@@ -798,16 +798,17 @@ int lyd_merge(struct lyd_node *target, const struct lyd_node *source, int option
  * - if the key of a list is being inserted, it is placed into a correct position instead of being placed as the last
  * element.
  * - if the target tree includes the default instance of the node being inserted, the default node is silently replaced
- * by the new node. Also, if a default node is being inserted and the target tree already contains
- * non-default instance, the existing instance is silently replaced. If it contains the exact same default node,
- * it is replaced as well.
+ * by the new node.
+ * - if a default node is being inserted and the target tree already contains non-default instance, the existing
+ * instance is silently replaced. If it contains the exact same default node, it is replaced as well.
  * - if a non-default node is being inserted and there is already its non-default instance in the target tree, the new
  * node is inserted and it is up to the caller to solve the presence of multiple instances afterwards.
  *
  * Note that this function differs from lyd_insert_before() and lyd_insert_after() because the position of the
  * node being inserted is determined automatically according to the rules described above. In contrast to
  * lyd_insert_parent(), lyd_insert() can not be used for top-level elements since the \p parent parameter must not be
- * NULL.
+ * NULL. If inserting something larger and not fitting the mentioned use-cases (or simply if unsure), you can always
+ * use lyd_merge(), it should be able to handle any situation.
  *
  * @param[in] parent Parent node for the \p node being inserted.
  * @param[in] node The node being inserted.
@@ -824,15 +825,17 @@ int lyd_insert(struct lyd_node *parent, struct lyd_node *node);
  * - if the key of a list is being inserted, it is placed into a correct position instead of being placed as the last
  * element.
  * - if the target tree includes the default instance of the node being inserted, the default node is silently replaced
- * by the new node. Also, if a default node is being inserted and the target tree already contains
- * non-default instance, the existing instance is silently replaced. If it contains the exact same default node,
- * it is replaced as well.
+ * by the new node.
+ * - if a default node is being inserted and the target tree already contains non-default instance, the existing
+ * instance is silently replaced. If it contains the exact same default node, it is replaced as well.
  * - if a non-default node is being inserted and there is already its non-default instance in the target tree, the new
  * node is inserted and it is up to the caller to solve the presence of multiple instances afterwards.
  *
  * Note that this function differs from lyd_insert_before() and lyd_insert_after() because the position of the
  * node being inserted is determined automatically as in the case of lyd_insert(). In contrast to lyd_insert(),
- * lyd_insert_sibling() can be used to insert top-level elements.
+ * lyd_insert_sibling() can be used to insert top-level elements. If inserting something larger and not fitting
+ * the mentioned use-cases (or simply if unsure), you can always use lyd_merge(), it should be able to handle
+ * any situation.
  *
  * @param[in,out] sibling Sibling node as a reference where to insert the \p node. When function succeeds, the sibling
  * is always set to point to the first sibling node. Note that in some cases described above, the provided sibling
@@ -848,8 +851,8 @@ int lyd_insert_sibling(struct lyd_node **sibling, struct lyd_node *node);
  * siblings (just moving \p node position), skip validation.
  *
  * - if the target tree includes the default instance of the node being inserted, the default node is silently removed.
- * Also, if a default node is being inserted and the target tree already contains
- * non-default instance, the existing instance is removed. If it contains the exact same default node, it is removed as well.
+ * - if a default node is being inserted and the target tree already contains non-default instance, the existing
+ * instance is removed. If it contains the exact same default node, it is removed as well.
  * - if a non-default node is being inserted and there is already its non-default instance in the target tree, the new
  * node is inserted and it is up to the caller to solve the presence of multiple instances afterwards.
  *
@@ -865,8 +868,8 @@ int lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node);
  * siblings (just moving \p node position), skip validation.
  *
  * - if the target tree includes the default instance of the node being inserted, the default node is silently removed.
- * Also, if a default node is being inserted and the target tree already contains
- * non-default instance, the existing instance is removed. If it contains the exact same default node, it is removed as well.
+ * - if a default node is being inserted and the target tree already contains non-default instance, the existing
+ * instance is removed. If it contains the exact same default node, it is removed as well.
  * - if a non-default node is being inserted and there is already its non-default instance in the target tree, the new
  * node is inserted and it is up to the caller to solve the presence of multiple instances afterwards.
  *

@@ -443,10 +443,9 @@ extern "C" {
  * of nodes, requires less information about the modified data, and is generally simpler to use. The path format
  * specifics can be found [here](@ref howtoxpath).
  *
- * Working with two data subtrees can also be performed two ways. Usually, you should use lyd_insert*() functions.
- * But they always work with a single subtree and it must be placed on an exact and correct location in the other
- * tree. If using lyd_merge(), this information is learned internally and duplicities (that would invalidate
- * the final data tree) are filtered out at the cost of somewhat reduced efficiency.
+ * Working with two data subtrees can also be performed two ways. Usually, you would use lyd_insert*() functions.
+ * They are generally meant for simple inserts of a node into a data tree. For more complicated inserts and when
+ * merging 2 trees use lyd_merge(). It offers additional options and is basically a more powerful insert.
  *
  * Also remember, that when you are creating/inserting a node, all the objects in that operation must belong to the
  * same context.

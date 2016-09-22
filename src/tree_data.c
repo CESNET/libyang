@@ -1665,6 +1665,7 @@ src_skip:
             if (!trg_child) {
 src_insert:
                 /* we need to insert the whole subtree */
+                lyd_unlink(src_elem_backup);
                 if (lyd_insert(trg_parent_backup, src_elem_backup)) {
                     LOGINT;
                     lyd_free_withsiblings(source);
@@ -1713,6 +1714,7 @@ lyd_merge_siblings(struct lyd_node *target, struct lyd_node *source, int options
 
         /* sibling not found, insert it */
         if (!trg) {
+            lyd_unlink(src);
             lyd_insert_after(target->prev, src);
             if (src == source) {
                 /* just so source is not freed, we inserted it and need it further */
