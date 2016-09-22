@@ -1,5 +1,5 @@
 /**
- * @file xml.c
+ * @file parser_xml.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief XML data parser for libyang
  *
