@@ -6758,11 +6758,13 @@ unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM 
  * @param[in] unres Unres data structure to use.
  * @param[in,out] root Root node of the data tree. If not NULL, auto-delete is performed on false when condition. If
  * NULL and when condition is false the error is raised.
+ * @param[in] trusted Whether the data are considered trusted (when, must conditions are not expected, unresolved
+ * leafrefs/instids are accepted).
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 int
-resolve_unres_data(struct unres_data *unres, struct lyd_node **root)
+resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int trusted)
 {
     uint32_t i, j, first = 1, resolved = 0, del_items = 0, when_stmt = 0;
     int rc, progress;
@@ -6784,10 +6786,11 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root)
     ly_vecode = LYVE_SUCCESS;
     do {
         progress = 0;
-        for(i = 0; i < unres->count; i++) {
+        for (i = 0; i < unres->count; i++) {
             if (unres->type[i] != UNRES_WHEN) {
                 continue;
             }
+            assert(!trusted);
             if (first) {
                 /* count when-stmt nodes in unres list */
                 when_stmt++;
@@ -6928,16 +6931,28 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root)
         if (unres->type[i] == UNRES_RESOLVED) {
             continue;
         }
+        assert(!trusted || ((unres->type[i] != UNRES_MUST) && (unres->type[i] != UNRES_MUST_INOUT)));
 
         rc = resolve_unres_data_item(unres->node[i], unres->type[i]);
-        if (rc == 0) {
-            unres->type[i] = UNRES_RESOLVED;
-            resolved++;
-        } else if (rc == -1) {
+        if (rc == -1) {
             ly_vlog_hide(0);
             /* print only this last error */
             resolve_unres_data_item(unres->node[i], unres->type[i]);
             return -1;
+        } else if ((rc == 0) || (trusted && ((unres->type[i] == UNRES_LEAFREF) || (unres->type[i] == UNRES_INSTID)))) {
+            unres->type[i] = UNRES_RESOLVED;
+            resolved++;
+            if (trusted) {
+                /* accept it in this case */
+                if (unres->type[i] == UNRES_LEAFREF) {
+                    LOGVRB("Leafref \"%s\" with value \"%s\" failed to be resolved.",
+                           ((struct lys_node_leaf *)unres->node[i]->schema)->type.info.lref.path,
+                           ((struct lyd_node_leaf_list *)unres->node[i])->value_str);
+                } else {
+                    LOGVRB("Instance identifier \"%s\" failed to be resolved.",
+                           ((struct lyd_node_leaf_list *)unres->node[i])->value_str);
+                }
+            }
         }
     }
 
