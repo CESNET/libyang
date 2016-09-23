@@ -130,5 +130,6 @@ int lyp_ctx_add_module(struct lys_module **module);
  *
  */
 unsigned int pututf8(char *dst, int32_t value);
+unsigned int copyutf8(char *dst, const char *src);
 
 #endif /* LY_PARSER_H_ */

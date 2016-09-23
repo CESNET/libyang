@@ -2088,29 +2088,48 @@ already_in_context:
  * 00000800 -- 0000FFFF:    1110xxxx 10xxxxxx 10xxxxxx
  * 00010000 -- 001FFFFF:    11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
  *
+ * Includes checking for valid characters (following RFC 7950, sec 9.4)
  */
 unsigned int
 pututf8(char *dst, int32_t value)
 {
     if (value < 0x80) {
         /* one byte character */
-        dst[0] = value;
+        if (value < 0x20 &&
+                value != 0x09 &&
+                value != 0x0a &&
+                value != 0x0d) {
+            goto error;
+        }
 
+        dst[0] = value;
         return 1;
     } else if (value < 0x800) {
         /* two bytes character */
         dst[0] = 0xc0 | (value >> 6);
         dst[1] = 0x80 | (value & 0x3f);
-
         return 2;
-    } else if (value < 0x10000) {
+    } else if (value < 0xfffe) {
         /* three bytes character */
+        if (((value & 0xf800) == 0xd800) ||
+                (value >= 0xfdd0 && value <= 0xfdef)) {
+            /* exclude surrogate blocks %xD800-DFFF */
+            /* exclude noncharacters %xFDD0-FDEF */
+            goto error;
+        }
+
         dst[0] = 0xe0 | (value >> 12);
         dst[1] = 0x80 | ((value >> 6) & 0x3f);
         dst[2] = 0x80 | (value & 0x3f);
 
         return 3;
-    } else if (value < 0x200000) {
+    } else if (value < 0x10fffe) {
+        if ((value & 0xffe) == 0xffe) {
+            /* exclude noncharacters %xFFFE-FFFF, %x1FFFE-1FFFF, %x2FFFE-2FFFF, %x3FFFE-3FFFF, %x4FFFE-4FFFF,
+             * %x5FFFE-5FFFF, %x6FFFE-6FFFF, %x7FFFE-7FFFF, %x8FFFE-8FFFF, %x9FFFE-9FFFF, %xAFFFE-AFFFF,
+             * %xBFFFE-BFFFF, %xCFFFE-CFFFF, %xDFFFE-DFFFF, %xEFFFE-EFFFF, %xFFFFE-FFFFF, %x10FFFE-10FFFF */
+            goto error;
+        }
         /* four bytes character */
         dst[0] = 0xf0 | (value >> 18);
         dst[1] = 0x80 | ((value >> 12) & 0x3f);
@@ -2118,10 +2137,75 @@ pututf8(char *dst, int32_t value)
         dst[3] = 0x80 | (value & 0x3f);
 
         return 4;
+    }
+error:
+    /* out of range */
+    LOGVAL(LYE_XML_INCHAR, LY_VLOG_NONE, NULL, NULL);
+    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%08x", value);
+    return 0;
+}
+
+unsigned int
+copyutf8(char *dst, const char *src)
+{
+    uint32_t value;
+
+    /* unicode characters */
+    if (!(src[0] & 0x80)) {
+        /* one byte character */
+        if (src[0] < 0x20 &&
+                src[0] != 0x09 &&
+                src[0] != 0x0a &&
+                src[0] != 0x0d) {
+            LOGVAL(LYE_XML_INCHAR, LY_VLOG_NONE, NULL, src);
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%02x", src[0]);
+            return 0;
+        }
+
+        dst[0] = src[0];
+        return 1;
+    } else if (!(src[0] & 0x20)) {
+        /* two bytes character */
+        dst[0] = src[0];
+        dst[1] = src[1];
+        return 2;
+    } else if (!(src[0] & 0x10)) {
+        /* three bytes character */
+        value = ((uint32_t)(src[0] & 0xf) << 12) | ((uint32_t)(src[1] & 0x3f) << 6) | (src[2] & 0x3f);
+        if (((value & 0xf800) == 0xd800) ||
+                (value >= 0xfdd0 && value <= 0xfdef) ||
+                (value & 0xffe) == 0xffe) {
+            /* exclude surrogate blocks %xD800-DFFF */
+            /* exclude noncharacters %xFDD0-FDEF */
+            /* exclude noncharacters %xFFFE-FFFF */
+            LOGVAL(LYE_XML_INCHAR, LY_VLOG_NONE, NULL, src);
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%08x", value);
+            return 0;
+        }
+
+        dst[0] = src[0];
+        dst[1] = src[1];
+        dst[2] = src[2];
+        return 3;
+    } else if (!(src[0] & 0x08)) {
+        /* four bytes character */
+        value = ((uint32_t)(src[0] & 0x7) << 18) | ((uint32_t)(src[1] & 0x3f) << 12) | ((uint32_t)(src[2] & 0x3f) << 6) | (src[3] & 0x3f);
+        if ((value & 0xffe) == 0xffe) {
+            /* exclude noncharacters %x1FFFE-1FFFF, %x2FFFE-2FFFF, %x3FFFE-3FFFF, %x4FFFE-4FFFF,
+             * %x5FFFE-5FFFF, %x6FFFE-6FFFF, %x7FFFE-7FFFF, %x8FFFE-8FFFF, %x9FFFE-9FFFF, %xAFFFE-AFFFF,
+             * %xBFFFE-BFFFF, %xCFFFE-CFFFF, %xDFFFE-DFFFF, %xEFFFE-EFFFF, %xFFFFE-FFFFF, %x10FFFE-10FFFF */
+            LOGVAL(LYE_XML_INCHAR, LY_VLOG_NONE, NULL, src);
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%08x", value);
+            return 0;
+        }
+        dst[0] = src[0];
+        dst[1] = src[1];
+        dst[2] = src[2];
+        dst[3] = src[3];
+        return 4;
     } else {
-        /* out of range */
-        LOGVAL(LYE_XML_INCHAR, LY_VLOG_NONE, NULL, value);
-        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%08x", value);
+        LOGVAL(LYE_XML_INCHAR, LY_VLOG_NONE, NULL, src);
+        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 leading byte 0x%02x", src[0]);
         return 0;
     }
 }

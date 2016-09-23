@@ -493,6 +493,139 @@ test_parse_print_oookeys_json(void **state)
     assert_string_equal(st->str1, out);
 }
 
+static void
+test_parse_noncharacters_xml(void **state)
+{
+    struct state *st;
+    const char* mod = "module x {namespace urn:x; prefix x; leaf x { type string;}}";
+    const char* data = "<x xmlns=\"urn:x\">----------</x>";
+
+    assert_ptr_not_equal(((*state) = st = calloc(1, sizeof *st)), NULL);
+    assert_ptr_not_equal((st->ctx = ly_ctx_new(NULL)), NULL);
+
+    /* test detection of invalid characters according to RFC 7950, sec 9.4 */
+    assert_ptr_not_equal(lys_parse_mem(st->ctx, mod, LYS_IN_YANG), 0);
+    assert_ptr_not_equal((st->str1 = strdup(data)), NULL);
+
+    /* exclude surrogate blocks 0xD800-DFFF - trying 0xd800 */
+    st->str1[17] = 0xed;
+    st->str1[18] = 0xa0;
+    st->str1[19] = 0x80;
+    assert_ptr_equal(lyd_parse_mem(st->ctx, st->str1, LYD_XML, LYD_OPT_CONFIG), NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_XML_INCHAR);
+    assert_string_equal(ly_errmsg(), "Invalid UTF-8 value 0x0000d800");
+
+    /* exclude noncharacters %xFDD0-FDEF - trying 0xfdd0 */
+    st->str1[17] = 0xef;
+    st->str1[18] = 0xb7;
+    st->str1[19] = 0x90;
+    assert_ptr_equal(lyd_parse_mem(st->ctx, st->str1, LYD_XML, LYD_OPT_CONFIG), NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_XML_INCHAR);
+    assert_string_equal(ly_errmsg(), "Invalid UTF-8 value 0x0000fdd0");
+
+    /* exclude noncharacters %xFFFE-FFFF - trying 0xfffe */
+    st->str1[17] = 0xef;
+    st->str1[18] = 0xbf;
+    st->str1[19] = 0xbe;
+    assert_ptr_equal(lyd_parse_mem(st->ctx, st->str1, LYD_XML, LYD_OPT_CONFIG), NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_XML_INCHAR);
+    assert_string_equal(ly_errmsg(), "Invalid UTF-8 value 0x0000fffe");
+
+    /* exclude c0 control characters except tab, carriage return and line feed */
+    st->str1[17] = 0x9; /* valid - horizontal tab */
+    st->str1[18] = 0xa; /* valid - new line */
+    st->str1[19] = 0xd; /* valid - carriage return */
+    st->str1[20] = 0x6; /* invalid - ack */
+    assert_ptr_equal(lyd_parse_mem(st->ctx, st->str1, LYD_XML, LYD_OPT_CONFIG), NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_XML_INCHAR);
+    assert_string_equal(ly_errmsg(), "Invalid UTF-8 value 0x06");
+
+    /* exclude noncharacters %x?FFFE-?FFFF - trying 0x10ffff */
+    st->str1[17] = 0xf4;
+    st->str1[18] = 0x8f;
+    st->str1[19] = 0xbf;
+    st->str1[20] = 0xbf;
+    assert_ptr_equal(lyd_parse_mem(st->ctx, st->str1, LYD_XML, LYD_OPT_CONFIG), NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_XML_INCHAR);
+    assert_string_equal(ly_errmsg(), "Invalid UTF-8 value 0x0010ffff");
+
+    /* 0x6 */
+    st->str1[17] = '&';
+    st->str1[18] = '#';
+    st->str1[19] = 'x';
+    st->str1[20] = '6';
+    st->str1[21] = ';';
+    assert_ptr_equal(lyd_parse_mem(st->ctx, st->str1, LYD_XML, LYD_OPT_CONFIG), NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_XML_INVAL);
+    assert_string_equal(ly_errmsg(), "Invalid character reference value.");
+
+    /* 0xdfff */
+    st->str1[17] = '&';
+    st->str1[18] = '#';
+    st->str1[19] = 'x';
+    st->str1[20] = 'd';
+    st->str1[21] = 'f';
+    st->str1[22] = 'f';
+    st->str1[23] = 'f';
+    st->str1[24] = ';';
+    assert_ptr_equal(lyd_parse_mem(st->ctx, st->str1, LYD_XML, LYD_OPT_CONFIG), NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_XML_INVAL);
+    assert_string_equal(ly_errmsg(), "Invalid character reference value.");
+
+    /* 0xfdef */
+    st->str1[17] = '&';
+    st->str1[18] = '#';
+    st->str1[19] = 'x';
+    st->str1[20] = 'f';
+    st->str1[21] = 'd';
+    st->str1[22] = 'e';
+    st->str1[23] = 'f';
+    st->str1[24] = ';';
+    assert_ptr_equal(lyd_parse_mem(st->ctx, st->str1, LYD_XML, LYD_OPT_CONFIG), NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_XML_INVAL);
+    assert_string_equal(ly_errmsg(), "Invalid character reference value.");
+
+    /* 0xffff */
+    st->str1[17] = '&';
+    st->str1[18] = '#';
+    st->str1[19] = 'x';
+    st->str1[20] = 'f';
+    st->str1[21] = 'f';
+    st->str1[22] = 'f';
+    st->str1[23] = 'f';
+    st->str1[24] = ';';
+    assert_ptr_equal(lyd_parse_mem(st->ctx, st->str1, LYD_XML, LYD_OPT_CONFIG), NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_XML_INVAL);
+    assert_string_equal(ly_errmsg(), "Invalid character reference value.");
+
+    /* the same using character reference */
+    /* 0x10ffff */
+    st->str1[17] = '&';
+    st->str1[18] = '#';
+    st->str1[19] = 'x';
+    st->str1[20] = '1';
+    st->str1[21] = '0';
+    st->str1[22] = 'f';
+    st->str1[23] = 'f';
+    st->str1[24] = 'f';
+    st->str1[25] = 'f';
+    st->str1[26] = ';';
+    assert_ptr_equal(lyd_parse_mem(st->ctx, st->str1, LYD_XML, LYD_OPT_CONFIG), NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_XML_INVAL);
+    assert_string_equal(ly_errmsg(), "Invalid character reference value.");
+
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -502,6 +635,7 @@ int main(void)
                     cmocka_unit_test_setup_teardown(test_parse_print_json, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_parse_print_oookeys_xml, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_parse_print_oookeys_json, setup_f, teardown_f),
+                    cmocka_unit_test_teardown(test_parse_noncharacters_xml, teardown_f),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

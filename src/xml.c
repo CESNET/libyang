@@ -694,8 +694,13 @@ loop:
                 (*len)++;
             }
         } else {
-            buf[o] = data[*len];
-            (*len)++;
+            r = copyutf8(&buf[o], &data[*len]);
+            if (!r) {
+                goto error;
+            }
+
+            o += r - 1;     /* o is ++ in for loop */
+            (*len) = (*len) + r;
         }
     }
 
