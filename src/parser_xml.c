@@ -75,7 +75,7 @@ xml_data_search_schemanode(struct lyxml_elem *xml, struct lys_node *start, int o
 
 /* logs directly */
 static int
-xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options)
+xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, int editbits)
 {
     struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
     int resolve;
@@ -92,6 +92,13 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options)
         resolve = 0;
     } else {
         resolve = 1;
+    }
+
+    if ((editbits & 0x10) && (node->schema->nodetype & LYS_LEAF) && (!leaf->value_str || !leaf->value_str[0])) {
+        /* we have edit-config leaf/leaf-list with delete operation and no (empty) value,
+         * this is not a bug since the node is just used as a kind of selection node */
+        leaf->value_type = LY_TYPE_ERR;
+        return EXIT_SUCCESS;
     }
 
     if ((leaf->value_type == LY_TYPE_IDENT) || (leaf->value_type == LY_TYPE_INST)) {
@@ -124,7 +131,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
     struct lyd_attr *dattr, *dattr_iter;
     struct lyxml_attr *attr;
     struct lyxml_elem *child, *next;
-    int i, havechildren, r, flag;
+    int i, havechildren, r, flag, editbits = 0;
     int ret = 0;
     const char *str = NULL;
 
@@ -228,7 +235,6 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
          * 0x08 - key attribute present
          * 0x10 - operation not allowing insert attribute
          */
-        i = 0;
         for (attr = xml->attr; attr; attr = attr->next) {
             if (attr->type != LYXML_ATTR_STD || !attr->ns) {
                 /* not interesting attribute or namespace declaration */
@@ -236,13 +242,13 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
             }
 
             if (!strcmp(attr->name, "operation") && !strcmp(attr->ns->value, LY_NSNC)) {
-                if (i & 0x10) {
+                if (editbits & 0x10) {
                     LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, (*result), "operation attributes", xml->name);
                     return -1;
                 }
 
                 if (!strcmp(attr->value, "delete") || !strcmp(attr->value, "remove")) {
-                    i |= 0x10;
+                    editbits |= 0x10;
                 } else if (strcmp(attr->value, "create") &&
                         strcmp(attr->value, "merge") &&
                         strcmp(attr->value, "replace")) {
@@ -258,49 +264,49 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
                     return -1;
                 }
 
-                if (i & 0x01) {
+                if (editbits & 0x01) {
                     LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, (*result), "insert attributes", xml->name);
                     return -1;
                 }
                 if (!strcmp(attr->value, "first") || !strcmp(attr->value, "last")) {
-                    i |= 0x01;
+                    editbits |= 0x01;
                 } else if (!strcmp(attr->value, "before") || !strcmp(attr->value, "after")) {
-                    i |= 0x01 | 0x02;
+                    editbits |= 0x01 | 0x02;
                 } else {
                     LOGVAL(LYE_INVALATTR, LY_VLOG_LYD, (*result), attr->value, attr->name);
                     return -1;
                 }
                 str = attr->name;
             } else if (!strcmp(attr->name, "value") && !strcmp(attr->ns->value, LY_NSYANG)) {
-                if (i & 0x04) {
+                if (editbits & 0x04) {
                     LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, (*result), "value attributes", xml->name);
                     return -1;
                 } else if (schema->nodetype & LYS_LIST) {
                     LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), attr->name, schema->name);
                     return -1;
                 }
-                i |= 0x04;
+                editbits |= 0x04;
                 str = attr->name;
             } else if (!strcmp(attr->name, "key") && !strcmp(attr->ns->value, LY_NSYANG)) {
-                if (i & 0x08) {
+                if (editbits & 0x08) {
                     LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, (*result), "key attributes", xml->name);
                     return -1;
                 } else if (schema->nodetype & LYS_LEAFLIST) {
                     LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), attr->name, schema->name);
                     return -1;
                 }
-                i |= 0x08;
+                editbits |= 0x08;
                 str = attr->name;
             }
         }
 
         /* report errors */
-        if (i > 0x10 || (i && i < 0x10 &&
+        if (editbits > 0x10 || (editbits && editbits < 0x10 &&
                 (!(schema->nodetype & (LYS_LEAFLIST | LYS_LIST)) || !(schema->flags & LYS_USERORDERED)))) {
             /* attributes in wrong elements */
             LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), str, xml->name);
             return -1;
-        } else if (i == 3) {
+        } else if (editbits == 3) {
             /* 0x01 | 0x02 - relative position, but value/key is missing */
             if (schema->nodetype & LYS_LIST) {
                 LOGVAL(LYE_MISSATTR, LY_VLOG_LYD, (*result), "key", xml->name);
@@ -308,9 +314,9 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
                 LOGVAL(LYE_MISSATTR, LY_VLOG_LYD, (*result), "value", xml->name);
             }
             return -1;
-        } else if ((i & (0x04 | 0x08)) && !(i & 0x02)) {
+        } else if ((editbits & (0x04 | 0x08)) && !(editbits & 0x02)) {
             /* key/value without relative position */
-            LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), (i & 0x04) ? "value" : "key", schema->name);
+            LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), (editbits & 0x04) ? "value" : "key", schema->name);
             return -1;
         }
     }
@@ -318,7 +324,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, const struct lys_node
     /* type specific processing */
     if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
         /* type detection and assigning the value */
-        if (xml_get_value(*result, xml, options)) {
+        if (xml_get_value(*result, xml, options, editbits)) {
             goto error;
         }
     } else if (schema->nodetype == LYS_ANYXML) {

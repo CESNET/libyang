@@ -384,6 +384,11 @@ int_range:
             }
         }
         break;
+    default:
+        /* unused outside libyang, we never should be here */
+        LOGINT;
+        ly_print(out, "%-*s%s\n", INDENT_LEN, "Base type: ", "UNKNOWN");
+        break;
     }
 
     if (uni) {

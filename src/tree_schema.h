@@ -311,6 +311,7 @@ struct lys_submodule {
  * @brief YANG built-in types
  */
 typedef enum {
+    LY_TYPE_ERR = -1,    /**< Error (return value for lyd_leaf_type()) */
     LY_TYPE_DER = 0,     /**< Derived type */
     LY_TYPE_BINARY,      /**< Any binary data ([RFC 6020 sec 9.8](http://tools.ietf.org/html/rfc6020#section-9.8)) */
     LY_TYPE_BITS,        /**< A set of bits or flags ([RFC 6020 sec 9.7](http://tools.ietf.org/html/rfc6020#section-9.7)) */
