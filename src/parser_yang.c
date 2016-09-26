@@ -1268,11 +1268,19 @@ yang_read_type(struct lys_module *module, void *parent, char *value, enum yytoke
     typ->flags = LY_YANG_STRUCTURE_FLAG;
     switch (type) {
     case LEAF_KEYWORD:
+        if (((struct lys_node_leaf *)parent)->type.der) {
+            LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, parent, "type", "leaf");
+            goto error;
+        }
         ((struct lys_node_leaf *)parent)->type.der = (struct lys_tpdf *)typ;
         ((struct lys_node_leaf *)parent)->type.parent = (struct lys_tpdf *)parent;
         typ->type = &((struct lys_node_leaf *)parent)->type;
         break;
     case LEAF_LIST_KEYWORD:
+        if (((struct lys_node_leaflist *)parent)->type.der) {
+            LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, parent, "type", "leaf-list");
+            goto error;
+        }
         ((struct lys_node_leaflist *)parent)->type.der = (struct lys_tpdf *)typ;
         ((struct lys_node_leaflist *)parent)->type.parent = (struct lys_tpdf *)parent;
         typ->type = &((struct lys_node_leaflist *)parent)->type;
@@ -1282,6 +1290,10 @@ yang_read_type(struct lys_module *module, void *parent, char *value, enum yytoke
         typ->type = (struct lys_type *)parent;
         break;
     case TYPEDEF_KEYWORD:
+        if (((struct lys_tpdf *)parent)->type.der) {
+            LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "type", "typedef");
+            goto error;
+        }
         ((struct lys_tpdf *)parent)->type.der = (struct lys_tpdf *)typ;
         typ->type = &((struct lys_tpdf *)parent)->type;
         break;
@@ -1332,6 +1344,9 @@ yang_delete_type(struct lys_module *module, struct yang_type *stype)
 {
     int i;
 
+    if (!stype) {
+        return;
+    }
     stype->type->base = stype->base;
     stype->type->der = NULL;
     lydict_remove(module->ctx, stype->name);
