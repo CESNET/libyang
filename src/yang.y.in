@@ -53,6 +53,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, ...);
   int32_t i;
   uint32_t uint;
   char *str;
+  char **p_str;
   void *v;
   char ch;
   struct lys_module *inc;
@@ -236,6 +237,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, ...);
 %type <ch> pattern_opt_stmt
 %type <ch> pattern_end
 %type <ch> modifier_stmt
+%type <p_str> tmp_string
 
 %destructor { free($$); } tmp_identifier_arg_str
 %destructor { free($$); } pattern_arg_str
@@ -257,6 +259,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, ...);
                 yang_delete_type(module, (struct yang_type *)$$.deviation->deviate->type->der);
               }
             } deviate_replace_stmtsep
+%destructor { free(($$) ? *$$ : NULL); } tmp_string
 
 %initial-action { yylloc.last_column = 0; }
 
@@ -285,11 +288,14 @@ start: module_stmt
                      }
                    }
 
-
-string_1: STRING  { if (read_all) {
+tmp_string: STRING { if (read_string) {
                       if (yyget_text(scanner)[0] == '"') {
-                        s = yang_read_string(yyget_text(scanner) + 1, yyget_leng(scanner) - 2, yylloc.first_column, (trg) ? trg->version : 0);
+                        s = malloc(yyget_leng(scanner) - 1 + 7 * yylval.i);
                         if (!s) {
+                          LOGMEM;
+                          YYABORT;
+                        }
+                        if (yang_read_string(yyget_text(scanner) + 1, s, yyget_leng(scanner) - 2, yylloc.first_column, (trg) ? trg->version : 0)) {
                           YYABORT;
                         }
                       } else {
@@ -300,39 +306,34 @@ string_1: STRING  { if (read_all) {
                         }
                         memcpy(s, yyget_text(scanner) + 1, yyget_leng(scanner) - 2);
                       }
+                      $$ = &s;
+                    } else {
+                      $$ = NULL;
                     }
                   }
-optsep string_2
+
+string_1: tmp_string optsep string_2
 
 
 string_2: @EMPTYDIR@
   |  string_2 '+' optsep
-     STRING { if (read_all){
-                char *temp;
+     STRING { if (read_string){
+                int length = yyget_leng(scanner) - 1 + strlen(s);
+                char *tmp;
+
+                tmp = realloc(s, length);
+                if (!tmp) {
+                  LOGMEM;
+                  YYABORT;
+                }
+                s = tmp;
                 if (yyget_text(scanner)[0] == '"') {
-                  temp = yang_read_string(yyget_text(scanner) + 1, yyget_leng(scanner) - 2, yylloc.first_column, (trg) ? trg->version : 0);
-                  if (!temp) {
-                    YYABORT;
-                  }
-                  s = ly_realloc(s, strlen(temp) + strlen(s) + 1);
-                  if (s) {
-                    strcat(s, temp);
-                    free(temp);
-                  } else {
-                    free(temp);
-                    LOGMEM;
+                  if (yang_read_string(yyget_text(scanner) + 1, s + strlen(s), yyget_leng(scanner) - 2, yylloc.first_column, (trg) ? trg->version : 0)) {
                     YYABORT;
                   }
                 } else {
-                  int length = yyget_leng(scanner) - 2 + strlen(s) + 1;
-                  s = ly_realloc(s, length);
-                  if (s) {
-                    memcpy(s + strlen(s), yyget_text(scanner) + 1, yyget_leng(scanner) - 2);
-                    s[length - 1] = '\0';
-                  } else {
-                    LOGMEM;
-                    YYABORT;
-                  }
+                  memcpy(s + strlen(s), yyget_text(scanner) + 1, yyget_leng(scanner) - 2);
+                  s[length - 1] = '\0';
                 }
               }
             }
@@ -820,14 +821,14 @@ yin_element_arg_str: TRUE_KEYWORD optsep
 
 status_stmt:  STATUS_KEYWORD sep status_arg_str stmtend { $$ = $3; }
 
-status_read_stmt:  STATUS_KEYWORD sep { read_all = (read_all) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
-                   status_arg_str { read_all = (read_all) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
+status_read_stmt:  STATUS_KEYWORD sep { read_string = (read_string) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
+                   status_arg_str { read_string = (read_string) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
                    stmtend { $$ = $4; }
 
 status_arg_str: CURRENT_KEYWORD optsep { $$ = LYS_STATUS_CURR; }
   | OBSOLETE_KEYWORD optsep { $$ = LYS_STATUS_OBSLT; }
   | DEPRECATED_KEYWORD optsep { $$ = LYS_STATUS_DEPRC; }
-  | string_1 { if (read_all) {
+  | string_1 { if (read_string) {
                  if (!strcmp(s, "current")) {
                    $$ = LYS_STATUS_CURR;
                  } else if (!strcmp(s, "obsolete")) {
@@ -4012,13 +4013,13 @@ when_opt_stmt: @EMPTYDIR@
 
 config_stmt: CONFIG_KEYWORD sep config_arg_str stmtend { $$ = $3; }
 
-config_read_stmt: CONFIG_KEYWORD sep { read_all = (read_all) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
-                  config_arg_str { read_all = (read_all) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
+config_read_stmt: CONFIG_KEYWORD sep { read_string = (read_string) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
+                  config_arg_str { read_string = (read_string) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
                   stmtend { $$ = $4; }
 
 config_arg_str: TRUE_KEYWORD optsep { $$ = LYS_CONFIG_W | LYS_CONFIG_SET; }
   |  FALSE_KEYWORD optsep { $$ = LYS_CONFIG_R | LYS_CONFIG_SET; }
-  |  string_1 { if (read_all) {
+  |  string_1 { if (read_string) {
                   if (!strcmp(s, "true")) {
                     $$ = LYS_CONFIG_W | LYS_CONFIG_SET;
                   } else if (!strcmp(s, "false")) {
@@ -4035,13 +4036,13 @@ config_arg_str: TRUE_KEYWORD optsep { $$ = LYS_CONFIG_W | LYS_CONFIG_SET; }
 
 mandatory_stmt: MANDATORY_KEYWORD sep mandatory_arg_str stmtend { $$ = $3; }
 
-mandatory_read_stmt: MANDATORY_KEYWORD sep { read_all = (read_all) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
-                     mandatory_arg_str { read_all = (read_all) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
+mandatory_read_stmt: MANDATORY_KEYWORD sep { read_string = (read_string) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
+                     mandatory_arg_str { read_string = (read_string) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
                      stmtend { $$ = $4; }
 
 mandatory_arg_str: TRUE_KEYWORD optsep { $$ = LYS_MAND_TRUE; }
   |  FALSE_KEYWORD optsep { $$ = LYS_MAND_FALSE; }
-  |  string_1 { if (read_all) {
+  |  string_1 { if (read_string) {
                   if (!strcmp(s, "true")) {
                     $$ = LYS_MAND_TRUE;
                   } else if (!strcmp(s, "false")) {

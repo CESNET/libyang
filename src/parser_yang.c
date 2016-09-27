@@ -2795,19 +2795,6 @@ error:
 }
 
 static int
-count_substring(const char *str, char c)
-{
-    const char *tmp = str;
-    int count = 0;
-
-    while ((tmp = strchr(tmp, c))) {
-        tmp++;
-        count++;
-    }
-    return count;
-}
-
-static int
 read_indent(const char *input, int indent, int size, int in_index, int *out_index, char *output)
 {
     int k = 0, j;
@@ -2818,6 +2805,10 @@ read_indent(const char *input, int indent, int size, int in_index, int *out_inde
         } else if (input[in_index] == '\t') {
             /* RFC 6020 6.1.3 tab character is treated as 8 space characters */
             k += 8;
+        } else  if (input[in_index] == '\\' && input[in_index + 1] == 't') {
+            /* RFC 6020 6.1.3 tab character is treated as 8 space characters */
+            k += 8;
+            ++in_index;
         } else {
             break;
         }
@@ -2830,87 +2821,67 @@ read_indent(const char *input, int indent, int size, int in_index, int *out_inde
             break;
         }
     }
-    return in_index;
+    return in_index - 1;
 }
 
-char *
-yang_read_string(const char *input, int size, int indent, int version)
-{
-    int space, count;
-    int in_index, out_index;
-    char *value;
-    char *retval = NULL;
+int
+yang_read_string(const char *input, char *output, int size, int indent, int version) {
+    int i=0, out_index=0, space = 0;
 
-    value = malloc(size + 1);
-    if (!value) {
-        LOGMEM;
-        return NULL;
-    }
-    /* replace special character in escape sequence */
-    in_index = out_index = 0;
-    while (in_index < size) {
-        if (input[in_index] == '\\') {
-            if (input[in_index + 1] == 'n') {
-                value[out_index] = '\n';
-                ++in_index;
-            } else if (input[in_index + 1] == 't') {
-                value[out_index] = '\t';
-                ++in_index;
-            } else if (input[in_index + 1] == '\\') {
-                value[out_index] = '\\';
-                ++in_index;
-            } else if ((in_index + 1) != size && input[in_index + 1] == '"') {
-                value[out_index] = '"';
-                ++in_index;
+    while (i < size) {
+        switch (input[i]) {
+        case '\n':
+            out_index -= space;
+            output[out_index] = '\n';
+            space = 0;
+            i = read_indent(input, indent, size, i + 1, &out_index, output);
+            break;
+        case ' ':
+        case '\t':
+            output[out_index] = input[i];
+            ++space;
+            break;
+        case '\\':
+            if (input[i + 1] == 'n') {
+                out_index -= space;
+                output[out_index] = '\n';
+                space = 0;
+                i = read_indent(input, indent, size, i + 2, &out_index, output);
+            } else if (input[i + 1] == 't') {
+                output[out_index] = '\t';
+                ++i;
+                ++space;
+            } else if (input[i + 1] == '\\') {
+                output[out_index] = '\\';
+                ++i;
+            } else if ((i + 1) != size && input[i + 1] == '"') {
+                output[out_index] = '"';
+                ++i;
             } else {
                 if (version < 2) {
-                    value[out_index] = input[in_index];
+                    output[out_index] = input[i];
                 } else {
                     /* YANG 1.1 backslash must not be followed by any other character */
                     LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, input);
-                    goto error;
+                    return EXIT_FAILURE;
                 }
             }
-        } else {
-            value[out_index] = input[in_index];
+            break;
+        default:
+            output[out_index] = input[i];
+            space = 0;
+            break;
         }
-        ++in_index;
+        ++i;
         ++out_index;
     }
-    value[out_index] = '\0';
-    size = out_index;
-    count = count_substring(value, '\t');
-
-    /* extend size of string due to replacing character '\t' with 8 spaces */
-    retval = malloc(size + 1 + 7 * count);
-    if (!retval) {
-        LOGMEM;
-        goto error;
-    }
-    in_index = out_index = space = 0;
-    while (in_index < size) {
-        if (value[in_index] == '\n') {
-            out_index -= space;
-            space = 0;
-            retval[out_index] = '\n';
-            ++out_index;
-            ++in_index;
-            in_index = read_indent(value, indent, size, in_index, &out_index, retval);
-            continue;
-        } else {
-            space = (value[in_index] == ' ' || value[in_index] == '\t') ? space + 1 : 0;
-            retval[out_index] = value[in_index];
-            ++out_index;
+    output[out_index] = '\0';
+    if (size != out_index) {
+        output = ly_realloc(output, out_index + 1);
+        if (!output) {
+            LOGMEM;
+            return EXIT_FAILURE;
         }
-        ++in_index;
     }
-    retval[out_index] = '\0';
-    if (out_index != size) {
-        retval = ly_realloc(retval, out_index + 1);
-    }
-    free(value);
-    return retval;
-error:
-    free(value);
-    return NULL;
+    return EXIT_SUCCESS;
 }

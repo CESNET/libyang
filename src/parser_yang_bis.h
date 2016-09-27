@@ -154,6 +154,7 @@ union YYSTYPE
   int32_t i;
   uint32_t uint;
   char *str;
+  char **p_str;
   void *v;
   char ch;
   struct lys_module *inc;
