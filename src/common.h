@@ -226,6 +226,7 @@ enum LY_VLOG_ELEM {
     LY_VLOG_STR  /* const char* */
 };
 void ly_vlog_hide(int hide);
+uint8_t *ly_vlog_hide_location(void);
 void ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...);
 #define LOGVAL(code, elem_type, elem, args...) ly_vlog(code, elem_type, elem, ##args)
 #define LOGPATH(elem_type, elem) ly_vlog(LYE_PATH, elem_type, elem)

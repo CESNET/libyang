@@ -310,7 +310,6 @@ static const LY_VECODE ecode2vecode[] = {
 };
 
 
-uint8_t *ly_vlog_hide_location(void);
 void
 ly_vlog_hide(int hide)
 {

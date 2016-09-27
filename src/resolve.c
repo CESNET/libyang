@@ -6213,16 +6213,24 @@ int
 unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
                       struct lys_node *snode)
 {
-    int rc;
+    int rc, log_hidden;
     struct lyxml_elem *yin;
     char *path, *msg;
 
     assert(unres && item && ((type != UNRES_LEAFREF) && (type != UNRES_INSTID) && (type != UNRES_WHEN)
            && (type != UNRES_MUST)));
 
-    ly_vlog_hide(1);
+    if (*ly_vlog_hide_location()) {
+        log_hidden = 1;
+    } else {
+        log_hidden = 0;
+        ly_vlog_hide(1);
+    }
     rc = resolve_unres_schema_item(mod, item, type, snode, unres);
-    ly_vlog_hide(0);
+    if (!log_hidden) {
+        ly_vlog_hide(0);
+    }
+
     if (rc != EXIT_FAILURE) {
         if (rc == -1 && ly_errno == LY_EVALID) {
             if (ly_log_level >= LY_LLERR) {
