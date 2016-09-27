@@ -2802,64 +2802,64 @@ autodelete:
 }
 
 API int
-lyd_replace(struct lyd_node *old, struct lyd_node *new, int destroy)
+lyd_replace(struct lyd_node *orig, struct lyd_node *repl, int destroy)
 {
     struct lyd_node *iter, *last;
 
-    if (!old) {
+    if (!orig) {
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
     }
 
-    if (!new) {
+    if (!repl) {
         /* remove the old one */
         goto finish;
     }
 
-    if (new->parent || new->prev->next) {
+    if (repl->parent || repl->prev->next) {
         /* isolate the new node */
-        new->next = NULL;
-        new->prev = new;
-        last = new;
+        repl->next = NULL;
+        repl->prev = repl;
+        last = repl;
     } else {
         /* get the last node of a possible list of nodes to be inserted */
-        for(last = new; last->next; last = last->next) {
+        for(last = repl; last->next; last = last->next) {
             /* part of the parent changes */
-            last->parent = old->parent;
+            last->parent = orig->parent;
         }
     }
 
     /* parent */
-    if (old->parent) {
-        if (old->parent->child == old) {
-            old->parent->child = new;
+    if (orig->parent) {
+        if (orig->parent->child == orig) {
+            orig->parent->child = repl;
         }
-        old->parent = NULL;
+        orig->parent = NULL;
     }
 
     /* predecessor */
-    if (old->prev == old) {
+    if (orig->prev == orig) {
         /* the old was alone */
         goto finish;
     }
-    if (old->prev->next) {
-        old->prev->next = new;
+    if (orig->prev->next) {
+        orig->prev->next = repl;
     }
-    new->prev = old->prev;
-    old->prev = old;
+    repl->prev = orig->prev;
+    orig->prev = orig;
 
     /* successor */
-    if (old->next) {
-        old->next->prev = last;
-        last->next = old->next;
-        old->next = NULL;
+    if (orig->next) {
+        orig->next->prev = last;
+        last->next = orig->next;
+        orig->next = NULL;
     } else {
         /* fix the last pointer */
-        if (new->parent) {
-            new->parent->child->prev = last;
+        if (repl->parent) {
+            repl->parent->child->prev = last;
         } else {
             /* get the first sibling */
-            for (iter = new; iter->prev != old; iter = iter->prev);
+            for (iter = repl; iter->prev != orig; iter = iter->prev);
             iter->prev = last;
         }
     }
@@ -2867,7 +2867,7 @@ lyd_replace(struct lyd_node *old, struct lyd_node *new, int destroy)
 finish:
     /* remove the old one */
     if (destroy) {
-        lyd_free(old);
+        lyd_free(orig);
     }
     return EXIT_SUCCESS;
 }
