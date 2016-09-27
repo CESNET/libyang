@@ -2871,6 +2871,7 @@ uses_opt_stmt: @EMPTYDIR@ { if (read_all) {
   ;
 
 refine_stmt: REFINE_KEYWORD sep refine_arg_str { if (read_all) {
+                                                   refine_parent = actual;
                                                    if (!(actual = yang_read_refine(trg, actual, s))) {
                                                      YYABORT;
                                                    }
@@ -2930,6 +2931,24 @@ refine_body_opt_stmts: @EMPTYDIR@ { if (read_all) {
                                       }
                                     }
                                   }
+                                  if (size_arrays->node[size_arrays->next].if_features) {
+                                    $$.refine->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.refine->iffeature);
+                                    if (!$$.refine->iffeature) {
+                                      LOGMEM;
+                                      YYABORT;
+                                    }
+                                    if (trg->version < 2) {
+                                      LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "if-feature");
+                                      YYABORT;
+                                    }
+                                    /* leaf, leaf-list, list, container or anyxml */
+                                    /* check possibility of statements combination */
+                                    if ($$.refine->target_type) {
+                                        $$.refine->target_type &= (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYDATA);
+                                    } else {
+                                        $$.refine->target_type = LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYDATA;
+                                    }
+                                  }
                                   size_arrays->next++;
                                 } else {
                                   $$.index = size_arrays->size;
@@ -2946,6 +2965,15 @@ refine_body_opt_stmts: @EMPTYDIR@ { if (read_all) {
                                          size_arrays->node[$1.index].must++;
                                        }
                                      }
+  |  refine_body_opt_stmts if_feature_stmt { if (read_all) {
+                                               if (yang_read_if_feature(trg, refine_parent, s, unres, REFINE_KEYWORD)) {
+                                                 YYABORT;
+                                               }
+                                               s=NULL;
+                                             } else {
+                                               size_arrays->node[$1.index].if_features++;
+                                             }
+                                           }
   |  refine_body_opt_stmts presence_stmt { if (read_all) {
                                              if ($1.refine->target_type) {
                                                if ($1.refine->target_type & LYS_CONTAINER) {

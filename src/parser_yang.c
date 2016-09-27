@@ -302,6 +302,7 @@ yang_read_if_feature(struct lys_module *module, void *ptr, char *value, struct u
     struct lys_node *n;
     struct lys_type_enum *e;
     struct lys_type_bit *b;
+    struct lys_refine *r;
 
     if ((module->version != 2) && ((value[0] == '(') || strchr(value, ' '))) {
         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "if-feature");
@@ -335,6 +336,11 @@ yang_read_if_feature(struct lys_module *module, void *ptr, char *value, struct u
         b = &((struct yang_type *)ptr)->type->info.bits.bit[((struct yang_type *)ptr)->type->info.bits.count - 1];
         ret = resolve_iffeature_compile(&b->iffeature[b->iffeature_size], exp, (struct lys_node *)((struct yang_type *)ptr)->type->parent, unres);
         b->iffeature_size++;
+        break;
+    case REFINE_KEYWORD:
+        r = &((struct lys_node_uses *)ptr)->refine[((struct lys_node_uses *)ptr)->refine_size - 1];
+        ret = resolve_iffeature_compile(&r->iffeature[r->iffeature_size], exp, (struct lys_node *) ptr, unres);
+        r->iffeature_size++;
         break;
     default:
         n = (struct lys_node *) ptr;
