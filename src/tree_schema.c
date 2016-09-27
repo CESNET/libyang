@@ -732,8 +732,9 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
         parent->child->prev = iter;
     }
 
-    /* check config value */
-    if (parent && !(parent->nodetype & (LYS_GROUPING | LYS_AUGMENT))) {
+    /* check config value (but ignore them in groupings and augments) */
+    for (iter = parent; iter && !(iter->nodetype & (LYS_GROUPING | LYS_AUGMENT)); iter = iter->parent);
+    if (parent && !iter) {
         for (iter = child; iter && !(iter->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT | LYS_RPC)); iter = iter->parent);
         if (!iter && (parent->flags & LYS_CONFIG_R) && (child->flags & LYS_CONFIG_W)) {
             LOGVAL(LYE_INARG, LY_VLOG_LYS, child, "true", "config");
@@ -2067,8 +2068,8 @@ ingrouping(const struct lys_node *node)
 }
 
 struct lys_node *
-lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct lys_node *node, uint8_t flags,
-             uint8_t nacm, struct unres_schema *unres, int shallow)
+lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct lys_node *node, uint8_t nacm,
+             struct unres_schema *unres, int shallow)
 {
     struct lys_node *retval = NULL, *child;
     struct ly_ctx *ctx = module->ctx;
@@ -2187,10 +2188,6 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
     retval->ref = lydict_insert(ctx, node->ref, 0);
     retval->nacm = nacm;
     retval->flags = node->flags;
-    if (!(retval->flags & LYS_CONFIG_MASK)) {
-        /* set parent's config flag */
-        retval->flags |= flags & LYS_CONFIG_MASK;
-    }
 
     retval->module = module;
     retval->nodetype = node->nodetype;
@@ -2243,7 +2240,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
         /* go recursively */
         if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
             LY_TREE_FOR(node->child, child) {
-                if (!lys_node_dup(module, retval, child, retval->flags, retval->nacm, unres, 0)) {
+                if (!lys_node_dup(module, retval, child, retval->nacm, unres, 0)) {
                     goto error;
                 }
             }

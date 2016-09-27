@@ -1817,7 +1817,7 @@ yang_read_deviate(struct type_deviation *dev, LYS_DEVIATE_TYPE mod)
     /* store a shallow copy of the original node */
     if (!dev->deviation->orig_node) {
         memset(&tmp_unres, 0, sizeof tmp_unres);
-        dev->deviation->orig_node = lys_node_dup(dev->target->module, NULL, dev->target, 0, 0, &tmp_unres, 1);
+        dev->deviation->orig_node = lys_node_dup(dev->target->module, NULL, dev->target, 0, &tmp_unres, 1);
         /* just to be safe */
         if (tmp_unres.count) {
             LOGINT;

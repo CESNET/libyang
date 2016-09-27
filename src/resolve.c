@@ -4013,30 +4013,42 @@ error:
  * Does not log.
  *
  * @param[in] node Siblings and their children to have flags changed.
- * @param[in] ignore Flag to ignore check if parent is LYS_NOTIF, LYS_INPUT, LYS_OUTPUT, LYS_RPC.
+ * @param[in] clear Flag to clear all config flags if parent is LYS_NOTIF, LYS_INPUT, LYS_OUTPUT, LYS_RPC.
  * @param[in] flags Flags to assign to all the nodes.
  *
  * @return 0 on success, -1 on error.
  */
 static int
-inherit_config_flag(struct lys_node *node, int ignore, int flags)
+inherit_config_flag(struct lys_node *node, int flags, int clear, int check_list)
 {
     assert(!(flags ^ (flags & LYS_CONFIG_MASK)));
     LY_TREE_FOR(node, node) {
-        if (!ignore && (node->flags & LYS_CONFIG_SET)) {
-            /* skip nodes with an explicit config value */
-            if ((flags & LYS_CONFIG_R) && (node->flags & LYS_CONFIG_W)) {
-                LOGVAL(LYE_INARG, LY_VLOG_LYS, node, "true", "config");
-                LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "State nodes cannot have configuration nodes as children.");
-                return -1;
+        if (clear) {
+            node->flags &= ~LYS_CONFIG_MASK;
+            assert(!(node->flags & LYS_CONFIG_SET));
+        } else {
+            if (node->flags & LYS_CONFIG_SET) {
+                /* skip nodes with an explicit config value */
+                if ((flags & LYS_CONFIG_R) && (node->flags & LYS_CONFIG_W)) {
+                    LOGVAL(LYE_INARG, LY_VLOG_LYS, node, "true", "config");
+                    LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "State nodes cannot have configuration nodes as children.");
+                    return -1;
+                }
+                continue;
             }
-            continue;
-        }
-        if (!(node->nodetype & (LYS_USES | LYS_GROUPING))) {
-            node->flags = (node->flags & ~LYS_CONFIG_MASK) | flags;
+
+            if (!(node->nodetype & (LYS_USES | LYS_GROUPING))) {
+                node->flags = (node->flags & ~LYS_CONFIG_MASK) | flags;
+                /* check that configuration lists have keys */
+                if (check_list && (node->nodetype == LYS_LIST)
+                        && (node->flags & LYS_CONFIG_W) && !((struct lys_node_list *)node)->keys_size) {
+                    LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, node, "key", "list");
+                    return -1;
+                }
+            }
         }
         if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
-            if (inherit_config_flag(node->child, ignore, flags)) {
+            if (inherit_config_flag(node->child, flags, clear, check_list)) {
                 return -1;
             }
         }
@@ -4056,7 +4068,7 @@ inherit_config_flag(struct lys_node *node, int ignore, int flags)
 static int
 resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
 {
-    int rc, ignore_config;
+    int rc, clear_config;
     struct lys_node *sub;
     const struct lys_node *aug_target, *parent;
     struct lys_module *mod;
@@ -4134,10 +4146,10 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
     }
 
     /* inherit config information from actual parent */
-    for(parent = aug_target; parent && !(parent->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT | LYS_RPC)); parent = parent->parent);
-    ignore_config = (parent) ? 1 : 0;
+    for(parent = aug_target; parent && !(parent->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT | LYS_RPC)); parent = lys_parent(parent));
+    clear_config = (parent) ? 1 : 0;
     LY_TREE_FOR(aug->child, sub) {
-        if (inherit_config_flag(sub, ignore_config, aug_target->flags & LYS_CONFIG_MASK)) {
+        if (inherit_config_flag(sub, aug_target->flags & LYS_CONFIG_MASK, clear_config, 1)) {
             return -1;
         }
     }
@@ -4223,7 +4235,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
     struct lys_refine *rfn;
     struct lys_restr *must, **old_must;
     struct lys_iffeature *iff, **old_iff;
-    int i, j, k, rc, parent_config, ignore_config;
+    int i, j, k, rc, parent_config, clear_config, check_list;
     uint8_t size, *old_size;
     unsigned int usize, usize1, usize2;
 
@@ -4247,7 +4259,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
 
     /* copy the data nodes from grouping into the uses context */
     LY_TREE_FOR(uses->grp->child, node_aux) {
-        node = lys_node_dup(uses->module, (struct lys_node *)uses, node_aux, 0, uses->nacm, unres, 0);
+        node = lys_node_dup(uses->module, (struct lys_node *)uses, node_aux, uses->nacm, unres, 0);
         if (!node) {
             LOGVAL(LYE_INARG, LY_VLOG_LYS, uses, uses->grp->name, "uses");
             LOGVAL(LYE_SPEC, LY_VLOG_LYS, uses, "Copying data from grouping failed.");
@@ -4260,13 +4272,27 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
             }
         }
     }
+
     ctx = uses->module->ctx;
-    for(parent = node; parent && !(parent->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT | LYS_RPC)); parent = parent->parent);
-    ignore_config = (parent) ? 1 : 0;
+    for (parent = node; parent && !(parent->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT | LYS_RPC | LYS_GROUPING));
+         parent = lys_parent(parent));
+    if (parent) {
+        if (parent->nodetype == LYS_GROUPING) {
+            /* we are still in some other unresolved grouping, unable to check lists */
+            check_list = 0;
+            clear_config = 0;
+        } else {
+            check_list = 0;
+            clear_config = 1;
+        }
+    } else {
+        check_list = 1;
+        clear_config = 0;
+    }
 
     if (parent_config) {
         assert(uses->child);
-        if (inherit_config_flag(uses->child, ignore_config, parent_config)) {
+        if (inherit_config_flag(uses->child, parent_config, clear_config, check_list)) {
             goto fail;
         }
     }
@@ -4311,7 +4337,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
         }
 
         /* config on any nodetype */
-        if ((rfn->flags & LYS_CONFIG_MASK) && !ignore_config) {
+        if ((rfn->flags & LYS_CONFIG_MASK) && !clear_config) {
             node->flags &= ~LYS_CONFIG_MASK;
             node->flags |= (rfn->flags & LYS_CONFIG_MASK);
         }
@@ -4497,7 +4523,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
         rfn = &uses->refine[i];
 
         /* config on any nodetype */
-        if ((rfn->flags & LYS_CONFIG_MASK) && !ignore_config) {
+        if ((rfn->flags & LYS_CONFIG_MASK) && !clear_config) {
             for (parent = lys_parent(node); parent && parent->nodetype == LYS_USES; parent = lys_parent(parent));
             if (parent && parent->nodetype != LYS_GROUPING &&
                     ((parent->flags & LYS_CONFIG_MASK) != (rfn->flags & LYS_CONFIG_MASK)) &&
