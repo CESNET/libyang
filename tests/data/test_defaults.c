@@ -422,8 +422,8 @@ test_rpc_output_default(void **state)
 {
     struct state *st = (*state);
     const char *xml1 = "<rpc1 xmlns=\"urn:libyang:tests:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
-                         "<outleaf2>hai</outleaf2>"
                          "<outleaf1 ncwd:default=\"true\">def2</outleaf1>"
+                         "<outleaf2>hai</outleaf2>"
                        "</rpc1>";
     const char *xml2 = "<rpc1 xmlns=\"urn:libyang:tests:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
                          "<outleaf1 ncwd:default=\"true\">def2</outleaf1>"
