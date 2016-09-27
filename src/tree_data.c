@@ -170,7 +170,7 @@ lyd_check_mandatory_data(struct lyd_node *root, struct lyd_node *last_parent,
         break;
     default:
         /* we cannot get here */
-        assert(1);
+        assert(0);
         break;
     }
 
@@ -1098,7 +1098,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
                     case LYD_ANYDATA_SXMLD:
                     case LYD_ANYDATA_JSOND:
                         /* dynamic strings are used only as input parameters */
-                        assert(1);
+                        assert(0);
                         break;
                     }
                     /* ... and 2) store the new one */
@@ -1556,7 +1556,7 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
         case LYD_ANYDATA_SXMLD:
         case LYD_ANYDATA_JSOND:
             /* dynamic strings are used only as input parameters */
-            assert(1);
+            assert(0);
             break;
         }
 
@@ -3992,7 +3992,7 @@ lyd_dup(const struct lyd_node *node, int recursive)
             case LYD_ANYDATA_SXMLD:
             case LYD_ANYDATA_JSOND:
                 /* dynamic strings are used only as input parameters */
-                assert(1);
+                assert(0);
                 break;
             }
             break;
@@ -4226,7 +4226,7 @@ lyd_free(struct lyd_node *node)
         case LYD_ANYDATA_SXMLD:
         case LYD_ANYDATA_JSOND:
             /* dynamic strings are used only as input parameters */
-            assert(1);
+            assert(0);
             break;
         }
     } else { /* LYS_LEAF | LYS_LEAFLIST */

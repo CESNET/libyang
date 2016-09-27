@@ -435,7 +435,7 @@ cast_string_recursive(struct lyd_node *node, int fake_cont, enum lyxp_node_type 
             case LYD_ANYDATA_SXMLD:
             case LYD_ANYDATA_JSOND:
                 /* dynamic strings are used only as input parameters */
-                assert(1);
+                assert(0);
                 break;
             }
         }

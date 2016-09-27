@@ -389,7 +389,7 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
         case LYD_ANYDATA_SXMLD:
         case LYD_ANYDATA_JSOND:
             /* dynamic strings are used only as input parameters */
-            assert(1);
+            assert(0);
             break;
         }
 
