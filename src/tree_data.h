@@ -888,11 +888,11 @@ int lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node);
  * If the \p new is NULL and \p destroy is true, it works like lyd_free(old).
  *
  * @param[in] old The specific node supposed to be replaced.
- * @param[in] new The new (list of) node(s) to be inserted instead of \p old
+ * @param[in] _new The new (list of) node(s) to be inserted instead of \p old
  * @param[in] destroy Flag for freeing the \p old.
  * @return 0 on success, nonzero in case of error.
  */
-int lyd_replace(struct lyd_node *old, struct lyd_node *new, int destroy);
+int lyd_replace(struct lyd_node *old, struct lyd_node *_new, int destroy);
 
 /**
  * @brief Order siblings according to the schema node ordering.
