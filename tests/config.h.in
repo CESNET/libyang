@@ -1,5 +1,5 @@
 /**
- * @file conig.h
+ * @file config.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief cmocka tests configuration header.
  *
