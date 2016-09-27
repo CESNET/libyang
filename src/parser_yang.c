@@ -1808,6 +1808,7 @@ yang_read_deviate(struct type_deviation *dev, LYS_DEVIATE_TYPE mod)
     dev->deviation->deviate[dev->deviation->deviate_size].mod = mod;
     dev->deviate = &dev->deviation->deviate[dev->deviation->deviate_size];
     dev->deviation->deviate_size++;
+    dev->trg_must_size = NULL;
     if (dev->deviation->deviate[0].mod == LY_DEVIATE_NO) {
         LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "not-supported");
         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"not-supported\" deviation cannot be combined with any other deviation.");

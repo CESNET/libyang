@@ -612,59 +612,59 @@ static const yytype_uint16 yyrline[] =
     1550,  1555,  1579,  1588,  1597,  1603,  1608,  1614,  1626,  1627,
     1642,  1644,  1646,  1648,  1650,  1650,  1657,  1658,  1663,  1685,
     1691,  1696,  1701,  1702,  1709,  1710,  1711,  1722,  1723,  1724,
-    1725,  1726,  1727,  1728,  1729,  1732,  1732,  1740,  1741,  1746,
-    1782,  1782,  1784,  1791,  1791,  1799,  1800,  1806,  1812,  1817,
-    1822,  1822,  1827,  1827,  1832,  1832,  1843,  1843,  1851,  1851,
-    1858,  1884,  1892,  1922,  1922,  1924,  1931,  1931,  1938,  1939,
-    1939,  1947,  1950,  1956,  1962,  1968,  1973,  1978,  1988,  2031,
-    2072,  2072,  2074,  2081,  2081,  2088,  2108,  2109,  2109,  2117,
-    2123,  2137,  2151,  2163,  2169,  2174,  2180,  2187,  2180,  2212,
-    2257,  2257,  2259,  2266,  2266,  2274,  2288,  2296,  2302,  2316,
-    2330,  2342,  2348,  2353,  2358,  2358,  2366,  2366,  2371,  2371,
-    2376,  2376,  2387,  2387,  2395,  2395,  2406,  2408,  2407,  2425,
-    2448,  2448,  2450,  2463,  2475,  2483,  2491,  2499,  2508,  2517,
-    2517,  2527,  2528,  2531,  2532,  2533,  2534,  2535,  2536,  2537,
-    2544,  2544,  2552,  2553,  2557,  2579,  2579,  2581,  2588,  2594,
-    2599,  2604,  2604,  2611,  2611,  2623,  2623,  2635,  2636,  2640,
-    2669,  2669,  2675,  2682,  2682,  2690,  2697,  2704,  2711,  2716,
-    2722,  2722,  2738,  2739,  2743,  2780,  2780,  2782,  2789,  2795,
-    2800,  2805,  2805,  2813,  2813,  2828,  2828,  2837,  2838,  2843,
-    2844,  2847,  2897,  2904,  2928,  2948,  2967,  2986,  3009,  3032,
-    3037,  3043,  3052,  3043,  3059,  3060,  3063,  3072,  3063,  3084,
-    3105,  3105,  3107,  3114,  3123,  3128,  3133,  3133,  3141,  3141,
-    3149,  3149,  3161,  3161,  3171,  3172,  3175,  3175,  3186,  3186,
-    3197,  3198,  3203,  3233,  3240,  3246,  3251,  3256,  3256,  3264,
-    3264,  3269,  3269,  3281,  3281,  3294,  3308,  3294,  3315,  3346,
-    3346,  3354,  3354,  3362,  3362,  3367,  3367,  3377,  3391,  3377,
-    3398,  3398,  3408,  3412,  3417,  3457,  3457,  3465,  3472,  3478,
-    3483,  3488,  3488,  3496,  3496,  3501,  3501,  3508,  3517,  3508,
-    3531,  3551,  3559,  3567,  3577,  3578,  3580,  3585,  3587,  3588,
-    3589,  3592,  3594,  3594,  3600,  3601,  3605,  3632,  3640,  3648,
-    3664,  3674,  3681,  3688,  3699,  3711,  3711,  3717,  3718,  3738,
-    3765,  3773,  3784,  3794,  3805,  3805,  3811,  3815,  3816,  3828,
-    3845,  3849,  3857,  3867,  3874,  3881,  3892,  3904,  3904,  3907,
-    3908,  3912,  3913,  3918,  3924,  3926,  3927,  3926,  3930,  3931,
-    3932,  3947,  3949,  3950,  3949,  3953,  3954,  3955,  3970,  3972,
-    3974,  3975,  3996,  3998,  3999,  4000,  4021,  4023,  4024,  4025,
-    4037,  4037,  4045,  4046,  4051,  4053,  4054,  4056,  4057,  4059,
-    4061,  4061,  4070,  4073,  4073,  4084,  4087,  4097,  4118,  4120,
-    4121,  4124,  4124,  4143,  4143,  4152,  4152,  4161,  4164,  4166,
-    4168,  4169,  4171,  4173,  4175,  4176,  4178,  4180,  4181,  4183,
-    4184,  4186,  4188,  4191,  4195,  4197,  4198,  4200,  4201,  4203,
-    4205,  4216,  4217,  4220,  4221,  4233,  4234,  4236,  4237,  4239,
-    4240,  4246,  4247,  4250,  4251,  4252,  4278,  4279,  4282,  4283,
-    4284,  4287,  4287,  4295,  4297,  4298,  4300,  4301,  4302,  4304,
-    4305,  4307,  4308,  4310,  4311,  4313,  4314,  4316,  4317,  4320,
-    4321,  4324,  4326,  4327,  4330,  4330,  4339,  4341,  4342,  4343,
-    4344,  4345,  4346,  4347,  4349,  4350,  4351,  4352,  4353,  4354,
-    4355,  4356,  4357,  4358,  4359,  4360,  4361,  4362,  4363,  4364,
-    4365,  4366,  4367,  4368,  4369,  4370,  4371,  4372,  4373,  4374,
-    4375,  4376,  4377,  4378,  4379,  4380,  4381,  4382,  4383,  4384,
-    4385,  4386,  4387,  4388,  4389,  4390,  4391,  4392,  4393,  4394,
-    4395,  4396,  4397,  4398,  4399,  4400,  4401,  4402,  4403,  4404,
-    4405,  4406,  4407,  4408,  4409,  4410,  4411,  4412,  4413,  4414,
-    4415,  4416,  4417,  4418,  4419,  4420,  4421,  4422,  4423,  4424,
-    4425,  4426,  4427,  4428,  4429,  4432,  4441
+    1725,  1726,  1727,  1728,  1729,  1732,  1732,  1740,  1741,  1751,
+    1787,  1787,  1789,  1796,  1796,  1804,  1805,  1811,  1817,  1822,
+    1827,  1827,  1832,  1832,  1837,  1837,  1848,  1848,  1856,  1856,
+    1863,  1894,  1902,  1932,  1932,  1934,  1941,  1941,  1948,  1949,
+    1949,  1957,  1960,  1966,  1972,  1978,  1983,  1988,  1998,  2046,
+    2087,  2087,  2089,  2096,  2096,  2103,  2123,  2124,  2124,  2132,
+    2138,  2152,  2166,  2178,  2184,  2189,  2195,  2202,  2195,  2232,
+    2277,  2277,  2279,  2286,  2286,  2294,  2308,  2316,  2322,  2336,
+    2350,  2362,  2368,  2373,  2378,  2378,  2386,  2386,  2391,  2391,
+    2396,  2396,  2407,  2407,  2415,  2415,  2426,  2428,  2427,  2450,
+    2473,  2473,  2475,  2488,  2500,  2508,  2516,  2524,  2533,  2542,
+    2542,  2552,  2553,  2556,  2557,  2558,  2559,  2560,  2561,  2562,
+    2569,  2569,  2577,  2578,  2589,  2611,  2611,  2613,  2620,  2626,
+    2631,  2636,  2636,  2643,  2643,  2655,  2655,  2667,  2668,  2679,
+    2708,  2708,  2714,  2721,  2721,  2729,  2736,  2743,  2750,  2755,
+    2761,  2761,  2782,  2783,  2787,  2824,  2824,  2826,  2833,  2839,
+    2844,  2849,  2849,  2857,  2857,  2872,  2872,  2881,  2882,  2887,
+    2888,  2891,  2941,  2948,  2972,  2992,  3011,  3030,  3053,  3076,
+    3081,  3087,  3096,  3087,  3110,  3111,  3114,  3123,  3114,  3140,
+    3161,  3161,  3163,  3170,  3179,  3184,  3189,  3189,  3197,  3197,
+    3205,  3205,  3217,  3217,  3227,  3228,  3231,  3231,  3242,  3242,
+    3253,  3254,  3259,  3289,  3296,  3302,  3307,  3312,  3312,  3320,
+    3320,  3325,  3325,  3337,  3337,  3350,  3364,  3350,  3378,  3409,
+    3409,  3417,  3417,  3425,  3425,  3430,  3430,  3440,  3454,  3440,
+    3468,  3468,  3478,  3482,  3494,  3534,  3534,  3542,  3549,  3555,
+    3560,  3565,  3565,  3573,  3573,  3578,  3578,  3585,  3594,  3585,
+    3608,  3628,  3636,  3644,  3654,  3655,  3657,  3662,  3664,  3665,
+    3666,  3669,  3671,  3671,  3677,  3678,  3689,  3716,  3724,  3732,
+    3748,  3758,  3765,  3772,  3783,  3795,  3795,  3801,  3802,  3827,
+    3854,  3862,  3873,  3883,  3894,  3894,  3900,  3904,  3905,  3917,
+    3934,  3938,  3946,  3956,  3963,  3970,  3981,  3993,  3993,  3996,
+    3997,  4001,  4002,  4007,  4013,  4015,  4016,  4015,  4019,  4020,
+    4021,  4036,  4038,  4039,  4038,  4042,  4043,  4044,  4059,  4061,
+    4063,  4064,  4085,  4087,  4088,  4089,  4110,  4112,  4113,  4114,
+    4126,  4126,  4134,  4135,  4140,  4142,  4143,  4145,  4146,  4148,
+    4150,  4150,  4159,  4162,  4162,  4173,  4176,  4186,  4207,  4209,
+    4210,  4213,  4213,  4232,  4232,  4241,  4241,  4250,  4253,  4255,
+    4257,  4258,  4260,  4262,  4264,  4265,  4267,  4269,  4270,  4272,
+    4273,  4275,  4277,  4280,  4284,  4286,  4287,  4289,  4290,  4292,
+    4294,  4305,  4306,  4309,  4310,  4322,  4323,  4325,  4326,  4328,
+    4329,  4335,  4336,  4339,  4340,  4341,  4367,  4368,  4371,  4372,
+    4373,  4376,  4376,  4384,  4386,  4387,  4389,  4390,  4391,  4393,
+    4394,  4396,  4397,  4399,  4400,  4402,  4403,  4405,  4406,  4409,
+    4410,  4413,  4415,  4416,  4419,  4419,  4428,  4430,  4431,  4432,
+    4433,  4434,  4435,  4436,  4438,  4439,  4440,  4441,  4442,  4443,
+    4444,  4445,  4446,  4447,  4448,  4449,  4450,  4451,  4452,  4453,
+    4454,  4455,  4456,  4457,  4458,  4459,  4460,  4461,  4462,  4463,
+    4464,  4465,  4466,  4467,  4468,  4469,  4470,  4471,  4472,  4473,
+    4474,  4475,  4476,  4477,  4478,  4479,  4480,  4481,  4482,  4483,
+    4484,  4485,  4486,  4487,  4488,  4489,  4490,  4491,  4492,  4493,
+    4494,  4495,  4496,  4497,  4498,  4499,  4500,  4501,  4502,  4503,
+    4504,  4505,  4506,  4507,  4508,  4509,  4510,  4511,  4512,  4513,
+    4514,  4515,  4516,  4517,  4518,  4521,  4530
 };
 #endif
 
@@ -4973,6 +4973,18 @@ yyreduce:
 
     break;
 
+  case 248:
+
+    { if (read_all) {
+              /* check XPath dependencies */
+              if (((yyvsp[-1].nodes).container->when || (yyvsp[-1].nodes).container->must_size) && (unres_schema_add_node(trg, unres, (yyvsp[-1].nodes).container, UNRES_XPATH, NULL) == -1)) {
+                YYABORT;
+              }
+            }
+          }
+
+    break;
+
   case 249:
 
     { if (read_all) {
@@ -5166,6 +5178,11 @@ yyreduce:
                       YYABORT;
                     }
                     if (unres_schema_add_str(trg, unres, &(yyvsp[-1].nodes).node.ptr_leaf->type, UNRES_TYPE_DFLT, (yyvsp[-1].nodes).node.ptr_leaf->dflt) == -1) {
+                      YYABORT;
+                    }
+                    /* check XPath dependencies */
+                    if (((yyvsp[-1].nodes).node.ptr_leaf->when || (yyvsp[-1].nodes).node.ptr_leaf->must_size) &&
+                        (unres_schema_add_node(trg, unres, (yyvsp[-1].nodes).node.ptr_leaf, UNRES_XPATH, NULL) == -1)) {
                       YYABORT;
                     }
                   }
@@ -5386,6 +5403,11 @@ yyreduce:
                             if (unres_schema_add_str(module, unres, &(yyvsp[-1].nodes).node.ptr_leaflist->type, UNRES_TYPE_DFLT, (yyvsp[-1].nodes).node.ptr_leaflist->dflt[i]) == -1) {
                               YYABORT;
                             }
+                          }
+                          /* check XPath dependencies */
+                          if (((yyvsp[-1].nodes).node.ptr_leaflist->when || (yyvsp[-1].nodes).node.ptr_leaflist->must_size) &&
+                              (unres_schema_add_node(trg, unres, (yyvsp[-1].nodes).node.ptr_leaflist, UNRES_XPATH, NULL) == -1)) {
+                            YYABORT;
                           }
                         }
                       }
@@ -5645,6 +5667,11 @@ yyreduce:
                                    YYABORT;
                                  }
                                  if (yang_read_unique(trg, (yyvsp[0].nodes).node.ptr_list, unres)) {
+                                   YYABORT;
+                                 }
+                                 /* check XPath dependencies */
+                                 if (((yyvsp[0].nodes).node.ptr_list->when || (yyvsp[0].nodes).node.ptr_list->must_size) &&
+                                     (unres_schema_add_node(trg, unres, (yyvsp[0].nodes).node.ptr_list, UNRES_XPATH, NULL) == -1)) {
                                    YYABORT;
                                  }
                                }
@@ -5951,6 +5978,11 @@ yyreduce:
                                 }
                                 free((yyvsp[0].nodes).choice.s);
                               }
+                              /* check XPath dependencies */
+                              if ((yyvsp[0].nodes).choice.ptr_choice->when &&
+                                  (unres_schema_add_node(trg, unres, (yyvsp[0].nodes).choice.ptr_choice, UNRES_XPATH, NULL) == -1)) {
+                                YYABORT;
+                              }
                             }
                           }
 
@@ -6137,6 +6169,19 @@ yyreduce:
 
     break;
 
+  case 363:
+
+    { if (read_all) {
+              /* check XPath dependencies */
+              if ((yyvsp[-1].nodes).cs->when &&
+                  (unres_schema_add_node(trg, unres, (yyvsp[-1].nodes).cs, UNRES_XPATH, NULL) == -1)) {
+                YYABORT;
+              }
+            }
+          }
+
+    break;
+
   case 364:
 
     { if (read_all) {
@@ -6249,6 +6294,19 @@ yyreduce:
                                                        }
                                                        actual_type = ANYDATA_KEYWORD;
                                                      }
+
+    break;
+
+  case 378:
+
+    { if (read_all) {
+             /* check XPath dependencies */
+             if (((yyvsp[-1].nodes).node.ptr_anydata->when || (yyvsp[-1].nodes).node.ptr_anydata->must_size) &&
+                 (unres_schema_add_node(trg, unres, (yyvsp[-1].nodes).node.ptr_anydata, UNRES_XPATH, NULL) == -1)) {
+               YYABORT;
+             }
+           }
+         }
 
     break;
 
@@ -6394,6 +6452,11 @@ yyreduce:
 
     { if (read_all) {
                         if (unres_schema_add_node(trg, unres, actual, UNRES_USES, NULL) == -1) {
+                          YYABORT;
+                        }
+                        /* check XPath dependencies */
+                        if (((struct lys_node_uses *)actual)->when &&
+                            (unres_schema_add_node(trg, unres, actual, UNRES_XPATH, NULL) == -1)) {
                           YYABORT;
                         }
                       }
@@ -6793,9 +6856,16 @@ yyreduce:
 
   case 422:
 
-    { if (read_all && !((yyvsp[0].nodes).node.flag & LYS_DATADEF)){
-                                            LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "data-def or case", "uses/augment");
-                                            YYABORT;
+    { if (read_all) {
+                                            if (!((yyvsp[0].nodes).node.flag & LYS_DATADEF)) {
+                                              LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "data-def or case", "uses/augment");
+                                              YYABORT;
+                                            }
+                                            /* check XPath dependencies */
+                                            if ((yyvsp[0].nodes).node.ptr_augment->when &&
+                                                (unres_schema_add_node(trg, unres, (yyvsp[0].nodes).node.ptr_augment, UNRES_XPATH, NULL) == -1)) {
+                                              YYABORT;
+                                            }
                                           }
                                         }
 
@@ -6822,6 +6892,11 @@ yyreduce:
                                          YYABORT;
                                        }
                                        if (unres_schema_add_node(trg, unres, actual, UNRES_AUGMENT, NULL) == -1) {
+                                         YYABORT;
+                                       }
+                                       /* check XPath dependencies */
+                                       if ((yyvsp[0].nodes).node.ptr_augment->when &&
+                                           (unres_schema_add_node(trg, unres, (yyvsp[0].nodes).node.ptr_augment, UNRES_XPATH, NULL) == -1)) {
                                          YYABORT;
                                        }
                                      }
@@ -7186,9 +7261,16 @@ yyreduce:
 
   case 466:
 
-    { if (read_all && !((yyvsp[0].nodes).node.flag & LYS_DATADEF)) {
-                                          LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, "data-def", "input");
-                                          YYABORT;
+    { if (read_all) {
+                                          if (!((yyvsp[0].nodes).node.flag & LYS_DATADEF)) {
+                                            LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, "data-def", "input");
+                                            YYABORT;
+                                          }
+                                          /* check XPath dependencies */
+                                          if ((yyvsp[0].nodes).node.ptr_inout->must_size &&
+                                              (unres_schema_add_node(trg, unres, (yyvsp[0].nodes).node.ptr_inout, UNRES_XPATH, NULL) == -1)) {
+                                            YYABORT;
+                                          }
                                         }
                                       }
 
@@ -7301,9 +7383,16 @@ yyreduce:
 
   case 478:
 
-    { if (read_all && !((yyvsp[0].nodes).node.flag & LYS_DATADEF)) {
-                                           LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, "data-def", "output");
-                                           YYABORT;
+    { if (read_all) {
+                                           if (!((yyvsp[0].nodes).node.flag & LYS_DATADEF)) {
+                                             LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, "data-def", "output");
+                                             YYABORT;
+                                           }
+                                           /* check XPath dependencies */
+                                           if ((yyvsp[0].nodes).node.ptr_inout->must_size &&
+                                               (unres_schema_add_node(trg, unres, (yyvsp[0].nodes).node.ptr_inout, UNRES_XPATH, NULL) == -1)) {
+                                             YYABORT;
+                                           }
                                          }
                                        }
 
@@ -7334,6 +7423,19 @@ yyreduce:
                           size_arrays->next++;
                         }
                       }
+
+    break;
+
+  case 483:
+
+    { if (read_all) {
+              /* check XPath dependencies */
+              if ((yyvsp[-1].nodes).notif->must_size &&
+                  (unres_schema_add_node(trg, unres, (yyvsp[-1].nodes).notif, UNRES_XPATH, NULL) == -1)) {
+                YYABORT;
+              }
+            }
+          }
 
     break;
 
@@ -7580,6 +7682,19 @@ yyreduce:
 
     break;
 
+  case 515:
+
+    { if (read_all) {
+             /* check XPath dependencies */
+             if (((yyvsp[-1].nodes).deviation->trg_must_size && *(yyvsp[-1].nodes).deviation->trg_must_size) &&
+                 unres_schema_add_node((yyvsp[-1].nodes).deviation->target->module, unres, (yyvsp[-1].nodes).deviation->target, UNRES_XPATH, NULL)) {
+               YYABORT;
+             }
+           }
+         }
+
+    break;
+
   case 516:
 
     { if (read_all) {
@@ -7755,6 +7870,11 @@ yyreduce:
                   }
                 }
                 llist->dflt_size = i + 1;
+              }
+              /* check XPath dependencies */
+              if (((yyvsp[-1].nodes).deviation->trg_must_size && *(yyvsp[-1].nodes).deviation->trg_must_size) &&
+                  unres_schema_add_node((yyvsp[-1].nodes).deviation->target->module, unres, (yyvsp[-1].nodes).deviation->target, UNRES_XPATH, NULL)) {
+                YYABORT;
               }
             }
           }

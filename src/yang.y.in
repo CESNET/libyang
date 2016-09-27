@@ -1740,8 +1740,13 @@ container_stmt: CONTAINER_KEYWORD sep identifier_arg_str { if (read_all) {
 container_end: ';'
   |  '{' stmtsep
          container_opt_stmt
-      '}'
-  ;
+      '}' { if (read_all) {
+              /* check XPath dependencies */
+              if (($3.container->when || $3.container->must_size) && (unres_schema_add_node(trg, unres, $3.container, UNRES_XPATH, NULL) == -1)) {
+                YYABORT;
+              }
+            }
+          }
 
 container_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                $$.container = actual;
@@ -1876,6 +1881,11 @@ leaf_stmt: LEAF_KEYWORD sep leaf_arg_str
                       YYABORT;
                     }
                     if (unres_schema_add_str(trg, unres, &$6.node.ptr_leaf->type, UNRES_TYPE_DFLT, $6.node.ptr_leaf->dflt) == -1) {
+                      YYABORT;
+                    }
+                    /* check XPath dependencies */
+                    if (($6.node.ptr_leaf->when || $6.node.ptr_leaf->must_size) &&
+                        (unres_schema_add_node(trg, unres, $6.node.ptr_leaf, UNRES_XPATH, NULL) == -1)) {
                       YYABORT;
                     }
                   }
@@ -2024,6 +2034,11 @@ leaf_list_arg_str: identifier_arg_str { if (read_all) {
                             if (unres_schema_add_str(module, unres, &$6.node.ptr_leaflist->type, UNRES_TYPE_DFLT, $6.node.ptr_leaflist->dflt[i]) == -1) {
                               YYABORT;
                             }
+                          }
+                          /* check XPath dependencies */
+                          if (($6.node.ptr_leaflist->when || $6.node.ptr_leaflist->must_size) &&
+                              (unres_schema_add_node(trg, unres, $6.node.ptr_leaflist, UNRES_XPATH, NULL) == -1)) {
+                            YYABORT;
                           }
                         }
                       }
@@ -2203,6 +2218,11 @@ list_stmt: LIST_KEYWORD sep identifier_arg_str { if (read_all) {
                                    YYABORT;
                                  }
                                  if (yang_read_unique(trg, $7.node.ptr_list, unres)) {
+                                   YYABORT;
+                                 }
+                                 /* check XPath dependencies */
+                                 if (($7.node.ptr_list->when || $7.node.ptr_list->must_size) &&
+                                     (unres_schema_add_node(trg, unres, $7.node.ptr_list, UNRES_XPATH, NULL) == -1)) {
                                    YYABORT;
                                  }
                                }
@@ -2418,6 +2438,11 @@ choice_end: ';'
                                 }
                                 free($3.choice.s);
                               }
+                              /* check XPath dependencies */
+                              if ($3.choice.ptr_choice->when &&
+                                  (unres_schema_add_node(trg, unres, $3.choice.ptr_choice, UNRES_XPATH, NULL) == -1)) {
+                                YYABORT;
+                              }
                             }
                           }
      '}' ;
@@ -2552,7 +2577,14 @@ case_stmt: CASE_KEYWORD sep identifier_arg_str { if (read_all) {
 case_end: ';'
   |  '{' stmtsep
          case_opt_stmt
-      '}' ;
+      '}' { if (read_all) {
+              /* check XPath dependencies */
+              if ($3.cs->when &&
+                  (unres_schema_add_node(trg, unres, $3.cs, UNRES_XPATH, NULL) == -1)) {
+                YYABORT;
+              }
+            }
+          }
 
 case_opt_stmt: @EMPTYDIR@ { if (read_all) {
                           $$.cs = actual;
@@ -2635,7 +2667,14 @@ anydata_stmt: ANYDATA_KEYWORD sep identifier_arg_str { if (read_all) {
 anyxml_end: ';'
   |  '{' stmtsep
          anyxml_opt_stmt
-     '}' ;
+     '}' { if (read_all) {
+             /* check XPath dependencies */
+             if (($3.node.ptr_anydata->when || $3.node.ptr_anydata->must_size) &&
+                 (unres_schema_add_node(trg, unres, $3.node.ptr_anydata, UNRES_XPATH, NULL) == -1)) {
+               YYABORT;
+             }
+           }
+         }
 
 anyxml_opt_stmt: @EMPTYDIR@ { if (read_all) {
                             $$.node.ptr_anydata = actual;
@@ -2730,6 +2769,11 @@ uses_stmt: USES_KEYWORD sep identifier_ref_arg_str { if (read_all) {
                                                    }
            uses_end { if (read_all) {
                         if (unres_schema_add_node(trg, unres, actual, UNRES_USES, NULL) == -1) {
+                          YYABORT;
+                        }
+                        /* check XPath dependencies */
+                        if (((struct lys_node_uses *)actual)->when &&
+                            (unres_schema_add_node(trg, unres, actual, UNRES_XPATH, NULL) == -1)) {
                           YYABORT;
                         }
                       }
@@ -3049,9 +3093,16 @@ uses_augment_stmt: AUGMENT_KEYWORD sep uses_augment_arg_str { if (read_all) {
                                                               }
                                                             }
                    '{' stmtsep
-                       augment_opt_stmt { if (read_all && !($7.node.flag & LYS_DATADEF)){
-                                            LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "data-def or case", "uses/augment");
-                                            YYABORT;
+                       augment_opt_stmt { if (read_all) {
+                                            if (!($7.node.flag & LYS_DATADEF)) {
+                                              LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "data-def or case", "uses/augment");
+                                              YYABORT;
+                                            }
+                                            /* check XPath dependencies */
+                                            if ($7.node.ptr_augment->when &&
+                                                (unres_schema_add_node(trg, unres, $7.node.ptr_augment, UNRES_XPATH, NULL) == -1)) {
+                                              YYABORT;
+                                            }
                                           }
                                         }
                    '}' ;
@@ -3075,6 +3126,11 @@ augment_stmt: AUGMENT_KEYWORD sep augment_arg_str { if (read_all) {
                                          YYABORT;
                                        }
                                        if (unres_schema_add_node(trg, unres, actual, UNRES_AUGMENT, NULL) == -1) {
+                                         YYABORT;
+                                       }
+                                       /* check XPath dependencies */
+                                       if ($7.node.ptr_augment->when &&
+                                           (unres_schema_add_node(trg, unres, $7.node.ptr_augment, UNRES_XPATH, NULL) == -1)) {
                                          YYABORT;
                                        }
                                      }
@@ -3305,9 +3361,16 @@ input_stmt: INPUT_KEYWORD optsep { if (read_all) {
                                    }
                                  }
             '{' stmtsep
-                input_output_opt_stmt { if (read_all && !($6.node.flag & LYS_DATADEF)) {
-                                          LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, "data-def", "input");
-                                          YYABORT;
+                input_output_opt_stmt { if (read_all) {
+                                          if (!($6.node.flag & LYS_DATADEF)) {
+                                            LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, "data-def", "input");
+                                            YYABORT;
+                                          }
+                                          /* check XPath dependencies */
+                                          if ($6.node.ptr_inout->must_size &&
+                                              (unres_schema_add_node(trg, unres, $6.node.ptr_inout, UNRES_XPATH, NULL) == -1)) {
+                                            YYABORT;
+                                          }
                                         }
                                       }
             '}'
@@ -3388,9 +3451,16 @@ output_stmt: OUTPUT_KEYWORD optsep { if (read_all) {
                                      }
                                    }
              '{' stmtsep
-                 input_output_opt_stmt { if (read_all && !($6.node.flag & LYS_DATADEF)) {
-                                           LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, "data-def", "output");
-                                           YYABORT;
+                 input_output_opt_stmt { if (read_all) {
+                                           if (!($6.node.flag & LYS_DATADEF)) {
+                                             LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, "data-def", "output");
+                                             YYABORT;
+                                           }
+                                           /* check XPath dependencies */
+                                           if ($6.node.ptr_inout->must_size &&
+                                               (unres_schema_add_node(trg, unres, $6.node.ptr_inout, UNRES_XPATH, NULL) == -1)) {
+                                             YYABORT;
+                                           }
                                          }
                                        }
              '}'
@@ -3411,7 +3481,14 @@ notification_end: ';' { if (read_all) {
                       }
   |  '{' stmtsep
          notification_opt_stmt
-      '}' ;
+      '}' { if (read_all) {
+              /* check XPath dependencies */
+              if ($3.notif->must_size &&
+                  (unres_schema_add_node(trg, unres, $3.notif, UNRES_XPATH, NULL) == -1)) {
+                YYABORT;
+              }
+            }
+          }
 
 
 notification_opt_stmt: @EMPTYDIR@ { if (read_all) {
@@ -3600,7 +3677,14 @@ deviate_add_stmt: ADD_KEYWORD optsep { if (read_all && yang_read_deviate(actual,
 deviate_add_end: ';'
   |  '{' stmtsep
          deviate_add_opt_stmt
-     '}'
+     '}' { if (read_all) {
+             /* check XPath dependencies */
+             if (($3.deviation->trg_must_size && *$3.deviation->trg_must_size) &&
+                 unres_schema_add_node($3.deviation->target->module, unres, $3.deviation->target, UNRES_XPATH, NULL)) {
+               YYABORT;
+             }
+           }
+         }
 
 deviate_add_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                  $$.deviation = actual;
@@ -3731,6 +3815,11 @@ deviate_delete_end: ';'
                   }
                 }
                 llist->dflt_size = i + 1;
+              }
+              /* check XPath dependencies */
+              if (($3.deviation->trg_must_size && *$3.deviation->trg_must_size) &&
+                  unres_schema_add_node($3.deviation->target->module, unres, $3.deviation->target, UNRES_XPATH, NULL)) {
+                YYABORT;
               }
             }
           }
