@@ -819,13 +819,15 @@ lyd_create_anydata(struct lyd_node *parent, const struct lys_node *schema, void 
     /* set the value */
     switch (value_type) {
     case LYD_ANYDATA_CONSTSTRING:
+    case LYD_ANYDATA_SXML:
     case LYD_ANYDATA_JSON:
         ret->value.str = lydict_insert(schema->module->ctx, (const char *)value, 0);
         break;
     case LYD_ANYDATA_STRING:
+    case LYD_ANYDATA_SXMLD:
     case LYD_ANYDATA_JSOND:
         ret->value.str = lydict_insert_zc(schema->module->ctx, (char *)value);
-        value_type = LYD_ANYDATA_CONSTSTRING;
+        value_type &= ~LYD_ANYDATA_STRING; /* make const string from string */
         break;
     case LYD_ANYDATA_DATATREE:
         ret->value.tree = (struct lyd_node *)value;
@@ -1082,9 +1084,8 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
                     /* values are not the same - 1) remove the old one ... */
                     switch (any->value_type) {
                     case LYD_ANYDATA_CONSTSTRING:
-                    case LYD_ANYDATA_STRING:
+                    case LYD_ANYDATA_SXML:
                     case LYD_ANYDATA_JSON:
-                    case LYD_ANYDATA_JSOND:
                         lydict_remove(ctx, any->value.str);
                         break;
                     case LYD_ANYDATA_DATATREE:
@@ -1093,17 +1094,25 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
                     case LYD_ANYDATA_XML:
                         lyxml_free_withsiblings(ctx, any->value.xml);
                         break;
+                    case LYD_ANYDATA_STRING:
+                    case LYD_ANYDATA_SXMLD:
+                    case LYD_ANYDATA_JSOND:
+                        /* dynamic strings are used only as input parameters */
+                        assert(1);
+                        break;
                     }
                     /* ... and 2) store the new one */
                     switch (value_type) {
                     case LYD_ANYDATA_CONSTSTRING:
+                    case LYD_ANYDATA_SXML:
                     case LYD_ANYDATA_JSON:
                         any->value.str = lydict_insert(ctx, (const char*)value, 0);
                         break;
                     case LYD_ANYDATA_STRING:
+                    case LYD_ANYDATA_SXMLD:
                     case LYD_ANYDATA_JSOND:
                         any->value.str = lydict_insert_zc(ctx, (char*)value);
-                        value_type = LYD_ANYDATA_CONSTSTRING;
+                        value_type &= ~LYD_ANYDATA_STRING; /* make const string from string */
                         break;
                     case LYD_ANYDATA_DATATREE:
                         any->value.tree = value;
@@ -1533,9 +1542,8 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
 
         switch(trg_any->value_type) {
         case LYD_ANYDATA_CONSTSTRING:
-        case LYD_ANYDATA_STRING:
+        case LYD_ANYDATA_SXML:
         case LYD_ANYDATA_JSON:
-        case LYD_ANYDATA_JSOND:
             lydict_remove(ctx, trg_any->value.str);
             break;
         case LYD_ANYDATA_DATATREE:
@@ -1543,6 +1551,12 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
             break;
         case LYD_ANYDATA_XML:
             lyxml_free_withsiblings(ctx, trg_any->value.xml);
+            break;
+        case LYD_ANYDATA_STRING:
+        case LYD_ANYDATA_SXMLD:
+        case LYD_ANYDATA_JSOND:
+            /* dynamic strings are used only as input parameters */
+            assert(1);
             break;
         }
 
@@ -3964,9 +3978,8 @@ lyd_dup(const struct lyd_node *node, int recursive)
             /* duplicate the value */
             switch (old_any->value_type) {
             case LYD_ANYDATA_CONSTSTRING:
-            case LYD_ANYDATA_STRING:
+            case LYD_ANYDATA_SXML:
             case LYD_ANYDATA_JSON:
-            case LYD_ANYDATA_JSOND:
                 new_any->value.str = lydict_insert(elem->schema->module->ctx, old_any->value.str, 0);
                 break;
             case LYD_ANYDATA_DATATREE:
@@ -3974,6 +3987,12 @@ lyd_dup(const struct lyd_node *node, int recursive)
                 break;
             case LYD_ANYDATA_XML:
                 new_any->value.xml = lyxml_dup_elem(elem->schema->module->ctx, old_any->value.xml, NULL, 1);
+                break;
+            case LYD_ANYDATA_STRING:
+            case LYD_ANYDATA_SXMLD:
+            case LYD_ANYDATA_JSOND:
+                /* dynamic strings are used only as input parameters */
+                assert(1);
                 break;
             }
             break;
@@ -4193,9 +4212,8 @@ lyd_free(struct lyd_node *node)
     } else if (node->schema->nodetype & LYS_ANYDATA) {
         switch (((struct lyd_node_anydata *)node)->value_type) {
         case LYD_ANYDATA_CONSTSTRING:
-        case LYD_ANYDATA_STRING:
+        case LYD_ANYDATA_SXML:
         case LYD_ANYDATA_JSON:
-        case LYD_ANYDATA_JSOND:
             lydict_remove(node->schema->module->ctx, ((struct lyd_node_anydata *)node)->value.str);
             break;
         case LYD_ANYDATA_DATATREE:
@@ -4203,6 +4221,12 @@ lyd_free(struct lyd_node *node)
             break;
         case LYD_ANYDATA_XML:
             lyxml_free_withsiblings(node->schema->module->ctx, ((struct lyd_node_anydata *)node)->value.xml);
+            break;
+        case LYD_ANYDATA_STRING:
+        case LYD_ANYDATA_SXMLD:
+        case LYD_ANYDATA_JSOND:
+            /* dynamic strings are used only as input parameters */
+            assert(1);
             break;
         }
     } else { /* LYS_LEAF | LYS_LEAFLIST */

@@ -46,26 +46,37 @@ typedef enum {
  * @brief List of possible value types stored in ::lyd_node_anydata.
  */
 typedef enum {
-    LYD_ANYDATA_CONSTSTRING, /**< value is constant string (const char *) which is internally duplicated for storing
-                                  in the anydata structure; XML sensitive characters (such as & or \>) are automatically
-                                  escaped when the anydata is printed in XML format */
-    LYD_ANYDATA_STRING,      /**< value is dynamically allocated string (char*), so the data are used directly without
-                                  duplication and caller is supposed to not manipulate with the data after a successful
-                                  call (including calling free() on the provided data); XML sensitive characters
-                                  (such as & or \>) are automatically escaped when the anydata is printed in XML format */
-    LYD_ANYDATA_DATATREE,    /**< value is struct lyd_node* (first sibling), the structure is directly connected into
-                                  the anydata node without duplication, caller is supposed to not manipulate with the
-                                  data after a successful call (including calling lyd_free() on the provided data) */
-    LYD_ANYDATA_XML,         /**< value is struct lyxml_elem*, the structure is directly connected into
-                                  the anydata node without duplication, caller is supposed to not manipulate with the
-                                  data after a successful call (including calling lyxml_free() on the provided data)*/
-    LYD_ANYDATA_JSON,        /**< value is string containing the data modeled by YANG and encoded as I-JSON. The string
-                                  is handled as constant string. In case of using the value as input parameter, the
-                                  #LYD_ANYDATA_JSOND can be used for dynamically allocated string. */
-    LYD_ANYDATA_JSOND        /**< In case of using value as input parameter, this value is supposed to be used for
-                                  dynamically allocated strings (it is actually combination of #LYD_ANYDATA_JSON and
-                                  #LYD_ANYDATA_STRING (and it can be also specified as ORed value of the mentioned
-                                  values. */
+    LYD_ANYDATA_CONSTSTRING = 0x00, /**< value is constant string (const char *) which is internally duplicated for
+                                         storing in the anydata structure; XML sensitive characters (such as & or \>)
+                                         are automatically escaped when the anydata is printed in XML format */
+    LYD_ANYDATA_STRING = 0x01,      /**< value is dynamically allocated string (char*), so the data are used directly
+                                         without duplication and caller is supposed to not manipulate with the data
+                                         after a successful call (including calling free() on the provided data); XML
+                                         sensitive characters (such as & or \>) are automatically escaped when the
+                                         anydata is printed in XML format */
+    LYD_ANYDATA_JSON = 0x02,        /**< value is string containing the data modeled by YANG and encoded as I-JSON. The
+                                         string is handled as constant string. In case of using the value as input
+                                         parameter, the #LYD_ANYDATA_JSOND can be used for dynamically allocated
+                                         string. */
+    LYD_ANYDATA_JSOND = 0x03,       /**< In case of using value as input parameter, this enumeration is supposed to be
+                                         used for dynamically allocated strings (it is actually combination of
+                                         #LYD_ANYDATA_JSON and #LYD_ANYDATA_STRING (and it can be also specified as
+                                         ORed value of the mentioned values. */
+    LYD_ANYDATA_SXML = 0x04,        /**< value is string containing the serialized XML data. The string is handled as
+                                         constant string. In case of using the value as input parameter, the
+                                         #LYD_ANYDATA_SXMLD can be used for dynamically allocated string. */
+    LYD_ANYDATA_SXMLD = 0x05,       /**< In case of using serialized XML value as input parameter, this enumeration is
+                                         supposed to be used for dynamically allocated strings (it is actually
+                                         combination of #LYD_ANYDATA_SXML and #LYD_ANYDATA_STRING (and it can be also
+                                         specified as ORed value of the mentioned values). */
+    LYD_ANYDATA_XML = 0x08,         /**< value is struct lyxml_elem*, the structure is directly connected into the
+                                         anydata node without duplication, caller is supposed to not manipulate with the
+                                         data after a successful call (including calling lyxml_free() on the provided
+                                         data) */
+    LYD_ANYDATA_DATATREE = 0x10,    /**< value is struct lyd_node* (first sibling), the structure is directly connected
+                                         into the anydata node without duplication, caller is supposed to not manipulate
+                                         with the data after a successful call (including calling lyd_free() on the
+                                         provided data) */
 } LYD_ANYDATA_VALUETYPE;
 
 /**

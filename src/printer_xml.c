@@ -365,9 +365,6 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
         /* ... and print anydata content */
         switch (any->value_type) {
         case LYD_ANYDATA_CONSTSTRING:
-        case LYD_ANYDATA_STRING:
-        case LYD_ANYDATA_JSON:
-        case LYD_ANYDATA_JSOND:
             lyxml_dump_text(out, any->value.str);
             break;
         case LYD_ANYDATA_DATATREE:
@@ -379,6 +376,20 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
             lyxml_print_mem(&buf, any->value.xml, (level ? LYXML_PRINT_FORMAT : 0) | LYXML_PRINT_SIBLINGS);
             ly_print(out, "%s%s", level ? "\n" : "", buf);
             free(buf);
+            break;
+        case LYD_ANYDATA_SXML:
+            /* print without escaping special characters */
+            ly_print(out, "%s", any->value.str);
+            break;
+        case LYD_ANYDATA_JSON:
+            /* JSON format is not supported */
+            LOGWRN("Unable to print anydata content (type %d) as XML.", any->value_type);
+            break;
+        case LYD_ANYDATA_STRING:
+        case LYD_ANYDATA_SXMLD:
+        case LYD_ANYDATA_JSOND:
+            /* dynamic strings are used only as input parameters */
+            assert(1);
             break;
         }
 
