@@ -2876,8 +2876,9 @@ static int
 lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd_node *node)
 {
     struct lys_node *par1, *par2;
+    const struct lys_node *siter;
     struct lyd_node *start, *iter, *ins, *next1, *next2;
-    int invalid = 0, clrdflt = 0;
+    int invalid = 0, isrpc = 0, clrdflt = 0;
     struct ly_set *llists = NULL;
     int pos, i;
     int stype = LYS_INPUT | LYS_OUTPUT;
@@ -2926,7 +2927,8 @@ lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd
         return EXIT_FAILURE;
     }
 
-    if (!parent || node->parent != parent || (invalid = lyp_is_rpc_action(node->schema))) {
+    invalid = isrpc = lyp_is_rpc_action(node->schema);
+    if (!parent || node->parent != parent || isrpc) {
         /* it is not just moving under a parent node or it is in an RPC where
          * nodes order matters, so the validation will be necessary */
         invalid++;
@@ -3025,6 +3027,40 @@ lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd
                 start = ins;
                 if (parent) {
                     parent->child = ins;
+                }
+            } else if (isrpc) {
+                /* add to the specific position in rpc/rpc-reply/action */
+                for (par1 = ins->schema->parent; !(par1->nodetype & (LYS_INPUT | LYS_OUTPUT)); par1 = par1->parent);
+                siter = NULL;
+                LY_TREE_FOR(start, iter) {
+                    while ((siter = lys_getnext(siter, par1, par1->module, 0))) {
+                        if (iter->schema == siter || ins->schema == siter) {
+                            break;
+                        }
+                    }
+                    if (ins->schema == siter) {
+                        /* we have the correct place for new node (before the iter) */
+                        if (iter == start) {
+                            start = ins;
+                            if (parent) {
+                                parent->child = ins;
+                            }
+                        } else {
+                            iter->prev->next = ins;
+                        }
+                        ins->prev = iter->prev;
+                        iter->prev = ins;
+                        ins->next = iter;
+
+                        /* we are done */
+                        break;
+                    }
+                }
+                if (!iter) {
+                    /* add as the last child of the parent */
+                    start->prev->next = ins;
+                    ins->prev = start->prev;
+                    start->prev = ins;
                 }
             } else {
                 /* add as the last child of the parent */
@@ -4995,7 +5031,7 @@ lyd_wd_add_leaf(struct lyd_node **tree, struct lyd_node *last_parent, struct lys
     }
     if (!dummy->parent && (*tree)) {
         /* connect dummy nodes into the data tree (at the end of top level nodes) */
-        if (lyd_insert_after((*tree)->prev, dummy)) {
+        if (lyd_insert_sibling(tree, dummy)) {
             goto error;
         }
     }
@@ -5131,7 +5167,7 @@ lyd_wd_add_leaflist(struct lyd_node **tree, struct lyd_node *last_parent, struct
     /* insert into the tree */
     if (first && !first->parent && (*tree)) {
         /* connect dummy nodes into the data tree (at the end of top level nodes) */
-        if (lyd_insert_after((*tree)->prev, first)) {
+        if (lyd_insert_sibling(tree, first)) {
             goto error;
         }
     } else if (!(*tree)) {
@@ -5250,7 +5286,7 @@ lyd_wd_add_subtree(struct lyd_node **root, struct lyd_node *last_parent, struct 
             subroot = _lyd_new(last_parent, schema, 1);
             if (!last_parent) {
                 if (*root) {
-                    lyd_insert_after((*root)->prev, subroot);
+                    lyd_insert_sibling(root, subroot);
                 } else {
                     *root = subroot;
                 }
