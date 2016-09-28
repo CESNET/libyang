@@ -37,6 +37,7 @@
 #define CONFIG_INHERIT_DISABLE 0x00
 #define CONFIG_INHERIT_ENABLE  0x01
 #define CONFIG_IGNORE 0x02
+#define CONFIG_MASK 0x03
 
 struct lys_node_array{
     uint8_t if_features;

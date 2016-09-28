@@ -3158,6 +3158,7 @@ uses_augment_stmt: AUGMENT_KEYWORD sep uses_augment_arg_str { if (read_all) {
                                               LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "data-def or case", "uses/augment");
                                               YYABORT;
                                             }
+                                            config_inherit = $7.node.flag & CONFIG_MASK;
                                             /* check XPath dependencies */
                                             if ($7.node.ptr_augment->when &&
                                                 (unres_schema_add_node(trg, unres, $7.node.ptr_augment, UNRES_XPATH, NULL) == -1)) {
@@ -3188,6 +3189,7 @@ augment_stmt: AUGMENT_KEYWORD sep augment_arg_str { if (read_all) {
                                        if (unres_schema_add_node(trg, unres, actual, UNRES_AUGMENT, NULL) == -1) {
                                          YYABORT;
                                        }
+                                       config_inherit = $7.node.flag & CONFIG_MASK;
                                        /* check XPath dependencies */
                                        if ($7.node.ptr_augment->when &&
                                            (unres_schema_add_node(trg, unres, $7.node.ptr_augment, UNRES_XPATH, NULL) == -1)) {
@@ -3199,7 +3201,8 @@ augment_stmt: AUGMENT_KEYWORD sep augment_arg_str { if (read_all) {
 
 augment_opt_stmt: @EMPTYDIR@ { if (read_all) {
                              $$.node.ptr_augment = actual;
-                             $$.node.flag = 0;
+                             $$.node.flag = config_inherit;
+                             config_inherit = CONFIG_INHERIT_ENABLE;
                              actual_type = AUGMENT_KEYWORD;
                              if (size_arrays->node[size_arrays->next].if_features) {
                                $$.node.ptr_augment->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.node.ptr_augment->iffeature);
