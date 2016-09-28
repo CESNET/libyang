@@ -90,6 +90,7 @@ TEST_GROUPING(void **state)
                 assert_ptr_not_equal(mod, NULL);
             }
         }
+        lys_set_implemented(ly_ctx_get_module(st->ctx, "mod", NULL));
 
         for (j = 0; j < TEST_DATA_FILE_COUNT; ++j) {
             sprintf(buf, TESTS_DIR "/conformance/" TEST_DIR "/data%d.xml", j + 1);

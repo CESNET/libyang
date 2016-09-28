@@ -1,6 +1,7 @@
 <list xmlns="urn:cesnet:mod1">
-    <port>80</port>
     <name>http</name>
+    <error>0</error>
+    <port>80</port>
 </list>
 <list xmlns="urn:cesnet:mod1">
     <name>https</name>

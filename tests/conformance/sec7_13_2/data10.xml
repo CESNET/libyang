@@ -1,7 +1,8 @@
 <test3 xmlns="urn:cesnet:mod1">
     <list>
-        <port>80</port>
         <name>http</name>
+        <error>10</error>
+        <port>80</port>
     </list>
     <list>
         <name>https</name>

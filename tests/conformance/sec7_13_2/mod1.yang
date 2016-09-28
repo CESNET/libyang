@@ -96,6 +96,7 @@ module mod1 {
 
                 leaf name { type string; }
                 leaf port { type uint16; }
+                leaf-list error { type int8; }
             }
         }
         description "test";

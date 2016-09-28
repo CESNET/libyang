@@ -41,6 +41,7 @@ module mod11 {
 
         list ll {
             key must;
+            status obsolete;
 
             leaf weight {
                 type uint32;
@@ -48,6 +49,7 @@ module mod11 {
             }
 
             leaf must {
+                status obsolete;
                 must "../../m = 'true'";
                 type string;
             }
