@@ -291,14 +291,17 @@ start: module_stmt
 
 tmp_string: STRING { if (read_string) {
                       if (yyget_text(scanner)[0] == '"') {
+                        char *tmp;
+
                         s = malloc(yyget_leng(scanner) - 1 + 7 * yylval.i);
                         if (!s) {
                           LOGMEM;
                           YYABORT;
                         }
-                        if (yang_read_string(yyget_text(scanner) + 1, s, yyget_leng(scanner) - 2, yylloc.first_column, (trg) ? trg->version : 0)) {
+                        if (!(tmp = yang_read_string(yyget_text(scanner) + 1, s, yyget_leng(scanner) - 2, 0, yylloc.first_column, (trg) ? trg->version : 0))) {
                           YYABORT;
                         }
+                        s = tmp;
                       } else {
                         s = calloc(1, yyget_leng(scanner) - 1);
                         if (!s) {
@@ -318,23 +321,24 @@ string_1: tmp_string optsep string_2
 
 string_2: @EMPTYDIR@
   |  string_2 '+' optsep
-     STRING { if (read_string){
-                int length = yyget_leng(scanner) - 1 + strlen(s);
+     STRING { if (read_string && (yyget_leng(scanner) > 2)) {
+                int length_s = strlen(s), length_tmp = yyget_leng(scanner);
                 char *tmp;
 
-                tmp = realloc(s, length);
+                tmp = realloc(s, length_s + length_tmp - 1);
                 if (!tmp) {
                   LOGMEM;
                   YYABORT;
                 }
                 s = tmp;
                 if (yyget_text(scanner)[0] == '"') {
-                  if (yang_read_string(yyget_text(scanner) + 1, s + strlen(s), yyget_leng(scanner) - 2, yylloc.first_column, (trg) ? trg->version : 0)) {
+                  if (!(tmp = yang_read_string(yyget_text(scanner) + 1, s, length_tmp - 2, length_s, yylloc.first_column, (trg) ? trg->version : 0))) {
                     YYABORT;
                   }
+                  s = tmp;
                 } else {
-                  memcpy(s + strlen(s), yyget_text(scanner) + 1, yyget_leng(scanner) - 2);
-                  s[length - 1] = '\0';
+                  memcpy(s + length_s, yyget_text(scanner) + 1, length_tmp - 2);
+                  s[length_s + length_tmp - 2] = '\0';
                 }
               }
             }

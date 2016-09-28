@@ -2830,9 +2830,9 @@ read_indent(const char *input, int indent, int size, int in_index, int *out_inde
     return in_index - 1;
 }
 
-int
-yang_read_string(const char *input, char *output, int size, int indent, int version) {
-    int i=0, out_index=0, space = 0;
+char *
+yang_read_string(const char *input, char *output, int size, int offset, int indent, int version) {
+    int i = 0, out_index = offset, space = 0;
 
     while (i < size) {
         switch (input[i]) {
@@ -2869,7 +2869,7 @@ yang_read_string(const char *input, char *output, int size, int indent, int vers
                 } else {
                     /* YANG 1.1 backslash must not be followed by any other character */
                     LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, input);
-                    return EXIT_FAILURE;
+                    return NULL;
                 }
             }
             break;
@@ -2883,11 +2883,11 @@ yang_read_string(const char *input, char *output, int size, int indent, int vers
     }
     output[out_index] = '\0';
     if (size != out_index) {
-        output = ly_realloc(output, out_index + 1);
+        output = realloc(output, out_index + 1);
         if (!output) {
             LOGMEM;
-            return EXIT_FAILURE;
+            return NULL;
         }
     }
-    return EXIT_SUCCESS;
+    return output;
 }
