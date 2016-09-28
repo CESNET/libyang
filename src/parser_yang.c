@@ -2611,13 +2611,13 @@ nacm_inherit(struct lys_module *module)
 }
 
 int
-store_flags(struct lys_node *node, uint8_t flags, int config_inherit)
+store_flags(struct lys_node *node, uint8_t flags, int config_opt)
 {
     struct lys_node *elem;
 
-    node->flags |= flags;
-    if (!(node->flags & LYS_CONFIG_MASK)) {
-        if (config_inherit) {
+    node->flags |= (config_opt == CONFIG_IGNORE) ? flags & (~(LYS_CONFIG_MASK | LYS_CONFIG_SET)): flags;
+    if (config_opt == CONFIG_INHERIT_ENABLE) {
+        if (!(node->flags & LYS_CONFIG_MASK)) {
             /* get config flag from parent */
             if (node->parent) {
                 node->flags |= node->parent->flags & LYS_CONFIG_MASK;
@@ -2625,15 +2625,15 @@ store_flags(struct lys_node *node, uint8_t flags, int config_inherit)
                 /* default config is true */
                 node->flags |= LYS_CONFIG_W;
             }
-        }
-    } else {
-        /* do we even care about config flags? */
-        for (elem = node; elem && !(elem->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT | LYS_RPC)); elem = elem->parent);
+        } else {
+            /* do we even care about config flags? */
+            for (elem = node; elem && !(elem->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT | LYS_RPC)); elem = elem->parent);
 
-        if (!elem && (node->flags & LYS_CONFIG_W) && node->parent && (node->parent->flags & LYS_CONFIG_R)) {
-            LOGVAL(LYE_INARG, LY_VLOG_LYS, node, "true", "config");
-            LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "State nodes cannot have configuration nodes as children.");
-            return EXIT_FAILURE;
+            if (!elem && (node->flags & LYS_CONFIG_W) && node->parent && (node->parent->flags & LYS_CONFIG_R)) {
+                LOGVAL(LYE_INARG, LY_VLOG_LYS, node, "true", "config");
+                LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "State nodes cannot have configuration nodes as children.");
+                return EXIT_FAILURE;
+            }
         }
     }
 

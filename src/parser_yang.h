@@ -34,6 +34,9 @@
 #define LYS_RPC_OUTPUT 0x02
 #define LYS_DATADEF 0x04
 #define LYS_TYPE_DEF 0x08
+#define CONFIG_INHERIT_DISABLE 0x00
+#define CONFIG_INHERIT_ENABLE  0x01
+#define CONFIG_IGNORE 0x02
 
 struct lys_node_array{
     uint8_t if_features;
@@ -102,11 +105,6 @@ struct type_deviation {
     struct ly_set *dflt_check;
 };
 
-struct type_uses {
-    struct lys_node_uses *ptr_uses;
-    int config_inherit;
-};
-
 struct yang_type {
     char flags;       /**< this is used to distinguish lyxml_elem * from a YANG temporary parsing structure */
     LY_DATA_TYPE base;
@@ -159,7 +157,7 @@ int yang_read_presence(struct lys_module *module, struct lys_node_container *con
 
 int yang_read_config(void *node, int value, enum yytokentype type);
 
-int store_flags(struct lys_node *node, uint8_t flags, int config_inherit);
+int store_flags(struct lys_node *node, uint8_t flags, int config_opt);
 
 void *yang_read_when(struct lys_module *module, struct lys_node *node, enum yytokentype type, char *value);
 

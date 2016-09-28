@@ -41,8 +41,6 @@
 #define EXTENSION_STA 0x02
 #define EXTENSION_DSC 0x04
 #define EXTENSION_REF 0x08
-#define DISABLE_INHERIT 0
-#define ENABLE_INHERIT 0x01
 
 void yyerror(YYLTYPE *yylloc, void *scanner, ...);
 /* temporary pointer for the check extension nacm 'data_node' */
@@ -66,10 +64,10 @@ void yyerror(YYLTYPE *yylloc, void *scanner, ...);
     struct type_node node;
     struct lys_node_case *cs;
     struct lys_node_grp *grouping;
-    struct type_uses uses;
     struct lys_refine *refine;
     struct lys_node_notif *notif;
     struct type_deviation *deviation;
+    struct lys_node_uses *uses;
   } nodes;
 }
 
@@ -205,6 +203,9 @@ void yyerror(YYLTYPE *yylloc, void *scanner, ...);
 %type <i> integer_value_arg_str
 %type <i> integer_value
 %type <i> feature_opt_stmt
+%type <i> rpc_arg_str
+%type <i> action_arg_str
+%type <i> notification_arg_str
 %type <v> length_arg_str
 %type <str> pattern_arg_str
 %type <v> range_arg_str
@@ -348,7 +349,7 @@ module_stmt: optsep MODULE_KEYWORD sep identifier_arg_str { if (read_all) {
                                                               trg = module;
                                                               yang_read_common(trg,s,MODULE_KEYWORD);
                                                               s = NULL;
-                                                              config_inherit = ENABLE_INHERIT;
+                                                              config_inherit = CONFIG_INHERIT_ENABLE;
                                                             }
                                                           }
              '{' stmtsep
@@ -383,7 +384,7 @@ submodule_stmt: optsep SUBMODULE_KEYWORD sep identifier_arg_str { if (read_all) 
                                                                     trg = (struct lys_module *)submodule;
                                                                     yang_read_common(trg,s,MODULE_KEYWORD);
                                                                     s = NULL;
-                                                                    config_inherit = ENABLE_INHERIT;
+                                                                    config_inherit = CONFIG_INHERIT_ENABLE;
                                                                   }
                                                                 }
                 '{' stmtsep
@@ -463,7 +464,7 @@ import_stmt: IMPORT_KEYWORD sep tmp_identifier_arg_str {
                                YYABORT;
                              }
                              trg = $$;
-                             config_inherit = ENABLE_INHERIT;
+                             config_inherit = CONFIG_INHERIT_ENABLE;
                            }
                          }
 
@@ -523,7 +524,7 @@ include_stmt: INCLUDE_KEYWORD sep tmp_identifier_arg_str { if (read_all) {
                                       if (!rc) {
                                         s = NULL;
                                         trg = $$;
-                                        config_inherit = ENABLE_INHERIT;
+                                        config_inherit = CONFIG_INHERIT_ENABLE;
                                       } else if (rc == -1) {
                                         YYABORT;
                                       }
@@ -727,8 +728,6 @@ body_stmt: extension_stmt
   | data_def_stmt
   | augment_stmt { if (!read_all) {
                      size_arrays->augment++;
-                   } else {
-                     config_inherit = ENABLE_INHERIT;
                    }
                  }
   | rpc_stmt
@@ -869,7 +868,7 @@ feature_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                  YYABORT;
                                }
                              }
-                             if (store_flags((struct lys_node *)actual, size_arrays->node[size_arrays->next].flags, 0)) {
+                             if (store_flags((struct lys_node *)actual, size_arrays->node[size_arrays->next].flags, CONFIG_INHERIT_DISABLE)) {
                                  YYABORT;
                              }
                              size_arrays->next++;
@@ -1655,7 +1654,12 @@ grouping_stmt: GROUPING_KEYWORD sep identifier_arg_str { if (read_all) {
                                                        }
                grouping_end;
 
-grouping_end: ';'
+grouping_end: ';' { if (read_all) {
+                      if (store_flags((struct lys_node *)actual, 0, config_inherit)) {
+                        YYABORT;
+                      }
+                    }
+                  }
   |  '{' stmtsep
          grouping_opt_stmt
      '}'
@@ -1671,7 +1675,7 @@ grouping_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                    YYABORT;
                                  }
                                }
-                               if (store_flags((struct lys_node *)$$.grouping, size_arrays->node[size_arrays->next].flags, 0)) {
+                               if (store_flags((struct lys_node *)$$.grouping, size_arrays->node[size_arrays->next].flags, config_inherit)) {
                                    YYABORT;
                                }
                                size_arrays->next++;
@@ -1738,7 +1742,12 @@ container_stmt: CONTAINER_KEYWORD sep identifier_arg_str { if (read_all) {
                                                          }
                 container_end ;
 
-container_end: ';'
+container_end: ';' { if (read_all) {
+                       if (store_flags((struct lys_node *)actual, 0, config_inherit)) {
+                         YYABORT;
+                       }
+                     }
+                   }
   |  '{' stmtsep
          container_opt_stmt
       '}' { if (read_all) {
@@ -2201,13 +2210,18 @@ list_stmt: LIST_KEYWORD sep identifier_arg_str { if (read_all) {
                                                }
            '{' stmtsep
                list_opt_stmt { if (read_all) {
+                                 struct lys_node *node;
+
                                  if ($7.node.ptr_list->flags & LYS_CONFIG_R) {
                                    /* RFC 6020, 7.7.5 - ignore ordering when the list represents state data
                                     * ignore oredering MASK - 0x7F
                                     */
                                    $7.node.ptr_list->flags &= 0x7F;
                                  }
-                                 if (($7.node.ptr_list->flags & LYS_CONFIG_W) && !$7.node.ptr_list->keys) {
+                                 /* check - if list is configuration, key statement is mandatory
+                                  * (but only if we are not in a grouping or augment, then the check is deferred) */
+                                 for (node = (struct lys_node *)$7.node.ptr_list; node && !(node->nodetype & (LYS_GROUPING | LYS_AUGMENT)); node = node->parent);
+                                 if (!node && ($7.node.ptr_list->flags & LYS_CONFIG_W) && !$7.node.ptr_list->keys) {
                                    LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, $7.node.ptr_list, "key", "list");
                                    YYABORT;
                                  }
@@ -2424,7 +2438,12 @@ choice_stmt: CHOICE_KEYWORD sep identifier_arg_str { if (read_all) {
                                                    }
              choice_end;
 
-choice_end: ';'
+choice_end: ';' { if (read_all) {
+                    if (store_flags((struct lys_node *)actual, 0, config_inherit)) {
+                      YYABORT;
+                    }
+                  }
+                }
   |  '{' stmtsep
          choice_opt_stmt  { if (read_all) {
                               if ($3.choice.s && ($3.choice.ptr_choice->flags & LYS_MAND_TRUE)) {
@@ -2575,7 +2594,12 @@ case_stmt: CASE_KEYWORD sep identifier_arg_str { if (read_all) {
                                                }
            case_end;
 
-case_end: ';'
+case_end: ';' { if (read_all) {
+                  if (store_flags((struct lys_node *)actual, 0, config_inherit)) {
+                    YYABORT;
+                  }
+                }
+              }
   |  '{' stmtsep
          case_opt_stmt
       '}' { if (read_all) {
@@ -2597,7 +2621,7 @@ case_opt_stmt: @EMPTYDIR@ { if (read_all) {
                               YYABORT;
                             }
                           }
-                          if (store_flags((struct lys_node *)$$.cs, size_arrays->node[size_arrays->next].flags, 1)) {
+                          if (store_flags((struct lys_node *)$$.cs, size_arrays->node[size_arrays->next].flags, config_inherit)) {
                               YYABORT;
                           }
                           size_arrays->next++;
@@ -2665,7 +2689,12 @@ anydata_stmt: ANYDATA_KEYWORD sep identifier_arg_str { if (read_all) {
                                                      }
              anyxml_end;
 
-anyxml_end: ';'
+anyxml_end: ';' { if (read_all) {
+                    if (store_flags((struct lys_node *)actual, 0, config_inherit)) {
+                      YYABORT;
+                    }
+                  }
+                }
   |  '{' stmtsep
          anyxml_opt_stmt
      '}' { if (read_all) {
@@ -2786,31 +2815,30 @@ uses_end: ';'
      '}' ;
 
 uses_opt_stmt: @EMPTYDIR@ { if (read_all) {
-                          $$.uses.ptr_uses = actual;
-                          $$.uses.config_inherit = config_inherit;
+                          $$.uses = actual;
                           actual_type = USES_KEYWORD;
                           if (size_arrays->node[size_arrays->next].if_features) {
-                            $$.uses.ptr_uses->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.uses.ptr_uses->iffeature);
-                            if (!$$.uses.ptr_uses->iffeature) {
+                            $$.uses->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.uses->iffeature);
+                            if (!$$.uses->iffeature) {
                               LOGMEM;
                               YYABORT;
                             }
                           }
                           if (size_arrays->node[size_arrays->next].refine) {
-                            $$.uses.ptr_uses->refine = calloc(size_arrays->node[size_arrays->next].refine, sizeof *$$.uses.ptr_uses->refine);
-                            if (!$$.uses.ptr_uses->refine) {
+                            $$.uses->refine = calloc(size_arrays->node[size_arrays->next].refine, sizeof *$$.uses->refine);
+                            if (!$$.uses->refine) {
                               LOGMEM;
                               YYABORT;
                             }
                           }
                           if (size_arrays->node[size_arrays->next].augment) {
-                            $$.uses.ptr_uses->augment = calloc(size_arrays->node[size_arrays->next].augment, sizeof *$$.uses.ptr_uses->augment);
-                            if (!$$.uses.ptr_uses->augment) {
+                            $$.uses->augment = calloc(size_arrays->node[size_arrays->next].augment, sizeof *$$.uses->augment);
+                            if (!$$.uses->augment) {
                               LOGMEM;
                               YYABORT;
                             }
                           }
-                          if (store_flags((struct lys_node *)$$.uses.ptr_uses, size_arrays->node[size_arrays->next].flags, 0)) {
+                          if (store_flags((struct lys_node *)$$.uses, size_arrays->node[size_arrays->next].flags, CONFIG_INHERIT_DISABLE)) {
                               YYABORT;
                           }
                           size_arrays->next++;
@@ -2822,10 +2850,10 @@ uses_opt_stmt: @EMPTYDIR@ { if (read_all) {
                           }
                         }
                       }
-  |  uses_opt_stmt when_stmt { actual = $1.uses.ptr_uses; actual_type = USES_KEYWORD; }
+  |  uses_opt_stmt when_stmt { actual = $1.uses; actual_type = USES_KEYWORD; }
      stmtsep
   |  uses_opt_stmt if_feature_stmt { if (read_all) {
-                                       if (yang_read_if_feature(trg, $1.uses.ptr_uses, s, unres, USES_KEYWORD)) {YYABORT;}
+                                       if (yang_read_if_feature(trg, $1.uses, s, unres, USES_KEYWORD)) {YYABORT;}
                                        s=NULL;
                                      } else {
                                        size_arrays->node[$1.index].if_features++;
@@ -2837,18 +2865,18 @@ uses_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                         }
                                       }
                                     }
-  |  uses_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.uses.ptr_uses, s, "uses")) {
+  |  uses_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.uses, s, "uses")) {
                                         YYABORT;
                                       }
                                       s = NULL;
                                     }
-  |  uses_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.uses.ptr_uses, s, "uses")) {
+  |  uses_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.uses, s, "uses")) {
                                       YYABORT;
                                     }
                                     s = NULL;
                                   }
   |  uses_opt_stmt refine_stmt { if (read_all) {
-                                   actual = $1.uses.ptr_uses;
+                                   actual = $1.uses;
                                    actual_type = USES_KEYWORD;
                                  } else {
                                    size_arrays->node[$1.index].refine++;
@@ -2856,13 +2884,12 @@ uses_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                }
      stmtsep
   |  uses_opt_stmt uses_augment_stmt { if (read_all) {
-                                         actual = $1.uses.ptr_uses;
+                                         actual = $1.uses;
                                          actual_type = USES_KEYWORD;
                                          data_node = actual;
                                          if (data_node->parent && (data_node->parent->nodetype == LYS_GROUPING)) {
                                            data_node = NULL;
                                          }
-                                         config_inherit = $1.uses.config_inherit;
                                        } else {
                                          size_arrays->node[$1.index].augment++;
                                        }
@@ -3177,7 +3204,6 @@ augment_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                  YYABORT;
                                }
                              }
-                             config_inherit = DISABLE_INHERIT;
                              size_arrays->next++;
                            } else {
                              $$.index = size_arrays->size;
@@ -3257,27 +3283,31 @@ augment_arg_str: absolute_schema_nodeids optsep
   |  string_1
   ;
 
-action_stmt: ACTION_KEYWORD sep identifier_arg_str { if (read_all) {
-                                                 if (!(actual = yang_read_action(trg, actual, s))) {
-                                                   YYABORT;
-                                                 }
-                                                 data_node = actual;
-                                                 s = NULL;
-                                               }
-                                               config_inherit = DISABLE_INHERIT;
-                                             }
-          rpc_end { config_inherit = ENABLE_INHERIT; }
+action_arg_str: identifier_arg_str { if (read_all) {
+                                       if (!(actual = yang_read_action(trg, actual, s))) {
+                                         YYABORT;
+                                       }
+                                       data_node = actual;
+                                       s = NULL;
+                                     }
+                                     $$ = config_inherit;
+                                     config_inherit = CONFIG_IGNORE;
+                                   }
 
-rpc_stmt: RPC_KEYWORD sep identifier_arg_str { if (read_all) {
-                                                 if (!(actual = yang_read_node(trg, NULL, s, LYS_RPC, sizeof(struct lys_node_rpc_action)))) {
-                                                   YYABORT;
-                                                 }
-                                                 data_node = actual;
-                                                 s = NULL;
-                                               }
-                                               config_inherit = DISABLE_INHERIT;
-                                             }
-          rpc_end { config_inherit = ENABLE_INHERIT; }
+action_stmt: ACTION_KEYWORD sep action_arg_str rpc_end { config_inherit = $3; }
+
+rpc_arg_str: identifier_arg_str { if (read_all) {
+                                    if (!(actual = yang_read_node(trg, NULL, s, LYS_RPC, sizeof(struct lys_node_rpc_action)))) {
+                                      YYABORT;
+                                    }
+                                    data_node = actual;
+                                    s = NULL;
+                                  }
+                                  $$ = config_inherit;
+                                  config_inherit = CONFIG_IGNORE;
+                                }
+
+rpc_stmt: RPC_KEYWORD sep rpc_arg_str rpc_end { config_inherit = $3; }
 
 rpc_end: ';'
   |  '{' stmtsep
@@ -3303,7 +3333,7 @@ rpc_opt_stmt: @EMPTYDIR@ { if (read_all) {
                              YYABORT;
                            }
                          }
-                         if (store_flags((struct lys_node *)$$.node.ptr_rpc, size_arrays->node[size_arrays->next].flags, 0)) {
+                         if (store_flags((struct lys_node *)$$.node.ptr_rpc, size_arrays->node[size_arrays->next].flags, CONFIG_INHERIT_DISABLE)) {
                              YYABORT;
                          }
                          size_arrays->next++;
@@ -3494,15 +3524,17 @@ output_stmt: OUTPUT_KEYWORD optsep { if (read_all) {
                                        }
              '}'
 
-notification_stmt: NOTIFICATION_KEYWORD sep identifier_arg_str { if (read_all) {
-                                                                   if (!(actual = yang_read_node(trg, actual, s, LYS_NOTIF, sizeof(struct lys_node_notif)))) {
-                                                                    YYABORT;
-                                                                   }
-                                                                   data_node = actual;
-                                                                 }
-                                                                 config_inherit = DISABLE_INHERIT;
-                                                               }
-                   notification_end { config_inherit = ENABLE_INHERIT; }
+notification_arg_str: identifier_arg_str { if (read_all) {
+                                             if (!(actual = yang_read_node(trg, actual, s, LYS_NOTIF, sizeof(struct lys_node_notif)))) {
+                                              YYABORT;
+                                             }
+                                             data_node = actual;
+                                           }
+                                           $$ = config_inherit;
+                                           config_inherit = CONFIG_INHERIT_DISABLE;
+                                         }
+
+notification_stmt: NOTIFICATION_KEYWORD sep notification_arg_str notification_end { config_inherit = $3; }
 
 notification_end: ';' { if (read_all) {
                           size_arrays->next++;
@@ -3548,7 +3580,7 @@ notification_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                       YYABORT;
                                     }
                                   }
-                                  if (store_flags((struct lys_node *)$$.notif, size_arrays->node[size_arrays->next].flags, config_inherit)) {
+                                  if (store_flags((struct lys_node *)$$.notif, size_arrays->node[size_arrays->next].flags, CONFIG_INHERIT_DISABLE)) {
                                       YYABORT;
                                   }
                                   size_arrays->next++;

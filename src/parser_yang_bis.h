@@ -167,10 +167,10 @@ union YYSTYPE
     struct type_node node;
     struct lys_node_case *cs;
     struct lys_node_grp *grouping;
-    struct type_uses uses;
     struct lys_refine *refine;
     struct lys_node_notif *notif;
     struct type_deviation *deviation;
+    struct lys_node_uses *uses;
   } nodes;
 
 
