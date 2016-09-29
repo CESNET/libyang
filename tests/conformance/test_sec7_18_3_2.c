@@ -25,8 +25,8 @@
 
 #define TEST_DIR "sec7_18_3_2"
 #define TEST_NAME test_sec7_18_3_2
-#define TEST_SCHEMA_COUNT 13
-#define TEST_SCHEMA_LOAD_FAIL 1,1,1,1,1,1,1,1,1,1,1,1,0
+#define TEST_SCHEMA_COUNT 14
+#define TEST_SCHEMA_LOAD_FAIL 1,1,1,1,1,1,1,1,1,1,1,1,0,1
 #define TEST_DATA_FILE_COUNT 7
 #define TEST_DATA_FILE_LOAD_FAIL 1,1,1,0,0,1,1
 

@@ -1,6 +1,6 @@
-module mod3 {
+module mod14 {
     prefix abc;
-    namespace "urn:cesnet:mod3";
+    namespace "urn:cesnet:mod14";
 
     import mod {
         prefix mod;
@@ -10,11 +10,7 @@ module mod3 {
         description "test";
 
         deviate add {
-            must "user";
-        }
-
-        deviate add {
-            units "kilobyte";
+            must "/llist";  // not exist node
         }
     }
 }
