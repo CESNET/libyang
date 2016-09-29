@@ -61,7 +61,7 @@ teardown_f(void **state)
 {
     struct state *st = (*state);
 
-    lyd_free(st->node);
+    lyd_free_withsiblings(st->node);
     ly_ctx_destroy(st->ctx, NULL);
     free(st);
     (*state) = NULL;
@@ -99,7 +99,7 @@ TEST_CONTAINER_PRESENCE(void **state)
             } else {
                 assert_ptr_not_equal(st->node, NULL);
             }
-            lyd_free(st->node);
+            lyd_free_withsiblings(st->node);
             st->node = NULL;
         }
 
