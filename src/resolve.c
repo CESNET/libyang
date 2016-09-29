@@ -1459,6 +1459,7 @@ resolve_iffeature_compile(struct lys_iffeature *iffeat_expr, const char *value, 
             f_size--;
 
             if (r == -1) {
+                free(iff_data);
                 goto error;
             }
         }
