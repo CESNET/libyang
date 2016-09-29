@@ -3209,7 +3209,6 @@ lys_sub_module_remove_devs_augs(struct lys_module *module)
             target_mod = (struct lys_module *)lys_get_implemented_module(target_mod);
         }
         lys_switch_deviation(&module->deviation[i], module);
-        assert(target_mod->deviated == 1);
 
         /* clear the deviation flag if possible */
         while ((mod = ly_ctx_get_module_iter(module->ctx, &i))) {
