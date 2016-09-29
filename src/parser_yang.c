@@ -1718,10 +1718,9 @@ yang_read_augment(struct lys_module *module, struct lys_node *parent, char *valu
 void *
 yang_read_deviation(struct lys_module *module, char *value)
 {
-    struct lys_node *dev_target = NULL, *parent;
+    struct lys_node *dev_target = NULL;
     struct lys_deviation *dev;
     struct type_deviation *deviation = NULL;
-    struct lys_module *mod;
     int rc;
 
     dev = &module->deviation[module->deviation_size];
@@ -1747,15 +1746,6 @@ yang_read_deviation(struct lys_module *module, char *value)
         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, dev->target_name, "deviation");
         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Deviating own module is not allowed.");
         goto error;
-    }
-
-    /* mark all the affected modules as deviated and implemented */
-    for(parent = dev_target; parent; parent = lys_parent(parent)) {
-        mod = lys_node_module(parent);
-        if (module != mod) {
-            mod->deviated = 1;
-            lys_set_implemented(mod);
-        }
     }
 
     /*save pointer to the deviation and deviated target*/

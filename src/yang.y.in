@@ -3659,19 +3659,34 @@ deviation_stmt: DEVIATION_KEYWORD sep deviation_arg_str { if (read_all) {
                                                             }
                                                         }
                 '{' stmtsep
-                    deviation_opt_stmt  { if (read_all) {
-                                            if (actual_type == DEVIATION_KEYWORD) {
-                                              LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "deviate", "deviation");
-                                              YYABORT;
-                                            }
-                                            if (yang_check_deviation(trg, $7.deviation->dflt_check, unres)) {
-                                              YYABORT;
-                                            }
-                                            ly_set_free($7.deviation->dflt_check);
-                                            free($7.deviation);
-                                          }
-                                        }
-                '}'
+                    deviation_opt_stmt
+                '}'  { if (read_all) {
+                         struct lys_module *mod;
+                         struct lys_node *parent;
+
+                         if (actual_type == DEVIATION_KEYWORD) {
+                           LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "deviate", "deviation");
+                           ly_set_free($7.deviation->dflt_check);
+                           free($7.deviation);
+                           YYABORT;
+                         }
+                         if (yang_check_deviation(trg, $7.deviation->dflt_check, unres)) {
+                           ly_set_free($7.deviation->dflt_check);
+                           free($7.deviation);
+                           YYABORT;
+                         }
+                         /* mark all the affected modules as deviated and implemented */
+                         for(parent = $7.deviation->target; parent; parent = lys_parent(parent)) {
+                             mod = lys_node_module(parent);
+                             if (module != mod) {
+                                 mod->deviated = 1;
+                                 lys_set_implemented(mod);
+                             }
+                         }
+                         ly_set_free($7.deviation->dflt_check);
+                         free($7.deviation);
+                       }
+                     }
 
 deviation_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                $$.deviation = actual;
