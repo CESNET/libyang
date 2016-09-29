@@ -4025,7 +4025,7 @@ inherit_config_flag(struct lys_node *node, int flags, int clear, int check_list)
     LY_TREE_FOR(node, node) {
         if (clear) {
             node->flags &= ~LYS_CONFIG_MASK;
-            assert(!(node->flags & LYS_CONFIG_SET));
+            node->flags &= ~LYS_CONFIG_SET;
         } else {
             if (node->flags & LYS_CONFIG_SET) {
                 /* skip nodes with an explicit config value */
