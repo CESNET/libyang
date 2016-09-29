@@ -6105,7 +6105,7 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
 
     assert(unres);
 
-    LOGVRB("Resolving unresolved schema nodes and their constraints...");
+    LOGVRB("Resolving \"%s\" unresolved schema nodes and their constraints...", mod->name);
     ly_vlog_hide(1);
 
     /* uses */
@@ -6192,7 +6192,7 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
         return -1;
     }
 
-    LOGVRB("All schema nodes and constraints resolved.");
+    LOGVRB("All \"%s\" schema nodes and constraints resolved.", mod->name);
     unres->count = 0;
     return EXIT_SUCCESS;
 }

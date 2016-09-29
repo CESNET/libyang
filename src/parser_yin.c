@@ -2205,7 +2205,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 }
 
                 /* check XPath dependencies again */
-                if (*trg_must_size && unres_schema_add_node(dev_target->module, unres, dev_target, UNRES_XPATH, NULL)) {
+                if (*trg_must_size && unres_schema_add_node(module, unres, dev_target, UNRES_XPATH, NULL)) {
                     goto error;
                 }
             } else if (!strcmp(child->name, "unique")) {

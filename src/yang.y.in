@@ -3763,7 +3763,7 @@ deviate_add_end: ';'
      '}' { if (read_all) {
              /* check XPath dependencies */
              if (($3.deviation->trg_must_size && *$3.deviation->trg_must_size) &&
-                 unres_schema_add_node($3.deviation->target->module, unres, $3.deviation->target, UNRES_XPATH, NULL)) {
+                 unres_schema_add_node(trg, unres, $3.deviation->target, UNRES_XPATH, NULL)) {
                YYABORT;
              }
            }
@@ -3901,7 +3901,7 @@ deviate_delete_end: ';'
               }
               /* check XPath dependencies */
               if (($3.deviation->trg_must_size && *$3.deviation->trg_must_size) &&
-                  unres_schema_add_node($3.deviation->target->module, unres, $3.deviation->target, UNRES_XPATH, NULL)) {
+                  unres_schema_add_node(trg, unres, $3.deviation->target, UNRES_XPATH, NULL)) {
                 YYABORT;
               }
             }
