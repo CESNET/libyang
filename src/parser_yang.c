@@ -967,10 +967,6 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
         break;
     case LY_TYPE_DEC64:
         if (typ->type->base == LY_TYPE_DEC64) {
-            if (typ->type->info.dec64.range && lyp_check_length_range(typ->type->info.dec64.range->expr, typ->type)) {
-                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, typ->type->info.dec64.range->expr, "range");
-                goto error;
-            }
             /* mandatory sub-statement(s) check */
             if (!typ->type->info.dec64.dig && !typ->type->der->type.der) {
                 /* decimal64 type directly derived from built-in type requires fraction-digits */
@@ -987,6 +983,10 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
             if (typ->type->der->type.der) {
                 typ->type->info.dec64.dig = typ->type->der->type.info.dec64.dig;
                 typ->type->info.dec64.div = typ->type->der->type.info.dec64.div;
+            }
+            if (typ->type->info.dec64.range && lyp_check_length_range(typ->type->info.dec64.range->expr, typ->type)) {
+                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, typ->type->info.dec64.range->expr, "range");
+                goto error;
             }
         } else if (typ->type->base >= LY_TYPE_INT8 && typ->type->base <=LY_TYPE_UINT64) {
             if (typ->type->info.dec64.dig) {

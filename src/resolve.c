@@ -2708,7 +2708,7 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct le
                 local_fmax = tmp_local_intv->value.fval.max;
 
                  if ((dec64cmp(local_fmin, local_fdig, tmp_intv->value.fval.min, local_fdig) > -1)
-                        && (dec64cmp(local_fmin, local_fdig, tmp_intv->value.fval.max, local_fdig) > 1)) {
+                        && (dec64cmp(local_fmin, local_fdig, tmp_intv->value.fval.max, local_fdig) < 1)) {
                     if (dec64cmp(local_fmax, local_fdig, tmp_intv->value.fval.max, local_fdig) < 1) {
                         tmp_local_intv = tmp_local_intv->next;
                         continue;

@@ -689,15 +689,16 @@ upper:
             c = tail;
             if (*c == '.') {
                 c++;
-                if (type->base == LY_TYPE_UINT64) {
-                    strtoull(c, &tail, 10);
-                } else {
+                errno = 0;
+                if (type->base == LY_TYPE_DEC64) {
                     strtoll(c, &tail, 10);
-                }
-                if (errno) {
+                    if (errno || c == tail) {
+                        goto error;
+                    }
+                    c = tail;
+                } else {
                     goto error;
                 }
-                c = tail;
             }
             while (isspace(*c)) {
                 c++;
@@ -728,18 +729,18 @@ upper:
             goto error;
         }
         c = tail;
-        if (*c == '.') {
+        if (*c == '.' && c[1] != '.') {
+            c++;
             errno = 0;
-            if (type->base == LY_TYPE_UINT64) {
-                strtoull(c, &tail, 10);
-            } else {
+            if (type->base == LY_TYPE_DEC64) {
                 strtoll(c, &tail, 10);
-            }
-            if (errno) {
-                /* out of range value */
+                if (errno || c == tail) {
+                    goto error;
+                }
+                c = tail;
+            } else {
                 goto error;
             }
-            c = tail;
         }
         while (isspace(*c)) {
             c++;
