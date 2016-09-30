@@ -4275,11 +4275,22 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
     }
 
     ctx = uses->module->ctx;
-    for (parent = node; parent && !(parent->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT | LYS_RPC | LYS_GROUPING));
-         parent = lys_parent(parent));
+
+    parent = node;
+    while (parent && !(parent->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT | LYS_RPC | LYS_GROUPING))) {
+        if (parent->nodetype == LYS_AUGMENT) {
+            if (!((struct lys_node_augment *)parent)->target) {
+                break;
+            } else {
+                parent = ((struct lys_node_augment *)parent)->target;
+            }
+        } else {
+            parent = parent->parent;
+        }
+    }
     if (parent) {
-        if (parent->nodetype == LYS_GROUPING) {
-            /* we are still in some other unresolved grouping, unable to check lists */
+        if (parent->nodetype & (LYS_GROUPING | LYS_AUGMENT)) {
+            /* we are still in some other unresolved grouping or augment, unable to check lists */
             check_list = 0;
             clear_config = 0;
         } else {
