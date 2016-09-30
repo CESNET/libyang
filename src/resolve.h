@@ -105,6 +105,17 @@ struct len_ran_intv {
     struct len_ran_intv *next;
 };
 
+/**
+ * @brief Convert a string with a decimal64 value into our representation.
+ * Syntax is expected to be correct. Does not log.
+ *
+ * @param[in,out] str_num Pointer to the beginning of the decimal64 number, returns the first unparsed character.
+ * @param[in] dig Fraction-digits of the resulting number.
+ * @param[out] num Decimal64 base value, fraction-digits equal \p dig.
+ * @return 0 on success, non-zero on error.
+ */
+int parse_range_dec64(const char **str_num, uint8_t dig, int64_t *num);
+
 int parse_identifier(const char *id);
 
 int parse_schema_nodeid(const char *id, const char **mod_name, int *mod_name_len, const char **name, int *nam_len,

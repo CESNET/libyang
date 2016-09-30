@@ -30,16 +30,8 @@
 #include "dict_private.h"
 #include "tree_internal.h"
 
-/**
- * @brief Convert a string with a decimal64 value into our representation.
- * Syntax is expected to be correct.
- *
- * @param[in,out] str_num Pointer to the beginning of the decimal64 number, returns the first unparsed character.
- * @param[in] dig Fraction-digits of the resulting number.
- * @return Decimal64 base value, fraction-digits equal \p dig.
- */
-static int64_t
-parse_range_dec64(const char **str_num, uint8_t dig)
+int
+parse_range_dec64(const char **str_num, uint8_t dig, int64_t *num)
 {
     const char *ptr;
     int minus = 0;
@@ -53,10 +45,14 @@ parse_range_dec64(const char **str_num, uint8_t dig)
         ++ptr;
     }
 
+    if (!isdigit(ptr[0])) {
+        /* there must be at least one */
+        return 1;
+    }
+
     for (str_exp = 0; isdigit(ptr[0]) || ((ptr[0] == '.') && (str_dig < 0)); ++ptr) {
         if (str_exp > 18) {
-            LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, *str_num, "range");
-            return 0;
+            return 1;
         }
 
         if (ptr[0] == '.') {
@@ -73,30 +69,32 @@ parse_range_dec64(const char **str_num, uint8_t dig)
             ++str_exp;
         }
     }
-    if (str_dig == -1) {
-        /* there are 0 number after the floating point */
+    if (str_dig == 0) {
+        /* no digits after '.' */
+        return 1;
+    } else if (str_dig == -1) {
+        /* there are 0 numbers after the floating point */
         str_dig = 0;
     }
 
     /* it's parsed, now adjust the number based on fraction-digits, if needed */
     if (str_dig < dig) {
         if ((str_exp - 1) + (dig - str_dig) > 18) {
-            LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, *str_num, "range");
-            return 0;
+            return 1;
         }
         ret *= dec_pow(dig - str_dig);
     }
     if (str_dig > dig) {
-        LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, *str_num, "range");
-        return 0;
+        return 1;
     }
 
     if (minus) {
         ret *= -1;
     }
     *str_num = ptr;
+    *num = ret;
 
-    return ret;
+    return 0;
 }
 
 /**
@@ -2552,7 +2550,10 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct le
             } else if (kind == 1) {
                 tmp_local_intv->value.sval.min = strtol(ptr, (char **)&ptr, 10);
             } else if (kind == 2) {
-                tmp_local_intv->value.fval.min = parse_range_dec64(&ptr, local_fdig);
+                if (parse_range_dec64(&ptr, local_fdig, &tmp_local_intv->value.fval.min)) {
+                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, ptr, "range");
+                    goto error;
+                }
             }
         } else if (!strncmp(ptr, "min", 3)) {
             if (kind == 0) {
@@ -2606,7 +2607,10 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct le
                 } else if (kind == 1) {
                     tmp_local_intv->value.sval.max = strtol(ptr, (char **)&ptr, 10);
                 } else if (kind == 2) {
-                    tmp_local_intv->value.fval.max = parse_range_dec64(&ptr, local_fdig);
+                    if (parse_range_dec64(&ptr, local_fdig, &tmp_local_intv->value.fval.max)) {
+                        LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, ptr, "range");
+                        goto error;
+                    }
                 }
             } else if (!strncmp(ptr, "max", 3)) {
                 if (kind == 0) {

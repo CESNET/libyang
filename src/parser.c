@@ -602,6 +602,35 @@ validate_pattern(const char *val_str, struct lys_type *type, struct lyd_node *no
     return EXIT_SUCCESS;
 }
 
+static void
+check_number(const char *str_num, const char **num_end, LY_DATA_TYPE base)
+{
+    if (!isdigit(str_num[0]) && (str_num[0] != '-') && (str_num[0] != '+')) {
+        *num_end = str_num;
+        return;
+    }
+
+    if ((str_num[0] == '-') || (str_num[0] == '+')) {
+        ++str_num;
+    }
+
+    while (isdigit(str_num[0])) {
+        ++str_num;
+    }
+
+    if ((base != LY_TYPE_DEC64) || (str_num[0] != '.') || !isdigit(str_num[1])) {
+        *num_end = str_num;
+        return;
+    }
+
+    ++str_num;
+    while (isdigit(str_num[0])) {
+        ++str_num;
+    }
+
+    *num_end = str_num;
+}
+
 /**
  * @brief Checks the syntax of length or range statement,
  *        on success checks the semantics as well. Does not log.
@@ -615,8 +644,7 @@ int
 lyp_check_length_range(const char *expr, struct lys_type *type)
 {
     struct len_ran_intv *intv = NULL, *tmp_intv;
-    const char *c = expr;
-    char *tail;
+    const char *c = expr, *tail;
     int ret = EXIT_FAILURE, flg = 1; /* first run flag */
 
     assert(expr);
@@ -673,33 +701,11 @@ upper:
                 goto max;
             }
 
-            if (!isdigit(*c) && (*c != '+') && (*c != '-')) {
-                goto error;
-            }
-
-            errno = 0;
-            if (type->base == LY_TYPE_UINT64) {
-                strtoull(c, &tail, 10);
-            } else {
-                strtoll(c, &tail, 10);
-            }
-            if (errno) {
+            check_number(c, &tail, type->base);
+            if (c == tail) {
                 goto error;
             }
             c = tail;
-            if (*c == '.') {
-                c++;
-                errno = 0;
-                if (type->base == LY_TYPE_DEC64) {
-                    strtoll(c, &tail, 10);
-                    if (errno || c == tail) {
-                        goto error;
-                    }
-                    c = tail;
-                } else {
-                    goto error;
-                }
-            }
             while (isspace(*c)) {
                 c++;
             }
@@ -718,30 +724,12 @@ upper:
 
     } else if (isdigit(*c) || (*c == '-') || (*c == '+')) {
         /* number */
-        errno = 0;
-        if (type->base == LY_TYPE_UINT64) {
-            strtoull(c, &tail, 10);
-        } else {
-            strtoll(c, &tail, 10);
-        }
-        if (errno) {
-            /* out of range value */
+        check_number(c, &tail, type->base);
+        if (c == tail) {
             goto error;
         }
         c = tail;
-        if (*c == '.' && c[1] != '.') {
-            c++;
-            errno = 0;
-            if (type->base == LY_TYPE_DEC64) {
-                strtoll(c, &tail, 10);
-                if (errno || c == tail) {
-                    goto error;
-                }
-                c = tail;
-            } else {
-                goto error;
-            }
-        }
+
         while (isspace(*c)) {
             c++;
         }
@@ -875,11 +863,11 @@ lyp_parse_value_type(struct lyd_node_leaf_list *node, struct lys_type *stype, in
 {
     #define DECSIZE 21
     struct lys_type *type;
-    char dec[DECSIZE];
+    const char *ptr;
     int64_t num;
     uint64_t unum;
     int len;
-    int c, i, j, d;
+    int c, i, j;
     int found;
 
     assert(node && (node->value_type == stype->base));
@@ -990,65 +978,14 @@ switchtype:
         /* locate dec64 structure with the fraction-digits value */
         for (type = stype; type->der->type.der; type = &type->der->type);
 
-        for (c = 0; isspace(node->value_str[c]); c++);
-        for (len = 0; node->value_str[c] && !isspace(node->value_str[c]); c++, len++);
-        c = c - len;
-        if (len > DECSIZE) {
-            /* too long */
+        ptr = node->value_str;
+        if (parse_range_dec64(&ptr, type->info.dec64.dig, &num) || ptr[0]) {
             LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, node->value_str, node->schema->name);
             return EXIT_FAILURE;
         }
 
-        /* normalize the number */
-        dec[0] = '\0';
-        for (i = j = d = found = 0; i < DECSIZE; i++) {
-            if (node->value_str[c + i] == '.') {
-                found = 1;
-                j = type->info.dec64.dig;
-                i--;
-                c++;
-                continue;
-            }
-            if (node->value_str[c + i] == '\0') {
-                c--;
-                if (!found) {
-                    j = type->info.dec64.dig;
-                    found = 1;
-                }
-                if (!j) {
-                    dec[i] = '\0';
-                    break;
-                }
-                d++;
-                if (d > DECSIZE - 2) {
-                    LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, node->value_str, node->schema->name);
-                    return EXIT_FAILURE;
-                }
-                dec[i] = '0';
-            } else {
-                if (!isdigit(node->value_str[c + i])) {
-                    if (i || node->value_str[c] != '-') {
-                        LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, node->value_str, node->schema->name);
-                        return EXIT_FAILURE;
-                    }
-                } else {
-                    d++;
-                }
-                if (d > DECSIZE - 2 || (found && !j)) {
-                    LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, node->value_str, node->schema->name);
-                    return EXIT_FAILURE;
-                }
-                dec[i] = node->value_str[c + i];
-            }
-            if (j) {
-                j--;
-            }
-        }
-
-        if (parse_int(dec, __INT64_C(-9223372036854775807) - __INT64_C(1), __INT64_C(9223372036854775807), 10, &num,
-                      (struct lyd_node *)node)
-                || validate_length_range(2, 0, 0, num, type->info.dec64.dig, stype,
-                                         node->value_str, (struct lyd_node *)node)) {
+        if (validate_length_range(2, 0, 0, num, type->info.dec64.dig, stype,
+                                  node->value_str, (struct lyd_node *)node)) {
             return EXIT_FAILURE;
         }
         node->value.dec64 = num;
