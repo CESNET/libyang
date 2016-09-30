@@ -181,12 +181,12 @@ test_lyxml_print_fd(void **state)
     (void) state; /* unused */
     char *result = NULL;
     struct stat sb;
-    char file_name[19];
+    char file_name[20];
     int rc;
     int fd;
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, "/tmp/libyang-XXXXXX", 21);
+    strncpy(file_name, "/tmp/libyang-XXXXXX", 20);
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -228,7 +228,7 @@ test_lyxml_print_file(void **state)
     struct lyxml_elem *xml = NULL;
     const char *path = TESTS_DIR"/api/files/a.xml";
     struct stat sb;
-    char file_name[19];
+    char file_name[20];
     char *result;
     FILE *f = NULL;
     int rc;
@@ -242,7 +242,7 @@ test_lyxml_print_file(void **state)
     assert_string_equal("x", xml->name);
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, "/tmp/libyang-XXXXXX", 21);
+    strncpy(file_name, "/tmp/libyang-XXXXXX", 20);
 
     fd = mkstemp(file_name);
     if (fd < 1) {

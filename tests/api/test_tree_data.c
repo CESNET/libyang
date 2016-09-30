@@ -1162,12 +1162,12 @@ test_lyd_print_fd_xml(void **state)
     (void) state; /* unused */
     char *result = NULL;
     struct stat sb;
-    char file_name[19];
+    char file_name[20];
     int rc;
     int fd;
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, "/tmp/libyang-XXXXXX", 21);
+    strncpy(file_name, "/tmp/libyang-XXXXXX", 20);
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1205,12 +1205,12 @@ test_lyd_print_fd_xml_format(void **state)
     (void) state; /* unused */
     char *result = NULL;
     struct stat sb;
-    char file_name[19];
+    char file_name[20];
     int rc;
     int fd;
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, "/tmp/libyang-XXXXXX", 21);
+    strncpy(file_name, "/tmp/libyang-XXXXXX", 20);
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1248,12 +1248,12 @@ test_lyd_print_fd_json(void **state)
     (void) state; /* unused */
     char *result = NULL;
     struct stat sb;
-    char file_name[19];
+    char file_name[20];
     int rc;
     int fd;
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, "/tmp/libyang-XXXXXX", 21);
+    strncpy(file_name, "/tmp/libyang-XXXXXX", 20);
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1290,14 +1290,14 @@ test_lyd_print_file_xml(void **state)
 {
     (void) state; /* unused */
     struct stat sb;
-    char file_name[19];
+    char file_name[20];
     char *result;
     FILE *f = NULL;
     int rc;
     int fd;
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, "/tmp/libyang-XXXXXX", 21);
+    strncpy(file_name, "/tmp/libyang-XXXXXX", 20);
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1345,14 +1345,14 @@ test_lyd_print_file_xml_format(void **state)
 {
     (void) state; /* unused */
     struct stat sb;
-    char file_name[19];
+    char file_name[20];
     char *result;
     FILE *f = NULL;
     int rc;
     int fd;
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, "/tmp/libyang-XXXXXX", 21);
+    strncpy(file_name, "/tmp/libyang-XXXXXX", 20);
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1400,14 +1400,14 @@ test_lyd_print_file_json(void **state)
 {
     (void) state; /* unused */
     struct stat sb;
-    char file_name[19];
+    char file_name[20];
     char *result;
     FILE *f = NULL;
     int rc;
     int fd = -1;
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, "/tmp/libyang-XXXXXX", 21);
+    strncpy(file_name, "/tmp/libyang-XXXXXX", 20);
 
     fd = mkstemp(file_name);
     if (fd < 1) {
