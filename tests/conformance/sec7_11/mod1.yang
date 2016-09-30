@@ -1,0 +1,33 @@
+module mod1 {
+    prefix abc;
+    namespace "urn:cesnet:mod1";
+
+    grouping gg {
+        container ccc {
+            presence "enable";
+
+            grouping hh {
+                list ll {
+                    key keys;
+
+                    leaf keys {
+                        type string;
+                        mandatory true;
+                    }
+
+                    grouping repeat {
+                        typedef abc {
+                            type string {
+                                pattern '[a-z]+';
+                                length "1..255";
+                            }
+                        }
+
+                        uses gg;  // circular dependency
+                    }
+                }
+            }
+
+        }
+    }
+}

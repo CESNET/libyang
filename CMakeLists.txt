@@ -101,6 +101,9 @@ set(lintsrc
 	tools/lint/completion.c
 	linenoise/linenoise.c)
 
+set(yang2yinsrc
+	tools/yang2yin/main.c)
+
 set(headers
 	src/libyang.h
 	src/tree_schema.h
@@ -164,6 +167,8 @@ add_custom_target(cclean
 
 add_executable(yanglint ${lintsrc})
 target_link_libraries(yanglint yang)
+
+add_executable(yang2yin ${yang2yinsrc})
 
 if(ENABLE_VALGRIND_TESTS)
 	set(ENABLE_BUILD_TESTS ON)

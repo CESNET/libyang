@@ -38,6 +38,7 @@
 #define CONFIG_INHERIT_ENABLE  0x01
 #define CONFIG_IGNORE 0x02
 #define CONFIG_MASK 0x03
+#define LYS_CHOICE_DEFAULT 0x10
 
 struct lys_node_array{
     uint8_t if_features;
@@ -78,11 +79,6 @@ struct lys_array_size {
     struct lys_node_array *node;
 };
 
-struct type_choice {
-  char *s;
-  struct lys_node_choice *ptr_choice;
-};
-
 struct type_node {
     union {
         struct lys_node_leaflist *ptr_leaflist;
@@ -93,6 +89,7 @@ struct type_node {
         struct lys_node_augment *ptr_augment;
         struct lys_node_rpc_action *ptr_rpc;
         struct lys_node_inout *ptr_inout;
+        struct lys_node_choice *ptr_choice;
     };
     uint flag;
 };

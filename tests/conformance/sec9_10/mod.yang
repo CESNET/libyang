@@ -1,0 +1,14 @@
+module mod {
+    prefix m;
+    namespace "urn:cesnet:mod";
+
+    identity j3 {
+        base j2;
+    }
+
+    identity j1;
+
+    identity j2 {
+        base j1;
+    }
+}

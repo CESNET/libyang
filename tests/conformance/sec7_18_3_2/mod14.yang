@@ -1,0 +1,16 @@
+module mod14 {
+    prefix abc;
+    namespace "urn:cesnet:mod14";
+
+    import mod {
+        prefix mod;
+    }
+
+    deviation "/mod:cont" {
+        description "test";
+
+        deviate add {
+            must "/llist";  // not exist node
+        }
+    }
+}
