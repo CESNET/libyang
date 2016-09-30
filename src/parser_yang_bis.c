@@ -4247,7 +4247,7 @@ yyreduce:
                  unsigned long val;
 
                  val = strtoul(s, &endptr, 10);
-                 if (*endptr || s[0] == '-' || val == 0 || val > UINT32_MAX) {
+                 if (*endptr || s[0] == '-' || errno || val == 0 || val > UINT32_MAX) {
                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "fraction-digits");
                    free(s);
                    s = NULL;
@@ -4857,7 +4857,7 @@ yyreduce:
                   char *endptr;
 
                   val = strtoul(s, &endptr, 10);
-                  if (val > UINT32_MAX || s[0] == '-' || *endptr) {
+                  if (s[0] == '-' || *endptr || errno || val > UINT32_MAX) {
                       LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "position");
                       free(s);
                       YYABORT;
@@ -8395,7 +8395,7 @@ yyreduce:
                     char *endptr;
 
                     val = strtoul(s, &endptr, 10);
-                    if (val > UINT32_MAX || *endptr) {
+                    if (*endptr || s[0] == '-' || errno || val > UINT32_MAX) {
                         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "min-elements");
                         free(s);
                         YYABORT;
@@ -8438,7 +8438,7 @@ yyreduce:
                     char *endptr;
 
                     val = strtoul(s, &endptr, 10);
-                    if (val == 0 || val > UINT32_MAX || *endptr) {
+                    if (*endptr || s[0] == '-' || errno || val == 0 || val > UINT32_MAX) {
                         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "max-elements");
                         free(s);
                         YYABORT;
