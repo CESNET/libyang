@@ -331,7 +331,7 @@ lyjson_convert_enumber(const char *number, unsigned int num_len, char *e_ptr)
     }
 
     chars_to_dot = dot_pos;
-    for (ptr = num + strlen(num), number_ptr = number; number_ptr - number < num_len_no_e; ) {
+    for (ptr = num + strlen(num), number_ptr = number; (unsigned)(number_ptr - number) < num_len_no_e; ) {
         if (!chars_to_dot) {
             *ptr = '.';
             ++ptr;
