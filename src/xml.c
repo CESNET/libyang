@@ -44,16 +44,9 @@ API const struct lyxml_ns *
 lyxml_get_ns(const struct lyxml_elem *elem, const char *prefix)
 {
     struct lyxml_attr *attr;
-    int len;
 
     if (!elem) {
         return NULL;
-    }
-
-    if (!prefix) {
-        len = 0;
-    } else {
-        len = strlen(prefix) + 1;
     }
 
     for (attr = elem->attr; attr; attr = attr->next) {
@@ -61,7 +54,7 @@ lyxml_get_ns(const struct lyxml_elem *elem, const char *prefix)
             continue;
         }
         if (!attr->name) {
-            if (!len) {
+            if (!prefix) {
                 /* default namespace found */
                 if (!attr->value) {
                     /* empty default namespace -> no default namespace */
@@ -69,7 +62,7 @@ lyxml_get_ns(const struct lyxml_elem *elem, const char *prefix)
                 }
                 return (struct lyxml_ns *)attr;
             }
-        } else if (len && !memcmp(attr->name, prefix, len)) {
+        } else if (!strcmp(attr->name, prefix)) {
             /* prefix found */
             return (struct lyxml_ns *)attr;
         }
