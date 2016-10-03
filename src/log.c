@@ -430,7 +430,6 @@ ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
     const char *fmt;
     char* path = NULL;
     uint16_t *index = NULL;
-    const void *iter = elem;
 
     ly_errno = LY_EVALID;
 
@@ -450,7 +449,7 @@ ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
     index = &((struct ly_err *)&ly_errno)->path_index;
     if (elem_type) { /* != LY_VLOG_NONE */
         /* check if the path is equal to the last one */
-        if ((elem_type == LY_VLOG_LYD ? ((struct lyd_node *)elem)->schema : iter) == ((struct ly_err *)&ly_errno)->path_obj) {
+        if (elem && (elem_type == LY_VLOG_LYD ? ((struct lyd_node *)elem)->schema : elem) == ((struct ly_err *)&ly_errno)->path_obj) {
             /* path is up-to-date (same as the last one) */
             goto log;
         }
@@ -458,11 +457,11 @@ ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
         /* update path */
         (*index) = LY_BUF_SIZE - 1;
         path[(*index)] = '\0';
-        if (!iter) {
+        if (!elem) {
             /* top-level */
             path[--(*index)] = '/';
         } else {
-            ly_vlog_build_path_reverse(elem_type, iter, path, index);
+            ly_vlog_build_path_reverse(elem_type, elem, path, index);
             /* store the source of the path */
             ((struct ly_err *)&ly_errno)->path_obj = elem_type == LY_VLOG_LYD ? ((struct lyd_node *)elem)->schema : elem;
         }
