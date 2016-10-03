@@ -1565,10 +1565,10 @@ deviate_minmax(struct lys_node *target, struct lyxml_elem *node, struct lys_devi
     /* check min-elements is smaller than max-elements */
     if (*max && *min > *max) {
         if (type) {
-            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"max-elements\".", value);
+            LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "max-elements");
             LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"max-elements\" is smaller than \"min-elements\".");
         } else {
-            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"min-elements\".", value);
+            LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "min-elements");
             LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"min-elements\" is bigger than \"max-elements\".");
         }
         goto error;
