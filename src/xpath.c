@@ -521,7 +521,7 @@ cast_node_set_to_string(struct lyxp_set *set, struct lyd_node *cur_node, int opt
 {
     enum lyxp_node_type root_type;
 
-    if (set->val.nodes[0].node->validity & LYD_VAL_INUSE) {
+    if ((set->val.nodes[0].type != LYXP_NODE_ATTR) && (set->val.nodes[0].node->validity & LYD_VAL_INUSE)) {
         LOGVAL(LYE_XPATH_DUMMY, LY_VLOG_LYD, set->val.nodes[0].node, set->val.nodes[0].node->schema->name);
         return NULL;
     }
