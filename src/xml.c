@@ -62,7 +62,7 @@ lyxml_get_ns(const struct lyxml_elem *elem, const char *prefix)
                 }
                 return (struct lyxml_ns *)attr;
             }
-        } else if (!strcmp(attr->name, prefix)) {
+        } else if (prefix && !strcmp(attr->name, prefix)) {
             /* prefix found */
             return (struct lyxml_ns *)attr;
         }
