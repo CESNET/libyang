@@ -1457,7 +1457,7 @@ YY_DECL
 
  int tab_count = 0;
  int size_str = 0;
- int column;
+ int column = 0;
  char *str = NULL;
  int _state = YY_START;
 
