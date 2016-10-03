@@ -2723,7 +2723,7 @@ struct lys_include inc;
 struct lys_module *trg = NULL;
 struct lys_node *tpdf_parent = NULL, *data_node = NULL;
 void *actual = NULL;
-struct lys_node_uses *refine_parent;
+struct lys_node_uses *refine_parent = NULL;
 int config_inherit = 0, actual_type = 0;
 int64_t cnt_val;
 int read_string = read_all;
