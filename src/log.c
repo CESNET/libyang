@@ -450,7 +450,7 @@ ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
     index = &((struct ly_err *)&ly_errno)->path_index;
     if (elem_type) { /* != LY_VLOG_NONE */
         /* check if the path is equal to the last one */
-        if (iter == ((struct ly_err *)&ly_errno)->path_obj) {
+        if ((elem_type == LY_VLOG_LYD ? ((struct lyd_node *)elem)->schema : iter) == ((struct ly_err *)&ly_errno)->path_obj) {
             /* path is up-to-date (same as the last one) */
             goto log;
         }
@@ -464,7 +464,7 @@ ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
         } else {
             ly_vlog_build_path_reverse(elem_type, iter, path, index);
             /* store the source of the path */
-            ((struct ly_err *)&ly_errno)->path_obj = elem;
+            ((struct ly_err *)&ly_errno)->path_obj = elem_type == LY_VLOG_LYD ? ((struct lyd_node *)elem)->schema : elem;
         }
     } else {
         /* erase path, the rest will be erased by log_vprintf() since it will get NULL path parameter */
