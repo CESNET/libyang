@@ -36,7 +36,7 @@ uint8_t ly_vlog_hide_def;
 static pthread_once_t ly_err_once = PTHREAD_ONCE_INIT;
 static pthread_key_t ly_err_key;
 #ifdef __linux__
-struct ly_err ly_err_main = {LY_SUCCESS, LYVE_SUCCESS, 0, 0, 0, NULL + 1, {0}, {0}, {0}, {0}};
+struct ly_err ly_err_main = {LY_SUCCESS, LYVE_SUCCESS, 0, 0, 0, 0, NULL + 1, {0}, {0}, {0}, {0}};
 #endif
 
 static void
