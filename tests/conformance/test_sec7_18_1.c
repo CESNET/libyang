@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <cmocka.h>
 #include <string.h>
+#include <sys/wait.h>
 
 #include "../config.h"
 #include "../../src/libyang.h"
