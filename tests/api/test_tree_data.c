@@ -38,6 +38,8 @@
 #include "../../src/tree_data.h"
 #include "../../src/tree_schema.h"
 
+#define TMP_TEMPLATE "/tmp/libyang-XXXXXX"
+
 struct ly_ctx *ctx = NULL;
 struct lyd_node *root = NULL;
 
@@ -1048,7 +1050,7 @@ test_lyd_print_fd_xml(void **state)
     int fd;
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, "/tmp/libyang-XXXXXX", 21);
+    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1091,7 +1093,7 @@ test_lyd_print_fd_xml_format(void **state)
     int fd;
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, "/tmp/libyang-XXXXXX", 21);
+    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1134,7 +1136,7 @@ test_lyd_print_fd_json(void **state)
     int fd;
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, "/tmp/libyang-XXXXXX", 21);
+    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1178,7 +1180,7 @@ test_lyd_print_file_xml(void **state)
     int fd;
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, "/tmp/libyang-XXXXXX", 21);
+    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1233,7 +1235,7 @@ test_lyd_print_file_xml_format(void **state)
     int fd;
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, "/tmp/libyang-XXXXXX", 21);
+    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1288,7 +1290,7 @@ test_lyd_print_file_json(void **state)
     int fd = -1;
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, "/tmp/libyang-XXXXXX", 21);
+    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
