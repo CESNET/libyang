@@ -684,13 +684,9 @@ upper:
                 goto error;
             }
             c = tail;
-            if (*c == '.') {
+            if (type->base == LY_TYPE_DEC64 && *c == '.' && isdigit(c[1])) {
                 c++;
-                if (type->base == LY_TYPE_UINT64) {
-                    strtoull(c, &tail, 10);
-                } else {
-                    strtoll(c, &tail, 10);
-                }
+                strtoll(c, &tail, 10);
                 if (errno) {
                     goto error;
                 }
@@ -725,13 +721,9 @@ upper:
             goto error;
         }
         c = tail;
-        if (*c == '.') {
-            errno = 0;
-            if (type->base == LY_TYPE_UINT64) {
-                strtoull(c, &tail, 10);
-            } else {
-                strtoll(c, &tail, 10);
-            }
+        if (type->base == LY_TYPE_DEC64 && *c == '.' && isdigit(c[1])) {
+            c++;
+            strtoll(c, &tail, 10);
             if (errno) {
                 /* out of range value */
                 goto error;
