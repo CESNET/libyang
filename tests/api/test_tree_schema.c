@@ -28,6 +28,8 @@
 #include "../config.h"
 #include "../../src/libyang.h"
 
+#define TMP_TEMPLATE "/tmp/libyang-XXXXXX"
+
 struct ly_ctx *ctx = NULL;
 struct lyd_node *root = NULL;
 
@@ -803,8 +805,7 @@ test_lys_print_fd_tree(void **state)
     }
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, "/tmp/libyang-XXXXXX", 20);
-
+    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -855,8 +856,7 @@ test_lys_print_fd_yang(void **state)
     }
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, "/tmp/libyang-XXXXXX", 20);
-
+    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -907,8 +907,7 @@ test_lys_print_fd_yin(void **state)
     }
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, "/tmp/libyang-XXXXXX", 20);
-
+    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -959,8 +958,7 @@ test_lys_print_fd_info(void **state)
     }
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, "/tmp/libyang-XXXXXX", 20);
-
+    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1012,8 +1010,7 @@ test_lys_print_file_tree(void **state)
     }
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, "/tmp/libyang-XXXXXX", 20);
-
+    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1076,8 +1073,7 @@ test_lys_print_file_yin(void **state)
     }
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, "/tmp/libyang-XXXXXX", 20);
-
+    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1140,8 +1136,7 @@ test_lys_print_file_yang(void **state)
     }
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, "/tmp/libyang-XXXXXX", 20);
-
+    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1204,8 +1199,7 @@ test_lys_print_file_info(void **state)
     }
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, "/tmp/libyang-XXXXXX", 20);
-
+    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
