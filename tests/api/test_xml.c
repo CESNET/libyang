@@ -36,6 +36,8 @@
 #include "../config.h"
 #include "../../src/libyang.h"
 
+#define TMP_TEMPLATE "/tmp/libyang-XXXXXX"
+
 struct ly_ctx *ctx = NULL;
 struct lyd_node *root = NULL;
 
@@ -192,7 +194,7 @@ test_lyxml_print_fd(void **state)
     int fd;
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, "/tmp/libyang-XXXXXX", 21);
+    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -248,7 +250,7 @@ test_lyxml_print_file(void **state)
     assert_string_equal("x", xml->name);
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, "/tmp/libyang-XXXXXX", 21);
+    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
