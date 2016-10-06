@@ -508,15 +508,15 @@ get_keyword(char *word, enum yang_arg *arg)
     switch (word[0]) {
     case 'a':
         ++word;
-        if (!memcmp(word, "nyxml", 5)) {
+        if (!strncmp(word, "nyxml", 5)) {
             word += 5;
             ret = YANG_ANYXML;
             *arg = Y_IDENTIF_ARG;
-        } else if (!memcmp(word, "rgument", 7)) {
+        } else if (!strncmp(word, "rgument", 7)) {
             word += 7;
             ret = YANG_ARGUMENT;
             *arg = Y_STR_ARG;
-        } else if (!memcmp(word, "ugment", 6)) {
+        } else if (!strncmp(word, "ugment", 6)) {
             word += 6;
             ret = YANG_AUGMENT;
             *arg = Y_STR_ARG;
@@ -524,15 +524,15 @@ get_keyword(char *word, enum yang_arg *arg)
         break;
     case 'b':
         ++word;
-        if (!memcmp(word, "ase", 3)) {
+        if (!strncmp(word, "ase", 3)) {
             word += 3;
             ret = YANG_BASE;
             *arg = Y_STR_ARG;
-        } else if (!memcmp(word, "elongs-to", 9)) {
+        } else if (!strncmp(word, "elongs-to", 9)) {
             word += 9;
             ret = YANG_BELONGS_TO;
             *arg = Y_IDENTIF_ARG;
-        } else if (!memcmp(word, "it", 2)) {
+        } else if (!strncmp(word, "it", 2)) {
             word += 2;
             ret = YANG_BIT;
             *arg = Y_STR_ARG;
@@ -540,27 +540,27 @@ get_keyword(char *word, enum yang_arg *arg)
         break;
     case 'c':
         ++word;
-        if (!memcmp(word, "ase", 3)) {
+        if (!strncmp(word, "ase", 3)) {
             word += 3;
             ret = YANG_CASE;
             *arg = Y_IDENTIF_ARG;
-        } else if (!memcmp(word, "hoice", 5)) {
+        } else if (!strncmp(word, "hoice", 5)) {
             word += 5;
             ret = YANG_CHOICE;
             *arg = Y_IDENTIF_ARG;
-        } else if (!memcmp(word, "on", 2)) {
+        } else if (!strncmp(word, "on", 2)) {
             word += 2;
-            if (!memcmp(word, "fig", 3)) {
+            if (!strncmp(word, "fig", 3)) {
                 word += 3;
                 ret = YANG_CONFIG;
                 *arg = Y_STR_ARG;
-            } else if (!memcmp(word, "ta", 2)) {
+            } else if (!strncmp(word, "ta", 2)) {
                 word += 2;
-                if (!memcmp(word, "ct", 2)) {
+                if (!strncmp(word, "ct", 2)) {
                     word += 2;
                     ret = YANG_CONTACT;
                     *arg = Y_STR_ARG;
-                } else if (!memcmp(word, "iner", 4)) {
+                } else if (!strncmp(word, "iner", 4)) {
                     word += 4;
                     ret = YANG_CONTAINER;
                     *arg = Y_IDENTIF_ARG;
@@ -572,21 +572,21 @@ get_keyword(char *word, enum yang_arg *arg)
         ++word;
         if (word[0] == 'e') {
             ++word;
-            if (!memcmp(word, "fault", 5)) {
+            if (!strncmp(word, "fault", 5)) {
                 word += 5;
                 ret = YANG_DEFAULT;
                 *arg = Y_STR_ARG;
-            } else if (!memcmp(word, "scription", 9)) {
+            } else if (!strncmp(word, "scription", 9)) {
                 word += 9;
                 ret = YANG_DESCRIPTION;
                 *arg = Y_STR_ARG;
-            } else if (!memcmp(word, "viat", 4)) {
+            } else if (!strncmp(word, "viat", 4)) {
                 word += 4;
                 if (word[0] == 'e') {
                     ++word;
                     ret = YANG_DEVIATE;
                     *arg = Y_STR_ARG;
-                } else if (!memcmp(word, "ion", 3)) {
+                } else if (!strncmp(word, "ion", 3)) {
                     word += 3;
                     ret = YANG_DEVIATION;
                     *arg = Y_STR_ARG;
@@ -596,22 +596,22 @@ get_keyword(char *word, enum yang_arg *arg)
         break;
     case 'e':
         ++word;
-        if (!memcmp(word, "num", 3)) {
+        if (!strncmp(word, "num", 3)) {
             word += 3;
             ret = YANG_ENUM;
             *arg = Y_STR_ARG;
-        } else if (!memcmp(word, "rror-", 5)) {
+        } else if (!strncmp(word, "rror-", 5)) {
             word += 5;
-            if (!memcmp(word, "app-tag", 7)) {
+            if (!strncmp(word, "app-tag", 7)) {
                 word += 7;
                 ret = YANG_ERROR_APP_TAG;
                 *arg = Y_STR_ARG;
-            } else if (!memcmp(word, "message", 7)) {
+            } else if (!strncmp(word, "message", 7)) {
                 word += 7;
                 ret = YANG_ERROR_MESSAGE;
                 *arg = Y_STR_ARG;
             }
-        } else if (!memcmp(word, "xtension", 8)) {
+        } else if (!strncmp(word, "xtension", 8)) {
             word += 8;
             ret = YANG_EXTENSION;
             *arg = Y_IDENTIF_ARG;
@@ -619,11 +619,11 @@ get_keyword(char *word, enum yang_arg *arg)
         break;
     case 'f':
         ++word;
-        if (!memcmp(word, "eature", 6)) {
+        if (!strncmp(word, "eature", 6)) {
             word += 6;
             ret = YANG_FEATURE;
             *arg = Y_IDENTIF_ARG;
-        } else if (!memcmp(word, "raction-digits", 14)) {
+        } else if (!strncmp(word, "raction-digits", 14)) {
             word += 14;
             ret = YANG_FRACTION_DIGITS;
             *arg = Y_STR_ARG;
@@ -631,7 +631,7 @@ get_keyword(char *word, enum yang_arg *arg)
         break;
     case 'g':
         ++word;
-        if (!memcmp(word, "rouping", 7)) {
+        if (!strncmp(word, "rouping", 7)) {
             word += 7;
             ret = YANG_GROUPING;
             *arg = Y_IDENTIF_ARG;
@@ -639,25 +639,25 @@ get_keyword(char *word, enum yang_arg *arg)
         break;
     case 'i':
         ++word;
-        if (!memcmp(word, "dentity", 7)) {
+        if (!strncmp(word, "dentity", 7)) {
             word += 7;
             ret = YANG_IDENTITY;
             *arg = Y_IDENTIF_ARG;
-        } else if (!memcmp(word, "f-feature", 9)) {
+        } else if (!strncmp(word, "f-feature", 9)) {
             word += 9;
             ret = YANG_IF_FEATURE;
             *arg = Y_IDENTIF_ARG;
-        } else if (!memcmp(word, "mport", 5)) {
+        } else if (!strncmp(word, "mport", 5)) {
             word += 5;
             ret = YANG_IMPORT;
             *arg = Y_IDENTIF_ARG;
         } else if (word[0] == 'n') {
             ++word;
-            if (!memcmp(word, "clude", 5)) {
+            if (!strncmp(word, "clude", 5)) {
                 word += 5;
                 ret = YANG_INCLUDE;
                 *arg = Y_IDENTIF_ARG;
-            } else if (!memcmp(word, "put", 3)) {
+            } else if (!strncmp(word, "put", 3)) {
                 word += 3;
                 ret = YANG_INPUT;
                 *arg = Y_NO_ARG;
@@ -666,7 +666,7 @@ get_keyword(char *word, enum yang_arg *arg)
         break;
     case 'k':
         ++word;
-        if (!memcmp(word, "ey", 2)) {
+        if (!strncmp(word, "ey", 2)) {
             word += 2;
             ret = YANG_KEY;
             *arg = Y_STR_ARG;
@@ -676,22 +676,22 @@ get_keyword(char *word, enum yang_arg *arg)
         ++word;
         if (word[0] == 'e') {
             ++word;
-            if (!memcmp(word, "af", 2)) {
+            if (!strncmp(word, "af", 2)) {
                 word += 2;
                 if (word[0] != '-') {
                     ret = YANG_LEAF;
                     *arg = Y_IDENTIF_ARG;
-                } else if (!memcmp(word, "-list", 5)) {
+                } else if (!strncmp(word, "-list", 5)) {
                     word += 5;
                     ret = YANG_LEAF_LIST;
                     *arg = Y_IDENTIF_ARG;
                 }
-            } else if (!memcmp(word, "ngth", 4)) {
+            } else if (!strncmp(word, "ngth", 4)) {
                 word += 4;
                 ret = YANG_LENGTH;
                 *arg = Y_STR_ARG;
             }
-        } else if (!memcmp(word, "ist", 3)) {
+        } else if (!strncmp(word, "ist", 3)) {
             word += 3;
             ret = YANG_LIST;
             *arg = Y_IDENTIF_ARG;
@@ -701,24 +701,24 @@ get_keyword(char *word, enum yang_arg *arg)
         ++word;
         if (word[0] == 'a') {
             ++word;
-            if (!memcmp(word, "ndatory", 7)) {
+            if (!strncmp(word, "ndatory", 7)) {
                 word += 7;
                 ret = YANG_MANDATORY;
                 *arg = Y_STR_ARG;
-            } else if (!memcmp(word, "x-elements", 10)) {
+            } else if (!strncmp(word, "x-elements", 10)) {
                 word += 10;
                 ret = YANG_MAX_ELEMENTS;
                 *arg = Y_STR_ARG;
             }
-        } else if (!memcmp(word, "in-elements", 11)) {
+        } else if (!strncmp(word, "in-elements", 11)) {
             word += 11;
             ret = YANG_MIN_ELEMENTS;
             *arg = Y_STR_ARG;
-        } else if (!memcmp(word, "odule", 5)) {
+        } else if (!strncmp(word, "odule", 5)) {
             word += 5;
             ret = YANG_MODULE;
             *arg = Y_IDENTIF_ARG;
-        } else if (!memcmp(word, "ust", 3)) {
+        } else if (!strncmp(word, "ust", 3)) {
             word += 3;
             ret = YANG_MUST;
             *arg = Y_STR_ARG;
@@ -726,11 +726,11 @@ get_keyword(char *word, enum yang_arg *arg)
         break;
     case 'n':
         ++word;
-        if (!memcmp(word, "amespace", 8)) {
+        if (!strncmp(word, "amespace", 8)) {
             word += 8;
             ret = YANG_NAMESPACE;
             *arg = Y_STR_ARG;
-        } else if (!memcmp(word, "otification", 11)) {
+        } else if (!strncmp(word, "otification", 11)) {
             word += 11;
             ret = YANG_NOTIFICATION;
             *arg = Y_IDENTIF_ARG;
@@ -740,16 +740,16 @@ get_keyword(char *word, enum yang_arg *arg)
         ++word;
         if (word[0] == 'r') {
             ++word;
-            if (!memcmp(word, "dered-by", 8)) {
+            if (!strncmp(word, "dered-by", 8)) {
                 word += 8;
                 ret = YANG_ORDERED_BY;
                 *arg = Y_STR_ARG;
-            } else if (!memcmp(word, "ganization", 10)) {
+            } else if (!strncmp(word, "ganization", 10)) {
                 word += 10;
                 ret = YANG_ORGANIZATION;
                 *arg = Y_STR_ARG;
             }
-        } else if (!memcmp(word, "utput", 5)) {
+        } else if (!strncmp(word, "utput", 5)) {
             word += 5;
             ret = YANG_OUTPUT;
             *arg = Y_NO_ARG;
@@ -757,28 +757,28 @@ get_keyword(char *word, enum yang_arg *arg)
         break;
     case 'p':
         ++word;
-        if (!memcmp(word, "at", 2)) {
+        if (!strncmp(word, "at", 2)) {
             word += 2;
             if (word[0] == 'h') {
                 ++word;
                 ret = YANG_PATH;
                 *arg = Y_STR_ARG;
-            } else if (!memcmp(word, "tern", 4)) {
+            } else if (!strncmp(word, "tern", 4)) {
                 word += 4;
                 ret = YANG_PATTERN;
                 *arg = Y_STR_ARG;
             }
-        } else if (!memcmp(word, "osition", 7)) {
+        } else if (!strncmp(word, "osition", 7)) {
             word += 7;
             ret = YANG_POSITION;
             *arg = Y_STR_ARG;
-        } else if (!memcmp(word, "re", 2)) {
+        } else if (!strncmp(word, "re", 2)) {
             word += 2;
-            if (!memcmp(word, "fix", 3)) {
+            if (!strncmp(word, "fix", 3)) {
                 word += 3;
                 ret = YANG_PREFIX;
                 *arg = Y_STR_ARG;
-            } else if (!memcmp(word, "sence", 5)) {
+            } else if (!strncmp(word, "sence", 5)) {
                 word += 5;
                 ret = YANG_PRESENCE;
                 *arg = Y_STR_ARG;
@@ -787,7 +787,7 @@ get_keyword(char *word, enum yang_arg *arg)
         break;
     case 'r':
         ++word;
-        if (!memcmp(word, "ange", 4)) {
+        if (!strncmp(word, "ange", 4)) {
             word += 4;
             ret = YANG_RANGE;
             *arg = Y_STR_ARG;
@@ -795,31 +795,31 @@ get_keyword(char *word, enum yang_arg *arg)
             ++word;
             if (word[0] == 'f') {
                 ++word;
-                if (!memcmp(word, "erence", 6)) {
+                if (!strncmp(word, "erence", 6)) {
                     word += 6;
                     ret = YANG_REFERENCE;
                     *arg = Y_STR_ARG;
-                } else if (!memcmp(word, "ine", 3)) {
+                } else if (!strncmp(word, "ine", 3)) {
                     word += 3;
                     ret = YANG_REFINE;
                     *arg = Y_STR_ARG;
                 }
-            } else if (!memcmp(word, "quire-instance", 14)) {
+            } else if (!strncmp(word, "quire-instance", 14)) {
                 word += 14;
                 ret = YANG_REQUIRE_INSTANCE;
                 *arg = Y_STR_ARG;
-            } else if (!memcmp(word, "vision", 6)) {
+            } else if (!strncmp(word, "vision", 6)) {
                 word += 6;
                 if (word[0] != '-') {
                     ret = YANG_REVISION;
                     *arg = Y_STR_ARG;
-                } else if (!memcmp(word, "-date", 5)) {
+                } else if (!strncmp(word, "-date", 5)) {
                     word += 5;
                     ret = YANG_REVISION_DATE;
                     *arg = Y_STR_ARG;
                 }
             }
-        } else if (!memcmp(word, "pc", 2)) {
+        } else if (!strncmp(word, "pc", 2)) {
             word += 2;
             ret = YANG_RPC;
             *arg = Y_IDENTIF_ARG;
@@ -827,11 +827,11 @@ get_keyword(char *word, enum yang_arg *arg)
         break;
     case 's':
         ++word;
-        if (!memcmp(word, "tatus", 5)) {
+        if (!strncmp(word, "tatus", 5)) {
             word += 5;
             ret = YANG_STATUS;
             *arg = Y_STR_ARG;
-        } else if (!memcmp(word, "ubmodule", 8)) {
+        } else if (!strncmp(word, "ubmodule", 8)) {
             word += 8;
             ret = YANG_SUBMODULE;
             *arg = Y_IDENTIF_ARG;
@@ -839,12 +839,12 @@ get_keyword(char *word, enum yang_arg *arg)
         break;
     case 't':
         ++word;
-        if (!memcmp(word, "ype", 3)) {
+        if (!strncmp(word, "ype", 3)) {
             word += 3;
             if (word[0] != 'd') {
                 ret = YANG_TYPE;
                 *arg = Y_STR_ARG;
-            } else if (!memcmp(word, "def", 3)) {
+            } else if (!strncmp(word, "def", 3)) {
                 word += 3;
                 ret = YANG_TYPEDEF;
                 *arg = Y_IDENTIF_ARG;
@@ -853,18 +853,18 @@ get_keyword(char *word, enum yang_arg *arg)
         break;
     case 'u':
         ++word;
-        if (!memcmp(word, "ni", 2)) {
+        if (!strncmp(word, "ni", 2)) {
             word += 2;
-            if (!memcmp(word, "que", 3)) {
+            if (!strncmp(word, "que", 3)) {
                 word += 3;
                 ret = YANG_UNIQUE;
                 *arg = Y_STR_ARG;
-            } else if (!memcmp(word, "ts", 2)) {
+            } else if (!strncmp(word, "ts", 2)) {
                 word += 2;
                 ret = YANG_UNITS;
                 *arg = Y_STR_ARG;
             }
-        } else if (!memcmp(word, "ses", 3)) {
+        } else if (!strncmp(word, "ses", 3)) {
             word += 3;
             ret = YANG_USES;
             *arg = Y_IDENTIF_ARG;
@@ -872,7 +872,7 @@ get_keyword(char *word, enum yang_arg *arg)
         break;
     case 'v':
         ++word;
-        if (!memcmp(word, "alue", 4)) {
+        if (!strncmp(word, "alue", 4)) {
             word += 4;
             ret = YANG_VALUE;
             *arg = Y_STR_ARG;
@@ -880,7 +880,7 @@ get_keyword(char *word, enum yang_arg *arg)
         break;
     case 'w':
         ++word;
-        if (!memcmp(word, "hen", 3)) {
+        if (!strncmp(word, "hen", 3)) {
             word += 3;
             ret = YANG_WHEN;
             *arg = Y_STR_ARG;
@@ -888,11 +888,11 @@ get_keyword(char *word, enum yang_arg *arg)
         break;
     case 'y':
         ++word;
-        if (!memcmp(word, "ang-version", 11)) {
+        if (!strncmp(word, "ang-version", 11)) {
             word += 11;
             ret = YANG_YANG_VERSION;
             *arg = Y_STR_ARG;
-        } else if (!memcmp(word, "in-element", 10)) {
+        } else if (!strncmp(word, "in-element", 10)) {
             word += 10;
             ret = YANG_YIN_ELEMENT;
             *arg = Y_STR_ARG;

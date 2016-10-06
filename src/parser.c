@@ -820,7 +820,7 @@ lyp_check_pattern(const char *pattern, pcre **pcre_precomp)
 
         /* find our range */
         for (idx = 0; lyp_ublock2urange[idx][0]; ++idx) {
-            if (!memcmp(perl_regex + start + 5, lyp_ublock2urange[idx][0], strlen(lyp_ublock2urange[idx][0]))) {
+            if (!strncmp(perl_regex + start + 5, lyp_ublock2urange[idx][0], strlen(lyp_ublock2urange[idx][0]))) {
                 break;
             }
         }
