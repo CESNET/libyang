@@ -64,4 +64,14 @@ void lydict_init(struct dict_table *dict);
  */
 void lydict_clean(struct dict_table *dict);
 
+/**
+ * @brief compute hash from (several) string(s)
+ *
+ * Usage:
+ * - init hash to 0
+ * - repeatedly call dict_hash_multi(), provide hash from the last call
+ * - call dict_hash_multi() with key_part = NULL to finish the hash
+ */
+uint32_t dict_hash_multi(uint32_t hash, const char *key_part, size_t len);
+
 #endif /* LY_DICT_PRIVATE_H_ */

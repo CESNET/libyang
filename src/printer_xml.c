@@ -31,7 +31,7 @@
 #define INDENT ""
 #define LEVEL (level ? level*2-2 : 0)
 
-void xml_print_node(struct lyout *out, int level, const struct lyd_node *node, int toplevel);
+void xml_print_node(struct lyout *out, int level, const struct lyd_node *node, int toplevel, int options);
 
 struct mlist {
     struct mlist *next;
@@ -64,7 +64,7 @@ modlist_add(struct mlist **mlist, const struct lys_module *mod)
 }
 
 static void
-xml_print_ns(struct lyout *out, const struct lyd_node *node)
+xml_print_ns(struct lyout *out, const struct lyd_node *node, int options)
 {
     struct lyd_node *next, *cur, *node2;
     struct lyd_attr *attr;
@@ -82,23 +82,27 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node)
     }
 
     /* add node children nodes and attribute modules */
-    if (!(node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYXML))) {
-        /* get with-defaults module */
-        wdmod = ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf-with-defaults", NULL);
+    if (!(node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
+        if (options & (LYP_WD_ALL_TAG | LYP_WD_IMPL_TAG)) {
+            /* get with-defaults module */
+            wdmod = ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf-with-defaults", NULL);
 
-        LY_TREE_FOR(node->child, node2) {
-            LY_TREE_DFS_BEGIN(node2, next, cur) {
-                if (cur->dflt && wdmod) {
-                    if (modlist_add(&mlist, wdmod)) {
-                        goto print;
+            LY_TREE_FOR(node->child, node2) {
+                LY_TREE_DFS_BEGIN(node2, next, cur) {
+                    if (cur->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+                        if (cur->dflt && wdmod) {
+                            if (modlist_add(&mlist, wdmod)) {
+                                goto print;
+                            }
+                        }
                     }
-                }
-                for (attr = cur->attr; attr; attr = attr->next) {
-                    if (modlist_add(&mlist, attr->module)) {
-                        goto print;
+                    for (attr = cur->attr; attr; attr = attr->next) {
+                        if (modlist_add(&mlist, attr->module)) {
+                            goto print;
+                        }
                     }
-                }
-            LY_TREE_DFS_END(node2, next, cur)}
+                LY_TREE_DFS_END(node2, next, cur)}
+            }
         }
     }
 
@@ -114,7 +118,7 @@ print:
 }
 
 static void
-xml_print_attrs(struct lyout *out, const struct lyd_node *node)
+xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
 {
     struct lyd_attr *attr;
     const char **prefs, **nss;
@@ -124,12 +128,16 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node)
     const struct lys_module *wdmod = NULL;
 
     /* with-defaults */
-    if (node->dflt) {
-        /* get with-defaults module */
-        wdmod = ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf-with-defaults", NULL);
-        if (wdmod) {
-            /* print attribute only if context include with-defaults schema */
-            ly_print(out, " %s:default=\"true\"", wdmod->prefix);
+    if (node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+        if ((node->dflt && (options & (LYP_WD_ALL_TAG | LYP_WD_IMPL_TAG))) ||
+                (!node->dflt && (options & LYP_WD_ALL_TAG) && lyd_wd_default((struct lyd_node_leaf_list *)node))) {
+            /* we have implicit OR explicit default node */
+            /* get with-defaults module */
+            wdmod = ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf-with-defaults", NULL);
+            if (wdmod) {
+                /* print attribute only if context include with-defaults schema */
+                ly_print(out, " %s:default=\"true\"", wdmod->prefix);
+            }
         }
     }
     /* technically, check for the extension get-filter-element-attributes from ietf-netconf */
@@ -170,7 +178,7 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node)
 }
 
 static void
-xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int toplevel)
+xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int toplevel, int options)
 {
     const struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
     const char *ns;
@@ -187,10 +195,10 @@ xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int to
     }
 
     if (toplevel) {
-        xml_print_ns(out, node);
+        xml_print_ns(out, node, options);
     }
 
-    xml_print_attrs(out, node);
+    xml_print_attrs(out, node, options);
 
     switch (leaf->value_type & LY_DATA_TYPE_MASK) {
     case LY_TYPE_BINARY:
@@ -258,7 +266,7 @@ xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int to
 }
 
 static void
-xml_print_container(struct lyout *out, int level, const struct lyd_node *node, int toplevel)
+xml_print_container(struct lyout *out, int level, const struct lyd_node *node, int toplevel, int options)
 {
     struct lyd_node *child;
     const char *ns;
@@ -272,10 +280,10 @@ xml_print_container(struct lyout *out, int level, const struct lyd_node *node, i
     }
 
     if (toplevel) {
-        xml_print_ns(out, node);
+        xml_print_ns(out, node, options);
     }
 
-    xml_print_attrs(out, node);
+    xml_print_attrs(out, node, options);
 
     if (!node->child) {
         ly_print(out, "/>%s", level ? "\n" : "");
@@ -284,14 +292,14 @@ xml_print_container(struct lyout *out, int level, const struct lyd_node *node, i
     ly_print(out, ">%s", level ? "\n" : "");
 
     LY_TREE_FOR(node->child, child) {
-        xml_print_node(out, level ? level + 1 : 0, child, 0);
+        xml_print_node(out, level ? level + 1 : 0, child, 0, options);
     }
 
     ly_print(out, "%*s</%s>%s", LEVEL, INDENT, node->schema->name, level ? "\n" : "");
 }
 
 static void
-xml_print_list(struct lyout *out, int level, const struct lyd_node *node, int is_list, int toplevel)
+xml_print_list(struct lyout *out, int level, const struct lyd_node *node, int is_list, int toplevel, int options)
 {
     struct lyd_node *child;
     const char *ns;
@@ -307,9 +315,9 @@ xml_print_list(struct lyout *out, int level, const struct lyd_node *node, int is
         }
 
         if (toplevel) {
-            xml_print_ns(out, node);
+            xml_print_ns(out, node, options);
         }
-        xml_print_attrs(out, node);
+        xml_print_attrs(out, node, options);
 
         if (!node->child) {
             ly_print(out, "/>%s", level ? "\n" : "");
@@ -318,21 +326,22 @@ xml_print_list(struct lyout *out, int level, const struct lyd_node *node, int is
         ly_print(out, ">%s", level ? "\n" : "");
 
         LY_TREE_FOR(node->child, child) {
-            xml_print_node(out, level ? level + 1 : 0, child, 0);
+            xml_print_node(out, level ? level + 1 : 0, child, 0, options);
         }
 
         ly_print(out, "%*s</%s>%s", LEVEL, INDENT, node->schema->name, level ? "\n" : "");
     } else {
         /* leaf-list print */
-        xml_print_leaf(out, level, node, toplevel);
+        xml_print_leaf(out, level, node, toplevel, options);
     }
 }
 
 static void
-xml_print_anyxml(struct lyout *out, int level, const struct lyd_node *node, int toplevel)
+xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int toplevel, int options)
 {
     char *buf;
-    struct lyd_node_anyxml *axml = (struct lyd_node_anyxml *)node;
+    struct lyd_node *iter;
+    struct lyd_node_anydata *any = (struct lyd_node_anydata *)node;
     const char *ns;
 
     if (toplevel || !node->parent || nscmp(node, node->parent)) {
@@ -344,47 +353,77 @@ xml_print_anyxml(struct lyout *out, int level, const struct lyd_node *node, int 
     }
 
     if (toplevel) {
-        xml_print_ns(out, node);
+        xml_print_ns(out, node, options);
     }
-    xml_print_attrs(out, node);
-    ly_print(out, ">");
-
-    if (axml->xml_struct) {
-        if (axml->value.xml) {
-            lyxml_print_mem(&buf, axml->value.xml, LYXML_PRINT_FORMAT | LYXML_PRINT_SIBLINGS);
-            ly_print(out, "\n%s", buf);
-            free(buf);
-        }
+    xml_print_attrs(out, node, options);
+    if (!(void*)any->value.tree) {
+        /* no content */
+        ly_print(out, "/>%s", level ? "\n" : "");
     } else {
-        if (axml->value.str) {
-            ly_print(out, "%s", axml->value.str);
+        /* close opening tag ... */
+        ly_print(out, ">");
+        /* ... and print anydata content */
+        switch (any->value_type) {
+        case LYD_ANYDATA_CONSTSTRING:
+            lyxml_dump_text(out, any->value.str);
+            break;
+        case LYD_ANYDATA_DATATREE:
+            LY_TREE_FOR(any->value.tree, iter) {
+                xml_print_node(out, level ? level + 1 : 0, iter, 0, options);
+            }
+            break;
+        case LYD_ANYDATA_XML:
+            lyxml_print_mem(&buf, any->value.xml, (level ? LYXML_PRINT_FORMAT : 0) | LYXML_PRINT_SIBLINGS);
+            ly_print(out, "%s%s", level ? "\n" : "", buf);
+            free(buf);
+            break;
+        case LYD_ANYDATA_SXML:
+            /* print without escaping special characters */
+            ly_print(out, "%s", any->value.str);
+            break;
+        case LYD_ANYDATA_JSON:
+            /* JSON format is not supported */
+            LOGWRN("Unable to print anydata content (type %d) as XML.", any->value_type);
+            break;
+        case LYD_ANYDATA_STRING:
+        case LYD_ANYDATA_SXMLD:
+        case LYD_ANYDATA_JSOND:
+            /* dynamic strings are used only as input parameters */
+            assert(0);
+            break;
         }
-    }
 
-    /* closing tag */
-    ly_print(out, "%*s</%s>%s", LEVEL, INDENT, node->schema->name, level ? "\n" : "");
+        /* closing tag */
+        ly_print(out, "%*s</%s>%s", LEVEL, INDENT, node->schema->name, level ? "\n" : "");
+    }
 }
 
 void
-xml_print_node(struct lyout *out, int level, const struct lyd_node *node, int toplevel)
+xml_print_node(struct lyout *out, int level, const struct lyd_node *node, int toplevel, int options)
 {
+    if (!lyd_wd_toprint(node, options)) {
+        return;
+    }
+
     switch (node->schema->nodetype) {
     case LYS_NOTIF:
     case LYS_RPC:
+    case LYS_ACTION:
     case LYS_CONTAINER:
-        xml_print_container(out, level, node, toplevel);
+        xml_print_container(out, level, node, toplevel, options);
         break;
     case LYS_LEAF:
-        xml_print_leaf(out, level, node, toplevel);
+        xml_print_leaf(out, level, node, toplevel, options);
         break;
     case LYS_LEAFLIST:
-        xml_print_list(out, level, node, 0, toplevel);
+        xml_print_list(out, level, node, 0, toplevel, options);
         break;
     case LYS_LIST:
-        xml_print_list(out, level, node, 1, toplevel);
+        xml_print_list(out, level, node, 1, toplevel, options);
         break;
     case LYS_ANYXML:
-        xml_print_anyxml(out, level, node, toplevel);
+    case LYS_ANYDATA:
+        xml_print_anydata(out, level, node, toplevel, options);
         break;
     default:
         LOGINT;
@@ -395,15 +434,44 @@ xml_print_node(struct lyout *out, int level, const struct lyd_node *node, int to
 int
 xml_print_data(struct lyout *out, const struct lyd_node *root, int options)
 {
-    const struct lyd_node *node;
+    const struct lyd_node *node, *next;
+    int level, action = 0;
+
+    assert(root);
+
+    level = (options & LYP_FORMAT ? 1 : 0);
+
+    /* learn whether we are printing an action first */
+    LY_TREE_DFS_BEGIN(root, next, node) {
+        if (node->schema->nodetype == LYS_ACTION) {
+            action = 1;
+            break;
+        }
+        LY_TREE_DFS_END(root, next, node);
+    }
+
+    if (action) {
+        ly_print(out, "%*s<action xmlns=\"urn:ietf:params:xml:ns:yang:1\">%s", LEVEL, INDENT, level ? "\n" : "");
+        if (level) {
+            ++level;
+        }
+    }
 
     /* content */
     LY_TREE_FOR(root, node) {
-        xml_print_node(out, (options & LYP_FORMAT ? 1 : 0), node, 1);
+        xml_print_node(out, level, node, 1, options);
         if (!(options & LYP_WITHSIBLINGS)) {
             break;
         }
     }
+
+    if (action) {
+        if (level) {
+            --level;
+        }
+        ly_print(out, "%*s</action>%s", LEVEL, INDENT, level ? "\n" : "");
+    }
+
     ly_print_flush(out);
 
     return EXIT_SUCCESS;

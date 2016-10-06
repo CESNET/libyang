@@ -3,6 +3,8 @@ CFLAGS=-Wall -O0
 
 compilation: validation validation_xml addloop
 
+all: addloop validation validation_xml sizes test
+
 addloop: addloop.c
 	$(CC) $(CFLAGS) -lyang $< -o $@
 
@@ -12,8 +14,10 @@ validation: validation.c
 validation_xml: validation_xml.c
 	$(CC) $(CFLAGS) -lxml2 -lxslt $< -o $@
 
+sizes: sizes.c
+	$(CC) $(CFLAGS) $< -o $@
 
-test: validation validation_xml
+test: addloop validation validation_xml
 	@rm -rf data.xml data_xml.xml addloop_result.xml; \
 	echo "Adding 5000 list items one by one (libyang)"; \
 	TIME=" time  : %Es\n memory: %MKb" time ./addloop perftest.yin | grep real | sed 's/* //'; \
@@ -32,5 +36,5 @@ test: validation validation_xml
 	TIME=" time  : %Es\n memory: %MKb" time ./validation_xml perftest.yin data_xml.xml perftest-config.rng perftest-schematron.xsl; \
 
 clean:
-	rm -rf validation validation_xml addloop data.xml data_xml.xml addloop_result.xml
+	rm -rf sizes validation validation_xml addloop data.xml data_xml.xml addloop_result.xml
 

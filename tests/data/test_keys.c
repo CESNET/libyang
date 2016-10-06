@@ -95,7 +95,7 @@ test_keys_correct2(void **state)
     node = lyd_new_leaf(st->dt, NULL, "value", "a");
     assert_ptr_not_equal(node, NULL);
 
-    rc = lyd_validate(&(st->dt), LYD_OPT_CONFIG);
+    rc = lyd_validate(&(st->dt), LYD_OPT_CONFIG, NULL);
     assert_int_equal(rc, 0);
 }
 
@@ -126,7 +126,7 @@ test_keys_missing2(void **state)
     node = lyd_new_leaf(st->dt, NULL, "key1", "1");
     assert_ptr_not_equal(node, NULL);
 
-    rc = lyd_validate(&(st->dt), LYD_OPT_CONFIG);
+    rc = lyd_validate(&(st->dt), LYD_OPT_CONFIG, NULL);
     assert_int_not_equal(rc, 0);
 
     lyd_free(node);
@@ -134,7 +134,7 @@ test_keys_missing2(void **state)
     node = lyd_new_leaf(st->dt, NULL, "key2", "2");
     assert_ptr_not_equal(node, NULL);
 
-    rc = lyd_validate(&(st->dt), LYD_OPT_CONFIG);
+    rc = lyd_validate(&(st->dt), LYD_OPT_CONFIG, NULL);
     assert_int_not_equal(rc, 0);
 }
 
@@ -142,14 +142,35 @@ static void
 test_keys_inorder(void **state)
 {
     struct state *st = (*state);
-    const char *data = "<l xmlns=\"urn:libyang:tests:keys\"><key2>2</key2><key1>1</key1><value>a</value></l>";
+    const char *data, *correct = "<l xmlns=\"urn:libyang:tests:keys\"><key1>1</key1><key2>2</key2><value>a</value></l>";
+    char *printed;
 
-    st->dt = lyd_parse_mem(st->ctx, data, LYD_XML, LYD_OPT_CONFIG);
+    /* invalid order */
+    data = "<l xmlns=\"urn:libyang:tests:keys\"><key2>2</key2><key1>1</key1><value>a</value></l>";
+    st->dt = lyd_parse_mem(st->ctx, data, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_STRICT);
     assert_ptr_equal(st->dt, NULL);
 
+    /* invalid order */
+    data = "<l xmlns=\"urn:libyang:tests:keys\"><key1>1</key1><value>a</value><key2>2</key2></l>";
+    st->dt = lyd_parse_mem(st->ctx, data, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_STRICT);
+    assert_ptr_equal(st->dt, NULL);
+
+    /* invalid order, not a strict parsing */
+    data = "<l xmlns=\"urn:libyang:tests:keys\"><key2>2</key2><key1>1</key1><value>a</value></l>";
+    st->dt = lyd_parse_mem(st->ctx, data, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->dt, NULL);
+    assert_int_equal(lyd_print_mem(&printed, st->dt, LYD_XML, 0), 0);
+    assert_string_equal(printed, correct);
+    free(printed);
+    lyd_free_withsiblings(st->dt);
+
+    /* invalid order, not a strict parsing */
     data = "<l xmlns=\"urn:libyang:tests:keys\"><key1>1</key1><value>a</value><key2>2</key2></l>";
     st->dt = lyd_parse_mem(st->ctx, data, LYD_XML, LYD_OPT_CONFIG);
-    assert_ptr_equal(st->dt, NULL);
+    assert_ptr_not_equal(st->dt, NULL);
+    assert_int_equal(lyd_print_mem(&printed, st->dt, LYD_XML, 0), 0);
+    assert_string_equal(printed, correct);
+    free(printed);
 }
 
 static void
@@ -157,30 +178,29 @@ test_keys_inorder2(void **state)
 {
     struct state *st = (*state);
     struct lyd_node *node;
-    int rc;
 
     st->dt = lyd_new(NULL, ly_ctx_get_module(st->ctx, "keys", NULL), "l");
     assert_ptr_not_equal(st->dt, NULL);
 
+    /* libyang is able to put the keys into a correct order */
     node = lyd_new_leaf(st->dt, NULL, "key2", "2");
     assert_ptr_not_equal(node, NULL);
     node = lyd_new_leaf(st->dt, NULL, "key1", "1");
     assert_ptr_not_equal(node, NULL);
 
-    rc = lyd_validate(&(st->dt), LYD_OPT_CONFIG);
-    assert_int_not_equal(rc, 0);
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG, NULL), 0);
 
-    lyd_free(st->dt->child);
+    lyd_free_withsiblings(st->dt->child);
 
-    node = lyd_new_leaf(st->dt, NULL, "value", "a");
-    assert_ptr_not_equal(node, NULL);
+    /* libyang is able to put the keys into a correct order */
     node = lyd_new_leaf(st->dt, NULL, "key2", "2");
     assert_ptr_not_equal(node, NULL);
+    node = lyd_new_leaf(st->dt, NULL, "value", "a");
+    assert_ptr_not_equal(node, NULL);
+    node = lyd_new_leaf(st->dt, NULL, "key1", "1");
+    assert_ptr_not_equal(node, NULL);
 
-    rc = lyd_validate(&(st->dt), LYD_OPT_CONFIG);
-    assert_int_not_equal(rc, 0);
-    assert_string_equal(ly_errmsg(), "Invalid position of the key element.");
-    assert_string_equal(ly_errpath(), "/keys:l[key1='1'][key2='2']/key2");
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG, NULL), 0);
 }
 
 int main(void)

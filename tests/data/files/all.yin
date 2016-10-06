@@ -2,7 +2,7 @@
 <module name="all"
         xmlns="urn:ietf:params:xml:ns:yang:yin:1"
         xmlns:all_mod="urn:all">
-  <yang-version value="1"/>
+  <yang-version value="1.1"/>
   <namespace uri="urn:all"/>
   <prefix value="all_mod"/>
   <revision date="2016-05-23"/>
@@ -82,17 +82,20 @@
       <type name="uint64"/>
     </leaf>
     <choice name="choic1">
-      <default value="leaf10"/>
-      <leaf name="leaf9">
+      <default value="leaf9b"/>
+      <leaf name="leaf9a">
         <type name="decimal64">
           <fraction-digits value="9"/>
         </type>
       </leaf>
-      <leaf name="leaf10">
+      <leaf name="leaf9b">
         <type name="boolean"/>
         <default value="false"/>
       </leaf>
     </choice>
+    <leaf name="leaf10">
+      <type name="boolean"/>
+    </leaf>
     <leaf name="leaf11">
       <type name="enumeration">
         <enum name="one"/>
@@ -148,6 +151,23 @@
         <type name="uint32"/>
       </leaf>
       <anyxml name="axml1"/>
+      <action name="act1">
+        <input>
+          <leaf name="leaf24">
+            <type name="string"/>
+          </leaf>
+        </input>
+        <output>
+          <leaf name="leaf25">
+            <type name="string"/>
+          </leaf>
+        </output>
+      </action>
+      <notification name="notif1">
+        <leaf name="leaf26">
+          <type name="string"/>
+        </leaf>
+      </notification>
     </list>
     <leaf-list name="llist1">
       <type name="tdef1"/>

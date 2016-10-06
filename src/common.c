@@ -36,7 +36,7 @@ uint8_t ly_vlog_hide_def;
 static pthread_once_t ly_err_once = PTHREAD_ONCE_INIT;
 static pthread_key_t ly_err_key;
 #ifdef __linux__
-struct ly_err ly_err_main = {LY_SUCCESS, LYVE_SUCCESS, 0, 0, 0, NULL + 1, {0}, {0}, {0}, {0}};
+struct ly_err ly_err_main = {LY_SUCCESS, LYVE_SUCCESS, 0, 0, 0, 0, NULL + 1, {0}, {0}, {0}, {0}};
 #endif
 
 static void
@@ -254,6 +254,10 @@ strnodetype(LYS_NODE type)
         return "rpc";
     case LYS_USES:
         return "uses";
+    case LYS_ACTION:
+        return "action";
+    case LYS_ANYDATA:
+        return "anydata";
     }
 
     return NULL;
@@ -621,4 +625,32 @@ ly_strequal_(const char *s1, const char *s2)
         }
         return 0;
     }
+}
+
+int64_t
+dec_pow(uint8_t exp)
+{
+    int64_t ret = 1;
+    uint8_t i;
+
+    for (i = 0; i < exp; ++i) {
+        ret *= 10;
+    }
+
+    return ret;
+}
+
+int
+dec64cmp(int64_t num1, uint8_t dig1, int64_t num2, uint8_t dig2)
+{
+    if (dig1 < dig2) {
+        num2 /= dec_pow(dig2 - dig1);
+    } else if (dig1 > dig2) {
+        num1 /= dec_pow(dig1 - dig2);
+    }
+
+    if (num1 == num2) {
+        return 0;
+    }
+    return (num1 > num2 ? 1 : -1);
 }

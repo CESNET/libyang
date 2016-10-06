@@ -1,12 +1,12 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 2.8.9)
 project(libyang C)
 
 set(LIBYANG_DESCRIPTION "libyang is YANG data modelling language parser and toolkit written (and providing API) in C.")
 
 # set version
 set(LIBYANG_MAJOR_VERSION 0)
-set(LIBYANG_MINOR_VERSION 9)
-set(LIBYANG_MICRO_VERSION 186)
+set(LIBYANG_MINOR_VERSION 10)
+set(LIBYANG_MICRO_VERSION 204)
 set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION})
 
@@ -32,7 +32,7 @@ else()
 		WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
 		COMMAND bison -Wno-other -l -o parser_yang_bis.c --defines=parser_yang_bis.h yang.y
 		COMMAND flex -L -o parser_yang_lex.c --header-file=parser_yang_lex.h yang.l
-		COMMAND ${SED_TOOL} -i 's/int yychar\;/int yychar\;\\nchar *s = NULL, *tmp_s = NULL\;\\nchar rev[LY_REV_SIZE]\;\\nstruct lys_module *trg = NULL\;\\nstruct lys_node *tpdf_parent = NULL, *data_node = NULL\;\\nvoid *actual = NULL\;\\nint config_inherit = 0, actual_type = 0\;\\nint64_t cnt_val\;/' parser_yang_bis.c
+		COMMAND ${SED_TOOL} -i 's/int yychar\;/int yychar\;\\nchar *s = NULL, *tmp_s = NULL\;\\nstruct lys_include inc\;\\nstruct lys_module *trg = NULL\;\\nstruct lys_node *tpdf_parent = NULL, *data_node = NULL\;\\nvoid *actual = NULL\;\\nstruct lys_node_uses *refine_parent = NULL\;\\nint config_inherit = 0, actual_type = 0\;\\nint64_t cnt_val\;\\nint read_string = read_all\;\\nvoid *yang_type = NULL\;/' parser_yang_bis.c
 	)
 endif()
 
@@ -99,6 +99,9 @@ set(lintsrc
 	tools/lint/completion.c
 	linenoise/linenoise.c)
 
+set(yang2yinsrc
+	tools/yang2yin/main.c)
+
 set(headers
 	src/libyang.h
 	src/tree_schema.h
@@ -106,7 +109,9 @@ set(headers
 	src/xml.h
 	src/dict.h)
 
-add_library(yang SHARED ${libsrc})
+set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
+add_library(yangobj OBJECT ${libsrc})
+add_library(yang SHARED $<TARGET_OBJECTS:yangobj>)
 set_target_properties(yang PROPERTIES VERSION ${LIBYANG_VERSION} SOVERSION ${LIBYANG_SOVERSION})
 
 # link math
@@ -160,6 +165,8 @@ add_custom_target(cclean
 
 add_executable(yanglint ${lintsrc})
 target_link_libraries(yanglint yang)
+
+add_executable(yang2yin ${yang2yinsrc})
 
 if(ENABLE_VALGRIND_TESTS)
 	set(ENABLE_BUILD_TESTS ON)

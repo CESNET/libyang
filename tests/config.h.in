@@ -1,5 +1,5 @@
 /**
- * @file conig.h
+ * @file config.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief cmocka tests configuration header.
  *
@@ -13,4 +13,4 @@
  */
 
 #define TESTS_DIR "@CMAKE_SOURCE_DIR@/tests"
-
+#define BUILD_DIR "@PROJECT_BINARY_DIR@"

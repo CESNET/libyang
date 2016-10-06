@@ -83,6 +83,32 @@ dict_hash(const char *key, size_t len)
     return hash;
 }
 
+/*
+ * Usage:
+ * - init hash to 0
+ * - repeatedly call dict_hash_multi(), provide hash from the last call
+ * - call dict_hash_multi() with key_part = NULL to finish the hash
+ */
+uint32_t
+dict_hash_multi(uint32_t hash, const char *key_part, size_t len)
+{
+    uint32_t i;
+
+    if (key_part) {
+        for (i = 0; i < len; ++i) {
+            hash += key_part[i];
+            hash += (hash << 10);
+            hash ^= (hash >> 6);
+        }
+    } else {
+        hash += (hash << 3);
+        hash ^= (hash >> 11);
+        hash += (hash << 15);
+    }
+
+    return hash;
+}
+
 API void
 lydict_remove(struct ly_ctx *ctx, const char *value)
 {

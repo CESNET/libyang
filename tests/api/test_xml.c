@@ -7,17 +7,11 @@
  *
  * Author: Mislav Novakovic <mislav.novakovic@sartura.hr>
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * This source code is licensed under BSD 3-Clause License (the "License").
+ * You may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *	http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *     https://opensource.org/licenses/BSD-3-Clause
  */
 
 #include <stdarg.h>
@@ -35,6 +29,8 @@
 
 #include "../config.h"
 #include "../../src/libyang.h"
+
+#define TMP_TEMPLATE "/tmp/libyang-XXXXXX"
 
 struct ly_ctx *ctx = NULL;
 struct lyd_node *root = NULL;
@@ -187,12 +183,12 @@ test_lyxml_print_fd(void **state)
     (void) state; /* unused */
     char *result = NULL;
     struct stat sb;
-    char file_name[19];
+    char file_name[20];
     int rc;
     int fd;
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, "/tmp/libyang-XXXXXX", 21);
+    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -234,7 +230,7 @@ test_lyxml_print_file(void **state)
     struct lyxml_elem *xml = NULL;
     const char *path = TESTS_DIR"/api/files/a.xml";
     struct stat sb;
-    char file_name[19];
+    char file_name[20];
     char *result;
     FILE *f = NULL;
     int rc;
@@ -248,7 +244,7 @@ test_lyxml_print_file(void **state)
     assert_string_equal("x", xml->name);
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, "/tmp/libyang-XXXXXX", 21);
+    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
 
     fd = mkstemp(file_name);
     if (fd < 1) {

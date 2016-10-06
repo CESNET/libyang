@@ -59,6 +59,11 @@ struct internal_modules {
 #define LY_NSNACM "urn:ietf:params:xml:ns:yang:ietf-netconf-acm"
 
 /**
+ * @brief internal parser flag for actions and inline notifications
+ */
+#define LYD_OPT_ACT_NOTIF 0x80
+
+/**
  * @brief Internal list of built-in types
  */
 struct ly_types {
@@ -177,14 +182,13 @@ int lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_modu
  * @param[in] module Target module for the duplicated node.
  * @param[in] parent Schema tree node where the node is being connected, NULL in case of top level \p node.
  * @param[in] node Schema tree node to be duplicated.
- * @param[in] flags Config flag to be inherited in case the origin node does not specify config flag
  * @param[in] nacm NACM flags to be inherited from the parent
  * @param[in] unres list of unresolved items
  * @param[in] shallow Whether to copy children and connect to parent/module too.
  * @return Created copy of the provided schema \p node.
  */
 struct lys_node *lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct lys_node *node,
-                              uint8_t flags, uint8_t nacm, struct unres_schema *unres, int shallow);
+                              uint8_t nacm, struct unres_schema *unres, int shallow);
 
 /**
  * @brief Switch two same schema nodes. \p src must be a shallow copy
@@ -267,23 +271,33 @@ void lys_node_free(struct lys_node *node, void (*private_destructor)(const struc
 void lys_free(struct lys_module *module, void (*private_destructor)(const struct lys_node *node, void *priv), int remove_from_ctx);
 
 /**
- * @brief Check presence of all the mandatory elements in the given data tree subtree. Logs directly.
+ * @brief Create a data container knowing it's schema node.
  *
- * Besides the mandatory statements, also min-elements and max-elements constraints in
- * lists and leaf-list are checked.
- *
- * If \p schema is NULL, iterate over and check \p data schema children. If \p schema is set, it is iterated over
- * its siblings.
- *
- * @param[in] data Root node for the searching subtree. Expecting that all child instances
- * mandatory nodes were already checked. Note that the \p start node itself is not checked since it must be present.
- * @param[in] schema To check mandatory elements in empty data tree (\p data is NULL), we need
- * the first schema node in a schema to be checked.
- * @param[in] status Include status (read-only) nodes.
- * @param[in] rpc_output Expect RPC output nodes instead RPC input ones.
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on failure.
+ * @param[in] parent Data parent of the new node.
+ * @param[in] schema Schema node of the new node.
+ * @param[in] dflt Set dflt flag in the created data nodes
+ * @return New node, NULL on error.
  */
-int ly_check_mandatory(const struct lyd_node *data, const struct lys_node *schema, int status, int rpc_output);
+struct lyd_node *_lyd_new(struct lyd_node *parent, const struct lys_node *schema, int dflt);
+
+/**
+ * @brief Create a dummy node for XPath evaluation. After done using, it should be removed.
+ *
+ * The function must be used very carefully:
+ * - there must not be a list node to create
+ *
+ * @param[in] data Any data node of the tree where the dummy node will be created
+ * @param[in] parent To optimize searching in data tree (and to avoid issues with lists), caller can specify a
+ *                   parent node that exists in the data tree.
+ * @param[in] schema Schema node of the dummy node to create, must be of nodetype that
+ * appears also in data tree.
+ * @param[in] value Optional value to be set in the dummy node
+ * @param[in] dflt Set dflt flag in the created data nodes
+ *
+ * @return The first created node needed for the dummy node in the given tree.
+ */
+struct lyd_node *lyd_new_dummy(struct lyd_node *data, struct lyd_node *parent, const struct lys_node *schema,
+                               const char *value, int dflt);
 
 /**
  * @brief Find the parent node of an attribute.
@@ -309,6 +323,18 @@ const struct lyd_node *lyd_attr_parent(const struct lyd_node *root, struct lyd_a
  */
 const struct lys_module *lys_get_import_module(const struct lys_module *module, const char *prefix, int pref_len,
                                                const char *name, int name_len);
+
+/**
+ * @brief Find the implemented revision of the given module in the context.
+ *
+ * If there is no revision of the module implemented, the given module is returned
+ * without any change. It is up to the caller to set the module implemented via
+ * lys_set_implemented() when needed.
+ *
+ * @param[in] mod Module to be searched.
+ * @return The implemeneted revision of the module if any, the given module otherwise.
+ */
+const struct lys_module *lys_get_implemented_module(const struct lys_module *mod);
 
 /**
  * @brief Find a specific sibling. Does not log.
@@ -354,57 +380,58 @@ int lys_get_data_sibling(const struct lys_module *mod, const struct lys_node *si
  *
  * @param[in] first First data node to compare.
  * @param[in] second Second node to compare.
+ * @param[in] action Option to specify what will be checked:
+ *            -1 - compare keys and all uniques
+ *             0 - compare only keys
+ *             n - compare n-th unique
  * @param[in] printval Flag for printing validation errors, useful for internal (non-validation) use of this function
  * @return 1 if both the nodes are the same from the YANG point of view,
  *         0 if they differ,
  *         -1 on error.
  */
-int lyd_list_equal(struct lyd_node *first, struct lyd_node *second, int printval);
+int lyd_list_equal(struct lyd_node *first, struct lyd_node *second, int action, int printval);
+
+const char *lyd_get_unique_default(const char* unique_expr, struct lyd_node *list);
 
 /**
- * @brief Check for (validate) top-level mandatory nodes of a data tree.
+ * @brief Check for (validate) mandatory nodes of a data tree. Checks recursively whole data tree. Requires all when
+ * statement to be solved.
  *
- * @param[in] data Data tree to validate.
- * @param[in] ctx libyang context.
- * @param[in] rpc RPC node should be set in case options & LYD_OPT_RPCREPLY and data == NULL.
+ * @param[in] root Data tree to validate.
+ * @param[in] ctx libyang context (for the case when the data tree is empty - i.e. root == NULL).
  * @param[in] options Standard @ref parseroptions.
  * @return EXIT_SUCCESS or EXIT_FAILURE.
  */
-int lyd_check_topmandatory(struct lyd_node *data, struct ly_ctx *ctx, int options);
+int lyd_check_mandatory_tree(struct lyd_node *root, struct ly_ctx *ctx, int options);
 
 /**
  * @brief Add default values, \p resolve unres, and finally
  * remove any redundant default values based on \p options.
  *
- * @param[in] root Data tree root. In case of #LYD_WD_TRIM the data tree can be modified so the root can be changed or
- *            removed. In other modes and with empty data tree, new default nodes can be created so the root pointer
+ * @param[in] root Data tree root. With empty data tree, new default nodes can be created so the root pointer
  *            will contain/return the newly created data tree.
- * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions. The
- *            LYD_WD_* options are used to select functionality:
- * - #LYD_WD_TRIM - remove all nodes that have value equal to their default value
- * - #LYD_WD_ALL - add default nodes
- * - #LYD_WD_ALL_TAG - add default nodes and set ::lyd_node#dflt in all nodes having their default value
- * - #LYD_WD_IMPL_TAG - add default nodes, but set ::lyd_node#dflt only in the added nodes
- * @note The *_TAG modes require to have ietf-netconf-with-defaults module in the context of the data tree in time of
- * printing - all the flagged nodes are printed with the 'default' attribute with 'true' value.
- * @param[in] ctx Optional parameter. If provided, default nodes from all modules in the context will be added (so it
- *            has no effect for #LYD_WD_TRIM). If NULL, only the modules explicitly mentioned in data tree are
- *            taken into account.
+ * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions.
+ * @param[in] ctx Optional parameter. If provided, default nodes from all modules in the context will be added.
+ *            If NULL, only the modules explicitly mentioned in data tree are taken into account.
+ * @param[in] data_tree Additional data tree to be traversed when evaluating when or must expressions in \p root
+ *            tree.
+ * @param[in] action Action itself in case \p root is actually an action.
  * @param[in] unres Valid unres structure, on function successful exit they are all resolved.
  * @return 0 on success, nonzero on failure.
  */
-int lyd_defaults_add_unres(struct lyd_node **node, int options, struct ly_ctx *ctx, struct unres_data *unres);
-
-void lys_deviation_add_ext_imports(struct lys_module *dev_target_module, struct lys_module *dev_module);
+int lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, struct lyd_node *data_tree,
+                           struct lyd_node *action, struct unres_data *unres);
 
 void lys_switch_deviations(struct lys_module *module);
 
 void lys_sub_module_remove_devs_augs(struct lys_module *module);
 
-int lys_module_set_implement(struct lys_module *module);
-
-int lys_sub_module_set_dev_aug_target_implement(struct lys_module *module);
-
 void lys_submodule_module_data_free(struct lys_submodule *submodule);
+
+/**
+ * @brief Get know if the \p leaf is a key of the \p list
+ * @return 0 for false, position of the key otherwise
+ */
+int lys_is_key(struct lys_node_list *list, struct lys_node_leaf *leaf);
 
 #endif /* LY_TREE_INTERNAL_H_ */

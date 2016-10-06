@@ -24,7 +24,7 @@
 #include "tree_internal.h"
 
 extern LY_ERR ly_errno_int;
-volatile uint8_t ly_log_level = LY_LLERR;
+volatile int8_t ly_log_level = LY_LLERR;
 static void (*ly_log_clb)(LY_LOG_LEVEL level, const char *msg, const char *path);
 static volatile int path_flag = 1;
 
@@ -94,6 +94,9 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
     }
 
     if (hide) {
+        if (free_flag) {
+            free(msg);
+        }
         return;
     }
 
@@ -134,6 +137,7 @@ const char *ly_errs[] = {
 /* LYE_EOF */          "Unexpected end of input data.",
 /* LYE_INSTMT */       "Invalid keyword \"%s\".",
 /* LYE_INCHILDSTMT */  "Invalid keyword \"%s\" as a child to \"%s\".",
+/* LYE_INPAR */        "Invalid ancestor \"%s\" of \"%s\".",
 /* LYE_INID */         "Invalid identifier \"%s\" (%s).",
 /* LYE_INDATE */       "Invalid date format of \"%s\", \"YYYY-MM-DD\" expected.",
 /* LYE_INARG */        "Invalid value \"%s\" of \"%s\".",
@@ -145,10 +149,14 @@ const char *ly_errs[] = {
 /* LYE_DUPLEAFLIST */  "Duplicated instance of \"%s\" leaf-list (\"%s\").",
 /* LYE_DUPLIST */      "Duplicated instance of \"%s\" list.",
 /* LYE_NOUNIQ */       "Unique data leaf(s) \"%s\" not satisfied in \"%s\" and \"%s\".",
-/* LYE_ENUM_DUPVAL */  "The value \"%d\" of \"%s\" enum has already been assigned to another enum value.",
+/* LYE_ENUM_INVAL */   "Invalid value \"%d\" of \"%s\" enum, restricted enum value does not match the base type value \"%d\".",
+/* LYE_ENUM_INNAME */  "Adding new enum name \"%s\" in restricted enumeration type is not allowed.",
+/* LYE_ENUM_DUPVAL */  "The value \"%d\" of \"%s\" enum has already been assigned to \"%s\" enum.",
 /* LYE_ENUM_DUPNAME */ "The enum name \"%s\" has already been assigned to another enum.",
 /* LYE_ENUM_WS */      "The enum name \"%s\" includes invalid leading or trailing whitespaces.",
-/* LYE_BITS_DUPVAL */  "The position \"%d\" of \"%s\" bits has already been used to another named bit.",
+/* LYE_BITS_INVAL */   "Invalid position \"%d\" of \"%s\" bit, restricted bits position does not match the base type position \"%d\".",
+/* LYE_BITS_INNAME */  "Adding new bit name \"%s\" in restricted bits type is not allowed.",
+/* LYE_BITS_DUPVAL */  "The position \"%d\" of \"%s\" bit has already been assigned to \"%s\" bit.",
 /* LYE_BITS_DUPNAME */ "The bit name \"%s\" has already been assigned to another bit.",
 /* LYE_INMOD */        "Module name \"%s\" refers to an unknown module.",
 /* LYE_INMOD_LEN */    "Module name \"%.*s\" refers to an unknown module.",
@@ -161,8 +169,10 @@ const char *ly_errs[] = {
 /* LYE_INRESOLV */     "Failed to resolve %s \"%s\".",
 /* LYE_INSTATUS */     "A \"%s\" definition %s references \"%s\" definition %s.",
 /* LYE_CIRC_LEAFREFS */"A circular chain of leafrefs detected.",
+/* LYE_CIRC_FEATURES */"A circular chain features detected in \"%s\" feature.",
 /* LYE_CIRC_IMPORTS */ "A circular dependency (import) for module \"%s\".",
 /* LYE_CIRC_INCLUDES */"A circular dependency (include) for submodule \"%s\".",
+/* LYE_INVER */        "Different YANG versions of a submodule and its main module.",
 
 /* LYE_OBSDATA */      "Obsolete data \"%s\" instantiated.",
 /* LYE_OBSTYPE */      "Data node \"%s\" with obsolete type \"%s\" instantiated.",
@@ -174,7 +184,7 @@ const char *ly_errs[] = {
 /* LYE_INVALATTR */    "Invalid \"%s\" attribute value \"%s\".",
 /* LYE_INATTR */       "Invalid attribute \"%s\" in \"%s\" element.",
 /* LYE_MISSATTR */     "Missing attribute \"%s\" in \"%s\" element.",
-/* LYE_NOCONSTR */     "Value \"%s\" does not satisfy a constraint (range, length, or pattern).",
+/* LYE_NOCONSTR */     "Value \"%s\" does not satisfy the constraint \"%s\" (range, length, or pattern).",
 /* LYE_INCHAR */       "Unexpected character(s) '%c' (%.15s).",
 /* LYE_INPRED */       "Predicate resolution failed on \"%s\".",
 /* LYE_MCASEDATA */    "Data for more than one case branch of \"%s\" choice present.",
@@ -188,6 +198,7 @@ const char *ly_errs[] = {
 /* LYE_NOLEAFREF */    "Leafref \"%s\" of value \"%s\" points to a non-existing leaf.",
 /* LYE_NOMANDCHOICE */ "Mandatory choice \"%s\" missing a case branch.",
 
+/* LYE_XPATH_INSNODE */"Schema node \"%.*s\" not found (%.*s).",
 /* LYE_XPATH_INTOK */  "Unexpected XPath token %s (%.15s).",
 /* LYE_XPATH_EOF */    "Unexpected XPath expression end.",
 /* LYE_XPATH_INOP_1 */ "Cannot apply XPath operation %s on %s.",
@@ -195,6 +206,7 @@ const char *ly_errs[] = {
 /* LYE_XPATH_INCTX */  "Invalid context type %s in %s.",
 /* LYE_XPATH_INARGCOUNT */ "Invalid number of arguments (%d) for the XPath function %s.",
 /* LYE_XPATH_INARGTYPE */ "Wrong type of argument #%d (%s) for the XPath function %s.",
+/* LYE_XPATH_DUMMY */   "Accessing the value of the dummy node \"%s\".",
 
 /* LYE_PATH_INCHAR */  "Unexpected character(s) '%c' (%s).",
 /* LYE_PATH_INMOD */   "Module not found.",
@@ -216,6 +228,7 @@ static const LY_VECODE ecode2vecode[] = {
     LYVE_EOF,          /* LYE_EOF */
     LYVE_INSTMT,       /* LYE_INSTMT */
     LYVE_INSTMT,       /* LYE_INCHILDSTMT */
+    LYVE_INPAR,        /* LYE_INPAR */
     LYVE_INID,         /* LYE_INID */
     LYVE_INDATE,       /* LYE_INDATE */
     LYVE_INARG,        /* LYE_INARG */
@@ -227,11 +240,15 @@ static const LY_VECODE ecode2vecode[] = {
     LYVE_DUPLEAFLIST,  /* LYE_DUPLEAFLIST */
     LYVE_DUPLIST,      /* LYE_DUPLIST */
     LYVE_NOUNIQ,       /* LYE_NOUNIQ */
-    LYVE_ENUM_DUPVAL,  /* LYE_ENUM_DUPVAL */
-    LYVE_ENUM_DUPNAME, /* LYE_ENUM_DUPNAME */
+    LYVE_ENUM_INVAL,   /* LYE_ENUM_INVAL */
+    LYVE_ENUM_INNAME,  /* LYE_ENUM_INNAME */
+    LYVE_ENUM_INVAL,   /* LYE_ENUM_DUPVAL */
+    LYVE_ENUM_INNAME,  /* LYE_ENUM_DUPNAME */
     LYVE_ENUM_WS,      /* LYE_ENUM_WS */
-    LYVE_BITS_DUPVAL,  /* LYE_BITS_DUPVAL */
-    LYVE_BITS_DUPNAME, /* LYE_BITS_DUPNAME */
+    LYVE_BITS_INVAL,   /* LYE_BITS_INVAL */
+    LYVE_BITS_INNAME,  /* LYE_BITS_INNAME */
+    LYVE_BITS_INVAL,   /* LYE_BITS_DUPVAL */
+    LYVE_BITS_INNAME,  /* LYE_BITS_DUPNAME */
     LYVE_INMOD,        /* LYE_INMOD */
     LYVE_INMOD,        /* LYE_INMOD_LEN */
     LYVE_KEY_NLEAF,    /* LYE_KEY_NLEAF */
@@ -243,8 +260,10 @@ static const LY_VECODE ecode2vecode[] = {
     LYVE_INRESOLV,     /* LYE_INRESOLV */
     LYVE_INSTATUS,     /* LYE_INSTATUS */
     LYVE_CIRC_LEAFREFS,/* LYE_CIRC_LEAFREFS */
+    LYVE_CIRC_FEATURES,/* LYE_CIRC_FEATURES */
     LYVE_CIRC_IMPORTS, /* LYE_CIRC_IMPORTS */
     LYVE_CIRC_INCLUDES,/* LYE_CIRC_INCLUDES */
+    LYVE_INVER,        /* LYE_INVER */
 
     LYVE_OBSDATA,      /* LYE_OBSDATA */
     LYVE_OBSDATA,      /* LYE_OBSTYPE */
@@ -269,6 +288,7 @@ static const LY_VECODE ecode2vecode[] = {
     LYVE_NOREQINS,     /* LYE_NOREQINS */
     LYVE_NOLEAFREF,    /* LYE_NOLEAFREF */
     LYVE_NOMANDCHOICE, /* LYE_NOMANDCHOICE */
+    LYVE_XPATH_INSNODE,/* LYE_XPATH_INSNODE */
 
     LYVE_XPATH_INTOK,  /* LYE_XPATH_INTOK */
     LYVE_XPATH_EOF,    /* LYE_XPATH_EOF */
@@ -277,6 +297,7 @@ static const LY_VECODE ecode2vecode[] = {
     LYVE_XPATH_INCTX,  /* LYE_XPATH_INCTX */
     LYVE_XPATH_INARGCOUNT, /* LYE_XPATH_INARGCOUNT */
     LYVE_XPATH_INARGTYPE, /* LYE_XPATH_INARGTYPE */
+    LYVE_XPATH_DUMMY,  /* LYE_XPATH_DUMMY */
 
     LYVE_PATH_INCHAR,  /* LYE_PATH_INCHAR */
     LYVE_PATH_INMOD,   /* LYE_PATH_INMOD */
@@ -289,7 +310,6 @@ static const LY_VECODE ecode2vecode[] = {
 };
 
 
-uint8_t *ly_vlog_hide_location(void);
 void
 ly_vlog_hide(int hide)
 {
@@ -410,7 +430,6 @@ ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
     const char *fmt;
     char* path = NULL;
     uint16_t *index = NULL;
-    const void *iter = elem;
 
     ly_errno = LY_EVALID;
 
@@ -430,7 +449,8 @@ ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
     index = &((struct ly_err *)&ly_errno)->path_index;
     if (elem_type) { /* != LY_VLOG_NONE */
         /* check if the path is equal to the last one */
-        if (iter == ((struct ly_err *)&ly_errno)->path_obj) {
+        if (elem && elem_type == ((struct ly_err *)&ly_errno)->path_obj_type &&
+                (elem_type == LY_VLOG_LYD ? ((struct lyd_node *)elem)->schema : elem) == ((struct ly_err *)&ly_errno)->path_obj) {
             /* path is up-to-date (same as the last one) */
             goto log;
         }
@@ -438,13 +458,14 @@ ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
         /* update path */
         (*index) = LY_BUF_SIZE - 1;
         path[(*index)] = '\0';
-        if (!iter) {
+        if (!elem) {
             /* top-level */
             path[--(*index)] = '/';
         } else {
-            ly_vlog_build_path_reverse(elem_type, iter, path, index);
+            ly_vlog_build_path_reverse(elem_type, elem, path, index);
             /* store the source of the path */
-            ((struct ly_err *)&ly_errno)->path_obj = elem;
+            ((struct ly_err *)&ly_errno)->path_obj_type = elem_type;
+            ((struct ly_err *)&ly_errno)->path_obj = elem_type == LY_VLOG_LYD ? ((struct lyd_node *)elem)->schema : elem;
         }
     } else {
         /* erase path, the rest will be erased by log_vprintf() since it will get NULL path parameter */

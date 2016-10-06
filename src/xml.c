@@ -44,16 +44,9 @@ API const struct lyxml_ns *
 lyxml_get_ns(const struct lyxml_elem *elem, const char *prefix)
 {
     struct lyxml_attr *attr;
-    int len;
 
     if (!elem) {
         return NULL;
-    }
-
-    if (!prefix) {
-        len = 0;
-    } else {
-        len = strlen(prefix) + 1;
     }
 
     for (attr = elem->attr; attr; attr = attr->next) {
@@ -61,7 +54,7 @@ lyxml_get_ns(const struct lyxml_elem *elem, const char *prefix)
             continue;
         }
         if (!attr->name) {
-            if (!len) {
+            if (!prefix) {
                 /* default namespace found */
                 if (!attr->value) {
                     /* empty default namespace -> no default namespace */
@@ -69,7 +62,7 @@ lyxml_get_ns(const struct lyxml_elem *elem, const char *prefix)
                 }
                 return (struct lyxml_ns *)attr;
             }
-        } else if (len && !memcmp(attr->name, prefix, len)) {
+        } else if (prefix && !strcmp(attr->name, prefix)) {
             /* prefix found */
             return (struct lyxml_ns *)attr;
         }
@@ -567,7 +560,7 @@ parse_ignore(const char *data, const char *endstr, unsigned int *len)
 
     slen = strlen(endstr);
 
-    while (*c && memcmp(c, endstr, slen)) {
+    while (*c && strncmp(c, endstr, slen)) {
         c++;
     }
     if (!*c) {
@@ -594,7 +587,7 @@ parse_text(const char *data, char delim, unsigned int *len)
     int32_t n;
 
     for (*len = o = 0; cdsect || data[*len] != delim; o++) {
-        if (!data[*len] || (!cdsect && !memcmp(&data[*len], "]]>", 3))) {
+        if (!data[*len] || (!cdsect && !strncmp(&data[*len], "]]>", 3))) {
             LOGVAL(LYE_XML_INVAL, LY_VLOG_NONE, NULL, "element content, \"]]>\" found");
             goto error;
         }
@@ -621,13 +614,13 @@ loop:
             o = 0;
         }
 
-        if (cdsect || !memcmp(&data[*len], "<![CDATA[", 9)) {
+        if (cdsect || !strncmp(&data[*len], "<![CDATA[", 9)) {
             /* CDSect */
             if (!cdsect) {
                 cdsect = 1;
                 *len += 9;
             }
-            if (data[*len] && !memcmp(&data[*len], "]]>", 3)) {
+            if (data[*len] && !strncmp(&data[*len], "]]>", 3)) {
                 *len += 3;
                 cdsect = 0;
                 o--;            /* we don't write any data in this iteration */
@@ -639,19 +632,19 @@ loop:
             (*len)++;
             if (data[*len] != '#') {
                 /* entity reference - only predefined refs are supported */
-                if (!memcmp(&data[*len], "lt;", 3)) {
+                if (!strncmp(&data[*len], "lt;", 3)) {
                     buf[o] = '<';
                     *len += 3;
-                } else if (!memcmp(&data[*len], "gt;", 3)) {
+                } else if (!strncmp(&data[*len], "gt;", 3)) {
                     buf[o] = '>';
                     *len += 3;
-                } else if (!memcmp(&data[*len], "amp;", 4)) {
+                } else if (!strncmp(&data[*len], "amp;", 4)) {
                     buf[o] = '&';
                     *len += 4;
-                } else if (!memcmp(&data[*len], "apos;", 5)) {
+                } else if (!strncmp(&data[*len], "apos;", 5)) {
                     buf[o] = '\'';
                     *len += 5;
-                } else if (!memcmp(&data[*len], "quot;", 5)) {
+                } else if (!strncmp(&data[*len], "quot;", 5)) {
                     buf[o] = '\"';
                     *len += 5;
                 } else {
@@ -694,12 +687,17 @@ loop:
                 (*len)++;
             }
         } else {
-            buf[o] = data[*len];
-            (*len)++;
+            r = copyutf8(&buf[o], &data[*len]);
+            if (!r) {
+                goto error;
+            }
+
+            o += r - 1;     /* o is ++ in for loop */
+            (*len) = (*len) + r;
         }
     }
 
-    if (delim == '<' && !memcmp(&data[*len], "<![CDATA[", 9)) {
+    if (delim == '<' && !strncmp(&data[*len], "<![CDATA[", 9)) {
         /* ignore loop's end condition on beginning of CDSect */
         goto loop;
     }
@@ -745,7 +743,7 @@ parse_attr(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml
     unsigned int size;
 
     /* check if it is attribute or namespace */
-    if (!memcmp(c, "xmlns", 5)) {
+    if (!strncmp(c, "xmlns", 5)) {
         /* namespace */
         attr = calloc(1, sizeof (struct lyxml_ns));
         if (!attr) {
@@ -912,7 +910,7 @@ lyxml_parse_elem(struct ly_ctx *ctx, const char *data, unsigned int *len, struct
 process:
     ly_errno = LY_SUCCESS;
     ign_xmlws(c);
-    if (!memcmp("/>", c, 2)) {
+    if (!strncmp("/>", c, 2)) {
         /* we are done, it was EmptyElemTag */
         c += 2;
         elem->content = lydict_insert(ctx, "", 0);
@@ -923,7 +921,7 @@ process:
         lws = NULL;
 
         while (*c) {
-            if (!memcmp(c, "</", 2)) {
+            if (!strncmp(c, "</", 2)) {
                 if (lws && !elem->child) {
                     /* leading white spaces were actually content */
                     goto store_content;
@@ -992,7 +990,7 @@ process:
                 closed_flag = 1;
                 break;
 
-            } else if (!memcmp(c, "<?", 2)) {
+            } else if (!strncmp(c, "<?", 2)) {
                 if (lws) {
                     /* leading white spaces were only formatting */
                     lws = NULL;
@@ -1003,7 +1001,7 @@ process:
                     goto error;
                 }
                 c += size;
-            } else if (!memcmp(c, "<!--", 4)) {
+            } else if (!strncmp(c, "<!--", 4)) {
                 if (lws) {
                     /* leading white spaces were only formatting */
                     lws = NULL;
@@ -1014,7 +1012,7 @@ process:
                     goto error;
                 }
                 c += size;
-            } else if (!memcmp(c, "<![CDATA[", 9)) {
+            } else if (!strncmp(c, "<![CDATA[", 9)) {
                 /* CDSect */
                 goto store_content;
             } else if (*c == '<') {
@@ -1093,7 +1091,7 @@ store_content:
                     /* xmlns="" -> no namespace */
                     nons_flag = 1;
                 }
-            } else if (prefix[0] && attr->name && !memcmp(attr->name, prefix, prefix_len + 1)) {
+            } else if (prefix[0] && attr->name && !strncmp(attr->name, prefix, prefix_len + 1)) {
                 /* matching namespace with prefix */
                 elem->ns = (struct lyxml_ns *)attr;
             }
@@ -1141,21 +1139,21 @@ repeat:
         } else if (is_xmlws(*c)) {
             /* skip whitespaces */
             ign_xmlws(c);
-        } else if (!memcmp(c, "<?", 2)) {
+        } else if (!strncmp(c, "<?", 2)) {
             /* XMLDecl or PI - ignore it */
             c += 2;
             if (parse_ignore(c, "?>", &len)) {
                 return NULL;
             }
             c += len;
-        } else if (!memcmp(c, "<!--", 4)) {
+        } else if (!strncmp(c, "<!--", 4)) {
             /* Comment - ignore it */
             c += 2;
             if (parse_ignore(c, "-->", &len)) {
                 return NULL;
             }
             c += len;
-        } else if (!memcmp(c, "<!", 2)) {
+        } else if (!strncmp(c, "<!", 2)) {
             /* DOCTYPE */
             /* TODO - standalone ignore counting < and > */
             LOGERR(LY_EINVAL, "DOCTYPE not supported in XML documents.");

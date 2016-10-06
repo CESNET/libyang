@@ -162,8 +162,13 @@ lyjson_parse_text(const char *data, unsigned int *len)
             goto error;
         } else {
             /* unescaped character */
-            buf[o] = data[*len];
-            (*len)++;
+            r = copyutf8(&buf[o], &data[*len]);
+            if (!r) {
+                goto error;
+            }
+
+            o += r - 1;     /* o is ++ in for loop */
+            (*len) += r;
         }
     }
 
@@ -326,7 +331,7 @@ lyjson_convert_enumber(const char *number, unsigned int num_len, char *e_ptr)
     }
 
     chars_to_dot = dot_pos;
-    for (ptr = num + strlen(num), number_ptr = number; number_ptr - number < num_len_no_e; ) {
+    for (ptr = num + strlen(num), number_ptr = number; (unsigned)(number_ptr - number) < num_len_no_e; ) {
         if (!chars_to_dot) {
             *ptr = '.';
             ++ptr;
@@ -375,69 +380,51 @@ lyjson_parse_boolean(const char *data)
 }
 
 static unsigned int
-json_get_anyxml(struct lyd_node_anyxml *axml, const char *data)
+json_get_anydata(struct lyd_node_anydata *any, const char *data)
 {
-    struct ly_ctx *ctx;
-    unsigned int len = 0, r;
-    char *str;
+    unsigned int len = 0, start, stop, c;
 
-    ctx = axml->schema->module->ctx;
-
-    if (data[len] == '"') {
-        /* string representations */
-        ++len;
-        str = lyjson_parse_text(&data[len], &r);
-        if (!str) {
-            LOGPATH(LY_VLOG_LYD, axml);
-            return 0;
-        }
-        axml->xml_struct = 0;
-        axml->value.str = lydict_insert_zc(ctx, str);
-        if (data[len + r] != '"') {
-            LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, axml,
-                   "JSON data (missing quotation-mark at the end of string)");
-            return 0;
-        }
-        len += r + 1;
-    } else if (data[len] == '-' || isdigit(data[len])) {
-        /* numeric type */
-        r = lyjson_parse_number(&data[len]);
-        if (!r) {
-            LOGPATH(LY_VLOG_LYD, axml);
-            return 0;
-        }
-        axml->xml_struct = 0;
-        axml->value.str = lydict_insert(ctx, &data[len], r);
-        len += r;
-    } else if (data[len] == 'f' || data[len] == 't') {
-        /* boolean */
-        r = lyjson_parse_boolean(&data[len]);
-        if (!r) {
-            LOGPATH(LY_VLOG_LYD, axml);
-            return 0;
-        }
-        axml->xml_struct = 0;
-        axml->value.str = lydict_insert(ctx, &data[len], r);
-        len += r;
-    } else if (!strncmp(&data[len], "[null]", 6)) {
-        /* empty */
-        axml->xml_struct = 0;
-        axml->value.str = lydict_insert(ctx, "", 0);
-        len += 6;
-    } else {
-        /* error */
-        LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, axml, "JSON data (unexpected value)");
+    /* anydata (as well as meaningful anyxml) is supposed to be encoded as object */
+    if (data[len] != '{') {
+        LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, any, "Anydata/anyxml content (not an object)");
         return 0;
     }
+
+    /* count opening '{' and closing '}' to get the end of the object without its parsing */
+    c = 1;
+    len++;
+    len += skip_ws(&data[len]);
+    start = stop = len;
+    while (data[len] && c) {
+        switch (data[len]) {
+        case '{':
+            c++;
+            break;
+        case '}':
+            c--;
+            break;
+        default:
+            if (!isspace(data[len])) {
+                stop = len;
+            }
+        }
+        len++;
+    }
+    if (c) {
+        LOGVAL(LYE_EOF, LY_VLOG_LYD, any);
+        return 0;
+    }
+    any->value_type = LYD_ANYDATA_JSON;
+    any->value.str = lydict_insert(any->schema->module->ctx, &data[start], stop - start + 1);
 
     len += skip_ws(&data[len]);
     return len;
 }
 
 static unsigned int
-json_get_value(struct lyd_node_leaf_list *leaf, const char *data, int options)
+json_get_value(struct lyd_node_leaf_list *leaf, struct lyd_node *first_sibling, const char *data, int options)
 {
-    struct lyd_node_leaf_list *new, *diter;
+    struct lyd_node_leaf_list *new;
     struct lys_type *stype;
     struct ly_ctx *ctx;
     unsigned int len = 0, r;
@@ -541,8 +528,7 @@ repeat:
             leaf->next = (struct lyd_node *)new;
 
             /* fix the "last" pointer */
-            for (diter = leaf; diter->prev != (struct lyd_node *)leaf; diter = (struct lyd_node_leaf_list *)diter->prev);
-            diter->prev = (struct lyd_node *)new;
+            first_sibling->prev = (struct lyd_node *)new;
 
             new->schema = leaf->schema;
 
@@ -748,16 +734,17 @@ error:
 
 static unsigned int
 json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *schema_parent, struct lyd_node **parent,
-                struct lyd_node *prev, struct attr_cont **attrs, int options, struct unres_data *unres)
+                struct lyd_node *first_sibling, struct lyd_node *prev, struct attr_cont **attrs, int options,
+                struct unres_data *unres)
 {
     unsigned int len = 0;
     unsigned int r;
     unsigned int flag_leaflist = 0;
-    int i;
+    int i, pos;
     char *name, *prefix = NULL, *str = NULL;
     const struct lys_module *module = NULL;
     struct lys_node *schema = NULL;
-    struct lyd_node *result = NULL, *new, *list, *diter = NULL, *first_sibling;
+    struct lyd_node *result = NULL, *new, *list, *diter = NULL;
     struct lyd_attr *attr;
     struct attr_cont *attrs_aux;
 
@@ -898,7 +885,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
             }
         }
     }
-    if (!schema) {
+    if (!schema || !lys_node_module(schema)->implemented) {
         LOGVAL(LYE_INELEM, LY_VLOG_LYD, (*parent), name);
         goto error;
     }
@@ -966,7 +953,8 @@ attr_repeat:
         result = calloc(1, sizeof(struct lyd_node_leaf_list));
         break;
     case LYS_ANYXML:
-        result = calloc(1, sizeof(struct lyd_node_anyxml));
+    case LYS_ANYDATA:
+        result = calloc(1, sizeof(struct lyd_node_anydata));
         break;
     default:
         LOGINT;
@@ -977,36 +965,57 @@ attr_repeat:
         goto error;
     }
 
-    result->parent = *parent;
-    if (*parent && !(*parent)->child) {
-        (*parent)->child = result;
-    }
-    if (prev) {
-        result->prev = prev;
-        prev->next = result;
-
-        /* fix the "last" pointer */
-        if (*parent) {
-            diter = (*parent)->child;
-        } else {
-            for (diter = prev; diter->prev != prev; diter = diter->prev);
-        }
-        diter->prev = result;
-        first_sibling = diter;
-    } else {
-        result->prev = result;
-        first_sibling = result;
-    }
+    result->prev = result;
     result->schema = schema;
+    result->parent = *parent;
+    diter = NULL;
+    if (*parent && (*parent)->child && schema->nodetype == LYS_LEAF && (*parent)->schema->nodetype == LYS_LIST &&
+        (pos = lys_is_key((struct lys_node_list *)(*parent)->schema, (struct lys_node_leaf *)schema))) {
+        /* it is key and we need to insert it into a correct place */
+        for (i = 0, diter = (*parent)->child;
+                diter && i < (pos - 1) && diter->schema->nodetype == LYS_LEAF &&
+                    lys_is_key((struct lys_node_list *)(*parent)->schema, (struct lys_node_leaf *)diter->schema);
+                i++, diter = diter->next);
+        if (diter) {
+            /* out of order insertion - insert list's key to the correct position, before the diter */
+            if ((*parent)->child == diter) {
+                (*parent)->child = result;
+                /* update first_sibling */
+                first_sibling = result;
+            }
+            if (diter->prev->next) {
+                diter->prev->next = result;
+            }
+            result->prev = diter->prev;
+            diter->prev = result;
+            result->next = diter;
+        }
+    }
+    if (!diter) {
+        /* simplified (faster) insert as the last node */
+        if (*parent && !(*parent)->child) {
+            (*parent)->child = result;
+        }
+        if (prev) {
+            result->prev = prev;
+            prev->next = result;
+
+            /* fix the "last" pointer */
+            first_sibling->prev = result;
+        } else {
+            result->prev = result;
+            first_sibling = result;
+        }
+    }
     result->validity = LYD_VAL_NOT;
-    if (resolve_applies_when(result)) {
+    if (resolve_applies_when(schema, 0, NULL)) {
         result->when_status = LYD_WHEN;
     }
 
     /* type specific processing */
     if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
         /* type detection and assigning the value */
-        r = json_get_value((struct lyd_node_leaf_list *)result, &data[len], options);
+        r = json_get_value((struct lyd_node_leaf_list *)result, first_sibling, &data[len], options);
         if (!r) {
             goto error;
         }
@@ -1016,8 +1025,8 @@ attr_repeat:
 
         len += r;
         len += skip_ws(&data[len]);
-    } else if (schema->nodetype == LYS_ANYXML) {
-        r = json_get_anyxml((struct lyd_node_anyxml *)result, &data[len]);
+    } else if (schema->nodetype & LYS_ANYDATA) {
+        r = json_get_anydata((struct lyd_node_anydata *)result, &data[len]);
         if (!r) {
             goto error;
         }
@@ -1040,7 +1049,7 @@ attr_repeat:
                 len++;
                 len += skip_ws(&data[len]);
 
-                r = json_parse_data(ctx, &data[len], NULL, &result, diter, &attrs_aux, options, unres);
+                r = json_parse_data(ctx, &data[len], NULL, &result, result->child, diter, &attrs_aux, options, unres);
                 if (!r) {
                     goto error;
                 }
@@ -1065,7 +1074,7 @@ attr_repeat:
         len += skip_ws(&data[len]);
 
         /* if we have empty non-presence container, we could remove it immediately if there were no attributes of it, who knows */
-        if (!(options & LYD_OPT_KEEPEMPTYCONT) && schema->nodetype == LYS_CONTAINER && !result->child &&
+        if (schema->nodetype == LYS_CONTAINER && !result->child &&
                 !result->attr && !((struct lys_node_container *)schema)->presence) {
             if (unres_data_add(unres, result, UNRES_EMPTYCONT)) {
                 goto error;
@@ -1094,7 +1103,7 @@ attr_repeat:
                 len++;
                 len += skip_ws(&data[len]);
 
-                r = json_parse_data(ctx, &data[len], NULL, &list, diter, &attrs_aux, options, unres);
+                r = json_parse_data(ctx, &data[len], NULL, &list, list->child, diter, &attrs_aux, options, unres);
                 if (!r) {
                     goto error;
                 }
@@ -1124,7 +1133,7 @@ attr_repeat:
                 ly_errno = 0;
                 if (!(options & LYD_OPT_TRUSTED) &&
                         (lyv_data_content(list, options, unres) ||
-                         lyv_multicases(list, NULL, first_sibling == list ? NULL : first_sibling, 0, NULL))) {
+                         lyv_multicases(list, NULL, prev ? &first_sibling : NULL, 0, NULL))) {
                     if (ly_errno) {
                         goto error;
                     }
@@ -1166,14 +1175,19 @@ attr_repeat:
     ly_errno = 0;
     if (!(options & LYD_OPT_TRUSTED) &&
             (lyv_data_content(result, options, unres) ||
-             lyv_multicases(result, NULL, first_sibling == result ? NULL : first_sibling, 0, NULL))) {
+             lyv_multicases(result, NULL, prev ? &first_sibling : NULL, 0, NULL))) {
         if (ly_errno) {
             goto error;
         }
     }
 
     /* validation successful */
-    result->validity = LYD_VAL_OK;
+    if (result->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
+        /* postpone checking when there will be all list/leaflist instances */
+        result->validity = LYD_VAL_UNIQUE;
+    } else {
+        result->validity = LYD_VAL_OK;
+    }
 
     if (!(*parent)) {
         *parent = result;
@@ -1206,12 +1220,14 @@ error:
 }
 
 struct lyd_node *
-lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *data, int options)
+lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct lys_node *parent, struct lyd_node *data_tree)
 {
     struct lyd_node *result = NULL, *next = NULL, *iter = NULL;
     struct unres_data *unres = NULL;
     unsigned int len = 0, r;
+    int i;
     struct attr_cont *attrs = NULL;
+    struct ly_set *set;
 
     ly_errno = LY_SUCCESS;
 
@@ -1245,7 +1261,7 @@ lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *da
         len++;
         len += skip_ws(&data[len]);
 
-        r = json_parse_data(ctx, &data[len], parent, &next, iter, &attrs, options, unres);
+        r = json_parse_data(ctx, &data[len], parent, &next, result, iter, &attrs, options, unres);
         if (!r) {
             goto error;
         }
@@ -1278,13 +1294,35 @@ lyd_parse_json(struct ly_ctx *ctx, const struct lys_node *parent, const char *da
         goto error;
     }
 
-    /* check for missing top level mandatory nodes */
-    if (lyd_check_topmandatory(result, ctx, options)) {
+    /* check for uniquness of top-level lists/leaflists because
+     * only the inner instances were tested in lyv_data_content() */
+    set = ly_set_new();
+    LY_TREE_FOR(result, iter) {
+        if (!(iter->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) || !(iter->validity & LYD_VAL_UNIQUE)) {
+            continue;
+        }
+
+        /* check each list/leaflist only once */
+        i = set->number;
+        if (ly_set_add(set, iter->schema, 0) != i) {
+            /* already checked */
+            continue;
+        }
+
+        if (lyv_data_unique(iter, result)) {
+            ly_set_free(set);
+            goto error;
+        }
+    }
+    ly_set_free(set);
+
+    /* add/validate default values, unres */
+    if (lyd_defaults_add_unres(&result, options, ctx, data_tree, NULL, unres)) {
         goto error;
     }
 
-    /* add/validate default values, unres */
-    if (lyd_defaults_add_unres(&result, options, ctx, unres)) {
+    /* check for missing top level mandatory nodes */
+    if (!(options & LYD_OPT_TRUSTED) && lyd_check_mandatory_tree(result, ctx, options)) {
         goto error;
     }
 
