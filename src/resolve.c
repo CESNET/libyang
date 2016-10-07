@@ -3723,8 +3723,8 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
                     return -1;
                 }
 
-                /* node is the parent already, skip one ".." */
-                for (i = 1, node = parent; i < parent_times; i++) {
+                /* we are looking for a sibling of a node, node it's parent (that is why parent_times - 1) */
+                for (i = 0, node = parent; i < parent_times - 1; i++) {
                     /* path is supposed to be evaluated in data tree, so we have to skip
                      * all schema nodes that cannot be instantiated in data tree */
                     for (node = lys_parent(node);
