@@ -3608,15 +3608,16 @@ resolve_path_predicate_schema(const char *path, const struct lys_node *context_n
         pke_parsed += i;
 
         for (i = 0, dst_node = parent; i < dest_parent_times; ++i) {
+            /* path is supposed to be evaluated in data tree, so we have to skip
+             * all schema nodes that cannot be instantiated in data tree */
+            for (dst_node = lys_parent(dst_node);
+                 dst_node && !(dst_node->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_ACTION | LYS_NOTIF));
+                 dst_node = lys_parent(dst_node));
+
             if (!dst_node) {
                 LOGVAL(LYE_NORESOLV, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent, "leafref predicate", path_key_expr);
                 return 0;
             }
-            /* path is supposed to be evaluated in data tree, so we have to skip
-             * all schema nodes that cannot be instantiated in data tree */
-            for (dst_node = lys_parent(dst_node);
-                 dst_node && !(dst_node->nodetype & (LYS_CONTAINER | LYS_LIST));
-                 dst_node = lys_parent(dst_node));
         }
         while (1) {
             if (!dest_pref) {
