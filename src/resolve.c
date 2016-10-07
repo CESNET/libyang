@@ -3712,7 +3712,7 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
                     /* path is supposed to be evaluated in data tree, so we have to skip
                      * all schema nodes that cannot be instantiated in data tree */
                     for (node = lys_parent(node);
-                         node && !(node->nodetype & (LYS_CONTAINER | LYS_LIST));
+                         node && !(node->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_ACTION | LYS_NOTIF));
                          node = lys_parent(node));
 
                     if (!node) {
