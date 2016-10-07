@@ -1920,7 +1920,7 @@ yang_read_deviate_must(struct type_deviation *dev, uint8_t c_must)
     }
 
     /* flag will be checked again, clear it for now */
-    dev->target->flags &= ~LYS_XPATH_DEP;
+    dev->target->flags &= ~LYS_VALID_DEP;
 
     if (dev->deviate->mod == LY_DEVIATE_ADD) {
         /* reallocate the must array of the target */

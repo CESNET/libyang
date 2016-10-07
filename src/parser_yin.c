@@ -2043,7 +2043,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 goto error;
             }
 
-            dev_target->flags &= ~LYS_XPATH_DEP;
+            dev_target->flags &= ~LYS_VALID_DEP;
 
             if (d->mod == LY_DEVIATE_RPL) {
                 /* replace must is forbidden */

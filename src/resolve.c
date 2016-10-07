@@ -3572,7 +3572,7 @@ error:
  */
 static int
 resolve_path_predicate_schema(const char *path, const struct lys_node *context_node,
-                              struct lys_node *parent)
+                              struct lys_node *parent, int parent_tpdf)
 {
     const struct lys_node *src_node, *dst_node;
     const char *path_key_expr, *source, *sour_pref, *dest, *dest_pref;
@@ -3617,6 +3617,10 @@ resolve_path_predicate_schema(const char *path, const struct lys_node *context_n
             if (!dst_node) {
                 LOGVAL(LYE_NORESOLV, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent, "leafref predicate", path_key_expr);
                 return 0;
+            }
+
+            if (!parent_tpdf && (dst_node->nodetype & (LYS_ACTION | LYS_NOTIF)) && lys_parent(dst_node)) {
+                parent->flags |= LYS_VALID_DEP;
             }
         }
         while (1) {
@@ -3674,11 +3678,18 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
     const struct lys_module *mod, *mod2;
     const char *id, *prefix, *name;
     int pref_len, nam_len, parent_times, has_predicate;
-    int i, first_iter, rc;
+    int i, first_iter, rc, in_act_notif = 0;
 
     first_iter = 1;
     parent_times = 0;
     id = path;
+
+    if (!parent_tpdf) {
+        for (node = lys_parent(parent); node && !(node->nodetype & (LYS_ACTION | LYS_NOTIF)); node = lys_parent(node));
+        if (node && lys_parent(node)) {
+            in_act_notif = 1;
+        }
+    }
 
     mod2 = lys_node_module(parent);
     do {
@@ -3700,6 +3711,11 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
                            "leafref", path);
                     return EXIT_FAILURE;
                 }
+
+                if (in_act_notif && !parent_tpdf) {
+                    /* we started in an inner notification/action and have an absolute path */
+                    parent->flags |= LYS_VALID_DEP;
+                }
             } else if (parent_times > 0) {
                 if (parent_tpdf) {
                     /* the path is not allowed to contain relative path since we are in top level typedef */
@@ -3716,11 +3732,14 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
                          node = lys_parent(node));
 
                     if (!node) {
-                        LOGVAL(LYE_NORESOLV, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent,
-                               "leafref", path);
+                        LOGVAL(LYE_NORESOLV, LY_VLOG_LYS, parent, "leafref", path);
                         return EXIT_FAILURE;
                     }
 
+                    if ((node->nodetype & (LYS_ACTION | LYS_NOTIF)) && lys_parent(node)) {
+                        assert(in_act_notif);
+                        parent->flags |= LYS_VALID_DEP;
+                    }
                 }
             } else {
                 LOGINT;
@@ -3754,7 +3773,7 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
                 return -1;
             }
 
-            i = resolve_path_predicate_schema(id, node, parent);
+            i = resolve_path_predicate_schema(id, node, parent, parent_tpdf);
             if (i <= 0) {
                 if (i == 0) {
                     return EXIT_FAILURE;
@@ -5780,7 +5799,7 @@ check_xpath(struct lys_node *node)
                 for (elem = set.val.snodes[i].snode; elem && (elem != parent); elem = lys_parent(elem));
                 if (!elem) {
                     /* not in node's RPC or notification subtree, set the flag */
-                    node->flags |= LYS_XPATH_DEP;
+                    node->flags |= LYS_VALID_DEP;
                     break;
                 }
             }

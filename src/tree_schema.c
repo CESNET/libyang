@@ -3022,7 +3022,7 @@ lys_node_xpath_atomize(const struct lys_node *node, int options)
     }
 
     LY_TREE_DFS_BEGIN(node, next, elem) {
-        if ((options & LYXP_NO_LOCAL) && !(elem->flags & LYS_XPATH_DEP)) {
+        if ((options & LYXP_NO_LOCAL) && !(elem->flags & LYS_VALID_DEP)) {
             /* elem has no dependencies from other subtrees and local nodes get discarded */
             goto next_iter;
         }
