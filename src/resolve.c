@@ -3559,12 +3559,41 @@ error:
     return rc;
 }
 
+static int
+resolve_path_arg_schema_valid_dep_flag(const struct lys_node *op_node, const struct lys_node *first_node, int abs_path)
+{
+    int dep1, dep2;
+    const struct lys_node *node;
+
+    if (lys_parent(op_node)) {
+        /* inner operation (notif/action) */
+        if (abs_path) {
+            return 1;
+        } else {
+            /* compare depth of both nodes */
+            for (dep1 = 0, node = op_node; lys_parent(node); node = lys_parent(node));
+            for (dep2 = 0, node = first_node; lys_parent(node); node = lys_parent(node));
+            if ((dep2 > dep1) || ((dep2 == dep1) && (op_node != first_node))) {
+                return 1;
+            }
+        }
+    } else {
+        /* top-level operation (notif/rpc) */
+        if (op_node != first_node) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
 /**
  * @brief Resolve a path (leafref) predicate in JSON schema context. Logs directly.
  *
  * @param[in] path Path to use.
  * @param[in] context_node Predicate context node (where the predicate is placed).
  * @param[in] parent Path context node (where the path begins/is placed).
+ * @param[in] op_node Optional node if the leafref is in an operation (action/rpc/notif).
  *
  * @return 0 on forward reference, otherwise the number
  *         of characters successfully parsed,
@@ -3572,12 +3601,12 @@ error:
  */
 static int
 resolve_path_predicate_schema(const char *path, const struct lys_node *context_node,
-                              struct lys_node *parent, int parent_tpdf)
+                              struct lys_node *parent, const struct lys_node *op_node)
 {
     const struct lys_node *src_node, *dst_node;
     const char *path_key_expr, *source, *sour_pref, *dest, *dest_pref;
     int pke_len, sour_len, sour_pref_len, dest_len, dest_pref_len, parsed = 0, pke_parsed = 0;
-    int has_predicate, dest_parent_times = 0, i, rc;
+    int has_predicate, dest_parent_times = 0, i, rc, first_iter;
 
     do {
         if ((i = parse_path_predicate(path, &sour_pref, &sour_pref_len, &source, &sour_len, &path_key_expr,
@@ -3611,18 +3640,15 @@ resolve_path_predicate_schema(const char *path, const struct lys_node *context_n
             /* path is supposed to be evaluated in data tree, so we have to skip
              * all schema nodes that cannot be instantiated in data tree */
             for (dst_node = lys_parent(dst_node);
-                 dst_node && !(dst_node->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_ACTION | LYS_NOTIF));
+                 dst_node && !(dst_node->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_ACTION | LYS_NOTIF | LYS_RPC));
                  dst_node = lys_parent(dst_node));
 
             if (!dst_node) {
                 LOGVAL(LYE_NORESOLV, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent, "leafref predicate", path_key_expr);
                 return 0;
             }
-
-            if (!parent_tpdf && (dst_node->nodetype & (LYS_ACTION | LYS_NOTIF)) && lys_parent(dst_node)) {
-                parent->flags |= LYS_VALID_DEP;
-            }
         }
+        first_iter = 1;
         while (1) {
             if (!dest_pref) {
                 dest_pref = dst_node->module->name;
@@ -3632,6 +3658,13 @@ resolve_path_predicate_schema(const char *path, const struct lys_node *context_n
             if (rc) {
                 LOGVAL(LYE_NORESOLV, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent, "leafref predicate", path_key_expr);
                 return 0;
+            }
+
+            if (first_iter) {
+                if (resolve_path_arg_schema_valid_dep_flag(op_node, dst_node, 0)) {
+                    parent->flags |= LYS_VALID_DEP;
+                }
+                first_iter = 0;
             }
 
             if (pke_len == pke_parsed) {
@@ -3674,21 +3707,21 @@ static int
 resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tpdf,
                         const struct lys_node **ret)
 {
-    const struct lys_node *node;
+    const struct lys_node *node, *op_node = NULL;
     const struct lys_module *mod, *mod2;
     const char *id, *prefix, *name;
     int pref_len, nam_len, parent_times, has_predicate;
-    int i, first_iter, rc, in_act_notif = 0;
+    int i, first_iter, rc;
 
     first_iter = 1;
     parent_times = 0;
     id = path;
 
+    /* find operation schema we are in, if applicable */
     if (!parent_tpdf) {
-        for (node = lys_parent(parent); node && !(node->nodetype & (LYS_ACTION | LYS_NOTIF)); node = lys_parent(node));
-        if (node && lys_parent(node)) {
-            in_act_notif = 1;
-        }
+        for (op_node = lys_parent(parent);
+             op_node && !(op_node->nodetype & (LYS_ACTION | LYS_NOTIF | LYS_RPC));
+             op_node = lys_parent(op_node));
     }
 
     mod2 = lys_node_module(parent);
@@ -3711,11 +3744,6 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
                            "leafref", path);
                     return EXIT_FAILURE;
                 }
-
-                if (in_act_notif && !parent_tpdf) {
-                    /* we started in an inner notification/action and have an absolute path */
-                    parent->flags |= LYS_VALID_DEP;
-                }
             } else if (parent_times > 0) {
                 if (parent_tpdf) {
                     /* the path is not allowed to contain relative path since we are in top level typedef */
@@ -3728,25 +3756,18 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
                     /* path is supposed to be evaluated in data tree, so we have to skip
                      * all schema nodes that cannot be instantiated in data tree */
                     for (node = lys_parent(node);
-                         node && !(node->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_ACTION | LYS_NOTIF));
+                         node && !(node->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_ACTION | LYS_NOTIF | LYS_RPC));
                          node = lys_parent(node));
 
                     if (!node) {
                         LOGVAL(LYE_NORESOLV, LY_VLOG_LYS, parent, "leafref", path);
                         return EXIT_FAILURE;
                     }
-
-                    if ((node->nodetype & (LYS_ACTION | LYS_NOTIF)) && lys_parent(node)) {
-                        assert(in_act_notif);
-                        parent->flags |= LYS_VALID_DEP;
-                    }
                 }
             } else {
                 LOGINT;
                 return -1;
             }
-
-            first_iter = 0;
         } else {
             /* move down the tree, if possible */
             if (node->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
@@ -3766,6 +3787,15 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
             return EXIT_FAILURE;
         }
 
+        if (first_iter) {
+            /* set external dependency flag, we can decide based on the first found node */
+            if (!parent_tpdf && op_node && parent_times &&
+                    resolve_path_arg_schema_valid_dep_flag(op_node, node, (parent_times == -1 ? 1 : 0))) {
+                parent->flags |= LYS_VALID_DEP;
+            }
+            first_iter = 0;
+        }
+
         if (has_predicate) {
             /* we have predicate, so the current result must be list */
             if (node->nodetype != LYS_LIST) {
@@ -3773,7 +3803,7 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
                 return -1;
             }
 
-            i = resolve_path_predicate_schema(id, node, parent, parent_tpdf);
+            i = resolve_path_predicate_schema(id, node, parent, op_node);
             if (i <= 0) {
                 if (i == 0) {
                     return EXIT_FAILURE;
