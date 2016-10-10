@@ -26,6 +26,10 @@
 extern "C" {
 #endif
 
+#define LY_VERSION_MAJOR @LIBYANG_MAJOR_VERSION@ /**< libyang major version number */
+#define LY_VERSION_MINOR @LIBYANG_MINOR_VERSION@ /**< libyang minor version number */
+#define LY_VERSION_MICRO @LIBYANG_MICRO_VERSION@ /**< libyang micro version number */
+
 /**
  * @mainpage About
  *
