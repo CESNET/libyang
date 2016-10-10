@@ -39,6 +39,8 @@ typedef struct {
 	char *helpstring; /* Documentation for this function. */
 } COMMAND;
 
+LYS_INFORMAT get_schema_format(char *path);
+
 extern COMMAND commands[];
 
 #endif /* COMMANDS_H_ */

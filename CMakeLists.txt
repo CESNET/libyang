@@ -96,6 +96,7 @@ set(libsrc
 
 set(lintsrc
 	tools/lint/main.c
+	tools/lint/main_ni.c
 	tools/lint/commands.c
 	tools/lint/completion.c
 	linenoise/linenoise.c)

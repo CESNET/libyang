@@ -106,11 +106,33 @@ cmd_verb_help(void)
     printf("verb (error/0 | warning/1 | verbose/2 | debug/3)\n");
 }
 
+LYS_INFORMAT
+get_schema_format(char *path)
+{
+    char *ptr;
+
+    if ((ptr = strrchr(path, '.')) != NULL) {
+        ++ptr;
+        if (!strcmp(ptr, "yin")) {
+            return LYS_IN_YIN;
+        } else if (!strcmp(ptr, "yang")) {
+            return LYS_IN_YANG;
+        } else {
+            fprintf(stderr, "Input file in an unknown format \"%s\".\n", ptr);
+            free(path);
+            return LYS_IN_UNKNOWN;
+        }
+    } else {
+        fprintf(stdout, "Input file \"%s\" without extension - unknown format.\n", path);
+        return LYS_IN_UNKNOWN;
+    }
+}
+
 int
 cmd_add(const char *arg)
 {
     int path_len;
-    char *ptr, *path;
+    char *path;
     const char *arg_ptr;
     const struct lys_module *model;
     LYS_INFORMAT format;
@@ -133,20 +155,10 @@ cmd_add(const char *arg)
     path = strndup(arg_ptr, path_len);
 
     while (path) {
-        if ((ptr = strrchr(path, '.')) != NULL) {
-            ++ptr;
-            if (!strcmp(ptr, "yin")) {
-                format = LYS_IN_YIN;
-            } else if (!strcmp(ptr, "yang")) {
-                format = LYS_IN_YANG;
-            } else {
-                fprintf(stderr, "Input file in an unknown format \"%s\".\n", ptr);
-                free(path);
-                return 1;
-            }
-        } else {
-            fprintf(stdout, "Input file \"%.*s\" without extension, assuming YIN format.\n", path_len, arg_ptr);
-            format = LYS_IN_YIN;
+        format = get_schema_format(path);
+        if (format == LYS_IN_UNKNOWN) {
+            free(path);
+            return 1;
         }
 
         model = lys_parse_path(ctx, path, format);
