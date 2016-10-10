@@ -1057,6 +1057,7 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
             break;
 
         case LY_TYPE_IDENT:
+            new->info.ident.count = old->info.ident.count;
             if (old->info.ident.count) {
                 new->info.ident.ref = malloc(old->info.ident.count * sizeof *new->info.ident.ref);
                 if (!new->info.ident.ref) {
