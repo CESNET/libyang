@@ -88,11 +88,12 @@ lyd_check_mandatory_data(struct lyd_node *root, struct lyd_node *last_parent,
         if (lys_is_disabled(schema, 2)) {
             /* disabled by if-feature */
             return EXIT_SUCCESS;
-        } else if ((options & LYD_OPT_TYPEMASK) && (schema->flags & LYS_CONFIG_R)) {
+        } else if ((options & LYD_OPT_TRUSTED) || ((options & LYD_OPT_TYPEMASK) && (schema->flags & LYS_CONFIG_R))) {
             /* status schema node in non-status data tree */
             return EXIT_SUCCESS;
         } else {
-            if (resolve_applies_when(schema, 1, last_parent ? last_parent->schema : NULL)) {
+            if ((!(options & LYD_OPT_TYPEMASK) || (options & (LYD_OPT_CONFIG | LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF)))
+                    && resolve_applies_when(schema, 1, last_parent ? last_parent->schema : NULL)) {
                 /* evaluate when statements */
                 dummy = lyd_new_dummy(root, last_parent, schema, NULL, 0);
                 if (!dummy) {
@@ -5061,7 +5062,8 @@ lyd_wd_add_leaf(struct lyd_node **tree, struct lyd_node *last_parent, struct lys
     }
     for (current = dummy; ; current = current->child) {
         /* if necessary, remember the created data in unres */
-        if (!(options & LYD_OPT_TRUSTED)) {
+        if (!(options & LYD_OPT_TRUSTED) && (!(options & LYD_OPT_TYPEMASK)
+                || (options & (LYD_OPT_CONFIG | LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF)))) {
             if ((current->when_status & LYD_WHEN) && unres_data_add(unres, current, UNRES_WHEN) == -1) {
                 goto error;
             }
@@ -5155,7 +5157,8 @@ lyd_wd_add_leaflist(struct lyd_node **tree, struct lyd_node *last_parent, struct
 
         for (current = dummy; ; current = current->child) {
             /* if necessary, remember the created data in unres */
-            if (!(options & LYD_OPT_TRUSTED)) {
+            if (!(options & LYD_OPT_TRUSTED) && (!(options & LYD_OPT_TYPEMASK)
+                    || (options & (LYD_OPT_CONFIG | LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF)))) {
                 if ((current->when_status & LYD_WHEN) && unres_data_add(unres, current, UNRES_WHEN) == -1) {
                     goto error;
                 }
@@ -5317,7 +5320,8 @@ lyd_wd_add_subtree(struct lyd_node **root, struct lyd_node *last_parent, struct 
             }
             last_parent = subroot;
 
-            if (!(options & LYD_OPT_TRUSTED)) {
+            if (!(options & LYD_OPT_TRUSTED) && (!(options & LYD_OPT_TYPEMASK)
+                    || (options & (LYD_OPT_CONFIG | LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF)))) {
                 /* if necessary, remember the created container in unres */
                 if ((subroot->when_status & LYD_WHEN) && unres_data_add(unres, subroot, UNRES_WHEN) == -1) {
                     goto error;

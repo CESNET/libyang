@@ -496,13 +496,15 @@ nextbit:
         }
     }
 
-    /* check must conditions */
-    i = resolve_applies_must(node);
-    if ((i & 0x1) && (unres_data_add(unres, node, UNRES_MUST) == -1)) {
-        return EXIT_FAILURE;
-    }
-    if ((i & 0x2) && (unres_data_add(unres, node, UNRES_MUST_INOUT) == -1)) {
-        return EXIT_FAILURE;
+    if (!(options & LYD_OPT_TYPEMASK) || (options & (LYD_OPT_CONFIG | LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF))) {
+        /* check must conditions */
+        i = resolve_applies_must(node);
+        if ((i & 0x1) && (unres_data_add(unres, node, UNRES_MUST) == -1)) {
+            return EXIT_FAILURE;
+        }
+        if ((i & 0x2) && (unres_data_add(unres, node, UNRES_MUST_INOUT) == -1)) {
+            return EXIT_FAILURE;
+        }
     }
 
     return EXIT_SUCCESS;
