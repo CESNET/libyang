@@ -41,8 +41,6 @@
 #define EXTENSION_STA 0x02
 #define EXTENSION_DSC 0x04
 #define EXTENSION_REF 0x08
-#define DISABLE_INHERIT 0
-#define ENABLE_INHERIT 0x01
 
 void yyerror(YYLTYPE *yylloc, void *scanner, ...);
 /* temporary pointer for the check extension nacm 'data_node' */
@@ -53,20 +51,22 @@ void yyerror(YYLTYPE *yylloc, void *scanner, ...);
   int32_t i;
   uint32_t uint;
   char *str;
+  char **p_str;
   void *v;
+  char ch;
   struct lys_module *inc;
   struct yang_type *type;
   union {
     uint32_t index;
     struct lys_node_container *container;
-    struct lys_node_anyxml *anyxml;
+    struct lys_node_anydata *anydata;
     struct type_node node;
     struct lys_node_case *cs;
     struct lys_node_grp *grouping;
-    struct type_uses uses;
     struct lys_refine *refine;
     struct lys_node_notif *notif;
     struct type_deviation *deviation;
+    struct lys_node_uses *uses;
   } nodes;
 }
 
@@ -163,6 +163,9 @@ void yyerror(YYLTYPE *yylloc, void *scanner, ...);
 %token TRUE_KEYWORD
 %token UNBOUNDED_KEYWORD
 %token USER_KEYWORD
+%token ACTION_KEYWORD
+%token MODIFIER_KEYWORD
+%token ANYDATA_KEYWORD
 
 %type <uint> positive_integer_value
 %type <uint> non_negative_integer_value
@@ -170,15 +173,21 @@ void yyerror(YYLTYPE *yylloc, void *scanner, ...);
 %type <uint> max_elements_stmt
 %type <uint> min_value_arg_str
 %type <uint> min_elements_stmt
-%type <uint> decimal_string_restrictions
+%type <uint> some_restrictions
 %type <uint> fraction_digits_arg_str
 %type <uint> position_value_arg_str
 %type <uint> extension_opt_stmt
+%type <i> require_instance_stmt
+%type <i> require_instance_arg_str
+%type <i> enum_opt_stmt
+%type <i> bit_opt_stmt
+%type <i> import_opt_stmt
+%type <i> include_opt_stmt
 %type <i> module_header_stmts
 %type <i> submodule_header_stmts
 %type <str> tmp_identifier_arg_str
 %type <str> message_opt_stmt
-%type <str> identity_opt_stmt
+%type <i> identity_opt_stmt
 %type <i> status_stmt
 %type <i> status_read_stmt
 %type <i> status_arg_str
@@ -193,14 +202,13 @@ void yyerror(YYLTYPE *yylloc, void *scanner, ...);
 %type <i> integer_value_arg_str
 %type <i> integer_value
 %type <i> feature_opt_stmt
+%type <i> rpc_arg_str
+%type <i> action_arg_str
+%type <i> notification_arg_str
 %type <v> length_arg_str
-%type <v> pattern_arg_str
+%type <str> pattern_arg_str
 %type <v> range_arg_str
-%type <v> enum_arg_str
-%type <v> bit_arg_str
 %type <v> union_spec
-%type <v> typedef_arg_str
-%type <type> type_stmtsep
 %type <nodes> container_opt_stmt
 %type <nodes> anyxml_opt_stmt
 %type <nodes> choice_opt_stmt
@@ -220,15 +228,37 @@ void yyerror(YYLTYPE *yylloc, void *scanner, ...);
 %type <nodes> deviate_add_opt_stmt
 %type <nodes> deviate_delete_opt_stmt
 %type <nodes> deviate_replace_opt_stmt
+%type <nodes> deviate_replace_stmtsep
+%type <nodes> leaf_arg_str
+%type <nodes> leaf_list_arg_str
+%type <nodes> typedef_arg_str
 %type <inc> include_stmt
 %type <inc> import_stmt
+%type <ch> pattern_opt_stmt
+%type <ch> pattern_end
+%type <ch> modifier_stmt
+%type <p_str> tmp_string
 
 %destructor { free($$); } tmp_identifier_arg_str
+%destructor { free($$); } pattern_arg_str
 %destructor { if (read_all) {
+                ly_set_free($$.deviation->dflt_check);
                 free($$.deviation);
               }
             } deviation_opt_stmt
-%destructor { yang_delete_type(module, $$); } type_stmtsep
+%destructor { if (read_all) {
+                yang_delete_type(module, (struct yang_type *)$$.node.ptr_leaf->type.der);
+              }
+            } leaf_arg_str, leaf_list_arg_str
+%destructor { if (read_all) {
+                yang_delete_type(module, (struct yang_type *)$$.node.ptr_tpdf->type.der);
+              }
+            } typedef_arg_str
+%destructor { if (read_all && $$.deviation->deviate->type) {
+                yang_delete_type(module, (struct yang_type *)$$.deviation->deviate->type->der);
+              }
+            } deviate_replace_stmtsep
+%destructor { free(($$) ? *$$ : NULL); } tmp_string
 
 %initial-action { yylloc.last_column = 0; }
 
@@ -257,13 +287,19 @@ start: module_stmt
                      }
                    }
 
-
-string_1: STRING  { if (read_all) {
+tmp_string: STRING { if (read_string) {
                       if (yyget_text(scanner)[0] == '"') {
-                        s = yang_read_string(yyget_text(scanner) + 1, yyget_leng(scanner) - 2, yylloc.first_column);
+                        char *tmp;
+
+                        s = malloc(yyget_leng(scanner) - 1 + 7 * yylval.i);
                         if (!s) {
+                          LOGMEM;
                           YYABORT;
                         }
+                        if (!(tmp = yang_read_string(yyget_text(scanner) + 1, s, yyget_leng(scanner) - 2, 0, yylloc.first_column, (trg) ? trg->version : 0))) {
+                          YYABORT;
+                        }
+                        s = tmp;
                       } else {
                         s = calloc(1, yyget_leng(scanner) - 1);
                         if (!s) {
@@ -272,39 +308,35 @@ string_1: STRING  { if (read_all) {
                         }
                         memcpy(s, yyget_text(scanner) + 1, yyget_leng(scanner) - 2);
                       }
+                      $$ = &s;
+                    } else {
+                      $$ = NULL;
                     }
                   }
-optsep string_2
+
+string_1: tmp_string optsep string_2
 
 
 string_2: @EMPTYDIR@
   |  string_2 '+' optsep
-     STRING { if (read_all){
-                char *temp;
+     STRING { if (read_string && (yyget_leng(scanner) > 2)) {
+                int length_s = strlen(s), length_tmp = yyget_leng(scanner);
+                char *tmp;
+
+                tmp = realloc(s, length_s + length_tmp - 1);
+                if (!tmp) {
+                  LOGMEM;
+                  YYABORT;
+                }
+                s = tmp;
                 if (yyget_text(scanner)[0] == '"') {
-                  temp = yang_read_string(yyget_text(scanner) + 1, yyget_leng(scanner) - 2, yylloc.first_column);
-                  if (!temp) {
+                  if (!(tmp = yang_read_string(yyget_text(scanner) + 1, s, length_tmp - 2, length_s, yylloc.first_column, (trg) ? trg->version : 0))) {
                     YYABORT;
                   }
-                  s = ly_realloc(s, strlen(temp) + strlen(s) + 1);
-                  if (s) {
-                    strcat(s, temp);
-                    free(temp);
-                  } else {
-                    free(temp);
-                    LOGMEM;
-                    YYABORT;
-                  }
+                  s = tmp;
                 } else {
-                  int length = yyget_leng(scanner) - 2 + strlen(s) + 1;
-                  s = ly_realloc(s, length);
-                  if (s) {
-                    memcpy(s + strlen(s), yyget_text(scanner) + 1, yyget_leng(scanner) - 2);
-                    s[length - 1] = '\0';
-                  } else {
-                    LOGMEM;
-                    YYABORT;
-                  }
+                  memcpy(s + length_s, yyget_text(scanner) + 1, length_tmp - 2);
+                  s[length_s + length_tmp - 2] = '\0';
                 }
               }
             }
@@ -319,7 +351,7 @@ module_stmt: optsep MODULE_KEYWORD sep identifier_arg_str { if (read_all) {
                                                               trg = module;
                                                               yang_read_common(trg,s,MODULE_KEYWORD);
                                                               s = NULL;
-                                                              config_inherit = ENABLE_INHERIT;
+                                                              config_inherit = CONFIG_INHERIT_ENABLE;
                                                             }
                                                           }
              '{' stmtsep
@@ -333,9 +365,16 @@ module_stmt: optsep MODULE_KEYWORD sep identifier_arg_str { if (read_all) {
              '}' optsep
 
 module_header_stmts: @EMPTYDIR@  { $$ = 0; }
-  |  module_header_stmts yang_version_stmt { if ($1) { LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "yang version", "module"); YYABORT; } $$ = 1; }
+  |  module_header_stmts yang_version_stmt { if (read_all) {
+                                               if (yang_check_version(module, submodule, s, $1)) {
+                                                 YYABORT;
+                                               }
+                                               $$ = 1;
+                                               s = NULL;
+                                             }
+                                           }
   |  module_header_stmts namespace_stmt { if (read_all && yang_read_common(module, s, NAMESPACE_KEYWORD)) {YYABORT;} s=NULL; }
-  |  module_header_stmts prefix_stmt { if (read_all && yang_read_prefix(module, NULL, s, MODULE_KEYWORD)) {YYABORT;} s=NULL; }
+  |  module_header_stmts prefix_stmt { if (read_all && yang_read_prefix(module, NULL, s)) {YYABORT;} s=NULL; }
   ;
 
 submodule_stmt: optsep SUBMODULE_KEYWORD sep identifier_arg_str { if (read_all) {
@@ -347,7 +386,7 @@ submodule_stmt: optsep SUBMODULE_KEYWORD sep identifier_arg_str { if (read_all) 
                                                                     trg = (struct lys_module *)submodule;
                                                                     yang_read_common(trg,s,MODULE_KEYWORD);
                                                                     s = NULL;
-                                                                    config_inherit = ENABLE_INHERIT;
+                                                                    config_inherit = CONFIG_INHERIT_ENABLE;
                                                                   }
                                                                 }
                 '{' stmtsep
@@ -363,11 +402,13 @@ submodule_stmt: optsep SUBMODULE_KEYWORD sep identifier_arg_str { if (read_all) 
                 '}' optsep
 
 submodule_header_stmts: @EMPTYDIR@ { $$ = 0; }
-  |  submodule_header_stmts yang_version_stmt { if ($1) {
-                                                  LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "yang version", "submodule");
-                                                  YYABORT;
+  |  submodule_header_stmts yang_version_stmt { if (read_all) {
+                                                  if (yang_check_version(module, submodule, s, $1)) {
+                                                    YYABORT;
+                                                  }
+                                                  $$ = 1;
+                                                  s = NULL;
                                                 }
-                                                $$ = 1;
                                               }
   |  submodule_header_stmts { if (read_all) {
                                 if (submodule->prefix) {
@@ -378,21 +419,7 @@ submodule_header_stmts: @EMPTYDIR@ { $$ = 0; }
                             }
      belongs_to_stmt
 
-yang_version_stmt: YANG_VERSION_KEYWORD sep yang_version_arg_str stmtend;
-
-yang_version_arg_str: NON_NEGATIVE_INTEGER { if (strlen(yyget_text(scanner))!=1 || yyget_text(scanner)[0]!='1') {
-                                               YYABORT;
-                                             }
-                                           } optsep
-  | string_1 { if (read_all) {
-                 if (strlen(s)!=1 || s[0]!='1') {
-                   free(s);
-                   YYABORT;
-                 }
-                 free(s);
-                 s = NULL;
-               }
-             }
+yang_version_stmt: YANG_VERSION_KEYWORD sep string stmtend;
 
 namespace_stmt: NAMESPACE_KEYWORD sep string stmtend;
 
@@ -428,30 +455,64 @@ import_stmt: IMPORT_KEYWORD sep tmp_identifier_arg_str {
                    size_arrays->imp++;
                  } else {
                    actual = &trg->imp[trg->imp_size];
+                   actual_type=IMPORT_KEYWORD;
                  }
              }
              '{' stmtsep
-                 prefix_stmt { if (read_all) {
-                                 if (yang_read_prefix(trg, actual, s, IMPORT_KEYWORD)) {YYABORT;}
-                                 s=NULL;
-                                 actual_type=IMPORT_KEYWORD;
-                               }
-                             }
-                 revision_date_opt
+                 import_opt_stmt
              '}' stmtsep { if (read_all) {
                              $$ = trg;
                              if (yang_fill_import(trg, actual, $3)) {
                                YYABORT;
                              }
                              trg = $$;
-                             config_inherit = ENABLE_INHERIT;
+                             config_inherit = CONFIG_INHERIT_ENABLE;
                            }
                          }
+
+import_opt_stmt: @EMPTYDIR@ { $$ = 0; }
+  |  import_opt_stmt prefix_stmt { if (read_all && yang_read_prefix(trg, actual, s)) {
+                                     YYABORT;
+                                   }
+                                   s = NULL;
+                                   $$ = $1;
+                                 }
+  |  import_opt_stmt description_stmt { if (read_all) {
+                                          if (trg->version != 2) {
+                                            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "description");
+                                          }
+                                          if (yang_read_description(trg, actual, s, "import")) {
+                                            YYABORT;
+                                          }
+                                        }
+                                        s = NULL;
+                                        $$ = $1;
+                                      }
+  |  import_opt_stmt reference_stmt { if (read_all) {
+                                        if (trg->version != 2) {
+                                          LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "reference");
+                                        }
+                                        if (yang_read_reference(trg, actual, s, "import")) {
+                                          YYABORT;
+                                        }
+                                      }
+                                      s = NULL;
+                                      $$ = $1;
+                                    }
+  |  import_opt_stmt revision_date_stmt { if (read_all) {
+                                            if ($1) {
+                                              LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "revision-date", "import");
+                                              YYABORT;
+                                            }
+                                          }
+                                          $$ = 1;
+                                        }
 
 tmp_identifier_arg_str: identifier_arg_str { $$ = s; s = NULL; }
 
 include_stmt: INCLUDE_KEYWORD sep tmp_identifier_arg_str { if (read_all) {
-                                                             memset(rev, 0, LY_REV_SIZE);
+                                                             memset(&inc, 0, sizeof inc);
+                                                             actual = &inc;
                                                              actual_type = INCLUDE_KEYWORD;
                                                            }
                                                            else {
@@ -461,11 +522,11 @@ include_stmt: INCLUDE_KEYWORD sep tmp_identifier_arg_str { if (read_all) {
               include_end stmtsep { if (read_all) {
                                       $$ = trg;
                                       int rc;
-                                      rc = yang_fill_include(module, submodule, $3, rev, unres);
+                                      rc = yang_fill_include(module, submodule, $3, actual, unres);
                                       if (!rc) {
                                         s = NULL;
                                         trg = $$;
-                                        config_inherit = ENABLE_INHERIT;
+                                        config_inherit = CONFIG_INHERIT_ENABLE;
                                       } else if (rc == -1) {
                                         YYABORT;
                                       }
@@ -474,18 +535,47 @@ include_stmt: INCLUDE_KEYWORD sep tmp_identifier_arg_str { if (read_all) {
 
 include_end: ';'
   | '{' stmtsep
-     revision_date_opt
+     include_opt_stmt
     '}'
 
-revision_date_opt: @EMPTYDIR@
-  | revision_date_stmt;
+include_opt_stmt: @EMPTYDIR@ { $$ = 0; }
+  |  include_opt_stmt description_stmt { if (read_all) {
+                                           if (trg->version != 2) {
+                                             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "description");
+                                           }
+                                           if (yang_read_description(trg, actual, s, "import")) {
+                                            YYABORT;
+                                           }
+                                         }
+                                         s = NULL;
+                                         $$ = $1;
+                                       }
+  |  include_opt_stmt reference_stmt { if (read_all) {
+                                         if (trg->version != 2) {
+                                           LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "reference");
+                                         }
+                                         if (yang_read_reference(trg, actual, s, "import")) {
+                                          YYABORT;
+                                         }
+                                       }
+                                       s = NULL;
+                                       $$ = $1;
+                                     }
+  |  include_opt_stmt revision_date_stmt { if (read_all) {
+                                             if ($1) {
+                                               LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "revision-date", "include");
+                                               YYABORT;
+                                             }
+                                           }
+                                           $$ = 1;
+                                         }
 
 revision_date_stmt: REVISION_DATE_KEYWORD sep date_arg_str
                     stmtend { if (read_all) {
                                  if (actual_type==IMPORT_KEYWORD) {
                                      memcpy(((struct lys_import *)actual)->rev, s, LY_REV_SIZE-1);
                                  } else {                              // INCLUDE KEYWORD
-                                     memcpy(rev, s, LY_REV_SIZE - 1);
+                                     memcpy(((struct lys_include *)actual)->rev, s, LY_REV_SIZE-1);
                                  }
                                  free(s);
                                  s = NULL;
@@ -504,7 +594,7 @@ belongs_to_stmt: BELONGS_TO_KEYWORD sep identifier_arg_str { if (read_all) {
                                                            }
                  '{' stmtsep
                      prefix_stmt { if (read_all) {
-                                     if (yang_read_prefix(trg, NULL, s, MODULE_KEYWORD)) {
+                                     if (yang_read_prefix(trg, NULL, s)) {
                                        YYABORT;
                                      }
                                      s = NULL;
@@ -625,8 +715,6 @@ body_stmts: @EMPTYDIR@ { if (read_all) {
                            LOGMEM;
                            YYABORT;
                          }
-                         /* module with deviation - must be implemented (description of /ietf-yang-library:modules-state/module/deviation) */
-                         module->implemented = 1;
                        }
                        actual = NULL;
                      }
@@ -642,8 +730,6 @@ body_stmt: extension_stmt
   | data_def_stmt
   | augment_stmt { if (!read_all) {
                      size_arrays->augment++;
-                   } else {
-                     config_inherit = ENABLE_INHERIT;
                    }
                  }
   | rpc_stmt
@@ -736,14 +822,14 @@ yin_element_arg_str: TRUE_KEYWORD optsep
 
 status_stmt:  STATUS_KEYWORD sep status_arg_str stmtend { $$ = $3; }
 
-status_read_stmt:  STATUS_KEYWORD sep { read_all = (read_all) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
-                   status_arg_str { read_all = (read_all) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
+status_read_stmt:  STATUS_KEYWORD sep { read_string = (read_string) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
+                   status_arg_str { read_string = (read_string) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
                    stmtend { $$ = $4; }
 
 status_arg_str: CURRENT_KEYWORD optsep { $$ = LYS_STATUS_CURR; }
   | OBSOLETE_KEYWORD optsep { $$ = LYS_STATUS_OBSLT; }
   | DEPRECATED_KEYWORD optsep { $$ = LYS_STATUS_DEPRC; }
-  | string_1 { if (read_all) {
+  | string_1 { if (read_string) {
                  if (!strcmp(s, "current")) {
                    $$ = LYS_STATUS_CURR;
                  } else if (!strcmp(s, "obsolete")) {
@@ -777,14 +863,16 @@ feature_end: ';'
 
 feature_opt_stmt: @EMPTYDIR@ { if (read_all) {
                              if (size_arrays->node[size_arrays->next].if_features) {
-                               ((struct lys_feature*)actual)->features = calloc(size_arrays->node[size_arrays->next].if_features,
-                                                                                sizeof *((struct lys_feature*)actual)->features);
-                               if (!((struct lys_feature*)actual)->features) {
+                               ((struct lys_feature*)actual)->iffeature = calloc(size_arrays->node[size_arrays->next].if_features,
+                                                                                sizeof *((struct lys_feature*)actual)->iffeature);
+                               if (!((struct lys_feature*)actual)->iffeature) {
                                  LOGMEM;
                                  YYABORT;
                                }
                              }
-                             store_flags((struct lys_node *)actual, size_arrays->node[size_arrays->next].flags, 0);
+                             if (store_flags((struct lys_node *)actual, size_arrays->node[size_arrays->next].flags, CONFIG_INHERIT_DISABLE)) {
+                                 YYABORT;
+                             }
                              size_arrays->next++;
                            } else {
                              $$ = size_arrays->size;
@@ -797,6 +885,12 @@ feature_opt_stmt: @EMPTYDIR@ { if (read_all) {
   |  feature_opt_stmt if_feature_stmt { if (read_all) {
                                           if (yang_read_if_feature(trg, actual, s, unres, FEATURE_KEYWORD)) {YYABORT;}
                                           s=NULL;
+                                          /* check for circular dependencies */
+                                          if (((struct lys_feature *)actual)->iffeature_size) {
+                                            if (unres_schema_add_node(module, unres, (struct lys_feature *)actual, UNRES_FEATURE, NULL) == -1) {
+                                                YYABORT;
+                                            }
+                                          }
                                         } else {
                                           size_arrays->node[$1].if_features++;
                                         }
@@ -818,7 +912,7 @@ feature_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                        s = NULL;
                                      }
 
-if_feature_stmt: IF_FEATURE_KEYWORD sep identifier_ref_arg_str stmtend;
+if_feature_stmt: IF_FEATURE_KEYWORD sep string stmtend;
 
 identity_stmt: IDENTITY_KEYWORD sep identifier_arg_str { if (read_all) {
                                                            if (!(actual = yang_read_identity(trg,s))) {YYABORT;}
@@ -831,64 +925,86 @@ identity_stmt: IDENTITY_KEYWORD sep identifier_arg_str { if (read_all) {
 
 identity_end: ';'
   |  '{' stmtsep
-         identity_opt_stmt { if (read_all && yang_read_base(trg, actual, $3, unres)) {
-                               YYABORT;
-                             }
-                           }
-      '}'
+         identity_opt_stmt
+     '}'
   ;
 
-identity_opt_stmt: @EMPTYDIR@ { $$ = NULL; }
+identity_opt_stmt: @EMPTYDIR@ { if (read_all) {
+                                  struct lys_ident *ident = actual;
+
+                                  if (size_arrays->node[size_arrays->next].base > 1 && (trg->version < 2)) {
+                                    LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "base", "identity");
+                                    YYABORT;
+                                  }
+
+                                  if ((trg->version < 2) && size_arrays->node[size_arrays->next].if_features) {
+                                    LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "if-feature", "identity");
+                                    YYABORT;
+                                  }
+
+                                  if (size_arrays->node[size_arrays->next].base) {
+                                    ident->base_size = 0;
+                                    ident->base = calloc(size_arrays->node[size_arrays->next].base, sizeof *ident->base);
+                                    if (!ident->base) {
+                                      LOGMEM;
+                                      YYABORT;
+                                    }
+                                  }
+
+                                  if (size_arrays->node[size_arrays->next].if_features) {
+                                      ident->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *ident->iffeature);
+                                      if (!ident->iffeature) {
+                                          LOGMEM;
+                                          YYABORT;
+                                      }
+                                  }
+
+                                  ident->flags |= size_arrays->node[size_arrays->next].flags;
+                                  size_arrays->next++;
+                                } else {
+                                  $$ = size_arrays->size;
+                                  if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                    LOGMEM;
+                                    YYABORT;
+                                  }
+                                }
+                              }
   |  identity_opt_stmt base_stmt { if (read_all) {
-                                     if ($1) {
-                                       LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "base", "identity");
-                                       free(s);
-                                       free($1);
+                                     if (yang_read_base(trg, actual, s, unres)) {
                                        YYABORT;
                                      }
-                                     $$ = s;
                                      s = NULL;
+                                   } else {
+                                     size_arrays->node[$1].base++;
                                    }
                                  }
-  |  identity_opt_stmt status_stmt { if (read_all) {
-                                       if (yang_check_flags((uint16_t*)&((struct lys_ident *)actual)->flags, LYS_STATUS_MASK, "status", "identity", $2, 1)) {
-                                         YYABORT;
+  |  identity_opt_stmt if_feature_stmt { if (read_all) {
+                                           if (yang_read_if_feature(trg, actual, s, unres, IDENTITY_KEYWORD)) {
+                                             YYABORT;
+                                           }
+                                           s=NULL;
+                                         } else {
+                                           size_arrays->node[$1].if_features++;
+                                         }
                                        }
-                                     }
-                                   }
+  |  identity_opt_stmt status_read_stmt { if (!read_all) {
+                                            if (yang_check_flags(&size_arrays->node[$1].flags, LYS_STATUS_MASK, "status", "identity", $2, 0)) {
+                                              YYABORT;
+                                            }
+                                          }
+                                        }
   |  identity_opt_stmt description_stmt { if (read_all && yang_read_description(trg, actual, s, "identity")) {
-                                            free($1);
                                             YYABORT;
                                           }
                                           s = NULL;
                                         }
   |  identity_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, actual, s, "identity")) {
-                                          free($1);
                                           YYABORT;
                                         }
                                         s = NULL;
                                       }
 
 base_stmt: BASE_KEYWORD sep identifier_ref_arg_str stmtend;
-
-typedef_stmt: TYPEDEF_KEYWORD sep typedef_arg_str
-              '{' stmtsep
-                  type_opt_stmt { if (read_all) {
-                                    if (!($6.node.flag & LYS_TYPE_DEF)) {
-                                      LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "type", "typedef");
-                                      YYABORT;
-                                    }
-                                    actual = tpdf_parent;
-
-                                    /* check default value */
-                                    if ($6.node.ptr_tpdf->dflt) {
-                                      if (unres_schema_add_str(trg, unres, &$6.node.ptr_tpdf->type, UNRES_TYPE_DFLT, $6.node.ptr_tpdf->dflt) == -1) {
-                                        YYABORT;
-                                      }
-                                    }
-                                  }
-                                }
-               '}' ;
 
 typedef_arg_str: identifier_arg_str { if (read_all) {
                                         tpdf_parent = actual;
@@ -897,34 +1013,43 @@ typedef_arg_str: identifier_arg_str { if (read_all) {
                                         }
                                         s = NULL;
                                         actual_type = TYPEDEF_KEYWORD;
+                                        $$.node.ptr_tpdf = actual;
                                       }
                                     }
 
-type_stmt: TYPE_KEYWORD sep identifier_ref_arg_str { if (read_all && !(actual = yang_read_type(trg, actual, s, actual_type))) {
-                                                       YYABORT;
-                                                     }
-                                                     s = NULL;
-                                                   }
-           type_end;
+typedef_stmt: TYPEDEF_KEYWORD sep typedef_arg_str
+              '{' stmtsep
+                  type_opt_stmt
+              '}' { if (read_all) {
+                      if (!($6.node.flag & LYS_TYPE_DEF)) {
+                        LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "type", "typedef");
+                        YYABORT;
+                      }
+                      if (unres_schema_add_node(trg, unres, &$6.node.ptr_tpdf->type, UNRES_TYPE_DER_TPDF, tpdf_parent) == -1) {
+                        lydict_remove(trg->ctx, ((struct yang_type *)$6.node.ptr_tpdf->type.der)->name);
+                        free($6.node.ptr_tpdf->type.der);
+                        $6.node.ptr_tpdf->type.der = NULL;
+                        YYABORT;
+                      }
+                      actual = tpdf_parent;
+
+                      /* check default value */
+                      if (unres_schema_add_str(trg, unres, &$6.node.ptr_tpdf->type, UNRES_TYPE_DFLT, $6.node.ptr_tpdf->dflt) == -1) {
+                        YYABORT;
+                      }
+                    }
+                  }
 
 type_opt_stmt: @EMPTYDIR@ { $$.node.ptr_tpdf = actual;
                         $$.node.flag = 0;
                       }
-  |  type_opt_stmt { if (read_all && ($1.node.flag & LYS_TYPE_DEF)) {
-                       LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, $1.node.ptr_tpdf, "type", "typedef");
-                       YYABORT;
-                     }
-                   }
-     type_stmt stmtsep { if (read_all) {
-                   actual = $1.node.ptr_tpdf;
-                   actual_type = TYPEDEF_KEYWORD;
-                   $1.node.flag |= LYS_TYPE_DEF;
-                   $$ = $1;
-                   if (unres_schema_add_node(trg, unres, &$1.node.ptr_tpdf->type, UNRES_TYPE_DER_TPDF, tpdf_parent)) {
-                     YYABORT;
-                   }
-                 }
-               }
+  |  type_opt_stmt type_stmt stmtsep { if (read_all) {
+                                         actual = $1.node.ptr_tpdf;
+                                         actual_type = TYPEDEF_KEYWORD;
+                                         $1.node.flag |= LYS_TYPE_DEF;
+                                         $$ = $1;
+                                       }
+                                     }
   |  type_opt_stmt units_stmt { if (read_all && yang_read_units(trg, $1.node.ptr_tpdf, s, TYPEDEF_KEYWORD)) {YYABORT;} s = NULL; }
   |  type_opt_stmt default_stmt { if (read_all && yang_read_default(trg, $1.node.ptr_tpdf, s, TYPEDEF_KEYWORD)) {
                                     YYABORT;
@@ -949,89 +1074,96 @@ type_opt_stmt: @EMPTYDIR@ { $$.node.ptr_tpdf = actual;
                                     s = NULL;
                                   }
 
+
+type_stmt: TYPE_KEYWORD sep type_arg_str type_end
+
+type_arg_str: identifier_ref_arg_str { if (read_all) {
+                                         if(!(actual = yang_read_type(trg, actual, s, actual_type))) {
+                                           YYABORT;
+                                         }
+                                         s = NULL;
+                                       }
+                                     }
+
 type_end: ';'
-  |  '{' type_stmtsep
+  |  '{' stmtsep
          type_body_stmts
       '}'
   ;
 
-/* store pointer to the structure of yang_type */
-type_stmtsep: stmtsep { if (read_all) {
-                          $$ = actual;
-                        } else {
-                          $$ = NULL;
-                        }
-                      }
-
-type_body_stmts: decimal_string_restrictions
+type_body_stmts: some_restrictions
   | enum_specification
-  | path_stmt  { /*leafref_specification */
-                 if (read_all) {
-                   ((struct yang_type *)actual)->base = LY_TYPE_LEAFREF;
-                   ((struct yang_type *)actual)->type->info.lref.path = lydict_insert_zc(trg->ctx, s);
-                   s = NULL;
-                 }
-               }
-  | base_stmt  { /*identityref_specification */
-                 if (read_all) {
-                   ((struct yang_type *)actual)->flags |= LYS_TYPE_BASE;
-                   ((struct yang_type *)actual)->base = LY_TYPE_LEAFREF;
-                   ((struct yang_type *)actual)->type->info.lref.path = lydict_insert_zc(trg->ctx, s);
-                   s = NULL;
-                 }
-               }
-  | require_instance_stmt  { /*instance_identifier_specification */
-                             if (read_all) {
-                               ((struct yang_type *)actual)->base = LY_TYPE_INST;
-                             }
-                           }
   | bits_specification
   ;
 
-
-decimal_string_restrictions: @EMPTYDIR@  { if (read_all) {
-                                         if (size_arrays->node[size_arrays->next].uni && size_arrays->node[size_arrays->next].pattern) {
-                                           LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", ((struct yang_type *)actual)->type->parent->name);
-                                           YYABORT;
-                                         }
-                                         if (size_arrays->node[size_arrays->next].pattern) {
-                                           ((struct yang_type *)actual)->type->info.str.patterns = calloc(size_arrays->node[size_arrays->next].pattern, sizeof(struct lys_restr));
-                                           if (!((struct yang_type *)actual)->type->info.str.patterns) {
-                                             LOGMEM;
-                                             YYABORT;
-                                           }
-                                           ((struct yang_type *)actual)->base = LY_TYPE_STRING;
-                                         }
-                                         if (size_arrays->node[size_arrays->next].uni) {
-                                           ((struct yang_type *)actual)->type->info.uni.types = calloc(size_arrays->node[size_arrays->next].uni, sizeof(struct lys_type));
-                                           if (!((struct yang_type *)actual)->type->info.uni.types) {
-                                             LOGMEM;
-                                             YYABORT;
-                                           }
-                                           ((struct yang_type *)actual)->base = LY_TYPE_UNION;
-                                         }
-                                         size_arrays->next++;
-                                       } else {
-                                         if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                           LOGMEM;
-                                           YYABORT;
-                                         }
-                                         $$ = size_arrays->size-1;
-                                       }
+some_restrictions: @EMPTYDIR@  { if (read_all) {
+                                   if (size_arrays->node[size_arrays->next].uni && size_arrays->node[size_arrays->next].pattern) {
+                                     LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", ((struct yang_type *)actual)->type->parent->name);
+                                     YYABORT;
+                                   }
+                                   if (size_arrays->node[size_arrays->next].pattern) {
+                                     ((struct yang_type *)actual)->type->info.str.patterns = calloc(size_arrays->node[size_arrays->next].pattern, sizeof(struct lys_restr));
+                                     if (!((struct yang_type *)actual)->type->info.str.patterns) {
+                                       LOGMEM;
+                                       YYABORT;
                                      }
-  |  decimal_string_restrictions length_stmt
-  |  decimal_string_restrictions pattern_stmt { if (!read_all) {
-                                                  size_arrays->node[$1].pattern++; /* count of pattern*/
-                                                }
-                                              }
-  |  decimal_string_restrictions fraction_digits_stmt
-  |  decimal_string_restrictions range_stmt stmtsep
-  |  decimal_string_restrictions union_spec type_stmt stmtsep { if (read_all) {
-                                                                  actual = $2;
-                                                                } else {
-                                                                  size_arrays->node[$1].uni++; /* count of union*/
-                                                                }
-                                                              }
+                                     ((struct yang_type *)actual)->base = LY_TYPE_STRING;
+                                   }
+                                   if (size_arrays->node[size_arrays->next].uni) {
+                                     if (strcmp(((struct yang_type *)actual)->name, "union")) {
+                                       /* type can be a substatement only in "union" type, not in derived types */
+                                       LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "type", "derived type");
+                                       YYABORT;
+                                     }
+                                     ((struct yang_type *)actual)->type->info.uni.types = calloc(size_arrays->node[size_arrays->next].uni, sizeof(struct lys_type));
+                                     if (!((struct yang_type *)actual)->type->info.uni.types) {
+                                       LOGMEM;
+                                       YYABORT;
+                                     }
+                                     ((struct yang_type *)actual)->base = LY_TYPE_UNION;
+                                   }
+                                   size_arrays->next++;
+                                 } else {
+                                   if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                     LOGMEM;
+                                     YYABORT;
+                                   }
+                                   $$ = size_arrays->size-1;
+                                 }
+                               }
+  |  some_restrictions require_instance_stmt { if (read_all && yang_read_require_instance(actual, $2)) {
+                                                 YYABORT;
+                                               }
+                                             }
+  |  some_restrictions path_stmt { if (read_all) {
+                                     /* leafref_specification */
+                                     if (yang_read_leafref_path(trg, actual, s)) {
+                                       YYABORT;
+                                     }
+                                     s = NULL;
+                                   }
+                                 }
+  |  some_restrictions base_stmt { if (read_all) {
+                                     /* identityref_specification */
+                                     if (yang_read_identyref(trg, actual, s , unres)) {
+                                       YYABORT;
+                                     }
+                                     s = NULL;
+                                   }
+                                 }
+  |  some_restrictions length_stmt
+  |  some_restrictions pattern_stmt { if (!read_all) {
+                                        size_arrays->node[$1].pattern++; /* count of pattern*/
+                                      }
+                                    }
+  |  some_restrictions fraction_digits_stmt
+  |  some_restrictions range_stmt stmtsep
+  |  some_restrictions union_spec type_stmt stmtsep { if (read_all) {
+                                                        actual = $2;
+                                                      } else {
+                                                        size_arrays->node[$1].uni++; /* count of union*/
+                                                      }
+                                                    }
   ;
 
   union_spec: @EMPTYDIR@ { if (read_all) {
@@ -1057,9 +1189,10 @@ fraction_digits_arg_str: positive_integer_value optsep { $$ = $1; }
   | string_1 { if (read_all) {
                  char *endptr = NULL;
                  unsigned long val;
+                 errno = 0;
 
                  val = strtoul(s, &endptr, 10);
-                 if (*endptr || s[0] == '-' || val == 0 || val > UINT32_MAX) {
+                 if (*endptr || s[0] == '-' || errno || val == 0 || val > UINT32_MAX) {
                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "fraction-digits");
                    free(s);
                    s = NULL;
@@ -1099,9 +1232,6 @@ message_opt_stmt: @EMPTYDIR@ { switch (actual_type) {
                            case LENGTH_KEYWORD:
                              $$ = "length";
                              break;
-                           case PATTERN_KEYWORD:
-                             $$ = "pattern";
-                             break;
                            case RANGE_KEYWORD:
                              $$ = "range";
                              break;
@@ -1128,25 +1258,79 @@ message_opt_stmt: @EMPTYDIR@ { switch (actual_type) {
                                        s = NULL;
                                      }
 
-pattern_stmt: PATTERN_KEYWORD sep pattern_arg_str pattern_end stmtsep { actual = $3;
-                                                                        actual_type = TYPE_KEYWORD;
+pattern_stmt: PATTERN_KEYWORD sep pattern_arg_str pattern_end stmtsep { if (read_all) {
+                                                                          if (yang_read_pattern(trg, actual, $3, $4)) {
+                                                                            YYABORT;
+                                                                          }
+                                                                          actual = yang_type;
+                                                                          actual_type = TYPE_KEYWORD;
+                                                                        }
                                                                       }
 
 pattern_arg_str: string { if (read_all) {
-                            $$ = actual;
-                            if (!(actual = yang_read_pattern(trg, actual, s))) {
-                              YYABORT;
-                            }
-                            actual_type = PATTERN_KEYWORD;
+                            struct yang_type *tmp = (struct yang_type *)actual;
+
+                            yang_type = actual;
+                            actual = &tmp->type->info.str.patterns[tmp->type->info.str.pat_count];
+                            tmp->type->info.str.pat_count++;
+                            $$ = s;
                             s = NULL;
+                          } else {
+                            $$ = NULL;
                           }
                         }
 
-pattern_end: ';'
+pattern_end: ';' { $$ = 0x06; }
   |  '{' stmtsep
-         message_opt_stmt
-     '}'
-  ;
+         pattern_opt_stmt
+     '}' { $$ = $3; }
+
+pattern_opt_stmt: @EMPTYDIR@ { $$ = 0x06; /* ACK */ }
+  |  pattern_opt_stmt modifier_stmt { if (read_all) {
+                                        if (trg->version < 2) {
+                                          LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "modifier");
+                                          YYABORT;
+                                        }
+                                        if ($1 != 0x06) {
+                                          LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "modifier", "pattern");
+                                          YYABORT;
+                                        }
+                                        $$ = $2;
+                                      }
+                                    }
+  |  pattern_opt_stmt error_message_stmt { if (read_all && yang_read_message(trg, actual, s, "pattern", ERROR_MESSAGE_KEYWORD)) {
+                                             YYABORT;
+                                           }
+                                           s = NULL;
+                                         }
+  |  pattern_opt_stmt error_app_tag_stmt { if (read_all && yang_read_message(trg, actual, s, "pattern", ERROR_APP_TAG_KEYWORD)) {
+                                             YYABORT;
+                                           }
+                                           s = NULL;
+                                         }
+  |  pattern_opt_stmt description_stmt { if (read_all && yang_read_description(trg, actual, s, "pattern")) {
+                                           YYABORT;
+                                          }
+                                          s = NULL;
+                                        }
+  |  pattern_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, actual, s, "pattern")) {
+                                         YYABORT;
+                                       }
+                                       s = NULL;
+                                     }
+
+modifier_stmt: MODIFIER_KEYWORD sep string stmtend { if (read_all) {
+                                                       if (!strcmp(s, "invert-match")) {
+                                                         $$ = 0x15;
+                                                         free(s);
+                                                         s = NULL;
+                                                       } else {
+                                                         LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, s);
+                                                         free(s);
+                                                         YYABORT;
+                                                       }
+                                                     }
+                                                   }
 
 enum_specification: { if (read_all) {
                         if (size_arrays->node[size_arrays->next].enm) {
@@ -1159,6 +1343,7 @@ enum_specification: { if (read_all) {
                         ((struct yang_type *)actual)->base = LY_TYPE_ENUM;
                         cnt_val = 0;
                       } else {
+                        cnt_val = size_arrays->size; /* hack store index of node array */
                         if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
                           LOGMEM;
                           YYABORT;
@@ -1172,18 +1357,18 @@ enum_stmts: @EMPTYDIR@
 
 enum_stmt: ENUM_KEYWORD sep enum_arg_str enum_end
            { if (read_all) {
-               if (yang_check_enum($3, actual, &cnt_val, actual_type)) {
+               if (yang_check_enum(yang_type, actual, &cnt_val, actual_type)) {
                  YYABORT;
                }
-               actual = $3;
+               actual = yang_type;
                actual_type = TYPE_KEYWORD;
              } else {
-               size_arrays->node[size_arrays->size-1].enm++; /* count of enum*/
+               size_arrays->node[cnt_val].enm++; /* count of enum*/
              }
            }
 
 enum_arg_str: string { if (read_all) {
-                         $$ = actual;
+                         yang_type = actual;
                          if (!(actual = yang_read_enum(trg, actual, s))) {
                            YYABORT;
                          }
@@ -1198,7 +1383,39 @@ enum_end: ';'
      '}'
   ;
 
-enum_opt_stmt: @EMPTYDIR@
+enum_opt_stmt: @EMPTYDIR@ { if (read_all) {
+                              if ((trg->version < 2) && size_arrays->node[size_arrays->next].if_features) {
+                                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "if-feature", "enum");
+                                YYABORT;
+                              }
+
+                              if (size_arrays->node[size_arrays->next].if_features) {
+                                ((struct lys_type_enum *)actual)->iffeature = calloc(size_arrays->node[size_arrays->next].if_features,
+                                                                                     sizeof *((struct lys_type_enum *)actual)->iffeature);
+                                if (!((struct lys_type_enum *)actual)->iffeature) {
+                                  LOGMEM;
+                                  YYABORT;
+                                }
+                              }
+
+                              size_arrays->next++;
+                            } else {
+                              $$ = size_arrays->size;
+                              if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                LOGMEM;
+                                YYABORT;
+                              }
+                            }
+                          }
+  |  enum_opt_stmt if_feature_stmt { if (read_all) {
+                                       if (yang_read_if_feature(trg, yang_type, s, unres, ENUM_KEYWORD)) {
+                                         YYABORT;
+                                       }
+                                       s = NULL;
+                                     } else {
+                                       size_arrays->node[$1].if_features++;
+                                     }
+                                   }
   |  enum_opt_stmt value_stmt { /* actual_type - it is used to check value of enum statement*/
                                 if (read_all) {
                                   if (actual_type) {
@@ -1230,10 +1447,10 @@ value_stmt: VALUE_KEYWORD sep integer_value_arg_str
                         ((struct lys_type_enum *)actual)->value = $3;
 
                         /* keep the highest enum value for automatic increment */
-                        if ($3 > cnt_val) {
+                        if ($3 >= cnt_val) {
                           cnt_val = $3;
+                          cnt_val++;
                         }
-                        cnt_val++;
                       }
                     }
 
@@ -1269,27 +1486,22 @@ range_end: ';'
 
 path_stmt: PATH_KEYWORD sep path_arg_str stmtend;
 
-require_instance_stmt: REQUIRE_INSTANCE_KEYWORD sep require_instance_arg_str stmtend;
+require_instance_stmt: REQUIRE_INSTANCE_KEYWORD sep require_instance_arg_str stmtend { $$ = $3; }
 
-require_instance_arg_str: TRUE_KEYWORD optsep { if (read_all) {
-                                                  ((struct yang_type *)actual)->type->info.inst.req = 1;
-                                                }
-                                              }
-  |  FALSE_KEYWORD optsep { if (read_all) {
-                              ((struct yang_type *)actual)->type->info.inst.req = -1;
-                            }
-                          }
+require_instance_arg_str: TRUE_KEYWORD optsep { $$ = 1; }
+  |  FALSE_KEYWORD optsep { $$ = -1; }
   |  string_1 { if (read_all) {
                   if (!strcmp(s,"true")) {
-                    ((struct yang_type *)actual)->type->info.inst.req = 1;
+                    $$ = 1;
                   } else if (!strcmp(s,"false")) {
-                    ((struct yang_type *)actual)->type->info.inst.req = -1;
+                    $$ = -1;
                   } else {
                     LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "require-instance");
                     free(s);
                     YYABORT;
                   }
                   free(s);
+                  s = NULL;
                 }
               }
   ;
@@ -1305,6 +1517,7 @@ bits_specification: { if (read_all) {
                         ((struct yang_type *)actual)->base = LY_TYPE_BITS;
                         cnt_val = 0;
                       } else {
+                        cnt_val = size_arrays->size; /* hack store index of node array */
                         if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
                           LOGMEM;
                           YYABORT;
@@ -1317,17 +1530,17 @@ bit_stmts: @EMPTYDIR@
 
 bit_stmt: BIT_KEYWORD sep bit_arg_str bit_end
           stmtsep { if (read_all) {
-                      if (yang_check_bit($3, actual, &cnt_val, actual_type)) {
+                      if (yang_check_bit(yang_type, actual, &cnt_val, actual_type)) {
                         YYABORT;
                       }
-                      actual = $3;
+                      actual = yang_type;
                     } else {
-                      size_arrays->node[size_arrays->size-1].bit++; /* count of bit*/
+                      size_arrays->node[cnt_val].bit++; /* count of bit*/
                     }
                   }
 
 bit_arg_str: identifier_arg_str { if (read_all) {
-                                    $$ = actual;
+                                    yang_type = actual;
                                     if (!(actual = yang_read_bit(trg, actual, s))) {
                                       YYABORT;
                                     }
@@ -1342,7 +1555,39 @@ bit_end: ';'
      '}'
   ;
 
-bit_opt_stmt: @EMPTYDIR@
+bit_opt_stmt: @EMPTYDIR@ { if (read_all) {
+                              if ((trg->version < 2) && size_arrays->node[size_arrays->next].if_features) {
+                                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "if-feature", "bit");
+                                YYABORT;
+                              }
+
+                              if (size_arrays->node[size_arrays->next].if_features) {
+                                ((struct lys_type_bit *)actual)->iffeature = calloc(size_arrays->node[size_arrays->next].if_features,
+                                                                                     sizeof *((struct lys_type_bit *)actual)->iffeature);
+                                if (!((struct lys_type_bit *)actual)->iffeature) {
+                                  LOGMEM;
+                                  YYABORT;
+                                }
+                              }
+
+                              size_arrays->next++;
+                            } else {
+                              $$ = size_arrays->size;
+                              if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                LOGMEM;
+                                YYABORT;
+                              }
+                            }
+                          }
+  |  bit_opt_stmt if_feature_stmt { if (read_all) {
+                                      if (yang_read_if_feature(trg, yang_type, s, unres, BIT_KEYWORD)) {
+                                        YYABORT;
+                                      }
+                                      s = NULL;
+                                    } else {
+                                      size_arrays->node[$1].if_features++;
+                                    }
+                                  }
   |  bit_opt_stmt position_stmt { /* actual_type - it is used to check position of bit statement*/
                                   if (read_all) {
                                     if (actual_type) {
@@ -1374,10 +1619,10 @@ position_stmt: POSITION_KEYWORD sep position_value_arg_str
                            ((struct lys_type_bit *)actual)->pos = $3;
 
                            /* keep the highest position value for automatic increment */
-                           if ($3 > cnt_val) {
+                           if ($3 >= cnt_val) {
                              cnt_val = $3;
+                             cnt_val++;
                            }
-                           cnt_val++;
                          }
                        }
 
@@ -1385,10 +1630,11 @@ position_value_arg_str: non_negative_integer_value optsep { $$ = $1; }
   |  string_1 { if (read_all) {
                   /* convert it to uint32_t */
                   unsigned long val;
-                  char *endptr;
+                  char *endptr = NULL;
+                  errno = 0;
 
                   val = strtoul(s, &endptr, 10);
-                  if (val > UINT32_MAX || s[0] == '-' || *endptr) {
+                  if (s[0] == '-' || *endptr || errno || val > UINT32_MAX) {
                       LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "position");
                       free(s);
                       YYABORT;
@@ -1414,7 +1660,12 @@ grouping_stmt: GROUPING_KEYWORD sep identifier_arg_str { if (read_all) {
                                                        }
                grouping_end;
 
-grouping_end: ';'
+grouping_end: ';' { if (read_all) {
+                      if (store_flags((struct lys_node *)actual, 0, config_inherit)) {
+                        YYABORT;
+                      }
+                    }
+                  }
   |  '{' stmtsep
          grouping_opt_stmt
      '}'
@@ -1430,7 +1681,9 @@ grouping_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                    YYABORT;
                                  }
                                }
-                               store_flags((struct lys_node *)$$.grouping, size_arrays->node[size_arrays->next].flags, 0);
+                               if (store_flags((struct lys_node *)$$.grouping, size_arrays->node[size_arrays->next].flags, config_inherit)) {
+                                   YYABORT;
+                               }
                                size_arrays->next++;
                              } else {
                                $$.index = size_arrays->size;
@@ -1465,6 +1718,16 @@ grouping_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                               }
                                             }
   |  grouping_opt_stmt data_def_stmt stmtsep { actual = $1.grouping; actual_type = GROUPING_KEYWORD; }
+  |  grouping_opt_stmt action_stmt stmtsep { actual = $1.grouping; actual_type = GROUPING_KEYWORD; }
+  |  grouping_opt_stmt notification_stmt stmtsep { if (read_all) {
+                                                     actual = $1.grouping;
+                                                     actual_type = GROUPING_KEYWORD;
+                                                     if (trg->version < 2) {
+                                                       LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "notification");
+                                                       YYABORT;
+                                                     }
+                                                   }
+                                                 }
   ;
 
 data_def_stmt: container_stmt
@@ -1473,6 +1736,7 @@ data_def_stmt: container_stmt
   |  list_stmt
   |  choice_stmt
   |  anyxml_stmt
+  |  anydata_stmt
   |  uses_stmt
   ;
 
@@ -1484,18 +1748,28 @@ container_stmt: CONTAINER_KEYWORD sep identifier_arg_str { if (read_all) {
                                                          }
                 container_end ;
 
-container_end: ';'
+container_end: ';' { if (read_all) {
+                       if (store_flags((struct lys_node *)actual, 0, config_inherit)) {
+                         YYABORT;
+                       }
+                     }
+                   }
   |  '{' stmtsep
          container_opt_stmt
-      '}'
-  ;
+      '}' { if (read_all) {
+              /* check XPath dependencies */
+              if (($3.container->when || $3.container->must_size) && (unres_schema_add_node(trg, unres, $3.container, UNRES_XPATH, NULL) == -1)) {
+                YYABORT;
+              }
+            }
+          }
 
 container_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                $$.container = actual;
                                actual_type = CONTAINER_KEYWORD;
                                if (size_arrays->node[size_arrays->next].if_features) {
-                                 $$.container->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.container->features);
-                                 if (!$$.container->features) {
+                                 $$.container->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.container->iffeature);
+                                 if (!$$.container->iffeature) {
                                    LOGMEM;
                                    YYABORT;
                                  }
@@ -1514,7 +1788,9 @@ container_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                    YYABORT;
                                  }
                                }
-                               store_flags((struct lys_node *)$$.container, size_arrays->node[size_arrays->next].flags, config_inherit);
+                               if (store_flags((struct lys_node *)$$.container, size_arrays->node[size_arrays->next].flags, config_inherit)) {
+                                   YYABORT;
+                               }
                                size_arrays->next++;
                              } else {
                                $$.index = size_arrays->size;
@@ -1569,6 +1845,22 @@ container_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                         data_node = actual;
                                       }
      stmtsep
+  |  container_opt_stmt action_stmt { actual = $1.container;
+                                      actual_type = CONTAINER_KEYWORD;
+                                      data_node = actual;
+                                    }
+     stmtsep
+  |  container_opt_stmt notification_stmt { if (read_all) {
+                                              actual = $1.container;
+                                              actual_type = CONTAINER_KEYWORD;
+                                              data_node = actual;
+                                              if (trg->version < 2) {
+                                                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "notification");
+                                                YYABORT;
+                                              }
+                                            }
+                                          }
+     stmtsep
   |  container_opt_stmt typedef_stmt { if (read_all) {
                                                  actual = $1.container;
                                                  actual_type = CONTAINER_KEYWORD;
@@ -1584,40 +1876,52 @@ container_opt_stmt: @EMPTYDIR@ { if (read_all) {
      stmtsep
   ;
 
-leaf_stmt: LEAF_KEYWORD sep identifier_arg_str { if (read_all) {
-                                                   if (!(actual = yang_read_node(trg,actual,s,LYS_LEAF,sizeof(struct lys_node_leaf)))) {YYABORT;}
-                                                   data_node = actual;
-                                                   s=NULL;
-                                                 }
-                                               }
+leaf_stmt: LEAF_KEYWORD sep leaf_arg_str
            '{' stmtsep
-               leaf_opt_stmt  { if (read_all) {
-                                  if (!($7.node.flag & LYS_TYPE_DEF)) {
-                                    LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, $7.node.ptr_leaf, "type", "leaf");
-                                    YYABORT;
-                                  }
-                                  if ($7.node.ptr_leaf->dflt) {
-                                    if ($7.node.ptr_leaf->flags & LYS_MAND_TRUE) {
-                                      /* RFC 6020, 7.6.4 - default statement must not with mandatory true */
-                                      LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, $7.node.ptr_leaf, "mandatory", "leaf");
-                                      LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The \"mandatory\" statement is forbidden on leaf with \"default\".");
-                                      YYABORT;
-                                    }
-                                    if (unres_schema_add_str(trg, unres, &$7.node.ptr_leaf->type, UNRES_TYPE_DFLT, $7.node.ptr_leaf->dflt) == -1) {
-                                      YYABORT;
-                                    }
-                                  }
-                                }
-                              }
-             '}' ;
+               leaf_opt_stmt
+            '}' { if (read_all) {
+                    if (!($6.node.flag & LYS_TYPE_DEF)) {
+                      LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, $6.node.ptr_leaf, "type", "leaf");
+                      YYABORT;
+                    }
+                    if (unres_schema_add_node(trg, unres, &$6.node.ptr_leaf->type, UNRES_TYPE_DER,(struct lys_node *)$6.node.ptr_leaf) == -1) {
+                      lydict_remove(trg->ctx, ((struct yang_type *)$6.node.ptr_leaf->type.der)->name);
+                      free($6.node.ptr_leaf->type.der);
+                      $6.node.ptr_leaf->type.der = NULL;
+                      YYABORT;
+                    }
+                    if ($6.node.ptr_leaf->dflt && ($6.node.ptr_leaf->flags & LYS_MAND_TRUE)) {
+                      /* RFC 6020, 7.6.4 - default statement must not with mandatory true */
+                      LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, $6.node.ptr_leaf, "mandatory", "leaf");
+                      LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The \"mandatory\" statement is forbidden on leaf with \"default\".");
+                      YYABORT;
+                    }
+                    if (unres_schema_add_str(trg, unres, &$6.node.ptr_leaf->type, UNRES_TYPE_DFLT, $6.node.ptr_leaf->dflt) == -1) {
+                      YYABORT;
+                    }
+                    /* check XPath dependencies */
+                    if (($6.node.ptr_leaf->when || $6.node.ptr_leaf->must_size) &&
+                        (unres_schema_add_node(trg, unres, $6.node.ptr_leaf, UNRES_XPATH, NULL) == -1)) {
+                      YYABORT;
+                    }
+                  }
+                }
+
+leaf_arg_str: identifier_arg_str { if (read_all) {
+                                     if (!(actual = yang_read_node(trg,actual,s,LYS_LEAF,sizeof(struct lys_node_leaf)))) {YYABORT;}
+                                     data_node = actual;
+                                     s=NULL;
+                                     $$.node.ptr_leaf = actual;
+                                   }
+                                 }
 
   leaf_opt_stmt: @EMPTYDIR@ { if (read_all) {
                             $$.node.ptr_leaf = actual;
                             $$.node.flag = 0;
                             actual_type = LEAF_KEYWORD;
                             if (size_arrays->node[size_arrays->next].if_features) {
-                              $$.node.ptr_leaf->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.node.ptr_leaf->features);
-                              if (!$$.node.ptr_leaf->features) {
+                              $$.node.ptr_leaf->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.node.ptr_leaf->iffeature);
+                              if (!$$.node.ptr_leaf->iffeature) {
                                 LOGMEM;
                                 YYABORT;
                               }
@@ -1629,7 +1933,9 @@ leaf_stmt: LEAF_KEYWORD sep identifier_arg_str { if (read_all) {
                                 YYABORT;
                               }
                             }
-                            store_flags((struct lys_node *)$$.node.ptr_leaf, size_arrays->node[size_arrays->next].flags, config_inherit);
+                            if (store_flags((struct lys_node *)$$.node.ptr_leaf, size_arrays->node[size_arrays->next].flags, config_inherit)) {
+                                YYABORT;
+                            }
                             size_arrays->next++;
                           } else {
                             $$.index = size_arrays->size;
@@ -1648,20 +1954,12 @@ leaf_stmt: LEAF_KEYWORD sep identifier_arg_str { if (read_all) {
                                          size_arrays->node[$1.index].if_features++;
                                        }
                                      }
-    |  leaf_opt_stmt { if (read_all && ($1.node.flag & LYS_TYPE_DEF)) {
-                         LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_leaf, "type", "leaf");
-                         YYABORT;
-                       }
-                     }
-       type_stmt { if (read_all) {
-                     actual = $1.node.ptr_leaf;
-                     actual_type = LEAF_KEYWORD;
-                     $1.node.flag |= LYS_TYPE_DEF;
-                     if (unres_schema_add_node(trg, unres, &$1.node.ptr_leaf->type, UNRES_TYPE_DER,(struct lys_node *)$1.node.ptr_leaf)) {
-                       YYABORT;
-                     }
-                   }
-                 }
+    |  leaf_opt_stmt type_stmt { if (read_all) {
+                                   actual = $1.node.ptr_leaf;
+                                   actual_type = LEAF_KEYWORD;
+                                   $1.node.flag |= LYS_TYPE_DEF;
+                                 }
+                               }
        stmtsep { $$ = $1;}
     |  leaf_opt_stmt units_stmt { if (read_all && yang_read_units(trg, $1.node.ptr_leaf, s, LEAF_KEYWORD)) {YYABORT;} s = NULL; }
     |  leaf_opt_stmt must_stmt { if (read_all) {
@@ -1703,36 +2001,67 @@ leaf_stmt: LEAF_KEYWORD sep identifier_arg_str { if (read_all) {
                                       }
                                       s = NULL;
                                     }
+leaf_list_arg_str: identifier_arg_str { if (read_all) {
+                                          if (!(actual = yang_read_node(trg,actual,s,LYS_LEAFLIST,sizeof(struct lys_node_leaflist)))) {
+                                            YYABORT;
+                                          }
+                                          data_node = actual;
+                                          s=NULL;
+                                          $$.node.ptr_leaflist = actual;
+                                        }
+                                      }
 
-  leaf_list_stmt: LEAF_LIST_KEYWORD sep identifier_arg_str { if (read_all) {
-                                                               if (!(actual = yang_read_node(trg,actual,s,LYS_LEAFLIST,sizeof(struct lys_node_leaflist)))) {YYABORT;}
-                                                               data_node = actual;
-                                                               s=NULL;
-                                                             }
-                                                           }
+  leaf_list_stmt: LEAF_LIST_KEYWORD sep leaf_list_arg_str
                   '{' stmtsep
-                      leaf_list_opt_stmt { if (read_all) {
-                                             if ($7.node.ptr_leaflist->flags & LYS_CONFIG_R) {
-                                               /* RFC 6020, 7.7.5 - ignore ordering when the list represents state data
-                                                * ignore oredering MASK - 0x7F
-                                                */
-                                             $7.node.ptr_leaflist->flags &= 0x7F;
-                                           }
-                                           if (!($7.node.flag & LYS_TYPE_DEF)) {
-                                             LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, $7.node.ptr_leaflist, "type", "leaf-list");
-                                             YYABORT;
-                                           }
-                                         }
-                                       }
-                '}' ;
+                      leaf_list_opt_stmt
+                  '}' { if (read_all) {
+                          int i;
+
+                          if ($6.node.ptr_leaflist->flags & LYS_CONFIG_R) {
+                            /* RFC 6020, 7.7.5 - ignore ordering when the list represents state data
+                             * ignore oredering MASK - 0x7F
+                             */
+                            $6.node.ptr_leaflist->flags &= 0x7F;
+                          }
+                          if (!($6.node.flag & LYS_TYPE_DEF)) {
+                            LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, $6.node.ptr_leaflist, "type", "leaf-list");
+                            YYABORT;
+                          }
+                          if (unres_schema_add_node(trg, unres, &$6.node.ptr_leaflist->type, UNRES_TYPE_DER, (struct lys_node *)$6.node.ptr_leaflist) == -1) {
+                            lydict_remove(trg->ctx, ((struct yang_type *)$6.node.ptr_leaflist->type.der)->name);
+                            free($6.node.ptr_leaflist->type.der);
+                            $6.node.ptr_leaflist->type.der = NULL;
+                            YYABORT;
+                          }
+                          if ($6.node.ptr_leaflist->dflt_size && $6.node.ptr_leaflist->min) {
+                            LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "min-elements", "leaf-list");
+                            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
+                                   "The \"min-elements\" statement with non-zero value is forbidden on leaf-lists with the \"default\" statement.");
+                            YYABORT;
+                          }
+
+                          /* check default value (if not defined, there still could be some restrictions
+                           * that need to be checked against a default value from a derived type) */
+                          for (i = 0; i < $6.node.ptr_leaflist->dflt_size; i++) {
+                            if (unres_schema_add_str(module, unres, &$6.node.ptr_leaflist->type, UNRES_TYPE_DFLT, $6.node.ptr_leaflist->dflt[i]) == -1) {
+                              YYABORT;
+                            }
+                          }
+                          /* check XPath dependencies */
+                          if (($6.node.ptr_leaflist->when || $6.node.ptr_leaflist->must_size) &&
+                              (unres_schema_add_node(trg, unres, $6.node.ptr_leaflist, UNRES_XPATH, NULL) == -1)) {
+                            YYABORT;
+                          }
+                        }
+                      }
 
 leaf_list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                $$.node.ptr_leaflist = actual;
                                $$.node.flag = 0;
                                actual_type = LEAF_LIST_KEYWORD;
                                if (size_arrays->node[size_arrays->next].if_features) {
-                                 $$.node.ptr_leaflist->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.node.ptr_leaflist->features);
-                                 if (!$$.node.ptr_leaflist->features) {
+                                 $$.node.ptr_leaflist->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.node.ptr_leaflist->iffeature);
+                                 if (!$$.node.ptr_leaflist->iffeature) {
                                    LOGMEM;
                                    YYABORT;
                                  }
@@ -1744,7 +2073,20 @@ leaf_list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                    YYABORT;
                                  }
                                }
-                               store_flags((struct lys_node *)$$.node.ptr_leaflist, size_arrays->node[size_arrays->next].flags, config_inherit);
+                               if (size_arrays->node[size_arrays->next].dflt) {
+                                 if (trg->version < 2) {
+                                   LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "default");
+                                   YYABORT;
+                                 }
+                                 $$.node.ptr_leaflist->dflt = calloc(size_arrays->node[size_arrays->next].dflt, sizeof *$$.node.ptr_leaflist->dflt);
+                                 if (!$$.node.ptr_leaflist->dflt) {
+                                   LOGMEM;
+                                   YYABORT;
+                                 }
+                               }
+                               if (store_flags((struct lys_node *)$$.node.ptr_leaflist, size_arrays->node[size_arrays->next].flags, config_inherit)) {
+                                   YYABORT;
+                               }
                                size_arrays->next++;
                              } else {
                                $$.index = size_arrays->size;
@@ -1763,21 +2105,33 @@ leaf_list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                             size_arrays->node[$1.index].if_features++;
                                           }
                                         }
-  |  leaf_list_opt_stmt { if (read_all && ($1.node.flag & LYS_TYPE_DEF)) {
-                            LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_leaflist, "type", "leaf-list");
-                            YYABORT;
-                          }
-                        }
-     type_stmt { if (read_all) {
-                   actual = $1.node.ptr_leaflist;
-                   actual_type = LEAF_LIST_KEYWORD;
-                   $1.node.flag |= LYS_TYPE_DEF;
-                   if (unres_schema_add_node(trg, unres, &$1.node.ptr_leaflist->type, UNRES_TYPE_DER, (struct lys_node *)$1.node.ptr_leaflist)) {
-                     YYABORT;
-                   }
-                 }
-               }
+  |  leaf_list_opt_stmt type_stmt { if (read_all) {
+                                      actual = $1.node.ptr_leaflist;
+                                      actual_type = LEAF_LIST_KEYWORD;
+                                      $1.node.flag |= LYS_TYPE_DEF;
+                                    }
+                                  }
      stmtsep { $$ = $1; }
+  |  leaf_list_opt_stmt default_stmt { if (read_all) {
+                                         int i;
+
+                                         /* check for duplicity in case of configuration data,
+                                          * in case of status data duplicities are allowed */
+                                         if ($1.node.ptr_leaflist->flags & LYS_CONFIG_W) {
+                                           for (i = 0; i < $1.node.ptr_leaflist->dflt_size; i++) {
+                                             if (ly_strequal($1.node.ptr_leaflist->dflt[i], s, 0)) {
+                                               LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "default");
+                                               LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Duplicated default value \"%s\".", s);
+                                               free(s);
+                                               YYABORT;
+                                             }
+                                           }
+                                         }
+                                         $1.node.ptr_leaflist->dflt[$1.node.ptr_leaflist->dflt_size++] = lydict_insert_zc(module->ctx, s);
+                                       } else {
+                                         size_arrays->node[$1.index].dflt++;
+                                       }
+                                     }
   |  leaf_list_opt_stmt units_stmt { if (read_all && yang_read_units(trg, $1.node.ptr_leaflist, s, LEAF_LIST_KEYWORD)) {YYABORT;} s = NULL; }
   |  leaf_list_opt_stmt must_stmt { if (read_all) {
                                       actual = $1.node.ptr_leaflist;
@@ -1860,13 +2214,18 @@ list_stmt: LIST_KEYWORD sep identifier_arg_str { if (read_all) {
                                                }
            '{' stmtsep
                list_opt_stmt { if (read_all) {
+                                 struct lys_node *node;
+
                                  if ($7.node.ptr_list->flags & LYS_CONFIG_R) {
                                    /* RFC 6020, 7.7.5 - ignore ordering when the list represents state data
                                     * ignore oredering MASK - 0x7F
                                     */
                                    $7.node.ptr_list->flags &= 0x7F;
                                  }
-                                 if (($7.node.ptr_list->flags & LYS_CONFIG_W) && !$7.node.ptr_list->keys) {
+                                 /* check - if list is configuration, key statement is mandatory
+                                  * (but only if we are not in a grouping or augment, then the check is deferred) */
+                                 for (node = (struct lys_node *)$7.node.ptr_list; node && !(node->nodetype & (LYS_GROUPING | LYS_AUGMENT)); node = node->parent);
+                                 if (!node && ($7.node.ptr_list->flags & LYS_CONFIG_W) && !$7.node.ptr_list->keys) {
                                    LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, $7.node.ptr_list, "key", "list");
                                    YYABORT;
                                  }
@@ -1880,6 +2239,11 @@ list_stmt: LIST_KEYWORD sep identifier_arg_str { if (read_all) {
                                  if (yang_read_unique(trg, $7.node.ptr_list, unres)) {
                                    YYABORT;
                                  }
+                                 /* check XPath dependencies */
+                                 if (($7.node.ptr_list->when || $7.node.ptr_list->must_size) &&
+                                     (unres_schema_add_node(trg, unres, $7.node.ptr_list, UNRES_XPATH, NULL) == -1)) {
+                                   YYABORT;
+                                 }
                                }
                              }
             '}' ;
@@ -1889,8 +2253,8 @@ list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                           $$.node.flag = 0;
                           actual_type = LIST_KEYWORD;
                           if (size_arrays->node[size_arrays->next].if_features) {
-                            $$.node.ptr_list->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.node.ptr_list->features);
-                            if (!$$.node.ptr_list->features) {
+                            $$.node.ptr_list->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.node.ptr_list->iffeature);
+                            if (!$$.node.ptr_list->iffeature) {
                               LOGMEM;
                               YYABORT;
                             }
@@ -1916,7 +2280,10 @@ list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                               YYABORT;
                             }
                           }
-                          store_flags((struct lys_node *)$$.node.ptr_list, size_arrays->node[size_arrays->next].flags, config_inherit);
+                          $$.node.ptr_list->keys_size = size_arrays->node[size_arrays->next].keys;
+                          if (store_flags((struct lys_node *)$$.node.ptr_list, size_arrays->node[size_arrays->next].flags, config_inherit)) {
+                              YYABORT;
+                          }
                           size_arrays->next++;
                         } else {
                           $$.index = size_arrays->size;
@@ -1946,11 +2313,15 @@ list_opt_stmt: @EMPTYDIR@ { if (read_all) {
   |  list_opt_stmt key_stmt { if (read_all) {
                                 if ($1.node.ptr_list->keys) {
                                   LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_list, "key", "list");
+                                  free(s);
                                   YYABORT;
                                 }
                                 $1.node.ptr_list->keys = (struct lys_node_leaf **)s;
                                 $$ = $1;
                                 s=NULL;
+                              } else {
+                                /* list has keys */
+                                size_arrays->node[$1.index].keys = 1;
                               }
                             }
   |  list_opt_stmt unique_stmt { if (read_all) {
@@ -2038,6 +2409,22 @@ list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                    data_node = actual;
                                  }
      stmtsep
+  |  list_opt_stmt action_stmt { actual = $1.node.ptr_list;
+                                 actual_type = LIST_KEYWORD;
+                                 data_node = actual;
+                               }
+     stmtsep
+  |  list_opt_stmt notification_stmt { if (read_all) {
+                                         actual = $1.node.ptr_list;
+                                         actual_type = LIST_KEYWORD;
+                                         data_node = actual;
+                                         if (trg->version < 2) {
+                                           LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "notification");
+                                           YYABORT;
+                                         }
+                                       }
+                                     }
+     stmtsep
   |  list_opt_stmt data_def_stmt { actual = $1.node.ptr_list;
                                    actual_type = LIST_KEYWORD;
                                    $1.node.flag |= LYS_DATADEF;
@@ -2057,23 +2444,37 @@ choice_stmt: CHOICE_KEYWORD sep identifier_arg_str { if (read_all) {
                                                    }
              choice_end;
 
-choice_end: ';'
+choice_end: ';' { if (read_all) {
+                    if (store_flags((struct lys_node *)actual, 0, config_inherit)) {
+                      YYABORT;
+                    }
+                  }
+                }
   |  '{' stmtsep
          choice_opt_stmt
-     '}' ;
+     '}' { if (read_all) {
+             /* check XPath dependencies */
+             if ($3.node.ptr_choice->when &&
+                 (unres_schema_add_node(trg, unres, $3.node.ptr_choice, UNRES_XPATH, NULL) == -1)) {
+               YYABORT;
+             }
+           }
+         }
 
 choice_opt_stmt: @EMPTYDIR@ { if (read_all) {
                             $$.node.ptr_choice = actual;
                             $$.node.flag = 0;
                             actual_type = CHOICE_KEYWORD;
                             if (size_arrays->node[size_arrays->next].if_features) {
-                              $$.node.ptr_choice->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.node.ptr_choice->features);
-                              if (!$$.node.ptr_choice->features) {
+                              $$.node.ptr_choice->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.node.ptr_choice->iffeature);
+                              if (!$$.node.ptr_choice->iffeature) {
                                 LOGMEM;
                                 YYABORT;
                               }
                             }
-                            store_flags((struct lys_node *)$$.node.ptr_choice, size_arrays->node[size_arrays->next].flags, config_inherit);
+                            if (store_flags((struct lys_node *)$$.node.ptr_choice, size_arrays->node[size_arrays->next].flags, config_inherit)) {
+                                YYABORT;
+                            }
                             size_arrays->next++;
                           } else {
                             $$.index = size_arrays->size;
@@ -2178,6 +2579,12 @@ short_case_stmt: container_stmt
   |  leaf_list_stmt
   |  list_stmt
   |  anyxml_stmt
+  |  anydata_stmt
+  |  choice_stmt { if (read_all && trg->version < 2 ) {
+                     LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "choice");
+                     YYABORT;
+                   }
+                 }
   ;
 
 case_stmt: CASE_KEYWORD sep identifier_arg_str { if (read_all) {
@@ -2188,22 +2595,36 @@ case_stmt: CASE_KEYWORD sep identifier_arg_str { if (read_all) {
                                                }
            case_end;
 
-case_end: ';'
+case_end: ';' { if (read_all) {
+                  if (store_flags((struct lys_node *)actual, 0, config_inherit)) {
+                    YYABORT;
+                  }
+                }
+              }
   |  '{' stmtsep
          case_opt_stmt
-      '}' ;
+      '}' { if (read_all) {
+              /* check XPath dependencies */
+              if ($3.cs->when &&
+                  (unres_schema_add_node(trg, unres, $3.cs, UNRES_XPATH, NULL) == -1)) {
+                YYABORT;
+              }
+            }
+          }
 
 case_opt_stmt: @EMPTYDIR@ { if (read_all) {
                           $$.cs = actual;
                           actual_type = CASE_KEYWORD;
                           if (size_arrays->node[size_arrays->next].if_features) {
-                            $$.cs->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.cs->features);
-                            if (!$$.cs->features) {
+                            $$.cs->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.cs->iffeature);
+                            if (!$$.cs->iffeature) {
                               LOGMEM;
                               YYABORT;
                             }
                           }
-                          store_flags((struct lys_node *)$$.cs, size_arrays->node[size_arrays->next].flags, 1);
+                          if (store_flags((struct lys_node *)$$.cs, size_arrays->node[size_arrays->next].flags, config_inherit)) {
+                              YYABORT;
+                          }
                           size_arrays->next++;
                         } else {
                           $$.index = size_arrays->size;
@@ -2246,39 +2667,66 @@ case_opt_stmt: @EMPTYDIR@ { if (read_all) {
   ;
 
 anyxml_stmt: ANYXML_KEYWORD sep identifier_arg_str { if (read_all) {
-                                                       if (!(actual = yang_read_node(trg,actual,s,LYS_ANYXML,sizeof(struct lys_node_anyxml)))) {YYABORT;}
+                                                       if (!(actual = yang_read_node(trg,actual,s,LYS_ANYXML,sizeof(struct lys_node_anydata)))) {YYABORT;}
                                                        data_node = actual;
                                                        if (data_node->parent && (data_node->parent->nodetype == LYS_GROUPING)) {
                                                          data_node = NULL;
                                                        }
                                                        s=NULL;
                                                      }
+                                                     actual_type = ANYXML_KEYWORD;
                                                    }
              anyxml_end;
 
-anyxml_end: ';'
+anydata_stmt: ANYDATA_KEYWORD sep identifier_arg_str { if (read_all) {
+                                                         if (!(actual = yang_read_node(trg, actual, s, LYS_ANYDATA, sizeof(struct lys_node_anydata)))) {YYABORT;}
+                                                         data_node = actual;
+                                                         if (data_node->parent && (data_node->parent->nodetype == LYS_GROUPING)) {
+                                                           data_node = NULL;
+                                                         }
+                                                         s = NULL;
+                                                       }
+                                                       actual_type = ANYDATA_KEYWORD;
+                                                     }
+             anyxml_end;
+
+anyxml_end: ';' { if (read_all) {
+                    if (store_flags((struct lys_node *)actual, 0, config_inherit)) {
+                      YYABORT;
+                    }
+                  }
+                }
   |  '{' stmtsep
          anyxml_opt_stmt
-     '}' ;
+     '}' { if (read_all) {
+             /* check XPath dependencies */
+             if (($3.node.ptr_anydata->when || $3.node.ptr_anydata->must_size) &&
+                 (unres_schema_add_node(trg, unres, $3.node.ptr_anydata, UNRES_XPATH, NULL) == -1)) {
+               YYABORT;
+             }
+           }
+         }
 
 anyxml_opt_stmt: @EMPTYDIR@ { if (read_all) {
-                            $$.anyxml = actual;
-                            actual_type = ANYXML_KEYWORD;
+                            $$.node.ptr_anydata = actual;
+                            $$.node.flag = actual_type;
                             if (size_arrays->node[size_arrays->next].if_features) {
-                              $$.anyxml->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.anyxml->features);
-                              if (!$$.anyxml->features) {
+                              $$.node.ptr_anydata->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.node.ptr_anydata->iffeature);
+                              if (!$$.node.ptr_anydata->iffeature) {
                                 LOGMEM;
                                 YYABORT;
                               }
                             }
                             if (size_arrays->node[size_arrays->next].must) {
-                              $$.anyxml->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.anyxml->must);
-                              if (!$$.anyxml->must) {
+                              $$.node.ptr_anydata->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.node.ptr_anydata->must);
+                              if (!$$.node.ptr_anydata->must) {
                                 LOGMEM;
                                 YYABORT;
                               }
                             }
-                            store_flags((struct lys_node *)$$.anyxml, size_arrays->node[size_arrays->next].flags, config_inherit);
+                            if (store_flags((struct lys_node *)$$.node.ptr_anydata, size_arrays->node[size_arrays->next].flags, config_inherit)) {
+                                YYABORT;
+                            }
                             size_arrays->next++;
                           } else {
                             $$.index = size_arrays->size;
@@ -2288,47 +2736,54 @@ anyxml_opt_stmt: @EMPTYDIR@ { if (read_all) {
                             }
                           }
                         }
-  |  anyxml_opt_stmt when_stmt { actual = $1.anyxml; actual_type = ANYXML_KEYWORD; }
+  |  anyxml_opt_stmt when_stmt { if (read_all) {
+                                   actual = $1.node.ptr_anydata;
+                                   actual_type = $1.node.flag;
+                                 }
+                               }
      stmtsep
   |  anyxml_opt_stmt if_feature_stmt { if (read_all) {
-                                         if (yang_read_if_feature(trg, $1.anyxml, s, unres, ANYXML_KEYWORD)) {YYABORT;}
+                                         if (yang_read_if_feature(trg, $1.node.ptr_anydata, s, unres, $1.node.flag)) {YYABORT;}
                                          s=NULL;
                                        } else {
                                          size_arrays->node[$1.index].if_features++;
                                        }
                                      }
   |  anyxml_opt_stmt must_stmt { if (read_all) {
-                                   actual = $1.anyxml;
-                                   actual_type = ANYXML_KEYWORD;
+                                   actual = $1.node.ptr_anydata;
+                                   actual_type = $1.node.flag;
                                  } else {
                                    size_arrays->node[$1.index].must++;
                                  }
                                }
      stmtsep
   |  anyxml_opt_stmt config_read_stmt { if (!read_all) {
-                                          if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_CONFIG_MASK, "config", "anyxml", $2, 0)) {
+                                          if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_CONFIG_MASK, "config",
+                                                               (actual_type == ANYXML_KEYWORD) ? "anyxml" : "anydata", $2, 0)) {
                                             YYABORT;
                                           }
                                         }
                                       }
   |  anyxml_opt_stmt mandatory_read_stmt { if (!read_all) {
-                                             if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_MAND_MASK, "mandatory", "anyxml", $2, 0)) {
+                                             if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_MAND_MASK, "mandatory",
+                                                                  (actual_type == ANYXML_KEYWORD) ? "anyxml" : "anydata", $2, 0)) {
                                                YYABORT;
                                              }
                                            }
                                          }
   |  anyxml_opt_stmt status_read_stmt { if (!read_all) {
-                                          if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "anyxml", $2, 0)) {
+                                          if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status",
+                                                               (actual_type == ANYXML_KEYWORD) ? "anyxml" : "anydata", $2, 0)) {
                                             YYABORT;
                                           }
                                         }
                                       }
-  |  anyxml_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.anyxml, s, "anyxml")) {
+  |  anyxml_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.node.ptr_anydata, s, ($1.node.flag == ANYXML_KEYWORD) ? "anyxml" : "anydata")) {
                                           YYABORT;
                                         }
                                         s = NULL;
                                       }
-  |  anyxml_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.anyxml, s, "anyxml")) {
+  |  anyxml_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.node.ptr_anydata, s, ($1.node.flag == ANYXML_KEYWORD) ? "anyxml" : "anydata")) {
                                         YYABORT;
                                       }
                                       s = NULL;
@@ -2347,6 +2802,11 @@ uses_stmt: USES_KEYWORD sep identifier_ref_arg_str { if (read_all) {
                         if (unres_schema_add_node(trg, unres, actual, UNRES_USES, NULL) == -1) {
                           YYABORT;
                         }
+                        /* check XPath dependencies */
+                        if (((struct lys_node_uses *)actual)->when &&
+                            (unres_schema_add_node(trg, unres, actual, UNRES_XPATH, NULL) == -1)) {
+                          YYABORT;
+                        }
                       }
                     }
 
@@ -2356,31 +2816,32 @@ uses_end: ';'
      '}' ;
 
 uses_opt_stmt: @EMPTYDIR@ { if (read_all) {
-                          $$.uses.ptr_uses = actual;
-                          $$.uses.config_inherit = config_inherit;
+                          $$.uses = actual;
                           actual_type = USES_KEYWORD;
                           if (size_arrays->node[size_arrays->next].if_features) {
-                            $$.uses.ptr_uses->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.uses.ptr_uses->features);
-                            if (!$$.uses.ptr_uses->features) {
+                            $$.uses->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.uses->iffeature);
+                            if (!$$.uses->iffeature) {
                               LOGMEM;
                               YYABORT;
                             }
                           }
                           if (size_arrays->node[size_arrays->next].refine) {
-                            $$.uses.ptr_uses->refine = calloc(size_arrays->node[size_arrays->next].refine, sizeof *$$.uses.ptr_uses->refine);
-                            if (!$$.uses.ptr_uses->refine) {
+                            $$.uses->refine = calloc(size_arrays->node[size_arrays->next].refine, sizeof *$$.uses->refine);
+                            if (!$$.uses->refine) {
                               LOGMEM;
                               YYABORT;
                             }
                           }
                           if (size_arrays->node[size_arrays->next].augment) {
-                            $$.uses.ptr_uses->augment = calloc(size_arrays->node[size_arrays->next].augment, sizeof *$$.uses.ptr_uses->augment);
-                            if (!$$.uses.ptr_uses->augment) {
+                            $$.uses->augment = calloc(size_arrays->node[size_arrays->next].augment, sizeof *$$.uses->augment);
+                            if (!$$.uses->augment) {
                               LOGMEM;
                               YYABORT;
                             }
                           }
-                          store_flags((struct lys_node *)$$.uses.ptr_uses, size_arrays->node[size_arrays->next].flags, 0);
+                          if (store_flags((struct lys_node *)$$.uses, size_arrays->node[size_arrays->next].flags, CONFIG_INHERIT_DISABLE)) {
+                              YYABORT;
+                          }
                           size_arrays->next++;
                         } else {
                           $$.index = size_arrays->size;
@@ -2390,10 +2851,10 @@ uses_opt_stmt: @EMPTYDIR@ { if (read_all) {
                           }
                         }
                       }
-  |  uses_opt_stmt when_stmt { actual = $1.uses.ptr_uses; actual_type = USES_KEYWORD; }
+  |  uses_opt_stmt when_stmt { actual = $1.uses; actual_type = USES_KEYWORD; }
      stmtsep
   |  uses_opt_stmt if_feature_stmt { if (read_all) {
-                                       if (yang_read_if_feature(trg, $1.uses.ptr_uses, s, unres, USES_KEYWORD)) {YYABORT;}
+                                       if (yang_read_if_feature(trg, $1.uses, s, unres, USES_KEYWORD)) {YYABORT;}
                                        s=NULL;
                                      } else {
                                        size_arrays->node[$1.index].if_features++;
@@ -2405,18 +2866,18 @@ uses_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                         }
                                       }
                                     }
-  |  uses_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.uses.ptr_uses, s, "uses")) {
+  |  uses_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.uses, s, "uses")) {
                                         YYABORT;
                                       }
                                       s = NULL;
                                     }
-  |  uses_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.uses.ptr_uses, s, "uses")) {
+  |  uses_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.uses, s, "uses")) {
                                       YYABORT;
                                     }
                                     s = NULL;
                                   }
   |  uses_opt_stmt refine_stmt { if (read_all) {
-                                   actual = $1.uses.ptr_uses;
+                                   actual = $1.uses;
                                    actual_type = USES_KEYWORD;
                                  } else {
                                    size_arrays->node[$1.index].refine++;
@@ -2424,13 +2885,12 @@ uses_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                }
      stmtsep
   |  uses_opt_stmt uses_augment_stmt { if (read_all) {
-                                         actual = $1.uses.ptr_uses;
+                                         actual = $1.uses;
                                          actual_type = USES_KEYWORD;
                                          data_node = actual;
                                          if (data_node->parent && (data_node->parent->nodetype == LYS_GROUPING)) {
                                            data_node = NULL;
                                          }
-                                         config_inherit = $1.uses.config_inherit;
                                        } else {
                                          size_arrays->node[$1.index].augment++;
                                        }
@@ -2439,6 +2899,7 @@ uses_opt_stmt: @EMPTYDIR@ { if (read_all) {
   ;
 
 refine_stmt: REFINE_KEYWORD sep refine_arg_str { if (read_all) {
+                                                   refine_parent = actual;
                                                    if (!(actual = yang_read_refine(trg, actual, s))) {
                                                      YYABORT;
                                                    }
@@ -2468,6 +2929,54 @@ refine_body_opt_stmts: @EMPTYDIR@ { if (read_all) {
                                     }
                                     $$.refine->target_type = LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYXML;
                                   }
+                                  if (size_arrays->node[size_arrays->next].dflt) {
+                                    $$.refine->dflt = calloc(size_arrays->node[size_arrays->next].dflt, sizeof *$$.refine->dflt);
+                                    if (!$$.refine->dflt) {
+                                      LOGMEM;
+                                      YYABORT;
+                                    }
+                                    if (size_arrays->node[size_arrays->next].dflt > 1) {
+                                      if (trg->version < 2) {
+                                        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "default", "refine");
+                                        YYABORT;
+                                      }
+                                      $$.refine->target_type = LYS_LEAFLIST;
+                                    } else {
+                                      if ($$.refine->target_type) {
+                                        if (trg->version < 2) {
+                                          $$.refine->target_type &= (LYS_LEAF | LYS_CHOICE);
+                                        } else {
+                                          /* YANG 1.1 */
+                                          $$.refine->target_type &= (LYS_LEAF | LYS_LEAFLIST | LYS_CHOICE);
+                                        }
+                                      } else {
+                                        if (trg->version < 2) {
+                                          $$.refine->target_type = LYS_LEAF | LYS_CHOICE;
+                                        } else {
+                                          /* YANG 1.1 */
+                                          $$.refine->target_type = LYS_LEAF | LYS_LEAFLIST | LYS_CHOICE;
+                                        }
+                                      }
+                                    }
+                                  }
+                                  if (size_arrays->node[size_arrays->next].if_features) {
+                                    $$.refine->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.refine->iffeature);
+                                    if (!$$.refine->iffeature) {
+                                      LOGMEM;
+                                      YYABORT;
+                                    }
+                                    if (trg->version < 2) {
+                                      LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "if-feature");
+                                      YYABORT;
+                                    }
+                                    /* leaf, leaf-list, list, container or anyxml */
+                                    /* check possibility of statements combination */
+                                    if ($$.refine->target_type) {
+                                        $$.refine->target_type &= (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYDATA);
+                                    } else {
+                                        $$.refine->target_type = LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYDATA;
+                                    }
+                                  }
                                   size_arrays->next++;
                                 } else {
                                   $$.index = size_arrays->size;
@@ -2484,6 +2993,15 @@ refine_body_opt_stmts: @EMPTYDIR@ { if (read_all) {
                                          size_arrays->node[$1.index].must++;
                                        }
                                      }
+  |  refine_body_opt_stmts if_feature_stmt { if (read_all) {
+                                               if (yang_read_if_feature(trg, refine_parent, s, unres, REFINE_KEYWORD)) {
+                                                 YYABORT;
+                                               }
+                                               s=NULL;
+                                             } else {
+                                               size_arrays->node[$1.index].if_features++;
+                                             }
+                                           }
   |  refine_body_opt_stmts presence_stmt { if (read_all) {
                                              if ($1.refine->target_type) {
                                                if ($1.refine->target_type & LYS_CONTAINER) {
@@ -2509,27 +3027,23 @@ refine_body_opt_stmts: @EMPTYDIR@ { if (read_all) {
                                            }
                                          }
   |  refine_body_opt_stmts default_stmt { if (read_all) {
-                                            if ($1.refine->target_type) {
-                                              if ($1.refine->target_type & (LYS_LEAF | LYS_CHOICE)) {
-                                                $1.refine->target_type &= (LYS_LEAF | LYS_CHOICE);
-                                                if ($1.refine->mod.dflt) {
-                                                  LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "default", "refine");
-                                                  free(s);
-                                                  YYABORT;
+                                            int i;
+
+                                            $1.refine->dflt[$1.refine->dflt_size] = lydict_insert_zc(trg->ctx, s);
+                                            /* check for duplicity */
+                                            for (i = 0; i < $1.refine->dflt_size; ++i) {
+                                                if (ly_strequal($1.refine->dflt[i], $1.refine->dflt[$1.refine->dflt_size], 1)) {
+                                                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, $1.refine->dflt[$1.refine->dflt_size], "default");
+                                                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Duplicated default value \"%s\".", $1.refine->dflt[$1.refine->dflt_size]);
+                                                    $1.refine->dflt_size++;
+                                                    YYABORT;
                                                 }
-                                                $1.refine->mod.dflt = lydict_insert_zc(trg->ctx, s);
-                                              } else {
-                                                free(s);
-                                                LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "default", "refine");
-                                                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
-                                                YYABORT;
-                                              }
-                                            } else {
-                                              $1.refine->target_type = LYS_LEAF | LYS_CHOICE;
-                                              $1.refine->mod.dflt = lydict_insert_zc(trg->ctx, s);
                                             }
+                                            $1.refine->dflt_size++;
                                             s = NULL;
                                             $$ = $1;
+                                          } else {
+                                            size_arrays->node[$1.index].dflt++;
                                           }
                                         }
   |  refine_body_opt_stmts config_stmt { if (read_all) {
@@ -2636,9 +3150,17 @@ uses_augment_stmt: AUGMENT_KEYWORD sep uses_augment_arg_str { if (read_all) {
                                                               }
                                                             }
                    '{' stmtsep
-                       augment_opt_stmt { if (read_all && !($7.node.flag & LYS_DATADEF)){
-                                            LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "data-def or case", "uses/augment");
-                                            YYABORT;
+                       augment_opt_stmt { if (read_all) {
+                                            if (!($7.node.flag & LYS_DATADEF)) {
+                                              LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "data-def or case", "uses/augment");
+                                              YYABORT;
+                                            }
+                                            config_inherit = $7.node.flag & CONFIG_MASK;
+                                            /* check XPath dependencies */
+                                            if ($7.node.ptr_augment->when &&
+                                                (unres_schema_add_node(trg, unres, $7.node.ptr_augment, UNRES_XPATH, NULL) == -1)) {
+                                              YYABORT;
+                                            }
                                           }
                                         }
                    '}' ;
@@ -2664,22 +3186,28 @@ augment_stmt: AUGMENT_KEYWORD sep augment_arg_str { if (read_all) {
                                        if (unres_schema_add_node(trg, unres, actual, UNRES_AUGMENT, NULL) == -1) {
                                          YYABORT;
                                        }
+                                       config_inherit = $7.node.flag & CONFIG_MASK;
+                                       /* check XPath dependencies */
+                                       if ($7.node.ptr_augment->when &&
+                                           (unres_schema_add_node(trg, unres, $7.node.ptr_augment, UNRES_XPATH, NULL) == -1)) {
+                                         YYABORT;
+                                       }
                                      }
                                    }
                '}' ;
 
 augment_opt_stmt: @EMPTYDIR@ { if (read_all) {
                              $$.node.ptr_augment = actual;
-                             $$.node.flag = 0;
+                             $$.node.flag = config_inherit;
+                             config_inherit = CONFIG_INHERIT_ENABLE;
                              actual_type = AUGMENT_KEYWORD;
                              if (size_arrays->node[size_arrays->next].if_features) {
-                               $$.node.ptr_augment->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.node.ptr_augment->features);
-                               if (!$$.node.ptr_augment->features) {
+                               $$.node.ptr_augment->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.node.ptr_augment->iffeature);
+                               if (!$$.node.ptr_augment->iffeature) {
                                  LOGMEM;
                                  YYABORT;
                                }
                              }
-                             config_inherit = DISABLE_INHERIT;
                              size_arrays->next++;
                            } else {
                              $$.index = size_arrays->size;
@@ -2725,6 +3253,26 @@ augment_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                       }
                                     }
      stmtsep { $$ = $1; }
+  |  augment_opt_stmt action_stmt { if (read_all) {
+                                      actual = $1.node.ptr_augment;
+                                      actual_type = AUGMENT_KEYWORD;
+                                      $1.node.flag |= LYS_DATADEF;
+                                      data_node = actual;
+                                    }
+                                  }
+     stmtsep { $$ = $1; }
+  |  augment_opt_stmt notification_stmt { if (read_all) {
+                                            actual = $1.node.ptr_augment;
+                                            actual_type = AUGMENT_KEYWORD;
+                                            $1.node.flag |= LYS_DATADEF;
+                                            data_node = actual;
+                                            if (trg->version < 2) {
+                                              LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "notification");
+                                              YYABORT;
+                                            }
+                                          }
+                                        }
+     stmtsep { $$ = $1; }
   |  augment_opt_stmt case_stmt { if (read_all) {
                                     actual = $1.node.ptr_augment;
                                     actual_type = AUGMENT_KEYWORD;
@@ -2739,16 +3287,31 @@ augment_arg_str: absolute_schema_nodeids optsep
   |  string_1
   ;
 
-rpc_stmt: RPC_KEYWORD sep identifier_arg_str { if (read_all) {
-                                                 if (!(actual = yang_read_node(trg, NULL, s, LYS_RPC, sizeof(struct lys_node_rpc)))) {
-                                                   YYABORT;
-                                                 }
-                                                 data_node = actual;
-                                                 s = NULL;
-                                               }
-                                               config_inherit = DISABLE_INHERIT;
-                                             }
-          rpc_end { config_inherit = ENABLE_INHERIT; }
+action_arg_str: identifier_arg_str { if (read_all) {
+                                       if (!(actual = yang_read_action(trg, actual, s))) {
+                                         YYABORT;
+                                       }
+                                       data_node = actual;
+                                       s = NULL;
+                                     }
+                                     $$ = config_inherit;
+                                     config_inherit = CONFIG_IGNORE;
+                                   }
+
+action_stmt: ACTION_KEYWORD sep action_arg_str rpc_end { config_inherit = $3; }
+
+rpc_arg_str: identifier_arg_str { if (read_all) {
+                                    if (!(actual = yang_read_node(trg, NULL, s, LYS_RPC, sizeof(struct lys_node_rpc_action)))) {
+                                      YYABORT;
+                                    }
+                                    data_node = actual;
+                                    s = NULL;
+                                  }
+                                  $$ = config_inherit;
+                                  config_inherit = CONFIG_IGNORE;
+                                }
+
+rpc_stmt: RPC_KEYWORD sep rpc_arg_str rpc_end { config_inherit = $3; }
 
 rpc_end: ';'
   |  '{' stmtsep
@@ -2761,8 +3324,8 @@ rpc_opt_stmt: @EMPTYDIR@ { if (read_all) {
                          $$.node.flag = 0;
                          actual_type = RPC_KEYWORD;
                          if (size_arrays->node[size_arrays->next].if_features) {
-                           $$.node.ptr_rpc->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.node.ptr_rpc->features);
-                           if (!$$.node.ptr_rpc->features) {
+                           $$.node.ptr_rpc->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.node.ptr_rpc->iffeature);
+                           if (!$$.node.ptr_rpc->iffeature) {
                              LOGMEM;
                              YYABORT;
                            }
@@ -2774,7 +3337,9 @@ rpc_opt_stmt: @EMPTYDIR@ { if (read_all) {
                              YYABORT;
                            }
                          }
-                         store_flags((struct lys_node *)$$.node.ptr_rpc, size_arrays->node[size_arrays->next].flags, 0);
+                         if (store_flags((struct lys_node *)$$.node.ptr_rpc, size_arrays->node[size_arrays->next].flags, CONFIG_INHERIT_DISABLE)) {
+                             YYABORT;
+                         }
                          size_arrays->next++;
                        } else {
                          $$.index = size_arrays->size;
@@ -2851,7 +3416,7 @@ input_stmt: INPUT_KEYWORD optsep { if (read_all) {
                                        LOGMEM;
                                        YYABORT;
                                      }
-                                     if (!(actual = yang_read_node(trg, actual, s, LYS_INPUT, sizeof(struct lys_node_rpc_inout)))) {
+                                     if (!(actual = yang_read_node(trg, actual, s, LYS_INPUT, sizeof(struct lys_node_inout)))) {
                                       YYABORT;
                                      }
                                      data_node = actual;
@@ -2859,9 +3424,16 @@ input_stmt: INPUT_KEYWORD optsep { if (read_all) {
                                    }
                                  }
             '{' stmtsep
-                input_output_opt_stmt { if (read_all && !($6.node.flag & LYS_DATADEF)) {
-                                          LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, "data-def", "input");
-                                          YYABORT;
+                input_output_opt_stmt { if (read_all) {
+                                          if (!($6.node.flag & LYS_DATADEF)) {
+                                            LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, "data-def", "input");
+                                            YYABORT;
+                                          }
+                                          /* check XPath dependencies */
+                                          if ($6.node.ptr_inout->must_size &&
+                                              (unres_schema_add_node(trg, unres, $6.node.ptr_inout, UNRES_XPATH, NULL) == -1)) {
+                                            YYABORT;
+                                          }
                                         }
                                       }
             '}'
@@ -2870,9 +3442,20 @@ input_output_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                   $$.node.ptr_inout = actual;
                                   $$.node.flag = 0;
                                   actual_type = INPUT_KEYWORD;
+                                  if (trg->version < 2 && size_arrays->node[size_arrays->next].must) {
+                                    LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "must");
+                                    YYABORT;
+                                  }
                                   if (size_arrays->node[size_arrays->next].tpdf) {
                                     $$.node.ptr_inout->tpdf = calloc(size_arrays->node[size_arrays->next].tpdf, sizeof *$$.node.ptr_inout->tpdf);
                                     if (!$$.node.ptr_inout->tpdf) {
+                                      LOGMEM;
+                                      YYABORT;
+                                    }
+                                  }
+                                  if (size_arrays->node[size_arrays->next].must) {
+                                    $$.node.ptr_inout->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.node.ptr_inout->must);
+                                    if (!$$.node.ptr_inout->must) {
                                       LOGMEM;
                                       YYABORT;
                                     }
@@ -2886,6 +3469,14 @@ input_output_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                   }
                                 }
                               }
+  |  input_output_opt_stmt must_stmt { if (read_all) {
+                                         actual = $1.node.ptr_inout;
+                                         actual_type = INPUT_KEYWORD;
+                                       } else {
+                                         size_arrays->node[$1.index].must++;
+                                       }
+                                     }
+     stmtsep
   |  input_output_opt_stmt typedef_stmt { if (read_all) {
                                                     actual = $1.node.ptr_inout;
                                                     actual_type = INPUT_KEYWORD;
@@ -2915,7 +3506,7 @@ output_stmt: OUTPUT_KEYWORD optsep { if (read_all) {
                                          LOGMEM;
                                          YYABORT;
                                        }
-                                       if (!(actual = yang_read_node(trg, actual, s, LYS_OUTPUT, sizeof(struct lys_node_rpc_inout)))) {
+                                       if (!(actual = yang_read_node(trg, actual, s, LYS_OUTPUT, sizeof(struct lys_node_inout)))) {
                                         YYABORT;
                                        }
                                        data_node = actual;
@@ -2923,35 +3514,51 @@ output_stmt: OUTPUT_KEYWORD optsep { if (read_all) {
                                      }
                                    }
              '{' stmtsep
-                 input_output_opt_stmt { if (read_all && !($6.node.flag & LYS_DATADEF)) {
-                                           LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, "data-def", "output");
-                                           YYABORT;
+                 input_output_opt_stmt { if (read_all) {
+                                           if (!($6.node.flag & LYS_DATADEF)) {
+                                             LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, "data-def", "output");
+                                             YYABORT;
+                                           }
+                                           /* check XPath dependencies */
+                                           if ($6.node.ptr_inout->must_size &&
+                                               (unres_schema_add_node(trg, unres, $6.node.ptr_inout, UNRES_XPATH, NULL) == -1)) {
+                                             YYABORT;
+                                           }
                                          }
                                        }
              '}'
 
-notification_stmt: NOTIFICATION_KEYWORD sep identifier_arg_str { if (read_all) {
-                                                                   if (!(actual = yang_read_node(trg, NULL, s, LYS_NOTIF, sizeof(struct lys_node_notif)))) {
-                                                                    YYABORT;
-                                                                   }
-                                                                   data_node = actual;
-                                                                 }
-                                                                 config_inherit = DISABLE_INHERIT;
-                                                               }
-                   notification_end { config_inherit = ENABLE_INHERIT; }
+notification_arg_str: identifier_arg_str { if (read_all) {
+                                             if (!(actual = yang_read_node(trg, actual, s, LYS_NOTIF, sizeof(struct lys_node_notif)))) {
+                                              YYABORT;
+                                             }
+                                             data_node = actual;
+                                           }
+                                           $$ = config_inherit;
+                                           config_inherit = CONFIG_INHERIT_DISABLE;
+                                         }
+
+notification_stmt: NOTIFICATION_KEYWORD sep notification_arg_str notification_end { config_inherit = $3; }
 
 notification_end: ';'
   |  '{' stmtsep
          notification_opt_stmt
-      '}' ;
+      '}' { if (read_all) {
+              /* check XPath dependencies */
+              if ($3.notif->must_size &&
+                  (unres_schema_add_node(trg, unres, $3.notif, UNRES_XPATH, NULL) == -1)) {
+                YYABORT;
+              }
+            }
+          }
 
 
 notification_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                   $$.notif = actual;
                                   actual_type = NOTIFICATION_KEYWORD;
                                   if (size_arrays->node[size_arrays->next].if_features) {
-                                    $$.notif->features = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.notif->features);
-                                    if (!$$.notif->features) {
+                                    $$.notif->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.notif->iffeature);
+                                    if (!$$.notif->iffeature) {
                                       LOGMEM;
                                       YYABORT;
                                     }
@@ -2963,7 +3570,20 @@ notification_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                       YYABORT;
                                     }
                                   }
-                                  store_flags((struct lys_node *)$$.notif, size_arrays->node[size_arrays->next].flags, 0);
+                                  if (trg->version < 2 && size_arrays->node[size_arrays->next].must) {
+                                    LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "must");
+                                    YYABORT;
+                                  }
+                                  if (size_arrays->node[size_arrays->next].must) {
+                                    $$.notif->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.notif->must);
+                                    if (!$$.notif->must) {
+                                      LOGMEM;
+                                      YYABORT;
+                                    }
+                                  }
+                                  if (store_flags((struct lys_node *)$$.notif, size_arrays->node[size_arrays->next].flags, CONFIG_INHERIT_DISABLE)) {
+                                      YYABORT;
+                                  }
                                   size_arrays->next++;
                                 } else {
                                   $$.index = size_arrays->size;
@@ -2973,6 +3593,14 @@ notification_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                   }
                                 }
                               }
+  |  notification_opt_stmt must_stmt { if (read_all) {
+                                      actual = $1.notif;
+                                      actual_type = NOTIFICATION_KEYWORD;
+                                    } else {
+                                      size_arrays->node[$1.index].must++;
+                                    }
+                                  }
+     stmtsep
   |  notification_opt_stmt if_feature_stmt { if (read_all) {
                                                if (yang_read_if_feature(trg, $1.notif, s, unres, NOTIFICATION_KEYWORD)) {YYABORT;}
                                                s=NULL;
@@ -3025,18 +3653,34 @@ deviation_stmt: DEVIATION_KEYWORD sep deviation_arg_str { if (read_all) {
                                                             }
                                                         }
                 '{' stmtsep
-                    deviation_opt_stmt  { if (read_all) {
-                                            if (actual_type == DEVIATION_KEYWORD) {
-                                              LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "deviate", "deviation");
-                                              YYABORT;
-                                            }
-                                            if (yang_check_deviation(trg, actual, unres)) {
-                                              YYABORT;
-                                            }
-                                            free($7.deviation);
-                                          }
-                                        }
-                '}'
+                    deviation_opt_stmt
+                '}'  { if (read_all) {
+                         struct lys_module *mod;
+                         struct lys_node *parent;
+
+                         if (actual_type == DEVIATION_KEYWORD) {
+                           LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "deviate", "deviation");
+                           ly_set_free($7.deviation->dflt_check);
+                           free($7.deviation);
+                           YYABORT;
+                         }
+                         if (yang_check_deviation(trg, $7.deviation->dflt_check, unres)) {
+                           ly_set_free($7.deviation->dflt_check);
+                           free($7.deviation);
+                           YYABORT;
+                         }
+                         /* mark all the affected modules as deviated and implemented */
+                         for(parent = $7.deviation->target; parent; parent = lys_parent(parent)) {
+                             mod = lys_node_module(parent);
+                             if (module != mod) {
+                                 mod->deviated = 1;
+                                 lys_set_implemented(mod);
+                             }
+                         }
+                         ly_set_free($7.deviation->dflt_check);
+                         free($7.deviation);
+                       }
+                     }
 
 deviation_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                $$.deviation = actual;
@@ -3045,6 +3689,7 @@ deviation_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                  $$.deviation->deviation->deviate = calloc(size_arrays->node[size_arrays->next].deviate, sizeof *$$.deviation->deviation->deviate);
                                  if (!$$.deviation->deviation->deviate) {
                                    LOGMEM;
+                                   ly_set_free($$.deviation->dflt_check);
                                    YYABORT;
                                  }
                                }
@@ -3058,6 +3703,7 @@ deviation_opt_stmt: @EMPTYDIR@ { if (read_all) {
                              }
                            }
   |  deviation_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.deviation->deviation, s, "deviation")) {
+                                             ly_set_free($1.deviation->dflt_check);
                                              free($1.deviation);
                                              YYABORT;
                                            }
@@ -3065,6 +3711,7 @@ deviation_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                            $$ = $1;
                                          }
   |  deviation_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.deviation->deviation, s, "deviation")) {
+                                           ly_set_free($1.deviation->dflt_check);
                                            free($1.deviation);
                                            YYABORT;
                                          }
@@ -3107,7 +3754,14 @@ deviate_add_stmt: ADD_KEYWORD optsep { if (read_all && yang_read_deviate(actual,
 deviate_add_end: ';'
   |  '{' stmtsep
          deviate_add_opt_stmt
-     '}'
+     '}' { if (read_all) {
+             /* check XPath dependencies */
+             if (($3.deviation->trg_must_size && *$3.deviation->trg_must_size) &&
+                 unres_schema_add_node(trg, unres, $3.deviation->target, UNRES_XPATH, NULL)) {
+               YYABORT;
+             }
+           }
+         }
 
 deviate_add_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                  $$.deviation = actual;
@@ -3119,6 +3773,11 @@ deviate_add_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                   }
                                   if (size_arrays->node[size_arrays->next].unique) {
                                     if (yang_read_deviate_unique(actual, size_arrays->node[size_arrays->next].unique)) {
+                                      YYABORT;
+                                    }
+                                  }
+                                  if (size_arrays->node[size_arrays->next].dflt) {
+                                    if (yang_read_deviate_default(trg, actual, size_arrays->node[size_arrays->next].dflt)) {
                                       YYABORT;
                                     }
                                   }
@@ -3164,11 +3823,13 @@ deviate_add_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                         }
                                       }
   |  deviate_add_opt_stmt default_stmt { if (read_all) {
-                                           if (yang_read_deviate_default(trg->ctx, $1.deviation, s)) {
+                                           if (yang_fill_deviate_default(trg->ctx, $1.deviation, s)) {
                                              YYABORT;
                                            }
                                            s = NULL;
                                            $$ = $1;
+                                         } else {
+                                           size_arrays->node[$1.index].dflt++;
                                          }
                                        }
   |  deviate_add_opt_stmt config_stmt { if (read_all) {
@@ -3217,7 +3878,28 @@ deviate_delete_stmt: DELETE_KEYWORD optsep { if (read_all && yang_read_deviate(a
 deviate_delete_end: ';'
   |  '{' stmtsep
          deviate_delete_opt_stmt
-      '}' ;
+      '}' { if (read_all) {
+              struct lys_node_leaflist *llist;
+              int i,j;
+
+              if ($3.deviation->deviate->dflt_size && $3.deviation->target->nodetype == LYS_LEAFLIST) {
+                /* consolidate the final list in the target after removing items from it */
+                llist = (struct lys_node_leaflist *)$3.deviation->target;
+                for (i = j = 0; j < llist->dflt_size; j++) {
+                  llist->dflt[i] = llist->dflt[j];
+                  if (llist->dflt[i]) {
+                    i++;
+                  }
+                }
+                llist->dflt_size = i + 1;
+              }
+              /* check XPath dependencies */
+              if (($3.deviation->trg_must_size && *$3.deviation->trg_must_size) &&
+                  unres_schema_add_node(trg, unres, $3.deviation->target, UNRES_XPATH, NULL)) {
+                YYABORT;
+              }
+            }
+          }
 
 deviate_delete_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                     $$.deviation = actual;
@@ -3229,6 +3911,11 @@ deviate_delete_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                     }
                                     if (size_arrays->node[size_arrays->next].unique) {
                                       if (yang_read_deviate_unique(actual, size_arrays->node[size_arrays->next].unique)) {
+                                        YYABORT;
+                                      }
+                                    }
+                                    if (size_arrays->node[size_arrays->next].dflt) {
+                                      if (yang_read_deviate_default(trg, actual, size_arrays->node[size_arrays->next].dflt)) {
                                         YYABORT;
                                       }
                                     }
@@ -3271,11 +3958,13 @@ deviate_delete_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                            }
                                          }
   |  deviate_delete_opt_stmt default_stmt { if (read_all) {
-                                              if (yang_read_deviate_default(trg->ctx, $1.deviation, s)) {
+                                              if (yang_fill_deviate_default(trg->ctx, $1.deviation, s)) {
                                                 YYABORT;
                                               }
                                               s = NULL;
                                               $$ = $1;
+                                            } else {
+                                              size_arrays->node[$1.index].dflt++;
                                             }
                                           }
 
@@ -3285,22 +3974,44 @@ deviate_replace_stmt: REPLACE_KEYWORD optsep { if (read_all && yang_read_deviate
                                              }
                       deviate_replace_end
 
+deviate_replace_stmtsep: stmtsep { if (read_all) {
+                                     $$.deviation = actual;
+                                   }
+                                 }
 deviate_replace_end: ';'
-  |  '{' stmtsep
+  |  '{' deviate_replace_stmtsep
          deviate_replace_opt_stmt
-     '}' ;
+     '}' { if (read_all && $3.deviation->deviate->type) {
+             if (unres_schema_add_node(trg, unres, $3.deviation->deviate->type, UNRES_TYPE_DER, $3.deviation->target) == -1) {
+               lydict_remove(trg->ctx, ((struct yang_type *)$3.deviation->deviate->type->der)->name);
+               free($3.deviation->deviate->type->der);
+               $3.deviation->deviate->type->der = NULL;
+               YYABORT;
+             }
+           }
+         }
 
 deviate_replace_opt_stmt: @EMPTYDIR@ { if (read_all) {
-                                    $$.deviation = actual;
-                                    actual_type = REPLACE_KEYWORD;
-                                  }
-                                }
-  |  deviate_replace_opt_stmt type_stmt stmtsep { if (read_all) {
-                                            if (unres_schema_add_node(trg, unres, $1.deviation->deviate->type, UNRES_TYPE_DER, $1.deviation->target)) {
-                                              YYABORT;
-                                            }
-                                          }
+                                         $$.deviation = actual;
+                                         actual_type = REPLACE_KEYWORD;
+                                         if (size_arrays->node[size_arrays->next].dflt) {
+                                           if (yang_read_deviate_default(trg, actual, size_arrays->node[size_arrays->next].dflt)) {
+                                             YYABORT;
+                                           }
                                         }
+                                        size_arrays->next++;
+                                      } else {
+                                        $$.index = size_arrays->size;
+                                        if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
+                                          LOGMEM;
+                                          YYABORT;
+                                        }
+                                      }
+                                    }
+  |  deviate_replace_opt_stmt type_stmt stmtsep { if (read_all) {
+                                                    ly_set_add($1.deviation->dflt_check, $1.deviation->target, 0);
+                                                  }
+                                                }
   |  deviate_replace_opt_stmt units_stmt { if (read_all) {
                                              if (yang_read_deviate_units(trg->ctx, $1.deviation, s)) {
                                                YYABORT;
@@ -3310,11 +4021,13 @@ deviate_replace_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                            }
                                          }
   |  deviate_replace_opt_stmt default_stmt { if (read_all) {
-                                               if (yang_read_deviate_default(trg->ctx, $1.deviation, s)) {
+                                               if (yang_fill_deviate_default(trg->ctx, $1.deviation, s)) {
                                                  YYABORT;
                                                }
                                                s = NULL;
                                                $$ = $1;
+                                             } else {
+                                               size_arrays->node[$1.index].dflt++;
                                              }
                                            }
   |  deviate_replace_opt_stmt config_stmt { if (read_all) {
@@ -3376,13 +4089,13 @@ when_opt_stmt: @EMPTYDIR@
 
 config_stmt: CONFIG_KEYWORD sep config_arg_str stmtend { $$ = $3; }
 
-config_read_stmt: CONFIG_KEYWORD sep { read_all = (read_all) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
-                  config_arg_str { read_all = (read_all) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
+config_read_stmt: CONFIG_KEYWORD sep { read_string = (read_string) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
+                  config_arg_str { read_string = (read_string) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
                   stmtend { $$ = $4; }
 
 config_arg_str: TRUE_KEYWORD optsep { $$ = LYS_CONFIG_W | LYS_CONFIG_SET; }
   |  FALSE_KEYWORD optsep { $$ = LYS_CONFIG_R | LYS_CONFIG_SET; }
-  |  string_1 { if (read_all) {
+  |  string_1 { if (read_string) {
                   if (!strcmp(s, "true")) {
                     $$ = LYS_CONFIG_W | LYS_CONFIG_SET;
                   } else if (!strcmp(s, "false")) {
@@ -3399,13 +4112,13 @@ config_arg_str: TRUE_KEYWORD optsep { $$ = LYS_CONFIG_W | LYS_CONFIG_SET; }
 
 mandatory_stmt: MANDATORY_KEYWORD sep mandatory_arg_str stmtend { $$ = $3; }
 
-mandatory_read_stmt: MANDATORY_KEYWORD sep { read_all = (read_all) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
-                     mandatory_arg_str { read_all = (read_all) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
+mandatory_read_stmt: MANDATORY_KEYWORD sep { read_string = (read_string) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
+                     mandatory_arg_str { read_string = (read_string) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
                      stmtend { $$ = $4; }
 
 mandatory_arg_str: TRUE_KEYWORD optsep { $$ = LYS_MAND_TRUE; }
   |  FALSE_KEYWORD optsep { $$ = LYS_MAND_FALSE; }
-  |  string_1 { if (read_all) {
+  |  string_1 { if (read_string) {
                   if (!strcmp(s, "true")) {
                     $$ = LYS_MAND_TRUE;
                   } else if (!strcmp(s, "false")) {
@@ -3431,10 +4144,11 @@ min_value_arg_str: non_negative_integer_value optsep { $$ = $1; }
                   } else {
                     /* convert it to uint32_t */
                     uint64_t val;
-                    char *endptr;
+                    char *endptr = NULL;
+                    errno = 0;
 
                     val = strtoul(s, &endptr, 10);
-                    if (val > UINT32_MAX || *endptr) {
+                    if (*endptr || s[0] == '-' || errno || val > UINT32_MAX) {
                         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "min-elements");
                         free(s);
                         YYABORT;
@@ -3456,10 +4170,11 @@ max_value_arg_str: UNBOUNDED_KEYWORD optsep { $$ = 0; }
                   } else {
                     /* convert it to uint32_t */
                     uint64_t val;
-                    char *endptr;
+                    char *endptr = NULL;
+                    errno = 0;
 
                     val = strtoul(s, &endptr, 10);
-                    if (val == 0 || val > UINT32_MAX || *endptr) {
+                    if (*endptr || s[0] == '-' || errno || val == 0 || val > UINT32_MAX) {
                         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "max-elements");
                         free(s);
                         YYABORT;
@@ -3753,12 +4468,12 @@ string_opt_part1: @EMPTYDIR@
   |  sep
 
 string_opt_part2: @EMPTYDIR@
-  |  strings
+  |  strings optsep
   |  STRING optsep string_opt_part3
 
 string_opt_part3: @EMPTYDIR@
   |  string_opt_part3 '+' optsep STRING optsep
-  
+
 unknown_statement_end: ';'
   |  '{' optsep unknown_statement2_opt '}'
 
@@ -3879,6 +4594,9 @@ identifier: IDENTIFIER
   |  TRUE_KEYWORD
   |  UNBOUNDED_KEYWORD
   |  USER_KEYWORD
+  |  ACTION_KEYWORD
+  |  MODIFIER_KEYWORD
+  |  ANYDATA_KEYWORD
   ;
 
 identifiers: identifier { if (read_all) {

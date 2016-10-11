@@ -31,8 +31,8 @@
 #define YANG_FAKEMODULE_PATH "../models/yang@2016-02-11.h"
 #define IETF_INET_TYPES_PATH "../models/ietf-inet-types@2013-07-15.h"
 #define IETF_YANG_TYPES_PATH "../models/ietf-yang-types@2013-07-15.h"
-#define IETF_YANG_LIB_PATH "../models/ietf-yang-library@2016-02-01.h"
-#define IETF_YANG_LIB_REV "2016-02-01"
+#define IETF_YANG_LIB_PATH "../models/ietf-yang-library@2016-06-21.h"
+#define IETF_YANG_LIB_REV "2016-06-21"
 
 #include YANG_FAKEMODULE_PATH
 #include IETF_INET_TYPES_PATH
@@ -50,7 +50,7 @@ static struct internal_modules_s {
     {"yang", "2016-02-11", (const char*)yang_2016_02_11_yin, 1, LYS_IN_YIN},
     {"ietf-inet-types", "2013-07-15", (const char*)ietf_inet_types_2013_07_15_yin, 0, LYS_IN_YIN},
     {"ietf-yang-types", "2013-07-15", (const char*)ietf_yang_types_2013_07_15_yin, 0, LYS_IN_YIN},
-    {"ietf-yang-library", "2016-02-01", (const char*)ietf_yang_library_2016_02_01_yin, 1, LYS_IN_YIN}
+    {"ietf-yang-library", "2016-06-21", (const char*)ietf_yang_library_2016_06_21_yin, 1, LYS_IN_YIN}
 };
 
 API struct ly_ctx *
@@ -357,48 +357,65 @@ ly_ctx_get_module_clb(const struct ly_ctx *ctx, void **user_data)
     return ctx->module_clb;
 }
 
-API const struct lys_module *
-ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
+struct lys_module *
+ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char *name, const char *revision,
+                       int implement, struct unres_schema *unres)
 {
-    const struct lys_module *module;
+    struct lys_module *mod;
     char *module_data;
     int i;
     void (*module_data_free)(void *module_data) = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
 
-    if (!ctx || !name) {
-        ly_errno = LY_EINVAL;
-        return NULL;
-    }
-
     /* exception for internal modules */
-    for (i = 0; i < INTERNAL_MODULES_COUNT; i++) {
-        if (ly_strequal(name, internal_modules[i].name, 0)) {
-            if (!revision || ly_strequal(revision, internal_modules[i].revision, 0)) {
-                /* return internal module */
-                return ly_ctx_get_module(ctx, name, revision);
+    if (!module) {
+        for (i = 0; i < INTERNAL_MODULES_COUNT; i++) {
+            if (ly_strequal(name, internal_modules[i].name, 0)) {
+                if (!revision || ly_strequal(revision, internal_modules[i].revision, 0)) {
+                    /* return internal module */
+                    return (struct lys_module *)ly_ctx_get_module(ctx, name, revision);
+                }
             }
         }
     }
 
     if (ctx->module_clb) {
-        module_data = ctx->module_clb(name, revision, ctx->module_clb_data, &format, &module_data_free);
+        if (module) {
+            mod = lys_main_module(module);
+            module_data = ctx->module_clb(mod->name, (mod->rev_size ? mod->rev[0].date : NULL), name, revision, ctx->module_clb_data, &format, &module_data_free);
+        } else {
+            module_data = ctx->module_clb(name, revision, NULL, NULL, ctx->module_clb_data, &format, &module_data_free);
+        }
         if (!module_data) {
             LOGERR(0, "User module retrieval callback failed!");
             return NULL;
         }
-        module = lys_parse_mem(ctx, module_data, format);
+
+        if (module) {
+            mod = (struct lys_module *)lys_submodule_parse(module, module_data, format, unres);
+        } else {
+            mod = (struct lys_module *)lys_parse_mem(ctx, module_data, format);
+        }
+
         if (module_data_free) {
             module_data_free(module_data);
         }
     } else {
-        module = lyp_search_file(ctx, NULL, name, revision, NULL);
-        if (module) {
-            ((struct lys_module *)module)->implemented = 1;
-        }
+        mod = lyp_search_file(ctx, module, name, revision, implement, unres);
     }
 
-    return module;
+    return mod;
+}
+
+API const struct lys_module *
+ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
+{
+    if (!ctx || !name) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    return ly_ctx_load_sub_module(ctx, NULL, name, revision, 1, NULL);
 }
 
 API const struct lys_module *
@@ -451,25 +468,34 @@ ylib_feature(struct lyd_node *parent, struct lys_module *cur_mod)
 static int
 ylib_deviation(struct lyd_node *parent, struct lys_module *cur_mod)
 {
-    int i;
-    const char *revision;
+    uint32_t i = 0, j;
+    const struct lys_module *mod;
     struct lyd_node *cont;
+    const char *ptr;
 
-    for (i = 0; i < cur_mod->imp_size; ++i) {
-        /* marks a deviating module */
-        if (cur_mod->imp[i].external == 2) {
-            revision = (cur_mod->imp[i].module->rev_size ? cur_mod->imp[i].module->rev[0].date : "");
-
-            cont = lyd_new(parent, NULL, "deviation");
-            if (!cont) {
-                return EXIT_FAILURE;
+    if (cur_mod->deviated) {
+        while ((mod = ly_ctx_get_module_iter(cur_mod->ctx, &i))) {
+            if (mod == cur_mod) {
+                continue;
             }
 
-            if (!lyd_new_leaf(cont, NULL, "name", cur_mod->imp[i].module->name)) {
-                return EXIT_FAILURE;
-            }
-            if (!lyd_new_leaf(cont, NULL, "revision", revision)) {
-                return EXIT_FAILURE;
+            for (j = 0; j < mod->deviation_size; ++j) {
+                ptr = strstr(mod->deviation[j].target_name, cur_mod->name);
+                if (ptr && ptr[strlen(cur_mod->name)] == ':') {
+                    cont = lyd_new(parent, NULL, "deviation");
+                    if (!cont) {
+                        return EXIT_FAILURE;
+                    }
+
+                    if (!lyd_new_leaf(cont, NULL, "name", mod->name)) {
+                        return EXIT_FAILURE;
+                    }
+                    if (!lyd_new_leaf(cont, NULL, "revision", (mod->rev_size ? mod->rev[0].date : ""))) {
+                        return EXIT_FAILURE;
+                    }
+
+                    break;
+                }
             }
         }
     }
@@ -482,14 +508,10 @@ ylib_submodules(struct lyd_node *parent, struct lys_module *cur_mod)
 {
     int i;
     char *str;
-    struct lyd_node *cont, *item;
-
-    if (cur_mod->inc_size) {
-        cont = lyd_new(parent, NULL, "submodules");
-    }
+    struct lyd_node *item;
 
     for (i = 0; i < cur_mod->inc_size && cur_mod->inc[i].submodule; ++i) {
-        item = lyd_new(cont, NULL, "submodule");
+        item = lyd_new(parent, NULL, "submodule");
         if (!item) {
             return EXIT_FAILURE;
         }
@@ -603,7 +625,7 @@ ly_ctx_info(struct ly_ctx *ctx)
         return NULL;
     }
 
-    if (lyd_validate(&root, LYD_OPT_NOSIBLINGS)) {
+    if (lyd_validate(&root, LYD_OPT_NOSIBLINGS, NULL)) {
         lyd_free(root);
         return NULL;
     }
@@ -622,22 +644,7 @@ ly_ctx_get_node(struct ly_ctx *ctx, const struct lys_node *start, const char *no
     }
 
     /* sets error and everything */
-    node = resolve_json_schema_nodeid(nodeid, ctx, start, 0);
-
-    return node;
-}
-
-API const struct lys_node *
-ly_ctx_get_node2(struct ly_ctx *ctx, const struct lys_node *start, const char *nodeid, int rpc_output)
-{
-    const struct lys_node *node;
-
-    if (!ctx || !nodeid || ((nodeid[0] != '/') && !start)) {
-        ly_errno = LY_EINVAL;
-        return NULL;
-    }
-
-    node = resolve_json_schema_nodeid(nodeid, ctx, start, (rpc_output ? 2 : 1));
+    node = resolve_json_nodeid(nodeid, ctx, start);
 
     return node;
 }

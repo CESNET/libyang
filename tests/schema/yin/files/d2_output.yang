@@ -7,7 +7,7 @@ module d2 {
   }
 
   feature d2_feat {
-    if-feature d1_pref:d1_feat;
+    if-feature "d1_pref:d1_feat";
   }
 
   identity d2_ident {

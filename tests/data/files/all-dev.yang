@@ -31,7 +31,7 @@ module all-dev {
   deviation "/all_mod:cont1/all_mod:leaf13" {
     deviate add {
       default "CVdseNE==";
-      must "../leaf2 > 0";
+      must "../leaf3 < 0";
       units "b/h";
     }
   }

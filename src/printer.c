@@ -134,6 +134,62 @@ ly_write(struct lyout *out, const char *buf, size_t count)
 }
 
 static int
+write_iff(struct lyout *out, const struct lys_module *module, struct lys_iffeature *expr, int *index_e, int *index_f)
+{
+    int count = 0, brackets_flag = *index_e;
+    uint8_t op;
+
+    op = iff_getop(expr->expr, *index_e);
+    (*index_e)++;
+
+    switch (op) {
+    case LYS_IFF_F:
+        if (lys_main_module(expr->features[*index_f]->module) != lys_main_module(module)) {
+            count += ly_print(out, "%s:", transform_module_name2import_prefix(module, lys_main_module(expr->features[*index_f]->module)->name));
+        }
+        count += ly_print(out, expr->features[*index_f]->name);
+        (*index_f)++;
+        break;
+    case LYS_IFF_NOT:
+        count += ly_print(out, "not ");
+        count += write_iff(out, module, expr, index_e, index_f);
+        break;
+    case LYS_IFF_AND:
+        if (brackets_flag) {
+            /* AND need brackets only if previous op was not */
+            if (*index_e < 2 || iff_getop(expr->expr, *index_e - 2) != LYS_IFF_NOT) {
+                brackets_flag = 0;
+            }
+        }
+        /* no break */
+    case LYS_IFF_OR:
+        if (brackets_flag) {
+            count += ly_print(out, "(");
+        }
+        count += write_iff(out, module, expr, index_e, index_f);
+        count += ly_print(out, " %s ", op == LYS_IFF_OR ? "or" : "and");
+        count += write_iff(out, module, expr, index_e, index_f);
+        if (brackets_flag) {
+            count += ly_print(out, ")");
+        }
+    }
+
+    return count;
+}
+
+int
+ly_print_iffeature(struct lyout *out, const struct lys_module *module, struct lys_iffeature *expr)
+{
+    int index_e = 0, index_f = 0;
+
+    if (expr->expr) {
+        return write_iff(out, module, expr, &index_e, &index_f);
+    }
+
+    return 0;
+}
+
+static int
 lys_print_(struct lyout *out, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
 {
     int ret;
@@ -327,4 +383,100 @@ lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), voi
     out.method.clb.arg = arg;
 
     return lyd_print_(&out, root, format, options);
+}
+
+int
+lyd_wd_toprint(const struct lyd_node *node, int options)
+{
+    const struct lyd_node *subroot, *next, *elem;
+    int flag = 0;
+
+    if (options & LYP_WD_TRIM) {
+        /* do not print default nodes */
+        if (node->dflt) {
+            /* implicit default node */
+            return 0;
+        } else if (node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+            if (lyd_wd_default((struct lyd_node_leaf_list *)node)) {
+                /* explicit default node */
+                return 0;
+            }
+        } else if ((node->schema->nodetype & (LYS_CONTAINER)) && !((struct lys_node_container *)node->schema)->presence) {
+            /* get know if non-presence container contains non-default node */
+            for (subroot = node->child; subroot && !flag; subroot = subroot->next) {
+                LY_TREE_DFS_BEGIN(subroot, next, elem) {
+                    if (elem->dflt) {
+                        /* skip subtree */
+                        goto trim_dfs_nextsibling;
+                    } else if (elem->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+                        if (!lyd_wd_default((struct lyd_node_leaf_list *)elem)) {
+                            /* non-default node */
+                            flag = 1;
+                            break;
+                        }
+                    }
+
+                    /* modified LY_TREE_DFS_END */
+                    /* select element for the next run - children first */
+                    /* child exception for leafs, leaflists and anyxml without children */
+                    if (elem->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
+                        next = NULL;
+                    } else {
+                        next = elem->child;
+                    }
+                    if (!next) {
+trim_dfs_nextsibling:
+                        /* no children */
+                        if (elem == subroot) {
+                            /* we are done, (START) has no children */
+                            break;
+                        }
+                        /* try siblings */
+                        next = elem->next;
+                    }
+                    while (!next) {
+                        /* parent is already processed, go to its sibling */
+                        elem = elem->parent;
+                        /* no siblings, go back through parents */
+                        if (elem->parent == subroot->parent) {
+                            /* we are done, no next element to process */
+                            break;
+                        }
+                        next = elem->next;
+                    }
+                }
+            }
+            if (!flag) {
+                /* only default nodes in subtree, do not print the container */
+                return 0;
+            }
+        }
+    } else if (node->dflt && !(options & LYP_WD_MASK) && (node->schema->flags & LYS_CONFIG_W)) {
+        /* LYP_WD_EXPLICIT
+         * - print only if it contains status data in its subtree */
+        LY_TREE_DFS_BEGIN(node, next, elem) {
+            if (elem->schema->flags & LYS_CONFIG_R) {
+                flag = 1;
+                break;
+            }
+            LY_TREE_DFS_END(node, next, elem)
+        }
+        if (!flag) {
+            return 0;
+        }
+    } else if (node->dflt && node->schema->nodetype == LYS_CONTAINER && !(options & LYP_KEEPEMPTYCONT)) {
+        /* avoid empty default containers */
+        LY_TREE_DFS_BEGIN(node, next, elem) {
+            if (elem->schema->nodetype != LYS_CONTAINER) {
+                flag = 1;
+                break;
+            }
+            LY_TREE_DFS_END(node, next, elem)
+        }
+        if (!flag) {
+            return 0;
+        }
+    }
+
+    return 1;
 }

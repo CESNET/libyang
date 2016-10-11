@@ -120,7 +120,7 @@ static int
 teardown_f(void **state)
 {
     (void) state; /* unused */
-    lyd_free(root);
+    lyd_free_withsiblings(root);
     ly_ctx_destroy(ctx, NULL);
 
     return 0;
@@ -195,10 +195,10 @@ test_yanglibrary(void **state)
     yanglib = ly_ctx_info(ctx);
     assert_non_null(yanglib);
 
-    rc = lyd_validate(&yanglib, LYD_OPT_DATA);
+    rc = lyd_validate(&yanglib, LYD_OPT_DATA, NULL);
 
     /* cleanup */
-    lyd_free(yanglib);
+    lyd_free_withsiblings(yanglib);
 
     assert_int_equal(rc, 0);
 }

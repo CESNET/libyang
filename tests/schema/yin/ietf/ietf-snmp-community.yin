@@ -52,6 +52,15 @@ the RFC itself for full legal notices.</text>
   Version 3 of the Internet-standard Network
   Management Framework</text>
   </reference>
+  <revision date="2015-01-23">
+    <description>
+        <text>When expression of augment '/snmp:snmp/snmp:target' with
+       non-existing leaves removed.</text>
+    </description>
+    <reference>
+      <text>RFC 7407 Errata</text>
+    </reference>
+  </revision>
   <revision date="2014-12-10">
     <description>
       <text>Initial revision.</text>
@@ -233,7 +242,6 @@ to be one of the available values of
     </case>
   </augment>
   <augment target-node="/snmp:snmp/snmp:target">
-    <when condition="snmp:v1 or snmp:v2c"/>
     <leaf name="mms">
       <type name="union">
         <type name="enumeration">

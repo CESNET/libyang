@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* data */
-	data = lyd_parse_path(ctx, argv[2], LYD_XML, LYD_OPT_DESTRUCT | LYD_OPT_TRUSTED);
+	data = lyd_parse_path(ctx, argv[2], LYD_XML, LYD_OPT_DESTRUCT | LYD_OPT_CONFIG);
 	if (!data) {
 		fprintf(stderr, "Failed to load data.\n");
 	}

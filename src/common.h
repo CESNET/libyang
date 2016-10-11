@@ -68,6 +68,7 @@ struct ly_err {
     uint8_t vlog_hide;
     uint8_t buf_used;
     uint16_t path_index;
+    uint8_t path_obj_type;
     const void *path_obj;
     char msg[LY_BUF_SIZE];
     char path[LY_BUF_SIZE];
@@ -91,7 +92,7 @@ char *ly_buf(void);
 /*
  * logger
  */
-extern volatile uint8_t ly_log_level;
+extern volatile int8_t ly_log_level;
 
 void ly_log(LY_LOG_LEVEL level, const char *format, ...);
 
@@ -137,6 +138,7 @@ typedef enum {
     LYE_EOF,
     LYE_INSTMT,
     LYE_INCHILDSTMT,
+    LYE_INPAR,
     LYE_INID,
     LYE_INDATE,
     LYE_INARG,
@@ -148,9 +150,13 @@ typedef enum {
     LYE_DUPLEAFLIST,
     LYE_DUPLIST,
     LYE_NOUNIQ,
+    LYE_ENUM_INVAL,
+    LYE_ENUM_INNAME,
     LYE_ENUM_DUPVAL,
     LYE_ENUM_DUPNAME,
     LYE_ENUM_WS,
+    LYE_BITS_INVAL,
+    LYE_BITS_INNAME,
     LYE_BITS_DUPVAL,
     LYE_BITS_DUPNAME,
     LYE_INMOD,
@@ -164,8 +170,10 @@ typedef enum {
     LYE_INRESOLV,
     LYE_INSTATUS,
     LYE_CIRC_LEAFREFS,
+    LYE_CIRC_FEATURES,
     LYE_CIRC_IMPORTS,
     LYE_CIRC_INCLUDES,
+    LYE_INVER,
 
     LYE_OBSDATA,
     LYE_OBSTYPE,
@@ -191,6 +199,7 @@ typedef enum {
     LYE_NOLEAFREF,
     LYE_NOMANDCHOICE,
 
+    LYE_XPATH_INSNODE,
     LYE_XPATH_INTOK,
     LYE_XPATH_EOF,
     LYE_XPATH_INOP_1,
@@ -198,6 +207,7 @@ typedef enum {
     LYE_XPATH_INCTX,
     LYE_XPATH_INARGCOUNT,
     LYE_XPATH_INARGTYPE,
+    LYE_XPATH_DUMMY,
 
     LYE_PATH_INCHAR,
     LYE_PATH_INMOD,
@@ -217,11 +227,15 @@ enum LY_VLOG_ELEM {
     LY_VLOG_STR  /* const char* */
 };
 void ly_vlog_hide(int hide);
+uint8_t *ly_vlog_hide_location(void);
 void ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...);
 #define LOGVAL(code, elem_type, elem, args...) ly_vlog(code, elem_type, elem, ##args)
 #define LOGPATH(elem_type, elem) ly_vlog(LYE_PATH, elem_type, elem)
 
 void ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *path, uint16_t *index);
+
+struct lys_module *ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char *name,
+                                          const char *revision, int implement, struct unres_schema *unres);
 
 /**
  * @brief Basic functionality like strpbrk(3). However, it searches string \p s
@@ -333,5 +347,9 @@ int ly_strequal_(const char *s1, const char *s2);
 #define ly_strequal0(s1, s2) ly_strequal_(s1, s2)
 #define ly_strequal1(s1, s2) (s1 == s2)
 #define ly_strequal(s1, s2, d) ly_strequal##d(s1, s2)
+
+int64_t dec_pow(uint8_t exp);
+
+int dec64cmp(int64_t num1, uint8_t dig1, int64_t num2, uint8_t dig2);
 
 #endif /* LY_COMMON_H_ */

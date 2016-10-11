@@ -7,17 +7,11 @@
  *
  * Author: Mislav Novakovic <mislav.novakovic@sartura.hr>
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * This source code is licensed under BSD 3-Clause License (the "License").
+ * You may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *	http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ *     https://opensource.org/licenses/BSD-3-Clause
  */
 
 #include <stdarg.h>
@@ -148,7 +142,7 @@ teardown_f(void **state)
 {
     (void) state; /* unused */
     if (root)
-        lyd_free(root);
+        lyd_free_withsiblings(root);
     if (ctx)
         ly_ctx_destroy(ctx, NULL);
 
@@ -286,7 +280,7 @@ test_ly_ctx_info(void **state)
 
     assert_int_equal(LYD_VAL_OK, node->validity);
 
-    lyd_free(node);
+    lyd_free_withsiblings(node);
 }
 
 static void
@@ -582,47 +576,6 @@ test_ly_ctx_get_node(void **state)
 }
 
 static void
-test_ly_ctx_get_node2(void **state)
-{
-    (void) state; /* unused */
-    const struct lys_node *node;
-    const char *nodeid1 = "/a:x/bubba";
-    const char *nodeid2 = "/b:x/bubba";
-    const char *nodeid3 = "/a:x/con/lef";
-
-    node = ly_ctx_get_node2(NULL, root->schema, nodeid1, 0);
-    if (node) {
-        fail();
-    }
-
-    node = ly_ctx_get_node2(ctx, root->schema, NULL, 0);
-    if (node) {
-        fail();
-    }
-
-    node = ly_ctx_get_node2(ctx, root->schema, nodeid1, 0);
-    if (!node) {
-        fail();
-    }
-
-    assert_string_equal("bubba", node->name);
-
-    node = ly_ctx_get_node2(ctx, root->schema, nodeid2, 0);
-    if (!node) {
-        fail();
-    }
-
-    assert_string_equal("bubba", node->name);
-
-    node = ly_ctx_get_node2(ctx, root->schema, nodeid3, 0);
-    if (!node) {
-        fail();
-    }
-
-    assert_string_equal("lef", node->name);
-}
-
-static void
 test_ly_set_new(void **state)
 {
     (void) state; /* unused */
@@ -859,7 +812,6 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_submodule, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_submodule2, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_node, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_ly_ctx_get_node2, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_set_new, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_set_add, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_set_rm, setup_f, teardown_f),

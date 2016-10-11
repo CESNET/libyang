@@ -52,17 +52,30 @@ int lyv_data_context(const struct lyd_node *node, int options, struct unres_data
 int lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres);
 
 /**
+ * @brief check for list/leaflist uniqueness.
+ *
+ * Function is used by lyv_data_context for inner lists/leaflists. Due to optimization, the function
+ * is used separatedly for the top-level lists/leaflists.
+ *
+ * @param[in] node List/leaflist node to be checked.
+ * @param[in] start First sibling of the \p node for searching for other instances of the same list/leaflist.
+ *                  Used for optimization, but can be NULL and the first sibling will be found.
+ */
+int lyv_data_unique(struct lyd_node *node, struct lyd_node *start);
+
+/**
  * @brief Validate if the \p node has a sibling from another choice's case. It can report an error or automatically
  * remove the nodes from other case than \p node.
  *
  * @param[in] node Data tree node to be checked.
  * @param[in] schemanode Alternative to \p node (node is preferred), schema of the (potential) node
- * @param[in] first_sibling The first sibling of the node where the searching will always start.
+ * @param[in,out] first_sibling The first sibling of the node where the searching will always start. It is updated
+ * when the first_sibling is (even repeatedly) autodeleted
  * @param[in] autodelete Flag to select if the conflicting nodes are supposed to be removed or reported
  * @param[in] nodel Exception for autodelete, if the \p nodel node would be removed, error is reported instead.
  * @return EXIT_SUCCESS or EXIT_FAILURE with set ly_errno.
  */
-int lyv_multicases(struct lyd_node *node, struct lys_node *schemanode, struct lyd_node *first_sibling, int autodelete,
+int lyv_multicases(struct lyd_node *node, struct lys_node *schemanode, struct lyd_node **first_sibling, int autodelete,
                    struct lyd_node *nodel);
 
 #endif /* LY_VALIDATION_H_ */

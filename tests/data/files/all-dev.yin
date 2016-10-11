@@ -31,7 +31,7 @@
   <deviation target-node="/all_mod:cont1/all_mod:leaf13">
     <deviate value="add">
       <default value="CVdseNE=="/>
-      <must condition="../leaf2 &gt; 0"/>
+      <must condition="../leaf3 &lt; 0"/>
       <units name="b/h"/>
     </deviate>
   </deviation>

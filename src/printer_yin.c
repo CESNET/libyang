@@ -87,11 +87,18 @@ static void
 yin_print_restr(struct lyout *out, int level, const char *elem_name, const struct lys_restr *restr)
 {
     int close;
+    int pattern = 0;
 
-    close = (restr->dsc || restr->ref || restr->eapptag || restr->emsg ? 0 : 1);
+    if (restr->expr[0] == 0x06 || restr->expr[0] == 0x15) {
+        pattern = 1;
+    }
+    close = (restr->dsc || restr->ref || restr->eapptag || restr->emsg || restr->expr[0] == 0x15 ? 0 : 1);
 
-    yin_print_open(out, level, elem_name, "value", restr->expr, close);
+    yin_print_open(out, level, elem_name, "value", pattern ? &restr->expr[1] : restr->expr , close);
     if (!close) {
+        if (restr->expr[0] == 0x15) {
+            yin_print_open(out, level + 1, "modifier", "value", "invert-match", 1);
+        }
         yin_print_restr_sub(out, level + 1, restr);
 
         yin_print_close(out, level, elem_name);
@@ -221,16 +228,11 @@ yin_print_snode_common2(struct lyout *out, int level, const struct lys_node *nod
 }
 
 static void
-yin_print_iffeature(struct lyout *out, int level, const struct lys_module *module, const struct lys_feature *feat)
+yin_print_iffeature(struct lyout *out, int level, const struct lys_module *module, struct lys_iffeature *iffeature)
 {
-    struct lys_module *mod;
-
     ly_print(out, "%*s<if-feature name=\"", LEVEL, INDENT);
-    mod = lys_main_module(feat->module);
-    if (lys_main_module(module) != mod) {
-        ly_print(out, "%s:", transform_module_name2import_prefix(module, mod->name));
-    }
-    ly_print(out, "%s\"/>\n", feat->name);
+    ly_print_iffeature(out, module, iffeature);
+    ly_print(out, "\"/>\n");
 }
 
 static void
@@ -238,15 +240,15 @@ yin_print_feature(struct lyout *out, int level, const struct lys_feature *feat)
 {
     int i, close;
 
-    close = (yin_has_snode_common((struct lys_node *)feat) || feat->features_size ? 0 : 1);
+    close = (yin_has_snode_common((struct lys_node *)feat) || feat->iffeature_size ? 0 : 1);
 
     yin_print_open(out, level, "feature", "name", feat->name, close);
 
     if (!close) {
         level++;
         yin_print_snode_common(out, level, (struct lys_node *)feat);
-        for (i = 0; i < feat->features_size; ++i) {
-            yin_print_iffeature(out, level, feat->module, feat->features[i]);
+        for (i = 0; i < feat->iffeature_size; ++i) {
+            yin_print_iffeature(out, level, feat->module, &feat->iffeature[i]);
         }
         level--;
 
@@ -421,13 +423,15 @@ yin_print_type(struct lyout *out, int level, const struct lys_module *module, co
             }
             break;
         case LY_TYPE_IDENT:
-            if (type->info.ident.ref) {
-                mod = lys_main_module(type->info.ident.ref->module);
-                if (lys_main_module(module) == mod) {
-                    ly_print(out, "%*s<base name=\"%s\"/>\n", LEVEL, INDENT, type->info.ident.ref->name);
-                } else {
-                    ly_print(out, "%*s<base name=\"%s:%s\"/>\n", LEVEL, INDENT,
-                            transform_module_name2import_prefix(module, mod->name), type->info.ident.ref->name);
+            if (type->info.ident.count) {
+                for (i = 0; i < type->info.ident.count; ++i) {
+                    mod = lys_main_module(type->info.ident.ref[i]->module);
+                    if (lys_main_module(module) == mod) {
+                        ly_print(out, "%*s<base name=\"%s\"/>\n", LEVEL, INDENT, type->info.ident.ref[i]->name);
+                    } else {
+                        ly_print(out, "%*s<base name=\"%s:%s\"/>\n", LEVEL, INDENT,
+                                transform_module_name2import_prefix(module, mod->name), type->info.ident.ref[i]->name);
+                    }
                 }
             }
             break;
@@ -546,12 +550,14 @@ yin_print_refine(struct lyout *out, int level, const struct lys_module *module, 
     for (i = 0; i < refine->must_size; ++i) {
         yin_print_must(out, level, module, &refine->must[i]);
     }
+    for (i = 0; i < refine->iffeature_size; i++) {
+        yin_print_iffeature(out, level, module, &refine->iffeature[i]);
+    }
+    for (i = 0; i < refine->dflt_size; ++i) {
+        yin_print_open(out, level, "default", "value", refine->dflt[i], 1);
+    }
 
-    if (refine->target_type & (LYS_LEAF | LYS_CHOICE)) {
-        if (refine->mod.dflt) {
-            yin_print_open(out, level, "default", "value", refine->mod.dflt, 1);
-        }
-    } else if (refine->target_type == LYS_CONTAINER) {
+    if (refine->target_type == LYS_CONTAINER) {
         if (refine->mod.presence) {
             yin_print_open(out, level, "presence", "value", refine->mod.presence, 1);
         }
@@ -617,8 +623,8 @@ yin_print_deviation(struct lyout *out, int level, const struct lys_module *modul
             yin_print_open(out, level, "mandatory", "value", "false", 1);
         }
 
-        if (deviation->deviate[i].dflt) {
-            yin_print_open(out, level, "default", "value", deviation->deviate[i].dflt, 1);
+        for (j = 0; j < deviation->deviate[i].dflt_size; j++) {
+            yin_print_open(out, level, "default", "value", deviation->deviate[i].dflt[j], 1);
         }
 
         if (deviation->deviate[i].min_set) {
@@ -672,8 +678,8 @@ yin_print_augment(struct lyout *out, int level, const struct lys_module *module,
     yin_print_nacmext(out, level, (struct lys_node *)augment, module);
     yin_print_snode_common(out, level, (struct lys_node *)augment);
 
-    for (i = 0; i < augment->features_size; i++) {
-        yin_print_iffeature(out, level, module, augment->features[i]);
+    for (i = 0; i < augment->iffeature_size; i++) {
+        yin_print_iffeature(out, level, module, &augment->iffeature[i]);
     }
 
     if (augment->when) {
@@ -687,7 +693,7 @@ yin_print_augment(struct lyout *out, int level, const struct lys_module *module,
         }
         yin_print_snode(out, level, sub,
                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
-                        LYS_USES | LYS_ANYXML | LYS_CASE);
+                        LYS_USES | LYS_ANYDATA | LYS_CASE | LYS_ACTION);
     }
     level--;
 
@@ -716,7 +722,7 @@ yin_print_typedef(struct lyout *out, int level, const struct lys_module *module,
 static void
 yin_print_identity(struct lyout *out, int level, const struct lys_ident *ident)
 {
-    int close;
+    int close, i;
     struct lys_module *mod;
 
     close = (yin_has_snode_common((struct lys_node *)ident) || ident->base ? 0 : 1);
@@ -726,13 +732,13 @@ yin_print_identity(struct lyout *out, int level, const struct lys_ident *ident)
     if (!close) {
         level++;
         yin_print_snode_common(out, level, (struct lys_node *)ident);
-        if (ident->base) {
+        for (i = 0; i < ident->base_size; i++) {
             ly_print(out, "%*s<base name=\"", LEVEL, INDENT);
-            mod = lys_main_module(ident->base->module);
+            mod = lys_main_module(ident->base[i]->module);
             if (lys_main_module(ident->module) != mod) {
                 ly_print(out, "%s:", transform_module_name2import_prefix(ident->module, mod->name));
             }
-            ly_print(out, "%s\"/>\n", ident->base->name);
+            ly_print(out, "%s\"/>\n", ident->base[i]->name);
         }
         level--;
 
@@ -756,8 +762,8 @@ yin_print_container(struct lyout *out, int level, const struct lys_node *node)
         yin_print_when(out, level, node->module, cont->when);
     }
 
-    for (i = 0; i < cont->features_size; i++) {
-        yin_print_iffeature(out, level, node->module, cont->features[i]);
+    for (i = 0; i < cont->iffeature_size; i++) {
+        yin_print_iffeature(out, level, node->module, &cont->iffeature[i]);
     }
 
     for (i = 0; i < cont->must_size; i++) {
@@ -781,7 +787,7 @@ yin_print_container(struct lyout *out, int level, const struct lys_node *node)
         }
         yin_print_snode(out, level, sub,
                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
-                        LYS_USES | LYS_GROUPING | LYS_ANYXML);
+                        LYS_USES | LYS_GROUPING | LYS_ANYDATA | LYS_ACTION | LYS_NOTIF);
     }
     level--;
 
@@ -801,8 +807,8 @@ yin_print_case(struct lyout *out, int level, const struct lys_node *node)
     yin_print_nacmext(out, level, node, node->module);
     yin_print_snode_common2(out, level, node);
 
-    for (i = 0; i < cas->features_size; i++) {
-        yin_print_iffeature(out, level, node->module, cas->features[i]);
+    for (i = 0; i < cas->iffeature_size; i++) {
+        yin_print_iffeature(out, level, node->module, &cas->iffeature[i]);
     }
 
     if (cas->when) {
@@ -816,7 +822,7 @@ yin_print_case(struct lyout *out, int level, const struct lys_node *node)
         }
         yin_print_snode(out, level, sub,
                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
-                        LYS_USES | LYS_ANYXML);
+                        LYS_USES | LYS_ANYDATA);
     }
     level--;
 
@@ -840,8 +846,8 @@ yin_print_choice(struct lyout *out, int level, const struct lys_node *node)
 
     yin_print_snode_common2(out, level, node);
 
-    for (i = 0; i < choice->features_size; i++) {
-        yin_print_iffeature(out, level, node->module, choice->features[i]);
+    for (i = 0; i < choice->iffeature_size; i++) {
+        yin_print_iffeature(out, level, node->module, &choice->iffeature[i]);
     }
 
     if (choice->when) {
@@ -854,7 +860,7 @@ yin_print_choice(struct lyout *out, int level, const struct lys_node *node)
             continue;
         }
         yin_print_snode(out, level, sub,
-                        LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYXML | LYS_CASE);
+                        LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_CASE);
     }
     level--;
 
@@ -874,8 +880,8 @@ yin_print_leaf(struct lyout *out, int level, const struct lys_node *node)
     if (leaf->when) {
         yin_print_when(out, level, node->module, leaf->when);
     }
-    for (i = 0; i < leaf->features_size; i++) {
-        yin_print_iffeature(out, level, node->module, leaf->features[i]);
+    for (i = 0; i < leaf->iffeature_size; i++) {
+        yin_print_iffeature(out, level, node->module, &leaf->iffeature[i]);
     }
     for (i = 0; i < leaf->must_size; i++) {
         yin_print_must(out, level, node->module, &leaf->must[i]);
@@ -894,32 +900,33 @@ yin_print_leaf(struct lyout *out, int level, const struct lys_node *node)
 }
 
 static void
-yin_print_anyxml(struct lyout *out, int level, const struct lys_node *node)
+yin_print_anydata(struct lyout *out, int level, const struct lys_node *node)
 {
     int i, close;
-    struct lys_node_anyxml *anyxml = (struct lys_node_anyxml *)node;
+    struct lys_node_anydata *any = (struct lys_node_anydata *)node;
+    const char *name;
 
-    close = (yin_has_nacmext(node) || yin_has_snode_common2(node) || anyxml->features_size || anyxml->must_size
-            || anyxml->when ? 0 : 1);
-
-    yin_print_open(out, level, "anyxml", "name", anyxml->name, close);
+    close = (yin_has_nacmext(node) || yin_has_snode_common2(node) || any->iffeature_size || any->must_size
+            || any->when ? 0 : 1);
+    name = any->nodetype == LYS_ANYXML ? "anyxml" : "anydata";
+    yin_print_open(out, level, name, "name", any->name, close);
 
     if (!close) {
         level++;
         yin_print_nacmext(out, level, node, node->module);
         yin_print_snode_common2(out, level, node);
-        for (i = 0; i < anyxml->features_size; i++) {
-            yin_print_iffeature(out, level, node->module, anyxml->features[i]);
+        for (i = 0; i < any->iffeature_size; i++) {
+            yin_print_iffeature(out, level, node->module, &any->iffeature[i]);
         }
-        for (i = 0; i < anyxml->must_size; i++) {
-            yin_print_must(out, level, node->module, &anyxml->must[i]);
+        for (i = 0; i < any->must_size; i++) {
+            yin_print_must(out, level, node->module, &any->must[i]);
         }
-        if (anyxml->when) {
-            yin_print_when(out, level, node->module, anyxml->when);
+        if (any->when) {
+            yin_print_when(out, level, node->module, any->when);
         }
         level--;
 
-        yin_print_close(out, level, "anyxml");
+        yin_print_close(out, level, name);
     }
 }
 
@@ -936,8 +943,8 @@ yin_print_leaflist(struct lyout *out, int level, const struct lys_node *node)
     if (llist->when) {
         yin_print_when(out, level, llist->module, llist->when);
     }
-    for (i = 0; i < llist->features_size; i++) {
-        yin_print_iffeature(out, level, node->module, llist->features[i]);
+    for (i = 0; i < llist->iffeature_size; i++) {
+        yin_print_iffeature(out, level, node->module, &llist->iffeature[i]);
     }
     for (i = 0; i < llist->must_size; i++) {
         yin_print_must(out, level, node->module, &llist->must[i]);
@@ -946,6 +953,9 @@ yin_print_leaflist(struct lyout *out, int level, const struct lys_node *node)
     yin_print_type(out, level, node->module, &llist->type);
     if (llist->units) {
         yin_print_open(out, level, "units", "name", llist->units, 1);
+    }
+    for (i = 0; i < llist->dflt_size; i++) {
+        yin_print_open(out, level, "default", "value", llist->dflt[i], 1);
     }
     if (llist->min > 0) {
         yin_print_unsigned(out, level, "min-elements", "value", llist->min);
@@ -975,8 +985,8 @@ yin_print_list(struct lyout *out, int level, const struct lys_node *node)
     if (list->when) {
         yin_print_when(out, level, list->module, list->when);
     }
-    for (i = 0; i < list->features_size; i++) {
-        yin_print_iffeature(out, level, node->module, list->features[i]);
+    for (i = 0; i < list->iffeature_size; i++) {
+        yin_print_iffeature(out, level, node->module, &list->iffeature[i]);
     }
     for (i = 0; i < list->must_size; i++) {
         yin_print_must(out, level, list->module, &list->must[i]);
@@ -1012,7 +1022,7 @@ yin_print_list(struct lyout *out, int level, const struct lys_node *node)
         }
         yin_print_snode(out, level, sub,
                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
-                        LYS_USES | LYS_GROUPING | LYS_ANYXML);
+                        LYS_USES | LYS_GROUPING | LYS_ANYDATA | LYS_ACTION | LYS_NOTIF);
     }
     level--;
 
@@ -1038,7 +1048,7 @@ yin_print_grouping(struct lyout *out, int level, const struct lys_node *node)
     LY_TREE_FOR(node->child, sub) {
         yin_print_snode(out, level, sub,
                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
-                        LYS_USES | LYS_GROUPING | LYS_ANYXML);
+                        LYS_USES | LYS_GROUPING | LYS_ANYDATA | LYS_ACTION);
     }
     level--;
 
@@ -1052,7 +1062,7 @@ yin_print_uses(struct lyout *out, int level, const struct lys_node *node)
     struct lys_node_uses *uses = (struct lys_node_uses *)node;
     struct lys_module *mod;
 
-    close = (yin_has_nacmext(node) || yin_has_snode_common(node) || uses->features_size || uses->when
+    close = (yin_has_nacmext(node) || yin_has_snode_common(node) || uses->iffeature_size || uses->when
             || uses->refine_size || uses->augment_size ? 0 : 1);
 
     ly_print(out, "%*s<uses name=\"", LEVEL, INDENT);
@@ -1068,8 +1078,8 @@ yin_print_uses(struct lyout *out, int level, const struct lys_node *node)
         level++;
         yin_print_nacmext(out, level, node, node->module);
         yin_print_snode_common(out, level, node);
-        for (i = 0; i < uses->features_size; i++) {
-            yin_print_iffeature(out, level, node->module, uses->features[i]);
+        for (i = 0; i < uses->iffeature_size; i++) {
+            yin_print_iffeature(out, level, node->module, &uses->iffeature[i]);
         }
         if (uses->when) {
             yin_print_when(out, level, node->module, uses->when);
@@ -1093,13 +1103,16 @@ yin_print_input_output(struct lyout *out, int level, const struct lys_node *node
 {
     int i;
     struct lys_node *sub;
-    struct lys_node_rpc_inout *inout = (struct lys_node_rpc_inout *)node;
+    struct lys_node_inout *inout = (struct lys_node_inout *)node;
 
     ly_print(out, "%*s<%s>\n", LEVEL, INDENT, (inout->nodetype == LYS_INPUT ? "input" : "output"));
 
     level++;
     for (i = 0; i < inout->tpdf_size; i++) {
         yin_print_typedef(out, level, node->module, &inout->tpdf[i]);
+    }
+    for (i = 0; i < inout->must_size; i++) {
+        yin_print_must(out, level, node->module, &inout->must[i]);
     }
 
     LY_TREE_FOR(node->child, sub) {
@@ -1109,7 +1122,7 @@ yin_print_input_output(struct lyout *out, int level, const struct lys_node *node
         }
         yin_print_snode(out, level, sub,
                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
-                        LYS_USES | LYS_GROUPING | LYS_ANYXML);
+                        LYS_USES | LYS_GROUPING | LYS_ANYDATA);
     }
     level--;
 
@@ -1117,22 +1130,22 @@ yin_print_input_output(struct lyout *out, int level, const struct lys_node *node
 }
 
 static void
-yin_print_rpc(struct lyout *out, int level, const struct lys_node *node)
+yin_print_rpc_action(struct lyout *out, int level, const struct lys_node *node)
 {
     int i, close;
     struct lys_node *sub;
-    struct lys_node_rpc *rpc = (struct lys_node_rpc *)node;
+    struct lys_node_rpc_action *rpc = (struct lys_node_rpc_action *)node;
 
-    close = (yin_has_snode_common(node) || rpc->features_size || rpc->tpdf_size || node->child ? 0 : 1);
+    close = (yin_has_snode_common(node) || rpc->iffeature_size || rpc->tpdf_size || node->child ? 0 : 1);
 
-    yin_print_open(out, level, "rpc", "name", node->name, close);
+    yin_print_open(out, level, (node->nodetype == LYS_RPC ? "rpc" : "action"), "name", node->name, close);
 
     if (!close) {
         level++;
         yin_print_snode_common(out, level, node);
 
-        for (i = 0; i < rpc->features_size; i++) {
-            yin_print_iffeature(out, level, node->module, rpc->features[i]);
+        for (i = 0; i < rpc->iffeature_size; i++) {
+            yin_print_iffeature(out, level, node->module, &rpc->iffeature[i]);
         }
 
         for (i = 0; i < rpc->tpdf_size; i++) {
@@ -1148,7 +1161,7 @@ yin_print_rpc(struct lyout *out, int level, const struct lys_node *node)
         }
         level--;
 
-        yin_print_close(out, level, "rpc");
+        yin_print_close(out, level, (node->nodetype == LYS_RPC ? "rpc" : "action"));
     }
 }
 
@@ -1159,7 +1172,7 @@ yin_print_notif(struct lyout *out, int level, const struct lys_node *node)
     struct lys_node *sub;
     struct lys_node_notif *notif = (struct lys_node_notif *)node;
 
-    close = (yin_has_snode_common(node) || notif->features_size || notif->tpdf_size || node->child ? 0 : 1);
+    close = (yin_has_snode_common(node) || notif->iffeature_size || notif->tpdf_size || node->child ? 0 : 1);
 
     yin_print_open(out, level, "notification", "name", node->name, close);
 
@@ -1167,12 +1180,16 @@ yin_print_notif(struct lyout *out, int level, const struct lys_node *node)
         level++;
         yin_print_snode_common(out, level, node);
 
-        for (i = 0; i < notif->features_size; i++) {
-            yin_print_iffeature(out, level, node->module, notif->features[i]);
+        for (i = 0; i < notif->iffeature_size; i++) {
+            yin_print_iffeature(out, level, node->module, &notif->iffeature[i]);
         }
 
         for (i = 0; i < notif->tpdf_size; i++) {
             yin_print_typedef(out, level, node->module, &notif->tpdf[i]);
+        }
+
+        for (i = 0; i < notif->must_size; i++) {
+            yin_print_must(out, level, node->module, &notif->must[i]);
         }
 
         LY_TREE_FOR(node->child, sub) {
@@ -1182,7 +1199,7 @@ yin_print_notif(struct lyout *out, int level, const struct lys_node *node)
             }
             yin_print_snode(out, level, sub,
                             LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
-                            LYS_USES | LYS_GROUPING | LYS_ANYXML);
+                            LYS_USES | LYS_GROUPING | LYS_ANYDATA);
         }
         level--;
 
@@ -1216,14 +1233,21 @@ yin_print_snode(struct lyout *out, int level, const struct lys_node *node, int m
         yin_print_grouping(out, level, node);
         break;
     case LYS_ANYXML:
-        yin_print_anyxml(out, level, node);
+    case LYS_ANYDATA:
+        yin_print_anydata(out, level, node);
         break;
     case LYS_CASE:
         yin_print_case(out, level, node);
         break;
+    case LYS_ACTION:
+        yin_print_rpc_action(out, level, node);
+        break;
     case LYS_INPUT:
     case LYS_OUTPUT:
         yin_print_input_output(out, level, node);
+        break;
+    case LYS_NOTIF:
+        yin_print_notif(out, level, node);
         break;
     default:
         break;
@@ -1246,9 +1270,6 @@ yin_print_namespaces(struct lyout *out, const struct lys_module *module)
         ly_print(out, "\n%*sxmlns:%s=\"%s\"", lvl, INDENT, module->prefix, module->ns);
     }
     for (i = 0; i < module->imp_size; ++i) {
-        if (module->imp[i].external) {
-            continue;
-        }
         ly_print(out, "\n%*sxmlns:%s=\"%s\"", lvl, INDENT, module->imp[i].prefix, module->imp[i].module->ns);
     }
 }
@@ -1264,7 +1285,7 @@ yin_print_model(struct lyout *out, const struct lys_module *module)
 
     ly_print(out, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
 
-    if (module->deviated) {
+    if (module->deviated == 1) {
         ly_print(out, "<!-- DEVIATED -->\n");
     }
 
@@ -1301,15 +1322,18 @@ yin_print_model(struct lyout *out, const struct lys_module *module)
 
     /* linkage-stmts */
     for (i = 0; i < module->imp_size; i++) {
-        if (module->imp[i].external) {
-            continue;
-        }
         yin_print_open(out, level, "import", "module", module->imp[i].module->name, 0);
 
         level++;
         yin_print_open(out, level, "prefix", "value", module->imp[i].prefix, 1);
         if (module->imp[i].rev[0]) {
             yin_print_open(out, level, "revision-date", "date", module->imp[i].rev, 1);
+        }
+        if (module->imp[i].dsc) {
+            yin_print_text(out, level, "description", module->imp[i].dsc);
+        }
+        if (module->imp[i].ref) {
+            yin_print_text(out, level, "reference", module->imp[i].ref);
         }
         level--;
 
@@ -1326,6 +1350,12 @@ yin_print_model(struct lyout *out, const struct lys_module *module)
         if (!close) {
             level++;
             yin_print_open(out, level, "revision-date", "date", module->inc[i].rev, 1);
+            if (module->inc[i].dsc) {
+                yin_print_text(out, level, "description", module->inc[i].dsc);
+            }
+            if (module->inc[i].ref) {
+                yin_print_text(out, level, "reference", module->inc[i].ref);
+            }
             level--;
 
             yin_print_close(out, level, "include");
@@ -1390,7 +1420,7 @@ yin_print_model(struct lyout *out, const struct lys_module *module)
 
         switch (node->nodetype) {
         case LYS_RPC:
-            yin_print_rpc(out, level, node);
+            yin_print_rpc_action(out, level, node);
             break;
         case LYS_NOTIF:
             yin_print_notif(out, level, node);
@@ -1398,7 +1428,7 @@ yin_print_model(struct lyout *out, const struct lys_module *module)
         default:
             yin_print_snode(out, level, node,
                              LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
-                             LYS_USES | LYS_GROUPING | LYS_ANYXML);
+                             LYS_USES | LYS_GROUPING | LYS_ANYDATA);
             break;
         }
     }

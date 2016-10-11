@@ -18,23 +18,28 @@
 #include "parser_yang.h"
 #include "parser_yang_bis.h"
 
-#define YY_USER_ACTION yylloc->first_line = yylloc->last_line = 0;\
-                       yylloc->first_column = yylloc->last_column +1;\
+#define YY_USER_ACTION yylloc->first_column = yylloc->last_column +1;\
                        yylloc->last_column = yylloc->first_column + yyleng - 1;
 %}
 %x COMMENT1
 %x COMMENT2
 %x PATH
+%x DOUBLEQUOTES
 %%
+ int tab_count = 0;
+ int size_str = 0;
+ int column = 0;
+ char *str = NULL;
+ int _state = YY_START;
 
-"/*" {BEGIN COMMENT1; }
+"/*" {_state = YY_START; BEGIN COMMENT1; }
 <COMMENT1>.  |
 <COMMENT1>\n 
-<COMMENT1>"*/" {BEGIN INITIAL; }
-"//" {BEGIN COMMENT2;}
+<COMMENT1>"*/" {BEGIN _state; }
+"//" {_state = YY_START; BEGIN COMMENT2;}
 <COMMENT2>. 
 <COMMENT2>\n |
-<COMMENT2>\r\n {BEGIN INITIAL; return EOL; }
+<COMMENT2>\r\n {BEGIN _state; return EOL; }
 "anyxml" { return ANYXML_KEYWORD; }
 "argument" { return ARGUMENT_KEYWORD; }
 "augment" { BEGIN PATH; return AUGMENT_KEYWORD; }
@@ -113,11 +118,25 @@
 "true" { return TRUE_KEYWORD; }
 "unbounded" { return UNBOUNDED_KEYWORD; }
 "user" { return USER_KEYWORD; }
+"action" {return ACTION_KEYWORD; }
+"modifier" {return MODIFIER_KEYWORD; }
+"anydata" {return ANYDATA_KEYWORD; }
 "{" |
 "}" |
 ";" | 
 "+"  { return yytext[0];}  /* unsolved problem with concatenate string '+' */
-\"([\n\t !#-~]|\\\"|\r\n)*\" {return STRING;}
+"\"" {_state = YY_START; BEGIN DOUBLEQUOTES; str = yytext; column = yylloc->first_column; }
+<DOUBLEQUOTES>\t|\\t { tab_count++; size_str += yyleng; }
+<DOUBLEQUOTES>([\n !#-~]|\\\"|\r\n)* { size_str += yyleng; }
+<DOUBLEQUOTES>\" { yylval->i = tab_count;
+                   BEGIN _state;
+                   yytext = str;
+                   yyleng = size_str + 2;
+                   yylloc->first_column = column;
+                   return STRING;
+                 }
+<DOUBLEQUOTES>. |
+<DOUBLEQUOTES><<EOF>> { return ERROR;}
 "'"([\n\t -&\(-~]|\r\n)*"'" {return STRING;}
 "0" {return ZERO;}
 "-"[1-9][0-9]* {return INTEGER;}
@@ -135,19 +154,19 @@
 <PATH>[ \t]+ { return WHITESPACE;}
 <PATH>";" |
 <PATH>"{" {BEGIN INITIAL; return yytext[0];}
-<PATH>\"([\n\t !#-~]|\\\"|\r\n)*\" {return STRING;}
+<PATH>"\"" {_state = YY_START; BEGIN DOUBLEQUOTES; str = yytext; column = yylloc->first_column; }
 <PATH>"'"([\n\t -&\(-~]|\r\n)*"'" {return STRING;}
-<PATH>"//" {BEGIN COMMENT2;}
-<PATH>"/*" {BEGIN COMMENT1;}
+<PATH>"//" {_state = YY_START; BEGIN COMMENT2;}
+<PATH>"/*" {_state = YY_START; BEGIN COMMENT1;}
 <PATH>[A-Za-z_][-A-Za-z0-9_\.]* {return IDENTIFIER;}
 <PATH>[A-Za-z_][-A-Za-z0-9_\.]*:[A-Za-z_][-A-Za-z0-9_\.]*   {return IDENTIFIERPREFIX;}
 [0-9]{4}[-][0-9]{2}[-][0-9]{2} {return REVISION_DATE;}
 [A-Za-z_][-A-Za-z0-9_\.]* {return IDENTIFIER;}
 [A-Za-z_][-A-Za-z0-9_\.]*:[A-Za-z_][-A-Za-z0-9_\.]*   {return IDENTIFIERPREFIX;}
 ([!#-&\(-:<-\[\]-z|~])+ {if (yytext[0]=='/') {
-                           switch(yytext[1]) { 
-                             case '*': BEGIN COMMENT1; yyless(2); break;
-                             case '/': yyless(2); BEGIN COMMENT2; break;
+                           switch(yytext[1]) {
+                             case '*': _state = YY_START; BEGIN COMMENT1; yyless(2); break;
+                             case '/': yyless(2); _state = YY_START; BEGIN COMMENT2; break;
                              default:  return STRINGS;
                             }
                           } else {return STRINGS;} }
