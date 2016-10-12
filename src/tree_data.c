@@ -1649,7 +1649,7 @@ lyd_merge_parent_children(struct lyd_node *target, struct lyd_node *source, int 
             /* first prepare for the next iteration */
             src_elem_backup = src_elem;
             trg_parent_backup = trg_parent;
-            if ((src_elem->schema->nodetype & (LYS_CONTAINER | LYS_LIST)) && trg_child) {
+            if ((src_elem->schema->nodetype & (LYS_CONTAINER | LYS_LIST)) && src_elem->child && trg_child) {
                 /* go into children */
                 src_next = src_elem->child;
                 trg_parent = trg_child;
@@ -1657,9 +1657,15 @@ lyd_merge_parent_children(struct lyd_node *target, struct lyd_node *source, int 
 src_skip:
                 /* no children (or the whole subtree will be inserted), try siblings */
                 if (src_elem == src) {
-                    /* we are done, src has no children, but we still need to insert it */
-                    src_next = NULL;
-                    goto src_insert;
+                    /* we are done, src has no children ... */
+                    if (src_elem->schema->nodetype == LYS_CONTAINER) {
+                        /* and it's a container (empty one), nothing else to do */
+                        break;
+                    } else {
+                        /* ... but we still need to insert it */
+                        src_next = NULL;
+                        goto src_insert;
+                    }
                 } else {
                     src_next = src_elem->next;
                     /* trg_parent does not change */
