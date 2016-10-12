@@ -1721,13 +1721,30 @@ lyd_merge_siblings(struct lyd_node *target, struct lyd_node *source, int options
         LY_TREE_FOR(target, trg) {
             /* sibling found, merge it */
             if (lyd_merge_node_equal(trg, src)) {
-                if (trg->schema->nodetype & (LYS_LEAF | LYS_ANYDATA)) {
+                switch (trg->schema->nodetype) {
+                case LYS_LEAF:
+                case LYS_ANYXML:
+                case LYS_ANYDATA:
                     lyd_merge_node_update(trg, src);
-                } else {
+                    break;
+                case LYS_LEAFLIST:
+                    /* it's already there, nothing to do */
+                    break;
+                case LYS_LIST:
+                case LYS_CONTAINER:
+                case LYS_NOTIF:
+                case LYS_RPC:
+                case LYS_INPUT:
+                case LYS_OUTPUT:
                     if (lyd_merge_parent_children(trg, src->child, options)) {
                         lyd_free_withsiblings(source);
                         return -1;
                     }
+                    break;
+                default:
+                    LOGINT;
+                    lyd_free_withsiblings(source);
+                    return -1;
                 }
                 break;
             }
