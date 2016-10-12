@@ -5609,6 +5609,7 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
                 /* fun case */
                 assert(act_notif->parent);
 
+                msg_parent = NULL;
                 msg_sibling = *root;
                 data_tree_parent = NULL;
                 data_tree_sibling = data_tree;
@@ -5634,6 +5635,7 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
                             LOGINT;
                             return EXIT_FAILURE;
                         }
+                        msg_parent = msg_sibling;
                         for (msg_sibling = msg_sibling->child;
                                 msg_sibling->schema->nodetype == LYS_LEAF;
                                 msg_sibling = msg_sibling->next) {
@@ -5642,16 +5644,18 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
                                 return EXIT_FAILURE;
                             }
                         }
-                        if (msg_sibling->schema->nodetype == LYS_ACTION) {
+                        if (msg_sibling->schema->nodetype & (LYS_ACTION | LYS_NOTIF)) {
                             /* we are done */
-                            assert(act_notif->parent == data_tree_parent);
-                            msg_sibling = act_notif;
+                            assert(act_notif->parent->schema == data_tree_parent->schema);
+                            assert(msg_sibling == act_notif);
                             break;
                         }
-                    } else {
-                        /* loop ends, make action_sibling correct again */
-                        msg_sibling = msg_sibling->parent;
                     }
+                }
+
+                /* loop ended after the first iteration, set the values correctly */
+                if (!data_tree_parent) {
+                    data_tree_sibling = data_tree;
                 }
 
             } else {
@@ -5662,11 +5666,9 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
             }
 
             /* unlink msg_sibling if needed (won't do anything ontherwise) */
-            assert(!msg_sibling->parent || (msg_sibling->prev != msg_sibling));
-            msg_parent = msg_sibling->parent;
             lyd_unlink_internal(msg_sibling, 0);
 
-            /* link it with data_tree for now */
+            /* now we can link msg_sibling into data_tree_parent or next to data_tree_sibling */
             assert(data_tree_parent || data_tree_sibling);
             if (data_tree_parent) {
                 if (!data_tree_parent->child) {
