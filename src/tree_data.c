@@ -4991,8 +4991,11 @@ lyd_wd_default(struct lyd_node_leaf_list *node)
         } else if (!llist->min) {
             /* get the default value from the type */
             for (tpdf = llist->type.der; tpdf && !dflts; tpdf = tpdf->type.der) {
-                dflts = &tpdf->dflt;
-                dflts_size = 1;
+                if (tpdf->dflt) {
+                    dflts = &tpdf->dflt;
+                    dflts_size = 1;
+                    break;
+                }
             }
         }
 
@@ -5153,8 +5156,11 @@ lyd_wd_add_leaflist(struct lyd_node **tree, struct lyd_node *last_parent, struct
     } else if (!llist->min) {
         /* get the default value from the type */
         for (tpdf = llist->type.der; tpdf && !dflt; tpdf = tpdf->type.der) {
-            dflt = &tpdf->dflt;
-            dflt_size = 1;
+            if (tpdf->dflt) {
+                dflt = &tpdf->dflt;
+                dflt_size = 1;
+                break;
+            }
         }
     }
 
