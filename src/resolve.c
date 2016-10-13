@@ -6130,7 +6130,11 @@ print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node)
         LOGVRB("Resolving %s \"%s\" failed, it will be attempted later.", "uses", ((struct lys_node_uses *)item)->name);
         break;
     case UNRES_TYPE_DFLT:
-        LOGVRB("Resolving %s \"%s\" failed, it will be attempted later.", "type default", (char *)str_node);
+        if (str_node) {
+            LOGVRB("Resolving %s \"%s\" failed, it will be attempted later.", "type default", (char *)str_node);
+        }   /* else no default value in the type itself, but we are checking some restrictions against
+             *  possible default value of some base type. The failure is caused by not resolved base type,
+             *  so it was already reported */
         break;
     case UNRES_CHOICE_DFLT:
         LOGVRB("Resolving %s \"%s\" failed, it will be attempted later.", "choice default", (char *)str_node);
