@@ -76,8 +76,10 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
         } else { /* hide */
             return;
         }
-        vsnprintf(msg, LY_BUF_SIZE - 1, format, args);
-        msg[LY_BUF_SIZE - 1] = '\0';
+        if (msg != format) {
+            vsnprintf(msg, LY_BUF_SIZE - 1, format, args);
+            msg[LY_BUF_SIZE - 1] = '\0';
+        }
     }
 
     if (level == LY_LLERR) {
@@ -93,7 +95,7 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
         ((struct ly_err *)&ly_errno)->apptag[0] = '\0';
     }
 
-    if (hide) {
+    if (hide || (level > ly_log_level)) {
         if (free_flag) {
             free(msg);
         }

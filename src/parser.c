@@ -1811,6 +1811,9 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
     struct lys_module *dup = NULL;
     LY_LOG_LEVEL verb;
 
+    /* store current log level, some magic is happening with it here */
+    verb = ly_log_level;
+
     /* check for importing a single module in multiple revisions */
     for (i = 0; i < module->imp_size; i++) {
         if (!module->imp[i].module) {
@@ -1823,8 +1826,10 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
                 /* the already imported module has
                  * - no revision, but here we require some
                  * - different revision than the one required here */
+                ly_verb(LY_LLERR);
                 LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "import");
                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Importing multiple revisions of module \"%s\".", value);
+                ly_verb(verb);
                 return -1;
             } else if (!imp->rev[0]) {
                 /* no revision, remember the duplication, but check revisions after loading the module
@@ -1849,7 +1854,6 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
     /* try to load the module */
     if (!imp->rev[0]) {
         /* no revision specified, try to load the newest module from the search locations into the context */
-        verb = ly_log_level;
         ly_verb(LY_LLSILENT);
         ly_ctx_load_sub_module(module->ctx, NULL, value, imp->rev[0] ? imp->rev : NULL, 0, NULL);
         ly_verb(verb);
@@ -1859,7 +1863,11 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
         } else if (ly_errno != LY_SUCCESS) {
             /* but it is not ok if e.g. the input data were found and they are invalid */
             lyp_check_circmod_pop(module);
+            /* really print this, even if we are recursively in this function */
+            ly_verb(LY_LLERR);
+            LOGERR(ly_errno, ly_errmsg());
             LOGERR(LY_EVALID, "Importing \"%s\" module into \"%s\" failed.", value, module->name);
+            ly_verb(verb);
             return -1;
         }
 
@@ -1877,10 +1885,10 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
 
     /* check the result */
     if (!imp->module) {
-        if (!ly_vecode) {
-            LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "import");
-        }
+        ly_verb(LY_LLERR);
+        LOGERR(ly_errno, ly_errmsg());
         LOGERR(LY_EVALID, "Importing \"%s\" module into \"%s\" failed.", value, module->name);
+        ly_verb(verb);
         return -1;
     }
 
@@ -1892,8 +1900,10 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
             /* - modules are not the same
              * - one of modules has no revision (except they both has no revision)
              * - revisions of the modules are not the same */
+            ly_verb(LY_LLERR);
             LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "import");
             LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Importing multiple revisions of module \"%s\".", value);
+            ly_verb(verb);
             return -1;
         }
     }
