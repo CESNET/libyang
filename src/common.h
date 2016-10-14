@@ -229,8 +229,15 @@ enum LY_VLOG_ELEM {
 void ly_vlog_hide(int hide);
 uint8_t *ly_vlog_hide_location(void);
 void ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...);
-#define LOGVAL(code, elem_type, elem, args...) ly_vlog(code, elem_type, elem, ##args)
-#define LOGPATH(elem_type, elem) ly_vlog(LYE_PATH, elem_type, elem)
+#define LOGVAL(code, elem_type, elem, args...)                      \
+    if (ly_log_level >= LY_LLERR) {                                 \
+        ly_vlog(code, elem_type, elem, ##args);                     \
+    }
+
+#define LOGPATH(elem_type, elem)                                    \
+    if (ly_log_level >= LY_LLERR) {                                 \
+        ly_vlog(LYE_PATH, elem_type, elem);                         \
+    }
 
 void ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *path, uint16_t *index);
 
