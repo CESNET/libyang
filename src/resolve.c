@@ -5006,7 +5006,7 @@ resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres
     if (!uses->grp) {
         rc = resolve_uses_schema_nodeid(uses->name, (const struct lys_node *)uses, (const struct lys_node_grp **)&uses->grp);
         if (rc == -1) {
-            LOGVAL(LYE_INRESOLV, LY_VLOG_LYS, uses, "grouping", uses->name);
+            LOGVAL(LYE_INRESOLV, LY_VLOG_LYS, uses, "uses", uses->name);
             return -1;
         } else if (rc > 0) {
             LOGVAL(LYE_INCHAR, LY_VLOG_LYS, uses, uses->name[rc - 1], &uses->name[rc - 1]);
@@ -5019,6 +5019,7 @@ resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres
                 ((struct lys_node_grp *)par_grp)->nacm++;
                 uses->flags |= LYS_USESGRP;
             }
+            LOGVAL(LYE_INRESOLV, LY_VLOG_LYS, uses, "uses", uses->name);
             return EXIT_FAILURE;
         }
     }
@@ -5031,6 +5032,7 @@ resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres
             /* instantiate grouping only when it is completely resolved */
             uses->grp = NULL;
         }
+        LOGVAL(LYE_INRESOLV, LY_VLOG_LYS, uses, "uses", uses->name);
         return EXIT_FAILURE;
     }
 
