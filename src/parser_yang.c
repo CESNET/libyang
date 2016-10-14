@@ -2630,44 +2630,24 @@ store_flags(struct lys_node *node, uint8_t flags, int config_opt)
     return EXIT_SUCCESS;
 }
 
-static int
-yang_parse(struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, const char *data,
-           unsigned int size, struct lys_array_size *size_arrays, int type_read)
+int
+yang_parse_mem(struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres,
+               const char *data, unsigned int size_data, struct lys_node **node)
 {
+    unsigned int size;
     YY_BUFFER_STATE bp;
     yyscan_t scanner = NULL;
     int ret = EXIT_SUCCESS;
 
+    size = (size_data) ? size_data : strlen(data) + 2;
     yylex_init(&scanner);
     bp = yy_scan_buffer((char *)data, size, scanner);
     yy_switch_to_buffer(bp, scanner);
-    if (yyparse(scanner, module, submodule, unres, size_arrays, type_read)) {
+    if (yyparse(scanner, module, submodule, unres, node)) {
         ret = EXIT_FAILURE;
     }
     yy_delete_buffer(bp, scanner);
     yylex_destroy(scanner);
-    return ret;
-}
-
-int
-yang_parse_mem(struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, const char *data, unsigned int size_data)
-{
-    struct lys_array_size *size_arrays=NULL;
-    unsigned int size;
-    int ret;
-
-    size_arrays = calloc(1, sizeof *size_arrays);
-    if (!size_arrays) {
-        LOGMEM;
-        return EXIT_FAILURE;
-    }
-    size = (size_data) ? size_data : strlen(data) + 2;
-    ret = yang_parse(module, submodule, unres, data, size, size_arrays, LY_READ_ONLY_SIZE);
-    if (!ret) {
-        ret = yang_parse(module, submodule, unres, data, size, size_arrays, LY_READ_ALL);
-    }
-    free(size_arrays->node);
-    free(size_arrays);
     return ret;
 }
 
@@ -2677,6 +2657,7 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
 
     struct lys_module *tmp_module, *module = NULL;
     struct unres_schema *unres = NULL;
+    struct lys_node *node = NULL;
 
     unres = calloc(1, sizeof *unres);
     if (!unres) {
@@ -2695,7 +2676,7 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
     module->type = 0;
     module->implemented = (implement ? 1 : 0);
 
-    if (yang_parse_mem(module, NULL, unres, data, size)) {
+    if (yang_parse_mem(module, NULL, unres, data, size, &node)) {
         goto error;
     }
 
@@ -2754,6 +2735,7 @@ struct lys_submodule *
 yang_read_submodule(struct lys_module *module, const char *data, unsigned int size, struct unres_schema *unres)
 {
     struct lys_submodule *submodule;
+    struct lys_node *node = NULL;
 
     submodule = calloc(1, sizeof *submodule);
     if (!submodule) {
@@ -2765,7 +2747,7 @@ yang_read_submodule(struct lys_module *module, const char *data, unsigned int si
     submodule->type = 1;
     submodule->belongsto = module;
 
-    if (yang_parse_mem(module, submodule, unres, data, size)) {
+    if (yang_parse_mem(module, submodule, unres, data, size, &node)) {
         goto error;
     }
 

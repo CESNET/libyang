@@ -263,9 +263,11 @@ int yang_check_flags(uint16_t *flags, uint16_t mask, char *what, char *where, ui
  * @param[in] unres Pointer to a unres_schema
  * @param[in] data Pointer to a NULL-terminated string containing YANG data to parse.
  * @param[in] size_data Size of input string
+ * @param[in/out] node Pointer to node
  * @return 0 on success, 1 on error.
  */
-int yang_parse_mem(struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, const char *data, unsigned int size_data);
+int yang_parse_mem(struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres,
+                   const char *data, unsigned int size_data, struct lys_node **node);
 
 struct lys_module *yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const char *revision, int implement);
 

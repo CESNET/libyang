@@ -19,8 +19,7 @@
 %parse-param {struct lys_module *module}
 %parse-param {struct lys_submodule *submodule}
 %parse-param {struct unres_schema *unres}
-%parse-param {struct lys_array_size *size_arrays}
-%parse-param {int read_all}
+%parse-param {struct lys_node **node}
 
 %lex-param {void *scanner}
 
