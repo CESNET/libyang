@@ -5056,9 +5056,6 @@ resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres
         }
 
         return EXIT_SUCCESS;
-    } else if ((rc == EXIT_FAILURE) && par_grp && !(uses->flags & LYS_USESGRP)) {
-        ((struct lys_node_grp *)par_grp)->nacm++;
-        uses->flags |= LYS_USESGRP;
     }
 
     return rc;
