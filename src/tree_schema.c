@@ -104,8 +104,21 @@ lys_get_sibling(const struct lys_node *siblings, const char *mod_name, int mod_n
         nam_len = strlen(name);
     }
 
-    /* set mod correctly */
+    /* set parent correctly */
     parent = lys_parent(siblings);
+
+    /* go up for each uses */
+    if (parent) {
+        do {
+            LY_TREE_FOR(parent, node) {
+                if (node->nodetype == LYS_USES) {
+                    parent = node->parent;
+                    break;
+                }
+            }
+        } while (node && parent);
+    }
+
     if (!parent) {
         mod = lys_node_module(siblings);
     }
