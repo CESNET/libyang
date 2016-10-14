@@ -1859,6 +1859,7 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
         } else if (ly_errno != LY_SUCCESS) {
             /* but it is not ok if e.g. the input data were found and they are invalid */
             lyp_check_circmod_pop(module);
+            LOGERR(LY_EVALID, "Importing \"%s\" module into \"%s\" failed.", value, module->name);
             return -1;
         }
 
