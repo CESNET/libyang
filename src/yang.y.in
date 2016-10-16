@@ -182,8 +182,8 @@ void yyerror(YYLTYPE *yylloc, void *scanner, ...);
 %type <i> bit_opt_stmt
 %type <i> import_opt_stmt
 %type <i> include_opt_stmt
-%type <i> module_header_stmts
-%type <i> submodule_header_stmts
+%type <i> module_header_stmt
+%type <i> submodule_header_stmt
 %type <str> tmp_identifier_arg_str
 %type <str> message_opt_stmt
 %type <i> identity_opt_stmt
@@ -354,26 +354,37 @@ module_stmt: optsep MODULE_KEYWORD sep identifier_arg_str { if (read_all) {
                                                             }
                                                           }
              '{' stmtsep
-                 module_header_stmts { if (read_all && !module->ns) { LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "namespace", "module"); YYABORT; }
-                                       if (read_all && !module->prefix) { LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "prefix", "module"); YYABORT; }
-                                     }
+                 module_header_stmts
                  linkage_stmts
                  meta_stmts
                  revision_stmts
                  body_stmts
              '}' optsep
 
-module_header_stmts: @EMPTYDIR@  { $$ = 0; }
-  |  module_header_stmts yang_version_stmt { if (read_all) {
-                                               if (yang_check_version(module, submodule, s, $1)) {
-                                                 YYABORT;
-                                               }
-                                               $$ = 1;
-                                               s = NULL;
-                                             }
-                                           }
-  |  module_header_stmts namespace_stmt { if (read_all && yang_read_common(module, s, NAMESPACE_KEYWORD)) {YYABORT;} s=NULL; }
-  |  module_header_stmts prefix_stmt { if (read_all && yang_read_prefix(module, NULL, s)) {YYABORT;} s=NULL; }
+
+module_header_stmts: module_header_stmt { if (!module->ns) {
+                                            LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "namespace", "module");
+                                            YYABORT;
+                                          }
+                                          if (!module->prefix) {
+                                            LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "prefix", "module");
+                                            YYABORT;
+                                          }
+                                        }
+
+module_header_stmt: @EMPTYDIR@  { $$ = 0; }
+  |  module_header_stmt yang_version_stmt { if (yang_check_version(module, submodule, s, $1)) {
+                                              YYABORT;
+                                            }
+                                            $$ = 1;
+                                            s = NULL;
+                                          }
+  |  module_header_stmt namespace_stmt { if (yang_read_common(module, s, NAMESPACE_KEYWORD)) {
+                                           YYABORT;
+                                         }
+                                         s=NULL;
+                                       }
+  |  module_header_stmt prefix_stmt { if (read_all && yang_read_prefix(module, NULL, s)) {YYABORT;} s=NULL; }
   ;
 
 submodule_stmt: optsep SUBMODULE_KEYWORD sep identifier_arg_str { if (read_all) {
@@ -389,27 +400,27 @@ submodule_stmt: optsep SUBMODULE_KEYWORD sep identifier_arg_str { if (read_all) 
                                                                   }
                                                                 }
                 '{' stmtsep
-                    submodule_header_stmts  { if (read_all && !submodule->prefix) {
-                                                LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "belongs-to", "submodule");
-                                                YYABORT;
-                                              }
-                                            }
+                    submodule_header_stmts
                     linkage_stmts
                     meta_stmts
                     revision_stmts
                     body_stmts
                 '}' optsep
 
-submodule_header_stmts: @EMPTYDIR@ { $$ = 0; }
-  |  submodule_header_stmts yang_version_stmt { if (read_all) {
-                                                  if (yang_check_version(module, submodule, s, $1)) {
-                                                    YYABORT;
-                                                  }
-                                                  $$ = 1;
-                                                  s = NULL;
+
+submodule_header_stmts: submodule_header_stmt { if (!submodule->prefix) {
+                                                  LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "belongs-to", "submodule");
+                                                  YYABORT;
                                                 }
                                               }
-  |  submodule_header_stmts { if (read_all) {
+submodule_header_stmt: @EMPTYDIR@ { $$ = 0; }
+  |  submodule_header_stmt yang_version_stmt { if (yang_check_version(module, submodule, s, $1)) {
+                                                 YYABORT;
+                                               }
+                                               $$ = 1;
+                                               s = NULL;
+                                             }
+  |  submodule_header_stmt { if (read_all) {
                                 if (submodule->prefix) {
                                   LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "belongs-to", "submodule");
                                   YYABORT;
