@@ -4064,6 +4064,69 @@ error:
 }
 
 /**
+ * @brief Check all XPath expressions of a node (when and must), set LYS_XPATH_DEP flag if required.
+ *
+ * @param[in] node Node to examine.
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
+ */
+static int
+check_node_xpath(struct lys_node *node)
+{
+    struct lys_node *parent, *elem;
+    struct lyxp_set set;
+    uint32_t i;
+    int rc;
+
+    parent = node;
+    while (parent) {
+        if (parent->nodetype == LYS_GROUPING) {
+            /* unresolved grouping, skip for now (will be checked later) */
+            return EXIT_SUCCESS;
+        }
+        if (parent->nodetype == LYS_AUGMENT) {
+            if (!((struct lys_node_augment *)parent)->target) {
+                /* uresolved augment, skip for now (will be checked later) */
+                return EXIT_SUCCESS;
+            } else {
+                parent = ((struct lys_node_augment *)parent)->target;
+                continue;
+            }
+        }
+        parent = parent->parent;
+    }
+
+    rc = lyxp_node_atomize(node, &set);
+    if (rc) {
+        return rc;
+    }
+
+    for (parent = node; parent && !(parent->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); parent = lys_parent(parent));
+
+    for (i = 0; i < set.used; ++i) {
+        /* skip roots'n'stuff */
+        if (set.val.snodes[i].type == LYXP_NODE_ELEM) {
+            /* XPath expression cannot reference "lower" status than the node that has the definition */
+            if (lyp_check_status(node->flags, lys_node_module(node), node->name, set.val.snodes[i].snode->flags,
+                    lys_node_module(set.val.snodes[i].snode), set.val.snodes[i].snode->name, node)) {
+                return -1;
+            }
+
+            if (parent) {
+                for (elem = set.val.snodes[i].snode; elem && (elem != parent); elem = lys_parent(elem));
+                if (!elem) {
+                    /* not in node's RPC or notification subtree, set the flag */
+                    node->flags |= LYS_VALID_DEP;
+                    break;
+                }
+            }
+        }
+    }
+
+    free(set.val.snodes);
+    return EXIT_SUCCESS;
+}
+
+/**
  * @brief Passes config flag down to children, skips nodes without config flags.
  * Does not log.
  *
@@ -4074,10 +4137,13 @@ error:
  * @return 0 on success, -1 on error.
  */
 static int
-inherit_config_flag(struct lys_node *node, int flags, int clear, int check_list)
+inherit_config_flag(struct lys_node *node, int flags, int clear, int check_list, int check_xpath)
 {
     assert(!(flags ^ (flags & LYS_CONFIG_MASK)));
     LY_TREE_FOR(node, node) {
+        if (check_xpath && check_node_xpath(node)) {
+            return -1;
+        }
         if (clear) {
             node->flags &= ~LYS_CONFIG_MASK;
             node->flags &= ~LYS_CONFIG_SET;
@@ -4103,7 +4169,7 @@ inherit_config_flag(struct lys_node *node, int flags, int clear, int check_list)
             }
         }
         if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
-            if (inherit_config_flag(node->child, flags, clear, check_list)) {
+            if (inherit_config_flag(node->child, flags, clear, check_list, check_xpath)) {
                 return -1;
             }
         }
@@ -4200,15 +4266,6 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
         return -1;
     }
 
-    /* inherit config information from actual parent */
-    for(parent = aug_target; parent && !(parent->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT | LYS_RPC)); parent = lys_parent(parent));
-    clear_config = (parent) ? 1 : 0;
-    LY_TREE_FOR(aug->child, sub) {
-        if (inherit_config_flag(sub, aug_target->flags & LYS_CONFIG_MASK, clear_config, 1)) {
-            return -1;
-        }
-    }
-
     /* check identifier uniqueness as in lys_node_addchild() */
     LY_TREE_FOR(aug->child, sub) {
         if (lys_check_id(sub, (struct lys_node *)aug_target, NULL)) {
@@ -4226,6 +4283,15 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
         aug->child->prev = sub;         /* finish connecting of both child lists */
     } else {
         aug->target->child = aug->child;
+    }
+
+    /* inherit config information from actual parent */
+    for(parent = aug_target; parent && !(parent->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT | LYS_RPC)); parent = lys_parent(parent));
+    clear_config = (parent) ? 1 : 0;
+    LY_TREE_FOR(aug->child, sub) {
+        if (inherit_config_flag(sub, aug_target->flags & LYS_CONFIG_MASK, clear_config, 1, 1)) {
+            return -1;
+        }
     }
 
 success:
@@ -4290,7 +4356,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
     struct lys_refine *rfn;
     struct lys_restr *must, **old_must;
     struct lys_iffeature *iff, **old_iff;
-    int i, j, k, rc, parent_config, clear_config, check_list;
+    int i, j, k, rc, parent_config, clear_config, check_list, check_xpath;
     uint8_t size, *old_size;
     unsigned int usize, usize1, usize2;
 
@@ -4347,18 +4413,21 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
             /* we are still in some other unresolved grouping or augment, unable to check lists */
             check_list = 0;
             clear_config = 0;
+            check_xpath = 0;
         } else {
             check_list = 0;
             clear_config = 1;
+            check_xpath = 1;
         }
     } else {
         check_list = 1;
         clear_config = 0;
+        check_xpath = 1;
     }
 
     if (parent_config) {
         assert(uses->child);
-        if (inherit_config_flag(uses->child, parent_config, clear_config, check_list)) {
+        if (inherit_config_flag(uses->child, parent_config, clear_config, check_list, check_xpath)) {
             goto fail;
         }
     }
@@ -5776,70 +5845,6 @@ cleanup:
 }
 
 /**
- * @brief Check all XPath expressions of a node (when and must), set LYS_XPATH_DEP flag if required.
- *
- * @param[in] node Node to examine.
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
- */
-static int
-check_xpath(struct lys_node *node)
-{
-    struct lys_node *parent, *elem;
-    struct lyxp_set set;
-    uint32_t i;
-    int rc;
-
-    parent = node;
-    while (parent) {
-        if (parent->nodetype == LYS_GROUPING) {
-            /* unresolved grouping, skip for now */
-            return 0;
-        }
-        if (parent->nodetype == LYS_AUGMENT) {
-            if (!((struct lys_node_augment *)parent)->target) {
-                /* uresolved augment skip for now */
-                return 0;
-            } else {
-                parent = ((struct lys_node_augment *)parent)->target;
-                continue;
-            }
-        }
-        parent = parent->parent;
-    }
-
-    rc = lyxp_node_atomize(node, &set);
-    if (rc) {
-        return rc;
-    }
-
-    /* RPC, action can have neither must nor when */
-    for (parent = node; parent && !(parent->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); parent = lys_parent(parent));
-
-    for (i = 0; i < set.used; ++i) {
-        /* skip roots'n'stuff */
-        if (set.val.snodes[i].type == LYXP_NODE_ELEM) {
-            /* XPath expression cannot reference "lower" status than the node that has the definition */
-            if (lyp_check_status(node->flags, lys_node_module(node), node->name, set.val.snodes[i].snode->flags,
-                    lys_node_module(set.val.snodes[i].snode), set.val.snodes[i].snode->name, node)) {
-                return -1;
-            }
-
-            if (parent) {
-                for (elem = set.val.snodes[i].snode; elem && (elem != parent); elem = lys_parent(elem));
-                if (!elem) {
-                    /* not in node's RPC or notification subtree, set the flag */
-                    node->flags |= LYS_VALID_DEP;
-                    break;
-                }
-            }
-        }
-    }
-
-    free(set.val.snodes);
-    return EXIT_SUCCESS;
-}
-
-/**
  * @brief Resolve a single unres schema item. Logs indirectly.
  *
  * @param[in] mod Main module.
@@ -6065,7 +6070,7 @@ featurecheckdone:
         break;
     case UNRES_XPATH:
         node = (struct lys_node *)item;
-        rc = check_xpath(node);
+        rc = check_node_xpath(node);
         break;
     default:
         LOGINT;

@@ -7704,8 +7704,8 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set)
         when = ((struct lys_node_augment *)node)->when;
         break;
     default:
-        LOGINT;
-        return -1;
+        /* nothing to check */
+        break;
     }
 
     /* check "when" */

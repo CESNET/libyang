@@ -104,9 +104,14 @@ lys_get_sibling(const struct lys_node *siblings, const char *mod_name, int mod_n
         nam_len = strlen(name);
     }
 
-    while (siblings->nodetype == LYS_USES) {
+    while (siblings && (siblings->nodetype == LYS_USES)) {
         siblings = siblings->child;
     }
+    if (!siblings) {
+        /* unresolved uses */
+        return EXIT_FAILURE;
+    }
+
     if (siblings->nodetype == LYS_GROUPING) {
         for (node = siblings; (node->nodetype == LYS_GROUPING) && (node->prev != siblings); node = node->prev);
         if (node->nodetype == LYS_GROUPING) {
