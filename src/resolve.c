@@ -6863,16 +6863,19 @@ unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM 
 /**
  * @brief Resolve every unres data item in the structure. Logs directly.
  *
+ * If options includes LYD_OPT_TRUSTED, the data are considered trusted (when, must conditions are not expected,
+ * unresolved leafrefs/instids are accepted).
+ *
+ * If options includes LYD_OPT_NOAUTODEL, the false resulting when condition on non-default nodes, the error is raised.
+ *
  * @param[in] unres Unres data structure to use.
- * @param[in,out] root Root node of the data tree. If not NULL, auto-delete is performed on false when condition. If
- * NULL and when condition is false the error is raised.
- * @param[in] trusted Whether the data are considered trusted (when, must conditions are not expected, unresolved
- * leafrefs/instids are accepted).
+ * @param[in,out] root Root node of the data tree, can be changed due to autodeletion.
+ * @param[in] options Data options as described above.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 int
-resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int trusted)
+resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options)
 {
     uint32_t i, j, first = 1, resolved = 0, del_items = 0, when_stmt = 0;
     int rc, progress;
@@ -6880,6 +6883,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int trusted
     struct lyd_node *parent;
     struct lyd_node_leaf_list *leaf;
 
+    assert(root);
     assert(unres);
 
     if (!unres->count) {
@@ -6898,7 +6902,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int trusted
             if (unres->type[i] != UNRES_WHEN) {
                 continue;
             }
-            assert(!trusted);
+            assert(!(options & LYD_OPT_TRUSTED));
             if (first) {
                 /* count when-stmt nodes in unres list */
                 when_stmt++;
@@ -6925,7 +6929,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int trusted
             rc = resolve_unres_data_item(unres->node[i], unres->type[i]);
             if (!rc) {
                 if (unres->node[i]->when_status & LYD_WHEN_FALSE) {
-                    if (!root) {
+                    if ((options & LYD_OPT_NOAUTODEL) && !unres->node[i]->dflt) {
                         /* false when condition */
                         ly_vlog_hide(0);
                         if (ly_log_level >= LY_LLERR) {
@@ -7039,7 +7043,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int trusted
         if (unres->type[i] == UNRES_RESOLVED) {
             continue;
         }
-        assert(!trusted || ((unres->type[i] != UNRES_MUST) && (unres->type[i] != UNRES_MUST_INOUT)));
+        assert(!(options & LYD_OPT_TRUSTED) || ((unres->type[i] != UNRES_MUST) && (unres->type[i] != UNRES_MUST_INOUT)));
 
         rc = resolve_unres_data_item(unres->node[i], unres->type[i]);
         if (rc == -1) {
@@ -7047,10 +7051,10 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int trusted
             /* print only this last error */
             resolve_unres_data_item(unres->node[i], unres->type[i]);
             return -1;
-        } else if ((rc == 0) || (trusted && ((unres->type[i] == UNRES_LEAFREF) || (unres->type[i] == UNRES_INSTID)))) {
+        } else if ((rc == 0) || ((options & LYD_OPT_TRUSTED) && ((unres->type[i] == UNRES_LEAFREF) || (unres->type[i] == UNRES_INSTID)))) {
             unres->type[i] = UNRES_RESOLVED;
             resolved++;
-            if (trusted) {
+            if (options & LYD_OPT_TRUSTED) {
                 /* accept it in this case */
                 if (unres->type[i] == UNRES_LEAFREF) {
                     LOGVRB("Leafref \"%s\" with value \"%s\" failed to be resolved.",

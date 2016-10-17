@@ -159,7 +159,7 @@ typedef union lyd_value_u {
 struct lyd_node {
     struct lys_node *schema;         /**< pointer to the schema definition of this node */
     uint8_t validity:4;              /**< [validity flags](@ref validityflags) */
-    uint8_t dflt:1;                  /**< flag for default node (applicable only on leafs) to be marked with default attribute */
+    uint8_t dflt:1;                  /**< flag for default node */
     uint8_t when_status:3;           /**< bit for checking if the when-stmt condition is resolved - internal use only,
                                           do not use this value! */
 
@@ -191,7 +191,7 @@ struct lyd_node_leaf_list {
     struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::lys_node_leaflist
                                           structure */
     uint8_t validity:4;              /**< [validity flags](@ref validityflags) */
-    uint8_t dflt:1;                  /**< flag for default node (applicable only on leafs) to be marked with default attribute */
+    uint8_t dflt:1;                  /**< flag for default node */
     uint8_t when_status:3;           /**< bit for checking if the when-stmt condition is resolved - internal use only,
                                           do not use this value! */
 
@@ -225,7 +225,7 @@ struct lyd_node_anydata {
     struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::lys_node_anydata
                                           structure */
     uint8_t validity:4;              /**< [validity flags](@ref validityflags) */
-    uint8_t dflt:1;                  /**< flag for default node (applicable only on leafs) to be marked with default attribute */
+    uint8_t dflt:1;                  /**< flag for default node */
     uint8_t when_status:3;           /**< bit for checking if the when-stmt condition is resolved - internal use only,
                                           do not use this value! */
 
