@@ -104,23 +104,31 @@ lys_get_sibling(const struct lys_node *siblings, const char *mod_name, int mod_n
         nam_len = strlen(name);
     }
 
+    while (siblings->nodetype == LYS_USES) {
+        siblings = siblings->child;
+    }
+    if (siblings->nodetype == LYS_GROUPING) {
+        for (node = siblings; (node->nodetype == LYS_GROUPING) && (node->prev != siblings); node = node->prev);
+        if (node->nodetype == LYS_GROUPING) {
+            /* we went through all the siblings, only groupings there - no valid sibling */
+            return EXIT_FAILURE;
+        }
+        /* update siblings to be valid */
+        siblings = node;
+    }
+
     /* set parent correctly */
     parent = lys_parent(siblings);
 
-    /* go up for each uses */
-    if (parent) {
-        do {
-            LY_TREE_FOR(parent, node) {
-                if (node->nodetype == LYS_USES) {
-                    parent = node->parent;
-                    break;
-                }
-            }
-        } while (node && parent);
+    /* go up all uses */
+    while (parent && (parent->nodetype == LYS_USES)) {
+        parent = lys_parent(parent);
     }
 
     if (!parent) {
-        mod = lys_node_module(siblings);
+        /* handle situation when there is a top-level uses referencing a foreign grouping */
+        for (node = siblings; lys_parent(node) && (node->nodetype == LYS_USES); node = lys_parent(node));
+        mod = lys_node_module(node);
     }
 
     /* try to find the node */
