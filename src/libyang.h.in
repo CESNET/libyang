@@ -989,6 +989,35 @@ const struct lys_submodule *ly_ctx_get_submodule2(const struct lys_module *main_
 const struct lys_node *ly_ctx_get_node(struct ly_ctx *ctx, const struct lys_node *start, const char *nodeid);
 
 /**
+ * @brief Remove the specified module from the context.
+ *
+ * The module to remove is selected the same way as ly_ctx_get_module() does it. Beside the selected
+ * module, also all other modules depending on all the modules being removed will be removed as well.
+ *
+ * libyang internal modules (those present when the context is created) cannot be removed.
+ *
+ * @param[in] ctx Context to work in.
+ * @param[in] name Name of the YANG module to remove.
+ * @param[in] revision Optional revision date of the YANG module to remove. If not specified,
+ * the schema in the newest revision is selected.
+ * @param[in] private_destructor Optional destructor function for private objects assigned
+ * to the nodes via lys_set_private(). If NULL, the private objects are not freed by libyang.
+ * @return EXIT_SUCCESS or EXIT_FAILURE if the module is not present in the context.
+ */
+int ly_ctx_remove_module(struct ly_ctx *ctx, const char *name, const char *revision,
+                         void (*private_destructor)(const struct lys_node *node, void *priv));
+
+/**
+ * @brief Remove all the modules from the context except the internal modules. Also the addition data in
+ * dictionary are kept.
+ *
+ * @param[in] ctx Context to work in.
+ * @param[in] private_destructor Optional destructor function for private objects assigned
+ * to the nodes via lys_set_private(). If NULL, the private objects are not freed by libyang.
+ */
+void ly_ctx_clean(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_node *node, void *priv));
+
+/**
  * @brief Free all internal structures of the specified context.
  *
  * The function should be used before terminating the application to destroy

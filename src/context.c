@@ -148,6 +148,24 @@ ly_ctx_get_searchdir(const struct ly_ctx *ctx)
 }
 
 API void
+ly_ctx_clean(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_node *node, void *priv))
+{
+    int i;
+
+    if (!ctx) {
+        return;
+    }
+
+    /* models list */
+    for (i = INTERNAL_MODULES_COUNT; i < ctx->models.used; ++i) {
+        lys_free(ctx->models.list[i], private_destructor, 0);
+        ctx->models.list[i] = NULL;
+    }
+    ctx->models.used = INTERNAL_MODULES_COUNT;
+    ctx->models.module_set_id++;
+}
+
+API void
 ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     int i;
@@ -416,6 +434,128 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
     }
 
     return ly_ctx_load_sub_module(ctx, NULL, name, revision, 1, NULL);
+}
+
+API int
+ly_ctx_remove_module(struct ly_ctx *ctx, const char *name, const char *revision,
+                     void (*private_destructor)(const struct lys_node *node, void *priv))
+{
+    struct lys_module *mod = NULL;
+    struct ly_set *mods;
+    uint8_t j, imported;
+    int i, o;
+    unsigned int u;
+
+    if (!ctx || !name) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+
+    /* get the module */
+    mod = (struct lys_module *)ly_ctx_get_module(ctx, name, revision);
+    if (!mod) {
+        ly_errno = LY_EINVAL;
+        return EXIT_FAILURE;
+    }
+    /* avoid removing internal modules ... */
+    for (i = 0; i < INTERNAL_MODULES_COUNT; i++) {
+        if (mod == ctx->models.list[i]) {
+            LOGERR(LY_EINVAL, "Internal module \"%s\" cannot be removed.", name);
+            return EXIT_FAILURE;
+        }
+    }
+    /* ... and hide the module from the further processing of the context modules list */
+    for (i = INTERNAL_MODULES_COUNT; i < ctx->models.used; i++) {
+        if (mod == ctx->models.list[i]) {
+            ctx->models.list[i] = NULL;
+            break;
+        }
+    }
+
+    /* get the complete list of modules to remove because of dependencies,
+     * we are going also to remove all the imported (not implemented) modules
+     * that are not used in any other module */
+    mods = ly_set_new();
+    ly_set_add(mods, mod, 0);
+checkdependency:
+    for (i = INTERNAL_MODULES_COUNT; i < ctx->models.used; i++) {
+        mod = ctx->models.list[i]; /* shortcut */
+        if (!mod) {
+            /* skip modules already selected for removing */
+            continue;
+        }
+
+        /* check depndency of imported modules */
+        for (j = 0; j < mod->imp_size; j++) {
+            for (u = 0; u < mods->number; u++) {
+                if (mod->imp[j].module == mods->set.g[u]) {
+                    /* module is importing some module to remove, so it must be also removed */
+                    ly_set_add(mods, mod, 0);
+                    ctx->models.list[i] = NULL;
+                    /* we have to start again because some of the already checked modules can
+                     * depend on the one we have just decided to remove */
+                    goto checkdependency;
+                }
+            }
+        }
+        /* check if the imported module is used in any module supposed to be kept */
+        if (!mod->implemented) {
+            imported = 0;
+            for (o = INTERNAL_MODULES_COUNT; o < ctx->models.used; o++) {
+                if (!ctx->models.list[o]) {
+                    /* skip modules already selected for removing */
+                    continue;
+                }
+                for (j = 0; j < ctx->models.list[o]->imp_size; j++) {
+                    if (ctx->models.list[o]->imp[j].module == mod) {
+                        /* the module is used in some other module not yet selected to be deleted */
+                        imported = 1;
+                        goto imported;
+                    }
+                }
+            }
+imported:
+            if (!imported) {
+                /* module is not implemented and neither imported by any other module in context
+                 * which is supposed to be kept after this operation, so we are going to remove also
+                 * this useless module */
+                ly_set_add(mods, mod, 0);
+                ctx->models.list[i] = NULL;
+                /* we have to start again, this time not because other module can depend on this one
+                 * (we know that there is no such module), but because the module can have import
+                 * that could became useless. If there are no imports, we can continue */
+                if (mod->imp_size) {
+                    goto checkdependency;
+                }
+            }
+        }
+    }
+
+    /* free the modules and update the list */
+    for (u = 0; u < mods->number; u++) {
+        lys_free((struct lys_module *)mods->set.g[u], private_destructor, 0);
+    }
+    ly_set_free(mods);
+
+    /* consolidate the modules list */
+    for (i = o = INTERNAL_MODULES_COUNT; i < ctx->models.used; i++) {
+        if (ctx->models.list[o]) {
+            /* used cell */
+            o++;
+        } else {
+            /* the current output cell is empty, move here an input cell */
+            ctx->models.list[o] = ctx->models.list[i];
+            ctx->models.list[i] = NULL;
+        }
+    }
+    /* get the last used cell to get know the number of used */
+    while (!ctx->models.list[o]) {
+        o--;
+    }
+    ctx->models.used = o + 1;
+    ctx->models.module_set_id++;
+
+    return EXIT_SUCCESS;
 }
 
 API const struct lys_module *
