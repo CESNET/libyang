@@ -3775,6 +3775,11 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
                 return -1;
             }
             node = node->child;
+            if (!node) {
+                LOGVAL(LYE_NORESOLV, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent,
+                       "leafref", path);
+                return EXIT_FAILURE;
+            }
         }
 
         if (!prefix) {
