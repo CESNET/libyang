@@ -27,6 +27,7 @@ enum UNRES_ITEM {
     UNRES_TYPE_DER,      /* unresolved derived type defined in leaf/leaflist */
     UNRES_TYPE_DER_TPDF, /* unresolved derived type defined as typedef */
     UNRES_TYPE_LEAFREF,  /* check leafref value */
+    UNRES_AUGMENT,       /* unresolved augment targets */
     UNRES_CHOICE_DFLT,   /* check choice default case */
     UNRES_IDENT,         /* unresolved derived identities */
     UNRES_TYPE_IDENTREF, /* check identityref value */
@@ -34,7 +35,6 @@ enum UNRES_ITEM {
     UNRES_TYPE_DFLT,     /* validate default type value */
     UNRES_LIST_KEYS,     /* list keys */
     UNRES_LIST_UNIQ,     /* list uniques */
-    UNRES_AUGMENT,       /* unresolved augment targets */
     UNRES_XPATH,         /* unchecked XPath expression */
 
     /* DATA */
