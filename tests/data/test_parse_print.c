@@ -276,7 +276,7 @@ test_parse_print_xml(void **state)
 
     st->dt = lyd_parse_path(st->ctx, rpcreply, LYD_XML, LYD_OPT_RPCREPLY, st->rpc_act, NULL);
     assert_ptr_not_equal(st->dt, NULL);
-    lyd_print_mem(&(st->str2), st->dt->child, LYD_XML, LYP_FORMAT);
+    lyd_print_mem(&(st->str2), st->dt, LYD_XML, LYP_FORMAT | LYP_NETCONF_XML);
 
     assert_string_equal(st->str1, st->str2);
 
@@ -326,7 +326,7 @@ test_parse_print_xml(void **state)
 
     st->dt = lyd_parse_path(st->ctx, actreply, LYD_XML, LYD_OPT_RPCREPLY, st->rpc_act, NULL);
     assert_ptr_not_equal(st->dt, NULL);
-    lyd_print_mem(&(st->str2), st->dt->child, LYD_XML, LYP_FORMAT);
+    lyd_print_mem(&(st->str2), st->dt, LYD_XML, LYP_FORMAT | LYP_NETCONF_XML);
 
     assert_string_equal(st->str1, st->str2);
 

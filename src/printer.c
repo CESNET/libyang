@@ -306,6 +306,10 @@ lyd_print_(struct lyout *out, const struct lyd_node *root, LYD_FORMAT format, in
     case LYD_XML:
         return xml_print_data(out, root, options);
     case LYD_JSON:
+        if (options & LYP_NETCONF_XML) {
+            LOGERR(LY_EINVAL, "JSON format with LYP_NETCONF_XML flag.");
+            return EXIT_FAILURE;
+        }
         return json_print_data(out, root, options);
     default:
         LOGERR(LY_EINVAL, "Unknown output format.");
