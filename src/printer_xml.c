@@ -441,7 +441,7 @@ xml_print_data(struct lyout *out, const struct lyd_node *root, int options)
 
     level = (options & LYP_FORMAT ? 1 : 0);
 
-    if (options & LYP_NETCONF_XML) {
+    if (options & LYP_NETCONF) {
         if (root->schema->nodetype != LYS_RPC) {
             /* learn whether we are printing an action */
             LY_TREE_DFS_BEGIN(root, next, node) {

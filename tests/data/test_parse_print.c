@@ -276,7 +276,7 @@ test_parse_print_xml(void **state)
 
     st->dt = lyd_parse_path(st->ctx, rpcreply, LYD_XML, LYD_OPT_RPCREPLY, st->rpc_act, NULL);
     assert_ptr_not_equal(st->dt, NULL);
-    lyd_print_mem(&(st->str2), st->dt, LYD_XML, LYP_FORMAT | LYP_NETCONF_XML);
+    lyd_print_mem(&(st->str2), st->dt, LYD_XML, LYP_FORMAT | LYP_NETCONF);
 
     assert_string_equal(st->str1, st->str2);
 
@@ -301,7 +301,7 @@ test_parse_print_xml(void **state)
 
     st->rpc_act = lyd_parse_path(st->ctx, act, LYD_XML, LYD_OPT_RPC, NULL);
     assert_ptr_not_equal(st->rpc_act, NULL);
-    lyd_print_mem(&(st->str2), st->rpc_act, LYD_XML, LYP_FORMAT | LYP_NETCONF_XML);
+    lyd_print_mem(&(st->str2), st->rpc_act, LYD_XML, LYP_FORMAT | LYP_NETCONF);
 
     assert_string_equal(st->str1, st->str2);
 
@@ -326,7 +326,7 @@ test_parse_print_xml(void **state)
 
     st->dt = lyd_parse_path(st->ctx, actreply, LYD_XML, LYD_OPT_RPCREPLY, st->rpc_act, NULL);
     assert_ptr_not_equal(st->dt, NULL);
-    lyd_print_mem(&(st->str2), st->dt, LYD_XML, LYP_FORMAT | LYP_NETCONF_XML);
+    lyd_print_mem(&(st->str2), st->dt, LYD_XML, LYP_FORMAT | LYP_NETCONF);
 
     assert_string_equal(st->str1, st->str2);
 
@@ -384,10 +384,15 @@ test_parse_print_json(void **state)
 {
     struct state *st = (*state);
     struct stat s;
+    const struct lys_node *rpc_schema;
     int fd;
     const char *data = TESTS_DIR"/data/files/all-data.json";
     const char *rpc = TESTS_DIR"/data/files/all-rpc.json";
+    const char *rpcreply = TESTS_DIR"/data/files/all-rpcreply.json";
+    const char *act = TESTS_DIR"/data/files/all-act.json";
+    const char *actreply = TESTS_DIR"/data/files/all-actreply.json";
     const char *notif = TESTS_DIR"/data/files/all-notif.json";
+    const char *innotif = TESTS_DIR"/data/files/all-innotif.json";
 
     /* data */
     fd = open(data, O_RDONLY);
@@ -420,7 +425,107 @@ test_parse_print_json(void **state)
     assert_int_equal(read(fd, st->str1, s.st_size), s.st_size);
     st->str1[s.st_size] = '\0';
 
-    st->dt = lyd_parse_path(st->ctx, rpc, LYD_JSON, LYD_OPT_RPC, NULL);
+    st->rpc_act = lyd_parse_path(st->ctx, rpc, LYD_JSON, LYD_OPT_RPC, NULL);
+    assert_ptr_not_equal(st->rpc_act, NULL);
+    lyd_print_mem(&(st->str2), st->rpc_act, LYD_JSON, LYP_FORMAT | LYP_NETCONF);
+
+    assert_string_equal(st->str1, st->str2);
+
+    close(fd);
+    fd = -1;
+    free(st->str1);
+    st->str1 = NULL;
+    free(st->str2);
+    st->str2 = NULL;
+
+    /* rpcreply */
+    fd = open(rpcreply, O_RDONLY);
+    fstat(fd, &s);
+    st->str1 = malloc(s.st_size + 1);
+    assert_ptr_not_equal(st->str1, NULL);
+    assert_int_equal(read(fd, st->str1, s.st_size), s.st_size);
+    st->str1[s.st_size] = '\0';
+
+    rpc_schema = ly_ctx_get_node(st->ctx, NULL, "/all:rpc1");
+    assert_ptr_not_equal(rpc_schema, NULL);
+    assert_int_equal(rpc_schema->nodetype, LYS_RPC);
+
+    st->dt = lyd_parse_path(st->ctx, rpcreply, LYD_JSON, LYD_OPT_RPCREPLY, st->rpc_act, NULL);
+    assert_ptr_not_equal(st->dt, NULL);
+    lyd_print_mem(&(st->str2), st->dt, LYD_JSON, LYP_FORMAT | LYP_NETCONF);
+
+    assert_string_equal(st->str1, st->str2);
+
+    close(fd);
+    fd = -1;
+    free(st->str1);
+    st->str1 = NULL;
+    free(st->str2);
+    st->str2 = NULL;
+    lyd_free(st->dt);
+    st->dt = NULL;
+    lyd_free(st->rpc_act);
+    st->rpc_act = NULL;
+
+    /* act */
+    fd = open(act, O_RDONLY);
+    fstat(fd, &s);
+    st->str1 = malloc(s.st_size + 1);
+    assert_ptr_not_equal(st->str1, NULL);
+    assert_int_equal(read(fd, st->str1, s.st_size), s.st_size);
+    st->str1[s.st_size] = '\0';
+
+    st->rpc_act = lyd_parse_path(st->ctx, act, LYD_JSON, LYD_OPT_RPC, NULL);
+    assert_ptr_not_equal(st->rpc_act, NULL);
+    lyd_print_mem(&(st->str2), st->rpc_act, LYD_JSON, LYP_FORMAT | LYP_NETCONF);
+
+    assert_string_equal(st->str1, st->str2);
+
+    close(fd);
+    fd = -1;
+    free(st->str1);
+    st->str1 = NULL;
+    free(st->str2);
+    st->str2 = NULL;
+
+    /* actreply */
+    fd = open(actreply, O_RDONLY);
+    fstat(fd, &s);
+    st->str1 = malloc(s.st_size + 1);
+    assert_ptr_not_equal(st->str1, NULL);
+    assert_int_equal(read(fd, st->str1, s.st_size), s.st_size);
+    st->str1[s.st_size] = '\0';
+
+    rpc_schema = ly_ctx_get_node(st->ctx, NULL, "/all:cont1/list1/act1");
+    assert_ptr_not_equal(rpc_schema, NULL);
+    assert_int_equal(rpc_schema->nodetype, LYS_ACTION);
+
+    st->dt = lyd_parse_path(st->ctx, actreply, LYD_JSON, LYD_OPT_RPCREPLY, st->rpc_act, NULL);
+    assert_ptr_not_equal(st->dt, NULL);
+    lyd_print_mem(&(st->str2), st->dt, LYD_JSON, LYP_FORMAT | LYP_NETCONF);
+
+    assert_string_equal(st->str1, st->str2);
+
+    close(fd);
+    fd = -1;
+    free(st->str1);
+    st->str1 = NULL;
+    free(st->str2);
+    st->str2 = NULL;
+    lyd_free(st->dt);
+    st->dt = NULL;
+    lyd_free(st->rpc_act);
+    st->rpc_act = NULL;
+
+    /* notif */
+    fd = open(notif, O_RDONLY);
+    fstat(fd, &s);
+    st->str1 = malloc(s.st_size + 1);
+    assert_ptr_not_equal(st->str1, NULL);
+    assert_int_equal(read(fd, st->str1, s.st_size), s.st_size);
+    st->str1[s.st_size] = '\0';
+
+    st->dt = lyd_parse_path(st->ctx, notif, LYD_JSON, LYD_OPT_NOTIF, NULL);
     assert_ptr_not_equal(st->dt, NULL);
     lyd_print_mem(&(st->str2), st->dt, LYD_JSON, LYP_FORMAT);
 
@@ -435,15 +540,15 @@ test_parse_print_json(void **state)
     lyd_free(st->dt);
     st->dt = NULL;
 
-    /* notif */
-    fd = open(notif, O_RDONLY);
+    /* inline notif */
+    fd = open(innotif, O_RDONLY);
     fstat(fd, &s);
     st->str1 = malloc(s.st_size + 1);
     assert_ptr_not_equal(st->str1, NULL);
     assert_int_equal(read(fd, st->str1, s.st_size), s.st_size);
     st->str1[s.st_size] = '\0';
 
-    st->dt = lyd_parse_path(st->ctx, notif, LYD_JSON, LYD_OPT_NOTIF, NULL);
+    st->dt = lyd_parse_path(st->ctx, innotif, LYD_JSON, LYD_OPT_NOTIF, NULL);
     assert_ptr_not_equal(st->dt, NULL);
     lyd_print_mem(&(st->str2), st->dt, LYD_JSON, LYP_FORMAT);
 

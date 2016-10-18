@@ -415,6 +415,21 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
             ((struct lyd_node_anydata *)*result)->value_type = LYD_ANYDATA_CONSTSTRING;
             ((struct lyd_node_anydata *)*result)->value.str = lydict_insert(ctx, xml->content, 0);
         }
+    } else if (schema->nodetype & (LYS_RPC | LYS_ACTION)) {
+        if (!(options & LYD_OPT_RPC) || *act_notif) {
+            LOGVAL(LYE_INELEM, LY_VLOG_LYD, (*result), schema->name);
+            LOGVAL(LYE_SPEC, LY_VLOG_LYD, (*result), "Unexpected %s node \"%s\".",
+                   (schema->nodetype == LYS_RPC ? "rpc" : "action"), schema->name);
+            goto error;
+        }
+        *act_notif = *result;
+    } else if (schema->nodetype == LYS_NOTIF) {
+        if (!(options & LYD_OPT_NOTIF) || *act_notif) {
+            LOGVAL(LYE_INELEM, LY_VLOG_LYD, (*result), schema->name);
+            LOGVAL(LYE_SPEC, LY_VLOG_LYD, (*result), "Unexpected notification node \"%s\".", schema->name);
+            goto error;
+        }
+        *act_notif = *result;
     }
 
     /* first part of validation checks */
@@ -489,16 +504,6 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
             for (dattr_iter = (*result)->attr; dattr_iter->next; dattr_iter = dattr_iter->next);
             dattr_iter->next = dattr;
         }
-    }
-
-    if ((*result)->schema->nodetype & (LYS_ACTION | LYS_NOTIF)) {
-        if (!(options & LYD_OPT_ACT_NOTIF) || *act_notif) {
-            LOGVAL(LYE_INELEM, LY_VLOG_LYD, (*result), (*result)->schema->name);
-            LOGVAL(LYE_SPEC, LY_VLOG_LYD, (*result), "Unexpected %s node \"%s\".",
-                   (options & LYD_OPT_RPC ? "action" : "notification"), (*result)->schema->name);
-            goto error;
-        }
-        *act_notif = *result;
     }
 
     /* process children */
@@ -670,11 +675,6 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
             && !strcmp(xmlstart->name, "action") && !strcmp(xmlstart->ns->value, "urn:ietf:params:xml:ns:yang:1")) {
         /* it's an action, not a simple RPC */
         xmlstart = xmlstart->child;
-        options |= LYD_OPT_ACT_NOTIF;
-    }
-    if ((options & LYD_OPT_NOTIF) && strcmp(xmlstart->name, "notification")) {
-        /* inline notification */
-        options |= LYD_OPT_ACT_NOTIF;
     }
 
     iter = last = NULL;
@@ -709,13 +709,10 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     if ((options & LYD_OPT_RPCREPLY) && (rpc_act->schema->nodetype != LYS_RPC)) {
         /* action reply */
         act_notif = reply_parent;
-    } else if (options & LYD_OPT_ACT_NOTIF) {
-        if (!act_notif) {
-            ly_vecode = LYVE_INELEM;
-            LOGVAL(LYE_SPEC, LY_VLOG_LYD, result, "Missing %s node.", (options & LYD_OPT_RPC ? "action" : "notification"));
-            goto error;
-        }
-        options &= ~LYD_OPT_ACT_NOTIF;
+    } else if ((options & (LYD_OPT_RPC | LYD_OPT_NOTIF)) && !act_notif) {
+        ly_vecode = LYVE_INELEM;
+        LOGVAL(LYE_SPEC, LY_VLOG_LYD, result, "Missing %s node.", (options & LYD_OPT_RPC ? "action" : "notification"));
+        goto error;
     }
 
     /* check for uniquness of top-level lists/leaflists because
@@ -744,10 +741,8 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     if (lyd_defaults_add_unres(&result, options, ctx, data_tree, act_notif, unres)) {
         goto error;
     }
-    if (!(options & LYD_OPT_TRUSTED)) {
-        if (lyd_check_mandatory_tree((act_notif ? act_notif : result), ctx, options)) {
-            goto error;
-        }
+    if (!(options & LYD_OPT_TRUSTED) && lyd_check_mandatory_tree((act_notif ? act_notif : result), ctx, options)) {
+        goto error;
     }
 
     free(unres->node);
