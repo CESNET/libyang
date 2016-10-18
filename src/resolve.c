@@ -2219,7 +2219,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
 
     while (1) {
         LY_TREE_FOR(start, sibling) {
-            /* RPC data check, return simply invalid argument, because the data tree is invalid */
+            /* RPC/action data check, return simply invalid argument, because the data tree is invalid */
             if (lys_parent(sibling->schema)) {
                 if (options & LYD_PATH_OPT_OUTPUT) {
                     if (lys_parent(sibling->schema)->nodetype == LYS_INPUT) {

@@ -574,8 +574,8 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     va_list ap;
     int r, i;
     struct unres_data *unres = NULL;
-    const struct lys_node *rpc_act = NULL;
-    struct lyd_node *result = NULL, *iter, *last, *reply_parent = NULL, *act_notif = NULL, *data_tree = NULL;
+    const struct lyd_node *rpc_act = NULL, *data_tree = NULL;
+    struct lyd_node *result = NULL, *iter, *last, *reply_parent = NULL, *reply_top = NULL, *act_notif = NULL;
     struct lyxml_elem *xmlstart, *xmlelem, *xmlaux;
     struct ly_set *set;
 
@@ -605,17 +605,35 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
 
     va_start(ap, options);
     if (options & LYD_OPT_RPCREPLY) {
-        rpc_act = va_arg(ap, const struct lys_node *);
-        if (!rpc_act || !(rpc_act->nodetype & (LYS_RPC | LYS_ACTION))) {
-            LOGERR(LY_EINVAL, "%s: invalid variable parameter (const struct lys_node *rpc_act).", __func__);
+        rpc_act = va_arg(ap, const struct lyd_node *);
+        if (!rpc_act || rpc_act->parent || !(rpc_act->schema->nodetype & (LYS_RPC | LYS_LIST | LYS_CONTAINER))) {
+            LOGERR(LY_EINVAL, "%s: invalid variable parameter (const struct lyd_node *rpc_act).", __func__);
             goto error;
         }
-        reply_parent = _lyd_new(NULL, rpc_act, 0);
+        if (rpc_act->schema->nodetype == LYS_RPC) {
+            /* RPC request */
+            reply_top = reply_parent = _lyd_new(NULL, rpc_act->schema, 0);
+        } else {
+            /* action request */
+            reply_top = lyd_dup(rpc_act, 1);
+            LY_TREE_DFS_BEGIN(reply_top, iter, reply_parent) {
+                if (reply_parent->schema->nodetype == LYS_ACTION) {
+                    break;
+                }
+                LY_TREE_DFS_END(reply_top, iter, reply_parent);
+            }
+            if (!reply_parent) {
+                LOGERR(LY_EINVAL, "%s: invalid variable parameter (const struct lyd_node *rpc_act).", __func__);
+                lyd_free_withsiblings(reply_top);
+                goto error;
+            }
+            lyd_free_withsiblings(reply_parent->child);
+        }
     }
     if (options & (LYD_OPT_RPC | LYD_OPT_NOTIF | LYD_OPT_RPCREPLY)) {
-        data_tree = va_arg(ap, struct lyd_node *);
+        data_tree = va_arg(ap, const struct lyd_node *);
         if (data_tree) {
-            LY_TREE_FOR(data_tree, iter) {
+            LY_TREE_FOR((struct lyd_node *)data_tree, iter) {
                 if (iter->parent) {
                     /* a sibling is not top-level */
                     LOGERR(LY_EINVAL, "%s: invalid variable parameter (const struct lyd_node *data_tree).", __func__);
@@ -663,8 +681,8 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     LY_TREE_FOR_SAFE(xmlstart, xmlaux, xmlelem) {
         r = xml_parse_data(ctx, xmlelem, reply_parent, result, last, options, unres, &iter, &act_notif);
         if (r) {
-            if (reply_parent) {
-                result = reply_parent;
+            if (reply_top) {
+                result = reply_top;
             }
             goto error;
         } else if (options & LYD_OPT_DESTRUCT) {
@@ -684,11 +702,14 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
         }
     }
 
-    if (reply_parent) {
-        result = reply_parent;
+    if (reply_top) {
+        result = reply_top;
     }
 
-    if (options & LYD_OPT_ACT_NOTIF) {
+    if ((options & LYD_OPT_RPCREPLY) && (rpc_act->schema->nodetype != LYS_RPC)) {
+        /* action reply */
+        act_notif = reply_parent;
+    } else if (options & LYD_OPT_ACT_NOTIF) {
         if (!act_notif) {
             ly_vecode = LYVE_INELEM;
             LOGVAL(LYE_SPEC, LY_VLOG_LYD, result, "Missing %s node.", (options & LYD_OPT_RPC ? "action" : "notification"));

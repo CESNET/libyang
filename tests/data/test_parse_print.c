@@ -29,6 +29,7 @@ struct state {
     struct ly_ctx *ctx;
     const struct lys_module *mod;
     struct lyd_node *dt;
+    struct lyd_node *rpc_act;
     int fd;
     char *str1;
     char *str2;
@@ -85,6 +86,7 @@ teardown_f(void **state)
     struct state *st = (*state);
 
     lyd_free_withsiblings(st->dt);
+    lyd_free_withsiblings(st->rpc_act);
     ly_ctx_destroy(st->ctx, NULL);
     if (st->fd > 0) {
         close(st->fd);
@@ -247,9 +249,9 @@ test_parse_print_xml(void **state)
     assert_int_equal(read(fd, st->str1, s.st_size), s.st_size);
     st->str1[s.st_size] = '\0';
 
-    st->dt = lyd_parse_path(st->ctx, rpc, LYD_XML, LYD_OPT_RPC, NULL);
-    assert_ptr_not_equal(st->dt, NULL);
-    lyd_print_mem(&(st->str2), st->dt, LYD_XML, LYP_FORMAT);
+    st->rpc_act = lyd_parse_path(st->ctx, rpc, LYD_XML, LYD_OPT_RPC, NULL);
+    assert_ptr_not_equal(st->rpc_act, NULL);
+    lyd_print_mem(&(st->str2), st->rpc_act, LYD_XML, LYP_FORMAT);
 
     assert_string_equal(st->str1, st->str2);
 
@@ -259,8 +261,6 @@ test_parse_print_xml(void **state)
     st->str1 = NULL;
     free(st->str2);
     st->str2 = NULL;
-    lyd_free(st->dt);
-    st->dt = NULL;
 
     /* rpcreply */
     fd = open(rpcreply, O_RDONLY);
@@ -274,7 +274,7 @@ test_parse_print_xml(void **state)
     assert_ptr_not_equal(rpc_schema, NULL);
     assert_int_equal(rpc_schema->nodetype, LYS_RPC);
 
-    st->dt = lyd_parse_path(st->ctx, rpcreply, LYD_XML, LYD_OPT_RPCREPLY, rpc_schema, NULL);
+    st->dt = lyd_parse_path(st->ctx, rpcreply, LYD_XML, LYD_OPT_RPCREPLY, st->rpc_act, NULL);
     assert_ptr_not_equal(st->dt, NULL);
     lyd_print_mem(&(st->str2), st->dt->child, LYD_XML, LYP_FORMAT);
 
@@ -288,6 +288,8 @@ test_parse_print_xml(void **state)
     st->str2 = NULL;
     lyd_free(st->dt);
     st->dt = NULL;
+    lyd_free(st->rpc_act);
+    st->rpc_act = NULL;
 
     /* act */
     fd = open(act, O_RDONLY);
@@ -297,9 +299,9 @@ test_parse_print_xml(void **state)
     assert_int_equal(read(fd, st->str1, s.st_size), s.st_size);
     st->str1[s.st_size] = '\0';
 
-    st->dt = lyd_parse_path(st->ctx, act, LYD_XML, LYD_OPT_RPC, NULL);
-    assert_ptr_not_equal(st->dt, NULL);
-    lyd_print_mem(&(st->str2), st->dt, LYD_XML, LYP_FORMAT);
+    st->rpc_act = lyd_parse_path(st->ctx, act, LYD_XML, LYD_OPT_RPC, NULL);
+    assert_ptr_not_equal(st->rpc_act, NULL);
+    lyd_print_mem(&(st->str2), st->rpc_act, LYD_XML, LYP_FORMAT | LYP_NETCONF_XML);
 
     assert_string_equal(st->str1, st->str2);
 
@@ -309,8 +311,6 @@ test_parse_print_xml(void **state)
     st->str1 = NULL;
     free(st->str2);
     st->str2 = NULL;
-    lyd_free(st->dt);
-    st->dt = NULL;
 
     /* actreply */
     fd = open(actreply, O_RDONLY);
@@ -324,7 +324,7 @@ test_parse_print_xml(void **state)
     assert_ptr_not_equal(rpc_schema, NULL);
     assert_int_equal(rpc_schema->nodetype, LYS_ACTION);
 
-    st->dt = lyd_parse_path(st->ctx, actreply, LYD_XML, LYD_OPT_RPCREPLY, rpc_schema, NULL);
+    st->dt = lyd_parse_path(st->ctx, actreply, LYD_XML, LYD_OPT_RPCREPLY, st->rpc_act, NULL);
     assert_ptr_not_equal(st->dt, NULL);
     lyd_print_mem(&(st->str2), st->dt->child, LYD_XML, LYP_FORMAT);
 
@@ -338,6 +338,8 @@ test_parse_print_xml(void **state)
     st->str2 = NULL;
     lyd_free(st->dt);
     st->dt = NULL;
+    lyd_free(st->rpc_act);
+    st->rpc_act = NULL;
 
     /* notif */
     fd = open(notif, O_RDONLY);

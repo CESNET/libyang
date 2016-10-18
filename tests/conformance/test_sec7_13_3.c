@@ -32,10 +32,10 @@
 #define TEST_DATA_FILE_LOAD_FAIL 0,0,0,0,1,0,0,0,1,1,1,1,1,1
 #define TEST_DATA_COMPARE_FAIL 1,0,0,0,0,0,0,0
 #define TEST_DATA_COMPARE "ssh", "ssh", "42", "pattern", "", "true", "", ""
-#define TEST_RPC_NODE "/mod1:test5", "/mod1:test5", "/mod1:test5", "/mod1:test4", \
-                      "/mod1:test3", "/mod1:test3", "/mod1:test2", "/mod1:test6", \
-                      "/mod1:test3", "/mod1:test3", "/mod1:test", "/mod1:test6", \
-                      "/mod1:test6", "/mod1:test6"
+#define TEST_RPC_NODE "test5", "test5", "test5", "test4", \
+                      "test3", "test3", "test2", "test6", \
+                      "test3", "test3", "test", "test6", \
+                      "test6", "test6"
 struct state {
     struct ly_ctx *ctx;
     struct lyd_node *node;
@@ -90,7 +90,7 @@ TEST_RPC_OUTPUT(void **state)
     const int data_compare_fail[] = {TEST_DATA_COMPARE_FAIL};
     const char *data_compare_string[] = {TEST_DATA_COMPARE};
     const char *data_rpc_name[] = {TEST_RPC_NODE};
-    const struct lys_node *rpc;
+    struct lyd_node *rpc;
 
     for (i = 0; i < 2; ++i) {
         for (j = 0; j < TEST_SCHEMA_COUNT; ++j) {
@@ -105,8 +105,9 @@ TEST_RPC_OUTPUT(void **state)
 
         for (j = 0; j < TEST_DATA_FILE_COUNT; ++j) {
             sprintf(buf, TESTS_DIR "/conformance/" TEST_DIR "/data%d.xml", j + 1);
-            rpc = ly_ctx_get_node(st->ctx, mod->data, data_rpc_name[j]);
+            rpc = lyd_new(NULL, mod, data_rpc_name[j]);
             st->node = lyd_parse_path(st->ctx, buf, LYD_XML, LYD_OPT_RPCREPLY, rpc, NULL);
+            lyd_free(rpc);
             if (data_files_fail[j]) {
                 assert_ptr_equal(st->node, NULL);
             } else {
