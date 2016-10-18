@@ -1701,6 +1701,14 @@ struct ly_set *lys_node_xpath_atomize(const struct lys_node *node, int options);
 #define LYXP_NO_LOCAL 0x02  /**< lys_node_xpath_atomize() option to discard schema node dependencies from the local subtree */
 
 /**
+ * @brief Build path (usable as XPath) of the schema node.
+ * @param[in] node Schema node to be processed.
+ * @return NULL on error, on success the buffer for the resulting path is allocated and caller is supposed to free it
+ * with free().
+ */
+char *lys_path(const struct lys_node *node);
+
+/**
  * @brief Return parent node in the schema tree.
  *
  * In case of augmenting node, it returns the target tree node where the augmenting
