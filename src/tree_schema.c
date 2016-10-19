@@ -2599,6 +2599,10 @@ lys_features_change(const struct lys_module *module, const char *name, int op)
 {
     int all = 0;
     int i, j, k;
+    int progress, faili, failj, failk;
+
+    uint8_t fsize;
+    struct lys_feature *f;
 
     if (!module || !name || !strlen(name)) {
         return EXIT_FAILURE;
@@ -2609,57 +2613,73 @@ lys_features_change(const struct lys_module *module, const char *name, int op)
         all = 1;
     }
 
-    /* module itself */
-    for (i = 0; i < module->features_size; i++) {
-        if (all || !strcmp(module->features[i].name, name)) {
-            if (op) {
-                /* check referenced features if they are enabled */
-                for (j = 0; j < module->features[i].iffeature_size; j++) {
-                    if (!resolve_iffeature(&module->features[i].iffeature[j])) {
-                        LOGERR(LY_EINVAL, "Feature \"%s\" is disabled by its %d. if-feature condition.",
-                               module->features[i].name, j + 1);
-                        return EXIT_FAILURE;
+    progress = failk = 1;
+    while (progress && failk) {
+        for (i = -1, failk = progress = 0; i < module->inc_size; i++) {
+            if (i == -1) {
+                fsize = module->features_size;
+                f = module->features;
+            } else {
+                fsize = module->inc[i].submodule->features_size;
+                f = module->inc[i].submodule->features;
+            }
+
+            for (j = 0; j < fsize; j++) {
+                if (all || !strcmp(f[j].name, name)) {
+                    /* skip already set features */
+                    if (op && (f[j].flags & LYS_FENABLED)) {
+                        continue;
+                    } else if (!op && !(f[j].flags & LYS_FENABLED)) {
+                        continue;
+                    }
+
+                    if (op) {
+                        /* check referenced features if they are enabled */
+                        for (k = 0; k < f[j].iffeature_size; k++) {
+                            if (!resolve_iffeature(&f[j].iffeature[k])) {
+                                if (all) {
+                                    faili = i;
+                                    failj = j;
+                                    failk = k + 1;
+                                    break;
+                                } else {
+                                    LOGERR(LY_EINVAL, "Feature \"%s\" is disabled by its %d. if-feature condition.",
+                                           f[j].name, k + 1);
+                                    return EXIT_FAILURE;
+                                }
+                            }
+                        }
+
+                        if (k == f[j].iffeature_size) {
+                            /* the last check passed, do the change */
+                            f[j].flags |= LYS_FENABLED;
+                            progress++;
+                        }
+                    } else {
+                        /* features can be disabled despite they are conditionaly disabled by other feature,
+                         * only enabling must be checked */
+                        f[j].flags &= ~LYS_FENABLED;
+                        progress++;
+                    }
+                    if (!all) {
+                        /* stop in case changing a single feature */
+                        return EXIT_SUCCESS;
                     }
                 }
-
-                module->features[i].flags |= LYS_FENABLED;
-            } else {
-                module->features[i].flags &= ~LYS_FENABLED;
-            }
-            if (!all) {
-                return EXIT_SUCCESS;
             }
         }
     }
-
-    /* submodules */
-    for (i = 0; i < module->inc_size; i++) {
-        for (j = 0; j < module->inc[i].submodule->features_size; j++) {
-            if (all || !strcmp(module->inc[i].submodule->features[j].name, name)) {
-                if (op) {
-                    /* check referenced features if they are enabled */
-                    for (k = 0; k < module->inc[i].submodule->features[j].iffeature_size; k++) {
-                        if (!resolve_iffeature(&module->inc[i].submodule->features[j].iffeature[k])) {
-                            LOGERR(LY_EINVAL, "Feature \"%s\" is disabled by its %d. if-feature condition.",
-                                module->inc[i].submodule->features[j].name, k + 1);
-                            return EXIT_FAILURE;
-                        }
-                    }
-
-                    module->inc[i].submodule->features[j].flags |= LYS_FENABLED;
-                } else {
-                    module->inc[i].submodule->features[j].flags &= ~LYS_FENABLED;
-                }
-                if (!all) {
-                    return EXIT_SUCCESS;
-                }
-            }
-        }
+    if (failk) {
+        /* print info about the last failing feature */
+        LOGERR(LY_EINVAL, "Feature \"%s\" is disabled by its %d. if-feature condition.",
+               faili == -1 ? module->features[failj].name : module->inc[faili].submodule->features[failj].name, failk);
+        return EXIT_FAILURE;
     }
 
     if (all) {
         return EXIT_SUCCESS;
     } else {
+        /* the specified feature not found */
         return EXIT_FAILURE;
     }
 }
