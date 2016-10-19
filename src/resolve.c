@@ -2189,7 +2189,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
 {
     char *module_name = ly_buf(), *buf_backup = NULL, *str;
     const char *id, *mod_name, *name;
-    int r, ret, mod_name_len, nam_len, is_relative = -1, has_predicate, last_parsed;
+    int r, ret, mod_name_len, nam_len, is_relative = -1, has_predicate, last_parsed, val_len;
     struct lyd_node *sibling, *last_match = NULL;
     struct lyd_node_leaf_list *llist;
     const struct lys_module *prefix_mod, *prev_mod;
@@ -2281,11 +2281,29 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
 
                 /* leaf-list, did we find it with the correct value or not? */
                 if (sibling->schema->nodetype == LYS_LEAFLIST) {
+                    if (has_predicate) {
+                        if ((r = parse_schema_json_predicate(id, &name, &nam_len, &llist_value, &val_len, &has_predicate)) < 1) {
+                            LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[0], id);
+                            *parsed = -1;
+                            return NULL;
+                        }
+                    } else {
+                        r = 0;
+                        if (llist_value) {
+                            val_len = strlen(llist_value);
+                        } else {
+                            val_len = 0;
+                        }
+                    }
+
                     llist = (struct lyd_node_leaf_list *)sibling;
-                    if ((!llist_value && llist->value_str && llist->value_str[0])
-                            || (llist_value && strcmp(llist_value, llist->value_str))) {
+                    if ((!val_len && llist->value_str && llist->value_str[0])
+                            || (val_len && (strncmp(llist_value, llist->value_str, val_len) || llist->value_str[val_len]))) {
                         continue;
                     }
+                    id += r;
+                    last_parsed += r;
+
                 } else if (sibling->schema->nodetype == LYS_LIST) {
                     /* list, we need predicates'n'stuff then */
                     r = 0;
