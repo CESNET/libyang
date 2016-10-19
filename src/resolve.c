@@ -2188,8 +2188,9 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
                                  int *parsed)
 {
     char *module_name = ly_buf(), *buf_backup = NULL, *str;
-    const char *id, *mod_name, *name;
-    int r, ret, mod_name_len, nam_len, is_relative = -1, has_predicate, last_parsed, val_len;
+    const char *id, *mod_name, *name, *pred_name;
+    int r, ret, mod_name_len, nam_len, is_relative = -1;
+    int has_predicate, last_parsed, val_len, pred_name_len, last_has_pred;
     struct lyd_node *sibling, *last_match = NULL;
     struct lyd_node_leaf_list *llist;
     const struct lys_module *prefix_mod, *prev_mod;
@@ -2281,9 +2282,15 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
 
                 /* leaf-list, did we find it with the correct value or not? */
                 if (sibling->schema->nodetype == LYS_LEAFLIST) {
+                    last_has_pred = 0;
                     if (has_predicate) {
-                        if ((r = parse_schema_json_predicate(id, &name, &nam_len, &llist_value, &val_len, &has_predicate)) < 1) {
+                        if ((r = parse_schema_json_predicate(id, &pred_name, &pred_name_len, &llist_value, &val_len, &last_has_pred)) < 1) {
                             LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[0], id);
+                            *parsed = -1;
+                            return NULL;
+                        }
+                        if ((pred_name[0] != '.') || (pred_name_len != 1)) {
+                            LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[1], id + 1);
                             *parsed = -1;
                             return NULL;
                         }
@@ -2303,6 +2310,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
                     }
                     id += r;
                     last_parsed += r;
+                    has_predicate = last_has_pred;
 
                 } else if (sibling->schema->nodetype == LYS_LIST) {
                     /* list, we need predicates'n'stuff then */
