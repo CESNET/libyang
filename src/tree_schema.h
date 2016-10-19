@@ -1472,6 +1472,7 @@ struct lys_feature {
 
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
     struct lys_iffeature *iffeature; /**< array of if-feature expressions */
+    struct ly_set *depfeatures;      /**< set of other features depending on this one */
 };
 
 /**

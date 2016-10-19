@@ -1722,6 +1722,7 @@ lys_feature_free(struct ly_ctx *ctx, struct lys_feature *f)
     lydict_remove(ctx, f->dsc);
     lydict_remove(ctx, f->ref);
     lys_iffeature_free(f->iffeature, f->iffeature_size);
+    ly_set_free(f->depfeatures);
 }
 
 static void
@@ -2591,6 +2592,27 @@ lys_free(struct lys_module *module, void (*private_destructor)(const struct lys_
     free(module);
 }
 
+static void
+lys_features_disable_recursive(struct lys_feature *f)
+{
+    unsigned int i;
+    struct lys_feature *depf;
+
+    /* disable the feature */
+    f->flags &= ~LYS_FENABLED;
+
+    /* by disabling feature we have to disable also all features that depends on this feature */
+    if (f->depfeatures) {
+        for (i = 0; i < f->depfeatures->number; i++) {
+            depf = (struct lys_feature *)f->depfeatures->set.g[i];
+            if (depf->flags & LYS_FENABLED) {
+                lys_features_disable_recursive(depf);
+            }
+        }
+    }
+}
+
+
 /*
  * op: 1 - enable, 0 - disable
  */
@@ -2656,9 +2678,7 @@ lys_features_change(const struct lys_module *module, const char *name, int op)
                             progress++;
                         }
                     } else {
-                        /* features can be disabled despite they are conditionaly disabled by other feature,
-                         * only enabling must be checked */
-                        f[j].flags &= ~LYS_FENABLED;
+                        lys_features_disable_recursive(&f[j]);
                         progress++;
                     }
                     if (!all) {

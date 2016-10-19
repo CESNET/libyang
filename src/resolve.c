@@ -1253,6 +1253,7 @@ iff_getop(uint8_t *list, int pos)
 struct unres_iffeat_data {
     struct lys_node *node;
     const char *fname;
+    int infeature;
 };
 
 void
@@ -1303,7 +1304,7 @@ result:
 
 int
 resolve_iffeature_compile(struct lys_iffeature *iffeat_expr, const char *value, struct lys_node *node,
-                          struct unres_schema *unres)
+                          int infeature, struct unres_schema *unres)
 {
     const char *c = value;
     int r, rc = EXIT_FAILURE;
@@ -1452,6 +1453,7 @@ resolve_iffeature_compile(struct lys_iffeature *iffeat_expr, const char *value, 
             iff_data = malloc(sizeof *iff_data);
             iff_data->node = node;
             iff_data->fname = lydict_insert(node->module->ctx, &c[i], j - i);
+            iff_data->infeature = infeature;
             r = unres_schema_add_node(node->module, unres, &iffeat_expr->features[f_size], UNRES_IFFEAT,
                                       (struct lys_node *)iff_data);
             f_size--;
@@ -6007,6 +6009,15 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         rc = resolve_feature(iff_data->fname, strlen(iff_data->fname), iff_data->node, item);
         if (!rc) {
             /* success */
+            if (iff_data->infeature) {
+                /* store backlink into the target feature to allow reverse changes in case of changing feature status */
+                feat = *((struct lys_feature **)item);
+                if (!feat->depfeatures) {
+                    feat->depfeatures = ly_set_new();
+                }
+                ly_set_add(feat->depfeatures, iff_data->node, 0);
+            }
+            /* cleanup temporary data */
             lydict_remove(mod->ctx, iff_data->fname);
             free(iff_data);
         }
