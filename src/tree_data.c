@@ -4829,6 +4829,26 @@ ly_set_free(struct ly_set *set)
     free(set);
 }
 
+API int
+ly_set_contains(const struct ly_set *set, void *node)
+{
+    unsigned int i;
+
+    if (!set) {
+        return -1;
+    }
+
+    for (i = 0; i < set->number; i++) {
+        if (set->set.g[i] == node) {
+            /* object found */
+            return i;
+        }
+    }
+
+    /* object not found */
+    return -1;
+}
+
 API struct ly_set *
 ly_set_dup(const struct ly_set *set)
 {

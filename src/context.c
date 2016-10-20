@@ -148,24 +148,6 @@ ly_ctx_get_searchdir(const struct ly_ctx *ctx)
 }
 
 API void
-ly_ctx_clean(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_node *node, void *priv))
-{
-    int i;
-
-    if (!ctx) {
-        return;
-    }
-
-    /* models list */
-    for (i = INTERNAL_MODULES_COUNT; i < ctx->models.used; ++i) {
-        lys_free(ctx->models.list[i], private_destructor, 0);
-        ctx->models.list[i] = NULL;
-    }
-    ctx->models.used = INTERNAL_MODULES_COUNT;
-    ctx->models.module_set_id++;
-}
-
-API void
 ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     int i;
@@ -436,6 +418,112 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
     return ly_ctx_load_sub_module(ctx, NULL, name, revision, 1, NULL);
 }
 
+/*
+ * mods - set of removed modules, if NULL all modules are supposed to be removed so any backlink is invalid
+ */
+static int
+ctx_modules_maintain_backlinks(struct ly_ctx *ctx, struct ly_set *mods)
+{
+    int o;
+    uint8_t j;
+    unsigned int u, v;
+    struct lys_module *mod;
+    struct lys_node *elem, *next;
+    struct lys_node_leaf *leaf;
+
+    /* maintain backlinks (start with internal ietf-yang-library which have leafs as possible targets of leafrefs */
+    for (o = INTERNAL_MODULES_COUNT - 1; o < ctx->models.used; o++) {
+        mod = ctx->models.list[o]; /* shortcut */
+
+        /* 1) features */
+        for (j = 0; j < mod->features_size; j++) {
+            if (!mod->features[j].depfeatures) {
+                continue;
+            }
+            for (v = 0; v < mod->features[j].depfeatures->number; v++) {
+                if (!mods || ly_set_contains(mods, ((struct lys_feature *)mod->features[j].depfeatures->set.g[v])->module) != -1) {
+                    /* depending feature is in module to remove */
+                    ly_set_rm_index(mod->features[j].depfeatures, v);
+                    v--;
+                }
+            }
+            if (!mod->features[j].depfeatures->number) {
+                /* all backlinks removed */
+                ly_set_free(mod->features[j].depfeatures);
+                mod->features[j].depfeatures = NULL;
+            }
+        }
+        /* identities */
+        for (u = 0; u < mod->ident_size; u++) {
+            if (!mod->ident[u].der) {
+                continue;
+            }
+            for (v = 0; v < mod->ident[u].der->number; v++) {
+                if (!mods || ly_set_contains(mods, ((struct lys_ident *)mod->ident[u].der->set.g[v])->module) != -1) {
+                    /* derived identity is in module to remove */
+                    ly_set_rm_index(mod->ident[u].der, v);
+                    v--;
+                }
+            }
+            if (!mod->ident[u].der->number) {
+                /* all backlinks removed */
+                ly_set_free(mod->ident[u].der);
+                mod->ident[u].der = NULL;
+            }
+        }
+
+        /* leafrefs */
+        for (elem = next = mod->data; elem; elem = next) {
+            if (elem->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+                leaf = (struct lys_node_leaf *)elem; /* shortcut */
+                if (leaf->backlinks) {
+                    if (!mods) {
+                        /* remove all backlinks */
+                        ly_set_free(leaf->backlinks);
+                        leaf->backlinks = NULL;
+                    } else {
+                        for (v = 0; v < leaf->backlinks->number; v++) {
+                            if (ly_set_contains(mods, leaf->backlinks->set.s[v]->module) != -1) {
+                                /* derived identity is in module to remove */
+                                ly_set_rm_index(leaf->backlinks, v);
+                                v--;
+                            }
+                        }
+                        if (!leaf->backlinks->number) {
+                            /* all backlinks removed */
+                            ly_set_free(leaf->backlinks);
+                            leaf->backlinks = NULL;
+                        }
+                    }
+                }
+            }
+
+            /* select next element to process */
+            next = elem->child;
+            /* child exception for leafs, leaflists, anyxml and groupings */
+            if (elem->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA | LYS_GROUPING)) {
+                next = NULL;
+            }
+            if (!next) {
+                /* no children,  try siblings */
+                next = elem->next;
+            }
+            while (!next) {
+                /* parent is already processed, go to its sibling */
+                elem = lys_parent(elem);
+                if (!elem) {
+                    /* we are done, no next element to process */
+                    break;
+                }
+                /* no siblings, go back through parents */
+                next = elem->next;
+            }
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
 API int
 ly_ctx_remove_module(struct ly_ctx *ctx, const char *name, const char *revision,
                      void (*private_destructor)(const struct lys_node *node, void *priv))
@@ -531,11 +619,6 @@ imported:
         }
     }
 
-    /* free the modules and update the list */
-    for (u = 0; u < mods->number; u++) {
-        lys_free((struct lys_module *)mods->set.g[u], private_destructor, 0);
-    }
-    ly_set_free(mods);
 
     /* consolidate the modules list */
     for (i = o = INTERNAL_MODULES_COUNT; i < ctx->models.used; i++) {
@@ -555,7 +638,38 @@ imported:
     ctx->models.used = o + 1;
     ctx->models.module_set_id++;
 
+    /* maintain backlinks (start with internal ietf-yang-library which have leafs as possible targets of leafrefs */
+    ctx_modules_maintain_backlinks(ctx, mods);
+
+    /* free the modules */
+    for (u = 0; u < mods->number; u++) {
+        /* remove the module */
+        lys_free((struct lys_module *)mods->set.g[u], private_destructor, 0);
+    }
+    ly_set_free(mods);
+
     return EXIT_SUCCESS;
+}
+
+API void
+ly_ctx_clean(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_node *node, void *priv))
+{
+    int i;
+
+    if (!ctx) {
+        return;
+    }
+
+    /* models list */
+    for (i = INTERNAL_MODULES_COUNT; i < ctx->models.used; ++i) {
+        lys_free(ctx->models.list[i], private_destructor, 0);
+        ctx->models.list[i] = NULL;
+    }
+    ctx->models.used = INTERNAL_MODULES_COUNT;
+    ctx->models.module_set_id++;
+
+    /* maintain backlinks (actually done only with ietf-yang-library since its leafs cna be target of leafref) */
+    ctx_modules_maintain_backlinks(ctx, NULL);
 }
 
 API const struct lys_module *

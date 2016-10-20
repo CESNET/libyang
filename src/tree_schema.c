@@ -1552,7 +1552,7 @@ lys_ident_free(struct ly_ctx *ctx, struct lys_ident *ident)
     }
 
     free(ident->base);
-    free(ident->der);
+    ly_set_free(ident->der);
     lydict_remove(ctx, ident->name);
     lydict_remove(ctx, ident->dsc);
     lydict_remove(ctx, ident->ref);
@@ -1622,10 +1622,8 @@ lys_leaf_free(struct ly_ctx *ctx, struct lys_node_leaf *leaf)
 {
     int i;
 
-    if (leaf->child) {
-        /* leafref backlinks */
-        ly_set_free((struct ly_set *)leaf->child);
-    }
+    /* leafref backlinks */
+    ly_set_free((struct ly_set *)leaf->backlinks);
 
     for (i = 0; i < leaf->must_size; i++) {
         lys_restr_free(ctx, &leaf->must[i]);
@@ -2889,14 +2887,14 @@ lys_leaf_add_leafref_target(struct lys_node_leaf *leafref_target, struct lys_nod
 
     /* create fake child - the ly_set structure to hold the list of
      * leafrefs referencing the leaf(-list) */
-    if (!leafref_target->child) {
-        leafref_target->child = (void*)ly_set_new();
-        if (!leafref_target->child) {
+    if (!leafref_target->backlinks) {
+        leafref_target->backlinks = (void*)ly_set_new();
+        if (!leafref_target->backlinks) {
             LOGMEM;
             return -1;
         }
     }
-    ly_set_add((struct ly_set *)leafref_target->child, leafref, 0);
+    ly_set_add((struct ly_set *)leafref_target->backlinks, leafref, 0);
 
     return 0;
 }

@@ -828,9 +828,9 @@ struct lys_node_leaf {
 
     LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_LEAF */
     struct lys_node *parent;         /**< pointer to the parent node, NULL in case of a top level node */
-    struct lys_node *child;          /**< always NULL except the leaf/leaflist is target of a leafref, in that case
-                                          the pointer stores set of ::lys_node leafref objects with path referencing
-                                          the current ::lys_node_leaf */
+    struct ly_set *backlinks;        /**< replacement for ::lys_node's child member, it is NULL except the leaf/leaflist
+                                          is target of a leafref. In that case the set stores ::lys_node leafref objects
+                                          with path referencing the current ::lys_node_leaf */
     struct lys_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
     struct lys_node *prev;           /**< pointer to the previous sibling node \note Note that this pointer is
                                           never NULL. If there is no sibling node, pointer points to the node
@@ -1509,11 +1509,10 @@ struct lys_ident {
 
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
     uint8_t base_size;               /**< number of elements in the #base array */
-    uint16_t der_size;               /**< number of elements in the #der array */
     struct lys_iffeature *iffeature; /**< array of if-feature expressions */
 
     struct lys_ident **base;         /**< array of pointers to the base identities */
-    struct lys_ident **der;          /**< array of pointers to the derived identities */
+    struct ly_set *der;              /**< set of backlinks to the derived identities */
 };
 
 /**

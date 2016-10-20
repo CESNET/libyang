@@ -4828,13 +4828,14 @@ identity_backlink_update(struct lys_ident *der, struct lys_ident *base)
 
     assert(der && base);
 
-    base->der = ly_realloc(base->der, (base->der_size + 1) * sizeof *(base->der));
     if (!base->der) {
-        LOGMEM;
-        return EXIT_FAILURE;
+        /* create a set for backlinks if it does not exist */
+        base->der = ly_set_new();
     }
-    base->der[base->der_size++] = der;
+    /* store backlink */
+    ly_set_add(base->der, der, LY_SET_OPT_USEASLIST);
 
+    /* do it recursively */
     for (i = 0; i < base->base_size; i++) {
         if (identity_backlink_update(der, base->base[i])) {
             return EXIT_FAILURE;
@@ -5031,7 +5032,8 @@ struct lys_ident *
 resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node *node)
 {
     const char *mod_name, *name;
-    int mod_name_len, rc, i, j;
+    int mod_name_len, rc, i;
+    unsigned int u;
     struct lys_ident *der, *cur;
 
     if (!type || (!type->info.ident.count && !type->der) || !ident_name) {
@@ -5056,13 +5058,16 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
                 goto match;
             }
 
-            for (j = 0; j < cur->der_size; j++) {
-                der = cur->der[j]; /* shortcut */
-                if (!strcmp(der->name, name) &&
-                        (!mod_name || (!strncmp(der->module->name, mod_name, mod_name_len) && !der->module->name[mod_name_len]))) {
-                    /* we have match */
-                    cur = der;
-                    goto match;
+            if (cur->der) {
+                /* there are also some derived identities */
+                for (u = 0; u < cur->der->number; u++) {
+                    der = (struct lys_ident *)cur->der->set.g[u]; /* shortcut */
+                    if (!strcmp(der->name, name) &&
+                            (!mod_name || (!strncmp(der->module->name, mod_name, mod_name_len) && !der->module->name[mod_name_len]))) {
+                        /* we have match */
+                        cur = der;
+                        goto match;
+                    }
                 }
             }
         }
@@ -6023,7 +6028,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
                 if (!feat->depfeatures) {
                     feat->depfeatures = ly_set_new();
                 }
-                ly_set_add(feat->depfeatures, iff_data->node, 0);
+                ly_set_add(feat->depfeatures, iff_data->node, LY_SET_OPT_USEASLIST);
             }
             /* cleanup temporary data */
             lydict_remove(mod->ctx, iff_data->fname);
