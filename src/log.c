@@ -96,10 +96,7 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
     }
 
     if (hide || (level > ly_log_level)) {
-        if (free_flag) {
-            free(msg);
-        }
-        return;
+        goto clean;
     }
 
     if (ly_log_clb) {
@@ -111,6 +108,7 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
         }
     }
 
+clean:
     if (free_flag) {
         free(msg);
     } else if (bufdup) {
