@@ -4226,7 +4226,7 @@ unique_arg_str: descendant_schema_nodeid unique_arg
 unique_arg: sep descendant_schema_nodeid unique_arg
   |  stmtend;
 
-key_stmt: KEY_KEYWORD sep key_arg_str;
+key_stmt: KEY_KEYWORD sep key_arg_str stmtend;
 
 key_arg_str: node_identifier { if (read_all){
                                  s = strdup(yyget_text(scanner));
@@ -4236,22 +4236,8 @@ key_arg_str: node_identifier { if (read_all){
                                  }
                                }
                              }
-             key_opt
-  |  string_1 stmtend
-  ;
-
-key_opt: sep node_identifier { if (read_all) {
-                                 s = ly_realloc(s,strlen(s) + yyget_leng(scanner) + 2);
-                                 if (!s) {
-                                   LOGMEM;
-                                   YYABORT;
-                                 }
-                                 strcat(s," ");
-                                 strcat(s, yyget_text(scanner));
-                                }
-                             }
-         key_opt
-  | stmtend
+             optsep
+  |  string_1
   ;
 
 range_arg_str: string { if (read_all) {
