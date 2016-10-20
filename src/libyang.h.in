@@ -1108,6 +1108,13 @@ struct ly_set *ly_set_dup(const struct ly_set *set);
 int ly_set_add(struct ly_set *set, void *node, int options);
 
 /**
+ * @brief Get know if the set contains the specified object.
+ * @param[in] set Set to explore.
+ * @param[in] node Object to be found in the set.
+ * @return Index of the object in the set or -1 if the object is not present in the set.
+int ly_set_contains(const struct ly_set *set, void *node);
+
+/**
  * @brief Remove all objects from the set, but keep the set container for further use.
  *
  * @param[in] set Set to clean.
