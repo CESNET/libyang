@@ -169,6 +169,9 @@ main_ni(int argc, char* argv[])
             ret = EXIT_SUCCESS;
             goto cleanup;
         case 'o':
+            if (out != stdout) {
+                fclose(out);
+            }
             out = fopen(optarg, "w");
             if (!out) {
                 fprintf(stderr, "yanglint error: unable open output file %s (%s)\n", optarg, strerror(errno));
