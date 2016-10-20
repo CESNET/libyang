@@ -281,7 +281,7 @@ main_ni(int argc, char* argv[])
     ret = EXIT_SUCCESS;
 
 cleanup:
-    if (out != stdout) {
+    if (out && out != stdout) {
         fclose(out);
     }
     free(mods);
