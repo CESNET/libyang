@@ -30,6 +30,8 @@
 #include "dict_private.h"
 #include "tree_internal.h"
 
+static int resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type);
+
 int
 parse_range_dec64(const char **str_num, uint8_t dig, int64_t *num)
 {
@@ -3631,8 +3633,8 @@ resolve_path_predicate_schema(const char *path, const struct lys_node *context_n
 {
     const struct lys_node *src_node, *dst_node;
     const char *path_key_expr, *source, *sour_pref, *dest, *dest_pref;
-    int pke_len, sour_len, sour_pref_len, dest_len, dest_pref_len, parsed = 0, pke_parsed = 0;
-    int has_predicate, dest_parent_times = 0, i, rc, first_iter;
+    int pke_len, sour_len, sour_pref_len, dest_len, dest_pref_len, pke_parsed, parsed = 0;
+    int has_predicate, dest_parent_times, i, rc, first_iter;
 
     do {
         if ((i = parse_path_predicate(path, &sour_pref, &sour_pref_len, &source, &sour_len, &path_key_expr,
@@ -3655,6 +3657,8 @@ resolve_path_predicate_schema(const char *path, const struct lys_node *context_n
         }
 
         /* destination */
+        dest_parent_times = 0;
+        pke_parsed = 0;
         if ((i = parse_path_key_expr(path_key_expr, &dest_pref, &dest_pref_len, &dest, &dest_len,
                                      &dest_parent_times)) < 1) {
             LOGVAL(LYE_INCHAR, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent, path_key_expr[-i], path_key_expr-i);
@@ -3843,6 +3847,7 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
                 }
             }
             id += i;
+            has_predicate = 0;
         }
         mod = lys_node_module(node);
         if (!mod->implemented && mod != mod2) {
@@ -6593,8 +6598,6 @@ unres_schema_free(struct lys_module *module, struct unres_schema **unres)
         (*unres) = NULL;
     }
 }
-
-static int resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type);
 
 static int
 resolve_leafref(struct lyd_node_leaf_list *leaf, struct lys_type *type)
