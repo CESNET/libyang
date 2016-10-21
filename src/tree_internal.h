@@ -177,6 +177,15 @@ struct lys_node_grp *lys_find_grouping_up(const char *name, struct lys_node *sta
 int lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *module);
 
 /**
+ * @brief Check all XPath expressions of a node (when and must), set LYS_XPATH_DEP flag if required.
+ *
+ * @param[in] node Node to examine.
+ * @param[in] check_place Check where the node is placed to get know if the check is supposed to be performed
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
+ */
+int lys_check_xpath(struct lys_node *node, int check_place);
+
+/**
  * @brief Create a copy of the specified schema tree \p node
  *
  * @param[in] module Target module for the duplicated node.

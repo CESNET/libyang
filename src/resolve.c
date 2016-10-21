@@ -4101,36 +4101,32 @@ error:
     return NULL;
 }
 
-/**
- * @brief Check all XPath expressions of a node (when and must), set LYS_XPATH_DEP flag if required.
- *
- * @param[in] node Node to examine.
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
- */
-static int
-check_node_xpath(struct lys_node *node)
+int
+lys_check_xpath(struct lys_node *node, int check_place)
 {
     struct lys_node *parent, *elem;
     struct lyxp_set set;
     uint32_t i;
     int rc;
 
-    parent = node;
-    while (parent) {
-        if (parent->nodetype == LYS_GROUPING) {
-            /* unresolved grouping, skip for now (will be checked later) */
-            return EXIT_SUCCESS;
-        }
-        if (parent->nodetype == LYS_AUGMENT) {
-            if (!((struct lys_node_augment *)parent)->target) {
-                /* uresolved augment, skip for now (will be checked later) */
+    if (check_place) {
+        parent = node;
+        while (parent) {
+            if (parent->nodetype == LYS_GROUPING) {
+                /* unresolved grouping, skip for now (will be checked later) */
                 return EXIT_SUCCESS;
-            } else {
-                parent = ((struct lys_node_augment *)parent)->target;
-                continue;
             }
+            if (parent->nodetype == LYS_AUGMENT) {
+                if (!((struct lys_node_augment *)parent)->target) {
+                    /* uresolved augment, skip for now (will be checked later) */
+                    return EXIT_SUCCESS;
+                } else {
+                    parent = ((struct lys_node_augment *)parent)->target;
+                    continue;
+                }
+            }
+            parent = parent->parent;
         }
-        parent = parent->parent;
     }
 
     rc = lyxp_node_atomize(node, &set);
@@ -4175,11 +4171,11 @@ check_node_xpath(struct lys_node *node)
  * @return 0 on success, -1 on error.
  */
 static int
-inherit_config_flag(struct lys_node *node, int flags, int clear, int check_list, int check_xpath)
+inherit_config_flag(struct lys_node *node, int flags, int clear)
 {
     assert(!(flags ^ (flags & LYS_CONFIG_MASK)));
     LY_TREE_FOR(node, node) {
-        if (check_xpath && check_node_xpath(node)) {
+        if (lys_check_xpath(node, 0)) {
             return -1;
         }
         if (clear) {
@@ -4199,15 +4195,15 @@ inherit_config_flag(struct lys_node *node, int flags, int clear, int check_list,
             if (!(node->nodetype & (LYS_USES | LYS_GROUPING))) {
                 node->flags = (node->flags & ~LYS_CONFIG_MASK) | flags;
                 /* check that configuration lists have keys */
-                if (check_list && (node->nodetype == LYS_LIST)
-                        && (node->flags & LYS_CONFIG_W) && !((struct lys_node_list *)node)->keys_size) {
+                if ((node->nodetype == LYS_LIST) && (node->flags & LYS_CONFIG_W)
+                        && !((struct lys_node_list *)node)->keys_size) {
                     LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, node, "key", "list");
                     return -1;
                 }
             }
         }
         if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
-            if (inherit_config_flag(node->child, flags, clear, check_list, check_xpath)) {
+            if (inherit_config_flag(node->child, flags, clear)) {
                 return -1;
             }
         }
@@ -4327,7 +4323,7 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
     for(parent = aug_target; parent && !(parent->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT | LYS_RPC)); parent = lys_parent(parent));
     clear_config = (parent) ? 1 : 0;
     LY_TREE_FOR(aug->child, sub) {
-        if (inherit_config_flag(sub, aug_target->flags & LYS_CONFIG_MASK, clear_config, 1, 1)) {
+        if (inherit_config_flag(sub, aug_target->flags & LYS_CONFIG_MASK, clear_config)) {
             return -1;
         }
     }
@@ -4386,7 +4382,7 @@ resolve_choice_dflt(struct lys_node_choice *choic, const char *dflt)
 static int
 resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
 {
-    struct ly_ctx *ctx;
+    struct ly_ctx *ctx = uses->module->ctx; /* shortcut */
     struct lys_node *node = NULL, *next, *iter, **refine_nodes = NULL;
     struct lys_node *node_aux, *parent, *tmp;
     struct lys_node_leaflist *llist;
@@ -4394,7 +4390,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
     struct lys_refine *rfn;
     struct lys_restr *must, **old_must;
     struct lys_iffeature *iff, **old_iff;
-    int i, j, k, rc, parent_config, clear_config, check_list, check_xpath;
+    int i, j, k, rc;
     uint8_t size, *old_size;
     unsigned int usize, usize1, usize2;
 
@@ -4405,15 +4401,6 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
     if (!uses->grp->child) {
         /* grouping without children, warning was already displayed */
         return EXIT_SUCCESS;
-    }
-
-    /* get proper parent (config) flags */
-    for (node_aux = lys_parent((struct lys_node *)uses); node_aux && (node_aux->nodetype == LYS_USES); node_aux = lys_parent(node_aux));
-    if (node_aux) {
-        parent_config = node_aux->flags & LYS_CONFIG_MASK;
-    } else {
-        /* default */
-        parent_config = LYS_CONFIG_W;
     }
 
     /* copy the data nodes from grouping into the uses context */
@@ -4429,44 +4416,6 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
             if (!(tmp->nodetype & (LYS_USES | LYS_GROUPING | LYS_CASE)) && ly_strequal(tmp->name, node_aux->name, 1)) {
                 goto fail;
             }
-        }
-    }
-
-    ctx = uses->module->ctx;
-
-    parent = node;
-    while (parent && !(parent->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT | LYS_RPC | LYS_GROUPING))) {
-        if (parent->nodetype == LYS_AUGMENT) {
-            if (!((struct lys_node_augment *)parent)->target) {
-                break;
-            } else {
-                parent = ((struct lys_node_augment *)parent)->target;
-            }
-        } else {
-            parent = parent->parent;
-        }
-    }
-    if (parent) {
-        if (parent->nodetype & (LYS_GROUPING | LYS_AUGMENT)) {
-            /* we are still in some other unresolved grouping or augment, unable to check lists */
-            check_list = 0;
-            clear_config = 0;
-            check_xpath = 0;
-        } else {
-            check_list = 0;
-            clear_config = 1;
-            check_xpath = 1;
-        }
-    } else {
-        check_list = 1;
-        clear_config = 0;
-        check_xpath = 1;
-    }
-
-    if (parent_config) {
-        assert(uses->child);
-        if (inherit_config_flag(uses->child, parent_config, clear_config, check_list, check_xpath)) {
-            goto fail;
         }
     }
 
@@ -4509,8 +4458,9 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
             node->ref = lydict_insert(ctx, rfn->ref, 0);
         }
 
-        /* config on any nodetype */
-        if ((rfn->flags & LYS_CONFIG_MASK) && !clear_config) {
+        /* config on any nodetype,
+         * in case of notification or rpc/action, the config is not applicable (there is no config status) */
+        if ((rfn->flags & LYS_CONFIG_MASK) && (node->flags & LYS_CONFIG_MASK)) {
             node->flags &= ~LYS_CONFIG_MASK;
             node->flags |= (rfn->flags & LYS_CONFIG_MASK);
         }
@@ -4696,7 +4646,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
         rfn = &uses->refine[i];
 
         /* config on any nodetype */
-        if ((rfn->flags & LYS_CONFIG_MASK) && !clear_config) {
+        if ((rfn->flags & LYS_CONFIG_MASK) && (node->flags & LYS_CONFIG_MASK)) {
             for (parent = lys_parent(node); parent && parent->nodetype == LYS_USES; parent = lys_parent(parent));
             if (parent && parent->nodetype != LYS_GROUPING &&
                     ((parent->flags & LYS_CONFIG_MASK) != (rfn->flags & LYS_CONFIG_MASK)) &&
@@ -6122,7 +6072,7 @@ featurecheckdone:
         break;
     case UNRES_XPATH:
         node = (struct lys_node *)item;
-        rc = check_node_xpath(node);
+        rc = lys_check_xpath(node, 1);
         break;
     default:
         LOGINT;

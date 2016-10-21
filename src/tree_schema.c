@@ -2093,15 +2093,19 @@ ingrouping(const struct lys_node *node)
     }
 }
 
-struct lys_node *
-lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct lys_node *node, uint8_t nacm,
-             struct unres_schema *unres, int shallow)
+/*
+ * final: 0 - do not change config flags; 1 - inherit config flags from the parent; 2 - remove config flags
+ */
+static struct lys_node *
+lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const struct lys_node *node, uint8_t nacm,
+                       struct unres_schema *unres, int shallow, int finalize)
 {
-    struct lys_node *retval = NULL, *child;
+    struct lys_node *retval = NULL, *iter;
     struct ly_ctx *ctx = module->ctx;
     int i, j, rc;
     unsigned int size, size1, size2;
     struct unres_list_uniq *unique_info;
+    uint16_t flags;
 
     struct lys_node_container *cont = NULL;
     struct lys_node_container *cont_orig = (struct lys_node_container *)node;
@@ -2258,6 +2262,39 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
             }
         }
 
+        /* inherit config flags */
+        for (iter = parent; iter && (iter->nodetype == LYS_USES); iter = lys_parent(iter));
+        if (iter) {
+            flags = iter->flags & LYS_CONFIG_MASK;
+        } else {
+            /* default */
+            flags = LYS_CONFIG_W;
+        }
+
+        switch (finalize) {
+        case 1:
+            /* inherit config flags */
+            if (retval->flags & LYS_CONFIG_SET) {
+                /* skip nodes with an explicit config value */
+                if ((flags & LYS_CONFIG_R) && (retval->flags & LYS_CONFIG_W)) {
+                    LOGVAL(LYE_INARG, LY_VLOG_LYS, retval, "true", "config");
+                    LOGVAL(LYE_SPEC, LY_VLOG_LYS, retval, "State nodes cannot have configuration nodes as children.");
+                    goto error;
+                }
+                break;
+            }
+
+            if (retval->nodetype != LYS_USES) {
+                retval->flags = (retval->flags & ~LYS_CONFIG_MASK) | flags;
+            }
+            break;
+        case 2:
+            /* erase config flags */
+            retval->flags &= ~LYS_CONFIG_MASK;
+            retval->flags &= ~LYS_CONFIG_SET;
+            break;
+        }
+
         /* connect it to the parent */
         if (lys_node_addchild(parent, retval->module, retval)) {
             goto error;
@@ -2265,10 +2302,21 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
 
         /* go recursively */
         if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
-            LY_TREE_FOR(node->child, child) {
-                if (!lys_node_dup(module, retval, child, retval->nacm, unres, 0)) {
+            LY_TREE_FOR(node->child, iter) {
+                if (!lys_node_dup_recursion(module, retval, iter, retval->nacm, unres, 0, finalize)) {
                     goto error;
                 }
+            }
+        }
+
+        if (finalize == 1) {
+            /* check that configuration lists have keys
+             * - we really want to check keys_size in original node, because the keys are
+             * not yet resolved here, it is done below in nodetype specific part */
+            if ((retval->nodetype == LYS_LIST) && (retval->flags & LYS_CONFIG_W)
+                    && !((struct lys_node_list *)node)->keys_size) {
+                LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, retval, "key", "list");
+                goto error;
             }
         }
     } else {
@@ -2503,6 +2551,59 @@ error:
 
     lys_node_free(retval, NULL, 0);
     return NULL;
+}
+
+struct lys_node *
+lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct lys_node *node, uint8_t nacm,
+             struct unres_schema *unres, int shallow)
+{
+    struct lys_node *p = NULL;
+    int finalize = 0;
+    struct lys_node *result, *iter, *next;
+
+    if (!shallow) {
+        /* get know where in schema tre we are to know what should be done during instantiation of the grouping */
+        for (p = parent;
+             p && !(p->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT | LYS_RPC | LYS_ACTION | LYS_GROUPING));
+             p = lys_parent(p));
+        finalize = p ? ((p->nodetype == LYS_GROUPING) ? 0 : 2) : 1;
+    }
+
+    result = lys_node_dup_recursion(module, parent, node, nacm, unres, shallow, finalize);
+    if (finalize) {
+        /* check xpath expressions in the instantiated tree */
+        for (iter = next = parent->child; iter; iter = next) {
+            if (iter->nodetype != LYS_GROUPING) {
+                if (lys_check_xpath(iter, 0)) {
+                    /* invalid xpath */
+                    return NULL;
+                }
+            }
+
+            /* select next item */
+            if (iter->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA | LYS_GROUPING)) {
+                /* child exception for leafs, leaflists and anyxml without children, ignore groupings */
+                next = NULL;
+            } else {
+                next = iter->child;
+            }
+            if (!next) {
+                /* no children, try siblings */
+                next = iter->next;
+            }
+            while (!next) {
+                /* parent is already processed, go to its sibling */
+                iter = lys_parent(iter);
+                if (iter == parent) {
+                    /* we are done, no next element to process */
+                    break;
+                }
+                next = iter->next;
+            }
+        }
+    }
+
+    return result;
 }
 
 void
