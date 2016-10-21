@@ -357,24 +357,50 @@ ly_ctx_get_module_clb(const struct ly_ctx *ctx, void **user_data)
     return ctx->module_clb;
 }
 
-struct lys_module *
+const struct lys_module *
 ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char *name, const char *revision,
                        int implement, struct unres_schema *unres)
 {
-    struct lys_module *mod;
+    const struct lys_module *mod;
     char *module_data;
     int i;
     void (*module_data_free)(void *module_data) = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
 
-    /* exception for internal modules */
     if (!module) {
+        /* exception for internal modules */
         for (i = 0; i < INTERNAL_MODULES_COUNT; i++) {
             if (ly_strequal(name, internal_modules[i].name, 0)) {
                 if (!revision || ly_strequal(revision, internal_modules[i].revision, 0)) {
                     /* return internal module */
                     return (struct lys_module *)ly_ctx_get_module(ctx, name, revision);
                 }
+            }
+        }
+        if (revision) {
+            /* try to get the schema with the specific revision from the context */
+            mod = ly_ctx_get_module(ctx, name, revision);
+            if (mod) {
+                /* we get such a module, make it implemented */
+                if (lys_set_implemented(mod)) {
+                    /* the schema cannot be implemented */
+                    mod = NULL;
+                }
+                return mod;
+            }
+        }
+    } else {
+        /* searching for submodule, try if it is already loaded */
+        mod = (struct lys_module *)ly_ctx_get_submodule2(module, name);
+        if (mod) {
+            if (!revision || (mod->rev_size && ly_strequal(mod->rev[0].date, revision, 0))) {
+                /* success */
+                return mod;
+            } else {
+                /* there is already another revision of the submodule */
+                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, mod->rev[0].date, "revision");
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Multiple revisions of a submodule included.");
+                return NULL;
             }
         }
     }
@@ -387,8 +413,15 @@ ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char
             module_data = ctx->module_clb(name, revision, NULL, NULL, ctx->module_clb_data, &format, &module_data_free);
         }
         if (!module_data) {
-            LOGERR(0, "User module retrieval callback failed!");
-            return NULL;
+            if (module || revision) {
+                /* we already know that the specified revision is not present in context, and we have no other
+                 * option in case of submodules */
+                LOGERR(LY_ESYS, "User module retrieval callback failed!");
+                return NULL;
+            } else {
+                /* get the newest revision from the context */
+                return ly_ctx_get_module(ctx, name, revision);
+            }
         }
 
         if (module) {

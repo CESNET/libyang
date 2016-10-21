@@ -235,8 +235,17 @@ void ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...);
 
 void ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *path, uint16_t *index);
 
-struct lys_module *ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char *name,
-                                          const char *revision, int implement, struct unres_schema *unres);
+/*
+ * - if \p module specified, it searches for submodules, they can be loaded only from a file or via module callback,
+ *   they cannot be get from context
+ * - if \p module is not specified
+ *   - if specific revision is specified, the first try is to get module from the context
+ *   - if no specific revision is specified, it tries to get the newest module - first it searches for the file and
+ *     then checks that the schema loaded from the same source isn't already in context. If the source wasn't
+ *     previously loaded, it is parsed.
+ */
+const struct lys_module *ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char *name,
+                                                const char *revision, int implement, struct unres_schema *unres);
 
 /**
  * @brief Basic functionality like strpbrk(3). However, it searches string \p s
