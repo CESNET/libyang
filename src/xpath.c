@@ -2692,13 +2692,13 @@ xpath_current(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_n
         return -1;
     }
 
-    lyxp_set_cast(set, LYXP_SET_EMPTY, cur_node, options);
-
     if (options & LYXP_SNODE_ALL) {
         set_snode_clear_ctx(set);
 
         set_snode_insert_node(set, (struct lys_node *)cur_node, LYXP_NODE_ELEM);
     } else {
+        lyxp_set_cast(set, LYXP_SET_EMPTY, cur_node, options);
+
         /* position is filled later */
         set_insert_node(set, cur_node, 0, LYXP_NODE_ELEM, 0);
     }
