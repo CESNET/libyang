@@ -568,14 +568,22 @@ prefix_stmt: PREFIX_KEYWORD sep prefix_arg_str stmtend { if (yang_read_prefix(tr
                                                        }
 
 meta_stmts: @EMPTYDIR@
-  |  meta_stmts organization_stmt { if (read_all && yang_read_common(trg, s, ORGANIZATION_KEYWORD)) {YYABORT;} s=NULL; }
-  |  meta_stmts contact_stmt { if (read_all && yang_read_common(trg, s, CONTACT_KEYWORD)) {YYABORT;} s=NULL; }
-  |  meta_stmts description_stmt { if (read_all && yang_read_description(trg, NULL, s, NULL)) {
+  |  meta_stmts organization_stmt { if (yang_read_common(trg, s, ORGANIZATION_KEYWORD)) {
+                                      YYABORT;
+                                    }
+                                    s = NULL;
+                                  }
+  |  meta_stmts contact_stmt { if (yang_read_common(trg, s, CONTACT_KEYWORD)) {
+                                 YYABORT;
+                               }
+                               s = NULL;
+                             }
+  |  meta_stmts description_stmt { if (yang_read_description(trg, NULL, s, NULL)) {
                                      YYABORT;
                                    }
                                    s = NULL;
                                  }
-  |  meta_stmts reference_stmt { if (read_all && yang_read_reference(trg, NULL, s, NULL)) {
+  |  meta_stmts reference_stmt { if (yang_read_reference(trg, NULL, s, NULL)) {
                                    YYABORT;
                                  }
                                  s=NULL;
