@@ -248,7 +248,6 @@ void yyerror(YYLTYPE *yylloc, void *scanner, ...);
 %type <nodes> leaf_list_arg_str
 %type <nodes> typedef_arg_str
 %type <inc> include_stmt
-%type <inc> import_stmt
 %type <ch> pattern_opt_stmt
 %type <ch> pattern_end
 %type <ch> modifier_stmt
@@ -460,12 +459,15 @@ import_stmt: IMPORT_KEYWORD sep import_arg_str
 import_arg_str: identifier_arg_str { YANG_ADDELEM(trg->imp, trg->imp_size);
                                      /* HACK for unres */
                                      ((struct lys_import *)actual)->module = (struct lys_module *)s;
+                                     s = NULL;
                                    }
 
 import_opt_stmt: @EMPTYDIR@ { $$ = 0; }
   |  import_opt_stmt prefix_stmt
   |  import_opt_stmt description_stmt { if (trg->version != 2) {
                                           LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "description");
+                                          free(s);
+                                          YYABORT;
                                         }
                                         if (yang_read_description(trg, actual, s, "import")) {
                                           YYABORT;
@@ -475,6 +477,8 @@ import_opt_stmt: @EMPTYDIR@ { $$ = 0; }
                                       }
   |  import_opt_stmt reference_stmt { if (trg->version != 2) {
                                         LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "reference");
+                                        free(s);
+                                        YYABORT;
                                       }
                                       if (yang_read_reference(trg, actual, s, "import")) {
                                         YYABORT;
