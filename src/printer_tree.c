@@ -185,6 +185,11 @@ tree_print_inout(struct lyout *out, const struct lys_module *module, int level, 
 
     assert(spec_config);
 
+    if (node->flags & LYS_IMPLICIT) {
+        /* implicit input/output which is not a part of the schema */
+        return;
+    }
+
     print_indent(out, indent, level);
     ly_print(out, "+--%s %s\n", (spec_config == 1 ? "-w" : "ro"), (spec_config == 1 ? "input" : "output"));
 

@@ -637,6 +637,7 @@ int
 lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys_node *child)
 {
     struct lys_node *iter;
+    struct lys_node_inout *in, *out, *inout;
     int type;
 
     assert(child);
@@ -730,32 +731,57 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
         lys_node_unlink(child);
     }
 
-    /* connect the child correctly */
-    if (!parent) {
-        if (module->data) {
-            module->data->prev->next = child;
-            child->prev = module->data->prev;
-            module->data->prev = child;
-        } else {
-            module->data = child;
-        }
-    } else {
-        if (!parent->child) {
-            /* the only/first child of the parent */
+    if (child->nodetype & (LYS_INPUT | LYS_OUTPUT)) {
+        /* replace the implicit input/output node */
+        if (child->nodetype == LYS_OUTPUT) {
+            inout = (struct lys_node_inout *)parent->child->next;
+        } else { /* LYS_INPUT */
+            inout = (struct lys_node_inout *)parent->child;
             parent->child = child;
-            child->parent = parent;
-            iter = child;
+        }
+        if (inout->next) {
+            child->next = inout->next;
+            inout->next->prev = child;
+            inout->next = NULL;
         } else {
-            /* add a new child at the end of parent's child list */
-            iter = parent->child->prev;
-            iter->next = child;
-            child->prev = iter;
+            parent->child->prev = child;
         }
-        while (iter->next) {
-            iter = iter->next;
-            iter->parent = parent;
+        child->prev = inout->prev;
+        if (inout->prev->next) {
+            inout->prev->next = child;
         }
-        parent->child->prev = iter;
+        inout->prev = (struct lys_node *)inout;
+        child->parent = parent;
+        inout->parent = NULL;
+        lys_node_free((struct lys_node *)inout, NULL, 0);
+    } else {
+        /* connect the child correctly */
+        if (!parent) {
+            if (module->data) {
+                module->data->prev->next = child;
+                child->prev = module->data->prev;
+                module->data->prev = child;
+            } else {
+                module->data = child;
+            }
+        } else {
+            if (!parent->child) {
+                /* the only/first child of the parent */
+                parent->child = child;
+                child->parent = parent;
+                iter = child;
+            } else {
+                /* add a new child at the end of parent's child list */
+                iter = parent->child->prev;
+                iter->next = child;
+                child->prev = iter;
+            }
+            while (iter->next) {
+                iter = iter->next;
+                iter->parent = parent;
+            }
+            parent->child->prev = iter;
+        }
     }
 
     /* check config value (but ignore them in groupings and augments) */
@@ -783,6 +809,23 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
                 iter->flags |= LYS_INCL_STATUS;
             }
         }
+    }
+
+    /* create implicit input/output nodes to have available them as possible target for augment */
+    if (child->nodetype & (LYS_RPC | LYS_ACTION)) {
+        in = calloc(1, sizeof *in);
+        in->nodetype = LYS_INPUT;
+        in->name = lydict_insert(child->module->ctx, "input", 5);
+        out = calloc(1, sizeof *out);
+        out->name = lydict_insert(child->module->ctx, "output", 6);
+        out->nodetype = LYS_OUTPUT;
+        in->module = out->module = child->module;
+        in->parent = out->parent = child;
+        in->flags = out->flags = LYS_IMPLICIT;
+        in->next = (struct lys_node *)out;
+        in->prev = (struct lys_node *)out;
+        out->prev = (struct lys_node *)in;
+        child->child = (struct lys_node *)in;
     }
     return EXIT_SUCCESS;
 }

@@ -1105,6 +1105,11 @@ yin_print_input_output(struct lyout *out, int level, const struct lys_node *node
     struct lys_node *sub;
     struct lys_node_inout *inout = (struct lys_node_inout *)node;
 
+    if (node->flags & LYS_IMPLICIT) {
+        /* implicit input/output which is not a part of the schema */
+        return;
+    }
+
     ly_print(out, "%*s<%s>\n", LEVEL, INDENT, (inout->nodetype == LYS_INPUT ? "input" : "output"));
 
     level++;
