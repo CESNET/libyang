@@ -62,6 +62,13 @@ char *get_current_dir_name(void);
 
 #define LY_BUF_SIZE 1024
 #define LY_APPTAG_LEN 128
+struct ly_err_item {
+    LY_ERR no;
+    LY_VECODE code;
+    char *msg;
+    char *path;
+    struct ly_err_item *next;
+};
 struct ly_err {
     LY_ERR no;
     LY_VECODE code;
@@ -69,12 +76,16 @@ struct ly_err {
     uint8_t buf_used;
     uint16_t path_index;
     uint8_t path_obj_type;
+    struct ly_err_item *errlist; /* list of stored errors */
     const void *path_obj;
     char msg[LY_BUF_SIZE];
     char path[LY_BUF_SIZE];
     char apptag[LY_APPTAG_LEN];
     char buf[LY_BUF_SIZE];
 };
+struct ly_err *ly_err_location(void);
+void ly_err_clean(void);
+void ly_err_repeat(void);
 
 /**
  * @brief libyang internal thread-specific buffer of LY_BUF_SIZE size

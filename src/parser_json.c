@@ -1132,7 +1132,7 @@ attr_repeat:
 
             if (data[len] == ',') {
                 /* various validation checks */
-                ly_errno = 0;
+                ly_err_clean();
                 if (!(options & LYD_OPT_TRUSTED) &&
                         (lyv_data_content(list, options, unres) ||
                          lyv_multicases(list, NULL, prev ? &first_sibling : NULL, 0, NULL))) {
@@ -1174,7 +1174,7 @@ attr_repeat:
         goto error;
     }
 
-    ly_errno = 0;
+    ly_err_clean();
     if (!(options & LYD_OPT_TRUSTED) &&
             (lyv_data_content(result, options, unres) ||
              lyv_multicases(result, NULL, prev ? &first_sibling : NULL, 0, NULL))) {
@@ -1232,7 +1232,7 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
     struct attr_cont *attrs = NULL;
     struct ly_set *set;
 
-    ly_errno = LY_SUCCESS;
+    ly_err_clean();
 
     if (!ctx || !data) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);

@@ -36,7 +36,7 @@ uint8_t ly_vlog_hide_def;
 static pthread_once_t ly_err_once = PTHREAD_ONCE_INIT;
 static pthread_key_t ly_err_key;
 #ifdef __linux__
-struct ly_err ly_err_main = {LY_SUCCESS, LYVE_SUCCESS, 0, 0, 0, 0, NULL + 1, {0}, {0}, {0}, {0}};
+struct ly_err ly_err_main = {LY_SUCCESS, LYVE_SUCCESS, 0, 0, 0, 0, NULL, NULL + 1, {0}, {0}, {0}, {0}};
 #endif
 
 static void
@@ -89,6 +89,24 @@ ly_err_location(void)
     }
 
     return e;
+}
+
+void
+ly_err_clean(void)
+{
+    struct ly_err_item *i, *next;
+
+    i = ly_err_location()->errlist;
+    ly_err_location()->errlist = NULL;
+    for (; i; i = next) {
+        next = i->next;
+        free(i->msg);
+        free(i->path);
+        free(i);
+    }
+
+    ly_err_location()->no = LY_SUCCESS;
+    ly_err_location()->code = LYVE_SUCCESS;
 }
 
 API LY_ERR *

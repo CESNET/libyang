@@ -6212,8 +6212,7 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
                 return -1;
             } else {
                 /* forward reference, erase ly_errno */
-                ly_errno = LY_SUCCESS;
-                ly_vecode = LYVE_SUCCESS;
+                ly_err_clean();
             }
         }
     } while (res_count && (res_count < unres_count));
@@ -6317,7 +6316,6 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
 {
     int rc, log_hidden;
     struct lyxml_elem *yin;
-    char *path, *msg;
 
     assert(unres && item && ((type != UNRES_LEAFREF) && (type != UNRES_INSTID) && (type != UNRES_WHEN)
            && (type != UNRES_MUST)));
@@ -6335,13 +6333,7 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
 
     if (rc != EXIT_FAILURE) {
         if (rc == -1 && ly_errno == LY_EVALID) {
-            if (ly_log_level >= LY_LLERR) {
-                path = strdup(ly_errpath());
-                msg = strdup(ly_errmsg());
-                LOGERR(LY_EVALID, "%s%s%s%s", msg, path[0] ? " (path: " : "", path[0] ? path : "", path[0] ? ")" : "");
-                free(path);
-                free(msg);
-            }
+            ly_err_repeat();
         }
         if (type == UNRES_LIST_UNIQ) {
             /* free the allocated structure */
@@ -6353,8 +6345,7 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
         return rc;
     } else {
         /* erase info about validation errors */
-        ly_errno = LY_SUCCESS;
-        ly_vecode = LYVE_SUCCESS;
+        ly_err_clean();
     }
 
     print_unres_schema_item_fail(item, type, snode);
@@ -6658,7 +6649,7 @@ lyd_leaf_type(const struct lyd_node_leaf_list *leaf)
                         return LY_TYPE_INST;
                     } else {
                         /* try to resolve instance-identifier */
-                        ly_errno = 0;
+                        ly_err_clean();
                         node = resolve_instid((struct lyd_node *)leaf, leaf->value_str);
                         if (!ly_errno && node) {
                             /* the real type is instance-identifier */
@@ -6677,8 +6668,7 @@ lyd_leaf_type(const struct lyd_node_leaf_list *leaf)
                 f = 0;
             }
             /* erase ly_errno and ly_vecode */
-            ly_errno = LY_SUCCESS;
-            ly_vecode = LYVE_SUCCESS;
+            ly_err_clean();
 
             if (!type_iter) {
                 LOGERR(LY_EINVAL, "Unable to get type from union \"%s\" with no valid type.", type->parent->name)
@@ -6717,7 +6707,7 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type)
             }
         } else if (datatype->base == LY_TYPE_INST) {
             /* try to resolve instance-identifier */
-            ly_errno = 0;
+            ly_err_clean();
             leaf->value.instance = resolve_instid((struct lyd_node *)leaf, leaf->value_str);
             if (!ly_errno && (leaf->value.instance || datatype->info.inst.req == -1)) {
                 /* success */
@@ -6732,8 +6722,7 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type)
         f = 0;
     }
     /* erase ly_errno and ly_vecode */
-    ly_errno = LY_SUCCESS;
-    ly_vecode = LYVE_SUCCESS;
+    ly_err_clean();
 
     if (!datatype) {
         /* failure */
@@ -6770,7 +6759,7 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type)
 
     case UNRES_INSTID:
         assert(sleaf->type.base == LY_TYPE_INST);
-        ly_errno = 0;
+        ly_err_clean();
         leaf->value.instance = resolve_instid(node, leaf->value_str);
         if (!leaf->value.instance) {
             if (ly_errno) {
@@ -6879,7 +6868,6 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
 {
     uint32_t i, j, first = 1, resolved = 0, del_items = 0, when_stmt = 0;
     int rc, progress;
-    char *msg, *path;
     struct lyd_node *parent;
     struct lyd_node_leaf_list *leaf;
 
@@ -6894,9 +6882,8 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
     ly_vlog_hide(1);
 
     /* when-stmt first */
-    ly_errno = LY_SUCCESS;
-    ly_vecode = LYVE_SUCCESS;
     do {
+        ly_err_clean();
         progress = 0;
         for (i = 0; i < unres->count; i++) {
             if (unres->type[i] != UNRES_WHEN) {
@@ -6932,14 +6919,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
                     if ((options & LYD_OPT_NOAUTODEL) && !unres->node[i]->dflt) {
                         /* false when condition */
                         ly_vlog_hide(0);
-                        if (ly_log_level >= LY_LLERR) {
-                            path = strdup(ly_errpath());
-                            msg = strdup(ly_errmsg());
-                            LOGERR(LY_EVALID, "%s%s%s%s", msg,
-                                   path[0] ? " (path: " : "", path[0] ? path : "", path[0] ? ")" : "");
-                            free(path);
-                            free(msg);
-                        }
+                        ly_err_repeat();
                         return -1;
                     } /* follows else */
 
@@ -6991,8 +6971,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
                 } else {
                     unres->type[i] = UNRES_RESOLVED;
                 }
-                ly_errno = LY_SUCCESS;
-                ly_vecode = LYVE_SUCCESS;
+                ly_err_clean();
                 resolved++;
                 progress = 1;
             } else if (rc == -1) {
@@ -7000,10 +6979,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
                 /* print only this last error */
                 resolve_unres_data_item(unres->node[i], unres->type[i]);
                 return -1;
-            } else {
-                /* forward reference, erase ly_errno */
-                ly_errno = LY_SUCCESS;
-            }
+            } /* else forward reference */
         }
         first = 0;
     } while (progress && resolved < when_stmt);
@@ -7011,13 +6987,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
     /* do we have some unresolved when-stmt? */
     if (when_stmt > resolved) {
         ly_vlog_hide(0);
-        if (ly_log_level >= LY_LLERR) {
-            path = strdup(ly_errpath());
-            msg = strdup(ly_errmsg());
-            LOGERR(LY_EVALID, "%s%s%s%s", msg, path[0] ? " (path: " : "", path[0] ? path : "", path[0] ? ")" : "");
-            free(path);
-            free(msg);
-        }
+        ly_err_repeat();
         return -1;
     }
 
