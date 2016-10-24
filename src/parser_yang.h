@@ -129,7 +129,7 @@ int yang_check_version(struct lys_module *module, struct lys_submodule *submodul
  */
 int yang_add_elem(struct lys_node_array **node, uint32_t *size);
 
-int yang_check_imports(struct lys_module *module);
+int yang_check_imports(struct lys_module *module, struct unres_schema *unres);
 
 int yang_read_description(struct lys_module *module, void *node, char *value, char *where);
 
@@ -245,9 +245,6 @@ int yang_check_deviate_must(struct ly_ctx *ctx, struct type_deviation *dev);
 int yang_check_deviate_unique(struct lys_module *module, struct type_deviation *dev, char *value);
 
 int yang_check_deviation(struct lys_module *module, struct ly_set *dflt_check, struct unres_schema *unres);
-
-int yang_fill_include(struct lys_module *module, struct lys_submodule *submodule, char *value,
-                      struct lys_include *inc, struct unres_schema *unres);
 
 int yang_use_extension(struct lys_module *module, struct lys_node *data_node, void *actual, char *value);
 

@@ -2486,17 +2486,24 @@ yang_check_deviation(struct lys_module *module, struct ly_set *dflt_check, struc
 
 }
 
-int
-yang_fill_include(struct lys_module *module, struct lys_submodule *submodule, char *value,
-                  struct lys_include *inc, struct unres_schema *unres)
+static int
+yang_fill_include(struct lys_module *trg, char *value, struct lys_include *inc,
+                  struct unres_schema *unres)
 {
-    struct lys_module *trg;
+    struct lys_submodule *submodule;
+    struct lys_module *module;
     const char *str;
     int rc;
     int ret = 0;
 
-    str = lydict_insert_zc(module->ctx, value);
-    trg = (submodule) ? (struct lys_module *)submodule : module;
+    str = lydict_insert_zc(trg->ctx, value);
+    if (trg->version) {
+        submodule = (struct lys_submodule *)trg;
+        module = ((struct lys_submodule *)trg)->belongsto;
+    } else {
+        submodule = NULL;
+        module = trg;
+    }
     rc = lyp_check_include(module, submodule, str, inc, unres);
     if (!rc) {
         /* success, copy the filled data into the final array */
@@ -2506,7 +2513,7 @@ yang_fill_include(struct lys_module *module, struct lys_submodule *submodule, ch
         ret = -1;
     }
 
-    lydict_remove(module->ctx, str);
+    lydict_remove(trg->ctx, str);
     return ret;
 }
 
@@ -2890,18 +2897,33 @@ yang_free_import(struct ly_ctx *ctx, struct lys_import *imp, uint8_t start, uint
     }
 }
 
+static void
+yang_free_include(struct ly_ctx *ctx, struct lys_include *inc, uint8_t start, uint8_t size)
+{
+    uint8_t i;
+
+    for (i = start; i < size; ++i){
+        free((char *)inc[i].submodule);
+        lydict_remove(ctx, inc[i].dsc);
+        lydict_remove(ctx, inc[i].ref);
+    }
+}
+
 /* check function*/
 
 int
-yang_check_imports(struct lys_module *module)
+yang_check_imports(struct lys_module *module, struct unres_schema *unres)
 {
     struct lys_import *imp;
-    uint8_t imp_size, i = 0;
+    struct lys_include *inc;
+    uint8_t imp_size, inc_size, j = 0, i = 0;
     size_t size;
     char *s;
 
     imp = module->imp;
     imp_size = module->imp_size;
+    inc = module->inc;
+    inc_size = module->inc_size;
 
     if (imp_size) {
         size = (imp_size * sizeof *module->imp) + sizeof(void*);
@@ -2913,7 +2935,18 @@ yang_check_imports(struct lys_module *module)
         }
         /* set stop block for possible realloc */
         module->imp[imp_size].module = (void*)0x1;
+    }
 
+    if (inc_size) {
+        size = (inc_size * sizeof *module->inc) + sizeof(void*);
+        module->inc_size = 0;
+        module->inc = calloc(1, size);
+        if (!module->inc) {
+            LOGMEM;
+            goto error;
+        }
+        /* set stop block for possible realloc */
+        module->inc[inc_size].submodule = (void*)0x1;
     }
 
     for (i = 0; i < imp_size; ++i) {
@@ -2924,12 +2957,23 @@ yang_check_imports(struct lys_module *module)
             goto error;
         }
     }
+    for (j = 0; j < inc_size; ++j) {
+        s = (char *) inc[i].submodule;
+        inc[i].submodule = NULL;
+        if (yang_fill_include(module, s, &inc[i], unres)) {
+            ++i;
+            goto error;
+        }
+    }
+    free(inc);
     free(imp);
 
     return EXIT_SUCCESS;
 
 error:
     yang_free_import(module->ctx, imp, i, imp_size);
+    yang_free_include(module->ctx, inc, j, inc_size);
     free(imp);
+    free(inc);
     return EXIT_FAILURE;
 }
