@@ -2465,7 +2465,7 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
         } else if (!strcmp(child->name, "uses")) {
             node = read_yin_uses(module, (struct lys_node *)aug, child, unres);
         } else if (!strcmp(child->name, "choice")) {
-            node = read_yin_case(module, (struct lys_node *)aug, child, 1, unres);
+            node = read_yin_choice(module, (struct lys_node *)aug, child, 1, unres);
         } else if (!strcmp(child->name, "case")) {
             node = read_yin_case(module, (struct lys_node *)aug, child, 1, unres);
         } else if (!strcmp(child->name, "anyxml")) {
