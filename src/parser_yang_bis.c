@@ -8987,6 +8987,7 @@ yyreturn:
 
 void yyerror(YYLTYPE *yylloc, void *scanner, ...){
 
-  (void)yylloc; /* unused */
-  LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, yyget_text(scanner));
+  if (yylloc->first_line != -1) {
+    LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, yyget_text(scanner));
+  }
 }

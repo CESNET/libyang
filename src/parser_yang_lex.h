@@ -231,6 +231,7 @@ void yyfree (void * ,yyscan_t yyscanner );
 #define COMMENT2 2
 #define PATH 3
 #define DOUBLEQUOTES 4
+#define SINGLEQUOTES 5
 
 #endif
 
@@ -357,6 +358,6 @@ extern int yylex \
 #undef YY_DECL
 #endif
 
-#line 361 "parser_yang_lex.h"
+#line 362 "parser_yang_lex.h"
 #undef yyIN_HEADER
 #endif /* yyHEADER_H */
