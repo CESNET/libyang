@@ -129,7 +129,7 @@ int yang_check_version(struct lys_module *module, struct lys_submodule *submodul
  */
 int yang_add_elem(struct lys_node_array **node, uint32_t *size);
 
-int yang_fill_import(struct lys_module *module, struct lys_import *imp, char *value);
+int yang_check_imports(struct lys_module *module);
 
 int yang_read_description(struct lys_module *module, void *node, char *value, char *where);
 

@@ -41,6 +41,22 @@
 #define EXTENSION_DSC 0x04
 #define EXTENSION_REF 0x08
 
+#define LY_YANG_ARRAY_SIZE 8
+#define YANG_ADDELEM(current_ptr, size)                                                  \
+    if (!(size % LY_YANG_ARRAY_SIZE)) {                                                  \
+        void *tmp;                                                                       \
+                                                                                         \
+        tmp = realloc(current_ptr, (sizeof *current_ptr) * (size + LY_YANG_ARRAY_SIZE)); \
+        if (!tmp) {                                                                      \
+            LOGMEM;                                                                      \
+            YYABORT;                                                                     \
+        }                                                                                \
+        memset(tmp + (sizeof *current_ptr) * size, 0, (sizeof *current_ptr) * LY_YANG_ARRAY_SIZE); \
+        current_ptr = tmp;                                                               \
+    }                                                                                    \
+    actual = &current_ptr[size];                                                         \
+    size++;
+
 void yyerror(YYLTYPE *yylloc, void *scanner, ...);
 /* temporary pointer for the check extension nacm 'data_node' */
 /* pointer on the current parsed element 'actual' */
@@ -355,7 +371,7 @@ module_stmt: optsep MODULE_KEYWORD sep identifier_arg_str { if (read_all) {
                                                           }
              '{' stmtsep
                  module_header_stmts
-                 linkage_stmts
+                 linkage_stmt
                  meta_stmts
                  revision_stmts
                  body_stmts
@@ -401,7 +417,7 @@ submodule_stmt: optsep SUBMODULE_KEYWORD sep identifier_arg_str { if (read_all) 
                                                                 }
                 '{' stmtsep
                     submodule_header_stmts
-                    linkage_stmts
+                    linkage_stmt
                     meta_stmts
                     revision_stmts
                     body_stmts
@@ -426,82 +442,49 @@ yang_version_stmt: YANG_VERSION_KEYWORD sep string stmtend;
 
 namespace_stmt: NAMESPACE_KEYWORD sep string stmtend;
 
-linkage_stmts: @EMPTYDIR@ { if (read_all) {
-                          if (size_arrays->imp) {
-                            size_t size = (size_arrays->imp * sizeof *trg->imp) + sizeof(void*);
-                            trg->imp = calloc(1, size);
-                            if (!trg->imp) {
-                              LOGMEM;
-                              YYABORT;
+linkage_stmt: linkage_stmts { if (yang_check_imports(trg)) {
+                                YYABORT;
+                              }
                             }
-                            /* set stop block for possible realloc */
-                            trg->imp[size_arrays->imp].module = (void*)0x1;
-                          }
-                          if (size_arrays->inc) {
-                            size_t size = (size_arrays->inc * sizeof *trg->inc) + sizeof(void*);
-                            trg->inc = calloc(1, size);
-                            if (!trg->inc) {
-                              LOGMEM;
-                              YYABORT;
-                            }
-                            /* set stop block for possible realloc */
-                            trg->inc[size_arrays->inc].submodule = (void*)0x1;
-                          }
-                        }
-                      }
+
+linkage_stmts: @EMPTYDIR@
  |  linkage_stmts import_stmt
  |  linkage_stmts include_stmt
  ;
 
-import_stmt: IMPORT_KEYWORD sep tmp_identifier_arg_str {
-                 if (!read_all) {
-                   size_arrays->imp++;
-                 } else {
-                   actual = &trg->imp[trg->imp_size];
-                   actual_type=IMPORT_KEYWORD;
-                 }
-             }
+import_stmt: IMPORT_KEYWORD sep import_arg_str
              '{' stmtsep
                  import_opt_stmt
-             '}' stmtsep { if (read_all) {
-                             $$ = trg;
-                             if (yang_fill_import(trg, actual, $3)) {
-                               YYABORT;
-                             }
-                             trg = $$;
-                             config_inherit = CONFIG_INHERIT_ENABLE;
-                           }
-                         }
+             '}' stmtsep
+
+import_arg_str: identifier_arg_str { YANG_ADDELEM(trg->imp, trg->imp_size);
+                                     /* HACK for unres */
+                                     ((struct lys_import *)actual)->module = (struct lys_module *)s;
+                                   }
 
 import_opt_stmt: @EMPTYDIR@ { $$ = 0; }
   |  import_opt_stmt prefix_stmt
-  |  import_opt_stmt description_stmt { if (read_all) {
-                                          if (trg->version != 2) {
-                                            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "description");
-                                          }
-                                          if (yang_read_description(trg, actual, s, "import")) {
-                                            YYABORT;
-                                          }
+  |  import_opt_stmt description_stmt { if (trg->version != 2) {
+                                          LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "description");
+                                        }
+                                        if (yang_read_description(trg, actual, s, "import")) {
+                                          YYABORT;
                                         }
                                         s = NULL;
                                         $$ = $1;
                                       }
-  |  import_opt_stmt reference_stmt { if (read_all) {
-                                        if (trg->version != 2) {
-                                          LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "reference");
-                                        }
-                                        if (yang_read_reference(trg, actual, s, "import")) {
-                                          YYABORT;
-                                        }
+  |  import_opt_stmt reference_stmt { if (trg->version != 2) {
+                                        LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "reference");
+                                      }
+                                      if (yang_read_reference(trg, actual, s, "import")) {
+                                        YYABORT;
                                       }
                                       s = NULL;
                                       $$ = $1;
                                     }
-  |  import_opt_stmt revision_date_stmt { if (read_all) {
-                                            if ($1) {
-                                              LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "revision-date", "import");
-                                              YYABORT;
-                                            }
+  |  import_opt_stmt revision_date_stmt { if ($1) {
+                                            LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "revision-date", "import");
+                                            YYABORT;
                                           }
                                           $$ = 1;
                                         }
@@ -569,16 +552,14 @@ include_opt_stmt: @EMPTYDIR@ { $$ = 0; }
                                          }
 
 revision_date_stmt: REVISION_DATE_KEYWORD sep date_arg_str
-                    stmtend { if (read_all) {
-                                 if (actual_type==IMPORT_KEYWORD) {
-                                     memcpy(((struct lys_import *)actual)->rev, s, LY_REV_SIZE-1);
-                                 } else {                              // INCLUDE KEYWORD
-                                     memcpy(((struct lys_include *)actual)->rev, s, LY_REV_SIZE-1);
-                                 }
-                                 free(s);
-                                 s = NULL;
-                               }
-                             }
+                    stmtend { if (actual_type==IMPORT_KEYWORD) {
+                                memcpy(((struct lys_import *)actual)->rev, s, LY_REV_SIZE-1);
+                              } else {                              // INCLUDE KEYWORD
+                                memcpy(((struct lys_include *)actual)->rev, s, LY_REV_SIZE-1);
+                              }
+                              free(s);
+                              s = NULL;
+                            }
 
 belongs_to_arg_str: identifier_arg_str { if (submodule->prefix) {
                                            LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "belongs-to", "submodule");

@@ -154,7 +154,7 @@ yang_read_prefix(struct lys_module *module, struct lys_import *imp, char *value)
 {
     int ret = 0;
 
-    if (lyp_check_identifier(value, LY_IDENT_PREFIX, module, NULL)) {
+    if (!imp && lyp_check_identifier(value, LY_IDENT_PREFIX, module, NULL)) {
         free(value);
         return EXIT_FAILURE;
     }
@@ -168,18 +168,23 @@ yang_read_prefix(struct lys_module *module, struct lys_import *imp, char *value)
     return ret;
 }
 
-int
-yang_fill_import(struct lys_module *module, struct lys_import *imp, char *value)
+static int
+yang_fill_import(struct lys_module *module, struct lys_import *imp_old, struct lys_import *imp_new, char *value)
 {
     const char *exp;
     int rc;
 
-    if (!imp->prefix) {
+    if (!imp_old->prefix) {
         LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "prefix", "import");
-        return EXIT_FAILURE;
+        goto error;
+    } else {
+        if (lyp_check_identifier(imp_old->prefix, LY_IDENT_PREFIX, module, NULL)) {
+            goto error;
+        }
     }
+    memcpy(imp_new, imp_old, sizeof *imp_old);
     exp = lydict_insert_zc(module->ctx, value);
-    rc = lyp_check_import(module, exp, imp);
+    rc = lyp_check_import(module, exp, imp_new);
     lydict_remove(module->ctx, exp);
     module->imp_size++;
     if (rc) {
@@ -187,6 +192,12 @@ yang_fill_import(struct lys_module *module, struct lys_import *imp, char *value)
     }
 
     return EXIT_SUCCESS;
+
+error:
+    free(value);
+    lydict_remove(module->ctx, imp_old->dsc);
+    lydict_remove(module->ctx, imp_old->ref);
+    return EXIT_FAILURE;
 }
 
 int
@@ -2862,4 +2873,63 @@ yang_read_string(const char *input, char *output, int size, int offset, int inde
         }
     }
     return output;
+}
+
+/* free function */
+
+static void
+yang_free_import(struct ly_ctx *ctx, struct lys_import *imp, uint8_t start, uint8_t size)
+{
+    uint8_t i;
+
+    for (i = start; i < size; ++i){
+        free((char *)imp[i].module);
+        lydict_remove(ctx, imp[i].prefix);
+        lydict_remove(ctx, imp[i].dsc);
+        lydict_remove(ctx, imp[i].ref);
+    }
+}
+
+/* check function*/
+
+int
+yang_check_imports(struct lys_module *module)
+{
+    struct lys_import *imp;
+    uint8_t imp_size, i = 0;
+    size_t size;
+    char *s;
+
+    imp = module->imp;
+    imp_size = module->imp_size;
+
+    if (imp_size) {
+        size = (imp_size * sizeof *module->imp) + sizeof(void*);
+        module->imp_size = 0;
+        module->imp = calloc(1, size);
+        if (!module->imp) {
+            LOGMEM;
+            goto error;
+        }
+        /* set stop block for possible realloc */
+        module->imp[imp_size].module = (void*)0x1;
+
+    }
+
+    for (i = 0; i < imp_size; ++i) {
+        s = (char *) imp[i].module;
+        imp[i].module = NULL;
+        if (yang_fill_import(module, &imp[i], &module->imp[module->imp_size], s)) {
+            ++i;
+            goto error;
+        }
+    }
+    free(imp);
+
+    return EXIT_SUCCESS;
+
+error:
+    yang_free_import(module->ctx, imp, i, imp_size);
+    free(imp);
+    return EXIT_FAILURE;
 }
