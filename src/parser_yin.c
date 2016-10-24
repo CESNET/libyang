@@ -5897,6 +5897,10 @@ yin_read_module(struct ly_ctx *ctx, const char *data, const char *revision, int 
     /* check root element */
     if (!yin->name || strcmp(yin->name, "module")) {
         LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, yin->name);
+        if (ly_strequal("submodule", yin->name, 0)) {
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
+                   "Submodules are parsed automatically as includes to the main module, do not parse them separately.");
+        }
         goto error;
     }
 
