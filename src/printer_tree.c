@@ -58,8 +58,11 @@ sibling_is_valid_child(const struct lys_node *node, int including, const struct 
         }
 
         if (!lys_is_disabled(cur, 0)) {
-            if (cur->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_CHOICE |
-                    LYS_INPUT | LYS_OUTPUT | LYS_CASE)) {
+            if (cur->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_CHOICE
+                    | LYS_CASE | LYS_NOTIF | LYS_ACTION)) {
+                return 1;
+            }
+            if ((cur->nodetype & (LYS_INPUT | LYS_OUTPUT)) && cur->child) {
                 return 1;
             }
             if ((cur->nodetype == LYS_USES) && sibling_is_valid_child(cur->child, 1, module)) {
