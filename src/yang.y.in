@@ -16,10 +16,12 @@
 %locations
 
 %parse-param {void *scanner}
+%parse-param {char **value}
 %parse-param {struct lys_module *module}
 %parse-param {struct lys_submodule *submodule}
 %parse-param {struct unres_schema *unres}
 %parse-param {struct lys_node **node}
+%parse-param {int *remove_import}
 
 %lex-param {void *scanner}
 
@@ -57,7 +59,7 @@
     actual = &current_ptr[size];                                                         \
     size++;
 
-void yyerror(YYLTYPE *yylloc, void *scanner, ...);
+void yyerror(YYLTYPE *yylloc, void *scanner, char **value, ...);
 /* temporary pointer for the check extension nacm 'data_node' */
 /* pointer on the current parsed element 'actual' */
 %}
@@ -270,7 +272,9 @@ void yyerror(YYLTYPE *yylloc, void *scanner, ...);
             } deviate_replace_stmtsep
 %destructor { free(($$) ? *$$ : NULL); } tmp_string
 
-%initial-action { yylloc.last_column = 0; }
+%initial-action { yylloc.last_column = 0;
+                  value = &s;
+                }
 
 %%
 
@@ -437,7 +441,8 @@ yang_version_stmt: YANG_VERSION_KEYWORD sep string stmtend;
 
 namespace_stmt: NAMESPACE_KEYWORD sep string stmtend;
 
-linkage_stmt: linkage_stmts { if (yang_check_imports(trg, unres)) {
+linkage_stmt: linkage_stmts { *remove_import = 0;
+                              if (yang_check_imports(trg, unres)) {
                                 YYABORT;
                               }
                             }
@@ -4543,8 +4548,9 @@ identifiers_ref: IDENTIFIERPREFIX { if (read_all) {
 
 %%
 
-void yyerror(YYLTYPE *yylloc, void *scanner, ...){
+void yyerror(YYLTYPE *yylloc, void *scanner, char **value, ...){
 
+  free(*value);
   (void)yylloc; /* unused */
   LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, yyget_text(scanner));
 }

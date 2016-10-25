@@ -18,6 +18,9 @@
 #include "parser.h"
 #include "xpath.h"
 
+static void yang_free_import(struct ly_ctx *ctx, struct lys_import *imp, uint8_t start, uint8_t size);
+static void yang_free_include(struct ly_ctx *ctx, struct lys_include *inc, uint8_t start, uint8_t size);
+
 static int
 yang_check_string(struct lys_module *module, const char **target, char *what, char *where, char *value)
 {
@@ -2649,13 +2652,21 @@ yang_parse_mem(struct lys_module *module, struct lys_submodule *submodule, struc
     unsigned int size;
     YY_BUFFER_STATE bp;
     yyscan_t scanner = NULL;
-    int ret = EXIT_SUCCESS;
+    int ret = EXIT_SUCCESS, remove_import = 1;
+    struct lys_module *trg;
 
     size = (size_data) ? size_data : strlen(data) + 2;
     yylex_init(&scanner);
     bp = yy_scan_buffer((char *)data, size, scanner);
     yy_switch_to_buffer(bp, scanner);
-    if (yyparse(scanner, module, submodule, unres, node)) {
+    if (yyparse(scanner, NULL, module, submodule, unres, node, &remove_import)) {
+        if (remove_import) {
+            trg = (submodule) ? (struct lys_module *)submodule : module;
+            yang_free_import(trg->ctx, trg->imp, 0, trg->imp_size);
+            yang_free_include(trg->ctx, trg->inc, 0, trg->inc_size);
+            trg->inc_size = 0;
+            trg->imp_size = 0;
+        }
         ret = EXIT_FAILURE;
     }
     yy_delete_buffer(bp, scanner);
