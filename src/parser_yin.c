@@ -3073,9 +3073,9 @@ read_yin_common(struct lys_module *module, struct lys_node *parent,
 
     if ((opt & OPT_CFG_INHERIT) && !(node->flags & LYS_CONFIG_MASK)) {
         /* get config flag from parent */
-        if (parent && (parent->flags & LYS_CONFIG_R)) {
-            node->flags |= LYS_CONFIG_R;
-        } else {
+        if (parent) {
+            node->flags |= parent->flags & LYS_CONFIG_MASK;
+        } else if (!parent) {
             /* default config is true */
             node->flags |= LYS_CONFIG_W;
         }

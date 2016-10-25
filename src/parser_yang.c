@@ -2611,8 +2611,8 @@ store_flags(struct lys_node *node, uint8_t flags, int config_opt)
     if (config_opt == CONFIG_INHERIT_ENABLE) {
         if (!(node->flags & LYS_CONFIG_MASK)) {
             /* get config flag from parent */
-            if (node->parent && (node->parent->flags & LYS_CONFIG_R)) {
-                node->flags |= LYS_CONFIG_R;
+            if (node->parent) {
+                node->flags |= node->parent->flags & LYS_CONFIG_MASK;
             } else {
                 /* default config is true */
                 node->flags |= LYS_CONFIG_W;

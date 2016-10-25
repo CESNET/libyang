@@ -4160,6 +4160,29 @@ lys_check_xpath(struct lys_node *node, int check_place)
     return EXIT_SUCCESS;
 }
 
+static int
+check_leafref_config(struct lys_node_leaf *leaf, struct lys_type *type)
+{
+    int i;
+
+    if (type->base == LY_TYPE_LEAFREF) {
+        if ((leaf->flags & LYS_CONFIG_W) && type->info.lref.target && (type->info.lref.target->flags & LYS_CONFIG_R)) {
+            LOGVAL(LYE_SPEC, LY_VLOG_LYS, leaf, "The %s is config but refers to a non-config %s.",
+                   strnodetype(leaf->nodetype), strnodetype(type->info.lref.target->nodetype));
+            return -1;
+        }
+        /* we can skip the test in case the leafref is not yet resolved. In that case the test is done in the time
+         * of leafref resolving (lys_leaf_add_leafref_target()) */
+    } else if (type->base == LY_TYPE_UNION) {
+        for (i = 0; i < type->info.uni.count; i++) {
+            if (check_leafref_config(leaf, &type->info.uni.types[i])) {
+                return -1;
+            }
+        }
+    }
+    return 0;
+}
+
 /**
  * @brief Passes config flag down to children, skips nodes without config flags.
  * Does not log.
@@ -4173,6 +4196,8 @@ lys_check_xpath(struct lys_node *node, int check_place)
 static int
 inherit_config_flag(struct lys_node *node, int flags, int clear)
 {
+    struct lys_node_leaf *leaf;
+
     assert(!(flags ^ (flags & LYS_CONFIG_MASK)));
     LY_TREE_FOR(node, node) {
         if (lys_check_xpath(node, 0)) {
@@ -4204,6 +4229,11 @@ inherit_config_flag(struct lys_node *node, int flags, int clear)
         }
         if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
             if (inherit_config_flag(node->child, flags, clear)) {
+                return -1;
+            }
+        } else if (node->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+            leaf = (struct lys_node_leaf *)node;
+            if (check_leafref_config(leaf, &leaf->type)) {
                 return -1;
             }
         }
