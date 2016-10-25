@@ -218,7 +218,7 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
     char *wd;
     DIR *dir = NULL;
     struct dirent *file;
-    char *match_name = NULL;
+    char *match_name = NULL, *dot, *rev;
     LYS_INFORMAT format, match_format = 0;
     struct lys_module *result = NULL;
     int localsearch = 0;
@@ -330,15 +330,15 @@ opendir_search:
             result = (struct lys_module *)ly_ctx_get_module(ctx, name, revision);
         }
         if (!result) {
-            LOGERR(LY_ESYS, "Data model \"%s\" not found.",
-                   name, ctx->models.search_path, wd);
+            LOGERR(LY_ESYS, "Data model \"%s\" not found.", name, ctx->models.search_path, wd);
         }
         goto cleanup;
     }
 
 matched:
     /* cut the format for now */
-    strrchr(match_name, '.')[1] = '\0';
+    dot = strrchr(match_name, '.');
+    dot[1] = '\0';
 
     /* check that the same file was not already loaded - it make sense only in case of loading the newest revision */
     if (!revision) {
@@ -358,7 +358,7 @@ matched:
     }
 
     /* add the format back */
-    match_name[strlen(match_name)] = 'y';
+    dot[1] = 'y';
 
     /* open the file */
     fd = open(match_name, O_RDONLY);
@@ -377,6 +377,22 @@ matched:
 
     if (!result) {
         goto cleanup;
+    }
+
+    /* check that name and revision match filename */
+    rev = strchr(match_name, '@');
+    /* name */
+    len = strlen(result->name);
+    if (strncmp(match_name, result->name, len) ||
+            ((rev && rev != &match_name[len]) || (!rev && dot != &match_name[len]))) {
+        LOGWRN("File name \"%s\" does not match module name \"%s\".", match_name, result->name);
+    }
+    if (rev) {
+        len = dot - ++rev;
+        if (!result->rev_size || len != 10 || strncmp(result->rev[0].date, rev, len)) {
+            LOGWRN("File name \"%s\" does not match module revision \"%s\".", match_name,
+                   result->rev_size ? result->rev[0].date : "none");
+        }
     }
 
     result->filepath = lydict_insert_zc(ctx, match_name);

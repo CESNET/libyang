@@ -910,6 +910,8 @@ lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format)
 {
     int fd;
     const struct lys_module *ret;
+    const char *rev, *dot, *filename;
+    size_t len;
 
     if (!ctx || !path) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
@@ -925,7 +927,36 @@ lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format)
     ret = lys_parse_fd(ctx, fd, format);
     close(fd);
 
-    if (ret && !ret->filepath) {
+    if (!ret) {
+        /* error */
+        return NULL;
+    }
+
+    /* check that name and revision match filename */
+    filename = strrchr(path, '/');
+    if (!filename) {
+        filename = path;
+    } else {
+        filename++;
+    }
+    rev = strchr(filename, '@');
+    dot = strrchr(filename, '.');
+
+    /* name */
+    len = strlen(ret->name);
+    if (strncmp(filename, ret->name, len) ||
+            ((rev && rev != &filename[len]) || (!rev && dot != &filename[len]))) {
+        LOGWRN("File name \"%s\" does not match module name \"%s\".", path, ret->name);
+    }
+    if (rev) {
+        len = dot - ++rev;
+        if (!ret->rev_size || len != 10 || strncmp(ret->rev[0].date, rev, len)) {
+            LOGWRN("File name \"%s\" does not match module revision \"%s\".", filename,
+                   ret->rev_size ? ret->rev[0].date : "none");
+        }
+    }
+
+    if (!ret->filepath) {
         /* store URI */
         ((struct lys_module *)ret)->filepath = lydict_insert(ctx, path, 0);
     }
