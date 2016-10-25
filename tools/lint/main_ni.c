@@ -94,11 +94,27 @@ version(void)
 void
 libyang_verbclb(LY_LOG_LEVEL level, const char *msg, const char *path)
 {
-    if (verbose && level < LY_LLDBG) {
+    char *levstr;
+
+    if (level <= verbose) {
+        switch(level) {
+        case LY_LLERR:
+            levstr = "err :";
+            break;
+        case LY_LLWRN:
+            levstr = "warn:";
+            break;
+        case LY_LLVRB:
+            levstr = "verb:";
+            break;
+        default:
+            levstr = "dbg :";
+            break;
+        }
         if (path) {
-            fprintf(stderr, "%s (%s)\n", msg, path);
+            fprintf(stderr, "%s %s (%s)\n", levstr, msg, path);
         } else {
-            fprintf(stderr, "%s\n", msg);
+            fprintf(stderr, "%s %s\n", levstr, msg);
         }
     }
 }
@@ -225,10 +241,8 @@ main_ni(int argc, char* argv[])
     }
 
     /* derefered setting of verbosity in libyang after context initiation */
-    if (verbose) {
-        ly_verb(verbose);
-        ly_set_log_clb(libyang_verbclb, 1);
-    }
+    ly_set_log_clb(libyang_verbclb, 1);
+    ly_verb(verbose);
 
     mods = malloc((argc - optind) * sizeof *mods);
     if (!mods) {
