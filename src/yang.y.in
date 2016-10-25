@@ -1493,34 +1493,30 @@ bit_opt_stmt: @EMPTYDIR@
                                  }
 
 position_stmt: POSITION_KEYWORD sep position_value_arg_str
-               stmtend { if (read_all) {
-                           ((struct lys_type_bit *)actual)->pos = $3;
+               stmtend { ((struct lys_type_bit *)actual)->pos = $3;
 
-                           /* keep the highest position value for automatic increment */
-                           if ($3 >= cnt_val) {
-                             cnt_val = $3;
-                             cnt_val++;
-                           }
+                         /* keep the highest position value for automatic increment */
+                         if ($3 >= cnt_val) {
+                           cnt_val = $3;
+                           cnt_val++;
                          }
                        }
 
 position_value_arg_str: non_negative_integer_value optsep { $$ = $1; }
-  |  string_1 { if (read_all) {
-                  /* convert it to uint32_t */
-                  unsigned long val;
-                  char *endptr = NULL;
-                  errno = 0;
+  |  string_1 { /* convert it to uint32_t */
+                unsigned long val;
+                char *endptr = NULL;
+                errno = 0;
 
-                  val = strtoul(s, &endptr, 10);
-                  if (s[0] == '-' || *endptr || errno || val > UINT32_MAX) {
-                      LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "position");
-                      free(s);
-                      YYABORT;
-                  }
+                val = strtoul(s, &endptr, 10);
+                if (s[0] == '-' || *endptr || errno || val > UINT32_MAX) {
+                  LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "position");
                   free(s);
-                  s = NULL;
-                  $$ = (uint32_t) val;
+                  YYABORT;
                 }
+                free(s);
+                s = NULL;
+                $$ = (uint32_t) val;
               }
 
 error_message_stmt: ERROR_MESSAGE_KEYWORD sep string stmtend;
