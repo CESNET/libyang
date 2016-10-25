@@ -106,7 +106,7 @@ error:
         return EXIT_FAILURE;
     }
 
-    if (!(value = transform_schema2json(parent->module, value))) {
+    if (!(value = transform_iffeat_schema2json(parent->module, value))) {
         return EXIT_FAILURE;
     }
 

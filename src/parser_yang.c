@@ -310,7 +310,7 @@ yang_read_if_feature(struct lys_module *module, void *ptr, char *value, struct u
         return EXIT_FAILURE;
     }
 
-    if (!(exp = transform_schema2json(module, value))) {
+    if (!(exp = transform_iffeat_schema2json(module, value))) {
         free(value);
         return EXIT_FAILURE;
     }

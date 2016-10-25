@@ -27,6 +27,7 @@
 
 #include "common.h"
 #include "tree_internal.h"
+#include "xpath.h"
 #include "libyang.h"
 
 /* libyang errno */
@@ -304,11 +305,12 @@ static const char *
 _transform_json2xml(const struct lys_module *module, const char *expr, int schema, const char ***prefixes,
                     const char ***namespaces, uint32_t *ns_count)
 {
-    const char *in, *id, *prefix;
-    char *out, *col, *name;
-    size_t out_size, out_used, id_len;
+    const char *cur_expr, *end, *prefix;
+    char *out, *name;
+    size_t out_size, out_used, name_len;
     const struct lys_module *mod;
-    uint32_t i;
+    uint32_t i, j;
+    struct lyxp_expr *exp;
 
     assert(module && expr && ((!prefixes && !namespaces && !ns_count) || (prefixes && namespaces && ns_count)));
 
@@ -318,8 +320,7 @@ _transform_json2xml(const struct lys_module *module, const char *expr, int schem
         *namespaces = NULL;
     }
 
-    in = expr;
-    out_size = strlen(in) + 1;
+    out_size = strlen(expr) + 1;
     out = malloc(out_size);
     if (!out) {
         LOGMEM;
@@ -327,98 +328,103 @@ _transform_json2xml(const struct lys_module *module, const char *expr, int schem
     }
     out_used = 0;
 
-    while (1) {
-        col = strchr(in, ':');
-        /* we're finished, copy the remaining part */
-        if (!col) {
-            strcpy(&out[out_used], in);
-            out_used += strlen(in) + 1;
-            assert(out_size == out_used);
-            return lydict_insert_zc(module->ctx, out);
-        }
-        id = strpbrk_backwards(col - 1, "/ [\'\"", (col - in) - 1);
-        if ((id[0] == '/') || (id[0] == ' ') || (id[0] == '[') || (id[0] == '\'') || (id[0] == '\"')) {
-            ++id;
-        }
-        id_len = col - id;
-
-        /* get the module */
-        if (!schema) {
-            name = strndup(id, id_len);
-            mod = ly_ctx_get_module(module->ctx, name, NULL);
-            free(name);
-            if (!mod) {
-                LOGVAL(LYE_INMOD_LEN, LY_VLOG_NONE, NULL, id_len, id);
-                goto fail;
-            }
-            prefix = mod->prefix;
-        } else {
-            name = strndup(id, id_len);
-            prefix = transform_module_name2import_prefix(module, name);
-            free(name);
-            if (!prefix) {
-                LOGVAL(LYE_INMOD_LEN, LY_VLOG_NONE, NULL, id_len, id);
-                goto fail;
-            }
-        }
-
-        /* remember the namespace definition (only if it's new) */
-        if (!schema && ns_count) {
-            for (i = 0; i < *ns_count; ++i) {
-                if (ly_strequal((*namespaces)[i], mod->ns, 1)) {
-                    break;
-                }
-            }
-            if (i == *ns_count) {
-                ++(*ns_count);
-                *prefixes = ly_realloc(*prefixes, *ns_count * sizeof **prefixes);
-                if (!(*prefixes)) {
-                    LOGMEM;
-                    goto fail;
-                }
-                *namespaces = ly_realloc(*namespaces, *ns_count * sizeof **namespaces);
-                if (!(*namespaces)) {
-                    LOGMEM;
-                    goto fail;
-                }
-                (*prefixes)[*ns_count - 1] = mod->prefix;
-                (*namespaces)[*ns_count - 1] = mod->ns;
-            }
-        }
-
-        /* adjust out size */
-        out_size += strlen(prefix) - id_len;
-        out = ly_realloc(out, out_size);
-        if (!out) {
-            LOGMEM;
-            goto fail;
-        }
-
-        /* copy the data before prefix */
-        strncpy(&out[out_used], in, id-in);
-        out_used += id - in;
-
-        /* copy the model prefix */
-        strcpy(&out[out_used], prefix);
-        out_used += strlen(prefix);
-
-        /* copy ':' */
-        out[out_used] = ':';
-        ++out_used;
-
-        /* finally adjust in pointer for next round */
-        in = col + 1;
+    exp = lyxp_parse_expr(expr);
+    if (!exp) {
+        free(out);
+        return NULL;
     }
 
-    /* unreachable */
-    LOGINT;
+    for (i = 0; i < exp->used; ++i) {
+        cur_expr = &exp->expr[exp->expr_pos[i]];
 
-fail:
+        /* copy WS */
+        if (i && ((end = exp->expr + exp->expr_pos[i - 1] + exp->tok_len[i - 1]) != cur_expr)) {
+            strncpy(&out[out_used], end, cur_expr - end);
+            out_used += cur_expr - end;
+        }
+
+        if ((exp->tokens[i] == LYXP_TOKEN_NAMETEST) && (end = strnchr(cur_expr, ':', exp->tok_len[i]))) {
+            /* get the module */
+            name_len = end - cur_expr;
+            if (!schema) {
+                name = strndup(cur_expr, name_len);
+                mod = ly_ctx_get_module(module->ctx, name, NULL);
+                free(name);
+                if (!mod) {
+                    LOGVAL(LYE_INMOD_LEN, LY_VLOG_NONE, NULL, name_len, cur_expr);
+                    goto error;
+                }
+                prefix = mod->prefix;
+            } else {
+                name = strndup(cur_expr, name_len);
+                prefix = transform_module_name2import_prefix(module, name);
+                free(name);
+                if (!prefix) {
+                    LOGVAL(LYE_INMOD_LEN, LY_VLOG_NONE, NULL, name_len, cur_expr);
+                    goto error;
+                }
+            }
+
+            /* remember the namespace definition (only if it's new) */
+            if (!schema && ns_count) {
+                for (j = 0; j < *ns_count; ++j) {
+                    if (ly_strequal((*namespaces)[j], mod->ns, 1)) {
+                        break;
+                    }
+                }
+                if (j == *ns_count) {
+                    ++(*ns_count);
+                    *prefixes = ly_realloc(*prefixes, *ns_count * sizeof **prefixes);
+                    if (!(*prefixes)) {
+                        LOGMEM;
+                        goto error;
+                    }
+                    *namespaces = ly_realloc(*namespaces, *ns_count * sizeof **namespaces);
+                    if (!(*namespaces)) {
+                        LOGMEM;
+                        goto error;
+                    }
+                    (*prefixes)[*ns_count - 1] = mod->prefix;
+                    (*namespaces)[*ns_count - 1] = mod->ns;
+                }
+            }
+
+            /* adjust out size (it can even decrease in some strange cases) */
+            out_size += strlen(prefix) - name_len;
+            out = ly_realloc(out, out_size);
+            if (!out) {
+                LOGMEM;
+                goto error;
+            }
+
+            /* copy the model name */
+            strcpy(&out[out_used], prefix);
+            out_used += strlen(prefix);
+
+            /* copy ':' */
+            out[out_used] = ':';
+            ++out_used;
+
+            /* copy the rest */
+            strncpy(&out[out_used], end + 1, (exp->tok_len[i] - name_len) - 1);
+            out_used += (exp->tok_len[i] - name_len) - 1;
+        } else {
+            strncpy(&out[out_used], &exp->expr[exp->expr_pos[i]], exp->tok_len[i]);
+            out_used += exp->tok_len[i];
+        }
+    }
+    out[out_used] = '\0';
+
+    lyxp_exp_free(exp);
+    return lydict_insert_zc(module->ctx, out);
+
+error:
     if (!schema && ns_count) {
         free(*prefixes);
         free(*namespaces);
     }
     free(out);
+    lyxp_exp_free(exp);
     return NULL;
 }
 
@@ -438,14 +444,15 @@ transform_json2schema(const struct lys_module *module, const char *expr)
 const char *
 transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml, int log)
 {
-    const char *in, *id;
-    char *out, *col, *prefix;
-    size_t out_size, out_used, id_len, rc;
+    const char *end, *cur_expr;
+    char *out, *prefix;
+    uint16_t i;
+    size_t out_size, out_used, pref_len;
     const struct lys_module *mod;
     const struct lyxml_ns *ns;
+    struct lyxp_expr *exp;
 
-    in = expr;
-    out_size = strlen(in)+1;
+    out_size = strlen(expr) + 1;
     out = malloc(out_size);
     if (!out) {
         if (log) {
@@ -455,93 +462,168 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
     }
     out_used = 0;
 
-    while (1) {
-        col = strchr(in, ':');
-        /* we're finished, copy the remaining part */
-        if (!col) {
-            strcpy(&out[out_used], in);
-            out_used += strlen(in)+1;
-            assert(out_size == out_used);
-            return lydict_insert_zc(ctx, out);
-        }
-        id = strpbrk_backwards(col-1, "/ [\'\"", (col-in)-1);
-        if ((id[0] == '/') || (id[0] == ' ') || (id[0] == '[') || (id[0] == '\'') || (id[0] == '\"')) {
-            ++id;
-        }
-        id_len = col-id;
-        rc = parse_identifier(id);
-        if (rc < id_len) {
-            if (log) {
-                LOGVAL(LYE_XML_INCHAR, LY_VLOG_XML, xml, id[rc], &id[rc]);
-            }
-            free(out);
-            return NULL;
-        }
-
-        /* get the module */
-        prefix = strndup(id, id_len);
-        if (!prefix) {
-            if (log) {
-                LOGMEM;
-            }
-            free(out);
-            return NULL;
-        }
-        ns = lyxml_get_ns(xml, prefix);
-        free(prefix);
-        if (!ns) {
-            if (log) {
-                LOGVAL(LYE_XML_INVAL, LY_VLOG_XML, xml, "namespace prexif");
-                LOGVAL(LYE_SPEC, LY_VLOG_XML, xml,
-                       "XML namespace with prefix \"%.*s\" not defined.", id_len, id);
-            }
-            free(out);
-            return NULL;
-        }
-        mod = ly_ctx_get_module_by_ns(ctx, ns->value, NULL);
-        if (!mod) {
-            if (log) {
-                LOGVAL(LYE_XML_INVAL, LY_VLOG_XML, xml, "module namespace");
-                LOGVAL(LYE_SPEC, LY_VLOG_XML, xml,
-                       "Module with the namespace \"%s\" could not be found.", ns->value);
-            }
-            free(out);
-            return NULL;
-        }
-
-        /* adjust out size (it can even decrease in some strange cases) */
-        out_size += strlen(mod->name)-id_len;
-        out = ly_realloc(out, out_size);
-        if (!out) {
-            if (log) {
-                LOGMEM;
-            }
-            return NULL;
-        }
-
-        /* copy the data before prefix */
-        strncpy(&out[out_used], in, id-in);
-        out_used += id-in;
-
-        /* copy the model name */
-        strcpy(&out[out_used], mod->name);
-        out_used += strlen(mod->name);
-
-        /* copy ':' */
-        out[out_used] = ':';
-        ++out_used;
-
-        /* finally adjust in pointer for next round */
-        in = col+1;
+    exp = lyxp_parse_expr(expr);
+    if (!exp) {
+        free(out);
+        return NULL;
     }
 
-    /* unreachable */
-    LOGINT;
+    for (i = 0; i < exp->used; ++i) {
+        cur_expr = &exp->expr[exp->expr_pos[i]];
+
+        /* copy WS */
+        if (i && ((end = exp->expr + exp->expr_pos[i - 1] + exp->tok_len[i - 1]) != cur_expr)) {
+            strncpy(&out[out_used], end, cur_expr - end);
+            out_used += cur_expr - end;
+        }
+
+        if ((exp->tokens[i] == LYXP_TOKEN_NAMETEST) && (end = strnchr(cur_expr, ':', exp->tok_len[i]))) {
+            /* get the module */
+            pref_len = end - cur_expr;
+            prefix = strndup(cur_expr, pref_len);
+            if (!prefix) {
+                if (log) {
+                    LOGMEM;
+                }
+                goto error;
+            }
+            ns = lyxml_get_ns(xml, prefix);
+            free(prefix);
+            if (!ns) {
+                if (log) {
+                    LOGVAL(LYE_XML_INVAL, LY_VLOG_XML, xml, "namespace prefix");
+                    LOGVAL(LYE_SPEC, LY_VLOG_XML, xml,
+                        "XML namespace with prefix \"%.*s\" not defined.", pref_len, cur_expr);
+                }
+                goto error;
+            }
+            mod = ly_ctx_get_module_by_ns(ctx, ns->value, NULL);
+            if (!mod) {
+                if (log) {
+                    LOGVAL(LYE_XML_INVAL, LY_VLOG_XML, xml, "module namespace");
+                    LOGVAL(LYE_SPEC, LY_VLOG_XML, xml,
+                        "Module with the namespace \"%s\" could not be found.", ns->value);
+                }
+                goto error;
+            }
+
+            /* adjust out size (it can even decrease in some strange cases) */
+            out_size += strlen(mod->name) - pref_len;
+            out = ly_realloc(out, out_size);
+            if (!out) {
+                if (log) {
+                    LOGMEM;
+                }
+                goto error;
+            }
+
+            /* copy the model name */
+            strcpy(&out[out_used], mod->name);
+            out_used += strlen(mod->name);
+
+            /* copy ':' */
+            out[out_used] = ':';
+            ++out_used;
+
+            /* copy the rest */
+            strncpy(&out[out_used], end + 1, (exp->tok_len[i] - pref_len) - 1);
+            out_used += (exp->tok_len[i] - pref_len) - 1;
+        } else {
+            strncpy(&out[out_used], &exp->expr[exp->expr_pos[i]], exp->tok_len[i]);
+            out_used += exp->tok_len[i];
+        }
+    }
+    out[out_used] = '\0';
+
+    lyxp_exp_free(exp);
+    return lydict_insert_zc(ctx, out);
+
+error:
+    free(out);
+    lyxp_exp_free(exp);
     return NULL;
 }
 
 const char *
 transform_schema2json(const struct lys_module *module, const char *expr)
+{
+    const char *end, *cur_expr;
+    char *out;
+    uint16_t i;
+    size_t out_size, out_used, pref_len;
+    const struct lys_module *mod;
+    struct lyxp_expr *exp;
+
+    out_size = strlen(expr) + 1;
+    out = malloc(out_size);
+    if (!out) {
+        LOGMEM;
+        return NULL;
+    }
+    out_used = 0;
+
+    exp = lyxp_parse_expr(expr);
+    if (!exp) {
+        free(out);
+        return NULL;
+    }
+
+    for (i = 0; i < exp->used; ++i) {
+        cur_expr = &exp->expr[exp->expr_pos[i]];
+
+        /* copy WS */
+        if (i && ((end = exp->expr + exp->expr_pos[i - 1] + exp->tok_len[i - 1]) != cur_expr)) {
+            strncpy(&out[out_used], end, cur_expr - end);
+            out_used += cur_expr - end;
+        }
+
+        if ((exp->tokens[i] == LYXP_TOKEN_NAMETEST) && (end = strnchr(cur_expr, ':', exp->tok_len[i]))) {
+            /* get the module */
+            pref_len = end - cur_expr;
+            mod = lys_get_import_module(module, cur_expr, pref_len, NULL, 0);
+            if (!mod) {
+                LOGVAL(LYE_INMOD_LEN, LY_VLOG_NONE, NULL, pref_len, cur_expr);
+                free(out);
+                return NULL;
+            }
+
+            /* adjust out size (it can even decrease in some strange cases) */
+            out_size += strlen(mod->name) - pref_len;
+            out = ly_realloc(out, out_size);
+            if (!out) {
+                LOGMEM;
+                goto error;
+            }
+
+            /* copy the model name */
+            strcpy(&out[out_used], mod->name);
+            out_used += strlen(mod->name);
+
+            /* copy ':' */
+            out[out_used] = ':';
+            ++out_used;
+
+            /* copy the rest */
+            strncpy(&out[out_used], end + 1, (exp->tok_len[i] - pref_len) - 1);
+            out_used += (exp->tok_len[i] - pref_len) - 1;
+        } else {
+            strncpy(&out[out_used], &exp->expr[exp->expr_pos[i]], exp->tok_len[i]);
+            out_used += exp->tok_len[i];
+        }
+    }
+    out[out_used] = '\0';
+
+    lyxp_exp_free(exp);
+    return lydict_insert_zc(module->ctx, out);
+
+error:
+    free(out);
+    lyxp_exp_free(exp);
+    return NULL;
+}
+
+const char *
+transform_iffeat_schema2json(const struct lys_module *module, const char *expr)
 {
     const char *in, *id;
     char *out, *col;
@@ -566,9 +648,8 @@ transform_schema2json(const struct lys_module *module, const char *expr)
             assert(out_size == out_used);
             return lydict_insert_zc(module->ctx, out);
         }
-        id = strpbrk_backwards(col-1, "/\n ([\'\"", (col-in)-1);
-        if ((id[0] == '/') || (id[0] == '\n') || (id[0] == ' ') || (id[0] == '(') || (id[0] == '[')
-                || (id[0] == '\'') || (id[0] == '\"')) {
+        id = strpbrk_backwards(col-1, "/ [\'\"", (col-in)-1);
+        if ((id[0] == '/') || (id[0] == ' ') || (id[0] == '[') || (id[0] == '\'') || (id[0] == '\"')) {
             ++id;
         }
         id_len = col-id;

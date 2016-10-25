@@ -346,6 +346,12 @@ const char *transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxm
 const char *transform_schema2json(const struct lys_module *module, const char *expr);
 
 /**
+ * @brief Same as transform_schema2json, but dumbed down, because if-feature expressions
+ *        are not valid XPath expressions.
+ */
+const char *transform_iffeat_schema2json(const struct lys_module *module, const char *expr);
+
+/**
  * @brief Wrapper for realloc() call. The only difference is that if it fails to
  * allocate the requested memory, the original memory is freed as well.
  *
