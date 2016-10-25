@@ -369,7 +369,7 @@ module_stmt: optsep MODULE_KEYWORD sep identifier_arg_str { if (read_all) {
                  linkage_stmt
                  meta_stmts
                  revision_stmts
-                 body_stmts
+                 body_stmts_end
              '}' optsep
 
 
@@ -415,7 +415,7 @@ submodule_stmt: optsep SUBMODULE_KEYWORD sep identifier_arg_str { if (read_all) 
                     linkage_stmt
                     meta_stmts
                     revision_stmts
-                    body_stmts
+                    body_stmts_end
                 '}' optsep
 
 
@@ -649,61 +649,22 @@ date_arg_str: REVISION_DATE { s = strdup(yyget_text(scanner));
                }
              }
 
-body_stmts: @EMPTYDIR@ { if (read_all) {
-                       if (size_arrays->features) {
-                         trg->features = calloc(size_arrays->features,sizeof *trg->features);
-                         if (!trg->features) {
-                           LOGMEM;
-                           YYABORT;
-                         }
-                       }
-                       if (size_arrays->ident) {
-                         trg->ident = calloc(size_arrays->ident,sizeof *trg->ident);
-                         if (!trg->ident) {
-                           LOGMEM;
-                           YYABORT;
-                         }
-                       }
-                       if (size_arrays->augment) {
-                         trg->augment = calloc(size_arrays->augment,sizeof *trg->augment);
-                         if (!trg->augment) {
-                           LOGMEM;
-                           YYABORT;
-                         }
-                       }
-                       if (size_arrays->tpdf) {
-                         trg->tpdf = calloc(size_arrays->tpdf, sizeof *trg->tpdf);
-                         if (!trg->tpdf) {
-                           LOGMEM;
-                           YYABORT;
-                         }
-                       }
-                       if (size_arrays->deviation) {
-                         trg->deviation = calloc(size_arrays->deviation, sizeof *trg->deviation);
-                         if (!trg->deviation) {
-                           LOGMEM;
-                           YYABORT;
-                         }
-                       }
-                       actual = NULL;
-                     }
-                   }
+body_stmts_end: body_stmts
+
+body_stmts: @EMPTYDIR@ { actual = NULL; }
   | body_stmts body_stmt stmtsep { actual = NULL; }
 
 
 body_stmt: extension_stmt
   | feature_stmt
   | identity_stmt
-  | typedef_stmt { if (!read_all) { size_arrays->tpdf++; } }
+  | typedef_stmt
   | grouping_stmt
   | data_def_stmt
-  | augment_stmt { if (!read_all) {
-                     size_arrays->augment++;
-                   }
-                 }
+  | augment_stmt
   | rpc_stmt
   | notification_stmt
-  | deviation_stmt { if (!read_all) { size_arrays->deviation++; } }
+  | deviation_stmt
 
 extension_stmt: EXTENSION_KEYWORD sep identifier_arg_str { if (read_all) {
                                                              /* we have the following supported (hardcoded) extensions: */
