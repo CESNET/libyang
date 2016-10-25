@@ -9,7 +9,7 @@
     "leaf7": 4000000000,
     "leaf8": "5000000000",
     "leaf9a": "25.012345678",
-    "leaf10": "true",
+    "leaf10": true,
     "leaf11": "two",
     "leaf12": "flag0 flag2",
     "leaf13": "somebase64string",
