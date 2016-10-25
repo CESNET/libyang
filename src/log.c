@@ -365,6 +365,7 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
                 prefix = NULL;
             }
             do {
+                sparent = ((struct lys_node *)elem)->parent;
                 elem = lys_parent((struct lys_node *)elem);
             } while (elem && (((struct lys_node *)elem)->nodetype == LYS_USES));
             break;
@@ -443,6 +444,11 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
             memcpy(&path[(*index)], prefix, len);
         }
         path[--(*index)] = '/';
+        if (elem_type == LY_VLOG_LYS && !elem && sparent && sparent->nodetype == LYS_AUGMENT) {
+            len = strlen(((struct lys_node_augment *)sparent)->target_name);
+            (*index) = (*index) - len;
+            memcpy(&path[(*index)], ((struct lys_node_augment *)sparent)->target_name, len);
+        }
     }
 }
 
