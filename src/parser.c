@@ -232,7 +232,7 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
             goto cleanup;
         }
     } else {
-        LOGWRN("No search path defined for the current context.");
+        LOGVRB("No search path defined for the current context.");
         /* there is no search_path, search only in current working dir */
         wd = get_current_dir_name();
         localsearch = 1;
