@@ -27,6 +27,7 @@ enum UNRES_ITEM {
     UNRES_TYPE_DER,      /* unresolved derived type defined in leaf/leaflist */
     UNRES_TYPE_DER_TPDF, /* unresolved derived type defined as typedef */
     UNRES_TYPE_LEAFREF,  /* check leafref value */
+    UNRES_AUGMENT,       /* unresolved augment targets */
     UNRES_CHOICE_DFLT,   /* check choice default case */
     UNRES_IDENT,         /* unresolved derived identities */
     UNRES_TYPE_IDENTREF, /* check identityref value */
@@ -34,7 +35,6 @@ enum UNRES_ITEM {
     UNRES_TYPE_DFLT,     /* validate default type value */
     UNRES_LIST_KEYS,     /* list keys */
     UNRES_LIST_UNIQ,     /* list uniques */
-    UNRES_AUGMENT,       /* unresolved augment targets */
     UNRES_XPATH,         /* unchecked XPath expression */
 
     /* DATA */
@@ -131,7 +131,7 @@ int parse_schema_json_predicate(const char *id, const char **name, int *nam_len,
 int resolve_iffeature(struct lys_iffeature *expr);
 void resolve_iffeature_getsizes(struct lys_iffeature *iffeat, unsigned int *expr_size, unsigned int *feat_size);
 int resolve_iffeature_compile(struct lys_iffeature *iffeat_expr, const char *value, struct lys_node *node,
-                              struct unres_schema *unres);
+                              int infeature, struct unres_schema *unres);
 uint8_t iff_getop(uint8_t *list, int pos);
 
 struct lyd_node *resolve_data_descendant_schema_nodeid(const char *nodeid, struct lyd_node *start);
@@ -204,6 +204,6 @@ int unres_data_addonly(struct unres_data *unres, struct lyd_node *node, enum UNR
 int unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM type);
 void unres_data_del(struct unres_data *unres, uint32_t i);
 
-int resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int trusted);
+int resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options);
 
 #endif /* _RESOLVE_H */

@@ -107,7 +107,7 @@ cmd_verb_help(void)
 }
 
 LYS_INFORMAT
-get_schema_format(char *path)
+get_schema_format(const char *path)
 {
     char *ptr;
 
@@ -119,7 +119,6 @@ get_schema_format(char *path)
             return LYS_IN_YANG;
         } else {
             fprintf(stderr, "Input file in an unknown format \"%s\".\n", ptr);
-            free(path);
             return LYS_IN_UNKNOWN;
         }
     } else {

@@ -81,7 +81,7 @@ TEST_MODULE(void **state)
     char buf[1024];
     LYS_INFORMAT schema_format = LYS_IN_YANG;
     const struct lys_module *mod;
-    struct lys_node *rpc = NULL;
+    struct lyd_node *rpc = NULL;
     int i, j, ret, option;
 
     for (i = 0; i < 2; ++i) {
@@ -110,13 +110,14 @@ TEST_MODULE(void **state)
                 break;
             case 4:
                 option = LYD_OPT_RPCREPLY;
-                rpc = mod->data;
+                rpc = lyd_new(NULL, mod, "rpc_test");
                 break;
             default:
                 option = LYD_OPT_CONFIG;
                 break;
             }
             st->node = lyd_parse_path(st->ctx, buf, LYD_XML, option, rpc, NULL);
+            lyd_free(rpc);
             if (data_files_fail[j]) {
                 assert_ptr_equal(st->node, NULL);
             } else {

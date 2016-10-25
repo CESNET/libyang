@@ -705,7 +705,7 @@ info_print_typedef_detail(struct lyout *outf, const struct lys_tpdf *tpdf)
 static void
 info_print_ident_detail(struct lyout *out, const struct lys_ident *ident)
 {
-    int i;
+    unsigned int i;
 
     ly_print(out, "%-*s%s\n", INDENT_LEN, "Identity: ", ident->name);
     ly_print(out, "%-*s%s\n", INDENT_LEN, "Module: ", ident->module->name);
@@ -722,11 +722,13 @@ info_print_ident_detail(struct lyout *out, const struct lys_ident *ident)
     }
 
     ly_print(out, "%-*s", INDENT_LEN, "Derived: ");
-    for (i = 0; i < ident->der_size; i++) {
-        ly_print(out, "%*s%s\n", i ? INDENT_LEN : 0, "", ident->der[i]->name);
-    }
-    if (!i) {
-        ly_print(out, "\n");
+    if (ident->der) {
+        for (i = 0; i < ident->der->number; i++) {
+            ly_print(out, "%*s%s\n", i ? INDENT_LEN : 0, "", ((struct lys_ident *)ident->der->set.g[i])->name);
+        }
+        if (!i) {
+            ly_print(out, "\n");
+        }
     }
 }
 

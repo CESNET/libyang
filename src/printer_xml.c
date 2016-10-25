@@ -435,22 +435,36 @@ int
 xml_print_data(struct lyout *out, const struct lyd_node *root, int options)
 {
     const struct lyd_node *node, *next;
-    int level, action = 0;
+    int level, action_input = 0;
 
     assert(root);
 
     level = (options & LYP_FORMAT ? 1 : 0);
 
-    /* learn whether we are printing an action first */
-    LY_TREE_DFS_BEGIN(root, next, node) {
-        if (node->schema->nodetype == LYS_ACTION) {
-            action = 1;
-            break;
+    if (options & LYP_NETCONF) {
+        if (root->schema->nodetype != LYS_RPC) {
+            /* learn whether we are printing an action */
+            LY_TREE_DFS_BEGIN(root, next, node) {
+                if (node->schema->nodetype == LYS_ACTION) {
+                    break;
+                }
+                LY_TREE_DFS_END(root, next, node);
+            }
+        } else {
+            node = root;
         }
-        LY_TREE_DFS_END(root, next, node);
+
+        if (node && (node->schema->nodetype & (LYS_RPC | LYS_ACTION))) {
+            if (node->child && (node->child->schema->parent->nodetype == LYS_OUTPUT)) {
+                /* skip the container */
+                root = node->child;
+            } else if (node->schema->nodetype == LYS_ACTION) {
+                action_input = 1;
+            }
+        }
     }
 
-    if (action) {
+    if (action_input) {
         ly_print(out, "%*s<action xmlns=\"urn:ietf:params:xml:ns:yang:1\">%s", LEVEL, INDENT, level ? "\n" : "");
         if (level) {
             ++level;
@@ -465,7 +479,7 @@ xml_print_data(struct lyout *out, const struct lyd_node *root, int options)
         }
     }
 
-    if (action) {
+    if (action_input) {
         if (level) {
             --level;
         }

@@ -41,7 +41,7 @@ help(int shortout)
     fprintf(stdout, "Options:\n"
         "  -h, --help            Show this help message and exit.\n"
         "  -v, --version         Show version number and exit.\n"
-        "  -V, --verbose         Show verbose messages.\n"
+        "  -V, --verbose         Show verbose messages, can be used multiple times to increase verbosity.\n"
         "  -f FORMAT, --format=FORMAT\n"
         "                        Convert to FORMAT. Supported formats: tree, yin, yang.\n"
         "  -o OUTFILE, --output=OUTFILE\n"
@@ -169,6 +169,9 @@ main_ni(int argc, char* argv[])
             ret = EXIT_SUCCESS;
             goto cleanup;
         case 'o':
+            if (out != stdout) {
+                fclose(out);
+            }
             out = fopen(optarg, "w");
             if (!out) {
                 fprintf(stderr, "yanglint error: unable open output file %s (%s)\n", optarg, strerror(errno));
@@ -191,7 +194,7 @@ main_ni(int argc, char* argv[])
             ret = EXIT_SUCCESS;
             goto cleanup;
         case 'V':
-            verbose = 1;
+            verbose++;
             break;
         default:
             help(1);
@@ -223,7 +226,7 @@ main_ni(int argc, char* argv[])
 
     /* derefered setting of verbosity in libyang after context initiation */
     if (verbose) {
-        ly_verb(LY_LLVRB);
+        ly_verb(verbose);
         ly_set_log_clb(libyang_verbclb, 1);
     }
 
@@ -238,7 +241,9 @@ main_ni(int argc, char* argv[])
         if (informat == LYS_IN_UNKNOWN) {
             goto cleanup;
         }
-        if (verbose) fprintf(stdout, "Validating %s file.\n", argv[optind]);
+        if (verbose >= 2) {
+            fprintf(stdout, "Validating %s file.\n", argv[optind]);
+        }
         mods[i] = lys_parse_path(ctx, argv[optind], informat);
         if (!mods[i]) {
             goto cleanup;
@@ -281,7 +286,7 @@ main_ni(int argc, char* argv[])
     ret = EXIT_SUCCESS;
 
 cleanup:
-    if (out != stdout) {
+    if (out && out != stdout) {
         fclose(out);
     }
     free(mods);

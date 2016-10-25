@@ -31,6 +31,9 @@
 #include "../config.h"
 #include "../../src/libyang.h"
 
+/* include private header to be able to check internal values */
+#include "../../src/context.h"
+
 struct ly_ctx *ctx = NULL;
 struct lyd_node *root = NULL;
 const struct lys_module *module = NULL;
@@ -430,6 +433,227 @@ test_ly_ctx_load_module(void **state)
 }
 
 static void
+test_ly_ctx_clean(void **state)
+{
+    (void) state; /* unused */
+    const struct lys_module *mod;
+    struct ly_ctx *ctx;
+    uint32_t dict_used;
+    uint16_t setid;
+    int modules_count;
+
+    ctx = ly_ctx_new(TESTS_DIR"/api/files/");
+    /* remember starting values */
+    setid = ctx->models.module_set_id;
+    modules_count = ctx->models.used;
+    dict_used = ctx->dict.used;
+
+    /* add a module */
+    mod = ly_ctx_load_module(ctx, "x", NULL);
+    assert_ptr_not_equal(mod, NULL);
+    assert_int_equal(modules_count + 1, ctx->models.used);
+    assert_int_not_equal(dict_used, ctx->dict.used);
+
+    /* clean the context */
+    ly_ctx_clean(ctx, NULL);
+    assert_int_equal(setid + 2, ctx->models.module_set_id);
+    assert_int_equal(modules_count, ctx->models.used);
+    assert_int_equal(dict_used, ctx->dict.used);
+
+    /* add a module again ... */
+    mod = ly_ctx_load_module(ctx, "x", NULL);
+    assert_ptr_not_equal(mod, NULL);
+    assert_int_equal(modules_count + 1, ctx->models.used);
+    assert_int_not_equal(dict_used, ctx->dict.used);
+    /* .. and add some string into dictionary */
+    assert_ptr_not_equal(lydict_insert(ctx, "qwertyuiop", 0), NULL);
+
+    /* clean the context */
+    ly_ctx_clean(ctx, NULL);
+    assert_int_equal(setid + 4, ctx->models.module_set_id);
+    assert_int_equal(modules_count, ctx->models.used);
+    assert_int_equal(dict_used + 1, ctx->dict.used);
+
+    /* cleanup */
+    ly_ctx_destroy(ctx, NULL);
+}
+
+static void
+test_ly_ctx_clean2(void **state)
+{
+    (void) state; /* unused */
+    const char *yang_dep = "module x {"
+                    "  namespace uri:x;"
+                    "  prefix x;"
+                    "  import ietf-yang-library { prefix yl; }"
+                    "  leaf x { config false; type leafref { path /yl:modules-state/yl:module/yl:name; } } }";
+    struct ly_ctx *ctx;
+    const struct lys_module *mod;
+    struct lys_node_leaf *leaf;
+
+    ctx = ly_ctx_new(NULL);
+    assert_ptr_not_equal(ctx, NULL);
+
+    /* load module depending by leafref on internal ietf-yang-library */
+    assert_ptr_not_equal(lys_parse_mem(ctx, yang_dep, LYS_IN_YANG), NULL);
+
+    /* get the target leaf in ietf-yang-library */
+    mod = ctx->models.list[3];
+    /* magic: leaf = /yl:modules-state/yl:module/yl:name */
+    leaf = (struct lys_node_leaf *)mod->data->next->child->next->child->prev->child->child;
+    assert_true(leaf->backlinks && leaf->backlinks->number == 1);
+
+    /* clean the context ... */
+    ly_ctx_clean(ctx, NULL);
+
+    /* ... and check that the leafref backlinks are removed */
+    assert_true(!leaf->backlinks || !leaf->backlinks->number);
+
+    /* cleanup */
+    ly_ctx_destroy(ctx, NULL);
+}
+
+static void
+test_ly_ctx_remove_module(void **state)
+{
+    (void) state; /* unused */
+    const struct lys_module *mod;
+    struct ly_ctx *ctx;
+    uint32_t dict_used;
+    uint16_t setid;
+    int modules_count;
+
+    ctx = ly_ctx_new(TESTS_DIR"/api/files/");
+    /* remember starting values */
+    setid = ctx->models.module_set_id;
+    modules_count = ctx->models.used;
+    dict_used = ctx->dict.used;
+
+    ly_ctx_load_module(ctx, "x", NULL);
+    ly_ctx_remove_module(ctx, "x", NULL, NULL);
+
+    /* add a module */
+    mod = ly_ctx_load_module(ctx, "y", NULL);
+    assert_ptr_not_equal(mod, NULL);
+    assert_true(setid < ctx->models.module_set_id);
+    setid = ctx->models.module_set_id;
+    assert_int_equal(modules_count + 2, ctx->models.used);
+    assert_int_not_equal(dict_used, ctx->dict.used);
+
+    /* remove the imported module (x), that should cause removing also the loaded module (y) */
+    ly_ctx_remove_module(ctx, "x", NULL, NULL);
+    assert_true(setid < ctx->models.module_set_id);
+    setid = ctx->models.module_set_id;
+    assert_int_equal(modules_count, ctx->models.used);
+    assert_int_equal(dict_used, ctx->dict.used);
+
+    /* add a module again ... */
+    mod = ly_ctx_load_module(ctx, "y", NULL);
+    assert_ptr_not_equal(mod, NULL);
+    assert_true(setid < ctx->models.module_set_id);
+    setid = ctx->models.module_set_id;
+    assert_int_equal(modules_count + 2, ctx->models.used);
+    assert_int_not_equal(dict_used, ctx->dict.used);
+    /* ... now remove the loaded module, the imported module is supposed to be removed because it is not
+     * used in any other module */
+    ly_ctx_remove_module(ctx, "y", NULL, NULL);
+    assert_true(setid < ctx->models.module_set_id);
+    setid = ctx->models.module_set_id;
+    assert_int_equal(modules_count, ctx->models.used);
+    assert_int_equal(dict_used, ctx->dict.used);
+
+    /* add a module again ... */
+    mod = ly_ctx_load_module(ctx, "y", NULL);
+    assert_ptr_not_equal(mod, NULL);
+    assert_true(setid < ctx->models.module_set_id);
+    setid = ctx->models.module_set_id;
+    assert_int_equal(modules_count + 2, ctx->models.used);
+    assert_int_not_equal(dict_used, ctx->dict.used);
+    /* and mark even the imported module 'x' as implemented ... */
+    assert_int_equal(lys_set_implemented(mod->imp[0].module), EXIT_SUCCESS);
+    /* ... now remove the loaded module, the imported module is supposed to be kept because it is implemented */
+    ly_ctx_remove_module(ctx, "y", NULL, NULL);
+    assert_true(setid < ctx->models.module_set_id);
+    setid = ctx->models.module_set_id;
+    assert_int_equal(modules_count + 1, ctx->models.used);
+    assert_int_not_equal(dict_used, ctx->dict.used);
+    ly_ctx_clean(ctx, NULL);
+
+    /* add a module again ... */
+    mod = ly_ctx_load_module(ctx, "y", NULL);
+    assert_true(setid < ctx->models.module_set_id);
+    setid = ctx->models.module_set_id;
+    assert_int_equal(modules_count + 2, ctx->models.used);
+    assert_int_not_equal(dict_used, ctx->dict.used);
+    /* and add another one also importing module 'x' ... */
+    assert_ptr_not_equal(ly_ctx_load_module(ctx, "z", NULL), NULL);
+    assert_true(setid < ctx->models.module_set_id);
+    setid = ctx->models.module_set_id;
+    assert_int_equal(modules_count + 3, ctx->models.used);
+    /* ... now remove the first loaded module, the imported module is supposed to be kept because it is used
+     * by the second loaded module */
+    ly_ctx_remove_module(ctx, "y", NULL, NULL);
+    assert_true(setid < ctx->models.module_set_id);
+    setid = ctx->models.module_set_id;
+    assert_int_equal(modules_count + 2, ctx->models.used);
+    assert_int_not_equal(dict_used, ctx->dict.used);
+
+    /* cleanup */
+    ly_ctx_destroy(ctx, NULL);
+}
+
+static void
+test_ly_ctx_remove_module2(void **state)
+{
+    (void) state; /* unused */
+    const char *yang_main = "module x {"
+                    "  namespace uri:x;"
+                    "  prefix x;"
+                    "  feature x;"
+                    "  identity basex;"
+                    "  leaf x { type string; } }";
+    const char *yang_dep = "module y {"
+                    "  namespace uri:y;"
+                    "  prefix y;"
+                    "  import x { prefix x; }"
+                    "  feature y { if-feature x:x; }"
+                    "  identity y { base x:basex; }"
+                    "  leaf y { type leafref { path /x:x; } } }";
+    struct ly_ctx *ctx;
+    const struct lys_module *mod;
+    struct lys_node_leaf *leaf;
+
+    ctx = ly_ctx_new(NULL);
+    assert_ptr_not_equal(ctx, NULL);
+
+    /* load both modules, y depends on x and x will contain several backlinks to y */
+    assert_ptr_not_equal((mod = lys_parse_mem(ctx, yang_main, LYS_IN_YANG)), NULL);
+    assert_ptr_not_equal(lys_parse_mem(ctx, yang_dep, LYS_IN_YANG), NULL);
+
+    /* check that there are the expected backlinks */
+    leaf = (struct lys_node_leaf *)mod->data;
+    assert_true(mod->features[0].depfeatures && mod->features[0].depfeatures->number);
+    assert_true(mod->ident[0].der && mod->ident[0].der->number);
+    assert_true(leaf->backlinks && leaf->backlinks->number);
+
+    /* remove y ... */
+    assert_int_equal(ly_ctx_remove_module(ctx, "y", NULL, NULL), 0);
+
+    /* ... make sure that x is still present ... */
+    mod = ly_ctx_get_module(ctx, "x", NULL);
+    assert_ptr_not_equal(mod, NULL);
+    leaf = (struct lys_node_leaf *)mod->data;
+
+    /* ... and check that the backlinks in it were removed */
+    assert_true(!mod->features[0].depfeatures || !mod->features[0].depfeatures->number);
+    assert_true(!mod->ident[0].der || !mod->ident[0].der->number);
+    assert_true(!leaf->backlinks || !leaf->backlinks->number);
+
+    /* cleanup */
+    ly_ctx_destroy(ctx, NULL);
+}
+
+static void
 test_ly_ctx_get_module_by_ns(void **state)
 {
     (void) state; /* unused */
@@ -808,6 +1032,10 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_module, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_module_older, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_load_module, setup_f, teardown_f),
+        cmocka_unit_test(test_ly_ctx_remove_module),
+        cmocka_unit_test(test_ly_ctx_remove_module2),
+        cmocka_unit_test(test_ly_ctx_clean),
+        cmocka_unit_test(test_ly_ctx_clean2),
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_module_by_ns, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_submodule, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_submodule2, setup_f, teardown_f),

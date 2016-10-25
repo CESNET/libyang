@@ -46,13 +46,8 @@ static int reparse_expr(struct lyxp_expr *exp, uint16_t *exp_idx);
 static int eval_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lyxp_set *set,
                      int options);
 
-/**
- * @brief Frees a parsed XPath expression. \p exp should not be used afterwards.
- *
- * @param[in] exp Expression to free.
- */
-static void
-exp_free(struct lyxp_expr *exp)
+void
+lyxp_exp_free(struct lyxp_expr *exp)
 {
     uint16_t i;
 
@@ -2171,18 +2166,8 @@ parse_ncname(const char *ncname)
     return parsed;
 }
 
-/**
- * @brief Parse an XPath expression into a structure of tokens.
- *        Logs directly.
- *
- * http://www.w3.org/TR/1999/REC-xpath-19991116/ section 3.7
- *
- * @param[in] expr XPath expression to parse. It is duplicated.
- *
- * @return Filled expression structure or NULL on error.
- */
-static struct lyxp_expr *
-parse_expr(const char *expr)
+struct lyxp_expr *
+lyxp_parse_expr(const char *expr)
 {
     struct lyxp_expr *ret;
     uint16_t parsed = 0, tok_len, ncname_len;
@@ -2432,7 +2417,7 @@ parse_expr(const char *expr)
     return ret;
 
 error:
-    exp_free(ret);
+    lyxp_exp_free(ret);
     return NULL;
 }
 
@@ -2692,13 +2677,13 @@ xpath_current(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_n
         return -1;
     }
 
-    lyxp_set_cast(set, LYXP_SET_EMPTY, cur_node, options);
-
     if (options & LYXP_SNODE_ALL) {
         set_snode_clear_ctx(set);
 
         set_snode_insert_node(set, (struct lys_node *)cur_node, LYXP_NODE_ELEM);
     } else {
+        lyxp_set_cast(set, LYXP_SET_EMPTY, cur_node, options);
+
         /* position is filled later */
         set_insert_node(set, cur_node, 0, LYXP_NODE_ELEM, 0);
     }
@@ -7278,7 +7263,7 @@ lyxp_eval(const char *expr, const struct lyd_node *cur_node, enum lyxp_node_type
         return EXIT_FAILURE;
     }
 
-    exp = parse_expr(expr);
+    exp = lyxp_parse_expr(expr);
     if (!exp) {
         rc = -1;
         goto finish;
@@ -7309,7 +7294,7 @@ lyxp_eval(const char *expr, const struct lyd_node *cur_node, enum lyxp_node_type
     }
 
 finish:
-    exp_free(exp);
+    lyxp_exp_free(exp);
     return rc;
 }
 
@@ -7599,7 +7584,7 @@ lyxp_atomize(const char *expr, const struct lys_node *cur_snode, enum lyxp_node_
     uint16_t exp_idx = 0;
     int rc = -1;
 
-    exp = parse_expr(expr);
+    exp = lyxp_parse_expr(expr);
     if (!exp) {
         rc = -1;
         goto finish;
@@ -7629,7 +7614,7 @@ lyxp_atomize(const char *expr, const struct lys_node *cur_snode, enum lyxp_node_
     }
 
 finish:
-    exp_free(exp);
+    lyxp_exp_free(exp);
     return rc;
 }
 
@@ -7704,8 +7689,8 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set)
         when = ((struct lys_node_augment *)node)->when;
         break;
     default:
-        LOGINT;
-        return -1;
+        /* nothing to check */
+        break;
     }
 
     /* check "when" */

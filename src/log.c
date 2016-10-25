@@ -52,6 +52,8 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
 {
     char *msg, *bufdup = NULL;
     int free_flag = 0;
+    struct ly_err *e = ly_err_location();
+    struct ly_err_item *eitem;
 
     if (&ly_errno == &ly_errno_int) {
         msg = "Internal logger error";
@@ -66,38 +68,58 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
     } else {
         if (level == LY_LLERR) {
             /* store error message into msg buffer ... */
-            msg = ((struct ly_err *)&ly_errno)->msg;
+            msg = e->msg;
         } else if (!hide) {
             /* other messages are stored in working string buffer and not available for later access */
-            msg = ((struct ly_err *)&ly_errno)->buf;
+            msg = e->buf;
             if (ly_buf_used && msg[0]) {
                 bufdup = strndup(msg, LY_BUF_SIZE - 1);
             }
         } else { /* hide */
             return;
         }
-        vsnprintf(msg, LY_BUF_SIZE - 1, format, args);
-        msg[LY_BUF_SIZE - 1] = '\0';
+        if (msg != format) {
+            vsnprintf(msg, LY_BUF_SIZE - 1, format, args);
+            msg[LY_BUF_SIZE - 1] = '\0';
+        }
     }
 
     if (level == LY_LLERR) {
         if (!path) {
             /* erase previous path */
-            ((struct ly_err *)&ly_errno)->path_index = LY_BUF_SIZE - 1;
-            if (((struct ly_err *)&ly_errno)->path_obj != NULL + 1) {
-                ((struct ly_err *)&ly_errno)->path_obj = NULL;
+            e->path_index = LY_BUF_SIZE - 1;
+            if (e->path_obj != NULL + 1) {
+                e->path_obj = NULL;
             }
         }
 
         /* if the error-app-tag should be set, do it after calling LOGVAL */
-        ((struct ly_err *)&ly_errno)->apptag[0] = '\0';
+        e->apptag[0] = '\0';
+
+        /* store error information into a list */
+        if (!e->errlist) {
+            eitem = e->errlist = malloc(sizeof *eitem);
+        } else {
+            for (eitem = e->errlist; eitem->next; eitem = eitem->next);
+            eitem->next = malloc(sizeof *eitem->next);
+            eitem = eitem->next;
+        }
+        if (eitem) {
+            eitem->no = ly_errno;
+            eitem->code = ly_vecode;
+            eitem->msg = strdup(msg);
+            if (path) {
+                eitem->path = strdup(path);
+            } else {
+                eitem->path = NULL;
+            }
+            eitem->next = NULL;
+        }
     }
 
-    if (hide) {
-        if (free_flag) {
-            free(msg);
-        }
-        return;
+
+    if (hide || (level > ly_log_level)) {
+        goto clean;
     }
 
     if (ly_log_clb) {
@@ -109,6 +131,7 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
         }
     }
 
+clean:
     if (free_flag) {
         free(msg);
     } else if (bufdup) {
@@ -342,6 +365,7 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
                 prefix = NULL;
             }
             do {
+                sparent = ((struct lys_node *)elem)->parent;
                 elem = lys_parent((struct lys_node *)elem);
             } while (elem && (((struct lys_node *)elem)->nodetype == LYS_USES));
             break;
@@ -420,6 +444,11 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
             memcpy(&path[(*index)], prefix, len);
         }
         path[--(*index)] = '/';
+        if (elem_type == LY_VLOG_LYS && !elem && sparent && sparent->nodetype == LYS_AUGMENT) {
+            len = strlen(((struct lys_node_augment *)sparent)->target_name);
+            (*index) = (*index) - len;
+            memcpy(&path[(*index)], ((struct lys_node_augment *)sparent)->target_name, len);
+        }
     }
 }
 
@@ -488,4 +517,23 @@ log:
         break;
     }
     va_end(ap);
+}
+
+void
+ly_err_repeat(void)
+{
+    struct ly_err_item *i;
+
+    if (ly_log_level >= LY_LLERR) {
+        for (i = ly_err_location()->errlist; i; i = i->next) {
+            if (ly_log_clb) {
+                ly_log_clb(LY_LLERR, i->msg, i->path);
+            } else {
+                fprintf(stderr, "libyang[%d]: %s%s", LY_LLERR, i->msg, i->path ? " " : "\n");
+                if (i->path) {
+                    fprintf(stderr, "(path: %s)\n", i->path);
+                }
+            }
+        }
+    }
 }

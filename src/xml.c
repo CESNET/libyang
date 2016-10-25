@@ -908,7 +908,7 @@ lyxml_parse_elem(struct ly_ctx *ctx, const char *data, unsigned int *len, struct
     c = e;
 
 process:
-    ly_errno = LY_SUCCESS;
+    ly_err_clean();
     ign_xmlws(c);
     if (!strncmp("/>", c, 2)) {
         /* we are done, it was EmptyElemTag */
@@ -1128,7 +1128,7 @@ lyxml_parse_mem(struct ly_ctx *ctx, const char *data, int options)
     unsigned int len;
     struct lyxml_elem *root, *first = NULL, *next;
 
-    ly_errno = LY_SUCCESS;
+    ly_err_clean();
 
 repeat:
     /* process document */

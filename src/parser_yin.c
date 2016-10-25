@@ -92,7 +92,8 @@ read_yin_subnode(struct ly_ctx *ctx, struct lyxml_elem *node, const char *name)
 
 /* logs directly */
 static int
-fill_yin_iffeature(struct lys_node *parent, struct lyxml_elem *yin, struct lys_iffeature *iffeat, struct unres_schema *unres)
+fill_yin_iffeature(struct lys_node *parent, int parent_is_feature, struct lyxml_elem *yin, struct lys_iffeature *iffeat,
+                   struct unres_schema *unres)
 {
     int r;
     const char *value;
@@ -105,11 +106,11 @@ error:
         return EXIT_FAILURE;
     }
 
-    if (!(value = transform_schema2json(parent->module, value))) {
+    if (!(value = transform_iffeat_schema2json(parent->module, value))) {
         return EXIT_FAILURE;
     }
 
-    r = resolve_iffeature_compile(iffeat, value, parent, unres);
+    r = resolve_iffeature_compile(iffeat, value, parent, parent_is_feature, unres);
     lydict_remove(parent->module->ctx, value);
     if (r) {
         return EXIT_FAILURE;
@@ -192,7 +193,7 @@ fill_yin_identity(struct lys_module *module, struct lyxml_elem *yin, struct lys_
             }
             lydict_remove(module->ctx, value);
         } else if (!strcmp(node->name, "if-feature")) {
-            rc = fill_yin_iffeature((struct lys_node *)ident, node, &ident->iffeature[ident->iffeature_size], unres);
+            rc = fill_yin_iffeature((struct lys_node *)ident, 0, node, &ident->iffeature[ident->iffeature_size], unres);
             ident->iffeature_size++;
             if (rc) {
                 return EXIT_FAILURE;
@@ -528,7 +529,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
                 LY_TREE_FOR(next->child, node) {
                     if (!strcmp(node->name, "if-feature")) {
-                        rc = fill_yin_iffeature((struct lys_node *)type->parent, node,
+                        rc = fill_yin_iffeature((struct lys_node *)type->parent, 0, node,
                                                 &bits_sc->iffeature[bits_sc->iffeature_size], unres);
                         bits_sc->iffeature_size++;
                         if (rc) {
@@ -821,7 +822,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
                 LY_TREE_FOR(next->child, node) {
                     if (!strcmp(node->name, "if-feature")) {
-                        rc = fill_yin_iffeature((struct lys_node *)type->parent, node,
+                        rc = fill_yin_iffeature((struct lys_node *)type->parent, 0, node,
                                                 &enms_sc->iffeature[enms_sc->iffeature_size], unres);
                         enms_sc->iffeature_size++;
                         if (rc) {
@@ -1370,7 +1371,7 @@ fill_yin_feature(struct lys_module *module, struct lyxml_elem *yin, struct lys_f
         }
     }
     LY_TREE_FOR(yin->child, child) {
-        ret = fill_yin_iffeature((struct lys_node *)f, child, &f->iffeature[f->iffeature_size], unres);
+        ret = fill_yin_iffeature((struct lys_node *)f, 1, child, &f->iffeature[f->iffeature_size], unres);
         f->iffeature_size++;
         if (ret) {
             goto error;
@@ -2464,7 +2465,7 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
         } else if (!strcmp(child->name, "uses")) {
             node = read_yin_uses(module, (struct lys_node *)aug, child, unres);
         } else if (!strcmp(child->name, "choice")) {
-            node = read_yin_case(module, (struct lys_node *)aug, child, 1, unres);
+            node = read_yin_choice(module, (struct lys_node *)aug, child, 1, unres);
         } else if (!strcmp(child->name, "case")) {
             node = read_yin_case(module, (struct lys_node *)aug, child, 1, unres);
         } else if (!strcmp(child->name, "anyxml")) {
@@ -2498,7 +2499,7 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
 
     LY_TREE_FOR_SAFE(yin->child, next, child) {
         if (!strcmp(child->name, "if-feature")) {
-            ret = fill_yin_iffeature((struct lys_node *)aug, child, &aug->iffeature[aug->iffeature_size], unres);
+            ret = fill_yin_iffeature((struct lys_node *)aug, 0, child, &aug->iffeature[aug->iffeature_size], unres);
             aug->iffeature_size++;
             if (ret) {
                 goto error;
@@ -2794,7 +2795,7 @@ fill_yin_refine(struct lys_node *uses, struct lyxml_elem *yin, struct lys_refine
 
     LY_TREE_FOR(yin->child, sub) {
         if (!strcmp(sub->name, "if-feature")) {
-            r = fill_yin_iffeature(uses, sub, &rfn->iffeature[rfn->iffeature_size], unres);
+            r = fill_yin_iffeature(uses, 0, sub, &rfn->iffeature[rfn->iffeature_size], unres);
             rfn->iffeature_size++;
             if (r) {
                 goto error;
@@ -3227,7 +3228,7 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
     }
     LY_TREE_FOR(yin->child, sub) {
-        ret = fill_yin_iffeature(retval, sub, &cs->iffeature[cs->iffeature_size], unres);
+        ret = fill_yin_iffeature(retval, 0, sub, &cs->iffeature[cs->iffeature_size], unres);
         cs->iffeature_size++;
         if (ret) {
             goto error;
@@ -3414,7 +3415,7 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
     }
 
     LY_TREE_FOR(yin->child, sub) {
-        ret = fill_yin_iffeature(retval, sub, &choice->iffeature[choice->iffeature_size], unres);
+        ret = fill_yin_iffeature(retval, 0, sub, &choice->iffeature[choice->iffeature_size], unres);
         choice->iffeature_size++;
         if (ret) {
             goto error;
@@ -3562,7 +3563,7 @@ read_yin_anydata(struct lys_module *module, struct lys_node *parent, struct lyxm
                 goto error;
             }
         } else if (!strcmp(sub->name, "if-feature")) {
-            r = fill_yin_iffeature(retval, sub, &anyxml->iffeature[anyxml->iffeature_size], unres);
+            r = fill_yin_iffeature(retval, 0, sub, &anyxml->iffeature[anyxml->iffeature_size], unres);
             anyxml->iffeature_size++;
             if (r) {
                 goto error;
@@ -3731,7 +3732,7 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 goto error;
             }
         } else if (!strcmp(sub->name, "if-feature")) {
-            r = fill_yin_iffeature(retval, sub, &leaf->iffeature[leaf->iffeature_size], unres);
+            r = fill_yin_iffeature(retval, 0, sub, &leaf->iffeature[leaf->iffeature_size], unres);
             leaf->iffeature_size++;
             if (r) {
                 goto error;
@@ -3974,7 +3975,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
                 goto error;
             }
         } else if (!strcmp(sub->name, "if-feature")) {
-            r = fill_yin_iffeature(retval, sub, &llist->iffeature[llist->iffeature_size], unres);
+            r = fill_yin_iffeature(retval, 0, sub, &llist->iffeature[llist->iffeature_size], unres);
             llist->iffeature_size++;
             if (r) {
                 goto error;
@@ -4272,7 +4273,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 goto error;
             }
         } else if (!strcmp(sub->name, "if-feature")) {
-            r = fill_yin_iffeature(retval, sub, &list->iffeature[list->iffeature_size], unres);
+            r = fill_yin_iffeature(retval, 0, sub, &list->iffeature[list->iffeature_size], unres);
             list->iffeature_size++;
             if (r) {
                 goto error;
@@ -4498,7 +4499,7 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
                 goto error;
             }
         } else if (!strcmp(sub->name, "if-feature")) {
-            r = fill_yin_iffeature(retval, sub, &cont->iffeature[cont->iffeature_size], unres);
+            r = fill_yin_iffeature(retval, 0, sub, &cont->iffeature[cont->iffeature_size], unres);
             cont->iffeature_size++;
             if (r) {
                 goto error;
@@ -4942,7 +4943,7 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
                 goto error;
             }
         } else if (!strcmp(sub->name, "if-feature")) {
-            r = fill_yin_iffeature(retval, sub, &notif->iffeature[notif->iffeature_size], unres);
+            r = fill_yin_iffeature(retval, 0, sub, &notif->iffeature[notif->iffeature_size], unres);
             notif->iffeature_size++;
             if (r) {
                 goto error;
@@ -5115,7 +5116,7 @@ read_yin_rpc_action(struct lys_module *module, struct lys_node *parent, struct l
                 goto error;
             }
         } else if (!strcmp(sub->name, "if-feature")) {
-            r = fill_yin_iffeature(retval, sub, &rpc->iffeature[rpc->iffeature_size], unres);
+            r = fill_yin_iffeature(retval, 0, sub, &rpc->iffeature[rpc->iffeature_size], unres);
             rpc->iffeature_size++;
             if (r) {
                 goto error;
@@ -5258,7 +5259,7 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 goto error;
             }
         } else if (!strcmp(sub->name, "if-feature")) {
-            r = fill_yin_iffeature(retval, sub, &uses->iffeature[uses->iffeature_size], unres);
+            r = fill_yin_iffeature(retval, 0, sub, &uses->iffeature[uses->iffeature_size], unres);
             uses->iffeature_size++;
             if (r) {
                 goto error;
@@ -5896,6 +5897,10 @@ yin_read_module(struct ly_ctx *ctx, const char *data, const char *revision, int 
     /* check root element */
     if (!yin->name || strcmp(yin->name, "module")) {
         LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, yin->name);
+        if (ly_strequal("submodule", yin->name, 0)) {
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
+                   "Submodules are parsed automatically as includes to the main module, do not parse them separately.");
+        }
         goto error;
     }
 

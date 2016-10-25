@@ -318,7 +318,7 @@ yang_read_if_feature(struct lys_module *module, void *ptr, char *value, struct u
         return EXIT_FAILURE;
     }
 
-    if (!(exp = transform_schema2json(module, value))) {
+    if (!(exp = transform_iffeat_schema2json(module, value))) {
         free(value);
         return EXIT_FAILURE;
     }
@@ -327,32 +327,34 @@ yang_read_if_feature(struct lys_module *module, void *ptr, char *value, struct u
     switch (type) {
     case FEATURE_KEYWORD:
         f = (struct lys_feature *) ptr;
-        ret = resolve_iffeature_compile(&f->iffeature[f->iffeature_size], exp, (struct lys_node *)f, unres);
+        ret = resolve_iffeature_compile(&f->iffeature[f->iffeature_size], exp, (struct lys_node *)f, 1, unres);
         f->iffeature_size++;
         break;
     case IDENTITY_KEYWORD:
         i = (struct lys_ident *) ptr;
-        ret = resolve_iffeature_compile(&i->iffeature[i->iffeature_size], exp, (struct lys_node *)i, unres);
+        ret = resolve_iffeature_compile(&i->iffeature[i->iffeature_size], exp, (struct lys_node *)i, 0, unres);
         i->iffeature_size++;
         break;
     case ENUM_KEYWORD:
         e = &((struct yang_type *)ptr)->type->info.enums.enm[((struct yang_type *)ptr)->type->info.enums.count - 1];
-        ret = resolve_iffeature_compile(&e->iffeature[e->iffeature_size], exp, (struct lys_node *)((struct yang_type *)ptr)->type->parent, unres);
+        ret = resolve_iffeature_compile(&e->iffeature[e->iffeature_size], exp,
+                                        (struct lys_node *)((struct yang_type *)ptr)->type->parent, 0, unres);
         e->iffeature_size++;
         break;
     case BIT_KEYWORD:
         b = &((struct yang_type *)ptr)->type->info.bits.bit[((struct yang_type *)ptr)->type->info.bits.count - 1];
-        ret = resolve_iffeature_compile(&b->iffeature[b->iffeature_size], exp, (struct lys_node *)((struct yang_type *)ptr)->type->parent, unres);
+        ret = resolve_iffeature_compile(&b->iffeature[b->iffeature_size], exp,
+                                        (struct lys_node *)((struct yang_type *)ptr)->type->parent, 0, unres);
         b->iffeature_size++;
         break;
     case REFINE_KEYWORD:
         r = &((struct lys_node_uses *)ptr)->refine[((struct lys_node_uses *)ptr)->refine_size - 1];
-        ret = resolve_iffeature_compile(&r->iffeature[r->iffeature_size], exp, (struct lys_node *) ptr, unres);
+        ret = resolve_iffeature_compile(&r->iffeature[r->iffeature_size], exp, (struct lys_node *) ptr, 0, unres);
         r->iffeature_size++;
         break;
     default:
         n = (struct lys_node *) ptr;
-        ret = resolve_iffeature_compile(&n->iffeature[n->iffeature_size], exp, n, unres);
+        ret = resolve_iffeature_compile(&n->iffeature[n->iffeature_size], exp, n, 0, unres);
         n->iffeature_size++;
         break;
     }

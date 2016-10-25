@@ -609,6 +609,7 @@ struct lys_iffeature {
  *     -------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *     1 LYS_USESGRP      | | | | | | | | | | | | |x| | | | | |
  *       LYS_AUTOASSIGNED | | | | | | | | | | | | | | | |x| | |
+ *       LYS_IMPLICIT     | | | | | | | | | |x|x| | | | | | | |
  *       LYS_CONFIG_W     |x|x|x|x|x|x| | | | | | | | | | | |x|
  *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *     2 LYS_CONFIG_R     |x|x|x|x|x|x| | | | | | | | | | | |x|
@@ -660,6 +661,7 @@ struct lys_iffeature {
 #define LYS_AUTOASSIGNED 0x01        /**< value was auto-assigned, applicable only to
                                           ::lys_type enum and bits flags */
 #define LYS_USESGRP      0x01        /**< flag for resolving uses in groupings, applicable only to ::lys_node_uses */
+#define LYS_IMPLICIT     0x01        /**< flag for implicitely created LYS_INPUT and LYS_OUTPUT nodes */
 #define LYS_VALID_DEP    0x200       /**< flag marking nodes, whose validation (when, must expressions or leafrefs)
                                           depends on nodes outside their subtree (applicable only to RPCs,
                                           notifications, and actions) */
@@ -808,8 +810,6 @@ struct lys_node_choice {
  * structure except the last #dflt member, which is replaced by ::lys_node_leaflist#min and ::lys_node_leaflist#max
  * members.
  *
- * ::lys_node_leaf is terminating node in the schema tree, so the #child member value is always NULL.
- *
  * The leaf schema node can be instantiated in the data tree, so the ::lys_node_leaf can be directly referenced from
  * ::lyd_node#schema.
  */
@@ -828,9 +828,9 @@ struct lys_node_leaf {
 
     LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_LEAF */
     struct lys_node *parent;         /**< pointer to the parent node, NULL in case of a top level node */
-    struct lys_node *child;          /**< always NULL except the leaf/leaflist is target of a leafref, in that case
-                                          the pointer stores set of ::lys_node leafref objects with path referencing
-                                          the current ::lys_node_leaf */
+    struct ly_set *backlinks;        /**< replacement for ::lys_node's child member, it is NULL except the leaf/leaflist
+                                          is target of a leafref. In that case the set stores ::lys_node leafref objects
+                                          with path referencing the current ::lys_node_leaf */
     struct lys_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
     struct lys_node *prev;           /**< pointer to the previous sibling node \note Note that this pointer is
                                           never NULL. If there is no sibling node, pointer points to the node
@@ -1158,11 +1158,21 @@ struct lys_node_case {
  * ::lys_node#iffeature_size is replaced by the #tpdf_size member and ::lys_node#iffeature is replaced by the #tpdf
  * member.
  *
+ * Note, that the the inout nodes are always present in ::lys_node_rpc_action node as its input and output children
+ * nodes. If they are not specified explicitely in the schema, they are implicitly added to serve as possible target
+ * of augments. These implicit elements can be recognised via #LYS_IMPLICIT bit in flags member of the input/output
+ * node.
  */
 struct lys_node_inout {
     const char *name;
     void *fill1[2];                  /**< padding for compatibility with ::lys_node - dsc and ref */
-    uint16_t fill2[1];               /**< padding for compatibility with ::lys_node - flags and nacm */
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) - only LYS_IMPLICIT is applicable */
+    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) - not used */
+#else
+    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) - not used */
+    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) - only LYS_IMPLICIT is applicable  */
+#endif
     struct lys_module *module;       /**< link to the node's data model */
 
     LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_INPUT or #LYS_OUTPUT */
@@ -1224,10 +1234,14 @@ struct lys_node_notif {
 };
 
 /**
- * @brief Schema rpc node structure.
+ * @brief Schema rpc/action node structure.
  *
  * Beginning of the structure is completely compatible with ::lys_node structure extending it by the #tpdf_size and
  * #tpdf members.
+ *
+ * Note, that the rpc/action node has always input and output children nodes. If they are not specified explicitly in
+ * the schema, they are implicitly added to server as possible target of augments. These implicit elements can be
+ * recognized via #LYS_IMPLICIT bit in flags member of the input/output node.
  */
 struct lys_node_rpc_action {
     const char *name;                /**< node name (mandatory) */
@@ -1472,6 +1486,7 @@ struct lys_feature {
 
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
     struct lys_iffeature *iffeature; /**< array of if-feature expressions */
+    struct ly_set *depfeatures;      /**< set of other features depending on this one */
 };
 
 /**
@@ -1508,11 +1523,10 @@ struct lys_ident {
 
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
     uint8_t base_size;               /**< number of elements in the #base array */
-    uint16_t der_size;               /**< number of elements in the #der array */
     struct lys_iffeature *iffeature; /**< array of if-feature expressions */
 
     struct lys_ident **base;         /**< array of pointers to the base identities */
-    struct lys_ident **der;          /**< array of pointers to the derived identities */
+    struct ly_set *der;              /**< set of backlinks to the derived identities */
 };
 
 /**
@@ -1699,6 +1713,14 @@ struct ly_set *lys_node_xpath_atomize(const struct lys_node *node, int options);
 
 #define LYXP_RECURSIVE 0x01 /**< lys_node_xpath_atomize() option to return schema node dependencies of all the expressions in the subtree */
 #define LYXP_NO_LOCAL 0x02  /**< lys_node_xpath_atomize() option to discard schema node dependencies from the local subtree */
+
+/**
+ * @brief Build path (usable as XPath) of the schema node.
+ * @param[in] node Schema node to be processed.
+ * @return NULL on error, on success the buffer for the resulting path is allocated and caller is supposed to free it
+ * with free().
+ */
+char *lys_path(const struct lys_node *node);
 
 /**
  * @brief Return parent node in the schema tree.

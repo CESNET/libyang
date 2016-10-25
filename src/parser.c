@@ -218,26 +218,10 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
     char *wd;
     DIR *dir = NULL;
     struct dirent *file;
-    char *match_name = NULL;
+    char *match_name = NULL, *dot, *rev;
     LYS_INFORMAT format, match_format = 0;
     struct lys_module *result = NULL;
     int localsearch = 0;
-
-    if (module) {
-        /* searching for submodule, try if it is already loaded */
-        result = (struct lys_module *)ly_ctx_get_submodule2(module, name);
-        if (result) {
-            if (!revision || (result->rev_size && ly_strequal(result->rev[0].date, revision, 0))) {
-                /* success */
-                return result;
-            } else {
-                /* there is already another revision of the submodule */
-                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, result->rev[0].date, "revision");
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Multiple revisions of a submodule included.");
-                return NULL;
-            }
-        }
-    }
 
     len = strlen(name);
     if (ctx->models.search_path) {
@@ -259,7 +243,7 @@ opendir_search:
     dir_len = strlen(wd);
     LOGVRB("Searching for \"%s\" in %s.", name, wd);
     if (!dir) {
-        LOGWRN("Unable to open directory \"%s\" for searching referenced modules (%s)",
+        LOGWRN("Unable to open directory \"%s\" for searching referenced modules (%s).",
                wd, strerror(errno));
     } else {
         while ((file = readdir(dir))) {
@@ -342,32 +326,39 @@ opendir_search:
     }
 
     if (!match_name) {
-        LOGERR(LY_ESYS, "Data model \"%s\" not found (neither in search path \"%s\" nor in working directory \"%s\")",
-               name, ctx->models.search_path, wd);
+        if (!module) {
+            result = (struct lys_module *)ly_ctx_get_module(ctx, name, revision);
+        }
+        if (!result) {
+            LOGERR(LY_ESYS, "Data model \"%s\" not found.", name, ctx->models.search_path, wd);
+        }
         goto cleanup;
     }
 
 matched:
     /* cut the format for now */
-    strrchr(match_name, '.')[1] = '\0';
+    dot = strrchr(match_name, '.');
+    dot[1] = '\0';
 
-    /* check that the same file was not already loaded */
-    for (i = 0; i < ctx->models.used; ++i) {
-        if (ctx->models.list[i]->filepath && !strcmp(name, ctx->models.list[i]->name)
-                && !strncmp(match_name, ctx->models.list[i]->filepath, strlen(match_name))) {
-            result = ctx->models.list[i];
-            if (implement && !result->implemented) {
-                /* make it implemented now */
-                if (lys_set_implemented(result)) {
-                    result = NULL;
+    /* check that the same file was not already loaded - it make sense only in case of loading the newest revision */
+    if (!revision) {
+        for (i = 0; i < ctx->models.used; ++i) {
+            if (ctx->models.list[i]->filepath && !strcmp(name, ctx->models.list[i]->name)
+                    && !strncmp(match_name, ctx->models.list[i]->filepath, strlen(match_name))) {
+                result = ctx->models.list[i];
+                if (implement && !result->implemented) {
+                    /* make it implemented now */
+                    if (lys_set_implemented(result)) {
+                        result = NULL;
+                    }
                 }
+                goto cleanup;
             }
-            goto cleanup;
         }
     }
 
     /* add the format back */
-    match_name[strlen(match_name)] = 'y';
+    dot[1] = 'y';
 
     /* open the file */
     fd = open(match_name, O_RDONLY);
@@ -386,6 +377,22 @@ matched:
 
     if (!result) {
         goto cleanup;
+    }
+
+    /* check that name and revision match filename */
+    rev = strchr(match_name, '@');
+    /* name */
+    len = strlen(result->name);
+    if (strncmp(match_name, result->name, len) ||
+            ((rev && rev != &match_name[len]) || (!rev && dot != &match_name[len]))) {
+        LOGWRN("File name \"%s\" does not match module name \"%s\".", match_name, result->name);
+    }
+    if (rev) {
+        len = dot - ++rev;
+        if (!result->rev_size || len != 10 || strncmp(result->rev[0].date, rev, len)) {
+            LOGWRN("File name \"%s\" does not match module revision \"%s\".", match_name,
+                   result->rev_size ? result->rev[0].date : "none");
+        }
     }
 
     result->filepath = lydict_insert_zc(ctx, match_name);
@@ -1198,8 +1205,7 @@ lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int res
 
             if (!lyp_parse_value_type(leaf, type, resolve)) {
                 /* success, erase set ly_errno and ly_vecode */
-                ly_errno = LY_SUCCESS;
-                ly_vecode = LYVE_SUCCESS;
+                ly_err_clean();
                 break;
             }
 
@@ -1809,7 +1815,7 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
 {
     int i;
     struct lys_module *dup = NULL;
-    LY_LOG_LEVEL verb;
+
 
     /* check for importing a single module in multiple revisions */
     for (i = 0; i < module->imp_size; i++) {
@@ -1846,39 +1852,14 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
         return -1;
     }
 
-    /* try to load the module */
-    if (!imp->rev[0]) {
-        /* no revision specified, try to load the newest module from the search locations into the context */
-        verb = ly_log_level;
-        ly_verb(LY_LLSILENT);
-        ly_ctx_load_sub_module(module->ctx, NULL, value, imp->rev[0] ? imp->rev : NULL, 0, NULL);
-        ly_verb(verb);
-        if (ly_errno == LY_ESYS) {
-            /* it is ok, that the e.g. input file was not found */
-            ly_errno = LY_SUCCESS;
-        } else if (ly_errno != LY_SUCCESS) {
-            /* but it is not ok if e.g. the input data were found and they are invalid */
-            lyp_check_circmod_pop(module);
-            return -1;
-        }
-
-        /* If the loaded module (if any) is really the newest, it will be loaded on the next line
-         * by ly_ctx_get_module() */
-    }
-    imp->module = (struct lys_module *)ly_ctx_get_module(module->ctx, value, imp->rev[0] ? imp->rev : NULL);
-    if (!imp->module) {
-        /* whether to use a user callback is decided in the function */
-        imp->module = (struct lys_module *)ly_ctx_load_sub_module(module->ctx, NULL, value, imp->rev[0] ? imp->rev : NULL, 0, NULL);
-    }
+    /* load module - in specific situations it tries to get the module from the context */
+    imp->module = (struct lys_module *)ly_ctx_load_sub_module(module->ctx, NULL, value, imp->rev[0] ? imp->rev : NULL, 0, NULL);
 
     /* update the list of currently being parsed modules */
     lyp_check_circmod_pop(module);
 
     /* check the result */
     if (!imp->module) {
-        if (!ly_vecode) {
-            LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "import");
-        }
         LOGERR(LY_EVALID, "Importing \"%s\" module into \"%s\" failed.", value, module->name);
         return -1;
     }
