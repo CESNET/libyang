@@ -1023,7 +1023,19 @@ type_end: ';'
       '}'
   ;
 
-type_body_stmts: some_restrictions
+type_body_stmts: some_restrictions { if (((struct yang_type *)actual)->base == LY_TYPE_STRING &&
+                                         ((struct yang_type *)actual)->type->info.str.pat_count) {
+                                       struct lys_restr *tmp;
+
+                                       tmp = realloc(((struct yang_type *)actual)->type->info.str.patterns,
+                                                     ((struct yang_type *)actual)->type->info.str.pat_count * sizeof *tmp);
+                                       if (!tmp) {
+                                         LOGMEM;
+                                         YYABORT;
+                                       }
+                                       ((struct yang_type *)actual)->type->info.str.patterns = tmp;
+                                     }
+                                   }
   | enum_specification
   | bits_specification
   ;
@@ -1084,10 +1096,7 @@ some_restrictions: @EMPTYDIR@  { if (read_all) {
                                    }
                                  }
   |  some_restrictions length_stmt
-  |  some_restrictions pattern_stmt { if (!read_all) {
-                                        size_arrays->node[$1].pattern++; /* count of pattern*/
-                                      }
-                                    }
+  |  some_restrictions pattern_stmt
   |  some_restrictions fraction_digits_stmt
   |  some_restrictions range_stmt stmtsep
   |  some_restrictions union_spec type_stmt stmtsep { if (read_all) {
@@ -1188,26 +1197,24 @@ message_opt_stmt: @EMPTYDIR@ { switch (actual_type) {
                                        s = NULL;
                                      }
 
-pattern_stmt: PATTERN_KEYWORD sep pattern_arg_str pattern_end stmtsep { if (read_all) {
-                                                                          if (yang_read_pattern(trg, actual, $3, $4)) {
-                                                                            YYABORT;
-                                                                          }
-                                                                          actual = yang_type;
-                                                                          actual_type = TYPE_KEYWORD;
+pattern_stmt: PATTERN_KEYWORD sep pattern_arg_str pattern_end stmtsep { if (yang_read_pattern(trg, actual, $3, $4)) {
+                                                                          YYABORT;
                                                                         }
+                                                                        actual = yang_type;
+                                                                        actual_type = TYPE_KEYWORD;
                                                                       }
 
-pattern_arg_str: string { if (read_all) {
-                            struct yang_type *tmp = (struct yang_type *)actual;
-
-                            yang_type = actual;
-                            actual = &tmp->type->info.str.patterns[tmp->type->info.str.pat_count];
-                            tmp->type->info.str.pat_count++;
-                            $$ = s;
-                            s = NULL;
-                          } else {
-                            $$ = NULL;
+pattern_arg_str: string { if (((struct yang_type *)actual)->base != 0 && ((struct yang_type *)actual)->base != LY_TYPE_STRING) {
+                            free(s);
+                            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Unexpected pattern statement.");
+                            YYABORT;
                           }
+                          ((struct yang_type *)actual)->base = LY_TYPE_STRING;
+                          yang_type = actual;
+                          YANG_ADDELEM(((struct yang_type *)actual)->type->info.str.patterns,
+                                       ((struct yang_type *)actual)->type->info.str.pat_count);
+                          $$ = s;
+                          s = NULL;
                         }
 
 pattern_end: ';' { $$ = 0x06; }
@@ -1216,49 +1223,45 @@ pattern_end: ';' { $$ = 0x06; }
      '}' { $$ = $3; }
 
 pattern_opt_stmt: @EMPTYDIR@ { $$ = 0x06; /* ACK */ }
-  |  pattern_opt_stmt modifier_stmt { if (read_all) {
-                                        if (trg->version < 2) {
-                                          LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "modifier");
-                                          YYABORT;
-                                        }
-                                        if ($1 != 0x06) {
-                                          LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "modifier", "pattern");
-                                          YYABORT;
-                                        }
-                                        $$ = $2;
+  |  pattern_opt_stmt modifier_stmt { if (trg->version < 2) {
+                                        LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "modifier");
+                                        YYABORT;
                                       }
+                                      if ($1 != 0x06) {
+                                        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "modifier", "pattern");
+                                        YYABORT;
+                                      }
+                                      $$ = $2;
                                     }
-  |  pattern_opt_stmt error_message_stmt { if (read_all && yang_read_message(trg, actual, s, "pattern", ERROR_MESSAGE_KEYWORD)) {
+  |  pattern_opt_stmt error_message_stmt { if (yang_read_message(trg, actual, s, "pattern", ERROR_MESSAGE_KEYWORD)) {
                                              YYABORT;
                                            }
                                            s = NULL;
                                          }
-  |  pattern_opt_stmt error_app_tag_stmt { if (read_all && yang_read_message(trg, actual, s, "pattern", ERROR_APP_TAG_KEYWORD)) {
+  |  pattern_opt_stmt error_app_tag_stmt { if (yang_read_message(trg, actual, s, "pattern", ERROR_APP_TAG_KEYWORD)) {
                                              YYABORT;
                                            }
                                            s = NULL;
                                          }
-  |  pattern_opt_stmt description_stmt { if (read_all && yang_read_description(trg, actual, s, "pattern")) {
+  |  pattern_opt_stmt description_stmt { if (yang_read_description(trg, actual, s, "pattern")) {
                                            YYABORT;
                                           }
                                           s = NULL;
                                         }
-  |  pattern_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, actual, s, "pattern")) {
+  |  pattern_opt_stmt reference_stmt { if (yang_read_reference(trg, actual, s, "pattern")) {
                                          YYABORT;
                                        }
                                        s = NULL;
                                      }
 
-modifier_stmt: MODIFIER_KEYWORD sep string stmtend { if (read_all) {
-                                                       if (!strcmp(s, "invert-match")) {
-                                                         $$ = 0x15;
-                                                         free(s);
-                                                         s = NULL;
-                                                       } else {
-                                                         LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, s);
-                                                         free(s);
-                                                         YYABORT;
-                                                       }
+modifier_stmt: MODIFIER_KEYWORD sep string stmtend { if (!strcmp(s, "invert-match")) {
+                                                       $$ = 0x15;
+                                                       free(s);
+                                                       s = NULL;
+                                                     } else {
+                                                       LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, s);
+                                                       free(s);
+                                                       YYABORT;
                                                      }
                                                    }
 
