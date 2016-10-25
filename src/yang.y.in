@@ -597,55 +597,53 @@ description_stmt: DESCRIPTION_KEYWORD sep string stmtend;
 
 reference_stmt: REFERENCE_KEYWORD sep string stmtend;
 
-revision_stmts: @EMPTYDIR@ { if (read_all && size_arrays->rev) {
-                           trg->rev = calloc(size_arrays->rev, sizeof *trg->rev);
-                           if (!trg->rev) {
-                             LOGMEM;
-                             YYABORT;
-                           }
-                         }
-                       }
-  | revision_stmts revision_stmt stmtsep;
+revision_stmts: revision_stmt { if (trg->rev_size) {
+                                  struct lys_revision *tmp;
+
+                                  tmp = realloc(trg->rev, trg->rev_size * sizeof *trg->rev);
+                                  if (!tmp) {
+                                    LOGMEM;
+                                    YYABORT;
+                                  }
+                                  trg->rev = tmp;
+                                }
+                              }
 
 
-revision_stmt: REVISION_KEYWORD sep date_arg_str { if (read_all) {
-                                                     if(!(actual=yang_read_revision(trg,s))) {YYABORT;}
-                                                     s=NULL;
-                                                   } else {
-                                                     size_arrays->rev++;
-                                                   }
-                                                 }
-               revision_end;
+revision_arg_stmt: date_arg_str { YANG_ADDELEM(trg->rev, trg->rev_size);
+                                  yang_read_revision(trg, s, actual);
+                                }
+
+revision_stmt: @EMPTYDIR@
+  |  revision_stmt REVISION_KEYWORD sep revision_arg_stmt revision_end stmtsep
 
 revision_end: ';'
-  | '{' stmtsep { actual_type = REVISION_KEYWORD; }
+  | '{' stmtsep
         revision_opt_stmt
      '}'
   ;
 
 revision_opt_stmt: @EMPTYDIR@
-  |  revision_opt_stmt description_stmt { if (read_all && yang_read_description(trg, actual, s, "revision")) {
+  |  revision_opt_stmt description_stmt { if (yang_read_description(trg, actual, s, "revision")) {
                                             YYABORT;
                                           }
                                           s = NULL;
                                         }
-  |  revision_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, actual, s, "revision")) {
+  |  revision_opt_stmt reference_stmt { if (yang_read_reference(trg, actual, s, "revision")) {
                                           YYABORT;
                                         }
                                         s = NULL;
                                       }
   ;
 
-date_arg_str: REVISION_DATE { if (read_all) {
-                                s = strdup(yyget_text(scanner));
-                                if (!s) {
-                                  LOGMEM;
-                                  YYABORT;
-                                }
+date_arg_str: REVISION_DATE { s = strdup(yyget_text(scanner));
+                              if (!s) {
+                                LOGMEM;
+                                YYABORT;
                               }
                             }
               optsep
-  | string_1 { if (read_all && lyp_check_date(s)) {
+  | string_1 { if (lyp_check_date(s)) {
                    free(s);
                    YYABORT;
                }

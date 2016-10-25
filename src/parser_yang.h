@@ -135,7 +135,7 @@ int yang_read_description(struct lys_module *module, void *node, char *value, ch
 
 int yang_read_reference(struct lys_module *module, void *node, char *value, char *where);
 
-void *yang_read_revision(struct lys_module *module, char *value);
+void yang_read_revision(struct lys_module *module, char *value, struct lys_revision *retval);
 
 void *yang_read_feature(struct lys_module *module, char *value);
 

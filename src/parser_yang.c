@@ -244,15 +244,11 @@ yang_read_reference(struct lys_module *module, void *node, char *value, char *wh
     return ret;
 }
 
-void *
-yang_read_revision(struct lys_module *module, char *value)
+void
+yang_read_revision(struct lys_module *module, char *value, struct lys_revision *retval)
 {
-    struct lys_revision *retval;
-
-    retval = &module->rev[module->rev_size];
-
     /* first member of array is last revision */
-    if (module->rev_size && strcmp(module->rev[0].date, value) < 0) {
+    if ((module->rev_size - 1) && strcmp(module->rev[0].date, value) < 0) {
         memcpy(retval->date, module->rev[0].date, LY_REV_SIZE);
         memcpy(module->rev[0].date, value, LY_REV_SIZE);
         retval->dsc = module->rev[0].dsc;
@@ -263,9 +259,7 @@ yang_read_revision(struct lys_module *module, char *value)
     } else {
         memcpy(retval->date, value, LY_REV_SIZE);
     }
-    module->rev_size++;
     free(value);
-    return retval;
 }
 
 int
