@@ -737,7 +737,8 @@ tree_print_model(struct lyout *out, const struct lys_module *module)
     /* augment */
     for (i = 0; i < module->augment_size; i++) {
         if ((module->type && (module->augment[i].target->module == module))
-                || (!module->type && (lys_node_module(module->augment[i].target) == module))) {
+                || (!module->type && (lys_node_module(module->augment[i].target) == module))
+                || lys_is_disabled((struct lys_node *)&module->augment[i], 0)) {
             /* submodule, target is our submodule or module, target is in our module or any submodules */
             continue;
         }
@@ -745,7 +746,7 @@ tree_print_model(struct lyout *out, const struct lys_module *module)
         ly_print(out, "augment %s:\n", module->augment[i].target_name);
         LY_TREE_FOR(module->augment[i].child, node) {
             /* submodule, foreign augments */
-            if (module->type && (node->module != module)) {
+            if (node->parent != (struct lys_node *)&module->augment[i]) {
                 continue;
             }
             tree_print_snode(out, module, level, indent, max_child_len, node,
