@@ -1035,10 +1035,10 @@ type_body_stmts: some_restrictions { if (((struct yang_type *)actual)->base == L
                                        }
                                        ((struct yang_type *)actual)->type->info.str.patterns = tmp;
                                      }
-                                     if ((((struct yang_type *)actual)->base == LY_TYPE_UNION) {
+                                     if (((struct yang_type *)actual)->base == LY_TYPE_UNION) {
                                        struct lys_type *tmp;
 
-                                       tmp = realloc(((struct yang_type *)actual)->type->info.uni.types
+                                       tmp = realloc(((struct yang_type *)actual)->type->info.uni.types,
                                                      ((struct yang_type *)actual)->type->info.uni.count * sizeof *tmp);
                                        if (!tmp) {
                                          LOGMEM;
@@ -1046,31 +1046,45 @@ type_body_stmts: some_restrictions { if (((struct yang_type *)actual)->base == L
                                        }
                                        ((struct yang_type *)actual)->type->info.uni.types = tmp;
                                      }
+                                     if (((struct yang_type *)actual)->base == LY_TYPE_IDENT) {
+                                       struct lys_ident **tmp;
+
+                                       tmp = realloc(((struct yang_type *)actual)->type->info.ident.ref,
+                                                     ((struct yang_type *)actual)->type->info.ident.count* sizeof *tmp);
+                                       if (!tmp) {
+                                         LOGMEM;
+                                         YYABORT;
+                                       }
+                                       ((struct yang_type *)actual)->type->info.ident.ref = tmp;
+                                     }
                                    }
   | enum_specification
   | bits_specification
   ;
 
 some_restrictions: @EMPTYDIR@
-  |  some_restrictions require_instance_stmt { if (read_all && yang_read_require_instance(actual, $2)) {
+  |  some_restrictions require_instance_stmt { if (yang_read_require_instance(actual, $2)) {
                                                  YYABORT;
                                                }
                                              }
-  |  some_restrictions path_stmt { if (read_all) {
-                                     /* leafref_specification */
-                                     if (yang_read_leafref_path(trg, actual, s)) {
-                                       YYABORT;
-                                     }
-                                     s = NULL;
+  |  some_restrictions path_stmt { /* leafref_specification */
+                                   if (yang_read_leafref_path(trg, actual, s)) {
+                                     YYABORT;
                                    }
+                                   s = NULL;
                                  }
-  |  some_restrictions base_stmt { if (read_all) {
-                                     /* identityref_specification */
-                                     if (yang_read_identyref(trg, actual, s , unres)) {
-                                       YYABORT;
-                                     }
-                                     s = NULL;
+  |  some_restrictions base_stmt { /* identityref_specification */
+                                   if (((struct yang_type *)actual)->base && ((struct yang_type *)actual)->base != LY_TYPE_IDENT) {
+                                     LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "base");
+                                     return EXIT_FAILURE;
                                    }
+                                   ((struct yang_type *)actual)->base = LY_TYPE_IDENT;
+                                   yang_type = actual;
+                                   YANG_ADDELEM(((struct yang_type *)actual)->type->info.ident.ref,
+                                                ((struct yang_type *)actual)->type->info.ident.count);
+                                   *((struct lys_ident **)actual) = (struct lys_ident *)s;
+                                   actual = yang_type;
+                                   s = NULL;
                                  }
   |  some_restrictions length_stmt
   |  some_restrictions pattern_stmt
@@ -1096,30 +1110,27 @@ some_restrictions: @EMPTYDIR@
                          }
 
 fraction_digits_stmt: FRACTION_DIGITS_KEYWORD sep fraction_digits_arg_str
-                      stmtend { if (read_all && yang_read_fraction(actual, $3)) {
+                      stmtend { if (yang_read_fraction(actual, $3)) {
                                   YYABORT;
                                 }
                               }
 
 fraction_digits_arg_str: positive_integer_value optsep { $$ = $1; }
-  | string_1 { if (read_all) {
-                 char *endptr = NULL;
-                 unsigned long val;
-                 errno = 0;
+  | string_1 { char *endptr = NULL;
+               unsigned long val;
+               errno = 0;
 
-                 val = strtoul(s, &endptr, 10);
-                 if (*endptr || s[0] == '-' || errno || val == 0 || val > UINT32_MAX) {
-                   LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "fraction-digits");
-                   free(s);
-                   s = NULL;
-                   YYABORT;
-                 }
-                 $$ = (uint32_t) val;
+               val = strtoul(s, &endptr, 10);
+               if (*endptr || s[0] == '-' || errno || val == 0 || val > UINT32_MAX) {
+                 LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "fraction-digits");
                  free(s);
-                 s =NULL;
+                 s = NULL;
+                 YYABORT;
                }
+               $$ = (uint32_t) val;
+               free(s);
+               s =NULL;
              }
-  ;
 
 length_stmt: LENGTH_KEYWORD sep length_arg_str length_end stmtsep { actual = $3;
                                                                     actual_type = TYPE_KEYWORD;
@@ -1368,21 +1379,18 @@ require_instance_stmt: REQUIRE_INSTANCE_KEYWORD sep require_instance_arg_str stm
 
 require_instance_arg_str: TRUE_KEYWORD optsep { $$ = 1; }
   |  FALSE_KEYWORD optsep { $$ = -1; }
-  |  string_1 { if (read_all) {
-                  if (!strcmp(s,"true")) {
-                    $$ = 1;
-                  } else if (!strcmp(s,"false")) {
-                    $$ = -1;
-                  } else {
-                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "require-instance");
-                    free(s);
-                    YYABORT;
-                  }
+  |  string_1 { if (!strcmp(s,"true")) {
+                  $$ = 1;
+                } else if (!strcmp(s,"false")) {
+                  $$ = -1;
+                } else {
+                  LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "require-instance");
                   free(s);
-                  s = NULL;
+                  YYABORT;
                 }
+                free(s);
+                s = NULL;
               }
-  ;
 
 bits_specification: bit_stmt bit_stmts { struct lys_type_bit * tmp;
 
@@ -4092,14 +4100,12 @@ key_arg_str: node_identifier { if (read_all){
   |  string_1
   ;
 
-range_arg_str: string { if (read_all) {
-                          $$ = actual;
-                          if (!(actual = yang_read_range(trg, actual, s))) {
-                             YYABORT;
-                          }
-                          actual_type = RANGE_KEYWORD;
-                          s = NULL;
+range_arg_str: string { $$ = actual;
+                        if (!(actual = yang_read_range(trg, actual, s))) {
+                          YYABORT;
                         }
+                        actual_type = RANGE_KEYWORD;
+                        s = NULL;
                       }
 
 absolute_schema_nodeid: '/' node_identifier { if (read_all) {
@@ -4148,24 +4154,20 @@ descendant_schema_nodeid: node_identifier { if (read_all)  {
                                           }
                           absolute_schema_nodeid_opt;
 
-path_arg_str: { tmp_s = yyget_text(scanner); } absolute_paths { if (read_all) {
-                                                     s = strdup(tmp_s);
-                                                     if (!s) {
-                                                       LOGMEM;
-                                                       YYABORT;
-                                                     }
-                                                     s[strlen(s) - 1] = '\0';
-                                                   }
-                                                 }
-  |  { tmp_s = yyget_text(scanner); } relative_path { if (read_all) {
-                                           s = strdup(tmp_s);
-                                           if (!s) {
-                                             LOGMEM;
-                                             YYABORT;
-                                           }
-                                           s[strlen(s) - 1] = '\0';
-                                         }
-                                       }
+path_arg_str: { tmp_s = yyget_text(scanner); } absolute_paths { s = strdup(tmp_s);
+                                                                if (!s) {
+                                                                  LOGMEM;
+                                                                  YYABORT;
+                                                                }
+                                                                s[strlen(s) - 1] = '\0';
+                                                             }
+  |  { tmp_s = yyget_text(scanner); } relative_path { s = strdup(tmp_s);
+                                                      if (!s) {
+                                                        LOGMEM;
+                                                        YYABORT;
+                                                      }
+                                                      s[strlen(s) - 1] = '\0';
+                                                    }
   |  string_1
   ;
 
