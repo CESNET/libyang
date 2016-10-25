@@ -1035,46 +1035,23 @@ type_body_stmts: some_restrictions { if (((struct yang_type *)actual)->base == L
                                        }
                                        ((struct yang_type *)actual)->type->info.str.patterns = tmp;
                                      }
+                                     if ((((struct yang_type *)actual)->base == LY_TYPE_UNION) {
+                                       struct lys_type *tmp;
+
+                                       tmp = realloc(((struct yang_type *)actual)->type->info.uni.types
+                                                     ((struct yang_type *)actual)->type->info.uni.count * sizeof *tmp);
+                                       if (!tmp) {
+                                         LOGMEM;
+                                         YYABORT;
+                                       }
+                                       ((struct yang_type *)actual)->type->info.uni.types = tmp;
+                                     }
                                    }
   | enum_specification
   | bits_specification
   ;
 
-some_restrictions: @EMPTYDIR@  { if (read_all) {
-                                   if (size_arrays->node[size_arrays->next].uni && size_arrays->node[size_arrays->next].pattern) {
-                                     LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", ((struct yang_type *)actual)->type->parent->name);
-                                     YYABORT;
-                                   }
-                                   if (size_arrays->node[size_arrays->next].pattern) {
-                                     ((struct yang_type *)actual)->type->info.str.patterns = calloc(size_arrays->node[size_arrays->next].pattern, sizeof(struct lys_restr));
-                                     if (!((struct yang_type *)actual)->type->info.str.patterns) {
-                                       LOGMEM;
-                                       YYABORT;
-                                     }
-                                     ((struct yang_type *)actual)->base = LY_TYPE_STRING;
-                                   }
-                                   if (size_arrays->node[size_arrays->next].uni) {
-                                     if (strcmp(((struct yang_type *)actual)->name, "union")) {
-                                       /* type can be a substatement only in "union" type, not in derived types */
-                                       LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "type", "derived type");
-                                       YYABORT;
-                                     }
-                                     ((struct yang_type *)actual)->type->info.uni.types = calloc(size_arrays->node[size_arrays->next].uni, sizeof(struct lys_type));
-                                     if (!((struct yang_type *)actual)->type->info.uni.types) {
-                                       LOGMEM;
-                                       YYABORT;
-                                     }
-                                     ((struct yang_type *)actual)->base = LY_TYPE_UNION;
-                                   }
-                                   size_arrays->next++;
-                                 } else {
-                                   if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                     LOGMEM;
-                                     YYABORT;
-                                   }
-                                   $$ = size_arrays->size-1;
-                                 }
-                               }
+some_restrictions: @EMPTYDIR@
   |  some_restrictions require_instance_stmt { if (read_all && yang_read_require_instance(actual, $2)) {
                                                  YYABORT;
                                                }
@@ -1099,26 +1076,24 @@ some_restrictions: @EMPTYDIR@  { if (read_all) {
   |  some_restrictions pattern_stmt
   |  some_restrictions fraction_digits_stmt
   |  some_restrictions range_stmt stmtsep
-  |  some_restrictions union_spec type_stmt stmtsep { if (read_all) {
-                                                        actual = $2;
-                                                      } else {
-                                                        size_arrays->node[$1].uni++; /* count of union*/
-                                                      }
-                                                    }
-  ;
+  |  some_restrictions union_spec type_stmt stmtsep { actual = $2; }
 
-  union_spec: @EMPTYDIR@ { if (read_all) {
-                         struct yang_type *typ;
-                         struct lys_type *type;
+  union_spec: @EMPTYDIR@ { struct yang_type *stype = (struct yang_type *)actual;
 
-                         typ = (struct yang_type *)actual;
-                         $$ = actual;
-                         type = &typ->type->info.uni.types[typ->type->info.uni.count++];
-                         type->parent = typ->type->parent;
-                         actual = type;
-                         actual_type = UNION_KEYWORD;
-                       }
-                     }
+                           if (stype->base != 0 && stype->base != LY_TYPE_UNION) {
+                             LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Unexpected type statement.");
+                             YYABORT;
+                           }
+                           stype->base = LY_TYPE_UNION;
+                           if (strcmp(stype->name, "union")) {
+                             /* type can be a substatement only in "union" type, not in derived types */
+                             LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "type", "derived type");
+                             YYABORT;
+                           }
+                           $$ = actual;
+                           YANG_ADDELEM(stype->type->info.uni.types, stype->type->info.uni.count)
+                           actual_type = UNION_KEYWORD;
+                         }
 
 fraction_digits_stmt: FRACTION_DIGITS_KEYWORD sep fraction_digits_arg_str
                       stmtend { if (read_all && yang_read_fraction(actual, $3)) {
