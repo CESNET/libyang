@@ -946,7 +946,7 @@ lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format)
     len = strlen(ret->name);
     if (strncmp(filename, ret->name, len) ||
             ((rev && rev != &filename[len]) || (!rev && dot != &filename[len]))) {
-        LOGWRN("File name \"%s\" does not match module name \"%s\".", path, ret->name);
+        LOGWRN("File name \"%s\" does not match module name \"%s\".", filename, ret->name);
     }
     if (rev) {
         len = dot - ++rev;

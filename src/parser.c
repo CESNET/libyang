@@ -218,7 +218,7 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
     char *wd;
     DIR *dir = NULL;
     struct dirent *file;
-    char *match_name = NULL, *dot, *rev;
+    char *match_name = NULL, *dot, *rev, *filename;
     LYS_INFORMAT format, match_format = 0;
     struct lys_module *result = NULL;
     int localsearch = 0;
@@ -336,6 +336,8 @@ opendir_search:
     }
 
 matched:
+    LOGVRB("Loading schema from \"%s\" file.", match_name);
+
     /* cut the format for now */
     dot = strrchr(match_name, '.');
     dot[1] = '\0';
@@ -380,17 +382,23 @@ matched:
     }
 
     /* check that name and revision match filename */
-    rev = strchr(match_name, '@');
+    filename = strrchr(match_name, '/');
+    if (!filename) {
+        filename = match_name;
+    } else {
+        filename++;
+    }
+    rev = strchr(filename, '@');
     /* name */
     len = strlen(result->name);
-    if (strncmp(match_name, result->name, len) ||
-            ((rev && rev != &match_name[len]) || (!rev && dot != &match_name[len]))) {
-        LOGWRN("File name \"%s\" does not match module name \"%s\".", match_name, result->name);
+    if (strncmp(filename, result->name, len) ||
+            ((rev && rev != &filename[len]) || (!rev && dot != &filename[len]))) {
+        LOGWRN("File name \"%s\" does not match module name \"%s\".", filename, result->name);
     }
     if (rev) {
         len = dot - ++rev;
         if (!result->rev_size || len != 10 || strncmp(result->rev[0].date, rev, len)) {
-            LOGWRN("File name \"%s\" does not match module revision \"%s\".", match_name,
+            LOGWRN("File name \"%s\" does not match module revision \"%s\".", filename,
                    result->rev_size ? result->rev[0].date : "none");
         }
     }
