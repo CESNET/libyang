@@ -1342,35 +1342,30 @@ enum_opt_stmt: @EMPTYDIR@
                                   }
 
 value_stmt: VALUE_KEYWORD sep integer_value_arg_str
-            stmtend { if (read_all) {
-                        ((struct lys_type_enum *)actual)->value = $3;
+            stmtend { ((struct lys_type_enum *)actual)->value = $3;
 
-                        /* keep the highest enum value for automatic increment */
-                        if ($3 >= cnt_val) {
-                          cnt_val = $3;
-                          cnt_val++;
-                        }
+                      /* keep the highest enum value for automatic increment */
+                      if ($3 >= cnt_val) {
+                        cnt_val = $3;
+                        cnt_val++;
                       }
                     }
 
 integer_value_arg_str: integer_value optsep { $$ = $1; }
-  |  string_1 { if (read_all) {
-                  /* convert it to int32_t */
-                  int64_t val;
-                  char *endptr;
+  |  string_1 { /* convert it to int32_t */
+                int64_t val;
+                char *endptr;
 
-                  val = strtoll(s, &endptr, 10);
-                  if (val < INT32_MIN || val > INT32_MAX || *endptr) {
-                      LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "value");
-                      free(s);
-                      YYABORT;
-                  }
-                  free(s);
-                  s = NULL;
-                  $$ = (int32_t) val;
-               }
+                val = strtoll(s, &endptr, 10);
+                if (val < INT32_MIN || val > INT32_MAX || *endptr) {
+                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "value");
+                    free(s);
+                    YYABORT;
+                }
+                free(s);
+                s = NULL;
+                $$ = (int32_t) val;
              }
-  ;
 
 range_stmt: RANGE_KEYWORD sep range_arg_str range_end { actual = $3;
                                                         actual_type = RANGE_KEYWORD;
