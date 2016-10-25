@@ -666,24 +666,24 @@ body_stmt: extension_stmt
   | notification_stmt
   | deviation_stmt
 
-extension_stmt: EXTENSION_KEYWORD sep identifier_arg_str { if (read_all) {
-                                                             /* we have the following supported (hardcoded) extensions: */
-                                                             /* ietf-netconf's get-filter-element-attributes */
-                                                             if (!strcmp(module->ns, LY_NSNC) && !strcmp(s, "get-filter-element-attributes")) {
-                                                               LOGDBG("NETCONF filter extension found");
-                                                              /* NACM's default-deny-write and default-deny-all */
-                                                             } else if (!strcmp(module->ns, LY_NSNACM) &&
-                                                                        (!strcmp(s, "default-deny-write") || !strcmp(s, "default-deny-all"))) {
-                                                               LOGDBG("NACM extension found");
-                                                               /* other extensions are not supported, so inform about such an extension */
-                                                             } else {
-                                                               LOGWRN("Not supported \"%s\" extension statement found, ignoring.", s);
-                                                             }
-                                                             free(s);
-                                                             s = NULL;
-                                                           }
-                                                         }
-                extension_end
+
+extension_arg_str: identifier_arg_str { /* we have the following supported (hardcoded) extensions: */
+                                        /* ietf-netconf's get-filter-element-attributes */
+                                        if (!strcmp(module->ns, LY_NSNC) && !strcmp(s, "get-filter-element-attributes")) {
+                                          LOGDBG("NETCONF filter extension found");
+                                          /* NACM's default-deny-write and default-deny-all */
+                                        } else if (!strcmp(module->ns, LY_NSNACM) &&
+                                                   (!strcmp(s, "default-deny-write") || !strcmp(s, "default-deny-all"))) {
+                                          LOGDBG("NACM extension found");
+                                          /* other extensions are not supported, so inform about such an extension */
+                                        } else {
+                                          LOGWRN("Not supported \"%s\" extension statement found, ignoring.", s);
+                                        }
+                                        free(s);
+                                        s = NULL;
+                                      }
+
+extension_stmt: EXTENSION_KEYWORD sep extension_arg_str extension_end
 
 extension_end: ';'
   | '{' stmtsep
@@ -705,10 +705,8 @@ extension_opt_stmt: @EMPTYDIR@ { $$ = 0; }
                                       $1 |= EXTENSION_STA;
                                       $$ = $1;
                                     }
-  |  extension_opt_stmt description_stmt { if (read_all) {
-                                             free(s);
-                                             s= NULL;
-                                           }
+  |  extension_opt_stmt description_stmt { free(s);
+                                           s= NULL;
                                            if ($1 & EXTENSION_DSC) {
                                              LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "description", "extension");
                                              YYABORT;
@@ -716,10 +714,8 @@ extension_opt_stmt: @EMPTYDIR@ { $$ = 0; }
                                            $1 |= EXTENSION_DSC;
                                            $$ = $1;
                                          }
-  |  extension_opt_stmt reference_stmt { if (read_all) {
-                                           free(s);
-                                           s = NULL;
-                                         }
+  |  extension_opt_stmt reference_stmt { free(s);
+                                         s = NULL;
                                          if ($1 & EXTENSION_REF) {
                                            LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "reference", "extension");
                                            YYABORT;
@@ -739,15 +735,13 @@ yin_element_stmt: YIN_ELEMENT_KEYWORD sep yin_element_arg_str stmtend;
 
 yin_element_arg_str: TRUE_KEYWORD optsep
   | FALSE_KEYWORD optsep
-  | string_1 { if (read_all) {
-                 if (strcmp(s, "true") && strcmp(s, "false")) {
-                    LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, s);
-                    free(s);
-                    YYABORT;
-                 }
+  | string_1 { if (strcmp(s, "true") && strcmp(s, "false")) {
+                 LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, s);
                  free(s);
-                 s = NULL;
+                 YYABORT;
                }
+               free(s);
+               s = NULL;
              }
 
 status_stmt:  STATUS_KEYWORD sep status_arg_str stmtend { $$ = $3; }
