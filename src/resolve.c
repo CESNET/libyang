@@ -4471,6 +4471,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
                 /* leaf */
                 leaf = (struct lys_node_leaf *)node;
 
+                /* replace default value */
                 lydict_remove(ctx, leaf->dflt);
                 leaf->dflt = lydict_insert(ctx, rfn->dflt[0], 0);
 
@@ -4707,17 +4708,18 @@ nextsibling:
         }
 
         /* default value */
-        if (rfn->dflt_size && node->nodetype == LYS_CHOICE) {
-            /* choice */
-
-            ((struct lys_node_choice *)node)->dflt = resolve_choice_dflt((struct lys_node_choice *)node,
-                                                                         rfn->dflt[0]);
-            if (!((struct lys_node_choice *)node)->dflt) {
-                LOGVAL(LYE_INARG, LY_VLOG_LYS, uses, rfn->dflt[0], "default");
-                goto fail;
-            }
-            if (lyp_check_mandatory_choice(node)) {
-                goto fail;
+        if (rfn->dflt_size) {
+            if (node->nodetype == LYS_CHOICE) {
+                /* choice */
+                ((struct lys_node_choice *)node)->dflt = resolve_choice_dflt((struct lys_node_choice *)node,
+                                                                             rfn->dflt[0]);
+                if (!((struct lys_node_choice *)node)->dflt) {
+                    LOGVAL(LYE_INARG, LY_VLOG_LYS, uses, rfn->dflt[0], "default");
+                    goto fail;
+                }
+                if (lyp_check_mandatory_choice(node)) {
+                    goto fail;
+                }
             }
         }
 
@@ -4737,6 +4739,7 @@ nextsibling:
         }
 
         /* additional checks */
+        /* default value with mandatory/min-elements */
         if (node->nodetype == LYS_LEAFLIST) {
             llist = (struct lys_node_leaflist *)node;
             if (llist->dflt_size && llist->min) {
@@ -4745,9 +4748,18 @@ nextsibling:
                        "The \"min-elements\" statement with non-zero value is forbidden on leaf-lists with the \"default\" statement.");
                 goto fail;
             }
+        } else if (node->nodetype == LYS_LEAF) {
+            leaf = (struct lys_node_leaf *)node;
+            if (leaf->dflt && (leaf->flags & LYS_MAND_TRUE)) {
+                LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, rfn->dflt_size ? "default" : "mandatory", "refine");
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
+                       "The \"mandatory\" statement is forbidden on leafs with the \"default\" statement.");
+                goto fail;
+            }
         }
-        if ((rfn->flags & LYS_MAND_TRUE) || rfn->mod.list.min) {
+
         /* check for mandatory node in default case, first find the closest parent choice to the changed node */
+        if ((rfn->flags & LYS_MAND_TRUE) || rfn->mod.list.min) {
             for (parent = node->parent;
                  parent && !(parent->nodetype & (LYS_CHOICE | LYS_GROUPING | LYS_ACTION | LYS_USES));
                  parent = parent->parent) {
