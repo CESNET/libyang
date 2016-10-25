@@ -196,7 +196,6 @@ void yyerror(YYLTYPE *yylloc, void *scanner, char **value, ...);
 %type <uint> extension_opt_stmt
 %type <i> require_instance_stmt
 %type <i> require_instance_arg_str
-%type <i> bit_opt_stmt
 %type <i> import_opt_stmt
 %type <i> include_opt_stmt
 %type <i> module_header_stmt
@@ -225,6 +224,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, char **value, ...);
 %type <v> range_arg_str
 %type <v> union_spec
 %type <v> enum_opt_stmt
+%type <v> bit_opt_stmt
 %type <nodes> container_opt_stmt
 %type <nodes> anyxml_opt_stmt
 %type <nodes> choice_opt_stmt
@@ -1264,7 +1264,8 @@ modifier_stmt: MODIFIER_KEYWORD sep string stmtend { if (read_all) {
 
 enum_specification: enum_stmt stmtsep enum_stmts { struct lys_type_enum * tmp;
 
-                                                   ((struct yang_type *)actual)->base = LY_TYPE_ENUM; cnt_val = 0;
+                                                   ((struct yang_type *)actual)->base = LY_TYPE_ENUM;
+                                                   cnt_val = 0;
                                                    tmp = realloc(((struct yang_type *)actual)->type->info.enums.enm,
                                                                  ((struct yang_type *)actual)->type->info.enums.count * sizeof *tmp);
                                                    if (!tmp) {
@@ -1400,109 +1401,86 @@ require_instance_arg_str: TRUE_KEYWORD optsep { $$ = 1; }
               }
   ;
 
-bits_specification: { if (read_all) {
-                        if (size_arrays->node[size_arrays->next].bit) {
-                          ((struct yang_type *)actual)->type->info.bits.bit = calloc(size_arrays->node[size_arrays->next++].bit, sizeof(struct lys_type_bit));
-                          if (!((struct yang_type *)actual)->type->info.bits.bit) {
-                            LOGMEM;
-                            YYABORT;
-                          }
-                        }
-                        ((struct yang_type *)actual)->base = LY_TYPE_BITS;
-                        cnt_val = 0;
-                      } else {
-                        cnt_val = size_arrays->size; /* hack store index of node array */
-                        if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                          LOGMEM;
-                          YYABORT;
-                        }
-                      }
-                    } bit_stmt bit_stmts
+bits_specification: bit_stmt bit_stmts { struct lys_type_bit * tmp;
+
+                                         ((struct yang_type *)actual)->base = LY_TYPE_BITS;
+                                         cnt_val = 0;
+                                         tmp = realloc(((struct yang_type *)actual)->type->info.bits.bit,
+                                                       ((struct yang_type *)actual)->type->info.bits.count * sizeof *tmp);
+                                         if (!tmp) {
+                                           LOGMEM;
+                                           YYABORT;
+                                         }
+                                         ((struct yang_type *)actual)->type->info.bits.bit = tmp;
+                                       }
 
 bit_stmts: @EMPTYDIR@
   | bit_stmts bit_stmt;
 
 bit_stmt: BIT_KEYWORD sep bit_arg_str bit_end
-          stmtsep { if (read_all) {
-                      if (yang_check_bit(yang_type, actual, &cnt_val, actual_type)) {
-                        YYABORT;
-                      }
-                      actual = yang_type;
-                    } else {
-                      size_arrays->node[cnt_val].bit++; /* count of bit*/
+          stmtsep { if (yang_check_bit(yang_type, actual, &cnt_val, actual_type)) {
+                      YYABORT;
                     }
+                    actual = yang_type;
+                    actual_type = TYPE_KEYWORD;
                   }
 
-bit_arg_str: identifier_arg_str { if (read_all) {
-                                    yang_type = actual;
-                                    if (!(actual = yang_read_bit(trg, actual, s))) {
-                                      YYABORT;
-                                    }
-                                    s = NULL;
-                                    actual_type = 0;
+bit_arg_str: identifier_arg_str { yang_type = actual;
+                                  YANG_ADDELEM(((struct yang_type *)actual)->type->info.bits.bit,
+                                               ((struct yang_type *)actual)->type->info.bits.count);
+                                  if (yang_read_bit(trg, yang_type, actual, s)) {
+                                    YYABORT;
                                   }
+                                  s = NULL;
+                                  actual_type = 0;
                                 }
 
 bit_end: ';'
   |  '{' stmtsep
          bit_opt_stmt
-     '}'
-  ;
+     '}' { if (((struct lys_type_bit *)actual)->iffeature_size) {
+             struct lys_iffeature *tmp;
 
-bit_opt_stmt: @EMPTYDIR@ { if (read_all) {
-                              if ((trg->version < 2) && size_arrays->node[size_arrays->next].if_features) {
-                                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "if-feature", "bit");
-                                YYABORT;
-                              }
+             tmp = realloc(((struct lys_type_bit *)actual)->iffeature,
+                           ((struct lys_type_bit *)actual)->iffeature_size * sizeof *tmp);
+             if (!tmp) {
+               LOGMEM;
+               YYABORT;
+             }
+             ((struct lys_type_bit *)actual)->iffeature = tmp;
+           }
+         }
 
-                              if (size_arrays->node[size_arrays->next].if_features) {
-                                ((struct lys_type_bit *)actual)->iffeature = calloc(size_arrays->node[size_arrays->next].if_features,
-                                                                                     sizeof *((struct lys_type_bit *)actual)->iffeature);
-                                if (!((struct lys_type_bit *)actual)->iffeature) {
-                                  LOGMEM;
+bit_opt_stmt: @EMPTYDIR@
+  |  bit_opt_stmt if_feature_stmt { if (trg->version < 2) {
+                                      LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "if-feature", "bit");
+                                      YYABORT;
+                                    }
+                                    $$ = actual;
+                                    YANG_ADDELEM(((struct lys_type_bit *)actual)->iffeature,
+                                                 ((struct lys_type_bit *)actual)->iffeature_size);
+                                    ((struct lys_iffeature *)actual)->features = (struct lys_feature**)s;
+                                    actual = $$;
+                                    s = NULL;
+                                  }
+  |  bit_opt_stmt position_stmt { /* actual_type - it is used to check position of bit statement*/
+                                  if (actual_type) {
+                                    LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "position", "bit");
+                                    YYABORT;
+                                  }
+                                  actual_type = 1;
+                                }
+  |  bit_opt_stmt status_stmt { if (yang_check_flags((uint16_t*)&((struct lys_type_bit *)actual)->flags,
+                                                     LYS_STATUS_MASK, "status", "bit", $2, 1)) {
                                   YYABORT;
                                 }
                               }
-
-                              size_arrays->next++;
-                            } else {
-                              $$ = size_arrays->size;
-                              if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                LOGMEM;
-                                YYABORT;
-                              }
-                            }
-                          }
-  |  bit_opt_stmt if_feature_stmt { if (read_all) {
-                                      if (yang_read_if_feature(trg, yang_type, s, unres, BIT_KEYWORD)) {
-                                        YYABORT;
-                                      }
-                                      s = NULL;
-                                    } else {
-                                      size_arrays->node[$1].if_features++;
-                                    }
-                                  }
-  |  bit_opt_stmt position_stmt { /* actual_type - it is used to check position of bit statement*/
-                                  if (read_all) {
-                                    if (actual_type) {
-                                      LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "position", "bit");
-                                      YYABORT;
-                                    }
-                                    actual_type = 1;
-                                  }
-                                }
-  |  bit_opt_stmt status_stmt { if (read_all) {
-                                  if (yang_check_flags((uint16_t*)&((struct lys_type_bit *)actual)->flags, LYS_STATUS_MASK, "status", "bit", $2, 1)) {
-                                    YYABORT;
-                                  }
-                                }
-                              }
-  |  bit_opt_stmt description_stmt { if (read_all && yang_read_description(trg, actual, s, "bit")) {
+  |  bit_opt_stmt description_stmt { if (yang_read_description(trg, actual, s, "bit")) {
                                        YYABORT;
                                      }
                                      s = NULL;
                                    }
-  |  bit_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, actual, s, "bit")) {
+  |  bit_opt_stmt reference_stmt { if (yang_read_reference(trg, actual, s, "bit")) {
                                      YYABORT;
                                    }
                                    s = NULL;

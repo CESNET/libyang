@@ -1563,32 +1563,29 @@ error:
     return EXIT_FAILURE;
 }
 
-void *
-yang_read_bit(struct lys_module *module, struct yang_type *typ, char *value)
+int
+yang_read_bit(struct lys_module *module, struct yang_type *typ, struct lys_type_bit *bit, char *value)
 {
-    int i;
-    struct lys_type_bit *bit;
+    int i, j;
 
-    bit = &typ->type->info.bits.bit[typ->type->info.bits.count];
-    if (lyp_check_identifier(value, LY_IDENT_SIMPLE, NULL, NULL)) {
+    bit->name = lydict_insert_zc(module->ctx, value);
+    if (lyp_check_identifier(bit->name, LY_IDENT_SIMPLE, NULL, NULL)) {
         free(value);
         goto error;
     }
-    bit->name = lydict_insert_zc(module->ctx, value);
 
+    j = typ->type->info.bits.count - 1;
     /* check the name uniqueness */
-    for (i = 0; i < typ->type->info.bits.count; i++) {
+    for (i = 0; i < j; i++) {
         if (!strcmp(typ->type->info.bits.bit[i].name, bit->name)) {
             LOGVAL(LYE_BITS_DUPNAME, LY_VLOG_NONE, NULL, bit->name);
-            typ->type->info.bits.count++;
             goto error;
         }
     }
-    typ->type->info.bits.count++;
-    return bit;
+    return EXIT_SUCCESS;
 
 error:
-    return NULL;
+    return EXIT_FAILURE;
 }
 
 int

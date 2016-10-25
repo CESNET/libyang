@@ -203,7 +203,7 @@ int yang_read_enum(struct lys_module *module, struct yang_type *typ, struct lys_
 
 int yang_check_enum(struct yang_type *typ, struct lys_type_enum *enm, int64_t *value, int assign);
 
-void *yang_read_bit(struct lys_module *module, struct yang_type *typ, char *value);
+int yang_read_bit(struct lys_module *module, struct yang_type *typ, struct lys_type_bit *bit, char *value);
 
 int yang_check_bit(struct yang_type *typ, struct lys_type_bit *bit, int64_t *value, int assign);
 
