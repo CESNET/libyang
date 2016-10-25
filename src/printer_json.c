@@ -117,10 +117,9 @@ contentprint:
     case LY_TYPE_ENUM:
     case LY_TYPE_IDENT:
     case LY_TYPE_INST:
-    case LY_TYPE_DEC64:
     case LY_TYPE_INT64:
     case LY_TYPE_UINT64:
-    case LY_TYPE_BOOL:
+    case LY_TYPE_DEC64:
         json_print_string(out, leaf->value_str);
         break;
 
@@ -130,6 +129,7 @@ contentprint:
     case LY_TYPE_UINT8:
     case LY_TYPE_UINT16:
     case LY_TYPE_UINT32:
+    case LY_TYPE_BOOL:
         ly_print(out, "%s", leaf->value_str[0] ? leaf->value_str : "null");
         break;
 
