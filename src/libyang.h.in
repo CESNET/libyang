@@ -379,6 +379,31 @@ extern "C" {
  * All data nodes in data trees are connected with their schema node - libyang is not able to represent data of an
  * unknown schema.
  *
+ * Connected to the aforementioned, it is important to mention that there are several kinds of data trees libyang
+ * can work with. Except for a standard full data tree and configuration data tree, there are trees specific for use
+ * in NETCONF, which are \<get\> or \<get-config\> replies, \<edit-config\> input content, generic RPC/action request,
+ * RPC/action reply, or a notification.
+ *
+ * Special care is needed when working with action input and RPC/action output, because in these cases the libyang data
+ * tree does not match the actual data tree NETCONF expects.
+ *
+ * <b>Action input</b> differentiates from a standard RPC that the child of \<rpc\> element is not the specific RPC
+ * request being sent, but a special \<action\> element in the base YANG namespace. It is expected to be present when
+ * parsing an action input and can optionally be included when the action is printed.
+ *
+ * As for <b>RPC output</b>, NETCONF expects the output parameters as direct children of the \<rpc-reply\> element.
+ * However, libyang encapsulates these parameters in the specific RPC request container. Same as before, it is expected
+ * to be without this container when parsing and can be printed out.
+ *
+ * Lastly, <b>action output</b> is almost similar to RPC output and in NETCONF you actually cannot distinguish them,
+ * but in case of action output, libyang puts all the output parameters under the action container, which is also
+ * just a child to all the schema tree ancestors up to the schema top-level, just like in an action input. Same applies
+ * even in this case, parsed data should be only the output parameters, you can decide how to print it.
+ *
+ * So, you do not have to use any special flag when you want to print the data tree the way libyang internally stores
+ * it, although you will not be able to parse it back, as was mentioned in the paragraphs above. To print data in the
+ * way NETCONF and libyang expects them to be, use #LYP_NETCONF flag for any printing function.
+ *
  * Please, continue reading a specific subsection or go through all the subsections if you are a new user of libyang.
  *
  * - @subpage howtodataparsers
@@ -502,7 +527,7 @@ extern "C" {
  * data. So how can then these conditions be verified during validation?
  *
  * There is an option to pass this additional data tree to all the functions that perform \b must and \b when condition
- * checking (\b lyd_parse_*() and lyd_validate()). Also, there is a flag #LYS_XPATH_DEP of \b struct lys_node that
+ * checking (\b lyd_parse_*() and lyd_validate()). Also, there is a flag #LYS_VALID_DEP of \b struct lys_node that
  * marks schema nodes that include conditions that require foreign nodes (outside their subtree) for their evaluation.
  * The subtree root is always the particular operation data node (for RPC it is the RPC data node and all
  * the input or output nodes as its children and similarly for action and notification). Note that for action and
@@ -519,7 +544,7 @@ extern "C" {
  *
  * Firstly, you should somehow learn that the operation data tree you are currently working with includes some schema
  * node instances that have conditions that require foreign data. You can either know this about every operation beforehand
- * or you go through all the schema nodes looking for the flag #LYS_XPATH_DEP. Then you should use lys_node_xpath_atomize()
+ * or you go through all the schema nodes looking for the flag #LYS_VALID_DEP. Then you should use lys_node_xpath_atomize()
  * to retrieve all XPath condition dependencies (in the form of schema nodes) outside the operation subtree. You will likely
  * want to use the flag #LYXP_NO_LOCAL to get rid of all the nodes from inside the subtree (you should already have those).
  * The last thing to do is to build a data tree that includes at least all the instances of the nodes obtained from lys_node_xpath_atomize()
@@ -618,6 +643,9 @@ extern "C" {
  *
  * To print the data tree with default nodes according to the with-defaults capability defined in
  * [RFC 6243](https://tools.ietf.org/html/rfc6243), check the [page about the default values](@ref howtodatawd).
+ *
+ * Also, to print the data in NETCONF format, use the #LYP_NETCONF flag. More information can be found on the page
+ * @ref howtodata.
  *
  * Functions List
  * --------------
