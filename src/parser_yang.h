@@ -199,7 +199,7 @@ void *yang_read_range(struct  lys_module *module, struct yang_type *typ, char *v
 
 int yang_read_fraction(struct yang_type *typ, uint32_t value);
 
-void *yang_read_enum(struct lys_module *module, struct yang_type *typ, char *value);
+int yang_read_enum(struct lys_module *module, struct yang_type *typ, struct lys_type_enum *enm, char *value);
 
 int yang_check_enum(struct yang_type *typ, struct lys_type_enum *enm, int64_t *value, int assign);
 

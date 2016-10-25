@@ -51,6 +51,7 @@
         tmp = realloc(current_ptr, (sizeof *current_ptr) * (size + LY_YANG_ARRAY_SIZE)); \
         if (!tmp) {                                                                      \
             LOGMEM;                                                                      \
+            free(s);                                                                     \
             YYABORT;                                                                     \
         }                                                                                \
         memset(tmp + (sizeof *current_ptr) * size, 0, (sizeof *current_ptr) * LY_YANG_ARRAY_SIZE); \
@@ -195,7 +196,6 @@ void yyerror(YYLTYPE *yylloc, void *scanner, char **value, ...);
 %type <uint> extension_opt_stmt
 %type <i> require_instance_stmt
 %type <i> require_instance_arg_str
-%type <i> enum_opt_stmt
 %type <i> bit_opt_stmt
 %type <i> import_opt_stmt
 %type <i> include_opt_stmt
@@ -224,6 +224,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, char **value, ...);
 %type <str> pattern_arg_str
 %type <v> range_arg_str
 %type <v> union_spec
+%type <v> enum_opt_stmt
 %type <nodes> container_opt_stmt
 %type <nodes> anyxml_opt_stmt
 %type <nodes> choice_opt_stmt
@@ -1261,111 +1262,80 @@ modifier_stmt: MODIFIER_KEYWORD sep string stmtend { if (read_all) {
                                                      }
                                                    }
 
-enum_specification: { if (read_all) {
-                        if (size_arrays->node[size_arrays->next].enm) {
-                          ((struct yang_type *)actual)->type->info.enums.enm = calloc(size_arrays->node[size_arrays->next++].enm, sizeof(struct lys_type_enum));
-                          if (!((struct yang_type *)actual)->type->info.enums.enm) {
-                            LOGMEM;
-                            YYABORT;
-                          }
-                        }
-                        ((struct yang_type *)actual)->base = LY_TYPE_ENUM;
-                        cnt_val = 0;
-                      } else {
-                        cnt_val = size_arrays->size; /* hack store index of node array */
-                        if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                          LOGMEM;
-                          YYABORT;
-                        }
-                      }
-                    } enum_stmt stmtsep enum_stmts;
+enum_specification: enum_stmt stmtsep enum_stmts { struct lys_type_enum * tmp;
+
+                                                   ((struct yang_type *)actual)->base = LY_TYPE_ENUM; cnt_val = 0;
+                                                   tmp = realloc(((struct yang_type *)actual)->type->info.enums.enm,
+                                                                 ((struct yang_type *)actual)->type->info.enums.count * sizeof *tmp);
+                                                   if (!tmp) {
+                                                     LOGMEM;
+                                                     YYABORT;
+                                                   }
+                                                   ((struct yang_type *)actual)->type->info.enums.enm = tmp;
+                                                 }
 
 enum_stmts: @EMPTYDIR@
   | enum_stmts enum_stmt stmtsep;
 
 
 enum_stmt: ENUM_KEYWORD sep enum_arg_str enum_end
-           { if (read_all) {
-               if (yang_check_enum(yang_type, actual, &cnt_val, actual_type)) {
-                 YYABORT;
-               }
-               actual = yang_type;
-               actual_type = TYPE_KEYWORD;
-             } else {
-               size_arrays->node[cnt_val].enm++; /* count of enum*/
+           { if (yang_check_enum(yang_type, actual, &cnt_val, actual_type)) {
+               YYABORT;
              }
+             actual = yang_type;
+             actual_type = TYPE_KEYWORD;
            }
 
-enum_arg_str: string { if (read_all) {
-                         yang_type = actual;
-                         if (!(actual = yang_read_enum(trg, actual, s))) {
-                           YYABORT;
-                         }
-                         s = NULL;
-                         actual_type = 0;
+enum_arg_str: string { yang_type = actual;
+                       YANG_ADDELEM(((struct yang_type *)actual)->type->info.enums.enm, ((struct yang_type *)actual)->type->info.enums.count);
+                       if (yang_read_enum(trg, yang_type, actual, s)) {
+                         YYABORT;
                        }
+                       s = NULL;
+                       actual_type = 0;
                      }
 
 enum_end: ';'
   |  '{' stmtsep
          enum_opt_stmt
-     '}'
-  ;
+     '}' { if (((struct lys_type_enum *)actual)->iffeature_size) {
+             struct lys_iffeature *tmp;
 
-enum_opt_stmt: @EMPTYDIR@ { if (read_all) {
-                              if ((trg->version < 2) && size_arrays->node[size_arrays->next].if_features) {
-                                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "if-feature", "enum");
-                                YYABORT;
-                              }
+             tmp = realloc(((struct lys_type_enum *)actual)->iffeature,
+                           ((struct lys_type_enum *)actual)->iffeature_size * sizeof *tmp);
+             if (!tmp) {
+               LOGMEM;
+               YYABORT;
+             }
+             ((struct lys_type_enum *)actual)->iffeature = tmp;
+           }
+         }
 
-                              if (size_arrays->node[size_arrays->next].if_features) {
-                                ((struct lys_type_enum *)actual)->iffeature = calloc(size_arrays->node[size_arrays->next].if_features,
-                                                                                     sizeof *((struct lys_type_enum *)actual)->iffeature);
-                                if (!((struct lys_type_enum *)actual)->iffeature) {
-                                  LOGMEM;
-                                  YYABORT;
-                                }
-                              }
-
-                              size_arrays->next++;
-                            } else {
-                              $$ = size_arrays->size;
-                              if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                LOGMEM;
-                                YYABORT;
-                              }
-                            }
-                          }
-  |  enum_opt_stmt if_feature_stmt { if (read_all) {
-                                       if (yang_read_if_feature(trg, yang_type, s, unres, ENUM_KEYWORD)) {
-                                         YYABORT;
-                                       }
-                                       s = NULL;
-                                     } else {
-                                       size_arrays->node[$1].if_features++;
-                                     }
+enum_opt_stmt: @EMPTYDIR@
+  |  enum_opt_stmt if_feature_stmt { $$ = actual;
+                                     YANG_ADDELEM(((struct lys_type_enum *)actual)->iffeature,
+                                                  ((struct lys_type_enum *)actual)->iffeature_size);
+                                     ((struct lys_iffeature *)actual)->features = (struct lys_feature**)s;
+                                     actual = $$;
+                                     s = NULL;
                                    }
   |  enum_opt_stmt value_stmt { /* actual_type - it is used to check value of enum statement*/
-                                if (read_all) {
-                                  if (actual_type) {
-                                    LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "value", "enum");
-                                    YYABORT;
-                                  }
-                                  actual_type = 1;
+                                if (actual_type) {
+                                  LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "value", "enum");
+                                  YYABORT;
                                 }
+                                actual_type = 1;
                               }
-  |  enum_opt_stmt status_stmt { if (read_all) {
-                                   if (yang_check_flags((uint16_t*)&((struct lys_type_enum *)actual)->flags, LYS_STATUS_MASK, "status", "enum", $2, 1)) {
-                                     YYABORT;
-                                   }
+  |  enum_opt_stmt status_stmt { if (yang_check_flags((uint16_t*)&((struct lys_type_enum *)actual)->flags, LYS_STATUS_MASK, "status", "enum", $2, 1)) {
+                                   YYABORT;
                                  }
                                }
-  |  enum_opt_stmt description_stmt { if (read_all && yang_read_description(trg, actual, s, "enum")) {
+  |  enum_opt_stmt description_stmt { if (yang_read_description(trg, actual, s, "enum")) {
                                         YYABORT;
                                       }
                                       s = NULL;
                                     }
-  |  enum_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, actual, s, "enum")) {
+  |  enum_opt_stmt reference_stmt { if (yang_read_reference(trg, actual, s, "enum")) {
                                       YYABORT;
                                     }
                                     s = NULL;

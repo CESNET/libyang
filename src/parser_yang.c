@@ -1491,11 +1491,10 @@ error:
     return EXIT_FAILURE;
 }
 
-void *
-yang_read_enum(struct lys_module *module, struct yang_type *typ, char *value)
+int
+yang_read_enum(struct lys_module *module, struct yang_type *typ, struct lys_type_enum *enm, char *value)
 {
-    struct lys_type_enum *enm;
-    int i;
+    int i, j;
 
     if (!value[0]) {
         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "enum name");
@@ -1504,7 +1503,6 @@ yang_read_enum(struct lys_module *module, struct yang_type *typ, char *value)
         goto error;
     }
 
-    enm = &typ->type->info.enums.enm[typ->type->info.enums.count];
     enm->name = lydict_insert_zc(module->ctx, value);
 
     /* the assigned name MUST NOT have any leading or trailing whitespace characters */
@@ -1513,20 +1511,19 @@ yang_read_enum(struct lys_module *module, struct yang_type *typ, char *value)
         goto error;
     }
 
+    j = typ->type->info.enums.count - 1;
     /* check the name uniqueness */
-    for (i = 0; i < typ->type->info.enums.count; i++) {
-        if (!strcmp(typ->type->info.enums.enm[i].name, typ->type->info.enums.enm[typ->type->info.enums.count].name)) {
+    for (i = 0; i < j; i++) {
+        if (!strcmp(typ->type->info.enums.enm[i].name, typ->type->info.enums.enm[j].name)) {
             LOGVAL(LYE_ENUM_DUPNAME, LY_VLOG_NONE, NULL, typ->type->info.enums.enm[i].name);
             goto error;
         }
     }
 
-    typ->type->info.enums.count++;
-    return enm;
+    return EXIT_SUCCESS;
 
 error:
-    typ->type->info.enums.count++;
-    return NULL;
+    return EXIT_FAILURE;
 }
 
 int
