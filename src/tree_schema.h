@@ -810,8 +810,6 @@ struct lys_node_choice {
  * structure except the last #dflt member, which is replaced by ::lys_node_leaflist#min and ::lys_node_leaflist#max
  * members.
  *
- * ::lys_node_leaf is terminating node in the schema tree, so the #child member value is always NULL.
- *
  * The leaf schema node can be instantiated in the data tree, so the ::lys_node_leaf can be directly referenced from
  * ::lyd_node#schema.
  */
