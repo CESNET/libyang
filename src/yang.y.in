@@ -1141,14 +1141,12 @@ length_stmt: LENGTH_KEYWORD sep length_arg_str length_end stmtsep { actual = $3;
                                                                     actual_type = TYPE_KEYWORD;
                                                                   }
 
-length_arg_str: string { if (read_all) {
-                           $$ = actual;
-                           if (!(actual = yang_read_length(trg, actual, s))) {
-                             YYABORT;
-                           }
-                           actual_type = LENGTH_KEYWORD;
-                           s = NULL;
+length_arg_str: string { $$ = actual;
+                         if (!(actual = yang_read_length(trg, actual, s))) {
+                           YYABORT;
                          }
+                         actual_type = LENGTH_KEYWORD;
+                         s = NULL;
                        }
 
 length_end: ';'
@@ -1158,33 +1156,33 @@ length_end: ';'
   ;
 
 message_opt_stmt: @EMPTYDIR@ { switch (actual_type) {
-                           case MUST_KEYWORD:
-                             $$ = "must";
-                             break;
-                           case LENGTH_KEYWORD:
-                             $$ = "length";
-                             break;
-                           case RANGE_KEYWORD:
-                             $$ = "range";
-                             break;
-                           }
-                         }
-  |  message_opt_stmt error_message_stmt { if (read_all && yang_read_message(trg, actual, s, $1, ERROR_MESSAGE_KEYWORD)) {
+                               case MUST_KEYWORD:
+                                 $$ = "must";
+                                 break;
+                               case LENGTH_KEYWORD:
+                                 $$ = "length";
+                                 break;
+                               case RANGE_KEYWORD:
+                                 $$ = "range";
+                                 break;
+                               }
+                             }
+  |  message_opt_stmt error_message_stmt { if (yang_read_message(trg, actual, s, $1, ERROR_MESSAGE_KEYWORD)) {
                                              YYABORT;
                                            }
                                            s = NULL;
                                          }
-  |  message_opt_stmt error_app_tag_stmt { if (read_all && yang_read_message(trg, actual, s, $1, ERROR_APP_TAG_KEYWORD)) {
+  |  message_opt_stmt error_app_tag_stmt { if (yang_read_message(trg, actual, s, $1, ERROR_APP_TAG_KEYWORD)) {
                                              YYABORT;
                                            }
                                            s = NULL;
                                          }
-  |  message_opt_stmt description_stmt { if (read_all && yang_read_description(trg, actual, s, $1)) {
+  |  message_opt_stmt description_stmt { if (yang_read_description(trg, actual, s, $1)) {
                                            YYABORT;
                                           }
                                           s = NULL;
                                         }
-  |  message_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, actual, s, $1)) {
+  |  message_opt_stmt reference_stmt { if (yang_read_reference(trg, actual, s, $1)) {
                                          YYABORT;
                                        }
                                        s = NULL;
