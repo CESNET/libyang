@@ -1313,7 +1313,12 @@ enum_end: ';'
          }
 
 enum_opt_stmt: @EMPTYDIR@
-  |  enum_opt_stmt if_feature_stmt { $$ = actual;
+  |  enum_opt_stmt if_feature_stmt { if (trg->version < 2) {
+                                       LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "if-feature");
+                                       free(s);
+                                       YYABORT;
+                                     }
+                                     $$ = actual;
                                      YANG_ADDELEM(((struct lys_type_enum *)actual)->iffeature,
                                                   ((struct lys_type_enum *)actual)->iffeature_size);
                                      ((struct lys_iffeature *)actual)->features = (struct lys_feature**)s;
@@ -1454,6 +1459,7 @@ bit_end: ';'
 bit_opt_stmt: @EMPTYDIR@
   |  bit_opt_stmt if_feature_stmt { if (trg->version < 2) {
                                       LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "if-feature", "bit");
+                                      free(s);
                                       YYABORT;
                                     }
                                     $$ = actual;
