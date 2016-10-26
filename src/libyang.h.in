@@ -934,7 +934,9 @@ typedef char *(*ly_module_clb)(const char *mod_name, const char *mod_rev, const 
                                void *user_data, LYS_INFORMAT *format, void (**free_module_data)(void *model_data));
 
 /**
- * @brief Set missing include or import model callback.
+ * @brief Set missing include or import module callback. It is meant to be used when the models
+ * are not locally available (such as when downloading modules from a NETCONF server), it should
+ * not be required in other cases.
  *
  * @param[in] ctx Context that will use this callback.
  * @param[in] clb Callback responsible for returning a missing model.
