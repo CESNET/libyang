@@ -43,19 +43,28 @@ struct ly_err ly_err_main = {LY_SUCCESS, LYVE_SUCCESS, 0, 0, 0, 0, NULL, NULL + 
 static void
 ly_err_free(void *ptr)
 {
+    struct ly_err *e = (struct ly_err *)ptr;
+    struct ly_err_item *i, *next;
+
     /* clean the error list */
-    ly_err_clean(0);
+    for (i = e->errlist; i; i = next) {
+        next = i->next;
+        free(i->msg);
+        free(i->path);
+        free(i);
+    }
+    e->errlist = NULL;
 
 #ifdef __linux__
     /* in __linux__ we use static memory in the main thread,
      * so this check is for programs terminating the main()
      * function by pthread_exit() :)
      */
-    if (ptr != &ly_err_main) {
+    if (e != &ly_err_main) {
 #else
     {
 #endif
-        free(ptr);
+        free(e);
     }
 }
 
