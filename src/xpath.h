@@ -27,10 +27,10 @@
  * PARSED GRAMMAR
  *
  * Full axes are not supported, abbreviated forms must be used,
- * variables are not supported, "id()" and "name(node-set?)"
- * functions are not supported, and processing instruction and
- * comment nodes are not supported, which is also reflected in
- * the grammar. Undefined rules and constants are tokens.
+ * variables are not supported, "id()" function is not supported,
+ * and processing instruction and comment nodes are not supported,
+ * which is also reflected in the grammar. Undefined rules and
+ * constants are tokens.
  *
  * Modified full grammar:
  *

@@ -227,7 +227,8 @@ const char *ly_errs[] = {
 /* LYE_XPATH_INOP_1 */ "Cannot apply XPath operation %s on %s.",
 /* LYE_XPATH_INOP_2 */ "Cannot apply XPath operation %s on %s and %s.",
 /* LYE_XPATH_INCTX */  "Invalid context type %s in %s.",
-/* LYE_XPATH_INARGCOUNT */ "Invalid number of arguments (%d) for the XPath function %s.",
+/* LYE_XPATH_INFUNC */ "Unknown XPath function \"%.*s\".",
+/* LYE_XPATH_INARGCOUNT */ "Invalid number of arguments (%d) for the XPath function %.*s.",
 /* LYE_XPATH_INARGTYPE */ "Wrong type of argument #%d (%s) for the XPath function %s.",
 /* LYE_XPATH_DUMMY */   "Accessing the value of the dummy node \"%s\".",
 
@@ -311,13 +312,14 @@ static const LY_VECODE ecode2vecode[] = {
     LYVE_NOREQINS,     /* LYE_NOREQINS */
     LYVE_NOLEAFREF,    /* LYE_NOLEAFREF */
     LYVE_NOMANDCHOICE, /* LYE_NOMANDCHOICE */
-    LYVE_XPATH_INSNODE,/* LYE_XPATH_INSNODE */
 
+    LYVE_XPATH_INSNODE,/* LYE_XPATH_INSNODE */
     LYVE_XPATH_INTOK,  /* LYE_XPATH_INTOK */
     LYVE_XPATH_EOF,    /* LYE_XPATH_EOF */
     LYVE_XPATH_INOP,   /* LYE_XPATH_INOP_1 */
     LYVE_XPATH_INOP,   /* LYE_XPATH_INOP_2 */
     LYVE_XPATH_INCTX,  /* LYE_XPATH_INCTX */
+    LYVE_XPATH_INFUNC, /* LYE_XPATH_INFUNC */
     LYVE_XPATH_INARGCOUNT, /* LYE_XPATH_INARGCOUNT */
     LYVE_XPATH_INARGTYPE, /* LYE_XPATH_INARGTYPE */
     LYVE_XPATH_DUMMY,  /* LYE_XPATH_DUMMY */
