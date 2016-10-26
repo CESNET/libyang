@@ -43,6 +43,9 @@ struct ly_err ly_err_main = {LY_SUCCESS, LYVE_SUCCESS, 0, 0, 0, 0, NULL, NULL + 
 static void
 ly_err_free(void *ptr)
 {
+    /* clean the error list */
+    ly_err_clean();
+
 #ifdef __linux__
     /* in __linux__ we use static memory in the main thread,
      * so this check is for programs terminating the main()
