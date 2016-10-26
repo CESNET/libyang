@@ -535,7 +535,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     }
 
     /* rest of validation checks */
-    ly_err_clean();
+    ly_err_clean(1);
     if (!(options & LYD_OPT_TRUSTED) &&
             (lyv_data_content(*result, options, unres) ||
              lyv_multicases(*result, NULL, prev ? &first_sibling : NULL, 0, NULL))) {
@@ -584,7 +584,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     struct lyxml_elem *xmlstart, *xmlelem, *xmlaux;
     struct ly_set *set;
 
-    ly_err_clean();
+    ly_err_clean(1);
 
     if (!ctx || !root) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);

@@ -837,7 +837,7 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int in
     struct lys_module *mod = NULL;
     unsigned int len;
 
-    ly_err_clean();
+    ly_err_clean(1);
 
     if (!ctx || !data) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);

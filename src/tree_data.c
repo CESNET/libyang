@@ -111,7 +111,7 @@ lyd_check_mandatory_data(struct lyd_node *root, struct lyd_node *last_parent,
                     if (!state) {
                         /* when evaluates to false */
                         lyd_free(dummy);
-                        ly_err_clean();
+                        ly_err_clean(1);
                         return EXIT_SUCCESS;
                     }
 
@@ -517,7 +517,7 @@ lyd_parse_fd_(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, va_lis
     }
 
     if (!sb.st_size) {
-        ly_err_clean();
+        ly_err_clean(1);
         return NULL;
     }
 
@@ -2670,7 +2670,7 @@ movedone:
     }
     lyd_free_diff(result2);
 
-    ly_err_clean();
+    ly_err_clean(1);
     return result;
 
 error:
@@ -3550,7 +3550,7 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
     struct unres_data *unres = NULL;
     struct ly_set *set;
 
-    ly_err_clean();
+    ly_err_clean(1);
 
     if (!node) {
         ly_errno = LY_EINVAL;
@@ -4395,7 +4395,7 @@ lyd_get_unique_default(const char* unique_expr, struct lyd_node *list)
             node = last->child;
             if (lyv_multicases(NULL, (struct lys_node *)parent, &node, 0, NULL)) {
                 /* another case is present */
-                ly_err_clean();
+                ly_err_clean(1);
                 dflt = NULL;
                 goto end;
             }

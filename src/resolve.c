@@ -6254,7 +6254,7 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
                 return -1;
             } else {
                 /* forward reference, erase ly_errno */
-                ly_err_clean();
+                ly_err_clean(1);
             }
         }
     } while (res_count && (res_count < unres_count));
@@ -6387,7 +6387,7 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
         return rc;
     } else {
         /* erase info about validation errors */
-        ly_err_clean();
+        ly_err_clean(1);
     }
 
     print_unres_schema_item_fail(item, type, snode);
@@ -6691,7 +6691,7 @@ lyd_leaf_type(const struct lyd_node_leaf_list *leaf)
                         return LY_TYPE_INST;
                     } else {
                         /* try to resolve instance-identifier */
-                        ly_err_clean();
+                        ly_err_clean(1);
                         node = resolve_instid((struct lyd_node *)leaf, leaf->value_str);
                         if (!ly_errno && node) {
                             /* the real type is instance-identifier */
@@ -6710,7 +6710,7 @@ lyd_leaf_type(const struct lyd_node_leaf_list *leaf)
                 f = 0;
             }
             /* erase ly_errno and ly_vecode */
-            ly_err_clean();
+            ly_err_clean(1);
 
             if (!type_iter) {
                 LOGERR(LY_EINVAL, "Unable to get type from union \"%s\" with no valid type.", type->parent->name)
@@ -6749,7 +6749,7 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type)
             }
         } else if (datatype->base == LY_TYPE_INST) {
             /* try to resolve instance-identifier */
-            ly_err_clean();
+            ly_err_clean(1);
             leaf->value.instance = resolve_instid((struct lyd_node *)leaf, leaf->value_str);
             if (!ly_errno && (leaf->value.instance || datatype->info.inst.req == -1)) {
                 /* success */
@@ -6764,7 +6764,7 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type)
         f = 0;
     }
     /* erase ly_errno and ly_vecode */
-    ly_err_clean();
+    ly_err_clean(1);
 
     if (!datatype) {
         /* failure */
@@ -6801,7 +6801,7 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type)
 
     case UNRES_INSTID:
         assert(sleaf->type.base == LY_TYPE_INST);
-        ly_err_clean();
+        ly_err_clean(1);
         leaf->value.instance = resolve_instid(node, leaf->value_str);
         if (!leaf->value.instance) {
             if (ly_errno) {
@@ -6925,7 +6925,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
 
     /* when-stmt first */
     do {
-        ly_err_clean();
+        ly_err_clean(1);
         progress = 0;
         for (i = 0; i < unres->count; i++) {
             if (unres->type[i] != UNRES_WHEN) {
@@ -7013,7 +7013,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
                 } else {
                     unres->type[i] = UNRES_RESOLVED;
                 }
-                ly_err_clean();
+                ly_err_clean(1);
                 resolved++;
                 progress = 1;
             } else if (rc == -1) {

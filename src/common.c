@@ -44,7 +44,7 @@ static void
 ly_err_free(void *ptr)
 {
     /* clean the error list */
-    ly_err_clean();
+    ly_err_clean(0);
 
 #ifdef __linux__
     /* in __linux__ we use static memory in the main thread,
@@ -96,7 +96,7 @@ ly_err_location(void)
 }
 
 void
-ly_err_clean(void)
+ly_err_clean(int with_errno)
 {
     struct ly_err_item *i, *next;
 
@@ -109,8 +109,10 @@ ly_err_clean(void)
         free(i);
     }
 
-    ly_err_location()->no = LY_SUCCESS;
-    ly_err_location()->code = LYVE_SUCCESS;
+    if (with_errno) {
+        ly_err_location()->no = LY_SUCCESS;
+        ly_err_location()->code = LYVE_SUCCESS;
+    }
 }
 
 API LY_ERR *

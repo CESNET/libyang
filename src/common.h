@@ -84,7 +84,7 @@ struct ly_err {
     char buf[LY_BUF_SIZE];
 };
 struct ly_err *ly_err_location(void);
-void ly_err_clean(void);
+void ly_err_clean(int with_errno);
 void ly_err_repeat(void);
 
 /**

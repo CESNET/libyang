@@ -1213,7 +1213,7 @@ lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int res
 
             if (!lyp_parse_value_type(leaf, type, resolve)) {
                 /* success, erase set ly_errno and ly_vecode */
-                ly_err_clean();
+                ly_err_clean(1);
                 break;
             }
 
