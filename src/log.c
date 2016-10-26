@@ -219,6 +219,7 @@ const char *ly_errs[] = {
 /* LYE_XPATH_INOP_1 */ "Cannot apply XPath operation %s on %s.",
 /* LYE_XPATH_INOP_2 */ "Cannot apply XPath operation %s on %s and %s.",
 /* LYE_XPATH_INCTX */  "Invalid context type %s in %s.",
+/* LYE_XPATH_INMOD */  "Unknown module \"%.*s\" relative to the context node \"%s\".",
 /* LYE_XPATH_INFUNC */ "Unknown XPath function \"%.*s\".",
 /* LYE_XPATH_INARGCOUNT */ "Invalid number of arguments (%d) for the XPath function %.*s.",
 /* LYE_XPATH_INARGTYPE */ "Wrong type of argument #%d (%s) for the XPath function %s.",
@@ -311,6 +312,7 @@ static const LY_VECODE ecode2vecode[] = {
     LYVE_XPATH_INOP,   /* LYE_XPATH_INOP_1 */
     LYVE_XPATH_INOP,   /* LYE_XPATH_INOP_2 */
     LYVE_XPATH_INCTX,  /* LYE_XPATH_INCTX */
+    LYVE_XPATH_INMOD,  /* LYE_XPATH_INMOD */
     LYVE_XPATH_INFUNC, /* LYE_XPATH_INFUNC */
     LYVE_XPATH_INARGCOUNT, /* LYE_XPATH_INARGCOUNT */
     LYVE_XPATH_INARGTYPE, /* LYE_XPATH_INARGTYPE */

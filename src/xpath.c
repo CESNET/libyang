@@ -4474,6 +4474,7 @@ moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, const char *qname,
 {
     int i, orig_used, pref_len, idx, temp_ctx = 0;
     const char *ptr, *name_dict = NULL; /* optimalization - so we can do (==) instead (!strncmp(...)) in moveto_node_check() */
+    char *str;
     struct lys_module *moveto_mod;
     const struct lys_node *sub;
     struct ly_ctx *ctx;
@@ -4496,7 +4497,9 @@ moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, const char *qname,
         pref_len = ptr - qname;
         moveto_mod = moveto_resolve_model(qname, pref_len, ctx, cur_node, 1);
         if (!moveto_mod) {
-            LOGINT;
+            str = lys_path(cur_node);
+            LOGVAL(LYE_XPATH_INMOD, LY_VLOG_NONE, NULL, pref_len, qname, str);
+            free(str);
             return -1;
         }
         qname += pref_len + 1;
@@ -4707,6 +4710,7 @@ moveto_snode_alldesc(struct lyxp_set *set, struct lys_node *cur_node, const char
                      int options)
 {
     int i, orig_used, pref_len, all = 0, match, idx;
+    char *str;
     struct lys_node *next, *elem, *start;
     struct lys_module *moveto_mod;
     struct ly_ctx *ctx;
@@ -4735,7 +4739,9 @@ moveto_snode_alldesc(struct lyxp_set *set, struct lys_node *cur_node, const char
         pref_len = strnchr(qname, ':', qname_len) - qname;
         moveto_mod = moveto_resolve_model(qname, pref_len, ctx, cur_node, 1);
         if (!moveto_mod) {
-            LOGINT;
+            str = lys_path(cur_node);
+            LOGVAL(LYE_XPATH_INMOD, LY_VLOG_NONE, NULL, pref_len, qname, str);
+            free(str);
             return -1;
         }
         qname += pref_len + 1;

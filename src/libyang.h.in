@@ -1364,6 +1364,7 @@ typedef enum {
     LYVE_XPATH_INOP,   /**< invalid XPath operation operands */
     /* */
     LYVE_XPATH_INCTX,  /**< invalid XPath context type */
+    LYVE_XPATH_INMOD,  /**< invalid module name */
     LYVE_XPATH_INFUNC, /**< invalid XPath function name */
     LYVE_XPATH_INARGCOUNT, /**< invalid number of arguments for an XPath function */
     LYVE_XPATH_INARGTYPE, /**< invalid type of arguments for an XPath function */
