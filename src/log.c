@@ -51,7 +51,6 @@ static void
 log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *path, va_list args)
 {
     char *msg, *bufdup = NULL;
-    int free_flag = 0;
     struct ly_err *e = ly_err_location();
     struct ly_err_item *eitem;
 
@@ -59,12 +58,7 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
         msg = "Internal logger error";
     } else if (!format) {
         /* postponed print of path related to the previous error, do not rewrite stored original message */
-        msg = NULL;
-        if (asprintf(&msg, "Path related to the last error: \"%s\".", path) == -1) {
-            msg = "Internal logger error (asprint() failed).";
-        } else {
-            free_flag = 1;
-        }
+        msg = "Path is related to the previous error message.";
     } else {
         if (level == LY_LLERR) {
             /* store error message into msg buffer ... */
@@ -132,9 +126,7 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
     }
 
 clean:
-    if (free_flag) {
-        free(msg);
-    } else if (bufdup) {
+    if (bufdup) {
         /* return previous internal buffer content */
         strncpy(msg, bufdup, LY_BUF_SIZE - 1);
         free(bufdup);
