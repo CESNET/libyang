@@ -870,8 +870,6 @@ lyp_parse_value_type(struct lyd_node_leaf_list *node, struct lys_type *stype, st
     int c, i, j;
     int found;
 
-    assert(node && ((node->value_type & LY_DATA_TYPE_MASK) == stype->base));
-
 switchtype:
     switch (node->value_type & LY_DATA_TYPE_MASK) {
     case LY_TYPE_BINARY:
