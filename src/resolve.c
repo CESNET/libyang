@@ -6700,7 +6700,7 @@ lyd_leaf_type(const struct lyd_node_leaf_list *leaf)
                         }
                     }
                 } else {
-                    r = lyp_parse_value_type((struct lyd_node_leaf_list *)leaf, type_iter, 1);
+                    r = lyp_parse_value_type((struct lyd_node_leaf_list *)leaf, type_iter, NULL, 1);
                     /* revert leaf's content affected by resolve_leafref */
                     ((struct lyd_node_leaf_list *)leaf)->value = value;
                     if (!r) {
@@ -6758,7 +6758,7 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type)
                 break;
             }
         } else {
-            if (!lyp_parse_value_type(leaf, datatype, 1)) {
+            if (!lyp_parse_value_type(leaf, datatype, NULL, 1)) {
                 /* success */
                 break;
             }
