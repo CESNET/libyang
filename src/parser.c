@@ -874,7 +874,7 @@ lyp_check_pattern(const char *pattern, pcre **pcre_precomp)
  * resolve - whether resolve identityrefs and leafrefs (which must be in JSON form)
  */
 int
-lyp_parse_value_type(struct lyd_node_leaf_list *node, struct lys_type *stype, int resolve)
+lyp_parse_value_type(struct lyd_node_leaf_list *node, struct lys_type *stype, struct lyxml_elem *xml, int resolve)
 {
     #define DECSIZE 21
     struct lys_type *type;
@@ -885,7 +885,7 @@ lyp_parse_value_type(struct lyd_node_leaf_list *node, struct lys_type *stype, in
     int c, i, j;
     int found;
 
-    assert(node && (node->value_type == stype->base));
+    assert(node && ((node->value_type & LY_DATA_TYPE_MASK) == stype->base));
 
 switchtype:
     switch (node->value_type & LY_DATA_TYPE_MASK) {
@@ -1171,8 +1171,60 @@ switchtype:
         node->value.uint64 = unum;
         break;
 
-    default:
-        return EXIT_FAILURE;
+    case LY_TYPE_UNION:
+        /* have to cover union here because a not resolving leafref can point to union and we need to resolve the base
+         * type of the value in leafref node */
+        assert(node->value_type & LY_TYPE_LEAFREF_UNRES);
+
+        /* turn logging off, we are going to try to validate the value with all the types in order */
+        ly_vlog_hide(1);
+
+        type = NULL;
+        while ((type = lyp_get_next_union_type(stype, type, &found))) {
+            found = 0;
+            ptr = NULL;
+            node->value_type = type->base;
+            memset(&node->value, 0, sizeof node->value);
+
+            /* in these cases we use JSON format */
+            if (xml && ((type->base == LY_TYPE_IDENT) || (type->base == LY_TYPE_INST))) {
+                /* remember the original value and try if it can be transformed into JSON format */
+                ptr = node->value_str;
+                node->value_str = transform_xml2json(node->schema->module->ctx, ptr, xml, 0);
+                if (!node->value_str) {
+                    /* if not, the value cannot be of these types, try another */
+                    node->value_str = ptr;
+                    found = 0;
+                    continue;
+                }
+            }
+
+            node->value_type &= ~LY_DATA_TYPE_MASK;
+            node->value_type |= type->base;
+            if (!lyp_parse_value_type(node, type, xml, resolve)) {
+                /* success */
+                break;
+            }
+
+            if (ptr) {
+                lydict_remove(node->schema->module->ctx, node->value_str);
+                node->value_str = ptr;
+            }
+
+        }
+
+        /* erase information about errors - they are false or irrelevant
+         * and will be replaced by a single error messages */
+        ly_err_clean(1);
+        ly_vlog_hide(0);
+
+        if (!type) {
+            /* failure */
+            node->value_type &= ~LY_DATA_TYPE_MASK;
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, (node->value_str ? node->value_str : ""), node->schema->name);
+            return EXIT_FAILURE;
+        }
+        break;
     }
 
     return EXIT_SUCCESS;
@@ -1199,21 +1251,19 @@ lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int res
 
             /* in these cases we use JSON format */
             if (xml && ((type->base == LY_TYPE_IDENT) || (type->base == LY_TYPE_INST))) {
+                /* remember the original value and try if it can be transformed into JSON format */
                 xml->content = leaf->value_str;
                 leaf->value_str = transform_xml2json(leaf->schema->module->ctx, xml->content, xml, 0);
                 if (!leaf->value_str) {
                     leaf->value_str = xml->content;
                     xml->content = NULL;
-
-                    type = lyp_get_next_union_type(stype, type, &found);
                     found = 0;
                     continue;
                 }
             }
 
-            if (!lyp_parse_value_type(leaf, type, resolve)) {
-                /* success, erase set ly_errno and ly_vecode */
-                ly_err_clean(1);
+            if (!lyp_parse_value_type(leaf, type, xml, resolve)) {
+                /* success */
                 break;
             }
 
@@ -1225,6 +1275,9 @@ lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int res
 
         }
 
+        /* erase information about errors - they are false or irrelevant
+         * and will be replaced by a single error messages */
+        ly_err_clean(1);
         ly_vlog_hide(0);
 
         if (!type) {
@@ -1234,7 +1287,7 @@ lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int res
         }
     } else {
         memset(&leaf->value, 0, sizeof leaf->value);
-        if (lyp_parse_value_type(leaf, stype, resolve)) {
+        if (lyp_parse_value_type(leaf, stype, xml, resolve)) {
             return EXIT_FAILURE;
         }
     }

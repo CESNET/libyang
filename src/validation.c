@@ -72,7 +72,7 @@ lyv_data_context(const struct lyd_node *node, int options, struct unres_data *un
              * target's type, because the target leaf does not need to be present */
             if (leaf->value_type == LY_TYPE_LEAFREF || leaf->value_type == LY_TYPE_INST) {
                 memset(&leaf->value, 0, sizeof leaf->value);
-                if (lyp_parse_value_type(leaf, &((struct lys_node_leaf *)leaf->schema)->type, 0)) {
+                if (lyp_parse_value_type(leaf, &((struct lys_node_leaf *)leaf->schema)->type, NULL, 0)) {
                     return EXIT_FAILURE;
                 }
             }
