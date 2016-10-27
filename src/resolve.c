@@ -6792,7 +6792,6 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type)
     int rc;
     struct lyd_node_leaf_list *leaf;
     struct lys_node_leaf *sleaf;
-    struct lyd_node *parent;
 
     leaf = (struct lyd_node_leaf_list *)node;
     sleaf = (struct lys_node_leaf *)leaf->schema;
@@ -6840,15 +6839,6 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type)
         }
         break;
 
-    case UNRES_EMPTYCONT:
-        do {
-            parent = node->parent;
-            lyd_free(node);
-            node = parent;
-        } while (node && (node->schema->nodetype == LYS_CONTAINER) && !node->child
-                 && !((struct lys_node_container *)node->schema)->presence);
-        break;
-
     default:
         LOGINT;
         return -1;
@@ -6870,7 +6860,7 @@ unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM 
 {
     assert(unres && node);
     assert((type == UNRES_LEAFREF) || (type == UNRES_INSTID) || (type == UNRES_WHEN) || (type == UNRES_MUST)
-           || (type == UNRES_MUST_INOUT) || (type == UNRES_UNION) || (type == UNRES_EMPTYCONT));
+           || (type == UNRES_MUST_INOUT) || (type == UNRES_UNION));
 
     unres->count++;
     unres->node = ly_realloc(unres->node, unres->count * sizeof *unres->node);

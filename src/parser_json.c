@@ -1073,12 +1073,10 @@ attr_repeat:
         len++;
         len += skip_ws(&data[len]);
 
-        /* if we have empty non-presence container, we could remove it immediately if there were no attributes of it, who knows */
+        /* if we have empty non-presence container, mark it as default */
         if (schema->nodetype == LYS_CONTAINER && !result->child &&
                 !result->attr && !((struct lys_node_container *)schema)->presence) {
-            if (unres_data_add(unres, result, UNRES_EMPTYCONT)) {
-                goto error;
-            }
+            result->dflt = 1;
         }
 
     } else if (schema->nodetype == LYS_LIST) {
