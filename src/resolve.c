@@ -482,6 +482,7 @@ parse_path_key_expr(const char *id, const char **prefix, int *pref_len, const ch
  * absolute-path       = 1*("/" (node-identifier *path-predicate))
  * relative-path       = 1*(".." "/") descendant-path
  *
+ * @param[in] mod Module of the context node to get correct prefix in case it is not explicitly specified
  * @param[in] id Identifier to use.
  * @param[out] prefix Points to the prefix, NULL if there is not any.
  * @param[out] pref_len Length of the prefix, 0 if there is not any.
@@ -496,8 +497,8 @@ parse_path_key_expr(const char *id, const char **prefix, int *pref_len, const ch
  *         positive on success, negative on failure.
  */
 static int
-parse_path_arg(const char *id, const char **prefix, int *pref_len, const char **name, int *nam_len, int *parent_times,
-               int *has_predicate)
+parse_path_arg(struct lys_module *mod, const char *id, const char **prefix, int *pref_len,
+               const char **name, int *nam_len, int *parent_times, int *has_predicate)
 {
     int parsed = 0, ret, par_times = 0;
 
@@ -552,6 +553,11 @@ parse_path_arg(const char *id, const char **prefix, int *pref_len, const char **
     /* node-identifier ([prefix:]identifier) */
     if ((ret = parse_node_identifier(id, prefix, pref_len, name, nam_len)) < 1) {
         return -parsed-ret;
+    }
+    if (!(*prefix)) {
+        /* actually we always need prefix even it is not specified */
+        *prefix = lys_main_module(mod)->name;
+        *pref_len = strlen(*prefix);
     }
 
     parsed += ret;
@@ -3510,7 +3516,7 @@ resolve_path_arg_data(struct lyd_node *node, const char *path, struct unres_data
 
     /* searching for nodeset */
     do {
-        if ((i = parse_path_arg(path, &prefix, &pref_len, &name, &nam_len, &parent_times, &has_predicate)) < 1) {
+        if ((i = parse_path_arg(node->schema->module, path, &prefix, &pref_len, &name, &nam_len, &parent_times, &has_predicate)) < 1) {
             LOGVAL(LYE_INCHAR, LY_VLOG_LYD, node, path[-i], &path[-i]);
             rc = -1;
             goto error;
@@ -3756,7 +3762,7 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
 
     mod2 = lys_node_module(parent);
     do {
-        if ((i = parse_path_arg(id, &prefix, &pref_len, &name, &nam_len, &parent_times, &has_predicate)) < 1) {
+        if ((i = parse_path_arg(parent->module, id, &prefix, &pref_len, &name, &nam_len, &parent_times, &has_predicate)) < 1) {
             LOGVAL(LYE_INCHAR, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent, id[-i], &id[-i]);
             return -1;
         }
