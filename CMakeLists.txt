@@ -50,6 +50,10 @@ if(NOT INCLUDE_INSTALL_DIR)
 	set(INCLUDE_INSTALL_DIR include/libyang)
 endif()
 
+if(NOT BIN_INSTALL_DIR)
+	set(BIN_INSTALL_DIR bin)
+endif()
+
 # set default build type if not specified by user
 if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE debug)
@@ -167,6 +171,8 @@ add_custom_target(cclean
 
 add_executable(yanglint ${lintsrc})
 target_link_libraries(yanglint yang)
+install(TARGETS yanglint DESTINATION ${BIN_INSTALL_DIR})
+install(FILES ${PROJECT_SOURCE_DIR}/tools/lint/yanglint.1 DESTINATION ${MAN_INSTALL_DIR}/man1)
 
 add_executable(yang2yin ${yang2yinsrc})
 
