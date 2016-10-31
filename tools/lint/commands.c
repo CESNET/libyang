@@ -318,7 +318,7 @@ cmd_data(const char *arg)
     size_t len;
     char **argv = NULL, *ptr;
     const char *out_path = NULL;
-    struct lyd_node *data = NULL, *val_tree = NULL;
+    struct lyd_node *data = NULL, *val_tree = NULL, *next, *iter;
     struct lyxml_elem *xml;
     const struct lys_node *rpc_act = NULL;
     LYD_FORMAT outformat = LYD_UNKNOWN, informat = LYD_UNKNOWN;
@@ -501,6 +501,11 @@ cmd_data(const char *arg)
         } else if (options & (LYD_OPT_RPC | LYD_OPT_NOTIF)) {
             data = lyd_parse_xml(ctx, &xml->child, options, val_tree);
         } else {
+            if ((options & LYD_OPT_TYPEMASK) == LYD_OPT_DATA && !(options & LYD_OPT_STRICT )) {
+                /* we have to include status data from ietf-yang-library which is part of the context,
+                 * so we have to postpone validation after merging input data with ly_ctx_info() */
+                options |= LYD_OPT_TRUSTED;
+            }
             data = lyd_parse_xml(ctx, &xml->child, options);
         }
         lyxml_free(ctx, xml);
@@ -519,8 +524,38 @@ cmd_data(const char *arg)
         } else if (options & (LYD_OPT_RPC | LYD_OPT_NOTIF)) {
             data = lyd_parse_path(ctx, argv[optind], informat, options, val_tree);
         } else {
+            if ((options & LYD_OPT_TYPEMASK) == LYD_OPT_DATA && !(options & LYD_OPT_STRICT )) {
+                /* we have to include status data from ietf-yang-library which is part of the context,
+                 * so we have to postpone validation after merging input data with ly_ctx_info() */
+                options |= LYD_OPT_TRUSTED;
+            }
             data = lyd_parse_path(ctx, argv[optind], informat, options);
         }
+    }
+    if (options & LYD_OPT_TRUSTED) {
+        /* postponed validation in case of LYD_OPT_DATA */
+        /* remove the trusted flag */
+        options &= ~LYD_OPT_TRUSTED;
+
+        /* merge with ietf-yang-library */
+        val_tree = ly_ctx_info(ctx);
+        if (lyd_merge(val_tree, data, LYD_OPT_DESTRUCT | LYD_OPT_EXPLICIT)) {
+            fprintf(stderr, "Merging input data with ietf-yang-library failed.\n");
+            goto cleanup;
+        }
+        data = val_tree;
+
+        /* invalidate all data - do not believe to the source */
+        LY_TREE_FOR(data, val_tree) {
+            LY_TREE_DFS_BEGIN(val_tree, next, iter) {
+                iter->validity = LYD_VAL_NOT;
+                LY_TREE_DFS_END(val_tree, next, iter)
+            }
+        }
+        val_tree = NULL;
+
+        /* validate the result */
+        lyd_validate(&data, options, NULL);
     }
     if (ly_errno) {
         fprintf(stderr, "Failed to parse data.\n");

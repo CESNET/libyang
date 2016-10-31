@@ -502,7 +502,9 @@ main_ni(int argc, char* argv[])
         }
         /* validate the data */
         if (outformat_d || root) {
-            lyd_validate(&root, options_parser, NULL);
+            if (lyd_validate(&root, options_parser, NULL)) {
+                goto cleanup;
+            }
         }
 
         /* print only if data output format specified */
