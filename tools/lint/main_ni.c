@@ -179,7 +179,7 @@ main_ni(int argc, char* argv[])
         struct dataitem *next;
     } *data = NULL, *data_item;
     struct ly_set *mods = NULL;
-    struct lyd_node *root = NULL, *node;
+    struct lyd_node *root = NULL, *node, *next, *subroot;
     struct lyxml_elem *xml = NULL;
 
     opterr = 0;
@@ -502,6 +502,13 @@ main_ni(int argc, char* argv[])
         }
         /* validate the data */
         if (outformat_d || root) {
+            /* do not trust the input, invalidate all the data first */
+            LY_TREE_FOR(root, subroot) {
+                LY_TREE_DFS_BEGIN(subroot, next, node) {
+                    node->validity = LYD_VAL_NOT;
+                    LY_TREE_DFS_END(subroot, next, node)
+                }
+            }
             if (lyd_validate(&root, options_parser, NULL)) {
                 goto cleanup;
             }
