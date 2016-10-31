@@ -53,6 +53,9 @@ endif()
 if(NOT BIN_INSTALL_DIR)
 	set(BIN_INSTALL_DIR bin)
 endif()
+if(NOT MAN_INSTALL_DIR)
+    set(MAN_INSTALL_DIR share/man/)
+endif()
 
 # set default build type if not specified by user
 if(NOT CMAKE_BUILD_TYPE)
