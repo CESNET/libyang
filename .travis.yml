@@ -21,10 +21,9 @@ branches:
     - devel
 
 before_install:
-  - wget https://cmocka.org/files/1.0/cmocka-1.0.1.tar.xz
-  - tar -xJvf cmocka-1.0.1.tar.xz
-  - cd cmocka-1.0.1 && mkdir build && cd build
-  - cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr .. && make -j2 && sudo make install
+  - git clone git://git.cryptomilk.org/projects/cmocka.git
+  - cd cmocka && mkdir build && cd build
+  - cmake .. && make -j2 && sudo make install
   - cd ../..
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew update; brew install pcre; brew install valgrind; fi
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo apt-get update -qq; sudo apt-get install -y valgrind; fi

@@ -15,7 +15,12 @@
 #ifndef LY_TREE_SCHEMA_H_
 #define LY_TREE_SCHEMA_H_
 
-#include <endian.h>
+#ifdef __APPLE__
+  #include <machine/endian.h>
+#else
+  #include <endian.h>
+#endif
+
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
