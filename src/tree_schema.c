@@ -3703,3 +3703,4 @@ lys_path(const struct lys_node *node)
 
     return result;
 }
+

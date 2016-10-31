@@ -3050,7 +3050,7 @@ check_default(struct lys_type *type, const char *value, struct lys_module *modul
         if (lyp_parse_value(&node, NULL, 1)) {
             ret = -1;
             if (base_tpdf) {
-                /* default value was is defined in some base typedef */
+                /* default value is defined in some base typedef */
                 if ((type->base == LY_TYPE_BITS && type->der->type.der) ||
                         (type->base == LY_TYPE_ENUM && type->der->type.der)) {
                     /* we have refined bits/enums */
@@ -6643,7 +6643,7 @@ resolve_leafref(struct lyd_node_leaf_list *leaf, struct lys_type *type)
     return EXIT_SUCCESS;
 }
 
-API LY_DATA_TYPE
+API const struct lys_type *
 lyd_leaf_type(const struct lyd_node_leaf_list *leaf)
 {
     struct lyd_node *node;
@@ -6652,13 +6652,7 @@ lyd_leaf_type(const struct lyd_node_leaf_list *leaf)
     int f = 0, r;
 
     if (!leaf || !(leaf->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
-        return LY_TYPE_ERR;
-    }
-
-    if (leaf->value_type > 0 && (leaf->value_type & LY_DATA_TYPE_MASK) != LY_TYPE_UNION &&
-            (leaf->value_type & LY_DATA_TYPE_MASK) != LY_TYPE_LEAFREF) {
-        /* we can get the type directly from the data node (it was already resolved) */
-        return leaf->value_type & LY_DATA_TYPE_MASK;
+        return NULL;
     }
 
     /* init */
@@ -6694,23 +6688,28 @@ lyd_leaf_type(const struct lyd_node_leaf_list *leaf)
                 } else if (type_iter->base == LY_TYPE_INST) {
                     if (type_iter->info.inst.req == -1) {
                         /* target not required, so it always succeeds */
-                        return LY_TYPE_INST;
+                        return type_iter;
                     } else {
                         /* try to resolve instance-identifier */
                         ly_err_clean(1);
                         node = resolve_instid((struct lyd_node *)leaf, leaf->value_str);
                         if (!ly_errno && node) {
                             /* the real type is instance-identifier */
-                            return LY_TYPE_INST;
+                            return type_iter;
                         }
                     }
                 } else {
                     r = lyp_parse_value_type((struct lyd_node_leaf_list *)leaf, type_iter, NULL, 1);
                     /* revert leaf's content affected by resolve_leafref */
+                    if (leaf->value_type == LY_TYPE_BITS) {
+                        if (leaf->value.bit) {
+                            free(leaf->value.bit);
+                        }
+                    }
                     ((struct lyd_node_leaf_list *)leaf)->value = value;
                     if (!r) {
                         /* we have the real type */
-                        return type_iter->base;
+                        return type_iter;
                     }
                 }
                 f = 0;
@@ -6720,19 +6719,19 @@ lyd_leaf_type(const struct lyd_node_leaf_list *leaf)
 
             if (!type_iter) {
                 LOGERR(LY_EINVAL, "Unable to get type from union \"%s\" with no valid type.", type->parent->name)
-                return LY_TYPE_ERR;
+                return NULL;
             }
             type = type_iter;
             break;
         default:
             /* we have the real type */
             ly_vlog_hide(0);
-            return type->base;
+            return type;
         }
     }
 
     ly_vlog_hide(0);
-    return LY_TYPE_ERR;
+    return NULL;
 }
 
 static int

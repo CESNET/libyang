@@ -90,6 +90,7 @@ json_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int o
     const char *schema = NULL;
     const struct lys_module *wdmod = NULL;
     LY_DATA_TYPE datatype;
+    const struct lys_type *type;
 
     if ((node->dflt && (options & (LYP_WD_ALL_TAG | LYP_WD_IMPL_TAG))) ||
             (!node->dflt && (options & LYP_WD_ALL_TAG) && lyd_wd_default(leaf))) {
@@ -134,7 +135,13 @@ contentprint:
         break;
 
     case LY_TYPE_LEAFREF:
-        datatype = lyd_leaf_type(leaf);
+        type = lyd_leaf_type(leaf);
+        if (!type) {
+            /* error */
+            ly_print(out, "\"(!error!)\"");
+            break;
+        }
+        datatype = type->base;
         goto contentprint;
 
     case LY_TYPE_EMPTY:
