@@ -114,7 +114,7 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, int ed
         }
     }
 
-    if (lyp_parse_value(leaf, xml, resolve)) {
+    if (lyp_parse_value(leaf, xml, resolve, 0)) {
         return EXIT_FAILURE;
     }
 

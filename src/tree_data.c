@@ -692,7 +692,7 @@ _lyd_new_leaf(struct lyd_node *parent, const struct lys_node *schema, const char
     }
 
     /* resolve the type correctly (after it was connected to parent cause of log) */
-    if (lyp_parse_value((struct lyd_node_leaf_list *)ret, NULL, 1)) {
+    if (lyp_parse_value((struct lyd_node_leaf_list *)ret, NULL, 1, 0)) {
         lyd_free((struct lyd_node *)ret);
         return NULL;
     }
@@ -770,7 +770,7 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
     /* leaf->value is erased by lyp_parse_value() */
 
     /* resolve the type correctly */
-    if (lyp_parse_value(leaf, NULL, 1)) {
+    if (lyp_parse_value(leaf, NULL, 1, 0)) {
         lydict_remove(leaf->schema->module->ctx, leaf->value_str);
         leaf->value_str = backup;
         memcpy(&leaf->value, &backup_val, sizeof backup);

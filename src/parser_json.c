@@ -508,7 +508,7 @@ repeat:
         return 0;
     }
 
-    if (lyp_parse_value(leaf, NULL, resolve)) {
+    if (lyp_parse_value(leaf, NULL, resolve, 0)) {
         ly_errno = LY_EVALID;
         return 0;
     }

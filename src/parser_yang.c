@@ -2453,13 +2453,16 @@ yang_check_deviation(struct lys_module *module, struct ly_set *dflt_check, struc
         if (dflt_check->set.s[u]->nodetype == LYS_LEAF) {
             leaf = (struct lys_node_leaf *)dflt_check->set.s[u];
             target_name = leaf->name;
-            rc = unres_schema_add_str(module, unres, &leaf->type, UNRES_TYPE_DFLT, value = leaf->dflt);
+            value = leaf->dflt;
+            rc = unres_schema_add_node(module, unres, &leaf->type, UNRES_TYPE_DFLT, (struct lys_node *)(&leaf->dflt));
         } else { /* LYS_LEAFLIST */
             llist = (struct lys_node_leaflist *)dflt_check->set.s[u];
             target_name = llist->name;
             for (i = 0; i < llist->dflt_size; i++) {
-                rc = unres_schema_add_str(module, unres, &llist->type, UNRES_TYPE_DFLT, value = llist->dflt[i]);
+                rc = unres_schema_add_node(module, unres, &llist->type, UNRES_TYPE_DFLT,
+                                           (struct lys_node *)(&llist->dflt[i]));
                 if (rc == -1) {
+                    value = llist->dflt[i];
                     break;
                 }
             }

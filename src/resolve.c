@@ -45,6 +45,8 @@ parse_range_dec64(const char **str_num, uint8_t dig, int64_t *num)
     if (ptr[0] == '-') {
         minus = 1;
         ++ptr;
+    } else if (ptr[0] == '+') {
+        ++ptr;
     }
 
     if (!isdigit(ptr[0])) {
@@ -2932,27 +2934,31 @@ check_leafref:
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 static int
-check_default(struct lys_type *type, const char *value, struct lys_module *module)
+check_default(struct lys_type *type, const char **value, struct lys_module *module)
 {
     struct lys_tpdf *base_tpdf = NULL;
     struct lyd_node_leaf_list node;
+    const char *dflt = NULL;
     int ret = EXIT_SUCCESS;
+
+    assert(value);
 
     if (type->base <= LY_TYPE_DER) {
         /* the type was not resolved yet, nothing to do for now */
         return EXIT_FAILURE;
     }
 
-    if (!value) {
+    dflt = *value;
+    if (!dflt) {
         /* we do not have a new default value, so is there any to check even, in some base type? */
         for (base_tpdf = type->der; base_tpdf->type.der; base_tpdf = base_tpdf->type.der) {
             if (base_tpdf->dflt) {
-                value = base_tpdf->dflt;
+                dflt = base_tpdf->dflt;
                 break;
             }
         }
 
-        if (!value) {
+        if (!dflt) {
             /* no default value, nothing to check, all is well */
             return EXIT_SUCCESS;
         }
@@ -3020,7 +3026,7 @@ check_default(struct lys_type *type, const char *value, struct lys_module *modul
 
     /* dummy leaf */
     memset(&node, 0, sizeof node);
-    node.value_str = value;
+    node.value_str = dflt;
     node.value_type = type->base;
     node.schema = calloc(1, sizeof (struct lys_node_leaf));
     if (!node.schema) {
@@ -3041,13 +3047,19 @@ check_default(struct lys_type *type, const char *value, struct lys_module *modul
             ret = EXIT_FAILURE;
             goto finish;
         }
-        ret = check_default(&type->info.lref.target->type, value, module);
+        ret = check_default(&type->info.lref.target->type, &dflt, module);
+        if (!ret) {
+            /* adopt possibly changed default value to its canonical form */
+            if (*value) {
+                *value = dflt;
+            }
+        }
 
     } else if ((type->base == LY_TYPE_INST) || (type->base == LY_TYPE_IDENT)) {
         /* it was converted to JSON format before, nothing else sensible we can do */
 
     } else {
-        if (lyp_parse_value(&node, NULL, 1)) {
+        if (lyp_parse_value(&node, NULL, 1, 1)) {
             ret = -1;
             if (base_tpdf) {
                 /* default value is defined in some base typedef */
@@ -3056,8 +3068,16 @@ check_default(struct lys_type *type, const char *value, struct lys_module *modul
                     /* we have refined bits/enums */
                     LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
                            "Invalid value \"%s\" of the default statement inherited to \"%s\" from \"%s\" base type.",
-                           value, type->parent->name, base_tpdf->name);
+                           dflt, type->parent->name, base_tpdf->name);
                 }
+            }
+        } else {
+            /* success - adopt canonical form from the node into the default value */
+            if (dflt != node.value_str) {
+                /* this can happen only if we have non-inherited default value,
+                 * inherited default values are already in canonical form */
+                assert(dflt == *value);
+                *value = node.value_str;
             }
         }
     }
@@ -4512,7 +4532,8 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
                 leaf->dflt = lydict_insert(ctx, rfn->dflt[0], 0);
 
                 /* check the default value */
-                if (unres_schema_add_str(leaf->module, unres, &leaf->type, UNRES_TYPE_DFLT, leaf->dflt) == -1) {
+                if (unres_schema_add_node(leaf->module, unres, &leaf->type, UNRES_TYPE_DFLT,
+                                          (struct lys_node *)(&leaf->dflt)) == -1) {
                     goto fail;
                 }
             } else if (node->nodetype == LYS_LEAFLIST) {
@@ -4534,7 +4555,8 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
 
                 /* check default value */
                 for (i = 0; i < llist->dflt_size; i++) {
-                    if (unres_schema_add_str(llist->module, unres, &llist->type, UNRES_TYPE_DFLT, llist->dflt[i]) == -1) {
+                    if (unres_schema_add_node(llist->module, unres, &llist->type, UNRES_TYPE_DFLT,
+                                              (struct lys_node *)(&llist->dflt[i])) == -1) {
                         goto fail;
                     }
                 }
@@ -6087,11 +6109,9 @@ featurecheckdone:
         rc = resolve_unres_schema_uses(item, unres);
         break;
     case UNRES_TYPE_DFLT:
-        expr = str_snode;
-        has_str = 1;
         stype = item;
 
-        rc = check_default(stype, expr, mod);
+        rc = check_default(stype, (const char **)str_snode, mod);
         break;
     case UNRES_CHOICE_DFLT:
         expr = str_snode;
@@ -6555,7 +6575,6 @@ unres_schema_free_item(struct ly_ctx *ctx, struct unres_schema *unres, uint32_t 
         break;
     case UNRES_IDENT:
     case UNRES_TYPE_IDENTREF:
-    case UNRES_TYPE_DFLT:
     case UNRES_CHOICE_DFLT:
     case UNRES_LIST_KEYS:
         lydict_remove(ctx, (const char *)unres->str_snode[i]);
@@ -6608,7 +6627,11 @@ static int
 resolve_leafref(struct lyd_node_leaf_list *leaf, struct lys_type *type)
 {
     struct unres_data matches;
+    struct lyd_node_leaf_list *dummy, *cmp;
     uint32_t i;
+    int rc;
+    struct lys_type *stype;
+    struct ly_ctx *ctx = leaf->schema->module->ctx; /* shortcut */
 
     assert(type->base == LY_TYPE_LEAFREF);
 
@@ -6622,12 +6645,72 @@ resolve_leafref(struct lyd_node_leaf_list *leaf, struct lys_type *type)
 
     /* check that value matches */
     for (i = 0; i < matches.count; ++i) {
-        if (ly_strequal(leaf->value_str, ((struct lyd_node_leaf_list *)matches.node[i])->value_str, 1)) {
-            leaf->value.leafref = matches.node[i];
+        cmp = (struct lyd_node_leaf_list *)matches.node[i]; /* shortcut */
+        switch (cmp->value_type) {
+        case LY_TYPE_STRING:
+        case LY_TYPE_BOOL:
+        case LY_TYPE_ENUM:
+        case LY_TYPE_BINARY:
+        case LY_TYPE_IDENT:
+        case LY_TYPE_INST:
+        case LY_TYPE_EMPTY:
+            /* canonical representation is the same as lexical ... */
+        case LY_TYPE_UNION:
+        case LY_TYPE_LEAFREF:
+            /* ... or we cannot resolve it */
+simplecmp:
+            if (ly_strequal(leaf->value_str, cmp->value_str, 1)) {
+                leaf->value.leafref = matches.node[i];
+                goto done;
+            }
+            break;
+        default:
+            /* in other case, get the canonical form of the value via a dummy node */
+            stype = (struct lys_type *)lyd_leaf_type(cmp);
+            if (!stype) {
+                /* try simple comparison */
+                goto simplecmp;
+            }
+            dummy = calloc(1, sizeof *dummy);
+            dummy->schema = cmp->schema;
+            dummy->value_type = cmp->value_type;
+            dummy->value_str = lydict_insert(ctx, leaf->value_str, 0);
+            /* parse the value according to the possible type */
+            rc = lyp_parse_value_type(dummy, stype, NULL, 0, 0);
+            if (!rc) {
+                /* success - try to compare the canonical forms */
+                if (ly_strequal(dummy->value_str, cmp->value_str, 1)) {
+                    /* replace leafref value with its canonical form */
+                    leaf->value.leafref = matches.node[i];
+                    lydict_remove(ctx, leaf->value_str);
+                    leaf->value_str = dummy->value_str;
+                } else {
+                    rc = -1;
+                }
+            }
+            if (rc) {
+                /* failure - remove duplicate leaf value */
+                lydict_remove(ctx, dummy->value_str);
+            }
+
+            /* cleanup - dummy */
+            if (dummy->value_type == LY_TYPE_BITS) {
+                free(dummy->value.bit);
+            }
+            free(dummy);
+
+            if (!rc) {
+                /* success - stop the loop */
+                goto done;
+            } else if (rc > 0) {
+                /* conversion to canonical form failed, try simple comparison of the current value */
+                goto simplecmp;
+            }
             break;
         }
     }
 
+done:
     free(matches.node);
 
     if (!leaf->value.leafref) {
@@ -6699,7 +6782,7 @@ lyd_leaf_type(const struct lyd_node_leaf_list *leaf)
                         }
                     }
                 } else {
-                    r = lyp_parse_value_type((struct lyd_node_leaf_list *)leaf, type_iter, NULL, 1);
+                    r = lyp_parse_value_type((struct lyd_node_leaf_list *)leaf, type_iter, NULL, 1, 0);
                     /* revert leaf's content affected by resolve_leafref */
                     if (leaf->value_type == LY_TYPE_BITS) {
                         if (leaf->value.bit) {
@@ -6761,7 +6844,7 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type)
                 break;
             }
         } else {
-            if (!lyp_parse_value_type(leaf, datatype, NULL, 1)) {
+            if (!lyp_parse_value_type(leaf, datatype, NULL, 1, 0)) {
                 /* success */
                 break;
             }

@@ -1318,7 +1318,7 @@ fill_yin_typedef(struct lys_module *module, struct lys_node *parent, struct lyxm
 
     /* check default value (if not defined, there still could be some restrictions
      * that need to be checked against a default value from a derived type) */
-    if (unres_schema_add_str(module, unres, &tpdf->type, UNRES_TYPE_DFLT, tpdf->dflt) == -1) {
+    if (unres_schema_add_node(module, unres, &tpdf->type, UNRES_TYPE_DFLT, (struct lys_node *)(&tpdf->dflt)) == -1) {
         goto error;
     }
 
@@ -2370,12 +2370,15 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
         rc = EXIT_SUCCESS;
         if (dflt_check->set.s[u]->nodetype == LYS_LEAF) {
             leaf = (struct lys_node_leaf *)dflt_check->set.s[u];
-            rc = unres_schema_add_str(module, unres, &leaf->type, UNRES_TYPE_DFLT, value = leaf->dflt);
+            value = leaf->dflt;
+            rc = unres_schema_add_node(module, unres, &leaf->type, UNRES_TYPE_DFLT, (struct lys_node *)(&leaf->dflt));
         } else { /* LYS_LEAFLIST */
             llist = (struct lys_node_leaflist *)dflt_check->set.s[u];
             for (j = 0; j < llist->dflt_size; j++) {
-                rc = unres_schema_add_str(module, unres, &llist->type, UNRES_TYPE_DFLT, value = llist->dflt[j]);
+                rc = unres_schema_add_node(module, unres, &llist->type, UNRES_TYPE_DFLT,
+                                           (struct lys_node *)(&llist->dflt[j]));
                 if (rc == -1) {
+                    value = llist->dflt[j];
                     break;
                 }
             }
@@ -3748,7 +3751,7 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
     /* check default value (if not defined, there still could be some restrictions
      * that need to be checked against a default value from a derived type) */
-    if (unres_schema_add_str(module, unres, &leaf->type, UNRES_TYPE_DFLT, leaf->dflt) == -1) {
+    if (unres_schema_add_node(module, unres, &leaf->type, UNRES_TYPE_DFLT, (struct lys_node *)(&leaf->dflt)) == -1) {
         goto error;
     }
 
@@ -4014,7 +4017,8 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
     /* check default value (if not defined, there still could be some restrictions
      * that need to be checked against a default value from a derived type) */
     for (r = 0; r < llist->dflt_size; r++) {
-        if (unres_schema_add_str(module, unres, &llist->type, UNRES_TYPE_DFLT, llist->dflt[r]) == -1) {
+        if (unres_schema_add_node(module, unres, &llist->type, UNRES_TYPE_DFLT,
+                                  (struct lys_node *)(&llist->dflt[r])) == -1) {
             goto error;
         }
     }
