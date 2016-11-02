@@ -3148,7 +3148,7 @@ check_key(struct lys_node_list *list, int index, const char *name, int len)
     }
 
     /* config attribute is the same as of the list */
-    if ((list->flags & LYS_CONFIG_MASK) != (key->flags & LYS_CONFIG_MASK)) {
+    if ((key->flags & LYS_CONFIG_MASK) && (list->flags & LYS_CONFIG_MASK) != (key->flags & LYS_CONFIG_MASK)) {
         LOGVAL(LYE_KEY_CONFIG, LY_VLOG_LYS, list, key->name);
         return -1;
     }
@@ -4707,7 +4707,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
         /* config on any nodetype */
         if ((rfn->flags & LYS_CONFIG_MASK) && (node->flags & LYS_CONFIG_MASK)) {
             for (parent = lys_parent(node); parent && parent->nodetype == LYS_USES; parent = lys_parent(parent));
-            if (parent && parent->nodetype != LYS_GROUPING &&
+            if (parent && parent->nodetype != LYS_GROUPING && (parent->flags & LYS_CONFIG_MASK) &&
                     ((parent->flags & LYS_CONFIG_MASK) != (rfn->flags & LYS_CONFIG_MASK)) &&
                     (rfn->flags & LYS_CONFIG_W)) {
                 /* setting config true under config false is prohibited */
@@ -5208,6 +5208,11 @@ resolve_list_keys(struct lys_node_list *list, const char *keys_str)
     const char *value;
 
     for (i = 0; i < list->keys_size; ++i) {
+        if (!list->child) {
+            /* no child, possible forward reference */
+            LOGVAL(LYE_INRESOLV, LY_VLOG_LYS, list, "list keys", keys_str);
+            return EXIT_FAILURE;
+        }
         /* get the key name */
         if ((value = strpbrk(keys_str, " \t\n"))) {
             len = value - keys_str;
@@ -6128,8 +6133,7 @@ featurecheckdone:
         }
         break;
     case UNRES_LIST_KEYS:
-        has_str = 1;
-        rc = resolve_list_keys(item, str_snode);
+        rc = resolve_list_keys(item, ((struct lys_node_list *)item)->keys_str);
         break;
     case UNRES_LIST_UNIQ:
         unique_info = (struct unres_list_uniq *)item;

@@ -4899,7 +4899,7 @@ yyreduce:
                                    YYABORT;
                                  }
                                }
-                               if (store_flags((struct lys_node *)(yyval.nodes).grouping, size_arrays->node[size_arrays->next].flags, config_inherit)) {
+                               if (store_flags((struct lys_node *)(yyval.nodes).grouping, size_arrays->node[size_arrays->next].flags, 0)) {
                                    YYABORT;
                                }
                                size_arrays->next++;

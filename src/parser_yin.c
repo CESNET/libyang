@@ -4048,7 +4048,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     int r;
     int c_tpdf = 0, c_must = 0, c_uniq = 0, c_ftrs = 0;
     int f_ordr = 0, f_max = 0, f_min = 0;
-    const char *key_str = NULL, *value;
+    const char *value;
     char *auxs;
     unsigned long val;
 
@@ -4110,7 +4110,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
             /* count the number of keys */
             GETVAL(value, sub, "value");
-            key_str = value;
+            list->keys_str = lydict_insert(module->ctx, value, 0);
             while ((value = strpbrk(value, " \t\n"))) {
                 list->keys_size++;
                 while (isspace(*value)) {
@@ -4242,7 +4242,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     /* check - if list is configuration, key statement is mandatory
      * (but only if we are not in a grouping or augment, then the check is deferred) */
     for (node = retval; node && !(node->nodetype & (LYS_GROUPING | LYS_AUGMENT)); node = node->parent);
-    if (!node && (list->flags & LYS_CONFIG_W) && !key_str) {
+    if (!node && (list->flags & LYS_CONFIG_W) && !list->keys_str) {
         LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, retval, "key", "list");
         goto error;
     }
@@ -4326,8 +4326,10 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         lyxml_free(module->ctx, sub);
     }
 
-    if (key_str) {
-        if (unres_schema_add_str(module, unres, list, UNRES_LIST_KEYS, key_str) == -1) {
+    if (list->keys_str) {
+        /* check that we are not in grouping */
+        for (node = parent; node && node->nodetype != LYS_GROUPING; node = lys_parent(node));
+        if (!node && unres_schema_add_node(module, unres, list, UNRES_LIST_KEYS, NULL) == -1) {
             goto error;
         }
     } /* else config false list without a key, key_str presence in case of config true is checked earlier */
@@ -4584,7 +4586,7 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
     grp->prev = (struct lys_node *)grp;
     retval = (struct lys_node *)grp;
 
-    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | (valid_config ? OPT_CFG_INHERIT : 0))) {
+    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE )) {
         goto error;
     }
 

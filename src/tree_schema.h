@@ -967,6 +967,9 @@ struct lys_node_list {
     struct lys_node_leaf **keys;     /**< array of pointers to the key nodes */
     struct lys_unique *unique;       /**< array of unique statement structures */
 
+    const char *keys_str;              /**< string defining the keys, must be stored besides the keys array since the
+                                          keys may not be present in case the list is inside grouping */
+
     uint8_t unique_size;             /**< number of elements in the #unique array (number of unique statements) */
 };
 

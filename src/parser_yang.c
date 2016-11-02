@@ -687,6 +687,7 @@ int
 yang_read_key(struct lys_module *module, struct lys_node_list *list, struct unres_schema *unres)
 {
     char *exp, *value;
+    struct lys_node *node;
 
     exp = value = (char *) list->keys;
     list->keys_size = 0;
@@ -697,20 +698,18 @@ yang_read_key(struct lys_module *module, struct lys_node_list *list, struct unre
         }
     }
     list->keys_size++;
+
+    list->keys_str = lydict_insert_zc(module->ctx, exp);
     list->keys = calloc(list->keys_size, sizeof *list->keys);
     if (!list->keys) {
         LOGMEM;
-        goto error;
+        return EXIT_FAILURE;
     }
-    if (unres_schema_add_str(module, unres, list, UNRES_LIST_KEYS, exp) == -1) {
-        goto error;
+    for (node = list->parent; node && node->nodetype != LYS_GROUPING; node = lys_parent(node));
+    if (!node && unres_schema_add_node(module, unres, list, UNRES_LIST_KEYS, NULL) == -1) {
+        return EXIT_FAILURE;
     }
-    free(exp);
     return EXIT_SUCCESS;
-
-error:
-    free(exp);
-    return EXIT_FAILURE;
 }
 
 int

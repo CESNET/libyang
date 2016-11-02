@@ -992,11 +992,7 @@ yin_print_list(struct lyout *out, int level, const struct lys_node *node)
         yin_print_must(out, level, list->module, &list->must[i]);
     }
     if (list->keys_size) {
-        ly_print(out, "%*s<key value=\"", LEVEL, INDENT);
-        for (i = 0; i < list->keys_size; i++) {
-            ly_print(out, "%s%s", list->keys[i]->name, i + 1 < list->keys_size ? " " : "");
-        }
-        ly_print(out, "\"/>\n");
+        ly_print(out, "%*s<key value=\"%s\"/>\n", LEVEL, INDENT, list->keys_str);
     }
     for (i = 0; i < list->unique_size; i++) {
         yin_print_unique(out, level, &list->unique[i]);

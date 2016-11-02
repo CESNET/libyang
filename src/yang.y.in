@@ -1684,7 +1684,7 @@ grouping_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                    YYABORT;
                                  }
                                }
-                               if (store_flags((struct lys_node *)$$.grouping, size_arrays->node[size_arrays->next].flags, config_inherit)) {
+                               if (store_flags((struct lys_node *)$$.grouping, size_arrays->node[size_arrays->next].flags, 0)) {
                                    YYABORT;
                                }
                                size_arrays->next++;

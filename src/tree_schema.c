@@ -2504,30 +2504,18 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         list->keys_size = list_orig->keys_size;
         if (list->keys_size) {
             list->keys = calloc(list->keys_size, sizeof *list->keys);
+            list->keys_str = lydict_insert(ctx, list_orig->keys_str, 0);
             if (!list->keys) {
                 LOGMEM;
                 goto error;
             }
 
             if (!shallow) {
-                /* we managed to resolve it before, resolve it again manually */
-                if (list_orig->keys[0]) {
-                    for (i = 0; i < list->keys_size; ++i) {
-                        rc = lys_get_sibling(list->child, lys_node_module(retval)->name, 0, list_orig->keys[i]->name, 0, LYS_LEAF,
-                                            (const struct lys_node **)&list->keys[i]);
-                        if (rc) {
-                            if (rc == EXIT_FAILURE) {
-                                LOGINT;
-                            }
-                            goto error;
-                        }
-                    }
-                /* it was not resolved yet, add unres copy */
-                } else {
-                    if (unres_schema_dup(module, unres, list_orig, UNRES_LIST_KEYS, list)) {
-                        LOGINT;
-                        goto error;
-                    }
+                /* the keys are going to be resolved only if the list is instantiated in data tree, not just
+                 * in another grouping */
+                for (iter = parent; iter && iter->nodetype != LYS_GROUPING; iter = iter->parent);
+                if (!iter && unres_schema_add_node(module, unres, list, UNRES_LIST_KEYS, NULL) == -1) {
+                    goto error;
                 }
             } else {
                 memcpy(list->keys, list_orig->keys, list->keys_size * sizeof *list->keys);

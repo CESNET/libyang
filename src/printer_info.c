@@ -421,23 +421,6 @@ info_print_list_constr(struct lyout *out, uint32_t min, uint32_t max)
 }
 
 static void
-info_print_keys(struct lyout *out, struct lys_node_leaf ** const keys, uint8_t keys_size)
-{
-    int i;
-
-    ly_print(out, "%-*s", INDENT_LEN, "Keys: ");
-
-    if (keys_size) {
-        ly_print(out, "%s\n", keys[0]->name);
-        for (i = 1; i < keys_size; ++i) {
-            ly_print(out, "%*s%s\n", INDENT_LEN, "", keys[i]->name);
-        }
-    } else {
-        ly_print(out, "\n");
-    }
-}
-
-static void
 info_print_unique(struct lyout *out, const struct lys_unique *unique, uint8_t unique_size)
 {
     int i, j;
@@ -895,7 +878,7 @@ info_print_list(struct lyout *out, const struct lys_node *node)
     info_print_if_feature(out, list->module, list->iffeature, list->iffeature_size);
     info_print_when(out, list->when);
     info_print_must(out, list->must, list->must_size);
-    info_print_keys(out, list->keys, list->keys_size);
+    info_print_text(out, list->keys_str, "Keys: ");
     info_print_unique(out, list->unique, list->unique_size);
     info_print_typedef(out, list->tpdf, list->tpdf_size);
     info_print_nacmext(out, list->nacm);
