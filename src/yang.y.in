@@ -2237,10 +2237,6 @@ list_stmt: LIST_KEYWORD sep identifier_arg_str { if (read_all) {
                                  if ($7.node.ptr_list->keys && yang_read_key(trg, $7.node.ptr_list, unres)) {
                                    YYABORT;
                                  }
-                                 if (!($7.node.flag & LYS_DATADEF)) {
-                                   LOGVAL(LYE_SPEC, LY_VLOG_LYS, $7.node.ptr_list, "data-def statement missing.");
-                                   YYABORT;
-                                 }
                                  if (yang_read_unique(trg, $7.node.ptr_list, unres)) {
                                    YYABORT;
                                  }
@@ -3430,10 +3426,6 @@ input_stmt: INPUT_KEYWORD optsep { if (read_all) {
                                  }
             '{' stmtsep
                 input_output_opt_stmt { if (read_all) {
-                                          if (!($6.node.flag & LYS_DATADEF)) {
-                                            LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, "data-def", "input");
-                                            YYABORT;
-                                          }
                                           /* check XPath dependencies */
                                           if ($6.node.ptr_inout->must_size &&
                                               (unres_schema_add_node(trg, unres, $6.node.ptr_inout, UNRES_XPATH, NULL) == -1)) {
@@ -3520,10 +3512,6 @@ output_stmt: OUTPUT_KEYWORD optsep { if (read_all) {
                                    }
              '{' stmtsep
                  input_output_opt_stmt { if (read_all) {
-                                           if (!($6.node.flag & LYS_DATADEF)) {
-                                             LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, "data-def", "output");
-                                             YYABORT;
-                                           }
                                            /* check XPath dependencies */
                                            if ($6.node.ptr_inout->must_size &&
                                                (unres_schema_add_node(trg, unres, $6.node.ptr_inout, UNRES_XPATH, NULL) == -1)) {
