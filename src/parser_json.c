@@ -428,16 +428,16 @@ json_get_value(struct lyd_node_leaf_list *leaf, struct lyd_node *first_sibling, 
     struct lys_type *stype;
     struct ly_ctx *ctx;
     unsigned int len = 0, r;
-    int resolve;
+    int resolvable;
     char *str;
 
     assert(leaf && data);
     ctx = leaf->schema->module->ctx;
 
     if (options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
-        resolve = 0;
+        resolvable = 0;
     } else {
-        resolve = 1;
+        resolvable = 1;
     }
 
     stype = &((struct lys_node_leaf *)leaf->schema)->type;
@@ -508,7 +508,10 @@ repeat:
         return 0;
     }
 
-    if (lyp_parse_value(leaf, NULL, resolve, 0)) {
+    /* the value is here converted to a JSON format if needed in case of LY_TYPE_IDENT and LY_TYPE_INST or to a
+     * canonical form of the value */
+    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, NULL, NULL, leaf,
+                         resolvable, 0)) {
         ly_errno = LY_EVALID;
         return 0;
     }

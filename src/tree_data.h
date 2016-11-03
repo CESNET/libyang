@@ -1151,9 +1151,12 @@ double lyd_dec64_to_double(const struct lyd_node *node);
  * representation so it is not #LY_TYPE_UNION neither #LY_TYPE_LEAFREF.
  *
  * @param[in] leaf The leaf/leaf-list node to be examined.
+ * @param[in] resolve Flag to store the leaf's value as its value data, in this case the value is resolved in the data
+ *            tree. Otherwise the data tree is not checked, so e.g. leafref type can be returned even if the value
+ *            does not match any target value in the data tree.
  * @return Pointer to the type definition of the \p leaf.
  */
-const struct lys_type *lyd_leaf_type(const struct lyd_node_leaf_list *leaf);
+const struct lys_type *lyd_leaf_type(struct lyd_node_leaf_list *leaf, int resolve);
 
 /**@} */
 

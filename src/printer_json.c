@@ -135,7 +135,7 @@ contentprint:
         break;
 
     case LY_TYPE_LEAFREF:
-        type = lyd_leaf_type(leaf);
+        type = lyd_leaf_type(leaf, 1);
         if (!type) {
             /* error */
             ly_print(out, "\"(!error!)\"");

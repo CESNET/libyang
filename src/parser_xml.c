@@ -78,21 +78,18 @@ static int
 xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, int editbits)
 {
     struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
-    int resolve;
+    int resolvable;
 
     assert(node && (node->schema->nodetype & (LYS_LEAFLIST | LYS_LEAF)) && xml);
 
+    if (options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
+        resolvable = 0;
+    } else {
+        resolvable = 1;
+    }
+
     leaf->value_str = xml->content;
     xml->content = NULL;
-
-    /* will be changed in case of union */
-    leaf->value_type = ((struct lys_node_leaf *)node->schema)->type.base;
-
-    if (options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
-        resolve = 0;
-    } else {
-        resolve = 1;
-    }
 
     if ((editbits & 0x10) && (node->schema->nodetype & LYS_LEAF) && (!leaf->value_str || !leaf->value_str[0])) {
         /* we have edit-config leaf/leaf-list with delete operation and no (empty) value,
@@ -101,20 +98,10 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, int ed
         return EXIT_SUCCESS;
     }
 
-    if ((leaf->value_type == LY_TYPE_IDENT) || (leaf->value_type == LY_TYPE_INST)) {
-        /* convert the path from the XML form using XML namespaces into the JSON format
-         * using module names as namespaces
-         */
-        xml->content = leaf->value_str;
-        leaf->value_str = transform_xml2json(leaf->schema->module->ctx, xml->content, xml, 1);
-        lydict_remove(leaf->schema->module->ctx, xml->content);
-        xml->content = NULL;
-        if (!leaf->value_str) {
-            return EXIT_FAILURE;
-        }
-    }
-
-    if (lyp_parse_value(leaf, xml, resolve, 0)) {
+    /* the value is here converted to a JSON format if needed in case of LY_TYPE_IDENT and LY_TYPE_INST or to a
+     * canonical form of the value */
+    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, xml, NULL, leaf,
+                         resolvable, 0)) {
         return EXIT_FAILURE;
     }
 

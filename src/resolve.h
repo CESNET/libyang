@@ -175,6 +175,8 @@ int resolve_applies_when(const struct lys_node *schema, int mode, const struct l
 int resolve_applies_must(const struct lyd_node *node);
 
 struct lys_ident *resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node *node);
+struct lyd_node *resolve_instid(struct lyd_node *data, const char *path);
+int resolve_leafref(struct lyd_node_leaf_list *leaf, struct lys_type *type);
 
 int resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres);
 

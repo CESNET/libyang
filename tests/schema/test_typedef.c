@@ -250,12 +250,12 @@ test_typedef_11_multidents_yang(void **state)
 
     root = lyd_parse_mem(st->ctx, data1, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(root, NULL);
-    assert_string_equal(ly_errmsg(), "Failed to resolve identityref \"des\".");
+    assert_string_equal(ly_errmsg(), "Invalid value \"des\" in \"l2\" element.");
     assert_string_equal(ly_errpath(), "/x:l2");
 
     root = lyd_parse_mem(st->ctx, data2, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(root, NULL);
-    assert_string_equal(ly_errmsg(), "Failed to resolve identityref \"des3\".");
+    assert_string_equal(ly_errmsg(), "Invalid value \"des3\" in \"l2\" element.");
     assert_string_equal(ly_errpath(), "/x:l2");
 
     root = lyd_parse_mem(st->ctx, data3, LYD_XML, LYD_OPT_CONFIG);
@@ -290,12 +290,12 @@ test_typedef_11_multidents_yin(void **state)
 
     root = lyd_parse_mem(st->ctx, data1, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(root, NULL);
-    assert_string_equal(ly_errmsg(), "Failed to resolve identityref \"des\".");
+    assert_string_equal(ly_errmsg(), "Invalid value \"des\" in \"l2\" element.");
     assert_string_equal(ly_errpath(), "/x:l2");
 
     root = lyd_parse_mem(st->ctx, data2, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(root, NULL);
-    assert_string_equal(ly_errmsg(), "Failed to resolve identityref \"des3\".");
+    assert_string_equal(ly_errmsg(), "Invalid value \"des3\" in \"l2\" element.");
     assert_string_equal(ly_errpath(), "/x:l2");
 
     root = lyd_parse_mem(st->ctx, data3, LYD_XML, LYD_OPT_CONFIG);

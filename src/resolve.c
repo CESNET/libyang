@@ -3054,12 +3054,8 @@ check_default(struct lys_type *type, const char **value, struct lys_module *modu
                 *value = dflt;
             }
         }
-
-    } else if ((type->base == LY_TYPE_INST) || (type->base == LY_TYPE_IDENT)) {
-        /* it was converted to JSON format before, nothing else sensible we can do */
-
     } else {
-        if (lyp_parse_value(&node, NULL, 1, 1)) {
+        if (!lyp_parse_value(&((struct lys_node_leaf *)node.schema)->type, &node.value_str, NULL, NULL, &node, 1, 1)) {
             ret = -1;
             if (base_tpdf) {
                 /* default value is defined in some base typedef */
@@ -4048,7 +4044,7 @@ remove_instid:
  *
  * @return Matching node or NULL if no such a node exists. If error occurs, NULL is returned and ly_errno is set.
  */
-static struct lyd_node *
+struct lyd_node *
 resolve_instid(struct lyd_node *data, const char *path)
 {
     int i = 0, j;
@@ -5049,7 +5045,7 @@ resolve_base_ident(const struct lys_module *module, struct lys_ident *ident, con
  *
  * @param[in] type Identityref type.
  * @param[in] ident_name Identityref name.
- * @param[in] node Node where the identityref is being resolved
+ * @param[in] node Node where the identityref is being resolved, if NULL the logging is switched off
  *
  * @return Pointer to the identity resolvent, NULL on error.
  */
@@ -5067,10 +5063,14 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
 
     rc = parse_node_identifier(ident_name, &mod_name, &mod_name_len, &name, NULL);
     if (rc < 1) {
-        LOGVAL(LYE_INCHAR, LY_VLOG_LYD, node, ident_name[-rc], &ident_name[-rc]);
+        if (node) {
+            LOGVAL(LYE_INCHAR, LY_VLOG_LYD, node, ident_name[-rc], &ident_name[-rc]);
+        }
         return NULL;
     } else if (rc < (signed)strlen(ident_name)) {
-        LOGVAL(LYE_INCHAR, LY_VLOG_LYD, node, ident_name[rc], &ident_name[rc]);
+        if (node) {
+            LOGVAL(LYE_INCHAR, LY_VLOG_LYD, node, ident_name[rc], &ident_name[rc]);
+        }
         return NULL;
     }
 
@@ -5099,15 +5099,19 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
         type = &type->der->type;
     }
 
-    LOGVAL(LYE_INRESOLV, LY_VLOG_LYD, node, "identityref", ident_name);
+    if (node) {
+        LOGVAL(LYE_INRESOLV, LY_VLOG_LYD, node, "identityref", ident_name);
+    }
     return NULL;
 
 match:
     for (i = 0; i < cur->iffeature_size; i++) {
         if (!resolve_iffeature(&cur->iffeature[i])) {
-            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, cur->name, node->schema->name);
-            LOGVAL(LYE_SPEC, LY_VLOG_LYD, node, "Identity \"%s\" is disabled by its if-feature condition.",
-                   cur->name);
+            if (node) {
+                LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, cur->name, node->schema->name);
+                LOGVAL(LYE_SPEC, LY_VLOG_LYD, node, "Identity \"%s\" is disabled by its if-feature condition.",
+                       cur->name);
+            }
             return NULL;
         }
     }
@@ -6627,15 +6631,11 @@ unres_schema_free(struct lys_module *module, struct unres_schema **unres)
     }
 }
 
-static int
+int
 resolve_leafref(struct lyd_node_leaf_list *leaf, struct lys_type *type)
 {
     struct unres_data matches;
-    struct lyd_node_leaf_list *dummy, *cmp;
     uint32_t i;
-    int rc;
-    struct lys_type *stype;
-    struct ly_ctx *ctx = leaf->schema->module->ctx; /* shortcut */
 
     assert(type->base == LY_TYPE_LEAFREF);
 
@@ -6649,72 +6649,15 @@ resolve_leafref(struct lyd_node_leaf_list *leaf, struct lys_type *type)
 
     /* check that value matches */
     for (i = 0; i < matches.count; ++i) {
-        cmp = (struct lyd_node_leaf_list *)matches.node[i]; /* shortcut */
-        switch (cmp->value_type) {
-        case LY_TYPE_STRING:
-        case LY_TYPE_BOOL:
-        case LY_TYPE_ENUM:
-        case LY_TYPE_BINARY:
-        case LY_TYPE_IDENT:
-        case LY_TYPE_INST:
-        case LY_TYPE_EMPTY:
-            /* canonical representation is the same as lexical ... */
-        case LY_TYPE_UNION:
-        case LY_TYPE_LEAFREF:
-            /* ... or we cannot resolve it */
-simplecmp:
-            if (ly_strequal(leaf->value_str, cmp->value_str, 1)) {
-                leaf->value.leafref = matches.node[i];
-                goto done;
-            }
-            break;
-        default:
-            /* in other case, get the canonical form of the value via a dummy node */
-            stype = (struct lys_type *)lyd_leaf_type(cmp);
-            if (!stype) {
-                /* try simple comparison */
-                goto simplecmp;
-            }
-            dummy = calloc(1, sizeof *dummy);
-            dummy->schema = cmp->schema;
-            dummy->value_type = cmp->value_type;
-            dummy->value_str = lydict_insert(ctx, leaf->value_str, 0);
-            /* parse the value according to the possible type */
-            rc = lyp_parse_value_type(dummy, stype, NULL, 0, 0);
-            if (!rc) {
-                /* success - try to compare the canonical forms */
-                if (ly_strequal(dummy->value_str, cmp->value_str, 1)) {
-                    /* replace leafref value with its canonical form */
-                    leaf->value.leafref = matches.node[i];
-                    lydict_remove(ctx, leaf->value_str);
-                    leaf->value_str = dummy->value_str;
-                } else {
-                    rc = -1;
-                }
-            }
-            if (rc) {
-                /* failure - remove duplicate leaf value */
-                lydict_remove(ctx, dummy->value_str);
-            }
-
-            /* cleanup - dummy */
-            if (dummy->value_type == LY_TYPE_BITS) {
-                free(dummy->value.bit);
-            }
-            free(dummy);
-
-            if (!rc) {
-                /* success - stop the loop */
-                goto done;
-            } else if (rc > 0) {
-                /* conversion to canonical form failed, try simple comparison of the current value */
-                goto simplecmp;
-            }
+        /* not that the value is already in canonical form since the parsers does the conversion,
+         * so we can simply compare just the values */
+        if (ly_strequal(leaf->value_str, ((struct lyd_node_leaf_list *)matches.node[i])->value_str, 1)) {
+            /* we have the match */
+            leaf->value.leafref = matches.node[i];
             break;
         }
     }
 
-done:
     free(matches.node);
 
     if (!leaf->value.leafref) {
@@ -6731,133 +6674,31 @@ done:
 }
 
 API const struct lys_type *
-lyd_leaf_type(const struct lyd_node_leaf_list *leaf)
+lyd_leaf_type(struct lyd_node_leaf_list *leaf, int resolve)
 {
-    struct lyd_node *node;
-    struct lys_type *type, *type_iter;
-    lyd_val value;
-    int f = 0, r;
-
     if (!leaf || !(leaf->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
         return NULL;
     }
 
-    /* init */
-    type = &((struct lys_node_leaf *)leaf->schema)->type;
-    value = leaf->value;
-    ly_vlog_hide(1);
-
-    /* resolve until we get the real data type */
-    while (1) {
-        /* get the correct data type from schema */
-        switch (type->base) {
-        case LY_TYPE_LEAFREF:
-            type = &type->info.lref.target->type;
-            break; /* continue in while loop */
-        case LY_TYPE_UNION:
-            type_iter = NULL;
-            while ((type_iter = lyp_get_next_union_type(type, type_iter, &f))) {
-                if (type_iter->base == LY_TYPE_LEAFREF) {
-                    if (type_iter->info.lref.req == -1) {
-                        /* target not required, so it always succeeds */
-                        break;
-                    } else {
-                        /* try to resolve leafref */
-                        memset(&((struct lyd_node_leaf_list *)leaf)->value, 0, sizeof leaf->value);
-                        r = resolve_leafref((struct lyd_node_leaf_list *)leaf, type_iter);
-                        /* revert leaf's content affected by resolve_leafref */
-                        ((struct lyd_node_leaf_list *)leaf)->value = value;
-                        if (!r) {
-                            /* success, we can continue with the leafref type */
-                            break;
-                        }
-                    }
-                } else if (type_iter->base == LY_TYPE_INST) {
-                    if (type_iter->info.inst.req == -1) {
-                        /* target not required, so it always succeeds */
-                        return type_iter;
-                    } else {
-                        /* try to resolve instance-identifier */
-                        ly_err_clean(1);
-                        node = resolve_instid((struct lyd_node *)leaf, leaf->value_str);
-                        if (!ly_errno && node) {
-                            /* the real type is instance-identifier */
-                            return type_iter;
-                        }
-                    }
-                } else {
-                    r = lyp_parse_value_type((struct lyd_node_leaf_list *)leaf, type_iter, NULL, 1, 0);
-                    /* revert leaf's content affected by resolve_leafref */
-                    if (leaf->value_type == LY_TYPE_BITS) {
-                        if (leaf->value.bit) {
-                            free(leaf->value.bit);
-                        }
-                    }
-                    ((struct lyd_node_leaf_list *)leaf)->value = value;
-                    if (!r) {
-                        /* we have the real type */
-                        return type_iter;
-                    }
-                }
-                f = 0;
-            }
-            /* erase ly_errno and ly_vecode */
-            ly_err_clean(1);
-
-            if (!type_iter) {
-                LOGERR(LY_EINVAL, "Unable to get type from union \"%s\" with no valid type.", type->parent->name)
-                return NULL;
-            }
-            type = type_iter;
-            break;
-        default:
-            /* we have the real type */
-            ly_vlog_hide(0);
-            return type;
-        }
+    if (((struct lys_node_leaf *)leaf->schema)->type.base == LY_TYPE_BITS) {
+        free(leaf->value.bit);
     }
+    memset(&leaf->value, 0, sizeof leaf->value);
 
-    ly_vlog_hide(0);
-    return NULL;
+    /* resolve */
+    return lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, (const char **)&leaf->value_str, NULL,
+                           (struct lyd_node *)leaf, resolve ? leaf : NULL, 1, 0);
 }
 
 static int
 resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type)
 {
     struct lys_type *datatype = NULL;
-    int f = 0;
 
     assert(type->base == LY_TYPE_UNION);
 
     memset(&leaf->value, 0, sizeof leaf->value);
-    while ((datatype = lyp_get_next_union_type(type, datatype, &f))) {
-        leaf->value_type = datatype->base;
-
-        if (datatype->base == LY_TYPE_LEAFREF) {
-            /* try to resolve leafref */
-            if (!resolve_leafref(leaf, datatype)) {
-                /* success */
-                break;
-            }
-        } else if (datatype->base == LY_TYPE_INST) {
-            /* try to resolve instance-identifier */
-            ly_err_clean(1);
-            leaf->value.instance = resolve_instid((struct lyd_node *)leaf, leaf->value_str);
-            if (!ly_errno && (leaf->value.instance || datatype->info.inst.req == -1)) {
-                /* success */
-                break;
-            }
-        } else {
-            if (!lyp_parse_value_type(leaf, datatype, NULL, 1, 0)) {
-                /* success */
-                break;
-            }
-        }
-        f = 0;
-    }
-    /* erase ly_errno and ly_vecode */
-    ly_err_clean(1);
-
+    datatype = lyp_parse_value(type, &leaf->value_str, NULL, (struct lyd_node *)leaf, leaf, 1, 0);
     if (!datatype) {
         /* failure */
         LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, (leaf->value_str ? leaf->value_str : ""), leaf->schema->name);

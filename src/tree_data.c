@@ -692,8 +692,9 @@ _lyd_new_leaf(struct lyd_node *parent, const struct lys_node *schema, const char
     }
 
     /* resolve the type correctly (after it was connected to parent cause of log) */
-    if (lyp_parse_value((struct lyd_node_leaf_list *)ret, NULL, 1, 0)) {
-        lyd_free((struct lyd_node *)ret);
+    if (!lyp_parse_value(&((struct lys_node_leaf *)ret->schema)->type, &((struct lyd_node_leaf_list *)ret)->value_str,
+                         NULL, NULL, (struct lyd_node_leaf_list *)ret, 1, 0)) {
+        lyd_free(ret);
         return NULL;
     }
 
@@ -741,6 +742,7 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
     lyd_val backup_val;
     struct lyd_node *parent;
     struct lys_node_list *slist;
+    LY_DATA_TYPE backup_type;
     uint32_t i;
 
     if (!leaf) {
@@ -765,16 +767,20 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
     }
 
     backup = leaf->value_str;
+    backup_type = leaf->value_type;
     memcpy(&backup_val, &leaf->value, sizeof backup);
     leaf->value_str = lydict_insert(leaf->schema->module->ctx, val_str ? val_str : "", 0);
     /* leaf->value is erased by lyp_parse_value() */
 
-    /* resolve the type correctly */
-    if (lyp_parse_value(leaf, NULL, 1, 0)) {
+    /* resolve the type correctly, makes the value canonical if needed */
+    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, NULL, NULL, leaf, 1, 0)) {
         lydict_remove(leaf->schema->module->ctx, leaf->value_str);
         leaf->value_str = backup;
         memcpy(&leaf->value, &backup_val, sizeof backup);
         return EXIT_FAILURE;
+    }
+    if (backup_type == LY_TYPE_BITS) {
+        free(backup_val.bit);
     }
 
     /* value is correct, remove backup */
