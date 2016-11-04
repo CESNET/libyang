@@ -38,7 +38,7 @@ parse_range_dec64(const char **str_num, uint8_t dig, int64_t *num)
     const char *ptr;
     int minus = 0;
     int64_t ret = 0;
-    int8_t str_exp, str_dig = -1;
+    int8_t str_exp, str_dig = -1, trailing_zeros = 0;
 
     ptr = *str_num;
 
@@ -66,9 +66,15 @@ parse_range_dec64(const char **str_num, uint8_t dig, int64_t *num)
             }
             ++str_dig;
         } else {
-            ret = ret * 10 + (ptr[0] - 48);
+            ret = ret * 10 + (ptr[0] - '0');
             if (str_dig > -1) {
                 ++str_dig;
+                if (ptr[0] == '0') {
+                    /* possibly trailing zero */
+                    trailing_zeros++;
+                } else {
+                    trailing_zeros = 0;
+                }
             }
             ++str_exp;
         }
@@ -79,6 +85,11 @@ parse_range_dec64(const char **str_num, uint8_t dig, int64_t *num)
     } else if (str_dig == -1) {
         /* there are 0 numbers after the floating point */
         str_dig = 0;
+    }
+    /* remove trailing zeros */
+    if (trailing_zeros) {
+        str_dig = str_dig - trailing_zeros;
+        ret = ret / dec_pow(trailing_zeros);
     }
 
     /* it's parsed, now adjust the number based on fraction-digits, if needed */
