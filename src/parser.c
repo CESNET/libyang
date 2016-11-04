@@ -1012,6 +1012,11 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         if (validate_length_range(0, (value ? strlen(value) : 0), 0, 0, 0, type, value, NULL)) {
             goto cleanup;
         }
+
+        if (leaf) {
+            /* store the result */
+            leaf->value.binary = value;
+        }
         break;
 
     case LY_TYPE_BITS:
