@@ -3067,7 +3067,8 @@ check_default(struct lys_type *type, const char **value, struct lys_module *modu
         }
     } else {
         if (!lyp_parse_value(&((struct lys_node_leaf *)node.schema)->type, &node.value_str, NULL, NULL, &node, 1, 1)) {
-            ret = -1;
+            /* possible forward reference */
+            ret = 1;
             if (base_tpdf) {
                 /* default value is defined in some base typedef */
                 if ((type->base == LY_TYPE_BITS && type->der->type.der) ||
@@ -5055,7 +5056,7 @@ resolve_base_ident(const struct lys_module *module, struct lys_ident *ident, con
  *
  * @param[in] type Identityref type.
  * @param[in] ident_name Identityref name.
- * @param[in] node Node where the identityref is being resolved, if NULL the logging is switched off
+ * @param[in] node Node where the identityref is being resolved
  *
  * @return Pointer to the identity resolvent, NULL on error.
  */
@@ -5075,11 +5076,17 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
     if (rc < 1) {
         if (node) {
             LOGVAL(LYE_INCHAR, LY_VLOG_LYD, node, ident_name[-rc], &ident_name[-rc]);
+        } else {
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid identityref value \"%s\".", ident_name);
+            ly_vecode = LYVE_INCHAR;
         }
         return NULL;
     } else if (rc < (signed)strlen(ident_name)) {
         if (node) {
             LOGVAL(LYE_INCHAR, LY_VLOG_LYD, node, ident_name[rc], &ident_name[rc]);
+        } else {
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid identityref value \"%s\".", ident_name);
+            ly_vecode = LYVE_INCHAR;
         }
         return NULL;
     }
@@ -5111,6 +5118,9 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
 
     if (node) {
         LOGVAL(LYE_INRESOLV, LY_VLOG_LYD, node, "identityref", ident_name);
+    } else {
+        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid identityref value \"%s\".", ident_name);
+        ly_vecode = LYVE_INRESOLV;
     }
     return NULL;
 
@@ -5121,6 +5131,10 @@ match:
                 LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, cur->name, node->schema->name);
                 LOGVAL(LYE_SPEC, LY_VLOG_LYD, node, "Identity \"%s\" is disabled by its if-feature condition.",
                        cur->name);
+            } else {
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Identity \"%s\" is disabled by its if-feature condition.",
+                       cur->name);
+                ly_vecode = LYVE_INVAL;
             }
             return NULL;
         }
