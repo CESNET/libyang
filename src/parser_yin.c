@@ -3210,7 +3210,7 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             continue;
         } else if (!strcmp(sub->name, "when")) {
             if (cs->when) {
-                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, retval, sub->name, yin->name);
                 goto error;
             }
 
@@ -3221,7 +3221,7 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
             lyxml_free(module->ctx, sub);
         } else {
-            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, sub->name);
+            LOGVAL(LYE_INSTMT, LY_VLOG_LYS, retval, sub->name);
             goto error;
         }
     }
@@ -3356,7 +3356,7 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
             }
         } else if (!strcmp(sub->name, "default")) {
             if (dflt) {
-                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, retval, sub->name, yin->name);
                 goto error;
             }
             dflt = sub;
@@ -3367,7 +3367,7 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
 
         } else if (!strcmp(sub->name, "mandatory")) {
             if (f_mand) {
-                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, retval, sub->name, yin->name);
                 goto error;
             }
             /* just checking the flags in leaf is not sufficient, we would allow
@@ -3381,12 +3381,12 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
             } else if (!strcmp(value, "false")) {
                 choice->flags |= LYS_MAND_FALSE;
             } else {
-                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, sub->name);
+                LOGVAL(LYE_INARG, LY_VLOG_LYS, retval, value, sub->name);
                 goto error;
             }                   /* else false is the default value, so we can ignore it */
         } else if (!strcmp(sub->name, "when")) {
             if (choice->when) {
-                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, retval, sub->name, yin->name);
                 goto error;
             }
 
@@ -3404,7 +3404,7 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
                 goto error;
             }
         } else {
-            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, sub->name);
+            LOGVAL(LYE_INSTMT, LY_VLOG_LYS, retval, sub->name);
             goto error;
         }
 
@@ -3430,8 +3430,8 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
 
     /* check - default is prohibited in combination with mandatory */
     if (dflt && (choice->flags & LYS_MAND_TRUE)) {
-        LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "default", "choice");
-        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The \"default\" statement is forbidden on choices with \"mandatory\".");
+        LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, retval, "default", "choice");
+        LOGVAL(LYE_SPEC, LY_VLOG_LYS, retval, "The \"default\" statement is forbidden on choices with \"mandatory\".");
         goto error;
     }
 
@@ -3503,7 +3503,7 @@ read_yin_anydata(struct lys_module *module, struct lys_node *parent, struct lyxm
 
         if (!strcmp(sub->name, "mandatory")) {
             if (f_mand) {
-                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, retval, sub->name, yin->name);
                 goto error;
             }
             /* just checking the flags in leaf is not sufficient, we would allow
@@ -3517,14 +3517,14 @@ read_yin_anydata(struct lys_module *module, struct lys_node *parent, struct lyxm
             } else if (!strcmp(value, "false")) {
                 anyxml->flags |= LYS_MAND_FALSE;
             } else {
-                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, sub->name);
+                LOGVAL(LYE_INARG, LY_VLOG_LYS, retval, value, sub->name);
                 goto error;
             }
             /* else false is the default value, so we can ignore it */
             lyxml_free(module->ctx, sub);
         } else if (!strcmp(sub->name, "when")) {
             if (anyxml->when) {
-                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, retval, sub->name, yin->name);
                 goto error;
             }
 
@@ -3540,7 +3540,7 @@ read_yin_anydata(struct lys_module *module, struct lys_node *parent, struct lyxm
             c_ftrs++;
 
         } else {
-            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, sub->name);
+            LOGVAL(LYE_INSTMT, LY_VLOG_LYS, retval, sub->name);
             goto error;
         }
     }
@@ -3634,7 +3634,7 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
         if (!strcmp(sub->name, "type")) {
             if (has_type) {
-                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, retval, sub->name, yin->name);
                 goto error;
             }
             /* HACK for unres */
@@ -3645,21 +3645,21 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             has_type = 1;
         } else if (!strcmp(sub->name, "default")) {
             if (leaf->dflt) {
-                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, retval, sub->name, yin->name);
                 goto error;
             }
             GETVAL(value, sub, "value");
             leaf->dflt = lydict_insert(module->ctx, value, strlen(value));
         } else if (!strcmp(sub->name, "units")) {
             if (leaf->units) {
-                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, retval, sub->name, yin->name);
                 goto error;
             }
             GETVAL(value, sub, "name");
             leaf->units = lydict_insert(module->ctx, value, strlen(value));
         } else if (!strcmp(sub->name, "mandatory")) {
             if (f_mand) {
-                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, retval, sub->name, yin->name);
                 goto error;
             }
             /* just checking the flags in leaf is not sufficient, we would allow
@@ -3673,12 +3673,12 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             } else if (!strcmp(value, "false")) {
                 leaf->flags |= LYS_MAND_FALSE;
             } else {
-                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, sub->name);
+                LOGVAL(LYE_INARG, LY_VLOG_LYS, retval, value, sub->name);
                 goto error;
             }                   /* else false is the default value, so we can ignore it */
         } else if (!strcmp(sub->name, "when")) {
             if (leaf->when) {
-                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, retval, sub->name, yin->name);
                 goto error;
             }
 
@@ -3695,7 +3695,7 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             continue;
 
         } else {
-            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, sub->name);
+            LOGVAL(LYE_INSTMT, LY_VLOG_LYS, retval, sub->name);
             goto error;
         }
 
@@ -3704,12 +3704,12 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
     /* check mandatory parameters */
     if (!has_type) {
-        LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "type", yin->name);
+        LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, retval, "type", yin->name);
         goto error;
     }
     if (leaf->dflt && (leaf->flags & LYS_MAND_TRUE)) {
-        LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "mandatory", "leaf");
-        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
+        LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, retval, "mandatory", "leaf");
+        LOGVAL(LYE_SPEC, LY_VLOG_LYS, retval,
                "The \"mandatory\" statement is forbidden on leaf with the \"default\" statement.");
         goto error;
     }
@@ -3818,7 +3818,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
 
         if (!strcmp(sub->name, "type")) {
             if (has_type) {
-                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, retval, sub->name, yin->name);
                 goto error;
             }
             /* HACK for unres */
@@ -3829,14 +3829,14 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
             has_type = 1;
         } else if (!strcmp(sub->name, "units")) {
             if (llist->units) {
-                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, retval, sub->name, yin->name);
                 goto error;
             }
             GETVAL(value, sub, "name");
             llist->units = lydict_insert(module->ctx, value, strlen(value));
         } else if (!strcmp(sub->name, "ordered-by")) {
             if (f_ordr) {
-                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, retval, sub->name, yin->name);
                 goto error;
             }
             /* just checking the flags in llist is not sufficient, we would
@@ -3856,7 +3856,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
             if (!strcmp(value, "user")) {
                 llist->flags |= LYS_USERORDERED;
             } else if (strcmp(value, "system")) {
-                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, sub->name);
+                LOGVAL(LYE_INARG, LY_VLOG_LYS, retval, value, sub->name);
                 goto error;
             } /* else system is the default value, so we can ignore it */
 
@@ -3872,7 +3872,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
 
         } else if (!strcmp(sub->name, "min-elements")) {
             if (f_min) {
-                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, retval, sub->name, yin->name);
                 goto error;
             }
             f_min = 1;
@@ -3887,18 +3887,18 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
             endptr = NULL;
             val = strtoul(value, &endptr, 10);
             if (*endptr || value[0] == '-' || errno || val > UINT32_MAX) {
-                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, sub->name);
+                LOGVAL(LYE_INARG, LY_VLOG_LYS, retval, value, sub->name);
                 goto error;
             }
             llist->min = (uint32_t) val;
             if (llist->max && (llist->min > llist->max)) {
-                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, sub->name);
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"min-elements\" is bigger than \"max-elements\".");
+                LOGVAL(LYE_INARG, LY_VLOG_LYS, retval, value, sub->name);
+                LOGVAL(LYE_SPEC, LY_VLOG_LYS, retval, "\"min-elements\" is bigger than \"max-elements\".");
                 goto error;
             }
         } else if (!strcmp(sub->name, "max-elements")) {
             if (f_max) {
-                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, retval, sub->name, yin->name);
                 goto error;
             }
             f_max = 1;
@@ -3916,19 +3916,19 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
                 endptr = NULL;
                 val = strtoul(value, &endptr, 10);
                 if (*endptr || value[0] == '-' || errno || val == 0 || val > UINT32_MAX) {
-                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, sub->name);
+                    LOGVAL(LYE_INARG, LY_VLOG_LYS, retval, value, sub->name);
                     goto error;
                 }
                 llist->max = (uint32_t) val;
                 if (llist->min > llist->max) {
-                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, sub->name);
-                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"max-elements\" is smaller than \"min-elements\".");
+                    LOGVAL(LYE_INARG, LY_VLOG_LYS, retval, value, sub->name);
+                    LOGVAL(LYE_SPEC, LY_VLOG_LYS, retval, "\"max-elements\" is smaller than \"min-elements\".");
                     goto error;
                 }
             }
         } else if (!strcmp(sub->name, "when")) {
             if (llist->when) {
-                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, retval, sub->name, yin->name);
                 goto error;
             }
 
@@ -3937,7 +3937,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
                 goto error;
             }
         } else {
-            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, sub->name);
+            LOGVAL(LYE_INSTMT, LY_VLOG_LYS, retval, sub->name);
             goto error;
         }
 
@@ -3946,7 +3946,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
 
     /* check constraints */
     if (!has_type) {
-        LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "type", yin->name);
+        LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, retval, "type", yin->name);
         goto error;
     }
 
@@ -3994,8 +3994,8 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
             if (llist->flags & LYS_CONFIG_W) {
                 for (r = 0; r < llist->dflt_size; r++) {
                     if (ly_strequal(llist->dflt[r], value, 1)) {
-                        LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "default");
-                        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Duplicated default value \"%s\".", value);
+                        LOGVAL(LYE_INARG, LY_VLOG_LYS, retval, value, "default");
+                        LOGVAL(LYE_SPEC, LY_VLOG_LYS, retval, "Duplicated default value \"%s\".", value);
                         goto error;
                     }
                 }
@@ -4011,8 +4011,8 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
     }
 
     if (llist->dflt_size && llist->min) {
-        LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "min-elements", "leaf-list");
-        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
+        LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, retval, "min-elements", "leaf-list");
+        LOGVAL(LYE_SPEC, LY_VLOG_LYS, retval,
                "The \"min-elements\" statement with non-zero value is forbidden on leaf-lists with the \"default\" statement.");
         goto error;
     }
@@ -4107,7 +4107,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         } else if (!strcmp(sub->name, "key")) {
             /* check cardinality 0..1 */
             if (list->keys_size) {
-                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, list->name);
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, retval, sub->name, list->name);
                 goto error;
             }
 
@@ -4140,7 +4140,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             /* optional stetments */
         } else if (!strcmp(sub->name, "ordered-by")) {
             if (f_ordr) {
-                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, retval, sub->name, yin->name);
                 goto error;
             }
             /* just checking the flags in llist is not sufficient, we would
@@ -4160,14 +4160,14 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             if (!strcmp(value, "user")) {
                 list->flags |= LYS_USERORDERED;
             } else if (strcmp(value, "system")) {
-                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, sub->name);
+                LOGVAL(LYE_INARG, LY_VLOG_LYS, retval, value, sub->name);
                 goto error;
             }
             /* else system is the default value, so we can ignore it */
             lyxml_free(module->ctx, sub);
         } else if (!strcmp(sub->name, "min-elements")) {
             if (f_min) {
-                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, retval, sub->name, yin->name);
                 goto error;
             }
             f_min = 1;
@@ -4182,20 +4182,20 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             auxs = NULL;
             val = strtoul(value, &auxs, 10);
             if (*auxs || value[0] == '-' || errno || val > UINT32_MAX) {
-                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, sub->name);
+                LOGVAL(LYE_INARG, LY_VLOG_LYS, retval, value, sub->name);
                 goto error;
             }
             list->min = (uint32_t) val;
             if (list->max && (list->min > list->max)) {
-                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, sub->name);
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"min-elements\" is bigger than \"max-elements\".");
+                LOGVAL(LYE_INARG, LY_VLOG_LYS, retval, value, sub->name);
+                LOGVAL(LYE_SPEC, LY_VLOG_LYS, retval, "\"min-elements\" is bigger than \"max-elements\".");
                 lyxml_free(module->ctx, sub);
                 goto error;
             }
             lyxml_free(module->ctx, sub);
         } else if (!strcmp(sub->name, "max-elements")) {
             if (f_max) {
-                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, retval, sub->name, yin->name);
                 goto error;
             }
             f_max = 1;
@@ -4213,20 +4213,20 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 auxs = NULL;
                 val = strtoul(value, &auxs, 10);
                 if (*auxs || value[0] == '-' || errno || val == 0 || val > UINT32_MAX) {
-                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, sub->name);
+                    LOGVAL(LYE_INARG, LY_VLOG_LYS, retval, value, sub->name);
                     goto error;
                 }
                 list->max = (uint32_t) val;
                 if (list->min > list->max) {
-                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, sub->name);
-                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"max-elements\" is smaller than \"min-elements\".");
+                    LOGVAL(LYE_INARG, LY_VLOG_LYS, retval, value, sub->name);
+                    LOGVAL(LYE_SPEC, LY_VLOG_LYS, retval, "\"max-elements\" is smaller than \"min-elements\".");
                     goto error;
                 }
             }
             lyxml_free(module->ctx, sub);
         } else if (!strcmp(sub->name, "when")) {
             if (list->when) {
-                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, retval, sub->name, yin->name);
                 goto error;
             }
 
@@ -4237,7 +4237,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             }
             lyxml_free(module->ctx, sub);
         } else {
-            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, sub->name);
+            LOGVAL(LYE_INSTMT, LY_VLOG_LYS, retval, sub->name);
             goto error;
         }
     }
@@ -4424,7 +4424,7 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
 
         if (!strcmp(sub->name, "presence")) {
             if (cont->presence) {
-                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, retval, sub->name, yin->name);
                 goto error;
             }
             GETVAL(value, sub, "value");
@@ -4433,7 +4433,7 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
             lyxml_free(module->ctx, sub);
         } else if (!strcmp(sub->name, "when")) {
             if (cont->when) {
-                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, retval, sub->name, yin->name);
                 goto error;
             }
 
@@ -4466,7 +4466,7 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
         } else if (!strcmp(sub->name, "if-feature")) {
             c_ftrs++;
         } else {
-            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, sub->name);
+            LOGVAL(LYE_INSTMT, LY_VLOG_LYS, retval, sub->name);
             goto error;
         }
     }
@@ -4625,7 +4625,7 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
         } else if (!strcmp(sub->name, "typedef")) {
             c_tpdf++;
         } else {
-            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, sub->name);
+            LOGVAL(LYE_INSTMT, LY_VLOG_LYS, retval, sub->name);
             goto error;
         }
     }
@@ -4767,7 +4767,7 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
             c_must++;
 
         } else {
-            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, sub->name);
+            LOGVAL(LYE_INSTMT, LY_VLOG_LYS, retval, sub->name);
             goto error;
         }
     }
@@ -4862,7 +4862,7 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
     int c_tpdf = 0, c_ftrs = 0, c_must = 0;
 
     if (parent && (module->version < 2)) {
-        LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "notification");
+        LOGVAL(LYE_INSTMT, LY_VLOG_LYS, parent, "notification");
         return NULL;
     }
 
@@ -4916,7 +4916,7 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
         } else if ((module->version >= 2) && !strcmp(sub->name, "must")) {
             c_must++;
         } else {
-            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, sub->name);
+            LOGVAL(LYE_INSTMT, LY_VLOG_LYS, retval, sub->name);
             goto error;
         }
     }
@@ -5025,13 +5025,13 @@ read_yin_rpc_action(struct lys_module *module, struct lys_node *parent, struct l
 
     if (!strcmp(yin->name, "action")) {
         if (module->version < 2) {
-            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "action");
+            LOGVAL(LYE_INSTMT, LY_VLOG_LYS, parent, "action");
             return NULL;
         }
         for (node = parent; node; node = lys_parent(node)) {
             if ((node->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))
                     || ((node->nodetype == LYS_LIST) && !((struct lys_node_list *)node)->keys_size)) {
-                LOGVAL(LYE_INPAR, LY_VLOG_NONE, NULL, strnodetype(node->nodetype), "action");
+                LOGVAL(LYE_INPAR, LY_VLOG_LYS, parent, strnodetype(node->nodetype), "action");
                 return NULL;
             }
         }
@@ -5070,7 +5070,7 @@ read_yin_rpc_action(struct lys_module *module, struct lys_node *parent, struct l
 
         if (!strcmp(sub->name, "input")) {
             if (c_input) {
-                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, retval, sub->name, yin->name);
                 goto error;
             }
             c_input++;
@@ -5078,7 +5078,7 @@ read_yin_rpc_action(struct lys_module *module, struct lys_node *parent, struct l
             lyxml_add_child(module->ctx, &root, sub);
         } else if (!strcmp(sub->name, "output")) {
             if (c_output) {
-                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, retval, sub->name, yin->name);
                 goto error;
             }
             c_output++;
@@ -5096,7 +5096,7 @@ read_yin_rpc_action(struct lys_module *module, struct lys_node *parent, struct l
         } else if (!strcmp(sub->name, "if-feature")) {
             c_ftrs++;
         } else {
-            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, sub->name);
+            LOGVAL(LYE_INSTMT, LY_VLOG_LYS, retval, sub->name);
             goto error;
         }
     }
@@ -5215,7 +5215,7 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             c_ftrs++;
         } else if (!strcmp(sub->name, "when")) {
             if (uses->when) {
-                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, retval, sub->name, yin->name);
                 goto error;
             }
 
@@ -5226,7 +5226,7 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             }
             lyxml_free(module->ctx, sub);
         } else {
-            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, sub->name);
+            LOGVAL(LYE_INSTMT, LY_VLOG_LYS, retval, sub->name);
             goto error;
         }
     }
