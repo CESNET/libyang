@@ -223,12 +223,14 @@ yang_print_snode_common2(struct lyout *out, int level, const struct lys_node *no
         ly_print(out, "%*sconfig false;\n", LEVEL, INDENT);
     }
 
-    if (node->flags & LYS_MAND_TRUE) {
-        yang_print_open(out, flag);
-        ly_print(out, "%*smandatory true;\n", LEVEL, INDENT);
-    } else if (node->flags & LYS_MAND_FALSE) {
-        yang_print_open(out, flag);
-        ly_print(out, "%*smandatory false;\n", LEVEL, INDENT);
+    if (node->nodetype & (LYS_LEAF | LYS_CHOICE | LYS_ANYDATA)) {
+        if (node->flags & LYS_MAND_TRUE) {
+            yang_print_open(out, flag);
+            ly_print(out, "%*smandatory true;\n", LEVEL, INDENT);
+        } else if (node->flags & LYS_MAND_FALSE) {
+            yang_print_open(out, flag);
+            ly_print(out, "%*smandatory false;\n", LEVEL, INDENT);
+        }
     }
 
     yang_print_snode_common(out, level, node, flag);

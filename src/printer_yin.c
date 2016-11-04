@@ -218,10 +218,12 @@ yin_print_snode_common2(struct lyout *out, int level, const struct lys_node *nod
         yin_print_open(out, level, "config", "value", "false", 1);
     }
 
-    if (node->flags & LYS_MAND_TRUE) {
-        yin_print_open(out, level, "mandatory", "value", "true", 1);
-    } else if (node->flags & LYS_MAND_FALSE) {
-        yin_print_open(out, level, "mandatory", "value", "false", 1);
+    if (node->nodetype & (LYS_LEAF | LYS_CHOICE | LYS_ANYDATA)) {
+        if (node->flags & LYS_MAND_TRUE) {
+            yin_print_open(out, level, "mandatory", "value", "true", 1);
+        } else if (node->flags & LYS_MAND_FALSE) {
+            yin_print_open(out, level, "mandatory", "value", "false", 1);
+        }
     }
 
     yin_print_snode_common(out, level, node);

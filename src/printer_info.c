@@ -792,7 +792,7 @@ info_print_container(struct lyout *out, const struct lys_node *node)
     ly_print(out, "%-*s%s\n", INDENT_LEN, "Module: ", cont->module->name);
     info_print_text(out, cont->dsc, "Desc: ");
     info_print_text(out, cont->ref, "Reference: ");
-    info_print_flags(out, cont->flags, LYS_CONFIG_MASK | LYS_STATUS_MASK | LYS_MAND_MASK, 0);
+    info_print_flags(out, cont->flags, LYS_CONFIG_MASK | LYS_STATUS_MASK, 0);
     info_print_text(out, cont->presence, "Presence: ");
     info_print_if_feature(out, cont->module, cont->iffeature, cont->iffeature_size);
     info_print_when(out, cont->when);
@@ -854,7 +854,7 @@ info_print_leaflist(struct lyout *out, const struct lys_node *node)
     ly_print(out, "%-*s%s\n", INDENT_LEN, "Module: ", llist->module->name);
     info_print_text(out, llist->dsc, "Desc: ");
     info_print_text(out, llist->ref, "Reference: ");
-    info_print_flags(out, llist->flags, LYS_CONFIG_MASK | LYS_STATUS_MASK | LYS_MAND_MASK | LYS_USERORDERED, 1);
+    info_print_flags(out, llist->flags, LYS_CONFIG_MASK | LYS_STATUS_MASK | LYS_USERORDERED, 1);
     info_print_text(out, llist->type.der->name, "Type: ");
     info_print_text(out, llist->units, "Units: ");
     info_print_list_constr(out, llist->min, llist->max);
@@ -873,7 +873,7 @@ info_print_list(struct lyout *out, const struct lys_node *node)
     ly_print(out, "%-*s%s\n", INDENT_LEN, "Module: ", list->module->name);
     info_print_text(out, list->dsc, "Desc: ");
     info_print_text(out, list->ref, "Reference: ");
-    info_print_flags(out, list->flags, LYS_CONFIG_MASK | LYS_STATUS_MASK | LYS_MAND_MASK | LYS_USERORDERED, 1);
+    info_print_flags(out, list->flags, LYS_CONFIG_MASK | LYS_STATUS_MASK | LYS_USERORDERED, 1);
     info_print_list_constr(out, list->min, list->max);
     info_print_if_feature(out, list->module, list->iffeature, list->iffeature_size);
     info_print_when(out, list->when);
@@ -927,7 +927,7 @@ info_print_case(struct lyout *out, const struct lys_node *node)
     ly_print(out, "%-*s%s\n", INDENT_LEN, "Module: ", cas->module->name);
     info_print_text(out, cas->dsc, "Desc: ");
     info_print_text(out, cas->ref, "Reference: ");
-    info_print_flags(out, cas->flags, LYS_CONFIG_MASK | LYS_STATUS_MASK | LYS_MAND_MASK, 0);
+    info_print_flags(out, cas->flags, LYS_CONFIG_MASK | LYS_STATUS_MASK, 0);
     info_print_if_feature(out, cas->module, cas->iffeature, cas->iffeature_size);
     info_print_when(out, cas->when);
     info_print_nacmext(out, cas->nacm);
