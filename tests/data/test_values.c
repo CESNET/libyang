@@ -145,6 +145,30 @@ test_xmltojson_identityref(void **state)
 }
 
 static void
+test_xmltojson_identityref2(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module y {"
+                    "  namespace urn:y;"
+                    "  prefix y;"
+                    "  identity vehicle;"
+                    "  identity car { base vehicle; }"
+                    "  leaf y { type identityref { base y:vehicle; } default y:car; }"
+                    "}";
+    const char *result = "<y xmlns=\"urn:y\" xmlns:y=\"urn:y\">y:car</y>";
+
+    assert_ptr_not_equal(lys_parse_mem(st->ctx, yang, LYS_IN_YANG), NULL);
+
+    st->dt = NULL;
+    lyd_validate(&st->dt, LYD_OPT_CONFIG, st->ctx);
+    assert_ptr_not_equal(st->dt, NULL);
+
+    lyd_print_mem(&st->data, st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL);
+    assert_ptr_not_equal(st->data, NULL);
+    assert_string_equal(st->data, result);
+}
+
+static void
 test_xmltojson_instanceid(void **state)
 {
     struct state *st = (*state);
@@ -270,6 +294,7 @@ int main(void)
     const struct CMUnitTest tests[] = {
                     cmocka_unit_test_setup_teardown(test_default_int, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_xmltojson_identityref, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_xmltojson_identityref2, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_xmltojson_instanceid, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_canonical, setup_f, teardown_f),};
 

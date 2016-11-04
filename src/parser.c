@@ -1267,11 +1267,6 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         ident = resolve_identref(type, value, (struct lyd_node*)leaf);
         if (!ident) {
-            if (leaf) {
-                LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, *value_, leaf->schema->name);
-            } else {
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid identityref value \"%s\" (%s).", value, *value_);
-            }
             goto cleanup;
         } else if (leaf) {
             /* store the result */
@@ -1308,11 +1303,11 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                 goto cleanup;
             }
         }
-        if (resolvable && tree && !resolve_instid(tree, value) && type->info.inst.req) {
+        if (resolvable && tree && !resolve_instid(tree, value) && (ly_errno || type->info.inst.req)) {
             if (leaf) {
                 LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, *value_, leaf->schema->name);
             } else {
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid instance-identifier value \"%s\" (%s).", value, *value_);
+                LOGVAL(LYE_SPEC, leaf ? LY_VLOG_LYD : LY_VLOG_NONE, leaf, "Invalid instance-identifier value \"%s\" (%s).", value, *value_);
             }
             goto cleanup;
         } else if (!resolvable && leaf) {
