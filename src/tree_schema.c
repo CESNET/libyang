@@ -647,6 +647,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
         module = parent->module;
     } else {
         assert(module);
+        assert(!(child->nodetype & (LYS_INPUT | LYS_OUTPUT)));
         type = 0;
     }
 
