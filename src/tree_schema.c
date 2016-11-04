@@ -2299,11 +2299,13 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
 
     retval->prev = retval;
 
-    retval->iffeature_size = node->iffeature_size;
-    retval->iffeature = calloc(retval->iffeature_size, sizeof *retval->iffeature);
-    if (!retval->iffeature) {
-        LOGMEM;
-        goto error;
+    if (node->iffeature_size) {
+        retval->iffeature_size = node->iffeature_size;
+        retval->iffeature = calloc(retval->iffeature_size, sizeof *retval->iffeature);
+        if (!retval->iffeature) {
+            LOGMEM;
+            goto error;
+        }
     }
 
     if (!shallow) {
