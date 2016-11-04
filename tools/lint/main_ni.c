@@ -179,7 +179,7 @@ main_ni(int argc, char* argv[])
         struct dataitem *next;
     } *data = NULL, *data_item;
     struct ly_set *mods = NULL;
-    struct lyd_node *root = NULL, *node, *next, *subroot;
+    struct lyd_node *root = NULL, *node = NULL, *next, *subroot;
     struct lyxml_elem *xml = NULL;
 
     opterr = 0;
@@ -434,7 +434,7 @@ main_ni(int argc, char* argv[])
         for (u = 0; u < mods->number; u++) {
             lys_print_file(out, (struct lys_module *)mods->set.g[u], outformat_s, NULL);
         }
-    } else {
+    } else if (data) {
         ly_errno = 0;
         if (!options_parser) {
             /* LYD_OPT_DATA - status data fro ietf-yang-library are needed */
@@ -501,7 +501,7 @@ main_ni(int argc, char* argv[])
             }
         }
         /* validate the data */
-        if (outformat_d || root) {
+        if (data) {
             /* do not trust the input, invalidate all the data first */
             LY_TREE_FOR(root, subroot) {
                 LY_TREE_DFS_BEGIN(subroot, next, node) {
