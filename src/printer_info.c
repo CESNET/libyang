@@ -654,16 +654,22 @@ info_print_data_with_include(struct lyout *out, const struct lys_module *mod)
 {
     int first = 1;
     struct lys_node *node;
+    const struct lys_module *mainmod = lys_main_module(mod);
 
     ly_print(out, "%-*s", INDENT_LEN, "Data: ");
 
-    if (mod->data) {
-        ly_print(out, "%s \"%s\"\n", strnodetype(mod->data->nodetype), mod->data->name);
-        node = mod->data->next;
-        first = 0;
+    if (mainmod->data) {
+        LY_TREE_FOR(mainmod->data, node) {
+            if (node->module != mod) {
+                continue;
+            }
 
-        for (; node; node = node->next) {
-            ly_print(out, "%*s%s \"%s\"\n", INDENT_LEN, "", strnodetype(node->nodetype), node->name);
+            if (first) {
+                ly_print(out, "%s \"%s\"\n", strnodetype(node->nodetype), node->name);
+                first = 0;
+            } else {
+                ly_print(out, "%*s%s \"%s\"\n", INDENT_LEN, "", strnodetype(node->nodetype), node->name);
+            }
         }
     }
 
