@@ -430,6 +430,9 @@ parse_int(const char *val_str, int64_t min, int64_t max, int base, int64_t *ret,
     if (!val_str || !val_str[0]) {
         if (node) {
             LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, "", node->schema->name);
+        } else {
+            ly_errno = LY_EVALID;
+            ly_vecode = LYVE_INVAL;
         }
         return EXIT_FAILURE;
     }
@@ -443,6 +446,9 @@ parse_int(const char *val_str, int64_t min, int64_t max, int base, int64_t *ret,
     if (errno || (*ret < min) || (*ret > max)) {
         if (node) {
             LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, val_str, node->schema->name);
+        } else {
+            ly_errno = LY_EVALID;
+            ly_vecode = LYVE_INVAL;
         }
         return EXIT_FAILURE;
     } else if (strptr && *strptr) {
@@ -452,6 +458,9 @@ parse_int(const char *val_str, int64_t min, int64_t max, int base, int64_t *ret,
         if (*strptr) {
             if (node) {
                 LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, val_str, node->schema->name);
+            } else {
+                ly_errno = LY_EVALID;
+                ly_vecode = LYVE_INVAL;
             }
             return EXIT_FAILURE;
         }
@@ -472,6 +481,9 @@ parse_uint(const char *val_str, uint64_t max, int base, uint64_t *ret, struct ly
     if (!val_str || !val_str[0]) {
         if (node) {
             LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, "", node->schema->name);
+        } else {
+            ly_errno = LY_EVALID;
+            ly_vecode = LYVE_INVAL;
         }
         return EXIT_FAILURE;
     }
@@ -482,6 +494,9 @@ parse_uint(const char *val_str, uint64_t max, int base, uint64_t *ret, struct ly
     if (errno || (*ret > max)) {
         if (node) {
             LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, val_str, node->schema->name);
+        } else {
+            ly_errno = LY_EVALID;
+            ly_vecode = LYVE_INVAL;
         }
         return EXIT_FAILURE;
     } else if (strptr && *strptr) {
@@ -491,6 +506,9 @@ parse_uint(const char *val_str, uint64_t max, int base, uint64_t *ret, struct ly
         if (*strptr) {
             if (node) {
                 LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, val_str, node->schema->name);
+            } else {
+                ly_errno = LY_EVALID;
+                ly_vecode = LYVE_INVAL;
             }
             return EXIT_FAILURE;
         }
@@ -1009,7 +1027,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
     switch(type->base) {
     case LY_TYPE_BINARY:
-        if (validate_length_range(0, (value ? strlen(value) : 0), 0, 0, 0, type, value, NULL)) {
+        if (validate_length_range(0, (value ? strlen(value) : 0), 0, 0, 0, type, value, (struct lyd_node *)leaf)) {
             goto cleanup;
         }
 
@@ -1158,7 +1176,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             goto cleanup;
         }
 
-        if (validate_length_range(2, 0, 0, num, type->info.dec64.dig, type, value, NULL)) {
+        if (validate_length_range(2, 0, 0, num, type->info.dec64.dig, type, value, (struct lyd_node *)leaf)) {
             goto cleanup;
         }
 
@@ -1360,11 +1378,11 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         break;
 
     case LY_TYPE_STRING:
-        if (validate_length_range(0, (value ? strlen(value) : 0), 0, 0, 0, type, value, NULL)) {
+        if (validate_length_range(0, (value ? strlen(value) : 0), 0, 0, 0, type, value, (struct lyd_node *)leaf)) {
             goto cleanup;
         }
 
-        if (validate_pattern(value, type, NULL)) {
+        if (validate_pattern(value, type, (struct lyd_node *)leaf)) {
             goto cleanup;
         }
 
@@ -1376,11 +1394,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
     case LY_TYPE_INT8:
         if (parse_int(value, __INT64_C(-128), __INT64_C(127), dflt ? 0 : 10, &num, (struct lyd_node *)leaf)
-                || validate_length_range(1, 0, num, 0, 0, type, value, NULL)) {
-            if (!leaf) {
-                ly_vecode = LYE_INVAL;
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid int8 value \"%s\".", value ? value : "");
-            } /* else error message printed in parse_int() */
+                || validate_length_range(1, 0, num, 0, 0, type, value, (struct lyd_node *)leaf)) {
             goto cleanup;
         }
 
@@ -1394,11 +1408,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
     case LY_TYPE_INT16:
         if (parse_int(value, __INT64_C(-32768), __INT64_C(32767), dflt ? 0 : 10, &num, (struct lyd_node *)leaf)
-                || validate_length_range(1, 0, num, 0, 0, type, value, NULL)) {
-            if (!leaf) {
-                ly_vecode = LYE_INVAL;
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid int16 value \"%s\".", value ? value : "");
-            } /* else error message printed in parse_int() */
+                || validate_length_range(1, 0, num, 0, 0, type, value, (struct lyd_node *)leaf)) {
             goto cleanup;
         }
 
@@ -1412,11 +1422,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
     case LY_TYPE_INT32:
         if (parse_int(value, __INT64_C(-2147483648), __INT64_C(2147483647), dflt ? 0 : 10, &num, (struct lyd_node *)leaf)
-                || validate_length_range(1, 0, num, 0, 0, type, value, NULL)) {
-            if (!leaf) {
-                ly_vecode = LYE_INVAL;
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid int32 value \"%s\".", value ? value : "");
-            } /* else error message printed in parse_int() */
+                || validate_length_range(1, 0, num, 0, 0, type, value, (struct lyd_node *)leaf)) {
             goto cleanup;
         }
 
@@ -1431,11 +1437,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
     case LY_TYPE_INT64:
         if (parse_int(value, __INT64_C(-9223372036854775807) - __INT64_C(1), __INT64_C(9223372036854775807),
                       dflt ? 0 : 10, &num, (struct lyd_node *)leaf)
-                || validate_length_range(1, 0, num, 0, 0, type, value, NULL)) {
-            if (!leaf) {
-                ly_vecode = LYE_INVAL;
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid int64 value \"%s\".", value ? value : "");
-            } /* else error message printed in parse_int() */
+                || validate_length_range(1, 0, num, 0, 0, type, value, (struct lyd_node *)leaf)) {
             goto cleanup;
         }
 
@@ -1449,11 +1451,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
     case LY_TYPE_UINT8:
         if (parse_uint(value, __UINT64_C(255), dflt ? 0 : 10, &unum, (struct lyd_node *)leaf)
-                || validate_length_range(0, unum, 0, 0, 0, type, value, NULL)) {
-            if (!leaf) {
-                ly_vecode = LYE_INVAL;
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid uint8 value \"%s\".", value ? value : "");
-            } /* else error message printed in parse_uint() */
+                || validate_length_range(0, unum, 0, 0, 0, type, value, (struct lyd_node *)leaf)) {
             goto cleanup;
         }
 
@@ -1467,11 +1465,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
     case LY_TYPE_UINT16:
         if (parse_uint(value, __UINT64_C(65535), dflt ? 0 : 10, &unum, (struct lyd_node *)leaf)
-                || validate_length_range(0, unum, 0, 0, 0, type, value, NULL)) {
-            if (!leaf) {
-                ly_vecode = LYE_INVAL;
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid uint16 value \"%s\".", value ? value : "");
-            } /* else error message printed in parse_uint() */
+                || validate_length_range(0, unum, 0, 0, 0, type, value, (struct lyd_node *)leaf)) {
             goto cleanup;
         }
 
@@ -1485,11 +1479,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
     case LY_TYPE_UINT32:
         if (parse_uint(value, __UINT64_C(4294967295), dflt ? 0 : 10, &unum, (struct lyd_node *)leaf)
-                || validate_length_range(0, unum, 0, 0, 0, type, value, NULL)) {
-            if (!leaf) {
-                ly_vecode = LYE_INVAL;
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid uint32 value \"%s\".", value ? value : "");
-            } /* else error message printed in parse_uint() */
+                || validate_length_range(0, unum, 0, 0, 0, type, value, (struct lyd_node *)leaf)) {
             goto cleanup;
         }
 
@@ -1503,11 +1493,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
     case LY_TYPE_UINT64:
         if (parse_uint(value, __UINT64_C(18446744073709551615), dflt ? 0 : 10, &unum, (struct lyd_node *)leaf)
-                || validate_length_range(0, unum, 0, 0, 0, type, value, NULL)) {
-            if (!leaf) {
-                ly_vecode = LYE_INVAL;
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid uint64 value \"%s\".", value ? value : "");
-            } /* else error message printed in parse_uint() */
+                || validate_length_range(0, unum, 0, 0, 0, type, value, (struct lyd_node *)leaf)) {
             goto cleanup;
         }
 
