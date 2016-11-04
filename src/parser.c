@@ -1007,7 +1007,7 @@ cleanup:
 /*
  * xml  - optional for converting instance-identifier and identityref into JSON format
  * tree - optional for resolving instance-identifiers and leafrefs
- * leaf - optional for storing parsed data
+ * leaf - optional for storing parsed data, mandatory in case of dflt
  */
 struct lys_type *
 lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *xml, struct lyd_node *tree,
@@ -1020,6 +1020,8 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
     const char *ptr, *value = *value_;
     struct lys_type_bit **bits = NULL;
     struct lys_ident *ident;
+
+    assert(leaf || !dflt);
 
     if (leaf) {
         leaf->value_type = type->base;
@@ -1263,6 +1265,28 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                 }
                 goto cleanup;
             }
+        } else if (dflt) {
+            /* turn logging off */
+            hidden = *ly_vlog_hide_location();
+            ly_vlog_hide(1);
+
+            /* the value actually uses module's prefixes instead of the module names as in JSON format,
+             * we have to convert it */
+            value = transform_schema2json(leaf->schema->module, value);
+            if (!value) {
+                /* invalid identityref format or it was already transformed, so ignore the error here */
+                value = *value_;
+                /* erase error information */
+                ly_err_clean(1);
+            } else if (value == *value_) {
+                /* we have actually created the same expression (prefixes are the same as the module names)
+                 * so we have just increased dictionary's refcount - fix it */
+                lydict_remove(type->parent->module->ctx, value);
+            }
+            /* turn logging back on */
+            if (!hidden) {
+                ly_vlog_hide(0);
+            }
         }
 
         ident = resolve_identref(type, value, (struct lyd_node*)leaf);
@@ -1273,10 +1297,15 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             leaf->value.ident = ident;
         }
 
-        if (xml) {
+        if (value != *value_) {
             /* update the changed value */
             lydict_remove(type->parent->module->ctx, *value_);
             *value_ = value;
+
+            /* we have to remember the conversion into JSON format to be able to print it in correct form */
+            if (dflt) {
+                type->parent->flags |= LYS_DFLTJSON;
+            }
         }
         break;
 
@@ -1302,6 +1331,28 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                 }
                 goto cleanup;
             }
+        } else if (dflt) {
+            /* turn logging off */
+            hidden = *ly_vlog_hide_location();
+            ly_vlog_hide(1);
+
+            /* the value actually uses module's prefixes instead of the module names as in JSON format,
+             * we have to convert it */
+            value = transform_schema2json(leaf->schema->module, value);
+            if (!value) {
+                /* invalid identityref format or it was already transformed, so ignore the error here */
+                value = *value_;
+                /* erase error information */
+                ly_err_clean(1);
+            } else if (value == *value_) {
+                /* we have actually created the same expression (prefixes are the same as the module names)
+                 * so we have just increased dictionary's refcount - fix it */
+                lydict_remove(type->parent->module->ctx, value);
+            }
+            /* turn logging back on */
+            if (!hidden) {
+                ly_vlog_hide(0);
+            }
         }
         if (resolvable && tree && !resolve_instid(tree, value) && (ly_errno || type->info.inst.req)) {
             if (leaf) {
@@ -1316,10 +1367,15 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             leaf->value_type |= LY_TYPE_INST_UNRES;
         }
 
-        if (xml) {
+        if (value != *value_) {
             /* update the changed value */
             lydict_remove(type->parent->module->ctx, *value_);
             *value_ = value;
+
+            /* we have to remember the conversion into JSON format to be able to print it in correct form */
+            if (dflt) {
+                type->parent->flags |= LYS_DFLTJSON;
+            }
         }
         break;
 

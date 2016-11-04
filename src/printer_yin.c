@@ -706,6 +706,7 @@ static void
 yin_print_typedef(struct lyout *out, int level, const struct lys_module *module, const struct lys_tpdf *tpdf)
 {
     yin_print_open(out, level, "typedef", "name", tpdf->name, 0);
+    const char *dflt;
 
     level++;
     yin_print_snode_common(out, level, (struct lys_node *)tpdf);
@@ -714,7 +715,15 @@ yin_print_typedef(struct lyout *out, int level, const struct lys_module *module,
         yin_print_open(out, level, "units", "name", tpdf->units, 1);
     }
     if (tpdf->dflt) {
-        yin_print_open(out, level, "default", "value", tpdf->dflt, 1);
+        if (tpdf->flags & LYS_DFLTJSON) {
+            dflt = transform_json2schema(module, tpdf->dflt);
+        } else {
+            dflt = tpdf->dflt;
+        }
+        yin_print_open(out, level, "default", "value", dflt, 1);
+        if (tpdf->flags & LYS_DFLTJSON) {
+            lydict_remove(module->ctx, dflt);
+        }
     }
     level--;
 
@@ -874,6 +883,7 @@ yin_print_leaf(struct lyout *out, int level, const struct lys_node *node)
 {
     int i;
     struct lys_node_leaf *leaf = (struct lys_node_leaf *)node;
+    const char *dflt;
 
     yin_print_open(out, level, "leaf", "name", node->name, 0);
 
@@ -894,7 +904,15 @@ yin_print_leaf(struct lyout *out, int level, const struct lys_node *node)
         yin_print_open(out, level, "units", "name", leaf->units, 1);
     }
     if (leaf->dflt) {
-        yin_print_open(out, level, "default", "value", leaf->dflt, 1);
+        if (leaf->flags & LYS_DFLTJSON) {
+            dflt = transform_json2schema(node->module, leaf->dflt);
+        } else {
+            dflt = leaf->dflt;
+        }
+        yin_print_open(out, level, "default", "value", dflt, 1);
+        if (leaf->flags & LYS_DFLTJSON) {
+            lydict_remove(node->module->ctx, dflt);
+        }
     }
     level--;
 
@@ -937,6 +955,7 @@ yin_print_leaflist(struct lyout *out, int level, const struct lys_node *node)
 {
     int i;
     struct lys_node_leaflist *llist = (struct lys_node_leaflist *)node;
+    const char *dflt;
 
     yin_print_open(out, level, "leaf-list", "name", node->name, 0);
 
@@ -957,7 +976,15 @@ yin_print_leaflist(struct lyout *out, int level, const struct lys_node *node)
         yin_print_open(out, level, "units", "name", llist->units, 1);
     }
     for (i = 0; i < llist->dflt_size; i++) {
-        yin_print_open(out, level, "default", "value", llist->dflt[i], 1);
+        if (llist->flags & LYS_DFLTJSON) {
+            dflt = transform_json2schema(node->module, llist->dflt[i]);
+        } else {
+            dflt = llist->dflt[i];
+        }
+        yin_print_open(out, level, "default", "value", dflt, 1);
+        if (llist->flags & LYS_DFLTJSON) {
+            lydict_remove(node->module->ctx, dflt);
+        }
     }
     if (llist->min > 0) {
         yin_print_unsigned(out, level, "min-elements", "value", llist->min);

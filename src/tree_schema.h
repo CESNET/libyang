@@ -639,6 +639,8 @@ struct lys_iffeature {
  *       LYS_FENABLED     | | | | | | | | | | | | | | |x| | | |
  *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *    10 LYS_VALID_DEP    |x|x|x|x|x|x|x|x|x|x|x| |x|x| | | | |
+ *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    11 LYS_DFLTJSON     | | |x|x| | | | | | | | | | | |x| | |
  *    --------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * @{
  */
@@ -670,6 +672,10 @@ struct lys_iffeature {
 #define LYS_VALID_DEP    0x200       /**< flag marking nodes, whose validation (when, must expressions or leafrefs)
                                           depends on nodes outside their subtree (applicable only to RPCs,
                                           notifications, and actions) */
+#define LYS_DFLTJSON     0x400       /**< default value (in ::lys_node_leaf, ::lys_node_leaflist, :lys_tpdf) was
+                                          converted into JSON format, since it contains identityref value which is
+                                          being used in JSON format (instead of module prefixes, we use the module
+                                          names) */
 /**
  * @}
  */
@@ -1455,7 +1461,7 @@ struct lys_tpdf {
     const char *name;                /**< name of the newly defined type (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_ values (or 0) are allowed */
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_ and LYS_DFLTJSON values (or 0) are allowed */
     struct lys_module *module;       /**< pointer to the module where the data type is defined (mandatory),
                                           NULL in case of built-in typedefs */
 

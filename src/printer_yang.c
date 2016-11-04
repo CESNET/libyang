@@ -688,6 +688,7 @@ yang_print_typedef(struct lyout *out, int level, const struct lys_module *module
 {
     ly_print(out, "%*stypedef %s {\n", LEVEL, INDENT, tpdf->name);
     level++;
+    const char *dflt;
 
     yang_print_snode_common(out, level, (struct lys_node *)tpdf, NULL);
     yang_print_type(out, level, module, &tpdf->type);
@@ -695,7 +696,15 @@ yang_print_typedef(struct lyout *out, int level, const struct lys_module *module
         ly_print(out, "%*sunits \"%s\";\n", LEVEL, INDENT, tpdf->units);
     }
     if (tpdf->dflt != NULL) {
-        ly_print(out, "%*sdefault \"%s\";\n", LEVEL, INDENT, tpdf->dflt);
+        if (tpdf->flags & LYS_DFLTJSON) {
+            dflt = transform_json2schema(module, tpdf->dflt);
+        } else {
+            dflt = tpdf->dflt;
+        }
+        ly_print(out, "%*sdefault \"%s\";\n", LEVEL, INDENT, dflt);
+        if (tpdf->flags & LYS_DFLTJSON) {
+            lydict_remove(module->ctx, dflt);
+        }
     }
 
     level--;
@@ -857,6 +866,7 @@ yang_print_leaf(struct lyout *out, int level, const struct lys_node *node)
 {
     int i;
     struct lys_node_leaf *leaf = (struct lys_node_leaf *)node;
+    const char *dflt;
 
     ly_print(out, "%*sleaf %s {\n", LEVEL, INDENT, node->name);
 
@@ -877,7 +887,15 @@ yang_print_leaf(struct lyout *out, int level, const struct lys_node *node)
         ly_print(out, "%*sunits \"%s\";\n", LEVEL, INDENT, leaf->units);
     }
     if (leaf->dflt) {
-        ly_print(out, "%*sdefault \"%s\";\n", LEVEL, INDENT, leaf->dflt);
+        if (leaf->flags & LYS_DFLTJSON) {
+            dflt = transform_json2schema(node->module, leaf->dflt);
+        } else {
+            dflt = leaf->dflt;
+        }
+        ly_print(out, "%*sdefault \"%s\";\n", LEVEL, INDENT, dflt);
+        if (leaf->flags & LYS_DFLTJSON) {
+            lydict_remove(node->module->ctx, dflt);
+        }
     }
     level--;
 
@@ -915,6 +933,7 @@ yang_print_leaflist(struct lyout *out, int level, const struct lys_node *node)
 {
     int i;
     struct lys_node_leaflist *llist = (struct lys_node_leaflist *)node;
+    const char *dflt;
 
     ly_print(out, "%*sleaf-list %s {\n", LEVEL, INDENT, node->name);
 
@@ -932,7 +951,15 @@ yang_print_leaflist(struct lyout *out, int level, const struct lys_node *node)
     yang_print_snode_common2(out, level, node, NULL);
     yang_print_type(out, level, node->module, &llist->type);
     for (i = 0; i < llist->dflt_size; ++i) {
-        ly_print(out, "%*sdefault \"%s\";\n", LEVEL, INDENT, llist->dflt[i]);
+        if (llist->flags & LYS_DFLTJSON) {
+            dflt = transform_json2schema(node->module, llist->dflt[i]);
+        } else {
+            dflt = llist->dflt[i];
+        }
+        ly_print(out, "%*sdefault \"%s\";\n", LEVEL, INDENT, dflt);
+        if (llist->flags & LYS_DFLTJSON) {
+            lydict_remove(node->module->ctx, dflt);
+        }
     }
     if (llist->units != NULL) {
         ly_print(out, "%*sunits \"%s\";\n", LEVEL, INDENT, llist->units);

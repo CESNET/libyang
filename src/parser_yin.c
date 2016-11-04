@@ -2303,14 +2303,16 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                         /* remove value */
                         lydict_remove(ctx, leaf->dflt);
                         leaf->dflt = NULL;
+                        leaf->flags &= ~LYS_DFLTJSON;
                     } else { /* add (already checked) and replace */
                         /* remove value */
                         lydict_remove(ctx, leaf->dflt);
+                        leaf->flags &= ~LYS_DFLTJSON;
 
                         /* set new value */
                         leaf->dflt = lydict_insert(ctx, value, u);
 
-                        /* remember to check it later (it may not fit now, but the type can be deviated too) */
+                        /* remember to check it later (it may not fit now, because the type can be deviated too) */
                         ly_set_add(dflt_check, dev_target, 0);
                     }
                 } else { /* LYS_LEAFLIST */
@@ -2346,6 +2348,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
 
                         /* remember to check it later (it may not fit now, but the type can be deviated too) */
                         ly_set_add(dflt_check, dev_target, 0);
+                        leaf->flags &= ~LYS_DFLTJSON;
                     }
                 }
             }
