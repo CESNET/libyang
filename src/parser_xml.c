@@ -60,7 +60,7 @@ xml_data_search_schemanode(struct lyxml_elem *xml, struct lys_node *start, int o
         /* match data nodes */
         if (ly_strequal(result->name, xml->name, 1)) {
             /* names matches, what about namespaces? */
-            if (ly_strequal(result->module->ns, xml->ns->value, 1)) {
+            if (ly_strequal(lys_main_module(result->module)->ns, xml->ns->value, 1)) {
                 /* we have matching result */
                 return result;
             }

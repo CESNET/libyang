@@ -77,7 +77,7 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node, int options)
 
     /* add node attribute modules */
     for (attr = node->attr; attr; attr = attr->next) {
-        if (modlist_add(&mlist, attr->module)) {
+        if (modlist_add(&mlist, lys_main_module(attr->module))) {
             goto print;
         }
     }
