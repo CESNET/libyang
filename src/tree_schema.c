@@ -656,6 +656,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
     case LYS_CONTAINER:
     case LYS_LIST:
     case LYS_GROUPING:
+    case LYS_USES:
         if (!(child->nodetype &
                 (LYS_ANYDATA | LYS_CHOICE | LYS_CONTAINER | LYS_GROUPING | LYS_LEAF |
                  LYS_LEAFLIST | LYS_LIST | LYS_USES | LYS_ACTION | LYS_NOTIF))) {
@@ -663,7 +664,6 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
             return EXIT_FAILURE;
         }
         break;
-    case LYS_USES:
     case LYS_INPUT:
     case LYS_OUTPUT:
     case LYS_NOTIF:
@@ -2599,6 +2599,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         grp->tpdf = lys_tpdf_dup(module, lys_parent(node), grp_orig->tpdf, grp->tpdf_size, unres);
         break;
 
+    case LYS_ACTION:
     case LYS_RPC:
         rpc->tpdf_size = rpc_orig->tpdf_size;
         rpc->tpdf = lys_tpdf_dup(module, lys_parent(node), rpc_orig->tpdf, rpc->tpdf_size, unres);
@@ -2614,6 +2615,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         ntf->tpdf_size = ntf_orig->tpdf_size;
         ntf->tpdf = lys_tpdf_dup(module, lys_parent(node), ntf_orig->tpdf, ntf->tpdf_size, unres);
         break;
+
 
     default:
         /* LY_NODE_AUGMENT */
