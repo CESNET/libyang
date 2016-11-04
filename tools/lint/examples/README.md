@@ -145,10 +145,10 @@ in the following command if you add `-f xml` option).
 Command and its output:
 
 ```
-> data -x config datastore.xml
+> data -t config datastore.xml
 ```
 
-We use option `-x` to specify type of the data in `datastore.xml`. By the
+We use option `-t` to specify type of the data in `datastore.xml`. By the
 `config` value we declare that the input file contains all the configuration
 data (with at least all the mandatory nodes as required by the loaded schemas),
 but without the status data. More examples of different data types will follow.
@@ -158,13 +158,13 @@ To handle unknown data as error, use strict mode (`-s` option).
 Command and its output:
 
 ```
-> data -x config -s datastore.xml
+> data -t config -s datastore.xml
 libyang[0]: Unknown element "interfaces". (path: /)
 Failed to parse data.
 ```
 
 Note that in case of working with complete datastore including the status data
-(no `-x` option is specified), `yanglint(1)` has to add status data from its
+(no `-t` option is specified), `yanglint(1)` has to add status data from its
 internal `ietf-yang-library` module. Using the `-s` option in this case forces
 validation in time of parsing the input file so it is expected to include also
 the mandatory status data from the `ietf-yang-library` module. 
@@ -192,7 +192,7 @@ Command and its output:
 Command and its output:
 
 ```
-> data -x config -s datastore.xml
+> data -t config -s datastore.xml
 ```
 
 **Different data content types**
@@ -202,7 +202,7 @@ situations (e.g. as <edit-config data>, result of the <get> with status data
 included or as a result of the <get-config> without the status data and
 possibly filtered, so without specified subtrees), it must be possible to
 specify which kind of data is going to be parsed. In `yanglint(1)`, this is done
-via `-x` option. The list of supported modes can be displayed by the `-h`
+via `-t` option. The list of supported modes can be displayed by the `-h`
 option given to the `data` command. In general, the `auto` value lets the
 `yanglint(1)` to recognize the data type automatically by the additional top-level
 elements added to the parsed data. This is the same way as `pyang(1)` uses. Note,
@@ -213,7 +213,7 @@ that the automatic data type recognition is available only for the XML input.
 Command and its output:
 
 ```
-> data -x edit config-missing-key.xml
+> data -t edit config-missing-key.xml
 libyang[0]: Invalid (mixed names) opening (nam) and closing (name) element tags. (path: /nacm/groups/group/nam)
 Failed to parse data.
 ```
@@ -223,7 +223,7 @@ Failed to parse data.
 Command and its output:
 
 ```
-> data -x edit config-unknown-element.xml
+> data -t edit config-unknown-element.xml
 libyang[0]: Unknown element "denied-operations". (path: /ietf-netconf-acm:nacm/denied-operations)
 Failed to parse data.
 ```
@@ -469,7 +469,7 @@ Note: This example also shows `JSON` output of the command.
 Command and its output:
 ```
 > feature -e * ietf-ip
-> data -f json -x config data-ip.xml
+> data -f json -t config data-ip.xml
 {
   "ietf-interfaces:interfaces": {
     "interface": [

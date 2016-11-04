@@ -53,9 +53,9 @@ cmd_print_help(void)
 void
 cmd_data_help(void)
 {
-    printf("data [-(-s)trict] [-x OPTION] [-d DEFAULTS] [-o <output-file>] [-f (xml | json)] [-t <additional-tree-file-name>]\n");
+    printf("data [-(-s)trict] [-t TYPE] [-d DEFAULTS] [-o <output-file>] [-f (xml | json)] [-x <additional-tree-file-name>]\n");
     printf("     <data-file-name> [<JSON-rpc/action-schema-nodeid>]\n");
-    printf("Accepted OPTIONs:\n");
+    printf("Accepted TYPEs:\n");
     printf("\tauto       - resolve data type (one of the following) automatically (as pyang does),\n");
     printf("\t             this option is applicable only in case of XML input data.\n");
     printf("\tconfig     - LYD_OPT_CONFIG\n");
@@ -70,8 +70,8 @@ cmd_data_help(void)
     printf("\tall-tagged - add missing default nodes and mark all the default nodes with the attribute.\n");
     printf("\ttrim       - remove all nodes with a default value\n");
     printf("\timplicit-tagged    - add missing nodes and mark them with the attribute\n\n");
-    printf("Option -t:\n");
-    printf("\tIf RPC/action/notification/RPC reply (for OPTIONs 'rpc', 'rpcreply', and 'notif') includes\n");
+    printf("Option -x:\n");
+    printf("\tIf RPC/action/notification/RPC reply (for TYPEs 'rpc', 'rpcreply', and 'notif') includes\n");
     printf("\tan XPath expression (when/must) that needs access to the configuration data, you can provide\n");
     printf("\tthem in a file, which will be parsed as 'config'.\n");
 }
@@ -79,9 +79,9 @@ cmd_data_help(void)
 void
 cmd_xpath_help(void)
 {
-    printf("xpath [-x OPTION] [-t <additional-tree-file-name>] -e <XPath-expression>\n"
+    printf("xpath [-t TYPE] [-x <additional-tree-file-name>] -e <XPath-expression>\n"
            "      <XML-data-file-name> [<JSON-rpc/action-schema-nodeid>]\n");
-    printf("Accepted OPTIONs:\n");
+    printf("Accepted TYPEs:\n");
     printf("\tauto       - resolve data type (one of the following) automatically (as pyang does),\n");
     printf("\t             this option is applicable only in case of XML input data.\n");
     printf("\tconfig     - LYD_OPT_CONFIG\n");
@@ -91,8 +91,8 @@ cmd_xpath_help(void)
     printf("\trpc        - LYD_OPT_RPC\n");
     printf("\trpcreply   - LYD_OPT_RPCREPLY (last parameter mandatory in this case)\n");
     printf("\tnotif      - LYD_OPT_NOTIF\n\n");
-    printf("Option -t:\n");
-    printf("\tIf RPC/action/notification/RPC reply (for OPTIONs 'rpc', 'rpcreply', and 'notif') includes\n");
+    printf("Option -x:\n");
+    printf("\tIf RPC/action/notification/RPC reply (for TYPEs 'rpc', 'rpcreply', and 'notif') includes\n");
     printf("\tan XPath expression (when/must) that needs access to the configuration data, you can provide\n");
     printf("\tthem in a file, which will be parsed as 'config'.\n");
 }
@@ -495,10 +495,10 @@ cmd_data(const char *arg)
         {"defaults", required_argument, 0, 'd'},
         {"help", no_argument, 0, 'h'},
         {"format", required_argument, 0, 'f'},
-        {"option", required_argument, 0, 'x'},
+        {"option", required_argument, 0, 't'},
         {"output", required_argument, 0, 'o'},
         {"strict", no_argument, 0, 's'},
-        {"validation-tree", required_argument, 0, 't'},
+        {"validation-tree", required_argument, 0, 'x'},
         {NULL, 0, 0, 0}
     };
 
@@ -515,7 +515,7 @@ cmd_data(const char *arg)
     optind = 0;
     while (1) {
         option_index = 0;
-        c = getopt_long(argc, argv, "d:hf:o:sx:t:", long_options, &option_index);
+        c = getopt_long(argc, argv, "d:hf:o:st:x:", long_options, &option_index);
         if (c == -1) {
             break;
         }
@@ -557,7 +557,7 @@ cmd_data(const char *arg)
             options |= LYD_OPT_STRICT;
             options |= LYD_OPT_OBSOLETE;
             break;
-        case 'x':
+        case 't':
             if (!strcmp(optarg, "auto")) {
                 options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_TYPEMASK;
             } else if (!strcmp(optarg, "config")) {
@@ -580,7 +580,7 @@ cmd_data(const char *arg)
                 goto cleanup;
             }
             break;
-        case 't':
+        case 'x':
             val_tree = lyd_parse_path(ctx, optarg, LYD_XML, LYD_OPT_CONFIG);
             if (!val_tree) {
                 fprintf(stderr, "Failed to parse the additional data tree for validation.\n");
@@ -699,7 +699,7 @@ cmd_xpath(const char *arg)
         case 'e':
             expr = optarg;
             break;
-        case 'x':
+        case 't':
             if (!strcmp(optarg, "auto")) {
                 options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_TYPEMASK;
             } else if (!strcmp(optarg, "config")) {
@@ -722,7 +722,7 @@ cmd_xpath(const char *arg)
                 goto cleanup;
             }
             break;
-        case 't':
+        case 'x':
             val_tree = lyd_parse_path(ctx, optarg, LYD_XML, LYD_OPT_CONFIG);
             if (!val_tree) {
                 fprintf(stderr, "Failed to parse the additional data tree for validation.\n");
