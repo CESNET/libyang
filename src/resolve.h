@@ -130,7 +130,7 @@ int parse_schema_json_predicate(const char *id, const char **name, int *nam_len,
 int resolve_iffeature(struct lys_iffeature *expr);
 void resolve_iffeature_getsizes(struct lys_iffeature *iffeat, unsigned int *expr_size, unsigned int *feat_size);
 int resolve_iffeature_compile(struct lys_iffeature *iffeat_expr, const char *value, struct lys_node *node,
-                              struct unres_schema *unres);
+                              int infeature, struct unres_schema *unres);
 uint8_t iff_getop(uint8_t *list, int pos);
 
 struct lyd_node *resolve_data_descendant_schema_nodeid(const char *nodeid, struct lyd_node *start);
@@ -175,6 +175,8 @@ int resolve_applies_when(const struct lys_node *schema, int mode, const struct l
 int resolve_applies_must(const struct lyd_node *node);
 
 struct lys_ident *resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node *node);
+struct lyd_node *resolve_instid(struct lyd_node *data, const char *path);
+int resolve_leafref(struct lyd_node_leaf_list *leaf, struct lys_type *type);
 
 int resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres);
 

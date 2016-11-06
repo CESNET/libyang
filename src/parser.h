@@ -42,8 +42,8 @@ struct lyd_node *xml_read_data(struct ly_ctx *ctx, const char *data, int options
  * @defgroup jsondata JSON data format support
  * @{
  */
-struct lyd_node *lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct lys_node *parent,
-                                struct lyd_node *data_tree);
+struct lyd_node *lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct lyd_node *rpc_act,
+                                const struct lyd_node *data_tree);
 
 /**@} jsondata */
 
@@ -62,8 +62,9 @@ struct lys_module *lyp_search_file(struct ly_ctx *ctx, struct lys_module *module
 
 struct lys_type *lyp_get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *found);
 
-int lyp_parse_value(struct lyd_node_leaf_list *leaf, struct lyxml_elem *xml, int resolve);
-int lyp_parse_value_type(struct lyd_node_leaf_list *node, struct lys_type *stype, struct lyxml_elem *xml, int resolve);
+struct lys_type *lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *xml,
+                                         struct lyd_node *tree, struct lyd_node_leaf_list *leaf, int resolvable,
+                                         int dflt);
 
 int lyp_check_length_range(const char *expr, struct lys_type *type);
 

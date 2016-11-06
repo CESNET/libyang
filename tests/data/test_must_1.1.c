@@ -118,7 +118,7 @@ test_dependency_action(void **state)
 
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_RPC, st->dt2), 0);
 
-    lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS);
+    lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_NETCONF);
     assert_string_equal(st->xml, "<action xmlns=\"urn:ietf:params:xml:ns:yang:1\"><top xmlns=\"urn:libyang:tests:must-dependact\"><list1><key1>a</key1><key2>b</key2><act1><b>bb</b></act1></list1></top></action>");
     free(st->xml);
     lyd_print_mem(&(st->xml), st->dt2, LYD_XML, LYP_WITHSIBLINGS);

@@ -177,6 +177,15 @@ struct lys_node_grp *lys_find_grouping_up(const char *name, struct lys_node *sta
 int lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *module);
 
 /**
+ * @brief Check all XPath expressions of a node (when and must), set LYS_XPATH_DEP flag if required.
+ *
+ * @param[in] node Node to examine.
+ * @param[in] check_place Check where the node is placed to get know if the check is supposed to be performed
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
+ */
+int lys_check_xpath(struct lys_node *node, int check_place);
+
+/**
  * @brief Create a copy of the specified schema tree \p node
  *
  * @param[in] module Target module for the duplicated node.
@@ -415,12 +424,12 @@ int lyd_check_mandatory_tree(struct lyd_node *root, struct ly_ctx *ctx, int opti
  *            If NULL, only the modules explicitly mentioned in data tree are taken into account.
  * @param[in] data_tree Additional data tree to be traversed when evaluating when or must expressions in \p root
  *            tree.
- * @param[in] action Action itself in case \p root is actually an action.
+ * @param[in] act_notif Action/notification itself in case \p root is actually an action/notification.
  * @param[in] unres Valid unres structure, on function successful exit they are all resolved.
  * @return 0 on success, nonzero on failure.
  */
-int lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, struct lyd_node *data_tree,
-                           struct lyd_node *action, struct unres_data *unres);
+int lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, const struct lyd_node *data_tree,
+                           struct lyd_node *act_notif, struct unres_data *unres);
 
 void lys_switch_deviations(struct lys_module *module);
 

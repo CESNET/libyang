@@ -381,6 +381,8 @@ submodule_stmt: optsep SUBMODULE_KEYWORD sep identifier_arg_str { if (read_all) 
                                                                     if (!submodule) {
                                                                       free(s);
                                                                       LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "submodule");
+                                                                      LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
+                                                                             "Submodules are parsed automatically as includes to the main module, do not parse them separately.");
                                                                       YYABORT;
                                                                     }
                                                                     trg = (struct lys_module *)submodule;
@@ -1034,7 +1036,8 @@ typedef_stmt: TYPEDEF_KEYWORD sep typedef_arg_str
                       actual = tpdf_parent;
 
                       /* check default value */
-                      if (unres_schema_add_str(trg, unres, &$6.node.ptr_tpdf->type, UNRES_TYPE_DFLT, $6.node.ptr_tpdf->dflt) == -1) {
+                      if (unres_schema_add_node(trg, unres, &$6.node.ptr_tpdf->type, UNRES_TYPE_DFLT,
+                                                (struct lys_node *)(&$6.node.ptr_tpdf->dflt)) == -1) {
                         YYABORT;
                       }
                     }
@@ -1681,7 +1684,7 @@ grouping_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                    YYABORT;
                                  }
                                }
-                               if (store_flags((struct lys_node *)$$.grouping, size_arrays->node[size_arrays->next].flags, config_inherit)) {
+                               if (store_flags((struct lys_node *)$$.grouping, size_arrays->node[size_arrays->next].flags, 0)) {
                                    YYABORT;
                                }
                                size_arrays->next++;
@@ -1896,7 +1899,8 @@ leaf_stmt: LEAF_KEYWORD sep leaf_arg_str
                       LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The \"mandatory\" statement is forbidden on leaf with \"default\".");
                       YYABORT;
                     }
-                    if (unres_schema_add_str(trg, unres, &$6.node.ptr_leaf->type, UNRES_TYPE_DFLT, $6.node.ptr_leaf->dflt) == -1) {
+                    if (unres_schema_add_node(trg, unres, &$6.node.ptr_leaf->type, UNRES_TYPE_DFLT,
+                                              (struct lys_node *)(&$6.node.ptr_leaf->dflt)) == -1) {
                       YYABORT;
                     }
                     /* check XPath dependencies */
@@ -2043,7 +2047,8 @@ leaf_list_arg_str: identifier_arg_str { if (read_all) {
                           /* check default value (if not defined, there still could be some restrictions
                            * that need to be checked against a default value from a derived type) */
                           for (i = 0; i < $6.node.ptr_leaflist->dflt_size; i++) {
-                            if (unres_schema_add_str(module, unres, &$6.node.ptr_leaflist->type, UNRES_TYPE_DFLT, $6.node.ptr_leaflist->dflt[i]) == -1) {
+                            if (unres_schema_add_node(module, unres, &$6.node.ptr_leaflist->type, UNRES_TYPE_DFLT,
+                                                      (struct lys_node *)(&$6.node.ptr_leaflist->dflt[i])) == -1) {
                               YYABORT;
                             }
                           }
@@ -2230,10 +2235,6 @@ list_stmt: LIST_KEYWORD sep identifier_arg_str { if (read_all) {
                                    YYABORT;
                                  }
                                  if ($7.node.ptr_list->keys && yang_read_key(trg, $7.node.ptr_list, unres)) {
-                                   YYABORT;
-                                 }
-                                 if (!($7.node.flag & LYS_DATADEF)) {
-                                   LOGVAL(LYE_SPEC, LY_VLOG_LYS, $7.node.ptr_list, "data-def statement missing.");
                                    YYABORT;
                                  }
                                  if (yang_read_unique(trg, $7.node.ptr_list, unres)) {
@@ -3425,10 +3426,6 @@ input_stmt: INPUT_KEYWORD optsep { if (read_all) {
                                  }
             '{' stmtsep
                 input_output_opt_stmt { if (read_all) {
-                                          if (!($6.node.flag & LYS_DATADEF)) {
-                                            LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, "data-def", "input");
-                                            YYABORT;
-                                          }
                                           /* check XPath dependencies */
                                           if ($6.node.ptr_inout->must_size &&
                                               (unres_schema_add_node(trg, unres, $6.node.ptr_inout, UNRES_XPATH, NULL) == -1)) {
@@ -3515,10 +3512,6 @@ output_stmt: OUTPUT_KEYWORD optsep { if (read_all) {
                                    }
              '{' stmtsep
                  input_output_opt_stmt { if (read_all) {
-                                           if (!($6.node.flag & LYS_DATADEF)) {
-                                             LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, "data-def", "output");
-                                             YYABORT;
-                                           }
                                            /* check XPath dependencies */
                                            if ($6.node.ptr_inout->must_size &&
                                                (unres_schema_add_node(trg, unres, $6.node.ptr_inout, UNRES_XPATH, NULL) == -1)) {
@@ -4607,6 +4600,7 @@ identifiers_ref: IDENTIFIERPREFIX { if (read_all) {
 
 void yyerror(YYLTYPE *yylloc, void *scanner, ...){
 
-  (void)yylloc; /* unused */
-  LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, yyget_text(scanner));
+  if (yylloc->first_line != -1) {
+    LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, yyget_text(scanner));
+  }
 }

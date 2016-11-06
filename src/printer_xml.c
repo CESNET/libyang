@@ -21,6 +21,7 @@
 #include <inttypes.h>
 
 #include "common.h"
+#include "parser.h"
 #include "printer.h"
 #include "xml_internal.h"
 #include "tree_data.h"
@@ -76,7 +77,7 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node, int options)
 
     /* add node attribute modules */
     for (attr = node->attr; attr; attr = attr->next) {
-        if (modlist_add(&mlist, attr->module)) {
+        if (modlist_add(&mlist, lys_main_module(attr->module))) {
             goto print;
         }
     }
@@ -185,6 +186,8 @@ xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int to
     const char **prefs, **nss;
     const char *xml_expr;
     uint32_t ns_count, i;
+    struct lys_type *type;
+    LY_DATA_TYPE datatype;
 
     if (toplevel || !node->parent || nscmp(node, node->parent)) {
         /* print "namespace" */
@@ -199,11 +202,12 @@ xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int to
     }
 
     xml_print_attrs(out, node, options);
-
-    switch (leaf->value_type & LY_DATA_TYPE_MASK) {
+    type = &((struct lys_node_leaf *)leaf->schema)->type;
+    datatype = leaf->value_type & LY_DATA_TYPE_MASK;
+printvalue:
+    switch (datatype) {
     case LY_TYPE_BINARY:
     case LY_TYPE_STRING:
-    case LY_TYPE_LEAFREF:
     case LY_TYPE_BITS:
     case LY_TYPE_ENUM:
     case LY_TYPE_BOOL:
@@ -249,6 +253,17 @@ xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int to
             ly_print(out, "/>");
         }
         lydict_remove(node->schema->module->ctx, xml_expr);
+        break;
+
+    case LY_TYPE_LEAFREF:
+        type = lyp_parse_value(type, (const char **)&leaf->value_str, NULL, (struct lyd_node *)leaf, NULL, 1, 0);
+        if (!type) {
+            /* error */
+            ly_print(out, "\"(!error!)\"");
+        } else {
+            datatype = type->base;
+            goto printvalue;
+        }
         break;
 
     case LY_TYPE_EMPTY:
@@ -435,22 +450,36 @@ int
 xml_print_data(struct lyout *out, const struct lyd_node *root, int options)
 {
     const struct lyd_node *node, *next;
-    int level, action = 0;
+    int level, action_input = 0;
 
     assert(root);
 
     level = (options & LYP_FORMAT ? 1 : 0);
 
-    /* learn whether we are printing an action first */
-    LY_TREE_DFS_BEGIN(root, next, node) {
-        if (node->schema->nodetype == LYS_ACTION) {
-            action = 1;
-            break;
+    if (options & LYP_NETCONF) {
+        if (root->schema->nodetype != LYS_RPC) {
+            /* learn whether we are printing an action */
+            LY_TREE_DFS_BEGIN(root, next, node) {
+                if (node->schema->nodetype == LYS_ACTION) {
+                    break;
+                }
+                LY_TREE_DFS_END(root, next, node);
+            }
+        } else {
+            node = root;
         }
-        LY_TREE_DFS_END(root, next, node);
+
+        if (node && (node->schema->nodetype & (LYS_RPC | LYS_ACTION))) {
+            if (node->child && (node->child->schema->parent->nodetype == LYS_OUTPUT)) {
+                /* skip the container */
+                root = node->child;
+            } else if (node->schema->nodetype == LYS_ACTION) {
+                action_input = 1;
+            }
+        }
     }
 
-    if (action) {
+    if (action_input) {
         ly_print(out, "%*s<action xmlns=\"urn:ietf:params:xml:ns:yang:1\">%s", LEVEL, INDENT, level ? "\n" : "");
         if (level) {
             ++level;
@@ -465,7 +494,7 @@ xml_print_data(struct lyout *out, const struct lyd_node *root, int options)
         }
     }
 
-    if (action) {
+    if (action_input) {
         if (level) {
             --level;
         }

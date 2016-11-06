@@ -27,10 +27,10 @@
  * PARSED GRAMMAR
  *
  * Full axes are not supported, abbreviated forms must be used,
- * variables are not supported, "id()" and "name(node-set?)"
- * functions are not supported, and processing instruction and
- * comment nodes are not supported, which is also reflected in
- * the grammar. Undefined rules and constants are tokens.
+ * variables are not supported, "id()" function is not supported,
+ * and processing instruction and comment nodes are not supported,
+ * which is also reflected in the grammar. Undefined rules and
+ * constants are tokens.
  *
  * Modified full grammar:
  *
@@ -137,7 +137,7 @@ struct lyxp_expr {
  * Tokens: '//',   'NameTest', '[',  'NameTest', 'and', 'NameTest', ']',  '/',  'NameTest', '|',  '/',  'NameTest'
  * Repeat: [9, 0], NULL,       NULL, [4, 0],     NULL,  NULL,       NULL, NULL, NULL,       NULL, NULL, NULL
  *
- * Operators between expressions that are concerned:
+ * Operators between expressions which this concerns:
  *     'or', 'and', '=', '!=', '<', '>', '<=', '>=', '+', '-', '*', 'div', 'mod', '|'
  */
 
@@ -276,5 +276,24 @@ int lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target, const struct 
  * @param[in] set Set to free.
  */
 void lyxp_set_free(struct lyxp_set *set);
+
+/**
+ * @brief Parse an XPath expression into a structure of tokens.
+ *        Logs directly.
+ *
+ * http://www.w3.org/TR/1999/REC-xpath-19991116/ section 3.7
+ *
+ * @param[in] expr XPath expression to parse. It is duplicated.
+ *
+ * @return Filled expression structure or NULL on error.
+ */
+struct lyxp_expr *lyxp_parse_expr(const char *expr);
+
+/**
+ * @brief Frees a parsed XPath expression. \p exp should not be used afterwards.
+ *
+ * @param[in] exp Expression to free.
+ */
+void lyxp_exp_free(struct lyxp_expr *exp);
 
 #endif /* _XPATH_H */

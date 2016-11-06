@@ -58,8 +58,11 @@ sibling_is_valid_child(const struct lys_node *node, int including, const struct 
         }
 
         if (!lys_is_disabled(cur, 0)) {
-            if (cur->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_CHOICE |
-                    LYS_INPUT | LYS_OUTPUT | LYS_CASE)) {
+            if (cur->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_CHOICE
+                    | LYS_CASE | LYS_NOTIF | LYS_ACTION)) {
+                return 1;
+            }
+            if ((cur->nodetype & (LYS_INPUT | LYS_OUTPUT)) && cur->child) {
                 return 1;
             }
             if ((cur->nodetype == LYS_USES) && sibling_is_valid_child(cur->child, 1, module)) {
@@ -184,6 +187,11 @@ tree_print_inout(struct lyout *out, const struct lys_module *module, int level, 
     struct lys_node *sub;
 
     assert(spec_config);
+
+    if (node->flags & LYS_IMPLICIT) {
+        /* implicit input/output which is not a part of the schema */
+        return;
+    }
 
     print_indent(out, indent, level);
     ly_print(out, "+--%s %s\n", (spec_config == 1 ? "-w" : "ro"), (spec_config == 1 ? "input" : "output"));
@@ -732,7 +740,8 @@ tree_print_model(struct lyout *out, const struct lys_module *module)
     /* augment */
     for (i = 0; i < module->augment_size; i++) {
         if ((module->type && (module->augment[i].target->module == module))
-                || (!module->type && (lys_node_module(module->augment[i].target) == module))) {
+                || (!module->type && (lys_node_module(module->augment[i].target) == module))
+                || lys_is_disabled((struct lys_node *)&module->augment[i], 0)) {
             /* submodule, target is our submodule or module, target is in our module or any submodules */
             continue;
         }
@@ -740,7 +749,7 @@ tree_print_model(struct lyout *out, const struct lys_module *module)
         ly_print(out, "augment %s:\n", module->augment[i].target_name);
         LY_TREE_FOR(module->augment[i].child, node) {
             /* submodule, foreign augments */
-            if (module->type && (node->module != module)) {
+            if (node->parent != (struct lys_node *)&module->augment[i]) {
                 continue;
             }
             tree_print_snode(out, module, level, indent, max_child_len, node,

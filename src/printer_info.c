@@ -421,23 +421,6 @@ info_print_list_constr(struct lyout *out, uint32_t min, uint32_t max)
 }
 
 static void
-info_print_keys(struct lyout *out, struct lys_node_leaf ** const keys, uint8_t keys_size)
-{
-    int i;
-
-    ly_print(out, "%-*s", INDENT_LEN, "Keys: ");
-
-    if (keys_size) {
-        ly_print(out, "%s\n", keys[0]->name);
-        for (i = 1; i < keys_size; ++i) {
-            ly_print(out, "%*s%s\n", INDENT_LEN, "", keys[i]->name);
-        }
-    } else {
-        ly_print(out, "\n");
-    }
-}
-
-static void
 info_print_unique(struct lyout *out, const struct lys_unique *unique, uint8_t unique_size)
 {
     int i, j;
@@ -671,16 +654,22 @@ info_print_data_with_include(struct lyout *out, const struct lys_module *mod)
 {
     int first = 1;
     struct lys_node *node;
+    const struct lys_module *mainmod = lys_main_module(mod);
 
     ly_print(out, "%-*s", INDENT_LEN, "Data: ");
 
-    if (mod->data) {
-        ly_print(out, "%s \"%s\"\n", strnodetype(mod->data->nodetype), mod->data->name);
-        node = mod->data->next;
-        first = 0;
+    if (mainmod->data) {
+        LY_TREE_FOR(mainmod->data, node) {
+            if (node->module != mod) {
+                continue;
+            }
 
-        for (; node; node = node->next) {
-            ly_print(out, "%*s%s \"%s\"\n", INDENT_LEN, "", strnodetype(node->nodetype), node->name);
+            if (first) {
+                ly_print(out, "%s \"%s\"\n", strnodetype(node->nodetype), node->name);
+                first = 0;
+            } else {
+                ly_print(out, "%*s%s \"%s\"\n", INDENT_LEN, "", strnodetype(node->nodetype), node->name);
+            }
         }
     }
 
@@ -705,7 +694,7 @@ info_print_typedef_detail(struct lyout *outf, const struct lys_tpdf *tpdf)
 static void
 info_print_ident_detail(struct lyout *out, const struct lys_ident *ident)
 {
-    int i;
+    unsigned int i;
 
     ly_print(out, "%-*s%s\n", INDENT_LEN, "Identity: ", ident->name);
     ly_print(out, "%-*s%s\n", INDENT_LEN, "Module: ", ident->module->name);
@@ -722,11 +711,13 @@ info_print_ident_detail(struct lyout *out, const struct lys_ident *ident)
     }
 
     ly_print(out, "%-*s", INDENT_LEN, "Derived: ");
-    for (i = 0; i < ident->der_size; i++) {
-        ly_print(out, "%*s%s\n", i ? INDENT_LEN : 0, "", ident->der[i]->name);
-    }
-    if (!i) {
-        ly_print(out, "\n");
+    if (ident->der) {
+        for (i = 0; i < ident->der->number; i++) {
+            ly_print(out, "%*s%s\n", i ? INDENT_LEN : 0, "", ((struct lys_ident *)ident->der->set.g[i])->name);
+        }
+        if (!i) {
+            ly_print(out, "\n");
+        }
     }
 }
 
@@ -807,7 +798,7 @@ info_print_container(struct lyout *out, const struct lys_node *node)
     ly_print(out, "%-*s%s\n", INDENT_LEN, "Module: ", cont->module->name);
     info_print_text(out, cont->dsc, "Desc: ");
     info_print_text(out, cont->ref, "Reference: ");
-    info_print_flags(out, cont->flags, LYS_CONFIG_MASK | LYS_STATUS_MASK | LYS_MAND_MASK, 0);
+    info_print_flags(out, cont->flags, LYS_CONFIG_MASK | LYS_STATUS_MASK, 0);
     info_print_text(out, cont->presence, "Presence: ");
     info_print_if_feature(out, cont->module, cont->iffeature, cont->iffeature_size);
     info_print_when(out, cont->when);
@@ -869,7 +860,7 @@ info_print_leaflist(struct lyout *out, const struct lys_node *node)
     ly_print(out, "%-*s%s\n", INDENT_LEN, "Module: ", llist->module->name);
     info_print_text(out, llist->dsc, "Desc: ");
     info_print_text(out, llist->ref, "Reference: ");
-    info_print_flags(out, llist->flags, LYS_CONFIG_MASK | LYS_STATUS_MASK | LYS_MAND_MASK | LYS_USERORDERED, 1);
+    info_print_flags(out, llist->flags, LYS_CONFIG_MASK | LYS_STATUS_MASK | LYS_USERORDERED, 1);
     info_print_text(out, llist->type.der->name, "Type: ");
     info_print_text(out, llist->units, "Units: ");
     info_print_list_constr(out, llist->min, llist->max);
@@ -888,12 +879,12 @@ info_print_list(struct lyout *out, const struct lys_node *node)
     ly_print(out, "%-*s%s\n", INDENT_LEN, "Module: ", list->module->name);
     info_print_text(out, list->dsc, "Desc: ");
     info_print_text(out, list->ref, "Reference: ");
-    info_print_flags(out, list->flags, LYS_CONFIG_MASK | LYS_STATUS_MASK | LYS_MAND_MASK | LYS_USERORDERED, 1);
+    info_print_flags(out, list->flags, LYS_CONFIG_MASK | LYS_STATUS_MASK | LYS_USERORDERED, 1);
     info_print_list_constr(out, list->min, list->max);
     info_print_if_feature(out, list->module, list->iffeature, list->iffeature_size);
     info_print_when(out, list->when);
     info_print_must(out, list->must, list->must_size);
-    info_print_keys(out, list->keys, list->keys_size);
+    info_print_text(out, list->keys_str, "Keys: ");
     info_print_unique(out, list->unique, list->unique_size);
     info_print_typedef(out, list->tpdf, list->tpdf_size);
     info_print_nacmext(out, list->nacm);
@@ -942,7 +933,7 @@ info_print_case(struct lyout *out, const struct lys_node *node)
     ly_print(out, "%-*s%s\n", INDENT_LEN, "Module: ", cas->module->name);
     info_print_text(out, cas->dsc, "Desc: ");
     info_print_text(out, cas->ref, "Reference: ");
-    info_print_flags(out, cas->flags, LYS_CONFIG_MASK | LYS_STATUS_MASK | LYS_MAND_MASK, 0);
+    info_print_flags(out, cas->flags, LYS_CONFIG_MASK | LYS_STATUS_MASK, 0);
     info_print_if_feature(out, cas->module, cas->iffeature, cas->iffeature_size);
     info_print_when(out, cas->when);
     info_print_nacmext(out, cas->nacm);

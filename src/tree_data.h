@@ -480,9 +480,9 @@ char *lyd_path(struct lyd_node *node);
  *                    when checking any "when" or "must" conditions in the parsed tree that require
  *                    some nodes outside their subtree. It must be a list of top-level elements!
  *                - #LYD_OPT_RPCREPLY:
- *                  - const struct ::lys_node *rpc_act - pointer to the RPC or action schema node
- *                    operation of the reply.
- *                  - struct lyd_node *data_tree - additional data tree that will be used
+ *                  - const struct ::lyd_node *rpc_act - pointer to the whole RPC or action operation data
+ *                    tree (the request) of the reply.
+ *                  - const struct ::lyd_node *data_tree - additional data tree that will be used
  *                    when checking any "when" or "must" conditions in the parsed tree that require
  *                    some nodes outside their subtree. It must be a list of top-level elements!
  * @return Pointer to the built data tree or NULL in case of empty \p data. To free the returned structure,
@@ -518,9 +518,9 @@ struct lyd_node *lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT 
  *                    when checking any "when" or "must" conditions in the parsed tree that require
  *                    some nodes outside their subtree. It must be a list of top-level elements!
  *                - #LYD_OPT_RPCREPLY:
- *                  - const struct ::lys_node *rpc_act - pointer to the RPC or action schema node
- *                    operation of the reply.
- *                  - struct lyd_node *data_tree - additional data tree that will be used
+ *                  - const struct ::lyd_node *rpc_act - pointer to the whole RPC or action operation data
+ *                    tree (the request) of the reply.
+ *                  - const struct ::lyd_node *data_tree - additional data tree that will be used
  *                    when checking any "when" or "must" conditions in the parsed tree that require
  *                    some nodes outside their subtree. It must be a list of top-level elements!
  * @return Pointer to the built data tree or NULL in case of empty file. To free the returned structure,
@@ -554,9 +554,9 @@ struct lyd_node *lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int
  *                    when checking any "when" or "must" conditions in the parsed tree that require
  *                    some nodes outside their subtree. It must be a list of top-level elements!
  *                - #LYD_OPT_RPCREPLY:
- *                  - const struct ::lys_node *rpc_act - pointer to the RPC or action schema node
- *                    operation of the reply.
- *                  - struct lyd_node *data_tree - additional data tree that will be used
+ *                  - const struct ::lyd_node *rpc_act - pointer to the whole RPC or action operation data
+ *                    tree (the request) of the reply.
+ *                  - const struct ::lyd_node *data_tree - additional data tree that will be used
  *                    when checking any "when" or "must" conditions in the parsed tree that require
  *                    some nodes outside their subtree. It must be a list of top-level elements!
  * @return Pointer to the built data tree or NULL in case of empty file. To free the returned structure,
@@ -600,9 +600,9 @@ struct lyd_node *lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT
  *                    when checking any "when" or "must" conditions in the parsed tree that require
  *                    some nodes outside their subtree. It must be a list of top-level elements!
  *                - #LYD_OPT_RPCREPLY:
- *                  - const struct ::lys_node *rpc_act - pointer to the RPC or action schema node
- *                    operation of the reply.
- *                  - struct lyd_node *data_tree - additional data tree that will be used
+ *                  - const struct ::lyd_node *rpc_act - pointer to the whole RPC or action operation data
+ *                    tree (the request) of the reply.
+ *                  - const struct ::lyd_node *data_tree - additional data tree that will be used
  *                    when checking any "when" or "must" conditions in the parsed tree that require
  *                    some nodes outside their subtree. It must be a list of top-level elements!
  * @return Pointer to the built data tree or NULL in case of empty \p root. To free the returned structure,
@@ -617,7 +617,7 @@ struct lyd_node *lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int
  * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
  * @param[in] module Module with the node being created.
  * @param[in] name Schema node name of the new data node. The node can be #LYS_CONTAINER, #LYS_LIST,
- * #LYS_NOTIF, or #LYS_RPC.
+ * #LYS_NOTIF, #LYS_RPC, or #LYS_ACTION.
  * @return New node, NULL on error.
  */
 struct lyd_node *lyd_new(struct lyd_node *parent, const struct lys_module *module, const char *name);
@@ -672,19 +672,19 @@ struct lyd_node *lyd_new_anydata(struct lyd_node *parent, const struct lys_modul
                                  void *value, LYD_ANYDATA_VALUETYPE value_type);
 
 /**
- * @brief Create a new container node in a data tree. Ignore RPC input nodes and instead use RPC output ones.
+ * @brief Create a new container node in a data tree. Ignore RPC/action input nodes and instead use RPC/action output ones.
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
  * @param[in] module Module with the node being created.
- * @param[in] name Schema node name of the new data node. The node can be #LYS_CONTAINER, #LYS_LIST,
- * #LYS_NOTIF, or #LYS_RPC.
+ * @param[in] name Schema node name of the new data node. The node should only be #LYS_CONTAINER or #LYS_LIST,
+ * but accepted are also #LYS_NOTIF, #LYS_RPC, or #LYS_ACTION.
  * @return New node, NULL on error.
  */
 struct lyd_node *lyd_new_output(struct lyd_node *parent, const struct lys_module *module, const char *name);
 
 /**
  * @brief Create a new leaf or leaflist node in a data tree with a string value that is converted to
- * the actual value. Ignore RPC input nodes and instead use RPC output ones.
+ * the actual value. Ignore RPC/action input nodes and instead use RPC/action output ones.
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
  * @param[in] module Module with the node being created.
@@ -697,8 +697,8 @@ struct lyd_node *lyd_new_output_leaf(struct lyd_node *parent, const struct lys_m
                                      const char *val_str);
 
 /**
- * @brief Create a new anydata or anyxml node in a data tree. Ignore RPC input nodes and instead use
- * RPC output ones.
+ * @brief Create a new anydata or anyxml node in a data tree. Ignore RPC/action input nodes and instead use
+ * RPC/action output ones.
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
  * @param[in] module Module with the node being created.
@@ -730,7 +730,7 @@ struct lyd_node *lyd_new_output_anydata(struct lyd_node *parent, const struct ly
 #define LYD_PATH_OPT_UPDATE   0x01 /**< If the target node exists and is a leaf, it is updated with the new value and returned.
                                         If the target node exists and is not a leaf, NULL is returned and no error set. */
 #define LYD_PATH_OPT_NOPARENT 0x02 /**< If any parents of the target node exist, return an error. */
-#define LYD_PATH_OPT_OUTPUT   0x04 /**< Changes the behavior to ignoring RPC input schema nodes and using only output ones. */
+#define LYD_PATH_OPT_OUTPUT   0x04 /**< Changes the behavior to ignoring RPC/action input schema nodes and using only output ones. */
 
 /** @} pathoptions */
 
@@ -744,8 +744,8 @@ struct lyd_node *lyd_new_output_anydata(struct lyd_node *parent, const struct ly
  * If \p path points to a list key and the list does not exist, the key value from the predicate is used
  * and \p value is ignored.
  *
- * @param[in] data_tree Existing data tree to add to/modify. If creating RPCs, there should only be one RPC and
- * either input or output. Can be NULL.
+ * @param[in] data_tree Existing data tree to add to/modify. If creating RPCs/actions, there should only be one
+ * RPC/action and either input or output, not both. Can be NULL.
  * @param[in] ctx Context to use. Mandatory if \p data_tree is NULL.
  * @param[in] path Simple data XPath of the new node. It can contain only simple node addressing with optional
  * module names as prefixes. List nodes must have predicates, one for each list key in the correct order and
@@ -1143,16 +1143,20 @@ int lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count),
 double lyd_dec64_to_double(const struct lyd_node *node);
 
 /**
- * @brief Get the real data type of the leaf/leaf-list node.
+ * @brief Get the real data type definition of the leaf/leaf-list node.
  *
  * Usually the data type can be obtained directly from the value_type member of the leaf/leaf-list.
- * However, in case the node is unresolved leafref, it can be more complicated to get the correct
- * data type, so this function can be used.
+ * However, in case the node is unresolved leafref or the complete definition of the type is needed, it can be quite
+ * complicated to get the correct data type, so this function can be used. The real type describes the value
+ * representation so it is not #LY_TYPE_UNION neither #LY_TYPE_LEAFREF.
  *
  * @param[in] leaf The leaf/leaf-list node to be examined.
- * @return The specific data type of the \p leaf.
+ * @param[in] resolve Flag to store the leaf's value as its value data, in this case the value is resolved in the data
+ *            tree. Otherwise the data tree is not checked, so e.g. leafref type can be returned even if the value
+ *            does not match any target value in the data tree.
+ * @return Pointer to the type definition of the \p leaf.
  */
-LY_DATA_TYPE lyd_leaf_type(const struct lyd_node_leaf_list *leaf);
+const struct lys_type *lyd_leaf_type(struct lyd_node_leaf_list *leaf, int resolve);
 
 /**@} */
 

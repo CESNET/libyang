@@ -90,6 +90,7 @@ json_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int o
     const char *schema = NULL;
     const struct lys_module *wdmod = NULL;
     LY_DATA_TYPE datatype;
+    const struct lys_type *type;
 
     if ((node->dflt && (options & (LYP_WD_ALL_TAG | LYP_WD_IMPL_TAG))) ||
             (!node->dflt && (options & LYP_WD_ALL_TAG) && lyd_wd_default(leaf))) {
@@ -134,7 +135,13 @@ contentprint:
         break;
 
     case LY_TYPE_LEAFREF:
-        datatype = lyd_leaf_type(leaf);
+        type = lyd_leaf_type(leaf, 1);
+        if (!type) {
+            /* error */
+            ly_print(out, "\"(!error!)\"");
+            break;
+        }
+        datatype = type->base;
         goto contentprint;
 
     case LY_TYPE_EMPTY:
@@ -361,6 +368,7 @@ json_print_nodes(struct lyout *out, int level, const struct lyd_node *root, int 
 
         switch (node->schema->nodetype) {
         case LYS_RPC:
+        case LYS_ACTION:
         case LYS_NOTIF:
         case LYS_CONTAINER:
             if (node->prev->next) {
@@ -423,21 +431,59 @@ json_print_nodes(struct lyout *out, int level, const struct lyd_node *root, int 
 int
 json_print_data(struct lyout *out, const struct lyd_node *root, int options)
 {
-    int level = 0;
+    const struct lyd_node *node, *next;
+    int level = 0, action_input = 0;
 
     if (options & LYP_FORMAT) {
         ++level;
     }
 
+    if (options & LYP_NETCONF) {
+        if (root->schema->nodetype != LYS_RPC) {
+            /* learn whether we are printing an action */
+            LY_TREE_DFS_BEGIN(root, next, node) {
+                if (node->schema->nodetype == LYS_ACTION) {
+                    break;
+                }
+                LY_TREE_DFS_END(root, next, node);
+            }
+        } else {
+            node = root;
+        }
+
+        if (node && (node->schema->nodetype & (LYS_RPC | LYS_ACTION))) {
+            if (node->child && (node->child->schema->parent->nodetype == LYS_OUTPUT)) {
+                /* skip the container */
+                root = node->child;
+            } else if (node->schema->nodetype == LYS_ACTION) {
+                action_input = 1;
+            }
+        }
+    }
+
     /* start */
     ly_print(out, "{%s", (level ? "\n" : ""));
+
+    if (action_input) {
+        ly_print(out, "%*s\"yang:action\":%s{%s", LEVEL, INDENT, (level ? " " : ""), (level ? "\n" : ""));
+        if (level) {
+            ++level;
+        }
+    }
 
     /* content */
     json_print_nodes(out, level, root, options & LYP_WITHSIBLINGS, 1, options);
 
+    if (action_input) {
+        if (level) {
+            --level;
+        }
+        ly_print(out, "%*s}%s", LEVEL, INDENT, (level ? "\n" : ""));
+    }
+
     /* end */
     ly_print(out, "}%s", (level ? "\n" : ""));
-    ly_print_flush(out);
 
+    ly_print_flush(out);
     return EXIT_SUCCESS;
 }

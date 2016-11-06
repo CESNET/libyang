@@ -310,7 +310,7 @@ yang_read_if_feature(struct lys_module *module, void *ptr, char *value, struct u
         return EXIT_FAILURE;
     }
 
-    if (!(exp = transform_schema2json(module, value))) {
+    if (!(exp = transform_iffeat_schema2json(module, value))) {
         free(value);
         return EXIT_FAILURE;
     }
@@ -319,32 +319,34 @@ yang_read_if_feature(struct lys_module *module, void *ptr, char *value, struct u
     switch (type) {
     case FEATURE_KEYWORD:
         f = (struct lys_feature *) ptr;
-        ret = resolve_iffeature_compile(&f->iffeature[f->iffeature_size], exp, (struct lys_node *)f, unres);
+        ret = resolve_iffeature_compile(&f->iffeature[f->iffeature_size], exp, (struct lys_node *)f, 1, unres);
         f->iffeature_size++;
         break;
     case IDENTITY_KEYWORD:
         i = (struct lys_ident *) ptr;
-        ret = resolve_iffeature_compile(&i->iffeature[i->iffeature_size], exp, (struct lys_node *)i, unres);
+        ret = resolve_iffeature_compile(&i->iffeature[i->iffeature_size], exp, (struct lys_node *)i, 0, unres);
         i->iffeature_size++;
         break;
     case ENUM_KEYWORD:
         e = &((struct yang_type *)ptr)->type->info.enums.enm[((struct yang_type *)ptr)->type->info.enums.count - 1];
-        ret = resolve_iffeature_compile(&e->iffeature[e->iffeature_size], exp, (struct lys_node *)((struct yang_type *)ptr)->type->parent, unres);
+        ret = resolve_iffeature_compile(&e->iffeature[e->iffeature_size], exp,
+                                        (struct lys_node *)((struct yang_type *)ptr)->type->parent, 0, unres);
         e->iffeature_size++;
         break;
     case BIT_KEYWORD:
         b = &((struct yang_type *)ptr)->type->info.bits.bit[((struct yang_type *)ptr)->type->info.bits.count - 1];
-        ret = resolve_iffeature_compile(&b->iffeature[b->iffeature_size], exp, (struct lys_node *)((struct yang_type *)ptr)->type->parent, unres);
+        ret = resolve_iffeature_compile(&b->iffeature[b->iffeature_size], exp,
+                                        (struct lys_node *)((struct yang_type *)ptr)->type->parent, 0, unres);
         b->iffeature_size++;
         break;
     case REFINE_KEYWORD:
         r = &((struct lys_node_uses *)ptr)->refine[((struct lys_node_uses *)ptr)->refine_size - 1];
-        ret = resolve_iffeature_compile(&r->iffeature[r->iffeature_size], exp, (struct lys_node *) ptr, unres);
+        ret = resolve_iffeature_compile(&r->iffeature[r->iffeature_size], exp, (struct lys_node *) ptr, 0, unres);
         r->iffeature_size++;
         break;
     default:
         n = (struct lys_node *) ptr;
-        ret = resolve_iffeature_compile(&n->iffeature[n->iffeature_size], exp, n, unres);
+        ret = resolve_iffeature_compile(&n->iffeature[n->iffeature_size], exp, n, 0, unres);
         n->iffeature_size++;
         break;
     }
@@ -685,6 +687,7 @@ int
 yang_read_key(struct lys_module *module, struct lys_node_list *list, struct unres_schema *unres)
 {
     char *exp, *value;
+    struct lys_node *node;
 
     exp = value = (char *) list->keys;
     list->keys_size = 0;
@@ -695,20 +698,18 @@ yang_read_key(struct lys_module *module, struct lys_node_list *list, struct unre
         }
     }
     list->keys_size++;
+
+    list->keys_str = lydict_insert_zc(module->ctx, exp);
     list->keys = calloc(list->keys_size, sizeof *list->keys);
     if (!list->keys) {
         LOGMEM;
-        goto error;
+        return EXIT_FAILURE;
     }
-    if (unres_schema_add_str(module, unres, list, UNRES_LIST_KEYS, exp) == -1) {
-        goto error;
+    for (node = list->parent; node && node->nodetype != LYS_GROUPING; node = lys_parent(node));
+    if (!node && unres_schema_add_node(module, unres, list, UNRES_LIST_KEYS, NULL) == -1) {
+        return EXIT_FAILURE;
     }
-    free(exp);
     return EXIT_SUCCESS;
-
-error:
-    free(exp);
-    return EXIT_FAILURE;
 }
 
 int
@@ -2110,9 +2111,11 @@ yang_fill_deviate_default(struct ly_ctx *ctx, struct type_deviation *dev, char *
             /* remove value */
             lydict_remove(ctx, leaf->dflt);
             leaf->dflt = NULL;
+            leaf->flags &= ~LYS_DFLTJSON;
         } else { /* add (already checked) and replace */
             /* remove value */
             lydict_remove(ctx, leaf->dflt);
+            leaf->flags &= ~LYS_DFLTJSON;
 
             /* set new value */
             leaf->dflt = lydict_insert(ctx, value, u);
@@ -2153,6 +2156,7 @@ yang_fill_deviate_default(struct ly_ctx *ctx, struct type_deviation *dev, char *
 
             /* remember to check it later (it may not fit now, but the type can be deviated too) */
             ly_set_add(dev->dflt_check, dev->target, 0);
+            llist->flags &= ~LYS_DFLTJSON;
         }
     }
 
@@ -2451,13 +2455,16 @@ yang_check_deviation(struct lys_module *module, struct ly_set *dflt_check, struc
         if (dflt_check->set.s[u]->nodetype == LYS_LEAF) {
             leaf = (struct lys_node_leaf *)dflt_check->set.s[u];
             target_name = leaf->name;
-            rc = unres_schema_add_str(module, unres, &leaf->type, UNRES_TYPE_DFLT, value = leaf->dflt);
+            value = leaf->dflt;
+            rc = unres_schema_add_node(module, unres, &leaf->type, UNRES_TYPE_DFLT, (struct lys_node *)(&leaf->dflt));
         } else { /* LYS_LEAFLIST */
             llist = (struct lys_node_leaflist *)dflt_check->set.s[u];
             target_name = llist->name;
             for (i = 0; i < llist->dflt_size; i++) {
-                rc = unres_schema_add_str(module, unres, &llist->type, UNRES_TYPE_DFLT, value = llist->dflt[i]);
+                rc = unres_schema_add_node(module, unres, &llist->type, UNRES_TYPE_DFLT,
+                                           (struct lys_node *)(&llist->dflt[i]));
                 if (rc == -1) {
+                    value = llist->dflt[i];
                     break;
                 }
             }
@@ -2609,8 +2616,8 @@ store_flags(struct lys_node *node, uint8_t flags, int config_opt)
     if (config_opt == CONFIG_INHERIT_ENABLE) {
         if (!(node->flags & LYS_CONFIG_MASK)) {
             /* get config flag from parent */
-            if (node->parent && (node->parent->flags & LYS_CONFIG_R)) {
-                node->flags |= LYS_CONFIG_R;
+            if (node->parent) {
+                node->flags |= node->parent->flags & LYS_CONFIG_MASK;
             } else {
                 /* default config is true */
                 node->flags |= LYS_CONFIG_W;

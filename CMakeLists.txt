@@ -1,12 +1,14 @@
 cmake_minimum_required(VERSION 2.8.9)
 project(libyang C)
 
+include(GNUInstallDirs)
+
 set(LIBYANG_DESCRIPTION "libyang is YANG data modelling language parser and toolkit written (and providing API) in C.")
 
 # set version
 set(LIBYANG_MAJOR_VERSION 0)
-set(LIBYANG_MINOR_VERSION 10)
-set(LIBYANG_MICRO_VERSION 239)
+set(LIBYANG_MINOR_VERSION 11)
+set(LIBYANG_MICRO_VERSION 43)
 set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION})
 configure_file(${PROJECT_SOURCE_DIR}/src/libyang.h.in ${PROJECT_SOURCE_DIR}/src/libyang.h)
@@ -32,7 +34,7 @@ else()
 	add_custom_target(bison
 		WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
 		COMMAND bison -Wno-other -l -o parser_yang_bis.c --defines=parser_yang_bis.h yang.y
-		COMMAND flex -L -o parser_yang_lex.c --header-file=parser_yang_lex.h yang.l
+		COMMAND flex -8 -L -o parser_yang_lex.c --header-file=parser_yang_lex.h yang.l
 		COMMAND ${SED_TOOL} -i 's/int yychar\;/int yychar\;\\nchar *s = NULL, *tmp_s = NULL\;\\nstruct lys_include inc\;\\nstruct lys_module *trg = NULL\;\\nstruct lys_node *tpdf_parent = NULL, *data_node = NULL\;\\nvoid *actual = NULL\;\\nstruct lys_node_uses *refine_parent = NULL\;\\nint config_inherit = 0, actual_type = 0\;\\nint64_t cnt_val\;\\nint read_string = read_all\;\\nvoid *yang_type = NULL\;/' parser_yang_bis.c
 	)
 endif()
@@ -40,14 +42,6 @@ endif()
 # check the supported platform
 if(NOT UNIX)
 	message(FATAL_ERROR "Only *nix like systems are supported.")
-endif()
-
-if(NOT LIB_INSTALL_DIR)
-	set(LIB_INSTALL_DIR lib)
-endif()
-
-if(NOT INCLUDE_INSTALL_DIR)
-	set(INCLUDE_INSTALL_DIR include/libyang)
 endif()
 
 # set default build type if not specified by user
@@ -129,21 +123,21 @@ find_package(PCRE REQUIRED)
 include_directories(${PCRE_INCLUDE_DIRS})
 target_link_libraries(yang ${PCRE_LIBRARIES})
 
-install(TARGETS yang DESTINATION ${LIB_INSTALL_DIR})
-install(FILES ${headers} DESTINATION ${INCLUDE_INSTALL_DIR})
+install(TARGETS yang DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(FILES ${headers} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libyang)
 
 find_package(PkgConfig)
 if(PKG_CONFIG_FOUND)
 	# generate and install pkg-config file
 	configure_file("libyang.pc.in" "libyang.pc" @ONLY)
-	install(FILES "${CMAKE_CURRENT_BINARY_DIR}/libyang.pc" DESTINATION "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}/pkgconfig")
+	install(FILES "${CMAKE_CURRENT_BINARY_DIR}/libyang.pc" DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
 	# check that pkg-config includes the used path
 	execute_process(COMMAND ${PKG_CONFIG_EXECUTABLE} --variable pc_path pkg-config RESULT_VARIABLE RETURN OUTPUT_VARIABLE PC_PATH ERROR_QUIET)
 	if(RETURN EQUAL 0)
-		string(REGEX MATCH "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}/pkgconfig" SUBSTR "${PC_PATH}")
+		string(REGEX MATCH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/pkgconfig" SUBSTR "${PC_PATH}")
 		string(LENGTH "${SUBSTR}" SUBSTR_LEN)
 		if(SUBSTR_LEN EQUAL 0)
-			message(WARNING "pkg-config will not detect the new package after installation, adjust PKG_CONFIG_PATH using \"export PKG_CONFIG_PATH=\${PKG_CONFIG_PATH}:${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}/pkgconfig\".")
+			message(WARNING "pkg-config will not detect the new package after installation, adjust PKG_CONFIG_PATH using \"export PKG_CONFIG_PATH=\${PKG_CONFIG_PATH}:${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/pkgconfig\".")
 		endif()
 	endif()
 endif()
@@ -167,6 +161,8 @@ add_custom_target(cclean
 
 add_executable(yanglint ${lintsrc})
 target_link_libraries(yanglint yang)
+install(TARGETS yanglint DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES ${PROJECT_SOURCE_DIR}/tools/lint/yanglint.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 
 add_executable(yang2yin ${yang2yinsrc})
 

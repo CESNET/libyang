@@ -51,25 +51,21 @@ static void
 log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *path, va_list args)
 {
     char *msg, *bufdup = NULL;
-    int free_flag = 0;
+    struct ly_err *e = ly_err_location();
+    struct ly_err_item *eitem;
 
     if (&ly_errno == &ly_errno_int) {
         msg = "Internal logger error";
     } else if (!format) {
         /* postponed print of path related to the previous error, do not rewrite stored original message */
-        msg = NULL;
-        if (asprintf(&msg, "Path related to the last error: \"%s\".", path) == -1) {
-            msg = "Internal logger error (asprint() failed).";
-        } else {
-            free_flag = 1;
-        }
+        msg = "Path is related to the previous error message.";
     } else {
         if (level == LY_LLERR) {
             /* store error message into msg buffer ... */
-            msg = ((struct ly_err *)&ly_errno)->msg;
+            msg = e->msg;
         } else if (!hide) {
             /* other messages are stored in working string buffer and not available for later access */
-            msg = ((struct ly_err *)&ly_errno)->buf;
+            msg = e->buf;
             if (ly_buf_used && msg[0]) {
                 bufdup = strndup(msg, LY_BUF_SIZE - 1);
             }
@@ -85,15 +81,36 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
     if (level == LY_LLERR) {
         if (!path) {
             /* erase previous path */
-            ((struct ly_err *)&ly_errno)->path_index = LY_BUF_SIZE - 1;
-            if (((struct ly_err *)&ly_errno)->path_obj != NULL + 1) {
-                ((struct ly_err *)&ly_errno)->path_obj = NULL;
+            e->path_index = LY_BUF_SIZE - 1;
+            if (e->path_obj != NULL + 1) {
+                e->path_obj = NULL;
             }
         }
 
         /* if the error-app-tag should be set, do it after calling LOGVAL */
-        ((struct ly_err *)&ly_errno)->apptag[0] = '\0';
+        e->apptag[0] = '\0';
+
+        /* store error information into a list */
+        if (!e->errlist) {
+            eitem = e->errlist = malloc(sizeof *eitem);
+        } else {
+            for (eitem = e->errlist; eitem->next; eitem = eitem->next);
+            eitem->next = malloc(sizeof *eitem->next);
+            eitem = eitem->next;
+        }
+        if (eitem) {
+            eitem->no = ly_errno;
+            eitem->code = ly_vecode;
+            eitem->msg = strdup(msg);
+            if (path) {
+                eitem->path = strdup(path);
+            } else {
+                eitem->path = NULL;
+            }
+            eitem->next = NULL;
+        }
     }
+
 
     if (hide || (level > ly_log_level)) {
         goto clean;
@@ -109,9 +126,7 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
     }
 
 clean:
-    if (free_flag) {
-        free(msg);
-    } else if (bufdup) {
+    if (bufdup) {
         /* return previous internal buffer content */
         strncpy(msg, bufdup, LY_BUF_SIZE - 1);
         free(bufdup);
@@ -204,7 +219,9 @@ const char *ly_errs[] = {
 /* LYE_XPATH_INOP_1 */ "Cannot apply XPath operation %s on %s.",
 /* LYE_XPATH_INOP_2 */ "Cannot apply XPath operation %s on %s and %s.",
 /* LYE_XPATH_INCTX */  "Invalid context type %s in %s.",
-/* LYE_XPATH_INARGCOUNT */ "Invalid number of arguments (%d) for the XPath function %s.",
+/* LYE_XPATH_INMOD */  "Unknown module \"%.*s\" relative to the context node \"%s\".",
+/* LYE_XPATH_INFUNC */ "Unknown XPath function \"%.*s\".",
+/* LYE_XPATH_INARGCOUNT */ "Invalid number of arguments (%d) for the XPath function %.*s.",
 /* LYE_XPATH_INARGTYPE */ "Wrong type of argument #%d (%s) for the XPath function %s.",
 /* LYE_XPATH_DUMMY */   "Accessing the value of the dummy node \"%s\".",
 
@@ -288,13 +305,15 @@ static const LY_VECODE ecode2vecode[] = {
     LYVE_NOREQINS,     /* LYE_NOREQINS */
     LYVE_NOLEAFREF,    /* LYE_NOLEAFREF */
     LYVE_NOMANDCHOICE, /* LYE_NOMANDCHOICE */
-    LYVE_XPATH_INSNODE,/* LYE_XPATH_INSNODE */
 
+    LYVE_XPATH_INSNODE,/* LYE_XPATH_INSNODE */
     LYVE_XPATH_INTOK,  /* LYE_XPATH_INTOK */
     LYVE_XPATH_EOF,    /* LYE_XPATH_EOF */
     LYVE_XPATH_INOP,   /* LYE_XPATH_INOP_1 */
     LYVE_XPATH_INOP,   /* LYE_XPATH_INOP_2 */
     LYVE_XPATH_INCTX,  /* LYE_XPATH_INCTX */
+    LYVE_XPATH_INMOD,  /* LYE_XPATH_INMOD */
+    LYVE_XPATH_INFUNC, /* LYE_XPATH_INFUNC */
     LYVE_XPATH_INARGCOUNT, /* LYE_XPATH_INARGCOUNT */
     LYVE_XPATH_INARGTYPE, /* LYE_XPATH_INARGTYPE */
     LYVE_XPATH_DUMMY,  /* LYE_XPATH_DUMMY */
@@ -321,7 +340,7 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
 {
     int i;
     struct lys_node_list *slist;
-    struct lys_node *sparent;
+    struct lys_node *sparent = NULL;
     struct lyd_node *dlist, *diter;
     const char *name, *prefix = NULL;
     size_t len;
@@ -342,6 +361,7 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
                 prefix = NULL;
             }
             do {
+                sparent = ((struct lys_node *)elem)->parent;
                 elem = lys_parent((struct lys_node *)elem);
             } while (elem && (((struct lys_node *)elem)->nodetype == LYS_USES));
             break;
@@ -420,6 +440,11 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
             memcpy(&path[(*index)], prefix, len);
         }
         path[--(*index)] = '/';
+        if (elem_type == LY_VLOG_LYS && !elem && sparent && sparent->nodetype == LYS_AUGMENT) {
+            len = strlen(((struct lys_node_augment *)sparent)->target_name);
+            (*index) = (*index) - len;
+            memcpy(&path[(*index)], ((struct lys_node_augment *)sparent)->target_name, len);
+        }
     }
 }
 
@@ -488,4 +513,23 @@ log:
         break;
     }
     va_end(ap);
+}
+
+void
+ly_err_repeat(void)
+{
+    struct ly_err_item *i;
+
+    if (ly_log_level >= LY_LLERR) {
+        for (i = ly_err_location()->errlist; i; i = i->next) {
+            if (ly_log_clb) {
+                ly_log_clb(LY_LLERR, i->msg, i->path);
+            } else {
+                fprintf(stderr, "libyang[%d]: %s%s", LY_LLERR, i->msg, i->path ? " " : "\n");
+                if (i->path) {
+                    fprintf(stderr, "(path: %s)\n", i->path);
+                }
+            }
+        }
+    }
 }
