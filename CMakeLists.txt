@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8.9)
 project(libyang C)
 
+include(GNUInstallDirs)
+
 set(LIBYANG_DESCRIPTION "libyang is YANG data modelling language parser and toolkit written (and providing API) in C.")
 
 # set version
@@ -40,21 +42,6 @@ endif()
 # check the supported platform
 if(NOT UNIX)
 	message(FATAL_ERROR "Only *nix like systems are supported.")
-endif()
-
-if(NOT LIB_INSTALL_DIR)
-	set(LIB_INSTALL_DIR lib)
-endif()
-
-if(NOT INCLUDE_INSTALL_DIR)
-	set(INCLUDE_INSTALL_DIR include/libyang)
-endif()
-
-if(NOT BIN_INSTALL_DIR)
-	set(BIN_INSTALL_DIR bin)
-endif()
-if(NOT MAN_INSTALL_DIR)
-    set(MAN_INSTALL_DIR share/man/)
 endif()
 
 # set default build type if not specified by user
@@ -136,21 +123,21 @@ find_package(PCRE REQUIRED)
 include_directories(${PCRE_INCLUDE_DIRS})
 target_link_libraries(yang ${PCRE_LIBRARIES})
 
-install(TARGETS yang DESTINATION ${LIB_INSTALL_DIR})
-install(FILES ${headers} DESTINATION ${INCLUDE_INSTALL_DIR})
+install(TARGETS yang DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(FILES ${headers} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libyang)
 
 find_package(PkgConfig)
 if(PKG_CONFIG_FOUND)
 	# generate and install pkg-config file
 	configure_file("libyang.pc.in" "libyang.pc" @ONLY)
-	install(FILES "${CMAKE_CURRENT_BINARY_DIR}/libyang.pc" DESTINATION "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}/pkgconfig")
+	install(FILES "${CMAKE_CURRENT_BINARY_DIR}/libyang.pc" DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
 	# check that pkg-config includes the used path
 	execute_process(COMMAND ${PKG_CONFIG_EXECUTABLE} --variable pc_path pkg-config RESULT_VARIABLE RETURN OUTPUT_VARIABLE PC_PATH ERROR_QUIET)
 	if(RETURN EQUAL 0)
-		string(REGEX MATCH "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}/pkgconfig" SUBSTR "${PC_PATH}")
+		string(REGEX MATCH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/pkgconfig" SUBSTR "${PC_PATH}")
 		string(LENGTH "${SUBSTR}" SUBSTR_LEN)
 		if(SUBSTR_LEN EQUAL 0)
-			message(WARNING "pkg-config will not detect the new package after installation, adjust PKG_CONFIG_PATH using \"export PKG_CONFIG_PATH=\${PKG_CONFIG_PATH}:${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}/pkgconfig\".")
+			message(WARNING "pkg-config will not detect the new package after installation, adjust PKG_CONFIG_PATH using \"export PKG_CONFIG_PATH=\${PKG_CONFIG_PATH}:${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/pkgconfig\".")
 		endif()
 	endif()
 endif()
@@ -174,8 +161,8 @@ add_custom_target(cclean
 
 add_executable(yanglint ${lintsrc})
 target_link_libraries(yanglint yang)
-install(TARGETS yanglint DESTINATION ${BIN_INSTALL_DIR})
-install(FILES ${PROJECT_SOURCE_DIR}/tools/lint/yanglint.1 DESTINATION ${MAN_INSTALL_DIR}/man1)
+install(TARGETS yanglint DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES ${PROJECT_SOURCE_DIR}/tools/lint/yanglint.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 
 add_executable(yang2yin ${yang2yinsrc})
 
