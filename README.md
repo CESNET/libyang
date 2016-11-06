@@ -19,6 +19,7 @@ providing API) in C. The library is used e.g. in [libnetconf2](https://github.co
   ([RFC 7951](https://tools.ietf.org/html/rfc7951)).
 * Manipulation with the instance data.
 * Support for default values in the instance data ([RFC 6243](https://tools.ietf.org/html/rfc6243)).
+* [yanglint](#yanglint) - features rich YANG tool.
 
 Current implementation covers YANG 1.0 ([RFC 6020](https://tools.ietf.org/html/rfc6020))
 as well as YANG 1.1 ([RFC 7950](https://tools.ietf.org/html/rfc7950)).
@@ -26,7 +27,7 @@ as well as YANG 1.1 ([RFC 7950](https://tools.ietf.org/html/rfc7950)).
 ## Planned Features
 
 * YANG Metadata ([RFC 7952](https://tools.ietf.org/html/rfc7952)).
-* [yanglint](#yanglint) as a full-fledged YANG tool.
+* Modular mechanism for supporting YANG extensions.
 
 ## Requirements
 
@@ -51,6 +52,8 @@ Doxygen tool:
 $ make doc
 $ google-chrome ../doc/html/index.html
 ```
+
+The documentation is also built hourly and available at [netopeer.liberouter.org](https://netopeer.liberouter.org/doc/libyang/master/).
 
 ### Useful CMake Options
 
@@ -113,6 +116,16 @@ linker. To help with setting all the compiler's options, there is `libyang.pc` f
 If you are using `cmake` in you project, it is also possible to use the provided
 `FindLibYANG.cmake` file to detect presence of the libyang library in the system.
 
+## yanglint
+
+libyang project includes features rich tool called `yanglint(1)` for validation
+and conversion of the schemas and YANG modeled data. The source codes are
+located at [`/tools/lint`](./tools/lint) and can be used to explore how an
+application is supposed to use the libyang library. `yanglint(1)` binary as
+well as its man page are installed together with the library itself. 
+
+There is also [README](./tools/lint/examples/README.md) describing some examples of
+using `yanglint`.
 
 ## Tests
 
@@ -156,15 +169,5 @@ Currently supported bindings are:
 * JavaScript
  * cmake option: `JAVASCRIPT_BINDING`
  * [README](./swig/javascript/README.md)
-
-## yanglint
-
-libyang source codes include a simple example tool to demanstrate how an application
-can work with the libyang library. The tool is called `yanglint`. It is not being
-installed together with the library itself, but it is built together with the library
-binary and you can find it in [`tools/lint`](./tools/lint) directory.
-
-There is also [README](./tools/lint/examples/README.md) describing some examples of
-using `yanglint`.
 
 
