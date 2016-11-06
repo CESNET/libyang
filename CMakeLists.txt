@@ -105,6 +105,16 @@ set(headers
 	src/xml.h
 	src/dict.h)
 
+# create static libyang library
+if(STATIC)
+    add_library(yang_static STATIC ${libsrc})
+    set_target_properties(yang_static PROPERTIES OUTPUT_NAME yang)
+    target_link_libraries(yang_static m)
+    target_link_libraries(yang_static ${CMAKE_THREAD_LIBS_INIT})
+    target_link_libraries(yang_static ${PCRE_LIBRARIES})
+    install(TARGETS yang_static DESTINATION ${LIB_INSTALL_DIR})
+endif(STATIC)
+
 set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 add_library(yangobj OBJECT ${libsrc})
 add_library(yang SHARED $<TARGET_OBJECTS:yangobj>)
