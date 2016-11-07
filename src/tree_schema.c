@@ -2636,7 +2636,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
              struct unres_schema *unres, int shallow)
 {
     struct lys_node *p = NULL;
-    int finalize = 0;
+    int finalize = 0, has_xpath;
     struct lys_node *result, *iter, *next;
 
     if (!shallow) {
@@ -2651,11 +2651,70 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
     if (finalize) {
         /* check xpath expressions in the instantiated tree */
         for (iter = next = parent->child; iter; iter = next) {
-            if (iter->nodetype != LYS_GROUPING) {
-                if (lys_check_xpath(iter, 0)) {
-                    /* invalid xpath */
-                    return NULL;
+
+            switch (iter->nodetype) {
+            case LYS_AUGMENT:
+                if (((struct lys_node_augment *)iter)->when) {
+                    has_xpath = 1;
                 }
+                break;
+            case LYS_CASE:
+                if (((struct lys_node_case *)iter)->when) {
+                    has_xpath = 1;
+                }
+                break;
+            case LYS_CHOICE:
+                if (((struct lys_node_choice *)iter)->when) {
+                    has_xpath = 1;
+                }
+                break;
+            case LYS_ANYDATA:
+                if (((struct lys_node_anydata *)iter)->when || ((struct lys_node_anydata *)iter)->must_size) {
+                    has_xpath = 1;
+                }
+                break;
+            case LYS_LEAF:
+                if (((struct lys_node_leaf *)iter)->when || ((struct lys_node_leaf *)iter)->must_size) {
+                    has_xpath = 1;
+                }
+                break;
+            case LYS_LEAFLIST:
+                if (((struct lys_node_leaflist *)iter)->when || ((struct lys_node_leaflist *)iter)->must_size) {
+                    has_xpath = 1;
+                }
+                break;
+            case LYS_LIST:
+                if (((struct lys_node_list *)iter)->when || ((struct lys_node_list *)iter)->must_size) {
+                    has_xpath = 1;
+                }
+                break;
+            case LYS_CONTAINER:
+                if (((struct lys_node_container *)iter)->when || ((struct lys_node_container *)iter)->must_size) {
+                    has_xpath = 1;
+                }
+                break;
+            case LYS_INPUT:
+            case LYS_OUTPUT:
+                if (((struct lys_node_inout *)iter)->must_size) {
+                    has_xpath = 1;
+                }
+                break;
+            case LYS_NOTIF:
+                if (((struct lys_node_notif *)iter)->must_size) {
+                    has_xpath = 1;
+                }
+                break;
+            case LYS_USES:
+                if (((struct lys_node_uses *)iter)->when) {
+                    has_xpath = 1;
+                }
+                break;
+            default:
+                has_xpath = 0;
+            }
+            if (has_xpath && unres_schema_add_node(module, unres, iter, UNRES_XPATH, NULL) == -1) {
+                /* invalid xpath */
+                return NULL;
             }
 
             /* select next item */
