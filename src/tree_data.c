@@ -3582,6 +3582,12 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
         /* LYD_OPT_NOSIBLINGS has no meaning here */
         options &= ~LYD_OPT_NOSIBLINGS;
     } else if (options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF)) {
+        /* LYD_OPT_NOSIBLINGS cannot be set in this case */
+        if (options & LYD_OPT_NOSIBLINGS) {
+            LOGERR(LY_EINVAL, "%s: invalid parameter (variable arg const struct lyd_node *data_tree with LYD_OPT_NOSIBLINGS).", __func__);
+            goto cleanup;
+        }
+
         /* get the additional data tree if given */
         data_tree = (struct lyd_node *)var_arg;
         if (data_tree) {
@@ -3595,12 +3601,6 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
 
             /* move it to the beginning */
             for (; data_tree->prev->next; data_tree = data_tree->prev);
-
-            /* LYD_OPT_NOSIBLINGS cannot be set in this case */
-            if (options & LYD_OPT_NOSIBLINGS) {
-                LOGERR(LY_EINVAL, "%s: invalid parameter (variable arg const struct lyd_node *data_tree with LYD_OPT_NOSIBLINGS).", __func__);
-                goto cleanup;
-            }
         }
     }
 
@@ -5588,6 +5588,7 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
                        struct lyd_node *act_notif, struct unres_data *unres)
 {
     struct lyd_node *msg_sibling = NULL, *msg_parent = NULL, *data_tree_sibling = NULL, *data_tree_parent = NULL;
+    int ret = EXIT_FAILURE;
 
     assert(root && unres && !(options & LYD_OPT_ACT_NOTIF));
     assert(!data_tree || !data_tree->prev->next);
@@ -5664,7 +5665,7 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
                         /* find new action sibling to search for later (skip list keys) */
                         if (!msg_sibling->child) {
                             LOGINT;
-                            return EXIT_FAILURE;
+                            goto unlink_datatree;
                         }
                         msg_parent = msg_sibling;
                         for (msg_sibling = msg_sibling->child;
@@ -5672,7 +5673,7 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
                                 msg_sibling = msg_sibling->next) {
                             if (!msg_sibling->next) {
                                 LOGINT;
-                                return EXIT_FAILURE;
+                                goto unlink_datatree;
                             }
                         }
                         if (msg_sibling->schema->nodetype & (LYS_ACTION | LYS_NOTIF)) {
@@ -5721,9 +5722,13 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
         }
 
         if (resolve_unres_data(unres, root, options)) {
-            return EXIT_FAILURE;
+            goto unlink_datatree;
         }
 
+        /* we are done */
+        ret = EXIT_SUCCESS;
+
+unlink_datatree:
         /* put the trees back in order */
         if (data_tree && (options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF))) {
             /* unlink it back */
@@ -5753,9 +5758,12 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
                 msg_sibling->parent = msg_parent;
             }
         }
+    } else {
+        /* we are done */
+        ret = EXIT_SUCCESS;
     }
 
-    return EXIT_SUCCESS;
+    return ret;
 }
 
 API struct lys_module *
