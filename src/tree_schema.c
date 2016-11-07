@@ -2175,7 +2175,7 @@ static struct lys_node *
 lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const struct lys_node *node, uint8_t nacm,
                        struct unres_schema *unres, int shallow, int finalize)
 {
-    struct lys_node *retval = NULL, *iter;
+    struct lys_node *retval = NULL, *iter, *p;
     struct ly_ctx *ctx = module->ctx;
     int i, j, rc;
     unsigned int size, size1, size2;
@@ -2340,7 +2340,10 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         }
 
         /* inherit config flags */
-        for (iter = parent; iter && (iter->nodetype == LYS_USES); iter = lys_parent(iter));
+        p = parent;
+        do {
+            for (iter = p; iter && (iter->nodetype == LYS_USES); iter = iter->parent);
+        } while (iter && iter->nodetype == LYS_AUGMENT && (p = lys_parent(iter)));
         if (iter) {
             flags = iter->flags & LYS_CONFIG_MASK;
         } else {
