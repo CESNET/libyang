@@ -1605,7 +1605,6 @@ schema_nodeid_siblingcheck(const struct lys_node *sibling, int8_t *shorthand, co
                            int implemented_mod, const struct lys_node **start)
 {
     const struct lys_module *prefix_mod;
-    int sh = 0;
 
     /* module check */
     prefix_mod = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
@@ -1624,7 +1623,6 @@ schema_nodeid_siblingcheck(const struct lys_node *sibling, int8_t *shorthand, co
         if (*shorthand != -1) {
             *shorthand = *shorthand ? 0 : 1;
         }
-        sh = 1;
     }
 
     /* the result node? */
@@ -1635,7 +1633,7 @@ schema_nodeid_siblingcheck(const struct lys_node *sibling, int8_t *shorthand, co
         return 0;
     }
 
-    if (!sh) {
+    if (!(*shorthand)) {
         /* move down the tree, if possible */
         if (sibling->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
             return -1;
