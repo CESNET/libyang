@@ -4151,8 +4151,8 @@ lys_check_xpath(struct lys_node *node, int check_place)
             }
             if (parent->nodetype == LYS_AUGMENT) {
                 if (!((struct lys_node_augment *)parent)->target) {
-                    /* uresolved augment, skip for now (will be checked later) */
-                    return EXIT_SUCCESS;
+                    /* unresolved augment, skip for now (will be checked later) */
+                    return EXIT_FAILURE;
                 } else {
                     parent = ((struct lys_node_augment *)parent)->target;
                     continue;
