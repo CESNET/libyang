@@ -4332,7 +4332,7 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
      * the added nodes cannot be mandatory
      */
     if (!aug->parent && (lys_node_module((struct lys_node *)aug) != lys_node_module(aug_target))
-            && (rc = lyp_check_mandatory_augment(aug))) {
+            && (rc = lyp_check_mandatory_augment(aug, aug_target))) {
         return rc;
     }
 

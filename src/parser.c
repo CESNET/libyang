@@ -1950,12 +1950,13 @@ lyp_check_mandatory_(const struct lys_node *root)
 
 /* logs directly */
 int
-lyp_check_mandatory_augment(struct lys_node_augment *aug)
+lyp_check_mandatory_augment(struct lys_node_augment *aug, const struct lys_node *target)
 {
     const struct lys_node *node;
 
-    if (aug->when) {
-        /* clarification from YANG 1.1 - augmentation can add mandatory nodes when it is
+    if (aug->when || target->nodetype == LYS_CHOICE) {
+        /* - mandatory nodes in new cases are ok;
+         * clarification from YANG 1.1 - augmentation can add mandatory nodes when it is
          * conditional with a when statement */
         return EXIT_SUCCESS;
     }
