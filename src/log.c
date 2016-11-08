@@ -188,6 +188,7 @@ const char *ly_errs[] = {
 /* LYE_CIRC_IMPORTS */ "A circular dependency (import) for module \"%s\".",
 /* LYE_CIRC_INCLUDES */"A circular dependency (include) for submodule \"%s\".",
 /* LYE_INVER */        "Different YANG versions of a submodule and its main module.",
+/* LYE_SUBMODULE */    "Unable to parse submodule, parse the main module instead.",
 
 /* LYE_OBSDATA */      "Obsolete data \"%s\" instantiated.",
 /* LYE_OBSTYPE */      "Data node \"%s\" with obsolete type \"%s\" instantiated.",
@@ -281,6 +282,7 @@ static const LY_VECODE ecode2vecode[] = {
     LYVE_CIRC_IMPORTS, /* LYE_CIRC_IMPORTS */
     LYVE_CIRC_INCLUDES,/* LYE_CIRC_INCLUDES */
     LYVE_INVER,        /* LYE_INVER */
+    LYVE_SUBMODULE,    /* LYE_SUBMODULE */
 
     LYVE_OBSDATA,      /* LYE_OBSDATA */
     LYVE_OBSDATA,      /* LYE_OBSTYPE */

@@ -380,9 +380,7 @@ module_header_stmts: @EMPTYDIR@  { $$ = 0; }
 submodule_stmt: optsep SUBMODULE_KEYWORD sep identifier_arg_str { if (read_all) {
                                                                     if (!submodule) {
                                                                       free(s);
-                                                                      LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "submodule");
-                                                                      LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
-                                                                             "Submodules are parsed automatically as includes to the main module, do not parse them separately.");
+                                                                      LOGVAL(LYE_SUBMODULE, LY_VLOG_NONE, NULL);
                                                                       YYABORT;
                                                                     }
                                                                     trg = (struct lys_module *)submodule;

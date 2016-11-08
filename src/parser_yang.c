@@ -2746,7 +2746,9 @@ error:
     unres_schema_free(module, &unres);
     if (!module || !module->name) {
         free(module);
-        LOGERR(ly_errno, "Module parsing failed.");
+        if (ly_vecode != LYVE_SUBMODULE) {
+            LOGERR(ly_errno, "Module parsing failed.");
+        }
         return NULL;
     }
 

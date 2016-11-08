@@ -5905,10 +5905,10 @@ yin_read_module(struct ly_ctx *ctx, const char *data, const char *revision, int 
 
     /* check root element */
     if (!yin->name || strcmp(yin->name, "module")) {
-        LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, yin->name);
         if (ly_strequal("submodule", yin->name, 0)) {
-            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
-                   "Submodules are parsed automatically as includes to the main module, do not parse them separately.");
+            LOGVAL(LYE_SUBMODULE, LY_VLOG_NONE, NULL);
+        } else {
+            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, yin->name);
         }
         goto error;
     }
@@ -5972,7 +5972,9 @@ error:
     unres_schema_free(module, &unres);
 
     if (!module) {
-        LOGERR(ly_errno, "Module parsing failed.");
+        if (ly_vecode != LYVE_SUBMODULE) {
+            LOGERR(ly_errno, "Module parsing failed.");
+        }
         return NULL;
     }
 
