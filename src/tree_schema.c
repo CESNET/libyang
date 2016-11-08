@@ -3220,6 +3220,7 @@ lys_find_xpath(const struct lys_node *node, const char *expr, int options)
     /* node and nodetype won't matter at all since it is absolute */
     if (lyxp_atomize(expr, node, LYXP_NODE_ELEM, &set, opts)) {
         free(set.val.snodes);
+        LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "Resolving XPath expression \"%s\" failed.", expr);
         return NULL;
     }
 
@@ -3281,6 +3282,7 @@ lys_xpath_atomize(const struct lys_node *cur_snode, enum lyxp_node_type cur_snod
 
     if (lyxp_atomize(expr, cur_snode, cur_snode_type, &set, options)) {
         free(set.val.snodes);
+        LOGVAL(LYE_SPEC, LY_VLOG_LYS, cur_snode, "Resolving XPath expression \"%s\" failed.", expr);
         return NULL;
     }
 

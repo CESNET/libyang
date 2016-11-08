@@ -7635,9 +7635,6 @@ lyxp_atomize(const char *expr, const struct lys_node *cur_snode, enum lyxp_node_
     set_snode_insert_node(set, cur_snode, cur_snode_type);
 
     rc = eval_expr(exp, &exp_idx, (struct lyd_node *)cur_snode, set, options);
-    if (rc == -1) {
-        LOGPATH(LY_VLOG_LYS, cur_snode);
-    }
 
 finish:
     lyxp_exp_free(exp);
@@ -7724,6 +7721,7 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set)
         resolve_when_ctx_snode(node, &ctx_snode, &ctx_snode_type);
         if (lyxp_atomize(when->cond, ctx_snode, ctx_snode_type, &tmp_set, LYXP_SNODE_WHEN | opts)) {
             free(tmp_set.val.snodes);
+            LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "Resolving when condition \"%s\" failed.", when->cond);
             if ((ly_errno == LY_EVALID) && (ly_vecode == LYVE_XPATH_INSNODE)) {
                 return EXIT_FAILURE;
             } else {
@@ -7740,6 +7738,7 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set)
         if (lyxp_atomize(must[i].expr, node, LYXP_NODE_ELEM, &tmp_set, LYXP_SNODE_MUST | opts)) {
             free(tmp_set.val.snodes);
             free(set->val.snodes);
+            LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "Resolving must restriction \"%s\" failed.", must[i].expr);
             if ((ly_errno == LY_EVALID) && (ly_vecode == LYVE_XPATH_INSNODE)) {
                 return EXIT_FAILURE;
             } else {
