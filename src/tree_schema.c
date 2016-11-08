@@ -2654,7 +2654,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
     if (finalize) {
         /* check xpath expressions in the instantiated tree */
         for (iter = next = parent->child; iter; iter = next) {
-
+            has_xpath = 0;
             switch (iter->nodetype) {
             case LYS_AUGMENT:
                 if (((struct lys_node_augment *)iter)->when) {
@@ -2713,7 +2713,8 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
                 }
                 break;
             default:
-                has_xpath = 0;
+                /* do nothing, has_xpath is zero */;
+                break;
             }
             if (has_xpath && unres_schema_add_node(module, unres, iter, UNRES_XPATH, NULL) == -1) {
                 /* invalid xpath */
