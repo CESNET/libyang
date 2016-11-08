@@ -136,7 +136,7 @@ uint8_t iff_getop(uint8_t *list, int pos);
 struct lyd_node *resolve_data_descendant_schema_nodeid(const char *nodeid, struct lyd_node *start);
 
 int resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, const struct lys_module *module,
-                                  const struct lys_node **ret);
+                                  int implement, const struct lys_node **ret);
 
 int resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *start, int ret_nodetype,
                                      int check_shorthand, int no_innerlist, const struct lys_node **ret);

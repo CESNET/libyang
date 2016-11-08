@@ -1518,7 +1518,7 @@ lys_augment_dup(struct lys_module *module, struct lys_node *parent, struct lys_n
         new[i].nodetype = old[i].nodetype;
 
         /* this must succeed, it was already resolved once */
-        if (resolve_augment_schema_nodeid(new[i].target_name, parent->child, NULL,
+        if (resolve_augment_schema_nodeid(new[i].target_name, parent->child, NULL, 1,
                                           (const struct lys_node **)&new[i].target)) {
             LOGINT;
             free(new);
@@ -3392,7 +3392,8 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *target_
                 parent_path = strndup(dev->target_name, strrchr(dev->target_name, '/') - dev->target_name);
 
                 target = NULL;
-                ret = resolve_augment_schema_nodeid(parent_path, NULL, target_module, (const struct lys_node **)&target);
+                ret = resolve_augment_schema_nodeid(parent_path, NULL, target_module, 1,
+                                                    (const struct lys_node **)&target);
                 free(parent_path);
                 if (ret || !target) {
                     LOGINT;
@@ -3409,7 +3410,8 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *target_
         } else {
             /* adding not-supported deviation */
             target = NULL;
-            ret = resolve_augment_schema_nodeid(dev->target_name, NULL, target_module, (const struct lys_node **)&target);
+            ret = resolve_augment_schema_nodeid(dev->target_name, NULL, target_module, 1,
+                                                (const struct lys_node **)&target);
             if (ret || !target) {
                 LOGINT;
                 return;
@@ -3420,7 +3422,8 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *target_
         }
     } else {
         target = NULL;
-        ret = resolve_augment_schema_nodeid(dev->target_name, NULL, target_module, (const struct lys_node **)&target);
+        ret = resolve_augment_schema_nodeid(dev->target_name, NULL, target_module, 1,
+                                            (const struct lys_node **)&target);
         if (ret || !target) {
             LOGINT;
             return;
@@ -3698,6 +3701,9 @@ lys_set_implemented(const struct lys_module *module)
             }
         }
     }
+    /* try again resolve augments in other modules possibly augmenting this one,
+     * since we have just enabled it
+     */
     /* resolve rest of unres items */
     if (unres->count && resolve_unres_schema((struct lys_module *)module, unres)) {
         goto error;

@@ -1612,7 +1612,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     }
 
     /* resolve target node */
-    rc = resolve_augment_schema_nodeid(dev->target_name, NULL, module, (const struct lys_node **)&dev_target);
+    rc = resolve_augment_schema_nodeid(dev->target_name, NULL, module, 1, (const struct lys_node **)&dev_target);
     if (rc || !dev_target) {
         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, dev->target_name, yin->name);
         goto error;
