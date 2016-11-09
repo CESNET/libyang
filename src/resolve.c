@@ -6382,7 +6382,7 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
                 continue;
             }
             /* processes UNRES_USES, UNRES_IFFEAT, UNRES_TYPE_DER, UNRES_TYPE_DER_TPDF, UNRES_TYPE_LEAFREF,
-             * UNRES_CHOICE_DFLT and UNRES_IDENT */
+             * UNRES_AUGMENT, UNRES_CHOICE_DFLT and UNRES_IDENT */
 
             ++unres_count;
             rc = resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres);
