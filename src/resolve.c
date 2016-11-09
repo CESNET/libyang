@@ -4261,17 +4261,18 @@ check_leafref_config(struct lys_node_leaf *leaf, struct lys_type *type)
  * @param[in] node Siblings and their children to have flags changed.
  * @param[in] clear Flag to clear all config flags if parent is LYS_NOTIF, LYS_INPUT, LYS_OUTPUT, LYS_RPC.
  * @param[in] flags Flags to assign to all the nodes.
+ * @param[in,out] unres List of unresolved items.
  *
  * @return 0 on success, -1 on error.
  */
 static int
-inherit_config_flag(struct lys_node *node, int flags, int clear)
+inherit_config_flag(struct lys_node *node, int flags, int clear, struct unres_schema *unres)
 {
     struct lys_node_leaf *leaf;
 
     assert(!(flags ^ (flags & LYS_CONFIG_MASK)));
     LY_TREE_FOR(node, node) {
-        if (lys_check_xpath(node, 0)) {
+        if (lys_has_xpath(node) && unres_schema_add_node(node->module, unres, node, UNRES_XPATH, NULL) == -1) {
             return -1;
         }
         if (clear) {
@@ -4299,7 +4300,7 @@ inherit_config_flag(struct lys_node *node, int flags, int clear)
             }
         }
         if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
-            if (inherit_config_flag(node->child, flags, clear)) {
+            if (inherit_config_flag(node->child, flags, clear, unres)) {
                 return -1;
             }
         } else if (node->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
@@ -4318,11 +4319,12 @@ inherit_config_flag(struct lys_node *node, int flags, int clear)
  *
  * @param[in] aug Augment to use.
  * @param[in] siblings Nodes where to start the search in. If set, uses augment, if not, standalone augment.
+ * @param[in,out] unres List of unresolved items.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 static int
-resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
+resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct unres_schema *unres)
 {
     int rc, clear_config;
     struct lys_node *sub;
@@ -4428,7 +4430,7 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings)
     for(parent = aug_target; parent && !(parent->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT | LYS_RPC)); parent = lys_parent(parent));
     clear_config = (parent) ? 1 : 0;
     LY_TREE_FOR(aug->child, sub) {
-        if (inherit_config_flag(sub, aug_target->flags & LYS_CONFIG_MASK, clear_config)) {
+        if (inherit_config_flag(sub, aug_target->flags & LYS_CONFIG_MASK, clear_config, unres)) {
             return -1;
         }
     }
@@ -4742,7 +4744,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
 
     /* apply augments */
     for (i = 0; i < uses->augment_size; i++) {
-        rc = resolve_augment(&uses->augment[i], uses->child);
+        rc = resolve_augment(&uses->augment[i], uses->child, unres);
         if (rc) {
             goto fail;
         }
@@ -6210,7 +6212,7 @@ featurecheckdone:
         rc = resolve_unique(unique_info->list, unique_info->expr, unique_info->trg_type);
         break;
     case UNRES_AUGMENT:
-        rc = resolve_augment(item, NULL);
+        rc = resolve_augment(item, NULL, unres);
         break;
     case UNRES_XPATH:
         node = (struct lys_node *)item;
@@ -6404,9 +6406,22 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
             if (unres->type[i] == UNRES_RESOLVED) {
                 continue;
             }
+            if (unres->type[i] == UNRES_XPATH) {
+                /* unresolvable XPaths are actually supposed to be warnings - they may be
+                 * unresolved due to the not implemented target module so it shouldn't avoid
+                 * parsing the module, but we still want to announce some issue here */
+                ly_vlog_hide(0xff);
+            }
             resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres);
+            if (unres->type[i] == UNRES_XPATH && *ly_vlog_hide_location() == 0xff) {
+                unres->type[i] = UNRES_RESOLVED;
+                resolved++;
+                ly_vlog_hide(0);
+            }
         }
-        return -1;
+        if (resolved < unres->count) {
+            return -1;
+        }
     }
 
     LOGVRB("All \"%s\" schema nodes and constraints resolved.", mod->name);

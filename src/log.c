@@ -111,8 +111,11 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
         }
     }
 
-
-    if (hide || (level > ly_log_level)) {
+    if (hide == 0xff && level == LY_LLERR && (LY_LLWRN <= ly_log_level)) {
+        /* change error to warning */
+        level = LY_LLWRN;
+    } else if (hide || (level > ly_log_level)) {
+        /* do not print the message */
         goto clean;
     }
 
@@ -332,9 +335,9 @@ static const LY_VECODE ecode2vecode[] = {
 
 
 void
-ly_vlog_hide(int hide)
+ly_vlog_hide(uint8_t hide)
 {
-    (*ly_vlog_hide_location()) = hide ? 1 : 0;
+    (*ly_vlog_hide_location()) = hide;
 }
 
 void

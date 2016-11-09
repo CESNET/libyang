@@ -4561,6 +4561,13 @@ moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, const char *qname,
                 set->val.snodes[i].in_ctx = 1;
             }
         }
+    } else if (orig_used == (int)set->used && !moveto_mod) {
+        /* no new node inserted into set (all are invalid now) and we were searching
+         * in the same schema as the previous node, so this is definitely a bug in expression,
+         * avoid changing it to just a warning */
+        if (*ly_vlog_hide_location() == 0xff) {
+            ly_vlog_hide(0);
+        }
     }
 
     return EXIT_SUCCESS;

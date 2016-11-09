@@ -186,6 +186,14 @@ int lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_modu
 int lys_check_xpath(struct lys_node *node, int check_place);
 
 /**
+ * @brief Get know if the node contains must or when with XPath expression
+ *
+ * @param[in] node Node to examine.
+ * @return 1 if contains, 0 otherwise
+ */
+int lys_has_xpath(const struct lys_node *node);
+
+/**
  * @brief Create a copy of the specified schema tree \p node
  *
  * @param[in] module Target module for the duplicated node.

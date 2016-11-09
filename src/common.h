@@ -238,7 +238,14 @@ enum LY_VLOG_ELEM {
     LY_VLOG_LYD, /* struct lyd_node* */
     LY_VLOG_STR  /* const char* */
 };
-void ly_vlog_hide(int hide);
+
+/*
+ * 0 - normal visibility
+ * 1-254 - do not print messages
+ * 255 - convert errors to warnings
+ */
+void ly_vlog_hide(uint8_t hide);
+
 uint8_t *ly_vlog_hide_location(void);
 void ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...);
 #define LOGVAL(code, elem_type, elem, args...)                      \
