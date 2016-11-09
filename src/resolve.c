@@ -3806,7 +3806,8 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
                         const struct lys_node **ret)
 {
     const struct lys_node *node, *op_node = NULL;
-    const struct lys_module *mod, *mod2;
+    const struct lys_module *mod;
+    struct lys_module *mod_start;
     const char *id, *prefix, *name;
     int pref_len, nam_len, parent_times, has_predicate;
     int i, first_iter, rc;
@@ -3822,9 +3823,9 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
              op_node = lys_parent(op_node));
     }
 
-    mod2 = lys_node_module(parent);
+    mod_start = lys_node_module(parent);
     do {
-        if ((i = parse_path_arg(parent->module, id, &prefix, &pref_len, &name, &nam_len, &parent_times, &has_predicate)) < 1) {
+        if ((i = parse_path_arg(mod_start, id, &prefix, &pref_len, &name, &nam_len, &parent_times, &has_predicate)) < 1) {
             LOGVAL(LYE_INCHAR, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent, id[-i], &id[-i]);
             return -1;
         }
@@ -3833,15 +3834,29 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
         if (first_iter) {
             if (parent_times == -1) {
                 /* resolve prefix of the module */
-                mod = lys_get_import_module(parent->module, NULL, 0, prefix, pref_len);
-                mod = lys_get_implemented_module(mod);
-                /* get start node */
-                node = mod ? mod->data : NULL;
-                if (!node) {
+                mod = prefix ? lys_get_import_module(mod_start, NULL, 0, prefix, pref_len) : mod_start;
+                if (!mod) {
                     LOGVAL(LYE_NORESOLV, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent,
                            "leafref", path);
                     return EXIT_FAILURE;
                 }
+                if (!mod->implemented) {
+                    mod = lys_get_implemented_module(mod);
+                    if (!mod->implemented) {
+                        /* make the found module implemented */
+                        if (lys_set_implemented(mod)) {
+                            return EXIT_FAILURE;
+                        }
+                    }
+                }
+                /* get start node */
+                if (!mod->data) {
+                    LOGVAL(LYE_NORESOLV, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent,
+                           "leafref", path);
+                    return EXIT_FAILURE;
+                }
+                node = mod->data;
+
             } else if (parent_times > 0) {
                 if (parent_tpdf) {
                     /* the path is not allowed to contain relative path since we are in top level typedef */
@@ -3862,11 +3877,44 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
                         return EXIT_FAILURE;
                     }
                 }
+
+                /* now we have to check that if we are going into a node from a different module,
+                 * the module is implemented (so its augments are applied) */
+                mod = prefix ? lys_get_import_module(mod_start, NULL, 0, prefix, pref_len) : mod_start;
+                if (!mod) {
+                    LOGVAL(LYE_NORESOLV, LY_VLOG_LYS, parent, "leafref", path);
+                    return EXIT_FAILURE;
+                }
+                if (!mod->implemented) {
+                    mod = lys_get_implemented_module(mod);
+                    if (!mod->implemented) {
+                        /* make the found module implemented */
+                        if (lys_set_implemented(mod)) {
+                            return EXIT_FAILURE;
+                        }
+                    }
+                }
             } else {
                 LOGINT;
                 return -1;
             }
         } else {
+            /* we have to first check that the module we are going into is implemented */
+            mod = prefix ? lys_get_import_module(mod_start, NULL, 0, prefix, pref_len) : mod_start;
+            if (!mod) {
+                LOGVAL(LYE_NORESOLV, LY_VLOG_LYS, parent, "leafref", path);
+                return EXIT_FAILURE;
+            }
+            if (!mod->implemented) {
+                mod = lys_get_implemented_module(mod);
+                if (!mod->implemented) {
+                    /* make the found module implemented */
+                    if (lys_set_implemented(mod)) {
+                        return EXIT_FAILURE;
+                    }
+                }
+            }
+
             /* move down the tree, if possible */
             if (node->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
                 LOGVAL(LYE_INCHAR, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent, name[0], name);
@@ -3881,7 +3929,7 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
         }
 
         if (!prefix) {
-            prefix = lys_node_module(parent)->name;
+            prefix = mod_start->name;
         }
 
         rc = lys_get_sibling(node, prefix, pref_len, name, nam_len, LYS_ANY & ~(LYS_USES | LYS_GROUPING), &node);
@@ -3916,13 +3964,6 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
             }
             id += i;
             has_predicate = 0;
-        }
-        mod = lys_node_module(node);
-        if (!mod->implemented && mod != mod2) {
-            /* set the module implemented */
-            if (lys_set_implemented(mod)) {
-                return -1;
-            }
         }
     } while (id[0]);
 
@@ -6044,7 +6085,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
 
         if (!lys_node_module(node)->implemented) {
             /* not implemented module, don't bother with resolving the leafref
-             * if the module is set to be implemented, tha path will be resolved then */
+             * if the module is set to be implemented, the path will be resolved then */
             rc = 0;
             break;
         }
