@@ -3704,9 +3704,9 @@ lys_set_implemented(const struct lys_module *module)
         }
         for (j = 0; j < module->inc[i].submodule->augment_size; j++) {
             /* apply augment */
-            if (!module->inc[i].submodule->augment[i].target
-                    && (unres_schema_add_node((struct lys_module *)module->inc[i].submodule, unres,
-                                              &module->inc[i].submodule->augment[i], UNRES_AUGMENT, NULL) == -1)) {
+            if (!module->inc[i].submodule->augment[j].target
+                    && (unres_schema_add_node((struct lys_module *)module->inc[j].submodule, unres,
+                                              &module->inc[i].submodule->augment[j], UNRES_AUGMENT, NULL) == -1)) {
                 goto error;
             }
         }
