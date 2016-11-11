@@ -166,6 +166,9 @@ ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_n
     /* dictionary */
     lydict_clean(&ctx->dict);
 
+    /* clean the error list */
+    ly_err_clean(0);
+
     free(ctx);
 }
 

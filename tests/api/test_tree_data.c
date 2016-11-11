@@ -1589,19 +1589,19 @@ test_lyd_leaf_type(void **state)
 
     data = lyd_parse_mem(ctx, xml1, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(data, NULL);
-    assert_int_equal(lyd_leaf_type((struct lyd_node_leaf_list *)data->child->prev), LY_TYPE_STRING);
+    assert_int_equal(lyd_leaf_type((struct lyd_node_leaf_list *)data->child->prev, 1)->base, LY_TYPE_STRING);
     lyd_free_withsiblings(data);
 
     data = lyd_parse_mem(ctx, xml2, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(data, NULL);
-    assert_int_equal(lyd_leaf_type((struct lyd_node_leaf_list *)data->child->prev), LY_TYPE_ENUM);
+    assert_int_equal(lyd_leaf_type((struct lyd_node_leaf_list *)data->child->prev, 1)->base, LY_TYPE_ENUM);
     lyd_free_withsiblings(data);
 
     /* Use trusted flag to avoid getting error on parsing since 'ssh' is invalid value */
     data = lyd_parse_mem(ctx, xml3, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_TRUSTED);
     assert_ptr_not_equal(data, NULL);
-    assert_int_equal(lyd_leaf_type((struct lyd_node_leaf_list *)data->child->prev), LY_TYPE_ERR);
-    assert_string_equal(ly_errmsg(), "Unable to get type from union \"u\" with no valid type.");
+    assert_int_equal(lyd_leaf_type((struct lyd_node_leaf_list *)data->child->prev, 1), NULL);
+    assert_string_equal(ly_errmsg(), "Invalid value \"ssh\" in \"u\" element.");
     lyd_free_withsiblings(data);
 }
 

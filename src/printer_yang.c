@@ -223,12 +223,14 @@ yang_print_snode_common2(struct lyout *out, int level, const struct lys_node *no
         ly_print(out, "%*sconfig false;\n", LEVEL, INDENT);
     }
 
-    if (node->flags & LYS_MAND_TRUE) {
-        yang_print_open(out, flag);
-        ly_print(out, "%*smandatory true;\n", LEVEL, INDENT);
-    } else if (node->flags & LYS_MAND_FALSE) {
-        yang_print_open(out, flag);
-        ly_print(out, "%*smandatory false;\n", LEVEL, INDENT);
+    if (node->nodetype & (LYS_LEAF | LYS_CHOICE | LYS_ANYDATA)) {
+        if (node->flags & LYS_MAND_TRUE) {
+            yang_print_open(out, flag);
+            ly_print(out, "%*smandatory true;\n", LEVEL, INDENT);
+        } else if (node->flags & LYS_MAND_FALSE) {
+            yang_print_open(out, flag);
+            ly_print(out, "%*smandatory false;\n", LEVEL, INDENT);
+        }
     }
 
     yang_print_snode_common(out, level, node, flag);
@@ -686,6 +688,7 @@ yang_print_typedef(struct lyout *out, int level, const struct lys_module *module
 {
     ly_print(out, "%*stypedef %s {\n", LEVEL, INDENT, tpdf->name);
     level++;
+    const char *dflt;
 
     yang_print_snode_common(out, level, (struct lys_node *)tpdf, NULL);
     yang_print_type(out, level, module, &tpdf->type);
@@ -693,7 +696,15 @@ yang_print_typedef(struct lyout *out, int level, const struct lys_module *module
         ly_print(out, "%*sunits \"%s\";\n", LEVEL, INDENT, tpdf->units);
     }
     if (tpdf->dflt != NULL) {
-        ly_print(out, "%*sdefault \"%s\";\n", LEVEL, INDENT, tpdf->dflt);
+        if (tpdf->flags & LYS_DFLTJSON) {
+            dflt = transform_json2schema(module, tpdf->dflt);
+        } else {
+            dflt = tpdf->dflt;
+        }
+        ly_print(out, "%*sdefault \"%s\";\n", LEVEL, INDENT, dflt);
+        if (tpdf->flags & LYS_DFLTJSON) {
+            lydict_remove(module->ctx, dflt);
+        }
     }
 
     level--;
@@ -855,6 +866,7 @@ yang_print_leaf(struct lyout *out, int level, const struct lys_node *node)
 {
     int i;
     struct lys_node_leaf *leaf = (struct lys_node_leaf *)node;
+    const char *dflt;
 
     ly_print(out, "%*sleaf %s {\n", LEVEL, INDENT, node->name);
 
@@ -875,7 +887,15 @@ yang_print_leaf(struct lyout *out, int level, const struct lys_node *node)
         ly_print(out, "%*sunits \"%s\";\n", LEVEL, INDENT, leaf->units);
     }
     if (leaf->dflt) {
-        ly_print(out, "%*sdefault \"%s\";\n", LEVEL, INDENT, leaf->dflt);
+        if (leaf->flags & LYS_DFLTJSON) {
+            dflt = transform_json2schema(node->module, leaf->dflt);
+        } else {
+            dflt = leaf->dflt;
+        }
+        ly_print(out, "%*sdefault \"%s\";\n", LEVEL, INDENT, dflt);
+        if (leaf->flags & LYS_DFLTJSON) {
+            lydict_remove(node->module->ctx, dflt);
+        }
     }
     level--;
 
@@ -913,6 +933,7 @@ yang_print_leaflist(struct lyout *out, int level, const struct lys_node *node)
 {
     int i;
     struct lys_node_leaflist *llist = (struct lys_node_leaflist *)node;
+    const char *dflt;
 
     ly_print(out, "%*sleaf-list %s {\n", LEVEL, INDENT, node->name);
 
@@ -930,7 +951,15 @@ yang_print_leaflist(struct lyout *out, int level, const struct lys_node *node)
     yang_print_snode_common2(out, level, node, NULL);
     yang_print_type(out, level, node->module, &llist->type);
     for (i = 0; i < llist->dflt_size; ++i) {
-        ly_print(out, "%*sdefault \"%s\";\n", LEVEL, INDENT, llist->dflt[i]);
+        if (llist->flags & LYS_DFLTJSON) {
+            dflt = transform_json2schema(node->module, llist->dflt[i]);
+        } else {
+            dflt = llist->dflt[i];
+        }
+        ly_print(out, "%*sdefault \"%s\";\n", LEVEL, INDENT, dflt);
+        if (llist->flags & LYS_DFLTJSON) {
+            lydict_remove(node->module->ctx, dflt);
+        }
     }
     if (llist->units != NULL) {
         ly_print(out, "%*sunits \"%s\";\n", LEVEL, INDENT, llist->units);
@@ -969,11 +998,7 @@ yang_print_list(struct lyout *out, int level, const struct lys_node *node)
         yang_print_must(out, level, list->module, &list->must[i]);
     }
     if (list->keys_size) {
-        ly_print(out, "%*skey \"", LEVEL, INDENT);
-        for (i = 0; i < list->keys_size; i++) {
-            ly_print(out, "%s%s", list->keys[i]->name, i + 1 < list->keys_size ? " " : "");
-        }
-        ly_print(out, "\";\n");
+        ly_print(out, "%*skey \"%s\";\n", LEVEL, INDENT, list->keys_str);
     }
     for (i = 0; i < list->unique_size; i++) {
         yang_print_unique(out, level, &list->unique[i]);

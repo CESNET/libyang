@@ -53,9 +53,9 @@ cmd_print_help(void)
 void
 cmd_data_help(void)
 {
-    printf("data [-(-s)trict] [-x OPTION] [-d DEFAULTS] [-o <output-file>] [-f (xml | json)] [-t <additional-tree-file-name>]\n");
+    printf("data [-(-s)trict] [-t TYPE] [-d DEFAULTS] [-o <output-file>] [-f (xml | json)] [-x <additional-tree-file-name>]\n");
     printf("     <data-file-name> [<JSON-rpc/action-schema-nodeid>]\n");
-    printf("Accepted OPTIONs:\n");
+    printf("Accepted TYPEs:\n");
     printf("\tauto       - resolve data type (one of the following) automatically (as pyang does),\n");
     printf("\t             this option is applicable only in case of XML input data.\n");
     printf("\tconfig     - LYD_OPT_CONFIG\n");
@@ -70,8 +70,8 @@ cmd_data_help(void)
     printf("\tall-tagged - add missing default nodes and mark all the default nodes with the attribute.\n");
     printf("\ttrim       - remove all nodes with a default value\n");
     printf("\timplicit-tagged    - add missing nodes and mark them with the attribute\n\n");
-    printf("Option -t:\n");
-    printf("\tIf RPC/action/notification/RPC reply (for OPTIONs 'rpc', 'rpcreply', and 'notif') includes\n");
+    printf("Option -x:\n");
+    printf("\tIf RPC/action/notification/RPC reply (for TYPEs 'rpc', 'rpcreply', and 'notif') includes\n");
     printf("\tan XPath expression (when/must) that needs access to the configuration data, you can provide\n");
     printf("\tthem in a file, which will be parsed as 'config'.\n");
 }
@@ -79,7 +79,22 @@ cmd_data_help(void)
 void
 cmd_xpath_help(void)
 {
-    printf("xpath -e <XPath-expression> <XML-data-file-name>\n");
+    printf("xpath [-t TYPE] [-x <additional-tree-file-name>] -e <XPath-expression>\n"
+           "      <XML-data-file-name> [<JSON-rpc/action-schema-nodeid>]\n");
+    printf("Accepted TYPEs:\n");
+    printf("\tauto       - resolve data type (one of the following) automatically (as pyang does),\n");
+    printf("\t             this option is applicable only in case of XML input data.\n");
+    printf("\tconfig     - LYD_OPT_CONFIG\n");
+    printf("\tget        - LYD_OPT_GET\n");
+    printf("\tgetconfig  - LYD_OPT_GETCONFIG\n");
+    printf("\tedit       - LYD_OPT_EDIT\n");
+    printf("\trpc        - LYD_OPT_RPC\n");
+    printf("\trpcreply   - LYD_OPT_RPCREPLY (last parameter mandatory in this case)\n");
+    printf("\tnotif      - LYD_OPT_NOTIF\n\n");
+    printf("Option -x:\n");
+    printf("\tIf RPC/action/notification/RPC reply (for TYPEs 'rpc', 'rpcreply', and 'notif') includes\n");
+    printf("\tan XPath expression (when/must) that needs access to the configuration data, you can provide\n");
+    printf("\tthem in a file, which will be parsed as 'config'.\n");
 }
 
 void
@@ -310,27 +325,180 @@ cleanup:
     return ret;
 }
 
+static int
+parse_data(const char *filepath, int options, struct lyd_node *val_tree, const char *act_nodeid,
+           struct lyd_node **result)
+{
+    size_t len;
+    LYD_FORMAT informat = LYD_UNKNOWN;
+    struct lyxml_elem *xml = NULL;
+    const struct lys_node *rpc_act = NULL;
+    struct lyd_node *data = NULL, *root, *next, *iter;
+
+    /* detect input format according to file suffix */
+    len = strlen(filepath);
+    if (len >= 5 && !strcmp(&filepath[len - 4], ".xml")) {
+        informat = LYD_XML;
+    } else if (len >= 6 && !strcmp(&filepath[len - 5], ".json")) {
+        informat = LYD_JSON;
+    } else {
+        fprintf(stderr, "Unable to resolve format of the input file, please add \".xml\" or \".json\" suffix.\n");
+        return EXIT_FAILURE;
+    }
+
+    ly_errno = LY_SUCCESS;
+
+    if ((options & LYD_OPT_TYPEMASK) == LYD_OPT_TYPEMASK) {
+        /* automatically detect data type from the data top level */
+        if (informat != LYD_XML) {
+            fprintf(stderr, "Only XML data can be automatically explored.\n");
+            return EXIT_FAILURE;
+        }
+
+        xml = lyxml_parse_path(ctx, filepath, 0);
+        if (!xml) {
+            fprintf(stderr, "Failed to parse XML data for automatic type detection.\n");
+            return EXIT_FAILURE;
+        }
+
+        /* NOTE: namespace is ignored to simplify usage of this feature */
+
+        if (!strcmp(xml->name, "data")) {
+            fprintf(stdout, "Parsing %s as complete datastore.\n", filepath);
+            options = (options & ~LYD_OPT_TYPEMASK);
+        } else if (!strcmp(xml->name, "config")) {
+            fprintf(stdout, "Parsing %s as config data.\n", filepath);
+            options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_CONFIG;
+        } else if (!strcmp(xml->name, "get-reply")) {
+            fprintf(stdout, "Parsing %s as <get> reply data.\n", filepath);
+            options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_GET;
+        } else if (!strcmp(xml->name, "get-config-reply")) {
+            fprintf(stdout, "Parsing %s as <get-config> reply data.\n", filepath);
+            options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_GETCONFIG;
+        } else if (!strcmp(xml->name, "edit-config")) {
+            fprintf(stdout, "Parsing %s as <edit-config> data.\n", filepath);
+            options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_EDIT;
+        } else if (!strcmp(xml->name, "rpc")) {
+            fprintf(stdout, "Parsing %s as <rpc> data.\n", filepath);
+            options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPC;
+        } else if (!strcmp(xml->name, "rpc-reply")) {
+            if (!act_nodeid) {
+                fprintf(stderr, "RPC reply data require additional argument (JSON schema nodeid of the RPC/action).\n");
+                lyxml_free(ctx, xml);
+                return EXIT_FAILURE;
+            }
+            fprintf(stdout, "Parsing %s as <rpc-reply> data.\n", filepath);
+            options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPCREPLY;
+            rpc_act = ly_ctx_get_node(ctx, NULL, act_nodeid);
+            if (!rpc_act || !(rpc_act->nodetype & (LYS_RPC | LYS_ACTION))) {
+                fprintf(stderr, "Invalid JSON schema nodeid.\n");
+                lyxml_free(ctx, xml);
+                return EXIT_FAILURE;
+            }
+        } else if (!strcmp(xml->name, "notification")) {
+            fprintf(stdout, "Parsing %s as <notification> data.\n", filepath);
+            options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_NOTIF;
+        } else {
+            fprintf(stderr, "Invalid top-level element for automatic data type recognition.\n");
+            lyxml_free(ctx, xml);
+            return EXIT_FAILURE;
+        }
+
+        if (options & LYD_OPT_RPCREPLY) {
+            data = lyd_parse_xml(ctx, &xml->child, options, rpc_act, val_tree);
+        } else if (options & (LYD_OPT_RPC | LYD_OPT_NOTIF)) {
+            data = lyd_parse_xml(ctx, &xml->child, options, val_tree);
+        } else {
+            if ((options & LYD_OPT_TYPEMASK) == LYD_OPT_DATA && !(options & LYD_OPT_STRICT )) {
+                /* we have to include status data from ietf-yang-library which is part of the context,
+                 * so we have to postpone validation after merging input data with ly_ctx_info() */
+                options |= LYD_OPT_TRUSTED;
+            }
+            data = lyd_parse_xml(ctx, &xml->child, options);
+        }
+        lyxml_free(ctx, xml);
+    } else {
+        if (options & LYD_OPT_RPCREPLY) {
+            if (act_nodeid) {
+                fprintf(stderr, "RPC reply data require additional argument (schema nodeid of the RPC/action).\n");
+                return EXIT_FAILURE;
+            }
+            rpc_act = ly_ctx_get_node(ctx, NULL, act_nodeid);
+            if (!rpc_act || !(rpc_act->nodetype & (LYS_RPC | LYS_ACTION))) {
+                fprintf(stderr, "Invalid JSON schema nodeid.\n");
+                return EXIT_FAILURE;
+            }
+            data = lyd_parse_path(ctx, filepath, informat, options, rpc_act, val_tree);
+        } else if (options & (LYD_OPT_RPC | LYD_OPT_NOTIF)) {
+            data = lyd_parse_path(ctx, filepath, informat, options, val_tree);
+        } else {
+            if ((options & LYD_OPT_TYPEMASK) == LYD_OPT_DATA && !(options & LYD_OPT_STRICT )) {
+                /* we have to include status data from ietf-yang-library which is part of the context,
+                 * so we have to postpone validation after merging input data with ly_ctx_info() */
+                options |= LYD_OPT_TRUSTED;
+            }
+            data = lyd_parse_path(ctx, filepath, informat, options);
+        }
+    }
+    if (ly_errno) {
+        fprintf(stderr, "Failed to parse data.\n");
+        lyd_free_withsiblings(data);
+        return EXIT_FAILURE;
+    }
+
+    if (options & LYD_OPT_TRUSTED) {
+        /* postponed validation in case of LYD_OPT_DATA */
+        /* remove the trusted flag */
+        options &= ~LYD_OPT_TRUSTED;
+
+        /* merge with ietf-yang-library */
+        root = ly_ctx_info(ctx);
+        if (lyd_merge(root, data, LYD_OPT_DESTRUCT | LYD_OPT_EXPLICIT)) {
+            fprintf(stderr, "Merging input data with ietf-yang-library failed.\n");
+            lyd_free_withsiblings(root);
+            lyd_free_withsiblings(data);
+            return EXIT_FAILURE;
+        }
+        data = root;
+
+        /* invalidate all data - do not believe to the source */
+        LY_TREE_FOR(data, root) {
+            LY_TREE_DFS_BEGIN(root, next, iter) {
+                iter->validity = LYD_VAL_NOT;
+                LY_TREE_DFS_END(root, next, iter)
+            }
+        }
+
+        /* validate the result */
+        if (lyd_validate(&data, options, NULL)) {
+            fprintf(stderr, "Failed to parse data.\n");
+            lyd_free_withsiblings(data);
+            return EXIT_FAILURE;
+        }
+    }
+
+    *result = data;
+    return EXIT_SUCCESS;
+}
+
 int
 cmd_data(const char *arg)
 {
     int c, argc, option_index, ret = 1;
     int options = 0, printopt = 0;
-    size_t len;
     char **argv = NULL, *ptr;
     const char *out_path = NULL;
     struct lyd_node *data = NULL, *val_tree = NULL;
-    struct lyxml_elem *xml;
-    const struct lys_node *rpc_act = NULL;
-    LYD_FORMAT outformat = LYD_UNKNOWN, informat = LYD_UNKNOWN;
+    LYD_FORMAT outformat = LYD_UNKNOWN;
     FILE *output = stdout;
     static struct option long_options[] = {
         {"defaults", required_argument, 0, 'd'},
         {"help", no_argument, 0, 'h'},
         {"format", required_argument, 0, 'f'},
-        {"option", required_argument, 0, 'x'},
+        {"option", required_argument, 0, 't'},
         {"output", required_argument, 0, 'o'},
         {"strict", no_argument, 0, 's'},
-        {"validation-tree", required_argument, 0, 't'},
+        {"validation-tree", required_argument, 0, 'x'},
         {NULL, 0, 0, 0}
     };
 
@@ -347,7 +515,7 @@ cmd_data(const char *arg)
     optind = 0;
     while (1) {
         option_index = 0;
-        c = getopt_long(argc, argv, "d:hf:o:sx:t:", long_options, &option_index);
+        c = getopt_long(argc, argv, "d:hf:o:st:x:", long_options, &option_index);
         if (c == -1) {
             break;
         }
@@ -389,7 +557,7 @@ cmd_data(const char *arg)
             options |= LYD_OPT_STRICT;
             options |= LYD_OPT_OBSOLETE;
             break;
-        case 'x':
+        case 't':
             if (!strcmp(optarg, "auto")) {
                 options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_TYPEMASK;
             } else if (!strcmp(optarg, "config")) {
@@ -412,7 +580,7 @@ cmd_data(const char *arg)
                 goto cleanup;
             }
             break;
-        case 't':
+        case 'x':
             val_tree = lyd_parse_path(ctx, optarg, LYD_XML, LYD_OPT_CONFIG);
             if (!val_tree) {
                 fprintf(stderr, "Failed to parse the additional data tree for validation.\n");
@@ -431,99 +599,7 @@ cmd_data(const char *arg)
         goto cleanup;
     }
 
-    /* detect input format according to file suffix */
-    len = strlen(argv[optind]);
-    if (len >= 5 && !strcmp(&argv[optind][len - 4], ".xml")) {
-        informat = LYD_XML;
-    } else if (len >= 6 && !strcmp(&argv[optind][len - 5], ".json")) {
-        informat = LYD_JSON;
-    } else {
-        fprintf(stderr, "Unable to resolve format of the input file, please add \".xml\" or \".json\" suffix.\n");
-        goto cleanup;
-    }
-
-    if ((options & LYD_OPT_TYPEMASK) == LYD_OPT_TYPEMASK) {
-        /* automatically detect data type from the data top level */
-        if (informat != LYD_XML) {
-            fprintf(stderr, "Only XML data can be automatically explored.\n");
-            goto cleanup;
-        }
-
-        xml = lyxml_parse_path(ctx, argv[optind], 0);
-        if (!xml) {
-            fprintf(stderr, "Failed to parse XML data for automatic type detection.\n");
-            goto cleanup;
-        }
-
-        /* NOTE: namespace is ignored to simplify usage of this feature */
-
-        if (!strcmp(xml->name, "data")) {
-            fprintf(stdout, "Parsing %s as complete datastore.\n", argv[optind]);
-            options = (options & ~LYD_OPT_TYPEMASK);
-        } else if (!strcmp(xml->name, "config")) {
-            fprintf(stdout, "Parsing %s as config data.\n", argv[optind]);
-            options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_CONFIG;
-        } else if (!strcmp(xml->name, "get-reply")) {
-            fprintf(stdout, "Parsing %s as <get> reply data.\n", argv[optind]);
-            options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_GET;
-        } else if (!strcmp(xml->name, "get-config-reply")) {
-            fprintf(stdout, "Parsing %s as <get-config> reply data.\n", argv[optind]);
-            options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_GETCONFIG;
-        } else if (!strcmp(xml->name, "edit-config")) {
-            fprintf(stdout, "Parsing %s as <edit-config> data.\n", argv[optind]);
-            options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_EDIT;
-        } else if (!strcmp(xml->name, "rpc")) {
-            fprintf(stdout, "Parsing %s as <rpc> data.\n", argv[optind]);
-            options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPC;
-        } else if (!strcmp(xml->name, "rpc-reply")) {
-            if (optind + 1 == argc) {
-                fprintf(stderr, "RPC reply data require additional argument (JSON schema nodeid of the RPC/action).\n");
-                goto cleanup;
-            }
-            fprintf(stdout, "Parsing %s as <rpc-reply> data.\n", argv[optind]);
-            options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPCREPLY;
-            rpc_act = ly_ctx_get_node(ctx, NULL, argv[optind + 1]);
-            if (!rpc_act || !(rpc_act->nodetype & (LYS_RPC | LYS_ACTION))) {
-                fprintf(stderr, "Invalid JSON schema nodeid.\n");
-                goto cleanup;
-            }
-        } else if (!strcmp(xml->name, "notification")) {
-            fprintf(stdout, "Parsing %s as <notification> data.\n", argv[optind]);
-            options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_NOTIF;
-        } else {
-            fprintf(stderr, "Invalid top-level element for automatic data type recognition.\n");
-            lyxml_free(ctx, xml);
-            goto cleanup;
-        }
-
-        if (options & LYD_OPT_RPCREPLY) {
-            data = lyd_parse_xml(ctx, &xml->child, options, rpc_act, val_tree);
-        } else if (options & (LYD_OPT_RPC | LYD_OPT_NOTIF)) {
-            data = lyd_parse_xml(ctx, &xml->child, options, val_tree);
-        } else {
-            data = lyd_parse_xml(ctx, &xml->child, options);
-        }
-        lyxml_free(ctx, xml);
-    } else {
-        if (options & LYD_OPT_RPCREPLY) {
-            if (optind + 1 == argc) {
-                fprintf(stderr, "RPC reply data require additional argument (schema nodeid of the RPC/action).\n");
-                goto cleanup;
-            }
-            rpc_act = ly_ctx_get_node(ctx, NULL, argv[optind + 1]);
-            if (!rpc_act || !(rpc_act->nodetype & (LYS_RPC | LYS_ACTION))) {
-                fprintf(stderr, "Invalid JSON schema nodeid.\n");
-                goto cleanup;
-            }
-            data = lyd_parse_path(ctx, argv[optind], informat, options, rpc_act, val_tree);
-        } else if (options & (LYD_OPT_RPC | LYD_OPT_NOTIF)) {
-            data = lyd_parse_path(ctx, argv[optind], informat, options, val_tree);
-        } else {
-            data = lyd_parse_path(ctx, argv[optind], informat, options);
-        }
-    }
-    if (ly_errno) {
-        fprintf(stderr, "Failed to parse data.\n");
+    if (parse_data(argv[optind], options, val_tree, argv[optind + 1], &data)) {
         goto cleanup;
     }
 
@@ -565,7 +641,8 @@ cmd_xpath(const char *arg)
     int c, argc, option_index, ret = 1, long_str;
     char **argv = NULL, *ptr, *expr = NULL;
     unsigned int i, j;
-    struct lyd_node *data = NULL, *node;
+    int options = 0;
+    struct lyd_node *data = NULL, *node, *val_tree = NULL;
     struct lyd_node_leaf_list *key;
     struct ly_set *set;
     static struct option long_options[] = {
@@ -609,7 +686,7 @@ cmd_xpath(const char *arg)
     optind = 0;
     while (1) {
         option_index = 0;
-        c = getopt_long(argc, argv, "he:", long_options, &option_index);
+        c = getopt_long(argc, argv, "he:t:x:", long_options, &option_index);
         if (c == -1) {
             break;
         }
@@ -621,6 +698,36 @@ cmd_xpath(const char *arg)
             goto cleanup;
         case 'e':
             expr = optarg;
+            break;
+        case 't':
+            if (!strcmp(optarg, "auto")) {
+                options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_TYPEMASK;
+            } else if (!strcmp(optarg, "config")) {
+                options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_CONFIG;
+            } else if (!strcmp(optarg, "get")) {
+                options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_GET;
+            } else if (!strcmp(optarg, "getconfig")) {
+                options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_GETCONFIG;
+            } else if (!strcmp(optarg, "edit")) {
+                options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_EDIT;
+            } else if (!strcmp(optarg, "rpc")) {
+                options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPC;
+            } else if (!strcmp(optarg, "rpcreply")) {
+                options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPCREPLY;
+            } else if (!strcmp(optarg, "notif")) {
+                options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_NOTIF;
+            } else {
+                fprintf(stderr, "Invalid parser option \"%s\".\n", optarg);
+                cmd_data_help();
+                goto cleanup;
+            }
+            break;
+        case 'x':
+            val_tree = lyd_parse_path(ctx, optarg, LYD_XML, LYD_OPT_CONFIG);
+            if (!val_tree) {
+                fprintf(stderr, "Failed to parse the additional data tree for validation.\n");
+                goto cleanup;
+            }
             break;
         case '?':
             fprintf(stderr, "Unknown option \"%d\".\n", (char)c);
@@ -638,10 +745,7 @@ cmd_xpath(const char *arg)
         goto cleanup;
     }
 
-    /* data file */
-    data = lyd_parse_path(ctx, argv[optind], LYD_XML, 0);
-    if (ly_errno) {
-        fprintf(stderr, "Failed to parse data.\n");
+    if (parse_data(argv[optind], options, val_tree, argv[optind + 1], &data)) {
         goto cleanup;
     }
 

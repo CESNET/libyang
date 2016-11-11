@@ -15,9 +15,6 @@
       <user-name>smith</user-name>
     </group>
   </groups>
-  <denied-operations>0</denied-operations>
-  <denied-data-writes>0</denied-data-writes>
-  <denied-notifications>0</denied-notifications>
 </nacm>
 <interfaces xmlns="urn:ietf:params:xml:ns:yang:ietf-interfaces">
   <interface>

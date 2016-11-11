@@ -43,16 +43,28 @@ struct ly_err ly_err_main = {LY_SUCCESS, LYVE_SUCCESS, 0, 0, 0, 0, NULL, NULL + 
 static void
 ly_err_free(void *ptr)
 {
+    struct ly_err *e = (struct ly_err *)ptr;
+    struct ly_err_item *i, *next;
+
+    /* clean the error list */
+    for (i = e->errlist; i; i = next) {
+        next = i->next;
+        free(i->msg);
+        free(i->path);
+        free(i);
+    }
+    e->errlist = NULL;
+
 #ifdef __linux__
     /* in __linux__ we use static memory in the main thread,
      * so this check is for programs terminating the main()
      * function by pthread_exit() :)
      */
-    if (ptr != &ly_err_main) {
+    if (e != &ly_err_main) {
 #else
     {
 #endif
-        free(ptr);
+        free(e);
     }
 }
 
@@ -93,7 +105,7 @@ ly_err_location(void)
 }
 
 void
-ly_err_clean(void)
+ly_err_clean(int with_errno)
 {
     struct ly_err_item *i, *next;
 
@@ -106,8 +118,10 @@ ly_err_clean(void)
         free(i);
     }
 
-    ly_err_location()->no = LY_SUCCESS;
-    ly_err_location()->code = LYVE_SUCCESS;
+    if (with_errno) {
+        ly_err_location()->no = LY_SUCCESS;
+        ly_err_location()->code = LYVE_SUCCESS;
+    }
 }
 
 API LY_ERR *
@@ -552,7 +566,7 @@ transform_schema2json(const struct lys_module *module, const char *expr)
     uint16_t i;
     size_t out_size, out_used, pref_len;
     const struct lys_module *mod;
-    struct lyxp_expr *exp;
+    struct lyxp_expr *exp = NULL;
 
     out_size = strlen(expr) + 1;
     out = malloc(out_size);
@@ -564,8 +578,7 @@ transform_schema2json(const struct lys_module *module, const char *expr)
 
     exp = lyxp_parse_expr(expr);
     if (!exp) {
-        free(out);
-        return NULL;
+        goto error;
     }
 
     for (i = 0; i < exp->used; ++i) {
@@ -583,8 +596,7 @@ transform_schema2json(const struct lys_module *module, const char *expr)
             mod = lys_get_import_module(module, cur_expr, pref_len, NULL, 0);
             if (!mod) {
                 LOGVAL(LYE_INMOD_LEN, LY_VLOG_NONE, NULL, pref_len, cur_expr);
-                free(out);
-                return NULL;
+                goto error;
             }
 
             /* adjust out size (it can even decrease in some strange cases) */

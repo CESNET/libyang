@@ -2,7 +2,7 @@
 
 * cmake >= 3.1
 * swig
-* node
+* node >= 0.10.x <7.0.x
 * npm
 
 ## Install
@@ -11,7 +11,7 @@
 $ cmake -DJAVASCRIPT_BINDING=ON ..
 $ make
 $ cd javascript
-$ npm install
+$ npm install --unsafe-perm
 ```
 
 More details on swig's javascript bindings can be found at [SWIG](http://www.swig.org/Doc3.0/Javascript.html#Javascript_node_extensions).
@@ -21,6 +21,5 @@ More details on swig's javascript bindings can be found at [SWIG](http://www.swi
 To include the node bindings simply use it with.
 
 ```
-yang = require("<path to build>/javascript/build/Release/yang")
+var yang = require("./index")
 ```
-

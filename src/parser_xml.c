@@ -60,7 +60,7 @@ xml_data_search_schemanode(struct lyxml_elem *xml, struct lys_node *start, int o
         /* match data nodes */
         if (ly_strequal(result->name, xml->name, 1)) {
             /* names matches, what about namespaces? */
-            if (ly_strequal(result->module->ns, xml->ns->value, 1)) {
+            if (ly_strequal(lys_main_module(result->module)->ns, xml->ns->value, 1)) {
                 /* we have matching result */
                 return result;
             }
@@ -78,21 +78,18 @@ static int
 xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, int editbits)
 {
     struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
-    int resolve;
+    int resolvable;
 
     assert(node && (node->schema->nodetype & (LYS_LEAFLIST | LYS_LEAF)) && xml);
 
+    if (options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
+        resolvable = 0;
+    } else {
+        resolvable = 1;
+    }
+
     leaf->value_str = xml->content;
     xml->content = NULL;
-
-    /* will be changed in case of union */
-    leaf->value_type = ((struct lys_node_leaf *)node->schema)->type.base;
-
-    if (options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
-        resolve = 0;
-    } else {
-        resolve = 1;
-    }
 
     if ((editbits & 0x10) && (node->schema->nodetype & LYS_LEAF) && (!leaf->value_str || !leaf->value_str[0])) {
         /* we have edit-config leaf/leaf-list with delete operation and no (empty) value,
@@ -101,20 +98,10 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, int ed
         return EXIT_SUCCESS;
     }
 
-    if ((leaf->value_type == LY_TYPE_IDENT) || (leaf->value_type == LY_TYPE_INST)) {
-        /* convert the path from the XML form using XML namespaces into the JSON format
-         * using module names as namespaces
-         */
-        xml->content = leaf->value_str;
-        leaf->value_str = transform_xml2json(leaf->schema->module->ctx, xml->content, xml, 1);
-        lydict_remove(leaf->schema->module->ctx, xml->content);
-        xml->content = NULL;
-        if (!leaf->value_str) {
-            return EXIT_FAILURE;
-        }
-    }
-
-    if (lyp_parse_value(leaf, xml, resolve)) {
+    /* the value is here converted to a JSON format if needed in case of LY_TYPE_IDENT and LY_TYPE_INST or to a
+     * canonical form of the value */
+    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, xml, NULL, leaf,
+                         resolvable, 0)) {
         return EXIT_FAILURE;
     }
 
@@ -528,14 +515,14 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         }
     }
 
-    /* if we have empty non-presence container, we can remove it */
+    /* if we have empty non-presence container, we keep it, but mark it as default */
     if (schema->nodetype == LYS_CONTAINER && !(*result)->child &&
             !(*result)->attr && !((struct lys_node_container *)schema)->presence) {
-        goto clear;
+        (*result)->dflt = 1;
     }
 
     /* rest of validation checks */
-    ly_err_clean();
+    ly_err_clean(1);
     if (!(options & LYD_OPT_TRUSTED) &&
             (lyv_data_content(*result, options, unres) ||
              lyv_multicases(*result, NULL, prev ? &first_sibling : NULL, 0, NULL))) {
@@ -584,7 +571,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     struct lyxml_elem *xmlstart, *xmlelem, *xmlaux;
     struct ly_set *set;
 
-    ly_err_clean();
+    ly_err_clean(1);
 
     if (!ctx || !root) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);

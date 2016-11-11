@@ -428,16 +428,16 @@ json_get_value(struct lyd_node_leaf_list *leaf, struct lyd_node *first_sibling, 
     struct lys_type *stype;
     struct ly_ctx *ctx;
     unsigned int len = 0, r;
-    int resolve;
+    int resolvable;
     char *str;
 
     assert(leaf && data);
     ctx = leaf->schema->module->ctx;
 
     if (options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
-        resolve = 0;
+        resolvable = 0;
     } else {
-        resolve = 1;
+        resolvable = 1;
     }
 
     stype = &((struct lys_node_leaf *)leaf->schema)->type;
@@ -508,7 +508,10 @@ repeat:
         return 0;
     }
 
-    if (lyp_parse_value(leaf, NULL, resolve)) {
+    /* the value is here converted to a JSON format if needed in case of LY_TYPE_IDENT and LY_TYPE_INST or to a
+     * canonical form of the value */
+    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, NULL, NULL, leaf,
+                         resolvable, 0)) {
         ly_errno = LY_EVALID;
         return 0;
     }
@@ -1075,12 +1078,10 @@ attr_repeat:
         len++;
         len += skip_ws(&data[len]);
 
-        /* if we have empty non-presence container, we could remove it immediately if there were no attributes of it, who knows */
+        /* if we have empty non-presence container, mark it as default */
         if (schema->nodetype == LYS_CONTAINER && !result->child &&
                 !result->attr && !((struct lys_node_container *)schema)->presence) {
-            if (unres_data_add(unres, result, UNRES_EMPTYCONT)) {
-                goto error;
-            }
+            result->dflt = 1;
         }
 
     } else if (schema->nodetype == LYS_LIST) {
@@ -1132,7 +1133,7 @@ attr_repeat:
 
             if (data[len] == ',') {
                 /* various validation checks */
-                ly_err_clean();
+                ly_err_clean(1);
                 if (!(options & LYD_OPT_TRUSTED) &&
                         (lyv_data_content(list, options, unres) ||
                          lyv_multicases(list, NULL, prev ? &first_sibling : NULL, 0, NULL))) {
@@ -1174,7 +1175,7 @@ attr_repeat:
         goto error;
     }
 
-    ly_err_clean();
+    ly_err_clean(1);
     if (!(options & LYD_OPT_TRUSTED) &&
             (lyv_data_content(result, options, unres) ||
              lyv_multicases(result, NULL, prev ? &first_sibling : NULL, 0, NULL))) {
@@ -1232,7 +1233,7 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
     struct attr_cont *attrs = NULL;
     struct ly_set *set;
 
-    ly_err_clean();
+    ly_err_clean(1);
 
     if (!ctx || !data) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);

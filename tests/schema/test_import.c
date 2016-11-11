@@ -108,12 +108,36 @@ test_circular_import(void **state)
     assert_int_equal(ly_vecode, LYVE_CIRC_IMPORTS);
 }
 
+/*
+ * When an imported module is targeted in augment or leafref, it must be
+ * (automatically) set to implemented module.
+ */
+static void
+test_autoimplement_augment_import(void **state)
+{
+    struct ly_ctx *ctx = *state;
+
+    ly_ctx_set_searchdir(ctx, SCHEMA_FOLDER_YANG);
+    assert_ptr_not_equal(ly_ctx_load_module(ctx, "impl_aug_a", NULL), NULL);
+}
+
+static void
+test_autoimplement_leafref_import(void **state)
+{
+    struct ly_ctx *ctx = *state;
+
+    ly_ctx_set_searchdir(ctx, SCHEMA_FOLDER_YANG);
+    assert_ptr_not_equal(ly_ctx_load_module(ctx, "impl_lr_a", NULL), NULL);
+}
+
 int
 main(void)
 {
     const struct CMUnitTest cmut[] = {
         cmocka_unit_test_setup_teardown(test_mult_revisions, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_circular_import, setup_ctx, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_autoimplement_augment_import, setup_ctx, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_autoimplement_leafref_import, setup_ctx, teardown_ctx),
     };
 
     return cmocka_run_group_tests(cmut, NULL, NULL);

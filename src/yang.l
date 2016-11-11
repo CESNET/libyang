@@ -39,7 +39,7 @@ U4     [\xf0][\x90-\xbf]{U}{U}|[\xf1-\xf3]{U}{U}{U}|[\xf4][\x80-\x8f]{U}{U}
  int column = 0;
  char *str = NULL;
  int _state = YY_START;
- yy_size_t i;
+ int i;
  uint32_t value;
 
 

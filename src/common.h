@@ -84,7 +84,7 @@ struct ly_err {
     char buf[LY_BUF_SIZE];
 };
 struct ly_err *ly_err_location(void);
-void ly_err_clean(void);
+void ly_err_clean(int with_errno);
 void ly_err_repeat(void);
 
 /**
@@ -183,6 +183,7 @@ typedef enum {
     LYE_CIRC_IMPORTS,
     LYE_CIRC_INCLUDES,
     LYE_INVER,
+    LYE_SUBMODULE,
 
     LYE_OBSDATA,
     LYE_OBSTYPE,
@@ -214,6 +215,8 @@ typedef enum {
     LYE_XPATH_INOP_1,
     LYE_XPATH_INOP_2,
     LYE_XPATH_INCTX,
+    LYE_XPATH_INMOD,
+    LYE_XPATH_INFUNC,
     LYE_XPATH_INARGCOUNT,
     LYE_XPATH_INARGTYPE,
     LYE_XPATH_DUMMY,
@@ -235,7 +238,14 @@ enum LY_VLOG_ELEM {
     LY_VLOG_LYD, /* struct lyd_node* */
     LY_VLOG_STR  /* const char* */
 };
-void ly_vlog_hide(int hide);
+
+/*
+ * 0 - normal visibility
+ * 1-254 - do not print messages
+ * 255 - convert errors to warnings
+ */
+void ly_vlog_hide(uint8_t hide);
+
 uint8_t *ly_vlog_hide_location(void);
 void ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...);
 #define LOGVAL(code, elem_type, elem, args...)                      \

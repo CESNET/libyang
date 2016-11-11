@@ -51,7 +51,6 @@ static void
 log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *path, va_list args)
 {
     char *msg, *bufdup = NULL;
-    int free_flag = 0;
     struct ly_err *e = ly_err_location();
     struct ly_err_item *eitem;
 
@@ -59,12 +58,7 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
         msg = "Internal logger error";
     } else if (!format) {
         /* postponed print of path related to the previous error, do not rewrite stored original message */
-        msg = NULL;
-        if (asprintf(&msg, "Path related to the last error: \"%s\".", path) == -1) {
-            msg = "Internal logger error (asprint() failed).";
-        } else {
-            free_flag = 1;
-        }
+        msg = "Path is related to the previous error message.";
     } else {
         if (level == LY_LLERR) {
             /* store error message into msg buffer ... */
@@ -117,8 +111,11 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
         }
     }
 
-
-    if (hide || (level > ly_log_level)) {
+    if (hide == 0xff && level == LY_LLERR && (LY_LLWRN <= ly_log_level)) {
+        /* change error to warning */
+        level = LY_LLWRN;
+    } else if (hide || (level > ly_log_level)) {
+        /* do not print the message */
         goto clean;
     }
 
@@ -132,9 +129,7 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
     }
 
 clean:
-    if (free_flag) {
-        free(msg);
-    } else if (bufdup) {
+    if (bufdup) {
         /* return previous internal buffer content */
         strncpy(msg, bufdup, LY_BUF_SIZE - 1);
         free(bufdup);
@@ -196,6 +191,7 @@ const char *ly_errs[] = {
 /* LYE_CIRC_IMPORTS */ "A circular dependency (import) for module \"%s\".",
 /* LYE_CIRC_INCLUDES */"A circular dependency (include) for submodule \"%s\".",
 /* LYE_INVER */        "Different YANG versions of a submodule and its main module.",
+/* LYE_SUBMODULE */    "Unable to parse submodule, parse the main module instead.",
 
 /* LYE_OBSDATA */      "Obsolete data \"%s\" instantiated.",
 /* LYE_OBSTYPE */      "Data node \"%s\" with obsolete type \"%s\" instantiated.",
@@ -227,7 +223,9 @@ const char *ly_errs[] = {
 /* LYE_XPATH_INOP_1 */ "Cannot apply XPath operation %s on %s.",
 /* LYE_XPATH_INOP_2 */ "Cannot apply XPath operation %s on %s and %s.",
 /* LYE_XPATH_INCTX */  "Invalid context type %s in %s.",
-/* LYE_XPATH_INARGCOUNT */ "Invalid number of arguments (%d) for the XPath function %s.",
+/* LYE_XPATH_INMOD */  "Unknown module \"%.*s\" relative to the context node \"%s\".",
+/* LYE_XPATH_INFUNC */ "Unknown XPath function \"%.*s\".",
+/* LYE_XPATH_INARGCOUNT */ "Invalid number of arguments (%d) for the XPath function %.*s.",
 /* LYE_XPATH_INARGTYPE */ "Wrong type of argument #%d (%s) for the XPath function %s.",
 /* LYE_XPATH_DUMMY */   "Accessing the value of the dummy node \"%s\".",
 
@@ -287,6 +285,7 @@ static const LY_VECODE ecode2vecode[] = {
     LYVE_CIRC_IMPORTS, /* LYE_CIRC_IMPORTS */
     LYVE_CIRC_INCLUDES,/* LYE_CIRC_INCLUDES */
     LYVE_INVER,        /* LYE_INVER */
+    LYVE_SUBMODULE,    /* LYE_SUBMODULE */
 
     LYVE_OBSDATA,      /* LYE_OBSDATA */
     LYVE_OBSDATA,      /* LYE_OBSTYPE */
@@ -311,13 +310,15 @@ static const LY_VECODE ecode2vecode[] = {
     LYVE_NOREQINS,     /* LYE_NOREQINS */
     LYVE_NOLEAFREF,    /* LYE_NOLEAFREF */
     LYVE_NOMANDCHOICE, /* LYE_NOMANDCHOICE */
-    LYVE_XPATH_INSNODE,/* LYE_XPATH_INSNODE */
 
+    LYVE_XPATH_INSNODE,/* LYE_XPATH_INSNODE */
     LYVE_XPATH_INTOK,  /* LYE_XPATH_INTOK */
     LYVE_XPATH_EOF,    /* LYE_XPATH_EOF */
     LYVE_XPATH_INOP,   /* LYE_XPATH_INOP_1 */
     LYVE_XPATH_INOP,   /* LYE_XPATH_INOP_2 */
     LYVE_XPATH_INCTX,  /* LYE_XPATH_INCTX */
+    LYVE_XPATH_INMOD,  /* LYE_XPATH_INMOD */
+    LYVE_XPATH_INFUNC, /* LYE_XPATH_INFUNC */
     LYVE_XPATH_INARGCOUNT, /* LYE_XPATH_INARGCOUNT */
     LYVE_XPATH_INARGTYPE, /* LYE_XPATH_INARGTYPE */
     LYVE_XPATH_DUMMY,  /* LYE_XPATH_DUMMY */
@@ -334,9 +335,9 @@ static const LY_VECODE ecode2vecode[] = {
 
 
 void
-ly_vlog_hide(int hide)
+ly_vlog_hide(uint8_t hide)
 {
-    (*ly_vlog_hide_location()) = hide ? 1 : 0;
+    (*ly_vlog_hide_location()) = hide;
 }
 
 void
@@ -344,7 +345,7 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
 {
     int i;
     struct lys_node_list *slist;
-    struct lys_node *sparent;
+    struct lys_node *sparent = NULL;
     struct lyd_node *dlist, *diter;
     const char *name, *prefix = NULL;
     size_t len;
