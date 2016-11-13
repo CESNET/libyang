@@ -292,8 +292,9 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
                     if (ly_set_add(dirs, wn, 0) == -1) {
                         goto cleanup;
                     }
-                    wn = NULL;
                     /* continue with the next item in current directory */
+                    wn = NULL;
+                    continue;
                 } else if (!S_ISREG(st.st_mode)) {
                     /* not a regular file (note that we see the target of symlinks instead of symlinks */
                     continue;
