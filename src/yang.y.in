@@ -57,8 +57,8 @@
         memset(tmp + (sizeof *current_ptr) * size, 0, (sizeof *current_ptr) * LY_YANG_ARRAY_SIZE); \
         current_ptr = tmp;                                                               \
     }                                                                                    \
-    actual = &current_ptr[size];                                                         \
-    size++;
+    actual = &current_ptr[size++];                                                       \
+    
 
 void yyerror(YYLTYPE *yylloc, void *scanner, char **value, ...);
 /* temporary pointer for the check extension nacm 'data_node' */
