@@ -1329,6 +1329,67 @@ error:
     return EXIT_FAILURE;
 }
 
+static int
+fill_yin_extension(struct lys_module *module, struct lyxml_elem *yin, struct lys_ext *ext)
+{
+    const char *value;
+    struct lyxml_elem *child;
+
+    GETVAL(value, yin, "name");
+
+    if (lyp_check_identifier(value, LY_IDENT_EXTENSION, module, NULL)) {
+        goto error;
+    }
+    ext->name = lydict_insert(module->ctx, value, strlen(value));
+
+    if (read_yin_common(module, NULL, (struct lys_node *)ext, yin, OPT_MODULE)) {
+        goto error;
+    }
+
+    if (yin->child) {
+        /* argument */
+        child = yin->child; /* shortcut */
+
+        if (strcmp(child->name, "argument")) {
+            /* only argument substatement expected */
+            LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, child->name, yin->name);
+            goto error;
+        } else if (child->next) {
+            /* no other children allowed */
+            LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, child->next->name, yin->name);
+            goto error;
+        }
+
+        GETVAL(value, child, "name");
+        ext->argument = lydict_insert(module->ctx, value, strlen(value));
+
+        if (child->child) {
+            /* yin-element */
+            if (strcmp(child->child->name, "yin-element")) {
+                /* only yin-element substatement expected */
+                LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, child->child->name, child->name);
+                goto error;
+            } else if (child->child->next) {
+                /* no other children allowed */
+                LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, child->child->next->name, child->name);
+                goto error;
+            }
+
+            GETVAL(value, child, "name");
+            if (ly_strequal(value, "true", 0)) {
+                ext->flags |= LYS_YINELEM;
+            }
+        }
+    }
+
+    /* TODO search for plugin */
+
+    return EXIT_SUCCESS;
+
+error:
+    return EXIT_FAILURE;
+}
+
 /* logs directly */
 static int
 fill_yin_feature(struct lys_module *module, struct lyxml_elem *yin, struct lys_feature *f, struct unres_schema *unres)
@@ -5312,7 +5373,7 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
     size_t size;
     int version_flag = 0;
     /* counters */
-    int c_imp = 0, c_rev = 0, c_tpdf = 0, c_ident = 0, c_inc = 0, c_aug = 0, c_ftrs = 0, c_dev = 0;
+    int c_imp = 0, c_rev = 0, c_tpdf = 0, c_ident = 0, c_inc = 0, c_aug = 0, c_ftrs = 0, c_dev = 0, c_ext = 0;
 
     /* to simplify code, store the module/submodule being processed as trg */
     trg = submodule ? (struct lys_module *)submodule : module;
@@ -5410,8 +5471,6 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
 
         } else if (!strcmp(child->name, "feature")) {
             c_ftrs++;
-        } else if (!strcmp(child->name, "deviation")) {
-            c_dev++;
 
             /* data statements */
         } else if (!strcmp(child->name, "container") ||
@@ -5506,22 +5565,11 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             lyxml_free(ctx, child);
 
         } else if (!strcmp(child->name, "extension")) {
-            GETVAL(value, child, "name");
+            c_ext++;
 
-            /* we have the following supported (hardcoded) extensions: */
-            /* ietf-netconf's get-filter-element-attributes */
-            if (!strcmp(module->ns, LY_NSNC) &&
-                    !strcmp(value, "get-filter-element-attributes")) {
-                LOGDBG("NETCONF filter extension found");
-            /* NACM's default-deny-write and default-deny-all */
-            } else if (!strcmp(module->ns, LY_NSNACM) &&
-                    (!strcmp(value, "default-deny-write") || !strcmp(value, "default-deny-all"))) {
-                LOGDBG("NACM extension found");
-            /* other extensions are not supported, so inform about such an extension */
-            } else {
-                LOGWRN("Not supported \"%s\" extension statement found, ignoring.", value);
-                lyxml_free(ctx, child);
-            }
+        } else if (!strcmp(child->name, "deviation")) {
+            c_dev++;
+
         } else {
             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child->name);
             goto error;
@@ -5602,6 +5650,13 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
     if (c_dev) {
         trg->deviation = calloc(c_dev, sizeof *trg->deviation);
         if (!trg->deviation) {
+            LOGMEM;
+            goto error;
+        }
+    }
+    if (c_ext) {
+        trg->extensions = calloc(c_ext, sizeof *trg->extensions);
+        if (!trg->extensions) {
             LOGMEM;
             goto error;
         }
@@ -5713,6 +5768,13 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
         } else if (!strcmp(child->name, "feature")) {
             r = fill_yin_feature(trg, child, &trg->features[trg->features_size], unres);
             trg->features_size++;
+            if (r) {
+                goto error;
+            }
+
+        } else if (!strcmp(child->name, "extension")) {
+            r = fill_yin_extension(trg, child, &trg->extensions[trg->extensions_size]);
+            trg->extensions_size++;
             if (r) {
                 goto error;
             }

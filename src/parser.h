@@ -54,7 +54,8 @@ enum LY_IDENT {
     LY_IDENT_TYPE,
     LY_IDENT_NODE,
     LY_IDENT_NAME,     /* uniqueness across the siblings */
-    LY_IDENT_PREFIX
+    LY_IDENT_PREFIX,
+    LY_IDENT_EXTENSION
 };
 
 struct lys_module *lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,

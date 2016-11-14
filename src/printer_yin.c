@@ -259,6 +259,31 @@ yin_print_feature(struct lyout *out, int level, const struct lys_feature *feat)
 }
 
 static void
+yin_print_extension(struct lyout *out, int level, const struct lys_ext *ext)
+{
+    int close, close2;
+
+    close = (yin_has_snode_common((struct lys_node *)ext) || ext->argument ? 0 : 1);
+
+    yin_print_open(out, level, "extension", "name", ext->name, close);
+    if (!close) {
+        level++;
+        yin_print_snode_common(out, level, (struct lys_node *)ext);
+        if (ext->argument) {
+            close2 = ext->flags & LYS_YINELEM ? 0 : 1;
+            yin_print_open(out, level, "argument", "name", ext->argument, close2);
+            if (!close2) {
+                yin_print_open(out, level + 1, "yin-element", "value", "true", 1);
+                yin_print_close(out, level, "argument");
+            }
+        }
+        level--;
+
+        yin_print_close(out, level, "extension");
+    }
+}
+
+static void
 yin_print_when(struct lyout *out, int level, const struct lys_module *module, const struct lys_when *when)
 {
     int close;
@@ -1440,6 +1465,10 @@ yin_print_model(struct lyout *out, const struct lys_module *module)
 
     for (i = 0; i < module->deviation_size; ++i) {
         yin_print_deviation(out, level, module, &module->deviation[i]);
+    }
+
+    for (i = 0; i < module->extensions_size; ++i) {
+        yin_print_extension(out, level, &module->extensions[i]);
     }
 
     LY_TREE_FOR(lys_main_module(module)->data, node) {

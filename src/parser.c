@@ -1786,11 +1786,12 @@ dup_prefix_check(const char *prefix, struct lys_module *module)
 int
 lyp_check_identifier(const char *id, enum LY_IDENT type, struct lys_module *module, struct lys_node *parent)
 {
-    int i;
+    int i, j;
     int size;
     struct lys_tpdf *tpdf;
     struct lys_node *node;
     struct lys_module *mainmod;
+    struct lys_submodule *submod;
 
     assert(id);
 
@@ -1897,7 +1898,7 @@ lyp_check_identifier(const char *id, enum LY_IDENT type, struct lys_module *modu
         assert(module);
         mainmod = lys_main_module(module);
 
-        /* check feature name uniqness*/
+        /* check feature name uniqueness*/
         /* check features in the current module */
         if (dup_feature_check(id, module)) {
             LOGVAL(LYE_DUPID, LY_VLOG_NONE, NULL, "feature", id);
@@ -1911,6 +1912,31 @@ lyp_check_identifier(const char *id, enum LY_IDENT type, struct lys_module *modu
                 return EXIT_FAILURE;
             }
         }
+        break;
+
+    case LY_IDENT_EXTENSION:
+        assert(module);
+        mainmod = lys_main_module(module);
+
+        /* check extension name uniqueness in the main module ... */
+        for (i = 0; i < mainmod->extensions_size; i++) {
+            if (ly_strequal(id, mainmod->extensions[i].name, 1)) {
+                LOGVAL(LYE_DUPID, LY_VLOG_NONE, NULL, "extension", id);
+                return EXIT_FAILURE;
+            }
+        }
+
+        /* ... and all its submodules */
+        for (j = 0; j < mainmod->inc_size && mainmod->inc[j].submodule; j++) {
+            submod = mainmod->inc[j].submodule; /* shortcut */
+            for (i = 0; i < submod->extensions_size; i++) {
+                if (ly_strequal(id, submod->extensions[i].name, 1)) {
+                    LOGVAL(LYE_DUPID, LY_VLOG_NONE, NULL, "extension", id);
+                    return EXIT_FAILURE;
+                }
+            }
+        }
+
         break;
 
     default:

@@ -263,6 +263,30 @@ yang_print_feature(struct lyout *out, int level, const struct lys_feature *feat)
 }
 
 static void
+yang_print_extension(struct lyout *out, int level, const struct lys_ext *ext)
+{
+    int flag = 0;
+
+    ly_print(out, "%*sextension %s", LEVEL, INDENT, ext->name);
+    level++;
+
+    yang_print_snode_common(out, level, (struct lys_node *)ext, &flag);
+    if (ext->argument) {
+        yang_print_open(out, &flag);
+        ly_print(out, "%*sargument %s", LEVEL, INDENT, ext->argument);
+
+        if (ext->flags & LYS_YINELEM) {
+            level++;
+            ly_print(out, "{\n%*syin-element true;\n", LEVEL, INDENT);
+            level--;
+        }
+    }
+
+    level--;
+    yang_print_close(out, level, flag);
+}
+
+static void
 yang_print_restr(struct lyout *out, int level, const struct lys_restr *restr, int *flag)
 {
     if (restr->dsc != NULL) {
@@ -1383,6 +1407,11 @@ yang_print_model(struct lyout *out, const struct lys_module *module)
     for (i = 0; i < module->tpdf_size; i++) {
         ly_print(out, "\n");
         yang_print_typedef(out, level, module, &module->tpdf[i]);
+    }
+
+    for (i = 0; i < module->extensions_size; i++) {
+        ly_print(out, "\n");
+        yang_print_extension(out, level, &module->extensions[i]);
     }
 
     for (i = 0; i < module->deviation_size; ++i) {

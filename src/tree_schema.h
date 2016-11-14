@@ -25,6 +25,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "extensions.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -258,6 +260,7 @@ struct lys_module {
     uint8_t features_size;           /**< number of elements in #features array */
     uint8_t augment_size;            /**< number of elements in #augment array */
     uint8_t deviation_size;          /**< number of elements in #deviation array */
+    uint8_t extensions_size;         /**< number of elements in #extensions array */
 
     struct lys_revision *rev;        /**< array of the module revisions, revisions[0] is always the last (newest)
                                           revision of the module */
@@ -268,6 +271,7 @@ struct lys_module {
     struct lys_feature *features;    /**< array of feature definitions */
     struct lys_node_augment *augment;/**< array of augments */
     struct lys_deviation *deviation; /**< array of specified deviations */
+    struct lys_ext *extensions;      /**< array of specified extensions */
 
     /* specific module's items in comparison to submodules */
     struct lys_node *data;           /**< first data statement, includes also RPCs and Notifications */
@@ -303,6 +307,7 @@ struct lys_submodule {
     uint8_t features_size;           /**< number of elements in #features array */
     uint8_t augment_size;            /**< number of elements in #augment array */
     uint8_t deviation_size;          /**< number of elements in #deviation array */
+    uint8_t extensions_size;         /**< number of elements in #extensions array */
 
     struct lys_revision *rev;        /**< array of the module revisions, revisions[0] is always the last (newest)
                                           revision of the submodule */
@@ -313,6 +318,7 @@ struct lys_submodule {
     struct lys_feature *features;    /**< array of feature definitions */
     struct lys_node_augment *augment;/**< array of augments */
     struct lys_deviation *deviation; /**< array of specified deviations */
+    struct lys_ext *extensions;      /**< array of specified extensions */
 
     /* specific submodule's items in comparison to modules */
     struct lys_module *belongsto;    /**< belongs-to (parent module) */
@@ -606,42 +612,43 @@ struct lys_iffeature {
  *     1 - container    6 - anydata/anyxml    11 - output       16 - type(def)
  *     2 - choice       7 - case              12 - grouping     17 - identity
  *     3 - leaf         8 - notification      13 - uses         18 - refine
- *     4 - leaflist     9 - rpc               14 - augment
+ *     4 - leaflist     9 - rpc               14 - augment      19 - extension
  *     5 - list        10 - input             15 - feature
  *
- *                                           1 1 1 1 1 1 1 1 1
- *                         1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8
- *     -------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *     1 LYS_USESGRP      | | | | | | | | | | | | |x| | | | | |
- *       LYS_AUTOASSIGNED | | | | | | | | | | | | | | | |x| | |
- *       LYS_IMPLICIT     | | | | | | | | | |x|x| | | | | | | |
- *       LYS_CONFIG_W     |x|x|x|x|x|x| | | | | | | | | | | |x|
- *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *     2 LYS_CONFIG_R     |x|x|x|x|x|x| | | | | | | | | | | |x|
- *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *     3 LYS_CONFIG_SET   |x|x|x|x|x|x| | | | | | | | | | | | |
- *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *     4 LYS_STATUS_CURR  |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |
- *       LYS_RFN_MAXSET   | | | | | | | | | | | | | | | | | |x|
- *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *     5 LYS_STATUS_DEPRC |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |
- *       LYS_RFN_MINSET   | | | | | | | | | | | | | | | | | |x|
- *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *     6 LYS_STATUS_OBSLT |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |
- *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *     7 LYS_MAND_TRUE    | |x|x| | |x| | | | | | | | | | | |x|
- *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *     8 LYS_MAND_FALSE   | |x|x| | |x| | | | | | | | | | | |x|
- *       LYS_INCL_STATUS  |x| | | |x| | | | | | | | | | | | | |
- *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *     9 LYS_USERORDERED  | | | |x|x| | | | | | | | | | | | | |
- *       LYS_UNIQUE       | | |x| | | | | | | | | | | | | | | |
- *       LYS_FENABLED     | | | | | | | | | | | | | | |x| | | |
- *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *    10 LYS_VALID_DEP    |x|x|x|x|x|x|x|x|x|x|x| |x|x| | | | |
- *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *    11 LYS_DFLTJSON     | | |x|x| | | | | | | | | | | |x| | |
- *    --------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *                                           1 1 1 1 1 1 1 1 1 1
+ *                         1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9
+ *     -------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     1 LYS_USESGRP      | | | | | | | | | | | | |x| | | | | | |
+ *       LYS_AUTOASSIGNED | | | | | | | | | | | | | | | |x| | | |
+ *       LYS_IMPLICIT     | | | | | | | | | |x|x| | | | | | | | |
+ *       LYS_CONFIG_W     |x|x|x|x|x|x| | | | | | | | | | | |x| |
+ *       LYS_YINELEM      | | | | | | | | | | | | | | | | | | |x|
+ *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     2 LYS_CONFIG_R     |x|x|x|x|x|x| | | | | | | | | | | |x| |
+ *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     3 LYS_CONFIG_SET   |x|x|x|x|x|x| | | | | | | | | | | | | |
+ *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     4 LYS_STATUS_CURR  |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |x|
+ *       LYS_RFN_MAXSET   | | | | | | | | | | | | | | | | | |x| |
+ *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     5 LYS_STATUS_DEPRC |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |x|
+ *       LYS_RFN_MINSET   | | | | | | | | | | | | | | | | | |x| |
+ *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     6 LYS_STATUS_OBSLT |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |x|
+ *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     7 LYS_MAND_TRUE    | |x|x| | |x| | | | | | | | | | | |x| |
+ *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     8 LYS_MAND_FALSE   | |x|x| | |x| | | | | | | | | | | |x| |
+ *       LYS_INCL_STATUS  |x| | | |x| | | | | | | | | | | | | | |
+ *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     9 LYS_USERORDERED  | | | |x|x| | | | | | | | | | | | | | |
+ *       LYS_UNIQUE       | | |x| | | | | | | | | | | | | | | | |
+ *       LYS_FENABLED     | | | | | | | | | | | | | | |x| | | | |
+ *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    10 LYS_VALID_DEP    |x|x|x|x|x|x|x|x|x|x|x| |x|x| | | | | |
+ *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    11 LYS_DFLTJSON     | | |x|x| | | | | | | | | | | |x| | | |
+ *    --------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * @{
  */
 #define LYS_CONFIG_W     0x01        /**< config true; */
@@ -676,9 +683,25 @@ struct lys_iffeature {
                                           converted into JSON format, since it contains identityref value which is
                                           being used in JSON format (instead of module prefixes, we use the module
                                           names) */
+#define LYS_YINELEM      0x01        /**< yin-element true for extension's argument */
 /**
  * @}
  */
+
+/**
+ * @brief YANG extension definition
+ */
+struct lys_ext {
+    const char *name;                /**< extension name */
+    const char *dsc;                 /**< description statement (optional) */
+    const char *ref;                 /**< reference statement (optional) */
+    uint16_t flags;                  /**< LYS_STATUS_* and LYS_YINELEM values (@ref snodeflags) */
+
+    struct lys_module *module;       /**< link to the extension's data model */
+
+    const char *argument;            /**< argument name, NULL if not specified */
+    struct lys_ext_plugin *plugin;   /**< pointer to the plugin's data if any */
+};
 
 /**
  * @brief Common structure representing single YANG data statement describing.

@@ -102,6 +102,7 @@ set(headers
 	src/libyang.h
 	src/tree_schema.h
 	src/tree_data.h
+	src/extensions.h
 	src/xml.h
 	src/dict.h)
 
