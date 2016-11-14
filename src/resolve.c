@@ -6120,7 +6120,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
 
         if (yin->flags & LY_YANG_STRUCTURE_FLAG) {
             yang = (struct yang_type *)yin;
-            rc = yang_check_type(mod, node, yang, tpdf_flag, unres);
+            rc = yang_check_type(mod, node, yang, stype, tpdf_flag, unres);
 
             if (rc) {
                 /* may try again later */

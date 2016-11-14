@@ -185,7 +185,7 @@ void *yang_read_type(struct lys_module *module, void *parent, char *value, enum 
 
 void *yang_read_length(struct lys_module *module, struct yang_type *typ, char *value);
 
-int yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_type *typ, int tpdftype, struct unres_schema *unres);
+int yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_type *typ, struct lys_type *type, int tpdftype, struct unres_schema *unres);
 
 void yang_delete_type(struct lys_module *module, struct yang_type *stype);
 

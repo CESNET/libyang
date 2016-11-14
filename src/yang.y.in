@@ -263,10 +263,6 @@ void yyerror(YYLTYPE *yylloc, void *scanner, char **value, ...);
                 yang_delete_type(module, (struct yang_type *)$$.node.ptr_leaf->type.der);
               }
             } leaf_arg_str, leaf_list_arg_str
-%destructor { if (read_all) {
-                yang_delete_type(module, (struct yang_type *)$$.node.ptr_tpdf->type.der);
-              }
-            } typedef_arg_str
 %destructor { if (read_all && $$.deviation->deviate->type) {
                 yang_delete_type(module, (struct yang_type *)$$.deviation->deviate->type->der);
               }
@@ -655,7 +651,17 @@ date_arg_str: REVISION_DATE { s = strdup(yyget_text(scanner));
                }
              }
 
-body_stmts_end: body_stmts
+body_stmts_end: body_stmts { void *tmp;
+
+                             if (trg->tpdf_size) {
+                               tmp = realloc(trg->tpdf, trg->tpdf_size * sizeof *trg->tpdf);
+                               if (!tmp) {
+                                 LOGMEM;
+                                 YYABORT;
+                               }
+                               trg->tpdf = tmp;
+                             }
+                           }
 
 body_stmts: @EMPTYDIR@ { actual = NULL; }
   | body_stmts body_stmt stmtsep { actual = NULL; }
@@ -936,70 +942,90 @@ identity_opt_stmt: @EMPTYDIR@ { if (read_all) {
 
 base_stmt: BASE_KEYWORD sep identifier_ref_arg_str stmtend;
 
-typedef_arg_str: identifier_arg_str { if (read_all) {
-                                        tpdf_parent = actual;
-                                        if (!(actual = yang_read_typedef(trg, actual, s))) {
+typedef_arg_str: identifier_arg_str { tpdf_parent = actual;
+                                      if (lyp_check_identifier(s, LY_IDENT_TYPE, trg, tpdf_parent)) {
+                                        free(s);
+                                        YYABORT;
+                                      }
+                                      if (!tpdf_parent) {
+                                        YANG_ADDELEM(trg->tpdf, trg->tpdf_size);
+                                      } else {
+                                        switch (tpdf_parent->nodetype) {
+                                        case LYS_GROUPING:
+                                          YANG_ADDELEM(((struct lys_node_grp *)tpdf_parent)->tpdf,
+                                                       ((struct lys_node_grp *)tpdf_parent)->tpdf_size);
+                                          break;
+                                        case LYS_CONTAINER:
+                                          YANG_ADDELEM(((struct lys_node_container *)tpdf_parent)->tpdf,
+                                                       ((struct lys_node_container *)tpdf_parent)->tpdf_size);
+                                          break;
+                                        case LYS_LIST:
+                                          YANG_ADDELEM(((struct lys_node_list *)tpdf_parent)->tpdf,
+                                                       ((struct lys_node_list *)tpdf_parent)->tpdf_size);
+                                          break;
+                                        case LYS_RPC:
+                                        case LYS_ACTION:
+                                          YANG_ADDELEM(((struct lys_node_rpc_action *)tpdf_parent)->tpdf,
+                                                       ((struct lys_node_rpc_action *)tpdf_parent)->tpdf_size);
+                                          break;
+                                        case LYS_INPUT:
+                                        case LYS_OUTPUT:
+                                          YANG_ADDELEM(((struct lys_node_inout *)tpdf_parent)->tpdf,
+                                                       ((struct lys_node_inout *)tpdf_parent)->tpdf_size);
+                                          break;
+                                        case LYS_NOTIF:
+                                          YANG_ADDELEM(((struct lys_node_notif *)tpdf_parent)->tpdf,
+                                                       ((struct lys_node_notif *)tpdf_parent)->tpdf_size);
+                                          break;
+                                        default:
+                                          /* another type of nodetype is error*/
+                                          LOGINT;
+                                          free(s);
                                           YYABORT;
                                         }
-                                        s = NULL;
-                                        actual_type = TYPEDEF_KEYWORD;
-                                        $$.node.ptr_tpdf = actual;
                                       }
+                                      ((struct lys_tpdf *)actual)->name = lydict_insert_zc(module->ctx, s);
+                                      ((struct lys_tpdf *)actual)->module = trg;
+                                      s = NULL;
+                                      actual_type = TYPEDEF_KEYWORD;
+                                      $$.node.ptr_tpdf = actual;
                                     }
 
 typedef_stmt: TYPEDEF_KEYWORD sep typedef_arg_str
               '{' stmtsep
                   type_opt_stmt
-              '}' { if (read_all) {
-                      if (!($6.node.flag & LYS_TYPE_DEF)) {
-                        LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "type", "typedef");
-                        YYABORT;
-                      }
-                      if (unres_schema_add_node(trg, unres, &$6.node.ptr_tpdf->type, UNRES_TYPE_DER_TPDF, tpdf_parent) == -1) {
-                        lydict_remove(trg->ctx, ((struct yang_type *)$6.node.ptr_tpdf->type.der)->name);
-                        free($6.node.ptr_tpdf->type.der);
-                        $6.node.ptr_tpdf->type.der = NULL;
-                        YYABORT;
-                      }
-                      actual = tpdf_parent;
-
-                      /* check default value */
-                      if (unres_schema_add_node(trg, unres, &$6.node.ptr_tpdf->type, UNRES_TYPE_DFLT,
-                                                (struct lys_node *)(&$6.node.ptr_tpdf->dflt)) == -1) {
-                        YYABORT;
-                      }
+              '}' { if (!($6.node.flag & LYS_TYPE_DEF)) {
+                      LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "type", "typedef");
+                      YYABORT;
                     }
+                    actual = tpdf_parent;
                   }
 
 type_opt_stmt: @EMPTYDIR@ { $$.node.ptr_tpdf = actual;
-                        $$.node.flag = 0;
-                      }
-  |  type_opt_stmt type_stmt stmtsep { if (read_all) {
-                                         actual = $1.node.ptr_tpdf;
-                                         actual_type = TYPEDEF_KEYWORD;
-                                         $1.node.flag |= LYS_TYPE_DEF;
-                                         $$ = $1;
-                                       }
+                            $$.node.flag = 0;
+                          }
+  |  type_opt_stmt type_stmt stmtsep { actual = $1.node.ptr_tpdf;
+                                       actual_type = TYPEDEF_KEYWORD;
+                                       $1.node.flag |= LYS_TYPE_DEF;
+                                       $$ = $1;
                                      }
-  |  type_opt_stmt units_stmt { if (read_all && yang_read_units(trg, $1.node.ptr_tpdf, s, TYPEDEF_KEYWORD)) {YYABORT;} s = NULL; }
-  |  type_opt_stmt default_stmt { if (read_all && yang_read_default(trg, $1.node.ptr_tpdf, s, TYPEDEF_KEYWORD)) {
+  |  type_opt_stmt units_stmt { if (yang_read_units(trg, $1.node.ptr_tpdf, s, TYPEDEF_KEYWORD)) {YYABORT;} s = NULL; }
+  |  type_opt_stmt default_stmt { if (yang_read_default(trg, $1.node.ptr_tpdf, s, TYPEDEF_KEYWORD)) {
                                     YYABORT;
                                   }
                                   s = NULL;
                                   $$ = $1;
                                 }
-  |  type_opt_stmt status_stmt { if (read_all) {
-                                   if (yang_check_flags((uint16_t*)&$1.node.ptr_tpdf->flags, LYS_STATUS_MASK, "status", "typedef", $2, 0)) {
-                                     YYABORT;
-                                   }
+  |  type_opt_stmt status_stmt { if (yang_check_flags((uint16_t*)&$1.node.ptr_tpdf->flags, LYS_STATUS_MASK, "status", "typedef", $2, 0)) {
+                                   YYABORT;
                                  }
                                }
-  |  type_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.node.ptr_tpdf, s, "typedef")) {
+  |  type_opt_stmt description_stmt { if (yang_read_description(trg, $1.node.ptr_tpdf, s, "typedef")) {
                                         YYABORT;
                                       }
                                       s = NULL;
                                     }
-  |  type_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.node.ptr_tpdf, s, "typedef")) {
+  |  type_opt_stmt reference_stmt { if (yang_read_reference(trg, $1.node.ptr_tpdf, s, "typedef")) {
                                       YYABORT;
                                     }
                                     s = NULL;
@@ -1008,12 +1034,10 @@ type_opt_stmt: @EMPTYDIR@ { $$.node.ptr_tpdf = actual;
 
 type_stmt: TYPE_KEYWORD sep type_arg_str type_end
 
-type_arg_str: identifier_ref_arg_str { if (read_all) {
-                                         if(!(actual = yang_read_type(trg, actual, s, actual_type))) {
-                                           YYABORT;
-                                         }
-                                         s = NULL;
+type_arg_str: identifier_ref_arg_str { if (!(actual = yang_read_type(trg, actual, s, actual_type))) {
+                                         YYABORT;
                                        }
+                                       s = NULL;
                                      }
 
 type_end: ';'

@@ -13,6 +13,7 @@
  */
 
 #include <ctype.h>
+#include <assert.h>
 #include "parser_yang.h"
 #include "parser_yang_lex.h"
 #include "parser.h"
@@ -20,6 +21,8 @@
 
 static void yang_free_import(struct ly_ctx *ctx, struct lys_import *imp, uint8_t start, uint8_t size);
 static void yang_free_include(struct ly_ctx *ctx, struct lys_include *inc, uint8_t start, uint8_t size);
+static int yang_check_sub_module(struct lys_module *module, struct unres_schema *unres, struct lys_node *node);
+static void free_yang_common(struct lys_module *module);
 
 static int
 yang_check_string(struct lys_module *module, const char **target, char *what, char *where, char *value)
@@ -32,60 +35,6 @@ yang_check_string(struct lys_module *module, const char **target, char *what, ch
         *target = lydict_insert_zc(module->ctx, value);
         return 0;
     }
-}
-
-static int
-yang_check_typedef_identif(struct lys_node *root, struct lys_node *node, char *id)
-{
-    struct lys_node *child, *next;
-    int size;
-    struct lys_tpdf *tpdf;
-
-    if (root) {
-        node = root;
-    }
-
-    do {
-        LY_TREE_DFS_BEGIN(node, next, child) {
-            if (child->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_GROUPING | LYS_RPC | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF)) {
-                switch (child->nodetype) {
-                case LYS_CONTAINER:
-                    tpdf = ((struct lys_node_container *)child)->tpdf;
-                    size = ((struct lys_node_container *)child)->tpdf_size;
-                    break;
-                case LYS_LIST:
-                    tpdf = ((struct lys_node_list *)child)->tpdf;
-                    size = ((struct lys_node_list *)child)->tpdf_size;
-                    break;
-                case LYS_GROUPING:
-                    tpdf = ((struct lys_node_grp *)child)->tpdf;
-                    size = ((struct lys_node_grp *)child)->tpdf_size;
-                    break;
-                case LYS_RPC:
-                    tpdf = ((struct lys_node_rpc_action *)child)->tpdf;
-                    size = ((struct lys_node_rpc_action *)child)->tpdf_size;
-                    break;
-                case LYS_INPUT:
-                case LYS_OUTPUT:
-                    tpdf = ((struct lys_node_inout *)child)->tpdf;
-                    size = ((struct lys_node_inout *)child)->tpdf_size;
-                    break;
-                case LYS_NOTIF:
-                    tpdf = ((struct lys_node_notif *)child)->tpdf;
-                    size = ((struct lys_node_notif *)child)->tpdf_size;
-                    break;
-                default:
-                    size = 0;
-                    break;
-                }
-                if (size && dup_typedef_check(id, tpdf, size)) {
-                    LOGVAL(LYE_DUPID, LY_VLOG_NONE, NULL, "typedef", id);
-                    return EXIT_FAILURE;
-                }
-            }
-        LY_TREE_DFS_END(node, next, child)}
-    } while (root && (node = node->next));
-    return EXIT_SUCCESS;
 }
 
 int
@@ -874,7 +823,7 @@ yang_read_identyref(struct lys_module *module, struct yang_type *stype, char *ex
 }
 
 int
-yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_type *typ, int tpdftype, struct unres_schema *unres)
+yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_type *typ, struct lys_type *type, int tpdftype, struct unres_schema *unres)
 {
     int i, j, rc, ret = -1;
     int8_t req;
@@ -900,7 +849,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
     /* module name */
     name = value;
     if (value[i]) {
-        typ->type->module_name = lydict_insert(module->ctx, value, i);
+        type->module_name = lydict_insert(module->ctx, value, i);
         name += i;
         if ((name[0] != ':') || (parse_identifier(name + 1) < 1)) {
             LOGVAL(LYE_INCHAR, LY_VLOG_NONE, NULL, name[0], name);
@@ -910,9 +859,9 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
         ++name;
     }
 
-    rc = resolve_superior_type(name, typ->type->module_name, module, parent, &typ->type->der);
+    rc = resolve_superior_type(name, type->module_name, module, parent, &type->der);
     if (rc == -1) {
-        LOGVAL(LYE_INMOD, LY_VLOG_NONE, NULL, typ->type->module_name);
+        LOGVAL(LYE_INMOD, LY_VLOG_NONE, NULL, type->module_name);
         lydict_remove(module->ctx, value);
         goto error;
 
@@ -925,7 +874,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
     }
     lydict_remove(module->ctx, value);
 
-    if (typ->type->base == LY_TYPE_ERR) {
+    if (type->base == LY_TYPE_ERR) {
         /* resolved type in grouping, decrease the grouping's nacm number to indicate that one less
          * unresolved item left inside the grouping, LY_TYPE_ERR used as a flag for types inside a grouping.  */
         for (siter = parent; siter && (siter->nodetype != LYS_GROUPING); siter = lys_parent(siter));
@@ -942,92 +891,92 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
     }
 
     /* check status */
-    if (lyp_check_status(typ->type->parent->flags, typ->type->parent->module, typ->type->parent->name,
-                         typ->type->der->flags, typ->type->der->module, typ->type->der->name, parent)) {
+    if (lyp_check_status(type->parent->flags, type->parent->module, type->parent->name,
+                         type->der->flags, type->der->module, type->der->name, parent)) {
         goto error;
     }
 
     base = typ->base;
-    typ->type->base = typ->type->der->type.base;
+    type->base = type->der->type.base;
     if (base == 0) {
-        base = typ->type->der->type.base;
+        base = type->der->type.base;
     }
     switch (base) {
     case LY_TYPE_STRING:
-        if (typ->type->base == LY_TYPE_BINARY) {
-            if (typ->type->info.str.pat_count) {
+        if (type->base == LY_TYPE_BINARY) {
+            if (type->info.str.pat_count) {
                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Binary type could not include pattern statement.");
                 goto error;
             }
-            typ->type->info.binary.length = typ->type->info.str.length;
-            if (typ->type->info.binary.length && lyp_check_length_range(typ->type->info.binary.length->expr, typ->type)) {
-                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, typ->type->info.binary.length->expr, "length");
+            type->info.binary.length = type->info.str.length;
+            if (type->info.binary.length && lyp_check_length_range(type->info.binary.length->expr, type)) {
+                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, type->info.binary.length->expr, "length");
                 goto error;
             }
-        } else if (typ->type->base == LY_TYPE_STRING) {
-            if (typ->type->info.str.length && lyp_check_length_range(typ->type->info.str.length->expr, typ->type)) {
-                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, typ->type->info.str.length->expr, "length");
+        } else if (type->base == LY_TYPE_STRING) {
+            if (type->info.str.length && lyp_check_length_range(type->info.str.length->expr, type)) {
+                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, type->info.str.length->expr, "length");
                 goto error;
             }
         } else {
-            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", typ->type->parent->name);
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", type->parent->name);
             goto error;
         }
         break;
     case LY_TYPE_DEC64:
-        if (typ->type->base == LY_TYPE_DEC64) {
+        if (type->base == LY_TYPE_DEC64) {
             /* mandatory sub-statement(s) check */
-            if (!typ->type->info.dec64.dig && !typ->type->der->type.der) {
+            if (!type->info.dec64.dig && !type->der->type.der) {
                 /* decimal64 type directly derived from built-in type requires fraction-digits */
                 LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "fraction-digits", "type");
                 goto error;
             }
-            if (typ->type->info.dec64.dig && typ->type->der->type.der) {
+            if (type->info.dec64.dig && type->der->type.der) {
                 /* type is not directly derived from buit-in type and fraction-digits statement is prohibited */
                 LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "fraction-digits");
                 goto error;
             }
 
             /* copy fraction-digits specification from parent type for easier internal use */
-            if (typ->type->der->type.der) {
-                typ->type->info.dec64.dig = typ->type->der->type.info.dec64.dig;
-                typ->type->info.dec64.div = typ->type->der->type.info.dec64.div;
+            if (type->der->type.der) {
+                type->info.dec64.dig = type->der->type.info.dec64.dig;
+                type->info.dec64.div = type->der->type.info.dec64.div;
             }
-            if (typ->type->info.dec64.range && lyp_check_length_range(typ->type->info.dec64.range->expr, typ->type)) {
-                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, typ->type->info.dec64.range->expr, "range");
+            if (type->info.dec64.range && lyp_check_length_range(type->info.dec64.range->expr, type)) {
+                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, type->info.dec64.range->expr, "range");
                 goto error;
             }
-        } else if (typ->type->base >= LY_TYPE_INT8 && typ->type->base <=LY_TYPE_UINT64) {
-            if (typ->type->info.dec64.dig) {
+        } else if (type->base >= LY_TYPE_INT8 && type->base <=LY_TYPE_UINT64) {
+            if (type->info.dec64.dig) {
                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Numerical type could not include fraction statement.");
                 goto error;
             }
-            typ->type->info.num.range = typ->type->info.dec64.range;
-            if (typ->type->info.num.range && lyp_check_length_range(typ->type->info.num.range->expr, typ->type)) {
-                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, typ->type->info.num.range->expr, "range");
+            type->info.num.range = type->info.dec64.range;
+            if (type->info.num.range && lyp_check_length_range(type->info.num.range->expr, type)) {
+                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, type->info.num.range->expr, "range");
                 goto error;
             }
         } else {
-            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", typ->type->parent->name);
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", type->parent->name);
             goto error;
         }
         break;
     case LY_TYPE_ENUM:
-        if (typ->type->base != LY_TYPE_ENUM) {
-            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", typ->type->parent->name);
+        if (type->base != LY_TYPE_ENUM) {
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", type->parent->name);
             goto error;
         }
-        dertype = &typ->type->der->type;
+        dertype = &type->der->type;
 
         if (!dertype->der) {
-            if (!typ->type->info.enums.count) {
+            if (!type->info.enums.count) {
                 /* type is derived directly from buit-in enumeartion type and enum statement is required */
                 LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "enum", "type");
                 goto error;
             }
         } else {
             for (; !dertype->info.enums.count; dertype = &dertype->der->type);
-            if (module->version < 2 && typ->type->info.enums.count) {
+            if (module->version < 2 && type->info.enums.count) {
                 /* type is not directly derived from built-in enumeration type and enum statement is prohibited
                  * in YANG 1.0, since YANG 1.1 enum statements can be used to restrict the base enumeration type */
                 LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "enum");
@@ -1036,28 +985,28 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
 
             /* restricted enumeration type - the name MUST be used in the base type */
             enms_sc = dertype->info.enums.enm;
-            for(i = 0; i < typ->type->info.enums.count; i++) {
+            for(i = 0; i < type->info.enums.count; i++) {
                 for (j = 0; j < dertype->info.enums.count; j++) {
-                    if (ly_strequal(enms_sc[j].name, typ->type->info.enums.enm[i].name, 1)) {
+                    if (ly_strequal(enms_sc[j].name, type->info.enums.enm[i].name, 1)) {
                         break;
                     }
                 }
                 if (j == dertype->info.enums.count) {
-                    LOGVAL(LYE_ENUM_INNAME, LY_VLOG_NONE, NULL, typ->type->info.enums.enm[i].name);
+                    LOGVAL(LYE_ENUM_INNAME, LY_VLOG_NONE, NULL, type->info.enums.enm[i].name);
                     goto error;
                 }
 
-                if (typ->type->info.enums.enm[i].flags & LYS_AUTOASSIGNED) {
+                if (type->info.enums.enm[i].flags & LYS_AUTOASSIGNED) {
                     /* automatically assign value from base type */
-                    typ->type->info.enums.enm[i].value = enms_sc[j].value;
+                    type->info.enums.enm[i].value = enms_sc[j].value;
                 } else {
                     /* check that the assigned value corresponds to the original
                      * value of the enum in the base type */
-                    if (typ->type->info.enums.enm[i].value != enms_sc[j].value) {
-                        /* typ->type->info.enums.enm[i].value - assigned value in restricted enum
+                    if (type->info.enums.enm[i].value != enms_sc[j].value) {
+                        /* type->info.enums.enm[i].value - assigned value in restricted enum
                          * enms_sc[j].value - value assigned to the corresponding enum (detected above) in base type */
-                        LOGVAL(LYE_ENUM_INVAL, LY_VLOG_NONE, NULL, typ->type->info.enums.enm[i].value,
-                               typ->type->info.enums.enm[i].name, enms_sc[j].value);
+                        LOGVAL(LYE_ENUM_INVAL, LY_VLOG_NONE, NULL, type->info.enums.enm[i].value,
+                               type->info.enums.enm[i].name, enms_sc[j].value);
                         goto error;
                     }
                 }
@@ -1065,21 +1014,21 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
         }
         break;
     case LY_TYPE_BITS:
-        if (typ->type->base != LY_TYPE_BITS) {
-            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", typ->type->parent->name);
+        if (type->base != LY_TYPE_BITS) {
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", type->parent->name);
             goto error;
         }
-        dertype = &typ->type->der->type;
+        dertype = &type->der->type;
 
         if (!dertype->der) {
-            if (!typ->type->info.bits.count) {
+            if (!type->info.bits.count) {
                 /* type is derived directly from buit-in bits type and bit statement is required */
                 LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "bit", "type");
                 goto error;
             }
         } else {
             for (; !dertype->info.enums.count; dertype = &dertype->der->type);
-            if (module->version < 2 && typ->type->info.bits.count) {
+            if (module->version < 2 && type->info.bits.count) {
                 /* type is not directly derived from buit-in bits type and bit statement is prohibited,
                  * since YANG 1.1 the bit statements can be used to restrict the base bits type */
                 LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "bit");
@@ -1087,60 +1036,60 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
             }
 
             bits_sc = dertype->info.bits.bit;
-            for (i = 0; i < typ->type->info.bits.count; i++) {
+            for (i = 0; i < type->info.bits.count; i++) {
                 for (j = 0; j < dertype->info.bits.count; j++) {
-                    if (ly_strequal(bits_sc[j].name, typ->type->info.bits.bit[i].name, 1)) {
+                    if (ly_strequal(bits_sc[j].name, type->info.bits.bit[i].name, 1)) {
                         break;
                     }
                 }
                 if (j == dertype->info.bits.count) {
-                    LOGVAL(LYE_BITS_INNAME, LY_VLOG_NONE, NULL, typ->type->info.bits.bit[i].name);
+                    LOGVAL(LYE_BITS_INNAME, LY_VLOG_NONE, NULL, type->info.bits.bit[i].name);
                     goto error;
                 }
 
                 /* restricted bits type */
-                if (typ->type->info.bits.bit[i].flags & LYS_AUTOASSIGNED) {
+                if (type->info.bits.bit[i].flags & LYS_AUTOASSIGNED) {
                     /* automatically assign position from base type */
-                    typ->type->info.bits.bit[i].pos = bits_sc[j].pos;
+                    type->info.bits.bit[i].pos = bits_sc[j].pos;
                 } else {
                     /* check that the assigned position corresponds to the original
                      * position of the bit in the base type */
-                    if (typ->type->info.bits.bit[i].pos != bits_sc[j].pos) {
-                        /* typ->type->info.bits.bit[i].pos - assigned position in restricted bits
+                    if (type->info.bits.bit[i].pos != bits_sc[j].pos) {
+                        /* type->info.bits.bit[i].pos - assigned position in restricted bits
                          * bits_sc[j].pos - position assigned to the corresponding bit (detected above) in base type */
-                        LOGVAL(LYE_BITS_INVAL, LY_VLOG_NONE, NULL, typ->type->info.bits.bit[i].pos,
-                               typ->type->info.bits.bit[i].name, bits_sc[j].pos);
+                        LOGVAL(LYE_BITS_INVAL, LY_VLOG_NONE, NULL, type->info.bits.bit[i].pos,
+                               type->info.bits.bit[i].name, bits_sc[j].pos);
                         goto error;
                     }
                 }
             }
         }
 
-        for (i = typ->type->info.bits.count - 1; i > 0; i--) {
+        for (i = type->info.bits.count - 1; i > 0; i--) {
             j = i;
 
             /* keep them ordered by position */
-            while (j && typ->type->info.bits.bit[j - 1].pos > typ->type->info.bits.bit[j].pos) {
+            while (j && type->info.bits.bit[j - 1].pos > type->info.bits.bit[j].pos) {
                 /* switch them */
-                memcpy(&bit_tmp, &typ->type->info.bits.bit[j], sizeof bit_tmp);
-                memcpy(&typ->type->info.bits.bit[j], &typ->type->info.bits.bit[j - 1], sizeof bit_tmp);
-                memcpy(&typ->type->info.bits.bit[j - 1], &bit_tmp, sizeof bit_tmp);
+                memcpy(&bit_tmp, &type->info.bits.bit[j], sizeof bit_tmp);
+                memcpy(&type->info.bits.bit[j], &type->info.bits.bit[j - 1], sizeof bit_tmp);
+                memcpy(&type->info.bits.bit[j - 1], &bit_tmp, sizeof bit_tmp);
                 j--;
             }
         }
         break;
     case LY_TYPE_LEAFREF:
-        if (typ->type->base == LY_TYPE_INST) {
-            if (typ->type->info.lref.path) {
+        if (type->base == LY_TYPE_INST) {
+            if (type->info.lref.path) {
                 LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "path");
                 goto error;
             }
-            if ((req = typ->type->info.lref.req)) {
-                typ->type->info.inst.req = req;
+            if ((req = type->info.lref.req)) {
+                type->info.inst.req = req;
             }
-        } else if (typ->type->base == LY_TYPE_LEAFREF) {
+        } else if (type->base == LY_TYPE_LEAFREF) {
             /* require-instance only YANG 1.1 */
-            if (typ->type->info.lref.req && (module->version < 2)) {
+            if (type->info.lref.req && (module->version < 2)) {
                 LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "require-instance");
                 goto error;
             }
@@ -1153,16 +1102,16 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
                 }
             }
 
-            if (typ->type->info.lref.path) {
-                if (typ->type->der->type.der) {
+            if (type->info.lref.path) {
+                if (type->der->type.der) {
                     LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "path");
                     goto error;
                 }
-                value = typ->type->info.lref.path;
+                value = type->info.lref.path;
                 /* store in the JSON format */
-                typ->type->info.lref.path = transform_schema2json(module, value);
+                type->info.lref.path = transform_schema2json(module, value);
                 lydict_remove(module->ctx, value);
-                if (!typ->type->info.lref.path) {
+                if (!type->info.lref.path) {
                     goto error;
                 }
                 /* try to resolve leafref path only when this is instantiated
@@ -1172,70 +1121,71 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
                  * - just instantiated in a grouping definition,
                  * because in those cases the nodes referenced in path might not be present
                  * and it is not a bug.  */
-                if (!tpdftype && unres_schema_add_node(module, unres, typ->type, UNRES_TYPE_LEAFREF, parent) == -1) {
+                if (!tpdftype && unres_schema_add_node(module, unres, type, UNRES_TYPE_LEAFREF, parent) == -1) {
                     goto error;
                 }
-            } else if (!typ->type->der->type.der) {
+            } else if (!type->der->type.der) {
                 LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "path", "type");
                 goto error;
             } else {
                 /* copy leafref definition into the derived type */
-                typ->type->info.lref.path = lydict_insert(module->ctx, typ->type->der->type.info.lref.path, 0);
+                type->info.lref.path = lydict_insert(module->ctx, type->der->type.info.lref.path, 0);
                 /* and resolve the path at the place we are (if not in grouping/typedef) */
-                if (!tpdftype && unres_schema_add_node(module, unres, typ->type, UNRES_TYPE_LEAFREF, parent) == -1) {
+                if (!tpdftype && unres_schema_add_node(module, unres, type, UNRES_TYPE_LEAFREF, parent) == -1) {
                     goto error;
                 }
 
                 /* add pointer to leafref target, only on leaves (not in typedefs) */
-                if (typ->type->info.lref.target && lys_leaf_add_leafref_target(typ->type->info.lref.target, (struct lys_node *)typ->type->parent)) {
+                if (type->info.lref.target && lys_leaf_add_leafref_target(type->info.lref.target, (struct lys_node *)type->parent)) {
                     goto error;
                 }
             }
         } else {
-            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", typ->type->parent->name);
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", type->parent->name);
             goto error;
         }
         break;
     case LY_TYPE_IDENT:
-        if (typ->type->base != LY_TYPE_IDENT) {
-            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", typ->type->parent->name);
+        if (type->base != LY_TYPE_IDENT) {
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", type->parent->name);
             goto error;
         }
-        if (typ->type->der->type.der) {
-            if (typ->type->info.ident.ref) {
+        if (type->der->type.der) {
+            if (type->info.ident.ref) {
                 LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "base");
                 goto error;
             }
         } else {
-            if (!typ->type->info.ident.ref) {
+            if (!type->info.ident.ref) {
                 LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "base", "type");
                 goto error;
             }
         }
         break;
     case LY_TYPE_UNION:
-        if (typ->type->base != LY_TYPE_UNION) {
-            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", typ->type->parent->name);
+        if (type->base != LY_TYPE_UNION) {
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", type->parent->name);
             goto error;
         }
-        if (!typ->type->info.uni.types) {
-            if (typ->type->der->type.der) {
+        if (!type->info.uni.types) {
+            if (type->der->type.der) {
                 /* this is just a derived type with no additional type specified/required */
                 break;
             }
             LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "type", "(union) type");
             goto error;
         }
-        for (i = 0; i < typ->type->info.uni.count; i++) {
-            if (unres_schema_add_node(module, unres, &typ->type->info.uni.types[i],
+        for (i = 0; i < type->info.uni.count; i++) {
+            type->info.uni.types[i].parent = type->parent;
+            if (unres_schema_add_node(module, unres, &type->info.uni.types[i],
                                       tpdftype ? UNRES_TYPE_DER_TPDF : UNRES_TYPE_DER, parent) == -1) {
                 goto error;
             }
             if (module->version < 2) {
-                if (typ->type->info.uni.types[i].base == LY_TYPE_EMPTY) {
+                if (type->info.uni.types[i].base == LY_TYPE_EMPTY) {
                     LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, "empty", typ->name);
                     goto error;
-                } else if (typ->type->info.uni.types[i].base == LY_TYPE_LEAFREF) {
+                } else if (type->info.uni.types[i].base == LY_TYPE_LEAFREF) {
                     LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, "leafref", typ->name);
                     goto error;
                 }
@@ -1245,8 +1195,8 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
 
     default:
         if (base >= LY_TYPE_BINARY && base <= LY_TYPE_UINT64) {
-            if (typ->type->base != base) {
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", typ->type->parent->name);
+            if (type->base != base) {
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid restriction in type \"%s\".", type->parent->name);
                 goto error;
             }
         } else {
@@ -1257,12 +1207,12 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
     return EXIT_SUCCESS;
 
 error:
-    if (typ->type->module_name) {
-        lydict_remove(module->ctx, typ->type->module_name);
-        typ->type->module_name = NULL;
+    if (type->module_name) {
+        lydict_remove(module->ctx, type->module_name);
+        type->module_name = NULL;
     }
     if (base) {
-        typ->type->base = base;
+        type->base = base;
     }
     return ret;
 }
@@ -1618,63 +1568,6 @@ yang_check_bit(struct yang_type *typ, struct lys_type_bit *bit, int64_t *value, 
 
 error:
     return EXIT_FAILURE;
-}
-
-void *
-yang_read_typedef(struct lys_module *module, struct lys_node *parent, char *value)
-{
-    struct lys_tpdf *ret;
-    struct lys_node *root;
-
-    root = (parent) ? NULL : lys_main_module(module)->data;
-    if (lyp_check_identifier(value, LY_IDENT_TYPE, module, parent) || yang_check_typedef_identif(root, parent, value)) {
-        free(value);
-        return NULL;
-    }
-
-    if (!parent) {
-        ret = &module->tpdf[module->tpdf_size];
-        module->tpdf_size++;
-    } else {
-        switch (parent->nodetype) {
-        case LYS_GROUPING:
-            ret = &((struct lys_node_grp *)parent)->tpdf[((struct lys_node_grp *)parent)->tpdf_size];
-            ((struct lys_node_grp *)parent)->tpdf_size++;
-            break;
-        case LYS_CONTAINER:
-            ret = &((struct lys_node_container *)parent)->tpdf[((struct lys_node_container *)parent)->tpdf_size];
-            ((struct lys_node_container *)parent)->tpdf_size++;
-            break;
-        case LYS_LIST:
-            ret = &((struct lys_node_list *)parent)->tpdf[((struct lys_node_list *)parent)->tpdf_size];
-            ((struct lys_node_list *)parent)->tpdf_size++;
-            break;
-        case LYS_RPC:
-        case LYS_ACTION:
-            ret = &((struct lys_node_rpc_action *)parent)->tpdf[((struct lys_node_rpc_action *)parent)->tpdf_size];
-            ((struct lys_node_rpc_action *)parent)->tpdf_size++;
-            break;
-        case LYS_INPUT:
-        case LYS_OUTPUT:
-            ret = &((struct lys_node_inout *)parent)->tpdf[((struct lys_node_inout *)parent)->tpdf_size];
-            ((struct lys_node_inout *)parent)->tpdf_size++;
-            break;
-        case LYS_NOTIF:
-            ret = &((struct lys_node_notif *)parent)->tpdf[((struct lys_node_notif *)parent)->tpdf_size];
-            ((struct lys_node_notif *)parent)->tpdf_size++;
-            break;
-        default:
-            /* another type of nodetype is error*/
-            LOGINT;
-            free(value);
-            return NULL;
-        }
-    }
-
-    ret->type.parent = ret;
-    ret->name = lydict_insert_zc(module->ctx, value);
-    ret->module = module;
-    return ret;
 }
 
 void *
@@ -2701,6 +2594,11 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
     module->implemented = (implement ? 1 : 0);
 
     if (yang_parse_mem(module, NULL, unres, data, size, &node)) {
+        free_yang_common(module);
+        goto error;
+    }
+
+    if (yang_check_sub_module(module, unres, node)) {
         goto error;
     }
 
@@ -2774,6 +2672,11 @@ yang_read_submodule(struct lys_module *module, const char *data, unsigned int si
     submodule->belongsto = module;
 
     if (yang_parse_mem(module, submodule, unres, data, size, &node)) {
+        free_yang_common((struct lys_module *)submodule);
+        goto error;
+    }
+
+    if (yang_check_sub_module((struct lys_module *)submodule, unres, node)) {
         goto error;
     }
 
@@ -2892,6 +2795,47 @@ yang_read_string(const char *input, char *output, int size, int offset, int inde
 
 /* free function */
 
+static void yang_type_free(struct ly_ctx *ctx, struct lys_type *type)
+{
+    struct yang_type *stype = (struct yang_type *)type->der;
+    int i;
+
+    if (!stype) {
+        return ;
+    }
+    lydict_remove(ctx, stype->name);
+    type->base = stype->base;
+    if (type->base == LY_TYPE_IDENT) {
+        for (i = 0; i < type->info.ident.count; ++i) {
+            free(type->info.ident.ref[i]);
+        }
+    }
+    lys_type_free(ctx, type);
+    free(stype);
+}
+
+static void
+yang_tpdf_free(struct ly_ctx *ctx, struct lys_tpdf *tpdf, uint8_t start, uint8_t size)
+{
+    uint8_t i;
+
+    assert(ctx);
+    if (!tpdf) {
+        return;
+    }
+
+    for (i = start; i < size; ++i) {
+        lydict_remove(ctx, tpdf->name);
+        lydict_remove(ctx, tpdf->dsc);
+        lydict_remove(ctx, tpdf->ref);
+
+        yang_type_free(ctx, &tpdf->type);
+
+        lydict_remove(ctx, tpdf->units);
+        lydict_remove(ctx, tpdf->dflt);
+    }
+}
+
 static void
 yang_free_import(struct ly_ctx *ctx, struct lys_import *imp, uint8_t start, uint8_t size)
 {
@@ -2915,6 +2859,14 @@ yang_free_include(struct ly_ctx *ctx, struct lys_include *inc, uint8_t start, ui
         lydict_remove(ctx, inc[i].dsc);
         lydict_remove(ctx, inc[i].ref);
     }
+}
+
+/* free common item from module and submodule */
+static void
+free_yang_common(struct lys_module *module)
+{
+    yang_tpdf_free(module->ctx, module->tpdf, 0, module->tpdf_size);
+    module->tpdf_size = 0;
 }
 
 /* check function*/
@@ -2983,5 +2935,54 @@ error:
     yang_free_include(module->ctx, inc, j, inc_size);
     free(imp);
     free(inc);
+    return EXIT_FAILURE;
+}
+
+int
+yang_check_typedef(struct lys_module *module, struct lys_node *parent, struct unres_schema *unres)
+{
+    struct lys_tpdf *tpdf;
+    uint8_t i, tpdf_size, *ptr_tpdf_size;
+    int ret = EXIT_SUCCESS;
+
+    if (!parent) {
+        tpdf = module->tpdf;
+        ptr_tpdf_size = &module->tpdf_size;
+    }
+
+    tpdf_size = *ptr_tpdf_size;
+    *ptr_tpdf_size = 0;
+
+    for (i = 0; i < tpdf_size; ++i) {
+        tpdf[i].type.parent = &tpdf[i];
+        if (unres_schema_add_node(module, unres, &tpdf[i].type, UNRES_TYPE_DER_TPDF, parent) == -1) {
+            ret = EXIT_FAILURE;
+            break;
+        }
+
+        /* check default value*/
+        if (tpdf[i].dflt && unres_schema_add_str(module, unres, &tpdf[i].type, UNRES_TYPE_DFLT, tpdf[i].dflt) == -1) {
+            ++i;
+            ret = EXIT_FAILURE;
+            break;
+        }
+        (*ptr_tpdf_size)++;
+    }
+    if (i < tpdf_size) {
+        yang_tpdf_free(module->ctx, tpdf, i, tpdf_size);
+    }
+
+    return ret;
+}
+
+static int
+yang_check_sub_module(struct lys_module *module, struct unres_schema *unres, struct lys_node *node)
+{
+    if (yang_check_typedef(module, NULL, unres)) {
+        goto error;
+    }
+
+    return EXIT_SUCCESS;
+error:
     return EXIT_FAILURE;
 }
