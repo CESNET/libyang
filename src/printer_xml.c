@@ -87,23 +87,23 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node, int options)
         if (options & (LYP_WD_ALL_TAG | LYP_WD_IMPL_TAG)) {
             /* get with-defaults module */
             wdmod = ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf-with-defaults", NULL);
+        }
 
-            LY_TREE_FOR(node->child, node2) {
-                LY_TREE_DFS_BEGIN(node2, next, cur) {
-                    if (cur->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
-                        if (cur->dflt && wdmod) {
-                            if (modlist_add(&mlist, wdmod)) {
-                                goto print;
-                            }
-                        }
-                    }
-                    for (attr = cur->attr; attr; attr = attr->next) {
-                        if (modlist_add(&mlist, attr->module)) {
+        LY_TREE_FOR(node->child, node2) {
+            LY_TREE_DFS_BEGIN(node2, next, cur) {
+                if (cur->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+                    if (cur->dflt && wdmod) {
+                        if (modlist_add(&mlist, wdmod)) {
                             goto print;
                         }
                     }
-                LY_TREE_DFS_END(node2, next, cur)}
-            }
+                }
+                for (attr = cur->attr; attr; attr = attr->next) {
+                    if (modlist_add(&mlist, attr->module)) {
+                        goto print;
+                    }
+                }
+            LY_TREE_DFS_END(node2, next, cur)}
         }
     }
 
