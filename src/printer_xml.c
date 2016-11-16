@@ -409,7 +409,7 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
         }
 
         /* closing tag */
-        ly_print(out, "%*s</%s>%s", LEVEL, INDENT, node->schema->name, level ? "\n" : "");
+        ly_print(out, "</%s>%s", node->schema->name, level ? "\n" : "");
     }
 }
 
