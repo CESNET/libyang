@@ -388,7 +388,8 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
             }
             break;
         case LYD_ANYDATA_XML:
-            lyxml_print_mem(&buf, any->value.xml, (level ? LYXML_PRINT_FORMAT : 0) | LYXML_PRINT_SIBLINGS);
+            lyxml_print_mem(&buf, any->value.xml, (level ? LYXML_PRINT_FORMAT | LYXML_PRINT_NO_LAST_NEWLINE : 0)
+                                                   | LYXML_PRINT_SIBLINGS);
             ly_print(out, "%s%s", level ? "\n" : "", buf);
             free(buf);
             break;
