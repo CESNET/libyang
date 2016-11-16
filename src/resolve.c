@@ -6341,8 +6341,8 @@ print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node)
                ((struct lys_node_augment *)item)->target_name);
         break;
     case UNRES_XPATH:
-        LOGVRB("Resolving %s \"%s\" with the context node \"%s\" failed, it will be attempted later.", "XPath",
-               (char *)str_node, ((struct lys_node *)item)->name);
+        LOGVRB("Resolving %s \"%s\" failed, it will be attempted later.", "XPath expressions of",
+               ((struct lys_node *)item)->name);
         break;
     default:
         LOGINT;
