@@ -2266,11 +2266,11 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
     last_parsed = r;
 
     if (is_relative) {
-        prev_mod = start->schema->module;
+        prev_mod = lyd_node_module(start);
         start = start->child;
     } else {
         for (; start->parent; start = start->parent);
-        prev_mod = start->schema->module;
+        prev_mod = lyd_node_module(start);
     }
 
     while (1) {
@@ -2331,7 +2331,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
                 } else {
                     prefix_mod = prev_mod;
                 }
-                if (prefix_mod != lys_node_module(sibling->schema)) {
+                if (prefix_mod != lyd_node_module(sibling)) {
                     continue;
                 }
 
@@ -2403,7 +2403,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
                 last_match = sibling;
                 start = sibling->child;
                 if (start) {
-                    prev_mod = start->schema->module;
+                    prev_mod = lyd_node_module(start);
                 }
                 break;
             }
