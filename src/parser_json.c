@@ -382,19 +382,37 @@ lyjson_parse_boolean(const char *data)
 static unsigned int
 json_get_anydata(struct lyd_node_anydata *any, const char *data)
 {
-    unsigned int len = 0, start, stop, c;
+    unsigned int len = 0, start, stop, c = 0;
+    char *str;
 
-    /* anydata (as well as meaningful anyxml) is supposed to be encoded as object */
-    if (data[len] != '{') {
-        LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, any, "Anydata/anyxml content (not an object)");
+    /* anydata (as well as meaningful anyxml) is supposed to be encoded as object,
+     * anyxml can be a string value, other JSON types are not supported since it is
+     * not clear how they are supposed to be represented/converted into an internal representation */
+    if (data[len] == '"' && any->schema->nodetype == LYS_ANYXML) {
+        len = 1;
+        str = lyjson_parse_text(&data[len], &c);
+        if (!str) {
+            return 0;
+        }
+        if (data[len + c] != '"') {
+            LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, any,
+                   "JSON data (missing quotation-mark at the end of string)");
+            return 0;
+        }
+
+        any->value.str = lydict_insert_zc(any->schema->module->ctx, str);
+        any->value_type = LYD_ANYDATA_CONSTSTRING;
+        return len + c + 1;
+    } else if (data[len] != '{') {
+        LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, any, "Unsupported Anydata/anyxml content (not an object nor string)");
         return 0;
     }
 
-    /* count opening '{' and closing '}' to get the end of the object without its parsing */
-    c = 1;
-    len++;
+    /* count opening '{' and closing '}' brackets to get the end of the object without its parsing */
+    c = len = 1;
     len += skip_ws(&data[len]);
-    start = stop = len;
+    start = len;
+    stop = start - 1;
     while (data[len] && c) {
         switch (data[len]) {
         case '{':
@@ -415,9 +433,10 @@ json_get_anydata(struct lyd_node_anydata *any, const char *data)
         return 0;
     }
     any->value_type = LYD_ANYDATA_JSON;
-    any->value.str = lydict_insert(any->schema->module->ctx, &data[start], stop - start + 1);
+    if (stop >= start) {
+        any->value.str = lydict_insert(any->schema->module->ctx, &data[start], stop - start + 1);
+    } /* else no data */
 
-    len += skip_ws(&data[len]);
     return len;
 }
 
