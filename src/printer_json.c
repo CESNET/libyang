@@ -41,7 +41,7 @@ json_print_string(struct lyout *out, const char *text)
 
     ly_write(out, "\"", 1);
     for (i = n = 0; text[i]; i++) {
-        if (text[i] < 0x20) {
+        if (text[i] >= 0 && text[i] < 0x20) {
             /* control character */
             n += ly_print(out, "\\u%.4X");
         } else {

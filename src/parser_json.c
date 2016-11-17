@@ -156,7 +156,7 @@ lyjson_parse_text(const char *data, unsigned int *len)
             }
             o += r - 1; /* o is ++ in for loop */
             (*len) += i; /* number of read characters */
-        } else if (data[*len] < 0x20 || data[*len] == 0x5c) {
+        } else if ((data[*len] >= 0 && data[*len] < 0x20) || data[*len] == 0x5c) {
             /* control characters must be escaped */
             LOGVAL(LYE_XML_INVAL, LY_VLOG_NONE, NULL, "control character (unescaped)");
             goto error;
