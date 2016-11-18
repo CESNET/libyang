@@ -2401,10 +2401,8 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
                     return NULL;
                 }
                 last_match = sibling;
+                prev_mod = lyd_node_module(sibling);
                 start = sibling->child;
-                if (start) {
-                    prev_mod = lyd_node_module(start);
-                }
                 break;
             }
         }
