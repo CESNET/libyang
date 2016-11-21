@@ -2896,11 +2896,14 @@ lys_features_change(const struct lys_module *module, const char *name, int op)
 
             for (j = 0; j < fsize; j++) {
                 if (all || !strcmp(f[j].name, name)) {
-                    /* skip already set features */
-                    if (op && (f[j].flags & LYS_FENABLED)) {
-                        continue;
-                    } else if (!op && !(f[j].flags & LYS_FENABLED)) {
-                        continue;
+                    if ((op && (f[j].flags & LYS_FENABLED)) || (!op && !(f[j].flags & LYS_FENABLED))) {
+                        if (all) {
+                            /* skip already set features */
+                            continue;
+                        } else {
+                            /* feature already set correctly */
+                            return EXIT_SUCCESS;
+                        }
                     }
 
                     if (op) {
