@@ -58,7 +58,6 @@
         current_ptr = tmp;                                                               \
     }                                                                                    \
     actual = &current_ptr[size++];                                                       \
-    
 
 void yyerror(YYLTYPE *yylloc, void *scanner, char **value, ...);
 /* temporary pointer for the check extension nacm 'data_node' */
@@ -661,6 +660,15 @@ body_stmts_end: body_stmts { void *tmp;
                                }
                                trg->tpdf = tmp;
                              }
+
+                             if (trg->features_size) {
+                               tmp = realloc(trg->features, trg->features_size * sizeof *trg->features);
+                               if (!tmp) {
+                                 LOGMEM;
+                                 YYABORT;
+                               }
+                               trg->features = tmp;
+                             }
                            }
 
 body_stmts: @EMPTYDIR@ { actual = NULL; }
@@ -782,67 +790,57 @@ status_arg_str: CURRENT_KEYWORD optsep { $$ = LYS_STATUS_CURR; }
                }
              }
 
-feature_stmt: FEATURE_KEYWORD sep identifier_arg_str { if (read_all) {
-                                                         if (!(actual = yang_read_feature(trg, s))) {YYABORT;}
-                                                         s=NULL;
-                                                       } else {
-                                                         size_arrays->features++;
-                                                       }
-                                                     }
-              feature_end
+feature_arg_str: identifier_arg_str { /* check uniqueness of feature's names */
+                                      if (lyp_check_identifier(s, LY_IDENT_FEATURE, trg, NULL)) {
+                                        free(s);
+                                        YYABORT;
+                                      }
+                                      YANG_ADDELEM(trg->features, trg->features_size);
+                                      ((struct lys_feature *)actual)->name = lydict_insert_zc(trg->ctx, s);
+                                      ((struct lys_feature *)actual)->module = trg;
+                                      s = NULL;
+                                    }
+
+feature_stmt: FEATURE_KEYWORD sep feature_arg_str feature_end
 
 feature_end: ';'
   | '{' stmtsep
         feature_opt_stmt
-    '}'
-  ;
+    '}' { struct lys_iffeature *tmp;
 
-feature_opt_stmt: @EMPTYDIR@ { if (read_all) {
-                             if (size_arrays->node[size_arrays->next].if_features) {
-                               ((struct lys_feature*)actual)->iffeature = calloc(size_arrays->node[size_arrays->next].if_features,
-                                                                                sizeof *((struct lys_feature*)actual)->iffeature);
-                               if (!((struct lys_feature*)actual)->iffeature) {
-                                 LOGMEM;
-                                 YYABORT;
-                               }
-                             }
-                             if (store_flags((struct lys_node *)actual, size_arrays->node[size_arrays->next].flags, CONFIG_INHERIT_DISABLE)) {
-                                 YYABORT;
-                             }
-                             size_arrays->next++;
-                           } else {
-                             $$ = size_arrays->size;
-                             if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                               LOGMEM;
-                               YYABORT;
-                             }
-                           }
-                         }
-  |  feature_opt_stmt if_feature_stmt { if (read_all) {
-                                          if (yang_read_if_feature(trg, actual, s, unres, FEATURE_KEYWORD)) {YYABORT;}
-                                          s=NULL;
-                                          /* check for circular dependencies */
-                                          if (((struct lys_feature *)actual)->iffeature_size) {
-                                            if (unres_schema_add_node(module, unres, (struct lys_feature *)actual, UNRES_FEATURE, NULL) == -1) {
-                                                YYABORT;
-                                            }
-                                          }
-                                        } else {
-                                          size_arrays->node[$1].if_features++;
-                                        }
+          if (((struct lys_feature *)actual)->iffeature_size) {
+            tmp = realloc(((struct lys_feature *)actual)->iffeature,
+                          ((struct lys_feature *)actual)->iffeature_size * sizeof *tmp);
+            if (!tmp) {
+              LOGMEM;
+              YYABORT;
+            }
+            ((struct lys_feature *)actual)->iffeature = tmp;
+          }
+        }
+
+feature_opt_stmt: @EMPTYDIR@
+  |  feature_opt_stmt if_feature_stmt { void *feature;
+
+                                        feature = actual;
+                                        YANG_ADDELEM(((struct lys_feature *)actual)->iffeature,
+                                                     ((struct lys_feature *)actual)->iffeature_size);
+                                        ((struct lys_iffeature *)actual)->features = (struct lys_feature **)s;
+                                        s = NULL;
+                                        actual = feature;
                                       }
-  |  feature_opt_stmt status_read_stmt { if (!read_all) {
-                                           if (yang_check_flags(&size_arrays->node[$1].flags, LYS_STATUS_MASK, "status", "feature", $2, 0)) {
-                                             YYABORT;
-                                           }
-                                         }
-                                       }
-  |  feature_opt_stmt description_stmt { if (read_all && yang_read_description(trg, actual, s, "feature")) {
+  |  feature_opt_stmt status_stmt { if (((struct lys_feature *)actual)->flags & LYS_STATUS_MASK) {
+                                      LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "feature");
+                                      YYABORT;
+                                    }
+                                    ((struct lys_feature *)actual)->flags |= $2;
+                                  }
+  |  feature_opt_stmt description_stmt { if (yang_read_description(trg, actual, s, "feature")) {
                                            YYABORT;
                                          }
                                          s = NULL;
                                        }
-  |  feature_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, actual, s, "feature")) {
+  |  feature_opt_stmt reference_stmt { if (yang_read_reference(trg, actual, s, "feature")) {
                                          YYABORT;
                                        }
                                        s = NULL;

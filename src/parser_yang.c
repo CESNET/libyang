@@ -229,26 +229,6 @@ yang_add_elem(struct lys_node_array **node, uint32_t *size)
     return EXIT_SUCCESS;
 }
 
-void *
-yang_read_feature(struct lys_module *module, char *value)
-{
-    struct lys_feature *retval;
-
-    /* check uniqueness of feature's names */
-    if (lyp_check_identifier(value, LY_IDENT_FEATURE, module, NULL)) {
-        goto error;
-    }
-    retval = &module->features[module->features_size];
-    retval->name = lydict_insert_zc(module->ctx, value);
-    retval->module = module;
-    module->features_size++;
-    return retval;
-
-error:
-    free(value);
-    return NULL;
-}
-
 int
 yang_read_if_feature(struct lys_module *module, void *ptr, char *value, struct unres_schema *unres, enum yytokentype type)
 {
@@ -2978,8 +2958,28 @@ yang_check_typedef(struct lys_module *module, struct lys_node *parent, struct un
 static int
 yang_check_sub_module(struct lys_module *module, struct unres_schema *unres, struct lys_node *node)
 {
+    uint8_t i, j, size;
+    struct lys_feature *feature; /* shortcut */
+    char *s;
+
     if (yang_check_typedef(module, NULL, unres)) {
         goto error;
+    }
+
+    /* check features */
+    for (i = 0; i < module->features_size; ++i) {
+        feature = &module->features[i];
+        size = feature->iffeature_size;
+        feature->iffeature_size = 0;
+        for (j = 0; j < size; ++j) {
+            s = (char *)feature->iffeature[j].features;
+            if (yang_read_if_feature(module, feature, s, unres, FEATURE_KEYWORD)) {
+                goto error;
+            }
+            if (unres_schema_add_node(module, unres, feature, UNRES_FEATURE, NULL) == -1) {
+                goto error;
+            }
+        }
     }
 
     return EXIT_SUCCESS;
