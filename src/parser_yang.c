@@ -2783,14 +2783,14 @@ yang_tpdf_free(struct ly_ctx *ctx, struct lys_tpdf *tpdf, uint8_t start, uint8_t
     }
 
     for (i = start; i < size; ++i) {
-        lydict_remove(ctx, tpdf->name);
-        lydict_remove(ctx, tpdf->dsc);
-        lydict_remove(ctx, tpdf->ref);
+        lydict_remove(ctx, tpdf[i].name);
+        lydict_remove(ctx, tpdf[i].dsc);
+        lydict_remove(ctx, tpdf[i].ref);
 
-        yang_type_free(ctx, &tpdf->type);
+        yang_type_free(ctx, &tpdf[i].type);
 
-        lydict_remove(ctx, tpdf->units);
-        lydict_remove(ctx, tpdf->dflt);
+        lydict_remove(ctx, tpdf[i].units);
+        lydict_remove(ctx, tpdf[i].dflt);
     }
 }
 
