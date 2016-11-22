@@ -139,11 +139,7 @@ void yang_read_revision(struct lys_module *module, char *value, struct lys_revis
 
 int yang_read_if_feature(struct lys_module *module, void *ptr, void *parent, char *value, struct unres_schema *unres, enum yytokentype type);
 
-void *yang_read_identity(struct lys_module *module, char *value);
-
 int yang_read_identyref(struct lys_module *module, struct yang_type *stype, char *expr, struct unres_schema *unres);
-
-int yang_read_base(struct lys_module *module, struct lys_ident *ident, char *value, struct unres_schema *unres);
 
 void *yang_read_must(struct lys_module *module, struct lys_node *node, char *value, enum yytokentype type);
 

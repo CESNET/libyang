@@ -310,22 +310,6 @@ yang_check_flags(uint16_t *flags, uint16_t mask, char *what, char *where, uint16
     }
 }
 
-void *
-yang_read_identity(struct lys_module *module, char *value)
-{
-    struct lys_ident *ret;
-
-    ret = &module->ident[module->ident_size];
-    ret->name = lydict_insert_zc(module->ctx, value);
-    ret->module = module;
-    if (dup_identities_check(ret->name, module)) {
-        lydict_remove(module->ctx, ret->name);
-        return NULL;
-    }
-    module->ident_size++;
-    return ret;
-}
-
 int
 yang_read_base(struct lys_module *module, struct lys_ident *ident, char *value, struct unres_schema *unres)
 {
@@ -337,16 +321,10 @@ yang_read_base(struct lys_module *module, struct lys_ident *ident, char *value, 
         return EXIT_FAILURE;
     }
 
-    /* temporarily decrement identity_size due to resolve base */
-    module->ident_size--;
     if (unres_schema_add_str(module, unres, ident, UNRES_IDENT, exp) == -1) {
         lydict_remove(module->ctx, exp);
-        /* undo change identity_size */
-        module->ident_size++;
         return EXIT_FAILURE;
     }
-    /* undo change identity_size */
-    module->ident_size++;
 
     lydict_remove(module->ctx, exp);
     return EXIT_SUCCESS;
@@ -2841,12 +2819,27 @@ yang_free_include(struct ly_ctx *ctx, struct lys_include *inc, uint8_t start, ui
     }
 }
 
+static void
+yang_free_ident_base(struct lys_ident *ident, uint32_t start, uint32_t size)
+{
+    uint32_t i;
+    uint8_t j;
+
+    /* free base name */
+    for (i = start; i < size; ++i) {
+        for (j = 0; j < ident[i].base_size; ++j) {
+            free(ident[i].base[j]);
+        }
+    }
+}
+
 /* free common item from module and submodule */
 static void
 free_yang_common(struct lys_module *module)
 {
     yang_tpdf_free(module->ctx, module->tpdf, 0, module->tpdf_size);
     module->tpdf_size = 0;
+    yang_free_ident_base(module->ident, 0, module->ident_size);
 }
 
 /* check function*/
@@ -3004,9 +2997,40 @@ yang_check_typedef(struct lys_module *module, struct lys_node *parent, struct un
 }
 
 static int
+yang_check_identities(struct lys_module *module, struct unres_schema *unres)
+{
+    uint32_t i, size, base_size;
+    uint8_t j;
+
+    size = module->ident_size;
+    module->ident_size = 0;
+    for (i = 0; i < size; ++i) {
+        base_size = module->ident[i].base_size;
+        module->ident[i].base_size = 0;
+        for (j = 0; j < base_size; ++j) {
+            if (yang_read_base(module, &module->ident[i], (char *)module->ident[i].base[j], unres)) {
+                ++j;
+                module->ident_size = size;
+                goto error;
+            }
+        }
+        module->ident_size++;
+    }
+
+    return EXIT_SUCCESS;
+
+error:
+    for (; j< module->ident[i].base_size; ++j) {
+        free(module->ident[i].base[j]);
+    }
+    yang_free_ident_base(module->ident, i + 1, size);
+    return EXIT_FAILURE;
+}
+
+static int
 yang_check_sub_module(struct lys_module *module, struct unres_schema *unres, struct lys_node *node)
 {
-    uint8_t i, j, size;
+    uint8_t i, j, size, erase_identities = 1;
     struct lys_feature *feature; /* shortcut */
     char *s;
 
@@ -3029,8 +3053,15 @@ yang_check_sub_module(struct lys_module *module, struct unres_schema *unres, str
             }
         }
     }
+    erase_identities = 0;
+    if (yang_check_identities(module, unres)) {
+        goto error;
+    }
 
     return EXIT_SUCCESS;
 error:
+    if (erase_identities) {
+        yang_free_ident_base(module->ident, 0, module->ident_size);
+    }
     return EXIT_FAILURE;
 }
