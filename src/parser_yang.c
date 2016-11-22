@@ -230,7 +230,8 @@ yang_add_elem(struct lys_node_array **node, uint32_t *size)
 }
 
 int
-yang_read_if_feature(struct lys_module *module, void *ptr, char *value, struct unres_schema *unres, enum yytokentype type)
+yang_read_if_feature(struct lys_module *module, void *ptr, void *parent, char *value,
+                     struct unres_schema *unres, enum yytokentype type)
 {
     const char *exp;
     int ret;
@@ -265,15 +266,13 @@ yang_read_if_feature(struct lys_module *module, void *ptr, char *value, struct u
         i->iffeature_size++;
         break;
     case ENUM_KEYWORD:
-        e = &((struct yang_type *)ptr)->type->info.enums.enm[((struct yang_type *)ptr)->type->info.enums.count - 1];
-        ret = resolve_iffeature_compile(&e->iffeature[e->iffeature_size], exp,
-                                        (struct lys_node *)((struct yang_type *)ptr)->type->parent, 0, unres);
+        e = (struct lys_type_enum *) ptr;
+        ret = resolve_iffeature_compile(&e->iffeature[e->iffeature_size], exp, (struct lys_node *) parent, 0, unres);
         e->iffeature_size++;
         break;
     case BIT_KEYWORD:
-        b = &((struct yang_type *)ptr)->type->info.bits.bit[((struct yang_type *)ptr)->type->info.bits.count - 1];
-        ret = resolve_iffeature_compile(&b->iffeature[b->iffeature_size], exp,
-                                        (struct lys_node *)((struct yang_type *)ptr)->type->parent, 0, unres);
+        b = (struct lys_type_bit *) ptr;
+        ret = resolve_iffeature_compile(&b->iffeature[b->iffeature_size], exp, (struct lys_node *) parent, 0, unres);
         b->iffeature_size++;
         break;
     case REFINE_KEYWORD:
@@ -1427,6 +1426,7 @@ yang_read_enum(struct lys_module *module, struct yang_type *typ, struct lys_type
 {
     int i, j;
 
+    typ->base = LY_TYPE_ENUM;
     if (!value[0]) {
         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "enum name");
         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Enum name must not be empty.");
@@ -2918,6 +2918,50 @@ error:
     return EXIT_FAILURE;
 }
 
+static int
+yang_check_type_iffeature(struct lys_module *module, struct unres_schema *unres, struct lys_type *type)
+{
+    uint i, j, size;
+    uint8_t iffeature_size;
+    LY_DATA_TYPE stype;
+
+    if (((struct yang_type *)type->der)->base == LY_TYPE_ENUM) {
+        stype = LY_TYPE_ENUM;
+        size = type->info.enums.count;
+    } else if (((struct yang_type *)type->der)->base == LY_TYPE_BITS) {
+        stype = LY_TYPE_ENUM;
+        size = type->info.enums.count;
+    } else {
+        return EXIT_SUCCESS;
+    }
+
+    for (i = 0; i < size; ++i) {
+        if (stype == LY_TYPE_ENUM) {
+            iffeature_size = type->info.enums.enm[i].iffeature_size;
+            type->info.enums.enm[i].iffeature_size = 0;
+            for (j = 0; j < iffeature_size; ++j) {
+                if (yang_read_if_feature(module, &type->info.enums.enm[i], type->parent,
+                                         (char *)type->info.enums.enm[i].iffeature[j].features, unres, ENUM_KEYWORD)) {
+                    goto error;
+                }
+            }
+        } else {
+            iffeature_size = type->info.bits.bit[i].iffeature_size;
+            type->info.bits.bit[i].iffeature_size = 0;
+            for (j = 0; j < iffeature_size; ++j) {
+                if (yang_read_if_feature(module, &type->info.bits.bit[i], type->parent,
+                                         (char *)type->info.bits.bit[i].iffeature[j].features, unres, BIT_KEYWORD)) {
+                    goto error;
+                }
+            }
+        }
+    }
+
+    return EXIT_SUCCESS;
+error:
+    return EXIT_FAILURE;
+}
+
 int
 yang_check_typedef(struct lys_module *module, struct lys_node *parent, struct unres_schema *unres)
 {
@@ -2935,6 +2979,10 @@ yang_check_typedef(struct lys_module *module, struct lys_node *parent, struct un
 
     for (i = 0; i < tpdf_size; ++i) {
         tpdf[i].type.parent = &tpdf[i];
+        if (yang_check_type_iffeature(module, unres, &tpdf[i].type)) {
+            ret = EXIT_FAILURE;
+            break;
+        }
         if (unres_schema_add_node(module, unres, &tpdf[i].type, UNRES_TYPE_DER_TPDF, parent) == -1) {
             ret = EXIT_FAILURE;
             break;
@@ -2973,7 +3021,7 @@ yang_check_sub_module(struct lys_module *module, struct unres_schema *unres, str
         feature->iffeature_size = 0;
         for (j = 0; j < size; ++j) {
             s = (char *)feature->iffeature[j].features;
-            if (yang_read_if_feature(module, feature, s, unres, FEATURE_KEYWORD)) {
+            if (yang_read_if_feature(module, feature, NULL, s, unres, FEATURE_KEYWORD)) {
                 goto error;
             }
             if (unres_schema_add_node(module, unres, feature, UNRES_FEATURE, NULL) == -1) {

@@ -913,7 +913,7 @@ identity_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                    }
                                  }
   |  identity_opt_stmt if_feature_stmt { if (read_all) {
-                                           if (yang_read_if_feature(trg, actual, s, unres, IDENTITY_KEYWORD)) {
+                                           if (yang_read_if_feature(trg, actual, NULL, s, unres, IDENTITY_KEYWORD)) {
                                              YYABORT;
                                            }
                                            s=NULL;
@@ -1274,7 +1274,6 @@ modifier_stmt: MODIFIER_KEYWORD sep string stmtend { if (!strcmp(s, "invert-matc
 
 enum_specification: enum_stmt stmtsep enum_stmts { struct lys_type_enum * tmp;
 
-                                                   ((struct yang_type *)actual)->base = LY_TYPE_ENUM;
                                                    cnt_val = 0;
                                                    tmp = realloc(((struct yang_type *)actual)->type->info.enums.enm,
                                                                  ((struct yang_type *)actual)->type->info.enums.count * sizeof *tmp);
@@ -1684,7 +1683,7 @@ container_opt_stmt: @EMPTYDIR@ { if (read_all) {
   |  container_opt_stmt when_stmt { actual = $1.container; actual_type = CONTAINER_KEYWORD; }
      stmtsep
   |  container_opt_stmt if_feature_stmt { if (read_all) {
-                                            if (yang_read_if_feature(trg, $1.container, s, unres, CONTAINER_KEYWORD)) {YYABORT;}
+                                            if (yang_read_if_feature(trg, $1.container, NULL, s, unres, CONTAINER_KEYWORD)) {YYABORT;}
                                             s=NULL;
                                           } else {
                                             size_arrays->node[$1.index].if_features++;
@@ -1830,7 +1829,7 @@ leaf_arg_str: identifier_arg_str { if (read_all) {
     |  leaf_opt_stmt when_stmt { actual = $1.node.ptr_leaf; actual_type = LEAF_KEYWORD; }
        stmtsep
     |  leaf_opt_stmt if_feature_stmt { if (read_all) {
-                                         if (yang_read_if_feature(trg, $1.node.ptr_leaf, s, unres, LEAF_KEYWORD)) {YYABORT;}
+                                         if (yang_read_if_feature(trg, $1.node.ptr_leaf, NULL, s, unres, LEAF_KEYWORD)) {YYABORT;}
                                          s=NULL;
                                        } else {
                                          size_arrays->node[$1.index].if_features++;
@@ -1982,7 +1981,7 @@ leaf_list_opt_stmt: @EMPTYDIR@ { if (read_all) {
   |  leaf_list_opt_stmt when_stmt { actual = $1.node.ptr_leaflist; actual_type = LEAF_LIST_KEYWORD; }
      stmtsep
   |  leaf_list_opt_stmt if_feature_stmt { if (read_all) {
-                                            if (yang_read_if_feature(trg, $1.node.ptr_leaflist, s, unres, LEAF_LIST_KEYWORD)) {YYABORT;}
+                                            if (yang_read_if_feature(trg, $1.node.ptr_leaflist, NULL, s, unres, LEAF_LIST_KEYWORD)) {YYABORT;}
                                             s=NULL;
                                           } else {
                                             size_arrays->node[$1.index].if_features++;
@@ -2175,7 +2174,7 @@ list_opt_stmt: @EMPTYDIR@ { if (read_all) {
   |  list_opt_stmt when_stmt { actual = $1.node.ptr_list; actual_type = LIST_KEYWORD; }
      stmtsep
   |  list_opt_stmt if_feature_stmt { if (read_all) {
-                                       if (yang_read_if_feature(trg, $1.node.ptr_list, s, unres, LIST_KEYWORD)) {YYABORT;}
+                                       if (yang_read_if_feature(trg, $1.node.ptr_list, NULL, s, unres, LIST_KEYWORD)) {YYABORT;}
                                        s=NULL;
                                      } else {
                                        size_arrays->node[$1.index].if_features++;
@@ -2366,7 +2365,7 @@ choice_opt_stmt: @EMPTYDIR@ { if (read_all) {
   |  choice_opt_stmt when_stmt { actual = $1.node.ptr_choice; actual_type = CHOICE_KEYWORD; }
      stmtsep { $$ = $1; }
   |  choice_opt_stmt if_feature_stmt { if (read_all) {
-                                         if (yang_read_if_feature(trg, $1.node.ptr_choice, s, unres, CHOICE_KEYWORD)) {
+                                         if (yang_read_if_feature(trg, $1.node.ptr_choice, NULL, s, unres, CHOICE_KEYWORD)) {
                                            YYABORT;
                                          }
                                          s=NULL;
@@ -2516,7 +2515,7 @@ case_opt_stmt: @EMPTYDIR@ { if (read_all) {
   |  case_opt_stmt when_stmt { actual = $1.cs; actual_type = CASE_KEYWORD; }
      stmtsep
   |  case_opt_stmt if_feature_stmt { if (read_all) {
-                                       if (yang_read_if_feature(trg, $1.cs, s, unres, CASE_KEYWORD)) {YYABORT;}
+                                       if (yang_read_if_feature(trg, $1.cs, NULL, s, unres, CASE_KEYWORD)) {YYABORT;}
                                        s=NULL;
                                      } else {
                                        size_arrays->node[$1.index].if_features++;
@@ -2622,7 +2621,7 @@ anyxml_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                }
      stmtsep
   |  anyxml_opt_stmt if_feature_stmt { if (read_all) {
-                                         if (yang_read_if_feature(trg, $1.node.ptr_anydata, s, unres, $1.node.flag)) {YYABORT;}
+                                         if (yang_read_if_feature(trg, $1.node.ptr_anydata, NULL, s, unres, $1.node.flag)) {YYABORT;}
                                          s=NULL;
                                        } else {
                                          size_arrays->node[$1.index].if_features++;
@@ -2733,7 +2732,7 @@ uses_opt_stmt: @EMPTYDIR@ { if (read_all) {
   |  uses_opt_stmt when_stmt { actual = $1.uses; actual_type = USES_KEYWORD; }
      stmtsep
   |  uses_opt_stmt if_feature_stmt { if (read_all) {
-                                       if (yang_read_if_feature(trg, $1.uses, s, unres, USES_KEYWORD)) {YYABORT;}
+                                       if (yang_read_if_feature(trg, $1.uses, NULL, s, unres, USES_KEYWORD)) {YYABORT;}
                                        s=NULL;
                                      } else {
                                        size_arrays->node[$1.index].if_features++;
@@ -2873,7 +2872,7 @@ refine_body_opt_stmts: @EMPTYDIR@ { if (read_all) {
                                        }
                                      }
   |  refine_body_opt_stmts if_feature_stmt { if (read_all) {
-                                               if (yang_read_if_feature(trg, refine_parent, s, unres, REFINE_KEYWORD)) {
+                                               if (yang_read_if_feature(trg, refine_parent, NULL, s, unres, REFINE_KEYWORD)) {
                                                  YYABORT;
                                                }
                                                s=NULL;
@@ -3099,7 +3098,7 @@ augment_opt_stmt: @EMPTYDIR@ { if (read_all) {
   |  augment_opt_stmt when_stmt { actual = $1.node.ptr_augment; actual_type = AUGMENT_KEYWORD; }
      stmtsep
   |  augment_opt_stmt if_feature_stmt { if (read_all) {
-                                          if (yang_read_if_feature(trg, $1.node.ptr_augment, s, unres, AUGMENT_KEYWORD)) {YYABORT;}
+                                          if (yang_read_if_feature(trg, $1.node.ptr_augment, NULL, s, unres, AUGMENT_KEYWORD)) {YYABORT;}
                                           s=NULL;
                                         } else {
                                           size_arrays->node[$1.index].if_features++;
@@ -3229,7 +3228,7 @@ rpc_opt_stmt: @EMPTYDIR@ { if (read_all) {
                        }
                      }
   |  rpc_opt_stmt if_feature_stmt { if (read_all) {
-                                      if (yang_read_if_feature(trg, $1.node.ptr_rpc, s, unres, RPC_KEYWORD)) {YYABORT;}
+                                      if (yang_read_if_feature(trg, $1.node.ptr_rpc, NULL, s, unres, RPC_KEYWORD)) {YYABORT;}
                                       s=NULL;
                                     } else {
                                       size_arrays->node[$1.index].if_features++;
@@ -3473,7 +3472,7 @@ notification_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                   }
      stmtsep
   |  notification_opt_stmt if_feature_stmt { if (read_all) {
-                                               if (yang_read_if_feature(trg, $1.notif, s, unres, NOTIFICATION_KEYWORD)) {YYABORT;}
+                                               if (yang_read_if_feature(trg, $1.notif, NULL, s, unres, NOTIFICATION_KEYWORD)) {YYABORT;}
                                                s=NULL;
                                              } else {
                                                size_arrays->node[$1.index].if_features++;

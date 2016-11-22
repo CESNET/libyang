@@ -137,7 +137,7 @@ int yang_read_reference(struct lys_module *module, void *node, char *value, char
 
 void yang_read_revision(struct lys_module *module, char *value, struct lys_revision *retval);
 
-int yang_read_if_feature(struct lys_module *module, void *ptr, char *value, struct unres_schema *unres, enum yytokentype type);
+int yang_read_if_feature(struct lys_module *module, void *ptr, void *parent, char *value, struct unres_schema *unres, enum yytokentype type);
 
 void *yang_read_identity(struct lys_module *module, char *value);
 
