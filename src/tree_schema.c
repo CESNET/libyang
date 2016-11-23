@@ -1088,7 +1088,7 @@ lys_restr_free(struct ly_ctx *ctx, struct lys_restr *restr)
     lydict_remove(ctx, restr->emsg);
 }
 
-static void
+void
 lys_iffeature_free(struct lys_iffeature *iffeature, uint8_t iffeature_size)
 {
     uint8_t i;

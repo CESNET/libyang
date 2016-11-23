@@ -158,14 +158,16 @@ void *yang_read_when(struct lys_module *module, struct lys_node *node, enum yyto
  *
  * @param[in/out] node Pointer to the array.
  * @param[in] parent Pointer to the parent.
+ * @param[in] root Pointer to the root of schema tree.
  * @param[in] value Name of node
  * @param[in] nodetype Type of node
  * @param[in] sizeof_struct Size of struct
  * @return Pointer to the node, NULL on error.
 */
-void * yang_read_node(struct lys_module *module, struct lys_node *parent, char *value, int nodetype, int sizeof_struct);
+void *yang_read_node(struct lys_module *module, struct lys_node *parent, struct lys_node **root,
+                     char *value, int nodetype, int sizeof_struct);
 
-void *yang_read_action(struct lys_module *module, struct lys_node *parent, char *value);
+void *yang_read_action(struct lys_module *module, struct lys_node *parent, struct lys_node **root, char *value);
 
 int yang_read_default(struct lys_module *module, void *node, char *value, enum yytokentype type);
 

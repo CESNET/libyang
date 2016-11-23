@@ -22,7 +22,8 @@
 static void yang_free_import(struct ly_ctx *ctx, struct lys_import *imp, uint8_t start, uint8_t size);
 static void yang_free_include(struct ly_ctx *ctx, struct lys_include *inc, uint8_t start, uint8_t size);
 static int yang_check_sub_module(struct lys_module *module, struct unres_schema *unres, struct lys_node *node);
-static void free_yang_common(struct lys_module *module);
+static void free_yang_common(struct lys_module *module, struct lys_node *node);
+void lys_iffeature_free(struct lys_iffeature *iffeature, uint8_t iffeature_size);
 
 static int
 yang_check_string(struct lys_module *module, const char **target, char *what, char *where, char *value)
@@ -504,9 +505,10 @@ error:
 }
 
 void *
-yang_read_node(struct lys_module *module, struct lys_node *parent, char *value, int nodetype, int sizeof_struct)
+yang_read_node(struct lys_module *module, struct lys_node *parent, struct lys_node **root,
+               char *value, int nodetype, int sizeof_struct)
 {
-    struct lys_node *node;
+    struct lys_node *node, **child;
 
     node = calloc(1, sizeof_struct);
     if (!node) {
@@ -519,21 +521,21 @@ yang_read_node(struct lys_module *module, struct lys_node *parent, char *value, 
     }
     node->module = module;
     node->nodetype = nodetype;
-    node->prev = node;
 
     /* insert the node into the schema tree */
-    if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, node)) {
-        if (value) {
-            lydict_remove(module->ctx, node->name);
-        }
-        free(node);
-        return NULL;
+    child = (parent) ? &parent->child : root;
+    if (*child) {
+        (*child)->prev->next = node;
+        (*child)->prev = node;
+    } else {
+        *child = node;
+        node->prev = node;
     }
     return node;
 }
 
 void *
-yang_read_action(struct lys_module *module, struct lys_node *parent, char *value)
+yang_read_action(struct lys_module *module, struct lys_node *parent, struct lys_node **root, char *value)
 {
     struct lys_node *node;
 
@@ -549,7 +551,7 @@ yang_read_action(struct lys_module *module, struct lys_node *parent, char *value
             return NULL;
         }
     }
-    return yang_read_node(module, parent, value, LYS_ACTION, sizeof(struct lys_node_rpc_action));
+    return yang_read_node(module, parent, root, value, LYS_ACTION, sizeof(struct lys_node_rpc_action));
 }
 
 int
@@ -2552,7 +2554,7 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
     module->implemented = (implement ? 1 : 0);
 
     if (yang_parse_mem(module, NULL, unres, data, size, &node)) {
-        free_yang_common(module);
+        free_yang_common(module, node);
         goto error;
     }
 
@@ -2630,7 +2632,7 @@ yang_read_submodule(struct lys_module *module, const char *data, unsigned int si
     submodule->belongsto = module;
 
     if (yang_parse_mem(module, submodule, unres, data, size, &node)) {
-        free_yang_common((struct lys_module *)submodule);
+        free_yang_common((struct lys_module *)submodule, node);
         goto error;
     }
 
@@ -2833,13 +2835,56 @@ yang_free_ident_base(struct lys_ident *ident, uint32_t start, uint32_t size)
     }
 }
 
+static void
+yang_free_grouping(struct ly_ctx *ctx, struct lys_node_grp * grp)
+{
+    yang_tpdf_free(ctx, grp->tpdf, 0, grp->tpdf_size);
+    free(grp->tpdf);
+}
+
+static void
+yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node)
+{
+    struct lys_node *tmp, *child, *sibling;
+
+    if (!node) {
+        return;
+    }
+    tmp = node;
+    child = tmp->child;
+
+    while (tmp) {
+        sibling = tmp->next;
+        /* common part */
+        lydict_remove(ctx, tmp->name);
+        if (!(tmp->nodetype & (LYS_INPUT | LYS_OUTPUT))) {
+            lys_iffeature_free(node->iffeature, node->iffeature_size);
+            lydict_remove(ctx, node->dsc);
+            lydict_remove(ctx, node->ref);
+        }
+
+        switch (tmp->nodetype) {
+        case LYS_GROUPING:
+            yang_free_grouping(ctx, (struct lys_node_grp *)tmp);
+            break;
+        default:
+            break;
+        }
+
+        yang_free_nodes(ctx, child);
+        free(tmp);
+        tmp = sibling;
+    }
+}
+
 /* free common item from module and submodule */
 static void
-free_yang_common(struct lys_module *module)
+free_yang_common(struct lys_module *module, struct lys_node *node)
 {
     yang_tpdf_free(module->ctx, module->tpdf, 0, module->tpdf_size);
     module->tpdf_size = 0;
     yang_free_ident_base(module->ident, 0, module->ident_size);
+    yang_free_nodes(module->ctx, node);
 }
 
 /* check function*/
@@ -2965,6 +3010,16 @@ yang_check_typedef(struct lys_module *module, struct lys_node *parent, struct un
     if (!parent) {
         tpdf = module->tpdf;
         ptr_tpdf_size = &module->tpdf_size;
+    } else {
+        switch (parent->nodetype) {
+        case LYS_GROUPING:
+            tpdf = ((struct lys_node_grp *)parent)->tpdf;
+            ptr_tpdf_size = &((struct lys_node_grp *)parent)->tpdf_size;
+            break;
+        default:
+            LOGINT;
+            return EXIT_FAILURE;
+        }
     }
 
     tpdf_size = *ptr_tpdf_size;
@@ -3028,9 +3083,76 @@ error:
 }
 
 static int
+yang_check_grouping(struct lys_module *module, struct lys_node_grp *node, struct unres_schema *unres)
+{
+    uint8_t i, size;
+
+    if (yang_check_typedef(module, (struct lys_node *)node, unres)) {
+        goto error;
+    }
+
+    size = node->iffeature_size;
+    node->iffeature_size = 0;
+    for (i = 0; i < size; ++i) {
+        if (yang_read_if_feature(module, node, NULL, (char *)node->iffeature[i].features, unres, GROUPING_KEYWORD)) {
+            node->iffeature_size = size;
+            goto error;
+        }
+    }
+
+    return EXIT_SUCCESS;
+
+error:
+    return EXIT_FAILURE;
+}
+
+static int
+yang_check_nodes(struct lys_module *module, struct lys_node *nodes, struct unres_schema *unres)
+{
+    struct lys_node *node = nodes, *sibling, *child;
+
+    while (node) {
+        sibling = node->next;
+        child = node->child;
+        node->next = NULL;
+        node->child = NULL;
+        node->prev = node;
+
+        if (lys_node_addchild(node->parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, node)) {
+            sibling = node;
+            child = NULL;
+            goto error;
+        }
+        switch (node->nodetype) {
+        case LYS_GROUPING:
+            if (yang_check_grouping(module, (struct lys_node_grp *)node, unres)) {
+                goto error;
+            }
+            break;
+        default:
+            LOGINT;
+            sibling = node;
+            child = NULL;
+            goto error;
+        }
+        if (yang_check_nodes(module, child, unres)) {
+            child = NULL;
+            goto error;
+        }
+        node = sibling;
+    }
+
+    return EXIT_SUCCESS;
+error:
+    yang_free_nodes(module->ctx, sibling);
+    yang_free_nodes(module->ctx, child);
+    return EXIT_FAILURE;
+}
+
+static int
 yang_check_sub_module(struct lys_module *module, struct unres_schema *unres, struct lys_node *node)
 {
-    uint8_t i, j, size, erase_identities = 1;
+    uint8_t i, j, size, erase_identities = 1, erase_nodes = 1;
     struct lys_feature *feature; /* shortcut */
     char *s;
 
@@ -3057,11 +3179,18 @@ yang_check_sub_module(struct lys_module *module, struct unres_schema *unres, str
     if (yang_check_identities(module, unres)) {
         goto error;
     }
+    erase_nodes = 0;
+    if (yang_check_nodes(module, node, unres)) {
+        goto error;
+    }
 
     return EXIT_SUCCESS;
 error:
     if (erase_identities) {
         yang_free_ident_base(module->ident, 0, module->ident_size);
+    }
+    if (erase_nodes) {
+        yang_free_nodes(module->ctx, node);
     }
     return EXIT_FAILURE;
 }

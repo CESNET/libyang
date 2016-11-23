@@ -1538,82 +1538,57 @@ units_stmt: UNITS_KEYWORD sep string stmtend;
 
 default_stmt: DEFAULT_KEYWORD sep string stmtend;
 
-grouping_stmt: GROUPING_KEYWORD sep identifier_arg_str { if (read_all) {
-                                                           if (!(actual = yang_read_node(trg,actual,s,LYS_GROUPING,sizeof(struct lys_node_grp)))) {YYABORT;}
-                                                           s=NULL;
-                                                         }
-                                                       }
-               grouping_end;
+grouping_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, actual, node, s, LYS_GROUPING, sizeof(struct lys_node_grp)))) {
+                                         YYABORT;
+                                       }
+                                       s = NULL;
+                                     }
+grouping_stmt: GROUPING_KEYWORD sep grouping_arg_str grouping_end;
 
-grouping_end: ';' { if (read_all) {
-                      if (store_flags((struct lys_node *)actual, 0, config_inherit)) {
-                        YYABORT;
-                      }
-                    }
-                  }
+grouping_end: ';'
   |  '{' stmtsep
          grouping_opt_stmt
      '}'
   ;
 
-grouping_opt_stmt: @EMPTYDIR@ { if (read_all) {
-                               $$.grouping = actual;
-                               actual_type = GROUPING_KEYWORD;
-                               if (size_arrays->node[size_arrays->next].tpdf) {
-                                 $$.grouping->tpdf = calloc(size_arrays->node[size_arrays->next].tpdf, sizeof *$$.grouping->tpdf);
-                                 if (!$$.grouping->tpdf) {
-                                   LOGMEM;
-                                   YYABORT;
-                                 }
-                               }
-                               if (store_flags((struct lys_node *)$$.grouping, size_arrays->node[size_arrays->next].flags, 0)) {
-                                   YYABORT;
-                               }
-                               size_arrays->next++;
-                             } else {
-                               $$.index = size_arrays->size;
-                               if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                 LOGMEM;
-                                 YYABORT;
-                               }
-                             }
-                           }
-  |  grouping_opt_stmt status_read_stmt { if (!read_all) {
-                                            if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "grouping", $2, 0)) {
-                                              YYABORT;
-                                            }
-                                          }
-                                        }
-  |  grouping_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.grouping, s, "grouping")) {
+grouping_opt_stmt: @EMPTYDIR@ { $$.grouping = actual;
+                                actual_type = GROUPING_KEYWORD;
+                              }
+  |  grouping_opt_stmt status_stmt { if ($1.grouping->flags & LYS_STATUS_MASK) {
+                                       LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "grouping");
+                                       YYABORT;
+                                     }
+                                     $1.grouping->flags |= $2;
+                                   }
+  |  grouping_opt_stmt description_stmt { if (yang_read_description(trg, $1.grouping, s, "grouping")) {
                                             YYABORT;
                                           }
                                           s = NULL;
                                         }
-  |  grouping_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.grouping, s, "grouping")) {
+  |  grouping_opt_stmt reference_stmt { if (yang_read_reference(trg, $1.grouping, s, "grouping")) {
                                           YYABORT;
                                         }
                                         s = NULL;
                                       }
-  |  grouping_opt_stmt grouping_stmt stmtsep { actual = $1.grouping; actual_type = GROUPING_KEYWORD; }
-  |  grouping_opt_stmt typedef_stmt stmtsep { if (read_all) {
-                                                actual = $1.grouping;
-                                                actual_type = GROUPING_KEYWORD;
-                                              } else {
-                                                size_arrays->node[$1.index].tpdf++;
-                                              }
+  |  grouping_opt_stmt grouping_stmt stmtsep { actual = $1.grouping;
+                                               actual_type = GROUPING_KEYWORD;
+                                             }
+  |  grouping_opt_stmt typedef_stmt stmtsep { actual = $1.grouping;
+                                              actual_type = GROUPING_KEYWORD;
                                             }
-  |  grouping_opt_stmt data_def_stmt stmtsep { actual = $1.grouping; actual_type = GROUPING_KEYWORD; }
-  |  grouping_opt_stmt action_stmt stmtsep { actual = $1.grouping; actual_type = GROUPING_KEYWORD; }
-  |  grouping_opt_stmt notification_stmt stmtsep { if (read_all) {
-                                                     actual = $1.grouping;
-                                                     actual_type = GROUPING_KEYWORD;
-                                                     if (trg->version < 2) {
-                                                       LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "notification");
-                                                       YYABORT;
-                                                     }
+  |  grouping_opt_stmt data_def_stmt stmtsep { actual = $1.grouping;
+                                               actual_type = GROUPING_KEYWORD;
+                                             }
+  |  grouping_opt_stmt action_stmt stmtsep { actual = $1.grouping;
+                                             actual_type = GROUPING_KEYWORD;
+                                           }
+  |  grouping_opt_stmt notification_stmt stmtsep { actual = $1.grouping;
+                                                   actual_type = GROUPING_KEYWORD;
+                                                   if (trg->version < 2) {
+                                                     LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "notification");
+                                                     YYABORT;
                                                    }
                                                  }
-  ;
 
 data_def_stmt: container_stmt
   |  leaf_stmt
@@ -1626,7 +1601,7 @@ data_def_stmt: container_stmt
   ;
 
 container_stmt: CONTAINER_KEYWORD sep identifier_arg_str { if (read_all) {
-                                                             if (!(actual = yang_read_node(trg,actual,s,LYS_CONTAINER,sizeof(struct lys_node_container)))) {YYABORT;}
+                                                             if (!(actual = yang_read_node(trg,actual,node,s,LYS_CONTAINER,sizeof(struct lys_node_container)))) {YYABORT;}
                                                              data_node = actual;
                                                              s=NULL;
                                                            }
@@ -1794,7 +1769,7 @@ leaf_stmt: LEAF_KEYWORD sep leaf_arg_str
                 }
 
 leaf_arg_str: identifier_arg_str { if (read_all) {
-                                     if (!(actual = yang_read_node(trg,actual,s,LYS_LEAF,sizeof(struct lys_node_leaf)))) {YYABORT;}
+                                     if (!(actual = yang_read_node(trg,actual,node,s,LYS_LEAF,sizeof(struct lys_node_leaf)))) {YYABORT;}
                                      data_node = actual;
                                      s=NULL;
                                      $$.node.ptr_leaf = actual;
@@ -1888,7 +1863,7 @@ leaf_arg_str: identifier_arg_str { if (read_all) {
                                       s = NULL;
                                     }
 leaf_list_arg_str: identifier_arg_str { if (read_all) {
-                                          if (!(actual = yang_read_node(trg,actual,s,LYS_LEAFLIST,sizeof(struct lys_node_leaflist)))) {
+                                          if (!(actual = yang_read_node(trg,actual,node,s,LYS_LEAFLIST,sizeof(struct lys_node_leaflist)))) {
                                             YYABORT;
                                           }
                                           data_node = actual;
@@ -2094,7 +2069,7 @@ leaf_list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                        }
 
 list_stmt: LIST_KEYWORD sep identifier_arg_str { if (read_all) {
-                                                   if (!(actual = yang_read_node(trg,actual,s,LYS_LIST,sizeof(struct lys_node_list)))) {YYABORT;}
+                                                   if (!(actual = yang_read_node(trg,actual,node,s,LYS_LIST,sizeof(struct lys_node_list)))) {YYABORT;}
                                                    data_node = actual;
                                                    s=NULL;
                                                  }
@@ -2317,7 +2292,7 @@ list_opt_stmt: @EMPTYDIR@ { if (read_all) {
   ;
 
 choice_stmt: CHOICE_KEYWORD sep identifier_arg_str { if (read_all) {
-                                                       if (!(actual = yang_read_node(trg,actual,s,LYS_CHOICE,sizeof(struct lys_node_choice)))) {YYABORT;}
+                                                       if (!(actual = yang_read_node(trg,actual,node,s,LYS_CHOICE,sizeof(struct lys_node_choice)))) {YYABORT;}
                                                        data_node = actual;
                                                        if (data_node->parent && (data_node->parent->nodetype == LYS_GROUPING)) {
                                                          data_node = NULL;
@@ -2471,7 +2446,7 @@ short_case_stmt: container_stmt
   ;
 
 case_stmt: CASE_KEYWORD sep identifier_arg_str { if (read_all) {
-                                                   if (!(actual = yang_read_node(trg,actual,s,LYS_CASE,sizeof(struct lys_node_case)))) {YYABORT;}
+                                                   if (!(actual = yang_read_node(trg,actual,node,s,LYS_CASE,sizeof(struct lys_node_case)))) {YYABORT;}
                                                    data_node = actual;
                                                    s=NULL;
                                                  }
@@ -2550,7 +2525,7 @@ case_opt_stmt: @EMPTYDIR@ { if (read_all) {
   ;
 
 anyxml_stmt: ANYXML_KEYWORD sep identifier_arg_str { if (read_all) {
-                                                       if (!(actual = yang_read_node(trg,actual,s,LYS_ANYXML,sizeof(struct lys_node_anydata)))) {YYABORT;}
+                                                       if (!(actual = yang_read_node(trg,actual,node,s,LYS_ANYXML,sizeof(struct lys_node_anydata)))) {YYABORT;}
                                                        data_node = actual;
                                                        if (data_node->parent && (data_node->parent->nodetype == LYS_GROUPING)) {
                                                          data_node = NULL;
@@ -2562,7 +2537,7 @@ anyxml_stmt: ANYXML_KEYWORD sep identifier_arg_str { if (read_all) {
              anyxml_end;
 
 anydata_stmt: ANYDATA_KEYWORD sep identifier_arg_str { if (read_all) {
-                                                         if (!(actual = yang_read_node(trg, actual, s, LYS_ANYDATA, sizeof(struct lys_node_anydata)))) {YYABORT;}
+                                                         if (!(actual = yang_read_node(trg, actual, node, s, LYS_ANYDATA, sizeof(struct lys_node_anydata)))) {YYABORT;}
                                                          data_node = actual;
                                                          if (data_node->parent && (data_node->parent->nodetype == LYS_GROUPING)) {
                                                            data_node = NULL;
@@ -2673,7 +2648,7 @@ anyxml_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                     }
 
 uses_stmt: USES_KEYWORD sep identifier_ref_arg_str { if (read_all) {
-                                                       if (!(actual = yang_read_node(trg,actual,s,LYS_USES,sizeof(struct lys_node_uses)))) {YYABORT;}
+                                                       if (!(actual = yang_read_node(trg,actual,node,s,LYS_USES,sizeof(struct lys_node_uses)))) {YYABORT;}
                                                        data_node = actual;
                                                        if (data_node->parent && (data_node->parent->nodetype == LYS_GROUPING)) {
                                                          data_node = NULL;
@@ -3171,7 +3146,7 @@ augment_arg_str: absolute_schema_nodeids optsep
   ;
 
 action_arg_str: identifier_arg_str { if (read_all) {
-                                       if (!(actual = yang_read_action(trg, actual, s))) {
+                                       if (!(actual = yang_read_action(trg, actual, node, s))) {
                                          YYABORT;
                                        }
                                        data_node = actual;
@@ -3184,7 +3159,7 @@ action_arg_str: identifier_arg_str { if (read_all) {
 action_stmt: ACTION_KEYWORD sep action_arg_str rpc_end { config_inherit = $3; }
 
 rpc_arg_str: identifier_arg_str { if (read_all) {
-                                    if (!(actual = yang_read_node(trg, NULL, s, LYS_RPC, sizeof(struct lys_node_rpc_action)))) {
+                                    if (!(actual = yang_read_node(trg, NULL, node, s, LYS_RPC, sizeof(struct lys_node_rpc_action)))) {
                                       YYABORT;
                                     }
                                     data_node = actual;
@@ -3299,7 +3274,7 @@ input_stmt: INPUT_KEYWORD optsep { if (read_all) {
                                        LOGMEM;
                                        YYABORT;
                                      }
-                                     if (!(actual = yang_read_node(trg, actual, s, LYS_INPUT, sizeof(struct lys_node_inout)))) {
+                                     if (!(actual = yang_read_node(trg, actual, node, s, LYS_INPUT, sizeof(struct lys_node_inout)))) {
                                       YYABORT;
                                      }
                                      data_node = actual;
@@ -3385,7 +3360,7 @@ output_stmt: OUTPUT_KEYWORD optsep { if (read_all) {
                                          LOGMEM;
                                          YYABORT;
                                        }
-                                       if (!(actual = yang_read_node(trg, actual, s, LYS_OUTPUT, sizeof(struct lys_node_inout)))) {
+                                       if (!(actual = yang_read_node(trg, actual, node, s, LYS_OUTPUT, sizeof(struct lys_node_inout)))) {
                                         YYABORT;
                                        }
                                        data_node = actual;
@@ -3404,7 +3379,7 @@ output_stmt: OUTPUT_KEYWORD optsep { if (read_all) {
              '}'
 
 notification_arg_str: identifier_arg_str { if (read_all) {
-                                             if (!(actual = yang_read_node(trg, actual, s, LYS_NOTIF, sizeof(struct lys_node_notif)))) {
+                                             if (!(actual = yang_read_node(trg, actual, node, s, LYS_NOTIF, sizeof(struct lys_node_notif)))) {
                                               YYABORT;
                                              }
                                              data_node = actual;
