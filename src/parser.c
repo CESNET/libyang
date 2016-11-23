@@ -1074,7 +1074,25 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
     switch(type->base) {
     case LY_TYPE_BINARY:
-        if (validate_length_range(0, (value ? strlen(value) : 0), 0, 0, 0, type, value, (struct lyd_node *)leaf)) {
+        /* get number of octets for length validation */
+        unum = value ? strlen(value) : 0;
+        if (unum & 3) {
+            /* base64 length must be multiple of 4 chars */
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, value, leaf->schema->name);
+            LOGVAL(LYE_SPEC, LY_VLOG_LYD, leaf, "Base64 encoded value length must be divisible by 4.");
+            goto cleanup;
+        }
+        len = (unum / 4) * 3;
+        /* check padding */
+        if (unum) {
+            if (value[unum - 1] == '=') {
+                len--;
+            }
+            if (value[unum - 2] == '=') {
+                len--;
+            }
+        }
+        if (validate_length_range(0, len, 0, 0, 0, type, value, (struct lyd_node *)leaf)) {
             goto cleanup;
         }
 
