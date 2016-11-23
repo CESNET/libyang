@@ -1600,102 +1600,78 @@ data_def_stmt: container_stmt
   |  uses_stmt
   ;
 
-container_stmt: CONTAINER_KEYWORD sep identifier_arg_str { if (read_all) {
-                                                             if (!(actual = yang_read_node(trg,actual,node,s,LYS_CONTAINER,sizeof(struct lys_node_container)))) {YYABORT;}
-                                                             data_node = actual;
-                                                             s=NULL;
-                                                           }
-                                                         }
-                container_end ;
+container_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, actual, node, s, LYS_CONTAINER, sizeof(struct lys_node_container)))) {
+                                          YYABORT;
+                                        }
+                                        data_node = actual;
+                                        s = NULL;
+                                      }
 
-container_end: ';' { if (read_all) {
-                       if (store_flags((struct lys_node *)actual, 0, config_inherit)) {
-                         YYABORT;
-                       }
-                     }
-                   }
+container_stmt: CONTAINER_KEYWORD sep container_arg_str container_end { store_config_flag((struct lys_node *)actual, config_inherit); }
+
+container_end: ';'
   |  '{' stmtsep
          container_opt_stmt
-      '}' { if (read_all) {
-              /* check XPath dependencies */
-              if (($3.container->when || $3.container->must_size) && (unres_schema_add_node(trg, unres, $3.container, UNRES_XPATH, NULL) == -1)) {
+      '}' { void *tmp;
+
+            if ($3.container->iffeature_size) {
+              tmp = realloc($3.container->iffeature, $3.container->iffeature_size * sizeof *$3.container->iffeature);
+              if (!tmp) {
+                LOGMEM;
                 YYABORT;
               }
+              $3.container->iffeature = tmp;
+            }
+
+            if ($3.container->must_size) {
+              tmp = realloc($3.container->must, $3.container->must_size * sizeof *$3.container->must);
+              if (!tmp) {
+                LOGMEM;
+                YYABORT;
+              }
+              $3.container->must = tmp;
             }
           }
 
-container_opt_stmt: @EMPTYDIR@ { if (read_all) {
-                               $$.container = actual;
-                               actual_type = CONTAINER_KEYWORD;
-                               if (size_arrays->node[size_arrays->next].if_features) {
-                                 $$.container->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.container->iffeature);
-                                 if (!$$.container->iffeature) {
-                                   LOGMEM;
-                                   YYABORT;
-                                 }
+container_opt_stmt: @EMPTYDIR@ { $$.container = actual;
+                                 actual_type = CONTAINER_KEYWORD;
                                }
-                               if (size_arrays->node[size_arrays->next].must) {
-                                 $$.container->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.container->must);
-                                 if (!$$.container->must) {
-                                   LOGMEM;
-                                   YYABORT;
-                                 }
-                               }
-                               if (size_arrays->node[size_arrays->next].tpdf) {
-                                 $$.container->tpdf = calloc(size_arrays->node[size_arrays->next].tpdf, sizeof *$$.container->tpdf);
-                                 if (!$$.container->tpdf) {
-                                   LOGMEM;
-                                   YYABORT;
-                                 }
-                               }
-                               if (store_flags((struct lys_node *)$$.container, size_arrays->node[size_arrays->next].flags, config_inherit)) {
-                                   YYABORT;
-                               }
-                               size_arrays->next++;
-                             } else {
-                               $$.index = size_arrays->size;
-                               if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                 LOGMEM;
-                                 YYABORT;
-                               }
-                             }
-                           }
-  |  container_opt_stmt when_stmt { actual = $1.container; actual_type = CONTAINER_KEYWORD; }
-     stmtsep
-  |  container_opt_stmt if_feature_stmt { if (read_all) {
-                                            if (yang_read_if_feature(trg, $1.container, NULL, s, unres, CONTAINER_KEYWORD)) {YYABORT;}
-                                            s=NULL;
-                                          } else {
-                                            size_arrays->node[$1.index].if_features++;
-                                          }
-                                        }
-  |  container_opt_stmt must_stmt { if (read_all) {
-                                      actual = $1.container;
-                                      actual_type = CONTAINER_KEYWORD;
-                                    } else {
-                                      size_arrays->node[$1.index].must++;
-                                    }
+  |  container_opt_stmt when_stmt { actual = $1.container;
+                                    actual_type = CONTAINER_KEYWORD;
                                   }
      stmtsep
-  |  container_opt_stmt presence_stmt { if (read_all && yang_read_presence(trg, $1.container, s)) {YYABORT;} s=NULL; }
-  |  container_opt_stmt config_read_stmt { if (!read_all) {
-                                             if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_CONFIG_MASK, "config", "container", $2, 0)) {
-                                               YYABORT;
-                                             }
-                                           }
-                                         }
-  |  container_opt_stmt status_read_stmt { if (!read_all) {
-                                             if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "container", $2, 0)) {
-                                               YYABORT;
-                                             }
-                                           }
-                                         }
-  |  container_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.container, s, "container")) {
+  |  container_opt_stmt if_feature_stmt { YANG_ADDELEM($1.container->iffeature, $1.container->iffeature_size);
+                                          ((struct lys_iffeature *)actual)->features = (struct lys_feature**)s;
+                                          actual = $1.container;
+                                          s = NULL;
+                                        }
+  |  container_opt_stmt must_stmt { actual = $1.container;
+                                    actual_type = CONTAINER_KEYWORD;
+                                  }
+     stmtsep
+  |  container_opt_stmt presence_stmt { if (yang_read_presence(trg, $1.container, s)) {
+                                          YYABORT;
+                                        }
+                                        s = NULL;
+                                      }
+  |  container_opt_stmt config_stmt { if ($1.container->flags & LYS_CONFIG_MASK) {
+                                        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "config", "container");
+                                        YYABORT;
+                                      }
+                                      $1.container->flags |= $2;
+                                    }
+  |  container_opt_stmt status_stmt { if ($1.container->flags & LYS_STATUS_MASK) {
+                                        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "container");
+                                        YYABORT;
+                                      }
+                                      $1.container->flags |= $2;
+                                    }
+  |  container_opt_stmt description_stmt { if (yang_read_description(trg, $1.container, s, "container")) {
                                              YYABORT;
                                            }
                                            s = NULL;
                                          }
-  |  container_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.container, s, "container")) {
+  |  container_opt_stmt reference_stmt { if (yang_read_reference(trg, $1.container, s, "container")) {
                                            YYABORT;
                                          }
                                          s = NULL;
@@ -1710,31 +1686,24 @@ container_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                       data_node = actual;
                                     }
      stmtsep
-  |  container_opt_stmt notification_stmt { if (read_all) {
-                                              actual = $1.container;
-                                              actual_type = CONTAINER_KEYWORD;
-                                              data_node = actual;
-                                              if (trg->version < 2) {
-                                                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "notification");
-                                                YYABORT;
-                                              }
+  |  container_opt_stmt notification_stmt { actual = $1.container;
+                                            actual_type = CONTAINER_KEYWORD;
+                                            data_node = actual;
+                                            if (trg->version < 2) {
+                                              LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "notification");
+                                              YYABORT;
                                             }
                                           }
      stmtsep
-  |  container_opt_stmt typedef_stmt { if (read_all) {
-                                                 actual = $1.container;
-                                                 actual_type = CONTAINER_KEYWORD;
-                                               } else {
-                                                 size_arrays->node[$1.index].tpdf++;
-                                               }
-                                             }
+  |  container_opt_stmt typedef_stmt { actual = $1.container;
+                                       actual_type = CONTAINER_KEYWORD;
+                                     }
      stmtsep
   |  container_opt_stmt data_def_stmt { actual = $1.container;
                                         actual_type = CONTAINER_KEYWORD;
                                         data_node = actual;
                                       }
      stmtsep
-  ;
 
 leaf_stmt: LEAF_KEYWORD sep leaf_arg_str
            '{' stmtsep
@@ -4054,13 +4023,63 @@ ordered_by_arg_str: USER_KEYWORD optsep { $$ = LYS_USERORDERED; }
                 }
               }
 
-must_stmt: MUST_KEYWORD sep string { if (read_all) {
-                                       if (!(actual=yang_read_must(trg, actual, s, actual_type))) {YYABORT;}
-                                       s=NULL;
-                                       actual_type=MUST_KEYWORD;
-                                     }
-                                   }
-           must_end;
+must_agr_str: string { switch (actual_type) {
+                       case CONTAINER_KEYWORD:
+                         YANG_ADDELEM(((struct lys_node_container *)actual)->must,
+                                     ((struct lys_node_container *)actual)->must_size);
+                         break;
+                       case ANYDATA_KEYWORD:
+                       case ANYXML_KEYWORD:
+                         YANG_ADDELEM(((struct lys_node_anydata *)actual)->must,
+                                     ((struct lys_node_anydata *)actual)->must_size);
+                         break;
+                       case LEAF_KEYWORD:
+                         YANG_ADDELEM(((struct lys_node_leaf *)actual)->must,
+                                     ((struct lys_node_leaf *)actual)->must_size);
+                         break;
+                       case LEAF_LIST_KEYWORD:
+                         YANG_ADDELEM(((struct lys_node_leaflist *)actual)->must,
+                                     ((struct lys_node_leaflist *)actual)->must_size);
+                         break;
+                       case LIST_KEYWORD:
+                         YANG_ADDELEM(((struct lys_node_list *)actual)->must,
+                                     ((struct lys_node_list *)actual)->must_size);
+                         break;
+                       case REFINE_KEYWORD:
+                         YANG_ADDELEM(((struct lys_refine *)actual)->must,
+                                     ((struct lys_refine *)actual)->must_size);
+                         break;
+                       case ADD_KEYWORD:
+                         YANG_ADDELEM(((struct type_deviation *)actual)->trg_must,
+                                     *((struct type_deviation *)actual)->trg_must_size);
+                         break;
+                       case DELETE_KEYWORD:
+                         YANG_ADDELEM(((struct type_deviation *)actual)->deviate->must,
+                                     ((struct type_deviation *)actual)->deviate->must_size);
+                         break;
+                       case NOTIFICATION_KEYWORD:
+                         YANG_ADDELEM(((struct lys_node_notif *)actual)->must,
+                                     ((struct lys_node_notif *)actual)->must_size);
+                         break;
+                       case INPUT_KEYWORD:
+                         YANG_ADDELEM(((struct lys_node_inout *)actual)->must,
+                                     ((struct lys_node_inout *)actual)->must_size);
+                         break;
+                       default:
+                         free(s);
+                         YYABORT;
+                       }
+                       ((struct lys_restr *)actual)->expr = transform_schema2json(trg, s);
+                       if (!((struct lys_restr *)actual)->expr) {
+                         free(s);
+                         YYABORT;
+                       }
+                       free(s);
+                       s = NULL;
+                       actual_type = MUST_KEYWORD;
+                     }
+
+must_stmt: MUST_KEYWORD sep must_agr_str must_end;
 
 must_end: ';'
   |  '{' stmtsep

@@ -331,60 +331,6 @@ yang_read_base(struct lys_module *module, struct lys_ident *ident, char *value, 
     return EXIT_SUCCESS;
 }
 
-void *
-yang_read_must(struct lys_module *module, struct lys_node *node, char *value, enum yytokentype type)
-{
-    struct lys_restr *retval;
-
-    switch (type) {
-    case CONTAINER_KEYWORD:
-        retval = &((struct lys_node_container *)node)->must[((struct lys_node_container *)node)->must_size++];
-        break;
-    case ANYDATA_KEYWORD:
-    case ANYXML_KEYWORD:
-        retval = &((struct lys_node_anydata *)node)->must[((struct lys_node_anydata *)node)->must_size++];
-        break;
-    case LEAF_KEYWORD:
-        retval = &((struct lys_node_leaf *)node)->must[((struct lys_node_leaf *)node)->must_size++];
-        break;
-    case LEAF_LIST_KEYWORD:
-        retval = &((struct lys_node_leaflist *)node)->must[((struct lys_node_leaflist *)node)->must_size++];
-        break;
-    case LIST_KEYWORD:
-        retval = &((struct lys_node_list *)node)->must[((struct lys_node_list *)node)->must_size++];
-        break;
-    case REFINE_KEYWORD:
-        retval = &((struct lys_refine *)node)->must[((struct lys_refine *)node)->must_size++];
-        break;
-    case ADD_KEYWORD:
-        retval = &(*((struct type_deviation *)node)->trg_must)[(*((struct type_deviation *)node)->trg_must_size)++];
-        memset(retval, 0, sizeof *retval);
-        break;
-    case DELETE_KEYWORD:
-        retval = &((struct type_deviation *)node)->deviate->must[((struct type_deviation *)node)->deviate->must_size++];
-        break;
-    case NOTIFICATION_KEYWORD:
-        retval = &((struct lys_node_notif *)node)->must[((struct lys_node_notif *)node)->must_size++];
-        break;
-    case INPUT_KEYWORD:
-        retval = &((struct lys_node_inout *)node)->must[((struct lys_node_inout *)node)->must_size++];
-        break;
-    default:
-        goto error;
-        break;
-    }
-    retval->expr = transform_schema2json(module, value);
-    if (!retval->expr) {
-        goto error;
-    }
-    free(value);
-    return retval;
-
-error:
-    free(value);
-    return NULL;
-}
-
 int
 yang_read_message(struct lys_module *module,struct lys_restr *save,char *value, char *what, int message)
 {
@@ -521,6 +467,7 @@ yang_read_node(struct lys_module *module, struct lys_node *parent, struct lys_no
     }
     node->module = module;
     node->nodetype = nodetype;
+    node->parent = parent;
 
     /* insert the node into the schema tree */
     child = (parent) ? &parent->child : root;
@@ -2499,6 +2446,24 @@ store_flags(struct lys_node *node, uint8_t flags, int config_opt)
     return EXIT_SUCCESS;
 }
 
+void
+store_config_flag(struct lys_node *node, int config_opt)
+{
+    if (config_opt == CONFIG_IGNORE) {
+        node->flags |= node->flags & (~(LYS_CONFIG_MASK | LYS_CONFIG_SET));
+    } else if (config_opt == CONFIG_INHERIT_ENABLE) {
+        if (!(node->flags & LYS_CONFIG_MASK)) {
+            /* get config flag from parent */
+            if (node->parent) {
+                node->flags |= node->parent->flags & LYS_CONFIG_MASK;
+            } else {
+                /* default config is true */
+                node->flags |= LYS_CONFIG_W;
+            }
+        }
+    }
+}
+
 int
 yang_parse_mem(struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres,
                const char *data, unsigned int size_data, struct lys_node **node)
@@ -2843,6 +2808,23 @@ yang_free_grouping(struct ly_ctx *ctx, struct lys_node_grp * grp)
 }
 
 static void
+yang_free_container(struct ly_ctx *ctx, struct lys_node_container * cont)
+{
+    uint8_t i;
+
+    yang_tpdf_free(ctx, cont->tpdf, 0, cont->tpdf_size);
+    free(cont->tpdf);
+    lydict_remove(ctx, cont->presence);
+
+    for (i = 0; cont->must_size; ++i) {
+        lys_restr_free(ctx, &cont->must[i]);
+    }
+    free(cont->must);
+
+    lys_when_free(ctx, cont->when);
+}
+
+static void
 yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node)
 {
     struct lys_node *tmp, *child, *sibling;
@@ -2866,6 +2848,9 @@ yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node)
         switch (tmp->nodetype) {
         case LYS_GROUPING:
             yang_free_grouping(ctx, (struct lys_node_grp *)tmp);
+            break;
+        case LYS_CONTAINER:
+            yang_free_container(ctx, (struct lys_node_container *)tmp);
             break;
         default:
             break;
@@ -3016,6 +3001,10 @@ yang_check_typedef(struct lys_module *module, struct lys_node *parent, struct un
             tpdf = ((struct lys_node_grp *)parent)->tpdf;
             ptr_tpdf_size = &((struct lys_node_grp *)parent)->tpdf_size;
             break;
+        case LYS_CONTAINER:
+            tpdf = ((struct lys_node_container *)parent)->tpdf;
+            ptr_tpdf_size = &((struct lys_node_container *)parent)->tpdf_size;
+            break;
         default:
             LOGINT;
             return EXIT_FAILURE;
@@ -3107,6 +3096,34 @@ error:
 }
 
 static int
+yang_check_container(struct lys_module *module, struct lys_node_container *node, struct unres_schema *unres)
+{
+    uint8_t i, size;
+
+    if (yang_check_typedef(module, (struct lys_node *)node, unres)) {
+        goto error;
+    }
+
+    size = node->iffeature_size;
+    node->iffeature_size = 0;
+    for (i = 0; i < size; ++i) {
+        if (yang_read_if_feature(module, node, NULL, (char *)node->iffeature[i].features, unres, CONTAINER_KEYWORD)) {
+            node->iffeature_size = size;
+            goto error;
+        }
+    }
+
+    /* check XPath dependencies */
+    if ((node->when || node->must_size) && (unres_schema_add_node(module, unres, node, UNRES_XPATH, NULL) == -1)) {
+        goto error;
+    }
+
+    return EXIT_SUCCESS;
+error:
+    return EXIT_FAILURE;
+}
+
+static int
 yang_check_nodes(struct lys_module *module, struct lys_node *nodes, struct unres_schema *unres)
 {
     struct lys_node *node = nodes, *sibling, *child;
@@ -3126,6 +3143,11 @@ yang_check_nodes(struct lys_module *module, struct lys_node *nodes, struct unres
         switch (node->nodetype) {
         case LYS_GROUPING:
             if (yang_check_grouping(module, (struct lys_node_grp *)node, unres)) {
+                goto error;
+            }
+            break;
+        case LYS_CONTAINER:
+            if (yang_check_container(module, (struct lys_node_container *)node, unres)) {
                 goto error;
             }
             break;

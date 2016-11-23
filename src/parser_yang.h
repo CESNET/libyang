@@ -141,8 +141,6 @@ int yang_read_if_feature(struct lys_module *module, void *ptr, void *parent, cha
 
 int yang_read_identyref(struct lys_module *module, struct yang_type *stype, char *expr, struct unres_schema *unres);
 
-void *yang_read_must(struct lys_module *module, struct lys_node *node, char *value, enum yytokentype type);
-
 int yang_read_message(struct lys_module *module,struct lys_restr *save,char *value, char *what, int message);
 
 int yang_read_presence(struct lys_module *module, struct lys_node_container *cont, char *value);
@@ -150,6 +148,8 @@ int yang_read_presence(struct lys_module *module, struct lys_node_container *con
 int yang_read_config(void *node, int value, enum yytokentype type);
 
 int store_flags(struct lys_node *node, uint8_t flags, int config_opt);
+
+void store_config_flag(struct lys_node *node, int config_opt);
 
 void *yang_read_when(struct lys_module *module, struct lys_node *node, enum yytokentype type, char *value);
 
