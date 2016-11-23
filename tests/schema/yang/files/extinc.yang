@@ -1,0 +1,10 @@
+submodule extinc {
+  yang-version 1.1;
+  belongs-to ext {
+    prefix i;
+  }
+
+  leaf incleaf {
+    type string;
+  }
+}

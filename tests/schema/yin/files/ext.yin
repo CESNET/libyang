@@ -1,0 +1,410 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module name="ext"
+        xmlns="urn:ietf:params:xml:ns:yang:yin:1"
+        xmlns:e="urn:ext"
+        xmlns:i="urn:extimp">
+  <yang-version value="1.1"/>
+  <namespace uri="urn:ext"/>
+  <prefix value="e"/>
+  <import module="extimp">
+    <prefix value="i"/>
+    <e:a/>
+    <e:b x="one"/>
+    <e:c>
+      <e:y>one</e:y>
+    </e:c>
+    <e:c>
+      <e:y>two</e:y>
+      <e:a/>
+      <e:b x="one"/>
+      <e:c>
+        <e:y>one</e:y>
+      </e:c>
+    </e:c>
+  </import>
+  <include module="extinc">
+    <e:a/>
+    <e:b x="one"/>
+    <e:c>
+      <e:y>one</e:y>
+    </e:c>
+    <e:c>
+      <e:y>two</e:y>
+      <e:a/>
+      <e:b x="one"/>
+      <e:c>
+        <e:y>one</e:y>
+      </e:c>
+    </e:c>
+  </include>
+  <extension name="a"/>
+  <extension name="b">
+    <argument name="x"/>
+  </extension>
+  <extension name="c">
+    <argument name="y">
+      <yin-element value="true"/>
+    </argument>
+  </extension>
+  <extension name="d">
+    <e:a/>
+    <e:b x="one"/>
+    <e:c>
+      <e:y>one</e:y>
+    </e:c>
+    <e:c>
+      <e:y>two</e:y>
+      <e:a/>
+      <e:b x="one"/>
+      <e:c>
+        <e:y>one</e:y>
+      </e:c>
+    </e:c>
+    <argument name="z"/>
+  </extension>
+  <feature name="turbo">
+    <e:a/>
+    <e:b x="one"/>
+    <e:c>
+      <e:y>one</e:y>
+    </e:c>
+    <e:c>
+      <e:y>two</e:y>
+      <e:a/>
+      <e:b x="one"/>
+      <e:c>
+        <e:y>one</e:y>
+      </e:c>
+    </e:c>
+  </feature>
+  <identity name="id">
+    <e:a/>
+    <e:b x="one"/>
+    <e:c>
+      <e:y>one</e:y>
+    </e:c>
+    <e:c>
+      <e:y>two</e:y>
+      <e:a/>
+      <e:b x="one"/>
+      <e:c>
+        <e:y>one</e:y>
+      </e:c>
+    </e:c>
+  </identity>
+  <typedef name="etype">
+    <e:a/>
+    <e:b x="one"/>
+    <e:c>
+      <e:y>one</e:y>
+    </e:c>
+    <e:c>
+      <e:y>two</e:y>
+      <e:a/>
+      <e:b x="one"/>
+      <e:c>
+        <e:y>one</e:y>
+      </e:c>
+    </e:c>
+    <type name="string">
+      <e:a/>
+      <e:b x="one"/>
+      <e:c>
+        <e:y>one</e:y>
+      </e:c>
+      <e:c>
+        <e:y>two</e:y>
+        <e:a/>
+        <e:b x="one"/>
+        <e:c>
+          <e:y>one</e:y>
+        </e:c>
+      </e:c>
+    </type>
+  </typedef>
+  <e:a/>
+  <e:b x="one"/>
+  <e:c>
+    <e:y>one</e:y>
+  </e:c>
+  <e:c>
+    <e:y>two</e:y>
+    <e:a/>
+    <e:b x="one"/>
+    <e:c>
+      <e:y>one</e:y>
+    </e:c>
+  </e:c>
+  <deviation target-node="/i:l">
+    <e:a/>
+    <e:b x="one"/>
+    <e:c>
+      <e:y>one</e:y>
+    </e:c>
+    <e:c>
+      <e:y>two</e:y>
+      <e:a/>
+      <e:b x="one"/>
+      <e:c>
+        <e:y>one</e:y>
+      </e:c>
+    </e:c>
+    <deviate value="not-supported"/>
+  </deviation>
+  <grouping name="grp">
+    <e:a/>
+    <e:b x="one"/>
+    <e:c>
+      <e:y>one</e:y>
+    </e:c>
+    <e:c>
+      <e:y>two</e:y>
+      <e:a/>
+      <e:b x="one"/>
+      <e:c>
+        <e:y>one</e:y>
+      </e:c>
+    </e:c>
+    <leaf name="x">
+      <type name="string"/>
+    </leaf>
+  </grouping>
+  <container name="cont">
+    <e:a/>
+    <e:b x="one"/>
+    <e:c>
+      <e:y>one</e:y>
+    </e:c>
+    <e:c>
+      <e:y>two</e:y>
+      <e:a/>
+      <e:b x="one"/>
+      <e:c>
+        <e:y>one</e:y>
+      </e:c>
+    </e:c>
+    <list name="l">
+      <key value="k"/>
+      <e:a/>
+      <e:b x="one"/>
+      <e:c>
+        <e:y>one</e:y>
+      </e:c>
+      <e:c>
+        <e:y>two</e:y>
+        <e:a/>
+        <e:b x="one"/>
+        <e:c>
+          <e:y>one</e:y>
+        </e:c>
+      </e:c>
+      <leaf name="k">
+        <type name="string"/>
+      </leaf>
+      <action name="act">
+        <e:a/>
+        <e:b x="one"/>
+        <e:c>
+          <e:y>one</e:y>
+        </e:c>
+        <e:c>
+          <e:y>two</e:y>
+          <e:a/>
+          <e:b x="one"/>
+          <e:c>
+            <e:y>one</e:y>
+          </e:c>
+        </e:c>
+      </action>
+    </list>
+    <uses name="grp">
+      <e:a/>
+      <e:b x="one"/>
+      <e:c>
+        <e:y>one</e:y>
+      </e:c>
+      <e:c>
+        <e:y>two</e:y>
+        <e:a/>
+        <e:b x="one"/>
+        <e:c>
+          <e:y>one</e:y>
+        </e:c>
+      </e:c>
+      <refine target-node="x">
+        <e:a/>
+        <e:b x="one"/>
+        <e:c>
+          <e:y>one</e:y>
+        </e:c>
+        <e:c>
+          <e:y>two</e:y>
+          <e:a/>
+          <e:b x="one"/>
+          <e:c>
+            <e:y>one</e:y>
+          </e:c>
+        </e:c>
+        <default value="none"/>
+      </refine>
+    </uses>
+  </container>
+  <choice name="ch">
+    <e:a/>
+    <e:b x="one"/>
+    <e:c>
+      <e:y>one</e:y>
+    </e:c>
+    <e:c>
+      <e:y>two</e:y>
+      <e:a/>
+      <e:b x="one"/>
+      <e:c>
+        <e:y>one</e:y>
+      </e:c>
+    </e:c>
+    <case name="ch1">
+      <e:a/>
+      <e:b x="one"/>
+      <e:c>
+        <e:y>one</e:y>
+      </e:c>
+      <e:c>
+        <e:y>two</e:y>
+        <e:a/>
+        <e:b x="one"/>
+        <e:c>
+          <e:y>one</e:y>
+        </e:c>
+      </e:c>
+      <leaf-list name="ch1ll">
+        <e:a/>
+        <e:b x="one"/>
+        <e:c>
+          <e:y>one</e:y>
+        </e:c>
+        <e:c>
+          <e:y>two</e:y>
+          <e:a/>
+          <e:b x="one"/>
+          <e:c>
+            <e:y>one</e:y>
+          </e:c>
+        </e:c>
+        <type name="string"/>
+      </leaf-list>
+    </case>
+    <anydata name="ch2">
+      <e:a/>
+      <e:b x="one"/>
+      <e:c>
+        <e:y>one</e:y>
+      </e:c>
+      <e:c>
+        <e:y>two</e:y>
+        <e:a/>
+        <e:b x="one"/>
+        <e:c>
+          <e:y>one</e:y>
+        </e:c>
+      </e:c>
+    </anydata>
+  </choice>
+  <rpc name="op">
+    <e:a/>
+    <e:b x="one"/>
+    <e:c>
+      <e:y>one</e:y>
+    </e:c>
+    <e:c>
+      <e:y>two</e:y>
+      <e:a/>
+      <e:b x="one"/>
+      <e:c>
+        <e:y>one</e:y>
+      </e:c>
+    </e:c>
+    <input>
+      <e:a/>
+      <e:b x="one"/>
+      <e:c>
+        <e:y>one</e:y>
+      </e:c>
+      <e:c>
+        <e:y>two</e:y>
+        <e:a/>
+        <e:b x="one"/>
+        <e:c>
+          <e:y>one</e:y>
+        </e:c>
+      </e:c>
+      <leaf name="x">
+        <type name="string"/>
+      </leaf>
+    </input>
+    <output>
+      <e:a/>
+      <e:b x="one"/>
+      <e:c>
+        <e:y>one</e:y>
+      </e:c>
+      <e:c>
+        <e:y>two</e:y>
+        <e:a/>
+        <e:b x="one"/>
+        <e:c>
+          <e:y>one</e:y>
+        </e:c>
+      </e:c>
+      <leaf name="x">
+        <type name="string"/>
+      </leaf>
+    </output>
+  </rpc>
+  <notification name="ntf">
+    <e:a/>
+    <e:b x="one"/>
+    <e:c>
+      <e:y>one</e:y>
+    </e:c>
+    <e:c>
+      <e:y>two</e:y>
+      <e:a/>
+      <e:b x="one"/>
+      <e:c>
+        <e:y>one</e:y>
+      </e:c>
+    </e:c>
+  </notification>
+  <augment target-node="/cont">
+    <e:a/>
+    <e:b x="one"/>
+    <e:c>
+      <e:y>one</e:y>
+    </e:c>
+    <e:c>
+      <e:y>two</e:y>
+      <e:a/>
+      <e:b x="one"/>
+      <e:c>
+        <e:y>one</e:y>
+      </e:c>
+    </e:c>
+    <leaf name="augleaf">
+      <e:a/>
+      <e:b x="one"/>
+      <e:c>
+        <e:y>one</e:y>
+      </e:c>
+      <e:c>
+        <e:y>two</e:y>
+        <e:a/>
+        <e:b x="one"/>
+        <e:c>
+          <e:y>one</e:y>
+        </e:c>
+      </e:c>
+      <type name="string"/>
+    </leaf>
+  </augment>
+</module>
