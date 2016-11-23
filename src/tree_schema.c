@@ -319,6 +319,32 @@ repeat:
 
 }
 
+static void
+lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, unsigned int size)
+{
+    unsigned int i;
+
+    if (!size || !e || !(*e)) {
+        return;
+    }
+
+    for (i = 0; i < size; i++) {
+        if (!e[i]) {
+            continue;
+        }
+
+        /* common part */
+        lys_extension_instances_free(ctx, e[i]->ext, e[i]->ext_size);
+
+        if (!e[i]->def->plugin || e[i]->def->plugin->type == LY_EXT_FLAG) {
+            /* flag instance */
+            lydict_remove(ctx, ((struct lys_ext_instance_flag *)e[i])->arg_value);
+        }
+        free(e[i]);
+    }
+    free(e);
+}
+
 void
 lys_node_unlink(struct lys_node *node)
 {
@@ -1267,6 +1293,57 @@ lys_yang_type_dup(struct lys_module *module, struct lys_node *parent, struct yan
     return NULL;
 }
 
+/*
+ * duplicate extension instance
+ */
+static struct lys_ext_instance **
+lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, unsigned int size, struct unres_schema *unres)
+{
+    int i;
+    unsigned int u;
+    struct lys_ext_instance **result;
+    struct lys_ext_instance_flag *result_flag;
+    struct unres_ext *info, *info_orig;
+
+    assert(size);
+    assert(!orig);
+    assert(!(*orig));
+
+    result = calloc(size, sizeof *result);
+    for (u = 0; u < size; u++) {
+        if (orig[u]) {
+            /* resolved extension instance, just duplicate it */
+            result[u]->def = orig[u]->def;
+            if (!orig[u]->def->plugin || orig[u]->def->plugin->type == LY_EXT_FLAG) {
+                result[u] = malloc(sizeof(struct lys_ext_instance_flag));
+                result_flag = (struct lys_ext_instance_flag *)result[u];
+                result_flag->arg_value = lydict_insert(mod->ctx, ((struct lys_ext_instance_flag *)orig[u])->arg_value, 0);
+            }
+        } else {
+            /* original extension is not yet resolved, so duplicate it in unres */
+            i = unres_schema_find(unres, -1, orig, UNRES_EXT);
+            if (i == -1) {
+                /* extension not found in unres */
+                LOGINT;
+                return NULL;
+            }
+            info_orig = unres->str_snode[i];
+            info = malloc(sizeof *info);
+            info->datatype = info_orig->datatype;
+            if (info->datatype == LYS_IN_YIN) {
+                info->data.yin = lyxml_dup_elem(mod->ctx, info_orig->data.yin, NULL, 1);
+            } /* else TODO YANG */
+            info->parent = info_orig->parent;
+            info->parent_type = info_orig->parent_type;
+            if (unres_schema_add_node(mod, unres, &result[u], UNRES_EXT, (struct lys_node *)info) == -1) {
+                return NULL;
+            }
+        }
+    }
+
+    return result;
+}
+
 static int
 lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, struct lys_type *old,
             int tpdftype, struct unres_schema *unres)
@@ -1277,6 +1354,13 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
     new->base = old->base;
     new->der = old->der;
     new->parent = (struct lys_tpdf *)parent;
+    if (old->ext_size) {
+        new->ext_size = old->ext_size;
+        new->ext = lys_ext_dup(mod, old->ext, old->ext_size, unres);
+        if (!new->ext) {
+            return -1;
+        }
+    }
 
     i = unres_schema_find(unres, -1, old, tpdftype ? UNRES_TYPE_DER_TPDF : UNRES_TYPE_DER);
     if (i != -1) {
@@ -1309,6 +1393,8 @@ lys_type_free(struct ly_ctx *ctx, struct lys_type *type)
     }
 
     lydict_remove(ctx, type->module_name);
+
+    lys_extension_instances_free(ctx, type->ext, type->ext_size);
 
     switch (type->base) {
     case LY_TYPE_BINARY:
@@ -1398,6 +1484,8 @@ lys_tpdf_free(struct ly_ctx *ctx, struct lys_tpdf *tpdf)
 
     lydict_remove(ctx, tpdf->units);
     lydict_remove(ctx, tpdf->dflt);
+
+    lys_extension_instances_free(ctx, tpdf->ext, tpdf->ext_size);
 }
 
 static struct lys_tpdf *
@@ -1489,6 +1577,7 @@ lys_augment_free(struct ly_ctx *ctx, struct lys_node_augment *aug, void (*privat
     lydict_remove(ctx, aug->ref);
 
     lys_iffeature_free(aug->iffeature, aug->iffeature_size);
+    lys_extension_instances_free(ctx, aug->ext, aug->ext_size);
 
     lys_when_free(ctx, aug->when);
 }
@@ -1632,6 +1721,7 @@ lys_ident_free(struct ly_ctx *ctx, struct lys_ident *ident)
     lydict_remove(ctx, ident->dsc);
     lydict_remove(ctx, ident->ref);
     lys_iffeature_free(ident->iffeature, ident->iffeature_size);
+    lys_extension_instances_free(ctx, ident->ext, ident->ext_size);
 
 }
 
@@ -1796,6 +1886,17 @@ lys_feature_free(struct ly_ctx *ctx, struct lys_feature *f)
     lydict_remove(ctx, f->ref);
     lys_iffeature_free(f->iffeature, f->iffeature_size);
     ly_set_free(f->depfeatures);
+    lys_extension_instances_free(ctx, f->ext, f->ext_size);
+}
+
+static void
+lys_extension_free(struct ly_ctx *ctx, struct lys_ext *e)
+{
+    lydict_remove(ctx, e->name);
+    lydict_remove(ctx, e->dsc);
+    lydict_remove(ctx, e->ref);
+    lydict_remove(ctx, e->argument);
+    lys_extension_instances_free(ctx, e->ext, e->ext_size);
 }
 
 static void
@@ -1810,6 +1911,7 @@ lys_deviation_free(struct lys_module *module, struct lys_deviation *dev)
     lydict_remove(ctx, dev->target_name);
     lydict_remove(ctx, dev->dsc);
     lydict_remove(ctx, dev->ref);
+    lys_extension_instances_free(ctx, dev->ext, dev->ext_size);
 
     if (!dev->deviate) {
         return ;
@@ -1876,6 +1978,8 @@ lys_uses_free(struct ly_ctx *ctx, struct lys_node_uses *uses, void (*private_des
         }
         free(uses->refine[i].dflt);
 
+        lys_extension_instances_free(ctx, uses->refine[i].ext, uses->refine[i].ext_size);
+
         if (uses->refine[i].target_type & LYS_CONTAINER) {
             lydict_remove(ctx, uses->refine[i].mod.presence);
         }
@@ -1923,6 +2027,8 @@ lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys
             lys_node_free(sub, private_destructor, 0);
         }
     }
+
+    lys_extension_instances_free(ctx, node->ext, node->ext_size);
 
     /* specific part */
     switch (node->nodetype) {
@@ -2005,6 +2111,30 @@ lys_get_implemented_module(const struct lys_module *mod)
 }
 
 const struct lys_module *
+lys_get_import_module_ns(const struct lys_module *module, const char *ns)
+{
+    int i;
+
+    assert(module && ns);
+
+    module = lys_main_module(module);
+
+    /* modul's own namespace */
+    if (ly_strequal(module->ns, ns, 0)) {
+        return module;
+    }
+
+    /* imported modules */
+    for (i = 0; i < module->imp_size; ++i) {
+        if (ly_strequal(module->imp[i].module->ns, ns, 0)) {
+            return module->imp[i].module;
+        }
+    }
+
+    return NULL;
+}
+
+const struct lys_module *
 lys_get_import_module(const struct lys_module *module, const char *prefix, int pref_len, const char *name, int name_len)
 {
     const struct lys_module *main_module;
@@ -2068,6 +2198,7 @@ module_free_common(struct lys_module *module, void (*private_destructor)(const s
         lydict_remove(ctx, module->imp[i].prefix);
         lydict_remove(ctx, module->imp[i].dsc);
         lydict_remove(ctx, module->imp[i].ref);
+        lys_extension_instances_free(ctx, module->imp[i].ext, module->imp[i].ext_size);
     }
     free(module->imp);
 
@@ -2105,10 +2236,14 @@ module_free_common(struct lys_module *module, void (*private_destructor)(const s
     }
     free(module->tpdf);
 
+    /* extension instances */
+    lys_extension_instances_free(ctx, module->ext, module->ext_size);
+
     /* include */
     for (i = 0; i < module->inc_size; i++) {
         lydict_remove(ctx, module->inc[i].dsc);
         lydict_remove(ctx, module->inc[i].ref);
+        lys_extension_instances_free(ctx, module->inc[i].ext, module->inc[i].ext_size);
         /* complete submodule free is done only from main module since
          * submodules propagate their includes to the main module */
         if (!module->type) {
@@ -2134,6 +2269,12 @@ module_free_common(struct lys_module *module, void (*private_destructor)(const s
         lys_deviation_free(module, &module->deviation[i]);
     }
     free(module->deviation);
+
+    /* extensions */
+    for (i = 0; i < module->extensions_size; i++) {
+        lys_extension_free(ctx, &module->extensions[i]);
+    }
+    free(module->extensions);
 
     lydict_remove(ctx, module->name);
     lydict_remove(ctx, module->prefix);

@@ -29,6 +29,7 @@
 #include "xml_internal.h"
 #include "dict_private.h"
 #include "tree_internal.h"
+#include "extensions.h"
 
 static int resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type);
 
@@ -4489,6 +4490,173 @@ success:
     return EXIT_SUCCESS;
 }
 
+static int
+resolve_extension(struct unres_ext *info, const struct lys_module *mod, struct lys_ext_instance **ext,
+                  struct unres_schema *unres)
+{
+    enum LY_VLOG_ELEM vlog_type;
+    void *vlog_node;
+    unsigned int i, j;
+    int c_ext = -1, rc;
+    struct lys_ext *e;
+    const char *value;
+    struct lyxml_elem *next_yin, *yin;
+    struct unres_ext *subinfo;
+
+    switch (info->parent_type) {
+    case LYS_EXT_PAR_NODE:
+        vlog_node = info->parent;
+        vlog_type = LY_VLOG_LYS;
+        break;
+    case LYS_EXT_PAR_MODULE:
+    case LYS_EXT_PAR_IMPORT:
+    case LYS_EXT_PAR_INCLUDE:
+        vlog_node = NULL;
+        vlog_type = LY_VLOG_LYS;
+        break;
+    case LYS_EXT_PAR_TYPE:
+    case LYS_EXT_PAR_TPDF:
+    case LYS_EXT_PAR_FEATURE:
+    case LYS_EXT_PAR_IDENT:
+    case LYS_EXT_PAR_EXT:
+    case LYS_EXT_PAR_EXTINST:
+    case LYS_EXT_PAR_REFINE:
+    case LYS_EXT_PAR_DEVIATION:
+        vlog_node = NULL;
+        vlog_node = LY_VLOG_NONE;
+        break;
+    }
+
+    if (info->datatype == LYS_IN_YIN) {
+        /* get the module where the extension is supposed to be defined */
+        mod = lys_get_import_module_ns(lys_main_module(mod), info->data.yin->ns->value);
+        if (!mod) {
+            LOGVAL(LYE_INSTMT, vlog_type, vlog_node, info->data.yin->name);
+            return -1;
+        }
+
+        /* find the extension definition */
+        e = NULL;
+        for (i = 0; i < mod->extensions_size; i++) {
+            if (ly_strequal(mod->extensions[i].name, info->data.yin->name, 1)) {
+                e = &mod->extensions[i];
+                break;
+            }
+        }
+        /* try submodules */
+        for (j = 0; !e && j < mod->inc_size; j++) {
+            for (i = 0; i < mod->inc[j].submodule->extensions_size; i++) {
+                if (ly_strequal(mod->inc[j].submodule->extensions[i].name, info->data.yin->name, 1)) {
+                    e = &mod->inc[j].submodule->extensions[i];
+                    break;
+                }
+            }
+        }
+        if (!e) {
+            LOGVAL(LYE_INSTMT, vlog_type, vlog_node, info->data.yin->name);
+            return EXIT_FAILURE;
+        }
+
+        /* we have the extension definition, so now it cannot be forward referenced and error is always fatal */
+        if (!e->plugin || e->plugin->type == LY_EXT_FLAG) {
+            if (e->flags & LYS_YINELEM) {
+                value = NULL;
+                c_ext = 0;
+                LY_TREE_FOR_SAFE(info->data.yin->child, next_yin, yin) {
+                    if (!yin->ns) {
+                        /* garbage */
+                        lyxml_free(mod->ctx, yin);
+                        continue;
+                    } else if (!strcmp(yin->ns->value, LY_NSYIN)) {
+                        /* standard YANG statements are not expected here */
+                        LOGVAL(LYE_INCHILDSTMT, vlog_type, vlog_node, yin->name, info->data.yin->name);
+                        return -1;
+                    } else if (yin->ns == info->data.yin->ns && ly_strequal(yin->name, e->argument, 1)) {
+                        /* we have the extension's argument */
+                        if (value) {
+                            LOGVAL(LYE_TOOMANY, vlog_type, vlog_node, yin->name, info->data.yin->name);
+                            return -1;
+                        }
+                        value = yin->content;
+                        yin->content = NULL;
+                        lyxml_free(mod->ctx, yin);
+                    } else {
+                        /* possible extension instance, processed later */
+                        c_ext++;
+                        continue;
+                    }
+                }
+                if (!value) {
+                    LOGVAL(LYE_MISSCHILDSTMT, vlog_type, vlog_node, e->argument, info->data.yin->name);
+                    return -1;
+                }
+            } else if (e->argument) {
+                value = lyxml_get_attr(info->data.yin, e->argument, NULL);
+                if (!value) {
+                    LOGVAL(LYE_MISSARG, LY_VLOG_NONE, NULL, e->argument, info->data.yin->name);
+                    return -1;
+                }
+                value = lydict_insert(mod->ctx, value, 0);
+            } else {
+                value = NULL;
+            }
+            (*ext) = calloc(1, sizeof(struct lys_ext_instance_flag));
+            ((struct lys_ext_instance_flag *)(*ext))->def = e;
+            ((struct lys_ext_instance_flag *)(*ext))->arg_value = value;
+
+            /* extension instances in extension */
+            if (c_ext == -1) {
+                c_ext = 0;
+                /* first, we have to count them */
+                LY_TREE_FOR_SAFE(info->data.yin->child, next_yin, yin) {
+                    if (!yin->ns) {
+                        /* garbage */
+                        lyxml_free(mod->ctx, yin);
+                        continue;
+                    } else if (strcmp(yin->ns->value, LY_NSYIN)) {
+                        /* possible extension instance */
+                        c_ext++;
+                    } else {
+                        /* unexpected statement */
+                        LOGVAL(LYE_INCHILDSTMT, vlog_type, vlog_node, yin->name, info->data.yin->name);
+                        return -1;
+                    }
+                }
+            }
+            if (c_ext) {
+                (*ext)->ext = calloc(c_ext, sizeof *(*ext)->ext);
+                if (!(*ext)->ext) {
+                    LOGMEM;
+                    return -1;
+                }
+                LY_TREE_FOR_SAFE(info->data.yin->child, next_yin, yin) {
+                    subinfo = malloc(sizeof *subinfo);
+                    lyxml_unlink(mod->ctx, yin);
+                    subinfo->data.yin = yin;
+                    subinfo->datatype = LYS_IN_YIN;
+                    subinfo->parent = (void *)(*ext);
+                    subinfo->parent_type = LYS_EXT_PAR_EXTINST;
+                    rc = unres_schema_add_node((struct lys_module *)mod, unres, &(*ext)->ext[(*ext)->ext_size],
+                                               UNRES_EXT, (struct lys_node *)subinfo);
+                    (*ext)->ext_size++;
+                    if (rc == -1) {
+                        return EXIT_FAILURE;
+                    }
+                }
+            }
+        } else {
+            /* unknown */
+            return -1;
+        }
+    } else {
+        /* TODO YANG */
+
+        return -1;
+    }
+
+    return EXIT_SUCCESS;
+}
+
 /**
  * @brief Resolve (find) choice default case. Does not log.
  *
@@ -6055,6 +6223,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
     struct yang_type *yang;
     struct unres_list_uniq *unique_info;
     struct unres_iffeat_data *iff_data;
+    struct unres_ext *ext_data;
 
     switch (type) {
     case UNRES_IDENT:
@@ -6259,6 +6428,20 @@ featurecheckdone:
         node = (struct lys_node *)item;
         rc = lys_check_xpath(node, 1);
         break;
+    case UNRES_EXT:
+        ext_data = (struct unres_ext *)str_snode;
+        rc = resolve_extension(ext_data, mod, (struct lys_ext_instance **)item, unres);
+        if (!rc) {
+            if (ext_data->datatype == LYS_IN_YIN) {
+                /* YIN */
+                lyxml_free(mod->ctx, ext_data->data.yin);
+            } else {
+                /* TODO YANG */
+                free(ext_data->data.yang);
+            }
+            free(ext_data);
+        }
+        break;
     default:
         LOGINT;
         break;
@@ -6280,7 +6463,8 @@ print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node)
     struct lyxml_elem *xml;
     struct lyxml_attr *attr;
     struct unres_iffeat_data *iff_data;
-    const char *type_name = NULL;
+    const char *name = NULL;
+    struct unres_ext *extinfo;
 
     switch (type) {
     case UNRES_IDENT:
@@ -6297,17 +6481,17 @@ print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node)
     case UNRES_TYPE_DER:
         xml = (struct lyxml_elem *)((struct lys_type *)item)->der;
         if (xml->flags & LY_YANG_STRUCTURE_FLAG) {
-            type_name = ((struct yang_type *)xml)->name;
+            name = ((struct yang_type *)xml)->name;
         } else {
             LY_TREE_FOR(xml->attr, attr) {
                 if ((attr->type == LYXML_ATTR_STD) && !strcmp(attr->name, "name")) {
-                    type_name = attr->value;
+                    name = attr->value;
                     break;
                 }
             }
             assert(attr);
         }
-        LOGVRB("Resolving %s \"%s\" failed, it will be attempted later.", "derived type", type_name);
+        LOGVRB("Resolving %s \"%s\" failed, it will be attempted later.", "derived type", name);
         break;
     case UNRES_IFFEAT:
         iff_data = str_node;
@@ -6343,6 +6527,11 @@ print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node)
     case UNRES_XPATH:
         LOGVRB("Resolving %s \"%s\" with the context node \"%s\" failed, it will be attempted later.", "XPath",
                (char *)str_node, ((struct lys_node *)item)->name);
+        break;
+    case UNRES_EXT:
+        extinfo = (struct unres_ext *)str_node;
+        name = extinfo->datatype == LYS_IN_YIN ? extinfo->data.yin->name : NULL; /* TODO YANG extension */
+        LOGVRB("Resolving extension \"%s\" failed, it will be attempted later.", name);
         break;
     default:
         LOGINT;

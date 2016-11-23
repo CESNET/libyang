@@ -48,7 +48,7 @@ typedef enum {
 typedef enum {
     LYD_ANYDATA_CONSTSTRING = 0x00, /**< value is constant string (const char *) which is internally duplicated for
                                          storing in the anydata structure; XML sensitive characters (such as & or \>)
-                                         are automatically escaped when the anydata is printed in XML format */
+                                         are automatically escaped when the anydata is printed in XML format. */
     LYD_ANYDATA_STRING = 0x01,      /**< value is dynamically allocated string (char*), so the data are used directly
                                          without duplication and caller is supposed to not manipulate with the data
                                          after a successful call (including calling free() on the provided data); XML

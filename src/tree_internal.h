@@ -342,6 +342,14 @@ const struct lys_module *lys_get_import_module(const struct lys_module *module, 
                                                const char *name, int name_len);
 
 /**
+ * @Brief Find an import from \p module with matching namespace, the \p module itself is also considered.
+ *
+ * @param[in] module Module with imports.
+ * @param[in] ns Namespace to be found.
+ */
+const struct lys_module *lys_get_import_module_ns(const struct lys_module *module, const char *ns);
+
+/**
  * @brief Find the implemented revision of the given module in the context.
  *
  * If there is no revision of the module implemented, the given module is returned

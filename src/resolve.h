@@ -36,6 +36,7 @@ enum UNRES_ITEM {
     UNRES_LIST_KEYS,     /* list keys */
     UNRES_LIST_UNIQ,     /* list uniques */
     UNRES_XPATH,         /* unchecked XPath expression */
+    UNRES_EXT,           /* extension instances */
 
     /* DATA */
     UNRES_LEAFREF,       /* unresolved leafref reference */
@@ -49,6 +50,20 @@ enum UNRES_ITEM {
     /* generic */
     UNRES_RESOLVED,      /* a resolved item */
     UNRES_DELETE,        /* prepared for auto-delete */
+};
+
+/**
+ * @brief auxiliaty structure to hold all necessary information for UNRES_EXT
+ */
+struct unres_ext {
+    union {
+        struct lyxml_elem *yin;      /**< YIN content of the extension instance */
+        char *yang;                  /**< TODO something that will fit YANG parser needs */
+    } data;
+    LYS_INFORMAT datatype;           /**< type of the data in data union */
+
+    void *parent;
+    LYS_EXT_PAR parent_type;
 };
 
 /**

@@ -182,6 +182,7 @@ module a {\n\
   prefix a_mod;\n\
 \n\
   include \"atop\";\n\
+\n\
   include \"asub\";\n\
 \n\
   revision \"2015-01-01\" {\n\
