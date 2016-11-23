@@ -1281,7 +1281,7 @@ lyxml_dump_text(struct lyout *out, const char *text)
 }
 
 static int
-dump_elem(struct lyout *out, const struct lyxml_elem *e, int level, int options)
+dump_elem(struct lyout *out, const struct lyxml_elem *e, int level, int options, int last_elem)
 {
     int size = 0;
     struct lyxml_attr *a;
@@ -1306,6 +1306,9 @@ dump_elem(struct lyout *out, const struct lyxml_elem *e, int level, int options)
     if (e->parent && (e->parent->flags & LYXML_ELEM_MIXED)) {
         delim_outer = "";
         indent = 0;
+    }
+    if (last_elem && (options & LYXML_PRINT_NO_LAST_NEWLINE)) {
+        delim_outer = "";
     }
 
     if (!(options & (LYXML_PRINT_OPEN | LYXML_PRINT_CLOSE | LYXML_PRINT_ATTRS)) || (options & LYXML_PRINT_OPEN))  {
@@ -1368,9 +1371,9 @@ dump_elem(struct lyout *out, const struct lyxml_elem *e, int level, int options)
     /* go recursively */
     LY_TREE_FOR(e->child, child) {
         if (options & LYXML_PRINT_FORMAT) {
-            size += dump_elem(out, child, level + 1, LYXML_PRINT_FORMAT);
+            size += dump_elem(out, child, level + 1, LYXML_PRINT_FORMAT, 0);
         } else {
-            size += dump_elem(out, child, level, 0);
+            size += dump_elem(out, child, level, 0, 0);
         }
     }
 
@@ -1388,7 +1391,7 @@ close:
 static int
 dump_siblings(struct lyout *out, const struct lyxml_elem *e, int options)
 {
-    const struct lyxml_elem *start, *iter;
+    const struct lyxml_elem *start, *iter, *next;
     int ret = 0;
 
     if (e->parent) {
@@ -1400,8 +1403,8 @@ dump_siblings(struct lyout *out, const struct lyxml_elem *e, int options)
         }
     }
 
-    LY_TREE_FOR(start, iter) {
-        ret += dump_elem(out, iter, 0, options);
+    LY_TREE_FOR_SAFE(start, next, iter) {
+        ret += dump_elem(out, iter, 0, options, (next ? 0 : 1));
     }
 
     return ret;
@@ -1422,7 +1425,7 @@ lyxml_print_file(FILE *stream, const struct lyxml_elem *elem, int options)
     if (options & LYXML_PRINT_SIBLINGS) {
         return dump_siblings(&out, elem, options);
     } else {
-        return dump_elem(&out, elem, 0, options);
+        return dump_elem(&out, elem, 0, options, 1);
     }
 }
 
@@ -1441,7 +1444,7 @@ lyxml_print_fd(int fd, const struct lyxml_elem *elem, int options)
     if (options & LYXML_PRINT_SIBLINGS) {
         return dump_siblings(&out, elem, options);
     } else {
-        return dump_elem(&out, elem, 0, options);
+        return dump_elem(&out, elem, 0, options, 1);
     }
 }
 
@@ -1463,7 +1466,7 @@ lyxml_print_mem(char **strp, const struct lyxml_elem *elem, int options)
     if (options & LYXML_PRINT_SIBLINGS) {
         r = dump_siblings(&out, elem, options);
     } else {
-        r = dump_elem(&out, elem, 0, options);
+        r = dump_elem(&out, elem, 0, options, 1);
     }
 
     *strp = out.method.mem.buf;
@@ -1486,6 +1489,6 @@ lyxml_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), v
     if (options & LYXML_PRINT_SIBLINGS) {
         return dump_siblings(&out, elem, options);
     } else {
-        return dump_elem(&out, elem, 0, options);
+        return dump_elem(&out, elem, 0, options, 1);
     }
 }
