@@ -3082,6 +3082,17 @@ lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd
                         }
                     }
                     if (ins->schema == siter) {
+                        if ((siter->nodetype & (LYS_LEAFLIST | LYS_LIST)) && iter->schema == siter) {
+                            /* we are inserting leaflist/list instance, but since there are already
+                             * some instances of the same leaflist/list, we want to insert the new one
+                             * as the last instance, so here we have to move on */
+                            while (iter && iter->schema == siter) {
+                                iter = iter->next;
+                            }
+                            if (!iter) {
+                                break;
+                            }
+                        }
                         /* we have the correct place for new node (before the iter) */
                         if (iter == start) {
                             start = ins;
