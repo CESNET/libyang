@@ -2850,16 +2850,16 @@ yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node)
         return;
     }
     tmp = node;
-    child = tmp->child;
 
     while (tmp) {
+        child = tmp->child;
         sibling = tmp->next;
         /* common part */
         lydict_remove(ctx, tmp->name);
         if (!(tmp->nodetype & (LYS_INPUT | LYS_OUTPUT))) {
-            lys_iffeature_free(node->iffeature, node->iffeature_size);
-            lydict_remove(ctx, node->dsc);
-            lydict_remove(ctx, node->ref);
+            lys_iffeature_free(tmp->iffeature, tmp->iffeature_size);
+            lydict_remove(ctx, tmp->dsc);
+            lydict_remove(ctx, tmp->ref);
         }
 
         switch (tmp->nodetype) {
