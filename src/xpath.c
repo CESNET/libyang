@@ -7335,8 +7335,6 @@ finish:
 
 /* full xml printing of set elements, not used currently */
 
-void xml_print_node(struct lyout *out, int level, struct lyd_node *node, int toplevel);
-
 void
 lyxp_set_print_xml(FILE *f, struct lyxp_set *set)
 {
@@ -7412,7 +7410,7 @@ lyxp_set_print_xml(FILE *f, struct lyxp_set *set)
                 break;
             case LYXP_NODE_ELEM:
                 ly_print(&out, "ELEM \"%s\"\n", set->value.nodes[i]->schema->name);
-                xml_print_node(&out, 1, set->value.nodes[i], 1);
+                xml_print_node(&out, 1, set->value.nodes[i], 1, LYP_FORMAT);
                 ly_print(&out, "\n");
                 break;
             case LYXP_NODE_TEXT:

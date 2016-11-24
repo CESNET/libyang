@@ -32,8 +32,6 @@
 #define INDENT ""
 #define LEVEL (level ? level*2-2 : 0)
 
-void xml_print_node(struct lyout *out, int level, const struct lyd_node *node, int toplevel, int options);
-
 struct mlist {
     struct mlist *next;
     struct lys_module *module;
