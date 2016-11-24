@@ -451,7 +451,7 @@ trim_dfs_nextsibling:
                 return 0;
             }
         }
-    } else if (node->dflt && !(options & LYP_WD_MASK) && (node->schema->flags & LYS_CONFIG_W)) {
+    } else if (node->dflt && !(options & LYP_WD_MASK) && !(node->schema->flags & LYS_CONFIG_R)) {
         /* LYP_WD_EXPLICIT
          * - print only if it contains status data in its subtree */
         LY_TREE_DFS_BEGIN(node, next, elem) {
