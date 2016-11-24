@@ -2825,6 +2825,23 @@ yang_free_container(struct ly_ctx *ctx, struct lys_node_container * cont)
 }
 
 static void
+yang_free_leaf(struct ly_ctx *ctx, struct lys_node_leaf *leaf)
+{
+    uint8_t i;
+
+    for (i = 0; i < leaf->must_size; i++) {
+        lys_restr_free(ctx, &leaf->must[i]);
+    }
+    free(leaf->must);
+
+    lys_when_free(ctx, leaf->when);
+
+    yang_type_free(ctx, &leaf->type);
+    lydict_remove(ctx, leaf->units);
+    lydict_remove(ctx, leaf->dflt);
+}
+
+static void
 yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node)
 {
     struct lys_node *tmp, *child, *sibling;
@@ -2851,6 +2868,9 @@ yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node)
             break;
         case LYS_CONTAINER:
             yang_free_container(ctx, (struct lys_node_container *)tmp);
+            break;
+        case LYS_LEAF:
+            yang_free_leaf(ctx, (struct lys_node_leaf *)tmp);
             break;
         default:
             break;
@@ -3124,6 +3144,44 @@ error:
 }
 
 static int
+yang_check_leaf(struct lys_module *module, struct lys_node_leaf *leaf, struct unres_schema *unres)
+{
+    uint8_t i, size;
+
+    if (yang_check_type_iffeature(module, unres, &leaf->type)) {
+        yang_type_free(module->ctx, &leaf->type);
+        goto error;
+    }
+
+    if (unres_schema_add_node(module, unres, &leaf->type, UNRES_TYPE_DER_TPDF, (struct lys_node *)leaf) == -1) {
+        yang_type_free(module->ctx, &leaf->type);
+        goto error;
+    }
+
+    if (leaf->dflt && unres_schema_add_node(module, unres, &leaf->type, UNRES_TYPE_DFLT, (struct lys_node *)leaf->dflt) == -1) {
+        goto error;
+    }
+
+    size = leaf->iffeature_size;
+    leaf->iffeature_size = 0;
+    for (i = 0; i < size; ++i) {
+        if (yang_read_if_feature(module, leaf, NULL, (char *)leaf->iffeature[i].features, unres, LEAF_KEYWORD)) {
+            leaf->iffeature_size = size;
+            goto error;
+        }
+    }
+
+    /* check XPath dependencies */
+    if ((leaf->when || leaf->must_size) && (unres_schema_add_node(module, unres, leaf, UNRES_XPATH, NULL) == -1)) {
+        goto error;
+    }
+
+    return EXIT_SUCCESS;
+error:
+    return EXIT_FAILURE;
+}
+
+static int
 yang_check_nodes(struct lys_module *module, struct lys_node *nodes, struct unres_schema *unres)
 {
     struct lys_node *node = nodes, *sibling, *child;
@@ -3148,6 +3206,11 @@ yang_check_nodes(struct lys_module *module, struct lys_node *nodes, struct unres
             break;
         case LYS_CONTAINER:
             if (yang_check_container(module, (struct lys_node_container *)node, unres)) {
+                goto error;
+            }
+            break;
+        case LYS_LEAF:
+            if (yang_check_leaf(module, (struct lys_node_leaf *)node, unres)) {
                 goto error;
             }
             break;

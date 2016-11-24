@@ -1708,129 +1708,109 @@ container_opt_stmt: @EMPTYDIR@ { $$.container = actual;
 leaf_stmt: LEAF_KEYWORD sep leaf_arg_str
            '{' stmtsep
                leaf_opt_stmt
-            '}' { if (read_all) {
-                    if (!($6.node.flag & LYS_TYPE_DEF)) {
-                      LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, $6.node.ptr_leaf, "type", "leaf");
-                      YYABORT;
-                    }
-                    if (unres_schema_add_node(trg, unres, &$6.node.ptr_leaf->type, UNRES_TYPE_DER,(struct lys_node *)$6.node.ptr_leaf) == -1) {
-                      lydict_remove(trg->ctx, ((struct yang_type *)$6.node.ptr_leaf->type.der)->name);
-                      free($6.node.ptr_leaf->type.der);
-                      $6.node.ptr_leaf->type.der = NULL;
-                      YYABORT;
-                    }
-                    if ($6.node.ptr_leaf->dflt && ($6.node.ptr_leaf->flags & LYS_MAND_TRUE)) {
-                      /* RFC 6020, 7.6.4 - default statement must not with mandatory true */
-                      LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, $6.node.ptr_leaf, "mandatory", "leaf");
-                      LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The \"mandatory\" statement is forbidden on leaf with \"default\".");
-                      YYABORT;
-                    }
-                    if (unres_schema_add_node(trg, unres, &$6.node.ptr_leaf->type, UNRES_TYPE_DFLT,
-                                              (struct lys_node *)(&$6.node.ptr_leaf->dflt)) == -1) {
-                      YYABORT;
-                    }
-                    /* check XPath dependencies */
-                    if (($6.node.ptr_leaf->when || $6.node.ptr_leaf->must_size) &&
-                        (unres_schema_add_node(trg, unres, $6.node.ptr_leaf, UNRES_XPATH, NULL) == -1)) {
-                      YYABORT;
-                    }
+            '}' { void *tmp;
+
+                  if (!($6.node.flag & LYS_TYPE_DEF)) {
+                    LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, $6.node.ptr_leaf, "type", "leaf");
+                    YYABORT;
                   }
+                  if ($6.node.ptr_leaf->dflt && ($6.node.ptr_leaf->flags & LYS_MAND_TRUE)) {
+                    /* RFC 6020, 7.6.4 - default statement must not with mandatory true */
+                    LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, $6.node.ptr_leaf, "mandatory", "leaf");
+                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The \"mandatory\" statement is forbidden on leaf with \"default\".");
+                    YYABORT;
+                  }
+
+                  if ($6.node.ptr_leaf->iffeature_size) {
+                    tmp = realloc($6.node.ptr_leaf->iffeature, $6.node.ptr_leaf->iffeature_size * sizeof *$6.node.ptr_leaf->iffeature);
+                    if (!tmp) {
+                      LOGMEM;
+                      YYABORT;
+                    }
+                    $6.node.ptr_leaf->iffeature = tmp;
+                  }
+
+                  if ($6.node.ptr_leaf->must_size) {
+                    tmp = realloc($6.node.ptr_leaf->must, $6.node.ptr_leaf->must_size * sizeof *$6.node.ptr_leaf->must);
+                    if (!tmp) {
+                      LOGMEM;
+                      YYABORT;
+                    }
+                    $6.node.ptr_leaf->must = tmp;
+                  }
+
+                  store_config_flag((struct lys_node *)$6.node.ptr_leaf, config_inherit);
                 }
 
-leaf_arg_str: identifier_arg_str { if (read_all) {
-                                     if (!(actual = yang_read_node(trg,actual,node,s,LYS_LEAF,sizeof(struct lys_node_leaf)))) {YYABORT;}
-                                     data_node = actual;
-                                     s=NULL;
-                                     $$.node.ptr_leaf = actual;
+leaf_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, actual, node, s, LYS_LEAF, sizeof(struct lys_node_leaf)))) {
+                                     YYABORT;
                                    }
+                                   data_node = actual;
+                                   s = NULL;
+                                   $$.node.ptr_leaf = actual;
                                  }
 
-  leaf_opt_stmt: @EMPTYDIR@ { if (read_all) {
-                            $$.node.ptr_leaf = actual;
+leaf_opt_stmt: @EMPTYDIR@ { $$.node.ptr_leaf = actual;
                             $$.node.flag = 0;
                             actual_type = LEAF_KEYWORD;
-                            if (size_arrays->node[size_arrays->next].if_features) {
-                              $$.node.ptr_leaf->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.node.ptr_leaf->iffeature);
-                              if (!$$.node.ptr_leaf->iffeature) {
-                                LOGMEM;
-                                YYABORT;
-                              }
-                            }
-                            if (size_arrays->node[size_arrays->next].must) {
-                              $$.node.ptr_leaf->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.node.ptr_leaf->must);
-                              if (!$$.node.ptr_leaf->must) {
-                                LOGMEM;
-                                YYABORT;
-                              }
-                            }
-                            if (store_flags((struct lys_node *)$$.node.ptr_leaf, size_arrays->node[size_arrays->next].flags, config_inherit)) {
-                                YYABORT;
-                            }
-                            size_arrays->next++;
-                          } else {
-                            $$.index = size_arrays->size;
-                            if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                              LOGMEM;
-                              YYABORT;
-                            }
                           }
-                        }
-    |  leaf_opt_stmt when_stmt { actual = $1.node.ptr_leaf; actual_type = LEAF_KEYWORD; }
+  |  leaf_opt_stmt when_stmt { actual = $1.node.ptr_leaf;
+                               actual_type = LEAF_KEYWORD;
+                             }
        stmtsep
-    |  leaf_opt_stmt if_feature_stmt { if (read_all) {
-                                         if (yang_read_if_feature(trg, $1.node.ptr_leaf, NULL, s, unres, LEAF_KEYWORD)) {YYABORT;}
-                                         s=NULL;
-                                       } else {
-                                         size_arrays->node[$1.index].if_features++;
-                                       }
-                                     }
-    |  leaf_opt_stmt type_stmt { if (read_all) {
-                                   actual = $1.node.ptr_leaf;
-                                   actual_type = LEAF_KEYWORD;
-                                   $1.node.flag |= LYS_TYPE_DEF;
-                                 }
-                               }
-       stmtsep { $$ = $1;}
-    |  leaf_opt_stmt units_stmt { if (read_all && yang_read_units(trg, $1.node.ptr_leaf, s, LEAF_KEYWORD)) {YYABORT;} s = NULL; }
-    |  leaf_opt_stmt must_stmt { if (read_all) {
-                                   actual = $1.node.ptr_leaf;
-                                   actual_type = LEAF_KEYWORD;
-                                 } else {
-                                   size_arrays->node[$1.index].must++;
-                                 }
-                               }
-       stmtsep
-    |  leaf_opt_stmt default_stmt { if (read_all && yang_read_default(trg, $1.node.ptr_leaf, s, LEAF_KEYWORD)) {YYABORT;}
-                                    s = NULL;
+  |  leaf_opt_stmt if_feature_stmt { YANG_ADDELEM($1.node.ptr_leaf->iffeature, $1.node.ptr_leaf->iffeature_size);
+                                     ((struct lys_iffeature *)actual)->features = (struct lys_feature**)s;
+                                     actual = $1.node.ptr_leaf;
+                                     s = NULL;
+                                   }
+  |  leaf_opt_stmt type_stmt { actual = $1.node.ptr_leaf;
+                               actual_type = LEAF_KEYWORD;
+                               $1.node.flag |= LYS_TYPE_DEF;
+                             }
+     stmtsep { $$ = $1;}
+  |  leaf_opt_stmt units_stmt { if (yang_read_units(trg, $1.node.ptr_leaf, s, LEAF_KEYWORD)) {
+                                  YYABORT;
+                                }
+                                s = NULL;
+                              }
+  |  leaf_opt_stmt must_stmt { actual = $1.node.ptr_leaf;
+                               actual_type = LEAF_KEYWORD;
+                             }
+     stmtsep
+  |  leaf_opt_stmt default_stmt { if (yang_read_default(trg, $1.node.ptr_leaf, s, LEAF_KEYWORD)) {
+                                    YYABORT;
                                   }
-    |  leaf_opt_stmt config_read_stmt { if (!read_all) {
-                                               if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_CONFIG_MASK, "config", "leaf", $2, 0)) {
-                                                 YYABORT;
-                                               }
-                                             }
-                                           }
-    |  leaf_opt_stmt mandatory_read_stmt { if (!read_all) {
-                                             if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_MAND_MASK, "mandatory", "leaf", $2, 0)) {
-                                               YYABORT;
-                                             }
-                                           }
-                                         }
-    |  leaf_opt_stmt status_read_stmt { if (!read_all) {
-                                          if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "leaf", $2, 0)) {
-                                            YYABORT;
-                                          }
-                                        }
-                                      }
-    |  leaf_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.node.ptr_leaf, s, "leaf")) {
-                                          YYABORT;
-                                        }
-                                        s = NULL;
-                                      }
-    |  leaf_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.node.ptr_leaf, s, "leaf")) {
+                                  s = NULL;
+                                }
+  |  leaf_opt_stmt config_stmt { if ($1.node.ptr_leaf->flags & LYS_CONFIG_MASK) {
+                                   LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "config", "leaf");
+                                   YYABORT;
+                                 }
+                                 $1.node.ptr_leaf->flags |= $2;
+                               }
+  |  leaf_opt_stmt mandatory_stmt { if ($1.node.ptr_leaf->flags & LYS_MAND_MASK) {
+                                      LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "mandatory", "leaf");
+                                      YYABORT;
+                                    }
+                                    $1.node.ptr_leaf->flags |= $2;
+                                  }
+  |  leaf_opt_stmt status_stmt { if ($1.node.ptr_leaf->flags & LYS_STATUS_MASK) {
+                                   LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "leaf");
+                                   YYABORT;
+                                 }
+                                 $1.node.ptr_leaf->flags |= $2;
+                               }
+  |  leaf_opt_stmt description_stmt { if (yang_read_description(trg, $1.node.ptr_leaf, s, "leaf")) {
                                         YYABORT;
                                       }
                                       s = NULL;
                                     }
+  |  leaf_opt_stmt reference_stmt { if (yang_read_reference(trg, $1.node.ptr_leaf, s, "leaf")) {
+                                      YYABORT;
+                                    }
+                                    s = NULL;
+                                  }
+
 leaf_list_arg_str: identifier_arg_str { if (read_all) {
                                           if (!(actual = yang_read_node(trg,actual,node,s,LYS_LEAFLIST,sizeof(struct lys_node_leaflist)))) {
                                             YYABORT;
