@@ -355,7 +355,6 @@ static void
 xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int toplevel, int options)
 {
     char *buf;
-    struct lyd_node *iter;
     struct lyd_node_anydata *any = (struct lyd_node_anydata *)node;
     const char *ns;
 
@@ -384,6 +383,9 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
             break;
         case LYD_ANYDATA_DATATREE:
             if (any->value.tree) {
+                if (level) {
+                    ly_print(out, "\n");
+                }
                 xml_print_node(out, level ? level + 1 : 0, any->value.tree, 0,
                                LYP_WITHSIBLINGS | (options & LYP_FORMAT));
             }
