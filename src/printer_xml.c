@@ -383,8 +383,9 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
             lyxml_dump_text(out, any->value.str);
             break;
         case LYD_ANYDATA_DATATREE:
-            LY_TREE_FOR(any->value.tree, iter) {
-                xml_print_node(out, level ? level + 1 : 0, iter, 0, options);
+            if (any->value.tree) {
+                xml_print_node(out, level ? level + 1 : 0, any->value.tree, 0,
+                               LYP_WITHSIBLINGS | (options & LYP_FORMAT));
             }
             break;
         case LYD_ANYDATA_XML:
