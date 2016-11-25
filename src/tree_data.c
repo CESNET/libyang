@@ -2042,7 +2042,7 @@ lyd_diff_compare(struct lyd_node *first, struct lyd_node *second,
                  struct ly_set *ordset_keys, struct ly_set *ordset, int options)
 {
     int rc;
-    char *str1, *str2;
+    char *str1 = NULL, *str2 = NULL;
     struct lyd_node_anydata *anydata;
 
     if (first->dflt && !(options & LYD_DIFFOPT_WITHDEFAULTS)) {
