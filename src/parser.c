@@ -1062,7 +1062,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
     int c, i, j, len, found = 0, hidden;
     int64_t num;
     uint64_t unum;
-    const char *ptr, *value = *value_;
+    const char *ptr, *ptr2, *value = *value_;
     struct lys_type_bit **bits = NULL;
     struct lys_ident *ident;
 
@@ -1075,7 +1075,18 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
     switch(type->base) {
     case LY_TYPE_BINARY:
         /* get number of octets for length validation */
-        unum = value ? strlen(value) : 0;
+        unum = 0;
+        if (value) {
+            ptr = value;
+            ptr2 = strchr(value, '\n');
+            while (ptr2) {
+                unum += ptr2 - ptr;
+                ptr = ptr2 + 1;
+                ptr2 = strchr(ptr, '\n');
+            }
+            unum += strlen(ptr);
+        }
+
         if (unum & 3) {
             /* base64 length must be multiple of 4 chars */
             LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, value, leaf->schema->name);
@@ -1085,10 +1096,10 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         len = (unum / 4) * 3;
         /* check padding */
         if (unum) {
-            if (value[unum - 1] == '=') {
+            if (ptr[strlen(ptr) - 1] == '=') {
                 len--;
             }
-            if (value[unum - 2] == '=') {
+            if (ptr[strlen(ptr) - 2] == '=') {
                 len--;
             }
         }
