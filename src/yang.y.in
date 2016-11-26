@@ -258,10 +258,6 @@ void yyerror(YYLTYPE *yylloc, void *scanner, char **value, ...);
                 free($$.deviation);
               }
             } deviation_opt_stmt
-%destructor { if (read_all) {
-                yang_delete_type(module, (struct yang_type *)$$.node.ptr_leaf->type.der);
-              }
-            } leaf_arg_str, leaf_list_arg_str
 %destructor { if (read_all && $$.deviation->deviate->type) {
                 yang_delete_type(module, (struct yang_type *)$$.deviation->deviate->type->der);
               }
@@ -1811,207 +1807,167 @@ leaf_opt_stmt: @EMPTYDIR@ { $$.node.ptr_leaf = actual;
                                     s = NULL;
                                   }
 
-leaf_list_arg_str: identifier_arg_str { if (read_all) {
-                                          if (!(actual = yang_read_node(trg,actual,node,s,LYS_LEAFLIST,sizeof(struct lys_node_leaflist)))) {
-                                            YYABORT;
-                                          }
-                                          data_node = actual;
-                                          s=NULL;
-                                          $$.node.ptr_leaflist = actual;
+leaf_list_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, actual, node, s, LYS_LEAFLIST, sizeof(struct lys_node_leaflist)))) {
+                                          YYABORT;
                                         }
+                                        data_node = actual;
+                                        s = NULL;
                                       }
 
   leaf_list_stmt: LEAF_LIST_KEYWORD sep leaf_list_arg_str
                   '{' stmtsep
                       leaf_list_opt_stmt
-                  '}' { if (read_all) {
-                          int i;
+                  '}' { void *tmp;
 
-                          if ($6.node.ptr_leaflist->flags & LYS_CONFIG_R) {
-                            /* RFC 6020, 7.7.5 - ignore ordering when the list represents state data
-                             * ignore oredering MASK - 0x7F
-                             */
-                            $6.node.ptr_leaflist->flags &= 0x7F;
-                          }
-                          if (!($6.node.flag & LYS_TYPE_DEF)) {
-                            LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, $6.node.ptr_leaflist, "type", "leaf-list");
-                            YYABORT;
-                          }
-                          if (unres_schema_add_node(trg, unres, &$6.node.ptr_leaflist->type, UNRES_TYPE_DER, (struct lys_node *)$6.node.ptr_leaflist) == -1) {
-                            lydict_remove(trg->ctx, ((struct yang_type *)$6.node.ptr_leaflist->type.der)->name);
-                            free($6.node.ptr_leaflist->type.der);
-                            $6.node.ptr_leaflist->type.der = NULL;
-                            YYABORT;
-                          }
-                          if ($6.node.ptr_leaflist->dflt_size && $6.node.ptr_leaflist->min) {
-                            LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "min-elements", "leaf-list");
-                            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
-                                   "The \"min-elements\" statement with non-zero value is forbidden on leaf-lists with the \"default\" statement.");
-                            YYABORT;
-                          }
-
-                          /* check default value (if not defined, there still could be some restrictions
-                           * that need to be checked against a default value from a derived type) */
-                          for (i = 0; i < $6.node.ptr_leaflist->dflt_size; i++) {
-                            if (unres_schema_add_node(module, unres, &$6.node.ptr_leaflist->type, UNRES_TYPE_DFLT,
-                                                      (struct lys_node *)(&$6.node.ptr_leaflist->dflt[i])) == -1) {
-                              YYABORT;
-                            }
-                          }
-                          /* check XPath dependencies */
-                          if (($6.node.ptr_leaflist->when || $6.node.ptr_leaflist->must_size) &&
-                              (unres_schema_add_node(trg, unres, $6.node.ptr_leaflist, UNRES_XPATH, NULL) == -1)) {
-                            YYABORT;
-                          }
+                        if ($6.node.ptr_leaflist->flags & LYS_CONFIG_R) {
+                          /* RFC 6020, 7.7.5 - ignore ordering when the list represents state data
+                           * ignore oredering MASK - 0x7F
+                           */
+                          $6.node.ptr_leaflist->flags &= 0x7F;
                         }
+                        if (!($6.node.flag & LYS_TYPE_DEF)) {
+                          LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, $6.node.ptr_leaflist, "type", "leaf-list");
+                          YYABORT;
+                        }
+                        if ($6.node.ptr_leaflist->dflt_size && $6.node.ptr_leaflist->min) {
+                          LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "min-elements", "leaf-list");
+                          LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
+                                 "The \"min-elements\" statement with non-zero value is forbidden on leaf-lists with the \"default\" statement.");
+                          YYABORT;
+                        }
+
+                        if ($6.node.ptr_leaflist->iffeature_size) {
+                          tmp = realloc($6.node.ptr_leaflist->iffeature, $6.node.ptr_leaflist->iffeature_size * sizeof *$6.node.ptr_leaflist->iffeature);
+                          if (!tmp) {
+                            LOGMEM;
+                            YYABORT;
+                          }
+                          $6.node.ptr_leaflist->iffeature = tmp;
+                        }
+
+                        if ($6.node.ptr_leaflist->must_size) {
+                          tmp = realloc($6.node.ptr_leaflist->must, $6.node.ptr_leaflist->must_size * sizeof *$6.node.ptr_leaflist->must);
+                          if (!tmp) {
+                            LOGMEM;
+                            YYABORT;
+                          }
+                          $6.node.ptr_leaflist->must = tmp;
+                        }
+
+                        if ($6.node.ptr_leaflist->dflt_size) {
+                          tmp = realloc($6.node.ptr_leaflist->dflt, $6.node.ptr_leaflist->dflt_size * sizeof *$6.node.ptr_leaflist->dflt);
+                          if (!tmp) {
+                            LOGMEM;
+                            YYABORT;
+                          }
+                          $6.node.ptr_leaflist->dflt = tmp;
+                        }
+
+                        store_config_flag((struct lys_node *)$6.node.ptr_leaflist, config_inherit);
                       }
 
-leaf_list_opt_stmt: @EMPTYDIR@ { if (read_all) {
-                               $$.node.ptr_leaflist = actual;
-                               $$.node.flag = 0;
-                               actual_type = LEAF_LIST_KEYWORD;
-                               if (size_arrays->node[size_arrays->next].if_features) {
-                                 $$.node.ptr_leaflist->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.node.ptr_leaflist->iffeature);
-                                 if (!$$.node.ptr_leaflist->iffeature) {
-                                   LOGMEM;
-                                   YYABORT;
-                                 }
+leaf_list_opt_stmt: @EMPTYDIR@ { $$.node.ptr_leaflist = actual;
+                                 $$.node.flag = 0;
+                                 actual_type = LEAF_LIST_KEYWORD;
                                }
-                               if (size_arrays->node[size_arrays->next].must) {
-                                 $$.node.ptr_leaflist->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.node.ptr_leaflist->must);
-                                 if (!$$.node.ptr_leaflist->must) {
-                                   LOGMEM;
-                                   YYABORT;
-                                 }
-                               }
-                               if (size_arrays->node[size_arrays->next].dflt) {
-                                 if (trg->version < 2) {
-                                   LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "default");
-                                   YYABORT;
-                                 }
-                                 $$.node.ptr_leaflist->dflt = calloc(size_arrays->node[size_arrays->next].dflt, sizeof *$$.node.ptr_leaflist->dflt);
-                                 if (!$$.node.ptr_leaflist->dflt) {
-                                   LOGMEM;
-                                   YYABORT;
-                                 }
-                               }
-                               if (store_flags((struct lys_node *)$$.node.ptr_leaflist, size_arrays->node[size_arrays->next].flags, config_inherit)) {
-                                   YYABORT;
-                               }
-                               size_arrays->next++;
-                             } else {
-                               $$.index = size_arrays->size;
-                               if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                 LOGMEM;
-                                 YYABORT;
-                               }
-                             }
-                           }
-  |  leaf_list_opt_stmt when_stmt { actual = $1.node.ptr_leaflist; actual_type = LEAF_LIST_KEYWORD; }
+  |  leaf_list_opt_stmt when_stmt { actual = $1.node.ptr_leaflist;
+                                    actual_type = LEAF_LIST_KEYWORD;
+                                  }
      stmtsep
-  |  leaf_list_opt_stmt if_feature_stmt { if (read_all) {
-                                            if (yang_read_if_feature(trg, $1.node.ptr_leaflist, NULL, s, unres, LEAF_LIST_KEYWORD)) {YYABORT;}
-                                            s=NULL;
-                                          } else {
-                                            size_arrays->node[$1.index].if_features++;
-                                          }
+  |  leaf_list_opt_stmt if_feature_stmt { YANG_ADDELEM($1.node.ptr_leaflist->iffeature,
+                                                       $1.node.ptr_leaflist->iffeature_size);
+                                          ((struct lys_iffeature *)actual)->features = (struct lys_feature**)s;
+                                          actual = $1.node.ptr_leaflist;
+                                          s = NULL;
                                         }
-  |  leaf_list_opt_stmt type_stmt { if (read_all) {
-                                      actual = $1.node.ptr_leaflist;
-                                      actual_type = LEAF_LIST_KEYWORD;
-                                      $1.node.flag |= LYS_TYPE_DEF;
-                                    }
+  |  leaf_list_opt_stmt type_stmt { actual = $1.node.ptr_leaflist;
+                                    actual_type = LEAF_LIST_KEYWORD;
+                                    $1.node.flag |= LYS_TYPE_DEF;
                                   }
      stmtsep { $$ = $1; }
-  |  leaf_list_opt_stmt default_stmt { if (read_all) {
-                                         int i;
+  |  leaf_list_opt_stmt default_stmt { int i;
 
-                                         /* check for duplicity in case of configuration data,
-                                          * in case of status data duplicities are allowed */
-                                         if ($1.node.ptr_leaflist->flags & LYS_CONFIG_W) {
-                                           for (i = 0; i < $1.node.ptr_leaflist->dflt_size; i++) {
-                                             if (ly_strequal($1.node.ptr_leaflist->dflt[i], s, 0)) {
-                                               LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "default");
-                                               LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Duplicated default value \"%s\".", s);
-                                               free(s);
-                                               YYABORT;
-                                             }
+                                       /* check for duplicity in case of configuration data,
+                                        * in case of status data duplicities are allowed */
+                                       if ($1.node.ptr_leaflist->flags & LYS_CONFIG_W) {
+                                         for (i = 0; i < $1.node.ptr_leaflist->dflt_size; ++i) {
+                                           if (ly_strequal($1.node.ptr_leaflist->dflt[i], s, 0)) {
+                                             LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "default");
+                                             LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Duplicated default value \"%s\".", s);
+                                             free(s);
+                                             YYABORT;
                                            }
                                          }
-                                         $1.node.ptr_leaflist->dflt[$1.node.ptr_leaflist->dflt_size++] = lydict_insert_zc(module->ctx, s);
-                                       } else {
-                                         size_arrays->node[$1.index].dflt++;
                                        }
+                                       YANG_ADDELEM($1.node.ptr_leaflist->dflt,
+                                                    $1.node.ptr_leaflist->dflt_size);
+                                       (*(const char **)actual) = lydict_insert_zc(module->ctx, s);
+                                       s = NULL;
+                                       actual = $1.node.ptr_leaflist;
                                      }
-  |  leaf_list_opt_stmt units_stmt { if (read_all && yang_read_units(trg, $1.node.ptr_leaflist, s, LEAF_LIST_KEYWORD)) {YYABORT;} s = NULL; }
-  |  leaf_list_opt_stmt must_stmt { if (read_all) {
-                                      actual = $1.node.ptr_leaflist;
-                                      actual_type = LEAF_LIST_KEYWORD;
-                                    } else {
-                                      size_arrays->node[$1.index].must++;
-                                    }
+  |  leaf_list_opt_stmt units_stmt { if (yang_read_units(trg, $1.node.ptr_leaflist, s, LEAF_LIST_KEYWORD)) {
+                                       YYABORT;
+                                     }
+                                     s = NULL;
+                                   }
+  |  leaf_list_opt_stmt must_stmt { actual = $1.node.ptr_leaflist;
+                                    actual_type = LEAF_LIST_KEYWORD;
                                   }
      stmtsep
-  |  leaf_list_opt_stmt config_read_stmt { if (!read_all) {
-                                             if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_CONFIG_MASK, "config", "leaf-list", $2, 0)) {
-                                               YYABORT;
-                                             }
-                                           }
-                                         }
-  |  leaf_list_opt_stmt min_elements_stmt { if (read_all) {
-                                              if ($1.node.flag & LYS_MIN_ELEMENTS) {
-                                                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_leaflist, "min-elements", "leaf-list");
-                                                YYABORT;
-                                              }
-                                              $1.node.ptr_leaflist->min = $2;
-                                              $1.node.flag |= LYS_MIN_ELEMENTS;
-                                              $$ = $1;
-                                              if ($1.node.ptr_leaflist->max && ($1.node.ptr_leaflist->min > $1.node.ptr_leaflist->max)) {
-                                                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", $2, "min-elements");
-                                                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"min-elements\" is bigger than \"max-elements\".");
-                                                YYABORT;
-                                              }
-                                            }
-                                          }
-  |  leaf_list_opt_stmt max_elements_stmt { if (read_all) {
-                                              if ($1.node.flag & LYS_MAX_ELEMENTS) {
-                                                LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_leaflist, "max-elements", "leaf-list");
-                                                YYABORT;
-                                              }
-                                              $1.node.ptr_leaflist->max = $2;
-                                              $1.node.flag |= LYS_MAX_ELEMENTS;
-                                              $$ = $1;
-                                              if ($1.node.ptr_leaflist->min > $1.node.ptr_leaflist->max) {
-                                                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", $2, "max-elements");
-                                                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"max-elements\" is smaller than \"min-elements\".");
-                                                YYABORT;
-                                              }
-                                            }
-                                          }
-  |  leaf_list_opt_stmt ordered_by_stmt { if (read_all) {
-                                            if ($1.node.flag & LYS_ORDERED_MASK) {
-                                              LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_leaflist, "ordered by", "leaf-list");
+  |  leaf_list_opt_stmt config_stmt { if ($1.node.ptr_leaflist->flags & LYS_CONFIG_MASK) {
+                                        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "config", "leaf-list");
+                                        YYABORT;
+                                      }
+                                      $1.node.ptr_leaflist->flags |= $2;
+                                    }
+  |  leaf_list_opt_stmt min_elements_stmt { if ($1.node.flag & LYS_MIN_ELEMENTS) {
+                                              LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_leaflist, "min-elements", "leaf-list");
                                               YYABORT;
                                             }
-                                            if ($2 & LYS_USERORDERED) {
-                                              $1.node.ptr_leaflist->flags |= LYS_USERORDERED;
-                                            }
-                                            $1.node.flag |= $2;
+                                            $1.node.ptr_leaflist->min = $2;
+                                            $1.node.flag |= LYS_MIN_ELEMENTS;
                                             $$ = $1;
+                                            if ($1.node.ptr_leaflist->max && ($1.node.ptr_leaflist->min > $1.node.ptr_leaflist->max)) {
+                                              LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", $2, "min-elements");
+                                              LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"min-elements\" is bigger than \"max-elements\".");
+                                              YYABORT;
+                                            }
                                           }
+  |  leaf_list_opt_stmt max_elements_stmt { if ($1.node.flag & LYS_MAX_ELEMENTS) {
+                                              LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_leaflist, "max-elements", "leaf-list");
+                                              YYABORT;
+                                            }
+                                            $1.node.ptr_leaflist->max = $2;
+                                            $1.node.flag |= LYS_MAX_ELEMENTS;
+                                            $$ = $1;
+                                            if ($1.node.ptr_leaflist->min > $1.node.ptr_leaflist->max) {
+                                              LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", $2, "max-elements");
+                                              LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"max-elements\" is smaller than \"min-elements\".");
+                                              YYABORT;
+                                            }
+                                          }
+  |  leaf_list_opt_stmt ordered_by_stmt { if ($1.node.flag & LYS_ORDERED_MASK) {
+                                            LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_leaflist, "ordered by", "leaf-list");
+                                            YYABORT;
+                                          }
+                                          if ($2 & LYS_USERORDERED) {
+                                            $1.node.ptr_leaflist->flags |= LYS_USERORDERED;
+                                          }
+                                          $1.node.flag |= $2;
+                                          $$ = $1;
                                         }
-  |  leaf_list_opt_stmt status_read_stmt { if (!read_all) {
-                                             if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "leaf-list", $2, 0)) {
-                                               YYABORT;
-                                             }
-                                           }
-                                         }
-  |  leaf_list_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.node.ptr_leaflist, s, "leaf-list")) {
+  |  leaf_list_opt_stmt status_stmt { if ($1.node.ptr_leaflist->flags & LYS_STATUS_MASK) {
+                                        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "leaf-list");
+                                        YYABORT;
+                                      }
+                                      $1.node.ptr_leaflist->flags |= $2;
+                                    }
+  |  leaf_list_opt_stmt description_stmt { if (yang_read_description(trg, $1.node.ptr_leaflist, s, "leaf-list")) {
                                              YYABORT;
                                            }
                                            s = NULL;
                                          }
-  |  leaf_list_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.node.ptr_leaflist, s, "leaf-list")) {
+  |  leaf_list_opt_stmt reference_stmt { if (yang_read_reference(trg, $1.node.ptr_leaflist, s, "leaf-list")) {
                                            YYABORT;
                                          }
                                          s = NULL;

@@ -2736,6 +2736,7 @@ static void yang_type_free(struct ly_ctx *ctx, struct lys_type *type)
         }
     }
     lys_type_free(ctx, type);
+    type->base = LY_TYPE_DER;
     free(stype);
 }
 
@@ -2842,6 +2843,27 @@ yang_free_leaf(struct ly_ctx *ctx, struct lys_node_leaf *leaf)
 }
 
 static void
+yang_free_leaflist(struct ly_ctx *ctx, struct lys_node_leaflist *leaflist)
+{
+    uint8_t i;
+
+    for (i = 0; i < leaflist->must_size; i++) {
+        lys_restr_free(ctx, &leaflist->must[i]);
+    }
+    free(leaflist->must);
+
+    for (i = 0; i < leaflist->dflt_size; i++) {
+        lydict_remove(ctx, leaflist->dflt[i]);
+    }
+    free(leaflist->dflt);
+
+    lys_when_free(ctx, leaflist->when);
+
+    yang_type_free(ctx, &leaflist->type);
+    lydict_remove(ctx, leaflist->units);
+}
+
+static void
 yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node)
 {
     struct lys_node *tmp, *child, *sibling;
@@ -2871,6 +2893,9 @@ yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node)
             break;
         case LYS_LEAF:
             yang_free_leaf(ctx, (struct lys_node_leaf *)tmp);
+            break;
+        case LYS_LEAFLIST:
+            yang_free_leaflist(ctx, (struct lys_node_leaflist *)tmp);
             break;
         default:
             break;
@@ -3182,6 +3207,48 @@ error:
 }
 
 static int
+yang_check_leaflist(struct lys_module *module, struct lys_node_leaflist *leaflist, struct unres_schema *unres)
+{
+    uint8_t i, size;
+
+    if (yang_check_type_iffeature(module, unres, &leaflist->type)) {
+        yang_type_free(module->ctx, &leaflist->type);
+        goto error;
+    }
+
+    if (unres_schema_add_node(module, unres, &leaflist->type, UNRES_TYPE_DER_TPDF, (struct lys_node *)leaflist) == -1) {
+        yang_type_free(module->ctx, &leaflist->type);
+        goto error;
+    }
+
+    /* check default value (if not defined, there still could be some restrictions
+     * that need to be checked against a default value from a derived type) */
+    for (i = 0; i < leaflist->dflt_size; ++i) {
+        if (unres_schema_add_node(module, unres, &leaflist->type, UNRES_TYPE_DFLT, (struct lys_node *)(&leaflist->dflt[i])) == -1) {
+            goto error;
+        }
+    }
+
+    size = leaflist->iffeature_size;
+    leaflist->iffeature_size = 0;
+    for (i = 0; i < size; ++i) {
+        if (yang_read_if_feature(module, leaflist, NULL, (char *)leaflist->iffeature[i].features, unres, LEAF_LIST_KEYWORD)) {
+            leaflist->iffeature_size = size;
+            goto error;
+        }
+    }
+
+    /* check XPath dependencies */
+    if ((leaflist->when || leaflist->must_size) && (unres_schema_add_node(module, unres, leaflist, UNRES_XPATH, NULL) == -1)) {
+        goto error;
+    }
+
+    return EXIT_SUCCESS;
+error:
+    return EXIT_FAILURE;
+}
+
+static int
 yang_check_nodes(struct lys_module *module, struct lys_node *nodes, struct unres_schema *unres)
 {
     struct lys_node *node = nodes, *sibling, *child;
@@ -3211,6 +3278,11 @@ yang_check_nodes(struct lys_module *module, struct lys_node *nodes, struct unres
             break;
         case LYS_LEAF:
             if (yang_check_leaf(module, (struct lys_node_leaf *)node, unres)) {
+                goto error;
+            }
+            break;
+        case LYS_LEAFLIST:
+            if (yang_check_leaflist(module, (struct lys_node_leaflist *)node, unres)) {
                 goto error;
             }
             break;
