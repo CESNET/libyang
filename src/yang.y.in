@@ -1887,6 +1887,11 @@ leaf_list_opt_stmt: @EMPTYDIR@ { $$.node.ptr_leaflist = actual;
      stmtsep { $$ = $1; }
   |  leaf_list_opt_stmt default_stmt { int i;
 
+                                       if (trg->version < 2) {
+                                         free(s);
+                                         LOGVAL(LYE_INSTMT, LY_VLOG_LYS, $1.node.ptr_leaflist, "default");
+                                         YYABORT;
+                                       }
                                        /* check for duplicity in case of configuration data,
                                         * in case of status data duplicities are allowed */
                                        if ($1.node.ptr_leaflist->flags & LYS_CONFIG_W) {
