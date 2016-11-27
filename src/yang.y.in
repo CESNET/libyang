@@ -1973,199 +1973,164 @@ leaf_list_opt_stmt: @EMPTYDIR@ { $$.node.ptr_leaflist = actual;
                                          s = NULL;
                                        }
 
-list_stmt: LIST_KEYWORD sep identifier_arg_str { if (read_all) {
-                                                   if (!(actual = yang_read_node(trg,actual,node,s,LYS_LIST,sizeof(struct lys_node_list)))) {YYABORT;}
-                                                   data_node = actual;
-                                                   s=NULL;
-                                                 }
-                                               }
-           '{' stmtsep
-               list_opt_stmt { if (read_all) {
-                                 struct lys_node *node;
-
-                                 if ($7.node.ptr_list->flags & LYS_CONFIG_R) {
-                                   /* RFC 6020, 7.7.5 - ignore ordering when the list represents state data
-                                    * ignore oredering MASK - 0x7F
-                                    */
-                                   $7.node.ptr_list->flags &= 0x7F;
-                                 }
-                                 /* check - if list is configuration, key statement is mandatory
-                                  * (but only if we are not in a grouping or augment, then the check is deferred) */
-                                 for (node = (struct lys_node *)$7.node.ptr_list; node && !(node->nodetype & (LYS_GROUPING | LYS_AUGMENT)); node = node->parent);
-                                 if (!node && ($7.node.ptr_list->flags & LYS_CONFIG_W) && !$7.node.ptr_list->keys) {
-                                   LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, $7.node.ptr_list, "key", "list");
-                                   YYABORT;
-                                 }
-                                 if ($7.node.ptr_list->keys && yang_read_key(trg, $7.node.ptr_list, unres)) {
-                                   YYABORT;
-                                 }
-                                 if (yang_read_unique(trg, $7.node.ptr_list, unres)) {
-                                   YYABORT;
-                                 }
-                                 /* check XPath dependencies */
-                                 if (($7.node.ptr_list->when || $7.node.ptr_list->must_size) &&
-                                     (unres_schema_add_node(trg, unres, $7.node.ptr_list, UNRES_XPATH, NULL) == -1)) {
-                                   YYABORT;
-                                 }
-                               }
-                             }
-            '}' ;
-
-list_opt_stmt: @EMPTYDIR@ { if (read_all) {
-                          $$.node.ptr_list = actual;
-                          $$.node.flag = 0;
-                          actual_type = LIST_KEYWORD;
-                          if (size_arrays->node[size_arrays->next].if_features) {
-                            $$.node.ptr_list->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.node.ptr_list->iffeature);
-                            if (!$$.node.ptr_list->iffeature) {
-                              LOGMEM;
-                              YYABORT;
-                            }
-                          }
-                          if (size_arrays->node[size_arrays->next].must) {
-                            $$.node.ptr_list->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.node.ptr_list->must);
-                            if (!$$.node.ptr_list->must) {
-                              LOGMEM;
-                              YYABORT;
-                            }
-                          }
-                          if (size_arrays->node[size_arrays->next].tpdf) {
-                            $$.node.ptr_list->tpdf = calloc(size_arrays->node[size_arrays->next].tpdf, sizeof *$$.node.ptr_list->tpdf);
-                            if (!$$.node.ptr_list->tpdf) {
-                              LOGMEM;
-                              YYABORT;
-                            }
-                          }
-                          if (size_arrays->node[size_arrays->next].unique) {
-                            $$.node.ptr_list->unique = calloc(size_arrays->node[size_arrays->next].unique, sizeof *$$.node.ptr_list->unique);
-                            if (!$$.node.ptr_list->unique) {
-                              LOGMEM;
-                              YYABORT;
-                            }
-                          }
-                          $$.node.ptr_list->keys_size = size_arrays->node[size_arrays->next].keys;
-                          if (store_flags((struct lys_node *)$$.node.ptr_list, size_arrays->node[size_arrays->next].flags, config_inherit)) {
-                              YYABORT;
-                          }
-                          size_arrays->next++;
-                        } else {
-                          $$.index = size_arrays->size;
-                          if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                            LOGMEM;
-                            YYABORT;
-                          }
-                        }
-                      }
-  |  list_opt_stmt when_stmt { actual = $1.node.ptr_list; actual_type = LIST_KEYWORD; }
-     stmtsep
-  |  list_opt_stmt if_feature_stmt { if (read_all) {
-                                       if (yang_read_if_feature(trg, $1.node.ptr_list, NULL, s, unres, LIST_KEYWORD)) {YYABORT;}
-                                       s=NULL;
-                                     } else {
-                                       size_arrays->node[$1.index].if_features++;
-                                     }
+list_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, actual, node, s, LYS_LIST, sizeof(struct lys_node_list)))) {
+                                     YYABORT;
                                    }
-  |  list_opt_stmt must_stmt { if (read_all) {
-                                 actual = $1.node.ptr_list;
-                                 actual_type = LIST_KEYWORD;
-                               } else {
-                                 size_arrays->node[$1.index].must++;
-                               }
+                                   data_node = actual;
+                                   s = NULL;
+                                 }
+
+list_stmt: LIST_KEYWORD sep list_arg_str
+           '{' stmtsep
+               list_opt_stmt
+            '}' { struct lys_node *node;
+                  void *tmp;
+
+                  store_config_flag((struct lys_node *)$6.node.ptr_list, config_inherit);
+                  if ($6.node.ptr_list->flags & LYS_CONFIG_R) {
+                    /* RFC 6020, 7.7.5 - ignore ordering when the list represents state data
+                     * ignore oredering MASK - 0x7F
+                     */
+                    $6.node.ptr_list->flags &= 0x7F;
+                  }
+                  /* check - if list is configuration, key statement is mandatory
+                   * (but only if we are not in a grouping or augment, then the check is deferred) */
+                  for (node = (struct lys_node *)$6.node.ptr_list; node && !(node->nodetype & (LYS_GROUPING | LYS_AUGMENT)); node = node->parent);
+                  if (!node && ($6.node.ptr_list->flags & LYS_CONFIG_W) && !$6.node.ptr_list->keys) {
+                    LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, $6.node.ptr_list, "key", "list");
+                    YYABORT;
+                  }
+
+                  if ($6.node.ptr_list->iffeature_size) {
+                    tmp = realloc($6.node.ptr_list->iffeature, $6.node.ptr_list->iffeature_size * sizeof *$6.node.ptr_list->iffeature);
+                    if (!tmp) {
+                      LOGMEM;
+                      YYABORT;
+                    }
+                    $6.node.ptr_list->iffeature = tmp;
+                  }
+
+                  if ($6.node.ptr_list->must_size) {
+                    tmp = realloc($6.node.ptr_list->must, $6.node.ptr_list->must_size * sizeof *$6.node.ptr_list->must);
+                    if (!tmp) {
+                      LOGMEM;
+                      YYABORT;
+                    }
+                    $6.node.ptr_list->must = tmp;
+                  }
+
+                  if ($6.node.ptr_list->tpdf_size) {
+                    tmp = realloc($6.node.ptr_list->tpdf, $6.node.ptr_list->tpdf_size * sizeof *$6.node.ptr_list->tpdf);
+                    if (!tmp) {
+                      LOGMEM;
+                      YYABORT;
+                    }
+                    $6.node.ptr_list->tpdf = tmp;
+                  }
+
+                  if ($6.node.ptr_list->unique_size) {
+                    tmp = realloc($6.node.ptr_list->unique, $6.node.ptr_list->unique_size * sizeof *$6.node.ptr_list->unique);
+                    if (!tmp) {
+                      LOGMEM;
+                      YYABORT;
+                    }
+                    $6.node.ptr_list->unique = tmp;
+                  }
+                }
+
+list_opt_stmt: @EMPTYDIR@ { $$.node.ptr_list = actual;
+                            $$.node.flag = 0;
+                            actual_type = LIST_KEYWORD;
+                          }
+  |  list_opt_stmt when_stmt { actual = $1.node.ptr_list;
+                               actual_type = LIST_KEYWORD;
                              }
      stmtsep
-  |  list_opt_stmt key_stmt { if (read_all) {
-                                if ($1.node.ptr_list->keys) {
+  |  list_opt_stmt if_feature_stmt { YANG_ADDELEM($1.node.ptr_list->iffeature,
+                                                  $1.node.ptr_list->iffeature_size);
+                                     ((struct lys_iffeature *)actual)->features = (struct lys_feature**)s;
+                                     actual = $1.node.ptr_list;
+                                     s = NULL;
+                                   }
+  |  list_opt_stmt must_stmt { actual = $1.node.ptr_list;
+                               actual_type = LIST_KEYWORD;
+                             }
+     stmtsep
+  |  list_opt_stmt key_stmt { if ($1.node.ptr_list->keys) {
                                   LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_list, "key", "list");
                                   free(s);
                                   YYABORT;
-                                }
-                                $1.node.ptr_list->keys = (struct lys_node_leaf **)s;
-                                $$ = $1;
-                                s=NULL;
-                              } else {
-                                /* list has keys */
-                                size_arrays->node[$1.index].keys = 1;
                               }
+                              $1.node.ptr_list->keys = (struct lys_node_leaf **)s;
+                              $$ = $1;
+                              s = NULL;
                             }
-  |  list_opt_stmt unique_stmt { if (read_all) {
-                                   $1.node.ptr_list->unique[$1.node.ptr_list->unique_size++].expr = (const char **)s;
-                                   $$ = $1;
-                                   s = NULL;
-                                 } else {
-                                   size_arrays->node[$1.index].unique++;
-                                 }
+  |  list_opt_stmt unique_stmt { YANG_ADDELEM($1.node.ptr_list->unique, $1.node.ptr_list->unique_size);
+                                 ((struct lys_unique *)actual)->expr = (const char **)s;
+                                 $$ = $1;
+                                 s = NULL;
                                }
-  |  list_opt_stmt config_read_stmt { if (!read_all) {
-                                        if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_CONFIG_MASK, "config", "list", $2, 0)) {
-                                          YYABORT;
-                                        }
-                                      }
-                                    }
-  |  list_opt_stmt min_elements_stmt { if (read_all) {
-                                         if ($1.node.flag & LYS_MIN_ELEMENTS) {
-                                           LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_list, "min-elements", "list");
-                                           YYABORT;
-                                         }
-                                         $1.node.ptr_list->min = $2;
-                                         $1.node.flag |= LYS_MIN_ELEMENTS;
-                                         $$ = $1;
-                                         if ($1.node.ptr_list->max && ($1.node.ptr_list->min > $1.node.ptr_list->max)) {
-                                           LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", $2, "min-elements");
-                                           LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"min-elements\" is bigger than \"max-elements\".");
-                                           YYABORT;
-                                         }
-                                       }
-                                     }
-  |  list_opt_stmt max_elements_stmt { if (read_all) {
-                                         if ($1.node.flag & LYS_MAX_ELEMENTS) {
-                                           LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_list, "max-elements", "list");
-                                           YYABORT;
-                                         }
-                                         $1.node.ptr_list->max = $2;
-                                         $1.node.flag |= LYS_MAX_ELEMENTS;
-                                         $$ = $1;
-                                         if ($1.node.ptr_list->min > $1.node.ptr_list->max) {
-                                           LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", $2, "min-elements");
-                                           LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"max-elements\" is smaller than \"min-elements\".");
-                                           YYABORT;
-                                         }
-                                       }
-                                     }
-  |  list_opt_stmt ordered_by_stmt { if (read_all) {
-                                       if ($1.node.flag & LYS_ORDERED_MASK) {
-                                         LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_list, "ordered by", "list");
+  |  list_opt_stmt config_stmt { if ($1.node.ptr_list->flags & LYS_CONFIG_MASK) {
+                                   LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "config", "list");
+                                   YYABORT;
+                                 }
+                                 $1.node.ptr_list->flags |= $2;
+                               }
+  |  list_opt_stmt min_elements_stmt { if ($1.node.flag & LYS_MIN_ELEMENTS) {
+                                         LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_list, "min-elements", "list");
                                          YYABORT;
                                        }
-                                       if ($2 & LYS_USERORDERED) {
-                                         $1.node.ptr_list->flags |= LYS_USERORDERED;
-                                       }
-                                       $1.node.flag |= $2;
+                                       $1.node.ptr_list->min = $2;
+                                       $1.node.flag |= LYS_MIN_ELEMENTS;
                                        $$ = $1;
+                                       if ($1.node.ptr_list->max && ($1.node.ptr_list->min > $1.node.ptr_list->max)) {
+                                         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", $2, "min-elements");
+                                         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"min-elements\" is bigger than \"max-elements\".");
+                                         YYABORT;
+                                       }
                                      }
+  |  list_opt_stmt max_elements_stmt { if ($1.node.flag & LYS_MAX_ELEMENTS) {
+                                         LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_list, "max-elements", "list");
+                                         YYABORT;
+                                       }
+                                       $1.node.ptr_list->max = $2;
+                                       $1.node.flag |= LYS_MAX_ELEMENTS;
+                                       $$ = $1;
+                                       if ($1.node.ptr_list->min > $1.node.ptr_list->max) {
+                                         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", $2, "min-elements");
+                                         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"max-elements\" is smaller than \"min-elements\".");
+                                         YYABORT;
+                                       }
+                                     }
+  |  list_opt_stmt ordered_by_stmt { if ($1.node.flag & LYS_ORDERED_MASK) {
+                                       LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_list, "ordered by", "list");
+                                       YYABORT;
+                                     }
+                                     if ($2 & LYS_USERORDERED) {
+                                       $1.node.ptr_list->flags |= LYS_USERORDERED;
+                                     }
+                                     $1.node.flag |= $2;
+                                     $$ = $1;
                                    }
-  |  list_opt_stmt status_read_stmt { if (!read_all) {
-                                        if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "list", $2, 0)) {
-                                          YYABORT;
-                                        }
-                                      }
-                                    }
-  |  list_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.node.ptr_list, s, "list")) {
+  |  list_opt_stmt status_stmt { if ($1.node.ptr_list->flags & LYS_STATUS_MASK) {
+                                   LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "list");
+                                   YYABORT;
+                                 }
+                                 $1.node.ptr_list->flags |= $2;
+                               }
+  |  list_opt_stmt description_stmt { if (yang_read_description(trg, $1.node.ptr_list, s, "list")) {
                                         YYABORT;
                                       }
                                       s = NULL;
                                     }
-  |  list_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.node.ptr_list, s, "list")) {
+  |  list_opt_stmt reference_stmt { if (yang_read_reference(trg, $1.node.ptr_list, s, "list")) {
                                       YYABORT;
                                     }
                                     s = NULL;
                                   }
-  |  list_opt_stmt typedef_stmt { if (read_all) {
-                                            actual = $1.node.ptr_list;
-                                            actual_type = LIST_KEYWORD;
-                                          } else {
-                                            size_arrays->node[$1.index].tpdf++;
-                                          }
-                                        }
+  |  list_opt_stmt typedef_stmt { actual = $1.node.ptr_list;
+                                  actual_type = LIST_KEYWORD;
+                                }
      stmtsep
   |  list_opt_stmt grouping_stmt { actual = $1.node.ptr_list;
                                    actual_type = LIST_KEYWORD;
@@ -2177,14 +2142,12 @@ list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                  data_node = actual;
                                }
      stmtsep
-  |  list_opt_stmt notification_stmt { if (read_all) {
-                                         actual = $1.node.ptr_list;
-                                         actual_type = LIST_KEYWORD;
-                                         data_node = actual;
-                                         if (trg->version < 2) {
-                                           LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "notification");
-                                           YYABORT;
-                                         }
+  |  list_opt_stmt notification_stmt { actual = $1.node.ptr_list;
+                                       actual_type = LIST_KEYWORD;
+                                       data_node = actual;
+                                       if (trg->version < 2) {
+                                         LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "notification");
+                                         YYABORT;
                                        }
                                      }
      stmtsep
@@ -2194,7 +2157,6 @@ list_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                    data_node = actual;
                                  }
      stmtsep { $$ = $1; }
-  ;
 
 choice_stmt: CHOICE_KEYWORD sep identifier_arg_str { if (read_all) {
                                                        if (!(actual = yang_read_node(trg,actual,node,s,LYS_CHOICE,sizeof(struct lys_node_choice)))) {YYABORT;}

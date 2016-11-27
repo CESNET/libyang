@@ -553,7 +553,6 @@ yang_read_key(struct lys_module *module, struct lys_node_list *list, struct unre
     struct lys_node *node;
 
     exp = value = (char *) list->keys;
-    list->keys_size = 0;
     while ((value = strpbrk(value, " \t\n"))) {
         list->keys_size++;
         while (isspace(*value)) {
@@ -2864,6 +2863,29 @@ yang_free_leaflist(struct ly_ctx *ctx, struct lys_node_leaflist *leaflist)
 }
 
 static void
+yang_free_list(struct ly_ctx *ctx, struct lys_node_list *list)
+{
+    uint8_t i;
+
+    yang_tpdf_free(ctx, list->tpdf, 0, list->tpdf_size);
+    free(list->tpdf);
+
+    for (i = 0; i < list->must_size; ++i) {
+        lys_restr_free(ctx, &list->must[i]);
+    }
+    free(list->must);
+
+    lys_when_free(ctx, list->when);
+
+    for (i = 0; i < list->unique_size; ++i) {
+        free(list->unique[i].expr);
+    }
+    free(list->unique);
+
+    free(list->keys);
+}
+
+static void
 yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node)
 {
     struct lys_node *tmp, *child, *sibling;
@@ -2896,6 +2918,9 @@ yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node)
             break;
         case LYS_LEAFLIST:
             yang_free_leaflist(ctx, (struct lys_node_leaflist *)tmp);
+            break;
+        case LYS_LIST:
+            yang_free_list(ctx, (struct lys_node_list *)tmp);
             break;
         default:
             break;
@@ -3049,6 +3074,10 @@ yang_check_typedef(struct lys_module *module, struct lys_node *parent, struct un
         case LYS_CONTAINER:
             tpdf = ((struct lys_node_container *)parent)->tpdf;
             ptr_tpdf_size = &((struct lys_node_container *)parent)->tpdf_size;
+            break;
+        case LYS_LIST:
+            tpdf = ((struct lys_node_list *)parent)->tpdf;
+            ptr_tpdf_size = &((struct lys_node_list *)parent)->tpdf_size;
             break;
         default:
             LOGINT;
@@ -3249,6 +3278,42 @@ error:
 }
 
 static int
+yang_check_list(struct lys_module *module, struct lys_node_list *list, struct unres_schema *unres)
+{
+    uint8_t size, i;
+    
+    if (yang_check_typedef(module, (struct lys_node *)list, unres)) {
+        goto error;
+    }
+
+    size = list->iffeature_size;
+    list->iffeature_size = 0;
+    for (i = 0; i < size; ++i) {
+        if (yang_read_if_feature(module, list, NULL, (char *)list->iffeature[i].features, unres, LIST_KEYWORD)) {
+            list->iffeature_size = size;
+            goto error;
+        }
+    }
+
+    if (list->keys && yang_read_key(module, list, unres)) {
+        goto error;
+    }
+
+    if (yang_read_unique(module, list, unres)) {
+        goto error;
+    }
+
+    /* check XPath dependencies */
+    if ((list->when || list->must_size) && (unres_schema_add_node(module, unres, list, UNRES_XPATH, NULL) == -1)) {
+        goto error;
+    }
+
+    return EXIT_SUCCESS;
+error:
+    return EXIT_FAILURE;
+}
+
+static int
 yang_check_nodes(struct lys_module *module, struct lys_node *nodes, struct unres_schema *unres)
 {
     struct lys_node *node = nodes, *sibling, *child;
@@ -3283,6 +3348,11 @@ yang_check_nodes(struct lys_module *module, struct lys_node *nodes, struct unres
             break;
         case LYS_LEAFLIST:
             if (yang_check_leaflist(module, (struct lys_node_leaflist *)node, unres)) {
+                goto error;
+            }
+            break;
+        case LYS_LIST:
+            if (yang_check_list(module, (struct lys_node_list *)node, unres)) {
                 goto error;
             }
             break;
