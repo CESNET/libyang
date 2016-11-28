@@ -2886,6 +2886,20 @@ yang_free_anydata(struct ly_ctx *ctx, struct lys_node_anydata *anydata)
 }
 
 static void
+yang_free_inout(struct ly_ctx *ctx, struct lys_node_inout *inout)
+{
+    uint8_t i;
+
+    yang_tpdf_free(ctx, inout->tpdf, 0, inout->tpdf_size);
+    free(inout->tpdf);
+
+    for (i = 0; i < inout->must_size; ++i) {
+        lys_restr_free(ctx, &inout->must[i]);
+    }
+    free(inout->must);
+}
+
+static void
 yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node)
 {
     struct lys_node *tmp, *child, *sibling;
@@ -2933,6 +2947,10 @@ yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node)
         case LYS_ANYXML:
         case LYS_ANYDATA:
             yang_free_anydata(ctx, (struct lys_node_anydata *)tmp);
+            break;
+        case LYS_INPUT:
+        case LYS_OUTPUT:
+            yang_free_inout(ctx, (struct lys_node_inout *)tmp);
             break;
         default:
             break;
@@ -3095,6 +3113,11 @@ yang_check_typedef(struct lys_module *module, struct lys_node *parent, struct un
         case LYS_ACTION:
             tpdf = ((struct lys_node_rpc_action *)parent)->tpdf;
             ptr_tpdf_size = &((struct lys_node_rpc_action *)parent)->tpdf_size;
+            break;
+        case LYS_INPUT:
+        case LYS_OUTPUT:
+            tpdf = ((struct lys_node_inout *)parent)->tpdf;
+            ptr_tpdf_size = &((struct lys_node_inout *)parent)->tpdf_size;
             break;
         default:
             LOGINT;
@@ -3503,6 +3526,17 @@ yang_check_nodes(struct lys_module *module, struct lys_node *nodes, struct unres
         case LYS_RPC:
         case LYS_ACTION:
             if (yang_check_rpc_action(module, (struct lys_node_rpc_action *)node, unres)){
+                goto error;
+            }
+            break;
+        case LYS_INPUT:
+        case LYS_OUTPUT:
+            /* check XPath dependencies */
+            if (((struct lys_node_inout *)node)->must_size &&
+                (unres_schema_add_node(module, unres, node, UNRES_XPATH, NULL) == -1)) {
+                goto error;
+            }
+            if (yang_check_typedef(module, node, unres)) {
                 goto error;
             }
             break;

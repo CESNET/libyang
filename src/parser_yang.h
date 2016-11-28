@@ -88,7 +88,6 @@ struct type_node {
         struct lys_node_anydata *ptr_anydata;
         struct lys_node_augment *ptr_augment;
         struct lys_node_rpc_action *ptr_rpc;
-        struct lys_node_inout *ptr_inout;
         struct lys_node_choice *ptr_choice;
     };
     uint flag;
