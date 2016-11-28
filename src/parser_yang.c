@@ -2932,6 +2932,9 @@ yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node)
         case LYS_CHOICE:
             yang_free_choice(ctx, (struct lys_node_choice *)tmp);
             break;
+        case LYS_CASE:
+            lys_when_free(ctx, ((struct lys_node_case *)tmp)->when);
+            break;
         default:
             break;
         }
@@ -3359,6 +3362,22 @@ error:
 }
 
 static int
+yang_check_case(struct lys_module *module, struct lys_node_case *cs, struct unres_schema *unres)
+{
+    uint8_t size, i;
+
+    size = cs->iffeature_size;
+    cs->iffeature_size = 0;
+    for (i = 0; i < size; ++i) {
+        if (yang_read_if_feature(module, cs, NULL, (char *)cs->iffeature[i].features, unres, CASE_KEYWORD)) {
+            cs->iffeature_size = size;
+            return EXIT_FAILURE;
+        }
+    }
+    return EXIT_SUCCESS;
+}
+
+static int
 yang_check_nodes(struct lys_module *module, struct lys_node *nodes, struct unres_schema *unres)
 {
     struct lys_node *node = nodes, *sibling, *child, *parent;
@@ -3406,6 +3425,11 @@ yang_check_nodes(struct lys_module *module, struct lys_node *nodes, struct unres
             break;
         case LYS_CHOICE:
             if (yang_check_choice(module, (struct lys_node_choice *)node, unres)) {
+                goto error;
+            }
+            break;
+        case LYS_CASE:
+            if (yang_check_case(module, (struct lys_node_case *)node, unres)) {
                 goto error;
             }
             break;

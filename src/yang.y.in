@@ -2282,74 +2282,55 @@ short_case_stmt: container_stmt
                  }
   ;
 
-case_stmt: CASE_KEYWORD sep identifier_arg_str { if (read_all) {
-                                                   if (!(actual = yang_read_node(trg,actual,node,s,LYS_CASE,sizeof(struct lys_node_case)))) {YYABORT;}
-                                                   data_node = actual;
-                                                   s=NULL;
-                                                 }
-                                               }
-           case_end;
+case_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, actual, node, s, LYS_CASE, sizeof(struct lys_node_case)))) {
+                                     YYABORT;
+                                   }
+                                   data_node = actual;
+                                   s = NULL;
+                                 }
 
-case_end: ';' { if (read_all) {
-                  if (store_flags((struct lys_node *)actual, 0, config_inherit)) {
-                    YYABORT;
-                  }
-                }
-              }
+case_stmt: CASE_KEYWORD sep case_arg_str
+           case_end { store_config_flag((struct lys_node *)actual, config_inherit); }
+
+case_end: ';'
   |  '{' stmtsep
          case_opt_stmt
-      '}' { if (read_all) {
-              /* check XPath dependencies */
-              if ($3.cs->when &&
-                  (unres_schema_add_node(trg, unres, $3.cs, UNRES_XPATH, NULL) == -1)) {
-                YYABORT;
-              }
-            }
+      '}' { struct lys_iffeature *tmp;
+
+           if ($3.cs->iffeature_size) {
+             tmp = realloc($3.cs->iffeature, $3.cs->iffeature_size * sizeof *tmp);
+             if (!tmp) {
+               LOGMEM;
+               YYABORT;
+             }
+             $3.cs->iffeature = tmp;
+           }
           }
 
-case_opt_stmt: @EMPTYDIR@ { if (read_all) {
-                          $$.cs = actual;
-                          actual_type = CASE_KEYWORD;
-                          if (size_arrays->node[size_arrays->next].if_features) {
-                            $$.cs->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.cs->iffeature);
-                            if (!$$.cs->iffeature) {
-                              LOGMEM;
-                              YYABORT;
-                            }
+case_opt_stmt: @EMPTYDIR@ { $$.cs = actual;
+                            actual_type = CASE_KEYWORD;
                           }
-                          if (store_flags((struct lys_node *)$$.cs, size_arrays->node[size_arrays->next].flags, config_inherit)) {
-                              YYABORT;
-                          }
-                          size_arrays->next++;
-                        } else {
-                          $$.index = size_arrays->size;
-                          if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                            LOGMEM;
-                            YYABORT;
-                          }
-                        }
-                      }
-  |  case_opt_stmt when_stmt { actual = $1.cs; actual_type = CASE_KEYWORD; }
+  |  case_opt_stmt when_stmt { actual = $1.cs;
+                               actual_type = CASE_KEYWORD;
+                             }
      stmtsep
-  |  case_opt_stmt if_feature_stmt { if (read_all) {
-                                       if (yang_read_if_feature(trg, $1.cs, NULL, s, unres, CASE_KEYWORD)) {YYABORT;}
-                                       s=NULL;
-                                     } else {
-                                       size_arrays->node[$1.index].if_features++;
-                                     }
+  |  case_opt_stmt if_feature_stmt { YANG_ADDELEM($1.cs->iffeature, $1.cs->iffeature_size);
+                                     ((struct lys_iffeature *)actual)->features = (struct lys_feature**)s;
+                                     actual = $1.cs;
+                                     s = NULL;
                                    }
-  |  case_opt_stmt status_read_stmt { if (!read_all) {
-                                        if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "case", $2, 0)) {
-                                          YYABORT;
-                                        }
-                                      }
-                                    }
-  |  case_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.cs, s, "case")) {
+  |  case_opt_stmt status_stmt { if ($1.cs->flags & LYS_STATUS_MASK) {
+                                   LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "case");
+                                   YYABORT;
+                                 }
+                                 $1.cs->flags |= $2;
+                               }
+  |  case_opt_stmt description_stmt { if (yang_read_description(trg, $1.cs, s, "case")) {
                                         YYABORT;
                                       }
                                       s = NULL;
                                     }
-  |  case_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.cs, s, "case")) {
+  |  case_opt_stmt reference_stmt { if (yang_read_reference(trg, $1.cs, s, "case")) {
                                       YYABORT;
                                     }
                                     s = NULL;
@@ -2359,7 +2340,6 @@ case_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                    data_node = actual;
                                  }
      stmtsep
-  ;
 
 anyxml_stmt: ANYXML_KEYWORD sep identifier_arg_str { if (read_all) {
                                                        if (!(actual = yang_read_node(trg,actual,node,s,LYS_ANYXML,sizeof(struct lys_node_anydata)))) {YYABORT;}
