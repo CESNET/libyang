@@ -2886,6 +2886,13 @@ yang_free_list(struct ly_ctx *ctx, struct lys_node_list *list)
 }
 
 static void
+yang_free_choice(struct ly_ctx *ctx, struct lys_node_choice *choice)
+{
+    free(choice->dflt);
+    lys_when_free(ctx, choice->when);
+}
+
+static void
 yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node)
 {
     struct lys_node *tmp, *child, *sibling;
@@ -2921,6 +2928,9 @@ yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node)
             break;
         case LYS_LIST:
             yang_free_list(ctx, (struct lys_node_list *)tmp);
+            break;
+        case LYS_CHOICE:
+            yang_free_choice(ctx, (struct lys_node_choice *)tmp);
             break;
         default:
             break;
@@ -3314,6 +3324,41 @@ error:
 }
 
 static int
+yang_check_choice(struct lys_module *module, struct lys_node_choice *choice, struct unres_schema *unres)
+{
+    char *value;
+    uint8_t size, i;
+
+    if (choice->dflt) {
+        value = (char *)choice->dflt;
+        choice->dflt = NULL;
+        if (unres_schema_add_str(module, unres, choice, UNRES_CHOICE_DFLT, value) == -1) {
+            free(value);
+            goto error;
+        }
+        free(value);
+    }
+
+    size = choice->iffeature_size;
+    choice->iffeature_size = 0;
+    for (i = 0; i < size; ++i) {
+        if (yang_read_if_feature(module, choice, NULL, (char *)choice->iffeature[i].features, unres, CHOICE_KEYWORD)) {
+            choice->iffeature_size = size;
+            goto error;
+        }
+    }
+
+    /* check XPath dependencies */
+    if ((choice->when) && (unres_schema_add_node(module, unres, choice, UNRES_XPATH, NULL) == -1)) {
+        goto error;
+    }
+
+    return EXIT_SUCCESS;
+error:
+    return EXIT_FAILURE;
+}
+
+static int
 yang_check_nodes(struct lys_module *module, struct lys_node *nodes, struct unres_schema *unres)
 {
     struct lys_node *node = nodes, *sibling, *child;
@@ -3353,6 +3398,11 @@ yang_check_nodes(struct lys_module *module, struct lys_node *nodes, struct unres
             break;
         case LYS_LIST:
             if (yang_check_list(module, (struct lys_node_list *)node, unres)) {
+                goto error;
+            }
+            break;
+        case LYS_CHOICE:
+            if (yang_check_choice(module, (struct lys_node_choice *)node, unres)) {
                 goto error;
             }
             break;
