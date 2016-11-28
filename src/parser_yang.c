@@ -481,26 +481,6 @@ yang_read_node(struct lys_module *module, struct lys_node *parent, struct lys_no
     return node;
 }
 
-void *
-yang_read_action(struct lys_module *module, struct lys_node *parent, struct lys_node **root, char *value)
-{
-    struct lys_node *node;
-
-    if (module->version != 2) {
-        LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "action");
-        return NULL;
-    }
-
-    for (node = parent; node; node = lys_parent(node)) {
-        if ((node->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))
-                || ((node->nodetype == LYS_LIST) && !((struct lys_node_list *)node)->keys_size)) {
-            LOGVAL(LYE_INPAR, LY_VLOG_NONE, NULL, strnodetype(node->nodetype), "action");
-            return NULL;
-        }
-    }
-    return yang_read_node(module, parent, root, value, LYS_ACTION, sizeof(struct lys_node_rpc_action));
-}
-
 int
 yang_read_default(struct lys_module *module, void *node, char *value, enum yytokentype type)
 {
@@ -2928,6 +2908,8 @@ yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node)
 
         switch (tmp->nodetype) {
         case LYS_GROUPING:
+        case LYS_RPC:
+        case LYS_ACTION:
             yang_free_grouping(ctx, (struct lys_node_grp *)tmp);
             break;
         case LYS_CONTAINER:
@@ -3108,6 +3090,11 @@ yang_check_typedef(struct lys_module *module, struct lys_node *parent, struct un
         case LYS_LIST:
             tpdf = ((struct lys_node_list *)parent)->tpdf;
             ptr_tpdf_size = &((struct lys_node_list *)parent)->tpdf_size;
+            break;
+        case LYS_RPC:
+        case LYS_ACTION:
+            tpdf = ((struct lys_node_rpc_action *)parent)->tpdf;
+            ptr_tpdf_size = &((struct lys_node_rpc_action *)parent)->tpdf_size;
             break;
         default:
             LOGINT;
@@ -3419,6 +3406,39 @@ error:
 }
 
 static int
+yang_check_rpc_action(struct lys_module *module, struct lys_node_rpc_action *rpc, struct unres_schema *unres)
+{
+    uint8_t size, i;
+    struct lys_node *node;
+
+    if (rpc->nodetype == LYS_ACTION) {
+        for (node = rpc->parent; node; node = lys_parent(node)) {
+            if ((node->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))
+                    || ((node->nodetype == LYS_LIST) && !((struct lys_node_list *)node)->keys_size)) {
+                LOGVAL(LYE_INPAR, LY_VLOG_NONE, NULL, strnodetype(node->nodetype), "action");
+                goto error;
+            }
+        }
+    }
+    if (yang_check_typedef(module, (struct lys_node *)rpc, unres)) {
+        goto error;
+    }
+
+    size = rpc->iffeature_size;
+    rpc->iffeature_size = 0;
+    for (i = 0; i < size; ++i) {
+        if (yang_read_if_feature(module, rpc, NULL, (char *)rpc->iffeature[i].features, unres, RPC_KEYWORD)) {
+            rpc->iffeature_size = size;
+            goto error;
+        }
+    }
+
+    return EXIT_SUCCESS;
+error:
+    return EXIT_FAILURE;
+}
+
+static int
 yang_check_nodes(struct lys_module *module, struct lys_node *nodes, struct unres_schema *unres)
 {
     struct lys_node *node = nodes, *sibling, *child, *parent;
@@ -3477,6 +3497,12 @@ yang_check_nodes(struct lys_module *module, struct lys_node *nodes, struct unres
         case LYS_ANYDATA:
         case LYS_ANYXML:
             if (yang_check_anydata(module, (struct lys_node_anydata *)node, unres)) {
+                goto error;
+            }
+            break;
+        case LYS_RPC:
+        case LYS_ACTION:
+            if (yang_check_rpc_action(module, (struct lys_node_rpc_action *)node, unres)){
                 goto error;
             }
             break;

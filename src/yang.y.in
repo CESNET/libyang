@@ -2941,26 +2941,27 @@ augment_arg_str: absolute_schema_nodeids optsep
   |  string_1
   ;
 
-action_arg_str: identifier_arg_str { if (read_all) {
-                                       if (!(actual = yang_read_action(trg, actual, node, s))) {
-                                         YYABORT;
-                                       }
-                                       data_node = actual;
-                                       s = NULL;
+action_arg_str: identifier_arg_str { if (module->version != 2) {
+                                       LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "action");
+                                       free(s);
+                                       YYABORT;
                                      }
+                                     if (!(actual = yang_read_node(trg, actual, node, s, LYS_ACTION, sizeof(struct lys_node_rpc_action)))) {
+                                       YYABORT;
+                                     }
+                                     data_node = actual;
+                                     s = NULL;
                                      $$ = config_inherit;
                                      config_inherit = CONFIG_IGNORE;
                                    }
 
 action_stmt: ACTION_KEYWORD sep action_arg_str rpc_end { config_inherit = $3; }
 
-rpc_arg_str: identifier_arg_str { if (read_all) {
-                                    if (!(actual = yang_read_node(trg, NULL, node, s, LYS_RPC, sizeof(struct lys_node_rpc_action)))) {
-                                      YYABORT;
-                                    }
-                                    data_node = actual;
-                                    s = NULL;
+rpc_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, NULL, node, s, LYS_RPC, sizeof(struct lys_node_rpc_action)))) {
+                                    YYABORT;
                                   }
+                                  data_node = actual;
+                                  s = NULL;
                                   $$ = config_inherit;
                                   config_inherit = CONFIG_IGNORE;
                                 }
@@ -2970,97 +2971,81 @@ rpc_stmt: RPC_KEYWORD sep rpc_arg_str rpc_end { config_inherit = $3; }
 rpc_end: ';'
   |  '{' stmtsep
          rpc_opt_stmt
-      '}'
+      '}' { void *tmp;
+
+            if ($3.node.ptr_rpc->iffeature_size) {
+              tmp = realloc($3.node.ptr_rpc->iffeature, $3.node.ptr_rpc->iffeature_size * sizeof *$3.node.ptr_rpc->iffeature);
+              if (!tmp) {
+                LOGMEM;
+                YYABORT;
+              }
+              $3.node.ptr_rpc->iffeature = tmp;
+            }
+
+            if ($3.node.ptr_rpc->tpdf_size) {
+              tmp = realloc($3.node.ptr_rpc->tpdf, $3.node.ptr_rpc->tpdf_size * sizeof *$3.node.ptr_rpc->tpdf);
+              if (!tmp) {
+                LOGMEM;
+                YYABORT;
+              }
+              $3.node.ptr_rpc->tpdf = tmp;
+            }
+          }
 
 
-rpc_opt_stmt: @EMPTYDIR@ { if (read_all) {
-                         $$.node.ptr_rpc = actual;
-                         $$.node.flag = 0;
-                         actual_type = RPC_KEYWORD;
-                         if (size_arrays->node[size_arrays->next].if_features) {
-                           $$.node.ptr_rpc->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.node.ptr_rpc->iffeature);
-                           if (!$$.node.ptr_rpc->iffeature) {
-                             LOGMEM;
-                             YYABORT;
-                           }
+rpc_opt_stmt: @EMPTYDIR@ { $$.node.ptr_rpc = actual;
+                           $$.node.flag = 0;
+                           actual_type = RPC_KEYWORD;
                          }
-                         if (size_arrays->node[size_arrays->next].tpdf) {
-                           $$.node.ptr_rpc->tpdf = calloc(size_arrays->node[size_arrays->next].tpdf, sizeof *$$.node.ptr_rpc->tpdf);
-                           if (!$$.node.ptr_rpc->tpdf) {
-                             LOGMEM;
-                             YYABORT;
-                           }
-                         }
-                         if (store_flags((struct lys_node *)$$.node.ptr_rpc, size_arrays->node[size_arrays->next].flags, CONFIG_INHERIT_DISABLE)) {
-                             YYABORT;
-                         }
-                         size_arrays->next++;
-                       } else {
-                         $$.index = size_arrays->size;
-                         if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                           LOGMEM;
-                           YYABORT;
-                         }
-                       }
-                     }
-  |  rpc_opt_stmt if_feature_stmt { if (read_all) {
-                                      if (yang_read_if_feature(trg, $1.node.ptr_rpc, NULL, s, unres, RPC_KEYWORD)) {YYABORT;}
-                                      s=NULL;
-                                    } else {
-                                      size_arrays->node[$1.index].if_features++;
-                                    }
+  |  rpc_opt_stmt if_feature_stmt { YANG_ADDELEM($1.node.ptr_rpc->iffeature,
+                                                 $1.node.ptr_rpc->iffeature_size);
+                                    ((struct lys_iffeature *)actual)->features = (struct lys_feature**)s;
+                                    actual = $1.node.ptr_rpc;
+                                    s = NULL;
                                   }
-  |  rpc_opt_stmt status_read_stmt { if (!read_all) {
-                                       if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "rpc", $2, 0)) {
-                                         YYABORT;
-                                       }
-                                     }
-                                   }
-  |  rpc_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.node.ptr_rpc, s, "rpc")) {
+  |  rpc_opt_stmt status_stmt { if ($1.node.ptr_rpc->flags & LYS_STATUS_MASK) {
+                                  LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "rpc");
+                                  YYABORT;
+                                }
+                                $1.node.ptr_rpc->flags |= $2;
+                             }
+  |  rpc_opt_stmt description_stmt { if (yang_read_description(trg, $1.node.ptr_rpc, s, "rpc")) {
                                        YYABORT;
                                      }
                                      s = NULL;
                                    }
-  |  rpc_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.node.ptr_rpc, s, "rpc")) {
+  |  rpc_opt_stmt reference_stmt { if (yang_read_reference(trg, $1.node.ptr_rpc, s, "rpc")) {
                                      YYABORT;
                                    }
                                    s = NULL;
                                  }
-  |  rpc_opt_stmt typedef_stmt { if (read_all) {
-                                           actual = $1.node.ptr_rpc;
-                                           actual_type = RPC_KEYWORD;
-                                         } else {
-                                           size_arrays->node[$1.index].tpdf++;
-                                         }
-                                       }
+  |  rpc_opt_stmt typedef_stmt { actual = $1.node.ptr_rpc;
+                                 actual_type = RPC_KEYWORD;
+                               }
      stmtsep
   |  rpc_opt_stmt grouping_stmt { actual = $1.node.ptr_rpc;
                                   actual_type = RPC_KEYWORD;
                                   data_node = actual;
                                 }
      stmtsep
-  |  rpc_opt_stmt input_stmt { if (read_all) {
-                                 if ($1.node.flag & LYS_RPC_INPUT) {
-                                   LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_rpc, "input", "rpc");
-                                   YYABORT;
-                                 }
-                                 $1.node.flag |= LYS_RPC_INPUT;
-                                 actual = $1.node.ptr_rpc;
-                                 actual_type = RPC_KEYWORD;
-                                 data_node = actual;
+  |  rpc_opt_stmt input_stmt { if ($1.node.flag & LYS_RPC_INPUT) {
+                                 LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_rpc, "input", "rpc");
+                                 YYABORT;
                                }
+                               $1.node.flag |= LYS_RPC_INPUT;
+                               actual = $1.node.ptr_rpc;
+                               actual_type = RPC_KEYWORD;
+                               data_node = actual;
                              }
      stmtsep { $$ = $1; }
-  |  rpc_opt_stmt output_stmt { if (read_all) {
-                                  if ($1.node.flag & LYS_RPC_OUTPUT) {
-                                    LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_rpc, "output", "rpc");
-                                    YYABORT;
-                                  }
-                                  $1.node.flag |= LYS_RPC_OUTPUT;
-                                  actual = $1.node.ptr_rpc;
-                                  actual_type = RPC_KEYWORD;
-                                  data_node = actual;
+  |  rpc_opt_stmt output_stmt { if ($1.node.flag & LYS_RPC_OUTPUT) {
+                                  LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_rpc, "output", "rpc");
+                                  YYABORT;
                                 }
+                                $1.node.flag |= LYS_RPC_OUTPUT;
+                                actual = $1.node.ptr_rpc;
+                                actual_type = RPC_KEYWORD;
+                                data_node = actual;
                               }
      stmtsep { $$ = $1; }
 
