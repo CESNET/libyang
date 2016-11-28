@@ -88,7 +88,8 @@ parse_range_dec64(const char **str_num, uint8_t dig, int64_t *num)
     }
     /* remove trailing zeros */
     if (trailing_zeros) {
-        str_dig = str_dig - trailing_zeros;
+        str_dig -= trailing_zeros;
+        str_exp -= trailing_zeros;
         ret = ret / dec_pow(trailing_zeros);
     }
 
