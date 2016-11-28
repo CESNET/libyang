@@ -3155,94 +3155,67 @@ notification_stmt: NOTIFICATION_KEYWORD sep notification_arg_str notification_en
 notification_end: ';'
   |  '{' stmtsep
          notification_opt_stmt
-      '}' { if (read_all) {
-              /* check XPath dependencies */
-              if ($3.notif->must_size &&
-                  (unres_schema_add_node(trg, unres, $3.notif, UNRES_XPATH, NULL) == -1)) {
+      '}' { void *tmp;
+
+            if ($3.notif->must_size) {
+              tmp = realloc($3.notif->must, $3.notif->must_size * sizeof *$3.notif->must);
+              if (!tmp) {
+                LOGMEM;
                 YYABORT;
               }
+              $3.notif->must = tmp;
             }
+
+           if ($3.notif->iffeature_size) {
+             tmp = realloc($3.notif->iffeature, $3.notif->iffeature_size * sizeof *$3.notif->iffeature);
+             if (!tmp) {
+               LOGMEM;
+               YYABORT;
+             }
+             $3.notif->iffeature = tmp;
+           }
+
+           if ($3.notif->tpdf_size) {
+             tmp = realloc($3.notif->tpdf, $3.notif->tpdf_size * sizeof *$3.notif->tpdf);
+             if (!tmp) {
+               LOGMEM;
+               YYABORT;
+             }
+             $3.notif->tpdf = tmp;
+           }
           }
 
-
-notification_opt_stmt: @EMPTYDIR@ { if (read_all) {
-                                  $$.notif = actual;
-                                  actual_type = NOTIFICATION_KEYWORD;
-                                  if (size_arrays->node[size_arrays->next].if_features) {
-                                    $$.notif->iffeature = calloc(size_arrays->node[size_arrays->next].if_features, sizeof *$$.notif->iffeature);
-                                    if (!$$.notif->iffeature) {
-                                      LOGMEM;
-                                      YYABORT;
-                                    }
+notification_opt_stmt: @EMPTYDIR@ { $$.notif = actual;
+                                    actual_type = NOTIFICATION_KEYWORD;
                                   }
-                                  if (size_arrays->node[size_arrays->next].tpdf) {
-                                    $$.notif->tpdf = calloc(size_arrays->node[size_arrays->next].tpdf, sizeof *$$.notif->tpdf);
-                                    if (!$$.notif->tpdf) {
-                                      LOGMEM;
-                                      YYABORT;
-                                    }
-                                  }
-                                  if (trg->version < 2 && size_arrays->node[size_arrays->next].must) {
-                                    LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "must");
-                                    YYABORT;
-                                  }
-                                  if (size_arrays->node[size_arrays->next].must) {
-                                    $$.notif->must = calloc(size_arrays->node[size_arrays->next].must, sizeof *$$.notif->must);
-                                    if (!$$.notif->must) {
-                                      LOGMEM;
-                                      YYABORT;
-                                    }
-                                  }
-                                  if (store_flags((struct lys_node *)$$.notif, size_arrays->node[size_arrays->next].flags, CONFIG_INHERIT_DISABLE)) {
-                                      YYABORT;
-                                  }
-                                  size_arrays->next++;
-                                } else {
-                                  $$.index = size_arrays->size;
-                                  if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                    LOGMEM;
-                                    YYABORT;
-                                  }
-                                }
-                              }
-  |  notification_opt_stmt must_stmt { if (read_all) {
-                                      actual = $1.notif;
-                                      actual_type = NOTIFICATION_KEYWORD;
-                                    } else {
-                                      size_arrays->node[$1.index].must++;
-                                    }
-                                  }
+  |  notification_opt_stmt must_stmt { actual = $1.notif;
+                                       actual_type = NOTIFICATION_KEYWORD;
+                                     }
      stmtsep
-  |  notification_opt_stmt if_feature_stmt { if (read_all) {
-                                               if (yang_read_if_feature(trg, $1.notif, NULL, s, unres, NOTIFICATION_KEYWORD)) {YYABORT;}
-                                               s=NULL;
-                                             } else {
-                                               size_arrays->node[$1.index].if_features++;
-                                             }
+  |  notification_opt_stmt if_feature_stmt { YANG_ADDELEM($1.notif->iffeature, $1.notif->iffeature_size);
+                                             ((struct lys_iffeature *)actual)->features = (struct lys_feature**)s;
+                                             actual = $1.notif;
+                                             s = NULL;
                                            }
-  |  notification_opt_stmt status_read_stmt { if (!read_all) {
-                                                if (yang_check_flags(&size_arrays->node[$1.index].flags, LYS_STATUS_MASK, "status", "notification", $2, 0)) {
-                                                  YYABORT;
-                                                }
-                                              }
-                                            }
-  |  notification_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.notif, s, "notification")) {
+  |  notification_opt_stmt status_stmt { if ($1.notif->flags & LYS_STATUS_MASK) {
+                                           LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "notification");
+                                           YYABORT;
+                                         }
+                                         $1.notif->flags |= $2;
+                                       }
+  |  notification_opt_stmt description_stmt { if (yang_read_description(trg, $1.notif, s, "notification")) {
                                                 YYABORT;
                                               }
                                               s = NULL;
                                             }
-  |  notification_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.notif, s, "notification")) {
+  |  notification_opt_stmt reference_stmt { if (yang_read_reference(trg, $1.notif, s, "notification")) {
                                               YYABORT;
                                             }
                                             s = NULL;
                                           }
-  |  notification_opt_stmt typedef_stmt { if (read_all) {
-                                                    actual = $1.notif;
-                                                    actual_type = NOTIFICATION_KEYWORD;
-                                                  } else {
-                                                    size_arrays->node[$1.index].tpdf++;
-                                                  }
-                                                }
+  |  notification_opt_stmt typedef_stmt { actual = $1.notif;
+                                          actual_type = NOTIFICATION_KEYWORD;
+                                        }
      stmtsep
   |  notification_opt_stmt grouping_stmt { actual = $1.notif;
                                            actual_type = NOTIFICATION_KEYWORD;
@@ -3254,7 +3227,6 @@ notification_opt_stmt: @EMPTYDIR@ { if (read_all) {
                                            data_node = actual;
                                          }
      stmtsep
-  ;
 
 deviation_stmt: DEVIATION_KEYWORD sep deviation_arg_str { if (read_all) {
                                                             if (!(actual = yang_read_deviation(trg, s))) {
@@ -3851,6 +3823,11 @@ must_agr_str: string { switch (actual_type) {
                                      ((struct type_deviation *)actual)->deviate->must_size);
                          break;
                        case NOTIFICATION_KEYWORD:
+                         if (trg->version < 2) {
+                           free(s);
+                           LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "must");
+                           YYABORT;
+                         }
                          YANG_ADDELEM(((struct lys_node_notif *)actual)->must,
                                      ((struct lys_node_notif *)actual)->must_size);
                          break;

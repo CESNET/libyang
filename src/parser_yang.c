@@ -2900,6 +2900,20 @@ yang_free_inout(struct ly_ctx *ctx, struct lys_node_inout *inout)
 }
 
 static void
+yang_free_notif(struct ly_ctx *ctx, struct lys_node_notif *notif)
+{
+    uint8_t i;
+
+    yang_tpdf_free(ctx, notif->tpdf, 0, notif->tpdf_size);
+    free(notif->tpdf);
+
+    for (i = 0; i < notif->must_size; ++i) {
+        lys_restr_free(ctx, &notif->must[i]);
+    }
+    free(notif->must);
+}
+
+static void
 yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node)
 {
     struct lys_node *tmp, *child, *sibling;
@@ -2951,6 +2965,9 @@ yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node)
         case LYS_INPUT:
         case LYS_OUTPUT:
             yang_free_inout(ctx, (struct lys_node_inout *)tmp);
+            break;
+        case LYS_NOTIF:
+            yang_free_notif(ctx, (struct lys_node_notif *)tmp);
             break;
         default:
             break;
@@ -3118,6 +3135,10 @@ yang_check_typedef(struct lys_module *module, struct lys_node *parent, struct un
         case LYS_OUTPUT:
             tpdf = ((struct lys_node_inout *)parent)->tpdf;
             ptr_tpdf_size = &((struct lys_node_inout *)parent)->tpdf_size;
+            break;
+        case LYS_NOTIF:
+            tpdf = ((struct lys_node_notif *)parent)->tpdf;
+            ptr_tpdf_size = &((struct lys_node_notif *)parent)->tpdf_size;
             break;
         default:
             LOGINT;
@@ -3462,6 +3483,34 @@ error:
 }
 
 static int
+yang_check_notif(struct lys_module *module, struct lys_node_notif *notif, struct unres_schema *unres)
+{
+    uint8_t size, i;
+
+    if (yang_check_typedef(module, (struct lys_node *)notif, unres)) {
+        goto error;
+    }
+
+    size = notif->iffeature_size;
+    notif->iffeature_size = 0;
+    for (i = 0; i < size; ++i) {
+        if (yang_read_if_feature(module, notif, NULL, (char *)notif->iffeature[i].features, unres, NOTIFICATION_KEYWORD)) {
+            notif->iffeature_size = size;
+            goto error;
+        }
+    }
+
+    /* check XPath dependencies */
+    if ((notif->must_size) && (unres_schema_add_node(module, unres, notif, UNRES_XPATH, NULL) == -1)) {
+        goto error;
+    }
+
+    return EXIT_SUCCESS;
+error:
+    return EXIT_FAILURE;
+}
+
+static int
 yang_check_nodes(struct lys_module *module, struct lys_node *nodes, struct unres_schema *unres)
 {
     struct lys_node *node = nodes, *sibling, *child, *parent;
@@ -3537,6 +3586,11 @@ yang_check_nodes(struct lys_module *module, struct lys_node *nodes, struct unres
                 goto error;
             }
             if (yang_check_typedef(module, node, unres)) {
+                goto error;
+            }
+            break;
+        case LYS_NOTIF:
+            if (yang_check_notif(module, (struct lys_node_notif *)node, unres)) {
                 goto error;
             }
             break;
