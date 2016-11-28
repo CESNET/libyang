@@ -395,6 +395,7 @@ json_get_anydata(struct lyd_node_anydata *any, const char *data)
             return 0;
         }
         if (data[len + c] != '"') {
+            free(str);
             LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, any,
                    "JSON data (missing quotation-mark at the end of string)");
             return 0;
