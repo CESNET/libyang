@@ -3361,18 +3361,21 @@ error:
 static int
 yang_check_nodes(struct lys_module *module, struct lys_node *nodes, struct unres_schema *unres)
 {
-    struct lys_node *node = nodes, *sibling, *child;
+    struct lys_node *node = nodes, *sibling, *child, *parent;
 
     while (node) {
         sibling = node->next;
         child = node->child;
+        parent = node->parent;
         node->next = NULL;
         node->child = NULL;
+        node->parent = NULL;
         node->prev = node;
 
-        if (lys_node_addchild(node->parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, node)) {
+        if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, node)) {
+            lys_node_unlink(node);
+            node->next = sibling;
             sibling = node;
-            child = NULL;
             goto error;
         }
         switch (node->nodetype) {
