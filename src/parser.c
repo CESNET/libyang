@@ -994,6 +994,10 @@ make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, vo
         c = *((uint8_t *)data2);
         if (num) {
             count = sprintf(buf, "%"PRId64" ", num);
+            if ((count - 1) <= c) {
+                /* we have 0. value, add a space for the leading zero */
+                count = sprintf(buf, "0%"PRId64" ", num);
+            }
             for (i = c, j = 1; i > 0 ; i--) {
                 if (j && i > 1 && buf[count - 2] == '0') {
                     /* we have trailing zero to skip */
