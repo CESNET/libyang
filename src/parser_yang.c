@@ -2893,6 +2893,19 @@ yang_free_choice(struct ly_ctx *ctx, struct lys_node_choice *choice)
 }
 
 static void
+yang_free_anydata(struct ly_ctx *ctx, struct lys_node_anydata *anydata)
+{
+    uint8_t i;
+
+    for (i = 0; i < anydata->must_size; ++i) {
+        lys_restr_free(ctx, &anydata->must[i]);
+    }
+    free(anydata->must);
+
+    lys_when_free(ctx, anydata->when);
+}
+
+static void
 yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node)
 {
     struct lys_node *tmp, *child, *sibling;
@@ -2934,6 +2947,10 @@ yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node)
             break;
         case LYS_CASE:
             lys_when_free(ctx, ((struct lys_node_case *)tmp)->when);
+            break;
+        case LYS_ANYXML:
+        case LYS_ANYDATA:
+            yang_free_anydata(ctx, (struct lys_node_anydata *)tmp);
             break;
         default:
             break;
@@ -3378,6 +3395,30 @@ yang_check_case(struct lys_module *module, struct lys_node_case *cs, struct unre
 }
 
 static int
+yang_check_anydata(struct lys_module *module, struct lys_node_anydata *anydata, struct unres_schema *unres)
+{
+    uint8_t size, i;
+
+    size = anydata->iffeature_size;
+    anydata->iffeature_size = 0;
+    for (i = 0; i < size; ++i) {
+        if (yang_read_if_feature(module, anydata, NULL, (char *)anydata->iffeature[i].features, unres, ANYXML_KEYWORD)) {
+            anydata->iffeature_size = size;
+            goto error;
+        }
+    }
+
+    /* check XPath dependencies */
+    if ((anydata->when) && (unres_schema_add_node(module, unres, anydata, UNRES_XPATH, NULL) == -1)) {
+        goto error;
+    }
+
+    return EXIT_SUCCESS;
+error:
+    return EXIT_FAILURE;
+}
+
+static int
 yang_check_nodes(struct lys_module *module, struct lys_node *nodes, struct unres_schema *unres)
 {
     struct lys_node *node = nodes, *sibling, *child, *parent;
@@ -3430,6 +3471,12 @@ yang_check_nodes(struct lys_module *module, struct lys_node *nodes, struct unres
             break;
         case LYS_CASE:
             if (yang_check_case(module, (struct lys_node_case *)node, unres)) {
+                goto error;
+            }
+            break;
+        case LYS_ANYDATA:
+        case LYS_ANYXML:
+            if (yang_check_anydata(module, (struct lys_node_anydata *)node, unres)) {
                 goto error;
             }
             break;
