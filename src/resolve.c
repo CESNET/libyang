@@ -4377,10 +4377,13 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct 
     rc = resolve_augment_schema_nodeid(aug->target_name, siblings, (siblings ? NULL : aug->module), mod->implemented, &aug_target);
     if (rc == -1) {
         return -1;
-    }
-    if (rc > 0) {
+    } else if (rc > 0) {
         LOGVAL(LYE_INCHAR, LY_VLOG_LYS, aug, aug->target_name[rc - 1], &aug->target_name[rc - 1]);
         return -1;
+    } else if (rc == 0 && aug->target) {
+        /* augment was resolved as a side effect of setting module implemented when
+         * resolving augment schema nodeid, so we are done here */
+        return 0;
     }
     if (!aug_target && mod->implemented) {
         LOGVAL(LYE_INRESOLV, LY_VLOG_LYS, aug, "augment", aug->target_name);
