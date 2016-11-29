@@ -1457,21 +1457,6 @@ error:
 }
 
 void *
-yang_read_refine(struct lys_module *module, struct lys_node_uses *uses, char *value)
-{
-    struct lys_refine *rfn;
-
-    rfn = &uses->refine[uses->refine_size];
-    uses->refine_size++;
-    rfn->target_name = transform_schema2json(module, value);
-    free(value);
-    if (!rfn->target_name) {
-        return NULL;
-    }
-    return rfn;
-}
-
-void *
 yang_read_augment(struct lys_module *module, struct lys_node *parent, char *value)
 {
     struct lys_node_augment *aug;
@@ -2914,6 +2899,36 @@ yang_free_notif(struct ly_ctx *ctx, struct lys_node_notif *notif)
 }
 
 static void
+yang_free_uses(struct ly_ctx *ctx, struct lys_node_uses *uses)
+{
+    int i, j;
+
+    for (i = 0; i < uses->refine_size; i++) {
+        lydict_remove(ctx, uses->refine[i].target_name);
+        lydict_remove(ctx, uses->refine[i].dsc);
+        lydict_remove(ctx, uses->refine[i].ref);
+
+        for (j = 0; j < uses->refine[i].must_size; j++) {
+            lys_restr_free(ctx, &uses->refine[i].must[j]);
+        }
+        free(uses->refine[i].must);
+
+        for (j = 0; j < uses->refine[i].dflt_size; j++) {
+            lydict_remove(ctx, uses->refine[i].dflt[j]);
+        }
+        free(uses->refine[i].dflt);
+
+        if (uses->refine[i].target_type & LYS_CONTAINER) {
+            lydict_remove(ctx, uses->refine[i].mod.presence);
+        }
+    }
+    free(uses->refine);
+
+    lys_when_free(ctx, uses->when);
+}
+
+
+static void
 yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node)
 {
     struct lys_node *tmp, *child, *sibling;
@@ -2968,6 +2983,9 @@ yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node)
             break;
         case LYS_NOTIF:
             yang_free_notif(ctx, (struct lys_node_notif *)tmp);
+            break;
+        case LYS_USES:
+            yang_free_uses(ctx, (struct lys_node_uses *)tmp);
             break;
         default:
             break;
@@ -3511,6 +3529,45 @@ error:
 }
 
 static int
+yang_check_uses(struct lys_module *module, struct lys_node_uses *uses, struct unres_schema *unres)
+{
+    uint8_t size, i, j;
+
+    size = uses->iffeature_size;
+    uses->iffeature_size = 0;
+    for (i = 0; i < size; ++i) {
+        if (yang_read_if_feature(module, uses, NULL, (char *)uses->iffeature[i].features, unres, USES_KEYWORD)) {
+            uses->iffeature_size = size;
+            goto error;
+        }
+    }
+
+    for (j = 0; uses->refine_size; ++j) {
+        size = uses->refine[j].iffeature_size;
+        uses->refine[j].iffeature_size = 0;
+        for (i = 0; i < size; ++i) {
+            if (yang_read_if_feature(module, uses, NULL, (char *)uses->refine[j].iffeature[i].features, unres, REFINE_KEYWORD)) {
+                uses->refine[j].iffeature_size = size;
+                goto error;
+            }
+        }
+    }
+
+    if (unres_schema_add_node(module, unres, uses, UNRES_USES, NULL) == -1) {
+        goto error;
+    }
+
+    /* check XPath dependencies */
+    if (uses->when && (unres_schema_add_node(module, unres, uses, UNRES_XPATH, NULL) == -1)) {
+        goto error;
+    }
+
+    return EXIT_SUCCESS;
+error:
+    return EXIT_FAILURE;
+}
+
+static int
 yang_check_nodes(struct lys_module *module, struct lys_node *nodes, struct unres_schema *unres)
 {
     struct lys_node *node = nodes, *sibling, *child, *parent;
@@ -3591,6 +3648,11 @@ yang_check_nodes(struct lys_module *module, struct lys_node *nodes, struct unres
             break;
         case LYS_NOTIF:
             if (yang_check_notif(module, (struct lys_node_notif *)node, unres)) {
+                goto error;
+            }
+            break;
+        case LYS_USES:
+            if (yang_check_uses(module, (struct lys_node_uses *)node, unres)) {
                 goto error;
             }
             break;

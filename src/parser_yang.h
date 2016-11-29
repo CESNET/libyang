@@ -202,8 +202,6 @@ int yang_check_bit(struct yang_type *typ, struct lys_type_bit *bit, int64_t *val
 
 void *yang_read_typedef(struct lys_module *module, struct lys_node *parent, char *value);
 
-void *yang_read_refine(struct lys_module *module, struct lys_node_uses *uses, char *value);
-
 void *yang_read_augment(struct lys_module *module, struct lys_node *parent, char *value);
 
 void *yang_read_deviation(struct lys_module *module, char *value);
