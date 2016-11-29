@@ -1777,13 +1777,22 @@ lyd_merge(struct lyd_node *target, const struct lyd_node *source, int options)
     const struct lyd_node *iter;
     struct lys_node *src_snode;
     int i, src_depth, depth, first_iter, ret, dflt = 1;
+    const struct lys_node *parent = NULL;
+
 
     if (!target || !source || (target->schema->module->ctx != source->schema->module->ctx)) {
         ly_errno = LY_EINVAL;
         return -1;
     }
 
-    if (lys_parent(target->schema)) {
+    parent = lys_parent(target->schema);
+
+    /* go up all uses */
+    while (parent && (parent->nodetype == LYS_USES)) {
+        parent = lys_parent(parent);
+    }
+
+    if (parent) {
         LOGERR(LY_EINVAL, "Target not a top-level data tree.");
         return -1;
     }
