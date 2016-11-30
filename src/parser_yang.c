@@ -2410,22 +2410,56 @@ store_flags(struct lys_node *node, uint8_t flags, int config_opt)
     return EXIT_SUCCESS;
 }
 
-void
+int
 store_config_flag(struct lys_node *node, int config_opt)
 {
-    if (config_opt == CONFIG_IGNORE) {
-        node->flags |= node->flags & (~(LYS_CONFIG_MASK | LYS_CONFIG_SET));
-    } else if (config_opt == CONFIG_INHERIT_ENABLE) {
-        if (!(node->flags & LYS_CONFIG_MASK)) {
-            /* get config flag from parent */
-            if (node->parent) {
-                node->flags |= node->parent->flags & LYS_CONFIG_MASK;
-            } else {
-                /* default config is true */
-                node->flags |= LYS_CONFIG_W;
+    int ret = config_opt;
+
+    switch (node->nodetype) {
+    case LYS_CONTAINER:
+    case LYS_LEAF:
+    case LYS_LEAFLIST:
+    case LYS_LIST:
+    case LYS_CHOICE:
+    case LYS_ANYDATA:
+    case LYS_ANYXML:
+        if (config_opt == CONFIG_IGNORE) {
+            node->flags |= node->flags & (~(LYS_CONFIG_MASK | LYS_CONFIG_SET));
+        } else if (config_opt == CONFIG_INHERIT_ENABLE) {
+            if (!(node->flags & LYS_CONFIG_MASK)) {
+                /* get config flag from parent */
+                if (node->parent) {
+                    node->flags |= node->parent->flags & LYS_CONFIG_MASK;
+                } else {
+                    /* default config is true */
+                    node->flags |= LYS_CONFIG_W;
+                }
             }
         }
+        break;
+    case LYS_CASE:
+        if (config_opt == CONFIG_INHERIT_ENABLE) {
+            if (!(node->flags & LYS_CONFIG_MASK)) {
+                /* get config flag from parent */
+                if (node->parent) {
+                    node->flags |= node->parent->flags & LYS_CONFIG_MASK;
+                } else {
+                    /* default config is true */
+                    node->flags |= LYS_CONFIG_W;
+                }
+            }
+        }
+        break;
+    case LYS_RPC:
+    case LYS_ACTION:
+    case LYS_NOTIF:
+        ret = CONFIG_IGNORE;
+        break;
+    default:
+        break;
     }
+
+    return ret;
 }
 
 int
@@ -3568,7 +3602,7 @@ error:
 }
 
 static int
-yang_check_nodes(struct lys_module *module, struct lys_node *nodes, struct unres_schema *unres)
+yang_check_nodes(struct lys_module *module, struct lys_node *nodes, int config_opt, struct unres_schema *unres)
 {
     struct lys_node *node = nodes, *sibling, *child, *parent;
 
@@ -3587,6 +3621,7 @@ yang_check_nodes(struct lys_module *module, struct lys_node *nodes, struct unres
             sibling = node;
             goto error;
         }
+        config_opt = store_config_flag(node, config_opt);
         switch (node->nodetype) {
         case LYS_GROUPING:
             if (yang_check_grouping(module, (struct lys_node_grp *)node, unres)) {
@@ -3662,7 +3697,7 @@ yang_check_nodes(struct lys_module *module, struct lys_node *nodes, struct unres
             child = NULL;
             goto error;
         }
-        if (yang_check_nodes(module, child, unres)) {
+        if (yang_check_nodes(module, child, config_opt, unres)) {
             child = NULL;
             goto error;
         }
@@ -3707,7 +3742,7 @@ yang_check_sub_module(struct lys_module *module, struct unres_schema *unres, str
         goto error;
     }
     erase_nodes = 0;
-    if (yang_check_nodes(module, node, unres)) {
+    if (yang_check_nodes(module, node, CONFIG_INHERIT_ENABLE, unres)) {
         goto error;
     }
 

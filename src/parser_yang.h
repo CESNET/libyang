@@ -148,8 +148,6 @@ int yang_read_config(void *node, int value, enum yytokentype type);
 
 int store_flags(struct lys_node *node, uint8_t flags, int config_opt);
 
-void store_config_flag(struct lys_node *node, int config_opt);
-
 void *yang_read_when(struct lys_module *module, struct lys_node *node, enum yytokentype type, char *value);
 
 /**

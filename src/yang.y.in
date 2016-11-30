@@ -1604,7 +1604,7 @@ container_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, actua
                                         s = NULL;
                                       }
 
-container_stmt: CONTAINER_KEYWORD sep container_arg_str container_end { store_config_flag((struct lys_node *)actual, config_inherit); }
+container_stmt: CONTAINER_KEYWORD sep container_arg_str container_end
 
 container_end: ';'
   |  '{' stmtsep
@@ -1735,8 +1735,6 @@ leaf_stmt: LEAF_KEYWORD sep leaf_arg_str
                     }
                     $6.node.ptr_leaf->must = tmp;
                   }
-
-                  store_config_flag((struct lys_node *)$6.node.ptr_leaf, config_inherit);
                 }
 
 leaf_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, actual, node, s, LYS_LEAF, sizeof(struct lys_node_leaf)))) {
@@ -1863,8 +1861,6 @@ leaf_list_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, actua
                           }
                           $6.node.ptr_leaflist->dflt = tmp;
                         }
-
-                        store_config_flag((struct lys_node *)$6.node.ptr_leaflist, config_inherit);
                       }
 
 leaf_list_opt_stmt: @EMPTYDIR@ { $$.node.ptr_leaflist = actual;
@@ -1992,7 +1988,6 @@ list_stmt: LIST_KEYWORD sep list_arg_str
             '}' { struct lys_node *node;
                   void *tmp;
 
-                  store_config_flag((struct lys_node *)$6.node.ptr_list, config_inherit);
                   if ($6.node.ptr_list->flags & LYS_CONFIG_R) {
                     /* RFC 6020, 7.7.5 - ignore ordering when the list represents state data
                      * ignore oredering MASK - 0x7F
@@ -2175,7 +2170,7 @@ choice_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, actual, 
                                    }
 
 choice_stmt: CHOICE_KEYWORD sep choice_arg_str
-             choice_end { store_config_flag((struct lys_node *)actual, config_inherit); }
+             choice_end
 
 choice_end: ';'
   |  '{' stmtsep
@@ -2291,7 +2286,7 @@ case_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, actual, no
                                  }
 
 case_stmt: CASE_KEYWORD sep case_arg_str
-           case_end { store_config_flag((struct lys_node *)actual, config_inherit); }
+           case_end
 
 case_end: ';'
   |  '{' stmtsep
@@ -2355,7 +2350,7 @@ anyxml_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, actual, 
                                    }
 
 anyxml_stmt: ANYXML_KEYWORD sep anyxml_arg_str
-             anyxml_end { store_config_flag((struct lys_node *)actual, config_inherit); }
+             anyxml_end
 
 anydata_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, actual, node, s, LYS_ANYDATA, sizeof(struct lys_node_anydata)))) {
                                         YYABORT;
@@ -2369,7 +2364,7 @@ anydata_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, actual,
                                     }
 
 anydata_stmt: ANYDATA_KEYWORD sep anydata_arg_str
-             anyxml_end { store_config_flag((struct lys_node *)actual, config_inherit); }
+             anyxml_end
 
 anyxml_end: ';'
   |  '{' stmtsep
