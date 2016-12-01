@@ -3987,7 +3987,7 @@ lyd_dup(const struct lyd_node *node, int recursive)
                 new_leaf->value = ((struct lyd_node_leaf_list *)elem)->value;
             }
 
-            /* bits type must be treated specially */
+            /* bits, leafref, and instid type must be treated specially */
             if (new_leaf->value_type == LY_TYPE_BITS) {
                 for (type = &((struct lys_node_leaf *)elem->schema)->type; type->der->module; type = &type->der->type) {
                     if (type->base != LY_TYPE_BITS) {
@@ -4007,6 +4007,10 @@ lyd_dup(const struct lyd_node *node, int recursive)
                 }
                 memcpy(new_leaf->value.bit, ((struct lyd_node_leaf_list *)elem)->value.bit,
                        type->info.bits.count * sizeof *new_leaf->value.bit);
+            } else if (new_leaf->value_type == LY_TYPE_LEAFREF) {
+                new_leaf->value.leafref = NULL;
+            } else if (new_leaf->value_type == LY_TYPE_INST) {
+                new_leaf->value.instance = NULL;
             }
             break;
         case LYS_ANYXML:

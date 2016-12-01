@@ -767,6 +767,11 @@ struct lyd_node *lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, co
  * @brief Create a copy of the specified data tree \p node. Namespaces are copied as needed,
  * schema references are kept the same.
  *
+ * The duplicated tree (the result) is created non-validated. To guarantee safe operations
+ * on it in the future, the recommended way of using it is after finishing all the partial data tree
+ * modifications, validate all the trees where the copies from this function were placed (or the copies
+ * themselves if they were kept separate).
+ *
  * @param[in] node Data tree node to be duplicated.
  * @param[in] recursive 1 if all children are supposed to be also duplicated.
  * @return Created copy of the provided data \p node.
