@@ -108,6 +108,11 @@ yin_print_restr(struct lyout *out, int level, const char *elem_name, const struc
 static int
 yin_has_nacmext(const struct lys_node *node)
 {
+    /* TODO remove with YANG extensions support, this is a temporary hack to avoid printing
+     * NACM extension instances since its definition is not even stored and it may confuse
+     * other tools when parsing modules printed from libyang */
+    return 0;
+
     if (node->nacm && (!lys_parent(node) || lys_parent(node)->nacm != node->nacm)) {
         return 1;
     }
@@ -119,6 +124,11 @@ yin_print_nacmext(struct lyout *out, int level, const struct lys_node *node, con
 {
     int i, j;
     const char *prefix = NULL;
+
+    /* TODO remove with YANG extensions support, this is a temporary hack to avoid printing
+     * NACM extension instances since its definition is not even stored and it may confuse
+     * other tools when parsing modules printed from libyang */
+    return;
 
     if (node->nacm && (!lys_parent(node) || lys_parent(node)->nacm != node->nacm)) {
         /* locate ietf-netconf-acm module in imports */

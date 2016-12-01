@@ -134,6 +134,11 @@ yang_print_nacmext(struct lyout *out, int level, const struct lys_node *node, co
     int i, j;
     const char *prefix = NULL;
 
+    /* TODO remove with YANG extensions support, this is a temporary hack to avoid printing
+     * NACM extension instances since its definition is not even stored and it may confuse
+     * other tools when parsing modules printed from libyang */
+    return;
+
     if (node->nacm && (!lys_parent(node) || lys_parent(node)->nacm != node->nacm)) {
         /* locate ietf-netconf-acm module in imports */
         if (!strcmp(module->name, "ietf-netconf-acm")) {
