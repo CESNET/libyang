@@ -231,17 +231,11 @@ yang_add_elem(struct lys_node_array **node, uint32_t *size)
 }
 
 int
-yang_read_if_feature(struct lys_module *module, void *ptr, void *parent, char *value,
-                     struct unres_schema *unres, enum yytokentype type)
+yang_fill_iffeature(struct lys_module *module, struct lys_iffeature *iffeature, void *parent,
+                    char *value, struct unres_schema *unres, int parent_is_feature)
 {
     const char *exp;
     int ret;
-    struct lys_feature *f;
-    struct lys_ident *i;
-    struct lys_node *n;
-    struct lys_type_enum *e;
-    struct lys_type_bit *b;
-    struct lys_refine *r;
 
     if ((module->version != 2) && ((value[0] == '(') || strchr(value, ' '))) {
         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "if-feature");
@@ -255,44 +249,10 @@ yang_read_if_feature(struct lys_module *module, void *ptr, void *parent, char *v
     }
     free(value);
 
-    switch (type) {
-    case FEATURE_KEYWORD:
-        f = (struct lys_feature *) ptr;
-        ret = resolve_iffeature_compile(&f->iffeature[f->iffeature_size], exp, (struct lys_node *)f, 1, unres);
-        f->iffeature_size++;
-        break;
-    case IDENTITY_KEYWORD:
-        i = (struct lys_ident *) ptr;
-        ret = resolve_iffeature_compile(&i->iffeature[i->iffeature_size], exp, (struct lys_node *)i, 0, unres);
-        i->iffeature_size++;
-        break;
-    case ENUM_KEYWORD:
-        e = (struct lys_type_enum *) ptr;
-        ret = resolve_iffeature_compile(&e->iffeature[e->iffeature_size], exp, (struct lys_node *) parent, 0, unres);
-        e->iffeature_size++;
-        break;
-    case BIT_KEYWORD:
-        b = (struct lys_type_bit *) ptr;
-        ret = resolve_iffeature_compile(&b->iffeature[b->iffeature_size], exp, (struct lys_node *) parent, 0, unres);
-        b->iffeature_size++;
-        break;
-    case REFINE_KEYWORD:
-        r = &((struct lys_node_uses *)ptr)->refine[((struct lys_node_uses *)ptr)->refine_size - 1];
-        ret = resolve_iffeature_compile(&r->iffeature[r->iffeature_size], exp, (struct lys_node *) ptr, 0, unres);
-        r->iffeature_size++;
-        break;
-    default:
-        n = (struct lys_node *) ptr;
-        ret = resolve_iffeature_compile(&n->iffeature[n->iffeature_size], exp, n, 0, unres);
-        n->iffeature_size++;
-        break;
-    }
+    ret = resolve_iffeature_compile(iffeature, exp, (struct lys_node *)parent, parent_is_feature, unres);
     lydict_remove(module->ctx, exp);
 
-    if (ret) {
-        return EXIT_FAILURE;
-    }
-    return EXIT_SUCCESS;
+    return (ret) ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
 int
@@ -3111,55 +3071,68 @@ error:
 }
 
 static int
-yang_check_type_iffeature(struct lys_module *module, struct unres_schema *unres, struct lys_type *type)
+yang_check_iffeatures(struct lys_module *module, void *ptr, void *parent, enum yytokentype type, struct unres_schema *unres)
 {
-    uint i, j, size;
-    uint8_t iffeature_size;
-    LY_DATA_TYPE stype;
+    struct lys_iffeature *iffeature;
+    uint8_t *ptr_size, size, i;
+    char *s;
+    int parent_is_feature = 0;
 
-    if (((struct yang_type *)type->der)->base == LY_TYPE_ENUM) {
-        stype = LY_TYPE_ENUM;
-        size = type->info.enums.count;
-    } else if (((struct yang_type *)type->der)->base == LY_TYPE_BITS) {
-        stype = LY_TYPE_ENUM;
-        size = type->info.enums.count;
-    } else {
-        return EXIT_SUCCESS;
+    switch (type) {
+    case FEATURE_KEYWORD:
+        iffeature = ((struct lys_feature *)parent)->iffeature;
+        size = ((struct lys_feature *)parent)->iffeature_size;
+        ptr_size = &((struct lys_feature *)parent)->iffeature_size;
+        parent_is_feature = 1;
+        break;
+    case IDENTITY_KEYWORD:
+        iffeature = ((struct lys_ident *)parent)->iffeature;
+        size = ((struct lys_ident *)parent)->iffeature_size;
+        ptr_size = &((struct lys_ident *)parent)->iffeature_size;
+        break;
+    case ENUM_KEYWORD:
+        iffeature = ((struct lys_type_enum *)ptr)->iffeature;
+        size = ((struct lys_type_enum *)ptr)->iffeature_size;
+        ptr_size = &((struct lys_type_enum *)ptr)->iffeature_size;
+        break;
+    case BIT_KEYWORD:
+        iffeature = ((struct lys_type_bit *)ptr)->iffeature;
+        size = ((struct lys_type_bit *)ptr)->iffeature_size;
+        ptr_size = &((struct lys_type_bit *)ptr)->iffeature_size;
+        break;
+    case REFINE_KEYWORD:
+        iffeature = ((struct lys_refine *)ptr)->iffeature;
+        size = ((struct lys_refine *)ptr)->iffeature_size;
+        ptr_size = &((struct lys_refine *)ptr)->iffeature_size;
+        break;
+    default:
+        iffeature = ((struct lys_node *)parent)->iffeature;
+        size = ((struct lys_node *)parent)->iffeature_size;
+        ptr_size = &((struct lys_node *)parent)->iffeature_size;
+        break;
     }
 
+    *ptr_size = 0;
     for (i = 0; i < size; ++i) {
-        if (stype == LY_TYPE_ENUM) {
-            iffeature_size = type->info.enums.enm[i].iffeature_size;
-            type->info.enums.enm[i].iffeature_size = 0;
-            for (j = 0; j < iffeature_size; ++j) {
-                if (yang_read_if_feature(module, &type->info.enums.enm[i], type->parent,
-                                         (char *)type->info.enums.enm[i].iffeature[j].features, unres, ENUM_KEYWORD)) {
-                    goto error;
-                }
-            }
-        } else {
-            iffeature_size = type->info.bits.bit[i].iffeature_size;
-            type->info.bits.bit[i].iffeature_size = 0;
-            for (j = 0; j < iffeature_size; ++j) {
-                if (yang_read_if_feature(module, &type->info.bits.bit[i], type->parent,
-                                         (char *)type->info.bits.bit[i].iffeature[j].features, unres, BIT_KEYWORD)) {
-                    goto error;
-                }
-            }
+        s = (char *)iffeature[i].features;
+        iffeature[i].features = NULL;
+        if (yang_fill_iffeature(module, &iffeature[i], parent, s, unres, parent_is_feature)) {
+            *ptr_size = size;
+            return EXIT_FAILURE;
         }
+        (*ptr_size)++;
     }
 
     return EXIT_SUCCESS;
-error:
-    return EXIT_FAILURE;
 }
+
 
 int
 yang_check_typedef(struct lys_module *module, struct lys_node *parent, struct unres_schema *unres)
 {
     struct lys_tpdf *tpdf;
-    uint8_t i, tpdf_size, *ptr_tpdf_size;
-    int ret = EXIT_SUCCESS;
+    uint8_t j, i, tpdf_size, *ptr_tpdf_size;
+    struct yang_type *stype;
 
     if (!parent) {
         tpdf = module->tpdf;
@@ -3203,28 +3176,39 @@ yang_check_typedef(struct lys_module *module, struct lys_node *parent, struct un
 
     for (i = 0; i < tpdf_size; ++i) {
         tpdf[i].type.parent = &tpdf[i];
-        if (yang_check_type_iffeature(module, unres, &tpdf[i].type)) {
-            ret = EXIT_FAILURE;
-            break;
+
+        stype = (struct yang_type *)tpdf[i].type.der;
+        if (stype->base == LY_TYPE_ENUM) {
+            for (j = 0; j < tpdf[i].type.info.enums.count; ++j) {
+                if (yang_check_iffeatures(module, &tpdf[i].type.info.enums.enm[j], &tpdf[i], ENUM_KEYWORD, unres)) {
+                    goto error;
+                }
+            }
+        } else if (stype->base == LY_TYPE_BITS) {
+            for (j = 0; j < tpdf[i].type.info.bits.count; ++j) {
+                if (yang_check_iffeatures(module, &tpdf[i].type.info.bits.bit[j], &tpdf[i], BIT_KEYWORD, unres)) {
+                    goto error;
+                }
+            }
         }
+
         if (unres_schema_add_node(module, unres, &tpdf[i].type, UNRES_TYPE_DER_TPDF, parent) == -1) {
-            ret = EXIT_FAILURE;
-            break;
+            goto error;
         }
 
         /* check default value*/
         if (tpdf[i].dflt && unres_schema_add_str(module, unres, &tpdf[i].type, UNRES_TYPE_DFLT, tpdf[i].dflt) == -1) {
             ++i;
-            ret = EXIT_FAILURE;
-            break;
+            goto error;
         }
         (*ptr_tpdf_size)++;
     }
-    if (i < tpdf_size) {
-        yang_tpdf_free(module->ctx, tpdf, i, tpdf_size);
-    }
 
-    return ret;
+    return EXIT_SUCCESS;
+
+error:
+    yang_tpdf_free(module->ctx, tpdf, i, tpdf_size);
+    return EXIT_FAILURE;
 }
 
 static int
@@ -3246,6 +3230,9 @@ yang_check_identities(struct lys_module *module, struct unres_schema *unres)
             }
         }
         module->ident_size++;
+        if (yang_check_iffeatures(module, NULL, &module->ident[i], IDENTITY_KEYWORD, unres)) {
+            goto error;
+        }
     }
 
     return EXIT_SUCCESS;
@@ -3259,49 +3246,18 @@ error:
 }
 
 static int
-yang_check_grouping(struct lys_module *module, struct lys_node_grp *node, struct unres_schema *unres)
+yang_check_container(struct lys_module *module, struct lys_node_container *cont, struct unres_schema *unres)
 {
-    uint8_t i, size;
-
-    if (yang_check_typedef(module, (struct lys_node *)node, unres)) {
+    if (yang_check_typedef(module, (struct lys_node *)cont, unres)) {
         goto error;
     }
 
-    size = node->iffeature_size;
-    node->iffeature_size = 0;
-    for (i = 0; i < size; ++i) {
-        if (yang_read_if_feature(module, node, NULL, (char *)node->iffeature[i].features, unres, GROUPING_KEYWORD)) {
-            node->iffeature_size = size;
-            goto error;
-        }
-    }
-
-    return EXIT_SUCCESS;
-
-error:
-    return EXIT_FAILURE;
-}
-
-static int
-yang_check_container(struct lys_module *module, struct lys_node_container *node, struct unres_schema *unres)
-{
-    uint8_t i, size;
-
-    if (yang_check_typedef(module, (struct lys_node *)node, unres)) {
+    if (yang_check_iffeatures(module, NULL, cont, CONTAINER_KEYWORD, unres)) {
         goto error;
-    }
-
-    size = node->iffeature_size;
-    node->iffeature_size = 0;
-    for (i = 0; i < size; ++i) {
-        if (yang_read_if_feature(module, node, NULL, (char *)node->iffeature[i].features, unres, CONTAINER_KEYWORD)) {
-            node->iffeature_size = size;
-            goto error;
-        }
     }
 
     /* check XPath dependencies */
-    if ((node->when || node->must_size) && (unres_schema_add_node(module, unres, node, UNRES_XPATH, NULL) == -1)) {
+    if ((cont->when || cont->must_size) && (unres_schema_add_node(module, unres, cont, UNRES_XPATH, NULL) == -1)) {
         goto error;
     }
 
@@ -3313,11 +3269,24 @@ error:
 static int
 yang_check_leaf(struct lys_module *module, struct lys_node_leaf *leaf, struct unres_schema *unres)
 {
-    uint8_t i, size;
+    int i;
+    struct yang_type *stype;
 
-    if (yang_check_type_iffeature(module, unres, &leaf->type)) {
-        yang_type_free(module->ctx, &leaf->type);
-        goto error;
+    stype = (struct yang_type *)leaf->type.der;
+    if (stype->base == LY_TYPE_ENUM) {
+        for (i = 0; i < leaf->type.info.enums.count; ++i) {
+            if (yang_check_iffeatures(module, &leaf->type.info.enums.enm[i], leaf, ENUM_KEYWORD, unres)) {
+                yang_type_free(module->ctx, &leaf->type);
+                goto error;
+            }
+        }
+    } else if (stype->base == LY_TYPE_BITS) {
+        for (i = 0; i < leaf->type.info.bits.count; ++i) {
+            if (yang_check_iffeatures(module, &leaf->type.info.bits.bit[i], leaf, BIT_KEYWORD, unres)) {
+                yang_type_free(module->ctx, &leaf->type);
+                goto error;
+            }
+        }
     }
 
     if (unres_schema_add_node(module, unres, &leaf->type, UNRES_TYPE_DER_TPDF, (struct lys_node *)leaf) == -1) {
@@ -3329,13 +3298,8 @@ yang_check_leaf(struct lys_module *module, struct lys_node_leaf *leaf, struct un
         goto error;
     }
 
-    size = leaf->iffeature_size;
-    leaf->iffeature_size = 0;
-    for (i = 0; i < size; ++i) {
-        if (yang_read_if_feature(module, leaf, NULL, (char *)leaf->iffeature[i].features, unres, LEAF_KEYWORD)) {
-            leaf->iffeature_size = size;
-            goto error;
-        }
+    if (yang_check_iffeatures(module, NULL, leaf, LEAF_KEYWORD, unres)) {
+        goto error;
     }
 
     /* check XPath dependencies */
@@ -3351,11 +3315,24 @@ error:
 static int
 yang_check_leaflist(struct lys_module *module, struct lys_node_leaflist *leaflist, struct unres_schema *unres)
 {
-    uint8_t i, size;
+    int i;
+    struct yang_type *stype;
 
-    if (yang_check_type_iffeature(module, unres, &leaflist->type)) {
-        yang_type_free(module->ctx, &leaflist->type);
-        goto error;
+    stype = (struct yang_type *)leaflist->type.der;
+    if (stype->base == LY_TYPE_ENUM) {
+        for (i = 0; i < leaflist->type.info.enums.count; ++i) {
+            if (yang_check_iffeatures(module, &leaflist->type.info.enums.enm[i], leaflist, ENUM_KEYWORD, unres)) {
+                yang_type_free(module->ctx, &leaflist->type);
+                goto error;
+            }
+        }
+    } else if (stype->base == LY_TYPE_BITS) {
+        for (i = 0; i < leaflist->type.info.bits.count; ++i) {
+            if (yang_check_iffeatures(module, &leaflist->type.info.bits.bit[i], leaflist, BIT_KEYWORD, unres)) {
+                yang_type_free(module->ctx, &leaflist->type);
+                goto error;
+            }
+        }
     }
 
     if (unres_schema_add_node(module, unres, &leaflist->type, UNRES_TYPE_DER_TPDF, (struct lys_node *)leaflist) == -1) {
@@ -3371,13 +3348,8 @@ yang_check_leaflist(struct lys_module *module, struct lys_node_leaflist *leaflis
         }
     }
 
-    size = leaflist->iffeature_size;
-    leaflist->iffeature_size = 0;
-    for (i = 0; i < size; ++i) {
-        if (yang_read_if_feature(module, leaflist, NULL, (char *)leaflist->iffeature[i].features, unres, LEAF_LIST_KEYWORD)) {
-            leaflist->iffeature_size = size;
-            goto error;
-        }
+    if (yang_check_iffeatures(module, NULL, leaflist, LEAF_LIST_KEYWORD, unres)) {
+        goto error;
     }
 
     /* check XPath dependencies */
@@ -3393,19 +3365,12 @@ error:
 static int
 yang_check_list(struct lys_module *module, struct lys_node_list *list, struct unres_schema *unres)
 {
-    uint8_t size, i;
-    
     if (yang_check_typedef(module, (struct lys_node *)list, unres)) {
         goto error;
     }
 
-    size = list->iffeature_size;
-    list->iffeature_size = 0;
-    for (i = 0; i < size; ++i) {
-        if (yang_read_if_feature(module, list, NULL, (char *)list->iffeature[i].features, unres, LIST_KEYWORD)) {
-            list->iffeature_size = size;
-            goto error;
-        }
+    if (yang_check_iffeatures(module, NULL, list, LIST_KEYWORD, unres)) {
+        goto error;
     }
 
     if (list->keys && yang_read_key(module, list, unres)) {
@@ -3430,7 +3395,6 @@ static int
 yang_check_choice(struct lys_module *module, struct lys_node_choice *choice, struct unres_schema *unres)
 {
     char *value;
-    uint8_t size, i;
 
     if (choice->dflt) {
         value = (char *)choice->dflt;
@@ -3442,13 +3406,8 @@ yang_check_choice(struct lys_module *module, struct lys_node_choice *choice, str
         free(value);
     }
 
-    size = choice->iffeature_size;
-    choice->iffeature_size = 0;
-    for (i = 0; i < size; ++i) {
-        if (yang_read_if_feature(module, choice, NULL, (char *)choice->iffeature[i].features, unres, CHOICE_KEYWORD)) {
-            choice->iffeature_size = size;
-            goto error;
-        }
+    if (yang_check_iffeatures(module, NULL, choice, CHOICE_KEYWORD, unres)) {
+        goto error;
     }
 
     /* check XPath dependencies */
@@ -3462,49 +3421,8 @@ error:
 }
 
 static int
-yang_check_case(struct lys_module *module, struct lys_node_case *cs, struct unres_schema *unres)
-{
-    uint8_t size, i;
-
-    size = cs->iffeature_size;
-    cs->iffeature_size = 0;
-    for (i = 0; i < size; ++i) {
-        if (yang_read_if_feature(module, cs, NULL, (char *)cs->iffeature[i].features, unres, CASE_KEYWORD)) {
-            cs->iffeature_size = size;
-            return EXIT_FAILURE;
-        }
-    }
-    return EXIT_SUCCESS;
-}
-
-static int
-yang_check_anydata(struct lys_module *module, struct lys_node_anydata *anydata, struct unres_schema *unres)
-{
-    uint8_t size, i;
-
-    size = anydata->iffeature_size;
-    anydata->iffeature_size = 0;
-    for (i = 0; i < size; ++i) {
-        if (yang_read_if_feature(module, anydata, NULL, (char *)anydata->iffeature[i].features, unres, ANYXML_KEYWORD)) {
-            anydata->iffeature_size = size;
-            goto error;
-        }
-    }
-
-    /* check XPath dependencies */
-    if ((anydata->when) && (unres_schema_add_node(module, unres, anydata, UNRES_XPATH, NULL) == -1)) {
-        goto error;
-    }
-
-    return EXIT_SUCCESS;
-error:
-    return EXIT_FAILURE;
-}
-
-static int
 yang_check_rpc_action(struct lys_module *module, struct lys_node_rpc_action *rpc, struct unres_schema *unres)
 {
-    uint8_t size, i;
     struct lys_node *node;
 
     if (rpc->nodetype == LYS_ACTION) {
@@ -3520,13 +3438,8 @@ yang_check_rpc_action(struct lys_module *module, struct lys_node_rpc_action *rpc
         goto error;
     }
 
-    size = rpc->iffeature_size;
-    rpc->iffeature_size = 0;
-    for (i = 0; i < size; ++i) {
-        if (yang_read_if_feature(module, rpc, NULL, (char *)rpc->iffeature[i].features, unres, RPC_KEYWORD)) {
-            rpc->iffeature_size = size;
-            goto error;
-        }
+    if (yang_check_iffeatures(module, NULL, rpc, RPC_KEYWORD, unres)) {
+        goto error;
     }
 
     return EXIT_SUCCESS;
@@ -3537,19 +3450,12 @@ error:
 static int
 yang_check_notif(struct lys_module *module, struct lys_node_notif *notif, struct unres_schema *unres)
 {
-    uint8_t size, i;
-
     if (yang_check_typedef(module, (struct lys_node *)notif, unres)) {
         goto error;
     }
 
-    size = notif->iffeature_size;
-    notif->iffeature_size = 0;
-    for (i = 0; i < size; ++i) {
-        if (yang_read_if_feature(module, notif, NULL, (char *)notif->iffeature[i].features, unres, NOTIFICATION_KEYWORD)) {
-            notif->iffeature_size = size;
-            goto error;
-        }
+    if (yang_check_iffeatures(module, NULL, notif, NOTIFICATION_KEYWORD, unres)) {
+        goto error;
     }
 
     /* check XPath dependencies */
@@ -3565,25 +3471,15 @@ error:
 static int
 yang_check_uses(struct lys_module *module, struct lys_node_uses *uses, struct unres_schema *unres)
 {
-    uint8_t size, i, j;
+    uint8_t i;
 
-    size = uses->iffeature_size;
-    uses->iffeature_size = 0;
-    for (i = 0; i < size; ++i) {
-        if (yang_read_if_feature(module, uses, NULL, (char *)uses->iffeature[i].features, unres, USES_KEYWORD)) {
-            uses->iffeature_size = size;
-            goto error;
-        }
+     if (yang_check_iffeatures(module, NULL, uses, USES_KEYWORD, unres)) {
+        goto error;
     }
 
-    for (j = 0; uses->refine_size; ++j) {
-        size = uses->refine[j].iffeature_size;
-        uses->refine[j].iffeature_size = 0;
-        for (i = 0; i < size; ++i) {
-            if (yang_read_if_feature(module, uses, NULL, (char *)uses->refine[j].iffeature[i].features, unres, REFINE_KEYWORD)) {
-                uses->refine[j].iffeature_size = size;
-                goto error;
-            }
+    for (i = 0; i < uses->refine_size; ++i) {
+         if (yang_check_iffeatures(module, &uses->refine[i], uses, REFINE_KEYWORD, unres)) {
+            goto error;
         }
     }
 
@@ -3624,7 +3520,10 @@ yang_check_nodes(struct lys_module *module, struct lys_node *nodes, int config_o
         config_opt = store_config_flag(node, config_opt);
         switch (node->nodetype) {
         case LYS_GROUPING:
-            if (yang_check_grouping(module, (struct lys_node_grp *)node, unres)) {
+            if (yang_check_typedef(module, node, unres)) {
+                goto error;
+            }
+            if (yang_check_iffeatures(module, NULL, node, GROUPING_KEYWORD, unres)) {
                 goto error;
             }
             break;
@@ -3654,13 +3553,17 @@ yang_check_nodes(struct lys_module *module, struct lys_node *nodes, int config_o
             }
             break;
         case LYS_CASE:
-            if (yang_check_case(module, (struct lys_node_case *)node, unres)) {
+            if (yang_check_iffeatures(module, NULL, node, CASE_KEYWORD, unres)) {
                 goto error;
             }
             break;
         case LYS_ANYDATA:
         case LYS_ANYXML:
-            if (yang_check_anydata(module, (struct lys_node_anydata *)node, unres)) {
+            if (yang_check_iffeatures(module, NULL, node, CHOICE_KEYWORD, unres)) {
+                goto error;
+            }
+            /* check XPath dependencies */
+            if ((((struct lys_node_anydata *)node)->when) && (unres_schema_add_node(module, unres, node, UNRES_XPATH, NULL) == -1)) {
                 goto error;
             }
             break;
@@ -3714,9 +3617,7 @@ error:
 static int
 yang_check_sub_module(struct lys_module *module, struct unres_schema *unres, struct lys_node *node)
 {
-    uint8_t i, j, size, erase_identities = 1, erase_nodes = 1;
-    struct lys_feature *feature; /* shortcut */
-    char *s;
+    uint i, erase_identities = 1, erase_nodes = 1;
 
     if (yang_check_typedef(module, NULL, unres)) {
         goto error;
@@ -3724,17 +3625,12 @@ yang_check_sub_module(struct lys_module *module, struct unres_schema *unres, str
 
     /* check features */
     for (i = 0; i < module->features_size; ++i) {
-        feature = &module->features[i];
-        size = feature->iffeature_size;
-        feature->iffeature_size = 0;
-        for (j = 0; j < size; ++j) {
-            s = (char *)feature->iffeature[j].features;
-            if (yang_read_if_feature(module, feature, NULL, s, unres, FEATURE_KEYWORD)) {
-                goto error;
-            }
-            if (unres_schema_add_node(module, unres, feature, UNRES_FEATURE, NULL) == -1) {
-                goto error;
-            }
+        if (yang_check_iffeatures(module, NULL, &module->features[i], FEATURE_KEYWORD, unres)) {
+            goto error;
+        }
+        /* check for circular dependencies */
+        if (module->features[i].iffeature_size && (unres_schema_add_node(module, unres, &module->features[i], UNRES_FEATURE, NULL) == -1)) {
+            goto error;
         }
     }
     erase_identities = 0;
