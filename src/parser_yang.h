@@ -39,6 +39,7 @@
 #define CONFIG_IGNORE 0x02
 #define CONFIG_MASK 0x03
 #define LYS_CHOICE_DEFAULT 0x10
+#define LYS_NO_ERASE_IDENTITY 0x20
 
 struct lys_node_array{
     uint8_t if_features;
@@ -137,8 +138,6 @@ int yang_read_reference(struct lys_module *module, void *node, char *value, char
 void yang_read_revision(struct lys_module *module, char *value, struct lys_revision *retval);
 
 int yang_read_if_feature(struct lys_module *module, void *ptr, void *parent, char *value, struct unres_schema *unres, enum yytokentype type);
-
-int yang_read_identyref(struct lys_module *module, struct yang_type *stype, char *expr, struct unres_schema *unres);
 
 int yang_read_message(struct lys_module *module,struct lys_restr *save,char *value, char *what, int message);
 

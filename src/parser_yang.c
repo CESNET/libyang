@@ -639,35 +639,6 @@ yang_read_require_instance(struct yang_type *stype, int req)
 }
 
 int
-yang_read_identyref(struct lys_module *module, struct yang_type *stype, char *expr, struct unres_schema *unres)
-{
-    const char *value;
-    int rc;
-
-    if (stype->base && stype->base != LY_TYPE_IDENT) {
-        LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "base");
-        return EXIT_FAILURE;
-    }
-
-    stype->base = LY_TYPE_IDENT;
-    /* store in the JSON format */
-    value = transform_schema2json(module, expr);
-    free(expr);
-
-    if (!value) {
-        return EXIT_FAILURE;
-    }
-    rc = unres_schema_add_str(module, unres, stype->type, UNRES_TYPE_IDENTREF, value);
-    lydict_remove(module->ctx, value);
-
-    if (rc == -1) {
-        return EXIT_FAILURE;
-    }
-
-    return EXIT_SUCCESS;
-}
-
-int
 yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_type *typ, struct lys_type *type, int tpdftype, struct unres_schema *unres)
 {
     int i, j, rc, ret = -1;
@@ -2688,7 +2659,7 @@ static void yang_type_free(struct ly_ctx *ctx, struct lys_type *type)
     }
     lydict_remove(ctx, stype->name);
     type->base = stype->base;
-    if (type->base == LY_TYPE_IDENT) {
+    if (type->base == LY_TYPE_IDENT && (!(stype->flags & LYS_NO_ERASE_IDENTITY))) {
         for (i = 0; i < type->info.ident.count; ++i) {
             free(type->info.ident.ref[i]);
         }
@@ -3126,6 +3097,47 @@ yang_check_iffeatures(struct lys_module *module, void *ptr, void *parent, enum y
     return EXIT_SUCCESS;
 }
 
+static int
+yang_check_identityref(struct lys_module *module, struct lys_type *type, struct unres_schema *unres)
+{
+    uint size, i;
+    int rc;
+    struct lys_ident **ref;
+    const char *value;
+    char *expr;
+
+    ref = type->info.ident.ref;
+    size = type->info.ident.count;
+    type->info.ident.count = 0;
+    type->info.ident.ref = NULL;
+    ((struct yang_type *)type->der)->flags |= LYS_NO_ERASE_IDENTITY;
+
+    for (i = 0; i < size; ++i) {
+        expr = (char *)ref[i];
+        /* store in the JSON format */
+        value = transform_schema2json(module, expr);
+        free(expr);
+
+        if (!value) {
+            goto error;
+        }
+        rc = unres_schema_add_str(module, unres, type, UNRES_TYPE_IDENTREF, value);
+        lydict_remove(module->ctx, value);
+
+        if (rc == -1) {
+            goto error;
+        }
+    }
+    free(ref);
+
+    return EXIT_SUCCESS;
+error:
+    for (i = i+1; i < size; ++i) {
+        free(ref[i]);
+    }
+    free(ref);
+    return EXIT_FAILURE;
+}
 
 int
 yang_check_typedef(struct lys_module *module, struct lys_node *parent, struct unres_schema *unres)
@@ -3189,6 +3201,10 @@ yang_check_typedef(struct lys_module *module, struct lys_node *parent, struct un
                 if (yang_check_iffeatures(module, &tpdf[i].type.info.bits.bit[j], &tpdf[i], BIT_KEYWORD, unres)) {
                     goto error;
                 }
+            }
+        } else if (stype->base == LY_TYPE_IDENT) {
+            if (yang_check_identityref(module, &tpdf[i].type, unres)) {
+                goto error;
             }
         }
 
@@ -3287,6 +3303,10 @@ yang_check_leaf(struct lys_module *module, struct lys_node_leaf *leaf, struct un
                 goto error;
             }
         }
+    } else if (stype->base == LY_TYPE_IDENT) {
+        if (yang_check_identityref(module, &leaf->type, unres)) {
+            goto error;
+        }
     }
 
     if (unres_schema_add_node(module, unres, &leaf->type, UNRES_TYPE_DER_TPDF, (struct lys_node *)leaf) == -1) {
@@ -3332,6 +3352,10 @@ yang_check_leaflist(struct lys_module *module, struct lys_node_leaflist *leaflis
                 yang_type_free(module->ctx, &leaflist->type);
                 goto error;
             }
+        }
+    } else if (stype->base == LY_TYPE_IDENT) {
+        if (yang_check_identityref(module, &leaflist->type, unres)) {
+            goto error;
         }
     }
 
