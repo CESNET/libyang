@@ -2190,7 +2190,7 @@ yang_fill_include(struct lys_module *trg, char *value, struct lys_include *inc,
     int ret = 0;
 
     str = lydict_insert_zc(trg->ctx, value);
-    if (trg->version) {
+    if (trg->type) {
         submodule = (struct lys_submodule *)trg;
         module = ((struct lys_submodule *)trg)->belongsto;
     } else {
@@ -2746,7 +2746,7 @@ yang_free_container(struct ly_ctx *ctx, struct lys_node_container * cont)
     free(cont->tpdf);
     lydict_remove(ctx, cont->presence);
 
-    for (i = 0; cont->must_size; ++i) {
+    for (i = 0; i < cont->must_size; ++i) {
         lys_restr_free(ctx, &cont->must[i]);
     }
     free(cont->must);
@@ -3021,10 +3021,10 @@ yang_check_imports(struct lys_module *module, struct unres_schema *unres)
         }
     }
     for (j = 0; j < inc_size; ++j) {
-        s = (char *) inc[i].submodule;
-        inc[i].submodule = NULL;
-        if (yang_fill_include(module, s, &inc[i], unres)) {
-            ++i;
+        s = (char *) inc[j].submodule;
+        inc[j].submodule = NULL;
+        if (yang_fill_include(module, s, &inc[j], unres)) {
+            ++j;
             goto error;
         }
     }
@@ -3187,6 +3187,9 @@ yang_check_typedef(struct lys_module *module, struct lys_node *parent, struct un
     *ptr_tpdf_size = 0;
 
     for (i = 0; i < tpdf_size; ++i) {
+        if (lyp_check_identifier(tpdf[i].name, LY_IDENT_TYPE, module, parent)) {
+            goto error;
+        }
         tpdf[i].type.parent = &tpdf[i];
 
         stype = (struct yang_type *)tpdf[i].type.der;
@@ -3213,7 +3216,7 @@ yang_check_typedef(struct lys_module *module, struct lys_node *parent, struct un
         }
 
         /* check default value*/
-        if (tpdf[i].dflt && unres_schema_add_str(module, unres, &tpdf[i].type, UNRES_TYPE_DFLT, tpdf[i].dflt) == -1) {
+        if (unres_schema_add_node(module, unres, &tpdf[i].type, UNRES_TYPE_DFLT, (struct lys_node *)(&tpdf[i].dflt)) == -1)  {
             ++i;
             goto error;
         }
@@ -3309,12 +3312,12 @@ yang_check_leaf(struct lys_module *module, struct lys_node_leaf *leaf, struct un
         }
     }
 
-    if (unres_schema_add_node(module, unres, &leaf->type, UNRES_TYPE_DER_TPDF, (struct lys_node *)leaf) == -1) {
+    if (unres_schema_add_node(module, unres, &leaf->type, UNRES_TYPE_DER, (struct lys_node *)leaf) == -1) {
         yang_type_free(module->ctx, &leaf->type);
         goto error;
     }
 
-    if (leaf->dflt && unres_schema_add_node(module, unres, &leaf->type, UNRES_TYPE_DFLT, (struct lys_node *)leaf->dflt) == -1) {
+    if (unres_schema_add_node(module, unres, &leaf->type, UNRES_TYPE_DFLT, (struct lys_node *)&leaf->dflt) == -1) {
         goto error;
     }
 
@@ -3335,7 +3338,7 @@ error:
 static int
 yang_check_leaflist(struct lys_module *module, struct lys_node_leaflist *leaflist, struct unres_schema *unres)
 {
-    int i;
+    int i, j;
     struct yang_type *stype;
 
     stype = (struct yang_type *)leaflist->type.der;
@@ -3359,14 +3362,25 @@ yang_check_leaflist(struct lys_module *module, struct lys_node_leaflist *leaflis
         }
     }
 
-    if (unres_schema_add_node(module, unres, &leaflist->type, UNRES_TYPE_DER_TPDF, (struct lys_node *)leaflist) == -1) {
+    if (unres_schema_add_node(module, unres, &leaflist->type, UNRES_TYPE_DER, (struct lys_node *)leaflist) == -1) {
         yang_type_free(module->ctx, &leaflist->type);
         goto error;
     }
 
-    /* check default value (if not defined, there still could be some restrictions
-     * that need to be checked against a default value from a derived type) */
     for (i = 0; i < leaflist->dflt_size; ++i) {
+        /* check for duplicity in case of configuration data,
+         * in case of status data duplicities are allowed */
+        if (leaflist->flags & LYS_CONFIG_W) {
+            for (j = i +1; j < leaflist->dflt_size; ++j) {
+                if (ly_strequal(leaflist->dflt[i], leaflist->dflt[j], 1)) {
+                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, leaflist->dflt[i], "default");
+                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Duplicated default value \"%s\".", leaflist->dflt[i]);
+                    goto error;
+                }
+            }
+        }
+        /* check default value (if not defined, there still could be some restrictions
+         * that need to be checked against a default value from a derived type) */
         if (unres_schema_add_node(module, unres, &leaflist->type, UNRES_TYPE_DFLT, (struct lys_node *)(&leaflist->dflt[i])) == -1) {
             goto error;
         }
@@ -3389,11 +3403,27 @@ error:
 static int
 yang_check_list(struct lys_module *module, struct lys_node_list *list, struct unres_schema *unres)
 {
+    struct lys_node *node;
+
     if (yang_check_typedef(module, (struct lys_node *)list, unres)) {
         goto error;
     }
 
     if (yang_check_iffeatures(module, NULL, list, LIST_KEYWORD, unres)) {
+        goto error;
+    }
+
+    if (list->flags & LYS_CONFIG_R) {
+        /* RFC 6020, 7.7.5 - ignore ordering when the list represents state data
+         * ignore oredering MASK - 0x7F
+         */
+        list->flags &= 0x7F;
+    }
+    /* check - if list is configuration, key statement is mandatory
+     * (but only if we are not in a grouping or augment, then the check is deferred) */
+    for (node = (struct lys_node *)list; node && !(node->nodetype & (LYS_GROUPING | LYS_AUGMENT)); node = node->parent);
+    if (!node && (list->flags & LYS_CONFIG_W) && !list->keys) {
+        LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, list, "key", "list");
         goto error;
     }
 
@@ -3542,6 +3572,13 @@ yang_check_nodes(struct lys_module *module, struct lys_node *nodes, int config_o
             goto error;
         }
         config_opt = store_config_flag(node, config_opt);
+
+        if (yang_check_nodes(module, child, config_opt, unres)) {
+            child = NULL;
+            goto error;
+        }
+        child = NULL;
+
         switch (node->nodetype) {
         case LYS_GROUPING:
             if (yang_check_typedef(module, node, unres)) {
@@ -3621,10 +3658,6 @@ yang_check_nodes(struct lys_module *module, struct lys_node *nodes, int config_o
         default:
             LOGINT;
             sibling = node;
-            child = NULL;
-            goto error;
-        }
-        if (yang_check_nodes(module, child, config_opt, unres)) {
             child = NULL;
             goto error;
         }

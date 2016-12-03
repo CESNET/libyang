@@ -454,6 +454,7 @@ import_arg_str: identifier_arg_str { YANG_ADDELEM(trg->imp, trg->imp_size);
                                      /* HACK for unres */
                                      ((struct lys_import *)actual)->module = (struct lys_module *)s;
                                      s = NULL;
+                                     actual_type = IMPORT_KEYWORD;
                                    }
 
 import_opt_stmt: @EMPTYDIR@ { $$ = 0; }
@@ -491,6 +492,7 @@ include_arg_str: identifier_arg_str { YANG_ADDELEM(trg->inc, trg->inc_size);
                                      /* HACK for unres */
                                      ((struct lys_include *)actual)->submodule = (struct lys_submodule *)s;
                                      s = NULL;
+                                     actual_type = INCLUDE_KEYWORD;
                                    }
 
 include_stmt: INCLUDE_KEYWORD sep include_arg_str include_end stmtsep
@@ -876,7 +878,7 @@ identity_end: ';'
 
            if (((struct lys_ident *)actual)->base_size) {
              tmp = realloc(((struct lys_ident *)actual)->base,
-                           ((struct lys_ident *)actual)->base_size * sizeof(struct lys_ident *));
+                           ((struct lys_ident *)actual)->base_size * sizeof *((struct lys_ident *)actual)->base);
              if (!tmp) {
                LOGMEM;
                YYABORT;
@@ -886,7 +888,7 @@ identity_end: ';'
 
            if (((struct lys_ident *)actual)->iffeature_size) {
              tmp = realloc(((struct lys_ident *)actual)->iffeature,
-                           ((struct lys_ident *)actual)->iffeature_size * sizeof(struct lys_iffeature *));
+                           ((struct lys_ident *)actual)->iffeature_size * sizeof *((struct lys_ident *)actual)->iffeature);
              if (!tmp) {
                LOGMEM;
                YYABORT;
@@ -1882,24 +1884,10 @@ leaf_list_opt_stmt: @EMPTYDIR@ { $$.node.ptr_leaflist = actual;
                                     $1.node.flag |= LYS_TYPE_DEF;
                                   }
      stmtsep { $$ = $1; }
-  |  leaf_list_opt_stmt default_stmt { int i;
-
-                                       if (trg->version < 2) {
+  |  leaf_list_opt_stmt default_stmt { if (trg->version < 2) {
                                          free(s);
                                          LOGVAL(LYE_INSTMT, LY_VLOG_LYS, $1.node.ptr_leaflist, "default");
                                          YYABORT;
-                                       }
-                                       /* check for duplicity in case of configuration data,
-                                        * in case of status data duplicities are allowed */
-                                       if ($1.node.ptr_leaflist->flags & LYS_CONFIG_W) {
-                                         for (i = 0; i < $1.node.ptr_leaflist->dflt_size; ++i) {
-                                           if (ly_strequal($1.node.ptr_leaflist->dflt[i], s, 0)) {
-                                             LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "default");
-                                             LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Duplicated default value \"%s\".", s);
-                                             free(s);
-                                             YYABORT;
-                                           }
-                                         }
                                        }
                                        YANG_ADDELEM($1.node.ptr_leaflist->dflt,
                                                     $1.node.ptr_leaflist->dflt_size);
@@ -1985,22 +1973,7 @@ list_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, actual, no
 list_stmt: LIST_KEYWORD sep list_arg_str
            '{' stmtsep
                list_opt_stmt
-            '}' { struct lys_node *node;
-                  void *tmp;
-
-                  if ($6.node.ptr_list->flags & LYS_CONFIG_R) {
-                    /* RFC 6020, 7.7.5 - ignore ordering when the list represents state data
-                     * ignore oredering MASK - 0x7F
-                     */
-                    $6.node.ptr_list->flags &= 0x7F;
-                  }
-                  /* check - if list is configuration, key statement is mandatory
-                   * (but only if we are not in a grouping or augment, then the check is deferred) */
-                  for (node = (struct lys_node *)$6.node.ptr_list; node && !(node->nodetype & (LYS_GROUPING | LYS_AUGMENT)); node = node->parent);
-                  if (!node && ($6.node.ptr_list->flags & LYS_CONFIG_W) && !$6.node.ptr_list->keys) {
-                    LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, $6.node.ptr_list, "key", "list");
-                    YYABORT;
-                  }
+            '}' { void *tmp;
 
                   if ($6.node.ptr_list->iffeature_size) {
                     tmp = realloc($6.node.ptr_list->iffeature, $6.node.ptr_list->iffeature_size * sizeof *$6.node.ptr_list->iffeature);
@@ -2070,6 +2043,7 @@ list_opt_stmt: @EMPTYDIR@ { $$.node.ptr_list = actual;
                                  ((struct lys_unique *)actual)->expr = (const char **)s;
                                  $$ = $1;
                                  s = NULL;
+                                 actual = $1.node.ptr_list;
                                }
   |  list_opt_stmt config_stmt { if ($1.node.ptr_list->flags & LYS_CONFIG_MASK) {
                                    LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "config", "list");
@@ -2177,6 +2151,12 @@ choice_end: ';'
          choice_opt_stmt
      '}' { struct lys_iffeature *tmp;
 
+           if (($3.node.ptr_choice->flags & LYS_MAND_TRUE) && $3.node.ptr_choice->dflt) {
+              LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "default", "choice");
+              LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The \"default\" statement is forbidden on choices with \"mandatory\".");
+              YYABORT;
+            }
+
            if ($3.node.ptr_choice->iffeature_size) {
              tmp = realloc($3.node.ptr_choice->iffeature, $3.node.ptr_choice->iffeature_size * sizeof *tmp);
              if (!tmp) {
@@ -2206,14 +2186,6 @@ choice_opt_stmt: @EMPTYDIR@ { $$.node.ptr_choice = actual;
                                       free(s);
                                       YYABORT;
                                     }
-
-                                    if ($1.node.ptr_choice->flags & LYS_MAND_TRUE) {
-                                      LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "default", "choice");
-                                      LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The \"default\" statement is forbidden on choices with \"mandatory\".");
-                                      free(s);
-                                      YYABORT;
-                                    }
-
                                     $1.node.ptr_choice->dflt = (struct lys_node *) s;
                                     s = NULL;
                                     $$ = $1;
