@@ -87,7 +87,6 @@ struct type_node {
         struct lys_node_leaf *ptr_leaf;
         struct lys_tpdf *ptr_tpdf;
         struct lys_node_anydata *ptr_anydata;
-        struct lys_node_augment *ptr_augment;
         struct lys_node_rpc_action *ptr_rpc;
         struct lys_node_choice *ptr_choice;
     };
@@ -136,8 +135,6 @@ int yang_read_description(struct lys_module *module, void *node, char *value, ch
 int yang_read_reference(struct lys_module *module, void *node, char *value, char *where);
 
 void yang_read_revision(struct lys_module *module, char *value, struct lys_revision *retval);
-
-int yang_read_if_feature(struct lys_module *module, void *ptr, void *parent, char *value, struct unres_schema *unres, enum yytokentype type);
 
 int yang_read_message(struct lys_module *module,struct lys_restr *save,char *value, char *what, int message);
 
@@ -199,7 +196,7 @@ int yang_check_bit(struct yang_type *typ, struct lys_type_bit *bit, int64_t *val
 
 void *yang_read_typedef(struct lys_module *module, struct lys_node *parent, char *value);
 
-void *yang_read_augment(struct lys_module *module, struct lys_node *parent, char *value);
+int yang_read_augment(struct lys_module *module, struct lys_node *parent, struct lys_node_augment *aug, char *value);
 
 void *yang_read_deviation(struct lys_module *module, char *value);
 

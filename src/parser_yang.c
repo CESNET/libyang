@@ -23,6 +23,8 @@ static void yang_free_import(struct ly_ctx *ctx, struct lys_import *imp, uint8_t
 static void yang_free_include(struct ly_ctx *ctx, struct lys_include *inc, uint8_t start, uint8_t size);
 static int yang_check_sub_module(struct lys_module *module, struct unres_schema *unres, struct lys_node *node);
 static void free_yang_common(struct lys_module *module, struct lys_node *node);
+static int yang_check_nodes(struct lys_module *module, struct lys_node *parent, struct lys_node *nodes,
+                            int config_opt, struct unres_schema *unres);
 void lys_iffeature_free(struct lys_iffeature *iffeature, uint8_t iffeature_size);
 
 static int
@@ -427,7 +429,6 @@ yang_read_node(struct lys_module *module, struct lys_node *parent, struct lys_no
     }
     node->module = module;
     node->nodetype = nodetype;
-    node->parent = parent;
 
     /* insert the node into the schema tree */
     child = (parent) ? &parent->child : root;
@@ -1387,30 +1388,18 @@ error:
     return EXIT_FAILURE;
 }
 
-void *
-yang_read_augment(struct lys_module *module, struct lys_node *parent, char *value)
+int
+yang_read_augment(struct lys_module *module, struct lys_node *parent, struct lys_node_augment *aug, char *value)
 {
-    struct lys_node_augment *aug;
-
-    if (parent) {
-        aug = &((struct lys_node_uses *)parent)->augment[((struct lys_node_uses *)parent)->augment_size];
-    } else {
-        aug = &module->augment[module->augment_size];
-    }
     aug->nodetype = LYS_AUGMENT;
     aug->target_name = transform_schema2json(module, value);
     free(value);
     if (!aug->target_name) {
-        return NULL;
+        return EXIT_FAILURE;
     }
     aug->parent = parent;
     aug->module = module;
-    if (parent) {
-        ((struct lys_node_uses *)parent)->augment_size++;
-    } else {
-        module->augment_size++;
-    }
-    return aug;
+    return EXIT_SUCCESS;
 }
 
 void *
@@ -2892,7 +2881,6 @@ yang_free_uses(struct ly_ctx *ctx, struct lys_node_uses *uses)
     lys_when_free(ctx, uses->when);
 }
 
-
 static void
 yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node)
 {
@@ -2960,6 +2948,18 @@ yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node)
         free(tmp);
         tmp = sibling;
     }
+}
+
+static void
+yang_free_augment(struct ly_ctx *ctx, struct lys_node_augment *aug)
+{
+    lydict_remove(ctx, aug->target_name);
+    lydict_remove(ctx, aug->dsc);
+    lydict_remove(ctx, aug->ref);
+
+    lys_iffeature_free(aug->iffeature, aug->iffeature_size);
+    lys_when_free(ctx, aug->when);
+    yang_free_nodes(ctx, aug->child);
 }
 
 /* free common item from module and submodule */
@@ -3523,16 +3523,52 @@ error:
 }
 
 static int
-yang_check_uses(struct lys_module *module, struct lys_node_uses *uses, struct unres_schema *unres)
+yang_check_augment(struct lys_module *module, struct lys_node_augment *augment, int config_opt, struct unres_schema *unres)
 {
-    uint8_t i;
+    struct lys_node *child;
 
-     if (yang_check_iffeatures(module, NULL, uses, USES_KEYWORD, unres)) {
+    child = augment->child;
+    augment->child = NULL;
+
+    if (yang_check_nodes(module, (struct lys_node *)augment, child, config_opt, unres)) {
+        goto error;
+    }
+
+    if (yang_check_iffeatures(module, NULL, augment, AUGMENT_KEYWORD, unres)) {
+        goto error;
+    }
+
+    /* check XPath dependencies */
+    if (augment->when && (unres_schema_add_node(module, unres, augment, UNRES_XPATH, NULL) == -1)) {
+        goto error;
+    }
+
+    return EXIT_SUCCESS;
+error:
+    return EXIT_FAILURE;
+}
+
+static int
+yang_check_uses(struct lys_module *module, struct lys_node_uses *uses, int config_opt, struct unres_schema *unres)
+{
+    uint i, size;
+
+    size = uses->augment_size;
+    uses->augment_size = 0;
+
+    if (yang_check_iffeatures(module, NULL, uses, USES_KEYWORD, unres)) {
         goto error;
     }
 
     for (i = 0; i < uses->refine_size; ++i) {
          if (yang_check_iffeatures(module, &uses->refine[i], uses, REFINE_KEYWORD, unres)) {
+            goto error;
+        }
+    }
+
+    for (i = 0; i < size; ++i) {
+        uses->augment_size++;
+        if (yang_check_augment(module, &uses->augment[i], config_opt, unres)) {
             goto error;
         }
     }
@@ -3548,21 +3584,23 @@ yang_check_uses(struct lys_module *module, struct lys_node_uses *uses, struct un
 
     return EXIT_SUCCESS;
 error:
+    for (i = uses->augment_size; i < size; ++i) {
+        yang_free_augment(module->ctx, &uses->augment[i]);
+    }
     return EXIT_FAILURE;
 }
 
 static int
-yang_check_nodes(struct lys_module *module, struct lys_node *nodes, int config_opt, struct unres_schema *unres)
+yang_check_nodes(struct lys_module *module, struct lys_node *parent, struct lys_node *nodes,
+                 int config_opt, struct unres_schema *unres)
 {
-    struct lys_node *node = nodes, *sibling, *child, *parent;
+    struct lys_node *node = nodes, *sibling, *child;
 
     while (node) {
         sibling = node->next;
         child = node->child;
-        parent = node->parent;
         node->next = NULL;
         node->child = NULL;
-        node->parent = NULL;
         node->prev = node;
 
         if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, node)) {
@@ -3573,7 +3611,7 @@ yang_check_nodes(struct lys_module *module, struct lys_node *nodes, int config_o
         }
         config_opt = store_config_flag(node, config_opt);
 
-        if (yang_check_nodes(module, child, config_opt, unres)) {
+        if (yang_check_nodes(module, node, child, config_opt, unres)) {
             child = NULL;
             goto error;
         }
@@ -3651,7 +3689,7 @@ yang_check_nodes(struct lys_module *module, struct lys_node *nodes, int config_o
             }
             break;
         case LYS_USES:
-            if (yang_check_uses(module, (struct lys_node_uses *)node, unres)) {
+            if (yang_check_uses(module, (struct lys_node_uses *)node, config_opt, unres)) {
                 goto error;
             }
             break;
@@ -3674,7 +3712,10 @@ error:
 static int
 yang_check_sub_module(struct lys_module *module, struct unres_schema *unres, struct lys_node *node)
 {
-    uint i, erase_identities = 1, erase_nodes = 1;
+    uint i, erase_identities = 1, erase_nodes = 1, aug_size;
+
+    aug_size = module->augment_size;
+    module->augment_size = 0;
 
     if (yang_check_typedef(module, NULL, unres)) {
         goto error;
@@ -3695,8 +3736,19 @@ yang_check_sub_module(struct lys_module *module, struct unres_schema *unres, str
         goto error;
     }
     erase_nodes = 0;
-    if (yang_check_nodes(module, node, CONFIG_INHERIT_ENABLE, unres)) {
+    if (yang_check_nodes(module, NULL, node, CONFIG_INHERIT_ENABLE, unres)) {
         goto error;
+    }
+
+    /* check augments */
+    for (i = 0; i < aug_size; ++i) {
+        module->augment_size++;
+        if (yang_check_augment(module, &module->augment[i], CONFIG_INHERIT_ENABLE, unres)) {
+            goto error;
+        }
+        if (unres_schema_add_node(module, unres, &module->augment[i], UNRES_AUGMENT, NULL) == -1) {
+            goto error;
+        }
     }
 
     return EXIT_SUCCESS;
@@ -3707,5 +3759,9 @@ error:
     if (erase_nodes) {
         yang_free_nodes(module->ctx, node);
     }
+    for (i = module->augment_size; i < aug_size; ++i) {
+        yang_free_augment(module->ctx, &module->augment[i]);
+    }
+
     return EXIT_FAILURE;
 }
