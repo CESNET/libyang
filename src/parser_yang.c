@@ -3482,7 +3482,7 @@ yang_check_rpc_action(struct lys_module *module, struct lys_node_rpc_action *rpc
     if (rpc->nodetype == LYS_ACTION) {
         for (node = rpc->parent; node; node = lys_parent(node)) {
             if ((node->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))
-                    || ((node->nodetype == LYS_LIST) && !((struct lys_node_list *)node)->keys_size)) {
+                    || ((node->nodetype == LYS_LIST) && !((struct lys_node_list *)node)->keys)) {
                 LOGVAL(LYE_INPAR, LY_VLOG_NONE, NULL, strnodetype(node->nodetype), "action");
                 goto error;
             }
