@@ -4326,13 +4326,16 @@ static int
 moveto_snode_check(const struct lys_node *node, enum lyxp_node_type root_type, const char *node_name,
                    struct lys_module *moveto_mod, int options)
 {
+    struct lys_node *parent;
+
     /* RPC input/output check */
+    for (parent = lys_parent(node); parent && (parent->nodetype == LYS_USES); parent = lys_parent(parent));
     if (options & LYXP_SNODE_OUTPUT) {
-        if (lys_parent(node) && (lys_parent(node)->nodetype == LYS_INPUT)) {
+        if (parent && (parent->nodetype == LYS_INPUT)) {
             return -1;
         }
     } else {
-        if (lys_parent(node) && (lys_parent(node)->nodetype == LYS_OUTPUT)) {
+        if (parent && (parent->nodetype == LYS_OUTPUT)) {
             return -1;
         }
     }
