@@ -5150,7 +5150,7 @@ resolve_base_ident(const struct lys_module *module, struct lys_ident *ident, con
 struct lys_ident *
 resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node *node)
 {
-    const char *mod_name, *name;
+    const char *mod_name, *name, *mod_name_iter;
     int mod_name_len, rc, i;
     unsigned int u;
     struct lys_ident *der, *cur;
@@ -5171,7 +5171,7 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
     }
     if (!mod_name) {
         /* no prefix, identity must be defined in the same module as node */
-        mod_name = node->schema->module->name;
+        mod_name = lys_main_module(node->schema->module)->name;
         mod_name_len = strlen(mod_name);
     }
 
@@ -5179,8 +5179,9 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
     while (type->der) {
         for (i = 0; i < type->info.ident.count; ++i) {
             cur = type->info.ident.ref[i];
+            mod_name_iter = lys_main_module(cur->module)->name;
             if (!strcmp(cur->name, name) &&
-                    !strncmp(cur->module->name, mod_name, mod_name_len) && !cur->module->name[mod_name_len]) {
+                    !strncmp(mod_name_iter, mod_name, mod_name_len) && !mod_name_iter[mod_name_len]) {
                 goto match;
             }
 
@@ -5188,8 +5189,9 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
                 /* there are also some derived identities */
                 for (u = 0; u < cur->der->number; u++) {
                     der = (struct lys_ident *)cur->der->set.g[u]; /* shortcut */
+                    mod_name_iter = lys_main_module(der->module)->name;
                     if (!strcmp(der->name, name) &&
-                            !strncmp(der->module->name, mod_name, mod_name_len) && !der->module->name[mod_name_len]) {
+                            !strncmp(mod_name_iter, mod_name, mod_name_len) && !mod_name_iter[mod_name_len]) {
                         /* we have match */
                         cur = der;
                         goto match;
