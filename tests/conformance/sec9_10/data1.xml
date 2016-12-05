@@ -1,1 +1,1 @@
-<test2 xmlns="urn:cesnet:mod3">j2</test2>
+<test2 xmlns="urn:cesnet:mod3" xmlns:mod="urn:cesnet:mod">mod:j2</test2>
