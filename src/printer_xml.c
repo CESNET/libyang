@@ -254,7 +254,8 @@ printvalue:
         break;
 
     case LY_TYPE_LEAFREF:
-        type = lyp_parse_value(type, (const char **)&leaf->value_str, NULL, (struct lyd_node *)leaf, NULL, 1, 0);
+        type = lyp_parse_value(type, (const char **)&leaf->value_str, NULL, (struct lyd_node *)leaf,
+                               (struct lyd_node_leaf_list *)leaf, 0, 1, 0);
         if (!type) {
             /* error */
             ly_print(out, "\"(!error!)\"");
