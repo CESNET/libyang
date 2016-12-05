@@ -5177,13 +5177,18 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
         }
         return NULL;
     }
+    if (!mod_name) {
+        /* no prefix, identity must be defined in the same module as node */
+        mod_name = node->schema->module->name;
+        mod_name_len = strlen(mod_name);
+    }
 
     /* go through all the bases in all the derived types */
     while (type->der) {
         for (i = 0; i < type->info.ident.count; ++i) {
             cur = type->info.ident.ref[i];
-            if (!strcmp(cur->name, name) && (!mod_name
-                    || (!strncmp(cur->module->name, mod_name, mod_name_len) && !cur->module->name[mod_name_len]))) {
+            if (!strcmp(cur->name, name) &&
+                    !strncmp(cur->module->name, mod_name, mod_name_len) && !cur->module->name[mod_name_len]) {
                 goto match;
             }
 
@@ -5192,7 +5197,7 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
                 for (u = 0; u < cur->der->number; u++) {
                     der = (struct lys_ident *)cur->der->set.g[u]; /* shortcut */
                     if (!strcmp(der->name, name) &&
-                            (!mod_name || (!strncmp(der->module->name, mod_name, mod_name_len) && !der->module->name[mod_name_len]))) {
+                            !strncmp(der->module->name, mod_name, mod_name_len) && !der->module->name[mod_name_len]) {
                         /* we have match */
                         cur = der;
                         goto match;
