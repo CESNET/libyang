@@ -2821,7 +2821,9 @@ read_indent(const char *input, int indent, int size, int in_index, int *out_inde
         if (k >= indent) {
             for (j = k - indent; j > 0; --j) {
                 output[*out_index] = ' ';
-                ++(*out_index);
+                if (j > 1) {
+                    ++(*out_index);
+                }
             }
             break;
         }
