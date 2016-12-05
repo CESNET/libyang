@@ -1314,6 +1314,20 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             leaf->value.ident = ident;
         }
 
+        if (!strchr(value, ':')) {
+            /* add missing default namespace, we need it for more simple values comparison
+             * in case a leafref is pointing to this identityref and we are resolving the leafref */
+            /* note that value is still equal to *value_ because if one of the previous transform_* function change
+             * it, it would already have the prefix here */
+            str = NULL;
+            asprintf(&str, "%s:%s", leaf->schema->module->name, value);
+            if (!ly_strequal(str, value, 0)) {
+                value = lydict_insert_zc(type->parent->module->ctx, str);
+            } else {
+                free(str);
+            }
+        }
+
         if (value != *value_) {
             /* update the changed value */
             lydict_remove(type->parent->module->ctx, *value_);

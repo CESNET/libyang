@@ -87,10 +87,11 @@ static void
 json_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int onlyvalue, int toplevel, int options)
 {
     struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
-    const char *schema = NULL;
+    const char *schema = NULL, *p, *mod_name;
     const struct lys_module *wdmod = NULL;
     LY_DATA_TYPE datatype;
     const struct lys_type *type;
+    size_t len;
 
     if ((node->dflt && (options & (LYP_WD_ALL_TAG | LYP_WD_IMPL_TAG))) ||
             (!node->dflt && (options & LYP_WD_ALL_TAG) && lyd_wd_default(leaf))) {
@@ -116,7 +117,6 @@ contentprint:
     case LY_TYPE_STRING:
     case LY_TYPE_BITS:
     case LY_TYPE_ENUM:
-    case LY_TYPE_IDENT:
     case LY_TYPE_INST:
     case LY_TYPE_INT64:
     case LY_TYPE_UINT64:
@@ -132,6 +132,19 @@ contentprint:
     case LY_TYPE_UINT32:
     case LY_TYPE_BOOL:
         ly_print(out, "%s", leaf->value_str[0] ? leaf->value_str : "null");
+        break;
+
+    case LY_TYPE_IDENT:
+        p = strchr(leaf->value_str, ':');
+        assert(p);
+        len = p - leaf->value_str;
+        mod_name = leaf->schema->module->name;
+        if (!strncmp(leaf->value_str, mod_name, len) && !mod_name[len]) {
+            /* do not print the prefix, it is the default prefix for this node */
+            json_print_string(out, ++p);
+        } else {
+            json_print_string(out, leaf->value_str);
+        }
         break;
 
     case LY_TYPE_LEAFREF:

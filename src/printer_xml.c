@@ -180,12 +180,14 @@ static void
 xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int toplevel, int options)
 {
     const struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
-    const char *ns;
+    const char *ns, *mod_name;
     const char **prefs, **nss;
     const char *xml_expr;
     uint32_t ns_count, i;
     struct lys_type *type;
     LY_DATA_TYPE datatype;
+    char *p;
+    size_t len;
 
     if (toplevel || !node->parent || nscmp(node, node->parent)) {
         /* print "namespace" */
@@ -228,6 +230,24 @@ printvalue:
         break;
 
     case LY_TYPE_IDENT:
+        if (!leaf->value_str || !leaf->value_str[0]) {
+            ly_print(out, "/>");
+            break;
+        }
+        p = strchr(leaf->value_str, ':');
+        assert(p);
+        len = p - leaf->value_str;
+        mod_name = leaf->schema->module->name;
+        if (!strncmp(leaf->value_str, mod_name, len) && !mod_name[len]) {
+            ly_print(out, ">");
+            lyxml_dump_text(out, ++p);
+            ly_print(out, "</%s>", node->schema->name);
+        } else {
+            /* avoid code duplication - use instance-identifier printer which gets necessary namespaces to print */
+            datatype = LY_TYPE_INST;
+            goto printvalue;
+        }
+        break;
     case LY_TYPE_INST:
         xml_expr = transform_json2xml(node->schema->module, ((struct lyd_node_leaf_list *)node)->value_str,
                                       &prefs, &nss, &ns_count);
