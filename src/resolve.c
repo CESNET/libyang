@@ -1611,9 +1611,6 @@ schema_nodeid_siblingcheck(const struct lys_node *sibling, int8_t *shorthand, co
     prefix_mod = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
     if (prefix_mod && implemented_mod) {
         prefix_mod = lys_implemented_module(prefix_mod);
-        if (!prefix_mod->implemented) {
-            return -1;
-        }
     }
     if (!prefix_mod) {
         return -1;
