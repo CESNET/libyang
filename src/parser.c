@@ -937,12 +937,13 @@ lyp_check_pattern(const char *pattern, pcre **pcre_precomp)
     return EXIT_SUCCESS;
 }
 
-static void
-make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, void *data2)
+int
+lyp_make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, void *data2)
 {
     char *buf = ly_buf(), *buf_backup = NULL, *str;
     struct lys_type_bit **bits = NULL;
-    int i, j, count;
+    const char *module_name;
+    int i, j, count, ret = 0;
     int64_t num;
     uint64_t unum;
     uint8_t c;
@@ -971,6 +972,16 @@ make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, vo
             } else {
                 sprintf(buf, "%s", bits[i]->name);
             }
+        }
+        break;
+
+    case LY_TYPE_IDENT:
+        module_name = (const char *)data1;
+        /* identity must always have a prefix */
+        if (!strchr(*value, ':')) {
+            sprintf(buf, "%s:%s", module_name, *value);
+        } else {
+            strcpy(buf, *value);
         }
         break;
 
@@ -1024,6 +1035,7 @@ make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, vo
     if (strcmp(buf, *value)) {
         lydict_remove(ctx, *value);
         *value = lydict_insert(ctx, buf, 0);
+        ret = 1;
     }
 
 cleanup:
@@ -1034,7 +1046,7 @@ cleanup:
     }
     ly_buf_used--;
 
-    return;
+    return ret;
 }
 
 
@@ -1053,7 +1065,6 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
     int64_t num;
     uint64_t unum;
     const char *ptr, *ptr2, *value = *value_;
-    char *str;
     struct lys_type_bit **bits = NULL;
     struct lys_ident *ident;
 
@@ -1182,7 +1193,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             c = c + len;
         }
 
-        make_canonical(type->parent->module->ctx, LY_TYPE_BITS, value_, bits, &type->info.bits.count);
+        lyp_make_canonical(type->parent->module->ctx, LY_TYPE_BITS, value_, bits, &type->info.bits.count);
 
         if (store) {
             /* store the result */
@@ -1220,7 +1231,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             goto cleanup;
         }
 
-        make_canonical(type->parent->module->ctx, LY_TYPE_DEC64, value_, &num, &type->info.dec64.dig);
+        lyp_make_canonical(type->parent->module->ctx, LY_TYPE_DEC64, value_, &num, &type->info.dec64.dig);
 
         if (store) {
             /* store the result */
@@ -1292,21 +1303,25 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             value = transform_schema2json(leaf->schema->module, value);
             if (!value) {
                 /* invalid identityref format or it was already transformed, so ignore the error here */
-                value = *value_;
+                value = lydict_insert(type->parent->module->ctx, *value_, 0);
                 /* erase error information */
                 ly_err_clean(1);
-            } else if (value == *value_) {
-                /* we have actually created the same expression (prefixes are the same as the module names)
-                 * so we have just increased dictionary's refcount - fix it */
-                lydict_remove(type->parent->module->ctx, value);
             }
             /* turn logging back on */
             if (!hidden) {
                 ly_vlog_hide(0);
             }
+        } else {
+            value = lydict_insert(type->parent->module->ctx, *value_, 0);
+        }
+        /* value is now in the dictionary, whether it differs from *value_ or not */
+
+        /* the value is always changed and includes prefix */
+        if (dflt) {
+            type->parent->flags |= LYS_DFLTJSON;
         }
 
-        ident = resolve_identref(type, value, (struct lyd_node*)leaf);
+        ident = resolve_identref(type, value, (struct lyd_node *)leaf);
         if (!ident) {
             goto cleanup;
         } else if (store) {
@@ -1314,30 +1329,12 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             leaf->value.ident = ident;
         }
 
-        if (!strchr(value, ':')) {
-            /* add missing default namespace, we need it for more simple values comparison
-             * in case a leafref is pointing to this identityref and we are resolving the leafref */
-            /* note that value is still equal to *value_ because if one of the previous transform_* function change
-             * it, it would already have the prefix here */
-            str = NULL;
-            asprintf(&str, "%s:%s", leaf->schema->module->name, value);
-            if (!ly_strequal(str, value, 0)) {
-                value = lydict_insert_zc(type->parent->module->ctx, str);
-            } else {
-                free(str);
-            }
-        }
+        lyp_make_canonical(type->parent->module->ctx, LY_TYPE_IDENT, &value,
+                           (void *)lyd_node_module((struct lyd_node *)leaf)->name, NULL);
 
-        if (value != *value_) {
-            /* update the changed value */
-            lydict_remove(type->parent->module->ctx, *value_);
-            *value_ = value;
-
-            /* we have to remember the conversion into JSON format to be able to print it in correct form */
-            if (dflt) {
-                type->parent->flags |= LYS_DFLTJSON;
-            }
-        }
+        /* replace the old value with the new one (even if they may be the same) */
+        lydict_remove(type->parent->module->ctx, *value_);
+        *value_ = value;
         break;
 
     case LY_TYPE_INST:
@@ -1456,7 +1453,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             goto cleanup;
         }
 
-        make_canonical(type->parent->module->ctx, LY_TYPE_INT8, value_, &num, NULL);
+        lyp_make_canonical(type->parent->module->ctx, LY_TYPE_INT8, value_, &num, NULL);
 
         if (store) {
             /* store the result */
@@ -1470,7 +1467,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             goto cleanup;
         }
 
-        make_canonical(type->parent->module->ctx, LY_TYPE_INT16, value_, &num, NULL);
+        lyp_make_canonical(type->parent->module->ctx, LY_TYPE_INT16, value_, &num, NULL);
 
         if (store) {
             /* store the result */
@@ -1484,7 +1481,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             goto cleanup;
         }
 
-        make_canonical(type->parent->module->ctx, LY_TYPE_INT32, value_, &num, NULL);
+        lyp_make_canonical(type->parent->module->ctx, LY_TYPE_INT32, value_, &num, NULL);
 
         if (store) {
             /* store the result */
@@ -1499,7 +1496,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             goto cleanup;
         }
 
-        make_canonical(type->parent->module->ctx, LY_TYPE_INT64, value_, &num, NULL);
+        lyp_make_canonical(type->parent->module->ctx, LY_TYPE_INT64, value_, &num, NULL);
 
         if (store) {
             /* store the result */
@@ -1513,7 +1510,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             goto cleanup;
         }
 
-        make_canonical(type->parent->module->ctx, LY_TYPE_UINT8, value_, &unum, NULL);
+        lyp_make_canonical(type->parent->module->ctx, LY_TYPE_UINT8, value_, &unum, NULL);
 
         if (store) {
             /* store the result */
@@ -1527,7 +1524,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             goto cleanup;
         }
 
-        make_canonical(type->parent->module->ctx, LY_TYPE_UINT16, value_, &unum, NULL);
+        lyp_make_canonical(type->parent->module->ctx, LY_TYPE_UINT16, value_, &unum, NULL);
 
         if (store) {
             /* store the result */
@@ -1541,7 +1538,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             goto cleanup;
         }
 
-        make_canonical(type->parent->module->ctx, LY_TYPE_UINT32, value_, &unum, NULL);
+        lyp_make_canonical(type->parent->module->ctx, LY_TYPE_UINT32, value_, &unum, NULL);
 
         if (store) {
             /* store the result */
@@ -1555,7 +1552,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             goto cleanup;
         }
 
-        make_canonical(type->parent->module->ctx, LY_TYPE_UINT64, value_, &unum, NULL);
+        lyp_make_canonical(type->parent->module->ctx, LY_TYPE_UINT64, value_, &unum, NULL);
 
         if (store) {
             /* store the result */
