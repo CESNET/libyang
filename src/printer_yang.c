@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <assert.h>
 
 #include "common.h"
 #include "printer.h"
@@ -702,7 +703,13 @@ yang_print_typedef(struct lyout *out, int level, const struct lys_module *module
     }
     if (tpdf->dflt != NULL) {
         if (tpdf->flags & LYS_DFLTJSON) {
-            dflt = transform_json2schema(module, tpdf->dflt);
+            assert(strchr(tpdf->dflt, ':'));
+            if (!strncmp(tpdf->dflt, module->name, strchr(tpdf->dflt, ':') - tpdf->dflt)) {
+                /* local module */
+                dflt = lydict_insert(module->ctx, strchr(tpdf->dflt, ':') + 1, 0);
+            } else {
+                dflt = transform_json2schema(module, tpdf->dflt);
+            }
         } else {
             dflt = tpdf->dflt;
         }
@@ -893,7 +900,13 @@ yang_print_leaf(struct lyout *out, int level, const struct lys_node *node)
     }
     if (leaf->dflt) {
         if (leaf->flags & LYS_DFLTJSON) {
-            dflt = transform_json2schema(node->module, leaf->dflt);
+            assert(strchr(leaf->dflt, ':'));
+            if (!strncmp(leaf->dflt, lys_node_module(node)->name, strchr(leaf->dflt, ':') - leaf->dflt)) {
+                /* local module */
+                dflt = lydict_insert(node->module->ctx, strchr(leaf->dflt, ':') + 1, 0);
+            } else {
+                dflt = transform_json2schema(node->module, leaf->dflt);
+            }
         } else {
             dflt = leaf->dflt;
         }
@@ -957,7 +970,13 @@ yang_print_leaflist(struct lyout *out, int level, const struct lys_node *node)
     yang_print_type(out, level, node->module, &llist->type);
     for (i = 0; i < llist->dflt_size; ++i) {
         if (llist->flags & LYS_DFLTJSON) {
-            dflt = transform_json2schema(node->module, llist->dflt[i]);
+            assert(strchr(llist->dflt[i], ':'));
+            if (!strncmp(llist->dflt[i], lys_node_module(node)->name, strchr(llist->dflt[i], ':') - llist->dflt[i])) {
+                /* local module */
+                dflt = lydict_insert(node->module->ctx, strchr(llist->dflt[i], ':') + 1, 0);
+            } else {
+                dflt = transform_json2schema(node->module, llist->dflt[i]);
+            }
         } else {
             dflt = llist->dflt[i];
         }
