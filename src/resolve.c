@@ -1610,7 +1610,10 @@ schema_nodeid_siblingcheck(const struct lys_node *sibling, int8_t *shorthand, co
     /* module check */
     prefix_mod = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
     if (prefix_mod && implemented_mod) {
-        prefix_mod = lys_get_implemented_module(prefix_mod);
+        prefix_mod = lys_implemented_module(prefix_mod);
+        if (!prefix_mod->implemented) {
+            return -1;
+        }
     }
     if (!prefix_mod) {
         return -1;
@@ -1684,7 +1687,7 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
              * itself, we don't want to search for the implemented module but augments
              * the module anyway. But when augmenting another module, we need the implemented
              * revision of the module if any */
-            aux_mod = lys_get_implemented_module(start_mod);
+            aux_mod = lys_implemented_module(start_mod);
             if (!aux_mod->implemented && implement) {
                 /* make the found module implemented */
                 if (lys_set_implemented(aux_mod)) {
@@ -1743,7 +1746,7 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
                     return -1;
                 }
                 if (!aux_mod->implemented) {
-                    aux_mod = lys_get_implemented_module(aux_mod);
+                    aux_mod = lys_implemented_module(aux_mod);
                     if (!aux_mod->implemented) {
                         /* make the found module implemented */
                         if (lys_set_implemented(aux_mod)) {
@@ -3840,7 +3843,7 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
                     return EXIT_FAILURE;
                 }
                 if (!mod->implemented) {
-                    mod = lys_get_implemented_module(mod);
+                    mod = lys_implemented_module(mod);
                     if (!mod->implemented) {
                         /* make the found module implemented */
                         if (lys_set_implemented(mod)) {
@@ -3885,7 +3888,7 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
                     return EXIT_FAILURE;
                 }
                 if (!mod->implemented) {
-                    mod = lys_get_implemented_module(mod);
+                    mod = lys_implemented_module(mod);
                     if (!mod->implemented) {
                         /* make the found module implemented */
                         if (lys_set_implemented(mod)) {
@@ -3905,7 +3908,7 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
                 return EXIT_FAILURE;
             }
             if (!mod->implemented) {
-                mod = lys_get_implemented_module(mod);
+                mod = lys_implemented_module(mod);
                 if (!mod->implemented) {
                     /* make the found module implemented */
                     if (lys_set_implemented(mod)) {
