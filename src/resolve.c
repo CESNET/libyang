@@ -2179,10 +2179,11 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
 static int
 resolve_partial_json_data_list_predicate(const char *predicate, const char *node_name, struct lyd_node *node, int *parsed)
 {
-    const char *name, *value;
+    const char *name, *value, *key_val;
     int nam_len, val_len, has_predicate = 1, r;
     uint16_t i;
     struct lyd_node_leaf_list *key;
+    const struct lys_type *type;
 
     assert(node);
     assert(node->schema->nodetype == LYS_LIST);
@@ -2214,8 +2215,18 @@ resolve_partial_json_data_list_predicate(const char *predicate, const char *node
             return -1;
         }
 
+        /* make value canonical */
+        type = lyd_leaf_type(key, 1);
+        if ((type->base == LY_TYPE_IDENT)
+                && !strncmp(key->value_str, lyd_node_module(node)->name, strlen(lyd_node_module(node)->name))) {
+            assert(key->value_str[strlen(lyd_node_module(node)->name)] == ':');
+            key_val = key->value_str + strlen(lyd_node_module(node)->name) + 1;
+        } else {
+            key_val = key->value_str;
+        }
+
         /* value does not match */
-        if (strncmp(key->value_str, value, val_len) || key->value_str[val_len]) {
+        if (strncmp(key_val, value, val_len) || key_val[val_len]) {
             return 1;
         }
 
@@ -2244,11 +2255,12 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
                                  int *parsed)
 {
     char *module_name = ly_buf(), *buf_backup = NULL, *str;
-    const char *id, *mod_name, *name, *pred_name;
+    const char *id, *mod_name, *name, *pred_name, *data_val;
     int r, ret, mod_name_len, nam_len, is_relative = -1;
-    int has_predicate, last_parsed, val_len, pred_name_len, last_has_pred;
+    int has_predicate, last_parsed, llval_len, pred_name_len, last_has_pred;
     struct lyd_node *sibling, *last_match = NULL;
     struct lyd_node_leaf_list *llist;
+    const struct lys_type *type;
     const struct lys_module *prefix_mod, *prev_mod;
     struct ly_ctx *ctx;
 
@@ -2338,9 +2350,11 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
 
                 /* leaf-list, did we find it with the correct value or not? */
                 if (sibling->schema->nodetype == LYS_LEAFLIST) {
+                    llist = (struct lyd_node_leaf_list *)sibling;
+
                     last_has_pred = 0;
                     if (has_predicate) {
-                        if ((r = parse_schema_json_predicate(id, &pred_name, &pred_name_len, &llist_value, &val_len, &last_has_pred)) < 1) {
+                        if ((r = parse_schema_json_predicate(id, &pred_name, &pred_name_len, &llist_value, &llval_len, &last_has_pred)) < 1) {
                             LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[0], id);
                             *parsed = -1;
                             return NULL;
@@ -2353,17 +2367,25 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
                     } else {
                         r = 0;
                         if (llist_value) {
-                            val_len = strlen(llist_value);
-                        } else {
-                            val_len = 0;
+                            llval_len = strlen(llist_value);
                         }
                     }
 
-                    llist = (struct lyd_node_leaf_list *)sibling;
-                    if ((!val_len && llist->value_str && llist->value_str[0])
-                            || (val_len && (strncmp(llist_value, llist->value_str, val_len) || llist->value_str[val_len]))) {
+                    /* make value canonical */
+                    type = lyd_leaf_type(llist, 1);
+                    if ((type->base == LY_TYPE_IDENT)
+                            && !strncmp(llist->value_str, lyd_node_module(sibling)->name, strlen(lyd_node_module(sibling)->name))) {
+                        assert(llist->value_str[strlen(lyd_node_module(sibling)->name)] == ':');
+                        data_val = llist->value_str + strlen(lyd_node_module(sibling)->name) + 1;
+                    } else {
+                        data_val = llist->value_str;
+                    }
+
+                    if ((!llist_value && data_val && data_val[0])
+                            || (llist_value && (strncmp(llist_value, data_val, llval_len) || data_val[llval_len]))) {
                         continue;
                     }
+
                     id += r;
                     last_parsed += r;
                     has_predicate = last_has_pred;
