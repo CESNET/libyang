@@ -473,7 +473,12 @@ parse_int(const char *val_str, int64_t min, int64_t max, int base, int64_t *ret,
     char *strptr;
 
     if (!val_str || !val_str[0]) {
-        LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, "", node->schema->name);
+        if (node) {
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, "", node->schema->name);
+        } else {
+            ly_errno = LY_EVALID;
+            ly_vecode = LYVE_INVAL;
+        }
         return EXIT_FAILURE;
     }
 
@@ -484,14 +489,24 @@ parse_int(const char *val_str, int64_t min, int64_t max, int base, int64_t *ret,
     /* parse the value */
     *ret = strtoll(val_str, &strptr, base);
     if (errno || (*ret < min) || (*ret > max)) {
-        LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, val_str, node->schema->name);
+        if (node) {
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, val_str, node->schema->name);
+        } else {
+            ly_errno = LY_EVALID;
+            ly_vecode = LYVE_INVAL;
+        }
         return EXIT_FAILURE;
     } else if (strptr && *strptr) {
         while (isspace(*strptr)) {
             ++strptr;
         }
         if (*strptr) {
-            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, val_str, node->schema->name);
+            if (node) {
+                LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, val_str, node->schema->name);
+            } else {
+                ly_errno = LY_EVALID;
+                ly_vecode = LYVE_INVAL;
+            }
             return EXIT_FAILURE;
         }
     }
