@@ -66,26 +66,6 @@ struct lys_type *lyp_parse_value(struct lys_type *type, const char **value_, str
                                          struct lyd_node *tree, struct lyd_node_leaf_list *leaf,
                                          int store, int resolvable, int dflt);
 
-/**
- * @brief Change the value into its canonical form. In libyang, additionally to the RFC,
- * all identities have their module as a prefix in their canonical form.
- *
- * @param[in] ctx
- * @param[in] type Type of the value.
- * @param[in,out] value Original and then canonical value.
- * @param[in] data1 If \p type is #LY_TYPE_BITS: (struct lys_type_bit **) type bit field,
- *                                #LY_TYPE_DEC64: (int64_t *) parsed digits of the number itself without floating point,
- *                                #LY_TYPE_IDENT: (const char *) local module name (identityref node module),
- *                                #LY_TYPE_INT*: (int64_t *) parsed int number itself,
- *                                #LY_TYPE_UINT*: (uint64_t *) parsed uint number itself,
- *                                otherwise ignored.
- * @param[in] data2 If \p type is #LY_TYPE_BITS: (int *) type bit field length,
- *                                #LY_TYPE_DEC64: (uint8_t *) number of fraction digits (position of the floating point),
- *                                otherwise ignored.
- * @return 1 if a conversion took place, 0 if the value was kept the same.
- */
-int lyp_make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, void *data2);
-
 int lyp_check_length_range(const char *expr, struct lys_type *type);
 
 int lyp_check_pattern(const char *pattern, pcre **pcre_precomp);
