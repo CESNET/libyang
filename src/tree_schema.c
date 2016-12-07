@@ -1976,15 +1976,15 @@ lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys
     free(node);
 }
 
-const struct lys_module *
-lys_get_implemented_module(const struct lys_module *mod)
+API struct lys_module *
+lys_implemented_module(const struct lys_module *mod)
 {
     struct ly_ctx *ctx;
     int i;
 
     if (!mod || mod->implemented) {
         /* invalid argument or the module itself is implemented */
-        return mod;
+        return (struct lys_module *)mod;
     }
 
     ctx = mod->ctx;
@@ -2001,7 +2001,7 @@ lys_get_implemented_module(const struct lys_module *mod)
 
     /* we have no revision of the module implemented, return the module itself,
      * it is up to the caller to set the module implemented when needed */
-    return mod;
+    return (struct lys_module *)mod;
 }
 
 const struct lys_module *
@@ -3529,7 +3529,7 @@ lys_sub_module_remove_devs_augs(struct lys_module *module)
         } else {
             target_mod = (struct lys_module *)lys_get_import_module(module, NULL, 0, module->deviation[i].target_name + 1,
                                                                     strcspn(module->deviation[i].target_name, ":") - 1);
-            target_mod = (struct lys_module *)lys_get_implemented_module(target_mod);
+            target_mod = (struct lys_module *)lys_implemented_module(target_mod);
         }
         lys_switch_deviation(&module->deviation[i], module);
 
