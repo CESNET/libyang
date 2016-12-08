@@ -63,7 +63,7 @@ struct unres_ext {
     LYS_INFORMAT datatype;           /**< type of the data in data union */
 
     void *parent;
-    LYS_EXT_PAR parent_type;
+    LYEXT_PAR parent_type;
 };
 
 /**

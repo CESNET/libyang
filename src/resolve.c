@@ -4528,24 +4528,24 @@ resolve_extension(struct unres_ext *info, const struct lys_module *mod, struct l
     struct unres_ext *subinfo;
 
     switch (info->parent_type) {
-    case LYS_EXT_PAR_NODE:
+    case LYEXT_PAR_NODE:
         vlog_node = info->parent;
         vlog_type = LY_VLOG_LYS;
         break;
-    case LYS_EXT_PAR_MODULE:
-    case LYS_EXT_PAR_IMPORT:
-    case LYS_EXT_PAR_INCLUDE:
+    case LYEXT_PAR_MODULE:
+    case LYEXT_PAR_IMPORT:
+    case LYEXT_PAR_INCLUDE:
         vlog_node = NULL;
         vlog_type = LY_VLOG_LYS;
         break;
-    case LYS_EXT_PAR_TYPE:
-    case LYS_EXT_PAR_TPDF:
-    case LYS_EXT_PAR_FEATURE:
-    case LYS_EXT_PAR_IDENT:
-    case LYS_EXT_PAR_EXT:
-    case LYS_EXT_PAR_EXTINST:
-    case LYS_EXT_PAR_REFINE:
-    case LYS_EXT_PAR_DEVIATION:
+    case LYEXT_PAR_TYPE:
+    case LYEXT_PAR_TPDF:
+    case LYEXT_PAR_FEATURE:
+    case LYEXT_PAR_IDENT:
+    case LYEXT_PAR_EXT:
+    case LYEXT_PAR_EXTINST:
+    case LYEXT_PAR_REFINE:
+    case LYEXT_PAR_DEVIATION:
         vlog_node = NULL;
         vlog_node = LY_VLOG_NONE;
         break;
@@ -4582,7 +4582,7 @@ resolve_extension(struct unres_ext *info, const struct lys_module *mod, struct l
         }
 
         /* we have the extension definition, so now it cannot be forward referenced and error is always fatal */
-        if (!e->plugin || e->plugin->type == LY_EXT_FLAG) {
+        if (!e->plugin || e->plugin->type == LYEXT_FLAG) {
             if (e->flags & LYS_YINELEM) {
                 value = NULL;
                 c_ext = 0;
@@ -4624,9 +4624,9 @@ resolve_extension(struct unres_ext *info, const struct lys_module *mod, struct l
             } else {
                 value = NULL;
             }
-            (*ext) = calloc(1, sizeof(struct lys_ext_instance_flag));
-            ((struct lys_ext_instance_flag *)(*ext))->def = e;
-            ((struct lys_ext_instance_flag *)(*ext))->arg_value = value;
+            (*ext) = calloc(1, sizeof(struct lys_ext_instance));
+            ((struct lys_ext_instance *)(*ext))->def = e;
+            ((struct lys_ext_instance *)(*ext))->arg_value = value;
 
             /* extension instances in extension */
             if (c_ext == -1) {
@@ -4659,7 +4659,7 @@ resolve_extension(struct unres_ext *info, const struct lys_module *mod, struct l
                     subinfo->data.yin = yin;
                     subinfo->datatype = LYS_IN_YIN;
                     subinfo->parent = (void *)(*ext);
-                    subinfo->parent_type = LYS_EXT_PAR_EXTINST;
+                    subinfo->parent_type = LYEXT_PAR_EXTINST;
                     rc = unres_schema_add_node((struct lys_module *)mod, unres, &(*ext)->ext[(*ext)->ext_size],
                                                UNRES_EXT, (struct lys_node *)subinfo);
                     (*ext)->ext_size++;

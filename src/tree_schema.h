@@ -1819,6 +1819,14 @@ struct ly_set *lys_node_xpath_atomize(const struct lys_node *node, int options);
 char *lys_path(const struct lys_node *node);
 
 /**
+ * @brief Get the type of the extension to be able to decide how the instance structure can be cast.
+ *
+ * @param[in] ext Generic extension instance structure.
+ * @return Extension type.
+ */
+LYEXT_TYPE lys_ext_instance_type(struct lys_ext_instance *ext);
+
+/**
  * @brief Return parent node in the schema tree.
  *
  * In case of augmenting node, it returns the target tree node where the augmenting

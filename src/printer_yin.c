@@ -198,21 +198,26 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
 
         content = 0;
         ly_print(out, "%*s<%s:%s", LEVEL, INDENT, prefix, ext[u]->def->name);
-
-        if (!ext[u]->def->plugin || ext[u]->def->plugin->type == LY_EXT_FLAG) {
-            /* flag extension */
-            if (((struct lys_ext_instance_flag *)ext[u])->arg_value) {
-                if (ext[u]->def->flags & LYS_YINELEM) {
-                    content = 1;
-                    level++;
-                    ly_print(out, ">\n%*s<%s:%s>%s</%s:%s>\n", LEVEL, INDENT, prefix, ext[u]->def->argument,
-                             ((struct lys_ext_instance_flag *)ext[u])->arg_value, prefix, ext[u]->def->argument);
-                    level--;
-                } else {
-                    ly_print(out, " %s=\"%s\"", ext[u]->def->argument,
-                             ((struct lys_ext_instance_flag *)ext[u])->arg_value);
-                }
+        /* extension - generic part */
+        if (ext[u]->arg_value) {
+            if (ext[u]->def->flags & LYS_YINELEM) {
+                content = 1;
+                level++;
+                ly_print(out, ">\n%*s<%s:%s>%s</%s:%s>\n", LEVEL, INDENT, prefix, ext[u]->def->argument,
+                         ext[u]->arg_value, prefix, ext[u]->def->argument);
+                level--;
+            } else {
+                ly_print(out, " %s=\"%s\"", ext[u]->def->argument, ext[u]->arg_value);
             }
+        }
+
+        /* extension - type-specific part */
+        switch (lys_ext_instance_type(ext[u])) {
+        case LYEXT_FLAG:
+            /* flag extension - nothing special */
+        case LYEXT_ERR:
+            LOGINT;
+            break;
         }
 
         /* extensions */

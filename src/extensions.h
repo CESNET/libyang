@@ -36,7 +36,7 @@ typedef enum {
  *         1 - no
  *         2 - ignore / skip without an error
  */
-typedef int (*ly_ext_check_position_clb)(LYS_STRUCT type, const void *parent);
+typedef int (*lyext_check_position_clb)(LYS_STRUCT type, const void *parent);
 
 /**
  * @brief Callback to check that the extension can be instantiated inside the provided node
@@ -47,61 +47,58 @@ typedef int (*ly_ext_check_position_clb)(LYS_STRUCT type, const void *parent);
  *         1 - no
  *         2 - ignore / skip without an error
  */
-typedef int (*ly_ext_check_value_clb)(const char *value);
+typedef int (*lyext_check_value_clb)(const char *value);
 
 /**
  * @brief Extension instance parent enumeration
  */
 typedef enum {
-    LYS_EXT_PAR_MODULE,              /**< ::lys_module or ::lys_submodule */
-    LYS_EXT_PAR_NODE,                /**< ::lys_node (and the derived types */
-    LYS_EXT_PAR_TPDF,                /**< ::lys_tpdf */
-    LYS_EXT_PAR_TYPE,                /**< ::lys_type */
-    LYS_EXT_PAR_FEATURE,             /**< ::lys_feature */
-    LYS_EXT_PAR_IDENT,               /**< ::lys_ident */
-    LYS_EXT_PAR_EXT,                 /**< ::lys_ext */
-    LYS_EXT_PAR_EXTINST,             /**< ::lys_extension_instance */
-    LYS_EXT_PAR_REFINE,              /**< ::lys_refine */
-    LYS_EXT_PAR_DEVIATION,           /**< ::lys_deviation */
-    LYS_EXT_PAR_IMPORT,              /**< ::lys_import */
-    LYS_EXT_PAR_INCLUDE              /**< ::lys_include */
-} LYS_EXT_PAR;
+    LYEXT_PAR_MODULE,              /**< ::lys_module or ::lys_submodule */
+    LYEXT_PAR_NODE,                /**< ::lys_node (and the derived types */
+    LYEXT_PAR_TPDF,                /**< ::lys_tpdf */
+    LYEXT_PAR_TYPE,                /**< ::lys_type */
+    LYEXT_PAR_FEATURE,             /**< ::lys_feature */
+    LYEXT_PAR_IDENT,               /**< ::lys_ident */
+    LYEXT_PAR_EXT,                 /**< ::lys_ext */
+    LYEXT_PAR_EXTINST,             /**< ::lys_ext_instance */
+    LYEXT_PAR_REFINE,              /**< ::lys_refine */
+    LYEXT_PAR_DEVIATION,           /**< ::lys_deviation */
+    LYEXT_PAR_IMPORT,              /**< ::lys_import */
+    LYEXT_PAR_INCLUDE              /**< ::lys_include */
+} LYEXT_PAR;
 
 /* extension types */
 typedef enum {
-    LY_EXT_FLAG = 1                  /**< simple extension with no substatements */
-} LY_EXT_TYPE;
+    LYEXT_ERR = -1,                /**< error value when #LYEXT_TYPE is expected as return value of a function */
+    LYEXT_FLAG = 0                 /**< simple extension with no substatements;
+                                        instances are stored directly as ::lys_ext_instance and no cast is needed;
+                                        plugins are expected directly as ::lys_ext_plugin and no cast is done */
+} LYEXT_TYPE;
 
+/**
+ * @brief Generic extension instance structure
+ *
+ * The structure can be cast to another lys_ext_instance_* structure according to the extension type
+ * that can be get via lys_ext_type() function. Check the #LYEXT_TYPE values to get know the specific mapping
+ * between the extension type and lys_ext_instance_* structures.
+ */
 struct lys_ext_instance {
     struct lys_ext *def;             /**< definition of the instantiated extension,
                                           according to the type in the extension's plugin structure, the
                                           structure can be cast to the more specific structure */
+    const char *arg_value;           /**< value of the instance's argument, if defined */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     uint8_t ext_size;                /**< number of elements in #ext array */
 };
 
-struct lys_ext_instance_flag {
-    struct lys_ext *def;
-    struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
-    uint8_t ext_size;                /**< number of elements in #ext array */
-
-    /* flag specific part */
-    const char *arg_value;           /**< value of the instance's argument */
-};
 
 struct lys_ext_plugin {
-    LY_EXT_TYPE type;                /**< type of the extension, according to it the structure will be casted */
-    ly_ext_check_position_clb *check_position; /**< callbcak for testing that the extension can be instantiated
+    LYEXT_TYPE type;                 /**< type of the extension, according to it the structure will be casted */
+    lyext_check_position_clb *check_position; /**< callbcak for testing that the extension can be instantiated
                                           under the provided parent. Mandatory callback. */
-    ly_ext_check_value_clb *check_value; /**< callback for testing if the argument value of the extension instance
+    lyext_check_value_clb *check_value; /**< callback for testing if the argument value of the extension instance
                                           is valid. Mandatory if the extension has the argument. */
 };
-
-/**
- * @brief Extension plugin structure for the LY_EXT_FLAG type of extension is actually the same as the base
- * ::lys_ext_plugin structure.
- */
-#define lys_ext_plugin_flag lys_ext_plugin
 
 #ifdef __cplusplus
 }

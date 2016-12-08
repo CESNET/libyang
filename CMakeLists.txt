@@ -78,6 +78,7 @@ set(libsrc
 	src/parser_yang.c
 	src/tree_schema.c
 	src/tree_data.c
+	src/extensions.c
 	src/printer.c
 	src/xpath.c
 	src/printer_yang.c

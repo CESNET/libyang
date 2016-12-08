@@ -200,15 +200,21 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
 
         flag = 0;
         ly_print(out, "%*s%s:%s", LEVEL, INDENT, prefix, ext[u]->def->name);
-
-        if (!ext[u]->def->plugin || ext[u]->def->plugin->type == LY_EXT_FLAG) {
-            /* flag extension */
-            if (((struct lys_ext_instance_flag *)ext[u])->arg_value) {
-                ly_print(out, " \"%s\"", ((struct lys_ext_instance_flag *)ext[u])->arg_value);
-            }
+        /* extension - generic part */
+        if (ext[u]->arg_value) {
+            ly_print(out, " \"%s\"", ext[u]->arg_value);
         }
 
-        /* extensions */
+        /* extension - type-specific part */
+        switch(lys_ext_instance_type(ext[u])) {
+        case LYEXT_FLAG:
+            /* flag extension - nothing special */
+        case LYEXT_ERR:
+            LOGINT;
+            break;
+        }
+
+        /* extensions in extension instance */
         if (ext[u]->ext_size) {
             yang_print_open(out, &flag);
             yang_print_extension_instances(out, level + 1, module, ext[u]->ext, ext[u]->ext_size);

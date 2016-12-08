@@ -335,10 +335,17 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
 
         /* common part */
         lys_extension_instances_free(ctx, e[i]->ext, e[i]->ext_size);
+        lydict_remove(ctx, e[i]->arg_value);
 
-        if (!e[i]->def->plugin || e[i]->def->plugin->type == LY_EXT_FLAG) {
-            /* flag instance */
-            lydict_remove(ctx, ((struct lys_ext_instance_flag *)e[i])->arg_value);
+        /* specific part according to the extension type */
+        switch(lys_ext_instance_type(e[i])) {
+        case LYEXT_FLAG:
+            /* flag instance - nothing special needed */
+            break;
+        case LYEXT_ERR:
+            /* should not appear */
+            LOGINT;
+            break;
         }
         free(e[i]);
     }
@@ -1302,7 +1309,6 @@ lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, unsigned int
     int i;
     unsigned int u;
     struct lys_ext_instance **result;
-    struct lys_ext_instance_flag *result_flag;
     struct unres_ext *info, *info_orig;
 
     assert(size);
@@ -1314,11 +1320,16 @@ lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, unsigned int
         if (orig[u]) {
             /* resolved extension instance, just duplicate it */
             result[u]->def = orig[u]->def;
-            if (!orig[u]->def->plugin || orig[u]->def->plugin->type == LY_EXT_FLAG) {
-                result[u] = malloc(sizeof(struct lys_ext_instance_flag));
-                result_flag = (struct lys_ext_instance_flag *)result[u];
-                result_flag->arg_value = lydict_insert(mod->ctx, ((struct lys_ext_instance_flag *)orig[u])->arg_value, 0);
+            switch(lys_ext_instance_type(orig[u])) {
+            case LYEXT_FLAG:
+                result[u] = malloc(sizeof(struct lys_ext_instance));
+                break;
+            case LYEXT_ERR:
+                LOGINT;
+                break;
             }
+            /* generic part */
+            result[u]->arg_value = lydict_insert(mod->ctx, orig[u]->arg_value, 0);
         } else {
             /* original extension is not yet resolved, so duplicate it in unres */
             i = unres_schema_find(unres, -1, orig, UNRES_EXT);
