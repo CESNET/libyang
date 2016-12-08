@@ -952,12 +952,31 @@ lyp_check_pattern(const char *pattern, pcre **pcre_precomp)
     return EXIT_SUCCESS;
 }
 
-static void
+/**
+ * @brief Change the value into its canonical form. In libyang, additionally to the RFC,
+ * all identities have their module as a prefix in their canonical form.
+ *
+ * @param[in] ctx
+ * @param[in] type Type of the value.
+ * @param[in,out] value Original and then canonical value.
+ * @param[in] data1 If \p type is #LY_TYPE_BITS: (struct lys_type_bit **) type bit field,
+ *                                #LY_TYPE_DEC64: (int64_t *) parsed digits of the number itself without floating point,
+ *                                #LY_TYPE_IDENT: (const char *) local module name (identityref node module),
+ *                                #LY_TYPE_INT*: (int64_t *) parsed int number itself,
+ *                                #LY_TYPE_UINT*: (uint64_t *) parsed uint number itself,
+ *                                otherwise ignored.
+ * @param[in] data2 If \p type is #LY_TYPE_BITS: (int *) type bit field length,
+ *                                #LY_TYPE_DEC64: (uint8_t *) number of fraction digits (position of the floating point),
+ *                                otherwise ignored.
+ * @return 1 if a conversion took place, 0 if the value was kept the same.
+ */
+static int
 make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, void *data2)
 {
     char *buf = ly_buf(), *buf_backup = NULL, *str;
     struct lys_type_bit **bits = NULL;
-    int i, j, count;
+    const char *module_name;
+    int i, j, count, ret = 0;
     int64_t num;
     uint64_t unum;
     uint8_t c;
@@ -989,11 +1008,25 @@ make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, vo
         }
         break;
 
+    case LY_TYPE_IDENT:
+        module_name = (const char *)data1;
+        /* identity must always have a prefix */
+        if (!strchr(*value, ':')) {
+            sprintf(buf, "%s:%s", module_name, *value);
+        } else {
+            strcpy(buf, *value);
+        }
+        break;
+
     case LY_TYPE_DEC64:
         num = *((int64_t *)data1);
         c = *((uint8_t *)data2);
         if (num) {
             count = sprintf(buf, "%"PRId64" ", num);
+            if ((count - 1) <= c) {
+                /* we have 0. value, add a space for the leading zero */
+                count = sprintf(buf, "0%"PRId64" ", num);
+            }
             for (i = c, j = 1; i > 0 ; i--) {
                 if (j && i > 1 && buf[count - 2] == '0') {
                     /* we have trailing zero to skip */
@@ -1035,6 +1068,7 @@ make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, vo
     if (strcmp(buf, *value)) {
         lydict_remove(ctx, *value);
         *value = lydict_insert(ctx, buf, 0);
+        ret = 1;
     }
 
 cleanup:
@@ -1045,40 +1079,70 @@ cleanup:
     }
     ly_buf_used--;
 
-    return;
+    return ret;
 }
 
 
 /*
  * xml  - optional for converting instance-identifier and identityref into JSON format
  * tree - optional for resolving instance-identifiers and leafrefs
- * leaf - optional for storing parsed data, mandatory in case of dflt
+ * leaf - mandatory to know the context (necessary e.g. for prefixes in idenitytref values)
+ * store - flag for storing parsed data
  */
 struct lys_type *
 lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *xml, struct lyd_node *tree,
-                        struct lyd_node_leaf_list *leaf, int resolvable, int dflt)
+                        struct lyd_node_leaf_list *leaf, int store, int resolvable, int dflt)
 {
     struct lys_type *ret = NULL, *t;
     int c, i, j, len, found = 0, hidden;
     int64_t num;
     uint64_t unum;
-    const char *ptr, *value = *value_;
+    const char *ptr, *ptr2, *value = *value_;
     struct lys_type_bit **bits = NULL;
     struct lys_ident *ident;
 
-    assert(leaf || !dflt);
+    assert(leaf);
 
-    if (leaf) {
+    if (store) {
         leaf->value_type = type->base;
     }
 
     switch(type->base) {
     case LY_TYPE_BINARY:
-        if (validate_length_range(0, (value ? strlen(value) : 0), 0, 0, 0, type, value, (struct lyd_node *)leaf)) {
+        /* get number of octets for length validation */
+        unum = 0;
+        if (value) {
+            ptr = value;
+            ptr2 = strchr(value, '\n');
+            while (ptr2) {
+                unum += ptr2 - ptr;
+                ptr = ptr2 + 1;
+                ptr2 = strchr(ptr, '\n');
+            }
+            unum += strlen(ptr);
+        }
+
+        if (unum & 3) {
+            /* base64 length must be multiple of 4 chars */
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, value, leaf->schema->name);
+            LOGVAL(LYE_SPEC, LY_VLOG_LYD, leaf, "Base64 encoded value length must be divisible by 4.");
+            goto cleanup;
+        }
+        len = (unum / 4) * 3;
+        /* check padding */
+        if (unum) {
+            if (ptr[strlen(ptr) - 1] == '=') {
+                len--;
+            }
+            if (ptr[strlen(ptr) - 2] == '=') {
+                len--;
+            }
+        }
+        if (validate_length_range(0, len, 0, 0, 0, type, value, (struct lyd_node *)leaf)) {
             goto cleanup;
         }
 
-        if (leaf) {
+        if (store) {
             /* store the result */
             leaf->value.binary = value;
         }
@@ -1090,7 +1154,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
          * bits type with some explicit bit specification */
         for (; !type->info.bits.count; type = &type->der->type);
 
-        if (value || leaf) {
+        if (value || store) {
             /* allocate the array of pointers to bits definition */
             bits = calloc(type->info.bits.count, sizeof *bits);
             if (!bits) {
@@ -1101,7 +1165,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         if (!value) {
             /* no bits set */
-            if (leaf) {
+            if (store) {
                 /* store empty array */
                 leaf->value.bit = bits;
             }
@@ -1128,30 +1192,19 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                     /* we have match, check if the value is enabled ... */
                     for (j = 0; j < type->info.bits.bit[i].iffeature_size; j++) {
                         if (!resolve_iffeature(&type->info.bits.bit[i].iffeature[i])) {
-                            if (leaf) {
-                                LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, value, leaf->schema->name);
-                                LOGVAL(LYE_SPEC, LY_VLOG_LYD, leaf,
-                                       "Bit \"%s\" is disabled by its if-feature condition.",
-                                       type->info.bits.bit[i].name);
-                            } else {
-                                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
-                                       "Bit \"%s\" is disabled by its if-feature condition.",
-                                       type->info.bits.bit[i].name);
-                            }
+                            LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, value, leaf->schema->name);
+                            LOGVAL(LYE_SPEC, LY_VLOG_LYD, leaf,
+                                   "Bit \"%s\" is disabled by its if-feature condition.", type->info.bits.bit[i].name);
+
                             free(bits);
                             goto cleanup;
                         }
                     }
                     /* check that the value was not already set */
                     if (bits[i]) {
-                        if (leaf) {
-                            LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, value, leaf->schema->name);
-                            LOGVAL(LYE_SPEC, LY_VLOG_LYD, leaf, "Bit \"%s\" used multiple times.",
-                                   type->info.bits.bit[i].name);
-                        } else {
-                            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Bit \"%s\" used multiple times.",
-                                   type->info.bits.bit[i].name);
-                        }
+                        LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, value, leaf->schema->name);
+                        LOGVAL(LYE_SPEC, LY_VLOG_LYD, leaf, "Bit \"%s\" used multiple times.",
+                               type->info.bits.bit[i].name);
                         free(bits);
                         goto cleanup;
                     }
@@ -1166,11 +1219,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
             if (!found) {
                 /* referenced bit value does not exists */
-                if (leaf) {
-                    LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, value, leaf->schema->name);
-                } else {
-                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid bit reference: \"%s\".", value);
-                }
+                LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, value, leaf->schema->name);
                 free(bits);
                 goto cleanup;
             }
@@ -1179,7 +1228,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         make_canonical(type->parent->module->ctx, LY_TYPE_BITS, value_, bits, &type->info.bits.count);
 
-        if (leaf) {
+        if (store) {
             /* store the result */
             leaf->value.bit = bits;
         } else {
@@ -1189,15 +1238,11 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
     case LY_TYPE_BOOL:
         if (value && !strcmp(value, "true")) {
-            if (leaf) {
+            if (store) {
                 leaf->value.bln = 1;
             }
         } else if (!value || strcmp(value, "false")) {
-            if (leaf) {
-                LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, value ? value : "", leaf->schema->name);
-            } else {
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid bool value \"%s\".", value ? value : "");
-            }
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, value ? value : "", leaf->schema->name);
             goto cleanup;
         }
         /* else stays 0 */
@@ -1205,21 +1250,13 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
     case LY_TYPE_DEC64:
         if (!value || !value[0]) {
-            if (leaf) {
-                LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, "", leaf->schema->name);
-            } else {
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid decimal64 value \"\".");
-            }
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, "", leaf->schema->name);
             goto cleanup;
         }
 
         ptr = value;
         if (parse_range_dec64(&ptr, type->info.dec64.dig, &num) || ptr[0]) {
-            if (leaf) {
-                LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, value, leaf->schema->name);
-            } else {
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid decimal64 value \"%s\".", value);
-            }
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, value, leaf->schema->name);
             goto cleanup;
         }
 
@@ -1229,7 +1266,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         make_canonical(type->parent->module->ctx, LY_TYPE_DEC64, value_, &num, &type->info.dec64.dig);
 
-        if (leaf) {
+        if (store) {
             /* store the result */
             leaf->value.dec64 = num;
         }
@@ -1237,11 +1274,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
     case LY_TYPE_EMPTY:
         if (value && value[0]) {
-            if (leaf) {
-                LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, value, leaf->schema->name);
-            } else {
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid empty value \"%s\".", value);
-            }
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, value, leaf->schema->name);
             goto cleanup;
         }
         break;
@@ -1258,19 +1291,14 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                 /* we have match, check if the value is enabled ... */
                 for (j = 0; j < type->info.enums.enm[i].iffeature_size; j++) {
                     if (!resolve_iffeature(&type->info.enums.enm[i].iffeature[i])) {
-                        if (leaf) {
-                            LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, value, leaf->schema->name);
-                            LOGVAL(LYE_SPEC, LY_VLOG_LYD, leaf, "Enum \"%s\" is disabled by its if-feature condition.",
-                                   value);
-                        } else {
-                            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Enum \"%s\" is disabled by its if-feature condition.",
-                                   value);
-                        }
+                        LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, value, leaf->schema->name);
+                        LOGVAL(LYE_SPEC, LY_VLOG_LYD, leaf, "Enum \"%s\" is disabled by its if-feature condition.",
+                               value);
                         goto cleanup;
                     }
                 }
                 /* ... and store pointer to the definition */
-                if (leaf) {
+                if (store) {
                     leaf->value.enm = &type->info.enums.enm[i];
                 }
                 found = 1;
@@ -1279,22 +1307,14 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         }
 
         if (!found) {
-            if (leaf) {
-                LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, value ? value : "", leaf->schema->name);
-            } else {
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid enum value \"%s\".", value ? value : "");
-            }
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, value ? value : "", leaf->schema->name);
             goto cleanup;
         }
         break;
 
     case LY_TYPE_IDENT:
         if (!value) {
-            if (leaf) {
-                LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, "", leaf->schema->name);
-            } else {
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid identityref value \"\".");
-            }
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, "", leaf->schema->name);
             goto cleanup;
         }
 
@@ -1303,11 +1323,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             value = transform_xml2json(type->parent->module->ctx, value, xml, 0);
             if (!value) {
                 /* invalid identityref format */
-                if (leaf) {
-                    LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, *value_, leaf->schema->name);
-                } else {
-                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid identityref value \"%s\".", *value_);
-                }
+                LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, *value_, leaf->schema->name);
                 goto cleanup;
             }
         } else if (dflt) {
@@ -1320,47 +1336,43 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             value = transform_schema2json(leaf->schema->module, value);
             if (!value) {
                 /* invalid identityref format or it was already transformed, so ignore the error here */
-                value = *value_;
+                value = lydict_insert(type->parent->module->ctx, *value_, 0);
                 /* erase error information */
                 ly_err_clean(1);
-            } else if (value == *value_) {
-                /* we have actually created the same expression (prefixes are the same as the module names)
-                 * so we have just increased dictionary's refcount - fix it */
-                lydict_remove(type->parent->module->ctx, value);
             }
             /* turn logging back on */
             if (!hidden) {
                 ly_vlog_hide(0);
             }
+        } else {
+            value = lydict_insert(type->parent->module->ctx, *value_, 0);
+        }
+        /* value is now in the dictionary, whether it differs from *value_ or not */
+
+        /* the value is always changed and includes prefix */
+        if (dflt) {
+            type->parent->flags |= LYS_DFLTJSON;
         }
 
-        ident = resolve_identref(type, value, (struct lyd_node*)leaf);
+        ident = resolve_identref(type, value, (struct lyd_node *)leaf);
         if (!ident) {
             goto cleanup;
-        } else if (leaf) {
+        } else if (store) {
             /* store the result */
             leaf->value.ident = ident;
         }
 
-        if (value != *value_) {
-            /* update the changed value */
-            lydict_remove(type->parent->module->ctx, *value_);
-            *value_ = value;
+        make_canonical(type->parent->module->ctx, LY_TYPE_IDENT, &value,
+                           (void *)lyd_node_module((struct lyd_node *)leaf)->name, NULL);
 
-            /* we have to remember the conversion into JSON format to be able to print it in correct form */
-            if (dflt) {
-                type->parent->flags |= LYS_DFLTJSON;
-            }
-        }
+        /* replace the old value with the new one (even if they may be the same) */
+        lydict_remove(type->parent->module->ctx, *value_);
+        *value_ = value;
         break;
 
     case LY_TYPE_INST:
         if (!value) {
-            if (leaf) {
-                LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, "", leaf->schema->name);
-            } else {
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid instance-identifier value \"\".");
-            }
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, "", leaf->schema->name);
             goto cleanup;
         }
 
@@ -1369,11 +1381,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             value = transform_xml2json(type->parent->module->ctx, value, xml, 0);
             if (!value) {
                 /* invalid instance-identifier format */
-                if (leaf) {
-                    LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, *value_, leaf->schema->name);
-                } else {
-                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid instance-identifier value \"%s\".", *value_);
-                }
+                LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, *value_, leaf->schema->name);
                 goto cleanup;
             }
         } else if (dflt) {
@@ -1400,13 +1408,9 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             }
         }
         if (resolvable && tree && !resolve_instid(tree, value) && (ly_errno || type->info.inst.req)) {
-            if (leaf) {
-                LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, *value_, leaf->schema->name);
-            } else {
-                LOGVAL(LYE_SPEC, leaf ? LY_VLOG_LYD : LY_VLOG_NONE, leaf, "Invalid instance-identifier value \"%s\" (%s).", value, *value_);
-            }
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, *value_, leaf->schema->name);
             goto cleanup;
-        } else if (!resolvable && leaf) {
+        } else if (!resolvable && store) {
             /* make the note that the data node is not resolvable instance-identifier,
              * because based on the data type the target is not necessary the part of the tree */
             leaf->value_type |= LY_TYPE_INST_UNRES;
@@ -1426,41 +1430,29 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
     case LY_TYPE_LEAFREF:
         if (!value) {
-            if (leaf) {
-                LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, "", leaf->schema->name);
-            } else {
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid leafref value \"\".");
-            }
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, "", leaf->schema->name);
             goto cleanup;
         }
 
         /* it is called not only to get the final type, but mainly to update value to canonical or JSON form
          * if needed */
-        t = lyp_parse_value(&type->info.lref.target->type, value_, xml, tree, leaf, resolvable, dflt);
+        t = lyp_parse_value(&type->info.lref.target->type, value_, xml, tree, leaf, 0, resolvable, dflt);
         value = *value_; /* refresh possibly changed value */
         if (!t) {
-            if (leaf) {
-                LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, value, leaf->schema->name);
-            } else {
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid leafref value \"%s\".", value);
-            }
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, value, leaf->schema->name);
             goto cleanup;
         }
 
-        if (!resolvable && leaf) {
+        if (!resolvable && store) {
             /* the leafref will not be resolved because of the data tree type which make possible that the
              * target is not present in the data tree. Therefore, instead of leafref type, we store into the
              * leaf the target type of the leafref with the note that it is unresolved leafref */
             leaf->value_type = t->base | LY_TYPE_LEAFREF_UNRES;
-        } else if (leaf) {
+        } else if (store) {
             /* if the leaf is resolvable, its type is kept as LY_TYPE_LEAFREF */
             leaf->value_type = LY_TYPE_LEAFREF;
 
-            /* erase possibly assigned data in value structure from recursive ly_parse_value() calling */
-            if (t->base == LY_TYPE_BITS) {
-                free(leaf->value.bit);
-            }
-            memset(&leaf->value, 0, sizeof leaf->value);
+            /* erase possible error from ly_parse_value() calling */
             ly_err_clean(1);
 
             /* if we have the complete tree, resolve the leafref */
@@ -1482,7 +1474,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             goto cleanup;
         }
 
-        if (leaf) {
+        if (store) {
             /* store the result */
             leaf->value.string = value;
         }
@@ -1496,7 +1488,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         make_canonical(type->parent->module->ctx, LY_TYPE_INT8, value_, &num, NULL);
 
-        if (leaf) {
+        if (store) {
             /* store the result */
             leaf->value.int8 = (int8_t)num;
         }
@@ -1510,7 +1502,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         make_canonical(type->parent->module->ctx, LY_TYPE_INT16, value_, &num, NULL);
 
-        if (leaf) {
+        if (store) {
             /* store the result */
             leaf->value.int16 = (int16_t)num;
         }
@@ -1524,7 +1516,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         make_canonical(type->parent->module->ctx, LY_TYPE_INT32, value_, &num, NULL);
 
-        if (leaf) {
+        if (store) {
             /* store the result */
             leaf->value.int32 = (int32_t)num;
         }
@@ -1539,7 +1531,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         make_canonical(type->parent->module->ctx, LY_TYPE_INT64, value_, &num, NULL);
 
-        if (leaf) {
+        if (store) {
             /* store the result */
             leaf->value.int64 = num;
         }
@@ -1553,7 +1545,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         make_canonical(type->parent->module->ctx, LY_TYPE_UINT8, value_, &unum, NULL);
 
-        if (leaf) {
+        if (store) {
             /* store the result */
             leaf->value.uint8 = (uint8_t)unum;
         }
@@ -1567,7 +1559,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         make_canonical(type->parent->module->ctx, LY_TYPE_UINT16, value_, &unum, NULL);
 
-        if (leaf) {
+        if (store) {
             /* store the result */
             leaf->value.uint16 = (uint16_t)unum;
         }
@@ -1581,7 +1573,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         make_canonical(type->parent->module->ctx, LY_TYPE_UINT32, value_, &unum, NULL);
 
-        if (leaf) {
+        if (store) {
             /* store the result */
             leaf->value.uint32 = (uint32_t)unum;
         }
@@ -1595,7 +1587,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         make_canonical(type->parent->module->ctx, LY_TYPE_UINT64, value_, &unum, NULL);
 
-        if (leaf) {
+        if (store) {
             /* store the result */
             leaf->value.uint64 = unum;
         }
@@ -1611,7 +1603,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         while ((t = lyp_get_next_union_type(type, t, &found))) {
             found = 0;
-            ret = lyp_parse_value(t, value_, xml, tree, leaf, resolvable, dflt);
+            ret = lyp_parse_value(t, value_, xml, tree, leaf, store, resolvable, dflt);
             if (ret) {
                 /* we have the result */
                 type = ret;
@@ -1621,7 +1613,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
              * and will be replaced by a single error messages */
             ly_err_clean(1);
 
-            if (leaf) {
+            if (store) {
                 /* erase possible present and invalid value data */
                 if (t->base == LY_TYPE_BITS) {
                     free(leaf->value.bit);
@@ -1637,13 +1629,10 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         if (!t) {
             /* not found */
-            if (leaf) {
+            if (store) {
                 leaf->value_type &= ~LY_DATA_TYPE_MASK;
-                LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, *value_ ? *value_ : "", leaf->schema->name);
-            } else {
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%s\" for union \"%s\".", *value_ ? *value_ : "",
-                       type->parent->name);
             }
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, *value_ ? *value_ : "", leaf->schema->name);
             goto cleanup;
         }
         break;

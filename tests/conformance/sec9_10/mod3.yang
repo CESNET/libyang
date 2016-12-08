@@ -22,7 +22,7 @@ module mod3 {
         type identityref {
             base mod:j1;
         }
-        default j3;
+        default mod:j3;
     }
 
     leaf test2 {
@@ -30,7 +30,7 @@ module mod3 {
             base sub2;
         }
 
-        when "../test = 'j3'";
+        when "../test = 'mod:j3'";
     }
 
     identity i3 {

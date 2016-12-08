@@ -395,6 +395,7 @@ json_get_anydata(struct lyd_node_anydata *any, const char *data)
             return 0;
         }
         if (data[len + c] != '"') {
+            free(str);
             LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, any,
                    "JSON data (missing quotation-mark at the end of string)");
             return 0;
@@ -529,7 +530,7 @@ repeat:
 
     /* the value is here converted to a JSON format if needed in case of LY_TYPE_IDENT and LY_TYPE_INST or to a
      * canonical form of the value */
-    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, NULL, NULL, leaf,
+    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, NULL, NULL, leaf, 1,
                          resolvable, 0)) {
         ly_errno = LY_EVALID;
         return 0;

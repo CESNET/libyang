@@ -155,7 +155,7 @@ test_xmltojson_identityref2(void **state)
                     "  identity car { base vehicle; }"
                     "  leaf y { type identityref { base y:vehicle; } default y:car; }"
                     "}";
-    const char *result = "<y xmlns=\"urn:y\" xmlns:y=\"urn:y\">y:car</y>";
+    const char *result = "<y xmlns=\"urn:y\">car</y>";
 
     assert_ptr_not_equal(lys_parse_mem(st->ctx, yang, LYS_IN_YANG), NULL);
 

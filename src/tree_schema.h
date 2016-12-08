@@ -1853,6 +1853,18 @@ struct lys_module *lys_node_module(const struct lys_node *node);
 struct lys_module *lys_main_module(const struct lys_module *module);
 
 /**
+ * @brief Find the implemented revision of the given module in the context.
+ *
+ * If there is no revision of the module implemented, the given module is returned
+ * without any change. It is up to the caller to set the module implemented via
+ * lys_set_implemented() when needed.
+ *
+ * @param[in] mod Module to be searched.
+ * @return The implemeneted revision of the module if any, the given module otherwise.
+ */
+struct lys_module *lys_implemented_module(const struct lys_module *mod);
+
+/**
  * @brief Mark imported module as "implemented".
  *
  * All the modules explicitly loaded are marked as "implemented", but in case of loading module

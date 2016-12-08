@@ -693,7 +693,7 @@ _lyd_new_leaf(struct lyd_node *parent, const struct lys_node *schema, const char
 
     /* resolve the type correctly (after it was connected to parent cause of log) */
     if (!lyp_parse_value(&((struct lys_node_leaf *)ret->schema)->type, &((struct lyd_node_leaf_list *)ret)->value_str,
-                         NULL, NULL, (struct lyd_node_leaf_list *)ret, 1, 0)) {
+                         NULL, NULL, (struct lyd_node_leaf_list *)ret, 1, 1, 0)) {
         lyd_free(ret);
         return NULL;
     }
@@ -773,7 +773,7 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
     /* leaf->value is erased by lyp_parse_value() */
 
     /* resolve the type correctly, makes the value canonical if needed */
-    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, NULL, NULL, leaf, 1, 0)) {
+    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, NULL, NULL, leaf, 1, 1, 0)) {
         lydict_remove(leaf->schema->module->ctx, leaf->value_str);
         leaf->value_str = backup;
         memcpy(&leaf->value, &backup_val, sizeof backup);
@@ -1777,13 +1777,22 @@ lyd_merge(struct lyd_node *target, const struct lyd_node *source, int options)
     const struct lyd_node *iter;
     struct lys_node *src_snode;
     int i, src_depth, depth, first_iter, ret, dflt = 1;
+    const struct lys_node *parent = NULL;
+
 
     if (!target || !source || (target->schema->module->ctx != source->schema->module->ctx)) {
         ly_errno = LY_EINVAL;
         return -1;
     }
 
-    if (lys_parent(target->schema)) {
+    parent = lys_parent(target->schema);
+
+    /* go up all uses */
+    while (parent && (parent->nodetype == LYS_USES)) {
+        parent = lys_parent(parent);
+    }
+
+    if (parent) {
         LOGERR(LY_EINVAL, "Target not a top-level data tree.");
         return -1;
     }
@@ -2042,7 +2051,7 @@ lyd_diff_compare(struct lyd_node *first, struct lyd_node *second,
                  struct ly_set *ordset_keys, struct ly_set *ordset, int options)
 {
     int rc;
-    char *str1, *str2;
+    char *str1 = NULL, *str2 = NULL;
     struct lyd_node_anydata *anydata;
 
     if (first->dflt && !(options & LYD_DIFFOPT_WITHDEFAULTS)) {
@@ -3082,6 +3091,17 @@ lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd
                         }
                     }
                     if (ins->schema == siter) {
+                        if ((siter->nodetype & (LYS_LEAFLIST | LYS_LIST)) && iter->schema == siter) {
+                            /* we are inserting leaflist/list instance, but since there are already
+                             * some instances of the same leaflist/list, we want to insert the new one
+                             * as the last instance, so here we have to move on */
+                            while (iter && iter->schema == siter) {
+                                iter = iter->next;
+                            }
+                            if (!iter) {
+                                break;
+                            }
+                        }
                         /* we have the correct place for new node (before the iter) */
                         if (iter == start) {
                             start = ins;
@@ -3967,7 +3987,7 @@ lyd_dup(const struct lyd_node *node, int recursive)
                 new_leaf->value = ((struct lyd_node_leaf_list *)elem)->value;
             }
 
-            /* bits type must be treated specially */
+            /* bits, leafref, and instid type must be treated specially */
             if (new_leaf->value_type == LY_TYPE_BITS) {
                 for (type = &((struct lys_node_leaf *)elem->schema)->type; type->der->module; type = &type->der->type) {
                     if (type->base != LY_TYPE_BITS) {
@@ -3987,6 +4007,10 @@ lyd_dup(const struct lyd_node *node, int recursive)
                 }
                 memcpy(new_leaf->value.bit, ((struct lyd_node_leaf_list *)elem)->value.bit,
                        type->info.bits.count * sizeof *new_leaf->value.bit);
+            } else if (new_leaf->value_type == LY_TYPE_LEAFREF) {
+                new_leaf->value.leafref = NULL;
+            } else if (new_leaf->value_type == LY_TYPE_INST) {
+                new_leaf->value.instance = NULL;
             }
             break;
         case LYS_ANYXML:

@@ -100,7 +100,7 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, int ed
 
     /* the value is here converted to a JSON format if needed in case of LY_TYPE_IDENT and LY_TYPE_INST or to a
      * canonical form of the value */
-    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, xml, NULL, leaf,
+    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, xml, NULL, leaf, 1,
                          resolvable, 0)) {
         return EXIT_FAILURE;
     }
