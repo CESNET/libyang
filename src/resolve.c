@@ -6783,6 +6783,7 @@ resolve_leafref(struct lyd_node_leaf_list *leaf, struct lys_type *type)
     assert(type->base == LY_TYPE_LEAFREF);
 
     /* init */
+    leaf->value.leafref = NULL;
     memset(&matches, 0, sizeof matches);
 
     /* EXIT_FAILURE return keeps leaf->value.lefref NULL, handled later */
