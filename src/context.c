@@ -679,6 +679,8 @@ imported:
 
     /* free the modules */
     for (u = 0; u < mods->number; u++) {
+        /* remove the applied deviations and augments */
+        lys_sub_module_remove_devs_augs((struct lys_module *)mods->set.g[u]);
         /* remove the module */
         lys_free((struct lys_module *)mods->set.g[u], private_destructor, 0);
     }
