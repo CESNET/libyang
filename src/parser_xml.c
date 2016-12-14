@@ -141,8 +141,9 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     if (!parent) {
         /* starting in root */
         for (i = 0; i < ctx->models.used; i++) {
-            /* skip just imported modules, data can be coupled only with the implemented modules */
-            if (!ctx->models.list[i]->implemented) {
+            /* skip just imported modules, data can be coupled only with the implemented modules,
+             * also skip the disabled modules */
+            if (!ctx->models.list[i]->implemented || ctx->models.list[i]->disabled) {
                 continue;
             }
             /* match data model based on namespace */

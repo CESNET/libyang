@@ -383,7 +383,8 @@ matched:
     dot = strrchr(match_name, '.');
     dot[1] = '\0';
 
-    /* check that the same file was not already loaded - it make sense only in case of loading the newest revision */
+    /* check that the same file was not already loaded - it make sense only in case of loading the newest revision,
+     * search also in disabled module - if the matching module is disabled, it will be enabled instead of loading it */
     if (!revision) {
         for (i = 0; i < ctx->models.used; ++i) {
             if (ctx->models.list[i]->filepath && !strcmp(name, ctx->models.list[i]->name)
@@ -395,6 +396,10 @@ matched:
                         result = NULL;
                     }
                 }
+                if (result->disabled) {
+                    lys_set_enabled(result);
+                }
+
                 goto cleanup;
             }
         }
@@ -2338,20 +2343,6 @@ lyp_ctx_add_module(struct lys_module **module)
     to_implement = 0;
     ctx = mod->ctx;
 
-    /* add to the context's list of modules */
-    if (ctx->models.used == ctx->models.size) {
-        newlist = realloc(ctx->models.list, (2 * ctx->models.size) * sizeof *newlist);
-        if (!newlist) {
-            LOGMEM;
-            return EXIT_FAILURE;
-        }
-        for (i = ctx->models.size; i < ctx->models.size * 2; i++) {
-            newlist[i] = NULL;
-        }
-        ctx->models.size *= 2;
-        ctx->models.list = newlist;
-    }
-
     for (i = 0; ctx->models.list[i]; i++) {
         /* check name (name/revision) and namespace uniqueness */
         if (!strcmp(ctx->models.list[i]->name, mod->name)) {
@@ -2401,8 +2392,21 @@ lyp_ctx_add_module(struct lys_module **module)
         }
         goto already_in_context;
     }
-    ctx->models.list[i] = mod;
-    ctx->models.used++;
+
+    /* add to the context's list of modules */
+    if (ctx->models.used == ctx->models.size) {
+        newlist = realloc(ctx->models.list, (2 * ctx->models.size) * sizeof *newlist);
+        if (!newlist) {
+            LOGMEM;
+            return EXIT_FAILURE;
+        }
+        for (i = ctx->models.size; i < ctx->models.size * 2; i++) {
+            newlist[i] = NULL;
+        }
+        ctx->models.size *= 2;
+        ctx->models.list = newlist;
+    }
+    ctx->models.list[ctx->models.used++] = mod;
     ctx->models.module_set_id++;
     return EXIT_SUCCESS;
 

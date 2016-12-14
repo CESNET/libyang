@@ -355,8 +355,8 @@ lyd_check_mandatory_tree(struct lyd_node *root, struct ly_ctx *ctx, int options)
             }
         } else {
             for (i = 0; i < ctx->models.used; i++) {
-                /* skip not implemented modules */
-                if (!ctx->models.list[i]->implemented) {
+                /* skip not implemented and disabled modules */
+                if (!ctx->models.list[i]->implemented || ctx->models.list[i]->disabled) {
                     continue;
                 }
                 LY_TREE_FOR(ctx->models.list[i]->data, siter) {
@@ -5562,8 +5562,8 @@ lyd_wd_add(struct lyd_node **root, struct ly_ctx *ctx, struct unres_data *unres,
             }
         } else {
             for (i = 0; i < ctx->models.used; i++) {
-                /* skip not implemented modules */
-                if (!ctx->models.list[i]->implemented) {
+                /* skip not implemented and disabled modules */
+                if (!ctx->models.list[i]->implemented || ctx->models.list[i]->disabled) {
                     continue;
                 }
                 LY_TREE_FOR(ctx->models.list[i]->data, siter) {

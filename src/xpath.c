@@ -4174,6 +4174,10 @@ moveto_resolve_model(const char *mod_name_ns, uint16_t mod_nam_ns_len, struct ly
     }
 
     for (i = 0; i < ctx->models.used; ++i) {
+        if (!ctx->models.list[i]->implemented || ctx->models.list[i]->disabled) {
+            /* skip not implemented or disabled modules */
+            continue;
+        }
         str = (is_name ? ctx->models.list[i]->name : ctx->models.list[i]->ns);
         if (!strncmp(str, mod_name_ns, mod_nam_ns_len) && !str[mod_nam_ns_len]) {
             return ctx->models.list[i];
