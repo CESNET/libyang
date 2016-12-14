@@ -144,6 +144,10 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
 API const char *
 ly_ctx_get_searchdir(const struct ly_ctx *ctx)
 {
+    if (!ctx) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
     return ctx->models.search_path;
 }
 
@@ -354,6 +358,11 @@ ly_ctx_set_module_clb(struct ly_ctx *ctx, ly_module_clb clb, void *user_data)
 API ly_module_clb
 ly_ctx_get_module_clb(const struct ly_ctx *ctx, void **user_data)
 {
+    if (!ctx) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
     if (user_data) {
         *user_data = ctx->module_clb_data;
     }
