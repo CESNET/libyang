@@ -1082,6 +1082,46 @@ cleanup:
     return ret;
 }
 
+static const char *
+ident_val_add_module_prefix(const char *value, const struct lyxml_elem *xml, struct ly_ctx *ctx)
+{
+    const struct lyxml_ns *ns;
+    const struct lys_module *mod;
+    char *str;
+
+    do {
+        LY_TREE_FOR((struct lyxml_ns *)xml->attr, ns) {
+            if ((ns->type == LYXML_ATTR_NS) && !ns->prefix) {
+                /* match */
+                break;
+            }
+        }
+        if (!ns) {
+            xml = xml->parent;
+        }
+    } while (!ns && xml);
+
+    if (!ns) {
+        /* no default namespace */
+        LOGINT;
+        return NULL;
+    }
+
+    /* find module */
+    mod = ly_ctx_get_module_by_ns(ctx, ns->value, NULL);
+    if (!mod) {
+        LOGINT;
+        return NULL;
+    }
+
+    if (asprintf(&str, "%s:%s", mod->name, value) == -1) {
+        LOGMEM;
+        return NULL;
+    }
+    lydict_remove(ctx, value);
+
+    return lydict_insert_zc(ctx, str);
+}
 
 /*
  * xml  - optional for converting instance-identifier and identityref into JSON format
@@ -1325,6 +1365,14 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                 /* invalid identityref format */
                 LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, *value_, leaf->schema->name);
                 goto cleanup;
+            }
+
+            /* the value has no prefix (default namespace), but the element's namespace has a prefix, find default namespace */
+            if (!strchr(value, ':') && xml->ns->prefix) {
+                value = ident_val_add_module_prefix(value, xml, type->parent->module->ctx);
+                if (!value) {
+                    goto cleanup;
+                }
             }
         } else if (dflt) {
             /* turn logging off */
