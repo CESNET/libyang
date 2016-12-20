@@ -88,8 +88,7 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, int ed
         resolvable = 1;
     }
 
-    leaf->value_str = xml->content;
-    xml->content = NULL;
+    leaf->value_str = lydict_insert(node->schema->module->ctx, xml->content, 0);
 
     if ((editbits & 0x10) && (node->schema->nodetype & LYS_LEAF) && (!leaf->value_str || !leaf->value_str[0])) {
         /* we have edit-config leaf/leaf-list with delete operation and no (empty) value,
