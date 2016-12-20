@@ -2343,7 +2343,7 @@ lyp_ctx_add_module(struct lys_module **module)
     to_implement = 0;
     ctx = mod->ctx;
 
-    for (i = 0; ctx->models.list[i]; i++) {
+    for (i = 0; i < ctx->models.used; i++) {
         /* check name (name/revision) and namespace uniqueness */
         if (!strcmp(ctx->models.list[i]->name, mod->name)) {
             if (to_implement) {
