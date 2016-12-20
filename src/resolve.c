@@ -5677,6 +5677,7 @@ resolve_when_relink_nodes(struct lyd_node *node, struct lyd_node *unlinked_nodes
     struct lyd_node *elem;
 
     LY_TREE_FOR_SAFE(unlinked_nodes, unlinked_nodes, elem) {
+        lyd_unlink(elem);
         if (ctx_node_type == LYXP_NODE_ELEM) {
             if (lyd_insert(node, elem)) {
                 return -1;
