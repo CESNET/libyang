@@ -2218,8 +2218,8 @@ resolve_partial_json_data_list_predicate(const char *predicate, const char *node
         /* make value canonical */
         type = lyd_leaf_type(key, 1);
         if ((type->base == LY_TYPE_IDENT)
-                && !strncmp(key->value_str, lyd_node_module(node)->name, strlen(lyd_node_module(node)->name))) {
-            assert(key->value_str[strlen(lyd_node_module(node)->name)] == ':');
+                && !strncmp(key->value_str, lyd_node_module(node)->name, strlen(lyd_node_module(node)->name))
+                && (key->value_str[strlen(lyd_node_module(node)->name)] == ':')) {
             key_val = key->value_str + strlen(lyd_node_module(node)->name) + 1;
         } else {
             key_val = key->value_str;
@@ -2374,8 +2374,8 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
                     /* make value canonical */
                     type = lyd_leaf_type(llist, 1);
                     if ((type->base == LY_TYPE_IDENT)
-                            && !strncmp(llist->value_str, lyd_node_module(sibling)->name, strlen(lyd_node_module(sibling)->name))) {
-                        assert(llist->value_str[strlen(lyd_node_module(sibling)->name)] == ':');
+                            && !strncmp(llist->value_str, lyd_node_module(sibling)->name, strlen(lyd_node_module(sibling)->name))
+                            && (llist->value_str[strlen(lyd_node_module(sibling)->name)] == ':')) {
                         data_val = llist->value_str + strlen(lyd_node_module(sibling)->name) + 1;
                     } else {
                         data_val = llist->value_str;
