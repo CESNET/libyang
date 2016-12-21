@@ -6713,9 +6713,12 @@ unres_schema_free_item(struct ly_ctx *ctx, struct unres_schema *unres, uint32_t 
         yin = (struct lyxml_elem *)((struct lys_type *)unres->item[i])->der;
         if (yin->flags & LY_YANG_STRUCTURE_FLAG) {
             yang =(struct yang_type *)yin;
-            yang->type->base = yang->base;
+            ((struct lys_type *)unres->item[i])->base = yang->base;
             lydict_remove(ctx, yang->name);
             free(yang);
+            if (((struct lys_type *)unres->item[i])->base == LY_TYPE_UNION) {
+                yang_free_type_union(ctx, (struct lys_type *)unres->item[i]);
+            }
         } else {
             lyxml_free(ctx, yin);
         }
