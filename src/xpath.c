@@ -391,8 +391,8 @@ cast_string_recursive(struct lyd_node *node, int fake_cont, enum lyxp_node_type 
         /* make value canonical */
         type = lyd_leaf_type((struct lyd_node_leaf_list *)node, 1);
         if (type->base == LY_TYPE_IDENT) {
-            if (!strncmp(value_str, lyd_node_module(node)->name, strlen(lyd_node_module(node)->name))) {
-                assert(value_str[strlen(lyd_node_module(node)->name)] == ':');
+            if (!strncmp(value_str, lyd_node_module(node)->name, strlen(lyd_node_module(node)->name))
+                    && (value_str[strlen(lyd_node_module(node)->name)] == ':')) {
                 value_str += strlen(lyd_node_module(node)->name) + 1;
             }
         }
