@@ -43,7 +43,6 @@
 #define EXTENSION_DSC 0x04
 #define EXTENSION_REF 0x08
 
-#define LY_YANG_ARRAY_SIZE 8
 #define YANG_ADDELEM(current_ptr, size)                                                  \
     if (!(size % LY_YANG_ARRAY_SIZE)) {                                                  \
         void *tmp;                                                                       \
@@ -72,6 +71,8 @@ void yyerror(YYLTYPE *yylloc, void *scanner, char **value, ...);
   void *v;
   char ch;
   struct yang_type *type;
+  struct lys_deviation *dev;
+  struct lys_deviate *deviate;
   union {
     uint32_t index;
     struct lys_node_container *container;
@@ -81,7 +82,6 @@ void yyerror(YYLTYPE *yylloc, void *scanner, char **value, ...);
     struct lys_node_grp *grouping;
     struct lys_refine *refine;
     struct lys_node_notif *notif;
-    struct type_deviation *deviation;
     struct lys_node_uses *uses;
     struct lys_node_inout *inout;
     struct lys_node_augment *augment;
@@ -241,11 +241,10 @@ void yyerror(YYLTYPE *yylloc, void *scanner, char **value, ...);
 %type <nodes> rpc_opt_stmt
 %type <nodes> input_output_opt_stmt
 %type <nodes> notification_opt_stmt
-%type <nodes> deviation_opt_stmt
-%type <nodes> deviate_add_opt_stmt
-%type <nodes> deviate_delete_opt_stmt
-%type <nodes> deviate_replace_opt_stmt
-%type <nodes> deviate_replace_stmtsep
+%type <dev> deviation_opt_stmt
+%type <deviate> deviate_add_opt_stmt
+%type <deviate> deviate_delete_opt_stmt
+%type <deviate> deviate_replace_opt_stmt
 %type <nodes> leaf_arg_str
 %type <nodes> leaf_list_arg_str
 %type <nodes> typedef_arg_str
@@ -255,15 +254,6 @@ void yyerror(YYLTYPE *yylloc, void *scanner, char **value, ...);
 %type <p_str> tmp_string
 
 %destructor { free($$); } pattern_arg_str
-%destructor { if (read_all) {
-                ly_set_free($$.deviation->dflt_check);
-                free($$.deviation);
-              }
-            } deviation_opt_stmt
-%destructor { if (read_all && $$.deviation->deviate->type) {
-                yang_delete_type(module, (struct yang_type *)$$.deviation->deviate->type->der);
-              }
-            } deviate_replace_stmtsep
 %destructor { free(($$) ? *$$ : NULL); } tmp_string
 
 %initial-action { yylloc.last_column = 0;
@@ -3134,108 +3124,70 @@ notification_opt_stmt: @EMPTYDIR@ { $$.notif = actual;
                                          }
      stmtsep
 
-deviation_stmt: DEVIATION_KEYWORD sep deviation_arg_str { if (read_all) {
-                                                            if (!(actual = yang_read_deviation(trg, s))) {
-                                                              YYABORT;
-                                                            }
-                                                            s = NULL;
-                                                            trg->deviation_size++;
-                                                            }
-                                                        }
+deviation_arg: deviation_arg_str { YANG_ADDELEM(trg->deviation, trg->deviation_size);
+                                   ((struct lys_deviation *)actual)->target_name = transform_schema2json(trg, s);
+                                   free(s);
+                                   if (!((struct lys_deviation *)actual)->target_name) {
+                                     YYABORT;
+                                   }
+                                   s = NULL;
+                                 }
+
+deviation_stmt: DEVIATION_KEYWORD sep deviation_arg
                 '{' stmtsep
                     deviation_opt_stmt
-                '}'  { if (read_all) {
-                         struct lys_module *mod;
-                         struct lys_node *parent;
+                '}' { void *tmp;
 
-                         if (actual_type == DEVIATION_KEYWORD) {
-                           LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "deviate", "deviation");
-                           ly_set_free($7.deviation->dflt_check);
-                           free($7.deviation);
-                           YYABORT;
-                         }
-                         if (yang_check_deviation(trg, $7.deviation->dflt_check, unres)) {
-                           ly_set_free($7.deviation->dflt_check);
-                           free($7.deviation);
-                           YYABORT;
-                         }
-                         /* mark all the affected modules as deviated and implemented */
-                         for(parent = $7.deviation->target; parent; parent = lys_parent(parent)) {
-                             mod = lys_node_module(parent);
-                             if (module != mod) {
-                                 mod->deviated = 1;
-                                 lys_set_implemented(mod);
-                             }
-                         }
-                         ly_set_free($7.deviation->dflt_check);
-                         free($7.deviation);
-                       }
-                     }
+                      if ($6->deviate_size) {
+                        tmp = realloc($6->deviate, $6->deviate_size * sizeof *$6->deviate);
+                        if (!tmp) {
+                          LOGINT;
+                          YYABORT;
+                        }
+                        $6->deviate = tmp;
+                      } else {
+                        LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "deviate", "deviation");
+                        YYABORT;
+                      }
+                    }
 
-deviation_opt_stmt: @EMPTYDIR@ { if (read_all) {
-                               $$.deviation = actual;
-                               actual_type = DEVIATION_KEYWORD;
-                               if (size_arrays->node[size_arrays->next].deviate) {
-                                 $$.deviation->deviation->deviate = calloc(size_arrays->node[size_arrays->next].deviate, sizeof *$$.deviation->deviation->deviate);
-                                 if (!$$.deviation->deviation->deviate) {
-                                   LOGMEM;
-                                   ly_set_free($$.deviation->dflt_check);
-                                   YYABORT;
-                                 }
+deviation_opt_stmt: @EMPTYDIR@ { $$ = actual;
+                                 actual_type = DEVIATION_KEYWORD;
                                }
-                               size_arrays->next++;
-                             } else {
-                               $$.index = size_arrays->size;
-                               if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                 LOGMEM;
-                                 YYABORT;
-                               }
-                             }
-                           }
-  |  deviation_opt_stmt description_stmt { if (read_all && yang_read_description(trg, $1.deviation->deviation, s, "deviation")) {
-                                             ly_set_free($1.deviation->dflt_check);
-                                             free($1.deviation);
+  |  deviation_opt_stmt description_stmt { if (yang_read_description(trg, $1, s, "deviation")) {
                                              YYABORT;
                                            }
                                            s = NULL;
                                            $$ = $1;
                                          }
-  |  deviation_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, $1.deviation->deviation, s, "deviation")) {
-                                           ly_set_free($1.deviation->dflt_check);
-                                           free($1.deviation);
+  |  deviation_opt_stmt reference_stmt { if (yang_read_reference(trg, $1, s, "deviation")) {
                                            YYABORT;
                                          }
                                          s = NULL;
                                          $$ = $1;
                                        }
-  |  deviation_opt_stmt DEVIATE_KEYWORD sep deviate_body_stmt { if (read_all) {
-                                                                  actual = $1.deviation;
-                                                                  actual_type = DEVIATE_KEYWORD;
-                                                                  $$ = $1;
-                                                                } else {
-                                                                  /* count of deviate statemenet */
-                                                                  size_arrays->node[$1.index].deviate++;
-                                                                }
+  |  deviation_opt_stmt DEVIATE_KEYWORD sep deviate_body_stmt { actual = $1;
+                                                                actual_type = DEVIATION_KEYWORD;
+                                                                $$ = $1;
                                                               }
 
 deviation_arg_str: absolute_schema_nodeids optsep
   | string_1
 
 deviate_body_stmt: deviate_not_supported_stmt
-                   { if (read_all && yang_read_deviate_unsupported(actual)) {
+                   { if (yang_read_deviate_unsupported(actual)) {
                        YYABORT;
                      }
                    }
   |  deviate_stmts optsep
 
+deviate_not_supported_stmt: NOT_SUPPORTED_KEYWORD optsep stmtend
+
 deviate_stmts: deviate_add_stmt
   |  deviate_replace_stmt
   |  deviate_delete_stmt
-  ;
 
-deviate_not_supported_stmt: NOT_SUPPORTED_KEYWORD optsep stmtend;
-
-deviate_add_stmt: ADD_KEYWORD optsep { if (read_all && yang_read_deviate(actual, LY_DEVIATE_ADD)) {
+deviate_add_stmt: ADD_KEYWORD optsep { if (!(actual = yang_read_deviate(actual, LY_DEVIATE_ADD))) {
                                          YYABORT;
                                        }
                                      }
@@ -3244,122 +3196,93 @@ deviate_add_stmt: ADD_KEYWORD optsep { if (read_all && yang_read_deviate(actual,
 deviate_add_end: ';'
   |  '{' stmtsep
          deviate_add_opt_stmt
-     '}' { if (read_all) {
-             /* check XPath dependencies */
-             if (($3.deviation->trg_must_size && *$3.deviation->trg_must_size) &&
-                 unres_schema_add_node(trg, unres, $3.deviation->target, UNRES_XPATH, NULL)) {
+     '}' { void *tmp;
+
+           if ($3->must_size) {
+             tmp = realloc($3->must, $3->must_size * sizeof *$3->must);
+             if (!tmp) {
+               LOGMEM;
                YYABORT;
              }
+             $3->must = tmp;
+           }
+
+           if ($3->unique_size) {
+             tmp = realloc($3->unique, $3->unique_size * sizeof *$3->unique);
+             if (!tmp) {
+               LOGMEM;
+               YYABORT;
+             }
+             $3->unique = tmp;
+           }
+
+           if ($3->dflt_size) {
+             tmp = realloc($3->dflt, $3->dflt_size * sizeof *$3->dflt);
+             if (!tmp) {
+               LOGMEM;
+               YYABORT;
+             }
+             $3->dflt = tmp;
            }
          }
 
-deviate_add_opt_stmt: @EMPTYDIR@ { if (read_all) {
-                                 $$.deviation = actual;
-                                 actual_type = ADD_KEYWORD;
-                                 if (size_arrays->node[size_arrays->next].must) {
-                                    if (yang_read_deviate_must(actual, size_arrays->node[size_arrays->next].must)) {
-                                      YYABORT;
-                                    }
-                                  }
-                                  if (size_arrays->node[size_arrays->next].unique) {
-                                    if (yang_read_deviate_unique(actual, size_arrays->node[size_arrays->next].unique)) {
-                                      YYABORT;
-                                    }
-                                  }
-                                  if (size_arrays->node[size_arrays->next].dflt) {
-                                    if (yang_read_deviate_default(trg, actual, size_arrays->node[size_arrays->next].dflt)) {
-                                      YYABORT;
-                                    }
-                                  }
-                                  size_arrays->next++;
-                               } else {
-                                 $$.index = size_arrays->size;
-                                 if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                   LOGMEM;
-                                   YYABORT;
+deviate_add_opt_stmt: @EMPTYDIR@ { $$ = actual;
+                                   actual_type = ADD_KEYWORD;
                                  }
-                               }
-                             }
-  |  deviate_add_opt_stmt units_stmt { if (read_all) {
-                                         if (yang_read_deviate_units(trg->ctx, $1.deviation, s)) {
-                                           YYABORT;
-                                         }
+  |  deviate_add_opt_stmt units_stmt { if (yang_read_units(trg, actual, s, ADD_KEYWORD)) {
+                                         YYABORT;
+                                       }
+                                       s = NULL;
+                                       $$ = $1;
+                                     }
+  |  deviate_add_opt_stmt must_stmt stmtsep { actual = $1;
+                                              actual_type = ADD_KEYWORD;
+                                              $$ = $1;
+                                            }
+  |  deviate_add_opt_stmt unique_stmt { YANG_ADDELEM($1->unique, $1->unique_size);
+                                        ((struct lys_unique *)actual)->expr = (const char **)s;
+                                        s = NULL;
+                                        actual = $1;
+                                        $$= $1;
+                                      }
+  |  deviate_add_opt_stmt default_stmt { YANG_ADDELEM($1->dflt, $1->dflt_size);
+                                         *((const char **)actual) = lydict_insert_zc(trg->ctx, s);
                                          s = NULL;
+                                         actual = $1;
                                          $$ = $1;
                                        }
-                                     }
-  |  deviate_add_opt_stmt must_stmt stmtsep { if (read_all) {
-                                        actual = $1.deviation;
-                                        actual_type = ADD_KEYWORD;
-                                        $$ = $1;
-                                      } else {
-                                        size_arrays->node[$1.index].must++;
-                                      }
-                                    }
-  |  deviate_add_opt_stmt unique_stmt { if (read_all) {
-                                          struct lys_node_list *list;
-
-                                          list = (struct lys_node_list *)$1.deviation->target;
-                                          if (yang_fill_unique(trg, list, &list->unique[list->unique_size], s, NULL)) {
-                                            list->unique_size++;
-                                            YYABORT;
-                                          }
-                                          list->unique_size++;
-                                          free(s);
-                                          s = NULL;
-                                          $$ = $1;
-                                        } else {
-                                          size_arrays->node[$1.index].unique++;
+  |  deviate_add_opt_stmt config_stmt { if ($1->flags & LYS_CONFIG_MASK) {
+                                          LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "config", "deviate");
+                                          YYABORT;
                                         }
+                                        $1->flags = $2;
+                                        $$ = $1;
                                       }
-  |  deviate_add_opt_stmt default_stmt { if (read_all) {
-                                           if (yang_fill_deviate_default(trg->ctx, $1.deviation, s)) {
+  |  deviate_add_opt_stmt mandatory_stmt { if ($1->flags & LYS_MAND_MASK) {
+                                             LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "mandatory", "deviate");
                                              YYABORT;
                                            }
-                                           s = NULL;
+                                           $1->flags = $2;
                                            $$ = $1;
-                                         } else {
-                                           size_arrays->node[$1.index].dflt++;
                                          }
-                                       }
-  |  deviate_add_opt_stmt config_stmt { if (read_all) {
-                                          if (yang_read_deviate_config($1.deviation, $2)) {
-                                            YYABORT;
-                                          }
-                                          $$ = $1;
-                                        }
-                                      }
-  |  deviate_add_opt_stmt mandatory_stmt { if (read_all) {
-                                             if (yang_read_deviate_mandatory($1.deviation, $2)) {
-                                               YYABORT;
-                                             }
-                                             $$ = $1;
-                                           }
-                                         }
-  |  deviate_add_opt_stmt min_elements_stmt { if (read_all) {
-                                                if ($1.deviation->deviate->min_set) {
-                                                  LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "min-elements", "deviation");
-                                                  YYABORT;
-                                                }
-                                                if (yang_read_deviate_minmax($1.deviation, $2, 0)) {
-                                                  YYABORT;
-                                                }
-                                                $$ =  $1;
+  |  deviate_add_opt_stmt min_elements_stmt { if ($1->min_set) {
+                                                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "min-elements", "deviation");
+                                                YYABORT;
                                               }
+                                              $1->min = $2;
+                                              $1->min_set = 1;
+                                              $$ =  $1;
                                             }
-  |  deviate_add_opt_stmt max_elements_stmt { if (read_all) {
-                                                if ($1.deviation->deviate->max_set) {
-                                                  LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "max-elements", "deviation");
-                                                  YYABORT;
-                                                }
-                                                if (yang_read_deviate_minmax($1.deviation, $2, 1)) {
-                                                  YYABORT;
-                                                }
-                                                $$ =  $1;
+  |  deviate_add_opt_stmt max_elements_stmt { if ($1->max_set) {
+                                                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "max-elements", "deviation");
+                                                YYABORT;
                                               }
+                                              $1->max = $2;
+                                              $1->max_set = 1;
+                                              $$ =  $1;
                                             }
 
-deviate_delete_stmt: DELETE_KEYWORD optsep { if (read_all && yang_read_deviate(actual, LY_DEVIATE_DEL)) {
+deviate_delete_stmt: DELETE_KEYWORD optsep { if (!(actual = yang_read_deviate(actual, LY_DEVIATE_DEL))) {
                                                YYABORT;
                                              }
                                            }
@@ -3368,193 +3291,130 @@ deviate_delete_stmt: DELETE_KEYWORD optsep { if (read_all && yang_read_deviate(a
 deviate_delete_end: ';'
   |  '{' stmtsep
          deviate_delete_opt_stmt
-      '}' { if (read_all) {
-              struct lys_node_leaflist *llist;
-              int i,j;
+      '}' { void *tmp;
 
-              if ($3.deviation->deviate->dflt_size && $3.deviation->target->nodetype == LYS_LEAFLIST) {
-                /* consolidate the final list in the target after removing items from it */
-                llist = (struct lys_node_leaflist *)$3.deviation->target;
-                for (i = j = 0; j < llist->dflt_size; j++) {
-                  llist->dflt[i] = llist->dflt[j];
-                  if (llist->dflt[i]) {
-                    i++;
-                  }
-                }
-                llist->dflt_size = i + 1;
-              }
-              /* check XPath dependencies */
-              if (($3.deviation->trg_must_size && *$3.deviation->trg_must_size) &&
-                  unres_schema_add_node(trg, unres, $3.deviation->target, UNRES_XPATH, NULL)) {
+            if ($3->must_size) {
+              tmp = realloc($3->must, $3->must_size * sizeof *$3->must);
+              if (!tmp) {
+                LOGMEM;
                 YYABORT;
               }
+              $3->must = tmp;
+            }
+
+            if ($3->unique_size) {
+              tmp = realloc($3->unique, $3->unique_size * sizeof *$3->unique);
+              if (!tmp) {
+                LOGMEM;
+                YYABORT;
+              }
+              $3->unique = tmp;
+            }
+
+            if ($3->dflt_size) {
+              tmp = realloc($3->dflt, $3->dflt_size * sizeof *$3->dflt);
+              if (!tmp) {
+                LOGMEM;
+                YYABORT;
+              }
+              $3->dflt = tmp;
             }
           }
 
-deviate_delete_opt_stmt: @EMPTYDIR@ { if (read_all) {
-                                    $$.deviation = actual;
-                                    actual_type = DELETE_KEYWORD;
-                                    if (size_arrays->node[size_arrays->next].must) {
-                                      if (yang_read_deviate_must(actual, size_arrays->node[size_arrays->next].must)) {
-                                        YYABORT;
-                                      }
+deviate_delete_opt_stmt: @EMPTYDIR@ { $$ = actual;
+                                      actual_type = DELETE_KEYWORD;
                                     }
-                                    if (size_arrays->node[size_arrays->next].unique) {
-                                      if (yang_read_deviate_unique(actual, size_arrays->node[size_arrays->next].unique)) {
-                                        YYABORT;
-                                      }
-                                    }
-                                    if (size_arrays->node[size_arrays->next].dflt) {
-                                      if (yang_read_deviate_default(trg, actual, size_arrays->node[size_arrays->next].dflt)) {
-                                        YYABORT;
-                                      }
-                                    }
-                                    size_arrays->next++;
-                                  } else {
-                                    $$.index = size_arrays->size;
-                                    if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                      LOGMEM;
-                                      YYABORT;
-                                    }
-                                  }
-                                }
-  |  deviate_delete_opt_stmt units_stmt { if (read_all) {
-                                            if (yang_read_deviate_units(trg->ctx, $1.deviation, s)) {
-                                              YYABORT;
-                                            }
+  |  deviate_delete_opt_stmt units_stmt { if (yang_read_units(trg, actual, s, DELETE_KEYWORD)) {
+                                            YYABORT;
+                                          }
+                                          s = NULL;
+                                          $$ = $1;
+                                        }
+  |  deviate_delete_opt_stmt must_stmt stmtsep { actual = $1;
+                                                 actual_type = DELETE_KEYWORD;
+                                                 $$ = $1;
+                                               }
+  |  deviate_delete_opt_stmt unique_stmt { YANG_ADDELEM($1->unique, $1->unique_size);
+                                           ((struct lys_unique *)actual)->expr = (const char **)s;
+                                           s = NULL;
+                                           actual = $1;
+                                           $$ = $1;
+                                         }
+  |  deviate_delete_opt_stmt default_stmt { YANG_ADDELEM($1->dflt, $1->dflt_size);
+                                            *((const char **)actual) = lydict_insert_zc(trg->ctx, s);
                                             s = NULL;
+                                            actual = $1;
                                             $$ = $1;
                                           }
-                                        }
-  |  deviate_delete_opt_stmt must_stmt stmtsep { if (read_all) {
-                                           if (yang_check_deviate_must(trg->ctx, $1.deviation)) {
-                                             YYABORT;
-                                           }
-                                           actual = $1.deviation;
-                                           actual_type = DELETE_KEYWORD;
-                                           $$ = $1;
-                                         } else {
-                                           size_arrays->node[$1.index].must++;
-                                         }
-                                       }
-  |  deviate_delete_opt_stmt unique_stmt { if (read_all) {
-                                             if (yang_check_deviate_unique(trg, $1.deviation, s)) {
-                                               YYABORT;
-                                             }
-                                             s = NULL;
-                                             $$ = $1;
-                                           } else {
-                                             size_arrays->node[$1.index].unique++;
-                                           }
-                                         }
-  |  deviate_delete_opt_stmt default_stmt { if (read_all) {
-                                              if (yang_fill_deviate_default(trg->ctx, $1.deviation, s)) {
-                                                YYABORT;
-                                              }
-                                              s = NULL;
-                                              $$ = $1;
-                                            } else {
-                                              size_arrays->node[$1.index].dflt++;
-                                            }
-                                          }
 
-deviate_replace_stmt: REPLACE_KEYWORD optsep { if (read_all && yang_read_deviate(actual, LY_DEVIATE_RPL)) {
+deviate_replace_stmt: REPLACE_KEYWORD optsep { if (!(actual = yang_read_deviate(actual, LY_DEVIATE_RPL))) {
                                                  YYABORT;
                                                }
                                              }
                       deviate_replace_end
 
-deviate_replace_stmtsep: stmtsep { if (read_all) {
-                                     $$.deviation = actual;
-                                   }
-                                 }
 deviate_replace_end: ';'
-  |  '{' deviate_replace_stmtsep
+  |  '{' stmtsep
          deviate_replace_opt_stmt
-     '}' { if (read_all && $3.deviation->deviate->type) {
-             if (unres_schema_add_node(trg, unres, $3.deviation->deviate->type, UNRES_TYPE_DER, $3.deviation->target) == -1) {
-               lydict_remove(trg->ctx, ((struct yang_type *)$3.deviation->deviate->type->der)->name);
-               free($3.deviation->deviate->type->der);
-               $3.deviation->deviate->type->der = NULL;
+     '}' { void *tmp;
+
+           if ($3->dflt_size) {
+             tmp = realloc($3->dflt, $3->dflt_size * sizeof *$3->dflt);
+             if (!tmp) {
+               LOGMEM;
                YYABORT;
              }
+             $3->dflt = tmp;
            }
          }
 
-deviate_replace_opt_stmt: @EMPTYDIR@ { if (read_all) {
-                                         $$.deviation = actual;
-                                         actual_type = REPLACE_KEYWORD;
-                                         if (size_arrays->node[size_arrays->next].dflt) {
-                                           if (yang_read_deviate_default(trg, actual, size_arrays->node[size_arrays->next].dflt)) {
+deviate_replace_opt_stmt: @EMPTYDIR@ { $$ = actual;
+                                       actual_type = REPLACE_KEYWORD;
+                                     }
+  |  deviate_replace_opt_stmt type_stmt stmtsep { actual = $1;
+                                                  actual_type = REPLACE_KEYWORD;
+                                                }
+  |  deviate_replace_opt_stmt units_stmt { if (yang_read_units(trg, actual, s, DELETE_KEYWORD)) {
                                              YYABORT;
                                            }
-                                        }
-                                        size_arrays->next++;
-                                      } else {
-                                        $$.index = size_arrays->size;
-                                        if (yang_add_elem(&size_arrays->node, &size_arrays->size)) {
-                                          LOGMEM;
-                                          YYABORT;
-                                        }
-                                      }
-                                    }
-  |  deviate_replace_opt_stmt type_stmt stmtsep { if (read_all) {
-                                                    ly_set_add($1.deviation->dflt_check, $1.deviation->target, 0);
-                                                  }
-                                                }
-  |  deviate_replace_opt_stmt units_stmt { if (read_all) {
-                                             if (yang_read_deviate_units(trg->ctx, $1.deviation, s)) {
-                                               YYABORT;
-                                             }
+                                           s = NULL;
+                                           $$ = $1;
+                                         }
+  |  deviate_replace_opt_stmt default_stmt { YANG_ADDELEM($1->dflt, $1->dflt_size);
+                                             *((const char **)actual) = lydict_insert_zc(trg->ctx, s);
                                              s = NULL;
+                                             actual = $1;
                                              $$ = $1;
                                            }
-                                         }
-  |  deviate_replace_opt_stmt default_stmt { if (read_all) {
-                                               if (yang_fill_deviate_default(trg->ctx, $1.deviation, s)) {
+  |  deviate_replace_opt_stmt config_stmt { if ($1->flags & LYS_CONFIG_MASK) {
+                                              LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "config", "deviate");
+                                              YYABORT;
+                                            }
+                                            $1->flags = $2;
+                                            $$ = $1;
+                                          }
+  |  deviate_replace_opt_stmt mandatory_stmt { if ($1->flags & LYS_MAND_MASK) {
+                                                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "mandatory", "deviate");
                                                  YYABORT;
                                                }
-                                               s = NULL;
+                                               $1->flags = $2;
                                                $$ = $1;
-                                             } else {
-                                               size_arrays->node[$1.index].dflt++;
                                              }
-                                           }
-  |  deviate_replace_opt_stmt config_stmt { if (read_all) {
-                                              if (yang_read_deviate_config($1.deviation, $2)) {
-                                                YYABORT;
-                                              }
-                                              $$ = $1;
-                                            }
-                                          }
-  |  deviate_replace_opt_stmt mandatory_stmt { if (read_all) {
-                                                 if (yang_read_deviate_mandatory($1.deviation, $2)) {
-                                                   YYABORT;
-                                                 }
-                                                 $$ = $1;
-                                               }
-                                             }
-  |  deviate_replace_opt_stmt min_elements_stmt { if (read_all) {
-                                                    if ($1.deviation->deviate->min_set) {
-                                                      LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "min-elements", "deviate");
-                                                      YYABORT;
-                                                    }
-                                                    if (yang_read_deviate_minmax($1.deviation, $2, 0)) {
-                                                      YYABORT;
-                                                    }
-                                                    $$ =  $1;
+  |  deviate_replace_opt_stmt min_elements_stmt { if ($1->min_set) {
+                                                    LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "min-elements", "deviation");
+                                                    YYABORT;
                                                   }
+                                                  $1->min = $2;
+                                                  $1->min_set = 1;
+                                                  $$ =  $1;
                                                 }
-  |  deviate_replace_opt_stmt max_elements_stmt { if (read_all) {
-                                                    if ($1.deviation->deviate->max_set) {
-                                                      LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "max-elements", "deviate");
-                                                      YYABORT;
-                                                    }
-                                                    if (yang_read_deviate_minmax($1.deviation, $2, 1)) {
-                                                      YYABORT;
-                                                    }
-                                                    $$ =  $1;
+  |  deviate_replace_opt_stmt max_elements_stmt { if ($1->max_set) {
+                                                    LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "max-elements", "deviation");
+                                                    YYABORT;
                                                   }
+                                                  $1->max = $2;
+                                                  $1->max_set = 1;
+                                                  $$ =  $1;
                                                 }
 
 when_stmt: WHEN_KEYWORD sep string  { if (read_all && !(actual=yang_read_when(trg, actual, actual_type, s))) {YYABORT;} s=NULL; actual_type=WHEN_KEYWORD;}
@@ -3721,12 +3581,9 @@ must_agr_str: string { switch (actual_type) {
                                      ((struct lys_refine *)actual)->must_size);
                          break;
                        case ADD_KEYWORD:
-                         YANG_ADDELEM(((struct type_deviation *)actual)->trg_must,
-                                     *((struct type_deviation *)actual)->trg_must_size);
-                         break;
                        case DELETE_KEYWORD:
-                         YANG_ADDELEM(((struct type_deviation *)actual)->deviate->must,
-                                     ((struct type_deviation *)actual)->deviate->must_size);
+                         YANG_ADDELEM(((struct lys_deviate *)actual)->must,
+                                      ((struct lys_deviate *)actual)->must_size);
                          break;
                        case NOTIFICATION_KEYWORD:
                          if (trg->version < 2) {
@@ -3748,14 +3605,14 @@ must_agr_str: string { switch (actual_type) {
                          break;
                        default:
                          free(s);
+                         LOGINT;
                          YYABORT;
                        }
                        ((struct lys_restr *)actual)->expr = transform_schema2json(trg, s);
+                       free(s);
                        if (!((struct lys_restr *)actual)->expr) {
-                         free(s);
                          YYABORT;
                        }
-                       free(s);
                        s = NULL;
                        actual_type = MUST_KEYWORD;
                      }
