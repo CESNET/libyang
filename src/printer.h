@@ -58,6 +58,7 @@ int info_print_model(struct lyout *out, const struct lys_module *module, const c
 
 int json_print_data(struct lyout *out, const struct lyd_node *root, int options);
 int xml_print_data(struct lyout *out, const struct lyd_node *root, int options);
+void xml_print_node(struct lyout *out, int level, const struct lyd_node *node, int toplevel, int options);
 
 /**
  * get know if the node is supposed to be printed according to the specified with-default mode

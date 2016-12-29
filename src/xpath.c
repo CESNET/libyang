@@ -350,6 +350,7 @@ cast_string_recursive(struct lyd_node *node, int fake_cont, enum lyxp_node_type 
 {
     char *buf, *line, *ptr;
     const char *value_str;
+    const struct lys_type *type;
     struct lyd_node *child;
     struct lyd_node_anydata *any;
 
@@ -385,6 +386,15 @@ cast_string_recursive(struct lyd_node *node, int fake_cont, enum lyxp_node_type 
         value_str = ((struct lyd_node_leaf_list *)node)->value_str;
         if (!value_str) {
             value_str = "";
+        }
+
+        /* make value canonical */
+        type = lyd_leaf_type((struct lyd_node_leaf_list *)node, 1);
+        if (type->base == LY_TYPE_IDENT) {
+            if (!strncmp(value_str, lyd_node_module(node)->name, strlen(lyd_node_module(node)->name))
+                    && (value_str[strlen(lyd_node_module(node)->name)] == ':')) {
+                value_str += strlen(lyd_node_module(node)->name) + 1;
+            }
         }
 
         /* print indent */
@@ -4164,6 +4174,10 @@ moveto_resolve_model(const char *mod_name_ns, uint16_t mod_nam_ns_len, struct ly
     }
 
     for (i = 0; i < ctx->models.used; ++i) {
+        if (ctx->models.list[i]->disabled) {
+            /* skip disabled modules */
+            continue;
+        }
         str = (is_name ? ctx->models.list[i]->name : ctx->models.list[i]->ns);
         if (!strncmp(str, mod_name_ns, mod_nam_ns_len) && !str[mod_nam_ns_len]) {
             return ctx->models.list[i];
@@ -4326,13 +4340,16 @@ static int
 moveto_snode_check(const struct lys_node *node, enum lyxp_node_type root_type, const char *node_name,
                    struct lys_module *moveto_mod, int options)
 {
+    struct lys_node *parent;
+
     /* RPC input/output check */
+    for (parent = lys_parent(node); parent && (parent->nodetype == LYS_USES); parent = lys_parent(parent));
     if (options & LYXP_SNODE_OUTPUT) {
-        if (lys_parent(node) && (lys_parent(node)->nodetype == LYS_INPUT)) {
+        if (parent && (parent->nodetype == LYS_INPUT)) {
             return -1;
         }
     } else {
-        if (lys_parent(node) && (lys_parent(node)->nodetype == LYS_OUTPUT)) {
+        if (parent && (parent->nodetype == LYS_OUTPUT)) {
             return -1;
         }
     }
@@ -7335,8 +7352,6 @@ finish:
 
 /* full xml printing of set elements, not used currently */
 
-void xml_print_node(struct lyout *out, int level, struct lyd_node *node, int toplevel);
-
 void
 lyxp_set_print_xml(FILE *f, struct lyxp_set *set)
 {
@@ -7412,7 +7427,7 @@ lyxp_set_print_xml(FILE *f, struct lyxp_set *set)
                 break;
             case LYXP_NODE_ELEM:
                 ly_print(&out, "ELEM \"%s\"\n", set->value.nodes[i]->schema->name);
-                xml_print_node(&out, 1, set->value.nodes[i], 1);
+                xml_print_node(&out, 1, set->value.nodes[i], 1, LYP_FORMAT);
                 ly_print(&out, "\n");
                 break;
             case LYXP_NODE_TEXT:

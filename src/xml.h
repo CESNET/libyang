@@ -178,6 +178,9 @@ struct lyxml_elem *lyxml_parse_path(struct ly_ctx *ctx, const char *filename, in
                                    option the printer consider that the given XML element can has some sibling
                                    elements and print them all (so the given element is not necessarily printed as
                                    the first one). */
+#define LYXML_PRINT_NO_LAST_NEWLINE 0x20 /**< makes sense only combined with LYXML_PRINT_FORMAT and causes the very
+                                           last newline not to be printed - necessary for correct anyxml XML structure
+                                           print. */
 
 /**
  * @}

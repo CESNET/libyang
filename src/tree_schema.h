@@ -239,7 +239,7 @@ struct lys_module {
     const char *contact;             /**< contact information for the module */
     const char *filepath;            /**< path, if the schema was read from a file, NULL in case of reading from memory */
     uint8_t type:1;                  /**< 0 - structure type used to distinguish structure from ::lys_submodule */
-    uint8_t version:4;               /**< yang-version:
+    uint8_t version:3;               /**< yang-version:
                                           - 0 = not specified, YANG 1.0 as default,
                                           - 1 = YANG 1.0,
                                           - 2 = YANG 1.1 */
@@ -247,6 +247,7 @@ struct lys_module {
                                           - 0 = not deviated,
                                           - 1 = the module is deviated by another module,
                                           - 2 = deviation applied to this module are temporarily off */
+    uint8_t disabled:1;              /**< flag if the module is disabled in the context */
     uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
 
     /* array sizes */
@@ -616,6 +617,7 @@ struct lys_iffeature {
  *       LYS_AUTOASSIGNED | | | | | | | | | | | | | | | |x| | |
  *       LYS_IMPLICIT     | | | | | | | | | |x|x| | | | | | | |
  *       LYS_CONFIG_W     |x|x|x|x|x|x| | | | | | | | | | | |x|
+ *       LYS_NOTAPPLIED   | | | | | | | | | | | | | |x| | | | |
  *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *     2 LYS_CONFIG_R     |x|x|x|x|x|x| | | | | | | | | | | |x|
  *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -676,6 +678,7 @@ struct lys_iffeature {
                                           converted into JSON format, since it contains identityref value which is
                                           being used in JSON format (instead of module prefixes, we use the module
                                           names) */
+#define LYS_NOTAPPLIED   0x01        /**< flag for the not applied augments to allow keeping the resolved target */
 /**
  * @}
  */
@@ -1771,6 +1774,23 @@ struct lys_module *lys_node_module(const struct lys_node *node);
 struct lys_module *lys_main_module(const struct lys_module *module);
 
 /**
+ * @brief Find the implemented revision of the given module in the context.
+ *
+ * If there is no revision of the module implemented, the given module is returned
+ * without any change. It is up to the caller to set the module implemented via
+ * lys_set_implemented() when needed.
+ *
+ * Also note that the result can be a disabled module and the caller is supposed to decide
+ * if it should by enabled via lys_set_enabled(). This is to avoid to try to set another
+ * revision of the module implemented that would fail due to the disabled, but the implemented
+ * module.
+ *
+ * @param[in] mod Module to be searched.
+ * @return The implemeneted revision of the module if any, the given module otherwise.
+ */
+struct lys_module *lys_implemented_module(const struct lys_module *mod);
+
+/**
  * @brief Mark imported module as "implemented".
  *
  * All the modules explicitly loaded are marked as "implemented", but in case of loading module
@@ -1784,10 +1804,46 @@ struct lys_module *lys_main_module(const struct lys_module *module);
  * Note that it is not possible to mark "implemented" multiple revisions of a same module within
  * a single context. In such a case the function fails.
  *
+ * If the module is currently disabled, this function enables the module implicitly.
+ *
  * @param[in] module The module to be set implemented.
  * @return EXIT_SUCCESS or EXIT_FAILURE
  */
 int lys_set_implemented(const struct lys_module *module);
+
+/**
+ * @brief Disable module in its context to avoid its further usage (it will be hidden for module getters).
+ *
+ * The function also disables all the modules in the context that depends on the provided module to disable.
+ * If the imported modules are not used by any other module in the context, they are also disabled. The result
+ * of this function can be reverted by lys_set_enabled() function.
+ *
+ * Since the disabled modules are hidden from the common module getters, there is a special
+ * ly_ctx_get_disabled_module_iter() to go through the disabled modules in the context.
+ *
+ * libyang internal modules (those present when the context is created) cannot be disabled. Any module
+ * loaded into the context is, by default, enabled.
+ *
+ * @param[in] module Module to be enabled.
+ * @return EXIT_SUCCESS or EXIT_FAILURE (in case of invalid parameter).
+ */
+int lys_set_disabled(const struct lys_module *module);
+
+/**
+ * @brief Enable previously disabled module.
+ *
+ * The function tries to revert previous call of the lys_set_disabled() so it checks other disabled
+ * modules in the context depending on the specified module and if it is possible, also the other modules
+ * are going to be enabled. Similarly, all the imported modules that were previously supposed as useless
+ * are enabled.
+ *
+ * libyang internal modules (those present when the context is created) are always enabled. Any other module
+ * loaded into the context is, by default, enabled.
+ *
+ * @param[in] module Module to be enabled.
+ * @return EXIT_SUCCESS or EXIT_FAILURE (in case of invalid parameter).
+ */
+int lys_set_enabled(const struct lys_module *module);
 
 /**
  * @brief Set a schema private pointer to a user pointer.

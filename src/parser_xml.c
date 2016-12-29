@@ -88,8 +88,7 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, int ed
         resolvable = 1;
     }
 
-    leaf->value_str = xml->content;
-    xml->content = NULL;
+    leaf->value_str = lydict_insert(node->schema->module->ctx, xml->content, 0);
 
     if ((editbits & 0x10) && (node->schema->nodetype & LYS_LEAF) && (!leaf->value_str || !leaf->value_str[0])) {
         /* we have edit-config leaf/leaf-list with delete operation and no (empty) value,
@@ -100,7 +99,7 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, int ed
 
     /* the value is here converted to a JSON format if needed in case of LY_TYPE_IDENT and LY_TYPE_INST or to a
      * canonical form of the value */
-    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, xml, NULL, leaf,
+    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, xml, NULL, leaf, 1,
                          resolvable, 0)) {
         return EXIT_FAILURE;
     }
@@ -141,8 +140,9 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     if (!parent) {
         /* starting in root */
         for (i = 0; i < ctx->models.used; i++) {
-            /* skip just imported modules, data can be coupled only with the implemented modules */
-            if (!ctx->models.list[i]->implemented) {
+            /* skip just imported modules, data can be coupled only with the implemented modules,
+             * also skip the disabled modules */
+            if (!ctx->models.list[i]->implemented || ctx->models.list[i]->disabled) {
                 continue;
             }
             /* match data model based on namespace */

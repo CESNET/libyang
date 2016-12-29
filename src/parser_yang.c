@@ -649,12 +649,13 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
     int i, j, rc, ret = -1;
     int8_t req;
     const char *name, *value;
-    LY_DATA_TYPE base = 0;
+    LY_DATA_TYPE base = 0, base_tmp;
     struct lys_node *siter;
     struct lys_type *dertype;
     struct lys_type_enum *enms_sc = NULL;
     struct lys_type_bit *bits_sc = NULL;
     struct lys_type_bit bit_tmp;
+    struct yang_type *yang;
 
     value = transform_schema2json(module, typ->name);
     if (!value) {
@@ -719,6 +720,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
 
     base = typ->base;
     type->base = type->der->type.base;
+    base_tmp = typ->type->base;
     if (base == 0) {
         base = type->der->type.base;
     }
@@ -997,16 +999,26 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
             goto error;
         }
         for (i = 0; i < type->info.uni.count; i++) {
-            type->info.uni.types[i].parent = type->parent;
-            if (unres_schema_add_node(module, unres, &type->info.uni.types[i],
-                                      tpdftype ? UNRES_TYPE_DER_TPDF : UNRES_TYPE_DER, parent) == -1) {
-                goto error;
+            dertype = &type->info.uni.types[i];
+            if (dertype->base == LY_TYPE_DER || dertype->base == LY_TYPE_ERR) {
+                yang = (struct yang_type *)dertype->der;
+                dertype->der = NULL;
+                if (yang_check_type(module, parent, yang, tpdftype, unres)) {
+                    dertype->der = (struct lys_tpdf *)yang;
+                    ret = EXIT_FAILURE;
+                    type->base = base_tmp;
+                    base = 0;
+                    goto error;
+                } else {
+                    lydict_remove(module->ctx, yang->name);
+                    free(yang);
+                }
             }
             if (module->version < 2) {
-                if (type->info.uni.types[i].base == LY_TYPE_EMPTY) {
+                if (dertype->base == LY_TYPE_EMPTY) {
                     LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, "empty", typ->name);
                     goto error;
-                } else if (type->info.uni.types[i].base == LY_TYPE_LEAFREF) {
+                } else if (dertype->base == LY_TYPE_LEAFREF) {
                     LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, "leafref", typ->name);
                     goto error;
                 }
@@ -1036,6 +1048,26 @@ error:
         type->base = base;
     }
     return ret;
+}
+
+void
+yang_free_type_union(struct ly_ctx *ctx, struct lys_type *type)
+{
+    struct lys_type *stype;
+    struct yang_type *yang;
+    int i;
+
+    for (i = 0; i < type->info.uni.count; ++i) {
+        stype = &type->info.uni.types[i];
+        if (stype->base == LY_TYPE_DER || stype->base == LY_TYPE_ERR) {
+            yang = (struct yang_type *)stype->der;
+            stype->base = yang->base;
+            lydict_remove(ctx, yang->name);
+            free(yang);
+        } else if (stype->base == LY_TYPE_UNION) {
+            yang_free_type_union(ctx, stype);
+        }
+    }
 }
 
 void *
@@ -2437,7 +2469,9 @@ read_indent(const char *input, int indent, int size, int in_index, int *out_inde
         if (k >= indent) {
             for (j = k - indent; j > 0; --j) {
                 output[*out_index] = ' ';
-                ++(*out_index);
+                if (j > 1) {
+                    ++(*out_index);
+                }
             }
             break;
         }

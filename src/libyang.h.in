@@ -95,8 +95,10 @@ extern "C" {
  * When creating a new context, search dir can be specified (NULL is accepted) to provide directory
  * where libyang will automatically search for schemas being imported or included. The search path
  * can be later changed via ly_ctx_set_searchdir() function. If the search dir is specified, it is explored
- * first. In case the module is not found, libyang tries to find the (sub)module also in current working working
- * directory. This automatic searching can be completely avoided when the caller sets module searching callback
+ * first. Except the searchpath, also all its subdirectories (and symlinks) are taken into account. In case
+ * the module is not found, libyang tries to find the (sub)module also in current working working directory.
+ * Note, that in this case only the current directory without any other subdirectory is examinde. This
+ * automatic searching can be completely avoided when the caller sets module searching callback
  * (#ly_module_clb) via ly_ctx_set_module_clb().
  *
  * Schemas are added into the context using [parser functions](@ref howtoschemasparsers) - \b lys_parse_*().
@@ -124,9 +126,14 @@ extern "C" {
  * <a href="https://tools.ietf.org/html/draft-ietf-netconf-yang-library-04">ietf-yang-library</a> schema.
  * To get a specific node defined in a module in the context, ly_ctx_get_node() can be used.
  *
- * Modules held by a context cannot be removed one after one. The only way how to \em change modules in the
- * context is to create a new context and remove the old one. To remove a context, there is ly_ctx_destroy()
- * function.
+ * Modules held by a context can be removed by ly_ctx_remove_module(). Besides removing the module, it is possible
+ * just to disable it with lys_set_disabled(). In this case the module is hidden in the context (disabled modules can
+ * be iterated via ly_ctx_get_disabled_module_iter()) and not used during the common work with the context. The module
+ * is enabled explicitly by calling lys_set_enabled() or implicitly by the request to load the schema (directly or
+ * indirectly via import of another module) into the context.
+ *
+ * To clean the context from all the loaded modules (except the [internal modules](@ref howtoschemasparsers)), the
+ * ly_ctx_clean() function can be used. To remove the context, there is ly_ctx_destroy() function.
  *
  * - @subpage howtocontextdict
  *
@@ -142,14 +149,19 @@ extern "C" {
  * - ly_ctx_load_module()
  * - ly_ctx_info()
  * - ly_ctx_get_module_iter()
+ * - ly_ctx_get_disabled_module_iter()
  * - ly_ctx_get_module()
  * - ly_ctx_get_module_older()
  * - ly_ctx_get_module_by_ns()
  * - ly_ctx_get_submodule()
  * - ly_ctx_get_submodule2()
  * - ly_ctx_get_node()
+ * - ly_ctx_remove_module()
+ * - ly_ctx_clean()
  * - ly_ctx_destroy()
  * - lys_set_implemented()
+ * - lys_set_disabled()
+ * - lys_set_enabled()
  */
 
 /**
@@ -212,6 +224,8 @@ extern "C" {
  * - lys_node_module()
  * - lys_set_private()
  * - lys_set_implemented()
+ * - lys_set_disabled()
+ * - lys_set_enabled()
  */
 
 /**
@@ -863,13 +877,22 @@ const char *ly_ctx_get_searchdir(const struct ly_ctx *ctx);
 struct lyd_node *ly_ctx_info(struct ly_ctx *ctx);
 
 /**
- * @brief Iterate over all modules in a context.
+ * @brief Iterate over all (enabled) modules in a context.
  *
  * @param[in] ctx Context with the modules.
  * @param[in,out] idx Index of the next module to be returned. Value of 0 starts from the beginning.
  * @return Next context module, NULL if the last was already returned.
  */
 const struct lys_module *ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32_t *idx);
+
+/**
+ * @brief Iterate over the disabled modules in a context.
+ *
+ * @param[in] ctx Context with the modules.
+ * @param[in,out] idx Index of the next module to be returned. Value of 0 starts from the beginning.
+ * @return Next context module, NULL if the last was already returned.
+ */
+const struct lys_module *ly_ctx_get_disabled_module_iter(const struct ly_ctx *ctx, uint32_t *idx);
 
 /**
  * @brief Get pointer to the schema tree of the module of the specified name.
@@ -1019,22 +1042,19 @@ const struct lys_submodule *ly_ctx_get_submodule2(const struct lys_module *main_
 const struct lys_node *ly_ctx_get_node(struct ly_ctx *ctx, const struct lys_node *start, const char *nodeid);
 
 /**
- * @brief Remove the specified module from the context.
+ * @brief Remove the specified module from its context.
  *
- * The module to remove is selected the same way as ly_ctx_get_module() does it. Beside the selected
- * module, also all other modules depending on all the modules being removed will be removed as well.
+ * Beside the selected module, also all other modules depending on all the modules being removed
+ * will be removed as well.
  *
  * libyang internal modules (those present when the context is created) cannot be removed.
  *
- * @param[in] ctx Context to work in.
- * @param[in] name Name of the YANG module to remove.
- * @param[in] revision Optional revision date of the YANG module to remove. If not specified,
- * the schema in the newest revision is selected.
+ * @param[in] module Module to be removed.
  * @param[in] private_destructor Optional destructor function for private objects assigned
  * to the nodes via lys_set_private(). If NULL, the private objects are not freed by libyang.
- * @return EXIT_SUCCESS or EXIT_FAILURE if the module is not present in the context.
+ * @return EXIT_SUCCESS or EXIT_FAILURE (in case of invalid parameter).
  */
-int ly_ctx_remove_module(struct ly_ctx *ctx, const char *name, const char *revision,
+int ly_ctx_remove_module(const struct lys_module *module,
                          void (*private_destructor)(const struct lys_node *node, void *priv));
 
 /**

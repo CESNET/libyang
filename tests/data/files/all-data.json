@@ -12,7 +12,7 @@
     "leaf10": true,
     "leaf11": "two",
     "leaf12": "flag0 flag2",
-    "leaf13": "somebase64string",
+    "leaf13": "aGVsbG8h",
     "leaf14": "ident1",
     "leaf15": [null],
     "leaf16": "/all:cont1/all:leaf2",

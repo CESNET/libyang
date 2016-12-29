@@ -166,6 +166,8 @@ void *yang_read_length(struct lys_module *module, struct yang_type *typ, char *v
 
 int yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_type *typ, struct lys_type *type, int tpdftype, struct unres_schema *unres);
 
+void yang_free_type_union(struct ly_ctx *ctx, struct lys_type *type);
+
 void yang_delete_type(struct lys_module *module, struct yang_type *stype);
 
 int yang_read_leafref_path(struct lys_module *module, struct yang_type *stype, char *value);

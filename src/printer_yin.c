@@ -14,6 +14,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "common.h"
 #include "printer.h"
@@ -108,6 +109,11 @@ yin_print_restr(struct lyout *out, int level, const char *elem_name, const struc
 static int
 yin_has_nacmext(const struct lys_node *node)
 {
+    /* TODO remove with YANG extensions support, this is a temporary hack to avoid printing
+     * NACM extension instances since its definition is not even stored and it may confuse
+     * other tools when parsing modules printed from libyang */
+    return 0;
+
     if (node->nacm && (!lys_parent(node) || lys_parent(node)->nacm != node->nacm)) {
         return 1;
     }
@@ -119,6 +125,11 @@ yin_print_nacmext(struct lyout *out, int level, const struct lys_node *node, con
 {
     int i, j;
     const char *prefix = NULL;
+
+    /* TODO remove with YANG extensions support, this is a temporary hack to avoid printing
+     * NACM extension instances since its definition is not even stored and it may confuse
+     * other tools when parsing modules printed from libyang */
+    return;
 
     if (node->nacm && (!lys_parent(node) || lys_parent(node)->nacm != node->nacm)) {
         /* locate ietf-netconf-acm module in imports */
@@ -716,7 +727,13 @@ yin_print_typedef(struct lyout *out, int level, const struct lys_module *module,
     }
     if (tpdf->dflt) {
         if (tpdf->flags & LYS_DFLTJSON) {
-            dflt = transform_json2schema(module, tpdf->dflt);
+            assert(strchr(tpdf->dflt, ':'));
+            if (!strncmp(tpdf->dflt, module->name, strchr(tpdf->dflt, ':') - tpdf->dflt)) {
+                /* local module */
+                dflt = lydict_insert(module->ctx, strchr(tpdf->dflt, ':') + 1, 0);
+            } else {
+                dflt = transform_json2schema(module, tpdf->dflt);
+            }
         } else {
             dflt = tpdf->dflt;
         }
@@ -905,7 +922,13 @@ yin_print_leaf(struct lyout *out, int level, const struct lys_node *node)
     }
     if (leaf->dflt) {
         if (leaf->flags & LYS_DFLTJSON) {
-            dflt = transform_json2schema(node->module, leaf->dflt);
+            assert(strchr(leaf->dflt, ':'));
+            if (!strncmp(leaf->dflt, lys_node_module(node)->name, strchr(leaf->dflt, ':') - leaf->dflt)) {
+                /* local module */
+                dflt = lydict_insert(node->module->ctx, strchr(leaf->dflt, ':') + 1, 0);
+            } else {
+                dflt = transform_json2schema(node->module, leaf->dflt);
+            }
         } else {
             dflt = leaf->dflt;
         }
@@ -977,7 +1000,13 @@ yin_print_leaflist(struct lyout *out, int level, const struct lys_node *node)
     }
     for (i = 0; i < llist->dflt_size; i++) {
         if (llist->flags & LYS_DFLTJSON) {
-            dflt = transform_json2schema(node->module, llist->dflt[i]);
+            assert(strchr(llist->dflt[i], ':'));
+            if (!strncmp(llist->dflt[i], lys_node_module(node)->name, strchr(llist->dflt[i], ':') - llist->dflt[i])) {
+                /* local module */
+                dflt = lydict_insert(node->module->ctx, strchr(llist->dflt[i], ':') + 1, 0);
+            } else {
+                dflt = transform_json2schema(node->module, llist->dflt[i]);
+            }
         } else {
             dflt = llist->dflt[i];
         }

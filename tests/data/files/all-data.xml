@@ -11,7 +11,7 @@
   <leaf10>false</leaf10>
   <leaf11>two</leaf11>
   <leaf12>flag0 flag2</leaf12>
-  <leaf13>somebase64string</leaf13>
+  <leaf13>aGVsbG8h</leaf13>
   <leaf14>ident1</leaf14>
   <leaf15/>
   <leaf16 xmlns:all_mod="urn:all">/all_mod:cont1/all_mod:leaf2</leaf16>
@@ -24,8 +24,7 @@
   <possibly>
     <long>xml</long>
   </possibly>
-</some>
-    </axml1>
+</some></axml1>
   </list1>
   <list1>
     <leaf18>key2</leaf18>
