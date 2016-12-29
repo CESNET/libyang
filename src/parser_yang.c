@@ -3218,8 +3218,14 @@ yang_check_leaf(struct lys_module *module, struct lys_node_leaf *leaf, struct un
         }
     } else if (stype->base == LY_TYPE_IDENT) {
         if (yang_check_identityref(module, &leaf->type, unres)) {
+            yang_type_free(module->ctx, &leaf->type);
             goto error;
         }
+    }
+
+    if (yang_check_iffeatures(module, NULL, leaf, LEAF_KEYWORD, unres)) {
+        yang_type_free(module->ctx, &leaf->type);
+        goto error;
     }
 
     if (unres_schema_add_node(module, unres, &leaf->type, UNRES_TYPE_DER, (struct lys_node *)leaf) == -1) {
@@ -3228,10 +3234,6 @@ yang_check_leaf(struct lys_module *module, struct lys_node_leaf *leaf, struct un
     }
 
     if (unres_schema_add_node(module, unres, &leaf->type, UNRES_TYPE_DFLT, (struct lys_node *)&leaf->dflt) == -1) {
-        goto error;
-    }
-
-    if (yang_check_iffeatures(module, NULL, leaf, LEAF_KEYWORD, unres)) {
         goto error;
     }
 
@@ -3268,8 +3270,14 @@ yang_check_leaflist(struct lys_module *module, struct lys_node_leaflist *leaflis
         }
     } else if (stype->base == LY_TYPE_IDENT) {
         if (yang_check_identityref(module, &leaflist->type, unres)) {
+            yang_type_free(module->ctx, &leaflist->type);
             goto error;
         }
+    }
+
+    if (yang_check_iffeatures(module, NULL, leaflist, LEAF_LIST_KEYWORD, unres)) {
+        yang_type_free(module->ctx, &leaflist->type);
+        goto error;
     }
 
     if (unres_schema_add_node(module, unres, &leaflist->type, UNRES_TYPE_DER, (struct lys_node *)leaflist) == -1) {
@@ -3294,10 +3302,6 @@ yang_check_leaflist(struct lys_module *module, struct lys_node_leaflist *leaflis
         if (unres_schema_add_node(module, unres, &leaflist->type, UNRES_TYPE_DFLT, (struct lys_node *)(&leaflist->dflt[i])) == -1) {
             goto error;
         }
-    }
-
-    if (yang_check_iffeatures(module, NULL, leaflist, LEAF_LIST_KEYWORD, unres)) {
-        goto error;
     }
 
     /* check XPath dependencies */
@@ -3360,6 +3364,12 @@ yang_check_choice(struct lys_module *module, struct lys_node_choice *choice, str
 {
     char *value;
 
+    if (yang_check_iffeatures(module, NULL, choice, CHOICE_KEYWORD, unres)) {
+        free(choice->dflt);
+        choice->dflt = NULL;
+        goto error;
+    }
+
     if (choice->dflt) {
         value = (char *)choice->dflt;
         choice->dflt = NULL;
@@ -3368,10 +3378,6 @@ yang_check_choice(struct lys_module *module, struct lys_node_choice *choice, str
             goto error;
         }
         free(value);
-    }
-
-    if (yang_check_iffeatures(module, NULL, choice, CHOICE_KEYWORD, unres)) {
-        goto error;
     }
 
     /* check XPath dependencies */
@@ -3440,11 +3446,12 @@ yang_check_augment(struct lys_module *module, struct lys_node_augment *augment, 
     child = augment->child;
     augment->child = NULL;
 
-    if (yang_check_nodes(module, (struct lys_node *)augment, child, config_opt, unres)) {
+    if (yang_check_iffeatures(module, NULL, augment, AUGMENT_KEYWORD, unres)) {
+        yang_free_nodes(module->ctx, child);
         goto error;
     }
 
-    if (yang_check_iffeatures(module, NULL, augment, AUGMENT_KEYWORD, unres)) {
+    if (yang_check_nodes(module, (struct lys_node *)augment, child, config_opt, unres)) {
         goto error;
     }
 
