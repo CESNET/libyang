@@ -1418,7 +1418,6 @@ require_instance_arg_str: TRUE_KEYWORD optsep { $$ = 1; }
 
 bits_specification: bit_stmt bit_stmts { struct lys_type_bit * tmp;
 
-                                         ((struct yang_type *)actual)->base = LY_TYPE_BITS;
                                          cnt_val = 0;
                                          tmp = realloc(((struct yang_type *)actual)->type->info.bits.bit,
                                                        ((struct yang_type *)actual)->type->info.bits.count * sizeof *tmp);
