@@ -23,9 +23,6 @@
 #include "common.h"
 #include "context.h"
 
-#define LY_ARRAY_SIZE 32
-#define LY_READ_ALL 1
-#define LY_READ_ONLY_SIZE 0
 #define LYS_SYSTEMORDERED 0x40
 #define LYS_ORDERED_MASK 0xC0
 #define LYS_MIN_ELEMENTS 0x01
@@ -41,45 +38,6 @@
 #define LYS_CHOICE_DEFAULT 0x10
 #define LYS_NO_ERASE_IDENTITY 0x20
 #define LY_YANG_ARRAY_SIZE 8
-
-struct lys_node_array{
-    uint8_t if_features;
-    uint8_t must;
-    union {
-        uint8_t tpdf;
-        uint8_t dflt;
-    };
-    uint8_t unique;
-    union {
-        uint uni;
-        uint16_t flags;
-    };
-    union {
-        uint enm;
-        uint pattern;
-        uint bit;
-        uint deviate;
-        uint keys;
-        uint base;
-    };
-    uint16_t refine;
-    uint16_t augment;
-
-};
-
-struct lys_array_size {
-    uint8_t rev;
-    uint8_t imp;
-    uint8_t inc;
-    uint32_t ident;
-    uint8_t features;
-    uint8_t augment;
-    uint8_t deviation;
-    uint8_t tpdf;
-    uint32_t size;
-    uint32_t next;
-    struct lys_node_array *node;
-};
 
 struct type_node {
     union {
@@ -110,15 +68,6 @@ int yang_read_common(struct lys_module *module,char *value, enum yytokentype typ
 int yang_read_prefix(struct lys_module *module, struct lys_import *imp, char *value);
 
 int yang_check_version(struct lys_module *module, struct lys_submodule *submodule, char *value, int repeat);
-
-/**
- * @brief Add node to the array
- *
- * @param[in/out] node Pointer to the array.
- * @param[in/out] size Pointer to the current size of array.
- * @return 1 on success, 0 on error.
- */
-int yang_add_elem(struct lys_node_array **node, uint32_t *size);
 
 int yang_check_imports(struct lys_module *module, struct unres_schema *unres);
 

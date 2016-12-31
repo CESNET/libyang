@@ -218,21 +218,6 @@ yang_read_revision(struct lys_module *module, char *value, struct lys_revision *
 }
 
 int
-yang_add_elem(struct lys_node_array **node, uint32_t *size)
-{
-    if (!(*size % LY_ARRAY_SIZE)) {
-        if (!(*node = ly_realloc(*node, (*size + LY_ARRAY_SIZE) * sizeof **node))) {
-            LOGMEM;
-            return EXIT_FAILURE;
-        } else {
-            memset(*node + *size, 0, LY_ARRAY_SIZE * sizeof **node);
-        }
-    }
-    (*size)++;
-    return EXIT_SUCCESS;
-}
-
-int
 yang_fill_iffeature(struct lys_module *module, struct lys_iffeature *iffeature, void *parent,
                     char *value, struct unres_schema *unres, int parent_is_feature)
 {

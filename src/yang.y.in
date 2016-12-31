@@ -204,13 +204,10 @@ void yyerror(YYLTYPE *yylloc, void *scanner, char **value, ...);
 %type <str> message_opt_stmt
 %type <i> identity_opt_stmt
 %type <i> status_stmt
-%type <i> status_read_stmt
 %type <i> status_arg_str
 %type <i> config_stmt
-%type <i> config_read_stmt
 %type <i> config_arg_str
 %type <i> mandatory_stmt
-%type <i> mandatory_read_stmt
 %type <i> mandatory_arg_str
 %type <i> ordered_by_stmt
 %type <i> ordered_by_arg_str
@@ -285,31 +282,27 @@ start: module_stmt
                      }
                    }
 
-tmp_string: STRING { if (read_string) {
-                      if (yyget_text(scanner)[0] == '"') {
-                        char *tmp;
+tmp_string: STRING { if (yyget_text(scanner)[0] == '"') {
+                      char *tmp;
 
-                        s = malloc(yyget_leng(scanner) - 1 + 7 * yylval.i);
-                        if (!s) {
-                          LOGMEM;
-                          YYABORT;
-                        }
-                        if (!(tmp = yang_read_string(yyget_text(scanner) + 1, s, yyget_leng(scanner) - 2, 0, yylloc.first_column, (trg) ? trg->version : 0))) {
-                          YYABORT;
-                        }
-                        s = tmp;
-                      } else {
-                        s = calloc(1, yyget_leng(scanner) - 1);
-                        if (!s) {
-                          LOGMEM;
-                          YYABORT;
-                        }
-                        memcpy(s, yyget_text(scanner) + 1, yyget_leng(scanner) - 2);
+                      s = malloc(yyget_leng(scanner) - 1 + 7 * yylval.i);
+                      if (!s) {
+                        LOGMEM;
+                        YYABORT;
                       }
-                      $$ = &s;
+                      if (!(tmp = yang_read_string(yyget_text(scanner) + 1, s, yyget_leng(scanner) - 2, 0, yylloc.first_column, (trg) ? trg->version : 0))) {
+                        YYABORT;
+                      }
+                      s = tmp;
                     } else {
-                      $$ = NULL;
+                      s = calloc(1, yyget_leng(scanner) - 1);
+                      if (!s) {
+                        LOGMEM;
+                        YYABORT;
+                      }
+                      memcpy(s, yyget_text(scanner) + 1, yyget_leng(scanner) - 2);
                     }
+                    $$ = &s;
                   }
 
 string_1: tmp_string optsep string_2
@@ -317,7 +310,7 @@ string_1: tmp_string optsep string_2
 
 string_2: @EMPTYDIR@
   |  string_2 '+' optsep
-     STRING { if (read_string && (yyget_leng(scanner) > 2)) {
+     STRING { if (yyget_leng(scanner) > 2) {
                 int length_s = strlen(s), length_tmp = yyget_leng(scanner);
                 char *tmp;
 
@@ -340,18 +333,18 @@ string_2: @EMPTYDIR@
             }
      optsep;
 
-module_stmt: optsep MODULE_KEYWORD sep identifier_arg_str { if (read_all) {
-                                                              if (submodule) {
-                                                                free(s);
-                                                                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "module");
-                                                                YYABORT;
-                                                              }
-                                                              trg = module;
-                                                              yang_read_common(trg,s,MODULE_KEYWORD);
-                                                              s = NULL;
-                                                              config_inherit = CONFIG_INHERIT_ENABLE;
-                                                            }
-                                                          }
+module_arg_str: identifier_arg_str { if (submodule) {
+                                       free(s);
+                                       LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "module");
+                                       YYABORT;
+                                     }
+                                     trg = module;
+                                     yang_read_common(trg,s,MODULE_KEYWORD);
+                                     s = NULL;
+                                     config_inherit = CONFIG_INHERIT_ENABLE;
+                                   }
+
+module_stmt: optsep MODULE_KEYWORD sep module_arg_str
              '{' stmtsep
                  module_header_stmts
                  linkage_stmt
@@ -386,18 +379,18 @@ module_header_stmt: @EMPTYDIR@  { $$ = 0; }
   |  module_header_stmt prefix_stmt
   ;
 
-submodule_stmt: optsep SUBMODULE_KEYWORD sep identifier_arg_str { if (read_all) {
-                                                                    if (!submodule) {
-                                                                      free(s);
-                                                                      LOGVAL(LYE_SUBMODULE, LY_VLOG_NONE, NULL);
-                                                                      YYABORT;
-                                                                    }
-                                                                    trg = (struct lys_module *)submodule;
-                                                                    yang_read_common(trg,s,MODULE_KEYWORD);
-                                                                    s = NULL;
-                                                                    config_inherit = CONFIG_INHERIT_ENABLE;
-                                                                  }
-                                                                }
+submodule_arg_str: identifier_arg_str { if (!submodule) {
+                                          free(s);
+                                          LOGVAL(LYE_SUBMODULE, LY_VLOG_NONE, NULL);
+                                          YYABORT;
+                                        }
+                                        trg = (struct lys_module *)submodule;
+                                        yang_read_common(trg,s,MODULE_KEYWORD);
+                                        s = NULL;
+                                        config_inherit = CONFIG_INHERIT_ENABLE;
+                                      }
+
+submodule_stmt: optsep SUBMODULE_KEYWORD sep submodule_arg_str
                 '{' stmtsep
                     submodule_header_stmts
                     linkage_stmt
@@ -774,28 +767,22 @@ yin_element_arg_str: TRUE_KEYWORD optsep
 
 status_stmt:  STATUS_KEYWORD sep status_arg_str stmtend { $$ = $3; }
 
-status_read_stmt:  STATUS_KEYWORD sep { read_string = (read_string) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
-                   status_arg_str { read_string = (read_string) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
-                   stmtend { $$ = $4; }
-
 status_arg_str: CURRENT_KEYWORD optsep { $$ = LYS_STATUS_CURR; }
   | OBSOLETE_KEYWORD optsep { $$ = LYS_STATUS_OBSLT; }
   | DEPRECATED_KEYWORD optsep { $$ = LYS_STATUS_DEPRC; }
-  | string_1 { if (read_string) {
-                 if (!strcmp(s, "current")) {
-                   $$ = LYS_STATUS_CURR;
-                 } else if (!strcmp(s, "obsolete")) {
-                   $$ = LYS_STATUS_OBSLT;
-                 } else if (!strcmp(s, "deprecated")) {
-                   $$ = LYS_STATUS_DEPRC;
-                 } else {
-                   LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, s);
-                   free(s);
-                   YYABORT;
-                 }
+  | string_1 { if (!strcmp(s, "current")) {
+                 $$ = LYS_STATUS_CURR;
+               } else if (!strcmp(s, "obsolete")) {
+                 $$ = LYS_STATUS_OBSLT;
+               } else if (!strcmp(s, "deprecated")) {
+                 $$ = LYS_STATUS_DEPRC;
+               } else {
+                 LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, s);
                  free(s);
-                 s = NULL;
+                 YYABORT;
                }
+               free(s);
+               s = NULL;
              }
 
 feature_arg_str: identifier_arg_str { /* check uniqueness of feature's names */
@@ -2226,7 +2213,7 @@ choice_opt_stmt: @EMPTYDIR@ { $$.node.ptr_choice = actual;
   |  choice_opt_stmt short_case_case_stmt { actual = $1.node.ptr_choice;
                                             actual_type = CHOICE_KEYWORD;
                                             data_node = actual;
-                                            if (read_all && data_node->parent && (data_node->parent->nodetype == LYS_GROUPING)) {
+                                            if (data_node->parent && (data_node->parent->nodetype == LYS_GROUPING)) {
                                               data_node = NULL;
                                             }
                                           }
@@ -3035,12 +3022,10 @@ output_stmt: OUTPUT_KEYWORD optsep { s = strdup("output");
                    }
                  }
 
-notification_arg_str: identifier_arg_str { if (read_all) {
-                                             if (!(actual = yang_read_node(trg, actual, node, s, LYS_NOTIF, sizeof(struct lys_node_notif)))) {
-                                              YYABORT;
-                                             }
-                                             data_node = actual;
+notification_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, actual, node, s, LYS_NOTIF, sizeof(struct lys_node_notif)))) {
+                                             YYABORT;
                                            }
+                                           data_node = actual;
                                            $$ = config_inherit;
                                            config_inherit = CONFIG_INHERIT_DISABLE;
                                          }
@@ -3416,8 +3401,14 @@ deviate_replace_opt_stmt: @EMPTYDIR@ { $$ = actual;
                                                   $$ =  $1;
                                                 }
 
-when_stmt: WHEN_KEYWORD sep string  { if (read_all && !(actual=yang_read_when(trg, actual, actual_type, s))) {YYABORT;} s=NULL; actual_type=WHEN_KEYWORD;}
-           when_end;
+when_arg_str: string  { if (!(actual=yang_read_when(trg, actual, actual_type, s))) {
+                          YYABORT;
+                        }
+                        s = NULL;
+                        actual_type=WHEN_KEYWORD;
+                      }
+
+when_stmt: WHEN_KEYWORD sep when_arg_str when_end;
 
 when_end: ';'
   |  '{' stmtsep
@@ -3425,12 +3416,12 @@ when_end: ';'
      '}'
 
 when_opt_stmt: @EMPTYDIR@
-  |  when_opt_stmt description_stmt { if (read_all && yang_read_description(trg, actual, s, "when")) {
+  |  when_opt_stmt description_stmt { if (yang_read_description(trg, actual, s, "when")) {
                                         YYABORT;
                                       }
                                       s = NULL;
                                     }
-  |  when_opt_stmt reference_stmt { if (read_all && yang_read_reference(trg, actual, s, "when")) {
+  |  when_opt_stmt reference_stmt { if (yang_read_reference(trg, actual, s, "when")) {
                                       YYABORT;
                                     }
                                     s = NULL;
@@ -3438,48 +3429,36 @@ when_opt_stmt: @EMPTYDIR@
 
 config_stmt: CONFIG_KEYWORD sep config_arg_str stmtend { $$ = $3; }
 
-config_read_stmt: CONFIG_KEYWORD sep { read_string = (read_string) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
-                  config_arg_str { read_string = (read_string) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
-                  stmtend { $$ = $4; }
-
 config_arg_str: TRUE_KEYWORD optsep { $$ = LYS_CONFIG_W | LYS_CONFIG_SET; }
   |  FALSE_KEYWORD optsep { $$ = LYS_CONFIG_R | LYS_CONFIG_SET; }
-  |  string_1 { if (read_string) {
-                  if (!strcmp(s, "true")) {
-                    $$ = LYS_CONFIG_W | LYS_CONFIG_SET;
-                  } else if (!strcmp(s, "false")) {
-                    $$ = LYS_CONFIG_R | LYS_CONFIG_SET;
-                  } else {
-                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "config");
-                    free(s);
-                    YYABORT;
-                  }
+  |  string_1 { if (!strcmp(s, "true")) {
+                  $$ = LYS_CONFIG_W | LYS_CONFIG_SET;
+                } else if (!strcmp(s, "false")) {
+                  $$ = LYS_CONFIG_R | LYS_CONFIG_SET;
+                } else {
+                  LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "config");
                   free(s);
-                  s = NULL;
+                  YYABORT;
                 }
+                free(s);
+                s = NULL;
               }
 
 mandatory_stmt: MANDATORY_KEYWORD sep mandatory_arg_str stmtend { $$ = $3; }
 
-mandatory_read_stmt: MANDATORY_KEYWORD sep { read_string = (read_string) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
-                     mandatory_arg_str { read_string = (read_string) ? LY_READ_ONLY_SIZE : LY_READ_ALL; }
-                     stmtend { $$ = $4; }
-
 mandatory_arg_str: TRUE_KEYWORD optsep { $$ = LYS_MAND_TRUE; }
   |  FALSE_KEYWORD optsep { $$ = LYS_MAND_FALSE; }
-  |  string_1 { if (read_string) {
-                  if (!strcmp(s, "true")) {
-                    $$ = LYS_MAND_TRUE;
-                  } else if (!strcmp(s, "false")) {
-                    $$ = LYS_MAND_FALSE;
-                  } else {
-                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "mandatory");
-                    free(s);
-                    YYABORT;
-                  }
+  |  string_1 { if (!strcmp(s, "true")) {
+                  $$ = LYS_MAND_TRUE;
+                } else if (!strcmp(s, "false")) {
+                  $$ = LYS_MAND_FALSE;
+                } else {
+                  LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "mandatory");
                   free(s);
-                  s = NULL;
+                  YYABORT;
                 }
+                free(s);
+                s = NULL;
               }
 
 presence_stmt: PRESENCE_KEYWORD sep string stmtend;
@@ -3487,70 +3466,64 @@ presence_stmt: PRESENCE_KEYWORD sep string stmtend;
 min_elements_stmt: MIN_ELEMENTS_KEYWORD sep min_value_arg_str stmtend { $$ = $3; }
 
 min_value_arg_str: non_negative_integer_value optsep { $$ = $1; }
-  |  string_1 { if (read_all) {
-                  if (strlen(s) == 1 && s[0] == '0') {
-                    $$ = 0;
-                  } else {
-                    /* convert it to uint32_t */
-                    uint64_t val;
-                    char *endptr = NULL;
-                    errno = 0;
+  |  string_1 { if (strlen(s) == 1 && s[0] == '0') {
+                  $$ = 0;
+                } else {
+                  /* convert it to uint32_t */
+                  uint64_t val;
+                  char *endptr = NULL;
+                  errno = 0;
 
-                    val = strtoul(s, &endptr, 10);
-                    if (*endptr || s[0] == '-' || errno || val > UINT32_MAX) {
-                        LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "min-elements");
-                        free(s);
-                        YYABORT;
-                    }
-                    $$ = (uint32_t) val;
+                  val = strtoul(s, &endptr, 10);
+                  if (*endptr || s[0] == '-' || errno || val > UINT32_MAX) {
+                      LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "min-elements");
+                      free(s);
+                      YYABORT;
                   }
-                  free(s);
-                  s = NULL;
+                  $$ = (uint32_t) val;
                 }
+                free(s);
+                s = NULL;
               }
 
 max_elements_stmt: MAX_ELEMENTS_KEYWORD sep max_value_arg_str stmtend { $$ = $3; }
 
 max_value_arg_str: UNBOUNDED_KEYWORD optsep { $$ = 0; }
   |  positive_integer_value optsep { $$ = $1; }
-  |  string_1 { if (read_all) {
-                  if (!strcmp(s, "unbounded")) {
-                    $$ = 0;
-                  } else {
-                    /* convert it to uint32_t */
-                    uint64_t val;
-                    char *endptr = NULL;
-                    errno = 0;
+  |  string_1 { if (!strcmp(s, "unbounded")) {
+                  $$ = 0;
+                } else {
+                  /* convert it to uint32_t */
+                  uint64_t val;
+                  char *endptr = NULL;
+                  errno = 0;
 
-                    val = strtoul(s, &endptr, 10);
-                    if (*endptr || s[0] == '-' || errno || val == 0 || val > UINT32_MAX) {
-                        LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "max-elements");
-                        free(s);
-                        YYABORT;
-                    }
-                    $$ = (uint32_t) val;
+                  val = strtoul(s, &endptr, 10);
+                  if (*endptr || s[0] == '-' || errno || val == 0 || val > UINT32_MAX) {
+                      LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "max-elements");
+                      free(s);
+                      YYABORT;
                   }
-                  free(s);
-                  s = NULL;
+                  $$ = (uint32_t) val;
                 }
+                free(s);
+                s = NULL;
               }
 
 ordered_by_stmt: ORDERED_BY_KEYWORD sep ordered_by_arg_str stmtend { $$ = $3; }
 
 ordered_by_arg_str: USER_KEYWORD optsep { $$ = LYS_USERORDERED; }
   |  SYSTEM_KEYWORD optsep { $$ = LYS_SYSTEMORDERED; }
-  |  string_1 { if (read_all) {
-                  if (!strcmp(s, "user")) {
-                    $$ = LYS_USERORDERED;
-                  } else if (!strcmp(s, "system")) {
-                    $$ = LYS_SYSTEMORDERED;
-                  } else {
-                    free(s);
-                    YYABORT;
-                  }
+  |  string_1 { if (!strcmp(s, "user")) {
+                  $$ = LYS_USERORDERED;
+                } else if (!strcmp(s, "system")) {
+                  $$ = LYS_SYSTEMORDERED;
+                } else {
                   free(s);
-                  s=NULL;
+                  YYABORT;
                 }
+                free(s);
+                s=NULL;
               }
 
 must_agr_str: string { switch (actual_type) {
@@ -3634,12 +3607,10 @@ unique_arg: sep descendant_schema_nodeid unique_arg
 
 key_stmt: KEY_KEYWORD sep key_arg_str stmtend;
 
-key_arg_str: node_identifier { if (read_all){
-                                 s = strdup(yyget_text(scanner));
-                                 if (!s) {
-                                   LOGMEM;
-                                   YYABORT;
-                                 }
+key_arg_str: node_identifier { s = strdup(yyget_text(scanner));
+                               if (!s) {
+                                 LOGMEM;
+                                 YYABORT;
                                }
                              }
              optsep
@@ -3654,24 +3625,22 @@ range_arg_str: string { $$ = actual;
                         s = NULL;
                       }
 
-absolute_schema_nodeid: '/' node_identifier { if (read_all) {
-                                                if (s) {
-                                                  s = ly_realloc(s,strlen(s) + yyget_leng(scanner) + 2);
-                                                  if (!s) {
-                                                    LOGMEM;
-                                                    YYABORT;
-                                                  }
-                                                  strcat(s,"/");
-                                                  strcat(s, yyget_text(scanner));
-                                                } else {
-                                                  s = malloc(yyget_leng(scanner) + 2);
-                                                  if (!s) {
-                                                    LOGMEM;
-                                                    YYABORT;
-                                                  }
-                                                  s[0]='/';
-                                                  memcpy(s + 1, yyget_text(scanner), yyget_leng(scanner) + 1);
+absolute_schema_nodeid: '/' node_identifier { if (s) {
+                                                s = ly_realloc(s,strlen(s) + yyget_leng(scanner) + 2);
+                                                if (!s) {
+                                                  LOGMEM;
+                                                  YYABORT;
                                                 }
+                                                strcat(s,"/");
+                                                strcat(s, yyget_text(scanner));
+                                              } else {
+                                                s = malloc(yyget_leng(scanner) + 2);
+                                                if (!s) {
+                                                  LOGMEM;
+                                                  YYABORT;
+                                                }
+                                                s[0]='/';
+                                                memcpy(s + 1, yyget_text(scanner), yyget_leng(scanner) + 1);
                                               }
                                             }
 
@@ -3681,20 +3650,18 @@ absolute_schema_nodeid_opt: @EMPTYDIR@
   |  absolute_schema_nodeid_opt absolute_schema_nodeid
   ;
 
-descendant_schema_nodeid: node_identifier { if (read_all)  {
-                                              if (s) {
-                                                s = ly_realloc(s,strlen(s) + yyget_leng(scanner) + 1);
-                                                if (!s) {
-                                                  LOGMEM;
-                                                  YYABORT;
-                                                }
-                                                strcat(s, yyget_text(scanner));
-                                              } else {
-                                                s = strdup(yyget_text(scanner));
-                                                if (!s) {
-                                                  LOGMEM;
-                                                  YYABORT;
-                                                }
+descendant_schema_nodeid: node_identifier { if (s) {
+                                              s = ly_realloc(s,strlen(s) + yyget_leng(scanner) + 1);
+                                              if (!s) {
+                                                LOGMEM;
+                                                YYABORT;
+                                              }
+                                              strcat(s, yyget_text(scanner));
+                                            } else {
+                                              s = strdup(yyget_text(scanner));
+                                              if (!s) {
+                                                LOGMEM;
+                                                YYABORT;
                                               }
                                             }
                                           }
@@ -3775,16 +3742,15 @@ non_negative_integer_value: ZERO { $$ = 0; }
 
 integer_value: ZERO { $$ = 0; }
   |  integer_value_convert { /* convert it to int32_t */
-               int64_t val;
+                             int64_t val;
 
-               val = strtoll(yyget_text(scanner), NULL, 10);
-               if (val < INT32_MIN || val > INT32_MAX) {
-                   LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The number is not in the correct range (INT32_MIN..INT32_MAX): \"%d\"",val);
-                   YYABORT;
-               }
-               $$ = (int32_t) val;
-             }
-  ;
+                             val = strtoll(yyget_text(scanner), NULL, 10);
+                             if (val < INT32_MIN || val > INT32_MAX) {
+                                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The number is not in the correct range (INT32_MIN..INT32_MAX): \"%d\"",val);
+                                 YYABORT;
+                             }
+                             $$ = (int32_t) val;
+                           }
 
 integer_value_convert: INTEGER
   |  NON_NEGATIVE_INTEGER
@@ -3793,7 +3759,7 @@ prefix_arg_str: string_1
   |  identifiers optsep;
 
 identifier_arg_str: identifiers optsep
-  |  string_1 { if (read_all && lyp_check_identifier(s, LY_IDENT_SIMPLE, trg, NULL)) {
+  |  string_1 { if (lyp_check_identifier(s, LY_IDENT_SIMPLE, trg, NULL)) {
                     free(s);
                     YYABORT;
                 }
@@ -3805,28 +3771,26 @@ node_identifier: identifier
 
 identifier_ref_arg_str: identifiers optsep
   | identifiers_ref optsep
-  | string_1 { if (read_all) {
-                 char *tmp;
+  | string_1 { char *tmp;
 
-                 if ((tmp = strchr(s, ':'))) {
-                   *tmp = '\0';
-                   /* check prefix */
-                   if (lyp_check_identifier(s, LY_IDENT_SIMPLE, trg, NULL)) {
-                     free(s);
-                     YYABORT;
-                   }
-                   /* check identifier */
-                   if (lyp_check_identifier(tmp + 1, LY_IDENT_SIMPLE, trg, NULL)) {
-                     free(s);
-                     YYABORT;
-                   }
-                   *tmp = ':';
-                 } else {
-                   /* check identifier */
-                   if (lyp_check_identifier(s, LY_IDENT_SIMPLE, trg, NULL)) {
-                     free(s);
-                     YYABORT;
-                   }
+               if ((tmp = strchr(s, ':'))) {
+                 *tmp = '\0';
+                 /* check prefix */
+                 if (lyp_check_identifier(s, LY_IDENT_SIMPLE, trg, NULL)) {
+                   free(s);
+                   YYABORT;
+                 }
+                 /* check identifier */
+                 if (lyp_check_identifier(tmp + 1, LY_IDENT_SIMPLE, trg, NULL)) {
+                   free(s);
+                   YYABORT;
+                 }
+                 *tmp = ':';
+               } else {
+                 /* check identifier */
+                 if (lyp_check_identifier(s, LY_IDENT_SIMPLE, trg, NULL)) {
+                   free(s);
+                   YYABORT;
                  }
                }
              }
@@ -3840,12 +3804,10 @@ stmtsep: @EMPTYDIR@
   | stmtsep unknown_statement
   ;
 
-unknown_statement: IDENTIFIERPREFIX { if (read_all ) {
-                                       if (yang_use_extension(trg, data_node, actual, yyget_text(scanner))) {
-                                         YYABORT;
-                                       }
-                                     }
-                                   }
+unknown_statement: IDENTIFIERPREFIX { if (yang_use_extension(trg, data_node, actual, yyget_text(scanner))) {
+                                        YYABORT;
+                                      }
+                                    }
                    string_opt unknown_statement_end
 
 string_opt: string_opt_part1 string_opt_part2
@@ -3883,12 +3845,10 @@ whitespace_opt: @EMPTYDIR@
   | WHITESPACE
   ;
 
-string: strings { if (read_all){
-                    s = strdup(yyget_text(scanner));
-                    if (!s) {
-                      LOGMEM;
-                      YYABORT;
-                    }
+string: strings { s = strdup(yyget_text(scanner));
+                  if (!s) {
+                    LOGMEM;
+                    YYABORT;
                   }
                 }
         optsep
@@ -3985,21 +3945,17 @@ identifier: IDENTIFIER
   |  ANYDATA_KEYWORD
   ;
 
-identifiers: identifier { if (read_all) {
-                            s = strdup(yyget_text(scanner));
-                            if (!s) {
-                              LOGMEM;
-                              YYABORT;
-                            }
+identifiers: identifier { s = strdup(yyget_text(scanner));
+                          if (!s) {
+                            LOGMEM;
+                            YYABORT;
                           }
                         }
 
-identifiers_ref: IDENTIFIERPREFIX { if (read_all) {
-                                      s = strdup(yyget_text(scanner));
-                                      if (!s) {
-                                        LOGMEM;
-                                        YYABORT;
-                                      }
+identifiers_ref: IDENTIFIERPREFIX { s = strdup(yyget_text(scanner));
+                                    if (!s) {
+                                      LOGMEM;
+                                      YYABORT;
                                     }
                                   }
 
