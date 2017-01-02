@@ -421,18 +421,18 @@ char *lyd_path(struct lyd_node *node);
 #define LYD_OPT_GET        0x02 /**< Data content from a NETCONF reply message to the NETCONF \<get\> operation.
                                      Validation modifications:
                                      - mandatory nodes can be omitted
-                                     - leafrefs and instance-identifier are not resolved
+                                     - leafrefs and instance-identifier resolution is allowed to fail
                                      - list's keys/unique nodes are not required (so duplication is not checked) */
 #define LYD_OPT_GETCONFIG  0x04 /**< Data content from a NETCONF reply message to the NETCONF \<get-config\> operation
                                      Validation modifications:
                                      - mandatory nodes can be omitted
-                                     - leafrefs and instance-identifier are not resolved
+                                     - leafrefs and instance-identifier resolution is allowed to fail
                                      - list's keys/unique nodes are not required (so duplication is not checked)
                                      - status data are not allowed */
 #define LYD_OPT_EDIT       0x08 /**< Content of the NETCONF \<edit-config\>'s config element.
                                      Validation modifications:
                                      - mandatory nodes can be omitted
-                                     - leafrefs and instance-identifier are not resolved
+                                     - leafrefs and instance-identifier resolution is allowed to fail
                                      - status data are not allowed */
 #define LYD_OPT_RPC        0x10 /**< Data represents RPC's input parameters. */
 #define LYD_OPT_RPCREPLY   0x20 /**< Data represents RPC's output parameters (maps to NETCONF <rpc-reply> data). */
