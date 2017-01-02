@@ -30,8 +30,6 @@
 #include "dict_private.h"
 #include "tree_internal.h"
 
-static int resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type);
-
 int
 parse_range_dec64(const char **str_num, uint8_t dig, int64_t *num)
 {
@@ -2183,7 +2181,6 @@ resolve_partial_json_data_list_predicate(const char *predicate, const char *node
     int nam_len, val_len, has_predicate = 1, r;
     uint16_t i;
     struct lyd_node_leaf_list *key;
-    const struct lys_type *type;
 
     assert(node);
     assert(node->schema->nodetype == LYS_LIST);
@@ -2216,8 +2213,7 @@ resolve_partial_json_data_list_predicate(const char *predicate, const char *node
         }
 
         /* make value canonical */
-        type = lyd_leaf_type(key, 1);
-        if ((type->base == LY_TYPE_IDENT)
+        if ((key->value_type & LY_TYPE_IDENT)
                 && !strncmp(key->value_str, lyd_node_module(node)->name, strlen(lyd_node_module(node)->name))
                 && (key->value_str[strlen(lyd_node_module(node)->name)] == ':')) {
             key_val = key->value_str + strlen(lyd_node_module(node)->name) + 1;
@@ -2260,7 +2256,6 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
     int has_predicate, last_parsed, llval_len, pred_name_len, last_has_pred;
     struct lyd_node *sibling, *last_match = NULL;
     struct lyd_node_leaf_list *llist;
-    const struct lys_type *type;
     const struct lys_module *prefix_mod, *prev_mod;
     struct ly_ctx *ctx;
 
@@ -2372,8 +2367,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
                     }
 
                     /* make value canonical */
-                    type = lyd_leaf_type(llist, 1);
-                    if ((type->base == LY_TYPE_IDENT)
+                    if ((llist->value_type & LY_TYPE_IDENT)
                             && !strncmp(llist->value_str, lyd_node_module(sibling)->name, strlen(lyd_node_module(sibling)->name))
                             && (llist->value_str[strlen(lyd_node_module(sibling)->name)] == ':')) {
                         data_val = llist->value_str + strlen(lyd_node_module(sibling)->name) + 1;
@@ -3119,7 +3113,7 @@ check_default(struct lys_type *type, const char **value, struct lys_module *modu
             }
         }
     } else {
-        if (!lyp_parse_value(&((struct lys_node_leaf *)node.schema)->type, &node.value_str, NULL, NULL, &node, 1, 1, 1)) {
+        if (!lyp_parse_value(&((struct lys_node_leaf *)node.schema)->type, &node.value_str, NULL, &node, 1, 1)) {
             /* possible forward reference */
             ret = 1;
             if (base_tpdf) {
@@ -3781,7 +3775,7 @@ resolve_path_predicate_schema(const char *path, const struct lys_node *context_n
 
             if (first_iter) {
                 if (resolve_path_arg_schema_valid_dep_flag(op_node, dst_node, 0)) {
-                    parent->flags |= LYS_VALID_DEP;
+                    parent->flags |= LYS_LEAFREF_DEP;
                 }
                 first_iter = 0;
             }
@@ -3963,7 +3957,7 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
             /* set external dependency flag, we can decide based on the first found node */
             if (!parent_tpdf && op_node && parent_times &&
                     resolve_path_arg_schema_valid_dep_flag(op_node, node, (parent_times == -1 ? 1 : 0))) {
-                parent->flags |= LYS_VALID_DEP;
+                parent->flags |= LYS_LEAFREF_DEP;
             }
             first_iter = 0;
         }
@@ -4141,93 +4135,6 @@ remove_instid:
     return parsed;
 }
 
-/**
- * @brief Resolve instance-identifier in JSON data format. Logs directly.
- *
- * @param[in] data Data node where the path is used
- * @param[in] path Instance-identifier node value.
- *
- * @return Matching node or NULL if no such a node exists. If error occurs, NULL is returned and ly_errno is set.
- */
-struct lyd_node *
-resolve_instid(struct lyd_node *data, const char *path)
-{
-    int i = 0, j;
-    struct lyd_node *result = NULL;
-    const struct lys_module *mod;
-    struct ly_ctx *ctx = data->schema->module->ctx;
-    const char *model, *name;
-    char *str;
-    int mod_len, name_len, has_predicate;
-    struct unres_data node_match;
-
-    memset(&node_match, 0, sizeof node_match);
-
-    /* we need root to resolve absolute path */
-    for (; data->parent; data = data->parent);
-    /* we're still parsing it and the pointer is not correct yet */
-    if (data->prev) {
-        for (; data->prev->next; data = data->prev);
-    }
-
-    /* search for the instance node */
-    while (path[i]) {
-        j = parse_instance_identifier(&path[i], &model, &mod_len, &name, &name_len, &has_predicate);
-        if (j <= 0) {
-            LOGVAL(LYE_INCHAR, LY_VLOG_LYD, data, path[i-j], &path[i-j]);
-            goto error;
-        }
-        i += j;
-
-        str = strndup(model, mod_len);
-        if (!str) {
-            LOGMEM;
-            goto error;
-        }
-        mod = ly_ctx_get_module(ctx, str, NULL);
-        free(str);
-
-        if (resolve_data(mod, name, name_len, data, &node_match)) {
-            /* no instance exists */
-            return NULL;
-        }
-
-        if (has_predicate) {
-            /* we have predicate, so the current results must be list or leaf-list */
-            j = resolve_predicate(&path[i], &node_match);
-            if (j < 1) {
-                LOGVAL(LYE_INPRED, LY_VLOG_LYD, data, &path[i-j]);
-                goto error;
-            }
-            i += j;
-
-            if (!node_match.count) {
-                /* no instance exists */
-                return NULL;
-            }
-        }
-    }
-
-    if (!node_match.count) {
-        /* no instance exists */
-        return NULL;
-    } else if (node_match.count > 1) {
-        /* instance identifier must resolve to a single node */
-        LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, data, path, "data tree");
-        goto error;
-    } else {
-        /* we have required result, remember it and cleanup */
-        result = node_match.node[0];
-        free(node_match.node);
-        return result;
-    }
-
-error:
-    /* cleanup */
-    free(node_match.node);
-    return NULL;
-}
-
 int
 lys_check_xpath(struct lys_node *node, int check_place)
 {
@@ -4282,7 +4189,7 @@ lys_check_xpath(struct lys_node *node, int check_place)
                 for (elem = set.val.snodes[i].snode; elem && (elem != parent); elem = lys_parent(elem));
                 if (!elem) {
                     /* not in node's RPC or notification subtree, set the flag */
-                    node->flags |= LYS_VALID_DEP;
+                    node->flags |= LYS_XPATH_DEP;
                     break;
                 }
             }
@@ -5385,7 +5292,7 @@ resolve_list_keys(struct lys_node_list *list, const char *keys_str)
  * @return EXIT_SUCCESS on pass, EXIT_FAILURE on fail, -1 on error.
  */
 static int
-resolve_must(struct lyd_node *node, int inout_parent)
+resolve_must(struct lyd_node *node, int inout_parent, int ignore_fail)
 {
     uint8_t i, must_size;
     struct lys_node *schema;
@@ -5446,21 +5353,25 @@ resolve_must(struct lyd_node *node, int inout_parent)
     }
 
     for (i = 0; i < must_size; ++i) {
-        if (lyxp_eval(must[i].expr, node, LYXP_NODE_ELEM, &set, LYXP_MUST)) {
+        if (lyxp_eval(must[i].expr, node, LYXP_NODE_ELEM, lyd_node_module(node), &set, LYXP_MUST)) {
             return -1;
         }
 
-        lyxp_set_cast(&set, LYXP_SET_BOOLEAN, node, LYXP_MUST);
+        lyxp_set_cast(&set, LYXP_SET_BOOLEAN, node, lyd_node_module(node), LYXP_MUST);
 
         if (!set.val.bool) {
-            LOGVAL(LYE_NOMUST, LY_VLOG_LYD, node, must[i].expr);
-            if (must[i].emsg) {
-                LOGVAL(LYE_SPEC, LY_VLOG_LYD, node, must[i].emsg);
+            if (ignore_fail) {
+                LOGVRB("Must condition \"%s\" not satisfied, but it is not required.", must[i].expr);
+            } else {
+                LOGVAL(LYE_NOMUST, LY_VLOG_LYD, node, must[i].expr);
+                if (must[i].emsg) {
+                    LOGVAL(LYE_SPEC, LY_VLOG_LYD, node, must[i].emsg);
+                }
+                if (must[i].eapptag) {
+                    strncpy(((struct ly_err *)&ly_errno)->apptag, must[i].eapptag, LY_APPTAG_LEN - 1);
+                }
+                return 1;
             }
-            if (must[i].eapptag) {
-                strncpy(((struct ly_err *)&ly_errno)->apptag, must[i].eapptag, LY_APPTAG_LEN - 1);
-            }
-            return 1;
         }
     }
 
@@ -5563,7 +5474,7 @@ resolve_when_ctx_node(struct lyd_node *node, struct lys_node *schema, struct lyd
 
 /**
  * @brief Temporarily unlink nodes as per YANG 1.1 RFC section 7.21.5 for when XPath evaluation.
- * The context nodes is adjusted if needed.
+ * The context node is adjusted if needed.
  *
  * @param[in] snode Schema node, whose children instances need to be unlinked.
  * @param[in,out] node Data siblings where to look for the children of \p snode. If it is unlinked,
@@ -5637,7 +5548,7 @@ resolve_when_unlink_nodes(struct lys_node *snode, struct lyd_node **node, struct
                 /* temporarily unlink the node */
                 lyd_unlink(elem);
                 if (*unlinked_nodes) {
-                    if (lyd_insert_after(*unlinked_nodes, elem)) {
+                    if (lyd_insert_after((*unlinked_nodes)->prev, elem)) {
                         LOGINT;
                         return -1;
                     }
@@ -5800,7 +5711,7 @@ check_augment:
  *   1, ly_vecode = LYVE_INWHEN - nodes needed to resolve are conditional and not yet resolved (under another "when")
  */
 int
-resolve_when(struct lyd_node *node, int *result)
+resolve_when(struct lyd_node *node, int *result, int ignore_fail)
 {
     struct lyd_node *ctx_node = NULL, *unlinked_nodes, *tmp_node;
     struct lys_node *sparent;
@@ -5814,7 +5725,8 @@ resolve_when(struct lyd_node *node, int *result)
     if (!(node->schema->nodetype & (LYS_NOTIF | LYS_RPC)) && (((struct lys_node_container *)node->schema)->when)) {
         /* make the node dummy for the evaluation */
         node->validity |= LYD_VAL_INUSE;
-        rc = lyxp_eval(((struct lys_node_container *)node->schema)->when->cond, node, LYXP_NODE_ELEM, &set, LYXP_WHEN);
+        rc = lyxp_eval(((struct lys_node_container *)node->schema)->when->cond, node, LYXP_NODE_ELEM, lyd_node_module(node),
+                       &set, LYXP_WHEN);
         node->validity &= ~LYD_VAL_INUSE;
         if (rc) {
             if (rc == 1) {
@@ -5824,15 +5736,20 @@ resolve_when(struct lyd_node *node, int *result)
         }
 
         /* set boolean result of the condition */
-        lyxp_set_cast(&set, LYXP_SET_BOOLEAN, node, LYXP_WHEN);
+        lyxp_set_cast(&set, LYXP_SET_BOOLEAN, node, lyd_node_module(node), LYXP_WHEN);
         if (!set.val.bool) {
-            LOGVAL(LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_container *)node->schema)->when->cond);
             node->when_status |= LYD_WHEN_FALSE;
-            goto cleanup;
+            if (ignore_fail) {
+                LOGVRB("When condition \"%s\" is not satisfied, but it is not required.",
+                       ((struct lys_node_container *)node->schema)->when->cond);
+            } else {
+                LOGVAL(LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_container *)node->schema)->when->cond);
+                goto cleanup;
+            }
         }
 
         /* free xpath set content */
-        lyxp_set_cast(&set, LYXP_SET_EMPTY, node, 0);
+        lyxp_set_cast(&set, LYXP_SET_EMPTY, node, lyd_node_module(node), 0);
     }
 
     sparent = node->schema;
@@ -5857,7 +5774,8 @@ resolve_when(struct lyd_node *node, int *result)
                 goto cleanup;
             }
 
-            rc = lyxp_eval(((struct lys_node_uses *)sparent)->when->cond, ctx_node, ctx_node_type, &set, LYXP_WHEN);
+            rc = lyxp_eval(((struct lys_node_uses *)sparent)->when->cond, ctx_node, ctx_node_type, lys_node_module(sparent),
+                           &set, LYXP_WHEN);
 
             if (unlinked_nodes && ctx_node) {
                 if (resolve_when_relink_nodes(ctx_node, unlinked_nodes, ctx_node_type)) {
@@ -5873,15 +5791,20 @@ resolve_when(struct lyd_node *node, int *result)
                 goto cleanup;
             }
 
-            lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, LYXP_WHEN);
+            lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, lys_node_module(sparent), LYXP_WHEN);
             if (!set.val.bool) {
-                LOGVAL(LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_uses *)sparent)->when->cond);
                 node->when_status |= LYD_WHEN_FALSE;
-                goto cleanup;
+                if (ignore_fail) {
+                    LOGVRB("When condition \"%s\" is not satisfied, but it is not required.",
+                        ((struct lys_node_uses *)sparent)->when->cond);
+                } else {
+                    LOGVAL(LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_uses *)sparent)->when->cond);
+                    goto cleanup;
+                }
             }
 
             /* free xpath set content */
-            lyxp_set_cast(&set, LYXP_SET_EMPTY, ctx_node, 0);
+            lyxp_set_cast(&set, LYXP_SET_EMPTY, ctx_node, lys_node_module(sparent), 0);
         }
 
 check_augment:
@@ -5901,7 +5824,8 @@ check_augment:
                 goto cleanup;
             }
 
-            rc = lyxp_eval(((struct lys_node_augment *)sparent->parent)->when->cond, ctx_node, ctx_node_type, &set, LYXP_WHEN);
+            rc = lyxp_eval(((struct lys_node_augment *)sparent->parent)->when->cond, ctx_node, ctx_node_type,
+                           lys_node_module(sparent->parent), &set, LYXP_WHEN);
 
             /* reconnect nodes, if ctx_node is NULL then all the nodes were unlinked, but linked together,
              * so the tree did not actually change and there is nothing for us to do
@@ -5920,16 +5844,21 @@ check_augment:
                 goto cleanup;
             }
 
-            lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, LYXP_WHEN);
+            lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, lys_node_module(sparent->parent), LYXP_WHEN);
 
             if (!set.val.bool) {
-                LOGVAL(LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_augment *)sparent->parent)->when->cond);
                 node->when_status |= LYD_WHEN_FALSE;
-               goto cleanup;
+                if (ignore_fail) {
+                    LOGVRB("When condition \"%s\" is not satisfied, but it is not required.",
+                        ((struct lys_node_augment *)sparent->parent)->when->cond);
+                } else {
+                    LOGVAL(LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_augment *)sparent->parent)->when->cond);
+                    goto cleanup;
+                }
             }
 
             /* free xpath set content */
-            lyxp_set_cast(&set, LYXP_SET_EMPTY, ctx_node, 0);
+            lyxp_set_cast(&set, LYXP_SET_EMPTY, ctx_node, lys_node_module(sparent->parent), 0);
         }
 
         sparent = lys_parent(sparent);
@@ -5939,7 +5868,7 @@ check_augment:
 
 cleanup:
     /* free xpath set content */
-    lyxp_set_cast(&set, LYXP_SET_EMPTY, ctx_node ? ctx_node : node, 0);
+    lyxp_set_cast(&set, LYXP_SET_EMPTY, ctx_node ? ctx_node : node, NULL, 0);
 
     if (result) {
         if (node->when_status & LYD_WHEN_TRUE) {
@@ -6778,20 +6707,111 @@ unres_schema_free(struct lys_module *module, struct unres_schema **unres)
     }
 }
 
-int
-resolve_leafref(struct lyd_node_leaf_list *leaf, struct lys_type *type)
+/**
+ * @brief Resolve instance-identifier in JSON data format. Logs directly.
+ *
+ * @param[in] data Data node where the path is used
+ * @param[in] path Instance-identifier node value.
+ * @param[in,out] ret Resolved instance or NULL.
+ *
+ * @return 0 on success (even if unresolved and \p ret is NULL), -1 on error.
+ */
+static int
+resolve_instid(struct lyd_node *data, const char *path, int req_inst, struct lyd_node **ret)
+{
+    int i = 0, j;
+    const struct lys_module *mod;
+    struct ly_ctx *ctx = data->schema->module->ctx;
+    const char *model, *name;
+    char *str;
+    int mod_len, name_len, has_predicate;
+    struct unres_data node_match;
+
+    memset(&node_match, 0, sizeof node_match);
+    *ret = NULL;
+
+    /* we need root to resolve absolute path */
+    for (; data->parent; data = data->parent);
+    /* we're still parsing it and the pointer is not correct yet */
+    if (data->prev) {
+        for (; data->prev->next; data = data->prev);
+    }
+
+    /* search for the instance node */
+    while (path[i]) {
+        j = parse_instance_identifier(&path[i], &model, &mod_len, &name, &name_len, &has_predicate);
+        if (j <= 0) {
+            LOGVAL(LYE_INCHAR, LY_VLOG_LYD, data, path[i-j], &path[i-j]);
+            goto error;
+        }
+        i += j;
+
+        str = strndup(model, mod_len);
+        if (!str) {
+            LOGMEM;
+            goto error;
+        }
+        mod = ly_ctx_get_module(ctx, str, NULL);
+        free(str);
+
+        if (resolve_data(mod, name, name_len, data, &node_match)) {
+            /* no instance exists */
+            break;
+        }
+
+        if (has_predicate) {
+            /* we have predicate, so the current results must be list or leaf-list */
+            j = resolve_predicate(&path[i], &node_match);
+            if (j < 1) {
+                LOGVAL(LYE_INPRED, LY_VLOG_LYD, data, &path[i-j]);
+                goto error;
+            }
+            i += j;
+
+            if (!node_match.count) {
+                /* no instance exists */
+                break;
+            }
+        }
+    }
+
+    if (!node_match.count) {
+        /* no instance exists */
+        if (req_inst > -1) {
+            LOGVAL(LYE_NOREQINS, LY_VLOG_NONE, NULL, path);
+            return EXIT_FAILURE;
+        }
+        LOGVRB("There is no instance of \"%s\", but it is not required.", path);
+        return EXIT_SUCCESS;
+    } else if (node_match.count > 1) {
+        /* instance identifier must resolve to a single node */
+        LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, data, path, "data tree");
+        goto error;
+    } else {
+        /* we have required result, remember it and cleanup */
+        *ret = node_match.node[0];
+        free(node_match.node);
+        return EXIT_SUCCESS;
+    }
+
+error:
+    /* cleanup */
+    free(node_match.node);
+    return -1;
+}
+
+static int
+resolve_leafref(struct lyd_node_leaf_list *leaf, const char *path, int req_inst, struct lyd_node **ret)
 {
     struct unres_data matches;
     uint32_t i;
 
-    assert(type->base == LY_TYPE_LEAFREF);
-
     /* init */
-    leaf->value.leafref = NULL;
     memset(&matches, 0, sizeof matches);
+    *ret = NULL;
 
     /* EXIT_FAILURE return keeps leaf->value.lefref NULL, handled later */
-    if (resolve_path_arg_data((struct lyd_node *)leaf, type->info.lref.path, &matches) == -1) {
+    if (resolve_path_arg_data((struct lyd_node *)leaf, path, &matches) == -1) {
         return -1;
     }
 
@@ -6801,58 +6821,143 @@ resolve_leafref(struct lyd_node_leaf_list *leaf, struct lys_type *type)
          * so we can simply compare just the values */
         if (ly_strequal(leaf->value_str, ((struct lyd_node_leaf_list *)matches.node[i])->value_str, 1)) {
             /* we have the match */
-            leaf->value.leafref = matches.node[i];
+            *ret = matches.node[i];
             break;
         }
     }
 
     free(matches.node);
 
-    if (!leaf->value.leafref) {
+    if (!*ret) {
         /* reference not found */
-        if (type->info.lref.req > -1) {
-            LOGVAL(LYE_NOLEAFREF, LY_VLOG_LYD, leaf, type->info.lref.path, leaf->value_str);
+        if (req_inst > -1) {
+            LOGVAL(LYE_NOLEAFREF, LY_VLOG_LYD, leaf, path, leaf->value_str);
             return EXIT_FAILURE;
         } else {
-            LOGVRB("There is no leafref with the value \"%s\", but it is not required.", leaf->value_str);
+            LOGVRB("There is no leafref \"%s\" with the value \"%s\", but it is not required.", path, leaf->value_str);
         }
     }
 
     return EXIT_SUCCESS;
 }
 
-API const struct lys_type *
-lyd_leaf_type(struct lyd_node_leaf_list *leaf, int resolve)
-{
-    if (!leaf || !(leaf->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
-        return NULL;
-    }
-    if (((struct lys_node_leaf *)leaf->schema)->type.base == LY_TYPE_BITS) {
-        free(leaf->value.bit);
-    }
-    memset(&leaf->value, 0, sizeof leaf->value);
-
-    /* resolve */
-    return lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, (const char **)&leaf->value_str, NULL,
-                           (struct lyd_node *)leaf, leaf, resolve, 1, 0);
-}
-
+/* ignore fail because we are parsing edit-config, get, or get-config - but only if the union includes leafref or instid */
 static int
-resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type)
+resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int ignore_fail)
 {
-    struct lys_type *datatype = NULL;
+    struct lys_type *t;
+    struct lyd_node *ret;
+    int found, hidden, success = 0;
+    const char *json_val = NULL;
 
     assert(type->base == LY_TYPE_UNION);
 
+    if ((leaf->value_type == LY_TYPE_UNION) || (leaf->value_type == (LY_TYPE_INST | LY_TYPE_INST_UNRES))) {
+        /* either NULL or instid previously converted to JSON */
+        json_val = leaf->value.string;
+    }
     memset(&leaf->value, 0, sizeof leaf->value);
-    datatype = lyp_parse_value(type, &leaf->value_str, NULL, (struct lyd_node *)leaf, leaf, 1, 1, 0);
-    if (!datatype) {
-        /* failure */
-        LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, (leaf->value_str ? leaf->value_str : ""), leaf->schema->name);
+
+    /* turn logging off, we are going to try to validate the value with all the types in order */
+    hidden = *ly_vlog_hide_location();
+    ly_vlog_hide(1);
+
+    t = NULL;
+    found = 0;
+    while ((t = lyp_get_next_union_type(type, t, &found))) {
+        found = 0;
+
+        switch (t->base) {
+        case LY_TYPE_LEAFREF:
+            if (!resolve_leafref(leaf, t->info.lref.path, (ignore_fail ? -1 : t->info.lref.req), &ret)) {
+                if (ret) {
+                    /* valid resolved */
+                    leaf->value.leafref = ret;
+                    leaf->value_type = LY_TYPE_LEAFREF;
+                } else {
+                    /* valid unresolved */
+                    if (!lyp_parse_value(t, &leaf->value_str, NULL, leaf, 1, 0)) {
+                        return -1;
+                    }
+                }
+
+                success = 1;
+            }
+            break;
+        case LY_TYPE_INST:
+            if (!resolve_instid((struct lyd_node *)leaf, (json_val ? json_val : leaf->value_str),
+                                (ignore_fail ? -1 : t->info.inst.req), &ret)) {
+                if (ret) {
+                    /* valid resolved */
+                    leaf->value.instance = ret;
+                    leaf->value_type = LY_TYPE_INST;
+
+                    if (json_val) {
+                        lydict_remove(leaf->schema->module->ctx, leaf->value_str);
+                        leaf->value_str = json_val;
+                        json_val = NULL;
+                    }
+                } else {
+                    /* valid unresolved */
+                    if (json_val) {
+                        /* put the JSON val back */
+                        leaf->value.string = json_val;
+                        json_val = NULL;
+                    } else {
+                        leaf->value.instance = NULL;
+                    }
+                    leaf->value_type = LY_TYPE_INST | LY_TYPE_INST_UNRES;
+                }
+
+                success = 1;
+            }
+            break;
+        default:
+            if (lyp_parse_value(t, &leaf->value_str, NULL, leaf, 1, 0)) {
+                success = 1;
+            }
+            break;
+        }
+
+        if (success) {
+            break;
+        }
+
+        /* erase information about errors - they are false or irrelevant
+         * and will be replaced by a single error messages */
+        ly_err_clean(1);
+
+        /* erase possible present and invalid value data */
+        if (t->base == LY_TYPE_BITS) {
+            free(leaf->value.bit);
+        }
+        memset(&leaf->value, 0, sizeof leaf->value);
+    }
+
+    /* turn logging back on */
+    if (!hidden) {
+        ly_vlog_hide(0);
+    }
+
+    if (json_val) {
+        if (!success) {
+            /* put the value back for now */
+            assert(leaf->value_type == LY_TYPE_UNION);
+            leaf->value.string = json_val;
+        } else {
+            /* value was ultimately useless, but we could not have known */
+            lydict_remove(leaf->schema->module->ctx, json_val);
+        }
+    }
+
+    if (!success && (!ignore_fail || !type->info.uni.has_ptr_type)) {
+        /* not found and it is required */
+        LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, leaf->value_str ? leaf->value_str : "", leaf->schema->name);
         return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;
+
 }
 
 /**
@@ -6860,14 +6965,16 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type)
  *
  * @param[in] node Data node to resolve.
  * @param[in] type Type of the unresolved item.
+ * @param[in] ignore_fails Flag whether to ignore any false condition or unresolved nodes (e.g., for LYD_OPT_EDIT).
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 int
-resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type)
+resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int ignore_fail)
 {
-    int rc;
+    int rc, req_inst;
     struct lyd_node_leaf_list *leaf;
+    struct lyd_node *ret;
     struct lys_node_leaf *sleaf;
 
     leaf = (struct lyd_node_leaf_list *)node;
@@ -6876,42 +6983,65 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type)
     switch (type) {
     case UNRES_LEAFREF:
         assert(sleaf->type.base == LY_TYPE_LEAFREF);
-        return resolve_leafref(leaf, &sleaf->type);
+        assert(leaf->validity & LYD_VAL_LEAFREF);
+        req_inst = (ignore_fail ? -1 : sleaf->type.info.lref.req);
+        rc = resolve_leafref(leaf, sleaf->type.info.lref.path, req_inst, &ret);
+        if (!rc) {
+            if (ret) {
+                /* valid resolved */
+                leaf->value.leafref = ret;
+                leaf->value_type = LY_TYPE_LEAFREF;
+            } else {
+                /* valid unresolved */
+                if (!(leaf->value_type & LY_TYPE_LEAFREF_UNRES)) {
+                    if (!lyp_parse_value(&sleaf->type, &leaf->value_str, NULL, leaf, 1, 0)) {
+                        return -1;
+                    }
+                }
+            }
+            leaf->validity &= ~LYD_VAL_LEAFREF;
+        } else {
+            return rc;
+        }
+        break;
 
     case UNRES_INSTID:
         assert(sleaf->type.base == LY_TYPE_INST);
-        ly_err_clean(1);
-        leaf->value.instance = resolve_instid(node, leaf->value_str);
-        if (!leaf->value.instance) {
-            if (ly_errno) {
-                return -1;
-            } else if (sleaf->type.info.inst.req > -1) {
-                LOGVAL(LYE_NOREQINS, LY_VLOG_LYD, leaf, leaf->value_str);
-                return EXIT_FAILURE;
+        req_inst = (ignore_fail ? -1 : sleaf->type.info.inst.req);
+        rc = resolve_instid(node, leaf->value_str, req_inst, &ret);
+        if (!rc) {
+            if (ret) {
+                /* valid resolved */
+                leaf->value.instance = ret;
+                leaf->value_type = LY_TYPE_INST;
             } else {
-                LOGVRB("There is no instance identifier \"%s\", but it is not required.", leaf->value_str);
+                /* valid unresolved */
+                leaf->value.instance = NULL;
+                leaf->value_type = LY_TYPE_INST | LY_TYPE_INST_UNRES;
             }
+        } else {
+            return rc;
         }
         break;
 
     case UNRES_UNION:
         assert(sleaf->type.base == LY_TYPE_UNION);
-        return resolve_union(leaf, &sleaf->type);
+        return resolve_union(leaf, &sleaf->type, ignore_fail);
 
     case UNRES_WHEN:
-        if ((rc = resolve_when(node, NULL))) {
+        if ((rc = resolve_when(node, NULL, ignore_fail))) {
             return rc;
         }
         break;
 
     case UNRES_MUST:
-        if ((rc = resolve_must(node, 0))) {
+        if ((rc = resolve_must(node, 0, ignore_fail))) {
             return rc;
         }
         break;
 
     case UNRES_MUST_INOUT:
-        if ((rc = resolve_must(node, 1))) {
+        if ((rc = resolve_must(node, 1, ignore_fail))) {
             return rc;
         }
         break;
@@ -6979,15 +7109,21 @@ int
 resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options)
 {
     uint32_t i, j, first = 1, resolved = 0, del_items = 0, when_stmt = 0;
-    int rc, progress;
+    int rc, progress, ignore_fails;
     struct lyd_node *parent;
-    struct lyd_node_leaf_list *leaf;
+    //struct lyd_node_leaf_list *leaf;
 
     assert(root);
     assert(unres);
 
     if (!unres->count) {
         return EXIT_SUCCESS;
+    }
+
+    if (options & (LYD_OPT_TRUSTED | LYD_OPT_GET | LYD_OPT_GETCONFIG | LYD_OPT_EDIT)) {
+        ignore_fails = 1;
+    } else {
+        ignore_fails = 0;
     }
 
     LOGVRB("Resolving unresolved data nodes and their constraints...");
@@ -7001,7 +7137,6 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
             if (unres->type[i] != UNRES_WHEN) {
                 continue;
             }
-            assert(!(options & LYD_OPT_TRUSTED));
             if (first) {
                 /* count when-stmt nodes in unres list */
                 when_stmt++;
@@ -7025,7 +7160,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
                 continue;
             }
 
-            rc = resolve_unres_data_item(unres->node[i], unres->type[i]);
+            rc = resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fails);
             if (!rc) {
                 if (unres->node[i]->when_status & LYD_WHEN_FALSE) {
                     if ((options & LYD_OPT_NOAUTODEL) && !unres->node[i]->dflt) {
@@ -7089,7 +7224,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
             } else if (rc == -1) {
                 ly_vlog_hide(0);
                 /* print only this last error */
-                resolve_unres_data_item(unres->node[i], unres->type[i]);
+                resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fails);
                 return -1;
             } /* else forward reference */
         }
@@ -7119,6 +7254,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
         unres->type[i] = UNRES_RESOLVED;
         del_items--;
     }
+    ly_vlog_hide(0);
 
     /* rest */
     for (i = 0; i < unres->count; ++i) {
@@ -7127,47 +7263,37 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
         }
         assert(!(options & LYD_OPT_TRUSTED) || ((unres->type[i] != UNRES_MUST) && (unres->type[i] != UNRES_MUST_INOUT)));
 
-        rc = resolve_unres_data_item(unres->node[i], unres->type[i]);
-        if (rc == -1) {
-            ly_vlog_hide(0);
+        rc = resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fails);
+        if (rc) {
+            /* since when was already resolved, a forward reference is an error */
+            //ly_vlog_hide(0);
             /* print only this last error */
-            resolve_unres_data_item(unres->node[i], unres->type[i]);
+            //resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fails);
             return -1;
-        } else if ((rc == 0) || ((options & LYD_OPT_TRUSTED) && ((unres->type[i] == UNRES_LEAFREF) || (unres->type[i] == UNRES_INSTID)))) {
-            unres->type[i] = UNRES_RESOLVED;
-            resolved++;
-            if (options & LYD_OPT_TRUSTED) {
-                /* accept it in this case */
-                if (unres->type[i] == UNRES_LEAFREF) {
-                    LOGVRB("Leafref \"%s\" with value \"%s\" failed to be resolved.",
-                           ((struct lys_node_leaf *)unres->node[i]->schema)->type.info.lref.path,
-                           ((struct lyd_node_leaf_list *)unres->node[i])->value_str);
-                } else {
-                    LOGVRB("Instance identifier \"%s\" failed to be resolved.",
-                           ((struct lyd_node_leaf_list *)unres->node[i])->value_str);
-                }
-            }
         }
+
+        unres->type[i] = UNRES_RESOLVED;
+        //resolved++;
     }
 
-    ly_vlog_hide(0);
-    if (resolved < unres->count) {
+    //ly_vlog_hide(0);
+    //if (resolved < unres->count) {
         /* try to resolve the unresolved data again, it will not resolve anything, but it will print
          * all the validation errors
          */
-        for (i = 0; i < unres->count; ++i) {
-            if (unres->type[i] == UNRES_UNION) {
+        //for (i = 0; i < unres->count; ++i) {
+            //if (unres->type[i] == UNRES_UNION) {
                 /* does not make sense to print specific errors for all
                  * the data types, just print that the value is invalid */
-                leaf = (struct lyd_node_leaf_list *)unres->node[i];
+                /*leaf = (struct lyd_node_leaf_list *)unres->node[i];
                 LOGVAL(LYE_INVAL, LY_VLOG_LYD, unres->node[i], (leaf->value_str ? leaf->value_str : ""),
                        leaf->schema->name);
             } else if (unres->type[i] != UNRES_RESOLVED) {
-                resolve_unres_data_item(unres->node[i], unres->type[i]);
+                resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fails);
             }
         }
         return -1;
-    }
+    }*/
 
     LOGVRB("All data nodes and constraints resolved.");
     unres->count = 0;

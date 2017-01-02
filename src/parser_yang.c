@@ -1245,6 +1245,10 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
                     goto error;
                 }
             }
+            if ((dertype->base == LY_TYPE_INST) || (dertype->base == LY_TYPE_LEAFREF)
+                    || ((dertype->base == LY_TYPE_UNION) && dertype->info.uni.has_ptr_type)) {
+                typ->type->info.uni.has_ptr_type = 1;
+            }
         }
         break;
 
@@ -1954,7 +1958,7 @@ yang_read_deviate_must(struct type_deviation *dev, uint8_t c_must)
     }
 
     /* flag will be checked again, clear it for now */
-    dev->target->flags &= ~LYS_VALID_DEP;
+    dev->target->flags &= ~LYS_XPATH_DEP;
 
     if (dev->deviate->mod == LY_DEVIATE_ADD) {
         /* reallocate the must array of the target */

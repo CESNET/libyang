@@ -505,7 +505,26 @@ main_ni(int argc, char* argv[])
             /* do not trust the input, invalidate all the data first */
             LY_TREE_FOR(root, subroot) {
                 LY_TREE_DFS_BEGIN(subroot, next, node) {
-                    node->validity = LYD_VAL_NOT;
+                    node->validity = LYD_VAL_OK;
+                    switch (node->schema->nodetype) {
+                    case LYS_LEAFLIST:
+                    case LYS_LEAF:
+                        if (((struct lys_node_leaf *)node->schema)->type.base == LY_TYPE_LEAFREF) {
+                            node->validity |= LYD_VAL_LEAFREF;
+                        }
+                        break;
+                    case LYS_LIST:
+                        node->validity |= LYD_VAL_UNIQUE;
+                        /* fallthrough */
+                    case LYS_CONTAINER:
+                    case LYS_NOTIF:
+                    case LYS_RPC:
+                    case LYS_ACTION:
+                        node->validity |= LYD_VAL_MAND;
+                        break;
+                    default:
+                        break;
+                    }
                     LY_TREE_DFS_END(subroot, next, node)
                 }
             }

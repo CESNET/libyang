@@ -442,23 +442,16 @@ json_get_anydata(struct lyd_node_anydata *any, const char *data)
 }
 
 static unsigned int
-json_get_value(struct lyd_node_leaf_list *leaf, struct lyd_node *first_sibling, const char *data, int options)
+json_get_value(struct lyd_node_leaf_list *leaf, struct lyd_node *first_sibling, const char *data)
 {
     struct lyd_node_leaf_list *new;
     struct lys_type *stype;
     struct ly_ctx *ctx;
     unsigned int len = 0, r;
-    int resolvable;
     char *str;
 
     assert(leaf && data);
     ctx = leaf->schema->module->ctx;
-
-    if (options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
-        resolvable = 0;
-    } else {
-        resolvable = 1;
-    }
 
     stype = &((struct lys_node_leaf *)leaf->schema)->type;
 
@@ -530,8 +523,7 @@ repeat:
 
     /* the value is here converted to a JSON format if needed in case of LY_TYPE_IDENT and LY_TYPE_INST or to a
      * canonical form of the value */
-    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, NULL, NULL, leaf, 1,
-                         resolvable, 0)) {
+    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, NULL, leaf, 1, 0)) {
         ly_errno = LY_EVALID;
         return 0;
     }
@@ -1015,7 +1007,7 @@ attr_repeat:
             first_sibling = result;
         }
     }
-    result->validity = LYD_VAL_NOT;
+    result->validity = ly_new_node_validity(result->schema);
     if (resolve_applies_when(schema, 0, NULL)) {
         result->when_status = LYD_WHEN;
     }
@@ -1023,7 +1015,7 @@ attr_repeat:
     /* type specific processing */
     if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
         /* type detection and assigning the value */
-        r = json_get_value((struct lyd_node_leaf_list *)result, first_sibling, &data[len], options);
+        r = json_get_value((struct lyd_node_leaf_list *)result, first_sibling, &data[len]);
         if (!r) {
             goto error;
         }
@@ -1161,8 +1153,6 @@ attr_repeat:
                         goto error;
                     }
                 }
-                /* validation successful */
-                list->validity = LYD_VAL_OK;
 
                 /* another instance of the list */
                 new = calloc(1, sizeof *new);
@@ -1191,14 +1181,13 @@ attr_repeat:
     }
 
     /* various validation checks */
-    if (!(options & LYD_OPT_TRUSTED) && lyv_data_context(result, options, unres)) {
+    if (lyv_data_context(result, options, unres)) {
         goto error;
     }
 
     ly_err_clean(1);
-    if (!(options & LYD_OPT_TRUSTED) &&
-            (lyv_data_content(result, options, unres) ||
-             lyv_multicases(result, NULL, prev ? &first_sibling : NULL, 0, NULL))) {
+    if (lyv_data_content(result, options, unres) ||
+             lyv_multicases(result, NULL, prev ? &first_sibling : NULL, 0, NULL)) {
         if (ly_errno) {
             goto error;
         }
@@ -1206,10 +1195,8 @@ attr_repeat:
 
     /* validation successful */
     if (result->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
-        /* postpone checking when there will be all list/leaflist instances */
-        result->validity = LYD_VAL_UNIQUE;
-    } else {
-        result->validity = LYD_VAL_OK;
+        /* postpone checking of unique when there will be all list/leaflist instances */
+        result->validity |= LYD_VAL_UNIQUE;
     }
 
     if (!(*parent)) {

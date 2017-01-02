@@ -185,7 +185,7 @@ const char *ly_errs[] = {
 /* LYE_KEY_DUP */      "Key identifier \"%s\" is not unique.",
 /* LYE_INREGEX */      "Regular expression \"%s\" is not valid (\"%s\": %s).",
 /* LYE_INRESOLV */     "Failed to resolve %s \"%s\".",
-/* LYE_INSTATUS */     "A \"%s\" definition %s references \"%s\" definition %s.",
+/* LYE_INSTATUS */     "A %s definition \"%s\" references %s definition \"%s\".",
 /* LYE_CIRC_LEAFREFS */"A circular chain of leafrefs detected.",
 /* LYE_CIRC_FEATURES */"A circular chain features detected in \"%s\" feature.",
 /* LYE_CIRC_IMPORTS */ "A circular dependency (import) for module \"%s\".",

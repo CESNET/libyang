@@ -1130,13 +1130,12 @@ ident_val_add_module_prefix(const char *value, const struct lyxml_elem *xml, str
 
 /*
  * xml  - optional for converting instance-identifier and identityref into JSON format
- * tree - optional for resolving instance-identifiers and leafrefs
  * leaf - mandatory to know the context (necessary e.g. for prefixes in idenitytref values)
- * store - flag for storing parsed data
+ * store - flag for union resolution - we do not want to store the result, we are just learning the type
  */
 struct lys_type *
-lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *xml, struct lyd_node *tree,
-                        struct lyd_node_leaf_list *leaf, int store, int resolvable, int dflt)
+lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *xml, struct lyd_node_leaf_list *leaf,
+                int store, int dflt)
 {
     struct lys_type *ret = NULL, *t;
     int c, i, j, len, found = 0, hidden;
@@ -1148,11 +1147,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
     assert(leaf);
 
-    if (store) {
-        leaf->value_type = type->base;
-    }
-
-    switch(type->base) {
+    switch (type->base) {
     case LY_TYPE_BINARY:
         /* get number of octets for length validation */
         unum = 0;
@@ -1190,6 +1185,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         if (store) {
             /* store the result */
             leaf->value.binary = value;
+            leaf->value_type = LY_TYPE_BINARY;
         }
         break;
 
@@ -1213,6 +1209,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             if (store) {
                 /* store empty array */
                 leaf->value.bit = bits;
+                leaf->value_type = LY_TYPE_BITS;
             }
             break;
         }
@@ -1276,6 +1273,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         if (store) {
             /* store the result */
             leaf->value.bit = bits;
+            leaf->value_type = LY_TYPE_BITS;
         } else {
             free(bits);
         }
@@ -1291,6 +1289,10 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             goto cleanup;
         }
         /* else stays 0 */
+
+        if (store) {
+            leaf->value_type = LY_TYPE_BOOL;
+        }
         break;
 
     case LY_TYPE_DEC64:
@@ -1314,6 +1316,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         if (store) {
             /* store the result */
             leaf->value.dec64 = num;
+            leaf->value_type = LY_TYPE_DEC64;
         }
         break;
 
@@ -1321,6 +1324,10 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         if (value && value[0]) {
             LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, value, leaf->schema->name);
             goto cleanup;
+        }
+
+        if (store) {
+            leaf->value_type = LY_TYPE_EMPTY;
         }
         break;
 
@@ -1345,6 +1352,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                 /* ... and store pointer to the definition */
                 if (store) {
                     leaf->value.enm = &type->info.enums.enm[i];
+                    leaf->value_type = LY_TYPE_ENUM;
                 }
                 found = 1;
                 break;
@@ -1413,6 +1421,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         } else if (store) {
             /* store the result */
             leaf->value.ident = ident;
+            leaf->value_type = LY_TYPE_IDENT;
         }
 
         make_canonical(type->parent->module->ctx, LY_TYPE_IDENT, &value,
@@ -1460,13 +1469,11 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                 ly_vlog_hide(0);
             }
         }
-        if (resolvable && tree && !resolve_instid(tree, value) && (ly_errno || type->info.inst.req)) {
-            LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, *value_, leaf->schema->name);
-            goto cleanup;
-        } else if (!resolvable && store) {
-            /* make the note that the data node is not resolvable instance-identifier,
-             * because based on the data type the target is not necessary the part of the tree */
-            leaf->value_type |= LY_TYPE_INST_UNRES;
+
+        if (store) {
+            /* note that the data node is an unresolved instance-identifier */
+            leaf->value.instance = NULL;
+            leaf->value_type = LY_TYPE_INST | LY_TYPE_INST_UNRES;
         }
 
         if (value != *value_) {
@@ -1489,30 +1496,16 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         /* it is called not only to get the final type, but mainly to update value to canonical or JSON form
          * if needed */
-        t = lyp_parse_value(&type->info.lref.target->type, value_, xml, tree, leaf, 0, resolvable, dflt);
+        t = lyp_parse_value(&type->info.lref.target->type, value_, xml, leaf, 0, dflt);
         value = *value_; /* refresh possibly changed value */
         if (!t) {
             LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, value, leaf->schema->name);
             goto cleanup;
         }
 
-        if (!resolvable && store) {
-            /* the leafref will not be resolved because of the data tree type which make possible that the
-             * target is not present in the data tree. Therefore, instead of leafref type, we store into the
-             * leaf the target type of the leafref with the note that it is unresolved leafref */
+        if (store) {
+            /* make the note that the data node is an unresolved leafref (value union was already filled) */
             leaf->value_type = t->base | LY_TYPE_LEAFREF_UNRES;
-        } else if (store) {
-            /* if the leaf is resolvable, its type is kept as LY_TYPE_LEAFREF */
-            leaf->value_type = LY_TYPE_LEAFREF;
-
-            /* erase possible error from ly_parse_value() calling */
-            ly_err_clean(1);
-
-            /* if we have the complete tree, resolve the leafref */
-            if (tree && resolve_leafref(leaf, type) && type->info.lref.req != -1) {
-                /* failure */
-                goto cleanup;
-            }
         }
 
         type = t;
@@ -1530,6 +1523,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         if (store) {
             /* store the result */
             leaf->value.string = value;
+            leaf->value_type = LY_TYPE_STRING;
         }
         break;
 
@@ -1544,6 +1538,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         if (store) {
             /* store the result */
             leaf->value.int8 = (int8_t)num;
+            leaf->value_type = LY_TYPE_INT8;
         }
         break;
 
@@ -1558,6 +1553,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         if (store) {
             /* store the result */
             leaf->value.int16 = (int16_t)num;
+            leaf->value_type = LY_TYPE_INT16;
         }
         break;
 
@@ -1572,6 +1568,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         if (store) {
             /* store the result */
             leaf->value.int32 = (int32_t)num;
+            leaf->value_type = LY_TYPE_INT32;
         }
         break;
 
@@ -1587,6 +1584,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         if (store) {
             /* store the result */
             leaf->value.int64 = num;
+            leaf->value_type = LY_TYPE_INT64;
         }
         break;
 
@@ -1601,6 +1599,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         if (store) {
             /* store the result */
             leaf->value.uint8 = (uint8_t)unum;
+            leaf->value_type = LY_TYPE_UINT8;
         }
         break;
 
@@ -1615,6 +1614,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         if (store) {
             /* store the result */
             leaf->value.uint16 = (uint16_t)unum;
+            leaf->value_type = LY_TYPE_UINT16;
         }
         break;
 
@@ -1629,6 +1629,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         if (store) {
             /* store the result */
             leaf->value.uint32 = (uint32_t)unum;
+            leaf->value_type = LY_TYPE_UINT32;
         }
         break;
 
@@ -1643,10 +1644,31 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         if (store) {
             /* store the result */
             leaf->value.uint64 = unum;
+            leaf->value_type = LY_TYPE_UINT64;
         }
         break;
 
     case LY_TYPE_UNION:
+        if (store) {
+            /* unresolved union type */
+            leaf->value_type = LY_TYPE_UNION;
+        }
+
+        if (type->info.uni.has_ptr_type) {
+            /* we are not resolving anything here, only parsing, and in this case we cannot decide
+             * the type without resolving it -> we return the union type (resolve it with resolve_union()) */
+            if (xml) {
+                /* in case it should resolve into a instance-identifier, we can only do the JSON conversion here */
+                leaf->value.string = transform_xml2json(type->parent->module->ctx, value, xml, 0);
+                if (!leaf->value.string) {
+                    /* invalid instance-identifier format */
+                    LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, *value_, leaf->schema->name);
+                    goto cleanup;
+                }
+            }
+            break;
+        }
+
         t = NULL;
         found = 0;
 
@@ -1656,7 +1678,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         while ((t = lyp_get_next_union_type(type, t, &found))) {
             found = 0;
-            ret = lyp_parse_value(t, value_, xml, tree, leaf, store, resolvable, dflt);
+            ret = lyp_parse_value(t, value_, xml, leaf, store, dflt);
             if (ret) {
                 /* we have the result */
                 type = ret;
@@ -1698,7 +1720,6 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
     ret = type;
 
 cleanup:
-
     return ret;
 }
 

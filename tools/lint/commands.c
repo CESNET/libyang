@@ -464,7 +464,26 @@ parse_data(const char *filepath, int options, struct lyd_node *val_tree, const c
         /* invalidate all data - do not believe to the source */
         LY_TREE_FOR(data, root) {
             LY_TREE_DFS_BEGIN(root, next, iter) {
-                iter->validity = LYD_VAL_NOT;
+                iter->validity = LYD_VAL_OK;
+                switch (iter->schema->nodetype) {
+                case LYS_LEAFLIST:
+                case LYS_LEAF:
+                    if (((struct lys_node_leaf *)iter->schema)->type.base == LY_TYPE_LEAFREF) {
+                        iter->validity |= LYD_VAL_LEAFREF;
+                    }
+                    break;
+                case LYS_LIST:
+                    iter->validity |= LYD_VAL_UNIQUE;
+                    /* fallthrough */
+                case LYS_CONTAINER:
+                case LYS_NOTIF:
+                case LYS_RPC:
+                case LYS_ACTION:
+                    iter->validity |= LYD_VAL_MAND;
+                    break;
+                default:
+                    break;
+                }
                 LY_TREE_DFS_END(root, next, iter)
             }
         }

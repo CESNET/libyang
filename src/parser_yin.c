@@ -1184,6 +1184,11 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             goto error;
         }
 
+        /* inherit instid presence information */
+        if ((type->der->type.base == LY_TYPE_UNION) && type->der->type.info.uni.has_ptr_type) {
+            type->info.uni.has_ptr_type = 1;
+        }
+
         /* allocate array for union's types ... */
         type->info.uni.types = calloc(i, sizeof *type->info.uni.types);
         if (!type->info.uni.types) {
@@ -1207,6 +1212,11 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                         rc = -1;
                     }
                 }
+
+                if ((type->info.uni.types[type->info.uni.count - 1].base == LY_TYPE_INST)
+                        || (type->info.uni.types[type->info.uni.count - 1].base == LY_TYPE_LEAFREF)) {
+                    type->info.uni.has_ptr_type = 1;
+                }
             }
             if (rc) {
                 /* even if we got EXIT_FAILURE, throw it all away, too much trouble doing something else */
@@ -1216,6 +1226,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 free(type->info.uni.types);
                 type->info.uni.types = NULL;
                 type->info.uni.count = 0;
+                type->info.uni.has_ptr_type = 0;
                 type->der = NULL;
                 type->base = LY_TYPE_DER;
 
@@ -2044,7 +2055,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 goto error;
             }
 
-            dev_target->flags &= ~LYS_VALID_DEP;
+            dev_target->flags &= ~LYS_XPATH_DEP;
 
             if (d->mod == LY_DEVIATE_RPL) {
                 /* replace must is forbidden */

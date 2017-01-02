@@ -179,12 +179,11 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
 static void
 xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int toplevel, int options)
 {
-    const struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
+    const struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node, *iter;
     const char *ns, *mod_name;
     const char **prefs, **nss;
     const char *xml_expr;
     uint32_t ns_count, i;
-    struct lys_type *type;
     LY_DATA_TYPE datatype;
     char *p;
     size_t len;
@@ -202,7 +201,6 @@ xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int to
     }
 
     xml_print_attrs(out, node, options);
-    type = &((struct lys_node_leaf *)leaf->schema)->type;
     datatype = leaf->value_type & LY_DATA_TYPE_MASK;
 printvalue:
     switch (datatype) {
@@ -274,13 +272,15 @@ printvalue:
         break;
 
     case LY_TYPE_LEAFREF:
-        type = lyp_parse_value(type, (const char **)&leaf->value_str, NULL, (struct lyd_node *)leaf,
-                               (struct lyd_node_leaf_list *)leaf, 0, 1, 0);
-        if (!type) {
+        iter = (struct lyd_node_leaf_list *)leaf->value.leafref;
+        while (iter && (iter->value_type == LY_TYPE_LEAFREF)) {
+            iter = (struct lyd_node_leaf_list *)iter->value.leafref;
+        }
+        if (!iter) {
             /* error */
             ly_print(out, "\"(!error!)\"");
         } else {
-            datatype = type->base;
+            datatype = iter->value_type & LY_DATA_TYPE_MASK;
             goto printvalue;
         }
         break;
@@ -443,6 +443,10 @@ xml_print_node(struct lyout *out, int level, const struct lyd_node *node, int to
 {
     if (!lyd_wd_toprint(node, options)) {
         return;
+    }
+
+    if (node->validity) {
+        LOGWRN("Printing invalidated node \"%s\" (flags %d)!", node->schema->name, node->validity);
     }
 
     switch (node->schema->nodetype) {

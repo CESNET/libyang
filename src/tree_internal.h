@@ -61,7 +61,7 @@ struct internal_modules {
 /**
  * @brief internal parser flag for actions and inline notifications
  */
-#define LYD_OPT_ACT_NOTIF 0x80
+#define LYD_OPT_ACT_NOTIF 0x100
 
 /**
  * @brief Internal list of built-in types

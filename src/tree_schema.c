@@ -1717,9 +1717,9 @@ lys_leaflist_free(struct ly_ctx *ctx, struct lys_node_leaflist *llist)
 {
     int i;
 
-    if (llist->child) {
+    if (llist->backlinks) {
         /* leafref backlinks */
-        ly_set_free((struct ly_set *)llist->child);
+        ly_set_free(llist->backlinks);
     }
 
     for (i = 0; i < llist->must_size; i++) {
@@ -3147,7 +3147,7 @@ lys_leaf_add_leafref_target(struct lys_node_leaf *leafref_target, struct lys_nod
             return -1;
         }
     }
-    ly_set_add((struct ly_set *)leafref_target->backlinks, leafref, 0);
+    ly_set_add(leafref_target->backlinks, leafref, 0);
 
     return 0;
 }
@@ -3342,7 +3342,7 @@ lys_node_xpath_atomize(const struct lys_node *node, int options)
     }
 
     LY_TREE_DFS_BEGIN(node, next, elem) {
-        if ((options & LYXP_NO_LOCAL) && !(elem->flags & LYS_VALID_DEP)) {
+        if ((options & LYXP_NO_LOCAL) && !(elem->flags & LYS_XPATH_DEP)) {
             /* elem has no dependencies from other subtrees and local nodes get discarded */
             goto next_iter;
         }

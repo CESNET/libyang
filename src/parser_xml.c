@@ -75,18 +75,11 @@ xml_data_search_schemanode(struct lyxml_elem *xml, struct lys_node *start, int o
 
 /* logs directly */
 static int
-xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, int editbits)
+xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int editbits)
 {
     struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
-    int resolvable;
 
     assert(node && (node->schema->nodetype & (LYS_LEAFLIST | LYS_LEAF)) && xml);
-
-    if (options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
-        resolvable = 0;
-    } else {
-        resolvable = 1;
-    }
 
     leaf->value_str = lydict_insert(node->schema->module->ctx, xml->content, 0);
 
@@ -99,8 +92,7 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, int ed
 
     /* the value is here converted to a JSON format if needed in case of LY_TYPE_IDENT and LY_TYPE_INST or to a
      * canonical form of the value */
-    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, xml, NULL, leaf, 1,
-                         resolvable, 0)) {
+    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, xml, leaf, 1, 0)) {
         return EXIT_FAILURE;
     }
 
@@ -280,7 +272,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
             first_sibling = *result;
         }
     }
-    (*result)->validity = LYD_VAL_NOT;
+    (*result)->validity = ly_new_node_validity((*result)->schema);
     if (resolve_applies_when(schema, 0, NULL)) {
         (*result)->when_status = LYD_WHEN;
     }
@@ -382,7 +374,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     /* type specific processing */
     if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
         /* type detection and assigning the value */
-        if (xml_get_value(*result, xml, options, editbits)) {
+        if (xml_get_value(*result, xml, editbits)) {
             goto error;
         }
     } else if (schema->nodetype & LYS_ANYDATA) {
@@ -420,7 +412,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     }
 
     /* first part of validation checks */
-    if (!(options & LYD_OPT_TRUSTED) && lyv_data_context(*result, options, unres)) {
+    if (lyv_data_context(*result, options, unres)) {
         goto error;
     }
 
@@ -523,9 +515,8 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 
     /* rest of validation checks */
     ly_err_clean(1);
-    if (!(options & LYD_OPT_TRUSTED) &&
-            (lyv_data_content(*result, options, unres) ||
-             lyv_multicases(*result, NULL, prev ? &first_sibling : NULL, 0, NULL))) {
+    if (lyv_data_content(*result, options, unres) ||
+             lyv_multicases(*result, NULL, prev ? &first_sibling : NULL, 0, NULL)) {
         if (ly_errno) {
             goto error;
         } else {
@@ -536,9 +527,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     /* validation successful */
     if ((*result)->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
         /* postpone checking when there will be all list/leaflist instances */
-        (*result)->validity = LYD_VAL_UNIQUE;
-    } else {
-        (*result)->validity = LYD_VAL_OK;
+        (*result)->validity |= LYD_VAL_UNIQUE;
     }
 
     return ret;
