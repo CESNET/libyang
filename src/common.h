@@ -362,6 +362,15 @@ const char *transform_schema2json(const struct lys_module *module, const char *e
 const char *transform_iffeat_schema2json(const struct lys_module *module, const char *expr);
 
 /**
+ * @brief Get a new node (non-validated) validity value.
+ *
+ * @param[in] schema Schema node of the new data node.
+ *
+ * @return Validity of the new node.
+ */
+int ly_new_node_validity(const struct lys_node *schema);
+
+/**
  * @brief Wrapper for realloc() call. The only difference is that if it fails to
  * allocate the requested memory, the original memory is freed as well.
  *

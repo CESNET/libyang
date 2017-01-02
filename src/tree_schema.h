@@ -241,7 +241,7 @@ struct lys_module {
     const char *contact;             /**< contact information for the module */
     const char *filepath;            /**< path, if the schema was read from a file, NULL in case of reading from memory */
     uint8_t type:1;                  /**< 0 - structure type used to distinguish structure from ::lys_submodule */
-    uint8_t version:4;               /**< yang-version:
+    uint8_t version:3;               /**< yang-version:
                                           - 0 = not specified, YANG 1.0 as default,
                                           - 1 = YANG 1.0,
                                           - 2 = YANG 1.1 */
@@ -249,6 +249,7 @@ struct lys_module {
                                           - 0 = not deviated,
                                           - 1 = the module is deviated by another module,
                                           - 2 = deviation applied to this module are temporarily off */
+    uint8_t disabled:1;              /**< flag if the module is disabled in the context */
     uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
 
     /* array sizes */
@@ -492,6 +493,7 @@ struct lys_type_info_str {
 struct lys_type_info_union {
     struct lys_type *types;  /**< array of union's subtypes */
     int count;               /**< number of subtype definitions in types array */
+    int has_ptr_type;       /**< types include an instance-identifier or leafref meaning the union must always be resolved */
 };
 
 /**
@@ -625,6 +627,7 @@ struct lys_iffeature {
  *     4 - leaflist     9 - rpc               14 - augment      19 - extension
  *     5 - list        10 - input             15 - feature
  *
+<<<<<<< HEAD
  *                                           1 1 1 1 1 1 1 1 1 1
  *                         1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9
  *     -------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -632,6 +635,7 @@ struct lys_iffeature {
  *       LYS_AUTOASSIGNED | | | | | | | | | | | | | | | |x| | | |
  *       LYS_IMPLICIT     | | | | | | | | | |x|x| | | | | | | | |
  *       LYS_CONFIG_W     |x|x|x|x|x|x| | | | | | | | | | | |x| |
+ *       LYS_NOTAPPLIED   | | | | | | | | | | | | | |x| | | | | |
  *       LYS_YINELEM      | | | | | | | | | | | | | | | | | | |x|
  *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *     2 LYS_CONFIG_R     |x|x|x|x|x|x| | | | | | | | | | | |x| |
@@ -657,7 +661,11 @@ struct lys_iffeature {
  *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *    10 LYS_VALID_DEP    |x|x|x|x|x|x|x|x|x|x|x| |x|x| | | | | |
  *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *    11 LYS_DFLTJSON     | | |x|x| | | | | | | | | | | |x| | | |
+ *    10 LYS_XPATH_DEP    |x|x|x|x|x|x|x|x|x|x|x| |x|x| | | | | |
+ *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    11 LYS_LEAFREF_DEP  |x|x|x|x|x|x|x|x|x|x|x| |x|x| | | | | |
+ *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *    12 LYS_DFLTJSON     | | |x|x| | | | | | | | | | | |x| | | |
  *    --------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * @{
  */
@@ -686,13 +694,17 @@ struct lys_iffeature {
                                           ::lys_type enum and bits flags */
 #define LYS_USESGRP      0x01        /**< flag for resolving uses in groupings, applicable only to ::lys_node_uses */
 #define LYS_IMPLICIT     0x01        /**< flag for implicitely created LYS_INPUT and LYS_OUTPUT nodes */
-#define LYS_VALID_DEP    0x200       /**< flag marking nodes, whose validation (when, must expressions or leafrefs)
+#define LYS_XPATH_DEP    0x200       /**< flag marking nodes, whose validation (when, must expressions)
                                           depends on nodes outside their subtree (applicable only to RPCs,
                                           notifications, and actions) */
-#define LYS_DFLTJSON     0x400       /**< default value (in ::lys_node_leaf, ::lys_node_leaflist, :lys_tpdf) was
+#define LYS_LEAFREF_DEP  0x400       /**< flag marking nodes, whose validation (leafrefs)
+                                          depends on nodes outside their subtree (applicable only to RPCs,
+                                          notifications, and actions) */
+#define LYS_DFLTJSON     0x800       /**< default value (in ::lys_node_leaf, ::lys_node_leaflist, :lys_tpdf) was
                                           converted into JSON format, since it contains identityref value which is
                                           being used in JSON format (instead of module prefixes, we use the module
                                           names) */
+#define LYS_NOTAPPLIED   0x01        /**< flag for the not applied augments to allow keeping the resolved target */
 #define LYS_YINELEM      0x01        /**< yin-element true for extension's argument */
 /**
  * @}
@@ -937,9 +949,9 @@ struct lys_node_leaflist {
 
     LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_LEAFLIST */
     struct lys_node *parent;         /**< pointer to the parent node, NULL in case of a top level node */
-    struct lys_node *child;          /**< always NULL except the leaf/leaflist is target of a leafref, in that case
-                                          the pointer stores set of ::lys_node leafref objects with path referencing
-                                          the current ::lys_node_leaflist */
+    struct ly_set *backlinks;        /**< replacement for ::lys_node's child member, it is NULL except the leaf/leaflist
+                                          is target of a leafref. In that case the set stores ::lys_node leafref objects
+                                          with path referencing the current ::lys_node_leaf */
     struct lys_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
     struct lys_node *prev;           /**< pointer to the previous sibling node \note Note that this pointer is
                                           never NULL. If there is no sibling node, pointer points to the node
@@ -1867,6 +1879,11 @@ struct lys_module *lys_main_module(const struct lys_module *module);
  * without any change. It is up to the caller to set the module implemented via
  * lys_set_implemented() when needed.
  *
+ * Also note that the result can be a disabled module and the caller is supposed to decide
+ * if it should by enabled via lys_set_enabled(). This is to avoid to try to set another
+ * revision of the module implemented that would fail due to the disabled, but the implemented
+ * module.
+ *
  * @param[in] mod Module to be searched.
  * @return The implemeneted revision of the module if any, the given module otherwise.
  */
@@ -1886,10 +1903,46 @@ struct lys_module *lys_implemented_module(const struct lys_module *mod);
  * Note that it is not possible to mark "implemented" multiple revisions of a same module within
  * a single context. In such a case the function fails.
  *
+ * If the module is currently disabled, this function enables the module implicitly.
+ *
  * @param[in] module The module to be set implemented.
  * @return EXIT_SUCCESS or EXIT_FAILURE
  */
 int lys_set_implemented(const struct lys_module *module);
+
+/**
+ * @brief Disable module in its context to avoid its further usage (it will be hidden for module getters).
+ *
+ * The function also disables all the modules in the context that depends on the provided module to disable.
+ * If the imported modules are not used by any other module in the context, they are also disabled. The result
+ * of this function can be reverted by lys_set_enabled() function.
+ *
+ * Since the disabled modules are hidden from the common module getters, there is a special
+ * ly_ctx_get_disabled_module_iter() to go through the disabled modules in the context.
+ *
+ * libyang internal modules (those present when the context is created) cannot be disabled. Any module
+ * loaded into the context is, by default, enabled.
+ *
+ * @param[in] module Module to be enabled.
+ * @return EXIT_SUCCESS or EXIT_FAILURE (in case of invalid parameter).
+ */
+int lys_set_disabled(const struct lys_module *module);
+
+/**
+ * @brief Enable previously disabled module.
+ *
+ * The function tries to revert previous call of the lys_set_disabled() so it checks other disabled
+ * modules in the context depending on the specified module and if it is possible, also the other modules
+ * are going to be enabled. Similarly, all the imported modules that were previously supposed as useless
+ * are enabled.
+ *
+ * libyang internal modules (those present when the context is created) are always enabled. Any other module
+ * loaded into the context is, by default, enabled.
+ *
+ * @param[in] module Module to be enabled.
+ * @return EXIT_SUCCESS or EXIT_FAILURE (in case of invalid parameter).
+ */
+int lys_set_enabled(const struct lys_module *module);
 
 /**
  * @brief Set a schema private pointer to a user pointer.

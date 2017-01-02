@@ -61,7 +61,7 @@ struct internal_modules {
 /**
  * @brief internal parser flag for actions and inline notifications
  */
-#define LYD_OPT_ACT_NOTIF 0x80
+#define LYD_OPT_ACT_NOTIF 0x100
 
 /**
  * @brief Internal list of built-in types
@@ -438,6 +438,7 @@ int lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *c
 void lys_switch_deviations(struct lys_module *module);
 
 void lys_sub_module_remove_devs_augs(struct lys_module *module);
+void lys_sub_module_apply_devs_augs(struct lys_module *module);
 
 void lys_submodule_module_data_free(struct lys_submodule *submodule);
 

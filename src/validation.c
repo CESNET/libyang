@@ -53,8 +53,6 @@ lyv_data_context(const struct lyd_node *node, int options, struct unres_data *un
 {
     const struct lys_node *siter = NULL;
     struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
-    struct lys_type *type;
-    int found = 0;
 
     assert(node);
     assert(unres);
@@ -65,40 +63,20 @@ lyv_data_context(const struct lyd_node *node, int options, struct unres_data *un
         return EXIT_FAILURE;
     }
 
-    /* check leafref/instance-identifier */
     if (node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
-        if (options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
-            /* if leafref or instance-identifier, parse the value according to the
-             * target's type, because the target leaf does not need to be present */
-            if (leaf->value_type == LY_TYPE_LEAFREF || leaf->value_type == LY_TYPE_INST) {
-                memset(&leaf->value, 0, sizeof leaf->value);
-                if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, NULL,
-                                     (struct lyd_node *)node, leaf, 1, 0, 0)) {
-                    return EXIT_FAILURE;
-                }
+        /* if union with leafref/intsid, leafref itself (invalid) or instance-identifier, store the node for later resolving */
+        if ((((struct lys_node_leaf *)leaf->schema)->type.base == LY_TYPE_UNION)
+                && ((struct lys_node_leaf *)leaf->schema)->type.info.uni.has_ptr_type) {
+            if (unres_data_add(unres, (struct lyd_node *)node, UNRES_UNION)) {
+                return EXIT_FAILURE;
             }
-        } else {
-            /* if union with leafref, leafref itself or instance-identifier, store the node for later resolving */
-            if (((struct lys_node_leaf *)leaf->schema)->type.base == LY_TYPE_UNION) {
-                /* get know if there is leafref in the union types */
-                type = NULL;
-                while ((type = lyp_get_next_union_type(&((struct lys_node_leaf *)leaf->schema)->type, type, &found))) {
-                    found = 0;
-                    if (type->base == LY_TYPE_LEAFREF) {
-                        if (unres_data_add(unres, (struct lyd_node *)node, UNRES_UNION)) {
-                            return EXIT_FAILURE;
-                        }
-                        break;
-                    }
-                }
-            } else if (leaf->value_type == LY_TYPE_LEAFREF && !leaf->value.leafref) {
-                if (unres_data_add(unres, (struct lyd_node *)node, UNRES_LEAFREF)) {
-                    return EXIT_FAILURE;
-                }
-            } else if (leaf->value_type == LY_TYPE_INST) {
-                if (unres_data_add(unres, (struct lyd_node *)node, UNRES_INSTID)) {
-                    return EXIT_FAILURE;
-                }
+        } else if ((((struct lys_node_leaf *)leaf->schema)->type.base == LY_TYPE_LEAFREF) && (leaf->validity & LYD_VAL_LEAFREF)) {
+            if (unres_data_add(unres, (struct lyd_node *)node, UNRES_LEAFREF)) {
+                return EXIT_FAILURE;
+            }
+        } else if (((struct lys_node_leaf *)leaf->schema)->type.base == LY_TYPE_INST) {
+            if (unres_data_add(unres, (struct lyd_node *)node, UNRES_INSTID)) {
+                return EXIT_FAILURE;
             }
         }
     }
@@ -385,6 +363,42 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
             }
         }
 
+        if (options & LYD_OPT_OBSOLETE) {
+            /* status - of the node's schema node itself and all its parents that
+             * cannot have their own instance (like a choice statement) */
+            siter = node->schema;
+            do {
+                if (((siter->flags & LYS_STATUS_MASK) == LYS_STATUS_OBSLT) && (options & LYD_OPT_OBSOLETE)) {
+                    LOGVAL(LYE_OBSDATA, LY_VLOG_LYD, node, schema->name);
+                    return EXIT_FAILURE;
+                }
+                siter = lys_parent(siter);
+            } while (siter && !(siter->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA)));
+
+            /* status of the identity value */
+            if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+                if (options & LYD_OPT_OBSOLETE) {
+                    /* check that we are not instantiating obsolete type */
+                    tpdf = ((struct lys_node_leaf *)node->schema)->type.der;
+                    while (tpdf) {
+                        if ((tpdf->flags & LYS_STATUS_MASK) == LYS_STATUS_OBSLT) {
+                            LOGVAL(LYE_OBSTYPE, LY_VLOG_LYD, node, schema->name, tpdf->name);
+                            return EXIT_FAILURE;
+                        }
+                        tpdf = tpdf->type.der;
+                    }
+                }
+                if (((struct lyd_node_leaf_list *)node)->value_type == LY_TYPE_IDENT) {
+                    ident = ((struct lyd_node_leaf_list *)node)->value.ident;
+                    if (lyp_check_status(schema->flags, schema->module, schema->name,
+                                    ident->flags, ident->module, ident->name, NULL)) {
+                        LOGPATH(LY_VLOG_LYD, node);
+                        return EXIT_FAILURE;
+                    }
+                }
+            }
+        }
+
         /* remove the flag */
         node->validity &= ~LYD_VAL_MAND;
     }
@@ -409,39 +423,7 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
     }
 
     if (node->validity) {
-        /* status - of the node's schema node itself and all its parents that
-         * cannot have their own instance (like a choice statement) */
-        siter = node->schema;
-        do {
-            if (((siter->flags & LYS_STATUS_MASK) == LYS_STATUS_OBSLT) && (options & LYD_OPT_OBSOLETE)) {
-                LOGVAL(LYE_OBSDATA, LY_VLOG_LYD, node, schema->name);
-                return EXIT_FAILURE;
-            }
-            siter = lys_parent(siter);
-        } while (siter && !(siter->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA)));
 
-        /* status of the identity value */
-        if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
-            if (options & LYD_OPT_OBSOLETE) {
-                /* check that we are not instantiating obsolete type */
-                tpdf = ((struct lys_node_leaf *)node->schema)->type.der;
-                while (tpdf) {
-                    if ((tpdf->flags & LYS_STATUS_MASK) == LYS_STATUS_OBSLT) {
-                        LOGVAL(LYE_OBSTYPE, LY_VLOG_LYD, node, schema->name, tpdf->name);
-                        return EXIT_FAILURE;
-                    }
-                    tpdf = tpdf->type.der;
-                }
-            }
-            if (((struct lyd_node_leaf_list *)node)->value_type == LY_TYPE_IDENT) {
-                ident = ((struct lyd_node_leaf_list *)node)->value.ident;
-                if (lyp_check_status(schema->flags, schema->module, schema->name,
-                                 ident->flags, ident->module, ident->name, NULL)) {
-                    LOGPATH(LY_VLOG_LYD, node);
-                    return EXIT_FAILURE;
-                }
-            }
-        }
     }
 
     if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {

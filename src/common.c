@@ -850,6 +850,38 @@ transform_iffeat_schema2json(const struct lys_module *module, const char *expr)
     return NULL;
 }
 
+int
+ly_new_node_validity(const struct lys_node *schema)
+{
+    int validity;
+
+    validity = LYD_VAL_OK;
+    switch (schema->nodetype) {
+    case LYS_LEAF:
+    case LYS_LEAFLIST:
+        if (((struct lys_node_leaf *)schema)->type.base == LY_TYPE_LEAFREF) {
+            validity |= LYD_VAL_LEAFREF;
+        }
+        validity |= LYD_VAL_MAND;
+        break;
+    case LYS_LIST:
+        validity |= LYD_VAL_UNIQUE;
+        /* fallthrough */
+    case LYS_CONTAINER:
+    case LYS_NOTIF:
+    case LYS_RPC:
+    case LYS_ACTION:
+    case LYS_ANYXML:
+    case LYS_ANYDATA:
+        validity |= LYD_VAL_MAND;
+        break;
+    default:
+        break;
+    }
+
+    return validity;
+}
+
 void *
 ly_realloc(void *ptr, size_t size)
 {
