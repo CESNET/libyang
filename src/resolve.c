@@ -6846,7 +6846,7 @@ static int
 resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int ignore_fail)
 {
     struct lys_type *t;
-    struct lyd_node *ret;
+    struct lyd_node *ret, *par, *op_node;
     int found, hidden, success = 0;
     const char *json_val = NULL;
 
@@ -6870,7 +6870,7 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int ignore
         switch (t->base) {
         case LY_TYPE_LEAFREF:
             if (!resolve_leafref(leaf, t->info.lref.path, (ignore_fail ? -1 : t->info.lref.req), &ret)) {
-                if (ret) {
+                if (ret && !(leaf->schema->flags & LYS_LEAFREF_DEP)) {
                     /* valid resolved */
                     leaf->value.leafref = ret;
                     leaf->value_type = LY_TYPE_LEAFREF;
@@ -6887,6 +6887,19 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int ignore
         case LY_TYPE_INST:
             if (!resolve_instid((struct lyd_node *)leaf, (json_val ? json_val : leaf->value_str),
                                 (ignore_fail ? -1 : t->info.inst.req), &ret)) {
+                if (ret) {
+                    for (op_node = (struct lyd_node *)leaf;
+                         op_node && !(op_node->schema->nodetype & (LYS_RPC | LYS_NOTIF | LYS_ACTION));
+                         op_node = op_node->parent);
+                    if (op_node) {
+                        /* this is an RPC/notif/action */
+                        for (par = ret->parent; par && (par != op_node); par = par->parent);
+                        if (!par) {
+                            /* target instance is outside the operation - do not store the pointer */
+                            ret = NULL;
+                        }
+                    }
+                }
                 if (ret) {
                     /* valid resolved */
                     leaf->value.instance = ret;
@@ -6974,7 +6987,7 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int ignore_
 {
     int rc, req_inst;
     struct lyd_node_leaf_list *leaf;
-    struct lyd_node *ret;
+    struct lyd_node *ret, *op_node, *par;
     struct lys_node_leaf *sleaf;
 
     leaf = (struct lyd_node_leaf_list *)node;
@@ -6987,7 +7000,7 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int ignore_
         req_inst = (ignore_fail ? -1 : sleaf->type.info.lref.req);
         rc = resolve_leafref(leaf, sleaf->type.info.lref.path, req_inst, &ret);
         if (!rc) {
-            if (ret) {
+            if (ret && !(leaf->schema->flags & LYS_LEAFREF_DEP)) {
                 /* valid resolved */
                 leaf->value.leafref = ret;
                 leaf->value_type = LY_TYPE_LEAFREF;
@@ -7010,6 +7023,19 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int ignore_
         req_inst = (ignore_fail ? -1 : sleaf->type.info.inst.req);
         rc = resolve_instid(node, leaf->value_str, req_inst, &ret);
         if (!rc) {
+            if (ret) {
+                for (op_node = (struct lyd_node *)leaf;
+                     op_node && !(op_node->schema->nodetype & (LYS_RPC | LYS_NOTIF | LYS_ACTION));
+                     op_node = op_node->parent);
+                if (op_node) {
+                    /* this is an RPC/notif/action */
+                    for (par = ret->parent; par && (par != op_node); par = par->parent);
+                    if (!par) {
+                        /* target instance is outside the operation - do not store the pointer */
+                        ret = NULL;
+                    }
+                }
+            }
             if (ret) {
                 /* valid resolved */
                 leaf->value.instance = ret;
