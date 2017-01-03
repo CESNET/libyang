@@ -1496,7 +1496,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         /* it is called not only to get the final type, but mainly to update value to canonical or JSON form
          * if needed */
-        t = lyp_parse_value(&type->info.lref.target->type, value_, xml, leaf, 0, dflt);
+        t = lyp_parse_value(&type->info.lref.target->type, value_, xml, leaf, store, dflt);
         value = *value_; /* refresh possibly changed value */
         if (!t) {
             LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, value, leaf->schema->name);
@@ -1505,7 +1505,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         if (store) {
             /* make the note that the data node is an unresolved leafref (value union was already filled) */
-            leaf->value_type = t->base | LY_TYPE_LEAFREF_UNRES;
+            leaf->value_type |= LY_TYPE_LEAFREF_UNRES;
         }
 
         type = t;
