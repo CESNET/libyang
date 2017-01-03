@@ -7146,7 +7146,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
         return EXIT_SUCCESS;
     }
 
-    if (options & (LYD_OPT_TRUSTED | LYD_OPT_GET | LYD_OPT_GETCONFIG | LYD_OPT_EDIT)) {
+    if (options & (LYD_OPT_TRUSTED | LYD_OPT_NOTIF_FILTER | LYD_OPT_GET | LYD_OPT_GETCONFIG | LYD_OPT_EDIT)) {
         ignore_fails = 1;
     } else {
         ignore_fails = 0;

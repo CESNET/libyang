@@ -1146,9 +1146,8 @@ attr_repeat:
             if (data[len] == ',') {
                 /* various validation checks */
                 ly_err_clean(1);
-                if (!(options & LYD_OPT_TRUSTED) &&
-                        (lyv_data_content(list, options, unres) ||
-                         lyv_multicases(list, NULL, prev ? &first_sibling : NULL, 0, NULL))) {
+                if (lyv_data_content(list, options, unres) ||
+                         lyv_multicases(list, NULL, prev ? &first_sibling : NULL, 0, NULL)) {
                     if (ly_errno) {
                         goto error;
                     }
@@ -1407,7 +1406,8 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
     }
 
     /* check for missing top level mandatory nodes */
-    if (!(options & LYD_OPT_TRUSTED) && lyd_check_mandatory_tree((act_notif ? act_notif : result), ctx, options)) {
+    if (!(options & (LYD_OPT_TRUSTED | LYD_OPT_NOTIF_FILTER))
+            && lyd_check_mandatory_tree((act_notif ? act_notif : result), ctx, options)) {
         goto error;
     }
 
