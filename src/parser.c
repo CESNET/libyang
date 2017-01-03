@@ -1284,8 +1284,11 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         } else if (!value || strcmp(value, "false")) {
             LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, value ? value : "", leaf->schema->name);
             goto cleanup;
+        } else {
+            if (store) {
+                leaf->value.bln = 0;
+            }
         }
-        /* else stays 0 */
         break;
 
     case LY_TYPE_DEC64:
