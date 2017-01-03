@@ -7137,7 +7137,6 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
     uint32_t i, j, first = 1, resolved = 0, del_items = 0, when_stmt = 0;
     int rc, progress, ignore_fails;
     struct lyd_node *parent;
-    //struct lyd_node_leaf_list *leaf;
 
     assert(root);
     assert(unres);
@@ -7292,34 +7291,11 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
         rc = resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fails);
         if (rc) {
             /* since when was already resolved, a forward reference is an error */
-            //ly_vlog_hide(0);
-            /* print only this last error */
-            //resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fails);
             return -1;
         }
 
         unres->type[i] = UNRES_RESOLVED;
-        //resolved++;
     }
-
-    //ly_vlog_hide(0);
-    //if (resolved < unres->count) {
-        /* try to resolve the unresolved data again, it will not resolve anything, but it will print
-         * all the validation errors
-         */
-        //for (i = 0; i < unres->count; ++i) {
-            //if (unres->type[i] == UNRES_UNION) {
-                /* does not make sense to print specific errors for all
-                 * the data types, just print that the value is invalid */
-                /*leaf = (struct lyd_node_leaf_list *)unres->node[i];
-                LOGVAL(LYE_INVAL, LY_VLOG_LYD, unres->node[i], (leaf->value_str ? leaf->value_str : ""),
-                       leaf->schema->name);
-            } else if (unres->type[i] != UNRES_RESOLVED) {
-                resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fails);
-            }
-        }
-        return -1;
-    }*/
 
     LOGVRB("All data nodes and constraints resolved.");
     unres->count = 0;
