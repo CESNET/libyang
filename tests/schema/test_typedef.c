@@ -941,7 +941,7 @@ test_typedef_11_union_leafref_yin(void **state)
     root = lyd_parse_mem(st->ctx, data4, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(root, NULL);
     assert_int_equal(((struct lyd_node_leaf_list *)root)->value_type, LY_TYPE_LEAFREF_UNRES | LY_TYPE_STRING);
-    assert_ptr_equal(NULL, ((struct lyd_node_leaf_list *)root)->value.leafref);
+    assert_string_equal("http", ((struct lyd_node_leaf_list *)root)->value.string);
     lyd_free_withsiblings(root);
 }
 
@@ -1021,7 +1021,7 @@ test_typedef_11_union_leafref_yang(void **state)
     root = lyd_parse_mem(st->ctx, data4, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(root, NULL);
     assert_int_equal(((struct lyd_node_leaf_list *)root)->value_type, LY_TYPE_LEAFREF_UNRES | LY_TYPE_STRING);
-    assert_ptr_equal(NULL, ((struct lyd_node_leaf_list *)root)->value.leafref);
+    assert_string_equal("http", ((struct lyd_node_leaf_list *)root)->value.string);
     lyd_free_withsiblings(root);
 }
 
