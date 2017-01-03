@@ -923,11 +923,19 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
          * unresolved item left inside the grouping, LY_TYPE_ERR used as a flag for types inside a grouping.  */
         for (siter = parent; siter && (siter->nodetype != LYS_GROUPING); siter = lys_parent(siter));
         if (siter) {
-            if (!((struct lys_node_grp *)siter)->nacm) {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+            if (!((uint8_t*)&((struct lys_node_grp *)siter)->flags)[1]) {
                 LOGINT;
                 goto error;
             }
-            ((struct lys_node_grp *)siter)->nacm--;
+            ((uint8_t*)&((struct lys_node_grp *)siter)->flags)[1]--;
+#else
+            if (!((uint8_t*)&((struct lys_node_grp *)siter)->flags)[0]) {
+                LOGINT;
+                goto error;
+            }
+            ((uint8_t*)&((struct lys_node_grp *)siter)->flags)[0]--;
+#endif
         } else {
             LOGINT;
             goto error;
@@ -985,7 +993,6 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
             /* copy fraction-digits specification from parent type for easier internal use */
             if (typ->type->der->type.der) {
                 typ->type->info.dec64.dig = typ->type->der->type.info.dec64.dig;
-                typ->type->info.dec64.div = typ->type->der->type.info.dec64.div;
             }
             if (typ->type->info.dec64.range && lyp_check_length_range(typ->type->info.dec64.range->expr, typ->type)) {
                 LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, typ->type->info.dec64.range->expr, "range");
@@ -1493,8 +1500,6 @@ error:
 int
 yang_read_fraction(struct yang_type *typ, uint32_t value)
 {
-    unsigned int i;
-
     if (typ->base == 0 || typ->base == LY_TYPE_DEC64) {
         typ->base = LY_TYPE_DEC64;
     } else {
@@ -1511,10 +1516,6 @@ yang_read_fraction(struct yang_type *typ, uint32_t value)
         goto error;
     }
     typ->type->info.dec64.dig = value;
-    typ->type->info.dec64.div = 10;
-    for (i = 1; i < value; i++) {
-        typ->type->info.dec64.div *= 10;
-    }
     return EXIT_SUCCESS;
 
 error:
@@ -1852,7 +1853,7 @@ yang_read_deviate(struct type_deviation *dev, LYS_DEVIATE_TYPE mod)
     /* store a shallow copy of the original node */
     if (!dev->deviation->orig_node) {
         memset(&tmp_unres, 0, sizeof tmp_unres);
-        dev->deviation->orig_node = lys_node_dup(dev->target->module, NULL, dev->target, 0, &tmp_unres, 1);
+        dev->deviation->orig_node = lys_node_dup(dev->target->module, NULL, dev->target, &tmp_unres, 1);
         /* just to be safe */
         if (tmp_unres.count) {
             LOGINT;
@@ -2580,68 +2581,12 @@ yang_use_extension(struct lys_module *module, struct lys_node *data_node, void *
     if (!ns && !strcmp(module->prefix, prefix)) {
         ns = (module->type) ? ((struct lys_submodule *)module)->belongsto->ns : module->ns;
     }
-    if (ns && !strcmp(ns, LY_NSNACM)) {
-        if (!strcmp(identif, "default-deny-write")) {
-            data_node->nacm |= LYS_NACM_DENYW;
-        } else if (!strcmp(identif, "default-deny-all")) {
-            data_node->nacm |= LYS_NACM_DENYA;
-        } else {
-            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, identif);
-            goto error;
-        }
-    }
     free(prefix);
     return EXIT_SUCCESS;
 
 error:
     free(prefix);
     return EXIT_FAILURE;
-}
-
-void
-nacm_inherit(struct lys_module *module)
-{
-    struct lys_node *next, *elem, *tmp_node, *tmp_child;
-
-    LY_TREE_DFS_BEGIN(module->data, next, elem) {
-        tmp_node = NULL;
-        if (elem->parent) {
-            switch (elem->nodetype) {
-                case LYS_GROUPING:
-                    /* extension nacm not inherited*/
-                    break;
-                case LYS_CHOICE:
-                case LYS_ANYXML:
-                case LYS_ANYDATA:
-                case LYS_USES:
-                    if (elem->parent->nodetype != LYS_GROUPING) {
-                        elem->nacm |= elem->parent->nacm;
-                    }
-                    break;
-                case LYS_CONTAINER:
-                case LYS_LIST:
-                case LYS_CASE:
-                case LYS_NOTIF:
-                case LYS_RPC:
-                case LYS_INPUT:
-                case LYS_OUTPUT:
-                case LYS_AUGMENT:
-                    elem->nacm |= elem->parent->nacm;
-                    break;
-                case LYS_LEAF:
-                case LYS_LEAFLIST:
-                    tmp_node = elem;
-                    tmp_child = elem->child;
-                    elem->child = NULL;
-                default:
-                    break;
-            }
-        }
-        LY_TREE_DFS_END(module->data, next, elem);
-        if (tmp_node) {
-            tmp_node->child = tmp_child;
-        }
-    }
 }
 
 int
@@ -2719,7 +2664,7 @@ struct lys_module *
 yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const char *revision, int implement)
 {
 
-    struct lys_module *tmp_module, *module = NULL;
+    struct lys_module *module = NULL;
     struct unres_schema *unres = NULL;
 
     unres = calloc(1, sizeof *unres);
@@ -2756,13 +2701,8 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
         }
     }
 
-    tmp_module = module;
     if (lyp_ctx_add_module(&module)) {
         goto error;
-    }
-
-    if (module == tmp_module) {
-        nacm_inherit(module);
     }
 
     if (module->deviation_size && !module->implemented) {

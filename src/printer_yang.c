@@ -130,53 +130,6 @@ yang_print_text(struct lyout *out, int level, const char *name, const char *text
 }
 
 static void
-yang_print_nacmext(struct lyout *out, int level, const struct lys_node *node, const struct lys_module *module, int *flag)
-{
-    int i, j;
-    const char *prefix = NULL;
-
-    /* TODO remove with YANG extensions support, this is a temporary hack to avoid printing
-     * NACM extension instances since its definition is not even stored and it may confuse
-     * other tools when parsing modules printed from libyang */
-    return;
-
-    if (node->nacm && (!lys_parent(node) || lys_parent(node)->nacm != node->nacm)) {
-        /* locate ietf-netconf-acm module in imports */
-        if (!strcmp(module->name, "ietf-netconf-acm")) {
-            prefix = module->prefix;
-        } else {
-            /* search in imports */
-            for (i = 0; i < module->imp_size; i++) {
-                if (!strcmp(module->imp[i].module->name, "ietf-netconf-acm")) {
-                    prefix = module->imp[i].prefix;
-                    break;
-                }
-            }
-            /* and in imports of includes */
-            if (!prefix) {
-                for (j = 0; j < module->inc_size; j++) {
-                    for (i = 0; i < module->inc[j].submodule->imp_size; i++) {
-                        if (!strcmp(module->inc[j].submodule->imp[i].module->name, "ietf-netconf-acm")) {
-                            prefix = module->inc[j].submodule->imp[i].prefix;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        if ((node->nacm & LYS_NACM_DENYW) && (!lys_parent(node) || !(lys_parent(node)->nacm & LYS_NACM_DENYW))) {
-            yang_print_open(out, flag);
-            ly_print(out, "%*s%s:default-deny-write;\n", LEVEL, INDENT, prefix);
-        }
-        if ((node->nacm & LYS_NACM_DENYA) && (!lys_parent(node) || !(lys_parent(node)->nacm & LYS_NACM_DENYA))) {
-            yang_print_open(out, flag);
-            ly_print(out, "%*s%s:default-deny-all;\n", LEVEL, INDENT, prefix);
-        }
-    }
-}
-
-static void
 yang_print_extension_instances(struct lyout *out, int level, const struct lys_module *module,
                                struct lys_ext_instance **ext, unsigned int count)
 {
@@ -754,7 +707,6 @@ yang_print_augment(struct lyout *out, int level, const struct lys_module *module
     lydict_remove(module->ctx, str);
     level++;
 
-    yang_print_nacmext(out, level, (struct lys_node *)augment, module, NULL);
     yang_print_snode_common(out, level, (struct lys_node *)augment, NULL);
 
     for (i = 0; i < augment->iffeature_size; i++) {
@@ -848,8 +800,6 @@ yang_print_container(struct lyout *out, int level, const struct lys_node *node)
 
     level++;
 
-    yang_print_nacmext(out, level, node, node->module, &flag);
-
     if (cont->when) {
         yang_print_open(out, &flag);
         yang_print_when(out, level, node->module, cont->when);
@@ -901,7 +851,6 @@ yang_print_case(struct lyout *out, int level, const struct lys_node *node)
 
     ly_print(out, "%*scase %s {\n", LEVEL, INDENT, cas->name);
     level++;
-    yang_print_nacmext(out, level, node, node->module, NULL);
     yang_print_snode_common2(out, level, node, NULL);
 
     for (i = 0; i < cas->iffeature_size; i++) {
@@ -936,7 +885,6 @@ yang_print_choice(struct lyout *out, int level, const struct lys_node *node)
     ly_print(out, "%*schoice %s {\n", LEVEL, INDENT, node->name);
 
     level++;
-    yang_print_nacmext(out, level, node, node->module, NULL);
     if (choice->dflt != NULL) {
         ly_print(out, "%*sdefault \"%s\";\n", LEVEL, INDENT, choice->dflt->name);
     }
@@ -973,7 +921,6 @@ yang_print_leaf(struct lyout *out, int level, const struct lys_node *node)
     ly_print(out, "%*sleaf %s {\n", LEVEL, INDENT, node->name);
 
     level++;
-    yang_print_nacmext(out, level, node, node->module, NULL);
     if (leaf->when) {
         yang_print_when(out, level, node->module, leaf->when);
     }
@@ -1018,7 +965,6 @@ yang_print_anydata(struct lyout *out, int level, const struct lys_node *node)
 
     ly_print(out, "%*s%s %s", LEVEL, INDENT, any->nodetype == LYS_ANYXML ? "anyxml" : "anydata", any->name);
     level++;
-    yang_print_nacmext(out, level, node, node->module, &flag);
     yang_print_snode_common2(out, level, node, &flag);
     for (i = 0; i < any->iffeature_size; i++) {
         yang_print_open(out, &flag);
@@ -1046,7 +992,6 @@ yang_print_leaflist(struct lyout *out, int level, const struct lys_node *node)
     ly_print(out, "%*sleaf-list %s {\n", LEVEL, INDENT, node->name);
 
     level++;
-    yang_print_nacmext(out, level, node, node->module, NULL);
     if (llist->when) {
         yang_print_when(out, level, llist->module, llist->when);
     }
@@ -1101,7 +1046,6 @@ yang_print_list(struct lyout *out, int level, const struct lys_node *node)
 
     ly_print(out, "%*slist %s {\n", LEVEL, INDENT, node->name);
     level++;
-    yang_print_nacmext(out, level, node, node->module, NULL);
     if (list->when) {
         yang_print_when(out, level, list->module, list->when);
     }
@@ -1187,7 +1131,6 @@ yang_print_uses(struct lyout *out, int level, const struct lys_node *node)
     ly_print(out, "%s", uses->name);
     level++;
 
-    yang_print_nacmext(out, level, node, node->module, &flag);
     yang_print_snode_common(out, level, node, &flag);
     for (i = 0; i < uses->iffeature_size; i++) {
         yang_print_open(out, &flag);

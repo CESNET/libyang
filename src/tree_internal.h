@@ -199,13 +199,12 @@ int lys_has_xpath(const struct lys_node *node);
  * @param[in] module Target module for the duplicated node.
  * @param[in] parent Schema tree node where the node is being connected, NULL in case of top level \p node.
  * @param[in] node Schema tree node to be duplicated.
- * @param[in] nacm NACM flags to be inherited from the parent
  * @param[in] unres list of unresolved items
  * @param[in] shallow Whether to copy children and connect to parent/module too.
  * @return Created copy of the provided schema \p node.
  */
 struct lys_node *lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct lys_node *node,
-                              uint8_t nacm, struct unres_schema *unres, int shallow);
+                              struct unres_schema *unres, int shallow);
 
 /**
  * @brief Switch two same schema nodes. \p src must be a shallow copy

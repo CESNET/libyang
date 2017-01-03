@@ -746,13 +746,7 @@ struct lys_node {
     const char *name;                /**< node name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
-    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
-#else
-    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
-    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
-#endif
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     uint8_t ext_size;                /**< number of elements in #ext array */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
@@ -784,13 +778,7 @@ struct lys_node_container {
     const char *name;                /**< node name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
-    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
-#else
-    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
-    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
-#endif
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     uint8_t ext_size;                /**< number of elements in #ext array */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
@@ -834,13 +822,7 @@ struct lys_node_choice {
     const char *name;                /**< node name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
-    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
-#else
-    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
-    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
-#endif
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     uint8_t ext_size;                /**< number of elements in #ext array */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
@@ -880,13 +862,7 @@ struct lys_node_leaf {
     const char *name;                /**< node name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
-    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
-#else
-    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
-    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
-#endif
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     uint8_t ext_size;                /**< number of elements in #ext array */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
@@ -936,13 +912,7 @@ struct lys_node_leaflist {
     const char *name;                /**< node name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
-    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
-#else
-    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
-    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
-#endif
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     uint8_t ext_size;                /**< number of elements in #ext array */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
@@ -992,13 +962,7 @@ struct lys_node_list {
     const char *name;                /**< node name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
-    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
-#else
-    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
-    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
-#endif
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     uint8_t ext_size;                /**< number of elements in #ext array */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
@@ -1052,13 +1016,7 @@ struct lys_node_anydata {
     const char *name;                /**< node name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
-    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
-#else
-    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
-    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
-#endif
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     uint8_t ext_size;                /**< number of elements in #ext array */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
@@ -1100,15 +1058,8 @@ struct lys_node_uses {
     const char *name;                /**< node name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* and LYS_USESGRP
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* and LYS_USESGRP
                                           values are allowed */
-    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
-#else
-    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
-    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* and LYS_USESGRP
-                                          values are allowed */
-#endif
     uint8_t ext_size;                /**< number of elements in #ext array */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
@@ -1157,13 +1108,7 @@ struct lys_node_grp {
     const char *name;                /**< node name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    uint16_t flags:8;                /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values are allowed */
-    uint16_t nacm:8;                 /**< [NACM extension flags](@ref nacmflags) - always 0 in ::lys_node_grp */
-#else
-    uint16_t nacm:8;                 /**< [NACM extension flags](@ref nacmflags) - always 0 in ::lys_node_grp */
-    uint16_t flags:8;                /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values are allowed */
-#endif
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values are allowed */
     uint8_t ext_size;                /**< number of elements in #ext array */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
@@ -1199,13 +1144,7 @@ struct lys_node_case {
     const char *name;                /**< node name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
-    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
-#else
-    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
-    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
-#endif
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     uint8_t ext_size;                /**< number of elements in #ext array */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
@@ -1246,13 +1185,7 @@ struct lys_node_case {
 struct lys_node_inout {
     const char *name;
     void *fill1[2];                  /**< padding for compatibility with ::lys_node - dsc and ref */
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) - only LYS_IMPLICIT is applicable */
-    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) - not used */
-#else
-    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) - not used */
-    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) - only LYS_IMPLICIT is applicable  */
-#endif
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_IMPLICIT is applicable */
     uint8_t ext_size;                /**< number of elements in #ext array */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     struct lys_module *module;       /**< link to the node's data model */
@@ -1285,13 +1218,7 @@ struct lys_node_notif {
     const char *name;                /**< node name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
-    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
-#else
-    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
-    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
-#endif
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     uint8_t ext_size;                /**< number of elements in #ext array */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
@@ -1331,13 +1258,7 @@ struct lys_node_rpc_action {
     const char *name;                /**< node name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
-    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
-#else
-    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
-    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
-#endif
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     uint8_t ext_size;                /**< number of elements in #ext array */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
@@ -1379,13 +1300,7 @@ struct lys_node_augment {
                                           placed (mandatory). */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
-    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
-#else
-    uint16_t nacm:2;                 /**< [NACM extension flags](@ref nacmflags) */
-    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) */
-#endif
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     uint8_t ext_size;                /**< number of elements in #ext array */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
@@ -1577,15 +1492,8 @@ struct lys_feature {
     const char *name;                /**< feature name (mandatory) */
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values and
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values and
                                           #LYS_FENABLED value are allowed */
-    uint16_t padding:2;
-#else
-    uint16_t padding:2;
-    uint16_t flags:14;               /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values and
-                                          #LYS_FENABLED value are allowed */
-#endif
     uint8_t ext_size;                /**< number of elements in #ext array */
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */

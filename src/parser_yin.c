@@ -44,7 +44,6 @@
 #define OPT_CFG_INHERIT 0x04
 #define OPT_CFG_IGNORE  0x08
 #define OPT_MODULE      0x10
-#define OPT_NACMEXT     0x20
 static int read_yin_common(struct lys_module *, struct lys_node *, struct lys_node *, struct lyxml_elem *, int);
 
 static struct lys_node *read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin,
@@ -367,11 +366,19 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
          * unresolved item left inside the grouping, LY_TYPE_ERR used as a flag for types inside a grouping. */
         for (siter = parent; siter && (siter->nodetype != LYS_GROUPING); siter = lys_parent(siter));
         if (siter) {
-            if (!((struct lys_node_grp *)siter)->nacm) {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+            if (!((uint8_t*)&((struct lys_node_grp *)siter)->flags)[1]) {
                 LOGINT;
                 goto error;
             }
-            ((struct lys_node_grp *)siter)->nacm--;
+            ((uint8_t*)&((struct lys_node_grp *)siter)->flags)[1]--;
+#else
+            if (!((uint8_t*)&((struct lys_node_grp *)siter)->flags)[0]) {
+                LOGINT;
+                goto error;
+            }
+            ((uint8_t*)&((struct lys_node_grp *)siter)->flags)[0]--;
+#endif
         } else {
             LOGINT;
             goto error;
@@ -1900,7 +1907,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
         /* store a shallow copy of the original node */
         if (!dev->orig_node) {
             memset(&tmp_unres, 0, sizeof tmp_unres);
-            dev->orig_node = lys_node_dup(dev_target->module, NULL, dev_target, 0, &tmp_unres, 1);
+            dev->orig_node = lys_node_dup(dev_target->module, NULL, dev_target, &tmp_unres, 1);
             /* just to be safe */
             if (tmp_unres.count) {
                 LOGINT;
@@ -2595,7 +2602,7 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
     }
     aug->parent = parent;
 
-    if (read_yin_common(module, NULL, (struct lys_node *)aug, yin, OPT_MODULE | OPT_NACMEXT)) {
+    if (read_yin_common(module, NULL, (struct lys_node *)aug, yin, OPT_MODULE)) {
         goto error;
     }
 
@@ -3229,11 +3236,6 @@ read_yin_common(struct lys_module *module, struct lys_node *parent,
         node->name = lydict_insert(ctx, value, strlen(value));
     }
 
-    /* inherit NACM flags */
-    if ((opt & OPT_NACMEXT) && parent) {
-        node->nacm = parent->nacm;
-    }
-
     /* process local parameters */
     LY_TREE_FOR_SAFE(xmlnode->child, next, sub) {
         if (!sub->ns) {
@@ -3242,24 +3244,7 @@ read_yin_common(struct lys_module *module, struct lys_node *parent,
             continue;
         }
         if  (strcmp(sub->ns->value, LY_NSYIN)) {
-            /* possibly an extension */
-            if (!strcmp(sub->ns->value, LY_NSNACM) && ly_ctx_get_module(ctx, "ietf-netconf-acm", NULL)) {
-                /* internally handled NACM extensions */
-                if (!(opt & OPT_NACMEXT)) {
-                    LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, sub->name);
-                    goto error;
-                }
-                if (!strcmp(sub->name, "default-deny-write")) {
-                    node->nacm |= LYS_NACM_DENYW;
-                } else if (!strcmp(sub->name, "default-deny-all")) {
-                    node->nacm |= LYS_NACM_DENYA;
-                } else {
-                    LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, sub->name);
-                    goto error;
-                }
-            }
-
-            /* keep the node for later processing, so skipping lyxml_free() */
+            /* possibly an extension, keep the node for later processing, so skipping lyxml_free() */
             continue;
         }
 
@@ -3419,7 +3404,7 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     retval = (struct lys_node *)cs;
 
     if (read_yin_common(module, parent, retval, yin,
-            OPT_IDENT | OPT_MODULE | (valid_config ? OPT_CFG_INHERIT : 0) | OPT_NACMEXT)) {
+            OPT_IDENT | OPT_MODULE | (valid_config ? OPT_CFG_INHERIT : 0))) {
         goto error;
     }
 
@@ -3562,8 +3547,7 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
     retval = (struct lys_node *)choice;
 
     if (read_yin_common(module, parent, retval, yin,
-            OPT_IDENT | OPT_MODULE | (valid_config ? OPT_CFG_PARSE | OPT_CFG_INHERIT : OPT_CFG_IGNORE)
-            | (parent && (parent->nodetype == LYS_GROUPING) ? 0 : OPT_NACMEXT))) {
+            OPT_IDENT | OPT_MODULE | (valid_config ? OPT_CFG_PARSE | OPT_CFG_INHERIT : OPT_CFG_IGNORE))) {
         goto error;
     }
 
@@ -3753,8 +3737,7 @@ read_yin_anydata(struct lys_module *module, struct lys_node *parent, struct lyxm
     retval = (struct lys_node *)anyxml;
 
     if (read_yin_common(module, parent, retval, yin,
-            OPT_IDENT | OPT_MODULE | (valid_config ? OPT_CFG_PARSE | OPT_CFG_INHERIT : OPT_CFG_IGNORE)
-            | (parent && (parent->nodetype == LYS_GROUPING) ? 0 : OPT_NACMEXT))) {
+            OPT_IDENT | OPT_MODULE | (valid_config ? OPT_CFG_PARSE | OPT_CFG_INHERIT : OPT_CFG_IGNORE))) {
         goto error;
     }
 
@@ -3895,8 +3878,7 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     retval = (struct lys_node *)leaf;
 
     if (read_yin_common(module, parent, retval, yin,
-            OPT_IDENT | OPT_MODULE | (valid_config ? OPT_CFG_PARSE | OPT_CFG_INHERIT : OPT_CFG_IGNORE)
-            | (parent && (parent->nodetype == LYS_GROUPING) ? 0 : OPT_NACMEXT))) {
+            OPT_IDENT | OPT_MODULE | (valid_config ? OPT_CFG_PARSE | OPT_CFG_INHERIT : OPT_CFG_IGNORE))) {
         goto error;
     }
 
@@ -4091,8 +4073,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
     retval = (struct lys_node *)llist;
 
     if (read_yin_common(module, parent, retval, yin,
-            OPT_IDENT | OPT_MODULE | (valid_config ? OPT_CFG_PARSE | OPT_CFG_INHERIT : OPT_CFG_IGNORE)
-            | (parent && (parent->nodetype == LYS_GROUPING) ? 0 : OPT_NACMEXT))) {
+            OPT_IDENT | OPT_MODULE | (valid_config ? OPT_CFG_PARSE | OPT_CFG_INHERIT : OPT_CFG_IGNORE))) {
         goto error;
     }
 
@@ -4375,8 +4356,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     retval = (struct lys_node *)list;
 
     if (read_yin_common(module, parent, retval, yin,
-            OPT_IDENT | OPT_MODULE | (valid_config ? OPT_CFG_PARSE | OPT_CFG_INHERIT : OPT_CFG_IGNORE)
-            | (parent && (parent->nodetype == LYS_GROUPING) ? 0 : OPT_NACMEXT))) {
+            OPT_IDENT | OPT_MODULE | (valid_config ? OPT_CFG_PARSE | OPT_CFG_INHERIT : OPT_CFG_IGNORE))) {
         goto error;
     }
 
@@ -4721,8 +4701,7 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
     retval = (struct lys_node *)cont;
 
     if (read_yin_common(module, parent, retval, yin,
-            OPT_IDENT | OPT_MODULE | (valid_config ? OPT_CFG_PARSE | OPT_CFG_INHERIT : OPT_CFG_IGNORE)
-            | (parent && (parent->nodetype == LYS_GROUPING) ? 0 : OPT_NACMEXT))) {
+            OPT_IDENT | OPT_MODULE | (valid_config ? OPT_CFG_PARSE | OPT_CFG_INHERIT : OPT_CFG_IGNORE))) {
         goto error;
     }
 
@@ -5074,7 +5053,7 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
 
     retval = (struct lys_node *)inout;
 
-    if (read_yin_common(module, parent, retval, yin, OPT_MODULE | OPT_NACMEXT)) {
+    if (read_yin_common(module, parent, retval, yin, OPT_MODULE)) {
         goto error;
     }
 
@@ -5233,7 +5212,7 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
     notif->prev = (struct lys_node *)notif;
     retval = (struct lys_node *)notif;
 
-    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_NACMEXT)) {
+    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE)) {
         goto error;
     }
 
@@ -5418,7 +5397,7 @@ read_yin_rpc_action(struct lys_module *module, struct lys_node *parent, struct l
     rpc->prev = (struct lys_node *)rpc;
     retval = (struct lys_node *)rpc;
 
-    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE | OPT_NACMEXT)) {
+    if (read_yin_common(module, parent, retval, yin, OPT_IDENT | OPT_MODULE)) {
         goto error;
     }
 
@@ -5568,8 +5547,7 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     GETVAL(value, yin, "name");
     uses->name = lydict_insert(module->ctx, value, 0);
 
-    if (read_yin_common(module, parent, retval, yin, OPT_MODULE
-            | (parent && (parent->nodetype == LYS_GROUPING) ? 0 : OPT_NACMEXT))) {
+    if (read_yin_common(module, parent, retval, yin, OPT_MODULE)) {
         goto error;
     }
 

@@ -2324,7 +2324,7 @@ ingrouping(const struct lys_node *node)
  * final: 0 - do not change config flags; 1 - inherit config flags from the parent; 2 - remove config flags
  */
 static struct lys_node *
-lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const struct lys_node *node, uint8_t nacm,
+lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const struct lys_node *node,
                        struct unres_schema *unres, int shallow, int finalize)
 {
     struct lys_node *retval = NULL, *iter, *p;
@@ -2443,7 +2443,6 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
     retval->name = lydict_insert(ctx, node->name, 0);
     retval->dsc = lydict_insert(ctx, node->dsc, 0);
     retval->ref = lydict_insert(ctx, node->ref, 0);
-    retval->nacm = nacm;
     retval->flags = node->flags;
 
     retval->module = module;
@@ -2535,7 +2534,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         /* go recursively */
         if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
             LY_TREE_FOR(node->child, iter) {
-                if (!lys_node_dup_recursion(module, retval, iter, retval->nacm, unres, 0, finalize)) {
+                if (!lys_node_dup_recursion(module, retval, iter, unres, 0, finalize)) {
                     goto error;
                 }
             }
@@ -2732,7 +2731,11 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         uses->augment_size = uses_orig->augment_size;
         if (!shallow) {
             uses->augment = lys_augment_dup(module, (struct lys_node *)uses, uses_orig->augment, uses_orig->augment_size);
-            if (!uses->grp || uses->grp->nacm) {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+            if (!uses->grp || ((uint8_t*)&uses->grp->flags)[1]) {
+#else
+            if (!uses->grp || ((uint8_t*)&uses->grp->flags)[0]) {
+#endif
                 assert(!uses->child);
                 if (unres_schema_add_node(module, unres, uses, UNRES_USES, NULL) == -1) {
                     goto error;
@@ -2857,7 +2860,7 @@ lys_has_xpath(const struct lys_node *node)
 }
 
 struct lys_node *
-lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct lys_node *node, uint8_t nacm,
+lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct lys_node *node,
              struct unres_schema *unres, int shallow)
 {
     struct lys_node *p = NULL;
@@ -2872,7 +2875,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
         finalize = p ? ((p->nodetype == LYS_GROUPING) ? 0 : 2) : 1;
     }
 
-    result = lys_node_dup_recursion(module, parent, node, nacm, unres, shallow, finalize);
+    result = lys_node_dup_recursion(module, parent, node, unres, shallow, finalize);
     if (finalize) {
         /* check xpath expressions in the instantiated tree */
         for (iter = next = parent->child; iter; iter = next) {

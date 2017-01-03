@@ -107,65 +107,6 @@ yin_print_restr(struct lyout *out, int level, const char *elem_name, const struc
 }
 
 static int
-yin_has_nacmext(const struct lys_node *node)
-{
-    /* TODO remove with YANG extensions support, this is a temporary hack to avoid printing
-     * NACM extension instances since its definition is not even stored and it may confuse
-     * other tools when parsing modules printed from libyang */
-    return 0;
-
-    if (node->nacm && (!lys_parent(node) || lys_parent(node)->nacm != node->nacm)) {
-        return 1;
-    }
-    return 0;
-}
-
-static void
-yin_print_nacmext(struct lyout *out, int level, const struct lys_node *node, const struct lys_module *module)
-{
-    int i, j;
-    const char *prefix = NULL;
-
-    /* TODO remove with YANG extensions support, this is a temporary hack to avoid printing
-     * NACM extension instances since its definition is not even stored and it may confuse
-     * other tools when parsing modules printed from libyang */
-    return;
-
-    if (node->nacm && (!lys_parent(node) || lys_parent(node)->nacm != node->nacm)) {
-        /* locate ietf-netconf-acm module in imports */
-        if (!strcmp(module->name, "ietf-netconf-acm")) {
-            prefix = module->prefix;
-        } else {
-            /* search in imports */
-            for (i = 0; i < module->imp_size; i++) {
-                if (!strcmp(module->imp[i].module->name, "ietf-netconf-acm")) {
-                    prefix = module->imp[i].prefix;
-                    break;
-                }
-            }
-            /* and in imports of includes */
-            if (!prefix) {
-                for (j = 0; j < module->inc_size; j++) {
-                    for (i = 0; i < module->inc[j].submodule->imp_size; i++) {
-                        if (!strcmp(module->inc[j].submodule->imp[i].module->name, "ietf-netconf-acm")) {
-                            prefix = module->inc[j].submodule->imp[i].prefix;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        if ((node->nacm & LYS_NACM_DENYW) && (!lys_parent(node) || !(lys_parent(node)->nacm & LYS_NACM_DENYW))) {
-            ly_print(out, "%*s<%s:default-deny-write/>\n", LEVEL, INDENT, prefix);
-        }
-        if ((node->nacm & LYS_NACM_DENYA) && (!lys_parent(node) || !(lys_parent(node)->nacm & LYS_NACM_DENYA))) {
-            ly_print(out, "%*s<%s:default-deny-all/>\n", LEVEL, INDENT, prefix);
-        }
-    }
-}
-
-static int
 yin_has_snode_common(const struct lys_node *node)
 {
     if ((node->flags & LYS_STATUS_MASK) || node->dsc || node->ref || node->ext_size) {
@@ -794,7 +735,6 @@ yin_print_augment(struct lyout *out, int level, const struct lys_module *module,
     lydict_remove(module->ctx, str);
 
     level++;
-    yin_print_nacmext(out, level, (struct lys_node *)augment, module);
     yin_print_snode_common(out, level, (struct lys_node *)augment);
 
     for (i = 0; i < augment->iffeature_size; i++) {
@@ -890,8 +830,6 @@ yin_print_container(struct lyout *out, int level, const struct lys_node *node)
     yin_print_open(out, level, "container", "name", node->name, 0);
 
     level++;
-    yin_print_nacmext(out, level, node, node->module);
-
     if (cont->when) {
         yin_print_when(out, level, node->module, cont->when);
     }
@@ -938,7 +876,6 @@ yin_print_case(struct lyout *out, int level, const struct lys_node *node)
     yin_print_open(out, level, "case", "name", cas->name, 0);
 
     level++;
-    yin_print_nacmext(out, level, node, node->module);
     yin_print_snode_common2(out, level, node);
 
     for (i = 0; i < cas->iffeature_size; i++) {
@@ -973,7 +910,6 @@ yin_print_choice(struct lyout *out, int level, const struct lys_node *node)
     yin_print_open(out, level, "choice", "name", node->name, 0);
 
     level++;
-    yin_print_nacmext(out, level, node, node->module);
     if (choice->dflt) {
         yin_print_open(out, level, "default", "value", choice->dflt->name, 1);
     }
@@ -1011,7 +947,6 @@ yin_print_leaf(struct lyout *out, int level, const struct lys_node *node)
     yin_print_open(out, level, "leaf", "name", node->name, 0);
 
     level++;
-    yin_print_nacmext(out, level, node, node->module);
     if (leaf->when) {
         yin_print_when(out, level, node->module, leaf->when);
     }
@@ -1055,14 +990,13 @@ yin_print_anydata(struct lyout *out, int level, const struct lys_node *node)
     struct lys_node_anydata *any = (struct lys_node_anydata *)node;
     const char *name;
 
-    close = (yin_has_nacmext(node) || yin_has_snode_common2(node) || any->iffeature_size || any->must_size
+    close = (yin_has_snode_common2(node) || any->iffeature_size || any->must_size
             || any->when ? 0 : 1);
     name = any->nodetype == LYS_ANYXML ? "anyxml" : "anydata";
     yin_print_open(out, level, name, "name", any->name, close);
 
     if (!close) {
         level++;
-        yin_print_nacmext(out, level, node, node->module);
         yin_print_snode_common2(out, level, node);
         for (i = 0; i < any->iffeature_size; i++) {
             yin_print_iffeature(out, level, node->module, &any->iffeature[i]);
@@ -1089,7 +1023,6 @@ yin_print_leaflist(struct lyout *out, int level, const struct lys_node *node)
     yin_print_open(out, level, "leaf-list", "name", node->name, 0);
 
     level++;
-    yin_print_nacmext(out, level, node, node->module);
     if (llist->when) {
         yin_print_when(out, level, llist->module, llist->when);
     }
@@ -1145,7 +1078,6 @@ yin_print_list(struct lyout *out, int level, const struct lys_node *node)
     yin_print_open(out, level, "list", "name", node->name, 0);
 
     level++;
-    yin_print_nacmext(out, level, node, node->module);
     if (list->when) {
         yin_print_when(out, level, list->module, list->when);
     }
@@ -1222,7 +1154,7 @@ yin_print_uses(struct lyout *out, int level, const struct lys_node *node)
     struct lys_node_uses *uses = (struct lys_node_uses *)node;
     struct lys_module *mod;
 
-    close = (yin_has_nacmext(node) || yin_has_snode_common(node) || uses->iffeature_size || uses->when
+    close = (yin_has_snode_common(node) || uses->iffeature_size || uses->when
             || uses->refine_size || uses->augment_size ? 0 : 1);
 
     ly_print(out, "%*s<uses name=\"", LEVEL, INDENT);
@@ -1236,7 +1168,6 @@ yin_print_uses(struct lyout *out, int level, const struct lys_node *node)
 
     if (!close) {
         level++;
-        yin_print_nacmext(out, level, node, node->module);
         yin_print_snode_common(out, level, node);
         for (i = 0; i < uses->iffeature_size; i++) {
             yin_print_iffeature(out, level, node->module, &uses->iffeature[i]);
