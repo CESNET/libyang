@@ -1459,7 +1459,8 @@ fill_yin_extension(struct lys_module *module, struct lyxml_elem *yin, struct lys
         }
     }
 
-    /* TODO search for plugin */
+    /* search for plugin */
+    ext->plugin = ext_get_plugin(ext->name, ext->module->name, ext->module->rev ? ext->module->rev[0].date : NULL);
 
     return EXIT_SUCCESS;
 

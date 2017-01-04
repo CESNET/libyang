@@ -133,4 +133,18 @@ int lyp_ctx_add_module(struct lys_module **module);
 unsigned int pututf8(char *dst, int32_t value);
 unsigned int copyutf8(char *dst, const char *src);
 
+/*
+ * Internal functions implementing YANG extensions support
+ * - implemented in extensions.c
+ */
+
+/**
+ * @brief If available, get the extension plugin for the specified extension
+ * @param[in] name Name of the extension
+ * @param[in] module Name of the extension's module
+ * @param[in] revision Revision of the extension's module
+ * @return pointer to the extension plugin structure, NULL if no plugin available
+ */
+struct lyext_plugin *ext_get_plugin(const char *name, const char *module, const char *revision);
+
 #endif /* LY_PARSER_H_ */

@@ -12,6 +12,7 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 #define _GNU_SOURCE
+#include <assert.h>
 #include <errno.h>
 #include <dirent.h>
 #include <dlfcn.h>
@@ -204,4 +205,25 @@ lys_ext_instance_type(struct lys_ext_instance *ext)
     } else {
         return ext->def->plugin->type;
     }
+}
+
+struct lyext_plugin *
+ext_get_plugin(const char *name, const char *module, const char *revision)
+{
+    unsigned int u;
+
+    assert(name);
+    assert(module);
+
+    for (u = 0; u < ext_plugins_count; u++) {
+        if (!strcmp(name, ext_plugins[u].name) &&
+                !strcmp(module, ext_plugins[u].module) &&
+                (!ext_plugins[u].revision || !strcmp(revision, ext_plugins[u].revision))) {
+            /* we have the match */
+            return ext_plugins[u].plugin;
+        }
+    }
+
+    /* plugin not found */
+    return NULL;
 }
