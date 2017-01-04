@@ -414,6 +414,16 @@ const void *lys_ext_instance_substmt(const struct lys_ext_instance *ext);
 LYEXT_TYPE lys_ext_instance_type(struct lys_ext_instance *ext);
 
 /**
+ * @brief Get the position of the extension instance in the extensions list.
+ *
+ * @param[in] def Definition of the extension to search
+ * @param[in] ext Extensions list as they are stored in the schema tree nodes
+ * @param[in] ext_size Number of items in the extensions list
+ * @return -1 in case the extension is not present in the list, index of the extension in the provided list otherwise
+ */
+int lys_ext_instance_presence(struct lys_ext *def, struct lys_ext_instance **ext, uint8_t ext_size);
+
+/**
  * @brief Load the available YANG extensions plugins from the plugin directory (LIBDIR/libyang/).
  *
  * This function is automatically called whenever a new context is created. Note that the removed plugins are kept

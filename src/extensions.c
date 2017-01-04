@@ -227,3 +227,24 @@ ext_get_plugin(const char *name, const char *module, const char *revision)
     /* plugin not found */
     return NULL;
 }
+
+API int
+lys_ext_instance_presence(struct lys_ext *def, struct lys_ext_instance **ext, uint8_t ext_size)
+{
+    uint8_t index;
+
+    if (!def || (ext_size && !ext)) {
+        ly_errno = LY_EINVAL;
+        return -1;
+    }
+
+    /* search for the extension instance */
+    for (index = 0; index < ext_size; index++) {
+        if (ext[index]->def == def) {
+            return index;
+        }
+    }
+
+    /* not found */
+    return -1;
+}
