@@ -66,6 +66,7 @@ lyext_clean_plugins(void)
         dlclose(dlhandlers.set.g[u]);
     }
     free(dlhandlers.set.g);
+    dlhandlers.set.g = NULL;
     dlhandlers.size = 0;
     dlhandlers.number = 0;
 
@@ -149,9 +150,13 @@ lyext_load_plugins(void)
         /* check extension implementations for collisions */
         for(u = 0; plugin[u].name; u++) {
             for (v = 0; v < ext_plugins_count; v++) {
-                if (!strcmp(plugin[u].name, ext_plugins[v].name) && !strcmp(plugin[u].ns, ext_plugins[v].ns)) {
-                    LOGERR(LY_ESYS, "Processing \"%s\" extension plugin failed, implementation collision for %s in %s.",
-                           name, plugin[u].name, plugin[u].ns);
+                if (!strcmp(plugin[u].name, ext_plugins[v].name) &&
+                        !strcmp(plugin[u].module, ext_plugins[v].module) &&
+                        (!plugin[u].revision || !ext_plugins[v].revision || !strcmp(plugin[u].revision, ext_plugins[v].revision))) {
+                    LOGERR(LY_ESYS, "Processing \"%s\" extension plugin failed,"
+                           "implementation collision for extension %s from module %s%s%s.",
+                           name, plugin[u].name, plugin[u].module, plugin[u].revision ? "@" : "",
+                           plugin[u].revision ? plugin[u].revision : "");
                     dlclose(dlhandler);
                     continue;
                 }

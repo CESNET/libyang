@@ -58,7 +58,12 @@ struct lyext_plugin {
 };
 
 struct lyext_plugin_list {
-    const char *ns;              /**< namespace of the extension */
+    const char *module;          /**< name of the module where the extension is defined */
+    const char *revision;        /**< optional module revision - if not specified, the plugin applies to any revision,
+                                      which is not an optional approach due to a possible future revisions of the module.
+                                      Instead, there should be defined multiple items in the plugins list, each with the
+                                      different revision, but all with the same pointer to the plugin extension. The
+                                      only valid use case for the NULL revision is the case the module has no revision. */
     const char *name;            /**< name of the extension */
     struct lyext_plugin *plugin; /**< plugin for the extension */
 };
