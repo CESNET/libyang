@@ -63,8 +63,11 @@ struct unres_ext {
     } data;
     LYS_INFORMAT datatype;           /**< type of the data in data union */
 
+    /* data for lys_ext_instance structure */
     void *parent;
     LYEXT_PAR parent_type;
+    LYEXT_SUBSTMT substmt;
+    uint8_t substmt_index;
 };
 
 /**

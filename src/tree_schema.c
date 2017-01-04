@@ -1333,6 +1333,8 @@ lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, unsigned int
             result[u]->arg_value = lydict_insert(mod->ctx, orig[u]->arg_value, 0);
             result[u]->parent = parent;
             result[u]->parent_type = parent_type;
+            result[u]->substmt = orig[u]->substmt;
+            result[u]->substmt_index = orig[u]->substmt_index;
         } else {
             /* original extension is not yet resolved, so duplicate it in unres */
             i = unres_schema_find(unres, -1, orig, UNRES_EXT);

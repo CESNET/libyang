@@ -104,6 +104,9 @@ fill_yin_ext(void *parent, LYEXT_PAR parent_type, struct lys_module *module, str
     info->datatype = LYS_IN_YIN;
     info->parent = parent;
     info->parent_type = parent_type;
+    /* TODO - extensions in substatements support */
+    info->substmt = 0;
+    info->substmt_index = 0;
 
     if (unres_schema_add_node(module, unres, ext, UNRES_EXT, (struct lys_node *)info) == -1) {
         return EXIT_FAILURE;
