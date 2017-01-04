@@ -6852,7 +6852,7 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int ignore
 
     assert(type->base == LY_TYPE_UNION);
 
-    if ((leaf->value_type == LY_TYPE_UNION) || (leaf->value_type == (LY_TYPE_INST | LY_TYPE_INST_UNRES))) {
+    if ((leaf->value_type == LY_TYPE_UNION) || ((int)leaf->value_type == (LY_TYPE_INST | LY_TYPE_INST_UNRES))) {
         /* either NULL or instid previously converted to JSON */
         json_val = leaf->value.string;
     }
