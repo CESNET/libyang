@@ -82,8 +82,7 @@ lyv_data_context(const struct lyd_node *node, int options, struct unres_data *un
     }
 
     /* check all relevant when conditions */
-    if ((node->when_status & LYD_WHEN) &&
-            (!(options & LYD_OPT_TYPEMASK) || (options & (LYD_OPT_CONFIG | LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF)))) {
+    if (node->when_status & LYD_WHEN) {
         if (unres_data_add(unres, (struct lyd_node *)node, UNRES_WHEN)) {
             return EXIT_FAILURE;
         }
@@ -96,7 +95,7 @@ lyv_data_context(const struct lyd_node *node, int options, struct unres_data *un
     }
 
     /* check elements order in case of RPC's input and output */
-    if (node->validity && lyp_is_rpc_action(node->schema)) {
+    if (!(options & (LYD_OPT_TRUSTED | LYD_OPT_NOTIF_FILTER)) && (node->validity & LYD_VAL_MAND) && lyp_is_rpc_action(node->schema)) {
         if ((node->prev != node) && node->prev->next) {
             for (siter = lys_getnext(node->schema, lys_parent(node->schema), node->schema->module, 0);
                     siter;
@@ -341,7 +340,7 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
 
     schema = node->schema; /* shortcut */
 
-    if (node->validity & LYD_VAL_MAND) {
+    if (!(options & (LYD_OPT_TRUSTED | LYD_OPT_NOTIF_FILTER)) && (node->validity & LYD_VAL_MAND)) {
         /* check presence and correct order of all keys in case of list */
         if (schema->nodetype == LYS_LIST && !(options & (LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
             if (lyv_keys(node)) {
@@ -422,10 +421,6 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
         }
     }
 
-    if (node->validity) {
-
-    }
-
     if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
         /* since feature can be enabled/disabled, do this check despite the validity flag,
          * - check if the type value (enum, bit, identity) is disabled via feature  */
@@ -479,8 +474,8 @@ nextbit:
         }
     }
 
-    if (!(options & LYD_OPT_TYPEMASK) || (options & (LYD_OPT_CONFIG | LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF))) {
-        /* check must conditions */
+    /* check must conditions */
+    if (!(options & (LYD_OPT_TRUSTED | LYD_OPT_NOTIF_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
         i = resolve_applies_must(node);
         if ((i & 0x1) && (unres_data_add(unres, node, UNRES_MUST) == -1)) {
             return EXIT_FAILURE;

@@ -541,8 +541,9 @@ extern "C" {
  * data. So how can then these conditions be verified during validation?
  *
  * There is an option to pass this additional data tree to all the functions that perform \b must and \b when condition
- * checking (\b lyd_parse_*() and lyd_validate()). Also, there is a flag #LYS_VALID_DEP of \b struct lys_node that
- * marks schema nodes that include conditions that require foreign nodes (outside their subtree) for their evaluation.
+ * checking (\b lyd_parse_*() and lyd_validate()). Also, there are 2 flags of \b struct lys_node that
+ * mark schema nodes that include paths that require foreign nodes (outside their subtree) for their evaluation. #LYS_XPATH_DEP
+ * marks nodes with such must and/or when expressions, #LYS_LEAFREF_DEP with such a leafref.
  * The subtree root is always the particular operation data node (for RPC it is the RPC data node and all
  * the input or output nodes as its children and similarly for action and notification). Note that for action and
  * not-top-level notification this means that all their parents are not considered as belonging to their subtree even though
@@ -558,7 +559,7 @@ extern "C" {
  *
  * Firstly, you should somehow learn that the operation data tree you are currently working with includes some schema
  * node instances that have conditions that require foreign data. You can either know this about every operation beforehand
- * or you go through all the schema nodes looking for the flag #LYS_VALID_DEP. Then you should use lys_node_xpath_atomize()
+ * or you go through all the schema nodes looking for the flags #LYS_XPATH_DEP and #LYS_LEAFREF_DEP. Then you should use lys_node_xpath_atomize()
  * to retrieve all XPath condition dependencies (in the form of schema nodes) outside the operation subtree. You will likely
  * want to use the flag #LYXP_NO_LOCAL to get rid of all the nodes from inside the subtree (you should already have those).
  * The last thing to do is to build a data tree that includes at least all the instances of the nodes obtained from lys_node_xpath_atomize()

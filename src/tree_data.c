@@ -5114,7 +5114,8 @@ lyd_wd_default(struct lyd_node_leaf_list *node)
 }
 
 static int
-lyd_wd_add_leaf(struct lyd_node **tree, struct lyd_node *last_parent, struct lys_node_leaf *leaf, struct unres_data *unres)
+lyd_wd_add_leaf(struct lyd_node **tree, struct lyd_node *last_parent, struct lys_node_leaf *leaf, struct unres_data *unres,
+                int check_when_must)
 {
     struct lyd_node *dummy = NULL, *current;
     struct lys_tpdf *tpdf;
@@ -5148,15 +5149,17 @@ lyd_wd_add_leaf(struct lyd_node **tree, struct lyd_node *last_parent, struct lys
     }
     for (current = dummy; ; current = current->child) {
         /* remember the created data in unres */
-        if ((current->when_status & LYD_WHEN) && unres_data_add(unres, current, UNRES_WHEN) == -1) {
-            goto error;
-        }
-        ret = resolve_applies_must(current);
-        if ((ret & 0x1) && (unres_data_add(unres, current, UNRES_MUST) == -1)) {
-            goto error;
-        }
-        if ((ret & 0x2) && (unres_data_add(unres, current, UNRES_MUST_INOUT) == -1)) {
-            goto error;
+        if (check_when_must) {
+            if ((current->when_status & LYD_WHEN) && unres_data_add(unres, current, UNRES_WHEN) == -1) {
+                goto error;
+            }
+            ret = resolve_applies_must(current);
+            if ((ret & 0x1) && (unres_data_add(unres, current, UNRES_MUST) == -1)) {
+                goto error;
+            }
+            if ((ret & 0x2) && (unres_data_add(unres, current, UNRES_MUST_INOUT) == -1)) {
+                goto error;
+            }
         }
 
         /* clear dummy-node flag */
@@ -5191,7 +5194,8 @@ error:
 }
 
 static int
-lyd_wd_add_leaflist(struct lyd_node **tree, struct lyd_node *last_parent, struct lys_node_leaflist *llist, struct unres_data *unres)
+lyd_wd_add_leaflist(struct lyd_node **tree, struct lyd_node *last_parent, struct lys_node_leaflist *llist,
+                    struct unres_data *unres, int check_when_must)
 {
     struct lyd_node *dummy, *current, *first = NULL;
     struct lys_tpdf *tpdf;
@@ -5242,15 +5246,17 @@ lyd_wd_add_leaflist(struct lyd_node **tree, struct lyd_node *last_parent, struct
 
         for (current = dummy; ; current = current->child) {
             /* remember the created data in unres */
-            if ((current->when_status & LYD_WHEN) && unres_data_add(unres, current, UNRES_WHEN) == -1) {
-                goto error;
-            }
-            ret = resolve_applies_must(current);
-            if ((ret & 0x1) && (unres_data_add(unres, current, UNRES_MUST) == -1)) {
-                goto error;
-            }
-            if ((ret & 0x2) && (unres_data_add(unres, current, UNRES_MUST_INOUT) == -1)) {
-                goto error;
+            if (check_when_must) {
+                if ((current->when_status & LYD_WHEN) && unres_data_add(unres, current, UNRES_WHEN) == -1) {
+                    goto error;
+                }
+                ret = resolve_applies_must(current);
+                if ((ret & 0x1) && (unres_data_add(unres, current, UNRES_MUST) == -1)) {
+                    goto error;
+                }
+                if ((ret & 0x2) && (unres_data_add(unres, current, UNRES_MUST_INOUT) == -1)) {
+                    goto error;
+                }
             }
 
             /* clear dummy-node flag */
@@ -5324,13 +5330,19 @@ lyd_wd_add_subtree(struct lyd_node **root, struct lyd_node *last_parent, struct 
     struct ly_set *present = NULL;
     struct lys_node *siter, *siter_prev;
     struct lyd_node *iter;
-    int i;
+    int i, check_when_must;
 
     assert(root);
 
     if ((options & LYD_OPT_TYPEMASK) && (schema->flags & LYS_CONFIG_R)) {
         /* non LYD_OPT_DATA tree, status data are not expected here */
         return EXIT_SUCCESS;
+    }
+
+    if (options & (LYD_OPT_TRUSTED | LYD_OPT_NOTIF_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
+        check_when_must = 0;
+    } else {
+        check_when_must = 1;
     }
 
     if (toplevel && (schema->nodetype & (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER))) {
@@ -5403,15 +5415,17 @@ lyd_wd_add_subtree(struct lyd_node **root, struct lyd_node *last_parent, struct 
             last_parent = subroot;
 
             /* remember the created container in unres */
-            if ((subroot->when_status & LYD_WHEN) && unres_data_add(unres, subroot, UNRES_WHEN) == -1) {
-                goto error;
-            }
-            i = resolve_applies_must(subroot);
-            if ((i & 0x1) && (unres_data_add(unres, subroot, UNRES_MUST) == -1)) {
-                goto error;
-            }
-            if ((i & 0x2) && (unres_data_add(unres, subroot, UNRES_MUST_INOUT) == -1)) {
-                goto error;
+            if (check_when_must) {
+                if ((subroot->when_status & LYD_WHEN) && unres_data_add(unres, subroot, UNRES_WHEN) == -1) {
+                    goto error;
+                }
+                i = resolve_applies_must(subroot);
+                if ((i & 0x1) && (unres_data_add(unres, subroot, UNRES_MUST) == -1)) {
+                    goto error;
+                }
+                if ((i & 0x2) && (unres_data_add(unres, subroot, UNRES_MUST_INOUT) == -1)) {
+                    goto error;
+                }
             }
         }
         /* no break */
@@ -5474,11 +5488,11 @@ lyd_wd_add_subtree(struct lyd_node **root, struct lyd_node *last_parent, struct 
             }
         }
         if (schema->nodetype == LYS_LEAF) {
-            if (lyd_wd_add_leaf(root, last_parent, (struct lys_node_leaf*)schema, unres)) {
+            if (lyd_wd_add_leaf(root, last_parent, (struct lys_node_leaf*)schema, unres, check_when_must)) {
                 return EXIT_FAILURE;
             }
         } else { /* LYS_LEAFLIST */
-            if (lyd_wd_add_leaflist(root, last_parent, (struct lys_node_leaflist*)schema, unres)) {
+            if (lyd_wd_add_leaflist(root, last_parent, (struct lys_node_leaflist*)schema, unres, check_when_must)) {
                 goto error;
             }
         }
@@ -5722,7 +5736,7 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
                 data_tree_sibling = (struct lyd_node *)data_tree;
             }
 
-            /* unlink msg_sibling if needed (won't do anything ontherwise) */
+            /* unlink msg_sibling if needed (won't do anything otherwise) */
             lyd_unlink_internal(msg_sibling, 0);
 
             /* now we can link msg_sibling into data_tree_parent or next to data_tree_sibling */
