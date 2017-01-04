@@ -4445,14 +4445,7 @@ resolve_extension(struct unres_ext *info, const struct lys_module *mod, struct l
         vlog_node = NULL;
         vlog_type = LY_VLOG_LYS;
         break;
-    case LYEXT_PAR_TYPE:
-    case LYEXT_PAR_TPDF:
-    case LYEXT_PAR_FEATURE:
-    case LYEXT_PAR_IDENT:
-    case LYEXT_PAR_EXT:
-    case LYEXT_PAR_EXTINST:
-    case LYEXT_PAR_REFINE:
-    case LYEXT_PAR_DEVIATION:
+    default:
         vlog_node = NULL;
         vlog_node = LY_VLOG_NONE;
         break;
@@ -4534,6 +4527,8 @@ resolve_extension(struct unres_ext *info, const struct lys_module *mod, struct l
             (*ext) = calloc(1, sizeof(struct lys_ext_instance));
             ((struct lys_ext_instance *)(*ext))->def = e;
             ((struct lys_ext_instance *)(*ext))->arg_value = value;
+            ((struct lys_ext_instance *)(*ext))->parent = info->parent;
+            ((struct lys_ext_instance *)(*ext))->parent_type = info->parent_type;
 
             /* extension instances in extension */
             if (c_ext == -1) {

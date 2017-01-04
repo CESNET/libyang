@@ -1304,10 +1304,11 @@ lys_yang_type_dup(struct lys_module *module, struct lys_node *parent, struct yan
  * duplicate extension instance
  */
 static struct lys_ext_instance **
-lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, unsigned int size, struct unres_schema *unres)
+lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, unsigned int size,
+            void *parent, LYEXT_PAR parent_type, struct unres_schema *unres)
 {
     int i;
-    unsigned int u;
+    unsigned int u = 0;
     struct lys_ext_instance **result;
     struct unres_ext *info, *info_orig;
 
@@ -1330,13 +1331,15 @@ lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, unsigned int
             }
             /* generic part */
             result[u]->arg_value = lydict_insert(mod->ctx, orig[u]->arg_value, 0);
+            result[u]->parent = parent;
+            result[u]->parent_type = parent_type;
         } else {
             /* original extension is not yet resolved, so duplicate it in unres */
             i = unres_schema_find(unres, -1, orig, UNRES_EXT);
             if (i == -1) {
                 /* extension not found in unres */
                 LOGINT;
-                return NULL;
+                goto error;
             }
             info_orig = unres->str_snode[i];
             info = malloc(sizeof *info);
@@ -1344,15 +1347,312 @@ lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, unsigned int
             if (info->datatype == LYS_IN_YIN) {
                 info->data.yin = lyxml_dup_elem(mod->ctx, info_orig->data.yin, NULL, 1);
             } /* else TODO YANG */
-            info->parent = info_orig->parent;
-            info->parent_type = info_orig->parent_type;
+            info->parent = parent;
+            info->parent_type = parent_type;
             if (unres_schema_add_node(mod, unres, &result[u], UNRES_EXT, (struct lys_node *)info) == -1) {
-                return NULL;
+                goto error;
             }
         }
     }
 
     return result;
+
+error:
+    lys_extension_instances_free(mod->ctx, result, u);
+    return NULL;
+}
+
+API const void *
+lys_ext_instance_substmt(const struct lys_ext_instance *ext)
+{
+    if (!ext) {
+        return NULL;
+    }
+
+    switch (ext->substmt) {
+    case LYEXT_SUBSTMT_SELF:
+    case LYEXT_SUBSTMT_MODIFIER:
+    case LYEXT_SUBSTMT_VERSION:
+        return NULL;
+    case LYEXT_SUBSTMT_ARGUMENT:
+        if (ext->parent_type == LYEXT_PAR_EXT) {
+            return ((struct lys_ext_instance*)ext->parent)->arg_value;
+        }
+        break;
+    case LYEXT_SUBSTMT_BASE:
+        if (ext->parent_type == LYEXT_PAR_TYPE) {
+            return ((struct lys_type*)ext->parent)->info.ident.ref[ext->substmt_index];
+        } else if (ext->parent_type == LYEXT_PAR_IDENT) {
+            return ((struct lys_ident*)ext->parent)->base[ext->substmt_index];
+        }
+        break;
+    case LYEXT_SUBSTMT_BELONGSTO:
+        if (ext->parent_type == LYEXT_PAR_MODULE && ((struct lys_module*)ext->parent)->type) {
+            return ((struct lys_submodule*)ext->parent)->belongsto;
+        }
+        break;
+    case LYEXT_SUBSTMT_CONFIG:
+    case LYEXT_SUBSTMT_MANDATORY:
+        if (ext->parent_type == LYEXT_PAR_NODE) {
+            return &((struct lys_node*)ext->parent)->flags;
+        } else if (ext->parent_type == LYEXT_PAR_DEVIATE) {
+            return &((struct lys_deviate*)ext->parent)->flags;
+        } else if (ext->parent_type == LYEXT_PAR_REFINE) {
+            return &((struct lys_refine*)ext->parent)->flags;
+        }
+        break;
+    case LYEXT_SUBSTMT_CONTACT:
+        if (ext->parent_type == LYEXT_PAR_MODULE) {
+            return ((struct lys_module*)ext->parent)->contact;
+        }
+        break;
+    case LYEXT_SUBSTMT_DEFAULT:
+        if (ext->parent_type == LYEXT_PAR_NODE) {
+            switch (((struct lys_node*)ext->parent)->nodetype) {
+            case LYS_LEAF:
+            case LYS_LEAFLIST:
+                /* in case of leaf, the index is supposed to be 0, so it will return the
+                 * correct pointer despite the leaf structure does not have dflt as array */
+                return ((struct lys_node_leaflist*)ext->parent)->dflt[ext->substmt_index];
+            case LYS_CHOICE:
+                return ((struct lys_node_choice*)ext->parent)->dflt;
+            default:
+                /* internal error */
+                break;
+            }
+        } else if (ext->parent_type == LYEXT_PAR_TPDF) {
+            return ((struct lys_tpdf*)ext->parent)->dflt;
+        } else if (ext->parent_type == LYEXT_PAR_DEVIATE) {
+            return ((struct lys_deviate*)ext->parent)->dflt[ext->substmt_index];
+        } else if (ext->parent_type == LYEXT_PAR_REFINE) {
+            return &((struct lys_refine*)ext->parent)->dflt[ext->substmt_index];
+        }
+        break;
+    case LYEXT_SUBSTMT_DESCRIPTION:
+        switch (ext->parent_type) {
+        case LYEXT_PAR_NODE:
+            return ((struct lys_node*)ext->parent)->dsc;
+        case LYEXT_PAR_MODULE:
+            return ((struct lys_module*)ext->parent)->dsc;
+        case LYEXT_PAR_IMPORT:
+            return ((struct lys_import*)ext->parent)->dsc;
+        case LYEXT_PAR_INCLUDE:
+            return ((struct lys_include*)ext->parent)->dsc;
+        case LYEXT_PAR_EXT:
+            return ((struct lys_ext*)ext->parent)->dsc;
+        case LYEXT_PAR_FEATURE:
+            return ((struct lys_feature*)ext->parent)->dsc;
+        case LYEXT_PAR_TPDF:
+            return ((struct lys_tpdf*)ext->parent)->dsc;
+        case LYEXT_PAR_TYPE_BIT:
+            return ((struct lys_type_bit*)ext->parent)->dsc;
+        case LYEXT_PAR_TYPE_ENUM:
+            return ((struct lys_type_enum*)ext->parent)->dsc;
+        case LYEXT_PAR_MUST:
+        case LYEXT_PAR_RANGE:
+        case LYEXT_PAR_LENGTH:
+        case LYEXT_PAR_PATTERN:
+            return ((struct lys_restr*)ext->parent)->dsc;
+        case LYEXT_PAR_WHEN:
+            return ((struct lys_when*)ext->parent)->dsc;
+        case LYEXT_PAR_IDENT:
+            return ((struct lys_ident*)ext->parent)->dsc;
+        case LYEXT_PAR_DEVIATION:
+            return ((struct lys_deviation*)ext->parent)->dsc;
+        case LYEXT_PAR_REVISION:
+            return ((struct lys_revision*)ext->parent)->dsc;
+        case LYEXT_PAR_REFINE:
+            return ((struct lys_refine*)ext->parent)->dsc;
+        default:
+            break;
+        }
+        break;
+    case LYEXT_SUBSTMT_ERRTAG:
+        if (ext->parent_type == LYEXT_PAR_MUST || ext->parent_type == LYEXT_PAR_RANGE ||
+                ext->parent_type == LYEXT_PAR_LENGTH || ext->parent_type == LYEXT_PAR_PATTERN) {
+            return ((struct lys_restr*)ext->parent)->eapptag;
+        }
+        break;
+    case LYEXT_SUBSTMT_ERRMSG:
+        if (ext->parent_type == LYEXT_PAR_MUST || ext->parent_type == LYEXT_PAR_RANGE ||
+                ext->parent_type == LYEXT_PAR_LENGTH || ext->parent_type == LYEXT_PAR_PATTERN) {
+            return ((struct lys_restr*)ext->parent)->emsg;
+        }
+        break;
+    case LYEXT_SUBSTMT_DIGITS:
+        if (ext->parent_type == LYEXT_PAR_TYPE && ((struct lys_type*)ext->parent)->base == LY_TYPE_DEC64) {
+            return &((struct lys_type*)ext->parent)->info.dec64.dig;
+        }
+        break;
+    case LYEXT_SUBSTMT_KEY:
+        if (ext->parent_type == LYEXT_PAR_NODE && ((struct lys_node*)ext->parent)->nodetype == LYS_LIST) {
+            return ((struct lys_node_list*)ext->parent)->keys;
+        }
+        break;
+    case LYEXT_SUBSTMT_MAX:
+        if (ext->parent_type == LYEXT_PAR_NODE) {
+            if (((struct lys_node*)ext->parent)->nodetype == LYS_LIST) {
+                return &((struct lys_node_list*)ext->parent)->max;
+            } else if (((struct lys_node*)ext->parent)->nodetype == LYS_LEAFLIST) {
+                return &((struct lys_node_leaflist*)ext->parent)->max;
+            }
+        } else if (ext->parent_type == LYEXT_PAR_REFINE) {
+            return &((struct lys_refine*)ext->parent)->mod.list.max;
+        }
+        break;
+    case LYEXT_SUBSTMT_MIN:
+        if (ext->parent_type == LYEXT_PAR_NODE) {
+            if (((struct lys_node*)ext->parent)->nodetype == LYS_LIST) {
+                return &((struct lys_node_list*)ext->parent)->min;
+            } else if (((struct lys_node*)ext->parent)->nodetype == LYS_LEAFLIST) {
+                return &((struct lys_node_leaflist*)ext->parent)->min;
+            }
+        } else if (ext->parent_type == LYEXT_PAR_REFINE) {
+            return &((struct lys_refine*)ext->parent)->mod.list.min;
+        }
+        break;
+    case LYEXT_SUBSTMT_NAMESPACE:
+        if (ext->parent_type == LYEXT_PAR_MODULE && !((struct lys_module*)ext->parent)->type) {
+            return ((struct lys_module*)ext->parent)->ns;
+        }
+        break;
+    case LYEXT_SUBSTMT_ORDEREDBY:
+        if (ext->parent_type == LYEXT_PAR_NODE &&
+                (((struct lys_node*)ext->parent)->nodetype & (LYS_LIST | LYS_LEAFLIST))) {
+            return &((struct lys_node_list*)ext->parent)->flags;
+        }
+        break;
+    case LYEXT_SUBSTMT_ORGANIZATION:
+        if (ext->parent_type == LYEXT_PAR_MODULE) {
+            return ((struct lys_module*)ext->parent)->org;
+        }
+        break;
+    case LYEXT_SUBSTMT_PATH:
+        if (ext->parent_type == LYEXT_PAR_TYPE && ((struct lys_type*)ext->parent)->base == LY_TYPE_LEAFREF) {
+            return ((struct lys_type*)ext->parent)->info.lref.path;
+        }
+        break;
+    case LYEXT_SUBSTMT_POSITION:
+        if (ext->parent_type == LYEXT_PAR_TYPE_BIT) {
+            return &((struct lys_type_bit*)ext->parent)->pos;
+        }
+        break;
+    case LYEXT_SUBSTMT_PREFIX:
+        if (ext->parent_type == LYEXT_PAR_MODULE) {
+            /* covers also lys_submodule */
+            return ((struct lys_module*)ext->parent)->prefix;
+        } else if (ext->parent_type == LYEXT_PAR_IMPORT) {
+            return ((struct lys_import*)ext->parent)->prefix;
+        }
+        break;
+    case LYEXT_SUBSTMT_PRESENCE:
+        if (ext->parent_type == LYEXT_PAR_NODE && ((struct lys_node*)ext->parent)->nodetype == LYS_CONTAINER) {
+            return ((struct lys_node_container*)ext->parent)->presence;
+        } else if (ext->parent_type == LYEXT_PAR_REFINE) {
+            return ((struct lys_refine*)ext->parent)->mod.presence;
+        }
+        break;
+    case LYEXT_SUBSTMT_REFERENCE:
+        switch (ext->parent_type) {
+        case LYEXT_PAR_NODE:
+            return ((struct lys_node*)ext->parent)->ref;
+        case LYEXT_PAR_MODULE:
+            return ((struct lys_module*)ext->parent)->ref;
+        case LYEXT_PAR_IMPORT:
+            return ((struct lys_import*)ext->parent)->ref;
+        case LYEXT_PAR_INCLUDE:
+            return ((struct lys_include*)ext->parent)->ref;
+        case LYEXT_PAR_EXT:
+            return ((struct lys_ext*)ext->parent)->ref;
+        case LYEXT_PAR_FEATURE:
+            return ((struct lys_feature*)ext->parent)->ref;
+        case LYEXT_PAR_TPDF:
+            return ((struct lys_tpdf*)ext->parent)->ref;
+        case LYEXT_PAR_TYPE_BIT:
+            return ((struct lys_type_bit*)ext->parent)->ref;
+        case LYEXT_PAR_TYPE_ENUM:
+            return ((struct lys_type_enum*)ext->parent)->ref;
+        case LYEXT_PAR_MUST:
+        case LYEXT_PAR_RANGE:
+        case LYEXT_PAR_LENGTH:
+        case LYEXT_PAR_PATTERN:
+            return ((struct lys_restr*)ext->parent)->ref;
+        case LYEXT_PAR_WHEN:
+            return ((struct lys_when*)ext->parent)->ref;
+        case LYEXT_PAR_IDENT:
+            return ((struct lys_ident*)ext->parent)->ref;
+        case LYEXT_PAR_DEVIATION:
+            return ((struct lys_deviation*)ext->parent)->ref;
+        case LYEXT_PAR_REVISION:
+            return ((struct lys_revision*)ext->parent)->ref;
+        case LYEXT_PAR_REFINE:
+            return ((struct lys_refine*)ext->parent)->ref;
+        default:
+            break;
+        }
+        break;
+    case LYEXT_SUBSTMT_REQINST:
+        if (ext->parent_type == LYEXT_PAR_TYPE) {
+            if (((struct lys_type*)ext->parent)->base == LY_TYPE_LEAFREF) {
+                return &((struct lys_type*)ext->parent)->info.lref.req;
+            } else if (((struct lys_type*)ext->parent)->base == LY_TYPE_INST) {
+                return &((struct lys_type*)ext->parent)->info.inst.req;
+            }
+        }
+        break;
+    case LYEXT_SUBSTMT_REVISIONDATE:
+        if (ext->parent_type == LYEXT_PAR_IMPORT) {
+            return ((struct lys_import*)ext->parent)->rev;
+        } else if (ext->parent_type == LYEXT_PAR_INCLUDE) {
+            return ((struct lys_include*)ext->parent)->rev;
+        }
+        break;
+    case LYEXT_SUBSTMT_STATUS:
+        switch (ext->parent_type) {
+        case LYEXT_PAR_NODE:
+        case LYEXT_PAR_IDENT:
+        case LYEXT_PAR_TPDF:
+        case LYEXT_PAR_EXT:
+        case LYEXT_PAR_FEATURE:
+        case LYEXT_PAR_TYPE_ENUM:
+        case LYEXT_PAR_TYPE_BIT:
+            /* in all structures the flags member is at the same offset */
+            return &((struct lys_node*)ext->parent)->flags;
+        default:
+            break;
+        }
+        break;
+    case LYEXT_SUBSTMT_UNIQUE:
+        if (ext->parent_type == LYEXT_PAR_DEVIATE) {
+            return &((struct lys_deviate*)ext->parent)->unique[ext->substmt_index];
+        } else if (ext->parent_type == LYEXT_PAR_NODE && ((struct lys_node*)ext->parent)->nodetype == LYS_LIST) {
+            return &((struct lys_node_list*)ext->parent)->unique[ext->substmt_index];
+        }
+        break;
+    case LYEXT_SUBSTMT_UNITS:
+        if (ext->parent_type == LYEXT_PAR_NODE &&
+                (((struct lys_node*)ext->parent)->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+            /* units is at the same offset in both lys_node_leaf and lys_node_leaflist */
+            return ((struct lys_node_leaf*)ext->parent)->units;
+        } else if (ext->parent_type == LYEXT_PAR_TPDF) {
+            return ((struct lys_tpdf*)ext->parent)->units;
+        } else if (ext->parent_type == LYEXT_PAR_DEVIATE) {
+            return ((struct lys_deviate*)ext->parent)->units;
+        }
+        break;
+    case LYEXT_SUBSTMT_VALUE:
+        if (ext->parent_type == LYEXT_PAR_TYPE_ENUM) {
+            return &((struct lys_type_enum*)ext->parent)->value;
+        }
+        break;
+    case LYEXT_SUBSTMT_YINELEM:
+        if (ext->parent_type == LYEXT_PAR_EXT) {
+            return &((struct lys_ext*)ext->parent)->flags;
+        }
+        break;
+    }
+    LOGINT;
+    return NULL;
 }
 
 static int
@@ -1367,7 +1667,7 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
     new->parent = (struct lys_tpdf *)parent;
     if (old->ext_size) {
         new->ext_size = old->ext_size;
-        new->ext = lys_ext_dup(mod, old->ext, old->ext_size, unres);
+        new->ext = lys_ext_dup(mod, old->ext, old->ext_size, new->parent, LYEXT_PAR_TPDF, unres);
         if (!new->ext) {
             return -1;
         }

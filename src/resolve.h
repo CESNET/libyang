@@ -16,6 +16,7 @@
 #define _RESOLVE_H
 
 #include "libyang.h"
+#include "extensions.h"
 
 /**
  * @brief Type of an unresolved item (in either SCHEMA or DATA)
