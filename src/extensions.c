@@ -11,12 +11,180 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
-
 #define _GNU_SOURCE
+#include <errno.h>
+#include <dirent.h>
+#include <dlfcn.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
 
 #include "common.h"
 #include "extensions.h"
+#include "extensions_config.h"
 #include "libyang.h"
+
+/* internal structures storing the extension plugins */
+struct lyext_plugin_list *ext_plugins = NULL;
+unsigned int ext_plugins_count = 0; /* size of the ext_plugins array */
+unsigned int ext_plugins_ref = 0;   /* number of contexts that may reference the ext_plugins */
+struct ly_set dlhandlers = {0, 0, {NULL}};
+pthread_mutex_t ext_lock = PTHREAD_MUTEX_INITIALIZER;
+
+/**
+ * @brief reference counter for the ext_plugins, it actually counts number of contexts
+ */
+unsigned int ext_plugins_references = 0;
+
+API int
+lyext_clean_plugins(void)
+{
+    unsigned int u;
+
+    if (ext_plugins_ref) {
+        /* there is a context that may refer to the plugins, so we cannot remove them */
+        return EXIT_FAILURE;
+    }
+
+    if (!ext_plugins_count) {
+        /* no plugin loaded - nothing to do */
+        return EXIT_SUCCESS;
+    }
+
+    /* lock the extension plugins list */
+    pthread_mutex_lock(&ext_lock);
+
+    /* clean the list */
+    free(ext_plugins);
+    ext_plugins = NULL;
+    ext_plugins_count = 0;
+
+    /* close the dl handlers */
+    for (u = 0; u < dlhandlers.number; u++) {
+        dlclose(dlhandlers.set.g[u]);
+    }
+    free(dlhandlers.set.g);
+    dlhandlers.size = 0;
+    dlhandlers.number = 0;
+
+    /* unlock the global structures */
+    pthread_mutex_unlock(&ext_lock);
+
+    return EXIT_SUCCESS;
+}
+
+API void
+lyext_load_plugins(void)
+{
+    DIR* dir;
+    struct dirent *file;
+    size_t len;
+    char *str;
+    char name[NAME_MAX];
+    void *dlhandler;
+    struct lyext_plugin_list *plugin, *p;
+    unsigned int u, v;
+
+    dir = opendir(LYEXT_PLUGINS_DIR);
+    if (!dir) {
+        /* no directory (or no access to it), no plugins */
+        LOGWRN("libyang extension plugins directory \"%s\" does not exist.", LYEXT_PLUGINS_DIR);
+        return;
+    }
+
+    /* lock the extension plugins list */
+    pthread_mutex_lock(&ext_lock);
+
+    while ((file = readdir(dir))) {
+        if (file->d_type != DT_REG && file->d_type == DT_LNK) {
+            /* other files than regular and symbolic links are ignored */
+            continue;
+        }
+
+        /* required format of the filename is *.so */
+        len = strlen(file->d_name);
+        if (len < 4 || strcmp(&file->d_name[len - 3], ".so")) {
+            continue;
+        }
+
+        /* store the name without the suffix */
+        memcpy(name, file->d_name, len - 3);
+        name[len - 3] = '\0';
+
+        /* and construct the filepath */
+        asprintf(&str, LYEXT_PLUGINS_DIR"/%s", file->d_name);
+
+        /* load the plugin - first, try if it is already loaded... */
+        dlhandler = dlopen(str, RTLD_NOW | RTLD_NOLOAD);
+        dlerror();    /* Clear any existing error */
+        if (dlhandler) {
+            /* the plugin is already loaded */
+            LOGVRB("Extension plugin \"%s\" already loaded.", str);
+            free(str);
+            continue;
+        }
+
+        /* ... and if not, load it */
+        dlhandler = dlopen(str, RTLD_NOW);
+        if (!dlhandler) {
+            LOGERR(LY_ESYS, "Loading \"%s\" as an extension plugin failed (%s).", str, dlerror());
+            free(str);
+            continue;
+        }
+        LOGVRB("Extension plugin \"%s\" successfully loaded.", str);
+        free(str);
+        dlerror();    /* Clear any existing error */
+
+        /* get the plugin data */
+        plugin = dlsym(dlhandler, name);
+        str = dlerror();
+        if (str) {
+            LOGERR(LY_ESYS, "Processing \"%s\" extension plugin failed, missing plugin list object (%s).", name, str);
+            dlclose(dlhandler);
+            continue;
+        }
+
+        /* check extension implementations for collisions */
+        for(u = 0; plugin[u].name; u++) {
+            for (v = 0; v < ext_plugins_count; v++) {
+                if (!strcmp(plugin[u].name, ext_plugins[v].name) && !strcmp(plugin[u].ns, ext_plugins[v].ns)) {
+                    LOGERR(LY_ESYS, "Processing \"%s\" extension plugin failed, implementation collision for %s in %s.",
+                           name, plugin[u].name, plugin[u].ns);
+                    dlclose(dlhandler);
+                    continue;
+                }
+            }
+        }
+
+        /* add the new plugins, we have number of new plugins as u */
+        p = realloc(ext_plugins, (ext_plugins_count + u) * sizeof *ext_plugins);
+        if (!p) {
+            LOGMEM;
+            dlclose(dlhandler);
+            closedir(dir);
+
+            /* unlock the global structures */
+            pthread_mutex_unlock(&ext_lock);
+
+            return;
+        }
+        ext_plugins = p;
+        for( ; u; u--) {
+            memcpy(&ext_plugins[ext_plugins_count], &plugin[u - 1], sizeof *plugin);
+            ext_plugins_count++;
+        }
+
+        /* keep the handler */
+        ly_set_add(&dlhandlers, dlhandler, LY_SET_OPT_USEASLIST);
+    }
+
+    closedir(dir);
+
+    /* unlock the global structures */
+    pthread_mutex_unlock(&ext_lock);
+}
 
 API LYEXT_TYPE
 lys_ext_instance_type(struct lys_ext_instance *ext)

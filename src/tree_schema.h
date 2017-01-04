@@ -414,6 +414,26 @@ const void *lys_ext_instance_substmt(const struct lys_ext_instance *ext);
 LYEXT_TYPE lys_ext_instance_type(struct lys_ext_instance *ext);
 
 /**
+ * @brief Load the available YANG extensions plugins from the plugin directory (LIBDIR/libyang/).
+ *
+ * This function is automatically called whenever a new context is created. Note that the removed plugins are kept
+ * in use until all the created contexts are destroyed via ly_ctx_destroy(), so only the newly added plugins are
+ * usually loaded by this function.
+ */
+void lyext_load_plugins(void);
+
+/**
+ * @brief Unload all the YANG extensions plugins.
+ *
+ * This function is automatically called whenever the context is destroyed. Note, that in case there is still a
+ * libyang context in use, the function does nothing since unloading the plugins would break the context's modules
+ * which may refer/use the plugins.
+ *
+ * Since the function is called with ly_ctx_destroy(), there is usually no need to call this function manually.
+ */
+int lyext_clean_plugins(void);
+
+/**
  * @brief Main schema node structure representing YANG module.
  *
  * Compatible with ::lys_submodule structure with exception of the last, #ns member, which is replaced by

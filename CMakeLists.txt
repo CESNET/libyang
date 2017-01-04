@@ -13,6 +13,9 @@ set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION})
 configure_file(${PROJECT_SOURCE_DIR}/src/libyang.h.in ${PROJECT_SOURCE_DIR}/src/libyang.h)
 
+set(LIBYANG_EXT_PLUGINS_DIR ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libyang)
+configure_file(${PROJECT_SOURCE_DIR}/src/extensions_config.h.in ${PROJECT_SOURCE_DIR}/src/extensions_config.h)
+
 # include custom Modules
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMakeModules/")
 
@@ -112,6 +115,7 @@ if(STATIC)
     add_library(yang_static STATIC ${libsrc})
     set_target_properties(yang_static PROPERTIES OUTPUT_NAME yang)
     target_link_libraries(yang_static m)
+    target_link_libraries(yang_static ${CMAKE_DL_LIBS})
     target_link_libraries(yang_static ${CMAKE_THREAD_LIBS_INIT})
     target_link_libraries(yang_static ${PCRE_LIBRARIES})
     install(TARGETS yang_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
@@ -124,6 +128,9 @@ set_target_properties(yang PROPERTIES VERSION ${LIBYANG_VERSION} SOVERSION ${LIB
 
 # link math
 target_link_libraries(yang m)
+
+#link dl
+target_link_libraries(yang ${CMAKE_DL_LIBS})
 
 # find pthreads
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)

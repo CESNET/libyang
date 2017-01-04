@@ -28,6 +28,12 @@
 #include "parser.h"
 #include "tree_internal.h"
 
+/*
+ * counter for references to the extensions plugins (for the number of contexts)
+ * located in extensions.c
+ */
+extern unsigned int ext_plugins_ref;
+
 #define YANG_FAKEMODULE_PATH "../models/yang@2016-02-11.h"
 #define IETF_INET_TYPES_PATH "../models/ietf-inet-types@2013-07-15.h"
 #define IETF_YANG_TYPES_PATH "../models/ietf-yang-types@2013-07-15.h"
@@ -69,6 +75,10 @@ ly_ctx_new(const char *search_dir)
 
     /* dictionary */
     lydict_init(&ctx->dict);
+
+    /* plugins */
+    ext_plugins_ref++;
+    lyext_load_plugins();
 
     /* models list */
     ctx->models.list = calloc(16, sizeof *ctx->models.list);
@@ -169,6 +179,10 @@ ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_n
 
     /* dictionary */
     lydict_clean(&ctx->dict);
+
+    /* plugins - will be removed only if this is the last context */
+    ext_plugins_ref--;
+    lyext_clean_plugins();
 
     /* clean the error list */
     ly_err_clean(0);
