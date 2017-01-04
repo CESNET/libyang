@@ -13,7 +13,11 @@ set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION})
 configure_file(${PROJECT_SOURCE_DIR}/src/libyang.h.in ${PROJECT_SOURCE_DIR}/src/libyang.h)
 
-set(LIBYANG_EXT_PLUGINS_DIR ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libyang)
+if(PLUGINS_DIR)
+	set(LIBYANG_EXT_PLUGINS_DIR ${PLUGINS_DIR})
+else()
+	set(LIBYANG_EXT_PLUGINS_DIR ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libyang)
+endif()
 configure_file(${PROJECT_SOURCE_DIR}/src/extensions_config.h.in ${PROJECT_SOURCE_DIR}/src/extensions_config.h)
 
 # include custom Modules
@@ -52,7 +56,7 @@ if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE debug)
 endif()
 
-set(CMAKE_C_FLAGS         "${CMAKE_C_FLAGS} -Wall -Wextra -fvisibility=hidden")
+set(CMAKE_C_FLAGS         "${CMAKE_C_FLAGS} -Wall -Wextra")
 set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
 set(CMAKE_C_FLAGS_DEBUG   "-g -O0")
 
@@ -114,6 +118,7 @@ set(headers
 if(STATIC)
     add_library(yang_static STATIC ${libsrc})
     set_target_properties(yang_static PROPERTIES OUTPUT_NAME yang)
+    set_target_properties(yang_static PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
     target_link_libraries(yang_static m)
     target_link_libraries(yang_static ${CMAKE_DL_LIBS})
     target_link_libraries(yang_static ${CMAKE_THREAD_LIBS_INIT})
@@ -125,6 +130,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 add_library(yangobj OBJECT ${libsrc})
 add_library(yang SHARED $<TARGET_OBJECTS:yangobj>)
 set_target_properties(yang PROPERTIES VERSION ${LIBYANG_VERSION} SOVERSION ${LIBYANG_SOVERSION})
+set_target_properties(yang PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
 
 # link math
 target_link_libraries(yang m)
@@ -178,11 +184,16 @@ add_custom_target(cclean
 		COMMAND rm -rf Makefile Doxyfile
 		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
+# YANG extensions plugins
+add_subdirectory(src/extensions)
+
+# yanglint
 add_executable(yanglint ${lintsrc})
 target_link_libraries(yanglint yang)
 install(TARGETS yanglint DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/tools/lint/yanglint.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 
+# yang2yin
 add_executable(yang2yin ${yang2yinsrc})
 
 if(ENABLE_VALGRIND_TESTS)

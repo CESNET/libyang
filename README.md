@@ -89,6 +89,17 @@ The `Debug` mode is currently used as the default one. to switch to the
 ```
 $ cmake -D CMAKE_BUILD_TYPE:String="Release" ..
 ```
+
+#### Changing Plugins Dir
+
+For the YANG extensions, libyang loads the extension plugins. By default, the
+directory to store the plugins is LIBDIR/libyang. To change it, use the following
+cmake option with the value specifying the desired directory:
+
+```
+$ cmake -DPLUGINS_DIR:PATH=`pwd`"/src/extensions/" ..
+```
+
 ### CMake Notes
 
 Note that, with CMake, if you want to change the compiler or its options after
