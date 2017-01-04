@@ -42,9 +42,8 @@ typedef int (*lyext_check_position_clb)(const void *parent, LYEXT_PAR parent_typ
  *
  * @param[in] type The type of the structure provided as \p parent.
  * @param[in] parent The parent of the instantiated extension.
- * @return 0 - yes
- *         1 - no
- *         2 - ignore / skip without an error
+ * @return 0 - ok
+ *         1 - error
  */
 typedef int (*lyext_check_result_clb)(struct lys_ext_instance *ext);
 
