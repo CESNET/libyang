@@ -4482,98 +4482,109 @@ resolve_extension(struct unres_ext *info, const struct lys_module *mod, struct l
         }
 
         /* we have the extension definition, so now it cannot be forward referenced and error is always fatal */
-        if (!e->plugin || e->plugin->type == LYEXT_FLAG) {
-            if (e->flags & LYS_YINELEM) {
-                value = NULL;
-                c_ext = 0;
-                LY_TREE_FOR_SAFE(info->data.yin->child, next_yin, yin) {
-                    if (!yin->ns) {
-                        /* garbage */
-                        lyxml_free(mod->ctx, yin);
-                        continue;
-                    } else if (!strcmp(yin->ns->value, LY_NSYIN)) {
-                        /* standard YANG statements are not expected here */
-                        LOGVAL(LYE_INCHILDSTMT, vlog_type, vlog_node, yin->name, info->data.yin->name);
-                        return -1;
-                    } else if (yin->ns == info->data.yin->ns && ly_strequal(yin->name, e->argument, 1)) {
-                        /* we have the extension's argument */
-                        if (value) {
-                            LOGVAL(LYE_TOOMANY, vlog_type, vlog_node, yin->name, info->data.yin->name);
-                            return -1;
-                        }
-                        value = yin->content;
-                        yin->content = NULL;
-                        lyxml_free(mod->ctx, yin);
-                    } else {
-                        /* possible extension instance, processed later */
-                        c_ext++;
-                        continue;
-                    }
-                }
-                if (!value) {
-                    LOGVAL(LYE_MISSCHILDSTMT, vlog_type, vlog_node, e->argument, info->data.yin->name);
-                    return -1;
-                }
-            } else if (e->argument) {
-                value = lyxml_get_attr(info->data.yin, e->argument, NULL);
-                if (!value) {
-                    LOGVAL(LYE_MISSARG, LY_VLOG_NONE, NULL, e->argument, info->data.yin->name);
-                    return -1;
-                }
-                value = lydict_insert(mod->ctx, value, 0);
-            } else {
-                value = NULL;
-            }
-            (*ext) = calloc(1, sizeof(struct lys_ext_instance));
-            ((struct lys_ext_instance *)(*ext))->def = e;
-            ((struct lys_ext_instance *)(*ext))->arg_value = value;
-            ((struct lys_ext_instance *)(*ext))->parent = info->parent;
-            ((struct lys_ext_instance *)(*ext))->parent_type = info->parent_type;
 
-            /* extension instances in extension */
-            if (c_ext == -1) {
-                c_ext = 0;
-                /* first, we have to count them */
-                LY_TREE_FOR_SAFE(info->data.yin->child, next_yin, yin) {
-                    if (!yin->ns) {
-                        /* garbage */
-                        lyxml_free(mod->ctx, yin);
-                        continue;
-                    } else if (strcmp(yin->ns->value, LY_NSYIN)) {
-                        /* possible extension instance */
-                        c_ext++;
-                    } else {
-                        /* unexpected statement */
-                        LOGVAL(LYE_INCHILDSTMT, vlog_type, vlog_node, yin->name, info->data.yin->name);
+        if (e->plugin && e->plugin->check_position) {
+            /* common part - we have plugin with position checking function, use it first */
+            if ((*e->plugin->check_position)(info->parent, info->parent_type, info->substmt)) {
+                /* extension is not allowed here */
+                LOGVAL(LYE_INSTMT, vlog_type, vlog_node, e->name);
+                return -1;
+            }
+        }
+
+        /* common part, even if there is no plugin */
+        if (e->flags & LYS_YINELEM) {
+            value = NULL;
+            c_ext = 0;
+            LY_TREE_FOR_SAFE(info->data.yin->child, next_yin, yin) {
+                if (!yin->ns) {
+                    /* garbage */
+                    lyxml_free(mod->ctx, yin);
+                    continue;
+                } else if (!strcmp(yin->ns->value, LY_NSYIN)) {
+                    /* standard YANG statements are not expected here */
+                    LOGVAL(LYE_INCHILDSTMT, vlog_type, vlog_node, yin->name, info->data.yin->name);
+                    return -1;
+                } else if (yin->ns == info->data.yin->ns && ly_strequal(yin->name, e->argument, 1)) {
+                    /* we have the extension's argument */
+                    if (value) {
+                        LOGVAL(LYE_TOOMANY, vlog_type, vlog_node, yin->name, info->data.yin->name);
                         return -1;
                     }
+                    value = yin->content;
+                    yin->content = NULL;
+                    lyxml_free(mod->ctx, yin);
+                } else {
+                    /* possible extension instance, processed later */
+                    c_ext++;
+                    continue;
                 }
             }
-            if (c_ext) {
-                (*ext)->ext = calloc(c_ext, sizeof *(*ext)->ext);
-                if (!(*ext)->ext) {
-                    LOGMEM;
+            if (!value) {
+                LOGVAL(LYE_MISSCHILDSTMT, vlog_type, vlog_node, e->argument, info->data.yin->name);
+                return -1;
+            }
+        } else if (e->argument) {
+            value = lyxml_get_attr(info->data.yin, e->argument, NULL);
+            if (!value) {
+                LOGVAL(LYE_MISSARG, LY_VLOG_NONE, NULL, e->argument, info->data.yin->name);
+                return -1;
+            }
+            value = lydict_insert(mod->ctx, value, 0);
+        } else {
+            value = NULL;
+        }
+        (*ext) = calloc(1, sizeof(struct lys_ext_instance));
+        ((struct lys_ext_instance *)(*ext))->def = e;
+        ((struct lys_ext_instance *)(*ext))->arg_value = value;
+        ((struct lys_ext_instance *)(*ext))->parent = info->parent;
+        ((struct lys_ext_instance *)(*ext))->parent_type = info->parent_type;
+        ((struct lys_ext_instance *)(*ext))->substmt = info->substmt;
+        ((struct lys_ext_instance *)(*ext))->substmt_index = info->substmt_index;
+
+        /* extension instances in extension */
+        if (c_ext == -1) {
+            c_ext = 0;
+            /* first, we have to count them */
+            LY_TREE_FOR_SAFE(info->data.yin->child, next_yin, yin) {
+                if (!yin->ns) {
+                    /* garbage */
+                    lyxml_free(mod->ctx, yin);
+                    continue;
+                } else if (strcmp(yin->ns->value, LY_NSYIN)) {
+                    /* possible extension instance */
+                    c_ext++;
+                } else {
+                    /* unexpected statement */
+                    LOGVAL(LYE_INCHILDSTMT, vlog_type, vlog_node, yin->name, info->data.yin->name);
                     return -1;
                 }
-                LY_TREE_FOR_SAFE(info->data.yin->child, next_yin, yin) {
-                    subinfo = malloc(sizeof *subinfo);
-                    lyxml_unlink(mod->ctx, yin);
-                    subinfo->data.yin = yin;
-                    subinfo->datatype = LYS_IN_YIN;
-                    subinfo->parent = (void *)(*ext);
-                    subinfo->parent_type = LYEXT_PAR_EXTINST;
-                    rc = unres_schema_add_node((struct lys_module *)mod, unres, &(*ext)->ext[(*ext)->ext_size],
-                                               UNRES_EXT, (struct lys_node *)subinfo);
-                    (*ext)->ext_size++;
-                    if (rc == -1) {
-                        return EXIT_FAILURE;
-                    }
+            }
+        }
+        if (c_ext) {
+            (*ext)->ext = calloc(c_ext, sizeof *(*ext)->ext);
+            if (!(*ext)->ext) {
+                LOGMEM;
+                return -1;
+            }
+            LY_TREE_FOR_SAFE(info->data.yin->child, next_yin, yin) {
+                subinfo = malloc(sizeof *subinfo);
+                lyxml_unlink(mod->ctx, yin);
+                subinfo->data.yin = yin;
+                subinfo->datatype = LYS_IN_YIN;
+                subinfo->parent = (void *)(*ext);
+                subinfo->parent_type = LYEXT_PAR_EXTINST;
+                rc = unres_schema_add_node((struct lys_module *)mod, unres, &(*ext)->ext[(*ext)->ext_size],
+                                           UNRES_EXT, (struct lys_node *)subinfo);
+                (*ext)->ext_size++;
+                if (rc == -1) {
+                    return EXIT_FAILURE;
                 }
             }
-        } else {
-            /* unknown */
-            return -1;
         }
+
+        /* TODO - lyext_check_result_clb, other than LYEXT_FLAG plugins */
+
     } else {
         /* TODO YANG */
 
