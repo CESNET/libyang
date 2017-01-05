@@ -1485,6 +1485,28 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
     return NULL;
 }
 
+API unsigned int
+lyd_list_pos(const struct lyd_node *node)
+{
+    unsigned int pos;
+    struct lys_node *schema;
+
+    if (!node || ((node->schema->nodetype != LYS_LIST) && (node->schema->nodetype != LYS_LEAFLIST))) {
+        return 0;
+    }
+
+    schema = node->schema;
+    pos = 0;
+    do {
+        if (node->schema == schema) {
+            ++pos;
+        }
+        node = node->prev;
+    } while (node->next);
+
+    return pos;
+}
+
 struct lyd_node *
 lyd_new_dummy(struct lyd_node *root, struct lyd_node *parent, const struct lys_node *schema, const char *value, int dflt)
 {

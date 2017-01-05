@@ -771,6 +771,15 @@ struct lyd_node *lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, co
                               LYD_ANYDATA_VALUETYPE value_type, int options);
 
 /**
+ * @brief Learn the relative instance position of a list or leaf-list within other instances of the
+ * same schema node.
+ *
+ * @param[in] node List or leaf-list to get the position of.
+ * @return 0 on error or positive integer of the instance position.
+ */
+unsigned int lyd_list_pos(const struct lyd_node *node);
+
+/**
  * @brief Create a copy of the specified data tree \p node. Namespaces are copied as needed,
  * schema references are kept the same.
  *
