@@ -180,6 +180,7 @@ static void
 xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int toplevel, int options)
 {
     const struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node, *iter;
+    const struct lys_type *type;
     const char *ns, *mod_name;
     const char **prefs, **nss;
     const char *xml_expr;
@@ -277,13 +278,18 @@ printvalue:
             iter = (struct lyd_node_leaf_list *)iter->value.leafref;
         }
         if (!iter) {
-            /* error */
-            ly_print(out, "\"(!error!)\"");
+            /* unresolved and invalid, but we can learn the correct type anyway */
+            type = lyd_leaf_type((struct lyd_node_leaf_list *)leaf);
+            if (!type) {
+                /* error */
+                ly_print(out, "\"(!error!)\"");
+                return;
+            }
+            datatype = type->base;
         } else {
             datatype = iter->value_type & LY_DATA_TYPE_MASK;
-            goto printvalue;
         }
-        break;
+        goto printvalue;
 
     case LY_TYPE_EMPTY:
         ly_print(out, "/>");
@@ -443,10 +449,6 @@ xml_print_node(struct lyout *out, int level, const struct lyd_node *node, int to
 {
     if (!lyd_wd_toprint(node, options)) {
         return;
-    }
-
-    if (node->validity) {
-        LOGWRN("Printing invalidated node \"%s\" (flags %d)!", node->schema->name, node->validity);
     }
 
     switch (node->schema->nodetype) {

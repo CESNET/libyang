@@ -87,6 +87,7 @@ static void
 json_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int onlyvalue, int toplevel, int options)
 {
     struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node, *iter;
+    const struct lys_type *type;
     const char *schema = NULL, *p, *mod_name;
     const struct lys_module *wdmod = NULL;
     LY_DATA_TYPE datatype;
@@ -152,13 +153,18 @@ contentprint:
             iter = (struct lyd_node_leaf_list *)iter->value.leafref;
         }
         if (!iter) {
-            /* error */
-            ly_print(out, "\"(!error!)\"");
+            /* unresolved and invalid, but we can learn the correct type anyway */
+            type = lyd_leaf_type((struct lyd_node_leaf_list *)leaf);
+            if (!type) {
+                /* error */
+                ly_print(out, "\"(!error!)\"");
+                return;
+            }
+            datatype = type->base;
         } else {
             datatype = iter->value_type & LY_DATA_TYPE_MASK;
-            goto contentprint;
         }
-        break;
+        goto contentprint;
 
     case LY_TYPE_EMPTY:
         ly_print(out, "[null]");
@@ -442,10 +448,6 @@ json_print_nodes(struct lyout *out, int level, const struct lyd_node *root, int 
     LY_TREE_FOR(root, node) {
         if (!lyd_wd_toprint(node, options)) {
             continue;
-        }
-
-        if (node->validity) {
-            LOGWRN("Printing invalidated node \"%s\" (flags %d)!", node->schema->name, node->validity);
         }
 
         switch (node->schema->nodetype) {
