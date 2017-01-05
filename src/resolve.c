@@ -6880,6 +6880,10 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int ignore
         /* either NULL or instid previously converted to JSON */
         json_val = leaf->value.string;
     }
+
+    if ((leaf->value_type & LY_DATA_TYPE_MASK) == LY_TYPE_BITS) {
+        free(leaf->value.bit);
+    }
     memset(&leaf->value, 0, sizeof leaf->value);
 
     /* turn logging off, we are going to try to validate the value with all the types in order */
@@ -7026,6 +7030,9 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int ignore_
         if (!rc) {
             if (ret && !(leaf->schema->flags & LYS_LEAFREF_DEP)) {
                 /* valid resolved */
+                if ((leaf->value_type & LY_DATA_TYPE_MASK) == LY_TYPE_BITS) {
+                    free(leaf->value.bit);
+                }
                 leaf->value.leafref = ret;
                 leaf->value_type = LY_TYPE_LEAFREF;
             } else {
