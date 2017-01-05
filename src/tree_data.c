@@ -862,7 +862,11 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
     lydict_remove(leaf->schema->module->ctx, backup);
 
     /* clear the default flag, the value is different */
-    leaf->dflt = 0;
+    if (leaf->dflt) {
+        for (parent = (struct lyd_node *)leaf; parent; parent = parent->parent) {
+            parent->dflt = 0;
+        }
+    }
 
     /* make the leafref unresolved */
     if (((struct lys_node_leaf *)leaf->schema)->type.base == LY_TYPE_LEAFREF) {
