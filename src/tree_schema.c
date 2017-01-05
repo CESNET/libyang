@@ -345,8 +345,14 @@ lys_node_unlink(struct lys_node *node)
         if (parent->child == node) {
             parent->child = node->next;
         }
-        /* and then continue with the target parent */
-        parent = ((struct lys_node_augment *)parent)->target;
+
+        if (parent->flags & LYS_NOTAPPLIED) {
+            /* data are not connected in the target, so we cannot continue with the target as a parent */
+            parent = NULL;
+        } else {
+            /* data are connected in target, so we will continue with the target as a parent */
+            parent = ((struct lys_node_augment *)parent)->target;
+        }
     }
 
     /* unlink from parent */
