@@ -911,7 +911,7 @@ parse_schema_nodeid(const char *id, const char **mod_name, int *mod_name_len, co
  * @brief Parse schema predicate (special format internally used).
  *
  * predicate           = "[" *WSP predicate-expr *WSP "]"
- * predicate-expr      = "." / identifier / key-with-value
+ * predicate-expr      = "." / identifier / positive-integer / key-with-value
  * key-with-value      = identifier *WSP "=" *WSP
  *                       ((DQUOTE string DQUOTE) /
  *                        (SQUOTE string SQUOTE))
@@ -963,6 +963,14 @@ parse_schema_json_predicate(const char *id, const char **name, int *nam_len, con
     /* identifier */
     if (id[0] == '.') {
         ret = 1;
+    } else if (isdigit(id[0])) {
+        if (id[0] == '0') {
+            return -parsed;
+        }
+        ret = 1;
+        while (isdigit(id[ret])) {
+            ++ret;
+        }
     } else if ((ret = parse_identifier(id)) < 1) {
         return -parsed + ret;
     }
@@ -983,6 +991,10 @@ parse_schema_json_predicate(const char *id, const char **name, int *nam_len, con
 
     /* there is value as well */
     if (id[0] == '=') {
+        if (name && isdigit(**name)) {
+            return -parsed;
+        }
+
         ++parsed;
         ++id;
 
@@ -1020,9 +1032,6 @@ parse_schema_json_predicate(const char *id, const char **name, int *nam_len, con
             ++parsed;
             ++id;
         }
-    } else if (value) {
-        /* if value was expected, it's mandatory */
-        return -parsed;
     }
 
     if (id[0] != ']') {
@@ -1962,15 +1971,17 @@ resolve_json_schema_list_predicate(const char *predicate, const struct lys_node_
     predicate += i;
     *parsed += i;
 
-    for (i = 0; i < list->keys_size; ++i) {
-        if (!strncmp(list->keys[i]->name, name, nam_len) && !list->keys[i]->name[nam_len]) {
-            break;
+    if (!isdigit(name[0])) {
+        for (i = 0; i < list->keys_size; ++i) {
+            if (!strncmp(list->keys[i]->name, name, nam_len) && !list->keys[i]->name[nam_len]) {
+                break;
+            }
         }
-    }
 
-    if (i == list->keys_size) {
-        LOGVAL(LYE_PATH_INKEY, LY_VLOG_NONE, NULL, name);
-        return -1;
+        if (i == list->keys_size) {
+            LOGVAL(LYE_PATH_INKEY, LY_VLOG_NONE, NULL, name);
+            return -1;
+        }
     }
 
     /* more predicates? */
@@ -2176,7 +2187,8 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
 }
 
 static int
-resolve_partial_json_data_list_predicate(const char *predicate, const char *node_name, struct lyd_node *node, int *parsed)
+resolve_partial_json_data_list_predicate(const char *predicate, const char *node_name, struct lyd_node *node,
+                                         int position, int *parsed)
 {
     const char *name, *value, *key_val;
     int nam_len, val_len, has_predicate = 1, r;
@@ -2188,12 +2200,6 @@ resolve_partial_json_data_list_predicate(const char *predicate, const char *node
 
     key = (struct lyd_node_leaf_list *)node->child;
     for (i = 0; i < ((struct lys_node_list *)node->schema)->keys_size; ++i) {
-        if (!key) {
-            /* invalid data */
-            LOGINT;
-            return -1;
-        }
-
         if (!has_predicate) {
             LOGVAL(LYE_PATH_MISSKEY, LY_VLOG_NONE, NULL, node_name);
             return -1;
@@ -2207,6 +2213,21 @@ resolve_partial_json_data_list_predicate(const char *predicate, const char *node
 
         predicate += r;
         *parsed += r;
+
+        if (isdigit(name[0])) {
+            if (position == atoi(name)) {
+                /* match */
+                break;
+            } else {
+                /* not a match */
+                return 1;
+            }
+        }
+
+        if (!key) {
+            /* it is not a position, so we need to key for it to be a match */
+            return 1;
+        }
 
         if (strncmp(key->schema->name, name, nam_len) || key->schema->name[nam_len]) {
             LOGVAL(LYE_PATH_INKEY, LY_VLOG_NONE, NULL, name);
@@ -2253,7 +2274,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
 {
     char *module_name = ly_buf(), *buf_backup = NULL, *str;
     const char *id, *mod_name, *name, *pred_name, *data_val;
-    int r, ret, mod_name_len, nam_len, is_relative = -1;
+    int r, ret, mod_name_len, nam_len, is_relative = -1, list_instance_position;
     int has_predicate, last_parsed, llval_len, pred_name_len, last_has_pred;
     struct lyd_node *sibling, *last_match = NULL;
     struct lyd_node_leaf_list *llist;
@@ -2283,6 +2304,8 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
     }
 
     while (1) {
+        list_instance_position = 0;
+
         LY_TREE_FOR(start, sibling) {
             /* RPC/action data check, return simply invalid argument, because the data tree is invalid */
             if (lys_parent(sibling->schema)) {
@@ -2386,14 +2409,15 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
                     has_predicate = last_has_pred;
 
                 } else if (sibling->schema->nodetype == LYS_LIST) {
-                    /* list, we need predicates'n'stuff then */
-                    r = 0;
+                    /* list, we likely need predicates'n'stuff then, but if without a predicate, we are always creating it */
                     if (!has_predicate) {
-                        LOGVAL(LYE_PATH_MISSKEY, LY_VLOG_NONE, NULL, name);
-                        *parsed = -1;
-                        return NULL;
+                        /* none match */
+                        return last_match;
                     }
-                    ret = resolve_partial_json_data_list_predicate(id, name, sibling, &r);
+
+                    ++list_instance_position;
+                    r = 0;
+                    ret = resolve_partial_json_data_list_predicate(id, name, sibling, list_instance_position, &r);
                     if (ret == -1) {
                         *parsed = -1;
                         return NULL;
@@ -7209,6 +7233,10 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int ignore
         /* either NULL or instid previously converted to JSON */
         json_val = leaf->value.string;
     }
+
+    if ((leaf->value_type & LY_DATA_TYPE_MASK) == LY_TYPE_BITS) {
+        free(leaf->value.bit);
+    }
     memset(&leaf->value, 0, sizeof leaf->value);
 
     /* turn logging off, we are going to try to validate the value with all the types in order */
@@ -7355,6 +7383,9 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int ignore_
         if (!rc) {
             if (ret && !(leaf->schema->flags & LYS_LEAFREF_DEP)) {
                 /* valid resolved */
+                if ((leaf->value_type & LY_DATA_TYPE_MASK) == LY_TYPE_BITS) {
+                    free(leaf->value.bit);
+                }
                 leaf->value.leafref = ret;
                 leaf->value_type = LY_TYPE_LEAFREF;
             } else {

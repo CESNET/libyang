@@ -82,7 +82,7 @@ lyv_data_context(const struct lyd_node *node, int options, struct unres_data *un
     }
 
     /* check all relevant when conditions */
-    if (node->when_status & LYD_WHEN) {
+    if (!(options & LYD_OPT_TRUSTED) && (node->when_status & LYD_WHEN)) {
         if (unres_data_add(unres, (struct lyd_node *)node, UNRES_WHEN)) {
             return EXIT_FAILURE;
         }
@@ -402,7 +402,7 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
         node->validity &= ~LYD_VAL_MAND;
     }
 
-    if (!(options & (LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
+    if (!(options & (LYD_OPT_TRUSTED | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
         /* skip key uniqueness check in case of get/get-config data */
         if (schema->nodetype & (LYS_LIST | LYS_CONTAINER)) {
             LY_TREE_FOR(schema->child, siter) {

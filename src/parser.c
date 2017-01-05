@@ -1147,6 +1147,11 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
     assert(leaf);
 
+    if (store && ((leaf->value_type & LY_DATA_TYPE_MASK) == LY_TYPE_BITS)) {
+        free(leaf->value.bit);
+        leaf->value.bit = NULL;
+    }
+
     switch (type->base) {
     case LY_TYPE_BINARY:
         /* get number of octets for length validation */

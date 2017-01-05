@@ -862,7 +862,11 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
     lydict_remove(leaf->schema->module->ctx, backup);
 
     /* clear the default flag, the value is different */
-    leaf->dflt = 0;
+    if (leaf->dflt) {
+        for (parent = (struct lyd_node *)leaf; parent; parent = parent->parent) {
+            parent->dflt = 0;
+        }
+    }
 
     /* make the leafref unresolved */
     if (((struct lys_node_leaf *)leaf->schema)->type.base == LY_TYPE_LEAFREF) {
@@ -1040,7 +1044,7 @@ lyd_new_output_anydata(struct lyd_node *parent, const struct lys_module *module,
 }
 
 static int
-lyd_new_path_list_keys(struct lyd_node *list, const char *list_name, const char *predicate, int *parsed)
+lyd_new_path_list_predicate(struct lyd_node *list, const char *list_name, const char *predicate, int *parsed)
 {
     const char *name, *value;
     char *key_val;
@@ -1063,7 +1067,12 @@ lyd_new_path_list_keys(struct lyd_node *list, const char *list_name, const char 
         *parsed += r;
         predicate += r;
 
-        if (strncmp(slist->keys[i]->name, name, nam_len) || slist->keys[i]->name[nam_len]) {
+        if (isdigit(name[0])) {
+            /* position index - creating without keys */
+            return 0;
+        }
+
+        if (!value || strncmp(slist->keys[i]->name, name, nam_len) || slist->keys[i]->name[nam_len]) {
             LOGVAL(LYE_PATH_INKEY, LY_VLOG_NONE, NULL, name[0], name);
             return -1;
         }
@@ -1088,7 +1097,7 @@ lyd_new_path_list_keys(struct lyd_node *list, const char *list_name, const char 
 
 API struct lyd_node *
 lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, void *value,
-                              LYD_ANYDATA_VALUETYPE value_type, int options)
+             LYD_ANYDATA_VALUETYPE value_type, int options)
 {
     char *module_name = ly_buf(), *buf_backup = NULL, *str;
     const char *mod_name, *name, *val_name, *val, *node_mod_name, *id;
@@ -1429,7 +1438,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
         }
 
         parsed = 0;
-        if ((schild->nodetype == LYS_LIST) && (!has_predicate || lyd_new_path_list_keys(node, name, id, &parsed))) {
+        if ((schild->nodetype == LYS_LIST) && has_predicate && lyd_new_path_list_predicate(node, name, id, &parsed)) {
             lyd_free(ret);
             return NULL;
         }
@@ -1478,6 +1487,28 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
 
     LOGINT;
     return NULL;
+}
+
+API unsigned int
+lyd_list_pos(const struct lyd_node *node)
+{
+    unsigned int pos;
+    struct lys_node *schema;
+
+    if (!node || ((node->schema->nodetype != LYS_LIST) && (node->schema->nodetype != LYS_LEAFLIST))) {
+        return 0;
+    }
+
+    schema = node->schema;
+    pos = 0;
+    do {
+        if (node->schema == schema) {
+            ++pos;
+        }
+        node = node->prev;
+    } while (node->next);
+
+    return pos;
 }
 
 struct lyd_node *
@@ -4018,6 +4049,9 @@ lyd_dup(const struct lyd_node *node, int recursive)
                 new_leaf->value.leafref = NULL;
             } else if (new_leaf->value_type == LY_TYPE_INST) {
                 new_leaf->value.instance = NULL;
+            } else if (new_leaf->value_type == LY_TYPE_UNION) {
+                /* unresolved union, there could be JSON instid value stored, duplicate it */
+                new_leaf->value.string = lydict_insert(node->schema->module->ctx, new_leaf->value.string, 0);
             }
             break;
         case LYS_ANYXML:

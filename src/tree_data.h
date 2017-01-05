@@ -212,7 +212,7 @@ struct lyd_node_leaf_list {
     /* leaflist's specific members */
     const char *value_str;           /**< string representation of value (for comparison, printing,...), always corresponds to value_type */
     lyd_val value;                   /**< node's value representation, always corresponds to schema->type.base */
-    LY_DATA_TYPE value_type;         /**< type of the value in the node, mainly for union to avoid repeating of type detection,
+    uint16_t value_type;             /**< type of the value in the node, mainly for union to avoid repeating of type detection,
                                           if (schema->type.base == LY_TYPE_LEAFREF), then value_type may be
                                           (LY_TYPE_LEAFREF_UNRES | leafref target value_type) and (value.leafref == NULL) */
 };
@@ -755,9 +755,9 @@ struct lyd_node *lyd_new_output_anydata(struct lyd_node *parent, const struct ly
  * RPC/action and either input or output, not both. Can be NULL.
  * @param[in] ctx Context to use. Mandatory if \p data_tree is NULL.
  * @param[in] path Simple absolute data XPath of the new node. It can contain only simple node addressing with optional
- * module names as prefixes. List nodes must have predicates, one for each list key in the correct order and
- * with its value as well, leaves and leaf-lists can have predicates too that have preference over \p value,
- * see @ref howtoxpath.
+ * module names as prefixes. List nodes can have predicates, one for each list key in the correct order and
+ * with its value as well or using specific instance position, leaves and leaf-lists can have predicates too that
+ * have preference over \p value, see @ref howtoxpath.
  * @param[in] value Value of the new leaf/lealf-list (const char*). If creating anydata or anyxml, the following
  *            \p value_type parameter is required to be specified correctly. If creating nodes of other types, the
  *            parameter is ignored.
@@ -769,6 +769,15 @@ struct lyd_node *lyd_new_output_anydata(struct lyd_node *parent, const struct ly
  */
 struct lyd_node *lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, void *value,
                               LYD_ANYDATA_VALUETYPE value_type, int options);
+
+/**
+ * @brief Learn the relative instance position of a list or leaf-list within other instances of the
+ * same schema node.
+ *
+ * @param[in] node List or leaf-list to get the position of.
+ * @return 0 on error or positive integer of the instance position.
+ */
+unsigned int lyd_list_pos(const struct lyd_node *node);
 
 /**
  * @brief Create a copy of the specified data tree \p node. Namespaces are copied as needed,
