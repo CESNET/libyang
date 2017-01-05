@@ -419,7 +419,7 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
                 }
             } else if (((struct lyd_node *)elem)->schema->nodetype == LYS_LEAFLIST &&
                     ((struct lyd_node_leaf_list *)elem)->value_str) {
-                if (strchr(((struct lyd_node_leaf_list *)diter)->value_str, '\'')) {
+                if (strchr(((struct lyd_node_leaf_list *)elem)->value_str, '\'')) {
                     val_start = "[.=\"";
                     val_end = "\"]";
                 } else {
