@@ -333,19 +333,11 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
             continue;
         }
 
-        /* common part */
-        lys_extension_instances_free(ctx, e[i]->ext, e[i]->ext_size);
-        lydict_remove(ctx, e[i]->arg_value);
-
-        /* specific part according to the extension type */
-        switch(lys_ext_instance_type(e[i])) {
-        case LYEXT_FLAG:
-            /* flag instance - nothing special needed */
-            break;
-        case LYEXT_ERR:
-            /* should not appear */
-            LOGINT;
-            break;
+        if (e[i]->flags & LYEXT_OPT_INHERIT) {
+            /* no free, this is just a shadow copy of the original extension instance */
+        } else {
+            lys_extension_instances_free(ctx, e[i]->ext, e[i]->ext_size);
+            lydict_remove(ctx, e[i]->arg_value);
         }
         free(e[i]);
     }

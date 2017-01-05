@@ -35,24 +35,37 @@
 int nacm_position(const void *parent, LYEXT_PAR parent_type, LYEXT_SUBSTMT UNUSED(substmt_type))
 {
     if (parent_type != LYEXT_PAR_NODE) {
-        return 2;
+        return 1;
     }
 
-    switch(((struct lys_node*)parent)->nodetype) {
-    case LYS_CONTAINER:
-    case LYS_LEAF:
-    case LYS_LEAFLIST:
-    case LYS_LIST:
-    case LYS_CHOICE:
-    case LYS_ANYXML:
-    case LYS_AUGMENT:
-    case LYS_CASE:
-    case LYS_USES:
-    case LYS_RPC:
-    case LYS_ACTION:
-    case LYS_NOTIF:
+    if (((struct lys_node*)parent)->nodetype &
+            (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_CHOICE | LYS_ANYDATA | LYS_AUGMENT | LYS_CASE |
+             LYS_USES | LYS_RPC | LYS_ACTION | LYS_NOTIF )) {
         return 0;
-    default:
+    } else {
+        return 1;
+    }
+}
+
+/**
+ * @brief Callback to decide whether the extension will be inherited into the provided schema node. The extension
+ * instance is always from some of the node's parents.
+ *
+ * @param[in] ext Extension instance to be inherited.
+ * @param[in] node Schema node where the node is supposed to be inherited.
+ * @return 0 - yes
+ *         1 - no (do not process the node's children)
+ *         2 - no, but continue with children
+ */
+int nacm_inherit(struct lys_ext_instance *UNUSED(ext), struct lys_node *node)
+{
+    /* libyang already checks if there is explicit instance of the extension already present,
+     * in such a case the extension is never inherited and we don't need to check it here */
+
+    /* inherit into all the schema nodes that can be instantiated in data trees */
+    if (node->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_ACTION | LYS_NOTIF )) {
+        return 0;
+    } else {
         return 2;
     }
 }
@@ -62,8 +75,10 @@ int nacm_position(const void *parent, LYEXT_PAR parent_type, LYEXT_SUBSTMT UNUSE
  */
 struct lyext_plugin nacm_deny_write = {
     .type = LYEXT_FLAG,
+    .flags = LYEXT_OPT_INHERIT,
     .check_position = &nacm_position,
     .check_result = NULL,
+    .check_inherit = &nacm_inherit
 };
 
 /**
@@ -71,8 +86,10 @@ struct lyext_plugin nacm_deny_write = {
  */
 struct lyext_plugin nacm_deny_all = {
     .type = LYEXT_FLAG,
+    .flags = LYEXT_OPT_INHERIT,
     .check_position = &nacm_position,
     .check_result = NULL,
+    .check_inherit = &nacm_inherit
 };
 
 /**

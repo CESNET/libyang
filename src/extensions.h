@@ -40,20 +40,34 @@ typedef int (*lyext_check_position_clb)(const void *parent, LYEXT_PAR parent_typ
  * @brief Callback to check that the extension instance is correct - have
  * the valid argument, all the mandatory substatements, etc.
  *
- * @param[in] type The type of the structure provided as \p parent.
- * @param[in] parent The parent of the instantiated extension.
+ * @param[in] ext Extension instance to be checked.
  * @return 0 - ok
  *         1 - error
  */
 typedef int (*lyext_check_result_clb)(struct lys_ext_instance *ext);
 
+/**
+ * @brief Callback to decide whether the extension will be inherited into the provided schema node. The extension
+ * instance is always from some of the node's parents.
+ *
+ * @param[in] ext Extension instance to be inherited.
+ * @param[in] node Schema node where the node is supposed to be inherited.
+ * @return 0 - yes
+ *         1 - no (do not process the node's children)
+ *         2 - no, but continue with children
+ */
+typedef int (*lyext_check_inherit_clb)(struct lys_ext_instance *ext, struct lys_node *node);
+
 struct lyext_plugin {
     LYEXT_TYPE type;                          /**< type of the extension, according to it the structure will be casted */
+    uint16_t flags;                           /**< [extension flags](@ref extflags) */
 
-    lyext_check_position_clb check_position; /**< callbcak for testing that the extension can be instantiated
+    lyext_check_position_clb check_position;  /**< callbcak for testing that the extension can be instantiated
                                                    under the provided parent. Mandatory callback. */
-    lyext_check_result_clb check_result;     /**< callback for testing if the argument value of the extension instance
+    lyext_check_result_clb check_result;      /**< callback for testing if the argument value of the extension instance
                                                    is valid. Mandatory if the extension has the argument. */
+    lyext_check_inherit_clb check_inherit;    /**< callback to decide if the extension is supposed to be inherited into
+                                                   the provided node */
 };
 
 struct lyext_plugin_list {

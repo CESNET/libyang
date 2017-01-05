@@ -4297,9 +4297,11 @@ static int
 resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct unres_schema *unres)
 {
     int rc, clear_config;
+    unsigned int u;
     struct lys_node *sub;
     const struct lys_node *aug_target, *parent;
     struct lys_module *mod;
+    struct lys_ext_instance *ext;
 
     assert(aug && !aug->target);
     mod = lys_main_module(aug->module);
@@ -4405,6 +4407,14 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct 
     LY_TREE_FOR(aug->child, sub) {
         if (inherit_config_flag(sub, aug_target->flags & LYS_CONFIG_MASK, clear_config, unres)) {
             return -1;
+        }
+    }
+
+    /* inherit extensions if any */
+    for (u = 0; u < aug->target->ext_size; u++) {
+        ext = aug->target->ext[u]; /* shortcut */
+        if (ext && ext->def->plugin && (ext->def->plugin->flags & LYEXT_OPT_INHERIT)) {
+            unres_schema_add_node(mod, unres, &ext, UNRES_EXT_FINALIZE, NULL);
         }
     }
 
@@ -6183,7 +6193,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
     /* has_str - whether the str_snode is a string in a dictionary that needs to be freed */
     int rc = -1, has_str = 0, tpdf_flag = 0, i, k;
     unsigned int j;
-    struct lys_node *node, *par_grp;
+    struct lys_node *root, *next, *node, *par_grp;
     const char *expr;
 
     struct ly_set *refs, *procs;
@@ -6196,6 +6206,8 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
     struct unres_list_uniq *unique_info;
     struct unres_iffeat_data *iff_data;
     struct unres_ext *ext_data;
+    struct lys_ext_instance *ext, **extlist;
+    struct lyext_plugin *eplugin;
 
     switch (type) {
     case UNRES_IDENT:
@@ -6416,7 +6428,107 @@ featurecheckdone:
                 free(ext_data->data.yang);
             }
             free(ext_data);
+
+            /* is there a callback to be done to finalize the extension? */
+            eplugin = (*(struct lys_ext_instance **)item)->def->plugin;
+            if (eplugin) {
+                if (eplugin->check_result || (eplugin->flags & LYEXT_OPT_INHERIT)) {
+                    unres_schema_add_node(mod, unres, item, UNRES_EXT_FINALIZE, NULL);
+                }
+            }
         }
+        break;
+    case UNRES_EXT_FINALIZE:
+        ext = *(struct lys_ext_instance **)item;
+        eplugin = ext->def->plugin;
+
+        /* inherit */
+        if ((eplugin->flags & LYEXT_OPT_INHERIT) && (ext->parent_type == LYEXT_PAR_NODE)) {
+            root = (struct lys_node *)ext->parent;
+            if (!(root->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
+                LY_TREE_DFS_BEGIN(root->child, next, node) {
+                    /* first, check if the node already contain instance of the same extension,
+                     * in such a case we won't inherit. In case the node was actually defined as
+                     * augment data, we are supposed to check the same way also the augment node itself */
+                    if (lys_ext_instance_presence(ext->def, node->ext, node->ext_size) != -1) {
+                        goto inherit_dfs_sibling;
+                    } else if (node->parent != root && node->parent->nodetype == LYS_AUGMENT &&
+                            lys_ext_instance_presence(ext->def, node->parent->ext, node->parent->ext_size) != -1) {
+                        goto inherit_dfs_sibling;
+                    }
+
+                    if (eplugin->check_inherit) {
+                        /* we have a callback to check the inheritance, use it */
+                        switch ((rc = (*eplugin->check_inherit)(ext, node))) {
+                        case 0:
+                            /* yes - continue with the inheriting code */
+                            break;
+                        case 1:
+                            /* no - continue with the node's sibling */
+                            goto inherit_dfs_sibling;
+                        case 2:
+                            /* no, but continue with the children, just skip the inheriting code for this node */
+                            goto inherit_dfs_child;
+                        default:
+                            LOGERR(LY_EINT, "Plugin's (%s:%s) check_inherit callback returns invalid value (%d),",
+                                   ext->def->module->name, ext->def->name, rc);
+                        }
+                    }
+
+                    /* inherit the extension */
+                    extlist = realloc(node->ext, (node->ext_size + 1) * sizeof *node->ext);
+                    if (!extlist) {
+                        LOGMEM;
+                        return -1;
+                    }
+                    extlist[node->ext_size] = malloc(sizeof **extlist);
+                    if (!extlist[node->ext_size]) {
+                        LOGMEM;
+                        node->ext = extlist;
+                        return -1;
+                    }
+                    memcpy(extlist[node->ext_size], ext, sizeof *ext);
+                    extlist[node->ext_size]->flags |= LYEXT_OPT_INHERIT;
+
+                    node->ext = extlist;
+                    node->ext_size++;
+
+inherit_dfs_child:
+                    /* modification of - select element for the next run - children first */
+                    if (node->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
+                        next = NULL;
+                    } else {
+                        next = node->child;
+                    }
+                    if (!next) {
+inherit_dfs_sibling:
+                        /* no children, try siblings */
+                        next = node->next;
+                    }
+                    while (!next) {
+                        /* go to the parent */
+                        node = lys_parent(node);
+
+                        /* we are done if we are back in the root (the starter's parent */
+                        if (node == root) {
+                            break;
+                        }
+
+                        /* parent is already processed, go to its sibling */
+                        next = node->next;
+                    }
+                }
+            }
+        }
+
+        /* final check */
+        if (eplugin->check_result) {
+            if ((*eplugin->check_result)(ext)) {
+                return -1;
+            }
+        }
+
+        rc = 0;
         break;
     default:
         LOGINT;
@@ -6580,9 +6692,9 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
         return -1;
     }
 
-    /* the rest */
+    /* the restexcept finalizing extensions */
     for (i = 0; i < unres->count; ++i) {
-        if (unres->type[i] == UNRES_RESOLVED) {
+        if (unres->type[i] == UNRES_RESOLVED || unres->type[i] == UNRES_EXT_FINALIZE) {
             continue;
         }
 
@@ -6603,6 +6715,19 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
     }
 
     ly_vlog_hide(0);
+
+    /* finalize extensions, keep it last to provide the complete schema tree information to the plugin's checkers */
+    for (i = 0; i < unres->count; ++i) {
+        if (unres->type[i] != UNRES_EXT_FINALIZE) {
+            continue;
+        }
+
+        rc =  resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres);
+        if (rc == 0) {
+            unres->type[i] = UNRES_RESOLVED;
+            ++resolved;
+        }
+    }
 
     if (resolved < unres->count) {
         /* try to resolve the unresolved nodes again, it will not resolve anything, but it will print
@@ -6693,42 +6818,46 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
         }
     }
 
-    if (*ly_vlog_hide_location()) {
-        log_hidden = 1;
-    } else {
-        log_hidden = 0;
-        ly_vlog_hide(1);
-    }
-    rc = resolve_unres_schema_item(mod, item, type, snode, unres);
-    if (!log_hidden) {
-        ly_vlog_hide(0);
-    }
+    if (type != UNRES_EXT_FINALIZE) {
+        /* extension finalization is not even tried when adding the item into the inres list */
 
-    if (rc != EXIT_FAILURE) {
-        if (rc == -1 && ly_errno == LY_EVALID) {
-            ly_err_repeat();
+        if (*ly_vlog_hide_location()) {
+            log_hidden = 1;
+        } else {
+            log_hidden = 0;
+            ly_vlog_hide(1);
         }
-        if (type == UNRES_LIST_UNIQ) {
-            /* free the allocated structure */
-            free(item);
-        } else if (rc == -1 && type == UNRES_IFFEAT) {
-            /* free the allocated resources */
-            free(*((char **)item));
-         }
-        return rc;
-    } else {
-        /* erase info about validation errors */
-        ly_err_clean(1);
-    }
+        rc = resolve_unres_schema_item(mod, item, type, snode, unres);
+        if (!log_hidden) {
+            ly_vlog_hide(0);
+        }
 
-    print_unres_schema_item_fail(item, type, snode);
+        if (rc != EXIT_FAILURE) {
+            if (rc == -1 && ly_errno == LY_EVALID) {
+                ly_err_repeat();
+            }
+            if (type == UNRES_LIST_UNIQ) {
+                /* free the allocated structure */
+                free(item);
+            } else if (rc == -1 && type == UNRES_IFFEAT) {
+                /* free the allocated resources */
+                free(*((char **)item));
+             }
+            return rc;
+        } else {
+            /* erase info about validation errors */
+            ly_err_clean(1);
+        }
 
-    /* HACK unlinking is performed here so that we do not do any (NS) copying in vain */
-    if (type == UNRES_TYPE_DER || type == UNRES_TYPE_DER_TPDF) {
-        yin = (struct lyxml_elem *)((struct lys_type *)item)->der;
-        if (!(yin->flags & LY_YANG_STRUCTURE_FLAG)) {
-            lyxml_unlink_elem(mod->ctx, yin, 1);
-            ((struct lys_type *)item)->der = (struct lys_tpdf *)yin;
+        print_unres_schema_item_fail(item, type, snode);
+
+        /* HACK unlinking is performed here so that we do not do any (NS) copying in vain */
+        if (type == UNRES_TYPE_DER || type == UNRES_TYPE_DER_TPDF) {
+            yin = (struct lyxml_elem *)((struct lys_type *)item)->der;
+            if (!(yin->flags & LY_YANG_STRUCTURE_FLAG)) {
+                lyxml_unlink_elem(mod->ctx, yin, 1);
+                ((struct lys_type *)item)->der = (struct lys_tpdf *)yin;
+            }
         }
     }
 

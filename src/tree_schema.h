@@ -220,7 +220,15 @@ typedef enum lys_nodetype {
 
 #define LYS_ANY 0x7FFF
 
-/* extension types */
+/**
+ * @defgroup extensions YANG Extensions
+ *
+ * @{
+ */
+
+/**
+ * @brief Extension types
+ */
 typedef enum {
     LYEXT_ERR = -1,                /**< error value when #LYEXT_TYPE is expected as return value of a function */
     LYEXT_FLAG = 0,                /**< simple extension with no substatements;
@@ -313,6 +321,23 @@ typedef enum {
 } LYEXT_SUBSTMT;
 
 /**
+ * @defgroup extflags Extension flags
+ * @ingroup extensions
+ *
+ * Various flags for extensions.
+
+ * @{
+ */
+#define LYEXT_OPT_INHERIT    0x01    /**< When instantiated in lys_node, the extension is supposed to be inherited
+                                          into the children lys_node elements. The plugin can affect inheriting by a
+                                          callback to decide if the extension instance is supposed to be inherited.
+                                          The extension instance with this flag is not printed and it is just a shadow
+                                          copy of the original extension instance in some of the parents. */
+/**
+ * @}
+ */
+
+/**
  * @brief YANG extension definition
  */
 struct lys_ext {
@@ -351,6 +376,7 @@ struct lys_ext_instance {
                                           LYEXT_SUBSTMT_DEFAULT and LYEXT_SUBSTMT_UNIQUE values of the
                                           ::lys_ext_instance#substmt member. To get the correct pointer to the
                                           data connected with the index, use lys_ext_instance_substmt() */
+    uint16_t flags;                   /**< [extension flags](@ref extflags) */
     LYEXT_SUBSTMT substmt;           /**< id for the case the extension instance is actually inside some of the
                                           node's member's (substatements). libyang does not store extension instances
                                           for all possible statements to save some, commonly unused, space. */

@@ -139,6 +139,11 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
     int flag;
 
     for (u = 0; u < count; u++) {
+        if (ext[u]->flags & LYEXT_OPT_INHERIT) {
+            /* ignore the inherited extensions which were not explicitely instantiated in the module */
+            continue;
+        }
+
         mod = lys_main_module(ext[u]->def->module);
         if (mod == module) {
             prefix = module->prefix;

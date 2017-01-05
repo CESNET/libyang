@@ -39,6 +39,8 @@ enum UNRES_ITEM {
     UNRES_XPATH,         /* unchecked XPath expression */
     UNRES_EXT,           /* extension instances */
 
+    UNRES_EXT_FINALIZE,  /* extension is already resolved, but needs to be finalized via plugin callbacks */
+
     /* DATA */
     UNRES_LEAFREF,       /* unresolved leafref reference */
     UNRES_INSTID,        /* unresolved instance-identifier reference */
