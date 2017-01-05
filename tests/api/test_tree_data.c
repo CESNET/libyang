@@ -599,6 +599,40 @@ test_lyd_new_path(void **state)
     assert_string_equal(node->next->schema->name, "rpc-container");
 
     lyd_free(root);
+
+    root = lyd_new_path(NULL, ctx, "/a:l", NULL, 0, 0);
+    assert_non_null(root);
+    assert_string_equal(root->schema->name, "l");
+
+    node = lyd_new_path(root, NULL, "/a:l[key1='11'][key2='22']/value", "val", 0, 0);
+    assert_non_null(node);
+    assert_ptr_not_equal(root->prev, root);
+    assert_string_equal(node->schema->name, "l");
+    assert_string_equal(node->child->schema->name, "key1");
+
+    node = lyd_new_path(root, NULL, "/a:l[1]/key1", "1", 0, 0);
+    assert_non_null(node);
+    assert_string_equal(node->schema->name, "key1");
+
+    node = lyd_new_path(root, NULL, "/a:l[1]/key2", "2", 0, 0);
+    assert_non_null(node);
+    assert_string_equal(node->schema->name, "key2");
+
+    node = lyd_new_path(root, NULL, "/a:l[1]/value", "vall", 0, 0);
+    assert_non_null(node);
+    assert_string_equal(node->schema->name, "value");
+
+    node = lyd_new_path(root, NULL, "/a:l[2]/value", "vall", 0, 0);
+    assert_null(node);
+
+    node = lyd_new_path(root, NULL, "/a:l[3]/value", "vall", 0, 0);
+    assert_non_null(node);
+    assert_string_equal(node->schema->name, "l");
+
+    node = lyd_new_path(root, NULL, "/a:l[0]", NULL, 0, 0);
+    assert_null(node);
+
+    lyd_free_withsiblings(root);
 }
 
 static void

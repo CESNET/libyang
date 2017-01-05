@@ -234,7 +234,7 @@ const char *ly_errs[] = {
 /* LYE_PATH_MISSMOD */ "Missing module name.",
 /* LYE_PATH_INNODE */  "Schema node not found.",
 /* LYE_PATH_INKEY */   "List key not found or on incorrect position (%s).",
-/* LYE_PATH_MISSKEY */ "Not all list keys specified (%s).",
+/* LYE_PATH_MISSKEY */ "List keys or position missing (%s).",
 /* LYE_PATH_EXISTS */  "Node already exists.",
 /* LYE_PATH_MISSPAR */ "Parent does not exist.",
 };

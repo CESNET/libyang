@@ -755,9 +755,9 @@ struct lyd_node *lyd_new_output_anydata(struct lyd_node *parent, const struct ly
  * RPC/action and either input or output, not both. Can be NULL.
  * @param[in] ctx Context to use. Mandatory if \p data_tree is NULL.
  * @param[in] path Simple absolute data XPath of the new node. It can contain only simple node addressing with optional
- * module names as prefixes. List nodes must have predicates, one for each list key in the correct order and
- * with its value as well, leaves and leaf-lists can have predicates too that have preference over \p value,
- * see @ref howtoxpath.
+ * module names as prefixes. List nodes can have predicates, one for each list key in the correct order and
+ * with its value as well or using specific instance position, leaves and leaf-lists can have predicates too that
+ * have preference over \p value, see @ref howtoxpath.
  * @param[in] value Value of the new leaf/lealf-list (const char*). If creating anydata or anyxml, the following
  *            \p value_type parameter is required to be specified correctly. If creating nodes of other types, the
  *            parameter is ignored.
