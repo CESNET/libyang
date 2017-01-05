@@ -208,7 +208,7 @@ struct lyd_node_leaf_list {
     /* leaflist's specific members */
     const char *value_str;           /**< string representation of value (for comparison, printing,...), always corresponds to value_type */
     lyd_val value;                   /**< node's value representation, always corresponds to schema->type.base */
-    LY_DATA_TYPE value_type;         /**< type of the value in the node, mainly for union to avoid repeating of type detection,
+    uint16_t value_type;             /**< type of the value in the node, mainly for union to avoid repeating of type detection,
                                           if (schema->type.base == LY_TYPE_LEAFREF), then value_type may be
                                           (LY_TYPE_LEAFREF_UNRES | leafref target value_type) and (value.leafref == NULL) */
 };
