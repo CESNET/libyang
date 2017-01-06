@@ -1048,12 +1048,35 @@ lyd_new_path_list_predicate(struct lyd_node *list, const char *list_name, const 
 {
     const char *name, *value;
     char *key_val;
-    int r, i, nam_len, val_len, has_predicate = 1;
+    int r, i, nam_len, val_len, has_predicate;
     struct lys_node_list *slist;
 
     slist = (struct lys_node_list *)list->schema;
 
-    for (i = 0; i < slist->keys_size; ++i) {
+    /* is the predicate a number? */
+    if (((r = parse_schema_json_predicate(predicate, &name, &nam_len, &value, &val_len, &has_predicate)) < 1)
+            || !strncmp(name, ".", nam_len)) {
+        LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, predicate[-r], &predicate[-r]);
+        return -1;
+    }
+
+    if (isdigit(name[0])) {
+        /* position index - creating without keys */
+        *parsed += r;
+        return 0;
+    }
+
+    /* it's not a number, so there must be some keys */
+    if (!slist->keys_size) {
+        /* there are none, so pretend we did not parse anything to get invalid char error later */
+        return 0;
+    }
+
+    /* go through all the keys */
+    i = 0;
+    goto check_parsed_values;
+
+    for (; i < slist->keys_size; ++i) {
         if (!has_predicate) {
             LOGVAL(LYE_PATH_MISSKEY, LY_VLOG_NONE, NULL, list_name);
             return -1;
@@ -1064,13 +1087,10 @@ lyd_new_path_list_predicate(struct lyd_node *list, const char *list_name, const 
             LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, predicate[-r], &predicate[-r]);
             return -1;
         }
+
+check_parsed_values:
         *parsed += r;
         predicate += r;
-
-        if (isdigit(name[0])) {
-            /* position index - creating without keys */
-            return 0;
-        }
 
         if (!value || strncmp(slist->keys[i]->name, name, nam_len) || slist->keys[i]->name[nam_len]) {
             LOGVAL(LYE_PATH_INKEY, LY_VLOG_NONE, NULL, name[0], name);

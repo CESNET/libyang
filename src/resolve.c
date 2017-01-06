@@ -2197,8 +2197,40 @@ resolve_partial_json_data_list_predicate(const char *predicate, const char *node
     assert(node);
     assert(node->schema->nodetype == LYS_LIST);
 
+    /* is the predicate a number? */
+    if (((r = parse_schema_json_predicate(predicate, &name, &nam_len, &value, &val_len, &has_predicate)) < 1)
+            || !strncmp(name, ".", nam_len)) {
+        LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, predicate[-r], &predicate[-r]);
+        return -1;
+    }
+
+    if (isdigit(name[0])) {
+        if (position == atoi(name)) {
+            /* match */
+            *parsed += r;
+            return 0;
+        } else {
+            /* not a match */
+            return 1;
+        }
+    }
+
+    if (!((struct lys_node_list *)node->schema)->keys_size) {
+        /* no keys in schema - causes an error later */
+        return 0;
+    }
+
     key = (struct lyd_node_leaf_list *)node->child;
-    for (i = 0; i < ((struct lys_node_list *)node->schema)->keys_size; ++i) {
+    if (!key) {
+        /* it is not a position, so we need a key for it to be a match */
+        return 1;
+    }
+
+    /* go through all the keys */
+    i = 0;
+    goto check_parsed_values;
+
+    for (; i < ((struct lys_node_list *)node->schema)->keys_size; ++i) {
         if (!has_predicate) {
             LOGVAL(LYE_PATH_MISSKEY, LY_VLOG_NONE, NULL, node_name);
             return -1;
@@ -2210,23 +2242,9 @@ resolve_partial_json_data_list_predicate(const char *predicate, const char *node
             return -1;
         }
 
+check_parsed_values:
         predicate += r;
         *parsed += r;
-
-        if (isdigit(name[0])) {
-            if (position == atoi(name)) {
-                /* match */
-                break;
-            } else {
-                /* not a match */
-                return 1;
-            }
-        }
-
-        if (!key) {
-            /* it is not a position, so we need to key for it to be a match */
-            return 1;
-        }
 
         if (strncmp(key->schema->name, name, nam_len) || key->schema->name[nam_len]) {
             LOGVAL(LYE_PATH_INKEY, LY_VLOG_NONE, NULL, name);
