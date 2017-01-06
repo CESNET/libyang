@@ -789,6 +789,10 @@ check_leaf_list_backlinks(struct lyd_node *node, int op)
                                 || ((op != 1) && (leaf_list->value_type & LY_TYPE_LEAFREF_UNRES))) {
                             /* invalidate the leafref, a change concerning it happened */
                             leaf_list->validity |= LYD_VAL_LEAFREF;
+                            if (leaf_list->value_type == LY_TYPE_LEAFREF) {
+                                /* remove invalid link */
+                                leaf_list->value.leafref = NULL;
+                            }
                         }
                     }
                     ly_set_free(data);
@@ -1668,10 +1672,12 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
         trg_leaf->value_str = src_leaf->value_str;
         src_leaf->value_str = NULL;
 
-        trg_leaf->value = src_leaf->value;
-        src_leaf->value = (lyd_val)0;
         if (trg_leaf->value_type == LY_TYPE_LEAFREF) {
             trg_leaf->validity |= LYD_VAL_LEAFREF;
+            trg_leaf->value.leafref = NULL;
+        } else {
+            trg_leaf->value = src_leaf->value;
+            src_leaf->value = (lyd_val)0;
         }
 
         trg_leaf->dflt = src_leaf->dflt;
