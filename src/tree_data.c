@@ -4002,15 +4002,136 @@ lyd_unlink(struct lyd_node *node)
     return lyd_unlink_internal(node, 1);
 }
 
+static struct lys_node *
+lyd_get_schema(const struct lyd_node *node, struct ly_ctx *ctx)
+{
+    const struct lys_module *mod;
+    struct lys_node *orig, *parent, *first_sibling, *iter = NULL;
+    struct ly_set *parents;
+    unsigned int index;
+    uint32_t idx;
+
+    assert(node);
+
+    if (!ctx || node->schema->module->ctx == ctx) {
+        /* we have the same context */
+        return node->schema;
+    }
+
+    /* we are searching for the schema node (orig) in different context */
+    orig = node->schema; /* shortcut */
+
+    /* store the parents chain */
+    parents = ly_set_new();
+    for (parent = orig; parent; parent = lys_parent(parent)) {
+        /* note - augments are skipped so we will work only with the implemented modules
+         * (where the augments are applied) */
+        ly_set_add(parents, parent, LY_SET_OPT_USEASLIST);
+    }
+    assert(parents->number);
+    index = parents->number - 1;
+
+    /* process the parents from the top level */
+    /* for the top-level node, we have to locate the module first */
+    parent = parents->set.s[index];
+    idx = 0;
+    while ((mod = ly_ctx_get_module_iter(ctx, &idx))) {
+        /* check module name */
+        if (strcmp(mod->name, parent->module->name)) {
+            continue;
+        }
+
+        /* check revision */
+        if ((!mod->rev_size && !parent->module->rev_size) ||
+                (mod->rev_size && parent->module->rev_size && !strcmp(mod->rev[0].date, parent->module->rev[0].date))) {
+            /* we have match */
+            break;
+        }
+    }
+    if (!mod) {
+        ly_set_free(parents);
+        return NULL;
+    }
+    first_sibling = mod->data;
+
+    /* now search in the schema tree for the matching node */
+    while (1) {
+        lys_get_sibling(first_sibling, parent->module->name, 0, parent->name, 0, parent->nodetype,
+                        (const struct lys_node **)&iter);
+        if (!iter) {
+            /* not found, iter will be used as NULL result */
+            break;
+        }
+
+        if (index == 0) {
+            /* we are done, iter is the result */
+            break;
+        } else {
+            /* we are going to continue, so update variables for the next loop */
+            first_sibling = iter->child;
+            parent = parents->set.s[--index];
+            iter = NULL;
+        }
+    }
+
+    ly_set_free(parents);
+    return iter;
+}
+
+/*
+ * - in leaflist it must be added with value_str
+ */
+static int
+lyd_dup_common(struct lyd_node *parent, struct lyd_node *new, const struct lyd_node *orig, struct ly_ctx *ctx)
+{
+    struct lyd_attr *attr;
+
+    /* fill common part */
+    if (ctx) {
+        /* we are changing the context, so we have to get the correct schema node in the new context */
+        if (parent) {
+            /* we know its parent, so we can start with it */
+            lys_get_sibling(parent->schema->child, orig->schema->module->name, 0, orig->schema->name, 0,
+                            orig->schema->nodetype, (const struct lys_node **)&new->schema);
+        } else {
+            /* we have to search in complete context */
+            new->schema = lyd_get_schema(orig, ctx);
+        }
+
+        if (!new->schema) {
+            LOGERR(LY_EINVAL, "Target context does not contain schema node for the data node being duplicated "
+                   "(%s:%s).", orig->schema->module->name, orig->schema->name);
+            return EXIT_FAILURE;
+        }
+    } else {
+        /* the context is the same so also the pointer into the schema will be the same */
+        new->schema = orig->schema;
+    }
+    new->attr = NULL;
+    LY_TREE_FOR(orig->attr, attr) {
+        lyd_dup_attr(ctx ? ctx : orig->schema->module->ctx, new, attr);
+    }
+    new->next = NULL;
+    new->prev = new;
+    new->parent = NULL;
+    new->validity = ly_new_node_validity(new->schema);
+    new->dflt = orig->dflt;
+    new->when_status = orig->when_status & LYD_WHEN;
+
+    if (parent && lyd_insert(parent, new)) {
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
+}
+
 API struct lyd_node *
-lyd_dup(const struct lyd_node *node, int recursive)
+lyd_dup_to_ctx(const struct lyd_node *node, int recursive, struct ly_ctx *ctx)
 {
     const struct lyd_node *next, *elem;
-    struct lyd_node *ret, *parent, *new_node;
-    struct lyd_attr *attr;
+    struct lyd_node *ret, *parent, *new_node = NULL;
     struct lyd_node_leaf_list *new_leaf;
     struct lyd_node_anydata *new_any, *old_any;
-    struct lys_type *type;
 
     if (!node) {
         ly_errno = LY_EINVAL;
@@ -4027,61 +4148,62 @@ lyd_dup(const struct lyd_node *node, int recursive)
         switch (elem->schema->nodetype) {
         case LYS_LEAF:
         case LYS_LEAFLIST:
-            new_leaf = malloc(sizeof *new_leaf);
+            new_leaf = calloc(1, sizeof *new_leaf);
             new_node = (struct lyd_node *)new_leaf;
             if (!new_node) {
                 LOGMEM;
-                return NULL;
+                goto error;
             }
 
-            new_leaf->value_str = lydict_insert(elem->schema->module->ctx,
+            new_leaf->value_str = lydict_insert(ctx ? ctx : elem->schema->module->ctx,
                                                 ((struct lyd_node_leaf_list *)elem)->value_str, 0);
             new_leaf->value_type = ((struct lyd_node_leaf_list *)elem)->value_type;
+            if (lyd_dup_common(parent, new_node, elem, ctx)) {
+                if (!new_node->schema) {
+                    /* in error cleanup, just free will be called instead of lyd_free(),
+                     * so do the additional cleanup here */
+                    lydict_remove(ctx ? ctx : elem->schema->module->ctx, new_leaf->value_str);
+                }
+                goto error;
+            }
 
             /* value_str pointer is shared in these cases */
             if ((new_leaf->value_type == LY_TYPE_BINARY) || (new_leaf->value_type == LY_TYPE_STRING)) {
                 new_leaf->value.string = new_leaf->value_str;
-            } else {
+            } else if (new_leaf->value_type != LY_TYPE_BITS) {
                 new_leaf->value = ((struct lyd_node_leaf_list *)elem)->value;
             }
 
             /* bits, leafref, and instid type must be treated specially */
-            if (new_leaf->value_type == LY_TYPE_BITS) {
-                for (type = &((struct lys_node_leaf *)elem->schema)->type; type->der->module; type = &type->der->type) {
-                    if (type->base != LY_TYPE_BITS) {
-                        LOGINT;
-                        lyd_free(new_node);
-                        lyd_free(ret);
-                        return NULL;
-                    }
-                }
-
-                new_leaf->value.bit = malloc(type->info.bits.count * sizeof *new_leaf->value.bit);
-                if (!new_leaf->value.bit) {
-                    LOGMEM;
-                    lyd_free(new_node);
-                    lyd_free(ret);
-                    return NULL;
-                }
-                memcpy(new_leaf->value.bit, ((struct lyd_node_leaf_list *)elem)->value.bit,
-                       type->info.bits.count * sizeof *new_leaf->value.bit);
-            } else if (new_leaf->value_type == LY_TYPE_LEAFREF) {
+            if (new_leaf->value_type == LY_TYPE_LEAFREF) {
                 new_leaf->value.leafref = NULL;
             } else if (new_leaf->value_type == LY_TYPE_INST) {
                 new_leaf->value.instance = NULL;
             } else if (new_leaf->value_type == LY_TYPE_UNION) {
-                /* unresolved union, there could be JSON instid value stored, duplicate it */
-                new_leaf->value.string = lydict_insert(node->schema->module->ctx, new_leaf->value.string, 0);
+                /* unresolved union (this must be non-validated tree), duplicate the stored string (duplicated
+                 * because of possible change of the value in case of instance-identifier) */
+                new_leaf->value.string = lydict_insert(ctx ? ctx : node->schema->module->ctx,
+                                                       new_leaf->value.string, 0);
+            } else if ((new_leaf->value_type == LY_TYPE_BITS) ||
+                    (ctx && (new_leaf->value_type == LY_TYPE_ENUM || new_leaf->value_type == LY_TYPE_IDENT))) {
+                /* in case of duplicating bits (no matter if in the same context or not) or enum and identityref into
+                 * a different context, searching for the type and duplicating the data is almost as same as resolving
+                 * the string value, so due to a simplicity, parse the value for the duplicated leaf */
+                lyp_parse_value(&((struct lys_node_leaf *)new_leaf->schema)->type, &new_leaf->value_str, NULL,
+                                new_leaf, 1, node->dflt);
             }
             break;
         case LYS_ANYXML:
         case LYS_ANYDATA:
             old_any = (struct lyd_node_anydata *)elem;
-            new_any = malloc(sizeof *new_any);
+            new_any = calloc(1, sizeof *new_any);
             new_node = (struct lyd_node *)new_any;
             if (!new_node) {
                 LOGMEM;
-                return NULL;
+                goto error;
+            }
+            if (lyd_dup_common(parent, new_node, elem, ctx)) {
+                goto error;
             }
 
             new_any->value_type = old_any->value_type;
@@ -4094,13 +4216,13 @@ lyd_dup(const struct lyd_node *node, int recursive)
             case LYD_ANYDATA_CONSTSTRING:
             case LYD_ANYDATA_SXML:
             case LYD_ANYDATA_JSON:
-                new_any->value.str = lydict_insert(elem->schema->module->ctx, old_any->value.str, 0);
+                new_any->value.str = lydict_insert(ctx ? ctx : elem->schema->module->ctx, old_any->value.str, 0);
                 break;
             case LYD_ANYDATA_DATATREE:
-                new_any->value.tree = lyd_dup(old_any->value.tree, 1);
+                new_any->value.tree = lyd_dup_to_ctx(old_any->value.tree, 1, ctx);
                 break;
             case LYD_ANYDATA_XML:
-                new_any->value.xml = lyxml_dup_elem(elem->schema->module->ctx, old_any->value.xml, NULL, 1);
+                new_any->value.xml = lyxml_dup_elem(ctx ? ctx : elem->schema->module->ctx, old_any->value.xml, NULL, 1);
                 break;
             case LYD_ANYDATA_STRING:
             case LYD_ANYDATA_SXMLD:
@@ -4115,41 +4237,23 @@ lyd_dup(const struct lyd_node *node, int recursive)
         case LYS_NOTIF:
         case LYS_RPC:
         case LYS_ACTION:
-            new_node = malloc(sizeof *new_node);
+            new_node = calloc(1, sizeof *new_node);
             if (!new_node) {
                 LOGMEM;
-                return NULL;
+                goto error;
             }
             new_node->child = NULL;
+
+            if (lyd_dup_common(parent, new_node, elem, ctx)) {
+                goto error;
+            }
             break;
         default:
-            lyd_free(ret);
             LOGINT;
-            return NULL;
+            goto error;
         }
-
-        /* fill common part */
-        new_node->schema = elem->schema;
-        new_node->attr = NULL;
-        LY_TREE_FOR(elem->attr, attr) {
-            lyd_dup_attr(elem->schema->module->ctx, new_node, attr);
-        }
-        new_node->next = NULL;
-        new_node->prev = new_node;
-        new_node->parent = NULL;
-        new_node->validity = ly_new_node_validity(new_node->schema);
-        new_node->dflt = elem->dflt;
-        new_node->when_status = elem->when_status & LYD_WHEN;
-
         if (!ret) {
             ret = new_node;
-        }
-        if (parent) {
-            if (lyd_insert(parent, new_node)) {
-                lyd_free(ret);
-                LOGINT;
-                return NULL;
-            }
         }
 
         if (!recursive) {
@@ -4172,6 +4276,8 @@ lyd_dup(const struct lyd_node *node, int recursive)
         } else {
             parent = new_node;
         }
+        new_node = NULL;
+
         while (!next) {
             /* no siblings, go back through parents */
             elem = elem->parent;
@@ -4179,9 +4285,8 @@ lyd_dup(const struct lyd_node *node, int recursive)
                 break;
             }
             if (!parent) {
-                lyd_free(ret);
                 LOGINT;
-                return NULL;
+                goto error;
             }
             parent = parent->parent;
             /* parent is already processed, go to its sibling */
@@ -4190,6 +4295,21 @@ lyd_dup(const struct lyd_node *node, int recursive)
     }
 
     return ret;
+
+error:
+    if (new_node && new_node->schema) {
+        lyd_free(new_node);
+    } else {
+        free(new_node);
+    }
+    lyd_free(ret);
+    return NULL;
+}
+
+API struct lyd_node *
+lyd_dup(const struct lyd_node *node, int recursive)
+{
+    return lyd_dup_to_ctx(node, recursive, NULL);
 }
 
 API void

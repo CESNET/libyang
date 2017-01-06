@@ -780,8 +780,7 @@ struct lyd_node *lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, co
 unsigned int lyd_list_pos(const struct lyd_node *node);
 
 /**
- * @brief Create a copy of the specified data tree \p node. Namespaces are copied as needed,
- * schema references are kept the same.
+ * @brief Create a copy of the specified data tree \p node. Schema references are kept the same.
  *
  * The duplicated tree (the result) is created non-validated. To guarantee safe operations
  * on it in the future, the recommended way of using it is after finishing all the partial data tree
@@ -793,6 +792,20 @@ unsigned int lyd_list_pos(const struct lyd_node *node);
  * @return Created copy of the provided data \p node.
  */
 struct lyd_node *lyd_dup(const struct lyd_node *node, int recursive);
+
+/**
+ * @brief Create a copy of the specified data tree \p node in the different context. All the
+ * schema references and strings are re-mapped into the specified context.
+ *
+ * If the target context does not contain the schemas used in the source data tree, error
+ * is raised and the new data tree is not created.
+ *
+ * @param[in] node Data tree node to be duplicated.
+ * @param[in] recursive 1 if all children are supposed to be also duplicated.
+ * @param[in] ctx Target context for the duplicated data.
+ * @return Created copy of the provided data \p node.
+ */
+struct lyd_node *lyd_dup_to_ctx(const struct lyd_node *node, int recursive, struct ly_ctx *ctx);
 
 /**
  * @brief Merge a (sub)tree into a data tree. Missing nodes are merged, leaf values updated.
