@@ -463,7 +463,7 @@ char *lyd_path(struct lyd_node *node);
 /**@} parseroptions */
 
 /**
- * @brief Parse (and validate according to appropriate schema from the given context) data.
+ * @brief Parse (and validate) data from memory.
  *
  * In case of LY_XML format, the data string is parsed completely. It means that when it contains
  * a non well-formed XML with multiple root elements, all those sibling XML trees are parsed. The
@@ -499,7 +499,7 @@ char *lyd_path(struct lyd_node *node);
 struct lyd_node *lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options, ...);
 
 /**
- * @brief Read data from the given file descriptor.
+ * @brief Read (and validate) data from the given file descriptor.
  *
  * \note Current implementation supports only reading data from standard (disk) file, not from sockets, pipes, etc.
  *
@@ -537,7 +537,7 @@ struct lyd_node *lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT 
 struct lyd_node *lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, ...);
 
 /**
- * @brief Read data from the given file path.
+ * @brief Read (and validate) data from the given file path.
  *
  * In case of LY_XML format, the file content is parsed completely. It means that when it contains
  * a non well-formed XML with multiple root elements, all those sibling XML trees are parsed. The
@@ -573,7 +573,7 @@ struct lyd_node *lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int
 struct lyd_node *lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int options, ...);
 
 /**
- * @brief Parse (and validate according to appropriate schema from the given context) XML tree.
+ * @brief Parse (and validate) XML tree.
  *
  * The output data tree is parsed from the given XML tree previously parsed by one of the
  * lyxml_read* functions.
@@ -621,6 +621,8 @@ struct lyd_node *lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int
 /**
  * @brief Create a new container node in a data tree.
  *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
+ *
  * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
  * @param[in] module Module with the node being created.
  * @param[in] name Schema node name of the new data node. The node can be #LYS_CONTAINER, #LYS_LIST,
@@ -632,6 +634,8 @@ struct lyd_node *lyd_new(struct lyd_node *parent, const struct lys_module *modul
 /**
  * @brief Create a new leaf or leaflist node in a data tree with a string value that is converted to
  * the actual value.
+ *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
  * @param[in] module Module with the node being created.
@@ -646,13 +650,10 @@ struct lyd_node *lyd_new_leaf(struct lyd_node *parent, const struct lys_module *
 /**
  * @brief Change value of a leaf node.
  *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
+ *
  * Despite the prototype allows to provide a leaflist node as \p leaf parameter, only leafs are accepted.
  * Also, changing the value of a list key is prohibited.
- *
- * As for the other data tree manipulation functions, the change is not fully validated to allow multiple changes
- * in the data tree. Therefore, when all changes on the data tree are done, caller is supposed to call lyd_validate()
- * to check that the result is valid data tree. Specifically, if a leafref leaf is changed, it is not checked that
- * the (leafref) value is correct.
  *
  * @param[in] leaf A leaf node to change.
  * @param[in] val_str String form of the new value to be set to the \p leaf. In case the type is #LY_TYPE_INST
@@ -663,6 +664,8 @@ int lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str);
 
 /**
  * @brief Create a new anydata or anyxml node in a data tree.
+ *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
  * This function is supposed to be a replacement for the lyd_new_anyxml_str() and lyd_new_anyxml_xml().
  *
@@ -681,6 +684,8 @@ struct lyd_node *lyd_new_anydata(struct lyd_node *parent, const struct lys_modul
 /**
  * @brief Create a new container node in a data tree. Ignore RPC/action input nodes and instead use RPC/action output ones.
  *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
+ *
  * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
  * @param[in] module Module with the node being created.
  * @param[in] name Schema node name of the new data node. The node should only be #LYS_CONTAINER or #LYS_LIST,
@@ -692,6 +697,8 @@ struct lyd_node *lyd_new_output(struct lyd_node *parent, const struct lys_module
 /**
  * @brief Create a new leaf or leaflist node in a data tree with a string value that is converted to
  * the actual value. Ignore RPC/action input nodes and instead use RPC/action output ones.
+ *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
  * @param[in] module Module with the node being created.
@@ -706,6 +713,8 @@ struct lyd_node *lyd_new_output_leaf(struct lyd_node *parent, const struct lys_m
 /**
  * @brief Create a new anydata or anyxml node in a data tree. Ignore RPC/action input nodes and instead use
  * RPC/action output ones.
+ *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
  * @param[in] module Module with the node being created.
@@ -743,6 +752,8 @@ struct lyd_node *lyd_new_output_anydata(struct lyd_node *parent, const struct ly
 
 /**
  * @brief Create a new data node based on a simple XPath.
+ *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
  * The new node is normally inserted at the end, either as the last child of a parent or as the last sibling
  * if working with top-level elements. However, when manipulating RPC input or output, schema ordering is
@@ -783,10 +794,7 @@ unsigned int lyd_list_pos(const struct lyd_node *node);
  * @brief Create a copy of the specified data tree \p node. Namespaces are copied as needed,
  * schema references are kept the same.
  *
- * The duplicated tree (the result) is created non-validated. To guarantee safe operations
- * on it in the future, the recommended way of using it is after finishing all the partial data tree
- * modifications, validate all the trees where the copies from this function were placed (or the copies
- * themselves if they were kept separate).
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
  * @param[in] node Data tree node to be duplicated.
  * @param[in] recursive 1 if all children are supposed to be also duplicated.
@@ -795,17 +803,15 @@ unsigned int lyd_list_pos(const struct lyd_node *node);
 struct lyd_node *lyd_dup(const struct lyd_node *node, int recursive);
 
 /**
- * @brief Merge a (sub)tree into a data tree. Missing nodes are merged, leaf values updated.
+ * @brief Merge a (sub)tree into a data tree.
+ *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
+ *
+ * Missing nodes are merged, leaf values updated.
  * If \p target and \p source do not share the top-level schema node, even if they
  * are from different modules, \p source parents up to top-level node will be created and
  * linked to the \p target (but only containers can be created this way, lists need keys,
  * so if lists are missing, an error will be returned).
- *
- * In short, this function will always try to return a fully valid data tree and will fail
- * if it is not possible. Also, in some less common cases, despite both trees \p target and
- * \p source are valid, the resulting tree may be invalid and this function will succeed.
- * If you know there are such possibilities in your data trees or you are not sure, always
- * validate the resulting merged \p target tree.
  *
  * @param[in] target Top-level (or an RPC output child) data tree to merge to. Must be valid.
  * @param[in] source Data tree to merge \p target with. Must be valid (at least as a subtree).
@@ -824,6 +830,8 @@ int lyd_merge(struct lyd_node *target, const struct lyd_node *source, int option
 /**
  * @brief Insert the \p node element as child to the \p parent element. The \p node is inserted as a last child of the
  * \p parent.
+ *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
  * - if the node is part of some other tree, it is automatically unlinked.
  * - if the node is the first node of a node list (with no parent), all the subsequent nodes are also inserted.
@@ -851,6 +859,8 @@ int lyd_insert(struct lyd_node *parent, struct lyd_node *node);
 
 /**
  * @brief Insert the \p node element as a last sibling of the specified \p sibling element.
+ *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
  * - if the node is part of some other tree, it is automatically unlinked.
  * - if the node is the first node of a node list (with no parent), all the subsequent nodes are also inserted.
@@ -880,7 +890,9 @@ int lyd_insert_sibling(struct lyd_node **sibling, struct lyd_node *node);
 
 /**
  * @brief Insert the \p node element after the \p sibling element. If \p node and \p siblings are already
- * siblings (just moving \p node position), skip validation.
+ * siblings (just moving \p node position).
+ *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
  * - if the target tree includes the default instance of the node being inserted, the default node is silently removed.
  * - if a default node is being inserted and the target tree already contains non-default instance, the existing
@@ -897,7 +909,9 @@ int lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node);
 
 /**
  * @brief Insert the \p node element after the \p sibling element. If \p node and \p siblings are already
- * siblings (just moving \p node position), skip validation.
+ * siblings (just moving \p node position).
+ *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
  * - if the target tree includes the default instance of the node being inserted, the default node is silently removed.
  * - if a default node is being inserted and the target tree already contains non-default instance, the existing
@@ -915,6 +929,8 @@ int lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node);
 
 /**
  * @brief Order siblings according to the schema node ordering.
+ *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
  * If the siblings include data nodes from other modules, they are
  * sorted based on the module order in the context.
@@ -999,6 +1015,8 @@ int lyd_wd_default(struct lyd_node_leaf_list *node);
 /**
  * @brief Unlink the specified data subtree. All referenced namespaces are copied.
  *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
+ *
  * Note, that the node's connection with the schema tree is kept. Therefore, in case of
  * reconnecting the node to a data tree using lyd_paste() it is necessary to paste it
  * to the appropriate place in the data tree following the schema.
@@ -1012,12 +1030,16 @@ int lyd_unlink(struct lyd_node *node);
  * @brief Free (and unlink) the specified data subtree. Use carefully, since libyang silently creates default nodes,
  * it is always better to use lyd_free_withsiblings() to free the complete data tree.
  *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
+ *
  * @param[in] node Root of the (sub)tree to be freed.
  */
 void lyd_free(struct lyd_node *node);
 
 /**
  * @brief Free (and unlink) the specified data tree and all its siblings (preceding as well as following).
+ *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
  * @param[in] node One of the siblings root element of the (sub)trees to be freed.
  */

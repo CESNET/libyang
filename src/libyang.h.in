@@ -478,7 +478,8 @@ extern "C" {
  * there is lyd_validate() function supposed to be called to make sure that the current data tree is valid. If
  * working with RPCs, they are invalid also in case the data nodes are not ordered according to the schema, which
  * you can fix easily with lyd_schema_sort(). Note, that not performing validation after some data tree changes
- * can cause failure of various libyang functions later.
+ * can cause failure of various libyang functions later. All functions performing data tree changes are marked
+ * with the __PARTIAL CHANGE__ flag in their documentation meaning they leave at least partly non-validated data tree.
  *
  * Creating data is generally possible in two ways, they can be combined. You can add nodes one-by-one based on
  * the node name and/or its parent (lyd_new(), \b lyd_new_anydata_*(), lyd_new_leaf(), and their output variants) or
