@@ -5880,10 +5880,24 @@ lyd_dec64_to_double(const struct lyd_node *node)
 API const struct lys_type *
 lyd_leaf_type(const struct lyd_node_leaf_list *leaf)
 {
+    struct lys_type *type;
+
     if (!leaf || !(leaf->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
         return NULL;
     }
 
-    return lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, (const char **)&leaf->value_str, NULL,
-                           (struct lyd_node_leaf_list *)leaf, 0, 0);
+    type = &((struct lys_node_leaf *)leaf->schema)->type;
+    if (type->base == LY_TYPE_UNION) {
+        if (type->info.uni.has_ptr_type && leaf->validity) {
+            /* we don't know what it will be after resolution */
+            return NULL;
+        }
+
+        if (resolve_union((struct lyd_node_leaf_list *)leaf, type, 0, 0, &type)) {
+            /* resolve union failed */
+            type = NULL;
+        }
+    }
+
+    return type;
 }
