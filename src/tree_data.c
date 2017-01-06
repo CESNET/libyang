@@ -789,6 +789,10 @@ check_leaf_list_backlinks(struct lyd_node *node, int op)
                                 || ((op != 1) && (leaf_list->value_type & LY_TYPE_LEAFREF_UNRES))) {
                             /* invalidate the leafref, a change concerning it happened */
                             leaf_list->validity |= LYD_VAL_LEAFREF;
+                            if (leaf_list->value_type == LY_TYPE_LEAFREF) {
+                                /* remove invalid link */
+                                leaf_list->value.leafref = NULL;
+                            }
                         }
                     }
                     ly_set_free(data);
@@ -1668,10 +1672,12 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
         trg_leaf->value_str = src_leaf->value_str;
         src_leaf->value_str = NULL;
 
-        trg_leaf->value = src_leaf->value;
-        src_leaf->value = (lyd_val)0;
         if (trg_leaf->value_type == LY_TYPE_LEAFREF) {
             trg_leaf->validity |= LYD_VAL_LEAFREF;
+            trg_leaf->value.leafref = NULL;
+        } else {
+            trg_leaf->value = src_leaf->value;
+            src_leaf->value = (lyd_val)0;
         }
 
         trg_leaf->dflt = src_leaf->dflt;
@@ -6000,10 +6006,24 @@ lyd_dec64_to_double(const struct lyd_node *node)
 API const struct lys_type *
 lyd_leaf_type(const struct lyd_node_leaf_list *leaf)
 {
+    struct lys_type *type;
+
     if (!leaf || !(leaf->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
         return NULL;
     }
 
-    return lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, (const char **)&leaf->value_str, NULL,
-                           (struct lyd_node_leaf_list *)leaf, 0, 0);
+    type = &((struct lys_node_leaf *)leaf->schema)->type;
+    if (type->base == LY_TYPE_UNION) {
+        if (type->info.uni.has_ptr_type && leaf->validity) {
+            /* we don't know what it will be after resolution */
+            return NULL;
+        }
+
+        if (resolve_union((struct lyd_node_leaf_list *)leaf, type, 0, 0, &type)) {
+            /* resolve union failed */
+            type = NULL;
+        }
+    }
+
+    return type;
 }
