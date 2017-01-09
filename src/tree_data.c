@@ -2310,10 +2310,12 @@ lyd_merge_to_ctx(struct lyd_node **trg, const struct lyd_node *src, int options,
             /* because we already have to duplicate it, do it in the correct context */
             node2 = lyd_dup_to_ctx(src, 1, ctx);
             if (!node2) {
+                lyd_free_withsiblings(node);
                 goto error;
             }
             if (node) {
                 if (lyd_insert_after(node->prev, node2)) {
+                    lyd_free_withsiblings(node);
                     goto error;
                 }
             } else {
@@ -2363,7 +2365,6 @@ error:
          * free it due to the error */
         lyd_free_withsiblings(target);
     }
-    lyd_free_withsiblings(node);
     lyd_free_withsiblings(src_merge_start);
     return -1;
 }
