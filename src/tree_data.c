@@ -2225,6 +2225,7 @@ lyd_merge_to_ctx(struct lyd_node **trg, const struct lyd_node *src, int options,
         }
     }
     while (1) {
+        /* going from down (source root) to up (top-level or the common node with target */
         do {
             for (src_snode = src->schema, i = 0; i < src_depth - depth; src_snode = lys_parent(src_snode), ++i);
             ++depth;
@@ -2291,8 +2292,16 @@ lyd_merge_to_ctx(struct lyd_node **trg, const struct lyd_node *src, int options,
         }
 
         if (!node) {
-            /* it is not there, create it. */
-            src_merge_start = _lyd_new(src_merge_start, src_snode, dflt);
+            /* it is not there, create it */
+            node2 = _lyd_new(NULL, src_snode, dflt);
+            if (!src_merge_start) {
+                src_merge_start = node2;
+            } else {
+                if (lyd_insert(node2, src_merge_start)) {
+                    goto error;
+                }
+                src_merge_start = node2;
+            }
         }
     }
 
@@ -2329,9 +2338,13 @@ lyd_merge_to_ctx(struct lyd_node **trg, const struct lyd_node *src, int options,
     }
 
     if (src_merge_start) {
-        src_merge_start->child = node;
+        /* insert data into the created parents */
+        /* first, get the lowest created parent, we don't have to check the nodetype since we are
+         * creating only a simple chain of containers */
+        for (node2 = src_merge_start; node2->child; node2 = node2->child);
+        node2->child = node;
         LY_TREE_FOR(node, node) {
-            node->parent = src_merge_start;
+            node->parent = node2;
         }
     } else {
         src_merge_start = node;
