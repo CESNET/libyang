@@ -872,10 +872,8 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
         }
     }
 
-    /* make the leafref unresolved */
-    if (((struct lys_node_leaf *)leaf->schema)->type.base == LY_TYPE_LEAFREF) {
-        leaf->validity |= LYD_VAL_LEAFREF;
-    }
+    /* make the node non-validate */
+    leaf->validity = ly_new_node_validity(leaf->schema);
 
     /* check possible leafref backlinks */
     check_leaf_list_backlinks((struct lyd_node *)leaf, 2);
