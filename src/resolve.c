@@ -2198,8 +2198,40 @@ resolve_partial_json_data_list_predicate(const char *predicate, const char *node
     assert(node);
     assert(node->schema->nodetype == LYS_LIST);
 
+    /* is the predicate a number? */
+    if (((r = parse_schema_json_predicate(predicate, &name, &nam_len, &value, &val_len, &has_predicate)) < 1)
+            || !strncmp(name, ".", nam_len)) {
+        LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, predicate[-r], &predicate[-r]);
+        return -1;
+    }
+
+    if (isdigit(name[0])) {
+        if (position == atoi(name)) {
+            /* match */
+            *parsed += r;
+            return 0;
+        } else {
+            /* not a match */
+            return 1;
+        }
+    }
+
+    if (!((struct lys_node_list *)node->schema)->keys_size) {
+        /* no keys in schema - causes an error later */
+        return 0;
+    }
+
     key = (struct lyd_node_leaf_list *)node->child;
-    for (i = 0; i < ((struct lys_node_list *)node->schema)->keys_size; ++i) {
+    if (!key) {
+        /* it is not a position, so we need a key for it to be a match */
+        return 1;
+    }
+
+    /* go through all the keys */
+    i = 0;
+    goto check_parsed_values;
+
+    for (; i < ((struct lys_node_list *)node->schema)->keys_size; ++i) {
         if (!has_predicate) {
             LOGVAL(LYE_PATH_MISSKEY, LY_VLOG_NONE, NULL, node_name);
             return -1;
@@ -2211,23 +2243,9 @@ resolve_partial_json_data_list_predicate(const char *predicate, const char *node
             return -1;
         }
 
+check_parsed_values:
         predicate += r;
         *parsed += r;
-
-        if (isdigit(name[0])) {
-            if (position == atoi(name)) {
-                /* match */
-                break;
-            } else {
-                /* not a match */
-                return 1;
-            }
-        }
-
-        if (!key) {
-            /* it is not a position, so we need to key for it to be a match */
-            return 1;
-        }
 
         if (strncmp(key->schema->name, name, nam_len) || key->schema->name[nam_len]) {
             LOGVAL(LYE_PATH_INKEY, LY_VLOG_NONE, NULL, name);
@@ -7219,8 +7237,9 @@ resolve_leafref(struct lyd_node_leaf_list *leaf, const char *path, int req_inst,
 }
 
 /* ignore fail because we are parsing edit-config, get, or get-config - but only if the union includes leafref or instid */
-static int
-resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int ignore_fail)
+int
+resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int store, int ignore_fail,
+              struct lys_type **resolved_type)
 {
     struct lys_type *t;
     struct lyd_node *ret, *par, *op_node;
@@ -7234,10 +7253,12 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int ignore
         json_val = leaf->value.string;
     }
 
-    if ((leaf->value_type & LY_DATA_TYPE_MASK) == LY_TYPE_BITS) {
-        free(leaf->value.bit);
+    if (store) {
+        if ((leaf->value_type & LY_DATA_TYPE_MASK) == LY_TYPE_BITS) {
+            free(leaf->value.bit);
+        }
+        memset(&leaf->value, 0, sizeof leaf->value);
     }
-    memset(&leaf->value, 0, sizeof leaf->value);
 
     /* turn logging off, we are going to try to validate the value with all the types in order */
     hidden = *ly_vlog_hide_location();
@@ -7251,14 +7272,16 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int ignore
         switch (t->base) {
         case LY_TYPE_LEAFREF:
             if (!resolve_leafref(leaf, t->info.lref.path, (ignore_fail ? -1 : t->info.lref.req), &ret)) {
-                if (ret && !(leaf->schema->flags & LYS_LEAFREF_DEP)) {
-                    /* valid resolved */
-                    leaf->value.leafref = ret;
-                    leaf->value_type = LY_TYPE_LEAFREF;
-                } else {
-                    /* valid unresolved */
-                    if (!lyp_parse_value(t, &leaf->value_str, NULL, leaf, 1, 0)) {
-                        return -1;
+                if (store) {
+                    if (ret && !(leaf->schema->flags & LYS_LEAFREF_DEP)) {
+                        /* valid resolved */
+                        leaf->value.leafref = ret;
+                        leaf->value_type = LY_TYPE_LEAFREF;
+                    } else {
+                        /* valid unresolved */
+                        if (!lyp_parse_value(t, &leaf->value_str, NULL, leaf, 1, 0)) {
+                            return -1;
+                        }
                     }
                 }
 
@@ -7268,46 +7291,48 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int ignore
         case LY_TYPE_INST:
             if (!resolve_instid((struct lyd_node *)leaf, (json_val ? json_val : leaf->value_str),
                                 (ignore_fail ? -1 : t->info.inst.req), &ret)) {
-                if (ret) {
-                    for (op_node = (struct lyd_node *)leaf;
-                         op_node && !(op_node->schema->nodetype & (LYS_RPC | LYS_NOTIF | LYS_ACTION));
-                         op_node = op_node->parent);
-                    if (op_node) {
-                        /* this is an RPC/notif/action */
-                        for (par = ret->parent; par && (par != op_node); par = par->parent);
-                        if (!par) {
-                            /* target instance is outside the operation - do not store the pointer */
-                            ret = NULL;
+                if (store) {
+                    if (ret) {
+                        for (op_node = (struct lyd_node *)leaf;
+                            op_node && !(op_node->schema->nodetype & (LYS_RPC | LYS_NOTIF | LYS_ACTION));
+                            op_node = op_node->parent);
+                        if (op_node) {
+                            /* this is an RPC/notif/action */
+                            for (par = ret->parent; par && (par != op_node); par = par->parent);
+                            if (!par) {
+                                /* target instance is outside the operation - do not store the pointer */
+                                ret = NULL;
+                            }
                         }
                     }
-                }
-                if (ret) {
-                    /* valid resolved */
-                    leaf->value.instance = ret;
-                    leaf->value_type = LY_TYPE_INST;
+                    if (ret) {
+                        /* valid resolved */
+                        leaf->value.instance = ret;
+                        leaf->value_type = LY_TYPE_INST;
 
-                    if (json_val) {
-                        lydict_remove(leaf->schema->module->ctx, leaf->value_str);
-                        leaf->value_str = json_val;
-                        json_val = NULL;
-                    }
-                } else {
-                    /* valid unresolved */
-                    if (json_val) {
-                        /* put the JSON val back */
-                        leaf->value.string = json_val;
-                        json_val = NULL;
+                        if (json_val) {
+                            lydict_remove(leaf->schema->module->ctx, leaf->value_str);
+                            leaf->value_str = json_val;
+                            json_val = NULL;
+                        }
                     } else {
-                        leaf->value.instance = NULL;
+                        /* valid unresolved */
+                        if (json_val) {
+                            /* put the JSON val back */
+                            leaf->value.string = json_val;
+                            json_val = NULL;
+                        } else {
+                            leaf->value.instance = NULL;
+                        }
+                        leaf->value_type = LY_TYPE_INST | LY_TYPE_INST_UNRES;
                     }
-                    leaf->value_type = LY_TYPE_INST | LY_TYPE_INST_UNRES;
                 }
 
                 success = 1;
             }
             break;
         default:
-            if (lyp_parse_value(t, &leaf->value_str, NULL, leaf, 1, 0)) {
+            if (lyp_parse_value(t, &leaf->value_str, NULL, leaf, store, 0)) {
                 success = 1;
             }
             break;
@@ -7322,10 +7347,12 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int ignore
         ly_err_clean(1);
 
         /* erase possible present and invalid value data */
-        if (t->base == LY_TYPE_BITS) {
-            free(leaf->value.bit);
+        if (store) {
+            if (t->base == LY_TYPE_BITS) {
+                free(leaf->value.bit);
+            }
+            memset(&leaf->value, 0, sizeof leaf->value);
         }
-        memset(&leaf->value, 0, sizeof leaf->value);
     }
 
     /* turn logging back on */
@@ -7344,7 +7371,11 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int ignore
         }
     }
 
-    if (!success && (!ignore_fail || !type->info.uni.has_ptr_type)) {
+    if (success) {
+        if (resolved_type) {
+            *resolved_type = t;
+        }
+    } else if (!ignore_fail || !type->info.uni.has_ptr_type) {
         /* not found and it is required */
         LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, leaf->value_str ? leaf->value_str : "", leaf->schema->name);
         return EXIT_FAILURE;
@@ -7436,7 +7467,7 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int ignore_
 
     case UNRES_UNION:
         assert(sleaf->type.base == LY_TYPE_UNION);
-        return resolve_union(leaf, &sleaf->type, ignore_fail);
+        return resolve_union(leaf, &sleaf->type, 1, ignore_fail, NULL);
 
     case UNRES_WHEN:
         if ((rc = resolve_when(node, NULL, ignore_fail))) {

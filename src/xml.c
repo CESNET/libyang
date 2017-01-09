@@ -241,6 +241,12 @@ lyxml_dup_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, struct lyxml_elem *p
     return result;
 }
 
+API struct lyxml_elem *
+lyxml_dup(struct ly_ctx *ctx, struct lyxml_elem *root)
+{
+    return lyxml_dup_elem(ctx, root, NULL, 1);
+}
+
 void
 lyxml_unlink_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns)
 {

@@ -745,7 +745,8 @@ struct lys_type_info_str {
 struct lys_type_info_union {
     struct lys_type *types;  /**< array of union's subtypes */
     int count;               /**< number of subtype definitions in types array */
-    int has_ptr_type;       /**< types include an instance-identifier or leafref meaning the union must always be resolved */
+    int has_ptr_type;        /**< types include an instance-identifier or leafref meaning the union must always be resolved
+                                  after parsing */
 };
 
 /**
@@ -851,6 +852,8 @@ struct lys_type {
      * LY_TYPE_UNION (uni)
      * struct lys_type *uni.types;        array of union's subtypes
      * int uni.count;                     number of subtype definitions in types array
+     * int uni.has_ptr_type;              types recursively include an instance-identifier or leafref (union must always
+     *                                    be resolved after it is parsed)
      */
 };
 
