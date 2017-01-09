@@ -348,6 +348,7 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
     struct lys_node *sparent = NULL;
     struct lyd_node *dlist, *diter;
     const char *name, *prefix = NULL, *val_end, *val_start;
+    char *str;
     size_t len;
 
     while (elem) {
@@ -431,8 +432,17 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
                         j /= 10;
                     }
 
+                    str = malloc(len + 1);
+                    if (!str) {
+                        LOGMEM;
+                        return;
+                    }
+                    sprintf(str, "%d", i);
+
                     (*index) -= len;
-                    sprintf(&path[(*index)], "%d", i);
+                    strncpy(&path[(*index)], str, len);
+
+                    free(str);
 
                     --(*index);
                     path[*index] = '[';
