@@ -791,8 +791,7 @@ struct lyd_node *lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, co
 unsigned int lyd_list_pos(const struct lyd_node *node);
 
 /**
- * @brief Create a copy of the specified data tree \p node. Namespaces are copied as needed,
- * schema references are kept the same.
+ * @brief Create a copy of the specified data tree \p node. Schema references are kept the same.
  *
  * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
@@ -803,19 +802,37 @@ unsigned int lyd_list_pos(const struct lyd_node *node);
 struct lyd_node *lyd_dup(const struct lyd_node *node, int recursive);
 
 /**
+ * @brief Create a copy of the specified data tree \p node in the different context. All the
+ * schema references and strings are re-mapped into the specified context.
+ *
+ * If the target context does not contain the schemas used in the source data tree, error
+ * is raised and the new data tree is not created.
+ *
+ * @param[in] node Data tree node to be duplicated.
+ * @param[in] recursive 1 if all children are supposed to be also duplicated.
+ * @param[in] ctx Target context for the duplicated data.
+ * @return Created copy of the provided data \p node.
+ */
+struct lyd_node *lyd_dup_to_ctx(const struct lyd_node *node, int recursive, struct ly_ctx *ctx);
+
+/**
  * @brief Merge a (sub)tree into a data tree.
  *
  * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
  * Missing nodes are merged, leaf values updated.
+ *
  * If \p target and \p source do not share the top-level schema node, even if they
  * are from different modules, \p source parents up to top-level node will be created and
  * linked to the \p target (but only containers can be created this way, lists need keys,
  * so if lists are missing, an error will be returned).
  *
+ * If the source data tree is in a different context, the resulting data are placed into the context
+ * of the target tree.
+ *
  * @param[in] target Top-level (or an RPC output child) data tree to merge to. Must be valid.
  * @param[in] source Data tree to merge \p target with. Must be valid (at least as a subtree).
- * @param[in] options Bitmask of 2 option flags:
+ * @param[in] options Bitmask of the following option flags:
  * - #LYD_OPT_DESTRUCT - spend \p source in the function, otherwise \p source is left untouched,
  * - #LYD_OPT_NOSIBLINGS - merge only the \p source subtree (ignore siblings), otherwise merge
  * \p source and all its succeeding siblings (preceeding ones are still ignored!),
@@ -824,6 +841,27 @@ struct lyd_node *lyd_dup(const struct lyd_node *node, int recursive);
  * @return 0 on success, nonzero in case of an error.
  */
 int lyd_merge(struct lyd_node *target, const struct lyd_node *source, int options);
+
+/**
+ * @brief Same as lyd_merge(), but moves the resulting data into the specified context.
+ *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
+ *
+ * @param[in] trg Top-level (or an RPC output child) data tree to merge to. Must be valid. If its context
+ *            differs from the specified \p ctx of the result, the provided data tree is freed and the new
+ *            tree in the required context is returned on success.
+ * @param[in] src Data tree to merge \p target with. Must be valid (at least as a subtree).
+ * @param[in] options Bitmask of the following option flags:
+ * - #LYD_OPT_DESTRUCT - spend \p source in the function, otherwise \p source is left untouched,
+ * - #LYD_OPT_NOSIBLINGS - merge only the \p source subtree (ignore siblings), otherwise merge
+ * \p source and all its succeeding siblings (preceeding ones are still ignored!),
+ * - #LYD_OPT_EXPLICIT - when merging an explicitly set node and a default node, always put
+ * the explicit node into \p target, otherwise the node which is in \p source is used.
+ * @param[in] ctx Target context in which the result will be created. Note that the successful merge requires to have
+ *            all the used modules in the source and target data trees loaded in the target context.
+ * @return 0 on success, nonzero in case of an error.
+ */
+int lyd_merge_to_ctx(struct lyd_node **trg, const struct lyd_node *src, int options, struct ly_ctx *ctx);
 
 #define LYD_OPT_EXPLICIT 0x0100
 
