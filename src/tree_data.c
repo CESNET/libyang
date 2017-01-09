@@ -4448,7 +4448,6 @@ lyd_dup_to_ctx(const struct lyd_node *node, int recursive, struct ly_ctx *ctx)
                 new_leaf->value.string = lydict_insert(ctx ? ctx : node->schema->module->ctx,
                                                        ((struct lyd_node_leaf_list *)elem)->value.string, 0);
                 break;
-            case LY_TYPE_BITS:
             case LY_TYPE_ENUM:
                 if (!ctx) {
                     /* we are still in the same context - just copy the data */
@@ -4457,6 +4456,7 @@ lyd_dup_to_ctx(const struct lyd_node *node, int recursive, struct ly_ctx *ctx)
                 }
                 /* no break */
             case LY_TYPE_IDENT:
+            case LY_TYPE_BITS:
                 /* in case of duplicating bits (no matter if in the same context or not) or enum and identityref into
                  * a different context, searching for the type and duplicating the data is almost as same as resolving
                  * the string value, so due to a simplicity, parse the value for the duplicated leaf */
