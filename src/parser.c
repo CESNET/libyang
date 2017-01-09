@@ -395,8 +395,7 @@ matched:
                     if (lys_set_implemented(result)) {
                         result = NULL;
                     }
-                }
-                if (result->disabled) {
+                } else if (result->disabled) {
                     lys_set_enabled(result);
                 }
 
