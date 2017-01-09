@@ -849,7 +849,8 @@ int lyd_merge(struct lyd_node *target, const struct lyd_node *source, int option
  *
  * @param[in] trg Top-level (or an RPC output child) data tree to merge to. Must be valid. If its context
  *            differs from the specified \p ctx of the result, the provided data tree is freed and the new
- *            tree in the required context is returned on success.
+ *            tree in the required context is returned on success. To keep the \p trg tree, convert it to the
+ *            target context using lyd_dup_to_ctx() and then call lyd_merge() instead of lyd_merge_to_ctx().
  * @param[in] src Data tree to merge \p target with. Must be valid (at least as a subtree).
  * @param[in] options Bitmask of the following option flags:
  * - #LYD_OPT_DESTRUCT - spend \p source in the function, otherwise \p source is left untouched,

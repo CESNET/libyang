@@ -499,6 +499,7 @@ extern "C" {
  * Functions List
  * --------------
  * - lyd_dup()
+ * - lyd_dup_to_ctx()
  * - lyd_change_leaf()
  * - lyd_insert()
  * - lyd_insert_sibling()
@@ -506,6 +507,7 @@ extern "C" {
  * - lyd_insert_after()
  * - lyd_insert_attr()
  * - lyd_merge()
+ * - lyd_merge_to_ctx()
  * - lyd_new()
  * - lyd_new_anydata()
  * - lyd_new_leaf()
