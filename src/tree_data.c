@@ -1904,9 +1904,12 @@ lyd_merge_node_equal(struct lyd_node *node1, struct lyd_node *node2)
         /* the nodes are in different contexts, get the appropriate schema nodes from the
          * same context */
         sch1 = lyd_get_schema_inctx(node1, node2->schema->module->ctx);
-        if (!sch1 || sch1 != node2->schema) {
+        if (!sch1) {
             LOGERR(LY_EINVAL, "Target context does not contain schema node for the data node being "
                    "merged (%s:%s).", node1->schema->module->name, node1->schema->name);
+            return 0;
+        } else if (sch1 != node2->schema) {
+            /* not matching nodes */
             return 0;
         }
     }
