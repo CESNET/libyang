@@ -1090,11 +1090,13 @@ void lyd_free_attr(struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_attr 
 struct lys_module *lyd_node_module(const struct lyd_node *node);
 
 /**
- * @brief Get the type structure of a leaf. In case of union, the correct
- * specific type is found.
+ * @brief Get the type structure of a leaf.
+ *
+ * In case of a union, the correct specific type is found.
+ * In case of a leafref, the final (if there is a chain of leafrefs) target's type is found.
  *
  * @param[in] leaf Leaf to examine.
- * @return Type structure of \p leaf, NULL on error.
+ * @return Found type, NULL on error.
  */
 const struct lys_type *lyd_leaf_type(const struct lyd_node_leaf_list *leaf);
 

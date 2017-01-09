@@ -1659,6 +1659,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
     case LY_TYPE_UNION:
         if (store) {
             /* unresolved union type */
+            memset(&leaf->value, 0, sizeof leaf->value);
             leaf->value_type = LY_TYPE_UNION;
         }
 

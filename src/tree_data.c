@@ -5893,17 +5893,22 @@ lyd_leaf_type(const struct lyd_node_leaf_list *leaf)
     }
 
     type = &((struct lys_node_leaf *)leaf->schema)->type;
-    if (type->base == LY_TYPE_UNION) {
-        if (type->info.uni.has_ptr_type && leaf->validity) {
-            /* we don't know what it will be after resolution */
-            return NULL;
-        }
 
-        if (resolve_union((struct lyd_node_leaf_list *)leaf, type, 0, 0, &type)) {
-            /* resolve union failed */
-            type = NULL;
+    do {
+        if (type->base == LY_TYPE_LEAFREF) {
+            type = &type->info.lref.target->type;
+        } else if (type->base == LY_TYPE_UNION) {
+            if (type->info.uni.has_ptr_type && leaf->validity) {
+                /* we don't know what it will be after resolution (validation) */
+                return NULL;
+            }
+
+            if (resolve_union((struct lyd_node_leaf_list *)leaf, type, 0, 0, &type)) {
+                /* resolve union failed */
+                return NULL;
+            }
         }
-    }
+    } while (type->base == LY_TYPE_LEAFREF);
 
     return type;
 }
