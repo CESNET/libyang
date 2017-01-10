@@ -3849,7 +3849,7 @@ lys_path(const struct lys_node *node)
 
     /* build the path */
     buf[index] = '\0';
-    ly_vlog_build_path_reverse(LY_VLOG_LYS, node, buf, &index);
+    ly_vlog_build_path_reverse(LY_VLOG_LYS, node, buf, &index, 0);
     result = strdup(&buf[index]);
 
     /* restore the shared internal buffer */

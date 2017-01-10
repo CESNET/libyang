@@ -1497,6 +1497,23 @@ test_lyd_path(void **state)
 }
 
 static void
+test_lyd_qualified_path(void **state)
+{
+    (void) state; /* unused */
+    char *str;
+
+    str = lyd_qualified_path(root);
+    assert_ptr_not_equal(str, NULL);
+    assert_string_equal(str, "/a:x");
+    free(str);
+
+    str = lyd_qualified_path(root->child);
+    assert_ptr_not_equal(str, NULL);
+    assert_string_equal(str, "/a:x/a:bubba");
+    free(str);
+}
+
+static void
 test_lyd_leaf_type(void **state)
 {
     struct ly_ctx *ctx = (struct ly_ctx *)*state;
@@ -1574,6 +1591,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_lyd_print_clb_xml_format, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_print_clb_json, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_path, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_lyd_qualified_path, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_leaf_type, setup_f2, teardown_f2),
     };
 

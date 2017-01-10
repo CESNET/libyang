@@ -4910,8 +4910,8 @@ end:
     return dflt;
 }
 
-API char *
-lyd_path(struct lyd_node *node)
+static char *
+_lyd_path(const struct lyd_node *node, int prefix_all)
 {
     char *buf_backup = NULL, *buf = ly_buf(), *result = NULL;
     uint16_t index = LY_BUF_SIZE - 1;
@@ -4929,7 +4929,7 @@ lyd_path(struct lyd_node *node)
 
     /* build the path */
     buf[index] = '\0';
-    ly_vlog_build_path_reverse(LY_VLOG_LYD, node, buf, &index);
+    ly_vlog_build_path_reverse(LY_VLOG_LYD, node, buf, &index, prefix_all);
     result = strdup(&buf[index]);
 
     /* restore the shared internal buffer */
@@ -4940,6 +4940,18 @@ lyd_path(struct lyd_node *node)
     ly_buf_used--;
 
     return result;
+}
+
+API char *
+lyd_path(const struct lyd_node *node)
+{
+    return _lyd_path(node, 0);
+}
+
+API char *
+lyd_qualified_path(const struct lyd_node *node)
+{
+    return _lyd_path(node, 1);
 }
 
 static int
@@ -5092,8 +5104,8 @@ uniquecheck:
                     idx1 = idx2 = LY_BUF_SIZE - 1;
                     path1[idx1] = '\0';
                     path2[idx2] = '\0';
-                    ly_vlog_build_path_reverse(LY_VLOG_LYD, first, path1, &idx1);
-                    ly_vlog_build_path_reverse(LY_VLOG_LYD, second, path2, &idx2);
+                    ly_vlog_build_path_reverse(LY_VLOG_LYD, first, path1, &idx1, 0);
+                    ly_vlog_build_path_reverse(LY_VLOG_LYD, second, path2, &idx2, 0);
 
                     /* use internal buffer to rebuild the unique string */
                     if (ly_buf_used && uniq_str[0]) {
