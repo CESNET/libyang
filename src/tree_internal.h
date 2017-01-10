@@ -375,13 +375,14 @@ int lys_get_sibling(const struct lys_node *siblings, const char *mod_name, int m
  * @param[in] siblings Siblings to consider. They are first adjusted to
  *                     point to the first sibling.
  * @param[in] name Node name.
+ * @param[in] nam_len Node \p name length.
  * @param[in] type ORed desired type of the node. 0 means any (data node) type.
  * @param[out] ret Pointer to the node of the desired type. Can be NULL.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on fail.
  */
-int lys_get_data_sibling(const struct lys_module *mod, const struct lys_node *siblings, const char *name, LYS_NODE type,
-                         const struct lys_node **ret);
+int lys_get_data_sibling(const struct lys_module *mod, const struct lys_node *siblings, const char *name, int nam_len,
+                         LYS_NODE type, const struct lys_node **ret);
 
 /**
  * @brief Compare 2 list or leaf-list data nodes if they are the same from the YANG point of view. Logs directly.

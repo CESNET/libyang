@@ -380,7 +380,17 @@ struct lyd_difflist *lyd_diff(struct lyd_node *first, struct lyd_node *second, i
  * @return NULL on error, on success the buffer for the resulting path is allocated and caller is supposed to free it
  * with free().
  */
-char *lyd_path(struct lyd_node *node);
+char *lyd_path(const struct lyd_node *node);
+
+/**
+ * @brief Build path (usable as instance-identified) of the data node with all the nodes fully qualified (having their
+ * model as prefix).
+ * @param[in] node Data node to be processed. Note that the node should be from a complete data tree, having a subtree
+ *            (after using lyd_unlink()) can cause generating invalid paths.
+ * @return NULL on error, on success the buffer for the resulting path is allocated and caller is supposed to free it
+ * with free().
+ */
+char *lyd_qualified_path(const struct lyd_node *node);
 
 /**
  * @defgroup parseroptions Data parser options

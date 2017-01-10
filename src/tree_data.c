@@ -639,7 +639,7 @@ lyd_new(struct lyd_node *parent, const struct lys_module *module, const char *na
         return NULL;
     }
 
-    if (lys_get_data_sibling(module, siblings, name, LYS_CONTAINER | LYS_LIST | LYS_NOTIF | LYS_RPC | LYS_ACTION, &snode)
+    if (lys_get_data_sibling(module, siblings, name, strlen(name), LYS_CONTAINER | LYS_LIST | LYS_NOTIF | LYS_RPC | LYS_ACTION, &snode)
             || !snode) {
         ly_errno = LY_EINVAL;
         return NULL;
@@ -725,7 +725,7 @@ lyd_new_leaf(struct lyd_node *parent, const struct lys_module *module, const cha
         return NULL;
     }
 
-    if (lys_get_data_sibling(module, siblings, name, LYS_LEAFLIST | LYS_LEAF, &snode) || !snode) {
+    if (lys_get_data_sibling(module, siblings, name, strlen(name), LYS_LEAFLIST | LYS_LEAF, &snode) || !snode) {
         ly_errno = LY_EINVAL;
         return NULL;
     }
@@ -966,7 +966,7 @@ lyd_new_anydata(struct lyd_node *parent, const struct lys_module *module, const 
         return NULL;
     }
 
-    if (lys_get_data_sibling(module, siblings, name, LYS_ANYDATA, &snode) || !snode) {
+    if (lys_get_data_sibling(module, siblings, name, strlen(name), LYS_ANYDATA, &snode) || !snode) {
         return NULL;
     }
 
@@ -989,7 +989,7 @@ lyd_new_output(struct lyd_node *parent, const struct lys_module *module, const c
         return NULL;
     }
 
-    if (lys_get_data_sibling(module, siblings, name, LYS_CONTAINER | LYS_LIST | LYS_NOTIF | LYS_RPC | LYS_ACTION, &snode)
+    if (lys_get_data_sibling(module, siblings, name, strlen(name), LYS_CONTAINER | LYS_LIST | LYS_NOTIF | LYS_RPC | LYS_ACTION, &snode)
             || !snode) {
         return NULL;
     }
@@ -1013,7 +1013,7 @@ lyd_new_output_leaf(struct lyd_node *parent, const struct lys_module *module, co
         return NULL;
     }
 
-    if (lys_get_data_sibling(module, siblings, name, LYS_LEAFLIST | LYS_LEAF, &snode) || !snode) {
+    if (lys_get_data_sibling(module, siblings, name, strlen(name), LYS_LEAFLIST | LYS_LEAF, &snode) || !snode) {
         ly_errno = LY_EINVAL;
         return NULL;
     }
@@ -1038,7 +1038,7 @@ lyd_new_output_anydata(struct lyd_node *parent, const struct lys_module *module,
         return NULL;
     }
 
-    if (lys_get_data_sibling(module, siblings, name, LYS_ANYDATA, &snode) || !snode) {
+    if (lys_get_data_sibling(module, siblings, name, strlen(name), LYS_ANYDATA, &snode) || !snode) {
         return NULL;
     }
 
@@ -4342,14 +4342,21 @@ static int
 lyd_dup_common(struct lyd_node *parent, struct lyd_node *new, const struct lyd_node *orig, struct ly_ctx *ctx)
 {
     struct lyd_attr *attr;
+    const struct lys_module *trg_mod;
 
     /* fill common part */
     if (ctx) {
         /* we are changing the context, so we have to get the correct schema node in the new context */
         if (parent) {
+            trg_mod = lys_get_import_module(lys_node_module(parent->schema), NULL, 0, orig->schema->module->name,
+                                            strlen(orig->schema->module->name));
+            if (!trg_mod) {
+                LOGINT;
+                return EXIT_FAILURE;
+            }
             /* we know its parent, so we can start with it */
-            lys_get_sibling(parent->schema->child, orig->schema->module->name, 0, orig->schema->name, 0,
-                            orig->schema->nodetype, (const struct lys_node **)&new->schema);
+            lys_get_data_sibling(trg_mod, parent->schema->child, orig->schema->name, strlen(orig->schema->name),
+                                 orig->schema->nodetype, (const struct lys_node **)&new->schema);
         } else {
             /* we have to search in complete context */
             new->schema = lyd_get_schema_inctx(orig, ctx);
@@ -4903,8 +4910,8 @@ end:
     return dflt;
 }
 
-API char *
-lyd_path(struct lyd_node *node)
+static char *
+_lyd_path(const struct lyd_node *node, int prefix_all)
 {
     char *buf_backup = NULL, *buf = ly_buf(), *result = NULL;
     uint16_t index = LY_BUF_SIZE - 1;
@@ -4922,7 +4929,7 @@ lyd_path(struct lyd_node *node)
 
     /* build the path */
     buf[index] = '\0';
-    ly_vlog_build_path_reverse(LY_VLOG_LYD, node, buf, &index);
+    ly_vlog_build_path_reverse(LY_VLOG_LYD, node, buf, &index, prefix_all);
     result = strdup(&buf[index]);
 
     /* restore the shared internal buffer */
@@ -4933,6 +4940,18 @@ lyd_path(struct lyd_node *node)
     ly_buf_used--;
 
     return result;
+}
+
+API char *
+lyd_path(const struct lyd_node *node)
+{
+    return _lyd_path(node, 0);
+}
+
+API char *
+lyd_qualified_path(const struct lyd_node *node)
+{
+    return _lyd_path(node, 1);
 }
 
 static int
@@ -5085,8 +5104,8 @@ uniquecheck:
                     idx1 = idx2 = LY_BUF_SIZE - 1;
                     path1[idx1] = '\0';
                     path2[idx2] = '\0';
-                    ly_vlog_build_path_reverse(LY_VLOG_LYD, first, path1, &idx1);
-                    ly_vlog_build_path_reverse(LY_VLOG_LYD, second, path2, &idx2);
+                    ly_vlog_build_path_reverse(LY_VLOG_LYD, first, path1, &idx1, 0);
+                    ly_vlog_build_path_reverse(LY_VLOG_LYD, second, path2, &idx2, 0);
 
                     /* use internal buffer to rebuild the unique string */
                     if (ly_buf_used && uniq_str[0]) {
