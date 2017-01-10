@@ -138,7 +138,7 @@ lys_get_sibling(const struct lys_node *siblings, const char *mod_name, int mod_n
 
     /* try to find the node */
     node = NULL;
-    while ((node = lys_getnext(node, parent, mod, LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE))) {
+    while ((node = lys_getnext(node, parent, mod, LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT))) {
         if (!type || (node->nodetype & type)) {
             /* module name comparison */
             node_mod_name = lys_node_module(node)->name;
@@ -160,8 +160,8 @@ lys_get_sibling(const struct lys_node *siblings, const char *mod_name, int mod_n
 }
 
 int
-lys_get_data_sibling(const struct lys_module *mod, const struct lys_node *siblings, const char *name, LYS_NODE type,
-                     const struct lys_node **ret)
+lys_get_data_sibling(const struct lys_module *mod, const struct lys_node *siblings, const char *name, int nam_len,
+                     LYS_NODE type, const struct lys_node **ret)
 {
     const struct lys_node *node;
 
@@ -187,7 +187,7 @@ lys_get_data_sibling(const struct lys_module *mod, const struct lys_node *siblin
             }
 
             /* direct name check */
-            if (ly_strequal(node->name, name, 0)) {
+            if (!strncmp(node->name, name, nam_len) && !node->name[nam_len]) {
                 if (ret) {
                     *ret = node;
                 }

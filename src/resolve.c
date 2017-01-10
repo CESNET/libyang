@@ -3756,6 +3756,7 @@ static int
 resolve_path_predicate_schema(const char *path, const struct lys_node *context_node,
                               struct lys_node *parent, const struct lys_node *op_node)
 {
+    const struct lys_module *trg_mod;
     const struct lys_node *src_node, *dst_node;
     const char *path_key_expr, *source, *sour_pref, *dest, *dest_pref;
     int pke_len, sour_len, sour_pref_len, dest_len, dest_pref_len, pke_parsed, parsed = 0;
@@ -3771,11 +3772,12 @@ resolve_path_predicate_schema(const char *path, const struct lys_node *context_n
         path += i;
 
         /* source (must be leaf) */
-        if (!sour_pref) {
-            sour_pref = context_node->module->name;
+        if (sour_pref) {
+            trg_mod = lys_get_import_module(lys_node_module(parent), NULL, 0, sour_pref, sour_pref_len);
+        } else {
+            trg_mod = NULL;
         }
-        rc = lys_get_sibling(context_node->child, sour_pref, sour_pref_len, source, sour_len,
-                             LYS_LEAF | LYS_LEAFLIST | LYS_AUGMENT, &src_node);
+        rc = lys_get_data_sibling(trg_mod, context_node->child, source, sour_len, LYS_LEAF | LYS_LEAFLIST, &src_node);
         if (rc) {
             LOGVAL(LYE_NORESOLV, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent, "leafref predicate", path-parsed);
             return 0;
@@ -3805,11 +3807,12 @@ resolve_path_predicate_schema(const char *path, const struct lys_node *context_n
         }
         first_iter = 1;
         while (1) {
-            if (!dest_pref) {
-                dest_pref = dst_node->module->name;
+            if (dest_pref) {
+                trg_mod = lys_get_import_module(lys_node_module(parent), NULL, 0, dest_pref, dest_pref_len);
+            } else {
+                trg_mod = NULL;
             }
-            rc = lys_get_sibling(dst_node->child, dest_pref, dest_pref_len, dest, dest_len,
-                                 LYS_CONTAINER | LYS_LIST | LYS_LEAF | LYS_AUGMENT, &dst_node);
+            rc = lys_get_data_sibling(trg_mod, dst_node->child, dest, dest_len, LYS_CONTAINER | LYS_LIST | LYS_LEAF, &dst_node);
             if (rc) {
                 LOGVAL(LYE_NORESOLV, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent, "leafref predicate", path_key_expr);
                 return 0;
@@ -3985,11 +3988,8 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
             }
         }
 
-        if (!prefix) {
-            prefix = mod_start->name;
-        }
-
-        rc = lys_get_sibling(node, prefix, pref_len, name, nam_len, LYS_ANY & ~(LYS_USES | LYS_GROUPING), &node);
+        rc = lys_get_data_sibling(mod, node, name, nam_len, LYS_LIST | LYS_CONTAINER | LYS_RPC | LYS_ACTION | LYS_NOTIF
+                                  | LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA, &node);
         if (rc) {
             LOGVAL(LYE_NORESOLV, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent, "leafref", path);
             return EXIT_FAILURE;
@@ -5296,7 +5296,8 @@ resolve_list_keys(struct lys_node_list *list, const char *keys_str)
             len = strlen(keys_str);
         }
 
-        rc = lys_get_sibling(list->child, lys_main_module(list->module)->name, 0, keys_str, len, LYS_LEAF, (const struct lys_node **)&list->keys[i]);
+        rc = lys_get_data_sibling(lys_node_module((struct lys_node *)list), list->child, keys_str, len, LYS_LEAF,
+                                  (const struct lys_node **)&list->keys[i]);
         if (rc) {
             LOGVAL(LYE_INRESOLV, LY_VLOG_LYS, list, "list keys", keys_str);
             return EXIT_FAILURE;
