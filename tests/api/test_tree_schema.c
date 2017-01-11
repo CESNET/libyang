@@ -194,27 +194,32 @@ module a {\n\
 \n\
   feature foo;\n\
 \n\
-  grouping gg {\n\
+  grouping gg {\n\n\
     leaf bar-gggg {\n\
       type string;\n\
     }\n\
   }\n\
 \n\
-  container x {\n\
+  container x {\n\n\
     leaf bar-leaf {\n\
       if-feature \"bar\";\n\
       type string;\n\
-    }\n\
+    }\n\n\
     uses gg {\n\
       if-feature \"bar\";\n\
-    }\n\
+    }\n\n\
     leaf baz {\n\
       if-feature \"foo\";\n\
       type string;\n\
-    }\n\
+    }\n\n\
     leaf bubba {\n\
       type string;\n\
     }\n\
+  }\n\
+\n\
+  augment \"/x\" {\n\
+    if-feature \"bar\";\n\n\
+    container bar-y;\n\
   }\n\
 \n\
   rpc bar-rpc {\n\
@@ -223,11 +228,6 @@ module a {\n\
 \n\
   rpc foo-rpc {\n\
     if-feature \"foo\";\n\
-  }\n\
-\n\
-  augment \"/x\" {\n\
-    if-feature \"bar\";\n\
-    container bar-y;\n\
   }\n\
 }\n";
 

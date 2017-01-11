@@ -30,9 +30,9 @@ module all-dev {
 
   deviation "/all_mod:cont1/all_mod:leaf13" {
     deviate add {
-      default "aGVsbG8h";
-      must "../leaf3 < 0";
       units "b/h";
+      must "../leaf3 < 0";
+      default "aGVsbG8h";
     }
   }
 
