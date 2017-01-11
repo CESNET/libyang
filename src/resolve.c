@@ -4505,7 +4505,7 @@ resolve_extension(struct unres_ext *info, const struct lys_module *mod, struct l
 
     if (info->datatype == LYS_IN_YIN) {
         /* get the module where the extension is supposed to be defined */
-        mod = lys_get_import_module_ns(lys_main_module(mod), info->data.yin->ns->value);
+        mod = lys_get_import_module_ns(mod, info->data.yin->ns->value);
         if (!mod) {
             LOGVAL(LYE_INSTMT, vlog_type, vlog_node, info->data.yin->name);
             return -1;
