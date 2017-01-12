@@ -1634,58 +1634,56 @@ yang_print_notif(struct lyout *out, int level, const struct lys_node *node)
 static void
 yang_print_snode(struct lyout *out, int level, const struct lys_node *node, int mask)
 {
+    if (node->nodetype & mask) {
+        if ((node->nodetype & (LYS_INPUT | LYS_OUTPUT)) && (node->flags & LYS_IMPLICIT)) {
+            /* implicit input/output node is not supposed to be printed */
+            return;
+        } else if (!node->parent ||
+                (node->parent->nodetype == LYS_AUGMENT && node != node->parent->child) ||
+                (node->parent->nodetype != LYS_AUGMENT && node->prev->next)) {
+            /* do not print the blank line before the first data-def node */
+            ly_print(out, "\n");
+        }
+    }
+
     switch (node->nodetype & mask) {
     case LYS_CONTAINER:
-        ly_print(out, "\n");
         yang_print_container(out, level, node);
         break;
     case LYS_CHOICE:
-        ly_print(out, "\n");
         yang_print_choice(out, level, node);
         break;
     case LYS_LEAF:
-        ly_print(out, "\n");
         yang_print_leaf(out, level, node);
         break;
     case LYS_LEAFLIST:
-        ly_print(out, "\n");
         yang_print_leaflist(out, level, node);
         break;
     case LYS_LIST:
-        ly_print(out, "\n");
         yang_print_list(out, level, node);
         break;
     case LYS_USES:
-        ly_print(out, "\n");
         yang_print_uses(out, level, node);
         break;
     case LYS_GROUPING:
-        ly_print(out, "\n");
         yang_print_grouping(out, level, node);
         break;
     case LYS_ANYXML:
     case LYS_ANYDATA:
-        ly_print(out, "\n");
         yang_print_anydata(out, level, node);
         break;
     case LYS_CASE:
-        ly_print(out, "\n");
         yang_print_case(out, level, node);
         break;
     case LYS_RPC:
     case LYS_ACTION:
-        ly_print(out, "\n");
         yang_print_rpc_action(out, level, node);
         break;
     case LYS_INPUT:
     case LYS_OUTPUT:
-        if (!(node->flags & LYS_IMPLICIT)) {
-            ly_print(out, "\n");
-            yang_print_input_output(out, level, node);
-        }
+        yang_print_input_output(out, level, node);
         break;
     case LYS_NOTIF:
-        ly_print(out, "\n");
         yang_print_notif(out, level, node);
         break;
     default:

@@ -194,13 +194,13 @@ module a {\n\
 \n\
   feature foo;\n\
 \n\
-  grouping gg {\n\n\
+  grouping gg {\n\
     leaf bar-gggg {\n\
       type string;\n\
     }\n\
   }\n\
 \n\
-  container x {\n\n\
+  container x {\n\
     leaf bar-leaf {\n\
       if-feature \"bar\";\n\
       type string;\n\
@@ -218,7 +218,7 @@ module a {\n\
   }\n\
 \n\
   augment \"/x\" {\n\
-    if-feature \"bar\";\n\n\
+    if-feature \"bar\";\n\
     container bar-y;\n\
   }\n\
 \n\

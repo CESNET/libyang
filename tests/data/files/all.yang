@@ -36,14 +36,12 @@ module all {
   }
 
   grouping group1 {
-
     leaf leaf1 {
       type int8;
     }
   }
 
   container cont1 {
-
     leaf leaf2 {
       if-feature "feat1";
       type int16;
@@ -96,7 +94,6 @@ module all {
 
     choice choic1 {
       default "leaf10";
-
       leaf leaf9 {
         type decimal64 {
           fraction-digits 9;
@@ -163,7 +160,6 @@ module all {
       unique "leaf19";
       min-elements 1;
       max-elements 20;
-
       leaf leaf18 {
         type string;
       }
@@ -175,16 +171,13 @@ module all {
       anyxml axml1;
 
       action act1 {
-
         input {
-
           leaf leaf24 {
             type string;
           }
         }
 
         output {
-
           leaf leaf25 {
             type string;
           }
@@ -192,7 +185,6 @@ module all {
       }
 
       notification notif1 {
-
         leaf leaf26 {
           type string;
         }
@@ -210,7 +202,6 @@ module all {
   }
 
   augment "/cont1" {
-
     leaf leaf17 {
       type identityref {
         base ident1;
@@ -219,18 +210,14 @@ module all {
   }
 
   rpc rpc1 {
-
     input {
-
       leaf leaf20 {
         type tdef1;
       }
     }
 
     output {
-
       container cont2 {
-
         leaf leaf21 {
           type empty;
         }
@@ -239,7 +226,6 @@ module all {
   }
 
   notification notif1 {
-
     leaf leaf22 {
       type empty;
     }

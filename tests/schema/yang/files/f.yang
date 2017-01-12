@@ -14,7 +14,6 @@ module f {
         path "/refleaf";
       }
     }
-
     leaf leaf1 {
       type tdef1;
     }
@@ -28,14 +27,12 @@ module f {
         path "/refleaf";
       }
     }
-
     grouping grp2 {
       typedef tdef4 {
         type leafref {
           path "/refleaf";
         }
       }
-
       leaf leaf4 {
         type tdef4;
       }
@@ -52,13 +49,11 @@ module f {
           path "/refleaf";
         }
       }
-
       leaf key1 {
         type string;
       }
 
       container cont2 {
-
         leaf leaf5 {
           type tdef5;
         }
@@ -82,14 +77,12 @@ module f {
         path "/refleaf";
       }
     }
-
     input {
       typedef tdef7 {
         type leafref {
           path "/refleaf";
         }
       }
-
       leaf leaf6 {
         type tdef6;
       }
@@ -105,7 +98,6 @@ module f {
           path "/refleaf";
         }
       }
-
       leaf leaf8 {
         type tdef8;
       }
@@ -118,7 +110,6 @@ module f {
         path "/refleaf";
       }
     }
-
     leaf leaf9 {
       type tdef9;
     }
