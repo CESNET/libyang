@@ -134,46 +134,6 @@ yang_print_text(struct lyout *out, int level, const char *name, const char *text
 
 }
 
-struct ext_substmt_info_s {
-    const char *name;
-    int flags;
-#define SUBST_FLAG_YIN 0x1 /**< has YIN element */
-#define SUBST_FLAG_ID 0x2  /**< the value is identifier -> no quotes */
-} ext_substmt_info[] = {
-  {NULL, 0},               /**< LYEXT_SUBSTMT_SELF */
-  {"argument", SUBST_FLAG_ID},          /**< LYEXT_SUBSTMT_ARGUMENT */
-  {"base", SUBST_FLAG_ID},              /**< LYEXT_SUBSTMT_BASE */
-  {"belongs-to", SUBST_FLAG_ID},        /**< LYEXT_SUBSTMT_BELONGSTO */
-  {"config", SUBST_FLAG_ID},            /**< LYEXT_SUBSTMT_CONFIG */
-  {"contact", SUBST_FLAG_YIN},          /**< LYEXT_SUBSTMT_CONTACT */
-  {"default", 0},                       /**< LYEXT_SUBSTMT_DEFAULT */
-  {"description", SUBST_FLAG_YIN},      /**< LYEXT_SUBSTMT_DESCRIPTION */
-  {"error-app-tag", 0},                 /**< LYEXT_SUBSTMT_ERRTAG */
-  {"error-message", SUBST_FLAG_YIN},    /**< LYEXT_SUBSTMT_ERRMSG */
-  {"fraction-digits", SUBST_FLAG_ID},   /**< LYEXT_SUBSTMT_DIGITS */
-  {"key", 0},                           /**< LYEXT_SUBSTMT_KEY */
-  {"mandatory", SUBST_FLAG_ID},         /**< LYEXT_SUBSTMT_MANDATORY */
-  {"max-elements", SUBST_FLAG_ID},      /**< LYEXT_SUBSTMT_MAX */
-  {"min-elements", SUBST_FLAG_ID},      /**< LYEXT_SUBSTMT_MIN */
-  {"modifier", SUBST_FLAG_ID},          /**< LYEXT_SUBSTMT_MODIFIER */
-  {"namespace", 0},                     /**< LYEXT_SUBSTMT_NAMESPACE */
-  {"ordered-by", SUBST_FLAG_ID},        /**< LYEXT_SUBSTMT_ORDEREDBY */
-  {"organization", SUBST_FLAG_YIN},     /**< LYEXT_SUBSTMT_ORGANIZATION */
-  {"path", 0},                          /**< LYEXT_SUBSTMT_PATH */
-  {"position", SUBST_FLAG_ID},          /**< LYEXT_SUBSTMT_POSITION */
-  {"prefix", SUBST_FLAG_ID},            /**< LYEXT_SUBSTMT_PREFIX */
-  {"presence", 0},                      /**< LYEXT_SUBSTMT_PRESENCE */
-  {"reference", SUBST_FLAG_YIN},        /**< LYEXT_SUBSTMT_REFERENCE */
-  {"require-instance", SUBST_FLAG_ID},  /**< LYEXT_SUBSTMT_REQINST */
-  {"revision-date", SUBST_FLAG_ID},     /**< LYEXT_SUBSTMT_REVISIONDATE */
-  {"status", SUBST_FLAG_ID},            /**< LYEXT_SUBSTMT_STATUS */
-  {"unique", 0},                        /**< LYEXT_SUBSTMT_UNIQUE */
-  {"units", 0},                         /**< LYEXT_SUBSTMT_UNITS */
-  {"value", SUBST_FLAG_ID},             /**< LYEXT_SUBSTMT_VALUE */
-  {"yang-version", SUBST_FLAG_ID},      /**< LYEXT_SUBSTMT_VERSION */
-  {"yin-element", SUBST_FLAG_ID}        /**< LYEXT_SUBSTMT_YINELEM */
-};
-
 static void
 yang_print_extension_instances(struct lyout *out, int level, const struct lys_module *module,
                                LYEXT_SUBSTMT substmt, uint8_t substmt_index,

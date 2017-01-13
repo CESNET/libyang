@@ -43,6 +43,17 @@ struct lyout {
     } method;
 };
 
+struct ext_substmt_info_s {
+    const char *name;
+    const char *arg;
+    int flags;
+#define SUBST_FLAG_YIN 0x1 /**< has YIN element */
+#define SUBST_FLAG_ID 0x2  /**< the value is identifier -> no quotes */
+};
+
+/* filled in printer.c */
+extern struct ext_substmt_info_s ext_substmt_info[];
+
 /**
  * @brief Generic printer, replacement for printf() / write() / etc
  */
