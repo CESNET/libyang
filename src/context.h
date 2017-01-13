@@ -3,7 +3,7 @@
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief internal context structures and functions
  *
- * Copyright (c) 2015 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2017 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -33,8 +33,10 @@ struct ly_modules_list {
 struct ly_ctx {
     struct dict_table dict;
     struct ly_modules_list models;
-    ly_module_clb module_clb;
-    void *module_clb_data;
+    ly_module_imp_clb imp_clb;
+    void *imp_clb_data;
+    ly_module_data_clb data_clb;
+    void *data_clb_data;
 };
 
 #endif /* LY_CONTEXT_H_ */

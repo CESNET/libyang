@@ -371,14 +371,14 @@ ly_ctx_get_module_older(const struct ly_ctx *ctx, const struct lys_module *modul
 }
 
 API void
-ly_ctx_set_module_clb(struct ly_ctx *ctx, ly_module_clb clb, void *user_data)
+ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_imp_clb clb, void *user_data)
 {
-    ctx->module_clb = clb;
-    ctx->module_clb_data = user_data;
+    ctx->imp_clb = clb;
+    ctx->imp_clb_data = user_data;
 }
 
-API ly_module_clb
-ly_ctx_get_module_clb(const struct ly_ctx *ctx, void **user_data)
+API ly_module_imp_clb
+ly_ctx_get_module_imp_clb(const struct ly_ctx *ctx, void **user_data)
 {
     if (!ctx) {
         ly_errno = LY_EINVAL;
@@ -386,9 +386,25 @@ ly_ctx_get_module_clb(const struct ly_ctx *ctx, void **user_data)
     }
 
     if (user_data) {
-        *user_data = ctx->module_clb_data;
+        *user_data = ctx->imp_clb_data;
     }
-    return ctx->module_clb;
+    return ctx->imp_clb;
+}
+
+API void
+ly_ctx_set_module_data_clb(struct ly_ctx *ctx, ly_module_data_clb clb, void *user_data)
+{
+    ctx->data_clb = clb;
+    ctx->data_clb_data = user_data;
+}
+
+API ly_module_data_clb
+ly_ctx_get_module_data_clb(const struct ly_ctx *ctx, void **user_data)
+{
+    if (user_data) {
+        *user_data = ctx->data_clb_data;
+    }
+    return ctx->data_clb;
 }
 
 const struct lys_module *
@@ -447,12 +463,12 @@ ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char
         }
     }
 
-    if (ctx->module_clb) {
+    if (ctx->imp_clb) {
         if (module) {
             mod = lys_main_module(module);
-            module_data = ctx->module_clb(mod->name, (mod->rev_size ? mod->rev[0].date : NULL), name, revision, ctx->module_clb_data, &format, &module_data_free);
+            module_data = ctx->imp_clb(mod->name, (mod->rev_size ? mod->rev[0].date : NULL), name, revision, ctx->imp_clb_data, &format, &module_data_free);
         } else {
-            module_data = ctx->module_clb(name, revision, NULL, NULL, ctx->module_clb_data, &format, &module_data_free);
+            module_data = ctx->imp_clb(name, revision, NULL, NULL, ctx->imp_clb_data, &format, &module_data_free);
         }
         if (!module_data) {
             if (module || revision) {

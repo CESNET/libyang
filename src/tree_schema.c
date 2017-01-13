@@ -3532,12 +3532,20 @@ lys_features_list(const struct lys_module *module, uint8_t **states)
 API struct lys_module *
 lys_node_module(const struct lys_node *node)
 {
+    if (!node) {
+        return NULL;
+    }
+
     return node->module->type ? ((struct lys_submodule *)node->module)->belongsto : node->module;
 }
 
 API struct lys_module *
 lys_main_module(const struct lys_module *module)
 {
+    if (!module) {
+        return NULL;
+    }
+
     return (module->type ? ((struct lys_submodule *)module)->belongsto : (struct lys_module *)module);
 }
 

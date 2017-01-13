@@ -105,6 +105,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                struct lyd_node *prev, int options, struct unres_data *unres, struct lyd_node **result,
                struct lyd_node **act_notif)
 {
+    const struct lys_module *mod = NULL;
     struct lyd_node *diter, *dlast;
     struct lys_node *schema = NULL, *target;
     struct lys_node_augment *aug;
@@ -130,61 +131,62 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 
     /* find schema node */
     if (!parent) {
-        /* starting in root */
-        for (i = 0; i < ctx->models.used; i++) {
-            /* skip just imported modules, data can be coupled only with the implemented modules,
-             * also skip the disabled modules */
-            if (!ctx->models.list[i]->implemented || ctx->models.list[i]->disabled) {
-                continue;
+        mod = ly_ctx_get_module_by_ns(ctx, xml->ns->value, NULL);
+        if (ctx->data_clb) {
+            if (!mod) {
+                mod = ctx->data_clb(ctx, NULL, xml->ns->value, 0, ctx->data_clb_data);
+            } else if (!mod->implemented) {
+                mod = ctx->data_clb(ctx, mod->name, mod->ns, LY_MODCLB_NOT_IMPLEMENTED, ctx->data_clb_data);
             }
-            /* match data model based on namespace */
-            if (ly_strequal(ctx->models.list[i]->ns, xml->ns->value, 1)) {
-                /* get the proper schema node */
-                schema = xml_data_search_schemanode(xml, ctx->models.list[i]->data, options);
-                if (!schema) {
-                    /* it still can be the specific case of this module containing an augment of another module
-                     * top-level choice or top-level choice's case, bleh */
-                    for (j = 0; j < ctx->models.list[i]->augment_size; ++j) {
-                        aug = &ctx->models.list[i]->augment[j];
-                        target = aug->target;
-                        if (target->nodetype & (LYS_CHOICE | LYS_CASE)) {
-                            /* 1) okay, the target is choice or case */
-                            while (target && (target->nodetype & (LYS_CHOICE | LYS_CASE | LYS_USES))) {
-                                target = lys_parent(target);
-                            }
-                            /* 2) now, the data node will be top-level, there are only non-data schema nodes */
-                            if (!target) {
-                                while ((schema = (struct lys_node *)lys_getnext(schema, (struct lys_node *)aug, NULL, 0))) {
-                                    /* 3) alright, even the name matches, we found our schema node */
-                                    if (ly_strequal(schema->name, xml->name, 1)) {
-                                        break;
-                                    }
+        }
+
+        /* get the proper schema node */
+        if (mod && mod->implemented && !mod->disabled) {
+            schema = xml_data_search_schemanode(xml, mod->data, options);
+            if (!schema) {
+                /* it still can be the specific case of this module containing an augment of another module
+                * top-level choice or top-level choice's case, bleh */
+                for (j = 0; j < mod->augment_size; ++j) {
+                    aug = &mod->augment[j];
+                    target = aug->target;
+                    if (target->nodetype & (LYS_CHOICE | LYS_CASE)) {
+                        /* 1) okay, the target is choice or case */
+                        while (target && (target->nodetype & (LYS_CHOICE | LYS_CASE | LYS_USES))) {
+                            target = lys_parent(target);
+                        }
+                        /* 2) now, the data node will be top-level, there are only non-data schema nodes */
+                        if (!target) {
+                            while ((schema = (struct lys_node *)lys_getnext(schema, (struct lys_node *)aug, NULL, 0))) {
+                                /* 3) alright, even the name matches, we found our schema node */
+                                if (ly_strequal(schema->name, xml->name, 1)) {
+                                    break;
                                 }
                             }
                         }
+                    }
 
-                        if (schema) {
-                            break;
-                        }
+                    if (schema) {
+                        break;
                     }
                 }
-                break;
             }
         }
     } else {
         /* parsing some internal node, we start with parent's schema pointer */
         schema = xml_data_search_schemanode(xml, parent->schema->child, options);
-    }
-    if (!schema) {
-        if ((options & LYD_OPT_STRICT) || ly_ctx_get_module_by_ns(ctx, xml->ns->value, NULL)) {
-            LOGVAL(LYE_INELEM, LY_VLOG_LYD, parent, xml->name);
-            return -1;
-        } else {
-            return 0;
+
+        if (schema) {
+            if (!lys_node_module(schema)->implemented && ctx->data_clb) {
+                mod = ctx->data_clb(ctx, lys_node_module(schema)->name, lys_node_module(schema)->ns,
+                                    LY_MODCLB_NOT_IMPLEMENTED, ctx->data_clb_data);
+            }
         }
-    } else if (!lys_node_module(schema)->implemented) {
+    }
+
+    mod = lys_node_module(schema);
+    if (!mod || !mod->implemented || mod->disabled) {
         if (options & LYD_OPT_STRICT) {
-            LOGVAL(LYE_INELEM, LY_VLOG_LYD, parent, xml->name);
+            LOGVAL(LYE_INELEM, (parent ? LY_VLOG_LYD : LY_VLOG_NONE), parent, xml->name);
             return -1;
         } else {
             return 0;
@@ -446,7 +448,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         dattr->next = NULL;
         dattr->name = attr->name;
         if (flag && ly_strequal(attr->name, "select", 0)) {
-            dattr->value = transform_xml2json(ctx, attr->value, xml, 1);
+            dattr->value = transform_xml2json(ctx, attr->value, xml, 0, 1);
             if (!dattr->value) {
                 free(dattr);
                 goto error;

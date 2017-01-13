@@ -28,6 +28,7 @@
 #include "common.h"
 #include "tree_internal.h"
 #include "xpath.h"
+#include "context.h"
 #include "libyang.h"
 
 /* libyang errno */
@@ -526,7 +527,7 @@ transform_json2schema(const struct lys_module *module, const char *expr)
 }
 
 const char *
-transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml, int log)
+transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml, int use_ctx_data_clb, int log)
 {
     const char *end, *cur_expr, *ptr;
     char *out, *prefix;
@@ -582,6 +583,13 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
                 goto error;
             }
             mod = ly_ctx_get_module_by_ns(ctx, ns->value, NULL);
+            if (use_ctx_data_clb && ctx->data_clb) {
+                if (!mod) {
+                    mod = ctx->data_clb(ctx, NULL, ns->value, 0, ctx->data_clb_data);
+                } else if (!mod->implemented) {
+                    mod = ctx->data_clb(ctx, mod->name, mod->ns, LY_MODCLB_NOT_IMPLEMENTED, ctx->data_clb_data);
+                }
+            }
             if (!mod) {
                 if (log) {
                     LOGVAL(LYE_XML_INVAL, LY_VLOG_XML, xml, "module namespace");
