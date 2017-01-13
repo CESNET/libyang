@@ -178,13 +178,13 @@ yin_print_substmt(struct lyout *out, int level, LYEXT_SUBSTMT substmt, uint8_t s
 
     if (ext_substmt_info[substmt].flags & SUBST_FLAG_YIN) {
         content = 1;
-        yin_print_open(out, level, NULL, ext_substmt_info[substmt].name, NULL, NULL, content);
-        yin_print_arg(out, level + 1, ext_substmt_info[substmt].arg, text);
+        yin_print_open(out, level, NULL, ext_substmt_info[substmt].name,
+                       NULL, NULL, content);
     } else {
         yin_print_open(out, level, NULL, ext_substmt_info[substmt].name,
                        ext_substmt_info[substmt].arg, text, content);
     }
-
+    /* extensions */
     i = -1;
     do {
         i = ly_print_ext_iter(ext, ext_size, i + 1, substmt);
@@ -197,6 +197,11 @@ yin_print_substmt(struct lyout *out, int level, LYEXT_SUBSTMT substmt, uint8_t s
                 i = ly_print_ext_iter(ext, ext_size, i + 1, substmt);
             } while (i != -1 && ext[i]->substmt_index != substmt_index);
         } while (i != -1);
+    }
+
+    /* argument as yin-element */
+    if (ext_substmt_info[substmt].flags & SUBST_FLAG_YIN) {
+        yin_print_arg(out, level + 1, ext_substmt_info[substmt].arg, text);
     }
 
     yin_print_close(out, level, NULL, ext_substmt_info[substmt].name, content);
