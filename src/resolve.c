@@ -4484,7 +4484,6 @@ resolve_extension(struct unres_ext *info, const struct lys_module *mod, struct l
     struct lys_ext *e;
     const char *value;
     struct lyxml_elem *next_yin, *yin;
-    struct unres_ext *subinfo;
 
     switch (info->parent_type) {
     case LYEXT_PAR_NODE:
@@ -4620,14 +4619,8 @@ resolve_extension(struct unres_ext *info, const struct lys_module *mod, struct l
                 return -1;
             }
             LY_TREE_FOR_SAFE(info->data.yin->child, next_yin, yin) {
-                subinfo = malloc(sizeof *subinfo);
-                lyxml_unlink(mod->ctx, yin);
-                subinfo->data.yin = yin;
-                subinfo->datatype = LYS_IN_YIN;
-                subinfo->parent = (void *)(*ext);
-                subinfo->parent_type = LYEXT_PAR_EXTINST;
-                rc = unres_schema_add_node((struct lys_module *)mod, unres, &(*ext)->ext[(*ext)->ext_size],
-                                           UNRES_EXT, (struct lys_node *)subinfo);
+                rc = lyp_yin_fill_ext(*ext, LYEXT_PAR_EXTINST, LYEXT_SUBSTMT_SELF, 0, (struct lys_module *)mod, yin,
+                                      &(*ext)->ext[(*ext)->ext_size], unres);
                 (*ext)->ext_size++;
                 if (rc == -1) {
                     return EXIT_FAILURE;
@@ -6735,7 +6728,7 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
         return -1;
     }
 
-    /* the restexcept finalizing extensions */
+    /* the rest except finalizing extensions */
     for (i = 0; i < unres->count; ++i) {
         if (unres->type[i] == UNRES_RESOLVED || unres->type[i] == UNRES_EXT_FINALIZE) {
             continue;

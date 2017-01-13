@@ -57,6 +57,9 @@ enum LY_IDENT {
     LY_IDENT_PREFIX,
     LY_IDENT_EXTENSION
 };
+int lyp_yin_fill_ext(void *parent, LYEXT_PAR parent_type, LYEXT_SUBSTMT substmt, uint8_t substmt_index,
+                     struct lys_module *module, struct lyxml_elem *yin, struct lys_ext_instance **ext,
+                     struct unres_schema *unres);
 
 struct lys_module *lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
                                    const char *revision, int implement, struct unres_schema *unres);
