@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module name="ext-def"
+        xmlns="urn:ietf:params:xml:ns:yang:yin:1"
+        xmlns:e="urn:ext-def">
+  <yang-version value="1.1"/>
+  <namespace uri="urn:ext-def"/>
+  <prefix value="e"/>
+  <extension name="a"/>
+  <extension name="b">
+    <argument name="x"/>
+  </extension>
+  <extension name="c">
+    <argument name="y">
+      <yin-element value="true"/>
+    </argument>
+  </extension>
+</module>

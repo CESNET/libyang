@@ -7,7 +7,6 @@
   <namespace uri="urn:ext"/>
   <prefix value="e"/>
   <import module="extimp">
-    <prefix value="i"/>
     <e:a/>
     <e:b x="one"/>
     <e:c>
@@ -21,6 +20,7 @@
         <e:y>one</e:y>
       </e:c>
     </e:c>
+    <prefix value="i"/>
   </import>
   <include module="extinc">
     <e:a/>
@@ -62,6 +62,19 @@
     </e:c>
     <argument name="z"/>
   </extension>
+  <e:a/>
+  <e:b x="one"/>
+  <e:c>
+    <e:y>one</e:y>
+  </e:c>
+  <e:c>
+    <e:y>two</e:y>
+    <e:a/>
+    <e:b x="one"/>
+    <e:c>
+      <e:y>one</e:y>
+    </e:c>
+  </e:c>
   <feature name="turbo">
     <e:a/>
     <e:b x="one"/>
@@ -122,35 +135,6 @@
       </e:c>
     </type>
   </typedef>
-  <e:a/>
-  <e:b x="one"/>
-  <e:c>
-    <e:y>one</e:y>
-  </e:c>
-  <e:c>
-    <e:y>two</e:y>
-    <e:a/>
-    <e:b x="one"/>
-    <e:c>
-      <e:y>one</e:y>
-    </e:c>
-  </e:c>
-  <deviation target-node="/i:l">
-    <e:a/>
-    <e:b x="one"/>
-    <e:c>
-      <e:y>one</e:y>
-    </e:c>
-    <e:c>
-      <e:y>two</e:y>
-      <e:a/>
-      <e:b x="one"/>
-      <e:c>
-        <e:y>one</e:y>
-      </e:c>
-    </e:c>
-    <deviate value="not-supported"/>
-  </deviation>
   <grouping name="grp">
     <e:a/>
     <e:b x="one"/>
@@ -184,7 +168,6 @@
       </e:c>
     </e:c>
     <list name="l">
-      <key value="k"/>
       <e:a/>
       <e:b x="one"/>
       <e:c>
@@ -198,6 +181,7 @@
           <e:y>one</e:y>
         </e:c>
       </e:c>
+      <key value="k"/>
       <leaf name="k">
         <type name="string"/>
       </leaf>
@@ -310,6 +294,37 @@
       </e:c>
     </anydata>
   </choice>
+  <augment target-node="/cont">
+    <e:a/>
+    <e:b x="one"/>
+    <e:c>
+      <e:y>one</e:y>
+    </e:c>
+    <e:c>
+      <e:y>two</e:y>
+      <e:a/>
+      <e:b x="one"/>
+      <e:c>
+        <e:y>one</e:y>
+      </e:c>
+    </e:c>
+    <leaf name="augleaf">
+      <e:a/>
+      <e:b x="one"/>
+      <e:c>
+        <e:y>one</e:y>
+      </e:c>
+      <e:c>
+        <e:y>two</e:y>
+        <e:a/>
+        <e:b x="one"/>
+        <e:c>
+          <e:y>one</e:y>
+        </e:c>
+      </e:c>
+      <type name="string"/>
+    </leaf>
+  </augment>
   <rpc name="op">
     <e:a/>
     <e:b x="one"/>
@@ -376,7 +391,7 @@
       </e:c>
     </e:c>
   </notification>
-  <augment target-node="/cont">
+  <deviation target-node="/i:l">
     <e:a/>
     <e:b x="one"/>
     <e:c>
@@ -390,21 +405,6 @@
         <e:y>one</e:y>
       </e:c>
     </e:c>
-    <leaf name="augleaf">
-      <e:a/>
-      <e:b x="one"/>
-      <e:c>
-        <e:y>one</e:y>
-      </e:c>
-      <e:c>
-        <e:y>two</e:y>
-        <e:a/>
-        <e:b x="one"/>
-        <e:c>
-          <e:y>one</e:y>
-        </e:c>
-      </e:c>
-      <type name="string"/>
-    </leaf>
-  </augment>
+    <deviate value="not-supported"/>
+  </deviation>
 </module>
