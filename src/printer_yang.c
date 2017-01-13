@@ -748,7 +748,7 @@ static void
 yang_print_deviation(struct lyout *out, int level, const struct lys_module *module,
                      const struct lys_deviation *deviation)
 {
-    int i, j, k, p;
+    int i, j, p;
     const char *str;
     char *s;
 
@@ -826,8 +826,8 @@ yang_print_deviation(struct lyout *out, int level, const struct lys_module *modu
         }
 
         /* default */
-        for (k = 0; k < deviation->deviate[i].dflt_size; ++k) {
-            yang_print_substmt(out, level, LYEXT_SUBSTMT_DEFAULT, k, deviation->deviate[i].dflt[k], module,
+        for (j = 0; j < deviation->deviate[i].dflt_size; ++j) {
+            yang_print_substmt(out, level, LYEXT_SUBSTMT_DEFAULT, j, deviation->deviate[i].dflt[j], module,
                                deviation->deviate[i].ext, deviation->deviate[i].ext_size);
         }
 
@@ -912,9 +912,10 @@ yang_print_augment(struct lyout *out, int level, const struct lys_node_augment *
 static void
 yang_print_typedef(struct lyout *out, int level, const struct lys_module *module, const struct lys_tpdf *tpdf)
 {
+    const char *dflt;
+
     ly_print(out, "%*stypedef %s {\n", LEVEL, INDENT, tpdf->name);
     level++;
-    const char *dflt;
 
     yang_print_snode_common(out, level, (struct lys_node *)tpdf, module, NULL, SNODE_COMMON_EXT);
     yang_print_type(out, level, module, &tpdf->type);
@@ -1044,7 +1045,7 @@ yang_print_container(struct lyout *out, int level, const struct lys_node *node)
             continue;
         }
         yang_print_open(out, &flag);
-        yang_print_snode(out, level, sub,LYS_NOTIF);
+        yang_print_snode(out, level, sub, LYS_NOTIF);
     }
 
     level--;
