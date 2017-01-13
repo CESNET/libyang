@@ -1703,10 +1703,10 @@ yang_print_model(struct lyout *out, const struct lys_module *module)
     for (i = 0; i < module->imp_size; i++) {
         ly_print(out, "\n%*simport %s {\n", LEVEL, INDENT, module->imp[i].module->name);
         level++;
-        yang_print_substmt(out, level, LYEXT_SUBSTMT_PREFIX, 0, module->imp[i].prefix,
-                           module, module->imp[i].ext, module->imp[i].ext_size);
         yang_print_extension_instances(out, level, module, LYEXT_SUBSTMT_SELF, 0,
                                        module->imp[i].ext, module->imp[i].ext_size);
+        yang_print_substmt(out, level, LYEXT_SUBSTMT_PREFIX, 0, module->imp[i].prefix,
+                           module, module->imp[i].ext, module->imp[i].ext_size);
         if (module->imp[i].rev[0]) {
             yang_print_substmt(out, level, LYEXT_SUBSTMT_REVISIONDATE, 0, module->imp[i].rev,
                                module, module->imp[i].ext, module->imp[i].ext_size);
