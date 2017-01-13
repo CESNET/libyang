@@ -6795,7 +6795,18 @@ resolve_instid(struct lyd_node *data, const char *path, int req_inst, struct lyd
             goto error;
         }
         mod = ly_ctx_get_module(ctx, str, NULL);
+        if (ctx->data_clb) {
+            if (!mod) {
+                mod = ctx->data_clb(ctx, str, NULL, 0, ctx->data_clb_data);
+            } else if (!mod->implemented) {
+                mod = ctx->data_clb(ctx, mod->name, mod->ns, LY_MODCLB_NOT_IMPLEMENTED, ctx->data_clb_data);
+            }
+        }
         free(str);
+
+        if (!mod || !mod->implemented || mod->disabled) {
+            break;
+        }
 
         if (resolve_data(mod, name, name_len, data, &node_match)) {
             /* no instance exists */

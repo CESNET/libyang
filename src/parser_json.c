@@ -831,61 +831,69 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
         /* starting in root */
         /* get the proper schema */
         module = ly_ctx_get_module(ctx, prefix, NULL);
-        if (module) {
+        if (ctx->data_clb) {
+            if (!module) {
+                module = ctx->data_clb(ctx, prefix, NULL, 0, ctx->data_clb_data);
+            } else if (!module->implemented) {
+                module = ctx->data_clb(ctx, module->name, module->ns, LY_MODCLB_NOT_IMPLEMENTED, ctx->data_clb_data);
+            }
+        }
+        if (module && module->implemented) {
             /* get the proper schema node */
             while ((schema = (struct lys_node *)lys_getnext(schema, NULL, module, 0))) {
                 if (!strcmp(schema->name, name)) {
                     break;
                 }
             }
-        } else {
-            LOGVAL(LYE_INELEM, LY_VLOG_NONE, NULL, name);
-            goto error;
         }
     } else {
-        /* parsing some internal node, we start with parent's schema pointer */
         if (prefix) {
-            /* get the proper schema */
+            /* get the proper module to give the chance to load/implement it */
             module = ly_ctx_get_module(ctx, prefix, NULL);
-            if (!module) {
-                LOGVAL(LYE_INELEM, LY_VLOG_LYD, (*parent), name);
-                goto error;
+            if (ctx->data_clb) {
+                if (!module) {
+                    module = ctx->data_clb(ctx, prefix, NULL, 0, ctx->data_clb_data);
+                } else if (!module->implemented) {
+                    module = ctx->data_clb(ctx, module->name, module->ns, LY_MODCLB_NOT_IMPLEMENTED, ctx->data_clb_data);
+                }
             }
         }
 
         /* go through RPC's input/output following the options' data type */
         if ((*parent)->schema->nodetype == LYS_RPC) {
-            while ((schema = (struct lys_node *)lys_getnext(schema, (*parent)->schema, module, LYS_GETNEXT_WITHINOUT))) {
+            while ((schema = (struct lys_node *)lys_getnext(schema, (*parent)->schema, NULL, LYS_GETNEXT_WITHINOUT))) {
                 if ((options & LYD_OPT_RPC) && (schema->nodetype == LYS_INPUT)) {
                     break;
                 } else if ((options & LYD_OPT_RPCREPLY) && (schema->nodetype == LYS_OUTPUT)) {
                     break;
                 }
             }
-            if (!schema) {
-                LOGVAL(LYE_INELEM, LY_VLOG_LYD, (*parent), name);
-                goto error;
-            }
             schema_parent = schema;
             schema = NULL;
         }
 
         if (schema_parent) {
-            while ((schema = (struct lys_node *)lys_getnext(schema, schema_parent, module, 0))) {
-                if (!strcmp(schema->name, name)) {
+            while ((schema = (struct lys_node *)lys_getnext(schema, schema_parent, NULL, 0))) {
+                if (!strcmp(schema->name, name)
+                        && ((prefix && !strcmp(lys_node_module(schema)->name, prefix))
+                        || (!prefix && (lys_node_module(schema) == lys_node_module(schema_parent))))) {
                     break;
                 }
             }
         } else {
-            while ((schema = (struct lys_node *)lys_getnext(schema, (*parent)->schema, module, 0))) {
-                if (!strcmp(schema->name, name)) {
+            while ((schema = (struct lys_node *)lys_getnext(schema, (*parent)->schema, NULL, 0))) {
+                if (!strcmp(schema->name, name)
+                        && ((prefix && !strcmp(lys_node_module(schema)->name, prefix))
+                        || (!prefix && (lys_node_module(schema) == lyd_node_module(*parent))))) {
                     break;
                 }
             }
         }
     }
-    if (!schema || !lys_node_module(schema)->implemented) {
-        LOGVAL(LYE_INELEM, LY_VLOG_LYD, (*parent), name);
+
+    module = lys_node_module(schema);
+    if (!module || !module->implemented || module->disabled) {
+        LOGVAL(LYE_INELEM, (*parent ? LY_VLOG_LYD : LY_VLOG_NONE), (*parent), name);
         goto error;
     }
 
@@ -898,7 +906,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
         }
 
 attr_repeat:
-        r = json_parse_attr(schema->module, &attr, &data[len]);
+        r = json_parse_attr((struct lys_module *)module, &attr, &data[len]);
         if (!r) {
             LOGPATH(LY_VLOG_LYD, (*parent));
             goto error;

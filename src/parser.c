@@ -1380,7 +1380,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         if (xml) {
             /* first, convert value into the json format */
-            value = transform_xml2json(type->parent->module->ctx, value, xml, 0);
+            value = transform_xml2json(type->parent->module->ctx, value, xml, 0, 0);
             if (!value) {
                 /* invalid identityref format */
                 LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, *value_, leaf->schema->name);
@@ -1447,7 +1447,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         if (xml) {
             /* first, convert value into the json format */
-            value = transform_xml2json(type->parent->module->ctx, value, xml, 0);
+            value = transform_xml2json(type->parent->module->ctx, value, xml, 1, 0);
             if (!value) {
                 /* invalid instance-identifier format */
                 LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, *value_, leaf->schema->name);
@@ -1667,7 +1667,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
              * the type without resolving it -> we return the union type (resolve it with resolve_union()) */
             if (xml) {
                 /* in case it should resolve into a instance-identifier, we can only do the JSON conversion here */
-                leaf->value.string = transform_xml2json(type->parent->module->ctx, value, xml, 0);
+                leaf->value.string = transform_xml2json(type->parent->module->ctx, value, xml, 1, 0);
                 if (!leaf->value.string) {
                     /* invalid instance-identifier format */
                     LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, *value_, leaf->schema->name);

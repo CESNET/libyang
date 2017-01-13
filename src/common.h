@@ -338,11 +338,12 @@ const char *transform_json2schema(const struct lys_module *module, const char *e
  * @param[in] ctx libyang context to use.
  * @param[in] expr XML expression.
  * @param[in] xml XML element with the expression.
+ * @param[in] use_ctx_data_clb Whether to use data_clb in \p ctx if an unknown module namespace is found.
  * @param[in] log Whether to log errors or not.
  *
  * @return Transformed JSON expression in the dictionary, NULL on error.
  */
-const char *transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml, int log);
+const char *transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml, int use_ctx_data_clb, int log);
 
 /**
  * @brief Transform expression from the schema format (prefixes of imports) to

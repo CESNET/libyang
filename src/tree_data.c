@@ -6276,6 +6276,10 @@ unlink_datatree:
 API struct lys_module *
 lyd_node_module(const struct lyd_node *node)
 {
+    if (!node) {
+        return NULL;
+    }
+
     return node->schema->module->type ? ((struct lys_submodule *)node->schema->module)->belongsto : node->schema->module;
 }
 
