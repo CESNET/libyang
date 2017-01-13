@@ -301,6 +301,10 @@ transform_module_name2import_prefix(const struct lys_module *module, const char 
 {
     uint16_t i;
 
+    if (!module_name) {
+        return NULL;
+    }
+
     if (!strcmp(lys_main_module(module)->name, module_name)) {
         /* the same for module and submodule */
         return module->prefix;
