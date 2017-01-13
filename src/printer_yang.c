@@ -154,7 +154,7 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
         }
 
         mod = lys_main_module(ext[u]->def->module);
-        if (mod == module) {
+        if (mod == lys_main_module(module)) {
             prefix = module->prefix;
         } else {
             for (x = 0; x < module->imp_size; x++) {
