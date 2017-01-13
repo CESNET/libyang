@@ -60,6 +60,9 @@
       <type name="tdef3"/>
     </leaf>
   </container>
+  <leaf name="refleaf">
+    <type name="empty"/>
+  </leaf>
   <rpc name="rpc1">
     <typedef name="tdef6">
       <type name="leafref">
@@ -100,7 +103,4 @@
       <type name="tdef9"/>
     </leaf>
   </notification>
-  <leaf name="refleaf">
-    <type name="empty"/>
-  </leaf>
 </module>

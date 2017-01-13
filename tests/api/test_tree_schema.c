@@ -270,17 +270,16 @@ char *result_yin = "\
       <type name=\"string\"/>\n\
     </leaf>\n\
   </container>\n\
+  <augment target-node=\"/x\">\n\
+    <if-feature name=\"bar\"/>\n\
+    <container name=\"bar-y\"/>\n\
+  </augment>\n\
   <rpc name=\"bar-rpc\">\n\
     <if-feature name=\"bar\"/>\n\
   </rpc>\n\
   <rpc name=\"foo-rpc\">\n\
     <if-feature name=\"foo\"/>\n\
   </rpc>\n\
-  <augment target-node=\"/x\">\n\
-    <if-feature name=\"bar\"/>\n\
-    <container name=\"bar-y\">\n\
-    </container>\n\
-  </augment>\n\
 </module>\n";
 
 char *result_info ="\

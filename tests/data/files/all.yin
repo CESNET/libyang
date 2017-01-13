@@ -8,8 +8,8 @@
   <revision date="2016-05-23"/>
   <revision date="2016-05-22"/>
   <feature name="feat1">
-    <status value="obsolete"/>
     <if-feature name="feat2"/>
+    <status value="obsolete"/>
   </feature>
   <feature name="feat2"/>
   <identity name="ident1">
@@ -38,12 +38,14 @@
   <container name="cont1">
     <leaf name="leaf2">
       <if-feature name="feat1"/>
-      <status value="obsolete"/>
       <type name="int16"/>
+      <status value="obsolete"/>
     </leaf>
     <uses name="group1">
       <if-feature name="feat2"/>
       <refine target-node="leaf1">
+        <must condition="24 - 4 = number('20')"/>
+        <default value="25"/>
         <config value="true"/>
         <mandatory value="false"/>
         <description>
@@ -52,8 +54,6 @@
         <reference>
           <text>none</text>
         </reference>
-        <must condition="24 - 4 = number('20')"/>
-        <default value="25"/>
       </refine>
     </uses>
     <leaf name="leaf3">
@@ -62,10 +62,10 @@
     <leaf name="leaf4">
       <type name="int64">
         <range value="1000 .. 50000">
-          <error-app-tag value="special-tag"/>
           <error-message>
             <value>Special error message.</value>
           </error-message>
+          <error-app-tag value="special-tag"/>
         </range>
       </type>
     </leaf>
@@ -177,6 +177,13 @@
       <type name="empty"/>
     </leaf>
   </container>
+  <augment target-node="/cont1">
+    <leaf name="leaf17">
+      <type name="identityref">
+        <base name="ident1"/>
+      </type>
+    </leaf>
+  </augment>
   <rpc name="rpc1">
     <input>
       <leaf name="leaf20">
@@ -196,11 +203,4 @@
       <type name="empty"/>
     </leaf>
   </notification>
-  <augment target-node="/cont1">
-    <leaf name="leaf17">
-      <type name="identityref">
-        <base name="ident1"/>
-      </type>
-    </leaf>
-  </augment>
 </module>

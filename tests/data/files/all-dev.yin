@@ -30,9 +30,9 @@
   </deviation>
   <deviation target-node="/all_mod:cont1/all_mod:leaf13">
     <deviate value="add">
-      <default value="aGVsbG8h"/>
-      <must condition="../leaf3 &lt; 0"/>
       <units name="b/h"/>
+      <must condition="../leaf3 &lt; 0"/>
+      <default value="aGVsbG8h"/>
     </deviate>
   </deviation>
   <deviation target-node="/all_mod:cont1/all_mod:leaf23">
