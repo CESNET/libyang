@@ -1253,6 +1253,7 @@ yang_print_leaflist(struct lyout *out, int level, const struct lys_node *node)
             lydict_remove(node->module->ctx, dflt);
         }
     }
+    yang_print_snode_common(out, level, node, node->module, NULL, SNODE_COMMON_CONFIG);
     if (llist->min > 0) {
         asprintf(&str, "%u", llist->min);
         yang_print_substmt(out, level, LYEXT_SUBSTMT_MIN, 0, str,

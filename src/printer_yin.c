@@ -1240,6 +1240,7 @@ yin_print_leaflist(struct lyout *out, int level, const struct lys_node *node)
             lydict_remove(node->module->ctx, dflt);
         }
     }
+    yin_print_snode_common(out, level, node, node->module, NULL, SNODE_COMMON_CONFIG);
     if (llist->min > 0) {
         yin_print_unsigned(out, level, LYEXT_SUBSTMT_MIN, node->module, node->ext, node->ext_size, llist->min);
     }
