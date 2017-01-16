@@ -2190,15 +2190,24 @@ lyd_diff_move_preprocess(struct diff_ordered *ordered, struct lyd_node *first, s
         }
     }
     if (dist_aux->next == ordered->dist) {
-        /* first item */
-        ordered->dist = dist_aux;
-        if (dist_aux->next) {
-            /* more than one item, update the last one's next */
-            ordered->dist_last->next = dist_aux;
+        if (ordered->dist_last == dist_aux) {
+            /* last item */
+            if (!ordered->dist) {
+                /* the only item */
+                dist_aux->next = dist_aux;
+                ordered->dist = ordered->dist_last = dist_aux;
+            }
         } else {
-            /* the only item */
-            ordered->dist_last = dist_aux;
-            dist_aux->next = dist_aux; /* ring list */
+            /* first item */
+            ordered->dist = dist_aux;
+            if (dist_aux->next) {
+                /* more than one item, update the last one's next */
+                ordered->dist_last->next = dist_aux;
+            } else {
+                /* the only item */
+                ordered->dist_last = dist_aux;
+                dist_aux->next = dist_aux; /* ring list */
+            }
         }
     }
 
@@ -2594,7 +2603,7 @@ dfs_nextsibling:
 
         for (dist_iter = ordered->dist; ; dist_iter = dist_iter->next) {
             /* dist list is sorted at the beginning, since applying a move causes
-             * just a small change in other distances, we assume the the biggest
+             * just a small change in other distances, we assume that the biggest
              * dist is the next one (note that dist list is implemented as ring
              * list). This way we avoid sorting distances after each move. The loop
              * stops when all distances are zero.
