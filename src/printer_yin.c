@@ -363,6 +363,12 @@ yin_print_restr(struct lyout *out, int level, const struct lys_module *module, c
         yin_print_extension_instances(out, level, module, LYEXT_SUBSTMT_SELF, 0,
                                       restr->ext, restr->ext_size);
     }
+    if (restr->expr[0] == 0x15) {
+        /* special byte value in pattern's expression: 0x15 - invert-match, 0x06 - match */
+        yin_print_close_parent(out, flag);
+        yin_print_substmt(out, level, LYEXT_SUBSTMT_MODIFIER, 0, "invert-match", module,
+                          restr->ext, restr->ext_size);
+    }
     if (restr->emsg != NULL) {
         yin_print_close_parent(out, flag);
         yin_print_substmt(out, level, LYEXT_SUBSTMT_ERRMSG, 0, restr->emsg,
@@ -398,11 +404,6 @@ yin_print_typerestr(struct lyout *out, int level, const char *elem_name,
     }
 
     yin_print_open(out, level, NULL, elem_name, "value", pattern ? &restr->expr[1] : restr->expr , content);
-    if (restr->expr[0] == 0x15) {
-        yin_print_close_parent(out, &content);
-        yin_print_substmt(out, level + 1, LYEXT_SUBSTMT_MODIFIER, 0, "invert-match", module,
-                          restr->ext, restr->ext_size);
-    }
     yin_print_restr(out, level + 1, module, restr, &content);
     yin_print_close(out, level, NULL, elem_name, content);
 }

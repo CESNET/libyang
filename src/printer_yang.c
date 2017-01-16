@@ -401,6 +401,12 @@ yang_print_restr(struct lyout *out, int level, const struct lys_module *module, 
         yang_print_open(out, flag);
         yang_print_extension_instances(out, level, module, LYEXT_SUBSTMT_SELF, 0, restr->ext, restr->ext_size);
     }
+    if (restr->expr[0] == 0x15) {
+        /* special byte value in pattern's expression: 0x15 - invert-match, 0x06 - match */
+        yang_print_open(out, flag);
+        yang_print_substmt(out, level, LYEXT_SUBSTMT_MODIFIER, 0, "invert-match",
+                           module, restr->ext, restr->ext_size);
+    }
     if (restr->emsg != NULL) {
         yang_print_open(out, flag);
         yang_print_substmt(out, level, LYEXT_SUBSTMT_ERRMSG, 0, restr->emsg,
@@ -623,11 +629,6 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
             yang_encode(out, &type->info.str.patterns[i].expr[1], -1);
             ly_print(out, "\"");
             flag2 = 0;
-            if (type->info.str.patterns[i].expr[0] == 0x15) {
-                yang_print_open(out, &flag2);
-                yang_print_substmt(out, level + 1, LYEXT_SUBSTMT_MODIFIER, 0, "invert-match",
-                                   module, type->info.str.patterns[i].ext, type->info.str.patterns[i].ext_size);
-            }
             yang_print_restr(out, level + 1, module, &type->info.str.patterns[i], &flag2);
             yang_print_close(out, level, flag2);
         }
