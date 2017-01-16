@@ -260,7 +260,8 @@ typedef enum {
     LYEXT_PAR_DEVIATE,             /**< ::lys_deviate */
     LYEXT_PAR_IMPORT,              /**< ::lys_import */
     LYEXT_PAR_INCLUDE,             /**< ::lys_include */
-    LYEXT_PAR_REVISION             /**< ::lys_revision */
+    LYEXT_PAR_REVISION,            /**< ::lys_revision */
+    LYEXT_PAR_IFFEATURE            /**< ::lys_iffeature */
 } LYEXT_PAR;
 
 /**
