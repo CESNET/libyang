@@ -454,7 +454,16 @@ yang_print_when(struct lyout *out, int level, const struct lys_module *module, c
         yang_print_open(out, &flag);
         yang_print_extension_instances(out, level, module, LYEXT_SUBSTMT_SELF, 0, when->ext, when->ext_size);
     }
-    yang_print_snode_common(out, level, (struct lys_node *)when, module, &flag, SNODE_COMMON_DSC | SNODE_COMMON_REF);
+    if (when->dsc != NULL) {
+        yang_print_open(out, &flag);
+        yang_print_substmt(out, level, LYEXT_SUBSTMT_DESCRIPTION, 0, when->dsc,
+                           module, when->ext, when->ext_size);
+    }
+    if (when->ref != NULL) {
+        yang_print_open(out, &flag);
+        yang_print_substmt(out, level, LYEXT_SUBSTMT_REFERENCE, 0, when->ref,
+                           module, when->ext, when->ext_size);
+    }
 
     level--;
     yang_print_close(out, level, flag);

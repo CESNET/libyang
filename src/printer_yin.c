@@ -443,7 +443,16 @@ yin_print_when(struct lyout *out, int level, const struct lys_module *module, co
         yin_print_close_parent(out, &flag);
         yin_print_extension_instances(out, level, module, LYEXT_SUBSTMT_SELF, 0, when->ext, when->ext_size);
     }
-    yin_print_snode_common(out, level, (struct lys_node *)when, module, &flag, SNODE_COMMON_DSC | SNODE_COMMON_REF);
+    if (when->dsc != NULL) {
+        yin_print_close_parent(out, &flag);
+        yin_print_substmt(out, level, LYEXT_SUBSTMT_DESCRIPTION, 0, when->dsc,
+                          module, when->ext, when->ext_size);
+    }
+    if (when->ref != NULL) {
+        yin_print_close_parent(out, &flag);
+        yin_print_substmt(out, level, LYEXT_SUBSTMT_REFERENCE, 0, when->ref,
+                          module, when->ext, when->ext_size);
+    }
 
     level--;
     yin_print_close(out, level, NULL, "when", flag);
