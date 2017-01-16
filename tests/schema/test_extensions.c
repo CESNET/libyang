@@ -163,6 +163,34 @@ test_container_sub_yin(void **state)
 }
 
 static void
+test_container_sub_yang(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    const char *yang = "module ext {\n"
+                    "  namespace \"urn:ext\";\n  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  container c {\n    presence \"test\" {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n    config false {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n    status current {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n    description\n      \"desc\" {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n    reference\n      \"ref\" {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n  }\n}\n";
+
+    mod = lys_parse_mem(st->ctx, yin, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL);
+    assert_ptr_not_equal(st->str1, NULL);
+    assert_string_equal(st->str1, yin);
+}
+
+static void
 test_leaf_sub_yin(void **state)
 {
     struct state *st = (*state);
@@ -298,8 +326,9 @@ main(void)
         cmocka_unit_test_setup_teardown(test_container_sub_yin, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_leaf_sub_yin, setup_ctx_yin, teardown_ctx),
 
-//        cmocka_unit_test_setup_teardown(test_fullset_yang, setup_ctx_yang, teardown_ctx)
-//        cmocka_unit_test_setup_teardown(test_leaf_sub_yin, setup_ctx_yin, teardown_ctx),
+//        cmocka_unit_test_setup_teardown(test_fullset_yang, setup_ctx_yang, teardown_ctx),
+//        cmocka_unit_test_setup_teardown(test_container_sub_yang, setup_ctx_yin, teardown_ctx),
+//        cmocka_unit_test_setup_teardown(test_leaf_sub_yang, setup_ctx_yin, teardown_ctx),
     };
 
     return cmocka_run_group_tests(cmut, NULL, NULL);
