@@ -185,7 +185,8 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
         /* extensions in extension instance */
         if (ext[u]->ext_size) {
             yang_print_open(out, &flag);
-            yang_print_extension_instances(out, level + 1, module, substmt, 0, ext[u]->ext, ext[u]->ext_size);
+            yang_print_extension_instances(out, level + 1, module, LYEXT_SUBSTMT_SELF, 0,
+                                           ext[u]->ext, ext[u]->ext_size);
         }
 
         /* close extension */
