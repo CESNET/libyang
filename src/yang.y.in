@@ -805,7 +805,8 @@ argument_end: ';'
         yin_element_stmt
     '}'
 
-yin_element_stmt: YIN_ELEMENT_KEYWORD sep yin_element_arg_str stmtend;
+yin_element_stmt: @EMPTYDIR@
+  |  YIN_ELEMENT_KEYWORD sep yin_element_arg_str stmtend;
 
 yin_element_arg_str: TRUE_KEYWORD optsep
   | FALSE_KEYWORD optsep
