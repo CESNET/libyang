@@ -1112,6 +1112,7 @@ lys_restr_free(struct ly_ctx *ctx, struct lys_restr *restr)
         return;
     }
 
+    lys_extension_instances_free(ctx, restr->ext, restr->ext_size);
     lydict_remove(ctx, restr->expr);
     lydict_remove(ctx, restr->dsc);
     lydict_remove(ctx, restr->ref);
