@@ -212,7 +212,15 @@ yin_print_iffeature(struct lyout *out, int level, const struct lys_module *modul
 {
     ly_print(out, "%*s<if-feature name=\"", LEVEL, INDENT);
     ly_print_iffeature(out, module, iffeature);
-    ly_print(out, "\"/>\n");
+
+    /* extensions */
+    if (iffeature->ext_size) {
+        ly_print(out, "\">\n");
+        yin_print_extension_instances(out, level + 1, module, LYEXT_SUBSTMT_SELF, 0, iffeature->ext, iffeature->ext_size);
+        ly_print(out, "%*s</if-feature>\n", LEVEL, INDENT);
+    } else {
+        ly_print(out, "\"/>\n");
+    }
 }
 
 /*
