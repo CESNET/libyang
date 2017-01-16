@@ -2013,11 +2013,9 @@ diff_ordset_insert(struct lyd_node *node, struct ly_set *ordset_keys, struct ly_
     i = ly_set_add(ordset_keys, node->schema, 0);
     if (i == ordset->number) {
         /* not seen user-ordered list */
-        new_ordered = malloc(sizeof *new_ordered);
+        new_ordered = calloc(1, sizeof *new_ordered);
         new_ordered->schema = node->schema;
-        new_ordered->count = 0;
-        new_ordered->items = NULL;
-        new_ordered->dist = NULL;
+
         ly_set_add(ordset, new_ordered, LY_SET_OPT_USEASLIST);
     }
     ((struct diff_ordered *)ordset->set.g[i])->count++;
