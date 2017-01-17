@@ -182,12 +182,12 @@ test_container_sub_yang(void **state)
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
                     "    }\n  }\n}\n";
 
-    mod = lys_parse_mem(st->ctx, yin, LYS_IN_YANG);
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
     assert_ptr_not_equal(mod, NULL);
 
     lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL);
     assert_ptr_not_equal(st->str1, NULL);
-    assert_string_equal(st->str1, yin);
+    assert_string_equal(st->str1, yang);
 }
 
 static void
@@ -224,6 +224,24 @@ test_leaf_sub_yin(void **state)
                     "        </reference>\n"
                     "      </pattern>\n"
                     "    </type>\n"
+                    "    <units name=\"petipivo\">\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "    </units>\n"
+                    "    <must condition=\"true()\">\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "      <error-message>\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "        <value>emsg</value>\n"
+                    "      </error-message>\n      <error-app-tag value=\"eapptag\">\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "      </error-app-tag>\n      <description>\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "        <text>desc</text>\n"
+                    "      </description>\n      <reference>\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "        <text>ref</text>\n"
+                    "      </reference>\n"
+                    "    </must>\n"
                     "    <config value=\"false\">\n"
                     "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
                     "    </config>\n"
@@ -275,7 +293,20 @@ test_leaf_sub_yang(void **state)
                     "        }\n        reference\n          \"ref\" {\n"
                     "          e:a;\n          e:b \"one\";\n          e:c \"one\";\n"
                     "        }\n      }\n    }\n"
-                    "    config false {\n"
+                    "    units \"petipivo\" {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n    must \"true()\" {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "      error-message\n        \"emsg\" {\n"
+                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "      }\n      error-app-tag \"eapptag\" {\n"
+                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "      }\n      description\n        \"desc\" {\n"
+                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "      }\n      reference\n        \"ref\" {\n"
+                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "      }\n"
+                    "    }\n    config false {\n"
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
                     "    }\n    mandatory true {\n"
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
@@ -284,6 +315,236 @@ test_leaf_sub_yang(void **state)
                     "    }\n    description\n      \"desc\" {\n"
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
                     "    }\n    reference\n      \"ref\" {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n  }\n}\n";
+
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL);
+    assert_ptr_not_equal(st->str1, NULL);
+    assert_string_equal(st->str1, yang);
+}
+
+static void
+test_leaflist_sub_yin(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    const char *yin = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <feature name=\"f1\"/>\n  <feature name=\"f\">\n"
+                    "    <e:a/>\n    <e:b x=\"one\"/>\n    <e:c>\n      <e:y>one</e:y>\n    </e:c>\n"
+                    "    <if-feature name=\"f1\">\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "    </if-feature>\n"
+                    "    <status value=\"current\">\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "    </status>\n"
+                    "    <description>\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "      <text>desc</text>\n"
+                    "    </description>\n"
+                    "    <reference>\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "      <text>ref</text>\n"
+                    "    </reference>\n"
+                    "  </feature>\n"
+                    "  <leaf-list name=\"l1\">\n"
+                    "    <when condition=\"true()\">\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "      <description>\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "        <text>desc</text>\n"
+                    "      </description>\n"
+                    "      <reference>\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "        <text>ref</text>\n"
+                    "      </reference>\n"
+                    "    </when>\n    <if-feature name=\"f\">\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "    </if-feature>\n    <type name=\"string\">\n"
+                    "      <length value=\"5\">\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "        <error-message>\n"
+                    "          <e:a/>\n          <e:b x=\"one\"/>\n          <e:c>\n            <e:y>one</e:y>\n          </e:c>\n"
+                    "          <value>emsg</value>\n"
+                    "        </error-message>\n        <error-app-tag value=\"eapptag\">\n"
+                    "          <e:a/>\n          <e:b x=\"one\"/>\n          <e:c>\n            <e:y>one</e:y>\n          </e:c>\n"
+                    "        </error-app-tag>\n        <description>\n"
+                    "          <e:a/>\n          <e:b x=\"one\"/>\n          <e:c>\n            <e:y>one</e:y>\n          </e:c>\n"
+                    "          <text>desc</text>\n"
+                    "        </description>\n        <reference>\n"
+                    "          <e:a/>\n          <e:b x=\"one\"/>\n          <e:c>\n            <e:y>one</e:y>\n          </e:c>\n"
+                    "          <text>ref</text>\n"
+                    "        </reference>\n"
+                    "      </length>\n"
+                    "    </type>\n"
+                    "    <units name=\"petipivo\">\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "    </units>\n"
+                    "    <must condition=\"true()\">\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "      <error-message>\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "        <value>emsg</value>\n"
+                    "      </error-message>\n      <error-app-tag value=\"eapptag\">\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "      </error-app-tag>\n      <description>\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "        <text>desc</text>\n"
+                    "      </description>\n"
+                    "      <reference>\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "        <text>ref</text>\n"
+                    "      </reference>\n"
+                    "    </must>\n"
+                    "    <config value=\"true\">\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "    </config>\n"
+                    "    <min-elements value=\"1\">\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "    </min-elements>\n"
+                    "    <max-elements value=\"1\">\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "    </max-elements>\n"
+                    "    <ordered-by value=\"user\">\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "    </ordered-by>\n"
+                    "    <status value=\"current\">\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "    </status>\n"
+                    "    <description>\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "      <text>desc</text>\n"
+                    "    </description>\n"
+                    "    <reference>\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "      <text>ref</text>\n"
+                    "    </reference>\n"
+                    "  </leaf-list>\n"
+                    "  <leaf-list name=\"l2\">\n"
+                    "    <type name=\"int8\">\n"
+                    "      <range value=\"1..10\">\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "        <error-message>\n"
+                    "          <e:a/>\n          <e:b x=\"one\"/>\n          <e:c>\n            <e:y>one</e:y>\n          </e:c>\n"
+                    "          <value>emsg</value>\n"
+                    "        </error-message>\n        <error-app-tag value=\"eapptag\">\n"
+                    "          <e:a/>\n          <e:b x=\"one\"/>\n          <e:c>\n            <e:y>one</e:y>\n          </e:c>\n"
+                    "        </error-app-tag>\n        <description>\n"
+                    "          <e:a/>\n          <e:b x=\"one\"/>\n          <e:c>\n            <e:y>one</e:y>\n          </e:c>\n"
+                    "          <text>desc</text>\n"
+                    "        </description>\n        <reference>\n"
+                    "          <e:a/>\n          <e:b x=\"one\"/>\n          <e:c>\n            <e:y>one</e:y>\n          </e:c>\n"
+                    "          <text>ref</text>\n"
+                    "        </reference>\n"
+                    "      </range>\n"
+                    "    </type>\n"
+                    "    <default value=\"1\"/>\n    <default value=\"2\">\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "    </default>\n"
+                    "  </leaf-list>\n</module>\n";
+
+    mod = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
+    assert_ptr_not_equal(mod, NULL);
+
+    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL);
+    assert_ptr_not_equal(st->str1, NULL);
+    assert_string_equal(st->str1, yin);
+}
+
+static void
+test_leaflist_sub_yang(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    const char *yang = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  feature f1;\n\n  feature f {\n"
+                    "    e:a;\n    e:b \"one\";\n    e:c \"one\";\n"
+                    "    if-feature \"f1\" {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n    status current {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n    description\n      \"desc\" {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n    reference\n      \"ref\" {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n  }\n\n"
+                    "  leaf-list l1 {\n"
+                    "    when \"true()\" {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "      description\n        \"desc\" {\n"
+                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "      }\n    reference\n        \"ref\" {\n"
+                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "      }\n"
+                    "    }\n    if-feature \"f\" {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n    type string {\n      length \"5\" {\n"
+                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "        error-message\n          \"emsg\" {\n"
+                    "          e:a;\n          e:b \"one\";\n          e:c \"one\";\n"
+                    "        }\n        error-app-tag \"eapptag\" {\n"
+                    "          e:a;\n          e:b \"one\";\n          e:c \"one\";\n"
+                    "        }\n        description\n          \"desc\" {\n"
+                    "          e:a;\n          e:b \"one\";\n          e:c \"one\";\n"
+                    "        }\n        reference\n          \"ref\" {\n"
+                    "          e:a;\n          e:b \"one\";\n          e:c \"one\";\n"
+                    "        }\n      }\n    }\n"
+                    "    units \"petipivo\" {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n    must \"true()\" {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "      error-message\n        \"emsg\" {\n"
+                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "      }\n      error-app-tag \"eapptag\" {\n"
+                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "      }\n      description\n        \"desc\" {\n"
+                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "      }\n      reference\n        \"ref\" {\n"
+                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "      }\n"
+                    "    }\n    config true {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n    min-elements 1 {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n    max-elements 1 {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n    ordered-by user {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n    status current {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n    description\n      \"desc\" {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n    reference\n      \"ref\" {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n  }\n\n"
+                    "  leaf-list l2 {\n"
+                    "    type int8 {\n      range \"1..10\" {\n"
+                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "        error-message\n          \"emsg\" {\n"
+                    "          e:a;\n          e:b \"one\";\n          e:c \"one\";\n"
+                    "        }\n        error-app-tag \"eapptag\" {\n"
+                    "          e:a;\n          e:b \"one\";\n          e:c \"one\";\n"
+                    "        }\n        description\n          \"desc\" {\n"
+                    "          e:a;\n          e:b \"one\";\n          e:c \"one\";\n"
+                    "        }\n        reference\n          \"ref\" {\n"
+                    "          e:a;\n          e:b \"one\";\n          e:c \"one\";\n"
+                    "        }\n      }\n    }\n"
+                    "    default \"1\";\n"
+                    "    default \"2\" {\n"
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
                     "    }\n  }\n}\n";
 
@@ -325,10 +586,12 @@ main(void)
         cmocka_unit_test_setup_teardown(test_fullset_yin, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_container_sub_yin, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_leaf_sub_yin, setup_ctx_yin, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_leaflist_sub_yin, setup_ctx_yin, teardown_ctx),
 
 //        cmocka_unit_test_setup_teardown(test_fullset_yang, setup_ctx_yang, teardown_ctx),
 //        cmocka_unit_test_setup_teardown(test_container_sub_yang, setup_ctx_yin, teardown_ctx),
 //        cmocka_unit_test_setup_teardown(test_leaf_sub_yang, setup_ctx_yin, teardown_ctx),
+//        cmocka_unit_test_setup_teardown(test_leaflist_sub_yang, setup_ctx_yin, teardown_ctx),
     };
 
     return cmocka_run_group_tests(cmut, NULL, NULL);
