@@ -4577,6 +4577,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     const char *value;
     char *auxs;
     unsigned long val;
+    void *reallocated;
 
     /* init */
     memset(&root, 0, sizeof root);
@@ -4647,6 +4648,11 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 LOGMEM;
                 goto error;
             }
+
+            if (read_yin_subnode_ext(module, retval, LYEXT_PAR_NODE, sub, LYEXT_SUBSTMT_KEY, 0, unres)) {
+                goto error;
+            }
+            lyxml_free(module->ctx, sub);
         } else if (!strcmp(sub->name, "unique")) {
             c_uniq++;
             lyxml_unlink_elem(module->ctx, sub, 2);
@@ -4683,8 +4689,11 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             } else if (strcmp(value, "system")) {
                 LOGVAL(LYE_INARG, LY_VLOG_LYS, retval, value, sub->name);
                 goto error;
+            } /* else system is the default value, so we can ignore it */
+
+            if (read_yin_subnode_ext(module, retval, LYEXT_PAR_NODE, sub, LYEXT_SUBSTMT_ORDEREDBY, 0, unres)) {
+                goto error;
             }
-            /* else system is the default value, so we can ignore it */
             lyxml_free(module->ctx, sub);
         } else if (!strcmp(sub->name, "min-elements")) {
             if (f_min) {
@@ -4711,6 +4720,9 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 LOGVAL(LYE_INARG, LY_VLOG_LYS, retval, value, sub->name);
                 LOGVAL(LYE_SPEC, LY_VLOG_LYS, retval, "\"min-elements\" is bigger than \"max-elements\".");
                 lyxml_free(module->ctx, sub);
+                goto error;
+            }
+            if (read_yin_subnode_ext(module, retval, LYEXT_PAR_NODE, sub, LYEXT_SUBSTMT_MIN, 0, unres)) {
                 goto error;
             }
             lyxml_free(module->ctx, sub);
@@ -4743,6 +4755,9 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                     LOGVAL(LYE_SPEC, LY_VLOG_LYS, retval, "\"max-elements\" is smaller than \"min-elements\".");
                     goto error;
                 }
+            }
+            if (read_yin_subnode_ext(module, retval, LYEXT_PAR_NODE, sub, LYEXT_SUBSTMT_MAX, 0, unres)) {
+                goto error;
             }
             lyxml_free(module->ctx, sub);
         } else if (!strcmp(sub->name, "when")) {
@@ -4794,12 +4809,18 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
     }
     if (c_ext) {
-        list->ext = calloc(c_ext, sizeof *list->ext);
-        if (!list->ext) {
+        /* some extensions may be already present from the substatements */
+        reallocated = realloc(retval->ext, (c_ext + retval->ext_size) * sizeof *retval->ext);
+        if (!reallocated) {
             LOGMEM;
             goto error;
         }
+        retval->ext = reallocated;
+
+        /* init memory */
+        memset(&retval->ext[retval->ext_size], 0, c_ext * sizeof *retval->ext);
     }
+
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (strcmp(sub->ns->value, LY_NSYIN)) {
             /* extension */
@@ -4887,6 +4908,10 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 goto error;
             }
 
+            if (read_yin_subnode_ext(module, retval, LYEXT_PAR_NODE, sub,
+                                     LYEXT_SUBSTMT_UNIQUE, list->unique_size - 1, unres)) {
+                goto error;
+            }
             lyxml_free(module->ctx, sub);
         }
     }
