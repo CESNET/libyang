@@ -2700,6 +2700,7 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
     struct matchlist_s {
         struct matchlist_s *prev;
         struct ly_set *match;
+        unsigned int i;
     } *matchlist = NULL, *mlaux;
     struct ly_set *ordset_keys = NULL, *ordset = NULL;
     struct diff_ordered *ordered;
@@ -2789,6 +2790,7 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
     result2 = lyd_diff_init_difflist(&size2);
 
     matchlist = malloc(sizeof *matchlist);
+    matchlist->i = 0;
     matchlist->match = ly_set_new();
     matchlist->prev = NULL;
 
@@ -2887,7 +2889,7 @@ cmp_continue:
             }
 
             /* and then find the first child */
-            for (iter = elem2, i = 0; iter; iter = iter->next) {
+            for (iter = elem2; iter; iter = iter->next) {
                 if (!(iter->validity & LYD_VAL_INUSE)) {
                     continue;
                 }
@@ -2901,24 +2903,24 @@ cmp_continue:
                         }
 
                         /* store necessary information for move detection */
-                        lyd_diff_move_preprocess(ordered, matchlist->match->set.d[i], iter);
+                        lyd_diff_move_preprocess(ordered, matchlist->match->set.d[matchlist->i], iter);
                         break;
                     }
                 }
 
                 if ((iter->schema->nodetype & (LYS_CONTAINER | LYS_LIST)) && iter->child) {
-                    while (!matchlist->match->set.d[i] || matchlist->match->set.d[i]->schema != iter->schema) {
-                        i++;
+                    while (!matchlist->match->set.d[matchlist->i] || matchlist->match->set.d[matchlist->i]->schema != iter->schema) {
+                        matchlist->i++;
                     }
-                    next1 = matchlist->match->set.d[i]->child;
+                    next1 = matchlist->match->set.d[matchlist->i]->child;
                     if (!next1) {
-                        parent = matchlist->match->set.d[i];
+                        parent = matchlist->match->set.d[matchlist->i];
                     }
-                    matchlist->match->set.d[i] = NULL;
+                    matchlist->match->set.d[matchlist->i] = NULL;
                     next2 = iter->child;
                     break;
                 }
-                i++;
+                matchlist->i++;
             }
 
             if (!iter) {
@@ -2930,6 +2932,7 @@ cmp_continue:
             } else {
                 /* create new matchlist item */
                 mlaux = malloc(sizeof *mlaux);
+                mlaux->i = 0;
                 mlaux->match = ly_set_new();
                 mlaux->prev = matchlist;
                 matchlist = mlaux;
@@ -2944,7 +2947,7 @@ cmp_continue:
 
             /* try to go to a cousin - child of the next parent's sibling */
             mlaux = matchlist->prev;
-            for (i = 0; (i < mlaux->match->number) && !mlaux->match->set.d[i]; i++);
+            for (; (mlaux->i < mlaux->match->number) && !mlaux->match->set.d[mlaux->i]; mlaux->i++);
             for (iter = elem2->parent->next; iter; iter = iter->next) {
                 if (!(iter->validity & LYD_VAL_INUSE)) {
                     continue;
@@ -2959,24 +2962,24 @@ cmp_continue:
                         }
 
                         /* store necessary information for move detection */
-                        lyd_diff_move_preprocess(ordered, mlaux->match->set.d[i], iter);
+                        lyd_diff_move_preprocess(ordered, mlaux->match->set.d[mlaux->i], iter);
                         break;
                     }
                 }
 
                 if ((iter->schema->nodetype & (LYS_CONTAINER | LYS_LIST)) && iter->child) {
-                    while (!mlaux->match->set.d[i] || mlaux->match->set.d[i]->schema != iter->schema) {
-                        i++;
+                    while (!mlaux->match->set.d[mlaux->i] || mlaux->match->set.d[mlaux->i]->schema != iter->schema) {
+                        mlaux->i++;
                     }
-                    next1 = mlaux->match->set.d[i]->child;
+                    next1 = mlaux->match->set.d[mlaux->i]->child;
                     if (!next1) {
-                        parent = mlaux->match->set.d[i];
+                        parent = mlaux->match->set.d[mlaux->i];
                     }
-                    mlaux->match->set.d[i] = NULL;
+                    mlaux->match->set.d[mlaux->i] = NULL;
                     next2 = iter->child;
                     break;
                 }
-                i++;
+                mlaux->i++;
             }
 
             /* if no cousin exists, continue next loop on higher level */
