@@ -17,9 +17,7 @@
   <revision date="2015-01-01"/>
   <feature name="foo"/>
   <augment target-node="/b:x">
-    <if-feature name="foo">
-      <if-feature name="foo"/>
-    </if-feature>
+    <if-feature name="foo"/>
     <leaf name="y">
       <type name="b:myenum"/>
       <if-feature name="foo"/>
