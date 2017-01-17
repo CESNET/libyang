@@ -329,7 +329,9 @@ typedef enum {
 
  * @{
  */
-#define LYEXT_OPT_INHERIT    0x01    /**< When instantiated in lys_node, the extension is supposed to be inherited
+#define LYEXT_OPT_DUP        0x01    /**< The instance contains the duplicated data when the statement was instantiated
+                                          via uses from a grouping */
+#define LYEXT_OPT_INHERIT    0x02    /**< When instantiated in lys_node, the extension is supposed to be inherited
                                           into the children lys_node elements. The plugin can affect inheriting by a
                                           callback to decide if the extension instance is supposed to be inherited.
                                           The extension instance with this flag is not printed and it is just a shadow

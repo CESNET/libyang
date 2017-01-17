@@ -319,6 +319,27 @@ repeat:
 
 }
 
+void
+lys_extension_instances_dup(struct lys_ext_instance **old, uint8_t size,
+                            struct lys_ext_instance ***new)
+{
+    unsigned int i;
+
+    if (!size) {
+        /* nothing to do */
+        return;
+    }
+
+    (*new) = malloc(size * sizeof **new);
+    for (i = 0; i < size; i++) {
+        /* duplicate the instances */
+        (*new)[i] = malloc(sizeof ***new);
+        memcpy((*new)[i], old[i], sizeof ***new);
+        /* update the instance's flags to show that this is a shadow copy of the original data */
+        (*new)[i]->flags |= LYEXT_OPT_DUP;
+    }
+}
+
 static void
 lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, unsigned int size)
 {
@@ -333,7 +354,7 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
             continue;
         }
 
-        if (e[i]->flags & LYEXT_OPT_INHERIT) {
+        if (e[i]->flags & (LYEXT_OPT_INHERIT | LYEXT_OPT_DUP)) {
             /* no free, this is just a shadow copy of the original extension instance */
         } else {
             lys_extension_instances_free(ctx, e[i]->ext, e[i]->ext_size);
@@ -1094,6 +1115,8 @@ lys_restr_dup(struct ly_ctx *ctx, struct lys_restr *old, int size)
         return NULL;
     }
     for (i = 0; i < size; i++) {
+        result[i].ext_size = old[i].ext_size;
+        lys_extension_instances_dup(old[i].ext, old[i].ext_size, &result[i].ext);
         result[i].expr = lydict_insert(ctx, old[i].expr, 0);
         result[i].dsc = lydict_insert(ctx, old[i].dsc, 0);
         result[i].ref = lydict_insert(ctx, old[i].ref, 0);
