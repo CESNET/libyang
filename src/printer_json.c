@@ -343,7 +343,7 @@ json_print_anyxml(struct lyout *out, int level, const struct lyd_node *node, int
         isobject = 1;
         ly_print(out, level ? "{\n" : "{");
         /* do not print any default values nor empty containers */
-        json_print_nodes(out, level, any->value.tree, 1, 0,  LYP_WITHSIBLINGS | (options & LYP_FORMAT));
+        json_print_nodes(out, level, any->value.tree, 1, 0,  LYP_WITHSIBLINGS | (options & ~LYP_NETCONF));
         break;
     case LYD_ANYDATA_JSON:
         isobject = 1;

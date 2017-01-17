@@ -407,7 +407,7 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
                     ly_print(out, "\n");
                 }
                 LY_TREE_FOR(any->value.tree, iter) {
-                    xml_print_node(out, level ? level + 1 : 0, iter, 0, (options & LYP_FORMAT));
+                    xml_print_node(out, level ? level + 1 : 0, iter, 0, (options & ~(LYP_WITHSIBLINGS | LYP_NETCONF)));
                 }
             }
             break;
