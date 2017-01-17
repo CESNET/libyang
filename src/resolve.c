@@ -6758,7 +6758,7 @@ static int
 check_instid_ext_dep(const struct lys_node *sleaf, const char *json_instid)
 {
     struct ly_set *set;
-    struct lys_node *op_node;
+    struct lys_node *op_node, *first_node;
     char *buf;
 
     for (op_node = lys_parent(sleaf);
@@ -6791,11 +6791,14 @@ check_instid_ext_dep(const struct lys_node *sleaf, const char *json_instid)
     }
     free(buf);
 
+    first_node = set->set.s[0];
+    ly_set_free(set);
+
     /* based on the first schema node in the path we can decide whether it points to an external tree or not */
 
     if (op_node) {
         /* it is an operation, so we're good if it points somewhere inside it */
-        if (op_node == set->set.s[0]) {
+        if (op_node == first_node) {
             assert(set->number == 1);
             return 0;
         } else {
