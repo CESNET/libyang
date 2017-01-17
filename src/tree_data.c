@@ -2476,11 +2476,9 @@ diff_ordset_insert(struct lyd_node *node, struct ly_set *ordset_keys, struct ly_
     i = ly_set_add(ordset_keys, node->schema, 0);
     if (i == ordset->number) {
         /* not seen user-ordered list */
-        new_ordered = malloc(sizeof *new_ordered);
+        new_ordered = calloc(1, sizeof *new_ordered);
         new_ordered->schema = node->schema;
-        new_ordered->count = 0;
-        new_ordered->items = NULL;
-        new_ordered->dist = NULL;
+
         ly_set_add(ordset, new_ordered, LY_SET_OPT_USEASLIST);
     }
     ((struct diff_ordered *)ordset->set.g[i])->count++;
@@ -2653,15 +2651,24 @@ lyd_diff_move_preprocess(struct diff_ordered *ordered, struct lyd_node *first, s
         }
     }
     if (dist_aux->next == ordered->dist) {
-        /* first item */
-        ordered->dist = dist_aux;
-        if (dist_aux->next) {
-            /* more than one item, update the last one's next */
-            ordered->dist_last->next = dist_aux;
+        if (ordered->dist_last == dist_aux) {
+            /* last item */
+            if (!ordered->dist) {
+                /* the only item */
+                dist_aux->next = dist_aux;
+                ordered->dist = ordered->dist_last = dist_aux;
+            }
         } else {
-            /* the only item */
-            ordered->dist_last = dist_aux;
-            dist_aux->next = dist_aux; /* ring list */
+            /* first item */
+            ordered->dist = dist_aux;
+            if (dist_aux->next) {
+                /* more than one item, update the last one's next */
+                ordered->dist_last->next = dist_aux;
+            } else {
+                /* the only item */
+                ordered->dist_last = dist_aux;
+                dist_aux->next = dist_aux; /* ring list */
+            }
         }
     }
 
@@ -2693,6 +2700,7 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
     struct matchlist_s {
         struct matchlist_s *prev;
         struct ly_set *match;
+        unsigned int i;
     } *matchlist = NULL, *mlaux;
     struct ly_set *ordset_keys = NULL, *ordset = NULL;
     struct diff_ordered *ordered;
@@ -2782,6 +2790,7 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
     result2 = lyd_diff_init_difflist(&size2);
 
     matchlist = malloc(sizeof *matchlist);
+    matchlist->i = 0;
     matchlist->match = ly_set_new();
     matchlist->prev = NULL;
 
@@ -2880,7 +2889,7 @@ cmp_continue:
             }
 
             /* and then find the first child */
-            for (iter = elem2, i = 0; iter; iter = iter->next) {
+            for (iter = elem2; iter; iter = iter->next) {
                 if (!(iter->validity & LYD_VAL_INUSE)) {
                     continue;
                 }
@@ -2894,24 +2903,24 @@ cmp_continue:
                         }
 
                         /* store necessary information for move detection */
-                        lyd_diff_move_preprocess(ordered, matchlist->match->set.d[i], iter);
+                        lyd_diff_move_preprocess(ordered, matchlist->match->set.d[matchlist->i], iter);
                         break;
                     }
                 }
 
                 if ((iter->schema->nodetype & (LYS_CONTAINER | LYS_LIST)) && iter->child) {
-                    while (!matchlist->match->set.d[i] || matchlist->match->set.d[i]->schema != iter->schema) {
-                        i++;
+                    while (!matchlist->match->set.d[matchlist->i] || matchlist->match->set.d[matchlist->i]->schema != iter->schema) {
+                        matchlist->i++;
                     }
-                    next1 = matchlist->match->set.d[i]->child;
+                    next1 = matchlist->match->set.d[matchlist->i]->child;
                     if (!next1) {
-                        parent = matchlist->match->set.d[i];
+                        parent = matchlist->match->set.d[matchlist->i];
                     }
-                    matchlist->match->set.d[i] = NULL;
+                    matchlist->match->set.d[matchlist->i] = NULL;
                     next2 = iter->child;
                     break;
                 }
-                i++;
+                matchlist->i++;
             }
 
             if (!iter) {
@@ -2923,6 +2932,7 @@ cmp_continue:
             } else {
                 /* create new matchlist item */
                 mlaux = malloc(sizeof *mlaux);
+                mlaux->i = 0;
                 mlaux->match = ly_set_new();
                 mlaux->prev = matchlist;
                 matchlist = mlaux;
@@ -2937,7 +2947,7 @@ cmp_continue:
 
             /* try to go to a cousin - child of the next parent's sibling */
             mlaux = matchlist->prev;
-            for (i = 0; (i < mlaux->match->number) && !mlaux->match->set.d[i]; i++);
+            for (; (mlaux->i < mlaux->match->number) && !mlaux->match->set.d[mlaux->i]; mlaux->i++);
             for (iter = elem2->parent->next; iter; iter = iter->next) {
                 if (!(iter->validity & LYD_VAL_INUSE)) {
                     continue;
@@ -2952,24 +2962,24 @@ cmp_continue:
                         }
 
                         /* store necessary information for move detection */
-                        lyd_diff_move_preprocess(ordered, mlaux->match->set.d[i], iter);
+                        lyd_diff_move_preprocess(ordered, mlaux->match->set.d[mlaux->i], iter);
                         break;
                     }
                 }
 
                 if ((iter->schema->nodetype & (LYS_CONTAINER | LYS_LIST)) && iter->child) {
-                    while (!mlaux->match->set.d[i] || mlaux->match->set.d[i]->schema != iter->schema) {
-                        i++;
+                    while (!mlaux->match->set.d[mlaux->i] || mlaux->match->set.d[mlaux->i]->schema != iter->schema) {
+                        mlaux->i++;
                     }
-                    next1 = mlaux->match->set.d[i]->child;
+                    next1 = mlaux->match->set.d[mlaux->i]->child;
                     if (!next1) {
-                        parent = mlaux->match->set.d[i];
+                        parent = mlaux->match->set.d[mlaux->i];
                     }
-                    mlaux->match->set.d[i] = NULL;
+                    mlaux->match->set.d[mlaux->i] = NULL;
                     next2 = iter->child;
                     break;
                 }
-                i++;
+                mlaux->i++;
             }
 
             /* if no cousin exists, continue next loop on higher level */
@@ -3057,7 +3067,7 @@ dfs_nextsibling:
 
         for (dist_iter = ordered->dist; ; dist_iter = dist_iter->next) {
             /* dist list is sorted at the beginning, since applying a move causes
-             * just a small change in other distances, we assume the the biggest
+             * just a small change in other distances, we assume that the biggest
              * dist is the next one (note that dist list is implemented as ring
              * list). This way we avoid sorting distances after each move. The loop
              * stops when all distances are zero.

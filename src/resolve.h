@@ -221,7 +221,7 @@ void unres_schema_free(struct lys_module *module, struct unres_schema **unres);
 int resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int store, int ignore_fail,
                   struct lys_type **resolved_type);
 
-int resolve_unres_data_item(struct lyd_node *dnode, enum UNRES_ITEM type, int ignore_fails);
+int resolve_unres_data_item(struct lyd_node *dnode, enum UNRES_ITEM type, int ignore_fail);
 
 int unres_data_addonly(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM type);
 int unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM type);

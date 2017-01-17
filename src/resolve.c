@@ -5539,6 +5539,7 @@ resolve_list_keys(struct lys_node_list *list, const char *keys_str)
 static int
 resolve_must(struct lyd_node *node, int inout_parent, int ignore_fail)
 {
+    int node_flags;
     uint8_t i, must_size;
     struct lys_node *schema;
     struct lys_restr *must;
@@ -5557,6 +5558,8 @@ resolve_must(struct lyd_node *node, int inout_parent, int ignore_fail)
         }
         must_size = ((struct lys_node_inout *)schema)->must_size;
         must = ((struct lys_node_inout *)schema)->must;
+
+        node_flags = schema->flags;
 
         /* context node is the RPC/action */
         node = node->parent;
@@ -5595,6 +5598,8 @@ resolve_must(struct lyd_node *node, int inout_parent, int ignore_fail)
             must_size = 0;
             break;
         }
+
+        node_flags = node->schema->flags;
     }
 
     for (i = 0; i < must_size; ++i) {
@@ -5605,7 +5610,7 @@ resolve_must(struct lyd_node *node, int inout_parent, int ignore_fail)
         lyxp_set_cast(&set, LYXP_SET_BOOLEAN, node, lyd_node_module(node), LYXP_MUST);
 
         if (!set.val.bool) {
-            if (ignore_fail) {
+            if ((ignore_fail == 1) || ((node_flags & LYS_XPATH_DEP) && (ignore_fail == 2))) {
                 LOGVRB("Must condition \"%s\" not satisfied, but it is not required.", must[i].expr);
             } else {
                 LOGVAL(LYE_NOMUST, LY_VLOG_LYD, node, must[i].expr);
@@ -5984,7 +5989,7 @@ resolve_when(struct lyd_node *node, int *result, int ignore_fail)
         lyxp_set_cast(&set, LYXP_SET_BOOLEAN, node, lyd_node_module(node), LYXP_WHEN);
         if (!set.val.bool) {
             node->when_status |= LYD_WHEN_FALSE;
-            if (ignore_fail) {
+            if ((ignore_fail == 1) || ((node->schema->flags & LYS_XPATH_DEP) && (ignore_fail == 2))) {
                 LOGVRB("When condition \"%s\" is not satisfied, but it is not required.",
                        ((struct lys_node_container *)node->schema)->when->cond);
             } else {
@@ -6039,7 +6044,7 @@ resolve_when(struct lyd_node *node, int *result, int ignore_fail)
             lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, lys_node_module(sparent), LYXP_WHEN);
             if (!set.val.bool) {
                 node->when_status |= LYD_WHEN_FALSE;
-                if (ignore_fail) {
+                if ((ignore_fail == 1) || ((sparent->flags & LYS_XPATH_DEP) || (ignore_fail == 2))) {
                     LOGVRB("When condition \"%s\" is not satisfied, but it is not required.",
                         ((struct lys_node_uses *)sparent)->when->cond);
                 } else {
@@ -6090,12 +6095,11 @@ check_augment:
             }
 
             lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, lys_node_module(sparent->parent), LYXP_WHEN);
-
             if (!set.val.bool) {
                 node->when_status |= LYD_WHEN_FALSE;
-                if (ignore_fail) {
+                if ((ignore_fail == 1) || ((sparent->parent->flags & LYS_XPATH_DEP) && (ignore_fail == 2))) {
                     LOGVRB("When condition \"%s\" is not satisfied, but it is not required.",
-                        ((struct lys_node_augment *)sparent->parent)->when->cond);
+                           ((struct lys_node_augment *)sparent->parent)->when->cond);
                 } else {
                     LOGVAL(LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_augment *)sparent->parent)->when->cond);
                     goto cleanup;
@@ -7096,6 +7100,63 @@ unres_schema_free(struct lys_module *module, struct unres_schema **unres)
     }
 }
 
+static int
+check_instid_ext_dep(const struct lys_node *sleaf, const char *json_instid)
+{
+    struct ly_set *set;
+    struct lys_node *op_node, *first_node;
+    char *buf;
+
+    for (op_node = lys_parent(sleaf);
+         op_node && !(op_node->nodetype & (LYS_NOTIF | LYS_RPC | LYS_ACTION));
+         op_node = lys_parent(op_node));
+
+    if (op_node && lys_parent(op_node)) {
+        /* nested operation - any absolute path is external */
+        return 1;
+    }
+
+    /* get the first node from the instid */
+    buf = strndup(json_instid, strchr(json_instid + 1, '/') - json_instid);
+    if (!buf) {
+        LOGMEM;
+        return -1;
+    }
+
+    /* there is a predicate, remove it */
+    if (buf[strlen(buf) - 1] == ']') {
+        assert(strchr(buf, '['));
+        *strchr(buf, '[') = '\0';
+    }
+
+    /* find the first schema node */
+    set = lys_find_xpath(sleaf, buf, 0);
+    if (!set || !set->number) {
+        free(buf);
+        return 1;
+    }
+    free(buf);
+
+    first_node = set->set.s[0];
+    ly_set_free(set);
+
+    /* based on the first schema node in the path we can decide whether it points to an external tree or not */
+
+    if (op_node) {
+        /* it is an operation, so we're good if it points somewhere inside it */
+        if (op_node == first_node) {
+            assert(set->number == 1);
+            return 0;
+        } else {
+            return 1;
+        }
+    }
+
+    /* we cannot know whether it points to a tree that is going to be unlinked (application must handle
+     * this itself), so we say it's not external */
+    return 0;
+}
+
 /**
  * @brief Resolve instance-identifier in JSON data format. Logs directly.
  *
@@ -7247,8 +7308,8 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int store,
               struct lys_type **resolved_type)
 {
     struct lys_type *t;
-    struct lyd_node *ret, *par, *op_node;
-    int found, hidden, success = 0;
+    struct lyd_node *ret;
+    int found, hidden, success = 0, ext_dep, req_inst;
     const char *json_val = NULL;
 
     assert(type->base == LY_TYPE_UNION);
@@ -7276,7 +7337,13 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int store,
 
         switch (t->base) {
         case LY_TYPE_LEAFREF:
-            if (!resolve_leafref(leaf, t->info.lref.path, (ignore_fail ? -1 : t->info.lref.req), &ret)) {
+            if ((ignore_fail == 1) || ((leaf->schema->flags & LYS_LEAFREF_DEP) && (ignore_fail == 2))) {
+                req_inst = -1;
+            } else {
+                req_inst = t->info.lref.req;
+            }
+
+            if (!resolve_leafref(leaf, t->info.lref.path, req_inst, &ret)) {
                 if (store) {
                     if (ret && !(leaf->schema->flags & LYS_LEAFREF_DEP)) {
                         /* valid resolved */
@@ -7294,23 +7361,17 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int store,
             }
             break;
         case LY_TYPE_INST:
+            ext_dep = check_instid_ext_dep(leaf->schema, (json_val ? json_val : leaf->value_str));
+            if ((ignore_fail == 1) || (ext_dep && (ignore_fail == 2))) {
+                req_inst = -1;
+            } else {
+                req_inst = t->info.inst.req;
+            }
+
             if (!resolve_instid((struct lyd_node *)leaf, (json_val ? json_val : leaf->value_str),
                                 (ignore_fail ? -1 : t->info.inst.req), &ret)) {
                 if (store) {
-                    if (ret) {
-                        for (op_node = (struct lyd_node *)leaf;
-                            op_node && !(op_node->schema->nodetype & (LYS_RPC | LYS_NOTIF | LYS_ACTION));
-                            op_node = op_node->parent);
-                        if (op_node) {
-                            /* this is an RPC/notif/action */
-                            for (par = ret->parent; par && (par != op_node); par = par->parent);
-                            if (!par) {
-                                /* target instance is outside the operation - do not store the pointer */
-                                ret = NULL;
-                            }
-                        }
-                    }
-                    if (ret) {
+                    if (ret && !ext_dep) {
                         /* valid resolved */
                         leaf->value.instance = ret;
                         leaf->value_type = LY_TYPE_INST;
@@ -7395,16 +7456,16 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int store,
  *
  * @param[in] node Data node to resolve.
  * @param[in] type Type of the unresolved item.
- * @param[in] ignore_fails Flag whether to ignore any false condition or unresolved nodes (e.g., for LYD_OPT_EDIT).
+ * @param[in] ignore_fail 0 - no, 1 - yes, 2 - yes, but only for external dependencies.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 int
 resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int ignore_fail)
 {
-    int rc, req_inst;
+    int rc, req_inst, ext_dep;
     struct lyd_node_leaf_list *leaf;
-    struct lyd_node *ret, *op_node, *par;
+    struct lyd_node *ret;
     struct lys_node_leaf *sleaf;
 
     leaf = (struct lyd_node_leaf_list *)node;
@@ -7414,7 +7475,11 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int ignore_
     case UNRES_LEAFREF:
         assert(sleaf->type.base == LY_TYPE_LEAFREF);
         assert(leaf->validity & LYD_VAL_LEAFREF);
-        req_inst = (ignore_fail ? -1 : sleaf->type.info.lref.req);
+        if ((ignore_fail == 1) || ((leaf->schema->flags & LYS_LEAFREF_DEP) && (ignore_fail == 2))) {
+            req_inst = -1;
+        } else {
+            req_inst = sleaf->type.info.lref.req;
+        }
         rc = resolve_leafref(leaf, sleaf->type.info.lref.path, req_inst, &ret);
         if (!rc) {
             if (ret && !(leaf->schema->flags & LYS_LEAFREF_DEP)) {
@@ -7440,23 +7505,19 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int ignore_
 
     case UNRES_INSTID:
         assert(sleaf->type.base == LY_TYPE_INST);
-        req_inst = (ignore_fail ? -1 : sleaf->type.info.inst.req);
+        ext_dep = check_instid_ext_dep(leaf->schema, leaf->value_str);
+        if (ext_dep == -1) {
+            return -1;
+        }
+
+        if ((ignore_fail == 1) || (ext_dep && (ignore_fail == 2))) {
+            req_inst = -1;
+        } else {
+            req_inst = sleaf->type.info.inst.req;
+        }
         rc = resolve_instid(node, leaf->value_str, req_inst, &ret);
         if (!rc) {
-            if (ret) {
-                for (op_node = (struct lyd_node *)leaf;
-                     op_node && !(op_node->schema->nodetype & (LYS_RPC | LYS_NOTIF | LYS_ACTION));
-                     op_node = op_node->parent);
-                if (op_node) {
-                    /* this is an RPC/notif/action */
-                    for (par = ret->parent; par && (par != op_node); par = par->parent);
-                    if (!par) {
-                        /* target instance is outside the operation - do not store the pointer */
-                        ret = NULL;
-                    }
-                }
-            }
-            if (ret) {
+            if (ret && !ext_dep) {
                 /* valid resolved */
                 leaf->value.instance = ret;
                 leaf->value_type = LY_TYPE_INST;
@@ -7555,7 +7616,7 @@ int
 resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options)
 {
     uint32_t i, j, first = 1, resolved = 0, del_items = 0, when_stmt = 0;
-    int rc, progress, ignore_fails;
+    int rc, progress, ignore_fail;
     struct lyd_node *parent;
 
     assert(root);
@@ -7566,9 +7627,11 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
     }
 
     if (options & (LYD_OPT_TRUSTED | LYD_OPT_NOTIF_FILTER | LYD_OPT_GET | LYD_OPT_GETCONFIG | LYD_OPT_EDIT)) {
-        ignore_fails = 1;
+        ignore_fail = 1;
+    } else if (options & LYD_OPT_NOEXTDEPS) {
+        ignore_fail = 2;
     } else {
-        ignore_fails = 0;
+        ignore_fail = 0;
     }
 
     LOGVRB("Resolving unresolved data nodes and their constraints...");
@@ -7605,7 +7668,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
                 continue;
             }
 
-            rc = resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fails);
+            rc = resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fail);
             if (!rc) {
                 if (unres->node[i]->when_status & LYD_WHEN_FALSE) {
                     if ((options & LYD_OPT_NOAUTODEL) && !unres->node[i]->dflt) {
@@ -7669,7 +7732,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
             } else if (rc == -1) {
                 ly_vlog_hide(0);
                 /* print only this last error */
-                resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fails);
+                resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fail);
                 return -1;
             } /* else forward reference */
         }
@@ -7708,7 +7771,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
         }
         assert(!(options & LYD_OPT_TRUSTED) || ((unres->type[i] != UNRES_MUST) && (unres->type[i] != UNRES_MUST_INOUT)));
 
-        rc = resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fails);
+        rc = resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fail);
         if (rc) {
             /* since when was already resolved, a forward reference is an error */
             return -1;
