@@ -365,6 +365,46 @@ test_move2(void **state)
 }
 
 static void
+test_move3(void **state)
+{
+    struct state *st = (*state);
+    const char *xml1 = "<df xmlns=\"urn:libyang:tests:defaults\">"
+                         "<llist>1</llist>"
+                         "<list><name>a</name><value>1</value></list>"
+                         "<llist>2</llist>"
+                         "<llist>3</llist>"
+                         "<llist>4</llist>"
+                       "</df>";
+    const char *xml2 = "<df xmlns=\"urn:libyang:tests:defaults\">"
+                         "<llist>1</llist>"
+                         "<list><name>a</name><value>1</value></list>"
+                         "<llist>2</llist>"
+                         "<llist>4</llist>"
+                         "<llist>3</llist>"
+                       "</df>";
+    char *str;
+    struct lyd_difflist *diff;
+
+    assert_ptr_not_equal((st->first = lyd_parse_mem(st->ctx, xml1, LYD_XML, LYD_OPT_CONFIG)), NULL);
+    assert_ptr_not_equal((st->second = lyd_parse_mem(st->ctx, xml2, LYD_XML, LYD_OPT_CONFIG)), NULL);
+
+    assert_ptr_not_equal((diff = lyd_diff(st->first, st->second, 0)), NULL);
+    assert_ptr_not_equal(diff->type, NULL);
+
+    assert_int_equal(diff->type[0], LYD_DIFF_MOVEDAFTER1);
+    assert_ptr_not_equal(diff->first[0], NULL);
+    assert_string_equal((str = lyd_path(diff->first[0])), "/defaults:df/llist[.='3']");
+    free(str);
+    assert_ptr_not_equal(diff->second[0], NULL);
+    assert_string_equal((str = lyd_path(diff->second[0])), "/defaults:df/llist[.='4']");
+    free(str);
+
+    assert_int_equal(diff->type[1], LYD_DIFF_END);
+
+    lyd_free_diff(diff);
+}
+
+static void
 test_mix1(void **state)
 {
     struct state *st = (*state);
@@ -531,6 +571,7 @@ int main(void)
                     cmocka_unit_test_setup_teardown(test_diff2, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_move1, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_move2, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_move3, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_mix1, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_mix2, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_wd1, setup_f, teardown_f), };
