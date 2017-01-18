@@ -4507,7 +4507,7 @@ resolve_extension(struct unres_ext *info, const struct lys_module *mod, struct l
         mod = lys_get_import_module_ns(mod, info->data.yin->ns->value);
         if (!mod) {
             LOGVAL(LYE_INSTMT, vlog_type, vlog_node, info->data.yin->name);
-            return -1;
+            return EXIT_FAILURE;
         }
 
         /* find the extension definition */
@@ -4620,7 +4620,7 @@ resolve_extension(struct unres_ext *info, const struct lys_module *mod, struct l
             }
             LY_TREE_FOR_SAFE(info->data.yin->child, next_yin, yin) {
                 rc = lyp_yin_fill_ext(*ext, LYEXT_PAR_EXTINST, LYEXT_SUBSTMT_SELF, 0, (struct lys_module *)mod, yin,
-                                      &(*ext)->ext[(*ext)->ext_size], unres);
+                                      &(*ext)->ext, (*ext)->ext_size, unres);
                 (*ext)->ext_size++;
                 if (rc == -1) {
                     return EXIT_FAILURE;
@@ -6237,6 +6237,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
     unsigned int j;
     struct lys_node *root, *next, *node, *par_grp;
     const char *expr;
+    uint8_t *u;
 
     struct ly_set *refs, *procs;
     struct lys_feature *ref, *feat;
@@ -6460,7 +6461,8 @@ featurecheckdone:
         break;
     case UNRES_EXT:
         ext_data = (struct unres_ext *)str_snode;
-        rc = resolve_extension(ext_data, mod, (struct lys_ext_instance **)item, unres);
+        extlist = &(*(struct lys_ext_instance ***)item)[ext_data->ext_index];
+        rc = resolve_extension(ext_data, mod, extlist, unres);
         if (!rc) {
             if (ext_data->datatype == LYS_IN_YIN) {
                 /* YIN */
@@ -6469,19 +6471,25 @@ featurecheckdone:
                 /* TODO YANG */
                 free(ext_data->data.yang);
             }
-            free(ext_data);
 
             /* is there a callback to be done to finalize the extension? */
-            eplugin = (*(struct lys_ext_instance **)item)->def->plugin;
+            eplugin = extlist[0]->def->plugin;
             if (eplugin) {
                 if (eplugin->check_result || (eplugin->flags & LYEXT_OPT_INHERIT)) {
-                    unres_schema_add_node(mod, unres, item, UNRES_EXT_FINALIZE, NULL);
+                    u = malloc(sizeof *u);
+                    (*u) = ext_data->ext_index;
+                    unres_schema_add_node(mod, unres, item, UNRES_EXT_FINALIZE, (struct lys_node *)u);
                 }
             }
+
+            free(ext_data);
         }
         break;
     case UNRES_EXT_FINALIZE:
-        ext = *(struct lys_ext_instance **)item;
+        u = (uint8_t *)str_snode;
+        ext = (*(struct lys_ext_instance ***)item)[*u];
+        free(u);
+
         eplugin = ext->def->plugin;
 
         /* inherit */

@@ -1326,20 +1326,21 @@ lys_yang_type_dup(struct lys_module *module, struct lys_node *parent, struct yan
 /*
  * duplicate extension instance
  */
-static struct lys_ext_instance **
-lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, unsigned int size,
-            void *parent, LYEXT_PAR parent_type, struct unres_schema *unres)
+static int
+lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, uint8_t size,
+            void *parent, LYEXT_PAR parent_type, struct lys_ext_instance ***new, struct unres_schema *unres)
 {
     int i;
-    unsigned int u = 0;
+    uint8_t u = 0;
     struct lys_ext_instance **result;
     struct unres_ext *info, *info_orig;
 
     assert(size);
     assert(!orig);
     assert(!(*orig));
+    assert(new);
 
-    result = calloc(size, sizeof *result);
+    (*new) = result = calloc(size, sizeof *result);
     for (u = 0; u < size; u++) {
         if (orig[u]) {
             /* resolved extension instance, just duplicate it */
@@ -1374,17 +1375,19 @@ lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, unsigned int
             } /* else TODO YANG */
             info->parent = parent;
             info->parent_type = parent_type;
-            if (unres_schema_add_node(mod, unres, &result[u], UNRES_EXT, (struct lys_node *)info) == -1) {
+            info->ext_index = u;
+            if (unres_schema_add_node(mod, unres, new, UNRES_EXT, (struct lys_node *)info) == -1) {
                 goto error;
             }
         }
     }
 
-    return result;
+    return EXIT_SUCCESS;
 
 error:
+    (*new) = NULL;
     lys_extension_instances_free(mod->ctx, result, u);
-    return NULL;
+    return EXIT_FAILURE;
 }
 
 API const void *
@@ -1692,8 +1695,7 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
     new->parent = (struct lys_tpdf *)parent;
     if (old->ext_size) {
         new->ext_size = old->ext_size;
-        new->ext = lys_ext_dup(mod, old->ext, old->ext_size, new->parent, LYEXT_PAR_TPDF, unres);
-        if (!new->ext) {
+        if (lys_ext_dup(mod, old->ext, old->ext_size, new->parent, LYEXT_PAR_TPDF, &new->ext, unres)) {
             return -1;
         }
     }
