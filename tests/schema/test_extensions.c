@@ -259,6 +259,11 @@ test_leaf_sub_yin(void **state)
                     "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
                     "      <text>ref</text>\n"
                     "    </reference>\n"
+                    "  </leaf>\n  <leaf name=\"d\">\n"
+                    "    <type name=\"int8\"/>\n"
+                    "    <default value=\"1\">\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "    </default>\n"
                     "  </leaf>\n</module>\n";
 
     mod = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
@@ -315,6 +320,10 @@ test_leaf_sub_yang(void **state)
                     "    }\n    description\n      \"desc\" {\n"
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
                     "    }\n    reference\n      \"ref\" {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n  }\n"
+                    "  leaf d {\n"
+                    "    type int8;\n      default 1 {\n"
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
                     "    }\n  }\n}\n";
 

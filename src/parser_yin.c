@@ -4119,6 +4119,10 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             }
             GETVAL(value, sub, "value");
             leaf->dflt = lydict_insert(module->ctx, value, strlen(value));
+
+            if (read_yin_subnode_ext(module, retval, LYEXT_PAR_NODE, sub, LYEXT_SUBSTMT_DEFAULT, 0, unres)) {
+                goto error;
+            }
         } else if (!strcmp(sub->name, "units")) {
             if (leaf->units) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, retval, sub->name, yin->name);
