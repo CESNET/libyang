@@ -3922,6 +3922,7 @@ read_yin_anydata(struct lys_module *module, struct lys_node *parent, struct lyxm
     int r;
     int f_mand = 0;
     int c_must = 0, c_ftrs = 0, c_ext = 0;
+    void *reallocated;
 
     anyxml = calloc(1, sizeof *anyxml);
     if (!anyxml) {
@@ -3968,6 +3969,10 @@ read_yin_anydata(struct lys_module *module, struct lys_node *parent, struct lyxm
                 goto error;
             }
             /* else false is the default value, so we can ignore it */
+
+            if (read_yin_subnode_ext(module, retval, LYEXT_PAR_NODE, sub, LYEXT_SUBSTMT_MANDATORY, 0, unres)) {
+                goto error;
+            }
             lyxml_free(module->ctx, sub);
         } else if (!strcmp(sub->name, "when")) {
             if (anyxml->when) {
@@ -4008,11 +4013,16 @@ read_yin_anydata(struct lys_module *module, struct lys_node *parent, struct lyxm
         }
     }
     if (c_ext) {
-        anyxml->ext = calloc(c_ext, sizeof *anyxml->ext);
-        if (!anyxml->ext) {
+        /* some extensions may be already present from the substatements */
+        reallocated = realloc(retval->ext, (c_ext + retval->ext_size) * sizeof *retval->ext);
+        if (!reallocated) {
             LOGMEM;
             goto error;
         }
+        retval->ext = reallocated;
+
+        /* init memory */
+        memset(&retval->ext[retval->ext_size], 0, c_ext * sizeof *retval->ext);
     }
 
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
