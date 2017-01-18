@@ -2430,7 +2430,21 @@ cmp_continue:
             /* and then find the first child */
             for (iter = elem2; iter; iter = iter->next) {
                 if (!(iter->validity & LYD_VAL_INUSE)) {
+                    /* the iter is not present in both trees */
                     continue;
+                } else if (matchlist->i == matchlist->match->number) {
+                    if (iter == elem2) {
+                        /* we already went through all the matching nodes and now we are just supposed to stop
+                         * the loop with no iter */
+                        iter = NULL;
+                        break;
+                    } else {
+                        /* we have started with some not processed data in matchlist, but now we have
+                         * the INUSE iter and no nodes in matchlist to find its equivalent,
+                         * so something went wrong somewhere */
+                        LOGINT;
+                        goto error;
+                    }
                 }
 
                 iter->validity &= ~LYD_VAL_INUSE;
@@ -2448,14 +2462,19 @@ cmp_continue:
                 }
 
                 if ((iter->schema->nodetype & (LYS_CONTAINER | LYS_LIST)) && iter->child) {
-                    while (!matchlist->match->set.d[matchlist->i] || matchlist->match->set.d[matchlist->i]->schema != iter->schema) {
+                    while (matchlist->i < matchlist->match->number && matchlist->match->set.d[matchlist->i]->schema != iter->schema) {
                         matchlist->i++;
+                    }
+                    if (matchlist->i == matchlist->match->number) {
+                        /* we have the INUSE iter, so we have to find its equivalent in match list */
+                        LOGINT;
+                        goto error;
                     }
                     next1 = matchlist->match->set.d[matchlist->i]->child;
                     if (!next1) {
                         parent = matchlist->match->set.d[matchlist->i];
                     }
-                    matchlist->match->set.d[matchlist->i] = NULL;
+                    matchlist->i++;
                     next2 = iter->child;
                     break;
                 }
@@ -2483,13 +2502,26 @@ cmp_continue:
 
             /* clean the last match set */
             ly_set_clean(matchlist->match);
+            matchlist->i = 0;
 
             /* try to go to a cousin - child of the next parent's sibling */
             mlaux = matchlist->prev;
-            for (; (mlaux->i < mlaux->match->number) && !mlaux->match->set.d[mlaux->i]; mlaux->i++);
             for (iter = elem2->parent->next; iter; iter = iter->next) {
                 if (!(iter->validity & LYD_VAL_INUSE)) {
                     continue;
+                } else if (mlaux->i == mlaux->match->number) {
+                    if (iter == elem2->parent->next) {
+                        /* we already went through all the matching nodes and now we are just supposed to stop
+                         * the loop with no iter */
+                        iter = NULL;
+                        break;
+                    } else {
+                        /* we have started with some not processed data in matchlist, but now we have
+                         * the INUSE iter and no nodes in matchlist to find its equivalent,
+                         * so something went wrong somewhere */
+                        LOGINT;
+                        goto error;
+                    }
                 }
 
                 iter->validity &= ~LYD_VAL_INUSE;
@@ -2507,14 +2539,19 @@ cmp_continue:
                 }
 
                 if ((iter->schema->nodetype & (LYS_CONTAINER | LYS_LIST)) && iter->child) {
-                    while (!mlaux->match->set.d[mlaux->i] || mlaux->match->set.d[mlaux->i]->schema != iter->schema) {
+                    while (mlaux->i < mlaux->match->number && mlaux->match->set.d[mlaux->i]->schema != iter->schema) {
                         mlaux->i++;
+                    }
+                    if (mlaux->i == mlaux->match->number) {
+                        /* we have the INUSE iter, so we have to find its equivalent in match list */
+                        LOGINT;
+                        goto error;
                     }
                     next1 = mlaux->match->set.d[mlaux->i]->child;
                     if (!next1) {
                         parent = mlaux->match->set.d[mlaux->i];
                     }
-                    mlaux->match->set.d[mlaux->i] = NULL;
+                    mlaux->i++;
                     next2 = iter->child;
                     break;
                 }
