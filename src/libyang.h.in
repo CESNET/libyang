@@ -794,11 +794,12 @@ extern "C" {
  * libyang can be used in multithreaded applications keeping in mind the following rules:
  * - libyang context manipulation (adding new schemas) is not thread safe and it is supposed to be done in a main
  *   thread before any other work with context, schemas or data instances. Destroying the context is supposed to
- *   be done when no other thread accesses context, schemas nor data trees
- * - Data parser (\b lyd_parse*() functions) can be used simultaneously in multiple threads (also the returned
- *   #ly_errno is thread safe).
- * - Modifying (lyd_new(), lyd_insert(), lyd_unlink(), lyd_free() and many other functions) a single data tree is not
- *   thread safe.
+ *   be done when no other thread accesses context, schemas nor data trees,
+ * - data parser (\b lyd_parse*() functions) can be used simultaneously in multiple threads (also the returned
+ *   #ly_errno is thread safe),
+ * - data manipulation (lyd_new(), lyd_insert(), lyd_unlink(), lyd_free() and many other
+ *   functions) a single data tree is not thread safe,
+ * - data printing of a single data tree is thread-safe.
  */
 
 /**
@@ -1286,7 +1287,7 @@ void ly_set_free(struct ly_set *set);
                                      all nodes that has its default value. The 'default' attribute has namespace:
                                      urn:ietf:params:xml:ns:netconf:default:1.0 and thus the attributes are
                                      printed only when the ietf-netconf-with-defaults module is present in libyang
-                                     context. */
+                                     context (but in that case this namespace is always printed). */
 #define LYP_WD_IMPL_TAG   0x80  /**< Same as LYP_WD_ALL_TAG but the attributes are added only to the nodes that
                                      are not explicitly present in the original data tree despite their
                                      value is equal to their default value.  There is the same limitation regarding

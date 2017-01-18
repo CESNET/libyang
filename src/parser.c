@@ -1131,6 +1131,7 @@ ident_val_add_module_prefix(const char *value, const struct lyxml_elem *xml, str
  * xml  - optional for converting instance-identifier and identityref into JSON format
  * leaf - mandatory to know the context (necessary e.g. for prefixes in idenitytref values)
  * store - flag for union resolution - we do not want to store the result, we are just learning the type
+ * dflt - whether the value is a default value from the schema
  */
 struct lys_type *
 lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *xml, struct lyd_node_leaf_list *leaf,
