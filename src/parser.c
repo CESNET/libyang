@@ -1796,10 +1796,11 @@ dup_identities_check(const char *id, struct lys_module *module)
 
     /* check identity in submodules */
     mainmod = lys_main_module(module);
-    for (i = 0; i < mainmod->inc_size && mainmod->inc[i].submodule; ++i)
-    if (dup_identity_check(id, mainmod->inc[i].submodule->ident, mainmod->inc[i].submodule->ident_size)) {
-        LOGVAL(LYE_DUPID, LY_VLOG_NONE, NULL, "identity", id);
-        return EXIT_FAILURE;
+    for (i = 0; i < mainmod->inc_size && mainmod->inc[i].submodule; ++i) {
+        if (dup_identity_check(id, mainmod->inc[i].submodule->ident, mainmod->inc[i].submodule->ident_size)) {
+            LOGVAL(LYE_DUPID, LY_VLOG_NONE, NULL, "identity", id);
+            return EXIT_FAILURE;
+        }
     }
 
     return EXIT_SUCCESS;
