@@ -706,7 +706,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
     case LYS_ANYXML:
     case LYS_ANYDATA:
         LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, parent, strnodetype(child->nodetype), strnodetype(parent->nodetype));
-        LOGVAL(LYE_SPEC, LY_VLOG_LYS, NULL, "The \"%s\" statement cannot have any data substatement.",
+        LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "The \"%s\" statement cannot have any data substatement.",
                strnodetype(parent->nodetype));
         return EXIT_FAILURE;
     case LYS_AUGMENT:
@@ -797,7 +797,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
         for (iter = child; iter && !(iter->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT | LYS_RPC)); iter = iter->parent);
         if (!iter && (parent->flags & LYS_CONFIG_R) && (child->flags & LYS_CONFIG_W)) {
             LOGVAL(LYE_INARG, LY_VLOG_LYS, child, "true", "config");
-            LOGVAL(LYE_SPEC, LY_VLOG_LYS, child, "State nodes cannot have configuration nodes as children.");
+            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "State nodes cannot have configuration nodes as children.");
             return EXIT_FAILURE;
         }
     }
@@ -2364,7 +2364,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
                 /* skip nodes with an explicit config value */
                 if ((flags & LYS_CONFIG_R) && (retval->flags & LYS_CONFIG_W)) {
                     LOGVAL(LYE_INARG, LY_VLOG_LYS, retval, "true", "config");
-                    LOGVAL(LYE_SPEC, LY_VLOG_LYS, retval, "State nodes cannot have configuration nodes as children.");
+                    LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "State nodes cannot have configuration nodes as children.");
                     goto error;
                 }
                 break;

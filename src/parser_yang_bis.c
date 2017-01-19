@@ -5210,7 +5210,7 @@ yyreduce:
                     if ((yyvsp[-1].nodes).node.ptr_leaf->dflt && ((yyvsp[-1].nodes).node.ptr_leaf->flags & LYS_MAND_TRUE)) {
                       /* RFC 6020, 7.6.4 - default statement must not with mandatory true */
                       LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaf, "mandatory", "leaf");
-                      LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The \"mandatory\" statement is forbidden on leaf with \"default\".");
+                      LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "The \"mandatory\" statement is forbidden on leaf with \"default\".");
                       YYABORT;
                     }
                     if (unres_schema_add_node(trg, unres, &(yyvsp[-1].nodes).node.ptr_leaf->type, UNRES_TYPE_DFLT,
@@ -5425,7 +5425,7 @@ yyreduce:
                           }
                           if ((yyvsp[-1].nodes).node.ptr_leaflist->dflt_size && (yyvsp[-1].nodes).node.ptr_leaflist->min) {
                             LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "min-elements", "leaf-list");
-                            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
+                            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL,
                                    "The \"min-elements\" statement with non-zero value is forbidden on leaf-lists with the \"default\" statement.");
                             YYABORT;
                           }

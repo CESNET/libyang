@@ -1895,7 +1895,7 @@ leaf_stmt: LEAF_KEYWORD sep leaf_arg_str
                     if ($6.node.ptr_leaf->dflt && ($6.node.ptr_leaf->flags & LYS_MAND_TRUE)) {
                       /* RFC 6020, 7.6.4 - default statement must not with mandatory true */
                       LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, $6.node.ptr_leaf, "mandatory", "leaf");
-                      LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The \"mandatory\" statement is forbidden on leaf with \"default\".");
+                      LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "The \"mandatory\" statement is forbidden on leaf with \"default\".");
                       YYABORT;
                     }
                     if (unres_schema_add_node(trg, unres, &$6.node.ptr_leaf->type, UNRES_TYPE_DFLT,
