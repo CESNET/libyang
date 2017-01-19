@@ -257,7 +257,7 @@ module ietf-ipfix-psamp {
   typedef ieNameType {
     type string {
       length "1..max";
-      pattern "\S+";
+      pattern '\S+';
     }
     description "Type for Information Element names.  Whitespaces
       are not allowed.";
@@ -277,7 +277,7 @@ module ietf-ipfix-psamp {
   typedef nameType {
     type string {
       length "1..max";
-      pattern "\S(.*\S)?";
+      pattern '\S(.*\S)?';
     }
     description "Type for 'name' leafs, which are used to identify
       specific instances within lists, etc.
