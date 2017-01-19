@@ -2869,7 +2869,7 @@ read_indent(const char *input, int indent, int size, int in_index, int *out_inde
 }
 
 char *
-yang_read_string(const char *input, char *output, int size, int offset, int indent, int version) {
+yang_read_string(const char *input, char *output, int size, int offset, int indent) {
     int i = 0, out_index = offset, space = 0;
 
     while (i < size) {
@@ -2902,13 +2902,9 @@ yang_read_string(const char *input, char *output, int size, int offset, int inde
                 output[out_index] = '"';
                 ++i;
             } else {
-                if (version < 2) {
-                    output[out_index] = input[i];
-                } else {
-                    /* YANG 1.1 backslash must not be followed by any other character */
-                    LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, input);
-                    return NULL;
-                }
+                /* backslash must not be followed by any other character */
+                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, input);
+                return NULL;
             }
             break;
         default:

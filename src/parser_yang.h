@@ -112,7 +112,7 @@ struct yang_type {
 
 #include "parser_yang_bis.h"
 
-char *yang_read_string(const char *input, char *output, int size, int offset, int indent, int version);
+char *yang_read_string(const char *input, char *output, int size, int offset, int indent);
 
 int yang_read_common(struct lys_module *module,char *value, enum yytokentype type);
 

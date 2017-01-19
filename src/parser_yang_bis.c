@@ -3029,7 +3029,7 @@ yyreduce:
                           LOGMEM;
                           YYABORT;
                         }
-                        if (!(tmp = yang_read_string(yyget_text(scanner) + 1, s, yyget_leng(scanner) - 2, 0, yylloc.first_column, (trg) ? trg->version : 0))) {
+                        if (!(tmp = yang_read_string(yyget_text(scanner) + 1, s, yyget_leng(scanner) - 2, 0, yylloc.first_column))) {
                           YYABORT;
                         }
                         s = tmp;
@@ -3062,7 +3062,7 @@ yyreduce:
                 }
                 s = tmp;
                 if (yyget_text(scanner)[0] == '"') {
-                  if (!(tmp = yang_read_string(yyget_text(scanner) + 1, s, length_tmp - 2, length_s, yylloc.first_column, (trg) ? trg->version : 0))) {
+                  if (!(tmp = yang_read_string(yyget_text(scanner) + 1, s, length_tmp - 2, length_s, yylloc.first_column))) {
                     YYABORT;
                   }
                   s = tmp;
@@ -5425,7 +5425,7 @@ yyreduce:
                           }
                           if ((yyvsp[-1].nodes).node.ptr_leaflist->dflt_size && (yyvsp[-1].nodes).node.ptr_leaflist->min) {
                             LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "min-elements", "leaf-list");
-                            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL,
+                            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
                                    "The \"min-elements\" statement with non-zero value is forbidden on leaf-lists with the \"default\" statement.");
                             YYABORT;
                           }
