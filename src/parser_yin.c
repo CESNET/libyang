@@ -5540,10 +5540,19 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
     }
 
     /* check for mandatory statements */
-    if (submodule && !submodule->prefix) {
-        LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "belongs-to", "submodule");
-        goto error;
-    } else if (!submodule) {
+    if (submodule) {
+        if (!submodule->prefix) {
+            LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "belongs-to", "submodule");
+            goto error;
+        }
+        if (!version_flag) {
+            /* check version compatibility with the main module */
+            if (module->version > 1) {
+                LOGVAL(LYE_INVER, LY_VLOG_NONE, NULL);
+                goto error;
+            }
+        }
+    } else {
         if (!module->ns) {
             LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "namespace", "module");
             goto error;
