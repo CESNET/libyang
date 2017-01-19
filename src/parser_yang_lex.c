@@ -2616,6 +2616,23 @@ YY_RULE_SETUP
         while (i < yyleng) {
             if (!(yytext[i] & 0x80)) {
                 /* one byte character */
+                if (yytext[i] == '/') {
+                    if (yytext[i + 1] == '/') {
+                        yyless(i);
+                        return STRINGS;
+                    } else if (yytext[i + 1] == '*') {
+                        yyless(i);
+                        return STRINGS;
+                    }
+                } else if (yytext[i] == '*' && yytext[i + 1] == '/') {
+                    if (!i) {
+                        yyless(1);
+                        return ERROR;
+                    } else {
+                        yyless(i);
+                        return STRINGS;
+                    }
+                }
                 ++i;
             } else if (!(yytext[i] & 0x20)) {
                 /* two bytes character */
