@@ -136,7 +136,8 @@ U4     [\xf0][\x90-\xbf]{U}{U}|[\xf1-\xf3]{U}{U}{U}|[\xf4][\x80-\x8f]{U}{U}
 "+"  { return yytext[0];}  /* unsolved problem with concatenate string '+' */
 "\"" {_state = YY_START; BEGIN DOUBLEQUOTES; str = yytext; column = yylloc->first_column; }
 <DOUBLEQUOTES>\t|\\t { tab_count++; size_str += yyleng; }
-<DOUBLEQUOTES>[\x0D\x20-\x21\x23-\x7f]|{U2}|\\\" { size_str += yyleng; }
+<DOUBLEQUOTES>[\x0D\x20-\x21\x23-\x5b\x5d-\x7f]|{U2} { size_str += yyleng; }
+<DOUBLEQUOTES>\\([\x09\x0A\x0D\x20-\x7f]|{U2}|{U3}|{U4}) { size_str += yyleng; }
 <DOUBLEQUOTES,SINGLEQUOTES>\n {yylloc->last_column = 0; size_str++; }
 <DOUBLEQUOTES,SINGLEQUOTES>{U3} {
     value = ((uint32_t)(yytext[0] & 0xf) << 12) | ((uint32_t)(yytext[1] & 0x3f) << 6) | (yytext[2] & 0x3f);
