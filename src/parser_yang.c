@@ -2530,7 +2530,7 @@ yang_fill_include(struct lys_module *module, struct lys_submodule *submodule, ch
 
     str = lydict_insert_zc(module->ctx, value);
     trg = (submodule) ? (struct lys_module *)submodule : module;
-    rc = lyp_check_include(module, submodule, str, inc, unres);
+    rc = lyp_check_include(trg, str, inc, unres);
     if (!rc) {
         /* success, copy the filled data into the final array */
         memcpy(&trg->inc[trg->inc_size], inc, sizeof *inc);
@@ -2754,6 +2754,11 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
                    module->name, module->rev[0].date, revision);
             goto error;
         }
+    }
+
+    /* check correctness of includes */
+    if (lyp_check_include_missing(module)) {
+        goto error;
     }
 
     tmp_module = module;

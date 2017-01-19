@@ -2916,8 +2916,7 @@ error:
 /* logs directly
  * returns:
  *  0 - inc successfully filled
- * -1 - error, inc is cleaned
- *  1 - duplication, ignore the inc structure, inc is cleaned
+ * -1 - error
  */
 static int
 fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, struct lyxml_elem *yin,
@@ -2967,7 +2966,7 @@ fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, str
 
     GETVAL(value, yin, "module");
 
-    return lyp_check_include(module, submodule, value, inc, unres);
+    return lyp_check_include(submodule ? (struct lys_module *)submodule : module, value, inc, unres);
 
 error:
 
@@ -5317,10 +5316,8 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
     struct lyxml_elem *next, *child, *child2, root, grps, augs;
     struct lys_node *node = NULL;
     struct lys_module *trg;
-    struct lys_include inc;
     const char *value;
     int i, r;
-    size_t size;
     int version_flag = 0;
     /* counters */
     int c_imp = 0, c_rev = 0, c_tpdf = 0, c_ident = 0, c_inc = 0, c_aug = 0, c_ftrs = 0, c_dev = 0;
@@ -5565,14 +5562,11 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
 
     /* allocate arrays for elements with cardinality of 0..n */
     if (c_imp) {
-        size = (c_imp * sizeof *trg->imp) + sizeof(void*);
-        trg->imp = calloc(1, size);
+        trg->imp = calloc(c_imp, sizeof *trg->imp);
         if (!trg->imp) {
             LOGMEM;
             goto error;
         }
-        /* set stop block for possible realloc */
-        trg->imp[c_imp].module = (void*)0x1;
     }
     if (c_rev) {
         trg->rev = calloc(c_rev, sizeof *trg->rev);
@@ -5596,14 +5590,11 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
         }
     }
     if (c_inc) {
-        size = (c_inc * sizeof *trg->inc) + sizeof(void*);
-        trg->inc = calloc(1, size);
+        trg->inc = calloc(c_inc, sizeof *trg->inc);
         if (!trg->inc) {
             LOGMEM;
             goto error;
         }
-        /* set stop block for possible realloc */
-        trg->inc[c_inc].submodule = (void*)0x1;
     }
     if (c_aug) {
         trg->augment = calloc(c_aug, sizeof *trg->augment);
@@ -5637,16 +5628,9 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             }
 
         } else if (!strcmp(child->name, "include")) {
-            memset(&inc, 0, sizeof inc);
-            /* 1) pass module, not trg, since we want to pass the main module
-             * 2) we cannot pass directly the structure in the array since
-             * submodule parser can realloc our array of includes */
-            r = fill_yin_include(module, submodule, child, &inc, unres);
-            if (!r) {
-                /* success, copy the filled data into the final array */
-                memcpy(&trg->inc[trg->inc_size], &inc, sizeof inc);
-                trg->inc_size++;
-            } else if (r == -1) {
+            r = fill_yin_include(module, submodule, child, &trg->inc[trg->inc_size], unres);
+            trg->inc_size++;
+            if (r) {
                 goto error;
             }
 
@@ -5741,25 +5725,6 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             r = fill_yin_deviation(trg, child, &trg->deviation[trg->deviation_size], unres);
             trg->deviation_size++;
             if (r) {
-                goto error;
-            }
-        }
-    }
-
-    if (!submodule) {
-        /* update the size of the arrays, they can be smaller due to possible duplicities
-         * found in submodules */
-        if (module->inc_size) {
-            module->inc = ly_realloc(module->inc, module->inc_size * sizeof *module->inc);
-            if (!module->inc) {
-                LOGMEM;
-                goto error;
-            }
-        }
-        if (module->imp_size) {
-            module->imp = ly_realloc(module->imp, module->imp_size * sizeof *module->imp);
-            if (!module->imp) {
-                LOGMEM;
                 goto error;
             }
         }
@@ -5966,6 +5931,11 @@ yin_read_module(struct ly_ctx *ctx, const char *data, const char *revision, int 
                    module->name, module->rev[0].date, revision);
             goto error;
         }
+    }
+
+    /* check correctness of includes */
+    if (lyp_check_include_missing(module)) {
+        goto error;
     }
 
     if (lyp_ctx_add_module(&module)) {

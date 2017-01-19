@@ -1109,11 +1109,7 @@ resolve_feature(const char *feat_name, uint16_t len, const struct lys_node *node
         }
     }
     /* ... and all its submodules */
-    for (i = 0; i < module->inc_size; i++) {
-        if (!module->inc[i].submodule) {
-            /* not yet resolved */
-            continue;
-        }
+    for (i = 0; i < module->inc_size && module->inc[i].submodule; i++) {
         for (j = 0; j < module->inc[i].submodule->features_size; j++) {
             if (!strncmp(name, module->inc[i].submodule->features[j].name, nam_len)
                     && !module->inc[i].submodule->features[j].name[nam_len]) {

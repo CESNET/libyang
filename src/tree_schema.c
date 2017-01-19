@@ -3648,7 +3648,7 @@ lys_sub_module_remove_devs_augs(struct lys_module *module)
     }
 
     /* remove deviation and augments defined in submodules */
-    for (v = 0; v < module->inc_size; ++v) {
+    for (v = 0; v < module->inc_size && module->inc[v].submodule; ++v) {
         for (u = 0; u < module->inc[v].submodule->deviation_size; ++u) {
             remove_dev(&module->inc[v].submodule->deviation[u], module);
         }
@@ -3774,10 +3774,7 @@ lys_set_implemented(const struct lys_module *module)
         goto error;
     }
     /* process augments in submodules */
-    for (i = 0; i < module->inc_size; ++i) {
-        if (!module->inc[i].submodule) {
-            continue;
-        }
+    for (i = 0; i < module->inc_size && module->inc[i].submodule; ++i) {
         for (j = 0; j < module->inc[i].submodule->augment_size; j++) {
             /* apply augment */
             if (!module->inc[i].submodule->augment[j].target

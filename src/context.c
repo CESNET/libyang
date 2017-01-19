@@ -179,7 +179,7 @@ ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_n
 API const struct lys_submodule *
 ly_ctx_get_submodule2(const struct lys_module *main_module, const char *submodule)
 {
-    struct lys_submodule *result;
+    const struct lys_submodule *result;
     int i;
 
     if (!main_module || !submodule) {
@@ -190,10 +190,16 @@ ly_ctx_get_submodule2(const struct lys_module *main_module, const char *submodul
     /* search in submodules list */
     for (i = 0; i < main_module->inc_size; i++) {
         result = main_module->inc[i].submodule;
-        if (result && ly_strequal(submodule, result->name, 0)) {
+        if (ly_strequal(submodule, result->name, 0)) {
             return result;
         }
+
+        /* in YANG 1.1 all the submodules must be included in the main module, so we are done.
+         * YANG 1.0 allows (is unclear about denying it) to include a submodule only in another submodule
+         * but when libyang parses such a module it adds the include into the main module so we are also done.
+         */
     }
+
 
     return NULL;
 }
@@ -431,20 +437,6 @@ ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char
                     mod = NULL;
                 }
                 return mod;
-            }
-        }
-    } else {
-        /* searching for submodule, try if it is already loaded */
-        mod = (struct lys_module *)ly_ctx_get_submodule2(module, name);
-        if (mod) {
-            if (!revision || (mod->rev_size && ly_strequal(mod->rev[0].date, revision, 0))) {
-                /* success */
-                return mod;
-            } else {
-                /* there is already another revision of the submodule */
-                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, mod->rev[0].date, "revision");
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Multiple revisions of a submodule included.");
-                return NULL;
             }
         }
     }

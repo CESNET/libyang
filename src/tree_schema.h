@@ -1457,7 +1457,6 @@ struct lys_include {
     char rev[LY_REV_SIZE];           /**< revision-date of the included submodule (optional) */
     const char *dsc;                 /**< description (optional) */
     const char *ref;                 /**< reference (optional) */
-    uint8_t external;                /**< flag for include records from submodules */
 };
 
 /**

@@ -181,8 +181,8 @@ module a {\n\
   namespace \"urn:a\";\n\
   prefix a_mod;\n\
 \n\
-  include \"atop\";\n\
   include \"asub\";\n\
+  include \"atop\";\n\
 \n\
   revision \"2015-01-01\" {\n\
     description\n\
@@ -237,8 +237,8 @@ char *result_yin = "\
         xmlns:a_mod=\"urn:a\">\n\
   <namespace uri=\"urn:a\"/>\n\
   <prefix value=\"a_mod\"/>\n\
-  <include module=\"atop\"/>\n\
   <include module=\"asub\"/>\n\
+  <include module=\"atop\"/>\n\
   <revision date=\"2015-01-01\">\n\
     <description>\n\
       <text>version 1</text>\n\

@@ -101,8 +101,9 @@ int lyp_check_date(const char *date);
 int lyp_check_mandatory_augment(struct lys_node_augment *node, const struct lys_node *target);
 int lyp_check_mandatory_choice(struct lys_node *node);
 
-int lyp_check_include(struct lys_module *module, struct lys_submodule *submodule, const char *value,
+int lyp_check_include(struct lys_module *module, const char *value,
                       struct lys_include *inc, struct unres_schema *unres);
+int lyp_check_include_missing(struct lys_module *main_module);
 
 int lyp_check_import(struct lys_module *module, const char *value, struct lys_import *imp);
 
