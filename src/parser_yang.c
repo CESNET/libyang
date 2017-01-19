@@ -2628,7 +2628,7 @@ store_flags(struct lys_node *node, uint8_t flags, int config_opt)
 
             if (!elem && (node->flags & LYS_CONFIG_W) && node->parent && (node->parent->flags & LYS_CONFIG_R)) {
                 LOGVAL(LYE_INARG, LY_VLOG_LYS, node, "true", "config");
-                LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "State nodes cannot have configuration nodes as children.");
+                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "State nodes cannot have configuration nodes as children.");
                 return EXIT_FAILURE;
             }
         }

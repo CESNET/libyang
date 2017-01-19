@@ -486,7 +486,7 @@ nextbit:
             for (i = 0; i < iff_size; i++) {
                 if (!resolve_iffeature(&iff[i])) {
                     LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, leaf->value_str, schema->name);
-                    LOGVAL(LYE_SPEC, LY_VLOG_LYD, node, "%s \"%s\" is disabled by its if-feature condition.",
+                    LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "%s \"%s\" is disabled by its if-feature condition.",
                            id, idname);
                     return EXIT_FAILURE;
                 }

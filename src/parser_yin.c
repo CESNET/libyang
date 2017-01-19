@@ -3431,7 +3431,7 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
     /* check - default is prohibited in combination with mandatory */
     if (dflt && (choice->flags & LYS_MAND_TRUE)) {
         LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, retval, "default", "choice");
-        LOGVAL(LYE_SPEC, LY_VLOG_LYS, retval, "The \"default\" statement is forbidden on choices with \"mandatory\".");
+        LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "The \"default\" statement is forbidden on choices with \"mandatory\".");
         goto error;
     }
 
@@ -3709,7 +3709,7 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     }
     if (leaf->dflt && (leaf->flags & LYS_MAND_TRUE)) {
         LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, retval, "mandatory", "leaf");
-        LOGVAL(LYE_SPEC, LY_VLOG_LYS, retval,
+        LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL,
                "The \"mandatory\" statement is forbidden on leaf with the \"default\" statement.");
         goto error;
     }
@@ -3893,7 +3893,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
             llist->min = (uint32_t) val;
             if (llist->max && (llist->min > llist->max)) {
                 LOGVAL(LYE_INARG, LY_VLOG_LYS, retval, value, sub->name);
-                LOGVAL(LYE_SPEC, LY_VLOG_LYS, retval, "\"min-elements\" is bigger than \"max-elements\".");
+                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "\"min-elements\" is bigger than \"max-elements\".");
                 goto error;
             }
         } else if (!strcmp(sub->name, "max-elements")) {
@@ -3922,7 +3922,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
                 llist->max = (uint32_t) val;
                 if (llist->min > llist->max) {
                     LOGVAL(LYE_INARG, LY_VLOG_LYS, retval, value, sub->name);
-                    LOGVAL(LYE_SPEC, LY_VLOG_LYS, retval, "\"max-elements\" is smaller than \"min-elements\".");
+                    LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "\"max-elements\" is smaller than \"min-elements\".");
                     goto error;
                 }
             }
@@ -3995,7 +3995,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
                 for (r = 0; r < llist->dflt_size; r++) {
                     if (ly_strequal(llist->dflt[r], value, 1)) {
                         LOGVAL(LYE_INARG, LY_VLOG_LYS, retval, value, "default");
-                        LOGVAL(LYE_SPEC, LY_VLOG_LYS, retval, "Duplicated default value \"%s\".", value);
+                        LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Duplicated default value \"%s\".", value);
                         goto error;
                     }
                 }
@@ -4012,7 +4012,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
 
     if (llist->dflt_size && llist->min) {
         LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, retval, "min-elements", "leaf-list");
-        LOGVAL(LYE_SPEC, LY_VLOG_LYS, retval,
+        LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL,
                "The \"min-elements\" statement with non-zero value is forbidden on leaf-lists with the \"default\" statement.");
         goto error;
     }
@@ -4188,7 +4188,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             list->min = (uint32_t) val;
             if (list->max && (list->min > list->max)) {
                 LOGVAL(LYE_INARG, LY_VLOG_LYS, retval, value, sub->name);
-                LOGVAL(LYE_SPEC, LY_VLOG_LYS, retval, "\"min-elements\" is bigger than \"max-elements\".");
+                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "\"min-elements\" is bigger than \"max-elements\".");
                 lyxml_free(module->ctx, sub);
                 goto error;
             }
@@ -4219,7 +4219,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 list->max = (uint32_t) val;
                 if (list->min > list->max) {
                     LOGVAL(LYE_INARG, LY_VLOG_LYS, retval, value, sub->name);
-                    LOGVAL(LYE_SPEC, LY_VLOG_LYS, retval, "\"max-elements\" is smaller than \"min-elements\".");
+                    LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "\"max-elements\" is smaller than \"min-elements\".");
                     goto error;
                 }
             }

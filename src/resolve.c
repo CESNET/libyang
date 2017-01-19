@@ -2134,7 +2134,7 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
                         /* wrong path for shorthand */
                         str = strndup(nodeid, (name + nam_len) - nodeid);
                         LOGVAL(LYE_PATH_INNODE, LY_VLOG_STR, str);
-                        LOGVAL(LYE_SPEC, LY_VLOG_STR, str, "Schema shorthand case path must include the virtual case statement.");
+                        LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Schema shorthand case path must include the virtual case statement.");
                         free(str);
                         return NULL;
                     }
@@ -3217,7 +3217,7 @@ check_key(struct lys_node_list *list, int index, const char *name, int len)
     /* key is not placed from augment */
     if (key->parent->nodetype == LYS_AUGMENT) {
         LOGVAL(LYE_KEY_MISS, LY_VLOG_LYS, key, key->name);
-        LOGVAL(LYE_SPEC, LY_VLOG_LYS, key, "Key inserted from augment.");
+        LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Key inserted from augment.");
         return -1;
     }
 
@@ -3225,7 +3225,7 @@ check_key(struct lys_node_list *list, int index, const char *name, int len)
     j = 0;
     if (key->when || (key->iffeature_size && (j = 1))) {
         LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, key, j ? "if-feature" : "when", "leaf");
-        LOGVAL(LYE_SPEC, LY_VLOG_LYS, key, "Key definition cannot depend on a \"%s\" condition.",
+        LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Key definition cannot depend on a \"%s\" condition.",
                j ? "if-feature" : "when");
         return -1;
     }
@@ -3252,21 +3252,21 @@ resolve_unique(struct lys_node *parent, const char *uniq_str_path, uint8_t *trg_
         if (rc) {
             LOGVAL(LYE_INARG, LY_VLOG_LYS, parent, uniq_str_path, "unique");
             if (rc > 0) {
-                LOGVAL(LYE_INCHAR, LY_VLOG_LYS, parent, uniq_str_path[rc - 1], &uniq_str_path[rc - 1]);
+                LOGVAL(LYE_INCHAR, LY_VLOG_PREV, NULL, uniq_str_path[rc - 1], &uniq_str_path[rc - 1]);
             } else if (rc == -2) {
-                LOGVAL(LYE_SPEC, LY_VLOG_LYS, parent, "Unique argument references list.");
+                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Unique argument references list.");
             }
             rc = -1;
         } else {
             LOGVAL(LYE_INARG, LY_VLOG_LYS, parent, uniq_str_path, "unique");
-            LOGVAL(LYE_SPEC, LY_VLOG_LYS, parent, "Target leaf not found.");
+            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Target leaf not found.");
             rc = EXIT_FAILURE;
         }
         goto error;
     }
     if (leaf->nodetype != LYS_LEAF) {
         LOGVAL(LYE_INARG, LY_VLOG_LYS, parent, uniq_str_path, "unique");
-        LOGVAL(LYE_SPEC, LY_VLOG_LYS, parent, "Target is not a leaf.");
+        LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Target is not a leaf.");
         return -1;
     }
 
@@ -3279,7 +3279,7 @@ resolve_unique(struct lys_node *parent, const char *uniq_str_path, uint8_t *trg_
     if (*trg_type) {
         if (((*trg_type == 1) && (leaf->flags & LYS_CONFIG_R)) || ((*trg_type == 2) && (leaf->flags & LYS_CONFIG_W))) {
             LOGVAL(LYE_INARG, LY_VLOG_LYS, parent, uniq_str_path, "unique");
-            LOGVAL(LYE_SPEC, LY_VLOG_LYS, parent,
+            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL,
                    "Leaf \"%s\" referenced in unique statement is config %s, but previous referenced leaf is config %s.",
                    uniq_str_path, *trg_type == 1 ? "false" : "true", *trg_type == 1 ? "true" : "false");
             return -1;
@@ -3805,7 +3805,7 @@ resolve_path_predicate_schema(const char *path, const struct lys_node *context_n
         /* check source - dest match */
         if (dst_node->nodetype != src_node->nodetype) {
             LOGVAL(LYE_NORESOLV, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent, "leafref predicate", path-parsed);
-            LOGVAL(LYE_SPEC, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent, "Destination node is not a %s, but a %s.",
+            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Destination node is not a %s, but a %s.",
                    strnodetype(src_node->nodetype), strnodetype(dst_node->nodetype));
             return -parsed;
         }
@@ -3991,8 +3991,7 @@ resolve_path_arg_schema(const char *path, struct lys_node *parent, int parent_tp
     /* the target must be leaf or leaf-list (in YANG 1.1 only) */
     if ((node->nodetype != LYS_LEAF) && (node->nodetype != LYS_LEAFLIST)) {
         LOGVAL(LYE_NORESOLV, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent, "leafref", path);
-        LOGVAL(LYE_SPEC, parent_tpdf ? LY_VLOG_NONE : LY_VLOG_LYS, parent_tpdf ? NULL : parent,
-               "Leafref target \"%s\" is not a leaf nor a leaf-list.", path);
+        LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Leafref target \"%s\" is not a leaf nor a leaf-list.", path);
         return -1;
     }
 
@@ -4345,7 +4344,7 @@ inherit_config_flag(struct lys_node *node, int flags, int clear, struct unres_sc
                 /* skip nodes with an explicit config value */
                 if ((flags & LYS_CONFIG_R) && (node->flags & LYS_CONFIG_W)) {
                     LOGVAL(LYE_INARG, LY_VLOG_LYS, node, "true", "config");
-                    LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "State nodes cannot have configuration nodes as children.");
+                    LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "State nodes cannot have configuration nodes as children.");
                     return -1;
                 }
                 continue;
@@ -4452,7 +4451,7 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct 
         LY_TREE_FOR(aug->child, sub) {
             if (!(sub->nodetype & (LYS_ANYDATA | LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_USES | LYS_CHOICE))) {
                 LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, aug, strnodetype(sub->nodetype), "augment");
-                LOGVAL(LYE_SPEC, LY_VLOG_LYS, aug, "Cannot augment \"%s\" with a \"%s\".",
+                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Cannot augment \"%s\" with a \"%s\".",
                        strnodetype(aug_target->nodetype), strnodetype(sub->nodetype));
                 return -1;
             }
@@ -4461,14 +4460,14 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct 
         LY_TREE_FOR(aug->child, sub) {
             if (!(sub->nodetype & (LYS_CASE | LYS_ANYDATA | LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST))) {
                 LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, aug, strnodetype(sub->nodetype), "augment");
-                LOGVAL(LYE_SPEC, LY_VLOG_LYS, aug, "Cannot augment \"%s\" with a \"%s\".",
+                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Cannot augment \"%s\" with a \"%s\".",
                        strnodetype(aug_target->nodetype), strnodetype(sub->nodetype));
                 return -1;
             }
         }
     } else {
         LOGVAL(LYE_INARG, LY_VLOG_LYS, aug, aug->target_name, "target-node");
-        LOGVAL(LYE_SPEC, LY_VLOG_LYS, aug, "Invalid augment target node type \"%s\".", strnodetype(aug_target->nodetype));
+        LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Invalid augment target node type \"%s\".", strnodetype(aug_target->nodetype));
         return -1;
     }
 
@@ -4580,7 +4579,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
         node = lys_node_dup(uses->module, (struct lys_node *)uses, node_aux, uses->nacm, unres, 0);
         if (!node) {
             LOGVAL(LYE_INARG, LY_VLOG_LYS, uses, uses->grp->name, "uses");
-            LOGVAL(LYE_SPEC, LY_VLOG_LYS, uses, "Copying data from grouping failed.");
+            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Copying data from grouping failed.");
             goto fail;
         }
         /* test the name of siblings */
@@ -4613,7 +4612,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
 
         if (rfn->target_type && !(node->nodetype & rfn->target_type)) {
             LOGVAL(LYE_INARG, LY_VLOG_LYS, uses, rfn->target_name, "refine");
-            LOGVAL(LYE_SPEC, LY_VLOG_LYS, uses, "Refine substatements not applicable to the target-node.");
+            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Refine substatements not applicable to the target-node.");
             goto fail;
         }
         refine_nodes[i] = node;
@@ -4828,7 +4827,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
                     (rfn->flags & LYS_CONFIG_W)) {
                 /* setting config true under config false is prohibited */
                 LOGVAL(LYE_INARG, LY_VLOG_LYS, uses, "config", "refine");
-                LOGVAL(LYE_SPEC, LY_VLOG_LYS, uses,
+                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL,
                        "changing config from 'false' to 'true' is prohibited while "
                        "the target's parent is still config 'false'.");
                 goto fail;
@@ -4846,7 +4845,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
                     if ((iter->flags & LYS_CONFIG_SET) && (iter->flags & LYS_CONFIG_W)) {
                         /* error - we would have config data under status data */
                         LOGVAL(LYE_INARG, LY_VLOG_LYS, uses, "config", "refine");
-                        LOGVAL(LYE_SPEC, LY_VLOG_LYS, uses,
+                        LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL,
                                "changing config from 'true' to 'false' is prohibited while the target "
                                "has still a children with explicit config 'true'.");
                         goto fail;
@@ -5231,7 +5230,7 @@ match:
     for (i = 0; i < cur->iffeature_size; i++) {
         if (!resolve_iffeature(&cur->iffeature[i])) {
             LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, cur->name, node->schema->name);
-            LOGVAL(LYE_SPEC, LY_VLOG_LYD, node, "Identity \"%s\" is disabled by its if-feature condition.", cur->name);
+            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Identity \"%s\" is disabled by its if-feature condition.", cur->name);
             return NULL;
         }
     }
@@ -5456,7 +5455,7 @@ resolve_must(struct lyd_node *node, int inout_parent)
         if (!set.val.bool) {
             LOGVAL(LYE_NOMUST, LY_VLOG_LYD, node, must[i].expr);
             if (must[i].emsg) {
-                LOGVAL(LYE_SPEC, LY_VLOG_LYD, node, must[i].emsg);
+                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, must[i].emsg);
             }
             if (must[i].eapptag) {
                 strncpy(((struct ly_err *)&ly_errno)->apptag, must[i].eapptag, LY_APPTAG_LEN - 1);
@@ -6020,7 +6019,7 @@ check_leafref_features(struct lys_type *type)
                 if ((unsigned int)ly_set_add(features, iter->iffeature[j].features[size - 1], 0) >= x) {
                     /* the feature is not present in features set of target's parents chain */
                     LOGVAL(LYE_NORESOLV, LY_VLOG_LYS, type->parent, "leafref", type->info.lref.path);
-                    LOGVAL(LYE_SPEC, LY_VLOG_LYS, type->parent,
+                    LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL,
                            "Leafref is not conditional based on \"%s\" feature as its target.",
                            iter->iffeature[j].features[size - 1]->name);
                     ret = -1;
