@@ -6647,7 +6647,7 @@ unres_schema_find(struct unres_schema *unres, int start_on_backwards, void *item
     int i;
     struct unres_list_uniq *aux_uniq1, *aux_uniq2;
 
-    if (start_on_backwards > 0) {
+    if (start_on_backwards >= 0) {
         i = start_on_backwards;
     } else {
         i = unres->count - 1;
