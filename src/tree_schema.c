@@ -2563,6 +2563,7 @@ module_free_common(struct lys_module *module, void (*private_destructor)(const s
 
     /* revisions */
     for (i = 0; i < module->rev_size; i++) {
+        lys_extension_instances_free(ctx, module->rev[i].ext, module->rev[i].ext_size);
         lydict_remove(ctx, module->rev[i].dsc);
         lydict_remove(ctx, module->rev[i].ref);
     }

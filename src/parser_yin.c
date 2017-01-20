@@ -134,6 +134,18 @@ read_yin_subnode_ext(struct lys_module *mod, void *elem, LYEXT_PAR elem_type,
         ext_size = &((struct lys_module *)elem)->ext_size;
         ext = &((struct lys_module *)elem)->ext;
         break;
+    case LYEXT_PAR_IMPORT:
+        ext_size = &((struct lys_import *)elem)->ext_size;
+        ext = &((struct lys_import *)elem)->ext;
+        break;
+    case LYEXT_PAR_INCLUDE:
+        ext_size = &((struct lys_include *)elem)->ext_size;
+        ext = &((struct lys_include *)elem)->ext;
+        break;
+    case LYEXT_PAR_REVISION:
+        ext_size = &((struct lys_revision *)elem)->ext_size;
+        ext = &((struct lys_revision *)elem)->ext;
+        break;
     case LYEXT_PAR_NODE:
         ext_size = &((struct lys_node *)elem)->ext_size;
         ext = &((struct lys_node *)elem)->ext;
@@ -3205,6 +3217,7 @@ fill_yin_import(struct lys_module *module, struct lyxml_elem *yin, struct lys_im
     struct lyxml_elem *child, *next, exts;
     const char *value;
     int r, c_ext = 0;
+    void *reallocated;
 
     /* init */
     memset(&exts, 0, sizeof exts);
@@ -3224,6 +3237,10 @@ fill_yin_import(struct lys_module *module, struct lyxml_elem *yin, struct lys_im
                 goto error;
             }
             imp->prefix = lydict_insert(module->ctx, value, strlen(value));
+
+            if (read_yin_subnode_ext(module, imp, LYEXT_PAR_IMPORT, child, LYEXT_SUBSTMT_PREFIX, 0, unres)) {
+                goto error;
+            }
         } else if (!strcmp(child->name, "revision-date")) {
             if (imp->rev[0]) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
@@ -3234,9 +3251,16 @@ fill_yin_import(struct lys_module *module, struct lyxml_elem *yin, struct lys_im
                 goto error;
             }
             memcpy(imp->rev, value, LY_REV_SIZE - 1);
+
+            if (read_yin_subnode_ext(module, imp, LYEXT_PAR_IMPORT, child, LYEXT_SUBSTMT_REVISIONDATE, 0, unres)) {
+                goto error;
+            }
         } else if ((module->version >= 2) && !strcmp(child->name, "description")) {
             if (imp->dsc) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
+                goto error;
+            }
+            if (read_yin_subnode_ext(module, imp, LYEXT_PAR_IMPORT, child, LYEXT_SUBSTMT_DESCRIPTION, 0, unres)) {
                 goto error;
             }
             imp->dsc = read_yin_subnode(module->ctx, child, "text");
@@ -3246,6 +3270,9 @@ fill_yin_import(struct lys_module *module, struct lyxml_elem *yin, struct lys_im
         } else if ((module->version >= 2) && !strcmp(child->name, "reference")) {
             if (imp->ref) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
+                goto error;
+            }
+            if (read_yin_subnode_ext(module, imp, LYEXT_PAR_IMPORT, child, LYEXT_SUBSTMT_REFERENCE, 0, unres)) {
                 goto error;
             }
             imp->ref = read_yin_subnode(module->ctx, child, "text");
@@ -3266,11 +3293,17 @@ fill_yin_import(struct lys_module *module, struct lyxml_elem *yin, struct lys_im
 
     /* process extensions */
     if (c_ext) {
-        imp->ext = calloc(c_ext, sizeof *imp->ext);
-        if (!imp->ext) {
+        /* some extensions may be already present from the substatements */
+        reallocated = realloc(imp->ext, (c_ext + imp->ext_size) * sizeof *imp->ext);
+        if (!reallocated) {
             LOGMEM;
             goto error;
         }
+        imp->ext = reallocated;
+
+        /* init memory */
+        memset(&imp->ext[imp->ext_size], 0, c_ext * sizeof *imp->ext);
+
         LY_TREE_FOR_SAFE(exts.child, next, child) {
             /* extension */
             r = lyp_yin_fill_ext(imp, LYEXT_PAR_IMPORT, 0, 0, module, child, &imp->ext, imp->ext_size, unres);
@@ -3304,6 +3337,7 @@ fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, str
     struct lyxml_elem *child, *next, exts;
     const char *value;
     int r, c_ext = 0;
+    void *reallocated;
 
     /* init */
     memset(&exts, 0, sizeof exts);
@@ -3327,9 +3361,16 @@ fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, str
                 goto error;
             }
             memcpy(inc->rev, value, LY_REV_SIZE - 1);
+
+            if (read_yin_subnode_ext(module, inc, LYEXT_PAR_INCLUDE, child, LYEXT_SUBSTMT_REVISIONDATE, 0, unres)) {
+                goto error;
+            }
         } else if ((module->version >= 2) && !strcmp(child->name, "description")) {
             if (inc->dsc) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
+                goto error;
+            }
+            if (read_yin_subnode_ext(module, inc, LYEXT_PAR_INCLUDE, child, LYEXT_SUBSTMT_DESCRIPTION, 0, unres)) {
                 goto error;
             }
             inc->dsc = read_yin_subnode(module->ctx, child, "text");
@@ -3339,6 +3380,9 @@ fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, str
         } else if ((module->version >= 2) && !strcmp(child->name, "reference")) {
             if (inc->ref) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
+                goto error;
+            }
+            if (read_yin_subnode_ext(module, inc, LYEXT_PAR_INCLUDE, child, LYEXT_SUBSTMT_REFERENCE, 0, unres)) {
                 goto error;
             }
             inc->ref = read_yin_subnode(module->ctx, child, "text");
@@ -3353,11 +3397,17 @@ fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, str
 
     /* process extensions */
     if (c_ext) {
-        inc->ext = calloc(c_ext, sizeof *inc->ext);
-        if (!inc->ext) {
+        /* some extensions may be already present from the substatements */
+        reallocated = realloc(inc->ext, (c_ext + inc->ext_size) * sizeof *inc->ext);
+        if (!reallocated) {
             LOGMEM;
             goto error;
         }
+        inc->ext = reallocated;
+
+        /* init memory */
+        memset(&inc->ext[inc->ext_size], 0, c_ext * sizeof *inc->ext);
+
         LY_TREE_FOR_SAFE(exts.child, next, child) {
             /* extension */
             r = lyp_yin_fill_ext(inc, LYEXT_PAR_INCLUDE, 0, 0, module, child, &inc->ext, inc->ext_size, unres);
@@ -5960,7 +6010,7 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 struct unres_schema *unres)
 {
     struct ly_ctx *ctx = module->ctx;
-    struct lyxml_elem *next, *child, *child2, root, grps, augs, exts;
+    struct lyxml_elem *next, *child, *next2, *child2, root, grps, augs, exts;
     struct lys_node *node = NULL;
     struct lys_module *trg;
     const char *value;
@@ -5969,6 +6019,7 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
     /* counters */
     int c_imp = 0, c_rev = 0, c_tpdf = 0, c_ident = 0, c_inc = 0, c_aug = 0, c_ftrs = 0, c_dev = 0;
     int c_ext = 0, c_extinst = 0;
+    void *reallocated;
 
     /* to simplify code, store the module/submodule being processed as trg */
     trg = submodule ? (struct lys_module *)submodule : module;
@@ -6004,6 +6055,10 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             }
             GETVAL(value, child, "uri");
             module->ns = lydict_insert(ctx, value, strlen(value));
+
+            if (read_yin_subnode_ext(trg, trg, LYEXT_PAR_MODULE, child, LYEXT_SUBSTMT_NAMESPACE, 0, unres)) {
+                goto error;
+            }
             lyxml_free(ctx, child);
         } else if (!submodule && !strcmp(child->name, "prefix")) {
             if (module->prefix) {
@@ -6015,6 +6070,10 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 goto error;
             }
             module->prefix = lydict_insert(ctx, value, strlen(value));
+
+            if (read_yin_subnode_ext(trg, trg, LYEXT_PAR_MODULE, child, LYEXT_SUBSTMT_PREFIX, 0, unres)) {
+                goto error;
+            }
             lyxml_free(ctx, child);
         } else if (submodule && !strcmp(child->name, "belongs-to")) {
             if (submodule->prefix) {
@@ -6024,6 +6083,10 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             GETVAL(value, child, "module");
             if (!ly_strequal(value, submodule->belongsto->name, 1)) {
                 LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, child->name);
+                goto error;
+            }
+
+            if (read_yin_subnode_ext(trg, trg, LYEXT_PAR_MODULE, child, LYEXT_SUBSTMT_BELONGSTO, 0, unres)) {
                 goto error;
             }
 
@@ -6047,6 +6110,10 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 goto error;
             }
             submodule->prefix = lydict_insert(ctx, value, strlen(value));
+
+            if (read_yin_subnode_ext(trg, trg, LYEXT_PAR_MODULE, child->child, LYEXT_SUBSTMT_PREFIX, 0, unres)) {
+                goto error;
+            }
 
             /* we are done with belongs-to */
             lyxml_free(ctx, child);
@@ -6095,6 +6162,9 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
                 goto error;
             }
+            if (read_yin_subnode_ext(trg, trg, LYEXT_PAR_MODULE, child, LYEXT_SUBSTMT_DESCRIPTION, 0, unres)) {
+                goto error;
+            }
             trg->dsc = read_yin_subnode(ctx, child, "text");
             lyxml_free(ctx, child);
             if (!trg->dsc) {
@@ -6103,6 +6173,9 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
         } else if (!strcmp(child->name, "reference")) {
             if (trg->ref) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
+                goto error;
+            }
+            if (read_yin_subnode_ext(trg, trg, LYEXT_PAR_MODULE, child, LYEXT_SUBSTMT_REFERENCE, 0, unres)) {
                 goto error;
             }
             trg->ref = read_yin_subnode(ctx, child, "text");
@@ -6115,6 +6188,9 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
                 goto error;
             }
+            if (read_yin_subnode_ext(trg, trg, LYEXT_PAR_MODULE, child, LYEXT_SUBSTMT_ORGANIZATION, 0, unres)) {
+                goto error;
+            }
             trg->org = read_yin_subnode(ctx, child, "text");
             lyxml_free(ctx, child);
             if (!trg->org) {
@@ -6123,6 +6199,9 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
         } else if (!strcmp(child->name, "contact")) {
             if (trg->contact) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
+                goto error;
+            }
+            if (read_yin_subnode_ext(trg, trg, LYEXT_PAR_MODULE, child, LYEXT_SUBSTMT_CONTACT, 0, unres)) {
                 goto error;
             }
             trg->contact = read_yin_subnode(ctx, child, "text");
@@ -6161,6 +6240,9 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 }
             }
 
+            if (read_yin_subnode_ext(trg, trg, LYEXT_PAR_MODULE, child, LYEXT_SUBSTMT_VERSION, 0, unres)) {
+                goto error;
+            }
             lyxml_free(ctx, child);
 
         } else if (!strcmp(child->name, "extension")) {
@@ -6264,11 +6346,16 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
         }
     }
     if (c_extinst) {
-        trg->ext = calloc(c_extinst, sizeof *trg->ext);
-        if (!trg->ext) {
+        /* some extensions may be already present from the substatements */
+        reallocated = realloc(trg->ext, (c_extinst + trg->ext_size) * sizeof *trg->ext);
+        if (!reallocated) {
             LOGMEM;
             goto error;
         }
+        trg->ext = reallocated;
+
+        /* init memory */
+        memset(&trg->ext[trg->ext_size], 0, c_extinst * sizeof *trg->ext);
     }
 
     /* middle part - process nodes with cardinality of 0..n except the data nodes and augments */
@@ -6281,7 +6368,7 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             }
 
         } else if (!strcmp(child->name, "include")) {
-            r = fill_yin_include(module, submodule, child, &trg->inc[trg->inc_size], unres);
+            r = fill_yin_include(trg, submodule, child, &trg->inc[trg->inc_size], unres);
             trg->inc_size++;
             if (r) {
                 goto error;
@@ -6301,10 +6388,23 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 }
             }
 
-            LY_TREE_FOR(child->child, child2) {
-                if (!strcmp(child2->name, "description")) {
+            LY_TREE_FOR_SAFE(child->child, next2, child2) {
+                if (!child2->ns) {
+                    /* garbage */
+                    continue;
+                } else if (strcmp(child2->ns->value, LY_NSYIN)) {
+                    /* possible extension instance */
+                    if (read_yin_subnode_ext(trg, &trg->rev[trg->rev_size], LYEXT_PAR_REVISION,
+                                             child2, LYEXT_SUBSTMT_SELF, 0, unres)) {
+                        goto error;
+                    }
+                } else if (!strcmp(child2->name, "description")) {
                     if (trg->rev[trg->rev_size].dsc) {
                         LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child2->name, child->name);
+                        goto error;
+                    }
+                    if (read_yin_subnode_ext(trg, &trg->rev[trg->rev_size], LYEXT_PAR_REVISION,
+                                             child2, LYEXT_SUBSTMT_DESCRIPTION, 0, unres)) {
                         goto error;
                     }
                     trg->rev[trg->rev_size].dsc = read_yin_subnode(ctx, child2, "text");
@@ -6316,6 +6416,10 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                         LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child2->name, child->name);
                         goto error;
                     }
+                    if (read_yin_subnode_ext(trg, &trg->rev[trg->rev_size], LYEXT_PAR_REVISION,
+                                             child2, LYEXT_SUBSTMT_REFERENCE, 0, unres)) {
+                        goto error;
+                    }
                     trg->rev[trg->rev_size].ref = read_yin_subnode(ctx, child2, "text");
                     if (!trg->rev[trg->rev_size].ref) {
                         goto error;
@@ -6325,32 +6429,6 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                     goto error;
                 }
             }
-
-            /* keep the latest revision at position 0 */
-            if (trg->rev_size && strcmp(trg->rev[trg->rev_size].date, trg->rev[0].date) > 0) {
-                /* switch their position */
-                value = strdup(trg->rev[0].date);
-                if (!value) {
-                    LOGMEM;
-                    goto error;
-                }
-                memcpy(trg->rev[0].date, trg->rev[trg->rev_size].date, LY_REV_SIZE - 1);
-                memcpy(trg->rev[trg->rev_size].date, value, LY_REV_SIZE - 1);
-                free((char *)value);
-
-                if (!ly_strequal(trg->rev[0].dsc, trg->rev[trg->rev_size].dsc, 1)) {
-                    value = trg->rev[0].dsc;
-                    trg->rev[0].dsc = trg->rev[trg->rev_size].dsc;
-                    trg->rev[trg->rev_size].dsc = value;
-                }
-
-                if (!ly_strequal(trg->rev[0].ref, trg->rev[trg->rev_size].ref, 1)) {
-                    value = trg->rev[0].ref;
-                    trg->rev[0].ref = trg->rev[trg->rev_size].ref;
-                    trg->rev[trg->rev_size].ref = value;
-                }
-            }
-
             trg->rev_size++;
 
         } else if (!strcmp(child->name, "typedef")) {
@@ -6392,7 +6470,7 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
 
     /* process extension instances */
     LY_TREE_FOR_SAFE(exts.child, next, child) {
-        r = lyp_yin_fill_ext(trg, LYEXT_PAR_MODULE, 0, 0, module, child, &trg->ext, trg->ext_size, unres);
+        r = lyp_yin_fill_ext(trg, LYEXT_PAR_MODULE, 0, 0, trg, child, &trg->ext, trg->ext_size, unres);
         trg->ext_size++;
         if (r) {
             goto error;
@@ -6595,6 +6673,8 @@ yin_read_module(struct ly_ctx *ctx, const char *data, const char *revision, int 
     if (unres->count && resolve_unres_schema(module, unres)) {
         goto error;
     }
+
+    lyp_sort_revisions(module);
 
     if (revision) {
         /* check revision of the parsed model */

@@ -1,0 +1,23 @@
+module ext-def {
+  yang-version 1.1;
+  namespace "urn:ext-def";
+  prefix e;
+
+  revision 2016-01-18;
+
+  extension a;
+
+  extension b {
+    argument x;
+  }
+
+  extension c {
+    argument y {
+      yin-element true;
+    }
+  }
+
+  typedef mystring {
+    type string;
+  }
+}

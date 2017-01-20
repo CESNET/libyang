@@ -5,6 +5,7 @@
   <yang-version value="1.1"/>
   <namespace uri="urn:ext-def"/>
   <prefix value="e"/>
+  <revision date="2016-01-18"/>
   <extension name="a"/>
   <extension name="b">
     <argument name="x"/>
@@ -14,4 +15,7 @@
       <yin-element value="true"/>
     </argument>
   </extension>
+  <typedef name="mystring">
+    <type name="string"/>
+  </typedef>
 </module>

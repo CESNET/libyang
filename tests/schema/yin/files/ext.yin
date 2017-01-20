@@ -22,7 +22,7 @@
     </e:c>
     <prefix value="i"/>
   </import>
-  <include module="extinc">
+  <include module="ext-inc">
     <e:a/>
     <e:b x="one"/>
     <e:c>

@@ -4,7 +4,6 @@ module ext {
   prefix e;
 
   import extimp {
-    prefix i;
     e:a;
     e:b "one";
     e:c "one";
@@ -13,9 +12,9 @@ module ext {
       e:b "one";
       e:c "one";
     }
+    prefix i;
   }
-
-  include extinc {
+  include ext-inc {
     e:a;
     e:b "one";
     e:c "one";
@@ -48,6 +47,14 @@ module ext {
       e:c "one";
     }
     argument z;
+  }
+  e:a;
+  e:b "one";
+  e:c "one";
+  e:c "two" {
+    e:a;
+    e:b "one";
+    e:c "one";
   }
 
   feature turbo {
@@ -93,27 +100,6 @@ module ext {
     }
   }
 
-  e:a;
-  e:b "one";
-  e:c "one";
-  e:c "two" {
-    e:a;
-    e:b "one";
-    e:c "one";
-  }
-
-  deviation "/i:l" {
-    e:a;
-    e:b "one";
-    e:c "one";
-    e:c "two" {
-      e:a;
-      e:b "one";
-      e:c "one";
-    }
-    deviate not-supported;
-  }
-
   grouping grp {
     e:a;
     e:b "one";
@@ -138,7 +124,6 @@ module ext {
       e:c "one";
     }
     list l {
-      key "k";
       e:a;
       e:b "one";
       e:c "one";
@@ -147,6 +132,7 @@ module ext {
         e:b "one";
         e:c "one";
       }
+      key "k";
       leaf k {
         type string;
       }
@@ -183,7 +169,6 @@ module ext {
       }
     }
   }
-
   choice ch {
     e:a;
     e:b "one";
@@ -225,7 +210,27 @@ module ext {
       }
     }
   }
-
+  augment "/cont" {
+    e:a;
+    e:b "one";
+    e:c "one";
+    e:c "two" {
+      e:a;
+      e:b "one";
+      e:c "one";
+    }
+    leaf augleaf {
+      e:a;
+      e:b "one";
+      e:c "one";
+      e:c "two" {
+        e:a;
+        e:b "one";
+        e:c "one";
+      }
+      type string;
+    }
+  }
   rpc op {
     e:a;
     e:b "one";
@@ -262,7 +267,6 @@ module ext {
       }
     }
   }
-
   notification ntf {
     e:a;
     e:b "one";
@@ -273,8 +277,7 @@ module ext {
       e:c "one";
     }
   }
-
-  augment "/cont" {
+  deviation "/i:l" {
     e:a;
     e:b "one";
     e:c "one";
@@ -283,16 +286,6 @@ module ext {
       e:b "one";
       e:c "one";
     }
-    leaf augleaf {
-      e:a;
-      e:b "one";
-      e:c "one";
-      e:c "two" {
-        e:a;
-        e:b "one";
-        e:c "one";
-      }
-      type string;
-    }
+    deviate not-supported;
   }
 }

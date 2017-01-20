@@ -1736,10 +1736,10 @@ struct lys_include {
  */
 struct lys_revision {
     char date[LY_REV_SIZE];          /**< revision-date (mandatory) */
+    uint8_t ext_size;                /**< number of elements in #ext array */
+    struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     const char *dsc;                 /**< revision's dsc (optional) */
     const char *ref;                 /**< revision's reference (optional) */
-    struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
-    uint8_t ext_size;                /**< number of elements in #ext array */
 };
 
 /**

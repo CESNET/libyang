@@ -111,6 +111,8 @@ int lyp_check_include_missing(struct lys_module *main_module);
 
 int lyp_check_import(struct lys_module *module, const char *value, struct lys_import *imp);
 
+void lyp_sort_revisions(struct lys_module *module);
+
 /**
  * @brief Propagate imports and includes into the main module
  *
