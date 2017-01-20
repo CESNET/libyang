@@ -1685,7 +1685,8 @@ yang_print_model(struct lyout *out, const struct lys_module *module)
     if (module->type) {
         ly_print(out, "submodule %s {%s\n", module->name, (module->deviated == 1 ? " // DEVIATED" : ""));
         level++;
-        if (module->version) {
+        if (lys_main_module(module)->version > 1 ||
+                ly_print_ext_iter(module->ext, module->ext_size, 0, LYEXT_SUBSTMT_VERSION) != -1) {
             yang_print_substmt(out, level, LYEXT_SUBSTMT_VERSION, 0,
                                ((struct lys_submodule *)module)->belongsto->version == 2 ? "1.1" : "1",
                                module, module->ext, module->ext_size);
