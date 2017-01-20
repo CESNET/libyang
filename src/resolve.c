@@ -6503,7 +6503,7 @@ unres_schema_add_str(struct lys_module *mod, struct unres_schema *unres, void *i
     dictstr = lydict_insert(mod->ctx, str, 0);
     rc = unres_schema_add_node(mod, unres, item, type, (struct lys_node *)dictstr);
 
-    if (rc == -1) {
+    if (rc < 0) {
         lydict_remove(mod->ctx, dictstr);
     }
     return rc;
@@ -6518,7 +6518,8 @@ unres_schema_add_str(struct lys_module *mod, struct unres_schema *unres, void *i
  * @param[in] type Type of the unresolved item. UNRES_TYPE_DER is handled specially!
  * @param[in] snode Schema node argument.
  *
- * @return EXIT_SUCCESS on success, EXIT_FIALURE on storing the item in unres, -1 on error.
+ * @return EXIT_SUCCESS on success, EXIT_FIALURE on storing the item in unres, -1 on error, -2 if the unres item
+ * is already in the unres list.
  */
 int
 unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
@@ -6536,7 +6537,7 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
         if (unres->type[u] == type && unres->item[u] == item &&
                 unres->str_snode[u] == snode && unres->module[u] == mod) {
             /* duplication, will be resolved later */
-            return EXIT_FAILURE;
+            return -2;
         }
     }
 
