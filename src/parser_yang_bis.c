@@ -2994,13 +2994,7 @@ yyreduce:
   YY_REDUCE_PRINT (yyn);
   switch (yyn)
     {
-        case 3:
-
-    {}
-
-    break;
-
-  case 4:
+        case 4:
 
     { if (read_string) {
                       if (yyget_text(scanner)[0] == '"') {

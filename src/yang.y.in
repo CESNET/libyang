@@ -267,7 +267,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, ...);
 /* to simplify code, store the module/submodule being processed as trg */
 
 start: module_stmt
- |  submodule_stmt {}
+ |  submodule_stmt
 
 tmp_string: STRING { if (read_string) {
                       if (yyget_text(scanner)[0] == '"') {
