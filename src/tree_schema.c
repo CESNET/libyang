@@ -1169,12 +1169,15 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
             } else {
                 /* there can be several unresolved base identities, duplicate them all */
                 i = -1;
-                while ((i = unres_schema_find(unres, i, old, UNRES_TYPE_IDENTREF)) != -1) {
-                    if (unres_schema_add_str(mod, unres, new, UNRES_TYPE_IDENTREF, unres->str_snode[i]) == -1) {
-                        return -1;
+                do {
+                    i = unres_schema_find(unres, i, old, UNRES_TYPE_IDENTREF);
+                    if (i != -1) {
+                        if (unres_schema_add_str(mod, unres, new, UNRES_TYPE_IDENTREF, unres->str_snode[i]) == -1) {
+                            return -1;
+                        }
                     }
                     --i;
-                }
+                } while (i > -1);
             }
             break;
 
