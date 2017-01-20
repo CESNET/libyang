@@ -4469,8 +4469,7 @@ success:
 }
 
 static int
-resolve_extension(struct unres_ext *info, const struct lys_module *mod, struct lys_ext_instance **ext,
-                  struct unres_schema *unres)
+resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct unres_schema *unres)
 {
     enum LY_VLOG_ELEM vlog_type;
     void *vlog_node;
@@ -4479,6 +4478,7 @@ resolve_extension(struct unres_ext *info, const struct lys_module *mod, struct l
     struct lys_ext *e;
     const char *value;
     struct lyxml_elem *next_yin, *yin;
+    const struct lys_module *mod;
 
     switch (info->parent_type) {
     case LYEXT_PAR_NODE:
@@ -4499,7 +4499,7 @@ resolve_extension(struct unres_ext *info, const struct lys_module *mod, struct l
 
     if (info->datatype == LYS_IN_YIN) {
         /* get the module where the extension is supposed to be defined */
-        mod = lys_get_import_module_ns(mod, info->data.yin->ns->value);
+        mod = lys_get_import_module_ns(info->mod, info->data.yin->ns->value);
         if (!mod) {
             LOGVAL(LYE_INSTMT, vlog_type, vlog_node, info->data.yin->name);
             return EXIT_FAILURE;
@@ -6457,7 +6457,7 @@ featurecheckdone:
     case UNRES_EXT:
         ext_data = (struct unres_ext *)str_snode;
         extlist = &(*(struct lys_ext_instance ***)item)[ext_data->ext_index];
-        rc = resolve_extension(ext_data, mod, extlist, unres);
+        rc = resolve_extension(ext_data, extlist, unres);
         if (!rc) {
             if (ext_data->datatype == LYS_IN_YIN) {
                 /* YIN */

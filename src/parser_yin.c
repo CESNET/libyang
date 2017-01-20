@@ -87,6 +87,7 @@ lyp_yin_fill_ext(void *parent, LYEXT_PAR parent_type, LYEXT_SUBSTMT substmt, uin
     info->data.yin = yin;
     info->datatype = LYS_IN_YIN;
     info->parent = parent;
+    info->mod = module;
     info->parent_type = parent_type;
     info->substmt = substmt;
     info->substmt_index = substmt_index;

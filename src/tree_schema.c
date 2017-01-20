@@ -1374,6 +1374,7 @@ lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, uint8_t size
                 info->data.yin = lyxml_dup_elem(mod->ctx, info_orig->data.yin, NULL, 1);
             } /* else TODO YANG */
             info->parent = parent;
+            info->mod = mod;
             info->parent_type = parent_type;
             info->ext_index = u;
             if (unres_schema_add_node(mod, unres, new, UNRES_EXT, (struct lys_node *)info) == -1) {

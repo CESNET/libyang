@@ -67,6 +67,7 @@ struct unres_ext {
 
     /* data for lys_ext_instance structure */
     void *parent;
+    struct lys_module *mod;
     LYEXT_PAR parent_type;
     LYEXT_SUBSTMT substmt;
     uint8_t substmt_index;
