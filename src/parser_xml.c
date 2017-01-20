@@ -237,7 +237,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
             /* out of order insertion - insert list's key to the correct position, before the diter */
             if (options & LYD_OPT_STRICT) {
                 LOGVAL(LYE_INORDER, LY_VLOG_LYD, *result, schema->name, diter->schema->name);
-                LOGVAL(LYE_SPEC, LY_VLOG_LYD, *result, "Invalid position of the key \"%s\" in a list \"%s\".",
+                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Invalid position of the key \"%s\" in a list \"%s\".",
                        schema->name, parent->schema->name);
                 free(*result);
                 *result = NULL;
@@ -399,7 +399,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     } else if (schema->nodetype & (LYS_RPC | LYS_ACTION)) {
         if (!(options & LYD_OPT_RPC) || *act_notif) {
             LOGVAL(LYE_INELEM, LY_VLOG_LYD, (*result), schema->name);
-            LOGVAL(LYE_SPEC, LY_VLOG_LYD, (*result), "Unexpected %s node \"%s\".",
+            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Unexpected %s node \"%s\".",
                    (schema->nodetype == LYS_RPC ? "rpc" : "action"), schema->name);
             goto error;
         }
@@ -407,7 +407,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     } else if (schema->nodetype == LYS_NOTIF) {
         if (!(options & LYD_OPT_NOTIF) || *act_notif) {
             LOGVAL(LYE_INELEM, LY_VLOG_LYD, (*result), schema->name);
-            LOGVAL(LYE_SPEC, LY_VLOG_LYD, (*result), "Unexpected notification node \"%s\".", schema->name);
+            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Unexpected notification node \"%s\".", schema->name);
             goto error;
         }
         *act_notif = *result;
@@ -428,7 +428,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                     !ly_strequal((*result)->schema->module->name, "ietf-netconf", 0)) {
                 if (options & LYD_OPT_STRICT) {
                     LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), attr->name, xml->name);
-                    LOGVAL(LYE_SPEC, LY_VLOG_LYD, (*result), "Attribute \"%s\" with no namespace (schema).",
+                    LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Attribute \"%s\" with no namespace (schema).",
                            attr->name);
                     goto error;
                 } else {
@@ -470,7 +470,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
             free(dattr);
             if (options & LYD_OPT_STRICT) {
                 LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), attr->name, xml->name);
-                LOGVAL(LYE_SPEC, LY_VLOG_LYD, (*result), "Attribute \"%s\" from unknown schema (\"%s\").",
+                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Attribute \"%s\" from unknown schema (\"%s\").",
                        attr->name, attr->ns->value);
                 goto error;
             } else {

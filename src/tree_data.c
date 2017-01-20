@@ -4157,7 +4157,7 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
             if (iter->parent && (iter->schema->nodetype & (LYS_ACTION | LYS_NOTIF))) {
                 if (!(options & LYD_OPT_ACT_NOTIF) || act_notif) {
                     LOGVAL(LYE_INELEM, LY_VLOG_LYD, iter, iter->schema->name);
-                    LOGVAL(LYE_SPEC, LY_VLOG_LYD, iter, "Unexpected %s node \"%s\".",
+                    LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Unexpected %s node \"%s\".",
                            (options & LYD_OPT_RPC ? "action" : "notification"), iter->schema->name);
                     goto cleanup;
                 }

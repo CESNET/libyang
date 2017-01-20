@@ -654,7 +654,7 @@ validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, int64_t fnum, u
 
         LOGVAL(LYE_NOCONSTR, LY_VLOG_LYD, node, (val_str ? val_str : ""), restr ? restr->expr : "");
         if (restr && restr->emsg) {
-            LOGVAL(LYE_SPEC, LY_VLOG_LYD, node, restr->emsg);
+            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, restr->emsg);
         }
         if (restr && restr->eapptag) {
             strncpy(((struct ly_err *)&ly_errno)->apptag, restr->eapptag, LY_APPTAG_LEN - 1);
@@ -691,7 +691,7 @@ validate_pattern(const char *val_str, struct lys_type *type, struct lyd_node *no
         if ((rc && type->info.str.patterns[i].expr[0] == 0x06) || (!rc && type->info.str.patterns[i].expr[0] == 0x15)) {
             LOGVAL(LYE_NOCONSTR, LY_VLOG_LYD, node, val_str, &type->info.str.patterns[i].expr[1]);
             if (type->info.str.patterns[i].emsg) {
-                LOGVAL(LYE_SPEC, LY_VLOG_LYD, node, type->info.str.patterns[i].emsg);
+                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, type->info.str.patterns[i].emsg);
             }
             if (type->info.str.patterns[i].eapptag) {
                 strncpy(((struct ly_err *)&ly_errno)->apptag, type->info.str.patterns[i].eapptag, LY_APPTAG_LEN - 1);
@@ -1170,7 +1170,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         if (unum & 3) {
             /* base64 length must be multiple of 4 chars */
             LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, value, leaf->schema->name);
-            LOGVAL(LYE_SPEC, LY_VLOG_LYD, leaf, "Base64 encoded value length must be divisible by 4.");
+            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Base64 encoded value length must be divisible by 4.");
             goto cleanup;
         }
         len = (unum / 4) * 3;
@@ -1240,7 +1240,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                     for (j = 0; j < type->info.bits.bit[i].iffeature_size; j++) {
                         if (!resolve_iffeature(&type->info.bits.bit[i].iffeature[i])) {
                             LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, value, leaf->schema->name);
-                            LOGVAL(LYE_SPEC, LY_VLOG_LYD, leaf,
+                            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL,
                                    "Bit \"%s\" is disabled by its if-feature condition.", type->info.bits.bit[i].name);
 
                             free(bits);
@@ -1250,7 +1250,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                     /* check that the value was not already set */
                     if (bits[i]) {
                         LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, value, leaf->schema->name);
-                        LOGVAL(LYE_SPEC, LY_VLOG_LYD, leaf, "Bit \"%s\" used multiple times.",
+                        LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Bit \"%s\" used multiple times.",
                                type->info.bits.bit[i].name);
                         free(bits);
                         goto cleanup;
@@ -1352,7 +1352,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                 for (j = 0; j < type->info.enums.enm[i].iffeature_size; j++) {
                     if (!resolve_iffeature(&type->info.enums.enm[i].iffeature[i])) {
                         LOGVAL(LYE_INVAL, LY_VLOG_LYD, leaf, value, leaf->schema->name);
-                        LOGVAL(LYE_SPEC, LY_VLOG_LYD, leaf, "Enum \"%s\" is disabled by its if-feature condition.",
+                        LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Enum \"%s\" is disabled by its if-feature condition.",
                                value);
                         goto cleanup;
                     }
@@ -1796,10 +1796,11 @@ dup_identities_check(const char *id, struct lys_module *module)
 
     /* check identity in submodules */
     mainmod = lys_main_module(module);
-    for (i = 0; i < mainmod->inc_size && mainmod->inc[i].submodule; ++i)
-    if (dup_identity_check(id, mainmod->inc[i].submodule->ident, mainmod->inc[i].submodule->ident_size)) {
-        LOGVAL(LYE_DUPID, LY_VLOG_NONE, NULL, "identity", id);
-        return EXIT_FAILURE;
+    for (i = 0; i < mainmod->inc_size && mainmod->inc[i].submodule; ++i) {
+        if (dup_identity_check(id, mainmod->inc[i].submodule->ident, mainmod->inc[i].submodule->ident_size)) {
+            LOGVAL(LYE_DUPID, LY_VLOG_NONE, NULL, "identity", id);
+            return EXIT_FAILURE;
+        }
     }
 
     return EXIT_SUCCESS;
@@ -2199,7 +2200,7 @@ lyp_check_circmod(struct lys_module *module, const char *value, int type)
     struct ly_modules_list *models = &module->ctx->models;
     int i;
 
-    /* circular import check */
+    /* circular check */
     if (!models->parsing_size) {
         if (ly_strequal(module->name, value, 1)) {
             LOGVAL(code, LY_VLOG_NONE, NULL, value);
@@ -2238,53 +2239,91 @@ lyp_check_circmod(struct lys_module *module, const char *value, int type)
     return 0;
 }
 
-/* returns:
- *  0 - inc successfully filled
- * -1 - error, inc is cleaned
- *  1 - duplication, ignore the inc structure, inc is cleaned
+/*
+ * -1 - error - invalid duplicities)
+ *  0 - success, no duplicity
+ *  1 - success, valid duplicity found and stored in *sub
  */
 int
-lyp_check_include(struct lys_module *module, struct lys_submodule *submodule, const char *value,
-                  struct lys_include *inc, struct unres_schema *unres)
+lyp_check_include_dup(struct lys_module *mod, const char *name, struct lys_include *inc, int top, struct lys_submodule **sub)
 {
-    int i, j;
+    uint8_t i;
+    int rc;
 
-    /* check that the submodule was not included yet (previous submodule could have included it) */
-    for (i = 0; i < module->inc_size; ++i) {
-        if (!module->inc[i].submodule) {
-            /* skip the not yet filled records */
-            continue;
-        }
-        if (ly_strequal(module->inc[i].submodule->name, value, 1)) {
+    assert(sub);
+
+    for (i = 0; i < mod->inc_size; i++) {
+        if (ly_strequal(mod->inc[i].submodule->name, name, 1)) {
             /* check revisions, including multiple revisions of a single module is error */
-            if (inc->rev[0] && (!module->inc[i].submodule->rev_size || strcmp(module->inc[i].submodule->rev[0].date, inc->rev))) {
+            if (inc->rev[0] && (!mod->inc[i].submodule->rev_size || strcmp(mod->inc[i].submodule->rev[0].date, inc->rev))) {
                 /* the already included submodule has
                  * - no revision, but here we require some
                  * - different revision than the one required here */
-                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "include");
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Including multiple revisions of submodule \"%s\".", value);
+                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, name, "include");
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Including multiple revisions of submodule \"%s\".", name);
                 return -1;
+            } else if (top) {
+                /* the same module is already included in the same module - error */
+                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, name, "include");
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Submodule \"%s\" included twice in the same module \"%s\".",
+                       name, mod->name);
+                return -1;
+            } else {
+                /* the same module is already included in some other submodule, return it */
+                (*sub) = mod->inc[i].submodule;
+                return 1;
             }
-            /* we want to load module, which is already included in the main module */
-            if (!submodule && !module->inc[i].external) {
-                /* it was already included by the main module */
-                LOGWRN("Duplicated include of the \"%s\" submodule in the \"%s\" module.", value, module->name);
-            } else if (submodule && module->inc[i].external) {
-                for (j = 0; j < submodule->inc_size && submodule->inc[j].submodule; j++) {
-                    if (ly_strequal(submodule->inc[j].submodule->name, value, 1)) {
-                        LOGWRN("Duplicated include of the \"%s\" submodule in the \"%s\" submodule.", value, submodule->name);
-                        break;
-                    }
-                }
-            }
+        }
 
-            if (!submodule) {
-                /* the included submodule is no longer external */
-                module->inc[i].external = 0;
-            }
-            return 1;
+        /* go recursively */
+        rc = lyp_check_include_dup((struct lys_module *)mod->inc[i].submodule, name, inc, 0, sub);
+        if (rc) {
+            /* error or found valid duplicity, do not continue with searching */
+            return rc;
         }
     }
+
+    /* not duplicity found */
+    return 0;
+}
+
+/* returns:
+ *  0 - inc successfully filled
+ * -1 - error
+ */
+int
+lyp_check_include(struct lys_module *module, const char *value,
+                  struct lys_include *inc, struct unres_schema *unres)
+{
+    int i;
+
+    /* check that the submodule was not included yet */
+    if (module->type) {
+        /* 1) in the same submodule and the submodules it already includes */
+        i = lyp_check_include_dup(module, value, inc, 1, &inc->submodule);
+        if (i == -1) {
+            return -1;
+        } else if (i == 1) {
+            return 0;
+        }
+
+        /* 2) in the main module and all the submodules it already includes */
+        i = lyp_check_include_dup(((struct lys_submodule *)module)->belongsto, value, inc, 0, &inc->submodule);
+        if (i == -1) {
+            return -1;
+        } else if (i == 1) {
+            return 0;
+        }
+    } else {
+        /* 3) in the main module itself and all the submodules it already includes */
+        i = lyp_check_include_dup(module, value, inc, 1, &inc->submodule);
+        if (i == -1) {
+            return -1;
+        } else if (i == 1) {
+            return 0;
+        }
+    }
+    /* sobmodule is not yet loaded */
 
     /* circular include check */
     if (lyp_check_circmod(module, value, 0)) {
@@ -2292,20 +2331,8 @@ lyp_check_include(struct lys_module *module, struct lys_submodule *submodule, co
     }
 
     /* try to load the submodule */
-    inc->submodule = (struct lys_submodule *)ly_ctx_get_submodule2(module, value);
-    if (inc->submodule) {
-        if (inc->rev[0]) {
-            if (!inc->submodule->rev_size || !ly_strequal(inc->rev, inc->submodule->rev[0].date, 1)) {
-                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, inc->rev[0], "revision");
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Multiple revisions of the same submodule included.");
-                lyp_check_circmod_pop(module);
-                goto error;
-            }
-        }
-    } else {
-        inc->submodule = (struct lys_submodule *)ly_ctx_load_sub_module(module->ctx, module, value,
-                                                                        inc->rev[0] ? inc->rev : NULL, 1, unres);
-    }
+    inc->submodule = (struct lys_submodule *)ly_ctx_load_sub_module(module->ctx, module, value,
+                                                                    inc->rev[0] ? inc->rev : NULL, 1, unres);
 
     /* update the list of currently being parsed modules */
     lyp_check_circmod_pop(module);
@@ -2316,19 +2343,87 @@ lyp_check_include(struct lys_module *module, struct lys_submodule *submodule, co
             LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "include");
         }
         LOGERR(LY_EVALID, "Including \"%s\" module into \"%s\" failed.", value, module->name);
-        goto error;
-    }
-
-    /* propagate submodule's includes and imports into the main module */
-    if (submodule && lyp_propagate_submodule(module, inc)) {
-        goto error;
+        return -1;
     }
 
     return 0;
+}
 
-error:
+static int
+lyp_check_include_missing_recursive(struct lys_module *main_module, struct lys_submodule *sub)
+{
+    uint8_t i, j;
+    void *reallocated;
 
-    return -1;
+    for (i = 0; i < sub->inc_size; i++) {
+        /* check that the include is also present in the main module */
+        for (j = 0; j < main_module->inc_size; j++) {
+            if (main_module->inc[j].submodule == sub->inc[i].submodule) {
+                break;
+            }
+        }
+
+        if (j == main_module->inc_size) {
+            /* match not found */
+            if (main_module->version >= 2) {
+                LOGVAL(LYE_MISSSTMT, LY_VLOG_NONE, NULL, "include");
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
+                       "The main module \"%s\" misses include of the \"%s\" submodule used in another submodule \"%s\".",
+                       main_module->name, sub->inc[i].submodule->name, sub->name);
+                /* now we should return error, but due to the issues with freeing the module, we actually have
+                 * to go through the all includes and, as in case of 1.0, add them into the main module and fail
+                 * at the end when all the includes are in the main module and we can free them */
+            } else {
+                /* not strictly an error in YANG 1.0 */
+                LOGWRN("The main module \"%s\" misses include of the \"%s\" submodule used in another submodule \"%s\".",
+                       main_module->name, sub->inc[i].submodule->name, sub->name);
+                LOGWRN("To avoid further issues, adding submodule \"%s\" into the main module \"%s\".",
+                       sub->inc[i].submodule->name, main_module->name);
+                /* but since it is a good practise and because we expect all the includes in the main module
+                 * when searching it and also when freeing the module, put it into it */
+            }
+            main_module->inc_size++;
+            reallocated = realloc(main_module->inc, main_module->inc_size * sizeof *main_module->inc);
+            if (!reallocated) {
+                LOGMEM;
+                return EXIT_FAILURE;
+            }
+            main_module->inc = reallocated;
+            memset(&main_module->inc[main_module->inc_size - 1], 0, sizeof *main_module->inc);
+            /* to avoid unexpected consequences, copy just a link to the submodule and the revision,
+             * all other substatements of the include are ignored */
+            memcpy(&main_module->inc[main_module->inc_size - 1].rev, sub->inc[i].rev, LY_REV_SIZE - 1);
+            main_module->inc[main_module->inc_size - 1].submodule = sub->inc[i].submodule;
+        }
+
+        /* recursion */
+        lyp_check_include_missing_recursive(main_module, sub->inc[i].submodule);
+    }
+
+    return EXIT_SUCCESS;
+}
+
+int
+lyp_check_include_missing(struct lys_module *main_module)
+{
+    uint8_t i;
+
+    ly_err_clean(1);
+
+    /* in YANG 1.1, all the submodules must be in the main module, check it even for
+     * 1.0 where it will be printed as warning and the include will be added into the main module */
+
+    for (i = 0; i < main_module->inc_size; i++) {
+        lyp_check_include_missing_recursive(main_module, main_module->inc[i].submodule);
+    }
+
+    if (ly_errno) {
+        /* see comment in lyp_check_include_missing_recursive() */
+        return EXIT_FAILURE;
+    } else {
+        /* everything ok */
+        return EXIT_SUCCESS;
+    }
 }
 
 /* returns:
@@ -2404,33 +2499,6 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
     }
 
     return 0;
-}
-
-/* Propagate includes into the main module */
-int
-lyp_propagate_submodule(struct lys_module *module, struct lys_include *inc)
-{
-    uint8_t i;
-    size_t size;
-    struct lys_include *aux_inc;
-
-    /* propagate the included submodule into the main module */
-    for (i = 0; (void*)module->inc[i].submodule != (void*)0x1; i++); /* get array size by searching for stop block */
-    size = (i + 1) * sizeof *module->inc;
-    aux_inc = realloc(module->inc, size + sizeof(void*));
-    if (!aux_inc) {
-        LOGMEM;
-        return EXIT_FAILURE;
-    }
-    module->inc = aux_inc;
-    memset(&module->inc[module->inc_size + 1], 0, (i - module->inc_size) * sizeof *module->inc);
-    module->inc[i + 1].submodule = (void*)0x1; /* set stop block */
-
-    memcpy(&module->inc[module->inc_size], inc, sizeof *module->inc);
-    module->inc[module->inc_size].external = 1;
-    module->inc_size++;
-
-    return EXIT_SUCCESS;
 }
 
 int

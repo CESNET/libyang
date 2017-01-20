@@ -1739,10 +1739,6 @@ yin_print_model(struct lyout *out, const struct lys_module *module)
         yin_print_close(out, level, NULL, "import", 1);
     }
     for (i = 0; i < module->inc_size; i++) {
-        if (module->inc[i].external) {
-            continue;
-        }
-
         if (module->inc[i].rev[0] || module->inc[i].dsc || module->inc[i].ref || module->inc[i].ext_size) {
             yin_print_open(out, level, NULL, "include", "module", module->inc[i].submodule->name, 1);
             level++;

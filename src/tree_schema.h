@@ -1725,11 +1725,10 @@ struct lys_import {
 struct lys_include {
     struct lys_submodule *submodule; /**< link to the included submodule (mandatory) */
     char rev[LY_REV_SIZE];           /**< revision-date of the included submodule (optional) */
-    uint8_t external;                /**< flag for include records from submodules */
     uint8_t ext_size;                /**< number of elements in #ext array */
+    struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     const char *dsc;                 /**< description (optional) */
     const char *ref;                 /**< reference (optional) */
-    struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
 };
 
 /**

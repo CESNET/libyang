@@ -2531,7 +2531,7 @@ yang_fill_include(struct lys_module *module, struct lys_submodule *submodule, ch
 
     str = lydict_insert_zc(module->ctx, value);
     trg = (submodule) ? (struct lys_module *)submodule : module;
-    rc = lyp_check_include(module, submodule, str, inc, unres);
+    rc = lyp_check_include(trg, str, inc, unres);
     if (!rc) {
         /* success, copy the filled data into the final array */
         memcpy(&trg->inc[trg->inc_size], inc, sizeof *inc);
@@ -2610,7 +2610,7 @@ store_flags(struct lys_node *node, uint8_t flags, int config_opt)
 
             if (!elem && (node->flags & LYS_CONFIG_W) && node->parent && (node->parent->flags & LYS_CONFIG_R)) {
                 LOGVAL(LYE_INARG, LY_VLOG_LYS, node, "true", "config");
-                LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "State nodes cannot have configuration nodes as children.");
+                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "State nodes cannot have configuration nodes as children.");
                 return EXIT_FAILURE;
             }
         }
@@ -2699,6 +2699,11 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
                    module->name, module->rev[0].date, revision);
             goto error;
         }
+    }
+
+    /* check correctness of includes */
+    if (lyp_check_include_missing(module)) {
+        goto error;
     }
 
     if (lyp_ctx_add_module(&module)) {
@@ -2809,7 +2814,7 @@ read_indent(const char *input, int indent, int size, int in_index, int *out_inde
 }
 
 char *
-yang_read_string(const char *input, char *output, int size, int offset, int indent, int version) {
+yang_read_string(const char *input, char *output, int size, int offset, int indent) {
     int i = 0, out_index = offset, space = 0;
 
     while (i < size) {
@@ -2842,13 +2847,9 @@ yang_read_string(const char *input, char *output, int size, int offset, int inde
                 output[out_index] = '"';
                 ++i;
             } else {
-                if (version < 2) {
-                    output[out_index] = input[i];
-                } else {
-                    /* YANG 1.1 backslash must not be followed by any other character */
-                    LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, input);
-                    return NULL;
-                }
+                /* backslash must not be followed by any other character */
+                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, input);
+                return NULL;
             }
             break;
         default:

@@ -1731,9 +1731,6 @@ yang_print_model(struct lyout *out, const struct lys_module *module)
         ly_print(out, "%*s}\n", LEVEL, INDENT);
     }
     for (i = 0; i < module->inc_size; i++) {
-        if (module->inc[i].external) {
-            continue;
-        }
         if (module->inc[i].rev[0] || module->inc[i].dsc || module->inc[i].ref || module->inc[i].ext_size) {
             ly_print(out, "\n%*sinclude %s {\n", LEVEL, INDENT, module->inc[i].submodule->name);
             level++;

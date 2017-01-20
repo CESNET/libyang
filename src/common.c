@@ -38,7 +38,7 @@ uint8_t ly_vlog_hide_def;
 static pthread_once_t ly_err_once = PTHREAD_ONCE_INIT;
 static pthread_key_t ly_err_key;
 #ifdef __linux__
-struct ly_err ly_err_main = {LY_SUCCESS, LYVE_SUCCESS, 0, 0, 0, 0, NULL, NULL + 1, {0}, {0}, {0}, {0}};
+struct ly_err ly_err_main = {LY_SUCCESS, LYVE_SUCCESS, 0, 0, 0, NULL, {0}, {0}, {0}, {0}};
 #endif
 
 static void
@@ -97,7 +97,6 @@ ly_err_location(void)
         {
 #endif /* __linux__ */
             e = calloc(1, sizeof *e);
-            e->path_obj = NULL + 1; /* hack - invalid address as an initial value */
         }
         pthread_setspecific(ly_err_key, e);
     }
@@ -577,7 +576,7 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
             if (!ns) {
                 if (log) {
                     LOGVAL(LYE_XML_INVAL, LY_VLOG_XML, xml, "namespace prefix");
-                    LOGVAL(LYE_SPEC, LY_VLOG_XML, xml,
+                    LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL,
                         "XML namespace with prefix \"%.*s\" not defined.", pref_len, cur_expr);
                 }
                 goto error;
@@ -593,7 +592,7 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
             if (!mod) {
                 if (log) {
                     LOGVAL(LYE_XML_INVAL, LY_VLOG_XML, xml, "module namespace");
-                    LOGVAL(LYE_SPEC, LY_VLOG_XML, xml,
+                    LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL,
                         "Module with the namespace \"%s\" could not be found.", ns->value);
                 }
                 goto error;
@@ -636,7 +635,7 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
             if (!ns) {
                 if (log) {
                     LOGVAL(LYE_XML_INVAL, LY_VLOG_XML, xml, "namespace prefix");
-                    LOGVAL(LYE_SPEC, LY_VLOG_XML, xml,
+                    LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL,
                         "XML namespace with prefix \"%.*s\" not defined.", pref_len, cur_expr);
                 }
                 goto error;

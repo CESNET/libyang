@@ -1044,7 +1044,7 @@ attr_repeat:
         if (schema->nodetype & (LYS_RPC | LYS_ACTION)) {
             if (!(options & LYD_OPT_RPC) || *act_notif) {
                 LOGVAL(LYE_INELEM, LY_VLOG_LYD, result, schema->name);
-                LOGVAL(LYE_SPEC, LY_VLOG_LYD, result, "Unexpected %s node \"%s\".",
+                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Unexpected %s node \"%s\".",
                        (schema->nodetype == LYS_RPC ? "rpc" : "action"), schema->name);
                 goto error;
             }
@@ -1052,7 +1052,7 @@ attr_repeat:
         } else if (schema->nodetype == LYS_NOTIF) {
             if (!(options & LYD_OPT_NOTIF) || *act_notif) {
                 LOGVAL(LYE_INELEM, LY_VLOG_LYD, result, schema->name);
-                LOGVAL(LYE_SPEC, LY_VLOG_LYD, result, "Unexpected notification node \"%s\".", schema->name);
+                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Unexpected notification node \"%s\".", schema->name);
                 goto error;
             }
             *act_notif = result;
