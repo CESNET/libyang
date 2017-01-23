@@ -305,16 +305,17 @@ fill_yin_identity(struct lys_module *module, struct lyxml_elem *yin, struct lys_
     const char *value;
     int rc;
     int c_ftrs = 0, c_base = 0, c_ext = 0;
+    void *reallocated;
 
     GETVAL(value, yin, "name");
     ident->name = value;
 
     if (read_yin_common(module, NULL, ident, LYEXT_PAR_IDENT, yin, OPT_IDENT | OPT_MODULE, unres)) {
-        return EXIT_FAILURE;
+        goto error;
     }
 
     if (dup_identities_check(ident->name, module)) {
-        return EXIT_FAILURE;
+        goto error;
     }
 
     LY_TREE_FOR(yin->child, node) {
@@ -324,7 +325,10 @@ fill_yin_identity(struct lys_module *module, struct lyxml_elem *yin, struct lys_
         } else if (!strcmp(node->name, "base")) {
             if (c_base && (module->version < 2)) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "base", "identity");
-                return EXIT_FAILURE;
+                goto error;
+            }
+            if (read_yin_subnode_ext(module, ident, LYEXT_PAR_IDENT, node, LYEXT_SUBSTMT_BASE, c_base, unres)) {
+                goto error;
             }
             c_base++;
 
@@ -333,7 +337,7 @@ fill_yin_identity(struct lys_module *module, struct lyxml_elem *yin, struct lys_
 
         } else {
             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, node->name, "identity");
-            return EXIT_FAILURE;
+            goto error;
         }
     }
 
@@ -342,22 +346,27 @@ fill_yin_identity(struct lys_module *module, struct lyxml_elem *yin, struct lys_
         ident->base = calloc(c_base, sizeof *ident->base);
         if (!ident->base) {
             LOGMEM;
-            return EXIT_FAILURE;
+            goto error;
         }
     }
     if (c_ftrs) {
         ident->iffeature = calloc(c_ftrs, sizeof *ident->iffeature);
         if (!ident->iffeature) {
             LOGMEM;
-            return EXIT_FAILURE;
+            goto error;
         }
     }
     if (c_ext) {
-        ident->ext = calloc(c_ext, sizeof *ident->ext);
-        if (!ident->ext) {
+        /* some extensions may be already present from the substatements */
+        reallocated = realloc(ident->ext, (c_ext + ident->ext_size) * sizeof *ident->ext);
+        if (!reallocated) {
             LOGMEM;
-            return EXIT_FAILURE;
+            goto error;
         }
+        ident->ext = reallocated;
+
+        /* init memory */
+        memset(&ident->ext[ident->ext_size], 0, c_ext * sizeof *ident->ext);
     }
 
     LY_TREE_FOR_SAFE(yin->child, next, node) {
@@ -372,19 +381,19 @@ fill_yin_identity(struct lys_module *module, struct lyxml_elem *yin, struct lys_
             GETVAL(value, node, "name");
             value = transform_schema2json(module, value);
             if (!value) {
-                return EXIT_FAILURE;
+                goto error;
             }
 
             if (unres_schema_add_str(module, unres, ident, UNRES_IDENT, value) == -1) {
                 lydict_remove(module->ctx, value);
-                return EXIT_FAILURE;
+                goto error;
             }
             lydict_remove(module->ctx, value);
         } else if (!strcmp(node->name, "if-feature")) {
             rc = fill_yin_iffeature((struct lys_node *)ident, 0, node, &ident->iffeature[ident->iffeature_size], unres);
             ident->iffeature_size++;
             if (rc) {
-                return EXIT_FAILURE;
+                goto error;
             }
         }
     }
@@ -1106,8 +1115,11 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             }
             rc = unres_schema_add_str(module, unres, type, UNRES_TYPE_IDENTREF, value);
             lydict_remove(module->ctx, value);
-
             if (rc == -1) {
+                goto error;
+            }
+
+            if (read_yin_subnode_ext(module, type, LYEXT_PAR_TYPE, node, LYEXT_SUBSTMT_BASE, 0, unres)) {
                 goto error;
             }
         }
