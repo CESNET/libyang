@@ -6783,6 +6783,7 @@ check_instid_ext_dep(const struct lys_node *sleaf, const char *json_instid)
     set = lys_find_xpath(sleaf, buf, 0);
     if (!set || !set->number) {
         free(buf);
+        ly_set_free(set);
         return 1;
     }
     free(buf);
