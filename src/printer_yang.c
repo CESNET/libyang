@@ -745,7 +745,7 @@ yang_print_refine(struct lyout *out, int level, const struct lys_module *module,
                 s = NULL;
             }
             yang_print_open(out, &flag);
-            yang_print_substmt(out, level, LYEXT_SUBSTMT_MIN, 0, s ? s : "unbounded", module, refine->ext, refine->ext_size);
+            yang_print_substmt(out, level, LYEXT_SUBSTMT_MAX, 0, s ? s : "unbounded", module, refine->ext, refine->ext_size);
             free(s);
         }
     }
