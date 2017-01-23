@@ -3226,16 +3226,24 @@ lys_data_path_reverse(const struct lys_node *node, char * const buf, uint32_t bu
 #endif
 
 API struct ly_set *
-lys_find_xpath(const struct lys_node *node, const char *expr, int options)
+lys_find_xpath(struct ly_ctx *ctx, const struct lys_node *node, const char *expr, int options)
 {
     struct lyxp_set set;
     struct ly_set *ret_set;
     uint32_t i;
     int opts;
 
-    if (!node || !expr) {
+    if ((!ctx && !node) || !expr) {
         ly_errno = LY_EINVAL;
         return NULL;
+    }
+
+    if (!node) {
+        node = ly_ctx_get_node(ctx, NULL, "/ietf-yang-library:modules-state");
+        if (!node) {
+            ly_errno = LY_EINT;
+            return NULL;
+        }
     }
 
     memset(&set, 0, sizeof set);
