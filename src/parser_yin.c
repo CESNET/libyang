@@ -2967,10 +2967,6 @@ fill_yin_refine(struct lys_node *uses, struct lyxml_elem *yin, struct lys_refine
     assert(uses);
     module = uses->module; /* shorthand */
 
-    if (read_yin_common(module, NULL, rfn, LYEXT_PAR_REFINE, yin, OPT_CFG_PARSE | OPT_MODULE, unres)) {
-        goto error;
-    }
-
     GETVAL(value, yin, "target-node");
     rfn->target_name = transform_schema2json(module, value);
     if (!rfn->target_name) {
@@ -2978,11 +2974,60 @@ fill_yin_refine(struct lys_node *uses, struct lyxml_elem *yin, struct lys_refine
     }
 
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
-        if (strcmp(sub->ns->value, LY_NSYIN)) {
+        if (!sub->ns) {
+            /* garbage */
+        } else if (strcmp(sub->ns->value, LY_NSYIN)) {
             /* extension */
             c_ext++;
             continue;
 
+        } else if (!strcmp(sub->name, "description")) {
+            if (rfn->dsc) {
+                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                goto error;
+            }
+
+            if (read_yin_subnode_ext(module, rfn, LYEXT_PAR_REFINE, sub, LYEXT_SUBSTMT_DESCRIPTION, 0, unres)) {
+                goto error;
+            }
+
+            rfn->dsc = read_yin_subnode(module->ctx, sub, "text");
+            if (!rfn->dsc) {
+                goto error;
+            }
+        } else if (!strcmp(sub->name, "reference")) {
+            if (rfn->ref) {
+                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                goto error;
+            }
+
+            if (read_yin_subnode_ext(module, rfn, LYEXT_PAR_REFINE, sub, LYEXT_SUBSTMT_REFERENCE, 0, unres)) {
+                goto error;
+            }
+
+            rfn->ref = read_yin_subnode(module->ctx, sub, "text");
+            if (!rfn->ref) {
+                goto error;
+            }
+        } else if (!strcmp(sub->name, "config")) {
+            if (rfn->flags & LYS_CONFIG_MASK) {
+                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, sub->name, yin->name);
+                goto error;
+            }
+            GETVAL(value, sub, "value");
+            if (!strcmp(value, "false")) {
+                rfn->flags |= LYS_CONFIG_R;
+            } else if (!strcmp(value, "true")) {
+                rfn->flags |= LYS_CONFIG_W;
+            } else {
+                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, sub->name);
+                goto error;
+            }
+            rfn->flags |= LYS_CONFIG_SET;
+
+            if (read_yin_subnode_ext(module, rfn, LYEXT_PAR_REFINE, sub, LYEXT_SUBSTMT_CONFIG, 0, unres)) {
+                goto error;
+            }
         } else if (!strcmp(sub->name, "default")) {
             /* leaf, leaf-list or choice */
 
