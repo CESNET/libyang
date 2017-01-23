@@ -7019,8 +7019,7 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int store,
                 req_inst = t->info.inst.req;
             }
 
-            if (!resolve_instid((struct lyd_node *)leaf, (json_val ? json_val : leaf->value_str),
-                                (ignore_fail ? -1 : t->info.inst.req), &ret)) {
+            if (!resolve_instid((struct lyd_node *)leaf, (json_val ? json_val : leaf->value_str), req_inst, &ret)) {
                 if (store) {
                     if (ret && !ext_dep) {
                         /* valid resolved */
