@@ -911,6 +911,114 @@ test_anydata_sub_yang(void **state)
 }
 
 static void
+test_choice_sub_yin(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    const char *yin = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <choice name=\"ch\">\n"
+                    "    <default value=\"a\">\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "    </default>\n"
+                    "    <config value=\"true\">\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "    </config>\n"
+                    "    <mandatory value=\"false\">\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "    </mandatory>\n"
+                    "    <status value=\"current\">\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "    </status>\n"
+                    "    <description>\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "      <text>desc</text>\n"
+                    "    </description>\n"
+                    "    <reference>\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "      <text>ref</text>\n"
+                    "    </reference>\n"
+                    "    <case name=\"a\">\n"
+                    "      <status value=\"current\">\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "      </status>\n"
+                    "      <description>\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "        <text>desc</text>\n"
+                    "      </description>\n"
+                    "      <reference>\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "        <text>ref</text>\n"
+                    "      </reference>\n"
+                    "      <leaf name=\"c\">\n"
+                    "        <type name=\"int8\"/>\n"
+                    "      </leaf>\n"
+                    "    </case>\n"
+                    "    <leaf name=\"b\">\n"
+                    "      <type name=\"int8\"/>\n"
+                    "    </leaf>\n"
+                    "  </choice>\n</module>\n";
+
+    mod = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
+    assert_ptr_not_equal(mod, NULL);
+
+    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL);
+    assert_ptr_not_equal(st->str1, NULL);
+    assert_string_equal(st->str1, yin);
+}
+
+static void
+test_choice_sub_yang(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    const char *yang = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  choice ch {\n"
+                    "    default \"a\" {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n    config true {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n    mandatory false {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n    status current {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n    description\n      \"desc\" {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n    reference\n      \"ref\" {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n    case a {\n"
+                    "      status current {\n"
+                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "      }\n      description\n        \"desc\" {\n"
+                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "      }\n      reference\n        \"ref\" {\n"
+                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "      }\n      leaf c {\n"
+                    "        type int8;\n"
+                    "      }\n"
+                    "    }\n    leaf b {\n      type int8;\n"
+                    "    }\n  }\n}\n";
+
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL);
+    assert_ptr_not_equal(st->str1, NULL);
+    assert_string_equal(st->str1, yang);
+}
+
+static void
 test_fullset_yang(void **state)
 {
     struct state *st = (*state);
@@ -944,6 +1052,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_leaflist_sub_yin, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_list_sub_yin, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_anydata_sub_yin, setup_ctx_yin, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_choice_sub_yin, setup_ctx_yin, teardown_ctx),
 
 //        cmocka_unit_test_setup_teardown(test_fullset_yang, setup_ctx_yang, teardown_ctx),
 //        cmocka_unit_test_setup_teardown(test_module_sub_yang, setup_ctx_yang, teardown_ctx),
@@ -952,6 +1061,7 @@ main(void)
 //        cmocka_unit_test_setup_teardown(test_leaflist_sub_yang, setup_ctx_yang, teardown_ctx),
 //        cmocka_unit_test_setup_teardown(test_list_sub_yang, setup_ctx_yang, teardown_ctx),
 //        cmocka_unit_test_setup_teardown(test_anydata_sub_yang, setup_ctx_yang, teardown_ctx),
+//        cmocka_unit_test_setup_teardown(test_choice_sub_yang, setup_ctx_yang, teardown_ctx),
     };
 
     return cmocka_run_group_tests(cmut, NULL, NULL);
