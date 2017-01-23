@@ -4981,7 +4981,7 @@ _lyd_path(const struct lyd_node *node, int prefix_all)
 
     /* restore the shared internal buffer */
     if (buf_backup) {
-        strcpy(buf, buf_backup);
+        strncpy(buf, buf_backup, LY_BUF_SIZE - 1);
         free(buf_backup);
     }
     ly_buf_used--;

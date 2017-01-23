@@ -177,8 +177,8 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 
         if (schema) {
             if (!lys_node_module(schema)->implemented && ctx->data_clb) {
-                mod = ctx->data_clb(ctx, lys_node_module(schema)->name, lys_node_module(schema)->ns,
-                                    LY_MODCLB_NOT_IMPLEMENTED, ctx->data_clb_data);
+                ctx->data_clb(ctx, lys_node_module(schema)->name, lys_node_module(schema)->ns,
+                              LY_MODCLB_NOT_IMPLEMENTED, ctx->data_clb_data);
             }
         }
     }

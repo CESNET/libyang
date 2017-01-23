@@ -852,9 +852,9 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
             module = ly_ctx_get_module(ctx, prefix, NULL);
             if (ctx->data_clb) {
                 if (!module) {
-                    module = ctx->data_clb(ctx, prefix, NULL, 0, ctx->data_clb_data);
+                    ctx->data_clb(ctx, prefix, NULL, 0, ctx->data_clb_data);
                 } else if (!module->implemented) {
-                    module = ctx->data_clb(ctx, module->name, module->ns, LY_MODCLB_NOT_IMPLEMENTED, ctx->data_clb_data);
+                    ctx->data_clb(ctx, module->name, module->ns, LY_MODCLB_NOT_IMPLEMENTED, ctx->data_clb_data);
                 }
             }
         }

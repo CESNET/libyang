@@ -6826,7 +6826,7 @@ unres_schema_add_str(struct lys_module *mod, struct unres_schema *unres, void *i
     dictstr = lydict_insert(mod->ctx, str, 0);
     rc = unres_schema_add_node(mod, unres, item, type, (struct lys_node *)dictstr);
 
-    if (rc == -1) {
+    if (rc < 0) {
         lydict_remove(mod->ctx, dictstr);
     }
     return rc;
@@ -6841,7 +6841,8 @@ unres_schema_add_str(struct lys_module *mod, struct unres_schema *unres, void *i
  * @param[in] type Type of the unresolved item. UNRES_TYPE_DER is handled specially!
  * @param[in] snode Schema node argument.
  *
- * @return EXIT_SUCCESS on success, EXIT_FIALURE on storing the item in unres, -1 on error.
+ * @return EXIT_SUCCESS on success, EXIT_FIALURE on storing the item in unres, -1 on error, -2 if the unres item
+ * is already in the unres list.
  */
 int
 unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
@@ -6859,7 +6860,7 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
         if (unres->type[u] == type && unres->item[u] == item &&
                 unres->str_snode[u] == snode && unres->module[u] == mod) {
             /* duplication, will be resolved later */
-            return EXIT_FAILURE;
+            return -2;
         }
     }
 
@@ -7002,7 +7003,7 @@ unres_schema_find(struct unres_schema *unres, int start_on_backwards, void *item
     int i;
     struct unres_list_uniq *aux_uniq1, *aux_uniq2;
 
-    if (start_on_backwards > 0) {
+    if (start_on_backwards >= 0) {
         i = start_on_backwards;
     } else {
         i = unres->count - 1;
@@ -7138,6 +7139,7 @@ check_instid_ext_dep(const struct lys_node *sleaf, const char *json_instid)
     set = lys_find_xpath(sleaf, buf, 0);
     if (!set || !set->number) {
         free(buf);
+        ly_set_free(set);
         return 1;
     }
     free(buf);
@@ -7373,8 +7375,7 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int store,
                 req_inst = t->info.inst.req;
             }
 
-            if (!resolve_instid((struct lyd_node *)leaf, (json_val ? json_val : leaf->value_str),
-                                (ignore_fail ? -1 : t->info.inst.req), &ret)) {
+            if (!resolve_instid((struct lyd_node *)leaf, (json_val ? json_val : leaf->value_str), req_inst, &ret)) {
                 if (store) {
                     if (ret && !ext_dep) {
                         /* valid resolved */
