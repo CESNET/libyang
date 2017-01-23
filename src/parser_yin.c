@@ -154,6 +154,10 @@ read_yin_subnode_ext(struct lys_module *mod, void *elem, LYEXT_PAR elem_type,
         ext_size = &((struct lys_ident *)elem)->ext_size;
         ext = &((struct lys_ident *)elem)->ext;
         break;
+    case LYEXT_PAR_TYPE:
+        ext_size = &((struct lys_type *)elem)->ext_size;
+        ext = &((struct lys_type *)elem)->ext;
+        break;
     case LYEXT_PAR_TYPE_BIT:
         ext_size = &((struct lys_type_bit *)elem)->ext_size;
         ext = &((struct lys_type_bit *)elem)->ext;
@@ -835,6 +839,11 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 for (i = 1; i < v; i++) {
                     type->info.dec64.div *= 10;
                 }
+
+                /* extensions */
+                if (read_yin_subnode_ext(module, type, LYEXT_PAR_TYPE, node, LYEXT_SUBSTMT_DIGITS, 0, unres)) {
+                    goto error;
+                }
             } else {
                 LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, node->name);
                 goto error;
@@ -1140,6 +1149,11 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                     LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, node->name);
                     goto error;
                 }
+
+                /* extensions */
+                if (read_yin_subnode_ext(module, type, LYEXT_PAR_TYPE, node, LYEXT_SUBSTMT_REQINST, 0, unres)) {
+                    goto error;
+                }
             } else {
                 LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, node->name);
                 goto error;
@@ -1240,6 +1254,11 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 if (!tpdftype && unres_schema_add_node(module, unres, type, UNRES_TYPE_LEAFREF, parent) == -1) {
                     goto error;
                 }
+
+                /* extensions */
+                if (read_yin_subnode_ext(module, type, LYEXT_PAR_TYPE, node, LYEXT_SUBSTMT_PATH, 0, unres)) {
+                    goto error;
+                }
             } else if (module->version >= 2 && !strcmp(node->name, "require-instance")) {
                 if (type->info.lref.req) {
                     LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, node->name, yin->name);
@@ -1252,6 +1271,11 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                     type->info.lref.req = -1;
                 } else {
                     LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, node->name);
+                    goto error;
+                }
+
+                /* extensions */
+                if (read_yin_subnode_ext(module, type, LYEXT_PAR_TYPE, node, LYEXT_SUBSTMT_REQINST, 0, unres)) {
                     goto error;
                 }
             } else {
