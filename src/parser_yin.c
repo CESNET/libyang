@@ -670,13 +670,17 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
 
             p_ = -1;
-            LY_TREE_FOR(next->child, node) {
-                if (!node->ns || strcmp(node->ns->value, LY_NSYIN)) {
+            LY_TREE_FOR_SAFE(next->child, next2, node) {
+                if (!node->ns) {
                     /* garbage */
                     continue;
-                }
-
-                if (!strcmp(node->name, "position")) {
+                } else if (strcmp(node->ns->value, LY_NSYIN)) {
+                    /* extension */
+                    if (read_yin_subnode_ext(module, &type->info.bits.bit[i], LYEXT_PAR_TYPE_BIT, node,
+                                             LYEXT_SUBSTMT_SELF, 0, unres)) {
+                        goto error;
+                    }
+                } else if (!strcmp(node->name, "position")) {
                     if (p_ != -1) {
                         LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, node->name, next->name);
                         type->info.bits.count = i + 1;
@@ -713,6 +717,10 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                         }
                     }
 
+                    if (read_yin_subnode_ext(module, &type->info.bits.bit[i], LYEXT_PAR_TYPE_BIT, node,
+                                             LYEXT_SUBSTMT_POSITION, 0, unres)) {
+                        goto error;
+                    }
                 } else if ((module->version >= 2) && !strcmp(node->name, "if-feature")) {
                     c_ftrs++;
                 } else {
@@ -946,13 +954,17 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             }
 
             val_set = 0;
-            LY_TREE_FOR(next->child, node) {
-                if (!node->ns || strcmp(node->ns->value, LY_NSYIN)) {
+            LY_TREE_FOR_SAFE(next->child, next2, node) {
+                if (!node->ns) {
                     /* garbage */
                     continue;
-                }
-
-                if (!strcmp(node->name, "value")) {
+                } else if (strcmp(node->ns->value, LY_NSYIN)) {
+                    /* extensions */
+                    if (read_yin_subnode_ext(module, &type->info.enums.enm[i], LYEXT_PAR_TYPE_ENUM, node,
+                                             LYEXT_SUBSTMT_SELF, 0, unres)) {
+                        goto error;
+                    }
+                } else if (!strcmp(node->name, "value")) {
                     if (val_set) {
                         LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, node->name, next->name);
                         type->info.enums.count = i + 1;
@@ -996,6 +1008,10 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                     }
                     val_set = 1;
 
+                    if (read_yin_subnode_ext(module, &type->info.enums.enm[i], LYEXT_PAR_TYPE_ENUM, node,
+                                             LYEXT_SUBSTMT_VALUE, 0, unres)) {
+                        goto error;
+                    }
                 } else if ((module->version >= 2) && !strcmp(node->name, "if-feature")) {
                     c_ftrs++;
 
