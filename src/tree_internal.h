@@ -207,15 +207,19 @@ struct lys_node *lys_node_dup(struct lys_module *module, struct lys_node *parent
                               struct unres_schema *unres, int shallow);
 
 /**
- * @brief duplicate the list of extension instances. Note that the function creates shadow copies of the extension
- * instances and marks them with LYEXT_OPT_DUP flag.
+ * @brief duplicate the list of extension instances.
  *
- * @param[in] old list of the extension instances to duplicate, the size of the array must correspond with \p size
+ * @param[in] ctx Context where we are
+ * @param[in] orig list of the extension instances to duplicate, the size of the array must correspond with \p size
  * @param[in] size number of items in \p old array to duplicate
+ * @param[in] parent Parent structure of the new extension instances list
+ * @param[in] parent_type Type of the provide \p parent *
  * @param[in,out] new Address where to store the created list of duplicated extension instances
+ * @param[in] unres list of unresolved items
+ *
  */
-void lys_extension_instances_dup(struct lys_ext_instance **old, uint8_t size,
-                                 struct lys_ext_instance ***new);
+int lys_ext_dup(struct ly_ctx *ctx, struct lys_ext_instance **orig, uint8_t size,
+                void *parent, LYEXT_PAR parent_type, struct lys_ext_instance ***new, struct unres_schema *unres);
 /**
  * @brief Switch two same schema nodes. \p src must be a shallow copy
  * of \p dst.

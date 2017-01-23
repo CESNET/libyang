@@ -182,10 +182,7 @@ read_yin_subnode_ext(struct lys_module *mod, void *elem, LYEXT_PAR elem_type,
         ext_size = &((struct lys_refine *)elem)->ext_size;
         ext = &((struct lys_refine *)elem)->ext;
         break;
-    case LYEXT_PAR_MUST:
-    case LYEXT_PAR_PATTERN:
-    case LYEXT_PAR_LENGTH:
-    case LYEXT_PAR_RANGE:
+    case LYEXT_PAR_RESTR:
         ext_size = &((struct lys_restr *)elem)->ext_size;
         ext = &((struct lys_restr *)elem)->ext;
         break;
@@ -827,7 +824,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 type->info.dec64.range->expr = lydict_insert(module->ctx, value, 0);
 
                 /* get possible substatements */
-                if (read_restr_substmt(module, LYEXT_PAR_RANGE, type->info.dec64.range, node, unres)) {
+                if (read_restr_substmt(module, LYEXT_PAR_RESTR, type->info.dec64.range, node, unres)) {
                     goto error;
                 }
             } else if (!strcmp(node->name, "fraction-digits")) {
@@ -1219,8 +1216,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 (*restrs)->expr = lydict_insert(module->ctx, value, 0);
 
                 /* get possible substatements */
-                if (read_restr_substmt(module, type->base == LY_TYPE_BINARY ? LYEXT_PAR_LENGTH : LYEXT_PAR_RANGE,
-                                       *restrs, node, unres)) {
+                if (read_restr_substmt(module, LYEXT_PAR_RESTR, *restrs, node, unres)) {
                     goto error;
                 }
             } else {
@@ -1342,7 +1338,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 type->info.str.length->expr = lydict_insert(module->ctx, value, 0);
 
                 /* get possible sub-statements */
-                if (read_restr_substmt(module, LYEXT_PAR_LENGTH, type->info.str.length, node, unres)) {
+                if (read_restr_substmt(module, LYEXT_PAR_RESTR, type->info.str.length, node, unres)) {
                     goto error;
                 }
                 lyxml_free(module->ctx, node);
@@ -1387,7 +1383,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                                 goto error;
                             }
                             /* get extensions of the modifier */
-                            if (read_yin_subnode_ext(module, restr, LYEXT_PAR_PATTERN, child,
+                            if (read_yin_subnode_ext(module, restr, LYEXT_PAR_RESTR, child,
                                                      LYEXT_SUBSTMT_MODIFIER, 0, unres)) {
                                 return EXIT_FAILURE;
                             }
@@ -1405,7 +1401,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 restr->expr = lydict_insert_zc(module->ctx, buf);
 
                 /* get possible sub-statements */
-                if (read_restr_substmt(module, LYEXT_PAR_PATTERN, restr, node, unres)) {
+                if (read_restr_substmt(module, LYEXT_PAR_RESTR, restr, node, unres)) {
                     free(type->info.str.patterns);
                     type->info.str.patterns = NULL;
                     goto error;
@@ -1784,7 +1780,7 @@ fill_yin_must(struct lys_module *module, struct lyxml_elem *yin, struct lys_rest
         goto error;
     }
 
-    return read_restr_substmt(module, LYEXT_PAR_MUST, must, yin, unres);
+    return read_restr_substmt(module, LYEXT_PAR_RESTR, must, yin, unres);
 
 error:
     return EXIT_FAILURE;
@@ -2966,6 +2962,7 @@ fill_yin_refine(struct lys_node *uses, struct lyxml_elem *yin, struct lys_refine
     int c_must = 0, c_ftrs = 0, c_dflt = 0, c_ext = 0;
     int r;
     unsigned long int val;
+    void *reallocated;
 
     assert(uses);
     module = uses->module; /* shorthand */
@@ -3020,6 +3017,9 @@ fill_yin_refine(struct lys_node *uses, struct lyxml_elem *yin, struct lys_refine
                 }
             }
 
+            if (read_yin_subnode_ext(module, rfn, LYEXT_PAR_REFINE, sub, LYEXT_SUBSTMT_DEFAULT, c_dflt, unres)) {
+                goto error;
+            }
             c_dflt++;
             continue;
         } else if (!strcmp(sub->name, "mandatory")) {
@@ -3052,6 +3052,9 @@ fill_yin_refine(struct lys_node *uses, struct lyxml_elem *yin, struct lys_refine
                 rfn->flags |= LYS_MAND_FALSE;
             } else {
                 LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, sub->name);
+                goto error;
+            }
+            if (read_yin_subnode_ext(module, rfn, LYEXT_PAR_REFINE, sub, LYEXT_SUBSTMT_MANDATORY, 0, unres)) {
                 goto error;
             }
         } else if (!strcmp(sub->name, "min-elements")) {
@@ -3089,6 +3092,10 @@ fill_yin_refine(struct lys_node *uses, struct lyxml_elem *yin, struct lys_refine
             }
             rfn->mod.list.min = (uint32_t) val;
             rfn->flags |= LYS_RFN_MINSET;
+
+            if (read_yin_subnode_ext(module, rfn, LYEXT_PAR_REFINE, sub, LYEXT_SUBSTMT_MIN, 0, unres)) {
+                goto error;
+            }
         } else if (!strcmp(sub->name, "max-elements")) {
             /* list or leaf-list */
             if (f_max) {
@@ -3128,6 +3135,10 @@ fill_yin_refine(struct lys_node *uses, struct lyxml_elem *yin, struct lys_refine
                 rfn->mod.list.max = (uint32_t) val;
             }
             rfn->flags |= LYS_RFN_MAXSET;
+
+            if (read_yin_subnode_ext(module, rfn, LYEXT_PAR_REFINE, sub, LYEXT_SUBSTMT_MAX, 0, unres)) {
+                goto error;
+            }
         } else if (!strcmp(sub->name, "presence")) {
             /* container */
             if (rfn->mod.presence) {
@@ -3149,6 +3160,10 @@ fill_yin_refine(struct lys_node *uses, struct lyxml_elem *yin, struct lys_refine
 
             GETVAL(value, sub, "value");
             rfn->mod.presence = lydict_insert(module->ctx, value, strlen(value));
+
+            if (read_yin_subnode_ext(module, rfn, LYEXT_PAR_REFINE, sub, LYEXT_SUBSTMT_PRESENCE, 0, unres)) {
+                goto error;
+            }
         } else if (!strcmp(sub->name, "must")) {
             /* leafm leaf-list, list, container or anyxml */
             /* check possibility of statements combination */
@@ -3213,11 +3228,16 @@ fill_yin_refine(struct lys_node *uses, struct lyxml_elem *yin, struct lys_refine
         }
     }
     if (c_ext) {
-        rfn->ext = calloc(c_ext, sizeof *rfn->ext);
-        if (!rfn->ext) {
+        /* some extensions may be already present from the substatements */
+        reallocated = realloc(rfn->ext, (c_ext + rfn->ext_size) * sizeof *rfn->ext);
+        if (!reallocated) {
             LOGMEM;
             goto error;
         }
+        rfn->ext = reallocated;
+
+        /* init memory */
+        memset(&rfn->ext[rfn->ext_size], 0, c_ext * sizeof *rfn->ext);
     }
 
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
@@ -5294,6 +5314,7 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
     struct lys_node_grp *grp;
     int r;
     int c_tpdf = 0, c_ext = 0;
+    void *reallocated;
 
     /* init */
     memset(&root, 0, sizeof root);
@@ -5355,11 +5376,16 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
         }
     }
     if (c_ext) {
-        grp->ext = calloc(c_ext, sizeof *grp->ext);
-        if (!grp->ext) {
+        /* some extensions may be already present from the substatements */
+        reallocated = realloc(retval->ext, (c_ext + retval->ext_size) * sizeof *retval->ext);
+        if (!reallocated) {
             LOGMEM;
             goto error;
         }
+        retval->ext = reallocated;
+
+        /* init memory */
+        memset(&retval->ext[retval->ext_size], 0, c_ext * sizeof *retval->ext);
     }
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (strcmp(sub->ns->value, LY_NSYIN)) {
@@ -5943,6 +5969,7 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     const char *value;
     int c_ref = 0, c_aug = 0, c_ftrs = 0, c_ext = 0;
     int r;
+    void *reallocated;
 
     uses = calloc(1, sizeof *uses);
     if (!uses) {
@@ -6020,11 +6047,16 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
     }
     if (c_ext) {
-        uses->ext = calloc(c_ext, sizeof *uses->ext);
-        if (!uses->ext) {
+        /* some extensions may be already present from the substatements */
+        reallocated = realloc(retval->ext, (c_ext + retval->ext_size) * sizeof *retval->ext);
+        if (!reallocated) {
             LOGMEM;
             goto error;
         }
+        retval->ext = reallocated;
+
+        /* init memory */
+        memset(&retval->ext[retval->ext_size], 0, c_ext * sizeof *retval->ext);
     }
 
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
