@@ -531,7 +531,7 @@ yin_print_type(struct lyout *out, int level, const struct lys_module *module, co
                                    type->info.bits.bit[i].ext, type->info.bits.bit[i].ext_size,
                                    type->info.bits.bit[i].pos);
             }
-            yin_print_snode_common(out, level, (struct lys_node *)&type->info.bits.bit[i], module, &content2,
+            yin_print_snode_common(out, level + 1, (struct lys_node *)&type->info.bits.bit[i], module, &content2,
                                    SNODE_COMMON_STATUS | SNODE_COMMON_DSC | SNODE_COMMON_REF);
             yin_print_close(out, level, NULL, "bit", content2);
         }
@@ -560,7 +560,7 @@ yin_print_type(struct lyout *out, int level, const struct lys_module *module, co
                                  type->info.enums.enm[i].ext, type->info.enums.enm[i].ext_size,
                                  type->info.enums.enm[i].value);
             }
-            yin_print_snode_common(out, level, (struct lys_node *)&type->info.enums.enm[i], module, &content2,
+            yin_print_snode_common(out, level + 1, (struct lys_node *)&type->info.enums.enm[i], module, &content2,
                                    SNODE_COMMON_STATUS | SNODE_COMMON_DSC | SNODE_COMMON_REF);
             yin_print_close(out, level, NULL, "enum", content2);
         }
