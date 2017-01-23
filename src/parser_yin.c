@@ -3638,6 +3638,7 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     struct lys_node_case *cs;
     struct lys_node *retval, *node = NULL;
     int c_ftrs = 0, c_ext = 0, ret;
+    void *reallocated;
 
     /* init */
     memset(&root, 0, sizeof root);
@@ -3706,12 +3707,18 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
     }
     if (c_ext) {
-        cs->ext = calloc(c_ext, sizeof *cs->ext);
-        if (!cs->ext) {
+        /* some extensions may be already present from the substatements */
+        reallocated = realloc(retval->ext, (c_ext + retval->ext_size) * sizeof *retval->ext);
+        if (!reallocated) {
             LOGMEM;
             goto error;
         }
+        retval->ext = reallocated;
+
+        /* init memory */
+        memset(&retval->ext[retval->ext_size], 0, c_ext * sizeof *retval->ext);
     }
+
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (strcmp(sub->ns->value, LY_NSYIN)) {
             /* extension */
@@ -3784,6 +3791,7 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
     struct lys_node_choice *choice;
     const char *value;
     int f_mand = 0, c_ftrs = 0, c_ext = 0, ret;
+    void *reallocated;
 
     choice = calloc(1, sizeof *choice);
     if (!choice) {
@@ -3846,9 +3854,13 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
                 LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, retval, sub->name, yin->name);
                 goto error;
             }
+
+            if (read_yin_subnode_ext(module, retval, LYEXT_PAR_NODE, sub, LYEXT_SUBSTMT_DEFAULT, 0, unres)) {
+                goto error;
+            }
+
             dflt = sub;
             lyxml_unlink_elem(ctx, dflt, 0);
-
             continue;
             /* skip lyxml_free() at the end of the loop, the sub node is processed later as dflt */
 
@@ -3871,6 +3883,10 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
                 LOGVAL(LYE_INARG, LY_VLOG_LYS, retval, value, sub->name);
                 goto error;
             }                   /* else false is the default value, so we can ignore it */
+
+            if (read_yin_subnode_ext(module, retval, LYEXT_PAR_NODE, sub, LYEXT_SUBSTMT_MANDATORY, 0, unres)) {
+                goto error;
+            }
         } else if (!strcmp(sub->name, "when")) {
             if (choice->when) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, retval, sub->name, yin->name);
@@ -3907,11 +3923,16 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
         }
     }
     if (c_ext) {
-        choice->ext = calloc(c_ext, sizeof *choice->ext);
-        if (!choice->ext) {
+        /* some extensions may be already present from the substatements */
+        reallocated = realloc(retval->ext, (c_ext + retval->ext_size) * sizeof *retval->ext);
+        if (!reallocated) {
             LOGMEM;
             goto error;
         }
+        retval->ext = reallocated;
+
+        /* init memory */
+        memset(&retval->ext[retval->ext_size], 0, c_ext * sizeof *retval->ext);
     }
 
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
