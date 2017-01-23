@@ -4785,22 +4785,22 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
                 llist = (struct lys_node_leaflist *)node;
 
                 /* remove complete set of defaults in target */
-                for (i = 0; i < llist->dflt_size; i++) {
-                    lydict_remove(ctx, llist->dflt[i]);
+                for (j = 0; j < llist->dflt_size; j++) {
+                    lydict_remove(ctx, llist->dflt[j]);
                 }
                 free(llist->dflt);
 
                 /* copy the default set from refine */
                 llist->dflt_size = rfn->dflt_size;
                 llist->dflt = malloc(llist->dflt_size * sizeof *llist->dflt);
-                for (i = 0; i < llist->dflt_size; i++) {
-                    llist->dflt[i] = lydict_insert(ctx, rfn->dflt[i], 0);
+                for (j = 0; j < llist->dflt_size; j++) {
+                    llist->dflt[j] = lydict_insert(ctx, rfn->dflt[j], 0);
                 }
 
                 /* check default value */
-                for (i = 0; i < llist->dflt_size; i++) {
+                for (j = 0; j < llist->dflt_size; j++) {
                     if (unres_schema_add_node(llist->module, unres, &llist->type, UNRES_TYPE_DFLT,
-                                              (struct lys_node *)(&llist->dflt[i])) == -1) {
+                                              (struct lys_node *)(&llist->dflt[j])) == -1) {
                         goto fail;
                     }
                 }
