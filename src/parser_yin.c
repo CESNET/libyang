@@ -2820,6 +2820,7 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
     struct lyxml_elem *sub, *next;
     struct lys_node *node;
     int ret, c_ftrs = 0, c_ext = 0;
+    void *reallocated;
 
     aug->nodetype = LYS_AUGMENT;
     GETVAL(value, yin, "target-node");
@@ -2838,9 +2839,7 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
             /* extension */
             c_ext++;
             continue;
-        }
-
-        if (!strcmp(sub->name, "if-feature")) {
+        } else if (!strcmp(sub->name, "if-feature")) {
             c_ftrs++;
             continue;
         } else if (!strcmp(sub->name, "when")) {
@@ -2901,11 +2900,16 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
         }
     }
     if (c_ext) {
-        aug->ext = calloc(c_ext, sizeof *aug->ext);
-        if (!aug->ext) {
+        /* some extensions may be already present from the substatements */
+        reallocated = realloc(aug->ext, (c_ext + aug->ext_size) * sizeof *aug->ext);
+        if (!reallocated) {
             LOGMEM;
             goto error;
         }
+        aug->ext = reallocated;
+
+        /* init memory */
+        memset(&aug->ext[aug->ext_size], 0, c_ext * sizeof *aug->ext);
     }
 
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
