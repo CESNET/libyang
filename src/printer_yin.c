@@ -960,11 +960,11 @@ yin_print_identity(struct lyout *out, int level, const struct lys_ident *ident)
         yin_print_close_parent(out, &content);
         mod = lys_main_module(ident->base[i]->module);
         if (lys_main_module(ident->module) == mod) {
-            yin_print_substmt(out, level, LYEXT_SUBSTMT_BASE, 0, ident->base[i]->name,
+            yin_print_substmt(out, level, LYEXT_SUBSTMT_BASE, i, ident->base[i]->name,
                               ident->module, ident->ext, ident->ext_size);
         } else {
             asprintf(&str, "%s:%s", transform_module_name2import_prefix(ident->module, mod->name), ident->base[i]->name);
-            yin_print_substmt(out, level, LYEXT_SUBSTMT_BASE, 0, str,
+            yin_print_substmt(out, level, LYEXT_SUBSTMT_BASE, i, str,
                               ident->module, ident->ext, ident->ext_size);
             free(str);
         }
