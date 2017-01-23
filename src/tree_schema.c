@@ -3253,8 +3253,14 @@ lys_find_xpath(struct ly_ctx *ctx, const struct lys_node *node, const char *expr
         opts |= LYXP_SNODE_OUTPUT;
     }
 
-    /* node and nodetype won't matter at all since it is absolute */
     if (lyxp_atomize(expr, node, LYXP_NODE_ELEM, &set, opts)) {
+        /* just find a relevant node to put in path, if it fails, use the original one */
+        for (i = 0; i < set.used; ++i) {
+            if (set.val.snodes[i].in_ctx == 1) {
+                node = set.val.snodes[i].snode;
+                break;
+            }
+        }
         free(set.val.snodes);
         LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "Resolving XPath expression \"%s\" failed.", expr);
         return NULL;
