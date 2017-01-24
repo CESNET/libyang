@@ -381,9 +381,10 @@ yang_print_extension(struct lyout *out, int level, const struct lys_ext *ext)
             yang_print_open(out, &flag2);
             yang_print_extension_instances(out, level + 1, ext->module, LYEXT_SUBSTMT_ARGUMENT, 0, &ext->ext[i], 1);
         }
-        if (ext->flags & LYS_YINELEM) {
+        if ((ext->flags & LYS_YINELEM) || ly_print_ext_iter(ext->ext, ext->ext_size, 0, LYEXT_SUBSTMT_YINELEM) != -1) {
             yang_print_open(out, &flag2);
-            yang_print_substmt(out, level + 1, LYEXT_SUBSTMT_YINELEM, 0, "true", ext->module, ext->ext, ext->ext_size);
+            yang_print_substmt(out, level + 1, LYEXT_SUBSTMT_YINELEM, 0,
+                               (ext->flags & LYS_YINELEM) ? "true" : "false", ext->module, ext->ext, ext->ext_size);
         }
         yang_print_close(out, level, flag2);
     }
