@@ -1523,6 +1523,7 @@ fill_yin_typedef(struct lys_module *module, struct lys_node *parent, struct lyxm
     const char *value;
     struct lyxml_elem *node, *next;
     int rc, has_type = 0, c_ext = 0;
+    void *reallocated;
 
     GETVAL(value, yin, "name");
     if (lyp_check_identifier(value, LY_IDENT_TYPE, module, parent)) {
@@ -1562,6 +1563,10 @@ fill_yin_typedef(struct lys_module *module, struct lys_node *parent, struct lyxm
             }
             GETVAL(value, node, "value");
             tpdf->dflt = lydict_insert(module->ctx, value, strlen(value));
+
+            if (read_yin_subnode_ext(module, tpdf, LYEXT_PAR_TPDF, node, LYEXT_SUBSTMT_DEFAULT, 0, unres)) {
+                goto error;
+            }
         } else if (!strcmp(node->name, "units")) {
             if (tpdf->units) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, node->name, yin->name);
@@ -1569,6 +1574,10 @@ fill_yin_typedef(struct lys_module *module, struct lys_node *parent, struct lyxm
             }
             GETVAL(value, node, "name");
             tpdf->units = lydict_insert(module->ctx, value, strlen(value));
+
+            if (read_yin_subnode_ext(module, tpdf, LYEXT_PAR_TPDF, node, LYEXT_SUBSTMT_UNITS, 0, unres)) {
+                goto error;
+            }
         } else {
             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, value);
             goto error;
@@ -1591,11 +1600,17 @@ fill_yin_typedef(struct lys_module *module, struct lys_node *parent, struct lyxm
 
     /* finish extensions parsing */
     if (c_ext) {
-        tpdf->ext = calloc(c_ext, sizeof *tpdf->ext);
-        if (!tpdf->ext) {
+        /* some extensions may be already present from the substatements */
+        reallocated = realloc(tpdf->ext, (c_ext + tpdf->ext_size) * sizeof *tpdf->ext);
+        if (!reallocated) {
             LOGMEM;
             goto error;
         }
+        tpdf->ext = reallocated;
+
+        /* init memory */
+        memset(&tpdf->ext[tpdf->ext_size], 0, c_ext * sizeof *tpdf->ext);
+
         LY_TREE_FOR_SAFE(yin->child, next, node) {
             rc = lyp_yin_fill_ext(tpdf, LYEXT_PAR_TYPE, 0, 0, module, node, &tpdf->ext, tpdf->ext_size, unres);
             tpdf->ext_size++;
