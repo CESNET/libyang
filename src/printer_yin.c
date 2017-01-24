@@ -768,8 +768,12 @@ yin_print_deviation(struct lyout *out, int level, const struct lys_module *modul
     for (i = 0; i < deviation->deviate_size; ++i) {
         ly_print(out, "%*s<deviate value=", LEVEL, INDENT);
         if (deviation->deviate[i].mod == LY_DEVIATE_NO) {
-            ly_print(out, "\"not-supported\"/>\n");
-            continue;
+            if (deviation->deviate[i].ext_size) {
+                ly_print(out, "\"not-supported\">\n");
+            } else {
+                ly_print(out, "\"not-supported\"/>\n");
+                continue;
+            }
         } else if (deviation->deviate[i].mod == LY_DEVIATE_ADD) {
             ly_print(out, "\"add\">\n");
         } else if (deviation->deviate[i].mod == LY_DEVIATE_RPL) {
@@ -781,7 +785,7 @@ yin_print_deviation(struct lyout *out, int level, const struct lys_module *modul
 
         /* extensions */
         if (deviation->deviate[i].ext_size) {
-            yin_print_extension_instances(out, level + 1, module, LYEXT_SUBSTMT_SELF, 0,
+            yin_print_extension_instances(out, level, module, LYEXT_SUBSTMT_SELF, 0,
                                           deviation->deviate[i].ext, deviation->deviate[i].ext_size);
         }
 
