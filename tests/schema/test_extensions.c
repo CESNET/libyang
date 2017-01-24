@@ -1595,7 +1595,25 @@ test_rpc_sub_yang(void **state)
                     "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
                     "        leaf out {\n"
                     "          type int8;\n"
-                    "        }\n      }\n    }\n  }\n}\n";
+                    "        }\n      }\n    }\n  }\n"
+                    "  rpc r {\n"
+                    "    e:a;\n    e:b \"one\";\n    e:c \"one\";\n"
+                    "    status current {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n    description\n      \"desc\" {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n    reference\n      \"ref\" {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n    input {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "      leaf in {\n"
+                    "        type int8;\n"
+                    "      }\n    }\n\n"
+                    "    output {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "      leaf out {\n"
+                    "        type int8;\n"
+                    "      }\n    }\n  }\n}\n";
 
     mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
     assert_ptr_not_equal(mod, NULL);
