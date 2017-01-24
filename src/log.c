@@ -353,7 +353,19 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
             elem = ((struct lyxml_elem *)elem)->parent;
             break;
         case LY_VLOG_LYS:
-            name = ((struct lys_node *)elem)->name;
+            if (((struct lys_node *)elem)->nodetype == LYS_AUGMENT) {
+                --(*index);
+                path[*index] = ']';
+
+                name = ((struct lys_node *)elem)->name;
+                len = strlen(name);
+                (*index) -= len;
+                memcpy(&path[*index], name, len);
+
+                name = "[";
+            } else {
+                name = ((struct lys_node *)elem)->name;
+            }
             if (prefix_all || !(sparent = lys_parent((struct lys_node *)elem)) ||
                     lys_node_module((struct lys_node *)elem) != lys_node_module(sparent)) {
                 prefix = lys_node_module((struct lys_node *)elem)->name;
@@ -416,8 +428,7 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
                     }
                 } else {
                     /* schema list without keys - use instance position */
-                    --(*index);
-                    path[*index] = ']';
+                    path[--(*index)] = ']';
 
                     i = j = lyd_list_pos(dlist);
                     len = 1;
@@ -476,8 +487,8 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
             return;
         }
         len = strlen(name);
-        (*index) = (*index) - len;
-        memcpy(&path[(*index)], name, len);
+        (*index) -= len;
+        memcpy(&path[*index], name, len);
         if (prefix) {
             path[--(*index)] = ':';
             len = strlen(prefix);
