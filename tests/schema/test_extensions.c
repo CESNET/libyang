@@ -99,29 +99,6 @@ teardown_ctx(void **state)
 }
 
 static void
-test_fullset_yin(void **state)
-{
-    struct state *st = (*state);
-    const struct lys_module *mod;
-    struct stat s;
-
-    mod = lys_parse_path(st->ctx, SCHEMA_FOLDER_YIN"/ext.yin", LYS_IN_YIN);
-    assert_ptr_not_equal(mod, NULL);
-
-    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL);
-    assert_ptr_not_equal(st->str1, NULL);
-
-    st->fd = open(SCHEMA_FOLDER_YIN"/ext.yin", O_RDONLY);
-    fstat(st->fd, &s);
-    st->str2 = malloc(s.st_size + 1);
-    assert_ptr_not_equal(st->str2, NULL);
-    assert_int_equal(read(st->fd, st->str2, s.st_size), s.st_size);
-    st->str2[s.st_size] = '\0';
-
-    assert_string_equal(st->str1, st->str2);
-}
-
-static void
 test_module_sub_yin(void **state)
 {
     struct state *st = (*state);
@@ -254,6 +231,7 @@ test_container_sub_yin(void **state)
                     "  <prefix value=\"x\"/>\n"
                     "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
                     "  <container name=\"c\">\n"
+                    "    <e:a/>\n    <e:b x=\"one\"/>\n    <e:c>\n      <e:y>one</e:y>\n    </e:c>\n"
                     "    <presence value=\"test\">\n"
                     "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
                     "    </presence>\n"
@@ -289,7 +267,9 @@ test_container_sub_yang(void **state)
     const char *yang = "module ext {\n"
                     "  namespace \"urn:ext\";\n  prefix x;\n\n"
                     "  import ext-def {\n    prefix e;\n  }\n\n"
-                    "  container c {\n    presence \"test\" {\n"
+                    "  container c {\n"
+                    "    e:a;\n    e:b \"one\";\n    e:c \"one\";\n"
+                    "    presence \"test\" {\n"
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
                     "    }\n    config false {\n"
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
@@ -402,6 +382,7 @@ test_leaf_sub_yin(void **state)
                     "      <text>ref</text>\n"
                     "    </reference>\n"
                     "  </leaf>\n  <leaf name=\"d\">\n"
+                    "    <e:a/>\n    <e:b x=\"one\"/>\n    <e:c>\n      <e:y>one</e:y>\n    </e:c>\n"
                     "    <type name=\"length\"/>\n"
                     "    <default value=\"1\">\n"
                     "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
@@ -480,6 +461,7 @@ test_leaf_sub_yang(void **state)
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
                     "    }\n  }\n"
                     "  leaf d {\n"
+                    "    e:a;\n    e:b \"one\";\n    e:c \"one\";\n"
                     "    type int8;\n      default 1 {\n"
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
                     "    }\n  }\n}\n";
@@ -597,6 +579,7 @@ test_leaflist_sub_yin(void **state)
                     "    </reference>\n"
                     "  </leaf-list>\n"
                     "  <leaf-list name=\"l2\">\n"
+                    "    <e:a/>\n    <e:b x=\"one\"/>\n    <e:c>\n      <e:y>one</e:y>\n    </e:c>\n"
                     "    <type name=\"int8\">\n"
                     "      <range value=\"1..10\">\n"
                     "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
@@ -698,6 +681,7 @@ test_leaflist_sub_yang(void **state)
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
                     "    }\n  }\n\n"
                     "  leaf-list l2 {\n"
+                    "    e:a;\n    e:b \"one\";\n    e:c \"one\";\n"
                     "    type int8 {\n      range \"1..10\" {\n"
                     "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
                     "        error-message\n          \"emsg\" {\n"
@@ -737,6 +721,7 @@ test_list_sub_yin(void **state)
                     "  <prefix value=\"x\"/>\n"
                     "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
                     "  <list name=\"l\">\n"
+                    "    <e:a/>\n    <e:b x=\"one\"/>\n    <e:c>\n      <e:y>one</e:y>\n    </e:c>\n"
                     "    <key value=\"id\">\n"
                     "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
                     "    </key>\n"
@@ -814,6 +799,7 @@ test_list_sub_yang(void **state)
                     "  prefix x;\n\n"
                     "  import ext-def {\n    prefix e;\n  }\n\n"
                     "  list l {\n"
+                    "    e:a;\n    e:b \"one\";\n    e:c \"one\";\n"
                     "    key \"id\" {\n"
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
                     "    }\n    unique \"val1f\";\n    unique \"val2\" {\n"
@@ -877,6 +863,7 @@ test_anydata_sub_yin(void **state)
                     "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
                     "  <feature name=\"f\"/>\n"
                     "  <anyxml name=\"a\">\n"
+                    "    <e:a/>\n    <e:b x=\"one\"/>\n    <e:c>\n      <e:y>one</e:y>\n    </e:c>\n"
                     "    <when condition=\"true()\">\n"
                     "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
                     "      <description>\n"
@@ -944,6 +931,7 @@ test_anydata_sub_yang(void **state)
                     "  import ext-def {\n    prefix e;\n  }\n\n"
                     "  feature f;\n\n"
                     "  anyxml l {\n"
+                    "    e:a;\n    e:b \"one\";\n    e:c \"one\";\n"
                     "    when \"true()\" {\n"
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
                     "      description\n        \"desc\" {\n"
@@ -999,6 +987,7 @@ test_choice_sub_yin(void **state)
                     "  <prefix value=\"x\"/>\n"
                     "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
                     "  <choice name=\"ch\">\n"
+                    "    <e:a/>\n    <e:b x=\"one\"/>\n    <e:c>\n      <e:y>one</e:y>\n    </e:c>\n"
                     "    <default value=\"a\">\n"
                     "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
                     "    </default>\n"
@@ -1020,6 +1009,7 @@ test_choice_sub_yin(void **state)
                     "      <text>ref</text>\n"
                     "    </reference>\n"
                     "    <case name=\"a\">\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
                     "      <status value=\"current\">\n"
                     "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
                     "      </status>\n"
@@ -1097,6 +1087,7 @@ test_choice_sub_yang(void **state)
                     "  prefix x;\n\n"
                     "  import ext-def {\n    prefix e;\n  }\n\n"
                     "  choice ch {\n"
+                    "    e:a;\n    e:b \"one\";\n    e:c \"one\";\n"
                     "    default \"a\" {\n"
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
                     "    }\n    config true {\n"
@@ -1110,6 +1101,7 @@ test_choice_sub_yang(void **state)
                     "    }\n    reference\n      \"ref\" {\n"
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
                     "    }\n    case a {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
                     "      status current {\n"
                     "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
                     "      }\n      description\n        \"desc\" {\n"
@@ -1279,6 +1271,7 @@ test_uses_sub_yin(void **state)
                     "      </default>\n"
                     "    </refine>\n"
                     "    <augment target-node=\"c\">\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
                     "      <status value=\"current\">\n"
                     "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
                     "      </status>\n"
@@ -1724,34 +1717,10 @@ test_notif_sub_yang(void **state)
     assert_string_equal(st->str1, yang);
 }
 
-static void
-test_fullset_yang(void **state)
-{
-    struct state *st = (*state);
-    const struct lys_module *mod;
-    struct stat s;
-
-    mod = lys_parse_path(st->ctx, SCHEMA_FOLDER_YANG"/ext.yang", LYS_IN_YANG);
-    assert_ptr_not_equal(mod, NULL);
-
-    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL);
-    assert_ptr_not_equal(st->str1, NULL);
-
-    st->fd = open(SCHEMA_FOLDER_YANG"/ext.yang", O_RDONLY);
-    fstat(st->fd, &s);
-    st->str2 = malloc(s.st_size + 1);
-    assert_ptr_not_equal(st->str2, NULL);
-    assert_int_equal(read(st->fd, st->str2, s.st_size), s.st_size);
-    st->str2[s.st_size] = '\0';
-
-    assert_string_equal(st->str1, st->str2);
-}
-
 int
 main(void)
 {
     const struct CMUnitTest cmut[] = {
-        cmocka_unit_test_setup_teardown(test_fullset_yin, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_module_sub_yin, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_container_sub_yin, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_leaf_sub_yin, setup_ctx_yin, teardown_ctx),
@@ -1764,7 +1733,6 @@ main(void)
         cmocka_unit_test_setup_teardown(test_rpc_sub_yin, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_notif_sub_yin, setup_ctx_yin, teardown_ctx),
 
-//        cmocka_unit_test_setup_teardown(test_fullset_yang, setup_ctx_yang, teardown_ctx),
 //        cmocka_unit_test_setup_teardown(test_module_sub_yang, setup_ctx_yang, teardown_ctx),
 //        cmocka_unit_test_setup_teardown(test_container_sub_yang, setup_ctx_yang, teardown_ctx),
 //        cmocka_unit_test_setup_teardown(test_leaf_sub_yang, setup_ctx_yang, teardown_ctx),
