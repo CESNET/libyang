@@ -5709,6 +5709,7 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
     struct lys_node_notif *notif;
     int r;
     int c_tpdf = 0, c_ftrs = 0, c_must = 0, c_ext = 0;
+    void *reallocated;
 
     if (parent && (module->version < 2)) {
         LOGVAL(LYE_INSTMT, LY_VLOG_LYS, parent, "notification");
@@ -5792,11 +5793,16 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
         }
     }
     if (c_ext) {
-        notif->ext = calloc(c_ext, sizeof *notif->ext);
-        if (!notif->ext) {
+        /* some extensions may be already present from the substatements */
+        reallocated = realloc(retval->ext, (c_ext + retval->ext_size) * sizeof *retval->ext);
+        if (!reallocated) {
             LOGMEM;
             goto error;
         }
+        retval->ext = reallocated;
+
+        /* init memory */
+        memset(&retval->ext[retval->ext_size], 0, c_ext * sizeof *retval->ext);
     }
 
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
