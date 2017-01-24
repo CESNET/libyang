@@ -712,7 +712,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
     case LYS_AUGMENT:
         if (!(child->nodetype &
                 (LYS_ANYDATA | LYS_CASE | LYS_CHOICE | LYS_CONTAINER | LYS_LEAF
-                | LYS_LEAFLIST | LYS_LIST | LYS_USES | LYS_ACTION))) {
+                | LYS_LEAFLIST | LYS_LIST | LYS_USES | LYS_ACTION | LYS_NOTIF))) {
             LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, parent, strnodetype(child->nodetype), strnodetype(parent->nodetype));
             return EXIT_FAILURE;
         }

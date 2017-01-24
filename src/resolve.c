@@ -4392,7 +4392,17 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct 
     }
 
     /* check augment target type and then augment nodes type */
-    if (aug_target->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_CASE | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF)) {
+    if (aug_target->nodetype & (LYS_CONTAINER | LYS_LIST)) {
+        LY_TREE_FOR(aug->child, sub) {
+            if (!(sub->nodetype & (LYS_ANYDATA | LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_USES
+                                   | LYS_CHOICE | LYS_ACTION | LYS_NOTIF))) {
+                LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, aug, strnodetype(sub->nodetype), "augment");
+                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Cannot augment \"%s\" with a \"%s\".",
+                       strnodetype(aug_target->nodetype), strnodetype(sub->nodetype));
+                return -1;
+            }
+        }
+    } else if (aug_target->nodetype & (LYS_CASE | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF)) {
         LY_TREE_FOR(aug->child, sub) {
             if (!(sub->nodetype & (LYS_ANYDATA | LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_USES | LYS_CHOICE))) {
                 LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, aug, strnodetype(sub->nodetype), "augment");
