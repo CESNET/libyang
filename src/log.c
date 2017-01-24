@@ -108,10 +108,7 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
         }
     }
 
-    if (hide == 0xff && level == LY_LLERR && (LY_LLWRN <= ly_log_level)) {
-        /* change error to warning */
-        level = LY_LLWRN;
-    } else if (hide || (level > ly_log_level)) {
+    if (hide || (level > ly_log_level)) {
         /* do not print the message */
         goto clean;
     }
@@ -139,7 +136,7 @@ ly_log(LY_LOG_LEVEL level, const char *format, ...)
     va_list ap;
 
     va_start(ap, format);
-    log_vprintf(level, 0, format, NULL, ap);
+    log_vprintf(level, (*ly_vlog_hide_location()), format, NULL, ap);
     va_end(ap);
 }
 

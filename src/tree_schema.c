@@ -3378,7 +3378,7 @@ lys_node_xpath_atomize(const struct lys_node *node, int options)
             goto next_iter;
         }
 
-        if (lyxp_node_atomize(elem, &set)) {
+        if (lyxp_node_atomize(elem, &set, 0)) {
             ly_set_free(ret_set);
             free(set.val.snodes);
             return NULL;
