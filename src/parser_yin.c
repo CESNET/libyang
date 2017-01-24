@@ -5566,10 +5566,7 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
     }
 
     retval = (struct lys_node *)inout;
-
-    if (read_yin_common(module, parent, retval, LYEXT_PAR_NODE, yin, OPT_MODULE, unres)) {
-        goto error;
-    }
+    retval->module = module;
 
     LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
 
@@ -5580,7 +5577,10 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
 
     /* data statements */
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
-        if (strcmp(sub->ns->value, LY_NSYIN)) {
+        if (!sub->ns) {
+            /* garbage */
+            lyxml_free(module->ctx, sub);
+        } else if (strcmp(sub->ns->value, LY_NSYIN)) {
             /* extension */
             c_ext++;
         } else if (!strcmp(sub->name, "container") ||
