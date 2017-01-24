@@ -20,4 +20,41 @@ module ext-def {
   typedef mystring {
     type string;
   }
+
+  leaf l1 {
+    type string;
+  }
+  leaf l2 {
+    type string;
+  }
+  leaf-list ll1 {
+    type uint8;
+  }
+  list lst1 {
+    key "id";
+    leaf id {
+      type string;
+    }
+    leaf val1 {
+      type uint8;
+    }
+    leaf val2 {
+      type uint8;
+      units "meter";
+      default "1";
+    }
+  }
+  list lst2 {
+    key "id";
+    unique "val1";
+    leaf id {
+      type string;
+    }
+    leaf val1 {
+      type uint8;
+    }
+    leaf val2 {
+      type uint8;
+    }
+  }
 }

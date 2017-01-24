@@ -18,4 +18,40 @@
   <typedef name="mystring">
     <type name="string"/>
   </typedef>
+  <leaf name="l1">
+    <type name="string"/>
+  </leaf>
+  <leaf name="l2">
+    <type name="string"/>
+  </leaf>
+  <leaf-list name="ll1">
+    <type name="uint8"/>
+  </leaf-list>
+  <list name="lst1">
+    <key value="id"/>
+    <leaf name="id">
+      <type name="string"/>
+    </leaf>
+    <leaf name="val1">
+      <type name="uint8"/>
+    </leaf>
+    <leaf name="val2">
+      <type name="uint8"/>
+      <units name="meter"/>
+      <default value="1"/>
+    </leaf>
+  </list>
+  <list name="lst2">
+    <key value="id"/>
+    <unique tag="val1"/>
+    <leaf name="id">
+      <type name="string"/>
+    </leaf>
+    <leaf name="val1">
+      <type name="uint8"/>
+    </leaf>
+    <leaf name="val2">
+      <type name="uint8"/>
+    </leaf>
+  </list>
 </module>

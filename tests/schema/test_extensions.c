@@ -1717,6 +1717,167 @@ test_notif_sub_yang(void **state)
     assert_string_equal(st->str1, yang);
 }
 
+static void
+test_deviation_sub_yin(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    const char *yin = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <deviation target-node=\"/e:l1\">\n"
+                    "    <e:a/>\n    <e:b x=\"one\"/>\n    <e:c>\n      <e:y>one</e:y>\n    </e:c>\n"
+                    "    <description>\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "      <text>desc</text>\n"
+                    "    </description>\n"
+                    "    <reference>\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "      <text>ref</text>\n"
+                    "    </reference>\n"
+                    "    <deviate value=\"not-supported\">\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "    </deviate>\n"
+                    "  </deviation>\n"
+                    "  <deviation target-node=\"/e:ll1\">\n"
+                    "    <deviate value=\"add\">\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "      <units name=\"meter\">\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "      </units>\n"
+                    "      <default value=\"1\">\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "      </default>\n"
+                    "      <default value=\"2\">\n"
+                    "        <e:a/>\n"
+                    "      </default>\n"
+                    "      <config value=\"false\">\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "      </config>\n"
+                    "    </deviate>\n"
+                    "  </deviation>\n"
+                    "  <deviation target-node=\"/e:lst1\">\n"
+                    "    <deviate value=\"add\">\n"
+                    "      <unique tag=\"val1\"/>\n      <unique tag=\"val2\">\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "      </unique>\n"
+                    "      <min-elements value=\"1\">\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "      </min-elements>\n"
+                    "      <max-elements value=\"1\">\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "      </max-elements>\n"
+                    "    </deviate>\n"
+                    "  </deviation>\n"
+                    "  <deviation target-node=\"/e:l2\">\n"
+                    "    <deviate value=\"add\">\n"
+                    "      <mandatory value=\"true\">\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "      </mandatory>\n"
+                    "    </deviate>\n"
+                    "  </deviation>\n"
+                    "  <deviation target-node=\"/e:lst1/e:val2\">\n"
+                    "    <deviate value=\"delete\">\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "      <units name=\"meter\">\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "      </units>\n"
+                    "      <default value=\"1\">\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "      </default>\n"
+                    "    </deviate>\n"
+                    "  </deviation>\n"
+                    "  <deviation target-node=\"/e:lst2\">\n"
+                    "    <deviate value=\"delete\">\n"
+                    "      <unique tag=\"val1\">\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "      </unique>\n"
+                    "    </deviate>\n"
+                    "  </deviation>\n"
+                    "</module>\n";
+
+    mod = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
+    assert_ptr_not_equal(mod, NULL);
+
+    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL);
+    assert_ptr_not_equal(st->str1, NULL);
+    assert_string_equal(st->str1, yin);
+}
+
+static void
+test_deviation_sub_yang(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    const char *yang = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  deviation \"/e:l1\" {\n"
+                    "    e:a;\n    e:b \"one\";\n    e:c \"one\";\n"
+                    "    description\n      \"desc\" {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n    reference\n      \"ref\" {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n    deviate not-supported {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    }\n  }\n\n"
+                    "  deviation \"/e:ll1\" {\n"
+                    "    deviate add {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "      units \"meter\" {\n"
+                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "      }\n      default \"1\" {\n"
+                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "      }\n      default \"2\" {\n"
+                    "        e:a;\n"
+                    "      }\n      config false {\n"
+                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "      }\n    }\n  }\n\n"
+                    "  deviation \"/e:lst1\" {\n"
+                    "    deviate add {\n"
+                    "      unique \"val1\";\n"
+                    "      unique \"val2\" {\n"
+                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "      }\n      min-elements 1 {\n"
+                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "      }\n      max-elements 2 {\n"
+                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "      }\n    }\n  }\n\n"
+                    "  deviation \"/e:l2\" {\n"
+                    "    deviate add {\n"
+                    "      mandatory true {\n"
+                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "      }\n    }\n  }\n\n"
+                    "  deviation \"/e:lst1/e:val2\" {\n"
+                    "    deviate delete {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "      units \"meter\" {\n"
+                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "      }\n      default \"1\" {\n"
+                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "      }\n    }\n  }\n\n"
+                    "  deviation \"/e:lst2\" {\n"
+                    "    deviate delete {\n"
+                    "      unique \"val1\" {\n"
+                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "      }\n    }\n  }\n}\n";
+
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL);
+    assert_ptr_not_equal(st->str1, NULL);
+    assert_string_equal(st->str1, yang);
+}
+
 int
 main(void)
 {
@@ -1732,6 +1893,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_extension_sub_yin, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_rpc_sub_yin, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_notif_sub_yin, setup_ctx_yin, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_deviation_sub_yin, setup_ctx_yin, teardown_ctx),
 
 //        cmocka_unit_test_setup_teardown(test_module_sub_yang, setup_ctx_yang, teardown_ctx),
 //        cmocka_unit_test_setup_teardown(test_container_sub_yang, setup_ctx_yang, teardown_ctx),
@@ -1744,6 +1906,7 @@ main(void)
 //        cmocka_unit_test_setup_teardown(test_extension_sub_yang, setup_ctx_yang, teardown_ctx),
 //        cmocka_unit_test_setup_teardown(test_rpc_sub_yang, setup_ctx_yang, teardown_ctx),
 //        cmocka_unit_test_setup_teardown(test_notif_sub_yang, setup_ctx_yang, teardown_ctx),
+//        cmocka_unit_test_setup_teardown(test_deviation_sub_yang, setup_ctx_yang, teardown_ctx),
     };
 
     return cmocka_run_group_tests(cmut, NULL, NULL);
