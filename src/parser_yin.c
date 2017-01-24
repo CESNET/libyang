@@ -5884,6 +5884,7 @@ read_yin_rpc_action(struct lys_module *module, struct lys_node *parent, struct l
     struct lys_node_rpc_action *rpc;
     int r;
     int c_tpdf = 0, c_ftrs = 0, c_input = 0, c_output = 0, c_ext = 0;
+    void *reallocated;
 
     if (!strcmp(yin->name, "action")) {
         if (module->version < 2) {
@@ -5977,11 +5978,16 @@ read_yin_rpc_action(struct lys_module *module, struct lys_node *parent, struct l
         }
     }
     if (c_ext) {
-        rpc->ext = calloc(c_ext, sizeof *rpc->ext);
-        if (!rpc->ext) {
+        /* some extensions may be already present from the substatements */
+        reallocated = realloc(retval->ext, (c_ext + retval->ext_size) * sizeof *retval->ext);
+        if (!reallocated) {
             LOGMEM;
             goto error;
         }
+        retval->ext = reallocated;
+
+        /* init memory */
+        memset(&retval->ext[retval->ext_size], 0, c_ext * sizeof *retval->ext);
     }
 
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
