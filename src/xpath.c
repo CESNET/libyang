@@ -4495,7 +4495,6 @@ moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, const char *qname,
 {
     int i, orig_used, pref_len, idx, temp_ctx = 0;
     const char *ptr, *name_dict = NULL; /* optimalization - so we can do (==) instead (!strncmp(...)) in moveto_node_check() */
-    char *str;
     struct lys_module *moveto_mod;
     const struct lys_node *sub;
     struct ly_ctx *ctx;
@@ -4518,9 +4517,7 @@ moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, const char *qname,
         pref_len = ptr - qname;
         moveto_mod = moveto_resolve_model(qname, pref_len, ctx, cur_node, 1);
         if (!moveto_mod) {
-            str = lys_path(cur_node);
-            LOGVAL(LYE_XPATH_INMOD, LY_VLOG_NONE, NULL, pref_len, qname, str);
-            free(str);
+            LOGVAL(LYE_XPATH_INMOD, LY_VLOG_NONE, NULL, pref_len, qname);
             return -1;
         }
         qname += pref_len + 1;
@@ -4576,13 +4573,6 @@ moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, const char *qname,
             if (set->val.snodes[i].in_ctx == 2) {
                 set->val.snodes[i].in_ctx = 1;
             }
-        }
-    } else if (orig_used == (int)set->used && !moveto_mod) {
-        /* no new node inserted into set (all are invalid now) and we were searching
-         * in the same schema as the previous node, so this is definitely a bug in expression,
-         * avoid changing it to just a warning */
-        if (*ly_vlog_hide_location() == 0xff) {
-            ly_vlog_hide(0);
         }
     }
 
@@ -4738,7 +4728,6 @@ moveto_snode_alldesc(struct lyxp_set *set, struct lys_node *cur_node, const char
                      int options)
 {
     int i, orig_used, pref_len, all = 0, match, idx;
-    char *str;
     struct lys_node *next, *elem, *start;
     struct lys_module *moveto_mod;
     struct ly_ctx *ctx;
@@ -4767,9 +4756,7 @@ moveto_snode_alldesc(struct lyxp_set *set, struct lys_node *cur_node, const char
         pref_len = strnchr(qname, ':', qname_len) - qname;
         moveto_mod = moveto_resolve_model(qname, pref_len, ctx, cur_node, 1);
         if (!moveto_mod) {
-            str = lys_path(cur_node);
-            LOGVAL(LYE_XPATH_INMOD, LY_VLOG_NONE, NULL, pref_len, qname, str);
-            free(str);
+            LOGVAL(LYE_XPATH_INMOD, LY_VLOG_NONE, NULL, pref_len, qname);
             return -1;
         }
         qname += pref_len + 1;
@@ -7665,16 +7652,18 @@ finish:
 }
 
 int
-lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set)
+lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int warn_on_fwd_ref)
 {
     struct lys_node *ctx_snode;
     enum lyxp_node_type ctx_snode_type;
     struct lyxp_set tmp_set;
     uint8_t must_size = 0;
     uint32_t i;
-    int opts;
+    int opts, ret = EXIT_SUCCESS;
     struct lys_when *when = NULL;
     struct lys_restr *must = NULL;
+
+    assert(!warn_on_fwd_ref || !*ly_vlog_hide_location());
 
     memset(&tmp_set, 0, sizeof tmp_set);
     memset(set, 0, sizeof *set);
@@ -7739,39 +7728,71 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set)
         break;
     }
 
+    if (warn_on_fwd_ref) {
+        /* hide errors, we can print only warnings */
+        ly_vlog_hide(1);
+    }
+
     /* check "when" */
     if (when) {
         resolve_when_ctx_snode(node, &ctx_snode, &ctx_snode_type);
         if (lyxp_atomize(when->cond, ctx_snode, ctx_snode_type, &tmp_set, LYXP_SNODE_WHEN | opts)) {
             free(tmp_set.val.snodes);
-            LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "Resolving when condition \"%s\" failed.", when->cond);
-            if ((ly_errno == LY_EVALID) && (ly_vecode == LYVE_XPATH_INSNODE)) {
-                return EXIT_FAILURE;
-            } else {
-                return -1;
+            if ((ly_errno != LY_EVALID) || (ly_vecode != LYVE_XPATH_INSNODE)) {
+                LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "Invalid when condition \"%s\".", when->cond);
+                ret = -1;
+                goto finish;
+            } else if (!warn_on_fwd_ref) {
+                LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "Invalid when condition \"%s\".", when->cond);
+                ret = EXIT_FAILURE;
+                goto finish;
             }
-        }
+            ly_vlog_hide(0);
+            LOGWRN(ly_errmsg());
+            LOGWRN("Invalid when condition \"%s\".", when->cond);
+            ly_vlog_hide(1);
 
-        set_snode_merge(set, &tmp_set);
-        memset(&tmp_set, 0, sizeof tmp_set);
+            ret = EXIT_FAILURE;
+            memset(&tmp_set, 0, sizeof tmp_set);
+        } else {
+            set_snode_merge(set, &tmp_set);
+            memset(&tmp_set, 0, sizeof tmp_set);
+        }
     }
 
     /* check "must" */
     for (i = 0; i < must_size; ++i) {
         if (lyxp_atomize(must[i].expr, node, LYXP_NODE_ELEM, &tmp_set, LYXP_SNODE_MUST | opts)) {
             free(tmp_set.val.snodes);
-            free(set->val.snodes);
-            LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "Resolving must restriction \"%s\" failed.", must[i].expr);
-            if ((ly_errno == LY_EVALID) && (ly_vecode == LYVE_XPATH_INSNODE)) {
-                return EXIT_FAILURE;
-            } else {
-                return -1;
+            if ((ly_errno != LY_EVALID) || (ly_vecode != LYVE_XPATH_INSNODE)) {
+                LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "Invalid must restriction \"%s\".", must[i].expr);
+                ret = -1;
+                goto finish;
+            } else if (!warn_on_fwd_ref) {
+                LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "Invalid must restriction \"%s\".", must[i].expr);
+                ret = EXIT_FAILURE;
+                goto finish;
             }
-        }
+            ly_vlog_hide(0);
+            LOGWRN(ly_errmsg());
+            LOGWRN("Invalid must restriction \"%s\".", must[i].expr);
+            ly_vlog_hide(1);
 
-        set_snode_merge(set, &tmp_set);
-        memset(&tmp_set, 0, sizeof tmp_set);
+            ret = EXIT_FAILURE;
+            memset(&tmp_set, 0, sizeof tmp_set);
+        } else {
+            set_snode_merge(set, &tmp_set);
+            memset(&tmp_set, 0, sizeof tmp_set);
+        }
     }
 
-    return EXIT_SUCCESS;
+finish:
+    if (warn_on_fwd_ref) {
+        ly_vlog_hide(0);
+    }
+    if (ret) {
+        free(set->val.snodes);
+        memset(set, 0, sizeof *set);
+    }
+    return ret;
 }

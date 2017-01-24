@@ -1557,8 +1557,8 @@ yang_print_rpc_action(struct lyout *out, int level, const struct lys_node *node)
     }
 
     LY_TREE_FOR(node->child, sub) {
-        /* augments */
-        if (sub->parent != node) {
+        /* augments and implicit nodes */
+        if ((sub->parent != node) || ((sub->nodetype & (LYS_INPUT | LYS_OUTPUT) && (sub->flags & LYS_IMPLICIT)))) {
             continue;
         }
         yang_print_open(out, &flag);

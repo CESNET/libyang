@@ -253,10 +253,12 @@ int lyxp_atomize(const char *expr, const struct lys_node *cur_snode, enum lyxp_n
  * @param[in] node Node to examine.
  * @param[in,out] set Resulting set of atoms merged from all the expressions.
  * Will be cleared before use.
+ * @param[in] warn_on_fwd_ref Setting this flag causes no errors to be printed and
+ * only warning is printed on forward reference paths (addressing a non-existing node).
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
-int lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set);
+int lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int warn_on_fwd_ref);
 
 /**
  * @brief Cast XPath set to another type.

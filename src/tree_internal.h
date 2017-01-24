@@ -181,9 +181,10 @@ int lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_modu
  *
  * @param[in] node Node to examine.
  * @param[in] check_place Check where the node is placed to get know if the check is supposed to be performed
+ * @param[in] warn_on_fwd_ref Whether to not print errors and only warn on forward references.
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
-int lys_check_xpath(struct lys_node *node, int check_place);
+int lys_check_xpath(struct lys_node *node, int check_place, int warn_on_fwd_ref);
 
 /**
  * @brief Get know if the node contains must or when with XPath expression

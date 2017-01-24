@@ -1469,11 +1469,6 @@ yin_print_input_output(struct lyout *out, int level, const struct lys_node *node
     struct lys_node *sub;
     struct lys_node_inout *inout = (struct lys_node_inout *)node;
 
-    if (node->flags & LYS_IMPLICIT) {
-        /* implicit input/output which is not a part of the schema */
-        return;
-    }
-
     yin_print_open(out, level, NULL, inout->nodetype == LYS_INPUT ? "input" : "output", NULL, NULL, 1);
     level++;
 
@@ -1527,7 +1522,7 @@ yin_print_rpc_action(struct lyout *out, int level, const struct lys_node *node)
 
     LY_TREE_FOR(node->child, sub) {
         /* augments */
-        if (sub->parent != node) {
+        if ((sub->parent != node) || (sub->nodetype != LYS_GROUPING)) {
             continue;
         }
         yin_print_close_parent(out, &content);
@@ -1536,7 +1531,7 @@ yin_print_rpc_action(struct lyout *out, int level, const struct lys_node *node)
 
     LY_TREE_FOR(node->child, sub) {
         /* augments */
-        if (sub->parent != node) {
+        if ((sub->parent != node) || ((sub->nodetype != LYS_INPUT) || (sub->flags & LYS_IMPLICIT))) {
             continue;
         }
         yin_print_close_parent(out, &content);
@@ -1545,7 +1540,7 @@ yin_print_rpc_action(struct lyout *out, int level, const struct lys_node *node)
 
     LY_TREE_FOR(node->child, sub) {
         /* augments */
-        if (sub->parent != node) {
+        if ((sub->parent != node) || ((sub->nodetype != LYS_OUTPUT) || (sub->flags & LYS_IMPLICIT))) {
             continue;
         }
         yin_print_close_parent(out, &content);

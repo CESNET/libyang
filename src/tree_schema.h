@@ -1973,13 +1973,18 @@ const struct lys_node *lys_getnext(const struct lys_node *last, const struct lys
 /**
  * @brief Search for schema nodes matching the provided XPath expression.
  *
- * @param[in] node Context schema node if \p expr is relative, otherwise any node.
+ * XPath always requires a context node to be able to evaluate an expression. However, if \p expr is absolute,
+ * the context node can almost always be arbitrary, so you can only set \p ctx and leave \p node empty. But, if
+ * \p expr is relative and \p node will not be set, you will likely get unexpected results.
+ *
+ * @param[in] ctx Context to use. Must be set if \p node is NULL.
+ * @param[in] node Context schema node if \p expr is relative, otherwise any node. Must be set if \p ctx is NULL.
  * @param[in] expr XPath expression filtering the matching nodes.
  * @param[in] options Bitmask of LYS_FIND_* options.
  * @return Set of found schema nodes. If no nodes are matching \p expr or the result
  * would be a number, a string, or a boolean, the returned set is empty. In case of an error, NULL is returned.
  */
-struct ly_set *lys_find_xpath(const struct lys_node *node, const char *expr, int options);
+struct ly_set *lys_find_xpath(struct ly_ctx *ctx, const struct lys_node *node, const char *expr, int options);
 
 #define LYS_FIND_OUTPUT 0x01 /**< lys_find_xpath() option to search RPC output nodes instead input ones */
 

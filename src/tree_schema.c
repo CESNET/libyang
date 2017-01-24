@@ -742,7 +742,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
     case LYS_AUGMENT:
         if (!(child->nodetype &
                 (LYS_ANYDATA | LYS_CASE | LYS_CHOICE | LYS_CONTAINER | LYS_LEAF
-                | LYS_LEAFLIST | LYS_LIST | LYS_USES | LYS_ACTION))) {
+                | LYS_LEAFLIST | LYS_LIST | LYS_USES | LYS_ACTION | LYS_NOTIF))) {
             LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, parent, strnodetype(child->nodetype), strnodetype(parent->nodetype));
             return EXIT_FAILURE;
         }
@@ -3704,16 +3704,24 @@ lys_data_path_reverse(const struct lys_node *node, char * const buf, uint32_t bu
 #endif
 
 API struct ly_set *
-lys_find_xpath(const struct lys_node *node, const char *expr, int options)
+lys_find_xpath(struct ly_ctx *ctx, const struct lys_node *node, const char *expr, int options)
 {
     struct lyxp_set set;
     struct ly_set *ret_set;
     uint32_t i;
     int opts;
 
-    if (!node || !expr) {
+    if ((!ctx && !node) || !expr) {
         ly_errno = LY_EINVAL;
         return NULL;
+    }
+
+    if (!node) {
+        node = ly_ctx_get_node(ctx, NULL, "/ietf-yang-library:modules-state");
+        if (!node) {
+            ly_errno = LY_EINT;
+            return NULL;
+        }
     }
 
     memset(&set, 0, sizeof set);
@@ -3723,8 +3731,14 @@ lys_find_xpath(const struct lys_node *node, const char *expr, int options)
         opts |= LYXP_SNODE_OUTPUT;
     }
 
-    /* node and nodetype won't matter at all since it is absolute */
     if (lyxp_atomize(expr, node, LYXP_NODE_ELEM, &set, opts)) {
+        /* just find a relevant node to put in path, if it fails, use the original one */
+        for (i = 0; i < set.used; ++i) {
+            if (set.val.snodes[i].in_ctx == 1) {
+                node = set.val.snodes[i].snode;
+                break;
+            }
+        }
         free(set.val.snodes);
         LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "Resolving XPath expression \"%s\" failed.", expr);
         return NULL;
@@ -3842,7 +3856,7 @@ lys_node_xpath_atomize(const struct lys_node *node, int options)
             goto next_iter;
         }
 
-        if (lyxp_node_atomize(elem, &set)) {
+        if (lyxp_node_atomize(elem, &set, 0)) {
             ly_set_free(ret_set);
             free(set.val.snodes);
             return NULL;

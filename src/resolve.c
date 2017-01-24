@@ -4174,12 +4174,12 @@ remove_instid:
 }
 
 int
-lys_check_xpath(struct lys_node *node, int check_place)
+lys_check_xpath(struct lys_node *node, int check_place, int warn_on_fwd_ref)
 {
     struct lys_node *parent, *elem;
     struct lyxp_set set;
     uint32_t i;
-    int rc;
+    int ret;
 
     if (check_place) {
         parent = node;
@@ -4207,9 +4207,9 @@ lys_check_xpath(struct lys_node *node, int check_place)
         }
     }
 
-    rc = lyxp_node_atomize(node, &set);
-    if (rc) {
-        return rc;
+    ret = lyxp_node_atomize(node, &set, warn_on_fwd_ref);
+    if (ret == -1) {
+        return -1;
     }
 
     for (parent = node; parent && !(parent->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); parent = lys_parent(parent));
@@ -4235,7 +4235,7 @@ lys_check_xpath(struct lys_node *node, int check_place)
     }
 
     free(set.val.snodes);
-    return EXIT_SUCCESS;
+    return ret;
 }
 
 static int
@@ -4395,7 +4395,17 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct 
     }
 
     /* check augment target type and then augment nodes type */
-    if (aug_target->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_CASE | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF)) {
+    if (aug_target->nodetype & (LYS_CONTAINER | LYS_LIST)) {
+        LY_TREE_FOR(aug->child, sub) {
+            if (!(sub->nodetype & (LYS_ANYDATA | LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_USES
+                                   | LYS_CHOICE | LYS_ACTION | LYS_NOTIF))) {
+                LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, aug, strnodetype(sub->nodetype), "augment");
+                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Cannot augment \"%s\" with a \"%s\".",
+                       strnodetype(aug_target->nodetype), strnodetype(sub->nodetype));
+                return -1;
+            }
+        }
+    } else if (aug_target->nodetype & (LYS_CASE | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF)) {
         LY_TREE_FOR(aug->child, sub) {
             if (!(sub->nodetype & (LYS_ANYDATA | LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_USES | LYS_CHOICE))) {
                 LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, aug, strnodetype(sub->nodetype), "augment");
@@ -6221,12 +6231,13 @@ cleanup:
  * @param[in] type Type of the unresolved item.
  * @param[in] str_snode String, a schema node, or NULL.
  * @param[in] unres Unres schema structure to use.
+ * @param[in] final_fail Whether we are just printing errors of the failed unres items.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 static int
 resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM type, void *str_snode,
-                          struct unres_schema *unres)
+                          struct unres_schema *unres, int final_fail)
 {
     /* has_str - whether the str_snode is a string in a dictionary that needs to be freed */
     int rc = -1, has_str = 0, tpdf_flag = 0, i, k;
@@ -6453,7 +6464,7 @@ featurecheckdone:
         break;
     case UNRES_XPATH:
         node = (struct lys_node *)item;
-        rc = lys_check_xpath(node, 1);
+        rc = lys_check_xpath(node, 1, final_fail);
         break;
     case UNRES_EXT:
         ext_data = (struct unres_ext *)str_snode;
@@ -6708,7 +6719,7 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
              * UNRES_AUGMENT, UNRES_CHOICE_DFLT and UNRES_IDENT */
 
             ++unres_count;
-            rc = resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres);
+            rc = resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, 0);
             if (!rc) {
                 unres->type[i] = UNRES_RESOLVED;
                 ++resolved;
@@ -6716,7 +6727,7 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
             } else if (rc == -1) {
                 ly_vlog_hide(0);
                 /* print the error */
-                resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres);
+                resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, 1);
                 return -1;
             } else {
                 /* forward reference, erase ly_errno */
@@ -6733,7 +6744,7 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
             if (unres->type[i] > UNRES_IDENT) {
                 continue;
             }
-            resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres);
+            resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, 1);
         }
         return -1;
     }
@@ -6744,7 +6755,7 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
             continue;
         }
 
-        rc = resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres);
+        rc = resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, 0);
         if (rc == 0) {
             if (unres->type[i] == UNRES_LIST_UNIQ) {
                 /* free the allocated structure */
@@ -6755,7 +6766,7 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
         } else if (rc == -1) {
             ly_vlog_hide(0);
             /* print the error */
-            resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres);
+            resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, 1);
             return -1;
         }
     }
@@ -6768,7 +6779,7 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
             continue;
         }
 
-        rc =  resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres);
+        rc =  resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, 0);
         if (rc == 0) {
             unres->type[i] = UNRES_RESOLVED;
             ++resolved;
@@ -6783,17 +6794,11 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
             if (unres->type[i] == UNRES_RESOLVED) {
                 continue;
             }
+            resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, 1);
             if (unres->type[i] == UNRES_XPATH) {
-                /* unresolvable XPaths are actually supposed to be warnings - they may be
-                 * unresolved due to the not implemented target module so it shouldn't avoid
-                 * parsing the module, but we still want to announce some issue here */
-                ly_vlog_hide(0xff);
-            }
-            resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres);
-            if (unres->type[i] == UNRES_XPATH && *ly_vlog_hide_location() == 0xff) {
+                /* XPath referencing an unknown node is actually supposed to be just a warning */
                 unres->type[i] = UNRES_RESOLVED;
                 resolved++;
-                ly_vlog_hide(0);
             }
         }
         if (resolved < unres->count) {
@@ -6874,7 +6879,7 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
             log_hidden = 0;
             ly_vlog_hide(1);
         }
-        rc = resolve_unres_schema_item(mod, item, type, snode, unres);
+        rc = resolve_unres_schema_item(mod, item, type, snode, unres, 0);
         if (!log_hidden) {
             ly_vlog_hide(0);
         }
@@ -7137,7 +7142,7 @@ check_instid_ext_dep(const struct lys_node *sleaf, const char *json_instid)
     }
 
     /* find the first schema node */
-    set = lys_find_xpath(sleaf, buf, 0);
+    set = lys_find_xpath(NULL, sleaf, buf, 0);
     if (!set || !set->number) {
         free(buf);
         ly_set_free(set);

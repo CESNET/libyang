@@ -108,10 +108,7 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
         }
     }
 
-    if (hide == 0xff && level == LY_LLERR && (LY_LLWRN <= ly_log_level)) {
-        /* change error to warning */
-        level = LY_LLWRN;
-    } else if (hide || (level > ly_log_level)) {
+    if (hide || (level > ly_log_level)) {
         /* do not print the message */
         goto clean;
     }
@@ -139,7 +136,7 @@ ly_log(LY_LOG_LEVEL level, const char *format, ...)
     va_list ap;
 
     va_start(ap, format);
-    log_vprintf(level, 0, format, NULL, ap);
+    log_vprintf(level, (*ly_vlog_hide_location()), format, NULL, ap);
     va_end(ap);
 }
 
@@ -220,7 +217,7 @@ const char *ly_errs[] = {
 /* LYE_XPATH_INOP_1 */ "Cannot apply XPath operation %s on %s.",
 /* LYE_XPATH_INOP_2 */ "Cannot apply XPath operation %s on %s and %s.",
 /* LYE_XPATH_INCTX */  "Invalid context type %s in %s.",
-/* LYE_XPATH_INMOD */  "Unknown module \"%.*s\" relative to the context node \"%s\".",
+/* LYE_XPATH_INMOD */  "Unknown module \"%.*s\".",
 /* LYE_XPATH_INFUNC */ "Unknown XPath function \"%.*s\".",
 /* LYE_XPATH_INARGCOUNT */ "Invalid number of arguments (%d) for the XPath function %.*s.",
 /* LYE_XPATH_INARGTYPE */ "Wrong type of argument #%d (%s) for the XPath function %s.",
@@ -356,7 +353,19 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
             elem = ((struct lyxml_elem *)elem)->parent;
             break;
         case LY_VLOG_LYS:
-            name = ((struct lys_node *)elem)->name;
+            if (((struct lys_node *)elem)->nodetype == LYS_AUGMENT) {
+                --(*index);
+                path[*index] = ']';
+
+                name = ((struct lys_node *)elem)->name;
+                len = strlen(name);
+                (*index) -= len;
+                memcpy(&path[*index], name, len);
+
+                name = "[";
+            } else {
+                name = ((struct lys_node *)elem)->name;
+            }
             if (prefix_all || !(sparent = lys_parent((struct lys_node *)elem)) ||
                     lys_node_module((struct lys_node *)elem) != lys_node_module(sparent)) {
                 prefix = lys_node_module((struct lys_node *)elem)->name;
@@ -419,8 +428,7 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
                     }
                 } else {
                     /* schema list without keys - use instance position */
-                    --(*index);
-                    path[*index] = ']';
+                    path[--(*index)] = ']';
 
                     i = j = lyd_list_pos(dlist);
                     len = 1;
@@ -479,8 +487,8 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
             return;
         }
         len = strlen(name);
-        (*index) = (*index) - len;
-        memcpy(&path[(*index)], name, len);
+        (*index) -= len;
+        memcpy(&path[*index], name, len);
         if (prefix) {
             path[--(*index)] = ':';
             len = strlen(prefix);
