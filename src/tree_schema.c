@@ -2270,6 +2270,8 @@ lys_deviation_free(struct lys_module *module, struct lys_deviation *dev)
     }
 
     for (i = 0; i < dev->deviate_size; i++) {
+        lys_extension_instances_free(ctx, dev->deviate[i].ext, dev->deviate[i].ext_size);
+
         for (j = 0; j < dev->deviate[i].dflt_size; j++) {
             lydict_remove(ctx, dev->deviate[i].dflt[j]);
         }

@@ -190,6 +190,14 @@ read_yin_subnode_ext(struct lys_module *mod, void *elem, LYEXT_PAR elem_type,
         ext_size = &((struct lys_when *)elem)->ext_size;
         ext = &((struct lys_when *)elem)->ext;
         break;
+    case LYEXT_PAR_DEVIATE:
+        ext_size = &((struct lys_deviate *)elem)->ext_size;
+        ext = &((struct lys_deviate *)elem)->ext;
+        break;
+    case LYEXT_PAR_DEVIATION:
+        ext_size = &((struct lys_deviation *)elem)->ext_size;
+        ext = &((struct lys_deviation *)elem)->ext;
+        break;
     default:
         LOGERR(LY_EINT, "parent type %d", elem_type);
         return EXIT_FAILURE;
@@ -2008,6 +2016,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     struct lys_restr **trg_must = NULL;
     struct unres_schema tmp_unres;
     struct lys_module *mod;
+    void *reallocated;
 
     ctx = module->ctx;
 
@@ -2043,6 +2052,9 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
                 goto error;
             }
+            if (read_yin_subnode_ext(module, dev, LYEXT_PAR_DEVIATION, child, LYEXT_SUBSTMT_DESCRIPTION, 0, unres)) {
+                goto error;
+            }
             dev->dsc = read_yin_subnode(ctx, child, "text");
             if (!dev->dsc) {
                 goto error;
@@ -2050,6 +2062,9 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
         } else if (!strcmp(child->name, "reference")) {
             if (dev->ref) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
+                goto error;
+            }
+            if (read_yin_subnode_ext(module, dev, LYEXT_PAR_DEVIATION, child, LYEXT_SUBSTMT_REFERENCE, 0, unres)) {
                 goto error;
             }
             dev->ref = read_yin_subnode(ctx, child, "text");
@@ -2083,13 +2098,17 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
         goto error;
     }
     if (c_ext) {
-        dev->ext = calloc(c_ext, sizeof *dev->ext);
-        if (!dev->ext) {
+        /* some extensions may be already present from the substatements */
+        reallocated = realloc(dev->ext, (c_ext + dev->ext_size) * sizeof *dev->ext);
+        if (!reallocated) {
             LOGMEM;
             goto error;
         }
-    }
+        dev->ext = reallocated;
 
+        /* init memory */
+        memset(&dev->ext[dev->ext_size], 0, c_ext * sizeof *dev->ext);
+    }
 
     LY_TREE_FOR_SAFE(yin->child, next, develem) {
         if (strcmp(develem->ns->value, LY_NSYIN)) {
@@ -2115,13 +2134,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
         GETVAL(value, develem, "value");
         if (!strcmp(value, "not-supported")) {
             dev->deviate[dev->deviate_size].mod = LY_DEVIATE_NO;
-            /* no property expected in this case */
-            if (develem->child) {
-                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, develem->child->name);
-                goto error;
-            }
-
-            /* and neither any other deviate statement is expected,
+            /* no other deviate statement is expected,
              * not-supported deviation must be the only deviation of the target
              */
             if (dev->deviate_size || develem->next) {
@@ -2145,9 +2158,6 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
             lys_node_unlink(dev_target);
             dev->orig_node = dev_target;
 
-            dev->deviate_size = 1;
-            ly_set_free(dflt_check);
-            return EXIT_SUCCESS;
         } else if (!strcmp(value, "add")) {
             dev->deviate[dev->deviate_size].mod = LY_DEVIATE_ADD;
         } else if (!strcmp(value, "replace")) {
@@ -2174,13 +2184,18 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
 
         /* process deviation properties */
         LY_TREE_FOR_SAFE(develem->child, next2, child) {
-            if (!child->ns || strcmp(child->ns->value, LY_NSYIN)) {
+            if (!child->ns) {
                 /* garbage */
                 lyxml_free(ctx, child);
                 continue;
-            }
-
-            if (!strcmp(child->name, "config")) {
+            } else if  (strcmp(child->ns->value, LY_NSYIN)) {
+                /* extensions */
+                c_ext++;
+            } else if (d->mod == LY_DEVIATE_NO) {
+                /* no YIN substatement expected in this case */
+                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child->name);
+                goto error;
+            } else if (!strcmp(child->name, "config")) {
                 if (d->flags & LYS_CONFIG_MASK) {
                     LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
                     goto error;
@@ -2212,7 +2227,14 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                     /* ... and replace it with the value specified in deviation */
                     dev_target->flags |= d->flags & LYS_CONFIG_MASK;
                 }
+
+                if (read_yin_subnode_ext(module, d, LYEXT_PAR_DEVIATE, child, LYEXT_SUBSTMT_CONFIG, 0, unres)) {
+                    goto error;
+                }
             } else if (!strcmp(child->name, "default")) {
+                if (read_yin_subnode_ext(module, d, LYEXT_PAR_DEVIATE, child, LYEXT_SUBSTMT_DEFAULT, c_dflt, unres)) {
+                    goto error;
+                }
                 c_dflt++;
 
                 /* check target node type */
@@ -2315,6 +2337,10 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                         goto error;
                     }
                 }
+
+                if (read_yin_subnode_ext(module, d, LYEXT_PAR_DEVIATE, child, LYEXT_SUBSTMT_MANDATORY, 0, unres)) {
+                    goto error;
+                }
             } else if (!strcmp(child->name, "min-elements")) {
                 if (f_min) {
                     LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
@@ -2325,6 +2351,9 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 if (deviate_minmax(dev_target, child, d, 0)) {
                     goto error;
                 }
+                if (read_yin_subnode_ext(module, d, LYEXT_PAR_DEVIATE, child, LYEXT_SUBSTMT_MIN, 0, unres)) {
+                    goto error;
+                }
             } else if (!strcmp(child->name, "max-elements")) {
                 if (f_max) {
                     LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
@@ -2333,6 +2362,9 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 f_max = 1;
 
                 if (deviate_minmax(dev_target, child, d, 1)) {
+                    goto error;
+                }
+                if (read_yin_subnode_ext(module, d, LYEXT_PAR_DEVIATE, child, LYEXT_SUBSTMT_MAX, 0, unres)) {
                     goto error;
                 }
             } else if (!strcmp(child->name, "must")) {
@@ -2380,6 +2412,9 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 }
                 d->type = t;
             } else if (!strcmp(child->name, "unique")) {
+                if (read_yin_subnode_ext(module, d, LYEXT_PAR_DEVIATE, child, LYEXT_SUBSTMT_UNIQUE, c_uniq, unres)) {
+                    goto error;
+                }
                 c_uniq++;
                 /* skip lyxml_free() at the end of the loop, this node will be processed later */
                 continue;
@@ -2433,6 +2468,11 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                     }
                     /* remove current units value of the target */
                     lydict_remove(ctx, *stritem);
+                    (*stritem) = NULL;
+                }
+
+                if (read_yin_subnode_ext(module, d, LYEXT_PAR_DEVIATE, child, LYEXT_SUBSTMT_UNITS, 0, unres)) {
+                    goto error;
                 }
             } else {
                 LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child->name);
@@ -2575,10 +2615,28 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 goto error;
             }
         }
+        if (c_ext) {
+            /* some extensions may be already present from the substatements */
+            reallocated = realloc(d->ext, (c_ext + d->ext_size) * sizeof *d->ext);
+            if (!reallocated) {
+                LOGMEM;
+                goto error;
+            }
+            d->ext = reallocated;
+
+            /* init memory */
+            memset(&d->ext[d->ext_size], 0, c_ext * sizeof *d->ext);
+        }
 
         /* process deviation properties with 0..n cardinality */
-        LY_TREE_FOR(develem->child, child) {
-            if (!strcmp(child->name, "must")) {
+        LY_TREE_FOR_SAFE(develem->child, next2, child) {
+            if (strcmp(child->ns->value, LY_NSYIN)) {
+                /* extension */
+                if (lyp_yin_fill_ext(d, LYEXT_PAR_DEVIATE, 0, 0, module, child, &d->ext, d->ext_size, unres)) {
+                    goto error;
+                }
+                d->ext_size++;
+            } else if (!strcmp(child->name, "must")) {
                 if (d->mod == LY_DEVIATE_DEL) {
                     if (fill_yin_must(module, child, &d->must[d->must_size], unres)) {
                         goto error;
@@ -2776,7 +2834,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
 
                         /* remember to check it later (it may not fit now, but the type can be deviated too) */
                         ly_set_add(dflt_check, dev_target, 0);
-                        leaf->flags &= ~LYS_DFLTJSON;
+                        llist->flags &= ~LYS_DFLTJSON;
                     }
                 }
             }
