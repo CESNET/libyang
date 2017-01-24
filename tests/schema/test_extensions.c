@@ -1491,6 +1491,121 @@ test_extension_sub_yang(void **state)
 }
 
 static void
+test_rpc_sub_yin(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    const char *yin = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <container name=\"c\">\n"
+                    "    <action name=\"a\">\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "      <status value=\"current\">\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "      </status>\n"
+                    "      <description>\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "        <text>desc</text>\n"
+                    "      </description>\n"
+                    "      <reference>\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "        <text>ref</text>\n"
+                    "      </reference>\n"
+                    "      <input>\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "        <leaf name=\"in\">\n"
+                    "          <type name=\"int8\"/>\n"
+                    "        </leaf>\n"
+                    "      </input>\n"
+                    "      <output>\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "        <leaf name=\"in\">\n"
+                    "          <type name=\"int8\"/>\n"
+                    "        </leaf>\n"
+                    "      </output>\n"
+                    "    </action>\n"
+                    "  </container>\n"
+                    "  <rpc name=\"r\">\n"
+                    "    <e:a/>\n    <e:b x=\"one\"/>\n    <e:c>\n      <e:y>one</e:y>\n    </e:c>\n"
+                    "    <status value=\"current\">\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "    </status>\n"
+                    "    <description>\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "      <text>desc</text>\n"
+                    "    </description>\n"
+                    "    <reference>\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "      <text>ref</text>\n"
+                    "    </reference>\n"
+                    "    <input>\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "      <leaf name=\"in\">\n"
+                    "        <type name=\"int8\"/>\n"
+                    "      </leaf>\n"
+                    "    </input>\n"
+                    "    <output>\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "      <leaf name=\"in\">\n"
+                    "        <type name=\"int8\"/>\n"
+                    "      </leaf>\n"
+                    "    </output>\n"
+                    "  </rpc>\n</module>\n";
+
+    mod = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
+    assert_ptr_not_equal(mod, NULL);
+
+    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL);
+    assert_ptr_not_equal(st->str1, NULL);
+    assert_string_equal(st->str1, yin);
+}
+
+static void
+test_rpc_sub_yang(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    const char *yang = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  container c {\n"
+                    "    action a {\n"
+                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "      status current {\n"
+                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "      }\n      description\n        \"desc\" {\n"
+                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "      }\n      reference\n        \"ref\" {\n"
+                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "      }\n      input {\n"
+                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "        leaf in {\n"
+                    "          type int8;\n"
+                    "        }\n      }\n\n"
+                    "      output {\n"
+                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "        leaf out {\n"
+                    "          type int8;\n"
+                    "        }\n      }\n    }\n  }\n}\n";
+
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL);
+    assert_ptr_not_equal(st->str1, NULL);
+    assert_string_equal(st->str1, yang);
+}
+
+static void
 test_fullset_yang(void **state)
 {
     struct state *st = (*state);
@@ -1527,6 +1642,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_choice_sub_yin, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_uses_sub_yin, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_extension_sub_yin, setup_ctx_yin, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_rpc_sub_yin, setup_ctx_yin, teardown_ctx),
 
 //        cmocka_unit_test_setup_teardown(test_fullset_yang, setup_ctx_yang, teardown_ctx),
 //        cmocka_unit_test_setup_teardown(test_module_sub_yang, setup_ctx_yang, teardown_ctx),
@@ -1538,6 +1654,7 @@ main(void)
 //        cmocka_unit_test_setup_teardown(test_choice_sub_yang, setup_ctx_yang, teardown_ctx),
 //        cmocka_unit_test_setup_teardown(test_uses_sub_yang, setup_ctx_yang, teardown_ctx),
 //        cmocka_unit_test_setup_teardown(test_extension_sub_yang, setup_ctx_yang, teardown_ctx),
+//        cmocka_unit_test_setup_teardown(test_rpc_sub_yang, setup_ctx_yang, teardown_ctx),
     };
 
     return cmocka_run_group_tests(cmut, NULL, NULL);
