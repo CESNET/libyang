@@ -53,7 +53,7 @@ int ly_print_iffeature(struct lyout *out, const struct lys_module *module, struc
 
 int yang_print_model(struct lyout *out, const struct lys_module *module);
 int yin_print_model(struct lyout *out, const struct lys_module *module);
-int tree_print_model(struct lyout *out, const struct lys_module *module);
+int tree_print_model(struct lyout *out, const struct lys_module *module, int groupings);
 int info_print_model(struct lyout *out, const struct lys_module *module, const char *target_node);
 
 int json_print_data(struct lyout *out, const struct lyd_node *root, int options);

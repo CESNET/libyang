@@ -193,6 +193,7 @@ static int
 lys_print_(struct lyout *out, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
 {
     int ret;
+    int grps = 0;
 
     switch (format) {
     case LYS_OUT_YIN:
@@ -205,8 +206,11 @@ lys_print_(struct lyout *out, const struct lys_module *module, LYS_OUTFORMAT for
         ret = yang_print_model(out, module);
         lys_switch_deviations((struct lys_module *)module);
         break;
+    case LYS_OUT_TREE_GRPS:
+        grps = 1;
+        /* no break */
     case LYS_OUT_TREE:
-        ret = tree_print_model(out, module);
+        ret = tree_print_model(out, module, grps);
         break;
     case LYS_OUT_INFO:
         ret = info_print_model(out, module, target_node);
