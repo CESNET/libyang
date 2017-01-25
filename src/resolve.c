@@ -4898,7 +4898,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
                 goto fail;
             }
             for (k = 0, j = *old_size; k < rfn->must_size; k++, j++) {
-                must[j].ext_size = rfn[k].ext_size;
+                must[j].ext_size = rfn->must[k].ext_size;
                 lys_ext_dup(ctx, rfn->must[k].ext, rfn->must[k].ext_size, &rfn->must[k], LYEXT_PAR_RESTR,
                             &must[j].ext, unres);
                 must[j].expr = lydict_insert(ctx, rfn->must[k].expr, 0);
