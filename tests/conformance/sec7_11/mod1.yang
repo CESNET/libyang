@@ -5,7 +5,7 @@ module mod1 {
     grouping gg {
         container ccc {
             presence "enable";
-
+			uses hh;
             grouping hh {
                 list ll {
                     key keys;
@@ -14,7 +14,7 @@ module mod1 {
                         type string;
                         mandatory true;
                     }
-
+					uses repeat;
                     grouping repeat {
                         typedef abc {
                             type string {
@@ -27,7 +27,6 @@ module mod1 {
                     }
                 }
             }
-
         }
     }
 }
