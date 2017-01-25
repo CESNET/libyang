@@ -319,11 +319,6 @@ repeat:
 
 }
 
-void lys_extension_instances_dup(void)
-{
-
-}
-
 static void
 lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, unsigned int size)
 {
@@ -1130,9 +1125,8 @@ lys_ext_dup(struct ly_ctx *ctx, struct lys_ext_instance **orig, uint8_t size,
             /* extensions */
             orig[u]->ext = NULL;
             result[u]->ext_size = orig[u]->ext_size;
-            if (orig[u]->ext_size &&
-                    lys_ext_dup(ctx, orig[u]->ext, orig[u]->ext_size, result[u],
-                                LYEXT_PAR_EXTINST, &result[u]->ext, unres)) {
+            if (lys_ext_dup(ctx, orig[u]->ext, orig[u]->ext_size, result[u],
+                            LYEXT_PAR_EXTINST, &result[u]->ext, unres)) {
                 goto error;
             }
         } else {
@@ -1251,6 +1245,12 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
                     new->info.bits.bit[i].ref = lydict_insert(mod->ctx, old->info.bits.bit[i].ref, 0);
                     new->info.bits.bit[i].flags = old->info.bits.bit[i].flags;
                     new->info.bits.bit[i].pos = old->info.bits.bit[i].pos;
+                    new->info.bits.bit[i].ext_size = old->info.bits.bit[i].ext_size;
+                    if (lys_ext_dup(mod->ctx, old->info.bits.bit[i].ext, old->info.bits.bit[i].ext_size,
+                                    &new->info.bits.bit[i], LYEXT_PAR_TYPE_BIT,
+                                    &new->info.bits.bit[i].ext, unres)) {
+                        return -1;
+                    }
                 }
             }
             break;
@@ -1277,6 +1277,12 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
                     new->info.enums.enm[i].ref = lydict_insert(mod->ctx, old->info.enums.enm[i].ref, 0);
                     new->info.enums.enm[i].flags = old->info.enums.enm[i].flags;
                     new->info.enums.enm[i].value = old->info.enums.enm[i].value;
+                    new->info.enums.enm[i].ext_size = old->info.enums.enm[i].ext_size;
+                    if (lys_ext_dup(mod->ctx, old->info.enums.enm[i].ext, old->info.enums.enm[i].ext_size,
+                                    &new->info.enums.enm[i], LYEXT_PAR_TYPE_ENUM,
+                                    &new->info.enums.enm[i].ext, unres)) {
+                        return -1;
+                    }
                 }
             }
             break;
@@ -1689,11 +1695,9 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
     new->base = old->base;
     new->der = old->der;
     new->parent = (struct lys_tpdf *)parent;
-    if (old->ext_size) {
-        new->ext_size = old->ext_size;
-        if (lys_ext_dup(mod->ctx, old->ext, old->ext_size, new, LYEXT_PAR_TYPE, &new->ext, unres)) {
-            return -1;
-        }
+    new->ext_size = old->ext_size;
+    if (lys_ext_dup(mod->ctx, old->ext, old->ext_size, new, LYEXT_PAR_TYPE, &new->ext, unres)) {
+        return -1;
     }
 
     i = unres_schema_find(unres, -1, old, tpdftype ? UNRES_TYPE_DER_TPDF : UNRES_TYPE_DER);
@@ -1824,45 +1828,8 @@ lys_tpdf_free(struct ly_ctx *ctx, struct lys_tpdf *tpdf)
     lys_extension_instances_free(ctx, tpdf->ext, tpdf->ext_size);
 }
 
-static struct lys_tpdf *
-lys_tpdf_dup(struct lys_module *mod, struct lys_node *parent, struct lys_tpdf *old, int size, struct unres_schema *unres)
-{
-    struct lys_tpdf *result;
-    int i, j;
-
-    if (!size) {
-        return NULL;
-    }
-
-    result = calloc(size, sizeof *result);
-    if (!result) {
-        LOGMEM;
-        return NULL;
-    }
-    for (i = 0; i < size; i++) {
-        result[i].name = lydict_insert(mod->ctx, old[i].name, 0);
-        result[i].dsc = lydict_insert(mod->ctx, old[i].dsc, 0);
-        result[i].ref = lydict_insert(mod->ctx, old[i].ref, 0);
-        result[i].flags = old[i].flags;
-        result[i].module = old[i].module;
-
-        if (lys_type_dup(mod, parent, &(result[i].type), &(old[i].type), 1, unres)) {
-            for (j = 0; j <= i; ++j) {
-                lys_tpdf_free(mod->ctx, &result[j]);
-            }
-            free(result);
-            return NULL;
-        }
-
-        result[i].dflt = lydict_insert(mod->ctx, old[i].dflt, 0);
-        result[i].units = lydict_insert(mod->ctx, old[i].units, 0);
-    }
-
-    return result;
-}
-
 static struct lys_when *
-lys_when_dup(struct ly_ctx *ctx, struct lys_when *old)
+lys_when_dup(struct ly_ctx *ctx, struct lys_when *old, struct unres_schema *unres)
 {
     struct lys_when *new;
 
@@ -1878,6 +1845,8 @@ lys_when_dup(struct ly_ctx *ctx, struct lys_when *old)
     new->cond = lydict_insert(ctx, old->cond, 0);
     new->dsc = lydict_insert(ctx, old->dsc, 0);
     new->ref = lydict_insert(ctx, old->ref, 0);
+    new->ext_size = old->ext_size;
+    lys_ext_dup(ctx, old->ext, old->ext_size, new, LYEXT_PAR_WHEN, &new->ext, unres);
 
     return new;
 }
@@ -1920,7 +1889,8 @@ lys_augment_free(struct ly_ctx *ctx, struct lys_node_augment *aug, void (*privat
 }
 
 static struct lys_node_augment *
-lys_augment_dup(struct lys_module *module, struct lys_node *parent, struct lys_node_augment *old, int size)
+lys_augment_dup(struct lys_module *module, struct lys_node *parent, struct lys_node_augment *old, int size,
+                struct unres_schema *unres)
 {
     struct lys_node_augment *new = NULL;
     struct lys_node *old_child, *new_child;
@@ -1942,6 +1912,8 @@ lys_augment_dup(struct lys_module *module, struct lys_node *parent, struct lys_n
         new[i].flags = old[i].flags;
         new[i].module = old[i].module;
         new[i].nodetype = old[i].nodetype;
+        new[i].ext_size = old[i].ext_size;
+        lys_ext_dup(module->ctx, old[i].ext, old[i].ext_size, &new[i], LYEXT_PAR_REFINE, &new[i].ext, unres);
 
         /* this must succeed, it was already resolved once */
         if (resolve_augment_schema_nodeid(new[i].target_name, parent->child, NULL, 1,
@@ -2039,6 +2011,8 @@ lys_refine_dup(struct ly_ctx *ctx, struct lys_refine *old, int size, struct unre
         } else if (result[i].target_type & (LYS_LIST | LYS_LEAFLIST)) {
             result[i].mod.list = old[i].mod.list;
         }
+        result[i].ext_size = old[i].ext_size;
+        lys_ext_dup(ctx, old[i].ext, old[i].ext_size, &result[i], LYEXT_PAR_REFINE, &result[i].ext, unres);
     }
 
     return result;
@@ -2682,14 +2656,9 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
     struct lys_node_anydata *any_orig = (struct lys_node_anydata *)node;
     struct lys_node_uses *uses = NULL;
     struct lys_node_uses *uses_orig = (struct lys_node_uses *)node;
-    struct lys_node_grp *grp = NULL;
-    struct lys_node_grp *grp_orig = (struct lys_node_grp *)node;
     struct lys_node_rpc_action *rpc = NULL;
-    struct lys_node_rpc_action *rpc_orig = (struct lys_node_rpc_action *)node;
     struct lys_node_inout *io = NULL;
-    struct lys_node_inout *io_orig = (struct lys_node_inout *)node;
     struct lys_node_rpc_action *ntf = NULL;
-    struct lys_node_rpc_action *ntf_orig = (struct lys_node_rpc_action *)node;
     struct lys_node_case *cs = NULL;
     struct lys_node_case *cs_orig = (struct lys_node_case *)node;
 
@@ -2739,11 +2708,6 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         retval = (struct lys_node *)cs;
         break;
 
-    case LYS_GROUPING:
-        grp = calloc(1, sizeof *grp);
-        retval = (struct lys_node *)grp;
-        break;
-
     case LYS_RPC:
     case LYS_ACTION:
         rpc = calloc(1, sizeof *rpc);
@@ -2784,6 +2748,11 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
 
     retval->prev = retval;
 
+    retval->ext_size = node->ext_size;
+    if (lys_ext_dup(ctx, node->ext, node->ext_size, retval, LYEXT_PAR_NODE, &retval->ext, unres)) {
+        goto error;
+    }
+
     if (node->iffeature_size) {
         retval->iffeature_size = node->iffeature_size;
         retval->iffeature = calloc(retval->iffeature_size, sizeof *retval->iffeature);
@@ -2821,6 +2790,13 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
                         goto error;
                     } /* else unres was duplicated */
                 }
+            }
+
+            /* duplicate if-feature's extensions */
+            retval->iffeature[i].ext_size = node->iffeature[i].ext_size;
+            if (lys_ext_dup(ctx, node->iffeature[i].ext, node->iffeature[i].ext_size,
+                            &retval->iffeature[i], LYEXT_PAR_IFFEATURE, &retval->iffeature[i].ext, unres)) {
+                goto error;
             }
         }
 
@@ -2868,6 +2844,10 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         /* go recursively */
         if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
             LY_TREE_FOR(node->child, iter) {
+                if (iter->nodetype & LYS_GROUPING) {
+                    /* do not instantiate groupings */
+                    continue;
+                }
                 if (!lys_node_dup_recursion(module, retval, iter, unres, 0, finalize)) {
                     goto error;
                 }
@@ -2894,20 +2874,19 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
     switch (node->nodetype) {
     case LYS_CONTAINER:
         if (cont_orig->when) {
-            cont->when = lys_when_dup(ctx, cont_orig->when);
+            cont->when = lys_when_dup(ctx, cont_orig->when, unres);
         }
         cont->presence = lydict_insert(ctx, cont_orig->presence, 0);
 
         cont->must_size = cont_orig->must_size;
-        cont->tpdf_size = cont_orig->tpdf_size;
-
         cont->must = lys_restr_dup(ctx, cont_orig->must, cont->must_size, unres);
-        cont->tpdf = lys_tpdf_dup(module, lys_parent(node), cont_orig->tpdf, cont->tpdf_size, unres);
-        break;
 
+        /* typedefs are not needed in instantiated grouping, nor the deviation's shallow copy */
+
+        break;
     case LYS_CHOICE:
         if (choice_orig->when) {
-            choice->when = lys_when_dup(ctx, choice_orig->when);
+            choice->when = lys_when_dup(ctx, choice_orig->when, unres);
         }
 
         if (!shallow) {
@@ -2951,7 +2930,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         leaf->must = lys_restr_dup(ctx, leaf_orig->must, leaf->must_size, unres);
 
         if (leaf_orig->when) {
-            leaf->when = lys_when_dup(ctx, leaf_orig->when);
+            leaf->when = lys_when_dup(ctx, leaf_orig->when, unres);
         }
         break;
 
@@ -2978,7 +2957,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         }
 
         if (llist_orig->when) {
-            llist->when = lys_when_dup(ctx, llist_orig->when);
+            llist->when = lys_when_dup(ctx, llist_orig->when, unres);
         }
         break;
 
@@ -2989,8 +2968,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         list->must_size = list_orig->must_size;
         list->must = lys_restr_dup(ctx, list_orig->must, list->must_size, unres);
 
-        list->tpdf_size = list_orig->tpdf_size;
-        list->tpdf = lys_tpdf_dup(module, lys_parent(node), list_orig->tpdf, list->tpdf_size, unres);
+        /* typedefs are not needed in instantiated grouping, nor the deviation's shallow copy */
 
         list->keys_size = list_orig->keys_size;
         if (list->keys_size) {
@@ -3039,7 +3017,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         }
 
         if (list_orig->when) {
-            list->when = lys_when_dup(ctx, list_orig->when);
+            list->when = lys_when_dup(ctx, list_orig->when, unres);
         }
         break;
 
@@ -3049,7 +3027,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         any->must = lys_restr_dup(ctx, any_orig->must, any->must_size, unres);
 
         if (any_orig->when) {
-            any->when = lys_when_dup(ctx, any_orig->when);
+            any->when = lys_when_dup(ctx, any_orig->when, unres);
         }
         break;
 
@@ -3057,14 +3035,15 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         uses->grp = uses_orig->grp;
 
         if (uses_orig->when) {
-            uses->when = lys_when_dup(ctx, uses_orig->when);
+            uses->when = lys_when_dup(ctx, uses_orig->when, unres);
         }
 
         uses->refine_size = uses_orig->refine_size;
         uses->refine = lys_refine_dup(ctx, uses_orig->refine, uses_orig->refine_size, unres);
         uses->augment_size = uses_orig->augment_size;
         if (!shallow) {
-            uses->augment = lys_augment_dup(module, (struct lys_node *)uses, uses_orig->augment, uses_orig->augment_size);
+            uses->augment = lys_augment_dup(module, (struct lys_node *)uses, uses_orig->augment,
+                                            uses_orig->augment_size, unres);
 #if __BYTE_ORDER == __LITTLE_ENDIAN
             if (!uses->grp || ((uint8_t*)&uses->grp->flags)[1]) {
 #else
@@ -3082,32 +3061,17 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
 
     case LYS_CASE:
         if (cs_orig->when) {
-            cs->when = lys_when_dup(ctx, cs_orig->when);
+            cs->when = lys_when_dup(ctx, cs_orig->when, unres);
         }
-        break;
-
-    case LYS_GROUPING:
-        grp->tpdf_size = grp_orig->tpdf_size;
-        grp->tpdf = lys_tpdf_dup(module, lys_parent(node), grp_orig->tpdf, grp->tpdf_size, unres);
         break;
 
     case LYS_ACTION:
     case LYS_RPC:
-        rpc->tpdf_size = rpc_orig->tpdf_size;
-        rpc->tpdf = lys_tpdf_dup(module, lys_parent(node), rpc_orig->tpdf, rpc->tpdf_size, unres);
-        break;
-
     case LYS_INPUT:
     case LYS_OUTPUT:
-        io->tpdf_size = io_orig->tpdf_size;
-        io->tpdf = lys_tpdf_dup(module, lys_parent(node), io_orig->tpdf, io->tpdf_size, unres);
-        break;
-
     case LYS_NOTIF:
-        ntf->tpdf_size = ntf_orig->tpdf_size;
-        ntf->tpdf = lys_tpdf_dup(module, lys_parent(node), ntf_orig->tpdf, ntf->tpdf_size, unres);
+        /* typedefs are not needed in instantiated grouping, nor the deviation's shallow copy */
         break;
-
 
     default:
         /* LY_NODE_AUGMENT */
@@ -3202,7 +3166,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
     struct lys_node *result, *iter, *next;
 
     if (!shallow) {
-        /* get know where in schema tre we are to know what should be done during instantiation of the grouping */
+        /* get know where in schema tree we are to know what should be done during instantiation of the grouping */
         for (p = parent;
              p && !(p->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT | LYS_RPC | LYS_ACTION | LYS_GROUPING));
              p = lys_parent(p));
@@ -3293,6 +3257,46 @@ lys_node_switch(struct lys_node *dst, struct lys_node *src)
     /* child */
     src->child = dst->child;
     dst->child = NULL;
+
+    /* node-specific data */
+    switch (dst->nodetype) {
+    case LYS_CONTAINER:
+        ((struct lys_node_container *)src)->tpdf_size = ((struct lys_node_container *)dst)->tpdf_size;
+        ((struct lys_node_container *)src)->tpdf = ((struct lys_node_container *)dst)->tpdf;
+        ((struct lys_node_container *)dst)->tpdf_size = 0;
+        ((struct lys_node_container *)dst)->tpdf = NULL;
+        break;
+    case LYS_LIST:
+        ((struct lys_node_list *)src)->tpdf_size = ((struct lys_node_list *)dst)->tpdf_size;
+        ((struct lys_node_list *)src)->tpdf = ((struct lys_node_list *)dst)->tpdf;
+        ((struct lys_node_list *)dst)->tpdf_size = 0;
+        ((struct lys_node_list *)dst)->tpdf = NULL;
+        break;
+    case LYS_RPC:
+    case LYS_ACTION:
+        ((struct lys_node_rpc_action *)src)->tpdf_size = ((struct lys_node_rpc_action *)dst)->tpdf_size;
+        ((struct lys_node_rpc_action *)src)->tpdf = ((struct lys_node_rpc_action *)dst)->tpdf;
+        ((struct lys_node_rpc_action *)dst)->tpdf_size = 0;
+        ((struct lys_node_rpc_action *)dst)->tpdf = NULL;
+        break;
+    case LYS_NOTIF:
+        ((struct lys_node_notif *)src)->tpdf_size = ((struct lys_node_notif *)dst)->tpdf_size;
+        ((struct lys_node_notif *)src)->tpdf = ((struct lys_node_notif *)dst)->tpdf;
+        ((struct lys_node_notif *)dst)->tpdf_size = 0;
+        ((struct lys_node_notif *)dst)->tpdf = NULL;
+        break;
+    case LYS_INPUT:
+    case LYS_OUTPUT:
+        ((struct lys_node_inout *)src)->tpdf_size = ((struct lys_node_inout *)dst)->tpdf_size;
+        ((struct lys_node_inout *)src)->tpdf = ((struct lys_node_inout *)dst)->tpdf;
+        ((struct lys_node_inout *)dst)->tpdf_size = 0;
+        ((struct lys_node_inout *)dst)->tpdf = NULL;
+        break;
+    default:
+        /* nothing special */
+        break;
+    }
+
 }
 
 void

@@ -4715,6 +4715,10 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
 
     /* copy the data nodes from grouping into the uses context */
     LY_TREE_FOR(uses->grp->child, node_aux) {
+        if (node_aux->nodetype & LYS_GROUPING) {
+            /* do not instantiate groupings from groupings */
+            continue;
+        }
         node = lys_node_dup(uses->module, (struct lys_node *)uses, node_aux, unres, 0);
         if (!node) {
             LOGVAL(LYE_INARG, LY_VLOG_LYS, uses, uses->grp->name, "uses");
