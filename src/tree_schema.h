@@ -183,6 +183,7 @@ typedef enum {
     LYS_OUT_YANG = 1,    /**< YANG schema output format */
     LYS_OUT_YIN = 2,     /**< YIN schema output format */
     LYS_OUT_TREE,        /**< Tree schema output format, for more information see the [printers](@ref howtoschemasprinters) page */
+    LYS_OUT_TREE_GRPS,   /**< Tree schema output format with printing groupings */
     LYS_OUT_INFO,        /**< Info schema output format, for more information see the [printers](@ref howtoschemasprinters) page */
 } LYS_OUTFORMAT;
 
