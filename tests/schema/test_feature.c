@@ -72,49 +72,49 @@ test_fullset(void **state)
     char *buf = NULL;
 
     const char *tree_alldisabled = "module: features\n"
-"   +--rw lst* [id] {not a}?\n"
-"   |  +--rw id    string\n"
-"   +--rw (ch)? {not (a and b)}?\n"
-"   |  +--:(ch3)\n"
-"   |     +--rw ch3?   string\n"
-"   +--rw axml?   anyxml {not (a or b)}?\n";
+"    +--rw lst* [id] {not a}?\n"
+"    |  +--rw id    string\n"
+"    +--rw (ch)? {not (a and b)}?\n"
+"    |  +--:(ch3)\n"
+"    |     +--rw ch3?   string\n"
+"    +--rw axml?   anyxml {not (a or b)}?\n";
 
     const char *tree_a = "module: features\n"
-"   +--rw grp?    string\n"
-"   +--rw cont! {a}?\n"
-"   +--rw ll*     string {a or b}?\n"
-"   +--rw (ch)? {not (a and b)}?\n"
-"      +--:(ch1) {a}?\n"
-"      |  +--rw ch1?   string\n"
-"      +--:(ch3)\n"
-"         +--rw ch3?   string\n";
+"    +--rw grp?    string\n"
+"    +--rw cont! {a}?\n"
+"    +--rw ll*     string {a or b}?\n"
+"    +--rw (ch)? {not (a and b)}?\n"
+"       +--:(ch1) {a}?\n"
+"       |  +--rw ch1?   string\n"
+"       +--:(ch3)\n"
+"          +--rw ch3?   string\n";
 
     const char *tree_ab = "module: features\n"
-"   +--rw grp?    string\n"
-"   +--rw cont! {a}?\n"
-"   +--rw lf?     string {a and b}?\n"
-"   +--rw ll*     string {a or b}?\n";
+"    +--rw grp?    string\n"
+"    +--rw cont! {a}?\n"
+"    +--rw lf?     string {a and b}?\n"
+"    +--rw ll*     string {a or b}?\n";
 
     const char *tree_abaa = "module: features\n"
-"   +--rw grp?    string\n"
-"   +--rw cont! {a}?\n"
-"   |  +--rw aug?   string\n"
-"   +--rw lf?     string {a and b}?\n"
-"   +--rw ll*     string {a or b}?\n"
-"rpcs:\n"
-"   +---x rpc1 {aa}?\n"
-"notifications:\n"
-"   +---n notif1 {aa}?\n";
+"    +--rw grp?    string\n"
+"    +--rw cont! {a}?\n"
+"    |  +--rw aug?   string\n"
+"    +--rw lf?     string {a and b}?\n"
+"    +--rw ll*     string {a or b}?\n\n"
+"  rpcs:\n"
+"    +---x rpc1 {aa}?\n\n"
+"  notifications:\n"
+"    +---n notif1 {aa}?\n";
 
     const char *tree_b = "module: features\n"
-"   +--rw ll*     string {a or b}?\n"
-"   +--rw lst* [id] {not a}?\n"
-"   |  +--rw id    string\n"
-"   +--rw (ch)? {not (a and b)}?\n"
-"      +--:(ch2) {b}?\n"
-"      |  +--rw ch2?   string\n"
-"      +--:(ch3)\n"
-"         +--rw ch3?   string\n";
+"    +--rw ll*     string {a or b}?\n"
+"    +--rw lst* [id] {not a}?\n"
+"    |  +--rw id    string\n"
+"    +--rw (ch)? {not (a and b)}?\n"
+"       +--:(ch2) {b}?\n"
+"       |  +--rw ch2?   string\n"
+"       +--:(ch3)\n"
+"          +--rw ch3?   string\n";
 
     mod = ly_ctx_load_module(ctx, "features", NULL);
     assert_non_null(mod);
