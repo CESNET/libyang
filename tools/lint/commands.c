@@ -41,7 +41,8 @@ cmd_add_help(void)
 void
 cmd_print_help(void)
 {
-    printf("print [-f (yang | yin | tree | info)] [-t <info-target-node>] [-o <output-file>] <model-name>[@<revision>]\n\n");
+    printf("print [-f (yang | yin | tree [--tree-print-groupings] | info [-t <info-target-node>])] [-o <output-file>]"
+           " <model-name>[@<revision>]\n\n");
     printf("\tinfo-target-node: <absolute-schema-node> | typedef[<absolute-schema-nodeid]/<typedef-name> |\n");
     printf("\t                  | identity/<identity-name> | feature/<feature-name> |\n");
     printf("\t                  | grouping/<grouping-name>(<absolute-schema-nodeid>) |\n");
@@ -207,7 +208,7 @@ cmd_add(const char *arg)
 int
 cmd_print(const char *arg)
 {
-    int c, argc, option_index, ret = 1;
+    int c, argc, option_index, ret = 1, grps = 0;
     char **argv = NULL, *ptr, *target_node = NULL, *model_name, *revision;
     const char *out_path = NULL;
     const struct lys_module *module;
@@ -218,6 +219,7 @@ cmd_print(const char *arg)
         {"format", required_argument, 0, 'f'},
         {"output", required_argument, 0, 'o'},
         {"target-node", required_argument, 0, 't'},
+        {"tree-print-groupings", no_argument, 0, 'g'},
         {NULL, 0, 0, 0}
     };
 
@@ -234,7 +236,7 @@ cmd_print(const char *arg)
     optind = 0;
     while (1) {
         option_index = 0;
-        c = getopt_long(argc, argv, "hf:o:t:", long_options, &option_index);
+        c = getopt_long(argc, argv, "hf:go:t:", long_options, &option_index);
         if (c == -1) {
             break;
         }
@@ -258,6 +260,9 @@ cmd_print(const char *arg)
                 goto cleanup;
             }
             break;
+        case 'g':
+            grps = 1;
+            break;
         case 'o':
             if (out_path) {
                 fprintf(stderr, "Output specified twice.\n");
@@ -278,6 +283,15 @@ cmd_print(const char *arg)
     if (optind == argc) {
         fprintf(stderr, "Missing the module name.\n");
         goto cleanup;
+    }
+
+    /* tree fromat with or without gropings */
+    if (grps) {
+        if (format == LYS_OUT_TREE) {
+            format = LYS_OUT_TREE_GRPS;
+        } else {
+            fprintf(stderr, "--tree-print-groupings option takes effect only in case of the tree output format");
+        }
     }
 
     /* module, revision */
