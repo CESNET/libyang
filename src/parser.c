@@ -416,7 +416,7 @@ matched:
     }
 
     if (module) {
-        result = (struct lys_module *)lys_submodule_read(module, fd, match_format, unres);
+        result = (struct lys_module *)lys_sub_parse_fd(module, fd, match_format, unres);
     } else {
         result = lys_read_import(ctx, fd, match_format, revision, implement);
     }
