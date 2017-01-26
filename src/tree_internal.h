@@ -104,8 +104,8 @@ struct lyd_node_pos {
  * @param[in] unres list of unresolved items
  * @return Created submodule structure or NULL in case of error.
  */
-struct lys_submodule *lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT format,
-                                          struct unres_schema *unres);
+struct lys_submodule *lys_sub_parse_mem(struct lys_module *module, const char *data, LYS_INFORMAT format,
+                                        struct unres_schema *unres);
 
 /**
  * @brief Create submodule structure by reading data from file descriptor.
@@ -119,8 +119,7 @@ struct lys_submodule *lys_submodule_parse(struct lys_module *module, const char 
  * @param[in] unres list of unresolved items
  * @return Created submodule structure or NULL in case of error.
  */
-struct lys_submodule *lys_submodule_read(struct lys_module *module, int fd, LYS_INFORMAT format,
-                                         struct unres_schema *unres);
+struct lys_submodule *lys_sub_parse_fd(struct lys_module *module, int fd, LYS_INFORMAT format, struct unres_schema *unres);
 
 /**
  * @brief Free the submodule structure

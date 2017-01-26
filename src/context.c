@@ -480,7 +480,7 @@ ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char
         }
 
         if (module) {
-            mod = (struct lys_module *)lys_submodule_parse(module, module_data, format, unres);
+            mod = (struct lys_module *)lys_sub_parse_mem(module, module_data, format, unres);
         } else {
             mod = (struct lys_module *)lys_parse_mem(ctx, module_data, format);
         }

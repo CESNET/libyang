@@ -912,12 +912,27 @@ lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
 }
 
 struct lys_submodule *
-lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT format, struct unres_schema *unres)
+lys_sub_parse_mem(struct lys_module *module, const char *data, LYS_INFORMAT format, struct unres_schema *unres)
 {
+    char *enlarged_data = NULL;
     struct lys_submodule *submod = NULL;
+    unsigned int len;
 
     assert(module);
     assert(data);
+
+    if (format == LYS_IN_YANG) {
+        /* enlarge data by 2 bytes for flex */
+        len = strlen(data);
+        enlarged_data = malloc((len + 2) * sizeof *enlarged_data);
+        if (!enlarged_data) {
+            LOGMEM;
+            return NULL;
+        }
+        memcpy(enlarged_data, data, len);
+        enlarged_data[len] = enlarged_data[len + 1] = '\0';
+        data = enlarged_data;
+    }
 
     /* get the main module */
     module = lys_main_module(module);
@@ -934,6 +949,7 @@ lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT fo
         break;
     }
 
+    free(enlarged_data);
     return submod;
 }
 
@@ -1047,7 +1063,7 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
 }
 
 struct lys_submodule *
-lys_submodule_read(struct lys_module *module, int fd, LYS_INFORMAT format, struct unres_schema *unres)
+lys_sub_parse_fd(struct lys_module *module, int fd, LYS_INFORMAT format, struct unres_schema *unres)
 {
     struct lys_submodule *submodule;
     struct stat sb;
@@ -1071,9 +1087,23 @@ lys_submodule_read(struct lys_module *module, int fd, LYS_INFORMAT format, struc
         LOGERR(LY_EMEM,"Map file into memory failed (%s()).",__func__);
         return NULL;
     }
-    submodule = lys_submodule_parse(module, addr, format, unres);
-    munmap(addr, sb.st_size + 2);
 
+    /* get the main module */
+    module = lys_main_module(module);
+
+    switch (format) {
+    case LYS_IN_YIN:
+        submodule = yin_read_submodule(module, addr, unres);
+        break;
+    case LYS_IN_YANG:
+        submodule = yang_read_submodule(module, addr, 0, unres);
+        break;
+    default:
+        assert(0);
+        break;
+    }
+
+    munmap(addr, sb.st_size + 2);
     return submodule;
 
 }
