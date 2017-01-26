@@ -1354,6 +1354,9 @@ test_uses_sub_yang(void **state)
                     "      type identityref {\n"
                     "        base two {\n"
                     "          e:a;\n          e:b \"one\";\n          e:c \"one\";\n"
+                    "        }\n"
+                    "        mandatory true {\n"
+                    "          e:a;\n"
                     "        }\n      }\n    }\n\n"
                     "    leaf-list ll1 {\n"
                     "      type int8;\n"
@@ -1381,14 +1384,14 @@ test_uses_sub_yang(void **state)
                     "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
                     "      }\n"
                     "    }\n    refine \"l\" {\n"
-                    "      mandatory \"true\" {\n"
+                    "      mandatory \"false\" {\n"
                     "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
                     "      }\n"
                     "    }\n    refine \"ll1\" {\n"
                     "      min-elements 1 {\n"
-                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
-                    "      }\n      max-elements 1 {\n"
-                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "        e:a;\n"
+                    "      }\n      max-elements 2 {\n"
+                    "        e:b \"one\";\n"
                     "      }\n"
                     "    }\n    refine \"ll2\" {\n"
                     "      default \"1\";\n"
@@ -1405,6 +1408,7 @@ test_uses_sub_yang(void **state)
                     "      }\n      leaf a {\n"
                     "        type int8;\n"
                     "      }\n    }\n  }\n}\n";
+    struct lys_node *uses;
 
 
     mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
@@ -1413,6 +1417,15 @@ test_uses_sub_yang(void **state)
     lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yang);
+
+    /* check applied refine's substatements' extensions */
+    uses = mod->data->prev;
+    assert_int_equal(uses->nodetype, LYS_USES);
+
+    assert_int_equal(uses->child->ext_size, 12); /* number of extensions in c */
+    assert_int_equal(uses->child->next->ext_size, 3); /* number of extensions in l */
+    assert_int_equal(uses->child->next->next->ext_size, 2); /* number of extensions in ll1 */
+    assert_int_equal(uses->child->prev->ext_size, 3); /* number of extensions in ll2 */
 }
 
 static void
