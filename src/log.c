@@ -82,9 +82,6 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
         if (!path) {
             /* erase previous path */
             e->path_index = LY_BUF_SIZE - 1;
-            if (e->path_obj != NULL + 1) {
-                e->path_obj = NULL;
-            }
         }
 
         /* if the error-app-tag should be set, do it after calling LOGVAL */
@@ -111,10 +108,7 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
         }
     }
 
-    if (hide == 0xff && level == LY_LLERR && (LY_LLWRN <= ly_log_level)) {
-        /* change error to warning */
-        level = LY_LLWRN;
-    } else if (hide || (level > ly_log_level)) {
+    if (hide || (level > ly_log_level)) {
         /* do not print the message */
         goto clean;
     }
@@ -142,7 +136,7 @@ ly_log(LY_LOG_LEVEL level, const char *format, ...)
     va_list ap;
 
     va_start(ap, format);
-    log_vprintf(level, 0, format, NULL, ap);
+    log_vprintf(level, (*ly_vlog_hide_location()), format, NULL, ap);
     va_end(ap);
 }
 
@@ -185,7 +179,7 @@ const char *ly_errs[] = {
 /* LYE_KEY_DUP */      "Key identifier \"%s\" is not unique.",
 /* LYE_INREGEX */      "Regular expression \"%s\" is not valid (\"%s\": %s).",
 /* LYE_INRESOLV */     "Failed to resolve %s \"%s\".",
-/* LYE_INSTATUS */     "A \"%s\" definition %s references \"%s\" definition %s.",
+/* LYE_INSTATUS */     "A %s definition \"%s\" references %s definition \"%s\".",
 /* LYE_CIRC_LEAFREFS */"A circular chain of leafrefs detected.",
 /* LYE_CIRC_FEATURES */"A circular chain features detected in \"%s\" feature.",
 /* LYE_CIRC_IMPORTS */ "A circular dependency (import) for module \"%s\".",
@@ -223,7 +217,7 @@ const char *ly_errs[] = {
 /* LYE_XPATH_INOP_1 */ "Cannot apply XPath operation %s on %s.",
 /* LYE_XPATH_INOP_2 */ "Cannot apply XPath operation %s on %s and %s.",
 /* LYE_XPATH_INCTX */  "Invalid context type %s in %s.",
-/* LYE_XPATH_INMOD */  "Unknown module \"%.*s\" relative to the context node \"%s\".",
+/* LYE_XPATH_INMOD */  "Unknown module \"%.*s\".",
 /* LYE_XPATH_INFUNC */ "Unknown XPath function \"%.*s\".",
 /* LYE_XPATH_INARGCOUNT */ "Invalid number of arguments (%d) for the XPath function %.*s.",
 /* LYE_XPATH_INARGTYPE */ "Wrong type of argument #%d (%s) for the XPath function %s.",
@@ -234,7 +228,7 @@ const char *ly_errs[] = {
 /* LYE_PATH_MISSMOD */ "Missing module name.",
 /* LYE_PATH_INNODE */  "Schema node not found.",
 /* LYE_PATH_INKEY */   "List key not found or on incorrect position (%s).",
-/* LYE_PATH_MISSKEY */ "Not all list keys specified (%s).",
+/* LYE_PATH_MISSKEY */ "List keys or position missing (%s).",
 /* LYE_PATH_EXISTS */  "Node already exists.",
 /* LYE_PATH_MISSPAR */ "Parent does not exist.",
 };
@@ -341,13 +335,14 @@ ly_vlog_hide(uint8_t hide)
 }
 
 void
-ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *path, uint16_t *index)
+ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *path, uint16_t *index, int prefix_all)
 {
-    int i;
+    int i, j;
     struct lys_node_list *slist;
     struct lys_node *sparent = NULL;
     struct lyd_node *dlist, *diter;
-    const char *name, *prefix = NULL;
+    const char *name, *prefix = NULL, *val_end, *val_start;
+    char *str;
     size_t len;
 
     while (elem) {
@@ -358,8 +353,20 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
             elem = ((struct lyxml_elem *)elem)->parent;
             break;
         case LY_VLOG_LYS:
-            name = ((struct lys_node *)elem)->name;
-            if (!(sparent = lys_parent((struct lys_node *)elem)) ||
+            if (((struct lys_node *)elem)->nodetype == LYS_AUGMENT) {
+                --(*index);
+                path[*index] = ']';
+
+                name = ((struct lys_node *)elem)->name;
+                len = strlen(name);
+                (*index) -= len;
+                memcpy(&path[*index], name, len);
+
+                name = "[";
+            } else {
+                name = ((struct lys_node *)elem)->name;
+            }
+            if (prefix_all || !(sparent = lys_parent((struct lys_node *)elem)) ||
                     lys_node_module((struct lys_node *)elem) != lys_node_module(sparent)) {
                 prefix = lys_node_module((struct lys_node *)elem)->name;
             } else {
@@ -372,7 +379,7 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
             break;
         case LY_VLOG_LYD:
             name = ((struct lyd_node *)elem)->schema->name;
-            if (!((struct lyd_node *)elem)->parent ||
+            if (prefix_all || !((struct lyd_node *)elem)->parent ||
                     lyd_node_module((struct lyd_node *)elem) != lyd_node_module(((struct lyd_node *)elem)->parent)) {
                 prefix = lyd_node_module((struct lyd_node *)elem)->name;
             } else {
@@ -383,41 +390,85 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
             if (((struct lyd_node *)elem)->schema->nodetype == LYS_LIST) {
                 dlist = (struct lyd_node *)elem;
                 slist = (struct lys_node_list *)((struct lyd_node *)elem)->schema;
-                for (i = slist->keys_size - 1; i > -1; i--) {
-                    LY_TREE_FOR(dlist->child, diter) {
-                        if (diter->schema == (struct lys_node *)slist->keys[i]) {
-                            break;
+                if (slist->keys_size) {
+                    /* schema list with keys - use key values in predicates */
+                    for (i = slist->keys_size - 1; i > -1; i--) {
+                        LY_TREE_FOR(dlist->child, diter) {
+                            if (diter->schema == (struct lys_node *)slist->keys[i]) {
+                                break;
+                            }
                         }
-                    }
-                    if (diter && ((struct lyd_node_leaf_list *)diter)->value_str) {
-                        (*index) -= 2;
-                        memcpy(&path[(*index)], "']", 2);
-                        len = strlen(((struct lyd_node_leaf_list *)diter)->value_str);
-                        (*index) -= len;
-                        memcpy(&path[(*index)], ((struct lyd_node_leaf_list *)diter)->value_str, len);
-                        (*index) -= 2;
-                        memcpy(&path[(*index)], "='", 2);
-                        len = strlen(diter->schema->name);
-                        (*index) -= len;
-                        memcpy(&path[(*index)], diter->schema->name, len);
-                        if (dlist->schema->module != diter->schema->module) {
-                            path[--(*index)] = ':';
-                            len = strlen(diter->schema->module->name);
+                        if (diter && ((struct lyd_node_leaf_list *)diter)->value_str) {
+                            if (strchr(((struct lyd_node_leaf_list *)diter)->value_str, '\'')) {
+                                val_start = "=\"";
+                                val_end = "\"]";
+                            } else {
+                                val_start = "='";
+                                val_end = "']";
+                            }
+
+                            (*index) -= 2;
+                            memcpy(&path[(*index)], val_end, 2);
+                            len = strlen(((struct lyd_node_leaf_list *)diter)->value_str);
                             (*index) -= len;
-                            memcpy(&path[(*index)], diter->schema->module->name, len);
+                            memcpy(&path[(*index)], ((struct lyd_node_leaf_list *)diter)->value_str, len);
+                            (*index) -= 2;
+                            memcpy(&path[(*index)], val_start, 2);
+                            len = strlen(diter->schema->name);
+                            (*index) -= len;
+                            memcpy(&path[(*index)], diter->schema->name, len);
+                            if (prefix_all || (dlist->schema->module != diter->schema->module)) {
+                                path[--(*index)] = ':';
+                                len = strlen(diter->schema->module->name);
+                                (*index) -= len;
+                                memcpy(&path[(*index)], diter->schema->module->name, len);
+                            }
+                            path[--(*index)] = '[';
                         }
-                        path[--(*index)] = '[';
                     }
+                } else {
+                    /* schema list without keys - use instance position */
+                    path[--(*index)] = ']';
+
+                    i = j = lyd_list_pos(dlist);
+                    len = 1;
+                    while (j > 9) {
+                        ++len;
+                        j /= 10;
+                    }
+
+                    str = malloc(len + 1);
+                    if (!str) {
+                        LOGMEM;
+                        return;
+                    }
+                    sprintf(str, "%d", i);
+
+                    (*index) -= len;
+                    strncpy(&path[(*index)], str, len);
+
+                    free(str);
+
+                    --(*index);
+                    path[*index] = '[';
                 }
             } else if (((struct lyd_node *)elem)->schema->nodetype == LYS_LEAFLIST &&
                     ((struct lyd_node_leaf_list *)elem)->value_str) {
+                if (strchr(((struct lyd_node_leaf_list *)elem)->value_str, '\'')) {
+                    val_start = "[.=\"";
+                    val_end = "\"]";
+                } else {
+                    val_start = "[.='";
+                    val_end = "']";
+                }
+
                 (*index) -= 2;
-                memcpy(&path[(*index)], "']", 2);
+                memcpy(&path[(*index)], val_end, 2);
                 len = strlen(((struct lyd_node_leaf_list *)elem)->value_str);
                 (*index) -= len;
                 memcpy(&path[(*index)], ((struct lyd_node_leaf_list *)elem)->value_str, len);
                 (*index) -= 4;
-                memcpy(&path[(*index)], "[.='", 4);
+                memcpy(&path[(*index)], val_start, 4);
             }
 
             elem = ((struct lyd_node *)elem)->parent;
@@ -436,8 +487,8 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
             return;
         }
         len = strlen(name);
-        (*index) = (*index) - len;
-        memcpy(&path[(*index)], name, len);
+        (*index) -= len;
+        memcpy(&path[*index], name, len);
         if (prefix) {
             path[--(*index)] = ':';
             len = strlen(prefix);
@@ -477,14 +528,7 @@ ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
     /* resolve path */
     path = ((struct ly_err *)&ly_errno)->path;
     index = &((struct ly_err *)&ly_errno)->path_index;
-    if (elem_type) { /* != LY_VLOG_NONE */
-        /* check if the path is equal to the last one */
-        if (elem && elem_type == ((struct ly_err *)&ly_errno)->path_obj_type &&
-                (elem_type == LY_VLOG_LYD ? ((struct lyd_node *)elem)->schema : elem) == ((struct ly_err *)&ly_errno)->path_obj) {
-            /* path is up-to-date (same as the last one) */
-            goto log;
-        }
-
+    if ((elem_type != LY_VLOG_NONE) && (elem_type != LY_VLOG_PREV)) { /* != LY_VLOG_NONE */
         /* update path */
         (*index) = LY_BUF_SIZE - 1;
         path[(*index)] = '\0';
@@ -492,12 +536,9 @@ ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
             /* top-level */
             path[--(*index)] = '/';
         } else {
-            ly_vlog_build_path_reverse(elem_type, elem, path, index);
-            /* store the source of the path */
-            ((struct ly_err *)&ly_errno)->path_obj_type = elem_type;
-            ((struct ly_err *)&ly_errno)->path_obj = elem_type == LY_VLOG_LYD ? ((struct lyd_node *)elem)->schema : elem;
+            ly_vlog_build_path_reverse(elem_type, elem, path, index, 0);
         }
-    } else {
+    } else if (elem_type == LY_VLOG_NONE) {
         /* erase path, the rest will be erased by log_vprintf() since it will get NULL path parameter */
         path[(*index)] = '\0';
     }

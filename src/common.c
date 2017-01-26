@@ -28,6 +28,7 @@
 #include "common.h"
 #include "tree_internal.h"
 #include "xpath.h"
+#include "context.h"
 #include "libyang.h"
 
 /* libyang errno */
@@ -37,7 +38,7 @@ uint8_t ly_vlog_hide_def;
 static pthread_once_t ly_err_once = PTHREAD_ONCE_INIT;
 static pthread_key_t ly_err_key;
 #ifdef __linux__
-struct ly_err ly_err_main = {LY_SUCCESS, LYVE_SUCCESS, 0, 0, 0, 0, NULL, NULL + 1, {0}, {0}, {0}, {0}};
+struct ly_err ly_err_main = {LY_SUCCESS, LYVE_SUCCESS, 0, 0, 0, NULL, {0}, {0}, {0}, {0}};
 #endif
 
 static void
@@ -96,7 +97,6 @@ ly_err_location(void)
         {
 #endif /* __linux__ */
             e = calloc(1, sizeof *e);
-            e->path_obj = NULL + 1; /* hack - invalid address as an initial value */
         }
         pthread_setspecific(ly_err_key, e);
     }
@@ -522,7 +522,7 @@ transform_json2schema(const struct lys_module *module, const char *expr)
 }
 
 const char *
-transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml, int log)
+transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml, int use_ctx_data_clb, int log)
 {
     const char *end, *cur_expr, *ptr;
     char *out, *prefix;
@@ -572,16 +572,23 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
             if (!ns) {
                 if (log) {
                     LOGVAL(LYE_XML_INVAL, LY_VLOG_XML, xml, "namespace prefix");
-                    LOGVAL(LYE_SPEC, LY_VLOG_XML, xml,
+                    LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL,
                         "XML namespace with prefix \"%.*s\" not defined.", pref_len, cur_expr);
                 }
                 goto error;
             }
             mod = ly_ctx_get_module_by_ns(ctx, ns->value, NULL);
+            if (use_ctx_data_clb && ctx->data_clb) {
+                if (!mod) {
+                    mod = ctx->data_clb(ctx, NULL, ns->value, 0, ctx->data_clb_data);
+                } else if (!mod->implemented) {
+                    mod = ctx->data_clb(ctx, mod->name, mod->ns, LY_MODCLB_NOT_IMPLEMENTED, ctx->data_clb_data);
+                }
+            }
             if (!mod) {
                 if (log) {
                     LOGVAL(LYE_XML_INVAL, LY_VLOG_XML, xml, "module namespace");
-                    LOGVAL(LYE_SPEC, LY_VLOG_XML, xml,
+                    LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL,
                         "Module with the namespace \"%s\" could not be found.", ns->value);
                 }
                 goto error;
@@ -624,7 +631,7 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
             if (!ns) {
                 if (log) {
                     LOGVAL(LYE_XML_INVAL, LY_VLOG_XML, xml, "namespace prefix");
-                    LOGVAL(LYE_SPEC, LY_VLOG_XML, xml,
+                    LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL,
                         "XML namespace with prefix \"%.*s\" not defined.", pref_len, cur_expr);
                 }
                 goto error;
@@ -848,6 +855,38 @@ transform_iffeat_schema2json(const struct lys_module *module, const char *expr)
     /* unreachable */
     LOGINT;
     return NULL;
+}
+
+int
+ly_new_node_validity(const struct lys_node *schema)
+{
+    int validity;
+
+    validity = LYD_VAL_OK;
+    switch (schema->nodetype) {
+    case LYS_LEAF:
+    case LYS_LEAFLIST:
+        if (((struct lys_node_leaf *)schema)->type.base == LY_TYPE_LEAFREF) {
+            validity |= LYD_VAL_LEAFREF;
+        }
+        validity |= LYD_VAL_MAND;
+        break;
+    case LYS_LIST:
+        validity |= LYD_VAL_UNIQUE;
+        /* fallthrough */
+    case LYS_CONTAINER:
+    case LYS_NOTIF:
+    case LYS_RPC:
+    case LYS_ACTION:
+    case LYS_ANYXML:
+    case LYS_ANYDATA:
+        validity |= LYD_VAL_MAND;
+        break;
+    default:
+        break;
+    }
+
+    return validity;
 }
 
 void *

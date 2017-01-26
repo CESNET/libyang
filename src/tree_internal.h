@@ -61,7 +61,7 @@ struct internal_modules {
 /**
  * @brief internal parser flag for actions and inline notifications
  */
-#define LYD_OPT_ACT_NOTIF 0x80
+#define LYD_OPT_ACT_NOTIF 0x100
 
 /**
  * @brief Internal list of built-in types
@@ -104,8 +104,8 @@ struct lyd_node_pos {
  * @param[in] unres list of unresolved items
  * @return Created submodule structure or NULL in case of error.
  */
-struct lys_submodule *lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT format,
-                                          struct unres_schema *unres);
+struct lys_submodule *lys_sub_parse_mem(struct lys_module *module, const char *data, LYS_INFORMAT format,
+                                        struct unres_schema *unres);
 
 /**
  * @brief Create submodule structure by reading data from file descriptor.
@@ -119,8 +119,7 @@ struct lys_submodule *lys_submodule_parse(struct lys_module *module, const char 
  * @param[in] unres list of unresolved items
  * @return Created submodule structure or NULL in case of error.
  */
-struct lys_submodule *lys_submodule_read(struct lys_module *module, int fd, LYS_INFORMAT format,
-                                         struct unres_schema *unres);
+struct lys_submodule *lys_sub_parse_fd(struct lys_module *module, int fd, LYS_INFORMAT format, struct unres_schema *unres);
 
 /**
  * @brief Free the submodule structure
@@ -181,9 +180,10 @@ int lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_modu
  *
  * @param[in] node Node to examine.
  * @param[in] check_place Check where the node is placed to get know if the check is supposed to be performed
+ * @param[in] warn_on_fwd_ref Whether to not print errors and only warn on forward references.
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
-int lys_check_xpath(struct lys_node *node, int check_place);
+int lys_check_xpath(struct lys_node *node, int check_place, int warn_on_fwd_ref);
 
 /**
  * @brief Get know if the node contains must or when with XPath expression
@@ -368,13 +368,14 @@ int lys_get_sibling(const struct lys_node *siblings, const char *mod_name, int m
  * @param[in] siblings Siblings to consider. They are first adjusted to
  *                     point to the first sibling.
  * @param[in] name Node name.
+ * @param[in] nam_len Node \p name length.
  * @param[in] type ORed desired type of the node. 0 means any (data node) type.
  * @param[out] ret Pointer to the node of the desired type. Can be NULL.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on fail.
  */
-int lys_get_data_sibling(const struct lys_module *mod, const struct lys_node *siblings, const char *name, LYS_NODE type,
-                         const struct lys_node **ret);
+int lys_get_data_sibling(const struct lys_module *mod, const struct lys_node *siblings, const char *name, int nam_len,
+                         LYS_NODE type, const struct lys_node **ret);
 
 /**
  * @brief Compare 2 list or leaf-list data nodes if they are the same from the YANG point of view. Logs directly.

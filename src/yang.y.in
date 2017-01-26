@@ -262,25 +262,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, char **value, ...);
 /* to simplify code, store the module/submodule being processed as trg */
 
 start: module_stmt
- |  submodule_stmt { if (!submodule) {
-                       /* update the size of the array, it can be smaller due to possible duplicities
-                        * found in submodules */
-                       if  (module->inc_size) {
-                         module->inc = ly_realloc(module->inc, module->inc_size * sizeof *module->inc);
-                         if (!module->inc) {
-                           LOGMEM;
-                           YYABORT;
-                         }
-                       }
-                       if (module->imp_size) {
-                         module->imp = ly_realloc(module->imp, module->imp_size * sizeof *module->imp);
-                         if (!module->imp) {
-                           LOGMEM;
-                           YYABORT;
-                         }
-                       }
-                     }
-                   }
+ |  submodule_stmt
 
 tmp_string: STRING { if (yyget_text(scanner)[0] == '"') {
                       char *tmp;
@@ -290,7 +272,7 @@ tmp_string: STRING { if (yyget_text(scanner)[0] == '"') {
                         LOGMEM;
                         YYABORT;
                       }
-                      if (!(tmp = yang_read_string(yyget_text(scanner) + 1, s, yyget_leng(scanner) - 2, 0, yylloc.first_column, (trg) ? trg->version : 0))) {
+                      if (!(tmp = yang_read_string(yyget_text(scanner) + 1, s, yyget_leng(scanner) - 2, 0, yylloc.first_column))) {
                         YYABORT;
                       }
                       s = tmp;
@@ -321,7 +303,7 @@ string_2: @EMPTYDIR@
                 }
                 s = tmp;
                 if (yyget_text(scanner)[0] == '"') {
-                  if (!(tmp = yang_read_string(yyget_text(scanner) + 1, s, length_tmp - 2, length_s, yylloc.first_column, (trg) ? trg->version : 0))) {
+                  if (!(tmp = yang_read_string(yyget_text(scanner) + 1, s, length_tmp - 2, length_s, yylloc.first_column))) {
                     YYABORT;
                   }
                   s = tmp;
@@ -752,7 +734,8 @@ argument_end: ';'
         yin_element_stmt
     '}'
 
-yin_element_stmt: YIN_ELEMENT_KEYWORD sep yin_element_arg_str stmtend;
+yin_element_stmt: @EMPTYDIR@
+  |  YIN_ELEMENT_KEYWORD sep yin_element_arg_str stmtend;
 
 yin_element_arg_str: TRUE_KEYWORD optsep
   | FALSE_KEYWORD optsep

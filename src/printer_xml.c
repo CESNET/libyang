@@ -83,19 +83,15 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node, int options)
     /* add node children nodes and attribute modules */
     if (!(node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
         if (options & (LYP_WD_ALL_TAG | LYP_WD_IMPL_TAG)) {
-            /* get with-defaults module */
+            /* get with-defaults module and print its namespace */
             wdmod = ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf-with-defaults", NULL);
+            if (wdmod && modlist_add(&mlist, wdmod)) {
+                goto print;
+            }
         }
 
         LY_TREE_FOR(node->child, node2) {
             LY_TREE_DFS_BEGIN(node2, next, cur) {
-                if (cur->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
-                    if (cur->dflt && wdmod) {
-                        if (modlist_add(&mlist, wdmod)) {
-                            goto print;
-                        }
-                    }
-                }
                 for (attr = cur->attr; attr; attr = attr->next) {
                     if (modlist_add(&mlist, attr->module)) {
                         goto print;
@@ -179,12 +175,12 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
 static void
 xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int toplevel, int options)
 {
-    const struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
+    const struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node, *iter;
+    const struct lys_type *type;
     const char *ns, *mod_name;
     const char **prefs, **nss;
     const char *xml_expr;
     uint32_t ns_count, i;
-    struct lys_type *type;
     LY_DATA_TYPE datatype;
     char *p;
     size_t len;
@@ -202,7 +198,6 @@ xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int to
     }
 
     xml_print_attrs(out, node, options);
-    type = &((struct lys_node_leaf *)leaf->schema)->type;
     datatype = leaf->value_type & LY_DATA_TYPE_MASK;
 printvalue:
     switch (datatype) {
@@ -274,16 +269,23 @@ printvalue:
         break;
 
     case LY_TYPE_LEAFREF:
-        type = lyp_parse_value(type, (const char **)&leaf->value_str, NULL, (struct lyd_node *)leaf,
-                               (struct lyd_node_leaf_list *)leaf, 0, 1, 0);
-        if (!type) {
-            /* error */
-            ly_print(out, "\"(!error!)\"");
-        } else {
-            datatype = type->base;
-            goto printvalue;
+        iter = (struct lyd_node_leaf_list *)leaf->value.leafref;
+        while (iter && (iter->value_type == LY_TYPE_LEAFREF)) {
+            iter = (struct lyd_node_leaf_list *)iter->value.leafref;
         }
-        break;
+        if (!iter) {
+            /* unresolved and invalid, but we can learn the correct type anyway */
+            type = lyd_leaf_type((struct lyd_node_leaf_list *)leaf);
+            if (!type) {
+                /* error */
+                ly_print(out, "\"(!error!)\"");
+                return;
+            }
+            datatype = type->base;
+        } else {
+            datatype = iter->value_type & LY_DATA_TYPE_MASK;
+        }
+        goto printvalue;
 
     case LY_TYPE_EMPTY:
         ly_print(out, "/>");
@@ -407,7 +409,7 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
                     ly_print(out, "\n");
                 }
                 LY_TREE_FOR(any->value.tree, iter) {
-                    xml_print_node(out, level ? level + 1 : 0, iter, 0, (options & LYP_FORMAT));
+                    xml_print_node(out, level ? level + 1 : 0, iter, 0, (options & ~(LYP_WITHSIBLINGS | LYP_NETCONF)));
                 }
             }
             break;

@@ -33,6 +33,7 @@ print_indent(struct lyout *out, uint64_t indent, int level)
 {
     int i;
 
+    ly_print(out, " ");
     for (i = 1; i < level; ++i) {
         if (indent & (1 << i)) {
             ly_print(out, "|  ");
@@ -43,7 +44,7 @@ print_indent(struct lyout *out, uint64_t indent, int level)
 }
 
 static int
-sibling_is_valid_child(const struct lys_node *node, int including, const struct lys_module *module)
+sibling_is_valid_child(const struct lys_node *node, int including, const struct lys_module *module, LY_DATA_TYPE type)
 {
     struct lys_node *cur;
 
@@ -58,22 +59,44 @@ sibling_is_valid_child(const struct lys_node *node, int including, const struct 
         }
 
         if (!lys_is_disabled(cur, 0)) {
-            if (cur->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_CHOICE
-                    | LYS_CASE | LYS_NOTIF | LYS_ACTION)) {
-                return 1;
-            }
-            if ((cur->nodetype & (LYS_INPUT | LYS_OUTPUT)) && cur->child) {
-                return 1;
-            }
-            if ((cur->nodetype == LYS_USES) && sibling_is_valid_child(cur->child, 1, module)) {
-                return 1;
+            switch (node->nodetype) {
+            case LYS_USES:
+                if (sibling_is_valid_child(cur->child, 1, module, type)) {
+                    return 1;
+                }
+                break;
+            case LYS_GROUPING:
+                /* we are printing groupings, find another */
+                if (cur->nodetype == LYS_GROUPING) {
+                    return 1;
+                }
+                break;
+            case LYS_RPC:
+                if (cur->nodetype == LYS_RPC) {
+                    return 1;
+                }
+                break;
+            case LYS_NOTIF:
+                if (cur->nodetype == LYS_NOTIF) {
+                    return 1;
+                }
+                break;
+            default:
+                if (cur->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_CHOICE
+                        | LYS_CASE)) {
+                    return 1;
+                }
+                if ((cur->nodetype & (LYS_INPUT | LYS_OUTPUT)) && cur->child) {
+                    return 1;
+                }
+                break;
             }
         }
     }
 
     /* if in uses, the following printed child can actually be in the parent node :-/ */
     if (lys_parent(node) && (lys_parent(node)->nodetype == LYS_USES)) {
-        return sibling_is_valid_child(lys_parent(node), 0, module);
+        return sibling_is_valid_child(lys_parent(node), 0, module, type);
     }
 
     return 0;
@@ -106,7 +129,7 @@ create_indent(int level, uint64_t old_indent, const struct lys_node *node, int s
     }
 
     /* next is a node that will actually be printed */
-    has_next = sibling_is_valid_child(node, 0, lys_main_module(module));
+    has_next = sibling_is_valid_child(node, 0, lys_main_module(module), node->nodetype);
 
     if (has_next && !next_is_case) {
         new_indent |= 1 << (level - 1);
@@ -155,6 +178,18 @@ tree_print_type(struct lyout *out, const struct lys_type *type)
         ly_print(out, "%s:%s", type->module_name, type->der->name);
     } else {
         ly_print(out, "%s", type->der->name);
+    }
+}
+
+static void
+tree_print_config(struct lyout *out, const struct lys_node *node, int spec_config)
+{
+    if (spec_config == 0) {
+        ly_print(out, "%s ", (node->flags & LYS_CONFIG_W) ? "rw" : (node->flags & LYS_CONFIG_R) ? "ro" : "--");
+    } else if (spec_config == 1) {
+        ly_print(out, "-w ");
+    } else if (spec_config == 2) {
+        ly_print(out, "ro ");
     }
 }
 
@@ -226,14 +261,7 @@ tree_print_container(struct lyout *out, const struct lys_module *module, int lev
 
     print_indent(out, indent, level);
     ly_print(out, "%s--", (cont->flags & LYS_STATUS_DEPRC ? "x" : (cont->flags & LYS_STATUS_OBSLT ? "o" : "+")));
-
-    if (spec_config == 0) {
-        ly_print(out, "%s ", (cont->flags & LYS_CONFIG_W ? "rw" : "ro"));
-    } else if (spec_config == 1) {
-        ly_print(out, "-w ");
-    } else if (spec_config == 2) {
-        ly_print(out, "ro ");
-    }
+    tree_print_config(out, node, spec_config);
 
     nodemod = lys_node_module(node);
     if (lys_main_module(module) != nodemod) {
@@ -276,14 +304,7 @@ tree_print_choice(struct lyout *out, const struct lys_module *module, int level,
 
     print_indent(out, indent, level);
     ly_print(out, "%s--", (choice->flags & LYS_STATUS_DEPRC ? "x" : (choice->flags & LYS_STATUS_OBSLT ? "o" : "+")));
-
-    if (spec_config == 0) {
-        ly_print(out, "%s ", (choice->flags & LYS_CONFIG_W ? "rw" : "ro"));
-    } else if (spec_config == 1) {
-        ly_print(out, "-w ");
-    } else if (spec_config == 2) {
-        ly_print(out, "ro ");
-    }
+    tree_print_config(out, node, spec_config);
 
     ly_print(out, "(");
 
@@ -373,14 +394,7 @@ tree_print_anydata(struct lyout *out, const struct lys_module *module, int level
 
     print_indent(out, indent, level);
     ly_print(out, "%s--", (any->flags & LYS_STATUS_DEPRC ? "x" : (any->flags & LYS_STATUS_OBSLT ? "o" : "+")));
-
-    if (spec_config == 0) {
-        ly_print(out, "%s ", (any->flags & LYS_CONFIG_W ? "rw" : "ro"));
-    } else if (spec_config == 1) {
-        ly_print(out, "-w ");
-    } else if (spec_config == 2) {
-        ly_print(out, "ro ");
-    }
+    tree_print_config(out, node, spec_config);
 
     prefix_len = 0;
     nodemod = lys_node_module(node);
@@ -426,14 +440,7 @@ tree_print_leaf(struct lyout *out, const struct lys_module *module, int level, u
 
     print_indent(out, indent, level);
     ly_print(out, "%s--", (leaf->flags & LYS_STATUS_DEPRC ? "x" : (leaf->flags & LYS_STATUS_OBSLT ? "o" : "+")));
-
-    if (spec_config == 0) {
-        ly_print(out, "%s ", (leaf->flags & LYS_CONFIG_W ? "rw" : "ro"));
-    } else if (spec_config == 1) {
-        ly_print(out, "-w ");
-    } else if (spec_config == 2) {
-        ly_print(out, "ro ");
-    }
+    tree_print_config(out, node, spec_config);
 
     prefix_len = 0;
     nodemod = lys_node_module(node);
@@ -467,14 +474,7 @@ tree_print_leaflist(struct lyout *out, const struct lys_module *module, int leve
 
     print_indent(out, indent, level);
     ly_print(out, "%s--", (leaflist->flags & LYS_STATUS_DEPRC ? "x" : (leaflist->flags & LYS_STATUS_OBSLT ? "o" : "+")));
-
-    if (spec_config == 0) {
-        ly_print(out, "%s ", (leaflist->flags & LYS_CONFIG_W ? "rw" : "ro"));
-    } else if (spec_config == 1) {
-        ly_print(out, "-w ");
-    } else if (spec_config == 2) {
-        ly_print(out, "ro ");
-    }
+    tree_print_config(out, node, spec_config);
 
     nodemod = lys_node_module(node);
     if (lys_main_module(module) != nodemod) {
@@ -503,14 +503,7 @@ tree_print_list(struct lyout *out, const struct lys_module *module, int level, u
 
     print_indent(out, indent, level);
     ly_print(out, "%s--", (list->flags & LYS_STATUS_DEPRC ? "x" : (list->flags & LYS_STATUS_OBSLT ? "o" : "+")));
-
-    if (spec_config == 0) {
-        ly_print(out, "%s ", (list->flags & LYS_CONFIG_W ? "rw" : "ro"));
-    } else if (spec_config == 1) {
-        ly_print(out, "-w ");
-    } else if (spec_config == 2) {
-        ly_print(out, "ro ");
-    }
+    tree_print_config(out, node, spec_config);
 
     nodemod = lys_node_module(node);
     if (lys_main_module(module) != nodemod) {
@@ -631,6 +624,42 @@ tree_print_notif(struct lyout *out, const struct lys_module *module, int level, 
 }
 
 static void
+tree_print_grp(struct lyout *out, const struct lys_module *module, int level, uint64_t indent,
+               const struct lys_node *node)
+{
+    unsigned int max_child_len;
+    uint64_t new_indent;
+    struct lys_node *sub;
+    struct lys_node_grp *grp = (struct lys_node_grp *)node;
+
+    if (lys_is_disabled(node, 0)) {
+        return;
+    }
+
+    print_indent(out, indent, level);
+    ly_print(out, "%s---- %s", (grp->flags & LYS_STATUS_DEPRC ? "x" : (grp->flags & LYS_STATUS_OBSLT ? "o" : "+")),
+             grp->name);
+
+    tree_print_features(out, module, grp->iffeature, grp->iffeature_size);
+
+    ly_print(out, "\n");
+
+    level++;
+    new_indent = create_indent(level, indent, node, 0, module);
+
+    max_child_len = get_max_name_len(module, node->child);
+
+    LY_TREE_FOR(node->child, sub) {
+        /* submodule, foreign augments */
+        if (module->type && (sub->parent != node) && (sub->module != module)) {
+            continue;
+        }
+        tree_print_snode(out, module, level, new_indent, max_child_len, sub,
+                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_USES, 0);
+    }
+}
+
+static void
 tree_print_choice_content(struct lyout *out, const struct lys_module *module, int level, uint64_t indent,
                           unsigned int max_name_len, const struct lys_node *node, int mask, int spec_config)
 {
@@ -692,11 +721,11 @@ tree_print_snode(struct lyout *out, const struct lys_module *module, int level, 
 }
 
 int
-tree_print_model(struct lyout *out, const struct lys_module *module)
+tree_print_model(struct lyout *out, const struct lys_module *module, int printgroupings)
 {
     struct lys_node *node, *data;
     unsigned int max_child_len;
-    int level = 1, have_rpcs = 0, have_notifs = 0;
+    int level = 1, have_rpcs = 0, have_notifs = 0, have_grps = 0;
     uint64_t indent = 0;
     int i;
 
@@ -730,6 +759,11 @@ tree_print_model(struct lyout *out, const struct lys_module *module)
                 have_notifs++;
             }
             break;
+        case LYS_GROUPING:
+            if (printgroupings && !lys_is_disabled(node, 0)) {
+                have_grps++;
+            }
+            break;
         default:
             tree_print_snode(out, module, level, indent, max_child_len, node,
                              LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_USES, 0);
@@ -746,7 +780,7 @@ tree_print_model(struct lyout *out, const struct lys_module *module)
             continue;
         }
 
-        ly_print(out, "augment %s:\n", module->augment[i].target_name);
+        ly_print(out, "\n  augment %s:\n", module->augment[i].target_name);
         LY_TREE_FOR(module->augment[i].child, node) {
             /* submodule, foreign augments */
             if (node->parent != (struct lys_node *)&module->augment[i]) {
@@ -759,31 +793,34 @@ tree_print_model(struct lyout *out, const struct lys_module *module)
 
     /* rpc */
     if (have_rpcs) {
-        ly_print(out, "rpcs:\n");
+        ly_print(out, "\n  rpcs:\n");
         LY_TREE_FOR(data, node) {
-            if (!have_rpcs) {
-                break;
-            }
             if (node->nodetype == LYS_RPC) {
                 tree_print_rpc_action(out, module, level, indent, node);
-                have_rpcs--;
             }
         }
     }
 
     /* notification */
     if (have_notifs) {
-        ly_print(out, "notifications:\n");
+        ly_print(out, "\n  notifications:\n");
         LY_TREE_FOR(data, node) {
-            if (!have_notifs) {
-                break;
-            }
             if (node->nodetype == LYS_NOTIF) {
                 tree_print_notif(out, module, level, indent, node);
-                have_notifs--;
             }
         }
     }
+
+    /* groupings */
+    if (have_grps) {
+        ly_print(out, "\n  groupings:\n");
+        LY_TREE_FOR(data, node) {
+            if (node->nodetype == LYS_GROUPING) {
+                tree_print_grp(out, module, level, indent, node);
+            }
+        }
+    }
+
     ly_print_flush(out);
 
     return EXIT_SUCCESS;

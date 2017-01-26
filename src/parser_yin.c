@@ -1184,6 +1184,11 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             goto error;
         }
 
+        /* inherit instid presence information */
+        if ((type->der->type.base == LY_TYPE_UNION) && type->der->type.info.uni.has_ptr_type) {
+            type->info.uni.has_ptr_type = 1;
+        }
+
         /* allocate array for union's types ... */
         type->info.uni.types = calloc(i, sizeof *type->info.uni.types);
         if (!type->info.uni.types) {
@@ -1207,6 +1212,11 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                         rc = -1;
                     }
                 }
+
+                if ((type->info.uni.types[type->info.uni.count - 1].base == LY_TYPE_INST)
+                        || (type->info.uni.types[type->info.uni.count - 1].base == LY_TYPE_LEAFREF)) {
+                    type->info.uni.has_ptr_type = 1;
+                }
             }
             if (rc) {
                 /* even if we got EXIT_FAILURE, throw it all away, too much trouble doing something else */
@@ -1216,6 +1226,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 free(type->info.uni.types);
                 type->info.uni.types = NULL;
                 type->info.uni.count = 0;
+                type->info.uni.has_ptr_type = 0;
                 type->der = NULL;
                 type->base = LY_TYPE_DER;
 
@@ -2044,7 +2055,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 goto error;
             }
 
-            dev_target->flags &= ~LYS_VALID_DEP;
+            dev_target->flags &= ~LYS_XPATH_DEP;
 
             if (d->mod == LY_DEVIATE_RPL) {
                 /* replace must is forbidden */
@@ -2905,8 +2916,7 @@ error:
 /* logs directly
  * returns:
  *  0 - inc successfully filled
- * -1 - error, inc is cleaned
- *  1 - duplication, ignore the inc structure, inc is cleaned
+ * -1 - error
  */
 static int
 fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, struct lyxml_elem *yin,
@@ -2956,7 +2966,7 @@ fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, str
 
     GETVAL(value, yin, "module");
 
-    return lyp_check_include(module, submodule, value, inc, unres);
+    return lyp_check_include(submodule ? (struct lys_module *)submodule : module, value, inc, unres);
 
 error:
 
@@ -3431,7 +3441,7 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
     /* check - default is prohibited in combination with mandatory */
     if (dflt && (choice->flags & LYS_MAND_TRUE)) {
         LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, retval, "default", "choice");
-        LOGVAL(LYE_SPEC, LY_VLOG_LYS, retval, "The \"default\" statement is forbidden on choices with \"mandatory\".");
+        LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "The \"default\" statement is forbidden on choices with \"mandatory\".");
         goto error;
     }
 
@@ -3709,7 +3719,7 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     }
     if (leaf->dflt && (leaf->flags & LYS_MAND_TRUE)) {
         LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, retval, "mandatory", "leaf");
-        LOGVAL(LYE_SPEC, LY_VLOG_LYS, retval,
+        LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL,
                "The \"mandatory\" statement is forbidden on leaf with the \"default\" statement.");
         goto error;
     }
@@ -3893,7 +3903,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
             llist->min = (uint32_t) val;
             if (llist->max && (llist->min > llist->max)) {
                 LOGVAL(LYE_INARG, LY_VLOG_LYS, retval, value, sub->name);
-                LOGVAL(LYE_SPEC, LY_VLOG_LYS, retval, "\"min-elements\" is bigger than \"max-elements\".");
+                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "\"min-elements\" is bigger than \"max-elements\".");
                 goto error;
             }
         } else if (!strcmp(sub->name, "max-elements")) {
@@ -3922,7 +3932,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
                 llist->max = (uint32_t) val;
                 if (llist->min > llist->max) {
                     LOGVAL(LYE_INARG, LY_VLOG_LYS, retval, value, sub->name);
-                    LOGVAL(LYE_SPEC, LY_VLOG_LYS, retval, "\"max-elements\" is smaller than \"min-elements\".");
+                    LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "\"max-elements\" is smaller than \"min-elements\".");
                     goto error;
                 }
             }
@@ -3995,7 +4005,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
                 for (r = 0; r < llist->dflt_size; r++) {
                     if (ly_strequal(llist->dflt[r], value, 1)) {
                         LOGVAL(LYE_INARG, LY_VLOG_LYS, retval, value, "default");
-                        LOGVAL(LYE_SPEC, LY_VLOG_LYS, retval, "Duplicated default value \"%s\".", value);
+                        LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Duplicated default value \"%s\".", value);
                         goto error;
                     }
                 }
@@ -4012,7 +4022,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
 
     if (llist->dflt_size && llist->min) {
         LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, retval, "min-elements", "leaf-list");
-        LOGVAL(LYE_SPEC, LY_VLOG_LYS, retval,
+        LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL,
                "The \"min-elements\" statement with non-zero value is forbidden on leaf-lists with the \"default\" statement.");
         goto error;
     }
@@ -4188,7 +4198,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             list->min = (uint32_t) val;
             if (list->max && (list->min > list->max)) {
                 LOGVAL(LYE_INARG, LY_VLOG_LYS, retval, value, sub->name);
-                LOGVAL(LYE_SPEC, LY_VLOG_LYS, retval, "\"min-elements\" is bigger than \"max-elements\".");
+                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "\"min-elements\" is bigger than \"max-elements\".");
                 lyxml_free(module->ctx, sub);
                 goto error;
             }
@@ -4219,7 +4229,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 list->max = (uint32_t) val;
                 if (list->min > list->max) {
                     LOGVAL(LYE_INARG, LY_VLOG_LYS, retval, value, sub->name);
-                    LOGVAL(LYE_SPEC, LY_VLOG_LYS, retval, "\"max-elements\" is smaller than \"min-elements\".");
+                    LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "\"max-elements\" is smaller than \"min-elements\".");
                     goto error;
                 }
             }
@@ -5306,10 +5316,8 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
     struct lyxml_elem *next, *child, *child2, root, grps, augs;
     struct lys_node *node = NULL;
     struct lys_module *trg;
-    struct lys_include inc;
     const char *value;
     int i, r;
-    size_t size;
     int version_flag = 0;
     /* counters */
     int c_imp = 0, c_rev = 0, c_tpdf = 0, c_ident = 0, c_inc = 0, c_aug = 0, c_ftrs = 0, c_dev = 0;
@@ -5529,10 +5537,19 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
     }
 
     /* check for mandatory statements */
-    if (submodule && !submodule->prefix) {
-        LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "belongs-to", "submodule");
-        goto error;
-    } else if (!submodule) {
+    if (submodule) {
+        if (!submodule->prefix) {
+            LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "belongs-to", "submodule");
+            goto error;
+        }
+        if (!version_flag) {
+            /* check version compatibility with the main module */
+            if (module->version > 1) {
+                LOGVAL(LYE_INVER, LY_VLOG_NONE, NULL);
+                goto error;
+            }
+        }
+    } else {
         if (!module->ns) {
             LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "namespace", "module");
             goto error;
@@ -5545,14 +5562,11 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
 
     /* allocate arrays for elements with cardinality of 0..n */
     if (c_imp) {
-        size = (c_imp * sizeof *trg->imp) + sizeof(void*);
-        trg->imp = calloc(1, size);
+        trg->imp = calloc(c_imp, sizeof *trg->imp);
         if (!trg->imp) {
             LOGMEM;
             goto error;
         }
-        /* set stop block for possible realloc */
-        trg->imp[c_imp].module = (void*)0x1;
     }
     if (c_rev) {
         trg->rev = calloc(c_rev, sizeof *trg->rev);
@@ -5576,14 +5590,11 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
         }
     }
     if (c_inc) {
-        size = (c_inc * sizeof *trg->inc) + sizeof(void*);
-        trg->inc = calloc(1, size);
+        trg->inc = calloc(c_inc, sizeof *trg->inc);
         if (!trg->inc) {
             LOGMEM;
             goto error;
         }
-        /* set stop block for possible realloc */
-        trg->inc[c_inc].submodule = (void*)0x1;
     }
     if (c_aug) {
         trg->augment = calloc(c_aug, sizeof *trg->augment);
@@ -5617,16 +5628,9 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             }
 
         } else if (!strcmp(child->name, "include")) {
-            memset(&inc, 0, sizeof inc);
-            /* 1) pass module, not trg, since we want to pass the main module
-             * 2) we cannot pass directly the structure in the array since
-             * submodule parser can realloc our array of includes */
-            r = fill_yin_include(module, submodule, child, &inc, unres);
-            if (!r) {
-                /* success, copy the filled data into the final array */
-                memcpy(&trg->inc[trg->inc_size], &inc, sizeof inc);
-                trg->inc_size++;
-            } else if (r == -1) {
+            r = fill_yin_include(module, submodule, child, &trg->inc[trg->inc_size], unres);
+            trg->inc_size++;
+            if (r) {
                 goto error;
             }
 
@@ -5721,25 +5725,6 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             r = fill_yin_deviation(trg, child, &trg->deviation[trg->deviation_size], unres);
             trg->deviation_size++;
             if (r) {
-                goto error;
-            }
-        }
-    }
-
-    if (!submodule) {
-        /* update the size of the arrays, they can be smaller due to possible duplicities
-         * found in submodules */
-        if (module->inc_size) {
-            module->inc = ly_realloc(module->inc, module->inc_size * sizeof *module->inc);
-            if (!module->inc) {
-                LOGMEM;
-                goto error;
-            }
-        }
-        if (module->imp_size) {
-            module->imp = ly_realloc(module->imp, module->imp_size * sizeof *module->imp);
-            if (!module->imp) {
-                LOGMEM;
                 goto error;
             }
         }
@@ -5946,6 +5931,11 @@ yin_read_module(struct ly_ctx *ctx, const char *data, const char *revision, int 
                    module->name, module->rev[0].date, revision);
             goto error;
         }
+    }
+
+    /* check correctness of includes */
+    if (lyp_check_include_missing(module)) {
+        goto error;
     }
 
     if (lyp_ctx_add_module(&module)) {

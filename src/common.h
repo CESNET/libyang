@@ -75,9 +75,7 @@ struct ly_err {
     uint8_t vlog_hide;
     uint8_t buf_used;
     uint16_t path_index;
-    uint8_t path_obj_type;
     struct ly_err_item *errlist; /* list of stored errors */
-    const void *path_obj;
     char msg[LY_BUF_SIZE];
     char path[LY_BUF_SIZE];
     char apptag[LY_APPTAG_LEN];
@@ -236,7 +234,8 @@ enum LY_VLOG_ELEM {
     LY_VLOG_XML, /* struct lyxml_elem* */
     LY_VLOG_LYS, /* struct lys_node* */
     LY_VLOG_LYD, /* struct lyd_node* */
-    LY_VLOG_STR  /* const char* */
+    LY_VLOG_STR, /* const char* */
+    LY_VLOG_PREV /* use exact same previous path */
 };
 
 /*
@@ -254,7 +253,7 @@ void ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...);
 #define LOGPATH(elem_type, elem)                                    \
     ly_vlog(LYE_PATH, elem_type, elem);
 
-void ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *path, uint16_t *index);
+void ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *path, uint16_t *index, int prefix_all);
 
 /*
  * - if \p module specified, it searches for submodules, they can be loaded only from a file or via module callback,
@@ -338,11 +337,12 @@ const char *transform_json2schema(const struct lys_module *module, const char *e
  * @param[in] ctx libyang context to use.
  * @param[in] expr XML expression.
  * @param[in] xml XML element with the expression.
+ * @param[in] use_ctx_data_clb Whether to use data_clb in \p ctx if an unknown module namespace is found.
  * @param[in] log Whether to log errors or not.
  *
  * @return Transformed JSON expression in the dictionary, NULL on error.
  */
-const char *transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml, int log);
+const char *transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml, int use_ctx_data_clb, int log);
 
 /**
  * @brief Transform expression from the schema format (prefixes of imports) to
@@ -360,6 +360,15 @@ const char *transform_schema2json(const struct lys_module *module, const char *e
  *        are not valid XPath expressions.
  */
 const char *transform_iffeat_schema2json(const struct lys_module *module, const char *expr);
+
+/**
+ * @brief Get a new node (non-validated) validity value.
+ *
+ * @param[in] schema Schema node of the new data node.
+ *
+ * @return Validity of the new node.
+ */
+int ly_new_node_validity(const struct lys_node *schema);
 
 /**
  * @brief Wrapper for realloc() call. The only difference is that if it fails to

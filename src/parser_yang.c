@@ -1009,6 +1009,10 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
                     goto error;
                 }
             }
+            if ((dertype->base == LY_TYPE_INST) || (dertype->base == LY_TYPE_LEAFREF)
+                    || ((dertype->base == LY_TYPE_UNION) && dertype->info.uni.has_ptr_type)) {
+                typ->type->info.uni.has_ptr_type = 1;
+            }
         }
         break;
 
@@ -1853,7 +1857,7 @@ yang_check_deviate_must(struct lys_module *module, struct unres_schema *unres,
     }
 
     /* flag will be checked again, clear it for now */
-    dev_target->flags &= ~LYS_VALID_DEP;
+    dev_target->flags &= ~LYS_XPATH_DEP;
 
     if (deviate->mod == LY_DEVIATE_ADD) {
         /* reallocate the must array of the target */
@@ -2041,21 +2045,12 @@ static int
 yang_fill_include(struct lys_module *trg, char *value, struct lys_include *inc,
                   struct unres_schema *unres)
 {
-    struct lys_submodule *submodule;
-    struct lys_module *module;
     const char *str;
     int rc;
     int ret = 0;
 
     str = lydict_insert_zc(trg->ctx, value);
-    if (trg->type) {
-        submodule = (struct lys_submodule *)trg;
-        module = ((struct lys_submodule *)trg)->belongsto;
-    } else {
-        submodule = NULL;
-        module = trg;
-    }
-    rc = lyp_check_include(module, submodule, str, inc, unres);
+    rc = lyp_check_include(trg, str, inc, unres);
     if (!rc) {
         /* success, copy the filled data into the final array */
         memcpy(&trg->inc[trg->inc_size], inc, sizeof *inc);
@@ -2190,7 +2185,7 @@ store_flags(struct lys_node *node, uint8_t flags, int config_opt)
 
             if (!elem && (node->flags & LYS_CONFIG_W) && node->parent && (node->parent->flags & LYS_CONFIG_R)) {
                 LOGVAL(LYE_INARG, LY_VLOG_LYS, node, "true", "config");
-                LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "State nodes cannot have configuration nodes as children.");
+                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "State nodes cannot have configuration nodes as children.");
                 return EXIT_FAILURE;
             }
         }
@@ -2327,6 +2322,11 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
         }
     }
 
+    /* check correctness of includes */
+    if (lyp_check_include_missing(module)) {
+        goto error;
+    }
+
     tmp_module = module;
     if (lyp_ctx_add_module(&module)) {
         goto error;
@@ -2446,7 +2446,7 @@ read_indent(const char *input, int indent, int size, int in_index, int *out_inde
 }
 
 char *
-yang_read_string(const char *input, char *output, int size, int offset, int indent, int version) {
+yang_read_string(const char *input, char *output, int size, int offset, int indent) {
     int i = 0, out_index = offset, space = 0;
 
     while (i < size) {
@@ -2479,13 +2479,9 @@ yang_read_string(const char *input, char *output, int size, int offset, int inde
                 output[out_index] = '"';
                 ++i;
             } else {
-                if (version < 2) {
-                    output[out_index] = input[i];
-                } else {
-                    /* YANG 1.1 backslash must not be followed by any other character */
-                    LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, input);
-                    return NULL;
-                }
+                /* backslash must not be followed by any other character */
+                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, input);
+                return NULL;
             }
             break;
         default:

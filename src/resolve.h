@@ -175,12 +175,10 @@ int resolve_applies_when(const struct lys_node *schema, int mode, const struct l
 int resolve_applies_must(const struct lyd_node *node);
 
 struct lys_ident *resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node *node);
-struct lyd_node *resolve_instid(struct lyd_node *data, const char *path);
-int resolve_leafref(struct lyd_node_leaf_list *leaf, struct lys_type *type);
 
 int resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres);
 
-int resolve_when(struct lyd_node *node, int *result);
+int resolve_when(struct lyd_node *node, int *result, int ignore_fail);
 
 int unres_schema_add_str(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
                          const char *str);
@@ -199,7 +197,10 @@ int unres_schema_find(struct unres_schema *unres, int start_on_backwards, void *
 
 void unres_schema_free(struct lys_module *module, struct unres_schema **unres);
 
-int resolve_unres_data_item(struct lyd_node *dnode, enum UNRES_ITEM type);
+int resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int store, int ignore_fail,
+                  struct lys_type **resolved_type);
+
+int resolve_unres_data_item(struct lyd_node *dnode, enum UNRES_ITEM type, int ignore_fail);
 
 int unres_data_addonly(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM type);
 int unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM type);

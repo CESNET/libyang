@@ -132,14 +132,18 @@ typedef union lyd_value_u {
  *
  * @{
  */
-#define LYD_VAL_OK       0x00    /**< node is successfully validated including whole subtree */
+#define LYD_VAL_OK       0x00    /**< Node is successfully validated including whole subtree */
 #define LYD_VAL_UNIQUE   0x01    /**< Unique value(s) changed, applicable only to ::lys_node_list data nodes */
 #define LYD_VAL_MAND     0x02    /**< Some child added/removed and it is needed to perform check for mandatory
                                       node or min/max constraints of direct list/leaflist children, applicable only
-                                      to ::lys_node_list and ::lys_node_container data nodes */
-#define LYD_VAL_NOT      0x07    /**< node was not validated yet */
-#define LYD_VAL_INUSE    0x08    /**< Internal flag for note about various processing on data, should be used only
-                                      internally and removed before the libyang returns to the caller */
+                                      to ::lys_node_list and ::lys_node_container data nodes, but if on any other node
+                                      except ::lys_node_leaflist, it means checking that data node for duplicities.
+                                      Additionally, it can be set on truly any node type and then status references
+                                      are checked for this node if flag #LYD_OPT_OBSOLETE is used. */
+#define LYD_VAL_LEAFREF  0x04    /**< Node is a leafref, which needs to be resolved (it is invalid, new possible
+                                      resolvent, or something similar) */
+#define LYD_VAL_INUSE    0x80    /**< Internal flag for note about various processing on data, should be used only
+                                      internally and removed before libyang returns the node to the caller */
 /**
  * @}
  */
@@ -158,8 +162,8 @@ typedef union lyd_value_u {
  */
 struct lyd_node {
     struct lys_node *schema;         /**< pointer to the schema definition of this node */
-    uint8_t validity:4;              /**< [validity flags](@ref validityflags) */
-    uint8_t dflt:1;                  /**< flag for default node */
+    uint8_t validity;                /**< [validity flags](@ref validityflags) */
+    uint8_t dflt:1;                  /**< flag for implicit default node */
     uint8_t when_status:3;           /**< bit for checking if the when-stmt condition is resolved - internal use only,
                                           do not use this value! */
 
@@ -190,8 +194,8 @@ struct lyd_node {
 struct lyd_node_leaf_list {
     struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::lys_node_leaflist
                                           structure */
-    uint8_t validity:4;              /**< [validity flags](@ref validityflags) */
-    uint8_t dflt:1;                  /**< flag for default node */
+    uint8_t validity;                /**< [validity flags](@ref validityflags) */
+    uint8_t dflt:1;                  /**< flag for implicit default node */
     uint8_t when_status:3;           /**< bit for checking if the when-stmt condition is resolved - internal use only,
                                           do not use this value! */
 
@@ -208,7 +212,7 @@ struct lyd_node_leaf_list {
     /* leaflist's specific members */
     const char *value_str;           /**< string representation of value (for comparison, printing,...), always corresponds to value_type */
     lyd_val value;                   /**< node's value representation, always corresponds to schema->type.base */
-    LY_DATA_TYPE value_type;         /**< type of the value in the node, mainly for union to avoid repeating of type detection,
+    uint16_t value_type;             /**< type of the value in the node, mainly for union to avoid repeating of type detection,
                                           if (schema->type.base == LY_TYPE_LEAFREF), then value_type may be
                                           (LY_TYPE_LEAFREF_UNRES | leafref target value_type) and (value.leafref == NULL) */
 };
@@ -224,8 +228,8 @@ struct lyd_node_leaf_list {
 struct lyd_node_anydata {
     struct lys_node *schema;         /**< pointer to the schema definition of this node which is ::lys_node_anydata
                                           structure */
-    uint8_t validity:4;              /**< [validity flags](@ref validityflags) */
-    uint8_t dflt:1;                  /**< flag for default node */
+    uint8_t validity;                /**< [validity flags](@ref validityflags) */
+    uint8_t dflt:1;                  /**< flag for implicit default node */
     uint8_t when_status:3;           /**< bit for checking if the when-stmt condition is resolved - internal use only,
                                           do not use this value! */
 
@@ -376,7 +380,17 @@ struct lyd_difflist *lyd_diff(struct lyd_node *first, struct lyd_node *second, i
  * @return NULL on error, on success the buffer for the resulting path is allocated and caller is supposed to free it
  * with free().
  */
-char *lyd_path(struct lyd_node *node);
+char *lyd_path(const struct lyd_node *node);
+
+/**
+ * @brief Build path (usable as instance-identified) of the data node with all the nodes fully qualified (having their
+ * model as prefix).
+ * @param[in] node Data node to be processed. Note that the node should be from a complete data tree, having a subtree
+ *            (after using lyd_unlink()) can cause generating invalid paths.
+ * @return NULL on error, on success the buffer for the resulting path is allocated and caller is supposed to free it
+ * with free().
+ */
+char *lyd_qualified_path(const struct lyd_node *node);
 
 /**
  * @defgroup parseroptions Data parser options
@@ -417,46 +431,51 @@ char *lyd_path(struct lyd_node *node);
 #define LYD_OPT_GET        0x02 /**< Data content from a NETCONF reply message to the NETCONF \<get\> operation.
                                      Validation modifications:
                                      - mandatory nodes can be omitted
-                                     - leafrefs and instance-identifier are not resolved
+                                     - leafrefs and instance-identifier resolution is allowed to fail
                                      - list's keys/unique nodes are not required (so duplication is not checked) */
 #define LYD_OPT_GETCONFIG  0x04 /**< Data content from a NETCONF reply message to the NETCONF \<get-config\> operation
                                      Validation modifications:
                                      - mandatory nodes can be omitted
-                                     - leafrefs and instance-identifier are not resolved
+                                     - leafrefs and instance-identifier resolution is allowed to fail
                                      - list's keys/unique nodes are not required (so duplication is not checked)
                                      - status data are not allowed */
 #define LYD_OPT_EDIT       0x08 /**< Content of the NETCONF \<edit-config\>'s config element.
                                      Validation modifications:
                                      - mandatory nodes can be omitted
-                                     - leafrefs and instance-identifier are not resolved
+                                     - leafrefs and instance-identifier resolution is allowed to fail
                                      - status data are not allowed */
 #define LYD_OPT_RPC        0x10 /**< Data represents RPC's input parameters. */
 #define LYD_OPT_RPCREPLY   0x20 /**< Data represents RPC's output parameters (maps to NETCONF <rpc-reply> data). */
 #define LYD_OPT_NOTIF      0x40 /**< Data represents an event notification data. */
-/* 0x80 reserved, formerly LYD_OPT_FILTER, now used internally */
+#define LYD_OPT_NOTIF_FILTER 0x80 /**< Data represents a filtered event notification data.
+                                       Validation modification:
+                                       - the only requirement is that the data tree matches the schema tree */
 #define LYD_OPT_TYPEMASK   0xff /**< Mask to filter data type options. Always only a single data type option (only
                                      single bit from the lower 8 bits) can be set. */
 
-#define LYD_OPT_STRICT     0x0100 /**< Instead of silent ignoring data without schema definition, raise an error. */
-#define LYD_OPT_DESTRUCT   0x0200 /**< Free the provided XML tree during parsing the data. With this option, the
+/* 0x100 reserved, used internally */
+#define LYD_OPT_STRICT     0x0200 /**< Instead of silent ignoring data without schema definition, raise an error. */
+#define LYD_OPT_DESTRUCT   0x0400 /**< Free the provided XML tree during parsing the data. With this option, the
                                        provided XML tree is affected and all succesfully parsed data are freed.
                                        This option is applicable only to lyd_parse_xml() function. */
-#define LYD_OPT_OBSOLETE   0x0400 /**< Raise an error when an obsolete statement (status set to obsolete) is used. */
-#define LYD_OPT_NOSIBLINGS 0x0800 /**< Parse only a single XML tree from the input. This option applies only to
+#define LYD_OPT_OBSOLETE   0x0800 /**< Raise an error when an obsolete statement (status set to obsolete) is used. */
+#define LYD_OPT_NOSIBLINGS 0x1000 /**< Parse only a single XML tree from the input. This option applies only to
                                        XML input data. */
-#define LYD_OPT_TRUSTED    0x1000 /**< Data comes from a trusted source and it is not needed to validate them. Data
+#define LYD_OPT_TRUSTED    0x2000 /**< Data comes from a trusted source and it is not needed to validate them. Data
                                        are connected with the schema, but the most validation checks (mandatory nodes,
                                        list instance uniqueness, etc.) are not performed. This option does not make
                                        sense for lyd_validate() so it is ignored by this function. */
-#define LYD_OPT_NOAUTODEL  0x2000 /**< Avoid automatic delete of subtrees with false when-stmt condition. The flag is
+#define LYD_OPT_NOAUTODEL  0x4000 /**< Avoid automatic delete of subtrees with false when-stmt condition. The flag is
                                        applicable only in combination with LYD_OPT_DATA and LYD_OPT_CONFIG flags.
                                        If used, libyang generates validation error instead of silently removing the
                                        constrained subtree. */
+#define LYD_OPT_NOEXTDEPS  0x8000 /**< Allow external dependencies (external leafrefs, instance-identifiers, must,
+                                       and when) to not be resolved/satisfiedduring validation. */
 
 /**@} parseroptions */
 
 /**
- * @brief Parse (and validate according to appropriate schema from the given context) data.
+ * @brief Parse (and validate) data from memory.
  *
  * In case of LY_XML format, the data string is parsed completely. It means that when it contains
  * a non well-formed XML with multiple root elements, all those sibling XML trees are parsed. The
@@ -492,7 +511,7 @@ char *lyd_path(struct lyd_node *node);
 struct lyd_node *lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options, ...);
 
 /**
- * @brief Read data from the given file descriptor.
+ * @brief Read (and validate) data from the given file descriptor.
  *
  * \note Current implementation supports only reading data from standard (disk) file, not from sockets, pipes, etc.
  *
@@ -530,7 +549,7 @@ struct lyd_node *lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT 
 struct lyd_node *lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, ...);
 
 /**
- * @brief Read data from the given file path.
+ * @brief Read (and validate) data from the given file path.
  *
  * In case of LY_XML format, the file content is parsed completely. It means that when it contains
  * a non well-formed XML with multiple root elements, all those sibling XML trees are parsed. The
@@ -566,7 +585,7 @@ struct lyd_node *lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int
 struct lyd_node *lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int options, ...);
 
 /**
- * @brief Parse (and validate according to appropriate schema from the given context) XML tree.
+ * @brief Parse (and validate) XML tree.
  *
  * The output data tree is parsed from the given XML tree previously parsed by one of the
  * lyxml_read* functions.
@@ -614,6 +633,8 @@ struct lyd_node *lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int
 /**
  * @brief Create a new container node in a data tree.
  *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
+ *
  * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
  * @param[in] module Module with the node being created.
  * @param[in] name Schema node name of the new data node. The node can be #LYS_CONTAINER, #LYS_LIST,
@@ -625,6 +646,8 @@ struct lyd_node *lyd_new(struct lyd_node *parent, const struct lys_module *modul
 /**
  * @brief Create a new leaf or leaflist node in a data tree with a string value that is converted to
  * the actual value.
+ *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
  * @param[in] module Module with the node being created.
@@ -639,13 +662,10 @@ struct lyd_node *lyd_new_leaf(struct lyd_node *parent, const struct lys_module *
 /**
  * @brief Change value of a leaf node.
  *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
+ *
  * Despite the prototype allows to provide a leaflist node as \p leaf parameter, only leafs are accepted.
  * Also, changing the value of a list key is prohibited.
- *
- * As for the other data tree manipulation functions, the change is not fully validated to allow multiple changes
- * in the data tree. Therefore, when all changes on the data tree are done, caller is supposed to call lyd_validate()
- * to check that the result is valid data tree. Specifically, if a leafref leaf is changed, it is not checked that
- * the (leafref) value is correct.
  *
  * @param[in] leaf A leaf node to change.
  * @param[in] val_str String form of the new value to be set to the \p leaf. In case the type is #LY_TYPE_INST
@@ -656,6 +676,8 @@ int lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str);
 
 /**
  * @brief Create a new anydata or anyxml node in a data tree.
+ *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
  * This function is supposed to be a replacement for the lyd_new_anyxml_str() and lyd_new_anyxml_xml().
  *
@@ -674,6 +696,8 @@ struct lyd_node *lyd_new_anydata(struct lyd_node *parent, const struct lys_modul
 /**
  * @brief Create a new container node in a data tree. Ignore RPC/action input nodes and instead use RPC/action output ones.
  *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
+ *
  * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
  * @param[in] module Module with the node being created.
  * @param[in] name Schema node name of the new data node. The node should only be #LYS_CONTAINER or #LYS_LIST,
@@ -685,6 +709,8 @@ struct lyd_node *lyd_new_output(struct lyd_node *parent, const struct lys_module
 /**
  * @brief Create a new leaf or leaflist node in a data tree with a string value that is converted to
  * the actual value. Ignore RPC/action input nodes and instead use RPC/action output ones.
+ *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
  * @param[in] module Module with the node being created.
@@ -699,6 +725,8 @@ struct lyd_node *lyd_new_output_leaf(struct lyd_node *parent, const struct lys_m
 /**
  * @brief Create a new anydata or anyxml node in a data tree. Ignore RPC/action input nodes and instead use
  * RPC/action output ones.
+ *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating top level element.
  * @param[in] module Module with the node being created.
@@ -737,6 +765,8 @@ struct lyd_node *lyd_new_output_anydata(struct lyd_node *parent, const struct ly
 /**
  * @brief Create a new data node based on a simple XPath.
  *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
+ *
  * The new node is normally inserted at the end, either as the last child of a parent or as the last sibling
  * if working with top-level elements. However, when manipulating RPC input or output, schema ordering is
  * required and always guaranteed.
@@ -747,10 +777,10 @@ struct lyd_node *lyd_new_output_anydata(struct lyd_node *parent, const struct ly
  * @param[in] data_tree Existing data tree to add to/modify. If creating RPCs/actions, there should only be one
  * RPC/action and either input or output, not both. Can be NULL.
  * @param[in] ctx Context to use. Mandatory if \p data_tree is NULL.
- * @param[in] path Simple data XPath of the new node. It can contain only simple node addressing with optional
- * module names as prefixes. List nodes must have predicates, one for each list key in the correct order and
- * with its value as well, leaves and leaf-lists can have predicates too that have preference over \p value,
- * see @ref howtoxpath.
+ * @param[in] path Simple absolute data XPath of the new node. It can contain only simple node addressing with optional
+ * module names as prefixes. List nodes can have predicates, one for each list key in the correct order and
+ * with its value as well or using specific instance position, leaves and leaf-lists can have predicates too that
+ * have preference over \p value, see @ref howtoxpath.
  * @param[in] value Value of the new leaf/lealf-list (const char*). If creating anydata or anyxml, the following
  *            \p value_type parameter is required to be specified correctly. If creating nodes of other types, the
  *            parameter is ignored.
@@ -764,13 +794,18 @@ struct lyd_node *lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, co
                               LYD_ANYDATA_VALUETYPE value_type, int options);
 
 /**
- * @brief Create a copy of the specified data tree \p node. Namespaces are copied as needed,
- * schema references are kept the same.
+ * @brief Learn the relative instance position of a list or leaf-list within other instances of the
+ * same schema node.
  *
- * The duplicated tree (the result) is created non-validated. To guarantee safe operations
- * on it in the future, the recommended way of using it is after finishing all the partial data tree
- * modifications, validate all the trees where the copies from this function were placed (or the copies
- * themselves if they were kept separate).
+ * @param[in] node List or leaf-list to get the position of.
+ * @return 0 on error or positive integer of the instance position.
+ */
+unsigned int lyd_list_pos(const struct lyd_node *node);
+
+/**
+ * @brief Create a copy of the specified data tree \p node. Schema references are kept the same.
+ *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
  * @param[in] node Data tree node to be duplicated.
  * @param[in] recursive 1 if all children are supposed to be also duplicated.
@@ -779,21 +814,37 @@ struct lyd_node *lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, co
 struct lyd_node *lyd_dup(const struct lyd_node *node, int recursive);
 
 /**
- * @brief Merge a (sub)tree into a data tree. Missing nodes are merged, leaf values updated.
+ * @brief Create a copy of the specified data tree \p node in the different context. All the
+ * schema references and strings are re-mapped into the specified context.
+ *
+ * If the target context does not contain the schemas used in the source data tree, error
+ * is raised and the new data tree is not created.
+ *
+ * @param[in] node Data tree node to be duplicated.
+ * @param[in] recursive 1 if all children are supposed to be also duplicated.
+ * @param[in] ctx Target context for the duplicated data.
+ * @return Created copy of the provided data \p node.
+ */
+struct lyd_node *lyd_dup_to_ctx(const struct lyd_node *node, int recursive, struct ly_ctx *ctx);
+
+/**
+ * @brief Merge a (sub)tree into a data tree.
+ *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
+ *
+ * Missing nodes are merged, leaf values updated.
+ *
  * If \p target and \p source do not share the top-level schema node, even if they
  * are from different modules, \p source parents up to top-level node will be created and
  * linked to the \p target (but only containers can be created this way, lists need keys,
  * so if lists are missing, an error will be returned).
  *
- * In short, this function will always try to return a fully valid data tree and will fail
- * if it is not possible. Also, in some less common cases, despite both trees \p target and
- * \p source are valid, the resulting tree may be invalid and this function will succeed.
- * If you know there are such possibilities in your data trees or you are not sure, always
- * validate the resulting merged \p target tree.
+ * If the source data tree is in a different context, the resulting data are placed into the context
+ * of the target tree.
  *
  * @param[in] target Top-level (or an RPC output child) data tree to merge to. Must be valid.
  * @param[in] source Data tree to merge \p target with. Must be valid (at least as a subtree).
- * @param[in] options Bitmask of 2 option flags:
+ * @param[in] options Bitmask of the following option flags:
  * - #LYD_OPT_DESTRUCT - spend \p source in the function, otherwise \p source is left untouched,
  * - #LYD_OPT_NOSIBLINGS - merge only the \p source subtree (ignore siblings), otherwise merge
  * \p source and all its succeeding siblings (preceeding ones are still ignored!),
@@ -803,11 +854,35 @@ struct lyd_node *lyd_dup(const struct lyd_node *node, int recursive);
  */
 int lyd_merge(struct lyd_node *target, const struct lyd_node *source, int options);
 
+/**
+ * @brief Same as lyd_merge(), but moves the resulting data into the specified context.
+ *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
+ *
+ * @param[in] trg Top-level (or an RPC output child) data tree to merge to. Must be valid. If its context
+ *            differs from the specified \p ctx of the result, the provided data tree is freed and the new
+ *            tree in the required context is returned on success. To keep the \p trg tree, convert it to the
+ *            target context using lyd_dup_to_ctx() and then call lyd_merge() instead of lyd_merge_to_ctx().
+ * @param[in] src Data tree to merge \p target with. Must be valid (at least as a subtree).
+ * @param[in] options Bitmask of the following option flags:
+ * - #LYD_OPT_DESTRUCT - spend \p source in the function, otherwise \p source is left untouched,
+ * - #LYD_OPT_NOSIBLINGS - merge only the \p source subtree (ignore siblings), otherwise merge
+ * \p source and all its succeeding siblings (preceeding ones are still ignored!),
+ * - #LYD_OPT_EXPLICIT - when merging an explicitly set node and a default node, always put
+ * the explicit node into \p target, otherwise the node which is in \p source is used.
+ * @param[in] ctx Target context in which the result will be created. Note that the successful merge requires to have
+ *            all the used modules in the source and target data trees loaded in the target context.
+ * @return 0 on success, nonzero in case of an error.
+ */
+int lyd_merge_to_ctx(struct lyd_node **trg, const struct lyd_node *src, int options, struct ly_ctx *ctx);
+
 #define LYD_OPT_EXPLICIT 0x0100
 
 /**
  * @brief Insert the \p node element as child to the \p parent element. The \p node is inserted as a last child of the
  * \p parent.
+ *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
  * - if the node is part of some other tree, it is automatically unlinked.
  * - if the node is the first node of a node list (with no parent), all the subsequent nodes are also inserted.
@@ -835,6 +910,8 @@ int lyd_insert(struct lyd_node *parent, struct lyd_node *node);
 
 /**
  * @brief Insert the \p node element as a last sibling of the specified \p sibling element.
+ *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
  * - if the node is part of some other tree, it is automatically unlinked.
  * - if the node is the first node of a node list (with no parent), all the subsequent nodes are also inserted.
@@ -864,7 +941,9 @@ int lyd_insert_sibling(struct lyd_node **sibling, struct lyd_node *node);
 
 /**
  * @brief Insert the \p node element after the \p sibling element. If \p node and \p siblings are already
- * siblings (just moving \p node position), skip validation.
+ * siblings (just moving \p node position).
+ *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
  * - if the target tree includes the default instance of the node being inserted, the default node is silently removed.
  * - if a default node is being inserted and the target tree already contains non-default instance, the existing
@@ -881,7 +960,9 @@ int lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node);
 
 /**
  * @brief Insert the \p node element after the \p sibling element. If \p node and \p siblings are already
- * siblings (just moving \p node position), skip validation.
+ * siblings (just moving \p node position).
+ *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
  * - if the target tree includes the default instance of the node being inserted, the default node is silently removed.
  * - if a default node is being inserted and the target tree already contains non-default instance, the existing
@@ -898,20 +979,9 @@ int lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node);
 int lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node);
 
 /**
- * @brief Insert the \p new element instead of the \p old element.
- *
- * If the \p new is the first node of a node list (with no parent), all the subsequent nodes are also inserted.
- * If the \p new is NULL and \p destroy is true, it works like lyd_free(old).
- *
- * @param[in] orig The specific node in the original tree supposed to be replaced.
- * @param[in] repl The new (list of) node(s) to be inserted instead of \p old
- * @param[in] destroy Flag for freeing the \p old.
- * @return 0 on success, nonzero in case of error.
- */
-int lyd_replace(struct lyd_node *orig, struct lyd_node *repl, int destroy);
-
-/**
  * @brief Order siblings according to the schema node ordering.
+ *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
  * If the siblings include data nodes from other modules, they are
  * sorted based on the module order in the context.
@@ -960,19 +1030,6 @@ struct ly_set *lyd_find_instance(const struct lyd_node *data, const struct lys_n
 struct lyd_node *lyd_first_sibling(struct lyd_node *node);
 
 /**
- * @brief Resolve the leafref.
- *
- * This function is considered to be a part of a low level API and it should be used deliberately.
- *
- * @param[in] leafref The leafref node to resolve.
- * @return
- * - EXIT_SUCCESS on success,
- * - EXIT_FAILURE when target does not exist,
- * - -1 on error.
- */
-int lyd_validate_leafref(struct lyd_node_leaf_list *leafref);
-
-/**
  * @brief Validate \p node data subtree.
  *
  * @param[in,out] node Data tree to be validated. In case the \p options does not includes #LYD_OPT_NOAUTODEL, libyang
@@ -1009,6 +1066,8 @@ int lyd_wd_default(struct lyd_node_leaf_list *node);
 /**
  * @brief Unlink the specified data subtree. All referenced namespaces are copied.
  *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
+ *
  * Note, that the node's connection with the schema tree is kept. Therefore, in case of
  * reconnecting the node to a data tree using lyd_paste() it is necessary to paste it
  * to the appropriate place in the data tree following the schema.
@@ -1022,12 +1081,16 @@ int lyd_unlink(struct lyd_node *node);
  * @brief Free (and unlink) the specified data subtree. Use carefully, since libyang silently creates default nodes,
  * it is always better to use lyd_free_withsiblings() to free the complete data tree.
  *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
+ *
  * @param[in] node Root of the (sub)tree to be freed.
  */
 void lyd_free(struct lyd_node *node);
 
 /**
  * @brief Free (and unlink) the specified data tree and all its siblings (preceding as well as following).
+ *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
  * @param[in] node One of the siblings root element of the (sub)trees to be freed.
  */
@@ -1076,6 +1139,17 @@ void lyd_free_attr(struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_attr 
  * @return pointer to the main module (schema structure), NULL in case of error.
  */
 struct lys_module *lyd_node_module(const struct lyd_node *node);
+
+/**
+ * @brief Get the type structure of a leaf.
+ *
+ * In case of a union, the correct specific type is found.
+ * In case of a leafref, the final (if there is a chain of leafrefs) target's type is found.
+ *
+ * @param[in] leaf Leaf to examine.
+ * @return Found type, NULL on error.
+ */
+const struct lys_type *lyd_leaf_type(const struct lyd_node_leaf_list *leaf);
 
 /**
 * @brief Print data tree in the specified format.
@@ -1146,22 +1220,6 @@ int lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count),
  * @return Closest double equivalent to the decimal64 value.
  */
 double lyd_dec64_to_double(const struct lyd_node *node);
-
-/**
- * @brief Get the real data type definition of the leaf/leaf-list node.
- *
- * Usually the data type can be obtained directly from the value_type member of the leaf/leaf-list.
- * However, in case the node is unresolved leafref or the complete definition of the type is needed, it can be quite
- * complicated to get the correct data type, so this function can be used. The real type describes the value
- * representation so it is not #LY_TYPE_UNION neither #LY_TYPE_LEAFREF.
- *
- * @param[in] leaf The leaf/leaf-list node to be examined.
- * @param[in] resolve Flag to store the leaf's value as its value data, in this case the value is resolved in the data
- *            tree. Otherwise the data tree is not checked, so e.g. leafref type can be returned even if the value
- *            does not match any target value in the data tree.
- * @return Pointer to the type definition of the \p leaf.
- */
-const struct lys_type *lyd_leaf_type(struct lyd_node_leaf_list *leaf, int resolve);
 
 /**@} */
 

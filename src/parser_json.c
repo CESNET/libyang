@@ -442,23 +442,16 @@ json_get_anydata(struct lyd_node_anydata *any, const char *data)
 }
 
 static unsigned int
-json_get_value(struct lyd_node_leaf_list *leaf, struct lyd_node *first_sibling, const char *data, int options)
+json_get_value(struct lyd_node_leaf_list *leaf, struct lyd_node *first_sibling, const char *data)
 {
     struct lyd_node_leaf_list *new;
     struct lys_type *stype;
     struct ly_ctx *ctx;
     unsigned int len = 0, r;
-    int resolvable;
     char *str;
 
     assert(leaf && data);
     ctx = leaf->schema->module->ctx;
-
-    if (options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
-        resolvable = 0;
-    } else {
-        resolvable = 1;
-    }
 
     stype = &((struct lys_node_leaf *)leaf->schema)->type;
 
@@ -530,8 +523,7 @@ repeat:
 
     /* the value is here converted to a JSON format if needed in case of LY_TYPE_IDENT and LY_TYPE_INST or to a
      * canonical form of the value */
-    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, NULL, NULL, leaf, 1,
-                         resolvable, 0)) {
+    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, NULL, leaf, 1, 0)) {
         ly_errno = LY_EVALID;
         return 0;
     }
@@ -839,61 +831,69 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
         /* starting in root */
         /* get the proper schema */
         module = ly_ctx_get_module(ctx, prefix, NULL);
-        if (module) {
+        if (ctx->data_clb) {
+            if (!module) {
+                module = ctx->data_clb(ctx, prefix, NULL, 0, ctx->data_clb_data);
+            } else if (!module->implemented) {
+                module = ctx->data_clb(ctx, module->name, module->ns, LY_MODCLB_NOT_IMPLEMENTED, ctx->data_clb_data);
+            }
+        }
+        if (module && module->implemented) {
             /* get the proper schema node */
             while ((schema = (struct lys_node *)lys_getnext(schema, NULL, module, 0))) {
                 if (!strcmp(schema->name, name)) {
                     break;
                 }
             }
-        } else {
-            LOGVAL(LYE_INELEM, LY_VLOG_NONE, NULL, name);
-            goto error;
         }
     } else {
-        /* parsing some internal node, we start with parent's schema pointer */
         if (prefix) {
-            /* get the proper schema */
+            /* get the proper module to give the chance to load/implement it */
             module = ly_ctx_get_module(ctx, prefix, NULL);
-            if (!module) {
-                LOGVAL(LYE_INELEM, LY_VLOG_LYD, (*parent), name);
-                goto error;
+            if (ctx->data_clb) {
+                if (!module) {
+                    ctx->data_clb(ctx, prefix, NULL, 0, ctx->data_clb_data);
+                } else if (!module->implemented) {
+                    ctx->data_clb(ctx, module->name, module->ns, LY_MODCLB_NOT_IMPLEMENTED, ctx->data_clb_data);
+                }
             }
         }
 
         /* go through RPC's input/output following the options' data type */
         if ((*parent)->schema->nodetype == LYS_RPC) {
-            while ((schema = (struct lys_node *)lys_getnext(schema, (*parent)->schema, module, LYS_GETNEXT_WITHINOUT))) {
+            while ((schema = (struct lys_node *)lys_getnext(schema, (*parent)->schema, NULL, LYS_GETNEXT_WITHINOUT))) {
                 if ((options & LYD_OPT_RPC) && (schema->nodetype == LYS_INPUT)) {
                     break;
                 } else if ((options & LYD_OPT_RPCREPLY) && (schema->nodetype == LYS_OUTPUT)) {
                     break;
                 }
             }
-            if (!schema) {
-                LOGVAL(LYE_INELEM, LY_VLOG_LYD, (*parent), name);
-                goto error;
-            }
             schema_parent = schema;
             schema = NULL;
         }
 
         if (schema_parent) {
-            while ((schema = (struct lys_node *)lys_getnext(schema, schema_parent, module, 0))) {
-                if (!strcmp(schema->name, name)) {
+            while ((schema = (struct lys_node *)lys_getnext(schema, schema_parent, NULL, 0))) {
+                if (!strcmp(schema->name, name)
+                        && ((prefix && !strcmp(lys_node_module(schema)->name, prefix))
+                        || (!prefix && (lys_node_module(schema) == lys_node_module(schema_parent))))) {
                     break;
                 }
             }
         } else {
-            while ((schema = (struct lys_node *)lys_getnext(schema, (*parent)->schema, module, 0))) {
-                if (!strcmp(schema->name, name)) {
+            while ((schema = (struct lys_node *)lys_getnext(schema, (*parent)->schema, NULL, 0))) {
+                if (!strcmp(schema->name, name)
+                        && ((prefix && !strcmp(lys_node_module(schema)->name, prefix))
+                        || (!prefix && (lys_node_module(schema) == lyd_node_module(*parent))))) {
                     break;
                 }
             }
         }
     }
-    if (!schema || !lys_node_module(schema)->implemented) {
-        LOGVAL(LYE_INELEM, LY_VLOG_LYD, (*parent), name);
+
+    module = lys_node_module(schema);
+    if (!module || !module->implemented || module->disabled) {
+        LOGVAL(LYE_INELEM, (*parent ? LY_VLOG_LYD : LY_VLOG_NONE), (*parent), name);
         goto error;
     }
 
@@ -906,7 +906,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
         }
 
 attr_repeat:
-        r = json_parse_attr(schema->module, &attr, &data[len]);
+        r = json_parse_attr((struct lys_module *)module, &attr, &data[len]);
         if (!r) {
             LOGPATH(LY_VLOG_LYD, (*parent));
             goto error;
@@ -1015,7 +1015,7 @@ attr_repeat:
             first_sibling = result;
         }
     }
-    result->validity = LYD_VAL_NOT;
+    result->validity = ly_new_node_validity(result->schema);
     if (resolve_applies_when(schema, 0, NULL)) {
         result->when_status = LYD_WHEN;
     }
@@ -1023,7 +1023,7 @@ attr_repeat:
     /* type specific processing */
     if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
         /* type detection and assigning the value */
-        r = json_get_value((struct lyd_node_leaf_list *)result, first_sibling, &data[len], options);
+        r = json_get_value((struct lyd_node_leaf_list *)result, first_sibling, &data[len]);
         if (!r) {
             goto error;
         }
@@ -1044,7 +1044,7 @@ attr_repeat:
         if (schema->nodetype & (LYS_RPC | LYS_ACTION)) {
             if (!(options & LYD_OPT_RPC) || *act_notif) {
                 LOGVAL(LYE_INELEM, LY_VLOG_LYD, result, schema->name);
-                LOGVAL(LYE_SPEC, LY_VLOG_LYD, result, "Unexpected %s node \"%s\".",
+                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Unexpected %s node \"%s\".",
                        (schema->nodetype == LYS_RPC ? "rpc" : "action"), schema->name);
                 goto error;
             }
@@ -1052,7 +1052,7 @@ attr_repeat:
         } else if (schema->nodetype == LYS_NOTIF) {
             if (!(options & LYD_OPT_NOTIF) || *act_notif) {
                 LOGVAL(LYE_INELEM, LY_VLOG_LYD, result, schema->name);
-                LOGVAL(LYE_SPEC, LY_VLOG_LYD, result, "Unexpected notification node \"%s\".", schema->name);
+                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Unexpected notification node \"%s\".", schema->name);
                 goto error;
             }
             *act_notif = result;
@@ -1154,15 +1154,12 @@ attr_repeat:
             if (data[len] == ',') {
                 /* various validation checks */
                 ly_err_clean(1);
-                if (!(options & LYD_OPT_TRUSTED) &&
-                        (lyv_data_content(list, options, unres) ||
-                         lyv_multicases(list, NULL, prev ? &first_sibling : NULL, 0, NULL))) {
+                if (lyv_data_content(list, options, unres) ||
+                         lyv_multicases(list, NULL, prev ? &first_sibling : NULL, 0, NULL)) {
                     if (ly_errno) {
                         goto error;
                     }
                 }
-                /* validation successful */
-                list->validity = LYD_VAL_OK;
 
                 /* another instance of the list */
                 new = calloc(1, sizeof *new);
@@ -1191,14 +1188,13 @@ attr_repeat:
     }
 
     /* various validation checks */
-    if (!(options & LYD_OPT_TRUSTED) && lyv_data_context(result, options, unres)) {
+    if (lyv_data_context(result, options, unres)) {
         goto error;
     }
 
     ly_err_clean(1);
-    if (!(options & LYD_OPT_TRUSTED) &&
-            (lyv_data_content(result, options, unres) ||
-             lyv_multicases(result, NULL, prev ? &first_sibling : NULL, 0, NULL))) {
+    if (lyv_data_content(result, options, unres) ||
+             lyv_multicases(result, NULL, prev ? &first_sibling : NULL, 0, NULL)) {
         if (ly_errno) {
             goto error;
         }
@@ -1206,10 +1202,8 @@ attr_repeat:
 
     /* validation successful */
     if (result->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
-        /* postpone checking when there will be all list/leaflist instances */
-        result->validity = LYD_VAL_UNIQUE;
-    } else {
-        result->validity = LYD_VAL_OK;
+        /* postpone checking of unique when there will be all list/leaflist instances */
+        result->validity |= LYD_VAL_UNIQUE;
     }
 
     if (!(*parent)) {
@@ -1420,7 +1414,8 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
     }
 
     /* check for missing top level mandatory nodes */
-    if (!(options & LYD_OPT_TRUSTED) && lyd_check_mandatory_tree((act_notif ? act_notif : result), ctx, options)) {
+    if (!(options & (LYD_OPT_TRUSTED | LYD_OPT_NOTIF_FILTER))
+            && lyd_check_mandatory_tree((act_notif ? act_notif : result), ctx, options)) {
         goto error;
     }
 

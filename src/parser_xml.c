@@ -75,18 +75,11 @@ xml_data_search_schemanode(struct lyxml_elem *xml, struct lys_node *start, int o
 
 /* logs directly */
 static int
-xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, int editbits)
+xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int editbits)
 {
     struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
-    int resolvable;
 
     assert(node && (node->schema->nodetype & (LYS_LEAFLIST | LYS_LEAF)) && xml);
-
-    if (options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
-        resolvable = 0;
-    } else {
-        resolvable = 1;
-    }
 
     leaf->value_str = lydict_insert(node->schema->module->ctx, xml->content, 0);
 
@@ -99,8 +92,7 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int options, int ed
 
     /* the value is here converted to a JSON format if needed in case of LY_TYPE_IDENT and LY_TYPE_INST or to a
      * canonical form of the value */
-    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, xml, NULL, leaf, 1,
-                         resolvable, 0)) {
+    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, xml, leaf, 1, 0)) {
         return EXIT_FAILURE;
     }
 
@@ -113,6 +105,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                struct lyd_node *prev, int options, struct unres_data *unres, struct lyd_node **result,
                struct lyd_node **act_notif)
 {
+    const struct lys_module *mod = NULL;
     struct lyd_node *diter, *dlast;
     struct lys_node *schema = NULL, *target;
     struct lys_node_augment *aug;
@@ -138,61 +131,62 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 
     /* find schema node */
     if (!parent) {
-        /* starting in root */
-        for (i = 0; i < ctx->models.used; i++) {
-            /* skip just imported modules, data can be coupled only with the implemented modules,
-             * also skip the disabled modules */
-            if (!ctx->models.list[i]->implemented || ctx->models.list[i]->disabled) {
-                continue;
+        mod = ly_ctx_get_module_by_ns(ctx, xml->ns->value, NULL);
+        if (ctx->data_clb) {
+            if (!mod) {
+                mod = ctx->data_clb(ctx, NULL, xml->ns->value, 0, ctx->data_clb_data);
+            } else if (!mod->implemented) {
+                mod = ctx->data_clb(ctx, mod->name, mod->ns, LY_MODCLB_NOT_IMPLEMENTED, ctx->data_clb_data);
             }
-            /* match data model based on namespace */
-            if (ly_strequal(ctx->models.list[i]->ns, xml->ns->value, 1)) {
-                /* get the proper schema node */
-                schema = xml_data_search_schemanode(xml, ctx->models.list[i]->data, options);
-                if (!schema) {
-                    /* it still can be the specific case of this module containing an augment of another module
-                     * top-level choice or top-level choice's case, bleh */
-                    for (j = 0; j < ctx->models.list[i]->augment_size; ++j) {
-                        aug = &ctx->models.list[i]->augment[j];
-                        target = aug->target;
-                        if (target->nodetype & (LYS_CHOICE | LYS_CASE)) {
-                            /* 1) okay, the target is choice or case */
-                            while (target && (target->nodetype & (LYS_CHOICE | LYS_CASE | LYS_USES))) {
-                                target = lys_parent(target);
-                            }
-                            /* 2) now, the data node will be top-level, there are only non-data schema nodes */
-                            if (!target) {
-                                while ((schema = (struct lys_node *)lys_getnext(schema, (struct lys_node *)aug, NULL, 0))) {
-                                    /* 3) alright, even the name matches, we found our schema node */
-                                    if (ly_strequal(schema->name, xml->name, 1)) {
-                                        break;
-                                    }
+        }
+
+        /* get the proper schema node */
+        if (mod && mod->implemented && !mod->disabled) {
+            schema = xml_data_search_schemanode(xml, mod->data, options);
+            if (!schema) {
+                /* it still can be the specific case of this module containing an augment of another module
+                * top-level choice or top-level choice's case, bleh */
+                for (j = 0; j < mod->augment_size; ++j) {
+                    aug = &mod->augment[j];
+                    target = aug->target;
+                    if (target->nodetype & (LYS_CHOICE | LYS_CASE)) {
+                        /* 1) okay, the target is choice or case */
+                        while (target && (target->nodetype & (LYS_CHOICE | LYS_CASE | LYS_USES))) {
+                            target = lys_parent(target);
+                        }
+                        /* 2) now, the data node will be top-level, there are only non-data schema nodes */
+                        if (!target) {
+                            while ((schema = (struct lys_node *)lys_getnext(schema, (struct lys_node *)aug, NULL, 0))) {
+                                /* 3) alright, even the name matches, we found our schema node */
+                                if (ly_strequal(schema->name, xml->name, 1)) {
+                                    break;
                                 }
                             }
                         }
+                    }
 
-                        if (schema) {
-                            break;
-                        }
+                    if (schema) {
+                        break;
                     }
                 }
-                break;
             }
         }
     } else {
         /* parsing some internal node, we start with parent's schema pointer */
         schema = xml_data_search_schemanode(xml, parent->schema->child, options);
-    }
-    if (!schema) {
-        if ((options & LYD_OPT_STRICT) || ly_ctx_get_module_by_ns(ctx, xml->ns->value, NULL)) {
-            LOGVAL(LYE_INELEM, LY_VLOG_LYD, parent, xml->name);
-            return -1;
-        } else {
-            return 0;
+
+        if (schema) {
+            if (!lys_node_module(schema)->implemented && ctx->data_clb) {
+                ctx->data_clb(ctx, lys_node_module(schema)->name, lys_node_module(schema)->ns,
+                              LY_MODCLB_NOT_IMPLEMENTED, ctx->data_clb_data);
+            }
         }
-    } else if (!lys_node_module(schema)->implemented) {
+    }
+
+    mod = lys_node_module(schema);
+    if (!mod || !mod->implemented || mod->disabled) {
         if (options & LYD_OPT_STRICT) {
-            LOGVAL(LYE_INELEM, LY_VLOG_LYD, parent, xml->name);
+            LOGVAL(LYE_INELEM, (parent ? LY_VLOG_LYD : LY_VLOG_NONE), parent, xml->name);
             return -1;
         } else {
             return 0;
@@ -243,7 +237,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
             /* out of order insertion - insert list's key to the correct position, before the diter */
             if (options & LYD_OPT_STRICT) {
                 LOGVAL(LYE_INORDER, LY_VLOG_LYD, *result, schema->name, diter->schema->name);
-                LOGVAL(LYE_SPEC, LY_VLOG_LYD, *result, "Invalid position of the key \"%s\" in a list \"%s\".",
+                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Invalid position of the key \"%s\" in a list \"%s\".",
                        schema->name, parent->schema->name);
                 free(*result);
                 *result = NULL;
@@ -280,7 +274,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
             first_sibling = *result;
         }
     }
-    (*result)->validity = LYD_VAL_NOT;
+    (*result)->validity = ly_new_node_validity((*result)->schema);
     if (resolve_applies_when(schema, 0, NULL)) {
         (*result)->when_status = LYD_WHEN;
     }
@@ -382,7 +376,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     /* type specific processing */
     if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
         /* type detection and assigning the value */
-        if (xml_get_value(*result, xml, options, editbits)) {
+        if (xml_get_value(*result, xml, editbits)) {
             goto error;
         }
     } else if (schema->nodetype & LYS_ANYDATA) {
@@ -405,7 +399,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     } else if (schema->nodetype & (LYS_RPC | LYS_ACTION)) {
         if (!(options & LYD_OPT_RPC) || *act_notif) {
             LOGVAL(LYE_INELEM, LY_VLOG_LYD, (*result), schema->name);
-            LOGVAL(LYE_SPEC, LY_VLOG_LYD, (*result), "Unexpected %s node \"%s\".",
+            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Unexpected %s node \"%s\".",
                    (schema->nodetype == LYS_RPC ? "rpc" : "action"), schema->name);
             goto error;
         }
@@ -413,14 +407,14 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     } else if (schema->nodetype == LYS_NOTIF) {
         if (!(options & LYD_OPT_NOTIF) || *act_notif) {
             LOGVAL(LYE_INELEM, LY_VLOG_LYD, (*result), schema->name);
-            LOGVAL(LYE_SPEC, LY_VLOG_LYD, (*result), "Unexpected notification node \"%s\".", schema->name);
+            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Unexpected notification node \"%s\".", schema->name);
             goto error;
         }
         *act_notif = *result;
     }
 
     /* first part of validation checks */
-    if (!(options & LYD_OPT_TRUSTED) && lyv_data_context(*result, options, unres)) {
+    if (lyv_data_context(*result, options, unres)) {
         goto error;
     }
 
@@ -434,7 +428,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                     !ly_strequal((*result)->schema->module->name, "ietf-netconf", 0)) {
                 if (options & LYD_OPT_STRICT) {
                     LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), attr->name, xml->name);
-                    LOGVAL(LYE_SPEC, LY_VLOG_LYD, (*result), "Attribute \"%s\" with no namespace (schema).",
+                    LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Attribute \"%s\" with no namespace (schema).",
                            attr->name);
                     goto error;
                 } else {
@@ -454,7 +448,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         dattr->next = NULL;
         dattr->name = attr->name;
         if (flag && ly_strequal(attr->name, "select", 0)) {
-            dattr->value = transform_xml2json(ctx, attr->value, xml, 1);
+            dattr->value = transform_xml2json(ctx, attr->value, xml, 0, 1);
             if (!dattr->value) {
                 free(dattr);
                 goto error;
@@ -476,7 +470,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
             free(dattr);
             if (options & LYD_OPT_STRICT) {
                 LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), attr->name, xml->name);
-                LOGVAL(LYE_SPEC, LY_VLOG_LYD, (*result), "Attribute \"%s\" from unknown schema (\"%s\").",
+                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Attribute \"%s\" from unknown schema (\"%s\").",
                        attr->name, attr->ns->value);
                 goto error;
             } else {
@@ -523,9 +517,8 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 
     /* rest of validation checks */
     ly_err_clean(1);
-    if (!(options & LYD_OPT_TRUSTED) &&
-            (lyv_data_content(*result, options, unres) ||
-             lyv_multicases(*result, NULL, prev ? &first_sibling : NULL, 0, NULL))) {
+    if (lyv_data_content(*result, options, unres) ||
+             lyv_multicases(*result, NULL, prev ? &first_sibling : NULL, 0, NULL)) {
         if (ly_errno) {
             goto error;
         } else {
@@ -536,9 +529,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     /* validation successful */
     if ((*result)->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
         /* postpone checking when there will be all list/leaflist instances */
-        (*result)->validity = LYD_VAL_UNIQUE;
-    } else {
-        (*result)->validity = LYD_VAL_OK;
+        (*result)->validity |= LYD_VAL_UNIQUE;
     }
 
     return ret;
@@ -728,7 +719,8 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     if (lyd_defaults_add_unres(&result, options, ctx, data_tree, act_notif, unres)) {
         goto error;
     }
-    if (!(options & LYD_OPT_TRUSTED) && lyd_check_mandatory_tree((act_notif ? act_notif : result), ctx, options)) {
+    if (!(options & (LYD_OPT_TRUSTED | LYD_OPT_NOTIF_FILTER))
+            && lyd_check_mandatory_tree((act_notif ? act_notif : result), ctx, options)) {
         goto error;
     }
 

@@ -76,7 +76,9 @@ help(int shortout)
         "        getconfig       - Result of the NETCONF <get-config> operation.\n"
         "        edit            - Content of the NETCONF <edit-config> operation.\n\n"
         "Tree output specific options:\n"
-        "  --tree-help           Print help on tree symbols and exit.\n\n");
+        "  --tree-help           Print help on tree symbols and exit.\n"
+        "  --tree-print-groupings\n"
+        "                        Print groupings.\n\n");
 }
 
 void
@@ -148,11 +150,12 @@ int
 main_ni(int argc, char* argv[])
 {
     int ret = EXIT_FAILURE;
-    int opt, opt_index = 0, i, featsize = 0;
+    int opt, opt_index = 0, i, featsize = 0, grps = 0;
     struct option options[] = {
         {"default",          required_argument, NULL, 'd'},
         {"format",           required_argument, NULL, 'f'},
         {"features",         required_argument, NULL, 'F'},
+        {"tree-print-groupings", no_argument,   NULL, 'g'},
         {"help",             no_argument,       NULL, 'h'},
         {"tree-help",        no_argument,       NULL, 'H'},
         {"output",           required_argument, NULL, 'o'},
@@ -183,7 +186,7 @@ main_ni(int argc, char* argv[])
     struct lyxml_elem *xml = NULL;
 
     opterr = 0;
-    while ((opt = getopt_long(argc, argv, "d:f:F:hHo:p:t:vV", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "d:f:F:ghHo:p:t:vV", options, &opt_index)) != -1) {
         switch (opt) {
         case 'd':
             if (!strcmp(optarg, "all")) {
@@ -237,6 +240,9 @@ main_ni(int argc, char* argv[])
             }
             *ptr = '\0';
 
+            break;
+        case 'g':
+            grps = 1;
             break;
         case 'h':
             help(0);
@@ -314,6 +320,15 @@ main_ni(int argc, char* argv[])
         /* we have multiple schemas to be printed as YIN or YANG */
         fprintf(stderr, "yanglint error: too many schemas to convert and store.\n");
         goto cleanup;
+    }
+    if (grps) {
+        if (outformat_d || (outformat_s && outformat_s != LYS_OUT_TREE)) {
+            /* we have --tree-print-grouping with other output format than tree */
+            fprintf(stderr,
+                    "yanglint warning: --tree-print-groupings option takes effect only in case of the tree output format.\n");
+        } else {
+            outformat_s = LYS_OUT_TREE_GRPS;
+        }
     }
     if (!outformat_d && options_dflt) {
         /* we have options for printing default nodes, but output is schema */
@@ -505,7 +520,26 @@ main_ni(int argc, char* argv[])
             /* do not trust the input, invalidate all the data first */
             LY_TREE_FOR(root, subroot) {
                 LY_TREE_DFS_BEGIN(subroot, next, node) {
-                    node->validity = LYD_VAL_NOT;
+                    node->validity = LYD_VAL_OK;
+                    switch (node->schema->nodetype) {
+                    case LYS_LEAFLIST:
+                    case LYS_LEAF:
+                        if (((struct lys_node_leaf *)node->schema)->type.base == LY_TYPE_LEAFREF) {
+                            node->validity |= LYD_VAL_LEAFREF;
+                        }
+                        break;
+                    case LYS_LIST:
+                        node->validity |= LYD_VAL_UNIQUE;
+                        /* fallthrough */
+                    case LYS_CONTAINER:
+                    case LYS_NOTIF:
+                    case LYS_RPC:
+                    case LYS_ACTION:
+                        node->validity |= LYD_VAL_MAND;
+                        break;
+                    default:
+                        break;
+                    }
                     LY_TREE_DFS_END(subroot, next, node)
                 }
             }

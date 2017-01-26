@@ -63,8 +63,7 @@ struct lys_module *lyp_search_file(struct ly_ctx *ctx, struct lys_module *module
 struct lys_type *lyp_get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *found);
 
 struct lys_type *lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *xml,
-                                         struct lyd_node *tree, struct lyd_node_leaf_list *leaf,
-                                         int store, int resolvable, int dflt);
+                                struct lyd_node_leaf_list *leaf, int store, int dflt);
 
 int lyp_check_length_range(const char *expr, struct lys_type *type);
 
@@ -102,8 +101,9 @@ int lyp_check_date(const char *date);
 int lyp_check_mandatory_augment(struct lys_node_augment *node, const struct lys_node *target);
 int lyp_check_mandatory_choice(struct lys_node *node);
 
-int lyp_check_include(struct lys_module *module, struct lys_submodule *submodule, const char *value,
+int lyp_check_include(struct lys_module *module, const char *value,
                       struct lys_include *inc, struct unres_schema *unres);
+int lyp_check_include_missing(struct lys_module *main_module);
 
 int lyp_check_import(struct lys_module *module, const char *value, struct lys_import *imp);
 
