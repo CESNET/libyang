@@ -217,7 +217,7 @@ typedef enum lys_nodetype {
 } LYS_NODE;
 
 /* all nodes sharing the node namespace except RPCs and notifications */
-#define LYS_NO_RPC_NOTIF_NODE 0x007F
+#define LYS_NO_RPC_NOTIF_NODE 0x807F
 
 #define LYS_ANY 0x7FFF
 

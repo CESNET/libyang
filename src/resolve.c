@@ -1785,7 +1785,7 @@ resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *star
     const struct lys_module *module;
 
     assert(nodeid && start && ret);
-    assert(!(ret_nodetype & (LYS_USES | LYS_AUGMENT)) && ((ret_nodetype == LYS_GROUPING) || !(ret_nodetype & LYS_GROUPING)));
+    assert(!(ret_nodetype & (LYS_USES | LYS_AUGMENT | LYS_GROUPING)));
 
     id = nodeid;
     module = start->module;
@@ -4746,7 +4746,8 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
     /* apply refines */
     for (i = 0; i < uses->refine_size; i++) {
         rfn = &uses->refine[i];
-        rc = resolve_descendant_schema_nodeid(rfn->target_name, uses->child, LYS_NO_RPC_NOTIF_NODE,
+        rc = resolve_descendant_schema_nodeid(rfn->target_name, uses->child,
+                                              LYS_NO_RPC_NOTIF_NODE | LYS_ACTION | LYS_NOTIF,
                                               1, 0, (const struct lys_node **)&node);
         if (rc || !node) {
             LOGVAL(LYE_INARG, LY_VLOG_LYS, uses, rfn->target_name, "refine");
