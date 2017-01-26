@@ -6848,6 +6848,8 @@ yin_read_submodule(struct lys_module *module, const char *data, struct unres_sch
         goto error;
     }
 
+    lyp_sort_revisions((struct lys_module *)submodule);
+
     /* cleanup */
     lyxml_free(module->ctx, yin);
 
