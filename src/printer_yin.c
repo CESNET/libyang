@@ -730,7 +730,7 @@ yin_print_refine(struct lyout *out, int level, const struct lys_module *module, 
             yin_print_close_parent(out, &content);
             if (refine->mod.list.max) {
                 yin_print_unsigned(out, level, LYEXT_SUBSTMT_MAX, module, refine->ext, refine->ext_size,
-                                   refine->mod.list.min);
+                                   refine->mod.list.max);
             } else {
                 yin_print_substmt(out, level, LYEXT_SUBSTMT_MAX, 0, "unbounded", module,
                                   refine->ext, refine->ext_size);
