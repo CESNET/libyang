@@ -221,6 +221,25 @@ struct lys_node *lys_node_dup(struct lys_module *module, struct lys_node *parent
  */
 int lys_ext_dup(struct ly_ctx *ctx, struct lys_ext_instance **orig, uint8_t size,
                 void *parent, LYEXT_PAR parent_type, struct lys_ext_instance ***new, struct unres_schema *unres);
+
+/**
+ * @brief Iterate over the specified type of the extension instances
+ *
+ * @param[in] ext Array of extensions to explore
+ * @param[in] ext_size Size of the provided \p ext array
+ * @param[in] start Index in the \p ext array where to start searching (first call with 0, the consequent calls with
+ *            the returned index increased by 1, unless the returned index is -1)
+ * @param[in] substmt Type of the extension (its belongins to the specific substatement) to iterate, use
+ *            #LYEXT_SUBSTMT_ALL to go through all the extensions in the array
+ * @result index in the ext, -1 if not present
+ */
+int lys_ext_iter(struct lys_ext_instance **ext, uint8_t ext_size, uint8_t start, LYEXT_SUBSTMT substmt);
+
+/**
+ * @brief free the array of the extension instances
+ */
+void lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, unsigned int size);
+
 /**
  * @brief Switch two same schema nodes. \p src must be a shallow copy
  * of \p dst.

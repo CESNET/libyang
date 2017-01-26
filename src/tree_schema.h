@@ -274,6 +274,7 @@ typedef enum {
  * points to the ::lys_module structure.
  */
 typedef enum {
+    LYEXT_SUBSTMT_ALL = -1,      /**< special value for the lys_ext_iter() */
     LYEXT_SUBSTMT_SELF = 0,      /**< extension of the structure itself, not substatement's */
     LYEXT_SUBSTMT_ARGUMENT,      /**< extension of the argument statement, can appear in lys_ext */
     LYEXT_SUBSTMT_BASE,          /**< extension of the base statement, can appear (repeatedly) in lys_type and lys_ident */

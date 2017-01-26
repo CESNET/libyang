@@ -62,11 +62,6 @@ void ly_print_flush(struct lyout *out);
 int ly_write(struct lyout *out, const char *buf, size_t count);
 int ly_print_iffeature(struct lyout *out, const struct lys_module *module, struct lys_iffeature *expr);
 
-/**
- * @result index in the ext, -1 if not present
- */
-int ly_print_ext_iter(struct lys_ext_instance **ext, uint8_t ext_size, uint8_t start, LYEXT_SUBSTMT substmt);
-
 int yang_print_model(struct lyout *out, const struct lys_module *module);
 int yin_print_model(struct lyout *out, const struct lys_module *module);
 int tree_print_model(struct lyout *out, const struct lys_module *module, int groupings);

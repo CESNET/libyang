@@ -2524,6 +2524,183 @@ lyp_sort_revisions(struct lys_module *module)
     }
 }
 
+
+static int
+lyp_rfn_apply_ext_(struct lys_refine *rfn, struct lys_node *target, LYEXT_SUBSTMT substmt)
+{
+    struct ly_ctx *ctx;
+    int m, n, i;
+    struct lys_ext_instance *new;
+    void *reallocated;
+
+    ctx = target->module->ctx; /* shortcut */
+
+    m = n = -1;
+    while ((m = lys_ext_iter(rfn->ext, rfn->ext_size, m + 1, substmt)) != -1) {
+        /* refine's description includes extensions, copy them to the target, replacing the previous
+         * description's extensions if any */
+
+        /* get the index of the extension to replace in the target node */
+        do {
+            n = lys_ext_iter(target->ext, target->ext_size, n + 1, substmt);
+            /* keep it in case the extension is inherited */
+        } while (n != -1 && (target->ext[n]->flags & LYEXT_OPT_INHERIT));
+
+        if (n == -1) {
+            /* nothing to replace, we are going to add it - reallocate */
+            new = malloc(sizeof **target->ext);
+            if (!new) {
+                LOGMEM;
+                return EXIT_FAILURE;
+            }
+            reallocated = realloc(target->ext, (target->ext_size + 1) * sizeof *target->ext);
+            if (!reallocated) {
+                LOGMEM;
+                free(new);
+                return EXIT_FAILURE;
+            }
+            target->ext = reallocated;
+            target->ext_size++;
+
+            /* init */
+            n = target->ext_size - 1;
+            target->ext[n] = new;
+            target->ext[n]->parent = target;
+            target->ext[n]->parent_type = LYEXT_PAR_NODE;
+            target->ext[n]->flags = 0;
+            target->ext[n]->substmt = substmt;
+        } else {
+            /* replacing - first remove the allocated data from target */
+            lys_extension_instances_free(ctx, target->ext[n]->ext, target->ext[n]->ext_size);
+            lydict_remove(ctx, target->ext[n]->arg_value);
+        }
+        /* common part for adding and replacing */
+        target->ext[n]->def = rfn->ext[m]->def;
+        /* parent and parent_type do not change */
+        target->ext[n]->arg_value = lydict_insert(ctx, rfn->ext[m]->arg_value, 0);
+        /* flags do not change */
+        target->ext[n]->ext_size = rfn->ext[m]->ext_size;
+        lys_ext_dup(ctx, rfn->ext[m]->ext, rfn->ext[m]->ext_size, target, LYEXT_PAR_NODE, &target->ext[n]->ext, NULL);
+        /* substmt does not change, but the index must be taken from the refine */
+        target->ext[n]->substmt_index = rfn->ext[m]->substmt_index;
+    }
+
+    /* remove the rest of extensions belonging to the original description in the target node */
+    while ((n = lys_ext_iter(target->ext, target->ext_size, n + 1, substmt)) != -1) {
+        /* remove the allocated data */
+        lys_extension_instances_free(ctx, target->ext[n]->ext, target->ext[n]->ext_size);
+        lydict_remove(ctx, target->ext[n]->arg_value);
+        free(target->ext[n]);
+        /* move the rest of the array */
+        for (i = n + 1; i < target->ext_size; i++) {
+            target->ext[i - 1] = target->ext[i];
+        }
+        /* clean the last cell in the array structure */
+        target->ext[target->ext_size - 1] = NULL;
+        /* the array is not reallocated here, just change its size */
+        target->ext_size--;
+        n--;
+    }
+
+    return EXIT_SUCCESS;
+}
+
+/*
+ * apply extension instances defined under refine's substatements.
+ * It cannot be done immediately when applying the refine because there can be
+ * still unresolved data (e.g. type) and mainly the targeted extension instances.
+ */
+int
+lyp_rfn_apply_ext(struct lys_module *module)
+{
+    int i, a = 0;
+    struct lys_node *root, *nextroot, *next, *node;
+    struct lys_node *target;
+    struct lys_node_uses *uses;
+    struct lys_refine *rfn;
+
+    /* refines in uses */
+    LY_TREE_FOR_SAFE(module->data, nextroot, root) {
+        /* go through the data tree of the module and all the defined augments */
+
+        LY_TREE_DFS_BEGIN(root, next, node) {
+            if (node->nodetype == LYS_USES) {
+                uses = (struct lys_node_uses *)node;
+
+                for (i = 0; i < uses->refine_size; i++) {
+                    if (!uses->refine[i].ext_size) {
+                        /* no extensions in refine */
+                        continue;
+                    }
+                    rfn = &uses->refine[i]; /* shortcut */
+
+                    /* get the target node */
+                    resolve_descendant_schema_nodeid(rfn->target_name, uses->child,
+                                                     LYS_NO_RPC_NOTIF_NODE | LYS_ACTION | LYS_NOTIF,
+                                                     1, 0, (const struct lys_node **)&target);
+
+                    /* description */
+                    if (rfn->dsc && lyp_rfn_apply_ext_(rfn, target, LYEXT_SUBSTMT_DESCRIPTION)) {
+                        return EXIT_FAILURE;
+                    }
+                    /* reference */
+                    if (rfn->ref && lyp_rfn_apply_ext_(rfn, target, LYEXT_SUBSTMT_REFERENCE)) {
+                        return EXIT_FAILURE;
+                    }
+                    /* config, in case of notification or rpc/action{notif, the config is not applicable
+                     * (there is no config status) */
+                    if ((rfn->flags & LYS_CONFIG_MASK) && (target->flags & LYS_CONFIG_MASK)) {
+                        if (lyp_rfn_apply_ext_(rfn, target, LYEXT_SUBSTMT_CONFIG)) {
+                            return EXIT_FAILURE;
+                        }
+                    }
+                    /* default value */
+                    if (rfn->dflt_size && lyp_rfn_apply_ext_(rfn, target, LYEXT_SUBSTMT_DEFAULT)) {
+                        return EXIT_FAILURE;
+                    }
+                    /* mandatory */
+                    if (rfn->flags & LYS_MAND_MASK) {
+                        if (lyp_rfn_apply_ext_(rfn, target, LYEXT_SUBSTMT_MANDATORY)) {
+                            return EXIT_FAILURE;
+                        }
+                    }
+                    /* presence */
+                    if ((target->nodetype & LYS_CONTAINER) && rfn->mod.presence) {
+                        if (lyp_rfn_apply_ext_(rfn, target, LYEXT_SUBSTMT_PRESENCE)) {
+                            return EXIT_FAILURE;
+                        }
+                    }
+                    /* min/max */
+                    if (rfn->flags & LYS_RFN_MINSET) {
+                        if (lyp_rfn_apply_ext_(rfn, target, LYEXT_SUBSTMT_MIN)) {
+                            return EXIT_FAILURE;
+                        }
+                    }
+                    if (rfn->flags & LYS_RFN_MAXSET) {
+                        if (lyp_rfn_apply_ext_(rfn, target, LYEXT_SUBSTMT_MAX)) {
+                            return EXIT_FAILURE;
+                        }
+                    }
+                    /* must and if-feature contain extensions on their own, not needed to be solved here */
+
+                    /* the allocated target's extension array can be now longer than needed in case
+                     * there is less refine substatement's extensions than in original. Since we are
+                     * going to reduce or keep the same memory, it is not necessary to test realloc's result */
+                    target->ext = realloc(target->ext, target->ext_size * sizeof *target->ext);
+                }
+            }
+            LY_TREE_DFS_END(root, next, node)
+        }
+
+        if (!nextroot && a < module->augment_size) {
+            nextroot = module->augment[a].child;
+            a++;
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
 int
 lyp_ctx_add_module(struct lys_module **module)
 {

@@ -4824,13 +4824,12 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
 
         /* mandatory on leaf, anyxml or choice */
         if (rfn->flags & LYS_MAND_MASK) {
-            if (node->nodetype & (LYS_LEAF | LYS_ANYDATA | LYS_CHOICE)) {
-                /* remove current value */
-                node->flags &= ~LYS_MAND_MASK;
+            /* remove current value */
+            node->flags &= ~LYS_MAND_MASK;
 
-                /* set new value */
-                node->flags |= (rfn->flags & LYS_MAND_MASK);
-            }
+            /* set new value */
+            node->flags |= (rfn->flags & LYS_MAND_MASK);
+
             if (rfn->flags & LYS_MAND_TRUE) {
                 /* check if node has default value */
                 if ((node->nodetype & LYS_LEAF) && ((struct lys_node_leaf *)node)->dflt) {

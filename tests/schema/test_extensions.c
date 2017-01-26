@@ -1213,9 +1213,13 @@ test_uses_sub_yin(void **state)
                     "          <e:a/>\n          <e:b x=\"one\"/>\n          <e:c>\n            <e:y>one</e:y>\n          </e:c>\n"
                     "        </base>\n"
                     "      </type>\n"
+                    "      <mandatory value=\"true\">\n        <e:a/>\n      </mandatory>\n"
                     "    </leaf>\n"
                     "    <leaf-list name=\"ll1\">\n"
                     "      <type name=\"int8\"/>\n"
+                    "      <min-elements value=\"2\">\n"
+                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "      </min-elements>\n"
                     "    </leaf-list>\n"
                     "    <leaf-list name=\"ll2\">\n"
                     "      <type name=\"int8\"/>\n"
@@ -1252,16 +1256,16 @@ test_uses_sub_yin(void **state)
                     "      </reference>\n"
                     "    </refine>\n"
                     "    <refine target-node=\"l\">\n"
-                    "      <mandatory value=\"true\">\n"
+                    "      <mandatory value=\"false\">\n"
                     "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
                     "      </mandatory>\n"
                     "    </refine>\n"
                     "    <refine target-node=\"ll1\">\n"
                     "      <min-elements value=\"1\">\n"
-                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "        <e:a/>\n"
                     "      </min-elements>\n"
-                    "      <max-elements value=\"1\">\n"
-                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "      <max-elements value=\"2\">\n"
+                    "        <e:b x=\"one\"/>\n"
                     "      </max-elements>\n"
                     "    </refine>\n"
                     "    <refine target-node=\"ll2\">\n"
@@ -1289,6 +1293,7 @@ test_uses_sub_yin(void **state)
                     "    </augment>\n"
                     "  </uses>\n"
                     "</module>\n";
+    struct lys_node *uses;
 
     mod = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
     assert_ptr_not_equal(mod, NULL);
@@ -1296,6 +1301,15 @@ test_uses_sub_yin(void **state)
     lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yin);
+
+    /* check applied refine's substatements' extensions */
+    uses = mod->data->prev;
+    assert_int_equal(uses->nodetype, LYS_USES);
+
+    assert_int_equal(uses->child->ext_size, 12); /* number of extensions in c */
+    assert_int_equal(uses->child->next->ext_size, 3); /* number of extensions in l */
+    assert_int_equal(uses->child->next->next->ext_size, 2); /* number of extensions in ll1 */
+    assert_int_equal(uses->child->prev->ext_size, 3); /* number of extensions in ll2 */
 }
 
 static void

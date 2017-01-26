@@ -319,7 +319,7 @@ repeat:
 
 }
 
-static void
+void
 lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, unsigned int size)
 {
     unsigned int i;
@@ -1078,6 +1078,20 @@ lys_submodule_read(struct lys_module *module, int fd, LYS_INFORMAT format, struc
 
 }
 
+int
+lys_ext_iter(struct lys_ext_instance **ext, uint8_t ext_size, uint8_t start, LYEXT_SUBSTMT substmt)
+{
+    unsigned int u;
+
+    for (u = start; u < ext_size; u++) {
+        if (ext[u]->substmt == substmt) {
+            return u;
+        }
+    }
+
+    return -1;
+}
+
 /*
  * duplicate extension instance
  */
@@ -1408,6 +1422,7 @@ lys_ext_instance_substmt(const struct lys_ext_instance *ext)
     }
 
     switch (ext->substmt) {
+    case LYEXT_SUBSTMT_ALL:
     case LYEXT_SUBSTMT_SELF:
     case LYEXT_SUBSTMT_MODIFIER:
     case LYEXT_SUBSTMT_VERSION:

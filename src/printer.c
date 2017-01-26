@@ -224,20 +224,6 @@ ly_print_iffeature(struct lyout *out, const struct lys_module *module, struct ly
     return 0;
 }
 
-int
-ly_print_ext_iter(struct lys_ext_instance **ext, uint8_t ext_size, uint8_t start, LYEXT_SUBSTMT substmt)
-{
-    unsigned int u;
-
-    for (u = start; u < ext_size; u++) {
-        if (ext[u]->substmt == substmt) {
-            return u;
-        }
-    }
-
-    return -1;
-}
-
 static int
 lys_print_(struct lyout *out, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
 {
