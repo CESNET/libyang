@@ -6939,6 +6939,7 @@ yin_read_module(struct ly_ctx *ctx, const char *data, const char *revision, int 
 
     lyp_sort_revisions(module);
     lyp_rfn_apply_ext(module);
+    lyp_deviation_apply_ext(module);
 
     if (revision) {
         /* check revision of the parsed model */

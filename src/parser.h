@@ -113,6 +113,7 @@ int lyp_check_import(struct lys_module *module, const char *value, struct lys_im
 
 void lyp_sort_revisions(struct lys_module *module);
 int lyp_rfn_apply_ext(struct lys_module *module);
+int lyp_deviation_apply_ext(struct lys_module *module);
 
 /**
  * @brief Propagate imports and includes into the main module
