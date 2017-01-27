@@ -189,7 +189,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <uint> min_elements_stmt
 %type <uint> fraction_digits_arg_str
 %type <uint> position_value_arg_str
-%type <uint> extension_opt_stmt
+%type <uint> yin_element_arg_str
 %type <i> require_instance_stmt
 %type <i> require_instance_arg_str
 %type <i> import_opt_stmt
@@ -655,6 +655,15 @@ body_stmts_end: body_stmts { void *tmp;
                                }
                                trg->augment = tmp;
                              }
+
+                             if (trg->extensions_size) {
+                               tmp = realloc(trg->extensions, trg->extensions_size * sizeof *trg->extensions);
+                               if (!tmp) {
+                                 LOGMEM;
+                                 YYABORT;
+                               }
+                               trg->extensions = tmp;
+                             }
                            }
 
 body_stmts: @EMPTYDIR@ { actual = NULL; }
@@ -673,64 +682,56 @@ body_stmt: extension_stmt
   | deviation_stmt
 
 
-extension_arg_str: identifier_arg_str { /* we have the following supported (hardcoded) extensions: */
-                                        /* ietf-netconf's get-filter-element-attributes */
-                                        if (!strcmp(param->module->ns, LY_NSNC) && !strcmp(s, "get-filter-element-attributes")) {
-                                          LOGDBG("NETCONF filter extension found");
-                                          /* NACM's default-deny-write and default-deny-all */
-                                        } else if (!strcmp(param->module->ns, LY_NSNACM) &&
-                                                   (!strcmp(s, "default-deny-write") || !strcmp(s, "default-deny-all"))) {
-                                          LOGDBG("NACM extension found");
-                                          /* other extensions are not supported, so inform about such an extension */
-                                        } else {
-                                          LOGWRN("Not supported \"%s\" extension statement found, ignoring.", s);
+extension_arg_str: identifier_arg_str { YANG_ADDELEM(trg->extensions, trg->extensions_size);
+                                        trg->extensions_size--;
+                                        ((struct lys_ext *)actual)->name = lydict_insert_zc(param->module->ctx, s);
+                                        ((struct lys_ext *)actual)->module = trg;
+                                        if (lyp_check_identifier(((struct lys_ext *)actual)->name, LY_IDENT_EXTENSION, trg, NULL)) {
+                                          YYABORT;
                                         }
-                                        free(s);
+                                        trg->extensions_size++;
                                         s = NULL;
                                       }
 
-extension_stmt: EXTENSION_KEYWORD sep extension_arg_str extension_end
+extension_stmt: EXTENSION_KEYWORD sep extension_arg_str extension_end 
+                { struct lys_ext *ext = actual;
+                  ext->plugin = ext_get_plugin(ext->name, ext->module->name, ext->module->rev ? ext->module->rev[0].date : NULL);
+                }
 
 extension_end: ';'
   | '{' stmtsep
         extension_opt_stmt
     '}'
 
-extension_opt_stmt: @EMPTYDIR@ { $$ = 0; }
-  |  extension_opt_stmt argument_stmt { if ($1 & EXTENSION_ARG) {
-                                          LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "argument", "extension");
-                                          YYABORT;
-                                        }
-                                        $1 |= EXTENSION_ARG;
-                                        $$ = $1;
-                                      }
-  |  extension_opt_stmt status_stmt { if ($1 & EXTENSION_STA) {
+extension_opt_stmt: @EMPTYDIR@
+  |  extension_opt_stmt argument_stmt
+  |  extension_opt_stmt status_stmt { if (((struct lys_ext *)actual)->flags & LYS_STATUS_MASK) {
                                         LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "extension");
                                         YYABORT;
                                       }
-                                      $1 |= EXTENSION_STA;
-                                      $$ = $1;
+                                      ((struct lys_ext *)actual)->flags |= $2;
                                     }
-  |  extension_opt_stmt description_stmt { free(s);
-                                           s= NULL;
-                                           if ($1 & EXTENSION_DSC) {
-                                             LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "description", "extension");
+  |  extension_opt_stmt description_stmt { if (yang_read_description(trg, actual, s, "extension", NODE)) {
                                              YYABORT;
                                            }
-                                           $1 |= EXTENSION_DSC;
-                                           $$ = $1;
+                                           s = NULL;
                                          }
-  |  extension_opt_stmt reference_stmt { free(s);
-                                         s = NULL;
-                                         if ($1 & EXTENSION_REF) {
-                                           LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "reference", "extension");
+  |  extension_opt_stmt reference_stmt { if (yang_read_reference(trg, actual, s, "extension", NODE)) {
                                            YYABORT;
                                          }
-                                         $1 |= EXTENSION_REF;
-                                         $$ = $1;
+                                         s = NULL;
                                        }
 
-argument_stmt: ARGUMENT_KEYWORD sep identifier_arg_str { free(s); s = NULL; } argument_end stmtsep;
+argument_str: identifier_arg_str { if (((struct lys_ext *)actual)->argument) {
+                                      LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "argument", "extension");
+                                      free(s);
+                                      YYABORT;
+                                   }
+                                   ((struct lys_ext *)actual)->argument = lydict_insert_zc(param->module->ctx, s);
+                                   s = NULL;
+                                 }
+
+argument_stmt: ARGUMENT_KEYWORD sep  argument_str argument_end stmtsep;
 
 argument_end: ';'
   | '{' stmtsep
@@ -738,11 +739,15 @@ argument_end: ';'
     '}'
 
 yin_element_stmt: @EMPTYDIR@
-  |  YIN_ELEMENT_KEYWORD sep yin_element_arg_str stmtend;
+  |  YIN_ELEMENT_KEYWORD sep yin_element_arg_str stmtend { ((struct lys_ext *)actual)->flags |= $3; }
 
-yin_element_arg_str: TRUE_KEYWORD optsep
-  | FALSE_KEYWORD optsep
-  | string_1 { if (strcmp(s, "true") && strcmp(s, "false")) {
+yin_element_arg_str: TRUE_KEYWORD optsep { $$ = LYS_YINELEM; }
+  | FALSE_KEYWORD optsep { $$ = 0; }
+  | string_1 { if (!strcmp(s, "true")) {
+                 $$ = LYS_YINELEM;
+               } else if (!strcmp(s, "false")) {
+                 $$ = 0;
+               } else {
                  LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, s);
                  free(s);
                  YYABORT;
