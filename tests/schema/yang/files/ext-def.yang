@@ -26,6 +26,10 @@ module ext-def {
   }
   leaf l2 {
     type string;
+    mandatory true {
+      e:b "one";
+      e:c "one";
+    }
   }
   leaf-list ll1 {
     type uint8;
@@ -46,7 +50,9 @@ module ext-def {
   }
   list lst2 {
     key "id";
-    unique "val1";
+    unique "val1" {
+      e:a;
+    }
     leaf id {
       type string;
     }

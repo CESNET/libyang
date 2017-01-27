@@ -23,6 +23,12 @@
   </leaf>
   <leaf name="l2">
     <type name="string"/>
+    <mandatory value="true">
+      <e:b x="one"/>
+      <e:c>
+        <e:y>one</e:y>
+      </e:c>
+    </mandatory>
   </leaf>
   <leaf-list name="ll1">
     <type name="uint8"/>
@@ -43,7 +49,9 @@
   </list>
   <list name="lst2">
     <key value="id"/>
-    <unique tag="val1"/>
+    <unique tag="val1">
+      <e:a/>
+    </unique>
     <leaf name="id">
       <type name="string"/>
     </leaf>
