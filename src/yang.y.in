@@ -381,7 +381,15 @@ submodule_header_stmts: submodule_header_stmt { if (!param->submodule->prefix) {
                                                   LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "belongs-to", "submodule");
                                                   YYABORT;
                                                 }
+                                                if (!$1) {
+                                                  /* check version compatibility with the main module */
+                                                  if (param->module->version > 1) {
+                                                      LOGVAL(LYE_INVER, LY_VLOG_NONE, NULL);
+                                                      YYABORT;
+                                                  }
+                                                }
                                               }
+
 submodule_header_stmt: @EMPTYDIR@ { $$ = 0; }
   |  submodule_header_stmt yang_version_stmt { if (yang_check_version(param->module, param->submodule, s, $1)) {
                                                  YYABORT;
