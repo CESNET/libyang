@@ -2524,7 +2524,6 @@ lyp_sort_revisions(struct lys_module *module)
     }
 }
 
-
 static int
 lyp_rfn_apply_ext_(struct lys_refine *rfn, struct lys_node *target, LYEXT_SUBSTMT substmt)
 {
@@ -2537,8 +2536,8 @@ lyp_rfn_apply_ext_(struct lys_refine *rfn, struct lys_node *target, LYEXT_SUBSTM
 
     m = n = -1;
     while ((m = lys_ext_iter(rfn->ext, rfn->ext_size, m + 1, substmt)) != -1) {
-        /* refine's description includes extensions, copy them to the target, replacing the previous
-         * description's extensions if any */
+        /* refine's substatement includes extensions, copy them to the target, replacing the previous
+         * substatement's extensions if any */
 
         /* get the index of the extension to replace in the target node */
         do {
@@ -2585,7 +2584,7 @@ lyp_rfn_apply_ext_(struct lys_refine *rfn, struct lys_node *target, LYEXT_SUBSTM
         target->ext[n]->substmt_index = rfn->ext[m]->substmt_index;
     }
 
-    /* remove the rest of extensions belonging to the original description in the target node */
+    /* remove the rest of extensions belonging to the original substatement in the target node */
     while ((n = lys_ext_iter(target->ext, target->ext_size, n + 1, substmt)) != -1) {
         /* remove the allocated data */
         lys_extension_instances_free(ctx, target->ext[n]->ext, target->ext[n]->ext_size);
