@@ -140,7 +140,9 @@ extern int yydebug;
     USER_KEYWORD = 350,
     ACTION_KEYWORD = 351,
     MODIFIER_KEYWORD = 352,
-    ANYDATA_KEYWORD = 353
+    ANYDATA_KEYWORD = 353,
+    NODE = 354,
+    NODE_PRINT = 355
   };
 #endif
 
@@ -198,6 +200,6 @@ struct YYLTYPE
 
 
 
-int yyparse (void *scanner, char **value, struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, struct lys_node **node, int *remove_import);
+int yyparse (void *scanner, struct yang_parameter *param);
 
 #endif /* !YY_YY_PARSER_YANG_BIS_H_INCLUDED  */

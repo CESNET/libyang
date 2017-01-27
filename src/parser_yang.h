@@ -52,6 +52,17 @@ struct type_node {
     uint flag;
 };
 
+struct yang_parameter {
+    struct lys_module *module;
+    struct lys_submodule *submodule;
+    struct unres_schema *unres;
+    struct lys_node **node;
+    char **value;
+    int *remove_import;
+    void **data_node;
+    void **actual_node;
+};
+
 struct yang_type {
     char flags;       /**< this is used to distinguish lyxml_elem * from a YANG temporary parsing structure */
     LY_DATA_TYPE base;
@@ -71,9 +82,9 @@ int yang_check_version(struct lys_module *module, struct lys_submodule *submodul
 
 int yang_check_imports(struct lys_module *module, struct unres_schema *unres);
 
-int yang_read_description(struct lys_module *module, void *node, char *value, char *where);
+int yang_read_description(struct lys_module *module, void *node, char *value, char *where, enum yytokentype type);
 
-int yang_read_reference(struct lys_module *module, void *node, char *value, char *where);
+int yang_read_reference(struct lys_module *module, void *node, char *value, char *where, enum yytokentype type);
 
 void yang_read_revision(struct lys_module *module, char *value, struct lys_revision *retval);
 

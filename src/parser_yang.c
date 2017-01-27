@@ -28,10 +28,11 @@ static int yang_check_nodes(struct lys_module *module, struct lys_node *parent, 
 void lys_iffeature_free(struct lys_iffeature *iffeature, uint8_t iffeature_size);
 
 static int
-yang_check_string(struct lys_module *module, const char **target, char *what, char *where, char *value)
+yang_check_string(struct lys_module *module, const char **target, char *what,
+                  char *where, char *value, struct lys_node *node)
 {
     if (*target) {
-        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, what, where);
+        LOGVAL(LYE_TOOMANY, (node) ? LY_VLOG_LYS : LY_VLOG_NONE, node, what, where);
         free(value);
         return 1;
     } else {
@@ -50,13 +51,13 @@ yang_read_common(struct lys_module *module, char *value, enum yytokentype type)
         module->name = lydict_insert_zc(module->ctx, value);
         break;
     case NAMESPACE_KEYWORD:
-        ret = yang_check_string(module, &module->ns, "namespace", "module", value);
+        ret = yang_check_string(module, &module->ns, "namespace", "module", value, NULL);
         break;
     case ORGANIZATION_KEYWORD:
-        ret = yang_check_string(module, &module->org, "organization", "module", value);
+        ret = yang_check_string(module, &module->org, "organization", "module", value, NULL);
         break;
     case CONTACT_KEYWORD:
-        ret = yang_check_string(module, &module->contact, "contact", "module", value);
+        ret = yang_check_string(module, &module->contact, "contact", "module", value, NULL);
         break;
     default:
         free(value);
@@ -115,9 +116,9 @@ yang_read_prefix(struct lys_module *module, struct lys_import *imp, char *value)
     }
 
     if (imp) {
-        ret = yang_check_string(module, &imp->prefix, "prefix", "import", value);
+        ret = yang_check_string(module, &imp->prefix, "prefix", "import", value, NULL);
     } else {
-        ret = yang_check_string(module, &module->prefix, "prefix", "module", value);
+        ret = yang_check_string(module, &module->prefix, "prefix", "module", value, NULL);
     }
 
     return ret;
@@ -156,45 +157,59 @@ error:
 }
 
 int
-yang_read_description(struct lys_module *module, void *node, char *value, char *where)
+yang_read_description(struct lys_module *module, void *node, char *value, char *where, enum yytokentype type)
 {
     int ret;
     char *dsc = "description";
 
-    if (!node) {
-        ret = yang_check_string(module, &module->dsc, dsc, "module", value);
-    } else {
-        if (!strcmp("revision", where)) {
-            ret = yang_check_string(module, &((struct lys_revision *)node)->dsc, dsc, where, value);
-        } else if (!strcmp("import", where)){
-            ret = yang_check_string(module, &((struct lys_import *)node)->dsc, dsc, where, value);
-        } else if (!strcmp("include", where)){
-            ret = yang_check_string(module, &((struct lys_include *)node)->dsc, dsc, where, value);
-        } else {
-            ret = yang_check_string(module, &((struct lys_node *)node)->dsc, dsc, where, value);
-        }
+    switch (type) {
+    case MODULE_KEYWORD:
+        ret = yang_check_string(module, &module->dsc, dsc, "module", value, NULL);
+        break;
+    case REVISION_KEYWORD:
+        ret = yang_check_string(module, &((struct lys_revision *)node)->dsc, dsc, where, value, NULL);
+        break;
+    case IMPORT_KEYWORD:
+        ret = yang_check_string(module, &((struct lys_import *)node)->dsc, dsc, where, value, NULL);
+        break;
+    case INCLUDE_KEYWORD:
+        ret = yang_check_string(module, &((struct lys_include *)node)->dsc, dsc, where, value, NULL);
+        break;
+    case NODE_PRINT:
+        ret = yang_check_string(module, &((struct lys_node *)node)->dsc, dsc, where, value, node);
+        break;
+    default:
+        ret = yang_check_string(module, &((struct lys_node *)node)->dsc, dsc, where, value, NULL);
+        break;
     }
     return ret;
 }
 
 int
-yang_read_reference(struct lys_module *module, void *node, char *value, char *where)
+yang_read_reference(struct lys_module *module, void *node, char *value, char *where, enum yytokentype type)
 {
     int ret;
     char *ref = "reference";
 
-    if (!node) {
-        ret = yang_check_string(module, &module->ref, "reference", "module", value);
-    } else {
-        if (!strcmp("revision", where)) {
-            ret = yang_check_string(module, &((struct lys_revision *)node)->ref, ref, where, value);
-        } else if (!strcmp("import", where)){
-            ret = yang_check_string(module, &((struct lys_import *)node)->ref, ref, where, value);
-        } else if (!strcmp("include", where)){
-            ret = yang_check_string(module, &((struct lys_include *)node)->ref, ref, where, value);
-        } else {
-            ret = yang_check_string(module, &((struct lys_node *)node)->ref, ref, where, value);
-        }
+    switch (type) {
+    case MODULE_KEYWORD:
+        ret = yang_check_string(module, &module->ref, ref, "module", value, NULL);
+        break;
+    case REVISION_KEYWORD:
+        ret = yang_check_string(module, &((struct lys_revision *)node)->ref, ref, where, value, NULL);
+        break;
+    case IMPORT_KEYWORD:
+        ret = yang_check_string(module, &((struct lys_import *)node)->ref, ref, where, value, NULL);
+        break;
+    case INCLUDE_KEYWORD:
+        ret = yang_check_string(module, &((struct lys_include *)node)->ref, ref, where, value, NULL);
+        break;
+    case NODE_PRINT:
+        ret = yang_check_string(module, &((struct lys_node *)node)->ref, ref, where, value, node);
+        break;
+    default:
+        ret = yang_check_string(module, &((struct lys_node *)node)->ref, ref, where, value, NULL);
+        break;
     }
     return ret;
 }
@@ -284,9 +299,9 @@ yang_read_message(struct lys_module *module,struct lys_restr *save,char *value, 
     int ret;
 
     if (message == ERROR_APP_TAG_KEYWORD) {
-        ret = yang_check_string(module, &save->eapptag, "error_app_tag", what, value);
+        ret = yang_check_string(module, &save->eapptag, "error_app_tag", what, value, NULL);
     } else {
-        ret = yang_check_string(module, &save->emsg, "error_message", what, value);
+        ret = yang_check_string(module, &save->emsg, "error_message", what, value, NULL);
     }
     return ret;
 }
@@ -409,9 +424,8 @@ yang_read_node(struct lys_module *module, struct lys_node *parent, struct lys_no
         LOGMEM;
         return NULL;
     }
-    if (value) {
-        node->name = lydict_insert_zc(module->ctx, value);
-    }
+    LOGDBG("YANG: parsing %s statement \"%s\"", strnodetype(nodetype), value);
+    node->name = lydict_insert_zc(module->ctx, value);
     node->module = module;
     node->nodetype = nodetype;
 
@@ -434,10 +448,10 @@ yang_read_default(struct lys_module *module, void *node, char *value, enum yytok
 
     switch (type) {
     case LEAF_KEYWORD:
-        ret = yang_check_string(module, &((struct lys_node_leaf *) node)->dflt, "default", "leaf", value);
+        ret = yang_check_string(module, &((struct lys_node_leaf *) node)->dflt, "default", "leaf", value, node);
         break;
     case TYPEDEF_KEYWORD:
-        ret = yang_check_string(module, &((struct lys_tpdf *) node)->dflt, "default", "typedef", value);
+        ret = yang_check_string(module, &((struct lys_tpdf *) node)->dflt, "default", "typedef", value, NULL);
         break;
     default:
         free(value);
@@ -455,17 +469,17 @@ yang_read_units(struct lys_module *module, void *node, char *value, enum yytoken
 
     switch (type) {
     case LEAF_KEYWORD:
-        ret = yang_check_string(module, &((struct lys_node_leaf *) node)->units, "units", "leaf", value);
+        ret = yang_check_string(module, &((struct lys_node_leaf *) node)->units, "units", "leaf", value, node);
         break;
     case LEAF_LIST_KEYWORD:
-        ret = yang_check_string(module, &((struct lys_node_leaflist *) node)->units, "units", "leaflist", value);
+        ret = yang_check_string(module, &((struct lys_node_leaflist *) node)->units, "units", "leaflist", value, node);
         break;
     case TYPEDEF_KEYWORD:
-        ret = yang_check_string(module, &((struct lys_tpdf *) node)->units, "units", "typedef", value);
+        ret = yang_check_string(module, &((struct lys_tpdf *) node)->units, "units", "typedef", value, NULL);
         break;
     case ADD_KEYWORD:
     case REPLACE_KEYWORD:
-        ret = yang_check_string(module, &((struct lys_deviate *) node)->units, "units", "deviate", value);
+        ret = yang_check_string(module, &((struct lys_deviate *) node)->units, "units", "deviate", value, NULL);
         break;
     default:
         free(value);
@@ -540,7 +554,7 @@ yang_fill_unique(struct lys_module *module, struct lys_node_list *list, struct l
         for (j = 0; j < i; j++) {
             if (ly_strequal(unique->expr[j], unique->expr[i], 1)) {
                 LOGVAL(LYE_INARG, LY_VLOG_LYS, list, unique->expr[i], "unique");
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The identifier is not unique");
+                LOGVAL(LYE_SPEC, LY_VLOG_LYS, list, "The identifier is not unique");
                 goto error;
             }
         }
@@ -2255,12 +2269,18 @@ yang_parse_mem(struct lys_module *module, struct lys_submodule *submodule, struc
     yyscan_t scanner = NULL;
     int ret = EXIT_SUCCESS, remove_import = 1;
     struct lys_module *trg;
+    struct yang_parameter param;
 
     size = (size_data) ? size_data : strlen(data) + 2;
     yylex_init(&scanner);
     bp = yy_scan_buffer((char *)data, size, scanner);
     yy_switch_to_buffer(bp, scanner);
-    if (yyparse(scanner, NULL, module, submodule, unres, node, &remove_import)) {
+    param.module = module;
+    param.submodule = submodule;
+    param.unres = unres;
+    param.node = node;
+    param.remove_import = &remove_import;
+    if (yyparse(scanner, &param)) {
         if (remove_import) {
             trg = (submodule) ? (struct lys_module *)submodule : module;
             yang_free_import(trg->ctx, trg->imp, 0, trg->imp_size);
@@ -3305,8 +3325,8 @@ yang_check_leaflist(struct lys_module *module, struct lys_node_leaflist *leaflis
         if (leaflist->flags & LYS_CONFIG_W) {
             for (j = i +1; j < leaflist->dflt_size; ++j) {
                 if (ly_strequal(leaflist->dflt[i], leaflist->dflt[j], 1)) {
-                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, leaflist->dflt[i], "default");
-                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Duplicated default value \"%s\".", leaflist->dflt[i]);
+                    LOGVAL(LYE_INARG, LY_VLOG_LYS, leaflist, leaflist->dflt[i], "default");
+                    LOGVAL(LYE_SPEC, LY_VLOG_LYS, leaflist, "Duplicated default value \"%s\".", leaflist->dflt[i]);
                     goto error;
                 }
             }
@@ -3430,7 +3450,7 @@ yang_check_rpc_action(struct lys_module *module, struct lys_node_rpc_action *rpc
         for (node = rpc->parent; node; node = lys_parent(node)) {
             if ((node->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))
                     || ((node->nodetype == LYS_LIST) && !((struct lys_node_list *)node)->keys)) {
-                LOGVAL(LYE_INPAR, LY_VLOG_NONE, NULL, strnodetype(node->nodetype), "action");
+                LOGVAL(LYE_INPAR, LY_VLOG_LYS, rpc->parent, strnodetype(node->nodetype), "action");
                 goto error;
             }
         }
