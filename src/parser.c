@@ -2599,6 +2599,13 @@ lyp_rfn_apply_ext_(struct lys_refine *rfn, struct lys_node *target, LYEXT_SUBSTM
         /* the array is not reallocated here, just change its size */
         target->ext_size--;
         n--;
+
+        if (!target->ext_size) {
+            /* ext array is empty */
+            free(target->ext);
+            target->ext = NULL;
+            break;
+        }
     }
 
     return EXIT_SUCCESS;
@@ -2682,10 +2689,12 @@ lyp_rfn_apply_ext(struct lys_module *module)
                     }
                     /* must and if-feature contain extensions on their own, not needed to be solved here */
 
-                    /* the allocated target's extension array can be now longer than needed in case
-                     * there is less refine substatement's extensions than in original. Since we are
-                     * going to reduce or keep the same memory, it is not necessary to test realloc's result */
-                    target->ext = realloc(target->ext, target->ext_size * sizeof *target->ext);
+                    if (target->ext_size) {
+                        /* the allocated target's extension array can be now longer than needed in case
+                         * there is less refine substatement's extensions than in original. Since we are
+                         * going to reduce or keep the same memory, it is not necessary to test realloc's result */
+                        target->ext = realloc(target->ext, target->ext_size * sizeof *target->ext);
+                    }
                 }
             }
             LY_TREE_DFS_END(root, next, node)
