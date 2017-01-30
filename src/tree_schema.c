@@ -667,7 +667,7 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
 int
 lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys_node *child)
 {
-    struct lys_node *iter;
+    struct lys_node *iter, *next;
     struct lys_node_inout *in, *out, *inout;
     int type;
 
@@ -797,11 +797,18 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
                 module->data = child;
             }
         } else {
+            next = NULL;
             if (!parent->child) {
                 /* the only/first child of the parent */
                 parent->child = child;
                 child->parent = parent;
                 iter = child;
+            } else if (type == LYS_AUGMENT) {
+                /* add a new child as a last child of the augment (no matter if applied or not) */
+                for (iter = parent->child->prev; iter->parent != parent; iter = iter->prev);
+                next = iter->next;
+                iter->next = child;
+                child->prev = iter;
             } else {
                 /* add a new child at the end of parent's child list */
                 iter = parent->child->prev;
@@ -812,7 +819,13 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
                 iter = iter->next;
                 iter->parent = parent;
             }
-            parent->child->prev = iter;
+            if (next) {
+                /* we are in applied augment, its target has some additional nodes after the nodes from this augment */
+                iter->next = next;
+                next->prev = iter;
+            } else {
+                parent->child->prev = iter;
+            }
         }
     }
 
@@ -3284,13 +3297,17 @@ lys_node_switch(struct lys_node *dst, struct lys_node *src)
     dst->prev = dst;
 
     /* parent child */
-    if (dst->parent && (dst->parent->child == dst)) {
-        dst->parent->child = src;
+    if (dst->parent) {
+        if (dst->parent->child == dst) {
+            dst->parent->child = src;
+        }
+    } else if (dst->module->data == dst) {
+        dst->module->data = src;
     }
 
     /* parent */
-    src->parent = dst->parent;
-    dst->parent = NULL;
+    src->parent = dst->parent;    dst->parent = NULL;
+
 
     /* child parent */
     LY_TREE_FOR(dst->child, child) {
@@ -3947,106 +3964,6 @@ next_iter:
 }
 
 static void
-lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *target_module)
-{
-    int ret;
-    char *parent_path;
-    struct lys_node *target;
-
-    if (!dev->deviate) {
-        return ;
-    }
-
-    if (dev->deviate[0].mod == LY_DEVIATE_NO) {
-        if (dev->orig_node) {
-            /* removing not-supported deviation ... */
-            if (strrchr(dev->target_name, '/') != dev->target_name) {
-                /* ... from a parent */
-                parent_path = strndup(dev->target_name, strrchr(dev->target_name, '/') - dev->target_name);
-
-                target = NULL;
-                ret = resolve_augment_schema_nodeid(parent_path, NULL, target_module, 1,
-                                                    (const struct lys_node **)&target);
-                free(parent_path);
-                if (ret || !target) {
-                    LOGINT;
-                    return;
-                }
-
-                lys_node_addchild(target, NULL, dev->orig_node);
-            } else {
-                /* ... from top-level data */
-                lys_node_addchild(NULL, (struct lys_module *)target_module, dev->orig_node);
-            }
-
-            dev->orig_node = NULL;
-        } else {
-            /* adding not-supported deviation */
-            target = NULL;
-            ret = resolve_augment_schema_nodeid(dev->target_name, NULL, target_module, 1,
-                                                (const struct lys_node **)&target);
-            if (ret || !target) {
-                LOGINT;
-                return;
-            }
-
-            lys_node_unlink(target);
-            dev->orig_node = target;
-        }
-    } else {
-        target = NULL;
-        ret = resolve_augment_schema_nodeid(dev->target_name, NULL, target_module, 1,
-                                            (const struct lys_node **)&target);
-        if (ret || !target) {
-            LOGINT;
-            return;
-        }
-
-        lys_node_switch(target, dev->orig_node);
-        dev->orig_node = target;
-    }
-}
-
-/* temporarily removes or applies deviations, updates module deviation flag accordingly */
-void
-lys_switch_deviations(struct lys_module *module)
-{
-    uint32_t i = 0, j;
-    const struct lys_module *mod;
-    const char *ptr;
-
-    if (module->deviated) {
-        while ((mod = ly_ctx_get_module_iter(module->ctx, &i))) {
-            if (mod == module) {
-                continue;
-            }
-
-            for (j = 0; j < mod->deviation_size; ++j) {
-                ptr = strstr(mod->deviation[j].target_name, module->name);
-                if (ptr && ptr[strlen(module->name)] == ':') {
-                    lys_switch_deviation(&mod->deviation[j], module);
-                }
-            }
-        }
-
-        if (module->deviated == 2) {
-            module->deviated = 1;
-        } else {
-            module->deviated = 2;
-        }
-    }
-}
-
-static void
-apply_dev(struct lys_deviation *dev, const struct lys_module *module)
-{
-    lys_switch_deviation(dev, module);
-
-    assert(dev->orig_node);
-    lys_node_module(dev->orig_node)->deviated = 1;
-}
-
-static void
 apply_aug(struct lys_node_augment *augment)
 {
     struct lys_node *last;
@@ -4065,72 +3982,6 @@ apply_aug(struct lys_node_augment *augment)
 
     /* remove the flag about not applicability */
     augment->flags &= ~LYS_NOTAPPLIED;
-}
-
-void
-lys_sub_module_apply_devs_augs(struct lys_module *module)
-{
-    uint8_t u, v;
-
-    /* remove applied deviations */
-    for (u = 0; u < module->deviation_size; ++u) {
-        apply_dev(&module->deviation[u], module);
-    }
-    /* remove applied augments */
-    for (u = 0; u < module->augment_size; ++u) {
-        apply_aug(&module->augment[u]);
-    }
-
-    /* remove deviation and augments defined in submodules */
-    for (v = 0; v < module->inc_size; ++v) {
-        for (u = 0; u < module->inc[v].submodule->deviation_size; ++u) {
-            apply_dev(&module->inc[v].submodule->deviation[u], module);
-        }
-
-        for (u = 0; u < module->inc[v].submodule->augment_size; ++u) {
-            apply_aug(&module->inc[v].submodule->augment[u]);
-        }
-    }
-}
-
-static void
-remove_dev(struct lys_deviation *dev, const struct lys_module *module)
-{
-    uint32_t idx = 0, j;
-    const struct lys_module *mod;
-    struct lys_module *target_mod;
-    const char *ptr;
-
-    if (dev->orig_node) {
-        target_mod = lys_node_module(dev->orig_node);
-    } else {
-        LOGINT;
-        return;
-    }
-    lys_switch_deviation(dev, module);
-
-    /* clear the deviation flag if possible */
-    while ((mod = ly_ctx_get_module_iter(module->ctx, &idx))) {
-        if ((mod == module) || (mod == target_mod)) {
-            continue;
-        }
-
-        for (j = 0; j < mod->deviation_size; ++j) {
-            ptr = strstr(mod->deviation[j].target_name, target_mod->name);
-            if (ptr && (ptr[strlen(target_mod->name)] == ':')) {
-                /* some other module deviation targets the inspected module, flag remains */
-                break;
-            }
-        }
-
-        if (j < mod->deviation_size) {
-            break;
-        }
-    }
-
-    if (!mod) {
-        target_mod->deviated = 0;
-    }
 }
 
 static void
@@ -4177,6 +4028,206 @@ remove_aug(struct lys_node_augment *augment)
     /* augment->target still keeps the resolved target, but for lys_augment_free()
      * we have to keep information that this augment is not applied to free its data */
     augment->flags |= LYS_NOTAPPLIED;
+}
+
+/*
+ * @param[in] module - the module where the deviation is defined
+ */
+static void
+lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module)
+{
+    int ret;
+    char *parent_path;
+    struct lys_node *target = NULL, *parent;
+
+    if (!dev->deviate) {
+        return ;
+    }
+
+    if (dev->deviate[0].mod == LY_DEVIATE_NO) {
+        if (dev->orig_node) {
+            /* removing not-supported deviation ... */
+            if (strrchr(dev->target_name, '/') != dev->target_name) {
+                /* ... from a parent */
+
+                /* reconnect to its previous position */
+                parent = dev->orig_node->parent;
+                if (parent) {
+                    /* the original node was actually from augment, we have to get know if the augment is
+                     * applied (its module is enabled and implemented). If yes, the node will be connected
+                     * to the augment and the linkage with the target will be fixed if needed, otherwise
+                     * it will be connected only to the augment */
+                    /* first, connect it into the augment */
+                    lys_node_addchild(parent, NULL, dev->orig_node);
+                    if (!parent->module->disabled && parent->module->implemented) {
+                        /* augment is supposed to be applied, so fix pointers in target and the status of the original node */
+                        if (parent->child == dev->orig_node) {
+                            /* the only node in augment */
+                            dev->orig_node->flags |= LYS_NOTAPPLIED;
+                            apply_aug((struct lys_node_augment *)parent);
+                        } else {
+                            /* other nodes from augment applied, nothing more needed in target, everything was done
+                             * by lys_node_addchild() */
+                            dev->orig_node->flags |= parent->child->flags & LYS_NOTAPPLIED;
+                        }
+                    } else {
+                        /* augment is not supposed to be applied */
+                        dev->orig_node->flags |= LYS_NOTAPPLIED;
+                    }
+                } else {
+                    /* non-augment, non-toplevel */
+                    parent_path = strndup(dev->target_name, strrchr(dev->target_name, '/') - dev->target_name);
+                    ret = resolve_augment_schema_nodeid(parent_path, NULL, module, 1,
+                                                        (const struct lys_node **)&target);
+                    free(parent_path);
+                    if (ret || !target) {
+                        LOGINT;
+                        return;
+                    }
+                    lys_node_addchild(target, NULL, dev->orig_node);
+                }
+            } else {
+                /* ... from top-level data */
+                lys_node_addchild(NULL, (struct lys_module *)dev->orig_node->module, dev->orig_node);
+            }
+
+            dev->orig_node = NULL;
+        } else {
+            /* adding not-supported deviation */
+            ret = resolve_augment_schema_nodeid(dev->target_name, NULL, module, 1,
+                                                (const struct lys_node **)&target);
+            if (ret || !target) {
+                LOGINT;
+                return;
+            }
+
+            /* unlink and store the original node */
+            parent = target->parent;
+            lys_node_unlink(target);
+            if (parent && parent->nodetype == LYS_AUGMENT) {
+                /* hack for augment, because when the original will be sometime reconnected back, we actually need
+                 * to reconnect it to both - the augment and its target (which is deduced from the deviations target
+                 * path), so we need to remember the augment as an addition */
+                target->parent = parent;
+            }
+            dev->orig_node = target;
+        }
+    } else {
+        ret = resolve_augment_schema_nodeid(dev->target_name, NULL, module, 1,
+                                            (const struct lys_node **)&target);
+        if (ret || !target) {
+            LOGINT;
+            return;
+        }
+
+        lys_node_switch(target, dev->orig_node);
+        dev->orig_node = target;
+    }
+}
+
+/* temporarily removes or applies deviations, updates module deviation flag accordingly */
+void
+lys_switch_deviations(struct lys_module *module)
+{
+    uint32_t i = 0, j;
+    const struct lys_module *mod;
+    const char *ptr;
+
+    if (module->deviated) {
+        while ((mod = ly_ctx_get_module_iter(module->ctx, &i))) {
+            if (mod == module) {
+                continue;
+            }
+
+            for (j = 0; j < mod->deviation_size; ++j) {
+                ptr = strstr(mod->deviation[j].target_name, module->name);
+                if (ptr && ptr[strlen(module->name)] == ':') {
+                    lys_switch_deviation(&mod->deviation[j], mod);
+                }
+            }
+        }
+
+        if (module->deviated == 2) {
+            module->deviated = 1;
+        } else {
+            module->deviated = 2;
+        }
+    }
+}
+
+static void
+apply_dev(struct lys_deviation *dev, const struct lys_module *module)
+{
+    lys_switch_deviation(dev, module);
+
+    assert(dev->orig_node);
+    lys_node_module(dev->orig_node)->deviated = 1;
+}
+
+static void
+remove_dev(struct lys_deviation *dev, const struct lys_module *module)
+{
+    uint32_t idx = 0, j;
+    const struct lys_module *mod;
+    struct lys_module *target_mod;
+    const char *ptr;
+
+    if (dev->orig_node) {
+        target_mod = lys_node_module(dev->orig_node);
+    } else {
+        LOGINT;
+        return;
+    }
+    lys_switch_deviation(dev, module);
+
+    /* clear the deviation flag if possible */
+    while ((mod = ly_ctx_get_module_iter(module->ctx, &idx))) {
+        if ((mod == module) || (mod == target_mod)) {
+            continue;
+        }
+
+        for (j = 0; j < mod->deviation_size; ++j) {
+            ptr = strstr(mod->deviation[j].target_name, target_mod->name);
+            if (ptr && (ptr[strlen(target_mod->name)] == ':')) {
+                /* some other module deviation targets the inspected module, flag remains */
+                break;
+            }
+        }
+
+        if (j < mod->deviation_size) {
+            break;
+        }
+    }
+
+    if (!mod) {
+        target_mod->deviated = 0;
+    }
+}
+
+void
+lys_sub_module_apply_devs_augs(struct lys_module *module)
+{
+    uint8_t u, v;
+
+    /* remove applied deviations */
+    for (u = 0; u < module->deviation_size; ++u) {
+        apply_dev(&module->deviation[u], module);
+    }
+    /* remove applied augments */
+    for (u = 0; u < module->augment_size; ++u) {
+        apply_aug(&module->augment[u]);
+    }
+
+    /* remove deviation and augments defined in submodules */
+    for (v = 0; v < module->inc_size; ++v) {
+        for (u = 0; u < module->inc[v].submodule->deviation_size; ++u) {
+            apply_dev(&module->inc[v].submodule->deviation[u], module);
+        }
+
+        for (u = 0; u < module->inc[v].submodule->augment_size; ++u) {
+            apply_aug(&module->inc[v].submodule->augment[u]);
+        }
+    }
 }
 
 void

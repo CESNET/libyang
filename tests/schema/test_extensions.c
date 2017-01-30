@@ -1748,7 +1748,7 @@ static void
 test_deviation_sub_yin(void **state)
 {
     struct state *st = (*state);
-    const struct lys_module *mod;
+    const struct lys_module *mod, *dev;
     const char *yin = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
                     "<module name=\"ext\"\n"
                     "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
@@ -1803,9 +1803,9 @@ test_deviation_sub_yin(void **state)
                     "    </deviate>\n"
                     "  </deviation>\n"
                     "  <deviation target-node=\"/e:l2\">\n"
-                    "    <deviate value=\"add\">\n"
-                    "      <mandatory value=\"true\">\n"
-                    "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
+                    "    <deviate value=\"replace\">\n"
+                    "      <mandatory value=\"false\">\n"
+                    "        <e:a/>\n"
                     "      </mandatory>\n"
                     "    </deviate>\n"
                     "  </deviation>\n"
@@ -1829,19 +1829,68 @@ test_deviation_sub_yin(void **state)
                     "  </deviation>\n"
                     "</module>\n";
 
-    mod = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
+    struct lys_node *node;
+
+    mod = ly_ctx_load_module(st->ctx, "ext-def", NULL);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL);
+    dev = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
+    assert_ptr_not_equal(dev, NULL);
+
+    lys_print_mem(&st->str1, dev, LYS_OUT_YIN, NULL);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yin);
+
+    /* check extensions in the deviated data */
+    /* l1 is removed */
+    assert_string_not_equal(mod->data->name, "l1");
+    assert_string_not_equal(mod->data->prev->name, "l1");
+    assert_string_not_equal(mod->data->next->name, "l1");
+
+    /* l2 is now first and instead of 2 extensions it now has only 1 */
+    node = mod->data;
+    assert_string_equal(node->name, "l2");
+    assert_int_equal(node->flags & LYS_MAND_MASK, LYS_MAND_FALSE);
+    assert_int_equal(node->ext_size, 1);
+
+    /* ll1 has 10 extensions (all from substatements) */
+    node = mod->data->next;
+    assert_string_equal(node->name, "ll1");
+    assert_int_equal(node->ext_size, 10);
+
+    /* lst2 has no ext, since the deviation removes unique which includes the only extension there */
+    node = mod->data->prev;
+    assert_string_equal(node->name, "lst2");
+    assert_int_equal(node->ext_size, 0);
+
+    /* revert deviations */
+    ly_ctx_remove_module(dev, NULL);
+
+    /* l1 is reconnected at the end of data nodes */
+    assert_string_equal(mod->data->prev->name, "l1");
+
+    /* l2 is back true and contains again the 2 extensions (both from mandatory substatement) */
+    node = mod->data;
+    assert_string_equal(node->name, "l2");
+    assert_int_equal(node->flags & LYS_MAND_MASK, LYS_MAND_TRUE);
+    assert_int_equal(node->ext_size, 2);
+
+    /* ll1 has no extension again */
+    node = mod->data->next;
+    assert_string_equal(node->name, "ll1");
+    assert_int_equal(node->ext_size, 0);
+
+    /* lst2 has back the one extension from its unique */
+    node = mod->data->prev->prev; /* lst2 is not last, there is added l1 */
+    assert_string_equal(node->name, "lst2");
+    assert_int_equal(node->ext_size, 1);
 }
 
 static void
 test_deviation_sub_yang(void **state)
 {
     struct state *st = (*state);
-    const struct lys_module *mod;
+    const struct lys_module *mod, *dev;
     const char *yang = "module ext {\n"
                     "  yang-version 1.1;\n"
                     "  namespace \"urn:ext\";\n"
@@ -1879,9 +1928,9 @@ test_deviation_sub_yang(void **state)
                     "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
                     "      }\n    }\n  }\n\n"
                     "  deviation \"/e:l2\" {\n"
-                    "    deviate add {\n"
-                    "      mandatory true {\n"
-                    "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
+                    "    deviate replace {\n"
+                    "      mandatory false {\n"
+                    "        e:a;\n"
                     "      }\n    }\n  }\n\n"
                     "  deviation \"/e:lst1/e:val2\" {\n"
                     "    deviate delete {\n"
@@ -1896,13 +1945,61 @@ test_deviation_sub_yang(void **state)
                     "      unique \"val1\" {\n"
                     "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
                     "      }\n    }\n  }\n}\n";
+    struct lys_node *node;
 
-    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    mod = ly_ctx_load_module(st->ctx, "ext-def", NULL);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL);
+    dev = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(dev, NULL);
+
+    lys_print_mem(&st->str1, dev, LYS_OUT_YANG, NULL);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yang);
+
+    /* check extensions in the deviated data */
+    /* l1 is removed */
+    assert_string_not_equal(mod->data->name, "l1");
+    assert_string_not_equal(mod->data->prev->name, "l1");
+    assert_string_not_equal(mod->data->next->name, "l1");
+
+    /* l2 is now first and instead of 2 extensions it now has only 1 */
+    node = mod->data;
+    assert_string_equal(node->name, "l2");
+    assert_int_equal(node->flags & LYS_MAND_MASK, LYS_MAND_FALSE);
+    assert_int_equal(node->ext_size, 1);
+
+    /* ll1 has 10 extensions (all from substatements) */
+    node = mod->data->next;
+    assert_string_equal(node->name, "ll1");
+    assert_int_equal(node->ext_size, 10);
+
+    /* lst2 has no ext, since the deviation removes unique which includes the only extension there */
+    node = mod->data->prev;
+    assert_string_equal(node->name, "lst2");
+    assert_int_equal(node->ext_size, 0);
+
+    /* revert deviations */
+    ly_ctx_remove_module(dev, NULL);
+
+    /* l1 is reconnected at the end of data nodes */
+    assert_string_equal(mod->data->prev->name, "l1");
+
+    /* l2 is back true and contains again the 2 extensions (both from mandatory substatement) */
+    node = mod->data;
+    assert_string_equal(node->name, "l2");
+    assert_int_equal(node->flags & LYS_MAND_MASK, LYS_MAND_TRUE);
+    assert_int_equal(node->ext_size, 2);
+
+    /* ll1 has no extension again */
+    node = mod->data->next;
+    assert_string_equal(node->name, "ll1");
+    assert_int_equal(node->ext_size, 0);
+
+    /* lst2 has back the one extension from its unique */
+    node = mod->data->prev->prev; /* lst2 is not last, there is added l1 */
+    assert_string_equal(node->name, "lst2");
+    assert_int_equal(node->ext_size, 1);
 }
 
 int

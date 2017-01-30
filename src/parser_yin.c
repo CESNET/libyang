@@ -2155,7 +2155,14 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
             }
 
             /* unlink and store the original node */
+            parent = dev_target->parent;
             lys_node_unlink(dev_target);
+            if (parent && parent->nodetype == LYS_AUGMENT) {
+                /* hack for augment, because when the original will be sometime reconnected back, we actually need
+                 * to reconnect it to both - the augment and its target (which is deduced from the deviations target
+                 * path), so we need to remember the augment as an addition */
+                dev_target->parent = parent;
+            }
             dev->orig_node = dev_target;
 
         } else if (!strcmp(value, "add")) {
@@ -6932,6 +6939,7 @@ yin_read_module(struct ly_ctx *ctx, const char *data, const char *revision, int 
 
     lyp_sort_revisions(module);
     lyp_rfn_apply_ext(module);
+    lyp_deviation_apply_ext(module);
 
     if (revision) {
         /* check revision of the parsed model */
