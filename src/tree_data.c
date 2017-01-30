@@ -986,7 +986,7 @@ lyd_new_path_list_keys(struct lyd_node *list, const char *list_name, const char 
         predicate += r;
 
         if (strncmp(slist->keys[i]->name, name, nam_len) || slist->keys[i]->name[nam_len]) {
-            LOGVAL(LYE_PATH_INKEY, LY_VLOG_NONE, NULL, name[0], name);
+            LOGVAL(LYE_PATH_INKEY, LY_VLOG_NONE, NULL, name);
             return -1;
         }
 
