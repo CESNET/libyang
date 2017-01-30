@@ -223,12 +223,12 @@ const char *ly_errs[] = {
 /* LYE_XPATH_INARGTYPE */ "Wrong type of argument #%d (%s) for the XPath function %s.",
 /* LYE_XPATH_DUMMY */   "Accessing the value of the dummy node \"%s\".",
 
-/* LYE_PATH_INCHAR */  "Unexpected character(s) '%c' (%s).",
+/* LYE_PATH_INCHAR */  "Unexpected character(s) '%c' (\"%s\").",
 /* LYE_PATH_INMOD */   "Module not found.",
 /* LYE_PATH_MISSMOD */ "Missing module name.",
 /* LYE_PATH_INNODE */  "Schema node not found.",
-/* LYE_PATH_INKEY */   "List key not found or on incorrect position (%s).",
-/* LYE_PATH_MISSKEY */ "List keys or position missing (%s).",
+/* LYE_PATH_INKEY */   "List key not found or on incorrect position (\"%s\").",
+/* LYE_PATH_MISSKEY */ "List keys or position missing (\"%s\").",
 /* LYE_PATH_EXISTS */  "Node already exists.",
 /* LYE_PATH_MISSPAR */ "Parent does not exist.",
 };
