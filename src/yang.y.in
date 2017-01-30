@@ -207,9 +207,6 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <i> ordered_by_arg_str
 %type <i> integer_value_arg_str
 %type <i> integer_value
-%type <i> rpc_arg_str
-%type <i> action_arg_str
-%type <i> notification_arg_str
 %type <v> length_arg_str
 %type <str> pattern_arg_str
 %type <v> range_arg_str
@@ -318,7 +315,6 @@ module_arg_str: identifier_arg_str { if (param->submodule) {
                                      trg = param->module;
                                      yang_read_common(trg,s,MODULE_KEYWORD);
                                      s = NULL;
-                                     config_inherit = CONFIG_INHERIT_ENABLE;
                                    }
 
 module_stmt: optsep MODULE_KEYWORD sep module_arg_str
@@ -364,7 +360,6 @@ submodule_arg_str: identifier_arg_str { if (!param->submodule) {
                                         trg = (struct lys_module *)param->submodule;
                                         yang_read_common(trg,s,MODULE_KEYWORD);
                                         s = NULL;
-                                        config_inherit = CONFIG_INHERIT_ENABLE;
                                       }
 
 submodule_stmt: optsep SUBMODULE_KEYWORD sep submodule_arg_str
@@ -2818,26 +2813,20 @@ action_arg_str: identifier_arg_str { if (param->module->version != 2) {
                                      }
                                      data_node = actual;
                                      s = NULL;
-                                     $$ = config_inherit;
-                                     config_inherit = CONFIG_IGNORE;
                                    }
 
-action_stmt: ACTION_KEYWORD sep action_arg_str rpc_end { config_inherit = $3;
-                                                         LOGDBG("YANG: finished parsing action statement \"%s\"", data_node->name);
-                                                       }
+action_stmt: ACTION_KEYWORD sep action_arg_str rpc_end 
+             { LOGDBG("YANG: finished parsing action statement \"%s\"", data_node->name); }
 
 rpc_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, NULL, param->node, s, LYS_RPC, sizeof(struct lys_node_rpc_action)))) {
                                     YYABORT;
                                   }
                                   data_node = actual;
                                   s = NULL;
-                                  $$ = config_inherit;
-                                  config_inherit = CONFIG_IGNORE;
                                 }
 
-rpc_stmt: RPC_KEYWORD sep rpc_arg_str rpc_end { config_inherit = $3;
-                                                LOGDBG("YANG: finished parsing rpc statement \"%s\"", data_node->name);
-                                              }
+rpc_stmt: RPC_KEYWORD sep rpc_arg_str rpc_end
+          { LOGDBG("YANG: finished parsing rpc statement \"%s\"", data_node->name); }
 
 rpc_end: ';'
   |  '{' stmtsep
@@ -3018,11 +3007,9 @@ notification_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, ac
                                              YYABORT;
                                            }
                                            data_node = actual;
-                                           $$ = config_inherit;
-                                           config_inherit = CONFIG_INHERIT_DISABLE;
                                          }
 
-notification_stmt: NOTIFICATION_KEYWORD sep notification_arg_str notification_end { config_inherit = $3; }
+notification_stmt: NOTIFICATION_KEYWORD sep notification_arg_str notification_end
 
 notification_end: ';'
   |  '{' stmtsep
