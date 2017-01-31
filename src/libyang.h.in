@@ -212,6 +212,7 @@ extern "C" {
  *
  * - @subpage howtoschemasparsers
  * - @subpage howtoschemasfeatures
+ * - @subpage howtoschemaextensions
  * - @subpage howtoschemasprinters
  *
  * \note There are many functions to access information from the schema trees. Details are available in
@@ -298,6 +299,50 @@ extern "C" {
  * - lys_features_disable()
  * - lys_features_state()
  * - lys_is_disabled()
+ */
+
+/**
+ * @page howtoschemaextensions YANG Extensions Support
+ *
+ * YANG provides extensions as a mechanism how to add new statements into the language. Since they are very generic -
+ * extension instance can appear anywhere, they can contain any other YANG statement including extension instances and
+ * their specification has a form of the description text, it is very challenging for libyang to provide working and
+ * useful implementation. Therefore, you can reach some limitation regarding the extensions support, but the common
+ * use cases should be covered and supported.
+ *
+ * Since libyang does not understand human text, it is not possible to get the complete defintion of the extension from
+ * its description statement. Therefore, libyang allows the schema authors to provide __extension plugin__ that provides
+ * information from the extension description to libyang.
+ *
+ * Here are some notes about the implementation of the particular YANG extensions features
+ *
+ * - Extension instance can appear anywhere
+ *   This is completely supported. In addition, the extension plugins are allowed to provide callback function to
+ *   check if the extension instance is actually allowed to be instantiated as a substatement of the particular node.
+ *
+ * - Extension instance can contain any other YANG statement
+ *   This is currently not supported. The following text describes how we want to implement this functionality in
+ *   future version.
+ *
+ *   The extension plugin is allowed to psecify the list of YANG substatements allowed to appear inside the extension
+ *   instance. libyang then parses the content of the extension instance with these restrictions. Other extension
+ *   instances as an extension instance substatements are always allowed. Note, that if there is no extension plugin
+ *   defined or if the list of the allowed substatements is empty, no substatement (except extension instances) is
+ *   allowed. Together with the allowed substatement, the extension plugin also specifies its cardinality and offset
+ *   for storing the parsed data in the extension instance structure.
+ *
+ * Extension Plugins
+ * -----------------
+ * Extension plugins provide more detailed information about the extension in a understandable form for libyang. These
+ * information is usually provided in a text form in the extension's description statement. libyang provides several
+ * plugins for the common IETF extensions (NACM, Metadata, ...) that can be used as a code examples for other
+ * extensions.
+ *
+ * Functions List
+ * --------------
+ * - lys_ext_instance_type()
+ * - lys_ext_instance_presence()
+ * - lys_ext_instance_substmt()
  */
 
 /**
