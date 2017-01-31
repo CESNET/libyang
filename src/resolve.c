@@ -4487,6 +4487,7 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
     int c_ext = -1, rc;
     struct lys_ext *e;
     const char *value;
+    char *ext_name, *ext_prefix, *tmp;
     struct lyxml_elem *next_yin, *yin;
     const struct lys_module *mod;
 
@@ -4636,9 +4637,63 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
         /* TODO - lyext_check_result_clb, other than LYEXT_FLAG plugins */
 
     } else {
-        /* TODO YANG */
+        ext_prefix = (char *)(*ext)->def;
+        tmp = strchr(ext_prefix, ':');
+        if (!tmp) {
+            LOGVAL(LYE_INSTMT, vlog_type, vlog_node, ext_prefix);
+            free(ext_prefix);
+            return -1;
+        }
+        ext_name = tmp + 1;
 
-        return -1;
+        /* get the module where the extension is supposed to be defined */
+        mod = lys_get_import_module(info->mod, ext_prefix, tmp - ext_prefix, NULL, 0);
+        if (!mod) {
+            LOGVAL(LYE_INSTMT, vlog_type, vlog_node, ext_prefix);
+            return EXIT_FAILURE;
+        }
+
+        /* find the extension definition */
+        e = NULL;
+        for (i = 0; i < mod->extensions_size; i++) {
+            if (ly_strequal(mod->extensions[i].name, ext_name, 0)) {
+                e = &mod->extensions[i];
+                break;
+            }
+        }
+        /* try submodules */
+        for (j = 0; !e && j < mod->inc_size; j++) {
+            for (i = 0; i < mod->inc[j].submodule->extensions_size; i++) {
+                if (ly_strequal(mod->inc[j].submodule->extensions[i].name, ext_name, 0)) {
+                    e = &mod->inc[j].submodule->extensions[i];
+                    break;
+                }
+            }
+        }
+        if (!e) {
+            LOGVAL(LYE_INSTMT, vlog_type, vlog_node, ext_prefix);
+            return EXIT_FAILURE;
+        }
+
+        /* we have the extension definition, so now it cannot be forward referenced and error is always fatal */
+
+        if (e->plugin && e->plugin->check_position) {
+            /* common part - we have plugin with position checking function, use it first */
+            if ((*e->plugin->check_position)(info->parent, info->parent_type, info->substmt)) {
+                /* extension is not allowed here */
+                LOGVAL(LYE_INSTMT, vlog_type, vlog_node, e->name);
+                return -1;
+            }
+        }
+
+        (*ext)->flags &= ~LYEXT_OPT_YANG;
+        free(ext_prefix);
+        (*ext)->def = e;
+        (*ext)->parent = info->parent;
+        if (yang_check_ext_instance(info->mod, &(*ext)->ext, (*ext)->ext_size, *ext, unres)) {
+            return -1;
+        }
+        /* TODO: find out extance_type a change instance via realloc */
     }
 
     return EXIT_SUCCESS;
@@ -7074,6 +7129,9 @@ unres_schema_free_item(struct ly_ctx *ctx, struct unres_schema *unres, uint32_t 
         break;
     case UNRES_LIST_UNIQ:
         free(unres->item[i]);
+        break;
+    case UNRES_EXT:
+        free(unres->str_snode[i]);
         break;
     default:
         break;

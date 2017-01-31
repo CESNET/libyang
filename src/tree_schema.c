@@ -336,6 +336,10 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
         if (e[i]->flags & (LYEXT_OPT_INHERIT)) {
             /* no free, this is just a shadow copy of the original extension instance */
         } else {
+            if (e[i]->flags & (LYEXT_OPT_YANG)) {
+                free(e[i]->def);     /* remove name of instance extension */
+                free(e[i]->parent);  /* remove backup part of yang file */
+            }
             lys_extension_instances_free(ctx, e[i]->ext, e[i]->ext_size);
             lydict_remove(ctx, e[i]->arg_value);
         }

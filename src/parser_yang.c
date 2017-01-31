@@ -2079,6 +2079,70 @@ yang_fill_include(struct lys_module *trg, char *value, struct lys_include *inc,
     return ret;
 }
 
+struct lys_ext_instance *
+yang_ext_instance(void *node, enum yytokentype type)
+{
+    struct lys_ext_instance ***ext, **tmp, *instance = NULL;
+    LYEXT_PAR parent_type;
+    uint8_t *size;
+
+    switch (type) {
+    case MODULE_KEYWORD:
+        ext = &((struct lys_module *)node)->ext;
+        size = &((struct lys_module *)node)->ext_size;
+        parent_type = LYEXT_PAR_MODULE;
+        break;
+    default:
+        LOGINT;
+        return NULL;
+    }
+
+    instance = calloc(1, sizeof *instance);
+    if (!instance) {
+        goto error;
+    }
+    instance->parent_type = parent_type;
+    tmp = realloc(*ext, (*size + 1) * sizeof *tmp);
+    if (!tmp) {
+        goto error;
+    }
+    tmp[*size] = instance;
+    *ext = tmp;
+    (*size)++;
+    return instance;
+
+error:
+    LOGMEM;
+    free(instance);
+    return NULL;
+}
+
+void *
+yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext_arg,
+              enum yytokentype actual_type, enum yytokentype backup_type)
+{
+    struct lys_ext_instance *instance;
+
+    if (backup_type != NODE) {
+        instance = yang_ext_instance((actual) ? actual : module, backup_type);
+        switch (actual_type) {
+        case NAMESPACE_KEYWORD:
+            instance->substmt = LYEXT_SUBSTMT_NAMESPACE;
+            break;
+        default:
+            LOGINT;
+            return NULL;
+        }
+    } else {
+        instance = yang_ext_instance(actual, actual_type);
+        instance->substmt = LYEXT_SUBSTMT_SELF;
+    }
+    instance->flags |= LYEXT_OPT_YANG;
+    instance->def = (struct lys_ext *)ext_name;    /* hack for UNRES */
+    instance->arg_value = lydict_insert_zc(module->ctx, ext_arg);
+    return instance;
+}
+
 int
 yang_use_extension(struct lys_module *module, struct lys_node *data_node, void *actual, char *value)
 {
@@ -2851,6 +2915,31 @@ free_yang_common(struct lys_module *module, struct lys_node *node)
 }
 
 /* check function*/
+
+int
+yang_check_ext_instance(struct lys_module *module, struct lys_ext_instance ***ext, uint size,
+                        void *parent, struct unres_schema *unres)
+{
+    struct unres_ext *info;
+    uint i;
+
+    for (i = 0; i < size; ++i) {
+        info = malloc(sizeof *info);
+        info->data.yang = (*ext)[i]->parent;
+        info->datatype = LYS_IN_YANG;
+        info->parent = parent;
+        info->mod = module;
+        info->parent_type = (*ext)[i]->parent_type;
+        info->substmt = (*ext)[i]->substmt;
+        info->substmt_index = (*ext)[i]->substmt_index;
+        info->ext_index = i;
+        if (unres_schema_add_node(module, unres, ext, UNRES_EXT, (struct lys_node *)info) == -1) {
+            return EXIT_FAILURE;
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
 
 int
 yang_check_imports(struct lys_module *module, struct unres_schema *unres)
@@ -3849,6 +3938,10 @@ yang_check_sub_module(struct lys_module *module, struct unres_schema *unres, str
     module->augment_size = 0;
     dev_size = module->deviation_size;
     module->deviation_size = 0;
+
+    if (yang_check_ext_instance(module, &module->ext, module->ext_size, module, unres)) {
+        goto error;
+    }
 
     if (yang_check_typedef(module, NULL, unres)) {
         goto error;

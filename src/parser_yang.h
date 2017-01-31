@@ -160,6 +160,13 @@ int yang_use_extension(struct lys_module *module, struct lys_node *data_node, vo
 
 int yang_check_flags(uint16_t *flags, uint16_t mask, char *what, char *where, uint16_t value, int shortint);
 
+void *yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext_arg,
+                    enum yytokentype actual_type, enum yytokentype backup_type);
+
+int yang_check_ext_instance(struct lys_module *module, struct lys_ext_instance ***ext, uint size,
+                            void *parent, struct unres_schema *unres);
+
+
 /* **
  * @brief Parse YANG from in-memory string
  *

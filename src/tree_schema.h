@@ -333,6 +333,7 @@ typedef enum {
                                           callback to decide if the extension instance is supposed to be inherited.
                                           The extension instance with this flag is not printed and it is just a shadow
                                           copy of the original extension instance in some of the parents. */
+#define LYEXT_OPT_YANG       0x02    /**< temporarily stored pointer to string, which contain prefix and name of extension */ 
 /**
  * @}
  */
