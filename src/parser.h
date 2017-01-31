@@ -120,6 +120,25 @@ int lyp_propagate_submodule(struct lys_module *module, struct lys_include *inc);
 int lyp_ctx_add_module(struct lys_module **module);
 
 /**
+ * @brief mmap() wrapper for parsers. To unmap, use lyp_munmap().
+ *
+ * @param[in] prot The desired memory protection as in case of mmap().
+ * @param[in] fd File descriptor for getting data.
+ * @param[in] addsize Number of additional bytes to be allocated (and zeroed) after the implicitly added
+ *                    string-terminating NULL byte.
+ * @param[out] length length of the allocated memory.
+ * @return On success, the pointer to the memory where the file data resists is returned. On error, the value MAP_FAILED
+ * is returned and #ly_errno value is set.
+ */
+void *
+lyp_mmap(int fd, size_t addsize, size_t *length);
+
+/**
+ * @brief Unmap function for the data mapped by lyp_mmap()
+ */
+int lyp_munmap(void *addr, size_t length);
+
+/**
  * Store UTF-8 character specified as 4byte integer into the dst buffer.
  * Returns number of written bytes (4 max), expects that dst has enough space.
  *

@@ -160,6 +160,60 @@ lyp_check_options(int options)
     return x ? !(x && !(x & (x - 1))) : 0;
 }
 
+void *
+lyp_mmap(int fd, size_t addsize, size_t *length)
+{
+    struct stat sb;
+    long pagesize;
+    size_t m;
+    void *addr;
+
+    assert(fd >= 0);
+    ly_errno = LY_SUCCESS;
+
+    if (fstat(fd, &sb) == -1) {
+        LOGERR(LY_ESYS, "Failed to stat the file descriptor (%s) for the mmap().", strerror(errno));
+        return MAP_FAILED;
+    }
+    if (!S_ISREG(sb.st_mode)) {
+        LOGERR(LY_EINVAL, "File to mmap() is not a regular file");
+        return MAP_FAILED;
+    }
+    if (!sb.st_size) {
+        LOGERR(LY_EINVAL, "File to mmap() is empty.");
+        return MAP_FAILED;
+    }
+    pagesize = sysconf(_SC_PAGESIZE);
+    ++addsize;                       /* at least one additional byte for terminating NULL byte */
+
+    m = sb.st_size % pagesize;
+    if (m && pagesize - m >= addsize) {
+        /* there will be enough space after the file content mapping to provide zeroed additional bytes */
+        *length = sb.st_size + addsize;
+        addr = mmap(NULL, *length, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+    } else {
+        /* there will not be enough bytes after the file content mapping for the additional bytes and some of them
+         * would overflow into another page that would not be zerroed and any access into it would generate SIGBUS.
+         * Therefore we have to do the following hack with double mapping. First, the required number of bytes
+         * (including the additinal bytes) is required as anonymous and thus they will be really provided (actually more
+         * because of using whole pages) and also initialized by zeros. Then, the file is mapped to the same address
+         * where the anonymous mapping starts. */
+        *length = sb.st_size + pagesize;
+        addr = mmap(NULL, *length, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        addr = mmap(addr, sb.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_FIXED, fd, 0);
+    }
+    if (addr == MAP_FAILED) {
+        LOGERR(LY_ESYS, "mmap() failed - %s", strerror(errno));
+    }
+    return addr;
+}
+
+int
+lyp_munmap(void *addr, size_t length)
+{
+    return munmap(addr, length);
+}
+
 /**
  * @brief Alternative for lys_read() + lys_parse() in case of import
  *
@@ -169,7 +223,7 @@ struct lys_module *
 lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const char *revision, int implement)
 {
     struct lys_module *module = NULL;
-    struct stat sb;
+    size_t length;
     char *addr;
 
     if (!ctx || fd < 0) {
@@ -177,20 +231,9 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const char *rev
         return NULL;
     }
 
-
-    if (fstat(fd, &sb) == -1) {
-        LOGERR(LY_ESYS, "Failed to stat the file descriptor (%s).", strerror(errno));
-        return NULL;
-    }
-
-    if (!sb.st_size) {
-        LOGERR(LY_EINVAL, "File empty.");
-        return NULL;
-    }
-
-    addr = mmap(NULL, sb.st_size + 2, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+    addr = lyp_mmap(fd, 1, &length);
     if (addr == MAP_FAILED) {
-        LOGERR(LY_EMEM,"Map file into memory failed (%s()).",__func__);
+        LOGERR(LY_ESYS, "Mapping file descriptor into memory failed (%s()).", __func__);
         return NULL;
     }
     switch (format) {
@@ -198,13 +241,13 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const char *rev
         module = yin_read_module(ctx, addr, revision, implement);
         break;
     case LYS_IN_YANG:
-        module = yang_read_module(ctx, addr, sb.st_size + 2, revision, implement);
+        module = yang_read_module(ctx, addr, length, revision, implement);
         break;
     default:
         LOGERR(LY_EINVAL, "%s: Invalid format parameter.", __func__);
         break;
     }
-    munmap(addr, sb.st_size + 2);
+    lyp_munmap(addr, length);
 
     return module;
 }

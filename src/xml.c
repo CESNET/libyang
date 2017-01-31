@@ -1211,7 +1211,7 @@ API struct lyxml_elem *
 lyxml_parse_path(struct ly_ctx *ctx, const char *filename, int options)
 {
     struct lyxml_elem *elem = NULL;
-    struct stat sb;
+    size_t length;
     int fd;
     char *addr;
 
@@ -1225,22 +1225,14 @@ lyxml_parse_path(struct ly_ctx *ctx, const char *filename, int options)
         LOGERR(LY_EINVAL,"Opening file \"%s\" failed.", filename);
         return NULL;
     }
-    if (fstat(fd, &sb) == -1) {
-        LOGERR(LY_EINVAL, "Unable to get file \"%s\" information.\n", filename);
-        goto error;
-    }
-    if (!S_ISREG(sb.st_mode)) {
-        LOGERR(LY_EINVAL, "%s: Invalid parameter, input file is not a regular file", __func__);
-        goto error;
-    }
-    addr = mmap(NULL, sb.st_size + 2, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+    addr = lyp_mmap(fd, 0, &length);
     if (addr == MAP_FAILED) {
-        LOGERR(LY_EMEM,"Map file into memory failed (%s()).", __func__);
+        LOGERR(LY_ESYS, "Mapping file descriptor into memory failed (%s()).", __func__);
         goto error;
     }
 
     elem = lyxml_parse_mem(ctx, addr, options);
-    munmap(addr, sb.st_size +2);
+    lyp_munmap(addr, length);
     close(fd);
 
     return elem;

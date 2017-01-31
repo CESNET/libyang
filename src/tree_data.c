@@ -503,7 +503,7 @@ static struct lyd_node *
 lyd_parse_fd_(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, va_list ap)
 {
     struct lyd_node *ret;
-    struct stat sb;
+    size_t length;
     char *data;
 
     if (!ctx || (fd == -1)) {
@@ -511,25 +511,15 @@ lyd_parse_fd_(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, va_lis
         return NULL;
     }
 
-    if (fstat(fd, &sb) == -1) {
-        LOGERR(LY_ESYS, "Failed to stat the file descriptor (%s).", strerror(errno));
-        return NULL;
-    }
-
-    if (!sb.st_size) {
-        ly_err_clean(1);
-        return NULL;
-    }
-
-    data = mmap(NULL, sb.st_size + 1, PROT_READ, MAP_PRIVATE, fd, 0);
+    data = lyp_mmap(fd, 0, &length);
     if (data == MAP_FAILED) {
-        LOGERR(LY_ESYS, "Mapping file descriptor into memory failed.");
+        LOGERR(LY_ESYS, "Mapping file descriptor into memory failed (%s()).", __func__);
         return NULL;
     }
 
     ret = lyd_parse_data_(ctx, data, format, options, ap);
 
-    munmap(data, sb.st_size + 1);
+    lyp_munmap(data, length);
 
     return ret;
 }
