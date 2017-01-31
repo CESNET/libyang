@@ -1055,7 +1055,7 @@ lys_sub_parse_fd(struct lys_module *module, int fd, LYS_INFORMAT format, struct 
         break;
     }
 
-    munmap(addr, length);
+    lyp_munmap(addr, length);
     return submodule;
 
 }
