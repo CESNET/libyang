@@ -234,7 +234,7 @@ typedef enum {
     LYEXT_ERR = -1,                /**< error value when #LYEXT_TYPE is expected as return value of a function */
     LYEXT_FLAG = 0,                /**< simple extension with no substatements;
                                         instances are stored directly as ::lys_ext_instance and no cast is needed;
-                                        plugins are expected directly as ::lys_ext_plugin and no cast is done */
+                                        plugins are expected directly as ::lyext_plugin and no cast is done */
 } LYEXT_TYPE;
 
 /**
@@ -468,6 +468,10 @@ void lyext_load_plugins(void);
  * Since the function is called with ly_ctx_destroy(), there is usually no need to call this function manually.
  */
 int lyext_clean_plugins(void);
+
+/**
+ * @}
+ */
 
 /**
  * @brief Main schema node structure representing YANG module.
