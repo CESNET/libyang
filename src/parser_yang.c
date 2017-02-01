@@ -2114,6 +2114,11 @@ yang_ext_instance(void *node, enum yytokentype type)
         size = &((struct lys_revision *)node)->ext_size;
         parent_type = LYEXT_PAR_REVISION;
         break;
+    case GROUPING_KEYWORD:
+        ext = &((struct lys_node *)node)->ext;
+        size = &((struct lys_node *)node)->ext_size;
+        parent_type = LYEXT_PAR_NODE;
+        break;
     default:
         LOGINT;
         return NULL;
@@ -3672,6 +3677,9 @@ yang_check_nodes(struct lys_module *module, struct lys_node *parent, struct lys_
             goto error;
         }
         config_opt = store_config_flag(node, config_opt);
+        if (yang_check_ext_instance(module, &node->ext, node->ext_size, node, unres)) {
+            goto error;
+        }
 
         switch (node->nodetype) {
         case LYS_GROUPING:

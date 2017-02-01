@@ -176,6 +176,10 @@ union YYSTYPE
     struct lys_node_augment *augment;
   } nodes;
   enum yytokentype token;
+  struct {
+    void *actual;
+    enum yytokentype token;
+  } backup_token;
 
 
 };

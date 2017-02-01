@@ -81,6 +81,10 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
     struct lys_node_augment *augment;
   } nodes;
   enum yytokentype token;
+  struct {
+    void *actual;
+    enum yytokentype token;
+  } backup_token;
 }
 
 %token UNION_KEYWORD
@@ -257,6 +261,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <token> import_arg_str
 %type <token> include_arg_str
 %type <token> revision_arg_stmt
+%type <backup_token> grouping_arg_str
 
 %destructor { free($$); } pattern_arg_str string_opt_part1 semicolom curly_bracket_open
 %destructor { free(($$) ? *$$ : NULL); } tmp_string
@@ -1638,25 +1643,28 @@ default_arg: string { backup_type = actual_type;
 
 default_stmt: DEFAULT_KEYWORD sep default_arg stmtend
 
-grouping_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, actual, param->node, s, LYS_GROUPING, sizeof(struct lys_node_grp)))) {
+grouping_arg_str: identifier_arg_str { $$.token = actual_type;
+                                       $$.actual = actual;
+                                       if (!(actual = yang_read_node(trg, actual, param->node, s, LYS_GROUPING, sizeof(struct lys_node_grp)))) {
                                          YYABORT;
                                        }
                                        s = NULL;
                                        data_node = actual;
+                                       actual_type = GROUPING_KEYWORD;
                                      }
 
 grouping_stmt: GROUPING_KEYWORD sep grouping_arg_str grouping_end
-               { LOGDBG("YANG: finished parsing grouping statement \"%s\"", data_node->name); }
+               { LOGDBG("YANG: finished parsing grouping statement \"%s\"", data_node->name);
+                 actual_type = $3.token;
+                 actual = $3.actual;
+               }
 
 grouping_end: ';'
   |  '{' stmtsep
          grouping_opt_stmt
      '}'
-  ;
 
-grouping_opt_stmt: @EMPTYDIR@ { $$.grouping = actual;
-                                actual_type = GROUPING_KEYWORD;
-                              }
+grouping_opt_stmt: @EMPTYDIR@ { $$.grouping = actual; }
   |  grouping_opt_stmt status_stmt { if ($1.grouping->flags & LYS_STATUS_MASK) {
                                        LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.grouping, "status", "grouping");
                                        YYABORT;
