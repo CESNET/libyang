@@ -543,7 +543,7 @@ main_ni(int argc, char* argv[])
                     LY_TREE_DFS_END(subroot, next, node)
                 }
             }
-            if (lyd_validate(&root, options_parser, NULL)) {
+            if (lyd_validate(&root, options_parser, ctx)) {
                 goto cleanup;
             }
         }
