@@ -216,22 +216,20 @@ yang_read_reference(struct lys_module *module, void *node, char *value, char *wh
     return ret;
 }
 
-void
+void *
 yang_read_revision(struct lys_module *module, char *value, struct lys_revision *retval)
 {
     /* first member of array is last revision */
     if ((module->rev_size - 1) && strcmp(module->rev[0].date, value) < 0) {
-        memcpy(retval->date, module->rev[0].date, LY_REV_SIZE);
+        memcpy(retval, &module->rev[0], sizeof *retval);
+        memset(&module->rev[0], 0, sizeof *retval);
         memcpy(module->rev[0].date, value, LY_REV_SIZE);
-        retval->dsc = module->rev[0].dsc;
-        retval->ref = module->rev[0].ref;
         retval = module->rev;
-        retval->dsc = NULL;
-        retval->ref = NULL;
     } else {
         memcpy(retval->date, value, LY_REV_SIZE);
     }
     free(value);
+    return retval;
 }
 
 int
@@ -2111,6 +2109,11 @@ yang_ext_instance(void *node, enum yytokentype type)
         size = &((struct lys_include *)node)->ext_size;
         parent_type = LYEXT_PAR_INCLUDE;
         break;
+    case REVISION_KEYWORD:
+        ext = &((struct lys_revision *)node)->ext;
+        size = &((struct lys_revision *)node)->ext_size;
+        parent_type = LYEXT_PAR_REVISION;
+        break;
     default:
         LOGINT;
         return NULL;
@@ -2165,6 +2168,12 @@ yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext
             break;
         case REFERENCE_KEYWORD:
             instance->substmt = LYEXT_SUBSTMT_REFERENCE;
+            break;
+        case CONTACT_KEYWORD:
+            instance->substmt = LYEXT_SUBSTMT_CONTACT;
+            break;
+        case ORGANIZATION_KEYWORD:
+            instance->substmt = LYEXT_SUBSTMT_ORGANIZATION;
             break;
         default:
             LOGINT;
@@ -3983,6 +3992,13 @@ yang_check_sub_module(struct lys_module *module, struct unres_schema *unres, str
 
     if (yang_check_ext_instance(module, &module->ext, module->ext_size, module, unres)) {
         goto error;
+    }
+
+    /* check extension in revision */
+    for (i = 0; i < module->rev_size; ++i) {
+        if (yang_check_ext_instance(module, &module->rev[i].ext, module->rev[i].ext_size, &module->rev[i], unres)) {
+            goto error;
+        }
     }
 
     if (yang_check_typedef(module, NULL, unres)) {

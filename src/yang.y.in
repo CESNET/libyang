@@ -256,6 +256,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <str> curly_bracket_open
 %type <token> import_arg_str
 %type <token> include_arg_str
+%type <token> revision_arg_stmt
 
 %destructor { free($$); } pattern_arg_str string_opt_part1 semicolom curly_bracket_open
 %destructor { free(($$) ? *$$ : NULL); } tmp_string
@@ -624,31 +625,36 @@ reference_arg: string { backup_type = actual_type;
 
 reference_stmt: REFERENCE_KEYWORD sep reference_arg stmtend
 
-revision_stmts: revision_stmt { if (trg->rev_size) {
-                                  struct lys_revision *tmp;
+revision_stmts: revision_stmts_opt { if (trg->rev_size) {
+                                      struct lys_revision *tmp;
 
-                                  tmp = realloc(trg->rev, trg->rev_size * sizeof *trg->rev);
-                                  if (!tmp) {
-                                    LOGMEM;
-                                    YYABORT;
+                                      tmp = realloc(trg->rev, trg->rev_size * sizeof *trg->rev);
+                                      if (!tmp) {
+                                        LOGMEM;
+                                        YYABORT;
+                                      }
+                                      trg->rev = tmp;
+                                    }
                                   }
-                                  trg->rev = tmp;
-                                }
-                              }
 
 
 revision_arg_stmt: date_arg_str { YANG_ADDELEM(trg->rev, trg->rev_size);
-                                  yang_read_revision(trg, s, actual);
+                                  actual = yang_read_revision(trg, s, actual);
+                                  $$ = actual_type;
+                                  actual_type = REVISION_KEYWORD;
                                 }
 
-revision_stmt: @EMPTYDIR@
-  |  revision_stmt REVISION_KEYWORD sep revision_arg_stmt revision_end stmtsep
+revision_stmts_opt: @EMPTYDIR@
+  |  revision_stmts_opt revision_stmt stmtsep
+
+revision_stmt: REVISION_KEYWORD sep revision_arg_stmt revision_end { actual_type = $3;
+                                                                     actual = NULL;
+                                                                   }
 
 revision_end: ';'
   | '{' stmtsep
         revision_opt_stmt
-     '}'
-  ;
+    '}'
 
 revision_opt_stmt: @EMPTYDIR@
   |  revision_opt_stmt description_stmt { if (yang_read_description(trg, actual, s, "revision",REVISION_KEYWORD)) {
