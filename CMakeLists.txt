@@ -42,7 +42,7 @@ else()
 		WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
 		COMMAND bison -Wno-other -l -o parser_yang_bis.c --defines=parser_yang_bis.h yang.y
 		COMMAND flex -8 -L -o parser_yang_lex.c --header-file=parser_yang_lex.h yang.l
-		COMMAND ${SED_TOOL} -i 's/int yychar\;/int yychar\;\\nchar *s = NULL, *tmp_s = NULL\;\\nstruct lys_module *trg = NULL\;\\nstruct lys_node *tpdf_parent = NULL, *data_node = NULL\;\\nvoid *actual = NULL\;\\nint actual_type = 0\;\\nint64_t cnt_val = 0\;\\nvoid *yang_type = NULL\;/' parser_yang_bis.c
+		COMMAND ${SED_TOOL} -i 's/int yychar\;/int yychar\;\\nchar *s = NULL, *tmp_s = NULL\;\\nstruct lys_module *trg = NULL\;\\nstruct lys_node *tpdf_parent = NULL, *data_node = NULL\;\\nvoid *actual = NULL\;\\nenum yytokentype backup_type, actual_type\;\\nint64_t cnt_val = 0\;\\nint is_value = 0\;\\nvoid *yang_type = NULL\;/' parser_yang_bis.c
 	)
 endif()
 

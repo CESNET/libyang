@@ -184,14 +184,20 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <uint> positive_integer_value
 %type <uint> non_negative_integer_value
 %type <uint> max_value_arg_str
+%type <uint> max_value_arg
 %type <uint> max_elements_stmt
 %type <uint> min_value_arg_str
+%type <uint> min_value_arg
 %type <uint> min_elements_stmt
 %type <uint> fraction_digits_arg_str
+%type <uint> fraction_digits_arg
 %type <uint> position_value_arg_str
+%type <uint> position_value_arg
 %type <uint> yin_element_arg_str
+%type <uint> yin_element_arg
 %type <i> require_instance_stmt
 %type <i> require_instance_arg_str
+%type <i> require_instance_arg
 %type <i> import_opt_stmt
 %type <i> include_opt_stmt
 %type <i> module_header_stmt
@@ -199,13 +205,18 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <str> message_opt_stmt
 %type <i> status_stmt
 %type <i> status_arg_str
+%type <i> status_arg
 %type <i> config_stmt
 %type <i> config_arg_str
+%type <i> config_arg
 %type <i> mandatory_stmt
 %type <i> mandatory_arg_str
+%type <i> mandatory_arg
 %type <i> ordered_by_stmt
 %type <i> ordered_by_arg_str
+%type <i> ordered_by_arg
 %type <i> integer_value_arg_str
+%type <i> value_arg
 %type <i> integer_value
 %type <v> length_arg_str
 %type <str> pattern_arg_str
@@ -365,6 +376,7 @@ submodule_arg_str: identifier_arg_str { if (!param->submodule) {
                                         trg = (struct lys_module *)param->submodule;
                                         yang_read_common(trg,s,MODULE_KEYWORD);
                                         s = NULL;
+                                        actual_type = SUBMODULE_KEYWORD;
                                       }
 
 submodule_stmt: optsep SUBMODULE_KEYWORD sep submodule_arg_str
@@ -397,9 +409,13 @@ submodule_header_stmt: @EMPTYDIR@ { $$ = 0; }
                                                $$ = 1;
                                                s = NULL;
                                              }
-  |  submodule_header_stmt belongs_to_stmt
+  |  submodule_header_stmt belongs_to_stmt stmtsep
 
-yang_version_stmt: YANG_VERSION_KEYWORD sep string stmtend;
+yang_version_arg: string { backup_type = actual_type;
+                           actual_type = YANG_VERSION_KEYWORD;
+                         }
+
+yang_version_stmt: YANG_VERSION_KEYWORD sep yang_version_arg stmtend
 
 namespace_arg_str: string { backup_type = actual_type;
                             actual_type = NAMESPACE_KEYWORD;
@@ -505,7 +521,11 @@ include_opt_stmt: @EMPTYDIR@ { $$ = 0; }
                                            $$ = 1;
                                          }
 
-revision_date_stmt: REVISION_DATE_KEYWORD sep date_arg_str
+revision_date_arg: date_arg_str { backup_type = actual_type;
+                                  actual_type = REVISION_DATE_KEYWORD;
+                                }
+
+revision_date_stmt: REVISION_DATE_KEYWORD sep revision_date_arg
                     stmtend { if (actual_type==IMPORT_KEYWORD) {
                                 memcpy(((struct lys_import *)actual)->rev, s, LY_REV_SIZE-1);
                               } else {                              // INCLUDE KEYWORD
@@ -527,18 +547,26 @@ belongs_to_arg_str: identifier_arg_str { if (param->submodule->prefix) {
                                          }
                                          free(s);
                                          s = NULL;
+                                         backup_type = actual_type;
+                                         actual_type = BELONGS_TO_KEYWORD;
                                        }
 
 belongs_to_stmt: BELONGS_TO_KEYWORD sep belongs_to_arg_str
                  '{' stmtsep
                      prefix_stmt
-                 '}' stmtsep
+                 '}' { actual_type = backup_type;
+                       backup_type = NODE;
+                     }
 
-prefix_stmt: PREFIX_KEYWORD sep prefix_arg_str stmtend { if (yang_read_prefix(trg, actual, s)) {
-                                                           YYABORT;
-                                                         }
-                                                         s = NULL;
-                                                       }
+prefix_arg: prefix_arg_str { backup_type = actual_type;
+                             actual_type = PREFIX_KEYWORD;
+                           }
+
+prefix_stmt: PREFIX_KEYWORD sep prefix_arg stmtend { if (yang_read_prefix(trg, actual, s)) {
+                                                       YYABORT;
+                                                     }
+                                                     s = NULL;
+                                                   }
 
 meta_stmts: @EMPTYDIR@
   |  meta_stmts organization_stmt { if (yang_read_common(trg, s, ORGANIZATION_KEYWORD)) {
@@ -562,13 +590,29 @@ meta_stmts: @EMPTYDIR@
                                  s=NULL;
                                }
 
-organization_stmt: ORGANIZATION_KEYWORD sep string stmtend;
+organization_arg: string { backup_type = actual_type;
+                           actual_type = ORGANIZATION_KEYWORD;
+                         }
 
-contact_stmt: CONTACT_KEYWORD sep string stmtend;
+organization_stmt: ORGANIZATION_KEYWORD sep organization_arg stmtend
 
-description_stmt: DESCRIPTION_KEYWORD sep string stmtend;
+contact_arg: string { backup_type = actual_type;
+                      actual_type = CONTACT_KEYWORD;
+                    }
 
-reference_stmt: REFERENCE_KEYWORD sep string stmtend;
+contact_stmt: CONTACT_KEYWORD sep contact_arg stmtend
+
+description_arg: string { backup_type = actual_type;
+                          actual_type = DESCRIPTION_KEYWORD;
+                        }
+
+description_stmt: DESCRIPTION_KEYWORD sep description_arg stmtend
+
+reference_arg: string { backup_type = actual_type;
+                        actual_type = REFERENCE_KEYWORD;
+                      }
+
+reference_stmt: REFERENCE_KEYWORD sep reference_arg stmtend
 
 revision_stmts: revision_stmt { if (trg->rev_size) {
                                   struct lys_revision *tmp;
@@ -742,8 +786,13 @@ argument_end: ';'
         yin_element_stmt
     '}'
 
+yin_element_arg: yin_element_arg_str { $$ = $1;
+                                       backup_type = actual_type;
+                                       actual_type = YIN_ELEMENT_KEYWORD;
+                                     }
+
 yin_element_stmt: @EMPTYDIR@
-  |  YIN_ELEMENT_KEYWORD sep yin_element_arg_str stmtend { ((struct lys_ext *)actual)->flags |= $3; }
+  |  YIN_ELEMENT_KEYWORD sep yin_element_arg stmtend { ((struct lys_ext *)actual)->flags |= $3; }
 
 yin_element_arg_str: TRUE_KEYWORD optsep { $$ = LYS_YINELEM; }
   | FALSE_KEYWORD optsep { $$ = 0; }
@@ -760,7 +809,12 @@ yin_element_arg_str: TRUE_KEYWORD optsep { $$ = LYS_YINELEM; }
                s = NULL;
              }
 
-status_stmt:  STATUS_KEYWORD sep status_arg_str stmtend { $$ = $3; }
+status_arg: status_arg_str { $$ = $1;
+                             backup_type = actual_type;
+                             actual_type = STATUS_KEYWORD;
+                           }
+
+status_stmt:  STATUS_KEYWORD sep status_arg stmtend { $$ = $3; }
 
 status_arg_str: CURRENT_KEYWORD optsep { $$ = LYS_STATUS_CURR; }
   | OBSOLETE_KEYWORD optsep { $$ = LYS_STATUS_OBSLT; }
@@ -836,7 +890,11 @@ feature_opt_stmt: @EMPTYDIR@
                                        s = NULL;
                                      }
 
-if_feature_stmt: IF_FEATURE_KEYWORD sep string stmtend;
+if_feature_arg: string { backup_type = actual_type;
+                         actual_type = IF_FEATURE_KEYWORD;
+                       }
+
+if_feature_stmt: IF_FEATURE_KEYWORD sep if_feature_arg stmtend;
 
 identity_arg_str: identifier_arg_str { const char *tmp;
 
@@ -924,7 +982,11 @@ identity_opt_stmt: @EMPTYDIR@
                                         s = NULL;
                                       }
 
-base_stmt: BASE_KEYWORD sep identifier_ref_arg_str stmtend;
+base_arg: identifier_ref_arg_str { backup_type = actual_type;
+                                   actual_type = BASE_KEYWORD;
+                                 }
+
+base_stmt: BASE_KEYWORD sep base_arg stmtend
 
 typedef_arg_str: identifier_arg_str { tpdf_parent = actual;
                                       if (lyp_check_identifier(s, LY_IDENT_TYPE, trg, tpdf_parent)) {
@@ -1116,7 +1178,12 @@ some_restrictions: @EMPTYDIR@
                            actual_type = UNION_KEYWORD;
                          }
 
-fraction_digits_stmt: FRACTION_DIGITS_KEYWORD sep fraction_digits_arg_str
+fraction_digits_arg: fraction_digits_arg_str { $$ = $1;
+                                               backup_type = actual_type;
+                                               actual_type = FRACTION_DIGITS_KEYWORD;
+                                             }
+
+fraction_digits_stmt: FRACTION_DIGITS_KEYWORD sep fraction_digits_arg
                       stmtend { if (yang_read_fraction(actual, $3)) {
                                   YYABORT;
                                 }
@@ -1247,16 +1314,20 @@ pattern_opt_stmt: @EMPTYDIR@ { $$ = 0x06; /* ACK */ }
                                        s = NULL;
                                      }
 
-modifier_stmt: MODIFIER_KEYWORD sep string stmtend { if (!strcmp(s, "invert-match")) {
-                                                       $$ = 0x15;
-                                                       free(s);
-                                                       s = NULL;
-                                                     } else {
-                                                       LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, s);
-                                                       free(s);
-                                                       YYABORT;
-                                                     }
-                                                   }
+modifier_arg: string { backup_type = actual_type;
+                       actual_type = MODIFIER_KEYWORD;
+                     }
+
+modifier_stmt: MODIFIER_KEYWORD sep modifier_arg stmtend { if (!strcmp(s, "invert-match")) {
+                                                             $$ = 0x15;
+                                                             free(s);
+                                                             s = NULL;
+                                                           } else {
+                                                             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, s);
+                                                             free(s);
+                                                             YYABORT;
+                                                           }
+                                                         }
 
 enum_specification: enum_stmt stmtsep enum_stmts { struct lys_type_enum * tmp;
 
@@ -1275,7 +1346,7 @@ enum_stmts: @EMPTYDIR@
 
 
 enum_stmt: ENUM_KEYWORD sep enum_arg_str enum_end
-           { if (yang_check_enum(yang_type, actual, &cnt_val, actual_type)) {
+           { if (yang_check_enum(yang_type, actual, &cnt_val, is_value)) {
                YYABORT;
              }
              actual = yang_type;
@@ -1288,7 +1359,7 @@ enum_arg_str: string { yang_type = actual;
                          YYABORT;
                        }
                        s = NULL;
-                       actual_type = 0;
+                       is_value = 0;
                      }
 
 enum_end: ';'
@@ -1320,12 +1391,11 @@ enum_opt_stmt: @EMPTYDIR@
                                      actual = $$;
                                      s = NULL;
                                    }
-  |  enum_opt_stmt value_stmt { /* actual_type - it is used to check value of enum statement*/
-                                if (actual_type) {
+  |  enum_opt_stmt value_stmt { if (is_value) {
                                   LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "value", "enum");
                                   YYABORT;
                                 }
-                                actual_type = 1;
+                                is_value = 1;
                               }
   |  enum_opt_stmt status_stmt { if (yang_check_flags((uint16_t*)&((struct lys_type_enum *)actual)->flags, LYS_STATUS_MASK, "status", "enum", $2, 1)) {
                                    YYABORT;
@@ -1342,7 +1412,12 @@ enum_opt_stmt: @EMPTYDIR@
                                     s = NULL;
                                   }
 
-value_stmt: VALUE_KEYWORD sep integer_value_arg_str
+value_arg: integer_value_arg_str { $$ = $1;
+                                   backup_type = actual_type;
+                                   actual_type = VALUE_KEYWORD;
+                                 }
+
+value_stmt: VALUE_KEYWORD sep value_arg
             stmtend { ((struct lys_type_enum *)actual)->value = $3;
 
                       /* keep the highest enum value for automatic increment */
@@ -1379,9 +1454,18 @@ range_end: ';'
       '}'
    ;
 
-path_stmt: PATH_KEYWORD sep path_arg_str stmtend;
+path_arg: path_arg_str { backup_type = actual_type;
+                         actual_type = PATH_KEYWORD;
+                       }
 
-require_instance_stmt: REQUIRE_INSTANCE_KEYWORD sep require_instance_arg_str stmtend { $$ = $3; }
+path_stmt: PATH_KEYWORD sep path_arg stmtend
+
+require_instance_arg: require_instance_arg_str { $$ = $1;
+                                                 backup_type = actual_type;
+                                                 actual_type = REQUIRE_INSTANCE_KEYWORD;
+                                               }
+
+require_instance_stmt: REQUIRE_INSTANCE_KEYWORD sep require_instance_arg stmtend { $$ = $3; }
 
 require_instance_arg_str: TRUE_KEYWORD optsep { $$ = 1; }
   |  FALSE_KEYWORD optsep { $$ = -1; }
@@ -1414,7 +1498,7 @@ bit_stmts: @EMPTYDIR@
   | bit_stmts bit_stmt;
 
 bit_stmt: BIT_KEYWORD sep bit_arg_str bit_end
-          stmtsep { if (yang_check_bit(yang_type, actual, &cnt_val, actual_type)) {
+          stmtsep { if (yang_check_bit(yang_type, actual, &cnt_val, is_value)) {
                       YYABORT;
                     }
                     actual = yang_type;
@@ -1428,7 +1512,7 @@ bit_arg_str: identifier_arg_str { yang_type = actual;
                                     YYABORT;
                                   }
                                   s = NULL;
-                                  actual_type = 0;
+                                  is_value = 0;
                                 }
 
 bit_end: ';'
@@ -1460,12 +1544,11 @@ bit_opt_stmt: @EMPTYDIR@
                                     actual = $$;
                                     s = NULL;
                                   }
-  |  bit_opt_stmt position_stmt { /* actual_type - it is used to check position of bit statement*/
-                                  if (actual_type) {
+  |  bit_opt_stmt position_stmt { if (is_value) {
                                     LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "position", "bit");
                                     YYABORT;
                                   }
-                                  actual_type = 1;
+                                  is_value = 1;
                                 }
   |  bit_opt_stmt status_stmt { if (yang_check_flags((uint16_t*)&((struct lys_type_bit *)actual)->flags,
                                                      LYS_STATUS_MASK, "status", "bit", $2, 1)) {
@@ -1483,7 +1566,12 @@ bit_opt_stmt: @EMPTYDIR@
                                    s = NULL;
                                  }
 
-position_stmt: POSITION_KEYWORD sep position_value_arg_str
+position_value_arg: position_value_arg_str { $$ = $1;
+                                             backup_type = actual_type;
+                                             actual_type = POSITION_KEYWORD;
+                                           }
+
+position_stmt: POSITION_KEYWORD sep position_value_arg
                stmtend { ((struct lys_type_bit *)actual)->pos = $3;
 
                          /* keep the highest position value for automatic increment */
@@ -1510,13 +1598,29 @@ position_value_arg_str: non_negative_integer_value optsep { $$ = $1; }
                 $$ = (uint32_t) val;
               }
 
-error_message_stmt: ERROR_MESSAGE_KEYWORD sep string stmtend;
+error_message_arg: string { backup_type = actual_type;
+                            actual_type = ERROR_MESSAGE_KEYWORD;
+                          }
 
-error_app_tag_stmt: ERROR_APP_TAG_KEYWORD sep string stmtend;
+error_message_stmt: ERROR_MESSAGE_KEYWORD sep error_message_arg stmtend
 
-units_stmt: UNITS_KEYWORD sep string stmtend;
+error_app_tag_arg: string { backup_type = actual_type;
+                            actual_type = ERROR_APP_TAG_KEYWORD;
+                          }
 
-default_stmt: DEFAULT_KEYWORD sep string stmtend;
+error_app_tag_stmt: ERROR_APP_TAG_KEYWORD sep error_app_tag_arg stmtend
+
+units_arg: string { backup_type = actual_type;
+                    actual_type = UNITS_KEYWORD;
+                  }
+
+units_stmt: UNITS_KEYWORD sep units_arg stmtend
+
+default_arg: string { backup_type = actual_type;
+                      actual_type = DEFAULT_KEYWORD;
+                    }
+
+default_stmt: DEFAULT_KEYWORD sep default_arg stmtend
 
 grouping_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, actual, param->node, s, LYS_GROUPING, sizeof(struct lys_node_grp)))) {
                                          YYABORT;
@@ -3155,7 +3259,12 @@ deviate_body_stmt: deviate_not_supported_stmt
                    }
   |  deviate_stmts optsep
 
-deviate_not_supported_stmt: NOT_SUPPORTED_KEYWORD optsep stmtend
+
+deviate_not_supported: NOT_SUPPORTED_KEYWORD {  backup_type = actual_type;
+                                                actual_type = NOT_SUPPORTED_KEYWORD;
+                                             }
+
+deviate_not_supported_stmt: deviate_not_supported optsep stmtend
 
 deviate_stmts: deviate_add_stmt
   |  deviate_replace_stmt
@@ -3417,7 +3526,12 @@ when_opt_stmt: @EMPTYDIR@
                                     s = NULL;
                                   }
 
-config_stmt: CONFIG_KEYWORD sep config_arg_str stmtend { $$ = $3; }
+config_arg: config_arg_str { $$ = $1;
+                             backup_type = actual_type;
+                             actual_type = CONFIG_KEYWORD;
+                           }
+
+config_stmt: CONFIG_KEYWORD sep config_arg stmtend { $$ = $3; }
 
 config_arg_str: TRUE_KEYWORD optsep { $$ = LYS_CONFIG_W | LYS_CONFIG_SET; }
   |  FALSE_KEYWORD optsep { $$ = LYS_CONFIG_R | LYS_CONFIG_SET; }
@@ -3434,7 +3548,12 @@ config_arg_str: TRUE_KEYWORD optsep { $$ = LYS_CONFIG_W | LYS_CONFIG_SET; }
                 s = NULL;
               }
 
-mandatory_stmt: MANDATORY_KEYWORD sep mandatory_arg_str stmtend { $$ = $3; }
+mandatory_arg: mandatory_arg_str { $$ = $1;
+                                   backup_type = actual_type;
+                                   actual_type = MANDATORY_KEYWORD;
+                                 }
+
+mandatory_stmt: MANDATORY_KEYWORD sep mandatory_arg stmtend { $$ = $3; }
 
 mandatory_arg_str: TRUE_KEYWORD optsep { $$ = LYS_MAND_TRUE; }
   |  FALSE_KEYWORD optsep { $$ = LYS_MAND_FALSE; }
@@ -3451,9 +3570,18 @@ mandatory_arg_str: TRUE_KEYWORD optsep { $$ = LYS_MAND_TRUE; }
                 s = NULL;
               }
 
-presence_stmt: PRESENCE_KEYWORD sep string stmtend;
+presence_arg: string { backup_type = actual_type;
+                       actual_type = PRESENCE_KEYWORD;
+                     }
 
-min_elements_stmt: MIN_ELEMENTS_KEYWORD sep min_value_arg_str stmtend { $$ = $3; }
+presence_stmt: PRESENCE_KEYWORD sep presence_arg stmtend
+
+min_value_arg: min_value_arg_str { $$ = $1;
+                                   backup_type = actual_type;
+                                   actual_type = MIN_ELEMENTS_KEYWORD;
+                                 }
+
+min_elements_stmt: MIN_ELEMENTS_KEYWORD sep min_value_arg stmtend { $$ = $3; }
 
 min_value_arg_str: non_negative_integer_value optsep { $$ = $1; }
   |  string_1 { if (strlen(s) == 1 && s[0] == '0') {
@@ -3476,7 +3604,12 @@ min_value_arg_str: non_negative_integer_value optsep { $$ = $1; }
                 s = NULL;
               }
 
-max_elements_stmt: MAX_ELEMENTS_KEYWORD sep max_value_arg_str stmtend { $$ = $3; }
+max_value_arg: max_value_arg_str { $$ = $1;
+                                   backup_type = actual_type;
+                                   actual_type = MAX_ELEMENTS_KEYWORD;
+                                 }
+
+max_elements_stmt: MAX_ELEMENTS_KEYWORD sep max_value_arg stmtend { $$ = $3; }
 
 max_value_arg_str: UNBOUNDED_KEYWORD optsep { $$ = 0; }
   |  positive_integer_value optsep { $$ = $1; }
@@ -3500,7 +3633,12 @@ max_value_arg_str: UNBOUNDED_KEYWORD optsep { $$ = 0; }
                 s = NULL;
               }
 
-ordered_by_stmt: ORDERED_BY_KEYWORD sep ordered_by_arg_str stmtend { $$ = $3; }
+ordered_by_arg: ordered_by_arg_str { $$ = $1;
+                                     backup_type = actual_type;
+                                     actual_type = ORDERED_BY_KEYWORD;
+                                   }
+
+ordered_by_stmt: ORDERED_BY_KEYWORD sep ordered_by_arg stmtend { $$ = $3; }
 
 ordered_by_arg_str: USER_KEYWORD optsep { $$ = LYS_USERORDERED; }
   |  SYSTEM_KEYWORD optsep { $$ = LYS_SYSTEMORDERED; }
@@ -3587,15 +3725,23 @@ must_end: ';'
      '}'
   ;
 
-unique_stmt: UNIQUE_KEYWORD sep unique_arg_str;
+unique_arg: unique_arg_str { backup_type = actual_type;
+                             actual_type = UNIQUE_KEYWORD;
+                           }
 
-unique_arg_str: descendant_schema_nodeid unique_arg
-  |  string_1 stmtend;
+unique_stmt: UNIQUE_KEYWORD sep unique_arg stmtend
 
-unique_arg: sep descendant_schema_nodeid unique_arg
-  |  stmtend;
+unique_arg_str: descendant_schema_nodeid unique_arg_opt
+  |  string_1
 
-key_stmt: KEY_KEYWORD sep key_arg_str stmtend;
+unique_arg_opt: @EMPTYDIR@
+  |  unique_arg_opt sep descendant_schema_nodeid
+
+key_arg: key_arg_str { backup_type = actual_type;
+                       actual_type = KEY_KEYWORD;
+                     }
+
+key_stmt: KEY_KEYWORD sep key_arg stmtend;
 
 key_arg_str: node_identifier { s = strdup(yyget_text(scanner));
                                if (!s) {

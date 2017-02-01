@@ -2088,6 +2088,8 @@ yang_ext_instance(void *node, enum yytokentype type)
 
     switch (type) {
     case MODULE_KEYWORD:
+    case SUBMODULE_KEYWORD:
+    case BELONGS_TO_KEYWORD:
         ext = &((struct lys_module *)node)->ext;
         size = &((struct lys_module *)node)->ext_size;
         parent_type = LYEXT_PAR_MODULE;
@@ -2125,16 +2127,28 @@ yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext
 
     if (backup_type != NODE) {
         instance = yang_ext_instance((actual) ? actual : module, backup_type);
+        if (!instance) {
+            return NULL;
+        }
         switch (actual_type) {
         case NAMESPACE_KEYWORD:
             instance->substmt = LYEXT_SUBSTMT_NAMESPACE;
+            break;
+        case BELONGS_TO_KEYWORD:
+            instance->substmt = LYEXT_SUBSTMT_BELONGSTO;
+            break;
+        case PREFIX_KEYWORD:
+            instance->substmt = LYEXT_SUBSTMT_PREFIX;
             break;
         default:
             LOGINT;
             return NULL;
         }
     } else {
-        instance = yang_ext_instance(actual, actual_type);
+        instance = yang_ext_instance((actual) ? actual : module, actual_type);
+        if (!instance) {
+            return NULL;
+        }
         instance->substmt = LYEXT_SUBSTMT_SELF;
     }
     instance->flags |= LYEXT_OPT_YANG;
