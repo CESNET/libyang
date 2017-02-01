@@ -1029,7 +1029,7 @@ API const struct lys_module *
 lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
 {
     const struct lys_module *module;
-    struct stat sb;
+    size_t length;
     char *addr;
     char buf[PATH_MAX];
     int len;
@@ -1039,27 +1039,17 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
         return NULL;
     }
 
-    if (fstat(fd, &sb) == -1) {
-        LOGERR(LY_ESYS, "Failed to stat the file descriptor (%s).", strerror(errno));
-        return NULL;
-    }
-    if (!S_ISREG(sb.st_mode)) {
-        LOGERR(LY_EINVAL, "Invalid parameter, input file is not a regular file");
-        return NULL;
-    }
-
-    if (!sb.st_size) {
-        LOGERR(LY_EINVAL, "File empty.");
-        return NULL;
-    }
-
-    addr = mmap(NULL, sb.st_size + 2, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+    addr = lyp_mmap(fd, format == LYS_IN_YANG ? 1 : 0, &length);
     if (addr == MAP_FAILED) {
-        LOGERR(LY_EMEM, "Map file into memory failed (%s()).",__func__);
+        LOGERR(LY_ESYS, "Mapping file descriptor into memory failed (%s()).", __func__);
+        return NULL;
+    } else if (!addr) {
+        LOGERR(LY_EINVAL, "Empty schema file.");
         return NULL;
     }
+
     module = lys_parse_mem_(ctx, addr, format, 1);
-    munmap(addr, sb.st_size + 2);
+    lyp_munmap(addr, length);
 
     if (module && !module->filepath) {
         /* get URI if there is /proc */
@@ -1079,25 +1069,18 @@ struct lys_submodule *
 lys_sub_parse_fd(struct lys_module *module, int fd, LYS_INFORMAT format, struct unres_schema *unres)
 {
     struct lys_submodule *submodule;
-    struct stat sb;
+    size_t length;
     char *addr;
 
     assert(module);
     assert(fd >= 0);
 
-    if (fstat(fd, &sb) == -1) {
-        LOGERR(LY_ESYS, "Failed to stat the file descriptor (%s).", strerror(errno));
-        return NULL;
-    }
-
-    if (!sb.st_size) {
-        LOGERR(LY_EINVAL, "File empty.");
-        return NULL;
-    }
-
-    addr = mmap(NULL, sb.st_size + 2, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+    addr = lyp_mmap(fd, format == LYS_IN_YANG ? 1 : 0, &length);
     if (addr == MAP_FAILED) {
-        LOGERR(LY_EMEM,"Map file into memory failed (%s()).",__func__);
+        LOGERR(LY_ESYS, "Mapping file descriptor into memory failed (%s()).", __func__);
+        return NULL;
+    } else if (!addr) {
+        LOGERR(LY_EINVAL, "Empty submodule schema file.");
         return NULL;
     }
 
@@ -1116,7 +1099,7 @@ lys_sub_parse_fd(struct lys_module *module, int fd, LYS_INFORMAT format, struct 
         break;
     }
 
-    munmap(addr, sb.st_size + 2);
+    lyp_munmap(addr, length);
     return submodule;
 
 }
