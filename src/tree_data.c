@@ -515,6 +515,9 @@ lyd_parse_fd_(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, va_lis
     if (data == MAP_FAILED) {
         LOGERR(LY_ESYS, "Mapping file descriptor into memory failed (%s()).", __func__);
         return NULL;
+    } else if (!data) {
+        ly_err_clean(1);
+        return NULL;
     }
 
     ret = lyd_parse_data_(ctx, data, format, options, ap);

@@ -180,8 +180,7 @@ lyp_mmap(int fd, size_t addsize, size_t *length)
         return MAP_FAILED;
     }
     if (!sb.st_size) {
-        LOGERR(LY_EINVAL, "File to mmap() is empty.");
-        return MAP_FAILED;
+        return NULL;
     }
     pagesize = sysconf(_SC_PAGESIZE);
     ++addsize;                       /* at least one additional byte for terminating NULL byte */
@@ -235,7 +234,11 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const char *rev
     if (addr == MAP_FAILED) {
         LOGERR(LY_ESYS, "Mapping file descriptor into memory failed (%s()).", __func__);
         return NULL;
+    } else if (!addr) {
+        LOGERR(LY_EINVAL, "Empty schema file.");
+        return NULL;
     }
+
     switch (format) {
     case LYS_IN_YIN:
         module = yin_read_module(ctx, addr, revision, implement);

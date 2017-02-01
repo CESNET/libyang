@@ -1229,6 +1229,9 @@ lyxml_parse_path(struct ly_ctx *ctx, const char *filename, int options)
     if (addr == MAP_FAILED) {
         LOGERR(LY_ESYS, "Mapping file descriptor into memory failed (%s()).", __func__);
         goto error;
+    } else if (!addr) {
+        /* empty XML file */
+        goto error;
     }
 
     elem = lyxml_parse_mem(ctx, addr, options);

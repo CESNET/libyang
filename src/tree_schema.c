@@ -1005,6 +1005,9 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
     if (addr == MAP_FAILED) {
         LOGERR(LY_ESYS, "Mapping file descriptor into memory failed (%s()).", __func__);
         return NULL;
+    } else if (!addr) {
+        LOGERR(LY_EINVAL, "Empty schema file.");
+        return NULL;
     }
 
     module = lys_parse_mem_(ctx, addr, format, 1);
@@ -1037,6 +1040,9 @@ lys_sub_parse_fd(struct lys_module *module, int fd, LYS_INFORMAT format, struct 
     addr = lyp_mmap(fd, format == LYS_IN_YANG ? 1 : 0, &length);
     if (addr == MAP_FAILED) {
         LOGERR(LY_ESYS, "Mapping file descriptor into memory failed (%s()).", __func__);
+        return NULL;
+    } else if (!addr) {
+        LOGERR(LY_EINVAL, "Empty submodule schema file.");
         return NULL;
     }
 
