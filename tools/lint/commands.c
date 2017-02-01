@@ -334,6 +334,7 @@ parse_data(const char *filepath, int options, struct lyd_node *val_tree, const c
     struct lyxml_elem *xml = NULL;
     const struct lys_node *rpc_act = NULL;
     struct lyd_node *data = NULL, *root, *next, *iter;
+    void *lydval_arg = NULL;
 
     /* detect input format according to file suffix */
     len = strlen(filepath);
@@ -366,18 +367,23 @@ parse_data(const char *filepath, int options, struct lyd_node *val_tree, const c
         if (!strcmp(xml->name, "data")) {
             fprintf(stdout, "Parsing %s as complete datastore.\n", filepath);
             options = (options & ~LYD_OPT_TYPEMASK);
+            lydval_arg = ctx;
         } else if (!strcmp(xml->name, "config")) {
             fprintf(stdout, "Parsing %s as config data.\n", filepath);
             options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_CONFIG;
+            lydval_arg = ctx;
         } else if (!strcmp(xml->name, "get-reply")) {
             fprintf(stdout, "Parsing %s as <get> reply data.\n", filepath);
             options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_GET;
+            lydval_arg = ctx;
         } else if (!strcmp(xml->name, "get-config-reply")) {
             fprintf(stdout, "Parsing %s as <get-config> reply data.\n", filepath);
             options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_GETCONFIG;
+            lydval_arg = ctx;
         } else if (!strcmp(xml->name, "edit-config")) {
             fprintf(stdout, "Parsing %s as <edit-config> data.\n", filepath);
             options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_EDIT;
+            lydval_arg = ctx;
         } else if (!strcmp(xml->name, "rpc")) {
             fprintf(stdout, "Parsing %s as <rpc> data.\n", filepath);
             options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPC;
@@ -470,7 +476,7 @@ parse_data(const char *filepath, int options, struct lyd_node *val_tree, const c
         }
 
         /* validate the result */
-        if (lyd_validate(&data, options, NULL)) {
+        if (lyd_validate(&data, options, lydval_arg)) {
             fprintf(stderr, "Failed to parse data.\n");
             lyd_free_withsiblings(data);
             return EXIT_FAILURE;
