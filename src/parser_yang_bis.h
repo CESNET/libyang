@@ -175,6 +175,7 @@ union YYSTYPE
     struct lys_node_inout *inout;
     struct lys_node_augment *augment;
   } nodes;
+  enum yytokentype token;
 
 
 };

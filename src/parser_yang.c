@@ -125,7 +125,8 @@ yang_read_prefix(struct lys_module *module, struct lys_import *imp, char *value)
 }
 
 static int
-yang_fill_import(struct lys_module *module, struct lys_import *imp_old, struct lys_import *imp_new, char *value)
+yang_fill_import(struct lys_module *module, struct lys_import *imp_old, struct lys_import *imp_new,
+                 char *value, struct unres_schema *unres)
 {
     const char *exp;
     int rc;
@@ -143,7 +144,7 @@ yang_fill_import(struct lys_module *module, struct lys_import *imp_old, struct l
     rc = lyp_check_import(module, exp, imp_new);
     lydict_remove(module->ctx, exp);
     module->imp_size++;
-    if (rc) {
+    if (rc || yang_check_ext_instance(module, &imp_new->ext, imp_new->ext_size, imp_new, unres)) {
         return EXIT_FAILURE;
     }
 
@@ -153,6 +154,7 @@ error:
     free(value);
     lydict_remove(module->ctx, imp_old->dsc);
     lydict_remove(module->ctx, imp_old->ref);
+    lys_extension_instances_free(module->ctx, imp_old->ext, imp_old->ext_size);
     return EXIT_FAILURE;
 }
 
@@ -2070,8 +2072,13 @@ yang_fill_include(struct lys_module *trg, char *value, struct lys_include *inc,
     if (!rc) {
         /* success, copy the filled data into the final array */
         memcpy(&trg->inc[trg->inc_size], inc, sizeof *inc);
+        if (yang_check_ext_instance(trg, &trg->inc[trg->inc_size].ext, trg->inc[trg->inc_size].ext_size,
+                                    &trg->inc[trg->inc_size], unres)) {
+            ret = -1;
+        }
         trg->inc_size++;
     } else if (rc == -1) {
+        lys_extension_instances_free(trg->ctx, inc->ext, inc->ext_size);
         ret = -1;
     }
 
@@ -2093,6 +2100,16 @@ yang_ext_instance(void *node, enum yytokentype type)
         ext = &((struct lys_module *)node)->ext;
         size = &((struct lys_module *)node)->ext_size;
         parent_type = LYEXT_PAR_MODULE;
+        break;
+    case IMPORT_KEYWORD:
+        ext = &((struct lys_import *)node)->ext;
+        size = &((struct lys_import *)node)->ext_size;
+        parent_type = LYEXT_PAR_IMPORT;
+        break;
+    case INCLUDE_KEYWORD:
+        ext = &((struct lys_include *)node)->ext;
+        size = &((struct lys_include *)node)->ext_size;
+        parent_type = LYEXT_PAR_INCLUDE;
         break;
     default:
         LOGINT;
@@ -2139,6 +2156,15 @@ yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext
             break;
         case PREFIX_KEYWORD:
             instance->substmt = LYEXT_SUBSTMT_PREFIX;
+            break;
+        case REVISION_DATE_KEYWORD:
+            instance->substmt = LYEXT_SUBSTMT_REVISIONDATE;
+            break;
+        case DESCRIPTION_KEYWORD:
+            instance->substmt = LYEXT_SUBSTMT_DESCRIPTION;
+            break;
+        case REFERENCE_KEYWORD:
+            instance->substmt = LYEXT_SUBSTMT_REFERENCE;
             break;
         default:
             LOGINT;
@@ -2607,6 +2633,7 @@ yang_free_import(struct ly_ctx *ctx, struct lys_import *imp, uint8_t start, uint
         lydict_remove(ctx, imp[i].prefix);
         lydict_remove(ctx, imp[i].dsc);
         lydict_remove(ctx, imp[i].ref);
+        lys_extension_instances_free(ctx, imp[i].ext, imp[i].ext_size);
     }
 }
 
@@ -2619,6 +2646,7 @@ yang_free_include(struct ly_ctx *ctx, struct lys_include *inc, uint8_t start, ui
         free((char *)inc[i].submodule);
         lydict_remove(ctx, inc[i].dsc);
         lydict_remove(ctx, inc[i].ref);
+        lys_extension_instances_free(ctx, inc[i].ext, inc[i].ext_size);
     }
 }
 
@@ -2996,7 +3024,7 @@ yang_check_imports(struct lys_module *module, struct unres_schema *unres)
     for (i = 0; i < imp_size; ++i) {
         s = (char *) imp[i].module;
         imp[i].module = NULL;
-        if (yang_fill_import(module, &imp[i], &module->imp[module->imp_size], s)) {
+        if (yang_fill_import(module, &imp[i], &module->imp[module->imp_size], s, unres)) {
             ++i;
             goto error;
         }
