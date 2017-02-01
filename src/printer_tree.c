@@ -59,37 +59,38 @@ sibling_is_valid_child(const struct lys_node *node, int including, const struct 
         }
 
         if (!lys_is_disabled(cur, 0)) {
-            switch (nodetype) {
-            case LYS_USES:
+            if (cur->nodetype == LYS_USES) {
                 if (sibling_is_valid_child(cur->child, 1, module, nodetype)) {
                     return 1;
                 }
-                break;
-            case LYS_GROUPING:
-                /* we are printing groupings, find another */
-                if (cur->nodetype == LYS_GROUPING) {
-                    return 1;
+            } else {
+                switch (nodetype) {
+                case LYS_GROUPING:
+                    /* we are printing groupings, find another */
+                    if (cur->nodetype == LYS_GROUPING) {
+                        return 1;
+                    }
+                    break;
+                case LYS_RPC:
+                    if (cur->nodetype == LYS_RPC) {
+                        return 1;
+                    }
+                    break;
+                case LYS_NOTIF:
+                    if (cur->nodetype == LYS_NOTIF) {
+                        return 1;
+                    }
+                    break;
+                default:
+                    if (cur->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_CHOICE
+                            | LYS_CASE)) {
+                        return 1;
+                    }
+                    if ((cur->nodetype & (LYS_INPUT | LYS_OUTPUT)) && cur->child) {
+                        return 1;
+                    }
+                    break;
                 }
-                break;
-            case LYS_RPC:
-                if (cur->nodetype == LYS_RPC) {
-                    return 1;
-                }
-                break;
-            case LYS_NOTIF:
-                if (cur->nodetype == LYS_NOTIF) {
-                    return 1;
-                }
-                break;
-            default:
-                if (cur->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_CHOICE
-                        | LYS_CASE)) {
-                    return 1;
-                }
-                if ((cur->nodetype & (LYS_INPUT | LYS_OUTPUT)) && cur->child) {
-                    return 1;
-                }
-                break;
             }
         }
     }
