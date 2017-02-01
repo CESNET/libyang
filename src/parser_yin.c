@@ -2001,7 +2001,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     struct lyxml_elem *next, *next2, *child, *develem;
     int c_dev = 0, c_must, c_uniq, c_dflt, c_ext = 0;
     int f_min = 0, f_max = 0; /* flags */
-    int i, j, rc;
+    int i, j, k, rc;
     unsigned int u;
     struct ly_ctx *ctx;
     struct lys_deviate *d = NULL;
@@ -2476,6 +2476,13 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                     /* remove current units value of the target */
                     lydict_remove(ctx, *stritem);
                     (*stritem) = NULL;
+
+                    /* remove its extensions */
+                    j = -1;
+                    while ((j = lys_ext_iter(dev_target->ext, dev_target->ext_size, j + 1, LYEXT_SUBSTMT_UNITS)) != -1) {
+                        lyp_ext_instance_rm(ctx, &dev_target->ext, &dev_target->ext_size, j);
+                        --j;
+                    }
                 }
 
                 if (read_yin_subnode_ext(module, d, LYEXT_PAR_DEVIATE, child, LYEXT_SUBSTMT_UNITS, 0, unres)) {
@@ -2739,6 +2746,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                                 list->unique[list->unique_size].expr = NULL;
                             }
 
+                            k = i; /* remember index for removing extensions */
                             i = -1; /* set match flag */
                             break;
                         }
@@ -2750,6 +2758,18 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, lyxml_get_attr(child, "tag", NULL), child->name);
                         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Value differs from the target being deleted.");
                         goto error;
+                    }
+
+                    /* remove extensions of this unique instance from the target node */
+                    j = -1;
+                    while ((j = lys_ext_iter(dev_target->ext, dev_target->ext_size, j + 1, LYEXT_SUBSTMT_UNIQUE)) != -1) {
+                        if (dev_target->ext[j]->substmt_index == k) {
+                            lyp_ext_instance_rm(ctx, &dev_target->ext, &dev_target->ext_size, j);
+                            --j;
+                        } else if (dev_target->ext[j]->substmt_index > k) {
+                            /* decrease the substatement index of the extension because of the changed array of uniques */
+                            dev_target->ext[j]->substmt_index--;
+                        }
                     }
                 } else { /* replace or add */
                     memset(&list->unique[list->unique_size], 0, sizeof *list->unique);
@@ -2777,6 +2797,13 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                             LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Value differs from the target being deleted.");
                             goto error;
                         }
+                        choice->dflt = NULL;
+                        /* remove extensions of this default instance from the target node */
+                        j = -1;
+                        while ((j = lys_ext_iter(dev_target->ext, dev_target->ext_size, j + 1, LYEXT_SUBSTMT_DEFAULT)) != -1) {
+                            lyp_ext_instance_rm(ctx, &dev_target->ext, &dev_target->ext_size, j);
+                            --j;
+                        }
                     } else { /* add or replace */
                         choice->dflt = node;
                         if (!choice->dflt) {
@@ -2797,6 +2824,13 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                         lydict_remove(ctx, leaf->dflt);
                         leaf->dflt = NULL;
                         leaf->flags &= ~LYS_DFLTJSON;
+
+                        /* remove extensions of this default instance from the target node */
+                        j = -1;
+                        while ((j = lys_ext_iter(dev_target->ext, dev_target->ext_size, j + 1, LYEXT_SUBSTMT_DEFAULT)) != -1) {
+                            lyp_ext_instance_rm(ctx, &dev_target->ext, &dev_target->ext_size, j);
+                            --j;
+                        }
                     } else { /* add (already checked) and replace */
                         /* remove value */
                         lydict_remove(ctx, leaf->dflt);
@@ -2817,6 +2851,18 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                                 /* match, remove the value */
                                 lydict_remove(llist->module->ctx, llist->dflt[i]);
                                 llist->dflt[i] = NULL;
+
+                                /* remove extensions of this default instance from the target node */
+                                j = -1;
+                                while ((j = lys_ext_iter(dev_target->ext, dev_target->ext_size, j + 1, LYEXT_SUBSTMT_DEFAULT)) != -1) {
+                                    if (dev_target->ext[j]->substmt_index == i) {
+                                        lyp_ext_instance_rm(ctx, &dev_target->ext, &dev_target->ext_size, j);
+                                        --j;
+                                    } else if (dev_target->ext[j]->substmt_index > i) {
+                                        /* decrease the substatement index of the extension because of the changed array of defaults */
+                                        dev_target->ext[j]->substmt_index--;
+                                    }
+                                }
                                 break;
                             }
                         }
@@ -6938,8 +6984,10 @@ yin_read_module(struct ly_ctx *ctx, const char *data, const char *revision, int 
     }
 
     lyp_sort_revisions(module);
-    lyp_rfn_apply_ext(module);
-    lyp_deviation_apply_ext(module);
+
+    if (lyp_rfn_apply_ext(module) || lyp_deviation_apply_ext(module)) {
+        goto error;
+    }
 
     if (revision) {
         /* check revision of the parsed model */

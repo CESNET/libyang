@@ -1206,7 +1206,7 @@ test_uses_sub_yin(void **state)
                     "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
                     "      <text>ref</text>\n"
                     "    </reference>\n"
-                    "    <container name=\"c\"/>\n"
+                    "    <container name=\"c\">\n      <e:a/>\n    </container>\n"
                     "    <leaf name=\"l\">\n"
                     "      <type name=\"identityref\">\n"
                     "        <base name=\"two\">\n"
@@ -1269,6 +1269,7 @@ test_uses_sub_yin(void **state)
                     "      </max-elements>\n"
                     "    </refine>\n"
                     "    <refine target-node=\"ll2\">\n"
+                    "      <e:a/>\n"
                     "      <default value=\"1\"/>\n"
                     "      <default value=\"2\">\n"
                     "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
@@ -1306,10 +1307,10 @@ test_uses_sub_yin(void **state)
     uses = mod->data->prev;
     assert_int_equal(uses->nodetype, LYS_USES);
 
-    assert_int_equal(uses->child->ext_size, 12); /* number of extensions in c */
+    assert_int_equal(uses->child->ext_size, 15); /* number of extensions in c */
     assert_int_equal(uses->child->next->ext_size, 3); /* number of extensions in l */
     assert_int_equal(uses->child->next->next->ext_size, 2); /* number of extensions in ll1 */
-    assert_int_equal(uses->child->prev->ext_size, 3); /* number of extensions in ll2 */
+    assert_int_equal(uses->child->prev->ext_size, 4); /* number of extensions in ll2 */
 }
 
 static void
@@ -1394,6 +1395,7 @@ test_uses_sub_yang(void **state)
                     "        e:b \"one\";\n"
                     "      }\n"
                     "    }\n    refine \"ll2\" {\n"
+                    "      e:a;\n"
                     "      default \"1\";\n"
                     "      default \"2\" {\n"
                     "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
@@ -1422,10 +1424,10 @@ test_uses_sub_yang(void **state)
     uses = mod->data->prev;
     assert_int_equal(uses->nodetype, LYS_USES);
 
-    assert_int_equal(uses->child->ext_size, 12); /* number of extensions in c */
+    assert_int_equal(uses->child->ext_size, 15); /* number of extensions in c */
     assert_int_equal(uses->child->next->ext_size, 3); /* number of extensions in l */
     assert_int_equal(uses->child->next->next->ext_size, 2); /* number of extensions in ll1 */
-    assert_int_equal(uses->child->prev->ext_size, 3); /* number of extensions in ll2 */
+    assert_int_equal(uses->child->prev->ext_size, 4); /* number of extensions in ll2 */
 }
 
 static void
@@ -1791,6 +1793,7 @@ test_deviation_sub_yin(void **state)
                     "  </deviation>\n"
                     "  <deviation target-node=\"/e:lst1\">\n"
                     "    <deviate value=\"add\">\n"
+                    "      <e:a/>\n      <e:b x=\"one\"/>\n"
                     "      <unique tag=\"val1\"/>\n      <unique tag=\"val2\">\n"
                     "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
                     "      </unique>\n"
@@ -1804,6 +1807,7 @@ test_deviation_sub_yin(void **state)
                     "  </deviation>\n"
                     "  <deviation target-node=\"/e:l2\">\n"
                     "    <deviate value=\"replace\">\n"
+                    "      <e:b x=\"ten\"/>\n"
                     "      <mandatory value=\"false\">\n"
                     "        <e:a/>\n"
                     "      </mandatory>\n"
@@ -1811,7 +1815,7 @@ test_deviation_sub_yin(void **state)
                     "  </deviation>\n"
                     "  <deviation target-node=\"/e:lst1/e:val2\">\n"
                     "    <deviate value=\"delete\">\n"
-                    "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
+                    "      <e:a/>\n"
                     "      <units name=\"meter\">\n"
                     "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
                     "      </units>\n"
@@ -1822,13 +1826,13 @@ test_deviation_sub_yin(void **state)
                     "  </deviation>\n"
                     "  <deviation target-node=\"/e:lst2\">\n"
                     "    <deviate value=\"delete\">\n"
+                    "      <e:a/>\n      <e:b x=\"two\"/>\n"
                     "      <unique tag=\"val1\">\n"
                     "        <e:a/>\n        <e:b x=\"one\"/>\n        <e:c>\n          <e:y>one</e:y>\n        </e:c>\n"
                     "      </unique>\n"
                     "    </deviate>\n"
                     "  </deviation>\n"
                     "</module>\n";
-
     struct lys_node *node;
 
     mod = ly_ctx_load_module(st->ctx, "ext-def", NULL);
@@ -1847,20 +1851,31 @@ test_deviation_sub_yin(void **state)
     assert_string_not_equal(mod->data->prev->name, "l1");
     assert_string_not_equal(mod->data->next->name, "l1");
 
-    /* l2 is now first and instead of 2 extensions it now has only 1 */
+    /* l2 is now first and instead of 5 extensions it now has only 3 */
     node = mod->data;
     assert_string_equal(node->name, "l2");
     assert_int_equal(node->flags & LYS_MAND_MASK, LYS_MAND_FALSE);
-    assert_int_equal(node->ext_size, 1);
+    assert_int_equal(node->ext_size, 3);
 
-    /* ll1 has 10 extensions (all from substatements) */
+    /* ll1 has 13 extensions (10 from substatements) */
     node = mod->data->next;
     assert_string_equal(node->name, "ll1");
-    assert_int_equal(node->ext_size, 10);
+    assert_int_equal(node->ext_size, 13);
 
-    /* lst2 has no ext, since the deviation removes unique which includes the only extension there */
+    /* lst1 has 12 extensions (2 added, 9 added from substatements) */
+    node = mod->data->next->next;
+    assert_string_equal(node->name, "lst1");
+    assert_int_equal(node->ext_size, 12);
+
+    /* lst2 has 1 ext, since the deviation removes unique with all its extensions and 3 of the 4 node's extensions */
     node = mod->data->prev;
     assert_string_equal(node->name, "lst2");
+    assert_int_equal(node->ext_size, 1);
+
+    /* val2 has no extension, all were deleted */
+    node = mod->data->next->next->child->prev;
+    assert_string_equal(node->name, "val2");
+    assert_string_equal(node->parent->name, "lst1");
     assert_int_equal(node->ext_size, 0);
 
     /* revert deviations */
@@ -1869,21 +1884,32 @@ test_deviation_sub_yin(void **state)
     /* l1 is reconnected at the end of data nodes */
     assert_string_equal(mod->data->prev->name, "l1");
 
-    /* l2 is back true and contains again the 2 extensions (both from mandatory substatement) */
+    /* l2 is back true and contains again the 5 extensions */
     node = mod->data;
     assert_string_equal(node->name, "l2");
     assert_int_equal(node->flags & LYS_MAND_MASK, LYS_MAND_TRUE);
-    assert_int_equal(node->ext_size, 2);
+    assert_int_equal(node->ext_size, 5);
 
     /* ll1 has no extension again */
     node = mod->data->next;
     assert_string_equal(node->name, "ll1");
     assert_int_equal(node->ext_size, 0);
 
-    /* lst2 has back the one extension from its unique */
+    /* lst1 has back 1 extension */
+    node = mod->data->next->next;
+    assert_string_equal(node->name, "lst1");
+    assert_int_equal(node->ext_size, 1);
+
+    /* lst2 has back all the 5 original extensions */
     node = mod->data->prev->prev; /* lst2 is not last, there is added l1 */
     assert_string_equal(node->name, "lst2");
-    assert_int_equal(node->ext_size, 1);
+    assert_int_equal(node->ext_size, 5);
+
+    /* val2 has back all its 2 extensions */
+    node = mod->data->next->next->child->prev;
+    assert_string_equal(node->name, "val2");
+    assert_string_equal(node->parent->name, "lst1");
+    assert_int_equal(node->ext_size, 2);
 }
 
 static void
@@ -1919,6 +1945,7 @@ test_deviation_sub_yang(void **state)
                     "      }\n    }\n  }\n\n"
                     "  deviation \"/e:lst1\" {\n"
                     "    deviate add {\n"
+                    "      e:a;\n      e:b \"one\";\n"
                     "      unique \"val1\";\n"
                     "      unique \"val2\" {\n"
                     "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
@@ -1929,12 +1956,13 @@ test_deviation_sub_yang(void **state)
                     "      }\n    }\n  }\n\n"
                     "  deviation \"/e:l2\" {\n"
                     "    deviate replace {\n"
+                    "      e:b \"ten\";\n"
                     "      mandatory false {\n"
                     "        e:a;\n"
                     "      }\n    }\n  }\n\n"
                     "  deviation \"/e:lst1/e:val2\" {\n"
                     "    deviate delete {\n"
-                    "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "      e:a;\n"
                     "      units \"meter\" {\n"
                     "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
                     "      }\n      default \"1\" {\n"
@@ -1942,6 +1970,7 @@ test_deviation_sub_yang(void **state)
                     "      }\n    }\n  }\n\n"
                     "  deviation \"/e:lst2\" {\n"
                     "    deviate delete {\n"
+                    "      e:a;\n      e:b \"two\";\n"
                     "      unique \"val1\" {\n"
                     "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
                     "      }\n    }\n  }\n}\n";
@@ -1963,20 +1992,31 @@ test_deviation_sub_yang(void **state)
     assert_string_not_equal(mod->data->prev->name, "l1");
     assert_string_not_equal(mod->data->next->name, "l1");
 
-    /* l2 is now first and instead of 2 extensions it now has only 1 */
+    /* l2 is now first and instead of 5 extensions it now has only 3 */
     node = mod->data;
     assert_string_equal(node->name, "l2");
     assert_int_equal(node->flags & LYS_MAND_MASK, LYS_MAND_FALSE);
-    assert_int_equal(node->ext_size, 1);
+    assert_int_equal(node->ext_size, 3);
 
-    /* ll1 has 10 extensions (all from substatements) */
+    /* ll1 has 13 extensions (10 from substatements) */
     node = mod->data->next;
     assert_string_equal(node->name, "ll1");
-    assert_int_equal(node->ext_size, 10);
+    assert_int_equal(node->ext_size, 13);
 
-    /* lst2 has no ext, since the deviation removes unique which includes the only extension there */
+    /* lst1 has 12 extensions (2 added, 9 added from substatements) */
+    node = mod->data->next->next;
+    assert_string_equal(node->name, "lst1");
+    assert_int_equal(node->ext_size, 12);
+
+    /* lst2 has 1 ext, since the deviation removes unique with all its extensions and 3 of the 4 node's extensions */
     node = mod->data->prev;
     assert_string_equal(node->name, "lst2");
+    assert_int_equal(node->ext_size, 1);
+
+    /* val2 has no extension, all were deleted */
+    node = mod->data->next->next->child->prev;
+    assert_string_equal(node->name, "val2");
+    assert_string_equal(node->parent->name, "lst1");
     assert_int_equal(node->ext_size, 0);
 
     /* revert deviations */
@@ -1985,21 +2025,32 @@ test_deviation_sub_yang(void **state)
     /* l1 is reconnected at the end of data nodes */
     assert_string_equal(mod->data->prev->name, "l1");
 
-    /* l2 is back true and contains again the 2 extensions (both from mandatory substatement) */
+    /* l2 is back true and contains again the 5 extensions */
     node = mod->data;
     assert_string_equal(node->name, "l2");
     assert_int_equal(node->flags & LYS_MAND_MASK, LYS_MAND_TRUE);
-    assert_int_equal(node->ext_size, 2);
+    assert_int_equal(node->ext_size, 5);
 
     /* ll1 has no extension again */
     node = mod->data->next;
     assert_string_equal(node->name, "ll1");
     assert_int_equal(node->ext_size, 0);
 
-    /* lst2 has back the one extension from its unique */
+    /* lst1 has back 1 extension */
+    node = mod->data->next->next;
+    assert_string_equal(node->name, "lst1");
+    assert_int_equal(node->ext_size, 1);
+
+    /* lst2 has back all the 5 original extensions */
     node = mod->data->prev->prev; /* lst2 is not last, there is added l1 */
     assert_string_equal(node->name, "lst2");
-    assert_int_equal(node->ext_size, 1);
+    assert_int_equal(node->ext_size, 5);
+
+    /* val2 has back all its 2 extensions */
+    node = mod->data->next->next->child->prev;
+    assert_string_equal(node->name, "val2");
+    assert_string_equal(node->parent->name, "lst1");
+    assert_int_equal(node->ext_size, 2);
 }
 
 int

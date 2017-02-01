@@ -22,6 +22,9 @@
     <type name="string"/>
   </leaf>
   <leaf name="l2">
+    <e:a/>
+    <e:b x="one"/>
+    <e:b x="two"/>
     <type name="string"/>
     <mandatory value="true">
       <e:b x="one"/>
@@ -34,6 +37,7 @@
     <type name="uint8"/>
   </leaf-list>
   <list name="lst1">
+    <e:b x="ten"/>
     <key value="id"/>
     <leaf name="id">
       <type name="string"/>
@@ -42,12 +46,19 @@
       <type name="uint8"/>
     </leaf>
     <leaf name="val2">
+      <e:a/>
       <type name="uint8"/>
-      <units name="meter"/>
+      <units name="meter">
+        <e:a/>
+      </units>
       <default value="1"/>
     </leaf>
   </list>
   <list name="lst2">
+    <e:a/>
+    <e:a/>
+    <e:b x="one"/>
+    <e:b x="two"/>
     <key value="id"/>
     <unique tag="val1">
       <e:a/>

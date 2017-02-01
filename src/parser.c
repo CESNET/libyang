@@ -2570,11 +2570,36 @@ lyp_sort_revisions(struct lys_module *module)
     }
 }
 
+void
+lyp_ext_instance_rm(struct ly_ctx *ctx, struct lys_ext_instance ***ext, uint8_t *size, uint8_t index)
+{
+    uint8_t i;
+
+    lys_extension_instances_free(ctx, (*ext)[index]->ext, (*ext)[index]->ext_size);
+    lydict_remove(ctx, (*ext)[index]->arg_value);
+    free((*ext)[index]);
+
+    /* move the rest of the array */
+    for (i = index + 1; i < (*size); i++) {
+        (*ext)[i - 1] = (*ext)[i];
+    }
+    /* clean the last cell in the array structure */
+    (*ext)[(*size) - 1] = NULL;
+    /* the array is not reallocated here, just change its size */
+    (*size) = (*size) - 1;
+
+    if (!(*size)) {
+        /* ext array is empty */
+        free((*ext));
+        ext = NULL;
+    }
+}
+
 static int
-lyp_rfn_apply_ext_(struct lys_refine *rfn, struct lys_node *target, LYEXT_SUBSTMT substmt)
+lyp_rfn_apply_ext_(struct lys_refine *rfn, struct lys_node *target, LYEXT_SUBSTMT substmt, struct lys_ext *extdef)
 {
     struct ly_ctx *ctx;
-    int m, n, i;
+    int m, n;
     struct lys_ext_instance *new;
     void *reallocated;
 
@@ -2583,13 +2608,16 @@ lyp_rfn_apply_ext_(struct lys_refine *rfn, struct lys_node *target, LYEXT_SUBSTM
     m = n = -1;
     while ((m = lys_ext_iter(rfn->ext, rfn->ext_size, m + 1, substmt)) != -1) {
         /* refine's substatement includes extensions, copy them to the target, replacing the previous
-         * substatement's extensions if any */
+         * substatement's extensions if any. In case of refining the extension itself, we are going to
+         * replace only the same extension (pointing to the same definition) */
+        if (substmt == LYEXT_SUBSTMT_SELF && rfn->ext[m]->def != extdef) {
+            continue;
+        }
 
         /* get the index of the extension to replace in the target node */
         do {
             n = lys_ext_iter(target->ext, target->ext_size, n + 1, substmt);
-            /* keep it in case the extension is inherited */
-        } while (n != -1 && (target->ext[n]->flags & LYEXT_OPT_INHERIT));
+        } while (n != -1 && substmt == LYEXT_SUBSTMT_SELF && target->ext[n]->def != extdef);
 
         if (n == -1) {
             /* nothing to replace, we are going to add it - reallocate */
@@ -2632,26 +2660,14 @@ lyp_rfn_apply_ext_(struct lys_refine *rfn, struct lys_node *target, LYEXT_SUBSTM
 
     /* remove the rest of extensions belonging to the original substatement in the target node */
     while ((n = lys_ext_iter(target->ext, target->ext_size, n + 1, substmt)) != -1) {
-        /* remove the allocated data */
-        lys_extension_instances_free(ctx, target->ext[n]->ext, target->ext[n]->ext_size);
-        lydict_remove(ctx, target->ext[n]->arg_value);
-        free(target->ext[n]);
-        /* move the rest of the array */
-        for (i = n + 1; i < target->ext_size; i++) {
-            target->ext[i - 1] = target->ext[i];
+        if (substmt == LYEXT_SUBSTMT_SELF && target->ext[n]->def != extdef) {
+            /* keep this extension */
+            continue;
         }
-        /* clean the last cell in the array structure */
-        target->ext[target->ext_size - 1] = NULL;
-        /* the array is not reallocated here, just change its size */
-        target->ext_size--;
-        n--;
 
-        if (!target->ext_size) {
-            /* ext array is empty */
-            free(target->ext);
-            target->ext = NULL;
-            break;
-        }
+        /* remove the item */
+        lyp_ext_instance_rm(ctx, &target->ext, &target->ext_size, n);
+        --n;
     }
 
     return EXIT_SUCCESS;
@@ -2665,11 +2681,12 @@ lyp_rfn_apply_ext_(struct lys_refine *rfn, struct lys_node *target, LYEXT_SUBSTM
 int
 lyp_rfn_apply_ext(struct lys_module *module)
 {
-    int i, a = 0;
+    int i, k, a = 0;
     struct lys_node *root, *nextroot, *next, *node;
     struct lys_node *target;
     struct lys_node_uses *uses;
     struct lys_refine *rfn;
+    struct ly_set *extset;
 
     /* refines in uses */
     LY_TREE_FOR_SAFE(module->data, nextroot, root) {
@@ -2691,45 +2708,59 @@ lyp_rfn_apply_ext(struct lys_module *module)
                                                      LYS_NO_RPC_NOTIF_NODE | LYS_ACTION | LYS_NOTIF,
                                                      1, 0, (const struct lys_node **)&target);
 
+                    /* extensions */
+                    extset = ly_set_new();
+                    k = -1;
+                    while ((k = lys_ext_iter(rfn->ext, rfn->ext_size, k + 1, LYEXT_SUBSTMT_SELF)) != -1) {
+                        ly_set_add(extset, rfn->ext[k]->def, 0);
+                    }
+                    for (k = 0; (unsigned int)k < extset->number; k++) {
+                        if (lyp_rfn_apply_ext_(rfn, target, LYEXT_SUBSTMT_SELF, (struct lys_ext *)extset->set.g[k])) {
+                            ly_set_free(extset);
+                            return EXIT_FAILURE;
+                        }
+                    }
+                    ly_set_free(extset);
+
                     /* description */
-                    if (rfn->dsc && lyp_rfn_apply_ext_(rfn, target, LYEXT_SUBSTMT_DESCRIPTION)) {
+                    if (rfn->dsc && lyp_rfn_apply_ext_(rfn, target, LYEXT_SUBSTMT_DESCRIPTION, NULL)) {
                         return EXIT_FAILURE;
                     }
                     /* reference */
-                    if (rfn->ref && lyp_rfn_apply_ext_(rfn, target, LYEXT_SUBSTMT_REFERENCE)) {
+                    if (rfn->ref && lyp_rfn_apply_ext_(rfn, target, LYEXT_SUBSTMT_REFERENCE, NULL)) {
                         return EXIT_FAILURE;
                     }
                     /* config, in case of notification or rpc/action{notif, the config is not applicable
                      * (there is no config status) */
                     if ((rfn->flags & LYS_CONFIG_MASK) && (target->flags & LYS_CONFIG_MASK)) {
-                        if (lyp_rfn_apply_ext_(rfn, target, LYEXT_SUBSTMT_CONFIG)) {
+                        if (lyp_rfn_apply_ext_(rfn, target, LYEXT_SUBSTMT_CONFIG, NULL)) {
                             return EXIT_FAILURE;
                         }
                     }
                     /* default value */
-                    if (rfn->dflt_size && lyp_rfn_apply_ext_(rfn, target, LYEXT_SUBSTMT_DEFAULT)) {
+                    if (rfn->dflt_size && lyp_rfn_apply_ext_(rfn, target, LYEXT_SUBSTMT_DEFAULT, NULL)) {
                         return EXIT_FAILURE;
                     }
                     /* mandatory */
                     if (rfn->flags & LYS_MAND_MASK) {
-                        if (lyp_rfn_apply_ext_(rfn, target, LYEXT_SUBSTMT_MANDATORY)) {
+                        if (lyp_rfn_apply_ext_(rfn, target, LYEXT_SUBSTMT_MANDATORY, NULL)) {
                             return EXIT_FAILURE;
                         }
                     }
                     /* presence */
                     if ((target->nodetype & LYS_CONTAINER) && rfn->mod.presence) {
-                        if (lyp_rfn_apply_ext_(rfn, target, LYEXT_SUBSTMT_PRESENCE)) {
+                        if (lyp_rfn_apply_ext_(rfn, target, LYEXT_SUBSTMT_PRESENCE, NULL)) {
                             return EXIT_FAILURE;
                         }
                     }
                     /* min/max */
                     if (rfn->flags & LYS_RFN_MINSET) {
-                        if (lyp_rfn_apply_ext_(rfn, target, LYEXT_SUBSTMT_MIN)) {
+                        if (lyp_rfn_apply_ext_(rfn, target, LYEXT_SUBSTMT_MIN, NULL)) {
                             return EXIT_FAILURE;
                         }
                     }
                     if (rfn->flags & LYS_RFN_MAXSET) {
-                        if (lyp_rfn_apply_ext_(rfn, target, LYEXT_SUBSTMT_MAX)) {
+                        if (lyp_rfn_apply_ext_(rfn, target, LYEXT_SUBSTMT_MAX, NULL)) {
                             return EXIT_FAILURE;
                         }
                     }
@@ -2754,34 +2785,75 @@ lyp_rfn_apply_ext(struct lys_module *module)
 
     return EXIT_SUCCESS;
 }
+
 static int
-lyp_deviate_apply_ext(struct lys_deviate *dev, struct lys_node *target, LYEXT_SUBSTMT substmt)
+lyp_deviate_del_ext(struct lys_node *target, struct lys_ext_instance *ext)
+{
+    int n = -1, found = 0;
+    char *path;
+
+    while ((n = lys_ext_iter(target->ext, target->ext_size, n + 1, ext->substmt)) != -1) {
+        if (target->ext[n]->def != ext->def) {
+            continue;
+        }
+
+        if (ext->def->argument) {
+            /* check matching arguments */
+            if (!ly_strequal(target->ext[n]->arg_value, ext->arg_value, 1)) {
+                continue;
+            }
+        }
+
+        /* we have the matching extension - remove it */
+        ++found;
+        lyp_ext_instance_rm(target->module->ctx, &target->ext, &target->ext_size, n);
+        --n;
+    }
+
+    if (!found) {
+        path = lys_path(target);
+        LOGERR(LY_EVALID, "Extension deviation: extension \"%s\" to delete not found in \"%s\".", ext->def->name, path)
+        free(path);
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
+}
+
+static int
+lyp_deviate_apply_ext(struct lys_deviate *dev, struct lys_node *target, LYEXT_SUBSTMT substmt, struct lys_ext *extdef)
 {
     struct ly_ctx *ctx;
-    int m, n, i;
+    int m, n;
     struct lys_ext_instance *new;
     void *reallocated;
+
+    /* LY_DEVIATE_ADD and LY_DEVIATE_RPL are very similar so they are implement the same way - in replacing,
+     * there can be some extension instances in the target, in case of adding, there should not be any so we
+     * will be just adding. */
 
     ctx = target->module->ctx; /* shortcut */
     m = n = -1;
 
-    /* LY_DEVIATE_ADD and LY_DEVIATE_RPL are very similar so they are implement the same way - in replacing,
-     * there can be some extension instances in the target, in case of adding, there should not be any so we
-     * will be just adding. In case of LY_DEVIATE_DEL, we will skip the part applying the extensions from deviation
-     * into the target and we will only remove the extensions in target */
-    if (dev->mod == LY_DEVIATE_DEL) {
-        goto remove;
-    }
-
     while ((m = lys_ext_iter(dev->ext, dev->ext_size, m + 1, substmt)) != -1) {
-        /* deviate's substatement includes extensions, copy them to the target, replacing the previous
-         * substatement's extensions if any */
+        /* deviate and its substatements include extensions, copy them to the target, replacing the previous
+         * extensions if any. In case of deviating extension itself, we have to deviate only the same type
+         * of the extension as specified in the deviation */
+        if (substmt == LYEXT_SUBSTMT_SELF && dev->ext[m]->def != extdef) {
+            continue;
+        }
 
-        /* get the index of the extension to replace in the target node */
-        do {
-            n = lys_ext_iter(target->ext, target->ext_size, n + 1, substmt);
-            /* keep it in case the extension is inherited */
-        } while (n != -1 && (target->ext[n]->flags & LYEXT_OPT_INHERIT));
+        if (substmt == LYEXT_SUBSTMT_SELF && dev->mod == LY_DEVIATE_ADD) {
+            /* in case of adding extension, we will be replacing only the inherited extensions */
+            do {
+                n = lys_ext_iter(target->ext, target->ext_size, n + 1, substmt);
+            } while (n != -1 && (target->ext[n]->def != extdef || !(target->ext[n]->flags & LYEXT_OPT_INHERIT)));
+        } else {
+            /* get the index of the extension to replace in the target node */
+            do {
+                n = lys_ext_iter(target->ext, target->ext_size, n + 1, substmt);
+                /* if we are applying extension deviation, we have to deviate only the same type of the extension */
+            } while (n != -1 && substmt == LYEXT_SUBSTMT_SELF && target->ext[n]->def != extdef);
+        }
 
         if (n == -1) {
             /* nothing to replace, we are going to add it - reallocate */
@@ -2827,33 +2899,27 @@ lyp_deviate_apply_ext(struct lys_deviate *dev, struct lys_node *target, LYEXT_SU
         lys_ext_dup(ctx, dev->ext[m]->ext, dev->ext[m]->ext_size, target, LYEXT_PAR_NODE, &target->ext[n]->ext, NULL);
     }
 
-remove:
-    /* remove the rest of extensions belonging to the original substatemen in the target node,
+    /* remove the rest of extensions belonging to the original substatement in the target node,
      * due to possible reverting of the deviation effect, they are actually not removed, just moved
      * to the backup of the original node when the original node is backuped, here we just have to
      * free the replaced / deleted originals */
     while ((n = lys_ext_iter(target->ext, target->ext_size, n + 1, substmt)) != -1) {
-        /* remove the allocated data */
-        lys_extension_instances_free(ctx, target->ext[n]->ext, target->ext[n]->ext_size);
-        lydict_remove(ctx, target->ext[n]->arg_value);
-        free(target->ext[n]);
+        if (substmt == LYEXT_SUBSTMT_SELF) {
+            /* if we are applying extension deviation, we are going to remove only
+             * - the same type of the extension in case of replacing
+             * - the same type of the extension which was inherited in case of adding
+             * note - delete deviation is covered in lyp_deviate_del_ext */
+            if (target->ext[n]->def != extdef ||
+                    (dev->mod == LY_DEVIATE_ADD && !(target->ext[n]->flags & LYEXT_OPT_INHERIT))) {
+                /* keep this extension */
+                continue;
+            }
 
-        /* move the rest of the array */
-        for (i = n + 1; i < target->ext_size; i++) {
-            target->ext[i - 1] = target->ext[i];
         }
-        /* clean the last cell in the array structure */
-        target->ext[target->ext_size - 1] = NULL;
-        /* the array is not reallocated here, just change its size */
-        target->ext_size--;
-        n--;
 
-        if (!target->ext_size) {
-            /* ext array is empty */
-            free(target->ext);
-            target->ext = NULL;
-            break;
-        }
+        /* remove the item */
+        lyp_ext_instance_rm(ctx, &target->ext, &target->ext_size, n);
+        --n;
     }
 
     return EXIT_SUCCESS;
@@ -2865,9 +2931,10 @@ remove:
 int
 lyp_deviation_apply_ext(struct lys_module *module)
 {
-    int i, j;
+    int i, j, k;
     struct lys_deviate *dev;
     struct lys_node *target;
+    struct ly_set *extset;
 
     for (i = 0; i < module->deviation_size; i++) {
         resolve_augment_schema_nodeid(module->deviation[i].target_name, NULL, module, 0,
@@ -2878,32 +2945,65 @@ lyp_deviation_apply_ext(struct lys_module *module)
         }
         for (j = 0; j < module->deviation[i].deviate_size; j++) {
             dev = &module->deviation[i].deviate[j];
+            if (!dev->ext_size) {
+                /* no extensions in deviate and its substatement, nothing to do here */
+                continue;
+            }
+
+            /* extensions */
+            if (dev->mod == LY_DEVIATE_DEL) {
+                k = -1;
+                while ((k = lys_ext_iter(dev->ext, dev->ext_size, k + 1, LYEXT_SUBSTMT_SELF)) != -1) {
+                    if (lyp_deviate_del_ext(target, dev->ext[k])) {
+                        return EXIT_FAILURE;
+                    }
+                }
+
+                /* In case of LY_DEVIATE_DEL, we are applying only extension deviation, removing
+                 * of the substatement's extensions was already done when the substatement was applied.
+                 * Extension deviation could not be applied by the parser since the extension could be unresolved,
+                 * which is not the issue of the other substatements. */
+                continue;
+            } else {
+                extset = ly_set_new();
+                k = -1;
+                while ((k = lys_ext_iter(dev->ext, dev->ext_size, k + 1, LYEXT_SUBSTMT_SELF)) != -1) {
+                    ly_set_add(extset, dev->ext[k]->def, 0);
+                }
+                for (k = 0; (unsigned int)k < extset->number; k++) {
+                    if (lyp_deviate_apply_ext(dev, target, LYEXT_SUBSTMT_SELF, (struct lys_ext *)extset->set.g[k])) {
+                        ly_set_free(extset);
+                        return EXIT_FAILURE;
+                    }
+                }
+                ly_set_free(extset);
+            }
 
             /* unique */
-            if (dev->unique_size && lyp_deviate_apply_ext(dev, target, LYEXT_SUBSTMT_UNIQUE)) {
+            if (dev->unique_size && lyp_deviate_apply_ext(dev, target, LYEXT_SUBSTMT_UNIQUE, NULL)) {
                 return EXIT_FAILURE;
             }
             /* units */
-            if (dev->units && lyp_deviate_apply_ext(dev, target, LYEXT_SUBSTMT_UNITS)) {
+            if (dev->units && lyp_deviate_apply_ext(dev, target, LYEXT_SUBSTMT_UNITS, NULL)) {
                 return EXIT_FAILURE;
             }
             /* default */
-            if (dev->dflt_size && lyp_deviate_apply_ext(dev, target, LYEXT_SUBSTMT_DEFAULT)) {
+            if (dev->dflt_size && lyp_deviate_apply_ext(dev, target, LYEXT_SUBSTMT_DEFAULT, NULL)) {
                 return EXIT_FAILURE;
             }
             /* config */
-            if ((dev->flags & LYS_CONFIG_MASK) && lyp_deviate_apply_ext(dev, target, LYEXT_SUBSTMT_CONFIG)) {
+            if ((dev->flags & LYS_CONFIG_MASK) && lyp_deviate_apply_ext(dev, target, LYEXT_SUBSTMT_CONFIG, NULL)) {
                 return EXIT_FAILURE;
             }
             /* mandatory */
-            if ((dev->flags & LYS_MAND_MASK) && lyp_deviate_apply_ext(dev, target, LYEXT_SUBSTMT_MANDATORY)) {
+            if ((dev->flags & LYS_MAND_MASK) && lyp_deviate_apply_ext(dev, target, LYEXT_SUBSTMT_MANDATORY, NULL)) {
                 return EXIT_FAILURE;
             }
             /* min/max */
-            if (dev->min_set && lyp_deviate_apply_ext(dev, target, LYEXT_SUBSTMT_MIN)) {
+            if (dev->min_set && lyp_deviate_apply_ext(dev, target, LYEXT_SUBSTMT_MIN, NULL)) {
                 return EXIT_FAILURE;
             }
-            if (dev->min_set && lyp_deviate_apply_ext(dev, target, LYEXT_SUBSTMT_MAX)) {
+            if (dev->min_set && lyp_deviate_apply_ext(dev, target, LYEXT_SUBSTMT_MAX, NULL)) {
                 return EXIT_FAILURE;
             }
             /* type and must contain extension instances in their structures */

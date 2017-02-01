@@ -115,6 +115,8 @@ void lyp_sort_revisions(struct lys_module *module);
 int lyp_rfn_apply_ext(struct lys_module *module);
 int lyp_deviation_apply_ext(struct lys_module *module);
 
+void lyp_ext_instance_rm(struct ly_ctx *ctx, struct lys_ext_instance ***ext, uint8_t *size, uint8_t index);
+
 /**
  * @brief Propagate imports and includes into the main module
  *
