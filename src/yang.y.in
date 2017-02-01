@@ -262,6 +262,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <token> include_arg_str
 %type <token> revision_arg_stmt
 %type <backup_token> grouping_arg_str
+%type <backup_token> container_arg_str
 
 %destructor { free($$); } pattern_arg_str string_opt_part1 semicolom curly_bracket_open
 %destructor { free(($$) ? *$$ : NULL); } tmp_string
@@ -1711,15 +1712,22 @@ data_def_stmt: container_stmt
   |  uses_stmt
   ;
 
-container_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, actual, param->node, s, LYS_CONTAINER, sizeof(struct lys_node_container)))) {
+container_arg_str: identifier_arg_str { $$.token = actual_type;
+                                        $$.actual = actual;
+                                        if (!(actual = yang_read_node(trg, actual, param->node, s, LYS_CONTAINER, sizeof(struct lys_node_container)))) {
                                           YYABORT;
                                         }
                                         data_node = actual;
                                         s = NULL;
+                                        actual_type = CONTAINER_KEYWORD;
                                       }
 
 container_stmt: CONTAINER_KEYWORD sep container_arg_str container_end
-                { LOGDBG("YANG: finished parsing container statement \"%s\"", data_node->name); }
+                { LOGDBG("YANG: finished parsing container statement \"%s\"", data_node->name);
+                  actual_type = $3.token;
+                  actual = $3.actual;
+                  data_node = $3.actual;
+                }
 
 container_end: ';'
   |  '{' stmtsep
@@ -1745,9 +1753,7 @@ container_end: ';'
             }
           }
 
-container_opt_stmt: @EMPTYDIR@ { $$.container = actual;
-                                 actual_type = CONTAINER_KEYWORD;
-                               }
+container_opt_stmt: @EMPTYDIR@ { $$.container = actual; }
   |  container_opt_stmt when_stmt { actual = $1.container;
                                     actual_type = CONTAINER_KEYWORD;
                                   }

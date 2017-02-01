@@ -2115,6 +2115,7 @@ yang_ext_instance(void *node, enum yytokentype type)
         parent_type = LYEXT_PAR_REVISION;
         break;
     case GROUPING_KEYWORD:
+    case CONTAINER_KEYWORD:
         ext = &((struct lys_node *)node)->ext;
         size = &((struct lys_node *)node)->ext_size;
         parent_type = LYEXT_PAR_NODE;
