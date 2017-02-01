@@ -46,7 +46,7 @@ print_indent(struct lyout *out, uint64_t indent, int level)
 static int
 sibling_is_valid_child(const struct lys_node *node, int including, const struct lys_module *module, LYS_NODE nodetype)
 {
-    struct lys_node *cur;
+    struct lys_node *cur, *cur2;
 
     if (!node) {
         return 0;
@@ -83,11 +83,18 @@ sibling_is_valid_child(const struct lys_node *node, int including, const struct 
                     break;
                 default:
                     if (cur->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_CHOICE
-                            | LYS_CASE)) {
+                            | LYS_CASE | LYS_ACTION)) {
                         return 1;
                     }
                     if ((cur->nodetype & (LYS_INPUT | LYS_OUTPUT)) && cur->child) {
                         return 1;
+                    }
+                    /* only nested notifications count here (not top-level) */
+                    if (cur->nodetype == LYS_NOTIF) {
+                        for (cur2 = lys_parent(cur); cur2 && (cur2->nodetype == LYS_USES); cur2 = lys_parent(cur2));
+                        if (cur2) {
+                            return 1;
+                        }
                     }
                     break;
                 }
