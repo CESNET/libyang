@@ -2610,7 +2610,7 @@ lyd_diff_equivnode(struct lyd_node *first, struct lyd_node *second)
         }
         if (iter1->schema->nodetype == LYS_LIST) {
             /* compare keys */
-            if (lyd_list_equal(first, second, 0, 0) != 1) {
+            if (lyd_list_equal(iter1, iter2, 0, 0) != 1) {
                 return 0;
             }
         }
