@@ -44,7 +44,7 @@ print_indent(struct lyout *out, uint64_t indent, int level)
 }
 
 static int
-sibling_is_valid_child(const struct lys_node *node, int including, const struct lys_module *module, LY_DATA_TYPE type)
+sibling_is_valid_child(const struct lys_node *node, int including, const struct lys_module *module, LYS_NODE nodetype)
 {
     struct lys_node *cur;
 
@@ -59,9 +59,9 @@ sibling_is_valid_child(const struct lys_node *node, int including, const struct 
         }
 
         if (!lys_is_disabled(cur, 0)) {
-            switch (node->nodetype) {
+            switch (nodetype) {
             case LYS_USES:
-                if (sibling_is_valid_child(cur->child, 1, module, type)) {
+                if (sibling_is_valid_child(cur->child, 1, module, nodetype)) {
                     return 1;
                 }
                 break;
@@ -96,7 +96,7 @@ sibling_is_valid_child(const struct lys_node *node, int including, const struct 
 
     /* if in uses, the following printed child can actually be in the parent node :-/ */
     if (lys_parent(node) && (lys_parent(node)->nodetype == LYS_USES)) {
-        return sibling_is_valid_child(lys_parent(node), 0, module, type);
+        return sibling_is_valid_child(lys_parent(node), 0, module, nodetype);
     }
 
     return 0;
