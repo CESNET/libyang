@@ -32,6 +32,8 @@ as well as YANG 1.1 ([RFC 7950](https://tools.ietf.org/html/rfc7950)).
 ## Requirements
 
 * cmake >= 2.8.9
+* flex
+* bison
 * libpcre
 * cmocka >= 1.0.0 (for tests only, see [Tests](#Tests))
 
