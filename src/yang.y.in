@@ -248,8 +248,6 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <deviate> deviate_add_opt_stmt
 %type <deviate> deviate_delete_opt_stmt
 %type <deviate> deviate_replace_opt_stmt
-%type <nodes> leaf_arg_str
-%type <nodes> leaf_list_arg_str
 %type <nodes> typedef_arg_str
 %type <ch> pattern_opt_stmt
 %type <ch> pattern_end
@@ -263,6 +261,9 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <token> revision_arg_stmt
 %type <backup_token> grouping_arg_str
 %type <backup_token> container_arg_str
+%type <backup_token> leaf_arg_str
+%type <backup_token> leaf_list_arg_str
+%type <backup_token> list_arg_str
 
 %destructor { free($$); } pattern_arg_str string_opt_part1 semicolom curly_bracket_open
 %destructor { free(($$) ? *$$ : NULL); } tmp_string
@@ -1858,19 +1859,23 @@ leaf_stmt: LEAF_KEYWORD sep leaf_arg_str
                   }
 
                   LOGDBG("YANG: finished parsing leaf statement \"%s\"", data_node->name);
+                  actual_type = $3.token;
+                  actual = $3.actual;
+                  data_node = $3.actual;
                 }
 
-leaf_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, actual, param->node, s, LYS_LEAF, sizeof(struct lys_node_leaf)))) {
+leaf_arg_str: identifier_arg_str { $$.token = actual_type;
+                                   $$.actual = actual;
+                                   if (!(actual = yang_read_node(trg, actual, param->node, s, LYS_LEAF, sizeof(struct lys_node_leaf)))) {
                                      YYABORT;
                                    }
                                    data_node = actual;
                                    s = NULL;
-                                   $$.node.ptr_leaf = actual;
+                                   actual_type = LEAF_KEYWORD;
                                  }
 
 leaf_opt_stmt: @EMPTYDIR@ { $$.node.ptr_leaf = actual;
                             $$.node.flag = 0;
-                            actual_type = LEAF_KEYWORD;
                           }
   |  leaf_opt_stmt when_stmt { actual = $1.node.ptr_leaf;
                                actual_type = LEAF_KEYWORD;
@@ -1929,11 +1934,14 @@ leaf_opt_stmt: @EMPTYDIR@ { $$.node.ptr_leaf = actual;
                                     s = NULL;
                                   }
 
-leaf_list_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, actual, param->node, s, LYS_LEAFLIST, sizeof(struct lys_node_leaflist)))) {
+leaf_list_arg_str: identifier_arg_str { $$.token = actual_type;
+                                        $$.actual = actual;
+                                        if (!(actual = yang_read_node(trg, actual, param->node, s, LYS_LEAFLIST, sizeof(struct lys_node_leaflist)))) {
                                           YYABORT;
                                         }
                                         data_node = actual;
                                         s = NULL;
+                                        actual_type = LEAF_LIST_KEYWORD;
                                       }
 
   leaf_list_stmt: LEAF_LIST_KEYWORD sep leaf_list_arg_str
@@ -1986,11 +1994,13 @@ leaf_list_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, actua
                         }
 
                         LOGDBG("YANG: finished parsing leaf-list statement \"%s\"", data_node->name);
+                        actual_type = $3.token;
+                        actual = $3.actual;
+                        data_node = $3.actual;
                       }
 
 leaf_list_opt_stmt: @EMPTYDIR@ { $$.node.ptr_leaflist = actual;
                                  $$.node.flag = 0;
-                                 actual_type = LEAF_LIST_KEYWORD;
                                }
   |  leaf_list_opt_stmt when_stmt { actual = $1.node.ptr_leaflist;
                                     actual_type = LEAF_LIST_KEYWORD;
@@ -2086,11 +2096,14 @@ leaf_list_opt_stmt: @EMPTYDIR@ { $$.node.ptr_leaflist = actual;
                                          s = NULL;
                                        }
 
-list_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, actual, param->node, s, LYS_LIST, sizeof(struct lys_node_list)))) {
+list_arg_str: identifier_arg_str { $$.token = actual_type;
+                                   $$.actual = actual;
+                                   if (!(actual = yang_read_node(trg, actual, param->node, s, LYS_LIST, sizeof(struct lys_node_list)))) {
                                      YYABORT;
                                    }
                                    data_node = actual;
                                    s = NULL;
+                                   actual_type = LIST_KEYWORD;
                                  }
 
 list_stmt: LIST_KEYWORD sep list_arg_str
@@ -2135,11 +2148,13 @@ list_stmt: LIST_KEYWORD sep list_arg_str
                   }
 
                   LOGDBG("YANG: finished parsing list statement \"%s\"", data_node->name);
+                  actual_type = $3.token;
+                  actual = $3.actual;
+                  data_node = $3.actual;
                 }
 
 list_opt_stmt: @EMPTYDIR@ { $$.node.ptr_list = actual;
                             $$.node.flag = 0;
-                            actual_type = LIST_KEYWORD;
                           }
   |  list_opt_stmt when_stmt { actual = $1.node.ptr_list;
                                actual_type = LIST_KEYWORD;
