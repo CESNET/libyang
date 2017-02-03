@@ -1841,7 +1841,7 @@ yang_check_deviate_must(struct lys_module *module, struct unres_schema *unres,
 {
     int i, j, erase_must = 1;
     struct lys_restr **trg_must, *must;
-    uint8_t *trg_must_size, must_size;
+    uint8_t *trg_must_size;
 
     /* check target node type */
     switch (dev_target->nodetype) {
@@ -1883,18 +1883,10 @@ yang_check_deviate_must(struct lys_module *module, struct unres_schema *unres,
             goto error;
         }
         *trg_must = must;
-        must_size = *trg_must_size;
-        for (i = 0; i < deviate->must_size; ++i) {
-            (*trg_must)[must_size].expr = deviate->must[i].expr;
-            (*trg_must)[must_size].dsc = deviate->must[i].dsc;
-            (*trg_must)[must_size].ref = deviate->must[i].ref;
-            (*trg_must)[must_size].emsg = deviate->must[i].emsg;
-            (*trg_must)[must_size].eapptag = deviate->must[i].eapptag;
-            ++must_size;
-        }
+        memcpy(&(*trg_must)[*trg_must_size], deviate->must, deviate->must_size * sizeof *must);
         free(deviate->must);
         deviate->must = &must[*trg_must_size];
-        *trg_must_size = must_size;
+        *trg_must_size = *trg_must_size + deviate->must_size;
         erase_must = 0;
     } else if (deviate->mod == LY_DEVIATE_DEL) {
         /* find must to delete, we are ok with just matching conditions */
@@ -1906,21 +1898,13 @@ yang_check_deviate_must(struct lys_module *module, struct unres_schema *unres,
                     /* ... and maintain the array */
                     (*trg_must_size)--;
                     if (i != *trg_must_size) {
-                        (*trg_must)[i].expr = (*trg_must)[*trg_must_size].expr;
-                        (*trg_must)[i].dsc = (*trg_must)[*trg_must_size].dsc;
-                        (*trg_must)[i].ref = (*trg_must)[*trg_must_size].ref;
-                        (*trg_must)[i].eapptag = (*trg_must)[*trg_must_size].eapptag;
-                        (*trg_must)[i].emsg = (*trg_must)[*trg_must_size].emsg;
+                        memcpy(&(*trg_must)[i], &(*trg_must)[*trg_must_size], sizeof *must);
                     }
                     if (!(*trg_must_size)) {
                         free(*trg_must);
                         *trg_must = NULL;
                     } else {
-                        (*trg_must)[*trg_must_size].expr = NULL;
-                        (*trg_must)[*trg_must_size].dsc = NULL;
-                        (*trg_must)[*trg_must_size].ref = NULL;
-                        (*trg_must)[*trg_must_size].eapptag = NULL;
-                        (*trg_must)[*trg_must_size].emsg = NULL;
+                        memset(&(*trg_must)[*trg_must_size], 0, sizeof *must);
                     }
 
                     i = -1; /* set match flag */
