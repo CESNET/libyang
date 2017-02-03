@@ -2103,6 +2103,10 @@ yang_ext_instance(void *node, enum yytokentype type)
     case LEAF_KEYWORD:
     case LEAF_LIST_KEYWORD:
     case LIST_KEYWORD:
+    case CHOICE_KEYWORD:
+    case CASE_KEYWORD:
+    case ANYXML_KEYWORD:
+    case ANYDATA_KEYWORD:
         ext = &((struct lys_node *)node)->ext;
         size = &((struct lys_node *)node)->ext_size;
         parent_type = LYEXT_PAR_NODE;

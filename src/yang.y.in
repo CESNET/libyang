@@ -264,6 +264,10 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <backup_token> leaf_arg_str
 %type <backup_token> leaf_list_arg_str
 %type <backup_token> list_arg_str
+%type <backup_token> choice_arg_str
+%type <backup_token> case_arg_str
+%type <backup_token> anyxml_arg_str
+%type <backup_token> anydata_arg_str
 
 %destructor { free($$); } pattern_arg_str string_opt_part1 semicolom curly_bracket_open
 %destructor { free(($$) ? *$$ : NULL); } tmp_string
@@ -2273,15 +2277,22 @@ list_opt_stmt: @EMPTYDIR@ { $$.node.ptr_list = actual;
                                  }
      stmtsep { $$ = $1; }
 
-choice_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, actual, param->node, s, LYS_CHOICE, sizeof(struct lys_node_choice)))) {
+choice_arg_str: identifier_arg_str { $$.token = actual_type;
+                                     $$.actual = actual;
+                                     if (!(actual = yang_read_node(trg, actual, param->node, s, LYS_CHOICE, sizeof(struct lys_node_choice)))) {
                                        YYABORT;
                                      }
                                      data_node = actual;
                                      s = NULL;
+                                     actual_type = CHOICE_KEYWORD;
                                    }
 
 choice_stmt: CHOICE_KEYWORD sep choice_arg_str choice_end
-             { LOGDBG("YANG: finished parsing choice statement \"%s\"", data_node->name); }
+             { LOGDBG("YANG: finished parsing choice statement \"%s\"", data_node->name);
+               actual_type = $3.token;
+               actual = $3.actual;
+               data_node = $3.actual;
+             }
 
 choice_end: ';'
   |  '{' stmtsep
@@ -2306,7 +2317,6 @@ choice_end: ';'
 
 choice_opt_stmt: @EMPTYDIR@ { $$.node.ptr_choice = actual;
                               $$.node.flag = 0;
-                              actual_type = CHOICE_KEYWORD;
                             }
   |  choice_opt_stmt when_stmt { actual = $1.node.ptr_choice;
                                  actual_type = CHOICE_KEYWORD;
@@ -2384,15 +2394,22 @@ short_case_stmt: container_stmt
                  }
   ;
 
-case_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, actual, param->node, s, LYS_CASE, sizeof(struct lys_node_case)))) {
+case_arg_str: identifier_arg_str { $$.token = actual_type;
+                                   $$.actual = actual;
+                                   if (!(actual = yang_read_node(trg, actual, param->node, s, LYS_CASE, sizeof(struct lys_node_case)))) {
                                      YYABORT;
                                    }
                                    data_node = actual;
                                    s = NULL;
+                                   actual_type = CASE_KEYWORD;
                                  }
 
 case_stmt: CASE_KEYWORD sep case_arg_str case_end
-           { LOGDBG("YANG: finished parsing case statement \"%s\"", data_node->name); }
+           { LOGDBG("YANG: finished parsing case statement \"%s\"", data_node->name);
+             actual_type = $3.token;
+             actual = $3.actual;
+             data_node = $3.actual;
+           }
 
 case_end: ';'
   |  '{' stmtsep
@@ -2409,9 +2426,7 @@ case_end: ';'
            }
           }
 
-case_opt_stmt: @EMPTYDIR@ { $$.cs = actual;
-                            actual_type = CASE_KEYWORD;
-                          }
+case_opt_stmt: @EMPTYDIR@ { $$.cs = actual; }
   |  case_opt_stmt when_stmt { actual = $1.cs;
                                actual_type = CASE_KEYWORD;
                              }
@@ -2444,7 +2459,9 @@ case_opt_stmt: @EMPTYDIR@ { $$.cs = actual;
      stmtsep
 
 
-anyxml_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, actual, param->node, s, LYS_ANYXML, sizeof(struct lys_node_anydata)))) {
+anyxml_arg_str: identifier_arg_str { $$.token = actual_type;
+                                     $$.actual = actual;
+                                     if (!(actual = yang_read_node(trg, actual, param->node, s, LYS_ANYXML, sizeof(struct lys_node_anydata)))) {
                                        YYABORT;
                                      }
                                      data_node = actual;
@@ -2453,9 +2470,15 @@ anyxml_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, actual, 
                                    }
 
 anyxml_stmt: ANYXML_KEYWORD sep anyxml_arg_str anyxml_end
-             { LOGDBG("YANG: finished parsing anyxml statement \"%s\"", data_node->name); }
+             { LOGDBG("YANG: finished parsing anyxml statement \"%s\"", data_node->name);
+               actual_type = $3.token;
+               actual = $3.actual;
+               data_node = $3.actual;
+             }
 
-anydata_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, actual, param->node, s, LYS_ANYDATA, sizeof(struct lys_node_anydata)))) {
+anydata_arg_str: identifier_arg_str { $$.token = actual_type;
+                                      $$.actual = actual;
+                                      if (!(actual = yang_read_node(trg, actual, param->node, s, LYS_ANYDATA, sizeof(struct lys_node_anydata)))) {
                                         YYABORT;
                                       }
                                       data_node = actual;
@@ -2464,7 +2487,11 @@ anydata_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, actual,
                                     }
 
 anydata_stmt: ANYDATA_KEYWORD sep anydata_arg_str anyxml_end
-              { LOGDBG("YANG: finished parsing anydata statement \"%s\"", data_node->name); }
+              { LOGDBG("YANG: finished parsing anydata statement \"%s\"", data_node->name);
+                actual_type = $3.token;
+                actual = $3.actual;
+                data_node = $3.actual;
+              }
 
 anyxml_end: ';'
   |  '{' stmtsep
