@@ -4573,7 +4573,6 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
         /* common part for all extension types */
         (*ext)->def = e;
         (*ext)->parent = info->parent;
-        (*ext)->module = info->mod;
         (*ext)->parent_type = info->parent_type;
         (*ext)->substmt = info->substmt;
         (*ext)->substmt_index = info->substmt_index;
@@ -4621,6 +4620,7 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
             }
             break;
         case LYEXT_COMPLEX:
+            ((struct lys_ext_instance_complex*)(*ext))->module = info->mod;
             if (lyp_yin_parse_complex_ext(info->mod, (struct lys_ext_instance_complex*)(*ext), info->data.yin, unres)) {
                 /* TODO memory cleanup */
                 return -1;
@@ -4688,7 +4688,6 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
         free(ext_prefix);
         (*ext)->def = e;
         (*ext)->parent = info->parent;
-        (*ext)->module = info->mod;
         if (yang_check_ext_instance(info->mod, &(*ext)->ext, (*ext)->ext_size, *ext, unres)) {
             return -1;
         }

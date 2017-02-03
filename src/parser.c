@@ -2619,6 +2619,9 @@ lyp_rfn_apply_ext_(struct lys_refine *rfn, struct lys_node *target, LYEXT_SUBSTM
             n = lys_ext_iter(target->ext, target->ext_size, n + 1, substmt);
         } while (n != -1 && substmt == LYEXT_SUBSTMT_SELF && target->ext[n]->def != extdef);
 
+        /* TODO cover complex extension instances
+           ((struct lys_ext_instance_complex*)(target->ext[n])->module = target->module;
+         */
         if (n == -1) {
             /* nothing to replace, we are going to add it - reallocate */
             new = malloc(sizeof **target->ext);
@@ -2639,7 +2642,6 @@ lyp_rfn_apply_ext_(struct lys_refine *rfn, struct lys_node *target, LYEXT_SUBSTM
             n = target->ext_size - 1;
             target->ext[n] = new;
             target->ext[n]->parent = target;
-            target->ext[n]->module = target->module;
             target->ext[n]->parent_type = LYEXT_PAR_NODE;
             target->ext[n]->flags = 0;
             target->ext[n]->substmt = substmt;
@@ -2857,6 +2859,9 @@ lyp_deviate_apply_ext(struct lys_deviate *dev, struct lys_node *target, LYEXT_SU
             } while (n != -1 && substmt == LYEXT_SUBSTMT_SELF && target->ext[n]->def != extdef);
         }
 
+        /* TODO cover complex extension instances
+           ((struct lys_ext_instance_complex*)(target->ext[n])->module = target->module;
+         */
         if (n == -1) {
             /* nothing to replace, we are going to add it - reallocate */
             new = malloc(sizeof **target->ext);
@@ -2894,7 +2899,6 @@ lyp_deviate_apply_ext(struct lys_deviate *dev, struct lys_node *target, LYEXT_SU
         target->ext[n]->arg_value = lydict_insert(ctx, dev->ext[m]->arg_value, 0);
         target->ext[n]->flags = 0;
         target->ext[n]->parent = target;
-        target->ext[n]->module = target->module;
         target->ext[n]->parent_type = LYEXT_PAR_NODE;
         target->ext[n]->substmt = substmt;
         target->ext[n]->substmt_index = dev->ext[m]->substmt_index;

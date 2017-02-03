@@ -1117,6 +1117,8 @@ lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, uint8_t size
 
     (*new) = result = calloc(size, sizeof *result);
     for (u = 0; u < size; u++) {
+        /* TODO cover complex extension instances */
+
         if (orig[u]) {
             /* resolved extension instance, just duplicate it */
             switch(lys_ext_instance_type(orig[u])) {
@@ -1125,6 +1127,7 @@ lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, uint8_t size
                 break;
             case LYEXT_COMPLEX:
                 result[u] = calloc(1, ((struct lyext_plugin_complex*)orig[u]->def->plugin)->instance_size);
+                ((struct lys_ext_instance_complex*)result[u])->module = mod;
                 /* TODO duplicate data in extension instance content */
                 break;
             case LYEXT_ERR:
@@ -1136,7 +1139,6 @@ lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, uint8_t size
             result[u]->flags = 0;
             result[u]->arg_value = lydict_insert(mod->ctx, orig[u]->arg_value, 0);
             result[u]->parent = parent;
-            result[u]->module = mod;
             result[u]->parent_type = parent_type;
             result[u]->substmt = orig[u]->substmt;
             result[u]->substmt_index = orig[u]->substmt_index;
@@ -1427,7 +1429,6 @@ lys_ext_instance_substmt(const struct lys_ext_instance *ext)
     }
 
     switch (ext->substmt) {
-    case LYEXT_SUBSTMT_ALL:
     case LYEXT_SUBSTMT_SELF:
     case LYEXT_SUBSTMT_MODIFIER:
     case LYEXT_SUBSTMT_VERSION:

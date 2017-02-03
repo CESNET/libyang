@@ -481,14 +481,12 @@ struct lys_ext_instance {
                                           LYEXT_SUBSTMT_DEFAULT and LYEXT_SUBSTMT_UNIQUE values of the
                                           ::lys_ext_instance#substmt member. To get the correct pointer to the
                                           data connected with the index, use lys_ext_instance_substmt() */
-    uint32_t padding1;               /**< padding for compatibility with ::lys_node */
+    uint8_t substmt;                 /**< #LYEXT_SUBSTMT - id for the case the extension instance is actually inside
+                                          some of the node's member's (substatements). libyang does not store extension
+                                          instances for all possible statements to save some, commonly unused, space. */
+    uint8_t parent_type;             /**< #LYEXT_PAR - type of the parent structure */
+    uint16_t padding1;               /**< 32b padding */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
-    void * padding2;                 /**< padding for compatibility with ::lys_node */
-    struct lys_module *module;       /**< pointer to the extension instance's module (mandatory) */
-    LYEXT_SUBSTMT substmt;           /**< id for the case the extension instance is actually inside some of the
-                                          node's member's (substatements). libyang does not store extension instances
-                                          for all possible statements to save some, commonly unused, space. */
-    LYEXT_PAR parent_type;           /**< type of the parent structure */
 };
 
 /**
@@ -511,16 +509,16 @@ struct lys_ext_instance_complex {
                                           LYEXT_SUBSTMT_DEFAULT and LYEXT_SUBSTMT_UNIQUE values of the
                                           ::lys_ext_instance#substmt member. To get the correct pointer to the
                                           data connected with the index, use lys_ext_instance_substmt() */
-    uint32_t padding1;               /**< padding for compatibility with ::lys_node */
+    uint8_t substmt;                 /**< #LYEXT_SUBSTMT - id for the case the extension instance is actually inside
+                                          some of the node's member's (substatements). libyang does not store extension
+                                          instances for all possible statements to save some, commonly unused, space. */
+    uint8_t parent_type;             /**< #LYEXT_PAR - type of the parent structure */
+    uint16_t padding1;               /**< 32b padding */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
-    void * padding2;                 /**< padding for compatibility with ::lys_node */
-    struct lys_module *module;       /**< pointer to the extension instance's module (mandatory) */
-    LYEXT_SUBSTMT substmt;           /**< id for the case the extension instance is actually inside some of the
-                                          node's member's (substatements). libyang does not store extension instances
-                                          for all possible statements to save some, commonly unused, space. */
-    LYEXT_PAR parent_type;           /**< type of the parent structure */
 
     /* to this point the structure is compatible with the generic ::lys_ext_instance structure */
+    void * padding2;                 /**< padding for compatibility placement of the module member */
+    struct lys_module *module;       /**< pointer to the extension instance's module (mandatory) */
     char content[0];                 /**< content of the extension instance */
 };
 
