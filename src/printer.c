@@ -134,7 +134,8 @@ ly_write(struct lyout *out, const char *buf, size_t count)
 }
 
 static int
-write_iff(struct lyout *out, const struct lys_module *module, struct lys_iffeature *expr, int *index_e, int *index_f)
+write_iff(struct lyout *out, const struct lys_module *module, struct lys_iffeature *expr, int module_name_or_prefix,
+          int *index_e, int *index_f)
 {
     int count = 0, brackets_flag = *index_e;
     uint8_t op;
@@ -145,14 +146,18 @@ write_iff(struct lyout *out, const struct lys_module *module, struct lys_iffeatu
     switch (op) {
     case LYS_IFF_F:
         if (lys_main_module(expr->features[*index_f]->module) != lys_main_module(module)) {
-            count += ly_print(out, "%s:", transform_module_name2import_prefix(module, lys_main_module(expr->features[*index_f]->module)->name));
+            if (module_name_or_prefix) {
+                count += ly_print(out, "%s:", lys_main_module(expr->features[*index_f]->module)->name);
+            } else {
+                count += ly_print(out, "%s:", transform_module_name2import_prefix(module, lys_main_module(expr->features[*index_f]->module)->name));
+            }
         }
         count += ly_print(out, expr->features[*index_f]->name);
         (*index_f)++;
         break;
     case LYS_IFF_NOT:
         count += ly_print(out, "not ");
-        count += write_iff(out, module, expr, index_e, index_f);
+        count += write_iff(out, module, expr, module_name_or_prefix, index_e, index_f);
         break;
     case LYS_IFF_AND:
         if (brackets_flag) {
@@ -166,9 +171,9 @@ write_iff(struct lyout *out, const struct lys_module *module, struct lys_iffeatu
         if (brackets_flag) {
             count += ly_print(out, "(");
         }
-        count += write_iff(out, module, expr, index_e, index_f);
+        count += write_iff(out, module, expr, module_name_or_prefix, index_e, index_f);
         count += ly_print(out, " %s ", op == LYS_IFF_OR ? "or" : "and");
-        count += write_iff(out, module, expr, index_e, index_f);
+        count += write_iff(out, module, expr, module_name_or_prefix, index_e, index_f);
         if (brackets_flag) {
             count += ly_print(out, ")");
         }
@@ -178,12 +183,12 @@ write_iff(struct lyout *out, const struct lys_module *module, struct lys_iffeatu
 }
 
 int
-ly_print_iffeature(struct lyout *out, const struct lys_module *module, struct lys_iffeature *expr)
+ly_print_iffeature(struct lyout *out, const struct lys_module *module, struct lys_iffeature *expr, int module_name_or_prefix)
 {
     int index_e = 0, index_f = 0;
 
     if (expr->expr) {
-        return write_iff(out, module, expr, &index_e, &index_f);
+        return write_iff(out, module, expr, module_name_or_prefix, &index_e, &index_f);
     }
 
     return 0;

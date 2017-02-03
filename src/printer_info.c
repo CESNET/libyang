@@ -159,11 +159,11 @@ info_print_if_feature(struct lyout *out, const struct lys_module *module,
     ly_print(out, "%-*s", INDENT_LEN, "If-feats: ");
 
     if (iffeature_size) {
-        ly_print_iffeature(out, module, &iffeature[0]);
+        ly_print_iffeature(out, module, &iffeature[0], 1);
         ly_print(out, "\n");
         for (i = 1; i < iffeature_size; ++i) {
             ly_print(out, "%*s", INDENT_LEN, "");
-            ly_print_iffeature(out, module, &iffeature[i]);
+            ly_print_iffeature(out, module, &iffeature[i], 1);
             ly_print(out, "\n");
         }
     } else {

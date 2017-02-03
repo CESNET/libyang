@@ -216,7 +216,7 @@ tree_print_features(struct lyout *out, const struct lys_module *module,
         if (i > 0) {
             ly_print(out, ",");
         }
-        ly_print_iffeature(out, module, &iffeature[i]);
+        ly_print_iffeature(out, module, &iffeature[i], 1);
     }
     ly_print(out, "}?");
 }
