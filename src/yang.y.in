@@ -271,6 +271,11 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <backup_token> uses_arg_str
 %type <backup_token> uses_augment_arg
 %type <backup_token> augment_arg
+%type <backup_token> action_arg_str
+%type <backup_token> rpc_arg_str
+%type <backup_token> input_arg
+%type <backup_token> output_arg
+%type <backup_token> notification_arg_str
 
 %destructor { free($$); } pattern_arg_str string_opt_part1 semicolom curly_bracket_open
 %destructor { free(($$) ? *$$ : NULL); } tmp_string
@@ -1263,6 +1268,10 @@ message_opt_stmt: @EMPTYDIR@ { switch (actual_type) {
                                  break;
                                case RANGE_KEYWORD:
                                  $$ = "range";
+                                 break;
+                               default:
+                                 LOGINT;
+                                 YYABORT;
                                  break;
                                }
                              }
@@ -3013,25 +3022,39 @@ action_arg_str: identifier_arg_str { if (param->module->version != 2) {
                                        free(s);
                                        YYABORT;
                                      }
+                                     $$.token = actual_type;
+                                     $$.actual = actual;
                                      if (!(actual = yang_read_node(trg, actual, param->node, s, LYS_ACTION, sizeof(struct lys_node_rpc_action)))) {
                                        YYABORT;
                                      }
                                      data_node = actual;
                                      s = NULL;
+                                     actual_type = ACTION_KEYWORD;
                                    }
 
 action_stmt: ACTION_KEYWORD sep action_arg_str rpc_end 
-             { LOGDBG("YANG: finished parsing action statement \"%s\"", data_node->name); }
+             { LOGDBG("YANG: finished parsing action statement \"%s\"", data_node->name);
+               actual_type = $3.token;
+               actual = $3.actual;
+               data_node = $3.actual;
+             }
 
-rpc_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, NULL, param->node, s, LYS_RPC, sizeof(struct lys_node_rpc_action)))) {
+rpc_arg_str: identifier_arg_str { $$.token = actual_type;
+                                  $$.actual = actual;
+                                  if (!(actual = yang_read_node(trg, NULL, param->node, s, LYS_RPC, sizeof(struct lys_node_rpc_action)))) {
                                     YYABORT;
                                   }
                                   data_node = actual;
                                   s = NULL;
+                                  actual_type = RPC_KEYWORD;
                                 }
 
 rpc_stmt: RPC_KEYWORD sep rpc_arg_str rpc_end
-          { LOGDBG("YANG: finished parsing rpc statement \"%s\"", data_node->name); }
+          { LOGDBG("YANG: finished parsing rpc statement \"%s\"", data_node->name);
+            actual_type = $3.token;
+            actual = $3.actual;
+            data_node = $3.actual;
+          }
 
 rpc_end: ';'
   |  '{' stmtsep
@@ -3060,7 +3083,6 @@ rpc_end: ';'
 
 rpc_opt_stmt: @EMPTYDIR@ { $$.node.ptr_rpc = actual;
                            $$.node.flag = 0;
-                           actual_type = RPC_KEYWORD;
                          }
   |  rpc_opt_stmt if_feature_stmt { YANG_ADDELEM($1.node.ptr_rpc->iffeature,
                                                  $1.node.ptr_rpc->iffeature_size);
@@ -3114,40 +3136,48 @@ rpc_opt_stmt: @EMPTYDIR@ { $$.node.ptr_rpc = actual;
                               }
      stmtsep { $$ = $1; }
 
-input_stmt: INPUT_KEYWORD optsep { s = strdup("input");
-                                   if (!s) {
-                                     LOGMEM;
-                                     YYABORT;
-                                   }
-                                   if (!(actual = yang_read_node(trg, actual, param->node, s, LYS_INPUT, sizeof(struct lys_node_inout)))) {
-                                     YYABORT;
-                                   }
-                                   data_node = actual;
-                                   s = NULL;
-                                 }
+input_arg: INPUT_KEYWORD optsep { $$.token = actual_type;
+                                  $$.actual = actual;
+                                  s = strdup("input");
+                                  if (!s) {
+                                    LOGMEM;
+                                    YYABORT;
+                                  }
+                                  if (!(actual = yang_read_node(trg, actual, param->node, s, LYS_INPUT, sizeof(struct lys_node_inout)))) {
+                                    YYABORT;
+                                  }
+                                  data_node = actual;
+                                  s = NULL;
+                                  actual_type = INPUT_KEYWORD;
+                                }
+
+input_stmt: input_arg
             '{' stmtsep
                 input_output_opt_stmt
             '}' { void *tmp;
 
-                  if ($6.inout->must_size) {
-                    tmp = realloc($6.inout->must, $6.inout->must_size * sizeof *$6.inout->must);
+                  if ($4.inout->must_size) {
+                    tmp = realloc($4.inout->must, $4.inout->must_size * sizeof *$4.inout->must);
                     if (!tmp) {
                       LOGMEM;
                       YYABORT;
                     }
-                    $6.inout->must = tmp;
+                    $4.inout->must = tmp;
                   }
 
-                  if ($6.inout->tpdf_size) {
-                    tmp = realloc($6.inout->tpdf, $6.inout->tpdf_size * sizeof *$6.inout->tpdf);
+                  if ($4.inout->tpdf_size) {
+                    tmp = realloc($4.inout->tpdf, $4.inout->tpdf_size * sizeof *$4.inout->tpdf);
                     if (!tmp) {
                       LOGMEM;
                       YYABORT;
                     }
-                    $6.inout->tpdf = tmp;
+                    $4.inout->tpdf = tmp;
                   }
 
                   LOGDBG("YANG: finished parsing input statement \"%s\"", data_node->name);
+                  actual_type = $1.token;
+                  actual = $1.actual;
+                  data_node = $1.actual;
                 }
 
 input_output_opt_stmt: @EMPTYDIR@ { $$.inout = actual;
@@ -3172,49 +3202,65 @@ input_output_opt_stmt: @EMPTYDIR@ { $$.inout = actual;
                                          }
      stmtsep
 
-output_stmt: OUTPUT_KEYWORD optsep { s = strdup("output");
-                                     if (!s) {
-                                       LOGMEM;
-                                       YYABORT;
-                                     }
-                                     if (!(actual = yang_read_node(trg, actual, param->node, s, LYS_OUTPUT, sizeof(struct lys_node_inout)))) {
-                                       YYABORT;
-                                     }
-                                     data_node = actual;
-                                     s = NULL;
-                                   }
+output_arg: OUTPUT_KEYWORD optsep { $$.token = actual_type;
+                                    $$.actual = actual;
+                                    s = strdup("output");
+                                    if (!s) {
+                                      LOGMEM;
+                                      YYABORT;
+                                    }
+                                    if (!(actual = yang_read_node(trg, actual, param->node, s, LYS_OUTPUT, sizeof(struct lys_node_inout)))) {
+                                      YYABORT;
+                                    }
+                                    data_node = actual;
+                                    s = NULL;
+                                    actual_type = OUTPUT_KEYWORD;
+                                  }
+
+output_stmt: output_arg
              '{' stmtsep
                  input_output_opt_stmt
              '}' { void *tmp;
 
-                   if ($6.inout->must_size) {
-                     tmp = realloc($6.inout->must, $6.inout->must_size * sizeof *$6.inout->must);
+                   if ($4.inout->must_size) {
+                     tmp = realloc($4.inout->must, $4.inout->must_size * sizeof *$4.inout->must);
                      if (!tmp) {
                        LOGMEM;
                        YYABORT;
                      }
-                     $6.inout->must = tmp;
+                     $4.inout->must = tmp;
                    }
 
-                   if ($6.inout->tpdf_size) {
-                     tmp = realloc($6.inout->tpdf, $6.inout->tpdf_size * sizeof *$6.inout->tpdf);
+                   if ($4.inout->tpdf_size) {
+                     tmp = realloc($4.inout->tpdf, $4.inout->tpdf_size * sizeof *$4.inout->tpdf);
                      if (!tmp) {
                        LOGMEM;
                        YYABORT;
                      }
-                     $6.inout->tpdf = tmp;
+                     $4.inout->tpdf = tmp;
                    }
 
                    LOGDBG("YANG: finished parsing output statement \"%s\"", data_node->name);
+                   actual_type = $1.token;
+                   actual = $1.actual;
+                   data_node = $1.actual;
                  }
 
-notification_arg_str: identifier_arg_str { if (!(actual = yang_read_node(trg, actual, param->node, s, LYS_NOTIF, sizeof(struct lys_node_notif)))) {
+notification_arg_str: identifier_arg_str { $$.token = actual_type;
+                                           $$.actual = actual;
+                                           if (!(actual = yang_read_node(trg, actual, param->node, s, LYS_NOTIF, sizeof(struct lys_node_notif)))) {
                                              YYABORT;
                                            }
                                            data_node = actual;
+                                           actual_type = NOTIFICATION_KEYWORD;
                                          }
 
 notification_stmt: NOTIFICATION_KEYWORD sep notification_arg_str notification_end
+                   { LOGDBG("YANG: finished parsing notification statement \"%s\"", data_node->name);
+                     actual_type = $3.token;
+                     actual = $3.actual;
+                     data_node = $3.actual;
+                   }
 
 notification_end: ';'
   |  '{' stmtsep
@@ -3247,8 +3293,6 @@ notification_end: ';'
              }
              $3.notif->tpdf = tmp;
            }
-
-           LOGDBG("YANG: finished parsing notification statement \"%s\"", data_node->name);
           }
 
 notification_opt_stmt: @EMPTYDIR@ { $$.notif = actual;
