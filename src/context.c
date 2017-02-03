@@ -171,8 +171,11 @@ ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_n
     }
 
     /* models list */
-    for (i = 0; i < ctx->models.used; ++i) {
-        lys_free(ctx->models.list[i], private_destructor, 0);
+    for (i = ctx->models.used; i > 0; i--) {
+        /* remove the applied deviations and augments */
+        lys_sub_module_remove_devs_augs(ctx->models.list[i - 1]);
+        /* remove the module */
+        lys_free(ctx->models.list[i - 1], private_destructor, 0);
     }
     free(ctx->models.search_path);
     free(ctx->models.list);
@@ -984,9 +987,13 @@ ly_ctx_clean(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_nod
     }
 
     /* models list */
-    for (i = INTERNAL_MODULES_COUNT; i < ctx->models.used; ++i) {
-        lys_free(ctx->models.list[i], private_destructor, 0);
-        ctx->models.list[i] = NULL;
+    for (i = ctx->models.used; i > INTERNAL_MODULES_COUNT; i--) {
+        /* remove the applied deviations and augments */
+        lys_sub_module_remove_devs_augs(ctx->models.list[i - 1]);
+        /* remove the module */
+        lys_free(ctx->models.list[i - 1], private_destructor, 0);
+        /* clean it for safer future use */
+        ctx->models.list[i - 1] = NULL;
     }
     ctx->models.used = INTERNAL_MODULES_COUNT;
     ctx->models.module_set_id++;
