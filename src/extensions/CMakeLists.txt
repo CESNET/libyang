@@ -6,3 +6,4 @@ macro(EXTENSION_PLUGIN PLUGIN_NAME SRCS)
 endmacro(EXTENSION_PLUGIN)
 
 EXTENSION_PLUGIN(nacm "nacm.c")
+EXTENSION_PLUGIN(metadata "metadata.c")
