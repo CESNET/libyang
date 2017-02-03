@@ -61,6 +61,11 @@ int lyp_yin_fill_ext(void *parent, LYEXT_PAR parent_type, LYEXT_SUBSTMT substmt,
                      struct lys_module *module, struct lyxml_elem *yin, struct lys_ext_instance ***ext,
                      uint8_t ext_index, struct unres_schema *unres);
 
+int lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_complex *ext,
+                              struct lyxml_elem *yin, struct unres_schema *unres);
+int lyp_yin_parse_subnode_ext(struct lys_module *mod, void *elem, LYEXT_PAR elem_type,
+                              struct lyxml_elem *yin, LYEXT_SUBSTMT type, uint8_t i, struct unres_schema *unres);
+
 struct lys_module *lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
                                    const char *revision, int implement, struct unres_schema *unres);
 

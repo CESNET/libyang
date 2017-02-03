@@ -22,6 +22,11 @@ extern "C" {
 #endif
 
 /**
+ * @addtogroup extensions
+ * @{
+ */
+
+/**
  * @brief Callback to check that the extension can be instantiated inside the provided node
  *
  * @param[in] parent The parent of the instantiated extension.
@@ -70,6 +75,24 @@ struct lyext_plugin {
                                                    the provided node */
 };
 
+struct lyext_plugin_complex {
+    LYEXT_TYPE type;                          /**< type of the extension, according to it the structure will be casted */
+    uint16_t flags;                           /**< [extension flags](@ref extflags) */
+
+    lyext_check_position_clb check_position;  /**< callbcak for testing that the extension can be instantiated
+                                                   under the provided parent. Mandatory callback. */
+    lyext_check_result_clb check_result;      /**< callback for testing if the argument value of the extension instance
+                                                   is valid. Mandatory if the extension has the argument. */
+    lyext_check_inherit_clb check_inherit;    /**< callback to decide if the extension is supposed to be inherited into
+                                                   the provided node */
+    struct lyext_substmt *substmt;            /**< NULL-terminated array of allowed substatements and restrictions
+                                                   to their instantiation inside the extension instance */
+    size_t instance_size;                     /**< size of the instance structure to allocate, the structure is
+                                                   is provided as ::lys_ext_instance_complex, but the content array
+                                                   is accessed according to the substmt specification provided by
+                                                   plugin */
+};
+
 struct lyext_plugin_list {
     const char *module;          /**< name of the module where the extension is defined */
     const char *revision;        /**< optional module revision - if not specified, the plugin applies to any revision,
@@ -81,15 +104,9 @@ struct lyext_plugin_list {
     struct lyext_plugin *plugin; /**< plugin for the extension */
 };
 
-#if 0
-// future use
-struct lyext_substmt_info {
-    uint8_t cardinality;  /**< allowed cardinality of the substatement */
-    uint16_t number;      /**< real number of the substatements (e.g. size of the allocated array) */
-    size_t offset;        /**< offset of the stored substatement structure/value/pointer-to */
-};
-#endif
-
+/**
+ * @}
+ */
 
 #ifdef __cplusplus
 }

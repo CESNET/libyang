@@ -4484,12 +4484,11 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
     enum LY_VLOG_ELEM vlog_type;
     void *vlog_node;
     unsigned int i, j;
-    int c_ext = -1, rc;
     struct lys_ext *e;
-    const char *value;
     char *ext_name, *ext_prefix, *tmp;
     struct lyxml_elem *next_yin, *yin;
     const struct lys_module *mod;
+    LYEXT_TYPE etype;
 
     switch (info->parent_type) {
     case LYEXT_PAR_NODE:
@@ -4509,6 +4508,8 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
     }
 
     if (info->datatype == LYS_IN_YIN) {
+        /* YIN */
+
         /* get the module where the extension is supposed to be defined */
         mod = lys_get_import_module_ns(info->mod, info->data.yin->ns->value);
         if (!mod) {
@@ -4549,10 +4550,46 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
             }
         }
 
-        /* common part, even if there is no plugin */
-        if (e->flags & LYS_YINELEM) {
-            value = NULL;
-            c_ext = 0;
+        /* extension type-specific part - allocation */
+        if (e->plugin) {
+            etype = e->plugin->type;
+        } else {
+            /* default type */
+            etype = LYEXT_FLAG;
+        }
+        switch (etype) {
+        case LYEXT_FLAG:
+            (*ext) = calloc(1, sizeof(struct lys_ext_instance));
+            break;
+        case LYEXT_COMPLEX:
+            (*ext) = calloc(1, ((struct lyext_plugin_complex*)e->plugin)->instance_size);
+            break;
+        case LYEXT_ERR:
+            /* we never should be here */
+            LOGINT;
+            return -1;
+        }
+
+        /* common part for all extension types */
+        (*ext)->def = e;
+        (*ext)->parent = info->parent;
+        (*ext)->module = info->mod;
+        (*ext)->parent_type = info->parent_type;
+        (*ext)->substmt = info->substmt;
+        (*ext)->substmt_index = info->substmt_index;
+
+        if (!(e->flags & LYS_YINELEM) && e->argument) {
+            (*ext)->arg_value = lyxml_get_attr(info->data.yin, e->argument, NULL);
+            if (!(*ext)->arg_value) {
+                LOGVAL(LYE_MISSARG, LY_VLOG_NONE, NULL, e->argument, info->data.yin->name);
+                return -1;
+            }
+            (*ext)->arg_value = lydict_insert(mod->ctx, (*ext)->arg_value, 0);
+        }
+
+        /* extension type-specific part - parsing content */
+        switch (etype) {
+        case LYEXT_FLAG:
             LY_TREE_FOR_SAFE(info->data.yin->child, next_yin, yin) {
                 if (!yin->ns) {
                     /* garbage */
@@ -4562,81 +4599,42 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
                     /* standard YANG statements are not expected here */
                     LOGVAL(LYE_INCHILDSTMT, vlog_type, vlog_node, yin->name, info->data.yin->name);
                     return -1;
-                } else if (yin->ns == info->data.yin->ns && ly_strequal(yin->name, e->argument, 1)) {
+                } else if (yin->ns == info->data.yin->ns &&
+                        (e->flags & LYS_YINELEM) && ly_strequal(yin->name, e->argument, 1)) {
                     /* we have the extension's argument */
-                    if (value) {
+                    if ((*ext)->arg_value) {
                         LOGVAL(LYE_TOOMANY, vlog_type, vlog_node, yin->name, info->data.yin->name);
                         return -1;
                     }
-                    value = yin->content;
+                    (*ext)->arg_value = yin->content;
                     yin->content = NULL;
                     lyxml_free(mod->ctx, yin);
                 } else {
-                    /* possible extension instance, processed later */
-                    c_ext++;
-                    continue;
-                }
-            }
-            if (!value) {
-                LOGVAL(LYE_MISSCHILDSTMT, vlog_type, vlog_node, e->argument, info->data.yin->name);
-                return -1;
-            }
-        } else if (e->argument) {
-            value = lyxml_get_attr(info->data.yin, e->argument, NULL);
-            if (!value) {
-                LOGVAL(LYE_MISSARG, LY_VLOG_NONE, NULL, e->argument, info->data.yin->name);
-                return -1;
-            }
-            value = lydict_insert(mod->ctx, value, 0);
-        } else {
-            value = NULL;
-        }
-        (*ext) = calloc(1, sizeof(struct lys_ext_instance));
-        ((struct lys_ext_instance *)(*ext))->def = e;
-        ((struct lys_ext_instance *)(*ext))->arg_value = value;
-        ((struct lys_ext_instance *)(*ext))->parent = info->parent;
-        ((struct lys_ext_instance *)(*ext))->parent_type = info->parent_type;
-        ((struct lys_ext_instance *)(*ext))->substmt = info->substmt;
-        ((struct lys_ext_instance *)(*ext))->substmt_index = info->substmt_index;
+                    /* extension instance */
+                    if (lyp_yin_parse_subnode_ext(info->mod, *ext, LYEXT_PAR_EXTINST, yin,
+                                                  LYEXT_SUBSTMT_SELF, 0, unres)) {
+                        return -1;
+                    }
 
-        /* extension instances in extension */
-        if (c_ext == -1) {
-            c_ext = 0;
-            /* first, we have to count them */
-            LY_TREE_FOR_SAFE(info->data.yin->child, next_yin, yin) {
-                if (!yin->ns) {
-                    /* garbage */
-                    lyxml_free(mod->ctx, yin);
                     continue;
-                } else if (strcmp(yin->ns->value, LY_NSYIN)) {
-                    /* possible extension instance */
-                    c_ext++;
-                } else {
-                    /* unexpected statement */
-                    LOGVAL(LYE_INCHILDSTMT, vlog_type, vlog_node, yin->name, info->data.yin->name);
-                    return -1;
                 }
             }
-        }
-        if (c_ext) {
-            (*ext)->ext = calloc(c_ext, sizeof *(*ext)->ext);
-            if (!(*ext)->ext) {
-                LOGMEM;
+            break;
+        case LYEXT_COMPLEX:
+            if (lyp_yin_parse_complex_ext(info->mod, (struct lys_ext_instance_complex*)(*ext), info->data.yin, unres)) {
+                /* TODO memory cleanup */
                 return -1;
             }
-            LY_TREE_FOR_SAFE(info->data.yin->child, next_yin, yin) {
-                rc = lyp_yin_fill_ext(*ext, LYEXT_PAR_EXTINST, LYEXT_SUBSTMT_SELF, 0, (struct lys_module *)mod, yin,
-                                      &(*ext)->ext, (*ext)->ext_size, unres);
-                (*ext)->ext_size++;
-                if (rc == -1) {
-                    return EXIT_FAILURE;
-                }
-            }
+            break;
+        default:
+            break;
         }
 
         /* TODO - lyext_check_result_clb, other than LYEXT_FLAG plugins */
 
     } else {
+        /* YANG */
+
         ext_prefix = (char *)(*ext)->def;
         tmp = strchr(ext_prefix, ':');
         if (!tmp) {
@@ -4690,6 +4688,7 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
         free(ext_prefix);
         (*ext)->def = e;
         (*ext)->parent = info->parent;
+        (*ext)->module = info->mod;
         if (yang_check_ext_instance(info->mod, &(*ext)->ext, (*ext)->ext_size, *ext, unres)) {
             return -1;
         }
@@ -4958,7 +4957,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
             }
             for (k = 0, j = *old_size; k < rfn->must_size; k++, j++) {
                 must[j].ext_size = rfn->must[k].ext_size;
-                lys_ext_dup(ctx, rfn->must[k].ext, rfn->must[k].ext_size, &rfn->must[k], LYEXT_PAR_RESTR,
+                lys_ext_dup(rfn->module, rfn->must[k].ext, rfn->must[k].ext_size, &rfn->must[k], LYEXT_PAR_RESTR,
                             &must[j].ext, unres);
                 must[j].expr = lydict_insert(ctx, rfn->must[k].expr, 0);
                 must[j].dsc = lydict_insert(ctx, rfn->must[k].dsc, 0);
@@ -6299,7 +6298,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
                           struct unres_schema *unres, int final_fail)
 {
     /* has_str - whether the str_snode is a string in a dictionary that needs to be freed */
-    int rc = -1, has_str = 0, tpdf_flag = 0, i, k;
+    int rc = -1, has_str = 0, parent_type = 0, i, k;
     unsigned int j;
     struct lys_node *root, *next, *node, *par_grp;
     const char *expr;
@@ -6341,7 +6340,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
          * case, the path has to contain absolute path, so we let the resolve_path_arg_schema()
          * know it via tpdf_flag */
         if (!node) {
-            tpdf_flag = 1;
+            parent_type = 1;
             node = (struct lys_node *)stype->parent;
         }
 
@@ -6351,9 +6350,9 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
             rc = 0;
             break;
         }
-        rc = resolve_path_arg_schema(stype->info.lref.path, node, tpdf_flag,
+        rc = resolve_path_arg_schema(stype->info.lref.path, node, parent_type,
                                      (const struct lys_node **)&stype->info.lref.target);
-        if (!tpdf_flag && !rc) {
+        if (!parent_type && !rc) {
             assert(stype->info.lref.target);
             /* check if leafref and its target are under a common if-features */
             rc = check_leafref_features(stype);
@@ -6368,8 +6367,11 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         }
 
         break;
+    case UNRES_TYPE_DER_EXT:
+        parent_type++;
+        /* no break */
     case UNRES_TYPE_DER_TPDF:
-        tpdf_flag = 1;
+        parent_type++;
         /* no break */
     case UNRES_TYPE_DER:
         /* parent */
@@ -6382,7 +6384,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
 
         if (yin->flags & LY_YANG_STRUCTURE_FLAG) {
             yang = (struct yang_type *)yin;
-            rc = yang_check_type(mod, node, yang, stype, tpdf_flag, unres);
+            rc = yang_check_type(mod, node, yang, stype, parent_type, unres);
 
             if (rc) {
                 /* may try again later */
@@ -6394,7 +6396,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
             }
 
         } else {
-            rc = fill_yin_type(mod, node, yin, stype, tpdf_flag, unres);
+            rc = fill_yin_type(mod, node, yin, stype, parent_type, unres);
             if (!rc) {
                 /* we need to always be able to free this, it's safe only in this case */
                 lyxml_free(mod->ctx, yin);
@@ -6405,7 +6407,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         }
         if (rc == EXIT_SUCCESS) {
             /* it does not make sense to have leaf-list of empty type */
-            if (!tpdf_flag && node->nodetype == LYS_LEAFLIST && stype->base == LY_TYPE_EMPTY) {
+            if (!parent_type && node->nodetype == LYS_LEAFLIST && stype->base == LY_TYPE_EMPTY) {
                 LOGWRN("The leaf-list \"%s\" is of \"empty\" type, which does not make sense.", node->name);
             }
         } else if (rc == EXIT_FAILURE && stype->base != LY_TYPE_ERR) {
@@ -6681,6 +6683,7 @@ print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node)
         LOGVRB("Resolving %s \"%s\" failed, it will be attempted later.", "leafref",
                ((struct lys_type *)item)->info.lref.path);
         break;
+    case UNRES_TYPE_DER_EXT:
     case UNRES_TYPE_DER_TPDF:
     case UNRES_TYPE_DER:
         xml = (struct lyxml_elem *)((struct lys_type *)item)->der;

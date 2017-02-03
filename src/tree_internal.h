@@ -209,7 +209,7 @@ struct lys_node *lys_node_dup(struct lys_module *module, struct lys_node *parent
 /**
  * @brief duplicate the list of extension instances.
  *
- * @param[in] ctx Context where we are
+ * @param[in] mod Module where we are
  * @param[in] orig list of the extension instances to duplicate, the size of the array must correspond with \p size
  * @param[in] size number of items in \p old array to duplicate
  * @param[in] parent Parent structure of the new extension instances list
@@ -218,7 +218,7 @@ struct lys_node *lys_node_dup(struct lys_module *module, struct lys_node *parent
  * @param[in] unres list of unresolved items
  *
  */
-int lys_ext_dup(struct ly_ctx *ctx, struct lys_ext_instance **orig, uint8_t size,
+int lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, uint8_t size,
                 void *parent, LYEXT_PAR parent_type, struct lys_ext_instance ***new, struct unres_schema *unres);
 
 /**

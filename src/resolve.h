@@ -27,6 +27,7 @@ enum UNRES_ITEM {
     UNRES_IFFEAT,        /* unresolved if-feature */
     UNRES_TYPE_DER,      /* unresolved derived type defined in leaf/leaflist */
     UNRES_TYPE_DER_TPDF, /* unresolved derived type defined as typedef */
+    UNRES_TYPE_DER_EXT,
     UNRES_TYPE_LEAFREF,  /* check leafref value */
     UNRES_AUGMENT,       /* unresolved augment targets */
     UNRES_CHOICE_DFLT,   /* check choice default case */

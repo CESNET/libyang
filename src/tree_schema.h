@@ -228,13 +228,111 @@ typedef enum lys_nodetype {
  */
 
 /**
+ * @brief List of YANG statements
+ *
+ * Note that the storage type/structure in the values description are used in case of #LY_STMT_CARD_OPT or
+ * #LY_STMT_CARD_MAND. In other cases, the data are stored as a pointer to the NULL-terminated array of pointers:
+ *
+ *     char*     -> char**
+ *     lys_type* -> lys_type**
+ *
+ * There are some items, that are not, in case of multiple instances, stored as an array.
+ * 1. The value is ORed with the previous value in the storage. Initial value is 0. This is the case of
+ *    e.g. #LY_STMT_STATUS.
+ * 2. The lys_node_* data types are stored as a data tree, so in case of multiple instances, they are stored
+ *    as siblings to the first node.
+ */
+typedef enum {
+    LY_STMT_ACTION = 1,
+    LY_STMT_ANYDATA,      /**< stored as ::lys_node_anydata*, covers also anyxml-stmt from YANG 1.0 */
+/*  LY_STMT_ANYXML - replaced by ANYDATA */
+    LY_STMT_ARGUMENT,
+    LY_STMT_AUGMENT,
+    LY_STMT_BASE,
+    LY_STMT_BELONGSTO, /* belongs-to */
+    LY_STMT_BIT,
+    LY_STMT_CASE,
+    LY_STMT_CHOICE,
+    LY_STMT_CONFIG,
+    LY_STMT_CONTACT,
+    LY_STMT_CONTAINER,
+    LY_STMT_DEFAULT,
+    LY_STMT_DESCRIPTION,  /**< stored as __const char*__ */
+    LY_STMT_DEVIATE,
+    LY_STMT_DEVIATION,
+    LY_STMT_ENUM,
+    LY_STMT_ERRTAG, /* error-app-tag */
+    LY_STMT_ERRMSG, /* error-message */
+    LY_STMT_EXTENSION,
+    LY_STMT_FEATURE,
+    LY_STMT_DIGITS, /* fraction-digits */
+    LY_STMT_GROUPING,
+    LY_STMT_IDENTITY,
+    LY_STMT_IFFEATURE,    /**< if-feature, stored as ::lys_iffeature* */
+    LY_STMT_IMPORT,
+    LY_STMT_INCLUDE,
+    LY_STMT_INPUT,
+    LY_STMT_KEY,
+    LY_STMT_LEAF,
+    LY_STMT_LEAFLIST, /* leaf-list */
+    LY_STMT_LENGTH,
+    LY_STMT_LIST,
+    LY_STMT_MANDATORY,
+    LY_STMT_MAX, /* max-elements */
+    LY_STMT_MIN, /* min-elements */
+    LY_STMT_MODIFIER,
+    LY_STMT_MODULE,
+    LY_STMT_MUST,
+    LY_STMT_NAMESPACE,
+    LY_STMT_NOTIFICATION,
+    LY_STMT_ORDEREDBY, /* ordered-by */
+    LY_STMT_ORG, /* organization */
+    LY_STMT_OUTPUT,
+    LY_STMT_PATH,
+    LY_STMT_PATTERN,
+    LY_STMT_POSITION,
+    LY_STMT_PREFIX,
+    LY_STMT_PRESENCE,
+    LY_STMT_RANGE,
+    LY_STMT_REFERENCE,    /**< stored as __const char*__ */
+    LY_STMT_REFINE,
+    LY_STMT_REQINSTANCE, /* require-instance */
+    LY_STMT_REVISION,
+    LY_STMT_REVISIONDATE, /* revision-date */
+    LY_STMT_RPC,
+    LY_STMT_STATUS,       /**< stored as __uint16_t__ value (ORed with the previous value) */
+    LY_STMT_SUBMODULE,
+    LY_STMT_TYPE,         /**< stored as ::lys_type* */
+    LY_STMT_TYPEDEF,
+    LY_STMT_UNIQUE,
+    LY_STMT_UNITS,        /**< stored as __const char*__ */
+    LY_STMT_USES,
+    LY_STMT_VALUE,
+    LY_STMT_WHEN,
+    LY_STMT_VERSION, /* yang-version */
+    LY_STMT_YINELEM /* yin-element */
+} LY_STMT;
+
+typedef enum {
+    LY_STMT_CARD_OPT,    /* 0..1 */
+    LY_STMT_CARD_MAND,   /* 1 */
+    LY_STMT_CARD_SOME,   /* 1..n */
+    LY_STMT_CARD_ANY     /* 0..n */
+} LY_STMT_CARD;
+
+/**
  * @brief Extension types
  */
 typedef enum {
     LYEXT_ERR = -1,                /**< error value when #LYEXT_TYPE is expected as return value of a function */
     LYEXT_FLAG = 0,                /**< simple extension with no substatements;
-                                        instances are stored directly as ::lys_ext_instance and no cast is needed;
-                                        plugins are expected directly as ::lyext_plugin and no cast is done */
+                                        instance is stored directly as ::lys_ext_instance and no cast is needed;
+                                        plugin is expected directly as ::lyext_plugin and no cast is done */
+    LYEXT_COMPLEX                  /**< complex extension with YANG substatement(s);
+                                        instance is stored as ::lys_ext_instance_complex to which it can be cast from
+                                        ::lys_ext_instance;
+                                        plugin is expected as ::lyext_plugin_complex to which it can be cast from
+                                        ::lyext_plugin */
 } LYEXT_TYPE;
 
 /**
@@ -338,6 +436,12 @@ typedef enum {
  * @}
  */
 
+struct lyext_substmt {
+    LY_STMT stmt;
+    size_t offset;
+    LY_STMT_CARD cardinality;
+};
+
 /**
  * @brief YANG extension definition
  */
@@ -377,11 +481,47 @@ struct lys_ext_instance {
                                           LYEXT_SUBSTMT_DEFAULT and LYEXT_SUBSTMT_UNIQUE values of the
                                           ::lys_ext_instance#substmt member. To get the correct pointer to the
                                           data connected with the index, use lys_ext_instance_substmt() */
+    uint32_t padding1;               /**< padding for compatibility with ::lys_node */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
+    void * padding2;                 /**< padding for compatibility with ::lys_node */
+    struct lys_module *module;       /**< pointer to the extension instance's module (mandatory) */
     LYEXT_SUBSTMT substmt;           /**< id for the case the extension instance is actually inside some of the
                                           node's member's (substatements). libyang does not store extension instances
                                           for all possible statements to save some, commonly unused, space. */
     LYEXT_PAR parent_type;           /**< type of the parent structure */
+};
+
+/**
+ * @brief Complex extension instance structure
+ *
+ * The structure extends the generic ::lys_ext_instance structure to be able to hold substatements as defined by the
+ * plugin.
+ */
+struct lys_ext_instance_complex {
+    struct lys_ext *def;             /**< definition of the instantiated extension, the plugin's type is #LYEXT_COMPLEX */
+    void *parent;                    /**< pointer to the parent element holding the extension instance(s), use
+                                          ::lys_ext_instance#parent_type to access the schema element */
+    const char *arg_value;           /**< value of the instance's argument, if defined */
+    uint16_t flags;                  /**< [extension flags](@ref extflags) */
+    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint8_t substmt_index;           /**< since some of the substatements can appear multiple times, it is needed to
+                                          keep the position of the specific instance of the substatement which contains
+                                          this extension instance. Order of both, the extension and substatement,
+                                          instances is the same. The index is filled only for LYEXT_SUBSTMT_BASE,
+                                          LYEXT_SUBSTMT_DEFAULT and LYEXT_SUBSTMT_UNIQUE values of the
+                                          ::lys_ext_instance#substmt member. To get the correct pointer to the
+                                          data connected with the index, use lys_ext_instance_substmt() */
+    uint32_t padding1;               /**< padding for compatibility with ::lys_node */
+    struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
+    void * padding2;                 /**< padding for compatibility with ::lys_node */
+    struct lys_module *module;       /**< pointer to the extension instance's module (mandatory) */
+    LYEXT_SUBSTMT substmt;           /**< id for the case the extension instance is actually inside some of the
+                                          node's member's (substatements). libyang does not store extension instances
+                                          for all possible statements to save some, commonly unused, space. */
+    LYEXT_PAR parent_type;           /**< type of the parent structure */
+
+    /* to this point the structure is compatible with the generic ::lys_ext_instance structure */
+    char content[0];                 /**< content of the extension instance */
 };
 
 /**
@@ -449,6 +589,18 @@ LYEXT_TYPE lys_ext_instance_type(struct lys_ext_instance *ext);
  * @return -1 in case the extension is not present in the list, index of the extension in the provided list otherwise
  */
 int lys_ext_instance_presence(struct lys_ext *def, struct lys_ext_instance **ext, uint8_t ext_size);
+
+/**
+ * @brief get pointer to the place where the specified extension's substatement is supposed to be stored in the complex
+ * extension instance.
+ *
+ * @param[in] stmt Substatement to get
+ * @param[in] ext Complex extension instance to be explored.
+ * @param[out] info Optional output parameter providing information about the \p stmt from the plugin.
+ * @return Address of the storage in the \p ext, NULL if the substatement is not allowed in this extension or any other
+ * error (e.g. invalid input data).
+ */
+void *lys_ext_complex_get_substmt(LY_STMT stmt, struct lys_ext_instance_complex *ext, struct lyext_substmt **info);
 
 /**
  * @brief Load the available YANG extensions plugins from the plugin directory (LIBDIR/libyang/).

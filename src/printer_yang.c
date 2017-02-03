@@ -26,6 +26,9 @@
 #define LEVEL (level*2)
 
 static void yang_print_snode(struct lyout *out, int level, const struct lys_node *node, int mask);
+static void yang_print_extension_instances(struct lyout *out, int level, const struct lys_module *module,
+                                           LYEXT_SUBSTMT substmt, uint8_t substmt_index,
+                                           struct lys_ext_instance **ext, unsigned int count);
 
 static void
 yang_encode(struct lyout *out, const char *text, int len)
@@ -132,66 +135,6 @@ yang_print_text(struct lyout *out, int level, const char *name, const char *text
     }
     level--;
 
-}
-
-static void
-yang_print_extension_instances(struct lyout *out, int level, const struct lys_module *module,
-                               LYEXT_SUBSTMT substmt, uint8_t substmt_index,
-                               struct lys_ext_instance **ext, unsigned int count)
-{
-    unsigned int u, x;
-    struct lys_module *mod;
-    const char *prefix = NULL;
-    int flag;
-
-    for (u = 0; u < count; u++) {
-        if (ext[u]->flags & LYEXT_OPT_INHERIT) {
-            /* ignore the inherited extensions which were not explicitely instantiated in the module */
-            continue;
-        } else if (ext[u]->substmt != substmt || ext[u]->substmt_index != substmt_index) {
-            /* do not print the other substatement than the required */
-            continue;
-        }
-
-        mod = lys_main_module(ext[u]->def->module);
-        if (mod == lys_main_module(module)) {
-            prefix = module->prefix;
-        } else {
-            for (x = 0; x < module->imp_size; x++) {
-                if (mod == module->imp[x].module) {
-                    prefix = module->imp[x].prefix;
-                    break;
-                }
-            }
-        }
-
-        flag = 0;
-        ly_print(out, "%*s%s:%s", LEVEL, INDENT, prefix, ext[u]->def->name);
-        /* extension - generic part */
-        if (ext[u]->arg_value) {
-            ly_print(out, " \"%s\"", ext[u]->arg_value);
-        }
-
-        /* extension - type-specific part */
-        switch(lys_ext_instance_type(ext[u])) {
-        case LYEXT_FLAG:
-            /* flag extension - nothing special */
-            break;
-        case LYEXT_ERR:
-            LOGINT;
-            break;
-        }
-
-        /* extensions in extension instance */
-        if (ext[u]->ext_size) {
-            yang_print_open(out, &flag);
-            yang_print_extension_instances(out, level + 1, module, LYEXT_SUBSTMT_SELF, 0,
-                                           ext[u]->ext, ext[u]->ext_size);
-        }
-
-        /* close extension */
-        yang_print_close(out, level, flag);
-    }
 }
 
 static void
@@ -1682,7 +1625,6 @@ yang_print_model(struct lyout *out, const struct lys_module *module)
 {
     unsigned int i;
     int level = 0, p;
-#define LEVEL (level*2)
 
     struct lys_node *node;
 
@@ -1861,5 +1803,160 @@ yang_print_model(struct lyout *out, const struct lys_module *module)
     ly_print_flush(out);
 
     return EXIT_SUCCESS;
-#undef LEVEL
+}
+
+static void
+yang_print_extcomplex_str(struct lyout *out, int level, const struct lys_module *module,
+                         struct lys_ext_instance_complex *ext, LY_STMT stmt, LYEXT_SUBSTMT substmt, int *content)
+{
+    struct lyext_substmt *info;
+    const char **str;
+    int c;
+
+    str = lys_ext_complex_get_substmt(stmt, ext, &info);
+    if (!str || !(*str)) {
+        return;
+    }
+    if (info->cardinality >= LY_STMT_CARD_SOME) {
+        /* we have array */
+        for (str = (const char **)(*str), c = 0; *str; str++, c++) {
+            yang_print_open(out, content);
+            yang_print_substmt(out, level, substmt, c, *str,
+                               module, ext->ext, ext->ext_size);
+        }
+    } else {
+        yang_print_open(out, content);
+        yang_print_substmt(out, level, substmt, 0, *str,
+                           module, ext->ext, ext->ext_size);
+    }
+}
+
+static void
+yang_print_extension_instances(struct lyout *out, int level, const struct lys_module *module,
+                               LYEXT_SUBSTMT substmt, uint8_t substmt_index,
+                               struct lys_ext_instance **ext, unsigned int count)
+{
+    unsigned int u, x;
+    struct lys_module *mod;
+    const char *prefix = NULL, *str;
+    int content, i;
+    struct lyext_plugin_complex *plugin;
+    struct lyext_substmt *info;
+    uint16_t *flags;
+    void **pp;
+
+#define YANG_PRINT_EXTCOMPLEX_STRUCT(STMT, TYPE, FUNC)                                        \
+    pp = lys_ext_complex_get_substmt(STMT, (struct lys_ext_instance_complex *)ext[u], &info); \
+    if (!pp || !(*pp)) { break; }                                                             \
+    if (info->cardinality >= LY_STMT_CARD_SOME) { /* process array */                         \
+        for (pp = *pp; *pp; pp++) {                                                           \
+            yang_print_open(out, &content);                                                   \
+            FUNC(out, level, module, (TYPE *)(*pp));                                          \
+        }                                                                                     \
+    } else { /* single item */                                                                \
+        yang_print_open(out, &content);                                                       \
+        FUNC(out, level, module, (TYPE *)(*pp));                                              \
+    }
+
+    for (u = 0; u < count; u++) {
+        if (ext[u]->flags & LYEXT_OPT_INHERIT) {
+            /* ignore the inherited extensions which were not explicitely instantiated in the module */
+            continue;
+        } else if (ext[u]->substmt != substmt || ext[u]->substmt_index != substmt_index) {
+            /* do not print the other substatement than the required */
+            continue;
+        }
+
+        mod = lys_main_module(ext[u]->def->module);
+        if (mod == lys_main_module(module)) {
+            prefix = module->prefix;
+        } else {
+            for (x = 0; x < module->imp_size; x++) {
+                if (mod == module->imp[x].module) {
+                    prefix = module->imp[x].prefix;
+                    break;
+                }
+            }
+        }
+
+        content = 0;
+        ly_print(out, "%*s%s:%s", LEVEL, INDENT, prefix, ext[u]->def->name);
+        /* extension - generic part */
+        if (ext[u]->arg_value) {
+            ly_print(out, " \"%s\"", ext[u]->arg_value);
+        }
+
+        /* extensions in extension instance */
+        if (ext[u]->ext_size) {
+            yang_print_open(out, &content);
+            yang_print_extension_instances(out, level + 1, module, LYEXT_SUBSTMT_SELF, 0,
+                                           ext[u]->ext, ext[u]->ext_size);
+        }
+
+        /* extension - type-specific part */
+        switch(lys_ext_instance_type(ext[u])) {
+        case LYEXT_FLAG:
+            /* flag extension - nothing special */
+            break;
+        case LYEXT_COMPLEX:
+            plugin = (struct lyext_plugin_complex*)ext[u]->def->plugin; /* shortcut */
+            if (!plugin->substmt) {
+                /* no content */
+                break;
+            }
+            level++;
+            for (i = 0; plugin->substmt[i].stmt; i++) {
+                switch(plugin->substmt[i].stmt) {
+                case LY_STMT_DESCRIPTION:
+                    yang_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
+                                              LY_STMT_DESCRIPTION, LYEXT_SUBSTMT_DESCRIPTION, &content);
+                    break;
+                case LY_STMT_REFERENCE:
+                    yang_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
+                                              LY_STMT_REFERENCE, LYEXT_SUBSTMT_REFERENCE, &content);
+                    break;
+                case LY_STMT_UNITS:
+                    yang_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
+                                              LY_STMT_UNITS, LYEXT_SUBSTMT_UNITS, &content);
+                    break;
+                case LY_STMT_TYPE:
+                    YANG_PRINT_EXTCOMPLEX_STRUCT(LY_STMT_TYPE, struct lys_type, yang_print_type);
+                    break;
+                case LY_STMT_IFFEATURE:
+                    YANG_PRINT_EXTCOMPLEX_STRUCT(LY_STMT_IFFEATURE, struct lys_iffeature, yang_print_iffeature);
+                    break;
+                case LY_STMT_STATUS:
+                    flags = lys_ext_complex_get_substmt(LY_STMT_STATUS, (struct lys_ext_instance_complex *)ext[u],
+                                                        &info);
+                    if (!flags) {
+                        return;
+                    }
+
+                    if (*flags & LYS_STATUS_CURR) {
+                        yang_print_open(out, &content);
+                        str = "current";
+                    } else if (*flags & LYS_STATUS_DEPRC) {
+                        yang_print_open(out, &content);
+                        str = "deprecated";
+                    } else if (*flags & LYS_STATUS_OBSLT) {
+                        yang_print_open(out, &content);
+                        str = "obsolete";
+                    }
+                    yang_print_substmt(out, level, LYEXT_SUBSTMT_STATUS, 0, str, module, ext[u]->ext, ext[u]->ext_size);
+                default:
+                    /* TODO */
+                    break;
+                }
+            }
+            level--;
+            break;
+        case LYEXT_ERR:
+            LOGINT;
+            break;
+        }
+
+        /* close extension */
+        yang_print_close(out, level, content);
+    }
+#undef YANG_PRINT_EXTCOMPLEX_STRUCT
 }
