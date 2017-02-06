@@ -1941,6 +1941,70 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
                         str = "obsolete";
                     }
                     yin_print_substmt(out, level, LYEXT_SUBSTMT_STATUS, 0, str, module, ext[u]->ext, ext[u]->ext_size);
+                case LY_STMT_ARGUMENT:
+                    yin_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
+                                             LY_STMT_ARGUMENT, LYEXT_SUBSTMT_ARGUMENT, &content);
+                    break;
+                case LY_STMT_DEFAULT:
+                    yin_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
+                                             LY_STMT_DEFAULT, LYEXT_SUBSTMT_DEFAULT, &content);
+                    break;
+                case LY_STMT_ERRTAG:
+                    yin_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
+                                             LY_STMT_ERRTAG, LYEXT_SUBSTMT_ERRTAG, &content);
+                    break;
+                case LY_STMT_ERRMSG:
+                    yin_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
+                                             LY_STMT_ERRMSG, LYEXT_SUBSTMT_ERRMSG, &content);
+                    break;
+                case LY_STMT_PREFIX:
+                    yin_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
+                                             LY_STMT_PREFIX, LYEXT_SUBSTMT_PREFIX, &content);
+                    break;
+                case LY_STMT_NAMESPACE:
+                    yin_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
+                                             LY_STMT_NAMESPACE, LYEXT_SUBSTMT_NAMESPACE, &content);
+                    break;
+                case LY_STMT_PRESENCE:
+                    yin_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
+                                             LY_STMT_PRESENCE, LYEXT_SUBSTMT_PRESENCE, &content);
+                    break;
+                case LY_STMT_REVISIONDATE:
+                    yin_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
+                                             LY_STMT_REVISIONDATE, LYEXT_SUBSTMT_REVISIONDATE, &content);
+                    break;
+                case LY_STMT_KEY:
+                    yin_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
+                                             LY_STMT_KEY, LYEXT_SUBSTMT_KEY, &content);
+                    break;
+                case LY_STMT_BASE:
+                    yin_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
+                                             LY_STMT_BASE, LYEXT_SUBSTMT_BASE, &content);
+                    break;
+                case LY_STMT_BELONGSTO:
+                    yin_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
+                                             LY_STMT_BELONGSTO, LYEXT_SUBSTMT_BELONGSTO, &content);
+                    break;
+                case LY_STMT_CONTACT:
+                    yin_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
+                                             LY_STMT_CONTACT, LYEXT_SUBSTMT_CONTACT, &content);
+                    break;
+                case LY_STMT_ORG:
+                    yin_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
+                                             LY_STMT_ORG, LYEXT_SUBSTMT_ORGANIZATION, &content);
+                    break;
+                case LY_STMT_PATH:
+                    yin_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
+                                             LY_STMT_PATH, LYEXT_SUBSTMT_PATH, &content);
+                    break;
+                case LY_STMT_VERSION:
+                    yin_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
+                                             LY_STMT_VERSION, LYEXT_SUBSTMT_VERSION, &content);
+                    break;
+                case LY_STMT_VALUE:
+                    yin_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
+                                             LY_STMT_VALUE, LYEXT_SUBSTMT_VALUE, &content);
+                    break;
                 default:
                     /* TODO */
                     break;

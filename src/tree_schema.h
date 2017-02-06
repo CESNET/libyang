@@ -246,23 +246,23 @@ typedef enum {
     LY_STMT_ACTION = 1,
     LY_STMT_ANYDATA,      /**< stored as ::lys_node_anydata*, covers also anyxml-stmt from YANG 1.0 */
 /*  LY_STMT_ANYXML - replaced by ANYDATA */
-    LY_STMT_ARGUMENT,
+    LY_STMT_ARGUMENT,     /**< stored as __const char*__ */
     LY_STMT_AUGMENT,
-    LY_STMT_BASE,
-    LY_STMT_BELONGSTO, /* belongs-to */
+    LY_STMT_BASE,         /**< stored as __const char*__ */
+    LY_STMT_BELONGSTO,    /**< belongs-to, stored as __const char*__ */
     LY_STMT_BIT,
     LY_STMT_CASE,
     LY_STMT_CHOICE,
     LY_STMT_CONFIG,
-    LY_STMT_CONTACT,
+    LY_STMT_CONTACT,      /**< stored as __const char*__ */
     LY_STMT_CONTAINER,
-    LY_STMT_DEFAULT,
+    LY_STMT_DEFAULT,      /**< stored as __const char*__ */
     LY_STMT_DESCRIPTION,  /**< stored as __const char*__ */
     LY_STMT_DEVIATE,
     LY_STMT_DEVIATION,
     LY_STMT_ENUM,
-    LY_STMT_ERRTAG, /* error-app-tag */
-    LY_STMT_ERRMSG, /* error-message */
+    LY_STMT_ERRTAG,       /**< error-app-tag, stored as __const char*__ */
+    LY_STMT_ERRMSG,       /**< error-message, stored as __const char*__ */
     LY_STMT_EXTENSION,
     LY_STMT_FEATURE,
     LY_STMT_DIGITS, /* fraction-digits */
@@ -272,7 +272,7 @@ typedef enum {
     LY_STMT_IMPORT,
     LY_STMT_INCLUDE,
     LY_STMT_INPUT,
-    LY_STMT_KEY,
+    LY_STMT_KEY,          /**< stored as __const char*__ */
     LY_STMT_LEAF,
     LY_STMT_LEAFLIST, /* leaf-list */
     LY_STMT_LENGTH,
@@ -283,22 +283,22 @@ typedef enum {
     LY_STMT_MODIFIER,
     LY_STMT_MODULE,
     LY_STMT_MUST,
-    LY_STMT_NAMESPACE,
+    LY_STMT_NAMESPACE,    /**< stored as __const char*__ */
     LY_STMT_NOTIFICATION,
     LY_STMT_ORDEREDBY, /* ordered-by */
-    LY_STMT_ORG, /* organization */
+    LY_STMT_ORG,          /**< organization, stored as __const char*__ */
     LY_STMT_OUTPUT,
-    LY_STMT_PATH,
+    LY_STMT_PATH,         /**< stored as __const char*__ */
     LY_STMT_PATTERN,
     LY_STMT_POSITION,
-    LY_STMT_PREFIX,
-    LY_STMT_PRESENCE,
+    LY_STMT_PREFIX,       /**< stored as __const char*__ */
+    LY_STMT_PRESENCE,     /**< stored as __const char*__ */
     LY_STMT_RANGE,
     LY_STMT_REFERENCE,    /**< stored as __const char*__ */
     LY_STMT_REFINE,
     LY_STMT_REQINSTANCE, /* require-instance */
     LY_STMT_REVISION,
-    LY_STMT_REVISIONDATE, /* revision-date */
+    LY_STMT_REVISIONDATE, /**< revision-date, stored as __const char*__ */
     LY_STMT_RPC,
     LY_STMT_STATUS,       /**< stored as __uint16_t__ value (ORed with the previous value) */
     LY_STMT_SUBMODULE,
@@ -307,9 +307,9 @@ typedef enum {
     LY_STMT_UNIQUE,
     LY_STMT_UNITS,        /**< stored as __const char*__ */
     LY_STMT_USES,
-    LY_STMT_VALUE,
+    LY_STMT_VALUE,        /**< stored as __const char*__ */
     LY_STMT_WHEN,
-    LY_STMT_VERSION, /* yang-version */
+    LY_STMT_VERSION,      /**< yang-version, stored as __const char*__ */
     LY_STMT_YINELEM /* yin-element */
 } LY_STMT;
 

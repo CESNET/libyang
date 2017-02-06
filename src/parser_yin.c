@@ -7269,6 +7269,86 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             if (lyp_yin_parse_subnode_ext(mod, ext, LYEXT_PAR_EXTINST, node, LYEXT_SUBSTMT_STATUS, 0, unres)) {
                 goto error;
             }
+        } else if (!strcmp(node->name, "argument")) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_ARGUMENT, LYEXT_SUBSTMT_ARGUMENT,
+                                         0, "name", unres)) {
+                goto error;
+            }
+        } else if (!strcmp(node->name, "default")) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_DEFAULT, LYEXT_SUBSTMT_DEFAULT,
+                                         0, "value", unres)) {
+                goto error;
+            }
+        } else if (!strcmp(node->name, "error-app-tag")) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_ERRTAG, LYEXT_SUBSTMT_ERRTAG,
+                                         0, "value", unres)) {
+                goto error;
+            }
+        } else if (!strcmp(node->name, "error-message")) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_ERRMSG, LYEXT_SUBSTMT_ERRMSG,
+                                         1, "value", unres)) {
+                goto error;
+            }
+        } else if (!strcmp(node->name, "prefix")) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_PREFIX, LYEXT_SUBSTMT_PREFIX,
+                                         0, "value", unres)) {
+                goto error;
+            }
+        } else if (!strcmp(node->name, "namespace")) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_NAMESPACE, LYEXT_SUBSTMT_NAMESPACE,
+                                         0, "uri", unres)) {
+                goto error;
+            }
+        } else if (!strcmp(node->name, "presence")) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_PRESENCE, LYEXT_SUBSTMT_PRESENCE,
+                                         0, "value", unres)) {
+                goto error;
+            }
+        } else if (!strcmp(node->name, "revision-date")) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_REVISIONDATE, LYEXT_SUBSTMT_REVISIONDATE,
+                                         0, "date", unres)) {
+                goto error;
+            }
+        } else if (!strcmp(node->name, "key")) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_KEY, LYEXT_SUBSTMT_KEY,
+                                         0, "value", unres)) {
+                goto error;
+            }
+        } else if (!strcmp(node->name, "base")) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_BASE, LYEXT_SUBSTMT_BASE,
+                                         0, "name", unres)) {
+                goto error;
+            }
+        } else if (!strcmp(node->name, "belongs-to")) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_BELONGSTO, LYEXT_SUBSTMT_BELONGSTO,
+                                         0, "module", unres)) {
+                goto error;
+            }
+        } else if (!strcmp(node->name, "contact")) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_CONTACT, LYEXT_SUBSTMT_CONTACT,
+                                         1, "text", unres)) {
+                goto error;
+            }
+        } else if (!strcmp(node->name, "organization")) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_ORG, LYEXT_SUBSTMT_ORGANIZATION,
+                                         1, "text", unres)) {
+                goto error;
+            }
+        } else if (!strcmp(node->name, "path")) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_PATH, LYEXT_SUBSTMT_PATH,
+                                         0, "value", unres)) {
+                goto error;
+            }
+        } else if (!strcmp(node->name, "yang-version")) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_VERSION, LYEXT_SUBSTMT_VERSION,
+                                         0, "value", unres)) {
+                goto error;
+            }
+        } else if (!strcmp(node->name, "value")) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_VALUE, LYEXT_SUBSTMT_VALUE,
+                                         0, "value", unres)) {
+                goto error;
+            }
         } else {
             LOGERR(LY_SUCCESS, "Extension's substatement \"%s\" not yet supported.", node->name);
             //LOGERR(LY_EINT, "Extension's substatement \"%s\" not yet supported.", node->name);
