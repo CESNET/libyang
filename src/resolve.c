@@ -5590,14 +5590,20 @@ resolve_when_unlink_nodes(struct lys_node *snode, struct lyd_node **node, struct
                           enum lyxp_node_type ctx_node_type, struct lyd_node **unlinked_nodes)
 {
     struct lyd_node *next, *elem;
+    const struct lys_node *slast;
 
     switch (snode->nodetype) {
     case LYS_AUGMENT:
     case LYS_USES:
     case LYS_CHOICE:
     case LYS_CASE:
-        LY_TREE_FOR(snode->child, snode) {
-            if (resolve_when_unlink_nodes(snode, node, ctx_node, ctx_node_type, unlinked_nodes)) {
+        slast = NULL;
+        while ((slast = lys_getnext(slast, snode, NULL, 0))) {
+            if (slast->nodetype & (LYS_ACTION | LYS_NOTIF)) {
+                continue;
+            }
+
+            if (resolve_when_unlink_nodes((struct lys_node *)slast, node, ctx_node, ctx_node_type, unlinked_nodes)) {
                 return -1;
             }
         }
