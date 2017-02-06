@@ -38,8 +38,6 @@
 #include "validation.h"
 #include "xpath.h"
 
-static int lyd_unlink_internal(struct lyd_node *node, int permanent);
-
 /**
  * @brief get the list of \p data's siblings of the given schema
  */
@@ -3459,8 +3457,8 @@ finish:
     }
 }
 
-static int
-lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd_node *node)
+int
+lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd_node *node, int invalidate)
 {
     struct lys_node *par1, *par2;
     const struct lys_node *siter;
@@ -3514,11 +3512,13 @@ lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd
         return EXIT_FAILURE;
     }
 
-    invalid = isrpc = lyp_is_rpc_action(node->schema);
-    if (!parent || node->parent != parent || isrpc) {
-        /* it is not just moving under a parent node or it is in an RPC where
-         * nodes order matters, so the validation will be necessary */
-        invalid++;
+    if (invalidate) {
+        invalid = isrpc = lyp_is_rpc_action(node->schema);
+        if (!parent || node->parent != parent || isrpc) {
+            /* it is not just moving under a parent node or it is in an RPC where
+             * nodes order matters, so the validation will be necessary */
+            invalid++;
+        }
     }
 
     /* unlink only if it is not a list of siblings without a parent and node is not the first sibling */
@@ -3669,7 +3669,9 @@ lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd
         }
         ins->parent = parent;
 
-        check_leaf_list_backlinks(ins, 0);
+        if (invalidate) {
+            check_leaf_list_backlinks(ins, 0);
+        }
 
         if (invalid) {
             lyd_insert_setinvalid(ins);
@@ -3702,7 +3704,7 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node)
         return EXIT_FAILURE;
     }
 
-    return lyd_insert_common(parent, NULL, node);
+    return lyd_insert_common(parent, NULL, node, 1);
 }
 
 API int
@@ -3713,12 +3715,12 @@ lyd_insert_sibling(struct lyd_node **sibling, struct lyd_node *node)
         return EXIT_FAILURE;
     }
 
-    return lyd_insert_common((*sibling) ? (*sibling)->parent : NULL, sibling, node);
+    return lyd_insert_common((*sibling) ? (*sibling)->parent : NULL, sibling, node, 1);
 
 }
 
-static int
-lyd_insert_nextto(struct lyd_node *sibling, struct lyd_node *node, int before)
+int
+lyd_insert_nextto(struct lyd_node *sibling, struct lyd_node *node, int before, int invalidate)
 {
     struct lys_node *par1, *par2;
     struct lyd_node *iter, *start = NULL, *ins, *next1, *next2, *last;
@@ -3745,7 +3747,7 @@ lyd_insert_nextto(struct lyd_node *sibling, struct lyd_node *node, int before)
         return EXIT_FAILURE;
     }
 
-    if (node->parent != sibling->parent || (invalid = lyp_is_rpc_action(node->schema)) || !node->parent) {
+    if (invalidate && ((node->parent != sibling->parent) || (invalid = lyp_is_rpc_action(node->schema)) || !node->parent)) {
         /* a) it is not just moving under a parent node (invalid = 1) or
          * b) it is in an RPC where nodes order matters (invalid = 2) or
          * c) it is top-level where we don't know if it is the same tree (invalid = 1),
@@ -3878,10 +3880,12 @@ lyd_insert_nextto(struct lyd_node *sibling, struct lyd_node *node, int before)
         node->prev = sibling;
     }
 
-    LY_TREE_FOR(node, next1) {
-        check_leaf_list_backlinks(next1, 0);
-        if (next1 == last) {
-            break;
+    if (invalidate) {
+        LY_TREE_FOR(node, next1) {
+            check_leaf_list_backlinks(next1, 0);
+            if (next1 == last) {
+                break;
+            }
         }
     }
 
@@ -3905,7 +3909,7 @@ error:
 API int
 lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node)
 {
-    if (!node || !sibling || lyd_insert_nextto(sibling, node, 1)) {
+    if (!node || !sibling || lyd_insert_nextto(sibling, node, 1, 1)) {
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
     }
@@ -3916,7 +3920,7 @@ lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node)
 API int
 lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node)
 {
-    if (!node || !sibling || lyd_insert_nextto(sibling, node, 0)) {
+    if (!node || !sibling || lyd_insert_nextto(sibling, node, 0, 1)) {
         ly_errno = LY_EINVAL;
         return EXIT_FAILURE;
     }
@@ -4353,7 +4357,7 @@ lyd_dup_attr(struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_attr *attr)
     return ret;
 }
 
-static int
+int
 lyd_unlink_internal(struct lyd_node *node, int permanent)
 {
     struct lyd_node *iter;

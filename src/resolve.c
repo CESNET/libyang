@@ -5605,7 +5605,7 @@ resolve_when_unlink_nodes(struct lys_node *snode, struct lyd_node **node, struct
                 }
 
                 /* temporarily unlink the node */
-                lyd_unlink(elem);
+                lyd_unlink_internal(elem, 0);
                 if (*unlinked_nodes) {
                     if (lyd_insert_after((*unlinked_nodes)->prev, elem)) {
                         LOGINT;
@@ -5647,13 +5647,13 @@ resolve_when_relink_nodes(struct lyd_node *node, struct lyd_node *unlinked_nodes
     struct lyd_node *elem;
 
     LY_TREE_FOR_SAFE(unlinked_nodes, unlinked_nodes, elem) {
-        lyd_unlink(elem);
+        lyd_unlink_internal(elem, 0);
         if (ctx_node_type == LYXP_NODE_ELEM) {
-            if (lyd_insert(node, elem)) {
+            if (lyd_insert_common(node, NULL, elem, 0)) {
                 return -1;
             }
         } else {
-            if (lyd_insert_after(node, elem)) {
+            if (lyd_insert_nextto(node, elem, 0, 0)) {
                 return -1;
             }
         }

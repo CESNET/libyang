@@ -327,6 +327,30 @@ struct lyd_node *lyd_new_dummy(struct lyd_node *data, struct lyd_node *parent, c
 const struct lyd_node *lyd_attr_parent(const struct lyd_node *root, struct lyd_attr *attr);
 
 /**
+ * @brief Internal version of lyd_unlink().
+ *
+ * @param[in] node Node to unlink.
+ * @param[in] permanent Whether the node is premanently unlinked or will be linked back.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on error.
+ */
+int lyd_unlink_internal(struct lyd_node *node, int permanent);
+
+/**
+ * @brief Internal version of lyd_insert() and lyd_insert_sibling().
+ *
+ * @param[in] invalidate Whether to invalidate any nodes. Set 0 only if linking back some temporarily internally unlinked nodes.
+ */
+int lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd_node *node, int invalidate);
+
+/**
+ * @brief Internal version of lyd_insert_before() and lyd_insert_after().
+ *
+ * @param[in] invalidate Whether to invalidate any nodes. Set 0 only if linking back some temporarily internally unlinked nodes.
+ */
+int lyd_insert_nextto(struct lyd_node *sibling, struct lyd_node *node, int before, int invalidate);
+
+/**
  * @brief Find an import from \p module with matching \p prefix, \p name, or both,
  * \p module itself is also compared.
  *
