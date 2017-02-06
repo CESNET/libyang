@@ -260,6 +260,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <token> include_arg_str
 %type <token> revision_arg_stmt
 %type <token> argument_str
+%type <token> belongs_to_arg_str
 %type <backup_token> grouping_arg_str
 %type <backup_token> container_arg_str
 %type <backup_token> leaf_arg_str
@@ -567,7 +568,8 @@ revision_date_arg: date_arg_str { backup_type = actual_type;
 
 revision_date_stmt: REVISION_DATE_KEYWORD sep revision_date_arg stmtend
 
-belongs_to_arg_str: identifier_arg_str { if (param->submodule->prefix) {
+belongs_to_arg_str: identifier_arg_str { $$ = actual_type;
+                                         if (param->submodule->prefix) {
                                            LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "belongs-to", "submodule");
                                            free(s);
                                            YYABORT;
@@ -579,16 +581,13 @@ belongs_to_arg_str: identifier_arg_str { if (param->submodule->prefix) {
                                          }
                                          free(s);
                                          s = NULL;
-                                         backup_type = actual_type;
                                          actual_type = BELONGS_TO_KEYWORD;
                                        }
 
 belongs_to_stmt: BELONGS_TO_KEYWORD sep belongs_to_arg_str
                  '{' stmtsep
                      prefix_stmt
-                 '}' { actual_type = backup_type;
-                       backup_type = NODE;
-                     }
+                 '}' { actual_type = $3; }
 
 prefix_arg: prefix_arg_str { backup_type = actual_type;
                              actual_type = PREFIX_KEYWORD;

@@ -2164,9 +2164,6 @@ yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext
         case NAMESPACE_KEYWORD:
             instance->insubstmt = LYEXT_SUBSTMT_NAMESPACE;
             break;
-        case BELONGS_TO_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_BELONGSTO;
-            break;
         case PREFIX_KEYWORD:
             instance->insubstmt = LYEXT_SUBSTMT_PREFIX;
             break;
@@ -2204,6 +2201,9 @@ yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext
         switch (actual_type) {
         case ARGUMENT_KEYWORD:
             instance->insubstmt = LYEXT_SUBSTMT_ARGUMENT;
+            break;
+        case BELONGS_TO_KEYWORD:
+            instance->insubstmt = LYEXT_SUBSTMT_BELONGSTO;
             break;
         default:
             instance->insubstmt = LYEXT_SUBSTMT_SELF;
