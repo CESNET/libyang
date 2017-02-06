@@ -474,15 +474,15 @@ struct lys_ext_instance {
     const char *arg_value;           /**< value of the instance's argument, if defined */
     uint16_t flags;                  /**< [extension flags](@ref extflags) */
     uint8_t ext_size;                /**< number of elements in #ext array */
-    uint8_t substmt_index;           /**< since some of the substatements can appear multiple times, it is needed to
-                                          keep the position of the specific instance of the substatement which contains
-                                          this extension instance. Order of both, the extension and substatement,
+    uint8_t insubstmt_index;         /**< since some of the statements can appear multiple times, it is needed to
+                                          keep the position of the specific statement instance which contains
+                                          this extension instance. Order of both, the extension and the statement,
                                           instances is the same. The index is filled only for LYEXT_SUBSTMT_BASE,
                                           LYEXT_SUBSTMT_DEFAULT and LYEXT_SUBSTMT_UNIQUE values of the
                                           ::lys_ext_instance#substmt member. To get the correct pointer to the
                                           data connected with the index, use lys_ext_instance_substmt() */
-    uint8_t substmt;                 /**< #LYEXT_SUBSTMT - id for the case the extension instance is actually inside
-                                          some of the node's member's (substatements). libyang does not store extension
+    uint8_t insubstmt;               /**< #LYEXT_SUBSTMT - id for the case the extension instance is actually inside
+                                          some of the node's members (substatements). libyang does not store extension
                                           instances for all possible statements to save some, commonly unused, space. */
     uint8_t parent_type;             /**< #LYEXT_PAR - type of the parent structure */
     uint16_t padding1;               /**< 32b padding */
@@ -502,22 +502,22 @@ struct lys_ext_instance_complex {
     const char *arg_value;           /**< value of the instance's argument, if defined */
     uint16_t flags;                  /**< [extension flags](@ref extflags) */
     uint8_t ext_size;                /**< number of elements in #ext array */
-    uint8_t substmt_index;           /**< since some of the substatements can appear multiple times, it is needed to
-                                          keep the position of the specific instance of the substatement which contains
-                                          this extension instance. Order of both, the extension and substatement,
+    uint8_t insubstmt_index;         /**< since some of the statements can appear multiple times, it is needed to
+                                          keep the position of the specific statement instance which contains
+                                          this extension instance. Order of both, the extension and the statement,
                                           instances is the same. The index is filled only for LYEXT_SUBSTMT_BASE,
                                           LYEXT_SUBSTMT_DEFAULT and LYEXT_SUBSTMT_UNIQUE values of the
                                           ::lys_ext_instance#substmt member. To get the correct pointer to the
                                           data connected with the index, use lys_ext_instance_substmt() */
-    uint8_t substmt;                 /**< #LYEXT_SUBSTMT - id for the case the extension instance is actually inside
-                                          some of the node's member's (substatements). libyang does not store extension
+    uint8_t insubstmt;               /**< #LYEXT_SUBSTMT - id for the case the extension instance is actually inside
+                                          some of the node's members (substatements). libyang does not store extension
                                           instances for all possible statements to save some, commonly unused, space. */
     uint8_t parent_type;             /**< #LYEXT_PAR - type of the parent structure */
     uint16_t padding1;               /**< 32b padding */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
 
     /* to this point the structure is compatible with the generic ::lys_ext_instance structure */
-    void * padding2;                 /**< padding for compatibility placement of the module member */
+    struct lyext_substmt *substmt;   /**< pointer to the plugin's list of substatements' information */
     struct lys_module *module;       /**< pointer to the extension instance's module (mandatory) */
     char content[0];                 /**< content of the extension instance */
 };

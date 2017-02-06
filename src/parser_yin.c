@@ -2767,12 +2767,12 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                     /* remove extensions of this unique instance from the target node */
                     j = -1;
                     while ((j = lys_ext_iter(dev_target->ext, dev_target->ext_size, j + 1, LYEXT_SUBSTMT_UNIQUE)) != -1) {
-                        if (dev_target->ext[j]->substmt_index == k) {
+                        if (dev_target->ext[j]->insubstmt_index == k) {
                             lyp_ext_instance_rm(ctx, &dev_target->ext, &dev_target->ext_size, j);
                             --j;
-                        } else if (dev_target->ext[j]->substmt_index > k) {
+                        } else if (dev_target->ext[j]->insubstmt_index > k) {
                             /* decrease the substatement index of the extension because of the changed array of uniques */
-                            dev_target->ext[j]->substmt_index--;
+                            dev_target->ext[j]->insubstmt_index--;
                         }
                     }
                 } else { /* replace or add */
@@ -2859,12 +2859,12 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                                 /* remove extensions of this default instance from the target node */
                                 j = -1;
                                 while ((j = lys_ext_iter(dev_target->ext, dev_target->ext_size, j + 1, LYEXT_SUBSTMT_DEFAULT)) != -1) {
-                                    if (dev_target->ext[j]->substmt_index == i) {
+                                    if (dev_target->ext[j]->insubstmt_index == i) {
                                         lyp_ext_instance_rm(ctx, &dev_target->ext, &dev_target->ext_size, j);
                                         --j;
-                                    } else if (dev_target->ext[j]->substmt_index > i) {
+                                    } else if (dev_target->ext[j]->insubstmt_index > i) {
                                         /* decrease the substatement index of the extension because of the changed array of defaults */
-                                        dev_target->ext[j]->substmt_index--;
+                                        dev_target->ext[j]->insubstmt_index--;
                                     }
                                 }
                                 break;

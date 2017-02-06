@@ -2156,28 +2156,28 @@ yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext
         }
         switch (actual_type) {
         case NAMESPACE_KEYWORD:
-            instance->substmt = LYEXT_SUBSTMT_NAMESPACE;
+            instance->insubstmt = LYEXT_SUBSTMT_NAMESPACE;
             break;
         case BELONGS_TO_KEYWORD:
-            instance->substmt = LYEXT_SUBSTMT_BELONGSTO;
+            instance->insubstmt = LYEXT_SUBSTMT_BELONGSTO;
             break;
         case PREFIX_KEYWORD:
-            instance->substmt = LYEXT_SUBSTMT_PREFIX;
+            instance->insubstmt = LYEXT_SUBSTMT_PREFIX;
             break;
         case REVISION_DATE_KEYWORD:
-            instance->substmt = LYEXT_SUBSTMT_REVISIONDATE;
+            instance->insubstmt = LYEXT_SUBSTMT_REVISIONDATE;
             break;
         case DESCRIPTION_KEYWORD:
-            instance->substmt = LYEXT_SUBSTMT_DESCRIPTION;
+            instance->insubstmt = LYEXT_SUBSTMT_DESCRIPTION;
             break;
         case REFERENCE_KEYWORD:
-            instance->substmt = LYEXT_SUBSTMT_REFERENCE;
+            instance->insubstmt = LYEXT_SUBSTMT_REFERENCE;
             break;
         case CONTACT_KEYWORD:
-            instance->substmt = LYEXT_SUBSTMT_CONTACT;
+            instance->insubstmt = LYEXT_SUBSTMT_CONTACT;
             break;
         case ORGANIZATION_KEYWORD:
-            instance->substmt = LYEXT_SUBSTMT_ORGANIZATION;
+            instance->insubstmt = LYEXT_SUBSTMT_ORGANIZATION;
             break;
         default:
             LOGINT;
@@ -2188,7 +2188,7 @@ yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext
         if (!instance) {
             return NULL;
         }
-        instance->substmt = LYEXT_SUBSTMT_SELF;
+        instance->insubstmt = LYEXT_SUBSTMT_SELF;
     }
     instance->flags |= LYEXT_OPT_YANG;
     instance->def = (struct lys_ext *)ext_name;    /* hack for UNRES */
@@ -2985,8 +2985,8 @@ yang_check_ext_instance(struct lys_module *module, struct lys_ext_instance ***ex
         info->parent = parent;
         info->mod = module;
         info->parent_type = (*ext)[i]->parent_type;
-        info->substmt = (*ext)[i]->substmt;
-        info->substmt_index = (*ext)[i]->substmt_index;
+        info->substmt = (*ext)[i]->insubstmt;
+        info->substmt_index = (*ext)[i]->insubstmt_index;
         info->ext_index = i;
         if (unres_schema_add_node(module, unres, ext, UNRES_EXT, (struct lys_node *)info) == -1) {
             return EXIT_FAILURE;

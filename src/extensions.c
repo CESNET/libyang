@@ -252,7 +252,6 @@ lys_ext_instance_presence(struct lys_ext *def, struct lys_ext_instance **ext, ui
 API void *
 lys_ext_complex_get_substmt(LY_STMT stmt, struct lys_ext_instance_complex *ext, struct lyext_substmt **info)
 {
-    struct lyext_plugin_complex *plugin;
     int i;
 
     if (!ext || !ext->def || !ext->def->plugin || ext->def->plugin->type != LYEXT_COMPLEX) {
@@ -260,8 +259,7 @@ lys_ext_complex_get_substmt(LY_STMT stmt, struct lys_ext_instance_complex *ext, 
         return NULL;
     }
 
-    plugin = (struct lyext_plugin_complex *)ext->def->plugin; /* shortcut */
-    if (!plugin->substmt) {
+    if (!ext->substmt) {
         /* no substatement defined in the plugin */
         if (info) {
             *info = NULL;
@@ -270,17 +268,17 @@ lys_ext_complex_get_substmt(LY_STMT stmt, struct lys_ext_instance_complex *ext, 
     }
 
     /* search the substatements defined by the plugin */
-    for (i = 0; plugin->substmt[i].stmt; i++) {
-        if (plugin->substmt[i].stmt == stmt) {
+    for (i = 0; ext->substmt[i].stmt; i++) {
+        if (ext->substmt[i].stmt == stmt) {
             if (info) {
-                *info = &plugin->substmt[i];
+                *info = &ext->substmt[i];
             }
             break;
         }
     }
 
-    if (plugin->substmt[i].stmt) {
-        return &ext->content[plugin->substmt[i].offset];
+    if (ext->substmt[i].stmt) {
+        return &ext->content[ext->substmt[i].offset];
     } else {
         return NULL;
     }

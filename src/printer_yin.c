@@ -117,14 +117,14 @@ yin_print_substmt(struct lyout *out, int level, LYEXT_SUBSTMT substmt, uint8_t s
     i = -1;
     do {
         i = lys_ext_iter(ext, ext_size, i + 1, substmt);
-    } while (i != -1 && ext[i]->substmt_index != substmt_index);
+    } while (i != -1 && ext[i]->insubstmt_index != substmt_index);
     if (i != -1) {
         yin_print_close_parent(out, &content);
         do {
             yin_print_extension_instances(out, level + 1, module, substmt, substmt_index, &ext[i], 1);
             do {
                 i = lys_ext_iter(ext, ext_size, i + 1, substmt);
-            } while (i != -1 && ext[i]->substmt_index != substmt_index);
+            } while (i != -1 && ext[i]->insubstmt_index != substmt_index);
         } while (i != -1);
     }
 
@@ -741,7 +741,7 @@ yin_print_deviation(struct lyout *out, int level, const struct lys_module *modul
             do {
                 p = lys_ext_iter(deviation->deviate[i].ext, deviation->deviate[i].ext_size,
                                       p + 1, LYEXT_SUBSTMT_UNIQUE);
-            } while (p != -1 && deviation->deviate[i].ext[p]->substmt_index != j);
+            } while (p != -1 && deviation->deviate[i].ext[p]->insubstmt_index != j);
             if (p != -1) {
                 yin_print_close_parent(out, &content);
                 do {
@@ -750,7 +750,7 @@ yin_print_deviation(struct lyout *out, int level, const struct lys_module *modul
                     do {
                         p = lys_ext_iter(deviation->deviate[i].ext, deviation->deviate[i].ext_size,
                                               p + 1, LYEXT_SUBSTMT_UNIQUE);
-                    } while (p != -1 && deviation->deviate[i].ext[p]->substmt_index != j);
+                    } while (p != -1 && deviation->deviate[i].ext[p]->insubstmt_index != j);
                 } while (p != -1);
             }
             yin_print_close(out, level, NULL, "unique", content);
@@ -1239,14 +1239,14 @@ yin_print_list(struct lyout *out, int level, const struct lys_node *node)
         p = -1;
         do {
             p = lys_ext_iter(list->ext, list->ext_size, p + 1, LYEXT_SUBSTMT_UNIQUE);
-        } while (p != -1 && list->ext[p]->substmt_index != i);
+        } while (p != -1 && list->ext[p]->insubstmt_index != i);
         if (p != -1) {
             yin_print_close_parent(out, &content2);
             do {
                 yin_print_extension_instances(out, level + 1, list->module, LYEXT_SUBSTMT_UNIQUE, i, &list->ext[p], 1);
                 do {
                     p = lys_ext_iter(list->ext, list->ext_size, p + 1, LYEXT_SUBSTMT_UNIQUE);
-                } while (p != -1 && list->ext[p]->substmt_index != i);
+                } while (p != -1 && list->ext[p]->insubstmt_index != i);
             } while (p != -1);
         }
         yin_print_close(out, level, NULL, "unique", content2);
@@ -1824,7 +1824,6 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
     unsigned int u, x;
     struct lys_module *mod;
     const char *prefix = NULL;
-    struct lyext_plugin_complex *plugin;
     struct lyext_substmt *info;
     int content, i;
     uint16_t *flags;
@@ -1832,9 +1831,9 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
     void **pp;
 
 #define YIN_PRINT_EXTCOMPLEX_STRUCT(STMT, TYPE, FUNC)                                         \
-    pp = lys_ext_complex_get_substmt(STMT, (struct lys_ext_instance_complex *)ext[u], &info); \
+    pp = lys_ext_complex_get_substmt(STMT, (struct lys_ext_instance_complex *)ext[u], NULL);  \
     if (!pp || !(*pp)) { break; }                                                             \
-    if (info->cardinality >= LY_STMT_CARD_SOME) { /* process array */                         \
+    if (info[i].cardinality >= LY_STMT_CARD_SOME) { /* process array */                       \
         for (pp = *pp; *pp; pp++) {                                                           \
             yin_print_close_parent(out, &content);                                            \
             FUNC(out, level, module, (TYPE *)(*pp));                                          \
@@ -1848,7 +1847,7 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
         if (ext[u]->flags & LYEXT_OPT_INHERIT) {
             /* ignore the inherited extensions which were not explicitely instantiated in the module */
             continue;
-        } else if (ext[u]->substmt != substmt || ext[u]->substmt_index != substmt_index) {
+        } else if (ext[u]->insubstmt != substmt || ext[u]->insubstmt_index != substmt_index) {
             /* do not print the other substatement than the required */
             continue;
         }
@@ -1899,14 +1898,14 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
             /* flag extension - nothing special */
             break;
         case LYEXT_COMPLEX:
-            plugin = (struct lyext_plugin_complex*)ext[u]->def->plugin; /* shortcut */
-            if (!plugin->substmt) {
+            info = ((struct lys_ext_instance_complex*)ext[u])->substmt; /* shortcut */
+            if (!info) {
                 /* no content */
                 break;
             }
             level++;
-            for (i = 0; plugin->substmt[i].stmt; i++) {
-                switch(plugin->substmt[i].stmt) {
+            for (i = 0; info[i].stmt; i++) {
+                switch(info[i].stmt) {
                 case LY_STMT_DESCRIPTION:
                     yin_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
                                              LY_STMT_DESCRIPTION, LYEXT_SUBSTMT_DESCRIPTION, &content);
@@ -1926,8 +1925,7 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
                     YIN_PRINT_EXTCOMPLEX_STRUCT(LY_STMT_IFFEATURE, struct lys_iffeature, yin_print_iffeature);
                     break;
                 case LY_STMT_STATUS:
-                    flags = lys_ext_complex_get_substmt(LY_STMT_STATUS, (struct lys_ext_instance_complex *)ext[u],
-                                                        &info);
+                    flags = lys_ext_complex_get_substmt(LY_STMT_STATUS, (struct lys_ext_instance_complex *)ext[u], NULL);
                     if (!flags) {
                         return;
                     }

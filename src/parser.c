@@ -2644,7 +2644,7 @@ lyp_rfn_apply_ext_(struct lys_refine *rfn, struct lys_node *target, LYEXT_SUBSTM
             target->ext[n]->parent = target;
             target->ext[n]->parent_type = LYEXT_PAR_NODE;
             target->ext[n]->flags = 0;
-            target->ext[n]->substmt = substmt;
+            target->ext[n]->insubstmt = substmt;
         } else {
             /* replacing - first remove the allocated data from target */
             lys_extension_instances_free(ctx, target->ext[n]->ext, target->ext[n]->ext_size);
@@ -2659,7 +2659,7 @@ lyp_rfn_apply_ext_(struct lys_refine *rfn, struct lys_node *target, LYEXT_SUBSTM
         lys_ext_dup(target->module, rfn->ext[m]->ext, rfn->ext[m]->ext_size, target, LYEXT_PAR_NODE,
                     &target->ext[n]->ext, NULL);
         /* substmt does not change, but the index must be taken from the refine */
-        target->ext[n]->substmt_index = rfn->ext[m]->substmt_index;
+        target->ext[n]->insubstmt_index = rfn->ext[m]->insubstmt_index;
     }
 
     /* remove the rest of extensions belonging to the original substatement in the target node */
@@ -2796,7 +2796,7 @@ lyp_deviate_del_ext(struct lys_node *target, struct lys_ext_instance *ext)
     int n = -1, found = 0;
     char *path;
 
-    while ((n = lys_ext_iter(target->ext, target->ext_size, n + 1, ext->substmt)) != -1) {
+    while ((n = lys_ext_iter(target->ext, target->ext_size, n + 1, ext->insubstmt)) != -1) {
         if (target->ext[n]->def != ext->def) {
             continue;
         }
@@ -2900,8 +2900,8 @@ lyp_deviate_apply_ext(struct lys_deviate *dev, struct lys_node *target, LYEXT_SU
         target->ext[n]->flags = 0;
         target->ext[n]->parent = target;
         target->ext[n]->parent_type = LYEXT_PAR_NODE;
-        target->ext[n]->substmt = substmt;
-        target->ext[n]->substmt_index = dev->ext[m]->substmt_index;
+        target->ext[n]->insubstmt = substmt;
+        target->ext[n]->insubstmt_index = dev->ext[m]->insubstmt_index;
         target->ext[n]->ext_size = dev->ext[m]->ext_size;
         lys_ext_dup(target->module, dev->ext[m]->ext, dev->ext[m]->ext_size, target, LYEXT_PAR_NODE,
                     &target->ext[n]->ext, NULL);

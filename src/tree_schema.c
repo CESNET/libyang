@@ -1084,7 +1084,7 @@ lys_ext_iter(struct lys_ext_instance **ext, uint8_t ext_size, uint8_t start, LYE
     unsigned int u;
 
     for (u = start; u < ext_size; u++) {
-        if (ext[u]->substmt == substmt) {
+        if (ext[u]->insubstmt == substmt) {
             return u;
         }
     }
@@ -1128,6 +1128,7 @@ lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, uint8_t size
             case LYEXT_COMPLEX:
                 result[u] = calloc(1, ((struct lyext_plugin_complex*)orig[u]->def->plugin)->instance_size);
                 ((struct lys_ext_instance_complex*)result[u])->module = mod;
+                ((struct lys_ext_instance_complex*)result[u])->substmt = ((struct lyext_plugin_complex*)orig[u]->def->plugin)->substmt;
                 /* TODO duplicate data in extension instance content */
                 break;
             case LYEXT_ERR:
@@ -1140,8 +1141,8 @@ lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, uint8_t size
             result[u]->arg_value = lydict_insert(mod->ctx, orig[u]->arg_value, 0);
             result[u]->parent = parent;
             result[u]->parent_type = parent_type;
-            result[u]->substmt = orig[u]->substmt;
-            result[u]->substmt_index = orig[u]->substmt_index;
+            result[u]->insubstmt = orig[u]->insubstmt;
+            result[u]->insubstmt_index = orig[u]->insubstmt_index;
 
             /* extensions */
             orig[u]->ext = NULL;
@@ -1428,7 +1429,7 @@ lys_ext_instance_substmt(const struct lys_ext_instance *ext)
         return NULL;
     }
 
-    switch (ext->substmt) {
+    switch (ext->insubstmt) {
     case LYEXT_SUBSTMT_SELF:
     case LYEXT_SUBSTMT_MODIFIER:
     case LYEXT_SUBSTMT_VERSION:
@@ -1440,9 +1441,9 @@ lys_ext_instance_substmt(const struct lys_ext_instance *ext)
         break;
     case LYEXT_SUBSTMT_BASE:
         if (ext->parent_type == LYEXT_PAR_TYPE) {
-            return ((struct lys_type*)ext->parent)->info.ident.ref[ext->substmt_index];
+            return ((struct lys_type*)ext->parent)->info.ident.ref[ext->insubstmt_index];
         } else if (ext->parent_type == LYEXT_PAR_IDENT) {
-            return ((struct lys_ident*)ext->parent)->base[ext->substmt_index];
+            return ((struct lys_ident*)ext->parent)->base[ext->insubstmt_index];
         }
         break;
     case LYEXT_SUBSTMT_BELONGSTO:
@@ -1472,7 +1473,7 @@ lys_ext_instance_substmt(const struct lys_ext_instance *ext)
             case LYS_LEAFLIST:
                 /* in case of leaf, the index is supposed to be 0, so it will return the
                  * correct pointer despite the leaf structure does not have dflt as array */
-                return ((struct lys_node_leaflist*)ext->parent)->dflt[ext->substmt_index];
+                return ((struct lys_node_leaflist*)ext->parent)->dflt[ext->insubstmt_index];
             case LYS_CHOICE:
                 return ((struct lys_node_choice*)ext->parent)->dflt;
             default:
@@ -1482,9 +1483,9 @@ lys_ext_instance_substmt(const struct lys_ext_instance *ext)
         } else if (ext->parent_type == LYEXT_PAR_TPDF) {
             return ((struct lys_tpdf*)ext->parent)->dflt;
         } else if (ext->parent_type == LYEXT_PAR_DEVIATE) {
-            return ((struct lys_deviate*)ext->parent)->dflt[ext->substmt_index];
+            return ((struct lys_deviate*)ext->parent)->dflt[ext->insubstmt_index];
         } else if (ext->parent_type == LYEXT_PAR_REFINE) {
-            return &((struct lys_refine*)ext->parent)->dflt[ext->substmt_index];
+            return &((struct lys_refine*)ext->parent)->dflt[ext->insubstmt_index];
         }
         break;
     case LYEXT_SUBSTMT_DESCRIPTION:
@@ -1675,9 +1676,9 @@ lys_ext_instance_substmt(const struct lys_ext_instance *ext)
         break;
     case LYEXT_SUBSTMT_UNIQUE:
         if (ext->parent_type == LYEXT_PAR_DEVIATE) {
-            return &((struct lys_deviate*)ext->parent)->unique[ext->substmt_index];
+            return &((struct lys_deviate*)ext->parent)->unique[ext->insubstmt_index];
         } else if (ext->parent_type == LYEXT_PAR_NODE && ((struct lys_node*)ext->parent)->nodetype == LYS_LIST) {
-            return &((struct lys_node_list*)ext->parent)->unique[ext->substmt_index];
+            return &((struct lys_node_list*)ext->parent)->unique[ext->insubstmt_index];
         }
         break;
     case LYEXT_SUBSTMT_UNITS:
@@ -4342,7 +4343,7 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
         }
 
         if (e[i]->def && e[i]->def->plugin && e[i]->def->plugin->type == LYEXT_COMPLEX) {
-            substmt = ((struct lyext_plugin_complex *)e[i]->def->plugin)->substmt;
+            substmt = ((struct lys_ext_instance_complex *)e[i])->substmt;
             for (j = 0; substmt[j].stmt; j++) {
                 switch(substmt[j].stmt) {
                 case LY_STMT_DESCRIPTION:

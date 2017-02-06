@@ -4574,8 +4574,8 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
         (*ext)->def = e;
         (*ext)->parent = info->parent;
         (*ext)->parent_type = info->parent_type;
-        (*ext)->substmt = info->substmt;
-        (*ext)->substmt_index = info->substmt_index;
+        (*ext)->insubstmt = info->substmt;
+        (*ext)->insubstmt_index = info->substmt_index;
 
         if (!(e->flags & LYS_YINELEM) && e->argument) {
             (*ext)->arg_value = lyxml_get_attr(info->data.yin, e->argument, NULL);
@@ -4621,6 +4621,7 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
             break;
         case LYEXT_COMPLEX:
             ((struct lys_ext_instance_complex*)(*ext))->module = info->mod;
+            ((struct lys_ext_instance_complex*)(*ext))->substmt = ((struct lyext_plugin_complex*)e->plugin)->substmt;
             if (lyp_yin_parse_complex_ext(info->mod, (struct lys_ext_instance_complex*)(*ext), info->data.yin, unres)) {
                 /* TODO memory cleanup */
                 return -1;
