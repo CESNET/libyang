@@ -259,6 +259,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <token> import_arg_str
 %type <token> include_arg_str
 %type <token> revision_arg_stmt
+%type <token> argument_str
 %type <backup_token> grouping_arg_str
 %type <backup_token> container_arg_str
 %type <backup_token> leaf_arg_str
@@ -276,6 +277,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <backup_token> input_arg
 %type <backup_token> output_arg
 %type <backup_token> notification_arg_str
+%type <backup_token> extension_arg_str
 
 %destructor { free($$); } pattern_arg_str string_opt_part1 semicolom curly_bracket_open
 %destructor { free(($$) ? *$$ : NULL); } tmp_string
@@ -765,20 +767,26 @@ body_stmt: extension_stmt
   | deviation_stmt
 
 
-extension_arg_str: identifier_arg_str { YANG_ADDELEM(trg->extensions, trg->extensions_size);
+extension_arg_str: identifier_arg_str { $$.token = actual_type;
+                                        $$.actual = actual;
+                                        YANG_ADDELEM(trg->extensions, trg->extensions_size);
                                         trg->extensions_size--;
                                         ((struct lys_ext *)actual)->name = lydict_insert_zc(param->module->ctx, s);
                                         ((struct lys_ext *)actual)->module = trg;
                                         if (lyp_check_identifier(((struct lys_ext *)actual)->name, LY_IDENT_EXTENSION, trg, NULL)) {
+                                          trg->extensions_size++;
                                           YYABORT;
                                         }
                                         trg->extensions_size++;
                                         s = NULL;
+                                        actual_type = EXTENSION_KEYWORD;
                                       }
 
 extension_stmt: EXTENSION_KEYWORD sep extension_arg_str extension_end 
                 { struct lys_ext *ext = actual;
                   ext->plugin = ext_get_plugin(ext->name, ext->module->name, ext->module->rev ? ext->module->rev[0].date : NULL);
+                  actual_type = $3.token;
+                  actual = $3.actual;
                 }
 
 extension_end: ';'
@@ -787,7 +795,7 @@ extension_end: ';'
     '}'
 
 extension_opt_stmt: @EMPTYDIR@
-  |  extension_opt_stmt argument_stmt
+  |  extension_opt_stmt argument_stmt stmtsep
   |  extension_opt_stmt status_stmt { if (((struct lys_ext *)actual)->flags & LYS_STATUS_MASK) {
                                         LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "extension");
                                         YYABORT;
@@ -805,16 +813,18 @@ extension_opt_stmt: @EMPTYDIR@
                                          s = NULL;
                                        }
 
-argument_str: identifier_arg_str { if (((struct lys_ext *)actual)->argument) {
+argument_str: identifier_arg_str { $$ = actual_type;
+                                   if (((struct lys_ext *)actual)->argument) {
                                       LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "argument", "extension");
                                       free(s);
                                       YYABORT;
                                    }
                                    ((struct lys_ext *)actual)->argument = lydict_insert_zc(param->module->ctx, s);
                                    s = NULL;
+                                   actual_type = ARGUMENT_KEYWORD;
                                  }
 
-argument_stmt: ARGUMENT_KEYWORD sep  argument_str argument_end stmtsep;
+argument_stmt: ARGUMENT_KEYWORD sep  argument_str argument_end { actual_type = $3; }
 
 argument_end: ';'
   | '{' stmtsep

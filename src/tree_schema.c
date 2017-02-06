@@ -4336,6 +4336,7 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
         } else {
             if (e[i]->flags & (LYEXT_OPT_YANG)) {
                 free(e[i]->def);     /* remove name of instance extension */
+                e[i]->def = NULL;
                 free(e[i]->parent);  /* remove backup part of yang file */
             }
             lys_extension_instances_free(ctx, e[i]->ext, e[i]->ext_size);

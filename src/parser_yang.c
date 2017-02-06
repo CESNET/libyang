@@ -2118,6 +2118,12 @@ yang_ext_instance(void *node, enum yytokentype type)
         size = &((struct lys_node *)node)->ext_size;
         parent_type = LYEXT_PAR_NODE;
         break;
+    case ARGUMENT_KEYWORD:
+    case EXTENSION_KEYWORD:
+        ext = &((struct lys_ext *)node)->ext;
+        size = &((struct lys_ext *)node)->ext_size;
+        parent_type = LYEXT_PAR_EXT;
+        break;
     default:
         LOGINT;
         return NULL;
@@ -2179,6 +2185,12 @@ yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext
         case ORGANIZATION_KEYWORD:
             instance->insubstmt = LYEXT_SUBSTMT_ORGANIZATION;
             break;
+        case YIN_ELEMENT_KEYWORD:
+            instance->insubstmt = LYEXT_SUBSTMT_YINELEM;
+            break;
+        case STATUS_KEYWORD:
+            instance->insubstmt = LYEXT_SUBSTMT_STATUS;
+            break;
         default:
             LOGINT;
             return NULL;
@@ -2189,6 +2201,14 @@ yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext
             return NULL;
         }
         instance->insubstmt = LYEXT_SUBSTMT_SELF;
+        switch (actual_type) {
+        case ARGUMENT_KEYWORD:
+            instance->insubstmt = LYEXT_SUBSTMT_ARGUMENT;
+            break;
+        default:
+            instance->insubstmt = LYEXT_SUBSTMT_SELF;
+            break;
+        }
     }
     instance->flags |= LYEXT_OPT_YANG;
     instance->def = (struct lys_ext *)ext_name;    /* hack for UNRES */
@@ -4004,6 +4024,13 @@ yang_check_sub_module(struct lys_module *module, struct unres_schema *unres, str
     /* check extension in revision */
     for (i = 0; i < module->rev_size; ++i) {
         if (yang_check_ext_instance(module, &module->rev[i].ext, module->rev[i].ext_size, &module->rev[i], unres)) {
+            goto error;
+        }
+    }
+
+    /* check extension in definition of extension */
+    for (i = 0; i < module->ext_size; ++i) {
+        if (yang_check_ext_instance(module, &module->extensions[i].ext, module->extensions[i].ext_size, &module->extensions[i], unres)) {
             goto error;
         }
     }
