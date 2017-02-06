@@ -88,11 +88,18 @@ lyext_load_plugins(void)
     void *dlhandler;
     struct lyext_plugin_list *plugin, *p;
     unsigned int u, v;
+    const char *pluginsdir;
 
-    dir = opendir(LYEXT_PLUGINS_DIR);
+    /* try to get the plugins directory from environment variable */
+    pluginsdir = getenv("LIBYANG_EXTENSIONS_PLUGINS_DIR");
+    if (!pluginsdir) {
+        pluginsdir = LYEXT_PLUGINS_DIR;
+    }
+
+    dir = opendir(pluginsdir);
     if (!dir) {
         /* no directory (or no access to it), no plugins */
-        LOGWRN("libyang extension plugins directory \"%s\" does not exist.", LYEXT_PLUGINS_DIR);
+        LOGWRN("libyang extensions plugins directory \"%s\" does not exist.", pluginsdir);
         return;
     }
 
@@ -116,7 +123,7 @@ lyext_load_plugins(void)
         name[len - 3] = '\0';
 
         /* and construct the filepath */
-        asprintf(&str, LYEXT_PLUGINS_DIR"/%s", file->d_name);
+        asprintf(&str, "%s/%s", pluginsdir, file->d_name);
 
         /* load the plugin - first, try if it is already loaded... */
         dlhandler = dlopen(str, RTLD_NOW | RTLD_NOLOAD);
