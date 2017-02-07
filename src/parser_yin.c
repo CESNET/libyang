@@ -7044,6 +7044,47 @@ error:
     return NULL;
 }
 
+static int
+yin_parse_extcomplex_bool(struct lys_module *mod, struct lyxml_elem *node,
+                          struct lys_ext_instance_complex *ext, LY_STMT stmt, LYEXT_SUBSTMT substmt,
+                          const char *true_val, const char *false_val, struct unres_schema *unres)
+{
+    uint8_t *val;
+    const char *str;
+    struct lyext_substmt *info;
+
+    val = lys_ext_complex_get_substmt(stmt, ext, &info);
+    if (!val) {
+        LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, node->name, node->parent->name);
+        return EXIT_FAILURE;
+    }
+    if (*val) {
+        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, node->name, node->parent->name);
+        return EXIT_FAILURE;
+    }
+
+    if (lyp_yin_parse_subnode_ext(mod, ext, LYEXT_PAR_EXTINST, node, substmt, 0, unres)) {
+        return EXIT_FAILURE;
+    }
+
+    str = lyxml_get_attr(node, "value", NULL);
+    if (!str) {
+        LOGVAL(LYE_MISSARG, LY_VLOG_NONE, NULL, "value", node->name);
+    } else if (true_val && !strcmp(true_val, str)) {
+        /* true value */
+        *val = 1;
+    } else if (false_val && !strcmp(false_val, str)) {
+        /* false value */
+        *val = 2;
+    } else {
+        /* unknown value */
+        LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, str, node->name);
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
+}
+
 /*
  * argelem - 1 if the value is stored in a standalone YIN element, 0 if stored as attribute
  * argname - name of the element/attribute where the value is stored
@@ -7132,6 +7173,38 @@ yin_getplace_for_extcomplex_flags(struct lyxml_elem *node, struct lys_ext_instan
     }
 
     return data;
+}
+
+static int
+yin_parse_extcomplex_flag(struct lys_module *mod, struct lyxml_elem *node,
+                          struct lys_ext_instance_complex *ext, LY_STMT stmt, LYEXT_SUBSTMT substmt,
+                          const char *val1_str, const char *val2_str, uint16_t mask,
+                          uint16_t val1, uint16_t val2, struct unres_schema *unres)
+{
+    uint16_t *val;
+    const char *str;
+
+    val = yin_getplace_for_extcomplex_flags(node, ext, stmt, mask);
+    if (!val) {
+        return EXIT_FAILURE;
+    }
+
+    str = lyxml_get_attr(node, "value", NULL);
+    if (!str) {
+        LOGVAL(LYE_MISSARG, LY_VLOG_NONE, NULL, "value", node->name);
+    } else if (!strcmp(val1_str, str)) {
+        *val = *val | val1;
+    } else if (!strcmp(val2_str, str)) {
+        *val = *val | val2;
+    } else {
+        /* unknown value */
+        LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, str, node->name);
+        return EXIT_FAILURE;
+    }
+    if (lyp_yin_parse_subnode_ext(mod, ext, LYEXT_PAR_EXTINST, node, substmt, 0, unres)) {
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
 }
 
 static void **
@@ -7269,6 +7342,12 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             if (lyp_yin_parse_subnode_ext(mod, ext, LYEXT_PAR_EXTINST, node, LYEXT_SUBSTMT_STATUS, 0, unres)) {
                 goto error;
             }
+        } else if (!strcmp(node->name, "config")) {
+            if (yin_parse_extcomplex_flag(mod, node, ext, LY_STMT_MANDATORY, LYEXT_SUBSTMT_MANDATORY,
+                                         "true", "false", LYS_CONFIG_MASK,
+                                         LYS_CONFIG_W | LYS_CONFIG_SET, LYS_CONFIG_R | LYS_CONFIG_SET, unres)) {
+                goto error;
+            }
         } else if (!strcmp(node->name, "argument")) {
             if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_ARGUMENT, LYEXT_SUBSTMT_ARGUMENT,
                                          0, "name", unres)) {
@@ -7277,6 +7356,11 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
         } else if (!strcmp(node->name, "default")) {
             if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_DEFAULT, LYEXT_SUBSTMT_DEFAULT,
                                          0, "value", unres)) {
+                goto error;
+            }
+        } else if (!strcmp(node->name, "mandatory")) {
+            if (yin_parse_extcomplex_flag(mod, node, ext, LY_STMT_MANDATORY, LYEXT_SUBSTMT_MANDATORY,
+                                         "true", "false", LYS_MAND_MASK, LYS_MAND_TRUE, LYS_MAND_FALSE, unres)) {
                 goto error;
             }
         } else if (!strcmp(node->name, "error-app-tag")) {
@@ -7319,6 +7403,11 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
                                          0, "name", unres)) {
                 goto error;
             }
+        } else if (!strcmp(node->name, "ordered-by")) {
+            if (yin_parse_extcomplex_flag(mod, node, ext, LY_STMT_ORDEREDBY, LYEXT_SUBSTMT_ORDEREDBY,
+                                         "user", "system", LYS_USERORDERED, LYS_USERORDERED, 0, unres)) {
+                goto error;
+            }
         } else if (!strcmp(node->name, "belongs-to")) {
             if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_BELONGSTO, LYEXT_SUBSTMT_BELONGSTO,
                                          0, "module", unres)) {
@@ -7342,6 +7431,21 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
         } else if (!strcmp(node->name, "yang-version")) {
             if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_VERSION, LYEXT_SUBSTMT_VERSION,
                                          0, "value", unres)) {
+                goto error;
+            }
+        } else if (!strcmp(node->name, "require-instance")) {
+            if (yin_parse_extcomplex_bool(mod, node, ext, LY_STMT_REQINSTANCE, LYEXT_SUBSTMT_REQINST,
+                                          "true", "false", unres)) {
+                goto error;
+            }
+        } else if (!strcmp(node->name, "modifier")) {
+            if (yin_parse_extcomplex_bool(mod, node, ext, LY_STMT_MODIFIER, LYEXT_SUBSTMT_MODIFIER,
+                                          "invert-match", NULL, unres)) {
+                goto error;
+            }
+        } else if (!strcmp(node->name, "yin-element")) {
+            if (yin_parse_extcomplex_bool(mod, node, ext, LY_STMT_YINELEM, LYEXT_SUBSTMT_YINELEM,
+                                          "true", "false", unres)) {
                 goto error;
             }
         } else if (!strcmp(node->name, "value")) {

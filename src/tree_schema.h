@@ -253,7 +253,8 @@ typedef enum {
     LY_STMT_BIT,
     LY_STMT_CASE,
     LY_STMT_CHOICE,
-    LY_STMT_CONFIG,
+    LY_STMT_CONFIG,       /**< stored as __uint16_t__ value (ORed with the previous value(s)), possible values are
+                               #LYS_CONFIG_R and #LYS_CONFIG_W (both ORed with #LYS_CONFIG_SET) */
     LY_STMT_CONTACT,      /**< stored as __const char*__ */
     LY_STMT_CONTAINER,
     LY_STMT_DEFAULT,      /**< stored as __const char*__ */
@@ -277,15 +278,18 @@ typedef enum {
     LY_STMT_LEAFLIST, /* leaf-list */
     LY_STMT_LENGTH,
     LY_STMT_LIST,
-    LY_STMT_MANDATORY,
+    LY_STMT_MANDATORY,    /**< stored as __uint16_t__ value (ORed with the previous value(s)), possible values are
+                               #LYS_MAND_TRUE and #LYS_MAND_FALSE */
     LY_STMT_MAX, /* max-elements */
     LY_STMT_MIN, /* min-elements */
-    LY_STMT_MODIFIER,
+    LY_STMT_MODIFIER,     /**< stored as __uint8_t__ interpreted as follows: 0 - not set/default; 1 - invert-match
+                               does not allow multiple instances */
     LY_STMT_MODULE,
     LY_STMT_MUST,
     LY_STMT_NAMESPACE,    /**< stored as __const char*__ */
     LY_STMT_NOTIFICATION,
-    LY_STMT_ORDEREDBY, /* ordered-by */
+    LY_STMT_ORDEREDBY,    /**< ordered-by, stored as __uint16_t__ value (ORed with the previous value(s)), possible
+                               value is #LYS_USERORDERED */
     LY_STMT_ORG,          /**< organization, stored as __const char*__ */
     LY_STMT_OUTPUT,
     LY_STMT_PATH,         /**< stored as __const char*__ */
@@ -296,11 +300,13 @@ typedef enum {
     LY_STMT_RANGE,
     LY_STMT_REFERENCE,    /**< stored as __const char*__ */
     LY_STMT_REFINE,
-    LY_STMT_REQINSTANCE, /* require-instance */
+    LY_STMT_REQINSTANCE,  /**< require-instance, stored as __uint8_t__ interpreted as follows: 0 - not set/default;
+                               1 - true; 2 - false, does not allow multiple instances */
     LY_STMT_REVISION,
     LY_STMT_REVISIONDATE, /**< revision-date, stored as __const char*__ */
     LY_STMT_RPC,
-    LY_STMT_STATUS,       /**< stored as __uint16_t__ value (ORed with the previous value) */
+    LY_STMT_STATUS,       /**< stored as __uint16_t__ value (ORed with the previous value(s)), possible values are
+                               #LYS_STATUS_CURR, #LYS_STATUS_DEPRC and #LYS_STATUS_OBSLT */
     LY_STMT_SUBMODULE,
     LY_STMT_TYPE,         /**< stored as ::lys_type* */
     LY_STMT_TYPEDEF,
@@ -310,7 +316,8 @@ typedef enum {
     LY_STMT_VALUE,        /**< stored as __const char*__ */
     LY_STMT_WHEN,
     LY_STMT_VERSION,      /**< yang-version, stored as __const char*__ */
-    LY_STMT_YINELEM /* yin-element */
+    LY_STMT_YINELEM       /**< stored as __uint8_t__ interpreted as follows: 0 - not set/default; 1 - true; 2 - false,
+                               does not allow multiple instances */
 } LY_STMT;
 
 typedef enum {

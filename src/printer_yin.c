@@ -1791,6 +1791,29 @@ yin_print_model(struct lyout *out, const struct lys_module *module)
 }
 
 static void
+yin_print_extcomplex_bool(struct lyout *out, int level, const struct lys_module *module,
+                          struct lys_ext_instance_complex *ext, LY_STMT stmt, LYEXT_SUBSTMT substmt,
+                          const char *true_val, const char *false_val, int *content)
+{
+    struct lyext_substmt *info;
+    uint8_t *val;
+
+    val = lys_ext_complex_get_substmt(stmt, ext, &info);
+    if (!val || !(*val)) {
+        return;
+    }
+
+    yin_print_close_parent(out, content);
+    if (*val == 1) {
+        yin_print_substmt(out, level, substmt, 0, true_val, module, ext->ext, ext->ext_size);
+    } else if (*val == 2) {
+        yin_print_substmt(out, level, substmt, 0, false_val, module, ext->ext, ext->ext_size);
+    } else {
+        LOGINT;
+    }
+}
+
+static void
 yin_print_extcomplex_str(struct lyout *out, int level, const struct lys_module *module,
                          struct lys_ext_instance_complex *ext, LY_STMT stmt, LYEXT_SUBSTMT substmt, int *content)
 {
@@ -1806,14 +1829,42 @@ yin_print_extcomplex_str(struct lyout *out, int level, const struct lys_module *
         /* we have array */
         for (str = (const char **)(*str), c = 0; *str; str++, c++) {
             yin_print_close_parent(out, content);
-            yin_print_substmt(out, level, substmt, c, *str,
-                              module, ext->ext, ext->ext_size);
+            yin_print_substmt(out, level, substmt, c, *str, module, ext->ext, ext->ext_size);
         }
     } else {
         yin_print_close_parent(out, content);
-        yin_print_substmt(out, level, substmt, 0, *str,
-                          module, ext->ext, ext->ext_size);
+        yin_print_substmt(out, level, substmt, 0, *str, module, ext->ext, ext->ext_size);
     }
+}
+
+/* val1 is supposed to be the default value */
+static void
+yin_print_extcomplex_flags(struct lyout *out, int level, const struct lys_module *module,
+                           struct lys_ext_instance_complex *ext, LY_STMT stmt, LYEXT_SUBSTMT substmt,
+                           const char *val1_str, const char *val2_str, uint16_t val1, uint16_t val2,
+                           int *content)
+{
+    const char *str;
+    uint16_t *flags;
+
+    flags = lys_ext_complex_get_substmt(stmt, ext, NULL);
+    if (!flags) {
+        return;
+    }
+
+    if (val1 & *flags) {
+        str = val1_str;
+    } else if (val2 & *flags) {
+        str = val2_str;
+    } else if (lys_ext_iter(ext->ext, ext->ext_size, 0, substmt) != -1) {
+        /* flag not set, but since there are some extension, we are going to print the default value */
+        str = val1_str;
+    } else {
+        return;
+    }
+
+    yin_print_close_parent(out, content);
+    yin_print_substmt(out, level, substmt, 0, str, module, ext->ext, ext->ext_size);
 }
 
 static void
@@ -1941,6 +1992,12 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
                         str = "obsolete";
                     }
                     yin_print_substmt(out, level, LYEXT_SUBSTMT_STATUS, 0, str, module, ext[u]->ext, ext[u]->ext_size);
+                case LY_STMT_CONFIG:
+                    yin_print_extcomplex_flags(out, level, module, (struct lys_ext_instance_complex*)ext[u],
+                                               LY_STMT_CONFIG, LYEXT_SUBSTMT_CONFIG,
+                                               "true", "false",
+                                               LYS_CONFIG_W | LYS_CONFIG_SET, LYS_CONFIG_R | LYS_CONFIG_SET, &content);
+                    break;
                 case LY_STMT_ARGUMENT:
                     yin_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
                                              LY_STMT_ARGUMENT, LYEXT_SUBSTMT_ARGUMENT, &content);
@@ -1948,6 +2005,11 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
                 case LY_STMT_DEFAULT:
                     yin_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
                                              LY_STMT_DEFAULT, LYEXT_SUBSTMT_DEFAULT, &content);
+                    break;
+                case LY_STMT_MANDATORY:
+                    yin_print_extcomplex_flags(out, level, module, (struct lys_ext_instance_complex*)ext[u],
+                                               LY_STMT_MANDATORY, LYEXT_SUBSTMT_MANDATORY,
+                                               "false", "true", LYS_MAND_FALSE, LYS_MAND_TRUE, &content);
                     break;
                 case LY_STMT_ERRTAG:
                     yin_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
@@ -1981,6 +2043,11 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
                     yin_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
                                              LY_STMT_BASE, LYEXT_SUBSTMT_BASE, &content);
                     break;
+                case LY_STMT_ORDEREDBY:
+                    yin_print_extcomplex_flags(out, level, module, (struct lys_ext_instance_complex*)ext[u],
+                                               LY_STMT_ORDEREDBY, LYEXT_SUBSTMT_ORDEREDBY,
+                                               "system", "user", 0, LYS_USERORDERED, &content);
+                    break;
                 case LY_STMT_BELONGSTO:
                     yin_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
                                              LY_STMT_BELONGSTO, LYEXT_SUBSTMT_BELONGSTO, &content);
@@ -2000,6 +2067,18 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
                 case LY_STMT_VERSION:
                     yin_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
                                              LY_STMT_VERSION, LYEXT_SUBSTMT_VERSION, &content);
+                    break;
+                case LY_STMT_REQINSTANCE:
+                    yin_print_extcomplex_bool(out, level, module, (struct lys_ext_instance_complex*)ext[u],
+                                              LY_STMT_REQINSTANCE, LYEXT_SUBSTMT_REQINST, "true", "false", &content);
+                    break;
+                case LY_STMT_MODIFIER:
+                    yin_print_extcomplex_bool(out, level, module, (struct lys_ext_instance_complex*)ext[u],
+                                              LY_STMT_MODIFIER, LYEXT_SUBSTMT_MODIFIER, "invert-match", NULL, &content);
+                    break;
+                case LY_STMT_YINELEM:
+                    yin_print_extcomplex_bool(out, level, module, (struct lys_ext_instance_complex*)ext[u],
+                                              LY_STMT_YINELEM, LYEXT_SUBSTMT_YINELEM, "true", "false", &content);
                     break;
                 case LY_STMT_VALUE:
                     yin_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
