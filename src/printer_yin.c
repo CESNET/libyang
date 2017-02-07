@@ -140,7 +140,7 @@ static void
 yin_print_iffeature(struct lyout *out, int level, const struct lys_module *module, struct lys_iffeature *iffeature)
 {
     ly_print(out, "%*s<if-feature name=\"", LEVEL, INDENT);
-    ly_print_iffeature(out, module, iffeature);
+    ly_print_iffeature(out, module, iffeature, 0);
 
     /* extensions */
     if (iffeature->ext_size) {
