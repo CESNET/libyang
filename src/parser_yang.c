@@ -2124,6 +2124,11 @@ yang_ext_instance(void *node, enum yytokentype type)
         size = &((struct lys_ext *)node)->ext_size;
         parent_type = LYEXT_PAR_EXT;
         break;
+    case FEATURE_KEYWORD:
+        ext = &((struct lys_feature *)node)->ext;
+        size = &((struct lys_feature *)node)->ext_size;
+        parent_type = LYEXT_PAR_FEATURE;
+        break;
     default:
         LOGINT;
         return NULL;
@@ -4029,7 +4034,7 @@ yang_check_sub_module(struct lys_module *module, struct unres_schema *unres, str
     }
 
     /* check extension in definition of extension */
-    for (i = 0; i < module->ext_size; ++i) {
+    for (i = 0; i < module->extensions_size; ++i) {
         if (yang_check_ext_instance(module, &module->extensions[i].ext, module->extensions[i].ext_size, &module->extensions[i], unres)) {
             goto error;
         }
@@ -4044,6 +4049,10 @@ yang_check_sub_module(struct lys_module *module, struct unres_schema *unres, str
         if (yang_check_iffeatures(module, NULL, &module->features[i], FEATURE_KEYWORD, unres)) {
             goto error;
         }
+        if (yang_check_ext_instance(module, &module->features[i].ext, module->features[i].ext_size, &module->features[i], unres)) {
+            goto error;
+        }
+
         /* check for circular dependencies */
         if (module->features[i].iffeature_size && (unres_schema_add_node(module, unres, &module->features[i], UNRES_FEATURE, NULL) == -1)) {
             goto error;
