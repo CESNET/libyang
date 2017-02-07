@@ -248,7 +248,6 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <deviate> deviate_add_opt_stmt
 %type <deviate> deviate_delete_opt_stmt
 %type <deviate> deviate_replace_opt_stmt
-%type <nodes> typedef_arg_str
 %type <ch> pattern_opt_stmt
 %type <ch> pattern_end
 %type <ch> modifier_stmt
@@ -282,6 +281,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <backup_token> feature_arg_str
 %type <backup_token> identity_arg_str
 %type <backup_token> if_feature_arg
+%type <backup_token> typedef_arg_str
 
 %destructor { free($$); } pattern_arg_str string_opt_part1 semicolom curly_bracket_open
 %destructor { free(($$) ? *$$ : NULL); } tmp_string
@@ -1084,6 +1084,8 @@ base_arg: identifier_ref_arg_str { backup_type = actual_type;
 base_stmt: BASE_KEYWORD sep base_arg stmtend
 
 typedef_arg_str: identifier_arg_str { tpdf_parent = actual;
+                                      $$.token = actual_type;
+                                      $$.actual = actual;
                                       if (lyp_check_identifier(s, LY_IDENT_TYPE, trg, tpdf_parent)) {
                                         free(s);
                                         YYABORT;
@@ -1129,7 +1131,6 @@ typedef_arg_str: identifier_arg_str { tpdf_parent = actual;
                                       ((struct lys_tpdf *)actual)->module = trg;
                                       s = NULL;
                                       actual_type = TYPEDEF_KEYWORD;
-                                      $$.node.ptr_tpdf = actual;
                                     }
 
 typedef_stmt: TYPEDEF_KEYWORD sep typedef_arg_str
@@ -1139,27 +1140,31 @@ typedef_stmt: TYPEDEF_KEYWORD sep typedef_arg_str
                       LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "type", "typedef");
                       YYABORT;
                     }
-                    actual = tpdf_parent;
+                    actual_type = $3.token;
+                    actual = $3.actual;
                   }
 
 type_opt_stmt: @EMPTYDIR@ { $$.node.ptr_tpdf = actual;
                             $$.node.flag = 0;
                           }
-  |  type_opt_stmt type_stmt stmtsep { actual = $1.node.ptr_tpdf;
-                                       actual_type = TYPEDEF_KEYWORD;
-                                       $1.node.flag |= LYS_TYPE_DEF;
+  |  type_opt_stmt type_stmt stmtsep { $1.node.flag |= LYS_TYPE_DEF;
                                        $$ = $1;
                                      }
-  |  type_opt_stmt units_stmt { if (yang_read_units(trg, $1.node.ptr_tpdf, s, TYPEDEF_KEYWORD)) {YYABORT;} s = NULL; }
+  |  type_opt_stmt units_stmt { if (yang_read_units(trg, $1.node.ptr_tpdf, s, TYPEDEF_KEYWORD)) {
+                                  YYABORT;
+                                }
+                                s = NULL;
+                              }
   |  type_opt_stmt default_stmt { if (yang_read_default(trg, $1.node.ptr_tpdf, s, TYPEDEF_KEYWORD)) {
                                     YYABORT;
                                   }
                                   s = NULL;
-                                  $$ = $1;
                                 }
-  |  type_opt_stmt status_stmt { if (yang_check_flags((uint16_t*)&$1.node.ptr_tpdf->flags, LYS_STATUS_MASK, "status", "typedef", $2, 0)) {
+  |  type_opt_stmt status_stmt { if ($1.node.ptr_tpdf->flags & LYS_STATUS_MASK) {
+                                   LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "typedef");
                                    YYABORT;
                                  }
+                                 $1.node.ptr_tpdf->flags |= $2;
                                }
   |  type_opt_stmt description_stmt { if (yang_read_description(trg, $1.node.ptr_tpdf, s, "typedef", NODE)) {
                                         YYABORT;
@@ -1171,7 +1176,6 @@ type_opt_stmt: @EMPTYDIR@ { $$.node.ptr_tpdf = actual;
                                     }
                                     s = NULL;
                                   }
-
 
 type_stmt: TYPE_KEYWORD sep type_arg_str type_end
 

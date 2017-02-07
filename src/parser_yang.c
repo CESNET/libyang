@@ -2139,6 +2139,11 @@ yang_ext_instance(void *node, enum yytokentype type)
         size = &((struct lys_iffeature *)node)->ext_size;
         parent_type = LYEXT_PAR_IFFEATURE;
         break;
+    case TYPEDEF_KEYWORD:
+        ext = &((struct lys_tpdf *)node)->ext;
+        size = &((struct lys_tpdf *)node)->ext_size;
+        parent_type = LYEXT_PAR_TPDF;
+        break;
     default:
         LOGINT;
         return NULL;
@@ -2206,6 +2211,12 @@ yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext
         case BASE_KEYWORD:
             instance->insubstmt = LYEXT_SUBSTMT_BASE;
             instance->insubstmt_index = ((struct lys_ident *)actual)->base_size;
+            break;
+        case DEFAULT_KEYWORD:
+            instance->insubstmt = LYEXT_SUBSTMT_DEFAULT;
+            break;
+        case UNITS_KEYWORD:
+            instance->insubstmt = LYEXT_SUBSTMT_UNITS;
             break;
         default:
             LOGINT;
@@ -3276,6 +3287,9 @@ yang_check_typedef(struct lys_module *module, struct lys_node *parent, struct un
             }
         }
 
+        if (yang_check_ext_instance(module, &tpdf[i].ext, tpdf[i].ext_size, &tpdf[i], unres)) {
+            goto error;
+        }
         if (unres_schema_add_node(module, unres, &tpdf[i].type, UNRES_TYPE_DER_TPDF, parent) == -1) {
             goto error;
         }
