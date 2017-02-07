@@ -1738,6 +1738,7 @@ grouping_stmt: GROUPING_KEYWORD sep grouping_arg_str grouping_end
                { LOGDBG("YANG: finished parsing grouping statement \"%s\"", data_node->name);
                  actual_type = $3.token;
                  actual = $3.actual;
+                 data_node = $3.actual;
                }
 
 grouping_end: ';'
@@ -1762,21 +1763,11 @@ grouping_opt_stmt: @EMPTYDIR@ { $$.grouping = actual; }
                                         }
                                         s = NULL;
                                       }
-  |  grouping_opt_stmt grouping_stmt stmtsep { actual = $1.grouping;
-                                               actual_type = GROUPING_KEYWORD;
-                                             }
-  |  grouping_opt_stmt typedef_stmt stmtsep { actual = $1.grouping;
-                                              actual_type = GROUPING_KEYWORD;
-                                            }
-  |  grouping_opt_stmt data_def_stmt stmtsep { actual = $1.grouping;
-                                               actual_type = GROUPING_KEYWORD;
-                                             }
-  |  grouping_opt_stmt action_stmt stmtsep { actual = $1.grouping;
-                                             actual_type = GROUPING_KEYWORD;
-                                           }
-  |  grouping_opt_stmt notification_stmt stmtsep { actual = $1.grouping;
-                                                   actual_type = GROUPING_KEYWORD;
-                                                   if (trg->version < 2) {
+  |  grouping_opt_stmt grouping_stmt stmtsep
+  |  grouping_opt_stmt typedef_stmt stmtsep
+  |  grouping_opt_stmt data_def_stmt stmtsep
+  |  grouping_opt_stmt action_stmt stmtsep
+  |  grouping_opt_stmt notification_stmt stmtsep { if (trg->version < 2) {
                                                      LOGVAL(LYE_INSTMT, LY_VLOG_LYS, $1.grouping, "notification");
                                                      YYABORT;
                                                    }
