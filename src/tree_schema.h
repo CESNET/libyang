@@ -241,83 +241,87 @@ typedef enum lys_nodetype {
  *    e.g. #LY_STMT_STATUS.
  * 2. The lys_node_* data types are stored as a data tree, so in case of multiple instances, they are stored
  *    as siblings to the first node.
+ *
+ * The values <= #LY_STMT_UNIQUE are compatible with #LYEXT_SUBSTMT values which defines the subset of YANG statements
+ * that does not store extension instances directly.
  */
 typedef enum {
-    LY_STMT_ACTION = 1,
-    LY_STMT_ANYDATA,      /**< stored as ::lys_node_anydata*, covers also anyxml-stmt from YANG 1.0 */
-/*  LY_STMT_ANYXML - replaced by ANYDATA */
-    LY_STMT_ARGUMENT,     /**< stored as __const char*__ */
-    LY_STMT_AUGMENT,
+    LY_STMT_ARGUMENT = 1, /**< stored as __const char*__ */
     LY_STMT_BASE,         /**< stored as __const char*__ */
     LY_STMT_BELONGSTO,    /**< belongs-to, stored as __const char*__ */
-    LY_STMT_BIT,
-    LY_STMT_CASE,
-    LY_STMT_CHOICE,
-    LY_STMT_CONFIG,       /**< stored as __uint16_t__ value (ORed with the previous value(s)), possible values are
-                               #LYS_CONFIG_R and #LYS_CONFIG_W (both ORed with #LYS_CONFIG_SET) */
     LY_STMT_CONTACT,      /**< stored as __const char*__ */
-    LY_STMT_CONTAINER,
     LY_STMT_DEFAULT,      /**< stored as __const char*__ */
     LY_STMT_DESCRIPTION,  /**< stored as __const char*__ */
-    LY_STMT_DEVIATE,
-    LY_STMT_DEVIATION,
-    LY_STMT_ENUM,
     LY_STMT_ERRTAG,       /**< error-app-tag, stored as __const char*__ */
     LY_STMT_ERRMSG,       /**< error-message, stored as __const char*__ */
+    LY_STMT_KEY,          /**< stored as __const char*__ */
+    LY_STMT_NAMESPACE,    /**< stored as __const char*__ */
+    LY_STMT_ORGANIZATION, /**< organization, stored as __const char*__ */
+    LY_STMT_PATH,         /**< stored as __const char*__ */
+    LY_STMT_PREFIX,       /**< stored as __const char*__ */
+    LY_STMT_PRESENCE,     /**< stored as __const char*__ */
+    LY_STMT_REFERENCE,    /**< stored as __const char*__ */
+    LY_STMT_REVISIONDATE, /**< revision-date, stored as __const char*__ */
+    LY_STMT_UNITS,        /**< stored as __const char*__ */
+    LY_STMT_VALUE,        /**< stored as __const char*__ */
+    LY_STMT_VERSION,      /**< yang-version, stored as __const char*__ */
+    LY_STMT_MODIFIER,     /**< stored as __uint8_t__ interpreted as follows: 0 - not set/default; 1 - invert-match
+                               does not allow multiple instances */
+    LY_STMT_REQINSTANCE,  /**< require-instance, stored as __uint8_t__ interpreted as follows: 0 - not set/default;
+                               1 - true; 2 - false, does not allow multiple instances */
+    LY_STMT_YINELEM,      /**< stored as __uint8_t__ interpreted as follows: 0 - not set/default; 1 - true; 2 - false,
+                               does not allow multiple instances */
+    LY_STMT_CONFIG,       /**< stored as __uint16_t__ value (ORed with the previous value(s)), possible values are
+                               #LYS_CONFIG_R and #LYS_CONFIG_W (both ORed with #LYS_CONFIG_SET) */
+    LY_STMT_MANDATORY,    /**< stored as __uint16_t__ value (ORed with the previous value(s)), possible values are
+                               #LYS_MAND_TRUE and #LYS_MAND_FALSE */
+    LY_STMT_ORDEREDBY,    /**< ordered-by, stored as __uint16_t__ value (ORed with the previous value(s)), possible
+                               value is #LYS_USERORDERED */
+    LY_STMT_STATUS,       /**< stored as __uint16_t__ value (ORed with the previous value(s)), possible values are
+                               #LYS_STATUS_CURR, #LYS_STATUS_DEPRC and #LYS_STATUS_OBSLT */
+    LY_STMT_DIGITS, /* fraction-digits */
+    LY_STMT_MAX, /* max-elements */
+    LY_STMT_MIN, /* min-elements */
+    LY_STMT_POSITION,
+    LY_STMT_UNIQUE,
+
+    LY_STMT_MODULE,
+    LY_STMT_SUBMODULE,
+    LY_STMT_ACTION,
+    LY_STMT_ANYDATA,      /**< stored as ::lys_node_anydata*, covers also anyxml-stmt from YANG 1.0 */
+/*  LY_STMT_ANYXML - replaced by ANYDATA */
+    LY_STMT_CASE,
+    LY_STMT_CHOICE,
+    LY_STMT_CONTAINER,
+    LY_STMT_GROUPING,
+    LY_STMT_INPUT,
+    LY_STMT_LEAF,
+    LY_STMT_LEAFLIST, /* leaf-list */
+    LY_STMT_LIST,
+    LY_STMT_NOTIFICATION,
+    LY_STMT_OUTPUT,
+    LY_STMT_RPC,
+    LY_STMT_USES,
+    LY_STMT_TYPEDEF,
+    LY_STMT_TYPE,         /**< stored as ::lys_type* */
+    LY_STMT_BIT,
+    LY_STMT_ENUM,
+    LY_STMT_REFINE,
+    LY_STMT_AUGMENT,
+    LY_STMT_DEVIATE,
+    LY_STMT_DEVIATION,
     LY_STMT_EXTENSION,
     LY_STMT_FEATURE,
-    LY_STMT_DIGITS, /* fraction-digits */
-    LY_STMT_GROUPING,
     LY_STMT_IDENTITY,
     LY_STMT_IFFEATURE,    /**< if-feature, stored as ::lys_iffeature* */
     LY_STMT_IMPORT,
     LY_STMT_INCLUDE,
-    LY_STMT_INPUT,
-    LY_STMT_KEY,          /**< stored as __const char*__ */
-    LY_STMT_LEAF,
-    LY_STMT_LEAFLIST, /* leaf-list */
     LY_STMT_LENGTH,
-    LY_STMT_LIST,
-    LY_STMT_MANDATORY,    /**< stored as __uint16_t__ value (ORed with the previous value(s)), possible values are
-                               #LYS_MAND_TRUE and #LYS_MAND_FALSE */
-    LY_STMT_MAX, /* max-elements */
-    LY_STMT_MIN, /* min-elements */
-    LY_STMT_MODIFIER,     /**< stored as __uint8_t__ interpreted as follows: 0 - not set/default; 1 - invert-match
-                               does not allow multiple instances */
-    LY_STMT_MODULE,
     LY_STMT_MUST,
-    LY_STMT_NAMESPACE,    /**< stored as __const char*__ */
-    LY_STMT_NOTIFICATION,
-    LY_STMT_ORDEREDBY,    /**< ordered-by, stored as __uint16_t__ value (ORed with the previous value(s)), possible
-                               value is #LYS_USERORDERED */
-    LY_STMT_ORG,          /**< organization, stored as __const char*__ */
-    LY_STMT_OUTPUT,
-    LY_STMT_PATH,         /**< stored as __const char*__ */
     LY_STMT_PATTERN,
-    LY_STMT_POSITION,
-    LY_STMT_PREFIX,       /**< stored as __const char*__ */
-    LY_STMT_PRESENCE,     /**< stored as __const char*__ */
     LY_STMT_RANGE,
-    LY_STMT_REFERENCE,    /**< stored as __const char*__ */
-    LY_STMT_REFINE,
-    LY_STMT_REQINSTANCE,  /**< require-instance, stored as __uint8_t__ interpreted as follows: 0 - not set/default;
-                               1 - true; 2 - false, does not allow multiple instances */
-    LY_STMT_REVISION,
-    LY_STMT_REVISIONDATE, /**< revision-date, stored as __const char*__ */
-    LY_STMT_RPC,
-    LY_STMT_STATUS,       /**< stored as __uint16_t__ value (ORed with the previous value(s)), possible values are
-                               #LYS_STATUS_CURR, #LYS_STATUS_DEPRC and #LYS_STATUS_OBSLT */
-    LY_STMT_SUBMODULE,
-    LY_STMT_TYPE,         /**< stored as ::lys_type* */
-    LY_STMT_TYPEDEF,
-    LY_STMT_UNIQUE,
-    LY_STMT_UNITS,        /**< stored as __const char*__ */
-    LY_STMT_USES,
-    LY_STMT_VALUE,        /**< stored as __const char*__ */
     LY_STMT_WHEN,
-    LY_STMT_VERSION,      /**< yang-version, stored as __const char*__ */
-    LY_STMT_YINELEM       /**< stored as __uint8_t__ interpreted as follows: 0 - not set/default; 1 - true; 2 - false,
-                               does not allow multiple instances */
+    LY_STMT_REVISION,
 } LY_STMT;
 
 typedef enum {
@@ -341,89 +345,6 @@ typedef enum {
                                         plugin is expected as ::lyext_plugin_complex to which it can be cast from
                                         ::lyext_plugin */
 } LYEXT_TYPE;
-
-/**
- * @brief Extension instance structure parent enumeration
- */
-typedef enum {
-    LYEXT_PAR_MODULE,              /**< ::lys_module or ::lys_submodule */
-    LYEXT_PAR_NODE,                /**< ::lys_node (and the derived structures) */
-    LYEXT_PAR_TPDF,                /**< ::lys_tpdf */
-    LYEXT_PAR_TYPE,                /**< ::lys_type */
-    LYEXT_PAR_TYPE_BIT,            /**< ::lys_type_bit */
-    LYEXT_PAR_TYPE_ENUM,           /**< ::lys_type_enum */
-    LYEXT_PAR_FEATURE,             /**< ::lys_feature */
-    LYEXT_PAR_RESTR,               /**< ::lys_restr - YANG's must, range, length and pattern statements */
-    LYEXT_PAR_WHEN,                /**< ::lys_when */
-    LYEXT_PAR_IDENT,               /**< ::lys_ident */
-    LYEXT_PAR_EXT,                 /**< ::lys_ext */
-    LYEXT_PAR_EXTINST,             /**< ::lys_ext_instance */
-    LYEXT_PAR_REFINE,              /**< ::lys_refine */
-    LYEXT_PAR_DEVIATION,           /**< ::lys_deviation */
-    LYEXT_PAR_DEVIATE,             /**< ::lys_deviate */
-    LYEXT_PAR_IMPORT,              /**< ::lys_import */
-    LYEXT_PAR_INCLUDE,             /**< ::lys_include */
-    LYEXT_PAR_REVISION,            /**< ::lys_revision */
-    LYEXT_PAR_IFFEATURE            /**< ::lys_iffeature */
-} LYEXT_PAR;
-
-/**
- * @brief List of substatement without extensions storage. If the module contains extension instances in these
- * substatements, they are stored with the extensions of the parent statement and flag to show to which substatement
- * they belongs to.
- *
- * For example, if the extension is supposed to be instantiated as a child to the description statement, libyang
- * stores the description just as its value. So, for example in case of the module's description, the description's
- * extension instance is actually stored in the lys_module's extensions list with the ::lys_ext_instance#substmt set to
- * #LYEXT_SUBSTMT_DESCRIPTION, ::lys_ext_instance#parent_type is LYEXT_PAR_MODULE and the ::lys_ext_instance#parent
- * points to the ::lys_module structure.
- */
-typedef enum {
-    LYEXT_SUBSTMT_ALL = -1,      /**< special value for the lys_ext_iter() */
-    LYEXT_SUBSTMT_SELF = 0,      /**< extension of the structure itself, not substatement's */
-    LYEXT_SUBSTMT_ARGUMENT,      /**< extension of the argument statement, can appear in lys_ext */
-    LYEXT_SUBSTMT_BASE,          /**< extension of the base statement, can appear (repeatedly) in lys_type and lys_ident */
-    LYEXT_SUBSTMT_BELONGSTO,     /**< extension of the belongs-to statement, can appear in lys_submodule */
-    LYEXT_SUBSTMT_CONFIG,        /**< extension of the config statement, can appear in lys_node and lys_deviate */
-    LYEXT_SUBSTMT_CONTACT,       /**< extension of the contact statement, can appear in lys_module */
-    LYEXT_SUBSTMT_DEFAULT,       /**< extension of the default statement, can appear in lys_node_leaf, lys_node_leaflist,
-                                      lys_node_choice and lys_deviate */
-    LYEXT_SUBSTMT_DESCRIPTION,   /**< extension of the description statement, can appear in lys_module, lys_submodule,
-                                      lys_node, lys_import, lys_include, lys_ext, lys_feature, lys_tpdf, lys_restr,
-                                      lys_ident, lys_deviation, lys_type_enum, lys_type_bit, lys_when and lys_revision */
-    LYEXT_SUBSTMT_ERRTAG,        /**< extension of the error-app-tag statement, can appear in lys_restr */
-    LYEXT_SUBSTMT_ERRMSG,        /**< extension of the error-message statement, can appear in lys_restr */
-    LYEXT_SUBSTMT_DIGITS,        /**< extension of the fraction-digits statement, can appear in lys_type */
-    LYEXT_SUBSTMT_KEY,           /**< extension of the key statement, can appear in lys_node_list */
-    LYEXT_SUBSTMT_MANDATORY,     /**< extension of the mandatory statement, can appear in lys_node_leaf, lys_node_choice,
-                                      lys_node_anydata and lys_deviate */
-    LYEXT_SUBSTMT_MAX,           /**< extension of the max-elements statement, can appear in lys_node_list,
-                                      lys_node_leaflist and lys_deviate */
-    LYEXT_SUBSTMT_MIN,           /**< extension of the min-elements statement, can appear in lys_node_list,
-                                      lys_node_leaflist and lys_deviate */
-    LYEXT_SUBSTMT_MODIFIER,      /**< extension of the modifier statement, can appear in lys_restr */
-    LYEXT_SUBSTMT_NAMESPACE,     /**< extension of the namespace statement, can appear in lys_module */
-    LYEXT_SUBSTMT_ORDEREDBY,     /**< extension of the ordered-by statement, can appear in lys_node_list and lys_node_leaflist */
-    LYEXT_SUBSTMT_ORGANIZATION,  /**< extension of the organization statement, can appear in lys_module and lys_submodule */
-    LYEXT_SUBSTMT_PATH,          /**< extension of the path statement, can appear in lys_type */
-    LYEXT_SUBSTMT_POSITION,      /**< extension of the position statement, can appear in lys_type_bit */
-    LYEXT_SUBSTMT_PREFIX,        /**< extension of the prefix statement, can appear in lys_module, lys_submodule (for
-                                      belongs-to's prefix) and lys_import */
-    LYEXT_SUBSTMT_PRESENCE,      /**< extension of the presence statement, can appear in lys_node_container */
-    LYEXT_SUBSTMT_REFERENCE,     /**< extension of the reference statement, can appear in lys_module, lys_submodule,
-                                      lys_node, lys_import, lys_include, lys_revision, lys_tpdf, lys_restr, lys_ident,
-                                      lys_ext, lys_feature, lys_deviation, lys_type_enum, lys_type_bit and lys_when */
-    LYEXT_SUBSTMT_REQINST,       /**< extension of the require-instance statement, can appear in lys_type */
-    LYEXT_SUBSTMT_REVISIONDATE,  /**< extension of the revision-date statement, can appear in lys_import and lys_include */
-    LYEXT_SUBSTMT_STATUS,        /**< extension of the status statement, can appear in lys_tpdf, lys_node, lys_ident,
-                                      lys_ext, lys_feature, lys_type_enum and lys_type_bit */
-    LYEXT_SUBSTMT_UNIQUE,        /**< extension of the unique statement, can appear in lys_node_list and lys_deviate */
-    LYEXT_SUBSTMT_UNITS,         /**< extension of the units statement, can appear in lys_tpdf, lys_node_leaf,
-                                      lys_node_leaflist and lys_deviate */
-    LYEXT_SUBSTMT_VALUE,         /**< extension of the value statement, can appear in lys_type_enum */
-    LYEXT_SUBSTMT_VERSION,       /**< extension of the yang-version statement, can appear in lys_module and lys_submodule */
-    LYEXT_SUBSTMT_YINELEM        /**< extension of the yin-element statement, can appear in lys_ext */
-} LYEXT_SUBSTMT;
 
 /**
  * @defgroup extflags Extension flags

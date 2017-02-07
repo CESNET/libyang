@@ -528,10 +528,10 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
     case LY_TYPE_INST:
         if (type->info.inst.req == 1) {
             yang_print_open(out, &flag);
-            yang_print_substmt(out, level, LYEXT_SUBSTMT_REQINST, 0, "true", module, type->ext, type->ext_size);
+            yang_print_substmt(out, level, LYEXT_SUBSTMT_REQINSTANCE, 0, "true", module, type->ext, type->ext_size);
         } else if (type->info.inst.req == -1) {
             yang_print_open(out, &flag);
-            yang_print_substmt(out, level, LYEXT_SUBSTMT_REQINST, 0, "false", module, type->ext, type->ext_size);
+            yang_print_substmt(out, level, LYEXT_SUBSTMT_REQINSTANCE, 0, "false", module, type->ext, type->ext_size);
         }
         break;
     case LY_TYPE_INT8:
@@ -561,10 +561,10 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
         }
         if (type->info.lref.req == 1) {
             yang_print_open(out, &flag);
-            yang_print_substmt(out, level, LYEXT_SUBSTMT_REQINST, 0, "true", module, type->ext, type->ext_size);
+            yang_print_substmt(out, level, LYEXT_SUBSTMT_REQINSTANCE, 0, "true", module, type->ext, type->ext_size);
         } else if (type->info.lref.req == -1) {
             yang_print_open(out, &flag);
-            yang_print_substmt(out, level, LYEXT_SUBSTMT_REQINST, 0, "false", module, type->ext, type->ext_size);
+            yang_print_substmt(out, level, LYEXT_SUBSTMT_REQINSTANCE, 0, "false", module, type->ext, type->ext_size);
         }
         break;
     case LY_TYPE_STRING:
@@ -1807,7 +1807,7 @@ yang_print_model(struct lyout *out, const struct lys_module *module)
 
 static void
 yang_print_extcomplex_bool(struct lyout *out, int level, const struct lys_module *module,
-                           struct lys_ext_instance_complex *ext, LY_STMT stmt, LYEXT_SUBSTMT substmt,
+                           struct lys_ext_instance_complex *ext, LY_STMT stmt,
                            const char *true_val, const char *false_val, int *content)
 {
     struct lyext_substmt *info;
@@ -1820,9 +1820,9 @@ yang_print_extcomplex_bool(struct lyout *out, int level, const struct lys_module
 
     yang_print_open(out, content);
     if (*val == 1) {
-        yang_print_substmt(out, level, substmt, 0, true_val, module, ext->ext, ext->ext_size);
+        yang_print_substmt(out, level, stmt, 0, true_val, module, ext->ext, ext->ext_size);
     } else if (*val == 2) {
-        yang_print_substmt(out, level, substmt, 0, false_val, module, ext->ext, ext->ext_size);
+        yang_print_substmt(out, level, stmt, 0, false_val, module, ext->ext, ext->ext_size);
     } else {
         LOGINT;
     }
@@ -1830,7 +1830,7 @@ yang_print_extcomplex_bool(struct lyout *out, int level, const struct lys_module
 
 static void
 yang_print_extcomplex_str(struct lyout *out, int level, const struct lys_module *module,
-                          struct lys_ext_instance_complex *ext, LY_STMT stmt, LYEXT_SUBSTMT substmt, int *content)
+                          struct lys_ext_instance_complex *ext, LY_STMT stmt, int *content)
 {
     struct lyext_substmt *info;
     const char **str;
@@ -1844,18 +1844,18 @@ yang_print_extcomplex_str(struct lyout *out, int level, const struct lys_module 
         /* we have array */
         for (str = (const char **)(*str), c = 0; *str; str++, c++) {
             yang_print_open(out, content);
-            yang_print_substmt(out, level, substmt, c, *str, module, ext->ext, ext->ext_size);
+            yang_print_substmt(out, level, stmt, c, *str, module, ext->ext, ext->ext_size);
         }
     } else {
         yang_print_open(out, content);
-        yang_print_substmt(out, level, substmt, 0, *str, module, ext->ext, ext->ext_size);
+        yang_print_substmt(out, level, stmt, 0, *str, module, ext->ext, ext->ext_size);
     }
 }
 
 /* val1 is supposed to be the default value */
 static void
 yang_print_extcomplex_flags(struct lyout *out, int level, const struct lys_module *module,
-                            struct lys_ext_instance_complex *ext, LY_STMT stmt, LYEXT_SUBSTMT substmt,
+                            struct lys_ext_instance_complex *ext, LY_STMT stmt,
                             const char *val1_str, const char *val2_str, uint16_t val1, uint16_t val2,
                             int *content)
 {
@@ -1871,7 +1871,7 @@ yang_print_extcomplex_flags(struct lyout *out, int level, const struct lys_modul
         str = val1_str;
     } else if (val2 & *flags) {
         str = val2_str;
-    } else if (lys_ext_iter(ext->ext, ext->ext_size, 0, substmt) != -1) {
+    } else if (lys_ext_iter(ext->ext, ext->ext_size, 0, stmt) != -1) {
         /* flag not set, but since there are some extension, we are going to print the default value */
         str = val1_str;
     } else {
@@ -1879,7 +1879,7 @@ yang_print_extcomplex_flags(struct lyout *out, int level, const struct lys_modul
     }
 
     yang_print_open(out, content);
-    yang_print_substmt(out, level, substmt, 0, str, module, ext->ext, ext->ext_size);
+    yang_print_substmt(out, level, stmt, 0, str, module, ext->ext, ext->ext_size);
 }
 
 static void
@@ -1958,16 +1958,26 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
             for (i = 0; info[i].stmt; i++) {
                 switch(info[i].stmt) {
                 case LY_STMT_DESCRIPTION:
-                    yang_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
-                                              LY_STMT_DESCRIPTION, LYEXT_SUBSTMT_DESCRIPTION, &content);
-                    break;
                 case LY_STMT_REFERENCE:
-                    yang_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
-                                              LY_STMT_REFERENCE, LYEXT_SUBSTMT_REFERENCE, &content);
-                    break;
                 case LY_STMT_UNITS:
+                case LY_STMT_ARGUMENT:
+                case LY_STMT_DEFAULT:
+                case LY_STMT_ERRTAG:
+                case LY_STMT_ERRMSG:
+                case LY_STMT_PREFIX:
+                case LY_STMT_NAMESPACE:
+                case LY_STMT_PRESENCE:
+                case LY_STMT_REVISIONDATE:
+                case LY_STMT_KEY:
+                case LY_STMT_BASE:
+                case LY_STMT_BELONGSTO:
+                case LY_STMT_CONTACT:
+                case LY_STMT_ORGANIZATION:
+                case LY_STMT_PATH:
+                case LY_STMT_VERSION:
+                case LY_STMT_VALUE:
                     yang_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
-                                              LY_STMT_UNITS, LYEXT_SUBSTMT_UNITS, &content);
+                                              info[i].stmt, &content);
                     break;
                 case LY_STMT_TYPE:
                     YANG_PRINT_EXTCOMPLEX_STRUCT(LY_STMT_TYPE, struct lys_type, yang_print_type);
@@ -1994,96 +2004,26 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
                     yang_print_substmt(out, level, LYEXT_SUBSTMT_STATUS, 0, str, module, ext[u]->ext, ext[u]->ext_size);
                 case LY_STMT_CONFIG:
                     yang_print_extcomplex_flags(out, level, module, (struct lys_ext_instance_complex*)ext[u],
-                                                LY_STMT_CONFIG, LYEXT_SUBSTMT_CONFIG,
-                                                "true", "false",
+                                                LY_STMT_CONFIG, "true", "false",
                                                 LYS_CONFIG_W | LYS_CONFIG_SET, LYS_CONFIG_R | LYS_CONFIG_SET, &content);
-                    break;
-                case LY_STMT_ARGUMENT:
-                    yang_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
-                                              LY_STMT_ARGUMENT, LYEXT_SUBSTMT_ARGUMENT, &content);
-                    break;
-                    break;
-                case LY_STMT_DEFAULT:
-                    yang_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
-                                              LY_STMT_DEFAULT, LYEXT_SUBSTMT_DEFAULT, &content);
                     break;
                 case LY_STMT_MANDATORY:
                     yang_print_extcomplex_flags(out, level, module, (struct lys_ext_instance_complex*)ext[u],
-                                                LY_STMT_MANDATORY, LYEXT_SUBSTMT_MANDATORY,
-                                                "false", "true", LYS_MAND_FALSE, LYS_MAND_TRUE, &content);
-                    break;
-                case LY_STMT_ERRTAG:
-                    yang_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
-                                              LY_STMT_ERRTAG, LYEXT_SUBSTMT_ERRTAG, &content);
-                    break;
-                case LY_STMT_ERRMSG:
-                    yang_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
-                                              LY_STMT_ERRMSG, LYEXT_SUBSTMT_ERRMSG, &content);
-                    break;
-                case LY_STMT_PREFIX:
-                    yang_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
-                                              LY_STMT_PREFIX, LYEXT_SUBSTMT_PREFIX, &content);
-                    break;
-                case LY_STMT_NAMESPACE:
-                    yang_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
-                                              LY_STMT_NAMESPACE, LYEXT_SUBSTMT_NAMESPACE, &content);
-                    break;
-                case LY_STMT_PRESENCE:
-                    yang_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
-                                              LY_STMT_PRESENCE, LYEXT_SUBSTMT_PRESENCE, &content);
-                    break;
-                case LY_STMT_REVISIONDATE:
-                    yang_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
-                                              LY_STMT_REVISIONDATE, LYEXT_SUBSTMT_REVISIONDATE, &content);
-                    break;
-                case LY_STMT_KEY:
-                    yang_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
-                                              LY_STMT_KEY, LYEXT_SUBSTMT_KEY, &content);
-                    break;
-                case LY_STMT_BASE:
-                    yang_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
-                                              LY_STMT_BASE, LYEXT_SUBSTMT_BASE, &content);
+                                                LY_STMT_MANDATORY, "false", "true", LYS_MAND_FALSE, LYS_MAND_TRUE,
+                                                &content);
                     break;
                 case LY_STMT_ORDEREDBY:
                     yang_print_extcomplex_flags(out, level, module, (struct lys_ext_instance_complex*)ext[u],
-                                                LY_STMT_ORDEREDBY, LYEXT_SUBSTMT_ORDEREDBY,
-                                                "system", "user", 0, LYS_USERORDERED, &content);
-                    break;
-                case LY_STMT_BELONGSTO:
-                    yang_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
-                                              LY_STMT_BELONGSTO, LYEXT_SUBSTMT_BELONGSTO, &content);
-                    break;
-                case LY_STMT_CONTACT:
-                    yang_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
-                                              LY_STMT_CONTACT, LYEXT_SUBSTMT_CONTACT, &content);
-                    break;
-                case LY_STMT_ORG:
-                    yang_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
-                                              LY_STMT_ORG, LYEXT_SUBSTMT_ORGANIZATION, &content);
-                    break;
-                case LY_STMT_PATH:
-                    yang_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
-                                              LY_STMT_PATH, LYEXT_SUBSTMT_PATH, &content);
-                    break;
-                case LY_STMT_VERSION:
-                    yang_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
-                                              LY_STMT_VERSION, LYEXT_SUBSTMT_VERSION, &content);
+                                                LY_STMT_ORDEREDBY, "system", "user", 0, LYS_USERORDERED, &content);
                     break;
                 case LY_STMT_REQINSTANCE:
+                case LY_STMT_YINELEM:
                     yang_print_extcomplex_bool(out, level, module, (struct lys_ext_instance_complex*)ext[u],
-                                               LY_STMT_REQINSTANCE, LYEXT_SUBSTMT_REQINST, "true", "false", &content);
+                                               info[i].stmt, "true", "false", &content);
                     break;
                 case LY_STMT_MODIFIER:
                     yang_print_extcomplex_bool(out, level, module, (struct lys_ext_instance_complex*)ext[u],
-                                               LY_STMT_MODIFIER, LYEXT_SUBSTMT_MODIFIER, "invert-match", NULL, &content);
-                    break;
-                case LY_STMT_YINELEM:
-                    yang_print_extcomplex_bool(out, level, module, (struct lys_ext_instance_complex*)ext[u],
-                                               LY_STMT_YINELEM, LYEXT_SUBSTMT_YINELEM, "true", "false", &content);
-                    break;
-                case LY_STMT_VALUE:
-                    yang_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
-                                              LY_STMT_VALUE, LYEXT_SUBSTMT_VALUE, &content);
+                                               LY_STMT_MODIFIER, "invert-match", NULL, &content);
                     break;
                 default:
                     /* TODO */

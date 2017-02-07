@@ -29,34 +29,34 @@ struct ext_substmt_info_s ext_substmt_info[] = {
   {"argument", "target-node", SUBST_FLAG_ID},   /**< LYEXT_SUBSTMT_ARGUMENT */
   {"base", "name", SUBST_FLAG_ID},              /**< LYEXT_SUBSTMT_BASE */
   {"belongs-to", "module", SUBST_FLAG_ID},      /**< LYEXT_SUBSTMT_BELONGSTO */
-  {"config", "value", SUBST_FLAG_ID},           /**< LYEXT_SUBSTMT_CONFIG */
   {"contact", "text", SUBST_FLAG_YIN},          /**< LYEXT_SUBSTMT_CONTACT */
   {"default", "value", 0},                      /**< LYEXT_SUBSTMT_DEFAULT */
   {"description", "text", SUBST_FLAG_YIN},      /**< LYEXT_SUBSTMT_DESCRIPTION */
   {"error-app-tag", "value", 0},                /**< LYEXT_SUBSTMT_ERRTAG */
   {"error-message", "value", SUBST_FLAG_YIN},   /**< LYEXT_SUBSTMT_ERRMSG */
-  {"fraction-digits", "value", SUBST_FLAG_ID},  /**< LYEXT_SUBSTMT_DIGITS */
   {"key", "value", 0},                          /**< LYEXT_SUBSTMT_KEY */
-  {"mandatory", "value", SUBST_FLAG_ID},        /**< LYEXT_SUBSTMT_MANDATORY */
-  {"max-elements", "value", SUBST_FLAG_ID},     /**< LYEXT_SUBSTMT_MAX */
-  {"min-elements", "value", SUBST_FLAG_ID},     /**< LYEXT_SUBSTMT_MIN */
-  {"modifier", "value", SUBST_FLAG_ID},         /**< LYEXT_SUBSTMT_MODIFIER */
   {"namespace", "uri", 0},                      /**< LYEXT_SUBSTMT_NAMESPACE */
-  {"ordered-by", "value", SUBST_FLAG_ID},       /**< LYEXT_SUBSTMT_ORDEREDBY */
   {"organization", "text", SUBST_FLAG_YIN},     /**< LYEXT_SUBSTMT_ORGANIZATION */
   {"path", "value", 0},                         /**< LYEXT_SUBSTMT_PATH */
-  {"position", "value", SUBST_FLAG_ID},         /**< LYEXT_SUBSTMT_POSITION */
   {"prefix", "value", SUBST_FLAG_ID},           /**< LYEXT_SUBSTMT_PREFIX */
   {"presence", "value", 0},                     /**< LYEXT_SUBSTMT_PRESENCE */
   {"reference", "text", SUBST_FLAG_YIN},        /**< LYEXT_SUBSTMT_REFERENCE */
-  {"require-instance", "value", SUBST_FLAG_ID}, /**< LYEXT_SUBSTMT_REQINST */
   {"revision-date", "date", SUBST_FLAG_ID},     /**< LYEXT_SUBSTMT_REVISIONDATE */
-  {"status", "value", SUBST_FLAG_ID},           /**< LYEXT_SUBSTMT_STATUS */
-  {"unique", "tag", 0},                         /**< LYEXT_SUBSTMT_UNIQUE */
   {"units", "name", 0},                         /**< LYEXT_SUBSTMT_UNITS */
   {"value", "value", SUBST_FLAG_ID},            /**< LYEXT_SUBSTMT_VALUE */
   {"yang-version", "value", SUBST_FLAG_ID},     /**< LYEXT_SUBSTMT_VERSION */
-  {"yin-element", "value", SUBST_FLAG_ID}       /**< LYEXT_SUBSTMT_YINELEM */
+  {"modifier", "value", SUBST_FLAG_ID},         /**< LYEXT_SUBSTMT_MODIFIER */
+  {"require-instance", "value", SUBST_FLAG_ID}, /**< LYEXT_SUBSTMT_REQINST */
+  {"yin-element", "value", SUBST_FLAG_ID},      /**< LYEXT_SUBSTMT_YINELEM */
+  {"config", "value", SUBST_FLAG_ID},           /**< LYEXT_SUBSTMT_CONFIG */
+  {"mandatory", "value", SUBST_FLAG_ID},        /**< LYEXT_SUBSTMT_MANDATORY */
+  {"ordered-by", "value", SUBST_FLAG_ID},       /**< LYEXT_SUBSTMT_ORDEREDBY */
+  {"status", "value", SUBST_FLAG_ID},           /**< LYEXT_SUBSTMT_STATUS */
+  {"fraction-digits", "value", SUBST_FLAG_ID},  /**< LYEXT_SUBSTMT_DIGITS */
+  {"max-elements", "value", SUBST_FLAG_ID},     /**< LYEXT_SUBSTMT_MAX */
+  {"min-elements", "value", SUBST_FLAG_ID},     /**< LYEXT_SUBSTMT_MIN */
+  {"position", "value", SUBST_FLAG_ID},         /**< LYEXT_SUBSTMT_POSITION */
+  {"unique", "tag", 0},                         /**< LYEXT_SUBSTMT_UNIQUE */
 };
 
 /* 0 - same, 1 - different */

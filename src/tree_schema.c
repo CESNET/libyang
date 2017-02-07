@@ -1643,7 +1643,7 @@ lys_ext_instance_substmt(const struct lys_ext_instance *ext)
             break;
         }
         break;
-    case LYEXT_SUBSTMT_REQINST:
+    case LYEXT_SUBSTMT_REQINSTANCE:
         if (ext->parent_type == LYEXT_PAR_TYPE) {
             if (((struct lys_type*)ext->parent)->base == LY_TYPE_LEAFREF) {
                 return &((struct lys_type*)ext->parent)->info.lref.req;

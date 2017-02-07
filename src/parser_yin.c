@@ -1172,7 +1172,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 }
 
                 /* extensions */
-                if (lyp_yin_parse_subnode_ext(module, type, LYEXT_PAR_TYPE, node, LYEXT_SUBSTMT_REQINST, 0, unres)) {
+                if (lyp_yin_parse_subnode_ext(module, type, LYEXT_PAR_TYPE, node, LYEXT_SUBSTMT_REQINSTANCE, 0, unres)) {
                     goto error;
                 }
             } else {
@@ -1295,7 +1295,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 }
 
                 /* extensions */
-                if (lyp_yin_parse_subnode_ext(module, type, LYEXT_PAR_TYPE, node, LYEXT_SUBSTMT_REQINST, 0, unres)) {
+                if (lyp_yin_parse_subnode_ext(module, type, LYEXT_PAR_TYPE, node, LYEXT_SUBSTMT_REQINSTANCE, 0, unres)) {
                     goto error;
                 }
             } else {
@@ -7046,7 +7046,7 @@ error:
 
 static int
 yin_parse_extcomplex_bool(struct lys_module *mod, struct lyxml_elem *node,
-                          struct lys_ext_instance_complex *ext, LY_STMT stmt, LYEXT_SUBSTMT substmt,
+                          struct lys_ext_instance_complex *ext, LY_STMT stmt,
                           const char *true_val, const char *false_val, struct unres_schema *unres)
 {
     uint8_t *val;
@@ -7063,7 +7063,7 @@ yin_parse_extcomplex_bool(struct lys_module *mod, struct lyxml_elem *node,
         return EXIT_FAILURE;
     }
 
-    if (lyp_yin_parse_subnode_ext(mod, ext, LYEXT_PAR_EXTINST, node, substmt, 0, unres)) {
+    if (lyp_yin_parse_subnode_ext(mod, ext, LYEXT_PAR_EXTINST, node, stmt, 0, unres)) {
         return EXIT_FAILURE;
     }
 
@@ -7091,7 +7091,7 @@ yin_parse_extcomplex_bool(struct lys_module *mod, struct lyxml_elem *node,
  */
 static int
 yin_parse_extcomplex_str(struct lys_module *mod, struct lyxml_elem *node,
-                         struct lys_ext_instance_complex *ext, LY_STMT stmt, LYEXT_SUBSTMT substmt,
+                         struct lys_ext_instance_complex *ext, LY_STMT stmt,
                          int argelem, const char *argname, struct unres_schema *unres)
 {
     int c;
@@ -7121,7 +7121,7 @@ yin_parse_extcomplex_str(struct lys_module *mod, struct lyxml_elem *node,
             for (c = 0; *str; str++, c++);
         }
     }
-    if (lyp_yin_parse_subnode_ext(mod, ext, LYEXT_PAR_EXTINST, node, substmt, c, unres)) {
+    if (lyp_yin_parse_subnode_ext(mod, ext, LYEXT_PAR_EXTINST, node, stmt, c, unres)) {
         return EXIT_FAILURE;
     }
 
@@ -7177,7 +7177,7 @@ yin_getplace_for_extcomplex_flags(struct lyxml_elem *node, struct lys_ext_instan
 
 static int
 yin_parse_extcomplex_flag(struct lys_module *mod, struct lyxml_elem *node,
-                          struct lys_ext_instance_complex *ext, LY_STMT stmt, LYEXT_SUBSTMT substmt,
+                          struct lys_ext_instance_complex *ext, LY_STMT stmt,
                           const char *val1_str, const char *val2_str, uint16_t mask,
                           uint16_t val1, uint16_t val2, struct unres_schema *unres)
 {
@@ -7201,7 +7201,7 @@ yin_parse_extcomplex_flag(struct lys_module *mod, struct lyxml_elem *node,
         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, str, node->name);
         return EXIT_FAILURE;
     }
-    if (lyp_yin_parse_subnode_ext(mod, ext, LYEXT_PAR_EXTINST, node, substmt, 0, unres)) {
+    if (lyp_yin_parse_subnode_ext(mod, ext, LYEXT_PAR_EXTINST, node, stmt, 0, unres)) {
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
@@ -7280,17 +7280,15 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
                 goto error;
             }
         } else if (!strcmp(node->name, "description")) {
-            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_DESCRIPTION, LYEXT_SUBSTMT_DESCRIPTION,
-                                         1, "text", unres)) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_DESCRIPTION, 1, "text", unres)) {
                 goto error;
             }
         } else if (!strcmp(node->name, "reference")) {
-            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_REFERENCE, LYEXT_SUBSTMT_REFERENCE,
-                                         1, "text", unres)) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_REFERENCE, 1, "text", unres)) {
                 goto error;
             }
         } else if (!strcmp(node->name, "units")) {
-            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_UNITS, LYEXT_SUBSTMT_UNITS, 0, "name", unres)) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_UNITS, 0, "name", unres)) {
                 goto error;
             }
         } else if (!strcmp(node->name, "type")) {
@@ -7343,114 +7341,94 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
                 goto error;
             }
         } else if (!strcmp(node->name, "config")) {
-            if (yin_parse_extcomplex_flag(mod, node, ext, LY_STMT_MANDATORY, LYEXT_SUBSTMT_MANDATORY,
-                                         "true", "false", LYS_CONFIG_MASK,
+            if (yin_parse_extcomplex_flag(mod, node, ext, LY_STMT_MANDATORY, "true", "false", LYS_CONFIG_MASK,
                                          LYS_CONFIG_W | LYS_CONFIG_SET, LYS_CONFIG_R | LYS_CONFIG_SET, unres)) {
                 goto error;
             }
         } else if (!strcmp(node->name, "argument")) {
-            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_ARGUMENT, LYEXT_SUBSTMT_ARGUMENT,
-                                         0, "name", unres)) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_ARGUMENT, 0, "name", unres)) {
                 goto error;
             }
         } else if (!strcmp(node->name, "default")) {
-            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_DEFAULT, LYEXT_SUBSTMT_DEFAULT,
-                                         0, "value", unres)) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_DEFAULT, 0, "value", unres)) {
                 goto error;
             }
         } else if (!strcmp(node->name, "mandatory")) {
-            if (yin_parse_extcomplex_flag(mod, node, ext, LY_STMT_MANDATORY, LYEXT_SUBSTMT_MANDATORY,
+            if (yin_parse_extcomplex_flag(mod, node, ext, LY_STMT_MANDATORY,
                                          "true", "false", LYS_MAND_MASK, LYS_MAND_TRUE, LYS_MAND_FALSE, unres)) {
                 goto error;
             }
         } else if (!strcmp(node->name, "error-app-tag")) {
-            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_ERRTAG, LYEXT_SUBSTMT_ERRTAG,
-                                         0, "value", unres)) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_ERRTAG, 0, "value", unres)) {
                 goto error;
             }
         } else if (!strcmp(node->name, "error-message")) {
-            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_ERRMSG, LYEXT_SUBSTMT_ERRMSG,
-                                         1, "value", unres)) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_ERRMSG, 1, "value", unres)) {
                 goto error;
             }
         } else if (!strcmp(node->name, "prefix")) {
-            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_PREFIX, LYEXT_SUBSTMT_PREFIX,
-                                         0, "value", unres)) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_PREFIX, 0, "value", unres)) {
                 goto error;
             }
         } else if (!strcmp(node->name, "namespace")) {
-            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_NAMESPACE, LYEXT_SUBSTMT_NAMESPACE,
-                                         0, "uri", unres)) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_NAMESPACE, 0, "uri", unres)) {
                 goto error;
             }
         } else if (!strcmp(node->name, "presence")) {
-            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_PRESENCE, LYEXT_SUBSTMT_PRESENCE,
-                                         0, "value", unres)) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_PRESENCE, 0, "value", unres)) {
                 goto error;
             }
         } else if (!strcmp(node->name, "revision-date")) {
-            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_REVISIONDATE, LYEXT_SUBSTMT_REVISIONDATE,
-                                         0, "date", unres)) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_REVISIONDATE, 0, "date", unres)) {
                 goto error;
             }
         } else if (!strcmp(node->name, "key")) {
-            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_KEY, LYEXT_SUBSTMT_KEY,
-                                         0, "value", unres)) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_KEY, 0, "value", unres)) {
                 goto error;
             }
         } else if (!strcmp(node->name, "base")) {
-            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_BASE, LYEXT_SUBSTMT_BASE,
-                                         0, "name", unres)) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_BASE, 0, "name", unres)) {
                 goto error;
             }
         } else if (!strcmp(node->name, "ordered-by")) {
-            if (yin_parse_extcomplex_flag(mod, node, ext, LY_STMT_ORDEREDBY, LYEXT_SUBSTMT_ORDEREDBY,
-                                         "user", "system", LYS_USERORDERED, LYS_USERORDERED, 0, unres)) {
+            if (yin_parse_extcomplex_flag(mod, node, ext, LY_STMT_ORDEREDBY,
+                                          "user", "system", LYS_USERORDERED, LYS_USERORDERED, 0, unres)) {
                 goto error;
             }
         } else if (!strcmp(node->name, "belongs-to")) {
-            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_BELONGSTO, LYEXT_SUBSTMT_BELONGSTO,
-                                         0, "module", unres)) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_BELONGSTO, 0, "module", unres)) {
                 goto error;
             }
         } else if (!strcmp(node->name, "contact")) {
-            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_CONTACT, LYEXT_SUBSTMT_CONTACT,
-                                         1, "text", unres)) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_CONTACT, 1, "text", unres)) {
                 goto error;
             }
         } else if (!strcmp(node->name, "organization")) {
-            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_ORG, LYEXT_SUBSTMT_ORGANIZATION,
-                                         1, "text", unres)) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_ORGANIZATION, 1, "text", unres)) {
                 goto error;
             }
         } else if (!strcmp(node->name, "path")) {
-            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_PATH, LYEXT_SUBSTMT_PATH,
-                                         0, "value", unres)) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_PATH, 0, "value", unres)) {
                 goto error;
             }
         } else if (!strcmp(node->name, "yang-version")) {
-            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_VERSION, LYEXT_SUBSTMT_VERSION,
-                                         0, "value", unres)) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_VERSION, 0, "value", unres)) {
                 goto error;
             }
         } else if (!strcmp(node->name, "require-instance")) {
-            if (yin_parse_extcomplex_bool(mod, node, ext, LY_STMT_REQINSTANCE, LYEXT_SUBSTMT_REQINST,
-                                          "true", "false", unres)) {
+            if (yin_parse_extcomplex_bool(mod, node, ext, LY_STMT_REQINSTANCE, "true", "false", unres)) {
                 goto error;
             }
         } else if (!strcmp(node->name, "modifier")) {
-            if (yin_parse_extcomplex_bool(mod, node, ext, LY_STMT_MODIFIER, LYEXT_SUBSTMT_MODIFIER,
-                                          "invert-match", NULL, unres)) {
+            if (yin_parse_extcomplex_bool(mod, node, ext, LY_STMT_MODIFIER, "invert-match", NULL, unres)) {
                 goto error;
             }
         } else if (!strcmp(node->name, "yin-element")) {
-            if (yin_parse_extcomplex_bool(mod, node, ext, LY_STMT_YINELEM, LYEXT_SUBSTMT_YINELEM,
-                                          "true", "false", unres)) {
+            if (yin_parse_extcomplex_bool(mod, node, ext, LY_STMT_YINELEM, "true", "false", unres)) {
                 goto error;
             }
         } else if (!strcmp(node->name, "value")) {
-            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_VALUE, LYEXT_SUBSTMT_VALUE,
-                                         0, "value", unres)) {
+            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_VALUE, 0, "value", unres)) {
                 goto error;
             }
         } else {
