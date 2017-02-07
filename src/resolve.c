@@ -1137,7 +1137,6 @@ resolve_feature(const char *feat_name, uint16_t len, const struct lys_node *node
  * @return
  *  -  1 if enabled
  *  -  0 if disabled
- *  - -1 if not usable by its if-feature expression
  */
 static int
 resolve_feature_value(const struct lys_feature *feat)
@@ -1146,7 +1145,7 @@ resolve_feature_value(const struct lys_feature *feat)
 
     for (i = 0; i < feat->iffeature_size; i++) {
         if (!resolve_iffeature(&feat->iffeature[i])) {
-            return -1;
+            return 0;
         }
     }
 
@@ -1157,7 +1156,7 @@ static int
 resolve_iffeature_recursive(struct lys_iffeature *expr, int *index_e, int *index_f)
 {
     uint8_t op;
-    int rc, a, b;
+    int a, b;
 
     op = iff_getop(expr->expr, *index_e);
     (*index_e)++;
@@ -1167,43 +1166,31 @@ resolve_iffeature_recursive(struct lys_iffeature *expr, int *index_e, int *index
         /* resolve feature */
         return resolve_feature_value(expr->features[(*index_f)++]);
     case LYS_IFF_NOT:
-        rc = resolve_iffeature_recursive(expr, index_e, index_f);
-        if (rc == -1) {
-            /* one of the referenced feature is hidden by its if-feature,
-             * so this if-feature expression is always false */
-            return -1;
-        } else {
-            /* invert result */
-            return rc ? 0 : 1;
-        }
+        /* invert result */
+        return resolve_iffeature_recursive(expr, index_e, index_f) ? 0 : 1;
     case LYS_IFF_AND:
     case LYS_IFF_OR:
         a = resolve_iffeature_recursive(expr, index_e, index_f);
         b = resolve_iffeature_recursive(expr, index_e, index_f);
-        if (a == -1 || b == -1) {
-            /* one of the referenced feature is hidden by its if-feature,
-             * so this if-feature expression is always false */
-            return -1;
-        } else if (op == LYS_IFF_AND) {
+        if (op == LYS_IFF_AND) {
             return a && b;
         } else { /* LYS_IFF_OR */
             return a || b;
         }
     }
 
-    return -1;
+    return 0;
 }
 
 int
 resolve_iffeature(struct lys_iffeature *expr)
 {
-    int rc = -1;
     int index_e = 0, index_f = 0;
 
     if (expr->expr) {
-        rc = resolve_iffeature_recursive(expr, &index_e, &index_f);
+        return resolve_iffeature_recursive(expr, &index_e, &index_f);
     }
-    return (rc == 1) ? 1 : 0;
+    return 0;
 }
 
 struct iff_stack {
