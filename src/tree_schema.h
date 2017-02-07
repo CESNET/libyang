@@ -279,7 +279,7 @@ typedef enum {
                                value is #LYS_USERORDERED */
     LY_STMT_STATUS,       /**< stored as __uint16_t__ value (ORed with the previous value(s)), possible values are
                                #LYS_STATUS_CURR, #LYS_STATUS_DEPRC and #LYS_STATUS_OBSLT */
-    LY_STMT_DIGITS, /* fraction-digits */
+    LY_STMT_DIGITS,       /**< fraction-digits, stored as __uint8_t__ */
     LY_STMT_MAX, /* max-elements */
     LY_STMT_MIN, /* min-elements */
     LY_STMT_POSITION,

@@ -397,13 +397,14 @@ yin_print_when(struct lyout *out, int level, const struct lys_module *module, co
 }
 
 static void
-yin_print_unsigned(struct lyout *out, int level, LYEXT_SUBSTMT substmt, const struct lys_module *module,
-                   struct lys_ext_instance **ext, unsigned int ext_size, unsigned int attr_value)
+yin_print_unsigned(struct lyout *out, int level, LYEXT_SUBSTMT substmt, uint8_t substmt_index,
+                   const struct lys_module *module, struct lys_ext_instance **ext, unsigned int ext_size,
+                   unsigned int attr_value)
 {
     char *str;
 
     asprintf(&str, "%u", attr_value);
-    yin_print_substmt(out, level, substmt, 0, str, module, ext, ext_size);
+    yin_print_substmt(out, level, substmt, substmt_index, str, module, ext, ext_size);
     free(str);
 }
 
@@ -417,7 +418,6 @@ yin_print_signed(struct lyout *out, int level, LYEXT_SUBSTMT substmt, const stru
     yin_print_substmt(out, level, substmt, 0, str, module, ext, ext_size);
     free(str);
 }
-
 
 static void
 yin_print_type(struct lyout *out, int level, const struct lys_module *module, const struct lys_type *type)
@@ -457,7 +457,7 @@ yin_print_type(struct lyout *out, int level, const struct lys_module *module, co
                                    SNODE_COMMON_EXT | SNODE_COMMON_IFF);
             if (!(type->info.bits.bit[i].flags & LYS_AUTOASSIGNED)) {
                 yin_print_close_parent(out, &content2);
-                yin_print_unsigned(out, level + 1, LYEXT_SUBSTMT_POSITION, module,
+                yin_print_unsigned(out, level + 1, LYEXT_SUBSTMT_POSITION, 0, module,
                                    type->info.bits.bit[i].ext, type->info.bits.bit[i].ext_size,
                                    type->info.bits.bit[i].pos);
             }
@@ -469,7 +469,7 @@ yin_print_type(struct lyout *out, int level, const struct lys_module *module, co
     case LY_TYPE_DEC64:
         if (!type->der->type.der) {
             yin_print_close_parent(out, &content);
-            yin_print_unsigned(out, level, LYEXT_SUBSTMT_DIGITS, module,
+            yin_print_unsigned(out, level, LYEXT_SUBSTMT_DIGITS, 0, module,
                                type->ext, type->ext_size, type->info.dec64.dig);
         }
         if (type->info.dec64.range) {
@@ -652,13 +652,13 @@ yin_print_refine(struct lyout *out, int level, const struct lys_module *module, 
     if (refine->target_type & (LYS_LIST | LYS_LEAFLIST)) {
         if (refine->flags & LYS_RFN_MINSET) {
             yin_print_close_parent(out, &content);
-            yin_print_unsigned(out, level, LYEXT_SUBSTMT_MIN, module, refine->ext, refine->ext_size,
+            yin_print_unsigned(out, level, LYEXT_SUBSTMT_MIN, 0, module, refine->ext, refine->ext_size,
                                refine->mod.list.min);
         }
         if (refine->flags & LYS_RFN_MAXSET) {
             yin_print_close_parent(out, &content);
             if (refine->mod.list.max) {
-                yin_print_unsigned(out, level, LYEXT_SUBSTMT_MAX, module, refine->ext, refine->ext_size,
+                yin_print_unsigned(out, level, LYEXT_SUBSTMT_MAX, 0, module, refine->ext, refine->ext_size,
                                    refine->mod.list.max);
             } else {
                 yin_print_substmt(out, level, LYEXT_SUBSTMT_MAX, 0, "unbounded", module,
@@ -782,7 +782,7 @@ yin_print_deviation(struct lyout *out, int level, const struct lys_module *modul
 
         /* min-elements */
         if (deviation->deviate[i].min_set) {
-            yin_print_unsigned(out, level, LYEXT_SUBSTMT_MIN, module,
+            yin_print_unsigned(out, level, LYEXT_SUBSTMT_MIN, 0, module,
                                deviation->deviate[i].ext, deviation->deviate[i].ext_size,
                                deviation->deviate[i].min);
         }
@@ -790,7 +790,7 @@ yin_print_deviation(struct lyout *out, int level, const struct lys_module *modul
         /* max-elements */
         if (deviation->deviate[i].max_set) {
             if (deviation->deviate[i].max) {
-                yin_print_unsigned(out, level, LYEXT_SUBSTMT_MAX, module,
+                yin_print_unsigned(out, level, LYEXT_SUBSTMT_MAX, 0, module,
                                    deviation->deviate[i].ext, deviation->deviate[i].ext_size,
                                    deviation->deviate[i].max);
             } else {
@@ -1184,10 +1184,10 @@ yin_print_leaflist(struct lyout *out, int level, const struct lys_node *node)
     }
     yin_print_snode_common(out, level, node, node->module, NULL, SNODE_COMMON_CONFIG);
     if (llist->min > 0) {
-        yin_print_unsigned(out, level, LYEXT_SUBSTMT_MIN, node->module, node->ext, node->ext_size, llist->min);
+        yin_print_unsigned(out, level, LYEXT_SUBSTMT_MIN, 0, node->module, node->ext, node->ext_size, llist->min);
     }
     if (llist->max > 0) {
-        yin_print_unsigned(out, level, LYEXT_SUBSTMT_MAX, node->module, node->ext, node->ext_size, llist->max);
+        yin_print_unsigned(out, level, LYEXT_SUBSTMT_MAX, 0, node->module, node->ext, node->ext_size, llist->max);
     }
     if (llist->flags & LYS_USERORDERED) {
         yin_print_substmt(out, level, LYEXT_SUBSTMT_ORDEREDBY, 0, "user",
@@ -1254,11 +1254,11 @@ yin_print_list(struct lyout *out, int level, const struct lys_node *node)
     yin_print_snode_common(out, level, node, node->module, NULL, SNODE_COMMON_CONFIG);
     if (list->min > 0) {
         yin_print_close_parent(out, &content);
-        yin_print_unsigned(out, level, LYEXT_SUBSTMT_MIN, node->module, node->ext, node->ext_size, list->min);
+        yin_print_unsigned(out, level, LYEXT_SUBSTMT_MIN, 0, node->module, node->ext, node->ext_size, list->min);
     }
     if (list->max > 0) {
         yin_print_close_parent(out, &content);
-        yin_print_unsigned(out, level, LYEXT_SUBSTMT_MAX, node->module, node->ext, node->ext_size, list->max);
+        yin_print_unsigned(out, level, LYEXT_SUBSTMT_MAX, 0, node->module, node->ext, node->ext_size, list->max);
     }
     if (list->flags & LYS_USERORDERED) {
         yin_print_substmt(out, level, LYEXT_SUBSTMT_ORDEREDBY, 0, "user",
@@ -1876,10 +1876,10 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
     struct lys_module *mod;
     const char *prefix = NULL;
     struct lyext_substmt *info;
-    int content, i;
+    int content, i, c;
     uint16_t *flags;
     const char *str;
-    void **pp;
+    void **pp, *p;
 
 #define YIN_PRINT_EXTCOMPLEX_STRUCT(STMT, TYPE, FUNC)                                         \
     pp = lys_ext_complex_get_substmt(STMT, (struct lys_ext_instance_complex *)ext[u], NULL);  \
@@ -1986,7 +1986,7 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
                     YIN_PRINT_EXTCOMPLEX_STRUCT(LY_STMT_IFFEATURE, struct lys_iffeature, yin_print_iffeature);
                     break;
                 case LY_STMT_STATUS:
-                    flags = lys_ext_complex_get_substmt(LY_STMT_STATUS, (struct lys_ext_instance_complex *)ext[u], NULL);
+                    flags = (uint16_t*)&((struct lys_ext_instance_complex*)ext[u])->content[info[i].offset];
                     if (!flags) {
                         return;
                     }
@@ -2024,6 +2024,25 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
                 case LY_STMT_MODIFIER:
                     yin_print_extcomplex_bool(out, level, module, (struct lys_ext_instance_complex*)ext[u],
                                               LY_STMT_MODIFIER, "invert-match", NULL, &content);
+                    break;
+                case LY_STMT_DIGITS:
+                    p = &((struct lys_ext_instance_complex*)ext[u])->content[info[i].offset];
+                    if (!p) {
+                        break;
+                    }
+
+                    if (info->cardinality >= LY_STMT_CARD_SOME) {
+                        /* we have array */
+                        for (p = *(void **)(p), c = 0; p; p++, c++) {
+                            yin_print_close_parent(out, &content);
+                            yin_print_unsigned(out, level, LYEXT_SUBSTMT_DIGITS, c, module,
+                                               ext[u]->ext, ext[u]->ext_size, (*(uint8_t*)p));
+                        }
+                    } else if ((*(uint8_t*)p)) {
+                        yin_print_close_parent(out, &content);
+                        yin_print_unsigned(out, level, LYEXT_SUBSTMT_DIGITS, 0, module,
+                                           ext[u]->ext, ext[u]->ext_size, (*(uint8_t*)p));
+                    }
                     break;
                 default:
                     /* TODO */
