@@ -4916,8 +4916,8 @@ fail:
     return -1;
 }
 
-static int
-identity_backlink_update(struct lys_ident *der, struct lys_ident *base)
+void
+resolve_identity_backlink_update(struct lys_ident *der, struct lys_ident *base)
 {
     int i;
 
@@ -4932,12 +4932,8 @@ identity_backlink_update(struct lys_ident *der, struct lys_ident *base)
 
     /* do it recursively */
     for (i = 0; i < base->base_size; i++) {
-        if (identity_backlink_update(der, base->base[i])) {
-            return EXIT_FAILURE;
-        }
+        resolve_identity_backlink_update(der, base->base[i]);
     }
-
-    return EXIT_SUCCESS;
 }
 
 /**
@@ -5096,13 +5092,11 @@ resolve_base_ident(const struct lys_module *module, struct lys_ident *ident, con
         if (lyp_check_status(flags, mod, ident ? ident->name : "of type",
                              (*ret)->flags, (*ret)->module, (*ret)->name, NULL)) {
             rc = -1;
-        } else {
-            if (ident) {
-                ident->base[ident->base_size++] = *ret;
+        } else if (ident) {
+            ident->base[ident->base_size++] = *ret;
 
-                /* maintain backlinks to the derived identities */
-                rc = identity_backlink_update(ident, *ret) ? -1 : EXIT_SUCCESS;
-            }
+            /* maintain backlinks to the derived identities */
+            resolve_identity_backlink_update(ident, *ret);
         }
     } else if (rc == EXIT_FAILURE) {
         LOGVAL(LYE_INRESOLV, LY_VLOG_NONE, NULL, parent, basename);

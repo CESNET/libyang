@@ -27,6 +27,7 @@
 #include "dict_private.h"
 #include "parser.h"
 #include "tree_internal.h"
+#include "resolve.h"
 
 #define YANG_FAKEMODULE_PATH "../models/yang@2016-02-11.h"
 #define IETF_INET_TYPES_PATH "../models/ietf-inet-types@2013-07-15.h"
@@ -598,20 +599,49 @@ ctx_modules_undo_backlinks(struct ly_ctx *ctx, struct ly_set *mods)
 }
 
 static int
-ctx_modules_redo_backlinks(struct ly_ctx *ctx, struct ly_set *mods)
+ctx_modules_redo_backlinks(struct ly_set *mods)
 {
-    uint16_t i;
+    unsigned int i, j, k, s;
+    struct lys_module *mod;
+    struct lys_node *next, *elem;
+    struct lys_type *type;
+    struct lys_feature *feat;
 
-    (void)ctx;
     for (i = 0; i < mods->number; ++i) {
-        /* 1) features */
-        /* TODO */
+        mod = (struct lys_module *)mods->set.g[i]; /* shortcut */
 
-        /* 2) identities */
-        /* TODO */
+        /* identities */
+        for (j = 0; j < mod->ident_size; j++) {
+            for (k = 0; k < mod->ident[j].base_size; k++) {
+                resolve_identity_backlink_update(&mod->ident[j], mod->ident[j].base[k]);
+            }
+        }
 
-        /* 3) leafrefs */
-        /* TODO */
+        /* features */
+        for (j = 0; j < mod->features_size; j++) {
+            for (k = 0; k < mod->features[j].iffeature_size; k++) {
+                resolve_iffeature_getsizes(&mod->features[j].iffeature[k], NULL, &s);
+                while (s--) {
+                    feat = mod->features[j].iffeature[k].features[s]; /* shortcut */
+                    if (!feat->depfeatures) {
+                        feat->depfeatures = ly_set_new();
+                    }
+                    ly_set_add(feat->depfeatures, &mod->features[j], LY_SET_OPT_USEASLIST);
+                }
+            }
+        }
+
+        /* leafrefs */
+        LY_TREE_DFS_BEGIN(mod->data, next, elem) {
+            if (elem->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+                type = &((struct lys_node_leaf *)elem)->type; /* shortcut */
+                if (type->base == LY_TYPE_LEAFREF) {
+                    lys_leaf_add_leafref_target(type->info.lref.target, elem);
+                }
+            }
+
+            LY_TREE_DFS_END(mod->data, next, elem);
+        }
     }
 
     return 0;
@@ -835,7 +865,7 @@ checkdependency:
     }
 
     /* maintain backlinks (start with internal ietf-yang-library which have leafs as possible targets of leafrefs */
-    ctx_modules_redo_backlinks(ctx, mods);
+    ctx_modules_redo_backlinks(mods);
 
     /* re-apply the deviations and augments */
     for (v = 0; v < mods->number; v++) {
@@ -996,7 +1026,7 @@ ly_ctx_clean(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_nod
     ctx->models.used = INTERNAL_MODULES_COUNT;
     ctx->models.module_set_id++;
 
-    /* maintain backlinks (actually done only with ietf-yang-library since its leafs cna be target of leafref) */
+    /* maintain backlinks (actually done only with ietf-yang-library since its leafs can be target of leafref) */
     ctx_modules_undo_backlinks(ctx, NULL);
 }
 

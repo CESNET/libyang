@@ -133,6 +133,8 @@ int resolve_iffeature_compile(struct lys_iffeature *iffeat_expr, const char *val
                               int infeature, struct unres_schema *unres);
 uint8_t iff_getop(uint8_t *list, int pos);
 
+void resolve_identity_backlink_update(struct lys_ident *der, struct lys_ident *base);
+
 struct lyd_node *resolve_data_descendant_schema_nodeid(const char *nodeid, struct lyd_node *start);
 
 int resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, const struct lys_module *module,
