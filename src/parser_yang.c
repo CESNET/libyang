@@ -2129,6 +2129,16 @@ yang_ext_instance(void *node, enum yytokentype type)
         size = &((struct lys_feature *)node)->ext_size;
         parent_type = LYEXT_PAR_FEATURE;
         break;
+    case IDENTITY_KEYWORD:
+        ext = &((struct lys_ident *)node)->ext;
+        size = &((struct lys_ident *)node)->ext_size;
+        parent_type = LYEXT_PAR_IDENT;
+        break;
+    case IF_FEATURE_KEYWORD:
+        ext = &((struct lys_iffeature *)node)->ext;
+        size = &((struct lys_iffeature *)node)->ext_size;
+        parent_type = LYEXT_PAR_IFFEATURE;
+        break;
     default:
         LOGINT;
         return NULL;
@@ -2192,6 +2202,10 @@ yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext
             break;
         case STATUS_KEYWORD:
             instance->insubstmt = LYEXT_SUBSTMT_STATUS;
+            break;
+        case BASE_KEYWORD:
+            instance->insubstmt = LYEXT_SUBSTMT_BASE;
+            instance->insubstmt_index = ((struct lys_ident *)actual)->base_size;
             break;
         default:
             LOGINT;
@@ -3138,6 +3152,10 @@ yang_check_iffeatures(struct lys_module *module, void *ptr, void *parent, enum y
             *ptr_size = size;
             return EXIT_FAILURE;
         }
+        if (yang_check_ext_instance(module, &iffeature[i].ext, iffeature[i].ext_size, &iffeature[i], unres)) {
+            *ptr_size = size;
+            return EXIT_FAILURE;
+        }
         (*ptr_size)++;
     }
 
@@ -3299,7 +3317,11 @@ yang_check_identities(struct lys_module *module, struct unres_schema *unres)
         if (yang_check_iffeatures(module, NULL, &module->ident[i], IDENTITY_KEYWORD, unres)) {
             goto error;
         }
+        if (yang_check_ext_instance(module, &module->ident[i].ext, module->ident[i].ext_size, &module->ident[i], unres)) {
+            goto error;
+        }
     }
+
 
     return EXIT_SUCCESS;
 
