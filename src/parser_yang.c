@@ -3480,6 +3480,7 @@ static int
 yang_check_leaf(struct lys_module *module, struct lys_node_leaf *leaf, struct unres_schema *unres)
 {
     if (yang_fill_type(module, &leaf->type, (struct yang_type *)leaf->type.der, leaf, unres)) {
+            yang_type_free(module->ctx, &leaf->type);
             goto error;
     }
     if (yang_check_iffeatures(module, NULL, leaf, LEAF_KEYWORD, unres)) {
@@ -3512,7 +3513,8 @@ yang_check_leaflist(struct lys_module *module, struct lys_node_leaflist *leaflis
     int i, j;
 
     if (yang_fill_type(module, &leaflist->type, (struct yang_type *)leaflist->type.der, leaflist, unres)) {
-            goto error;
+        yang_type_free(module->ctx, &leaflist->type);
+        goto error;
     }
     if (yang_check_iffeatures(module, NULL, leaflist, LEAF_LIST_KEYWORD, unres)) {
         yang_type_free(module->ctx, &leaflist->type);
