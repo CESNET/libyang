@@ -495,8 +495,8 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
 /*
  * mods - set of removed modules, if NULL all modules are supposed to be removed so any backlink is invalid
  */
-static int
-ctx_modules_maintain_backlinks(struct ly_ctx *ctx, struct ly_set *mods)
+static void
+ctx_modules_undo_backlinks(struct ly_ctx *ctx, struct ly_set *mods)
 {
     int o;
     uint8_t j;
@@ -527,7 +527,8 @@ ctx_modules_maintain_backlinks(struct ly_ctx *ctx, struct ly_set *mods)
                 mod->features[j].depfeatures = NULL;
             }
         }
-        /* identities */
+
+        /* 2) identities */
         for (u = 0; u < mod->ident_size; u++) {
             if (!mod->ident[u].der) {
                 continue;
@@ -546,7 +547,7 @@ ctx_modules_maintain_backlinks(struct ly_ctx *ctx, struct ly_set *mods)
             }
         }
 
-        /* leafrefs */
+        /* 3) leafrefs */
         for (elem = next = mod->data; elem; elem = next) {
             if (elem->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
                 leaf = (struct lys_node_leaf *)elem; /* shortcut */
@@ -594,8 +595,26 @@ ctx_modules_maintain_backlinks(struct ly_ctx *ctx, struct ly_set *mods)
             }
         }
     }
+}
 
-    return EXIT_SUCCESS;
+static int
+ctx_modules_redo_backlinks(struct ly_ctx *ctx, struct ly_set *mods)
+{
+    uint16_t i;
+
+    (void)ctx;
+    for (i = 0; i < mods->number; ++i) {
+        /* 1) features */
+        /* TODO */
+
+        /* 2) identities */
+        /* TODO */
+
+        /* 3) leafrefs */
+        /* TODO */
+    }
+
+    return 0;
 }
 
 API int
@@ -695,7 +714,7 @@ imported:
     }
 
     /* maintain backlinks (start with internal ietf-yang-library which have leafs as possible targets of leafrefs */
-    ctx_modules_maintain_backlinks(ctx, mods);
+    ctx_modules_undo_backlinks(ctx, mods);
 
     /* remove the applied deviations and augments */
     for (u = 0; u < mods->number; u++) {
@@ -816,7 +835,7 @@ checkdependency:
     }
 
     /* maintain backlinks (start with internal ietf-yang-library which have leafs as possible targets of leafrefs */
-    ctx_modules_maintain_backlinks(ctx, mods);
+    ctx_modules_redo_backlinks(ctx, mods);
 
     /* re-apply the deviations and augments */
     for (v = 0; v < mods->number; v++) {
@@ -946,7 +965,7 @@ imported:
     ctx->models.module_set_id++;
 
     /* maintain backlinks (start with internal ietf-yang-library which have leafs as possible targets of leafrefs */
-    ctx_modules_maintain_backlinks(ctx, mods);
+    ctx_modules_undo_backlinks(ctx, mods);
 
     /* free the modules */
     for (u = 0; u < mods->number; u++) {
@@ -978,7 +997,7 @@ ly_ctx_clean(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_nod
     ctx->models.module_set_id++;
 
     /* maintain backlinks (actually done only with ietf-yang-library since its leafs cna be target of leafref) */
-    ctx_modules_maintain_backlinks(ctx, NULL);
+    ctx_modules_undo_backlinks(ctx, NULL);
 }
 
 API const struct lys_module *
