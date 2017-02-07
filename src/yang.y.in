@@ -223,12 +223,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <i> integer_value_arg_str
 %type <i> value_arg
 %type <i> integer_value
-%type <v> length_arg_str
 %type <str> pattern_arg_str
-%type <v> range_arg_str
-%type <v> union_spec
-%type <v> enum_opt_stmt
-%type <v> bit_opt_stmt
 %type <nodes> container_opt_stmt
 %type <nodes> anyxml_opt_stmt
 %type <nodes> choice_opt_stmt
@@ -282,6 +277,13 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <backup_token> identity_arg_str
 %type <backup_token> if_feature_arg
 %type <backup_token> typedef_arg_str
+%type <backup_token> type_arg_str
+%type <backup_token> length_arg_str
+%type <backup_token> pattern_sep
+%type <backup_token> range_arg_str
+%type <backup_token> union_spec
+%type <backup_token> enum_arg_str
+%type <backup_token> bit_arg_str
 
 %destructor { free($$); } pattern_arg_str string_opt_part1 semicolom curly_bracket_open
 %destructor { free(($$) ? *$$ : NULL); } tmp_string
@@ -1178,18 +1180,23 @@ type_opt_stmt: @EMPTYDIR@ { $$.node.ptr_tpdf = actual;
                                   }
 
 type_stmt: TYPE_KEYWORD sep type_arg_str type_end
+           { actual_type = $3.token;
+             actual = $3.actual;
+           }
 
-type_arg_str: identifier_ref_arg_str { if (!(actual = yang_read_type(trg, actual, s, actual_type))) {
+type_arg_str: identifier_ref_arg_str { $$.token = actual_type;
+                                       $$.actual = actual;
+                                       if (!(actual = yang_read_type(trg, actual, s, actual_type))) {
                                          YYABORT;
                                        }
                                        s = NULL;
+                                       actual_type = TYPE_KEYWORD;
                                      }
 
 type_end: ';'
   |  '{' stmtsep
          type_body_stmts
       '}'
-  ;
 
 type_body_stmts: some_restrictions { if (((struct yang_type *)actual)->base == LY_TYPE_STRING &&
                                          ((struct yang_type *)actual)->type->info.str.pat_count) {
@@ -1228,7 +1235,6 @@ type_body_stmts: some_restrictions { if (((struct yang_type *)actual)->base == L
                                    }
   | enum_specification
   | bits_specification
-  ;
 
 some_restrictions: @EMPTYDIR@
   |  some_restrictions require_instance_stmt { if (yang_read_require_instance(actual, $2)) {
@@ -1254,28 +1260,33 @@ some_restrictions: @EMPTYDIR@
                                    actual = yang_type;
                                    s = NULL;
                                  }
-  |  some_restrictions length_stmt
-  |  some_restrictions pattern_stmt
+  |  some_restrictions length_stmt stmtsep
+  |  some_restrictions pattern_stmt stmtsep
   |  some_restrictions fraction_digits_stmt
   |  some_restrictions range_stmt stmtsep
-  |  some_restrictions union_spec type_stmt stmtsep { actual = $2; }
+  |  some_restrictions union_stmt stmtsep
 
-  union_spec: @EMPTYDIR@ { struct yang_type *stype = (struct yang_type *)actual;
+union_stmt: union_spec type_stmt { actual_type = $1.token;
+                                   actual = $1.actual;
+                                 }
 
-                           if (stype->base != 0 && stype->base != LY_TYPE_UNION) {
-                             LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Unexpected type statement.");
-                             YYABORT;
-                           }
-                           stype->base = LY_TYPE_UNION;
-                           if (strcmp(stype->name, "union")) {
-                             /* type can be a substatement only in "union" type, not in derived types */
-                             LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "type", "derived type");
-                             YYABORT;
-                           }
-                           $$ = actual;
-                           YANG_ADDELEM(stype->type->info.uni.types, stype->type->info.uni.count)
-                           actual_type = UNION_KEYWORD;
+union_spec: @EMPTYDIR@ { struct yang_type *stype = (struct yang_type *)actual;
+
+                         $$.token = actual_type;
+                         $$.actual = actual;
+                         if (stype->base != 0 && stype->base != LY_TYPE_UNION) {
+                           LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Unexpected type statement.");
+                           YYABORT;
                          }
+                         stype->base = LY_TYPE_UNION;
+                         if (strcmp(stype->name, "union")) {
+                           /* type can be a substatement only in "union" type, not in derived types */
+                           LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "type", "derived type");
+                           YYABORT;
+                         }
+                         YANG_ADDELEM(stype->type->info.uni.types, stype->type->info.uni.count)
+                         actual_type = UNION_KEYWORD;
+                       }
 
 fraction_digits_arg: fraction_digits_arg_str { $$ = $1;
                                                backup_type = actual_type;
@@ -1305,11 +1316,13 @@ fraction_digits_arg_str: positive_integer_value optsep { $$ = $1; }
                s =NULL;
              }
 
-length_stmt: LENGTH_KEYWORD sep length_arg_str length_end stmtsep { actual = $3;
-                                                                    actual_type = TYPE_KEYWORD;
-                                                                  }
+length_stmt: LENGTH_KEYWORD sep length_arg_str length_end
+             { actual = $3.actual;
+               actual_type = $3.token;
+             }
 
-length_arg_str: string { $$ = actual;
+length_arg_str: string { $$.token = actual_type;
+                         $$.actual = actual;
                          if (!(actual = yang_read_length(trg, actual, s))) {
                            YYABORT;
                          }
@@ -1321,7 +1334,6 @@ length_end: ';'
   |  '{' stmtsep
          message_opt_stmt
       '}'
-  ;
 
 message_opt_stmt: @EMPTYDIR@ { switch (actual_type) {
                                case MUST_KEYWORD:
@@ -1360,11 +1372,16 @@ message_opt_stmt: @EMPTYDIR@ { switch (actual_type) {
                                        s = NULL;
                                      }
 
-pattern_stmt: PATTERN_KEYWORD sep pattern_arg_str pattern_end stmtsep { if (yang_read_pattern(trg, actual, $3, $4)) {
+pattern_sep: sep { $$.token = actual_type;
+                   $$.actual = actual;
+                   actual_type = PATTERN_KEYWORD;
+                 }
+
+pattern_stmt: PATTERN_KEYWORD pattern_sep pattern_arg_str pattern_end  { if (yang_read_pattern(trg, actual, $3, $4)) {
                                                                           YYABORT;
                                                                         }
-                                                                        actual = yang_type;
-                                                                        actual_type = TYPE_KEYWORD;
+                                                                        actual_type = $2.token;
+                                                                        actual = $2.actual;
                                                                       }
 
 pattern_arg_str: string { if (((struct yang_type *)actual)->base != 0 && ((struct yang_type *)actual)->base != LY_TYPE_STRING) {
@@ -1452,11 +1469,12 @@ enum_stmt: ENUM_KEYWORD sep enum_arg_str enum_end
            { if (yang_check_enum(yang_type, actual, &cnt_val, is_value)) {
                YYABORT;
              }
-             actual = yang_type;
-             actual_type = TYPE_KEYWORD;
+             actual = $3.actual;
+             actual_type = $3.token;
            }
 
-enum_arg_str: string { yang_type = actual;
+enum_arg_str: string { $$.token = actual_type;
+                       $$.actual = yang_type = actual;
                        YANG_ADDELEM(((struct yang_type *)actual)->type->info.enums.enm, ((struct yang_type *)actual)->type->info.enums.count);
                        if (yang_read_enum(trg, yang_type, actual, s)) {
                          YYABORT;
@@ -1536,8 +1554,8 @@ integer_value_arg_str: integer_value optsep { $$ = $1; }
                 $$ = (int32_t) val;
              }
 
-range_stmt: RANGE_KEYWORD sep range_arg_str range_end { actual = $3;
-                                                        actual_type = RANGE_KEYWORD;
+range_stmt: RANGE_KEYWORD sep range_arg_str range_end { actual_type = $3.token;
+                                                        actual = $3.actual;
                                                       }
 
 
@@ -1594,11 +1612,12 @@ bit_stmt: BIT_KEYWORD sep bit_arg_str bit_end
           stmtsep { if (yang_check_bit(yang_type, actual, &cnt_val, is_value)) {
                       YYABORT;
                     }
-                    actual = yang_type;
-                    actual_type = TYPE_KEYWORD;
+                    actual = $3.actual;
+                    actual_type = $3.token;
                   }
 
-bit_arg_str: identifier_arg_str { yang_type = actual;
+bit_arg_str: identifier_arg_str { $$.token = actual_type;
+                                  $$.actual = yang_type = actual;
                                   YANG_ADDELEM(((struct yang_type *)actual)->type->info.bits.bit,
                                                ((struct yang_type *)actual)->type->info.bits.count);
                                   if (yang_read_bit(trg, yang_type, actual, s)) {
@@ -3876,7 +3895,8 @@ key_arg_str: node_identifier { s = strdup(yyget_text(scanner));
   |  string_1
   ;
 
-range_arg_str: string { $$ = actual;
+range_arg_str: string { $$.token = actual_type;
+                        $$.actual = actual;
                         if (!(actual = yang_read_range(trg, actual, s))) {
                           YYABORT;
                         }

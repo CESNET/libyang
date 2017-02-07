@@ -1162,8 +1162,6 @@ yang_read_length(struct lys_module *module, struct yang_type *typ, char *value)
     if (typ->base == 0 || typ->base == LY_TYPE_STRING) {
         length = &typ->type->info.str.length;
         typ->base = LY_TYPE_STRING;
-    } else if (typ->base == LY_TYPE_BINARY) {
-        length = &typ->type->info.binary.length;
     } else {
         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Unexpected length statement.");
         goto error;
@@ -2144,6 +2142,28 @@ yang_ext_instance(void *node, enum yytokentype type)
         size = &((struct lys_tpdf *)node)->ext_size;
         parent_type = LYEXT_PAR_TPDF;
         break;
+    case TYPE_KEYWORD:
+        ext = &((struct yang_type *)node)->type->ext;
+        size = &((struct yang_type *)node)->type->ext_size;
+        parent_type = LYEXT_PAR_TYPE;
+        break;
+    case LENGTH_KEYWORD:
+    case PATTERN_KEYWORD:
+    case RANGE_KEYWORD:
+        ext = &((struct lys_restr *)node)->ext;
+        size = &((struct lys_restr *)node)->ext_size;
+        parent_type = LYEXT_PAR_RESTR;
+        break;
+    case ENUM_KEYWORD:
+        ext = &((struct lys_type_enum *)node)->ext;
+        size = &((struct lys_type_enum *)node)->ext_size;
+        parent_type = LYEXT_PAR_TYPE_ENUM;
+        break;
+    case BIT_KEYWORD:
+        ext = &((struct lys_type_bit *)node)->ext;
+        size = &((struct lys_type_bit *)node)->ext_size;
+        parent_type = LYEXT_PAR_TYPE_BIT;
+        break;
     default:
         LOGINT;
         return NULL;
@@ -2210,13 +2230,42 @@ yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext
             break;
         case BASE_KEYWORD:
             instance->insubstmt = LYEXT_SUBSTMT_BASE;
-            instance->insubstmt_index = ((struct lys_ident *)actual)->base_size;
+            if (backup_type == IDENTITY_KEYWORD) {
+                instance->insubstmt_index = ((struct lys_ident *)actual)->base_size;
+            } else {
+                /* base in type */
+                instance->insubstmt_index = ((struct yang_type *)actual)->type->info.ident.count;
+            }
             break;
         case DEFAULT_KEYWORD:
             instance->insubstmt = LYEXT_SUBSTMT_DEFAULT;
             break;
         case UNITS_KEYWORD:
             instance->insubstmt = LYEXT_SUBSTMT_UNITS;
+            break;
+        case REQUIRE_INSTANCE_KEYWORD:
+            instance->insubstmt = LYEXT_SUBSTMT_REQINSTANCE;
+            break;
+        case PATH_KEYWORD:
+            instance->insubstmt = LYEXT_SUBSTMT_PATH;
+            break;
+        case ERROR_MESSAGE_KEYWORD:
+            instance->insubstmt = LYEXT_SUBSTMT_ERRMSG;
+            break;
+        case ERROR_APP_TAG_KEYWORD:
+            instance->insubstmt = LYEXT_SUBSTMT_ERRTAG;
+            break;
+        case MODIFIER_KEYWORD:
+            instance->insubstmt = LYEXT_SUBSTMT_MODIFIER;
+            break;
+        case FRACTION_DIGITS_KEYWORD:
+            instance->insubstmt = LYEXT_SUBSTMT_DIGITS;
+            break;
+        case VALUE_KEYWORD:
+            instance->insubstmt = LYEXT_SUBSTMT_VALUE;
+            break;
+        case POSITION_KEYWORD:
+            instance->insubstmt = LYEXT_SUBSTMT_POSITION;
             break;
         default:
             LOGINT;
@@ -3216,11 +3265,80 @@ error:
 }
 
 int
+yang_fill_type(struct lys_module *module, struct lys_type *type, struct yang_type *stype,
+               void *parent, struct unres_schema *unres)
+{
+    int i;
+
+    type->parent = parent;
+    if (yang_check_ext_instance(module, &type->ext, type->ext_size, type, unres)) {
+        return EXIT_FAILURE;
+    }
+    switch (stype->base) {
+    case LY_TYPE_ENUM:
+        for (i = 0; i < type->info.enums.count; ++i) {
+            if (yang_check_iffeatures(module, &type->info.enums.enm[i], parent, ENUM_KEYWORD, unres)) {
+                return EXIT_FAILURE;
+            }
+            if (yang_check_ext_instance(module, &type->info.enums.enm[i].ext, type->info.enums.enm[i].ext_size,
+                                        &type->info.enums.enm[i], unres)) {
+                return EXIT_FAILURE;
+            }
+        }
+        break;
+    case LY_TYPE_BITS:
+        for (i = 0; i < type->info.bits.count; ++i) {
+            if (yang_check_iffeatures(module, &type->info.bits.bit[i], parent, BIT_KEYWORD, unres)) {
+                return EXIT_FAILURE;
+            }
+            if (yang_check_ext_instance(module, &type->info.bits.bit[i].ext, type->info.bits.bit[i].ext_size,
+                                        &type->info.bits.bit[i], unres)) {
+                return EXIT_FAILURE;
+            }
+        }
+        break;
+    case LY_TYPE_IDENT:
+        if (yang_check_identityref(module, type, unres)) {
+            return EXIT_FAILURE;
+        }
+        break;
+    case LY_TYPE_STRING:
+        if (type->info.str.length && yang_check_ext_instance(module, &type->info.str.length->ext,
+                                                             type->info.str.length->ext_size, type->info.str.length, unres)) {
+            return EXIT_FAILURE;
+        }
+        for (i = 0; i < type->info.str.pat_count; ++i) {
+            if (yang_check_ext_instance(module, &type->info.str.patterns[i].ext, type->info.str.patterns[i].ext_size,
+                                        &type->info.str.patterns[i], unres)) {
+                return EXIT_FAILURE;
+            }
+        }
+        break;
+    case LY_TYPE_DEC64:
+        if (type->info.dec64.range && yang_check_ext_instance(module, &type->info.dec64.range->ext,
+                                                             type->info.dec64.range->ext_size, type->info.dec64.range, unres)) {
+            return EXIT_FAILURE;
+        }
+        break;
+    case LY_TYPE_UNION:
+        for (i = 0; i < type->info.uni.count; ++i) {
+            if (yang_fill_type(module, &type->info.uni.types[i], (struct yang_type *)type->info.uni.types[i].der,
+                               parent, unres)) {
+                return EXIT_FAILURE;
+            }
+        }
+    default:
+        /* nothing checks */
+        break;
+    }
+    return EXIT_SUCCESS;
+}
+
+int
 yang_check_typedef(struct lys_module *module, struct lys_node *parent, struct unres_schema *unres)
 {
     struct lys_tpdf *tpdf;
-    uint8_t j, i, tpdf_size, *ptr_tpdf_size;
-    struct yang_type *stype;
+    uint8_t i, tpdf_size, *ptr_tpdf_size;
 
     if (!parent) {
         tpdf = module->tpdf;
@@ -3266,27 +3384,10 @@ yang_check_typedef(struct lys_module *module, struct lys_node *parent, struct un
         if (lyp_check_identifier(tpdf[i].name, LY_IDENT_TYPE, module, parent)) {
             goto error;
         }
-        tpdf[i].type.parent = &tpdf[i];
 
-        stype = (struct yang_type *)tpdf[i].type.der;
-        if (stype->base == LY_TYPE_ENUM) {
-            for (j = 0; j < tpdf[i].type.info.enums.count; ++j) {
-                if (yang_check_iffeatures(module, &tpdf[i].type.info.enums.enm[j], &tpdf[i], ENUM_KEYWORD, unres)) {
-                    goto error;
-                }
-            }
-        } else if (stype->base == LY_TYPE_BITS) {
-            for (j = 0; j < tpdf[i].type.info.bits.count; ++j) {
-                if (yang_check_iffeatures(module, &tpdf[i].type.info.bits.bit[j], &tpdf[i], BIT_KEYWORD, unres)) {
-                    goto error;
-                }
-            }
-        } else if (stype->base == LY_TYPE_IDENT) {
-            if (yang_check_identityref(module, &tpdf[i].type, unres)) {
-                goto error;
-            }
+        if (yang_fill_type(module, &tpdf[i].type, (struct yang_type *)tpdf[i].type.der, &tpdf[i], unres)) {
+            goto error;
         }
-
         if (yang_check_ext_instance(module, &tpdf[i].ext, tpdf[i].ext_size, &tpdf[i], unres)) {
             goto error;
         }
@@ -3378,31 +3479,9 @@ error:
 static int
 yang_check_leaf(struct lys_module *module, struct lys_node_leaf *leaf, struct unres_schema *unres)
 {
-    int i;
-    struct yang_type *stype;
-
-    stype = (struct yang_type *)leaf->type.der;
-    if (stype->base == LY_TYPE_ENUM) {
-        for (i = 0; i < leaf->type.info.enums.count; ++i) {
-            if (yang_check_iffeatures(module, &leaf->type.info.enums.enm[i], leaf, ENUM_KEYWORD, unres)) {
-                yang_type_free(module->ctx, &leaf->type);
-                goto error;
-            }
-        }
-    } else if (stype->base == LY_TYPE_BITS) {
-        for (i = 0; i < leaf->type.info.bits.count; ++i) {
-            if (yang_check_iffeatures(module, &leaf->type.info.bits.bit[i], leaf, BIT_KEYWORD, unres)) {
-                yang_type_free(module->ctx, &leaf->type);
-                goto error;
-            }
-        }
-    } else if (stype->base == LY_TYPE_IDENT) {
-        if (yang_check_identityref(module, &leaf->type, unres)) {
-            yang_type_free(module->ctx, &leaf->type);
+    if (yang_fill_type(module, &leaf->type, (struct yang_type *)leaf->type.der, leaf, unres)) {
             goto error;
-        }
     }
-
     if (yang_check_iffeatures(module, NULL, leaf, LEAF_KEYWORD, unres)) {
         yang_type_free(module->ctx, &leaf->type);
         goto error;
@@ -3431,30 +3510,10 @@ static int
 yang_check_leaflist(struct lys_module *module, struct lys_node_leaflist *leaflist, struct unres_schema *unres)
 {
     int i, j;
-    struct yang_type *stype;
 
-    stype = (struct yang_type *)leaflist->type.der;
-    if (stype->base == LY_TYPE_ENUM) {
-        for (i = 0; i < leaflist->type.info.enums.count; ++i) {
-            if (yang_check_iffeatures(module, &leaflist->type.info.enums.enm[i], leaflist, ENUM_KEYWORD, unres)) {
-                yang_type_free(module->ctx, &leaflist->type);
-                goto error;
-            }
-        }
-    } else if (stype->base == LY_TYPE_BITS) {
-        for (i = 0; i < leaflist->type.info.bits.count; ++i) {
-            if (yang_check_iffeatures(module, &leaflist->type.info.bits.bit[i], leaflist, BIT_KEYWORD, unres)) {
-                yang_type_free(module->ctx, &leaflist->type);
-                goto error;
-            }
-        }
-    } else if (stype->base == LY_TYPE_IDENT) {
-        if (yang_check_identityref(module, &leaflist->type, unres)) {
-            yang_type_free(module->ctx, &leaflist->type);
+    if (yang_fill_type(module, &leaflist->type, (struct yang_type *)leaflist->type.der, leaflist, unres)) {
             goto error;
-        }
     }
-
     if (yang_check_iffeatures(module, NULL, leaflist, LEAF_LIST_KEYWORD, unres)) {
         yang_type_free(module->ctx, &leaflist->type);
         goto error;
