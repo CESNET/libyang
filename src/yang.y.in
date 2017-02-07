@@ -280,6 +280,8 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <backup_token> notification_arg_str
 %type <backup_token> extension_arg_str
 %type <backup_token> feature_arg_str
+%type <backup_token> identity_arg_str
+%type <backup_token> if_feature_arg
 
 %destructor { free($$); } pattern_arg_str string_opt_part1 semicolom curly_bracket_open
 %destructor { free(($$) ? *$$ : NULL); } tmp_string
@@ -915,15 +917,7 @@ feature_end: ';'
         }
 
 feature_opt_stmt: @EMPTYDIR@
-  |  feature_opt_stmt if_feature_stmt { void *feature;
-
-                                        feature = actual;
-                                        YANG_ADDELEM(((struct lys_feature *)actual)->iffeature,
-                                                     ((struct lys_feature *)actual)->iffeature_size);
-                                        ((struct lys_iffeature *)actual)->features = (struct lys_feature **)s;
-                                        s = NULL;
-                                        actual = feature;
-                                      }
+  |  feature_opt_stmt if_feature_stmt stmtsep
   |  feature_opt_stmt status_stmt { if (((struct lys_feature *)actual)->flags & LYS_STATUS_MASK) {
                                       LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "feature");
                                       YYABORT;
@@ -941,11 +935,67 @@ feature_opt_stmt: @EMPTYDIR@
                                        s = NULL;
                                      }
 
-if_feature_arg: string { backup_type = actual_type;
+if_feature_arg: string { $$.token = actual_type;
+                         $$.actual = actual;
+                         switch (actual_type) {
+                         case FEATURE_KEYWORD:
+                           YANG_ADDELEM(((struct lys_feature *)actual)->iffeature,
+                                        ((struct lys_feature *)actual)->iffeature_size);
+                           break;
+                         case IDENTITY_KEYWORD:
+                           if (trg->version < 2) {
+                             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "if-feature", "identity");
+                             free(s);
+                             YYABORT;
+                           }
+                           YANG_ADDELEM(((struct lys_ident *)actual)->iffeature,
+                                        ((struct lys_ident *)actual)->iffeature_size);
+                           break;
+                         case ENUM_KEYWORD:
+                           if (trg->version < 2) {
+                             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "if-feature");
+                             free(s);
+                             YYABORT;
+                           }
+                           YANG_ADDELEM(((struct lys_type_enum *)actual)->iffeature,
+                                        ((struct lys_type_enum *)actual)->iffeature_size);
+                           break;
+                         case BIT_KEYWORD:
+                           if (trg->version < 2) {
+                             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "if-feature", "bit");
+                             free(s);
+                             YYABORT;
+                           }
+                           YANG_ADDELEM(((struct lys_type_bit *)actual)->iffeature,
+                                        ((struct lys_type_bit *)actual)->iffeature_size);
+                           break;
+                         case REFINE_KEYWORD:
+                           if (trg->version < 2) {
+                             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "if-feature");
+                             free(s);
+                             YYABORT;
+                           }
+                           YANG_ADDELEM(((struct lys_refine *)actual)->iffeature,
+                                        ((struct lys_refine *)actual)->iffeature_size);
+                           break;
+                         default:
+                           /* lys_node_* */
+                           YANG_ADDELEM(((struct lys_node *)actual)->iffeature,
+                                        ((struct lys_node *)actual)->iffeature_size);
+                           break;
+                         }
+                         ((struct lys_iffeature *)actual)->features = (struct lys_feature **)s;
+                         s = NULL;
                          actual_type = IF_FEATURE_KEYWORD;
                        }
 
-if_feature_stmt: IF_FEATURE_KEYWORD sep if_feature_arg stmtend;
+if_feature_stmt: IF_FEATURE_KEYWORD sep if_feature_arg if_feature_end
+                 { actual = $3.actual;
+                   actual_type = $3.token;
+                 }
+
+if_feature_end: ';'
+  | '{' stmtsep '}'
 
 identity_arg_str: identifier_arg_str { const char *tmp;
 
@@ -955,12 +1005,18 @@ identity_arg_str: identifier_arg_str { const char *tmp;
                                          lydict_remove(trg->ctx, tmp);
                                          YYABORT;
                                        }
+                                       $$.token = actual_type;
+                                       $$.actual = actual;
                                        YANG_ADDELEM(trg->ident, trg->ident_size);
                                        ((struct lys_ident *)actual)->name = tmp;
                                        ((struct lys_ident *)actual)->module = trg;
+                                       actual_type = IDENTITY_KEYWORD;
                                      }
 
-identity_stmt: IDENTITY_KEYWORD sep identity_arg_str identity_end;
+identity_stmt: IDENTITY_KEYWORD sep identity_arg_str identity_end
+               { actual = $3.actual;
+                 actual_type = $3.token;
+               }
 
 identity_end: ';'
   |  '{' stmtsep
@@ -1003,19 +1059,7 @@ identity_opt_stmt: @EMPTYDIR@
                                    s = NULL;
                                    actual = identity;
                                  }
-  |  identity_opt_stmt if_feature_stmt { void *identity;
-
-                                         if (trg->version < 2) {
-                                           LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "if-feature", "identity");
-                                           YYABORT;
-                                         }
-                                         identity = actual;
-                                         YANG_ADDELEM(((struct lys_ident *)actual)->iffeature,
-                                                      ((struct lys_ident *)actual)->iffeature_size);
-                                         ((struct lys_iffeature *)actual)->features = (struct lys_feature **)s;
-                                         s = NULL;
-                                         actual = identity;
-                                       }
+  |  identity_opt_stmt if_feature_stmt stmtsep
   |  identity_opt_stmt status_stmt { if (((struct lys_ident *)actual)->flags & LYS_STATUS_MASK) {
                                        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "identity");
                                        YYABORT;
@@ -1415,6 +1459,7 @@ enum_arg_str: string { yang_type = actual;
                        }
                        s = NULL;
                        is_value = 0;
+                       actual_type = ENUM_KEYWORD;
                      }
 
 enum_end: ';'
@@ -1434,18 +1479,7 @@ enum_end: ';'
          }
 
 enum_opt_stmt: @EMPTYDIR@
-  |  enum_opt_stmt if_feature_stmt { if (trg->version < 2) {
-                                       LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "if-feature");
-                                       free(s);
-                                       YYABORT;
-                                     }
-                                     $$ = actual;
-                                     YANG_ADDELEM(((struct lys_type_enum *)actual)->iffeature,
-                                                  ((struct lys_type_enum *)actual)->iffeature_size);
-                                     ((struct lys_iffeature *)actual)->features = (struct lys_feature**)s;
-                                     actual = $$;
-                                     s = NULL;
-                                   }
+  |  enum_opt_stmt if_feature_stmt stmtsep
   |  enum_opt_stmt value_stmt { if (is_value) {
                                   LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "value", "enum");
                                   YYABORT;
@@ -1568,6 +1602,7 @@ bit_arg_str: identifier_arg_str { yang_type = actual;
                                   }
                                   s = NULL;
                                   is_value = 0;
+                                  actual_type = BIT_KEYWORD;
                                 }
 
 bit_end: ';'
@@ -1587,18 +1622,7 @@ bit_end: ';'
          }
 
 bit_opt_stmt: @EMPTYDIR@
-  |  bit_opt_stmt if_feature_stmt { if (trg->version < 2) {
-                                      LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "if-feature", "bit");
-                                      free(s);
-                                      YYABORT;
-                                    }
-                                    $$ = actual;
-                                    YANG_ADDELEM(((struct lys_type_bit *)actual)->iffeature,
-                                                 ((struct lys_type_bit *)actual)->iffeature_size);
-                                    ((struct lys_iffeature *)actual)->features = (struct lys_feature**)s;
-                                    actual = $$;
-                                    s = NULL;
-                                  }
+  |  bit_opt_stmt if_feature_stmt stmtsep
   |  bit_opt_stmt position_stmt { if (is_value) {
                                     LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "position", "bit");
                                     YYABORT;
@@ -1791,11 +1815,7 @@ container_opt_stmt: @EMPTYDIR@ { $$.container = actual; }
                                     actual_type = CONTAINER_KEYWORD;
                                   }
      stmtsep
-  |  container_opt_stmt if_feature_stmt { YANG_ADDELEM($1.container->iffeature, $1.container->iffeature_size);
-                                          ((struct lys_iffeature *)actual)->features = (struct lys_feature**)s;
-                                          actual = $1.container;
-                                          s = NULL;
-                                        }
+  |  container_opt_stmt if_feature_stmt stmtsep
   |  container_opt_stmt must_stmt { actual = $1.container;
                                     actual_type = CONTAINER_KEYWORD;
                                   }
@@ -1913,11 +1933,7 @@ leaf_opt_stmt: @EMPTYDIR@ { $$.node.ptr_leaf = actual;
                                actual_type = LEAF_KEYWORD;
                              }
        stmtsep
-  |  leaf_opt_stmt if_feature_stmt { YANG_ADDELEM($1.node.ptr_leaf->iffeature, $1.node.ptr_leaf->iffeature_size);
-                                     ((struct lys_iffeature *)actual)->features = (struct lys_feature**)s;
-                                     actual = $1.node.ptr_leaf;
-                                     s = NULL;
-                                   }
+  |  leaf_opt_stmt if_feature_stmt stmtsep
   |  leaf_opt_stmt type_stmt { actual = $1.node.ptr_leaf;
                                actual_type = LEAF_KEYWORD;
                                $1.node.flag |= LYS_TYPE_DEF;
@@ -2038,12 +2054,7 @@ leaf_list_opt_stmt: @EMPTYDIR@ { $$.node.ptr_leaflist = actual;
                                     actual_type = LEAF_LIST_KEYWORD;
                                   }
      stmtsep
-  |  leaf_list_opt_stmt if_feature_stmt { YANG_ADDELEM($1.node.ptr_leaflist->iffeature,
-                                                       $1.node.ptr_leaflist->iffeature_size);
-                                          ((struct lys_iffeature *)actual)->features = (struct lys_feature**)s;
-                                          actual = $1.node.ptr_leaflist;
-                                          s = NULL;
-                                        }
+  |  leaf_list_opt_stmt if_feature_stmt stmtsep
   |  leaf_list_opt_stmt type_stmt { actual = $1.node.ptr_leaflist;
                                     actual_type = LEAF_LIST_KEYWORD;
                                     $1.node.flag |= LYS_TYPE_DEF;
@@ -2192,12 +2203,7 @@ list_opt_stmt: @EMPTYDIR@ { $$.node.ptr_list = actual;
                                actual_type = LIST_KEYWORD;
                              }
      stmtsep
-  |  list_opt_stmt if_feature_stmt { YANG_ADDELEM($1.node.ptr_list->iffeature,
-                                                  $1.node.ptr_list->iffeature_size);
-                                     ((struct lys_iffeature *)actual)->features = (struct lys_feature**)s;
-                                     actual = $1.node.ptr_list;
-                                     s = NULL;
-                                   }
+  |  list_opt_stmt if_feature_stmt stmtsep
   |  list_opt_stmt must_stmt { actual = $1.node.ptr_list;
                                actual_type = LIST_KEYWORD;
                              }
@@ -2350,12 +2356,7 @@ choice_opt_stmt: @EMPTYDIR@ { $$.node.ptr_choice = actual;
                                  actual_type = CHOICE_KEYWORD;
                                }
      stmtsep { $$ = $1; }
-  |  choice_opt_stmt if_feature_stmt { YANG_ADDELEM($1.node.ptr_choice->iffeature,
-                                                    $1.node.ptr_choice->iffeature_size);
-                                       ((struct lys_iffeature *)actual)->features = (struct lys_feature**)s;
-                                       actual = $1.node.ptr_choice;
-                                       s = NULL;
-                                     }
+  |  choice_opt_stmt if_feature_stmt stmtsep
   |  choice_opt_stmt default_stmt { if ($1.node.flag & LYS_CHOICE_DEFAULT) {
                                       LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_choice, "default", "choice");
                                       free(s);
@@ -2459,11 +2460,7 @@ case_opt_stmt: @EMPTYDIR@ { $$.cs = actual; }
                                actual_type = CASE_KEYWORD;
                              }
      stmtsep
-  |  case_opt_stmt if_feature_stmt { YANG_ADDELEM($1.cs->iffeature, $1.cs->iffeature_size);
-                                     ((struct lys_iffeature *)actual)->features = (struct lys_feature**)s;
-                                     actual = $1.cs;
-                                     s = NULL;
-                                   }
+  |  case_opt_stmt if_feature_stmt stmtsep
   |  case_opt_stmt status_stmt { if ($1.cs->flags & LYS_STATUS_MASK) {
                                    LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.cs, "status", "case");
                                    YYABORT;
@@ -2552,12 +2549,7 @@ anyxml_opt_stmt: @EMPTYDIR@ { $$.node.ptr_anydata = actual;
                                  actual_type = $1.node.flag;
                                }
      stmtsep
-  |  anyxml_opt_stmt if_feature_stmt { YANG_ADDELEM($1.node.ptr_anydata->iffeature,
-                                                    $1.node.ptr_anydata->iffeature_size);
-                                       ((struct lys_iffeature *)actual)->features = (struct lys_feature**)s;
-                                       actual = $1.node.ptr_anydata;
-                                       s = NULL;
-                                     }
+  |  anyxml_opt_stmt if_feature_stmt stmtsep
   |  anyxml_opt_stmt must_stmt { actual = $1.node.ptr_anydata;
                                  actual_type = $1.node.flag;
                                }
@@ -2649,11 +2641,7 @@ uses_opt_stmt: @EMPTYDIR@ { $$.uses = actual; }
                                actual_type = USES_KEYWORD;
                              }
      stmtsep
-  |  uses_opt_stmt if_feature_stmt { YANG_ADDELEM($1.uses->iffeature, $1.uses->iffeature_size);
-                                     ((struct lys_iffeature *)actual)->features = (struct lys_feature**)s;
-                                     actual = $1.uses;
-                                     s = NULL;
-                                   }
+  |  uses_opt_stmt if_feature_stmt stmtsep
   |  uses_opt_stmt status_stmt { if ($1.uses->flags & LYS_STATUS_MASK) {
                                    LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.uses, "status", "uses");
                                    YYABORT;
@@ -2747,30 +2735,22 @@ refine_body_opt_stmts: @EMPTYDIR@ { $$.refine = actual;
                                                  $1.refine->target_type = LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYXML;
                                                }
                                              }
-  |  refine_body_opt_stmts if_feature_stmt { if (trg->version < 2) {
-                                               free(s);
-                                               LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "if-feature");
-                                               YYABORT;
-                                             }
-                                             YANG_ADDELEM($1.refine->iffeature, $1.refine->iffeature_size);
-                                             ((struct lys_iffeature *)actual)->features = (struct lys_feature**)s;
-                                             actual = $1.refine;
-                                             s = NULL;
-                                             /* leaf, leaf-list, list, container or anyxml */
-                                             /* check possibility of statements combination */
-                                             if ($1.refine->target_type) {
-                                               if ($1.refine->target_type & (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYDATA)) {
-                                                 $1.refine->target_type &= (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYDATA);
-                                               } else {
-                                                 free(s);
-                                                 LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "if-feature", "refine");
-                                                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
-                                                 YYABORT;
-                                               }
-                                             } else {
-                                               $1.refine->target_type = LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYDATA;
-                                             }
-                                           }
+  |  refine_body_opt_stmts if_feature_stmt
+     stmtsep { /* leaf, leaf-list, list, container or anyxml */
+               /* check possibility of statements combination */
+               if ($1.refine->target_type) {
+                 if ($1.refine->target_type & (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYDATA)) {
+                   $1.refine->target_type &= (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYDATA);
+                 } else {
+                   free(s);
+                   LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "if-feature", "refine");
+                   LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
+                   YYABORT;
+                 }
+               } else {
+                 $1.refine->target_type = LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYDATA;
+               }
+             }
   |  refine_body_opt_stmts presence_stmt { if ($1.refine->target_type) {
                                              if ($1.refine->target_type & LYS_CONTAINER) {
                                                if ($1.refine->mod.presence) {
@@ -2987,11 +2967,7 @@ augment_opt_stmt: @EMPTYDIR@ { $$.augment = actual; }
                                   actual_type = AUGMENT_KEYWORD;
                                 }
      stmtsep
-  |  augment_opt_stmt if_feature_stmt { YANG_ADDELEM($1.augment->iffeature, $1.augment->iffeature_size);
-                                        ((struct lys_iffeature *)actual)->features = (struct lys_feature**)s;
-                                        actual = $1.augment;
-                                        s = NULL;
-                                      }
+  |  augment_opt_stmt if_feature_stmt stmtsep
   |  augment_opt_stmt status_stmt { if ($1.augment->flags & LYS_STATUS_MASK) {
                                       LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.augment, "status", "augment");
                                       YYABORT;
@@ -3100,12 +3076,7 @@ rpc_end: ';'
 rpc_opt_stmt: @EMPTYDIR@ { $$.node.ptr_rpc = actual;
                            $$.node.flag = 0;
                          }
-  |  rpc_opt_stmt if_feature_stmt { YANG_ADDELEM($1.node.ptr_rpc->iffeature,
-                                                 $1.node.ptr_rpc->iffeature_size);
-                                    ((struct lys_iffeature *)actual)->features = (struct lys_feature**)s;
-                                    actual = $1.node.ptr_rpc;
-                                    s = NULL;
-                                  }
+  |  rpc_opt_stmt if_feature_stmt stmtsep
   |  rpc_opt_stmt status_stmt { if ($1.node.ptr_rpc->flags & LYS_STATUS_MASK) {
                                   LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_rpc, "status", "rpc");
                                   YYABORT;
@@ -3318,11 +3289,7 @@ notification_opt_stmt: @EMPTYDIR@ { $$.notif = actual;
                                        actual_type = NOTIFICATION_KEYWORD;
                                      }
      stmtsep
-  |  notification_opt_stmt if_feature_stmt { YANG_ADDELEM($1.notif->iffeature, $1.notif->iffeature_size);
-                                             ((struct lys_iffeature *)actual)->features = (struct lys_feature**)s;
-                                             actual = $1.notif;
-                                             s = NULL;
-                                           }
+  |  notification_opt_stmt if_feature_stmt stmtsep
   |  notification_opt_stmt status_stmt { if ($1.notif->flags & LYS_STATUS_MASK) {
                                            LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.notif, "status", "notification");
                                            YYABORT;
