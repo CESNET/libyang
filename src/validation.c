@@ -141,7 +141,7 @@ eq_table_insert(struct eq_item *table, struct lyd_node *node, uint32_t hash, uin
             }
 
             /* compare nodes */
-            if (lyd_list_equal(node, table[i].node, action, 1)) {
+            if (lyd_list_equal(node, table[i].node, action, 0, 1)) {
                 /* instance duplication */
                 return EXIT_FAILURE;
             }
@@ -195,7 +195,7 @@ lyv_data_unique(struct lyd_node *node, struct lyd_node *start)
 
     if (set->number == 2) {
         /* simple comparison */
-        if (lyd_list_equal(set->set.d[0], set->set.d[1], -1, 1)) {
+        if (lyd_list_equal(set->set.d[0], set->set.d[1], -1, 0, 1)) {
             /* instance duplication */
             ly_set_free(set);
             return EXIT_FAILURE;

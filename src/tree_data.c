@@ -2527,7 +2527,7 @@ lyd_diff_compare(struct lyd_node *first, struct lyd_node *second,
     switch (first->schema->nodetype) {
     case LYS_LEAFLIST:
     case LYS_LIST:
-        rc = lyd_list_equal(first, second, 0, 0);
+        rc = lyd_list_equal(first, second, 0, (options & LYD_DIFFOPT_WITHDEFAULTS ? 1 : 0), 0);
         if (rc == -1) {
             return -1;
         } else if (!rc) {
@@ -2552,7 +2552,8 @@ lyd_diff_compare(struct lyd_node *first, struct lyd_node *second,
     case LYS_LEAF:
         /* check for leaf's modification */
         if (!ly_strequal(((struct lyd_node_leaf_list * )first)->value_str,
-                         ((struct lyd_node_leaf_list * )second)->value_str, 1)) {
+                         ((struct lyd_node_leaf_list * )second)->value_str, 1)
+                || ((options & LYD_DIFFOPT_WITHDEFAULTS) && (first->dflt != second->dflt))) {
             if (lyd_difflist_add(diff, size, (*i)++, LYD_DIFF_CHANGED, first, second)) {
                return -1;
             }
@@ -2608,7 +2609,7 @@ lyd_diff_equivnode(struct lyd_node *first, struct lyd_node *second)
         }
         if (iter1->schema->nodetype == LYS_LIST) {
             /* compare keys */
-            if (lyd_list_equal(iter1, iter2, 0, 0) != 1) {
+            if (lyd_list_equal(first, second, 0, 0, 0) != 1) {
                 return 0;
             }
         }
@@ -5085,9 +5086,13 @@ lyd_build_relative_data_path(const struct lyd_node *node, const char *schema_id,
  * -1 - compare keys and all uniques
  * 0  - compare only keys
  * n  - compare n-th unique
+ *
+ * withdefaults (only for leaf-list):
+ * 0 - treat default nodes are normal nodes
+ * 1 - only change is that if 2 nodes have the same value, but one is default, the other not, they are considered non-equal
  */
 int
-lyd_list_equal(struct lyd_node *first, struct lyd_node *second, int action, int printval)
+lyd_list_equal(struct lyd_node *first, struct lyd_node *second, int action, int withdefaults, int log)
 {
     struct lys_node_list *slist;
     const struct lys_node *snode = NULL;
@@ -5113,8 +5118,9 @@ lyd_list_equal(struct lyd_node *first, struct lyd_node *second, int action, int 
         }
         /* compare values */
         if (ly_strequal(((struct lyd_node_leaf_list *)first)->value_str,
-                        ((struct lyd_node_leaf_list *)second)->value_str, 1)) {
-            if (printval) {
+                        ((struct lyd_node_leaf_list *)second)->value_str, 1)
+                && (!withdefaults || (first->dflt == second->dflt))) {
+            if (log) {
                 LOGVAL(LYE_DUPLEAFLIST, LY_VLOG_LYD, second, second->schema->name,
                        ((struct lyd_node_leaf_list *)second)->value_str);
             }
@@ -5166,7 +5172,7 @@ uniquecheck:
                 }
                 if (j && (j == slist->unique[i].expr_size)) {
                     /* all unique leafs are the same in this set, create this nice error */
-                    if (!printval) {
+                    if (!log) {
                         return 1;
                     }
 
@@ -5242,7 +5248,7 @@ uniquecheck:
             }
         }
 
-        if (printval) {
+        if (log) {
             LOGVAL(LYE_DUPLIST, LY_VLOG_LYD, second, second->schema->name);
         }
         return 1;
@@ -6233,7 +6239,7 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
                     while (data_tree_sibling) {
                         if ((data_tree_sibling->schema == msg_sibling->schema)
                                 && ((msg_sibling->schema->nodetype != LYS_LIST)
-                                    || lyd_list_equal(data_tree_sibling, msg_sibling, 0, 0))) {
+                                    || lyd_list_equal(data_tree_sibling, msg_sibling, 0, 0, 0))) {
                             /* match */
                             break;
                         }

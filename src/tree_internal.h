@@ -414,12 +414,13 @@ int lys_get_data_sibling(const struct lys_module *mod, const struct lys_node *si
  *            -1 - compare keys and all uniques
  *             0 - compare only keys
  *             n - compare n-th unique
- * @param[in] printval Flag for printing validation errors, useful for internal (non-validation) use of this function
+ * @param[in] withdefaults Whether only different dflt flags cause 2 nodes not to be equal.
+ * @param[in] log Flag for printing validation errors, useful for internal (non-validation) use of this function
  * @return 1 if both the nodes are the same from the YANG point of view,
  *         0 if they differ,
  *         -1 on error.
  */
-int lyd_list_equal(struct lyd_node *first, struct lyd_node *second, int action, int printval);
+int lyd_list_equal(struct lyd_node *first, struct lyd_node *second, int action, int withdefaults, int log);
 
 const char *lyd_get_unique_default(const char* unique_expr, struct lyd_node *list);
 
