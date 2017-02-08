@@ -2301,10 +2301,7 @@ choice_end: ';'
 choice_opt_stmt: @EMPTYDIR@ { $$.node.ptr_choice = actual;
                               $$.node.flag = 0;
                             }
-  |  choice_opt_stmt when_stmt { actual = $1.node.ptr_choice;
-                                 actual_type = CHOICE_KEYWORD;
-                               }
-     stmtsep { $$ = $1; }
+  |  choice_opt_stmt when_stmt stmtsep
   |  choice_opt_stmt if_feature_stmt stmtsep
   |  choice_opt_stmt default_stmt { if ($1.node.flag & LYS_CHOICE_DEFAULT) {
                                       LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_choice, "default", "choice");
@@ -2349,15 +2346,10 @@ choice_opt_stmt: @EMPTYDIR@ { $$.node.ptr_choice = actual;
                                       s = NULL;
                                       $$ = $1;
                                     }
-  |  choice_opt_stmt short_case_case_stmt { actual = $1.node.ptr_choice;
-                                            actual_type = CHOICE_KEYWORD;
-                                            data_node = actual;
-                                          }
-     stmtsep { $$ = $1; }
+  |  choice_opt_stmt short_case_case_stmt stmtsep
 
 short_case_case_stmt:  short_case_stmt
   |  case_stmt
-  ;
 
 short_case_stmt: container_stmt
   |  leaf_stmt
@@ -2370,7 +2362,6 @@ short_case_stmt: container_stmt
                      YYABORT;
                    }
                  }
-  ;
 
 case_arg_str: identifier_arg_str { $$.token = actual_type;
                                    $$.actual = actual;
@@ -2405,10 +2396,7 @@ case_end: ';'
           }
 
 case_opt_stmt: @EMPTYDIR@ { $$.cs = actual; }
-  |  case_opt_stmt when_stmt { actual = $1.cs;
-                               actual_type = CASE_KEYWORD;
-                             }
-     stmtsep
+  |  case_opt_stmt when_stmt stmtsep
   |  case_opt_stmt if_feature_stmt stmtsep
   |  case_opt_stmt status_stmt { if ($1.cs->flags & LYS_STATUS_MASK) {
                                    LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.cs, "status", "case");
@@ -2426,11 +2414,7 @@ case_opt_stmt: @EMPTYDIR@ { $$.cs = actual; }
                                     }
                                     s = NULL;
                                   }
-  |  case_opt_stmt data_def_stmt { actual = $1.cs;
-                                   actual_type = CASE_KEYWORD;
-                                   data_node = actual;
-                                 }
-     stmtsep
+  |  case_opt_stmt data_def_stmt stmtsep
 
 
 anyxml_arg_str: identifier_arg_str { $$.token = actual_type;
@@ -2494,15 +2478,9 @@ anyxml_end: ';'
 anyxml_opt_stmt: @EMPTYDIR@ { $$.node.ptr_anydata = actual;
                               $$.node.flag = actual_type;
                             }
-  |  anyxml_opt_stmt when_stmt { actual = $1.node.ptr_anydata;
-                                 actual_type = $1.node.flag;
-                               }
-     stmtsep
+  |  anyxml_opt_stmt when_stmt stmtsep
   |  anyxml_opt_stmt if_feature_stmt stmtsep
-  |  anyxml_opt_stmt must_stmt { actual = $1.node.ptr_anydata;
-                                 actual_type = $1.node.flag;
-                               }
-     stmtsep
+  |  anyxml_opt_stmt must_stmt stmtsep
   |  anyxml_opt_stmt config_stmt { if ($1.node.ptr_anydata->flags & LYS_CONFIG_MASK) {
                                      LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_anydata, "config",
                                             ($1.node.flag == ANYXML_KEYWORD) ? "anyxml" : "anydata");
