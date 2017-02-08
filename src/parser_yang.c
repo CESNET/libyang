@@ -2154,6 +2154,11 @@ yang_ext_instance(void *node, enum yytokentype type)
         size = &((struct lys_restr *)node)->ext_size;
         parent_type = LYEXT_PAR_RESTR;
         break;
+    case WHEN_KEYWORD:
+        ext = &((struct lys_when *)node)->ext;
+        size = &((struct lys_when *)node)->ext_size;
+        parent_type = LYEXT_PAR_RESTR;
+        break;
     case ENUM_KEYWORD:
         ext = &((struct lys_type_enum *)node)->ext;
         size = &((struct lys_type_enum *)node)->ext_size;
@@ -3466,6 +3471,9 @@ yang_check_container(struct lys_module *module, struct lys_node_container *cont,
     }
     *child = NULL;
 
+    if (cont->when && yang_check_ext_instance(module, &cont->when->ext, cont->when->ext_size, cont->when, unres)) {
+        goto error;
+    }
     /* check XPath dependencies */
     if ((cont->when || cont->must_size) && (unres_schema_add_node(module, unres, cont, UNRES_XPATH, NULL) == -1)) {
         goto error;
@@ -3494,6 +3502,10 @@ yang_check_leaf(struct lys_module *module, struct lys_node_leaf *leaf, struct un
     }
 
     if (unres_schema_add_node(module, unres, &leaf->type, UNRES_TYPE_DFLT, (struct lys_node *)&leaf->dflt) == -1) {
+        goto error;
+    }
+
+    if (leaf->when && yang_check_ext_instance(module, &leaf->when->ext, leaf->when->ext_size, leaf->when, unres)) {
         goto error;
     }
 
@@ -3543,6 +3555,10 @@ yang_check_leaflist(struct lys_module *module, struct lys_node_leaflist *leaflis
         if (unres_schema_add_node(module, unres, &leaflist->type, UNRES_TYPE_DFLT, (struct lys_node *)(&leaflist->dflt[i])) == -1) {
             goto error;
         }
+    }
+
+    if (leaflist->when && yang_check_ext_instance(module, &leaflist->when->ext, leaflist->when->ext_size, leaflist->when, unres)) {
+        goto error;
     }
 
     /* check XPath dependencies */
@@ -3597,6 +3613,9 @@ yang_check_list(struct lys_module *module, struct lys_node_list *list, struct ly
         goto error;
     }
 
+    if (list->when && yang_check_ext_instance(module, &list->when->ext, list->when->ext_size, list->when, unres)) {
+        goto error;
+    }
     /* check XPath dependencies */
     if ((list->when || list->must_size) && (unres_schema_add_node(module, unres, list, UNRES_XPATH, NULL) == -1)) {
         goto error;
@@ -3635,6 +3654,10 @@ yang_check_choice(struct lys_module *module, struct lys_node_choice *choice, str
             goto error;
         }
         free(value);
+    }
+
+    if (choice->when && yang_check_ext_instance(module, &choice->when->ext, choice->when->ext_size, choice->when, unres)) {
+        goto error;
     }
 
     /* check XPath dependencies */
@@ -3726,6 +3749,10 @@ yang_check_augment(struct lys_module *module, struct lys_node_augment *augment, 
         goto error;
     }
 
+    if (augment->when && yang_check_ext_instance(module, &augment->when->ext, augment->when->ext_size, augment->when, unres)) {
+        goto error;
+    }
+
     /* check XPath dependencies */
     if (augment->when && (unres_schema_add_node(module, unres, augment, UNRES_XPATH, NULL) == -1)) {
         goto error;
@@ -3765,6 +3792,10 @@ yang_check_uses(struct lys_module *module, struct lys_node_uses *uses, int confi
         goto error;
     }
 
+    if (uses->when && yang_check_ext_instance(module, &uses->when->ext, uses->when->ext_size, uses->when, unres)) {
+        goto error;
+    }
+
     /* check XPath dependencies */
     if (uses->when && (unres_schema_add_node(module, unres, uses, UNRES_XPATH, NULL) == -1)) {
         goto error;
@@ -3775,6 +3806,33 @@ error:
     for (i = uses->augment_size; i < size; ++i) {
         yang_free_augment(module->ctx, &uses->augment[i]);
     }
+    return EXIT_FAILURE;
+}
+
+static int
+yang_check_anydata(struct lys_module *module, struct lys_node_anydata *anydata, struct lys_node **child,
+                   int config_opt, struct unres_schema *unres)
+{
+    if (yang_check_iffeatures(module, NULL, anydata, ANYDATA_KEYWORD, unres)) {
+        goto error;
+    }
+
+    if (yang_check_nodes(module, (struct lys_node *)anydata, *child, config_opt, unres)) {
+        *child = NULL;
+        goto error;
+    }
+    *child = NULL;
+
+    if (anydata->when && yang_check_ext_instance(module, &anydata->when->ext, anydata->when->ext_size, anydata->when, unres)) {
+        goto error;
+    }
+
+    /* check XPath dependencies */
+    if (anydata->when && (unres_schema_add_node(module, unres, anydata, UNRES_XPATH, NULL) == -1)) {
+        goto error;
+    }
+    return EXIT_SUCCESS;
+error:
     return EXIT_FAILURE;
 }
 
@@ -3853,15 +3911,7 @@ yang_check_nodes(struct lys_module *module, struct lys_node *parent, struct lys_
             break;
         case LYS_ANYDATA:
         case LYS_ANYXML:
-            if (yang_check_iffeatures(module, NULL, node, CHOICE_KEYWORD, unres)) {
-                goto error;
-            }
-            if (yang_check_nodes(module, node, child, config_opt, unres)) {
-                child = NULL;
-                goto error;
-            }
-            /* check XPath dependencies */
-            if ((((struct lys_node_anydata *)node)->when) && (unres_schema_add_node(module, unres, node, UNRES_XPATH, NULL) == -1)) {
+            if (yang_check_anydata(module, (struct lys_node_anydata *)node, &child, config_opt, unres)) {
                 goto error;
             }
             break;

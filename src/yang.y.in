@@ -284,6 +284,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <backup_token> union_spec
 %type <backup_token> enum_arg_str
 %type <backup_token> bit_arg_str
+%type <backup_token> when_arg_str
 
 %destructor { free($$); } pattern_arg_str string_opt_part1 semicolom curly_bracket_open
 %destructor { free(($$) ? *$$ : NULL); } tmp_string
@@ -3633,14 +3634,19 @@ deviate_replace_opt_stmt: @EMPTYDIR@ { $$ = actual;
                                                   $$ =  $1;
                                                 }
 
-when_arg_str: string  { if (!(actual=yang_read_when(trg, actual, actual_type, s))) {
+when_arg_str: string  { $$.token = actual_type;
+                        $$.actual = actual;
+                        if (!(actual = yang_read_when(trg, actual, actual_type, s))) {
                           YYABORT;
                         }
                         s = NULL;
-                        actual_type=WHEN_KEYWORD;
+                        actual_type = WHEN_KEYWORD;
                       }
 
-when_stmt: WHEN_KEYWORD sep when_arg_str when_end;
+when_stmt: WHEN_KEYWORD sep when_arg_str when_end
+           { actual_type = $3.token;
+             actual = $3.actual;
+           }
 
 when_end: ';'
   |  '{' stmtsep
