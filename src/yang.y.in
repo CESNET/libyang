@@ -1827,15 +1827,9 @@ container_end: ';'
           }
 
 container_opt_stmt: @EMPTYDIR@ { $$.container = actual; }
-  |  container_opt_stmt when_stmt { actual = $1.container;
-                                    actual_type = CONTAINER_KEYWORD;
-                                  }
-     stmtsep
+  |  container_opt_stmt when_stmt stmtsep
   |  container_opt_stmt if_feature_stmt stmtsep
-  |  container_opt_stmt must_stmt { actual = $1.container;
-                                    actual_type = CONTAINER_KEYWORD;
-                                  }
-     stmtsep
+  |  container_opt_stmt must_stmt stmtsep
   |  container_opt_stmt presence_stmt { if (yang_read_presence(trg, $1.container, s)) {
                                           YYABORT;
                                         }
@@ -1863,34 +1857,15 @@ container_opt_stmt: @EMPTYDIR@ { $$.container = actual; }
                                          }
                                          s = NULL;
                                        }
-  |  container_opt_stmt grouping_stmt { actual = $1.container;
-                                        actual_type = CONTAINER_KEYWORD;
-                                        data_node = actual;
-                                      }
-     stmtsep
-  |  container_opt_stmt action_stmt { actual = $1.container;
-                                      actual_type = CONTAINER_KEYWORD;
-                                      data_node = actual;
-                                    }
-     stmtsep
-  |  container_opt_stmt notification_stmt { actual = $1.container;
-                                            actual_type = CONTAINER_KEYWORD;
-                                            data_node = actual;
-                                            if (trg->version < 2) {
-                                              LOGVAL(LYE_INSTMT, LY_VLOG_LYS, $1.container, "notification");
-                                              YYABORT;
-                                            }
-                                          }
-     stmtsep
-  |  container_opt_stmt typedef_stmt { actual = $1.container;
-                                       actual_type = CONTAINER_KEYWORD;
-                                     }
-     stmtsep
-  |  container_opt_stmt data_def_stmt { actual = $1.container;
-                                        actual_type = CONTAINER_KEYWORD;
-                                        data_node = actual;
-                                      }
-     stmtsep
+  |  container_opt_stmt grouping_stmt stmtsep
+  |  container_opt_stmt action_stmt stmtsep
+  |  container_opt_stmt notification_stmt stmtsep { if (trg->version < 2) {
+                                                      LOGVAL(LYE_INSTMT, LY_VLOG_LYS, $1.container, "notification");
+                                                      YYABORT;
+                                                    }
+                                                  }
+  |  container_opt_stmt typedef_stmt stmtsep
+  |  container_opt_stmt data_def_stmt stmtsep
 
 leaf_stmt: LEAF_KEYWORD sep leaf_arg_str
            '{' stmtsep

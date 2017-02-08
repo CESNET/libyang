@@ -2273,6 +2273,12 @@ yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext
         case POSITION_KEYWORD:
             instance->insubstmt = LYEXT_SUBSTMT_POSITION;
             break;
+        case PRESENCE_KEYWORD:
+            instance->insubstmt = LYEXT_SUBSTMT_PRESENCE;
+            break;
+        case CONFIG_KEYWORD:
+            instance->insubstmt = LYEXT_SUBSTMT_CONFIG;
+            break;
         default:
             LOGINT;
             return NULL;
