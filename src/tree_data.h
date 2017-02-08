@@ -364,10 +364,11 @@ struct lyd_difflist *lyd_diff(struct lyd_node *first, struct lyd_node *second, i
 #define LYD_DIFFOPT_NOSIBLINGS   0x0800 /**< The both trees to diff have to instantiate the same schema node so only the
                                              single subtree is compared. */
 #define LYD_DIFFOPT_WITHDEFAULTS 0x0001 /**< Take default nodes with their values into account and handle them as part
-                                             of both trees. In this case, a node with defined default value cannot be
-                                             deleted, because when it is removed from a tree, it is implicitly replaced
-                                             by the default node, so the node is not #LYD_DIFF_DELETED, but
-                                             #LYD_DIFF_CHANGED. Note that in this case, applying the resulting
+                                             of both trees. Summary of the modified behavior:
+                                             - deleted node is replaced with implicit default node - #LYD_DIFF_CHANGED instead delete
+                                             - created node replaces an implicit default node - #LYD_DIFF_CHANGED instead create
+                                             - in both cases even if the values match - #LYD_DIFF_CHANGED is still returned, because dlft flag was changed
+                                             Note that in this case, applying the resulting
                                              transactions on the first tree does not result to the exact second tree,
                                              because instead of having implicit default nodes you are going to have
                                              explicit default nodes. */

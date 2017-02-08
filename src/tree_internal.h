@@ -359,6 +359,30 @@ struct lyd_node *lyd_new_dummy(struct lyd_node *data, struct lyd_node *parent, c
 const struct lyd_node *lyd_attr_parent(const struct lyd_node *root, struct lyd_attr *attr);
 
 /**
+ * @brief Internal version of lyd_unlink().
+ *
+ * @param[in] node Node to unlink.
+ * @param[in] permanent Whether the node is premanently unlinked or will be linked back.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on error.
+ */
+int lyd_unlink_internal(struct lyd_node *node, int permanent);
+
+/**
+ * @brief Internal version of lyd_insert() and lyd_insert_sibling().
+ *
+ * @param[in] invalidate Whether to invalidate any nodes. Set 0 only if linking back some temporarily internally unlinked nodes.
+ */
+int lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd_node *node, int invalidate);
+
+/**
+ * @brief Internal version of lyd_insert_before() and lyd_insert_after().
+ *
+ * @param[in] invalidate Whether to invalidate any nodes. Set 0 only if linking back some temporarily internally unlinked nodes.
+ */
+int lyd_insert_nextto(struct lyd_node *sibling, struct lyd_node *node, int before, int invalidate);
+
+/**
  * @brief Find an import from \p module with matching \p prefix, \p name, or both,
  * \p module itself is also compared.
  *
@@ -430,12 +454,13 @@ int lys_get_data_sibling(const struct lys_module *mod, const struct lys_node *si
  *            -1 - compare keys and all uniques
  *             0 - compare only keys
  *             n - compare n-th unique
- * @param[in] printval Flag for printing validation errors, useful for internal (non-validation) use of this function
+ * @param[in] withdefaults Whether only different dflt flags cause 2 nodes not to be equal.
+ * @param[in] log Flag for printing validation errors, useful for internal (non-validation) use of this function
  * @return 1 if both the nodes are the same from the YANG point of view,
  *         0 if they differ,
  *         -1 on error.
  */
-int lyd_list_equal(struct lyd_node *first, struct lyd_node *second, int action, int printval);
+int lyd_list_equal(struct lyd_node *first, struct lyd_node *second, int action, int withdefaults, int log);
 
 const char *lyd_get_unique_default(const char* unique_expr, struct lyd_node *list);
 

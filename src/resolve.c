@@ -1138,7 +1138,6 @@ resolve_feature(const char *feat_name, uint16_t len, const struct lys_node *node
  * @return
  *  -  1 if enabled
  *  -  0 if disabled
- *  - -1 if not usable by its if-feature expression
  */
 static int
 resolve_feature_value(const struct lys_feature *feat)
@@ -1147,7 +1146,7 @@ resolve_feature_value(const struct lys_feature *feat)
 
     for (i = 0; i < feat->iffeature_size; i++) {
         if (!resolve_iffeature(&feat->iffeature[i])) {
-            return -1;
+            return 0;
         }
     }
 
@@ -1158,7 +1157,7 @@ static int
 resolve_iffeature_recursive(struct lys_iffeature *expr, int *index_e, int *index_f)
 {
     uint8_t op;
-    int rc, a, b;
+    int a, b;
 
     op = iff_getop(expr->expr, *index_e);
     (*index_e)++;
@@ -1168,43 +1167,31 @@ resolve_iffeature_recursive(struct lys_iffeature *expr, int *index_e, int *index
         /* resolve feature */
         return resolve_feature_value(expr->features[(*index_f)++]);
     case LYS_IFF_NOT:
-        rc = resolve_iffeature_recursive(expr, index_e, index_f);
-        if (rc == -1) {
-            /* one of the referenced feature is hidden by its if-feature,
-             * so this if-feature expression is always false */
-            return -1;
-        } else {
-            /* invert result */
-            return rc ? 0 : 1;
-        }
+        /* invert result */
+        return resolve_iffeature_recursive(expr, index_e, index_f) ? 0 : 1;
     case LYS_IFF_AND:
     case LYS_IFF_OR:
         a = resolve_iffeature_recursive(expr, index_e, index_f);
         b = resolve_iffeature_recursive(expr, index_e, index_f);
-        if (a == -1 || b == -1) {
-            /* one of the referenced feature is hidden by its if-feature,
-             * so this if-feature expression is always false */
-            return -1;
-        } else if (op == LYS_IFF_AND) {
+        if (op == LYS_IFF_AND) {
             return a && b;
         } else { /* LYS_IFF_OR */
             return a || b;
         }
     }
 
-    return -1;
+    return 0;
 }
 
 int
 resolve_iffeature(struct lys_iffeature *expr)
 {
-    int rc = -1;
     int index_e = 0, index_f = 0;
 
     if (expr->expr) {
-        rc = resolve_iffeature_recursive(expr, &index_e, &index_f);
+        return resolve_iffeature_recursive(expr, &index_e, &index_f);
     }
-    return (rc == 1) ? 1 : 0;
+    return 0;
 }
 
 struct iff_stack {
@@ -5161,8 +5148,8 @@ fail:
     return -1;
 }
 
-static int
-identity_backlink_update(struct lys_ident *der, struct lys_ident *base)
+void
+resolve_identity_backlink_update(struct lys_ident *der, struct lys_ident *base)
 {
     int i;
 
@@ -5177,12 +5164,8 @@ identity_backlink_update(struct lys_ident *der, struct lys_ident *base)
 
     /* do it recursively */
     for (i = 0; i < base->base_size; i++) {
-        if (identity_backlink_update(der, base->base[i])) {
-            return EXIT_FAILURE;
-        }
+        resolve_identity_backlink_update(der, base->base[i]);
     }
-
-    return EXIT_SUCCESS;
 }
 
 /**
@@ -5341,13 +5324,11 @@ resolve_base_ident(const struct lys_module *module, struct lys_ident *ident, con
         if (lyp_check_status(flags, mod, ident ? ident->name : "of type",
                              (*ret)->flags, (*ret)->module, (*ret)->name, NULL)) {
             rc = -1;
-        } else {
-            if (ident) {
-                ident->base[ident->base_size++] = *ret;
+        } else if (ident) {
+            ident->base[ident->base_size++] = *ret;
 
-                /* maintain backlinks to the derived identities */
-                rc = identity_backlink_update(ident, *ret) ? -1 : EXIT_SUCCESS;
-            }
+            /* maintain backlinks to the derived identities */
+            resolve_identity_backlink_update(ident, *ret);
         }
     } else if (rc == EXIT_FAILURE) {
         LOGVAL(LYE_INRESOLV, LY_VLOG_NONE, NULL, parent, basename);
@@ -5807,14 +5788,20 @@ resolve_when_unlink_nodes(struct lys_node *snode, struct lyd_node **node, struct
                           enum lyxp_node_type ctx_node_type, struct lyd_node **unlinked_nodes)
 {
     struct lyd_node *next, *elem;
+    const struct lys_node *slast;
 
     switch (snode->nodetype) {
     case LYS_AUGMENT:
     case LYS_USES:
     case LYS_CHOICE:
     case LYS_CASE:
-        LY_TREE_FOR(snode->child, snode) {
-            if (resolve_when_unlink_nodes(snode, node, ctx_node, ctx_node_type, unlinked_nodes)) {
+        slast = NULL;
+        while ((slast = lys_getnext(slast, snode, NULL, 0))) {
+            if (slast->nodetype & (LYS_ACTION | LYS_NOTIF)) {
+                continue;
+            }
+
+            if (resolve_when_unlink_nodes((struct lys_node *)slast, node, ctx_node, ctx_node_type, unlinked_nodes)) {
                 return -1;
             }
         }
@@ -5862,7 +5849,7 @@ resolve_when_unlink_nodes(struct lys_node *snode, struct lyd_node **node, struct
                 }
 
                 /* temporarily unlink the node */
-                lyd_unlink(elem);
+                lyd_unlink_internal(elem, 0);
                 if (*unlinked_nodes) {
                     if (lyd_insert_after((*unlinked_nodes)->prev, elem)) {
                         LOGINT;
@@ -5904,13 +5891,13 @@ resolve_when_relink_nodes(struct lyd_node *node, struct lyd_node *unlinked_nodes
     struct lyd_node *elem;
 
     LY_TREE_FOR_SAFE(unlinked_nodes, unlinked_nodes, elem) {
-        lyd_unlink(elem);
+        lyd_unlink_internal(elem, 0);
         if (ctx_node_type == LYXP_NODE_ELEM) {
-            if (lyd_insert(node, elem)) {
+            if (lyd_insert_common(node, NULL, elem, 0)) {
                 return -1;
             }
         } else {
-            if (lyd_insert_after(node, elem)) {
+            if (lyd_insert_nextto(node, elem, 0, 0)) {
                 return -1;
             }
         }

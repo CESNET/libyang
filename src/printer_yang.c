@@ -175,7 +175,7 @@ static void
 yang_print_iffeature(struct lyout *out, int level, const struct lys_module *module, struct lys_iffeature *iffeature)
 {
     ly_print(out, "%*sif-feature \"", LEVEL, INDENT);
-    ly_print_iffeature(out, module, iffeature);
+    ly_print_iffeature(out, module, iffeature, 0);
 
     /* extensions */
     if (iffeature->ext_size) {
@@ -414,6 +414,29 @@ yang_print_when(struct lyout *out, int level, const struct lys_module *module, c
 }
 
 static void
+yang_print_unsigned(struct lyout *out, int level, LYEXT_SUBSTMT substmt, uint8_t substmt_index,
+                    const struct lys_module *module, struct lys_ext_instance **ext, unsigned int ext_size,
+                    unsigned int attr_value)
+{
+    char *str;
+
+    asprintf(&str, "%u", attr_value);
+    yang_print_substmt(out, level, substmt, substmt_index, str, module, ext, ext_size);
+    free(str);
+}
+
+static void
+yang_print_signed(struct lyout *out, int level, LYEXT_SUBSTMT substmt, const struct lys_module *module,
+                  struct lys_ext_instance **ext, unsigned int ext_size, signed int attr_value)
+{
+    char *str;
+
+    asprintf(&str, "%d", attr_value);
+    yang_print_substmt(out, level, substmt, 0, str, module, ext, ext_size);
+    free(str);
+}
+
+static void
 yang_print_type(struct lyout *out, int level, const struct lys_module *module, const struct lys_type *type)
 {
     int i;
@@ -458,10 +481,9 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
                                     SNODE_COMMON_EXT | SNODE_COMMON_IFF);
             if (!(type->info.bits.bit[i].flags & LYS_AUTOASSIGNED)) {
                 yang_print_open(out, &flag2);
-                asprintf(&s, "%u", type->info.bits.bit[i].pos);
-                yang_print_substmt(out, level, LYEXT_SUBSTMT_POSITION, 0, s,
-                                   module, type->info.bits.bit[i].ext, type->info.bits.bit[i].ext_size);
-                free(s);
+                yang_print_unsigned(out, level, LYEXT_SUBSTMT_POSITION, 0, module,
+                                    type->info.bits.bit[i].ext, type->info.bits.bit[i].ext_size,
+                                    type->info.bits.bit[i].pos);
             }
             yang_print_snode_common(out, level, (struct lys_node *)&type->info.bits.bit[i], module, &flag2,
                                     SNODE_COMMON_STATUS | SNODE_COMMON_DSC | SNODE_COMMON_REF);
@@ -472,9 +494,8 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
     case LY_TYPE_DEC64:
         if (!type->der->type.der) {
             yang_print_open(out, &flag);
-            asprintf(&s, "%d", type->info.dec64.dig);
-            yang_print_substmt(out, level, LYEXT_SUBSTMT_DIGITS, 0, s, module, type->ext, type->ext_size);
-            free(s);
+            yang_print_unsigned(out, level, LYEXT_SUBSTMT_DIGITS, 0, module,
+                                type->ext, type->ext_size, type->info.dec64.dig);
         }
         if (type->info.dec64.range != NULL) {
             yang_print_open(out, &flag);
@@ -496,10 +517,9 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
                                     SNODE_COMMON_EXT | SNODE_COMMON_IFF);
             if (!(type->info.enums.enm[i].flags & LYS_AUTOASSIGNED)) {
                 yang_print_open(out, &flag2);
-                asprintf(&s, "%d", type->info.enums.enm[i].value);
-                yang_print_substmt(out, level, LYEXT_SUBSTMT_VALUE, 0, s,
-                                   module, type->info.enums.enm[i].ext, type->info.enums.enm[i].ext_size);
-                free(s);
+                yang_print_signed(out, level, LYEXT_SUBSTMT_VALUE, module,
+                                  type->info.enums.enm[i].ext, type->info.enums.enm[i].ext_size,
+                                  type->info.enums.enm[i].value);
             }
             yang_print_snode_common(out, level, (struct lys_node *)&type->info.enums.enm[i], module, &flag2,
                                     SNODE_COMMON_STATUS | SNODE_COMMON_DSC | SNODE_COMMON_REF);
@@ -640,7 +660,6 @@ yang_print_refine(struct lyout *out, int level, const struct lys_module *module,
 {
     int i, flag = 0;
     const char *str;
-    char *s;
 
     str = transform_json2schema(module, refine->target_name);
     ly_print(out, "%*srefine \"%s\"", LEVEL, INDENT, str);
@@ -677,20 +696,18 @@ yang_print_refine(struct lyout *out, int level, const struct lys_module *module,
     }
     if (refine->target_type & (LYS_LIST | LYS_LEAFLIST)) {
         if (refine->flags & LYS_RFN_MINSET) {
-            asprintf(&s, "%u", refine->mod.list.min);
             yang_print_open(out, &flag);
-            yang_print_substmt(out, level, LYEXT_SUBSTMT_MIN, 0, s, module, refine->ext, refine->ext_size);
-            free(s);
+            yang_print_unsigned(out, level, LYEXT_SUBSTMT_MIN, 0, module, refine->ext, refine->ext_size,
+                                refine->mod.list.min);
         }
         if (refine->flags & LYS_RFN_MAXSET) {
-            if (refine->mod.list.max) {
-                asprintf(&s, "%u", refine->mod.list.max);
-            } else {
-                s = NULL;
-            }
             yang_print_open(out, &flag);
-            yang_print_substmt(out, level, LYEXT_SUBSTMT_MAX, 0, s ? s : "unbounded", module, refine->ext, refine->ext_size);
-            free(s);
+            if (refine->mod.list.max) {
+                yang_print_unsigned(out, level, LYEXT_SUBSTMT_MAX, 0, module, refine->ext, refine->ext_size,
+                                    refine->mod.list.max);
+            } else {
+                yang_print_substmt(out, level, LYEXT_SUBSTMT_MAX, 0, "unbounded", module, refine->ext, refine->ext_size);
+            }
         }
     }
     yang_print_snode_common(out, level, (struct lys_node *)refine, module, &flag, SNODE_COMMON_DSC | SNODE_COMMON_REF);
@@ -705,7 +722,6 @@ yang_print_deviation(struct lyout *out, int level, const struct lys_module *modu
 {
     int i, j, p;
     const char *str;
-    char *s;
 
     str = transform_json2schema(module, deviation->target_name);
     ly_print(out, "%*sdeviation \"%s\" {\n", LEVEL, INDENT, str);
@@ -810,22 +826,21 @@ yang_print_deviation(struct lyout *out, int level, const struct lys_module *modu
 
         /* min-elements */
         if (deviation->deviate[i].min_set) {
-            asprintf(&s, "%u", deviation->deviate[i].min);
-            yang_print_substmt(out, level, LYEXT_SUBSTMT_MIN, 0, s, module,
-                               deviation->deviate[i].ext, deviation->deviate[i].ext_size);
-            free(s);
+            yang_print_unsigned(out, level, LYEXT_SUBSTMT_MIN, 0, module,
+                                deviation->deviate[i].ext, deviation->deviate[i].ext_size,
+                                deviation->deviate[i].min);
         }
 
         /* max-elements */
         if (deviation->deviate[i].max_set) {
             if (deviation->deviate[i].max) {
-                asprintf(&s, "%u", deviation->deviate[i].max);
+                yang_print_unsigned(out, level, LYEXT_SUBSTMT_MAX, 0, module,
+                                    deviation->deviate[i].ext, deviation->deviate[i].ext_size,
+                                    deviation->deviate[i].max);
             } else {
-                s = NULL;
+                yang_print_substmt(out, level, LYEXT_SUBSTMT_MAX, 0, "unbounded", module,
+                                   deviation->deviate[i].ext, deviation->deviate[i].ext_size);
             }
-            yang_print_substmt(out, level, LYEXT_SUBSTMT_MAX, 0, s ? s : "unbounded", module,
-                               deviation->deviate[i].ext, deviation->deviate[i].ext_size);
-            free(s);
         }
 
         level--;
@@ -1166,7 +1181,6 @@ yang_print_leaflist(struct lyout *out, int level, const struct lys_node *node)
     int i;
     struct lys_node_leaflist *llist = (struct lys_node_leaflist *)node;
     const char *dflt;
-    char *str;
 
     ly_print(out, "%*sleaf-list %s {\n", LEVEL, INDENT, node->name);
     level++;
@@ -1203,16 +1217,10 @@ yang_print_leaflist(struct lyout *out, int level, const struct lys_node *node)
     }
     yang_print_snode_common(out, level, node, node->module, NULL, SNODE_COMMON_CONFIG);
     if (llist->min > 0) {
-        asprintf(&str, "%u", llist->min);
-        yang_print_substmt(out, level, LYEXT_SUBSTMT_MIN, 0, str,
-                           node->module, node->ext, node->ext_size);
-        free(str);
+        yang_print_unsigned(out, level, LYEXT_SUBSTMT_MIN, 0, node->module, node->ext, node->ext_size, llist->min);
     }
     if (llist->max > 0) {
-        asprintf(&str, "%u", llist->max);
-        yang_print_substmt(out, level, LYEXT_SUBSTMT_MAX, 0, str,
-                           node->module, node->ext, node->ext_size);
-        free(str);
+        yang_print_unsigned(out, level, LYEXT_SUBSTMT_MAX, 0, node->module, node->ext, node->ext_size, llist->max);
     }
     if (llist->flags & LYS_USERORDERED) {
         yang_print_substmt(out, level, LYEXT_SUBSTMT_ORDEREDBY, 0, "user",
@@ -1233,7 +1241,6 @@ yang_print_list(struct lyout *out, int level, const struct lys_node *node)
     int i, p, flag = 0;
     struct lys_node *sub;
     struct lys_node_list *list = (struct lys_node_list *)node;
-    char *str;
 
     ly_print(out, "%*slist %s", LEVEL, INDENT, node->name);
     level++;
@@ -1279,17 +1286,11 @@ yang_print_list(struct lyout *out, int level, const struct lys_node *node)
     yang_print_snode_common(out, level, node, node->module, &flag, SNODE_COMMON_CONFIG);
     if (list->min > 0) {
         yang_print_open(out, &flag);
-        asprintf(&str, "%u", list->min);
-        yang_print_substmt(out, level, LYEXT_SUBSTMT_MIN, 0, str,
-                           node->module, node->ext, node->ext_size);
-        free(str);
+        yang_print_unsigned(out, level, LYEXT_SUBSTMT_MIN, 0, node->module, node->ext, node->ext_size, list->min);
     }
     if (list->max > 0) {
         yang_print_open(out, &flag);
-        asprintf(&str, "%u", list->max);
-        yang_print_substmt(out, level, LYEXT_SUBSTMT_MAX, 0, str,
-                           node->module, node->ext, node->ext_size);
-        free(str);
+        yang_print_unsigned(out, level, LYEXT_SUBSTMT_MAX, 0, node->module, node->ext, node->ext_size, list->max);
     }
     if (list->flags & LYS_USERORDERED) {
         yang_print_open(out, &flag);
@@ -1890,10 +1891,10 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
     unsigned int u, x;
     struct lys_module *mod;
     const char *prefix = NULL, *str;
-    int content, i;
+    int content, i, c;
     struct lyext_substmt *info;
     uint16_t *flags;
-    void **pp;
+    void **pp, *p;
 
 #define YANG_PRINT_EXTCOMPLEX_STRUCT(STMT, TYPE, FUNC)                                        \
     pp = lys_ext_complex_get_substmt(STMT, (struct lys_ext_instance_complex *)ext[u], NULL);  \
@@ -2024,6 +2025,25 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
                 case LY_STMT_MODIFIER:
                     yang_print_extcomplex_bool(out, level, module, (struct lys_ext_instance_complex*)ext[u],
                                                LY_STMT_MODIFIER, "invert-match", NULL, &content);
+                    break;
+                case LY_STMT_DIGITS:
+                    p = &((struct lys_ext_instance_complex*)ext[u])->content[info[i].offset];
+                    if (!p) {
+                        break;
+                    }
+
+                    if (info->cardinality >= LY_STMT_CARD_SOME) {
+                        /* we have array */
+                        for (p = *(void **)(p), c = 0; p; p++, c++) {
+                            yang_print_open(out, &content);
+                            yang_print_unsigned(out, level, LYEXT_SUBSTMT_DIGITS, c, module,
+                                               ext[u]->ext, ext[u]->ext_size, (*(uint8_t*)p));
+                        }
+                    } else if ((*(uint8_t*)p)) {
+                        yang_print_open(out, &content);
+                        yang_print_unsigned(out, level, LYEXT_SUBSTMT_DIGITS, 0, module,
+                                            ext[u]->ext, ext[u]->ext_size, (*(uint8_t*)p));
+                    }
                     break;
                 default:
                     /* TODO */

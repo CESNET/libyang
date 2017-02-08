@@ -1315,11 +1315,6 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 if (!parenttype && unres_schema_add_node(module, unres, type, UNRES_TYPE_LEAFREF, parent) == -1) {
                     goto error;
                 }
-
-                /* add pointer to leafref target, only on leaves (not in typedefs) */
-                if (type->info.lref.target && lys_leaf_add_leafref_target(type->info.lref.target, (struct lys_node *)type->parent)) {
-                    goto error;
-                }
             }
         }
 
@@ -7260,8 +7255,11 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
 {
     struct lyxml_elem *next, *node;
     struct lys_type **type;
-    void **pp, *p;
+    void **pp, *p, *reallocated;
     const char *value;
+    struct lyext_substmt *info;
+    long int v;
+    int i;
 
     LY_TREE_FOR_SAFE(yin->child, next, node) {
         if (!node->ns) {
@@ -7430,6 +7428,56 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
         } else if (!strcmp(node->name, "value")) {
             if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_VALUE, 0, "value", unres)) {
                 goto error;
+            }
+        } else if (!strcmp(node->name, "fraction-digits")) {
+            p = lys_ext_complex_get_substmt(LY_STMT_DIGITS, ext, &info);
+            if (!p) {
+                LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, node->name, node->parent->name);
+                goto error;
+            }
+            if (info->cardinality < LY_STMT_CARD_SOME && (*(uint8_t *)p)) {
+                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, node->name, node->parent->name);
+                goto error;
+            }
+            i = 0;
+            pp = NULL;
+            if (info->cardinality >= LY_STMT_CARD_SOME) {
+                /* there can be multiple instances */
+                pp = p;
+                if (!(*pp)) {
+                    /* allocate initial array */
+                    *pp = p = malloc(2 * sizeof(uint8_t*));
+                } else {
+                    for (i = 0, p = *pp; p; p++, p++);
+                }
+                p = malloc(sizeof(uint8_t));
+            }
+
+            GETVAL(value, node, "value");
+            v = strtol(value, NULL, 10);
+
+            /* range check */
+            if (v < 1 || v > 18) {
+                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, node->name);
+                goto error;
+            }
+
+            if (lyp_yin_parse_subnode_ext(mod, ext, LYEXT_PAR_EXTINST, node, LYEXT_SUBSTMT_STATUS, i, unres)) {
+                goto error;
+            }
+
+            /* store the value */
+            (*(uint8_t *)p) = (uint8_t)v;
+
+            if (pp) {
+                /* enlarge the array */
+                reallocated = realloc(*pp, (i + 2) * sizeof(uint8_t*));
+                if (!reallocated) {
+                    LOGMEM;
+                    goto error;
+                }
+                *pp = reallocated;
+                pp[i + 1] = NULL;
             }
         } else {
             LOGERR(LY_SUCCESS, "Extension's substatement \"%s\" not yet supported.", node->name);
