@@ -5314,6 +5314,11 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
     const char *value;
     int i, r;
     int version_flag = 0;
+    /* (sub)module substatements are ordered in groups, increment this value when moving to another group
+     * 0 - header-stmts, 1 - linkage-stmts, 2 - meta-stmts, 3 - revision-stmts, 4 - body-stmts */
+    int substmt_group;
+    /* just remember last substatement for logging */
+    const char *substmt_prev;
     /* counters */
     int c_imp = 0, c_rev = 0, c_tpdf = 0, c_ident = 0, c_inc = 0, c_aug = 0, c_ftrs = 0, c_dev = 0;
 
@@ -5333,6 +5338,8 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
      * the middle loop, we process other elements with carinality of 0..n since
      * we need to allocate arrays to store them.
      */
+    substmt_group = 0;
+    substmt_prev = NULL;
     LY_TREE_FOR_SAFE(yin->child, next, child) {
         if (!child->ns || strcmp(child->ns->value, LY_NSYIN)) {
             /* garbage */
@@ -5341,6 +5348,13 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
         }
 
         if (!submodule && !strcmp(child->name, "namespace")) {
+            if (substmt_group > 0) {
+                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child->name);
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Statement \"%s\" cannot appear after \"%s\" statement.",
+                       child->name, substmt_prev);
+                goto error;
+            }
+
             if (module->ns) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
                 goto error;
@@ -5348,7 +5362,16 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             GETVAL(value, child, "uri");
             module->ns = lydict_insert(ctx, value, strlen(value));
             lyxml_free(ctx, child);
+
+            substmt_prev = "namespace";
         } else if (!submodule && !strcmp(child->name, "prefix")) {
+            if (substmt_group > 0) {
+                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child->name);
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Statement \"%s\" cannot appear after \"%s\" statement.",
+                       child->name, substmt_prev);
+                goto error;
+            }
+
             if (module->prefix) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
                 goto error;
@@ -5359,7 +5382,16 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             }
             module->prefix = lydict_insert(ctx, value, strlen(value));
             lyxml_free(ctx, child);
+
+            substmt_prev = "prefix";
         } else if (submodule && !strcmp(child->name, "belongs-to")) {
+            if (substmt_group > 0) {
+                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child->name);
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Statement \"%s\" cannot appear after \"%s\" statement.",
+                       child->name, substmt_prev);
+                goto error;
+            }
+
             if (submodule->prefix) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
                 goto error;
@@ -5394,28 +5426,78 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             /* we are done with belongs-to */
             lyxml_free(ctx, child);
 
+            substmt_prev = "belongs-to";
+
             /* counters (statements with n..1 cardinality) */
         } else if (!strcmp(child->name, "import")) {
+            if (substmt_group > 1) {
+                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child->name);
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Statement \"%s\" cannot appear after \"%s\" statement.",
+                       child->name, substmt_prev);
+                goto error;
+            }
+            substmt_group = 1;
+
             c_imp++;
+
+            substmt_prev = "import";
         } else if (!strcmp(child->name, "revision")) {
+            if (substmt_group > 3) {
+                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child->name);
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Statement \"%s\" cannot appear after \"%s\" statement.",
+                       child->name, substmt_prev);
+                goto error;
+            }
+            substmt_group = 3;
+
             c_rev++;
+
+            substmt_prev = "revision";
         } else if (!strcmp(child->name, "typedef")) {
+            substmt_group = 4;
+
             c_tpdf++;
+
+            substmt_prev = "typedef";
         } else if (!strcmp(child->name, "identity")) {
+            substmt_group = 4;
+
             c_ident++;
+
+            substmt_prev = "identity";
         } else if (!strcmp(child->name, "include")) {
+            if (substmt_group > 1) {
+                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child->name);
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Statement \"%s\" cannot appear after \"%s\" statement.",
+                       child->name, substmt_prev);
+                goto error;
+            }
+            substmt_group = 1;
+
             c_inc++;
+
+            substmt_prev = "include";
         } else if (!strcmp(child->name, "augment")) {
+            substmt_group = 4;
+
             c_aug++;
             /* keep augments separated, processed last */
             lyxml_unlink_elem(ctx, child, 2);
             lyxml_add_child(ctx, &augs, child);
 
+            substmt_prev = "augment";
         } else if (!strcmp(child->name, "feature")) {
+            substmt_group = 4;
+
             c_ftrs++;
+
+            substmt_prev = "feature";
         } else if (!strcmp(child->name, "deviation")) {
+            substmt_group = 4;
+
             c_dev++;
 
+            substmt_prev = "deviation";
             /* data statements */
         } else if (!strcmp(child->name, "container") ||
                 !strcmp(child->name, "leaf-list") ||
@@ -5426,16 +5508,30 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 !strcmp(child->name, "anyxml") ||
                 !strcmp(child->name, "rpc") ||
                 !strcmp(child->name, "notification")) {
+            substmt_group = 4;
+
             lyxml_unlink_elem(ctx, child, 2);
             lyxml_add_child(ctx, &root, child);
 
+            substmt_prev = "data definition";
         } else if (!strcmp(child->name, "grouping")) {
+            substmt_group = 4;
+
             /* keep groupings separated and process them before other data statements */
             lyxml_unlink_elem(ctx, child, 2);
             lyxml_add_child(ctx, &grps, child);
 
+            substmt_prev = "grouping";
             /* optional statements */
         } else if (!strcmp(child->name, "description")) {
+            if (substmt_group > 2) {
+                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child->name);
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Statement \"%s\" cannot appear after \"%s\" statement.",
+                       child->name, substmt_prev);
+                goto error;
+            }
+            substmt_group = 2;
+
             if (trg->dsc) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
                 goto error;
@@ -5445,7 +5541,17 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             if (!trg->dsc) {
                 goto error;
             }
+
+            substmt_prev = "description";
         } else if (!strcmp(child->name, "reference")) {
+            if (substmt_group > 2) {
+                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child->name);
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Statement \"%s\" cannot appear after \"%s\" statement.",
+                       child->name, substmt_prev);
+                goto error;
+            }
+            substmt_group = 2;
+
             if (trg->ref) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
                 goto error;
@@ -5455,7 +5561,17 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             if (!trg->ref) {
                 goto error;
             }
+
+            substmt_prev = "reference";
         } else if (!strcmp(child->name, "organization")) {
+            if (substmt_group > 2) {
+                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child->name);
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Statement \"%s\" cannot appear after \"%s\" statement.",
+                       child->name, substmt_prev);
+                goto error;
+            }
+            substmt_group = 2;
+
             if (trg->org) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
                 goto error;
@@ -5465,7 +5581,17 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             if (!trg->org) {
                 goto error;
             }
+
+            substmt_prev = "organization";
         } else if (!strcmp(child->name, "contact")) {
+            if (substmt_group > 2) {
+                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child->name);
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Statement \"%s\" cannot appear after \"%s\" statement.",
+                       child->name, substmt_prev);
+                goto error;
+            }
+            substmt_group = 2;
+
             if (trg->contact) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
                 goto error;
@@ -5475,7 +5601,16 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             if (!trg->contact) {
                 goto error;
             }
+
+            substmt_prev = "contact";
         } else if (!strcmp(child->name, "yang-version")) {
+            if (substmt_group > 0) {
+                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child->name);
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Statement \"%s\" cannot appear after \"%s\" statement.",
+                       child->name, substmt_prev);
+                goto error;
+            }
+
             if (version_flag) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
                 goto error;
@@ -5508,7 +5643,10 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
 
             lyxml_free(ctx, child);
 
+            substmt_prev = "yang-version";
         } else if (!strcmp(child->name, "extension")) {
+            substmt_group = 4;
+
             GETVAL(value, child, "name");
 
             /* we have the following supported (hardcoded) extensions: */
@@ -5525,6 +5663,8 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 LOGWRN("Not supported \"%s\" extension statement found, ignoring.", value);
                 lyxml_free(ctx, child);
             }
+
+            substmt_prev = "extension";
         } else {
             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child->name);
             goto error;
