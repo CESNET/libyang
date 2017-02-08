@@ -119,7 +119,7 @@ test_module_sub_yin(void **state)
                     "    <e:a/>\n    <e:b x=\"one\"/>\n    <e:c>\n      <e:y>one</e:y>\n    </e:c>\n"
                     "    <prefix value=\"e\">\n"
                     "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
-                    "    </prefix>\n    <revision-date date=\"2016-01-18\">\n"
+                    "    </prefix>\n    <revision-date date=\"2017-01-18\">\n"
                     "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
                     "    </revision-date>\n    <description>\n"
                     "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
@@ -131,7 +131,7 @@ test_module_sub_yin(void **state)
                     "  </import>\n"
                     "  <include module=\"ext-inc\">\n"
                     "    <e:a/>\n    <e:b x=\"one\"/>\n    <e:c>\n      <e:y>one</e:y>\n    </e:c>\n"
-                    "    <revision-date date=\"2016-01-18\">\n"
+                    "    <revision-date date=\"2017-01-18\">\n"
                     "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
                     "    </revision-date>\n    <description>\n"
                     "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
@@ -141,7 +141,7 @@ test_module_sub_yin(void **state)
                     "      <text>ref</text>\n"
                     "    </reference>\n"
                     "  </include>\n"
-                    "  <revision date=\"2016-01-20\">\n"
+                    "  <revision date=\"2017-01-20\">\n"
                     "    <e:a/>\n    <e:b x=\"one\"/>\n    <e:c>\n      <e:y>one</e:y>\n    </e:c>\n"
                     "    <description>\n"
                     "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
@@ -150,7 +150,7 @@ test_module_sub_yin(void **state)
                     "      <e:a/>\n      <e:b x=\"one\"/>\n      <e:c>\n        <e:y>one</e:y>\n      </e:c>\n"
                     "      <text>ref</text>\n"
                     "    </reference>\n"
-                    "  </revision>\n  <revision date=\"2016-01-18\">\n"
+                    "  </revision>\n  <revision date=\"2017-01-18\">\n"
                     "    <e:a/>\n"
                     "  </revision>\n"
                     "  <e:a/>\n  <e:b x=\"one\"/>\n  <e:c>\n    <e:y>one</e:y>\n  </e:c>\n"
@@ -181,7 +181,7 @@ test_module_sub_yang(void **state)
                     "    e:a;\n    e:b \"one\";\n    e:c \"one\";\n"
                     "    prefix e {\n"
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
-                    "    }\n    revision-date 2016-01-18 {\n"
+                    "    }\n    revision-date 2017-01-18 {\n"
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
                     "    }\n    description\n      \"desc\" {\n"
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
@@ -190,21 +190,21 @@ test_module_sub_yang(void **state)
                     "    }\n  }\n\n"
                     "  include ext-inc {\n"
                     "    e:a;\n    e:b \"one\";\n    e:c \"one\";\n"
-                    "    revision-date 2016-01-18 {\n"
+                    "    revision-date 2017-01-18 {\n"
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
                     "    }\n    description\n      \"desc\" {\n"
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
                     "    }\n    reference\n      \"ref\" {\n"
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
                     "    }\n  }\n\n"
-                    "  revision \"2016-01-20\" {\n"
+                    "  revision \"2017-01-20\" {\n"
                     "    e:a;\n    e:b \"one\";\n    e:c \"one\";\n"
                     "    description\n      \"desc\" {\n"
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
                     "    }\n    reference\n      \"ref\" {\n"
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
                     "    }\n  }\n"
-                    "  revision \"2016-01-18\" {\n"
+                    "  revision \"2017-01-18\" {\n"
                     "    e:a;\n"
                     "  }\n\n"
                     "  e:a;\n  e:b \"one\";\n  e:c \"one\";\n}\n";
@@ -2053,6 +2053,73 @@ test_deviation_sub_yang(void **state)
     assert_int_equal(node->ext_size, 2);
 }
 
+static void
+test_complex_yin(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    const char *yin = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex>\n"
+                    "    <argument name=\"a\"/>\n"
+                    "    <base name=\"b\"/>\n"
+                    "    <contact>\n      <text>contact</text>\n    </contact>\n"
+                    "    <default value=\"c\"/>\n"
+                    "    <description>\n      <text>description</text>\n    </description>\n"
+                    "  </e:complex>\n"
+                    "</module>\n";
+
+    mod = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
+    assert_ptr_not_equal(mod, NULL);
+
+    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL);
+    assert_ptr_not_equal(st->str1, NULL);
+    assert_string_equal(st->str1, yin);
+}
+
+static void
+test_complex_arrays_yin(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    const char *yin = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex-arrays>\n"
+                    "    <argument name=\"a\"/>\n"
+                    "    <argument name=\"b\"/>\n"
+                    "    <base name=\"a\"/>\n"
+                    "    <base name=\"b\"/>\n"
+                    "    <contact>\n      <text>contact1</text>\n    </contact>\n"
+                    "    <contact>\n      <text>contact2</text>\n    </contact>\n"
+                    "    <default value=\"a\"/>\n"
+                    "    <default value=\"b\"/>\n"
+                    "    <description>\n      <text>description1</text>\n    </description>\n"
+                    "    <description>\n      <text>description2</text>\n    </description>\n"
+                    "  </e:complex-arrays>\n"
+                    "</module>\n";
+
+    mod = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
+    assert_ptr_not_equal(mod, NULL);
+
+    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL);
+    assert_ptr_not_equal(st->str1, NULL);
+    assert_string_equal(st->str1, yin);
+}
+
 int
 main(void)
 {
@@ -2069,6 +2136,8 @@ main(void)
         cmocka_unit_test_setup_teardown(test_rpc_sub_yin, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_notif_sub_yin, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_deviation_sub_yin, setup_ctx_yin, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_complex_yin, setup_ctx_yin, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_complex_arrays_yin, setup_ctx_yin, teardown_ctx),
 
 //        cmocka_unit_test_setup_teardown(test_module_sub_yang, setup_ctx_yang, teardown_ctx),
 //        cmocka_unit_test_setup_teardown(test_container_sub_yang, setup_ctx_yang, teardown_ctx),

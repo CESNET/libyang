@@ -27,7 +27,7 @@
   <import module="ext-def">
     <prefix value="e"/>
   </import>
-  <revision date="2016-01-18"/>
+  <revision date="2017-01-18"/>
   <typedef name="mystring">
     <type name="e:mystring"/>
   </typedef>

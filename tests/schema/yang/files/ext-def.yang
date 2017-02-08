@@ -3,7 +3,7 @@ module ext-def {
   namespace "urn:ext-def";
   prefix e;
 
-  revision 2016-01-18;
+  revision 2017-01-18;
 
   extension a;
 
@@ -17,6 +17,10 @@ module ext-def {
     }
   }
 
+  extension complex;
+
+  extension complex-arrays;
+
   typedef mystring {
     type string;
   }
@@ -25,6 +29,9 @@ module ext-def {
     type string;
   }
   leaf l2 {
+    e:a;
+    e:b "one";
+    e:b "two";
     type string;
     mandatory true {
       e:b "one";
@@ -35,6 +42,7 @@ module ext-def {
     type uint8;
   }
   list lst1 {
+    e:b "ten";
     key "id";
     leaf id {
       type string;
@@ -43,12 +51,19 @@ module ext-def {
       type uint8;
     }
     leaf val2 {
+      e:a;
       type uint8;
-      units "meter";
+      units "meter" {
+        e:a;
+      }
       default "1";
     }
   }
   list lst2 {
+    e:a;
+    e:a;
+    e:b "one";
+    e:b "two";
     key "id";
     unique "val1" {
       e:a;

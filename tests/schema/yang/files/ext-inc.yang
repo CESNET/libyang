@@ -19,7 +19,7 @@ submodule ext-inc {
     prefix e;
   }
 
-  revision 2016-01-18;
+  revision 2017-01-18;
 
   typedef mystring {
     type e:mystring;
