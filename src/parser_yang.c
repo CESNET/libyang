@@ -2245,6 +2245,9 @@ yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext
             break;
         case DEFAULT_KEYWORD:
             instance->insubstmt = LYEXT_SUBSTMT_DEFAULT;
+            if (backup_type == LEAF_LIST_KEYWORD) {
+                instance->insubstmt_index = ((struct lys_node_leaflist *)actual)->dflt_size;
+            }
             break;
         case UNITS_KEYWORD:
             instance->insubstmt = LYEXT_SUBSTMT_UNITS;
@@ -2278,6 +2281,25 @@ yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext
             break;
         case CONFIG_KEYWORD:
             instance->insubstmt = LYEXT_SUBSTMT_CONFIG;
+            break;
+        case MANDATORY_KEYWORD:
+            instance->insubstmt = LYEXT_SUBSTMT_MANDATORY;
+            break;
+        case MIN_ELEMENTS_KEYWORD:
+            instance->insubstmt = LYEXT_SUBSTMT_MIN;
+            break;
+        case MAX_ELEMENTS_KEYWORD:
+            instance->insubstmt = LYEXT_SUBSTMT_MAX;
+            break;
+        case ORDERED_BY_KEYWORD:
+            instance->insubstmt = LYEXT_SUBSTMT_ORDEREDBY;
+            break;
+        case KEY_KEYWORD:
+            instance->insubstmt = LYEXT_SUBSTMT_KEY;
+            break;
+        case UNIQUE_KEYWORD:
+            instance->insubstmt = LYEXT_SUBSTMT_UNIQUE;
+            instance->insubstmt_index = ((struct lys_node_list *)actual)->unique_size;
             break;
         default:
             LOGINT;

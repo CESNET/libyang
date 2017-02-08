@@ -1920,25 +1920,17 @@ leaf_arg_str: identifier_arg_str { $$.token = actual_type;
 leaf_opt_stmt: @EMPTYDIR@ { $$.node.ptr_leaf = actual;
                             $$.node.flag = 0;
                           }
-  |  leaf_opt_stmt when_stmt { actual = $1.node.ptr_leaf;
-                               actual_type = LEAF_KEYWORD;
-                             }
-       stmtsep
+  |  leaf_opt_stmt when_stmt stmtsep
   |  leaf_opt_stmt if_feature_stmt stmtsep
-  |  leaf_opt_stmt type_stmt { actual = $1.node.ptr_leaf;
-                               actual_type = LEAF_KEYWORD;
-                               $1.node.flag |= LYS_TYPE_DEF;
-                             }
-     stmtsep { $$ = $1;}
+  |  leaf_opt_stmt type_stmt stmtsep { $1.node.flag |= LYS_TYPE_DEF;
+                                       $$ = $1;
+                                     }
   |  leaf_opt_stmt units_stmt { if (yang_read_units(trg, $1.node.ptr_leaf, s, LEAF_KEYWORD)) {
                                   YYABORT;
                                 }
                                 s = NULL;
                               }
-  |  leaf_opt_stmt must_stmt { actual = $1.node.ptr_leaf;
-                               actual_type = LEAF_KEYWORD;
-                             }
-     stmtsep
+  |  leaf_opt_stmt must_stmt stmtsep
   |  leaf_opt_stmt default_stmt { if (yang_read_default(trg, $1.node.ptr_leaf, s, LEAF_KEYWORD)) {
                                     YYABORT;
                                   }
@@ -2041,16 +2033,11 @@ leaf_list_arg_str: identifier_arg_str { $$.token = actual_type;
 leaf_list_opt_stmt: @EMPTYDIR@ { $$.node.ptr_leaflist = actual;
                                  $$.node.flag = 0;
                                }
-  |  leaf_list_opt_stmt when_stmt { actual = $1.node.ptr_leaflist;
-                                    actual_type = LEAF_LIST_KEYWORD;
-                                  }
-     stmtsep
+  |  leaf_list_opt_stmt when_stmt stmtsep
   |  leaf_list_opt_stmt if_feature_stmt stmtsep
-  |  leaf_list_opt_stmt type_stmt { actual = $1.node.ptr_leaflist;
-                                    actual_type = LEAF_LIST_KEYWORD;
-                                    $1.node.flag |= LYS_TYPE_DEF;
-                                  }
-     stmtsep { $$ = $1; }
+  |  leaf_list_opt_stmt type_stmt stmtsep { $1.node.flag |= LYS_TYPE_DEF;
+                                            $$ = $1;
+                                          }
   |  leaf_list_opt_stmt default_stmt { if (trg->version < 2) {
                                          free(s);
                                          LOGVAL(LYE_INSTMT, LY_VLOG_LYS, $1.node.ptr_leaflist, "default");
@@ -2067,10 +2054,7 @@ leaf_list_opt_stmt: @EMPTYDIR@ { $$.node.ptr_leaflist = actual;
                                      }
                                      s = NULL;
                                    }
-  |  leaf_list_opt_stmt must_stmt { actual = $1.node.ptr_leaflist;
-                                    actual_type = LEAF_LIST_KEYWORD;
-                                  }
-     stmtsep
+  |  leaf_list_opt_stmt must_stmt stmtsep
   |  leaf_list_opt_stmt config_stmt { if ($1.node.ptr_leaflist->flags & LYS_CONFIG_MASK) {
                                         LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_leaflist, "config", "leaf-list");
                                         YYABORT;
@@ -2190,15 +2174,9 @@ list_stmt: LIST_KEYWORD sep list_arg_str
 list_opt_stmt: @EMPTYDIR@ { $$.node.ptr_list = actual;
                             $$.node.flag = 0;
                           }
-  |  list_opt_stmt when_stmt { actual = $1.node.ptr_list;
-                               actual_type = LIST_KEYWORD;
-                             }
-     stmtsep
+  |  list_opt_stmt when_stmt stmtsep
   |  list_opt_stmt if_feature_stmt stmtsep
-  |  list_opt_stmt must_stmt { actual = $1.node.ptr_list;
-                               actual_type = LIST_KEYWORD;
-                             }
-     stmtsep
+  |  list_opt_stmt must_stmt stmtsep
   |  list_opt_stmt key_stmt { if ($1.node.ptr_list->keys) {
                                   LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_list, "key", "list");
                                   free(s);
@@ -2272,35 +2250,15 @@ list_opt_stmt: @EMPTYDIR@ { $$.node.ptr_list = actual;
                                     }
                                     s = NULL;
                                   }
-  |  list_opt_stmt typedef_stmt { actual = $1.node.ptr_list;
-                                  actual_type = LIST_KEYWORD;
-                                }
-     stmtsep
-  |  list_opt_stmt grouping_stmt { actual = $1.node.ptr_list;
-                                   actual_type = LIST_KEYWORD;
-                                   data_node = actual;
-                                 }
-     stmtsep
-  |  list_opt_stmt action_stmt { actual = $1.node.ptr_list;
-                                 actual_type = LIST_KEYWORD;
-                                 data_node = actual;
-                               }
-     stmtsep
-  |  list_opt_stmt notification_stmt { actual = $1.node.ptr_list;
-                                       actual_type = LIST_KEYWORD;
-                                       data_node = actual;
-                                       if (trg->version < 2) {
-                                         LOGVAL(LYE_INSTMT, LY_VLOG_LYS, $1.node.ptr_list, "notification");
-                                         YYABORT;
-                                       }
-                                     }
-     stmtsep
-  |  list_opt_stmt data_def_stmt { actual = $1.node.ptr_list;
-                                   actual_type = LIST_KEYWORD;
-                                   $1.node.flag |= LYS_DATADEF;
-                                   data_node = actual;
-                                 }
-     stmtsep { $$ = $1; }
+  |  list_opt_stmt typedef_stmt stmtsep
+  |  list_opt_stmt grouping_stmt stmtsep
+  |  list_opt_stmt action_stmt stmtsep
+  |  list_opt_stmt notification_stmt stmtsep { if (trg->version < 2) {
+                                                 LOGVAL(LYE_INSTMT, LY_VLOG_LYS, $1.node.ptr_list, "notification");
+                                                 YYABORT;
+                                               }
+                                             }
+  |  list_opt_stmt data_def_stmt stmtsep
 
 choice_arg_str: identifier_arg_str { $$.token = actual_type;
                                      $$.actual = actual;
