@@ -209,10 +209,10 @@ test_module_sub_yang(void **state)
                     "  }\n\n"
                     "  e:a;\n  e:b \"one\";\n  e:c \"one\";\n}\n";
 
-    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YIN);
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL);
+    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yang);
 }
@@ -459,10 +459,10 @@ test_leaf_sub_yang(void **state)
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
                     "    }\n    reference\n      \"ref\" {\n"
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
-                    "    }\n  }\n"
+                    "    }\n  }\n\n"
                     "  leaf d {\n"
                     "    e:a;\n    e:b \"one\";\n    e:c \"one\";\n"
-                    "    type int8;\n      default 1 {\n"
+                    "    type int8;\n    default \"1\" {\n"
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
                     "    }\n  }\n}\n";
 
@@ -636,7 +636,7 @@ test_leaflist_sub_yang(void **state)
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
                     "      description\n        \"desc\" {\n"
                     "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
-                    "      }\n    reference\n        \"ref\" {\n"
+                    "      }\n      reference\n        \"ref\" {\n"
                     "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
                     "      }\n"
                     "    }\n    if-feature \"f\" {\n"
@@ -802,7 +802,7 @@ test_list_sub_yang(void **state)
                     "    e:a;\n    e:b \"one\";\n    e:c \"one\";\n"
                     "    key \"id\" {\n"
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
-                    "    }\n    unique \"val1f\";\n    unique \"val2\" {\n"
+                    "    }\n    unique \"val1\";\n    unique \"val2\" {\n"
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
                     "    }\n    config true {\n"
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
@@ -824,13 +824,13 @@ test_list_sub_yang(void **state)
                     "        require-instance true {\n"
                     "          e:a;\n          e:b \"one\";\n          e:c \"one\";\n"
                     "        }\n      }\n"
-                    "    }\n    leaf val1 {\n"
+                    "    }\n\n    leaf val1 {\n"
                     "      type decimal64 {\n"
                     "        e:a;\n"
                     "        fraction-digits 2 {\n"
                     "          e:a;\n          e:b \"one\";\n          e:c \"one\";\n"
                     "        }\n      }\n"
-                    "    }\n    leaf val2 {\n"
+                    "    }\n\n    leaf val2 {\n"
                     "      type leafref {\n"
                     "        e:a;\n"
                     "        path \"../val1\" {\n"
@@ -936,7 +936,7 @@ test_anydata_sub_yang(void **state)
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
                     "      description\n        \"desc\" {\n"
                     "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
-                    "      }\n    reference\n        \"ref\" {\n"
+                    "      }\n      reference\n        \"ref\" {\n"
                     "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
                     "      }\n"
                     "    }\n    if-feature \"f\" {\n"
@@ -1113,36 +1113,36 @@ test_choice_sub_yang(void **state)
                     "          bit zero {\n"
                     "            e:a;\n            e:b \"one\";\n            e:c \"one\";\n"
                     "            position 0 {\n"
-                    "              e:a;\n            e:b \"one\";\n              e:c \"one\";\n"
+                    "              e:a;\n              e:b \"one\";\n              e:c \"one\";\n"
                     "            }\n"
                     "            status current {\n"
-                    "              e:a;\n            e:b \"one\";\n              e:c \"one\";\n"
+                    "              e:a;\n              e:b \"one\";\n              e:c \"one\";\n"
                     "            }\n            description\n              \"desc\" {\n"
-                    "              e:a;\n            e:b \"one\";\n              e:c \"one\";\n"
-                    "            }\n      reference\n              \"ref\" {\n"
-                    "              e:a;\n            e:b \"one\";\n              e:c \"one\";\n"
+                    "              e:a;\n              e:b \"one\";\n              e:c \"one\";\n"
+                    "            }\n            reference\n              \"ref\" {\n"
+                    "              e:a;\n              e:b \"one\";\n              e:c \"one\";\n"
                     "            }\n          }\n"
                     "          bit one {\n"
                     "            e:a;\n"
                     "          }\n"
-                    "      }\n"
-                    "    }\n    leaf b {\n"
-                    "      type enumeration {\n"
-                    "        enum \"one\" {\n"
-                    "          e:a;\n"
                     "        }\n"
-                    "        enum \"two\" {\n"
-                    "          e:a;\n          e:b \"one\";\n          e:c \"one\";\n"
-                    "          value 2 {\n"
-                    "            e:a;\n            e:b \"one\";\n            e:c \"one\";\n"
+                    "      }\n\n      leaf b {\n"
+                    "        type enumeration {\n"
+                    "          enum \"one\" {\n"
+                    "            e:a;\n"
                     "          }\n"
-                    "          status current {\n"
+                    "          enum \"two\" {\n"
                     "            e:a;\n            e:b \"one\";\n            e:c \"one\";\n"
-                    "          }\n          description\n            \"desc\" {\n"
-                    "            e:a;\n            e:b \"one\";\n            e:c \"one\";\n"
-                    "          }\n      reference\n            \"ref\" {\n"
-                    "            e:a;\n            e:b \"one\";\n            e:c \"one\";\n"
-                    "          }\n        }\n      }\n    }\n  }\n}\n";
+                    "            value 2 {\n"
+                    "              e:a;\n              e:b \"one\";\n              e:c \"one\";\n"
+                    "            }\n"
+                    "            status current {\n"
+                    "              e:a;\n              e:b \"one\";\n              e:c \"one\";\n"
+                    "            }\n            description\n              \"desc\" {\n"
+                    "              e:a;\n              e:b \"one\";\n              e:c \"one\";\n"
+                    "            }\n            reference\n              \"ref\" {\n"
+                    "              e:a;\n              e:b \"one\";\n              e:c \"one\";\n"
+                    "            }\n          }\n        }\n      }\n    }\n  }\n}\n";
 
     mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
     assert_ptr_not_equal(mod, NULL);
@@ -1355,10 +1355,10 @@ test_uses_sub_yang(void **state)
                     "      type identityref {\n"
                     "        base two {\n"
                     "          e:a;\n          e:b \"one\";\n          e:c \"one\";\n"
-                    "        }\n"
-                    "        mandatory true {\n"
-                    "          e:a;\n"
-                    "        }\n      }\n    }\n\n"
+                    "        }\n      }\n"
+                    "      mandatory true {\n"
+                    "        e:a;\n"
+                    "      }\n    }\n\n"
                     "    leaf-list ll1 {\n"
                     "      type int8;\n"
                     "    }\n\n"
@@ -1366,7 +1366,7 @@ test_uses_sub_yang(void **state)
                     "      type int8;\n"
                     "    }\n  }\n\n"
                     "  uses grp {\n"
-                    "    e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
+                    "    e:a;\n    e:b \"one\";\n    e:c \"one\";\n"
                     "    status current {\n"
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
                     "    }\n    description\n      \"desc\" {\n"
@@ -1385,7 +1385,7 @@ test_uses_sub_yang(void **state)
                     "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
                     "      }\n"
                     "    }\n    refine \"l\" {\n"
-                    "      mandatory \"false\" {\n"
+                    "      mandatory false {\n"
                     "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
                     "      }\n"
                     "    }\n    refine \"ll1\" {\n"
@@ -1411,7 +1411,6 @@ test_uses_sub_yang(void **state)
                     "        type int8;\n"
                     "      }\n    }\n  }\n}\n";
     struct lys_node *uses;
-
 
     mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
     assert_ptr_not_equal(mod, NULL);
@@ -1617,7 +1616,7 @@ test_rpc_sub_yang(void **state)
                     "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
                     "        leaf out {\n"
                     "          type int8;\n"
-                    "        }\n      }\n    }\n  }\n"
+                    "        }\n      }\n    }\n  }\n\n"
                     "  rpc r {\n"
                     "    e:a;\n    e:b \"one\";\n    e:c \"one\";\n"
                     "    status current {\n"
@@ -1725,7 +1724,7 @@ test_notif_sub_yang(void **state)
                     "        e:a;\n        e:b \"one\";\n        e:c \"one\";\n"
                     "      }\n      leaf out {\n"
                     "        type int8;\n"
-                    "      }\n    }\n  }\n"
+                    "      }\n    }\n  }\n\n"
                     "  notification n {\n"
                     "    e:a;\n    e:b \"one\";\n    e:c \"one\";\n"
                     "    status current {\n"
@@ -2139,17 +2138,17 @@ main(void)
         cmocka_unit_test_setup_teardown(test_complex_yin, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_complex_arrays_yin, setup_ctx_yin, teardown_ctx),
 
-//        cmocka_unit_test_setup_teardown(test_module_sub_yang, setup_ctx_yang, teardown_ctx),
-//        cmocka_unit_test_setup_teardown(test_container_sub_yang, setup_ctx_yang, teardown_ctx),
-//        cmocka_unit_test_setup_teardown(test_leaf_sub_yang, setup_ctx_yang, teardown_ctx),
-//        cmocka_unit_test_setup_teardown(test_leaflist_sub_yang, setup_ctx_yang, teardown_ctx),
-//        cmocka_unit_test_setup_teardown(test_list_sub_yang, setup_ctx_yang, teardown_ctx),
-//        cmocka_unit_test_setup_teardown(test_anydata_sub_yang, setup_ctx_yang, teardown_ctx),
-//        cmocka_unit_test_setup_teardown(test_choice_sub_yang, setup_ctx_yang, teardown_ctx),
-//        cmocka_unit_test_setup_teardown(test_uses_sub_yang, setup_ctx_yang, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_module_sub_yang, setup_ctx_yang, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_container_sub_yang, setup_ctx_yang, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_leaf_sub_yang, setup_ctx_yang, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_leaflist_sub_yang, setup_ctx_yang, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_list_sub_yang, setup_ctx_yang, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_anydata_sub_yang, setup_ctx_yang, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_choice_sub_yang, setup_ctx_yang, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_uses_sub_yang, setup_ctx_yang, teardown_ctx),
 //        cmocka_unit_test_setup_teardown(test_extension_sub_yang, setup_ctx_yang, teardown_ctx),
-//        cmocka_unit_test_setup_teardown(test_rpc_sub_yang, setup_ctx_yang, teardown_ctx),
-//        cmocka_unit_test_setup_teardown(test_notif_sub_yang, setup_ctx_yang, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_rpc_sub_yang, setup_ctx_yang, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_notif_sub_yang, setup_ctx_yang, teardown_ctx),
 //        cmocka_unit_test_setup_teardown(test_deviation_sub_yang, setup_ctx_yang, teardown_ctx),
     };
 
