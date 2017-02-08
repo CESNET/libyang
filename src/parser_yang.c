@@ -2207,6 +2207,9 @@ yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext
             return NULL;
         }
         switch (actual_type) {
+        case YANG_VERSION_KEYWORD:
+            instance->insubstmt = LYEXT_SUBSTMT_VERSION;
+            break;
         case NAMESPACE_KEYWORD:
             instance->insubstmt = LYEXT_SUBSTMT_NAMESPACE;
             break;
