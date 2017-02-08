@@ -542,6 +542,10 @@ repeat:
             new->prev = (struct lyd_node *)leaf;
             leaf->next = (struct lyd_node *)new;
 
+            /* copy the validity and when flags */
+            new->validity = leaf->validity;
+            new->when_status = leaf->when_status;
+
             /* fix the "last" pointer */
             first_sibling->prev = (struct lyd_node *)new;
 
@@ -1169,6 +1173,10 @@ attr_repeat:
                 new->parent = list->parent;
                 new->prev = list;
                 list->next = new;
+
+                /* copy the validity and when flags */
+                new->validity = list->validity;
+                new->when_status = list->when_status;
 
                 /* fix the "last" pointer */
                 first_sibling->prev = new;
