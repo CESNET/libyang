@@ -2003,6 +2003,7 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
                         str = "obsolete";
                     }
                     yang_print_substmt(out, level, LYEXT_SUBSTMT_STATUS, 0, str, module, ext[u]->ext, ext[u]->ext_size);
+                    break;
                 case LY_STMT_CONFIG:
                     yang_print_extcomplex_flags(out, level, module, (struct lys_ext_instance_complex*)ext[u],
                                                 LY_STMT_CONFIG, "true", "false",
