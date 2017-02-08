@@ -285,6 +285,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <backup_token> enum_arg_str
 %type <backup_token> bit_arg_str
 %type <backup_token> when_arg_str
+%type <backup_token> must_agr_str
 
 %destructor { free($$); } pattern_arg_str string_opt_part1 semicolom curly_bracket_open
 %destructor { free(($$) ? *$$ : NULL); } tmp_string
@@ -3793,7 +3794,9 @@ ordered_by_arg_str: USER_KEYWORD optsep { $$ = LYS_USERORDERED; }
                 s=NULL;
               }
 
-must_agr_str: string { switch (actual_type) {
+must_agr_str: string { $$.token = actual_type;
+                       $$.actual = actual;
+                       switch (actual_type) {
                        case CONTAINER_KEYWORD:
                          YANG_ADDELEM(((struct lys_node_container *)actual)->must,
                                      ((struct lys_node_container *)actual)->must_size);
@@ -3856,13 +3859,15 @@ must_agr_str: string { switch (actual_type) {
                        actual_type = MUST_KEYWORD;
                      }
 
-must_stmt: MUST_KEYWORD sep must_agr_str must_end;
+must_stmt: MUST_KEYWORD sep must_agr_str must_end
+           { actual_type = $3.token;
+             actual = $3.actual;
+           }
 
 must_end: ';'
   |  '{' stmtsep
          message_opt_stmt
      '}'
-  ;
 
 unique_arg: unique_arg_str { backup_type = actual_type;
                              actual_type = UNIQUE_KEYWORD;
