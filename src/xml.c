@@ -600,7 +600,7 @@ parse_text(const char *data, char delim, unsigned int *len)
 
 loop:
 
-        if (o > BUFSIZE - 3) {
+        if (o > BUFSIZE - 4) {
             /* add buffer into the result */
             if (result) {
                 size = size + o;
