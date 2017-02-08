@@ -165,18 +165,16 @@ ly_ctx_get_searchdir(const struct ly_ctx *ctx)
 API void
 ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_node *node, void *priv))
 {
-    int i;
-
     if (!ctx) {
         return;
     }
 
     /* models list */
-    for (i = ctx->models.used; i > 0; i--) {
+    for (; ctx->models.used > 0; ctx->models.used--) {
         /* remove the applied deviations and augments */
-        lys_sub_module_remove_devs_augs(ctx->models.list[i - 1]);
+        lys_sub_module_remove_devs_augs(ctx->models.list[ctx->models.used - 1]);
         /* remove the module */
-        lys_free(ctx->models.list[i - 1], private_destructor, 0);
+        lys_free(ctx->models.list[ctx->models.used - 1], private_destructor, 0);
     }
     free(ctx->models.search_path);
     free(ctx->models.list);
@@ -1029,22 +1027,19 @@ imported:
 API void
 ly_ctx_clean(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_node *node, void *priv))
 {
-    int i;
-
     if (!ctx) {
         return;
     }
 
     /* models list */
-    for (i = ctx->models.used; i > INTERNAL_MODULES_COUNT; i--) {
+    for (; ctx->models.used > INTERNAL_MODULES_COUNT; ctx->models.used--) {
         /* remove the applied deviations and augments */
-        lys_sub_module_remove_devs_augs(ctx->models.list[i - 1]);
+        lys_sub_module_remove_devs_augs(ctx->models.list[ctx->models.used - 1]);
         /* remove the module */
-        lys_free(ctx->models.list[i - 1], private_destructor, 0);
+        lys_free(ctx->models.list[ctx->models.used - 1], private_destructor, 0);
         /* clean it for safer future use */
-        ctx->models.list[i - 1] = NULL;
+        ctx->models.list[ctx->models.used - 1] = NULL;
     }
-    ctx->models.used = INTERNAL_MODULES_COUNT;
     ctx->models.module_set_id++;
 
     /* maintain backlinks (actually done only with ietf-yang-library since its leafs can be target of leafref) */
