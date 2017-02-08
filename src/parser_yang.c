@@ -2543,6 +2543,10 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
         }
     }
 
+    if (lyp_rfn_apply_ext(module)) {
+        goto error;
+    }
+
     /* check correctness of includes */
     if (lyp_check_include_missing(module)) {
         goto error;
@@ -3810,6 +3814,10 @@ yang_check_augment(struct lys_module *module, struct lys_node_augment *augment, 
     }
 
     if (yang_check_nodes(module, (struct lys_node *)augment, child, config_opt, unres)) {
+        goto error;
+    }
+
+    if (yang_check_ext_instance(module, &augment->ext, augment->ext_size, augment, unres)) {
         goto error;
     }
 
