@@ -26,7 +26,7 @@
 
 struct ext_substmt_info_s ext_substmt_info[] = {
   {NULL, NULL, 0},                              /**< LYEXT_SUBSTMT_SELF */
-  {"argument", "target-node", SUBST_FLAG_ID},   /**< LYEXT_SUBSTMT_ARGUMENT */
+  {"argument", "name", SUBST_FLAG_ID},          /**< LYEXT_SUBSTMT_ARGUMENT */
   {"base", "name", SUBST_FLAG_ID},              /**< LYEXT_SUBSTMT_BASE */
   {"belongs-to", "module", SUBST_FLAG_ID},      /**< LYEXT_SUBSTMT_BELONGSTO */
   {"contact", "text", SUBST_FLAG_YIN},          /**< LYEXT_SUBSTMT_CONTACT */
