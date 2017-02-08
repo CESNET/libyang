@@ -237,7 +237,6 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <nodes> refine_body_opt_stmts
 %type <nodes> augment_opt_stmt
 %type <nodes> rpc_opt_stmt
-%type <nodes> input_output_opt_stmt
 %type <nodes> notification_opt_stmt
 %type <dev> deviation_opt_stmt
 %type <deviate> deviate_add_opt_stmt
@@ -2890,10 +2889,7 @@ augment_stmt: AUGMENT_KEYWORD sep augment_arg
                   }
 
 augment_opt_stmt: @EMPTYDIR@ { $$.augment = actual; }
-  |  augment_opt_stmt when_stmt { actual = $1.augment;
-                                  actual_type = AUGMENT_KEYWORD;
-                                }
-     stmtsep
+  |  augment_opt_stmt when_stmt stmtsep
   |  augment_opt_stmt if_feature_stmt stmtsep
   |  augment_opt_stmt status_stmt { if ($1.augment->flags & LYS_STATUS_MASK) {
                                       LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.augment, "status", "augment");
@@ -2911,30 +2907,14 @@ augment_opt_stmt: @EMPTYDIR@ { $$.augment = actual; }
                                        }
                                        s = NULL;
                                      }
-  |  augment_opt_stmt data_def_stmt { actual = $1.augment;
-                                      actual_type = AUGMENT_KEYWORD;
-                                      data_node = actual;
-                                    }
-     stmtsep
-  |  augment_opt_stmt action_stmt { actual = $1.augment;
-                                    actual_type = AUGMENT_KEYWORD;
-                                    data_node = actual;
-                                  }
-     stmtsep
-  |  augment_opt_stmt notification_stmt { actual = $1.augment;
-                                          actual_type = AUGMENT_KEYWORD;
-                                          data_node = actual;
-                                          if (trg->version < 2) {
-                                            LOGVAL(LYE_INSTMT, LY_VLOG_LYS, $1.augment, "notification");
-                                            YYABORT;
-                                          }
-                                        }
-     stmtsep
-  |  augment_opt_stmt case_stmt { actual = $1.augment;
-                                  actual_type = AUGMENT_KEYWORD;
-                                  data_node = actual;
-                                }
-     stmtsep
+  |  augment_opt_stmt data_def_stmt stmtsep
+  |  augment_opt_stmt action_stmt stmtsep
+  |  augment_opt_stmt notification_stmt stmtsep { if (trg->version < 2) {
+                                                    LOGVAL(LYE_INSTMT, LY_VLOG_LYS, $1.augment, "notification");
+                                                    YYABORT;
+                                                  }
+                                                }
+  |  augment_opt_stmt case_stmt stmtsep
 
 action_arg_str: identifier_arg_str { if (param->module->version != 2) {
                                        LOGVAL(LYE_INSTMT, LY_VLOG_LYS, actual, "action");
@@ -3020,35 +3000,22 @@ rpc_opt_stmt: @EMPTYDIR@ { $$.node.ptr_rpc = actual;
                                    }
                                    s = NULL;
                                  }
-  |  rpc_opt_stmt typedef_stmt { actual = $1.node.ptr_rpc;
-                                 actual_type = RPC_KEYWORD;
-                               }
-     stmtsep
-  |  rpc_opt_stmt grouping_stmt { actual = $1.node.ptr_rpc;
-                                  actual_type = RPC_KEYWORD;
-                                  data_node = actual;
-                                }
-     stmtsep
-  |  rpc_opt_stmt input_stmt { if ($1.node.flag & LYS_RPC_INPUT) {
-                                 LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_rpc, "input", "rpc");
-                                 YYABORT;
-                               }
-                               $1.node.flag |= LYS_RPC_INPUT;
-                               actual = $1.node.ptr_rpc;
-                               actual_type = RPC_KEYWORD;
-                               data_node = actual;
-                             }
-     stmtsep { $$ = $1; }
-  |  rpc_opt_stmt output_stmt { if ($1.node.flag & LYS_RPC_OUTPUT) {
-                                  LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_rpc, "output", "rpc");
-                                  YYABORT;
-                                }
-                                $1.node.flag |= LYS_RPC_OUTPUT;
-                                actual = $1.node.ptr_rpc;
-                                actual_type = RPC_KEYWORD;
-                                data_node = actual;
-                              }
-     stmtsep { $$ = $1; }
+  |  rpc_opt_stmt typedef_stmt stmtsep
+  |  rpc_opt_stmt grouping_stmt stmtsep
+  |  rpc_opt_stmt input_stmt stmtsep { if ($1.node.flag & LYS_RPC_INPUT) {
+                                         LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_rpc, "input", "rpc");
+                                         YYABORT;
+                                       }
+                                       $1.node.flag |= LYS_RPC_INPUT;
+                                       $$ = $1;
+                                     }
+  |  rpc_opt_stmt output_stmt stmtsep { if ($1.node.flag & LYS_RPC_OUTPUT) {
+                                          LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.node.ptr_rpc, "output", "rpc");
+                                          YYABORT;
+                                        }
+                                        $1.node.flag |= LYS_RPC_OUTPUT;
+                                        $$ = $1;
+                                      }
 
 input_arg: INPUT_KEYWORD optsep { $$.token = actual_type;
                                   $$.actual = actual;
@@ -3069,23 +3036,24 @@ input_stmt: input_arg
             '{' stmtsep
                 input_output_opt_stmt
             '}' { void *tmp;
+                  struct lys_node_inout *input = actual;
 
-                  if ($4.inout->must_size) {
-                    tmp = realloc($4.inout->must, $4.inout->must_size * sizeof *$4.inout->must);
+                  if (input->must_size) {
+                    tmp = realloc(input->must, input->must_size * sizeof *input->must);
                     if (!tmp) {
                       LOGMEM;
                       YYABORT;
                     }
-                    $4.inout->must = tmp;
+                    input->must = tmp;
                   }
 
-                  if ($4.inout->tpdf_size) {
-                    tmp = realloc($4.inout->tpdf, $4.inout->tpdf_size * sizeof *$4.inout->tpdf);
+                  if (input->tpdf_size) {
+                    tmp = realloc(input->tpdf, input->tpdf_size * sizeof *input->tpdf);
                     if (!tmp) {
                       LOGMEM;
                       YYABORT;
                     }
-                    $4.inout->tpdf = tmp;
+                    input->tpdf = tmp;
                   }
 
                   LOGDBG("YANG: finished parsing input statement \"%s\"", data_node->name);
@@ -3094,27 +3062,11 @@ input_stmt: input_arg
                   data_node = $1.actual;
                 }
 
-input_output_opt_stmt: @EMPTYDIR@ { $$.inout = actual;
-                                    actual_type = INPUT_KEYWORD;
-                                  }
-  |  input_output_opt_stmt must_stmt { actual = $1.inout;
-                                       actual_type = INPUT_KEYWORD;
-                                     }
-     stmtsep
-  |  input_output_opt_stmt typedef_stmt { actual = $1.inout;
-                                          actual_type = INPUT_KEYWORD;
-                                        }
-     stmtsep
-  |  input_output_opt_stmt grouping_stmt { actual = $1.inout;
-                                           actual_type = INPUT_KEYWORD;
-                                           data_node = actual;
-                                         }
-     stmtsep
-  |  input_output_opt_stmt data_def_stmt { actual = $1.inout;
-                                           actual_type = INPUT_KEYWORD;
-                                           data_node = actual;
-                                         }
-     stmtsep
+input_output_opt_stmt: @EMPTYDIR@
+  |  input_output_opt_stmt must_stmt stmtsep
+  |  input_output_opt_stmt typedef_stmt stmtsep
+  |  input_output_opt_stmt grouping_stmt stmtsep
+  |  input_output_opt_stmt data_def_stmt stmtsep
 
 output_arg: OUTPUT_KEYWORD optsep { $$.token = actual_type;
                                     $$.actual = actual;
@@ -3135,23 +3087,24 @@ output_stmt: output_arg
              '{' stmtsep
                  input_output_opt_stmt
              '}' { void *tmp;
+                   struct lys_node_inout *output = actual;
 
-                   if ($4.inout->must_size) {
-                     tmp = realloc($4.inout->must, $4.inout->must_size * sizeof *$4.inout->must);
+                   if (output->must_size) {
+                     tmp = realloc(output->must, output->must_size * sizeof *output->must);
                      if (!tmp) {
                        LOGMEM;
                        YYABORT;
                      }
-                     $4.inout->must = tmp;
+                     output->must = tmp;
                    }
 
-                   if ($4.inout->tpdf_size) {
-                     tmp = realloc($4.inout->tpdf, $4.inout->tpdf_size * sizeof *$4.inout->tpdf);
+                   if (output->tpdf_size) {
+                     tmp = realloc(output->tpdf, output->tpdf_size * sizeof *output->tpdf);
                      if (!tmp) {
                        LOGMEM;
                        YYABORT;
                      }
-                     $4.inout->tpdf = tmp;
+                     output->tpdf = tmp;
                    }
 
                    LOGDBG("YANG: finished parsing output statement \"%s\"", data_node->name);
@@ -3209,13 +3162,8 @@ notification_end: ';'
            }
           }
 
-notification_opt_stmt: @EMPTYDIR@ { $$.notif = actual;
-                                    actual_type = NOTIFICATION_KEYWORD;
-                                  }
-  |  notification_opt_stmt must_stmt { actual = $1.notif;
-                                       actual_type = NOTIFICATION_KEYWORD;
-                                     }
-     stmtsep
+notification_opt_stmt: @EMPTYDIR@ { $$.notif = actual; }
+  |  notification_opt_stmt must_stmt stmtsep
   |  notification_opt_stmt if_feature_stmt stmtsep
   |  notification_opt_stmt status_stmt { if ($1.notif->flags & LYS_STATUS_MASK) {
                                            LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.notif, "status", "notification");
@@ -3233,20 +3181,9 @@ notification_opt_stmt: @EMPTYDIR@ { $$.notif = actual;
                                             }
                                             s = NULL;
                                           }
-  |  notification_opt_stmt typedef_stmt { actual = $1.notif;
-                                          actual_type = NOTIFICATION_KEYWORD;
-                                        }
-     stmtsep
-  |  notification_opt_stmt grouping_stmt { actual = $1.notif;
-                                           actual_type = NOTIFICATION_KEYWORD;
-                                           data_node = actual;
-                                         }
-     stmtsep
-  |  notification_opt_stmt data_def_stmt { actual = $1.notif;
-                                           actual_type = NOTIFICATION_KEYWORD;
-                                           data_node = actual;
-                                         }
-     stmtsep
+  |  notification_opt_stmt typedef_stmt stmtsep
+  |  notification_opt_stmt grouping_stmt stmtsep
+  |  notification_opt_stmt data_def_stmt stmtsep
 
 deviation_arg: deviation_arg_str { YANG_ADDELEM(trg->deviation, trg->deviation_size);
                                    ((struct lys_deviation *)actual)->target_name = transform_schema2json(trg, s);
