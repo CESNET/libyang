@@ -285,6 +285,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <backup_token> bit_arg_str
 %type <backup_token> when_arg_str
 %type <backup_token> must_agr_str
+%type <backup_token> refine_arg_str
 
 %destructor { free($$); } pattern_arg_str string_opt_part1 semicolom curly_bracket_open
 %destructor { free(($$) ? *$$ : NULL); } tmp_string
@@ -2563,10 +2564,7 @@ uses_end: ';'
          }
 
 uses_opt_stmt: @EMPTYDIR@ { $$.uses = actual; }
-  |  uses_opt_stmt when_stmt { actual = $1.uses;
-                               actual_type = USES_KEYWORD;
-                             }
-     stmtsep
+  |  uses_opt_stmt when_stmt stmtsep
   |  uses_opt_stmt if_feature_stmt stmtsep
   |  uses_opt_stmt status_stmt { if ($1.uses->flags & LYS_STATUS_MASK) {
                                    LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, $1.uses, "status", "uses");
@@ -2584,20 +2582,15 @@ uses_opt_stmt: @EMPTYDIR@ { $$.uses = actual; }
                                     }
                                     s = NULL;
                                   }
-  |  uses_opt_stmt refine_stmt { actual = $1.uses;
-                                 actual_type = USES_KEYWORD;
-                               }
-     stmtsep
-  |  uses_opt_stmt uses_augment_stmt { actual = $1.uses;
-                                       actual_type = USES_KEYWORD;
-                                       data_node = actual;
-                                     }
-     stmtsep
+  |  uses_opt_stmt refine_stmt stmtsep
+  |  uses_opt_stmt uses_augment_stmt stmtsep
 
 refine_args_str: descendant_schema_nodeid optsep
   | string_1
 
-refine_arg_str: refine_args_str { YANG_ADDELEM(((struct lys_node_uses *)actual)->refine,
+refine_arg_str: refine_args_str { $$.token = actual_type;
+                                  $$.actual = actual;
+                                  YANG_ADDELEM(((struct lys_node_uses *)actual)->refine,
                                                ((struct lys_node_uses *)actual)->refine_size);
                                   ((struct lys_refine *)actual)->target_name = transform_schema2json(trg, s);
                                   free(s);
@@ -2605,9 +2598,13 @@ refine_arg_str: refine_args_str { YANG_ADDELEM(((struct lys_node_uses *)actual)-
                                   if (!((struct lys_refine *)actual)->target_name) {
                                     YYABORT;
                                   }
+                                  actual_type = REFINE_KEYWORD;
                                 }
 
 refine_stmt: REFINE_KEYWORD sep refine_arg_str refine_end
+             { actual_type = $3.token;
+               actual = $3.actual;
+             }
 
 refine_end: ';'
   |  '{' stmtsep
@@ -2640,9 +2637,7 @@ refine_end: ';'
              }
              $3.refine->dflt = tmp;
            }
-
          }
-
 
 refine_body_opt_stmts: @EMPTYDIR@ { $$.refine = actual;
                                     actual_type = REFINE_KEYWORD;

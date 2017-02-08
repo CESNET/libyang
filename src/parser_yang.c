@@ -2170,6 +2170,11 @@ yang_ext_instance(void *node, enum yytokentype type)
         size = &((struct lys_type_bit *)node)->ext_size;
         parent_type = LYEXT_PAR_TYPE_BIT;
         break;
+    case REFINE_KEYWORD:
+        ext = &((struct lys_type_bit *)node)->ext;
+        size = &((struct lys_type_bit *)node)->ext_size;
+        parent_type = LYEXT_PAR_REFINE;
+        break;
     default:
         LOGINT;
         return NULL;
@@ -2250,6 +2255,8 @@ yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext
             instance->insubstmt = LYEXT_SUBSTMT_DEFAULT;
             if (backup_type == LEAF_LIST_KEYWORD) {
                 instance->insubstmt_index = ((struct lys_node_leaflist *)actual)->dflt_size;
+            } else if (backup_type == REFINE_KEYWORD) {
+                instance->insubstmt_index = ((struct lys_refine *)actual)->dflt_size;
             }
             break;
         case UNITS_KEYWORD:
@@ -3838,7 +3845,13 @@ yang_check_uses(struct lys_module *module, struct lys_node_uses *uses, int confi
     }
 
     for (i = 0; i < uses->refine_size; ++i) {
-         if (yang_check_iffeatures(module, &uses->refine[i], uses, REFINE_KEYWORD, unres)) {
+        if (yang_check_iffeatures(module, &uses->refine[i], uses, REFINE_KEYWORD, unres)) {
+            goto error;
+        }
+        if (yang_check_must(module, uses->refine[i].must, uses->refine[i].must_size, unres)) {
+            goto error;
+        }
+        if (yang_check_ext_instance(module, &uses->refine[i].ext, uses->refine[i].ext_size, &uses->refine[i], unres)) {
             goto error;
         }
     }
