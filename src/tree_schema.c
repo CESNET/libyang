@@ -4283,7 +4283,7 @@ static void
 lys_extcomplex_free_str(struct ly_ctx *ctx, struct lys_ext_instance_complex *ext, LY_STMT stmt)
 {
     struct lyext_substmt *info;
-    const char **str;
+    const char **str, ***a;
     int c;
 
     str = lys_ext_complex_get_substmt(stmt, ext, &info);
@@ -4292,10 +4292,11 @@ lys_extcomplex_free_str(struct ly_ctx *ctx, struct lys_ext_instance_complex *ext
     }
     if (info->cardinality >= LY_STMT_CARD_SOME) {
         /* we have array */
-        for (str = (const char **)(*str), c = 0; *str; str++, c++) {
+        a = (const char ***)str;
+        for (str = (*(const char ***)str), c = 0; *str; str++, c++) {
             lydict_remove(ctx, *str);
         }
-        free(str);
+        free(*a);
     } else {
         lydict_remove(ctx, *str);
     }
@@ -4350,6 +4351,22 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
                 case LY_STMT_DESCRIPTION:
                 case LY_STMT_REFERENCE:
                 case LY_STMT_UNITS:
+                case LY_STMT_ARGUMENT:
+                case LY_STMT_DEFAULT:
+                case LY_STMT_ERRTAG:
+                case LY_STMT_ERRMSG:
+                case LY_STMT_PREFIX:
+                case LY_STMT_NAMESPACE:
+                case LY_STMT_PRESENCE:
+                case LY_STMT_REVISIONDATE:
+                case LY_STMT_KEY:
+                case LY_STMT_BASE:
+                case LY_STMT_BELONGSTO:
+                case LY_STMT_CONTACT:
+                case LY_STMT_ORGANIZATION:
+                case LY_STMT_PATH:
+                case LY_STMT_VERSION:
+                case LY_STMT_VALUE:
                     lys_extcomplex_free_str(ctx, (struct lys_ext_instance_complex *)e[i], substmt[j].stmt);
                     break;
                 case LY_STMT_TYPE:
