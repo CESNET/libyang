@@ -2086,6 +2086,13 @@ test_complex_yin(void **state)
                     "    <units name=\"j\"/>\n"
                     "    <value value=\"k\"/>\n"
                     "    <yang-version value=\"l\"/>\n"
+                    "    <modifier value=\"invert-match\"/>\n"
+                    "    <require-instance value=\"true\"/>\n"
+                    "    <yin-element value=\"true\"/>\n"
+                    "    <config value=\"true\"/>\n"
+                    "    <mandatory value=\"true\"/>\n"
+                    "    <ordered-by value=\"user\"/>\n"
+                    "    <status value=\"obsolete\"/>\n"
                     "  </e:complex>\n"
                     "</module>\n";
 

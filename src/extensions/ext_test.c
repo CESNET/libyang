@@ -41,33 +41,33 @@ int libyang_ext_test_position(const void * UNUSED(parent), LYEXT_PAR UNUSED(pare
 }
 
 struct lyext_substmt libyang_ext_test_substmt[] = {
-    {LY_STMT_ARGUMENT,      0,                  LY_STMT_CARD_OPT},
-    {LY_STMT_BASE,          1 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_BELONGSTO,     2 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_CONTACT,       4 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_DEFAULT,       5 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_DESCRIPTION,   6 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_ERRTAG,        7 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_ERRMSG,        8 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_KEY,           9 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_NAMESPACE,    10 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_ORGANIZATION, 11 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_PATH,         12 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_PREFIX,       13 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_PRESENCE,     14 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_REFERENCE,    15 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_REVISIONDATE, 16 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_UNITS,        17 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_VALUE,        18 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_VERSION,      19 * sizeof(void *), LY_STMT_CARD_OPT},
-/*    {LY_STMT_MODIFIER,     19 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_REQINSTANCE,  20 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_YINELEM,      21 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_CONFIG,       22 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_MANDATORY,    23 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_ORDEREDBY,    24 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_STATUS,       25 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_DIGITS,       26 * sizeof(void *), LY_STMT_CARD_OPT},
+    {LY_STMT_ARGUMENT,      0,                       LY_STMT_CARD_OPT}, /* const char* */
+    {LY_STMT_BASE,          1 * sizeof(const char*), LY_STMT_CARD_OPT}, /* const char* */
+    {LY_STMT_BELONGSTO,     2 * sizeof(const char*), LY_STMT_CARD_OPT}, /* const char*[2] */
+    {LY_STMT_CONTACT,       4 * sizeof(const char*), LY_STMT_CARD_OPT}, /* const char* */
+    {LY_STMT_DEFAULT,       5 * sizeof(const char*), LY_STMT_CARD_OPT}, /* const char* */
+    {LY_STMT_DESCRIPTION,   6 * sizeof(const char*), LY_STMT_CARD_OPT}, /* const char* */
+    {LY_STMT_ERRTAG,        7 * sizeof(const char*), LY_STMT_CARD_OPT}, /* const char* */
+    {LY_STMT_ERRMSG,        8 * sizeof(const char*), LY_STMT_CARD_OPT}, /* const char* */
+    {LY_STMT_KEY,           9 * sizeof(const char*), LY_STMT_CARD_OPT}, /* const char* */
+    {LY_STMT_NAMESPACE,    10 * sizeof(const char*), LY_STMT_CARD_OPT}, /* const char* */
+    {LY_STMT_ORGANIZATION, 11 * sizeof(const char*), LY_STMT_CARD_OPT}, /* const char* */
+    {LY_STMT_PATH,         12 * sizeof(const char*), LY_STMT_CARD_OPT}, /* const char* */
+    {LY_STMT_PREFIX,       13 * sizeof(const char*), LY_STMT_CARD_OPT}, /* const char* */
+    {LY_STMT_PRESENCE,     14 * sizeof(const char*), LY_STMT_CARD_OPT}, /* const char* */
+    {LY_STMT_REFERENCE,    15 * sizeof(const char*), LY_STMT_CARD_OPT}, /* const char* */
+    {LY_STMT_REVISIONDATE, 16 * sizeof(const char*), LY_STMT_CARD_OPT}, /* const char* */
+    {LY_STMT_UNITS,        17 * sizeof(const char*), LY_STMT_CARD_OPT}, /* const char* */
+    {LY_STMT_VALUE,        18 * sizeof(const char*), LY_STMT_CARD_OPT}, /* const char* */
+    {LY_STMT_VERSION,      19 * sizeof(const char*), LY_STMT_CARD_OPT}, /* const char* */
+    {LY_STMT_MODIFIER,     20 * sizeof(const char*), LY_STMT_CARD_OPT}, /* uint8_t */
+    {LY_STMT_REQINSTANCE,  20 * sizeof(const char*) + 1 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* uint8_t */
+    {LY_STMT_YINELEM,      20 * sizeof(const char*) + 2 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* uint8_t */
+    {LY_STMT_CONFIG,       20 * sizeof(const char*) + 3 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared uint16_t */
+    {LY_STMT_MANDATORY,    20 * sizeof(const char*) + 3 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared uint16_t */
+    {LY_STMT_ORDEREDBY,    20 * sizeof(const char*) + 3 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared uint16_t */
+    {LY_STMT_STATUS,       20 * sizeof(const char*) + 3 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared uint16_t */
+/*    {LY_STMT_DIGITS,       26 * sizeof(void *), LY_STMT_CARD_OPT},
     {LY_STMT_MAX,          27 * sizeof(void *), LY_STMT_CARD_OPT},
     {LY_STMT_MIN,          28 * sizeof(void *), LY_STMT_CARD_OPT},
     {LY_STMT_POSITION,     29 * sizeof(void *), LY_STMT_CARD_OPT},
@@ -112,33 +112,26 @@ struct lyext_substmt libyang_ext_test_substmt[] = {
 };
 
 struct lyext_substmt libyang_ext_test_substmt_arrays[] = {
-    {LY_STMT_ARGUMENT,      0,                  LY_STMT_CARD_ANY},
-    {LY_STMT_BASE,          1 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_BELONGSTO,     2 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_CONTACT,       4 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_DEFAULT,       5 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_DESCRIPTION,   6 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_ERRTAG,        7 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_ERRMSG,        8 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_KEY,           9 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_NAMESPACE,    10 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_ORGANIZATION, 11 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_PATH,         12 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_PREFIX,       13 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_PRESENCE,     14 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_REFERENCE,    15 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_REVISIONDATE, 16 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_UNITS,        17 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_VALUE,        18 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_VERSION,      19 * sizeof(void *), LY_STMT_CARD_ANY},
-/*    {LY_STMT_MODIFIER,     19 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_REQINSTANCE,  20 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_YINELEM,      21 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_CONFIG,       22 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_MANDATORY,    23 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_ORDEREDBY,    24 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_STATUS,       25 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_DIGITS,       26 * sizeof(void *), LY_STMT_CARD_ANY},
+    {LY_STMT_ARGUMENT,      0,                       LY_STMT_CARD_ANY}, /* const char** */
+    {LY_STMT_BASE,          1 * sizeof(const char*), LY_STMT_CARD_ANY}, /* const char** */
+    {LY_STMT_BELONGSTO,     2 * sizeof(const char*), LY_STMT_CARD_ANY}, /* const char**[2] */
+    {LY_STMT_CONTACT,       4 * sizeof(const char*), LY_STMT_CARD_ANY}, /* const char** */
+    {LY_STMT_DEFAULT,       5 * sizeof(const char*), LY_STMT_CARD_ANY}, /* const char** */
+    {LY_STMT_DESCRIPTION,   6 * sizeof(const char*), LY_STMT_CARD_ANY}, /* const char** */
+    {LY_STMT_ERRTAG,        7 * sizeof(const char*), LY_STMT_CARD_ANY}, /* const char** */
+    {LY_STMT_ERRMSG,        8 * sizeof(const char*), LY_STMT_CARD_ANY}, /* const char** */
+    {LY_STMT_KEY,           9 * sizeof(const char*), LY_STMT_CARD_ANY}, /* const char** */
+    {LY_STMT_NAMESPACE,    10 * sizeof(const char*), LY_STMT_CARD_ANY}, /* const char** */
+    {LY_STMT_ORGANIZATION, 11 * sizeof(const char*), LY_STMT_CARD_ANY}, /* const char** */
+    {LY_STMT_PATH,         12 * sizeof(const char*), LY_STMT_CARD_ANY}, /* const char** */
+    {LY_STMT_PREFIX,       13 * sizeof(const char*), LY_STMT_CARD_ANY}, /* const char** */
+    {LY_STMT_PRESENCE,     14 * sizeof(const char*), LY_STMT_CARD_ANY}, /* const char** */
+    {LY_STMT_REFERENCE,    15 * sizeof(const char*), LY_STMT_CARD_ANY}, /* const char** */
+    {LY_STMT_REVISIONDATE, 16 * sizeof(const char*), LY_STMT_CARD_ANY}, /* const char** */
+    {LY_STMT_UNITS,        17 * sizeof(const char*), LY_STMT_CARD_ANY}, /* const char** */
+    {LY_STMT_VALUE,        18 * sizeof(const char*), LY_STMT_CARD_ANY}, /* const char** */
+    {LY_STMT_VERSION,      19 * sizeof(const char*), LY_STMT_CARD_ANY}, /* const char** */
+/*  {LY_STMT_DIGITS,       26 * sizeof(void *), LY_STMT_CARD_ANY},
     {LY_STMT_MAX,          27 * sizeof(void *), LY_STMT_CARD_ANY},
     {LY_STMT_MIN,          28 * sizeof(void *), LY_STMT_CARD_ANY},
     {LY_STMT_POSITION,     29 * sizeof(void *), LY_STMT_CARD_ANY},

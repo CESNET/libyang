@@ -274,13 +274,15 @@ typedef enum {
     LY_STMT_YINELEM,      /**< stored as __uint8_t__ interpreted as follows: 0 - not set/default; 1 - true; 2 - false,
                                does not allow multiple instances */
     LY_STMT_CONFIG,       /**< stored as __uint16_t__ value (ORed with the previous value(s)), possible values are
-                               #LYS_CONFIG_R and #LYS_CONFIG_W (both ORed with #LYS_CONFIG_SET) */
+                               #LYS_CONFIG_R and #LYS_CONFIG_W (both ORed with #LYS_CONFIG_SET), does not allow multiple
+                               instances */
     LY_STMT_MANDATORY,    /**< stored as __uint16_t__ value (ORed with the previous value(s)), possible values are
-                               #LYS_MAND_TRUE and #LYS_MAND_FALSE */
+                               #LYS_MAND_TRUE and #LYS_MAND_FALSE, does not allow multiple instances */
     LY_STMT_ORDEREDBY,    /**< ordered-by, stored as __uint16_t__ value (ORed with the previous value(s)), possible
-                               value is #LYS_USERORDERED */
+                               value is #LYS_USERORDERED, does not allow multiple instances */
     LY_STMT_STATUS,       /**< stored as __uint16_t__ value (ORed with the previous value(s)), possible values are
-                               #LYS_STATUS_CURR, #LYS_STATUS_DEPRC and #LYS_STATUS_OBSLT */
+                               #LYS_STATUS_CURR, #LYS_STATUS_DEPRC and #LYS_STATUS_OBSLT, does not allow multiple
+                               instances */
     LY_STMT_DIGITS,       /**< fraction-digits, stored as __uint8_t__ */
     LY_STMT_MAX, /* max-elements */
     LY_STMT_MIN, /* min-elements */
