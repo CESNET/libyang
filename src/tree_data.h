@@ -445,8 +445,8 @@ char *lyd_qualified_path(const struct lyd_node *node);
                                      - mandatory nodes can be omitted
                                      - leafrefs and instance-identifier resolution is allowed to fail
                                      - status data are not allowed */
-#define LYD_OPT_RPC        0x10 /**< Data represents RPC's input parameters. */
-#define LYD_OPT_RPCREPLY   0x20 /**< Data represents RPC's output parameters (maps to NETCONF <rpc-reply> data). */
+#define LYD_OPT_RPC        0x10 /**< Data represents RPC or action input parameters. */
+#define LYD_OPT_RPCREPLY   0x20 /**< Data represents RPC or action output parameters (maps to NETCONF <rpc-reply> data). */
 #define LYD_OPT_NOTIF      0x40 /**< Data represents an event notification data. */
 #define LYD_OPT_NOTIF_FILTER 0x80 /**< Data represents a filtered event notification data.
                                        Validation modification:
@@ -467,7 +467,7 @@ char *lyd_qualified_path(const struct lyd_node *node);
                                        list instance uniqueness, etc.) are not performed. This option does not make
                                        sense for lyd_validate() so it is ignored by this function. */
 #define LYD_OPT_NOAUTODEL  0x4000 /**< Avoid automatic delete of subtrees with false when-stmt condition. The flag is
-                                       applicable only in combination with LYD_OPT_DATA and LYD_OPT_CONFIG flags.
+                                       applicable only in combination with #LYD_OPT_DATA and #LYD_OPT_CONFIG flags.
                                        If used, libyang generates validation error instead of silently removing the
                                        constrained subtree. */
 #define LYD_OPT_NOEXTDEPS  0x8000 /**< Allow external dependencies (external leafrefs, instance-identifiers, must,
