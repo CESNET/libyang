@@ -449,7 +449,7 @@ struct lys_ext_instance_complex {
     /* to this point the structure is compatible with the generic ::lys_ext_instance structure */
     struct lyext_substmt *substmt;   /**< pointer to the plugin's list of substatements' information */
     struct lys_module *module;       /**< pointer to the extension instance's module (mandatory) */
-    char content[0];                 /**< content of the extension instance */
+    char content[];                  /**< content of the extension instance */
 };
 
 /**
