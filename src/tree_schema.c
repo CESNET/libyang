@@ -4315,13 +4315,12 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
 {
     unsigned int i, j;
     struct lyext_substmt *substmt;
-    struct lyext_substmt *info;
     void **pp, **start;
 
 #define EXTCOMPLEX_FREE_STRUCT(STMT, TYPE, FUNC, FREE, ARGS...)                               \
-    pp = lys_ext_complex_get_substmt(STMT, (struct lys_ext_instance_complex *)e[i], &info);   \
+    pp = lys_ext_complex_get_substmt(STMT, (struct lys_ext_instance_complex *)e[i], NULL);    \
     if (!pp || !(*pp)) { break; }                                                             \
-    if (info->cardinality >= LY_STMT_CARD_SOME) { /* process array */                         \
+    if (substmt[j].cardinality >= LY_STMT_CARD_SOME) { /* process array */                    \
         for (start = pp = *pp; *pp; pp++) {                                                   \
             FUNC(ctx, (TYPE *)(*pp), ##ARGS);                                                 \
             if (FREE) { free(*pp); }                                                          \
@@ -4384,11 +4383,15 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
                 case LY_STMT_IFFEATURE:
                     EXTCOMPLEX_FREE_STRUCT(LY_STMT_IFFEATURE, struct lys_iffeature, lys_iffeature_free, 0, 1);
                     break;
-                case LY_STMT_STATUS:
-                    /* nothing to free */
+                case LY_STMT_DIGITS:
+                    if (substmt[j].cardinality >= LY_STMT_CARD_SOME) {
+                        /* free the array */
+                        pp = (void**)&((struct lys_ext_instance_complex *)e[i])->content[substmt[j].offset];
+                        free(*pp);
+                    }
                     break;
                 default:
-                    /* TODO */
+                    /* nothing to free */
                     break;
                 }
             }

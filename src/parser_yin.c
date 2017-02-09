@@ -7487,18 +7487,18 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, node->name, node->parent->name);
                 goto error;
             }
-            i = 0;
             pp = NULL;
             if (info->cardinality >= LY_STMT_CARD_SOME) {
                 /* there can be multiple instances */
                 pp = p;
+                i = 0;
                 if (!(*pp)) {
                     /* allocate initial array */
-                    *pp = p = malloc(2 * sizeof(uint8_t*));
+                    *pp = malloc(2 * sizeof(uint8_t));
                 } else {
-                    for (i = 0, p = *pp; p; p++, p++);
+                    for (i = 0; (*(uint8_t**)pp)[i]; i++);
                 }
-                p = malloc(sizeof(uint8_t));
+                p = &(*(uint8_t**)pp)[i];
             }
 
             GETVAL(value, node, "value");
@@ -7525,7 +7525,7 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
                     goto error;
                 }
                 *pp = reallocated;
-                pp[i + 1] = NULL;
+                (*(uint8_t**)pp)[i + 1] = 0;
             }
         } else {
             LOGERR(LY_SUCCESS, "Extension's substatement \"%s\" not yet supported.", node->name);

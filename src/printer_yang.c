@@ -2066,10 +2066,10 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
 
                     if (info->cardinality >= LY_STMT_CARD_SOME) {
                         /* we have array */
-                        for (p = *(void **)(p), c = 0; p; p++, c++) {
+                        for (c = 0; (*(uint8_t **)p)[c]; c++) {
                             yang_print_open(out, &content);
                             yang_print_unsigned(out, level, LYEXT_SUBSTMT_DIGITS, c, module,
-                                               ext[u]->ext, ext[u]->ext_size, (*(uint8_t*)p));
+                                                ext[u]->ext, ext[u]->ext_size, (*(uint8_t**)p)[c]);
                         }
                     } else if ((*(uint8_t*)p)) {
                         yang_print_open(out, &content);

@@ -231,14 +231,15 @@ typedef enum lys_nodetype {
  * @brief List of YANG statements
  *
  * Note that the storage type/structure in the values description are used in case of #LY_STMT_CARD_OPT or
- * #LY_STMT_CARD_MAND. In other cases, the data are stored as a pointer to the NULL-terminated array of pointers:
+ * #LY_STMT_CARD_MAND. In other cases, the data are stored as a pointer to the NULL-terminated array of base types:
  *
  *     char*     -> char**
  *     lys_type* -> lys_type**
+ *     uint8_t   -> uint8_t*
  *
- * There are some items, that are not, in case of multiple instances, stored as an array.
+ * There are some items, that are not, in case of multiple instances, stored as an array of pointers.
  * 1. The value is ORed with the previous value in the storage. Initial value is 0. This is the case of
- *    e.g. #LY_STMT_STATUS.
+ *    e.g. #LY_STMT_STATUS. These items actually does not allow to have multiple instances (it does not make sense).
  * 2. The lys_node_* data types are stored as a data tree, so in case of multiple instances, they are stored
  *    as siblings to the first node.
  *

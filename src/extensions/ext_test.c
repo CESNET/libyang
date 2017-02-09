@@ -67,8 +67,8 @@ struct lyext_substmt libyang_ext_test_substmt[] = {
     {LY_STMT_MANDATORY,    20 * sizeof(const char*) + 3 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared uint16_t */
     {LY_STMT_ORDEREDBY,    20 * sizeof(const char*) + 3 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared uint16_t */
     {LY_STMT_STATUS,       20 * sizeof(const char*) + 3 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared uint16_t */
-/*    {LY_STMT_DIGITS,       26 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_MAX,          27 * sizeof(void *), LY_STMT_CARD_OPT},
+    {LY_STMT_DIGITS,       20 * sizeof(const char*) + 3 * sizeof(uint8_t) + sizeof(uint16_t), LY_STMT_CARD_OPT}, /* uint8_t */
+/*    {LY_STMT_MAX,          27 * sizeof(void *), LY_STMT_CARD_OPT},
     {LY_STMT_MIN,          28 * sizeof(void *), LY_STMT_CARD_OPT},
     {LY_STMT_POSITION,     29 * sizeof(void *), LY_STMT_CARD_OPT},
     {LY_STMT_UNIQUE,       30 * sizeof(void *), LY_STMT_CARD_OPT},
@@ -131,8 +131,8 @@ struct lyext_substmt libyang_ext_test_substmt_arrays[] = {
     {LY_STMT_UNITS,        17 * sizeof(const char*), LY_STMT_CARD_ANY}, /* const char** */
     {LY_STMT_VALUE,        18 * sizeof(const char*), LY_STMT_CARD_ANY}, /* const char** */
     {LY_STMT_VERSION,      19 * sizeof(const char*), LY_STMT_CARD_ANY}, /* const char** */
-/*  {LY_STMT_DIGITS,       26 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_MAX,          27 * sizeof(void *), LY_STMT_CARD_ANY},
+    {LY_STMT_DIGITS,       20 * sizeof(const char*), LY_STMT_CARD_ANY}, /* uint8_t* */
+/*    {LY_STMT_MAX,          27 * sizeof(void *), LY_STMT_CARD_ANY},
     {LY_STMT_MIN,          28 * sizeof(void *), LY_STMT_CARD_ANY},
     {LY_STMT_POSITION,     29 * sizeof(void *), LY_STMT_CARD_ANY},
     {LY_STMT_UNIQUE,       30 * sizeof(void *), LY_STMT_CARD_ANY},
