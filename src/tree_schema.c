@@ -4293,12 +4293,21 @@ lys_extcomplex_free_str(struct ly_ctx *ctx, struct lys_ext_instance_complex *ext
     if (info->cardinality >= LY_STMT_CARD_SOME) {
         /* we have array */
         a = (const char ***)str;
-        for (str = (*(const char ***)str), c = 0; *str; str++, c++) {
-            lydict_remove(ctx, *str);
+        for (str = (*(const char ***)str), c = 0; str[c]; c++) {
+            lydict_remove(ctx, str[c]);
         }
-        free(*a);
+        free(a[0]);
+        if (stmt == LY_STMT_BELONGSTO) {
+            for (str = a[1], c = 0; str[c]; c++) {
+                lydict_remove(ctx, str[c]);
+            }
+            free(a[1]);
+        }
     } else {
-        lydict_remove(ctx, *str);
+        lydict_remove(ctx, str[0]);
+        if (stmt == LY_STMT_BELONGSTO) {
+            lydict_remove(ctx, str[1]);
+        }
     }
 }
 void

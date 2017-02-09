@@ -7108,43 +7108,91 @@ yin_parse_extcomplex_str(struct lys_module *mod, struct lyxml_elem *node,
     if (info->cardinality >= LY_STMT_CARD_SOME) {
         /* there can be multiple instances, str is actually const char *** */
         p = (const char ***)str;
-        str = *p;
-        if (!str) {
+        if (!p[0]) {
             /* allocate initial array */
-            *p = str = malloc(2 * sizeof *str);
+            p[0] = malloc(2 * sizeof(const char *));
+            if (stmt == LY_STMT_BELONGSTO) {
+                /* allocate another array for the belongs-to's prefixes */
+                p[1] = malloc(2 * sizeof(const char *));
+            }
         } else {
-            for (c = 0; *str; str++, c++);
+            /* get the index in the array to add new item */
+            for (c = 0; p[0][c]; c++);
         }
+        str = p[0];
     }
     if (lyp_yin_parse_subnode_ext(mod, ext, LYEXT_PAR_EXTINST, node, stmt, c, unres)) {
         return EXIT_FAILURE;
     }
 
     if (argelem) {
-        *str = read_yin_subnode(mod->ctx, node, argname);
-    } else {
-        *str = lyxml_get_attr(node, argname, NULL);
-        if (!*str) {
-            LOGVAL(LYE_MISSARG, LY_VLOG_NONE, NULL, argname, node->name);
-        } else {
-            *str = lydict_insert(mod->ctx, *str, 0);
-        }
-    }
-    if (!*str) {
-        return EXIT_FAILURE;
-    }
-    if (p) {
-        /* enlarge the array */
-        reallocated = realloc(*p, (c + 2) * sizeof *str);
-        if (!reallocated) {
-            LOGMEM;
-            lydict_remove(mod->ctx, *str);
-            *str = NULL;
+        str[c] = read_yin_subnode(mod->ctx, node, argname);
+        if (!str[c]) {
             return EXIT_FAILURE;
         }
-        *p = reallocated;
-        str = *p;
-        str[c + 1] = NULL;
+    } else {
+        str[c] = lyxml_get_attr(node, argname, NULL);
+        if (!str[c]) {
+            LOGVAL(LYE_MISSARG, LY_VLOG_NONE, NULL, argname, node->name);
+            return EXIT_FAILURE;
+        } else {
+            str[c] = lydict_insert(mod->ctx, str[c], 0);
+        }
+
+        if (stmt == LY_STMT_BELONGSTO) {
+            /* get the belongs-to's mandatory prefix substatement */
+            if (!node->child) {
+                LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "prefix", node->name);
+                return EXIT_FAILURE;
+            } else if (strcmp(node->child->name, "prefix")) {
+                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, node->child->name);
+                return EXIT_FAILURE;
+            } else if (node->child->next) {
+                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, node->child->next->name);
+                return EXIT_FAILURE;
+            }
+            /* and now finally get the value */
+            if (p) {
+                str = p[1];
+            } else {
+                str++;
+            }
+            str[c] = lyxml_get_attr(node->child, "value", ((void *)0));
+            if (!str[c]) {
+                LOGVAL(LYE_MISSARG, LY_VLOG_NONE, NULL, "value", node->child->name);
+                return EXIT_FAILURE;
+            }
+            str[c] = lydict_insert(mod->ctx, str[c], 0);
+
+            if (!str[c] || lyp_yin_parse_subnode_ext(mod, ext, LYEXT_PAR_EXTINST, node->child, LYEXT_SUBSTMT_PREFIX, 0, unres)) {
+                return EXIT_FAILURE;
+            }
+        }
+    }
+    if (p) {
+        /* enlarge the array(s) */
+        reallocated = realloc(p[0], (c + 2) * sizeof(const char *));
+        if (!reallocated) {
+            LOGMEM;
+            lydict_remove(mod->ctx, p[0][c]);
+            p[0][c] = NULL;
+            return EXIT_FAILURE;
+        }
+        p[0] = reallocated;
+        p[0][c + 1] = NULL;
+
+        if (stmt == LY_STMT_BELONGSTO) {
+            /* enlarge the second belongs-to's array with prefixes */
+            reallocated = realloc(p[1], (c + 2) * sizeof(const char *));
+            if (!reallocated) {
+                LOGMEM;
+                lydict_remove(mod->ctx, p[1][c]);
+                p[1][c] = NULL;
+                return EXIT_FAILURE;
+            }
+            p[1] = reallocated;
+            p[1][c + 1] = NULL;
+        }
     }
 
     return EXIT_SUCCESS;

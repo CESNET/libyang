@@ -1876,7 +1876,7 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
     struct lys_module *mod;
     const char *prefix = NULL;
     struct lyext_substmt *info;
-    int content, i, c;
+    int content, i, j, c;
     uint16_t *flags;
     const char *str;
     void **pp, *p;
@@ -1970,7 +1970,6 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
                 case LY_STMT_REVISIONDATE:
                 case LY_STMT_KEY:
                 case LY_STMT_BASE:
-                case LY_STMT_BELONGSTO:
                 case LY_STMT_CONTACT:
                 case LY_STMT_ORGANIZATION:
                 case LY_STMT_PATH:
@@ -1978,6 +1977,38 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
                 case LY_STMT_VALUE:
                     yin_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
                                              info[i].stmt, &content);
+                    break;
+                case LY_STMT_BELONGSTO:
+                    pp = lys_ext_complex_get_substmt(LY_STMT_BELONGSTO, (struct lys_ext_instance_complex*)ext[u], NULL);
+                    if (!pp || !(*pp)) {
+                        break;
+                    }
+                    if (info->cardinality >= LY_STMT_CARD_SOME) {
+                        /* we have array */
+                        for (c = 0; ((const char***)pp)[0][c]; c++) {
+                            yin_print_close_parent(out, &content);
+                            yin_print_open(out, level, NULL, "belongs-to", "module", ((const char ***)pp)[0][c], 1);
+                            j = -1;
+                            while ((j = lys_ext_iter(ext[u]->ext, ext[u]->ext_size, j + 1, LYEXT_SUBSTMT_BELONGSTO)) != -1) {
+                                yin_print_extension_instances(out, level + 1, module, LYEXT_SUBSTMT_BELONGSTO, c,
+                                                              &ext[u]->ext[j], 1);
+                            }
+                            yin_print_substmt(out, level + 1, LYEXT_SUBSTMT_PREFIX, c, ((const char ***)pp)[1][c],
+                                              module, ext[u]->ext, ext[u]->ext_size);
+                            yin_print_close(out, level, NULL, "belongs-to", 1);
+                        }
+                    } else {
+                        yin_print_close_parent(out, &content);
+                        yin_print_open(out, level, NULL, "belongs-to", "module", (const char *)pp[0], 1);
+                        j = -1;
+                        while ((j = lys_ext_iter(ext[u]->ext, ext[u]->ext_size, j + 1, LYEXT_SUBSTMT_BELONGSTO)) != -1) {
+                            yin_print_extension_instances(out, level + 1, module, LYEXT_SUBSTMT_BELONGSTO, 0,
+                                                          &ext[u]->ext[j], 1);
+                        }
+                        yin_print_substmt(out, level + 1, LYEXT_SUBSTMT_PREFIX, 0, (const char *)pp[1],
+                                          module, ext[u]->ext, ext[u]->ext_size);
+                        yin_print_close(out, level, NULL, "belongs-to", 1);
+                    }
                     break;
                 case LY_STMT_TYPE:
                     YIN_PRINT_EXTCOMPLEX_STRUCT(LY_STMT_TYPE, struct lys_type, yin_print_type);

@@ -248,7 +248,9 @@ typedef enum lys_nodetype {
 typedef enum {
     LY_STMT_ARGUMENT = 1, /**< stored as __const char*__ */
     LY_STMT_BASE,         /**< stored as __const char*__ */
-    LY_STMT_BELONGSTO,    /**< belongs-to, stored as __const char*__ */
+    LY_STMT_BELONGSTO,    /**< belongs-to, stored as __const char*[2]__, the second item contains belongs-to's prefix,
+                               in case of multiple instances, the belongs-to's module values and prefixes are stored in
+                               two arrays (__const char **[2]__) */
     LY_STMT_CONTACT,      /**< stored as __const char*__ */
     LY_STMT_DEFAULT,      /**< stored as __const char*__ */
     LY_STMT_DESCRIPTION,  /**< stored as __const char*__ */
