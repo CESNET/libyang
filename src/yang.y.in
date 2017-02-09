@@ -324,7 +324,7 @@ module_arg_str: identifier_arg_str { if (param->submodule) {
 module_stmt: optsep MODULE_KEYWORD sep module_arg_str
              '{' stmtsep
                  module_header_stmts
-                 linkage_stmt
+                 linkage_stmts
                  meta_stmts
                  revision_stmts
                  body_stmts_end
@@ -370,7 +370,7 @@ submodule_arg_str: identifier_arg_str { if (!param->submodule) {
 submodule_stmt: optsep SUBMODULE_KEYWORD sep submodule_arg_str
                 '{' stmtsep
                     submodule_header_stmts
-                    linkage_stmt
+                    linkage_stmts
                     meta_stmts
                     revision_stmts
                     body_stmts_end
@@ -403,16 +403,9 @@ yang_version_stmt: YANG_VERSION_KEYWORD sep string stmtend;
 
 namespace_stmt: NAMESPACE_KEYWORD sep string stmtend;
 
-linkage_stmt: linkage_stmts { *param->remove_import = 0;
-                              if (yang_check_imports(trg, param->unres)) {
-                                YYABORT;
-                              }
-                            }
-
 linkage_stmts: @EMPTYDIR@
  |  linkage_stmts import_stmt
  |  linkage_stmts include_stmt
- ;
 
 import_stmt: IMPORT_KEYWORD sep import_arg_str
              '{' stmtsep
@@ -657,7 +650,25 @@ body_stmts_end: body_stmts { void *tmp;
                              }
                            }
 
-body_stmts: @EMPTYDIR@ { actual = NULL; }
+body_stmts: @EMPTYDIR@ { /* check the module with respect to the context now */
+                         if (!param->submodule) {
+                           switch (lyp_ctx_check_module(trg)) {
+                           case -1:
+                             YYABORT;
+                           case 0:
+                             break;
+                           case 1:
+                             /* it's already there */
+                             param->exist_module = 1;
+                             YYABORT;
+                           }
+                         }
+                         param->remove_import = 0;
+                         if (yang_check_imports(trg, param->unres)) {
+                           YYABORT;
+                         }
+                         actual = NULL;
+                       }
   | body_stmts body_stmt stmtsep { actual = NULL; }
 
 

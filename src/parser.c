@@ -2522,91 +2522,92 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
 }
 
 int
-lyp_ctx_add_module(struct lys_module **module)
+lyp_ctx_check_module(struct lys_module *module)
 {
     struct ly_ctx *ctx;
-    struct lys_module **newlist = NULL;
-    struct lys_module *mod;
     int i, match_i = -1, to_implement;
-    int ret = EXIT_SUCCESS;
 
     assert(module);
-    mod = (*module);
     to_implement = 0;
-    ctx = mod->ctx;
+    ctx = module->ctx;
 
     for (i = 0; i < ctx->models.used; i++) {
         /* check name (name/revision) and namespace uniqueness */
-        if (!strcmp(ctx->models.list[i]->name, mod->name)) {
+        if (!strcmp(ctx->models.list[i]->name, module->name)) {
             if (to_implement) {
                 if (i == match_i) {
                     continue;
                 }
                 LOGERR(LY_EINVAL, "Module \"%s\" in another revision already implemented.", ctx->models.list[i]->name);
-                return EXIT_FAILURE;
-            } else if (!ctx->models.list[i]->rev_size && mod->rev_size) {
+                return -1;
+            } else if (!ctx->models.list[i]->rev_size && module->rev_size) {
                 LOGERR(LY_EINVAL, "Module \"%s\" without revision already in context.", ctx->models.list[i]->name);
-                return EXIT_FAILURE;
-            } else if (ctx->models.list[i]->rev_size && !mod->rev_size) {
+                return -1;
+            } else if (ctx->models.list[i]->rev_size && !module->rev_size) {
                 LOGERR(LY_EINVAL, "Module \"%s\" with revision already in context.", ctx->models.list[i]->name);
-                return EXIT_FAILURE;
-            } else if ((!mod->rev_size && !ctx->models.list[i]->rev_size)
-                    || !strcmp(ctx->models.list[i]->rev[0].date, mod->rev[0].date)) {
+                return -1;
+            } else if ((!module->rev_size && !ctx->models.list[i]->rev_size)
+                    || !strcmp(ctx->models.list[i]->rev[0].date, module->rev[0].date)) {
 
                 LOGVRB("Module \"%s\" already in context.", ctx->models.list[i]->name);
-                to_implement = mod->implemented;
+                to_implement = module->implemented;
                 match_i = i;
                 if (to_implement && !ctx->models.list[i]->implemented) {
                     /* check first that it is okay to change it to implemented */
                     i = -1;
                     continue;
                 }
-                goto already_in_context;
+                return 1;
 
-            } else if (mod->implemented && ctx->models.list[i]->implemented) {
+            } else if (module->implemented && ctx->models.list[i]->implemented) {
                 LOGERR(LY_EINVAL, "Module \"%s\" in another revision already implemented.", ctx->models.list[i]->name);
-                return EXIT_FAILURE;
+                return -1;
             }
             /* else keep searching, for now the caller is just adding
              * another revision of an already present schema
              */
-        } else if (!strcmp(ctx->models.list[i]->ns, mod->ns)) {
+        } else if (!strcmp(ctx->models.list[i]->ns, module->ns)) {
             LOGERR(LY_EINVAL, "Two different modules (\"%s\" and \"%s\") have the same namespace \"%s\".",
-                   ctx->models.list[i]->name, mod->name, mod->ns);
-            return EXIT_FAILURE;
+                   ctx->models.list[i]->name, module->name, module->ns);
+            return -1;
         }
     }
 
     if (to_implement) {
-        i = match_i;
-        if (lys_set_implemented(ctx->models.list[i])) {
-            ret = EXIT_FAILURE;
+        if (lys_set_implemented(ctx->models.list[match_i])) {
+            return -1;
         }
-        goto already_in_context;
+        return 1;
     }
+
+    return 0;
+}
+
+int
+lyp_ctx_add_module(struct lys_module *module)
+{
+    struct lys_module **newlist = NULL;
+    int i;
+
+    assert(!lyp_ctx_check_module(module));
 
     /* add to the context's list of modules */
-    if (ctx->models.used == ctx->models.size) {
-        newlist = realloc(ctx->models.list, (2 * ctx->models.size) * sizeof *newlist);
+    if (module->ctx->models.used == module->ctx->models.size) {
+        newlist = realloc(module->ctx->models.list, (2 * module->ctx->models.size) * sizeof *newlist);
         if (!newlist) {
             LOGMEM;
-            return EXIT_FAILURE;
+            return -1;
         }
-        for (i = ctx->models.size; i < ctx->models.size * 2; i++) {
+        for (i = module->ctx->models.size; i < module->ctx->models.size * 2; i++) {
             newlist[i] = NULL;
         }
-        ctx->models.size *= 2;
-        ctx->models.list = newlist;
+        module->ctx->models.size *= 2;
+        module->ctx->models.list = newlist;
     }
-    ctx->models.list[ctx->models.used++] = mod;
-    ctx->models.module_set_id++;
-    return EXIT_SUCCESS;
+    module->ctx->models.list[module->ctx->models.used++] = module;
+    module->ctx->models.module_set_id++;
 
-already_in_context:
-    lys_sub_module_remove_devs_augs(mod);
-    lys_free(mod, NULL, 1);
-    (*module) = ctx->models.list[i];
-    return ret;
+    return 0;
 }
 
 /**

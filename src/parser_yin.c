@@ -5308,11 +5308,11 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 struct unres_schema *unres)
 {
     struct ly_ctx *ctx = module->ctx;
-    struct lyxml_elem *next, *child, *child2, root, grps, augs;
+    struct lyxml_elem *next, *child, *child2, root, grps, augs, revs;
     struct lys_node *node = NULL;
     struct lys_module *trg;
     const char *value;
-    int i, r;
+    int i, r, ret = -1;
     int version_flag = 0;
     /* (sub)module substatements are ordered in groups, increment this value when moving to another group
      * 0 - header-stmts, 1 - linkage-stmts, 2 - meta-stmts, 3 - revision-stmts, 4 - body-stmts */
@@ -5329,6 +5329,7 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
     memset(&root, 0, sizeof root);
     memset(&grps, 0, sizeof grps);
     memset(&augs, 0, sizeof augs);
+    memset(&revs, 0, sizeof revs);
 
     /*
      * in the first run, we process elements with cardinality of 1 or 0..1 and
@@ -5355,12 +5356,12 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 goto error;
             }
 
-            if (module->ns) {
+            if (trg->ns) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
                 goto error;
             }
             GETVAL(value, child, "uri");
-            module->ns = lydict_insert(ctx, value, strlen(value));
+            trg->ns = lydict_insert(ctx, value, strlen(value));
             lyxml_free(ctx, child);
 
             substmt_prev = "namespace";
@@ -5372,15 +5373,15 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 goto error;
             }
 
-            if (module->prefix) {
+            if (trg->prefix) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
                 goto error;
             }
             GETVAL(value, child, "value");
-            if (lyp_check_identifier(value, LY_IDENT_PREFIX, module, NULL)) {
+            if (lyp_check_identifier(value, LY_IDENT_PREFIX, trg, NULL)) {
                 goto error;
             }
-            module->prefix = lydict_insert(ctx, value, strlen(value));
+            trg->prefix = lydict_insert(ctx, value, strlen(value));
             lyxml_free(ctx, child);
 
             substmt_prev = "prefix";
@@ -5451,6 +5452,9 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             substmt_group = 3;
 
             c_rev++;
+
+            lyxml_unlink_elem(ctx, child, 2);
+            lyxml_add_child(ctx, &revs, child);
 
             substmt_prev = "revision";
         } else if (!strcmp(child->name, "typedef")) {
@@ -5685,11 +5689,11 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             }
         }
     } else {
-        if (!module->ns) {
+        if (!trg->ns) {
             LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "namespace", "module");
             goto error;
         }
-        if (!module->prefix) {
+        if (!trg->prefix) {
             LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "prefix", "module");
             goto error;
         }
@@ -5753,7 +5757,91 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
         }
     }
 
-    /* middle part - process nodes with cardinality of 0..n except the data nodes and augments */
+    /* middle part 1 - process revision and then check whether this (sub)module was not already parsed, add it there */
+    LY_TREE_FOR_SAFE(revs.child, next, child) {
+        GETVAL(value, child, "date");
+        if (lyp_check_date(value)) {
+            goto error;
+        }
+        memcpy(trg->rev[trg->rev_size].date, value, LY_REV_SIZE - 1);
+        /* check uniqueness of the revision date - not required by RFC */
+        for (i = 0; i < trg->rev_size; i++) {
+            if (!strcmp(value, trg->rev[i].date)) {
+                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, child->name);
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Revision is not unique.");
+            }
+        }
+
+        LY_TREE_FOR(child->child, child2) {
+            if (!strcmp(child2->name, "description")) {
+                if (trg->rev[trg->rev_size].dsc) {
+                    LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child2->name, child->name);
+                    goto error;
+                }
+                trg->rev[trg->rev_size].dsc = read_yin_subnode(ctx, child2, "text");
+                if (!trg->rev[trg->rev_size].dsc) {
+                    goto error;
+                }
+            } else if (!strcmp(child2->name, "reference")) {
+                if (trg->rev[trg->rev_size].ref) {
+                    LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child2->name, child->name);
+                    goto error;
+                }
+                trg->rev[trg->rev_size].ref = read_yin_subnode(ctx, child2, "text");
+                if (!trg->rev[trg->rev_size].ref) {
+                    goto error;
+                }
+            } else {
+                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child2->name);
+                goto error;
+            }
+        }
+
+        /* keep the latest revision at position 0 */
+        if (trg->rev_size && strcmp(trg->rev[trg->rev_size].date, trg->rev[0].date) > 0) {
+            /* switch their position */
+            value = strdup(trg->rev[0].date);
+            if (!value) {
+                LOGMEM;
+                goto error;
+            }
+            memcpy(trg->rev[0].date, trg->rev[trg->rev_size].date, LY_REV_SIZE - 1);
+            memcpy(trg->rev[trg->rev_size].date, value, LY_REV_SIZE - 1);
+            free((char *)value);
+
+            if (!ly_strequal(trg->rev[0].dsc, trg->rev[trg->rev_size].dsc, 1)) {
+                value = trg->rev[0].dsc;
+                trg->rev[0].dsc = trg->rev[trg->rev_size].dsc;
+                trg->rev[trg->rev_size].dsc = value;
+            }
+
+            if (!ly_strequal(trg->rev[0].ref, trg->rev[trg->rev_size].ref, 1)) {
+                value = trg->rev[0].ref;
+                trg->rev[0].ref = trg->rev[trg->rev_size].ref;
+                trg->rev[trg->rev_size].ref = value;
+            }
+        }
+
+        trg->rev_size++;
+
+        lyxml_free(ctx, child);
+    }
+
+    /* check the module with respect to the context now */
+    if (!submodule) {
+        switch (lyp_ctx_check_module(module)) {
+        case -1:
+            goto error;
+        case 0:
+            break;
+        case 1:
+            /* it's already there */
+            ret = 1;
+            goto error;
+        }
+    }
+
+    /* middle part 2 - process nodes with cardinality of 0..n except the data nodes and augments */
     LY_TREE_FOR_SAFE(yin->child, next, child) {
         if (!strcmp(child->name, "import")) {
             r = fill_yin_import(trg, child, &trg->imp[trg->imp_size]);
@@ -5768,72 +5856,6 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             if (r) {
                 goto error;
             }
-
-        } else if (!strcmp(child->name, "revision")) {
-            GETVAL(value, child, "date");
-            if (lyp_check_date(value)) {
-                goto error;
-            }
-            memcpy(trg->rev[trg->rev_size].date, value, LY_REV_SIZE - 1);
-            /* check uniqueness of the revision date - not required by RFC */
-            for (i = 0; i < trg->rev_size; i++) {
-                if (!strcmp(value, trg->rev[i].date)) {
-                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, child->name);
-                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Revision is not unique.");
-                }
-            }
-
-            LY_TREE_FOR(child->child, child2) {
-                if (!strcmp(child2->name, "description")) {
-                    if (trg->rev[trg->rev_size].dsc) {
-                        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child2->name, child->name);
-                        goto error;
-                    }
-                    trg->rev[trg->rev_size].dsc = read_yin_subnode(ctx, child2, "text");
-                    if (!trg->rev[trg->rev_size].dsc) {
-                        goto error;
-                    }
-                } else if (!strcmp(child2->name, "reference")) {
-                    if (trg->rev[trg->rev_size].ref) {
-                        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child2->name, child->name);
-                        goto error;
-                    }
-                    trg->rev[trg->rev_size].ref = read_yin_subnode(ctx, child2, "text");
-                    if (!trg->rev[trg->rev_size].ref) {
-                        goto error;
-                    }
-                } else {
-                    LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child2->name);
-                    goto error;
-                }
-            }
-
-            /* keep the latest revision at position 0 */
-            if (trg->rev_size && strcmp(trg->rev[trg->rev_size].date, trg->rev[0].date) > 0) {
-                /* switch their position */
-                value = strdup(trg->rev[0].date);
-                if (!value) {
-                    LOGMEM;
-                    goto error;
-                }
-                memcpy(trg->rev[0].date, trg->rev[trg->rev_size].date, LY_REV_SIZE - 1);
-                memcpy(trg->rev[trg->rev_size].date, value, LY_REV_SIZE - 1);
-                free((char *)value);
-
-                if (!ly_strequal(trg->rev[0].dsc, trg->rev[trg->rev_size].dsc, 1)) {
-                    value = trg->rev[0].dsc;
-                    trg->rev[0].dsc = trg->rev[trg->rev_size].dsc;
-                    trg->rev[trg->rev_size].dsc = value;
-                }
-
-                if (!ly_strequal(trg->rev[0].ref, trg->rev[trg->rev_size].ref, 1)) {
-                    value = trg->rev[0].ref;
-                    trg->rev[0].ref = trg->rev[trg->rev_size].ref;
-                    trg->rev[trg->rev_size].ref = value;
-                }
-            }
-
-            trg->rev_size++;
 
         } else if (!strcmp(child->name, "typedef")) {
             r = fill_yin_typedef(trg, NULL, child, &trg->tpdf[trg->tpdf_size], unres);
@@ -5920,21 +5942,23 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
         lyxml_free(ctx, child);
     }
 
-    return EXIT_SUCCESS;
+    return 0;
 
 error:
-    /* cleanup */
     while (root.child) {
-        lyxml_free(module->ctx, root.child);
+        lyxml_free(ctx, root.child);
     }
     while (grps.child) {
-        lyxml_free(module->ctx, grps.child);
+        lyxml_free(ctx, grps.child);
     }
     while (augs.child) {
-        lyxml_free(module->ctx, augs.child);
+        lyxml_free(ctx, augs.child);
+    }
+    while (revs.child) {
+        lyxml_free(ctx, revs.child);
     }
 
-    return EXIT_FAILURE;
+    return ret;
 }
 
 /* logs directly */
@@ -5975,6 +5999,7 @@ yin_read_submodule(struct lys_module *module, const char *data, struct unres_sch
     submodule->belongsto = module;
 
     LOGVRB("Reading submodule \"%s\".", submodule->name);
+    /* module cannot be changed in this case and 1 cannot be returned */
     if (read_sub_module(module, submodule, yin, unres)) {
         goto error;
     }
@@ -6011,6 +6036,7 @@ yin_read_module(struct ly_ctx *ctx, const char *data, const char *revision, int 
     struct lys_module *module = NULL;
     struct unres_schema *unres;
     const char *value;
+    int ret;
 
     unres = calloc(1, sizeof *unres);
     if (!unres) {
@@ -6050,13 +6076,23 @@ yin_read_module(struct ly_ctx *ctx, const char *data, const char *revision, int 
     module->implemented = (implement ? 1 : 0);
 
     LOGVRB("Reading module \"%s\".", module->name);
-    if (read_sub_module(module, NULL, yin, unres)) {
+    ret = read_sub_module(module, NULL, yin, unres);
+    if (ret == -1) {
         goto error;
     }
 
-    /* resolve rest of unres items */
-    if (unres->count && resolve_unres_schema(module, unres)) {
-        goto error;
+    if (ret == 1) {
+        assert(!unres->count);
+    } else {
+        /* resolve rest of unres items */
+        if (unres->count && resolve_unres_schema(module, unres)) {
+            goto error;
+        }
+
+        /* check correctness of includes */
+        if (lyp_check_include_missing(module)) {
+            goto error;
+        }
     }
 
     if (revision) {
@@ -6068,22 +6104,27 @@ yin_read_module(struct ly_ctx *ctx, const char *data, const char *revision, int 
         }
     }
 
-    /* check correctness of includes */
-    if (lyp_check_include_missing(module)) {
-        goto error;
-    }
+    /* add into context if not already there */
+    if (!ret) {
+        if (module->deviation_size && !module->implemented) {
+            LOGVRB("Module \"%s\" includes deviations, changing its conformance to \"implement\".", module->name);
+            /* deviations always causes target to be made implemented,
+             * but augents and leafrefs not, so we have to apply them now */
+            if (lys_set_implemented(module)) {
+                goto error;
+            }
+        }
 
-    if (lyp_ctx_add_module(&module)) {
-        goto error;
-    }
-
-    if (module->deviation_size && !module->implemented) {
-        LOGVRB("Module \"%s\" includes deviations, changing its conformance to \"implement\".", module->name);
-        /* deviations always causes target to be made implemented,
-         * but augents and leafrefs not, so we have to apply them now */
-        if (lys_set_implemented(module)) {
+        if (lyp_ctx_add_module(module)) {
             goto error;
         }
+    } else {
+        /* free what was parsed */
+        lys_free(module, NULL, 0);
+
+        /* get the model from the context */
+        module = (struct lys_module *)ly_ctx_get_module(ctx, value, revision);
+        assert(module);
     }
 
     lyxml_free(ctx, yin);
