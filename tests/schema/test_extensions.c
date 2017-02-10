@@ -2097,6 +2097,12 @@ test_complex_yin(void **state)
                     "    <max-elements value=\"2\"/>\n"
                     "    <min-elements value=\"4\"/>\n"
                     "    <position value=\"11\"/>\n"
+                    "    <module name=\"inmod\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:i=\"urn:inmod\">\n"
+                    "      <namespace uri=\"urn:inmod\"/>\n"
+                    "      <prefix value=\"i\"/>\n"
+                    "    </module>\n"
                     "  </e:complex>\n"
                     "</module>\n";
 
@@ -2167,6 +2173,18 @@ test_complex_arrays_yin(void **state)
                     "    <min-elements value=\"5\"/>\n"
                     "    <position value=\"11\"/>\n"
                     "    <position value=\"12\"/>\n"
+                    "    <module name=\"inmod1\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:i=\"urn:inmod1\">\n"
+                    "      <namespace uri=\"urn:inmod1\"/>\n"
+                    "      <prefix value=\"i\"/>\n"
+                    "    </module>\n"
+                    "    <module name=\"inmod2\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:i=\"urn:inmod2\">\n"
+                    "      <namespace uri=\"urn:inmod2\"/>\n"
+                    "      <prefix value=\"i\"/>\n"
+                    "    </module>\n"
                     "  </e:complex-arrays>\n"
                     "</module>\n";
 

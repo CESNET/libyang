@@ -4401,6 +4401,14 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
                         free(*pp);
                     }
                     break;
+                case LY_STMT_MODULE:
+                    /* modules are part of the context, so they will be freed there */
+                    if (substmt[j].cardinality >= LY_STMT_CARD_SOME) {
+                        /* free the array */
+                        pp = (void**)&((struct lys_ext_instance_complex *)e[i])->content[substmt[j].offset];
+                        free(*pp);
+                    }
+                    break;
                 default:
                     /* nothing to free */
                     break;

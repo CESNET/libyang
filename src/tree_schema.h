@@ -290,7 +290,7 @@ typedef enum {
     LY_STMT_POSITION,     /**< stored as __uint32_t*__ */
     LY_STMT_UNIQUE,
 
-    LY_STMT_MODULE,
+    LY_STMT_MODULE,       /**< stored as ::lys_module* */
     LY_STMT_SUBMODULE,
     LY_STMT_ACTION,
     LY_STMT_ANYDATA,      /**< stored as ::lys_node_anydata*, covers also anyxml-stmt from YANG 1.0 */

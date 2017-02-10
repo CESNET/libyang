@@ -73,9 +73,10 @@ struct lyext_substmt libyang_ext_test_substmt[] = {
                            sizeof(uint16_t) + 1 * sizeof(uint32_t*), LY_STMT_CARD_OPT}, /* uint32_t* */
     {LY_STMT_POSITION,     20 * sizeof(const char*) + 4 * sizeof(uint8_t) +
                            sizeof(uint16_t) + 2 * sizeof(uint32_t*), LY_STMT_CARD_OPT}, /* uint32_t* */
-/*    {LY_STMT_UNIQUE,       30 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_MODULE,       31 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_SUBMODULE,    32 * sizeof(void *), LY_STMT_CARD_OPT},
+/* compress the offset calculation */
+    {LY_STMT_UNIQUE,       23 * sizeof(void*) + 6 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* TODO */
+    {LY_STMT_MODULE,       24 * sizeof(void*) + 6 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* struct lys_module* */
+/*    {LY_STMT_SUBMODULE,    32 * sizeof(void *), LY_STMT_CARD_OPT},
     {LY_STMT_ACTION,       33 * sizeof(void *), LY_STMT_CARD_OPT},
     {LY_STMT_ANYDATA,      34 * sizeof(void *), LY_STMT_CARD_OPT},
     {LY_STMT_CASE,         35 * sizeof(void *), LY_STMT_CARD_OPT},
@@ -139,9 +140,10 @@ struct lyext_substmt libyang_ext_test_substmt_arrays[] = {
                             1 * sizeof(uint32_t*), LY_STMT_CARD_ANY}, /* uint32_t* */
     {LY_STMT_POSITION,     20 * sizeof(const char*) + sizeof(uint8_t*) +
                             2 * sizeof(uint32_t*), LY_STMT_CARD_ANY}, /* uint32_t* */
-/*    {LY_STMT_UNIQUE,       30 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_MODULE,       31 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_SUBMODULE,    32 * sizeof(void *), LY_STMT_CARD_ANY},
+/* compress the offset calculation */
+    {LY_STMT_UNIQUE,       24 * sizeof(void*), LY_STMT_CARD_ANY}, /* TODO */
+    {LY_STMT_MODULE,       25 * sizeof(void*), LY_STMT_CARD_ANY}, /* struct lys_module** */
+/*    {LY_STMT_SUBMODULE,    32 * sizeof(void *), LY_STMT_CARD_ANY},
     {LY_STMT_ACTION,       33 * sizeof(void *), LY_STMT_CARD_ANY},
     {LY_STMT_ANYDATA,      34 * sizeof(void *), LY_STMT_CARD_ANY},
     {LY_STMT_CASE,         35 * sizeof(void *), LY_STMT_CARD_ANY},

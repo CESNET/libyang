@@ -7093,9 +7093,8 @@ error:
 
 /* logs directly */
 struct lys_module *
-yin_read_module(struct ly_ctx *ctx, const char *data, const char *revision, int implement)
+yin_read_module_(struct ly_ctx *ctx, struct lyxml_elem *yin, const char *revision, int implement)
 {
-    struct lyxml_elem *yin;
     struct lys_module *module = NULL;
     struct unres_schema *unres;
     const char *value;
@@ -7105,11 +7104,6 @@ yin_read_module(struct ly_ctx *ctx, const char *data, const char *revision, int 
     if (!unres) {
         LOGMEM;
         return NULL;
-    }
-
-    yin = lyxml_parse_mem(ctx, data, 0);
-    if (!yin) {
-       goto error;
     }
 
     /* check root element */
@@ -7196,14 +7190,12 @@ yin_read_module(struct ly_ctx *ctx, const char *data, const char *revision, int 
         assert(module);
     }
 
-    lyxml_free(ctx, yin);
     unres_schema_free(NULL, &unres);
     LOGVRB("Module \"%s\" successfully parsed.", module->name);
     return module;
 
 error:
     /* cleanup */
-    lyxml_free(ctx, yin);
     unres_schema_free(module, &unres);
 
     if (!module) {
@@ -7218,6 +7210,26 @@ error:
     lys_sub_module_remove_devs_augs(module);
     lys_free(module, NULL, 1);
     return NULL;
+}
+
+/* logs directly */
+struct lys_module *
+yin_read_module(struct ly_ctx *ctx, const char *data, const char *revision, int implement)
+{
+    struct lyxml_elem *yin;
+    struct lys_module *result;
+
+    yin = lyxml_parse_mem(ctx, data, 0);
+    if (!yin) {
+        LOGERR(ly_errno, "Module parsing failed.");
+        return NULL;
+    }
+
+    result = yin_read_module_(ctx, yin, revision, implement);
+
+    lyxml_free(ctx, yin);
+
+    return result;
 }
 
 static int
@@ -7791,6 +7803,16 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             (**(uint32_t **)p) = (uint32_t)ll;
 
             YIN_EXTCOMPLEX_INT_ENLARGE(uint32_t*);
+        } else if (!strcmp(node->name, "module")) {
+            pp = yin_getplace_for_extcomplex_struct(node, ext, LY_STMT_MODULE);
+            if (!pp) {
+                goto error;
+            }
+
+            *(struct lys_module **)pp = yin_read_module_(mod->ctx, node, NULL, mod->implemented);
+            if (!(*pp)) {
+                goto error;
+            }
         } else {
             LOGERR(LY_SUCCESS, "Extension's substatement \"%s\" not yet supported.", node->name);
             //LOGERR(LY_EINT, "Extension's substatement \"%s\" not yet supported.", node->name);

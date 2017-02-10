@@ -1621,17 +1621,18 @@ yang_print_snode(struct lyout *out, int level, const struct lys_node *node, int 
     }
 }
 
-int
-yang_print_model(struct lyout *out, const struct lys_module *module)
+static int
+yang_print_model_(struct lyout *out, int level, const struct lys_module *module)
 {
     unsigned int i;
-    int level = 0, p;
+    int p;
 
     struct lys_node *node;
 
     /* (sub)module-header-stmts */
     if (module->type) {
-        ly_print(out, "submodule %s {%s\n", module->name, (module->deviated == 1 ? " // DEVIATED" : ""));
+        ly_print(out, "%*ssubmodule %s {%s\n", LEVEL, INDENT, module->name,
+                 (module->deviated == 1 ? " // DEVIATED" : ""));
         level++;
         if (lys_main_module(module)->version > 1 ||
                 lys_ext_iter(module->ext, module->ext_size, 0, LYEXT_SUBSTMT_VERSION) != -1) {
@@ -1648,7 +1649,8 @@ yang_print_model(struct lyout *out, const struct lys_module *module)
                            module, module->ext, module->ext_size);
         ly_print(out, "%*s}\n", LEVEL, INDENT);
     } else {
-        ly_print(out, "module %s {%s\n", module->name, (module->deviated == 1 ? " // DEVIATED" : ""));
+        ly_print(out, "%*smodule %s {%s\n", LEVEL, INDENT, module->name,
+                 (module->deviated == 1 ? " // DEVIATED" : ""));
         level++;
         if (module->version) {
             yang_print_substmt(out, level, LYEXT_SUBSTMT_VERSION, 0, module->version == 2 ? "1.1" : "1",
@@ -1800,10 +1802,17 @@ yang_print_model(struct lyout *out, const struct lys_module *module)
         yang_print_deviation(out, level, module, &module->deviation[i]);
     }
 
-    ly_print(out, "}\n");
+    level--;
+    ly_print(out, "%*s}\n", LEVEL, INDENT);
     ly_print_flush(out);
 
     return EXIT_SUCCESS;
+}
+
+int
+yang_print_model(struct lyout *out, const struct lys_module *module)
+{
+    return yang_print_model_(out, 0, module);
 }
 
 static void
@@ -1897,6 +1906,18 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
     void **pp, *p;
 
 #define YANG_PRINT_EXTCOMPLEX_STRUCT(STMT, TYPE, FUNC)                                        \
+    pp = lys_ext_complex_get_substmt(STMT, (struct lys_ext_instance_complex *)ext[u], NULL);  \
+    if (!pp || !(*pp)) { break; }                                                             \
+    if (info[i].cardinality >= LY_STMT_CARD_SOME) { /* process array */                       \
+        for (pp = *pp; *pp; pp++) {                                                           \
+            yang_print_open(out, &content);                                                   \
+            FUNC(out, level, (TYPE *)(*pp));                                                  \
+        }                                                                                     \
+    } else { /* single item */                                                                \
+        yang_print_open(out, &content);                                                       \
+        FUNC(out, level, (TYPE *)(*pp));                                                      \
+    }
+#define YANG_PRINT_EXTCOMPLEX_STRUCT_M(STMT, TYPE, FUNC)                                      \
     pp = lys_ext_complex_get_substmt(STMT, (struct lys_ext_instance_complex *)ext[u], NULL);  \
     if (!pp || !(*pp)) { break; }                                                             \
     if (info[i].cardinality >= LY_STMT_CARD_SOME) { /* process array */                       \
@@ -2026,10 +2047,10 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
                     }
                     break;
                 case LY_STMT_TYPE:
-                    YANG_PRINT_EXTCOMPLEX_STRUCT(LY_STMT_TYPE, struct lys_type, yang_print_type);
+                    YANG_PRINT_EXTCOMPLEX_STRUCT_M(LY_STMT_TYPE, struct lys_type, yang_print_type);
                     break;
                 case LY_STMT_IFFEATURE:
-                    YANG_PRINT_EXTCOMPLEX_STRUCT(LY_STMT_IFFEATURE, struct lys_iffeature, yang_print_iffeature);
+                    YANG_PRINT_EXTCOMPLEX_STRUCT_M(LY_STMT_IFFEATURE, struct lys_iffeature, yang_print_iffeature);
                     break;
                 case LY_STMT_STATUS:
                     flags = lys_ext_complex_get_substmt(LY_STMT_STATUS, (struct lys_ext_instance_complex *)ext[u], NULL);
@@ -2098,6 +2119,9 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
                 case LY_STMT_POSITION:
                     YANG_PRINT_EXTCOMPLEX_INT(LYEXT_SUBSTMT_POSITION, uint32_t);
                     break;
+                case LY_STMT_MODULE:
+                    YANG_PRINT_EXTCOMPLEX_STRUCT(LY_STMT_TYPE, struct lys_module, yang_print_model_);
+                    break;
                 default:
                     /* TODO */
                     break;
@@ -2114,4 +2138,6 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
         yang_print_close(out, level, content);
     }
 #undef YANG_PRINT_EXTCOMPLEX_STRUCT
+#undef YANG_PRINT_EXTCOMPLEX_STRUCT_M
+#undef YANG_PRINT_EXTCOMPLEX_INT
 }

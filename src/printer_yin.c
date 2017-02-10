@@ -1597,14 +1597,12 @@ yin_print_xmlns(struct lyout *out, const struct lys_module *module)
     }
 }
 
-int
-yin_print_model(struct lyout *out, const struct lys_module *module)
+static int
+yin_print_model_(struct lyout *out, int level, const struct lys_module *module)
 {
     unsigned int i;
-    int level = 0, p;
+    int p;
     struct lys_node *node;
-
-    ly_print(out, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
 
     if (module->deviated == 1) {
         ly_print(out, "<!-- DEVIATED -->\n");
@@ -1612,7 +1610,7 @@ yin_print_model(struct lyout *out, const struct lys_module *module)
 
     /* (sub)module-header-stmts */
     if (module->type) {
-        ly_print(out, "<submodule name=\"%s\"\n", module->name);
+        ly_print(out, "%*s<submodule name=\"%s\"\n", LEVEL, INDENT, module->name);
         yin_print_xmlns(out, module);
         ly_print(out, ">\n");
 
@@ -1632,7 +1630,7 @@ yin_print_model(struct lyout *out, const struct lys_module *module)
                           module, module->ext, module->ext_size);
         yin_print_close(out, level, NULL, "belongs-to", 1);
     } else {
-        ly_print(out, "<module name=\"%s\"\n", module->name);
+        ly_print(out, "%*s<module name=\"%s\"\n", LEVEL, INDENT, module->name);
         yin_print_xmlns(out, module);
         ly_print(out, ">\n");
 
@@ -1780,14 +1778,24 @@ yin_print_model(struct lyout *out, const struct lys_module *module)
         yin_print_deviation(out, level, module, &module->deviation[i]);
     }
 
+    level--;
     if (module->type) {
-        ly_print(out, "</submodule>\n");
+        ly_print(out, "%*s</submodule>\n", LEVEL, INDENT);
     } else {
-        ly_print(out, "</module>\n");
+        ly_print(out, "%*s</module>\n", LEVEL, INDENT);
     }
     ly_print_flush(out);
 
     return EXIT_SUCCESS;
+}
+
+int
+yin_print_model(struct lyout *out, const struct lys_module *module)
+{
+    int level = 0;
+
+    ly_print(out, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+    return yin_print_model_(out, level, module);
 }
 
 static void
@@ -1882,6 +1890,18 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
     void **pp, *p;
 
 #define YIN_PRINT_EXTCOMPLEX_STRUCT(STMT, TYPE, FUNC)                                         \
+    pp = lys_ext_complex_get_substmt(STMT, (struct lys_ext_instance_complex *)ext[u], NULL);  \
+    if (!pp || !(*pp)) { break; }                                                             \
+    if (info[i].cardinality >= LY_STMT_CARD_SOME) { /* process array */                       \
+        for (pp = *pp; *pp; pp++) {                                                           \
+            yin_print_close_parent(out, &content);                                            \
+            FUNC(out, level, (TYPE *)(*pp));                                                  \
+        }                                                                                     \
+    } else { /* single item */                                                                \
+        yin_print_close_parent(out, &content);                                                \
+        FUNC(out, level, (TYPE *)(*pp));                                                      \
+    }
+#define YIN_PRINT_EXTCOMPLEX_STRUCT_M(STMT, TYPE, FUNC)                                       \
     pp = lys_ext_complex_get_substmt(STMT, (struct lys_ext_instance_complex *)ext[u], NULL);  \
     if (!pp || !(*pp)) { break; }                                                             \
     if (info[i].cardinality >= LY_STMT_CARD_SOME) { /* process array */                       \
@@ -2025,10 +2045,10 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
                     }
                     break;
                 case LY_STMT_TYPE:
-                    YIN_PRINT_EXTCOMPLEX_STRUCT(LY_STMT_TYPE, struct lys_type, yin_print_type);
+                    YIN_PRINT_EXTCOMPLEX_STRUCT_M(LY_STMT_TYPE, struct lys_type, yin_print_type);
                     break;
                 case LY_STMT_IFFEATURE:
-                    YIN_PRINT_EXTCOMPLEX_STRUCT(LY_STMT_IFFEATURE, struct lys_iffeature, yin_print_iffeature);
+                    YIN_PRINT_EXTCOMPLEX_STRUCT_M(LY_STMT_IFFEATURE, struct lys_iffeature, yin_print_iffeature);
                     break;
                 case LY_STMT_STATUS:
                     flags = (uint16_t*)&((struct lys_ext_instance_complex*)ext[u])->content[info[i].offset];
@@ -2097,6 +2117,9 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
                 case LY_STMT_POSITION:
                     YIN_PRINT_EXTCOMPLEX_INT(LYEXT_SUBSTMT_POSITION, uint32_t);
                     break;
+                case LY_STMT_MODULE:
+                    YIN_PRINT_EXTCOMPLEX_STRUCT(LY_STMT_MODULE, struct lys_module, yin_print_model_);
+                    break;
                 default:
                     /* TODO */
                     break;
@@ -2114,4 +2137,6 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
     }
 
 #undef YIN_PRINT_EXTCOMPLEX_STRUCT
+#undef YIN_PRINT_EXTCOMPLEX_STRUCT_M
+#undef YIN_PRINT_EXTCOMPLEX_INT
 }
