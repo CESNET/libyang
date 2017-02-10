@@ -6093,6 +6093,9 @@ yin_read_module(struct ly_ctx *ctx, const char *data, const char *revision, int 
         if (lyp_check_include_missing(module)) {
             goto error;
         }
+
+        /* remove our submodules from the parsed submodules list */
+        lyp_del_includedup(module);
     }
 
     if (revision) {

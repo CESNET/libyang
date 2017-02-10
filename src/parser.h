@@ -76,6 +76,8 @@ int lyp_check_status(uint16_t flags1, struct lys_module *mod1, const char *name1
                      uint16_t flags2, struct lys_module *mod2, const char *name2,
                      const struct lys_node *node);
 
+void lyp_del_includedup(struct lys_module *mod);
+
 int dup_typedef_check(const char *type, struct lys_tpdf *tpdf, int size);
 
 int dup_identities_check(const char *id, struct lys_module *module);
