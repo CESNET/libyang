@@ -6316,7 +6316,7 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 struct unres_schema *unres)
 {
     struct ly_ctx *ctx = module->ctx;
-    struct lyxml_elem *next, *child, *child2, root, grps, augs, revs, exts;
+    struct lyxml_elem *next, *next2, *child, *child2, root, grps, augs, revs, exts;
     struct lys_node *node = NULL;
     struct lys_module *trg;
     const char *value;
@@ -6794,18 +6794,6 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             goto error;
         }
     }
-    if (c_extinst) {
-        /* some extensions may be already present from the substatements */
-        reallocated = realloc(trg->ext, (c_extinst + trg->ext_size) * sizeof *trg->ext);
-        if (!reallocated) {
-            LOGMEM;
-            goto error;
-        }
-        trg->ext = reallocated;
-
-        /* init memory */
-        memset(&trg->ext[trg->ext_size], 0, c_extinst * sizeof *trg->ext);
-    }
 
     /* middle part 1 - process revision and then check whether this (sub)module was not already parsed, add it there */
     LY_TREE_FOR_SAFE(revs.child, next, child) {
@@ -6822,7 +6810,7 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             }
         }
 
-        LY_TREE_FOR(child->child, child2) {
+        LY_TREE_FOR_SAFE(child->child, next2, child2) {
             if (!child2->ns) {
                 /* garbage */
                 continue;
@@ -6936,11 +6924,24 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
     }
 
     /* process extension instances */
-    LY_TREE_FOR_SAFE(exts.child, next, child) {
-        r = lyp_yin_fill_ext(trg, LYEXT_PAR_MODULE, 0, 0, trg, child, &trg->ext, trg->ext_size, unres);
-        trg->ext_size++;
-        if (r) {
+    if (c_extinst) {
+        /* some extensions may be already present from the substatements */
+        reallocated = realloc(trg->ext, (c_extinst + trg->ext_size) * sizeof *trg->ext);
+        if (!reallocated) {
+            LOGMEM;
             goto error;
+        }
+        trg->ext = reallocated;
+
+        /* init memory */
+        memset(&trg->ext[trg->ext_size], 0, c_extinst * sizeof *trg->ext);
+
+        LY_TREE_FOR_SAFE(exts.child, next, child) {
+            r = lyp_yin_fill_ext(trg, LYEXT_PAR_MODULE, 0, 0, trg, child, &trg->ext, trg->ext_size, unres);
+            trg->ext_size++;
+            if (r) {
+                goto error;
+            }
         }
     }
 
