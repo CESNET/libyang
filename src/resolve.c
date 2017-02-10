@@ -4490,7 +4490,7 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
         break;
     default:
         vlog_node = NULL;
-        vlog_node = LY_VLOG_NONE;
+        vlog_type = LY_VLOG_NONE;
         break;
     }
 
