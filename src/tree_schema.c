@@ -4384,6 +4384,9 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
                     EXTCOMPLEX_FREE_STRUCT(LY_STMT_IFFEATURE, struct lys_iffeature, lys_iffeature_free, 0, 1);
                     break;
                 case LY_STMT_DIGITS:
+                case LY_STMT_MAX:
+                case LY_STMT_MIN:
+                case LY_STMT_POSITION:
                     if (substmt[j].cardinality >= LY_STMT_CARD_SOME) {
                         /* free the array */
                         pp = (void**)&((struct lys_ext_instance_complex *)e[i])->content[substmt[j].offset];

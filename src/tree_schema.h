@@ -285,9 +285,9 @@ typedef enum {
                                #LYS_STATUS_CURR, #LYS_STATUS_DEPRC and #LYS_STATUS_OBSLT, does not allow multiple
                                instances */
     LY_STMT_DIGITS,       /**< fraction-digits, stored as __uint8_t__ */
-    LY_STMT_MAX, /* max-elements */
-    LY_STMT_MIN, /* min-elements */
-    LY_STMT_POSITION,
+    LY_STMT_MAX,          /**< max-elements, stored as __uint32_t__ */
+    LY_STMT_MIN,          /**< min-elements, stored as __uint32_t__ */
+    LY_STMT_POSITION,     /**< stored as __uint32_t__ */
     LY_STMT_UNIQUE,
 
     LY_STMT_MODULE,

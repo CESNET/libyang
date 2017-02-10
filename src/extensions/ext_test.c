@@ -68,10 +68,12 @@ struct lyext_substmt libyang_ext_test_substmt[] = {
     {LY_STMT_ORDEREDBY,    20 * sizeof(const char*) + 3 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared uint16_t */
     {LY_STMT_STATUS,       20 * sizeof(const char*) + 3 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared uint16_t */
     {LY_STMT_DIGITS,       20 * sizeof(const char*) + 3 * sizeof(uint8_t) + sizeof(uint16_t), LY_STMT_CARD_OPT}, /* uint8_t */
-/*    {LY_STMT_MAX,          27 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_MIN,          28 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_POSITION,     29 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_UNIQUE,       30 * sizeof(void *), LY_STMT_CARD_OPT},
+    {LY_STMT_MAX,          20 * sizeof(const char*) + 4 * sizeof(uint8_t) + sizeof(uint16_t), LY_STMT_CARD_OPT}, /* uint32_t */
+    {LY_STMT_MIN,          20 * sizeof(const char*) + 4 * sizeof(uint8_t) +
+                           sizeof(uint16_t) + 1 * sizeof(uint32_t), LY_STMT_CARD_OPT}, /* uint32_t */
+    {LY_STMT_POSITION,     20 * sizeof(const char*) + 4 * sizeof(uint8_t) +
+                           sizeof(uint16_t) + 2 * sizeof(uint32_t), LY_STMT_CARD_OPT}, /* uint32_t */
+/*    {LY_STMT_UNIQUE,       30 * sizeof(void *), LY_STMT_CARD_OPT},
     {LY_STMT_MODULE,       31 * sizeof(void *), LY_STMT_CARD_OPT},
     {LY_STMT_SUBMODULE,    32 * sizeof(void *), LY_STMT_CARD_OPT},
     {LY_STMT_ACTION,       33 * sizeof(void *), LY_STMT_CARD_OPT},
@@ -132,10 +134,12 @@ struct lyext_substmt libyang_ext_test_substmt_arrays[] = {
     {LY_STMT_VALUE,        18 * sizeof(const char*), LY_STMT_CARD_ANY}, /* const char** */
     {LY_STMT_VERSION,      19 * sizeof(const char*), LY_STMT_CARD_ANY}, /* const char** */
     {LY_STMT_DIGITS,       20 * sizeof(const char*), LY_STMT_CARD_ANY}, /* uint8_t* */
-/*    {LY_STMT_MAX,          27 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_MIN,          28 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_POSITION,     29 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_UNIQUE,       30 * sizeof(void *), LY_STMT_CARD_ANY},
+    {LY_STMT_MAX,          20 * sizeof(const char*) + sizeof(uint8_t*), LY_STMT_CARD_ANY}, /* uint32_t* */
+    {LY_STMT_MIN,          20 * sizeof(const char*) + sizeof(uint8_t*) +
+                            1 * sizeof(uint32_t*), LY_STMT_CARD_ANY}, /* uint32_t* */
+    {LY_STMT_POSITION,     20 * sizeof(const char*) + sizeof(uint8_t*) +
+                            2 * sizeof(uint32_t*), LY_STMT_CARD_ANY}, /* uint32_t* */
+/*    {LY_STMT_UNIQUE,       30 * sizeof(void *), LY_STMT_CARD_ANY},
     {LY_STMT_MODULE,       31 * sizeof(void *), LY_STMT_CARD_ANY},
     {LY_STMT_SUBMODULE,    32 * sizeof(void *), LY_STMT_CARD_ANY},
     {LY_STMT_ACTION,       33 * sizeof(void *), LY_STMT_CARD_ANY},

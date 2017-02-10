@@ -2094,6 +2094,9 @@ test_complex_yin(void **state)
                     "    <ordered-by value=\"user\"/>\n"
                     "    <status value=\"obsolete\"/>\n"
                     "    <fraction-digits value=\"5\"/>\n"
+                    "    <max-elements value=\"2\"/>\n"
+                    "    <min-elements value=\"4\"/>\n"
+                    "    <position value=\"11\"/>\n"
                     "  </e:complex>\n"
                     "</module>\n";
 
@@ -2158,6 +2161,12 @@ test_complex_arrays_yin(void **state)
                     "    <yang-version value=\"b\"/>\n"
                     "    <fraction-digits value=\"5\"/>\n"
                     "    <fraction-digits value=\"10\"/>\n"
+                    "    <max-elements value=\"2\"/>\n"
+                    "    <max-elements value=\"3\"/>\n"
+                    "    <min-elements value=\"4\"/>\n"
+                    "    <min-elements value=\"5\"/>\n"
+                    "    <position value=\"11\"/>\n"
+                    "    <position value=\"12\"/>\n"
                     "  </e:complex-arrays>\n"
                     "</module>\n";
 
