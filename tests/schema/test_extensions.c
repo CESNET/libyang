@@ -1498,7 +1498,7 @@ test_extension_sub_yang(void **state)
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
                     "    }\n    reference\n      \"ref\" {\n"
                     "      e:a;\n      e:b \"one\";\n      e:c \"one\";\n"
-                    "    }\n  }\n"
+                    "    }\n  }\n\n"
                     "  e:a {\n"
                     "    e:a;\n    e:b \"one\";\n    e:c \"one\";\n"
                     "  }\n}\n";
@@ -2196,10 +2196,10 @@ main(void)
         cmocka_unit_test_setup_teardown(test_anydata_sub_yang, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_choice_sub_yang, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_uses_sub_yang, setup_ctx_yang, teardown_ctx),
-//        cmocka_unit_test_setup_teardown(test_extension_sub_yang, setup_ctx_yang, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_extension_sub_yang, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_rpc_sub_yang, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_notif_sub_yang, setup_ctx_yang, teardown_ctx),
-//        cmocka_unit_test_setup_teardown(test_deviation_sub_yang, setup_ctx_yang, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_deviation_sub_yang, setup_ctx_yang, teardown_ctx),
     };
 
     return cmocka_run_group_tests(cmut, NULL, NULL);
