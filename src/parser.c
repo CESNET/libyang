@@ -3026,10 +3026,18 @@ lyp_ctx_check_module(struct lys_module *module)
 {
     struct ly_ctx *ctx;
     int i, match_i = -1, to_implement;
+    const char *last_rev = NULL;
 
     assert(module);
     to_implement = 0;
     ctx = module->ctx;
+
+    /* find latest revision */
+    for (i = 0; i < module->rev_size; ++i) {
+        if (!last_rev || (strcmp(last_rev, module->rev[i].date) < 0)) {
+            last_rev = module->rev[i].date;
+        }
+    }
 
     for (i = 0; i < ctx->models.used; i++) {
         /* check name (name/revision) and namespace uniqueness */
@@ -3047,7 +3055,7 @@ lyp_ctx_check_module(struct lys_module *module)
                 LOGERR(LY_EINVAL, "Module \"%s\" with revision already in context.", ctx->models.list[i]->name);
                 return -1;
             } else if ((!module->rev_size && !ctx->models.list[i]->rev_size)
-                    || !strcmp(ctx->models.list[i]->rev[0].date, module->rev[0].date)) {
+                    || !strcmp(ctx->models.list[i]->rev[0].date, last_rev)) {
 
                 LOGVRB("Module \"%s\" already in context.", ctx->models.list[i]->name);
                 to_implement = module->implemented;
