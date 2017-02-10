@@ -127,12 +127,14 @@ void lyp_ext_instance_rm(struct ly_ctx *ctx, struct lys_ext_instance ***ext, uin
  *
  * @param module Main module
  * @param inc Filled include structure
- * @param line
  * @return 0 for success, 1 for failure
  */
 int lyp_propagate_submodule(struct lys_module *module, struct lys_include *inc);
 
-int lyp_ctx_add_module(struct lys_module **module);
+/* return: -1 = error, 0 = succes, 1 = already there */
+int lyp_ctx_check_module(struct lys_module *module);
+
+int lyp_ctx_add_module(struct lys_module *module);
 
 /**
  * @brief mmap() wrapper for parsers. To unmap, use lyp_munmap().

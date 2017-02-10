@@ -442,7 +442,8 @@ json_get_anydata(struct lyd_node_anydata *any, const char *data)
 }
 
 static unsigned int
-json_get_value(struct lyd_node_leaf_list *leaf, struct lyd_node *first_sibling, const char *data)
+json_get_value(struct lyd_node_leaf_list *leaf, struct lyd_node **first_sibling, const char *data, int options,
+               struct unres_data *unres)
 {
     struct lyd_node_leaf_list *new;
     struct lys_type *stype;
@@ -532,6 +533,19 @@ repeat:
         /* repeat until end-array */
         len += skip_ws(&data[len]);
         if (data[len] == ',') {
+            /* various validation checks */
+            if (lyv_data_context((struct lyd_node*)leaf, options, unres)) {
+                return 0;
+            }
+
+            ly_err_clean(1);
+            if (lyv_data_content((struct lyd_node*)leaf, options, unres) ||
+                     lyv_multicases((struct lyd_node*)leaf, NULL, first_sibling, 0, NULL)) {
+                if (ly_errno) {
+                    return 0;
+                }
+            }
+
             /* another instance of the leaf-list */
             new = calloc(1, sizeof(struct lyd_node_leaf_list));
             if (!new) {
@@ -542,8 +556,12 @@ repeat:
             new->prev = (struct lyd_node *)leaf;
             leaf->next = (struct lyd_node *)new;
 
+            /* copy the validity and when flags */
+            new->validity = leaf->validity;
+            new->when_status = leaf->when_status;
+
             /* fix the "last" pointer */
-            first_sibling->prev = (struct lyd_node *)new;
+            (*first_sibling)->prev = (struct lyd_node *)new;
 
             new->schema = leaf->schema;
 
@@ -1023,7 +1041,7 @@ attr_repeat:
     /* type specific processing */
     if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
         /* type detection and assigning the value */
-        r = json_get_value((struct lyd_node_leaf_list *)result, first_sibling, &data[len]);
+        r = json_get_value((struct lyd_node_leaf_list *)result, &first_sibling, &data[len], options, unres);
         if (!r) {
             goto error;
         }
@@ -1153,6 +1171,10 @@ attr_repeat:
 
             if (data[len] == ',') {
                 /* various validation checks */
+                if (lyv_data_context(list, options, unres)) {
+                    goto error;
+                }
+
                 ly_err_clean(1);
                 if (lyv_data_content(list, options, unres) ||
                          lyv_multicases(list, NULL, prev ? &first_sibling : NULL, 0, NULL)) {
@@ -1170,6 +1192,10 @@ attr_repeat:
                 new->prev = list;
                 list->next = new;
 
+                /* copy the validity and when flags */
+                new->validity = list->validity;
+                new->when_status = list->when_status;
+
                 /* fix the "last" pointer */
                 first_sibling->prev = new;
 
@@ -1177,7 +1203,7 @@ attr_repeat:
                 list = new;
             }
         } while (data[len] == ',');
-        result = first_sibling;
+        result = list;
 
         if (data[len] != ']') {
             LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, result, "JSON data (missing end-array)");

@@ -2468,7 +2468,7 @@ yang_parse_mem(struct lys_module *module, struct lys_submodule *submodule, struc
     unsigned int size;
     YY_BUFFER_STATE bp;
     yyscan_t scanner = NULL;
-    int ret = EXIT_SUCCESS, remove_import = 1;
+    int ret = 0;
     struct lys_module *trg;
     struct yang_parameter param;
 
@@ -2480,16 +2480,17 @@ yang_parse_mem(struct lys_module *module, struct lys_submodule *submodule, struc
     param.submodule = submodule;
     param.unres = unres;
     param.node = node;
-    param.remove_import = &remove_import;
+    param.remove_import = 1;
+    param.exist_module = 0;
     if (yyparse(scanner, &param)) {
-        if (remove_import) {
+        if (param.remove_import) {
             trg = (submodule) ? (struct lys_module *)submodule : module;
             yang_free_import(trg->ctx, trg->imp, 0, trg->imp_size);
             yang_free_include(trg->ctx, trg->inc, 0, trg->inc_size);
             trg->inc_size = 0;
             trg->imp_size = 0;
         }
-        ret = EXIT_FAILURE;
+        ret = (param.exist_module) ? 1 : -1;
     }
     yy_delete_buffer(bp, scanner);
     yylex_destroy(scanner);
@@ -2500,9 +2501,10 @@ struct lys_module *
 yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const char *revision, int implement)
 {
 
-    struct lys_module *module = NULL;
+    struct lys_module *module = NULL, *tmp_mod;
     struct unres_schema *unres = NULL;
     struct lys_node *node = NULL;
+    int ret;
 
     unres = calloc(1, sizeof *unres);
     if (!unres) {
@@ -2521,17 +2523,20 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
     module->type = 0;
     module->implemented = (implement ? 1 : 0);
 
-    if (yang_parse_mem(module, NULL, unres, data, size, &node)) {
+    ret = yang_parse_mem(module, NULL, unres, data, size, &node);
+    if (ret == -1) {
         free_yang_common(module, node);
         goto error;
-    }
+    } else if (ret == 1 ) {
+        assert(!unres->count);
+    } else {
+        if (yang_check_sub_module(module, unres, node)) {
+            goto error;
+        }
 
-    if (yang_check_sub_module(module, unres, node)) {
-        goto error;
-    }
-
-    if (module && unres->count && resolve_unres_schema(module, unres)) {
-        goto error;
+        if (module && unres->count && resolve_unres_schema(module, unres)) {
+            goto error;
+        }
     }
 
     if (revision) {
@@ -2543,26 +2548,38 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
         }
     }
 
-    if (lyp_rfn_apply_ext(module)) {
-        goto error;
-    }
-
-    /* check correctness of includes */
-    if (lyp_check_include_missing(module)) {
-        goto error;
-    }
-
-    if (lyp_ctx_add_module(&module)) {
-        goto error;
-    }
-
-    if (module->deviation_size && !module->implemented) {
-        LOGVRB("Module \"%s\" includes deviations, changing its conformance to \"implement\".", module->name);
-        /* deviations always causes target to be made implemented,
-         * but augents and leafrefs not, so we have to apply them now */
-        if (lys_set_implemented(module)) {
+    /* add into context if not already there */
+    if (!ret) {
+        /* check correctness of includes */
+        if (lyp_check_include_missing(module)) {
             goto error;
         }
+
+        if (lyp_rfn_apply_ext(module)) {
+            goto error;
+        }
+
+        if (lyp_ctx_add_module(module)) {
+            goto error;
+        }
+
+        if (module->deviation_size && !module->implemented) {
+            LOGVRB("Module \"%s\" includes deviations, changing its conformance to \"implement\".", module->name);
+            /* deviations always causes target to be made implemented,
+             * but augents and leafrefs not, so we have to apply them now */
+            if (lys_set_implemented(module)) {
+                goto error;
+            }
+        }
+    } else {
+        tmp_mod = module;
+
+        /* get the model from the context */
+        module = (struct lys_module *)ly_ctx_get_module(ctx, module->name, revision);
+        assert(module);
+
+        /* free what was parsed */
+        lys_free(tmp_mod, NULL, 0);
     }
 
     unres_schema_free(NULL, &unres);
@@ -2603,6 +2620,7 @@ yang_read_submodule(struct lys_module *module, const char *data, unsigned int si
     submodule->type = 1;
     submodule->belongsto = module;
 
+    /* module cannot be changed in this case and 1 cannot be returned */
     if (yang_parse_mem(module, submodule, unres, data, size, &node)) {
         free_yang_common((struct lys_module *)submodule, node);
         goto error;
@@ -3929,7 +3947,7 @@ yang_check_nodes(struct lys_module *module, struct lys_node *parent, struct lys_
         node->next = NULL;
         node->child = NULL;
         node->prev = node;
-        
+
         if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, node)) {
             lys_node_unlink(node);
             node->next = sibling;

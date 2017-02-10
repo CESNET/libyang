@@ -58,9 +58,10 @@ struct yang_parameter {
     struct unres_schema *unres;
     struct lys_node **node;
     char **value;
-    int *remove_import;
     void **data_node;
     void **actual_node;
+    uint8_t remove_import;
+    uint8_t exist_module;
 };
 
 struct yang_type {
@@ -178,7 +179,7 @@ int yang_check_ext_instance(struct lys_module *module, struct lys_ext_instance *
  * @param[in] data Pointer to a NULL-terminated string containing YANG data to parse.
  * @param[in] size_data Size of input string
  * @param[in/out] node Pointer to node
- * @return 0 on success, 1 on error.
+ * @return 0 on success, -1 on error, 1 on module is already in context.
  */
 int yang_parse_mem(struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres,
                    const char *data, unsigned int size_data, struct lys_node **node);

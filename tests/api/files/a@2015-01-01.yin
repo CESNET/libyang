@@ -4,7 +4,6 @@
         xmlns:a="urn:a">
   <namespace uri="urn:a"/>
   <prefix value="a_mod"/>
-  <feature name="foo"/>
   <revision date="2015-01-01">
     <description>
       <text>version 1</text>
@@ -13,6 +12,7 @@
       <text>RFC XXXX</text>
     </reference>
   </revision>
+  <feature name="foo"/>
   <grouping name="gg">
     <leaf name="bar-gggg">
       <type name="string"/>

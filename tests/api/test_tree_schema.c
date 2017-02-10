@@ -40,6 +40,8 @@ const char *lys_module_a = \
         xmlns:a=\"urn:a\">                            \
   <namespace uri=\"urn:a\"/>                          \
   <prefix value=\"a_mod\"/>                           \
+  <include module=\"asub\"/>                          \
+  <include module=\"atop\"/>                          \
   <revision date=\"2015-01-01\">                      \
     <description>                                     \
       <text>version 1</text>                          \
@@ -48,8 +50,6 @@ const char *lys_module_a = \
       <text>RFC XXXX</text>                           \
     </reference>                                      \
   </revision>                                         \
-  <include module=\"asub\"/>                          \
-  <include module=\"atop\"/>                          \
   <feature name=\"foo\"/>                             \
   <grouping name=\"gg\">                              \
     <leaf name=\"bar-gggg\">                          \
