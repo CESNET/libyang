@@ -142,7 +142,8 @@ extern int yydebug;
     MODIFIER_KEYWORD = 352,
     ANYDATA_KEYWORD = 353,
     NODE = 354,
-    NODE_PRINT = 355
+    NODE_PRINT = 355,
+    EXTENSION_INSTANCE = 356
   };
 #endif
 

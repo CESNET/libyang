@@ -185,6 +185,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %token ANYDATA_KEYWORD
 %token NODE
 %token NODE_PRINT
+%token EXTENSION_INSTANCE
 
 %type <uint> positive_integer_value
 %type <uint> non_negative_integer_value
@@ -249,6 +250,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <str> string_opt_part1
 %type <str> semicolom
 %type <str> curly_bracket_open
+%type <str> unknown_statement2_identifier
 %type <token> import_arg_str
 %type <token> include_arg_str
 %type <token> revision_arg_stmt
@@ -291,6 +293,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <backup_token> deviate_add
 %type <backup_token> deviate_delete
 %type <backup_token> deviate_replace
+%type <backup_token> string_opt
 
 %destructor { free($$); } pattern_arg_str string_opt_part1 semicolom curly_bracket_open
 %destructor { free(($$) ? *$$ : NULL); } tmp_string
@@ -3974,11 +3977,17 @@ stmtsep: @EMPTYDIR@
   ;
 
 unknown_statement: identifiers_ref string_opt unknown_statement_end
+                   { actual_type = $2.token;
+                     actual = $2.actual;
+                   }
 
-string_opt: string_opt_part1 string_opt_part2 { if (!yang_read_ext(trg, actual, $1, s, actual_type, backup_type)) {
+string_opt: string_opt_part1 string_opt_part2 { $$.token = actual_type;
+                                                $$.actual = actual;
+                                                if (!(actual = yang_read_ext(trg, actual, $1, s, actual_type, backup_type))) {
                                                   YYABORT;
                                                 }
                                                 s = NULL;
+                                                actual_type = EXTENSION_INSTANCE;
                                               }
 
 string_opt_part1: optsep { $$ = s; s = NULL; }
@@ -3986,14 +3995,37 @@ string_opt_part1: optsep { $$ = s; s = NULL; }
 string_opt_part2: @EMPTYDIR@
   |  string
 
+unknown_string: @EMPTYDIR@
+  |  sep unknown_string_part1
+
+unknown_string_part1: @EMPTYDIR@
+  |  strings optsep
+  |  STRING optsep unknown_string_part2
+
+unknown_string_part2: @EMPTYDIR@
+  |  unknown_string_part2 '+' optsep STRING optsep
+
 unknown_statement_end: ';'
   |  '{' optsep unknown_statement2_opt '}'
 
 unknown_statement2_opt: @EMPTYDIR@
-  |  unknown_statement2_opt node_identifier string_opt unknown_statement2_end;
+  |  unknown_statement2_opt unknown_statement2 optsep
 
-unknown_statement2_end: ';' optsep
-  |  '{' optsep unknown_statement2_opt '}' optsep
+/* unknown_statement2 read yang statement or extension; yang statement is parsed later */
+
+unknown_statement2: unknown_statement
+  |  unknown_statement2_identifier unknown_string unknown_statement2_end
+
+unknown_statement2_end: ';'
+  |  '{' optsep unknown_statement2_opt '}'
+
+unknown_statement2_identifier: identifier { $$ = yyget_text(scanner); }
+
+unknown_statement3_opt: @EMPTYDIR@
+  |  unknown_statement3_opt node_identifier unknown_string unknown_statement3_opt_end;
+
+unknown_statement3_opt_end: ';' optsep
+  |  '{' optsep unknown_statement3_opt '}' optsep
 
 sep_stmt: WHITESPACE
   | EOL

@@ -2236,6 +2236,11 @@ yang_ext_instance(void *node, enum yytokentype type)
         size = &((struct lys_deviate *)node)->ext_size;
         parent_type = LYEXT_PAR_DEVIATE;
         break;
+    case EXTENSION_INSTANCE:
+        ext = &((struct lys_ext_instance *)node)->ext;
+        size = &((struct lys_ext_instance *)node)->ext_size;
+        parent_type = LYEXT_PAR_EXTINST;
+        break;
     default:
         LOGINT;
         return NULL;
