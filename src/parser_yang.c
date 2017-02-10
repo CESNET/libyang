@@ -20,6 +20,7 @@
 #include "xpath.h"
 
 static void yang_free_import(struct ly_ctx *ctx, struct lys_import *imp, uint8_t start, uint8_t size);
+static int yang_check_must(struct lys_module *module, struct lys_restr *must, uint size, struct unres_schema *unres);
 static void yang_free_include(struct ly_ctx *ctx, struct lys_include *inc, uint8_t start, uint8_t size);
 static int yang_check_sub_module(struct lys_module *module, struct unres_schema *unres, struct lys_node *node);
 static void free_yang_common(struct lys_module *module, struct lys_node *node);
@@ -479,6 +480,7 @@ yang_read_units(struct lys_module *module, void *node, char *value, enum yytoken
         break;
     case ADD_KEYWORD:
     case REPLACE_KEYWORD:
+    case DELETE_KEYWORD:
         ret = yang_check_string(module, &((struct lys_deviate *) node)->units, "units", "deviate", value, NULL);
         break;
     default:
@@ -1402,17 +1404,21 @@ yang_read_augment(struct lys_module *module, struct lys_node *parent, struct lys
     return EXIT_SUCCESS;
 }
 
-int
+void *
 yang_read_deviate_unsupported(struct lys_deviation *dev)
 {
     if (dev->deviate_size) {
         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"not-supported\" deviation cannot be combined with any other deviation.");
-        return EXIT_FAILURE;
+        return NULL;
     }
     dev->deviate = calloc(1, sizeof *dev->deviate);
+    if (!dev->deviate) {
+        LOGMEM;
+        return NULL;
+    }
     dev->deviate[dev->deviate_size].mod = LY_DEVIATE_NO;
     dev->deviate_size = 1;
-    return EXIT_SUCCESS;
+    return dev->deviate;
 }
 
 void *
@@ -1442,6 +1448,7 @@ int
 yang_read_deviate_units(struct ly_ctx *ctx, struct lys_deviate *deviate, struct lys_node *dev_target)
 {
     const char **stritem;
+    int j;
 
     /* check target node type */
     if (dev_target->nodetype == LYS_LEAFLIST) {
@@ -1463,6 +1470,13 @@ yang_read_deviate_units(struct ly_ctx *ctx, struct lys_deviate *deviate, struct 
         }
         /* remove current units value of the target */
         lydict_remove(ctx, *stritem);
+        *stritem = NULL;
+        /* remove its extensions */
+        j = -1;
+        while ((j = lys_ext_iter(dev_target->ext, dev_target->ext_size, j + 1, LYEXT_SUBSTMT_UNITS)) != -1) {
+            lyp_ext_instance_rm(ctx, &dev_target->ext, &dev_target->ext_size, j);
+            --j;
+        }
     } else {
         if (deviate->mod == LY_DEVIATE_ADD) {
             /* check that there is no current value */
@@ -1530,7 +1544,7 @@ yang_fill_deviate_default(struct ly_ctx *ctx, struct lys_deviate *deviate, struc
     struct lys_node_choice *choice;
     struct lys_node_leaf *leaf;
     struct lys_node_leaflist *llist;
-    int rc, i;
+    int rc, i, j;
     unsigned int u;
 
     u = strlen(value);
@@ -1546,6 +1560,13 @@ yang_fill_deviate_default(struct ly_ctx *ctx, struct lys_deviate *deviate, struc
                 LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "default");
                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Value differs from the target being deleted.");
                 goto error;
+            }
+            choice->dflt = NULL;
+            /* remove extensions of this default instance from the target node */
+            j = -1;
+            while ((j = lys_ext_iter(dev_target->ext, dev_target->ext_size, j + 1, LYEXT_SUBSTMT_DEFAULT)) != -1) {
+                lyp_ext_instance_rm(ctx, &dev_target->ext, &dev_target->ext_size, j);
+                --j;
             }
         } else { /* add or replace */
             choice->dflt = node;
@@ -1567,6 +1588,12 @@ yang_fill_deviate_default(struct ly_ctx *ctx, struct lys_deviate *deviate, struc
             lydict_remove(ctx, leaf->dflt);
             leaf->dflt = NULL;
             leaf->flags &= ~LYS_DFLTJSON;
+            /* remove extensions of this default instance from the target node */
+            j = -1;
+            while ((j = lys_ext_iter(dev_target->ext, dev_target->ext_size, j + 1, LYEXT_SUBSTMT_DEFAULT)) != -1) {
+                lyp_ext_instance_rm(ctx, &dev_target->ext, &dev_target->ext_size, j);
+                --j;
+            }
         } else { /* add (already checked) and replace */
             /* remove value */
             lydict_remove(ctx, leaf->dflt);
@@ -1587,6 +1614,17 @@ yang_fill_deviate_default(struct ly_ctx *ctx, struct lys_deviate *deviate, struc
                     /* match, remove the value */
                     lydict_remove(llist->module->ctx, llist->dflt[i]);
                     llist->dflt[i] = NULL;
+                    /* remove extensions of this default instance from the target node */
+                    j = -1;
+                    while ((j = lys_ext_iter(dev_target->ext, dev_target->ext_size, j + 1, LYEXT_SUBSTMT_DEFAULT)) != -1) {
+                        if (dev_target->ext[j]->insubstmt_index == i) {
+                            lyp_ext_instance_rm(ctx, &dev_target->ext, &dev_target->ext_size, j);
+                            --j;
+                        } else if (dev_target->ext[j]->insubstmt_index > i) {
+                            /* decrease the substatement index of the extension because of the changed array of defaults */
+                            dev_target->ext[j]->insubstmt_index--;
+                        }
+                    }
                     break;
                 }
             }
@@ -1913,6 +1951,9 @@ yang_check_deviate_must(struct lys_module *module, struct unres_schema *unres,
         }
     }
 
+    if (yang_check_must(module, deviate->must, deviate->must_size, unres)) {
+        goto error;
+    }
     /* check XPath dependencies */
     if (*trg_must_size && unres_schema_add_node(module, unres, dev_target, UNRES_XPATH, NULL)) {
         goto error;
@@ -1933,7 +1974,7 @@ int
 yang_deviate_delete_unique(struct lys_module *module, struct lys_deviate *deviate,
                            struct lys_node_list *list, int index, char * value)
 {
-    int i, j;
+    int i, j, k;
 
     /* find unique structures to delete */
     for (i = 0; i < list->unique_size; i++) {
@@ -1968,6 +2009,7 @@ yang_deviate_delete_unique(struct lys_module *module, struct lys_deviate *deviat
                 list->unique[list->unique_size].expr = NULL;
             }
 
+            k = i; /* remember index for removing extensions */
             i = -1; /* set match flag */
             break;
         }
@@ -1980,6 +2022,17 @@ yang_deviate_delete_unique(struct lys_module *module, struct lys_deviate *deviat
         return EXIT_FAILURE;
     }
 
+    /* remove extensions of this unique instance from the target node */
+    j = -1;
+    while ((j = lys_ext_iter(list->ext, list->ext_size, j + 1, LYEXT_SUBSTMT_UNIQUE)) != -1) {
+        if (list->ext[j]->insubstmt_index == k) {
+            lyp_ext_instance_rm(module->ctx, &list->ext, &list->ext_size, j);
+            --j;
+        } else if (list->ext[j]->insubstmt_index > k) {
+            /* decrease the substatement index of the extension because of the changed array of uniques */
+            list->ext[j]->insubstmt_index--;
+        }
+    }
     return EXIT_SUCCESS;
 }
 
@@ -2170,6 +2223,19 @@ yang_ext_instance(void *node, enum yytokentype type)
         size = &((struct lys_type_bit *)node)->ext_size;
         parent_type = LYEXT_PAR_REFINE;
         break;
+    case DEVIATION_KEYWORD:
+        ext = &((struct lys_deviation *)node)->ext;
+        size = &((struct lys_deviation *)node)->ext_size;
+        parent_type = LYEXT_PAR_DEVIATION;
+        break;
+    case NOT_SUPPORTED_KEYWORD:
+    case ADD_KEYWORD:
+    case DELETE_KEYWORD:
+    case REPLACE_KEYWORD:
+        ext = &((struct lys_deviate *)node)->ext;
+        size = &((struct lys_deviate *)node)->ext_size;
+        parent_type = LYEXT_PAR_DEVIATE;
+        break;
     default:
         LOGINT;
         return NULL;
@@ -2248,10 +2314,19 @@ yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext
             break;
         case DEFAULT_KEYWORD:
             instance->insubstmt = LYEXT_SUBSTMT_DEFAULT;
-            if (backup_type == LEAF_LIST_KEYWORD) {
+            switch (backup_type) {
+            case LEAF_LIST_KEYWORD:
                 instance->insubstmt_index = ((struct lys_node_leaflist *)actual)->dflt_size;
-            } else if (backup_type == REFINE_KEYWORD) {
+                break;
+            case REFINE_KEYWORD:
                 instance->insubstmt_index = ((struct lys_refine *)actual)->dflt_size;
+                break;
+            case ADD_KEYWORD:
+                instance->insubstmt_index = ((struct lys_deviate *)actual)->dflt_size;
+                break;
+            default:
+                /* nothing changes */
+                break;
             }
             break;
         case UNITS_KEYWORD:
@@ -2304,7 +2379,12 @@ yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext
             break;
         case UNIQUE_KEYWORD:
             instance->insubstmt = LYEXT_SUBSTMT_UNIQUE;
-            instance->insubstmt_index = ((struct lys_node_list *)actual)->unique_size;
+            if (backup_type == LIST_KEYWORD) {
+                instance->insubstmt_index = ((struct lys_node_list *)actual)->unique_size;
+            } else {
+                /* deviate */
+                instance->insubstmt_index = ((struct lys_deviate *)actual)->unique_size;
+            }
             break;
         default:
             LOGINT;
@@ -2555,7 +2635,7 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
             goto error;
         }
 
-        if (lyp_rfn_apply_ext(module)) {
+        if (lyp_rfn_apply_ext(module) || lyp_deviation_apply_ext(module)) {
             goto error;
         }
 
@@ -4073,6 +4153,9 @@ yang_check_deviate(struct lys_module *module, struct unres_schema *unres, struct
     struct lys_tpdf *tmp_parent;
     int i, j;
 
+    if (yang_check_ext_instance(module, &deviate->ext, deviate->ext_size, deviate, unres)) {
+        goto error;
+    }
     if (deviate->must_size && yang_check_deviate_must(module, unres, deviate, dev_target)) {
         goto error;
     }
@@ -4139,6 +4222,10 @@ yang_check_deviate(struct lys_module *module, struct unres_schema *unres, struct
         free(deviate->type);
         deviate->type = type;
         deviate->type->parent = tmp_parent;
+        if (yang_fill_type(module, type, (struct yang_type *)type->der, tmp_parent, unres)) {
+            goto error;
+        }
+
         if (unres_schema_add_node(module, unres, deviate->type, UNRES_TYPE_DER, dev_target) == -1) {
             goto error;
         }
@@ -4207,6 +4294,10 @@ yang_check_deviation(struct lys_module *module, struct unres_schema *unres, stru
             LOGINT;
             goto error;
         }
+    }
+
+    if (yang_check_ext_instance(module, &dev->ext, dev->ext_size, dev, unres)) {
+        goto error;
     }
 
     for (i = 0; i < dev->deviate_size; ++i) {

@@ -286,6 +286,11 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <backup_token> when_arg_str
 %type <backup_token> must_agr_str
 %type <backup_token> refine_arg_str
+%type <backup_token> deviation_arg
+%type <backup_token> deviate_not_supported
+%type <backup_token> deviate_add
+%type <backup_token> deviate_delete
+%type <backup_token> deviate_replace
 
 %destructor { free($$); } pattern_arg_str string_opt_part1 semicolom curly_bracket_open
 %destructor { free(($$) ? *$$ : NULL); } tmp_string
@@ -3192,13 +3197,16 @@ notification_opt_stmt: @EMPTYDIR@ { $$.notif = actual; }
   |  notification_opt_stmt grouping_stmt stmtsep
   |  notification_opt_stmt data_def_stmt stmtsep
 
-deviation_arg: deviation_arg_str { YANG_ADDELEM(trg->deviation, trg->deviation_size);
+deviation_arg: deviation_arg_str { $$.token = actual_type;
+                                   $$.actual = actual;
+                                   YANG_ADDELEM(trg->deviation, trg->deviation_size);
                                    ((struct lys_deviation *)actual)->target_name = transform_schema2json(trg, s);
                                    free(s);
                                    if (!((struct lys_deviation *)actual)->target_name) {
                                      YYABORT;
                                    }
                                    s = NULL;
+                                   actual_type = DEVIATION_KEYWORD;
                                  }
 
 deviation_stmt: DEVIATION_KEYWORD sep deviation_arg
@@ -3217,11 +3225,11 @@ deviation_stmt: DEVIATION_KEYWORD sep deviation_arg
                         LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "deviate", "deviation");
                         YYABORT;
                       }
+                      actual_type = $3.token;
+                      actual = $3.actual;
                     }
 
-deviation_opt_stmt: @EMPTYDIR@ { $$ = actual;
-                                 actual_type = DEVIATION_KEYWORD;
-                               }
+deviation_opt_stmt: @EMPTYDIR@ { $$ = actual; }
   |  deviation_opt_stmt description_stmt { if (yang_read_description(trg, $1, s, "deviation", NODE)) {
                                              YYABORT;
                                            }
@@ -3234,37 +3242,47 @@ deviation_opt_stmt: @EMPTYDIR@ { $$ = actual;
                                          s = NULL;
                                          $$ = $1;
                                        }
-  |  deviation_opt_stmt DEVIATE_KEYWORD sep deviate_body_stmt { actual = $1;
-                                                                actual_type = DEVIATION_KEYWORD;
-                                                                $$ = $1;
-                                                              }
+  |  deviation_opt_stmt DEVIATE_KEYWORD sep deviate_body_stmt stmtsep
 
 deviation_arg_str: absolute_schema_nodeids optsep
   | string_1
 
 deviate_body_stmt: deviate_not_supported_stmt
-                   { if (yang_read_deviate_unsupported(actual)) {
-                       YYABORT;
-                     }
-                   }
-  |  deviate_stmts optsep
+  |  deviate_stmts
 
 
-deviate_not_supported: NOT_SUPPORTED_KEYWORD {  backup_type = actual_type;
-                                                actual_type = NOT_SUPPORTED_KEYWORD;
+deviate_not_supported: NOT_SUPPORTED_KEYWORD { $$.token = actual_type;
+                                               $$.actual = actual;
+                                               if (!(actual = yang_read_deviate_unsupported(actual))) {
+                                                 YYABORT;
+                                               }
+                                               actual_type = NOT_SUPPORTED_KEYWORD;
                                              }
 
-deviate_not_supported_stmt: deviate_not_supported optsep stmtend
+deviate_not_supported_stmt: deviate_not_supported optsep deviate_not_supported_end
+                            { actual_type = $1.token;
+                              actual = $1.actual;
+                            }
+
+deviate_not_supported_end: ';'
+  | '{' stmtsep '}'
 
 deviate_stmts: deviate_add_stmt
   |  deviate_replace_stmt
   |  deviate_delete_stmt
 
-deviate_add_stmt: ADD_KEYWORD optsep { if (!(actual = yang_read_deviate(actual, LY_DEVIATE_ADD))) {
-                                         YYABORT;
-                                       }
-                                     }
-                  deviate_add_end
+deviate_add: ADD_KEYWORD { $$.token = actual_type;
+                           $$.actual = actual;
+                           if (!(actual = yang_read_deviate(actual, LY_DEVIATE_ADD))) {
+                             YYABORT;
+                           }
+                           actual_type = ADD_KEYWORD;
+                         }
+
+deviate_add_stmt: deviate_add optsep deviate_add_end
+                  { actual_type = $1.token;
+                    actual = $1.actual;
+                  }
 
 deviate_add_end: ';'
   |  '{' stmtsep
@@ -3299,19 +3317,14 @@ deviate_add_end: ';'
            }
          }
 
-deviate_add_opt_stmt: @EMPTYDIR@ { $$ = actual;
-                                   actual_type = ADD_KEYWORD;
-                                 }
+deviate_add_opt_stmt: @EMPTYDIR@ { $$ = actual; }
   |  deviate_add_opt_stmt units_stmt { if (yang_read_units(trg, actual, s, ADD_KEYWORD)) {
                                          YYABORT;
                                        }
                                        s = NULL;
                                        $$ = $1;
                                      }
-  |  deviate_add_opt_stmt must_stmt stmtsep { actual = $1;
-                                              actual_type = ADD_KEYWORD;
-                                              $$ = $1;
-                                            }
+  |  deviate_add_opt_stmt must_stmt stmtsep
   |  deviate_add_opt_stmt unique_stmt { YANG_ADDELEM($1->unique, $1->unique_size);
                                         ((struct lys_unique *)actual)->expr = (const char **)s;
                                         s = NULL;
@@ -3355,11 +3368,18 @@ deviate_add_opt_stmt: @EMPTYDIR@ { $$ = actual;
                                               $$ =  $1;
                                             }
 
-deviate_delete_stmt: DELETE_KEYWORD optsep { if (!(actual = yang_read_deviate(actual, LY_DEVIATE_DEL))) {
-                                               YYABORT;
-                                             }
-                                           }
-                     deviate_delete_end
+deviate_delete: DELETE_KEYWORD { $$.token = actual_type;
+                                 $$.actual = actual;
+                                 if (!(actual = yang_read_deviate(actual, LY_DEVIATE_DEL))) {
+                                   YYABORT;
+                                 }
+                                 actual_type = DELETE_KEYWORD;
+                               }
+
+deviate_delete_stmt: deviate_delete optsep deviate_delete_end
+                     { actual_type = $1.token;
+                       actual = $1.actual;
+                     }
 
 deviate_delete_end: ';'
   |  '{' stmtsep
@@ -3394,19 +3414,14 @@ deviate_delete_end: ';'
             }
           }
 
-deviate_delete_opt_stmt: @EMPTYDIR@ { $$ = actual;
-                                      actual_type = DELETE_KEYWORD;
-                                    }
+deviate_delete_opt_stmt: @EMPTYDIR@ { $$ = actual; }
   |  deviate_delete_opt_stmt units_stmt { if (yang_read_units(trg, actual, s, DELETE_KEYWORD)) {
                                             YYABORT;
                                           }
                                           s = NULL;
                                           $$ = $1;
                                         }
-  |  deviate_delete_opt_stmt must_stmt stmtsep { actual = $1;
-                                                 actual_type = DELETE_KEYWORD;
-                                                 $$ = $1;
-                                               }
+  |  deviate_delete_opt_stmt must_stmt stmtsep
   |  deviate_delete_opt_stmt unique_stmt { YANG_ADDELEM($1->unique, $1->unique_size);
                                            ((struct lys_unique *)actual)->expr = (const char **)s;
                                            s = NULL;
@@ -3420,11 +3435,18 @@ deviate_delete_opt_stmt: @EMPTYDIR@ { $$ = actual;
                                             $$ = $1;
                                           }
 
-deviate_replace_stmt: REPLACE_KEYWORD optsep { if (!(actual = yang_read_deviate(actual, LY_DEVIATE_RPL))) {
-                                                 YYABORT;
-                                               }
-                                             }
-                      deviate_replace_end
+deviate_replace: REPLACE_KEYWORD { $$.token = actual_type;
+                                   $$.actual = actual;
+                                   if (!(actual = yang_read_deviate(actual, LY_DEVIATE_RPL))) {
+                                     YYABORT;
+                                   }
+                                   actual_type = REPLACE_KEYWORD;
+                                 }
+
+deviate_replace_stmt: deviate_replace optsep deviate_replace_end
+                      { actual_type = $1.token;
+                        actual = $1.actual;
+                      }
 
 deviate_replace_end: ';'
   |  '{' stmtsep
@@ -3441,12 +3463,8 @@ deviate_replace_end: ';'
            }
          }
 
-deviate_replace_opt_stmt: @EMPTYDIR@ { $$ = actual;
-                                       actual_type = REPLACE_KEYWORD;
-                                     }
-  |  deviate_replace_opt_stmt type_stmt stmtsep { actual = $1;
-                                                  actual_type = REPLACE_KEYWORD;
-                                                }
+deviate_replace_opt_stmt: @EMPTYDIR@ { $$ = actual; }
+  |  deviate_replace_opt_stmt type_stmt stmtsep
   |  deviate_replace_opt_stmt units_stmt { if (yang_read_units(trg, actual, s, DELETE_KEYWORD)) {
                                              YYABORT;
                                            }

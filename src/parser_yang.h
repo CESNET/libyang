@@ -153,7 +153,7 @@ int yang_read_augment(struct lys_module *module, struct lys_node *parent, struct
 
 void *yang_read_deviate(struct lys_deviation *dev, LYS_DEVIATE_TYPE mod);
 
-int yang_read_deviate_unsupported(struct lys_deviation *dev);
+void *yang_read_deviate_unsupported(struct lys_deviation *dev);
 
 int yang_fill_unique(struct lys_module *module, struct lys_node_list *list, struct lys_unique *unique, char *value, struct unres_schema *unres);
 
