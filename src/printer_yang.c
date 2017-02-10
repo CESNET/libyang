@@ -1912,15 +1912,15 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
     p = &((struct lys_ext_instance_complex*)ext[u])->content[info[i].offset];      \
     if (!p) { break; }                                                             \
     if (info->cardinality >= LY_STMT_CARD_SOME) { /* we have array */              \
-        for (c = 0; (*(TYPE**)p)[c]; c++) {                                        \
+        for (c = 0; (*(TYPE***)p)[c]; c++) {                                       \
             yang_print_open(out, &content);                                        \
             yang_print_unsigned(out, level, STMT, c, module,                       \
-                                ext[u]->ext, ext[u]->ext_size, (*(TYPE**)p)[c]);   \
+                                ext[u]->ext, ext[u]->ext_size, *(*(TYPE***)p)[c]); \
         }                                                                          \
-    } else if ((*(TYPE*)p)) {                                                      \
+    } else if ((*(TYPE**)p)) {                                                     \
         yang_print_open(out, &content);                                            \
         yang_print_unsigned(out, level, STMT, 0, module,                           \
-                            ext[u]->ext, ext[u]->ext_size, (*(TYPE*)p));           \
+                            ext[u]->ext, ext[u]->ext_size, (**(TYPE**)p));         \
     }
 
     for (u = 0; u < count; u++) {
@@ -2073,7 +2073,21 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
                                                LY_STMT_MODIFIER, "invert-match", NULL, &content);
                     break;
                 case LY_STMT_DIGITS:
-                    YANG_PRINT_EXTCOMPLEX_INT(LYEXT_SUBSTMT_DIGITS, uint8_t);
+                    p = &((struct lys_ext_instance_complex*)ext[u])->content[info[i].offset];
+                    if (!p) {
+                        break;
+                    }
+                    if (info->cardinality >= LY_STMT_CARD_SOME) { /* we have array */
+                        for (c = 0; (*(uint8_t**)p)[c]; c++) {
+                            yang_print_open(out, &content);
+                            yang_print_unsigned(out, level, LYEXT_SUBSTMT_DIGITS, c, module,
+                                                ext[u]->ext, ext[u]->ext_size, (*(uint8_t**)p)[c]);
+                        }
+                    } else if ((*(uint8_t*)p)) {
+                        yang_print_open(out, &content);
+                        yang_print_unsigned(out, level, LYEXT_SUBSTMT_DIGITS, 0, module,
+                                            ext[u]->ext, ext[u]->ext_size, (*(uint8_t*)p));
+                    }
                     break;
                 case LY_STMT_MAX:
                     YANG_PRINT_EXTCOMPLEX_INT(LYEXT_SUBSTMT_MAX, uint32_t);

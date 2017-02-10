@@ -4313,7 +4313,7 @@ lys_extcomplex_free_str(struct ly_ctx *ctx, struct lys_ext_instance_complex *ext
 void
 lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, unsigned int size)
 {
-    unsigned int i, j;
+    unsigned int i, j, k;
     struct lyext_substmt *substmt;
     void **pp, **start;
 
@@ -4383,10 +4383,18 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
                 case LY_STMT_IFFEATURE:
                     EXTCOMPLEX_FREE_STRUCT(LY_STMT_IFFEATURE, struct lys_iffeature, lys_iffeature_free, 0, 1);
                     break;
-                case LY_STMT_DIGITS:
                 case LY_STMT_MAX:
                 case LY_STMT_MIN:
                 case LY_STMT_POSITION:
+                    pp = (void**)&((struct lys_ext_instance_complex *)e[i])->content[substmt[j].offset];
+                    if (substmt[j].cardinality >= LY_STMT_CARD_SOME) {
+                        for(k = 0; ((uint32_t**)(*pp))[k]; k++) {
+                            free(((uint32_t**)(*pp))[k]);
+                        }
+                    }
+                    free(*pp);
+                    break;
+                case LY_STMT_DIGITS:
                     if (substmt[j].cardinality >= LY_STMT_CARD_SOME) {
                         /* free the array */
                         pp = (void**)&((struct lys_ext_instance_complex *)e[i])->content[substmt[j].offset];

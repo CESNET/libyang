@@ -7716,7 +7716,7 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
 
             YIN_EXTCOMPLEX_INT_ENLARGE(uint8_t);
         } else if (!strcmp(node->name, "max-elements")) {
-            YIN_EXTCOMPLEX_INT_GETPLACE(LY_STMT_MAX, uint32_t);
+            YIN_EXTCOMPLEX_INT_GETPLACE(LY_STMT_MAX, uint32_t*);
 
             GETVAL(value, node, "value");
             while (isspace(value[0])) {
@@ -7740,11 +7740,12 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             }
 
             /* store the value */
-            (*(uint32_t *)p) = (uint32_t)u;
+            *(uint32_t **)p = malloc(sizeof(uint32_t));
+            (**(uint32_t **)p) = (uint32_t)u;
 
-            YIN_EXTCOMPLEX_INT_ENLARGE(uint32_t);
+            YIN_EXTCOMPLEX_INT_ENLARGE(uint32_t*);
         } else if (!strcmp(node->name, "min-elements")) {
-            YIN_EXTCOMPLEX_INT_GETPLACE(LY_STMT_MIN, uint32_t);
+            YIN_EXTCOMPLEX_INT_GETPLACE(LY_STMT_MIN, uint32_t*);
 
             GETVAL(value, node, "value");
             while (isspace(value[0])) {
@@ -7765,11 +7766,12 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             }
 
             /* store the value */
-            (*(uint32_t *)p) = (uint32_t)u;
+            *(uint32_t **)p = malloc(sizeof(uint32_t));
+            (**(uint32_t **)p) = (uint32_t)u;
 
-            YIN_EXTCOMPLEX_INT_ENLARGE(uint32_t);
+            YIN_EXTCOMPLEX_INT_ENLARGE(uint32_t*);
         } else if (!strcmp(node->name, "position")) {
-            YIN_EXTCOMPLEX_INT_GETPLACE(LY_STMT_POSITION, uint32_t);
+            YIN_EXTCOMPLEX_INT_GETPLACE(LY_STMT_POSITION, uint32_t*);
 
             GETVAL(value, node, "value");
             ll = strtoll(value, NULL, 10);
@@ -7785,9 +7787,10 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             }
 
             /* store the value */
-            (*(uint32_t *)p) = (uint32_t)ll;
+            *(uint32_t **)p = malloc(sizeof(uint32_t));
+            (**(uint32_t **)p) = (uint32_t)ll;
 
-            YIN_EXTCOMPLEX_INT_ENLARGE(uint32_t);
+            YIN_EXTCOMPLEX_INT_ENLARGE(uint32_t*);
         } else {
             LOGERR(LY_SUCCESS, "Extension's substatement \"%s\" not yet supported.", node->name);
             //LOGERR(LY_EINT, "Extension's substatement \"%s\" not yet supported.", node->name);
