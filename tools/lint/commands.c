@@ -55,7 +55,7 @@ void
 cmd_data_help(void)
 {
     printf("data [-(-s)trict] [-t TYPE] [-d DEFAULTS] [-o <output-file>] [-f (xml | json)] [-x <additional-tree-file-name>]\n");
-    printf("     <data-file-name> [<JSON-rpc/action-schema-nodeid>]\n");
+    printf("     <data-file-name> [<RPC/action-data-file-name>]\n");
     printf("Accepted TYPEs:\n");
     printf("\tauto       - resolve data type (one of the following) automatically (as pyang does),\n");
     printf("\t             this option is applicable only in case of XML input data.\n");
@@ -340,14 +340,13 @@ cleanup:
 }
 
 static int
-parse_data(const char *filepath, int options, struct lyd_node *val_tree, const char *act_nodeid,
+parse_data(const char *filepath, int options, struct lyd_node *val_tree, const char *rpc_act_file,
            struct lyd_node **result)
 {
     size_t len;
     LYD_FORMAT informat = LYD_UNKNOWN;
     struct lyxml_elem *xml = NULL;
-    const struct lys_node *rpc_act = NULL;
-    struct lyd_node *data = NULL, *root, *next, *iter;
+    struct lyd_node *data = NULL, *root, *next, *iter, *rpc_act = NULL;
     void *lydval_arg = NULL;
 
     /* detect input format according to file suffix */
@@ -402,16 +401,16 @@ parse_data(const char *filepath, int options, struct lyd_node *val_tree, const c
             fprintf(stdout, "Parsing %s as <rpc> data.\n", filepath);
             options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPC;
         } else if (!strcmp(xml->name, "rpc-reply")) {
-            if (!act_nodeid) {
-                fprintf(stderr, "RPC reply data require additional argument (JSON schema nodeid of the RPC/action).\n");
+            if (!rpc_act_file) {
+                fprintf(stderr, "RPC/action reply data require additional argument (file with the RPC/action).\n");
                 lyxml_free(ctx, xml);
                 return EXIT_FAILURE;
             }
             fprintf(stdout, "Parsing %s as <rpc-reply> data.\n", filepath);
             options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPCREPLY;
-            rpc_act = ly_ctx_get_node(ctx, NULL, act_nodeid);
-            if (!rpc_act || !(rpc_act->nodetype & (LYS_RPC | LYS_ACTION))) {
-                fprintf(stderr, "Invalid JSON schema nodeid.\n");
+            rpc_act = lyd_parse_path(ctx, rpc_act_file, informat, LYD_OPT_RPC, val_tree);
+            if (!rpc_act) {
+                fprintf(stderr, "Failed to parse RPC/action.\n");
                 lyxml_free(ctx, xml);
                 return EXIT_FAILURE;
             }
@@ -439,13 +438,13 @@ parse_data(const char *filepath, int options, struct lyd_node *val_tree, const c
         lyxml_free(ctx, xml);
     } else {
         if (options & LYD_OPT_RPCREPLY) {
-            if (act_nodeid) {
-                fprintf(stderr, "RPC reply data require additional argument (schema nodeid of the RPC/action).\n");
+            if (!rpc_act_file) {
+                fprintf(stderr, "RPC/action reply data require additional argument (file with the RPC/action).\n");
                 return EXIT_FAILURE;
             }
-            rpc_act = ly_ctx_get_node(ctx, NULL, act_nodeid);
-            if (!rpc_act || !(rpc_act->nodetype & (LYS_RPC | LYS_ACTION))) {
-                fprintf(stderr, "Invalid JSON schema nodeid.\n");
+            rpc_act = lyd_parse_path(ctx, rpc_act_file, informat, LYD_OPT_RPC, val_tree);
+            if (!rpc_act) {
+                fprintf(stderr, "Failed to parse RPC/action.\n");
                 return EXIT_FAILURE;
             }
             data = lyd_parse_path(ctx, filepath, informat, options, rpc_act, val_tree);
@@ -460,6 +459,8 @@ parse_data(const char *filepath, int options, struct lyd_node *val_tree, const c
             data = lyd_parse_path(ctx, filepath, informat, options);
         }
     }
+    lyd_free_withsiblings(rpc_act);
+
     if (ly_errno) {
         fprintf(stderr, "Failed to parse data.\n");
         lyd_free_withsiblings(data);
