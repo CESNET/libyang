@@ -2202,7 +2202,7 @@ lyp_del_includedup(struct lys_module *mod)
 
     assert(mod && !mod->type);
 
-    if (mod->inc_size) {
+    if (mod->inc_size && models->parsed_submodules_count) {
         for (i = models->parsed_submodules_count - 1; models->parsed_submodules[i]->type; --i);
         assert(models->parsed_submodules[i] == mod);
 
