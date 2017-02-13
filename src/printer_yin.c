@@ -1888,7 +1888,17 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
     uint16_t *flags;
     const char *str;
     void **pp, *p;
+    struct lys_node *siter;
 
+#define YIN_PRINT_EXTCOMPLEX_SNODE(STMT)                                                      \
+    pp = lys_ext_complex_get_substmt(STMT, (struct lys_ext_instance_complex *)ext[u], NULL);  \
+    if (!pp || !(*pp)) { break; }                                                             \
+    LY_TREE_FOR((struct lys_node*)(*pp), siter) {                                             \
+        if (lys_snode2stmt(siter->nodetype) == STMT) {                                        \
+            yin_print_close_parent(out, &content);                                            \
+            yin_print_snode(out, level, siter, LYS_ANY);                                      \
+        }                                                                                     \
+    }
 #define YIN_PRINT_EXTCOMPLEX_STRUCT(STMT, TYPE, FUNC)                                         \
     pp = lys_ext_complex_get_substmt(STMT, (struct lys_ext_instance_complex *)ext[u], NULL);  \
     if (!pp || !(*pp)) { break; }                                                             \
@@ -2119,6 +2129,22 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
                     break;
                 case LY_STMT_MODULE:
                     YIN_PRINT_EXTCOMPLEX_STRUCT(LY_STMT_MODULE, struct lys_module, yin_print_model_);
+                    break;
+                case LY_STMT_ACTION:
+                case LY_STMT_ANYDATA:
+                case LY_STMT_ANYXML:
+                case LY_STMT_CASE:
+                case LY_STMT_CHOICE:
+                case LY_STMT_CONTAINER:
+                case LY_STMT_GROUPING:
+                case LY_STMT_INPUT:
+                case LY_STMT_OUTPUT:
+                case LY_STMT_LEAF:
+                case LY_STMT_LEAFLIST:
+                case LY_STMT_LIST:
+                case LY_STMT_NOTIFICATION:
+                case LY_STMT_USES:
+                    YIN_PRINT_EXTCOMPLEX_SNODE(info[i].stmt);
                     break;
                 default:
                     /* TODO */

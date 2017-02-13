@@ -213,13 +213,14 @@ typedef enum lys_nodetype {
     LYS_USES = 0x1000,           /**< uses statement node */
     LYS_AUGMENT = 0x2000,        /**< augment statement node */
     LYS_ACTION = 0x4000,         /**< action statement node */
-    LYS_ANYDATA = 0x8020         /**< anydata statement node, in tests it can be used for both #LYS_ANYXML and #LYS_ANYDATA */
+    LYS_ANYDATA = 0x8020,        /**< anydata statement node, in tests it can be used for both #LYS_ANYXML and #LYS_ANYDATA */
+    LYS_EXT = 0x10000            /**< complex extension instance, ::lys_ext_instance_complex */
 } LYS_NODE;
 
 /* all nodes sharing the node namespace except RPCs and notifications */
 #define LYS_NO_RPC_NOTIF_NODE 0x807F
 
-#define LYS_ANY 0x7FFF
+#define LYS_ANY 0xFFFF
 
 /**
  * @defgroup extensions YANG Extensions
@@ -230,8 +231,10 @@ typedef enum lys_nodetype {
 /**
  * @brief List of YANG statements
  *
- * Note that the storage type/structure in the values description are used in case of #LY_STMT_CARD_OPT or
- * #LY_STMT_CARD_MAND. In other cases, the data are stored as a pointer to the NULL-terminated array of base types:
+ * The description of each statement contains the storage type for the case the statement is specified by extension
+ * plugin to appear as a substatement to the extension instance. Note that the storage type/structure are used in
+ * case of #LY_STMT_CARD_OPT or #LY_STMT_CARD_MAND. In other cases, the data are stored as a pointer to the
+ * NULL-terminated array of base types:
  *
  *     char*     -> char**
  *     lys_type* -> lys_type**
@@ -247,6 +250,7 @@ typedef enum lys_nodetype {
  * that does not store extension instances directly.
  */
 typedef enum {
+    LY_STMT_UNKNOWN = 0,
     LY_STMT_ARGUMENT = 1, /**< stored as __const char*__ */
     LY_STMT_BASE,         /**< stored as __const char*__ */
     LY_STMT_BELONGSTO,    /**< belongs-to, stored as __const char*[2]__, the second item contains belongs-to's prefix,
@@ -291,22 +295,23 @@ typedef enum {
     LY_STMT_UNIQUE,
 
     LY_STMT_MODULE,       /**< stored as ::lys_module* */
-    LY_STMT_SUBMODULE,
-    LY_STMT_ACTION,
-    LY_STMT_ANYDATA,      /**< stored as ::lys_node_anydata*, covers also anyxml-stmt from YANG 1.0 */
-/*  LY_STMT_ANYXML - replaced by ANYDATA */
-    LY_STMT_CASE,
-    LY_STMT_CHOICE,
-    LY_STMT_CONTAINER,
-    LY_STMT_GROUPING,
-    LY_STMT_INPUT,
-    LY_STMT_LEAF,
-    LY_STMT_LEAFLIST, /* leaf-list */
-    LY_STMT_LIST,
-    LY_STMT_NOTIFICATION,
-    LY_STMT_OUTPUT,
-    LY_STMT_RPC,
-    LY_STMT_USES,
+    LY_STMT_SUBMODULE,    /**< not supported - submodules are tightly connected with their modules so it does not make
+                               any sense to have them instantiated under an extension instance */
+    LY_STMT_ACTION,       /**< stored as ::lys_node_rpc_action, part of the data tree */
+    LY_STMT_ANYDATA,      /**< stored as ::lys_node_anydata*, part of the data tree  */
+    LY_STMT_ANYXML,       /**< stored as ::lys_node_anydata*, part of the data tree  */
+    LY_STMT_CASE,         /**< stored as ::lys_node_case*, part of the data tree  */
+    LY_STMT_CHOICE,       /**< stored as ::lys_node_choice*, part of the data tree  */
+    LY_STMT_CONTAINER,    /**< stored as ::lys_node_container*, part of the data tree  */
+    LY_STMT_GROUPING,     /**< stored as ::lys_node_grouping*, part of the data tree  */
+    LY_STMT_INPUT,        /**< stored as ::lys_node_input*, part of the data tree, but it cannot apper multiple times */
+    LY_STMT_LEAF,         /**< stored as ::lys_node_leaf*, part of the data tree  */
+    LY_STMT_LEAFLIST,     /**< leaf-list, stored as ::lys_node_leaflist*, part of the data tree  */
+    LY_STMT_LIST,         /**< stored as ::lys_node_list*, part of the data tree  */
+    LY_STMT_NOTIFICATION, /**< stored as ::lys_node_notification*, part of the data tree  */
+    LY_STMT_OUTPUT,       /**< stored as ::lys_node_anydata*, part of the data tree, but it cannot apper multiple times */
+    LY_STMT_RPC,          /**< not supported, use actions instead */
+    LY_STMT_USES,         /**< stored as ::lys_node_uses*, part of the data tree  */
     LY_STMT_TYPEDEF,
     LY_STMT_TYPE,         /**< stored as ::lys_type* */
     LY_STMT_BIT,
@@ -452,6 +457,7 @@ struct lys_ext_instance_complex {
     /* to this point the structure is compatible with the generic ::lys_ext_instance structure */
     struct lyext_substmt *substmt;   /**< pointer to the plugin's list of substatements' information */
     struct lys_module *module;       /**< pointer to the extension instance's module (mandatory) */
+    LYS_NODE nodetype;               /**< type of the node for the case the extension instance contains schema nodes, */
     char content[];                  /**< content of the extension instance */
 };
 

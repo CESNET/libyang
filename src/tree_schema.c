@@ -321,7 +321,7 @@ repeat:
 void
 lys_node_unlink(struct lys_node *node)
 {
-    struct lys_node *parent, *first;
+    struct lys_node *parent, *first, **pp;
     struct lys_module *main_module;
 
     if (!node) {
@@ -356,7 +356,13 @@ lys_node_unlink(struct lys_node *node)
 
     /* unlink from parent */
     if (parent) {
-        if (parent->child == node) {
+        if (parent->nodetype == LYS_EXT) {
+            pp = (struct lys_node **)lys_ext_complex_get_substmt(lys_snode2stmt(node->nodetype),
+                                                                 (struct lys_ext_instance_complex*)parent, NULL);
+            if (*pp == node) {
+                *pp = node->next;
+            }
+        } else if (parent->child == node) {
             parent->child = node->next;
         }
         node->parent = NULL;
@@ -372,7 +378,11 @@ lys_node_unlink(struct lys_node *node)
     } else {
         /* unlinking the last element */
         if (parent) {
-            first = parent->child;
+            if (parent->nodetype == LYS_EXT) {
+                first = *(struct lys_node **)pp;
+            } else {
+                first = parent->child;
+            }
         } else {
             first = node;
             while (first->prev->next) {
@@ -482,7 +492,7 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
 {
     struct lys_node *start, *stop, *iter;
     struct lys_node_grp *grp;
-    int down;
+    int down, up;
 
     assert(node);
 
@@ -496,19 +506,24 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
     case LYS_GROUPING:
         /* 6.2.1, rule 6 */
         if (parent) {
-            if (parent->child) {
-                down = 1;
-                start = parent->child;
-            } else {
+            start = *lys_child(parent, LYS_GROUPING);
+            if (!start) {
                 down = 0;
                 start = parent;
+            } else {
+                down = 1;
+            }
+            if (parent->nodetype == LYS_EXT) {
+                up = 0;
+            } else {
+                up = 1;
             }
         } else {
-            down = 1;
+            down = up = 1;
             start = module->data;
         }
         /* go up */
-        if (lys_find_grouping_up(node->name, start)) {
+        if (up && lys_find_grouping_up(node->name, start)) {
             LOGVAL(LYE_DUPID, LY_VLOG_LYS, node, "grouping", node->name);
             return EXIT_FAILURE;
         }
@@ -559,6 +574,9 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
             if (!iter) {
                 stop = NULL;
                 iter = module->data;
+            } else if (iter->nodetype == LYS_EXT) {
+                stop = iter;
+                iter = *lys_child(iter, node->nodetype);
             } else {
                 stop = iter;
                 iter = iter->child;
@@ -613,7 +631,7 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
     case LYS_CASE:
         /* 6.2.1, rule 8 */
         if (parent) {
-            start = parent->child;
+            start = *lys_child(parent, LYS_CASE);
         } else {
             start = module->data;
         }
@@ -641,9 +659,11 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
 int
 lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys_node *child)
 {
-    struct lys_node *iter, *next;
+    struct lys_node *iter, *next, **pchild;
     struct lys_node_inout *in, *out, *inout;
     int type;
+    void *p;
+    struct lyext_substmt *info = NULL;
 
     assert(child);
 
@@ -724,7 +744,16 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
             LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, parent, strnodetype(child->nodetype), "(sub)module");
             return EXIT_FAILURE;
         }
-
+        break;
+    case LYS_EXT:
+        /* plugin-defined */
+        p = lys_ext_complex_get_substmt(lys_snode2stmt(child->nodetype), (struct lys_ext_instance_complex*)parent, &info);
+        if (!p) {
+            LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, parent, strnodetype(child->nodetype),
+                   ((struct lys_ext_instance_complex*)parent)->def->name);
+            return EXIT_FAILURE;
+        }
+        /* TODO check cardinality */
         break;
     }
 
@@ -737,7 +766,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
         lys_node_unlink(child);
     }
 
-    if (child->nodetype & (LYS_INPUT | LYS_OUTPUT)) {
+    if ((child->nodetype & (LYS_INPUT | LYS_OUTPUT)) && parent->nodetype != LYS_EXT) {
         /* replace the implicit input/output node */
         if (child->nodetype == LYS_OUTPUT) {
             inout = (struct lys_node_inout *)parent->child->next;
@@ -772,20 +801,23 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
             }
         } else {
             next = NULL;
-            if (!parent->child) {
+            pchild = lys_child(parent, child->nodetype);
+            assert(pchild);
+
+            if (!(*pchild)) {
                 /* the only/first child of the parent */
-                parent->child = child;
+                *pchild = child;
                 child->parent = parent;
                 iter = child;
             } else if (type == LYS_AUGMENT) {
                 /* add a new child as a last child of the augment (no matter if applied or not) */
-                for (iter = parent->child->prev; iter->parent != parent; iter = iter->prev);
+                for (iter = (*pchild)->prev; iter->parent != parent; iter = iter->prev);
                 next = iter->next;
                 iter->next = child;
                 child->prev = iter;
             } else {
                 /* add a new child at the end of parent's child list */
-                iter = parent->child->prev;
+                iter = (*pchild)->prev;
                 iter->next = child;
                 child->prev = iter;
             }
@@ -798,13 +830,13 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
                 iter->next = next;
                 next->prev = iter;
             } else {
-                parent->child->prev = iter;
+                (*pchild)->prev = iter;
             }
         }
     }
 
     /* check config value (but ignore them in groupings and augments) */
-    for (iter = parent; iter && !(iter->nodetype & (LYS_GROUPING | LYS_AUGMENT)); iter = iter->parent);
+    for (iter = parent; iter && !(iter->nodetype & (LYS_GROUPING | LYS_AUGMENT | LYS_EXT)); iter = iter->parent);
     if (parent && !iter) {
         for (iter = child; iter && !(iter->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT | LYS_RPC)); iter = iter->parent);
         if (!iter && (parent->flags & LYS_CONFIG_R) && (child->flags & LYS_CONFIG_W)) {
@@ -1127,6 +1159,7 @@ lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, uint8_t size
                 break;
             case LYEXT_COMPLEX:
                 result[u] = calloc(1, ((struct lyext_plugin_complex*)orig[u]->def->plugin)->instance_size);
+                ((struct lys_ext_instance_complex*)result[u])->nodetype = LYS_EXT;
                 ((struct lys_ext_instance_complex*)result[u])->module = mod;
                 ((struct lys_ext_instance_complex*)result[u])->substmt = ((struct lyext_plugin_complex*)orig[u]->def->plugin)->substmt;
                 /* TODO duplicate data in extension instance content */
@@ -2277,6 +2310,7 @@ lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys
     case LYS_OUTPUT:
         lys_inout_free(ctx, (struct lys_node_inout *)node);
         break;
+    case LYS_EXT:
     case LYS_UNKNOWN:
         LOGINT;
         break;
@@ -3462,15 +3496,45 @@ lys_main_module(const struct lys_module *module)
 API struct lys_node *
 lys_parent(const struct lys_node *node)
 {
-    if (!node || !node->parent) {
+    struct lys_node *parent;
+
+    if (!node) {
         return NULL;
     }
 
-    if (node->parent->nodetype == LYS_AUGMENT) {
-        return ((struct lys_node_augment *)node->parent)->target;
+    if (node->nodetype == LYS_EXT) {
+        if (((struct lys_ext_instance_complex*)node)->parent_type != LYEXT_PAR_NODE) {
+            return NULL;
+        }
+        parent = (struct lys_node*)((struct lys_ext_instance_complex*)node)->parent;
+    } else if (!node->parent) {
+        return NULL;
+    } else {
+        parent = node->parent;
     }
 
-    return node->parent;
+    if (parent->nodetype == LYS_AUGMENT) {
+        return ((struct lys_node_augment *)parent)->target;
+    } else {
+        return parent;
+    }
+}
+
+struct lys_node **
+lys_child(struct lys_node *node, LYS_NODE nodetype)
+{
+    void *pp;
+    assert(node);
+
+    if (node->nodetype == LYS_EXT) {
+        pp = lys_ext_complex_get_substmt(lys_snode2stmt(nodetype), (struct lys_ext_instance_complex*)node, NULL);
+        if (!pp) {
+            return NULL;
+        }
+        return (struct lys_node **)pp;
+    } else {
+        return &node->child;
+    }
 }
 
 API void *
@@ -4316,6 +4380,7 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
     unsigned int i, j, k;
     struct lyext_substmt *substmt;
     void **pp, **start;
+    struct lys_node *siter, *snext;
 
 #define EXTCOMPLEX_FREE_STRUCT(STMT, TYPE, FUNC, FREE, ARGS...)                               \
     pp = lys_ext_complex_get_substmt(STMT, (struct lys_ext_instance_complex *)e[i], NULL);    \
@@ -4407,6 +4472,12 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
                         /* free the array */
                         pp = (void**)&((struct lys_ext_instance_complex *)e[i])->content[substmt[j].offset];
                         free(*pp);
+                    }
+                    break;
+                case LY_STMT_ACTION:
+                    pp = (void**)&((struct lys_ext_instance_complex *)e[i])->content[substmt[j].offset];
+                    LY_TREE_FOR_SAFE((struct lys_node *)(*pp), snext, siter) {
+                        lys_node_free(siter, NULL, 0);
                     }
                     break;
                 default:

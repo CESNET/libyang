@@ -4607,6 +4607,7 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
             }
             break;
         case LYEXT_COMPLEX:
+            ((struct lys_ext_instance_complex*)(*ext))->nodetype = LYS_EXT;
             ((struct lys_ext_instance_complex*)(*ext))->module = info->mod;
             ((struct lys_ext_instance_complex*)(*ext))->substmt = ((struct lyext_plugin_complex*)e->plugin)->substmt;
             if (lyp_yin_parse_complex_ext(info->mod, (struct lys_ext_instance_complex*)(*ext), info->data.yin, unres)) {
@@ -4767,7 +4768,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
             goto fail;
         }
         /* test the name of siblings */
-        LY_TREE_FOR((uses->parent) ? uses->parent->child : lys_main_module(uses->module)->data, tmp) {
+        LY_TREE_FOR((uses->parent) ? *lys_child(uses->parent, LYS_USES) : lys_main_module(uses->module)->data, tmp) {
             if (!(tmp->nodetype & (LYS_USES | LYS_GROUPING | LYS_CASE)) && ly_strequal(tmp->name, node_aux->name, 1)) {
                 goto fail;
             }

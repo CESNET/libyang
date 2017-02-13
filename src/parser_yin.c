@@ -3936,7 +3936,8 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 !strcmp(sub->name, "list") ||
                 !strcmp(sub->name, "uses") ||
                 !strcmp(sub->name, "choice") ||
-                !strcmp(sub->name, "anyxml")) {
+                !strcmp(sub->name, "anyxml") ||
+                !strcmp(sub->name, "anydata")) {
 
             lyxml_unlink_elem(module->ctx, sub, 2);
             lyxml_add_child(module->ctx, &root, sub);
@@ -4968,6 +4969,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 !strcmp(sub->name, "uses") ||
                 !strcmp(sub->name, "grouping") ||
                 !strcmp(sub->name, "anyxml") ||
+                !strcmp(sub->name, "anydata") ||
                 !strcmp(sub->name, "action") ||
                 !strcmp(sub->name, "notification")) {
             lyxml_unlink_elem(module->ctx, sub, 2);
@@ -5128,7 +5130,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
     /* check - if list is configuration, key statement is mandatory
      * (but only if we are not in a grouping or augment, then the check is deferred) */
-    for (node = retval; node && !(node->nodetype & (LYS_GROUPING | LYS_AUGMENT)); node = node->parent);
+    for (node = retval; node && !(node->nodetype & (LYS_GROUPING | LYS_AUGMENT | LYS_EXT)); node = node->parent);
     if (!node && (list->flags & LYS_CONFIG_W) && !list->keys_str) {
         LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, retval, "key", "list");
         goto error;
@@ -5361,6 +5363,7 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
                 !strcmp(sub->name, "uses") ||
                 !strcmp(sub->name, "grouping") ||
                 !strcmp(sub->name, "anyxml") ||
+                !strcmp(sub->name, "anydata") ||
                 !strcmp(sub->name, "action") ||
                 !strcmp(sub->name, "notification")) {
             lyxml_unlink_elem(module->ctx, sub, 2);
@@ -5542,6 +5545,7 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
                 !strcmp(sub->name, "uses") ||
                 !strcmp(sub->name, "grouping") ||
                 !strcmp(sub->name, "anyxml") ||
+                !strcmp(sub->name, "anydata") ||
                 !strcmp(sub->name, "action") ||
                 !strcmp(sub->name, "notification")) {
             lyxml_unlink_elem(module->ctx, sub, 2);
@@ -5700,7 +5704,8 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
                 !strcmp(sub->name, "choice") ||
                 !strcmp(sub->name, "uses") ||
                 !strcmp(sub->name, "grouping") ||
-                !strcmp(sub->name, "anyxml")) {
+                !strcmp(sub->name, "anyxml") ||
+                !strcmp(sub->name, "anydata")) {
             lyxml_unlink_elem(module->ctx, sub, 2);
             lyxml_add_child(module->ctx, &root, sub);
 
@@ -5863,7 +5868,8 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
                 !strcmp(sub->name, "choice") ||
                 !strcmp(sub->name, "uses") ||
                 !strcmp(sub->name, "grouping") ||
-                !strcmp(sub->name, "anyxml")) {
+                !strcmp(sub->name, "anyxml") ||
+                !strcmp(sub->name, "anydata")) {
             lyxml_unlink_elem(module->ctx, sub, 2);
             lyxml_add_child(module->ctx, &root, sub);
 
@@ -6535,6 +6541,7 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 !strcmp(child->name, "choice") ||
                 !strcmp(child->name, "uses") ||
                 !strcmp(child->name, "anyxml") ||
+                !strcmp(child->name, "anydata") ||
                 !strcmp(child->name, "rpc") ||
                 !strcmp(child->name, "notification")) {
             substmt_group = 4;
@@ -7443,6 +7450,29 @@ yin_parse_extcomplex_flag(struct lys_module *mod, struct lyxml_elem *node,
     return EXIT_SUCCESS;
 }
 
+static struct lys_node **
+yin_getplace_for_extcomplex_node(struct lyxml_elem *node, struct lys_ext_instance_complex *ext, LY_STMT stmt)
+{
+    struct lyext_substmt *info;
+    struct lys_node **snode, *siter;
+
+    snode = lys_ext_complex_get_substmt(stmt, ext, &info);
+    if (!snode) {
+        LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, node->name, node->parent->name);
+        return NULL;
+    }
+    if (info->cardinality < LY_STMT_CARD_SOME) {
+        LY_TREE_FOR(*snode, siter) {
+            if (stmt == lys_snode2stmt(siter->nodetype)) {
+                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, node->name, node->parent->name);
+                return NULL;
+            }
+        }
+    }
+
+    return snode;
+}
+
 static void **
 yin_getplace_for_extcomplex_struct(struct lyxml_elem *node, struct lys_ext_instance_complex *ext, LY_STMT stmt)
 {
@@ -7505,6 +7535,10 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
     unsigned long u;
     int i;
 
+#define YIN_EXTCOMPLEX_PARSE_SNODE(STMT, FUNC, ARGS...)                              \
+    pp = (void**)yin_getplace_for_extcomplex_node(node, ext, STMT);                  \
+    if (!pp) { goto error; }                                                         \
+    if (!FUNC(mod, (struct lys_node*)ext, node, ##ARGS, unres)) { goto error; }
 #define YIN_EXTCOMPLEX_INT_GETPLACE(STMT, TYPE)                                      \
     p = lys_ext_complex_get_substmt(STMT, ext, &info);                               \
     if (!p) {                                                                        \
@@ -7813,6 +7847,34 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             if (!(*pp)) {
                 goto error;
             }
+        } else if (!strcmp(node->name, "action")) {
+            YIN_EXTCOMPLEX_PARSE_SNODE(LY_STMT_ACTION, read_yin_rpc_action);
+        } else if (!strcmp(node->name, "anydata")) {
+            YIN_EXTCOMPLEX_PARSE_SNODE(LY_STMT_ANYDATA, read_yin_anydata, LYS_ANYDATA, 0);
+        } else if (!strcmp(node->name, "anyxml")) {
+            YIN_EXTCOMPLEX_PARSE_SNODE(LY_STMT_ANYXML, read_yin_anydata, LYS_ANYXML, 0);
+        } else if (!strcmp(node->name, "case")) {
+            YIN_EXTCOMPLEX_PARSE_SNODE(LY_STMT_CASE, read_yin_case, 0);
+        } else if (!strcmp(node->name, "choice")) {
+            YIN_EXTCOMPLEX_PARSE_SNODE(LY_STMT_CHOICE, read_yin_choice, 0);
+        } else if (!strcmp(node->name, "container")) {
+            YIN_EXTCOMPLEX_PARSE_SNODE(LY_STMT_CONTAINER, read_yin_container, 0);
+        } else if (!strcmp(node->name, "grouping")) {
+            YIN_EXTCOMPLEX_PARSE_SNODE(LY_STMT_GROUPING, read_yin_grouping, 0);
+        } else if (!strcmp(node->name, "output")) {
+            YIN_EXTCOMPLEX_PARSE_SNODE(LY_STMT_OUTPUT, read_yin_input_output);
+        } else if (!strcmp(node->name, "input")) {
+            YIN_EXTCOMPLEX_PARSE_SNODE(LY_STMT_INPUT, read_yin_input_output);
+        } else if (!strcmp(node->name, "leaf")) {
+            YIN_EXTCOMPLEX_PARSE_SNODE(LY_STMT_LEAF, read_yin_leaf, 0);
+        } else if (!strcmp(node->name, "leaf-list")) {
+            YIN_EXTCOMPLEX_PARSE_SNODE(LY_STMT_LEAFLIST, read_yin_leaflist, 0);
+        } else if (!strcmp(node->name, "list")) {
+            YIN_EXTCOMPLEX_PARSE_SNODE(LY_STMT_LIST, read_yin_list, 0);
+        } else if (!strcmp(node->name, "notification")) {
+            YIN_EXTCOMPLEX_PARSE_SNODE(LY_STMT_NOTIFICATION, read_yin_notif);
+        } else if (!strcmp(node->name, "uses")) {
+            YIN_EXTCOMPLEX_PARSE_SNODE(LY_STMT_USES, read_yin_uses);
         } else {
             LOGERR(LY_SUCCESS, "Extension's substatement \"%s\" not yet supported.", node->name);
             //LOGERR(LY_EINT, "Extension's substatement \"%s\" not yet supported.", node->name);

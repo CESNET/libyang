@@ -291,6 +291,8 @@ strnodetype(LYS_NODE type)
         return "action";
     case LYS_ANYDATA:
         return "anydata";
+    case LYS_EXT:
+        return "extension instance";
     }
 
     return NULL;

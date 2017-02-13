@@ -363,6 +363,8 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
                 memcpy(&path[*index], name, len);
 
                 name = "[";
+            } else if (((struct lys_node *)elem)->nodetype == LYS_EXT) {
+                name = ((struct lys_ext_instance *)elem)->def->name;
             } else {
                 name = ((struct lys_node *)elem)->name;
             }
@@ -371,6 +373,15 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
                 prefix = lys_node_module((struct lys_node *)elem)->name;
             } else {
                 prefix = NULL;
+            }
+            if (((struct lys_node *)elem)->nodetype == LYS_EXT) {
+                if (((struct lys_ext_instance*)elem)->parent_type == LYEXT_PAR_NODE) {
+                    elem = (struct lys_node*)((struct lys_ext_instance*)elem)->parent;
+                } else {
+                    sparent = NULL;
+                    elem = NULL;
+                }
+                break;
             }
             do {
                 sparent = ((struct lys_node *)elem)->parent;

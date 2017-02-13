@@ -506,4 +506,8 @@ void lys_submodule_module_data_free(struct lys_submodule *submodule);
  */
 int lys_is_key(struct lys_node_list *list, struct lys_node_leaf *leaf);
 
+
+LY_STMT lys_snode2stmt(LYS_NODE nodetype);
+struct lys_node ** lys_child(struct lys_node *node, LYS_NODE nodetype);
+
 #endif /* LY_TREE_INTERNAL_H_ */
