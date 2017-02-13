@@ -2052,8 +2052,8 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
                     break;
                 case LY_STMT_STATUS:
                     flags = (uint16_t*)&((struct lys_ext_instance_complex*)ext[u])->content[info[i].offset];
-                    if (!flags) {
-                        return;
+                    if (!flags || !(*flags)) {
+                        break;
                     }
 
                     if (*flags & LYS_STATUS_CURR) {

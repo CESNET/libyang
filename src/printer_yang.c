@@ -2054,8 +2054,8 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
                     break;
                 case LY_STMT_STATUS:
                     flags = lys_ext_complex_get_substmt(LY_STMT_STATUS, (struct lys_ext_instance_complex *)ext[u], NULL);
-                    if (!flags) {
-                        return;
+                    if (!flags || !(*flags)) {
+                        break;
                     }
 
                     if (*flags & LYS_STATUS_CURR) {
