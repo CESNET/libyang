@@ -116,7 +116,7 @@ Preparation:
 Command and its output:
 
 ```
-> add module3.yang 
+> add module3.yang
 libyang[0]: Schema node "a" not found (../c/a).
 libyang[0]: Path is related to the previous error message. (path: /module3:m)
 libyang[0]: Module "module3" parsing failed.
@@ -125,7 +125,7 @@ libyang[0]: Module "module3" parsing failed.
 Note that libyang does not provide line numbers of the error. Instead it tries to
 print the path to the related node. in some cases (as this one) it is not able
 to print the path immediately so the path (to the node `m` which refers node which
-does not exist) is printed in the second message. 
+does not exist) is printed in the second message.
 
 ## Data Validation
 
@@ -167,7 +167,81 @@ Note that in case of working with complete datastore including the status data
 (no `-t` option is specified), `yanglint(1)` has to add status data from its
 internal `ietf-yang-library` module. Using the `-s` option in this case forces
 validation in time of parsing the input file so it is expected to include also
-the mandatory status data from the `ietf-yang-library` module. 
+the mandatory status data from the `ietf-yang-library` module.
+
+**RPC and RPC-reply**
+
+It is possible to validate RPCs and their replies as well.
+
+Peparation:
+
+```
+> clear
+> add module4.yang
+```
+
+Command and its output:
+
+```
+> data -t rpc rpc.xml
+```
+
+Reply to this RPC can be validated too, but it must be specified, to which
+RPC it is a reply to, because it is not included in the reply itself.
+
+Command and its output:
+
+```
+> data -t rpcreply rpc-reply.xml rpc.xml
+```
+
+**action and action-reply**
+
+Actions are validated the same way as RPCs except you need to be careful
+about the input file structure.
+
+Preparation
+
+```
+> clear
+> add module4.yang
+```
+
+Command and its output:
+
+```
+> data -t rpc action.xml
+```
+
+Command and its output:
+
+```
+> data -t rpc action-reply.xml action.xml
+```
+
+**notification**
+
+Both top-level and nested notification can be validated.
+
+Preparation
+
+```
+> clear
+> add module4.yang
+```
+
+Command and its output:
+
+```
+> data -t notif notification.xml
+```
+
+Command and its output:
+
+```
+> data -t notif nested-notification.xml
+```
+
 
 **Multiple top-level elements in a single document**
 
@@ -178,8 +252,6 @@ interconnects data trees (defined as top-level elements of a single schema
 or by multiple schemas).
 
 Preparation:
-
-Command and its output:
 
 ```
 > clear
@@ -345,41 +417,41 @@ Module:    ietf-netconf-acm
 Namespace: urn:ietf:params:xml:ns:yang:ietf-netconf-acm
 Prefix:    nacm
 Desc:      NETCONF Access Control Model.
-           
+
            Copyright (c) 2012 IETF Trust and the persons identified as
            authors of the code.  All rights reserved.
-           
+
            Redistribution and use in source and binary forms, with or
            without modification, is permitted pursuant to, and subject
            to the license terms contained in, the Simplified BSD
            License set forth in Section 4.c of the IETF Trust's
            Legal Provisions Relating to IETF Documents
            (http://trustee.ietf.org/license-info).
-           
+
            This version of this YANG module is part of RFC 6536; see
            the RFC itself for full legal notices.
-Reference: 
+Reference:
 Org:       IETF NETCONF (Network Configuration) Working Group
 Contact:   WG Web:   <http://tools.ietf.org/wg/netconf/>
            WG List:  <mailto:netconf@ietf.org>
-           
+
            WG Chair: Mehmet Ersue
                      <mailto:mehmet.ersue@nsn.com>
-           
+
            WG Chair: Bert Wijnen
                      <mailto:bertietf@bwijnen.net>
-           
+
            Editor:   Andy Bierman
                      <mailto:andy@yumaworks.com>
-           
+
            Editor:   Martin Bjorklund
                      <mailto:mbj@tail-f.com>
 YANG ver:  1.0
 Deviated:  no
 Implement: yes
-URI:       
+URI:
 Revisions: 2012-02-22
-Includes:  
+Includes:
 Imports:   yang:ietf-yang-types
 Typedefs:  user-name-type
            matchall-string-type
@@ -387,10 +459,10 @@ Typedefs:  user-name-type
            group-name-type
            action-type
            node-instance-identifier
-Idents:    
-Features:  
-Augments:  
-Deviation: 
+Idents:
+Features:
+Augments:
+Deviation:
 Data:      container "nacm"
 ```
 
@@ -406,16 +478,16 @@ Desc:      Enables or disables all NETCONF access control
            enforcement.  If 'true', then enforcement
            is enabled.  If 'false', then enforcement
            is disabled.
-Reference: 
+Reference:
 Config:    read-write
 Status:    current
 Mandatory: no
 Type:      boolean
-Units:     
+Units:
 Default:   true
-If-feats:  
-When:      
-Must:      
+If-feats:
+When:
+Must:
 NACM:      default-deny-all
 ```
 
