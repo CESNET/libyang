@@ -6149,6 +6149,7 @@ error:
 
     LOGERR(ly_errno, "Module \"%s\" parsing failed.", module->name);
 
+    lyp_del_includedup(module);
     lys_sub_module_remove_devs_augs(module);
     lys_free(module, NULL, 1);
     return NULL;
