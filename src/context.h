@@ -24,9 +24,12 @@ struct ly_modules_list {
     int size;
     int used;
     struct lys_module **list;
-    const char **parsing;
-    uint8_t parsing_size;
-    uint8_t parsing_number;
+    /* all (sub)modules that are currently being parsed */
+    const char **parsing_sub_modules;
+    uint8_t parsing_sub_modules_count;
+    /* all already parsed submodules of a module, which is before all its submodules (to mark submodule imports) */
+    struct lys_module **parsed_submodules;
+    uint8_t parsed_submodules_count;
     uint16_t module_set_id;
 };
 

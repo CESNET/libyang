@@ -2220,67 +2220,92 @@ lyp_check_status(uint16_t flags1, struct lys_module *mod1, const char *name1,
     return EXIT_SUCCESS;
 }
 
-static void
-lyp_check_circmod_pop(struct lys_module *module)
+void
+lyp_del_includedup(struct lys_module *mod)
 {
-    struct ly_modules_list *models = &module->ctx->models;
+    struct ly_modules_list *models = &mod->ctx->models;
+    uint8_t i;
 
-    /* update the list of currently being parsed modules */
-    models->parsing_number--;
-    if (models->parsing_number == 1) {
-        free(models->parsing);
-        models->parsing = NULL;
-        models->parsing_number = models->parsing_size = 0;
-    } else {
-        models->parsing[models->parsing_number] = NULL;
+    assert(mod && !mod->type);
+
+    if (mod->inc_size && models->parsed_submodules_count) {
+        for (i = models->parsed_submodules_count - 1; models->parsed_submodules[i]->type; --i);
+        assert(models->parsed_submodules[i] == mod);
+
+        models->parsed_submodules_count = i;
+        if (!models->parsed_submodules_count) {
+            free(models->parsed_submodules);
+            models->parsed_submodules = NULL;
+        }
     }
+}
+
+static void
+lyp_add_includedup(struct lys_module *sub_mod, struct lys_submodule *parsed_submod)
+{
+    struct ly_modules_list *models = &sub_mod->ctx->models;
+    int16_t i;
+
+    /* store main module if first include */
+    if (models->parsed_submodules_count) {
+        for (i = models->parsed_submodules_count - 1; models->parsed_submodules[i]->type; --i);
+    } else {
+        i = -1;
+    }
+    if ((i == -1) || (models->parsed_submodules[i] != lys_main_module(sub_mod))) {
+        ++models->parsed_submodules_count;
+        models->parsed_submodules = ly_realloc(models->parsed_submodules,
+                                               models->parsed_submodules_count * sizeof *models->parsed_submodules);
+        if (!models->parsed_submodules) {
+            LOGMEM;
+            return;
+        }
+        models->parsed_submodules[models->parsed_submodules_count - 1] = lys_main_module(sub_mod);
+    }
+
+    /* store parsed submodule */
+    ++models->parsed_submodules_count;
+    models->parsed_submodules = ly_realloc(models->parsed_submodules,
+                                           models->parsed_submodules_count * sizeof *models->parsed_submodules);
+    if (!models->parsed_submodules) {
+        LOGMEM;
+        return;
+    }
+    models->parsed_submodules[models->parsed_submodules_count - 1] = (struct lys_module *)parsed_submod;
 }
 
 /*
  * types: 0 - include, 1 - import
  */
 static int
-lyp_check_circmod(struct lys_module *module, const char *value, int type)
+lyp_check_add_circmod(struct lys_module *module, const char *value, int type)
 {
     LY_ECODE code = type ? LYE_CIRC_IMPORTS : LYE_CIRC_INCLUDES;
     struct ly_modules_list *models = &module->ctx->models;
-    int i;
+    uint8_t i;
 
-    /* circular check */
-    if (!models->parsing_size) {
-        if (ly_strequal(module->name, value, 1)) {
+    /* include/import itself */
+    if (ly_strequal(module->name, value, 1)) {
+        LOGVAL(code, LY_VLOG_NONE, NULL, value);
+        return -1;
+    }
+
+    /* currently parsed modules */
+    for (i = 0; i < models->parsing_sub_modules_count; i++) {
+        if (ly_strequal(models->parsing_sub_modules[i], value, 1)) {
             LOGVAL(code, LY_VLOG_NONE, NULL, value);
             return -1;
         }
-
-        /* storing - first import, besides the module being imported, add also the starting module */
-        models->parsing_size = models->parsing_number = 2;
-        models->parsing = malloc(2 * sizeof *models->parsing);
-        if (!models->parsing) {
-            LOGMEM;
-            return -1;
-        }
-        models->parsing[0] = module->name;
-        models->parsing[1] = value;
-    } else {
-        for (i = 0; i < models->parsing_number; i++) {
-            if (ly_strequal(models->parsing[i], value, 1)) {
-                LOGVAL(code, LY_VLOG_NONE, NULL, value);
-                return -1;
-            }
-        }
-        /* storing - enlarge the list of modules being currently parsed */
-        models->parsing_number++;
-        if (models->parsing_number >= models->parsing_size) {
-            models->parsing_size++;
-            models->parsing = ly_realloc(models->parsing, models->parsing_size * sizeof *models->parsing);
-            if (!models->parsing) {
-                LOGMEM;
-                return -1;
-            }
-        }
-        models->parsing[models->parsing_number - 1] = value;
     }
+    /* storing - enlarge the list of modules being currently parsed */
+    ++models->parsing_sub_modules_count;
+    models->parsing_sub_modules = ly_realloc(models->parsing_sub_modules,
+                                             models->parsing_sub_modules_count * sizeof *models->parsing_sub_modules);
+    if (!models->parsing_sub_modules) {
+        LOGMEM;
+        return -1;
+    }
+    models->parsing_sub_modules[models->parsing_sub_modules_count - 1] = value;
 
     return 0;
 }
@@ -2290,46 +2315,48 @@ lyp_check_circmod(struct lys_module *module, const char *value, int type)
  *  0 - success, no duplicity
  *  1 - success, valid duplicity found and stored in *sub
  */
-int
-lyp_check_include_dup(struct lys_module *mod, const char *name, struct lys_include *inc, int top, struct lys_submodule **sub)
+static int
+lyp_check_includedup(struct lys_module *mod, const char *name, struct lys_include *inc, struct lys_submodule **sub)
 {
-    uint8_t i;
-    int rc;
+    struct lys_module **parsed_sub = mod->ctx->models.parsed_submodules;
+    uint8_t i, parsed_sub_count = mod->ctx->models.parsed_submodules_count;
 
     assert(sub);
 
-    for (i = 0; i < mod->inc_size; i++) {
+    for (i = 0; i < mod->inc_size; ++i) {
         if (ly_strequal(mod->inc[i].submodule->name, name, 1)) {
-            /* check revisions, including multiple revisions of a single module is error */
-            if (inc->rev[0] && (!mod->inc[i].submodule->rev_size || strcmp(mod->inc[i].submodule->rev[0].date, inc->rev))) {
-                /* the already included submodule has
-                 * - no revision, but here we require some
-                 * - different revision than the one required here */
-                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, name, "include");
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Including multiple revisions of submodule \"%s\".", name);
-                return -1;
-            } else if (top) {
-                /* the same module is already included in the same module - error */
-                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, name, "include");
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Submodule \"%s\" included twice in the same module \"%s\".",
-                       name, mod->name);
-                return -1;
-            } else {
+            /* the same module is already included in the same module - error */
+            LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, name, "include");
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Submodule \"%s\" included twice in the same module \"%s\".",
+                   name, mod->name);
+            return -1;
+        }
+    }
+
+    if (parsed_sub_count) {
+        for (i = parsed_sub_count - 1; parsed_sub[i]->type; --i) {
+            if (ly_strequal(parsed_sub[i]->name, name, 1)) {
+                /* check revisions, including multiple revisions of a single module is error */
+                if (inc->rev[0] && (!parsed_sub[i]->rev_size || strcmp(parsed_sub[i]->rev[0].date, inc->rev))) {
+                    /* the already included submodule has
+                     * - no revision, but here we require some
+                     * - different revision than the one required here */
+                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, name, "include");
+                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Including multiple revisions of submodule \"%s\".", name);
+                    return -1;
+                }
+
                 /* the same module is already included in some other submodule, return it */
-                (*sub) = mod->inc[i].submodule;
+                (*sub) = (struct lys_submodule *)parsed_sub[i];
                 return 1;
             }
         }
 
-        /* go recursively */
-        rc = lyp_check_include_dup((struct lys_module *)mod->inc[i].submodule, name, inc, 0, sub);
-        if (rc) {
-            /* error or found valid duplicity, do not continue with searching */
-            return rc;
-        }
+        /* if we are submodule, the last module must be our main */
+        assert(!mod->type || (parsed_sub[i] == ((struct lys_submodule *)mod)->belongsto));
     }
 
-    /* not duplicity found */
+    /* no duplicity found */
     return 0;
 }
 
@@ -2338,41 +2365,21 @@ lyp_check_include_dup(struct lys_module *mod, const char *name, struct lys_inclu
  * -1 - error
  */
 int
-lyp_check_include(struct lys_module *module, const char *value,
-                  struct lys_include *inc, struct unres_schema *unres)
+lyp_check_include(struct lys_module *module, const char *value, struct lys_include *inc, struct unres_schema *unres)
 {
     int i;
 
     /* check that the submodule was not included yet */
-    if (module->type) {
-        /* 1) in the same submodule and the submodules it already includes */
-        i = lyp_check_include_dup(module, value, inc, 1, &inc->submodule);
-        if (i == -1) {
-            return -1;
-        } else if (i == 1) {
-            return 0;
-        }
-
-        /* 2) in the main module and all the submodules it already includes */
-        i = lyp_check_include_dup(((struct lys_submodule *)module)->belongsto, value, inc, 0, &inc->submodule);
-        if (i == -1) {
-            return -1;
-        } else if (i == 1) {
-            return 0;
-        }
-    } else {
-        /* 3) in the main module itself and all the submodules it already includes */
-        i = lyp_check_include_dup(module, value, inc, 1, &inc->submodule);
-        if (i == -1) {
-            return -1;
-        } else if (i == 1) {
-            return 0;
-        }
+    i = lyp_check_includedup(module, value, inc, &inc->submodule);
+    if (i == -1) {
+        return -1;
+    } else if (i == 1) {
+        return 0;
     }
-    /* sobmodule is not yet loaded */
+    /* submodule is not yet loaded */
 
     /* circular include check */
-    if (lyp_check_circmod(module, value, 0)) {
+    if (lyp_check_add_circmod(module, value, 0)) {
         return -1;
     }
 
@@ -2381,7 +2388,11 @@ lyp_check_include(struct lys_module *module, const char *value,
                                                                     inc->rev[0] ? inc->rev : NULL, 1, unres);
 
     /* update the list of currently being parsed modules */
-    lyp_check_circmod_pop(module);
+    --module->ctx->models.parsing_sub_modules_count;
+    if (!module->ctx->models.parsing_sub_modules_count) {
+        free(module->ctx->models.parsing_sub_modules);
+        module->ctx->models.parsing_sub_modules = NULL;
+    }
 
     /* check the result */
     if (!inc->submodule) {
@@ -2391,6 +2402,9 @@ lyp_check_include(struct lys_module *module, const char *value,
         LOGERR(LY_EVALID, "Including \"%s\" module into \"%s\" failed.", value, module->name);
         return -1;
     }
+
+    /* store the submodule as successfully parsed */
+    lyp_add_includedup(module, inc->submodule);
 
     return 0;
 }
@@ -2482,7 +2496,6 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
     int i;
     struct lys_module *dup = NULL;
 
-
     /* check for importing a single module in multiple revisions */
     for (i = 0; i < module->imp_size; i++) {
         if (!module->imp[i].module) {
@@ -2514,7 +2527,7 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
     }
 
     /* circular import check */
-    if (lyp_check_circmod(module, value, 1)) {
+    if (lyp_check_add_circmod(module, value, 1)) {
         return -1;
     }
 
@@ -2522,7 +2535,11 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
     imp->module = (struct lys_module *)ly_ctx_load_sub_module(module->ctx, NULL, value, imp->rev[0] ? imp->rev : NULL, 0, NULL);
 
     /* update the list of currently being parsed modules */
-    lyp_check_circmod_pop(module);
+    --module->ctx->models.parsing_sub_modules_count;
+    if (!module->ctx->models.parsing_sub_modules_count) {
+        free(module->ctx->models.parsing_sub_modules);
+        module->ctx->models.parsing_sub_modules = NULL;
+    }
 
     /* check the result */
     if (!imp->module) {

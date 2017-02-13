@@ -2612,14 +2612,14 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
     if (ret == -1) {
         free_yang_common(module, node);
         goto error;
-    } else if (ret == 1 ) {
+    } else if (ret == 1) {
         assert(!unres->count);
     } else {
         if (yang_check_sub_module(module, unres, node)) {
             goto error;
         }
 
-        if (module && unres->count && resolve_unres_schema(module, unres)) {
+        if (unres->count && resolve_unres_schema(module, unres)) {
             goto error;
         }
     }
@@ -2639,6 +2639,10 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
         if (lyp_check_include_missing(module)) {
             goto error;
         }
+
+        /* remove our submodules from the parsed submodules list */
+        lyp_del_includedup(module);
+
 
         if (lyp_rfn_apply_ext(module) || lyp_deviation_apply_ext(module)) {
             goto error;
@@ -2684,6 +2688,7 @@ error:
 
     LOGERR(ly_errno, "Module \"%s\" parsing failed.", module->name);
 
+    lyp_del_includedup(module);
     lys_sub_module_remove_devs_augs(module);
     lys_free(module, NULL, 1);
     return NULL;
