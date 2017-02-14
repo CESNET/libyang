@@ -38,6 +38,9 @@
 #define LYS_CHOICE_DEFAULT 0x10
 #define LYS_NO_ERASE_IDENTITY 0x20
 #define LY_YANG_ARRAY_SIZE 8
+#define YANG_REMOVE_IMPORT 0x01
+#define YANG_EXIST_MODULE 0x02
+#define EXT_INSTANCE_SUBSTMT 0x04
 
 struct type_node {
     union {
@@ -60,8 +63,7 @@ struct yang_parameter {
     char **value;
     void **data_node;
     void **actual_node;
-    uint8_t remove_import;
-    uint8_t exist_module;
+    uint8_t flags;
 };
 
 struct yang_type {
@@ -162,10 +164,16 @@ int yang_use_extension(struct lys_module *module, struct lys_node *data_node, vo
 int yang_check_flags(uint16_t *flags, uint16_t mask, char *what, char *where, uint16_t value, int shortint);
 
 void *yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext_arg,
-                    enum yytokentype actual_type, enum yytokentype backup_type);
+                    enum yytokentype actual_type, enum yytokentype backup_type, int is_ext_instance);
 
 int yang_check_ext_instance(struct lys_module *module, struct lys_ext_instance ***ext, uint size,
                             void *parent, struct unres_schema *unres);
+
+int yang_read_extcomplex_str(struct lys_module *module, struct lys_ext_instance_complex *ext, const char *arg_name, 
+                             const char *parent_name, char *value, int parent_stmt, LY_STMT stmt);
+
+int yang_parse_ext_substatement(struct lys_module *module, struct unres_schema *unres, const char *data,
+                                char *ext_name, struct lys_ext_instance_complex *ext);
 
 
 /* **

@@ -2115,7 +2115,7 @@ yang_fill_include(struct lys_module *trg, char *value, struct lys_include *inc,
 }
 
 struct lys_ext_instance *
-yang_ext_instance(void *node, enum yytokentype type)
+yang_ext_instance(void *node, enum yytokentype type, int is_ext_instance)
 {
     struct lys_ext_instance ***ext, **tmp, *instance = NULL;
     LYEXT_PAR parent_type;
@@ -2124,10 +2124,20 @@ yang_ext_instance(void *node, enum yytokentype type)
     switch (type) {
     case MODULE_KEYWORD:
     case SUBMODULE_KEYWORD:
-    case BELONGS_TO_KEYWORD:
         ext = &((struct lys_module *)node)->ext;
         size = &((struct lys_module *)node)->ext_size;
         parent_type = LYEXT_PAR_MODULE;
+        break;
+    case BELONGS_TO_KEYWORD:
+        if (is_ext_instance) {
+            ext = &((struct lys_ext_instance *)node)->ext;
+            size = &((struct lys_ext_instance *)node)->ext_size;
+            parent_type = LYEXT_PAR_EXTINST;
+        } else {
+            ext = &((struct lys_module *)node)->ext;
+            size = &((struct lys_module *)node)->ext_size;
+            parent_type = LYEXT_PAR_MODULE;
+        }
         break;
     case IMPORT_KEYWORD:
         ext = &((struct lys_import *)node)->ext;
@@ -2268,12 +2278,12 @@ error:
 
 void *
 yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext_arg,
-              enum yytokentype actual_type, enum yytokentype backup_type)
+              enum yytokentype actual_type, enum yytokentype backup_type, int is_ext_instance)
 {
     struct lys_ext_instance *instance;
 
     if (backup_type != NODE) {
-        instance = yang_ext_instance((actual) ? actual : module, backup_type);
+        instance = yang_ext_instance((actual) ? actual : module, backup_type, is_ext_instance);
         if (!instance) {
             return NULL;
         }
@@ -2396,7 +2406,7 @@ yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext
             return NULL;
         }
     } else {
-        instance = yang_ext_instance((actual) ? actual : module, actual_type);
+        instance = yang_ext_instance((actual) ? actual : module, actual_type, is_ext_instance);
         if (!instance) {
             return NULL;
         }
@@ -2561,21 +2571,49 @@ yang_parse_mem(struct lys_module *module, struct lys_submodule *submodule, struc
     yylex_init(&scanner);
     bp = yy_scan_buffer((char *)data, size, scanner);
     yy_switch_to_buffer(bp, scanner);
+    memset(&param, 0, sizeof param);
     param.module = module;
     param.submodule = submodule;
     param.unres = unres;
     param.node = node;
-    param.remove_import = 1;
-    param.exist_module = 0;
+    param.flags |= YANG_REMOVE_IMPORT;
     if (yyparse(scanner, &param)) {
-        if (param.remove_import) {
+        if (param.flags & YANG_REMOVE_IMPORT) {
             trg = (submodule) ? (struct lys_module *)submodule : module;
             yang_free_import(trg->ctx, trg->imp, 0, trg->imp_size);
             yang_free_include(trg->ctx, trg->inc, 0, trg->inc_size);
             trg->inc_size = 0;
             trg->imp_size = 0;
         }
-        ret = (param.exist_module) ? 1 : -1;
+        ret = (param.flags & YANG_EXIST_MODULE) ? 1 : -1;
+    }
+    yy_delete_buffer(bp, scanner);
+    yylex_destroy(scanner);
+    return ret;
+}
+
+int
+yang_parse_ext_substatement(struct lys_module *module, struct unres_schema *unres, const char *data,
+                            char *ext_name, struct lys_ext_instance_complex *ext)
+{
+    unsigned int size;
+    YY_BUFFER_STATE bp;
+    yyscan_t scanner = NULL;
+    int ret = 0;
+    struct yang_parameter param;
+
+    size = strlen(data) + 2;
+    yylex_init(&scanner);
+    bp = yy_scan_buffer((char *)data, size, scanner);
+    yy_switch_to_buffer(bp, scanner);
+    memset(&param, 0, sizeof param);
+    param.module = module;
+    param.unres = unres;
+    param.actual_node = (void **)ext;
+    param.data_node = (void **)ext_name;
+    param.flags |= EXT_INSTANCE_SUBSTMT;
+    if (yyparse(scanner, &param)) {
+        ret = -1;
     }
     yy_delete_buffer(bp, scanner);
     yylex_destroy(scanner);
@@ -4453,4 +4491,87 @@ error:
         free(module->deviation[i].deviate);
     }
     return EXIT_FAILURE;
+}
+
+int
+yang_read_extcomplex_str(struct lys_module *module, struct lys_ext_instance_complex *ext, const char *arg_name, 
+                         const char *parent_name, char *value, int parent_stmt, LY_STMT stmt)
+{
+    int c;
+    const char **str, ***p = NULL;
+    void *reallocated;
+    struct lyext_substmt *info;
+
+    c = 0;
+    if (stmt == LY_STMT_PREFIX && parent_stmt == LY_STMT_BELONGSTO) {
+        str = lys_ext_complex_get_substmt(LY_STMT_BELONGSTO, ext, &info);
+        if (info->cardinality < LY_STMT_CARD_SOME) {
+            str++;
+        } else {
+           /* get the index in the array to add new item */
+            p = (const char ***)str;
+            for (c = 0; p[0][c + 1]; c++);
+            str = p[1];
+        }
+        str[c] = lydict_insert_zc(module->ctx, value);
+    }  else {
+        str = lys_ext_complex_get_substmt(stmt, ext, &info);
+        if (!str) {
+            LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, arg_name, parent_name);
+            free(value);
+            return EXIT_FAILURE;
+        }
+        if (info->cardinality < LY_STMT_CARD_SOME && *str) {
+            LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, arg_name, parent_name);
+            free(value);
+            return EXIT_FAILURE;
+        }
+
+        if (info->cardinality >= LY_STMT_CARD_SOME) {
+            /* there can be multiple instances, str is actually const char *** */
+            p = (const char ***)str;
+            if (!p[0]) {
+                /* allocate initial array */
+                p[0] = malloc(2 * sizeof(const char *));
+                if (stmt == LY_STMT_BELONGSTO) {
+                    /* allocate another array for the belongs-to's prefixes */
+                    p[1] = calloc(2, sizeof(const char *));
+                }
+            } else {
+                /* get the index in the array to add new item */
+                for (c = 0; p[0][c]; c++);
+            }
+            str = p[0];
+        }
+
+        str[c] = lydict_insert_zc(module->ctx, value);
+
+        if (p) {
+            /* enlarge the array(s) */
+            reallocated = realloc(p[0], (c + 2) * sizeof(const char *));
+            if (!reallocated) {
+                LOGMEM;
+                lydict_remove(module->ctx, p[0][c]);
+                p[0][c] = NULL;
+                return EXIT_FAILURE;
+            }
+            p[0] = reallocated;
+            p[0][c + 1] = NULL;
+
+            if (stmt == LY_STMT_BELONGSTO) {
+                /* enlarge the second belongs-to's array with prefixes */
+                reallocated = realloc(p[1], (c + 2) * sizeof(const char *));
+                if (!reallocated) {
+                    LOGMEM;
+                    lydict_remove(module->ctx, p[1][c]);
+                    p[1][c] = NULL;
+                    return EXIT_FAILURE;
+                }
+                p[1] = reallocated;
+                p[1][c + 1] = NULL;
+            }
+        }
+    }
+
+    return EXIT_SUCCESS;
 }

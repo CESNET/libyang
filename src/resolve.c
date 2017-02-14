@@ -4481,6 +4481,7 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
     char *ext_name, *ext_prefix, *tmp;
     struct lyxml_elem *next_yin, *yin;
     const struct lys_module *mod;
+    struct lys_ext_instance *tmp_ext;
     LYEXT_TYPE etype;
 
     switch (info->parent_type) {
@@ -4634,8 +4635,7 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
         tmp = strchr(ext_prefix, ':');
         if (!tmp) {
             LOGVAL(LYE_INSTMT, vlog_type, vlog_node, ext_prefix);
-            free(ext_prefix);
-            return -1;
+            goto error;
         }
         ext_name = tmp + 1;
 
@@ -4675,21 +4675,59 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
             if ((*e->plugin->check_position)(info->parent, info->parent_type, info->substmt)) {
                 /* extension is not allowed here */
                 LOGVAL(LYE_INSTMT, vlog_type, vlog_node, e->name);
-                return -1;
+                goto error;
             }
         }
 
+        /* extension common part */
         (*ext)->flags &= ~LYEXT_OPT_YANG;
-        free(ext_prefix);
         (*ext)->def = e;
         (*ext)->parent = info->parent;
-        if (yang_check_ext_instance(info->mod, &(*ext)->ext, (*ext)->ext_size, *ext, unres)) {
-            return -1;
+
+        /* extension type-specific part */
+        if (e->plugin) {
+            etype = e->plugin->type;
+        } else {
+            /* default type */
+            etype = LYEXT_FLAG;
         }
-        /* TODO: find out extance_type a change instance via realloc */
+        switch (etype) {
+        case LYEXT_FLAG:
+            /* nothing change */
+            break;
+        case LYEXT_COMPLEX:
+            tmp_ext = realloc(*ext, ((struct lyext_plugin_complex*)e->plugin)->instance_size);
+            if (!tmp_ext) {
+                LOGMEM;
+                goto error;
+            }
+            memset((char *)tmp_ext + sizeof **ext, 0, ((struct lyext_plugin_complex*)e->plugin)->instance_size - sizeof **ext);
+            (*ext) = tmp_ext;
+            ((struct lys_ext_instance_complex*)(*ext))->module = info->mod;
+            ((struct lys_ext_instance_complex*)(*ext))->substmt = ((struct lyext_plugin_complex*)e->plugin)->substmt;
+            break;
+        case LYEXT_ERR:
+            /* we never should be here */
+            LOGINT;
+            goto error;
+        }
+
+        if (info->data.yang) {
+            *tmp = ':';
+            if (yang_parse_ext_substatement(info->mod, unres, info->data.yang, ext_prefix, (struct lys_ext_instance_complex*)(*ext))) {
+                goto error;
+            }
+        }
+        if (yang_check_ext_instance(info->mod, &(*ext)->ext, (*ext)->ext_size, *ext, unres)) {
+            goto error;
+        }
+        free(ext_prefix);
     }
 
     return EXIT_SUCCESS;
+error:
+    free(ext_prefix);
+    return -1;
 }
 
 /**

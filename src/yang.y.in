@@ -32,12 +32,6 @@
 #include "parser_yang_lex.h"
 #include "parser.h"
 
-/* only syntax rules */
-#define EXTENSION_ARG 0x01
-#define EXTENSION_STA 0x02
-#define EXTENSION_DSC 0x04
-#define EXTENSION_REF 0x08
-
 #define YANG_ADDELEM(current_ptr, size)                                                  \
     if (!(size % LY_YANG_ARRAY_SIZE)) {                                                  \
         void *tmp;                                                                       \
@@ -299,10 +293,18 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %destructor { free(($$) ? *$$ : NULL); } tmp_string
 
 %initial-action { yylloc.last_column = 0;
+                  if (param->flags & EXT_INSTANCE_SUBSTMT) {
+                    is_ext_instance = 1;
+                    ext_instance = (struct lys_ext_instance_complex *)param->actual_node;
+                    ext_name = (char *)param->data_node;
+                  } else {
+                    is_ext_instance = 0;
+                  }
                   param->value = &s;
                   param->data_node = (void **)&data_node;
                   param->actual_node = &actual;
                   backup_type = NODE;
+                  trg = (param->submodule) ? (struct lys_module *)param->submodule : param->module;
                 }
 
 %%
@@ -311,6 +313,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 
 start: module_stmt
  |  submodule_stmt
+ |  ext_substatements
 
 tmp_string: STRING { if (yyget_text(scanner)[0] == '"') {
                       char *tmp;
@@ -406,8 +409,11 @@ module_header_stmt: @EMPTYDIR@  { $$ = 0; }
                                          }
                                          s = NULL;
                                        }
-  |  module_header_stmt prefix_stmt
-  ;
+  |  module_header_stmt prefix_stmt { if (yang_read_prefix(trg, NULL, s)) {
+                                        YYABORT;
+                                      }
+                                      s = NULL;
+                                    }
 
 submodule_arg_str: identifier_arg_str { if (!param->submodule) {
                                           free(s);
@@ -485,7 +491,11 @@ import_arg_str: identifier_arg_str { YANG_ADDELEM(trg->imp, trg->imp_size);
                                    }
 
 import_opt_stmt: @EMPTYDIR@ { $$ = 0; }
-  |  import_opt_stmt prefix_stmt
+  |  import_opt_stmt prefix_stmt { if (yang_read_prefix(trg, actual, s)) {
+                                     YYABORT;
+                                   }
+                                   s = NULL;
+                                 }
   |  import_opt_stmt description_stmt { if (trg->version != 2) {
                                           LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "description");
                                           free(s);
@@ -578,17 +588,24 @@ revision_date_arg: date_arg_str { backup_type = actual_type;
 revision_date_stmt: REVISION_DATE_KEYWORD sep revision_date_arg stmtend
 
 belongs_to_arg_str: identifier_arg_str { $$ = actual_type;
-                                         if (param->submodule->prefix) {
-                                           LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "belongs-to", "submodule");
+                                         if (is_ext_instance) {
+                                           if (yang_read_extcomplex_str(trg, ext_instance, "belongs-to", ext_name, s,
+                                                                        0, LY_STMT_BELONGSTO)) {
+                                             YYABORT;
+                                           }
+                                         } else {
+                                           if (param->submodule->prefix) {
+                                             LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "belongs-to", "submodule");
+                                             free(s);
+                                             YYABORT;
+                                           }
+                                           if (!ly_strequal(s, param->submodule->belongsto->name, 0)) {
+                                             LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "belongs-to");
+                                             free(s);
+                                             YYABORT;
+                                           }
                                            free(s);
-                                           YYABORT;
                                          }
-                                         if (!ly_strequal(s, param->submodule->belongsto->name, 0)) {
-                                           LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "belongs-to");
-                                           free(s);
-                                           YYABORT;
-                                         }
-                                         free(s);
                                          s = NULL;
                                          actual_type = BELONGS_TO_KEYWORD;
                                        }
@@ -596,17 +613,25 @@ belongs_to_arg_str: identifier_arg_str { $$ = actual_type;
 belongs_to_stmt: BELONGS_TO_KEYWORD sep belongs_to_arg_str
                  '{' stmtsep
                      prefix_stmt
-                 '}' { actual_type = $3; }
+                 '}' { if (is_ext_instance) {
+                         if (yang_read_extcomplex_str(trg, ext_instance, "prefix", "belongs-to", s,
+                                                      LY_STMT_BELONGSTO, LY_STMT_PREFIX)) {
+                           YYABORT;
+                         }
+                       } else {
+                         if (yang_read_prefix(trg, NULL, s)) {
+                           YYABORT;
+                         }
+                       }
+                       s = NULL;
+                       actual_type = $3;
+                     }
 
 prefix_arg: prefix_arg_str { backup_type = actual_type;
                              actual_type = PREFIX_KEYWORD;
                            }
 
-prefix_stmt: PREFIX_KEYWORD sep prefix_arg stmtend { if (yang_read_prefix(trg, actual, s)) {
-                                                       YYABORT;
-                                                     }
-                                                     s = NULL;
-                                                   }
+prefix_stmt: PREFIX_KEYWORD sep prefix_arg stmtend
 
 meta_stmts: @EMPTYDIR@
   |  meta_stmts organization_stmt { if (yang_read_common(trg, s, ORGANIZATION_KEYWORD)) {
@@ -768,11 +793,11 @@ body_stmts: @EMPTYDIR@ { /* check the module with respect to the context now */
                              break;
                            case 1:
                              /* it's already there */
-                             param->exist_module = 1;
+                             param->flags |= YANG_EXIST_MODULE;
                              YYABORT;
                            }
                          }
-                         param->remove_import = 0;
+                         param->flags &= (~YANG_REMOVE_IMPORT);
                          if (yang_check_imports(trg, param->unres)) {
                            YYABORT;
                          }
@@ -3983,7 +4008,8 @@ unknown_statement: identifiers_ref string_opt unknown_statement_end
 
 string_opt: string_opt_part1 string_opt_part2 { $$.token = actual_type;
                                                 $$.actual = actual;
-                                                if (!(actual = yang_read_ext(trg, actual, $1, s, actual_type, backup_type))) {
+                                                if (!(actual = yang_read_ext(trg, actual, $1, s, actual_type,
+                                                                             backup_type, is_ext_instance))) {
                                                   YYABORT;
                                                 }
                                                 s = NULL;
@@ -4015,9 +4041,27 @@ unknown_statement2_opt: @EMPTYDIR@
 
 unknown_statement2: unknown_statement
   |  unknown_statement2_identifier unknown_string unknown_statement2_end
+     {  struct lys_ext_instance *ext = actual;
+        int32_t length = 0, old_length = 0;
+        char *tmp_value;
+
+        length = strlen($1);
+        old_length = (ext->parent) ? strlen((char *)ext->parent) + 2 : 2;
+        tmp_value = realloc(ext->parent, old_length + length + 1);
+        if (!tmp_value) {
+          LOGMEM;
+          YYABORT;
+        }
+        ext->parent = tmp_value;
+        tmp_value += old_length - 2;
+        memcpy(tmp_value, $1, length);
+        tmp_value[length] = ' ';
+        tmp_value[length + 1] = '\0';
+        tmp_value[length + 2] = '\0';
+      }
 
 unknown_statement2_end: ';'
-  |  '{' optsep unknown_statement2_opt '}'
+  |  '{' optsep unknown_statement3_opt '}'
 
 unknown_statement2_identifier: identifier { $$ = yyget_text(scanner); }
 
@@ -4154,6 +4198,20 @@ identifiers_ref: IDENTIFIERPREFIX { s = strdup(yyget_text(scanner));
                                       YYABORT;
                                     }
                                   }
+
+ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
+                                actual = ext_instance;
+                                if (!is_ext_instance) {
+                                  LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, yyget_text(scanner));
+                                  YYABORT;
+                                }
+                              }
+  |  ext_substatements belongs_to_stmt stmtsep
+  |  ext_substatements prefix_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "prefix", ext_name, s,
+                                                                  0, LY_STMT_PREFIX)) {
+                                       YYABORT;
+                                     }
+                                   }
 
 %%
 
