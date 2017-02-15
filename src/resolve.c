@@ -4684,6 +4684,11 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
         (*ext)->def = e;
         (*ext)->parent = info->parent;
 
+        if (e->argument && !(*ext)->arg_value) {
+            LOGVAL(LYE_MISSARG, LY_VLOG_NONE, NULL, e->argument, ext_name);
+            goto error;
+        }
+
         /* extension type-specific part */
         if (e->plugin) {
             etype = e->plugin->type;
