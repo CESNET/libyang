@@ -4455,7 +4455,7 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
                 case LY_STMT_MIN:
                 case LY_STMT_POSITION:
                     pp = (void**)&((struct lys_ext_instance_complex *)e[i])->content[substmt[j].offset];
-                    if (substmt[j].cardinality >= LY_STMT_CARD_SOME) {
+                    if (substmt[j].cardinality >= LY_STMT_CARD_SOME && *pp) {
                         for(k = 0; ((uint32_t**)(*pp))[k]; k++) {
                             free(((uint32_t**)(*pp))[k]);
                         }

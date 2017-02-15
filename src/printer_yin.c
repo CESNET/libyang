@@ -1925,14 +1925,14 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
     }
 #define YIN_PRINT_EXTCOMPLEX_INT(STMT, TYPE)                                       \
     p = &((struct lys_ext_instance_complex*)ext[u])->content[info[i].offset];      \
-    if (!p) { break; }                                                             \
+    if (!p || !*(TYPE**)p) { break; }                                              \
     if (info->cardinality >= LY_STMT_CARD_SOME) { /* we have array */              \
         for (c = 0; (*(TYPE***)p)[c]; c++) {                                       \
             yin_print_close_parent(out, &content);                                 \
             yin_print_unsigned(out, level, STMT, c, module,                        \
                                ext[u]->ext, ext[u]->ext_size, *(*(TYPE***)p)[c]);  \
         }                                                                          \
-    } else if ((*(TYPE**)p)) {                                                     \
+    } else {                                                                       \
         yin_print_close_parent(out, &content);                                     \
         yin_print_unsigned(out, level, STMT, 0, module,                            \
                            ext[u]->ext, ext[u]->ext_size, (**(TYPE**)p));          \
@@ -2106,7 +2106,7 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
                     if (!p) {
                         break;
                     }
-                    if (info->cardinality >= LY_STMT_CARD_SOME) { /* we have array */
+                    if (info->cardinality >= LY_STMT_CARD_SOME && *(uint8_t**)p) { /* we have array */
                         for (c = 0; (*(uint8_t**)p)[c]; c++) {
                             yin_print_close_parent(out, &content);
                             yin_print_unsigned(out, level, LYEXT_SUBSTMT_DIGITS, c, module,
