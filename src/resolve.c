@@ -6391,7 +6391,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
 
         } else {
             rc = fill_yin_type(mod, node, yin, stype, parent_type, unres);
-            if (!rc) {
+            if (!rc || rc == -1) {
                 /* we need to always be able to free this, it's safe only in this case */
                 lyxml_free(mod->ctx, yin);
             } else {
@@ -6801,6 +6801,9 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
                 continue;
             }
             resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, 1);
+            if (unres->type[i] == UNRES_TYPE_DER_EXT) {
+                lyxml_free(mod->ctx, (struct lyxml_elem*)((struct lys_type *)unres->item[i])->der);
+            }
         }
         return -1;
     }

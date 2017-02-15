@@ -90,9 +90,9 @@ struct lyext_substmt libyang_ext_test_substmt[] = {
     {LY_STMT_NOTIFICATION, 25 * sizeof(void*) + 6 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
     {LY_STMT_OUTPUT,       25 * sizeof(void*) + 6 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
     {LY_STMT_USES,         25 * sizeof(void*) + 6 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
-/*    {LY_STMT_TYPEDEF,      47 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_TYPE,         48 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_BIT,          49 * sizeof(void *), LY_STMT_CARD_OPT},
+    {LY_STMT_TYPEDEF,      26 * sizeof(void*) + 6 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* struct lys_tpdf* */
+    {LY_STMT_TYPE,         27 * sizeof(void*) + 6 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* struct lys_type* */
+/*    {LY_STMT_BIT,          49 * sizeof(void *), LY_STMT_CARD_OPT},
     {LY_STMT_ENUM,         40 * sizeof(void *), LY_STMT_CARD_OPT},
     {LY_STMT_REFINE,       51 * sizeof(void *), LY_STMT_CARD_OPT},
     {LY_STMT_AUGMENT,      52 * sizeof(void *), LY_STMT_CARD_OPT},
@@ -156,9 +156,9 @@ struct lyext_substmt libyang_ext_test_substmt_arrays[] = {
     {LY_STMT_NOTIFICATION, 26 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
     {LY_STMT_OUTPUT,       26 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
     {LY_STMT_USES,         26 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
-/*    {LY_STMT_TYPEDEF,      47 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_TYPE,         48 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_BIT,          49 * sizeof(void *), LY_STMT_CARD_ANY},
+    {LY_STMT_TYPEDEF,      27 * sizeof(void*), LY_STMT_CARD_ANY}, /* struct lys_tpdf** */
+    {LY_STMT_TYPE,         28 * sizeof(void*), LY_STMT_CARD_ANY}, /* struct lys_type** */
+/*    {LY_STMT_BIT,          49 * sizeof(void *), LY_STMT_CARD_ANY},
     {LY_STMT_ENUM,         40 * sizeof(void *), LY_STMT_CARD_ANY},
     {LY_STMT_REFINE,       51 * sizeof(void *), LY_STMT_CARD_ANY},
     {LY_STMT_AUGMENT,      52 * sizeof(void *), LY_STMT_CARD_ANY},

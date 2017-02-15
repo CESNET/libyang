@@ -2057,6 +2057,9 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
                 case LY_STMT_TYPE:
                     YIN_PRINT_EXTCOMPLEX_STRUCT_M(LY_STMT_TYPE, struct lys_type, yin_print_type);
                     break;
+                case LY_STMT_TYPEDEF:
+                    YIN_PRINT_EXTCOMPLEX_STRUCT_M(LY_STMT_TYPEDEF, struct lys_tpdf, yin_print_typedef);
+                    break;
                 case LY_STMT_IFFEATURE:
                     YIN_PRINT_EXTCOMPLEX_STRUCT_M(LY_STMT_IFFEATURE, struct lys_iffeature, yin_print_iffeature);
                     break;

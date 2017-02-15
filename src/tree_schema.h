@@ -313,7 +313,7 @@ typedef enum {
     LY_STMT_OUTPUT,       /**< stored as ::lys_node_anydata*, part of the data tree, but it cannot apper multiple times */
     LY_STMT_RPC,          /**< not supported, use actions instead */
     LY_STMT_USES,         /**< stored as ::lys_node_uses*, part of the data tree  */
-    LY_STMT_TYPEDEF,
+    LY_STMT_TYPEDEF,      /**< stored as ::lys_tpdf* */
     LY_STMT_TYPE,         /**< stored as ::lys_type* */
     LY_STMT_BIT,
     LY_STMT_ENUM,

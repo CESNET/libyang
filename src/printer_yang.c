@@ -2059,6 +2059,9 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
                 case LY_STMT_TYPE:
                     YANG_PRINT_EXTCOMPLEX_STRUCT_M(LY_STMT_TYPE, struct lys_type, yang_print_type);
                     break;
+                case LY_STMT_TYPEDEF:
+                    YANG_PRINT_EXTCOMPLEX_STRUCT_M(LY_STMT_TYPEDEF, struct lys_tpdf, yang_print_typedef);
+                    break;
                 case LY_STMT_IFFEATURE:
                     YANG_PRINT_EXTCOMPLEX_STRUCT_M(LY_STMT_IFFEATURE, struct lys_iffeature, yang_print_iffeature);
                     break;

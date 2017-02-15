@@ -7614,6 +7614,7 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             (*type) = calloc(1, sizeof **type);
 
             /* HACK for unres */
+            lyxml_unlink(mod->ctx, node);
             (*type)->der = (struct lys_tpdf *)node;
             (*type)->parent = (struct lys_tpdf *)ext;
 
@@ -7622,6 +7623,17 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
                 goto error;
             }
             continue; /* skip lyxml_free() */
+        } else if (!strcmp(node->name, "typedef")) {
+            pp = yin_getplace_for_extcomplex_struct(node, ext, LY_STMT_TYPEDEF);
+            if (!pp) {
+                goto error;
+            }
+            /* allocate typedef structure */
+            (*pp) = calloc(1, sizeof(struct lys_tpdf));
+
+            if (fill_yin_typedef(mod, (struct lys_node *)ext, node, *((struct lys_tpdf **)pp), unres)) {
+                goto error;
+            }
         } else if (!strcmp(node->name, "if-feature")) {
             pp = yin_getplace_for_extcomplex_struct(node, ext, LY_STMT_IFFEATURE);
             if (!pp) {

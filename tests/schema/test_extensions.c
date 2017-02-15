@@ -2140,6 +2140,8 @@ test_complex_yin(void **state)
                     "      <anydata name=\"i\"/>\n"
                     "    </output>\n"
                     "    <uses name=\"grp\"/>\n"
+                    "    <typedef name=\"mytype\">\n      <type name=\"string\"/>\n    </typedef>\n"
+                    "    <type name=\"string\"/>\n"
                     "  </e:complex>\n"
                     "</module>\n";
 
@@ -2230,6 +2232,10 @@ test_complex_arrays_yin(void **state)
                     "    <anyxml name=\"anyxml2\"/>\n"
                     "    <leaf name=\"l1\">\n      <type name=\"string\"/>\n    </leaf>\n"
                     "    <leaf name=\"l2\">\n      <type name=\"string\"/>\n    </leaf>\n"
+                    "    <typedef name=\"mytype1\">\n      <type name=\"string\"/>\n    </typedef>\n"
+                    "    <typedef name=\"mytype2\">\n      <type name=\"string\"/>\n    </typedef>\n"
+                    "    <type name=\"string\"/>\n"
+                    "    <type name=\"uint8\"/>\n"
                     "  </e:complex-arrays>\n"
                     "</module>\n";
 
