@@ -1139,6 +1139,10 @@ yang_read_type(struct lys_module *module, void *parent, char *value, enum yytoke
         dev->type->der = (struct lys_tpdf *)typ;
         typ->type = dev->type;
         break;
+    case EXTENSION_INSTANCE:
+        ((struct lys_type *)parent)->der = (struct lys_tpdf *)typ;
+        typ->type = parent;
+        break;
     default:
         goto error;
         break;
@@ -2913,7 +2917,8 @@ yang_read_string(const char *input, char *output, int size, int offset, int inde
 
 /* free function */
 
-static void yang_type_free(struct ly_ctx *ctx, struct lys_type *type)
+void
+yang_type_free(struct ly_ctx *ctx, struct lys_type *type)
 {
     struct yang_type *stype = (struct yang_type *)type->der;
     int i;
@@ -4642,4 +4647,51 @@ yang_fill_ext_substm_index(struct lys_ext_instance_complex *ext, LY_STMT stmt, e
         for (c = 0; p[0][c]; c++);
         return c + decrement;
     }
+}
+
+void **
+yang_getplace_for_extcomplex_struct(char *parent_name, char *node_name, struct lys_ext_instance_complex *ext, LY_STMT stmt)
+{
+    int c;
+    void **data, ***p = NULL;
+    void *reallocated;
+    struct lyext_substmt *info;
+
+    data = lys_ext_complex_get_substmt(stmt, ext, &info);
+    if (!data) {
+        LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, node_name, parent_name);
+        return NULL;
+    }
+    if (info->cardinality < LY_STMT_CARD_SOME && *data) {
+        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, node_name, parent_name);
+        return NULL;
+    }
+
+    c = 0;
+    if (info->cardinality >= LY_STMT_CARD_SOME) {
+        /* there can be multiple instances, so instead of pointer to array,
+         * we have in data pointer to pointer to array */
+        p = (void ***)data;
+        data = *p;
+        if (!data) {
+            /* allocate initial array */
+            *p = data = malloc(2 * sizeof(void *));
+        } else {
+            for (c = 0; *data; data++, c++);
+        }
+    }
+
+    if (p) {
+        /* enlarge the array */
+        reallocated = realloc(*p, (c + 2) * sizeof(void *));
+        if (!reallocated) {
+            LOGMEM;
+            return NULL;
+        }
+        *p = reallocated;
+        data = *p;
+        data[c + 1] = NULL;
+    }
+
+    return &data[c];
 }

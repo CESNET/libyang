@@ -6795,6 +6795,8 @@ int
 resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
 {
     uint32_t i, resolved = 0, unres_count, res_count;
+    struct lyxml_elem *yin;
+    struct yang_type *yang;
     int rc;
 
     assert(unres);
@@ -6845,7 +6847,18 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
             }
             resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, 1);
             if (unres->type[i] == UNRES_TYPE_DER_EXT) {
-                lyxml_free(mod->ctx, (struct lyxml_elem*)((struct lys_type *)unres->item[i])->der);
+                yin = (struct lyxml_elem*)((struct lys_type *)unres->item[i])->der;
+                if (yin->flags & LY_YANG_STRUCTURE_FLAG) {
+                    yang =(struct yang_type *)yin;
+                    ((struct lys_type *)unres->item[i])->base = yang->base;
+                    if (yang->base == LY_TYPE_UNION) {
+                        yang_free_type_union(mod->ctx, (struct lys_type *)unres->item[i]);
+                    }
+                    lydict_remove(mod->ctx, yang->name);
+                    free(yang);
+                } else {
+                    lyxml_free(mod->ctx, yin);
+                }
             }
         }
         return -1;

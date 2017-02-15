@@ -245,6 +245,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <str> semicolom
 %type <str> curly_bracket_open
 %type <str> unknown_statement2_identifier
+%type <v> type_ext_alloc
 %type <token> import_arg_str
 %type <token> include_arg_str
 %type <token> revision_arg_stmt
@@ -291,6 +292,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 
 %destructor { free($$); } pattern_arg_str string_opt_part1 semicolom curly_bracket_open
 %destructor { free(($$) ? *$$ : NULL); } tmp_string
+%destructor { yang_type_free(param->module->ctx, $$); } type_ext_alloc
 
 %initial-action { yylloc.last_column = 0;
                   if (param->flags & EXT_INSTANCE_SUBSTMT) {
@@ -4199,6 +4201,20 @@ identifiers_ref: IDENTIFIERPREFIX { s = strdup(yyget_text(scanner));
                                     }
                                   }
 
+type_ext_alloc: @EMPTYDIR@ { struct lys_type **type;
+
+                             type = (struct lys_type **)yang_getplace_for_extcomplex_struct(ext_name, "type", ext_instance, LY_STMT_TYPE);
+                             if (!type) {
+                               YYABORT;
+                             }
+                             /* allocate type structure */
+                             (*type) = calloc(1, sizeof **type);
+
+                             /* HACK for unres */
+                             (*type)->parent = (struct lys_tpdf *)ext_instance;
+                             $$ = actual = *type;
+                            }
+
 ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
                                 actual = ext_instance;
                                 if (!is_ext_instance) {
@@ -4282,6 +4298,19 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
                                               YYABORT;
                                             }
                                           }
+  |  ext_substatements type_ext_alloc type_stmt stmtsep
+     { struct lys_type *type = $2;
+
+       if (yang_fill_type(trg, type, (struct yang_type *)type->der, ext_instance, param->unres)) {
+         yang_type_free(trg->ctx, type);
+         YYABORT;
+       }
+       if (unres_schema_add_node(trg, param->unres, type, UNRES_TYPE_DER_EXT, NULL) == -1) {
+         yang_type_free(trg->ctx, type);
+         YYABORT;
+       }
+       actual = ext_instance;
+     }
 
 %%
 
