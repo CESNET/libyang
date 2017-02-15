@@ -340,38 +340,48 @@ yang_print_extension(struct lyout *out, int level, const struct lys_ext *ext)
 }
 
 static void
-yang_print_restr(struct lyout *out, int level, const struct lys_module *module, const struct lys_restr *restr, int *flag)
+yang_print_restr(struct lyout *out, int level, const struct lys_module *module, const struct lys_restr *restr,
+                 const char *name, const char *value)
 {
+    int flag = 0;
+
+    ly_print(out, "%*s%s \"", LEVEL, INDENT, name);
+    yang_encode(out, value, -1);
+    ly_print(out, "\"");
+
+    level++;
     if (restr->ext_size) {
-        yang_print_open(out, flag);
+        yang_print_open(out, &flag);
         yang_print_extension_instances(out, level, module, LYEXT_SUBSTMT_SELF, 0, restr->ext, restr->ext_size);
     }
     if (restr->expr[0] == 0x15) {
         /* special byte value in pattern's expression: 0x15 - invert-match, 0x06 - match */
-        yang_print_open(out, flag);
+        yang_print_open(out, &flag);
         yang_print_substmt(out, level, LYEXT_SUBSTMT_MODIFIER, 0, "invert-match",
                            module, restr->ext, restr->ext_size);
     }
     if (restr->emsg != NULL) {
-        yang_print_open(out, flag);
+        yang_print_open(out, &flag);
         yang_print_substmt(out, level, LYEXT_SUBSTMT_ERRMSG, 0, restr->emsg,
                            module, restr->ext, restr->ext_size);
     }
     if (restr->eapptag != NULL) {
-        yang_print_open(out, flag);
+        yang_print_open(out, &flag);
         yang_print_substmt(out, level, LYEXT_SUBSTMT_ERRTAG, 0, restr->eapptag,
                            module, restr->ext, restr->ext_size);
     }
     if (restr->dsc != NULL) {
-        yang_print_open(out, flag);
+        yang_print_open(out, &flag);
         yang_print_substmt(out, level, LYEXT_SUBSTMT_DESCRIPTION, 0, restr->dsc,
                            module, restr->ext, restr->ext_size);
     }
     if (restr->ref != NULL) {
-        yang_print_open(out, flag);
+        yang_print_open(out, &flag);
         yang_print_substmt(out, level, LYEXT_SUBSTMT_REFERENCE, 0, restr->ref,
                            module, restr->ext, restr->ext_size);
     }
+    level--;
+    yang_print_close(out, level, flag);
 }
 
 static void
@@ -463,12 +473,7 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
     case LY_TYPE_BINARY:
         if (type->info.binary.length) {
             yang_print_open(out, &flag);
-            ly_print(out, "%*slength \"", LEVEL, INDENT);
-            yang_encode(out, type->info.binary.length->expr, -1);
-            ly_print(out, "\"");
-            flag2 = 0;
-            yang_print_restr(out, level + 1, module, type->info.binary.length, &flag2);
-            yang_print_close(out, level, flag2);
+            yang_print_restr(out, level, module, type->info.binary.length, "length", type->info.binary.length->expr);
         }
         break;
     case LY_TYPE_BITS:
@@ -499,12 +504,7 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
         }
         if (type->info.dec64.range != NULL) {
             yang_print_open(out, &flag);
-            ly_print(out, "%*srange \"", LEVEL, INDENT);
-            yang_encode(out, type->info.dec64.range->expr, -1);
-            ly_print(out, "\"");
-            flag2 = 0;
-            yang_print_restr(out, level + 1, module, type->info.dec64.range, &flag2);
-            yang_print_close(out, level, flag2);
+            yang_print_restr(out, level, module, type->info.dec64.range, "range", type->info.dec64.range->expr);
         }
         break;
     case LY_TYPE_ENUM:
@@ -564,12 +564,7 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
     case LY_TYPE_UINT64:
         if (type->info.num.range) {
             yang_print_open(out, &flag);
-            ly_print(out, "%*srange \"", LEVEL, INDENT);
-            yang_encode(out, type->info.num.range->expr, -1);
-            ly_print(out, "\"");
-            flag2 = 0;
-            yang_print_restr(out, level + 1, module, type->info.num.range, &flag2);
-            yang_print_close(out, level, flag2);
+            yang_print_restr(out, level, module, type->info.num.range, "range", type->info.num.range->expr);
         }
         break;
     case LY_TYPE_LEAFREF:
@@ -590,21 +585,12 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
     case LY_TYPE_STRING:
         if (type->info.str.length) {
             yang_print_open(out, &flag);
-            ly_print(out, "%*slength \"", LEVEL, INDENT);
-            yang_encode(out, type->info.str.length->expr, -1);
-            ly_print(out, "\"");
-            flag2 = 0;
-            yang_print_restr(out, level + 1, module, type->info.str.length, &flag2);
-            yang_print_close(out, level, flag2);
+            yang_print_restr(out, level, module, type->info.str.length, "length", type->info.str.length->expr);
         }
         for (i = 0; i < type->info.str.pat_count; i++) {
             yang_print_open(out, &flag);
-            ly_print(out, "%*spattern \"", LEVEL, INDENT);
-            yang_encode(out, &type->info.str.patterns[i].expr[1], -1);
-            ly_print(out, "\"");
-            flag2 = 0;
-            yang_print_restr(out, level + 1, module, &type->info.str.patterns[i], &flag2);
-            yang_print_close(out, level, flag2);
+            yang_print_restr(out, level, module, &type->info.str.patterns[i],
+                             "pattern", &type->info.str.patterns[i].expr[1]);
         }
         break;
     case LY_TYPE_UNION:
@@ -625,7 +611,6 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
 static void
 yang_print_must(struct lyout *out, int level, const struct lys_module *module, const struct lys_restr *must)
 {
-    int flag = 0;
     const char *str;
 
     str = transform_json2schema(module, must->expr);
@@ -633,14 +618,8 @@ yang_print_must(struct lyout *out, int level, const struct lys_module *module, c
         ly_print(out, "(!error!)");
         return;
     }
-
-    ly_print(out, "%*smust \"", LEVEL, INDENT);
-    yang_encode(out, str, -1);
-    ly_print(out, "\"");
+    yang_print_restr(out, level, module, must, "must", str);
     lydict_remove(module->ctx, str);
-
-    yang_print_restr(out, level + 1, module, must, &flag);
-    yang_print_close(out, level, flag);
 }
 
 static void
@@ -1927,17 +1906,17 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
         yang_print_open(out, &content);                                                       \
         FUNC(out, level, (TYPE *)(*pp));                                                      \
     }
-#define YANG_PRINT_EXTCOMPLEX_STRUCT_M(STMT, TYPE, FUNC)                                      \
+#define YANG_PRINT_EXTCOMPLEX_STRUCT_M(STMT, TYPE, FUNC, ARGS...)                             \
     pp = lys_ext_complex_get_substmt(STMT, (struct lys_ext_instance_complex *)ext[u], NULL);  \
     if (!pp || !(*pp)) { break; }                                                             \
     if (info[i].cardinality >= LY_STMT_CARD_SOME) { /* process array */                       \
         for (pp = *pp; *pp; pp++) {                                                           \
             yang_print_open(out, &content);                                                   \
-            FUNC(out, level, module, (TYPE *)(*pp));                                          \
+            FUNC(out, level, module, (TYPE *)(*pp), ##ARGS);                                  \
         }                                                                                     \
     } else { /* single item */                                                                \
         yang_print_open(out, &content);                                                       \
-        FUNC(out, level, module, (TYPE *)(*pp));                                              \
+        FUNC(out, level, module, (TYPE *)(*pp), ##ARGS);                                      \
     }
 #define YANG_PRINT_EXTCOMPLEX_INT(STMT, TYPE)                                      \
     p = &((struct lys_ext_instance_complex*)ext[u])->content[info[i].offset];      \
@@ -2189,6 +2168,21 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
                 case LY_STMT_NOTIFICATION:
                 case LY_STMT_USES:
                     YANG_PRINT_EXTCOMPLEX_SNODE(info[i].stmt);
+                    break;
+                case LY_STMT_LENGTH:
+                    YANG_PRINT_EXTCOMPLEX_STRUCT_M(LY_STMT_LENGTH, struct lys_restr, yang_print_restr,
+                                                   "length", ((struct lys_restr *)(*pp))->expr);
+                    break;
+                case LY_STMT_MUST:
+                    YANG_PRINT_EXTCOMPLEX_STRUCT_M(LY_STMT_MUST, struct lys_restr, yang_print_must);
+                    break;
+                case LY_STMT_PATTERN:
+                    YANG_PRINT_EXTCOMPLEX_STRUCT_M(LY_STMT_PATTERN, struct lys_restr, yang_print_restr,
+                                                   "pattern", &((struct lys_restr *)(*pp))->expr[1]);
+                    break;
+                case LY_STMT_RANGE:
+                    YANG_PRINT_EXTCOMPLEX_STRUCT_M(LY_STMT_RANGE, struct lys_restr, yang_print_restr,
+                                                   "range", ((struct lys_restr *)(*pp))->expr);
                     break;
                 default:
                     /* TODO */

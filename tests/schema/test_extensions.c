@@ -2140,7 +2140,13 @@ test_complex_yin(void **state)
                     "    <uses name=\"grp\"/>\n"
                     "    <typedef name=\"mytype\">\n      <type name=\"string\"/>\n    </typedef>\n"
                     "    <type name=\"string\"/>\n"
+                    "    <if-feature name=\"f\"/>\n"
+                    "    <length value=\"10..20\"/>\n"
+                    "    <must condition=\"1\"/>\n"
+                    "    <pattern value=\"[a-z]*\"/>\n"
+                    "    <range value=\"0..10\"/>\n"
                     "  </e:complex>\n"
+                    "  <feature name=\"f\"/>\n"
                     "</module>\n";
 
     mod = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
@@ -2232,7 +2238,19 @@ test_complex_arrays_yin(void **state)
                     "    <typedef name=\"mytype2\">\n      <type name=\"string\"/>\n    </typedef>\n"
                     "    <type name=\"string\"/>\n"
                     "    <type name=\"uint8\"/>\n"
+                    "    <if-feature name=\"f1\"/>\n"
+                    "    <if-feature name=\"f2\"/>\n"
+                    "    <length value=\"10\"/>\n"
+                    "    <length value=\"20\"/>\n"
+                    "    <must condition=\"1\"/>\n"
+                    "    <must condition=\"2\"/>\n"
+                    "    <pattern value=\"[a-z]*\"/>\n"
+                    "    <pattern value=\"[A-Z]*\"/>\n"
+                    "    <range value=\"0..10\"/>\n"
+                    "    <range value=\"100..110\"/>\n"
                     "  </e:complex-arrays>\n"
+                    "  <feature name=\"f1\"/>\n"
+                    "  <feature name=\"f2\"/>\n"
                     "</module>\n";
 
     mod = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);

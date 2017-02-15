@@ -4522,6 +4522,12 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
                         free(*pp);
                     }
                     break;
+                case LY_STMT_LENGTH:
+                case LY_STMT_MUST:
+                case LY_STMT_PATTERN:
+                case LY_STMT_RANGE:
+                    EXTCOMPLEX_FREE_STRUCT(substmt[j].stmt, struct lys_restr, lys_restr_free, 1);
+                    break;
                 default:
                     /* nothing to free */
                     break;
