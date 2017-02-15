@@ -59,39 +59,37 @@ struct lyext_substmt libyang_ext_test_substmt[] = {
     {LY_STMT_REVISIONDATE, 16 * sizeof(const char*), LY_STMT_CARD_OPT}, /* const char* */
     {LY_STMT_UNITS,        17 * sizeof(const char*), LY_STMT_CARD_OPT}, /* const char* */
     {LY_STMT_VALUE,        18 * sizeof(const char*), LY_STMT_CARD_OPT}, /* const char* */
-    {LY_STMT_VERSION,      19 * sizeof(const char*), LY_STMT_CARD_OPT}, /* const char* */
-    {LY_STMT_MODIFIER,     20 * sizeof(const char*), LY_STMT_CARD_OPT}, /* uint8_t */
-    {LY_STMT_REQINSTANCE,  20 * sizeof(const char*) + 1 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* uint8_t */
-    {LY_STMT_YINELEM,      20 * sizeof(const char*) + 2 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* uint8_t */
-    {LY_STMT_CONFIG,       20 * sizeof(const char*) + 3 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared uint16_t */
-    {LY_STMT_MANDATORY,    20 * sizeof(const char*) + 3 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared uint16_t */
-    {LY_STMT_ORDEREDBY,    20 * sizeof(const char*) + 3 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared uint16_t */
-    {LY_STMT_STATUS,       20 * sizeof(const char*) + 3 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared uint16_t */
-    {LY_STMT_DIGITS,       20 * sizeof(const char*) + 3 * sizeof(uint8_t) + sizeof(uint16_t), LY_STMT_CARD_OPT}, /* uint8_t */
-    {LY_STMT_MAX,          20 * sizeof(const char*) + 4 * sizeof(uint8_t) + sizeof(uint16_t), LY_STMT_CARD_OPT}, /* uint32_t* */
-    {LY_STMT_MIN,          20 * sizeof(const char*) + 4 * sizeof(uint8_t) +
+    {LY_STMT_MODIFIER,     19 * sizeof(const char*), LY_STMT_CARD_OPT}, /* uint8_t */
+    {LY_STMT_REQINSTANCE,  19 * sizeof(const char*) + 1 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* uint8_t */
+    {LY_STMT_CONFIG,       19 * sizeof(const char*) + 2 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared uint16_t */
+    {LY_STMT_MANDATORY,    19 * sizeof(const char*) + 2 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared uint16_t */
+    {LY_STMT_ORDEREDBY,    19 * sizeof(const char*) + 2 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared uint16_t */
+    {LY_STMT_STATUS,       19 * sizeof(const char*) + 2 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared uint16_t */
+    {LY_STMT_DIGITS,       19 * sizeof(const char*) + 2 * sizeof(uint8_t) + sizeof(uint16_t), LY_STMT_CARD_OPT}, /* uint8_t */
+    {LY_STMT_MAX,          19 * sizeof(const char*) + 3 * sizeof(uint8_t) + sizeof(uint16_t), LY_STMT_CARD_OPT}, /* uint32_t* */
+    {LY_STMT_MIN,          19 * sizeof(const char*) + 3 * sizeof(uint8_t) +
                            sizeof(uint16_t) + 1 * sizeof(uint32_t*), LY_STMT_CARD_OPT}, /* uint32_t* */
-    {LY_STMT_POSITION,     20 * sizeof(const char*) + 4 * sizeof(uint8_t) +
+    {LY_STMT_POSITION,     19 * sizeof(const char*) + 3 * sizeof(uint8_t) +
                            sizeof(uint16_t) + 2 * sizeof(uint32_t*), LY_STMT_CARD_OPT}, /* uint32_t* */
 /* compress the offset calculation */
-    {LY_STMT_UNIQUE,       23 * sizeof(void*) + 6 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* struct lys_unique* */
-    {LY_STMT_MODULE,       24 * sizeof(void*) + 6 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* struct lys_module* */
-    {LY_STMT_ACTION,       25 * sizeof(void*) + 6 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
-    {LY_STMT_ANYDATA,      25 * sizeof(void*) + 6 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
-    {LY_STMT_ANYXML,       25 * sizeof(void*) + 6 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
-    {LY_STMT_CASE,         25 * sizeof(void*) + 6 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
-    {LY_STMT_CHOICE,       25 * sizeof(void*) + 6 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
-    {LY_STMT_CONTAINER,    25 * sizeof(void*) + 6 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
-    {LY_STMT_GROUPING,     25 * sizeof(void*) + 6 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
-    {LY_STMT_INPUT,        25 * sizeof(void*) + 6 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
-    {LY_STMT_LEAF,         25 * sizeof(void*) + 6 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
-    {LY_STMT_LEAFLIST,     25 * sizeof(void*) + 6 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
-    {LY_STMT_LIST,         25 * sizeof(void*) + 6 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
-    {LY_STMT_NOTIFICATION, 25 * sizeof(void*) + 6 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
-    {LY_STMT_OUTPUT,       25 * sizeof(void*) + 6 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
-    {LY_STMT_USES,         25 * sizeof(void*) + 6 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
-    {LY_STMT_TYPEDEF,      26 * sizeof(void*) + 6 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* struct lys_tpdf* */
-    {LY_STMT_TYPE,         27 * sizeof(void*) + 6 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* struct lys_type* */
+    {LY_STMT_UNIQUE,       22 * sizeof(void*) + 5 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* struct lys_unique* */
+    {LY_STMT_MODULE,       23 * sizeof(void*) + 5 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* struct lys_module* */
+    {LY_STMT_ACTION,       24 * sizeof(void*) + 5 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
+    {LY_STMT_ANYDATA,      24 * sizeof(void*) + 5 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
+    {LY_STMT_ANYXML,       24 * sizeof(void*) + 5 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
+    {LY_STMT_CASE,         24 * sizeof(void*) + 5 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
+    {LY_STMT_CHOICE,       24 * sizeof(void*) + 5 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
+    {LY_STMT_CONTAINER,    24 * sizeof(void*) + 5 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
+    {LY_STMT_GROUPING,     24 * sizeof(void*) + 5 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
+    {LY_STMT_INPUT,        24 * sizeof(void*) + 5 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
+    {LY_STMT_LEAF,         24 * sizeof(void*) + 5 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
+    {LY_STMT_LEAFLIST,     24 * sizeof(void*) + 5 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
+    {LY_STMT_LIST,         24 * sizeof(void*) + 5 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
+    {LY_STMT_NOTIFICATION, 24 * sizeof(void*) + 5 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
+    {LY_STMT_OUTPUT,       24 * sizeof(void*) + 5 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
+    {LY_STMT_USES,         24 * sizeof(void*) + 5 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
+    {LY_STMT_TYPEDEF,      25 * sizeof(void*) + 5 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* struct lys_tpdf* */
+    {LY_STMT_TYPE,         26 * sizeof(void*) + 5 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* struct lys_type* */
 /*    {LY_STMT_BIT,          49 * sizeof(void *), LY_STMT_CARD_OPT},
     {LY_STMT_ENUM,         40 * sizeof(void *), LY_STMT_CARD_OPT},
     {LY_STMT_REFINE,       51 * sizeof(void *), LY_STMT_CARD_OPT},
@@ -132,32 +130,31 @@ struct lyext_substmt libyang_ext_test_substmt_arrays[] = {
     {LY_STMT_REVISIONDATE, 16 * sizeof(const char*), LY_STMT_CARD_ANY}, /* const char** */
     {LY_STMT_UNITS,        17 * sizeof(const char*), LY_STMT_CARD_ANY}, /* const char** */
     {LY_STMT_VALUE,        18 * sizeof(const char*), LY_STMT_CARD_ANY}, /* const char** */
-    {LY_STMT_VERSION,      19 * sizeof(const char*), LY_STMT_CARD_ANY}, /* const char** */
-    {LY_STMT_DIGITS,       20 * sizeof(const char*), LY_STMT_CARD_ANY}, /* uint8_t* */
-    {LY_STMT_MAX,          20 * sizeof(const char*) + sizeof(uint8_t*), LY_STMT_CARD_ANY}, /* uint32_t* */
-    {LY_STMT_MIN,          20 * sizeof(const char*) + sizeof(uint8_t*) +
+    {LY_STMT_DIGITS,       19 * sizeof(const char*), LY_STMT_CARD_ANY}, /* uint8_t* */
+    {LY_STMT_MAX,          19 * sizeof(const char*) + sizeof(uint8_t*), LY_STMT_CARD_ANY}, /* uint32_t* */
+    {LY_STMT_MIN,          19 * sizeof(const char*) + sizeof(uint8_t*) +
                             1 * sizeof(uint32_t*), LY_STMT_CARD_ANY}, /* uint32_t* */
-    {LY_STMT_POSITION,     20 * sizeof(const char*) + sizeof(uint8_t*) +
+    {LY_STMT_POSITION,     19 * sizeof(const char*) + sizeof(uint8_t*) +
                             2 * sizeof(uint32_t*), LY_STMT_CARD_ANY}, /* uint32_t* */
 /* compress the offset calculation */
-    {LY_STMT_UNIQUE,       24 * sizeof(void*), LY_STMT_CARD_ANY}, /* struct lys_unique** */
-    {LY_STMT_MODULE,       25 * sizeof(void*), LY_STMT_CARD_ANY}, /* struct lys_module** */
-    {LY_STMT_ACTION,       26 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
-    {LY_STMT_ANYDATA,      26 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
-    {LY_STMT_ANYXML,       26 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
-    {LY_STMT_CASE,         26 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
-    {LY_STMT_CHOICE,       26 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
-    {LY_STMT_CONTAINER,    26 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
-    {LY_STMT_GROUPING,     26 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
-    {LY_STMT_INPUT,        26 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
-    {LY_STMT_LEAF,         26 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
-    {LY_STMT_LEAFLIST,     26 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
-    {LY_STMT_LIST,         26 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
-    {LY_STMT_NOTIFICATION, 26 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
-    {LY_STMT_OUTPUT,       26 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
-    {LY_STMT_USES,         26 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
-    {LY_STMT_TYPEDEF,      27 * sizeof(void*), LY_STMT_CARD_ANY}, /* struct lys_tpdf** */
-    {LY_STMT_TYPE,         28 * sizeof(void*), LY_STMT_CARD_ANY}, /* struct lys_type** */
+    {LY_STMT_UNIQUE,       23 * sizeof(void*), LY_STMT_CARD_ANY}, /* struct lys_unique** */
+    {LY_STMT_MODULE,       24 * sizeof(void*), LY_STMT_CARD_ANY}, /* struct lys_module** */
+    {LY_STMT_ACTION,       25 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
+    {LY_STMT_ANYDATA,      25 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
+    {LY_STMT_ANYXML,       25 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
+    {LY_STMT_CASE,         25 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
+    {LY_STMT_CHOICE,       25 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
+    {LY_STMT_CONTAINER,    25 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
+    {LY_STMT_GROUPING,     25 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
+    {LY_STMT_INPUT,        25 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
+    {LY_STMT_LEAF,         25 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
+    {LY_STMT_LEAFLIST,     25 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
+    {LY_STMT_LIST,         25 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
+    {LY_STMT_NOTIFICATION, 25 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
+    {LY_STMT_OUTPUT,       25 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
+    {LY_STMT_USES,         25 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
+    {LY_STMT_TYPEDEF,      26 * sizeof(void*), LY_STMT_CARD_ANY}, /* struct lys_tpdf** */
+    {LY_STMT_TYPE,         27 * sizeof(void*), LY_STMT_CARD_ANY}, /* struct lys_type** */
 /*    {LY_STMT_BIT,          49 * sizeof(void *), LY_STMT_CARD_ANY},
     {LY_STMT_ENUM,         40 * sizeof(void *), LY_STMT_CARD_ANY},
     {LY_STMT_REFINE,       51 * sizeof(void *), LY_STMT_CARD_ANY},

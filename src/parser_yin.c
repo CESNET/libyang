@@ -7737,20 +7737,12 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_PATH, 0, "value", unres)) {
                 goto error;
             }
-        } else if (!strcmp(node->name, "yang-version")) {
-            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_VERSION, 0, "value", unres)) {
-                goto error;
-            }
         } else if (!strcmp(node->name, "require-instance")) {
             if (yin_parse_extcomplex_bool(mod, node, ext, LY_STMT_REQINSTANCE, "true", "false", unres)) {
                 goto error;
             }
         } else if (!strcmp(node->name, "modifier")) {
             if (yin_parse_extcomplex_bool(mod, node, ext, LY_STMT_MODIFIER, "invert-match", NULL, unres)) {
-                goto error;
-            }
-        } else if (!strcmp(node->name, "yin-element")) {
-            if (yin_parse_extcomplex_bool(mod, node, ext, LY_STMT_YINELEM, "true", "false", unres)) {
                 goto error;
             }
         } else if (!strcmp(node->name, "value")) {

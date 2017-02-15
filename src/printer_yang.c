@@ -2019,7 +2019,6 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
                 case LY_STMT_CONTACT:
                 case LY_STMT_ORGANIZATION:
                 case LY_STMT_PATH:
-                case LY_STMT_VERSION:
                 case LY_STMT_VALUE:
                     yang_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
                                               info[i].stmt, &content);
@@ -2098,7 +2097,6 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
                                                 LY_STMT_ORDEREDBY, "system", "user", 0, LYS_USERORDERED, &content);
                     break;
                 case LY_STMT_REQINSTANCE:
-                case LY_STMT_YINELEM:
                     yang_print_extcomplex_bool(out, level, module, (struct lys_ext_instance_complex*)ext[u],
                                                info[i].stmt, "true", "false", &content);
                     break;

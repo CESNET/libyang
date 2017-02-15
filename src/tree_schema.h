@@ -272,13 +272,12 @@ typedef enum {
     LY_STMT_REVISIONDATE, /**< revision-date, stored as __const char*__ */
     LY_STMT_UNITS,        /**< stored as __const char*__ */
     LY_STMT_VALUE,        /**< stored as __const char*__ */
-    LY_STMT_VERSION,      /**< yang-version, stored as __const char*__ */
+    LY_STMT_VERSION,      /**< not supported in extension instances */
     LY_STMT_MODIFIER,     /**< stored as __uint8_t__ interpreted as follows: 0 - not set/default; 1 - invert-match
                                does not allow multiple instances */
     LY_STMT_REQINSTANCE,  /**< require-instance, stored as __uint8_t__ interpreted as follows: 0 - not set/default;
                                1 - true; 2 - false, does not allow multiple instances */
-    LY_STMT_YINELEM,      /**< stored as __uint8_t__ interpreted as follows: 0 - not set/default; 1 - true; 2 - false,
-                               does not allow multiple instances */
+    LY_STMT_YINELEM,      /**< not supported in extension instances  */
     LY_STMT_CONFIG,       /**< stored as __uint16_t__ value (ORed with the previous value(s)), possible values are
                                #LYS_CONFIG_R and #LYS_CONFIG_W (both ORed with #LYS_CONFIG_SET), does not allow multiple
                                instances */
@@ -315,18 +314,18 @@ typedef enum {
     LY_STMT_USES,         /**< stored as ::lys_node_uses*, part of the data tree  */
     LY_STMT_TYPEDEF,      /**< stored as ::lys_tpdf* */
     LY_STMT_TYPE,         /**< stored as ::lys_type* */
-    LY_STMT_BIT,
-    LY_STMT_ENUM,
-    LY_STMT_REFINE,
-    LY_STMT_AUGMENT,
-    LY_STMT_DEVIATE,
-    LY_STMT_DEVIATION,
-    LY_STMT_EXTENSION,
-    LY_STMT_FEATURE,
-    LY_STMT_IDENTITY,
+    LY_STMT_BIT,          /**< not supported in extension instances */
+    LY_STMT_ENUM,         /**< not supported in extension instances */
+    LY_STMT_REFINE,       /**< not supported in extension instances */
+    LY_STMT_AUGMENT,      /**< not supported in extension instances */
+    LY_STMT_DEVIATE,      /**< not supported in extension instances */
+    LY_STMT_DEVIATION,    /**< not supported in extension instances */
+    LY_STMT_EXTENSION,    /**< not supported in extension instances */
+    LY_STMT_FEATURE,      /**< not supported in extension instances */
+    LY_STMT_IDENTITY,     /**< not supported in extension instances */
     LY_STMT_IFFEATURE,    /**< if-feature, stored as ::lys_iffeature* */
-    LY_STMT_IMPORT,
-    LY_STMT_INCLUDE,
+    LY_STMT_IMPORT,       /**< not supported in extension instances */
+    LY_STMT_INCLUDE,      /**< not supported in extension instances */
     LY_STMT_LENGTH,
     LY_STMT_MUST,
     LY_STMT_PATTERN,
