@@ -7538,6 +7538,7 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
     long long int ll;
     unsigned long u;
     int i;
+    int64_t v_;
 
 #define YIN_EXTCOMPLEX_GETPLACE(STMT, TYPE)                                          \
     p = lys_ext_complex_get_substmt(STMT, ext, &info);                               \
@@ -7753,10 +7754,6 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             if (yin_parse_extcomplex_bool(mod, node, ext, LY_STMT_MODIFIER, "invert-match", NULL, unres)) {
                 goto error;
             }
-        } else if (!strcmp(node->name, "value")) {
-            if (yin_parse_extcomplex_str(mod, node, ext, LY_STMT_VALUE, 0, "value", unres)) {
-                goto error;
-            }
         } else if (!strcmp(node->name, "fraction-digits")) {
             YIN_EXTCOMPLEX_GETPLACE(LY_STMT_DIGITS, uint8_t);
 
@@ -7832,6 +7829,32 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             (**(uint32_t **)p) = (uint32_t)u;
 
             YIN_EXTCOMPLEX_ENLARGE(uint32_t*);
+        } if (!strcmp(node->name, "value")) {
+            YIN_EXTCOMPLEX_GETPLACE(LY_STMT_VALUE, int32_t*);
+
+            GETVAL(value, node, "value");
+            while (isspace(value[0])) {
+                value++;
+            }
+
+            /* convert it to int32_t */
+            v_ = strtoll(value, NULL, 10);
+
+            /* range check */
+            if (v_ < INT32_MIN || v_ > INT32_MAX) {
+                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, node->name);
+                goto error;
+            }
+
+            if (lyp_yin_parse_subnode_ext(mod, ext, LYEXT_PAR_EXTINST, node, LYEXT_SUBSTMT_VALUE, i, unres)) {
+                goto error;
+            }
+
+            /* store the value */
+            *(int32_t **)p = malloc(sizeof(int32_t));
+            (**(int32_t **)p) = (int32_t)v_;
+
+            YIN_EXTCOMPLEX_ENLARGE(int32_t*);
         } else if (!strcmp(node->name, "position")) {
             YIN_EXTCOMPLEX_GETPLACE(LY_STMT_POSITION, uint32_t*);
 

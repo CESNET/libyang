@@ -4441,7 +4441,6 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
                 case LY_STMT_CONTACT:
                 case LY_STMT_ORGANIZATION:
                 case LY_STMT_PATH:
-                case LY_STMT_VALUE:
                     lys_extcomplex_free_str(ctx, (struct lys_ext_instance_complex *)e[i], substmt[j].stmt);
                     break;
                 case LY_STMT_TYPE:
@@ -4456,6 +4455,7 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
                 case LY_STMT_MAX:
                 case LY_STMT_MIN:
                 case LY_STMT_POSITION:
+                case LY_STMT_VALUE:
                     pp = (void**)&((struct lys_ext_instance_complex *)e[i])->content[substmt[j].offset];
                     if (substmt[j].cardinality >= LY_STMT_CARD_SOME && *pp) {
                         for(k = 0; ((uint32_t**)(*pp))[k]; k++) {

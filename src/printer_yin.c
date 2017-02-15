@@ -409,13 +409,14 @@ yin_print_unsigned(struct lyout *out, int level, LYEXT_SUBSTMT substmt, uint8_t 
 }
 
 static void
-yin_print_signed(struct lyout *out, int level, LYEXT_SUBSTMT substmt, const struct lys_module *module,
-                 struct lys_ext_instance **ext, unsigned int ext_size, signed int attr_value)
+yin_print_signed(struct lyout *out, int level, LYEXT_SUBSTMT substmt, uint8_t substmt_index,
+                 const struct lys_module *module, struct lys_ext_instance **ext, unsigned int ext_size,
+                 signed int attr_value)
 {
     char *str;
 
     asprintf(&str, "%d", attr_value);
-    yin_print_substmt(out, level, substmt, 0, str, module, ext, ext_size);
+    yin_print_substmt(out, level, substmt, substmt_index, str, module, ext, ext_size);
     free(str);
 }
 
@@ -486,7 +487,7 @@ yin_print_type(struct lyout *out, int level, const struct lys_module *module, co
                                    SNODE_COMMON_EXT | SNODE_COMMON_IFF);
             if (!(type->info.enums.enm[i].flags & LYS_AUTOASSIGNED)) {
                 yin_print_close_parent(out, &content2);
-                yin_print_signed(out, level + 1, LYEXT_SUBSTMT_VALUE, module,
+                yin_print_signed(out, level + 1, LYEXT_SUBSTMT_VALUE, 0, module,
                                  type->info.enums.enm[i].ext, type->info.enums.enm[i].ext_size,
                                  type->info.enums.enm[i].value);
             }
@@ -1923,19 +1924,19 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
         yin_print_close_parent(out, &content);                                                \
         FUNC(out, level, module, (TYPE *)(*pp), ##ARGS);                                      \
     }
-#define YIN_PRINT_EXTCOMPLEX_INT(STMT, TYPE)                                       \
+#define YIN_PRINT_EXTCOMPLEX_INT(STMT, TYPE, SIGN)                                 \
     p = &((struct lys_ext_instance_complex*)ext[u])->content[info[i].offset];      \
     if (!p || !*(TYPE**)p) { break; }                                              \
     if (info->cardinality >= LY_STMT_CARD_SOME) { /* we have array */              \
         for (c = 0; (*(TYPE***)p)[c]; c++) {                                       \
             yin_print_close_parent(out, &content);                                 \
-            yin_print_unsigned(out, level, STMT, c, module,                        \
-                               ext[u]->ext, ext[u]->ext_size, *(*(TYPE***)p)[c]);  \
+            yin_print_##SIGN(out, level, STMT, c, module,                          \
+                             ext[u]->ext, ext[u]->ext_size, *(*(TYPE***)p)[c]);    \
         }                                                                          \
     } else {                                                                       \
         yin_print_close_parent(out, &content);                                     \
-        yin_print_unsigned(out, level, STMT, 0, module,                            \
-                           ext[u]->ext, ext[u]->ext_size, (**(TYPE**)p));          \
+        yin_print_##SIGN(out, level, STMT, 0, module,                              \
+                         ext[u]->ext, ext[u]->ext_size, (**(TYPE**)p));            \
     }
 
     for (u = 0; u < count; u++) {
@@ -2017,7 +2018,6 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
                 case LY_STMT_CONTACT:
                 case LY_STMT_ORGANIZATION:
                 case LY_STMT_PATH:
-                case LY_STMT_VALUE:
                     yin_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
                                              info[i].stmt, &content);
                     break;
@@ -2120,13 +2120,16 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
                     }
                     break;
                 case LY_STMT_MAX:
-                    YIN_PRINT_EXTCOMPLEX_INT(LYEXT_SUBSTMT_MAX, uint32_t);
+                    YIN_PRINT_EXTCOMPLEX_INT(LYEXT_SUBSTMT_MAX, uint32_t, unsigned);
                     break;
                 case LY_STMT_MIN:
-                    YIN_PRINT_EXTCOMPLEX_INT(LYEXT_SUBSTMT_MIN, uint32_t);
+                    YIN_PRINT_EXTCOMPLEX_INT(LYEXT_SUBSTMT_MIN, uint32_t, unsigned);
                     break;
                 case LY_STMT_POSITION:
-                    YIN_PRINT_EXTCOMPLEX_INT(LYEXT_SUBSTMT_POSITION, uint32_t);
+                    YIN_PRINT_EXTCOMPLEX_INT(LYEXT_SUBSTMT_POSITION, uint32_t, unsigned);
+                    break;
+                case LY_STMT_VALUE:
+                    YIN_PRINT_EXTCOMPLEX_INT(LYEXT_SUBSTMT_VALUE, int32_t, signed);
                     break;
                 case LY_STMT_UNIQUE:
                     pp = lys_ext_complex_get_substmt(LY_STMT_UNIQUE, (struct lys_ext_instance_complex *)ext[u], NULL);

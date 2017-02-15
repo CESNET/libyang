@@ -436,13 +436,14 @@ yang_print_unsigned(struct lyout *out, int level, LYEXT_SUBSTMT substmt, uint8_t
 }
 
 static void
-yang_print_signed(struct lyout *out, int level, LYEXT_SUBSTMT substmt, const struct lys_module *module,
-                  struct lys_ext_instance **ext, unsigned int ext_size, signed int attr_value)
+yang_print_signed(struct lyout *out, int level, LYEXT_SUBSTMT substmt, uint8_t substmt_index,
+                  const struct lys_module *module, struct lys_ext_instance **ext, unsigned int ext_size,
+                  signed int attr_value)
 {
     char *str;
 
     asprintf(&str, "%d", attr_value);
-    yang_print_substmt(out, level, substmt, 0, str, module, ext, ext_size);
+    yang_print_substmt(out, level, substmt, substmt_index, str, module, ext, ext_size);
     free(str);
 }
 
@@ -517,7 +518,7 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
                                     SNODE_COMMON_EXT | SNODE_COMMON_IFF);
             if (!(type->info.enums.enm[i].flags & LYS_AUTOASSIGNED)) {
                 yang_print_open(out, &flag2);
-                yang_print_signed(out, level, LYEXT_SUBSTMT_VALUE, module,
+                yang_print_signed(out, level, LYEXT_SUBSTMT_VALUE, 0, module,
                                   type->info.enums.enm[i].ext, type->info.enums.enm[i].ext_size,
                                   type->info.enums.enm[i].value);
             }
@@ -1918,18 +1919,18 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
         yang_print_open(out, &content);                                                       \
         FUNC(out, level, module, (TYPE *)(*pp), ##ARGS);                                      \
     }
-#define YANG_PRINT_EXTCOMPLEX_INT(STMT, TYPE)                                      \
+#define YANG_PRINT_EXTCOMPLEX_INT(STMT, TYPE, SIGN)                                \
     p = &((struct lys_ext_instance_complex*)ext[u])->content[info[i].offset];      \
     if (!p || !*(TYPE**)p) { break; }                                              \
     if (info->cardinality >= LY_STMT_CARD_SOME) { /* we have array */              \
         for (c = 0; (*(TYPE***)p)[c]; c++) {                                       \
             yang_print_open(out, &content);                                        \
-            yang_print_unsigned(out, level, STMT, c, module,                       \
+            yang_print_##SIGN(out, level, STMT, c, module,                         \
                                 ext[u]->ext, ext[u]->ext_size, *(*(TYPE***)p)[c]); \
         }                                                                          \
     } else {                                                                       \
         yang_print_open(out, &content);                                            \
-        yang_print_unsigned(out, level, STMT, 0, module,                           \
+        yang_print_##SIGN(out, level, STMT, 0, module,                             \
                             ext[u]->ext, ext[u]->ext_size, (**(TYPE**)p));         \
     }
 
@@ -1998,7 +1999,6 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
                 case LY_STMT_CONTACT:
                 case LY_STMT_ORGANIZATION:
                 case LY_STMT_PATH:
-                case LY_STMT_VALUE:
                     yang_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
                                               info[i].stmt, &content);
                     break;
@@ -2101,13 +2101,16 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
                     }
                     break;
                 case LY_STMT_MAX:
-                    YANG_PRINT_EXTCOMPLEX_INT(LYEXT_SUBSTMT_MAX, uint32_t);
+                    YANG_PRINT_EXTCOMPLEX_INT(LYEXT_SUBSTMT_MAX, uint32_t, unsigned);
                     break;
                 case LY_STMT_MIN:
-                    YANG_PRINT_EXTCOMPLEX_INT(LYEXT_SUBSTMT_MIN, uint32_t);
+                    YANG_PRINT_EXTCOMPLEX_INT(LYEXT_SUBSTMT_MIN, uint32_t, unsigned);
                     break;
                 case LY_STMT_POSITION:
-                    YANG_PRINT_EXTCOMPLEX_INT(LYEXT_SUBSTMT_POSITION, uint32_t);
+                    YANG_PRINT_EXTCOMPLEX_INT(LYEXT_SUBSTMT_POSITION, uint32_t, unsigned);
+                    break;
+                case LY_STMT_VALUE:
+                    YANG_PRINT_EXTCOMPLEX_INT(LYEXT_SUBSTMT_VALUE, int32_t, signed);
                     break;
                 case LY_STMT_UNIQUE:
                     YANG_PRINT_EXTCOMPLEX_STRUCT(LY_STMT_UNIQUE, struct lys_unique, yang_print_unique);

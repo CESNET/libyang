@@ -271,7 +271,7 @@ typedef enum {
     LY_STMT_REFERENCE,    /**< stored as __const char*__ */
     LY_STMT_REVISIONDATE, /**< revision-date, stored as __const char*__ */
     LY_STMT_UNITS,        /**< stored as __const char*__ */
-    LY_STMT_VALUE,        /**< stored as __const char*__ */
+    LY_STMT_VALUE,        /**< stored as __int32_t*__ */
     LY_STMT_VERSION,      /**< not supported in extension instances */
     LY_STMT_MODIFIER,     /**< stored as __uint8_t__ interpreted as follows: 0 - not set/default; 1 - invert-match
                                does not allow multiple instances */
