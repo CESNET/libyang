@@ -293,7 +293,6 @@ typedef enum {
     LY_STMT_MIN,          /**< min-elements, stored as __uint32_t*__ */
     LY_STMT_POSITION,     /**< stored as __uint32_t*__ */
     LY_STMT_UNIQUE,       /**< stored as ::lys_unique* */
-
     LY_STMT_MODULE,       /**< stored as ::lys_module* */
     LY_STMT_SUBMODULE,    /**< not supported - submodules are tightly connected with their modules so it does not make
                                any sense to have them instantiated under an extension instance */
@@ -326,10 +325,10 @@ typedef enum {
     LY_STMT_IFFEATURE,    /**< if-feature, stored as ::lys_iffeature* */
     LY_STMT_IMPORT,       /**< not supported in extension instances */
     LY_STMT_INCLUDE,      /**< not supported in extension instances */
-    LY_STMT_LENGTH,
+    LY_STMT_LENGTH,       /**< stored as ::lys_restr* */
     LY_STMT_MUST,
-    LY_STMT_PATTERN,
-    LY_STMT_RANGE,
+    LY_STMT_PATTERN,      /**< stored as ::lys_restr* */
+    LY_STMT_RANGE,        /**< stored as ::lys_restr* */
     LY_STMT_WHEN,
     LY_STMT_REVISION,
 } LY_STMT;

@@ -90,23 +90,12 @@ struct lyext_substmt libyang_ext_test_substmt[] = {
     {LY_STMT_USES,         24 * sizeof(void*) + 5 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
     {LY_STMT_TYPEDEF,      25 * sizeof(void*) + 5 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* struct lys_tpdf* */
     {LY_STMT_TYPE,         26 * sizeof(void*) + 5 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* struct lys_type* */
-/*    {LY_STMT_BIT,          49 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_ENUM,         40 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_REFINE,       51 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_AUGMENT,      52 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_DEVIATE,      53 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_DEVIATION,    54 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_EXTENSION,    55 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_FEATURE,      56 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_IDENTITY,     57 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_IFFEATURE,    58 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_IMPORT,       59 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_INCLUDE,      60 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_LENGTH,       61 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_MUST,         62 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_PATTERN,      63 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_RANGE,        64 * sizeof(void *), LY_STMT_CARD_OPT},
-    {LY_STMT_WHEN,         65 * sizeof(void *), LY_STMT_CARD_OPT},
+    {LY_STMT_IFFEATURE,    27 * sizeof(void*) + 5 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* struct lys_iffeature* */
+    {LY_STMT_LENGTH,       28 * sizeof(void*) + 5 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* struct lys_restr* */
+    {LY_STMT_MUST,         29 * sizeof(void*) + 5 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* struct lys_restr* */
+    {LY_STMT_PATTERN,      30 * sizeof(void*) + 5 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* struct lys_restr* */
+    {LY_STMT_RANGE,        31 * sizeof(void*) + 5 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* struct lys_restr* */
+/*    {LY_STMT_WHEN,         65 * sizeof(void *), LY_STMT_CARD_OPT},
     {LY_STMT_REVISION,     66 * sizeof(void *), LY_STMT_CARD_OPT},
 */    {0, 0, 0} /* terminating item */
 };
@@ -155,23 +144,12 @@ struct lyext_substmt libyang_ext_test_substmt_arrays[] = {
     {LY_STMT_USES,         25 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
     {LY_STMT_TYPEDEF,      26 * sizeof(void*), LY_STMT_CARD_ANY}, /* struct lys_tpdf** */
     {LY_STMT_TYPE,         27 * sizeof(void*), LY_STMT_CARD_ANY}, /* struct lys_type** */
-/*    {LY_STMT_BIT,          49 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_ENUM,         40 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_REFINE,       51 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_AUGMENT,      52 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_DEVIATE,      53 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_DEVIATION,    54 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_EXTENSION,    55 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_FEATURE,      56 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_IDENTITY,     57 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_IFFEATURE,    58 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_IMPORT,       59 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_INCLUDE,      60 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_LENGTH,       61 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_MUST,         62 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_PATTERN,      63 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_RANGE,        64 * sizeof(void *), LY_STMT_CARD_ANY},
-    {LY_STMT_WHEN,         65 * sizeof(void *), LY_STMT_CARD_ANY},
+    {LY_STMT_IFFEATURE,    28 * sizeof(void*), LY_STMT_CARD_ANY}, /* struct lys_iffeature** */
+    {LY_STMT_LENGTH,       29 * sizeof(void*), LY_STMT_CARD_ANY}, /* struct lys_restr** */
+    {LY_STMT_MUST,         30 * sizeof(void*), LY_STMT_CARD_ANY}, /* struct lys_restr** */
+    {LY_STMT_PATTERN,      31 * sizeof(void*), LY_STMT_CARD_ANY}, /* struct lys_restr** */
+    {LY_STMT_RANGE,        32 * sizeof(void*), LY_STMT_CARD_ANY}, /* struct lys_restr** */
+/*    {LY_STMT_WHEN,         65 * sizeof(void *), LY_STMT_CARD_ANY},
     {LY_STMT_REVISION,     66 * sizeof(void *), LY_STMT_CARD_ANY},
 */    {0, 0, 0} /* terminating item */
 };
@@ -190,7 +168,7 @@ struct lyext_plugin_complex libyang_ext_test_p = {
     .substmt = libyang_ext_test_substmt,
 
     /* final size of the extension instance structure with the space for storing the substatements */
-    .instance_size = 67 * sizeof(void*)
+    .instance_size = sizeof(struct lys_ext_instance_complex) + 34 * sizeof(void*) + 5 * sizeof(uint8_t)
 };
 
 /**
@@ -207,7 +185,7 @@ struct lyext_plugin_complex libyang_ext_test_arrays_p = {
     .substmt = libyang_ext_test_substmt_arrays,
 
     /* final size of the extension instance structure with the space for storing the substatements */
-    .instance_size = 67 * sizeof(void*)
+    .instance_size = sizeof(struct lys_ext_instance_complex) + 35 * sizeof(void*)
 };
 
 /**

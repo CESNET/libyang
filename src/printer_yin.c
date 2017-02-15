@@ -331,8 +331,8 @@ yin_print_restr(struct lyout *out, int level, const struct lys_module *module, c
 
 /* covers length, range, pattern*/
 static void
-yin_print_typerestr(struct lyout *out, int level, const char *elem_name,
-                    const struct lys_module *module, const struct lys_restr *restr)
+yin_print_typerestr(struct lyout *out, int level, const struct lys_module *module,
+                    const struct lys_restr *restr, const char *elem_name)
 {
     int content = 0;
     int pattern = 0;
@@ -445,7 +445,7 @@ yin_print_type(struct lyout *out, int level, const struct lys_module *module, co
     switch (type->base) {
     case LY_TYPE_BINARY:
         if (type->info.binary.length) {
-            yin_print_typerestr(out, level, "length", module, type->info.binary.length);
+            yin_print_typerestr(out, level, module, type->info.binary.length, "length");
         }
         break;
     case LY_TYPE_BITS:
@@ -474,7 +474,7 @@ yin_print_type(struct lyout *out, int level, const struct lys_module *module, co
         }
         if (type->info.dec64.range) {
             yin_print_close_parent(out, &content);
-            yin_print_typerestr(out, level, "range", module, type->info.dec64.range);
+            yin_print_typerestr(out, level, module, type->info.dec64.range, "range");
         }
         break;
     case LY_TYPE_ENUM:
@@ -532,7 +532,7 @@ yin_print_type(struct lyout *out, int level, const struct lys_module *module, co
     case LY_TYPE_UINT64:
         if (type->info.num.range) {
             yin_print_close_parent(out, &content);
-            yin_print_typerestr(out, level, "range", module, type->info.num.range);
+            yin_print_typerestr(out, level, module, type->info.num.range, "range");
         }
         break;
     case LY_TYPE_LEAFREF:
@@ -553,11 +553,11 @@ yin_print_type(struct lyout *out, int level, const struct lys_module *module, co
     case LY_TYPE_STRING:
         if (type->info.str.length) {
             yin_print_close_parent(out, &content);
-            yin_print_typerestr(out, level, "length", module, type->info.str.length);
+            yin_print_typerestr(out, level, module, type->info.str.length, "length");
         }
         for (i = 0; i < type->info.str.pat_count; i++) {
             yin_print_close_parent(out, &content);
-            yin_print_typerestr(out, level, "pattern", module, &type->info.str.patterns[i]);
+            yin_print_typerestr(out, level, module, &type->info.str.patterns[i], "pattern");
         }
         break;
     case LY_TYPE_UNION:
@@ -1911,17 +1911,17 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
         yin_print_close_parent(out, &content);                                                \
         FUNC(out, level, (TYPE *)(*pp));                                                      \
     }
-#define YIN_PRINT_EXTCOMPLEX_STRUCT_M(STMT, TYPE, FUNC)                                       \
+#define YIN_PRINT_EXTCOMPLEX_STRUCT_M(STMT, TYPE, FUNC, ARGS...)                              \
     pp = lys_ext_complex_get_substmt(STMT, (struct lys_ext_instance_complex *)ext[u], NULL);  \
     if (!pp || !(*pp)) { break; }                                                             \
     if (info[i].cardinality >= LY_STMT_CARD_SOME) { /* process array */                       \
         for (pp = *pp; *pp; pp++) {                                                           \
             yin_print_close_parent(out, &content);                                            \
-            FUNC(out, level, module, (TYPE *)(*pp));                                          \
+            FUNC(out, level, module, (TYPE *)(*pp), ##ARGS);                                  \
         }                                                                                     \
     } else { /* single item */                                                                \
         yin_print_close_parent(out, &content);                                                \
-        FUNC(out, level, module, (TYPE *)(*pp));                                              \
+        FUNC(out, level, module, (TYPE *)(*pp), ##ARGS);                                      \
     }
 #define YIN_PRINT_EXTCOMPLEX_INT(STMT, TYPE)                                       \
     p = &((struct lys_ext_instance_complex*)ext[u])->content[info[i].offset];      \
@@ -2183,6 +2183,18 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
                 case LY_STMT_NOTIFICATION:
                 case LY_STMT_USES:
                     YIN_PRINT_EXTCOMPLEX_SNODE(info[i].stmt);
+                    break;
+                case LY_STMT_LENGTH:
+                    YIN_PRINT_EXTCOMPLEX_STRUCT_M(LY_STMT_LENGTH, struct lys_restr, yin_print_typerestr, "length");
+                    break;
+                case LY_STMT_MUST:
+                    YIN_PRINT_EXTCOMPLEX_STRUCT_M(LY_STMT_MUST, struct lys_restr, yin_print_must);
+                    break;
+                case LY_STMT_PATTERN:
+                    YIN_PRINT_EXTCOMPLEX_STRUCT_M(LY_STMT_PATTERN, struct lys_restr, yin_print_typerestr, "pattern");
+                    break;
+                case LY_STMT_RANGE:
+                    YIN_PRINT_EXTCOMPLEX_STRUCT_M(LY_STMT_RANGE, struct lys_restr, yin_print_typerestr, "range");
                     break;
                 default:
                     /* TODO */
