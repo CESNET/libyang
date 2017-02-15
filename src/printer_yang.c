@@ -2172,7 +2172,7 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
                     }
                     break;
                 case LY_STMT_MODULE:
-                    YANG_PRINT_EXTCOMPLEX_STRUCT(LY_STMT_TYPE, struct lys_module, yang_print_model_);
+                    YANG_PRINT_EXTCOMPLEX_STRUCT(LY_STMT_MODULE, struct lys_module, yang_print_model_);
                     break;
                 case LY_STMT_ACTION:
                 case LY_STMT_ANYDATA:
