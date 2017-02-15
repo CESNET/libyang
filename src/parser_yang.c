@@ -4462,6 +4462,10 @@ yang_check_sub_module(struct lys_module *module, struct unres_schema *unres, str
     dev_size = module->deviation_size;
     module->deviation_size = 0;
 
+    if (yang_check_typedef(module, NULL, unres)) {
+        goto error;
+    }
+
     if (yang_check_ext_instance(module, &module->ext, module->ext_size, module, unres)) {
         goto error;
     }
@@ -4478,10 +4482,6 @@ yang_check_sub_module(struct lys_module *module, struct unres_schema *unres, str
         if (yang_check_ext_instance(module, &module->extensions[i].ext, module->extensions[i].ext_size, &module->extensions[i], unres)) {
             goto error;
         }
-    }
-
-    if (yang_check_typedef(module, NULL, unres)) {
-        goto error;
     }
 
     /* check features */

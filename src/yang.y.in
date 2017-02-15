@@ -246,6 +246,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <str> curly_bracket_open
 %type <str> unknown_statement2_identifier
 %type <v> type_ext_alloc
+%type <v> typedef_ext_alloc
 %type <token> import_arg_str
 %type <token> include_arg_str
 %type <token> revision_arg_stmt
@@ -293,6 +294,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %destructor { free($$); } pattern_arg_str string_opt_part1 semicolom curly_bracket_open
 %destructor { free(($$) ? *$$ : NULL); } tmp_string
 %destructor { yang_type_free(param->module->ctx, $$); } type_ext_alloc
+%destructor { yang_type_free(param->module->ctx, &((struct lys_tpdf *)$$)->type); } typedef_ext_alloc
 
 %initial-action { yylloc.last_column = 0;
                   if (param->flags & EXT_INSTANCE_SUBSTMT) {
@@ -1134,49 +1136,52 @@ base_arg: identifier_ref_arg_str { backup_type = actual_type;
 
 base_stmt: BASE_KEYWORD sep base_arg stmtend
 
-typedef_arg_str: identifier_arg_str { tpdf_parent = actual;
+typedef_arg_str: identifier_arg_str { tpdf_parent = (actual_type == EXTENSION_INSTANCE) ? ext_instance : actual;
                                       $$.token = actual_type;
                                       $$.actual = actual;
                                       if (lyp_check_identifier(s, LY_IDENT_TYPE, trg, tpdf_parent)) {
                                         free(s);
                                         YYABORT;
                                       }
-                                      if (!tpdf_parent) {
+                                      switch (actual_type) {
+                                      case MODULE_KEYWORD:
+                                      case SUBMODULE_KEYWORD:
                                         YANG_ADDELEM(trg->tpdf, trg->tpdf_size);
-                                      } else {
-                                        switch (tpdf_parent->nodetype) {
-                                        case LYS_GROUPING:
-                                          YANG_ADDELEM(((struct lys_node_grp *)tpdf_parent)->tpdf,
-                                                       ((struct lys_node_grp *)tpdf_parent)->tpdf_size);
-                                          break;
-                                        case LYS_CONTAINER:
-                                          YANG_ADDELEM(((struct lys_node_container *)tpdf_parent)->tpdf,
-                                                       ((struct lys_node_container *)tpdf_parent)->tpdf_size);
-                                          break;
-                                        case LYS_LIST:
-                                          YANG_ADDELEM(((struct lys_node_list *)tpdf_parent)->tpdf,
-                                                       ((struct lys_node_list *)tpdf_parent)->tpdf_size);
-                                          break;
-                                        case LYS_RPC:
-                                        case LYS_ACTION:
-                                          YANG_ADDELEM(((struct lys_node_rpc_action *)tpdf_parent)->tpdf,
-                                                       ((struct lys_node_rpc_action *)tpdf_parent)->tpdf_size);
-                                          break;
-                                        case LYS_INPUT:
-                                        case LYS_OUTPUT:
-                                          YANG_ADDELEM(((struct lys_node_inout *)tpdf_parent)->tpdf,
-                                                       ((struct lys_node_inout *)tpdf_parent)->tpdf_size);
-                                          break;
-                                        case LYS_NOTIF:
-                                          YANG_ADDELEM(((struct lys_node_notif *)tpdf_parent)->tpdf,
-                                                       ((struct lys_node_notif *)tpdf_parent)->tpdf_size);
-                                          break;
-                                        default:
-                                          /* another type of nodetype is error*/
-                                          LOGINT;
-                                          free(s);
-                                          YYABORT;
-                                        }
+                                        break;
+                                      case GROUPING_KEYWORD:
+                                        YANG_ADDELEM(((struct lys_node_grp *)tpdf_parent)->tpdf,
+                                                     ((struct lys_node_grp *)tpdf_parent)->tpdf_size);
+                                        break;
+                                      case CONTAINER_KEYWORD:
+                                        YANG_ADDELEM(((struct lys_node_container *)tpdf_parent)->tpdf,
+                                                     ((struct lys_node_container *)tpdf_parent)->tpdf_size);
+                                        break;
+                                      case LIST_KEYWORD:
+                                        YANG_ADDELEM(((struct lys_node_list *)tpdf_parent)->tpdf,
+                                                     ((struct lys_node_list *)tpdf_parent)->tpdf_size);
+                                        break;
+                                      case RPC_KEYWORD:
+                                      case ACTION_KEYWORD:
+                                        YANG_ADDELEM(((struct lys_node_rpc_action *)tpdf_parent)->tpdf,
+                                                     ((struct lys_node_rpc_action *)tpdf_parent)->tpdf_size);
+                                        break;
+                                      case INPUT_KEYWORD:
+                                      case OUTPUT_KEYWORD:
+                                        YANG_ADDELEM(((struct lys_node_inout *)tpdf_parent)->tpdf,
+                                                     ((struct lys_node_inout *)tpdf_parent)->tpdf_size);
+                                        break;
+                                      case NOTIFICATION_KEYWORD:
+                                        YANG_ADDELEM(((struct lys_node_notif *)tpdf_parent)->tpdf,
+                                                     ((struct lys_node_notif *)tpdf_parent)->tpdf_size);
+                                        break;
+                                      case EXTENSION_INSTANCE:
+                                        /* typedef is already allocated */
+                                        break;
+                                      default:
+                                        /* another type of nodetype is error*/
+                                        LOGINT;
+                                        free(s);
+                                        YYABORT;
                                       }
                                       ((struct lys_tpdf *)actual)->name = lydict_insert_zc(param->module->ctx, s);
                                       ((struct lys_tpdf *)actual)->module = trg;
@@ -4215,6 +4220,17 @@ type_ext_alloc: @EMPTYDIR@ { struct lys_type **type;
                              $$ = actual = *type;
                             }
 
+typedef_ext_alloc: @EMPTYDIR@ { struct lys_tpdf **tpdf;
+
+                                tpdf = (struct lys_tpdf **)yang_getplace_for_extcomplex_struct(ext_name, "typedef", ext_instance, LY_STMT_TYPEDEF);
+                                if (!tpdf) {
+                                  YYABORT;
+                                }
+                                /* allocate typedef structure */
+                                (*tpdf) = calloc(1, sizeof **tpdf);
+                                $$ = actual = *tpdf;
+                              }
+
 ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
                                 actual = ext_instance;
                                 if (!is_ext_instance) {
@@ -4307,6 +4323,25 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
        }
        if (unres_schema_add_node(trg, param->unres, type, UNRES_TYPE_DER_EXT, NULL) == -1) {
          yang_type_free(trg->ctx, type);
+         YYABORT;
+       }
+       actual = ext_instance;
+     }
+  |  ext_substatements typedef_ext_alloc typedef_stmt stmtsep
+     { struct lys_tpdf *tpdf = $2;
+
+       if (yang_fill_type(trg, &tpdf->type, (struct yang_type *)tpdf->type.der, tpdf, param->unres)) {
+         yang_type_free(trg->ctx, &tpdf->type);
+       }
+       if (yang_check_ext_instance(trg, &tpdf->ext, tpdf->ext_size, tpdf, param->unres)) {
+         YYABORT;
+       }
+       if (unres_schema_add_node(trg, param->unres, &tpdf->type, UNRES_TYPE_DER_TPDF, (struct lys_node *)ext_instance) == -1) {
+         yang_type_free(trg->ctx, &tpdf->type);
+         YYABORT;
+       }
+       /* check default value*/
+       if (unres_schema_add_node(trg, param->unres, &tpdf->type, UNRES_TYPE_DFLT, (struct lys_node *)(&tpdf->dflt)) == -1)  {
          YYABORT;
        }
        actual = ext_instance;
