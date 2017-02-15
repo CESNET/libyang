@@ -202,6 +202,7 @@ API const struct lys_node *
 lys_getnext(const struct lys_node *last, const struct lys_node *parent, const struct lys_module *module, int options)
 {
     const struct lys_node *next;
+    struct lys_node **snode;
 
     if (!last) {
         /* first call */
@@ -209,7 +210,11 @@ lys_getnext(const struct lys_node *last, const struct lys_node *parent, const st
         /* get know where to start */
         if (parent) {
             /* schema subtree */
-            next = last = parent->child;
+            snode = lys_child(parent, LYS_UNKNOWN);
+            if (!snode) {
+                return NULL;
+            }
+            next = last = *snode;
         } else {
             /* top level data */
             assert(module);
@@ -314,8 +319,6 @@ repeat:
         /* we should not be here */
         return NULL;
     }
-
-
 }
 
 void
@@ -3521,7 +3524,7 @@ lys_parent(const struct lys_node *node)
 }
 
 struct lys_node **
-lys_child(struct lys_node *node, LYS_NODE nodetype)
+lys_child(const struct lys_node *node, LYS_NODE nodetype)
 {
     void *pp;
     assert(node);
@@ -3533,7 +3536,7 @@ lys_child(struct lys_node *node, LYS_NODE nodetype)
         }
         return (struct lys_node **)pp;
     } else {
-        return &node->child;
+        return (struct lys_node **)&node->child;
     }
 }
 
@@ -4494,6 +4497,28 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
                         lys_node_free(siter, NULL, 0);
                     }
                     *pp = NULL;
+                    break;
+                case LY_STMT_UNIQUE:
+                    pp = lys_ext_complex_get_substmt(LY_STMT_UNIQUE, (struct lys_ext_instance_complex *)e[i], NULL);
+                    if (!pp || !(*pp)) {
+                        break;
+                    }
+                    if (substmt[j].cardinality >= LY_STMT_CARD_SOME) { /* process array */
+                        for (start = pp = *pp; *pp; pp++) {
+                            for (k = 0; k < (*(struct lys_unique**)pp)->expr_size; k++) {
+                                lydict_remove(ctx, (*(struct lys_unique**)pp)->expr[k]);
+                            }
+                            free((*(struct lys_unique**)pp)->expr);
+                            free(*pp);
+                        }
+                        free(start);
+                    } else { /* single item */
+                        for (k = 0; k < (*(struct lys_unique**)pp)->expr_size; k++) {
+                            lydict_remove(ctx, (*(struct lys_unique**)pp)->expr[k]);
+                        }
+                        free((*(struct lys_unique**)pp)->expr);
+                        free(*pp);
+                    }
                     break;
                 default:
                     /* nothing to free */

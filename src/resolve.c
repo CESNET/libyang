@@ -1771,8 +1771,13 @@ resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *star
     /* resolved import module from the start module, it must match the next node-name-match sibling */
     const struct lys_module *module;
 
-    assert(nodeid && start && ret);
+    assert(nodeid && ret);
     assert(!(ret_nodetype & (LYS_USES | LYS_AUGMENT | LYS_GROUPING)));
+
+    if (!start) {
+        /* leaf not found */
+        return 0;
+    }
 
     id = nodeid;
     module = start->module;
@@ -3267,7 +3272,7 @@ resolve_unique(struct lys_node *parent, const char *uniq_str_path, uint8_t *trg_
     int rc;
     const struct lys_node *leaf = NULL;
 
-    rc = resolve_descendant_schema_nodeid(uniq_str_path, parent->child, LYS_LEAF, 1, 1, &leaf);
+    rc = resolve_descendant_schema_nodeid(uniq_str_path, *lys_child(parent, LYS_LEAF), LYS_LEAF, 1, 1, &leaf);
     if (rc || !leaf) {
         if (rc) {
             LOGVAL(LYE_INARG, LY_VLOG_LYS, parent, uniq_str_path, "unique");
@@ -3291,7 +3296,8 @@ resolve_unique(struct lys_node *parent, const char *uniq_str_path, uint8_t *trg_
     }
 
     /* check status */
-    if (lyp_check_status(parent->flags, parent->module, parent->name, leaf->flags, leaf->module, leaf->name, leaf)) {
+    if (parent->nodetype != LYS_EXT && lyp_check_status(parent->flags, parent->module, parent->name,
+                                                        leaf->flags, leaf->module, leaf->name, leaf)) {
         return -1;
     }
 

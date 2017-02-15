@@ -2097,6 +2097,7 @@ test_complex_yin(void **state)
                     "    <max-elements value=\"2\"/>\n"
                     "    <min-elements value=\"4\"/>\n"
                     "    <position value=\"11\"/>\n"
+                    "    <unique tag=\"e\"/>\n"
                     "    <module name=\"inmod\"\n"
                     "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
                     "        xmlns:i=\"urn:inmod\">\n"
@@ -2209,6 +2210,8 @@ test_complex_arrays_yin(void **state)
                     "    <min-elements value=\"5\"/>\n"
                     "    <position value=\"11\"/>\n"
                     "    <position value=\"12\"/>\n"
+                    "    <unique tag=\"l1 l2\"/>\n"
+                    "    <unique tag=\"l2\"/>\n"
                     "    <module name=\"inmod1\"\n"
                     "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
                     "        xmlns:i=\"urn:inmod1\">\n"
@@ -2225,6 +2228,8 @@ test_complex_arrays_yin(void **state)
                     "    <anydata name=\"anydata2\"/>\n"
                     "    <anyxml name=\"anyxml1\"/>\n"
                     "    <anyxml name=\"anyxml2\"/>\n"
+                    "    <leaf name=\"l1\">\n      <type name=\"string\"/>\n    </leaf>\n"
+                    "    <leaf name=\"l2\">\n      <type name=\"string\"/>\n    </leaf>\n"
                     "  </e:complex-arrays>\n"
                     "</module>\n";
 

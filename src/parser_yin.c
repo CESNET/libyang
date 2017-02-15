@@ -7543,7 +7543,7 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
     pp = (void**)yin_getplace_for_extcomplex_node(node, ext, STMT);                  \
     if (!pp) { goto error; }                                                         \
     if (!FUNC(mod, (struct lys_node*)ext, node, ##ARGS, unres)) { goto error; }
-#define YIN_EXTCOMPLEX_INT_GETPLACE(STMT, TYPE)                                      \
+#define YIN_EXTCOMPLEX_GETPLACE(STMT, TYPE)                                          \
     p = lys_ext_complex_get_substmt(STMT, ext, &info);                               \
     if (!p) {                                                                        \
         LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, node->name, node->parent->name); \
@@ -7553,10 +7553,10 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
         LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, node->name, node->parent->name);     \
         goto error;                                                                  \
     }                                                                                \
-    pp = NULL;                                                                       \
+    pp = NULL; i = 0;                                                                \
     if (info->cardinality >= LY_STMT_CARD_SOME) {                                    \
         /* there can be multiple instances */                                        \
-        pp = p; i = 0;                                                               \
+        pp = p;                                                                      \
         if (!(*pp)) {                                                                \
             *pp = malloc(2 * sizeof(TYPE)); /* allocate initial array */             \
         } else {                                                                     \
@@ -7564,7 +7564,7 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
         }                                                                            \
         p = &(*(TYPE**)pp)[i];                                                       \
     }
-#define YIN_EXTCOMPLEX_INT_ENLARGE(TYPE)                     \
+#define YIN_EXTCOMPLEX_ENLARGE(TYPE)                         \
     if (pp) {                                                \
         /* enlarge the array */                              \
         reallocated = realloc(*pp, (i + 2) * sizeof(TYPE*)); \
@@ -7746,7 +7746,7 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
                 goto error;
             }
         } else if (!strcmp(node->name, "fraction-digits")) {
-            YIN_EXTCOMPLEX_INT_GETPLACE(LY_STMT_DIGITS, uint8_t);
+            YIN_EXTCOMPLEX_GETPLACE(LY_STMT_DIGITS, uint8_t);
 
             GETVAL(value, node, "value");
             v = strtol(value, NULL, 10);
@@ -7764,9 +7764,9 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             /* store the value */
             (*(uint8_t *)p) = (uint8_t)v;
 
-            YIN_EXTCOMPLEX_INT_ENLARGE(uint8_t);
+            YIN_EXTCOMPLEX_ENLARGE(uint8_t);
         } else if (!strcmp(node->name, "max-elements")) {
-            YIN_EXTCOMPLEX_INT_GETPLACE(LY_STMT_MAX, uint32_t*);
+            YIN_EXTCOMPLEX_GETPLACE(LY_STMT_MAX, uint32_t*);
 
             GETVAL(value, node, "value");
             while (isspace(value[0])) {
@@ -7793,9 +7793,9 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             *(uint32_t **)p = malloc(sizeof(uint32_t));
             (**(uint32_t **)p) = (uint32_t)u;
 
-            YIN_EXTCOMPLEX_INT_ENLARGE(uint32_t*);
+            YIN_EXTCOMPLEX_ENLARGE(uint32_t*);
         } else if (!strcmp(node->name, "min-elements")) {
-            YIN_EXTCOMPLEX_INT_GETPLACE(LY_STMT_MIN, uint32_t*);
+            YIN_EXTCOMPLEX_GETPLACE(LY_STMT_MIN, uint32_t*);
 
             GETVAL(value, node, "value");
             while (isspace(value[0])) {
@@ -7819,9 +7819,9 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             *(uint32_t **)p = malloc(sizeof(uint32_t));
             (**(uint32_t **)p) = (uint32_t)u;
 
-            YIN_EXTCOMPLEX_INT_ENLARGE(uint32_t*);
+            YIN_EXTCOMPLEX_ENLARGE(uint32_t*);
         } else if (!strcmp(node->name, "position")) {
-            YIN_EXTCOMPLEX_INT_GETPLACE(LY_STMT_POSITION, uint32_t*);
+            YIN_EXTCOMPLEX_GETPLACE(LY_STMT_POSITION, uint32_t*);
 
             GETVAL(value, node, "value");
             ll = strtoll(value, NULL, 10);
@@ -7840,7 +7840,7 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             *(uint32_t **)p = malloc(sizeof(uint32_t));
             (**(uint32_t **)p) = (uint32_t)ll;
 
-            YIN_EXTCOMPLEX_INT_ENLARGE(uint32_t*);
+            YIN_EXTCOMPLEX_ENLARGE(uint32_t*);
         } else if (!strcmp(node->name, "module")) {
             pp = yin_getplace_for_extcomplex_struct(node, ext, LY_STMT_MODULE);
             if (!pp) {
@@ -7851,6 +7851,18 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             if (!(*pp)) {
                 goto error;
             }
+        } else if (!strcmp(node->name, "unique")) {
+            YIN_EXTCOMPLEX_GETPLACE(LY_STMT_UNIQUE, struct lys_unique*);
+
+            *(struct lys_unique**)p = calloc(1, sizeof(struct lys_unique));
+            if (fill_yin_unique(mod, (struct lys_node*)ext, node, *(struct lys_unique**)p, unres)) {
+                goto error;
+            }
+
+            if (lyp_yin_parse_subnode_ext(mod, ext, LYEXT_PAR_EXTINST, node, LYEXT_SUBSTMT_UNIQUE, i, unres)) {
+                goto error;
+            }
+            YIN_EXTCOMPLEX_ENLARGE(struct lys_unique*);
         } else if (!strcmp(node->name, "action")) {
             YIN_EXTCOMPLEX_PARSE_SNODE(LY_STMT_ACTION, read_yin_rpc_action);
         } else if (!strcmp(node->name, "anydata")) {

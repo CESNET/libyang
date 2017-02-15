@@ -74,7 +74,7 @@ struct lyext_substmt libyang_ext_test_substmt[] = {
     {LY_STMT_POSITION,     20 * sizeof(const char*) + 4 * sizeof(uint8_t) +
                            sizeof(uint16_t) + 2 * sizeof(uint32_t*), LY_STMT_CARD_OPT}, /* uint32_t* */
 /* compress the offset calculation */
-    {LY_STMT_UNIQUE,       23 * sizeof(void*) + 6 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* TODO */
+    {LY_STMT_UNIQUE,       23 * sizeof(void*) + 6 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* struct lys_unique* */
     {LY_STMT_MODULE,       24 * sizeof(void*) + 6 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* struct lys_module* */
     {LY_STMT_ACTION,       25 * sizeof(void*) + 6 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
     {LY_STMT_ANYDATA,      25 * sizeof(void*) + 6 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* shared struct lys_node* */
@@ -140,7 +140,7 @@ struct lyext_substmt libyang_ext_test_substmt_arrays[] = {
     {LY_STMT_POSITION,     20 * sizeof(const char*) + sizeof(uint8_t*) +
                             2 * sizeof(uint32_t*), LY_STMT_CARD_ANY}, /* uint32_t* */
 /* compress the offset calculation */
-    {LY_STMT_UNIQUE,       24 * sizeof(void*), LY_STMT_CARD_ANY}, /* TODO */
+    {LY_STMT_UNIQUE,       24 * sizeof(void*), LY_STMT_CARD_ANY}, /* struct lys_unique** */
     {LY_STMT_MODULE,       25 * sizeof(void*), LY_STMT_CARD_ANY}, /* struct lys_module** */
     {LY_STMT_ACTION,       26 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */
     {LY_STMT_ANYDATA,      26 * sizeof(void*), LY_STMT_CARD_ANY}, /* shared struct lys_node* */

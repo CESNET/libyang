@@ -276,7 +276,14 @@ lys_ext_complex_get_substmt(LY_STMT stmt, struct lys_ext_instance_complex *ext, 
 
     /* search the substatements defined by the plugin */
     for (i = 0; ext->substmt[i].stmt; i++) {
-        if (ext->substmt[i].stmt == stmt) {
+        if (stmt == LY_STMT_NODE) {
+            if (ext->substmt[i].stmt >= LY_STMT_ACTION && ext->substmt[i].stmt <= LY_STMT_USES) {
+                if (info) {
+                    *info = &ext->substmt[i];
+                }
+                break;
+            }
+        } else if (ext->substmt[i].stmt == stmt) {
             if (info) {
                 *info = &ext->substmt[i];
             }
@@ -327,6 +334,6 @@ lys_snode2stmt(LYS_NODE nodetype)
     case LYS_ACTION:
         return LY_STMT_ACTION;
     default:
-        return LY_STMT_UNKNOWN;
+        return LY_STMT_NODE;
     }
 }

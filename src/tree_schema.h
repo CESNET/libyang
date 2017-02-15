@@ -250,7 +250,8 @@ typedef enum lys_nodetype {
  * that does not store extension instances directly.
  */
 typedef enum {
-    LY_STMT_UNKNOWN = 0,
+    LY_STMT_NODE = -1,    /**< mask for values #LY_STMT_ACTION - #LY_STMT_USES */
+    LY_STMT_UNKNOWN = 0,  /**< error return value */
     LY_STMT_ARGUMENT = 1, /**< stored as __const char*__ */
     LY_STMT_BASE,         /**< stored as __const char*__ */
     LY_STMT_BELONGSTO,    /**< belongs-to, stored as __const char*[2]__, the second item contains belongs-to's prefix,
@@ -292,7 +293,7 @@ typedef enum {
     LY_STMT_MAX,          /**< max-elements, stored as __uint32_t*__ */
     LY_STMT_MIN,          /**< min-elements, stored as __uint32_t*__ */
     LY_STMT_POSITION,     /**< stored as __uint32_t*__ */
-    LY_STMT_UNIQUE,
+    LY_STMT_UNIQUE,       /**< stored as ::lys_unique* */
 
     LY_STMT_MODULE,       /**< stored as ::lys_module* */
     LY_STMT_SUBMODULE,    /**< not supported - submodules are tightly connected with their modules so it does not make
