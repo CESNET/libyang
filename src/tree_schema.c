@@ -4475,10 +4475,25 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
                     }
                     break;
                 case LY_STMT_ACTION:
+                case LY_STMT_ANYDATA:
+                case LY_STMT_ANYXML:
+                case LY_STMT_CASE:
+                case LY_STMT_CHOICE:
+                case LY_STMT_CONTAINER:
+                case LY_STMT_GROUPING:
+                case LY_STMT_INPUT:
+                case LY_STMT_LEAF:
+                case LY_STMT_LEAFLIST:
+                case LY_STMT_LIST:
+                case LY_STMT_NOTIFICATION:
+                case LY_STMT_OUTPUT:
+                case LY_STMT_RPC:
+                case LY_STMT_USES:
                     pp = (void**)&((struct lys_ext_instance_complex *)e[i])->content[substmt[j].offset];
                     LY_TREE_FOR_SAFE((struct lys_node *)(*pp), snext, siter) {
                         lys_node_free(siter, NULL, 0);
                     }
+                    *pp = NULL;
                     break;
                 default:
                     /* nothing to free */
