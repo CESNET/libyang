@@ -4652,7 +4652,7 @@ yang_fill_ext_substm_index(struct lys_ext_instance_complex *ext, LY_STMT stmt, e
 }
 
 void **
-yang_getplace_for_extcomplex_struct(char *parent_name, char *node_name, struct lys_ext_instance_complex *ext, LY_STMT stmt)
+yang_getplace_for_extcomplex_struct(struct lys_ext_instance_complex *ext, char *parent_name, char *node_name, LY_STMT stmt)
 {
     int c;
     void **data, ***p = NULL;
@@ -4780,3 +4780,4 @@ yang_fill_extcomplex_uint8(struct lys_ext_instance_complex *ext, char *parent_na
 
     return EXIT_SUCCESS;
 }
+

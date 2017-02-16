@@ -196,6 +196,8 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <uint> yin_element_arg_str
 %type <uint> yin_element_arg
 %type <uint> fraction_digits_stmt
+%type <uint> position_stmt
+%type <i> value_stmt
 %type <i> require_instance_stmt
 %type <i> require_instance_arg_str
 %type <i> require_instance_arg
@@ -1560,6 +1562,12 @@ enum_opt_stmt: @EMPTYDIR@
                                   LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "value", "enum");
                                   YYABORT;
                                 }
+                                ((struct lys_type_enum *)actual)->value = $2;
+
+                                /* keep the highest enum value for automatic increment */
+                                if ($2 >= cnt_val) {
+                                  cnt_val = $2 + 1;
+                                }
                                 is_value = 1;
                               }
   |  enum_opt_stmt status_stmt { if (yang_check_flags((uint16_t*)&((struct lys_type_enum *)actual)->flags, LYS_STATUS_MASK, "status", "enum", $2, 1)) {
@@ -1582,15 +1590,7 @@ value_arg: integer_value_arg_str { $$ = $1;
                                    actual_type = VALUE_KEYWORD;
                                  }
 
-value_stmt: VALUE_KEYWORD sep value_arg
-            stmtend { ((struct lys_type_enum *)actual)->value = $3;
-
-                      /* keep the highest enum value for automatic increment */
-                      if ($3 >= cnt_val) {
-                        cnt_val = $3;
-                        cnt_val++;
-                      }
-                    }
+value_stmt: VALUE_KEYWORD sep value_arg stmtend { $$ = $3; }
 
 integer_value_arg_str: integer_value optsep { $$ = $1; }
   |  string_1 { /* convert it to int32_t */
@@ -1704,6 +1704,12 @@ bit_opt_stmt: @EMPTYDIR@
                                     LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "position", "bit");
                                     YYABORT;
                                   }
+                                  ((struct lys_type_bit *)actual)->pos = $2;
+
+                                  /* keep the highest position value for automatic increment */
+                                  if ($2 >= cnt_val) {
+                                    cnt_val = $2 + 1;
+                                  }
                                   is_value = 1;
                                 }
   |  bit_opt_stmt status_stmt { if (yang_check_flags((uint16_t*)&((struct lys_type_bit *)actual)->flags,
@@ -1727,15 +1733,7 @@ position_value_arg: position_value_arg_str { $$ = $1;
                                              actual_type = POSITION_KEYWORD;
                                            }
 
-position_stmt: POSITION_KEYWORD sep position_value_arg
-               stmtend { ((struct lys_type_bit *)actual)->pos = $3;
-
-                         /* keep the highest position value for automatic increment */
-                         if ($3 >= cnt_val) {
-                           cnt_val = $3;
-                           cnt_val++;
-                         }
-                       }
+position_stmt: POSITION_KEYWORD sep position_value_arg stmtend { $$ = $3; }
 
 position_value_arg_str: non_negative_integer_value optsep { $$ = $1; }
   |  string_1 { /* convert it to uint32_t */
@@ -4208,7 +4206,7 @@ identifiers_ref: IDENTIFIERPREFIX { s = strdup(yyget_text(scanner));
 
 type_ext_alloc: @EMPTYDIR@ { struct lys_type **type;
 
-                             type = (struct lys_type **)yang_getplace_for_extcomplex_struct(ext_name, "type", ext_instance, LY_STMT_TYPE);
+                             type = (struct lys_type **)yang_getplace_for_extcomplex_struct(ext_instance, ext_name, "type", LY_STMT_TYPE);
                              if (!type) {
                                YYABORT;
                              }
@@ -4222,7 +4220,7 @@ type_ext_alloc: @EMPTYDIR@ { struct lys_type **type;
 
 typedef_ext_alloc: @EMPTYDIR@ { struct lys_tpdf **tpdf;
 
-                                tpdf = (struct lys_tpdf **)yang_getplace_for_extcomplex_struct(ext_name, "typedef", ext_instance, LY_STMT_TYPEDEF);
+                                tpdf = (struct lys_tpdf **)yang_getplace_for_extcomplex_struct(ext_instance, ext_name, "typedef", LY_STMT_TYPEDEF);
                                 if (!tpdf) {
                                   YYABORT;
                                 }
@@ -4385,6 +4383,50 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
          YYABORT;
        }
      }
+  |  ext_substatements min_elements_stmt { uint32_t **val;
+
+                                           val = (uint32_t **)yang_getplace_for_extcomplex_struct(ext_instance, ext_name, "min-elements",
+                                                                                                  LY_STMT_MIN);
+                                           if (!val) {
+                                             YYABORT;
+                                           }
+                                           /* store the value */
+                                           *val = malloc(sizeof(uint32_t));
+                                           **val = $2;
+                                         }
+  |  ext_substatements max_elements_stmt { uint32_t **val;
+
+                                           val = (uint32_t **)yang_getplace_for_extcomplex_struct(ext_instance, ext_name, "max-elements",
+                                                                                                  LY_STMT_MAX);
+                                           if (!val) {
+                                             YYABORT;
+                                           }
+                                           /* store the value */
+                                           *val = malloc(sizeof(uint32_t));
+                                           **val = $2;
+                                         }
+  |  ext_substatements position_stmt { uint32_t **val;
+
+                                       val = (uint32_t **)yang_getplace_for_extcomplex_struct(ext_instance, ext_name, "position",
+                                                                                              LY_STMT_POSITION);
+                                       if (!val) {
+                                         YYABORT;
+                                       }
+                                       /* store the value */
+                                       *val = malloc(sizeof(uint32_t));
+                                       **val = $2;
+                                     }
+  |  ext_substatements value_stmt { int32_t **val;
+
+                                    val = (int32_t **)yang_getplace_for_extcomplex_struct(ext_instance, ext_name, "value",
+                                                                                          LY_STMT_VALUE);
+                                    if (!val) {
+                                      YYABORT;
+                                    }
+                                    /* store the value */
+                                    *val = malloc(sizeof(int32_t));
+                                    **val = $2;
+                                  }
 
 %%
 
