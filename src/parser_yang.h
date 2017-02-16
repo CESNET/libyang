@@ -168,6 +168,9 @@ int yang_use_extension(struct lys_module *module, struct lys_node *data_node, vo
 
 int yang_check_flags(uint16_t *flags, uint16_t mask, char *what, char *where, uint16_t value, int shortint);
 
+int yang_fill_iffeature(struct lys_module *module, struct lys_iffeature *iffeature, void *parent,
+                        char *value, struct unres_schema *unres, int parent_is_feature);
+
 void *yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext_arg,
                     enum yytokentype actual_type, enum yytokentype backup_type, int is_ext_instance);
 

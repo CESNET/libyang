@@ -250,6 +250,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <str> unknown_statement2_identifier
 %type <v> type_ext_alloc
 %type <v> typedef_ext_alloc
+%type <v> iffeature_ext_alloc
 %type <token> import_arg_str
 %type <token> include_arg_str
 %type <token> revision_arg_stmt
@@ -1033,6 +1034,9 @@ if_feature_arg: string { $$.token = actual_type;
                            }
                            YANG_ADDELEM(((struct lys_refine *)actual)->iffeature,
                                         ((struct lys_refine *)actual)->iffeature_size);
+                           break;
+                         case EXTENSION_INSTANCE:
+                           /* nothing change */
                            break;
                          default:
                            /* lys_node_* */
@@ -4229,6 +4233,17 @@ typedef_ext_alloc: @EMPTYDIR@ { struct lys_tpdf **tpdf;
                                 $$ = actual = *tpdf;
                               }
 
+iffeature_ext_alloc: @EMPTYDIR@ { struct lys_iffeature **iffeature;
+
+                                 iffeature = (struct lys_iffeature **)yang_getplace_for_extcomplex_struct(ext_instance, ext_name, "if-feature", LY_STMT_IFFEATURE);
+                                 if (!iffeature) {
+                                   YYABORT;
+                                 }
+                                 /* allocate typedef structure */
+                                 (*iffeature) = calloc(1, sizeof **iffeature);
+                                 $$ = actual = *iffeature;
+                               }
+
 ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
                                 actual = ext_instance;
                                 if (!is_ext_instance) {
@@ -4427,6 +4442,36 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
                                     *val = malloc(sizeof(int32_t));
                                     **val = $2;
                                   }
+  |  ext_substatements unique_stmt { struct lys_unique **unique;
+                                     int rc;
+
+                                     unique = (struct lys_unique **)yang_getplace_for_extcomplex_struct(ext_instance, ext_name, "unique",
+                                                                                                        LY_STMT_UNIQUE);
+                                     if (!unique) {
+                                       YYABORT;
+                                     }
+                                     *unique = calloc(1, sizeof(struct lys_unique));
+                                     rc = yang_fill_unique(trg, (struct lys_node_list *)ext_instance, *unique, s, param->unres);
+                                     free(s);
+                                     s = NULL;
+                                     if (rc) {
+                                       YYABORT;
+                                     }
+                                   }
+  |  ext_substatements iffeature_ext_alloc if_feature_stmt stmtsep
+     { struct lys_iffeature *iffeature;
+
+       iffeature = $2;
+       s = (char *)iffeature->features;
+       iffeature->features = NULL;
+       if (yang_fill_iffeature(trg, iffeature, ext_instance, s, param->unres, 0)) {
+         YYABORT;
+       }
+       if (yang_check_ext_instance(trg, &iffeature->ext, iffeature->ext_size, iffeature, param->unres)) {
+         YYABORT;
+       }
+       s = NULL;
+     }
 
 %%
 
