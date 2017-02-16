@@ -1156,7 +1156,7 @@ lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, uint8_t size
 
         if (orig[u]) {
             /* resolved extension instance, just duplicate it */
-            switch(lys_ext_instance_type(orig[u])) {
+            switch(orig[u]->ext_type) {
             case LYEXT_FLAG:
                 result[u] = malloc(sizeof(struct lys_ext_instance));
                 break;
@@ -1167,9 +1167,6 @@ lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, uint8_t size
                 ((struct lys_ext_instance_complex*)result[u])->substmt = ((struct lyext_plugin_complex*)orig[u]->def->plugin)->substmt;
                 /* TODO duplicate data in extension instance content */
                 break;
-            case LYEXT_ERR:
-                LOGINT;
-                break;
             }
             /* generic part */
             result[u]->def = orig[u]->def;
@@ -1179,6 +1176,7 @@ lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, uint8_t size
             result[u]->parent_type = parent_type;
             result[u]->insubstmt = orig[u]->insubstmt;
             result[u]->insubstmt_index = orig[u]->insubstmt_index;
+            result[u]->ext_type = orig[u]->ext_type;
 
             /* extensions */
             orig[u]->ext = NULL;

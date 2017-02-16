@@ -422,7 +422,8 @@ struct lys_ext_instance {
                                           some of the node's members (substatements). libyang does not store extension
                                           instances for all possible statements to save some, commonly unused, space. */
     uint8_t parent_type;             /**< #LYEXT_PAR - type of the parent structure */
-    uint16_t padding1;               /**< 32b padding */
+    uint8_t ext_type;                /**< extension type (#LYEXT_TYPE) */
+    uint8_t padding;                 /**< 32b padding */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
 };
 
@@ -450,7 +451,8 @@ struct lys_ext_instance_complex {
                                           some of the node's members (substatements). libyang does not store extension
                                           instances for all possible statements to save some, commonly unused, space. */
     uint8_t parent_type;             /**< #LYEXT_PAR - type of the parent structure */
-    uint16_t padding1;               /**< 32b padding */
+    uint8_t ext_type;                /**< extension type (#LYEXT_TYPE) */
+    uint8_t padding;                 /**< 32b padding */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
 
     /* to this point the structure is compatible with the generic ::lys_ext_instance structure */
@@ -507,14 +509,6 @@ struct lys_ext_instance_complex {
  * casting the returned pointer are described above.
  */
 const void *lys_ext_instance_substmt(const struct lys_ext_instance *ext);
-
-/**
- * @brief Get the type of the extension to be able to decide how the instance structure can be cast.
- *
- * @param[in] ext Generic extension instance structure.
- * @return Extension type.
- */
-LYEXT_TYPE lys_ext_instance_type(struct lys_ext_instance *ext);
 
 /**
  * @brief Get the position of the extension instance in the extensions list.

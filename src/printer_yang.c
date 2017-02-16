@@ -1973,7 +1973,7 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
         }
 
         /* extension - type-specific part */
-        switch(lys_ext_instance_type(ext[u])) {
+        switch(ext[u]->ext_type) {
         case LYEXT_FLAG:
             /* flag extension - nothing special */
             break;
@@ -2202,9 +2202,6 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
                 }
             }
             level--;
-            break;
-        case LYEXT_ERR:
-            LOGINT;
             break;
         }
 

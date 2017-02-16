@@ -1992,7 +1992,7 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
         }
 
         /* extension - type-specific part */
-        switch (lys_ext_instance_type(ext[u])) {
+        switch (ext[u]->ext_type) {
         case LYEXT_FLAG:
             /* flag extension - nothing special */
             break;
@@ -2214,9 +2214,6 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
                 }
             }
             level--;
-            break;
-        case LYEXT_ERR:
-            LOGINT;
             break;
         }
 

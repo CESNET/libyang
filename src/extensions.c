@@ -199,21 +199,6 @@ lyext_load_plugins(void)
     pthread_mutex_unlock(&ext_lock);
 }
 
-API LYEXT_TYPE
-lys_ext_instance_type(struct lys_ext_instance *ext)
-{
-    if (!ext) {
-        return LYEXT_ERR;
-    }
-
-    if (!ext->def->plugin) {
-        /* default extension type - LY_EXT_FLAG */
-        return 0;
-    } else {
-        return ext->def->plugin->type;
-    }
-}
-
 struct lyext_plugin *
 ext_get_plugin(const char *name, const char *module, const char *revision)
 {

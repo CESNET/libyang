@@ -4570,6 +4570,7 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
         (*ext)->parent_type = info->parent_type;
         (*ext)->insubstmt = info->substmt;
         (*ext)->insubstmt_index = info->substmt_index;
+        (*ext)->ext_type = e->plugin ? e->plugin->type : LYEXT_FLAG;
 
         if (!(e->flags & LYS_YINELEM) && e->argument) {
             (*ext)->arg_value = lyxml_get_attr(info->data.yin, e->argument, NULL);
@@ -4683,6 +4684,7 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
         (*ext)->flags &= ~LYEXT_OPT_YANG;
         (*ext)->def = e;
         (*ext)->parent = info->parent;
+        (*ext)->ext_type = e->plugin ? e->plugin->type : LYEXT_FLAG;
 
         if (e->argument && !(*ext)->arg_value) {
             LOGVAL(LYE_MISSARG, LY_VLOG_NONE, NULL, e->argument, ext_name);
