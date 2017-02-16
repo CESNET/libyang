@@ -2199,6 +2199,9 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
                 case LY_STMT_RANGE:
                     YIN_PRINT_EXTCOMPLEX_STRUCT_M(LY_STMT_RANGE, struct lys_restr, yin_print_typerestr, "range");
                     break;
+                case LY_STMT_WHEN:
+                    YIN_PRINT_EXTCOMPLEX_STRUCT_M(LY_STMT_WHEN, struct lys_when, yin_print_when);
+                    break;
                 default:
                     /* TODO */
                     break;

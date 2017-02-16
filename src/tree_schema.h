@@ -329,7 +329,7 @@ typedef enum {
     LY_STMT_MUST,         /**< stored as ::lys_restr* */
     LY_STMT_PATTERN,      /**< stored as ::lys_restr* */
     LY_STMT_RANGE,        /**< stored as ::lys_restr* */
-    LY_STMT_WHEN,
+    LY_STMT_WHEN,         /**< stored as ::lys_when* */
     LY_STMT_REVISION,
 } LY_STMT;
 

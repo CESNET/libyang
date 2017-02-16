@@ -2145,6 +2145,7 @@ test_complex_yin(void **state)
                     "    <must condition=\"1\"/>\n"
                     "    <pattern value=\"[a-z]*\"/>\n"
                     "    <range value=\"0..10\"/>\n"
+                    "    <when condition=\"1\"/>\n"
                     "  </e:complex>\n"
                     "  <feature name=\"f\"/>\n"
                     "</module>\n";
@@ -2248,6 +2249,8 @@ test_complex_arrays_yin(void **state)
                     "    <pattern value=\"[A-Z]*\"/>\n"
                     "    <range value=\"0..10\"/>\n"
                     "    <range value=\"100..110\"/>\n"
+                    "    <when condition=\"1\"/>\n"
+                    "    <when condition=\"2\"/>\n"
                     "  </e:complex-arrays>\n"
                     "  <feature name=\"f1\"/>\n"
                     "  <feature name=\"f2\"/>\n"

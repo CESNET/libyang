@@ -2187,6 +2187,9 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
                     YANG_PRINT_EXTCOMPLEX_STRUCT_M(LY_STMT_RANGE, struct lys_restr, yang_print_restr,
                                                    "range", ((struct lys_restr *)(*pp))->expr);
                     break;
+                case LY_STMT_WHEN:
+                    YANG_PRINT_EXTCOMPLEX_STRUCT_M(LY_STMT_WHEN, struct lys_when, yang_print_when);
+                    break;
                 default:
                     /* TODO */
                     break;

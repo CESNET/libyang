@@ -7885,6 +7885,15 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             if (!(*pp)) {
                 goto error;
             }
+        } else if (!strcmp(node->name, "when")) {
+            YIN_EXTCOMPLEX_GETPLACE(LY_STMT_WHEN, struct lys_when*);
+
+            *(struct lys_when**)p = read_yin_when(mod, node, unres);
+            if (!*(struct lys_when**)p) {
+                goto error;
+            }
+
+            YIN_EXTCOMPLEX_ENLARGE(struct lys_when*);
         } else if (!strcmp(node->name, "unique")) {
             YIN_EXTCOMPLEX_GETPLACE(LY_STMT_UNIQUE, struct lys_unique*);
 
