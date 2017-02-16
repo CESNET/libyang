@@ -4531,6 +4531,28 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
                 case LY_STMT_WHEN:
                     EXTCOMPLEX_FREE_STRUCT(LY_STMT_WHEN, struct lys_when, lys_when_free, 0);
                     break;
+                case LY_STMT_REVISION:
+                    pp = lys_ext_complex_get_substmt(LY_STMT_REVISION, (struct lys_ext_instance_complex *)e[i], NULL);
+                    if (!pp || !(*pp)) {
+                        break;
+                    }
+                    if (substmt[j].cardinality >= LY_STMT_CARD_SOME) { /* process array */
+                        for (start = pp = *pp; *pp; pp++) {
+                            lydict_remove(ctx, (*(struct lys_revision**)pp)->dsc);
+                            lydict_remove(ctx, (*(struct lys_revision**)pp)->ref);
+                            lys_extension_instances_free(ctx, (*(struct lys_revision**)pp)->ext,
+                                                         (*(struct lys_revision**)pp)->ext_size);
+                            free(*pp);
+                        }
+                        free(start);
+                    } else { /* single item */
+                        lydict_remove(ctx, (*(struct lys_revision**)pp)->dsc);
+                        lydict_remove(ctx, (*(struct lys_revision**)pp)->ref);
+                        lys_extension_instances_free(ctx, (*(struct lys_revision**)pp)->ext,
+                                                     (*(struct lys_revision**)pp)->ext_size);
+                        free(*pp);
+                    }
+                    break;
                 default:
                     /* nothing to free */
                     break;

@@ -2146,6 +2146,7 @@ test_complex_yin(void **state)
                     "    <pattern value=\"[a-z]*\"/>\n"
                     "    <range value=\"0..10\"/>\n"
                     "    <when condition=\"1\"/>\n"
+                    "    <revision date=\"2016-02-16\"/>\n"
                     "  </e:complex>\n"
                     "  <feature name=\"f\"/>\n"
                     "</module>\n";
@@ -2251,6 +2252,8 @@ test_complex_arrays_yin(void **state)
                     "    <range value=\"100..110\"/>\n"
                     "    <when condition=\"1\"/>\n"
                     "    <when condition=\"2\"/>\n"
+                    "    <revision date=\"2016-02-16\"/>\n"
+                    "    <revision date=\"2016-02-17\"/>\n"
                     "  </e:complex-arrays>\n"
                     "  <feature name=\"f1\"/>\n"
                     "  <feature name=\"f2\"/>\n"

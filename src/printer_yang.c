@@ -1601,6 +1601,20 @@ yang_print_snode(struct lyout *out, int level, const struct lys_node *node, int 
     }
 }
 
+static void
+yang_print_revision(struct lyout *out, int level, const struct lys_module *module, const struct lys_revision *rev)
+{
+    if (rev->dsc || rev->ref || rev->ext_size) {
+        ly_print(out, "%*srevision \"%s\" {\n", LEVEL, INDENT, rev->date);
+        yang_print_extension_instances(out, level + 1, module, LYEXT_SUBSTMT_SELF, 0, rev->ext, rev->ext_size);
+        yang_print_substmt(out, level + 1, LYEXT_SUBSTMT_DESCRIPTION, 0, rev->dsc, module, rev->ext, rev->ext_size);
+        yang_print_substmt(out, level + 1, LYEXT_SUBSTMT_REFERENCE, 0, rev->ref, module, rev->ext, rev->ext_size);
+        ly_print(out, "%*s}\n", LEVEL, INDENT);
+    } else {
+        ly_print(out, "%*srevision %s;\n", LEVEL, INDENT, rev->date);
+    }
+}
+
 static int
 yang_print_model_(struct lyout *out, int level, const struct lys_module *module)
 {
@@ -1700,18 +1714,7 @@ yang_print_model_(struct lyout *out, int level, const struct lys_module *module)
         ly_print(out, "\n");
     }
     for (i = 0; i < module->rev_size; i++) {
-        if (module->rev[i].dsc || module->rev[i].ref || module->rev[i].ext_size) {
-            ly_print(out, "%*srevision \"%s\" {\n", LEVEL, INDENT, module->rev[i].date);
-            yang_print_extension_instances(out, level + 1, module, LYEXT_SUBSTMT_SELF, 0,
-                                           module->rev[i].ext, module->rev[i].ext_size);
-            yang_print_substmt(out, level + 1, LYEXT_SUBSTMT_DESCRIPTION, 0, module->rev[i].dsc,
-                               module, module->rev[i].ext, module->rev[i].ext_size);
-            yang_print_substmt(out, level + 1, LYEXT_SUBSTMT_REFERENCE, 0, module->rev[i].ref,
-                               module, module->rev[i].ext, module->rev[i].ext_size);
-            ly_print(out, "%*s}\n", LEVEL, INDENT);
-        } else {
-            ly_print(out, "%*srevision %s;\n", LEVEL, INDENT, module->rev[i].date);
-        }
+        yang_print_revision(out, level, module, &module->rev[i]);
     }
 
     /* body-stmts */
@@ -2189,6 +2192,9 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
                     break;
                 case LY_STMT_WHEN:
                     YANG_PRINT_EXTCOMPLEX_STRUCT_M(LY_STMT_WHEN, struct lys_when, yang_print_when);
+                    break;
+                case LY_STMT_REVISION:
+                    YANG_PRINT_EXTCOMPLEX_STRUCT_M(LY_STMT_REVISION, struct lys_revision, yang_print_revision);
                     break;
                 default:
                     /* TODO */

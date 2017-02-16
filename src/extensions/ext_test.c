@@ -97,8 +97,8 @@ struct lyext_substmt libyang_ext_test_substmt[] = {
     {LY_STMT_PATTERN,      30 * sizeof(void*) + 5 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* struct lys_restr* */
     {LY_STMT_RANGE,        31 * sizeof(void*) + 5 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* struct lys_restr* */
     {LY_STMT_WHEN,         32 * sizeof(void*) + 5 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* struct lys_when* */
-/*    {LY_STMT_REVISION,     66 * sizeof(void *), LY_STMT_CARD_OPT},
-*/    {0, 0, 0} /* terminating item */
+    {LY_STMT_REVISION,     33 * sizeof(void*) + 5 * sizeof(uint8_t), LY_STMT_CARD_OPT}, /* struct lys_revision* */
+    {0, 0, 0} /* terminating item */
 };
 
 struct lyext_substmt libyang_ext_test_substmt_arrays[] = {
@@ -152,8 +152,8 @@ struct lyext_substmt libyang_ext_test_substmt_arrays[] = {
     {LY_STMT_PATTERN,      31 * sizeof(void*), LY_STMT_CARD_ANY}, /* struct lys_restr** */
     {LY_STMT_RANGE,        32 * sizeof(void*), LY_STMT_CARD_ANY}, /* struct lys_restr** */
     {LY_STMT_WHEN,         33 * sizeof(void*), LY_STMT_CARD_ANY}, /* struct lys_when** */
-/*    {LY_STMT_REVISION,     66 * sizeof(void *), LY_STMT_CARD_ANY},
-*/    {0, 0, 0} /* terminating item */
+    {LY_STMT_REVISION,     34 * sizeof(void*), LY_STMT_CARD_ANY}, /* struct lys_revision** */
+    {0, 0, 0} /* terminating item */
 };
 
 /**
