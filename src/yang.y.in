@@ -195,6 +195,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <uint> position_value_arg
 %type <uint> yin_element_arg_str
 %type <uint> yin_element_arg
+%type <uint> fraction_digits_stmt
 %type <i> require_instance_stmt
 %type <i> require_instance_arg_str
 %type <i> require_instance_arg
@@ -1316,7 +1317,10 @@ some_restrictions: @EMPTYDIR@
                                  }
   |  some_restrictions length_stmt stmtsep
   |  some_restrictions pattern_stmt stmtsep
-  |  some_restrictions fraction_digits_stmt
+  |  some_restrictions fraction_digits_stmt { if (yang_read_fraction(actual, $2)) {
+                                                YYABORT;
+                                              }
+                                            }
   |  some_restrictions range_stmt stmtsep
   |  some_restrictions union_stmt stmtsep
 
@@ -1347,11 +1351,7 @@ fraction_digits_arg: fraction_digits_arg_str { $$ = $1;
                                                actual_type = FRACTION_DIGITS_KEYWORD;
                                              }
 
-fraction_digits_stmt: FRACTION_DIGITS_KEYWORD sep fraction_digits_arg
-                      stmtend { if (yang_read_fraction(actual, $3)) {
-                                  YYABORT;
-                                }
-                              }
+fraction_digits_stmt: FRACTION_DIGITS_KEYWORD sep fraction_digits_arg stmtend { $$ = $3; }
 
 fraction_digits_arg_str: positive_integer_value optsep { $$ = $1; }
   | string_1 { char *endptr = NULL;
@@ -4366,15 +4366,25 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
                                            YYABORT;
                                          }
                                        }
-  |  ext_substatements require_instance_stmt { if (yang_fill_extcomplex_bool(ext_instance, ext_name, "require-instance",
-                                                                             LY_STMT_REQINSTANCE, $2)) {
+  |  ext_substatements require_instance_stmt { if (yang_fill_extcomplex_uint8(ext_instance, ext_name, "require-instance",
+                                                                              LY_STMT_REQINSTANCE, $2)) {
                                                  YYABORT;
                                                }
                                              }
-  |  ext_substatements modifier_stmt { if (yang_fill_extcomplex_bool(ext_instance, ext_name, "modifier", LY_STMT_MODIFIER, 0)) {
+  |  ext_substatements modifier_stmt { if (yang_fill_extcomplex_uint8(ext_instance, ext_name, "modifier", LY_STMT_MODIFIER, 0)) {
                                          YYABORT;
                                        }
                                      }
+  |  ext_substatements fraction_digits_stmt
+     { /* range check */
+       if ($2 < 1 || $2 > 18) {
+         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", $2, "fraction-digits");
+         YYABORT;
+       }
+       if (yang_fill_extcomplex_uint8(ext_instance, ext_name, "fraction-digits", LY_STMT_DIGITS, $2)) {
+         YYABORT;
+       }
+     }
 
 %%
 
