@@ -1824,6 +1824,67 @@ error:
 }
 
 static int
+fill_yin_revision(struct lys_module *module, struct lyxml_elem *yin, struct lys_revision *rev,
+                  struct unres_schema *unres)
+{
+    struct lyxml_elem *next, *child;
+    const char *value;
+
+    GETVAL(value, yin, "date");
+    if (lyp_check_date(value)) {
+        goto error;
+    }
+    memcpy(rev->date, value, LY_REV_SIZE - 1);
+
+    LY_TREE_FOR_SAFE(yin->child, next, child) {
+        if (!child->ns) {
+            /* garbage */
+            continue;
+        } else if (strcmp(child->ns->value, LY_NSYIN)) {
+            /* possible extension instance */
+            if (lyp_yin_parse_subnode_ext(module, rev, LYEXT_PAR_REVISION,
+                                          child, LYEXT_SUBSTMT_SELF, 0, unres)) {
+                goto error;
+            }
+        } else if (!strcmp(child->name, "description")) {
+            if (rev->dsc) {
+                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
+                goto error;
+            }
+            if (lyp_yin_parse_subnode_ext(module, rev, LYEXT_PAR_REVISION,
+                                          child, LYEXT_SUBSTMT_DESCRIPTION, 0, unres)) {
+                goto error;
+            }
+            rev->dsc = read_yin_subnode(module->ctx, child, "text");
+            if (!rev->dsc) {
+                goto error;
+            }
+        } else if (!strcmp(child->name, "reference")) {
+            if (rev->ref) {
+                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child->name, yin->name);
+                goto error;
+            }
+            if (lyp_yin_parse_subnode_ext(module, rev, LYEXT_PAR_REVISION,
+                                          child, LYEXT_SUBSTMT_REFERENCE, 0, unres)) {
+                goto error;
+            }
+            rev->ref = read_yin_subnode(module->ctx, child, "text");
+            if (!rev->ref) {
+                goto error;
+            }
+        } else {
+            LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child->name);
+            goto error;
+        }
+    }
+
+    return EXIT_SUCCESS;
+
+error:
+    return EXIT_FAILURE;
+}
+
+static int
 fill_yin_unique(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, struct lys_unique *unique,
                 struct unres_schema *unres)
 {
@@ -6322,7 +6383,7 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 struct unres_schema *unres)
 {
     struct ly_ctx *ctx = module->ctx;
-    struct lyxml_elem *next, *next2, *child, *child2, root, grps, augs, revs, exts;
+    struct lyxml_elem *next, *child, root, grps, augs, revs, exts;
     struct lys_node *node = NULL;
     struct lys_module *trg;
     const char *value;
@@ -6804,61 +6865,19 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
 
     /* middle part 1 - process revision and then check whether this (sub)module was not already parsed, add it there */
     LY_TREE_FOR_SAFE(revs.child, next, child) {
-        GETVAL(value, child, "date");
-        if (lyp_check_date(value)) {
+        r = fill_yin_revision(trg, child, &trg->rev[trg->rev_size], unres);
+        trg->rev_size++;
+        if (r) {
             goto error;
         }
-        memcpy(trg->rev[trg->rev_size].date, value, LY_REV_SIZE - 1);
-        /* check uniqueness of the revision date - not required by RFC */
-        for (i = 0; i < trg->rev_size; i++) {
-            if (!strcmp(value, trg->rev[i].date)) {
-                LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, child->name);
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Revision is not unique.");
-            }
-        }
 
-        LY_TREE_FOR_SAFE(child->child, next2, child2) {
-            if (!child2->ns) {
-                /* garbage */
-                continue;
-            } else if (strcmp(child2->ns->value, LY_NSYIN)) {
-                /* possible extension instance */
-                if (lyp_yin_parse_subnode_ext(trg, &trg->rev[trg->rev_size], LYEXT_PAR_REVISION,
-                                              child2, LYEXT_SUBSTMT_SELF, 0, unres)) {
-                    goto error;
-                }
-            } else if (!strcmp(child2->name, "description")) {
-                if (trg->rev[trg->rev_size].dsc) {
-                    LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child2->name, child->name);
-                    goto error;
-                }
-                if (lyp_yin_parse_subnode_ext(trg, &trg->rev[trg->rev_size], LYEXT_PAR_REVISION,
-                                              child2, LYEXT_SUBSTMT_DESCRIPTION, 0, unres)) {
-                    goto error;
-                }
-                trg->rev[trg->rev_size].dsc = read_yin_subnode(ctx, child2, "text");
-                if (!trg->rev[trg->rev_size].dsc) {
-                    goto error;
-                }
-            } else if (!strcmp(child2->name, "reference")) {
-                if (trg->rev[trg->rev_size].ref) {
-                    LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, child2->name, child->name);
-                    goto error;
-                }
-                if (lyp_yin_parse_subnode_ext(trg, &trg->rev[trg->rev_size], LYEXT_PAR_REVISION,
-                                              child2, LYEXT_SUBSTMT_REFERENCE, 0, unres)) {
-                    goto error;
-                }
-                trg->rev[trg->rev_size].ref = read_yin_subnode(ctx, child2, "text");
-                if (!trg->rev[trg->rev_size].ref) {
-                    goto error;
-                }
-            } else {
-                LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child2->name);
-                goto error;
+        /* check uniqueness of the revision date - not required by RFC */
+        for (i = 0; i < (trg->rev_size - 1); i++) {
+            if (!strcmp(trg->rev[i].date, trg->rev[trg->rev_size - 1].date)) {
+                LOGWRN("Module's revisions are not unique (%s).", trg->rev[trg->rev_size - 1].date);
+                break;
             }
         }
-        trg->rev_size++;
 
         lyxml_free(ctx, child);
     }
@@ -7537,8 +7556,7 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
     long int v;
     long long int ll;
     unsigned long u;
-    int i;
-    int64_t v_;
+    int i, j;
 
 #define YIN_EXTCOMPLEX_GETPLACE(STMT, TYPE)                                          \
     p = lys_ext_complex_get_substmt(STMT, ext, &info);                               \
@@ -7838,10 +7856,10 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             }
 
             /* convert it to int32_t */
-            v_ = strtoll(value, NULL, 10);
+            ll = strtoll(value, NULL, 10);
 
             /* range check */
-            if (v_ < INT32_MIN || v_ > INT32_MAX) {
+            if (ll < INT32_MIN || ll > INT32_MAX) {
                 LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, node->name);
                 goto error;
             }
@@ -7852,7 +7870,7 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
 
             /* store the value */
             *(int32_t **)p = malloc(sizeof(int32_t));
-            (**(int32_t **)p) = (int32_t)v_;
+            (**(int32_t **)p) = (int32_t)ll;
 
             YIN_EXTCOMPLEX_ENLARGE(int32_t*);
         } else if (!strcmp(node->name, "position")) {
@@ -7886,6 +7904,33 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             if (!(*pp)) {
                 goto error;
             }
+        } else if (!strcmp(node->name, "when")) {
+            YIN_EXTCOMPLEX_GETPLACE(LY_STMT_WHEN, struct lys_when*);
+
+            *(struct lys_when**)p = read_yin_when(mod, node, unres);
+            if (!*(struct lys_when**)p) {
+                goto error;
+            }
+
+            YIN_EXTCOMPLEX_ENLARGE(struct lys_when*);
+        } else if (!strcmp(node->name, "revision")) {
+            YIN_EXTCOMPLEX_GETPLACE(LY_STMT_REVISION, struct lys_revision*);
+
+            *(struct lys_revision**)p = calloc(1, sizeof(struct lys_revision));
+            if (fill_yin_revision(mod, node, *(struct lys_revision**)p, unres)) {
+                goto error;
+            }
+
+            /* check uniqueness of the revision dates - not required by RFC */
+            if (pp) {
+                for (j = 0; j < i; j++) {
+                    if (!strcmp((*(struct lys_revision***)pp)[j]->date, (*(struct lys_revision**)p)->date)) {
+                        LOGWRN("Module's revisions are not unique (%s).", (*(struct lys_revision**)p)->date);
+                    }
+                }
+            }
+
+            YIN_EXTCOMPLEX_ENLARGE(struct lys_revision*);
         } else if (!strcmp(node->name, "unique")) {
             YIN_EXTCOMPLEX_GETPLACE(LY_STMT_UNIQUE, struct lys_unique*);
 

@@ -1579,6 +1579,22 @@ yin_print_snode(struct lyout *out, int level, const struct lys_node *node, int m
 }
 
 static void
+yin_print_revision(struct lyout *out, int level, const struct lys_module *module, const struct lys_revision *rev)
+{
+    if (rev->dsc || rev->ref || rev->ext_size) {
+        yin_print_open(out, level, NULL, "revision", "date", rev->date, 1);
+        level++;
+        yin_print_extension_instances(out, level, module, LYEXT_SUBSTMT_SELF, 0, rev->ext, rev->ext_size);
+        yin_print_substmt(out, level, LYEXT_SUBSTMT_DESCRIPTION, 0, rev->dsc, module, rev->ext, rev->ext_size);
+        yin_print_substmt(out, level, LYEXT_SUBSTMT_REFERENCE, 0, rev->ref, module, rev->ext, rev->ext_size);
+        level--;
+        yin_print_close(out, level, NULL, "revision", 1);
+    } else {
+        yin_print_open(out, level, NULL, "revision", "date", rev->date, -1);
+    }
+}
+
+static void
 yin_print_xmlns(struct lyout *out, const struct lys_module *module)
 {
     unsigned int i, lvl;
@@ -1702,20 +1718,7 @@ yin_print_model_(struct lyout *out, int level, const struct lys_module *module)
 
     /* revision-stmts */
     for (i = 0; i < module->rev_size; i++) {
-        if (module->rev[i].dsc || module->rev[i].ref || module->ext_size) {
-            yin_print_open(out, level, NULL, "revision", "date", module->rev[i].date, 1);
-            level++;
-            yin_print_extension_instances(out, level, module, LYEXT_SUBSTMT_SELF, 0,
-                                          module->rev[i].ext, module->rev[i].ext_size);
-            yin_print_substmt(out, level, LYEXT_SUBSTMT_DESCRIPTION, 0, module->rev[i].dsc,
-                              module, module->rev[i].ext, module->rev[i].ext_size);
-            yin_print_substmt(out, level, LYEXT_SUBSTMT_REFERENCE, 0, module->rev[i].ref,
-                               module, module->rev[i].ext, module->rev[i].ext_size);
-            level--;
-            yin_print_close(out, level, NULL, "revision", 1);
-        } else {
-            yin_print_open(out, level, NULL, "revision", "date", module->rev[i].date, -1);
-        }
+        yin_print_revision(out, level, module, &module->rev[i]);
     }
 
     /* body-stmts */
@@ -2198,6 +2201,12 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
                     break;
                 case LY_STMT_RANGE:
                     YIN_PRINT_EXTCOMPLEX_STRUCT_M(LY_STMT_RANGE, struct lys_restr, yin_print_typerestr, "range");
+                    break;
+                case LY_STMT_WHEN:
+                    YIN_PRINT_EXTCOMPLEX_STRUCT_M(LY_STMT_WHEN, struct lys_when, yin_print_when);
+                    break;
+                case LY_STMT_REVISION:
+                    YIN_PRINT_EXTCOMPLEX_STRUCT_M(LY_STMT_REVISION, struct lys_revision, yin_print_revision);
                     break;
                 default:
                     /* TODO */
