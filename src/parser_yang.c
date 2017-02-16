@@ -4718,3 +4718,32 @@ yang_fill_extcomplex_flags(struct lys_ext_instance_complex *ext, char *parent_na
     *data |= value;
     return EXIT_SUCCESS;
 }
+
+int
+yang_fill_extcomplex_bool(struct lys_ext_instance_complex *ext, char *parent_name, char *node_name,
+                          LY_STMT stmt, uint8_t value)
+{
+    uint8_t *val;
+    struct lyext_substmt *info;
+
+    val = lys_ext_complex_get_substmt(stmt, ext, &info);
+    if (!val) {
+        LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, node_name, parent_name);
+        return EXIT_FAILURE;
+    }
+    if (*val) {
+        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, node_name, parent_name);
+        return EXIT_FAILURE;
+    }
+
+    if (stmt == LY_STMT_REQINSTANCE) {
+        *val = (value == 1) ? 1 : 2;
+    } else if (stmt == LY_STMT_MODIFIER) {
+        *val =  1;
+    } else {
+        LOGINT;
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
+}

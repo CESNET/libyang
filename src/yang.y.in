@@ -4366,6 +4366,15 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
                                            YYABORT;
                                          }
                                        }
+  |  ext_substatements require_instance_stmt { if (yang_fill_extcomplex_bool(ext_instance, ext_name, "require-instance",
+                                                                             LY_STMT_REQINSTANCE, $2)) {
+                                                 YYABORT;
+                                               }
+                                             }
+  |  ext_substatements modifier_stmt { if (yang_fill_extcomplex_bool(ext_instance, ext_name, "modifier", LY_STMT_MODIFIER, 0)) {
+                                         YYABORT;
+                                       }
+                                     }
 
 %%
 
