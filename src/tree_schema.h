@@ -302,12 +302,12 @@ typedef enum {
     LY_STMT_CASE,         /**< stored as ::lys_node_case*, part of the data tree  */
     LY_STMT_CHOICE,       /**< stored as ::lys_node_choice*, part of the data tree  */
     LY_STMT_CONTAINER,    /**< stored as ::lys_node_container*, part of the data tree  */
-    LY_STMT_GROUPING,     /**< stored as ::lys_node_grouping*, part of the data tree  */
-    LY_STMT_INPUT,        /**< stored as ::lys_node_input*, part of the data tree, but it cannot apper multiple times */
+    LY_STMT_GROUPING,     /**< stored as ::lys_node_grp*, part of the data tree  */
+    LY_STMT_INPUT,        /**< stored as ::lys_node_inout*, part of the data tree, but it cannot appear multiple times */
     LY_STMT_LEAF,         /**< stored as ::lys_node_leaf*, part of the data tree  */
     LY_STMT_LEAFLIST,     /**< leaf-list, stored as ::lys_node_leaflist*, part of the data tree  */
     LY_STMT_LIST,         /**< stored as ::lys_node_list*, part of the data tree  */
-    LY_STMT_NOTIFICATION, /**< stored as ::lys_node_notification*, part of the data tree  */
+    LY_STMT_NOTIFICATION, /**< stored as ::lys_node_notif*, part of the data tree  */
     LY_STMT_OUTPUT,       /**< stored as ::lys_node_anydata*, part of the data tree, but it cannot apper multiple times */
     LY_STMT_RPC,          /**< not supported, use actions instead */
     LY_STMT_USES,         /**< stored as ::lys_node_uses*, part of the data tree  */
@@ -330,9 +330,14 @@ typedef enum {
     LY_STMT_PATTERN,      /**< stored as ::lys_restr* */
     LY_STMT_RANGE,        /**< stored as ::lys_restr* */
     LY_STMT_WHEN,         /**< stored as ::lys_when* */
-    LY_STMT_REVISION,
+    LY_STMT_REVISION,     /**< stored as ::lys_revision */
 } LY_STMT;
 
+/**
+ * @brief Possible cardinalities of the YANG statements.
+ *
+ * Used in extensions plugins to define cardinalities of the extension instance substatements.
+ */
 typedef enum {
     LY_STMT_CARD_OPT,    /* 0..1 */
     LY_STMT_CARD_MAND,   /* 1 */
@@ -368,15 +373,22 @@ typedef enum {
                                           callback to decide if the extension instance is supposed to be inherited.
                                           The extension instance with this flag is not printed and it is just a shadow
                                           copy of the original extension instance in some of the parents. */
-#define LYEXT_OPT_YANG       0x02    /**< temporarily stored pointer to string, which contain prefix and name of extension */ 
+/** @cond INTERNAL */
+#define LYEXT_OPT_YANG       0x02    /**< temporarily stored pointer to string, which contain prefix and name of extension */
 /**
+ * @endcond
  * @}
  */
 
+/**
+ * @brief Description of the extension instance substatement.
+ *
+ * Provided by extensions plugins to libyang to be able to parse the content of extension instances.
+ */
 struct lyext_substmt {
-    LY_STMT stmt;
-    size_t offset;
-    LY_STMT_CARD cardinality;
+    LY_STMT stmt;              /**< allowed substatement */
+    size_t offset;             /**< offset in the ::lys_ext_instance_complex#content */
+    LY_STMT_CARD cardinality;  /**< cardinality of the substatement */
 };
 
 /**
@@ -416,7 +428,7 @@ struct lys_ext_instance {
                                           this extension instance. Order of both, the extension and the statement,
                                           instances is the same. The index is filled only for LYEXT_SUBSTMT_BASE,
                                           LYEXT_SUBSTMT_DEFAULT and LYEXT_SUBSTMT_UNIQUE values of the
-                                          ::lys_ext_instance#substmt member. To get the correct pointer to the
+                                          ::lys_ext_instance#insubstmt member. To get the correct pointer to the
                                           data connected with the index, use lys_ext_instance_substmt() */
     uint8_t insubstmt;               /**< #LYEXT_SUBSTMT - id for the case the extension instance is actually inside
                                           some of the node's members (substatements). libyang does not store extension
@@ -445,7 +457,7 @@ struct lys_ext_instance_complex {
                                           this extension instance. Order of both, the extension and the statement,
                                           instances is the same. The index is filled only for LYEXT_SUBSTMT_BASE,
                                           LYEXT_SUBSTMT_DEFAULT and LYEXT_SUBSTMT_UNIQUE values of the
-                                          ::lys_ext_instance#substmt member. To get the correct pointer to the
+                                          ::lys_ext_instance#insubstmt member. To get the correct pointer to the
                                           data connected with the index, use lys_ext_instance_substmt() */
     uint8_t insubstmt;               /**< #LYEXT_SUBSTMT - id for the case the extension instance is actually inside
                                           some of the node's members (substatements). libyang does not store extension
@@ -469,40 +481,40 @@ struct lys_ext_instance_complex {
  * any of the parent's substatements).
  *
  * Returned pointer is supposed to be cast according to the extension instance's substmt value:
- *  LYEXT_SUBSTMT_ARGUMENT     -> const char* (lys_ext_instance.arg_value)
- *  LYEXT_SUBSTMT_BASE         -> struct lys_ident* (lys_type.info.ident.ref[index] or lys_ident.base[index])
- *  LYEXT_SUBSTMT_BELONGSTO    -> struct lys_module* (lys_submodule.belongsto)
- *  LYEXT_SUBSTMT_CONFIG       -> uint16_t* (e.g. lys_node.flags, use #LYS_CONFIG_MASK to get only the config flag)
- *  LYEXT_SUBSTMT_CONTACT      -> const char* (e.g. lys_module.contact)
- *  LYEXT_SUBSTMT_DEFAULT      -> const char* (e.g. lys_node_leaflist.dflt[index]) or struct lys_node*
- *                                (lys_node_choice.dflt) depending on the parent
- *  LYEXT_SUBSTMT_DESCRIPTION  -> const char* (e.g. lys_module.dsc)
- *  LYEXT_SUBSTMT_ERRTAG       -> const char* (lys_restr.eapptag)
- *  LYEXT_SUBSTMT_ERRMSG       -> const char* (lys_restr.emsg)
- *  LYEXT_SUBSTMT_DIGITS       -> uint8_t* (lys_type.info.dec64.dig)
- *  LYEXT_SUBSTMT_KEY          -> struct lys_node_leaf** (lys_node_list.keys)
- *  LYEXT_SUBSTMT_MANDATORY    -> uint16_t* (e.g. lys_node.flags, use #LYS_MAND_MASK to get only the mandatory flag)
- *  LYEXT_SUBSTMT_MAX          -> uint32_t* (e.g. lys_node_list.max)
- *  LYEXT_SUBSTMT_MIN          -> uint32_t* (e.g. lys_node_list.min)
- *  LYEXT_SUBSTMT_MODIFIER     -> NULL, the substatement is stored as a special value of the first byte of the
- *                                restriction's expression (ly_restr.expr[0])
- *  LYEXT_SUBSTMT_NAMESPACE    -> cont char* (lys_module.ns)
- *  LYEXT_SUBSTMT_ORDEREDBY    -> uint16_t* (e.g. lys_node.flags, use #LYS_USERORDERED as mask to get the flag)
- *  LYEXT_SUBSTMT_ORGANIZATION -> const char* (e.g. lys_module.org)
- *  LYEXT_SUBSTMT_PATH         -> const char* (lys_type.info.lref.path)
- *  LYEXT_SUBSTMT_POSITION     -> uint32_t* (bit.pos)
- *  LYEXT_SUBSTMT_PREFIX       -> const char* (e.g. lys_module.prefix)
- *  LYEXT_SUBSTMT_PRESENCE     -> const char* (lys_node_container.presence)
- *  LYEXT_SUBSTMT_REFERENCE    -> const char* (e.g. lys_node.ref)
- *  LYEXT_SUBSTMT_REQINST      -> int8_t* (lys_type.info.lref.req or lys_type.info.inst.req)
- *  LYEXT_SUBSTMT_REVISIONDATE -> const char* (e.g. lys_import.rev)
- *  LYEXT_SUBSTMT_STATUS       -> uint16_t* (e.g. lys_node.flags, use #LYS_STATUS_MASK to get only the status flag)
- *  LYEXT_SUBSTMT_UNIQUE       -> struct lys_unique* (lys_node_list.unique[index])
- *  LYEXT_SUBSTMT_UNITS        -> const char* (e.g. lys_node_leaf.units)
- *  LYEXT_SUBSTMT_VALUE        -> int32_t* (enm.value
- *  LYEXT_SUBSTMT_VERSION      -> NULL, the version is stored as a bit-field value so the address cannot be returned,
- *                                however the value can be simply accessed as ((struct lys_module*)ext->parent)->version
- *  LYEXT_SUBSTMT_YINELEM      -> NULL, the substatement is stored as a flag
+ * - #LYEXT_SUBSTMT_ARGUMENT     -> const char* (lys_ext_instance.arg_value)
+ * - #LYEXT_SUBSTMT_BASE         -> struct lys_ident* (lys_type.info.ident.ref[index] or lys_ident.base[index])
+ * - #LYEXT_SUBSTMT_BELONGSTO    -> struct lys_module* (lys_submodule.belongsto)
+ * - #LYEXT_SUBSTMT_CONFIG       -> uint16_t* (e.g. lys_node.flags, use #LYS_CONFIG_MASK to get only the config flag)
+ * - #LYEXT_SUBSTMT_CONTACT      -> const char* (e.g. lys_module.contact)
+ * - #LYEXT_SUBSTMT_DEFAULT      -> const char* (e.g. lys_node_leaflist.dflt[index]) or struct lys_node*
+ *                                  (lys_node_choice.dflt) depending on the parent
+ * - #LYEXT_SUBSTMT_DESCRIPTION  -> const char* (e.g. lys_module.dsc)
+ * - #LYEXT_SUBSTMT_ERRTAG       -> const char* (lys_restr.eapptag)
+ * - #LYEXT_SUBSTMT_ERRMSG       -> const char* (lys_restr.emsg)
+ * - #LYEXT_SUBSTMT_DIGITS       -> uint8_t* (lys_type.info.dec64.dig)
+ * - #LYEXT_SUBSTMT_KEY          -> struct lys_node_leaf** (lys_node_list.keys)
+ * - #LYEXT_SUBSTMT_MANDATORY    -> uint16_t* (e.g. lys_node.flags, use #LYS_MAND_MASK to get only the mandatory flag)
+ * - #LYEXT_SUBSTMT_MAX          -> uint32_t* (e.g. lys_node_list.max)
+ * - #LYEXT_SUBSTMT_MIN          -> uint32_t* (e.g. lys_node_list.min)
+ * - #LYEXT_SUBSTMT_MODIFIER     -> NULL, the substatement is stored as a special value of the first byte of the
+ *                                  restriction's expression (ly_restr.expr[0])
+ * - #LYEXT_SUBSTMT_NAMESPACE    -> cont char* (lys_module.ns)
+ * - #LYEXT_SUBSTMT_ORDEREDBY    -> uint16_t* (e.g. lys_node.flags, use #LYS_USERORDERED as mask to get the flag)
+ * - #LYEXT_SUBSTMT_ORGANIZATION -> const char* (e.g. lys_module.org)
+ * - #LYEXT_SUBSTMT_PATH         -> const char* (lys_type.info.lref.path)
+ * - #LYEXT_SUBSTMT_POSITION     -> uint32_t* (bit.pos)
+ * - #LYEXT_SUBSTMT_PREFIX       -> const char* (e.g. lys_module.prefix)
+ * - #LYEXT_SUBSTMT_PRESENCE     -> const char* (lys_node_container.presence)
+ * - #LYEXT_SUBSTMT_REFERENCE    -> const char* (e.g. lys_node.ref)
+ * - #LYEXT_SUBSTMT_REQINSTANCE  -> int8_t* (lys_type.info.lref.req or lys_type.info.inst.req)
+ * - #LYEXT_SUBSTMT_REVISIONDATE -> const char* (e.g. lys_import.rev)
+ * - #LYEXT_SUBSTMT_STATUS       -> uint16_t* (e.g. lys_node.flags, use #LYS_STATUS_MASK to get only the status flag)
+ * - #LYEXT_SUBSTMT_UNIQUE       -> struct lys_unique* (lys_node_list.unique[index])
+ * - #LYEXT_SUBSTMT_UNITS        -> const char* (e.g. lys_node_leaf.units)
+ * - #LYEXT_SUBSTMT_VALUE        -> int32_t* (enm.value
+ * - #LYEXT_SUBSTMT_VERSION      -> NULL, the version is stored as a bit-field value so the address cannot be returned,
+ *                                  however the value can be simply accessed as ((struct lys_module*)ext->parent)->version
+ * - #LYEXT_SUBSTMT_YINELEM      -> NULL, the substatement is stored as a flag
  *
  * @param[in] ext The extension instance to explore
  * @return Pointer to the data connected with the statement where the extension was instantiated. Details about

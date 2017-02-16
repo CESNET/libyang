@@ -58,7 +58,7 @@ typedef enum {
  *
  * For example, if the extension is supposed to be instantiated as a child to the description statement, libyang
  * stores the description just as its value. So, for example in case of the module's description, the description's
- * extension instance is actually stored in the lys_module's extensions list with the ::lys_ext_instance#substmt set to
+ * extension instance is actually stored in the lys_module's extensions list with the ::lys_ext_instance#insubstmt set to
  * #LYEXT_SUBSTMT_DESCRIPTION, ::lys_ext_instance#parent_type is LYEXT_PAR_MODULE and the ::lys_ext_instance#parent
  * points to the ::lys_module structure.
  *
@@ -138,7 +138,8 @@ typedef int (*lyext_check_result_clb)(struct lys_ext_instance *ext);
 
 /**
  * @brief Callback to decide whether the extension will be inherited into the provided schema node. The extension
- * instance is always from some of the node's parents.
+ * instance is always from some of the node's parents. The inherited extension instances are marked with the
+ * #LYEXT_OPT_INHERIT flag.
  *
  * @param[in] ext Extension instance to be inherited.
  * @param[in] node Schema node where the node is supposed to be inherited.
@@ -157,7 +158,8 @@ struct lyext_plugin {
     lyext_check_result_clb check_result;      /**< callback for testing if the argument value of the extension instance
                                                    is valid. Mandatory if the extension has the argument. */
     lyext_check_inherit_clb check_inherit;    /**< callback to decide if the extension is supposed to be inherited into
-                                                   the provided node */
+                                                   the provided node, the callback is used only if the flags contains
+                                                   #LYEXT_OPT_INHERIT flag */
 };
 
 struct lyext_plugin_complex {
@@ -169,7 +171,8 @@ struct lyext_plugin_complex {
     lyext_check_result_clb check_result;      /**< callback for testing if the argument value of the extension instance
                                                    is valid. Mandatory if the extension has the argument. */
     lyext_check_inherit_clb check_inherit;    /**< callback to decide if the extension is supposed to be inherited into
-                                                   the provided node */
+                                                   the provided node, the callback is used only if the flags contains
+                                                   #LYEXT_OPT_INHERIT flag */
     struct lyext_substmt *substmt;            /**< NULL-terminated array of allowed substatements and restrictions
                                                    to their instantiation inside the extension instance */
     size_t instance_size;                     /**< size of the instance structure to allocate, the structure is

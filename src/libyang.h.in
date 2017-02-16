@@ -38,12 +38,14 @@ extern "C" {
  *
  * @section about-features Main Features
  *
- * - Parsing (and validating) schemas in YANG format.
- * - Parsing (and validating) schemas in YIN format.
- * - Parsing, validating and printing instance data in XML format.
- * - Parsing, validating and printing instance data in JSON format ([RFC 7951](https://tools.ietf.org/html/rfc7951)).
- * - Manipulation with the instance data.
- * - Support for default values in the instance data ([RFC 6243](https://tools.ietf.org/html/rfc6243)).
+ * - [Parsing (and validating) schemas](@ref howtoschemasparsers) in YANG format.
+ * - [Parsing (and validating) schemas](@ref howtoschemasparsers) in YIN format.
+ * - [Parsing, validating and printing instance data](@ref howtodata) in XML format.
+ * - [Parsing, validating and printing instance data](@ref howtodata) in JSON format
+ *   ([RFC 7951](https://tools.ietf.org/html/rfc7951)).
+ * - [Manipulation with the instance data](@ref howtodatamanipulators).
+ * - Support for [YANG extensions](@ref howtoschemaextensions).
+ * - Support for [default values in the instance data](@ref howtodatawd) ([RFC 6243](https://tools.ietf.org/html/rfc6243)).
  *
  * The current implementation covers YANG 1.0 ([RFC 6020](https://tools.ietf.org/html/rfc6020)) as well as
  * YANG 1.1 ([RFC 7950](https://tools.ietf.org/html/rfc7950)).
@@ -311,25 +313,49 @@ extern "C" {
  * use cases should be covered and supported.
  *
  * Since libyang does not understand human text, it is not possible to get the complete defintion of the extension from
- * its description statement. Therefore, libyang allows the schema authors to provide __extension plugin__ that provides
- * information from the extension description to libyang.
+ * its description statement. Therefore, libyang allows the schema authors to provide @link lyext_plugin extension
+ * plugin@endlink that provides information from the extension description to libyang.
  *
  * Here are some notes about the implementation of the particular YANG extensions features
  *
  * - Extension instance can appear anywhere
  *   This is completely supported. In addition, the extension plugins are allowed to provide callback function to
  *   check if the extension instance is actually allowed to be instantiated as a substatement of the particular node.
+ *   In some case the extension instance is not stored in the libyang structures inside the statement it is
+ *   instantiated since some statements (such as description, position and several others listed as #LYEXT_SUBSTMT) are
+ *   not stored as a structure, but directly as a value. The extension instances of such statements are then actually
+ *   stored besides the extension instances of the parent structure (e.g. in ::lys_type_bit in case of position's
+ *   extension instances). These extension instances are indicated by the ::lys_ext_instance#insubstmt value which
+ *   refers (sometimes in combination with ::lys_ext_instance#insubstmt_index) to the substatement where the particular
+ *   extension is actually instantiated.
  *
  * - Extension instance can contain any other YANG statement
- *   This is currently not supported. The following text describes how we want to implement this functionality in
- *   future version.
+ *   This is supported with exceptions - the list of YANG statements is defined as #LY_STMT enumeration with the
+ *   description if the specific statement can appear as an extension instance substatement or if there is some
+ *   limitation regarding its cardinality. It also specifies how the specific statement is stored in the extension
+ *   instance (which data type or structure is used). In some cases, like `include` or `yang-version` statements, it
+ *   make no sense to have them inside an extension instance, so they are not supported by libyang.
  *
- *   The extension plugin is allowed to psecify the list of YANG substatements allowed to appear inside the extension
- *   instance. libyang then parses the content of the extension instance with these restrictions. Other extension
- *   instances as an extension instance substatements are always allowed. Note, that if there is no extension plugin
- *   defined or if the list of the allowed substatements is empty, no substatement (except extension instances) is
- *   allowed. Together with the allowed substatement, the extension plugin also specifies its cardinality and offset
- *   for storing the parsed data in the extension instance structure.
+ *   The list of allowed substatement for the specific extension instances is provided by the extension plugin. Besides
+ *   the list of substatement, the plugin also specifies where the data are stored and the cardinality for each
+ *   substatement. Other extension instances as an extension instance substatements are always allowed. Note, that if
+ *   there is no extension plugin defined or if the list of the allowed substatements is empty, no substatement (except
+ *   extension instances) is allowed.
+ *
+ * There are several extension types (enumerated as #LYEXT_TYPE) according to their purpose and content:
+ *
+ * - #LYEXT_FLAG - simple extension with no content (no substatement is allowed). The extension instance serves just as
+ *   a flag with or without an argument and its value. The example of such an extension is NACM's __default-deny-write__
+ *   or __default-deny-all__. This is the default type of extension for the case there is no extension plugin available
+ *   for the specific extension. Extension instances of this type are represented as ::lys_ext_instance.
+ *
+ * - #LYEXT_COMPLEX - complex extension with content. The specific rules for the content and how it is stored in the
+ *   extension instance structure is specified by the plugin. Extension instances of this type are represented as
+ *   ::lys_ext_instance_complex.
+ *
+ * Note that the ::lys_ext_instance structure serves as a generic structure for all extension instances. In case the
+ * ::lys_ext_instance#ext_type is set to a different value than #LYEXT_FLAG, the structure can be cast to the particular
+ * extension instance structure to access the type-specific members.
  *
  * Extension Plugins
  * -----------------
@@ -338,11 +364,41 @@ extern "C" {
  * plugins for the common IETF extensions (NACM, Metadata, ...) that can be used as a code examples for other
  * extensions.
  *
+ * There are several types of extension plugins which corresponds to the extension types:
+ *
+ * - ::lyext_plugin - the plugin for a simple extensions of type #LYEXT_FLAG. The plugin is supposed to provide
+ *   callbacks for:
+ *   + @link lyext_check_position_clb checking extension position @endlink (if the extension instance can be instantiated
+ *     in a particular parent)
+ *   + @link lyext_check_inherit_clb deciding if the extension is supposed to be inherited @endlink
+ *     (see #LYEXT_OPT_INHERIT). Note that the inherited extension instances are available in the libyang data
+ *     structures, but they are not part of the schema so they are not printed into the schema output formats.
+ *   + @link lyext_check_result_clb checking the result @endlink, the callback is called when the schema is completely
+ *     parsed and all the data are available for the final (possibly complex) checking (or modification)
+ * - ::lyext_plugin_complex - the plugin for the complex extension instances (#LYEXT_COMPLEX). The structure extends
+ *   the ::lyext_plugin structure by:
+ *   + instance_size - the overall size of the ::lyext_plugin_complex structure to allocate.
+ *     The substatement list is flexible array, so the size of the plugin structure depends on the content of the array.
+ *   + substmt - the list of the allowed substatements to the extension instance, besides the substatement id, it
+ *     also specifies its cardinality and the specific position in the ::lys_ext_instance_complex where the data are
+ *     stored (as offset to the ::lys_ext_instance_complex#content member). The way how the data are stored is
+ *     specified descriptions of #LY_STMT values.
+ *
+ * The plugins are loaded from the plugin directory (LIBDIR/libyang/) whenever a context is created. However, the list
+ * of plugins can be refreshed manually by lyext_load_plugins(). The plugin directory path can be change via the
+ * `LIBYANG_EXTENSIONS_PLUGINS_DIR` environment variable. Note, that no more available plugins are not removed, only
+ * the new plugins are loaded. Also note that availability of new plugins does not affect the current schemas in the
+ * contexts, they are applied only to the newly parsed schemas.
+ *
+ * The plugins list can be cleaned by lyext_clean_plugins(). However, since various contexts (respectively their
+ * schemas) can link to the plugins, the cleanup is successful only when there is no remaining context.
+ *
  * Functions List
  * --------------
- * - lys_ext_instance_type()
  * - lys_ext_instance_presence()
  * - lys_ext_instance_substmt()
+ * - lyext_load_plugins()
+ * - lyext_clean_plugins()
  */
 
 /**
