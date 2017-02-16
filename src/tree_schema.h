@@ -326,7 +326,7 @@ typedef enum {
     LY_STMT_IMPORT,       /**< not supported in extension instances */
     LY_STMT_INCLUDE,      /**< not supported in extension instances */
     LY_STMT_LENGTH,       /**< stored as ::lys_restr* */
-    LY_STMT_MUST,
+    LY_STMT_MUST,         /**< stored as ::lys_restr* */
     LY_STMT_PATTERN,      /**< stored as ::lys_restr* */
     LY_STMT_RANGE,        /**< stored as ::lys_restr* */
     LY_STMT_WHEN,
