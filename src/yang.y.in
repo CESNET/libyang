@@ -4346,6 +4346,26 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
        }
        actual = ext_instance;
      }
+  |  ext_substatements status_stmt { if (yang_fill_extcomplex_flags(ext_instance, ext_name, "status", LY_STMT_STATUS,
+                                                                    $2, LYS_STATUS_MASK)) {
+                                       YYABORT;
+                                     }
+                                   }
+  |  ext_substatements config_stmt { if (yang_fill_extcomplex_flags(ext_instance, ext_name, "config", LY_STMT_CONFIG,
+                                                                    $2, LYS_CONFIG_MASK)) {
+                                       YYABORT;
+                                     }
+                                   }
+  |  ext_substatements mandatory_stmt { if (yang_fill_extcomplex_flags(ext_instance, ext_name, "mandatory", LY_STMT_MANDATORY,
+                                                                       $2, LYS_MAND_MASK)) {
+                                          YYABORT;
+                                        }
+                                      }
+  |  ext_substatements ordered_by_stmt { if (yang_fill_extcomplex_flags(ext_instance, ext_name, "ordered-by", LY_STMT_ORDEREDBY,
+                                                                        $2, LYS_ORDERED_MASK)) {
+                                           YYABORT;
+                                         }
+                                       }
 
 %%
 

@@ -179,6 +179,9 @@ int yang_read_extcomplex_str(struct lys_module *module, struct lys_ext_instance_
 
 void **yang_getplace_for_extcomplex_struct(char *parent_name, char *node_name, struct lys_ext_instance_complex *ext, LY_STMT stmt);
 
+int yang_fill_extcomplex_flags(struct lys_ext_instance_complex *ext, char *parent_name, char *node_name,
+                               LY_STMT stmt, uint16_t value, uint16_t mask);
+
 int yang_parse_ext_substatement(struct lys_module *module, struct unres_schema *unres, const char *data,
                                 char *ext_name, struct lys_ext_instance_complex *ext);
 
