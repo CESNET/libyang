@@ -47,6 +47,9 @@ struct lyd_node *lyd_parse_json(struct ly_ctx *ctx, const char *data, int option
 
 /**@} jsondata */
 
+/* list of YANG statement strings */
+extern const char *ly_stmt_str[];
+
 enum LY_IDENT {
     LY_IDENT_SIMPLE,   /* only syntax rules */
     LY_IDENT_FEATURE,

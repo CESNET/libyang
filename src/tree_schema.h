@@ -296,7 +296,7 @@ typedef enum {
     LY_STMT_MODULE,       /**< stored as ::lys_module* */
     LY_STMT_SUBMODULE,    /**< not supported - submodules are tightly connected with their modules so it does not make
                                any sense to have them instantiated under an extension instance */
-    LY_STMT_ACTION,       /**< stored as ::lys_node_rpc_action, part of the data tree */
+    LY_STMT_ACTION,       /**< stored as ::lys_node_rpc_action*, part of the data tree */
     LY_STMT_ANYDATA,      /**< stored as ::lys_node_anydata*, part of the data tree  */
     LY_STMT_ANYXML,       /**< stored as ::lys_node_anydata*, part of the data tree  */
     LY_STMT_CASE,         /**< stored as ::lys_node_case*, part of the data tree  */

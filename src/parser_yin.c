@@ -7847,7 +7847,7 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             (**(uint32_t **)p) = (uint32_t)u;
 
             YIN_EXTCOMPLEX_ENLARGE(uint32_t*);
-        } if (!strcmp(node->name, "value")) {
+        } else if (!strcmp(node->name, "value")) {
             YIN_EXTCOMPLEX_GETPLACE(LY_STMT_VALUE, int32_t*);
 
             GETVAL(value, node, "value");
@@ -8035,14 +8035,77 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
         } else if (!strcmp(node->name, "range")) {
             YIN_EXTCOMPLEX_PARSE_RESTR(LY_STMT_RANGE);
         } else {
-            LOGERR(LY_SUCCESS, "Extension's substatement \"%s\" not yet supported.", node->name);
-            //LOGERR(LY_EINT, "Extension's substatement \"%s\" not yet supported.", node->name);
+            LOGERR(LY_SUCCESS, "Extension's substatement \"%s\" not supported.", node->name);
+            //LOGERR(LY_EINT, "Extension's substatement \"%s\" not supported.", node->name);
             //return EXIT_FAILURE;
         }
         lyxml_free(mod->ctx, node);
     }
 
-    /* TODO check for mandatory substatements */
+    if (!ext->substmt) {
+        return EXIT_SUCCESS;
+    }
+
+    /* check for mandatory substatements */
+    for (i = 0; ext->substmt[i].stmt; i++) {
+        if (ext->substmt[i].cardinality == LY_STMT_CARD_OPT || ext->substmt[i].cardinality == LY_STMT_CARD_ANY) {
+            /* not a mandatory */
+            continue;
+        } else if (ext->substmt[i].cardinality == LY_STMT_CARD_SOME) {
+            goto array;
+        }
+
+        /*
+         * LY_STMT_ORDEREDBY - not checked, has a default value which is the same as explicit system order
+         * LY_STMT_MODIFIER, LY_STMT_STATUS, LY_STMT_MANDATORY, LY_STMT_CONFIG - checked, but mandatory requirement
+         * does not make sense since there is also a default value specified
+         */
+        switch(ext->substmt[i].stmt) {
+        case LY_STMT_ORDEREDBY:
+            /* always ok */
+            break;
+        case LY_STMT_REQINSTANCE:
+        case LY_STMT_DIGITS:
+        case LY_STMT_MODIFIER:
+            p = lys_ext_complex_get_substmt(ext->substmt[i].stmt, ext, NULL);
+            if (!*(uint8_t*)p) {
+                LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, ly_stmt_str[ext->substmt[i].stmt], yin->name);
+                goto error;
+            }
+            break;
+        case LY_STMT_STATUS:
+            p = lys_ext_complex_get_substmt(ext->substmt[i].stmt, ext, NULL);
+            if (!(*(uint16_t*)p & LYS_STATUS_MASK)) {
+                LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, ly_stmt_str[ext->substmt[i].stmt], yin->name);
+                goto error;
+            }
+            break;
+        case LY_STMT_MANDATORY:
+            p = lys_ext_complex_get_substmt(ext->substmt[i].stmt, ext, NULL);
+            if (!(*(uint16_t*)p & LYS_MAND_MASK)) {
+                LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, ly_stmt_str[ext->substmt[i].stmt], yin->name);
+                goto error;
+            }
+            break;
+        case LY_STMT_CONFIG:
+            p = lys_ext_complex_get_substmt(ext->substmt[i].stmt, ext, NULL);
+            if (!(*(uint16_t*)p & LYS_CONFIG_MASK)) {
+                LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, ly_stmt_str[ext->substmt[i].stmt], yin->name);
+                goto error;
+            }
+            break;
+        default:
+array:
+            /* stored as a pointer */
+            p = lys_ext_complex_get_substmt(ext->substmt[i].stmt, ext, NULL);
+            if (!(*(void**)p)) {
+                LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, ly_stmt_str[ext->substmt[i].stmt], yin->name);
+                goto error;
+            }
+            break;
+        }
+    }
+
     return EXIT_SUCCESS;
 
 error:

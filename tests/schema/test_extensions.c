@@ -2267,6 +2267,189 @@ test_complex_arrays_yin(void **state)
     assert_string_equal(st->str1, yin);
 }
 
+static void
+test_complex_mand_yin(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    const char *yin1 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex-mand>\n  </e:complex-mand>\n"
+                    "</module>\n";
+    const char *yin2 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex-mand>\n"
+                    "    <description>\n      <text>description1</text>\n    </description>\n"
+                    "  </e:complex-mand>\n"
+                    "</module>\n";
+    const char *yin3 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex-mand>\n"
+                    "    <description>\n      <text>description1</text>\n    </description>\n"
+                    "    <default value=\"b\"/>\n"
+                    "  </e:complex-mand>\n"
+                    "</module>\n";
+    const char *yin4 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex-mand>\n"
+                    "    <description>\n      <text>description1</text>\n    </description>\n"
+                    "    <default value=\"b\"/>\n    <config value=\"true\"/>\n"
+                    "  </e:complex-mand>\n"
+                    "</module>\n";
+    const char *yin5 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex-mand>\n"
+                    "    <description>\n      <text>description1</text>\n    </description>\n"
+                    "    <default value=\"b\"/>\n    <config value=\"true\"/>\n    <mandatory value=\"true\"/>\n"
+                    "  </e:complex-mand>\n"
+                    "</module>\n";
+    const char *yin6 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex-mand>\n"
+                    "    <description>\n      <text>description1</text>\n    </description>\n"
+                    "    <default value=\"b\"/>\n    <config value=\"true\"/>\n    <mandatory value=\"true\"/>\n"
+                    "    <status value=\"obsolete\"/>\n"
+                    "  </e:complex-mand>\n"
+                    "</module>\n";
+    const char *yin7 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex-mand>\n"
+                    "    <description>\n      <text>description1</text>\n    </description>\n"
+                    "    <default value=\"b\"/>\n    <config value=\"true\"/>\n    <mandatory value=\"true\"/>\n"
+                    "    <status value=\"obsolete\"/>\n    <fraction-digits value=\"5\"/>\n"
+                    "  </e:complex-mand>\n"
+                    "</module>\n";
+    const char *yin8 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex-mand>\n"
+                    "    <description>\n      <text>description1</text>\n    </description>\n"
+                    "    <default value=\"b\"/>\n    <config value=\"true\"/>\n    <mandatory value=\"true\"/>\n"
+                    "    <status value=\"obsolete\"/>\n    <fraction-digits value=\"5\"/>\n"
+                    "    <min-elements value=\"4\"/>\n"
+                    "  </e:complex-mand>\n"
+                    "</module>\n";
+    const char *yin9 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex-mand>\n"
+                    "    <description>\n      <text>description1</text>\n    </description>\n"
+                    "    <default value=\"b\"/>\n    <config value=\"true\"/>\n    <mandatory value=\"true\"/>\n"
+                    "    <status value=\"obsolete\"/>\n    <fraction-digits value=\"5\"/>\n"
+                    "    <min-elements value=\"4\"/>\n"
+                    "    <leaf name=\"l1\">\n      <type name=\"string\"/>\n    </leaf>\n"
+                    "  </e:complex-mand>\n"
+                    "</module>\n";
+    const char *yin_correct = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex-mand>\n"
+                    "    <description>\n      <text>description1</text>\n    </description>\n"
+                    "    <default value=\"b\"/>\n"
+                    "    <config value=\"true\"/>\n"
+                    "    <mandatory value=\"true\"/>\n"
+                    "    <status value=\"obsolete\"/>\n"
+                    "    <fraction-digits value=\"5\"/>\n"
+                    "    <min-elements value=\"4\"/>\n"
+                    "    <leaf name=\"l1\">\n      <type name=\"string\"/>\n    </leaf>\n"
+                    "    <must condition=\"1\"/>\n"
+                    "  </e:complex-mand>\n"
+                    "</module>\n";
+
+    mod = lys_parse_mem(st->ctx, yin1, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    mod = lys_parse_mem(st->ctx, yin2, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    mod = lys_parse_mem(st->ctx, yin3, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    mod = lys_parse_mem(st->ctx, yin4, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    mod = lys_parse_mem(st->ctx, yin5, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    mod = lys_parse_mem(st->ctx, yin6, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    mod = lys_parse_mem(st->ctx, yin7, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    mod = lys_parse_mem(st->ctx, yin8, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    mod = lys_parse_mem(st->ctx, yin9, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+
+    mod = lys_parse_mem(st->ctx, yin_correct, LYS_IN_YIN);
+    assert_ptr_not_equal(mod, NULL);
+
+    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL);
+    assert_ptr_not_equal(st->str1, NULL);
+    assert_string_equal(st->str1, yin_correct);
+}
+
 int
 main(void)
 {
@@ -2285,6 +2468,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_deviation_sub_yin, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_complex_yin, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_complex_arrays_yin, setup_ctx_yin, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_complex_mand_yin, setup_ctx_yin, teardown_ctx),
 
         cmocka_unit_test_setup_teardown(test_module_sub_yang, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_container_sub_yang, setup_ctx_yang, teardown_ctx),

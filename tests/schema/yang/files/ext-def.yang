@@ -21,6 +21,8 @@ module ext-def {
 
   extension complex-arrays;
 
+  extension complex-mand;
+
   typedef mystring {
     type string;
   }

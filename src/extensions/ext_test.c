@@ -156,6 +156,19 @@ struct lyext_substmt libyang_ext_test_substmt_arrays[] = {
     {0, 0, 0} /* terminating item */
 };
 
+struct lyext_substmt libyang_ext_test_substmt_mand[] = {
+    {LY_STMT_DESCRIPTION,   0,                 LY_STMT_CARD_MAND}, /* const char* */
+    {LY_STMT_DEFAULT,       1 * sizeof(void*), LY_STMT_CARD_SOME}, /* const char* */
+    {LY_STMT_CONFIG,        2 * sizeof(void*), LY_STMT_CARD_MAND}, /* shared uint16_t */
+    {LY_STMT_MANDATORY,     2 * sizeof(void*), LY_STMT_CARD_MAND}, /* shared uint16_t */
+    {LY_STMT_STATUS,        2 * sizeof(void*), LY_STMT_CARD_MAND}, /* shared uint16_t */
+    {LY_STMT_DIGITS,        2 * sizeof(void*) + sizeof(uint16_t), LY_STMT_CARD_MAND}, /* uint8_t */
+    {LY_STMT_MIN,           2 * sizeof(void*) + sizeof(uint8_t) + sizeof(uint16_t), LY_STMT_CARD_SOME}, /* uint32_t* */
+    {LY_STMT_LEAF,          3 * sizeof(void*) + sizeof(uint8_t) + sizeof(uint16_t), LY_STMT_CARD_SOME}, /* shared struct lys_node* */
+    {LY_STMT_MUST,          4 * sizeof(void*) + sizeof(uint8_t) + sizeof(uint16_t), LY_STMT_CARD_SOME}, /* struct lys_restr* */
+    {0, 0, 0} /* terminating item */
+};
+
 /**
  * @brief Plugin structure with cardinalities up to 1
  */
@@ -191,6 +204,23 @@ struct lyext_plugin_complex libyang_ext_test_arrays_p = {
 };
 
 /**
+ * @brief Plugin structure with mandatory tests
+ */
+struct lyext_plugin_complex libyang_ext_test_mand_p = {
+    .type = LYEXT_COMPLEX,
+    .flags = 0,
+    .check_position = &libyang_ext_test_position,
+    .check_result = NULL,
+    .check_inherit = NULL,
+
+    /* specification of allowed substatements of the extension instance */
+    .substmt = libyang_ext_test_substmt_mand,
+
+    /* final size of the extension instance structure with the space for storing the substatements */
+    .instance_size = sizeof(struct lys_ext_instance_complex) + 5 * sizeof(void*) + sizeof(uint8_t) + sizeof(uint16_t)
+};
+
+/**
  * @brief list of all extension plugins implemented here
  *
  * MANDATORY object for all libyang extension plugins, the name must match the <name>.so
@@ -198,5 +228,6 @@ struct lyext_plugin_complex libyang_ext_test_arrays_p = {
 struct lyext_plugin_list libyang_ext_test[] = {
     {"ext-def", "2017-01-18", "complex", (struct lyext_plugin*)&libyang_ext_test_p},
     {"ext-def", "2017-01-18", "complex-arrays", (struct lyext_plugin*)&libyang_ext_test_arrays_p},
+    {"ext-def", "2017-01-18", "complex-mand", (struct lyext_plugin*)&libyang_ext_test_mand_p},
     {NULL, NULL, NULL, NULL} /* terminating item */
 };
