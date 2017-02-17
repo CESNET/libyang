@@ -294,8 +294,6 @@ typedef enum {
     LY_STMT_POSITION,     /**< stored as __uint32_t*__ */
     LY_STMT_UNIQUE,       /**< stored as ::lys_unique* */
     LY_STMT_MODULE,       /**< stored as ::lys_module* */
-    LY_STMT_SUBMODULE,    /**< not supported - submodules are tightly connected with their modules so it does not make
-                               any sense to have them instantiated under an extension instance */
     LY_STMT_ACTION,       /**< stored as ::lys_node_rpc_action*, part of the data tree */
     LY_STMT_ANYDATA,      /**< stored as ::lys_node_anydata*, part of the data tree  */
     LY_STMT_ANYXML,       /**< stored as ::lys_node_anydata*, part of the data tree  */
@@ -309,10 +307,19 @@ typedef enum {
     LY_STMT_LIST,         /**< stored as ::lys_node_list*, part of the data tree  */
     LY_STMT_NOTIFICATION, /**< stored as ::lys_node_notif*, part of the data tree  */
     LY_STMT_OUTPUT,       /**< stored as ::lys_node_anydata*, part of the data tree, but it cannot apper multiple times */
-    LY_STMT_RPC,          /**< not supported, use actions instead */
     LY_STMT_USES,         /**< stored as ::lys_node_uses*, part of the data tree  */
     LY_STMT_TYPEDEF,      /**< stored as ::lys_tpdf* */
     LY_STMT_TYPE,         /**< stored as ::lys_type* */
+    LY_STMT_IFFEATURE,    /**< if-feature, stored as ::lys_iffeature* */
+    LY_STMT_LENGTH,       /**< stored as ::lys_restr* */
+    LY_STMT_MUST,         /**< stored as ::lys_restr* */
+    LY_STMT_PATTERN,      /**< stored as ::lys_restr* */
+    LY_STMT_RANGE,        /**< stored as ::lys_restr* */
+    LY_STMT_WHEN,         /**< stored as ::lys_when* */
+    LY_STMT_REVISION,     /**< stored as ::lys_revision */
+    LY_STMT_SUBMODULE,    /**< not supported - submodules are tightly connected with their modules so it does not make
+                               any sense to have them instantiated under an extension instance */
+    LY_STMT_RPC,          /**< not supported, use actions instead */
     LY_STMT_BIT,          /**< not supported in extension instances */
     LY_STMT_ENUM,         /**< not supported in extension instances */
     LY_STMT_REFINE,       /**< not supported in extension instances */
@@ -322,15 +329,8 @@ typedef enum {
     LY_STMT_EXTENSION,    /**< not supported in extension instances */
     LY_STMT_FEATURE,      /**< not supported in extension instances */
     LY_STMT_IDENTITY,     /**< not supported in extension instances */
-    LY_STMT_IFFEATURE,    /**< if-feature, stored as ::lys_iffeature* */
     LY_STMT_IMPORT,       /**< not supported in extension instances */
     LY_STMT_INCLUDE,      /**< not supported in extension instances */
-    LY_STMT_LENGTH,       /**< stored as ::lys_restr* */
-    LY_STMT_MUST,         /**< stored as ::lys_restr* */
-    LY_STMT_PATTERN,      /**< stored as ::lys_restr* */
-    LY_STMT_RANGE,        /**< stored as ::lys_restr* */
-    LY_STMT_WHEN,         /**< stored as ::lys_when* */
-    LY_STMT_REVISION,     /**< stored as ::lys_revision */
 } LY_STMT;
 
 /**

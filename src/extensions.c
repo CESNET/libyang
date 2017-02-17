@@ -26,6 +26,7 @@
 #include "extensions.h"
 #include "extensions_config.h"
 #include "libyang.h"
+#include "parser.h"
 
 /* internal structures storing the extension plugins */
 struct lyext_plugin_list *ext_plugins = NULL;
@@ -87,6 +88,7 @@ lyext_load_plugins(void)
     char name[NAME_MAX];
     void *dlhandler;
     struct lyext_plugin_list *plugin, *p;
+    struct lyext_plugin_complex *pluginc;
     unsigned int u, v;
     const char *pluginsdir;
 
@@ -155,8 +157,8 @@ lyext_load_plugins(void)
             continue;
         }
 
-        /* check extension implementations for collisions */
         for(u = 0; plugin[u].name; u++) {
+            /* check extension implementations for collisions */
             for (v = 0; v < ext_plugins_count; v++) {
                 if (!strcmp(plugin[u].name, ext_plugins[v].name) &&
                         !strcmp(plugin[u].module, ext_plugins[v].module) &&
@@ -166,10 +168,36 @@ lyext_load_plugins(void)
                            name, plugin[u].name, plugin[u].module, plugin[u].revision ? "@" : "",
                            plugin[u].revision ? plugin[u].revision : "");
                     dlclose(dlhandler);
-                    continue;
+                    goto nextplugin;
+                }
+            }
+
+            /* check for valid supported substatements in case of complex extension */
+            if (plugin[u].plugin->type == LYEXT_COMPLEX && ((struct lyext_plugin_complex *)plugin[u].plugin)->substmt) {
+                pluginc = (struct lyext_plugin_complex *)plugin[u].plugin;
+                for (v = 0; pluginc->substmt[v].stmt; v++) {
+                    if (pluginc->substmt[v].stmt >= LY_STMT_SUBMODULE ||
+                            pluginc->substmt[v].stmt == LY_STMT_VERSION ||
+                            pluginc->substmt[v].stmt == LY_STMT_YINELEM) {
+                        LOGERR(LY_EINVAL,
+                               "Extension plugin \"%s\" (extension %s) allows not supported extension substatement (%s)",
+                               name, plugin[u].name, ly_stmt_str[pluginc->substmt[v].stmt]);
+                        dlclose(dlhandler);
+                        goto nextplugin;
+                    }
+                    if (pluginc->substmt[v].cardinality > LY_STMT_CARD_MAND &&
+                             pluginc->substmt[v].stmt >= LY_STMT_MODIFIER &&
+                             pluginc->substmt[v].stmt <= LY_STMT_STATUS) {
+                        LOGERR(LY_EINVAL, "Extension plugin \"%s\" (extension %s) allows multiple instances on \"%s\" "
+                               "substatement, which is not supported.",
+                               name, plugin[u].name, ly_stmt_str[pluginc->substmt[v].stmt]);
+                        dlclose(dlhandler);
+                        goto nextplugin;
+                    }
                 }
             }
         }
+
 
         /* add the new plugins, we have number of new plugins as u */
         p = realloc(ext_plugins, (ext_plugins_count + u) * sizeof *ext_plugins);
@@ -191,6 +219,8 @@ lyext_load_plugins(void)
 
         /* keep the handler */
         ly_set_add(&dlhandlers, dlhandler, LY_SET_OPT_USEASLIST);
+
+nextplugin:;
     }
 
     closedir(dir);
