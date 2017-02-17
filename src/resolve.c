@@ -6571,14 +6571,7 @@ featurecheckdone:
         extlist = &(*(struct lys_ext_instance ***)item)[ext_data->ext_index];
         rc = resolve_extension(ext_data, extlist, unres);
         if (!rc) {
-            if (ext_data->datatype == LYS_IN_YIN) {
-                /* YIN */
-                lyxml_free(mod->ctx, ext_data->data.yin);
-            } else {
-                /* TODO YANG */
-                free(ext_data->data.yang);
-            }
-
+            /* success */
             /* is there a callback to be done to finalize the extension? */
             eplugin = extlist[0]->def->plugin;
             if (eplugin) {
@@ -6588,7 +6581,16 @@ featurecheckdone:
                     unres_schema_add_node(mod, unres, item, UNRES_EXT_FINALIZE, (struct lys_node *)u);
                 }
             }
-
+        }
+        if (!rc || rc == -1) {
+            /* cleanup on success or fatal error */
+            if (ext_data->datatype == LYS_IN_YIN) {
+                /* YIN */
+                lyxml_free(mod->ctx, ext_data->data.yin);
+            } else {
+                /* TODO YANG */
+                free(ext_data->data.yang);
+            }
             free(ext_data);
         }
         break;
