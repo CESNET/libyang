@@ -1925,7 +1925,7 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
 #define YANG_PRINT_EXTCOMPLEX_INT(STMT, TYPE, SIGN)                                \
     p = &((struct lys_ext_instance_complex*)ext[u])->content[info[i].offset];      \
     if (!p || !*(TYPE**)p) { break; }                                              \
-    if (info->cardinality >= LY_STMT_CARD_SOME) { /* we have array */              \
+    if (info[i].cardinality >= LY_STMT_CARD_SOME) { /* we have array */            \
         for (c = 0; (*(TYPE***)p)[c]; c++) {                                       \
             yang_print_open(out, &content);                                        \
             yang_print_##SIGN(out, level, STMT, c, module,                         \

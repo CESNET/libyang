@@ -1930,7 +1930,7 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
 #define YIN_PRINT_EXTCOMPLEX_INT(STMT, TYPE, SIGN)                                 \
     p = &((struct lys_ext_instance_complex*)ext[u])->content[info[i].offset];      \
     if (!p || !*(TYPE**)p) { break; }                                              \
-    if (info->cardinality >= LY_STMT_CARD_SOME) { /* we have array */              \
+    if (info[i].cardinality >= LY_STMT_CARD_SOME) { /* we have array */            \
         for (c = 0; (*(TYPE***)p)[c]; c++) {                                       \
             yin_print_close_parent(out, &content);                                 \
             yin_print_##SIGN(out, level, STMT, c, module,                          \
