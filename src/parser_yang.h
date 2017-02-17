@@ -168,6 +168,9 @@ int yang_use_extension(struct lys_module *module, struct lys_node *data_node, vo
 
 int yang_check_flags(uint16_t *flags, uint16_t mask, char *what, char *where, uint16_t value, int shortint);
 
+int yang_fill_iffeature(struct lys_module *module, struct lys_iffeature *iffeature, void *parent,
+                        char *value, struct unres_schema *unres, int parent_is_feature);
+
 void *yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext_arg,
                     enum yytokentype actual_type, enum yytokentype backup_type, int is_ext_instance);
 
@@ -177,7 +180,13 @@ int yang_check_ext_instance(struct lys_module *module, struct lys_ext_instance *
 int yang_read_extcomplex_str(struct lys_module *module, struct lys_ext_instance_complex *ext, const char *arg_name, 
                              const char *parent_name, char *value, int parent_stmt, LY_STMT stmt);
 
-void **yang_getplace_for_extcomplex_struct(char *parent_name, char *node_name, struct lys_ext_instance_complex *ext, LY_STMT stmt);
+void **yang_getplace_for_extcomplex_struct(struct lys_ext_instance_complex *ext, char *parent_name, char *node_name, LY_STMT stmt);
+
+int yang_fill_extcomplex_flags(struct lys_ext_instance_complex *ext, char *parent_name, char *node_name,
+                               LY_STMT stmt, uint16_t value, uint16_t mask);
+
+int yang_fill_extcomplex_uint8(struct lys_ext_instance_complex *ext, char *parent_name, char *node_name,
+                               LY_STMT stmt, uint8_t value);
 
 int yang_parse_ext_substatement(struct lys_module *module, struct unres_schema *unres, const char *data,
                                 char *ext_name, struct lys_ext_instance_complex *ext);
