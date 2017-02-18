@@ -4367,6 +4367,8 @@ lys_extcomplex_free_str(struct ly_ctx *ctx, struct lys_ext_instance_complex *ext
                 lydict_remove(ctx, str[c]);
             }
             free(a[1]);
+        } else if (stmt == LY_STMT_ARGUMENT) {
+            free(a[1]);
         }
     } else {
         lydict_remove(ctx, str[0]);

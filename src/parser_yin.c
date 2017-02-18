@@ -7313,7 +7313,7 @@ yin_parse_extcomplex_str(struct lys_module *mod, struct lyxml_elem *node,
                          int argelem, const char *argname, struct unres_schema *unres)
 {
     int c;
-    const char **str, ***p = NULL;
+    const char **str, ***p = NULL, *value;
     void *reallocated;
     struct lyext_substmt *info;
 
@@ -7337,6 +7337,9 @@ yin_parse_extcomplex_str(struct lys_module *mod, struct lyxml_elem *node,
             if (stmt == LY_STMT_BELONGSTO) {
                 /* allocate another array for the belongs-to's prefixes */
                 p[1] = malloc(2 * sizeof(const char *));
+            } else if (stmt == LY_STMT_ARGUMENT) {
+                /* allocate another array for the yin element */
+                p[1] = malloc(2 * sizeof(uint8_t));
             }
         } else {
             /* get the index in the array to add new item */
@@ -7390,6 +7393,40 @@ yin_parse_extcomplex_str(struct lys_module *mod, struct lyxml_elem *node,
             if (!str[c] || lyp_yin_parse_subnode_ext(mod, ext, LYEXT_PAR_EXTINST, node->child, LYEXT_SUBSTMT_PREFIX, 0, unres)) {
                 return EXIT_FAILURE;
             }
+        } else if (stmt == LY_STMT_ARGUMENT) {
+            str = (p) ? p[1] : str + 1;
+            if (!node->child) {
+                /* default value of yin element */
+                ((uint8_t *)str)[c] = 2;
+            } else {
+                /* get optional yin-element substatement */
+                if (strcmp(node->child->name, "yin-element")) {
+                    LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, node->child->name);
+                    return EXIT_FAILURE;
+                } else if (node->child->next) {
+                    LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, node->child->next->name);
+                    return EXIT_FAILURE;
+                } else {
+                    /* and now finally get the value */
+                    value = lyxml_get_attr(node->child, "value", NULL);
+                    if (!value) {
+                        LOGVAL(LYE_MISSARG, LY_VLOG_NONE, NULL, "value", node->child->name);
+                        return EXIT_FAILURE;
+                    }
+                    if (ly_strequal(value, "true", 0)) {
+                        ((uint8_t *)str)[c] = 1;
+                    } else if (ly_strequal(value, "false", 0)) {
+                        ((uint8_t *)str)[c] = 2;
+                    } else {
+                        LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, str, node->name);
+                        return EXIT_FAILURE;
+                    }
+
+                    if (lyp_yin_parse_subnode_ext(mod, ext, LYEXT_PAR_EXTINST, node->child, LYEXT_SUBSTMT_YINELEM, c, unres)) {
+                        return EXIT_FAILURE;
+                    }
+                }
+            }
         }
     }
     if (p) {
@@ -7415,6 +7452,16 @@ yin_parse_extcomplex_str(struct lys_module *mod, struct lyxml_elem *node,
             }
             p[1] = reallocated;
             p[1][c + 1] = NULL;
+        } else if (stmt == LY_STMT_ARGUMENT){
+            /* enlarge the second argument's array with yin element */
+            reallocated = realloc(p[1], (c + 2) * sizeof(uint8_t));
+            if (!reallocated) {
+                LOGMEM;
+                ((uint8_t *)p[1])[c] = 0;
+                return EXIT_FAILURE;
+            }
+            p[1] = reallocated;
+            ((uint8_t *)p[1])[c + 1] = 0;
         }
     }
 

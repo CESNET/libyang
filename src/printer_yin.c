@@ -2008,7 +2008,6 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
                 case LY_STMT_DESCRIPTION:
                 case LY_STMT_REFERENCE:
                 case LY_STMT_UNITS:
-                case LY_STMT_ARGUMENT:
                 case LY_STMT_DEFAULT:
                 case LY_STMT_ERRTAG:
                 case LY_STMT_ERRMSG:
@@ -2023,6 +2022,47 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
                 case LY_STMT_PATH:
                     yin_print_extcomplex_str(out, level, module, (struct lys_ext_instance_complex*)ext[u],
                                              info[i].stmt, &content);
+                    break;
+                case LY_STMT_ARGUMENT:
+                    pp = lys_ext_complex_get_substmt(LY_STMT_ARGUMENT, (struct lys_ext_instance_complex*)ext[u], NULL);
+                    if (!pp || !(*pp)) {
+                        break;
+                    }
+                    yin_print_close_parent(out, &content);
+                    if (info->cardinality >= LY_STMT_CARD_SOME) {
+                        /* we have array */
+                        for (c = 0; ((const char***)pp)[0][c]; c++) {
+                            content2 = 0;
+                            yin_print_open(out, level, NULL, "argument", "name", ((const char ***)pp)[0][c], 0);
+                            j = -1;
+                            while ((j = lys_ext_iter(ext[u]->ext, ext[u]->ext_size, j + 1, LYEXT_SUBSTMT_ARGUMENT)) != -1) {
+                                yin_print_close_parent(out, &content2);
+                                yin_print_extension_instances(out, level + 1, module, LYEXT_SUBSTMT_ARGUMENT, c,
+                                                              &ext[u]->ext[j], 1);
+                            }
+                            if (((uint8_t *)pp[1])[c] == 1 || lys_ext_iter(ext[u]->ext, ext[u]->ext_size, c, LYEXT_SUBSTMT_YINELEM) != -1) {
+                                yin_print_close_parent(out, &content2);
+                                yin_print_substmt(out, level + 1, LYEXT_SUBSTMT_YINELEM, c,
+                                                 (((uint8_t *)pp[1])[c] == 1) ? "true" : "false", module, ext[u]->ext, ext[u]->ext_size);
+                            }
+                            yin_print_close(out, level, NULL, "argument", content2);
+                        }
+                    } else {
+                        content2 = 0;
+                        yin_print_open(out, level, NULL, "argument", "name", (const char *)pp[0], 0);
+                        j = -1;
+                        while ((j = lys_ext_iter(ext[u]->ext, ext[u]->ext_size, j + 1, LYEXT_SUBSTMT_ARGUMENT)) != -1) {
+                            yin_print_close_parent(out, &content2);
+                            yin_print_extension_instances(out, level + 1, module, LYEXT_SUBSTMT_ARGUMENT, 0,
+                                                          &ext[u]->ext[j], 1);
+                        }
+                        if (*(uint8_t*)(pp + 1) == 1 || lys_ext_iter(ext[u]->ext, ext[u]->ext_size, 0, LYEXT_SUBSTMT_YINELEM) != -1) {
+                            yin_print_close_parent(out, &content2);
+                            yin_print_substmt(out, level + 1, LYEXT_SUBSTMT_YINELEM, 0,
+                                             (*(uint8_t*)(pp + 1) == 1) ? "true" : "false", module, ext[u]->ext, ext[u]->ext_size);
+                        }
+                        yin_print_close(out, level, NULL, "argument", content2);
+                    }
                     break;
                 case LY_STMT_BELONGSTO:
                     pp = lys_ext_complex_get_substmt(LY_STMT_BELONGSTO, (struct lys_ext_instance_complex*)ext[u], NULL);

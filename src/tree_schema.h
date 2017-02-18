@@ -252,7 +252,10 @@ typedef enum lys_nodetype {
 typedef enum {
     LY_STMT_NODE = -1,    /**< mask for values #LY_STMT_ACTION - #LY_STMT_USES */
     LY_STMT_UNKNOWN = 0,  /**< error return value */
-    LY_STMT_ARGUMENT = 1, /**< stored as __const char*__ */
+    LY_STMT_ARGUMENT = 1, /**< stored as __const char*__ + __uint8_t__, the second item contains yin element
+                               interpreted as follows: 1 - true; 2 - false/default, in case of multiple instances,
+                               the argument's values and yin elements are stored in two arrays
+                               (__const char **__ + __uint8_t *__) */
     LY_STMT_BASE,         /**< stored as __const char*__ */
     LY_STMT_BELONGSTO,    /**< belongs-to, stored as __const char*[2]__, the second item contains belongs-to's prefix,
                                in case of multiple instances, the belongs-to's module values and prefixes are stored in
