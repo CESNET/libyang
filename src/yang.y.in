@@ -251,6 +251,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <v> type_ext_alloc
 %type <v> typedef_ext_alloc
 %type <v> iffeature_ext_alloc
+%type <v> restriction_ext_alloc
 %type <token> import_arg_str
 %type <token> include_arg_str
 %type <token> revision_arg_stmt
@@ -1410,7 +1411,7 @@ length_stmt: LENGTH_KEYWORD sep length_arg_str length_end
 
 length_arg_str: string { $$.token = actual_type;
                          $$.actual = actual;
-                         if (!(actual = yang_read_length(trg, actual, s))) {
+                         if (!(actual = yang_read_length(trg, actual, s, is_ext_instance))) {
                            YYABORT;
                          }
                          actual_type = LENGTH_KEYWORD;
@@ -1461,7 +1462,6 @@ message_opt_stmt: @EMPTYDIR@ { switch (actual_type) {
 
 pattern_sep: sep { $$.token = actual_type;
                    $$.actual = actual;
-                   actual_type = PATTERN_KEYWORD;
                  }
 
 pattern_stmt: PATTERN_KEYWORD pattern_sep pattern_arg_str pattern_end  { if (yang_read_pattern(trg, actual, $3, $4)) {
@@ -1471,17 +1471,19 @@ pattern_stmt: PATTERN_KEYWORD pattern_sep pattern_arg_str pattern_end  { if (yan
                                                                         actual = $2.actual;
                                                                       }
 
-pattern_arg_str: string { if (((struct yang_type *)actual)->base != 0 && ((struct yang_type *)actual)->base != LY_TYPE_STRING) {
-                            free(s);
-                            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Unexpected pattern statement.");
-                            YYABORT;
+pattern_arg_str: string { if (actual_type != EXTENSION_INSTANCE) {
+                            if (((struct yang_type *)actual)->base != 0 && ((struct yang_type *)actual)->base != LY_TYPE_STRING) {
+                              free(s);
+                              LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Unexpected pattern statement.");
+                              YYABORT;
+                            }
+                            ((struct yang_type *)actual)->base = LY_TYPE_STRING;
+                            YANG_ADDELEM(((struct yang_type *)actual)->type->info.str.patterns,
+                                         ((struct yang_type *)actual)->type->info.str.pat_count);
                           }
-                          ((struct yang_type *)actual)->base = LY_TYPE_STRING;
-                          yang_type = actual;
-                          YANG_ADDELEM(((struct yang_type *)actual)->type->info.str.patterns,
-                                       ((struct yang_type *)actual)->type->info.str.pat_count);
                           $$ = s;
                           s = NULL;
+                          actual_type = PATTERN_KEYWORD;
                         }
 
 pattern_end: ';' { $$ = 0x06; }
@@ -3782,6 +3784,9 @@ must_agr_str: string { $$.token = actual_type;
                          YANG_ADDELEM(((struct lys_node_inout *)actual)->must,
                                      ((struct lys_node_inout *)actual)->must_size);
                          break;
+                       case EXTENSION_INSTANCE:
+                         /* must is already allocated */
+                         break;
                        default:
                          free(s);
                          LOGINT;
@@ -3836,7 +3841,7 @@ key_arg_str: node_identifier { s = strdup(yyget_text(scanner));
 
 range_arg_str: string { $$.token = actual_type;
                         $$.actual = actual;
-                        if (!(actual = yang_read_range(trg, actual, s))) {
+                        if (!(actual = yang_read_range(trg, actual, s, is_ext_instance))) {
                           YYABORT;
                         }
                         actual_type = RANGE_KEYWORD;
@@ -4271,6 +4276,34 @@ iffeature_ext_alloc: @EMPTYDIR@ { struct lys_iffeature **iffeature;
                                  $$ = actual = *iffeature;
                                }
 
+restriction_ext_alloc: @EMPTYDIR@ { struct lys_restr **restr;
+                                    LY_STMT stmt;
+
+                                    s = yyget_text(scanner);
+                                    if (!strcmp(s, "must")) {
+                                      stmt = LY_STMT_MUST;
+                                    } else if (!strcmp(s, "pattern")) {
+                                      stmt = LY_STMT_PATTERN;
+                                    } else if (!strcmp(s, "range")) {
+                                      stmt = LY_STMT_RANGE;
+                                    } else {
+                                      stmt = LY_STMT_LENGTH;
+                                    }
+                                    restr = (struct lys_restr **)yang_getplace_for_extcomplex_struct(ext_instance, ext_name, s, stmt);
+                                    if (!restr) {
+                                      YYABORT;
+                                    }
+                                    /* allocate structure for must */
+                                    (*restr) = calloc(1, sizeof(struct lys_restr));
+                                    $$ = actual = *restr;
+                                    s = NULL;
+                                  }
+
+restriction_ext_stmt: must_stmt
+  |  pattern_stmt
+  |  range_stmt
+  |  length_stmt
+
 ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
                                 actual = ext_instance;
                                 if (!is_ext_instance) {
@@ -4500,6 +4533,11 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
        s = NULL;
      }
   |  ext_substatements argument_stmt stmtsep
+  |  ext_substatements restriction_ext_alloc restriction_ext_stmt stmtsep
+     { if (yang_check_ext_instance(trg, &((struct lys_restr *)$2)->ext, ((struct lys_restr *)$2)->ext_size, $2, param->unres)) {
+         YYABORT;
+       }
+     }
 
 %%
 

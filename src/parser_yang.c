@@ -1157,34 +1157,37 @@ error:
 }
 
 void *
-yang_read_length(struct lys_module *module, struct yang_type *typ, char *value)
+yang_read_length(struct lys_module *module, struct yang_type *stype, char *value, int is_ext_instance)
 {
-    struct lys_restr **length;
+    struct lys_restr *length;
 
-    if (typ->base == 0 || typ->base == LY_TYPE_STRING) {
-        length = &typ->type->info.str.length;
-        typ->base = LY_TYPE_STRING;
+    if (is_ext_instance) {
+        length = (struct lys_restr *)stype;
     } else {
-        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Unexpected length statement.");
-        goto error;
-    }
+        if (stype->base == 0 || stype->base == LY_TYPE_STRING) {
+            stype->base = LY_TYPE_STRING;
+        } else {
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Unexpected length statement.");
+            goto error;
+        }
 
-    if (*length) {
-        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "length", "type");
-        goto error;
+        if (stype->type->info.str.length) {
+            LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "length", "type");
+            goto error;
+        }
+        length = calloc(1, sizeof *length);
+        if (!length) {
+            LOGMEM;
+            goto error;
+        }
+        stype->type->info.str.length = length;
     }
-    *length = calloc(1, sizeof **length);
-    if (!*length) {
-        LOGMEM;
-        goto error;
-    }
-    (*length)->expr = lydict_insert_zc(module->ctx, value);
-    return *length;
+    length->expr = lydict_insert_zc(module->ctx, value);
+    return length;
 
 error:
     free(value);
     return NULL;
-
 }
 
 int
@@ -1216,24 +1219,31 @@ yang_read_pattern(struct lys_module *module, struct lys_restr *pattern, char *va
 }
 
 void *
-yang_read_range(struct  lys_module *module, struct yang_type *typ, char *value)
+yang_read_range(struct  lys_module *module, struct yang_type *stype, char *value, int is_ext_instance)
 {
-    if (typ->base != 0 && typ->base != LY_TYPE_DEC64) {
-        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Unexpected range statement.");
-        goto error;
+    struct lys_restr * range;
+
+    if (is_ext_instance) {
+        range = (struct lys_restr *)stype;
+    } else {
+        if (stype->base != 0 && stype->base != LY_TYPE_DEC64) {
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Unexpected range statement.");
+            goto error;
+        }
+        stype->base = LY_TYPE_DEC64;
+        if (stype->type->info.dec64.range) {
+            LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "range", "type");
+            goto error;
+        }
+        range = calloc(1, sizeof *range);
+        if (!range) {
+            LOGMEM;
+            goto error;
+        }
+        stype->type->info.dec64.range = range;
     }
-    typ->base = LY_TYPE_DEC64;
-    if (typ->type->info.dec64.range) {
-        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "range", "type");
-        goto error;
-    }
-    typ->type->info.dec64.range = calloc(1, sizeof *typ->type->info.dec64.range);
-    if (!typ->type->info.dec64.range) {
-        LOGMEM;
-        goto error;
-    }
-    typ->type->info.dec64.range->expr = lydict_insert_zc(module->ctx, value);
-    return typ->type->info.dec64.range;
+    range->expr = lydict_insert_zc(module->ctx, value);
+    return range;
 
 error:
     free(value);
@@ -4703,13 +4713,13 @@ yang_getplace_for_extcomplex_struct(struct lys_ext_instance_complex *ext, char *
         data = *p;
         if (!data) {
             /* allocate initial array */
-            *p = data = malloc(2 * sizeof(void *));
+            *p = data = calloc(2, sizeof(void *));
         } else {
             for (c = 0; *data; data++, c++);
         }
     }
 
-    if (p) {
+    if (c) {
         /* enlarge the array */
         reallocated = realloc(*p, (c + 2) * sizeof(void *));
         if (!reallocated) {

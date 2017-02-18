@@ -125,7 +125,7 @@ int yang_read_unique(struct lys_module *module, struct lys_node_list *list, stru
 
 void *yang_read_type(struct lys_module *module, void *parent, char *value, enum yytokentype type);
 
-void *yang_read_length(struct lys_module *module, struct yang_type *typ, char *value);
+void *yang_read_length(struct  lys_module *module, struct yang_type *stype, char *value, int is_ext_instance);
 
 int yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_type *typ, struct lys_type *type, int tpdftype, struct unres_schema *unres);
 
@@ -142,7 +142,7 @@ int yang_read_require_instance(struct yang_type *stype, int req);
 
 int yang_read_pattern(struct lys_module *module, struct lys_restr *pattern, char *value, char modifier);
 
-void *yang_read_range(struct  lys_module *module, struct yang_type *typ, char *value);
+void *yang_read_range(struct  lys_module *module, struct yang_type *stype, char *value, int is_ext_instance);
 
 int yang_read_fraction(struct yang_type *typ, uint32_t value);
 
