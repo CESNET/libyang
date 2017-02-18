@@ -873,12 +873,19 @@ extension_opt_stmt: @EMPTYDIR@
                                        }
 
 argument_str: identifier_arg_str { $$ = actual_type;
-                                   if (((struct lys_ext *)actual)->argument) {
-                                      LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "argument", "extension");
-                                      free(s);
-                                      YYABORT;
+                                   if (is_ext_instance) {
+                                     if (yang_read_extcomplex_str(trg, ext_instance, "argument", ext_name, s,
+                                                                  0, LY_STMT_ARGUMENT)) {
+                                       YYABORT;
+                                     }
+                                   } else {
+                                     if (((struct lys_ext *)actual)->argument) {
+                                        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "argument", "extension");
+                                        free(s);
+                                        YYABORT;
+                                     }
+                                     ((struct lys_ext *)actual)->argument = lydict_insert_zc(param->module->ctx, s);
                                    }
-                                   ((struct lys_ext *)actual)->argument = lydict_insert_zc(param->module->ctx, s);
                                    s = NULL;
                                    actual_type = ARGUMENT_KEYWORD;
                                  }
@@ -896,7 +903,27 @@ yin_element_arg: yin_element_arg_str { $$ = $1;
                                      }
 
 yin_element_stmt: @EMPTYDIR@
-  |  YIN_ELEMENT_KEYWORD sep yin_element_arg stmtend { ((struct lys_ext *)actual)->flags |= $3; }
+  |  YIN_ELEMENT_KEYWORD sep yin_element_arg stmtend
+     { if (is_ext_instance) {
+         int c;
+         const char ***p;
+         uint8_t *val;
+         struct lyext_substmt *info;
+
+         c = 0;
+         p = lys_ext_complex_get_substmt(LY_STMT_ARGUMENT, ext_instance, &info);
+         if (info->cardinality >= LY_STMT_CARD_SOME) {
+           /* get the index in the array to add new item */
+           for (c = 0; p[0][c + 1]; c++);
+           val = (uint8_t *)p[1];
+         } else {
+           val = (uint8_t *)(p + 1);
+         }
+         val[c] = ($3 == LYS_YINELEM) ? 1 : 2;
+       } else {
+         ((struct lys_ext *)actual)->flags |= $3;
+       }
+     }
 
 yin_element_arg_str: TRUE_KEYWORD optsep { $$ = LYS_YINELEM; }
   | FALSE_KEYWORD optsep { $$ = 0; }
@@ -4472,6 +4499,7 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
        }
        s = NULL;
      }
+  |  ext_substatements argument_stmt stmtsep
 
 %%
 

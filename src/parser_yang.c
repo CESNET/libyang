@@ -2180,6 +2180,16 @@ yang_ext_instance(void *node, enum yytokentype type, int is_ext_instance)
         parent_type = LYEXT_PAR_NODE;
         break;
     case ARGUMENT_KEYWORD:
+        if (is_ext_instance) {
+            ext = &((struct lys_ext_instance *)node)->ext;
+            size = &((struct lys_ext_instance *)node)->ext_size;
+            parent_type = LYEXT_PAR_EXTINST;
+        } else {
+            ext = &((struct lys_ext *)node)->ext;
+            size = &((struct lys_ext *)node)->ext_size;
+            parent_type = LYEXT_PAR_EXT;
+        }
+        break;
     case EXTENSION_KEYWORD:
         ext = &((struct lys_ext *)node)->ext;
         size = &((struct lys_ext *)node)->ext_size;
@@ -3326,8 +3336,6 @@ yang_check_ext_instance(struct lys_module *module, struct lys_ext_instance ***ex
         info->substmt_index = (*ext)[i]->insubstmt_index;
         info->ext_index = i;
         if (unres_schema_add_node(module, unres, ext, UNRES_EXT, (struct lys_node *)info) == -1) {
-            free(info->data.yang);
-            free(info);
             return EXIT_FAILURE;
         }
     }
@@ -4583,10 +4591,15 @@ yang_read_extcomplex_str(struct lys_module *module, struct lys_ext_instance_comp
             p = (const char ***)str;
             if (!p[0]) {
                 /* allocate initial array */
-                p[0] = malloc(2 * sizeof(const char *));
+                p[0] = calloc(2, sizeof(const char *));
                 if (stmt == LY_STMT_BELONGSTO) {
                     /* allocate another array for the belongs-to's prefixes */
                     p[1] = calloc(2, sizeof(const char *));
+                } else if (stmt == LY_STMT_ARGUMENT) {
+                    /* allocate another array for the yin element */
+                    p[1] = calloc(2, sizeof(uint8_t));
+                    /* default value of yin element */
+                    ((uint8_t *)p[1])[0] = 2;
                 }
             } else {
                 /* get the index in the array to add new item */
@@ -4597,7 +4610,7 @@ yang_read_extcomplex_str(struct lys_module *module, struct lys_ext_instance_comp
 
         str[c] = lydict_insert_zc(module->ctx, value);
 
-        if (p) {
+        if (c) {
             /* enlarge the array(s) */
             reallocated = realloc(p[0], (c + 2) * sizeof(const char *));
             if (!reallocated) {
@@ -4620,6 +4633,16 @@ yang_read_extcomplex_str(struct lys_module *module, struct lys_ext_instance_comp
                 }
                 p[1] = reallocated;
                 p[1][c + 1] = NULL;
+            } else if (stmt == LY_STMT_ARGUMENT) {
+                /* enlarge the second argument's array with yin element */
+                reallocated = realloc(p[1], (c + 2) * sizeof(uint8_t));
+                if (!reallocated) {
+                    LOGMEM;
+                    ((uint8_t *)p[1])[c] = 0;
+                    return EXIT_FAILURE;
+                }
+                p[1] = reallocated;
+                ((uint8_t *)p[1])[c + 1] = 0;
             }
         }
     }
@@ -4637,6 +4660,9 @@ yang_fill_ext_substm_index(struct lys_ext_instance_complex *ext, LY_STMT stmt, e
 
     if (keyword == BELONGS_TO_KEYWORD || stmt == LY_STMT_BELONGSTO) {
         stmt = LY_STMT_BELONGSTO;
+        decrement = -1;
+    } else if (keyword == ARGUMENT_KEYWORD || stmt == LY_STMT_ARGUMENT) {
+        stmt = LY_STMT_ARGUMENT;
         decrement = -1;
     }
 

@@ -2026,7 +2026,7 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
                                 yang_print_substmt(out, level + 1, LYEXT_SUBSTMT_YINELEM, c,
                                                    (((uint8_t *)pp[1])[c] == 1) ? "true" : "false", module, ext[u]->ext, ext[u]->ext_size);
                             }
-                            yang_print_close(out, LEVEL, content2);
+                            yang_print_close(out, level, content2);
                         }
                     } else {
                         content2 = 0;
@@ -2042,7 +2042,7 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
                             yang_print_substmt(out, level + 1, LYEXT_SUBSTMT_YINELEM, 0,
                                                (*(uint8_t*)(pp + 1) == 1) ? "true" : "false", module, ext[u]->ext, ext[u]->ext_size);
                         }
-                        yang_print_close(out, LEVEL, content2);
+                        yang_print_close(out, level, content2);
                     }
                     break;
                 case LY_STMT_BELONGSTO:
