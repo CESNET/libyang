@@ -252,6 +252,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <v> typedef_ext_alloc
 %type <v> iffeature_ext_alloc
 %type <v> restriction_ext_alloc
+%type <v> when_ext_alloc
 %type <token> import_arg_str
 %type <token> include_arg_str
 %type <token> revision_arg_stmt
@@ -4299,6 +4300,13 @@ restriction_ext_alloc: @EMPTYDIR@ { struct lys_restr **restr;
                                     s = NULL;
                                   }
 
+when_ext_alloc: @EMPTYDIR@ { actual = yang_getplace_for_extcomplex_struct(ext_instance, ext_name, "when", LY_STMT_WHEN);
+                             if (!actual) {
+                               YYABORT;
+                             }
+                             $$ = actual;
+                           }
+
 restriction_ext_stmt: must_stmt
   |  pattern_stmt
   |  range_stmt
@@ -4535,6 +4543,12 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
   |  ext_substatements argument_stmt stmtsep
   |  ext_substatements restriction_ext_alloc restriction_ext_stmt stmtsep
      { if (yang_check_ext_instance(trg, &((struct lys_restr *)$2)->ext, ((struct lys_restr *)$2)->ext_size, $2, param->unres)) {
+         YYABORT;
+       }
+     }
+  |  ext_substatements when_ext_alloc when_stmt stmtsep
+     { if (yang_check_ext_instance(trg, &(*(struct lys_when **)$2)->ext, (*(struct lys_when **)$2)->ext_size,
+                                   *(struct lys_when **)$2, param->unres)) {
          YYABORT;
        }
      }

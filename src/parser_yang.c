@@ -401,6 +401,9 @@ yang_read_when(struct lys_module *module, struct lys_node *node, enum yytokentyp
         }
         ((struct lys_node_augment *)node)->when = retval;
         break;
+    case EXTENSION_INSTANCE:
+        *(struct lys_when **)node = retval;
+        break;
     default:
         goto error;
         break;
@@ -410,7 +413,8 @@ yang_read_when(struct lys_module *module, struct lys_node *node, enum yytokentyp
 
 error:
     free(value);
-    lys_when_free(module->ctx, retval);
+    lydict_remove(module->ctx, retval->cond);
+    free(retval);
     return NULL;
 }
 
