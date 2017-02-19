@@ -2674,6 +2674,9 @@ yang_parse_ext_substatement(struct lys_module *module, struct unres_schema *unre
     struct yang_parameter param;
     struct lys_node *node = NULL;
 
+    if (!data) {
+        return EXIT_SUCCESS;
+    }
     size = strlen(data) + 2;
     yylex_init(&scanner);
     bp = yy_scan_buffer((char *)data, size, scanner);
@@ -3321,6 +3324,25 @@ yang_free_deviate(struct ly_ctx *ctx, struct lys_deviation *dev, uint index)
         }
         free(dev->deviate[i].unique);
     }
+}
+
+void
+yang_free_ext_data(struct yang_ext_substmt *substmt)
+{
+    int i;
+
+    if (!substmt) {
+        return;
+    }
+
+    free(substmt->ext_substmt);
+    if (substmt->ext_modules) {
+        for (i = 0; substmt->ext_modules[i]; ++i) {
+            free(substmt->ext_modules[i]);
+        }
+        free(substmt->ext_modules);
+    }
+    free(substmt);
 }
 
 /* free common item from module and submodule */
@@ -4858,6 +4880,63 @@ yang_extcomplex_node(struct lys_ext_instance_complex *ext, char *parent_name, ch
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, node_name, parent_name);
                 return EXIT_FAILURE;
             }
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
+int
+yang_fill_extcomplex_module(struct ly_ctx *ctx, struct lys_ext_instance_complex *ext,
+                            char *parent_name, char **values, int implemented)
+{
+    int c, i;
+    struct lys_module **modules, ***p, *reallocated, **pp;
+    struct lyext_substmt *info;
+
+    if (!values) {
+        return EXIT_SUCCESS;
+    }
+    pp = modules = lys_ext_complex_get_substmt(LY_STMT_MODULE, ext, &info);
+    if (!modules) {
+        LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "module", parent_name);
+        return EXIT_FAILURE;
+    }
+
+    for (i = 0; values[i]; ++i) {
+        c = 0;
+        if (info->cardinality < LY_STMT_CARD_SOME && *modules) {
+            LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "module", parent_name);
+            return EXIT_FAILURE;
+        }
+        if (info->cardinality >= LY_STMT_CARD_SOME) {
+            /* there can be multiple instances, so instead of pointer to array,
+             * we have in modules pointer to pointer to array */
+            p = (struct lys_module ***)pp;
+            modules = *p;
+            if (!modules) {
+                /* allocate initial array */
+                *p = modules = calloc(2, sizeof(struct lys_module *));
+            } else {
+                for (c = 0; *modules; modules++, c++);
+            }
+        }
+
+        if (c) {
+            /* enlarge the array */
+            reallocated = realloc(*p, (c + 2) * sizeof(struct lys_module *));
+            if (!reallocated) {
+                LOGMEM;
+                return EXIT_FAILURE;
+            }
+            *p = (struct lys_module **)reallocated;
+            modules = *p;
+            modules[c + 1] = NULL;
+        }
+
+        modules[c] = yang_read_module(ctx, values[i], 0, NULL, implemented);
+        if (!modules[c]) {
+            return EXIT_FAILURE;
         }
     }
 

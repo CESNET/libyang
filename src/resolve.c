@@ -4715,7 +4715,12 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
             ((struct lys_ext_instance_complex*)(*ext))->nodetype = LYS_EXT;
             if (info->data.yang) {
                 *tmp = ':';
-                if (yang_parse_ext_substatement(info->mod, unres, info->data.yang, ext_prefix, (struct lys_ext_instance_complex*)(*ext))) {
+                if (yang_parse_ext_substatement(info->mod, unres, info->data.yang->ext_substmt, ext_prefix,
+                                                (struct lys_ext_instance_complex*)(*ext))) {
+                    goto error;
+                }
+                if (yang_fill_extcomplex_module(info->mod->ctx, (struct lys_ext_instance_complex*)(*ext), ext_prefix,
+                                                info->data.yang->ext_modules, info->mod->implemented)) {
                     goto error;
                 }
             }
@@ -6589,8 +6594,8 @@ featurecheckdone:
                 /* YIN */
                 lyxml_free(mod->ctx, ext_data->data.yin);
             } else {
-                /* TODO YANG */
-                free(ext_data->data.yang);
+                /* YANG */
+                yang_free_ext_data(ext_data->data.yang);
             }
             free(ext_data);
         }

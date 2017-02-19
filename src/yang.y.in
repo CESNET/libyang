@@ -251,7 +251,8 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <str> string_opt_part1
 %type <str> semicolom
 %type <str> curly_bracket_open
-%type <str> unknown_statement2_identifier
+%type <str> unknown_statement2_yang_stmt
+%type <str> unknown_statement2_module_stmt
 %type <v> type_ext_alloc
 %type <v> typedef_ext_alloc
 %type <v> iffeature_ext_alloc
@@ -4101,30 +4102,77 @@ unknown_statement2_opt: @EMPTYDIR@
 /* unknown_statement2 read yang statement or extension; yang statement is parsed later */
 
 unknown_statement2: unknown_statement
-  |  unknown_statement2_identifier unknown_string unknown_statement2_end
-     {  struct lys_ext_instance *ext = actual;
+  |  unknown_statement2_yang_stmt unknown_string unknown_statement2_end
+     {  struct yang_ext_substmt *substmt = ((struct lys_ext_instance *)actual)->parent;
         int32_t length = 0, old_length = 0;
         char *tmp_value;
 
+        if (!substmt) {
+          substmt = calloc(1, sizeof *substmt);
+          if (!substmt) {
+            LOGMEM;
+            YYABORT;
+          }
+          ((struct lys_ext_instance *)actual)->parent = substmt;
+        }
         length = strlen($1);
-        old_length = (ext->parent) ? strlen((char *)ext->parent) + 2 : 2;
-        tmp_value = realloc(ext->parent, old_length + length + 1);
+        old_length = (substmt->ext_substmt) ? strlen(substmt->ext_substmt) + 2 : 2;
+        tmp_value = realloc(substmt->ext_substmt, old_length + length + 1);
         if (!tmp_value) {
           LOGMEM;
           YYABORT;
         }
-        ext->parent = tmp_value;
+        substmt->ext_substmt = tmp_value;
         tmp_value += old_length - 2;
         memcpy(tmp_value, $1, length);
         tmp_value[length] = ' ';
         tmp_value[length + 1] = '\0';
         tmp_value[length + 2] = '\0';
       }
+  |  unknown_statement2_module_stmt unknown_string unknown_statement2_end
+     {  struct yang_ext_substmt *substmt = ((struct lys_ext_instance *)actual)->parent;
+        int32_t length;
+        char *tmp_value, **array;
+        int i = 0;
+
+        if (!substmt) {
+          substmt = calloc(1, sizeof *substmt);
+          if (!substmt) {
+            LOGMEM;
+            YYABORT;
+          }
+          ((struct lys_ext_instance *)actual)->parent = substmt;
+        }
+        length = strlen($1);
+        if (!substmt->ext_modules) {
+          array = malloc(2 * sizeof *substmt->ext_modules);
+        } else {
+          for (i = 0; substmt->ext_modules[i]; ++i);
+          array = realloc(substmt->ext_modules, (i + 2) * sizeof *substmt->ext_modules);
+        }
+        if (!array) {
+          LOGMEM;
+          YYABORT;
+        }
+        substmt->ext_modules = array;
+        array[i + 1] = NULL;
+        tmp_value = malloc(length + 2);
+        if (!tmp_value) {
+          LOGMEM;
+          YYABORT;
+        }
+        array[i] = tmp_value;
+        memcpy(tmp_value, $1, length);
+        tmp_value[length] = '\0';
+        tmp_value[length + 1] = '\0';
+      }
 
 unknown_statement2_end: ';'
   |  '{' optsep unknown_statement3_opt '}'
 
-unknown_statement2_identifier: identifier { $$ = yyget_text(scanner); }
+unknown_statement2_yang_stmt: yang_stmt { $$ = yyget_text(scanner); }
+
+unknown_statement2_module_stmt: MODULE_KEYWORD { $$ = yyget_text(scanner); }
 
 unknown_statement3_opt: @EMPTYDIR@
   |  unknown_statement3_opt node_identifier unknown_string unknown_statement3_opt_end;
@@ -4163,8 +4211,23 @@ strings: STRINGS
   |  INTEGER
   |  NON_NEGATIVE_INTEGER
 
-identifier: IDENTIFIER
-  |  ANYXML_KEYWORD
+identifier: MODULE_KEYWORD
+  |  identifier1
+  |  yang_stmt
+
+identifier1: IDENTIFIER
+  |  CURRENT_KEYWORD
+  |  DEPRECATED_KEYWORD
+  |  FALSE_KEYWORD
+  |  NOT_SUPPORTED_KEYWORD
+  |  OBSOLETE_KEYWORD
+  |  SYSTEM_KEYWORD
+  |  TRUE_KEYWORD
+  |  UNBOUNDED_KEYWORD
+  |  USER_KEYWORD
+
+
+yang_stmt: ANYXML_KEYWORD
   |  ARGUMENT_KEYWORD
   |  AUGMENT_KEYWORD
   |  BASE_KEYWORD
@@ -4199,7 +4262,6 @@ identifier: IDENTIFIER
   |  MANDATORY_KEYWORD
   |  MAX_ELEMENTS_KEYWORD
   |  MIN_ELEMENTS_KEYWORD
-  |  MODULE_KEYWORD
   |  MUST_KEYWORD
   |  NAMESPACE_KEYWORD
   |  NOTIFICATION_KEYWORD
@@ -4230,21 +4292,11 @@ identifier: IDENTIFIER
   |  YANG_VERSION_KEYWORD
   |  YIN_ELEMENT_KEYWORD
   |  ADD_KEYWORD
-  |  CURRENT_KEYWORD
   |  DELETE_KEYWORD
-  |  DEPRECATED_KEYWORD
-  |  FALSE_KEYWORD
-  |  NOT_SUPPORTED_KEYWORD
-  |  OBSOLETE_KEYWORD
   |  REPLACE_KEYWORD
-  |  SYSTEM_KEYWORD
-  |  TRUE_KEYWORD
-  |  UNBOUNDED_KEYWORD
-  |  USER_KEYWORD
   |  ACTION_KEYWORD
   |  MODIFIER_KEYWORD
   |  ANYDATA_KEYWORD
-  ;
 
 identifiers: identifier { s = strdup(yyget_text(scanner));
                           if (!s) {

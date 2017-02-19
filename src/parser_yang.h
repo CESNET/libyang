@@ -66,6 +66,11 @@ struct yang_parameter {
     uint8_t flags;
 };
 
+struct yang_ext_substmt {
+    char *ext_substmt;  /* pointer to string, which contains substmts without module statement */
+    char **ext_modules; /* array of char *, which contains module statements */
+};
+
 struct yang_type {
     char flags;       /**< this is used to distinguish lyxml_elem * from a YANG temporary parsing structure */
     LY_DATA_TYPE base;
@@ -171,6 +176,8 @@ int yang_check_flags(uint16_t *flags, uint16_t mask, char *what, char *where, ui
 int yang_fill_iffeature(struct lys_module *module, struct lys_iffeature *iffeature, void *parent,
                         char *value, struct unres_schema *unres, int parent_is_feature);
 
+void yang_free_ext_data(struct yang_ext_substmt *substmt);
+
 void *yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext_arg,
                     enum yytokentype actual_type, enum yytokentype backup_type, int is_ext_instance);
 
@@ -194,6 +201,9 @@ int yang_fill_extcomplex_uint8(struct lys_ext_instance_complex *ext, char *paren
 
 int yang_parse_ext_substatement(struct lys_module *module, struct unres_schema *unres, const char *data,
                                 char *ext_name, struct lys_ext_instance_complex *ext);
+
+int yang_fill_extcomplex_module(struct ly_ctx *ctx, struct lys_ext_instance_complex *ext,
+                                char *parent_name, char **values, int implemented);
 
 
 /* **

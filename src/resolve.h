@@ -61,10 +61,10 @@ enum UNRES_ITEM {
  */
 struct unres_ext {
     union {
-        struct lyxml_elem *yin;      /**< YIN content of the extension instance */
-        char *yang;                  /**< TODO something that will fit YANG parser needs */
+        struct lyxml_elem *yin;         /**< YIN content of the extension instance */
+        struct yang_ext_substmt *yang;  /**< YANG content of strings */
     } data;
-    LYS_INFORMAT datatype;           /**< type of the data in data union */
+    LYS_INFORMAT datatype;              /**< type of the data in data union */
 
     /* data for lys_ext_instance structure */
     void *parent;
