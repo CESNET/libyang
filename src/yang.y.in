@@ -4579,18 +4579,21 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
          YYABORT;
        }
        s = NULL;
+       actual = ext_instance;
      }
   |  ext_substatements argument_stmt stmtsep
   |  ext_substatements restriction_ext_alloc restriction_ext_stmt stmtsep
      { if (yang_check_ext_instance(trg, &((struct lys_restr *)$2)->ext, ((struct lys_restr *)$2)->ext_size, $2, param->unres)) {
          YYABORT;
        }
+       actual = ext_instance;
      }
   |  ext_substatements when_ext_alloc when_stmt stmtsep
      { if (yang_check_ext_instance(trg, &(*(struct lys_when **)$2)->ext, (*(struct lys_when **)$2)->ext_size,
                                    *(struct lys_when **)$2, param->unres)) {
          YYABORT;
        }
+       actual = ext_instance;
      }
   |  ext_substatements revision_ext_alloc revision_stmt stmtsep
      { int i;
@@ -4605,6 +4608,7 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
                                    &$2.revision[$2.index], param->unres)) {
          YYABORT;
        }
+       actual = ext_instance;
      }
 
 %%

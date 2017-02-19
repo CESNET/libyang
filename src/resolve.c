@@ -4712,6 +4712,13 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
             (*ext) = tmp_ext;
             ((struct lys_ext_instance_complex*)(*ext))->module = info->mod;
             ((struct lys_ext_instance_complex*)(*ext))->substmt = ((struct lyext_plugin_complex*)e->plugin)->substmt;
+            ((struct lys_ext_instance_complex*)(*ext))->nodetype = LYS_EXT;
+            if (info->data.yang) {
+                *tmp = ':';
+                if (yang_parse_ext_substatement(info->mod, unres, info->data.yang, ext_prefix, (struct lys_ext_instance_complex*)(*ext))) {
+                    goto error;
+                }
+            }
             break;
         case LYEXT_ERR:
             /* we never should be here */
@@ -4719,12 +4726,6 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
             goto error;
         }
 
-        if (info->data.yang) {
-            *tmp = ':';
-            if (yang_parse_ext_substatement(info->mod, unres, info->data.yang, ext_prefix, (struct lys_ext_instance_complex*)(*ext))) {
-                goto error;
-            }
-        }
         if (yang_check_ext_instance(info->mod, &(*ext)->ext, (*ext)->ext_size, *ext, unres)) {
             goto error;
         }

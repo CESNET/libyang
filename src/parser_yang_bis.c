@@ -687,7 +687,7 @@ static const yytype_uint16 yyrline[] =
     4362,  4363,  4368,  4373,  4378,  4383,  4388,  4393,  4398,  4403,
     4408,  4413,  4418,  4423,  4428,  4433,  4438,  4451,  4470,  4475,
     4480,  4485,  4490,  4495,  4499,  4509,  4520,  4531,  4542,  4553,
-    4569,  4583,  4584,  4589,  4595
+    4569,  4584,  4585,  4591,  4598
 };
 #endif
 
@@ -8254,7 +8254,7 @@ yyreduce:
 
     { struct lys_revision **rev;
                                  int i;
-                                 
+
                                  rev = (struct lys_revision **)yang_getplace_for_extcomplex_struct(ext_instance, &i, ext_name,
                                                                                                    "revision", LY_STMT_REVISION);
                                  if (!rev) {
@@ -8646,6 +8646,7 @@ yyreduce:
          YYABORT;
        }
        s = NULL;
+       actual = ext_instance;
      }
 
     break;
@@ -8655,6 +8656,7 @@ yyreduce:
     { if (yang_check_ext_instance(trg, &((struct lys_restr *)(yyvsp[-2].v))->ext, ((struct lys_restr *)(yyvsp[-2].v))->ext_size, (yyvsp[-2].v), param->unres)) {
          YYABORT;
        }
+       actual = ext_instance;
      }
 
     break;
@@ -8665,6 +8667,7 @@ yyreduce:
                                    *(struct lys_when **)(yyvsp[-2].v), param->unres)) {
          YYABORT;
        }
+       actual = ext_instance;
      }
 
     break;
@@ -8675,7 +8678,6 @@ yyreduce:
 
        for (i = 0; i < (yyvsp[-2].revisions).index; ++i) {
          if (!strcmp((yyvsp[-2].revisions).revision[i]->date, (yyvsp[-2].revisions).revision[(yyvsp[-2].revisions).index]->date)) {
-           printf("%s %d\n", (yyvsp[-2].revisions).revision[(yyvsp[-2].revisions).index]->date, strcmp((yyvsp[-2].revisions).revision[i]->date, (yyvsp[-2].revisions).revision[(yyvsp[-2].revisions).index]->date));
            LOGWRN("Module's revisions are not unique (%s).", (yyvsp[-2].revisions).revision[i]->date);
            break;
          }
@@ -8684,6 +8686,7 @@ yyreduce:
                                    &(yyvsp[-2].revisions).revision[(yyvsp[-2].revisions).index], param->unres)) {
          YYABORT;
        }
+       actual = ext_instance;
      }
 
     break;
