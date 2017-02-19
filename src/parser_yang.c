@@ -27,6 +27,7 @@ static void free_yang_common(struct lys_module *module, struct lys_node *node);
 static int yang_check_nodes(struct lys_module *module, struct lys_node *parent, struct lys_node *nodes,
                             int config_opt, struct unres_schema *unres);
 static int yang_fill_ext_substm_index(struct lys_ext_instance_complex *ext, LY_STMT stmt, enum yytokentype keyword);
+static void yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node);
 void lys_iffeature_free(struct ly_ctx *ctx, struct lys_iffeature *iffeature, uint8_t iffeature_size);
 
 static int
@@ -2671,6 +2672,7 @@ yang_parse_ext_substatement(struct lys_module *module, struct unres_schema *unre
     yyscan_t scanner = NULL;
     int ret = 0;
     struct yang_parameter param;
+    struct lys_node *node = NULL;
 
     size = strlen(data) + 2;
     yylex_init(&scanner);
@@ -2679,11 +2681,18 @@ yang_parse_ext_substatement(struct lys_module *module, struct unres_schema *unre
     memset(&param, 0, sizeof param);
     param.module = module;
     param.unres = unres;
+    param.node = &node;
     param.actual_node = (void **)ext;
     param.data_node = (void **)ext_name;
     param.flags |= EXT_INSTANCE_SUBSTMT;
     if (yyparse(scanner, &param)) {
+        yang_free_nodes(module->ctx, node);
         ret = -1;
+    } else {
+        /* success parse, but it needs some sematic controls */
+        if (node && yang_check_nodes(module, (struct lys_node *)ext, node, CONFIG_INHERIT_DISABLE, unres)) {
+            ret = -1;
+        }
     }
     yy_delete_buffer(bp, scanner);
     yylex_destroy(scanner);
@@ -4831,3 +4840,26 @@ yang_fill_extcomplex_uint8(struct lys_ext_instance_complex *ext, char *parent_na
     return EXIT_SUCCESS;
 }
 
+int
+yang_extcomplex_node(struct lys_ext_instance_complex *ext, char *parent_name, char *node_name,
+                     struct lys_node *node, LY_STMT stmt)
+{
+    struct lyext_substmt *info;
+    struct lys_node **snode, *siter;
+
+    snode = lys_ext_complex_get_substmt(stmt, ext, &info);
+    if (!snode) {
+        LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, node_name, parent_name);
+        return EXIT_FAILURE;
+    }
+    if (info->cardinality < LY_STMT_CARD_SOME) {
+        LY_TREE_FOR(node, siter) {
+            if (stmt == lys_snode2stmt(siter->nodetype)) {
+                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, node_name, parent_name);
+                return EXIT_FAILURE;
+            }
+        }
+    }
+
+    return EXIT_SUCCESS;
+}

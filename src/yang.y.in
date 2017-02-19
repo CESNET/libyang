@@ -4347,6 +4347,60 @@ revision_ext_alloc: @EMPTYDIR@ { struct lys_revision **rev;
                                  $$.index = i;
                                }
 
+datadef_ext_check: @EMPTYDIR@ { LY_STMT stmt;
+
+                                s = yyget_text(scanner);
+                                if (!strcmp(s, "action")) {
+                                  stmt = LY_STMT_ACTION;
+                                } else if (!strcmp(s, "anydata")) {
+                                  stmt = LY_STMT_ANYDATA;
+                                } else if (!strcmp(s, "anyxml")) {
+                                  stmt = LY_STMT_ANYXML;
+                                } else if (!strcmp(s, "case")) {
+                                  stmt = LY_STMT_CASE;
+                                } else if (!strcmp(s, "choice")) {
+                                  stmt = LY_STMT_CHOICE;
+                                } else if (!strcmp(s, "container")) {
+                                  stmt = LY_STMT_CONTAINER;
+                                } else if (!strcmp(s, "grouping")) {
+                                  stmt = LY_STMT_GROUPING;
+                                } else if (!strcmp(s, "input")) {
+                                  stmt = LY_STMT_INPUT;
+                                } else if (!strcmp(s, "leaf")) {
+                                  stmt = LY_STMT_LEAF;
+                                } else if (!strcmp(s, "leaf-list")) {
+                                  stmt = LY_STMT_LEAFLIST;
+                                } else if (!strcmp(s, "list")) {
+                                  stmt = LY_STMT_LIST;
+                                } else if (!strcmp(s, "notification")) {
+                                  stmt = LY_STMT_NOTIFICATION;
+                                } else if (!strcmp(s, "output")) {
+                                  stmt = LY_STMT_OUTPUT;
+                                } else {
+                                  stmt = LY_STMT_USES;
+                                }
+                                if (yang_extcomplex_node(ext_instance, ext_name, s, *param->node, stmt)) {
+                                  YYABORT;
+                                }
+                                actual = NULL;
+                                s = NULL;
+                              }
+
+datadef_ext_stmt: action_stmt
+  |  anydata_stmt
+  |  anyxml_stmt
+  |  case_stmt
+  |  choice_stmt
+  |  container_stmt
+  |  grouping_stmt
+  |  input_stmt
+  |  leaf_stmt
+  |  leaf_list_stmt
+  |  list_stmt
+  |  notification_stmt
+  |  output_stmt
+  |  uses_stmt
+
 restriction_ext_stmt: must_stmt
   |  pattern_stmt
   |  range_stmt
@@ -4610,6 +4664,7 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
        }
        actual = ext_instance;
      }
+  | ext_substatements datadef_ext_check datadef_ext_stmt stmtsep { actual = ext_instance; }
 
 %%
 
