@@ -79,6 +79,10 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
     void *actual;
     enum yytokentype token;
   } backup_token;
+  struct {
+    struct lys_revision **revision;
+    int index;
+  } revisions;
 }
 
 %token UNION_KEYWORD
@@ -253,11 +257,12 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <v> iffeature_ext_alloc
 %type <v> restriction_ext_alloc
 %type <v> when_ext_alloc
+%type <revisions> revision_ext_alloc
 %type <token> import_arg_str
 %type <token> include_arg_str
-%type <token> revision_arg_stmt
 %type <token> argument_str
 %type <token> belongs_to_arg_str
+%type <backup_token> revision_arg_stmt
 %type <backup_token> grouping_arg_str
 %type <backup_token> container_arg_str
 %type <backup_token> leaf_arg_str
@@ -702,17 +707,31 @@ revision_stmts: revision_stmts_opt { if (trg->rev_size) {
                                   }
 
 
-revision_arg_stmt: date_arg_str { YANG_ADDELEM(trg->rev, trg->rev_size);
-                                  actual = yang_read_revision(trg, s, actual);
-                                  $$ = actual_type;
+revision_arg_stmt: date_arg_str { $$.token = actual_type;
+                                  $$.actual = actual;
+                                  if (!is_ext_instance) {
+                                    YANG_ADDELEM(trg->rev, trg->rev_size);
+                                  }
+                                  memcpy(((struct lys_revision *)actual)->date, s, LY_REV_SIZE);
+                                  free(s);
+                                  s = NULL;
                                   actual_type = REVISION_KEYWORD;
                                 }
 
 revision_stmts_opt: @EMPTYDIR@
-  |  revision_stmts_opt revision_stmt stmtsep
+  |  revision_stmts_opt revision_stmt stmtsep { int i;
 
-revision_stmt: REVISION_KEYWORD sep revision_arg_stmt revision_end { actual_type = $3;
-                                                                     actual = NULL;
+                                                /* check uniqueness of the revision date - not required by RFC */
+                                                for (i = 0; i < (trg->rev_size - 1); i++) {
+                                                  if (!strcmp(trg->rev[i].date, trg->rev[trg->rev_size - 1].date)) {
+                                                    LOGWRN("Module's revisions are not unique (%s).", trg->rev[trg->rev_size - 1].date);
+                                                    break;
+                                                  }
+                                                }
+                                              }
+
+revision_stmt: REVISION_KEYWORD sep revision_arg_stmt revision_end { actual_type = $3.token;
+                                                                     actual = $3.actual;
                                                                    }
 
 revision_end: ';'
@@ -4243,7 +4262,8 @@ identifiers_ref: IDENTIFIERPREFIX { s = strdup(yyget_text(scanner));
 
 type_ext_alloc: @EMPTYDIR@ { struct lys_type **type;
 
-                             type = (struct lys_type **)yang_getplace_for_extcomplex_struct(ext_instance, ext_name, "type", LY_STMT_TYPE);
+                             type = (struct lys_type **)yang_getplace_for_extcomplex_struct(ext_instance, NULL, ext_name,
+                                                                                            "type", LY_STMT_TYPE);
                              if (!type) {
                                YYABORT;
                              }
@@ -4257,7 +4277,8 @@ type_ext_alloc: @EMPTYDIR@ { struct lys_type **type;
 
 typedef_ext_alloc: @EMPTYDIR@ { struct lys_tpdf **tpdf;
 
-                                tpdf = (struct lys_tpdf **)yang_getplace_for_extcomplex_struct(ext_instance, ext_name, "typedef", LY_STMT_TYPEDEF);
+                                tpdf = (struct lys_tpdf **)yang_getplace_for_extcomplex_struct(ext_instance, NULL, ext_name,
+                                                                                               "typedef", LY_STMT_TYPEDEF);
                                 if (!tpdf) {
                                   YYABORT;
                                 }
@@ -4268,7 +4289,8 @@ typedef_ext_alloc: @EMPTYDIR@ { struct lys_tpdf **tpdf;
 
 iffeature_ext_alloc: @EMPTYDIR@ { struct lys_iffeature **iffeature;
 
-                                 iffeature = (struct lys_iffeature **)yang_getplace_for_extcomplex_struct(ext_instance, ext_name, "if-feature", LY_STMT_IFFEATURE);
+                                 iffeature = (struct lys_iffeature **)yang_getplace_for_extcomplex_struct(ext_instance, NULL, ext_name,
+                                                                                                          "if-feature", LY_STMT_IFFEATURE);
                                  if (!iffeature) {
                                    YYABORT;
                                  }
@@ -4290,7 +4312,7 @@ restriction_ext_alloc: @EMPTYDIR@ { struct lys_restr **restr;
                                     } else {
                                       stmt = LY_STMT_LENGTH;
                                     }
-                                    restr = (struct lys_restr **)yang_getplace_for_extcomplex_struct(ext_instance, ext_name, s, stmt);
+                                    restr = (struct lys_restr **)yang_getplace_for_extcomplex_struct(ext_instance, NULL, ext_name, s, stmt);
                                     if (!restr) {
                                       YYABORT;
                                     }
@@ -4300,12 +4322,30 @@ restriction_ext_alloc: @EMPTYDIR@ { struct lys_restr **restr;
                                     s = NULL;
                                   }
 
-when_ext_alloc: @EMPTYDIR@ { actual = yang_getplace_for_extcomplex_struct(ext_instance, ext_name, "when", LY_STMT_WHEN);
+when_ext_alloc: @EMPTYDIR@ { actual = yang_getplace_for_extcomplex_struct(ext_instance, NULL, ext_name, "when", LY_STMT_WHEN);
                              if (!actual) {
                                YYABORT;
                              }
                              $$ = actual;
                            }
+
+revision_ext_alloc: @EMPTYDIR@ { struct lys_revision **rev;
+                                 int i;
+
+                                 rev = (struct lys_revision **)yang_getplace_for_extcomplex_struct(ext_instance, &i, ext_name,
+                                                                                                   "revision", LY_STMT_REVISION);
+                                 if (!rev) {
+                                   YYABORT;
+                                 }
+                                 rev[i] = calloc(1, sizeof **rev);
+                                 if (!*rev) {
+                                   LOGMEM;
+                                   YYABORT;
+                                 }
+                                 actual = rev[i];
+                                 $$.revision = rev;
+                                 $$.index = i;
+                               }
 
 restriction_ext_stmt: must_stmt
   |  pattern_stmt
@@ -4468,8 +4508,8 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
      }
   |  ext_substatements min_elements_stmt { uint32_t **val;
 
-                                           val = (uint32_t **)yang_getplace_for_extcomplex_struct(ext_instance, ext_name, "min-elements",
-                                                                                                  LY_STMT_MIN);
+                                           val = (uint32_t **)yang_getplace_for_extcomplex_struct(ext_instance, NULL, ext_name,
+                                                                                                  "min-elements", LY_STMT_MIN);
                                            if (!val) {
                                              YYABORT;
                                            }
@@ -4479,8 +4519,8 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
                                          }
   |  ext_substatements max_elements_stmt { uint32_t **val;
 
-                                           val = (uint32_t **)yang_getplace_for_extcomplex_struct(ext_instance, ext_name, "max-elements",
-                                                                                                  LY_STMT_MAX);
+                                           val = (uint32_t **)yang_getplace_for_extcomplex_struct(ext_instance, NULL, ext_name,
+                                                                                                  "max-elements", LY_STMT_MAX);
                                            if (!val) {
                                              YYABORT;
                                            }
@@ -4490,8 +4530,8 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
                                          }
   |  ext_substatements position_stmt { uint32_t **val;
 
-                                       val = (uint32_t **)yang_getplace_for_extcomplex_struct(ext_instance, ext_name, "position",
-                                                                                              LY_STMT_POSITION);
+                                       val = (uint32_t **)yang_getplace_for_extcomplex_struct(ext_instance, NULL, ext_name,
+                                                                                              "position", LY_STMT_POSITION);
                                        if (!val) {
                                          YYABORT;
                                        }
@@ -4501,8 +4541,8 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
                                      }
   |  ext_substatements value_stmt { int32_t **val;
 
-                                    val = (int32_t **)yang_getplace_for_extcomplex_struct(ext_instance, ext_name, "value",
-                                                                                          LY_STMT_VALUE);
+                                    val = (int32_t **)yang_getplace_for_extcomplex_struct(ext_instance, NULL, ext_name,
+                                                                                          "value", LY_STMT_VALUE);
                                     if (!val) {
                                       YYABORT;
                                     }
@@ -4513,8 +4553,8 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
   |  ext_substatements unique_stmt { struct lys_unique **unique;
                                      int rc;
 
-                                     unique = (struct lys_unique **)yang_getplace_for_extcomplex_struct(ext_instance, ext_name, "unique",
-                                                                                                        LY_STMT_UNIQUE);
+                                     unique = (struct lys_unique **)yang_getplace_for_extcomplex_struct(ext_instance, NULL, ext_name,
+                                                                                                        "unique", LY_STMT_UNIQUE);
                                      if (!unique) {
                                        YYABORT;
                                      }
@@ -4549,6 +4589,20 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
   |  ext_substatements when_ext_alloc when_stmt stmtsep
      { if (yang_check_ext_instance(trg, &(*(struct lys_when **)$2)->ext, (*(struct lys_when **)$2)->ext_size,
                                    *(struct lys_when **)$2, param->unres)) {
+         YYABORT;
+       }
+     }
+  |  ext_substatements revision_ext_alloc revision_stmt stmtsep
+     { int i;
+
+       for (i = 0; i < $2.index; ++i) {
+         if (!strcmp($2.revision[i]->date, $2.revision[$2.index]->date)) {
+           LOGWRN("Module's revisions are not unique (%s).", $2.revision[i]->date);
+           break;
+         }
+       }
+       if (yang_check_ext_instance(trg, &$2.revision[$2.index]->ext, $2.revision[$2.index]->ext_size,
+                                   &$2.revision[$2.index], param->unres)) {
          YYABORT;
        }
      }

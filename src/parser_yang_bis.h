@@ -181,6 +181,10 @@ union YYSTYPE
     void *actual;
     enum yytokentype token;
   } backup_token;
+  struct {
+    struct lys_revision **revision;
+    int index;
+  } revisions;
 
 
 };

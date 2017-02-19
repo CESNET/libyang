@@ -2732,6 +2732,8 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
         }
     }
 
+    lyp_sort_revisions(module);
+
     if (revision) {
         /* check revision of the parsed model */
         if (!module->rev_size || strcmp(revision, module->rev[0].date)) {
@@ -2823,6 +2825,8 @@ yang_read_submodule(struct lys_module *module, const char *data, unsigned int si
         free_yang_common((struct lys_module *)submodule, node);
         goto error;
     }
+
+    lyp_sort_revisions((struct lys_module *)submodule);
 
     if (yang_check_sub_module((struct lys_module *)submodule, unres, node)) {
         goto error;
@@ -4692,7 +4696,8 @@ yang_fill_ext_substm_index(struct lys_ext_instance_complex *ext, LY_STMT stmt, e
 }
 
 void **
-yang_getplace_for_extcomplex_struct(struct lys_ext_instance_complex *ext, char *parent_name, char *node_name, LY_STMT stmt)
+yang_getplace_for_extcomplex_struct(struct lys_ext_instance_complex *ext, int *index,
+                                    char *parent_name, char *node_name, LY_STMT stmt)
 {
     int c;
     void **data, ***p = NULL;
@@ -4735,7 +4740,12 @@ yang_getplace_for_extcomplex_struct(struct lys_ext_instance_complex *ext, char *
         data[c + 1] = NULL;
     }
 
-    return &data[c];
+    if (index) {
+        *index = c;
+        return data;
+    } else {
+        return &data[c];
+    }
 }
 
 int
