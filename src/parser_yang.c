@@ -2994,6 +2994,7 @@ yang_tpdf_free(struct ly_ctx *ctx, struct lys_tpdf *tpdf, uint8_t start, uint8_t
 
         lydict_remove(ctx, tpdf[i].units);
         lydict_remove(ctx, tpdf[i].dflt);
+        lys_extension_instances_free(ctx, tpdf[i].ext, tpdf[i].ext_size);
     }
 }
 
@@ -3194,6 +3195,7 @@ yang_free_uses(struct ly_ctx *ctx, struct lys_node_uses *uses)
         if (uses->refine[i].target_type & LYS_CONTAINER) {
             lydict_remove(ctx, uses->refine[i].mod.presence);
         }
+        lys_extension_instances_free(ctx, uses->refine[i].ext, uses->refine[i].ext_size);
     }
     free(uses->refine);
 
@@ -3262,7 +3264,7 @@ yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node)
         default:
             break;
         }
-
+        lys_extension_instances_free(ctx, tmp->ext, tmp->ext_size);
         yang_free_nodes(ctx, child);
         free(tmp);
         tmp = sibling;
@@ -3279,6 +3281,7 @@ yang_free_augment(struct ly_ctx *ctx, struct lys_node_augment *aug)
     lys_iffeature_free(ctx, aug->iffeature, aug->iffeature_size);
     lys_when_free(ctx, aug->when);
     yang_free_nodes(ctx, aug->child);
+    lys_extension_instances_free(ctx, aug->ext, aug->ext_size);
 }
 
 static void
@@ -3307,6 +3310,7 @@ yang_free_deviate(struct ly_ctx *ctx, struct lys_deviation *dev, uint index)
             free(dev->deviate[i].unique[j].expr);
         }
         free(dev->deviate[i].unique);
+        lys_extension_instances_free(ctx, dev->deviate[i].ext, dev->deviate[i].ext_size);
     }
 }
 
