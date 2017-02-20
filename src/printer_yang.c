@@ -2101,6 +2101,9 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
                     } else if (*flags & LYS_STATUS_OBSLT) {
                         yang_print_open(out, &content);
                         str = "obsolete";
+                    } else {
+                        /* no status flag */
+                        break;
                     }
                     yang_print_substmt(out, level, LYEXT_SUBSTMT_STATUS, 0, str, module, ext[u]->ext, ext[u]->ext_size);
                     break;

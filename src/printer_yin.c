@@ -2120,6 +2120,9 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
                     } else if (*flags & LYS_STATUS_OBSLT) {
                         yin_print_close_parent(out, &content);
                         str = "obsolete";
+                    } else {
+                        /* no status flag */
+                        break;
                     }
                     yin_print_substmt(out, level, LYEXT_SUBSTMT_STATUS, 0, str, module, ext[u]->ext, ext[u]->ext_size);
                     break;
