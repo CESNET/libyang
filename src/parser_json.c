@@ -1364,7 +1364,8 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
         len += r;
 
         if (!result) {
-            result = next;
+            for (iter = next; iter && iter->prev->next; iter = iter->prev);
+            result = iter;
         }
         if (next) {
             iter = next;
