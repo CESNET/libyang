@@ -1626,9 +1626,11 @@ enum_opt_stmt: @EMPTYDIR@
                                 }
                                 is_value = 1;
                               }
-  |  enum_opt_stmt status_stmt { if (yang_check_flags((uint16_t*)&((struct lys_type_enum *)actual)->flags, LYS_STATUS_MASK, "status", "enum", $2, 1)) {
+  |  enum_opt_stmt status_stmt { if (((struct lys_type_enum *)actual)->flags & LYS_STATUS_MASK) {
+                                   LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "enum");
                                    YYABORT;
                                  }
+                                 ((struct lys_type_enum *)actual)->flags |= $2;
                                }
   |  enum_opt_stmt description_stmt { if (yang_read_description(trg, actual, s, "enum", NODE)) {
                                         YYABORT;
@@ -1768,10 +1770,11 @@ bit_opt_stmt: @EMPTYDIR@
                                   }
                                   is_value = 1;
                                 }
-  |  bit_opt_stmt status_stmt { if (yang_check_flags((uint16_t*)&((struct lys_type_bit *)actual)->flags,
-                                                     LYS_STATUS_MASK, "status", "bit", $2, 1)) {
-                                  YYABORT;
-                                }
+  |  bit_opt_stmt status_stmt { if (((struct lys_type_bit *)actual)->flags & LYS_STATUS_MASK) {
+                                   LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "bit");
+                                   YYABORT;
+                                 }
+                                 ((struct lys_type_bit *)actual)->flags |= $2;
                               }
   |  bit_opt_stmt description_stmt { if (yang_read_description(trg, actual, s, "bit", NODE)) {
                                        YYABORT;
@@ -2854,9 +2857,11 @@ refine_body_opt_stmts: @EMPTYDIR@ { $$.refine = actual;
   |  refine_body_opt_stmts config_stmt { if ($1.refine->target_type) {
                                            if ($1.refine->target_type & (LYS_LEAF | LYS_CHOICE | LYS_LIST | LYS_CONTAINER | LYS_LEAFLIST)) {
                                              $1.refine->target_type &= (LYS_LEAF | LYS_CHOICE | LYS_LIST | LYS_CONTAINER | LYS_LEAFLIST);
-                                             if (yang_check_flags((uint16_t*)&$1.refine->flags, LYS_CONFIG_MASK, "config", "refine", $2, 1)) {
+                                             if ($1.refine->flags & LYS_CONFIG_MASK) {
+                                               LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "config", "refine");
                                                YYABORT;
                                              }
+                                             $1.refine->flags |= $2;
                                            } else {
                                              LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "config", "refine");
                                              LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
@@ -2871,9 +2876,11 @@ refine_body_opt_stmts: @EMPTYDIR@ { $$.refine = actual;
   |  refine_body_opt_stmts mandatory_stmt { if ($1.refine->target_type) {
                                               if ($1.refine->target_type & (LYS_LEAF | LYS_CHOICE | LYS_ANYXML)) {
                                                 $1.refine->target_type &= (LYS_LEAF | LYS_CHOICE | LYS_ANYXML);
-                                                if (yang_check_flags((uint16_t*)&$1.refine->flags, LYS_MAND_MASK, "mandatory", "refine", $2, 1)) {
+                                                if ($1.refine->flags & LYS_MAND_MASK) {
+                                                  LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "mandatory", "refine");
                                                   YYABORT;
                                                 }
+                                                $1.refine->flags |= $2;
                                               } else {
                                                 LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "mandatory", "refine");
                                                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");

@@ -261,22 +261,6 @@ yang_fill_iffeature(struct lys_module *module, struct lys_iffeature *iffeature, 
 }
 
 int
-yang_check_flags(uint16_t *flags, uint16_t mask, char *what, char *where, uint16_t value, int shortint)
-{
-    if (*flags & mask) {
-        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, what, where);
-        return EXIT_FAILURE;
-    } else {
-        if (shortint) {
-            *((uint8_t *)flags) |= (uint8_t)value;
-        } else {
-            *flags |= value;
-        }
-        return EXIT_SUCCESS;
-    }
-}
-
-int
 yang_read_base(struct lys_module *module, struct lys_ident *ident, char *value, struct unres_schema *unres)
 {
     const char *exp;
