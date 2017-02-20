@@ -185,7 +185,7 @@ module a {\n\
 \n\
   include \"atop\";\n\
 \n\
-  revision \"2015-01-01\" {\n\
+  revision 2015-01-01 {\n\
     description\n\
       \"version 1\";\n\
     reference\n\

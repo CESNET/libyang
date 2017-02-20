@@ -1607,7 +1607,7 @@ static void
 yang_print_revision(struct lyout *out, int level, const struct lys_module *module, const struct lys_revision *rev)
 {
     if (rev->dsc || rev->ref || rev->ext_size) {
-        ly_print(out, "%*srevision \"%s\" {\n", LEVEL, INDENT, rev->date);
+        ly_print(out, "%*srevision %s {\n", LEVEL, INDENT, rev->date);
         yang_print_extension_instances(out, level + 1, module, LYEXT_SUBSTMT_SELF, 0, rev->ext, rev->ext_size);
         yang_print_substmt(out, level + 1, LYEXT_SUBSTMT_DESCRIPTION, 0, rev->dsc, module, rev->ext, rev->ext_size);
         yang_print_substmt(out, level + 1, LYEXT_SUBSTMT_REFERENCE, 0, rev->ref, module, rev->ext, rev->ext_size);
