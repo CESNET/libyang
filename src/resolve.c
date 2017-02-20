@@ -4723,6 +4723,9 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
                                                 info->data.yang->ext_modules, info->mod->implemented)) {
                     goto error;
                 }
+                if (lyp_mand_check_ext((struct lys_ext_instance_complex*)(*ext), ext_prefix)) {
+                    goto error;
+                }
             }
             break;
         case LYEXT_ERR:
