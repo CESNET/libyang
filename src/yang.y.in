@@ -3840,11 +3840,8 @@ unique_arg: unique_arg_str { backup_type = actual_type;
 
 unique_stmt: UNIQUE_KEYWORD sep unique_arg stmtend
 
-unique_arg_str: descendant_schema_nodeid unique_arg_opt
+unique_arg_str: descendant_schema_nodeid optsep
   |  string_1
-
-unique_arg_opt: @EMPTYDIR@
-  |  unique_arg_opt sep descendant_schema_nodeid
 
 key_arg: key_arg_str { backup_type = actual_type;
                        actual_type = KEY_KEYWORD;

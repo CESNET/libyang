@@ -2156,8 +2156,6 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
                     YANG_PRINT_EXTCOMPLEX_INT(LYEXT_SUBSTMT_VALUE, int32_t, signed);
                     break;
                 case LY_STMT_UNIQUE:
-                    YANG_PRINT_EXTCOMPLEX_STRUCT(LY_STMT_UNIQUE, struct lys_unique, yang_print_unique);
-
                     pp = lys_ext_complex_get_substmt(LY_STMT_UNIQUE, (struct lys_ext_instance_complex *)ext[u], NULL);
                     if (!pp || !(*pp)) {
                         break;
@@ -2172,7 +2170,7 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
                                 j = lys_ext_iter(ext[u]->ext, ext[u]->ext_size, j + 1, LYEXT_SUBSTMT_UNIQUE);
                             } while (j != -1 && ext[u]->ext[j]->insubstmt_index != c);
                             if (j != -1) {
-                                yang_print_open(out, &content);
+                                yang_print_open(out, &content2);
                                 do {
                                     yang_print_extension_instances(out, level + 1, module, LYEXT_SUBSTMT_UNIQUE, c,
                                                                    &ext[u]->ext[j], 1);
@@ -2189,7 +2187,7 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
                         /* unique's extensions */
                         j = -1; content2 = 0;
                         while ((j = lys_ext_iter(ext[u]->ext, ext[u]->ext_size, j + 1, LYEXT_SUBSTMT_UNIQUE)) != -1) {
-                            yang_print_open(out, &content);
+                            yang_print_open(out, &content2);
                             yang_print_extension_instances(out, level + 1, module, LYEXT_SUBSTMT_UNIQUE, 0,
                                                            &ext[u]->ext[j], 1);
                         }
