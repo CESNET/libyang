@@ -219,22 +219,6 @@ yang_read_reference(struct lys_module *module, void *node, char *value, char *wh
     return ret;
 }
 
-void *
-yang_read_revision(struct lys_module *module, char *value, struct lys_revision *retval)
-{
-    /* first member of array is last revision */
-    if ((module->rev_size - 1) && strcmp(module->rev[0].date, value) < 0) {
-        memcpy(retval, &module->rev[0], sizeof *retval);
-        memset(&module->rev[0], 0, sizeof *retval);
-        memcpy(module->rev[0].date, value, LY_REV_SIZE);
-        retval = module->rev;
-    } else {
-        memcpy(retval->date, value, LY_REV_SIZE);
-    }
-    free(value);
-    return retval;
-}
-
 int
 yang_fill_iffeature(struct lys_module *module, struct lys_iffeature *iffeature, void *parent,
                     char *value, struct unres_schema *unres, int parent_is_feature)
@@ -2482,81 +2466,6 @@ yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext
         instance->insubstmt_index = yang_fill_ext_substm_index(actual, stmt, backup_type);
     }
     return instance;
-}
-
-int
-yang_use_extension(struct lys_module *module, struct lys_node *data_node, void *actual, char *value)
-{
-    char *prefix;
-    char *identif;
-    const char *ns = NULL;
-    int i;
-
-    /* check to the same pointer */
-    if (data_node != actual) {
-        return EXIT_SUCCESS;
-    }
-
-    prefix = strdup(value);
-    if (!prefix) {
-        LOGMEM;
-        goto error;
-    }
-    /* find prefix anf identificator*/
-    identif = strchr(prefix, ':');
-    if (!identif) {
-        LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, prefix);
-        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The extension must have prefix.");
-        goto error;
-    }
-    *identif = '\0';
-    identif++;
-
-    for(i = 0; i < module->imp_size; ++i) {
-        if (!strcmp(module->imp[i].prefix, prefix)) {
-            ns = module->imp[i].module->ns;
-            break;
-        }
-    }
-    if (!ns && !strcmp(module->prefix, prefix)) {
-        ns = (module->type) ? ((struct lys_submodule *)module)->belongsto->ns : module->ns;
-    }
-    free(prefix);
-    return EXIT_SUCCESS;
-
-error:
-    free(prefix);
-    return EXIT_FAILURE;
-}
-
-int
-store_flags(struct lys_node *node, uint8_t flags, int config_opt)
-{
-    struct lys_node *elem;
-
-    node->flags |= (config_opt == CONFIG_IGNORE) ? flags & (~(LYS_CONFIG_MASK | LYS_CONFIG_SET)): flags;
-    if (config_opt == CONFIG_INHERIT_ENABLE) {
-        if (!(node->flags & LYS_CONFIG_MASK)) {
-            /* get config flag from parent */
-            if (node->parent) {
-                node->flags |= node->parent->flags & LYS_CONFIG_MASK;
-            } else {
-                /* default config is true */
-                node->flags |= LYS_CONFIG_W;
-            }
-        } else {
-            /* do we even care about config flags? */
-            for (elem = node; elem && !(elem->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT | LYS_RPC)); elem = elem->parent);
-
-            if (!elem && (node->flags & LYS_CONFIG_W) && node->parent && (node->parent->flags & LYS_CONFIG_R)) {
-                LOGVAL(LYE_INARG, LY_VLOG_LYS, node, "true", "config");
-                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "State nodes cannot have configuration nodes as children.");
-                return EXIT_FAILURE;
-            }
-        }
-    }
-
-    return EXIT_SUCCESS;
 }
 
 int
