@@ -124,7 +124,9 @@ yang_print_text(struct lyout *out, int level, const char *name, const char *text
         yang_encode(out, t, s - t);
         ly_print(out, "\n");
         t = s + 1;
-        ly_print(out, "%*s ", LEVEL, INDENT);
+        if (*t != '\n') {
+            ly_print(out, "%*s ", LEVEL, INDENT);
+        }
     }
 
     yang_encode(out, t, strlen(t));
