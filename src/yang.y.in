@@ -184,6 +184,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %token NODE
 %token NODE_PRINT
 %token EXTENSION_INSTANCE
+%token SUBMODULE_EXT_KEYWORD
 
 %type <uint> positive_integer_value
 %type <uint> non_negative_integer_value
@@ -316,6 +317,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
                   } else {
                     is_ext_instance = 0;
                   }
+                  yylloc.last_line = is_ext_instance;     /* HACK for flex - return SUBMODULE_KEYWORD or SUBMODULE_EXT_KEYWORD */
                   param->value = &s;
                   param->data_node = (void **)&data_node;
                   param->actual_node = &actual;
@@ -4438,6 +4440,22 @@ datadef_ext_check: @EMPTYDIR@ { LY_STMT stmt;
                                 s = NULL;
                               }
 
+not_supported_ext_check: not_supported_ext { LOGERR(LY_SUCCESS, "Extension's substatement \"%s\" not supported.", yyget_text(scanner)); }
+
+not_supported_ext: YANG_VERSION_KEYWORD
+  |  YIN_ELEMENT_KEYWORD
+  |  BIT_KEYWORD
+  |  ENUM_KEYWORD
+  |  AUGMENT_KEYWORD
+  |  DEVIATION_KEYWORD
+  |  DEVIATE_KEYWORD
+  |  EXTENSION_KEYWORD
+  |  FEATURE_KEYWORD
+  |  IDENTITY_KEYWORD
+  |  IMPORT_KEYWORD
+  |  INCLUDE_KEYWORD
+  |  SUBMODULE_EXT_KEYWORD
+
 datadef_ext_stmt: action_stmt
   |  anydata_stmt
   |  anyxml_stmt
@@ -4716,7 +4734,8 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
        }
        actual = ext_instance;
      }
-  | ext_substatements datadef_ext_check datadef_ext_stmt stmtsep { actual = ext_instance; }
+  |  ext_substatements datadef_ext_check datadef_ext_stmt stmtsep { actual = ext_instance; }
+  |  ext_substatements not_supported_ext_check unknown_string unknown_statement3_opt_end
 
 %%
 

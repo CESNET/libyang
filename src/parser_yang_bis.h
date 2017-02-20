@@ -143,7 +143,8 @@ extern int yydebug;
     ANYDATA_KEYWORD = 353,
     NODE = 354,
     NODE_PRINT = 355,
-    EXTENSION_INSTANCE = 356
+    EXTENSION_INSTANCE = 356,
+    SUBMODULE_EXT_KEYWORD = 357
   };
 #endif
 

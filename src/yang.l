@@ -104,7 +104,7 @@ U4     [\xf0][\x90-\xbf]{U}{U}|[\xf1-\xf3]{U}{U}{U}|[\xf4][\x80-\x8f]{U}{U}
 "revision-date" { return REVISION_DATE_KEYWORD; }
 "rpc" { return RPC_KEYWORD; }
 "status" { return STATUS_KEYWORD; }
-"submodule" { return SUBMODULE_KEYWORD; }
+"submodule" { return (yylloc->last_line) ? SUBMODULE_EXT_KEYWORD : SUBMODULE_KEYWORD; }
 "type" { return TYPE_KEYWORD; }
 "typedef" { return TYPEDEF_KEYWORD; }
 "unique" { BEGIN PATH; return UNIQUE_KEYWORD; }
