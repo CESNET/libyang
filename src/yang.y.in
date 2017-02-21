@@ -226,6 +226,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <i> integer_value_arg_str
 %type <i> value_arg
 %type <i> integer_value
+%type <i> ext_substatements
 %type <str> pattern_arg_str
 %type <nodes> container_opt_stmt
 %type <nodes> anyxml_opt_stmt
@@ -4610,10 +4611,18 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
                                           YYABORT;
                                         }
                                       }
-  |  ext_substatements ordered_by_stmt { if (yang_fill_extcomplex_flags(ext_instance, ext_name, "ordered-by", LY_STMT_ORDEREDBY,
-                                                                        $2, LYS_ORDERED_MASK)) {
-                                           YYABORT;
+  |  ext_substatements ordered_by_stmt { if ($1 & LYS_ORDERED_MASK) {
+                                            LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "ordered by", ext_name);
+                                            YYABORT;
                                          }
+                                         if ($2 & LYS_USERORDERED) {
+                                           if (yang_fill_extcomplex_flags(ext_instance, ext_name, "ordered-by", LY_STMT_ORDEREDBY,
+                                                                          $2, LYS_USERORDERED)) {
+                                             YYABORT;
+                                           }
+                                         }
+                                         $1 |= $2;
+                                         $$ = $1;
                                        }
   |  ext_substatements require_instance_stmt { if (yang_fill_extcomplex_uint8(ext_instance, ext_name, "require-instance",
                                                                               LY_STMT_REQINSTANCE, $2)) {
