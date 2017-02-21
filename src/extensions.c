@@ -134,6 +134,9 @@ lyext_load_plugins(void)
             /* the plugin is already loaded */
             LOGVRB("Extension plugin \"%s\" already loaded.", str);
             free(str);
+
+            /* keep the refcount of the shared object correct */
+            dlclose(dlhandler);
             continue;
         }
 
