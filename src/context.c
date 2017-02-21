@@ -78,7 +78,6 @@ ly_ctx_new(const char *search_dir)
     lydict_init(&ctx->dict);
 
     /* plugins */
-    ext_plugins_ref++;
     lyext_load_plugins();
 
     /* models list */
@@ -88,6 +87,7 @@ ly_ctx_new(const char *search_dir)
         free(ctx);
         return NULL;
     }
+    ext_plugins_ref++;
     ctx->models.used = 0;
     ctx->models.size = 16;
     if (search_dir) {
