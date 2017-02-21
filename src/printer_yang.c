@@ -1469,30 +1469,12 @@ yang_print_rpc_action(struct lyout *out, int level, const struct lys_node *node)
     }
 
     LY_TREE_FOR(node->child, sub) {
-        /* augments */
-        if (sub->parent != node) {
-            continue;
-        }
-        yang_print_open(out, &flag);
-        yang_print_snode(out, level, sub, LYS_GROUPING);
-    }
-
-    LY_TREE_FOR(node->child, sub) {
-        /* augments */
-        if (sub->parent != node) {
-            continue;
-        }
-        yang_print_open(out, &flag);
-        yang_print_snode(out, level, sub, LYS_INPUT);
-    }
-
-    LY_TREE_FOR(node->child, sub) {
         /* augments and implicit nodes */
         if ((sub->parent != node) || ((sub->nodetype & (LYS_INPUT | LYS_OUTPUT) && (sub->flags & LYS_IMPLICIT)))) {
             continue;
         }
         yang_print_open(out, &flag);
-        yang_print_snode(out, level, sub, LYS_OUTPUT);
+        yang_print_snode(out, level, sub, LYS_INPUT | LYS_OUTPUT | LYS_GROUPING);
     }
 
     level--;
