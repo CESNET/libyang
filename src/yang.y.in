@@ -4487,6 +4487,7 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
                                   LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, yyget_text(scanner));
                                   YYABORT;
                                 }
+                                $$ = 0;
                               }
   |  ext_substatements belongs_to_stmt stmtsep
   |  ext_substatements prefix_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "prefix", ext_name, s,
