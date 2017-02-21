@@ -5762,7 +5762,7 @@ resolve_when(struct lyd_node *node, int *result, int ignore_fail)
     assert(node);
     memset(&set, 0, sizeof set);
 
-    if (!(node->schema->nodetype & (LYS_NOTIF | LYS_RPC)) && (((struct lys_node_container *)node->schema)->when)) {
+    if (!(node->schema->nodetype & (LYS_NOTIF | LYS_RPC | LYS_ACTION)) && (((struct lys_node_container *)node->schema)->when)) {
         /* make the node dummy for the evaluation */
         node->validity |= LYD_VAL_INUSE;
         rc = lyxp_eval(((struct lys_node_container *)node->schema)->when->cond, node, LYXP_NODE_ELEM, lyd_node_module(node),
