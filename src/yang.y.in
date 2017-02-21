@@ -226,6 +226,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %type <i> integer_value_arg_str
 %type <i> value_arg
 %type <i> integer_value
+%type <i> ext_substatements
 %type <str> pattern_arg_str
 %type <nodes> container_opt_stmt
 %type <nodes> anyxml_opt_stmt
@@ -1626,9 +1627,11 @@ enum_opt_stmt: @EMPTYDIR@
                                 }
                                 is_value = 1;
                               }
-  |  enum_opt_stmt status_stmt { if (yang_check_flags((uint16_t*)&((struct lys_type_enum *)actual)->flags, LYS_STATUS_MASK, "status", "enum", $2, 1)) {
+  |  enum_opt_stmt status_stmt { if (((struct lys_type_enum *)actual)->flags & LYS_STATUS_MASK) {
+                                   LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "enum");
                                    YYABORT;
                                  }
+                                 ((struct lys_type_enum *)actual)->flags |= $2;
                                }
   |  enum_opt_stmt description_stmt { if (yang_read_description(trg, actual, s, "enum", NODE)) {
                                         YYABORT;
@@ -1768,10 +1771,11 @@ bit_opt_stmt: @EMPTYDIR@
                                   }
                                   is_value = 1;
                                 }
-  |  bit_opt_stmt status_stmt { if (yang_check_flags((uint16_t*)&((struct lys_type_bit *)actual)->flags,
-                                                     LYS_STATUS_MASK, "status", "bit", $2, 1)) {
-                                  YYABORT;
-                                }
+  |  bit_opt_stmt status_stmt { if (((struct lys_type_bit *)actual)->flags & LYS_STATUS_MASK) {
+                                   LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "bit");
+                                   YYABORT;
+                                 }
+                                 ((struct lys_type_bit *)actual)->flags |= $2;
                               }
   |  bit_opt_stmt description_stmt { if (yang_read_description(trg, actual, s, "bit", NODE)) {
                                        YYABORT;
@@ -2854,9 +2858,11 @@ refine_body_opt_stmts: @EMPTYDIR@ { $$.refine = actual;
   |  refine_body_opt_stmts config_stmt { if ($1.refine->target_type) {
                                            if ($1.refine->target_type & (LYS_LEAF | LYS_CHOICE | LYS_LIST | LYS_CONTAINER | LYS_LEAFLIST)) {
                                              $1.refine->target_type &= (LYS_LEAF | LYS_CHOICE | LYS_LIST | LYS_CONTAINER | LYS_LEAFLIST);
-                                             if (yang_check_flags((uint16_t*)&$1.refine->flags, LYS_CONFIG_MASK, "config", "refine", $2, 1)) {
+                                             if ($1.refine->flags & LYS_CONFIG_MASK) {
+                                               LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "config", "refine");
                                                YYABORT;
                                              }
+                                             $1.refine->flags |= $2;
                                            } else {
                                              LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "config", "refine");
                                              LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
@@ -2871,9 +2877,11 @@ refine_body_opt_stmts: @EMPTYDIR@ { $$.refine = actual;
   |  refine_body_opt_stmts mandatory_stmt { if ($1.refine->target_type) {
                                               if ($1.refine->target_type & (LYS_LEAF | LYS_CHOICE | LYS_ANYXML)) {
                                                 $1.refine->target_type &= (LYS_LEAF | LYS_CHOICE | LYS_ANYXML);
-                                                if (yang_check_flags((uint16_t*)&$1.refine->flags, LYS_MAND_MASK, "mandatory", "refine", $2, 1)) {
+                                                if ($1.refine->flags & LYS_MAND_MASK) {
+                                                  LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "mandatory", "refine");
                                                   YYABORT;
                                                 }
+                                                $1.refine->flags |= $2;
                                               } else {
                                                 LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "mandatory", "refine");
                                                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
@@ -4479,6 +4487,7 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
                                   LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, yyget_text(scanner));
                                   YYABORT;
                                 }
+                                $$ = 0;
                               }
   |  ext_substatements belongs_to_stmt stmtsep
   |  ext_substatements prefix_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "prefix", ext_name, s,
@@ -4603,10 +4612,18 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
                                           YYABORT;
                                         }
                                       }
-  |  ext_substatements ordered_by_stmt { if (yang_fill_extcomplex_flags(ext_instance, ext_name, "ordered-by", LY_STMT_ORDEREDBY,
-                                                                        $2, LYS_ORDERED_MASK)) {
-                                           YYABORT;
+  |  ext_substatements ordered_by_stmt { if ($1 & LYS_ORDERED_MASK) {
+                                            LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "ordered by", ext_name);
+                                            YYABORT;
                                          }
+                                         if ($2 & LYS_USERORDERED) {
+                                           if (yang_fill_extcomplex_flags(ext_instance, ext_name, "ordered-by", LY_STMT_ORDEREDBY,
+                                                                          $2, LYS_USERORDERED)) {
+                                             YYABORT;
+                                           }
+                                         }
+                                         $1 |= $2;
+                                         $$ = $1;
                                        }
   |  ext_substatements require_instance_stmt { if (yang_fill_extcomplex_uint8(ext_instance, ext_name, "require-instance",
                                                                               LY_STMT_REQINSTANCE, $2)) {

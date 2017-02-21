@@ -94,15 +94,11 @@ int yang_read_description(struct lys_module *module, void *node, char *value, ch
 
 int yang_read_reference(struct lys_module *module, void *node, char *value, char *where, enum yytokentype type);
 
-void *yang_read_revision(struct lys_module *module, char *value, struct lys_revision *retval);
-
 int yang_read_message(struct lys_module *module,struct lys_restr *save,char *value, char *what, int message);
 
 int yang_read_presence(struct lys_module *module, struct lys_node_container *cont, char *value);
 
 int yang_read_config(void *node, int value, enum yytokentype type);
-
-int store_flags(struct lys_node *node, uint8_t flags, int config_opt);
 
 void *yang_read_when(struct lys_module *module, struct lys_node *node, enum yytokentype type, char *value);
 
@@ -168,10 +164,6 @@ void *yang_read_deviate(struct lys_deviation *dev, LYS_DEVIATE_TYPE mod);
 void *yang_read_deviate_unsupported(struct lys_deviation *dev);
 
 int yang_fill_unique(struct lys_module *module, struct lys_node_list *list, struct lys_unique *unique, char *value, struct unres_schema *unres);
-
-int yang_use_extension(struct lys_module *module, struct lys_node *data_node, void *actual, char *value);
-
-int yang_check_flags(uint16_t *flags, uint16_t mask, char *what, char *where, uint16_t value, int shortint);
 
 int yang_fill_iffeature(struct lys_module *module, struct lys_iffeature *iffeature, void *parent,
                         char *value, struct unres_schema *unres, int parent_is_feature);
