@@ -2160,6 +2160,83 @@ test_complex_yin(void **state)
 }
 
 static void
+test_complex_yang(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    const char *yang = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex {\n"
+                    "    argument a;\n"
+                    "    base b;\n"
+                    "    belongs-to test {\n      prefix t;\n    }\n"
+                    "    contact\n      \"contact\";\n"
+                    "    default \"c\";\n"
+                    "    description\n      \"description\";\n"
+                    "    error-app-tag \"d\";\n"
+                    "    error-message\n      \"errmsg\";\n"
+                    "    key \"e\";\n"
+                    "    namespace \"urn\";\n"
+                    "    organization\n      \"org\";\n"
+                    "    path \"f\";\n"
+                    "    prefix g;\n"
+                    "    presence \"h\";\n"
+                    "    reference\n      \"reference\";\n"
+                    "    revision-date 2017-02-21;\n"
+                    "    units \"j\";\n"
+                    "    modifier invert-match;\n"
+                    "    require-instance true;\n"
+                    "    config true;\n"
+                    "    mandatory true;\n"
+                    "    ordered-by user;\n"
+                    "    status obsolete;\n"
+                    "    fraction-digits 5;\n"
+                    "    max-elements 2;\n"
+                    "    min-elements 4;\n"
+                    "    position 11;\n"
+                    "    value 355;\n"
+                    "    unique \"e\";\n"
+                    "    module inmod {\n"
+                    "      namespace \"urn:inmod\";\n"
+                    "      prefix i;\n    }\n"
+                    "    action action;\n\n"
+                    "    anydata anydata;\n\n"
+                    "    anyxml anyxml;\n\n"
+                    "    case case;\n\n"
+                    "    choice choice {\n      anydata a;\n\n      anydata b;\n    }\n\n"
+                    "    container container {\n      presence \"presence\";\n    }\n\n"
+                    "    grouping grp {\n      anydata c;\n    }\n\n"
+                    "    input {\n      anydata d;\n    }\n\n"
+                    "    leaf e {\n      type string;\n    }\n\n"
+                    "    leaf-list f {\n      type string;\n    }\n\n"
+                    "    list g {\n      key \"k\";\n"
+                    "      leaf k {\n        type string;\n      }\n    }\n\n"
+                    "    notification h {\n      anydata i;\n    }\n\n"
+                    "    output {\n      anydata i;\n    }\n\n"
+                    "    uses grp;\n"
+                    "    typedef mytype {\n      type string;\n    }\n"
+                    "    type string;\n"
+                    "    if-feature \"f\";\n"
+                    "    length \"10..20\";\n"
+                    "    must \"1\";\n"
+                    "    pattern \"[a-z]*\";\n"
+                    "    range \"0..10\";\n"
+                    "    when \"1\";\n"
+                    "    revision 2016-02-16;\n  }\n\n"
+                    "  feature f;\n}\n";
+
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL);
+    assert_ptr_not_equal(st->str1, NULL);
+    assert_string_equal(st->str1, yang);
+}
+
+static void
 test_complex_arrays_yin(void **state)
 {
     struct state *st = (*state);
@@ -2267,6 +2344,102 @@ test_complex_arrays_yin(void **state)
     lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yin);
+}
+
+static void
+test_complex_arrays_yang(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    const char *yang = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex-arrays {\n"
+                    "    argument b;\n"
+                    "    argument a {\n      yin-element true;\n    }\n"
+                    "    base a;\n"
+                    "    base b;\n"
+                    "    belongs-to test1 {\n      prefix t1;\n    }\n"
+                    "    belongs-to test2 {\n      prefix t2;\n    }\n"
+                    "    contact\n      \"contact1\";\n"
+                    "    contact\n      \"contact2\";\n"
+                    "    default \"a\";\n"
+                    "    default \"b\";\n"
+                    "    description\n      \"description1\";\n"
+                    "    description\n      \"description2\";\n"
+                    "    error-app-tag \"a\";\n"
+                    "    error-app-tag \"b\";\n"
+                    "    error-message\n      \"errmsg1\";\n"
+                    "    error-message\n      \"errmsg2\";\n"
+                    "    key \"a\";\n"
+                    "    key \"b\";\n"
+                    "    namespace \"urn1\";\n"
+                    "    namespace \"urn2\";\n"
+                    "    organization\n      \"org1\";\n"
+                    "    organization\n      \"org2\";\n"
+                    "    path \"a\";\n"
+                    "    path \"b\";\n"
+                    "    prefix a;\n"
+                    "    prefix b;\n"
+                    "    presence \"a\";\n"
+                    "    presence \"b\";\n"
+                    "    reference\n      \"reference1\";\n"
+                    "    reference\n      \"reference2\";\n"
+                    "    units \"a\";\n"
+                    "    units \"b\";\n"
+                    "    fraction-digits 5;\n"
+                    "    fraction-digits 10;\n"
+                    "    max-elements 2;\n"
+                    "    max-elements 3;\n"
+                    "    min-elements 4;\n"
+                    "    min-elements 5;\n"
+                    "    position 11;\n"
+                    "    position 12;\n"
+                    "    value 42;\n"
+                    "    value -55;\n"
+                    "    unique \"l1 l2\";\n"
+                    "    unique \"l2\";\n"
+                    "    module inmod1 {\n"
+                    "      namespace \"urn:inmod1\";\n"
+                    "      prefix i;\n    }\n"
+                    "    module inmod2 {\n"
+                    "      namespace \"urn:inmod2\";\n"
+                    "      prefix i;\n    }\n"
+                    "    anydata anydata1;\n\n"
+                    "    anydata anydata2;\n\n"
+                    "    anyxml anyxml1;\n\n"
+                    "    anyxml anyxml2;\n\n"
+                    "    leaf l1 {\n      type string;\n    }\n\n"
+                    "    leaf l2 {\n      type string;\n    }\n"
+                    "    typedef mytype1 {\n      type string;\n    }\n"
+                    "    typedef mytype2 {\n      type string;\n    }\n"
+                    "    type string;\n"
+                    "    type uint8;\n"
+                    "    if-feature \"f1\";\n"
+                    "    if-feature \"f2\";\n"
+                    "    length \"10\";\n"
+                    "    length \"20\";\n"
+                    "    must \"1\";\n"
+                    "    must \"2\";\n"
+                    "    pattern \"[a-z]*\";\n"
+                    "    pattern \"[A-Z]*\";\n"
+                    "    range \"0..10\";\n"
+                    "    range \"100..110\";\n"
+                    "    when \"1\";\n"
+                    "    when \"2\";\n"
+                    "    revision 2016-02-16;\n"
+                    "    revision 2016-02-17;\n  }\n\n"
+                    "  feature f1;\n\n"
+                    "  feature f2;\n}\n";
+
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL);
+    assert_ptr_not_equal(st->str1, NULL);
+    assert_string_equal(st->str1, yang);
 }
 
 static void
@@ -2452,6 +2625,134 @@ test_complex_mand_yin(void **state)
     assert_string_equal(st->str1, yin_correct);
 }
 
+static void
+test_complex_mand_yang(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    const char *yang1 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex-mand;\n}\n";
+    const char *yang2 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex-mand {\n"
+                    "    description\n    \"description1\";\n"
+                    "  }\n}\n";
+    const char *yang3 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex-mand {\n"
+                    "    description\n      \"description1\";\n"
+                    "    default \"b\";\n"
+                    "  }\n}\n";
+    const char *yang4 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex-mand {\n"
+                    "    description\n      \"description1\";\n"
+                    "    default \"b\";\n    config true;\n"
+                    "  }\n}\n";
+    const char *yang5 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex-mand {\n"
+                    "    description\n      \"description1\";\n"
+                    "    default \"b\";\n    config true;\n    mandatory true;\n"
+                    "  }\n}\n";
+    const char *yang6 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex-mand {\n"
+                    "    description\n      \"description1\";\n"
+                    "    default \"b\";\n    config true;\n    mandatory true;\n"
+                    "    status obsolete;\n"
+                    "  }\n}\n";
+    const char *yang7 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex-mand {\n"
+                    "    description\n      \"description1\";\n"
+                    "    default \"b\";\n    config true;\n    mandatory true;\n"
+                    "    status obsolete;\n    fraction-digits 5;\n"
+                    "  }\n}\n";
+    const char *yang8 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex-mand {\n"
+                    "    description\n      \"description1\";\n"
+                    "    default \"b\";\n    config true;\n    mandatory true;\n"
+                    "    status obsolete;\n    fraction-digits 5;\n    min-elements 4;\n"
+                    "  }\n}\n";
+    const char *yang9 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex-mand {\n"
+                    "    description\n      \"description1\";\n"
+                    "    default \"b\";\n    config true;\n    mandatory true;\n"
+                    "    status obsolete;\n    fraction-digits 5;\n    min-elements 4;\n"
+                    "    leaf l1 {\n      type string;\n    }\n"
+                    "  }\n}\n";
+    const char *yang_correct = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex-mand {\n"
+                    "    description\n      \"description1\";\n"
+                    "    default \"b\";\n    config true;\n    mandatory true;\n"
+                    "    status obsolete;\n    fraction-digits 5;\n    min-elements 4;\n"
+                    "    leaf l1 {\n      type string;\n    }\n"
+                    "    must \"1\";\n"
+                    "  }\n}\n";
+
+    mod = lys_parse_mem(st->ctx, yang1, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    mod = lys_parse_mem(st->ctx, yang2, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    mod = lys_parse_mem(st->ctx, yang3, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    mod = lys_parse_mem(st->ctx, yang4, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    mod = lys_parse_mem(st->ctx, yang5, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    mod = lys_parse_mem(st->ctx, yang6, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    mod = lys_parse_mem(st->ctx, yang7, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    mod = lys_parse_mem(st->ctx, yang8, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    mod = lys_parse_mem(st->ctx, yang9, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+
+    mod = lys_parse_mem(st->ctx, yang_correct, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL);
+    assert_ptr_not_equal(st->str1, NULL);
+    assert_string_equal(st->str1, yang_correct);
+}
+
+
 int
 main(void)
 {
@@ -2484,6 +2785,9 @@ main(void)
         cmocka_unit_test_setup_teardown(test_rpc_sub_yang, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_notif_sub_yang, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_deviation_sub_yang, setup_ctx_yang, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_complex_yang, setup_ctx_yang, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_complex_arrays_yang, setup_ctx_yang, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_complex_mand_yang, setup_ctx_yang, teardown_ctx),
     };
 
     return cmocka_run_group_tests(cmut, NULL, NULL);
