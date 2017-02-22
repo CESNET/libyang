@@ -378,8 +378,16 @@ typedef enum {
                                           copy of the original extension instance in some of the parents. */
 /** @cond INTERNAL */
 #define LYEXT_OPT_YANG       0x02    /**< temporarily stored pointer to string, which contain prefix and name of extension */
+/** @endcond */
+#define LYEXT_OPT_PLUGIN1    0x0100  /**< reserved flag for plugin-specific use */
+#define LYEXT_OPT_PLUGIN2    0x0200  /**< reserved flag for plugin-specific use */
+#define LYEXT_OPT_PLUGIN3    0x0400  /**< reserved flag for plugin-specific use */
+#define LYEXT_OPT_PLUGIN4    0x0800  /**< reserved flag for plugin-specific use */
+#define LYEXT_OPT_PLUGIN5    0x1000  /**< reserved flag for plugin-specific use */
+#define LYEXT_OPT_PLUGIN6    0x2000  /**< reserved flag for plugin-specific use */
+#define LYEXT_OPT_PLUGIN7    0x4000  /**< reserved flag for plugin-specific use */
+#define LYEXT_OPT_PLUGIN8    0x8000  /**< reserved flag for plugin-specific use */
 /**
- * @endcond
  * @}
  */
 
