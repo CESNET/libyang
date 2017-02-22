@@ -69,13 +69,20 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node, int options)
     struct lyd_attr *attr;
     const struct lys_module *wdmod = NULL;
     struct mlist *mlist = NULL, *miter;
+    int r;
 
     assert(out);
     assert(node);
 
     /* add node attribute modules */
     for (attr = node->attr; attr; attr = attr->next) {
-        if (modlist_add(&mlist, lys_main_module(attr->module))) {
+        if (!attr->annotation) {
+            /* exception for NETCONF's operation and filter */
+            r = modlist_add(&mlist, ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf", NULL));
+        } else {
+            r = modlist_add(&mlist, lys_main_module(attr->annotation->module));
+        }
+        if (r) {
             goto print;
         }
     }
@@ -93,7 +100,13 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node, int options)
         LY_TREE_FOR(node->child, node2) {
             LY_TREE_DFS_BEGIN(node2, next, cur) {
                 for (attr = cur->attr; attr; attr = attr->next) {
-                    if (modlist_add(&mlist, attr->module)) {
+                    if (!attr->annotation) {
+                        /* exception for NETCONF's operation and filter */
+                        r = modlist_add(&mlist, ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf", NULL));
+                    } else {
+                        r = modlist_add(&mlist, lys_main_module(attr->annotation->module));
+                    }
+                    if (r) {
                         goto print;
                     }
                 }
@@ -142,33 +155,30 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
     }
 
     for (attr = node->attr; attr; attr = attr->next) {
-        if (rpc_filter && !strcmp(attr->name, "type")) {
-            ly_print(out, " %s=\"", attr->name);
-        } else if (rpc_filter && !strcmp(attr->name, "select")) {
-            xml_expr = transform_json2xml(node->schema->module, attr->value, &prefs, &nss, &ns_count);
-            if (!xml_expr) {
-                /* error */
-                ly_print(out, "\"(!error!)\"");
-                return;
-            }
-
+        xml_expr = transform_json2xml(node->schema->module, attr->value, &prefs, &nss, &ns_count);
+        if (xml_expr) {
             for (i = 0; i < ns_count; ++i) {
                 ly_print(out, " xmlns:%s=\"%s\"", prefs[i], nss[i]);
             }
             free(prefs);
             free(nss);
-
-            ly_print(out, " %s=\"", attr->name);
-            lyxml_dump_text(out, xml_expr);
-            ly_print(out, "\"");
-
-            lydict_remove(node->schema->module->ctx, xml_expr);
-            continue;
-        } else {
-            ly_print(out, " %s:%s=\"", attr->module->prefix, attr->name);
         }
-        lyxml_dump_text(out, attr->value);
+
+        if (attr->annotation) {
+            ly_print(out, " %s:%s=\"", attr->annotation->module->prefix, attr->name);
+        } else if (rpc_filter) {
+            /* exception for NETCONF's filter's attributes */
+            ly_print(out, " %s=\"", attr->name);
+        } else {
+            /* exception for NETCONF's edit-config's attributes */
+            ly_print(out, " nc:%s=\"", attr->name);
+        }
+        lyxml_dump_text(out, xml_expr ? xml_expr : attr->value);
         ly_print(out, "\"");
+
+        if (xml_expr) {
+            lydict_remove(node->schema->module->ctx, xml_expr);
+        }
     }
 }
 

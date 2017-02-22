@@ -4350,8 +4350,9 @@ lyd_dup_attr(struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_attr *attr)
     }
 
     /* fill new attr except */
+    ret->parent = parent;
     ret->next = NULL;
-    ret->module = attr->module;
+    ret->annotation = attr->annotation;
     ret->name = lydict_insert(ctx, attr->name, 0);
     ret->value = lydict_insert(ctx, attr->value, 0);
 
@@ -4740,6 +4741,7 @@ lyd_insert_attr(struct lyd_node *parent, const struct lys_module *mod, const cha
     const struct lys_module *module;
     const char *p;
     char *aux;
+    int pos, i;
 
     if (!parent || !name || !value) {
         return NULL;
@@ -4769,13 +4771,29 @@ lyd_insert_attr(struct lyd_node *parent, const struct lys_module *mod, const cha
         module = parent->schema->module;
     }
 
+    pos = -1;
+    do {
+        if ((unsigned int)(pos + 1) < module->ext_size) {
+            i = lys_ext_instance_presence(&ctx->models.list[0]->extensions[0],
+                                          &module->ext[pos + 1], module->ext_size - (pos + 1));
+            pos = (i == -1) ? -1 : pos + 1 + i;
+        } else {
+            pos = -1;
+        }
+        if (pos == -1) {
+            LOGERR(LY_EINVAL, "Attribute does not match any annotation instance definition.");
+            return NULL;
+        }
+    } while (!ly_strequal(module->ext[pos]->arg_value, name, 0));
+
     a = malloc(sizeof *a);
     if (!a) {
         LOGMEM;
         return NULL;
     }
-    a->module = (struct lys_module *)module;
+    a->parent = parent;
     a->next = NULL;
+    a->annotation = (struct lys_ext_instance_complex *)module->ext[pos];
     a->name = lydict_insert(ctx, name, 0);
     a->value = lydict_insert(ctx, value, 0);
 

@@ -35,18 +35,20 @@
  */
 extern unsigned int ext_plugins_ref;
 
-#define YANG_FAKEMODULE_PATH "../models/yang@2016-02-11.h"
+#define IETF_YANG_METADATA_PATH "../models/ietf-yang-metadata@2016-08-05.h"
+#define YANG_PATH "../models/yang@2017-02-20.h"
 #define IETF_INET_TYPES_PATH "../models/ietf-inet-types@2013-07-15.h"
 #define IETF_YANG_TYPES_PATH "../models/ietf-yang-types@2013-07-15.h"
 #define IETF_YANG_LIB_PATH "../models/ietf-yang-library@2016-06-21.h"
 #define IETF_YANG_LIB_REV "2016-06-21"
 
-#include YANG_FAKEMODULE_PATH
+#include IETF_YANG_METADATA_PATH
+#include YANG_PATH
 #include IETF_INET_TYPES_PATH
 #include IETF_YANG_TYPES_PATH
 #include IETF_YANG_LIB_PATH
 
-#define INTERNAL_MODULES_COUNT 4
+#define INTERNAL_MODULES_COUNT 5
 static struct internal_modules_s {
     const char *name;
     const char *revision;
@@ -54,7 +56,8 @@ static struct internal_modules_s {
     uint8_t implemented;
     LYS_INFORMAT format;
 } internal_modules[INTERNAL_MODULES_COUNT] = {
-    {"yang", "2016-02-11", (const char*)yang_2016_02_11_yin, 1, LYS_IN_YIN},
+    {"ietf-yang-metadata", "2016-08-05", (const char*)ietf_yang_metadata_2016_08_05_yin, 0, LYS_IN_YIN},
+    {"yang", "2017-02-20", (const char*)yang_2017_02_20_yin, 1, LYS_IN_YIN},
     {"ietf-inet-types", "2013-07-15", (const char*)ietf_inet_types_2013_07_15_yin, 0, LYS_IN_YIN},
     {"ietf-yang-types", "2013-07-15", (const char*)ietf_yang_types_2013_07_15_yin, 0, LYS_IN_YIN},
     {"ietf-yang-library", "2016-06-21", (const char*)ietf_yang_library_2016_06_21_yin, 1, LYS_IN_YIN}

@@ -584,12 +584,13 @@ repeat:
 }
 
 static unsigned int
-json_parse_attr(struct lys_module *parent_module, struct lyd_attr **attr, const char *data)
+json_parse_attr(struct lys_module *parent_module, struct lyd_attr **attr, const char *data, int options)
 {
     unsigned int len = 0, r;
-    char *str = NULL, *name, *prefix, *value;
+    char *str = NULL, *name, *prefix = NULL, *value;
     struct lys_module *module = parent_module;
     struct lyd_attr *attr_new, *attr_last = NULL;
+    int pos, i;
 
     *attr = NULL;
 
@@ -658,13 +659,44 @@ repeat:
     len += r + 1;
     len += skip_ws(&data[len]);
 
+    /* find the appropriate annotation definition */
+    pos = lys_ext_instance_presence(&module->ctx->models.list[0]->extensions[0], module->ext, module->ext_size);
+    if (pos == -1) {
+        free(value);
+attr_error:
+        if (options & LYD_OPT_STRICT) {
+            LOGVAL(LYE_INELEM, LY_VLOG_NONE, NULL, name);
+            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Unknown metadata (%s%s%s).",
+                   prefix ? prefix : "", prefix ? ":" : "", name);
+            goto error;
+        } else {
+            LOGWRN("Unknown metadata (%s%s%s) - skipping.",
+                   prefix ? prefix : "", prefix ? ":" : "", name);
+            goto next;
+        }
+    }
+
     attr_new = malloc(sizeof **attr);
     if (!attr_new) {
         LOGMEM;
         goto error;
     }
-    attr_new->module = module;
+    /* will be filled later, at this moment it can be unknow due to a way
+     * how the attributes are encoded in JSON */
+    attr_new->parent = NULL;
     attr_new->next = NULL;
+
+    while(pos != -1 && ((unsigned int)(pos + 1) < module->ext_size) &&
+            !ly_strequal(module->ext[pos]->arg_value, name, 0)) {
+        i = lys_ext_instance_presence(&module->ctx->models.list[0]->extensions[0],
+                                      &module->ext[pos + 1], module->ext_size - (pos + 1));
+        pos = (i == -1) ? -1 : pos + 1 + i;
+    }
+    if (pos == -1) {
+        goto attr_error;
+    }
+    attr_new->annotation = (struct lys_ext_instance_complex *)module->ext[pos];
+
     attr_new->name = lydict_insert(module->ctx, name, 0);
     attr_new->value = lydict_insert_zc(module->ctx, value);
     if (!attr_last) {
@@ -674,6 +706,7 @@ repeat:
         attr_last = attr_new;
     }
 
+next:
     free(str);
     str = NULL;
 
@@ -691,7 +724,7 @@ repeat:
 error:
     free(str);
     if (*attr) {
-        lyd_free_attr((*attr)->module->ctx, NULL, *attr, 1);
+        lyd_free_attr(module->ctx, NULL, *attr, 1);
         *attr = NULL;
     }
     return 0;
@@ -709,6 +742,7 @@ store_attrs(struct ly_ctx *ctx, struct attr_cont *attrs, struct lyd_node *first)
 {
     struct lyd_node *diter;
     struct attr_cont *iter;
+    struct lyd_attr *aiter;
     unsigned int flag_leaflist = 0;
 
     while (attrs) {
@@ -738,6 +772,9 @@ store_attrs(struct ly_ctx *ctx, struct attr_cont *attrs, struct lyd_node *first)
             }
 
             diter->attr = iter->attr;
+            for (aiter = iter->attr; aiter; aiter = aiter->next) {
+                aiter->parent = diter;
+            }
             break;
         }
 
@@ -828,7 +865,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
             goto error;
         }
 
-        r = json_parse_attr((*parent)->schema->module, &attr, &data[len]);
+        r = json_parse_attr((*parent)->schema->module, &attr, &data[len], options);
         if (!r) {
             LOGPATH(LY_VLOG_LYD, (*parent));
             goto error;
@@ -839,6 +876,9 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
             lyd_free_attr(ctx, NULL, attr, 1);
         } else {
             (*parent)->attr = attr;
+            for (; attr; attr = attr->next) {
+                attr->parent = *parent;
+            }
         }
         free(str);
         return len;
@@ -924,7 +964,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
         }
 
 attr_repeat:
-        r = json_parse_attr((struct lys_module *)module, &attr, &data[len]);
+        r = json_parse_attr((struct lys_module *)module, &attr, &data[len], options);
         if (!r) {
             LOGPATH(LY_VLOG_LYD, (*parent));
             goto error;

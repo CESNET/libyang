@@ -46,17 +46,24 @@ const char *lys_module_a = \
 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>           \
 <module name=\"a\"                                    \
         xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"   \
+        xmlns:md=\"urn:ietf:params:xml:ns:yang:ietf-yang-metadata\"\
         xmlns:a=\"urn:a\">                            \
   <namespace uri=\"urn:a\"/>                          \
   <prefix value=\"a_mod\"/>                           \
   <include module=\"asub\"/>                          \
   <include module=\"atop\"/>                          \
+  <import module=\"ietf-yang-metadata\">              \
+    <prefix value=\"md\"/>                            \
+  </import>                                           \
   <feature name=\"foo\"/>                             \
   <grouping name=\"gg\">                              \
     <leaf name=\"bar-gggg\">                          \
       <type name=\"string\"/>                         \
     </leaf>                                           \
   </grouping>                                         \
+  <md:annotation name=\"test\">                       \
+    <type name=\"string\"/>                           \
+  </md:annotation>                                    \
   <container name=\"x\">                              \
     <leaf name=\"bar-leaf\">                          \
       <if-feature name=\"bar\"/>                      \

@@ -112,7 +112,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     struct lyd_attr *dattr, *dattr_iter;
     struct lyxml_attr *attr;
     struct lyxml_elem *child, *next;
-    int i, j, havechildren, r, flag, pos, editbits = 0;
+    int i, j, havechildren, r, pos, editbits = 0;
     int ret = 0;
     const char *str = NULL;
 
@@ -419,7 +419,6 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     }
 
     for (attr = xml->attr; attr; attr = attr->next) {
-        flag = 0;
         if (attr->type != LYXML_ATTR_STD) {
             continue;
         } else if (!attr->ns) {
@@ -437,53 +436,89 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                 }
             } else {
                 /* exception for filter's attributes */
-                flag = 1;
+                pos = -1;
+            }
+        } else if (!strcmp(attr->ns->value, LY_NSNC)) {
+            /* exception for edit-config's attributes */
+            pos = -1;
+        } else { /* regular annotation */
+            /* first, get module where the annotation should be defined */
+            mod = (struct lys_module*)ly_ctx_get_module_by_ns(ctx, attr->ns->value, NULL);
+            if (!mod) {
+                goto attr_error;
+            }
+
+            /* then, find the appropriate annotation definition */
+            pos = lys_ext_instance_presence(&ctx->models.list[0]->extensions[0], mod->ext, mod->ext_size);
+            if (pos == -1) {
+                goto attr_error;
             }
         }
 
+        /* allocate and fill the data attribute structure */
         dattr = malloc(sizeof *dattr);
         if (!dattr) {
             goto error;
         }
+        dattr->parent = (*result);
         dattr->next = NULL;
+
+        if (pos != -1) {
+            while(pos != -1 && ((unsigned int)(pos + 1) < mod->ext_size) &&
+                    !ly_strequal(mod->ext[pos]->arg_value, attr->name, 1)) {
+                i = lys_ext_instance_presence(&ctx->models.list[0]->extensions[0],
+                                              &mod->ext[pos + 1], mod->ext_size - (pos + 1));
+                pos = (i == -1) ? -1 : pos + 1 + i;
+            }
+            if (pos == -1) {
+                goto attr_error;
+            }
+            dattr->annotation = (struct lys_ext_instance_complex *)mod->ext[pos];
+        } else {
+            /* exception for NETCONF's edit-config and filter attributes */
+            dattr->annotation = NULL;
+        }
+
         dattr->name = attr->name;
-        if (flag && ly_strequal(attr->name, "select", 0)) {
-            dattr->value = transform_xml2json(ctx, attr->value, xml, 0, 1);
-            if (!dattr->value) {
+        attr->name = NULL;
+
+        ly_vlog_hide(1);
+        dattr->value = transform_xml2json(ctx, attr->value, xml, 0, 1);
+        ly_vlog_hide(0);
+        if (!dattr->value) {
+            if (ly_errno != LY_EVALID) {
+                /* fatal error, reprint the error message */
+                ly_err_repeat();
                 free(dattr);
                 goto error;
             }
-            lydict_remove(ctx, attr->value);
-        } else {
+            /* problem with resolving value as xpath
+             * - ignore it and just store the value as it is */
+            ly_err_clean(1);
             dattr->value = attr->value;
-        }
-        attr->name = NULL;
-        attr->value = NULL;
-
-        if (!attr->ns) {
-            /* filter's attributes, it actually has no namespace, but we need some for internal representation */
-            dattr->module = (*result)->schema->module;
+            attr->value = NULL;
         } else {
-            dattr->module = (struct lys_module *)ly_ctx_get_module_by_ns(ctx, attr->ns->value, NULL);
-        }
-        if (!dattr->module) {
-            free(dattr);
-            if (options & LYD_OPT_STRICT) {
-                LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), attr->name, xml->name);
-                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Attribute \"%s\" from unknown schema (\"%s\").",
-                       attr->name, attr->ns->value);
-                goto error;
-            } else {
-                LOGWRN("Attribute \"%s\" from unknown schema (\"%s\") - skipping.", attr->name, attr->ns->value);
-                continue;
-            }
+            lydict_remove(ctx, attr->value);
+            attr->value = NULL;
         }
 
+        /* insert into the data node */
         if (!(*result)->attr) {
             (*result)->attr = dattr;
         } else {
             for (dattr_iter = (*result)->attr; dattr_iter->next; dattr_iter = dattr_iter->next);
             dattr_iter->next = dattr;
+        }
+        continue;
+
+attr_error:
+        if (options & LYD_OPT_STRICT) {
+            LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), attr->name, xml->name);
+            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Unknown metadata (%s:%s).", attr->ns->value, attr->name);
+            goto error;
+        } else {
+            LOGWRN("Unknown metadata (%s:%s) - skipping.", attr->ns->value, attr->name);
+            continue;
         }
     }
 

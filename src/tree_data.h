@@ -82,18 +82,17 @@ typedef enum {
 /**
  * @brief Attribute structure.
  *
- * The structure provides information about attributes of a data element. Such attributes partially
- * maps to annotations from draft-ietf-netmod-yang-metadata. In XML, they are represented as standard
- * XML attrbutes. In JSON, they are represented as JSON elements starting with the '@' character
- * (for more information, see the yang metadata draft.
+ * The structure provides information about attributes of a data element. Such attributes must map to
+ * annotations as specified in RFC 7952. The only exception is the filter type (in NETCONF get operations)
+ * and edit-config's operation attributes. In XML, they are represented as standard XML attrbutes. In JSON,
+ * they are represented as JSON elements starting with the '@' character (for more information, see the
+ * YANG metadata RFC.
  *
  */
 struct lyd_attr {
+    struct lyd_node *parent;         /**< data node where the attribute is placed */
     struct lyd_attr *next;           /**< pointer to the next attribute of the same element */
-    struct lys_module *module;       /**< pointer to the attribute's module.
-                                          TODO when annotations will be supported, point to the annotation definition
-                                          and validate that the attribute is really defined there. Currently, we just
-                                          believe that it is defined in the module it says */
+    struct lys_ext_instance_complex *annotation; /**< pointer to the attribute/annotation's definition */
     const char *name;                /**< attribute name */
     const char *value;               /**< attribute value */
 };
