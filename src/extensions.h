@@ -128,7 +128,7 @@ typedef int (*lyext_check_position_clb)(const void *parent, LYEXT_PAR parent_typ
 
 /**
  * @brief Callback to check that the extension instance is correct - have
- * the valid argument, all the mandatory substatements, etc.
+ * the valid argument, cardinality, etc.
  *
  * @param[in] ext Extension instance to be checked.
  * @return 0 - ok

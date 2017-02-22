@@ -71,13 +71,45 @@ int nacm_inherit(struct lys_ext_instance *UNUSED(ext), struct lys_node *node)
 }
 
 /**
+ * @brief Callback to check that the extension instance is correct - have
+ * the valid argument, cardinality, etc.
+ *
+ * In NACM case, we are checking only the cardinality.
+ *
+ * @param[in] ext Extension instance to be checked.
+ * @return 0 - ok
+ *         1 - error
+ */
+int
+nacm_cardinality(struct lys_ext_instance *ext)
+{
+    struct lys_ext_instance **extlist;
+    uint8_t extsize, i, c;
+
+    extlist = ((struct lys_node *)ext->parent)->ext;
+    extsize = ((struct lys_node *)ext->parent)->ext_size;
+
+    for (i = c = 0; i < extsize; i++) {
+        if (extlist[i]->def == ext->def) {
+            c++;
+        }
+    }
+
+    if (c > 1) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+/**
  * @brief Plugin for the NACM's default-deny-write extension
  */
 struct lyext_plugin nacm_deny_write = {
     .type = LYEXT_FLAG,
     .flags = LYEXT_OPT_INHERIT,
     .check_position = &nacm_position,
-    .check_result = NULL,
+    .check_result = &nacm_cardinality,
     .check_inherit = &nacm_inherit
 };
 
@@ -88,7 +120,7 @@ struct lyext_plugin nacm_deny_all = {
     .type = LYEXT_FLAG,
     .flags = LYEXT_OPT_INHERIT,
     .check_position = &nacm_position,
-    .check_result = NULL,
+    .check_result = &nacm_cardinality,
     .check_inherit = &nacm_inherit
 };
 
