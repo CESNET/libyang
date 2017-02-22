@@ -18,6 +18,8 @@
 #  define UNUSED(x) UNUSED_ ## x
 #endif
 
+#include <stdlib.h>
+
 #include "../extensions.h"
 
 /**
@@ -85,17 +87,29 @@ nacm_cardinality(struct lys_ext_instance *ext)
 {
     struct lys_ext_instance **extlist;
     uint8_t extsize, i, c;
+    char *path;
+
+    if (ext->flags & LYEXT_OPT_PLUGIN1) {
+        /* already checked */
+        ext->flags &= ~LYEXT_OPT_PLUGIN1;
+        return 0;
+    }
 
     extlist = ((struct lys_node *)ext->parent)->ext;
     extsize = ((struct lys_node *)ext->parent)->ext_size;
 
     for (i = c = 0; i < extsize; i++) {
         if (extlist[i]->def == ext->def) {
+            extlist[i]->flags |= LYEXT_OPT_PLUGIN1;
             c++;
         }
     }
 
     if (c > 1) {
+        path = lys_path((struct lys_node *)(ext->parent));
+        LYEXT_LOG(LY_LLERR, "extension nacm:%s can appear only once, but %d instances found in %s.",
+                  ext->def->name, c, path);
+        free(path);
         return 1;
     } else {
         return 0;
