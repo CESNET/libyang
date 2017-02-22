@@ -6841,7 +6841,7 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
             } else if (rc == -1) {
                 ly_vlog_hide(0);
                 /* print the error */
-                resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, 1);
+                ly_err_repeat();
                 return -1;
             } else {
                 /* forward reference, erase ly_errno */
@@ -6894,8 +6894,11 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
         } else if (rc == -1) {
             ly_vlog_hide(0);
             /* print the error */
-            resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, 1);
+            ly_err_repeat();
             return -1;
+        } else {
+            /* forward reference, erase ly_errno */
+            ly_err_clean(1);
         }
     }
 
@@ -6908,10 +6911,14 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
         }
 
         rc =  resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, 0);
+        unres->type[i] = UNRES_RESOLVED;
         if (rc == 0) {
-            unres->type[i] = UNRES_RESOLVED;
             ++resolved;
         }
+        /* else error - it was already printed, but resolved was not increased,
+           so this unres item will not be resolved again in the following code,
+           but it will cause returning -1 at the end, this way we are able to
+           print all the issues with unres */
     }
 
     if (resolved < unres->count) {
