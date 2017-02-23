@@ -7339,7 +7339,7 @@ yin_parse_extcomplex_str(struct lys_module *mod, struct lyxml_elem *node,
                 p[1] = malloc(2 * sizeof(const char *));
             } else if (stmt == LY_STMT_ARGUMENT) {
                 /* allocate another array for the yin element */
-                p[1] = malloc(2 * sizeof(uint8_t));
+                ((uint8_t **)p)[1] = malloc(2 * sizeof(uint8_t));
             }
         } else {
             /* get the index in the array to add new item */
