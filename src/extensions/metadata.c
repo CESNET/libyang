@@ -43,6 +43,66 @@ int annotation_position(const void * UNUSED(parent), LYEXT_PAR parent_type, LYEX
 }
 
 /**
+ * @brief Callback to check that the extension instance is correct - have
+ * the valid argument, cardinality, etc.
+ *
+ * In Metadata case, we are checking for the annotation names duplication.
+ *
+ * @param[in] ext Extension instance to be checked.
+ * @return 0 - ok
+ *         1 - error
+ */
+int
+annotation_duplication_check(struct lys_ext_instance *ext)
+{
+    uint8_t  i, j, c;
+    struct lys_module *mod;
+    struct lys_submodule *submod;
+
+    if (ext->flags & LYEXT_OPT_PLUGIN1) {
+        /* already checked */
+        ext->flags &= ~LYEXT_OPT_PLUGIN1;
+        return 0;
+    }
+
+    mod = lys_main_module((struct lys_module *)ext->parent);
+
+    for (i = c = 0; i < mod->ext_size; i++) {
+        /* note, that it is not necessary to check also ext->insubstmt since
+         * annotation_position() ensures that annotation instances are placed only
+         * in module or submodule */
+        if (mod->ext[i]->def == ext->def && mod->ext[i]->arg_value == ext->arg_value) {
+            if (mod->ext[i] != ext) {
+                /* do not mark the instance being checked */
+                mod->ext[i]->flags |= LYEXT_OPT_PLUGIN1;
+            }
+            c++;
+        }
+    }
+    /* similarly, go through the all extensions in the main module submodules */
+    for (j = 0; j < mod->inc_size; j++) {
+        submod = mod->inc[j].submodule; /* shortcut */
+        for (i = 0; i < submod->ext_size; i++) {
+            if (submod->ext[i]->def == ext->def && submod->ext[i]->arg_value == ext->arg_value) {
+                if (submod->ext[i] != ext) {
+                    /* do not mark the instance being checked */
+                    submod->ext[i]->flags |= LYEXT_OPT_PLUGIN1;
+                }
+                c++;
+            }
+        }
+    }
+
+    if (c > 1) {
+        LYEXT_LOG(LY_LLERR, "Annotations",
+                  "Annotation instance %s is not unique, there are %d instances with the same name in module %s.",
+                  ext->arg_value, c, ((struct lys_module *)ext->parent)->name);
+        return 1;
+    } else {
+        return 0;
+    }
+}
+/**
  * extension instance's content:
  * struct lys_type *type;
  * const char* dsc;
@@ -71,7 +131,7 @@ struct lyext_plugin_complex annotation = {
     .type = LYEXT_COMPLEX,
     .flags = 0,
     .check_position = &annotation_position,
-    .check_result = NULL,
+    .check_result = &annotation_duplication_check,
     .check_inherit = NULL,
 
     /* specification of allowed substatements of the extension instance */
