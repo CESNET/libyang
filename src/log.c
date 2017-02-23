@@ -141,19 +141,16 @@ ly_log(LY_LOG_LEVEL level, const char *format, ...)
 }
 
 void
-lyext_log(LY_LOG_LEVEL level, const char *filename, const char *function, const char *format, ...)
+lyext_log(LY_LOG_LEVEL level, const char *plugin, const char *function, const char *format, ...)
 {
     va_list ap;
-    char *plugin_msg, *plugin_name, *p;
+    char *plugin_msg;
 
     if (ly_log_level < level) {
         return;
     }
 
-    plugin_name = strdup(filename);
-    p = strrchr(plugin_name, '.');
-    *p = '\0';
-    asprintf(&plugin_msg, "%s (extension plugin %s, %s())", format, plugin_name, function);
+    asprintf(&plugin_msg, "%s (extension plugin %s, %s())", format, plugin, function);
 
     va_start(ap, format);
     log_vprintf(level, (*ly_vlog_hide_location()), plugin_msg, NULL, ap);

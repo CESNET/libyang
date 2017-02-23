@@ -100,14 +100,20 @@ nacm_cardinality(struct lys_ext_instance *ext)
 
     for (i = c = 0; i < extsize; i++) {
         if (extlist[i]->def == ext->def) {
-            extlist[i]->flags |= LYEXT_OPT_PLUGIN1;
+            /* note, that it is not necessary to check also ext->insubstmt since
+             * nacm_position() ensures that NACM's extension instances are placed only
+             * in schema nodes */
+            if (extlist[i] != ext) {
+                /* do not mark the instance being checked */
+                extlist[i]->flags |= LYEXT_OPT_PLUGIN1;
+            }
             c++;
         }
     }
 
     if (c > 1) {
         path = lys_path((struct lys_node *)(ext->parent));
-        LYEXT_LOG(LY_LLERR, "extension nacm:%s can appear only once, but %d instances found in %s.",
+        LYEXT_LOG(LY_LLERR, "NACM", "Extension nacm:%s can appear only once, but %d instances found in %s.",
                   ext->def->name, c, path);
         free(path);
         return 1;

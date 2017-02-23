@@ -195,17 +195,18 @@ struct lyext_plugin_list {
 /**
  * @brief Logging function for extension plugins, use #LYEXT_LOG macro instead!
  */
-void lyext_log(LY_LOG_LEVEL level, const char *filename, const char *function, const char *format, ...);
+void lyext_log(LY_LOG_LEVEL level, const char *plugin, const char *function, const char *format, ...);
 
 /**
  * @brief Logging macro for extension plugins
  *
  * @param[in] level #LY_LOG_LEVEL value with the message importance.
+ * @param[in] plugin Plugin name.
  * @param[in] str Format string as in case of printf function.
  * @param[in] args Parameters to expand in format string.
  */
-#define LYEXT_LOG(level, str, args...)                 \
-    lyext_log(level, __FILE__, __func__, str, ##args); \
+#define LYEXT_LOG(level, plugin, str, args...)       \
+    lyext_log(level, plugin, __func__, str, ##args); \
 
 /**
  * @}
