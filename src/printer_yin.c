@@ -1456,29 +1456,11 @@ yin_print_rpc_action(struct lyout *out, int level, const struct lys_node *node)
 
     LY_TREE_FOR(node->child, sub) {
         /* augments */
-        if ((sub->parent != node) || (sub->nodetype != LYS_GROUPING)) {
+        if ((sub->parent != node) || ((sub->nodetype & (LYS_INPUT | LYS_OUTPUT) && (sub->flags & LYS_IMPLICIT)))) {
             continue;
         }
         yin_print_close_parent(out, &content);
-        yin_print_snode(out, level, sub, LYS_GROUPING);
-    }
-
-    LY_TREE_FOR(node->child, sub) {
-        /* augments */
-        if ((sub->parent != node) || ((sub->nodetype != LYS_INPUT) || (sub->flags & LYS_IMPLICIT))) {
-            continue;
-        }
-        yin_print_close_parent(out, &content);
-        yin_print_snode(out, level, sub, LYS_INPUT);
-    }
-
-    LY_TREE_FOR(node->child, sub) {
-        /* augments */
-        if ((sub->parent != node) || ((sub->nodetype != LYS_OUTPUT) || (sub->flags & LYS_IMPLICIT))) {
-            continue;
-        }
-        yin_print_close_parent(out, &content);
-        yin_print_snode(out, level, sub, LYS_OUTPUT);
+        yin_print_snode(out, level, sub, LYS_INPUT | LYS_OUTPUT | LYS_GROUPING);
     }
 
     level--;

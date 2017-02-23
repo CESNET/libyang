@@ -3804,7 +3804,7 @@ yang_check_list(struct lys_module *module, struct lys_node_list *list, struct ly
     }
     /* check - if list is configuration, key statement is mandatory
      * (but only if we are not in a grouping or augment, then the check is deferred) */
-    for (node = (struct lys_node *)list; node && !(node->nodetype & (LYS_GROUPING | LYS_AUGMENT)); node = node->parent);
+    for (node = (struct lys_node *)list; node && !(node->nodetype & (LYS_GROUPING | LYS_AUGMENT | LYS_EXT)); node = node->parent);
     if (!node && (list->flags & LYS_CONFIG_W) && !list->keys) {
         LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, list, "key", "list");
         goto error;

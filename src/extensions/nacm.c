@@ -18,6 +18,8 @@
 #  define UNUSED(x) UNUSED_ ## x
 #endif
 
+#include <stdlib.h>
+
 #include "../extensions.h"
 
 /**
@@ -71,13 +73,63 @@ int nacm_inherit(struct lys_ext_instance *UNUSED(ext), struct lys_node *node)
 }
 
 /**
+ * @brief Callback to check that the extension instance is correct - have
+ * the valid argument, cardinality, etc.
+ *
+ * In NACM case, we are checking only the cardinality.
+ *
+ * @param[in] ext Extension instance to be checked.
+ * @return 0 - ok
+ *         1 - error
+ */
+int
+nacm_cardinality(struct lys_ext_instance *ext)
+{
+    struct lys_ext_instance **extlist;
+    uint8_t extsize, i, c;
+    char *path;
+
+    if (ext->flags & LYEXT_OPT_PLUGIN1) {
+        /* already checked */
+        ext->flags &= ~LYEXT_OPT_PLUGIN1;
+        return 0;
+    }
+
+    extlist = ((struct lys_node *)ext->parent)->ext;
+    extsize = ((struct lys_node *)ext->parent)->ext_size;
+
+    for (i = c = 0; i < extsize; i++) {
+        if (extlist[i]->def == ext->def) {
+            /* note, that it is not necessary to check also ext->insubstmt since
+             * nacm_position() ensures that NACM's extension instances are placed only
+             * in schema nodes */
+            if (extlist[i] != ext) {
+                /* do not mark the instance being checked */
+                extlist[i]->flags |= LYEXT_OPT_PLUGIN1;
+            }
+            c++;
+        }
+    }
+
+    if (c > 1) {
+        path = lys_path((struct lys_node *)(ext->parent));
+        LYEXT_LOG(LY_LLERR, "NACM", "Extension nacm:%s can appear only once, but %d instances found in %s.",
+                  ext->def->name, c, path);
+        free(path);
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+/**
  * @brief Plugin for the NACM's default-deny-write extension
  */
 struct lyext_plugin nacm_deny_write = {
     .type = LYEXT_FLAG,
     .flags = LYEXT_OPT_INHERIT,
     .check_position = &nacm_position,
-    .check_result = NULL,
+    .check_result = &nacm_cardinality,
     .check_inherit = &nacm_inherit
 };
 
@@ -88,7 +140,7 @@ struct lyext_plugin nacm_deny_all = {
     .type = LYEXT_FLAG,
     .flags = LYEXT_OPT_INHERIT,
     .check_position = &nacm_position,
-    .check_result = NULL,
+    .check_result = &nacm_cardinality,
     .check_inherit = &nacm_inherit
 };
 

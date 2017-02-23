@@ -4723,9 +4723,9 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
                                                 info->data.yang->ext_modules, info->mod->implemented)) {
                     goto error;
                 }
-                if (lyp_mand_check_ext((struct lys_ext_instance_complex*)(*ext), ext_prefix)) {
-                    goto error;
-                }
+            }
+            if (lyp_mand_check_ext((struct lys_ext_instance_complex*)(*ext), ext_prefix)) {
+                goto error;
             }
             break;
         case LYEXT_ERR:
@@ -6086,7 +6086,7 @@ resolve_when(struct lyd_node *node, int *result, int ignore_fail)
     assert(node);
     memset(&set, 0, sizeof set);
 
-    if (!(node->schema->nodetype & (LYS_NOTIF | LYS_RPC)) && (((struct lys_node_container *)node->schema)->when)) {
+    if (!(node->schema->nodetype & (LYS_NOTIF | LYS_RPC | LYS_ACTION)) && (((struct lys_node_container *)node->schema)->when)) {
         /* make the node dummy for the evaluation */
         node->validity |= LYD_VAL_INUSE;
         rc = lyxp_eval(((struct lys_node_container *)node->schema)->when->cond, node, LYXP_NODE_ELEM, lyd_node_module(node),
@@ -6841,7 +6841,7 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
             } else if (rc == -1) {
                 ly_vlog_hide(0);
                 /* print the error */
-                resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, 1);
+                ly_err_repeat();
                 return -1;
             } else {
                 /* forward reference, erase ly_errno */
@@ -6894,8 +6894,11 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
         } else if (rc == -1) {
             ly_vlog_hide(0);
             /* print the error */
-            resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, 1);
+            ly_err_repeat();
             return -1;
+        } else {
+            /* forward reference, erase ly_errno */
+            ly_err_clean(1);
         }
     }
 
@@ -6908,10 +6911,14 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
         }
 
         rc =  resolve_unres_schema_item(mod, unres->item[i], unres->type[i], unres->str_snode[i], unres, 0);
+        unres->type[i] = UNRES_RESOLVED;
         if (rc == 0) {
-            unres->type[i] = UNRES_RESOLVED;
             ++resolved;
         }
+        /* else error - it was already printed, but resolved was not increased,
+           so this unres item will not be resolved again in the following code,
+           but it will cause returning -1 at the end, this way we are able to
+           print all the issues with unres */
     }
 
     if (resolved < unres->count) {

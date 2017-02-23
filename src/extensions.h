@@ -15,7 +15,7 @@
 #ifndef LY_EXTENSIONS_H_
 #define LY_EXTENSIONS_H_
 
-#include "tree_schema.h"
+#include "libyang.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -128,7 +128,7 @@ typedef int (*lyext_check_position_clb)(const void *parent, LYEXT_PAR parent_typ
 
 /**
  * @brief Callback to check that the extension instance is correct - have
- * the valid argument, all the mandatory substatements, etc.
+ * the valid argument, cardinality, etc.
  *
  * @param[in] ext Extension instance to be checked.
  * @return 0 - ok
@@ -191,6 +191,22 @@ struct lyext_plugin_list {
     const char *name;            /**< name of the extension */
     struct lyext_plugin *plugin; /**< plugin for the extension */
 };
+
+/**
+ * @brief Logging function for extension plugins, use #LYEXT_LOG macro instead!
+ */
+void lyext_log(LY_LOG_LEVEL level, const char *plugin, const char *function, const char *format, ...);
+
+/**
+ * @brief Logging macro for extension plugins
+ *
+ * @param[in] level #LY_LOG_LEVEL value with the message importance.
+ * @param[in] plugin Plugin name.
+ * @param[in] str Format string as in case of printf function.
+ * @param[in] args Parameters to expand in format string.
+ */
+#define LYEXT_LOG(level, plugin, str, args...)       \
+    lyext_log(level, plugin, __func__, str, ##args); \
 
 /**
  * @}

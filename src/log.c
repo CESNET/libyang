@@ -140,6 +140,25 @@ ly_log(LY_LOG_LEVEL level, const char *format, ...)
     va_end(ap);
 }
 
+void
+lyext_log(LY_LOG_LEVEL level, const char *plugin, const char *function, const char *format, ...)
+{
+    va_list ap;
+    char *plugin_msg;
+
+    if (ly_log_level < level) {
+        return;
+    }
+
+    asprintf(&plugin_msg, "%s (reported by extension plugin %s, %s())", format, plugin, function);
+
+    va_start(ap, format);
+    log_vprintf(level, (*ly_vlog_hide_location()), plugin_msg, NULL, ap);
+    va_end(ap);
+
+    free(plugin_msg);
+}
+
 const char *ly_errs[] = {
 /* LYE_SUCCESS */      "",
 /* LYE_XML_MISS */     "Missing %s \"%s\".",
