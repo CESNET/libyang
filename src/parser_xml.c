@@ -106,6 +106,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                struct lyd_node **act_notif)
 {
     const struct lys_module *mod = NULL;
+    const struct lys_submodule *submod;
     struct lyd_node *diter, *dlast;
     struct lys_node *schema = NULL, *target;
     struct lys_node_augment *aug;
@@ -449,7 +450,25 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
             }
 
             /* then, find the appropriate annotation definition */
+            submod = NULL;
             pos = lys_ext_instance_presence(&ctx->models.list[0]->extensions[0], mod->ext, mod->ext_size);
+            while(pos != -1 && ((unsigned int)(pos + 1) < mod->ext_size) &&
+                    !ly_strequal(mod->ext[pos]->arg_value, attr->name, 1)) {
+                i = lys_ext_instance_presence(&ctx->models.list[0]->extensions[0],
+                                              &mod->ext[pos + 1], mod->ext_size - (pos + 1));
+                pos = (i == -1) ? -1 : pos + 1 + i;
+            }
+            /* try submodules */
+            for (j = 0; pos == -1 && j < mod->inc_size; j++) {
+                submod = mod->inc[j].submodule;
+                pos = lys_ext_instance_presence(&ctx->models.list[0]->extensions[0], submod->ext, submod->ext_size);
+                while (pos != -1 && ((unsigned int)(pos + 1) < submod->ext_size)
+                       && !ly_strequal(submod->ext[pos]->arg_value, attr->name, 1)) {
+                    i = lys_ext_instance_presence(&ctx->models.list[0]->extensions[0], &submod->ext[pos + 1],
+                                                  submod->ext_size - (pos + 1));
+                    pos = (i == -1) ? -1 : pos + 1 + i;
+                }
+            }
             if (pos == -1) {
                 goto attr_error;
             }
@@ -464,16 +483,8 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         dattr->next = NULL;
 
         if (pos != -1) {
-            while(pos != -1 && ((unsigned int)(pos + 1) < mod->ext_size) &&
-                    !ly_strequal(mod->ext[pos]->arg_value, attr->name, 1)) {
-                i = lys_ext_instance_presence(&ctx->models.list[0]->extensions[0],
-                                              &mod->ext[pos + 1], mod->ext_size - (pos + 1));
-                pos = (i == -1) ? -1 : pos + 1 + i;
-            }
-            if (pos == -1) {
-                goto attr_error;
-            }
-            dattr->annotation = (struct lys_ext_instance_complex *)mod->ext[pos];
+            dattr->annotation = submod ? (struct lys_ext_instance_complex *)submod->ext[pos] :
+                                         (struct lys_ext_instance_complex *)mod->ext[pos];
         } else {
             /* exception for NETCONF's edit-config and filter attributes */
             dattr->annotation = NULL;
@@ -514,10 +525,10 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 attr_error:
         if (options & LYD_OPT_STRICT) {
             LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), attr->name, xml->name);
-            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Unknown metadata (%s:%s).", attr->ns->value, attr->name);
+            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Unknown metadata (%s:%s).", attr->ns->prefix, attr->name);
             goto error;
         } else {
-            LOGWRN("Unknown metadata (%s:%s) - skipping.", attr->ns->value, attr->name);
+            LOGWRN("Unknown metadata (%s:%s) - skipping.", attr->ns->prefix, attr->name);
             continue;
         }
     }

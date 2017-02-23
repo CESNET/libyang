@@ -77,7 +77,7 @@ json_print_attrs(struct lyout *out, int level, const struct lyd_node *node, cons
             /* skip exception for the NETCONF's attribute since JSON is not defined for NETCONF */
             continue;
         }
-        if (attr->annotation->module != node->schema->module) {
+        if (lys_main_module(attr->annotation->module) != lys_main_module(node->schema->module)) {
             ly_print(out, "%*s\"%s:%s\":", LEVEL, INDENT, attr->annotation->module->name, attr->name);
         } else {
             ly_print(out, "%*s\"%s\":", LEVEL, INDENT, attr->name);
