@@ -1272,8 +1272,8 @@ yang_read_enum(struct lys_module *module, struct yang_type *typ, struct lys_type
     j = typ->type->info.enums.count - 1;
     /* check the name uniqueness */
     for (i = 0; i < j; i++) {
-        if (!strcmp(typ->type->info.enums.enm[i].name, typ->type->info.enums.enm[j].name)) {
-            LOGVAL(LYE_ENUM_DUPNAME, LY_VLOG_NONE, NULL, typ->type->info.enums.enm[i].name);
+        if (ly_strequal(typ->type->info.enums.enm[i].name, enm->name, 1)) {
+            LOGVAL(LYE_ENUM_DUPNAME, LY_VLOG_NONE, NULL, enm->name);
             goto error;
         }
     }
@@ -1329,14 +1329,13 @@ yang_read_bit(struct lys_module *module, struct yang_type *typ, struct lys_type_
     typ->base = LY_TYPE_BITS;
     bit->name = lydict_insert_zc(module->ctx, value);
     if (lyp_check_identifier(bit->name, LY_IDENT_SIMPLE, NULL, NULL)) {
-        free(value);
         goto error;
     }
 
     j = typ->type->info.bits.count - 1;
     /* check the name uniqueness */
     for (i = 0; i < j; i++) {
-        if (!strcmp(typ->type->info.bits.bit[i].name, bit->name)) {
+        if (ly_strequal(typ->type->info.bits.bit[i].name, bit->name, 1)) {
             LOGVAL(LYE_BITS_DUPNAME, LY_VLOG_NONE, NULL, bit->name);
             goto error;
         }
@@ -1414,7 +1413,7 @@ yang_read_deviate(struct lys_deviation *dev, LYS_DEVIATE_TYPE mod)
 {
     struct lys_deviate *deviate;
 
-    if (dev->deviate && dev->deviate[0].mod == LY_DEVIATE_NO) {
+    if (dev->deviate_size && dev->deviate[0].mod == LY_DEVIATE_NO) {
         LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "not-supported");
         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"not-supported\" deviation cannot be combined with any other deviation.");
         return NULL;
@@ -2028,8 +2027,8 @@ int yang_check_deviate_unique(struct lys_module *module, struct lys_deviate *dev
 {
     struct lys_node_list *list;
     char *str;
-    uint i;
-    struct lys_unique *last_unique;
+    uint i = 0;
+    struct lys_unique *last_unique = NULL;
 
     if (yang_read_deviate_unique(deviate, dev_target)) {
         goto error;
@@ -2282,7 +2281,7 @@ yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext
     LY_STMT stmt = LY_STMT_UNKNOWN;
 
     if (backup_type != NODE) {
-        instance = yang_ext_instance((actual) ? actual : module, backup_type, is_ext_instance);
+        instance = yang_ext_instance(actual, backup_type, is_ext_instance);
         if (!instance) {
             return NULL;
         }
@@ -2440,7 +2439,7 @@ yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext
             return NULL;
         }
     } else {
-        instance = yang_ext_instance((actual) ? actual : module, actual_type, is_ext_instance);
+        instance = yang_ext_instance(actual, actual_type, is_ext_instance);
         if (!instance) {
             return NULL;
         }
@@ -4083,8 +4082,7 @@ yang_check_nodes(struct lys_module *module, struct lys_node *parent, struct lys_
 
         if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, node)) {
             lys_node_unlink(node);
-            node->next = sibling;
-            sibling = node;
+            yang_free_nodes(module->ctx, node);
             goto error;
         }
         config_opt = store_config_flag(node, config_opt);
@@ -4331,7 +4329,7 @@ yang_check_deviation(struct lys_module *module, struct unres_schema *unres, stru
                 if (((struct lys_node_list *)dev_target->parent)->keys[i] == (struct lys_node_leaf *)dev_target) {
                     LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, "not-supported", "deviation");
                     LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"not-supported\" deviation cannot remove a list key.");
-                    return EXIT_FAILURE;
+                    goto error;
                 }
             }
         }
@@ -4509,6 +4507,7 @@ yang_read_extcomplex_str(struct lys_module *module, struct lys_ext_instance_comp
 
     c = 0;
     if (stmt == LY_STMT_PREFIX && parent_stmt == LY_STMT_BELONGSTO) {
+        /* str contains no NULL value */
         str = lys_ext_complex_get_substmt(LY_STMT_BELONGSTO, ext, &info);
         if (info->cardinality < LY_STMT_CARD_SOME) {
             str++;
@@ -4543,7 +4542,7 @@ yang_read_extcomplex_str(struct lys_module *module, struct lys_ext_instance_comp
                     p[1] = calloc(2, sizeof(const char *));
                 } else if (stmt == LY_STMT_ARGUMENT) {
                     /* allocate another array for the yin element */
-                    p[1] = calloc(2, sizeof(uint8_t));
+                    ((uint8_t **)p)[1] = calloc(2, sizeof(uint8_t));
                     /* default value of yin element */
                     ((uint8_t *)p[1])[0] = 2;
                 }

@@ -4077,8 +4077,8 @@ unknown_statement: identifiers_ref string_opt unknown_statement_end
 
 string_opt: string_opt_part1 string_opt_part2 { $$.token = actual_type;
                                                 $$.actual = actual;
-                                                if (!(actual = yang_read_ext(trg, actual, $1, s, actual_type,
-                                                                             backup_type, is_ext_instance))) {
+                                                if (!(actual = yang_read_ext(trg, (actual) ? actual : trg, $1, s,
+                                                                             actual_type, backup_type, is_ext_instance))) {
                                                   YYABORT;
                                                 }
                                                 s = NULL;

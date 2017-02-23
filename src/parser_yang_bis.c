@@ -8076,8 +8076,8 @@ yyreduce:
 
     { (yyval.backup_token).token = actual_type;
                                                 (yyval.backup_token).actual = actual;
-                                                if (!(actual = yang_read_ext(trg, actual, (yyvsp[-1].str), s, actual_type,
-                                                                             backup_type, is_ext_instance))) {
+                                                if (!(actual = yang_read_ext(trg, (actual) ? actual : trg, (yyvsp[-1].str), s,
+                                                                             actual_type, backup_type, is_ext_instance))) {
                                                   YYABORT;
                                                 }
                                                 s = NULL;
