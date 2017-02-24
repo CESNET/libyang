@@ -947,7 +947,7 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int in
         op->arg_value = lydict_insert(ctx, "operation", 9);
         op->def = &ctx->models.list[0]->extensions[0];
         op->ext_type = LYEXT_COMPLEX;
-        op->parent = mod;
+        op->module = op->parent = mod;
         op->parent_type = LYEXT_PAR_MODULE;
         op->substmt = ((struct lyext_plugin_complex *)op->def->plugin)->substmt;
         op->nodetype = LYS_EXT;
@@ -976,7 +976,7 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int in
         op->arg_value = lydict_insert(ctx, "type", 4);
         op->def = &ctx->models.list[0]->extensions[0];
         op->ext_type = LYEXT_COMPLEX;
-        op->parent = mod;
+        op->module = op->parent = mod;
         op->parent_type = LYEXT_PAR_MODULE;
         op->substmt = ((struct lyext_plugin_complex *)op->def->plugin)->substmt;
         op->nodetype = LYS_EXT;
@@ -999,7 +999,7 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int in
         op->arg_value = lydict_insert(ctx, "select", 6);
         op->def = &ctx->models.list[0]->extensions[0];
         op->ext_type = LYEXT_COMPLEX;
-        op->parent = mod;
+        op->module = op->parent = mod;
         op->parent_type = LYEXT_PAR_MODULE;
         op->substmt = ((struct lyext_plugin_complex *)op->def->plugin)->substmt;
         op->nodetype = LYS_EXT;
