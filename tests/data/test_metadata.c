@@ -90,6 +90,37 @@ test_leafref_type(void **state)
 }
 
 /*
+ * attribute with no appropriate anotation specification cannot be loaded
+ */
+static void
+test_unknown_metadata(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  leaf a { type string; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input = "<a xmlns=\"urn:x\" xmlns:x=\"urn:x\" x:attribute=\"not-defined\">a</a>";
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    /* parse input with strict - error */
+    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_STRICT, NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_INATTR);
+
+    /* parse input without strict - passes, but the attribute is not present */
+    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_CONFIG, NULL);
+    assert_ptr_not_equal(st->data, NULL);
+    assert_ptr_equal(st->data->attr, NULL);
+}
+
+/*
  * correctness of parsing and printing NETCONF's filter's attributes
  */
 static void
@@ -109,8 +140,8 @@ test_nc_filter_subtree(void **state)
     lyd_print_mem(&st->str, st->data, LYD_XML, 0);
     assert_ptr_not_equal(st->str, NULL);
     assert_string_equal(st->str, filter_subtree);
-
 }
+
 static void
 test_nc_filter_xpath(void **state)
 {
@@ -130,12 +161,109 @@ test_nc_filter_xpath(void **state)
     assert_string_equal(st->str, filter_xpath);
 }
 
+/*
+ * correctness of parsing and printing NETCONF's edit-config's attributes
+ * - invalid operation's value
+ */
+static void
+test_nc_editconfig1(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  leaf a { type string; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input = "<a xmlns=\"urn:x\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" "
+                    "nc:operation=\"not-defined\">a</a>";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    /* operation attribute is valid, but its value is invalid so the parsing fails no matter if strict is used */
+    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT , NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_INVAL);
+}
+
+/*
+ * correctness of parsing and printing NETCONF's edit-config's attributes
+ * - too many operation attributes
+ */
+static void
+test_nc_editconfig2(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  leaf a { type string; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input = "<a xmlns=\"urn:x\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" "
+                    "nc:operation=\"merge\" nc:operation=\"replace\" nc:operation=\"create\" "
+                    "nc:operation=\"delete\" nc:operation=\"remove\">a</a>";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT , NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+}
+
+/*
+ * correctness of parsing and printing NETCONF's edit-config's attributes
+ * - correct use
+ */
+static void
+test_nc_editconfig3(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  leaf a { type string; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input = "<a xmlns=\"urn:x\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" "
+                    "nc:operation=\"create\">a</a>";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT , NULL);
+    assert_ptr_not_equal(st->data, NULL);
+    lyd_print_mem(&st->str, st->data, LYD_XML, 0);
+    assert_ptr_not_equal(st->str, NULL);
+    assert_string_equal(st->str, input);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
                     cmocka_unit_test_setup_teardown(test_leafref_type, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_unknown_metadata, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_nc_filter_subtree, setup_f, teardown_f),
-                    cmocka_unit_test_setup_teardown(test_nc_filter_xpath, setup_f, teardown_f),};
+                    cmocka_unit_test_setup_teardown(test_nc_filter_xpath, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig1, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig2, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig3, setup_f, teardown_f),};
 
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
