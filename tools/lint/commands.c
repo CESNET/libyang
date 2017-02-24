@@ -15,6 +15,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
+#include <ctype.h>
 #include <assert.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -120,6 +121,12 @@ void
 cmd_verb_help(void)
 {
     printf("verb (error/0 | warning/1 | verbose/2 | debug/3)\n");
+}
+
+void
+cmd_debug_help(void)
+{
+    printf("debug (dict | yang | yin | xpath | diff)+\n");
 }
 
 LYS_INFORMAT
@@ -1172,15 +1179,58 @@ cmd_verb(const char *arg)
     verb = arg + 5;
     if (!strcmp(verb, "error") || !strcmp(verb, "0")) {
         ly_verb(LY_LLERR);
+        ly_verb_dbg(0);
     } else if (!strcmp(verb, "warning") || !strcmp(verb, "1")) {
         ly_verb(LY_LLWRN);
+        ly_verb_dbg(0);
     } else if (!strcmp(verb, "verbose")  || !strcmp(verb, "2")) {
         ly_verb(LY_LLVRB);
+        ly_verb_dbg(0);
     } else if (!strcmp(verb, "debug")  || !strcmp(verb, "3")) {
         ly_verb(LY_LLDBG);
+        ly_verb_dbg(LY_LDGDICT | LY_LDGYANG | LY_LDGYIN | LY_LDGXPATH | LY_LDGDIFF);
     } else {
         fprintf(stderr, "Unknown verbosity \"%s\"\n", verb);
         return 1;
+    }
+
+    return 0;
+}
+
+int
+cmd_debug(const char *arg)
+{
+    const char *beg, *end;
+    if (strlen(arg) < 6) {
+        cmd_debug_help();
+        return 1;
+    }
+
+    ly_verb_dbg(0);
+
+    end = arg + 6;
+    while (end[0]) {
+        for (beg = end; isspace(beg[0]); ++beg);
+        if (!beg[0]) {
+            break;
+        }
+
+        for (end = beg; (end[0] && !isspace(end[0])); ++end);
+
+        if (!strncmp(beg, "dict", end - beg)) {
+            ly_verb_dbg(LY_LDGDICT);
+        } else if (!strncmp(beg, "yang", end - beg)) {
+            ly_verb_dbg(LY_LDGYANG);
+        } else if (!strncmp(beg, "yin", end - beg)) {
+            ly_verb_dbg(LY_LDGYIN);
+        } else if (!strncmp(beg, "xpath", end - beg)) {
+            ly_verb_dbg(LY_LDGXPATH);
+        } else if (!strncmp(beg, "diff", end - beg)) {
+            ly_verb_dbg(LY_LDGDIFF);
+        } else {
+            fprintf(stderr, "Unknown debug group \"%.*s\"\n", (int)(end - beg), beg);
+            return 1;
+        }
     }
 
     return 0;
@@ -1250,6 +1300,7 @@ COMMAND commands[] = {
         {"searchpath", cmd_searchpath, cmd_searchpath_help, "Set the search path for models"},
         {"clear", cmd_clear, NULL, "Clear the context - remove all the loaded models"},
         {"verb", cmd_verb, cmd_verb_help, "Change verbosity"},
+        {"debug", cmd_debug, cmd_debug_help, "Display specific debug message groups"},
         {"quit", cmd_quit, NULL, "Quit the program"},
         /* synonyms for previous commands */
         {"?", cmd_help, NULL, "Display commands description"},

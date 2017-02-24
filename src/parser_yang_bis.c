@@ -5120,7 +5120,7 @@ yyreduce:
 
   case 246:
 
-    { LOGDBG("YANG: finished parsing grouping statement \"%s\"", data_node->name);
+    { LOGDBG(LY_LDGYANG, "finished parsing grouping statement \"%s\"", data_node->name);
                  actual_type = (yyvsp[-1].backup_token).token;
                  actual = (yyvsp[-1].backup_token).actual;
                  data_node = (yyvsp[-1].backup_token).actual;
@@ -5191,7 +5191,7 @@ yyreduce:
 
   case 267:
 
-    { LOGDBG("YANG: finished parsing container statement \"%s\"", data_node->name);
+    { LOGDBG(LY_LDGYANG, "finished parsing container statement \"%s\"", data_node->name);
                   actual_type = (yyvsp[-1].backup_token).token;
                   actual = (yyvsp[-1].backup_token).actual;
                   data_node = (yyvsp[-1].backup_token).actual;
@@ -5325,7 +5325,7 @@ yyreduce:
                     (yyvsp[-1].nodes).node.ptr_leaf->must = tmp;
                   }
 
-                  LOGDBG("YANG: finished parsing leaf statement \"%s\"", data_node->name);
+                  LOGDBG(LY_LDGYANG, "finished parsing leaf statement \"%s\"", data_node->name);
                   actual_type = (yyvsp[-4].backup_token).token;
                   actual = (yyvsp[-4].backup_token).actual;
                   data_node = (yyvsp[-4].backup_token).actual;
@@ -5498,7 +5498,7 @@ yyreduce:
                           (yyvsp[-1].nodes).node.ptr_leaflist->dflt = tmp;
                         }
 
-                        LOGDBG("YANG: finished parsing leaf-list statement \"%s\"", data_node->name);
+                        LOGDBG(LY_LDGYANG, "finished parsing leaf-list statement \"%s\"", data_node->name);
                         actual_type = (yyvsp[-4].backup_token).token;
                         actual = (yyvsp[-4].backup_token).actual;
                         data_node = (yyvsp[-4].backup_token).actual;
@@ -5695,7 +5695,7 @@ yyreduce:
                     (yyvsp[-1].nodes).node.ptr_list->unique = tmp;
                   }
 
-                  LOGDBG("YANG: finished parsing list statement \"%s\"", data_node->name);
+                  LOGDBG(LY_LDGYANG, "finished parsing list statement \"%s\"", data_node->name);
                   actual_type = (yyvsp[-4].backup_token).token;
                   actual = (yyvsp[-4].backup_token).actual;
                   data_node = (yyvsp[-4].backup_token).actual;
@@ -5855,7 +5855,7 @@ yyreduce:
 
   case 335:
 
-    { LOGDBG("YANG: finished parsing choice statement \"%s\"", data_node->name);
+    { LOGDBG(LY_LDGYANG, "finished parsing choice statement \"%s\"", data_node->name);
                actual_type = (yyvsp[-1].backup_token).token;
                actual = (yyvsp[-1].backup_token).actual;
                data_node = (yyvsp[-1].backup_token).actual;
@@ -5992,7 +5992,7 @@ yyreduce:
 
   case 358:
 
-    { LOGDBG("YANG: finished parsing case statement \"%s\"", data_node->name);
+    { LOGDBG(LY_LDGYANG, "finished parsing case statement \"%s\"", data_node->name);
              actual_type = (yyvsp[-1].backup_token).token;
              actual = (yyvsp[-1].backup_token).actual;
              data_node = (yyvsp[-1].backup_token).actual;
@@ -6069,7 +6069,7 @@ yyreduce:
 
   case 369:
 
-    { LOGDBG("YANG: finished parsing anyxml statement \"%s\"", data_node->name);
+    { LOGDBG(LY_LDGYANG, "finished parsing anyxml statement \"%s\"", data_node->name);
                actual_type = (yyvsp[-1].backup_token).token;
                actual = (yyvsp[-1].backup_token).actual;
                data_node = (yyvsp[-1].backup_token).actual;
@@ -6093,7 +6093,7 @@ yyreduce:
 
   case 371:
 
-    { LOGDBG("YANG: finished parsing anydata statement \"%s\"", data_node->name);
+    { LOGDBG(LY_LDGYANG, "finished parsing anydata statement \"%s\"", data_node->name);
                 actual_type = (yyvsp[-1].backup_token).token;
                 actual = (yyvsp[-1].backup_token).actual;
                 data_node = (yyvsp[-1].backup_token).actual;
@@ -6206,7 +6206,7 @@ yyreduce:
 
   case 384:
 
-    { LOGDBG("YANG: finished parsing uses statement \"%s\"", data_node->name);
+    { LOGDBG(LY_LDGYANG, "finished parsing uses statement \"%s\"", data_node->name);
              actual_type = (yyvsp[-1].backup_token).token;
              actual = (yyvsp[-1].backup_token).actual;
              data_node = (yyvsp[-1].backup_token).actual;
@@ -6615,7 +6615,7 @@ yyreduce:
 
   case 415:
 
-    { LOGDBG("YANG: finished parsing augment statement \"%s\"", data_node->name);
+    { LOGDBG(LY_LDGYANG, "finished parsing augment statement \"%s\"", data_node->name);
                          actual_type = (yyvsp[-4].backup_token).token;
                          actual = (yyvsp[-4].backup_token).actual;
                          data_node = (yyvsp[-4].backup_token).actual;
@@ -6640,7 +6640,7 @@ yyreduce:
 
   case 419:
 
-    { LOGDBG("YANG: finished parsing augment statement \"%s\"", data_node->name);
+    { LOGDBG(LY_LDGYANG, "finished parsing augment statement \"%s\"", data_node->name);
                     actual_type = (yyvsp[-4].backup_token).token;
                     actual = (yyvsp[-4].backup_token).actual;
                     data_node = (yyvsp[-4].backup_token).actual;
@@ -6716,7 +6716,7 @@ yyreduce:
 
   case 431:
 
-    { LOGDBG("YANG: finished parsing action statement \"%s\"", data_node->name);
+    { LOGDBG(LY_LDGYANG, "finished parsing action statement \"%s\"", data_node->name);
                actual_type = (yyvsp[-1].backup_token).token;
                actual = (yyvsp[-1].backup_token).actual;
                data_node = (yyvsp[-1].backup_token).actual;
@@ -6740,7 +6740,7 @@ yyreduce:
 
   case 433:
 
-    { LOGDBG("YANG: finished parsing rpc statement \"%s\"", data_node->name);
+    { LOGDBG(LY_LDGYANG, "finished parsing rpc statement \"%s\"", data_node->name);
             actual_type = (yyvsp[-1].backup_token).token;
             actual = (yyvsp[-1].backup_token).actual;
             data_node = (yyvsp[-1].backup_token).actual;
@@ -6878,7 +6878,7 @@ yyreduce:
                     input->tpdf = tmp;
                   }
 
-                  LOGDBG("YANG: finished parsing input statement \"%s\"", data_node->name);
+                  LOGDBG(LY_LDGYANG, "finished parsing input statement \"%s\"", data_node->name);
                   actual_type = (yyvsp[-4].backup_token).token;
                   actual = (yyvsp[-4].backup_token).actual;
                   data_node = (yyvsp[-4].backup_token).actual;
@@ -6928,7 +6928,7 @@ yyreduce:
                      output->tpdf = tmp;
                    }
 
-                   LOGDBG("YANG: finished parsing output statement \"%s\"", data_node->name);
+                   LOGDBG(LY_LDGYANG, "finished parsing output statement \"%s\"", data_node->name);
                    actual_type = (yyvsp[-4].backup_token).token;
                    actual = (yyvsp[-4].backup_token).actual;
                    data_node = (yyvsp[-4].backup_token).actual;
@@ -6951,7 +6951,7 @@ yyreduce:
 
   case 455:
 
-    { LOGDBG("YANG: finished parsing notification statement \"%s\"", data_node->name);
+    { LOGDBG(LY_LDGYANG, "finished parsing notification statement \"%s\"", data_node->name);
                      actual_type = (yyvsp[-1].backup_token).token;
                      actual = (yyvsp[-1].backup_token).actual;
                      data_node = (yyvsp[-1].backup_token).actual;

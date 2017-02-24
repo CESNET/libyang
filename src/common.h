@@ -105,27 +105,29 @@ extern volatile int8_t ly_log_level;
 
 void ly_log(LY_LOG_LEVEL level, const char *format, ...);
 
+void ly_log_dbg(LY_LOG_DBG_GROUP group, const char *format, ...);
+
 #define LOGERR(errno, str, args...)                                 \
     if (errno) { ly_errno = errno; }                                \
     ly_log(LY_LLERR, str, ##args);
 
 #define LOGWRN(str, args...)                                        \
-	if (ly_log_level >= LY_LLWRN) {                                 \
-		ly_log(LY_LLWRN, str, ##args);                              \
-	}
+    if (ly_log_level >= LY_LLWRN) {                                 \
+        ly_log(LY_LLWRN, str, ##args);                              \
+    }
 
 #define LOGVRB(str, args...)                                        \
-	if (ly_log_level >= LY_LLVRB) {                                 \
-		ly_log(LY_LLVRB, str, ##args);                              \
-	}
+    if (ly_log_level >= LY_LLVRB) {                                 \
+        ly_log(LY_LLVRB, str, ##args);                              \
+    }
 
 #ifdef NDEBUG
 #define LOGDBG(str, args...)
 #else
-#define LOGDBG(str, args...)                                        \
-	if (ly_log_level >= LY_LLDBG) {                                 \
-		ly_log(LY_LLDBG, str, ##args);                              \
-	}
+#define LOGDBG(dbg_group, str, args...)                             \
+    if (ly_log_level >= LY_LLDBG) {                                 \
+        ly_log_dbg(dbg_group, str, ##args);                         \
+    }
 #endif
 
 #define LOGMEM LOGERR(LY_EMEM, "Memory allocation failed (%s()).", __func__)

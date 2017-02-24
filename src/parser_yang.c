@@ -399,7 +399,7 @@ yang_read_node(struct lys_module *module, struct lys_node *parent, struct lys_no
         LOGMEM;
         return NULL;
     }
-    LOGDBG("YANG: parsing %s statement \"%s\"", strnodetype(nodetype), value);
+    LOGDBG(LY_LDGYANG, "parsing %s statement \"%s\"", strnodetype(nodetype), value);
     node->name = lydict_insert_zc(module->ctx, value);
     node->module = module;
     node->nodetype = nodetype;
@@ -4497,7 +4497,7 @@ error:
 }
 
 int
-yang_read_extcomplex_str(struct lys_module *module, struct lys_ext_instance_complex *ext, const char *arg_name, 
+yang_read_extcomplex_str(struct lys_module *module, struct lys_ext_instance_complex *ext, const char *arg_name,
                          const char *parent_name, char *value, int parent_stmt, LY_STMT stmt)
 {
     int c;

@@ -1420,7 +1420,8 @@ typedef enum {
     LY_LLERR = 0,     /**< Print only error messages, default value. */
     LY_LLWRN,         /**< Print error and warning messages. */
     LY_LLVRB,         /**< Besides errors and warnings, print some other verbose messages. */
-    LY_LLDBG          /**< Print all messages including some development debug messages. */
+    LY_LLDBG          /**< Print all messages including some development debug messages (be careful,
+                           without subsequently calling ly_verb_dbg() no debug messages will be printed!). */
 } LY_LOG_LEVEL;
 
 /**
@@ -1428,6 +1429,28 @@ typedef enum {
  * @param[in] level Verbosity level.
  */
 void ly_verb(LY_LOG_LEVEL level);
+
+#ifndef NDEBUG
+
+/**
+ * @typedef LY_LOG_DBG_GROUP
+ * @brief Selected displayed debug message groups.
+ */
+typedef enum {
+    LY_LDGDICT = 0x01,  /**< Dictionary additions and deletions. */
+    LY_LDGYANG = 0x02,  /**< YANG parser messages. */
+    LY_LDGYIN = 0x04,   /**< YIN parser messages. */
+    LY_LDGXPATH = 0x08, /**< XPath parsing end evaluation. */
+    LY_LDGDIFF = 0x10   /**< Diff processing and creation. */
+} LY_LOG_DBG_GROUP;
+
+/**
+ * @brief Enable specific debugging messages (independent of log level).
+ * @param[in] dbg_groups Bitfield of #LY_LOG_DBG_GROUP - enabled debug message groups.
+ */
+void ly_verb_dbg(int dbg_groups);
+
+#endif
 
 /**
  * @brief Set logger callback.

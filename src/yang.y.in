@@ -1847,7 +1847,7 @@ grouping_arg_str: identifier_arg_str { $$.token = actual_type;
                                      }
 
 grouping_stmt: GROUPING_KEYWORD sep grouping_arg_str grouping_end
-               { LOGDBG("YANG: finished parsing grouping statement \"%s\"", data_node->name);
+               { LOGDBG(LY_LDGYANG, "finished parsing grouping statement \"%s\"", data_node->name);
                  actual_type = $3.token;
                  actual = $3.actual;
                  data_node = $3.actual;
@@ -1906,7 +1906,7 @@ container_arg_str: identifier_arg_str { $$.token = actual_type;
                                       }
 
 container_stmt: CONTAINER_KEYWORD sep container_arg_str container_end
-                { LOGDBG("YANG: finished parsing container statement \"%s\"", data_node->name);
+                { LOGDBG(LY_LDGYANG, "finished parsing container statement \"%s\"", data_node->name);
                   actual_type = $3.token;
                   actual = $3.actual;
                   data_node = $3.actual;
@@ -2011,7 +2011,7 @@ leaf_stmt: LEAF_KEYWORD sep leaf_arg_str
                     $6.node.ptr_leaf->must = tmp;
                   }
 
-                  LOGDBG("YANG: finished parsing leaf statement \"%s\"", data_node->name);
+                  LOGDBG(LY_LDGYANG, "finished parsing leaf statement \"%s\"", data_node->name);
                   actual_type = $3.token;
                   actual = $3.actual;
                   data_node = $3.actual;
@@ -2134,7 +2134,7 @@ leaf_list_arg_str: identifier_arg_str { $$.token = actual_type;
                           $6.node.ptr_leaflist->dflt = tmp;
                         }
 
-                        LOGDBG("YANG: finished parsing leaf-list statement \"%s\"", data_node->name);
+                        LOGDBG(LY_LDGYANG, "finished parsing leaf-list statement \"%s\"", data_node->name);
                         actual_type = $3.token;
                         actual = $3.actual;
                         data_node = $3.actual;
@@ -2275,7 +2275,7 @@ list_stmt: LIST_KEYWORD sep list_arg_str
                     $6.node.ptr_list->unique = tmp;
                   }
 
-                  LOGDBG("YANG: finished parsing list statement \"%s\"", data_node->name);
+                  LOGDBG(LY_LDGYANG, "finished parsing list statement \"%s\"", data_node->name);
                   actual_type = $3.token;
                   actual = $3.actual;
                   data_node = $3.actual;
@@ -2381,7 +2381,7 @@ choice_arg_str: identifier_arg_str { $$.token = actual_type;
                                    }
 
 choice_stmt: CHOICE_KEYWORD sep choice_arg_str choice_end
-             { LOGDBG("YANG: finished parsing choice statement \"%s\"", data_node->name);
+             { LOGDBG(LY_LDGYANG, "finished parsing choice statement \"%s\"", data_node->name);
                actual_type = $3.token;
                actual = $3.actual;
                data_node = $3.actual;
@@ -2484,7 +2484,7 @@ case_arg_str: identifier_arg_str { $$.token = actual_type;
                                  }
 
 case_stmt: CASE_KEYWORD sep case_arg_str case_end
-           { LOGDBG("YANG: finished parsing case statement \"%s\"", data_node->name);
+           { LOGDBG(LY_LDGYANG, "finished parsing case statement \"%s\"", data_node->name);
              actual_type = $3.token;
              actual = $3.actual;
              data_node = $3.actual;
@@ -2538,7 +2538,7 @@ anyxml_arg_str: identifier_arg_str { $$.token = actual_type;
                                    }
 
 anyxml_stmt: ANYXML_KEYWORD sep anyxml_arg_str anyxml_end
-             { LOGDBG("YANG: finished parsing anyxml statement \"%s\"", data_node->name);
+             { LOGDBG(LY_LDGYANG, "finished parsing anyxml statement \"%s\"", data_node->name);
                actual_type = $3.token;
                actual = $3.actual;
                data_node = $3.actual;
@@ -2555,7 +2555,7 @@ anydata_arg_str: identifier_arg_str { $$.token = actual_type;
                                     }
 
 anydata_stmt: ANYDATA_KEYWORD sep anydata_arg_str anyxml_end
-              { LOGDBG("YANG: finished parsing anydata statement \"%s\"", data_node->name);
+              { LOGDBG(LY_LDGYANG, "finished parsing anydata statement \"%s\"", data_node->name);
                 actual_type = $3.token;
                 actual = $3.actual;
                 data_node = $3.actual;
@@ -2634,7 +2634,7 @@ uses_arg_str: identifier_ref_arg_str { $$.token = actual_type;
                                      }
 
 uses_stmt: USES_KEYWORD sep uses_arg_str uses_end
-           { LOGDBG("YANG: finished parsing uses statement \"%s\"", data_node->name);
+           { LOGDBG(LY_LDGYANG, "finished parsing uses statement \"%s\"", data_node->name);
              actual_type = $3.token;
              actual = $3.actual;
              data_node = $3.actual;
@@ -2968,7 +2968,7 @@ uses_augment_arg: uses_augment_arg_str { void *parent;
 uses_augment_stmt: AUGMENT_KEYWORD sep uses_augment_arg
                    '{' stmtsep
                        augment_opt_stmt
-                   '}' { LOGDBG("YANG: finished parsing augment statement \"%s\"", data_node->name);
+                   '}' { LOGDBG(LY_LDGYANG, "finished parsing augment statement \"%s\"", data_node->name);
                          actual_type = $3.token;
                          actual = $3.actual;
                          data_node = $3.actual;
@@ -2991,7 +2991,7 @@ augment_arg: augment_arg_str { $$.token = actual_type;
 augment_stmt: AUGMENT_KEYWORD sep augment_arg
               '{' stmtsep
                   augment_opt_stmt
-              '}' { LOGDBG("YANG: finished parsing augment statement \"%s\"", data_node->name);
+              '}' { LOGDBG(LY_LDGYANG, "finished parsing augment statement \"%s\"", data_node->name);
                     actual_type = $3.token;
                     actual = $3.actual;
                     data_node = $3.actual;
@@ -3041,7 +3041,7 @@ action_arg_str: identifier_arg_str { if (param->module->version != 2) {
                                    }
 
 action_stmt: ACTION_KEYWORD sep action_arg_str rpc_end
-             { LOGDBG("YANG: finished parsing action statement \"%s\"", data_node->name);
+             { LOGDBG(LY_LDGYANG, "finished parsing action statement \"%s\"", data_node->name);
                actual_type = $3.token;
                actual = $3.actual;
                data_node = $3.actual;
@@ -3058,7 +3058,7 @@ rpc_arg_str: identifier_arg_str { $$.token = actual_type;
                                 }
 
 rpc_stmt: RPC_KEYWORD sep rpc_arg_str rpc_end
-          { LOGDBG("YANG: finished parsing rpc statement \"%s\"", data_node->name);
+          { LOGDBG(LY_LDGYANG, "finished parsing rpc statement \"%s\"", data_node->name);
             actual_type = $3.token;
             actual = $3.actual;
             data_node = $3.actual;
@@ -3165,7 +3165,7 @@ input_stmt: input_arg
                     input->tpdf = tmp;
                   }
 
-                  LOGDBG("YANG: finished parsing input statement \"%s\"", data_node->name);
+                  LOGDBG(LY_LDGYANG, "finished parsing input statement \"%s\"", data_node->name);
                   actual_type = $1.token;
                   actual = $1.actual;
                   data_node = $1.actual;
@@ -3216,7 +3216,7 @@ output_stmt: output_arg
                      output->tpdf = tmp;
                    }
 
-                   LOGDBG("YANG: finished parsing output statement \"%s\"", data_node->name);
+                   LOGDBG(LY_LDGYANG, "finished parsing output statement \"%s\"", data_node->name);
                    actual_type = $1.token;
                    actual = $1.actual;
                    data_node = $1.actual;
@@ -3232,7 +3232,7 @@ notification_arg_str: identifier_arg_str { $$.token = actual_type;
                                          }
 
 notification_stmt: NOTIFICATION_KEYWORD sep notification_arg_str notification_end
-                   { LOGDBG("YANG: finished parsing notification statement \"%s\"", data_node->name);
+                   { LOGDBG(LY_LDGYANG, "finished parsing notification statement \"%s\"", data_node->name);
                      actual_type = $3.token;
                      actual = $3.actual;
                      data_node = $3.actual;

@@ -3979,7 +3979,7 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         goto error;
     }
 
-    LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
+    LOGDBG(LY_LDGYIN, "parsing %s statement \"%s\"", yin->name, retval->name);
 
     /* insert the node into the schema tree */
     if (lys_node_addchild(parent, lys_main_module(module), retval)) {
@@ -4130,7 +4130,7 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
         goto error;
     }
 
-    LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
+    LOGDBG(LY_LDGYIN, "parsing %s statement \"%s\"", yin->name, retval->name);
 
     /* insert the node into the schema tree */
     if (lys_node_addchild(parent, lys_main_module(module), retval)) {
@@ -4334,7 +4334,7 @@ read_yin_anydata(struct lys_module *module, struct lys_node *parent, struct lyxm
         goto error;
     }
 
-    LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
+    LOGDBG(LY_LDGYIN, "parsing %s statement \"%s\"", yin->name, retval->name);
 
     /* insert the node into the schema tree */
     if (lys_node_addchild(parent, lys_main_module(module), retval)) {
@@ -4485,7 +4485,7 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         goto error;
     }
 
-    LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
+    LOGDBG(LY_LDGYIN, "parsing %s statement \"%s\"", yin->name, retval->name);
 
     /* insert the node into the schema tree */
     if (lys_node_addchild(parent, lys_main_module(module), retval)) {
@@ -4698,7 +4698,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
         goto error;
     }
 
-    LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
+    LOGDBG(LY_LDGYIN, "parsing %s statement \"%s\"", yin->name, retval->name);
 
     /* insert the node into the schema tree */
     if (lys_node_addchild(parent, lys_main_module(module), retval)) {
@@ -5007,7 +5007,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         goto error;
     }
 
-    LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
+    LOGDBG(LY_LDGYIN, "parsing %s statement \"%s\"", yin->name, retval->name);
 
     /* insert the node into the schema tree */
     if (lys_node_addchild(parent, lys_main_module(module), retval)) {
@@ -5378,7 +5378,7 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
         goto error;
     }
 
-    LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
+    LOGDBG(LY_LDGYIN, "parsing %s statement \"%s\"", yin->name, retval->name);
 
     /* insert the node into the schema tree */
     if (lys_node_addchild(parent, lys_main_module(module), retval)) {
@@ -5585,7 +5585,7 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
         goto error;
     }
 
-    LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
+    LOGDBG(LY_LDGYIN, "parsing %s statement \"%s\"", yin->name, retval->name);
 
     /* insert the node into the schema tree */
     if (lys_node_addchild(parent, lys_main_module(module), retval)) {
@@ -5743,7 +5743,7 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
     retval = (struct lys_node *)inout;
     retval->module = module;
 
-    LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
+    LOGDBG(LY_LDGYIN, "parsing %s statement \"%s\"", yin->name, retval->name);
 
     /* insert the node into the schema tree */
     if (lys_node_addchild(parent, lys_main_module(module), retval)) {
@@ -5907,7 +5907,7 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
         goto error;
     }
 
-    LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
+    LOGDBG(LY_LDGYIN, "parsing %s statement \"%s\"", yin->name, retval->name);
 
     /* insert the node into the schema tree */
     if (lys_node_addchild(parent, lys_main_module(module), retval)) {
@@ -6099,7 +6099,7 @@ read_yin_rpc_action(struct lys_module *module, struct lys_node *parent, struct l
         goto error;
     }
 
-    LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
+    LOGDBG(LY_LDGYIN, "parsing %s statement \"%s\"", yin->name, retval->name);
 
     /* insert the node into the schema tree */
     if (lys_node_addchild(parent, lys_main_module(module), retval)) {
@@ -6255,7 +6255,7 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         goto error;
     }
 
-    LOGDBG("YIN: parsing %s statement \"%s\"", yin->name, retval->name);
+    LOGDBG(LY_LDGYIN, "parsing %s statement \"%s\"", yin->name, retval->name);
 
     /* insert the node into the schema tree */
     if (lys_node_addchild(parent, lys_main_module(module), retval)) {

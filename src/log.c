@@ -27,12 +27,25 @@ extern LY_ERR ly_errno_int;
 volatile int8_t ly_log_level = LY_LLERR;
 static void (*ly_log_clb)(LY_LOG_LEVEL level, const char *msg, const char *path);
 static volatile int path_flag = 1;
+#ifndef NDEBUG
+volatile int ly_log_dbg_groups = 0;
+#endif
 
 API void
 ly_verb(LY_LOG_LEVEL level)
 {
     ly_log_level = level;
 }
+
+#ifndef NDEBUG
+
+API void
+ly_verb_dbg(int dbg_groups)
+{
+    ly_log_dbg_groups = dbg_groups;
+}
+
+#endif
 
 API void
 ly_set_log_clb(void (*clb)(LY_LOG_LEVEL level, const char *msg, const char *path), int path)
@@ -139,6 +152,52 @@ ly_log(LY_LOG_LEVEL level, const char *format, ...)
     log_vprintf(level, (*ly_vlog_hide_location()), format, NULL, ap);
     va_end(ap);
 }
+
+#ifndef NDEBUG
+
+void
+ly_log_dbg(LY_LOG_DBG_GROUP group, const char *format, ...)
+{
+    char *dbg_format;
+    const char *str_group;
+    va_list ap;
+
+    if (!(ly_log_dbg_groups & group)) {
+        return;
+    }
+
+    switch (group) {
+    case LY_LDGDICT:
+        str_group = "DICT";
+        break;
+    case LY_LDGYANG:
+        str_group = "YANG";
+        break;
+    case LY_LDGYIN:
+        str_group = "YIN";
+        break;
+    case LY_LDGXPATH:
+        str_group = "XPATH";
+        break;
+    case LY_LDGDIFF:
+        str_group = "DIFF";
+        break;
+    default:
+        LOGINT;
+        return;
+    }
+
+    if (asprintf(&dbg_format, "%s: %s", str_group, format) == -1) {
+        LOGMEM;
+        return;
+    }
+
+    va_start(ap, format);
+    log_vprintf(LY_LLDBG, (*ly_vlog_hide_location()), dbg_format, NULL, ap);
+    va_end(ap);
+}
+
+#endif
 
 void
 lyext_log(LY_LOG_LEVEL level, const char *plugin, const char *function, const char *format, ...)

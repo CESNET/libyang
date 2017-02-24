@@ -164,9 +164,9 @@ print_expr_struct_debug(struct lyxp_expr *exp)
         return;
     }
 
-    LOGDBG("XPATH: expression \"%s\":", exp->expr);
+    LOGDBG(LY_LDGXPATH, "expression \"%s\":", exp->expr);
     for (i = 0; i < exp->used; ++i) {
-        sprintf(tmp, "XPATH:\tToken %s, in expression \"%.*s\"", print_token(exp->tokens[i]), exp->tok_len[i],
+        sprintf(tmp, "\ttoken %s, in expression \"%.*s\"", print_token(exp->tokens[i]), exp->tok_len[i],
                &exp->expr[exp->expr_pos[i]]);
         if (exp->repeat[i]) {
             sprintf(tmp + strlen(tmp), " (repeat %d", exp->repeat[i][0]);
@@ -175,7 +175,7 @@ print_expr_struct_debug(struct lyxp_expr *exp)
             }
             strcat(tmp, ")");
         }
-        LOGDBG(tmp);
+        LOGDBG(LY_LDGXPATH, tmp);
     }
 }
 
@@ -200,42 +200,42 @@ print_set_debug(struct lyxp_set *set)
 
     switch (set->type) {
     case LYXP_SET_NODE_SET:
-        LOGDBG("XPATH: set NODE SET:");
+        LOGDBG(LY_LDGXPATH, "set NODE SET:");
         for (i = 0; i < set->used; ++i) {
             item = &set->val.nodes[i];
 
             switch (item->type) {
             case LYXP_NODE_ROOT:
-                LOGDBG("XPATH:\t%d (pos %u): ROOT", i + 1, item->pos);
+                LOGDBG(LY_LDGXPATH, "\t%d (pos %u): ROOT", i + 1, item->pos);
                 break;
             case LYXP_NODE_ROOT_CONFIG:
-                LOGDBG("XPATH:\t%d (pos %u): ROOT CONFIG", i + 1, item->pos);
+                LOGDBG(LY_LDGXPATH, "\t%d (pos %u): ROOT CONFIG", i + 1, item->pos);
                 break;
             case LYXP_NODE_ELEM:
                 if ((item->node->schema->nodetype == LYS_LIST)
                         && (item->node->child->schema->nodetype == LYS_LEAF)) {
-                    LOGDBG("XPATH:\t%d (pos %u): ELEM %s (1st child val: %s)", i + 1, item->pos,
+                    LOGDBG(LY_LDGXPATH, "\t%d (pos %u): ELEM %s (1st child val: %s)", i + 1, item->pos,
                            item->node->schema->name,
                            ((struct lyd_node_leaf_list *)item->node->child)->value_str);
                 } else if (item->node->schema->nodetype == LYS_LEAFLIST) {
-                    LOGDBG("XPATH:\t%d (pos %u): ELEM %s (val: %s)", i + 1, item->pos,
+                    LOGDBG(LY_LDGXPATH, "\t%d (pos %u): ELEM %s (val: %s)", i + 1, item->pos,
                            item->node->schema->name,
                            ((struct lyd_node_leaf_list *)item->node)->value_str);
                 } else {
-                    LOGDBG("XPATH:\t%d (pos %u): ELEM %s", i + 1, item->pos, item->node->schema->name);
+                    LOGDBG(LY_LDGXPATH, "\t%d (pos %u): ELEM %s", i + 1, item->pos, item->node->schema->name);
                 }
                 break;
             case LYXP_NODE_TEXT:
                 if (item->node->schema->nodetype & LYS_ANYDATA) {
-                    LOGDBG("XPATH:\t%d (pos %u): TEXT <%s>", i + 1, item->pos,
+                    LOGDBG(LY_LDGXPATH, "\t%d (pos %u): TEXT <%s>", i + 1, item->pos,
                            item->node->schema->nodetype == LYS_ANYXML ? "anyxml" : "anydata");
                 } else {
-                    LOGDBG("XPATH:\t%d (pos %u): TEXT %s", i + 1, item->pos,
+                    LOGDBG(LY_LDGXPATH, "\t%d (pos %u): TEXT %s", i + 1, item->pos,
                            ((struct lyd_node_leaf_list *)item->node)->value_str);
                 }
                 break;
             case LYXP_NODE_ATTR:
-                LOGDBG("XPATH:\t%d (pos %u): ATTR %s = %s", i + 1, item->pos, set->val.attrs[i].attr->name,
+                LOGDBG(LY_LDGXPATH, "\t%d (pos %u): ATTR %s = %s", i + 1, item->pos, set->val.attrs[i].attr->name,
                        set->val.attrs[i].attr->value);
                 break;
             }
@@ -243,19 +243,19 @@ print_set_debug(struct lyxp_set *set)
         break;
 
     case LYXP_SET_SNODE_SET:
-        LOGDBG("XPATH: set SNODE SET:");
+        LOGDBG(LY_LDGXPATH, "set SNODE SET:");
         for (i = 0; i < set->used; ++i) {
             sitem = &set->val.snodes[i];
 
             switch (sitem->type) {
             case LYXP_NODE_ROOT:
-                LOGDBG("XPATH:\t%d (%u): ROOT", i + 1, sitem->in_ctx);
+                LOGDBG(LY_LDGXPATH, "\t%d (%u): ROOT", i + 1, sitem->in_ctx);
                 break;
             case LYXP_NODE_ROOT_CONFIG:
-                LOGDBG("XPATH:\t%d (%u): ROOT CONFIG", i + 1, sitem->in_ctx);
+                LOGDBG(LY_LDGXPATH, "\t%d (%u): ROOT CONFIG", i + 1, sitem->in_ctx);
                 break;
             case LYXP_NODE_ELEM:
-                LOGDBG("XPATH:\t%d (%u): ELEM %s", i + 1, sitem->in_ctx, sitem->snode->name);
+                LOGDBG(LY_LDGXPATH, "\t%d (%u): ELEM %s", i + 1, sitem->in_ctx, sitem->snode->name);
                 break;
             default:
                 LOGINT;
@@ -265,21 +265,21 @@ print_set_debug(struct lyxp_set *set)
         break;
 
     case LYXP_SET_EMPTY:
-        LOGDBG("XPATH: set EMPTY");
+        LOGDBG(LY_LDGXPATH, "set EMPTY");
         break;
 
     case LYXP_SET_BOOLEAN:
-        LOGDBG("XPATH: set BOOLEAN");
-        LOGDBG("XPATH:\t%s", (set->val.bool ? "true" : "false"));
+        LOGDBG(LY_LDGXPATH, "set BOOLEAN");
+        LOGDBG(LY_LDGXPATH, "\t%s", (set->val.bool ? "true" : "false"));
         break;
 
     case LYXP_SET_STRING:
-        LOGDBG("XPATH: set STRING");
-        LOGDBG("XPATH:\t%s", set->val.str);
+        LOGDBG(LY_LDGXPATH, "set STRING");
+        LOGDBG(LY_LDGXPATH, "\t%s", set->val.str);
         break;
 
     case LYXP_SET_NUMBER:
-        LOGDBG("XPATH: set NUMBER");
+        LOGDBG(LY_LDGXPATH, "set NUMBER");
 
         if (isnan(set->val.num)) {
             str_num = strdup("NaN");
@@ -304,7 +304,7 @@ print_set_debug(struct lyxp_set *set)
             return;
         }
 
-        LOGDBG("XPATH:\t%s", str_num);
+        LOGDBG(LY_LDGXPATH, "\t%s", str_num);
         free(str_num);
     }
 }
@@ -1077,7 +1077,7 @@ skip_children:
             return 0;
         } else {
             /* node is before prev, we assumed otherwise :( */
-            //LOGDBG("XPATH: get_node_pos optimalization fail.");
+            //LOGDBG(LY_LDGXPATH, "get_node_pos optimalization fail.");
 
             *prev = NULL;
             *prev_pos = 0;
@@ -1089,7 +1089,7 @@ skip_children:
     }
 
     /*if (*prev) {
-        LOGDBG("XPATH: get_node_pos optimalization success.");
+        LOGDBG(LY_LDGXPATH, "get_node_pos optimalization success.");
     }*/
 
     /* remember the last found node for next time */
@@ -1284,7 +1284,7 @@ set_sort(struct lyxp_set *set, const struct lyd_node *cur_node, int options)
         return -1;
     }
 
-    LOGDBG("XPATH: SORT BEGIN");
+    LOGDBG(LY_LDGXPATH, "SORT BEGIN");
     print_set_debug(set);
 
     for (i = 0; i < set->used; ++i) {
@@ -1319,7 +1319,7 @@ set_sort(struct lyxp_set *set, const struct lyd_node *cur_node, int options)
         }
     }
 
-    LOGDBG("XPATH: SORT END %d", ret);
+    LOGDBG(LY_LDGXPATH, "SORT END %d", ret);
     print_set_debug(set);
 
     return ret;
@@ -1396,9 +1396,9 @@ set_sorted_merge(struct lyxp_set *trg, struct lyxp_set *src, struct lyd_node *cu
     }
 
 #ifndef NDEBUG
-    LOGDBG("XPATH: MERGE target");
+    LOGDBG(LY_LDGXPATH, "MERGE target");
     print_set_debug(trg);
-    LOGDBG("XPATH: MERGE source");
+    LOGDBG(LY_LDGXPATH, "MERGE source");
     print_set_debug(src);
 #endif
 
@@ -1465,7 +1465,7 @@ copy_nodes:
     }
 
 #ifndef NDEBUG
-    LOGDBG("XPATH: MERGE result");
+    LOGDBG(LY_LDGXPATH, "MERGE result");
     print_set_debug(trg);
 #endif
 
@@ -5677,7 +5677,7 @@ eval_literal(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyxp_set *set)
             set_fill_string(set, &exp->expr[exp->expr_pos[*exp_idx] + 1], exp->tok_len[*exp_idx] - 2);
         }
     }
-    LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+    LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
     ++(*exp_idx);
 }
@@ -5754,7 +5754,7 @@ eval_node_test(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
             return rc;
         }
 
-        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
         ++(*exp_idx);
         break;
@@ -5779,17 +5779,17 @@ eval_node_test(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
                 }
             }
         }
-        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
         ++(*exp_idx);
 
         /* '(' */
-        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
         ++(*exp_idx);
 
         /* ')' */
-        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
         ++(*exp_idx);
         break;
@@ -5826,7 +5826,7 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
     struct lyxp_set set2;
 
     /* '[' */
-    LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+    LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
            print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
     ++(*exp_idx);
 
@@ -6017,7 +6017,7 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
     }
 
     /* ']' */
-    LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+    LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
            print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
     ++(*exp_idx);
 
@@ -6054,7 +6054,7 @@ eval_relative_location_path(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd
             assert(exp->tok_len[*exp_idx] == 2);
             all_desc = 1;
         }
-        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
         ++(*exp_idx);
 
@@ -6072,7 +6072,7 @@ step:
             if (ret) {
                 return ret;
             }
-            LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+            LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
             ++(*exp_idx);
             break;
@@ -6086,7 +6086,7 @@ step:
             if (ret) {
                 return ret;
             }
-            LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+            LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
             ++(*exp_idx);
             break;
@@ -6094,7 +6094,7 @@ step:
         case LYXP_TOKEN_AT:
             /* evaluate '@' */
             attr_axis = 1;
-            LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+            LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
             ++(*exp_idx);
 
@@ -6153,7 +6153,7 @@ eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd
     if (exp->tok_len[*exp_idx] == 1) {
         /* evaluate '/' - deferred */
         all_desc = 0;
-        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
         ++(*exp_idx);
 
@@ -6178,7 +6178,7 @@ eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd
     } else {
         /* evaluate '//' - deferred so as not to waste memory by remembering all the nodes */
         all_desc = 1;
-        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
         ++(*exp_idx);
 
@@ -6334,12 +6334,12 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
         }
     }
 
-    LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+    LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
     ++(*exp_idx);
 
     /* '(' */
-    LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+    LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
     ++(*exp_idx);
 
@@ -6367,7 +6367,7 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
         }
     }
     while ((exp->used > *exp_idx) && (exp->tokens[*exp_idx] == LYXP_TOKEN_COMMA)) {
-        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
         ++(*exp_idx);
 
@@ -6396,7 +6396,7 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
     }
 
     /* ')' */
-    LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+    LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
     ++(*exp_idx);
 
@@ -6449,7 +6449,7 @@ eval_number(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyxp_set *set)
         set_fill_number(set, num);
     }
 
-    LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+    LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
     ++(*exp_idx);
     return EXIT_SUCCESS;
@@ -6483,7 +6483,7 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
         /* '(' Expr ')' */
 
         /* '(' */
-        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
         ++(*exp_idx);
 
@@ -6494,7 +6494,7 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
         }
 
         /* ')' */
-        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
         ++(*exp_idx);
 
@@ -6604,7 +6604,7 @@ predicate:
             all_desc = 1;
         }
 
-        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
         ++(*exp_idx);
 
@@ -6649,7 +6649,7 @@ eval_unary_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_n
             /* double '-' makes '+', ignore */
             unary_minus = -1;
         }
-        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
         ++(*exp_idx);
     }
@@ -6675,7 +6675,7 @@ eval_unary_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_n
 
     /* ('|' PathExpr)* */
     while (op_exp) {
-        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
         ++(*exp_idx);
 
@@ -6773,7 +6773,7 @@ eval_multiplicative_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_no
     while (op_exp) {
         this_op = *exp_idx;
 
-        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
         ++(*exp_idx);
 
@@ -6866,7 +6866,7 @@ eval_additive_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
     while (op_exp) {
         this_op = *exp_idx;
 
-        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
         ++(*exp_idx);
 
@@ -6961,7 +6961,7 @@ eval_relational_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *
     while (op_exp) {
         this_op = *exp_idx;
 
-        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
         ++(*exp_idx);
 
@@ -7053,7 +7053,7 @@ eval_equality_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
     while (op_exp) {
         this_op = *exp_idx;
 
-        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
         ++(*exp_idx);
 
@@ -7150,7 +7150,7 @@ eval_and_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_nod
 
     /* ('and' EqualityExpr)* */
     while (op_exp) {
-        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (!set || !set->val.bool ? "skipped" : "parsed"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (!set || !set->val.bool ? "skipped" : "parsed"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
         ++(*exp_idx);
 
@@ -7244,7 +7244,7 @@ eval_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, s
 
     /* ('or' AndExpr)* */
     while (op_exp) {
-        LOGDBG("XPATH: %-27s %s %s[%u]", __func__, (!set || set->val.bool ? "skipped" : "parsed"),
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (!set || set->val.bool ? "skipped" : "parsed"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
         ++(*exp_idx);
 

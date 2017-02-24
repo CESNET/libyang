@@ -2648,7 +2648,7 @@ lyd_diff_move_preprocess(struct diff_ordered *ordered, struct lyd_node *first, s
         }
     }
     if (pos != ordered->count) {
-        LOGDBG("DIFF: Detected moved element \"%s\" from %d to %d (distance %d)",
+        LOGDBG(LY_LDGDIFF, "detected moved element \"%s\" from %d to %d (distance %d)",
                str = lyd_path(first), pos, ordered->count, ordered->count - pos);
         free(str);
     }
