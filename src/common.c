@@ -328,7 +328,7 @@ _transform_json2xml(const struct lys_module *module, const char *expr, int schem
     const char *cur_expr, *end, *prefix, *ptr;
     char *out, *name;
     size_t out_size, out_used, name_len;
-    const struct lys_module *mod;
+    const struct lys_module *mod = NULL;
     uint32_t i, j;
     struct lyxp_expr *exp;
 

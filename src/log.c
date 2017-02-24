@@ -150,7 +150,10 @@ lyext_log(LY_LOG_LEVEL level, const char *plugin, const char *function, const ch
         return;
     }
 
-    asprintf(&plugin_msg, "%s (reported by extension plugin %s, %s())", format, plugin, function);
+    if (asprintf(&plugin_msg, "%s (reported by extension plugin %s, %s())", format, plugin, function) == -1) {
+        LOGMEM;
+        return;
+    }
 
     va_start(ap, format);
     log_vprintf(level, (*ly_vlog_hide_location()), plugin_msg, NULL, ap);

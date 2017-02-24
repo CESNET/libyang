@@ -1104,8 +1104,8 @@ lys_sub_parse_fd(struct lys_module *module, int fd, LYS_INFORMAT format, struct 
         submodule = yang_read_submodule(module, addr, 0, unres);
         break;
     default:
-        assert(0);
-        break;
+        LOGINT;
+        return NULL;
     }
 
     lyp_munmap(addr, length);
