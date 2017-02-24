@@ -423,55 +423,46 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         if (attr->type != LYXML_ATTR_STD) {
             continue;
         } else if (!attr->ns) {
-            if ((*result)->schema->nodetype != LYS_ANYXML ||
-                    !ly_strequal((*result)->schema->name, "filter", 0) ||
-                    !ly_strequal((*result)->schema->module->name, "ietf-netconf", 0)) {
-                if (options & LYD_OPT_STRICT) {
-                    LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), attr->name, xml->name);
-                    LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Attribute \"%s\" with no namespace (schema).",
-                           attr->name);
-                    goto error;
-                } else {
-                    LOGWRN("Ignoring \"%s\" attribute in \"%s\" element.", attr->name, xml->name);
-                    continue;
-                }
+            if ((*result)->schema->nodetype == LYS_ANYXML &&
+                    ly_strequal((*result)->schema->name, "filter", 0) &&
+                    ly_strequal((*result)->schema->module->name, "ietf-netconf", 0)) {
+                /* NETCONF filter's attributes, which we implement as non-standard annotations,
+                 * they are unqualified (no namespace), but we know that we have internally defined
+                 * them in the ietf-netconf module, so the same module as the filter node itself */
+                mod = (*result)->schema->module;
             } else {
-                /* exception for filter's attributes */
-                pos = -1;
+                /* garbage */
+                goto attr_error;
             }
-        } else if (!strcmp(attr->ns->value, LY_NSNC)) {
-            /* exception for edit-config's attributes */
-            pos = -1;
         } else { /* regular annotation */
             /* first, get module where the annotation should be defined */
             mod = (struct lys_module*)ly_ctx_get_module_by_ns(ctx, attr->ns->value, NULL);
             if (!mod) {
                 goto attr_error;
             }
-
-            /* then, find the appropriate annotation definition */
-            submod = NULL;
-            pos = lys_ext_instance_presence(&ctx->models.list[0]->extensions[0], mod->ext, mod->ext_size);
-            while(pos != -1 && ((unsigned int)(pos + 1) < mod->ext_size) &&
-                    !ly_strequal(mod->ext[pos]->arg_value, attr->name, 1)) {
-                i = lys_ext_instance_presence(&ctx->models.list[0]->extensions[0],
-                                              &mod->ext[pos + 1], mod->ext_size - (pos + 1));
+        }
+        /* then, find the appropriate annotation definition */
+        submod = NULL;
+        pos = lys_ext_instance_presence(&ctx->models.list[0]->extensions[0], mod->ext, mod->ext_size);
+        while (pos != -1 && ((unsigned int)(pos + 1) < mod->ext_size)
+               && !ly_strequal(mod->ext[pos]->arg_value, attr->name, 1)) {
+            i = lys_ext_instance_presence(&ctx->models.list[0]->extensions[0], &mod->ext[pos + 1],
+                                          mod->ext_size - (pos + 1));
+            pos = (i == -1) ? -1 : pos + 1 + i;
+        }
+        /* try submodules */
+        for (j = 0; pos == -1 && j < mod->inc_size; j++) {
+            submod = mod->inc[j].submodule;
+            pos = lys_ext_instance_presence(&ctx->models.list[0]->extensions[0], submod->ext, submod->ext_size);
+            while (pos != -1 && ((unsigned int)(pos + 1) < submod->ext_size)
+                   && !ly_strequal(submod->ext[pos]->arg_value, attr->name, 1)) {
+                i = lys_ext_instance_presence(&ctx->models.list[0]->extensions[0], &submod->ext[pos + 1],
+                                              submod->ext_size - (pos + 1));
                 pos = (i == -1) ? -1 : pos + 1 + i;
             }
-            /* try submodules */
-            for (j = 0; pos == -1 && j < mod->inc_size; j++) {
-                submod = mod->inc[j].submodule;
-                pos = lys_ext_instance_presence(&ctx->models.list[0]->extensions[0], submod->ext, submod->ext_size);
-                while (pos != -1 && ((unsigned int)(pos + 1) < submod->ext_size)
-                       && !ly_strequal(submod->ext[pos]->arg_value, attr->name, 1)) {
-                    i = lys_ext_instance_presence(&ctx->models.list[0]->extensions[0], &submod->ext[pos + 1],
-                                                  submod->ext_size - (pos + 1));
-                    pos = (i == -1) ? -1 : pos + 1 + i;
-                }
-            }
-            if (pos == -1) {
-                goto attr_error;
-            }
+        }
+        if (pos == -1) {
+            goto attr_error;
         }
 
         /* allocate and fill the data attribute structure */
@@ -481,15 +472,8 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         }
         dattr->parent = (*result);
         dattr->next = NULL;
-
-        if (pos != -1) {
-            dattr->annotation = submod ? (struct lys_ext_instance_complex *)submod->ext[pos] :
-                                         (struct lys_ext_instance_complex *)mod->ext[pos];
-        } else {
-            /* exception for NETCONF's edit-config and filter attributes */
-            dattr->annotation = NULL;
-        }
-
+        dattr->annotation = submod ? (struct lys_ext_instance_complex *)submod->ext[pos] :
+                                     (struct lys_ext_instance_complex *)mod->ext[pos];
         dattr->name = attr->name;
         attr->name = NULL;
 
@@ -505,28 +489,6 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
             goto error;
         }
 
-#if 0
-        ly_vlog_hide(1);
-        dattr->value = transform_xml2json(ctx, attr->value, xml, 0, 1);
-        ly_vlog_hide(0);
-        if (!dattr->value) {
-            if (ly_errno != LY_EVALID) {
-                /* fatal error, reprint the error message */
-                ly_err_repeat();
-                free(dattr);
-                goto error;
-            }
-            /* problem with resolving value as xpath
-             * - ignore it and just store the value as it is */
-            ly_err_clean(1);
-            dattr->value = attr->value;
-            attr->value = NULL;
-        } else {
-            lydict_remove(ctx, attr->value);
-            attr->value = NULL;
-        }
-#endif
-
         /* insert into the data node */
         if (!(*result)->attr) {
             (*result)->attr = dattr;
@@ -539,10 +501,12 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 attr_error:
         if (options & LYD_OPT_STRICT) {
             LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), attr->name, xml->name);
-            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Unknown metadata (%s:%s).", attr->ns->prefix, attr->name);
+            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Unknown metadata (%s%s%s).",
+                   attr->ns ? attr->ns->prefix : "", attr->ns ? ":" : "", attr->name);
             goto error;
         } else {
-            LOGWRN("Unknown metadata (%s:%s) - skipping.", attr->ns->prefix, attr->name);
+            LOGWRN("Unknown metadata (%s%s%s) - skipping.",
+                   attr->ns ? attr->ns->prefix : "", attr->ns ? ":" : "", attr->name);
             continue;
         }
     }

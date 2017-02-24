@@ -157,15 +157,13 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
     }
 
     for (attr = node->attr; attr; attr = attr->next) {
-        if (attr->annotation) {
-            ly_print(out, " %s:%s=\"", attr->annotation->module->prefix, attr->name);
-        } else if (rpc_filter) {
+        if (rpc_filter) {
             /* exception for NETCONF's filter's attributes */
             ly_print(out, " %s=\"", attr->name);
         } else {
-            /* exception for NETCONF's edit-config's attributes */
-            ly_print(out, " nc:%s=\"", attr->name);
+            ly_print(out, " %s:%s=\"", attr->annotation->module->prefix, attr->name);
         }
+
         switch (attr->value_type & LY_DATA_TYPE_MASK) {
         case LY_TYPE_BINARY:
         case LY_TYPE_STRING:

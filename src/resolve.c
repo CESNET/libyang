@@ -2908,9 +2908,9 @@ resolve_superior_type(const char *name, const char *mod_name, const struct lys_m
     if (!mod_name) {
         /* no prefix, try built-in types */
         for (i = 1; i < LY_DATA_TYPE_COUNT; i++) {
-            if (!strcmp(ly_types[i].def->name, name)) {
+            if (!strcmp(ly_types[i]->name, name)) {
                 if (ret) {
-                    *ret = ly_types[i].def;
+                    *ret = ly_types[i];
                 }
                 return EXIT_SUCCESS;
             }

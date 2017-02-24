@@ -133,7 +133,7 @@ struct lyext_substmt annotation_substmt[] = {
     {LY_STMT_TYPE, 0, LY_STMT_CARD_MAND},
     {LY_STMT_UNITS, 3 * sizeof(void *),  LY_STMT_CARD_OPT},
     {LY_STMT_STATUS, 5 * sizeof(void *),  LY_STMT_CARD_OPT},
-    {LY_STMT_DESCRIPTION, sizeof(void *),  LY_STMT_CARD_OPT},
+    {LY_STMT_DESCRIPTION, 1 * sizeof(void *),  LY_STMT_CARD_OPT},
     {LY_STMT_REFERENCE, 2 * sizeof(void *),  LY_STMT_CARD_OPT},
     {0, 0, 0} /* terminating item */
 };
@@ -152,8 +152,7 @@ struct lyext_plugin_complex annotation = {
     .substmt = annotation_substmt,
 
     /* final size of the extension instance structure with the space for storing the substatements */
-    .instance_size = sizeof(struct lys_ext_instance) + sizeof(struct lys_type) +
-                     3 * sizeof(char*) + sizeof(uint16_t) + sizeof(struct lys_iffeature*)
+    .instance_size = sizeof(struct lys_ext_instance_complex) + 5 * sizeof(void*) + sizeof(uint16_t)
 };
 
 /**
