@@ -3807,6 +3807,7 @@ must_agr_str: string { $$.token = actual_type;
                                      ((struct lys_node_notif *)actual)->must_size);
                          break;
                        case INPUT_KEYWORD:
+                       case OUTPUT_KEYWORD:
                          if (trg->version < 2) {
                            free(s);
                            LOGVAL(LYE_INSTMT, LY_VLOG_LYS, actual, "must");
