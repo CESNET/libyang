@@ -280,145 +280,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         (*result)->when_status = LYD_WHEN;
     }
 
-    /* check insert attribute and its values */
-    if (options & LYD_OPT_EDIT) {
-        /* 0x01 - insert attribute present
-         * 0x02 - insert is relative (before or after)
-         * 0x04 - value attribute present
-         * 0x08 - key attribute present
-         * 0x10 - operation not allowing insert attribute
-         */
-        for (attr = xml->attr; attr; attr = attr->next) {
-            if (attr->type != LYXML_ATTR_STD || !attr->ns) {
-                /* not interesting attribute or namespace declaration */
-                continue;
-            }
-
-            if (!strcmp(attr->name, "operation") && !strcmp(attr->ns->value, LY_NSNC)) {
-                if (editbits & 0x10) {
-                    LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, (*result), "operation attributes", xml->name);
-                    return -1;
-                }
-
-                if (!strcmp(attr->value, "delete") || !strcmp(attr->value, "remove")) {
-                    editbits |= 0x10;
-                } else if (strcmp(attr->value, "create") &&
-                        strcmp(attr->value, "merge") &&
-                        strcmp(attr->value, "replace")) {
-                    /* unknown operation */
-                    LOGVAL(LYE_INVALATTR, LY_VLOG_LYD, (*result), attr->value, attr->name);
-                    return -1;
-                }
-            } else if (!strcmp(attr->name, "insert") && !strcmp(attr->ns->value, LY_NSYANG)) {
-                /* 'insert' attribute present */
-                if (!(schema->flags & LYS_USERORDERED)) {
-                    /* ... but it is not expected */
-                    LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), "insert", schema->name);
-                    return -1;
-                }
-
-                if (editbits & 0x01) {
-                    LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, (*result), "insert attributes", xml->name);
-                    return -1;
-                }
-                if (!strcmp(attr->value, "first") || !strcmp(attr->value, "last")) {
-                    editbits |= 0x01;
-                } else if (!strcmp(attr->value, "before") || !strcmp(attr->value, "after")) {
-                    editbits |= 0x01 | 0x02;
-                } else {
-                    LOGVAL(LYE_INVALATTR, LY_VLOG_LYD, (*result), attr->value, attr->name);
-                    return -1;
-                }
-                str = attr->name;
-            } else if (!strcmp(attr->name, "value") && !strcmp(attr->ns->value, LY_NSYANG)) {
-                if (editbits & 0x04) {
-                    LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, (*result), "value attributes", xml->name);
-                    return -1;
-                } else if (schema->nodetype & LYS_LIST) {
-                    LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), attr->name, schema->name);
-                    return -1;
-                }
-                editbits |= 0x04;
-                str = attr->name;
-            } else if (!strcmp(attr->name, "key") && !strcmp(attr->ns->value, LY_NSYANG)) {
-                if (editbits & 0x08) {
-                    LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, (*result), "key attributes", xml->name);
-                    return -1;
-                } else if (schema->nodetype & LYS_LEAFLIST) {
-                    LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), attr->name, schema->name);
-                    return -1;
-                }
-                editbits |= 0x08;
-                str = attr->name;
-            }
-        }
-
-        /* report errors */
-        if (editbits > 0x10 || (editbits && editbits < 0x10 &&
-                (!(schema->nodetype & (LYS_LEAFLIST | LYS_LIST)) || !(schema->flags & LYS_USERORDERED)))) {
-            /* attributes in wrong elements */
-            LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), str, xml->name);
-            return -1;
-        } else if (editbits == 3) {
-            /* 0x01 | 0x02 - relative position, but value/key is missing */
-            if (schema->nodetype & LYS_LIST) {
-                LOGVAL(LYE_MISSATTR, LY_VLOG_LYD, (*result), "key", xml->name);
-            } else { /* LYS_LEAFLIST */
-                LOGVAL(LYE_MISSATTR, LY_VLOG_LYD, (*result), "value", xml->name);
-            }
-            return -1;
-        } else if ((editbits & (0x04 | 0x08)) && !(editbits & 0x02)) {
-            /* key/value without relative position */
-            LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), (editbits & 0x04) ? "value" : "key", schema->name);
-            return -1;
-        }
-    }
-
-    /* type specific processing */
-    if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
-        /* type detection and assigning the value */
-        if (xml_get_value(*result, xml, editbits)) {
-            goto error;
-        }
-    } else if (schema->nodetype & LYS_ANYDATA) {
-        /* store children values */
-        if (xml->child) {
-            child = xml->child;
-            /* manually unlink all siblings and correct namespaces */
-            xml->child = NULL;
-            LY_TREE_FOR(child, next) {
-                next->parent = NULL;
-                lyxml_correct_elem_ns(ctx, next, 1, 1);
-            }
-
-            ((struct lyd_node_anydata *)*result)->value_type = LYD_ANYDATA_XML;
-            ((struct lyd_node_anydata *)*result)->value.xml = child;
-        } else {
-            ((struct lyd_node_anydata *)*result)->value_type = LYD_ANYDATA_CONSTSTRING;
-            ((struct lyd_node_anydata *)*result)->value.str = lydict_insert(ctx, xml->content, 0);
-        }
-    } else if (schema->nodetype & (LYS_RPC | LYS_ACTION)) {
-        if (!(options & LYD_OPT_RPC) || *act_notif) {
-            LOGVAL(LYE_INELEM, LY_VLOG_LYD, (*result), schema->name);
-            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Unexpected %s node \"%s\".",
-                   (schema->nodetype == LYS_RPC ? "rpc" : "action"), schema->name);
-            goto error;
-        }
-        *act_notif = *result;
-    } else if (schema->nodetype == LYS_NOTIF) {
-        if (!(options & LYD_OPT_NOTIF) || *act_notif) {
-            LOGVAL(LYE_INELEM, LY_VLOG_LYD, (*result), schema->name);
-            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Unexpected notification node \"%s\".", schema->name);
-            goto error;
-        }
-        *act_notif = *result;
-    }
-
-    /* first part of validation checks */
-    if (lyv_data_context(*result, options, unres)) {
-        goto error;
-    }
-
+    /* process attributes */
     for (attr = xml->attr; attr; attr = attr->next) {
         if (attr->type != LYXML_ATTR_STD) {
             continue;
@@ -509,6 +371,140 @@ attr_error:
                    attr->ns ? attr->ns->prefix : "", attr->ns ? ":" : "", attr->name);
             continue;
         }
+    }
+
+    /* check insert attribute and its values */
+    if (options & LYD_OPT_EDIT) {
+        /* 0x01 - insert attribute present
+         * 0x02 - insert is relative (before or after)
+         * 0x04 - value attribute present
+         * 0x08 - key attribute present
+         * 0x10 - operation not allowing insert attribute
+         */
+        for (dattr = (*result)->attr; dattr; dattr = dattr->next) {
+            if (!strcmp(dattr->annotation->arg_value, "operation") &&
+                    !strcmp(dattr->annotation->module->name, "ietf-netconf")) {
+                if (editbits & 0x10) {
+                    LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, (*result), "operation attributes", xml->name);
+                    return -1;
+                }
+
+                if (dattr->value.enm->value >= 3) {
+                    /* delete or remove */
+                    editbits |= 0x10;
+                }
+            } else if (dattr->annotation->module == ctx->models.list[1] && /* internal YANG schema */
+                    !strcmp(dattr->annotation->arg_value, "insert")) {
+                /* 'insert' attribute present */
+                if (!(schema->flags & LYS_USERORDERED)) {
+                    /* ... but it is not expected */
+                    LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), "insert", schema->name);
+                    return -1;
+                }
+                if (editbits & 0x01) {
+                    LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, (*result), "insert attributes", xml->name);
+                    return -1;
+                }
+                switch (dattr->value.enm->value) {
+                case 0: /* first */
+                case 1: /* last */
+                    editbits |= 0x01;
+                    break;
+                case 2: /* before */
+                case 3: /* after */
+                    editbits |= 0x01 | 0x02;
+                    break;
+                }
+                str = dattr->name;
+            } else if (dattr->annotation->module == ctx->models.list[1] && /* internal YANG schema */
+                    !strcmp(dattr->annotation->arg_value, "value")) {
+                if (editbits & 0x04) {
+                    LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, (*result), "value attributes", xml->name);
+                    return -1;
+                } else if (schema->nodetype & LYS_LIST) {
+                    LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), dattr->name, schema->name);
+                    return -1;
+                }
+                editbits |= 0x04;
+                str = dattr->name;
+            } else if (dattr->annotation->module == ctx->models.list[1] && /* internal YANG schema */
+                    !strcmp(dattr->annotation->arg_value, "key")) {
+                if (editbits & 0x08) {
+                    LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, (*result), "key attributes", xml->name);
+                    return -1;
+                } else if (schema->nodetype & LYS_LEAFLIST) {
+                    LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), dattr->name, schema->name);
+                    return -1;
+                }
+                editbits |= 0x08;
+                str = dattr->name;
+            }
+        }
+
+        /* report errors */
+        if (editbits > 0x10 || (editbits && editbits < 0x10 &&
+                (!(schema->nodetype & (LYS_LEAFLIST | LYS_LIST)) || !(schema->flags & LYS_USERORDERED)))) {
+            /* attributes in wrong elements */
+            LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), str, xml->name);
+            return -1;
+        } else if (editbits == 3) {
+            /* 0x01 | 0x02 - relative position, but value/key is missing */
+            if (schema->nodetype & LYS_LIST) {
+                LOGVAL(LYE_MISSATTR, LY_VLOG_LYD, (*result), "key", xml->name);
+            } else { /* LYS_LEAFLIST */
+                LOGVAL(LYE_MISSATTR, LY_VLOG_LYD, (*result), "value", xml->name);
+            }
+            return -1;
+        } else if ((editbits & (0x04 | 0x08)) && !(editbits & 0x02)) {
+            /* key/value without relative position */
+            LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), (editbits & 0x04) ? "value" : "key", schema->name);
+            return -1;
+        }
+    }
+
+    /* type specific processing */
+    if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+        /* type detection and assigning the value */
+        if (xml_get_value(*result, xml, editbits)) {
+            goto error;
+        }
+    } else if (schema->nodetype & LYS_ANYDATA) {
+        /* store children values */
+        if (xml->child) {
+            child = xml->child;
+            /* manually unlink all siblings and correct namespaces */
+            xml->child = NULL;
+            LY_TREE_FOR(child, next) {
+                next->parent = NULL;
+                lyxml_correct_elem_ns(ctx, next, 1, 1);
+            }
+
+            ((struct lyd_node_anydata *)*result)->value_type = LYD_ANYDATA_XML;
+            ((struct lyd_node_anydata *)*result)->value.xml = child;
+        } else {
+            ((struct lyd_node_anydata *)*result)->value_type = LYD_ANYDATA_CONSTSTRING;
+            ((struct lyd_node_anydata *)*result)->value.str = lydict_insert(ctx, xml->content, 0);
+        }
+    } else if (schema->nodetype & (LYS_RPC | LYS_ACTION)) {
+        if (!(options & LYD_OPT_RPC) || *act_notif) {
+            LOGVAL(LYE_INELEM, LY_VLOG_LYD, (*result), schema->name);
+            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Unexpected %s node \"%s\".",
+                   (schema->nodetype == LYS_RPC ? "rpc" : "action"), schema->name);
+            goto error;
+        }
+        *act_notif = *result;
+    } else if (schema->nodetype == LYS_NOTIF) {
+        if (!(options & LYD_OPT_NOTIF) || *act_notif) {
+            LOGVAL(LYE_INELEM, LY_VLOG_LYD, (*result), schema->name);
+            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Unexpected notification node \"%s\".", schema->name);
+            goto error;
+        }
+        *act_notif = *result;
+    }
+
+    /* first part of validation checks */
+    if (lyv_data_context(*result, options, unres)) {
+        goto error;
     }
 
     /* process children */
