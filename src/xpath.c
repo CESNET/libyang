@@ -539,7 +539,7 @@ cast_node_set_to_string(struct lyxp_set *set, struct lyd_node *cur_node, struct 
     case LYXP_NODE_TEXT:
         return cast_string_elem(set->val.nodes[0].node, local_mod, 0, root_type);
     case LYXP_NODE_ATTR:
-        return strdup(set->val.attrs[0].attr->value);
+        return strdup(set->val.attrs[0].attr->value_str);
     }
 
     LOGINT;
@@ -3157,7 +3157,7 @@ xpath_lang(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd_node *
     /* find lang attribute */
     for (; node; node = node->parent) {
         for (attr = node->attr; attr; attr = attr->next) {
-            if (attr->name && !strcmp(attr->name, "lang") && !strcmp(attr->module->name, "xml")) {
+            if (attr->name && !strcmp(attr->name, "lang") && !strcmp(attr->annotation->module->name, "xml")) {
                 break;
             }
         }
@@ -3172,13 +3172,13 @@ xpath_lang(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd_node *
         set_fill_boolean(set, 0);
     } else {
         for (i = 0; args[0]->val.str[i]; ++i) {
-            if (tolower(args[0]->val.str[i]) != tolower(attr->value[i])) {
+            if (tolower(args[0]->val.str[i]) != tolower(attr->value_str[i])) {
                 set_fill_boolean(set, 0);
                 break;
             }
         }
         if (!args[0]->val.str[i]) {
-            if (!attr->value[i] || (attr->value[i] == '-')) {
+            if (!attr->value_str[i] || (attr->value_str[i] == '-')) {
                 set_fill_boolean(set, 1);
             } else {
                 set_fill_boolean(set, 0);
@@ -3389,7 +3389,7 @@ xpath_namespace_uri(struct lyxp_set **args, uint16_t arg_count, struct lyd_node 
         if (item->type == LYXP_NODE_ELEM) {
             module =  item->node->schema->module;
         } else { /* LYXP_NODE_ATTR */
-            module = ((struct lyd_attr *)item->node)->module;
+            module = ((struct lyd_attr *)item->node)->annotation->module;
         }
 
         module = lys_main_module(module);
@@ -4922,7 +4922,7 @@ moveto_attr(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
             LY_TREE_FOR(set->val.nodes[i].node->attr, sub) {
 
                 /* check "namespace" */
-                if (moveto_mod && (sub->module != moveto_mod)) {
+                if (moveto_mod && (sub->annotation->module != moveto_mod)) {
                     /* no match */
                     continue;
                 }
@@ -5073,7 +5073,7 @@ moveto_attr_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
         if (set->val.nodes[i].type == LYXP_NODE_ELEM) {
             LY_TREE_FOR(set->val.nodes[i].node->attr, sub) {
                 /* check "namespace" */
-                if (moveto_mod && (sub->module != moveto_mod)) {
+                if (moveto_mod && (sub->annotation->module != moveto_mod)) {
                     /* no match */
                     continue;
                 }

@@ -648,7 +648,9 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
                 out_size += strlen(mod->name) - pref_len;
                 out = ly_realloc(out, out_size);
                 if (!out) {
-                    LOGMEM;
+                    if (log) {
+                        LOGMEM;
+                    }
                     goto error;
                 }
 

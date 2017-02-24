@@ -504,7 +504,7 @@ test_ly_ctx_clean2(void **state)
     assert_ptr_not_equal(lys_parse_mem(ctx, yang_dep, LYS_IN_YANG), NULL);
 
     /* get the target leaf in ietf-yang-library */
-    mod = ctx->models.list[3];
+    mod = ctx->models.list[4];
     /* magic: leaf = /yl:modules-state/yl:module/yl:name */
     leaf = (struct lys_node_leaf *)mod->data->next->child->next->child->prev->child->child;
     assert_true(leaf->backlinks && leaf->backlinks->number == 1);

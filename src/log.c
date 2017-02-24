@@ -205,6 +205,10 @@ lyext_log(LY_LOG_LEVEL level, const char *plugin, const char *function, const ch
     va_list ap;
     char *plugin_msg;
 
+    if (level == LY_LLERR) {
+        /* set errno */
+        ly_errno = LY_EEXT;
+    }
     if (ly_log_level < level) {
         return;
     }

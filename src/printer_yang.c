@@ -19,6 +19,7 @@
 #include <assert.h>
 
 #include "common.h"
+#include "context.h"
 #include "printer.h"
 #include "tree_schema.h"
 
@@ -1927,6 +1928,13 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
             continue;
         } else if (ext[u]->insubstmt != substmt || ext[u]->insubstmt_index != substmt_index) {
             /* do not print the other substatement than the required */
+            continue;
+        } else if (ext[u]->def->module == module->ctx->models.list[0] &&
+                 (!strcmp(ext[u]->arg_value, "operation") ||
+                  !strcmp(ext[u]->arg_value, "select") ||
+                  !strcmp(ext[u]->arg_value, "type"))) {
+            /* hack for NETCONF's edit-config's operation and filter's attributes
+             * - the annotation definition is only internal, do not print it */
             continue;
         }
 

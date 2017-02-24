@@ -195,8 +195,14 @@ test_implemented_info_yin(void **state)
     char *data;
     const char *template = "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">\n"
 "  <module>\n"
+"    <name>ietf-yang-metadata</name>\n"
+"    <revision>2016-08-05</revision>\n"
+"    <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-metadata</namespace>\n"
+"    <conformance-type>import</conformance-type>\n"
+"  </module>\n"
+"  <module>\n"
 "    <name>yang</name>\n"
-"    <revision>2016-02-11</revision>\n"
+"    <revision>2017-02-20</revision>\n"
 "    <namespace>urn:ietf:params:xml:ns:yang:1</namespace>\n"
 "    <conformance-type>implement</conformance-type>\n"
 "  </module>\n"
@@ -240,7 +246,7 @@ test_implemented_info_yin(void **state)
 "    <feature>foo</feature>\n"
 "    <conformance-type>implement</conformance-type>\n"
 "  </module>\n"
-"  <module-set-id>8</module-set-id>\n"
+"  <module-set-id>9</module-set-id>\n"
 "</modules-state>\n";
 
     ly_ctx_set_searchdir(ctx, SCHEMA_FOLDER_YIN);
@@ -268,8 +274,14 @@ test_implemented_info_yang(void **state)
     char *data;
     const char *template = "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">\n"
 "  <module>\n"
+"    <name>ietf-yang-metadata</name>\n"
+"    <revision>2016-08-05</revision>\n"
+"    <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-metadata</namespace>\n"
+"    <conformance-type>import</conformance-type>\n"
+"  </module>\n"
+"  <module>\n"
 "    <name>yang</name>\n"
-"    <revision>2016-02-11</revision>\n"
+"    <revision>2017-02-20</revision>\n"
 "    <namespace>urn:ietf:params:xml:ns:yang:1</namespace>\n"
 "    <conformance-type>implement</conformance-type>\n"
 "  </module>\n"
@@ -313,7 +325,7 @@ test_implemented_info_yang(void **state)
 "    <feature>foo</feature>\n"
 "    <conformance-type>implement</conformance-type>\n"
 "  </module>\n"
-"  <module-set-id>8</module-set-id>\n"
+"  <module-set-id>9</module-set-id>\n"
 "</modules-state>\n";
 
     ly_ctx_set_searchdir(ctx, SCHEMA_FOLDER_YANG);

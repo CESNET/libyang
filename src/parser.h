@@ -75,7 +75,7 @@ struct lys_module *lyp_search_file(struct ly_ctx *ctx, struct lys_module *module
 struct lys_type *lyp_get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *found);
 
 struct lys_type *lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *xml,
-                                struct lyd_node_leaf_list *leaf, int store, int dflt);
+                                struct lyd_node_leaf_list *leaf, struct lyd_attr *attr, int store, int dflt);
 
 int lyp_check_length_range(const char *expr, struct lys_type *type);
 

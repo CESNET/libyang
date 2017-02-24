@@ -66,11 +66,7 @@ struct internal_modules {
 /**
  * @brief Internal list of built-in types
  */
-struct ly_types {
-    LY_DATA_TYPE type;
-    struct lys_tpdf *def;
-};
-extern struct ly_types ly_types[LY_DATA_TYPE_COUNT];
+extern struct lys_tpdf *ly_types[LY_DATA_TYPE_COUNT];
 
 /**
  * @brief Internal structure for data node sorting.

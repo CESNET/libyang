@@ -53,12 +53,26 @@ int annotation_position(const void * UNUSED(parent), LYEXT_PAR parent_type, LYEX
  *         1 - error
  */
 int
-annotation_duplication_check(struct lys_ext_instance *ext)
+annotation_final_check(struct lys_ext_instance *ext)
 {
     uint8_t  i, j, c;
     struct lys_module *mod;
     struct lys_submodule *submod;
+    struct lys_type *type;
 
+    /*
+     * check type - leafref is not allowed
+     */
+    type = *(struct lys_type**)lys_ext_complex_get_substmt(LY_STMT_TYPE, (struct lys_ext_instance_complex *)ext, NULL);
+    if (type->base == LY_TYPE_LEAFREF) {
+        LYEXT_LOG(LY_LLERR, "Annotations", "The leafref type is not supported for annotations (annotation %s).",
+                  ext->arg_value);
+        return 1;
+    }
+
+    /*
+     * check duplication
+     */
     if (ext->flags & LYEXT_OPT_PLUGIN1) {
         /* already checked */
         ext->flags &= ~LYEXT_OPT_PLUGIN1;
@@ -119,7 +133,7 @@ struct lyext_substmt annotation_substmt[] = {
     {LY_STMT_TYPE, 0, LY_STMT_CARD_MAND},
     {LY_STMT_UNITS, 3 * sizeof(void *),  LY_STMT_CARD_OPT},
     {LY_STMT_STATUS, 5 * sizeof(void *),  LY_STMT_CARD_OPT},
-    {LY_STMT_DESCRIPTION, sizeof(void *),  LY_STMT_CARD_OPT},
+    {LY_STMT_DESCRIPTION, 1 * sizeof(void *),  LY_STMT_CARD_OPT},
     {LY_STMT_REFERENCE, 2 * sizeof(void *),  LY_STMT_CARD_OPT},
     {0, 0, 0} /* terminating item */
 };
@@ -131,15 +145,14 @@ struct lyext_plugin_complex annotation = {
     .type = LYEXT_COMPLEX,
     .flags = 0,
     .check_position = &annotation_position,
-    .check_result = &annotation_duplication_check,
+    .check_result = &annotation_final_check,
     .check_inherit = NULL,
 
     /* specification of allowed substatements of the extension instance */
     .substmt = annotation_substmt,
 
     /* final size of the extension instance structure with the space for storing the substatements */
-    .instance_size = sizeof(struct lys_ext_instance) + sizeof(struct lys_type) +
-                     3 * sizeof(char*) + sizeof(uint16_t) + sizeof(struct lys_iffeature*)
+    .instance_size = sizeof(struct lys_ext_instance_complex) + 5 * sizeof(void*) + sizeof(uint16_t)
 };
 
 /**
