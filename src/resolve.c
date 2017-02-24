@@ -3144,7 +3144,7 @@ check_default(struct lys_type *type, const char **value, struct lys_module *modu
             }
         }
     } else {
-        if (!lyp_parse_value(&((struct lys_node_leaf *)node.schema)->type, &node.value_str, NULL, &node, 1, 1)) {
+        if (!lyp_parse_value(&((struct lys_node_leaf *)node.schema)->type, &node.value_str, NULL, &node, NULL, 1, 1)) {
             /* possible forward reference */
             ret = 1;
             if (base_tpdf) {
@@ -5411,7 +5411,7 @@ resolve_base_ident(const struct lys_module *module, struct lys_ident *ident, con
  * @return Pointer to the identity resolvent, NULL on error.
  */
 struct lys_ident *
-resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node *node)
+resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node *node, struct lys_module *mod)
 {
     const char *mod_name, *name, *mod_name_iter;
     int mod_name_len, rc, i;
@@ -5434,7 +5434,7 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
     }
     if (!mod_name) {
         /* no prefix, identity must be defined in the same module as node */
-        mod_name = lys_main_module(node->schema->module)->name;
+        mod_name = lys_main_module(mod)->name;
         mod_name_len = strlen(mod_name);
     }
 
@@ -7502,7 +7502,7 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int store,
                         leaf->value_type = LY_TYPE_LEAFREF;
                     } else {
                         /* valid unresolved */
-                        if (!lyp_parse_value(t, &leaf->value_str, NULL, leaf, 1, 0)) {
+                        if (!lyp_parse_value(t, &leaf->value_str, NULL, leaf, NULL, 1, 0)) {
                             return -1;
                         }
                     }
@@ -7548,7 +7548,7 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int store,
             }
             break;
         default:
-            if (lyp_parse_value(t, &leaf->value_str, NULL, leaf, store, 0)) {
+            if (lyp_parse_value(t, &leaf->value_str, NULL, leaf, NULL, store, 0)) {
                 success = 1;
             }
             break;
@@ -7642,7 +7642,7 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int ignore_
             } else {
                 /* valid unresolved */
                 if (!(leaf->value_type & LY_TYPE_LEAFREF_UNRES)) {
-                    if (!lyp_parse_value(&sleaf->type, &leaf->value_str, NULL, leaf, 1, 0)) {
+                    if (!lyp_parse_value(&sleaf->type, &leaf->value_str, NULL, leaf, NULL, 1, 0)) {
                         return -1;
                     }
                 }

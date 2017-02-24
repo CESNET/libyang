@@ -539,7 +539,7 @@ cast_node_set_to_string(struct lyxp_set *set, struct lyd_node *cur_node, struct 
     case LYXP_NODE_TEXT:
         return cast_string_elem(set->val.nodes[0].node, local_mod, 0, root_type);
     case LYXP_NODE_ATTR:
-        return strdup(set->val.attrs[0].attr->value);
+        return strdup(set->val.attrs[0].attr->value_str);
     }
 
     LOGINT;
@@ -3172,13 +3172,13 @@ xpath_lang(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd_node *
         set_fill_boolean(set, 0);
     } else {
         for (i = 0; args[0]->val.str[i]; ++i) {
-            if (tolower(args[0]->val.str[i]) != tolower(attr->value[i])) {
+            if (tolower(args[0]->val.str[i]) != tolower(attr->value_str[i])) {
                 set_fill_boolean(set, 0);
                 break;
             }
         }
         if (!args[0]->val.str[i]) {
-            if (!attr->value[i] || (attr->value[i] == '-')) {
+            if (!attr->value_str[i] || (attr->value_str[i] == '-')) {
                 set_fill_boolean(set, 1);
             } else {
                 set_fill_boolean(set, 0);

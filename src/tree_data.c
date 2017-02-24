@@ -682,7 +682,7 @@ _lyd_new_leaf(struct lyd_node *parent, const struct lys_node *schema, const char
 
     /* resolve the type correctly (after it was connected to parent cause of log) */
     if (!lyp_parse_value(&((struct lys_node_leaf *)ret->schema)->type, &((struct lyd_node_leaf_list *)ret)->value_str,
-                         NULL, (struct lyd_node_leaf_list *)ret, 1, 0)) {
+                         NULL, (struct lyd_node_leaf_list *)ret, NULL, 1, 0)) {
         lyd_free(ret);
         return NULL;
     }
@@ -843,7 +843,7 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
     /* leaf->value is erased by lyp_parse_value() */
 
     /* parse the type correctly, makes the value canonical if needed */
-    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, NULL, leaf, 1, 0)) {
+    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, NULL, leaf, NULL, 1, 0)) {
         lydict_remove(leaf->schema->module->ctx, leaf->value_str);
         leaf->value_str = backup;
         memcpy(&leaf->value, &backup_val, sizeof backup);
@@ -1819,7 +1819,7 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
                  * a different context, searching for the type and duplicating the data is almost as same as resolving
                  * the string value, so due to a simplicity, parse the value for the duplicated leaf */
                 lyp_parse_value(&((struct lys_node_leaf *)trg_leaf->schema)->type, &trg_leaf->value_str, NULL,
-                                trg_leaf, 1, trg_leaf->dflt);
+                                trg_leaf, NULL, 1, trg_leaf->dflt);
                 break;
             default:
                 trg_leaf->value = src_leaf->value;
@@ -4341,7 +4341,7 @@ lyd_dup_attr(struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_attr *attr)
         ret = parent->attr;
     } else {
         for (ret = parent->attr; ret->next; ret = ret->next);
-        ret->next = malloc(sizeof *ret);
+        ret->next = calloc(1, sizeof *ret);
         ret = ret->next;
     }
     if (!ret) {
@@ -4354,8 +4354,38 @@ lyd_dup_attr(struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_attr *attr)
     ret->next = NULL;
     ret->annotation = attr->annotation;
     ret->name = lydict_insert(ctx, attr->name, 0);
-    ret->value = lydict_insert(ctx, attr->value, 0);
-
+    ret->value_str = lydict_insert(ctx, attr->value_str, 0);
+    ret->value_type = attr->value_type;
+    switch (ret->value_type) {
+    case LY_TYPE_BINARY:
+    case LY_TYPE_STRING:
+        /* value_str pointer is shared in these cases */
+        ret->value.string = ret->value_str;
+        break;
+    case LY_TYPE_LEAFREF:
+        ret->value.leafref = NULL;
+        break;
+    case LY_TYPE_INST:
+        ret->value.instance = NULL;
+        break;
+    case LY_TYPE_UNION:
+        /* unresolved union (this must be non-validated tree), duplicate the stored string (duplicated
+         * because of possible change of the value in case of instance-identifier) */
+        ret->value.string = lydict_insert(ctx, attr->value.string, 0);
+        break;
+    case LY_TYPE_ENUM:
+    case LY_TYPE_IDENT:
+    case LY_TYPE_BITS:
+        /* in case of duplicating bits (no matter if in the same context or not) or enum and identityref into
+         * a different context, searching for the type and duplicating the data is almost as same as resolving
+         * the string value, so due to a simplicity, parse the value for the duplicated leaf */
+        lyp_parse_value(*((struct lys_type **)lys_ext_complex_get_substmt(LY_STMT_TYPE, ret->annotation, NULL)),
+                             &ret->value_str, NULL, NULL, ret, 1, 0);
+        break;
+    default:
+        ret->value = attr->value;
+        break;
+    }
     return ret;
 }
 
@@ -4547,7 +4577,7 @@ lyd_dup_to_ctx(const struct lyd_node *node, int recursive, struct ly_ctx *ctx)
                  * a different context, searching for the type and duplicating the data is almost as same as resolving
                  * the string value, so due to a simplicity, parse the value for the duplicated leaf */
                 lyp_parse_value(&((struct lys_node_leaf *)new_leaf->schema)->type, &new_leaf->value_str, NULL,
-                                new_leaf, 1, node->dflt);
+                                new_leaf, NULL, 1, node->dflt);
                 break;
             default:
                 new_leaf->value = ((struct lyd_node_leaf_list *)elem)->value;
@@ -4710,7 +4740,20 @@ lyd_free_attr(struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_attr *attr
         iter = iter->next;
 
         lydict_remove(ctx, attr->name);
-        lydict_remove(ctx, attr->value);
+        switch (attr->value_type & LY_DATA_TYPE_MASK) {
+        case LY_TYPE_BITS:
+            if (attr->value.bit) {
+                free(attr->value.bit);
+            }
+            break;
+        case LY_TYPE_UNION:
+            /* unresolved union leaf */
+            lydict_remove(ctx, attr->value.string);
+            break;
+        default:
+            break;
+        }
+        lydict_remove(ctx, attr->value_str);
         free(attr);
     }
 }
@@ -4786,7 +4829,7 @@ lyd_insert_attr(struct lyd_node *parent, const struct lys_module *mod, const cha
         }
     } while (!ly_strequal(module->ext[pos]->arg_value, name, 0));
 
-    a = malloc(sizeof *a);
+    a = calloc(1, sizeof *a);
     if (!a) {
         LOGMEM;
         return NULL;
@@ -4795,7 +4838,12 @@ lyd_insert_attr(struct lyd_node *parent, const struct lys_module *mod, const cha
     a->next = NULL;
     a->annotation = (struct lys_ext_instance_complex *)module->ext[pos];
     a->name = lydict_insert(ctx, name, 0);
-    a->value = lydict_insert(ctx, value, 0);
+    a->value_str = lydict_insert(ctx, value, 0);
+    if (!lyp_parse_value(*((struct lys_type **)lys_ext_complex_get_substmt(LY_STMT_TYPE, a->annotation, NULL)),
+                         &a->value_str, NULL, NULL, a, 1, 0)) {
+        lyd_free_attr(ctx, NULL, a, 0);
+        return NULL;
+    }
 
     if (!parent->attr) {
         parent->attr = a;

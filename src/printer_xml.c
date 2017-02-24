@@ -130,10 +130,12 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
 {
     struct lyd_attr *attr;
     const char **prefs, **nss;
-    const char *xml_expr;
+    const char *xml_expr, *mod_name;
     uint32_t ns_count, i;
     int rpc_filter = 0;
     const struct lys_module *wdmod = NULL;
+    char *p;
+    size_t len;
 
     /* with-defaults */
     if (node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
@@ -155,15 +157,6 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
     }
 
     for (attr = node->attr; attr; attr = attr->next) {
-        xml_expr = transform_json2xml(node->schema->module, attr->value, &prefs, &nss, &ns_count);
-        if (xml_expr) {
-            for (i = 0; i < ns_count; ++i) {
-                ly_print(out, " xmlns:%s=\"%s\"", prefs[i], nss[i]);
-            }
-            free(prefs);
-            free(nss);
-        }
-
         if (attr->annotation) {
             ly_print(out, " %s:%s=\"", attr->annotation->module->prefix, attr->name);
         } else if (rpc_filter) {
@@ -173,7 +166,70 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
             /* exception for NETCONF's edit-config's attributes */
             ly_print(out, " nc:%s=\"", attr->name);
         }
-        lyxml_dump_text(out, xml_expr ? xml_expr : attr->value);
+        switch (attr->value_type & LY_DATA_TYPE_MASK) {
+        case LY_TYPE_BINARY:
+        case LY_TYPE_STRING:
+        case LY_TYPE_BITS:
+        case LY_TYPE_ENUM:
+        case LY_TYPE_BOOL:
+        case LY_TYPE_DEC64:
+        case LY_TYPE_INT8:
+        case LY_TYPE_INT16:
+        case LY_TYPE_INT32:
+        case LY_TYPE_INT64:
+        case LY_TYPE_UINT8:
+        case LY_TYPE_UINT16:
+        case LY_TYPE_UINT32:
+        case LY_TYPE_UINT64:
+            if (attr->value_str) {
+                lyxml_dump_text(out, attr->value_str);
+            }
+            break;
+
+        case LY_TYPE_IDENT:
+            if (!attr->value_str) {
+                break;
+            }
+            p = strchr(attr->value_str, ':');
+            assert(p);
+            len = p - attr->value_str;
+            mod_name = attr->annotation->module->name;
+            if (!strncmp(attr->value_str, mod_name, len) && !mod_name[len]) {
+                lyxml_dump_text(out, ++p);
+            } else {
+                /* avoid code duplication - use instance-identifier printer which gets necessary namespaces to print */
+                goto printinst;
+            }
+            break;
+        case LY_TYPE_INST:
+printinst:
+            xml_expr = transform_json2xml(node->schema->module, ((struct lyd_node_leaf_list *)node)->value_str,
+                                          &prefs, &nss, &ns_count);
+            if (!xml_expr) {
+                /* error */
+                ly_print(out, "(!error!)");
+                return;
+            }
+
+            for (i = 0; i < ns_count; ++i) {
+                ly_print(out, " xmlns:%s=\"%s\"", prefs[i], nss[i]);
+            }
+            free(prefs);
+            free(nss);
+
+            lyxml_dump_text(out, xml_expr);
+            lydict_remove(node->schema->module->ctx, xml_expr);
+            break;
+
+        /* LY_TYPE_LEAFREF not allowed */
+        case LY_TYPE_EMPTY:
+            break;
+
+        default:
+            /* error */
+            ly_print(out, "(!error!)");
+        }
+
         ly_print(out, "\"");
 
         if (xml_expr) {

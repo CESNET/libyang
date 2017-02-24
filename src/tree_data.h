@@ -80,24 +80,6 @@ typedef enum {
 } LYD_ANYDATA_VALUETYPE;
 
 /**
- * @brief Attribute structure.
- *
- * The structure provides information about attributes of a data element. Such attributes must map to
- * annotations as specified in RFC 7952. The only exception is the filter type (in NETCONF get operations)
- * and edit-config's operation attributes. In XML, they are represented as standard XML attrbutes. In JSON,
- * they are represented as JSON elements starting with the '@' character (for more information, see the
- * YANG metadata RFC.
- *
- */
-struct lyd_attr {
-    struct lyd_node *parent;         /**< data node where the attribute is placed */
-    struct lyd_attr *next;           /**< pointer to the next attribute of the same element */
-    struct lys_ext_instance_complex *annotation; /**< pointer to the attribute/annotation's definition */
-    const char *name;                /**< attribute name */
-    const char *value;               /**< attribute value */
-};
-
-/**
  * @brief node's value representation
  */
 typedef union lyd_value_u {
@@ -122,6 +104,28 @@ typedef union lyd_value_u {
     uint32_t uint32;             /**< 32-bit signed integer */
     uint64_t uint64;             /**< 64-bit signed integer */
 } lyd_val;
+
+/**
+ * @brief Attribute structure.
+ *
+ * The structure provides information about attributes of a data element. Such attributes must map to
+ * annotations as specified in RFC 7952. The only exception is the filter type (in NETCONF get operations)
+ * and edit-config's operation attributes. In XML, they are represented as standard XML attrbutes. In JSON,
+ * they are represented as JSON elements starting with the '@' character (for more information, see the
+ * YANG metadata RFC.
+ *
+ */
+struct lyd_attr {
+    struct lyd_node *parent;         /**< data node where the attribute is placed */
+    struct lyd_attr *next;           /**< pointer to the next attribute of the same element */
+    struct lys_ext_instance_complex *annotation; /**< pointer to the attribute/annotation's definition */
+    const char *name;                /**< attribute name */
+    const char *value_str;           /**< string representation of value (for comparison, printing,...), always corresponds to value_type */
+    lyd_val value;                   /**< node's value representation, always corresponds to schema->type.base */
+    uint16_t value_type;             /**< type of the value in the node, mainly for union to avoid repeating of type detection,
+                                          if (schema->type.base == LY_TYPE_LEAFREF), then value_type may be
+                                          (LY_TYPE_LEAFREF_UNRES | leafref target value_type) and (value.leafref == NULL) */
+};
 
 /**
  * @defgroup validityflags Validity flags

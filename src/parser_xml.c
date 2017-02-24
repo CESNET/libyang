@@ -92,7 +92,7 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int editbits)
 
     /* the value is here converted to a JSON format if needed in case of LY_TYPE_IDENT and LY_TYPE_INST or to a
      * canonical form of the value */
-    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, xml, leaf, 1, 0)) {
+    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, xml, leaf, NULL, 1, 0)) {
         return EXIT_FAILURE;
     }
 
@@ -475,7 +475,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         }
 
         /* allocate and fill the data attribute structure */
-        dattr = malloc(sizeof *dattr);
+        dattr = calloc(1, sizeof *dattr);
         if (!dattr) {
             goto error;
         }
@@ -493,6 +493,19 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         dattr->name = attr->name;
         attr->name = NULL;
 
+        dattr->value_str = attr->value;
+        attr->value = NULL;
+
+        /* the value is here converted to a JSON format if needed in case of LY_TYPE_IDENT and LY_TYPE_INST or to a
+         * canonical form of the value */
+        if (!lyp_parse_value(*((struct lys_type **)lys_ext_complex_get_substmt(LY_STMT_TYPE, dattr->annotation, NULL)),
+                             &dattr->value_str, xml, NULL, dattr, 1, 0)) {
+            attr->value = dattr->value_str;
+            free(dattr);
+            goto error;
+        }
+
+#if 0
         ly_vlog_hide(1);
         dattr->value = transform_xml2json(ctx, attr->value, xml, 0, 1);
         ly_vlog_hide(0);
@@ -512,6 +525,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
             lydict_remove(ctx, attr->value);
             attr->value = NULL;
         }
+#endif
 
         /* insert into the data node */
         if (!(*result)->attr) {

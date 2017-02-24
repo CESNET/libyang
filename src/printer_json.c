@@ -67,6 +67,8 @@ static void
 json_print_attrs(struct lyout *out, int level, const struct lyd_node *node, const struct lys_module *wdmod)
 {
     struct lyd_attr *attr;
+    size_t len;
+    char *p;
 
     if (wdmod) {
         ly_print(out, "%*s\"%s:default\":\"true\"", LEVEL, INDENT, wdmod->name);
@@ -82,7 +84,51 @@ json_print_attrs(struct lyout *out, int level, const struct lyd_node *node, cons
         } else {
             ly_print(out, "%*s\"%s\":", LEVEL, INDENT, attr->name);
         }
-        json_print_string(out, attr->value ? attr->value : "");
+        /* leafref is not supported */
+        switch (attr->value_type & LY_DATA_TYPE_MASK) {
+        case LY_TYPE_BINARY:
+        case LY_TYPE_STRING:
+        case LY_TYPE_BITS:
+        case LY_TYPE_ENUM:
+        case LY_TYPE_INST:
+        case LY_TYPE_INT64:
+        case LY_TYPE_UINT64:
+        case LY_TYPE_DEC64:
+            json_print_string(out, attr->value.string);
+            break;
+
+        case LY_TYPE_INT8:
+        case LY_TYPE_INT16:
+        case LY_TYPE_INT32:
+        case LY_TYPE_UINT8:
+        case LY_TYPE_UINT16:
+        case LY_TYPE_UINT32:
+        case LY_TYPE_BOOL:
+            ly_print(out, "%s", attr->value_str[0] ? attr->value_str : "null");
+            break;
+
+        case LY_TYPE_IDENT:
+            p = strchr(attr->value_str, ':');
+            assert(p);
+            len = p - attr->value_str;
+            if (!strncmp(attr->value_str, attr->annotation->module->name, len)
+                    && !attr->annotation->module->name[len]) {
+                /* do not print the prefix, it is the default prefix for this node */
+                json_print_string(out, ++p);
+            } else {
+                json_print_string(out, attr->value_str);
+            }
+            break;
+
+        case LY_TYPE_EMPTY:
+            ly_print(out, "[null]");
+            break;
+
+        default:
+            /* error */
+            ly_print(out, "\"(!error!)\"");
+        }
+
         ly_print(out, "%s%s", attr->next ? "," : "", (level ? "\n" : ""));
     }
 }

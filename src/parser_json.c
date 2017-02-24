@@ -524,7 +524,7 @@ repeat:
 
     /* the value is here converted to a JSON format if needed in case of LY_TYPE_IDENT and LY_TYPE_INST or to a
      * canonical form of the value */
-    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, NULL, leaf, 1, 0)) {
+    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, NULL, leaf, NULL, 1, 0)) {
         ly_errno = LY_EVALID;
         return 0;
     }
@@ -676,7 +676,7 @@ attr_error:
         }
     }
 
-    attr_new = malloc(sizeof **attr);
+    attr_new = calloc(1, sizeof **attr);
     if (!attr_new) {
         LOGMEM;
         goto error;
@@ -698,7 +698,12 @@ attr_error:
     attr_new->annotation = (struct lys_ext_instance_complex *)module->ext[pos];
 
     attr_new->name = lydict_insert(module->ctx, name, 0);
-    attr_new->value = lydict_insert_zc(module->ctx, value);
+    attr_new->value_str = lydict_insert_zc(module->ctx, value);
+    if (!lyp_parse_value(*((struct lys_type **)lys_ext_complex_get_substmt(LY_STMT_TYPE, attr_new->annotation, NULL)),
+                         &attr_new->value_str, NULL, NULL, attr_new, 1, 0)) {
+        goto attr_error;
+    }
+
     if (!attr_last) {
         *attr = attr_last = attr_new;
     } else {
