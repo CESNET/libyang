@@ -1462,7 +1462,8 @@ typedef enum {
     LY_ESYS,       /**< System call failure */
     LY_EINVAL,     /**< Invalid value */
     LY_EINT,       /**< Internal error */
-    LY_EVALID      /**< Validation failure */
+    LY_EVALID,     /**< Validation failure */
+    LY_EEXT        /**< Extension error reported by an extension plugin */
 } LY_ERR;
 
 /**

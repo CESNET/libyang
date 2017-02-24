@@ -6692,6 +6692,7 @@ inherit_dfs_sibling:
         /* final check */
         if (eplugin->check_result) {
             if ((*eplugin->check_result)(ext)) {
+                ly_errno = LY_EEXT;
                 return -1;
             }
         }
