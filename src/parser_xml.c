@@ -83,7 +83,7 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int editbits)
 
     leaf->value_str = lydict_insert(node->schema->module->ctx, xml->content, 0);
 
-    if ((editbits & 0x10) && (node->schema->nodetype & LYS_LEAF) && (!leaf->value_str || !leaf->value_str[0])) {
+    if ((editbits & 0x20) && (node->schema->nodetype & LYS_LEAF) && (!leaf->value_str || !leaf->value_str[0])) {
         /* we have edit-config leaf/leaf-list with delete operation and no (empty) value,
          * this is not a bug since the node is just used as a kind of selection node */
         leaf->value_type = LY_TYPE_ERR;
@@ -395,7 +395,8 @@ attr_error:
          * 0x02 - insert is relative (before or after)
          * 0x04 - value attribute present
          * 0x08 - key attribute present
-         * 0x10 - operation not allowing insert attribute
+         * 0x10 - operation attribute present
+         * 0x20 - operation not allowing insert attribute (delete or remove)
          */
         for (dattr = (*result)->attr; dattr; dattr = dattr->next) {
             if (!strcmp(dattr->annotation->arg_value, "operation") &&
@@ -405,9 +406,10 @@ attr_error:
                     return -1;
                 }
 
+                editbits |= 0x10;
                 if (dattr->value.enm->value >= 3) {
                     /* delete or remove */
-                    editbits |= 0x10;
+                    editbits |= 0x20;
                 }
             } else if (dattr->annotation->module == ctx->models.list[1] && /* internal YANG schema */
                     !strcmp(dattr->annotation->arg_value, "insert")) {
@@ -421,15 +423,11 @@ attr_error:
                     LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, (*result), "insert attributes", xml->name);
                     return -1;
                 }
-                switch (dattr->value.enm->value) {
-                case 0: /* first */
-                case 1: /* last */
-                    editbits |= 0x01;
-                    break;
-                case 2: /* before */
-                case 3: /* after */
-                    editbits |= 0x01 | 0x02;
-                    break;
+
+                editbits |= 0x01;
+                if (dattr->value.enm->value >= 2) {
+                    /* before or after */
+                    editbits |= 0x02;
                 }
                 str = dattr->name;
             } else if (dattr->annotation->module == ctx->models.list[1] && /* internal YANG schema */
@@ -458,7 +456,7 @@ attr_error:
         }
 
         /* report errors */
-        if (editbits > 0x10 || (editbits && editbits < 0x10 &&
+        if ((editbits > 0x10 && editbits != 0x20) || (editbits && editbits < 0x10 &&
                 (!(schema->nodetype & (LYS_LEAFLIST | LYS_LIST)) || !(schema->flags & LYS_USERORDERED)))) {
             /* attributes in wrong elements */
             LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), str, xml->name);
