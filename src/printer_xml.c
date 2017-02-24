@@ -76,9 +76,11 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node, int options)
 
     /* add node attribute modules */
     for (attr = node->attr; attr; attr = attr->next) {
-        if (!attr->annotation) {
-            /* exception for NETCONF's operation and filter */
-            r = modlist_add(&mlist, ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf", NULL));
+        if (!strcmp(node->schema->name, "filter") &&
+                (!strcmp(node->schema->module->name, "ietf-netconf") ||
+                 !strcmp(node->schema->module->name, "notifications"))) {
+            /* exception for NETCONF's filter attributes */
+            continue;
         } else {
             r = modlist_add(&mlist, lys_main_module(attr->annotation->module));
         }
@@ -100,9 +102,11 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node, int options)
         LY_TREE_FOR(node->child, node2) {
             LY_TREE_DFS_BEGIN(node2, next, cur) {
                 for (attr = cur->attr; attr; attr = attr->next) {
-                    if (!attr->annotation) {
-                        /* exception for NETCONF's operation and filter */
-                        r = modlist_add(&mlist, ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf", NULL));
+                    if (!strcmp(cur->schema->name, "filter") &&
+                            (!strcmp(cur->schema->module->name, "ietf-netconf") ||
+                             !strcmp(cur->schema->module->name, "notifications"))) {
+                        /* exception for NETCONF's filter attributes */
+                        continue;
                     } else {
                         r = modlist_add(&mlist, lys_main_module(attr->annotation->module));
                     }
@@ -130,7 +134,7 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
 {
     struct lyd_attr *attr;
     const char **prefs, **nss;
-    const char *xml_expr, *mod_name;
+    const char *xml_expr = NULL, *mod_name;
     uint32_t ns_count, i;
     int rpc_filter = 0;
     const struct lys_module *wdmod = NULL;
@@ -159,6 +163,21 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
     for (attr = node->attr; attr; attr = attr->next) {
         if (rpc_filter) {
             /* exception for NETCONF's filter's attributes */
+            if (!strcmp(attr->name, "select")) {
+                /* xpath content, we have to convert the JSON format into XML first */
+                xml_expr = transform_json2xml(node->schema->module, attr->value_str, &prefs, &nss, &ns_count);
+                if (!xml_expr) {
+                    /* error */
+                    ly_print(out, "\"(!error!)\"");
+                    return;
+                }
+
+                for (i = 0; i < ns_count; ++i) {
+                    ly_print(out, " xmlns:%s=\"%s\"", prefs[i], nss[i]);
+                }
+                free(prefs);
+                free(nss);
+            }
             ly_print(out, " %s=\"", attr->name);
         } else {
             ly_print(out, " %s:%s=\"", attr->annotation->module->prefix, attr->name);
@@ -180,7 +199,8 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
         case LY_TYPE_UINT32:
         case LY_TYPE_UINT64:
             if (attr->value_str) {
-                lyxml_dump_text(out, attr->value_str);
+                /* xml_expr can contain transformed xpath */
+                lyxml_dump_text(out, xml_expr ? xml_expr : attr->value_str);
             }
             break;
 
@@ -456,7 +476,7 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
         xml_print_ns(out, node, options);
     }
     xml_print_attrs(out, node, options);
-    if (!(void*)any->value.tree) {
+    if (!(void*)any->value.tree || (any->value_type == LYD_ANYDATA_CONSTSTRING && !any->value.str[0])) {
         /* no content */
         ly_print(out, "/>%s", level ? "\n" : "");
     } else {

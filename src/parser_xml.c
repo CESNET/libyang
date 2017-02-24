@@ -113,7 +113,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     struct lyd_attr *dattr, *dattr_iter;
     struct lyxml_attr *attr;
     struct lyxml_elem *child, *next;
-    int i, j, havechildren, r, pos, editbits = 0;
+    int i, j, havechildren, r, pos, editbits = 0, filterflag = 0;
     int ret = 0;
     const char *str = NULL;
 
@@ -292,6 +292,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                  * they are unqualified (no namespace), but we know that we have internally defined
                  * them in the ietf-netconf module, so the same module as the filter node itself */
                 mod = (*result)->schema->module;
+                filterflag = 1;
             } else {
                 /* garbage */
                 goto attr_error;
@@ -342,13 +343,28 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         dattr->value_str = attr->value;
         attr->value = NULL;
 
-        /* the value is here converted to a JSON format if needed in case of LY_TYPE_IDENT and LY_TYPE_INST or to a
-         * canonical form of the value */
-        if (!lyp_parse_value(*((struct lys_type **)lys_ext_complex_get_substmt(LY_STMT_TYPE, dattr->annotation, NULL)),
-                             &dattr->value_str, xml, NULL, dattr, 1, 0)) {
-            attr->value = dattr->value_str;
-            free(dattr);
-            goto error;
+        if (filterflag && !strcmp(dattr->name, "select")) {
+            /* exception for XPath select in filter, which is supposed to be transformed
+             * into JSON format to keep the information about namespaces */
+            dattr->value.string = transform_xml2json(ctx, dattr->value_str, xml, 0, 1);
+            if (!dattr->value.string) {
+                /* problem with resolving value as xpath */
+                attr->value = dattr->value_str;
+                free(dattr);
+                goto error;
+            }
+            lydict_remove(ctx, dattr->value_str);
+            dattr->value_str = dattr->value.string;
+            dattr->value_type = LY_TYPE_STRING;
+        } else {
+            /* the value is here converted to a JSON format if needed in case of LY_TYPE_IDENT and LY_TYPE_INST or to a
+             * canonical form of the value */
+            if (!lyp_parse_value(*((struct lys_type **)lys_ext_complex_get_substmt(LY_STMT_TYPE, dattr->annotation, NULL)),
+                                 &dattr->value_str, xml, NULL, dattr, 1, 0)) {
+                attr->value = dattr->value_str;
+                free(dattr);
+                goto error;
+            }
         }
 
         /* insert into the data node */
