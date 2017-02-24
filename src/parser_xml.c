@@ -403,7 +403,7 @@ attr_error:
                     !strcmp(dattr->annotation->module->name, "ietf-netconf")) {
                 if (editbits & 0x10) {
                     LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, (*result), "operation attributes", xml->name);
-                    return -1;
+                    goto error;
                 }
 
                 editbits |= 0x10;
@@ -417,11 +417,11 @@ attr_error:
                 if (!(schema->flags & LYS_USERORDERED)) {
                     /* ... but it is not expected */
                     LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), "insert", schema->name);
-                    return -1;
+                    goto error;
                 }
                 if (editbits & 0x01) {
                     LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, (*result), "insert attributes", xml->name);
-                    return -1;
+                    goto error;
                 }
 
                 editbits |= 0x01;
@@ -434,10 +434,10 @@ attr_error:
                     !strcmp(dattr->annotation->arg_value, "value")) {
                 if (editbits & 0x04) {
                     LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, (*result), "value attributes", xml->name);
-                    return -1;
+                    goto error;
                 } else if (schema->nodetype & LYS_LIST) {
                     LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), dattr->name, schema->name);
-                    return -1;
+                    goto error;
                 }
                 editbits |= 0x04;
                 str = dattr->name;
@@ -445,10 +445,10 @@ attr_error:
                     !strcmp(dattr->annotation->arg_value, "key")) {
                 if (editbits & 0x08) {
                     LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, (*result), "key attributes", xml->name);
-                    return -1;
+                    goto error;
                 } else if (schema->nodetype & LYS_LEAFLIST) {
                     LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), dattr->name, schema->name);
-                    return -1;
+                    goto error;
                 }
                 editbits |= 0x08;
                 str = dattr->name;
@@ -460,7 +460,7 @@ attr_error:
                 (!(schema->nodetype & (LYS_LEAFLIST | LYS_LIST)) || !(schema->flags & LYS_USERORDERED)))) {
             /* attributes in wrong elements */
             LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), str, xml->name);
-            return -1;
+            goto error;
         } else if (editbits == 3) {
             /* 0x01 | 0x02 - relative position, but value/key is missing */
             if (schema->nodetype & LYS_LIST) {
@@ -468,11 +468,11 @@ attr_error:
             } else { /* LYS_LEAFLIST */
                 LOGVAL(LYE_MISSATTR, LY_VLOG_LYD, (*result), "value", xml->name);
             }
-            return -1;
+            goto error;
         } else if ((editbits & (0x04 | 0x08)) && !(editbits & 0x02)) {
             /* key/value without relative position */
             LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), (editbits & 0x04) ? "value" : "key", schema->name);
-            return -1;
+            goto error;
         }
     }
 
