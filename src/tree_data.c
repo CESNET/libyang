@@ -2129,7 +2129,7 @@ lyd_merge_to_ctx(struct lyd_node **trg, const struct lyd_node *src, int options,
 {
     struct lyd_node *node = NULL, *node2, *target, *trg_merge_start, *src_merge_start = NULL;
     const struct lyd_node *iter;
-    struct lys_node *src_snode, *sch;
+    struct lys_node *src_snode, *sch = NULL;
     int i, src_depth, depth, first_iter, ret, dflt = 1;
     const struct lys_node *parent = NULL;
 

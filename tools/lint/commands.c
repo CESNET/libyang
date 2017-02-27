@@ -123,11 +123,15 @@ cmd_verb_help(void)
     printf("verb (error/0 | warning/1 | verbose/2 | debug/3)\n");
 }
 
+#ifndef NDEBUG
+
 void
 cmd_debug_help(void)
 {
     printf("debug (dict | yang | yin | xpath | diff)+\n");
 }
+
+#endif
 
 LYS_INFORMAT
 get_schema_format(const char *path)
@@ -1179,16 +1183,24 @@ cmd_verb(const char *arg)
     verb = arg + 5;
     if (!strcmp(verb, "error") || !strcmp(verb, "0")) {
         ly_verb(LY_LLERR);
+#ifndef NDEBUG
         ly_verb_dbg(0);
+#endif
     } else if (!strcmp(verb, "warning") || !strcmp(verb, "1")) {
         ly_verb(LY_LLWRN);
+#ifndef NDEBUG
         ly_verb_dbg(0);
+#endif
     } else if (!strcmp(verb, "verbose")  || !strcmp(verb, "2")) {
         ly_verb(LY_LLVRB);
+#ifndef NDEBUG
         ly_verb_dbg(0);
+#endif
     } else if (!strcmp(verb, "debug")  || !strcmp(verb, "3")) {
         ly_verb(LY_LLDBG);
+#ifndef NDEBUG
         ly_verb_dbg(LY_LDGDICT | LY_LDGYANG | LY_LDGYIN | LY_LDGXPATH | LY_LDGDIFF);
+#endif
     } else {
         fprintf(stderr, "Unknown verbosity \"%s\"\n", verb);
         return 1;
@@ -1196,6 +1208,8 @@ cmd_verb(const char *arg)
 
     return 0;
 }
+
+#ifndef NDEBUG
 
 int
 cmd_debug(const char *arg)
@@ -1235,6 +1249,8 @@ cmd_debug(const char *arg)
 
     return 0;
 }
+
+#endif
 
 int
 cmd_quit(const char *UNUSED(arg))
@@ -1300,7 +1316,9 @@ COMMAND commands[] = {
         {"searchpath", cmd_searchpath, cmd_searchpath_help, "Set the search path for models"},
         {"clear", cmd_clear, NULL, "Clear the context - remove all the loaded models"},
         {"verb", cmd_verb, cmd_verb_help, "Change verbosity"},
+#ifndef NDEBUG
         {"debug", cmd_debug, cmd_debug_help, "Display specific debug message groups"},
+#endif
         {"quit", cmd_quit, NULL, "Quit the program"},
         /* synonyms for previous commands */
         {"?", cmd_help, NULL, "Display commands description"},
