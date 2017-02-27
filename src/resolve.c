@@ -4454,7 +4454,12 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct 
     for (u = 0; u < aug->target->ext_size; u++) {
         ext = aug->target->ext[u]; /* shortcut */
         if (ext && ext->def->plugin && (ext->def->plugin->flags & LYEXT_OPT_INHERIT)) {
-            unres_schema_add_node(mod, unres, &ext, UNRES_EXT_FINALIZE, NULL);
+            if (unres_schema_add_node(mod, unres, &ext, UNRES_EXT_FINALIZE, NULL) == -1) {
+                /* something really bad happend since the extension finalization is not actually
+                 * being resolved while adding into unres, so something more serious with the unres
+                 * list itself must happened */
+                return -1;
+            }
         }
     }
 
@@ -4463,6 +4468,7 @@ success:
         /* make target modules also implemented */
         for (sub = aug->target; sub; sub = lys_parent(sub)) {
            if (lys_set_implemented(sub->module)) {
+               LOGERR(ly_errno, "Setting the augmented module \"%s\" implemented failed.", sub->module->name);
                return -1;
            }
         }
@@ -6587,7 +6593,12 @@ featurecheckdone:
                 if (eplugin->check_result || (eplugin->flags & LYEXT_OPT_INHERIT)) {
                     u = malloc(sizeof *u);
                     (*u) = ext_data->ext_index;
-                    unres_schema_add_node(mod, unres, item, UNRES_EXT_FINALIZE, (struct lys_node *)u);
+                    if (unres_schema_add_node(mod, unres, item, UNRES_EXT_FINALIZE, (struct lys_node *)u) == -1) {
+                        /* something really bad happend since the extension finalization is not actually
+                         * being resolved while adding into unres, so something more serious with the unres
+                         * list itself must happened */
+                        return -1;
+                    }
                 }
             }
         }
