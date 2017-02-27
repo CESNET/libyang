@@ -2819,9 +2819,16 @@ lyp_rfn_apply_ext(struct lys_module *module)
                     rfn = &uses->refine[i]; /* shortcut */
 
                     /* get the target node */
+                    target = NULL;
                     resolve_descendant_schema_nodeid(rfn->target_name, uses->child,
                                                      LYS_NO_RPC_NOTIF_NODE | LYS_ACTION | LYS_NOTIF,
                                                      1, 0, (const struct lys_node **)&target);
+                    if (!target) {
+                        /* it should always succeed since the target_name was already resolved at least
+                         * once when the refine itself was being resolved */
+                        LOGINT;
+                        return EXIT_FAILURE;
+                    }
 
                     /* extensions */
                     extset = ly_set_new();
