@@ -605,6 +605,7 @@ json_parse_attr(struct lys_module *parent_module, struct lyd_attr **attr, const 
     }
 
 repeat:
+    prefix = NULL;
     len++;
     len += skip_ws(&data[len]);
 
