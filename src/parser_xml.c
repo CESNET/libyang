@@ -399,6 +399,7 @@ attr_error:
          * 0x20 - operation not allowing insert attribute (delete or remove)
          */
         for (dattr = (*result)->attr; dattr; dattr = dattr->next) {
+            str = NULL;
             if (!strcmp(dattr->annotation->arg_value, "operation") &&
                     !strcmp(dattr->annotation->module->name, "ietf-netconf")) {
                 if (editbits & 0x10) {
@@ -456,9 +457,8 @@ attr_error:
         }
 
         /* report errors */
-        if ((editbits > 0x10 && editbits != 0x20) || (editbits && editbits < 0x10 &&
-                (!(schema->nodetype & (LYS_LEAFLIST | LYS_LIST)) || !(schema->flags & LYS_USERORDERED)))) {
-            /* attributes in wrong elements */
+        if (str && (!(schema->nodetype & (LYS_LEAFLIST | LYS_LIST)) || !(schema->flags & LYS_USERORDERED))) {
+            /* moving attributes in wrong elements (not an user ordered list or not a list at all) */
             LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), str, xml->name);
             goto error;
         } else if (editbits == 3) {
