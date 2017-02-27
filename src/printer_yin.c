@@ -1800,9 +1800,9 @@ yin_print_extcomplex_bool(struct lyout *out, int level, const struct lys_module 
 
     yin_print_close_parent(out, content);
     if (*val == 1) {
-        yin_print_substmt(out, level, stmt, 0, true_val, module, ext->ext, ext->ext_size);
+        yin_print_substmt(out, level, (LYEXT_SUBSTMT)stmt, 0, true_val, module, ext->ext, ext->ext_size);
     } else if (*val == 2) {
-        yin_print_substmt(out, level, stmt, 0, false_val, module, ext->ext, ext->ext_size);
+        yin_print_substmt(out, level, (LYEXT_SUBSTMT)stmt, 0, false_val, module, ext->ext, ext->ext_size);
     } else {
         LOGINT;
     }
@@ -1824,11 +1824,11 @@ yin_print_extcomplex_str(struct lyout *out, int level, const struct lys_module *
         /* we have array */
         for (str = (const char **)(*str), c = 0; *str; str++, c++) {
             yin_print_close_parent(out, content);
-            yin_print_substmt(out, level, stmt, c, *str, module, ext->ext, ext->ext_size);
+            yin_print_substmt(out, level, (LYEXT_SUBSTMT)stmt, c, *str, module, ext->ext, ext->ext_size);
         }
     } else {
         yin_print_close_parent(out, content);
-        yin_print_substmt(out, level, stmt, 0, *str, module, ext->ext, ext->ext_size);
+        yin_print_substmt(out, level, (LYEXT_SUBSTMT)stmt, 0, *str, module, ext->ext, ext->ext_size);
     }
 }
 
@@ -1851,7 +1851,7 @@ yin_print_extcomplex_flags(struct lyout *out, int level, const struct lys_module
         str = val1_str;
     } else if (val2 & *flags) {
         str = val2_str;
-    } else if (lys_ext_iter(ext->ext, ext->ext_size, 0, stmt) != -1) {
+    } else if (lys_ext_iter(ext->ext, ext->ext_size, 0, (LYEXT_SUBSTMT)stmt) != -1) {
         /* flag not set, but since there are some extension, we are going to print the default value */
         str = val1_str;
     } else {
@@ -1859,7 +1859,7 @@ yin_print_extcomplex_flags(struct lyout *out, int level, const struct lys_module
     }
 
     yin_print_close_parent(out, content);
-    yin_print_substmt(out, level, stmt, 0, str, module, ext->ext, ext->ext_size);
+    yin_print_substmt(out, level, (LYEXT_SUBSTMT)stmt, 0, str, module, ext->ext, ext->ext_size);
 }
 
 static void

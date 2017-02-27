@@ -7281,7 +7281,7 @@ yin_parse_extcomplex_bool(struct lys_module *mod, struct lyxml_elem *node,
         return EXIT_FAILURE;
     }
 
-    if (lyp_yin_parse_subnode_ext(mod, ext, LYEXT_PAR_EXTINST, node, stmt, 0, unres)) {
+    if (lyp_yin_parse_subnode_ext(mod, ext, LYEXT_PAR_EXTINST, node, (LYEXT_SUBSTMT)stmt, 0, unres)) {
         return EXIT_FAILURE;
     }
 
@@ -7347,7 +7347,7 @@ yin_parse_extcomplex_str(struct lys_module *mod, struct lyxml_elem *node,
         }
         str = p[0];
     }
-    if (lyp_yin_parse_subnode_ext(mod, ext, LYEXT_PAR_EXTINST, node, stmt, c, unres)) {
+    if (lyp_yin_parse_subnode_ext(mod, ext, LYEXT_PAR_EXTINST, node, (LYEXT_SUBSTMT)stmt, c, unres)) {
         return EXIT_FAILURE;
     }
 
@@ -7514,7 +7514,7 @@ yin_parse_extcomplex_flag(struct lys_module *mod, struct lyxml_elem *node,
         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, str, node->name);
         return EXIT_FAILURE;
     }
-    if (lyp_yin_parse_subnode_ext(mod, ext, LYEXT_PAR_EXTINST, node, stmt, 0, unres)) {
+    if (lyp_yin_parse_subnode_ext(mod, ext, LYEXT_PAR_EXTINST, node, (LYEXT_SUBSTMT)stmt, 0, unres)) {
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
