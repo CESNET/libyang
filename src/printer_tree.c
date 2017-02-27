@@ -150,7 +150,7 @@ create_indent(int level, uint64_t old_indent, const struct lys_node *node, int s
     has_next = sibling_is_valid_child(node, 0, lys_main_module(module), aug_parent, node->nodetype);
 
     if (has_next && !next_is_case) {
-        new_indent |= 1 << (level - 1);
+        new_indent |= (uint64_t)1 << (level - 1);
     }
 
     return new_indent;
