@@ -184,6 +184,7 @@ main_ni(int argc, char* argv[])
     struct ly_set *mods = NULL;
     struct lyd_node *root = NULL, *node = NULL, *next, *subroot;
     struct lyxml_elem *xml = NULL;
+    void *p;
 
     opterr = 0;
     while ((opt = getopt_long(argc, argv, "d:f:F:ghHo:p:t:vV", options, &opt_index)) != -1) {
@@ -228,10 +229,15 @@ main_ni(int argc, char* argv[])
         case 'F':
             featsize++;
             if (!feat) {
-                feat = malloc(sizeof *feat);
+                p = malloc(sizeof *feat);
             } else {
-                feat = realloc(feat, featsize * sizeof *feat);
+                p = realloc(feat, featsize * sizeof *feat);
             }
+            if (!p) {
+                fprintf(stderr, "Memory allocation failed (%s:%d, %s)", __FILE__, __LINE__, strerror(errno));
+                goto cleanup;
+            }
+            feat = p;
             feat[featsize - 1] = strdup(optarg);
             ptr = strchr(feat[featsize - 1], ':');
             if (!ptr) {

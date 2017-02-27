@@ -233,13 +233,19 @@ cmd_print(const char *arg)
         {"tree-print-groupings", no_argument, 0, 'g'},
         {NULL, 0, 0, 0}
     };
+    void *rlcd;
 
     argc = 1;
     argv = malloc(2*sizeof *argv);
     *argv = strdup(arg);
     ptr = strtok(*argv, " ");
     while ((ptr = strtok(NULL, " "))) {
-        argv = realloc(argv, (argc+2)*sizeof *argv);
+        rlcd = realloc(argv, (argc+2)*sizeof *argv);
+        if (!rlcd) {
+            fprintf(stderr, "Memory allocation failed (%s:%d, %s)", __FILE__, __LINE__, strerror(errno));
+            goto cleanup;
+        }
+        argv = rlcd;
         argv[argc++] = ptr;
     }
     argv[argc] = NULL;
@@ -552,13 +558,19 @@ cmd_data(const char *arg)
         {"validation-tree", required_argument, 0, 'x'},
         {NULL, 0, 0, 0}
     };
+    void *rlcd;
 
     argc = 1;
     argv = malloc(2*sizeof *argv);
     *argv = strdup(arg);
     ptr = strtok(*argv, " ");
     while ((ptr = strtok(NULL, " "))) {
-        argv = realloc(argv, (argc+2)*sizeof *argv);
+        rlcd = realloc(argv, (argc + 2) * sizeof *argv);
+        if (!rlcd) {
+            fprintf(stderr, "Memory allocation failed (%s:%d, %s)", __FILE__, __LINE__, strerror(errno));
+            goto cleanup;
+        }
+        argv = rlcd;
         argv[argc++] = ptr;
     }
     argv[argc] = NULL;
@@ -701,6 +713,7 @@ cmd_xpath(const char *arg)
         {"expr", required_argument, 0, 'e'},
         {NULL, 0, 0, 0}
     };
+    void *rlcd;
 
     long_str = 0;
     argc = 1;
@@ -715,7 +728,12 @@ cmd_xpath(const char *arg)
                 ptr[strlen(ptr) - 1] = '\0';
             }
         } else {
-            argv = realloc(argv, (argc + 2) * sizeof *argv);
+            rlcd = realloc(argv, (argc + 2) * sizeof *argv);
+            if (!rlcd) {
+                fprintf(stderr, "Memory allocation failed (%s:%d, %s)", __FILE__, __LINE__, strerror(errno));
+                goto cleanup;
+            }
+            argv = rlcd;
             argv[argc] = ptr;
             if (ptr[0] == '"') {
                 long_str = '"';
@@ -879,13 +897,19 @@ cmd_list(const char *arg)
         {"format", required_argument, 0, 'f'},
         {NULL, 0, 0, 0}
     };
+    void *rlcd;
 
     argc = 1;
     argv = malloc(2*sizeof *argv);
     *argv = strdup(arg);
     ptr = strtok(*argv, " ");
     while ((ptr = strtok(NULL, " "))) {
-        argv = realloc(argv, (argc+2)*sizeof *argv);
+        rlcd = realloc(argv, (argc+2)*sizeof *argv);
+        if (!rlcd) {
+            fprintf(stderr, "Memory allocation failed (%s:%d, %s)", __FILE__, __LINE__, strerror(errno));
+            goto error;
+        }
+        argv = rlcd;
         argv[argc++] = ptr;
     }
     argv[argc] = NULL;
@@ -1014,13 +1038,19 @@ cmd_feature(const char *arg)
         {"disable", required_argument, 0, 'd'},
         {NULL, 0, 0, 0}
     };
+    void *rlcd;
 
     argc = 1;
     argv = malloc(2*sizeof *argv);
     *argv = strdup(arg);
     ptr = strtok(*argv, " ");
     while ((ptr = strtok(NULL, " "))) {
-        argv = realloc(argv, (argc+2)*sizeof *argv);
+        rlcd = realloc(argv, (argc + 2) * sizeof *argv);
+        if (!rlcd) {
+            fprintf(stderr, "Memory allocation failed (%s:%d, %s)", __FILE__, __LINE__, strerror(errno));
+            goto cleanup;
+        }
+        argv = rlcd;
         argv[argc++] = ptr;
     }
     argv[argc] = NULL;

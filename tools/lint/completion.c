@@ -29,6 +29,7 @@ static void
 get_cmd_completion(const char *hint, char ***matches, unsigned int *match_count)
 {
     int i;
+    void *p;
 
     *match_count = 0;
     *matches = NULL;
@@ -36,7 +37,12 @@ get_cmd_completion(const char *hint, char ***matches, unsigned int *match_count)
     for (i = 0; commands[i].name; i++) {
         if (!strncmp(hint, commands[i].name, strlen(hint))) {
             ++(*match_count);
-            *matches = realloc(*matches, *match_count * sizeof **matches);
+            p = realloc(*matches, *match_count * sizeof **matches);
+            if (!p) {
+                fprintf(stderr, "Memory allocation failed (%s:%d, %s)", __FILE__, __LINE__, strerror(errno));
+                return;
+            }
+            *matches = p;
             (*matches)[*match_count-1] = strdup(commands[i].name);
         }
     }
@@ -74,6 +80,7 @@ get_model_completion(const char *hint, char ***matches, unsigned int *match_coun
     int i;
     uint32_t idx = 0;
     const struct lys_module *module;
+    void *p;
 
     *match_count = 0;
     *matches = NULL;
@@ -81,14 +88,24 @@ get_model_completion(const char *hint, char ***matches, unsigned int *match_coun
     while ((module = ly_ctx_get_module_iter(ctx, &idx))) {
         if (!strncmp(hint, module->name, strlen(hint))) {
             ++(*match_count);
-            *matches = realloc(*matches, *match_count * sizeof **matches);
+            p = realloc(*matches, *match_count * sizeof **matches);
+            if (!p) {
+                fprintf(stderr, "Memory allocation failed (%s:%d, %s)", __FILE__, __LINE__, strerror(errno));
+                return;
+            }
+            *matches = p;
             (*matches)[*match_count-1] = strdup(module->name);
         }
 
         for (i = 0; i < module->inc_size; ++i) {
             if (!strncmp(hint, module->inc[i].submodule->name, strlen(hint))) {
                 ++(*match_count);
-                *matches = realloc(*matches, *match_count * sizeof **matches);
+                p = realloc(*matches, *match_count * sizeof **matches);
+                if (!p) {
+                    fprintf(stderr, "Memory allocation failed (%s:%d, %s)", __FILE__, __LINE__, strerror(errno));
+                    return;
+                }
+                *matches = p;
                 (*matches)[*match_count-1] = strdup(module->inc[i].submodule->name);
             }
         }
