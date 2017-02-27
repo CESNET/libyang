@@ -7006,9 +7006,10 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
         }
     }
 
-    if (type != UNRES_EXT_FINALIZE) {
+    if (type == UNRES_EXT_FINALIZE) {
         /* extension finalization is not even tried when adding the item into the inres list */
-
+        rc = EXIT_FAILURE;
+    } else {
         if (*ly_vlog_hide_location()) {
             log_hidden = 1;
         } else {
