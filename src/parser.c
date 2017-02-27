@@ -3137,6 +3137,7 @@ lyp_deviation_apply_ext(struct lys_module *module)
     struct ly_set *extset;
 
     for (i = 0; i < module->deviation_size; i++) {
+        target = NULL;
         resolve_augment_schema_nodeid(module->deviation[i].target_name, NULL, module, 0,
                                       (const struct lys_node **)&target);
         if (!target) {
