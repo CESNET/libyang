@@ -3000,7 +3000,10 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
         mod = lys_node_module(parent);
         if (module != mod) {
             mod->deviated = 1;
-            lys_set_implemented(mod);
+            if (lys_set_implemented(mod)) {
+                LOGERR(ly_errno, "Setting the deviated module \"%s\" implemented failed.", mod->name);
+                goto error;
+            }
         }
     }
 
