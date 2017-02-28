@@ -3,7 +3,7 @@
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief The main libyang public header.
  *
- * Copyright (c) 2015-2016 CESNET, z.s.p.o.
+ * Copyright (c) 2015-2017 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -44,8 +44,9 @@ extern "C" {
  * - [Parsing, validating and printing instance data](@ref howtodata) in JSON format
  *   ([RFC 7951](https://tools.ietf.org/html/rfc7951)).
  * - [Manipulation with the instance data](@ref howtodatamanipulators).
- * - Support for [YANG extensions](@ref howtoschemaextensions).
  * - Support for [default values in the instance data](@ref howtodatawd) ([RFC 6243](https://tools.ietf.org/html/rfc6243)).
+ * - Support for [YANG extensions](@ref howtoschemaextensions).
+ * - Support for [YANG Metadata](@ref howtoschemametadata) ([RFC 7952](https://tools.ietf.org/html/rfc6243)).
  *
  * The current implementation covers YANG 1.0 ([RFC 6020](https://tools.ietf.org/html/rfc6020)) as well as
  * YANG 1.1 ([RFC 7950](https://tools.ietf.org/html/rfc7950)).
@@ -57,7 +58,7 @@ extern "C" {
  *
  * @section about-license License
  *
- * Copyright (c) 2015-2016 CESNET, z.s.p.o.
+ * Copyright (c) 2015-2017 CESNET, z.s.p.o.
  *
  * (The BSD 3-Clause License)
  *
@@ -242,23 +243,26 @@ extern "C" {
  *
  * - YANG
  *
- *   Basic YANG schemas format described in [RFC 6020](http://tools.ietf.org/html/rfc6020).
- *   Currently, only YANG 1.0 is supported.
+ *   Basic YANG schemas format described in [RFC 6020](http://tools.ietf.org/html/rfc6020) and
+ *   [RFC 7951](http://tools.ietf.org/html/rfc7951) (so both YANG 1.0 and YANG 1.1 versions are supported).
  *
  * - YIN
  *
  *   Alternative XML-based format to YANG - YANG Independent Notation. The details can be found in
- *   [RFC 6020](http://tools.ietf.org/html/rfc6020#section-11).
+ *   [RFC 6020](http://tools.ietf.org/html/rfc6020#section-11) and
+ *   [RFC 7951](http://tools.ietf.org/html/rfc7951#section-13).
  *
- * When the [context](@ref howtocontext) is created, it already contains the following three schemas, which
+ * When the [context](@ref howtocontext) is created, it already contains the following schemas, which
  * are implemented internally by libyang:
+ * - ietf-yang-metadata@2016-08-05
+ * - yang@2017-02-20
  * - ietf-inet-types@2013-07-15
  * - ietf-yang-types@2013-07-15
- * - ietf-yang-library@2015-07-03
- * - yang@2016-02-11
+ * - ietf-yang-library@2016-06-21
  *
- * The last one is libyang's internal module to provide namespace for various YANG attributes defined in RFC 6020
- * (such as `insert` attribute for edit-config's data).
+ * The `yang` schema is the libyang's internal module to provide namespace and definitions of for various YANG
+ * attributes described in [RFC 7951](https://tools.ietf.org/html/rfc6243) (such as `insert` attribute for
+ * edit-config's data).
  *
  * Other schemas can be added to the context manually as described in [context page](@ref howtocontext) by the functions
  * listed below. Besides the schema parser functions, it is also possible to use ly_ctx_load_module() which tries to
@@ -393,6 +397,57 @@ extern "C" {
  * The plugins list can be cleaned by lyext_clean_plugins(). However, since various contexts (respectively their
  * schemas) can link to the plugins, the cleanup is successful only when there is no remaining context.
  *
+ * Metadata Support
+ * ----------------
+ * @anchor howtoschemametadata
+ *
+ * YANG Metadata annotations are defined in [RFC 7952](https://tools.ietf.org/html/rfc6243) as YANG extension. In
+ * practice, it allows to have XML attributes (there is also a special encoding for JSON) in YANG modeled data.
+ * libyang does not allow to have any XML attribute without the appropriate annotation definition describing the
+ * data as it is done e.g. for leafs. When an attribute without a matching annotation definition is found in the
+ * input data, it is silently dropped (with warning) or an error is reported in case the #LYD_OPT_STRICT parser
+ * option is provided to the [parser function](@ref howtodataparsers).
+ *
+ * There are some XML attributes, described by [YANG](https://tools.ietf.org/html/rfc7951) and
+ * [NETCONF](https://tools.ietf.org/html/rfc6241) specifications, which are not defined as annotations, but libyang
+ * implements them this way. In case of attributes in the YANG namespace (`insert`, `value` and `key` attributes
+ * for the NETCONF edit-config operation), they are defined in special libyang's internal module `yang`, which is
+ * available in each context and the content of this schema can be printed via
+ * [schema printers](@ref howtoschemasprinters).
+ *
+ * In case of the attributes described in [NETCONF specification](https://tools.ietf.org/html/rfc6241), the libyang's
+ * annotations structures are hidden and cannot be printed despite, internally, they are part of the `ietf-netconf`'s
+ * schema structure. Therefore, these attributes are available only when the `ietf-netconf` schema is loaded in the
+ * context. The definitions of these annotations are as follows:
+ *
+ *     md:annotation operation {
+ *       type enumeration {
+ *         enum merge;
+ *         enum replace;
+ *         enum create;
+ *         enum delete;
+ *         enum remove;
+ *       }
+ *     }
+ *
+ *     md:annotation type {
+ *       type enumeration {
+ *         enum subtree;
+ *         enum xpath {
+ *           if-feature "nc:xpath";
+ *         }
+ *       }
+ *     }
+ *
+ *     md:annotation select {
+ *       type string;
+ *     }
+ *
+ * Note, that, following the specification,
+ * - the `type` and `select` XML attributes are supposed to be unqualified (without namespace) and that
+ * - the `select`'s content is XPath and it is internally transformed by libyang into the format where the
+ *   XML namespace prefixes are replaced by the YANG module names.
+ *
  * Functions List
  * --------------
  * - lys_ext_instance_presence()
@@ -409,13 +464,14 @@ extern "C" {
  *
  * - YANG
  *
- *   Basic YANG schemas format described in [RFC 6020](http://tools.ietf.org/html/rfc6020).
- *   Currently, only YANG 1.0 is supported.
+ *   Basic YANG schemas format described in [RFC 6020](http://tools.ietf.org/html/rfc6020) and
+ *   [RFC 7951](http://tools.ietf.org/html/rfc7951) (so both YANG 1.0 and YANG 1.1 versions are supported).
  *
  * - YIN
  *
  *   Alternative XML-based format to YANG - YANG Independent Notation. The details can be found in
- *   [RFC 6020](http://tools.ietf.org/html/rfc6020#section-11).
+ *   [RFC 6020](http://tools.ietf.org/html/rfc6020#section-11) and
+ *   [RFC 7951](http://tools.ietf.org/html/rfc7951#section-13).
  *
  * - Tree
  *

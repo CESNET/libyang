@@ -19,6 +19,8 @@ providing API) in C. The library is used e.g. in [libnetconf2](https://github.co
   ([RFC 7951](https://tools.ietf.org/html/rfc7951)).
 * Manipulation with the instance data.
 * Support for default values in the instance data ([RFC 6243](https://tools.ietf.org/html/rfc6243)).
+* Support for YANG extensions.
+* Support for YANG Metadata ([RFC 7952](https://tools.ietf.org/html/rfc6243)).
 * [yanglint](#yanglint) - features rich YANG tool.
 
 Current implementation covers YANG 1.0 ([RFC 6020](https://tools.ietf.org/html/rfc6020))
@@ -53,7 +55,8 @@ $ make doc
 $ google-chrome ../doc/html/index.html
 ```
 
-The documentation is also built hourly and available at [netopeer.liberouter.org](https://netopeer.liberouter.org/doc/libyang/master/).
+The documentation is also built hourly and available at
+[netopeer.liberouter.org](https://netopeer.liberouter.org/doc/libyang/master/).
 
 ### Useful CMake Options
 
@@ -90,7 +93,7 @@ The `Debug` mode is currently used as the default one. to switch to the
 $ cmake -D CMAKE_BUILD_TYPE:String="Release" ..
 ```
 
-#### Changing Plugins Dir
+#### Changing Extensions Plugins Directory
 
 For the YANG extensions, libyang loads the extension plugins. By default, the
 directory to store the plugins is LIBDIR/libyang. To change it, use the following
