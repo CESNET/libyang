@@ -1004,7 +1004,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
             }
             if ((dertype->base == LY_TYPE_INST) || (dertype->base == LY_TYPE_LEAFREF)
                     || ((dertype->base == LY_TYPE_UNION) && dertype->info.uni.has_ptr_type)) {
-                typ->type->info.uni.has_ptr_type = 1;
+                type->info.uni.has_ptr_type = 1;
             }
         }
         break;
