@@ -7662,6 +7662,7 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int warn_on
     int opts, ret = EXIT_SUCCESS;
     struct lys_when *when = NULL;
     struct lys_restr *must = NULL;
+    char *path;
 
     assert(!warn_on_fwd_ref || !*ly_vlog_hide_location());
 
@@ -7749,7 +7750,9 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int warn_on
             }
             ly_vlog_hide(0);
             LOGWRN(ly_errmsg());
-            LOGWRN("Invalid when condition \"%s\".", when->cond);
+            path = lys_path(node);
+            LOGWRN("Invalid when condition \"%s\". (%s)", when->cond, path);
+            free(path);
             ly_vlog_hide(1);
 
             ret = EXIT_FAILURE;
@@ -7775,7 +7778,9 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int warn_on
             }
             ly_vlog_hide(0);
             LOGWRN(ly_errmsg());
-            LOGWRN("Invalid must restriction \"%s\".", must[i].expr);
+            path = lys_path(node);
+            LOGWRN("Invalid must restriction \"%s\". (%s)", must[i].expr, path);
+            free(path);
             ly_vlog_hide(1);
 
             ret = EXIT_FAILURE;
