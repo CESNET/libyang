@@ -100,6 +100,12 @@ cmake option with the value specifying the desired directory:
 $ cmake -DPLUGINS_DIR:PATH=`pwd`"/src/extensions/" ..
 ```
 
+The directory path can be also changed runtime via environment variable, e.g.:
+
+```
+$ LIBYANG_EXTENSIONS_PLUGINS_DIR=`pwd`/my/relative/path yanglint
+```
+
 ### CMake Notes
 
 Note that, with CMake, if you want to change the compiler or its options after
