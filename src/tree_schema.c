@@ -411,7 +411,7 @@ lys_find_grouping_up(const char *name, struct lys_node *start)
     for (par_iter = start; par_iter; par_iter = par_iter->parent) {
         /* top-level augment, look into module (uses augment is handled correctly below) */
         if (par_iter->parent && !par_iter->parent->parent && (par_iter->parent->nodetype == LYS_AUGMENT)) {
-            par_iter = par_iter->parent->module->data;
+            par_iter = lys_main_module(par_iter->parent->module)->data;
             if (!par_iter) {
                 break;
             }
@@ -504,6 +504,7 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
     } else {
         module = parent->module;
     }
+    module = lys_main_module(module);
 
     switch (node->nodetype) {
     case LYS_GROUPING:
@@ -3250,8 +3251,8 @@ lys_node_switch(struct lys_node *dst, struct lys_node *src)
         if (dst->parent->child == dst) {
             dst->parent->child = src;
         }
-    } else if (dst->module->data == dst) {
-        dst->module->data = src;
+    } else if (lys_main_module(dst->module)->data == dst) {
+        lys_main_module(dst->module)->data = src;
     }
 
     /* parent */

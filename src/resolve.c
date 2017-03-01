@@ -1887,7 +1887,7 @@ resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *modu
     assert(!(ret_nodetype & (LYS_USES | LYS_AUGMENT)) && ((ret_nodetype == LYS_GROUPING) || !(ret_nodetype & LYS_GROUPING)));
 
     id = nodeid;
-    start = module->data;
+    start = lys_main_module(module)->data;
 
     if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL)) < 1) {
         return ((id - nodeid) - r) + 1;
