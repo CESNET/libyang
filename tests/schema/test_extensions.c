@@ -2752,6 +2752,1310 @@ test_complex_mand_yang(void **state)
     assert_string_equal(st->str1, yang_correct);
 }
 
+static void
+test_complex_many_instace_yin(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    const char *yin1 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex>\n"
+                    "    <description>\n      <text>description1</text>\n    </description>\n"
+                    "    <description>\n      <text>description2</text>\n    </description>\n"
+                    "  </e:complex>\n"
+                    "</module>\n";
+    const char *yin2 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex>\n"
+                    "    <reference>\n      <text>reference1</text>\n    </reference>\n"
+                    "    <reference>\n      <text>reference1</text>\n    </reference>\n"
+                    "  </e:complex>\n"
+                    "</module>\n";
+    const char *yin3 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex>\n"
+                    "    <argument name=\"b\">\n      <yin-element value=\"true\"/>    </argument>\n"
+                    "    <argument name=\"a\">\n      <yin-element value=\"false\"/>    </argument>\n"
+                    "  </e:complex>\n"
+                    "</module>\n";
+    const char *yin4 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex>\n"
+                    "    <belongs-to module=\"test1\">\n      <prefix value=\"t1\"/>\n    </belongs-to>\n"
+                    "    <belongs-to module=\"test2\">\n      <prefix value=\"t2\"/>\n    </belongs-to>\n"
+                    "  </e:complex>\n"
+                    "</module>\n";
+    const char *yin5 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex>\n"
+                    "    <contact>\n      <text>contact1</text>\n    </contact>\n"
+                    "    <contact>\n      <text>contact2</text>\n    </contact>\n"
+                    "  </e:complex>\n"
+                    "</module>\n";
+    const char *yin6 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex>\n"
+                    "  <default value=\"b\"/>\n"
+                    "  <default value=\"a\"/>\n"
+                    "  </e:complex>\n"
+                    "</module>\n";
+    const char *yin7 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex>\n"
+                    "    <error-message>\n      <value>error-message1</value>\n    </error-message>\n"
+                    "    <error-message>\n      <value>error-message2</value>\n    </error-message>\n"
+                    "  </e:complex>\n"
+                    "</module>\n";
+    const char *yin8 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex>\n"
+                    "    <error-app-tag value=\"a\"/>\n"
+                    "    <error-app-tag value=\"b\"/>\n"
+                    "  </e:complex>\n"
+                    "</module>\n";
+    const char *yin9 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex>\n"
+                    "    <namespace uri=\"urn:namespace1\"/>\n"
+                    "    <namespace uri=\"urn:namespace2\"/>\n"
+                    "  </e:complex>\n"
+                    "</module>\n";
+    const char *yin10 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex>\n"
+                    "    <organization>\n      <text>organization1</text>\n    </organization>\n"
+                    "    <organization>\n      <text>organization1</text>\n    </organization>\n"
+                    "  </e:complex>\n"
+                    "</module>\n";
+    const char *yin11 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex>\n"
+                    "    <path value=\"leaf\"/>\n"
+                    "    <path value=\"leaf1\"/>\n"
+                    "  </e:complex>\n"
+                    "</module>\n";
+    const char *yin12 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex>\n"
+                    "    <presence value=\"presence1\"/>\n"
+                    "    <presence value=\"presence2\"/>\n"
+                    "  </e:complex>\n"
+                    "</module>\n";
+    const char *yin13 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex>\n"
+                    "    <prefix value=\"a\"/>\n"
+                    "    <prefix value=\"b\"/>\n"
+                    "  </e:complex>\n"
+                    "</module>\n";
+    const char *yin14 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex>\n"
+                    "    <revision-date date=\"2017-02-22\"/>"
+                    "    <revision-date date=\"2015-02-22\"/>"
+                    "  </e:complex>\n"
+                    "</module>\n";
+    const char *yin15 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex>\n"
+                    "    <units name=\"meter\"/>\n"
+                    "    <units name=\"kilogram\"/>\n"
+                    "  </e:complex>\n"
+                    "</module>\n";
+    const char *yin16 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex>\n"
+                    "    <modifier value=\"invert-match\"/>\n"
+                    "    <modifier value=\"invert-match\"/>\n"
+                    "  </e:complex>\n"
+                    "</module>\n";
+    const char *yin17 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex>\n"
+                    "    <value value=\"142\"/>"
+                    "    <value value=\"1456\"/>"
+                    "  </e:complex>\n"
+                    "</module>\n";
+    const char *yin18 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex>\n"
+                    "    <require-instance value=\"true\"/>"
+                    "    <require-instance value=\"true\"/>"
+                    "  </e:complex>\n"
+                    "</module>\n";
+    const char *yin19 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex>\n"
+                    "    <length value=\"5..20\"/>"
+                    "    <length value=\"5..10\"/>"
+                    "  </e:complex>\n"
+                    "</module>\n";
+    const char *yin20 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex>\n"
+                    "    <pattern value=\"A-Za-z]+\"/>"
+                    "    <pattern value=\"[A-Za-z]+[0-9]*\"/>"
+                    "  </e:complex>\n"
+                    "</module>\n";
+    const char *yin21 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex>\n"
+                    "    <must condition=\"leaf = true\"/>"
+                    "    <must condition=\"leaf = false\"/>"
+                    "    <leaf name=\"leaf\">\n      <type name=\"boolean\"/>\n    </leaf>\n"
+                    "  </e:complex>\n"
+                    "</module>\n";
+    const char *yin22 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex>\n"
+                    "    <range value=\"1..25\"/>"
+                    "    <range value=\"25 | 40 .. 100\"/>"
+                    "  </e:complex>\n"
+                    "</module>\n";
+    const char *yin23 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex>\n"
+                    "    <when condition=\"leaf = true\"/>"
+                    "    <when condition=\"leaf = false\"/>"
+                    "    <leaf name=\"leaf\">\n      <type name=\"boolean\"/>\n    </leaf>\n"
+                    "  </e:complex>\n"
+                    "</module>\n";
+    const char *yin24 = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+                    "<module name=\"ext\"\n"
+                    "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+                    "        xmlns:x=\"urn:ext\"\n"
+                    "        xmlns:e=\"urn:ext-def\">\n"
+                    "  <yang-version value=\"1.1\"/>\n"
+                    "  <namespace uri=\"urn:ext\"/>\n"
+                    "  <prefix value=\"x\"/>\n"
+                    "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+                    "  <e:complex>\n"
+                    "    <revision date=\"2016-02-16\"/>\n"
+                    "    <revision date=\"2016-02-17\"/>\n"
+                    "  </e:complex>\n"
+                    "</module>\n";
+
+    mod = lys_parse_mem(st->ctx, yin1, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yin2, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yin3, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yin4, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yin5, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yin6, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yin7, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yin8, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yin9, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yin9, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yin10, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yin11, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yin12, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yin13, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yin14, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yin15, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yin16, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yin17, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yin18, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yin19, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yin20, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yin21, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yin22, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yin23, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yin24, LYS_IN_YIN);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+}
+
+static void
+test_complex_many_instace_yang(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    const char *yang1 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex {\n"
+                    "    description\n    \"description1\";\n"
+                    "    description\n    \"description2\";\n"
+                    "  }\n}\n";
+    const char *yang2 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex {\n"
+                    "    reference\n    \"reference1\";\n"
+                    "    reference\n    \"reference2\";\n"
+                    "  }\n}\n";
+    const char *yang3 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex {\n"
+                    "    argument a {\n      yin-element true;\n    }\n"
+                    "    argument b {\n      yin-element true;\n    }\n"
+                    "  }\n}\n";
+    const char *yang4 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex {\n"
+                    "    belongs-to test1 {\n      prefix t1;\n    }\n"
+                    "    belongs-to test2 {\n      prefix t2;\n    }\n"
+                    "  }\n}\n";
+    const char *yang5 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex {\n"
+                    "    contact\n    \"contact1\";\n"
+                    "    contact\n    \"contact2\";\n"
+                    "  }\n}\n";
+    const char *yang6 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex {\n"
+                    "    default \"default1\";\n"
+                    "    default \"default2\";\n"
+                    "  }\n}\n";
+    const char *yang7 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex {\n"
+                    "    error-message \"err-msg1\";\n"
+                    "    error-message \"err-msg2\";\n"
+                    "  }\n}\n";
+    const char *yang8 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex {\n"
+                    "    key \"key1\";\n"
+                    "    key \"key2\";\n"
+                    "  }\n}\n";
+    const char *yang9 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex {\n"
+                    "    namespace \"namespace1\";\n"
+                    "    namespace \"namespace2\";\n"
+                    "  }\n}\n";
+    const char *yang10 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex {\n"
+                    "    organization \"organization1\";\n"
+                    "    organization \"organization2\";\n"
+                    "  }\n}\n";
+    const char *yang11 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex {\n"
+                    "    path \"leaf\";\n"
+                    "    path \"leaf\";\n"
+                    "    leaf leaf {\n      type string;\n     }\n"
+                    "  }\n}\n";
+    const char *yang12 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex {\n"
+                    "    presence \"presence1\";\n"
+                    "    presence \"presence2\";\n"
+                    "  }\n}\n";
+    const char *yang13 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex {\n"
+                    "    prefix \"prefix1\";\n"
+                    "    prefix \"prefix2\";\n"
+                    "  }\n}\n";
+    const char *yang14 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex {\n"
+                    "    revision-date 2017-02-22;\n"
+                    "    revision-date 2017-02-25;\n"
+                    "  }\n}\n";
+    const char *yang15 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex {\n"
+                    "    units \"units1\";\n"
+                    "    units \"units2\";\n"
+                    "  }\n}\n";
+    const char *yang16 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex {\n"
+                    "    modifier invert-match;\n"
+                    "    modifier invert-match;\n"
+                    "  }\n}\n";
+    const char *yang17 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex {\n"
+                    "    value 142;\n"
+                    "    value 1456;\n"
+                    "  }\n}\n";
+    const char *yang18 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex {\n"
+                    "    require-instance \"true\";\n"
+                    "    require-instance \"true\";\n"
+                    "  }\n}\n";
+    const char *yang19 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex {\n"
+                    "    length \"5..20\";\n"
+                    "    length \"5..10\";\n"
+                    "  }\n}\n";
+    const char *yang20 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex {\n"
+                    "    pattern \"[A-Za-z]+\";\n"
+                    "    pattern \"[A-Za-z]+[0-9]*\";\n"
+                    "  }\n}\n";
+    const char *yang21 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex {\n"
+                    "    must \"leaf = true\";\n"
+                    "    must \"leaf = false\";\n"
+                    "    leaf leaf {\n      type string;\n     }\n"
+                    "  }\n}\n";
+    const char *yang22 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex {\n"
+                    "    range \"1..25\";\n"
+                    "    range \"25 | 40 .. 100\";\n"
+                    "  }\n}\n";
+    const char *yang23 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex {\n"
+                    "    when \"leaf = true\";\n"
+                    "    when \"leaf = false\";\n"
+                    "    leaf leaf {\n      type string;\n     }\n"
+                    "  }\n}\n";
+    const char *yang24 = "module ext {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  e:complex {\n"
+                    "    revision 2017-03-30;\n"
+                    "    revision 2016-03-30;\n"
+                    "  }\n}\n";
+
+    mod = lys_parse_mem(st->ctx, yang1, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yang2, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yang3, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yang4, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yang5, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yang6, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yang7, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yang8, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yang9, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yang9, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yang10, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yang11, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yang12, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yang13, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yang14, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yang15, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yang16, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yang17, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yang18, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yang19, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yang20, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yang21, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yang22, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yang23, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    mod = lys_parse_mem(st->ctx, yang24, LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+}
+
+static void
+test_complex_arrays_str_yin(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    const char *yin[17];
+    int i;
+
+    yin[0] = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+             "<module name=\"ext1\"\n"
+             "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+             "        xmlns:x=\"urn:ext1\"\n"
+             "        xmlns:e=\"urn:ext-def\">\n"
+             "  <yang-version value=\"1.1\"/>\n"
+             "  <namespace uri=\"urn:ext1\"/>\n"
+             "  <prefix value=\"x\"/>\n"
+             "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+             "  <extension name=\"a\">\n    <argument name=\"y\"/>\n  </extension>\n"
+             "  <e:complex-arrays>\n"
+             "    <description>\n      <text>description1</text>\n    </description>\n"
+             "    <description>\n"
+             "      <x:a y=\"ok\"/>\n"
+             "      <text>description1</text>\n"
+             "    </description>\n"
+             "    <description>\n      <text>description3</text>\n    </description>\n"
+             "  </e:complex-arrays>\n"
+             "</module>\n";
+    yin[1] = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+             "<module name=\"ext2\"\n"
+             "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+             "        xmlns:x=\"urn:ext2\"\n"
+             "        xmlns:e=\"urn:ext-def\">\n"
+             "  <yang-version value=\"1.1\"/>\n"
+             "  <namespace uri=\"urn:ext2\"/>\n"
+             "  <prefix value=\"x\"/>\n"
+             "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+             "  <extension name=\"a\">\n    <argument name=\"y\"/>\n  </extension>\n"
+             "  <e:complex-arrays>\n"
+             "    <reference>\n      <text>reference1</text>\n    </reference>\n"
+             "    <reference>\n"
+             "      <x:a y=\"ok\"/>\n"
+             "      <text>reference1</text>\n"
+             "    </reference>\n"
+             "    <reference>\n      <text>reference3</text>\n    </reference>\n"
+             "  </e:complex-arrays>\n"
+             "</module>\n";
+    yin[2] = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+             "<module name=\"ext3\"\n"
+             "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+             "        xmlns:x=\"urn:ext3\"\n"
+             "        xmlns:e=\"urn:ext-def\">\n"
+             "  <yang-version value=\"1.1\"/>\n"
+             "  <namespace uri=\"urn:ext3\"/>\n"
+             "  <prefix value=\"x\"/>\n"
+             "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+             "  <extension name=\"a\">\n    <argument name=\"y\"/>\n  </extension>\n"
+             "  <e:complex-arrays>\n"
+             "    <contact>\n      <text>contact1</text>\n    </contact>\n"
+             "    <contact>\n"
+             "      <x:a y=\"ok\"/>\n"
+             "      <text>contact1</text>\n"
+             "    </contact>\n"
+             "    <contact>\n      <text>contact3</text>\n    </contact>\n"
+             "  </e:complex-arrays>\n"
+             "</module>\n";
+    yin[3] = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+             "<module name=\"ext4\"\n"
+             "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+             "        xmlns:x=\"urn:ext4\"\n"
+             "        xmlns:e=\"urn:ext-def\">\n"
+             "  <yang-version value=\"1.1\"/>\n"
+             "  <namespace uri=\"urn:ext4\"/>\n"
+             "  <prefix value=\"x\"/>\n"
+             "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+             "  <extension name=\"a\">\n    <argument name=\"y\"/>\n  </extension>\n"
+             "  <e:complex-arrays>\n"
+             "    <default value=\"default1\"/>\n"
+             "    <default value=\"default2\">\n"
+             "      <x:a y=\"ok\"/>\n"
+             "    </default>\n"
+             "    <default value=\"default3\"/>\n"
+             "  </e:complex-arrays>\n"
+             "</module>\n";
+    yin[4] = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+             "<module name=\"ext5\"\n"
+             "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+             "        xmlns:x=\"urn:ext5\"\n"
+             "        xmlns:e=\"urn:ext-def\">\n"
+             "  <yang-version value=\"1.1\"/>\n"
+             "  <namespace uri=\"urn:ext5\"/>\n"
+             "  <prefix value=\"x\"/>\n"
+             "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+             "  <extension name=\"a\">\n    <argument name=\"y\"/>\n  </extension>\n"
+             "  <e:complex-arrays>\n"
+             "    <error-message>\n      <value>error-message1</value>\n    </error-message>\n"
+             "    <error-message>\n"
+             "      <x:a y=\"ok\"/>\n"
+             "      <value>error-message1</value>\n"
+             "    </error-message>\n"
+             "    <error-message>\n      <value>error-message3</value>\n    </error-message>\n"
+             "  </e:complex-arrays>\n"
+             "</module>\n";
+    yin[5] = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+             "<module name=\"ext6\"\n"
+             "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+             "        xmlns:x=\"urn:ext6\"\n"
+             "        xmlns:e=\"urn:ext-def\">\n"
+             "  <yang-version value=\"1.1\"/>\n"
+             "  <namespace uri=\"urn:ext6\"/>\n"
+             "  <prefix value=\"x\"/>\n"
+             "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+             "  <extension name=\"a\">\n    <argument name=\"y\"/>\n  </extension>\n"
+             "  <e:complex-arrays>\n"
+             "    <error-app-tag value=\"error-app-tag1\"/>\n"
+             "    <error-app-tag value=\"error-app-tag2\">\n"
+             "      <x:a y=\"ok\"/>\n"
+             "    </error-app-tag>\n"
+             "    <error-app-tag value=\"error-app-tag3\"/>\n"
+             "  </e:complex-arrays>\n"
+             "</module>\n";
+    yin[6] = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+             "<module name=\"ext7\"\n"
+             "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+             "        xmlns:x=\"urn:ext7\"\n"
+             "        xmlns:e=\"urn:ext-def\">\n"
+             "  <yang-version value=\"1.1\"/>\n"
+             "  <namespace uri=\"urn:ext7\"/>\n"
+             "  <prefix value=\"x\"/>\n"
+             "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+             "  <extension name=\"a\">\n    <argument name=\"y\"/>\n  </extension>\n"
+             "  <e:complex-arrays>\n"
+             "    <namespace uri=\"urn:namespace1\"/>\n"
+             "    <namespace uri=\"urn:namespace2\">\n"
+             "      <x:a y=\"ok\"/>\n"
+             "    </namespace>\n"
+             "    <namespace uri=\"urn:namespace3\"/>\n"
+             "  </e:complex-arrays>\n"
+             "</module>\n";
+    yin[7] = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+             "<module name=\"ext8\"\n"
+             "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+             "        xmlns:x=\"urn:ext8\"\n"
+             "        xmlns:e=\"urn:ext-def\">\n"
+             "  <yang-version value=\"1.1\"/>\n"
+             "  <namespace uri=\"urn:ext8\"/>\n"
+             "  <prefix value=\"x\"/>\n"
+             "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+             "  <extension name=\"a\">\n    <argument name=\"y\"/>\n  </extension>\n"
+             "  <e:complex-arrays>\n"
+             "    <organization>\n      <text>organization1</text>\n    </organization>\n"
+             "    <organization>\n"
+             "      <x:a y=\"ok\"/>\n"
+             "      <text>organization1</text>\n"
+             "    </organization>\n"
+             "    <organization>\n      <text>organization3</text>\n    </organization>\n"
+             "  </e:complex-arrays>\n"
+             "</module>\n";
+    yin[8] = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+             "<module name=\"ext9\"\n"
+             "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+             "        xmlns:x=\"urn:ext9\"\n"
+             "        xmlns:e=\"urn:ext-def\">\n"
+             "  <yang-version value=\"1.1\"/>\n"
+             "  <namespace uri=\"urn:ext9\"/>\n"
+             "  <prefix value=\"x\"/>\n"
+             "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+             "  <extension name=\"a\">\n    <argument name=\"y\"/>\n  </extension>\n"
+             "  <e:complex-arrays>\n"
+             "    <path value=\"path1\"/>\n"
+             "    <path value=\"path2\">\n"
+             "      <x:a y=\"ok\"/>\n"
+             "    </path>\n"
+             "    <path value=\"path3\"/>\n"
+             "  </e:complex-arrays>\n"
+             "</module>\n";
+    yin[9] = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+             "<module name=\"ext10\"\n"
+             "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+             "        xmlns:x=\"urn:ext10\"\n"
+             "        xmlns:e=\"urn:ext-def\">\n"
+             "  <yang-version value=\"1.1\"/>\n"
+             "  <namespace uri=\"urn:ext10\"/>\n"
+             "  <prefix value=\"x\"/>\n"
+             "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+             "  <extension name=\"a\">\n    <argument name=\"y\"/>\n  </extension>\n"
+             "  <e:complex-arrays>\n"
+             "    <prefix value=\"prefix1\"/>\n"
+             "    <prefix value=\"prefix2\">\n"
+             "      <x:a y=\"ok\"/>\n"
+             "    </prefix>\n"
+             "    <prefix value=\"prefix3\"/>\n"
+             "  </e:complex-arrays>\n"
+             "</module>\n";
+    yin[10] = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+             "<module name=\"ext11\"\n"
+             "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+             "        xmlns:x=\"urn:ext11\"\n"
+             "        xmlns:e=\"urn:ext-def\">\n"
+             "  <yang-version value=\"1.1\"/>\n"
+             "  <namespace uri=\"urn:ext11\"/>\n"
+             "  <prefix value=\"x\"/>\n"
+             "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+             "  <extension name=\"a\">\n    <argument name=\"y\"/>\n  </extension>\n"
+             "  <e:complex-arrays>\n"
+             "    <presence value=\"presence1\"/>\n"
+             "    <presence value=\"presence2\">\n"
+             "      <x:a y=\"ok\"/>\n"
+             "    </presence>\n"
+             "    <presence value=\"presence3\"/>\n"
+             "  </e:complex-arrays>\n"
+             "</module>\n";
+    yin[11] = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+             "<module name=\"ext12\"\n"
+             "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+             "        xmlns:x=\"urn:ext12\"\n"
+             "        xmlns:e=\"urn:ext-def\">\n"
+             "  <yang-version value=\"1.1\"/>\n"
+             "  <namespace uri=\"urn:ext12\"/>\n"
+             "  <prefix value=\"x\"/>\n"
+             "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+             "  <extension name=\"a\">\n    <argument name=\"y\"/>\n  </extension>\n"
+             "  <e:complex-arrays>\n"
+             "    <units name=\"units1\"/>\n"
+             "    <units name=\"units2\">\n"
+             "      <x:a y=\"ok\"/>\n"
+             "    </units>\n"
+             "    <units name=\"units3\"/>\n"
+             "  </e:complex-arrays>\n"
+             "</module>\n";
+    yin[12] = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+             "<module name=\"ext13\"\n"
+             "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+             "        xmlns:x=\"urn:ext13\"\n"
+             "        xmlns:e=\"urn:ext-def\">\n"
+             "  <yang-version value=\"1.1\"/>\n"
+             "  <namespace uri=\"urn:ext13\"/>\n"
+             "  <prefix value=\"x\"/>\n"
+             "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+             "  <extension name=\"a\">\n    <argument name=\"y\"/>\n  </extension>\n"
+             "  <e:complex-arrays>\n"
+             "    <revision-date date=\"2017-02-20\"/>\n"
+             "    <revision-date date=\"2017-02-25\">\n"
+             "      <x:a y=\"ok\"/>\n"
+             "    </revision-date>\n"
+             "    <revision-date date=\"2017-02-28\"/>\n"
+             "  </e:complex-arrays>\n"
+             "</module>\n";
+    yin[13] = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+             "<module name=\"ext14\"\n"
+             "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+             "        xmlns:x=\"urn:ext14\"\n"
+             "        xmlns:e=\"urn:ext-def\">\n"
+             "  <yang-version value=\"1.1\"/>\n"
+             "  <namespace uri=\"urn:ext14\"/>\n"
+             "  <prefix value=\"x\"/>\n"
+             "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+             "  <extension name=\"a\">\n    <argument name=\"y\"/>\n  </extension>\n"
+             "  <e:complex-arrays>\n"
+             "    <base name=\"base1\"/>\n"
+             "    <base name=\"base2\">\n"
+             "      <x:a y=\"ok\"/>\n"
+             "    </base>\n"
+             "    <base name=\"base3\"/>\n"
+             "  </e:complex-arrays>\n"
+             "</module>\n";
+    yin[14] = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+             "<module name=\"ext15\"\n"
+             "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+             "        xmlns:x=\"urn:ext15\"\n"
+             "        xmlns:e=\"urn:ext-def\">\n"
+             "  <yang-version value=\"1.1\"/>\n"
+             "  <namespace uri=\"urn:ext15\"/>\n"
+             "  <prefix value=\"x\"/>\n"
+             "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+             "  <extension name=\"a\">\n    <argument name=\"y\"/>\n  </extension>\n"
+             "  <extension name=\"b\"/>\n"
+             "  <e:complex-arrays>\n"
+             "    <argument name=\"argument1\"/>\n"
+             "    <argument name=\"argument2\">\n"
+             "      <x:a y=\"ok\"/>\n"
+             "    </argument>\n"
+             "    <argument name=\"argument3\">\n"
+             "      <yin-element value=\"true\">\n"
+             "        <x:b/>\n"
+             "      </yin-element>\n"
+             "    </argument>\n"
+             "    <argument name=\"argument4\">\n"
+             "      <yin-element value=\"false\">\n"
+             "        <x:a y=\"value\"/>\n"
+             "      </yin-element>\n"
+             "    </argument>\n"
+             "  </e:complex-arrays>\n"
+             "</module>\n";
+    yin[15] = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+             "<module name=\"ext16\"\n"
+             "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+             "        xmlns:x=\"urn:ext16\"\n"
+             "        xmlns:e=\"urn:ext-def\">\n"
+             "  <yang-version value=\"1.1\"/>\n"
+             "  <namespace uri=\"urn:ext16\"/>\n"
+             "  <prefix value=\"x\"/>\n"
+             "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+             "  <extension name=\"a\">\n    <argument name=\"y\"/>\n  </extension>\n"
+             "  <e:complex-arrays>\n"
+             "    <belongs-to module=\"mod1\">\n      <prefix value=\"prefix1\"/>\n    </belongs-to>\n"
+             "    <belongs-to module=\"mod2\">\n"
+             "      <prefix value=\"prefix2\">\n        <x:a y=\"value\"/>\n      </prefix>\n"
+             "    </belongs-to>\n"
+             "    <belongs-to module=\"mod3\">\n"
+             "      <x:a y=\"ok\"/>\n"
+             "      <prefix value=\"prefix3\"/>\n"
+             "    </belongs-to>\n"
+             "  </e:complex-arrays>\n"
+             "</module>\n";
+    yin[16] = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+             "<module name=\"ext17\"\n"
+             "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+             "        xmlns:x=\"urn:ext17\"\n"
+             "        xmlns:e=\"urn:ext-def\">\n"
+             "  <yang-version value=\"1.1\"/>\n"
+             "  <namespace uri=\"urn:ext17\"/>\n"
+             "  <prefix value=\"x\"/>\n"
+             "  <import module=\"ext-def\">\n    <prefix value=\"e\"/>\n  </import>\n"
+             "  <extension name=\"a\">\n    <argument name=\"y\"/>\n  </extension>\n"
+             "  <e:complex-arrays>\n"
+             "    <key value=\"key1\"/>\n"
+             "    <key value=\"key2\">\n"
+             "      <x:a y=\"ok\"/>\n"
+             "    </key>\n"
+             "    <key value=\"key3\"/>\n"
+             "  </e:complex-arrays>\n"
+             "</module>\n";
+
+    for (i = 0; i < 17; ++i) {
+        printf("module ext%d ... ", i + 1);
+        mod = lys_parse_mem(st->ctx, yin[i], LYS_IN_YIN);
+        assert_ptr_not_equal(mod, NULL);
+
+        lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL);
+        assert_ptr_not_equal(st->str1, NULL);
+        assert_string_equal(st->str1, yin[i]);
+        free(st->str1);
+        st->str1 = NULL;
+        printf("OK\n");
+    }
+}
+
+static void
+test_complex_arrays_str_yang(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    const char *yang[17];
+    int i;
+
+    yang[0] = "module ext1 {\n"
+              "  yang-version 1.1;\n"
+              "  namespace \"urn:ext1\";\n"
+              "  prefix x;\n\n"
+              "  import ext-def {\n    prefix e;\n  }\n\n"
+              "  extension a {\n"
+              "    e:complex-arrays {\n"
+              "      description\n        \"description1\";\n"
+              "      description\n        \"description2\" {\n        x:a \"ok\";\n      }\n"
+              "      description\n        \"description3\";\n"
+              "    }\n    argument value;\n"
+              "  }\n}\n";
+    yang[1] = "module ext2 {\n"
+              "  yang-version 1.1;\n"
+              "  namespace \"urn:ext2\";\n"
+              "  prefix x;\n\n"
+              "  import ext-def {\n    prefix e;\n  }\n\n"
+              "  extension a {\n"
+              "    e:complex-arrays {\n"
+              "      reference\n        \"reference1\";\n"
+              "      reference\n        \"reference2\" {\n        x:a \"ok\";\n      }\n"
+              "      reference\n        \"reference3\";\n"
+              "    }\n    argument value;\n"
+              "  }\n}\n";
+    yang[2] =  "module ext3 {\n"
+              "  yang-version 1.1;\n"
+              "  namespace \"urn:ext3\";\n"
+              "  prefix x;\n\n"
+              "  import ext-def {\n    prefix e;\n  }\n\n"
+              "  extension a {\n"
+              "    e:complex-arrays {\n"
+              "      contact\n        \"contact1\";\n"
+              "      contact\n        \"contact2\" {\n        x:a \"ok\";\n      }\n"
+              "      contact\n        \"contact3\";\n"
+              "    }\n    argument value;\n"
+              "  }\n}\n";
+    yang[3] = "module ext4 {\n"
+              "  yang-version 1.1;\n"
+              "  namespace \"urn:ext4\";\n"
+              "  prefix x;\n\n"
+              "  import ext-def {\n    prefix e;\n  }\n\n"
+              "  extension a {\n"
+              "    e:complex-arrays {\n"
+              "      default \"default1\";\n"
+              "      default \"default2\" {\n        x:a \"ok\";\n      }\n"
+              "      default \"default3\";\n"
+              "    }\n    argument value;\n"
+              "  }\n}\n";
+    yang[4] =  "module ext5 {\n"
+              "  yang-version 1.1;\n"
+              "  namespace \"urn:ext5\";\n"
+              "  prefix x;\n\n"
+              "  import ext-def {\n    prefix e;\n  }\n\n"
+              "  extension a {\n"
+              "    e:complex-arrays {\n"
+              "      error-message\n        \"error-message1\";\n"
+              "      error-message\n        \"error-message2\" {\n        x:a \"ok\";\n      }\n"
+              "      error-message\n        \"error-message3\";\n"
+              "    }\n    argument value;\n"
+              "  }\n}\n";
+    yang[5] = "module ext6 {\n"
+              "  yang-version 1.1;\n"
+              "  namespace \"urn:ext6\";\n"
+              "  prefix x;\n\n"
+              "  import ext-def {\n    prefix e;\n  }\n\n"
+              "  extension a {\n"
+              "    e:complex-arrays {\n"
+              "      error-app-tag \"error-app-tag1\";\n"
+              "      error-app-tag \"error-app-tag2\" {\n        x:a \"ok\";\n      }\n"
+              "      error-app-tag \"error-app-tag3\";\n"
+              "    }\n    argument value;\n"
+              "  }\n}\n";
+    yang[6] = "module ext7 {\n"
+              "  yang-version 1.1;\n"
+              "  namespace \"urn:ext7\";\n"
+              "  prefix x;\n\n"
+              "  import ext-def {\n    prefix e;\n  }\n\n"
+              "  extension a {\n"
+              "    e:complex-arrays {\n"
+              "      namespace \"urn:namespace1\";\n"
+              "      namespace \"urn:namespace2\" {\n        x:a \"ok\";\n      }\n"
+              "      namespace \"urn:namespace3\";\n"
+              "    }\n    argument value;\n"
+              "  }\n}\n";
+    yang[7] = "module ext8 {\n"
+              "  yang-version 1.1;\n"
+              "  namespace \"urn:ext8\";\n"
+              "  prefix x;\n\n"
+              "  import ext-def {\n    prefix e;\n  }\n\n"
+              "  extension a {\n"
+              "    e:complex-arrays {\n"
+              "      organization\n        \"organization1\";\n"
+              "      organization\n        \"organization2\" {\n        x:a \"ok\";\n      }\n"
+              "      organization\n        \"organization3\";\n"
+              "    }\n    argument value;\n"
+              "  }\n}\n";
+    yang[8] = "module ext9 {\n"
+              "  yang-version 1.1;\n"
+              "  namespace \"urn:ext9\";\n"
+              "  prefix x;\n\n"
+              "  import ext-def {\n    prefix e;\n  }\n\n"
+              "  extension a {\n"
+              "    e:complex-arrays {\n"
+              "      path \"path1\";\n"
+              "      path \"path2\" {\n        x:a \"ok\";\n      }\n"
+              "      path \"path3\";\n"
+              "    }\n    argument value;\n"
+              "  }\n}\n";
+    yang[9] = "module ext10 {\n"
+              "  yang-version 1.1;\n"
+              "  namespace \"urn:ext10\";\n"
+              "  prefix x;\n\n"
+              "  import ext-def {\n    prefix e;\n  }\n\n"
+              "  extension a {\n"
+              "    e:complex-arrays {\n"
+              "      prefix prefix1;\n"
+              "      prefix prefix2 {\n        x:a \"ok\";\n      }\n"
+              "      prefix prefix3;\n"
+              "    }\n    argument value;\n"
+              "  }\n}\n";
+    yang[10] = "module ext11 {\n"
+              "  yang-version 1.1;\n"
+              "  namespace \"urn:ext11\";\n"
+              "  prefix x;\n\n"
+              "  import ext-def {\n    prefix e;\n  }\n\n"
+              "  extension a {\n"
+              "    e:complex-arrays {\n"
+              "      presence \"presence1\";\n"
+              "      presence \"presence2\" {\n        x:a \"ok\";\n      }\n"
+              "      presence \"presence3\";\n"
+              "    }\n    argument value;\n"
+              "  }\n}\n";
+    yang[11] = "module ext12 {\n"
+              "  yang-version 1.1;\n"
+              "  namespace \"urn:ext12\";\n"
+              "  prefix x;\n\n"
+              "  import ext-def {\n    prefix e;\n  }\n\n"
+              "  extension a {\n"
+              "    e:complex-arrays {\n"
+              "      units \"units1\";\n"
+              "      units \"units2\" {\n        x:a \"ok\";\n      }\n"
+              "      units \"units3\";\n"
+              "    }\n    argument value;\n"
+              "  }\n}\n";
+    yang[12] = "module ext13 {\n"
+              "  yang-version 1.1;\n"
+              "  namespace \"urn:ext13\";\n"
+              "  prefix x;\n\n"
+              "  import ext-def {\n    prefix e;\n  }\n\n"
+              "  extension a {\n"
+              "    e:complex-arrays {\n"
+              "      revision-date 2017-02-20;\n"
+              "      revision-date 2017-02-25 {\n        x:a \"ok\";\n      }\n"
+              "      revision-date 2017-02-28;\n"
+              "    }\n    argument value;\n"
+              "  }\n}\n";
+    yang[13] = "module ext14 {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext14\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  extension a {\n"
+                    "    e:complex-arrays {\n"
+                    "      base base1;\n"
+                    "      base base2 {\n        x:a \"ok\";\n      }\n"
+                    "      base base3;\n"
+                    "    }\n    argument value;\n"
+                    "  }\n}\n";
+    yang[14] = "module ext15 {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext15\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  extension b;\n\n"
+                    "  extension a {\n"
+                    "    e:complex-arrays {\n"
+                    "      argument argument1;\n"
+                    "      argument argument2 {\n        x:a \"ok\";\n      }\n"
+                    "      argument argument3 {\n"
+                    "        yin-element true {\n          x:b;\n        }\n      }\n"
+                    "      argument argument4 {\n"
+                    "        yin-element false {\n          x:a \"value\";\n        }\n      }\n"
+                    "    }\n    argument value;\n"
+                    "  }\n}\n";
+    yang[15] = "module ext16 {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext16\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  extension b;\n\n"
+                    "  extension a {\n"
+                    "    e:complex-arrays {\n"
+                    "      belongs-to mod1 {\n"
+                    "        prefix prefix1;\n      }\n"
+                    "      belongs-to mod2 {\n"
+                    "        prefix prefix2 {\n          x:a \"ok\";\n        }\n      }\n"
+                    "      belongs-to mod3 {\n        x:b;\n"
+                    "        prefix prefix3;\n      }\n"
+                    "    }\n    argument value;\n"
+                    "  }\n}\n";
+    yang[16] = "module ext17 {\n"
+                    "  yang-version 1.1;\n"
+                    "  namespace \"urn:ext17\";\n"
+                    "  prefix x;\n\n"
+                    "  import ext-def {\n    prefix e;\n  }\n\n"
+                    "  extension a {\n"
+                    "    e:complex-arrays {\n"
+                    "      key \"key1\";\n"
+                    "      key \"key2\" {\n        x:a \"ok\";\n      }\n"
+                    "      key \"key3\";\n"
+                    "    }\n    argument value;\n"
+                    "  }\n}\n";
+
+    for (i = 0; i < 17; ++i) {
+        printf("module ext%d ... ", i + 1);
+        mod = lys_parse_mem(st->ctx, yang[i], LYS_IN_YANG);
+        assert_ptr_not_equal(mod, NULL);
+
+        lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL);
+        assert_ptr_not_equal(st->str1, NULL);
+        assert_string_equal(st->str1, yang[i]);
+        free(st->str1);
+        st->str1 = NULL;
+        printf("OK\n");
+    }
+}
 
 int
 main(void)
@@ -2772,6 +4076,8 @@ main(void)
         cmocka_unit_test_setup_teardown(test_complex_yin, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_complex_arrays_yin, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_complex_mand_yin, setup_ctx_yin, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_complex_many_instace_yin, setup_ctx_yin, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_complex_arrays_str_yin, setup_ctx_yin, teardown_ctx),
 
         cmocka_unit_test_setup_teardown(test_module_sub_yang, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_container_sub_yang, setup_ctx_yang, teardown_ctx),
@@ -2788,6 +4094,8 @@ main(void)
         cmocka_unit_test_setup_teardown(test_complex_yang, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_complex_arrays_yang, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_complex_mand_yang, setup_ctx_yang, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_complex_many_instace_yang, setup_ctx_yang, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_complex_arrays_str_yang, setup_ctx_yang, teardown_ctx),
     };
 
     return cmocka_run_group_tests(cmut, NULL, NULL);
