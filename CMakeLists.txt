@@ -8,7 +8,7 @@ set(LIBYANG_DESCRIPTION "libyang is YANG data modelling language parser and tool
 # set version
 set(LIBYANG_MAJOR_VERSION 0)
 set(LIBYANG_MINOR_VERSION 12)
-set(LIBYANG_MICRO_VERSION 90)
+set(LIBYANG_MICRO_VERSION 92)
 set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION})
 configure_file(${PROJECT_SOURCE_DIR}/src/libyang.h.in ${PROJECT_SOURCE_DIR}/src/libyang.h)
@@ -42,7 +42,7 @@ else()
 		WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
 		COMMAND bison -l -o parser_yang_bis.c --defines=parser_yang_bis.h yang.y
 		COMMAND flex -8 -L -o parser_yang_lex.c --header-file=parser_yang_lex.h yang.l
-		COMMAND ${SED_TOOL} -i 's/int yychar\;/int yychar\;\\nchar *s = NULL, *tmp_s = NULL, *ext_name\;\\nstruct lys_module *trg = NULL\;\\nstruct lys_node *tpdf_parent = NULL, *data_node = NULL\;\\nstruct lys_ext_instance_complex *ext_instance\;\\nint is_ext_instance\;\\nvoid *actual = NULL\;\\nenum yytokentype backup_type, actual_type\;\\nint64_t cnt_val = 0\;\\nint is_value = 0\;\\nvoid *yang_type = NULL\;/' parser_yang_bis.c
+		COMMAND ${SED_TOOL} -i 's/int yychar\;/int yychar\;\\nchar *s = NULL, *tmp_s = NULL, *ext_name = NULL\;\\nstruct lys_module *trg = NULL\;\\nstruct lys_node *tpdf_parent = NULL, *data_node = NULL\;\\nstruct lys_ext_instance_complex *ext_instance = NULL\;\\nint is_ext_instance\;\\nvoid *actual = NULL\;\\nenum yytokentype backup_type, actual_type = MODULE_KEYWORD\;\\nint64_t cnt_val = 0\;\\nint is_value = 0\;\\nvoid *yang_type = NULL\;/' parser_yang_bis.c
 	)
 endif()
 

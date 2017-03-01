@@ -525,11 +525,7 @@ attr_error:
     if (havechildren && xml->child) {
         diter = dlast = NULL;
         LY_TREE_FOR_SAFE(xml->child, next, child) {
-            if (schema->nodetype & (LYS_RPC | LYS_NOTIF)) {
-                r = xml_parse_data(ctx, child, *result, (*result)->child, dlast, 0, unres, &diter, act_notif);
-            } else {
-                r = xml_parse_data(ctx, child, *result, (*result)->child, dlast, options, unres, &diter, act_notif);
-            }
+            r = xml_parse_data(ctx, child, *result, (*result)->child, dlast, options, unres, &diter, act_notif);
             if (r) {
                 goto error;
             } else if (options & LYD_OPT_DESTRUCT) {
