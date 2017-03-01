@@ -1864,7 +1864,7 @@ resolve_uses_schema_nodeid(const char *nodeid, const struct lys_node *start, con
     if (!module) {
         return -1;
     }
-    if (module != start->module) {
+    if (module != lys_main_module(start->module)) {
         start = module->data;
     }
 
