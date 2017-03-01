@@ -2009,14 +2009,28 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
                             ly_print(out, "%*sargument %s", LEVEL, INDENT, ((const char ***)pp)[0][c]);
                             j = -1;
                             while ((j = lys_ext_iter(ext[u]->ext, ext[u]->ext_size, j + 1, LYEXT_SUBSTMT_ARGUMENT)) != -1) {
+                                if (ext[u]->ext[j]->insubstmt_index != c) {
+                                    continue;
+                                }
                                 yang_print_open(out, &content2);
                                 yang_print_extension_instances(out, level + 1, module, LYEXT_SUBSTMT_ARGUMENT, c,
                                                                &ext[u]->ext[j], 1);
                             }
-                            if (((uint8_t *)pp[1])[c] == 1 || lys_ext_iter(ext[u]->ext, ext[u]->ext_size, c, LYEXT_SUBSTMT_YINELEM) != -1) {
+
+                            if (((uint8_t *)pp[1])[c] == 1) {
                                 yang_print_open(out, &content2);
                                 yang_print_substmt(out, level + 1, LYEXT_SUBSTMT_YINELEM, c,
                                                    (((uint8_t *)pp[1])[c] == 1) ? "true" : "false", module, ext[u]->ext, ext[u]->ext_size);
+                            } else {
+                                j = -1;
+                                while ((j = lys_ext_iter(ext[u]->ext, ext[u]->ext_size, j + 1, LYEXT_SUBSTMT_YINELEM)) != -1) {
+                                    if (ext[u]->ext[j]->insubstmt_index == c) {
+                                        yang_print_open(out, &content2);
+                                        yang_print_substmt(out, level + 1, LYEXT_SUBSTMT_YINELEM, c, (((uint8_t *)pp[1])[c] == 1) ? "true" : "false",
+                                                           module, ext[u]->ext + j, ext[u]->ext_size - j);
+                                        break;
+                                    }
+                                }
                             }
                             yang_print_close(out, level, content2);
                         }
