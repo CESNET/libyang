@@ -1378,10 +1378,11 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                 if (!strncmp(type->info.bits.bit[i].name, &value[c], len) && !type->info.bits.bit[i].name[len]) {
                     /* we have match, check if the value is enabled ... */
                     for (j = 0; j < type->info.bits.bit[i].iffeature_size; j++) {
-                        if (!resolve_iffeature(&type->info.bits.bit[i].iffeature[i])) {
+                        if (!resolve_iffeature(&type->info.bits.bit[i].iffeature[j])) {
                             LOGVAL(LYE_INVAL, LY_VLOG_LYD, contextnode, value, itemname);
                             LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL,
-                                   "Bit \"%s\" is disabled by its if-feature condition.", type->info.bits.bit[i].name);
+                                   "Bit \"%s\" is disabled by its %d. if-feature condition.",
+                                   type->info.bits.bit[i].name, j + 1);
 
                             free(bits);
                             goto cleanup;
@@ -1490,10 +1491,10 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             if (value && !strcmp(value, type->info.enums.enm[i].name)) {
                 /* we have match, check if the value is enabled ... */
                 for (j = 0; j < type->info.enums.enm[i].iffeature_size; j++) {
-                    if (!resolve_iffeature(&type->info.enums.enm[i].iffeature[i])) {
+                    if (!resolve_iffeature(&type->info.enums.enm[i].iffeature[j])) {
                         LOGVAL(LYE_INVAL, LY_VLOG_LYD, contextnode, value, itemname);
-                        LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Enum \"%s\" is disabled by its if-feature condition.",
-                               value);
+                        LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Enum \"%s\" is disabled by its %d.if-feature condition.",
+                               value, j + 1);
                         goto cleanup;
                     }
                 }
