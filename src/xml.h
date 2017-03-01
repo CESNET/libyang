@@ -118,6 +118,9 @@ struct lyxml_elem {
                                         trees from a single source (regular file terminated by EOF or memory chunk
                                         terminated by NULL byte). In such a case, the returned XML element has other
                                         siblings representing the other XML trees from the source. */
+#define LYXML_PARSE_NOMIXEDCONTENT 0x02 /**< By default, the parser allows elements with mixed content (text content
+                                        mixed with standard XML children). This option cases to handle such elements
+                                        as invalid input (#LYVE_XML_INVAL). */
 
 /**
  * @}

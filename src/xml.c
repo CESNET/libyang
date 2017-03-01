@@ -845,7 +845,7 @@ error:
 
 /* logs directly */
 struct lyxml_elem *
-lyxml_parse_elem(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml_elem *parent)
+lyxml_parse_elem(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml_elem *parent, int options)
 {
     const char *c = data, *start, *e;
     const char *lws;    /* leading white space for handling mixed content */
@@ -1033,6 +1033,10 @@ process:
                 }
                 if (elem->content) {
                     /* we have a mixed content */
+                    if (options & LYXML_PARSE_NOMIXEDCONTENT) {
+                        LOGVAL(LYE_XML_INVAL, LY_VLOG_XML, elem, "XML element with mixed content");
+                        goto error;
+                    }
                     child = calloc(1, sizeof *child);
                     if (!child) {
                         LOGMEM;
@@ -1043,7 +1047,7 @@ process:
                     lyxml_add_child(ctx, elem, child);
                     elem->flags |= LYXML_ELEM_MIXED;
                 }
-                child = lyxml_parse_elem(ctx, c, &size, elem);
+                child = lyxml_parse_elem(ctx, c, &size, elem, options);
                 if (!child) {
                     goto error;
                 }
@@ -1067,6 +1071,10 @@ store_content:
 
                 if (elem->child) {
                     /* we have a mixed content */
+                    if (options & LYXML_PARSE_NOMIXEDCONTENT) {
+                        LOGVAL(LYE_XML_INVAL, LY_VLOG_XML, elem, "XML element with mixed content");
+                        goto error;
+                    }
                     child = calloc(1, sizeof *child);
                     if (!child) {
                         LOGMEM;
@@ -1175,7 +1183,7 @@ repeat:
         }
     }
 
-    root = lyxml_parse_elem(ctx, c, &len, NULL);
+    root = lyxml_parse_elem(ctx, c, &len, NULL, options);
     if (!root) {
         if (first) {
             LY_TREE_FOR_SAFE(first, next, root) {

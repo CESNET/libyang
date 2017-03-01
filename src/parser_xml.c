@@ -121,6 +121,15 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     assert(result);
     *result = NULL;
 
+    if (xml->flags & LYXML_ELEM_MIXED) {
+        if (options & LYD_OPT_STRICT) {
+            LOGVAL(LYE_XML_INVAL, LY_VLOG_XML, xml, "XML element with mixed content");
+            return -1;
+        } else {
+            return 0;
+        }
+    }
+
     if (!xml->ns || !xml->ns->value) {
         if (options & LYD_OPT_STRICT) {
             LOGVAL(LYE_XML_MISS, LY_VLOG_XML, xml, "element's", "namespace");

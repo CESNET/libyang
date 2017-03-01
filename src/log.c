@@ -582,14 +582,16 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
             LOGINT;
             return;
         }
-        len = strlen(name);
-        (*index) -= len;
-        memcpy(&path[*index], name, len);
-        if (prefix) {
-            path[--(*index)] = ':';
-            len = strlen(prefix);
-            (*index) = (*index) - len;
-            memcpy(&path[(*index)], prefix, len);
+        if (name) {
+            len = strlen(name);
+            (*index) -= len;
+            memcpy(&path[*index], name, len);
+            if (prefix) {
+                path[--(*index)] = ':';
+                len = strlen(prefix);
+                (*index) = (*index) - len;
+                memcpy(&path[(*index)], prefix, len);
+            }
         }
         path[--(*index)] = '/';
         if (elem_type == LY_VLOG_LYS && !elem && sparent && sparent->nodetype == LYS_AUGMENT) {

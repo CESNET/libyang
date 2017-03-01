@@ -7061,7 +7061,7 @@ yin_read_submodule(struct lys_module *module, const char *data, struct unres_sch
 
     assert(module->ctx);
 
-    yin = lyxml_parse_mem(module->ctx, data, 0);
+    yin = lyxml_parse_mem(module->ctx, data, LYXML_PARSE_NOMIXEDCONTENT);
     if (!yin) {
         return NULL;
     }
@@ -7252,7 +7252,7 @@ yin_read_module(struct ly_ctx *ctx, const char *data, const char *revision, int 
     struct lyxml_elem *yin;
     struct lys_module *result;
 
-    yin = lyxml_parse_mem(ctx, data, 0);
+    yin = lyxml_parse_mem(ctx, data, LYXML_PARSE_NOMIXEDCONTENT);
     if (!yin) {
         LOGERR(ly_errno, "Module parsing failed.");
         return NULL;
