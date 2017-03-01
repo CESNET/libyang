@@ -7393,7 +7393,7 @@ yin_parse_extcomplex_str(struct lys_module *mod, struct lyxml_elem *node,
             }
             str[c] = lydict_insert(mod->ctx, str[c], 0);
 
-            if (!str[c] || lyp_yin_parse_subnode_ext(mod, ext, LYEXT_PAR_EXTINST, node->child, LYEXT_SUBSTMT_PREFIX, 0, unres)) {
+            if (!str[c] || lyp_yin_parse_subnode_ext(mod, ext, LYEXT_PAR_EXTINST, node->child, LYEXT_SUBSTMT_PREFIX, c, unres)) {
                 return EXIT_FAILURE;
             }
         } else if (stmt == LY_STMT_ARGUMENT) {
