@@ -2775,13 +2775,13 @@ yyparse (void *scanner, struct yang_parameter *param)
 {
 /* The lookahead symbol.  */
 int yychar;
-char *s = NULL, *tmp_s = NULL, *ext_name;
+char *s = NULL, *tmp_s = NULL, *ext_name = NULL;
 struct lys_module *trg = NULL;
 struct lys_node *tpdf_parent = NULL, *data_node = NULL;
-struct lys_ext_instance_complex *ext_instance;
+struct lys_ext_instance_complex *ext_instance = NULL;
 int is_ext_instance;
 void *actual = NULL;
-enum yytokentype backup_type, actual_type;
+enum yytokentype backup_type, actual_type = MODULE_KEYWORD;
 int64_t cnt_val = 0;
 int is_value = 0;
 void *yang_type = NULL;
