@@ -150,9 +150,12 @@ test_nc_filter_xpath(void **state)
                     "<filter type=\"xpath\" "
                     "xmlns:yanglib=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\" "
                     "select=\"/yanglib:modules-state/yanglib:module-set-id\"/></get>";
+    const struct lys_module *mod;
 
     /* load ietf-netconf schema */
-    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+    mod = lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+    assert_int_equal(lys_features_enable(mod, "xpath"), 0);
 
     st->data = lyd_parse_mem(st->ctx, filter_xpath, LYD_XML, LYD_OPT_RPC, NULL);
     assert_ptr_not_equal(st->data, NULL);

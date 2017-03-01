@@ -992,14 +992,14 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int in
         (*type)->info.enums.enm[0].name = lydict_insert(ctx, "subtree", 7);
         (*type)->info.enums.enm[1].value = 1;
         (*type)->info.enums.enm[1].name = lydict_insert(ctx, "xpath", 5);
-        for (i = 0; i < mod->features_size; i++) {
-            if (!strcmp(mod->features[i].name, "xpath")) {
+        for (i = mod->features_size; i > 0; i--) {
+            if (!strcmp(mod->features[i - 1].name, "xpath")) {
                 (*type)->info.enums.enm[1].iffeature_size = 1;
                 (*type)->info.enums.enm[1].iffeature = calloc(1, sizeof(struct lys_feature));
                 (*type)->info.enums.enm[1].iffeature[0].expr = malloc(sizeof(uint8_t));
                 *(*type)->info.enums.enm[1].iffeature[0].expr = 3; /* LYS_IFF_F */
                 (*type)->info.enums.enm[1].iffeature[0].features = malloc(sizeof(struct lys_feature*));
-                (*type)->info.enums.enm[1].iffeature[0].features[0] = &mod->features[i];
+                (*type)->info.enums.enm[1].iffeature[0].features[0] = &mod->features[i - 1];
                 break;
             }
         }
