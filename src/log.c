@@ -279,8 +279,8 @@ const char *ly_errs[] = {
 /* LYE_INELEM_LEN */   "Unknown element \"%.*s\".",
 /* LYE_MISSELEM */     "Missing required element \"%s\" in \"%s\".",
 /* LYE_INVAL */        "Invalid value \"%s\" in \"%s\" element.",
-/* LYE_INVALATTR */    "Invalid \"%s\" attribute value \"%s\".",
-/* LYE_INATTR */       "Invalid attribute \"%s\" in \"%s\" element.",
+/* LYE_INMETA */       "Invalid \"%s:%s\" metadata with value \"%s\".",
+/* LYE_INATTR */       "Invalid attribute \"%s\".",
 /* LYE_MISSATTR */     "Missing attribute \"%s\" in \"%s\" element.",
 /* LYE_NOCONSTR */     "Value \"%s\" does not satisfy the constraint \"%s\" (range, length, or pattern).",
 /* LYE_INCHAR */       "Unexpected character(s) '%c' (%.15s).",
@@ -373,7 +373,7 @@ static const LY_VECODE ecode2vecode[] = {
     LYVE_INELEM,       /* LYE_INELEM_LEN */
     LYVE_MISSELEM,     /* LYE_MISSELEM */
     LYVE_INVAL,        /* LYE_INVAL */
-    LYVE_INVALATTR,    /* LYE_INVALATTR */
+    LYVE_INMETA,       /* LYE_INMETA */
     LYVE_INATTR,       /* LYE_INATTR */
     LYVE_MISSATTR,     /* LYE_MISSATTR */
     LYVE_NOCONSTR,     /* LYE_NOCONSTR */
