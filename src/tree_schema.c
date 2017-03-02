@@ -393,7 +393,7 @@ lys_find_grouping_up(const char *name, struct lys_node *start)
     for (par_iter = start; par_iter; par_iter = par_iter->parent) {
         /* top-level augment, look into module (uses augment is handled correctly below) */
         if (par_iter->parent && !par_iter->parent->parent && (par_iter->parent->nodetype == LYS_AUGMENT)) {
-            par_iter = par_iter->parent->module->data;
+            par_iter = lys_main_module(par_iter->parent->module)->data;
             if (!par_iter) {
                 break;
             }
