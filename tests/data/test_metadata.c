@@ -93,7 +93,7 @@ test_leafref_type(void **state)
  * attribute with no appropriate anotation specification cannot be loaded
  */
 static void
-test_unknown_metadata(void **state)
+test_unknown_metadata_xml(void **state)
 {
     struct state *st = (*state);
     const char *yang = "module x {"
@@ -112,10 +112,43 @@ test_unknown_metadata(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_STRICT, NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INATTR);
+    assert_int_equal(ly_vecode, LYVE_INMETA);
 
     /* parse input without strict - passes, but the attribute is not present */
     st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_CONFIG, NULL);
+    assert_ptr_not_equal(st->data, NULL);
+    assert_ptr_equal(st->data->attr, NULL);
+}
+
+static void
+test_unknown_metadata_json(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  leaf a { type string; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input = "{"
+        "\"x:a\": \"a\","
+        "\"@x:a\": {"
+            "\"x:attribute\": \"not-defined\""
+        "}"
+    "}";
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    /* parse input with strict - error */
+    st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_CONFIG | LYD_OPT_STRICT, NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_INMETA);
+
+    /* parse input without strict - passes, but the attribute is not present */
+    st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_CONFIG, NULL);
     assert_ptr_not_equal(st->data, NULL);
     assert_ptr_equal(st->data->attr, NULL);
 }
@@ -124,7 +157,7 @@ test_unknown_metadata(void **state)
  * correctness of parsing and printing NETCONF's filter's attributes
  */
 static void
-test_nc_filter_subtree(void **state)
+test_nc_filter1_xml(void **state)
 {
     struct state *st = (*state);
     const char *filter_subtree = "<get xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">"
@@ -143,18 +176,17 @@ test_nc_filter_subtree(void **state)
 }
 
 static void
-test_nc_filter_xpath(void **state)
+test_nc_filter2_xml(void **state)
 {
+    const struct lys_module *mod;
     struct state *st = (*state);
     const char *filter_xpath = "<get xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">"
                     "<filter type=\"xpath\" "
                     "xmlns:yanglib=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\" "
                     "select=\"/yanglib:modules-state/yanglib:module-set-id\"/></get>";
-    const struct lys_module *mod;
 
     /* load ietf-netconf schema */
-    mod = lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG);
-    assert_ptr_not_equal(mod, NULL);
+    assert_ptr_not_equal((mod = lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG)), NULL);
     assert_int_equal(lys_features_enable(mod, "xpath"), 0);
 
     st->data = lyd_parse_mem(st->ctx, filter_xpath, LYD_XML, LYD_OPT_RPC, NULL);
@@ -165,11 +197,152 @@ test_nc_filter_xpath(void **state)
 }
 
 /*
+ * correctness of parsing and printing NETCONF's filter attributes
+ * - incorrect namespace
+ */
+static void
+test_nc_filter3_xml(void **state)
+{
+    struct state *st = (*state);
+    const char *input =
+        "<get-config xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.1\">"
+          "<source>"
+            "<running/>"
+          "</source>"
+          "<filter nc:type=\"subtree\">"
+            "<some>filter</some>"
+          "</filter>"
+        "</get-config>";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_RPC | LYD_OPT_STRICT, NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_INMETA);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_RPC, NULL);
+    assert_ptr_not_equal(st->data, NULL);
+    assert_ptr_equal(st->data->child->next->attr, NULL);
+}
+
+/*
+ * correctness of parsing and printing NETCONF's filter attributes
+ * - incorrect value
+ */
+static void
+test_nc_filter4_xml(void **state)
+{
+    struct state *st = (*state);
+    const char *input =
+        "<get-config xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">"
+          "<source>"
+            "<running/>"
+          "</source>"
+          "<filter type=\"subtrees\">"
+            "<some>filter</some>"
+          "</filter>"
+        "</get-config>";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_RPC, NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_INVAL);
+}
+
+/*
+ * correctness of parsing and printing NETCONF's filter attributes
+ * - xpath feature off
+ */
+static void
+test_nc_filter5_xml(void **state)
+{
+    struct state *st = (*state);
+    const char *input =
+        "<get-config xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">"
+          "<source>"
+            "<running/>"
+          "</source>"
+          "<filter type=\"xpath\">"
+            "<some>filter</some>"
+          "</filter>"
+        "</get-config>";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_RPC, NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_INVAL);
+}
+
+/*
+ * correctness of parsing and printing NETCONF's filter attributes
+ * - mix of filter types
+ */
+static void
+test_nc_filter6_xml(void **state)
+{
+    const struct lys_module *mod;
+    struct state *st = (*state);
+    const char *input =
+        "<get-config xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">"
+          "<source>"
+            "<running/>"
+          "</source>"
+          "<filter type=\"subtree\" type=\"xpath\" select=\"/*[local-name() = 'modules-state']/*\">"
+          "</filter>"
+        "</get-config>";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal((mod = lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG)), NULL);
+    assert_int_equal(lys_features_enable(mod, "xpath"), 0);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_RPC, NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+}
+
+/*
+ * correctness of parsing and printing NETCONF's filter attributes
+ * - xpath filter without select
+ */
+static void
+test_nc_filter7_xml(void **state)
+{
+    const struct lys_module *mod;
+    struct state *st = (*state);
+    const char *input =
+        "<get-config xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\">"
+          "<source>"
+            "<running/>"
+          "</source>"
+          "<filter type=\"xpath\">"
+          "</filter>"
+        "</get-config>";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal((mod = lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG)), NULL);
+    assert_int_equal(lys_features_enable(mod, "xpath"), 0);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_RPC, NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_MISSATTR);
+}
+
+/*
  * correctness of parsing and printing NETCONF's edit-config's attributes
  * - invalid operation's value
  */
 static void
-test_nc_editconfig1(void **state)
+test_nc_editconfig1_xml(void **state)
 {
     struct state *st = (*state);
     const char *yang = "module x {"
@@ -195,12 +368,43 @@ test_nc_editconfig1(void **state)
     assert_int_equal(ly_vecode, LYVE_INVAL);
 }
 
+static void
+test_nc_editconfig1_json(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  leaf a { type string; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input = "{"
+        "\"x:a\":\"a\","
+        "\"@x:a\":{"
+            "\"ietf-netconf:operation\":\"not-defined\""
+        "}"
+    "}";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    /* operation attribute is valid, but its value is invalid so the parsing fails no matter if strict is used */
+    st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_EDIT , NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_INVAL);
+}
+
 /*
  * correctness of parsing and printing NETCONF's edit-config's attributes
  * - too many operation attributes
  */
 static void
-test_nc_editconfig2(void **state)
+test_nc_editconfig2_xml(void **state)
 {
     struct state *st = (*state);
     const char *yang = "module x {"
@@ -220,7 +424,41 @@ test_nc_editconfig2(void **state)
     mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
     assert_ptr_not_equal(mod, NULL);
 
-    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT , NULL);
+    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT, NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+}
+
+static void
+test_nc_editconfig2_json(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  leaf a { type string; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input = "{"
+        "\"x:a\":\"a\","
+        "\"@x:a\":{"
+            "\"ietf-netconf:operation\":\"merge\","
+            "\"ietf-netconf:operation\":\"replace\","
+            "\"ietf-netconf:operation\":\"create\","
+            "\"ietf-netconf:operation\":\"delete\","
+            "\"ietf-netconf:operation\":\"remove\""
+        "}"
+    "}";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_EDIT, NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
     assert_int_equal(ly_vecode, LYVE_TOOMANY);
@@ -231,7 +469,7 @@ test_nc_editconfig2(void **state)
  * - correct use
  */
 static void
-test_nc_editconfig3(void **state)
+test_nc_editconfig3_xml(void **state)
 {
     struct state *st = (*state);
     const char *yang = "module x {"
@@ -250,23 +488,992 @@ test_nc_editconfig3(void **state)
     mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
     assert_ptr_not_equal(mod, NULL);
 
-    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT , NULL);
+    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT, NULL);
     assert_ptr_not_equal(st->data, NULL);
     lyd_print_mem(&st->str, st->data, LYD_XML, 0);
     assert_ptr_not_equal(st->str, NULL);
     assert_string_equal(st->str, input);
 }
 
+static void
+test_nc_editconfig3_json(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  leaf a { type string; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input = "{"
+        "\"x:a\":\"a\","
+        "\"@x:a\":{"
+            "\"ietf-netconf:operation\":\"create\""
+        "}"
+    "}";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_EDIT, NULL);
+    assert_ptr_not_equal(st->data, NULL);
+    lyd_print_mem(&st->str, st->data, LYD_JSON, 0);
+    assert_ptr_not_equal(st->str, NULL);
+    assert_string_equal(st->str, input);
+}
+
+/*
+ * correctness of parsing and printing NETCONF's edit-config's attributes
+ * - insert, value attr in system-ordered list
+ */
+static void
+test_nc_editconfig4_xml(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  leaf-list a { type string; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input =
+        "<a xmlns=\"urn:x\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:insert=\"before\" yang:value=\"b\">a</a>";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT , NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_INATTR);
+}
+
+static void
+test_nc_editconfig4_json(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  leaf-list a { type string; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input = "{"
+        "\"x:a\":[\"a\"],"
+        "\"@x:a\":[{"
+            "\"yang:insert\":\"before\","
+            "\"yang:value\":\"b\""
+        "}]"
+    "}";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_EDIT , NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_INATTR);
+}
+
+/*
+ * correctness of parsing and printing NETCONF's edit-config's attributes
+ * - insert attr in operation delete
+ */
+static void
+test_nc_editconfig5_xml(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  leaf-list a { type string; ordered-by user; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input =
+        "<a xmlns=\"urn:x\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" "
+            "nc:operation=\"delete\" yang:insert=\"first\">a</a>";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT , NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_INATTR);
+}
+
+static void
+test_nc_editconfig5_json(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  leaf-list a { type string; ordered-by user; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input = "{"
+        "\"x:a\":[\"a\"],"
+        "\"@x:a\":[{"
+            "\"ietf-netconf:operation\":\"delete\","
+            "\"yang:insert\":\"first\""
+        "}]"
+    "}";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_EDIT , NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_INATTR);
+}
+
+/*
+ * correctness of parsing and printing NETCONF's edit-config's attributes
+ * - several insert attr
+ */
+static void
+test_nc_editconfig6_xml(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  leaf-list a { type string; ordered-by user; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input =
+        "<a xmlns=\"urn:x\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" "
+            "nc:operation=\"create\" yang:insert=\"first\" yang:insert=\"last\">a</a>";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT , NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+}
+
+static void
+test_nc_editconfig6_json(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  leaf-list a { type string; ordered-by user; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input = "{"
+        "\"x:a\":[\"a\"],"
+        "\"@x:a\":[{"
+            "\"ietf-netconf:operation\":\"create\","
+            "\"yang:insert\":\"first\","
+            "\"yang:insert\":\"last\""
+        "}]"
+    "}";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_EDIT , NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+}
+
+/*
+ * correctness of parsing and printing NETCONF's edit-config's attributes
+ * - several value attr
+ */
+static void
+test_nc_editconfig7_xml(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  leaf-list a { type string; ordered-by user; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input =
+        "<a xmlns=\"urn:x\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" "
+            "nc:operation=\"create\" yang:insert=\"before\" yang:value=\"b\" yang:value=\"d\">a</a>";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT, NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+}
+
+static void
+test_nc_editconfig7_json(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  leaf-list a { type string; ordered-by user; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input = "{"
+        "\"x:a\":[\"a\"],"
+        "\"@x:a\":[{"
+            "\"ietf-netconf:operation\":\"create\","
+            "\"yang:insert\":\"before\","
+            "\"yang:value\":\"b\","
+            "\"yang:value\":\"d\""
+        "}]"
+    "}";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_EDIT, NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+}
+
+/*
+ * correctness of parsing and printing NETCONF's edit-config's attributes
+ * - correct use
+ */
+static void
+test_nc_editconfig8_xml(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  leaf-list a { type string; ordered-by user; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input =
+        "<a xmlns=\"urn:x\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" "
+            "nc:operation=\"create\" yang:insert=\"first\">a</a>";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT, NULL);
+    assert_ptr_not_equal(st->data, NULL);
+    lyd_print_mem(&st->str, st->data, LYD_XML, 0);
+    assert_ptr_not_equal(st->str, NULL);
+    assert_string_equal(st->str, input);
+}
+
+static void
+test_nc_editconfig8_json(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  leaf-list a { type string; ordered-by user; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input = "{"
+        "\"x:a\":[\"a\"],"
+        "\"@x:a\":[{"
+            "\"ietf-netconf:operation\":\"create\","
+            "\"yang:insert\":\"first\""
+        "}]"
+    "}";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_EDIT, NULL);
+    assert_ptr_not_equal(st->data, NULL);
+    lyd_print_mem(&st->str, st->data, LYD_JSON, 0);
+    assert_ptr_not_equal(st->str, NULL);
+    assert_string_equal(st->str, input);
+}
+
+/*
+ * correctness of parsing and printing NETCONF's edit-config's attributes
+ * - correct use
+ */
+static void
+test_nc_editconfig9_xml(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  leaf-list a { type string; ordered-by user; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input =
+        "<a xmlns=\"urn:x\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" "
+            "nc:operation=\"replace\" yang:insert=\"before\" yang:value=\"b\">a</a>";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT, NULL);
+    assert_ptr_not_equal(st->data, NULL);
+    lyd_print_mem(&st->str, st->data, LYD_XML, 0);
+    assert_ptr_not_equal(st->str, NULL);
+    assert_string_equal(st->str, input);
+}
+
+static void
+test_nc_editconfig9_json(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  leaf-list a { type string; ordered-by user; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input = "{"
+        "\"x:a\":[\"a\"],"
+        "\"@x:a\":[{"
+            "\"ietf-netconf:operation\":\"replace\","
+            "\"yang:insert\":\"before\","
+            "\"yang:value\":\"b\""
+        "}]"
+    "}";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_EDIT, NULL);
+    assert_ptr_not_equal(st->data, NULL);
+    lyd_print_mem(&st->str, st->data, LYD_JSON, 0);
+    assert_ptr_not_equal(st->str, NULL);
+    assert_string_equal(st->str, input);
+}
+
+/*
+ * correctness of parsing and printing NETCONF's edit-config's attributes
+ * - insert in system ordered list
+ */
+static void
+test_nc_editconfig10_xml(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  list a { key \"k\"; leaf k { type string; } ordered-by system; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input =
+        "<a xmlns=\"urn:x\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" "
+            "nc:operation=\"create\" yang:insert=\"before\" yang:key=\"[...]\"><k>a</k></a>";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT, NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_INATTR);
+}
+
+static void
+test_nc_editconfig10_json(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  list a { key \"k\"; leaf k { type string; } ordered-by system; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input = "{"
+        "\"x:a\":[{"
+            "\"@\":{"
+                "\"ietf-netconf:operation\":\"create\","
+                "\"yang:insert\":\"before\","
+                "\"yang:key\":\"[...]\""
+            "},"
+            "\"k\":\"a\""
+        "}]"
+    "}";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_EDIT, NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_INATTR);
+}
+
+/*
+ * correctness of parsing and printing NETCONF's edit-config's attributes
+ * - insert attr in operation delete
+ */
+static void
+test_nc_editconfig11_xml(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  list a { key \"k\"; leaf k { type string; } ordered-by user; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input =
+        "<a xmlns=\"urn:x\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" "
+            "nc:operation=\"delete\" yang:insert=\"first\"><k>a</k></a>";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT , NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_INATTR);
+}
+
+static void
+test_nc_editconfig11_json(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  list a { key \"k\"; leaf k { type string; } ordered-by user; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input = "{"
+        "\"x:a\":[{"
+            "\"@\":{"
+                "\"ietf-netconf:operation\":\"delete\","
+                "\"yang:insert\":\"first\""
+            "},"
+            "\"k\":\"a\""
+        "}]"
+    "}";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_EDIT , NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_INATTR);
+}
+
+/*
+ * correctness of parsing and printing NETCONF's edit-config's attributes
+ * - several insert attr
+ */
+static void
+test_nc_editconfig12_xml(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  list a { key \"k\"; leaf k { type string; } ordered-by user; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input =
+        "<a xmlns=\"urn:x\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" "
+            "nc:operation=\"create\" yang:insert=\"before\" yang:insert=\"last\"><k>a</k></a>";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT , NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+}
+
+static void
+test_nc_editconfig12_json(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  list a { key \"k\"; leaf k { type string; } ordered-by user; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input = "{"
+        "\"x:a\":[{"
+            "\"@\":{"
+                "\"ietf-netconf:operation\":\"create\","
+                "\"yang:insert\":\"before\","
+                "\"yang:insert\":\"last\""
+            "},"
+            "\"k\":\"a\""
+        "}]"
+    "}";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_EDIT , NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+}
+
+/*
+ * correctness of parsing and printing NETCONF's edit-config's attributes
+ * - several key attr
+ */
+static void
+test_nc_editconfig13_xml(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  list a { key \"k\"; leaf k { type string; } ordered-by user; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input =
+        "<a xmlns=\"urn:x\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" "
+            "nc:operation=\"create\" yang:insert=\"before\" yang:key=\"[...]\" yang:key=\"[...]\"><k>a</k></a>";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT, NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+}
+
+static void
+test_nc_editconfig13_json(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  list a { key \"k\"; leaf k { type string; } ordered-by user; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input = "{"
+        "\"x:a\":[{"
+            "\"@\":{"
+                "\"ietf-netconf:operation\":\"create\","
+                "\"yang:insert\":\"before\","
+                "\"yang:key\":\"[...]\","
+                "\"yang:key\":\"[...]\""
+            "},"
+            "\"k\":\"a\""
+        "}]"
+    "}";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_EDIT, NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+}
+
+/*
+ * correctness of parsing and printing NETCONF's edit-config's attributes
+ * - correct use
+ */
+static void
+test_nc_editconfig14_xml(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  list a { key \"k\"; leaf k { type string; } ordered-by user; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input =
+        "<a xmlns=\"urn:x\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" "
+            "nc:operation=\"create\" yang:insert=\"first\"><k>a</k></a>";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT, NULL);
+    assert_ptr_not_equal(st->data, NULL);
+    lyd_print_mem(&st->str, st->data, LYD_XML, 0);
+    assert_ptr_not_equal(st->str, NULL);
+    assert_string_equal(st->str, input);
+}
+
+static void
+test_nc_editconfig14_json(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  list a { key \"k\"; leaf k { type string; } ordered-by user; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input = "{"
+        "\"x:a\":[{"
+            "\"@\":{"
+                "\"ietf-netconf:operation\":\"create\","
+                "\"yang:insert\":\"first\""
+            "},"
+            "\"k\":\"a\""
+        "}]"
+    "}";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_EDIT, NULL);
+    assert_ptr_not_equal(st->data, NULL);
+    lyd_print_mem(&st->str, st->data, LYD_JSON, 0);
+    assert_ptr_not_equal(st->str, NULL);
+    assert_string_equal(st->str, input);
+}
+
+/*
+ * correctness of parsing and printing NETCONF's edit-config's attributes
+ * - correct use
+ */
+static void
+test_nc_editconfig15_xml(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  list a { key \"k\"; leaf k { type string; } ordered-by user; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input =
+        "<a xmlns=\"urn:x\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" "
+            "nc:operation=\"replace\" yang:insert=\"before\" yang:key=\"[...]\"><k>a</k></a>";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT, NULL);
+    assert_ptr_not_equal(st->data, NULL);
+    lyd_print_mem(&st->str, st->data, LYD_XML, 0);
+    assert_ptr_not_equal(st->str, NULL);
+    assert_string_equal(st->str, input);
+}
+
+static void
+test_nc_editconfig15_json(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  list a { key \"k\"; leaf k { type string; } ordered-by user; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input = "{"
+        "\"x:a\":[{"
+            "\"@\":{"
+                "\"ietf-netconf:operation\":\"replace\","
+                "\"yang:insert\":\"before\","
+                "\"yang:key\":\"[...]\""
+            "},"
+            "\"k\":\"a\""
+        "}]"
+    "}";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_EDIT, NULL);
+    assert_ptr_not_equal(st->data, NULL);
+    lyd_print_mem(&st->str, st->data, LYD_JSON, 0);
+    assert_ptr_not_equal(st->str, NULL);
+    assert_string_equal(st->str, input);
+}
+
+/*
+ * correctness of parsing and printing NETCONF's edit-config's attributes
+ * - value in list
+ */
+static void
+test_nc_editconfig16_xml(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  list a { key \"k\"; leaf k { type string; } ordered-by user; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input =
+        "<a xmlns=\"urn:x\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" "
+            "nc:operation=\"create\" yang:insert=\"before\" yang:value=\"d\"><k>a</k></a>";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT, NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_INATTR);
+}
+
+static void
+test_nc_editconfig16_json(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  list a { key \"k\"; leaf k { type string; } ordered-by user; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input = "{"
+        "\"x:a\":[{"
+            "\"@\":{"
+                "\"ietf-netconf:operation\":\"create\","
+                "\"yang:insert\":\"before\","
+                "\"yang:value\":\"d\""
+            "},"
+            "\"k\":\"a\""
+        "}]"
+    "}";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_EDIT, NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_INATTR);
+}
+
+/*
+ * correctness of parsing and printing NETCONF's edit-config's attributes
+ * - key in leaf-list
+ */
+static void
+test_nc_editconfig17_xml(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  leaf-list a { type string; ordered-by user; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input =
+        "<a xmlns=\"urn:x\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" "
+            "nc:operation=\"create\" yang:insert=\"before\" yang:key=\"[...]\">a</a>";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT, NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_INATTR);
+}
+
+static void
+test_nc_editconfig17_json(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  leaf-list a { type string; ordered-by user; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input = "{"
+        "\"x:a\":[\"a\"],"
+        "\"@x:a\":[{"
+            "\"ietf-netconf:operation\":\"create\","
+            "\"yang:insert\":\"before\","
+            "\"yang:key\":\"[...]\""
+        "}]"
+    "}";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_EDIT, NULL);
+    assert_ptr_equal(st->data, NULL);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_INATTR);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
                     cmocka_unit_test_setup_teardown(test_leafref_type, setup_f, teardown_f),
-                    cmocka_unit_test_setup_teardown(test_unknown_metadata, setup_f, teardown_f),
-                    cmocka_unit_test_setup_teardown(test_nc_filter_subtree, setup_f, teardown_f),
-                    cmocka_unit_test_setup_teardown(test_nc_filter_xpath, setup_f, teardown_f),
-                    cmocka_unit_test_setup_teardown(test_nc_editconfig1, setup_f, teardown_f),
-                    cmocka_unit_test_setup_teardown(test_nc_editconfig2, setup_f, teardown_f),
-                    cmocka_unit_test_setup_teardown(test_nc_editconfig3, setup_f, teardown_f),};
+                    cmocka_unit_test_setup_teardown(test_unknown_metadata_xml, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_unknown_metadata_json, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_filter1_xml, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_filter2_xml, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_filter3_xml, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_filter4_xml, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_filter5_xml, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_filter6_xml, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_filter7_xml, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig1_xml, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig1_json, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig2_xml, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig2_json, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig3_xml, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig3_json, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig4_xml, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig4_json, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig5_xml, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig5_json, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig6_xml, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig6_json, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig7_xml, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig7_json, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig8_xml, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig8_json, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig9_xml, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig9_json, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig10_xml, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig10_json, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig11_xml, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig11_json, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig12_xml, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig12_json, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig13_xml, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig13_json, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig14_xml, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig14_json, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig15_xml, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig15_json, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig16_xml, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig16_json, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig17_xml, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig17_json, setup_f, teardown_f),
+    };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
