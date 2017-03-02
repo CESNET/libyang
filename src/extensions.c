@@ -117,7 +117,7 @@ lyext_load_plugins(void)
 
         /* required format of the filename is *.so */
         len = strlen(file->d_name);
-        if (len < 4 || strcmp(&file->d_name[len - 3], ".so")) {
+        if (len < 4 || strcmp(&file->d_name[len - 3], LYEXT_PLUGIN_SUFFIX)) {
             continue;
         }
 

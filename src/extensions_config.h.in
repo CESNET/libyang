@@ -17,4 +17,10 @@
 
 #define LYEXT_PLUGINS_DIR "@LIBYANG_EXT_PLUGINS_DIR@" /**< directory with YANG extension plugins */
 
+#if defined __linux__ || defined __unix__
+#  define LYEXT_PLUGIN_SUFFIX ".so"
+#elif defined __APPLE__
+#  define LYEXT_PLUGIN_SUFFIX ".dylib"
+#endif
+
 #endif /* LY_EXTENSIONS_CONFIG_H_ */
