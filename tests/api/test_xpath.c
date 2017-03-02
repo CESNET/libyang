@@ -32,10 +32,10 @@ static const char *data =
   "<interface>"
     "<name>iface1</name>"
     "<description>iface1 dsc</description>"
-    "<type yang:type_attr='1'>ianaift:ethernetCsmacd</type>"
+    "<type>ianaift:ethernetCsmacd</type>"
     "<enabled>true</enabled>"
     "<link-up-down-trap-enable>disabled</link-up-down-trap-enable>"
-    "<ip:ipv4 yang:ip_attr='14'>"
+    "<ip:ipv4>"
       "<ip:enabled>true</ip:enabled>"
       "<ip:forwarding>true</ip:forwarding>"
       "<ip:mtu>68</ip:mtu>"
@@ -52,7 +52,7 @@ static const char *data =
         "<ip:link-layer-address>01:34:56:78:9a:bc:de:f0</ip:link-layer-address>"
       "</ip:neighbor>"
     "</ip:ipv4>"
-    "<ip:ipv6 yang:ip_attr='16'>"
+    "<ip:ipv6>"
       "<ip:enabled>true</ip:enabled>"
       "<ip:forwarding>false</ip:forwarding>"
       "<ip:mtu>1280</ip:mtu>"
@@ -76,10 +76,10 @@ static const char *data =
   "<interface>"
     "<name>iface2</name>"
     "<description>iface2 dsc</description>"
-    "<type yang:type_attr='2'>ianaift:softwareLoopback</type>"
+    "<type>ianaift:softwareLoopback</type>"
     "<enabled>false</enabled>"
     "<link-up-down-trap-enable>disabled</link-up-down-trap-enable>"
-    "<ip:ipv4 yang:ip_attr='24'>"
+    "<ip:ipv4>"
       "<ip:address>"
         "<ip:ip>10.0.0.5</ip:ip>"
         "<ip:netmask>255.0.0.0</ip:netmask>"
@@ -93,7 +93,7 @@ static const char *data =
         "<ip:link-layer-address>01:34:56:78:9a:bc:de:fa</ip:link-layer-address>"
       "</ip:neighbor>"
     "</ip:ipv4>"
-    "<ip:ipv6 yang:ip_attr='26'>"
+    "<ip:ipv6>"
       "<ip:address>"
         "<ip:ip>2001:abcd:ef01:2345:6789:0:1:5</ip:ip>"
         "<ip:prefix-length>64</ip:prefix-length>"
@@ -285,42 +285,6 @@ test_advanced(void **state)
 }
 
 static void
-test_attributes(void **state)
-{
-    struct state *st = (*state);
-
-    st->set = lyd_find_xpath(st->dt, "//*[@*]");
-    assert_ptr_not_equal(st->set, NULL);
-    assert_int_equal(st->set->number, 6);
-    ly_set_free(st->set);
-    st->set = NULL;
-
-    st->set = lyd_find_xpath(st->dt, "//@*/..");
-    assert_ptr_not_equal(st->set, NULL);
-    assert_int_equal(st->set->number, 6);
-    ly_set_free(st->set);
-    st->set = NULL;
-
-    st->set = lyd_find_xpath(st->dt, "//*[@*[substring(local-name(.),1,2) = 'ip']]");
-    assert_ptr_not_equal(st->set, NULL);
-    assert_int_equal(st->set->number, 4);
-    ly_set_free(st->set);
-    st->set = NULL;
-
-    st->set = lyd_find_xpath(st->dt, "//*[@*[substring(local-name(.),1,2) = 'ip']]");
-    assert_ptr_not_equal(st->set, NULL);
-    assert_int_equal(st->set->number, 4);
-    ly_set_free(st->set);
-    st->set = NULL;
-
-    st->set = lyd_find_xpath(st->dt, "//*[@yang:ip_attr > '20']");
-    assert_ptr_not_equal(st->set, NULL);
-    assert_int_equal(st->set->number, 2);
-    ly_set_free(st->set);
-    st->set = NULL;
-}
-
-static void
 test_functions_operators(void **state)
 {
     struct state *st = (*state);
@@ -402,7 +366,6 @@ int main(void)
                     cmocka_unit_test_setup_teardown(test_invalid, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_simple, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_advanced, setup_f, teardown_f),
-                    cmocka_unit_test_setup_teardown(test_attributes, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_functions_operators, setup_f, teardown_f),
                     };
 
