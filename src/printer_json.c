@@ -94,7 +94,7 @@ json_print_attrs(struct lyout *out, int level, const struct lyd_node *node, cons
         case LY_TYPE_INT64:
         case LY_TYPE_UINT64:
         case LY_TYPE_DEC64:
-            json_print_string(out, attr->value.string);
+            json_print_string(out, attr->value_str);
             break;
 
         case LY_TYPE_INT8:
