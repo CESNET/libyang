@@ -411,7 +411,7 @@ struct lys_ext {
     const char *ref;                 /**< reference statement (optional) */
     uint16_t flags;                  /**< LYS_STATUS_* and LYS_YINELEM values (@ref snodeflags) */
     uint8_t ext_size;                /**< number of elements in #ext array */
-    uint8_t padding[1];              /**< padding for compatibility with ::lys_node */
+    uint8_t padding[5];              /**< padding for compatibility with ::lys_node */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     const char *argument;            /**< argument name, NULL if not specified, replacement for ::lys_node's iffeature */
     struct lys_module *module;       /**< link to the extension's data model */
