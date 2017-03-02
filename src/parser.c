@@ -1493,7 +1493,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                 for (j = 0; j < type->info.enums.enm[i].iffeature_size; j++) {
                     if (!resolve_iffeature(&type->info.enums.enm[i].iffeature[j])) {
                         LOGVAL(LYE_INVAL, LY_VLOG_LYD, contextnode, value, itemname);
-                        LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Enum \"%s\" is disabled by its %d.if-feature condition.",
+                        LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Enum \"%s\" is disabled by its %d. if-feature condition.",
                                value, j + 1);
                         goto cleanup;
                     }
