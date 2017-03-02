@@ -115,15 +115,16 @@ lyext_load_plugins(void)
             continue;
         }
 
-        /* required format of the filename is *.so */
+        /* required format of the filename is *LYEXT_PLUGIN_SUFFIX */
         len = strlen(file->d_name);
-        if (len < 4 || strcmp(&file->d_name[len - 3], LYEXT_PLUGIN_SUFFIX)) {
+        if (len < LYEXT_PLUGIN_SUFFIX_LEN + 1 ||
+                strcmp(&file->d_name[len - LYEXT_PLUGIN_SUFFIX_LEN], LYEXT_PLUGIN_SUFFIX)) {
             continue;
         }
 
         /* store the name without the suffix */
-        memcpy(name, file->d_name, len - 3);
-        name[len - 3] = '\0';
+        memcpy(name, file->d_name, len - LYEXT_PLUGIN_SUFFIX_LEN);
+        name[len - LYEXT_PLUGIN_SUFFIX_LEN] = '\0';
 
         /* and construct the filepath */
         asprintf(&str, "%s/%s", pluginsdir, file->d_name);
