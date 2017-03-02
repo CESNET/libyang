@@ -474,7 +474,7 @@ char *lyd_qualified_path(const struct lyd_node *node);
                                        If used, libyang generates validation error instead of silently removing the
                                        constrained subtree. */
 #define LYD_OPT_NOEXTDEPS  0x8000 /**< Allow external dependencies (external leafrefs, instance-identifiers, must,
-                                       and when) to not be resolved/satisfiedduring validation. */
+                                       and when) to not be resolved/satisfied during validation. */
 
 /**@} parseroptions */
 
