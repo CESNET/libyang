@@ -1907,6 +1907,187 @@ lyp_get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *
     return ret;
 }
 
+/* ret 0 - ret set, ret 1 - ret not set, no log, ret -1 - ret not set, fatal error */
+int
+lyp_fill_attr(struct ly_ctx *ctx, struct lyd_node *parent, const char *module_ns, const char *module_name,
+              const char *attr_name, const char *attr_value, struct lyxml_elem *xml, struct lyd_attr **ret)
+{
+    const struct lys_module *mod = NULL;
+    const struct lys_submodule *submod = NULL;
+    struct lyd_attr *dattr;
+    int pos, i, j, k;
+
+    /* first, get module where the annotation should be defined */
+    if (module_ns) {
+        mod = (struct lys_module *)ly_ctx_get_module_by_ns(ctx, module_ns, NULL);
+    } else if (module_name) {
+        mod = (struct lys_module *)ly_ctx_get_module(ctx, module_name, NULL);
+    } else {
+        LOGINT;
+        return -1;
+    }
+    if (!mod) {
+        return 1;
+    }
+
+    /* then, find the appropriate annotation definition */
+    pos = -1;
+    for (i = 0, j = 0; i < mod->ext_size; i = i + j + 1) {
+        j = lys_ext_instance_presence(&ctx->models.list[0]->extensions[0], &mod->ext[i], mod->ext_size - i);
+        if (j == -1) {
+            break;
+        }
+        if (ly_strequal(mod->ext[i + j]->arg_value, attr_name, 0)) {
+            pos = i + j;
+            break;
+        }
+    }
+
+    /* try submodules */
+    if (pos == -1) {
+        for (k = 0; k < mod->inc_size; ++k) {
+            submod = mod->inc[k].submodule;
+            for (i = 0, j = 0; i < submod->ext_size; i = i + j + 1) {
+                j = lys_ext_instance_presence(&ctx->models.list[0]->extensions[0], &submod->ext[i], submod->ext_size - i);
+                if (j == -1) {
+                    break;
+                }
+                if (ly_strequal(submod->ext[i + j]->arg_value, attr_name, 0)) {
+                    pos = i + j;
+                    break;
+                }
+            }
+        }
+    }
+
+    if (pos == -1) {
+        return 1;
+    }
+
+    /* allocate and fill the data attribute structure */
+    dattr = calloc(1, sizeof *dattr);
+    if (!dattr) {
+        LOGMEM;
+        return -1;
+    }
+    dattr->parent = parent;
+    dattr->next = NULL;
+    dattr->annotation = submod ? (struct lys_ext_instance_complex *)submod->ext[pos] :
+                                 (struct lys_ext_instance_complex *)mod->ext[pos];
+    dattr->name = lydict_insert(ctx, attr_name, 0);
+    dattr->value_str = lydict_insert(ctx, attr_value, 0);
+
+    /* the value is here converted to a JSON format if needed in case of LY_TYPE_IDENT and LY_TYPE_INST or to a
+     * canonical form of the value */
+    if (!lyp_parse_value(*((struct lys_type **)lys_ext_complex_get_substmt(LY_STMT_TYPE, dattr->annotation, NULL)),
+                         &dattr->value_str, xml, NULL, dattr, 1, 0)) {
+        free(dattr);
+        return -1;
+    }
+
+    *ret = dattr;
+    return 0;
+}
+
+int
+lyp_check_edit_attr(struct ly_ctx *ctx, struct lyd_attr *attr, struct lyd_node *parent, int *editbits)
+{
+    struct lyd_attr *last = NULL;
+    int bits = 0;
+
+    /* 0x01 - insert attribute present
+     * 0x02 - insert is relative (before or after)
+     * 0x04 - value attribute present
+     * 0x08 - key attribute present
+     * 0x10 - operation attribute present
+     * 0x20 - operation not allowing insert attribute (delete or remove)
+     */
+    LY_TREE_FOR(attr, attr) {
+        last = NULL;
+        if (!strcmp(attr->annotation->arg_value, "operation") &&
+                !strcmp(attr->annotation->module->name, "ietf-netconf")) {
+            if (bits & 0x10) {
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, parent, "operation attributes", parent->schema->name);
+                return -1;
+            }
+
+            bits |= 0x10;
+            if (attr->value.enm->value >= 3) {
+                /* delete or remove */
+                bits |= 0x20;
+            }
+        } else if (attr->annotation->module == ctx->models.list[1] && /* internal YANG schema */
+                !strcmp(attr->annotation->arg_value, "insert")) {
+            /* 'insert' attribute present */
+            if (!(parent->schema->flags & LYS_USERORDERED)) {
+                /* ... but it is not expected */
+                LOGVAL(LYE_INATTR, LY_VLOG_LYD, parent, "insert");
+                return -1;
+            }
+            if (bits & 0x01) {
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, parent, "insert attributes", parent->schema->name);
+                return -1;
+            }
+
+            bits |= 0x01;
+            if (attr->value.enm->value >= 2) {
+                /* before or after */
+                bits |= 0x02;
+            }
+            last = attr;
+        } else if (attr->annotation->module == ctx->models.list[1] && /* internal YANG schema */
+                !strcmp(attr->annotation->arg_value, "value")) {
+            if (bits & 0x04) {
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, parent, "value attributes", parent->schema->name);
+                return -1;
+            } else if (parent->schema->nodetype & LYS_LIST) {
+                LOGVAL(LYE_INATTR, LY_VLOG_LYD, parent, attr->name);
+                return -1;
+            }
+            bits |= 0x04;
+            last = attr;
+        } else if (attr->annotation->module == ctx->models.list[1] && /* internal YANG schema */
+                !strcmp(attr->annotation->arg_value, "key")) {
+            if (bits & 0x08) {
+                LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, parent, "key attributes", parent->schema->name);
+                return -1;
+            } else if (parent->schema->nodetype & LYS_LEAFLIST) {
+                LOGVAL(LYE_INATTR, LY_VLOG_LYD, parent, attr->name);
+                return -1;
+            }
+            bits |= 0x08;
+            last = attr;
+        }
+    }
+
+    /* report errors */
+    if (last && (!(parent->schema->nodetype & (LYS_LEAFLIST | LYS_LIST)) || !(parent->schema->flags & LYS_USERORDERED))) {
+        /* moving attributes in wrong elements (not an user ordered list or not a list at all) */
+        LOGVAL(LYE_INATTR, LY_VLOG_LYD, parent, last->name);
+        return -1;
+    } else if (bits == 3) {
+        /* 0x01 | 0x02 - relative position, but value/key is missing */
+        if (parent->schema->nodetype & LYS_LIST) {
+            LOGVAL(LYE_MISSATTR, LY_VLOG_LYD, parent, "key", parent->schema->name);
+        } else { /* LYS_LEAFLIST */
+            LOGVAL(LYE_MISSATTR, LY_VLOG_LYD, parent, "value", parent->schema->name);
+        }
+        return -1;
+    } else if ((bits & (0x04 | 0x08)) && !(bits & 0x02)) {
+        /* key/value without relative position */
+        LOGVAL(LYE_INATTR, LY_VLOG_LYD, parent, (bits & 0x04) ? "value" : "key");
+        return -1;
+    } else if ((bits & 0x21) == 0x21) {
+        /* insert in delete/remove */
+        LOGVAL(LYE_INATTR, LY_VLOG_LYD, parent, "insert");
+        return -1;
+    }
+
+    if (editbits) {
+        *editbits = bits;
+    }
+    return 0;
+}
 
 /* does not log */
 static int

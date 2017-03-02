@@ -590,7 +590,7 @@ json_parse_attr(struct lys_module *parent_module, struct lyd_attr **attr, const 
     char *str = NULL, *name, *prefix = NULL, *value;
     struct lys_module *module = parent_module;
     struct lyd_attr *attr_new, *attr_last = NULL;
-    int pos, i;
+    int ret;
 
     *attr = NULL;
 
@@ -660,50 +660,23 @@ repeat:
     len += r + 1;
     len += skip_ws(&data[len]);
 
-    /* find the appropriate annotation definition */
-    pos = lys_ext_instance_presence(&module->ctx->models.list[0]->extensions[0], module->ext, module->ext_size);
-    if (pos == -1) {
+    ret = lyp_fill_attr(parent_module->ctx, NULL, NULL, prefix, name, value, NULL, &attr_new);
+    if (ret == -1) {
         free(value);
-attr_error:
-        if (options & LYD_OPT_STRICT) {
-            LOGVAL(LYE_INELEM, LY_VLOG_NONE, NULL, name);
-            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Unknown metadata (%s%s%s).",
-                   prefix ? prefix : "", prefix ? ":" : "", name);
-            goto error;
-        } else {
-            LOGWRN("Unknown metadata (%s%s%s) - skipping.",
-                   prefix ? prefix : "", prefix ? ":" : "", name);
-            goto next;
-        }
-    }
-
-    attr_new = calloc(1, sizeof **attr);
-    if (!attr_new) {
-        LOGMEM;
         goto error;
-    }
-    /* will be filled later, at this moment it can be unknow due to a way
-     * how the attributes are encoded in JSON */
-    attr_new->parent = NULL;
-    attr_new->next = NULL;
+    } else if (ret == 1) {
+        if (options & LYD_OPT_STRICT) {
+            LOGVAL(LYE_INMETA, LY_VLOG_NONE, NULL, prefix, name, value);
+            free(value);
+            goto error;
+        }
 
-    while(pos != -1 && ((unsigned int)(pos + 1) < module->ext_size) &&
-            !ly_strequal(module->ext[pos]->arg_value, name, 0)) {
-        i = lys_ext_instance_presence(&module->ctx->models.list[0]->extensions[0],
-                                      &module->ext[pos + 1], module->ext_size - (pos + 1));
-        pos = (i == -1) ? -1 : pos + 1 + i;
+        LOGWRN("Unknown \"%s:%s\" metadata with value \"%s\", ignoring.",
+               (prefix ? prefix : "<none>"), name, value);
+        free(value);
+        goto next;
     }
-    if (pos == -1) {
-        goto attr_error;
-    }
-    attr_new->annotation = (struct lys_ext_instance_complex *)module->ext[pos];
-
-    attr_new->name = lydict_insert(module->ctx, name, 0);
-    attr_new->value_str = lydict_insert_zc(module->ctx, value);
-    if (!lyp_parse_value(*((struct lys_type **)lys_ext_complex_get_substmt(LY_STMT_TYPE, attr_new->annotation, NULL)),
-                         &attr_new->value_str, NULL, NULL, attr_new, 1, 0)) {
-        goto attr_error;
-    }
+    free(value);
 
     if (!attr_last) {
         *attr = attr_last = attr_new;
@@ -744,7 +717,7 @@ struct attr_cont {
 };
 
 static int
-store_attrs(struct ly_ctx *ctx, struct attr_cont *attrs, struct lyd_node *first)
+store_attrs(struct ly_ctx *ctx, struct attr_cont *attrs, struct lyd_node *first, int options)
 {
     struct lyd_node *diter;
     struct attr_cont *iter;
@@ -781,6 +754,7 @@ store_attrs(struct ly_ctx *ctx, struct attr_cont *attrs, struct lyd_node *first)
             for (aiter = iter->attr; aiter; aiter = aiter->next) {
                 aiter->parent = diter;
             }
+
             break;
         }
 
@@ -791,6 +765,11 @@ store_attrs(struct ly_ctx *ctx, struct attr_cont *attrs, struct lyd_node *first)
             goto error;
         }
         free(iter);
+
+        /* check edit-config attribute correctness */
+        if ((options & LYD_OPT_EDIT) && lyp_check_edit_attr(ctx, diter->attr, diter, NULL)) {
+            goto error;
+        }
     }
 
     return 0;
@@ -873,7 +852,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
 
         r = json_parse_attr((*parent)->schema->module, &attr, &data[len], options);
         if (!r) {
-            LOGPATH(LY_VLOG_LYD, (*parent));
+            LOGPATH(LY_VLOG_LYD, *parent);
             goto error;
         }
         len += r;
@@ -886,6 +865,12 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
                 attr->parent = *parent;
             }
         }
+
+        /* check edit-config attribute correctness */
+        if ((options & LYD_OPT_EDIT) && lyp_check_edit_attr(ctx, (*parent)->attr, *parent, NULL)) {
+            goto error;
+        }
+
         free(str);
         return len;
     }
@@ -988,10 +973,6 @@ attr_repeat:
             attrs_aux->schema = schema;
             attrs_aux->next = *attrs;
             *attrs = attrs_aux;
-        } else if (!flag_leaflist) {
-            /* error */
-            LOGVAL(LYE_XML_INVAL, LY_VLOG_LYD, (*parent), "attribute data");
-            goto error;
         }
 
         if (flag_leaflist) {
@@ -1150,7 +1131,7 @@ attr_repeat:
             } while(data[len] == ',');
 
             /* store attributes */
-            if (store_attrs(ctx, attrs_aux, result->child)) {
+            if (store_attrs(ctx, attrs_aux, result->child, options)) {
                 goto error;
             }
         }
@@ -1202,7 +1183,7 @@ attr_repeat:
             } while(data[len] == ',');
 
             /* store attributes */
-            if (store_attrs(ctx, attrs_aux, list->child)) {
+            if (store_attrs(ctx, attrs_aux, list->child, options)) {
                 goto error;
             }
 
@@ -1437,7 +1418,7 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
     }
 
     /* store attributes */
-    if (store_attrs(ctx, attrs, result)) {
+    if (store_attrs(ctx, attrs, result, options)) {
         goto error;
     }
 

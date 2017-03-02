@@ -74,6 +74,12 @@ struct lys_module *lyp_search_file(struct ly_ctx *ctx, struct lys_module *module
 
 struct lys_type *lyp_get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *found);
 
+/* return: 0 - ret set, ok; 1 - ret not set, no log, unknown meta; -1 - ret not set, log, fatal error */
+int lyp_fill_attr(struct ly_ctx *ctx, struct lyd_node *parent, const char *module_ns, const char *module_name,
+                  const char *attr_name, const char *attr_value, struct lyxml_elem *xml, struct lyd_attr **ret);
+
+int lyp_check_edit_attr(struct ly_ctx *ctx, struct lyd_attr *attr, struct lyd_node *parent, int *editbits);
+
 struct lys_type *lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *xml,
                                 struct lyd_node_leaf_list *leaf, struct lyd_attr *attr, int store, int dflt);
 
