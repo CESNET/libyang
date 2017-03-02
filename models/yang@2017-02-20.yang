@@ -42,6 +42,7 @@ module yang {
       enum before;
       enum after;
     }
+    reference "RFC7950 section 7.8.6. and section 7.7.9.";
     description
       "In user ordered leaf-list, the attribute can be used to control
        where in the leaf-list the entry is inserted. It can be used during
@@ -58,9 +59,19 @@ module yang {
 
   md:annotation value {
     type string;
+    reference "RFC7950 section 7.7.9.";
+    description
+      "In user ordered leaf-list, the attribute must be used if the attribute
+       insert is used and specifies before/after which existing instance the
+       new instance should be inserted.";
   }
 
   md:annotation key {
     type string;
+    reference "RFC7950 section 7.8.6.";
+    description
+      "In user ordered list, the attribute must be used if the attribute
+       insert is used and specifies before/after which existing instance the
+       new instance should be inserted.";
   }
 }
