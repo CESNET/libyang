@@ -1253,7 +1253,7 @@ yin_print_list(struct lyout *out, int level, const struct lys_node *node)
         }
         yin_print_close(out, level, NULL, "unique", content2);
     }
-    yin_print_snode_common(out, level, node, node->module, NULL, SNODE_COMMON_CONFIG);
+    yin_print_snode_common(out, level, node, node->module, &content, SNODE_COMMON_CONFIG);
     if (list->min > 0) {
         yin_print_close_parent(out, &content);
         yin_print_unsigned(out, level, LYEXT_SUBSTMT_MIN, 0, node->module, node->ext, node->ext_size, list->min);
@@ -1269,7 +1269,7 @@ yin_print_list(struct lyout *out, int level, const struct lys_node *node)
         yin_print_substmt(out, level, LYEXT_SUBSTMT_ORDEREDBY, 0, "system",
                           node->module, node->ext, node->ext_size);
     }
-    yin_print_snode_common(out, level, node, node->module, NULL,
+    yin_print_snode_common(out, level, node, node->module, &content,
                            SNODE_COMMON_STATUS | SNODE_COMMON_DSC | SNODE_COMMON_REF);
     for (i = 0; i < list->tpdf_size; i++) {
         yin_print_close_parent(out, &content);
