@@ -6170,6 +6170,7 @@ eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd
             if (ret) {
                 return ret;
             }
+            break;
         default:
             break;
         }

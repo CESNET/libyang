@@ -1383,7 +1383,6 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                             LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL,
                                    "Bit \"%s\" is disabled by its %d. if-feature condition.",
                                    type->info.bits.bit[i].name, j + 1);
-
                             free(bits);
                             goto cleanup;
                         }

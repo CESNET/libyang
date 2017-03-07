@@ -3520,6 +3520,7 @@ yang_fill_type(struct lys_module *module, struct lys_type *type, struct yang_typ
                 return EXIT_FAILURE;
             }
         }
+        break;
     default:
         /* nothing checks */
         break;
