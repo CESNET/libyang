@@ -26,12 +26,16 @@ struct ly_modules_list {
     struct lys_module **list;
     /* all (sub)modules that are currently being parsed */
     const char **parsing_sub_modules;
-    uint8_t parsing_sub_modules_count;
     /* all already parsed submodules of a module, which is before all its submodules (to mark submodule imports) */
     struct lys_module **parsed_submodules;
+    uint8_t parsing_sub_modules_count;
     uint8_t parsed_submodules_count;
     uint16_t module_set_id;
+    uint32_t flags;
 };
+
+#define LY_CTX_ALLIMPLEMENTED 0x01 /**< all modules are implemented despite they were loaded explicitly or implicitly
+                                        via import statement */
 
 struct ly_ctx {
     struct dict_table dict;

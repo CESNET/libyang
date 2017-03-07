@@ -125,6 +125,26 @@ ly_ctx_new(const char *search_dir)
 }
 
 API void
+ly_ctx_set_allimplemented(struct ly_ctx *ctx)
+{
+    if (!ctx) {
+        return;
+    }
+
+    ctx->models.flags |= LY_CTX_ALLIMPLEMENTED;
+}
+
+API void
+ly_ctx_unset_allimplemented(struct ly_ctx *ctx)
+{
+    if (!ctx) {
+        return;
+    }
+
+    ctx->models.flags &= ~LY_CTX_ALLIMPLEMENTED;
+}
+
+API void
 ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
 {
     char *cwd;

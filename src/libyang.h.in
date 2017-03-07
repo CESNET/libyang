@@ -122,7 +122,9 @@ extern "C" {
  * the implemented module cannot be changed back to just imported module. The imported modules are used only as a
  * source of definitions for types (including identities) and uses statements. The data in such a modules are
  * ignored - caller is not allowed to create the data defined in the model via data parsers, the default nodes are
- * not added into any data tree and mandatory nodes are not checked in the data trees.
+ * not added into any data tree and mandatory nodes are not checked in the data trees. This can be changed by
+ * ly_ctx_set_allimplemented() function which causes that all the imported modules are automatically set to be
+ * implemented.
  *
  * Context holds all modules and their submodules internally. To get
  * a specific module or submodule, use ly_ctx_get_module() and ly_ctx_get_submodule(). There are some additional
@@ -155,6 +157,8 @@ extern "C" {
  * - ly_ctx_get_module_imp_clb()
  * - ly_ctx_set_module_data_clb()
  * - ly_ctx_get_module_data_clb()
+ * - ly_ctx_set_allimplemented()
+ * - ly_ctx_unset_allimplemented()
  * - ly_ctx_load_module()
  * - ly_ctx_info()
  * - ly_ctx_get_module_iter()
@@ -1049,6 +1053,25 @@ void ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir);
  * @return Current value of the search path.
  */
 const char *ly_ctx_get_searchdir(const struct ly_ctx *ctx);
+
+/**
+ * @brief Make context to set all the imported modules to be implemented. By default,
+ * if the imported module is not used in leafref's path, augment or deviation, it is
+ * imported and its data tree is not taken into account.
+ *
+ * Note, that function does not make the currently loaded modules, it just change the
+ * schema parser behavior for the future parsing. This flag can be unset by ly_ctx_unset_allimplemented().
+ *
+ * @param[in] ctx Context to be modified.
+ */
+void ly_ctx_set_allimplemented(struct ly_ctx *ctx);
+
+/**
+ * @brief Reverse function to ly_ctx_set_allimplemented().
+ *
+ * @param[in] ctx Context to be modified.
+ */
+void ly_ctx_unset_allimplemented(struct ly_ctx *ctx);
 
 /**
  * @brief Get data of an internal ietf-yang-library module.

@@ -52,6 +52,7 @@ help(int shortout)
         "                        Convert to FORMAT. Supported formats: \n"
         "                        tree, yin, yang for schemas,\n"
         "                        xml, json for data.\n\n"
+        "  -i, --allimplemented  Make all the imported modules implemented.\n\n"
         "  -o OUTFILE, --output=OUTFILE\n"
         "                        Write the output to OUTFILE instead of stdout.\n\n"
         "  -F FEATURES, --features=FEATURES\n"
@@ -158,6 +159,7 @@ main_ni(int argc, char* argv[])
         {"tree-print-groupings", no_argument,   NULL, 'g'},
         {"help",             no_argument,       NULL, 'h'},
         {"tree-help",        no_argument,       NULL, 'H'},
+        {"allimplemented",   no_argument,       NULL, 'i'},
         {"output",           required_argument, NULL, 'o'},
         {"path",             required_argument, NULL, 'p'},
         {"version",          no_argument,       NULL, 'v'},
@@ -175,7 +177,7 @@ main_ni(int argc, char* argv[])
     char **feat = NULL, *ptr, *featlist;
     struct stat st;
     uint32_t u;
-    int options_dflt = 0, options_parser = 0;
+    int options_dflt = 0, options_parser = 0, options_allimplemented = 0;
     struct dataitem {
         const char *filename;
         LYD_FORMAT format;
@@ -187,7 +189,7 @@ main_ni(int argc, char* argv[])
     void *p;
 
     opterr = 0;
-    while ((opt = getopt_long(argc, argv, "d:f:F:ghHo:p:t:vV", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "d:f:F:ghHio:p:t:vV", options, &opt_index)) != -1) {
         switch (opt) {
         case 'd':
             if (!strcmp(optarg, "all")) {
@@ -258,6 +260,9 @@ main_ni(int argc, char* argv[])
             tree_help();
             ret = EXIT_SUCCESS;
             goto cleanup;
+        case 'i':
+            options_allimplemented = 1;
+            break;
         case 'o':
             if (out != stdout) {
                 fclose(out);
@@ -352,6 +357,11 @@ main_ni(int argc, char* argv[])
     ctx = ly_ctx_new(searchpath);
     if (!ctx) {
         goto cleanup;
+    }
+
+    /* set context options */
+    if (options_allimplemented) {
+        ly_ctx_set_allimplemented(ctx);
     }
 
     /* derefered setting of verbosity in libyang after context initiation */

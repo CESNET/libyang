@@ -2807,7 +2807,9 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
     }
 
     /* load module - in specific situations it tries to get the module from the context */
-    imp->module = (struct lys_module *)ly_ctx_load_sub_module(module->ctx, NULL, value, imp->rev[0] ? imp->rev : NULL, 0, NULL);
+    imp->module = (struct lys_module *)ly_ctx_load_sub_module(module->ctx, NULL, value, imp->rev[0] ? imp->rev : NULL,
+                                                              module->ctx->models.flags & LY_CTX_ALLIMPLEMENTED ? 1 : 0,
+                                                              NULL);
 
     /* update the list of currently being parsed modules */
     --module->ctx->models.parsing_sub_modules_count;

@@ -36,7 +36,8 @@ extern struct ly_ctx *ctx;
 void
 cmd_add_help(void)
 {
-    printf("add <path-to-model> [<other-models> ...]\n");
+    printf("add [-i] <path-to-model> [<other-models> ...]\n");
+    printf("\t-i         - make all the imported modules implemented\n");
 }
 
 void
@@ -157,18 +158,26 @@ get_schema_format(const char *path)
 int
 cmd_add(const char *arg)
 {
-    int path_len;
-    char *path;
-    const char *arg_ptr;
+    int path_len, ret = 1;
+    char *path, *s, *arg_ptr;
     const struct lys_module *model;
-    LYS_INFORMAT format;
+    LYS_INFORMAT format = LYS_IN_UNKNOWN;
 
     if (strlen(arg) < 5) {
         cmd_add_help();
         return 1;
     }
 
-    arg_ptr = arg + strlen("add ");
+    arg_ptr = strdup(arg + 3 /* ignore "add" */);
+
+    for (s = strstr(arg_ptr, "-i"); s ; s = strstr(s + 2, "-i")) {
+        if (s[2] == '\0' || s[2] == ' ') {
+            ly_ctx_set_allimplemented(ctx);
+            s[0] = s[1] = ' ';
+        }
+    }
+    s = arg_ptr;
+
     while (arg_ptr[0] == ' ') {
         ++arg_ptr;
     }
@@ -184,7 +193,7 @@ cmd_add(const char *arg)
         format = get_schema_format(path);
         if (format == LYS_IN_UNKNOWN) {
             free(path);
-            return 1;
+            goto cleanup;
         }
 
         model = lys_parse_path(ctx, path, format);
@@ -192,7 +201,7 @@ cmd_add(const char *arg)
 
         if (!model) {
             /* libyang printed the error messages */
-            return 1;
+            goto cleanup;
         }
 
         /* next model */
@@ -212,8 +221,18 @@ cmd_add(const char *arg)
             path = NULL;
         }
     }
+    if (format == LYS_IN_UNKNOWN) {
+        /* no schema on input */
+        cmd_add_help();
+        goto cleanup;
+    }
+    ret = 0;
 
-    return 0;
+cleanup:
+    free(s);
+    ly_ctx_unset_allimplemented(ctx);
+
+    return ret;
 }
 
 int
