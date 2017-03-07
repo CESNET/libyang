@@ -3294,7 +3294,6 @@ yang_check_imports(struct lys_module *module, struct unres_schema *unres)
     struct lys_import *imp;
     struct lys_include *inc;
     uint8_t imp_size, inc_size, j = 0, i = 0;
-    size_t size;
     char *s;
 
     imp = module->imp;
@@ -3303,27 +3302,21 @@ yang_check_imports(struct lys_module *module, struct unres_schema *unres)
     inc_size = module->inc_size;
 
     if (imp_size) {
-        size = (imp_size * sizeof *module->imp) + sizeof(void*);
+        module->imp = calloc(imp_size, sizeof *module->imp);
         module->imp_size = 0;
-        module->imp = calloc(1, size);
         if (!module->imp) {
             LOGMEM;
             goto error;
         }
-        /* set stop block for possible realloc */
-        module->imp[imp_size].module = (void*)0x1;
     }
 
     if (inc_size) {
-        size = (inc_size * sizeof *module->inc) + sizeof(void*);
+        module->inc = calloc(inc_size, sizeof *module->inc);
         module->inc_size = 0;
-        module->inc = calloc(1, size);
         if (!module->inc) {
             LOGMEM;
             goto error;
         }
-        /* set stop block for possible realloc */
-        module->inc[inc_size].submodule = (void*)0x1;
     }
 
     for (i = 0; i < imp_size; ++i) {
