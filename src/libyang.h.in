@@ -109,9 +109,11 @@ extern "C" {
  * search in search dir and in the current working directory is used.
  *
  * Similarly, data trees can be parsed by \b lyd_parse_*() functions. Note, that functions for schemas have \b lys_
- * prefix while functions for instance data have \b lyd_ prefix. If during data parsing a schema is required and
- * not found in the context, a callback is called, which should add this schema into the context. You can set it
- * using ly_ctx_set_module_data_clb() (more in @ref howtodataparsers and @ref howtodatavalidation).
+ * prefix while functions for instance data have \b lyd_ prefix. It can happen during data parsing that a schema is
+ * required and __not found__ in the context or the schema is found, but is __only imported__, not implemented (so the
+ * data cannot actually be instantiated). In these cases, a callback is called, which should add this schema into
+ * the context or change its conformance to implemented. You can set the callback using ly_ctx_set_module_data_clb()
+ * (more in @ref howtodataparsers and @ref howtodatavalidation).
  *
  * Context can hold multiple revisions of the same schema, but only one of them can be implemented. The schema is not
  * implemented in case it is automatically loaded as import for another module and it is not referenced in such
@@ -617,9 +619,9 @@ extern "C" {
  * In contrast to the schema parser, data parser also accepts empty input data if such an empty data tree is valid
  * according to the schemas in the libyang context.
  *
- * If a node from a schema, which is not present in the context, is parsed, a callback set by ly_ctx_set_module_data_clb()
- * is called and this way the application is given the opportunity to add this schema into the context before the
- * parsing would fail.
+ * If a node from a schema, which is not present in the context or is not implemented, is parsed, a callback set by
+ * ly_ctx_set_module_data_clb() is called and this way the application is given the opportunity to add this schema into
+ * the context or change its conformance before the parsing would fail.
  *
  * In case of XML input data, there is one additional way to parse input data. Besides parsing the data from a string
  * in memory or a file, caller is able to build an XML tree using [libyang XML parser](@ref howtoxml) and then use
