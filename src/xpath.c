@@ -4155,16 +4155,25 @@ moveto_resolve_model(const char *mod_name_ns, uint16_t mod_nam_ns_len, struct ly
 {
     uint16_t i;
     const char *str;
-    struct lys_module *mod;
+    struct lys_module *mod, *mainmod;
 
     if (cur_snode) {
-        mod = lys_node_module(cur_snode);
-        str = (is_name ? mod->name : mod->ns);
+        /* detect if the XPath is used in augment - in such a case the module of the context node (cur_snode)
+         * differs from the currently processed module. Then, we have to use the currently processed module
+         * for searching for the module/namespace instead of the module of the context node */
+        if (ctx->models.parsing_sub_modules_count &&
+                cur_snode->module != ctx->models.parsing_sub_modules[ctx->models.parsing_sub_modules_count - 1]) {
+            mod = ctx->models.parsing_sub_modules[ctx->models.parsing_sub_modules_count - 1];
+        } else {
+            mod = cur_snode->module;
+        }
+        mainmod = lys_main_module(mod);
+
+        str = (is_name ? mainmod->name : mainmod->ns);
         if (!strncmp(str, mod_name_ns, mod_nam_ns_len) && !str[mod_nam_ns_len]) {
-            return lys_node_module(cur_snode);
+            return mainmod;
         }
 
-        mod = cur_snode->module;
         for (i = 0; i < mod->imp_size; ++i) {
             str = (is_name ? mod->imp[i].module->name : mod->imp[i].module->ns);
             if (!strncmp(str, mod_name_ns, mod_nam_ns_len) && !str[mod_nam_ns_len]) {
