@@ -1913,6 +1913,7 @@ lyp_fill_attr(struct ly_ctx *ctx, struct lyd_node *parent, const char *module_ns
 {
     const struct lys_module *mod = NULL;
     const struct lys_submodule *submod = NULL;
+    struct lys_type **type;
     struct lyd_attr *dattr;
     int pos, i, j, k;
 
@@ -1978,8 +1979,8 @@ lyp_fill_attr(struct ly_ctx *ctx, struct lyd_node *parent, const char *module_ns
 
     /* the value is here converted to a JSON format if needed in case of LY_TYPE_IDENT and LY_TYPE_INST or to a
      * canonical form of the value */
-    if (!lyp_parse_value(*((struct lys_type **)lys_ext_complex_get_substmt(LY_STMT_TYPE, dattr->annotation, NULL)),
-                         &dattr->value_str, xml, NULL, dattr, 1, 0)) {
+    type = lys_ext_complex_get_substmt(LY_STMT_TYPE, dattr->annotation, NULL);
+    if (!type || !lyp_parse_value(*type, &dattr->value_str, xml, NULL, dattr, 1, 0)) {
         free(dattr);
         return -1;
     }

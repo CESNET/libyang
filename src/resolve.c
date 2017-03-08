@@ -2155,7 +2155,7 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
                 }
 
                 /* update prev mod */
-                prev_mod = start_parent->child->module;
+                prev_mod = (start_parent ? start_parent->child->module : module);
                 break;
             }
         }
