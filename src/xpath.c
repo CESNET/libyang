@@ -4164,6 +4164,7 @@ moveto_resolve_model(const char *mod_name_ns, uint16_t mod_nam_ns_len, struct ly
             return lys_node_module(cur_snode);
         }
 
+        mod = cur_snode->module;
         for (i = 0; i < mod->imp_size; ++i) {
             str = (is_name ? mod->imp[i].module->name : mod->imp[i].module->ns);
             if (!strncmp(str, mod_name_ns, mod_nam_ns_len) && !str[mod_nam_ns_len]) {
