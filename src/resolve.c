@@ -5493,8 +5493,14 @@ match:
 static int
 resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres)
 {
-    int rc;
+    int rc, endian_idx;
     struct lys_node *par_grp;
+
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+    endian_idx = 1;
+#else
+    endian_idx = 0;
+#endif
 
     /* HACK: when a grouping has uses inside, all such uses have to be resolved before the grouping itself is used
      *       in some uses. When we see such a uses, the grouping's higher byte of the flags member (not used in
@@ -5516,11 +5522,7 @@ resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres
                 /* hack - in contrast to lys_node, lys_node_grp has bigger nacm field
                  * (and smaller flags - it uses only a limited set of flags)
                  */
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-                ((uint8_t*)&((struct lys_node_grp *)par_grp)->flags)[1]++;
-#else
-                ((uint8_t*)&((struct lys_node_grp *)par_grp)->flags)[0]++;
-#endif
+                ((uint8_t*)&((struct lys_node_grp *)par_grp)->flags)[endian_idx]++;
                 uses->flags |= LYS_USESGRP;
             }
             LOGVAL(LYE_INRESOLV, LY_VLOG_LYS, uses, "uses", uses->name);
@@ -5528,15 +5530,9 @@ resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres
         }
     }
 
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    if (((uint8_t*)&uses->grp->flags)[1]) {
+    if (((uint8_t*)&uses->grp->flags)[endian_idx]) {
         if (par_grp && !(uses->flags & LYS_USESGRP)) {
-            ((uint8_t*)&((struct lys_node_grp *)par_grp)->flags)[1]++;
-#else
-    if (((uint8_t*)&uses->grp->flags)[0]) {
-        if (par_grp && !(uses->flags & LYS_USESGRP)) {
-            ((uint8_t*)&((struct lys_node_grp *)par_grp)->flags)[0]++;
-#endif
+            ((uint8_t*)&((struct lys_node_grp *)par_grp)->flags)[endian_idx]++;
             uses->flags |= LYS_USESGRP;
         } else {
             /* instantiate grouping only when it is completely resolved */
@@ -5550,19 +5546,11 @@ resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres
     if (!rc) {
         /* decrease unres count only if not first try */
         if (par_grp && (uses->flags & LYS_USESGRP)) {
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-            if (!((uint8_t*)&((struct lys_node_grp *)par_grp)->flags)[1]) {;
-#else
-            if (!((uint8_t*)&((struct lys_node_grp *)par_grp)->flags)[0]) {;
-#endif
+            if (!((uint8_t*)&((struct lys_node_grp *)par_grp)->flags)[endian_idx]) {
                 LOGINT;
                 return -1;
             }
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-            ((uint8_t*)&((struct lys_node_grp *)par_grp)->flags)[1]--;
-#else
-            ((uint8_t*)&((struct lys_node_grp *)par_grp)->flags)[0]--;
-#endif
+            ((uint8_t*)&((struct lys_node_grp *)par_grp)->flags)[endian_idx]--;
             uses->flags &= ~LYS_USESGRP;
         }
 
