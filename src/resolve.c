@@ -1594,7 +1594,7 @@ resolve_data_descendant_schema_nodeid(const char *nodeid, struct lyd_node *start
 static int
 schema_nodeid_siblingcheck(const struct lys_node *sibling, int8_t *shorthand, const char *id,
                            const struct lys_module *module, const char *mod_name, int mod_name_len,
-                           int implemented_mod, const struct lys_node **start)
+                           int implemented_mod, const struct lys_node **start_parent)
 {
     const struct lys_module *prefix_mod;
 
@@ -1630,7 +1630,7 @@ schema_nodeid_siblingcheck(const struct lys_node *sibling, int8_t *shorthand, co
         if (sibling->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
             return -1;
         }
-        *start = sibling->child;
+        *start_parent = sibling;
     }
 
     return 2;
@@ -1644,7 +1644,7 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
                               int implement, const struct lys_node **ret)
 {
     const char *name, *mod_name, *mod_name_prev, *id;
-    const struct lys_node *sibling;
+    const struct lys_node *sibling, *start_parent;
     int r, nam_len, mod_name_len, is_relative = -1;
     int8_t shorthand = 0;
     /* resolved import module from the start module, it must match the next node-name-match sibling */
@@ -1667,6 +1667,11 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
     if (is_relative) {
         module = start_mod = start->module;
 
+        start_parent = lys_parent(start);
+        while (start_parent && (start_parent->nodetype == LYS_USES)) {
+            start_parent = lys_parent(start_parent);
+        }
+
     /* absolute-schema-nodeid */
     } else {
         start_mod = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
@@ -1688,18 +1693,18 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
         if (!start_mod) {
             return -1;
         }
-        start = start_mod->data;
+        start_parent = NULL;
     }
 
     while (1) {
         sibling = NULL;
         mod_name_prev = mod_name;
-        while ((sibling = lys_getnext(sibling, lys_parent(start), start_mod,
+        while ((sibling = lys_getnext(sibling, start_parent, start_mod,
                                       LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT))) {
             /* name match */
             if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
                 r = schema_nodeid_siblingcheck(sibling, &shorthand, id, module, mod_name, mod_name_len,
-                                               implement, &start);
+                                               implement, &start_parent);
                 if (r == 0) {
                     *ret = sibling;
                     return EXIT_SUCCESS;
@@ -1765,7 +1770,7 @@ resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *star
                                  int check_shorthand, int no_innerlist, const struct lys_node **ret)
 {
     const char *name, *mod_name, *id;
-    const struct lys_node *sibling;
+    const struct lys_node *sibling, *start_parent;
     int r, nam_len, mod_name_len, is_relative = -1;
     int8_t shorthand = check_shorthand ? 0 : -1;
     /* resolved import module from the start module, it must match the next node-name-match sibling */
@@ -1791,13 +1796,18 @@ resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *star
         return -1;
     }
 
+    start_parent = lys_parent(start);
+    while (start_parent && (start_parent->nodetype == LYS_USES)) {
+        start_parent = lys_parent(start_parent);
+    }
+
     while (1) {
         sibling = NULL;
-        while ((sibling = lys_getnext(sibling, lys_parent(start), module,
+        while ((sibling = lys_getnext(sibling, start_parent, module,
                                       LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE))) {
             /* name match */
             if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
-                r = schema_nodeid_siblingcheck(sibling, &shorthand, id, module, mod_name, mod_name_len, 0, &start);
+                r = schema_nodeid_siblingcheck(sibling, &shorthand, id, module, mod_name, mod_name_len, 0, &start_parent);
                 if (r == 0) {
                     if (!(sibling->nodetype & ret_nodetype)) {
                         /* wrong node type, too bad */
@@ -1878,7 +1888,7 @@ resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *modu
                                const struct lys_node **ret)
 {
     const char *name, *mod_name, *id;
-    const struct lys_node *sibling, *start;
+    const struct lys_node *sibling, *start_parent;
     int r, nam_len, mod_name_len, is_relative = -1;
     int8_t shorthand = 0;
     const struct lys_module *abs_start_mod;
@@ -1887,7 +1897,7 @@ resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *modu
     assert(!(ret_nodetype & (LYS_USES | LYS_AUGMENT)) && ((ret_nodetype == LYS_GROUPING) || !(ret_nodetype & LYS_GROUPING)));
 
     id = nodeid;
-    start = lys_main_module(module)->data;
+    start_parent = NULL;
 
     if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL)) < 1) {
         return ((id - nodeid) - r) + 1;
@@ -1905,11 +1915,11 @@ resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *modu
 
     while (1) {
         sibling = NULL;
-        while ((sibling = lys_getnext(sibling, lys_parent(start), abs_start_mod, LYS_GETNEXT_WITHCHOICE
+        while ((sibling = lys_getnext(sibling, start_parent, abs_start_mod, LYS_GETNEXT_WITHCHOICE
                                       | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT | LYS_GETNEXT_WITHGROUPING))) {
             /* name match */
             if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
-                r = schema_nodeid_siblingcheck(sibling, &shorthand, id, module, mod_name, mod_name_len, 0, &start);
+                r = schema_nodeid_siblingcheck(sibling, &shorthand, id, module, mod_name, mod_name_len, 0, &start_parent);
                 if (r == 0) {
                     if (!(sibling->nodetype & ret_nodetype)) {
                         /* wrong node type, too bad */
@@ -1986,7 +1996,7 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
 {
     char *module_name = ly_buf(), *buf_backup = NULL, *str;
     const char *name, *mod_name, *id;
-    const struct lys_node *sibling;
+    const struct lys_node *sibling, *start_parent;
     int r, nam_len, mod_name_len, is_relative = -1, has_predicate, shorthand = 0;
     /* resolved import module from the start module, it must match the next node-name-match sibling */
     const struct lys_module *prefix_mod, *module, *prev_mod;
@@ -2006,13 +2016,9 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
 
     if (is_relative) {
         assert(start);
-        start = start->child;
-        if (!start) {
-            /* no descendants, fail for sure */
-            str = strndup(nodeid, (name + nam_len) - nodeid);
-            LOGVAL(LYE_PATH_INNODE, LY_VLOG_STR, str);
-            free(str);
-            return NULL;
+        start_parent = start;
+        while (start_parent && (start_parent->nodetype == LYS_USES)) {
+            start_parent = lys_parent(start_parent);
         }
         module = start->module;
     } else {
@@ -2049,7 +2055,7 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
             free(str);
             return NULL;
         }
-        start = module->data;
+        start_parent = NULL;
 
         /* now it's as if there was no module name */
         mod_name = NULL;
@@ -2060,7 +2066,7 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
 
     while (1) {
         sibling = NULL;
-        while ((sibling = lys_getnext(sibling, lys_parent(start), module,
+        while ((sibling = lys_getnext(sibling, start_parent, module,
                 LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT))) {
             /* name match */
             if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
@@ -2121,7 +2127,7 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
                     id += r;
                 }
 
-                /* check for shorthand cases - then 'start' does not change */
+                /* check for shorthand cases - then 'start_parent' does not change */
                 if (lys_parent(sibling) && (lys_parent(sibling)->nodetype == LYS_CHOICE) && (sibling->nodetype != LYS_CASE)) {
                     shorthand = ~shorthand;
                 }
@@ -2145,11 +2151,11 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
                         LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[0], id);
                         return NULL;
                     }
-                    start = sibling->child;
+                    start_parent = sibling;
                 }
 
                 /* update prev mod */
-                prev_mod = start->module;
+                prev_mod = start_parent->child->module;
                 break;
             }
         }
@@ -5848,7 +5854,7 @@ resolve_when_unlink_nodes(struct lys_node *snode, struct lyd_node **node, struct
     case LYS_CHOICE:
     case LYS_CASE:
         slast = NULL;
-        while ((slast = lys_getnext(slast, snode, NULL, 0))) {
+        while ((slast = lys_getnext(slast, snode, NULL, LYS_GETNEXT_PARENTUSES))) {
             if (slast->nodetype & (LYS_ACTION | LYS_NOTIF)) {
                 continue;
             }

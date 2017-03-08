@@ -3951,7 +3951,7 @@ lys_module_node_pos_r(struct lys_node *first_sibling, struct lys_node *target, u
 {
     const struct lys_node *next = NULL;
 
-    /* the schema nodes are actually from data, lys_getnext skips non-data schema nodes for us */
+    /* the schema nodes are actually from data, lys_getnext skips non-data schema nodes for us (we know the parent will not be uses) */
     while ((next = lys_getnext(next, lys_parent(first_sibling), lys_node_module(first_sibling), 0))) {
         ++(*pos);
         if (target == next) {

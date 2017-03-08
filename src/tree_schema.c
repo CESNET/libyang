@@ -162,14 +162,14 @@ int
 lys_get_data_sibling(const struct lys_module *mod, const struct lys_node *siblings, const char *name, int nam_len,
                      LYS_NODE type, const struct lys_node **ret)
 {
-    const struct lys_node *node;
+    const struct lys_node *node, *parent;
 
     assert(siblings && name);
     assert(!(type & (LYS_AUGMENT | LYS_USES | LYS_GROUPING | LYS_CHOICE | LYS_CASE | LYS_INPUT | LYS_OUTPUT)));
 
-    /* find the beginning */
-    while (siblings->prev->next) {
-        siblings = siblings->prev;
+    parent = lys_parent(siblings);
+    while (parent && (parent->nodetype == LYS_USES)) {
+        parent = lys_parent(parent);
     }
 
     if (!mod) {
@@ -178,7 +178,7 @@ lys_get_data_sibling(const struct lys_module *mod, const struct lys_node *siblin
 
     /* try to find the node */
     node = NULL;
-    while ((node = lys_getnext(node, lys_parent(siblings), mod, 0))) {
+    while ((node = lys_getnext(node, parent, mod, 0))) {
         if (!type || (node->nodetype & type)) {
             /* module check */
             if (lys_node_module(node) != lys_main_module(mod)) {
@@ -203,6 +203,11 @@ lys_getnext(const struct lys_node *last, const struct lys_node *parent, const st
 {
     const struct lys_node *next;
     struct lys_node **snode;
+
+    if ((!parent && !module) || (parent && (parent->nodetype == LYS_USES) && !(options & LYS_GETNEXT_PARENTUSES))) {
+        LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
+        return NULL;
+    }
 
     if (!last) {
         /* first call */
