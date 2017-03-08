@@ -664,7 +664,7 @@ ly_err_repeat(void)
 {
     struct ly_err_item *i;
 
-    if (ly_log_level >= LY_LLERR) {
+    if ((ly_log_level >= LY_LLERR) && !*ly_vlog_hide_location()) {
         for (i = ly_err_location()->errlist; i; i = i->next) {
             if (ly_log_clb) {
                 ly_log_clb(LY_LLERR, i->msg, i->path);

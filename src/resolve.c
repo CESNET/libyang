@@ -6822,12 +6822,17 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
     uint32_t i, resolved = 0, unres_count, res_count;
     struct lyxml_elem *yin;
     struct yang_type *yang;
-    int rc;
+    int rc, log_hidden;
 
     assert(unres);
 
     LOGVRB("Resolving \"%s\" unresolved schema nodes and their constraints...", mod->name);
-    ly_vlog_hide(1);
+    if (*ly_vlog_hide_location()) {
+        log_hidden = 1;
+    } else {
+        log_hidden = 0;
+        ly_vlog_hide(1);
+    }
 
     /* uses */
     do {
@@ -6851,7 +6856,9 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
                 ++resolved;
                 ++res_count;
             } else if (rc == -1) {
-                ly_vlog_hide(0);
+                if (!log_hidden) {
+                    ly_vlog_hide(0);
+                }
                 /* print the error */
                 ly_err_repeat();
                 return -1;
@@ -6864,7 +6871,9 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
 
     if (res_count < unres_count) {
         /* just print the errors */
-        ly_vlog_hide(0);
+        if (!log_hidden) {
+            ly_vlog_hide(0);
+        }
 
         for (i = 0; i < unres->count; ++i) {
             if (unres->type[i] > UNRES_IDENT) {
@@ -6904,7 +6913,9 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
             unres->type[i] = UNRES_RESOLVED;
             ++resolved;
         } else if (rc == -1) {
-            ly_vlog_hide(0);
+            if (!log_hidden) {
+                ly_vlog_hide(0);
+            }
             /* print the error */
             ly_err_repeat();
             return -1;
@@ -6914,7 +6925,9 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
         }
     }
 
-    ly_vlog_hide(0);
+    if (!log_hidden) {
+        ly_vlog_hide(0);
+    }
 
     /* finalize extensions, keep it last to provide the complete schema tree information to the plugin's checkers */
     for (i = 0; i < unres->count; ++i) {
