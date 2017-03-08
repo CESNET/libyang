@@ -3189,7 +3189,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
     result = lys_node_dup_recursion(module, parent, node, unres, shallow, finalize);
     if (finalize) {
         /* check xpath expressions in the instantiated tree */
-        for (iter = next = parent->child; iter; iter = next) {
+        for (iter = next = result; iter; iter = next) {
             if (lys_has_xpath(iter) && unres_schema_add_node(module, unres, iter, UNRES_XPATH, NULL) == -1) {
                 /* invalid xpath */
                 return NULL;
@@ -3204,12 +3204,16 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
             }
             if (!next) {
                 /* no children, try siblings */
+                if (iter == result) {
+                    /* we are done, no next element to process */
+                    break;
+                }
                 next = iter->next;
             }
             while (!next) {
                 /* parent is already processed, go to its sibling */
                 iter = lys_parent(iter);
-                if (iter == parent) {
+                if (lys_parent(iter) == lys_parent(result)) {
                     /* we are done, no next element to process */
                     break;
                 }

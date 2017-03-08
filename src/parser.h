@@ -47,6 +47,14 @@ struct lyd_node *lyd_parse_json(struct ly_ctx *ctx, const char *data, int option
 
 /**@} jsondata */
 
+/**
+ * internal options values for schema parsers
+ */
+#define LYS_PARSE_OPT_CFG_NOINHERIT 0x01 /**< do not inherit config flag */
+#define LYS_PARSE_OPT_CFG_IGNORE    0x02 /**< ignore config flag (in rpc, actions, notifications) */
+#define LYS_PARSE_OPT_CFG_MASK      0x03
+#define LYS_PARSE_OPT_INGRP         0x04 /**< flag to know that parser is inside a grouping */
+
 /* list of YANG statement strings */
 extern const char *ly_stmt_str[];
 
