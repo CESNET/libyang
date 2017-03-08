@@ -25,7 +25,7 @@ struct ly_modules_list {
     int used;
     struct lys_module **list;
     /* all (sub)modules that are currently being parsed */
-    const char **parsing_sub_modules;
+    struct lys_module **parsing_sub_modules;
     /* all already parsed submodules of a module, which is before all its submodules (to mark submodule imports) */
     struct lys_module **parsed_submodules;
     uint8_t parsing_sub_modules_count;

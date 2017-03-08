@@ -2554,7 +2554,7 @@ lyp_add_includedup(struct lys_module *sub_mod, struct lys_submodule *parsed_subm
  * types: 0 - include, 1 - import
  */
 static int
-lyp_check_add_circmod(struct lys_module *module, const char *value, int type)
+lyp_check_circmod(struct lys_module *module, const char *value, int type)
 {
     LY_ECODE code = type ? LYE_CIRC_IMPORTS : LYE_CIRC_INCLUDES;
     struct ly_modules_list *models = &module->ctx->models;
@@ -2568,11 +2568,20 @@ lyp_check_add_circmod(struct lys_module *module, const char *value, int type)
 
     /* currently parsed modules */
     for (i = 0; i < models->parsing_sub_modules_count; i++) {
-        if (ly_strequal(models->parsing_sub_modules[i], value, 1)) {
+        if (ly_strequal(models->parsing_sub_modules[i]->name, value, 1)) {
             LOGVAL(code, LY_VLOG_NONE, NULL, value);
             return -1;
         }
     }
+
+    return 0;
+}
+
+int
+lyp_check_circmod_add(struct lys_module *module)
+{
+    struct ly_modules_list *models = &module->ctx->models;
+
     /* storing - enlarge the list of modules being currently parsed */
     ++models->parsing_sub_modules_count;
     models->parsing_sub_modules = ly_realloc(models->parsing_sub_modules,
@@ -2581,9 +2590,20 @@ lyp_check_add_circmod(struct lys_module *module, const char *value, int type)
         LOGMEM;
         return -1;
     }
-    models->parsing_sub_modules[models->parsing_sub_modules_count - 1] = value;
+    models->parsing_sub_modules[models->parsing_sub_modules_count - 1] = module;
 
     return 0;
+}
+
+void
+lyp_check_circmod_pop(struct ly_ctx *ctx)
+{
+    /* update the list of currently being parsed modules */
+    ctx->models.parsing_sub_modules_count--;
+    if (!ctx->models.parsing_sub_modules_count) {
+        free(ctx->models.parsing_sub_modules);
+        ctx->models.parsing_sub_modules = NULL;
+    }
 }
 
 /*
@@ -2655,20 +2675,13 @@ lyp_check_include(struct lys_module *module, const char *value, struct lys_inclu
     /* submodule is not yet loaded */
 
     /* circular include check */
-    if (lyp_check_add_circmod(module, value, 0)) {
+    if (lyp_check_circmod(module, value, 0)) {
         return -1;
     }
 
     /* try to load the submodule */
     inc->submodule = (struct lys_submodule *)ly_ctx_load_sub_module(module->ctx, module, value,
                                                                     inc->rev[0] ? inc->rev : NULL, 1, unres);
-
-    /* update the list of currently being parsed modules */
-    --module->ctx->models.parsing_sub_modules_count;
-    if (!module->ctx->models.parsing_sub_modules_count) {
-        free(module->ctx->models.parsing_sub_modules);
-        module->ctx->models.parsing_sub_modules = NULL;
-    }
 
     /* check the result */
     if (!inc->submodule) {
@@ -2803,7 +2816,7 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
     }
 
     /* circular import check */
-    if (lyp_check_add_circmod(module, value, 1)) {
+    if (lyp_check_circmod(module, value, 1)) {
         return -1;
     }
 
@@ -2811,13 +2824,6 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
     imp->module = (struct lys_module *)ly_ctx_load_sub_module(module->ctx, NULL, value, imp->rev[0] ? imp->rev : NULL,
                                                               module->ctx->models.flags & LY_CTX_ALLIMPLEMENTED ? 1 : 0,
                                                               NULL);
-
-    /* update the list of currently being parsed modules */
-    --module->ctx->models.parsing_sub_modules_count;
-    if (!module->ctx->models.parsing_sub_modules_count) {
-        free(module->ctx->models.parsing_sub_modules);
-        module->ctx->models.parsing_sub_modules = NULL;
-    }
 
     /* check the result */
     if (!imp->module) {

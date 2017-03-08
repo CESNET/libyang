@@ -7115,6 +7115,11 @@ yin_read_submodule(struct lys_module *module, const char *data, struct unres_sch
     submodule->type = 1;
     submodule->belongsto = module;
 
+    /* add into the list of processed modules */
+    if (lyp_check_circmod_add((struct lys_module *)submodule)) {
+        goto error;
+    }
+
     LOGVRB("Reading submodule \"%s\".", submodule->name);
     /* module cannot be changed in this case and 1 cannot be returned */
     if (read_sub_module(module, submodule, yin, unres)) {
@@ -7125,6 +7130,7 @@ yin_read_submodule(struct lys_module *module, const char *data, struct unres_sch
 
     /* cleanup */
     lyxml_free(module->ctx, yin);
+    lyp_check_circmod_pop(module->ctx);
 
     LOGVRB("Submodule \"%s\" successfully parsed.", submodule->name);
     return submodule;
@@ -7141,6 +7147,7 @@ error:
 
     LOGERR(ly_errno, "Submodule \"%s\" parsing failed.", submodule->name);
 
+    lyp_check_circmod_pop(module->ctx);
     lys_sub_module_remove_devs_augs((struct lys_module *)submodule);
     lys_submodule_module_data_free(submodule);
     lys_submodule_free(submodule, NULL);
@@ -7187,6 +7194,11 @@ yin_read_module_(struct ly_ctx *ctx, struct lyxml_elem *yin, const char *revisio
     module->name = lydict_insert(ctx, value, strlen(value));
     module->type = 0;
     module->implemented = (implement ? 1 : 0);
+
+    /* add into the list of processed modules */
+    if (lyp_check_circmod_add(module)) {
+        goto error;
+    }
 
     LOGVRB("Reading module \"%s\".", module->name);
     ret = read_sub_module(module, NULL, yin, unres);
@@ -7250,6 +7262,7 @@ yin_read_module_(struct ly_ctx *ctx, struct lyxml_elem *yin, const char *revisio
     }
 
     unres_schema_free(NULL, &unres);
+    lyp_check_circmod_pop(ctx);
     LOGVRB("Module \"%s\" successfully parsed.", module->name);
     return module;
 
@@ -7266,6 +7279,7 @@ error:
 
     LOGERR(ly_errno, "Module \"%s\" parsing failed.", module->name);
 
+    lyp_check_circmod_pop(ctx);
     lyp_del_includedup(module);
     lys_sub_module_remove_devs_augs(module);
     lys_free(module, NULL, 1);

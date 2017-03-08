@@ -2613,6 +2613,11 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
     module->type = 0;
     module->implemented = (implement ? 1 : 0);
 
+    /* add into the list of processed modules */
+    if (lyp_check_circmod_add(module)) {
+        goto error;
+    }
+
     ret = yang_parse_mem(module, NULL, unres, data, size, &node);
     if (ret == -1) {
         free_yang_common(module, node);
@@ -2679,6 +2684,7 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
     }
 
     unres_schema_free(NULL, &unres);
+    lyp_check_circmod_pop(ctx);
     LOGVRB("Module \"%s\" successfully parsed.", module->name);
     return module;
 
@@ -2695,6 +2701,7 @@ error:
 
     LOGERR(ly_errno, "Module \"%s\" parsing failed.", module->name);
 
+    lyp_check_circmod_pop(ctx);
     lyp_del_includedup(module);
     lys_sub_module_remove_devs_augs(module);
     lys_free(module, NULL, 1);
@@ -2717,6 +2724,11 @@ yang_read_submodule(struct lys_module *module, const char *data, unsigned int si
     submodule->type = 1;
     submodule->belongsto = module;
 
+    /* add into the list of processed modules */
+    if (lyp_check_circmod_add((struct lys_module *)submodule)) {
+        goto error;
+    }
+
     /* module cannot be changed in this case and 1 cannot be returned */
     if (yang_parse_mem(module, submodule, unres, data, size, &node)) {
         free_yang_common((struct lys_module *)submodule, node);
@@ -2728,6 +2740,8 @@ yang_read_submodule(struct lys_module *module, const char *data, unsigned int si
     if (yang_check_sub_module((struct lys_module *)submodule, unres, node)) {
         goto error;
     }
+
+    lyp_check_circmod_pop(module->ctx);
 
     LOGVRB("Submodule \"%s\" successfully parsed.", submodule->name);
     return submodule;
@@ -2744,6 +2758,7 @@ error:
 
     LOGERR(ly_errno, "Submodule \"%s\" parsing failed.", submodule->name);
 
+    lyp_check_circmod_pop(module->ctx);
     lys_sub_module_remove_devs_augs((struct lys_module *)submodule);
     lys_submodule_module_data_free(submodule);
     lys_submodule_free(submodule, NULL);
