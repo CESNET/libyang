@@ -4272,9 +4272,6 @@ inherit_config_flag(struct lys_node *node, int flags, int clear, struct unres_sc
 
     assert(!(flags ^ (flags & LYS_CONFIG_MASK)));
     LY_TREE_FOR(node, node) {
-        if (lys_has_xpath(node) && unres_schema_add_node(node->module, unres, node, UNRES_XPATH, NULL) == -1) {
-            return -1;
-        }
         if (clear) {
             node->flags &= ~LYS_CONFIG_MASK;
             node->flags &= ~LYS_CONFIG_SET;
@@ -7021,14 +7018,16 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
     assert(unres && item && ((type != UNRES_LEAFREF) && (type != UNRES_INSTID) && (type != UNRES_WHEN)
            && (type != UNRES_MUST)));
 
+#ifndef NDEBUG
     /* check for duplicities in unres */
     for (u = 0; u < unres->count; u++) {
         if (unres->type[u] == type && unres->item[u] == item &&
                 unres->str_snode[u] == snode && unres->module[u] == mod) {
-            /* duplication, will be resolved later */
-            return -2;
+            /* duplication, should not happen */
+            assert(0);
         }
     }
+#endif
 
     if (type == UNRES_EXT_FINALIZE) {
         /* extension finalization is not even tried when adding the item into the inres list */
