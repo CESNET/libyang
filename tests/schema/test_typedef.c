@@ -309,7 +309,7 @@ test_typedef_11_enums_yang(void **state)
     struct state *st = (*state);
     const struct lys_module *mod;
     const char *enums1 = "module x {"
-"  yang-version \"1.1\";"
+"  yang-version 1.1;"
 "  namespace \"urn:x\";"
 "  prefix x;"
 "  typedef e1 { type enumeration { enum one; enum two; } default one; }"
@@ -424,7 +424,7 @@ test_typedef_11_bits_yang(void **state)
     const struct lys_module *mod;
 
     const char *bits1 = "module y {"
-"  yang-version \"1.1\";"
+"  yang-version 1.1;"
 "  namespace \"urn:y\";"
 "  prefix \"y\";"
 "  typedef b1 { type \"bits\" { bit \"one\"; bit two; } default one; }"
@@ -830,7 +830,7 @@ test_typedef_11_pattern_yang(void **state)
 "  namespace \"urn:x\";\n  prefix x;\n\n"
 "  leaf l {\n    type string {\n"
 "      pattern \"[a-zA-Z_][a-zA-Z0-9\\\\-_.]*\";\n"
-"      pattern \"[nN][oO][tT].*\" {\n        modifier \"invert-match\";\n      }\n"
+"      pattern \"[nN][oO][tT].*\" {\n        modifier invert-match;\n      }\n"
 "    }\n"
 "  }\n"
 "}\n";
@@ -940,8 +940,8 @@ test_typedef_11_union_leafref_yin(void **state)
 
     root = lyd_parse_mem(st->ctx, data4, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(root, NULL);
-    assert_int_equal(((struct lyd_node_leaf_list *)root)->value_type, LY_TYPE_LEAFREF);
-    assert_ptr_equal(NULL, ((struct lyd_node_leaf_list *)root)->value.leafref);
+    assert_int_equal(((struct lyd_node_leaf_list *)root)->value_type, LY_TYPE_LEAFREF_UNRES | LY_TYPE_STRING);
+    assert_string_equal("http", ((struct lyd_node_leaf_list *)root)->value.string);
     lyd_free_withsiblings(root);
 }
 
@@ -1020,8 +1020,8 @@ test_typedef_11_union_leafref_yang(void **state)
 
     root = lyd_parse_mem(st->ctx, data4, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(root, NULL);
-    assert_int_equal(((struct lyd_node_leaf_list *)root)->value_type, LY_TYPE_LEAFREF);
-    assert_ptr_equal(NULL, ((struct lyd_node_leaf_list *)root)->value.leafref);
+    assert_int_equal(((struct lyd_node_leaf_list *)root)->value_type, LY_TYPE_LEAFREF_UNRES | LY_TYPE_STRING);
+    assert_string_equal("http", ((struct lyd_node_leaf_list *)root)->value.string);
     lyd_free_withsiblings(root);
 }
 
@@ -1086,7 +1086,7 @@ test_typedef_11_union_empty_yang(void **state)
 {
     struct state *st = (*state);
     const char *modstr = "module x {"
-"  yang-version \"1.1\";"
+"  yang-version 1.1;"
 "  namespace \"urn:x\"; prefix \"x\";"
 "  typedef mytype1 {"
 "    type union {"

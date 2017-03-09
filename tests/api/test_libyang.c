@@ -144,10 +144,16 @@ static int
 teardown_f(void **state)
 {
     (void) state; /* unused */
-    if (root)
+    if (root) {
         lyd_free_withsiblings(root);
-    if (ctx)
+    }
+
+    if (ctx) {
         ly_ctx_destroy(ctx, NULL);
+    }
+
+    root = NULL;
+    ctx = NULL;
 
     return 0;
 }
@@ -498,7 +504,7 @@ test_ly_ctx_clean2(void **state)
     assert_ptr_not_equal(lys_parse_mem(ctx, yang_dep, LYS_IN_YANG), NULL);
 
     /* get the target leaf in ietf-yang-library */
-    mod = ctx->models.list[3];
+    mod = ctx->models.list[4];
     /* magic: leaf = /yl:modules-state/yl:module/yl:name */
     leaf = (struct lys_node_leaf *)mod->data->next->child->next->child->prev->child->child;
     assert_true(leaf->backlinks && leaf->backlinks->number == 1);
@@ -518,7 +524,6 @@ test_ly_ctx_remove_module(void **state)
 {
     (void) state; /* unused */
     const struct lys_module *mod;
-    struct ly_ctx *ctx;
     uint32_t dict_used;
     uint16_t setid;
     int modules_count;
@@ -529,8 +534,8 @@ test_ly_ctx_remove_module(void **state)
     modules_count = ctx->models.used;
     dict_used = ctx->dict.used;
 
-    ly_ctx_load_module(ctx, "x", NULL);
-    ly_ctx_remove_module(ctx, "x", NULL, NULL);
+    mod = ly_ctx_load_module(ctx, "x", NULL);
+    ly_ctx_remove_module(mod, NULL);
 
     /* add a module */
     mod = ly_ctx_load_module(ctx, "y", NULL);
@@ -541,7 +546,9 @@ test_ly_ctx_remove_module(void **state)
     assert_int_not_equal(dict_used, ctx->dict.used);
 
     /* remove the imported module (x), that should cause removing also the loaded module (y) */
-    ly_ctx_remove_module(ctx, "x", NULL, NULL);
+    mod = ly_ctx_get_module(ctx, "x", NULL);
+    assert_ptr_not_equal(mod, NULL);
+    ly_ctx_remove_module(mod, NULL);
     assert_true(setid < ctx->models.module_set_id);
     setid = ctx->models.module_set_id;
     assert_int_equal(modules_count, ctx->models.used);
@@ -556,7 +563,7 @@ test_ly_ctx_remove_module(void **state)
     assert_int_not_equal(dict_used, ctx->dict.used);
     /* ... now remove the loaded module, the imported module is supposed to be removed because it is not
      * used in any other module */
-    ly_ctx_remove_module(ctx, "y", NULL, NULL);
+    ly_ctx_remove_module(mod, NULL);
     assert_true(setid < ctx->models.module_set_id);
     setid = ctx->models.module_set_id;
     assert_int_equal(modules_count, ctx->models.used);
@@ -572,7 +579,7 @@ test_ly_ctx_remove_module(void **state)
     /* and mark even the imported module 'x' as implemented ... */
     assert_int_equal(lys_set_implemented(mod->imp[0].module), EXIT_SUCCESS);
     /* ... now remove the loaded module, the imported module is supposed to be kept because it is implemented */
-    ly_ctx_remove_module(ctx, "y", NULL, NULL);
+    ly_ctx_remove_module(mod, NULL);
     assert_true(setid < ctx->models.module_set_id);
     setid = ctx->models.module_set_id;
     assert_int_equal(modules_count + 1, ctx->models.used);
@@ -592,14 +599,11 @@ test_ly_ctx_remove_module(void **state)
     assert_int_equal(modules_count + 3, ctx->models.used);
     /* ... now remove the first loaded module, the imported module is supposed to be kept because it is used
      * by the second loaded module */
-    ly_ctx_remove_module(ctx, "y", NULL, NULL);
+    ly_ctx_remove_module(mod, NULL);
     assert_true(setid < ctx->models.module_set_id);
     setid = ctx->models.module_set_id;
     assert_int_equal(modules_count + 2, ctx->models.used);
     assert_int_not_equal(dict_used, ctx->dict.used);
-
-    /* cleanup */
-    ly_ctx_destroy(ctx, NULL);
 }
 
 static void
@@ -619,7 +623,6 @@ test_ly_ctx_remove_module2(void **state)
                     "  feature y { if-feature x:x; }"
                     "  identity y { base x:basex; }"
                     "  leaf y { type leafref { path /x:x; } } }";
-    struct ly_ctx *ctx;
     const struct lys_module *mod;
     struct lys_node_leaf *leaf;
 
@@ -637,7 +640,9 @@ test_ly_ctx_remove_module2(void **state)
     assert_true(leaf->backlinks && leaf->backlinks->number);
 
     /* remove y ... */
-    assert_int_equal(ly_ctx_remove_module(ctx, "y", NULL, NULL), 0);
+    mod = ly_ctx_get_module(ctx, "y", NULL);
+    assert_ptr_not_equal(mod, NULL);
+    assert_int_equal(ly_ctx_remove_module(mod, NULL), 0);
 
     /* ... make sure that x is still present ... */
     mod = ly_ctx_get_module(ctx, "x", NULL);
@@ -648,10 +653,95 @@ test_ly_ctx_remove_module2(void **state)
     assert_true(!mod->features[0].depfeatures || !mod->features[0].depfeatures->number);
     assert_true(!mod->ident[0].der || !mod->ident[0].der->number);
     assert_true(!leaf->backlinks || !leaf->backlinks->number);
-
-    /* cleanup */
-    ly_ctx_destroy(ctx, NULL);
 }
+
+static void
+test_lys_set_enabled(void **state)
+{
+    (void) state; /* unused */
+    const struct lys_module *mod;
+
+    ctx = ly_ctx_new(NULL);
+    assert_ptr_not_equal(ctx, NULL);
+
+    /* test failures - invalid input */
+    assert_int_not_equal(lys_set_enabled(NULL), 0);
+
+    /* test success - enabled module */
+    mod = ly_ctx_get_module(ctx, "ietf-yang-library", NULL);
+    assert_ptr_not_equal(mod, NULL);
+    assert_int_equal(lys_set_enabled(mod), 0);
+}
+
+/* include also some test for lys_set_enabled() */
+static void
+test_lys_set_disabled(void **state)
+{
+    (void) state; /* unused */
+    const struct lys_module *mod, *modx, *mody;
+    const char *yang_x = "module x {"
+                    "  namespace uri:x;"
+                    "  prefix x;"
+                    "  container x { presence yes; }}";
+    const char *yang_y = "module y {"
+                    "  namespace uri:y;"
+                    "  prefix y;"
+                    "  import x { prefix x;}"
+                    "  augment /x:x {"
+                    "    leaf y { type string;}}}";
+
+    ctx = ly_ctx_new(NULL);
+    assert_ptr_not_equal(ctx, NULL);
+
+    /* test failures - invalid input */
+    assert_int_not_equal(lys_set_disabled(NULL), 0);
+
+    /* test failures - internal module */
+    mod = ly_ctx_get_module(ctx, "ietf-yang-library", NULL);
+    assert_ptr_not_equal(mod, NULL);
+    assert_int_not_equal(lys_set_disabled(mod), 0);
+
+    /* test success - disabling y extending x */
+    modx = lys_parse_mem(ctx, yang_x, LYS_IN_YANG);
+    assert_ptr_not_equal(modx, NULL);
+    mody = lys_parse_mem(ctx, yang_y, LYS_IN_YANG);
+    assert_ptr_not_equal(mody, NULL);
+
+    /* all the modules are enabled ... */
+    assert_int_equal(mody->disabled, 0);
+    assert_int_equal(modx->disabled, 0);
+    /* ... and the y's augment is applied */
+    assert_ptr_not_equal(modx->data->child, NULL);
+
+    /* by disabling y ... */
+    assert_int_equal(lys_set_disabled(mody), 0);
+    /* ... y is disabled while x stays enabled (it is implemented) ...*/
+    assert_int_equal(mody->disabled, 1);
+    assert_int_equal(modx->disabled, 0);
+    /* ... and y's augment disappeared from x */
+    assert_ptr_equal(modx->data->child, NULL);
+
+    /* by enabling it, everything goes back */
+    assert_int_equal(lys_set_enabled(mody), 0);
+    assert_int_equal(mody->disabled, 0);
+    assert_int_equal(modx->disabled, 0);
+    assert_ptr_not_equal(modx->data->child, NULL);
+
+    /* by disabling x ... */
+    assert_int_equal(lys_set_disabled(modx), 0);
+    /* ... both x and y are disabled (y depends on x) ...*/
+    assert_int_equal(mody->disabled, 1);
+    assert_int_equal(modx->disabled, 1);
+    /* ... and y's augment disappeared from x */
+    assert_ptr_equal(modx->data->child, NULL);
+
+    /* by enabling it, everything goes back */
+    assert_int_equal(lys_set_enabled(modx), 0);
+    assert_int_equal(mody->disabled, 0);
+    assert_int_equal(modx->disabled, 0);
+    assert_ptr_not_equal(modx->data->child, NULL);
+}
+
 
 static void
 test_ly_ctx_get_module_by_ns(void **state)
@@ -1032,8 +1122,10 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_module, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_module_older, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_load_module, setup_f, teardown_f),
-        cmocka_unit_test(test_ly_ctx_remove_module),
-        cmocka_unit_test(test_ly_ctx_remove_module2),
+        cmocka_unit_test_teardown(test_ly_ctx_remove_module, teardown_f),
+        cmocka_unit_test_teardown(test_ly_ctx_remove_module2, teardown_f),
+        cmocka_unit_test_teardown(test_lys_set_enabled, teardown_f),
+        cmocka_unit_test_teardown(test_lys_set_disabled, teardown_f),
         cmocka_unit_test(test_ly_ctx_clean),
         cmocka_unit_test(test_ly_ctx_clean2),
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_module_by_ns, setup_f, teardown_f),

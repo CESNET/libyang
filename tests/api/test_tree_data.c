@@ -46,17 +46,24 @@ const char *lys_module_a = \
 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>           \
 <module name=\"a\"                                    \
         xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"   \
+        xmlns:md=\"urn:ietf:params:xml:ns:yang:ietf-yang-metadata\"\
         xmlns:a=\"urn:a\">                            \
   <namespace uri=\"urn:a\"/>                          \
   <prefix value=\"a_mod\"/>                           \
   <include module=\"asub\"/>                          \
   <include module=\"atop\"/>                          \
+  <import module=\"ietf-yang-metadata\">              \
+    <prefix value=\"md\"/>                            \
+  </import>                                           \
   <feature name=\"foo\"/>                             \
   <grouping name=\"gg\">                              \
     <leaf name=\"bar-gggg\">                          \
       <type name=\"string\"/>                         \
     </leaf>                                           \
   </grouping>                                         \
+  <md:annotation name=\"test\">                       \
+    <type name=\"string\"/>                           \
+  </md:annotation>                                    \
   <container name=\"x\">                              \
     <leaf name=\"bar-leaf\">                          \
       <if-feature name=\"bar\"/>                      \
@@ -235,25 +242,6 @@ setup_f(void **state)
     rc = generic_init(config_file, lys_module_a, yang_folder);
 
     if (rc) {
-        return -1;
-    }
-
-    return 0;
-}
-
-static int
-setup_leafrefs(void **state)
-{
-    (void) state; /* unused */
-    char *yang_folder = TESTS_DIR"/data/files";
-    int rc;
-
-    rc = generic_init(NULL, NULL, yang_folder);
-    if (rc) {
-        return -1;
-    }
-
-    if (!ly_ctx_load_module(ctx, "leafrefs", NULL)) {
         return -1;
     }
 
@@ -636,6 +624,40 @@ test_lyd_new_path(void **state)
     assert_string_equal(node->next->schema->name, "rpc-container");
 
     lyd_free(root);
+
+    root = lyd_new_path(NULL, ctx, "/a:l", NULL, 0, 0);
+    assert_non_null(root);
+    assert_string_equal(root->schema->name, "l");
+
+    node = lyd_new_path(root, NULL, "/a:l[key1='11'][key2='22']/value", "val", 0, 0);
+    assert_non_null(node);
+    assert_ptr_not_equal(root->prev, root);
+    assert_string_equal(node->schema->name, "l");
+    assert_string_equal(node->child->schema->name, "key1");
+
+    node = lyd_new_path(root, NULL, "/a:l[1]/key1", "1", 0, 0);
+    assert_non_null(node);
+    assert_string_equal(node->schema->name, "key1");
+
+    node = lyd_new_path(root, NULL, "/a:l[1]/key2", "2", 0, 0);
+    assert_non_null(node);
+    assert_string_equal(node->schema->name, "key2");
+
+    node = lyd_new_path(root, NULL, "/a:l[1]/value", "vall", 0, 0);
+    assert_non_null(node);
+    assert_string_equal(node->schema->name, "value");
+
+    node = lyd_new_path(root, NULL, "/a:l[2]/value", "vall", 0, 0);
+    assert_null(node);
+
+    node = lyd_new_path(root, NULL, "/a:l[3]/value", "vall", 0, 0);
+    assert_non_null(node);
+    assert_string_equal(node->schema->name, "l");
+
+    node = lyd_new_path(root, NULL, "/a:l[0]", NULL, 0, 0);
+    assert_null(node);
+
+    lyd_free_withsiblings(root);
 }
 
 static void
@@ -785,58 +807,6 @@ test_lyd_insert_after(void **state)
 }
 
 static void
-test_lyd_replace(void **state)
-{
-    (void) state; /* unused */
-    struct lyd_node *data1, *data2, *after;
-    const char *yang = "module test {"
-                    "  namespace \"urn:test\";"
-                    "  prefix t;"
-                    "  leaf-list ll { type string; }}";
-    const char *xml = "<ll xmlns=\"urn:test\">a</ll>"
-                    "<ll xmlns=\"urn:test\">b</ll>";
-
-    assert_ptr_not_equal(lys_parse_mem(ctx, yang, LYS_IN_YANG), NULL);
-
-    /* we have "a, b" */
-    data1 = lyd_parse_mem(ctx, xml, LYD_XML, LYD_OPT_CONFIG);
-    assert_ptr_not_equal(data1, NULL);
-    assert_ptr_not_equal(data1->next, NULL);
-    /* remember what is after b (some default node) */
-    after = data1->next->next;
-
-    data2 = lyd_new_path(NULL, ctx, "/test:ll[.=\"x\"]", NULL, 0, 0);
-    assert_ptr_not_equal(data2, NULL);
-
-    assert_int_equal(lyd_replace(data1, data2, 1), 0);
-    data1 = data2;
-
-    /* now it should be "x, b" */
-    assert_string_equal(((struct lyd_node_leaf_list *)data1)->value_str, "x");
-    assert_ptr_not_equal(data1->next, NULL);
-    assert_string_equal(((struct lyd_node_leaf_list *)data1->next)->value_str, "b");
-    assert_ptr_equal(data1->next->next, after);
-
-    data2 = lyd_new_path(NULL, ctx, "/test:ll[.=\"y\"]", NULL, 0, 0);
-    assert_ptr_not_equal(data2, NULL);
-    assert_int_equal(lyd_insert_after(data2, lyd_new_path(NULL, ctx, "/test:ll[.=\"z\"]", NULL, 0, 0)), 0);
-    assert_ptr_not_equal(data2->next, NULL);
-    assert_string_equal(((struct lyd_node_leaf_list *)data2->next)->value_str, "z");
-
-    /* so now replacing "x" by "y,z" and we should get "y,z,b" */
-    assert_int_equal(lyd_replace(data1, data2, 1), 0);
-    data1 = data2;
-    assert_string_equal(((struct lyd_node_leaf_list *)data1)->value_str, "y");
-    assert_ptr_not_equal(data1->next, NULL);
-    assert_string_equal(((struct lyd_node_leaf_list *)data1->next)->value_str, "z");
-    assert_ptr_not_equal(data1->next->next, NULL);
-    assert_string_equal(((struct lyd_node_leaf_list *)data1->next->next)->value_str, "b");
-    assert_ptr_equal(data1->next->next->next, after);
-
-    lyd_free_withsiblings(data1);
-}
-
-static void
 test_lyd_schema_sort(void **state)
 {
     (void) state; /* unused */
@@ -935,37 +905,6 @@ test_lyd_find_instance(void **state)
     assert_string_equal("test", result->value_str);
 
     ly_set_free(set);
-}
-
-static void
-test_lyd_validate_leafref(void **state)
-{
-    (void) state; /* unused */
-    struct lyd_node *root = NULL, *list;
-    struct lyd_node_leaf_list *lr;
-    int rc;
-
-    root = lyd_new_path(NULL, ctx, "/leafrefs:lrtests/link", "jedna", 0, 0);
-    assert_ptr_not_equal(root, NULL);
-    assert_ptr_not_equal(root->child, NULL);
-
-    lr = (struct lyd_node_leaf_list *)root->child;
-    assert_ptr_equal(lr->value.leafref, NULL);
-
-    rc = lyd_validate_leafref(lr);
-    assert_int_equal(rc, EXIT_FAILURE);
-    assert_ptr_equal(lr->value.leafref, NULL);
-
-    list = lyd_new_path(root, ctx, "/leafrefs:lrtests/target[id='1']/name", "jedna", 0, 0);
-    assert_ptr_not_equal(list, NULL);
-    assert_ptr_not_equal(list->child, NULL);
-    assert_ptr_equal(list->parent, root);
-
-    rc = lyd_validate_leafref(lr);
-    assert_int_equal(rc, EXIT_SUCCESS);
-    assert_ptr_equal(lr->value.leafref, list->child->next);
-
-    lyd_free_withsiblings(root);
 }
 
 static void
@@ -1565,6 +1504,23 @@ test_lyd_path(void **state)
 }
 
 static void
+test_lyd_qualified_path(void **state)
+{
+    (void) state; /* unused */
+    char *str;
+
+    str = lyd_qualified_path(root);
+    assert_ptr_not_equal(str, NULL);
+    assert_string_equal(str, "/a:x");
+    free(str);
+
+    str = lyd_qualified_path(root->child);
+    assert_ptr_not_equal(str, NULL);
+    assert_string_equal(str, "/a:x/a:bubba");
+    free(str);
+}
+
+static void
 test_lyd_leaf_type(void **state)
 {
     struct ly_ctx *ctx = (struct ly_ctx *)*state;
@@ -1582,26 +1538,24 @@ test_lyd_leaf_type(void **state)
 "} }";
     const char *xml1 = "<x xmlns=\"urn:x\"><str>http</str><e>ftp</e><u>http</u></x>";
     const char *xml2 = "<x xmlns=\"urn:x\"><str>http</str><e>ftp</e><u>ftp</u></x>";
-    const char *xml3 = "<x xmlns=\"urn:x\"><str>http</str><e>ftp</e><u>ssh</u></x>";
     struct lyd_node *data;
 
     assert_ptr_not_equal(lys_parse_mem(ctx, yang, LYS_IN_YANG), 0);
 
     data = lyd_parse_mem(ctx, xml1, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(data, NULL);
-    assert_int_equal(lyd_leaf_type((struct lyd_node_leaf_list *)data->child->prev, 1)->base, LY_TYPE_STRING);
+    assert_int_equal(lyd_leaf_type((struct lyd_node_leaf_list *)data->child->prev)->base, LY_TYPE_STRING);
     lyd_free_withsiblings(data);
 
     data = lyd_parse_mem(ctx, xml2, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(data, NULL);
-    assert_int_equal(lyd_leaf_type((struct lyd_node_leaf_list *)data->child->prev, 1)->base, LY_TYPE_ENUM);
+    assert_int_equal(lyd_leaf_type((struct lyd_node_leaf_list *)data->child->prev)->base, LY_TYPE_ENUM);
     lyd_free_withsiblings(data);
 
-    /* Use trusted flag to avoid getting error on parsing since 'ssh' is invalid value */
-    data = lyd_parse_mem(ctx, xml3, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_TRUSTED);
+    data = lyd_parse_mem(ctx, xml2, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(data, NULL);
-    assert_int_equal(lyd_leaf_type((struct lyd_node_leaf_list *)data->child->prev, 1), NULL);
-    assert_string_equal(ly_errmsg(), "Invalid value \"ssh\" in \"u\" element.");
+    lyd_change_leaf((struct lyd_node_leaf_list *)data->child->prev, "ssh");
+    assert_int_equal(lyd_leaf_type((struct lyd_node_leaf_list *)data->child->prev), NULL);
     lyd_free_withsiblings(data);
 }
 
@@ -1622,11 +1576,9 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_lyd_insert_sibling, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_insert_before, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_insert_after, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_lyd_replace, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_schema_sort, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_find_xpath, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_find_instance, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_lyd_validate_leafref, setup_leafrefs, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_validate, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_unlink, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_free, setup_f, teardown_f),
@@ -1646,6 +1598,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_lyd_print_clb_xml_format, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_print_clb_json, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_path, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_lyd_qualified_path, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_leaf_type, setup_f2, teardown_f2),
     };
 

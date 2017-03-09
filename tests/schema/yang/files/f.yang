@@ -37,9 +37,11 @@ module f {
         type tdef4;
       }
     }
+
     leaf leaf2 {
       type tdef2;
     }
+
     list list1 {
       key "key1";
       typedef tdef5 {
@@ -50,16 +52,23 @@ module f {
       leaf key1 {
         type string;
       }
+
       container cont2 {
         leaf leaf5 {
           type tdef5;
         }
+
         uses grp2;
       }
     }
+
     leaf leaf3 {
       type tdef3;
     }
+  }
+
+  leaf refleaf {
+    type empty;
   }
 
   rpc rpc1 {
@@ -77,10 +86,12 @@ module f {
       leaf leaf6 {
         type tdef6;
       }
+
       leaf leaf7 {
         type tdef7;
       }
     }
+
     output {
       typedef tdef8 {
         type leafref {
@@ -102,9 +113,5 @@ module f {
     leaf leaf9 {
       type tdef9;
     }
-  }
-
-  leaf refleaf {
-    type empty;
   }
 }

@@ -23,10 +23,10 @@
     </type>
   </leaf>
   <leaf name="d2_leaf2">
-    <must condition="/d1_pref:d1_leaf &lt; 6"/>
     <type name="identityref">
       <base name="d1_pref:d1_ident"/>
     </type>
+    <must condition="/d1_pref:d1_leaf &lt; 6"/>
   </leaf>
   <uses name="d1_pref:d1_group">
     <when condition="/d1_pref:d1_leaf = 5"/>

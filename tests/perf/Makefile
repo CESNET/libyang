@@ -14,7 +14,7 @@ validation: validation.c
 validation_xml: validation_xml.c
 	$(CC) $(CFLAGS) -lxml2 -lxslt $< -o $@
 
-sizes: sizes.c
+sizes: sizes.c ../../src/tree_schema.h ../../src/tree_data.h
 	$(CC) $(CFLAGS) $< -o $@
 
 test: addloop validation validation_xml

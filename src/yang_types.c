@@ -187,25 +187,26 @@ struct lys_tpdf ly_type_union = {
     .type = {.base = LY_TYPE_UNION}
 };
 
-struct ly_types ly_types[LY_DATA_TYPE_COUNT] = {
-    {LY_TYPE_DER, NULL},
-    {LY_TYPE_BINARY, &ly_type_binary},
-    {LY_TYPE_BITS, &ly_type_bits},
-    {LY_TYPE_BOOL, &ly_type_bool},
-    {LY_TYPE_DEC64, &ly_type_dec64},
-    {LY_TYPE_EMPTY, &ly_type_empty},
-    {LY_TYPE_ENUM, &ly_type_enum},
-    {LY_TYPE_IDENT, &ly_type_ident},
-    {LY_TYPE_INST, &ly_type_inst},
-    {LY_TYPE_INT8, &ly_type_int8},
-    {LY_TYPE_INT16, &ly_type_int16},
-    {LY_TYPE_INT32, &ly_type_int32},
-    {LY_TYPE_INT64, &ly_type_int64},
-    {LY_TYPE_LEAFREF, &ly_type_leafref},
-    {LY_TYPE_STRING, &ly_type_string},
-    {LY_TYPE_UINT8, &ly_type_uint8},
-    {LY_TYPE_UINT16, &ly_type_uint16},
-    {LY_TYPE_UINT32, &ly_type_uint32},
-    {LY_TYPE_UINT64, &ly_type_uint64},
-    {LY_TYPE_UNION, &ly_type_union}
+struct lys_tpdf *ly_types[LY_DATA_TYPE_COUNT] = {
+    [LY_TYPE_DER] = NULL,
+    [LY_TYPE_BINARY] = &ly_type_binary,
+    [LY_TYPE_BITS] = &ly_type_bits,
+    [LY_TYPE_BOOL] = &ly_type_bool,
+    [LY_TYPE_DEC64] = &ly_type_dec64,
+    [LY_TYPE_EMPTY] = &ly_type_empty,
+    [LY_TYPE_ENUM] = &ly_type_enum,
+    [LY_TYPE_IDENT] = &ly_type_ident,
+    [LY_TYPE_INST] = &ly_type_inst,
+    [LY_TYPE_INT8] = &ly_type_int8,
+    [LY_TYPE_INT16] = &ly_type_int16,
+    [LY_TYPE_INT32] = &ly_type_int32,
+    [LY_TYPE_INT64] = &ly_type_int64,
+    [LY_TYPE_LEAFREF] = &ly_type_leafref,
+    [LY_TYPE_STRING] = &ly_type_string,
+    [LY_TYPE_UINT8] = &ly_type_uint8,
+    [LY_TYPE_UINT16] = &ly_type_uint16,
+    [LY_TYPE_UINT32] = &ly_type_uint32,
+    [LY_TYPE_UINT64] = &ly_type_uint64,
+    [LY_TYPE_UNION] = &ly_type_union
 };
+

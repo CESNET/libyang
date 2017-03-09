@@ -241,6 +241,12 @@ lyxml_dup_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, struct lyxml_elem *p
     return result;
 }
 
+API struct lyxml_elem *
+lyxml_dup(struct ly_ctx *ctx, struct lyxml_elem *root)
+{
+    return lyxml_dup_elem(ctx, root, NULL, 1);
+}
+
 void
 lyxml_unlink_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns)
 {
@@ -594,7 +600,7 @@ parse_text(const char *data, char delim, unsigned int *len)
 
 loop:
 
-        if (o > BUFSIZE - 3) {
+        if (o > BUFSIZE - 4) {
             /* add buffer into the result */
             if (result) {
                 size = size + o;
@@ -839,7 +845,7 @@ error:
 
 /* logs directly */
 struct lyxml_elem *
-lyxml_parse_elem(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml_elem *parent)
+lyxml_parse_elem(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml_elem *parent, int options)
 {
     const char *c = data, *start, *e;
     const char *lws;    /* leading white space for handling mixed content */
@@ -1027,6 +1033,10 @@ process:
                 }
                 if (elem->content) {
                     /* we have a mixed content */
+                    if (options & LYXML_PARSE_NOMIXEDCONTENT) {
+                        LOGVAL(LYE_XML_INVAL, LY_VLOG_XML, elem, "XML element with mixed content");
+                        goto error;
+                    }
                     child = calloc(1, sizeof *child);
                     if (!child) {
                         LOGMEM;
@@ -1037,7 +1047,7 @@ process:
                     lyxml_add_child(ctx, elem, child);
                     elem->flags |= LYXML_ELEM_MIXED;
                 }
-                child = lyxml_parse_elem(ctx, c, &size, elem);
+                child = lyxml_parse_elem(ctx, c, &size, elem, options);
                 if (!child) {
                     goto error;
                 }
@@ -1061,6 +1071,10 @@ store_content:
 
                 if (elem->child) {
                     /* we have a mixed content */
+                    if (options & LYXML_PARSE_NOMIXEDCONTENT) {
+                        LOGVAL(LYE_XML_INVAL, LY_VLOG_XML, elem, "XML element with mixed content");
+                        goto error;
+                    }
                     child = calloc(1, sizeof *child);
                     if (!child) {
                         LOGMEM;
@@ -1169,7 +1183,7 @@ repeat:
         }
     }
 
-    root = lyxml_parse_elem(ctx, c, &len, NULL);
+    root = lyxml_parse_elem(ctx, c, &len, NULL, options);
     if (!root) {
         if (first) {
             LY_TREE_FOR_SAFE(first, next, root) {
@@ -1205,7 +1219,7 @@ API struct lyxml_elem *
 lyxml_parse_path(struct ly_ctx *ctx, const char *filename, int options)
 {
     struct lyxml_elem *elem = NULL;
-    struct stat sb;
+    size_t length;
     int fd;
     char *addr;
 
@@ -1219,22 +1233,17 @@ lyxml_parse_path(struct ly_ctx *ctx, const char *filename, int options)
         LOGERR(LY_EINVAL,"Opening file \"%s\" failed.", filename);
         return NULL;
     }
-    if (fstat(fd, &sb) == -1) {
-        LOGERR(LY_EINVAL, "Unable to get file \"%s\" information.\n", filename);
-        goto error;
-    }
-    if (!S_ISREG(sb.st_mode)) {
-        LOGERR(LY_EINVAL, "%s: Invalid parameter, input file is not a regular file", __func__);
-        goto error;
-    }
-    addr = mmap(NULL, sb.st_size + 2, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+    addr = lyp_mmap(fd, 0, &length);
     if (addr == MAP_FAILED) {
-        LOGERR(LY_EMEM,"Map file into memory failed (%s()).", __func__);
+        LOGERR(LY_ESYS, "Mapping file descriptor into memory failed (%s()).", __func__);
+        goto error;
+    } else if (!addr) {
+        /* empty XML file */
         goto error;
     }
 
     elem = lyxml_parse_mem(ctx, addr, options);
-    munmap(addr, sb.st_size +2);
+    lyp_munmap(addr, length);
     close(fd);
 
     return elem;

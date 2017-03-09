@@ -28,6 +28,7 @@
 #include "common.h"
 #include "tree_internal.h"
 #include "xpath.h"
+#include "context.h"
 #include "libyang.h"
 
 /* libyang errno */
@@ -290,6 +291,8 @@ strnodetype(LYS_NODE type)
         return "action";
     case LYS_ANYDATA:
         return "anydata";
+    case LYS_EXT:
+        return "extension instance";
     }
 
     return NULL;
@@ -299,6 +302,10 @@ const char *
 transform_module_name2import_prefix(const struct lys_module *module, const char *module_name)
 {
     uint16_t i;
+
+    if (!module_name) {
+        return NULL;
+    }
 
     if (!strcmp(lys_main_module(module)->name, module_name)) {
         /* the same for module and submodule */
@@ -321,7 +328,7 @@ _transform_json2xml(const struct lys_module *module, const char *expr, int schem
     const char *cur_expr, *end, *prefix, *ptr;
     char *out, *name;
     size_t out_size, out_used, name_len;
-    const struct lys_module *mod;
+    const struct lys_module *mod = NULL;
     uint32_t i, j;
     struct lyxp_expr *exp;
 
@@ -521,7 +528,7 @@ transform_json2schema(const struct lys_module *module, const char *expr)
 }
 
 const char *
-transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml, int log)
+transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml, int use_ctx_data_clb, int log)
 {
     const char *end, *cur_expr, *ptr;
     char *out, *prefix;
@@ -577,6 +584,13 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
                 goto error;
             }
             mod = ly_ctx_get_module_by_ns(ctx, ns->value, NULL);
+            if (use_ctx_data_clb && ctx->data_clb) {
+                if (!mod) {
+                    mod = ctx->data_clb(ctx, NULL, ns->value, 0, ctx->data_clb_data);
+                } else if (!mod->implemented) {
+                    mod = ctx->data_clb(ctx, mod->name, mod->ns, LY_MODCLB_NOT_IMPLEMENTED, ctx->data_clb_data);
+                }
+            }
             if (!mod) {
                 if (log) {
                     LOGVAL(LYE_XML_INVAL, LY_VLOG_XML, xml, "module namespace");
@@ -634,7 +648,9 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
                 out_size += strlen(mod->name) - pref_len;
                 out = ly_realloc(out, out_size);
                 if (!out) {
-                    LOGMEM;
+                    if (log) {
+                        LOGMEM;
+                    }
                     goto error;
                 }
 
@@ -847,6 +863,38 @@ transform_iffeat_schema2json(const struct lys_module *module, const char *expr)
     /* unreachable */
     LOGINT;
     return NULL;
+}
+
+int
+ly_new_node_validity(const struct lys_node *schema)
+{
+    int validity;
+
+    validity = LYD_VAL_OK;
+    switch (schema->nodetype) {
+    case LYS_LEAF:
+    case LYS_LEAFLIST:
+        if (((struct lys_node_leaf *)schema)->type.base == LY_TYPE_LEAFREF) {
+            validity |= LYD_VAL_LEAFREF;
+        }
+        validity |= LYD_VAL_MAND;
+        break;
+    case LYS_LIST:
+        validity |= LYD_VAL_UNIQUE;
+        /* fallthrough */
+    case LYS_CONTAINER:
+    case LYS_NOTIF:
+    case LYS_RPC:
+    case LYS_ACTION:
+    case LYS_ANYXML:
+    case LYS_ANYDATA:
+        validity |= LYD_VAL_MAND;
+        break;
+    default:
+        break;
+    }
+
+    return validity;
 }
 
 void *

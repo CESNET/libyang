@@ -118,6 +118,9 @@ struct lyxml_elem {
                                         trees from a single source (regular file terminated by EOF or memory chunk
                                         terminated by NULL byte). In such a case, the returned XML element has other
                                         siblings representing the other XML trees from the source. */
+#define LYXML_PARSE_NOMIXEDCONTENT 0x02 /**< By default, the parser allows elements with mixed content (text content
+                                        mixed with standard XML children). This option cases to handle such elements
+                                        as invalid input (#LYVE_XML_INVAL). */
 
 /**
  * @}
@@ -235,6 +238,20 @@ int lyxml_print_mem(char **strp, const struct lyxml_elem *elem, int options);
  * @return number of printed characters.
  */
 int lyxml_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, const struct lyxml_elem *elem, int options);
+
+/**
+ * @brief Duplicate the XML tree into the different content.
+ *
+ * Date parser requires to have the input XML tree in the same context as the resulting data tree. Therefore,
+ * if you need to parse a single XML tree into a different contexts, you have to duplicate the source XML
+ * tree into the required context first.
+ *
+ * @param[in] ctx Target context for the result.
+ * @param[in] root Root node of the XML tree to duplicate. If an internal node is provided,
+ *            the parents are not duplicated and only the specified subtree is duplicated.
+ * @result Pointer to the duplicated tree or NULL on error.
+ */
+struct lyxml_elem *lyxml_dup(struct ly_ctx *ctx, struct lyxml_elem *root);
 
 /**
  * @brief Free (and unlink from the XML tree) the specified element with all

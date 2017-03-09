@@ -159,11 +159,11 @@ info_print_if_feature(struct lyout *out, const struct lys_module *module,
     ly_print(out, "%-*s", INDENT_LEN, "If-feats: ");
 
     if (iffeature_size) {
-        ly_print_iffeature(out, module, &iffeature[0]);
+        ly_print_iffeature(out, module, &iffeature[0], 1);
         ly_print(out, "\n");
         for (i = 1; i < iffeature_size; ++i) {
             ly_print(out, "%*s", INDENT_LEN, "");
-            ly_print_iffeature(out, module, &iffeature[i]);
+            ly_print_iffeature(out, module, &iffeature[i], 1);
             ly_print(out, "\n");
         }
     } else {
@@ -433,22 +433,6 @@ info_print_unique(struct lyout *out, const struct lys_unique *unique, uint8_t un
             for (j = (!i ? 1 : 0); j < unique[i].expr_size; ++j) {
                 ly_print(out, "%*s%s\n", INDENT_LEN, "", unique[i].expr[j]);
             }
-        }
-    } else {
-        ly_print(out, "\n");
-    }
-}
-
-static void
-info_print_nacmext(struct lyout *out, uint8_t nacm)
-{
-    ly_print(out, "%-*s", INDENT_LEN, "NACM: ");
-
-    if (nacm) {
-        if (nacm & LYS_NACM_DENYW) {
-            ly_print(out, "default-deny-write\n");
-        } else if (nacm & LYS_NACM_DENYA) {
-            ly_print(out, "default-deny-all\n");
         }
     } else {
         ly_print(out, "\n");
@@ -804,7 +788,6 @@ info_print_container(struct lyout *out, const struct lys_node *node)
     info_print_when(out, cont->when);
     info_print_must(out, cont->must, cont->must_size);
     info_print_typedef(out, cont->tpdf, cont->tpdf_size);
-    info_print_nacmext(out, cont->nacm);
 
     info_print_snode(out, (struct lys_node *)cont, cont->child, "Children:");
 }
@@ -827,7 +810,6 @@ info_print_choice(struct lyout *out, const struct lys_node *node)
     }
     info_print_if_feature(out, choice->module, choice->iffeature, choice->iffeature_size);
     info_print_when(out, choice->when);
-    info_print_nacmext(out, choice->nacm);
 
     info_print_snode(out, (struct lys_node *)choice, choice->child, "Cases:");
 }
@@ -848,7 +830,6 @@ info_print_leaf(struct lyout *out, const struct lys_node *node)
     info_print_if_feature(out, leaf->module, leaf->iffeature, leaf->iffeature_size);
     info_print_when(out, leaf->when);
     info_print_must(out, leaf->must, leaf->must_size);
-    info_print_nacmext(out, leaf->nacm);
 }
 
 static void
@@ -867,7 +848,6 @@ info_print_leaflist(struct lyout *out, const struct lys_node *node)
     info_print_if_feature(out, llist->module, llist->iffeature, llist->iffeature_size);
     info_print_when(out, llist->when);
     info_print_must(out, llist->must, llist->must_size);
-    info_print_nacmext(out, llist->nacm);
 }
 
 static void
@@ -887,7 +867,6 @@ info_print_list(struct lyout *out, const struct lys_node *node)
     info_print_text(out, list->keys_str, "Keys: ");
     info_print_unique(out, list->unique, list->unique_size);
     info_print_typedef(out, list->tpdf, list->tpdf_size);
-    info_print_nacmext(out, list->nacm);
 
     info_print_snode(out, (struct lys_node *)list, list->child, "Children:");
 }
@@ -905,7 +884,6 @@ info_print_anydata(struct lyout *out, const struct lys_node *node)
     info_print_if_feature(out, any->module, any->iffeature, any->iffeature_size);
     info_print_when(out, any->when);
     info_print_must(out, any->must, any->must_size);
-    info_print_nacmext(out, any->nacm);
 }
 
 static void
@@ -919,7 +897,6 @@ info_print_grouping(struct lyout *out, const struct lys_node *node)
     info_print_text(out, group->ref, "Reference: ");
     info_print_flags(out, group->flags, LYS_STATUS_MASK, 0);
     info_print_typedef(out, group->tpdf, group->tpdf_size);
-    info_print_nacmext(out, group->nacm);
 
     info_print_snode(out, (struct lys_node *)group, group->child, "Children:");
 }
@@ -936,7 +913,6 @@ info_print_case(struct lyout *out, const struct lys_node *node)
     info_print_flags(out, cas->flags, LYS_CONFIG_MASK | LYS_STATUS_MASK, 0);
     info_print_if_feature(out, cas->module, cas->iffeature, cas->iffeature_size);
     info_print_when(out, cas->when);
-    info_print_nacmext(out, cas->nacm);
 
     info_print_snode(out, (struct lys_node *)cas, cas->child, "Children:");
 }
@@ -982,7 +958,6 @@ info_print_notif(struct lyout *out, const struct lys_node *node)
     info_print_if_feature(out, ntf->module, ntf->iffeature, ntf->iffeature_size);
     info_print_typedef(out, ntf->tpdf, ntf->tpdf_size);
     info_print_must(out, ntf->must, ntf->must_size);
-    info_print_nacmext(out, ntf->nacm);
 
     info_print_snode(out, (struct lys_node *)ntf, ntf->child, "Params:");
 }
@@ -999,7 +974,6 @@ info_print_rpc(struct lyout *out, const struct lys_node *node)
     info_print_flags(out, rpc->flags, LYS_STATUS_MASK, 0);
     info_print_if_feature(out, rpc->module, rpc->iffeature, rpc->iffeature_size);
     info_print_typedef(out, rpc->tpdf, rpc->tpdf_size);
-    info_print_nacmext(out, rpc->nacm);
 
     info_print_snode(out, (struct lys_node *)rpc, rpc->child, "Data:");
 }
@@ -1016,7 +990,6 @@ info_print_action(struct lyout *out, const struct lys_node *node)
     info_print_flags(out, act->flags, LYS_STATUS_MASK, 0);
     info_print_if_feature(out, act->module, act->iffeature, act->iffeature_size);
     info_print_typedef(out, act->tpdf, act->tpdf_size);
-    info_print_nacmext(out, act->nacm);
 
     info_print_snode(out, (struct lys_node *)act, act->child, "Data:");
 }

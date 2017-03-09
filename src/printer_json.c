@@ -67,18 +67,68 @@ static void
 json_print_attrs(struct lyout *out, int level, const struct lyd_node *node, const struct lys_module *wdmod)
 {
     struct lyd_attr *attr;
+    size_t len;
+    char *p;
 
     if (wdmod) {
         ly_print(out, "%*s\"%s:default\":\"true\"", LEVEL, INDENT, wdmod->name);
         ly_print(out, "%s%s", node->attr ? "," : "", (level ? "\n" : ""));
     }
     for (attr = node->attr; attr; attr = attr->next) {
-        if (attr->module != node->schema->module) {
-            ly_print(out, "%*s\"%s:%s\":", LEVEL, INDENT, attr->module->name, attr->name);
+        if (!attr->annotation) {
+            /* skip exception for the NETCONF's attribute since JSON is not defined for NETCONF */
+            continue;
+        }
+        if (lys_main_module(attr->annotation->module) != lys_main_module(node->schema->module)) {
+            ly_print(out, "%*s\"%s:%s\":", LEVEL, INDENT, attr->annotation->module->name, attr->name);
         } else {
             ly_print(out, "%*s\"%s\":", LEVEL, INDENT, attr->name);
         }
-        json_print_string(out, attr->value ? attr->value : "");
+        /* leafref is not supported */
+        switch (attr->value_type & LY_DATA_TYPE_MASK) {
+        case LY_TYPE_BINARY:
+        case LY_TYPE_STRING:
+        case LY_TYPE_BITS:
+        case LY_TYPE_ENUM:
+        case LY_TYPE_INST:
+        case LY_TYPE_INT64:
+        case LY_TYPE_UINT64:
+        case LY_TYPE_DEC64:
+            json_print_string(out, attr->value_str);
+            break;
+
+        case LY_TYPE_INT8:
+        case LY_TYPE_INT16:
+        case LY_TYPE_INT32:
+        case LY_TYPE_UINT8:
+        case LY_TYPE_UINT16:
+        case LY_TYPE_UINT32:
+        case LY_TYPE_BOOL:
+            ly_print(out, "%s", attr->value_str[0] ? attr->value_str : "null");
+            break;
+
+        case LY_TYPE_IDENT:
+            p = strchr(attr->value_str, ':');
+            assert(p);
+            len = p - attr->value_str;
+            if (!strncmp(attr->value_str, attr->annotation->module->name, len)
+                    && !attr->annotation->module->name[len]) {
+                /* do not print the prefix, it is the default prefix for this node */
+                json_print_string(out, ++p);
+            } else {
+                json_print_string(out, attr->value_str);
+            }
+            break;
+
+        case LY_TYPE_EMPTY:
+            ly_print(out, "[null]");
+            break;
+
+        default:
+            /* error */
+            ly_print(out, "\"(!error!)\"");
+        }
+
         ly_print(out, "%s%s", attr->next ? "," : "", (level ? "\n" : ""));
     }
 }
@@ -86,11 +136,11 @@ json_print_attrs(struct lyout *out, int level, const struct lyd_node *node, cons
 static void
 json_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int onlyvalue, int toplevel, int options)
 {
-    struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
+    struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node, *iter;
+    const struct lys_type *type;
     const char *schema = NULL, *p, *mod_name;
     const struct lys_module *wdmod = NULL;
     LY_DATA_TYPE datatype;
-    const struct lys_type *type;
     size_t len;
 
     if ((node->dflt && (options & (LYP_WD_ALL_TAG | LYP_WD_IMPL_TAG))) ||
@@ -148,13 +198,22 @@ contentprint:
         break;
 
     case LY_TYPE_LEAFREF:
-        type = lyd_leaf_type(leaf, 1);
-        if (!type) {
-            /* error */
-            ly_print(out, "\"(!error!)\"");
-            break;
+        iter = (struct lyd_node_leaf_list *)leaf->value.leafref;
+        while (iter && (iter->value_type == LY_TYPE_LEAFREF)) {
+            iter = (struct lyd_node_leaf_list *)iter->value.leafref;
         }
-        datatype = type->base;
+        if (!iter) {
+            /* unresolved and invalid, but we can learn the correct type anyway */
+            type = lyd_leaf_type((struct lyd_node_leaf_list *)leaf);
+            if (!type) {
+                /* error */
+                ly_print(out, "\"(!error!)\"");
+                return;
+            }
+            datatype = type->base;
+        } else {
+            datatype = iter->value_type & LY_DATA_TYPE_MASK;
+        }
         goto contentprint;
 
     case LY_TYPE_EMPTY:
@@ -175,7 +234,7 @@ contentprint:
             ly_print(out, ",%s%*s\"@%s\":%s{%s", (level ? "\n" : ""), LEVEL, INDENT, node->schema->name,
                      (level ? " " : ""), (level ? "\n" : ""));
         }
-        json_print_attrs(out, level + 1, node, wdmod);
+        json_print_attrs(out, (level ? level + 1 : level), node, wdmod);
         ly_print(out, "%*s}", LEVEL, INDENT);
     }
 
@@ -199,7 +258,7 @@ json_print_container(struct lyout *out, int level, const struct lyd_node *node, 
     }
     if (node->attr) {
         ly_print(out, "%*s\"@\":%s{%s", LEVEL, INDENT, (level ? " " : ""), (level ? "\n" : ""));
-        json_print_attrs(out, (level? level + 1 : level), node, NULL);
+        json_print_attrs(out, (level ? level + 1 : level), node, NULL);
         ly_print(out, "%*s}", LEVEL, INDENT);
         if (node->child) {
             ly_print(out, ",%s", (level ? "\n" : ""));
@@ -254,8 +313,12 @@ json_print_leaf_list(struct lyout *out, int level, const struct lyd_node *node, 
             }
             if (list->attr) {
                 ly_print(out, "%*s\"@\":%s{%s", LEVEL, INDENT, (level ? " " : ""), (level ? "\n" : ""));
-                json_print_attrs(out, level + 1, list, NULL);
-                ly_print(out, "%*s}%s", LEVEL, INDENT, list->child ? ",\n" : "");
+                json_print_attrs(out, (level ? level + 1 : level), list, NULL);
+                if (list->child) {
+                    ly_print(out, "%*s},%s", LEVEL, INDENT, (level ? "\n" : ""));
+                } else {
+                    ly_print(out, "%*s}", LEVEL, INDENT);
+                }
             }
             json_print_nodes(out, level, list->child, 1, 0, options);
             if (level) {
@@ -404,7 +467,7 @@ json_print_anydata(struct lyout *out, int level, const struct lyd_node *node, in
         break;
     case LYD_ANYDATA_JSON:
         if (any->value.str) {
-            ly_print(out, "%*s%s\n", LEVEL, INDENT, any->value.str);
+            ly_print(out, "%*s%s%s", LEVEL, INDENT, any->value.str, (level ? "\n" : ""));
         }
         break;
     default:
@@ -416,9 +479,11 @@ json_print_anydata(struct lyout *out, int level, const struct lyd_node *node, in
     /* print attributes as sibling leaf */
     if (node->attr) {
         if (schema) {
-            ly_print(out, ",\n%*s\"@%s:%s\": {\n", LEVEL, INDENT, schema, node->schema->name);
+            ly_print(out, ",%s%*s\"@%s:%s\":%s{%s", (level ? "\n" : ""), LEVEL, INDENT, schema, node->schema->name,
+                     (level ? " " : ""), (level ? "\n" : ""));
         } else {
-            ly_print(out, ",\n%*s\"@%s\": {\n", LEVEL, INDENT, node->schema->name);
+            ly_print(out, ",%s%*s\"@%s\":%s{%s", (level ? "\n" : ""), LEVEL, INDENT, node->schema->name,
+                     (level ? " " : ""), (level ? "\n" : ""));
         }
         json_print_attrs(out, (level ? level + 1 : level), node, NULL);
         ly_print(out, "%*s}", LEVEL, INDENT);

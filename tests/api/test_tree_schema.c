@@ -40,6 +40,8 @@ const char *lys_module_a = \
         xmlns:a=\"urn:a\">                            \
   <namespace uri=\"urn:a\"/>                          \
   <prefix value=\"a_mod\"/>                           \
+  <include module=\"asub\"/>                          \
+  <include module=\"atop\"/>                          \
   <revision date=\"2015-01-01\">                      \
     <description>                                     \
       <text>version 1</text>                          \
@@ -48,8 +50,6 @@ const char *lys_module_a = \
       <text>RFC XXXX</text>                           \
     </reference>                                      \
   </revision>                                         \
-  <include module=\"asub\"/>                          \
-  <include module=\"atop\"/>                          \
   <feature name=\"foo\"/>                             \
   <grouping name=\"gg\">                              \
     <leaf name=\"bar-gggg\">                          \
@@ -171,20 +171,21 @@ const char *lys_module_a_with_typo = \
 
 char *result_tree = "\
 module: a\n\
-   +--rw top\n\
-   |  +--rw bar-sub2\n\
-   +--rw x\n\
-      +--rw bubba?      string\n";
+    +--rw top\n\
+    |  +--rw bar-sub2\n\
+    +--rw x\n\
+       +--rw bubba?      string\n";
 
 char *result_yang = "\
 module a {\n\
   namespace \"urn:a\";\n\
   prefix a_mod;\n\
 \n\
-  include \"atop\";\n\
   include \"asub\";\n\
 \n\
-  revision \"2015-01-01\" {\n\
+  include \"atop\";\n\
+\n\
+  revision 2015-01-01 {\n\
     description\n\
       \"version 1\";\n\
     reference\n\
@@ -203,17 +204,22 @@ module a {\n\
     leaf bar-leaf {\n\
       if-feature \"bar\";\n\
       type string;\n\
-    }\n\
+    }\n\n\
     uses gg {\n\
       if-feature \"bar\";\n\
-    }\n\
+    }\n\n\
     leaf baz {\n\
       if-feature \"foo\";\n\
       type string;\n\
-    }\n\
+    }\n\n\
     leaf bubba {\n\
       type string;\n\
     }\n\
+  }\n\
+\n\
+  augment \"/x\" {\n\
+    if-feature \"bar\";\n\
+    container bar-y;\n\
   }\n\
 \n\
   rpc bar-rpc {\n\
@@ -222,11 +228,6 @@ module a {\n\
 \n\
   rpc foo-rpc {\n\
     if-feature \"foo\";\n\
-  }\n\
-\n\
-  augment \"/x\" {\n\
-    if-feature \"bar\";\n\
-    container bar-y;\n\
   }\n\
 }\n";
 
@@ -237,8 +238,8 @@ char *result_yin = "\
         xmlns:a_mod=\"urn:a\">\n\
   <namespace uri=\"urn:a\"/>\n\
   <prefix value=\"a_mod\"/>\n\
-  <include module=\"atop\"/>\n\
   <include module=\"asub\"/>\n\
+  <include module=\"atop\"/>\n\
   <revision date=\"2015-01-01\">\n\
     <description>\n\
       <text>version 1</text>\n\
@@ -269,17 +270,16 @@ char *result_yin = "\
       <type name=\"string\"/>\n\
     </leaf>\n\
   </container>\n\
+  <augment target-node=\"/x\">\n\
+    <if-feature name=\"bar\"/>\n\
+    <container name=\"bar-y\"/>\n\
+  </augment>\n\
   <rpc name=\"bar-rpc\">\n\
     <if-feature name=\"bar\"/>\n\
   </rpc>\n\
   <rpc name=\"foo-rpc\">\n\
     <if-feature name=\"foo\"/>\n\
   </rpc>\n\
-  <augment target-node=\"/x\">\n\
-    <if-feature name=\"bar\"/>\n\
-    <container name=\"bar-y\">\n\
-    </container>\n\
-  </augment>\n\
 </module>\n";
 
 char *result_info ="\

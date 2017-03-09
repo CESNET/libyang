@@ -43,17 +43,29 @@ struct lyout {
     } method;
 };
 
+struct ext_substmt_info_s {
+    const char *name;
+    const char *arg;
+    int flags;
+#define SUBST_FLAG_YIN 0x1 /**< has YIN element */
+#define SUBST_FLAG_ID 0x2  /**< the value is identifier -> no quotes */
+};
+
+/* filled in printer.c */
+extern struct ext_substmt_info_s ext_substmt_info[];
+
 /**
  * @brief Generic printer, replacement for printf() / write() / etc
  */
 int ly_print(struct lyout *out, const char *format, ...);
 void ly_print_flush(struct lyout *out);
 int ly_write(struct lyout *out, const char *buf, size_t count);
-int ly_print_iffeature(struct lyout *out, const struct lys_module *module, struct lys_iffeature *expr);
+/* module_name_or_prefix: 1 - print module names for foreign if-features, 0 - print import prefixes */
+int ly_print_iffeature(struct lyout *out, const struct lys_module *module, struct lys_iffeature *expr, int module_name_or_prefix);
 
 int yang_print_model(struct lyout *out, const struct lys_module *module);
 int yin_print_model(struct lyout *out, const struct lys_module *module);
-int tree_print_model(struct lyout *out, const struct lys_module *module);
+int tree_print_model(struct lyout *out, const struct lys_module *module, int groupings);
 int info_print_model(struct lyout *out, const struct lys_module *module, const char *target_node);
 
 int json_print_data(struct lyout *out, const struct lyd_node *root, int options);

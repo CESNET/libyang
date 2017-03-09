@@ -15,6 +15,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
+#include <ctype.h>
 #include <assert.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -35,13 +36,15 @@ extern struct ly_ctx *ctx;
 void
 cmd_add_help(void)
 {
-    printf("add <path-to-model> [<other-models> ...]\n");
+    printf("add [-i] <path-to-model> [<other-models> ...]\n");
+    printf("\t-i         - make all the imported modules implemented\n");
 }
 
 void
 cmd_print_help(void)
 {
-    printf("print [-f (yang | yin | tree | info)] [-t <info-target-node>] [-o <output-file>] <model-name>[@<revision>]\n\n");
+    printf("print [-f (yang | yin | tree [--tree-print-groupings] | info [-t <info-target-node>])] [-o <output-file>]"
+           " <model-name>[@<revision>]\n\n");
     printf("\tinfo-target-node: <absolute-schema-node> | typedef[<absolute-schema-nodeid]/<typedef-name> |\n");
     printf("\t                  | identity/<identity-name> | feature/<feature-name> |\n");
     printf("\t                  | grouping/<grouping-name>(<absolute-schema-nodeid>) |\n");
@@ -54,7 +57,7 @@ void
 cmd_data_help(void)
 {
     printf("data [-(-s)trict] [-t TYPE] [-d DEFAULTS] [-o <output-file>] [-f (xml | json)] [-x <additional-tree-file-name>]\n");
-    printf("     <data-file-name> [<JSON-rpc/action-schema-nodeid>]\n");
+    printf("     <data-file-name> [<RPC/action-data-file-name>]\n");
     printf("Accepted TYPEs:\n");
     printf("\tauto       - resolve data type (one of the following) automatically (as pyang does),\n");
     printf("\t             this option is applicable only in case of XML input data.\n");
@@ -121,6 +124,16 @@ cmd_verb_help(void)
     printf("verb (error/0 | warning/1 | verbose/2 | debug/3)\n");
 }
 
+#ifndef NDEBUG
+
+void
+cmd_debug_help(void)
+{
+    printf("debug (dict | yang | yin | xpath | diff)+\n");
+}
+
+#endif
+
 LYS_INFORMAT
 get_schema_format(const char *path)
 {
@@ -145,18 +158,26 @@ get_schema_format(const char *path)
 int
 cmd_add(const char *arg)
 {
-    int path_len;
-    char *path;
-    const char *arg_ptr;
+    int path_len, ret = 1;
+    char *path, *s, *arg_ptr;
     const struct lys_module *model;
-    LYS_INFORMAT format;
+    LYS_INFORMAT format = LYS_IN_UNKNOWN;
 
     if (strlen(arg) < 5) {
         cmd_add_help();
         return 1;
     }
 
-    arg_ptr = arg + strlen("add ");
+    arg_ptr = strdup(arg + 3 /* ignore "add" */);
+
+    for (s = strstr(arg_ptr, "-i"); s ; s = strstr(s + 2, "-i")) {
+        if (s[2] == '\0' || s[2] == ' ') {
+            ly_ctx_set_allimplemented(ctx);
+            s[0] = s[1] = ' ';
+        }
+    }
+    s = arg_ptr;
+
     while (arg_ptr[0] == ' ') {
         ++arg_ptr;
     }
@@ -172,7 +193,7 @@ cmd_add(const char *arg)
         format = get_schema_format(path);
         if (format == LYS_IN_UNKNOWN) {
             free(path);
-            return 1;
+            goto cleanup;
         }
 
         model = lys_parse_path(ctx, path, format);
@@ -180,7 +201,7 @@ cmd_add(const char *arg)
 
         if (!model) {
             /* libyang printed the error messages */
-            return 1;
+            goto cleanup;
         }
 
         /* next model */
@@ -200,14 +221,24 @@ cmd_add(const char *arg)
             path = NULL;
         }
     }
+    if (format == LYS_IN_UNKNOWN) {
+        /* no schema on input */
+        cmd_add_help();
+        goto cleanup;
+    }
+    ret = 0;
 
-    return 0;
+cleanup:
+    free(s);
+    ly_ctx_unset_allimplemented(ctx);
+
+    return ret;
 }
 
 int
 cmd_print(const char *arg)
 {
-    int c, argc, option_index, ret = 1;
+    int c, argc, option_index, ret = 1, grps = 0;
     char **argv = NULL, *ptr, *target_node = NULL, *model_name, *revision;
     const char *out_path = NULL;
     const struct lys_module *module;
@@ -218,15 +249,22 @@ cmd_print(const char *arg)
         {"format", required_argument, 0, 'f'},
         {"output", required_argument, 0, 'o'},
         {"target-node", required_argument, 0, 't'},
+        {"tree-print-groupings", no_argument, 0, 'g'},
         {NULL, 0, 0, 0}
     };
+    void *rlcd;
 
     argc = 1;
     argv = malloc(2*sizeof *argv);
     *argv = strdup(arg);
     ptr = strtok(*argv, " ");
     while ((ptr = strtok(NULL, " "))) {
-        argv = realloc(argv, (argc+2)*sizeof *argv);
+        rlcd = realloc(argv, (argc+2)*sizeof *argv);
+        if (!rlcd) {
+            fprintf(stderr, "Memory allocation failed (%s:%d, %s)", __FILE__, __LINE__, strerror(errno));
+            goto cleanup;
+        }
+        argv = rlcd;
         argv[argc++] = ptr;
     }
     argv[argc] = NULL;
@@ -234,7 +272,7 @@ cmd_print(const char *arg)
     optind = 0;
     while (1) {
         option_index = 0;
-        c = getopt_long(argc, argv, "hf:o:t:", long_options, &option_index);
+        c = getopt_long(argc, argv, "hf:go:t:", long_options, &option_index);
         if (c == -1) {
             break;
         }
@@ -258,6 +296,9 @@ cmd_print(const char *arg)
                 goto cleanup;
             }
             break;
+        case 'g':
+            grps = 1;
+            break;
         case 'o':
             if (out_path) {
                 fprintf(stderr, "Output specified twice.\n");
@@ -278,6 +319,15 @@ cmd_print(const char *arg)
     if (optind == argc) {
         fprintf(stderr, "Missing the module name.\n");
         goto cleanup;
+    }
+
+    /* tree fromat with or without gropings */
+    if (grps) {
+        if (format == LYS_OUT_TREE) {
+            format = LYS_OUT_TREE_GRPS;
+        } else {
+            fprintf(stderr, "--tree-print-groupings option takes effect only in case of the tree output format");
+        }
     }
 
     /* module, revision */
@@ -326,14 +376,13 @@ cleanup:
 }
 
 static int
-parse_data(const char *filepath, int options, struct lyd_node *val_tree, const char *act_nodeid,
+parse_data(const char *filepath, int options, struct lyd_node *val_tree, const char *rpc_act_file,
            struct lyd_node **result)
 {
     size_t len;
     LYD_FORMAT informat = LYD_UNKNOWN;
     struct lyxml_elem *xml = NULL;
-    const struct lys_node *rpc_act = NULL;
-    struct lyd_node *data = NULL, *root, *next, *iter;
+    struct lyd_node *data = NULL, *root, *next, *iter, *rpc_act = NULL;
     void *lydval_arg = NULL;
 
     /* detect input format according to file suffix */
@@ -388,16 +437,16 @@ parse_data(const char *filepath, int options, struct lyd_node *val_tree, const c
             fprintf(stdout, "Parsing %s as <rpc> data.\n", filepath);
             options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPC;
         } else if (!strcmp(xml->name, "rpc-reply")) {
-            if (!act_nodeid) {
-                fprintf(stderr, "RPC reply data require additional argument (JSON schema nodeid of the RPC/action).\n");
+            if (!rpc_act_file) {
+                fprintf(stderr, "RPC/action reply data require additional argument (file with the RPC/action).\n");
                 lyxml_free(ctx, xml);
                 return EXIT_FAILURE;
             }
             fprintf(stdout, "Parsing %s as <rpc-reply> data.\n", filepath);
             options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPCREPLY;
-            rpc_act = ly_ctx_get_node(ctx, NULL, act_nodeid);
-            if (!rpc_act || !(rpc_act->nodetype & (LYS_RPC | LYS_ACTION))) {
-                fprintf(stderr, "Invalid JSON schema nodeid.\n");
+            rpc_act = lyd_parse_path(ctx, rpc_act_file, informat, LYD_OPT_RPC, val_tree);
+            if (!rpc_act) {
+                fprintf(stderr, "Failed to parse RPC/action.\n");
                 lyxml_free(ctx, xml);
                 return EXIT_FAILURE;
             }
@@ -425,13 +474,13 @@ parse_data(const char *filepath, int options, struct lyd_node *val_tree, const c
         lyxml_free(ctx, xml);
     } else {
         if (options & LYD_OPT_RPCREPLY) {
-            if (act_nodeid) {
-                fprintf(stderr, "RPC reply data require additional argument (schema nodeid of the RPC/action).\n");
+            if (!rpc_act_file) {
+                fprintf(stderr, "RPC/action reply data require additional argument (file with the RPC/action).\n");
                 return EXIT_FAILURE;
             }
-            rpc_act = ly_ctx_get_node(ctx, NULL, act_nodeid);
-            if (!rpc_act || !(rpc_act->nodetype & (LYS_RPC | LYS_ACTION))) {
-                fprintf(stderr, "Invalid JSON schema nodeid.\n");
+            rpc_act = lyd_parse_path(ctx, rpc_act_file, informat, LYD_OPT_RPC, val_tree);
+            if (!rpc_act) {
+                fprintf(stderr, "Failed to parse RPC/action.\n");
                 return EXIT_FAILURE;
             }
             data = lyd_parse_path(ctx, filepath, informat, options, rpc_act, val_tree);
@@ -446,6 +495,8 @@ parse_data(const char *filepath, int options, struct lyd_node *val_tree, const c
             data = lyd_parse_path(ctx, filepath, informat, options);
         }
     }
+    lyd_free_withsiblings(rpc_act);
+
     if (ly_errno) {
         fprintf(stderr, "Failed to parse data.\n");
         lyd_free_withsiblings(data);
@@ -470,7 +521,26 @@ parse_data(const char *filepath, int options, struct lyd_node *val_tree, const c
         /* invalidate all data - do not believe to the source */
         LY_TREE_FOR(data, root) {
             LY_TREE_DFS_BEGIN(root, next, iter) {
-                iter->validity = LYD_VAL_NOT;
+                iter->validity = LYD_VAL_OK;
+                switch (iter->schema->nodetype) {
+                case LYS_LEAFLIST:
+                case LYS_LEAF:
+                    if (((struct lys_node_leaf *)iter->schema)->type.base == LY_TYPE_LEAFREF) {
+                        iter->validity |= LYD_VAL_LEAFREF;
+                    }
+                    break;
+                case LYS_LIST:
+                    iter->validity |= LYD_VAL_UNIQUE;
+                    /* fallthrough */
+                case LYS_CONTAINER:
+                case LYS_NOTIF:
+                case LYS_RPC:
+                case LYS_ACTION:
+                    iter->validity |= LYD_VAL_MAND;
+                    break;
+                default:
+                    break;
+                }
                 LY_TREE_DFS_END(root, next, iter)
             }
         }
@@ -507,13 +577,19 @@ cmd_data(const char *arg)
         {"validation-tree", required_argument, 0, 'x'},
         {NULL, 0, 0, 0}
     };
+    void *rlcd;
 
     argc = 1;
     argv = malloc(2*sizeof *argv);
     *argv = strdup(arg);
     ptr = strtok(*argv, " ");
     while ((ptr = strtok(NULL, " "))) {
-        argv = realloc(argv, (argc+2)*sizeof *argv);
+        rlcd = realloc(argv, (argc + 2) * sizeof *argv);
+        if (!rlcd) {
+            fprintf(stderr, "Memory allocation failed (%s:%d, %s)", __FILE__, __LINE__, strerror(errno));
+            goto cleanup;
+        }
+        argv = rlcd;
         argv[argc++] = ptr;
     }
     argv[argc] = NULL;
@@ -656,6 +732,7 @@ cmd_xpath(const char *arg)
         {"expr", required_argument, 0, 'e'},
         {NULL, 0, 0, 0}
     };
+    void *rlcd;
 
     long_str = 0;
     argc = 1;
@@ -670,7 +747,12 @@ cmd_xpath(const char *arg)
                 ptr[strlen(ptr) - 1] = '\0';
             }
         } else {
-            argv = realloc(argv, (argc + 2) * sizeof *argv);
+            rlcd = realloc(argv, (argc + 2) * sizeof *argv);
+            if (!rlcd) {
+                fprintf(stderr, "Memory allocation failed (%s:%d, %s)", __FILE__, __LINE__, strerror(errno));
+                goto cleanup;
+            }
+            argv = rlcd;
             argv[argc] = ptr;
             if (ptr[0] == '"') {
                 long_str = '"';
@@ -834,13 +916,19 @@ cmd_list(const char *arg)
         {"format", required_argument, 0, 'f'},
         {NULL, 0, 0, 0}
     };
+    void *rlcd;
 
     argc = 1;
     argv = malloc(2*sizeof *argv);
     *argv = strdup(arg);
     ptr = strtok(*argv, " ");
     while ((ptr = strtok(NULL, " "))) {
-        argv = realloc(argv, (argc+2)*sizeof *argv);
+        rlcd = realloc(argv, (argc+2)*sizeof *argv);
+        if (!rlcd) {
+            fprintf(stderr, "Memory allocation failed (%s:%d, %s)", __FILE__, __LINE__, strerror(errno));
+            goto error;
+        }
+        argv = rlcd;
         argv[argc++] = ptr;
     }
     argv[argc] = NULL;
@@ -969,13 +1057,19 @@ cmd_feature(const char *arg)
         {"disable", required_argument, 0, 'd'},
         {NULL, 0, 0, 0}
     };
+    void *rlcd;
 
     argc = 1;
     argv = malloc(2*sizeof *argv);
     *argv = strdup(arg);
     ptr = strtok(*argv, " ");
     while ((ptr = strtok(NULL, " "))) {
-        argv = realloc(argv, (argc+2)*sizeof *argv);
+        rlcd = realloc(argv, (argc + 2) * sizeof *argv);
+        if (!rlcd) {
+            fprintf(stderr, "Memory allocation failed (%s:%d, %s)", __FILE__, __LINE__, strerror(errno));
+            goto cleanup;
+        }
+        argv = rlcd;
         argv[argc++] = ptr;
     }
     argv[argc] = NULL;
@@ -1138,12 +1232,24 @@ cmd_verb(const char *arg)
     verb = arg + 5;
     if (!strcmp(verb, "error") || !strcmp(verb, "0")) {
         ly_verb(LY_LLERR);
+#ifndef NDEBUG
+        ly_verb_dbg(0);
+#endif
     } else if (!strcmp(verb, "warning") || !strcmp(verb, "1")) {
         ly_verb(LY_LLWRN);
+#ifndef NDEBUG
+        ly_verb_dbg(0);
+#endif
     } else if (!strcmp(verb, "verbose")  || !strcmp(verb, "2")) {
         ly_verb(LY_LLVRB);
+#ifndef NDEBUG
+        ly_verb_dbg(0);
+#endif
     } else if (!strcmp(verb, "debug")  || !strcmp(verb, "3")) {
         ly_verb(LY_LLDBG);
+#ifndef NDEBUG
+        ly_verb_dbg(LY_LDGDICT | LY_LDGYANG | LY_LDGYIN | LY_LDGXPATH | LY_LDGDIFF);
+#endif
     } else {
         fprintf(stderr, "Unknown verbosity \"%s\"\n", verb);
         return 1;
@@ -1151,6 +1257,49 @@ cmd_verb(const char *arg)
 
     return 0;
 }
+
+#ifndef NDEBUG
+
+int
+cmd_debug(const char *arg)
+{
+    const char *beg, *end;
+    if (strlen(arg) < 6) {
+        cmd_debug_help();
+        return 1;
+    }
+
+    ly_verb_dbg(0);
+
+    end = arg + 6;
+    while (end[0]) {
+        for (beg = end; isspace(beg[0]); ++beg);
+        if (!beg[0]) {
+            break;
+        }
+
+        for (end = beg; (end[0] && !isspace(end[0])); ++end);
+
+        if (!strncmp(beg, "dict", end - beg)) {
+            ly_verb_dbg(LY_LDGDICT);
+        } else if (!strncmp(beg, "yang", end - beg)) {
+            ly_verb_dbg(LY_LDGYANG);
+        } else if (!strncmp(beg, "yin", end - beg)) {
+            ly_verb_dbg(LY_LDGYIN);
+        } else if (!strncmp(beg, "xpath", end - beg)) {
+            ly_verb_dbg(LY_LDGXPATH);
+        } else if (!strncmp(beg, "diff", end - beg)) {
+            ly_verb_dbg(LY_LDGDIFF);
+        } else {
+            fprintf(stderr, "Unknown debug group \"%.*s\"\n", (int)(end - beg), beg);
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+#endif
 
 int
 cmd_quit(const char *UNUSED(arg))
@@ -1216,6 +1365,9 @@ COMMAND commands[] = {
         {"searchpath", cmd_searchpath, cmd_searchpath_help, "Set the search path for models"},
         {"clear", cmd_clear, NULL, "Clear the context - remove all the loaded models"},
         {"verb", cmd_verb, cmd_verb_help, "Change verbosity"},
+#ifndef NDEBUG
+        {"debug", cmd_debug, cmd_debug_help, "Display specific debug message groups"},
+#endif
         {"quit", cmd_quit, NULL, "Quit the program"},
         /* synonyms for previous commands */
         {"?", cmd_help, NULL, "Display commands description"},

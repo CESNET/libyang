@@ -204,7 +204,7 @@ dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
 
         ctx->dict.used++;
 
-        LOGDBG("DICT: inserting \"%s\"", record->value);
+        LOGDBG(LY_LDGDICT, "inserting \"%s\"", record->value);
         return record->value;
     }
 
@@ -226,7 +226,7 @@ dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
         if (match) {
             /* record found */
             if (record->refcount == DICT_REC_MAXCOUNT) {
-                LOGWRN("DICT: refcount overflow detected, duplicating record");
+                LOGWRN("Refcount overflow detected, duplicating dictionary record");
                 break;
             }
             record->refcount++;
@@ -235,7 +235,7 @@ dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
                 free(value);
             }
 
-            LOGDBG("DICT: inserting (refcount) \"%s\"", record->value);
+            LOGDBG(LY_LDGDICT, "inserting (refcount) \"%s\"", record->value);
             return record->value;
         }
 
@@ -276,7 +276,7 @@ dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
 
     ctx->dict.used++;
 
-    LOGDBG("DICT: inserting \"%s\" with collision ", new->value);
+    LOGDBG(LY_LDGDICT, "inserting \"%s\" with collision ", new->value);
     return new->value;
 }
 

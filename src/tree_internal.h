@@ -61,16 +61,12 @@ struct internal_modules {
 /**
  * @brief internal parser flag for actions and inline notifications
  */
-#define LYD_OPT_ACT_NOTIF 0x80
+#define LYD_OPT_ACT_NOTIF 0x100
 
 /**
  * @brief Internal list of built-in types
  */
-struct ly_types {
-    LY_DATA_TYPE type;
-    struct lys_tpdf *def;
-};
-extern struct ly_types ly_types[LY_DATA_TYPE_COUNT];
+extern struct lys_tpdf *ly_types[LY_DATA_TYPE_COUNT];
 
 /**
  * @brief Internal structure for data node sorting.
@@ -104,8 +100,8 @@ struct lyd_node_pos {
  * @param[in] unres list of unresolved items
  * @return Created submodule structure or NULL in case of error.
  */
-struct lys_submodule *lys_submodule_parse(struct lys_module *module, const char *data, LYS_INFORMAT format,
-                                          struct unres_schema *unres);
+struct lys_submodule *lys_sub_parse_mem(struct lys_module *module, const char *data, LYS_INFORMAT format,
+                                        struct unres_schema *unres);
 
 /**
  * @brief Create submodule structure by reading data from file descriptor.
@@ -119,8 +115,7 @@ struct lys_submodule *lys_submodule_parse(struct lys_module *module, const char 
  * @param[in] unres list of unresolved items
  * @return Created submodule structure or NULL in case of error.
  */
-struct lys_submodule *lys_submodule_read(struct lys_module *module, int fd, LYS_INFORMAT format,
-                                         struct unres_schema *unres);
+struct lys_submodule *lys_sub_parse_fd(struct lys_module *module, int fd, LYS_INFORMAT format, struct unres_schema *unres);
 
 /**
  * @brief Free the submodule structure
@@ -181,9 +176,10 @@ int lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_modu
  *
  * @param[in] node Node to examine.
  * @param[in] check_place Check where the node is placed to get know if the check is supposed to be performed
+ * @param[in] warn_on_fwd_ref Whether to not print errors and only warn on forward references.
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
-int lys_check_xpath(struct lys_node *node, int check_place);
+int lys_check_xpath(struct lys_node *node, int check_place, int warn_on_fwd_ref);
 
 /**
  * @brief Get know if the node contains must or when with XPath expression
@@ -199,13 +195,45 @@ int lys_has_xpath(const struct lys_node *node);
  * @param[in] module Target module for the duplicated node.
  * @param[in] parent Schema tree node where the node is being connected, NULL in case of top level \p node.
  * @param[in] node Schema tree node to be duplicated.
- * @param[in] nacm NACM flags to be inherited from the parent
  * @param[in] unres list of unresolved items
  * @param[in] shallow Whether to copy children and connect to parent/module too.
  * @return Created copy of the provided schema \p node.
  */
 struct lys_node *lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct lys_node *node,
-                              uint8_t nacm, struct unres_schema *unres, int shallow);
+                              struct unres_schema *unres, int shallow);
+
+/**
+ * @brief duplicate the list of extension instances.
+ *
+ * @param[in] mod Module where we are
+ * @param[in] orig list of the extension instances to duplicate, the size of the array must correspond with \p size
+ * @param[in] size number of items in \p old array to duplicate
+ * @param[in] parent Parent structure of the new extension instances list
+ * @param[in] parent_type Type of the provide \p parent *
+ * @param[in,out] new Address where to store the created list of duplicated extension instances
+ * @param[in] unres list of unresolved items
+ *
+ */
+int lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, uint8_t size,
+                void *parent, LYEXT_PAR parent_type, struct lys_ext_instance ***new, struct unres_schema *unres);
+
+/**
+ * @brief Iterate over the specified type of the extension instances
+ *
+ * @param[in] ext Array of extensions to explore
+ * @param[in] ext_size Size of the provided \p ext array
+ * @param[in] start Index in the \p ext array where to start searching (first call with 0, the consequent calls with
+ *            the returned index increased by 1, unless the returned index is -1)
+ * @param[in] substmt Type of the extension (its belongins to the specific substatement) to iterate, use
+ *            #LYEXT_SUBSTMT_ALL to go through all the extensions in the array
+ * @result index in the ext, -1 if not present
+ */
+int lys_ext_iter(struct lys_ext_instance **ext, uint8_t ext_size, uint8_t start, LYEXT_SUBSTMT substmt);
+
+/**
+ * @brief free the array of the extension instances
+ */
+void lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, unsigned int size);
 
 /**
  * @brief Switch two same schema nodes. \p src must be a shallow copy
@@ -327,6 +355,30 @@ struct lyd_node *lyd_new_dummy(struct lyd_node *data, struct lyd_node *parent, c
 const struct lyd_node *lyd_attr_parent(const struct lyd_node *root, struct lyd_attr *attr);
 
 /**
+ * @brief Internal version of lyd_unlink().
+ *
+ * @param[in] node Node to unlink.
+ * @param[in] permanent Whether the node is premanently unlinked or will be linked back.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on error.
+ */
+int lyd_unlink_internal(struct lyd_node *node, int permanent);
+
+/**
+ * @brief Internal version of lyd_insert() and lyd_insert_sibling().
+ *
+ * @param[in] invalidate Whether to invalidate any nodes. Set 0 only if linking back some temporarily internally unlinked nodes.
+ */
+int lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd_node *node, int invalidate);
+
+/**
+ * @brief Internal version of lyd_insert_before() and lyd_insert_after().
+ *
+ * @param[in] invalidate Whether to invalidate any nodes. Set 0 only if linking back some temporarily internally unlinked nodes.
+ */
+int lyd_insert_nextto(struct lyd_node *sibling, struct lyd_node *node, int before, int invalidate);
+
+/**
  * @brief Find an import from \p module with matching \p prefix, \p name, or both,
  * \p module itself is also compared.
  *
@@ -340,6 +392,14 @@ const struct lyd_node *lyd_attr_parent(const struct lyd_node *root, struct lyd_a
  */
 const struct lys_module *lys_get_import_module(const struct lys_module *module, const char *prefix, int pref_len,
                                                const char *name, int name_len);
+
+/**
+ * @Brief Find an import from \p module with matching namespace, the \p module itself is also considered.
+ *
+ * @param[in] module Module with imports.
+ * @param[in] ns Namespace to be found.
+ */
+const struct lys_module *lys_get_import_module_ns(const struct lys_module *module, const char *ns);
 
 /**
  * @brief Find a specific sibling. Does not log.
@@ -390,12 +450,13 @@ int lys_get_data_sibling(const struct lys_module *mod, const struct lys_node *si
  *            -1 - compare keys and all uniques
  *             0 - compare only keys
  *             n - compare n-th unique
- * @param[in] printval Flag for printing validation errors, useful for internal (non-validation) use of this function
+ * @param[in] withdefaults Whether only different dflt flags cause 2 nodes not to be equal.
+ * @param[in] log Flag for printing validation errors, useful for internal (non-validation) use of this function
  * @return 1 if both the nodes are the same from the YANG point of view,
  *         0 if they differ,
  *         -1 on error.
  */
-int lyd_list_equal(struct lyd_node *first, struct lyd_node *second, int action, int printval);
+int lyd_list_equal(struct lyd_node *first, struct lyd_node *second, int action, int withdefaults, int log);
 
 const char *lyd_get_unique_default(const char* unique_expr, struct lyd_node *list);
 
@@ -431,6 +492,7 @@ int lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *c
 void lys_switch_deviations(struct lys_module *module);
 
 void lys_sub_module_remove_devs_augs(struct lys_module *module);
+void lys_sub_module_apply_devs_augs(struct lys_module *module);
 
 void lys_submodule_module_data_free(struct lys_submodule *submodule);
 
@@ -439,5 +501,9 @@ void lys_submodule_module_data_free(struct lys_submodule *submodule);
  * @return 0 for false, position of the key otherwise
  */
 int lys_is_key(struct lys_node_list *list, struct lys_node_leaf *leaf);
+
+
+LY_STMT lys_snode2stmt(LYS_NODE nodetype);
+struct lys_node ** lys_child(const struct lys_node *node, LYS_NODE nodetype);
 
 #endif /* LY_TREE_INTERNAL_H_ */

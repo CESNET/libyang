@@ -52,6 +52,7 @@ help(int shortout)
         "                        Convert to FORMAT. Supported formats: \n"
         "                        tree, yin, yang for schemas,\n"
         "                        xml, json for data.\n\n"
+        "  -i, --allimplemented  Make all the imported modules implemented.\n\n"
         "  -o OUTFILE, --output=OUTFILE\n"
         "                        Write the output to OUTFILE instead of stdout.\n\n"
         "  -F FEATURES, --features=FEATURES\n"
@@ -76,7 +77,9 @@ help(int shortout)
         "        getconfig       - Result of the NETCONF <get-config> operation.\n"
         "        edit            - Content of the NETCONF <edit-config> operation.\n\n"
         "Tree output specific options:\n"
-        "  --tree-help           Print help on tree symbols and exit.\n\n");
+        "  --tree-help           Print help on tree symbols and exit.\n"
+        "  --tree-print-groupings\n"
+        "                        Print groupings.\n\n");
 }
 
 void
@@ -148,13 +151,15 @@ int
 main_ni(int argc, char* argv[])
 {
     int ret = EXIT_FAILURE;
-    int opt, opt_index = 0, i, featsize = 0;
+    int opt, opt_index = 0, i, featsize = 0, grps = 0;
     struct option options[] = {
         {"default",          required_argument, NULL, 'd'},
         {"format",           required_argument, NULL, 'f'},
         {"features",         required_argument, NULL, 'F'},
+        {"tree-print-groupings", no_argument,   NULL, 'g'},
         {"help",             no_argument,       NULL, 'h'},
         {"tree-help",        no_argument,       NULL, 'H'},
+        {"allimplemented",   no_argument,       NULL, 'i'},
         {"output",           required_argument, NULL, 'o'},
         {"path",             required_argument, NULL, 'p'},
         {"version",          no_argument,       NULL, 'v'},
@@ -172,7 +177,7 @@ main_ni(int argc, char* argv[])
     char **feat = NULL, *ptr, *featlist;
     struct stat st;
     uint32_t u;
-    int options_dflt = 0, options_parser = 0;
+    int options_dflt = 0, options_parser = 0, options_allimplemented = 0;
     struct dataitem {
         const char *filename;
         LYD_FORMAT format;
@@ -181,9 +186,10 @@ main_ni(int argc, char* argv[])
     struct ly_set *mods = NULL;
     struct lyd_node *root = NULL, *node = NULL, *next, *subroot;
     struct lyxml_elem *xml = NULL;
+    void *p;
 
     opterr = 0;
-    while ((opt = getopt_long(argc, argv, "d:f:F:hHo:p:t:vV", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "d:f:F:ghHio:p:t:vV", options, &opt_index)) != -1) {
         switch (opt) {
         case 'd':
             if (!strcmp(optarg, "all")) {
@@ -225,10 +231,15 @@ main_ni(int argc, char* argv[])
         case 'F':
             featsize++;
             if (!feat) {
-                feat = malloc(sizeof *feat);
+                p = malloc(sizeof *feat);
             } else {
-                feat = realloc(feat, featsize * sizeof *feat);
+                p = realloc(feat, featsize * sizeof *feat);
             }
+            if (!p) {
+                fprintf(stderr, "Memory allocation failed (%s:%d, %s)", __FILE__, __LINE__, strerror(errno));
+                goto cleanup;
+            }
+            feat = p;
             feat[featsize - 1] = strdup(optarg);
             ptr = strchr(feat[featsize - 1], ':');
             if (!ptr) {
@@ -238,6 +249,9 @@ main_ni(int argc, char* argv[])
             *ptr = '\0';
 
             break;
+        case 'g':
+            grps = 1;
+            break;
         case 'h':
             help(0);
             ret = EXIT_SUCCESS;
@@ -246,6 +260,9 @@ main_ni(int argc, char* argv[])
             tree_help();
             ret = EXIT_SUCCESS;
             goto cleanup;
+        case 'i':
+            options_allimplemented = 1;
+            break;
         case 'o':
             if (out != stdout) {
                 fclose(out);
@@ -315,6 +332,15 @@ main_ni(int argc, char* argv[])
         fprintf(stderr, "yanglint error: too many schemas to convert and store.\n");
         goto cleanup;
     }
+    if (grps) {
+        if (outformat_d || (outformat_s && outformat_s != LYS_OUT_TREE)) {
+            /* we have --tree-print-grouping with other output format than tree */
+            fprintf(stderr,
+                    "yanglint warning: --tree-print-groupings option takes effect only in case of the tree output format.\n");
+        } else {
+            outformat_s = LYS_OUT_TREE_GRPS;
+        }
+    }
     if (!outformat_d && options_dflt) {
         /* we have options for printing default nodes, but output is schema */
         fprintf(stderr, "yanglint warning: default mode is ignored when printing schema.\n");
@@ -331,6 +357,11 @@ main_ni(int argc, char* argv[])
     ctx = ly_ctx_new(searchpath);
     if (!ctx) {
         goto cleanup;
+    }
+
+    /* set context options */
+    if (options_allimplemented) {
+        ly_ctx_set_allimplemented(ctx);
     }
 
     /* derefered setting of verbosity in libyang after context initiation */
@@ -505,7 +536,26 @@ main_ni(int argc, char* argv[])
             /* do not trust the input, invalidate all the data first */
             LY_TREE_FOR(root, subroot) {
                 LY_TREE_DFS_BEGIN(subroot, next, node) {
-                    node->validity = LYD_VAL_NOT;
+                    node->validity = LYD_VAL_OK;
+                    switch (node->schema->nodetype) {
+                    case LYS_LEAFLIST:
+                    case LYS_LEAF:
+                        if (((struct lys_node_leaf *)node->schema)->type.base == LY_TYPE_LEAFREF) {
+                            node->validity |= LYD_VAL_LEAFREF;
+                        }
+                        break;
+                    case LYS_LIST:
+                        node->validity |= LYD_VAL_UNIQUE;
+                        /* fallthrough */
+                    case LYS_CONTAINER:
+                    case LYS_NOTIF:
+                    case LYS_RPC:
+                    case LYS_ACTION:
+                        node->validity |= LYD_VAL_MAND;
+                        break;
+                    default:
+                        break;
+                    }
                     LY_TREE_DFS_END(subroot, next, node)
                 }
             }

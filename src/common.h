@@ -110,22 +110,28 @@ void ly_log(LY_LOG_LEVEL level, const char *format, ...);
     ly_log(LY_LLERR, str, ##args);
 
 #define LOGWRN(str, args...)                                        \
-	if (ly_log_level >= LY_LLWRN) {                                 \
-		ly_log(LY_LLWRN, str, ##args);                              \
-	}
+    if (ly_log_level >= LY_LLWRN) {                                 \
+        ly_log(LY_LLWRN, str, ##args);                              \
+    }
 
 #define LOGVRB(str, args...)                                        \
-	if (ly_log_level >= LY_LLVRB) {                                 \
-		ly_log(LY_LLVRB, str, ##args);                              \
-	}
+    if (ly_log_level >= LY_LLVRB) {                                 \
+        ly_log(LY_LLVRB, str, ##args);                              \
+    }
 
 #ifdef NDEBUG
+
 #define LOGDBG(str, args...)
+
 #else
-#define LOGDBG(str, args...)                                        \
-	if (ly_log_level >= LY_LLDBG) {                                 \
-		ly_log(LY_LLDBG, str, ##args);                              \
-	}
+
+#define LOGDBG(dbg_group, str, args...)                             \
+    if (ly_log_level >= LY_LLDBG) {                                 \
+        ly_log_dbg(dbg_group, str, ##args);                         \
+    }
+
+void ly_log_dbg(LY_LOG_DBG_GROUP group, const char *format, ...);
+
 #endif
 
 #define LOGMEM LOGERR(LY_EMEM, "Memory allocation failed (%s()).", __func__)
@@ -190,7 +196,7 @@ typedef enum {
     LYE_INELEM_LEN,
     LYE_MISSELEM,
     LYE_INVAL,
-    LYE_INVALATTR,
+    LYE_INMETA,
     LYE_INATTR,
     LYE_MISSATTR,
     LYE_NOCONSTR,
@@ -253,7 +259,7 @@ void ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...);
 #define LOGPATH(elem_type, elem)                                    \
     ly_vlog(LYE_PATH, elem_type, elem);
 
-void ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *path, uint16_t *index);
+void ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *path, uint16_t *index, int prefix_all);
 
 /*
  * - if \p module specified, it searches for submodules, they can be loaded only from a file or via module callback,
@@ -337,11 +343,12 @@ const char *transform_json2schema(const struct lys_module *module, const char *e
  * @param[in] ctx libyang context to use.
  * @param[in] expr XML expression.
  * @param[in] xml XML element with the expression.
+ * @param[in] use_ctx_data_clb Whether to use data_clb in \p ctx if an unknown module namespace is found.
  * @param[in] log Whether to log errors or not.
  *
  * @return Transformed JSON expression in the dictionary, NULL on error.
  */
-const char *transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml, int log);
+const char *transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml, int use_ctx_data_clb, int log);
 
 /**
  * @brief Transform expression from the schema format (prefixes of imports) to
@@ -359,6 +366,15 @@ const char *transform_schema2json(const struct lys_module *module, const char *e
  *        are not valid XPath expressions.
  */
 const char *transform_iffeat_schema2json(const struct lys_module *module, const char *expr);
+
+/**
+ * @brief Get a new node (non-validated) validity value.
+ *
+ * @param[in] schema Schema node of the new data node.
+ *
+ * @return Validity of the new node.
+ */
+int ly_new_node_validity(const struct lys_node *schema);
 
 /**
  * @brief Wrapper for realloc() call. The only difference is that if it fails to

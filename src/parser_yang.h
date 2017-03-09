@@ -23,9 +23,6 @@
 #include "common.h"
 #include "context.h"
 
-#define LY_ARRAY_SIZE 32
-#define LY_READ_ALL 1
-#define LY_READ_ONLY_SIZE 0
 #define LYS_SYSTEMORDERED 0x40
 #define LYS_ORDERED_MASK 0xC0
 #define LYS_MIN_ELEMENTS 0x01
@@ -34,50 +31,12 @@
 #define LYS_RPC_OUTPUT 0x02
 #define LYS_DATADEF 0x04
 #define LYS_TYPE_DEF 0x08
-#define CONFIG_INHERIT_DISABLE 0x00
-#define CONFIG_INHERIT_ENABLE  0x01
-#define CONFIG_IGNORE 0x02
-#define CONFIG_MASK 0x03
 #define LYS_CHOICE_DEFAULT 0x10
-
-struct lys_node_array{
-    uint8_t if_features;
-    uint8_t must;
-    union {
-        uint8_t tpdf;
-        uint8_t dflt;
-    };
-    uint8_t unique;
-    union {
-        uint uni;
-        uint16_t flags;
-    };
-    union {
-        uint enm;
-        uint pattern;
-        uint bit;
-        uint deviate;
-        uint keys;
-        uint base;
-    };
-    uint16_t refine;
-    uint16_t augment;
-
-};
-
-struct lys_array_size {
-    uint8_t rev;
-    uint8_t imp;
-    uint8_t inc;
-    uint32_t ident;
-    uint8_t features;
-    uint8_t augment;
-    uint8_t deviation;
-    uint8_t tpdf;
-    uint32_t size;
-    uint32_t next;
-    struct lys_node_array *node;
-};
+#define LYS_NO_ERASE_IDENTITY 0x20
+#define LY_YANG_ARRAY_SIZE 8
+#define YANG_REMOVE_IMPORT 0x01
+#define YANG_EXIST_MODULE 0x02
+#define EXT_INSTANCE_SUBSTMT 0x04
 
 struct type_node {
     union {
@@ -86,21 +45,26 @@ struct type_node {
         struct lys_node_leaf *ptr_leaf;
         struct lys_tpdf *ptr_tpdf;
         struct lys_node_anydata *ptr_anydata;
-        struct lys_node_augment *ptr_augment;
         struct lys_node_rpc_action *ptr_rpc;
-        struct lys_node_inout *ptr_inout;
         struct lys_node_choice *ptr_choice;
     };
     uint flag;
 };
 
-struct type_deviation {
-    struct lys_deviation *deviation;
-    struct lys_node *target;
-    struct lys_deviate *deviate;
-    struct lys_restr **trg_must;
-    uint8_t *trg_must_size;
-    struct ly_set *dflt_check;
+struct yang_parameter {
+    struct lys_module *module;
+    struct lys_submodule *submodule;
+    struct unres_schema *unres;
+    struct lys_node **node;
+    char **value;
+    void **data_node;
+    void **actual_node;
+    uint8_t flags;
+};
+
+struct yang_ext_substmt {
+    char *ext_substmt;  /* pointer to string, which contains substmts without module statement */
+    char **ext_modules; /* array of char *, which contains module statements */
 };
 
 struct yang_type {
@@ -120,42 +84,17 @@ int yang_read_prefix(struct lys_module *module, struct lys_import *imp, char *va
 
 int yang_check_version(struct lys_module *module, struct lys_submodule *submodule, char *value, int repeat);
 
-/**
- * @brief Add node to the array
- *
- * @param[in/out] node Pointer to the array.
- * @param[in/out] size Pointer to the current size of array.
- * @return 1 on success, 0 on error.
- */
-int yang_add_elem(struct lys_node_array **node, uint32_t *size);
+int yang_check_imports(struct lys_module *module, struct unres_schema *unres);
 
-int yang_fill_import(struct lys_module *module, struct lys_import *imp, char *value);
+int yang_read_description(struct lys_module *module, void *node, char *value, char *where, enum yytokentype type);
 
-int yang_read_description(struct lys_module *module, void *node, char *value, char *where);
-
-int yang_read_reference(struct lys_module *module, void *node, char *value, char *where);
-
-void *yang_read_revision(struct lys_module *module, char *value);
-
-void *yang_read_feature(struct lys_module *module, char *value);
-
-int yang_read_if_feature(struct lys_module *module, void *ptr, char *value, struct unres_schema *unres, enum yytokentype type);
-
-void *yang_read_identity(struct lys_module *module, char *value);
-
-int yang_read_identyref(struct lys_module *module, struct yang_type *stype, char *expr, struct unres_schema *unres);
-
-int yang_read_base(struct lys_module *module, struct lys_ident *ident, char *value, struct unres_schema *unres);
-
-void *yang_read_must(struct lys_module *module, struct lys_node *node, char *value, enum yytokentype type);
+int yang_read_reference(struct lys_module *module, void *node, char *value, char *where, enum yytokentype type);
 
 int yang_read_message(struct lys_module *module,struct lys_restr *save,char *value, char *what, int message);
 
 int yang_read_presence(struct lys_module *module, struct lys_node_container *cont, char *value);
 
 int yang_read_config(void *node, int value, enum yytokentype type);
-
-int store_flags(struct lys_node *node, uint8_t flags, int config_opt);
 
 void *yang_read_when(struct lys_module *module, struct lys_node *node, enum yytokentype type, char *value);
 
@@ -164,14 +103,14 @@ void *yang_read_when(struct lys_module *module, struct lys_node *node, enum yyto
  *
  * @param[in/out] node Pointer to the array.
  * @param[in] parent Pointer to the parent.
+ * @param[in] root Pointer to the root of schema tree.
  * @param[in] value Name of node
  * @param[in] nodetype Type of node
  * @param[in] sizeof_struct Size of struct
  * @return Pointer to the node, NULL on error.
 */
-void * yang_read_node(struct lys_module *module, struct lys_node *parent, char *value, int nodetype, int sizeof_struct);
-
-void *yang_read_action(struct lys_module *module, struct lys_node *parent, char *value);
+void *yang_read_node(struct lys_module *module, struct lys_node *parent, struct lys_node **root,
+                     char *value, int nodetype, int sizeof_struct);
 
 int yang_read_default(struct lys_module *module, void *node, char *value, enum yytokentype type);
 
@@ -183,11 +122,16 @@ int yang_read_unique(struct lys_module *module, struct lys_node_list *list, stru
 
 void *yang_read_type(struct lys_module *module, void *parent, char *value, enum yytokentype type);
 
-void *yang_read_length(struct lys_module *module, struct yang_type *typ, char *value);
+void *yang_read_length(struct  lys_module *module, struct yang_type *stype, char *value, int is_ext_instance);
 
-int yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_type *typ, int tpdftype, struct unres_schema *unres);
+int yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_type *typ, struct lys_type *type, int tpdftype, struct unres_schema *unres);
 
-void yang_delete_type(struct lys_module *module, struct yang_type *stype);
+int yang_fill_type(struct lys_module *module, struct lys_type *type, struct yang_type *stype,
+                   void *parent, struct unres_schema *unres);
+
+void yang_free_type_union(struct ly_ctx *ctx, struct lys_type *type);
+
+void yang_type_free(struct ly_ctx *ctx, struct lys_type *type);
 
 int yang_read_leafref_path(struct lys_module *module, struct yang_type *stype, char *value);
 
@@ -195,63 +139,60 @@ int yang_read_require_instance(struct yang_type *stype, int req);
 
 int yang_read_pattern(struct lys_module *module, struct lys_restr *pattern, char *value, char modifier);
 
-void *yang_read_range(struct  lys_module *module, struct yang_type *typ, char *value);
+void *yang_read_range(struct  lys_module *module, struct yang_type *stype, char *value, int is_ext_instance);
 
 int yang_read_fraction(struct yang_type *typ, uint32_t value);
 
-void *yang_read_enum(struct lys_module *module, struct yang_type *typ, char *value);
+int yang_read_enum(struct lys_module *module, struct yang_type *typ, struct lys_type_enum *enm, char *value);
 
 int yang_check_enum(struct yang_type *typ, struct lys_type_enum *enm, int64_t *value, int assign);
 
-void *yang_read_bit(struct lys_module *module, struct yang_type *typ, char *value);
+int yang_read_bit(struct lys_module *module, struct yang_type *typ, struct lys_type_bit *bit, char *value);
 
 int yang_check_bit(struct yang_type *typ, struct lys_type_bit *bit, int64_t *value, int assign);
 
 void *yang_read_typedef(struct lys_module *module, struct lys_node *parent, char *value);
 
-void *yang_read_refine(struct lys_module *module, struct lys_node_uses *uses, char *value);
+int yang_read_augment(struct lys_module *module, struct lys_node *parent, struct lys_node_augment *aug, char *value);
 
-void *yang_read_augment(struct lys_module *module, struct lys_node *parent, char *value);
+void *yang_read_deviate(struct lys_deviation *dev, LYS_DEVIATE_TYPE mod);
 
-void *yang_read_deviation(struct lys_module *module, char *value);
-
-int yang_read_deviate_unsupported(struct type_deviation *dev);
-
-int yang_read_deviate(struct type_deviation *dev, LYS_DEVIATE_TYPE mod);
-
-int yang_read_deviate_units(struct ly_ctx *ctx, struct type_deviation *dev, char *value);
-
-int yang_read_deviate_must(struct type_deviation *dev, uint8_t c_must);
+void *yang_read_deviate_unsupported(struct lys_deviation *dev);
 
 int yang_fill_unique(struct lys_module *module, struct lys_node_list *list, struct lys_unique *unique, char *value, struct unres_schema *unres);
 
-int yang_read_deviate_unique(struct type_deviation *dev, uint8_t c_uniq);
+int yang_fill_iffeature(struct lys_module *module, struct lys_iffeature *iffeature, void *parent,
+                        char *value, struct unres_schema *unres, int parent_is_feature);
 
-int yang_read_deviate_default(struct lys_module *module, struct type_deviation *dev, uint8_t c_dflt);
+void yang_free_ext_data(struct yang_ext_substmt *substmt);
 
-int yang_fill_deviate_default(struct ly_ctx *ctx, struct type_deviation *dev, char *exp);
+void *yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext_arg,
+                    enum yytokentype actual_type, enum yytokentype backup_type, int is_ext_instance);
 
-int yang_read_deviate_config(struct type_deviation *dev, uint8_t value);
+int yang_check_ext_instance(struct lys_module *module, struct lys_ext_instance ***ext, uint size,
+                            void *parent, struct unres_schema *unres);
 
-int yang_read_deviate_mandatory(struct type_deviation *dev, uint8_t value);
+int yang_read_extcomplex_str(struct lys_module *module, struct lys_ext_instance_complex *ext, const char *arg_name, 
+                             const char *parent_name, char *value, int parent_stmt, LY_STMT stmt);
 
-/*
- * type: 0 - min, 1 - max
- */
-int yang_read_deviate_minmax(struct type_deviation *dev, uint32_t value, int type);
+void **yang_getplace_for_extcomplex_struct(struct lys_ext_instance_complex *ext, int *index,
+                                    char *parent_name, char *node_name, LY_STMT stmt);
 
-int yang_check_deviate_must(struct ly_ctx *ctx, struct type_deviation *dev);
+int yang_extcomplex_node(struct lys_ext_instance_complex *ext, char *parent_name, char *node_name,
+                         struct lys_node *node, LY_STMT stmt);
 
-int yang_check_deviate_unique(struct lys_module *module, struct type_deviation *dev, char *value);
+int yang_fill_extcomplex_flags(struct lys_ext_instance_complex *ext, char *parent_name, char *node_name,
+                               LY_STMT stmt, uint16_t value, uint16_t mask);
 
-int yang_check_deviation(struct lys_module *module, struct ly_set *dflt_check, struct unres_schema *unres);
+int yang_fill_extcomplex_uint8(struct lys_ext_instance_complex *ext, char *parent_name, char *node_name,
+                               LY_STMT stmt, uint8_t value);
 
-int yang_fill_include(struct lys_module *module, struct lys_submodule *submodule, char *value,
-                      struct lys_include *inc, struct unres_schema *unres);
+int yang_parse_ext_substatement(struct lys_module *module, struct unres_schema *unres, const char *data,
+                                char *ext_name, struct lys_ext_instance_complex *ext);
 
-int yang_use_extension(struct lys_module *module, struct lys_node *data_node, void *actual, char *value);
+int yang_fill_extcomplex_module(struct ly_ctx *ctx, struct lys_ext_instance_complex *ext,
+                                char *parent_name, char **values, int implemented);
 
-int yang_check_flags(uint16_t *flags, uint16_t mask, char *what, char *where, uint16_t value, int shortint);
 
 /* **
  * @brief Parse YANG from in-memory string
@@ -263,9 +204,11 @@ int yang_check_flags(uint16_t *flags, uint16_t mask, char *what, char *where, ui
  * @param[in] unres Pointer to a unres_schema
  * @param[in] data Pointer to a NULL-terminated string containing YANG data to parse.
  * @param[in] size_data Size of input string
- * @return 0 on success, 1 on error.
+ * @param[in/out] node Pointer to node
+ * @return 0 on success, -1 on error, 1 on module is already in context.
  */
-int yang_parse_mem(struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres, const char *data, unsigned int size_data);
+int yang_parse_mem(struct lys_module *module, struct lys_submodule *submodule, struct unres_schema *unres,
+                   const char *data, unsigned int size_data, struct lys_node **node);
 
 struct lys_module *yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const char *revision, int implement);
 

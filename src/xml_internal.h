@@ -66,8 +66,6 @@ void lyxml_correct_elem_ns(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy
 struct lyxml_elem *lyxml_dup_elem(struct ly_ctx *ctx, struct lyxml_elem *elem,
                                   struct lyxml_elem *parent, int recursive);
 
-struct lyxml_elem *lyxml_parse_elem(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml_elem *parent);
-
 /**
  * @brief Free attribute. Includes unlinking from an element if the attribute
  * is placed anywhere.

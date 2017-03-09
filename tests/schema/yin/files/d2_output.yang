@@ -25,10 +25,10 @@ module d2 {
   }
 
   leaf d2_leaf2 {
-    must "/d1_pref:d1_leaf < 6";
     type identityref {
       base d1_pref:d1_ident;
     }
+    must "/d1_pref:d1_leaf < 6";
   }
 
   uses d1_pref:d1_group {
