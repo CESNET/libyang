@@ -7006,13 +7006,14 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
                       struct lys_node *snode)
 {
     int rc, log_hidden;
-    uint32_t u;
     struct lyxml_elem *yin;
 
     assert(unres && item && ((type != UNRES_LEAFREF) && (type != UNRES_INSTID) && (type != UNRES_WHEN)
            && (type != UNRES_MUST)));
 
 #ifndef NDEBUG
+    uint32_t u;
+
     /* check for duplicities in unres */
     for (u = 0; u < unres->count; u++) {
         if (unres->type[u] == type && unres->item[u] == item &&
