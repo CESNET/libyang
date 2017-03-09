@@ -34,7 +34,8 @@ enum UNRES_ITEM {
     UNRES_IDENT,         /* unresolved derived identities */
     UNRES_TYPE_IDENTREF, /* check identityref value */
     UNRES_FEATURE,       /* feature for circular check, it must be postponed when all if-features are resolved */
-    UNRES_TYPE_DFLT,     /* validate default type value */
+    UNRES_TYPEDEF_DFLT,  /* validate default type value (from typedef) */
+    UNRES_TYPE_DFLT,     /* validate default type value (from lys_node) */
     UNRES_LIST_KEYS,     /* list keys */
     UNRES_LIST_UNIQ,     /* list uniques */
     UNRES_XPATH,         /* unchecked XPath expression */

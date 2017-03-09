@@ -3029,7 +3029,7 @@ check_leafref:
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 static int
-check_default(struct lys_type *type, const char **value, struct lys_module *module)
+check_default(struct lys_type *type, const char **value, struct lys_module *module, int tpdf)
 {
     struct lys_tpdf *base_tpdf = NULL;
     struct lyd_node_leaf_list node;
@@ -3041,6 +3041,9 @@ check_default(struct lys_type *type, const char **value, struct lys_module *modu
     if (type->base <= LY_TYPE_DER) {
         /* the type was not resolved yet, nothing to do for now */
         return EXIT_FAILURE;
+    } else if (type->base == LY_TYPE_LEAFREF && tpdf) {
+        /* leafref in typedef cannot be checked */
+        return EXIT_SUCCESS;
     }
 
     dflt = *value;
@@ -3142,7 +3145,7 @@ check_default(struct lys_type *type, const char **value, struct lys_module *modu
             ret = EXIT_FAILURE;
             goto finish;
         }
-        ret = check_default(&type->info.lref.target->type, &dflt, module);
+        ret = check_default(&type->info.lref.target->type, &dflt, module, 0);
         if (!ret) {
             /* adopt possibly changed default value to its canonical form */
             if (*value) {
@@ -6539,10 +6542,13 @@ featurecheckdone:
     case UNRES_USES:
         rc = resolve_unres_schema_uses(item, unres);
         break;
+    case UNRES_TYPEDEF_DFLT:
+        parent_type++;
+        /* no break */
     case UNRES_TYPE_DFLT:
         stype = item;
 
-        rc = check_default(stype, (const char **)str_snode, mod);
+        rc = check_default(stype, (const char **)str_snode, mod, parent_type);
         break;
     case UNRES_CHOICE_DFLT:
         expr = str_snode;
@@ -6764,6 +6770,7 @@ print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node)
     case UNRES_USES:
         LOGVRB("Resolving %s \"%s\" failed, it will be attempted later.", "uses", ((struct lys_node_uses *)item)->name);
         break;
+    case UNRES_TYPEDEF_DFLT:
     case UNRES_TYPE_DFLT:
         if (str_node) {
             LOGVRB("Resolving %s \"%s\" failed, it will be attempted later.", "type default", (char *)str_node);

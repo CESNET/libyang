@@ -3592,7 +3592,8 @@ yang_check_typedef(struct lys_module *module, struct lys_node *parent, struct un
 
         (*ptr_tpdf_size)++;
         /* check default value*/
-        if (unres_schema_add_node(module, unres, &tpdf[i].type, UNRES_TYPE_DFLT, (struct lys_node *)(&tpdf[i].dflt)) == -1)  {
+        if (unres_schema_add_node(module, unres, &tpdf[i].type, UNRES_TYPEDEF_DFLT,
+                                  (struct lys_node *)(&tpdf[i].dflt)) == -1)  {
             ++i;
             goto error;
         }
@@ -3709,7 +3710,8 @@ yang_check_leaf(struct lys_module *module, struct lys_node_leaf *leaf, int optio
         goto error;
     }
 
-    if (unres_schema_add_node(module, unres, &leaf->type, UNRES_TYPE_DFLT, (struct lys_node *)&leaf->dflt) == -1) {
+    if (!(options & LYS_PARSE_OPT_INGRP) &&
+            (unres_schema_add_node(module, unres, &leaf->type, UNRES_TYPE_DFLT, (struct lys_node *)&leaf->dflt) == -1)) {
         goto error;
     }
 
@@ -3764,7 +3766,9 @@ yang_check_leaflist(struct lys_module *module, struct lys_node_leaflist *leaflis
         }
         /* check default value (if not defined, there still could be some restrictions
          * that need to be checked against a default value from a derived type) */
-        if (unres_schema_add_node(module, unres, &leaflist->type, UNRES_TYPE_DFLT, (struct lys_node *)(&leaflist->dflt[i])) == -1) {
+        if (!(options & LYS_PARSE_OPT_INGRP) &&
+                (unres_schema_add_node(module, unres, &leaflist->type, UNRES_TYPE_DFLT,
+                                       (struct lys_node *)(&leaflist->dflt[i])) == -1)) {
             goto error;
         }
     }
