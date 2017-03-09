@@ -1,18 +1,5 @@
 # Known Issues
 
-## YANG statements
-
-### Extensions
-
-libyang is not able to parse generic extensions defined in YANG schema. The currently supported
-extensions are only
- * get-filter-element-attributes from ietf-netconf,
- * default-deny-write from ietf-netconf-acm,
- * default-deny-all from ietf-netconf-acm.
-
-All other extension definitions/instances are currently ignored and only warning
-`Not supported "<name>" extension statement found, ignoring.` is printed.
-
 ## XPath Expressions
 
 ### Axes
