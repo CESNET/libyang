@@ -46,6 +46,10 @@ with debug information).
 Specifies search path for getting imported modules or included submodules. It
 is not possible to specify multiple search paths.
 .TP
+.BR \-s "\fR,\fP " \-\^\-strict
+Changes handling of unknown data nodes - instead of silently ignoring unknown data,
+error is printed and data parsing fails. This option applies only on data parsing.
+.TP
 .BR \-f " \fIFORMAT\fP" "\fR,\fP \-\^\-format=\fIFORMAT\fP"
 Converts the content of the input \fIFILE\fPs into the specified \fIFORMAT\fP. If no
 \fIOUTFILE\fP is specified, the data are printed on the standard output. Only the
@@ -112,4 +116,4 @@ https://github.com/CESNET/libyang (libyang homepage and Git repository)
 Radek Krejci <rkrejci@cesnet.cz>, Michal Vasko <mvasko@cesnet.cz>
 .
 .SH COPYRIGHT
-Copyright \(co 2015-2016 CESNET, a.l.e.
+Copyright \(co 2015-2017 CESNET, a.l.e.
