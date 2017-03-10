@@ -2951,8 +2951,9 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
 
         if (leaf_orig->dflt) {
             leaf->dflt = lydict_insert(ctx, leaf_orig->dflt, 0);
-            if (unres_schema_add_node(module, unres, &leaf->type, UNRES_TYPE_DFLT,
-                                      (struct lys_node *)(&leaf->dflt)) == -1) {
+            if ((!ingrouping(retval) || (leaf->type.base != LY_TYPE_LEAFREF))
+                    && unres_schema_add_node(module, unres, &leaf->type, UNRES_TYPE_DFLT,
+                                             (struct lys_node *)(&leaf->dflt)) == -1) {
                 goto error;
             }
         }
@@ -2981,8 +2982,9 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         llist->dflt = malloc(llist->dflt_size * sizeof *llist->dflt);
         for (i = 0; i < llist->dflt_size; i++) {
             llist->dflt[i] = lydict_insert(ctx, llist_orig->dflt[i], 0);
-            if (unres_schema_add_node(module, unres, &llist->type, UNRES_TYPE_DFLT,
-                                      (struct lys_node *)(&llist->dflt[i])) == -1) {
+            if ((!ingrouping(retval) || (llist->type.base != LY_TYPE_LEAFREF))
+                    && unres_schema_add_node(module, unres, &llist->type, UNRES_TYPE_DFLT,
+                                             (struct lys_node *)(&llist->dflt[i])) == -1) {
                 goto error;
             }
         }
