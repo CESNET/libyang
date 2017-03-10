@@ -1597,6 +1597,14 @@ lyd_merge_node_equal(struct lyd_node *node1, struct lyd_node *node2)
         }
         break;
     case LYS_LIST:
+        if (((struct lys_node_list *)node1->schema)->keys_size == 0)
+        {
+          /* If there is no key, there is no way to detect equivalence,
+           * so the nodes must always be different
+           */
+          return 0;
+        }
+
         child1 = node1->child;
         child2 = node2->child;
         /* the exact data order is guaranteed */
