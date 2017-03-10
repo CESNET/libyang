@@ -35,6 +35,8 @@ as well as YANG 1.1 ([RFC 7950](https://tools.ietf.org/html/rfc7950)).
 
 * cmake >= 2.8.9
 * libpcre
+ * note, that PCRE is supposed to be compiled with unicode support (configure's options
+   `--enable-utf` and `--enable-unicode-properties`)
 * cmocka >= 1.0.0 (for tests only, see [Tests](#Tests))
 
 ## Building
