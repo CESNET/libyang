@@ -48,6 +48,8 @@ help(int shortout)
         "  -V, --verbose         Show verbose messages, can be used multiple times to\n"
         "                        increase verbosity.\n"
         "  -p PATH, --path=PATH  Separated search path for yin and yang modules.\n\n"
+        "  -s, --strict          Strict data parsing (do not skip unknown data),\n"
+        "                        has no effect for schemas.\n\n"
         "  -f FORMAT, --format=FORMAT\n"
         "                        Convert to FORMAT. Supported formats: \n"
         "                        tree, yin, yang for schemas,\n"
@@ -162,6 +164,7 @@ main_ni(int argc, char* argv[])
         {"allimplemented",   no_argument,       NULL, 'i'},
         {"output",           required_argument, NULL, 'o'},
         {"path",             required_argument, NULL, 'p'},
+        {"strict",           no_argument,       NULL, 's'},
         {"version",          no_argument,       NULL, 'v'},
         {"verbose",          no_argument,       NULL, 'V'},
         {"type",             required_argument, NULL, 't'},
@@ -189,7 +192,7 @@ main_ni(int argc, char* argv[])
     void *p;
 
     opterr = 0;
-    while ((opt = getopt_long(argc, argv, "d:f:F:ghHio:p:t:vV", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "d:f:F:ghHio:p:st:vV", options, &opt_index)) != -1) {
         switch (opt) {
         case 'd':
             if (!strcmp(optarg, "all")) {
@@ -284,6 +287,9 @@ main_ni(int argc, char* argv[])
                 goto cleanup;
             }
             break;
+        case 's':
+            options_parser |= LYD_OPT_STRICT;
+            break;
         case 't':
             if (!strcmp(optarg, "auto")) {
                 options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_TYPEMASK;
@@ -346,7 +352,7 @@ main_ni(int argc, char* argv[])
         fprintf(stderr, "yanglint warning: default mode is ignored when printing schema.\n");
     }
     if (!outformat_d && options_parser) {
-        /* we have options for printing default nodes, but output is schema */
+        /* we have options for printing data tree, but output is schema */
         fprintf(stderr, "yanglint warning: parser option is ignored when printing schema.\n");
     }
 
@@ -467,8 +473,8 @@ main_ni(int argc, char* argv[])
         }
     } else if (data) {
         ly_errno = 0;
-        if (!options_parser) {
-            /* LYD_OPT_DATA - status data fro ietf-yang-library are needed */
+        if (!(options_parser & LYD_OPT_TYPEMASK)) {
+            /* LYD_OPT_DATA - status data for ietf-yang-library are needed */
             root = ly_ctx_info(ctx);
         }
         for (data_item = data; data_item; data_item = data_item->next) {
