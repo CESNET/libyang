@@ -38,7 +38,7 @@
 #include "parser_yang.h"
 
 static int lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, struct lys_type *old,
-                        int tpdftype, struct unres_schema *unres);
+                        int in_grp, struct unres_schema *unres);
 
 API const struct lys_node *
 lys_is_disabled(const struct lys_node *node, int recursive)
@@ -1381,7 +1381,7 @@ lys_iffeature_free(struct ly_ctx *ctx, struct lys_iffeature *iffeature, uint8_t 
 
 static int
 type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, struct lys_type *old,
-              LY_DATA_TYPE base, int tpdftype, struct unres_schema *unres)
+              LY_DATA_TYPE base, int in_grp, struct unres_schema *unres)
 {
     int i;
 
@@ -1492,7 +1492,7 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
         case LY_TYPE_LEAFREF:
             if (old->info.lref.path) {
                 new->info.lref.path = lydict_insert(mod->ctx, old->info.lref.path, 0);
-                if (!tpdftype && unres_schema_add_node(mod, unres, new, UNRES_TYPE_LEAFREF, parent) == -1) {
+                if (!in_grp && unres_schema_add_node(mod, unres, new, UNRES_TYPE_LEAFREF, parent) == -1) {
                     return -1;
                 }
             }
@@ -1515,7 +1515,7 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
                     return -1;
                 }
                 for (i = 0; i < new->info.uni.count; i++) {
-                    if (lys_type_dup(mod, parent, &(new->info.uni.types[i]), &(old->info.uni.types[i]), tpdftype, unres)) {
+                    if (lys_type_dup(mod, parent, &(new->info.uni.types[i]), &(old->info.uni.types[i]), in_grp, unres)) {
                         return -1;
                     }
                 }
@@ -1531,7 +1531,7 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
 
 struct yang_type *
 lys_yang_type_dup(struct lys_module *module, struct lys_node *parent, struct yang_type *old, struct lys_type *type,
-                  int tpdftype, struct unres_schema *unres)
+                  int in_grp, struct unres_schema *unres)
 {
     struct yang_type *new;
 
@@ -1548,7 +1548,7 @@ lys_yang_type_dup(struct lys_module *module, struct lys_node *parent, struct yan
         LOGMEM;
         goto error;
     }
-    if (type_dup(module, parent, type, old->type, new->base, tpdftype, unres)) {
+    if (type_dup(module, parent, type, old->type, new->base, in_grp, unres)) {
         new->type->base = new->base;
         lys_type_free(module->ctx, new->type);
         memset(&new->type->info, 0, sizeof new->type->info);
@@ -1848,7 +1848,7 @@ lys_ext_instance_substmt(const struct lys_ext_instance *ext)
 
 static int
 lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, struct lys_type *old,
-            int tpdftype, struct unres_schema *unres)
+            int in_grp, struct unres_schema *unres)
 {
     int i;
 
@@ -1861,24 +1861,23 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
         return -1;
     }
 
-    i = unres_schema_find(unres, -1, old, tpdftype ? UNRES_TYPE_DER_TPDF : UNRES_TYPE_DER);
+    i = unres_schema_find(unres, -1, old, UNRES_TYPE_DER);
     if (i != -1) {
         /* HACK (serious one) for unres */
         /* nothing else we can do but duplicate it immediately */
         if (((struct lyxml_elem *)old->der)->flags & LY_YANG_STRUCTURE_FLAG) {
-            new->der = (struct lys_tpdf *)lys_yang_type_dup(mod, parent, (struct yang_type *)old->der, new, tpdftype, unres);
+            new->der = (struct lys_tpdf *)lys_yang_type_dup(mod, parent, (struct yang_type *)old->der, new, in_grp, unres);
         } else {
             new->der = (struct lys_tpdf *)lyxml_dup_elem(mod->ctx, (struct lyxml_elem *)old->der, NULL, 1);
         }
         /* all these unres additions can fail even though they did not before */
-        if (!new->der || unres_schema_add_node(mod, unres, new,
-                                               tpdftype ? UNRES_TYPE_DER_TPDF : UNRES_TYPE_DER, parent) == -1) {
+        if (!new->der || (unres_schema_add_node(mod, unres, new, UNRES_TYPE_DER, parent) == -1)) {
             return -1;
         }
         return EXIT_SUCCESS;
     }
 
-    return type_dup(mod, parent, new, old, new->base, tpdftype, unres);
+    return type_dup(mod, parent, new, old, new->base, in_grp, unres);
 }
 
 void
