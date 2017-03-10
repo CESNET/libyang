@@ -26,11 +26,6 @@ providing API) in C. The library is used e.g. in [libnetconf2](https://github.co
 Current implementation covers YANG 1.0 ([RFC 6020](https://tools.ietf.org/html/rfc6020))
 as well as YANG 1.1 ([RFC 7950](https://tools.ietf.org/html/rfc7950)).
 
-## Planned Features
-
-* YANG Metadata ([RFC 7952](https://tools.ietf.org/html/rfc7952)).
-* Modular mechanism for supporting YANG extensions.
-
 ## Requirements
 
 * cmake >= 2.8.9
