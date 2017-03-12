@@ -2690,7 +2690,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
     struct lys_node_uses *uses_orig = (struct lys_node_uses *)node;
     struct lys_node_rpc_action *rpc = NULL;
     struct lys_node_inout *io = NULL;
-    struct lys_node_rpc_action *ntf = NULL;
+    struct lys_node_notif *ntf = NULL;
     struct lys_node_case *cs = NULL;
     struct lys_node_case *cs_orig = (struct lys_node_case *)node;
 
