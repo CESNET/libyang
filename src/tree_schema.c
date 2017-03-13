@@ -69,6 +69,10 @@ check:
     if (node->nodetype == LYS_AUGMENT) {
         /* go to parent actually means go to the target node */
         node = ((struct lys_node_augment *)node)->target;
+        if (!node) {
+            /* unresolved augment, let's say it's enabled */
+            return NULL;
+        }
     } else if (node->parent) {
         node = node->parent;
     } else {
