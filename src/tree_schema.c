@@ -201,7 +201,7 @@ lys_get_data_sibling(const struct lys_module *mod, const struct lys_node *siblin
 API const struct lys_node *
 lys_getnext(const struct lys_node *last, const struct lys_node *parent, const struct lys_module *module, int options)
 {
-    const struct lys_node *next;
+    const struct lys_node *next, *aug_parent;
     struct lys_node **snode;
 
     if ((!parent && !module) || (parent && (parent->nodetype == LYS_USES) && !(options & LYS_GETNEXT_PARENTUSES))) {
@@ -216,7 +216,8 @@ lys_getnext(const struct lys_node *last, const struct lys_node *parent, const st
         if (parent) {
             /* schema subtree */
             snode = lys_child(parent, LYS_UNKNOWN);
-            if (!snode) {
+            /* do not return anything if the augment does not have any children */
+            if (!snode || ((parent->nodetype == LYS_AUGMENT) && ((*snode)->parent != parent))) {
                 return NULL;
             }
             next = last = *snode;
@@ -234,6 +235,25 @@ lys_getnext(const struct lys_node *last, const struct lys_node *parent, const st
     }
 
 repeat:
+    if (parent && (parent->nodetype == LYS_AUGMENT) && next) {
+        /* do not return anything outside the parent augment */
+        aug_parent = next->parent;
+        do {
+            while (aug_parent && (aug_parent->nodetype != LYS_AUGMENT)) {
+                aug_parent = aug_parent->parent;
+            }
+            if (aug_parent) {
+                if (aug_parent == parent) {
+                    break;
+                }
+                aug_parent = ((struct lys_node_augment *)aug_parent)->target;
+            }
+
+        } while (aug_parent);
+        if (!aug_parent) {
+            return NULL;
+        }
+    }
     while (next && (next->nodetype == LYS_GROUPING)) {
         if (options & LYS_GETNEXT_WITHGROUPING) {
             return next;

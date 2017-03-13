@@ -2067,6 +2067,7 @@ const struct lys_node *lys_is_disabled(const struct lys_node *node, int recursiv
  *
  * @param[in] last Previously returned schema tree node, or NULL in case of the first call.
  * @param[in] parent Parent of the subtree where the function starts processing (__cannot be__ #LYS_USES, use its parent).
+ * If it is #LYS_AUGMENT, only the children of that augment are returned.
  * @param[in] module In case of iterating on top level elements, the \p parent is NULL and module must be specified.
  * @param[in] options ORed options LYS_GETNEXT_*.
  * @return Next schema tree node that can be instanciated in a data tree, NULL in case there is no such element
