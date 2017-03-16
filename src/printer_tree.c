@@ -45,7 +45,7 @@ print_indent(struct lyout *out, uint64_t indent, int level)
 }
 
 static int
-sibling_is_valid_child(const struct lys_node *node, int including, const struct lys_module *module,
+sibling_is_valid_child(const struct lys_node *node, int including, const struct lys_module *sub_module,
                        struct lys_node *aug_parent, LYS_NODE nodetype)
 {
     struct lys_node *cur, *cur2;
@@ -63,13 +63,13 @@ sibling_is_valid_child(const struct lys_node *node, int including, const struct 
             return 0;
         }
 
-        if (module != lys_node_module(cur)) {
+        if (sub_module->type && (lys_main_module(sub_module) != lys_node_module(cur))) {
             continue;
         }
 
         if (!lys_is_disabled(cur, 0)) {
             if (cur->nodetype == LYS_USES) {
-                if (sibling_is_valid_child(cur->child, 1, module, NULL, nodetype)) {
+                if (sibling_is_valid_child(cur->child, 1, sub_module, NULL, nodetype)) {
                     return 1;
                 }
             } else {
@@ -113,7 +113,7 @@ sibling_is_valid_child(const struct lys_node *node, int including, const struct 
 
     /* if in uses, the following printed child can actually be in the parent node :-/ */
     if (lys_parent(node) && (lys_parent(node)->nodetype == LYS_USES)) {
-        return sibling_is_valid_child(lys_parent(node), 0, module, NULL, nodetype);
+        return sibling_is_valid_child(lys_parent(node), 0, sub_module, NULL, nodetype);
     }
 
     return 0;
@@ -121,7 +121,7 @@ sibling_is_valid_child(const struct lys_node *node, int including, const struct 
 
 uint64_t
 create_indent(int level, uint64_t old_indent, const struct lys_node *node, int shorthand,
-              const struct lys_module *module, struct lys_node *aug_parent)
+              const struct lys_module *sub_module, struct lys_node *aug_parent)
 {
     uint64_t new_indent;
     int next_is_case = 0, is_case = 0, has_next = 0;
@@ -147,7 +147,7 @@ create_indent(int level, uint64_t old_indent, const struct lys_node *node, int s
     }
 
     /* next is a node that will actually be printed */
-    has_next = sibling_is_valid_child(node, 0, lys_main_module(module), aug_parent, node->nodetype);
+    has_next = sibling_is_valid_child(node, 0, sub_module, aug_parent, node->nodetype);
 
     if (has_next && !next_is_case) {
         new_indent |= (uint64_t)1 << (level - 1);
