@@ -4233,7 +4233,7 @@ check_leafref_config(struct lys_node_leaf *leaf, struct lys_type *type)
 
     if (type->base == LY_TYPE_LEAFREF) {
         if ((leaf->flags & LYS_CONFIG_W) && type->info.lref.target && (type->info.lref.target->flags & LYS_CONFIG_R)) {
-            LOGVAL(LYE_SPEC, LY_VLOG_LYS, leaf, "The %s is config but refers to a non-config %s.",
+            LOGVAL(LYE_SPEC, LY_VLOG_LYS, leaf, "The leafref %s is config but refers to a non-config %s.",
                    strnodetype(leaf->nodetype), strnodetype(type->info.lref.target->nodetype));
             return -1;
         }

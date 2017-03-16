@@ -3716,7 +3716,7 @@ lys_leaf_add_leafref_target(struct lys_node_leaf *leafref_target, struct lys_nod
     /* check for config flag */
     if ((leafref->flags & LYS_CONFIG_W) && (leafref_target->flags & LYS_CONFIG_R)) {
         LOGVAL(LYE_SPEC, LY_VLOG_LYS, leafref,
-               "The %s is config but refers to a non-config %s.",
+               "The leafref %s is config but refers to a non-config %s.",
                strnodetype(leafref->nodetype), strnodetype(leafref_target->nodetype));
         return -1;
     }
