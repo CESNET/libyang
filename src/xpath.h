@@ -295,10 +295,20 @@ void lyxp_set_free(struct lyxp_set *set);
 struct lyxp_expr *lyxp_parse_expr(const char *expr);
 
 /**
- * @brief Frees a parsed XPath expression. \p exp should not be used afterwards.
+ * @brief Reparse (perform additional syntax checks) an XPath
+ * expression structure.
  *
- * @param[in] exp Expression to free.
+ * @param[in] exp Parsed expression structure.
+ * @param[in,out] exp_idx Current index in \p exp. Set to 0 on first call, param just for recursion.
+ * @return EXIT_SUCCESS on success, -1 on error.
  */
-void lyxp_exp_free(struct lyxp_expr *exp);
+int lyxp_reparse_expr(struct lyxp_expr *exp, uint16_t *exp_idx);
+
+/**
+ * @brief Frees a parsed XPath expression. \p expr should not be used afterwards.
+ *
+ * @param[in] expr Expression to free.
+ */
+void lyxp_expr_free(struct lyxp_expr *expr);
 
 #endif /* _XPATH_H */

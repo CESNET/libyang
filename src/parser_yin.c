@@ -3147,9 +3147,16 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
     }
 
     /* check XPath dependencies */
-    if (!(options & LYS_PARSE_OPT_INGRP) && aug->when &&
-            (unres_schema_add_node(module, unres, (struct lys_node *)aug, UNRES_XPATH, NULL) == -1)) {
-        goto error;
+    if (aug->when) {
+        if (options & LYS_PARSE_OPT_INGRP) {
+            if (lyp_check_xpath_syntax((struct lys_node *)aug)) {
+                goto error;
+            }
+        } else {
+            if (unres_schema_add_node(module, unres, (struct lys_node *)aug, UNRES_XPATH, NULL) == -1) {
+                goto error;
+            }
+        }
     }
 
     return EXIT_SUCCESS;
@@ -4091,9 +4098,16 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     }
 
     /* check XPath dependencies */
-    if (!(options & LYS_PARSE_OPT_INGRP) && cs->when &&
-            (unres_schema_add_node(module, unres, retval, UNRES_XPATH, NULL) == -1)) {
-        goto error;
+    if (cs->when) {
+        if (options & LYS_PARSE_OPT_INGRP) {
+            if (lyp_check_xpath_syntax(retval)) {
+                goto error;
+            }
+        } else {
+            if (unres_schema_add_node(module, unres, retval, UNRES_XPATH, NULL) == -1) {
+                goto error;
+            }
+        }
     }
 
     return retval;
@@ -4299,9 +4313,16 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
     }
 
     /* check XPath dependencies */
-    if (!(options & LYS_PARSE_OPT_INGRP) && choice->when &&
-            (unres_schema_add_node(module, unres, retval, UNRES_XPATH, NULL) == -1)) {
-        goto error;
+    if (choice->when) {
+        if (options & LYS_PARSE_OPT_INGRP) {
+            if (lyp_check_xpath_syntax(retval)) {
+                goto error;
+            }
+        } else {
+            if (unres_schema_add_node(module, unres, retval, UNRES_XPATH, NULL) == -1) {
+                goto error;
+            }
+        }
     }
 
     return retval;
@@ -4455,9 +4476,16 @@ read_yin_anydata(struct lys_module *module, struct lys_node *parent, struct lyxm
     }
 
     /* check XPath dependencies */
-    if (!(options & LYS_PARSE_OPT_INGRP) && (anyxml->when || anyxml->must_size) &&
-            (unres_schema_add_node(module, unres, retval, UNRES_XPATH, NULL) == -1)) {
-        goto error;
+    if (anyxml->when || anyxml->must) {
+        if (options & LYS_PARSE_OPT_INGRP) {
+            if (lyp_check_xpath_syntax(retval)) {
+                goto error;
+            }
+        } else {
+            if (unres_schema_add_node(module, unres, retval, UNRES_XPATH, NULL) == -1) {
+                goto error;
+            }
+        }
     }
 
     return retval;
@@ -4670,9 +4698,16 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     }
 
     /* check XPath dependencies */
-    if (!(options & LYS_PARSE_OPT_INGRP) && (leaf->when || leaf->must_size) &&
-            (unres_schema_add_node(module, unres, retval, UNRES_XPATH, NULL) == -1)) {
-        goto error;
+    if (leaf->when || leaf->must) {
+        if (options & LYS_PARSE_OPT_INGRP) {
+            if (lyp_check_xpath_syntax(retval)) {
+                goto error;
+            }
+        } else {
+            if (unres_schema_add_node(module, unres, retval, UNRES_XPATH, NULL) == -1) {
+                goto error;
+            }
+        }
     }
 
     return retval;
@@ -4979,9 +5014,16 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
     }
 
     /* check XPath dependencies */
-    if (!(options & LYS_PARSE_OPT_INGRP) && (llist->when || llist->must_size) &&
-            (unres_schema_add_node(module, unres, retval, UNRES_XPATH, NULL) == -1)) {
-        goto error;
+    if (llist->when || llist->must) {
+        if (options & LYS_PARSE_OPT_INGRP) {
+            if (lyp_check_xpath_syntax(retval)) {
+                goto error;
+            }
+        } else {
+            if (unres_schema_add_node(module, unres, retval, UNRES_XPATH, NULL) == -1) {
+                goto error;
+            }
+        }
     }
 
     return retval;
@@ -5350,9 +5392,16 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     }
 
     /* check XPath dependencies */
-    if (!(options & LYS_PARSE_OPT_INGRP) && (list->when || list->must_size) &&
-            (unres_schema_add_node(module, unres, retval, UNRES_XPATH, NULL) == -1)) {
-        goto error;
+    if (list->when || list->must) {
+        if (options & LYS_PARSE_OPT_INGRP) {
+            if (lyp_check_xpath_syntax(retval)) {
+                goto error;
+            }
+        } else {
+            if (unres_schema_add_node(module, unres, retval, UNRES_XPATH, NULL) == -1) {
+                goto error;
+            }
+        }
     }
 
     return retval;
@@ -5565,9 +5614,16 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
     }
 
     /* check XPath dependencies */
-    if (!(options & LYS_PARSE_OPT_INGRP) && (cont->when || cont->must_size) &&
-            (unres_schema_add_node(module, unres, retval, UNRES_XPATH, NULL) == -1)) {
-        goto error;
+    if (cont->when || cont->must) {
+        if (options & LYS_PARSE_OPT_INGRP) {
+            if (lyp_check_xpath_syntax(retval)) {
+                goto error;
+            }
+        } else {
+            if (unres_schema_add_node(module, unres, retval, UNRES_XPATH, NULL) == -1) {
+                goto error;
+            }
+        }
     }
 
     return retval;
@@ -5886,9 +5942,16 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
     }
 
     /* check XPath dependencies */
-    if (!(options & LYS_PARSE_OPT_INGRP) && inout->must_size &&
-            (unres_schema_add_node(module, unres, retval, UNRES_XPATH, NULL) == -1)) {
-        goto error;
+    if (inout->must) {
+        if (options & LYS_PARSE_OPT_INGRP) {
+            if (lyp_check_xpath_syntax(retval)) {
+                goto error;
+            }
+        } else {
+            if (unres_schema_add_node(module, unres, retval, UNRES_XPATH, NULL) == -1) {
+                goto error;
+            }
+        }
     }
 
     return retval;
@@ -6070,9 +6133,16 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
     }
 
     /* check XPath dependencies */
-    if (!(options & LYS_PARSE_OPT_INGRP) && notif->must_size &&
-            (unres_schema_add_node(module, unres, retval, UNRES_XPATH, NULL) == -1)) {
-        goto error;
+    if (notif->must) {
+        if (options & LYS_PARSE_OPT_INGRP) {
+            if (lyp_check_xpath_syntax(retval)) {
+                goto error;
+            }
+        } else {
+            if (unres_schema_add_node(module, unres, retval, UNRES_XPATH, NULL) == -1) {
+                goto error;
+            }
+        }
     }
 
     return retval;
@@ -6393,9 +6463,16 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     }
 
     /* check XPath dependencies */
-    if (!(options & LYS_PARSE_OPT_INGRP) && uses->when &&
-            (unres_schema_add_node(module, unres, retval, UNRES_XPATH, NULL) == -1)) {
-        goto error;
+    if (uses->when) {
+        if (options & LYS_PARSE_OPT_INGRP) {
+            if (lyp_check_xpath_syntax(retval)) {
+                goto error;
+            }
+        } else {
+            if (unres_schema_add_node(module, unres, retval, UNRES_XPATH, NULL) == -1) {
+                goto error;
+            }
+        }
     }
 
     return retval;

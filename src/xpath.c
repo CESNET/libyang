@@ -42,30 +42,29 @@
 
 static const  struct lyd_node *moveto_get_root(const struct lyd_node *cur_node, int options,
                                                enum lyxp_node_type *root_type);
-static int reparse_expr(struct lyxp_expr *exp, uint16_t *exp_idx);
 static int eval_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lys_module *local_mod,
                      struct lyxp_set *set, int options);
 
 void
-lyxp_exp_free(struct lyxp_expr *exp)
+lyxp_expr_free(struct lyxp_expr *expr)
 {
     uint16_t i;
 
-    if (!exp) {
+    if (!expr) {
         return;
     }
 
-    free(exp->expr);
-    free(exp->tokens);
-    free(exp->expr_pos);
-    free(exp->tok_len);
-    if (exp->repeat) {
-        for (i = 0; i < exp->used; ++i) {
-            free(exp->repeat[i]);
+    free(expr->expr);
+    free(expr->tokens);
+    free(expr->expr_pos);
+    free(expr->tok_len);
+    if (expr->repeat) {
+        for (i = 0; i < expr->used; ++i) {
+            free(expr->repeat[i]);
         }
     }
-    free(exp->repeat);
-    free(exp);
+    free(expr->repeat);
+    free(expr);
 }
 
 /**
@@ -1645,7 +1644,7 @@ reparse_predicate(struct lyxp_expr *exp, uint16_t *exp_idx)
     }
     ++(*exp_idx);
 
-    if (reparse_expr(exp, exp_idx)) {
+    if (lyxp_reparse_expr(exp, exp_idx)) {
         return -1;
     }
 
@@ -1979,7 +1978,7 @@ reparse_function_call(struct lyxp_expr *exp, uint16_t *exp_idx)
     }
     if (exp->tokens[*exp_idx] != LYXP_TOKEN_PAR2) {
         ++arg_count;
-        if (reparse_expr(exp, exp_idx)) {
+        if (lyxp_reparse_expr(exp, exp_idx)) {
             return -1;
         }
     }
@@ -1987,7 +1986,7 @@ reparse_function_call(struct lyxp_expr *exp, uint16_t *exp_idx)
         ++(*exp_idx);
 
         ++arg_count;
-        if (reparse_expr(exp, exp_idx)) {
+        if (lyxp_reparse_expr(exp, exp_idx)) {
             return -1;
         }
     }
@@ -2033,7 +2032,7 @@ reparse_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx)
         /* '(' Expr ')' Predicate* */
         ++(*exp_idx);
 
-        if (reparse_expr(exp, exp_idx)) {
+        if (lyxp_reparse_expr(exp, exp_idx)) {
             return -1;
         }
 
@@ -2268,8 +2267,8 @@ reparse_additive_expr:
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
-static int
-reparse_expr(struct lyxp_expr *exp, uint16_t *exp_idx)
+int
+lyxp_reparse_expr(struct lyxp_expr *exp, uint16_t *exp_idx)
 {
     uint16_t prev_or_exp, prev_and_exp;
 
@@ -2585,7 +2584,7 @@ lyxp_parse_expr(const char *expr)
     return ret;
 
 error:
-    lyxp_exp_free(ret);
+    lyxp_expr_free(ret);
     return NULL;
 }
 
@@ -7317,7 +7316,7 @@ lyxp_eval(const char *expr, const struct lyd_node *cur_node, enum lyxp_node_type
         goto finish;
     }
 
-    rc = reparse_expr(exp, &exp_idx);
+    rc = lyxp_reparse_expr(exp, &exp_idx);
     if (rc) {
         goto finish;
     } else if (exp->used > exp_idx) {
@@ -7342,7 +7341,7 @@ lyxp_eval(const char *expr, const struct lyd_node *cur_node, enum lyxp_node_type
     }
 
 finish:
-    lyxp_exp_free(exp);
+    lyxp_expr_free(exp);
     return rc;
 }
 
@@ -7637,7 +7636,7 @@ lyxp_atomize(const char *expr, const struct lys_node *cur_snode, enum lyxp_node_
         goto finish;
     }
 
-    rc = reparse_expr(exp, &exp_idx);
+    rc = lyxp_reparse_expr(exp, &exp_idx);
     if (rc) {
         goto finish;
     } else if (exp->used > exp_idx) {
@@ -7658,7 +7657,7 @@ lyxp_atomize(const char *expr, const struct lys_node *cur_snode, enum lyxp_node_
     rc = eval_expr(exp, &exp_idx, (struct lyd_node *)cur_snode, lys_node_module(cur_snode), set, options);
 
 finish:
-    lyxp_exp_free(exp);
+    lyxp_expr_free(exp);
     return rc;
 }
 

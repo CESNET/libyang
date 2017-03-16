@@ -501,7 +501,7 @@ _transform_json2xml(const struct lys_module *module, const char *expr, int schem
     }
     out[out_used] = '\0';
 
-    lyxp_exp_free(exp);
+    lyxp_expr_free(exp);
     return lydict_insert_zc(module->ctx, out);
 
 error:
@@ -510,7 +510,7 @@ error:
         free(*namespaces);
     }
     free(out);
-    lyxp_exp_free(exp);
+    lyxp_expr_free(exp);
     return NULL;
 }
 
@@ -676,12 +676,12 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
     }
     out[out_used] = '\0';
 
-    lyxp_exp_free(exp);
+    lyxp_expr_free(exp);
     return lydict_insert_zc(ctx, out);
 
 error:
     free(out);
-    lyxp_exp_free(exp);
+    lyxp_expr_free(exp);
     return NULL;
 }
 
@@ -781,12 +781,12 @@ transform_schema2json(const struct lys_module *module, const char *expr)
     }
     out[out_used] = '\0';
 
-    lyxp_exp_free(exp);
+    lyxp_expr_free(exp);
     return lydict_insert_zc(module->ctx, out);
 
 error:
     free(out);
-    lyxp_exp_free(exp);
+    lyxp_expr_free(exp);
     return NULL;
 }
 
