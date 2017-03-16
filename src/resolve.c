@@ -5533,7 +5533,6 @@ resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres
             /* instantiate grouping only when it is completely resolved */
             uses->grp = NULL;
         }
-        LOGVAL(LYE_INRESOLV, LY_VLOG_LYS, uses, "uses (grouping is incomplete)", uses->name);
         return EXIT_FAILURE;
     }
 
