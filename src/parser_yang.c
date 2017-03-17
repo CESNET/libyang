@@ -3685,7 +3685,7 @@ yang_check_container(struct lys_module *module, struct lys_node_container *cont,
     /* check XPath dependencies */
     if (cont->when || cont->must_size) {
         if (options & LYS_PARSE_OPT_INGRP) {
-            if (lyp_check_xpath_syntax((struct lys_node *)cont)) {
+            if (lyxp_node_check_syntax((struct lys_node *)cont)) {
                 goto error;
             }
         } else {
@@ -3732,7 +3732,7 @@ yang_check_leaf(struct lys_module *module, struct lys_node_leaf *leaf, int optio
     /* check XPath dependencies */
     if (leaf->when || leaf->must_size) {
         if (options & LYS_PARSE_OPT_INGRP) {
-            if (lyp_check_xpath_syntax((struct lys_node *)leaf)) {
+            if (lyxp_node_check_syntax((struct lys_node *)leaf)) {
                 goto error;
             }
         } else {
@@ -3798,7 +3798,7 @@ yang_check_leaflist(struct lys_module *module, struct lys_node_leaflist *leaflis
     /* check XPath dependencies */
     if (leaflist->when || leaflist->must_size) {
         if (options & LYS_PARSE_OPT_INGRP) {
-            if (lyp_check_xpath_syntax((struct lys_node *)leaflist)) {
+            if (lyxp_node_check_syntax((struct lys_node *)leaflist)) {
                 goto error;
             }
         } else {
@@ -3865,7 +3865,7 @@ yang_check_list(struct lys_module *module, struct lys_node_list *list, struct ly
     /* check XPath dependencies */
     if (list->when || list->must_size) {
         if (options & LYS_PARSE_OPT_INGRP) {
-            if (lyp_check_xpath_syntax((struct lys_node *)list)) {
+            if (lyxp_node_check_syntax((struct lys_node *)list)) {
                 goto error;
             }
         } else {
@@ -3917,7 +3917,7 @@ yang_check_choice(struct lys_module *module, struct lys_node_choice *choice, str
     /* check XPath dependencies */
     if (choice->when) {
         if (options & LYS_PARSE_OPT_INGRP) {
-            if (lyp_check_xpath_syntax((struct lys_node *)choice)) {
+            if (lyxp_node_check_syntax((struct lys_node *)choice)) {
                 goto error;
             }
         } else {
@@ -3991,7 +3991,7 @@ yang_check_notif(struct lys_module *module, struct lys_node_notif *notif, struct
     /* check XPath dependencies */
     if (notif->must_size) {
         if (options & LYS_PARSE_OPT_INGRP) {
-            if (lyp_check_xpath_syntax((struct lys_node *)notif)) {
+            if (lyxp_node_check_syntax((struct lys_node *)notif)) {
                 goto error;
             }
         } else {
@@ -4034,7 +4034,7 @@ yang_check_augment(struct lys_module *module, struct lys_node_augment *augment, 
     /* check XPath dependencies */
     if (augment->when) {
         if (options & LYS_PARSE_OPT_INGRP) {
-            if (lyp_check_xpath_syntax((struct lys_node *)augment)) {
+            if (lyxp_node_check_syntax((struct lys_node *)augment)) {
                 goto error;
             }
         } else {
@@ -4091,7 +4091,7 @@ yang_check_uses(struct lys_module *module, struct lys_node_uses *uses, int optio
     /* check XPath dependencies */
     if (uses->when) {
         if (options & LYS_PARSE_OPT_INGRP) {
-            if (lyp_check_xpath_syntax((struct lys_node *)uses)) {
+            if (lyxp_node_check_syntax((struct lys_node *)uses)) {
                 goto error;
             }
         } else {
@@ -4133,7 +4133,7 @@ yang_check_anydata(struct lys_module *module, struct lys_node_anydata *anydata, 
     /* check XPath dependencies */
     if (anydata->when || anydata->must_size) {
         if (options & LYS_PARSE_OPT_INGRP) {
-            if (lyp_check_xpath_syntax((struct lys_node *)anydata)) {
+            if (lyxp_node_check_syntax((struct lys_node *)anydata)) {
                 goto error;
             }
         } else {
@@ -4226,7 +4226,7 @@ yang_check_nodes(struct lys_module *module, struct lys_node *parent, struct lys_
                 }
                 /* check XPath dependencies */
                 if (options & LYS_PARSE_OPT_INGRP) {
-                    if (lyp_check_xpath_syntax(node)) {
+                    if (lyxp_node_check_syntax(node)) {
                         goto error;
                     }
                 } else {
@@ -4263,7 +4263,7 @@ yang_check_nodes(struct lys_module *module, struct lys_node *parent, struct lys_
                 }
                 /* check XPath dependencies */
                 if (options & LYS_PARSE_OPT_INGRP) {
-                    if (lyp_check_xpath_syntax(node)) {
+                    if (lyxp_node_check_syntax(node)) {
                         goto error;
                     }
                 } else {

@@ -261,6 +261,15 @@ int lyxp_atomize(const char *expr, const struct lys_node *cur_snode, enum lyxp_n
 int lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int warn_on_fwd_ref);
 
 /**
+ * @brief Check syntax of all the XPath expressions of the node.
+ *
+ * @param[in] node Node to examine.
+ *
+ * @return EXIT_SUCCESS on success, -1 on error.
+ */
+int lyxp_node_check_syntax(const struct lys_node *node);
+
+/**
  * @brief Cast XPath set to another type.
  *        Indirectly context position aware.
  *
@@ -293,16 +302,6 @@ void lyxp_set_free(struct lyxp_set *set);
  * @return Filled expression structure or NULL on error.
  */
 struct lyxp_expr *lyxp_parse_expr(const char *expr);
-
-/**
- * @brief Reparse (perform additional syntax checks) an XPath
- * expression structure.
- *
- * @param[in] exp Parsed expression structure.
- * @param[in,out] exp_idx Current index in \p exp. Set to 0 on first call, param just for recursion.
- * @return EXIT_SUCCESS on success, -1 on error.
- */
-int lyxp_reparse_expr(struct lyxp_expr *exp, uint16_t *exp_idx);
 
 /**
  * @brief Frees a parsed XPath expression. \p expr should not be used afterwards.

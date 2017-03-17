@@ -3,7 +3,7 @@
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief common libyang parsers routines implementations
  *
- * Copyright (c) 2015 CESNET, z.s.p.o.
+ * Copyright (c) 2015-2017 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -29,7 +29,6 @@
 #include <pcre.h>
 
 #include "common.h"
-#include "xpath.h"
 #include "context.h"
 #include "libyang.h"
 #include "parser.h"
@@ -2654,105 +2653,6 @@ lyp_check_includedup(struct lys_module *mod, const char *name, struct lys_includ
     }
 
     /* no duplicity found */
-    return 0;
-}
-
-int
-lyp_check_xpath_syntax(struct lys_node *node)
-{
-    uint8_t must_size = 0;
-    uint16_t exp_idx;
-    uint32_t i;
-    int ret;
-    struct lys_when *when = NULL;
-    struct lys_restr *must = NULL;
-    struct lyxp_expr *expr;
-
-    switch (node->nodetype) {
-    case LYS_CONTAINER:
-        when = ((struct lys_node_container *)node)->when;
-        must = ((struct lys_node_container *)node)->must;
-        must_size = ((struct lys_node_container *)node)->must_size;
-        break;
-    case LYS_CHOICE:
-        when = ((struct lys_node_choice *)node)->when;
-        break;
-    case LYS_LEAF:
-        when = ((struct lys_node_leaf *)node)->when;
-        must = ((struct lys_node_leaf *)node)->must;
-        must_size = ((struct lys_node_leaf *)node)->must_size;
-        break;
-    case LYS_LEAFLIST:
-        when = ((struct lys_node_leaflist *)node)->when;
-        must = ((struct lys_node_leaflist *)node)->must;
-        must_size = ((struct lys_node_leaflist *)node)->must_size;
-        break;
-    case LYS_LIST:
-        when = ((struct lys_node_list *)node)->when;
-        must = ((struct lys_node_list *)node)->must;
-        must_size = ((struct lys_node_list *)node)->must_size;
-        break;
-    case LYS_ANYXML:
-    case LYS_ANYDATA:
-        when = ((struct lys_node_anydata *)node)->when;
-        must = ((struct lys_node_anydata *)node)->must;
-        must_size = ((struct lys_node_anydata *)node)->must_size;
-        break;
-    case LYS_CASE:
-        when = ((struct lys_node_case *)node)->when;
-        break;
-    case LYS_NOTIF:
-        must = ((struct lys_node_notif *)node)->must;
-        must_size = ((struct lys_node_notif *)node)->must_size;
-        break;
-    case LYS_INPUT:
-    case LYS_OUTPUT:
-        must = ((struct lys_node_inout *)node)->must;
-        must_size = ((struct lys_node_inout *)node)->must_size;
-        break;
-    case LYS_USES:
-        when = ((struct lys_node_uses *)node)->when;
-        break;
-    case LYS_AUGMENT:
-        when = ((struct lys_node_augment *)node)->when;
-        break;
-    default:
-        /* nothing to check */
-        break;
-    }
-
-    /* check "when" */
-    if (when) {
-        expr = lyxp_parse_expr(when->cond);
-        if (!expr) {
-            return -1;
-        }
-
-        exp_idx = 0;
-        ret = lyxp_reparse_expr(expr, &exp_idx);
-
-        lyxp_expr_free(expr);
-        if (ret) {
-            return -1;
-        }
-    }
-
-    /* check "must" */
-    for (i = 0; i < must_size; ++i) {
-        expr = lyxp_parse_expr(must[i].expr);
-        if (!expr) {
-            return -1;
-        }
-
-        exp_idx = 0;
-        ret = lyxp_reparse_expr(expr, &exp_idx);
-
-        lyxp_expr_free(expr);
-        if (ret) {
-            return -1;
-        }
-    }
-
     return 0;
 }
 

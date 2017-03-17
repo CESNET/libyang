@@ -3149,7 +3149,7 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
     /* check XPath dependencies */
     if (aug->when) {
         if (options & LYS_PARSE_OPT_INGRP) {
-            if (lyp_check_xpath_syntax((struct lys_node *)aug)) {
+            if (lyxp_node_check_syntax((struct lys_node *)aug)) {
                 goto error;
             }
         } else {
@@ -4100,7 +4100,7 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     /* check XPath dependencies */
     if (cs->when) {
         if (options & LYS_PARSE_OPT_INGRP) {
-            if (lyp_check_xpath_syntax(retval)) {
+            if (lyxp_node_check_syntax(retval)) {
                 goto error;
             }
         } else {
@@ -4315,7 +4315,7 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
     /* check XPath dependencies */
     if (choice->when) {
         if (options & LYS_PARSE_OPT_INGRP) {
-            if (lyp_check_xpath_syntax(retval)) {
+            if (lyxp_node_check_syntax(retval)) {
                 goto error;
             }
         } else {
@@ -4478,7 +4478,7 @@ read_yin_anydata(struct lys_module *module, struct lys_node *parent, struct lyxm
     /* check XPath dependencies */
     if (anyxml->when || anyxml->must) {
         if (options & LYS_PARSE_OPT_INGRP) {
-            if (lyp_check_xpath_syntax(retval)) {
+            if (lyxp_node_check_syntax(retval)) {
                 goto error;
             }
         } else {
@@ -4700,7 +4700,7 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     /* check XPath dependencies */
     if (leaf->when || leaf->must) {
         if (options & LYS_PARSE_OPT_INGRP) {
-            if (lyp_check_xpath_syntax(retval)) {
+            if (lyxp_node_check_syntax(retval)) {
                 goto error;
             }
         } else {
@@ -5016,7 +5016,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
     /* check XPath dependencies */
     if (llist->when || llist->must) {
         if (options & LYS_PARSE_OPT_INGRP) {
-            if (lyp_check_xpath_syntax(retval)) {
+            if (lyxp_node_check_syntax(retval)) {
                 goto error;
             }
         } else {
@@ -5394,7 +5394,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     /* check XPath dependencies */
     if (list->when || list->must) {
         if (options & LYS_PARSE_OPT_INGRP) {
-            if (lyp_check_xpath_syntax(retval)) {
+            if (lyxp_node_check_syntax(retval)) {
                 goto error;
             }
         } else {
@@ -5616,7 +5616,7 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
     /* check XPath dependencies */
     if (cont->when || cont->must) {
         if (options & LYS_PARSE_OPT_INGRP) {
-            if (lyp_check_xpath_syntax(retval)) {
+            if (lyxp_node_check_syntax(retval)) {
                 goto error;
             }
         } else {
@@ -5944,7 +5944,7 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
     /* check XPath dependencies */
     if (inout->must) {
         if (options & LYS_PARSE_OPT_INGRP) {
-            if (lyp_check_xpath_syntax(retval)) {
+            if (lyxp_node_check_syntax(retval)) {
                 goto error;
             }
         } else {
@@ -6135,7 +6135,7 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
     /* check XPath dependencies */
     if (notif->must) {
         if (options & LYS_PARSE_OPT_INGRP) {
-            if (lyp_check_xpath_syntax(retval)) {
+            if (lyxp_node_check_syntax(retval)) {
                 goto error;
             }
         } else {
@@ -6465,7 +6465,7 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     /* check XPath dependencies */
     if (uses->when) {
         if (options & LYS_PARSE_OPT_INGRP) {
-            if (lyp_check_xpath_syntax(retval)) {
+            if (lyxp_node_check_syntax(retval)) {
                 goto error;
             }
         } else {

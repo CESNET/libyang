@@ -44,6 +44,7 @@ static const  struct lyd_node *moveto_get_root(const struct lyd_node *cur_node, 
                                                enum lyxp_node_type *root_type);
 static int eval_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lys_module *local_mod,
                      struct lyxp_set *set, int options);
+static int reparse_expr(struct lyxp_expr *exp, uint16_t *exp_idx);
 
 void
 lyxp_expr_free(struct lyxp_expr *expr)
@@ -1644,7 +1645,7 @@ reparse_predicate(struct lyxp_expr *exp, uint16_t *exp_idx)
     }
     ++(*exp_idx);
 
-    if (lyxp_reparse_expr(exp, exp_idx)) {
+    if (reparse_expr(exp, exp_idx)) {
         return -1;
     }
 
@@ -1978,7 +1979,7 @@ reparse_function_call(struct lyxp_expr *exp, uint16_t *exp_idx)
     }
     if (exp->tokens[*exp_idx] != LYXP_TOKEN_PAR2) {
         ++arg_count;
-        if (lyxp_reparse_expr(exp, exp_idx)) {
+        if (reparse_expr(exp, exp_idx)) {
             return -1;
         }
     }
@@ -1986,7 +1987,7 @@ reparse_function_call(struct lyxp_expr *exp, uint16_t *exp_idx)
         ++(*exp_idx);
 
         ++arg_count;
-        if (lyxp_reparse_expr(exp, exp_idx)) {
+        if (reparse_expr(exp, exp_idx)) {
             return -1;
         }
     }
@@ -2032,7 +2033,7 @@ reparse_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx)
         /* '(' Expr ')' Predicate* */
         ++(*exp_idx);
 
-        if (lyxp_reparse_expr(exp, exp_idx)) {
+        if (reparse_expr(exp, exp_idx)) {
             return -1;
         }
 
@@ -2267,8 +2268,8 @@ reparse_additive_expr:
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
-int
-lyxp_reparse_expr(struct lyxp_expr *exp, uint16_t *exp_idx)
+static int
+reparse_expr(struct lyxp_expr *exp, uint16_t *exp_idx)
 {
     uint16_t prev_or_exp, prev_and_exp;
 
@@ -7316,7 +7317,7 @@ lyxp_eval(const char *expr, const struct lyd_node *cur_node, enum lyxp_node_type
         goto finish;
     }
 
-    rc = lyxp_reparse_expr(exp, &exp_idx);
+    rc = reparse_expr(exp, &exp_idx);
     if (rc) {
         goto finish;
     } else if (exp->used > exp_idx) {
@@ -7636,7 +7637,7 @@ lyxp_atomize(const char *expr, const struct lys_node *cur_snode, enum lyxp_node_
         goto finish;
     }
 
-    rc = lyxp_reparse_expr(exp, &exp_idx);
+    rc = reparse_expr(exp, &exp_idx);
     if (rc) {
         goto finish;
     } else if (exp->used > exp_idx) {
@@ -7810,4 +7811,108 @@ finish:
         memset(set, 0, sizeof *set);
     }
     return ret;
+}
+
+int
+lyxp_node_check_syntax(const struct lys_node *node)
+{
+    uint8_t must_size = 0;
+    uint16_t exp_idx;
+    uint32_t i;
+    struct lys_when *when = NULL;
+    struct lys_restr *must = NULL;
+    struct lyxp_expr *expr;
+
+    switch (node->nodetype) {
+    case LYS_CONTAINER:
+        when = ((struct lys_node_container *)node)->when;
+        must = ((struct lys_node_container *)node)->must;
+        must_size = ((struct lys_node_container *)node)->must_size;
+        break;
+    case LYS_CHOICE:
+        when = ((struct lys_node_choice *)node)->when;
+        break;
+    case LYS_LEAF:
+        when = ((struct lys_node_leaf *)node)->when;
+        must = ((struct lys_node_leaf *)node)->must;
+        must_size = ((struct lys_node_leaf *)node)->must_size;
+        break;
+    case LYS_LEAFLIST:
+        when = ((struct lys_node_leaflist *)node)->when;
+        must = ((struct lys_node_leaflist *)node)->must;
+        must_size = ((struct lys_node_leaflist *)node)->must_size;
+        break;
+    case LYS_LIST:
+        when = ((struct lys_node_list *)node)->when;
+        must = ((struct lys_node_list *)node)->must;
+        must_size = ((struct lys_node_list *)node)->must_size;
+        break;
+    case LYS_ANYXML:
+    case LYS_ANYDATA:
+        when = ((struct lys_node_anydata *)node)->when;
+        must = ((struct lys_node_anydata *)node)->must;
+        must_size = ((struct lys_node_anydata *)node)->must_size;
+        break;
+    case LYS_CASE:
+        when = ((struct lys_node_case *)node)->when;
+        break;
+    case LYS_NOTIF:
+        must = ((struct lys_node_notif *)node)->must;
+        must_size = ((struct lys_node_notif *)node)->must_size;
+        break;
+    case LYS_INPUT:
+    case LYS_OUTPUT:
+        must = ((struct lys_node_inout *)node)->must;
+        must_size = ((struct lys_node_inout *)node)->must_size;
+        break;
+    case LYS_USES:
+        when = ((struct lys_node_uses *)node)->when;
+        break;
+    case LYS_AUGMENT:
+        when = ((struct lys_node_augment *)node)->when;
+        break;
+    default:
+        /* nothing to check */
+        break;
+    }
+
+    /* check "when" */
+    if (when) {
+        expr = lyxp_parse_expr(when->cond);
+        if (!expr) {
+            return -1;
+        }
+
+        exp_idx = 0;
+        if (reparse_expr(expr, &exp_idx)) {
+            lyxp_expr_free(expr);
+            return -1;
+        } else if (exp_idx != expr->used) {
+            LOGVAL(LYE_XPATH_INTOK, LY_VLOG_NONE, NULL, print_token(expr->tokens[exp_idx]), &expr->expr[expr->expr_pos[exp_idx]]);
+            lyxp_expr_free(expr);
+            return -1;
+        }
+        lyxp_expr_free(expr);
+    }
+
+    /* check "must" */
+    for (i = 0; i < must_size; ++i) {
+        expr = lyxp_parse_expr(must[i].expr);
+        if (!expr) {
+            return -1;
+        }
+
+        exp_idx = 0;
+        if (reparse_expr(expr, &exp_idx)) {
+            lyxp_expr_free(expr);
+            return -1;
+        } else if (exp_idx != expr->used) {
+            LOGVAL(LYE_XPATH_INTOK, LY_VLOG_NONE, NULL, print_token(expr->tokens[exp_idx]), &expr->expr[expr->expr_pos[exp_idx]]);
+            lyxp_expr_free(expr);
+            return -1;
+        }
+        lyxp_expr_free(expr);
+    }
+
+    return 0;
 }
