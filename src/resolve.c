@@ -3571,7 +3571,7 @@ resolve_path_predicate_data(const char *pred, struct lyd_node *node, struct unre
             while (leaf_src->value_type == LY_TYPE_LEAFREF) {
                 leaf_src = (struct lyd_node_leaf_list *)leaf_src->value.leafref;
             }
-            if (leaf_src->value_type != leaf_dst->value_type) {
+            if ((leaf_src->value_type & LY_DATA_TYPE_MASK) != (leaf_dst->value_type & LY_DATA_TYPE_MASK)) {
                 goto remove_leafref;
             }
 
