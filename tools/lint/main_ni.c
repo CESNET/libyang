@@ -78,6 +78,7 @@ help(int shortout)
         "        get             - Result of the NETCONF <get> operation.\n"
         "        getconfig       - Result of the NETCONF <get-config> operation.\n"
         "        edit            - Content of the NETCONF <edit-config> operation.\n\n"
+        "  -y YANGLIB_PATH       - Path to a yang-library data describing the initial context.\n\n"
         "Tree output specific options:\n"
         "  --tree-help           Print help on tree symbols and exit.\n"
         "  --tree-print-groupings\n"
@@ -168,6 +169,7 @@ main_ni(int argc, char* argv[])
         {"version",          no_argument,       NULL, 'v'},
         {"verbose",          no_argument,       NULL, 'V'},
         {"type",             required_argument, NULL, 't'},
+        {NULL,               required_argument, NULL, 'y'},
         {NULL,               0,                 NULL, 0}
     };
     FILE *out = stdout;
@@ -175,9 +177,9 @@ main_ni(int argc, char* argv[])
     const struct lys_module *mod;
     LYS_OUTFORMAT outformat_s = 0;
     LYS_INFORMAT informat_s;
-    LYD_FORMAT informat_d, outformat_d = 0;
+    LYD_FORMAT informat_d, outformat_d = 0, ylformat = 0;
     char *searchpath = NULL;
-    char **feat = NULL, *ptr, *featlist;
+    char **feat = NULL, *ptr, *featlist, *ylpath = NULL;
     struct stat st;
     uint32_t u;
     int options_dflt = 0, options_parser = 0, options_allimplemented = 0;
@@ -192,7 +194,7 @@ main_ni(int argc, char* argv[])
     void *p;
 
     opterr = 0;
-    while ((opt = getopt_long(argc, argv, "d:f:F:ghHio:p:st:vV", options, &opt_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "d:f:F:ghHio:p:st:vVy:", options, &opt_index)) != -1) {
         switch (opt) {
         case 'd':
             if (!strcmp(optarg, "all")) {
@@ -316,6 +318,24 @@ main_ni(int argc, char* argv[])
         case 'V':
             verbose++;
             break;
+        case 'y':
+            ptr = strrchr(optarg, '.');
+            if (ptr) {
+                ptr++;
+                if (!strcmp(ptr, "xml")) {
+                    ylformat = LYD_XML;
+                } else if (!strcmp(ptr, "json")) {
+                    ylformat = LYD_JSON;
+                } else {
+                    fprintf(stderr, "yanglint error: yang-library file in an unknown format \"%s\".\n", ptr);
+                    goto cleanup;
+                }
+            } else {
+                fprintf(stderr, "yanglint error: yang-library file in an unknown format.\n");
+                goto cleanup;
+            }
+            ylpath = optarg;
+            break;
         default:
             help(1);
             if (optopt) {
@@ -360,7 +380,11 @@ main_ni(int argc, char* argv[])
     ly_set_log_clb(libyang_verbclb, 1);
 
     /* create libyang context */
-    ctx = ly_ctx_new(searchpath);
+    if (ylpath) {
+        ctx = ly_ctx_new_ylpath(searchpath, ylpath, ylformat);
+    } else {
+        ctx = ly_ctx_new(searchpath);
+    }
     if (!ctx) {
         goto cleanup;
     }

@@ -122,7 +122,7 @@ complete_cmd(const char *buf, const char *hint, linenoiseCompletions *lc)
         linenoisePathCompletion(buf, hint, lc);
     } else if ((!strncmp(buf, "searchpath ", 11) || !strncmp(buf, "data ", 5)
             || !strncmp(buf, "config ", 7) || !strncmp(buf, "filter ", 7)
-            || !strncmp(buf, "xpath ", 6)) && !last_is_opt(hint)) {
+            || !strncmp(buf, "xpath ", 6) || !strncmp(buf, "clear ", 6)) && !last_is_opt(hint)) {
         linenoisePathCompletion(buf, hint, lc);
     } else if ((!strncmp(buf, "print ", 6) || !strncmp(buf, "feature ", 8)) && !last_is_opt(hint)) {
         get_model_completion(hint, &matches, &match_count);

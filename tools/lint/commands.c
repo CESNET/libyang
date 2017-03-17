@@ -41,6 +41,14 @@ cmd_add_help(void)
 }
 
 void
+cmd_clear_help(void)
+{
+    printf("clear [<yang-library>]\n");
+    printf("\t Replace the current context with an empty one, searchpath is kept.\n");
+    printf("\t If <yang-library> path specified, load the modules according to the yang library data.\n");
+}
+
+void
 cmd_print_help(void)
 {
     printf("print [-f (yang | yin | tree [--tree-print-groupings] | info [-t <info-target-node>])] [-o <output-file>]"
@@ -375,23 +383,35 @@ cleanup:
     return ret;
 }
 
-static int
-parse_data(const char *filepath, int options, struct lyd_node *val_tree, const char *rpc_act_file,
-           struct lyd_node **result)
+static LYD_FORMAT
+detect_data_format(char *filepath)
 {
     size_t len;
+
+    /* detect input format according to file suffix */
+    len = strlen(filepath);
+    for (; isspace(filepath[len - 1]); len--, filepath[len] = '\0'); /* remove trailing whitespaces */
+    if (len >= 5 && !strcmp(&filepath[len - 4], ".xml")) {
+        return LYD_XML;
+    } else if (len >= 6 && !strcmp(&filepath[len - 5], ".json")) {
+        return LYD_JSON;
+    } else {
+        return LYD_UNKNOWN;
+    }
+}
+
+static int
+parse_data(char *filepath, int options, struct lyd_node *val_tree, const char *rpc_act_file,
+           struct lyd_node **result)
+{
     LYD_FORMAT informat = LYD_UNKNOWN;
     struct lyxml_elem *xml = NULL;
     struct lyd_node *data = NULL, *root, *next, *iter, *rpc_act = NULL;
     void *lydval_arg = NULL;
 
     /* detect input format according to file suffix */
-    len = strlen(filepath);
-    if (len >= 5 && !strcmp(&filepath[len - 4], ".xml")) {
-        informat = LYD_XML;
-    } else if (len >= 6 && !strcmp(&filepath[len - 5], ".json")) {
-        informat = LYD_JSON;
-    } else {
+    informat = detect_data_format(filepath);
+    if (informat == LYD_UNKNOWN) {
         fprintf(stderr, "Unable to resolve format of the input file, please add \".xml\" or \".json\" suffix.\n");
         return EXIT_FAILURE;
     }
@@ -1209,14 +1229,40 @@ cmd_searchpath(const char *arg)
 }
 
 int
-cmd_clear(const char *UNUSED(arg))
+cmd_clear(const char *arg)
 {
-    ly_ctx_destroy(ctx, NULL);
-    ctx = ly_ctx_new(NULL);
-    if (!ctx) {
+    int i;
+    char *ylpath;
+    struct ly_ctx *ctx_new;
+    LYD_FORMAT format;
+
+    /* get optional yang library file name */
+    for (i = 5; arg[i] && isspace(arg[i]); i++);
+    if (arg[i]) {
+        ylpath = strdup(&arg[i]);
+        format = detect_data_format(ylpath);
+        if (format == LYD_UNKNOWN) {
+            free(ylpath);
+            fprintf(stderr, "Unable to resolve format of the yang library file, please add \".xml\" or \".json\" suffix.\n");
+            goto create_empty;
+        }
+
+        ctx_new = ly_ctx_new_ylpath(ly_ctx_get_searchdir(ctx), ylpath, format);
+        free(ylpath);
+    } else {
+create_empty:
+        ctx_new = ly_ctx_new(ly_ctx_get_searchdir(ctx));
+    }
+
+    if (!ctx_new) {
         fprintf(stderr, "Failed to create context.\n");
         return 1;
     }
+
+    /* final switch */
+    ly_ctx_destroy(ctx, NULL);
+    ctx = ctx_new;
+
     return 0;
 }
 
@@ -1363,7 +1409,7 @@ COMMAND commands[] = {
         {"list", cmd_list, cmd_list_help, "List all the loaded models"},
         {"feature", cmd_feature, cmd_feature_help, "Print/enable/disable all/specific features of models"},
         {"searchpath", cmd_searchpath, cmd_searchpath_help, "Set the search path for models"},
-        {"clear", cmd_clear, NULL, "Clear the context - remove all the loaded models"},
+        {"clear", cmd_clear, cmd_clear_help, "Clear the context - remove all the loaded models"},
         {"verb", cmd_verb, cmd_verb_help, "Change verbosity"},
 #ifndef NDEBUG
         {"debug", cmd_debug, cmd_debug_help, "Display specific debug message groups"},

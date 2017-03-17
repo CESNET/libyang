@@ -31,43 +31,43 @@ complex way.
 .
 .SH OPTIONS
 .TP
-.BR \-h "\fR,\fP " \-\^\-help
+.BR "\-h\fR,\fP \-\^\-help"
 Outputs usage help and exits.
 .TP
-.BR \-v "\fR,\fP " \-\^\-version
+.BR "\-v\fR,\fP \-\^\-version"
 Outputs the version number and exits.
 .TP
-.BR \-V "\fR,\fP " \-\^\-verbose
+.BR "\-V\fR,\fP \-\^\-verbose"
 Increases the verbosity level. If not specified, only errors are printed, with
 each appearance it adds: warnings, verbose messages, debug messages (if compiled
 with debug information).
 .TP
-.BR \-p " \fIPATH\fP" "\fR,\fP \-\^\-path=\fIPATH\fP"
+.BR "\-p \fIPATH\fP\fR,\fP \-\^\-path=\fIPATH\fP"
 Specifies search path for getting imported modules or included submodules. It
 is not possible to specify multiple search paths.
 .TP
-.BR \-s "\fR,\fP " \-\^\-strict
+.BR "\-s\fR,\fP \-\^\-strict"
 Changes handling of unknown data nodes - instead of silently ignoring unknown data,
 error is printed and data parsing fails. This option applies only on data parsing.
 .TP
-.BR \-f " \fIFORMAT\fP" "\fR,\fP \-\^\-format=\fIFORMAT\fP"
+.BR "\-f \fIFORMAT\fP\fR,\fP \-\^\-format=\fIFORMAT\fP"
 Converts the content of the input \fIFILE\fPs into the specified \fIFORMAT\fP. If no
 \fIOUTFILE\fP is specified, the data are printed on the standard output. Only the
 compatible formats for the input \fIFILE\fPs are allowed, see the section \fBFORMATS\fP.
 .TP
-.BR \-o " \fIOUTFILE\fP" "\fR,\fP \-\^\-output=\fIOUTFILE\fP"
+.BR "\-o \fIOUTFILE\fP\fR,\fP \-\^\-output=\fIOUTFILE\fP"
 Writes the output data into the specified \fIOUTFILE\fP. The option can be used
 only in combination with \fB--format\fR option. In case of converting schema, only
 a single input schema \fIFILE\fP is allowed. In case of data input \fIFILE\fPs,
 input is merged and printed into a single \fIOUTFILE\fP.
 .TP
-.BR \-F " \fIFEATURES\fP" "\fR,\fP \-\^\-features=\fIFEATURES\fP"
+.BR "\-F \fIFEATURES\fP\fR,\fP \-\^\-features=\fIFEATURES\fP"
 Specifies the list of enabled features in the format 
 \fIMODULE\fP:[\fIFEATURE\fP,...]. In case of processing multiple modules, the
 option can be used repeatedly. To disable all the features, use an empty list
 specified for the particular module.
 .TP
-.BR \-d " \fIMODE\fP" "\fR,\fP" \-\^\-default=\fIMODE\fP"
+.BR "\-d \fIMODE\fP\fR,\fP \-\^\-default=\fIMODE\fP"
 Print data with default values, according to the \fIMODE\fP (to print attributes,
 the ietf-netconf-with-defaults model must be loaded). The \fIMODE\fP is one of the following:
  \[bu] \fBall\fP             - add missing default nodes
@@ -75,7 +75,7 @@ the ietf-netconf-with-defaults model must be loaded). The \fIMODE\fP is one of t
  \[bu] \fBtrim\fP            - remove all nodes with a default value
  \[bu] \fBimplicit-tagged\fP - add missing nodes and mark them with the attribute
 .TP
-.BR \-t " \fITYPE\fP" "\fR,\fP" \-\^\-type=\fITYPE\fP"
+.BR "\-t \fITYPE\fP\fR,\fP \-\^\-type=\fITYPE\fP"
 Specify data tree type in the input data \fIFILE\fPs. The \fITYPE\fP is one of the following:
  \[bu] \fBauto\fP            - Resolve data type (one of the following) automatically (as pyang does). Applicable only on XML input data.
  \[bu] \fBdata\fP            - Complete datastore with status data (default type).
@@ -83,6 +83,12 @@ Specify data tree type in the input data \fIFILE\fPs. The \fITYPE\fP is one of t
  \[bu] \fBget\fP             - Result of the NETCONF <get> operation.
  \[bu] \fBgetconfig\fP       - Result of the NETCONF <get-config> operation.
  \[bu] \fBedit\fP            - Content of the NETCONF <edit-config> operation.
+.TP
+.BR "\-y \fIYANGLIB_PATH\fP"
+Specify path to a yang-library data file (XML or JSON) describing the initial context.
+If provided, yanglint loads the modules according to the content of the yang-library data tree.
+Otherwise, an empty content with only the internal libyang modules is used. This does
+not limit user to load another modules explicitly specified as command line parameters.
 .
 .SH FORMATS
 There are two types of formats to use.
