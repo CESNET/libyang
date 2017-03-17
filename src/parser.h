@@ -16,6 +16,7 @@
 #define LY_PARSER_H_
 
 #include <pcre.h>
+#include <sys/mman.h>
 
 #include "libyang.h"
 #include "tree_schema.h"
