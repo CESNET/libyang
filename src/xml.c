@@ -1144,6 +1144,11 @@ lyxml_parse_mem(struct ly_ctx *ctx, const char *data, int options)
 
     ly_err_clean(1);
 
+    if (!ctx) {
+        LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
+        return NULL;
+    }
+
 repeat:
     /* process document */
     while (1) {
