@@ -124,6 +124,100 @@ ly_ctx_new(const char *search_dir)
     return ctx;
 }
 
+static struct ly_ctx *
+ly_ctx_new_yl_common(const char *search_dir, const char *input, LYD_FORMAT format,
+                     struct lyd_node* (*parser_func)(struct ly_ctx*, const char*, LYD_FORMAT, int,...))
+{
+    unsigned int u;
+    struct lyd_node *module, *node;
+    const char *name, *revision;
+    struct ly_set features = {0, };
+    const struct lys_module *mod;
+    struct lyd_node *yltree = NULL;
+    struct ly_ctx *ctx = NULL;
+
+    /* create empty (with internal modules including ietf-yang-library) context */
+    ctx = ly_ctx_new(search_dir);
+    if (!ctx) {
+        goto error;
+    }
+
+    /* parse yang library data tree */
+    yltree = parser_func(ctx, input, format, LYD_OPT_DATA, NULL);
+    if (!yltree) {
+        goto error;
+    }
+
+    /* process the data tree */
+    LY_TREE_FOR(yltree->child, module) {
+        if (module->schema->nodetype == LYS_LEAF) {
+            /* module-set-id - ignore it */
+            continue;
+        }
+
+        /* initiate */
+        name = NULL;
+        revision = NULL;
+        ly_set_clean(&features);
+
+        LY_TREE_FOR(module->child, node) {
+            if (!strcmp(node->schema->name, "name")) {
+                name = ((struct lyd_node_leaf_list*)node)->value_str;
+            } else if (!strcmp(node->schema->name, "revision")) {
+                revision = ((struct lyd_node_leaf_list*)node)->value_str;
+            } else if (!strcmp(node->schema->name, "feature")) {
+                ly_set_add(&features, node, LY_SET_OPT_USEASLIST);
+            } else if (!strcmp(node->schema->name, "conformance-type") &&
+                    ((struct lyd_node_leaf_list*)node)->value.enm->value) {
+                /* imported module - skip it, it will be loaded as a side effect
+                 * of loading another module */
+                goto next_module;
+            }
+        }
+
+        /* use the gathered data to load the module */
+        mod = ly_ctx_load_module(ctx, name, revision);
+        if (!mod) {
+            LOGERR(LY_EINVAL, "Unable to load module specified by yang library data.");
+            goto error;
+        }
+
+        /* set features */
+        for (u = 0; u < features.number; u++) {
+            lys_features_enable(mod, ((struct lyd_node_leaf_list*)features.set.d[u])->value_str);
+        }
+
+next_module:;
+    }
+
+    if (0) {
+        /* skip context destroy in case of success */
+error:
+        ly_ctx_destroy(ctx, NULL);
+        ctx = NULL;
+    }
+
+    /* cleanup */
+    if (yltree) {
+        /* yang library data tree */
+        lyd_free_withsiblings(yltree);
+    }
+
+    return ctx;
+}
+
+API struct ly_ctx *
+ly_ctx_new_ylpath(const char *search_dir, const char *path, LYD_FORMAT format)
+{
+    return ly_ctx_new_yl_common(search_dir, path, format, lyd_parse_path);
+}
+
+API struct ly_ctx *
+ly_ctx_new_ylmem(const char *search_dir, const char *data, LYD_FORMAT format)
+{
+    return ly_ctx_new_yl_common(search_dir, data, format, lyd_parse_mem);
+}
+
 API void
 ly_ctx_set_allimplemented(struct ly_ctx *ctx)
 {

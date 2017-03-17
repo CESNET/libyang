@@ -1039,6 +1039,52 @@ struct ly_ctx;
 struct ly_ctx *ly_ctx_new(const char *search_dir);
 
 /**
+ * @brief Create libyang context according to the content of the given yang-library data.
+ *
+ * This function loads the yang-library data from the file at the given path. If you need
+ * to pass the data as string, use ly_ctx_new_ylmem(). Both functions extend functionality of
+ * ly_ctx_new() by loading modules specified in the ietf-yang-library form into the context
+ * being created.
+ *
+ * Note, that the modules are loaded the same way as in case of ly_ctx_load_module(), so the schema
+ * paths in the yang-library data are ignored and the modules are loaded from the context's search
+ * locations. On the other hand, YANG features of the modules are set as specified in the yang-library
+ * data.
+ *
+ * To get yang library data from a libyang context, use ly_ctx_info().
+ *
+ * @param[in] search_dir Directory where libyang will search for the imported or included modules
+ * and submodules. If no such directory is available, NULL is accepted.
+ * @param[in] path Path to the file containing yang-library data in the specified \p format.
+ * @param[in] format Format of the data in the provided file.
+ * @return Pointer to the created libyang context, NULL in case of error.
+ */
+struct ly_ctx *ly_ctx_new_ylpath(const char *search_dir, const char *path, LYD_FORMAT format);
+
+/**
+ * @brief Create libyang context according to the content of the given yang-library data.
+ *
+ * This function loads the yang-library data from the given string. If you need to pass the data
+ * as path to a file holding the data, use ly_ctx_new_ylpath(). Both functions extend functionality of
+ * ly_ctx_new() by loading modules specified in the ietf-yang-library form into the context
+ * being created.
+ *
+ * Note, that the modules are loaded the same way as in case of ly_ctx_load_module(), so the schema
+ * paths in the yang-library data are ignored and the modules are loaded from the context's search
+ * locations. On the other hand, YANG features of the modules are set as specified in the yang-library
+ * data.
+ *
+ * To get yang library data from a libyang context, use ly_ctx_info().
+ *
+ * @param[in] search_dir Directory where libyang will search for the imported or included modules
+ * and submodules. If no such directory is available, NULL is accepted.
+ * @param[in] data String containing yang-library data in the specified \p format.
+ * @param[in] format Format of the data in the provided file.
+ * @return Pointer to the created libyang context, NULL in case of error.
+ */
+struct ly_ctx *ly_ctx_new_ylmem(const char *search_dir, const char *data, LYD_FORMAT format);
+
+/**
  * @brief Change the search path in libyang context
  *
  * @param[in] ctx Context to be modified.
