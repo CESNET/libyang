@@ -37,15 +37,15 @@ ly_verb(LY_LOG_LEVEL level)
     ly_log_level = level;
 }
 
-#ifndef NDEBUG
-
 API void
 ly_verb_dbg(int dbg_groups)
 {
+#ifndef NDEBUG
     ly_log_dbg_groups = dbg_groups;
-}
-
+#else
+    (void)dbg_groups;
 #endif
+}
 
 API void
 ly_set_log_clb(void (*clb)(LY_LOG_LEVEL level, const char *msg, const char *path), int path)
