@@ -295,11 +295,12 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         } else if (!attr->ns) {
             if ((*result)->schema->nodetype == LYS_ANYXML &&
                     ly_strequal((*result)->schema->name, "filter", 0) &&
-                    ly_strequal((*result)->schema->module->name, "ietf-netconf", 0)) {
+                    (ly_strequal((*result)->schema->module->name, "ietf-netconf", 0) ||
+                    ly_strequal((*result)->schema->module->name, "notifications", 0))) {
                 /* NETCONF filter's attributes, which we implement as non-standard annotations,
                  * they are unqualified (no namespace), but we know that we have internally defined
-                 * them in the ietf-netconf module, so the same module as the filter node itself */
-                str = (*result)->schema->module->ns;
+                 * them in the ietf-netconf module */
+                str = "urn:ietf:params:xml:ns:netconf:base:1.0";
                 filterflag = 1;
             } else {
                 /* garbage */
