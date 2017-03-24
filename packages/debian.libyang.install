@@ -1,0 +1,6 @@
+usr/lib/*/libyang.so.*
+usr/lib/*/libyang/nacm.so
+usr/lib/*/libyang/metadata.so
+usr/bin/yanglint
+usr/share/man/man1/yanglint.1
+

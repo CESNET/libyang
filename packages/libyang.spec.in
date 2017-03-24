@@ -1,0 +1,71 @@
+Name: @PACKAGE_NAME@
+Version: @LIBYANG_VERSION@
+Release: 0
+Summary: Libyang library
+Url: https://github.com/CESNET/libyang
+Source: %{url}/archive/@BRANCH@.tar.gz
+License: BSD-3-Clause
+BuildRoot: %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
+
+%define  debug_package %{nil}
+
+Requires:	pcre-devel
+BuildRequires:  cmake
+BuildRequires:  doxygen
+BuildRequires:  glibc-devel
+BuildRequires:	pcre-devel
+BuildRequires:  valgrind
+BuildRequires:	libcmocka-devel
+
+%package debuginfo
+Summary:    Debug info of libyang library
+Requires:   %{name} = %{version}-%{release}
+
+%package devel
+Summary:    Headers of libyang library
+Requires:   %{name} = %{version}-%{release}
+
+%description debuginfo
+Debug info of libyang library.
+
+%description devel
+Headers of libyang library.
+
+%description
+Libyang is YANG data modelling language parser and toolkit written (and providing API) in C.
+
+%prep
+%setup -n libyang-@BRANCH@
+
+
+%build
+cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr -D CMAKE_BUILD_TYPE:String="@BUILD_TYPE@" .
+make
+
+%check
+make test
+
+%install
+make DESTDIR=%{buildroot} install
+%{_rpmconfigdir}/find-debuginfo.sh
+
+%post -p /sbin/ldconfig
+
+%postun -p /sbin/ldconfig
+
+%files
+%{_libdir}/libyang.so.*
+%{_libdir}/libyang/nacm.so
+%{_bindir}/yanglint
+%{_libdir}/libyang/metadata.so
+%{_datadir}/man/man1/yanglint.1.gz
+
+%files debuginfo
+%{_usr}/lib/debug/*
+%{_usr}/lib/debug/.b*
+%{_usrsrc}/debug/*
+
+%files devel
+%{_libdir}/libyang.so
+%{_libdir}/pkgconfig/libyang.pc
+%{_includedir}/libyang/*

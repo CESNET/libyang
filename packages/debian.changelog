@@ -1,0 +1,9 @@
+libyang (0.12.130) stable; urgency=low
+
+  * VERSIOn bump to version 0.12.130
+
+  * xml parser BUGFIX filter can appear in create-subscription also
+
+  * schema tree BUGFIX missing include
+
+-- Michal Vasko <mvasko@cesnet.cz>  Fri, 24 Mar 2017 11:24:21 +0100
