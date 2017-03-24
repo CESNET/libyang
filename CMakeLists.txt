@@ -9,7 +9,7 @@ set(LIBYANG_DESCRIPTION "libyang is YANG data modelling language parser and tool
 set(LIBYANG_MAJOR_VERSION 0)
 set(LIBYANG_MINOR_VERSION 12)
 set(LIBYANG_MICRO_VERSION 130)
-set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
+set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION} CACHE STRING "")
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION})
 configure_file(${PROJECT_SOURCE_DIR}/src/libyang.h.in ${PROJECT_SOURCE_DIR}/src/libyang.h)
 
@@ -46,6 +46,24 @@ else()
 	)
 endif()
 
+if (DEFINED $ENV{TRAVIS_BRANCH})
+	if ($ENV{TRAVIS_BRANCH} STREQUAL "devel")
+		set(PACKAGE_NAME "libyang-experimental")
+		set(BRANCH "devel")
+		set(BUILD_TYPE "debug")
+	else ()
+		set(PACKAGE_NAME "libyang")
+		set(BRANCH "master")
+		set(BUILD_TYPE "Package")
+	endif()
+	# change version in config files
+    configure_file(${PROJECT_SOURCE_DIR}/packages/libyang.spec.in ${PROJECT_BINARY_DIR}/packages/libyang.spec)
+    configure_file(${PROJECT_SOURCE_DIR}/packages/libyang.dsc.in ${PROJECT_BINARY_DIR}/packages/libyang.dsc)
+    configure_file(${PROJECT_SOURCE_DIR}/packages/debian.control.in ${PROJECT_BINARY_DIR}/packages/debian.control)
+    configure_file(${PROJECT_SOURCE_DIR}/packages/debian.rules.in ${PROJECT_BINARY_DIR}/packages/debian.rules)
+endif()
+
+
 # check the supported platform
 if(NOT UNIX)
 	message(FATAL_ERROR "Only *nix like systems are supported.")
@@ -58,9 +76,10 @@ endif()
 
 set(CMAKE_C_FLAGS         "${CMAKE_C_FLAGS} -Wall -Wextra")
 set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
+set(CMAKE_C_FLAGS_PACKAGE "-g -O2 -DNDEBUG")
 set(CMAKE_C_FLAGS_DEBUG   "-g -O0")
 
-if(CMAKE_BUILD_TYPE STREQUAL debug)
+if((CMAKE_BUILD_TYPE STREQUAL debug) OR (CMAKE_BUILD_TYPE STREQUAL Package))
 	option(ENABLE_BUILD_TESTS "Build tests" ON)
 	option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" ON)
 else()
