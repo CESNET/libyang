@@ -2977,9 +2977,9 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         if (leaf_orig->dflt) {
             leaf->dflt = lydict_insert(ctx, leaf_orig->dflt, 0);
             if (!ingrouping(retval) || (leaf->type.base != LY_TYPE_LEAFREF)) {
-                /* problem is when it is an identityref referencing identity from its own module
-                 * (no prefix) and we are using the grouping in a different module */
-                if ((leaf->type.base == LY_TYPE_IDENT) && !strchr(leaf->dflt, ':') && (module != leaf_orig->module)) {
+                /* problem is when it is an identityref referencing an identity from a module
+                 * and we are using the grouping in a different module */
+                if ((leaf->type.base == LY_TYPE_IDENT)) {
                     tmp_mod = leaf_orig->module;
                 } else {
                     tmp_mod = module;
