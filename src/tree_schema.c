@@ -2979,7 +2979,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
             if (!ingrouping(retval) || (leaf->type.base != LY_TYPE_LEAFREF)) {
                 /* problem is when it is an identityref referencing an identity from a module
                  * and we are using the grouping in a different module */
-                if ((leaf->type.base == LY_TYPE_IDENT)) {
+                if (leaf->type.base == LY_TYPE_IDENT) {
                     tmp_mod = leaf_orig->module;
                 } else {
                     tmp_mod = module;
