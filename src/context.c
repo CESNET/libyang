@@ -131,7 +131,7 @@ ly_ctx_new_yl_common(const char *search_dir, const char *input, LYD_FORMAT forma
     unsigned int u;
     struct lyd_node *module, *node;
     const char *name, *revision;
-    struct ly_set features = {0, };
+    struct ly_set features = {0, 0, {NULL}};
     const struct lys_module *mod;
     struct lyd_node *yltree = NULL;
     struct ly_ctx *ctx = NULL;
