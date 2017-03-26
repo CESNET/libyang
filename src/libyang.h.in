@@ -97,11 +97,11 @@ extern "C" {
  *
  * When creating a new context, search dir can be specified (NULL is accepted) to provide directory
  * where libyang will automatically search for schemas being imported or included. The search path
- * can be later changed via ly_ctx_set_searchdir() function. If the search dir is specified, it is explored
- * first. Except the searchpath, also all its subdirectories (and symlinks) are taken into account. In case
- * the module is not found, libyang tries to find the (sub)module also in current working working directory.
- * Note, that in this case only the current directory without any other subdirectory is examinde. This
- * automatic searching can be completely avoided when the caller sets module searching callback
+ * can be later changed via ly_ctx_set_searchdir() and ly_ctx_unset_searchidrs() functions. If the search dir
+ * is specified, it is explored first. Except the searchpath, also all its subdirectories (and symlinks) are 
+ * taken into account. In case the module is not found, libyang tries to find the (sub)module also in current
+ * working working directory. Note, that in this case only the current directory without any other subdirectory
+ * is examinde. This automatic searching can be completely avoided when the caller sets module searching callback
  * (#ly_module_imp_clb) via ly_ctx_set_module_imp_clb().
  *
  * Schemas are added into the context using [parser functions](@ref howtoschemasparsers) - \b lys_parse_*().
@@ -152,6 +152,7 @@ extern "C" {
  * --------------
  * - ly_ctx_new()
  * - ly_ctx_set_searchdir()
+ * - ly_ctx_unset_searchdirs()
  * - ly_ctx_get_searchdir()
  * - ly_ctx_set_module_imp_clb()
  * - ly_ctx_get_module_imp_clb()
@@ -1085,15 +1086,25 @@ struct ly_ctx *ly_ctx_new_ylpath(const char *search_dir, const char *path, LYD_F
 struct ly_ctx *ly_ctx_new_ylmem(const char *search_dir, const char *data, LYD_FORMAT format);
 
 /**
- * @brief Change the search path in libyang context
+ * @brief Add the search path into libyang context
+ *
+ * To reset search paths set in the context, use ly_ctx_unset_searchdirs() and then
+ * set search paths again.
  *
  * @param[in] ctx Context to be modified.
- * @param[in] search_dir New search path to replace the current one in ctx.
+ * @param[in] search_dir New search path to add to the current paths previously set in ctx.
  */
 void ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir);
 
 /**
- * @brief Get current value of the search path in libyang context
+ * @brief Clean all the search paths set in libyang context
+ *
+ * @param[in] ctx Context to be modified.
+ */
+void ly_ctx_unset_searchdirs(struct ly_ctx *ctx);
+
+/**
+ * @brief Get value of the search path in libyang context
  *
  * @param[in] ctx Context to query.
  * @return Current value of the search path.

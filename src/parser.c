@@ -360,13 +360,15 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
     } else if (ly_set_add(dirs, wd, 0) == -1) {
         goto cleanup;
     }
-    if (ctx->models.search_path) {
-        wd = strdup(ctx->models.search_path);
-        if (!wd) {
-            LOGMEM;
-            goto cleanup;
-        } else if (ly_set_add(dirs, wd, 0) == -1) {
-            goto cleanup;
+    if (ctx->models.search_paths) {
+        for (i = 0; ctx->models.search_paths[i]; i++) {
+            wd = strdup(ctx->models.search_paths[i]);
+            if (!wd) {
+                LOGMEM;
+                goto cleanup;
+            } else if (ly_set_add(dirs, wd, 0) == -1) {
+                goto cleanup;
+            }
         }
     }
     wd = NULL;
@@ -489,7 +491,7 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
             result = (struct lys_module *)ly_ctx_get_module(ctx, name, revision);
         }
         if (!result) {
-            LOGERR(LY_ESYS, "Data model \"%s\" not found.", name, ctx->models.search_path, wd);
+            LOGERR(LY_ESYS, "Data model \"%s\" not found.", name);
         }
         goto cleanup;
     }

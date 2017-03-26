@@ -108,7 +108,7 @@ test_modules(void **state)
                          };
     int i, format;
 
-    if (!strcmp(ctx->models.search_path, realpath(SCHEMA_FOLDER_YIN, path))) {
+    if (!strcmp(ctx->models.search_paths[0], realpath(SCHEMA_FOLDER_YIN, path))) {
         extension = ".yin";
         format = LYS_IN_YIN;
     }  else {
@@ -116,8 +116,8 @@ test_modules(void **state)
         format = LYS_IN_YANG;
     }
 
-    if (chdir(ctx->models.search_path)) {
-        fprintf(stderr, "unable to open \"%s\" folder.\n", ctx->models.search_path);
+    if (chdir(ctx->models.search_paths[0])) {
+        fprintf(stderr, "unable to open \"%s\" folder.\n", ctx->models.search_paths[0]);
         fail();
     }
 

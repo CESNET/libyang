@@ -20,7 +20,7 @@
 #include "libyang.h"
 
 struct ly_modules_list {
-    char *search_path;
+    char **search_paths;
     int size;
     int used;
     struct lys_module **list;
