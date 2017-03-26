@@ -268,6 +268,7 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
             r = realloc(ctx->models.search_paths, (index + 2) * sizeof *ctx->models.search_paths);
             if (!r) {
                 LOGMEM;
+                free(cwd);
                 return;
             }
             ctx->models.search_paths = r;
