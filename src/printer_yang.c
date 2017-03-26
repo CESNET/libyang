@@ -1016,17 +1016,22 @@ yang_print_case(struct lyout *out, int level, const struct lys_node *node)
     struct lys_node *sub;
     struct lys_node_case *cas = (struct lys_node_case *)node;
 
-    ly_print(out, "%*scase %s", LEVEL, INDENT, cas->name);
-    level++;
+    if (!(node->flags & LYS_IMPLICIT)) {
+        ly_print(out, "%*scase %s", LEVEL, INDENT, cas->name);
+        level++;
 
-    yang_print_snode_common(out, level, node, node->module, &flag, SNODE_COMMON_EXT);
-    if (cas->when) {
-        yang_print_open(out, &flag);
-        yang_print_when(out, level, node->module, cas->when);
+        yang_print_snode_common(out, level, node, node->module, &flag, SNODE_COMMON_EXT);
+        if (cas->when) {
+            yang_print_open(out, &flag);
+            yang_print_when(out, level, node->module, cas->when);
+        }
+        yang_print_snode_common(out, level, node, node->module, &flag,
+                                SNODE_COMMON_IFF | SNODE_COMMON_STATUS | SNODE_COMMON_DSC | SNODE_COMMON_REF);
+    } else {
+        flag = 1;
     }
-    yang_print_snode_common(out, level, node, node->module, &flag,
-                            SNODE_COMMON_IFF | SNODE_COMMON_STATUS | SNODE_COMMON_DSC | SNODE_COMMON_REF);
 
+    /* print children */
     LY_TREE_FOR(node->child, sub) {
         /* augments */
         if (sub->parent != node) {
@@ -1036,6 +1041,11 @@ yang_print_case(struct lyout *out, int level, const struct lys_node *node)
         yang_print_snode(out, level, sub,
                          LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
                          LYS_USES | LYS_ANYDATA);
+    }
+
+    if (node->flags & LYS_IMPLICIT) {
+        /* do not print anything about the case, it was implicitely added by libyang */
+        return;
     }
 
     level--;

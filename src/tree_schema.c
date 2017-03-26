@@ -694,7 +694,8 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
 {
     struct lys_node *iter, *next, **pchild;
     struct lys_node_inout *in, *out, *inout;
-    int type;
+    struct lys_node_case *c;
+    int type, shortcase = 0;
     void *p;
     struct lyext_substmt *info = NULL;
 
@@ -737,6 +738,9 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
                 (LYS_ANYDATA | LYS_CASE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_CHOICE))) {
             LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, parent, strnodetype(child->nodetype), "choice");
             return EXIT_FAILURE;
+        }
+        if (child->nodetype != LYS_CASE) {
+            shortcase = 1;
         }
         break;
     case LYS_CASE:
@@ -823,6 +827,18 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
         inout->parent = NULL;
         lys_node_free((struct lys_node *)inout, NULL, 0);
     } else {
+        if (shortcase) {
+            /* create the implicit case to allow it to serve as a target of the augments,
+             * it won't be printed, but it will be present in the tree */
+            c = calloc(1, sizeof *c);
+            c->name = lydict_insert(module->ctx, child->name, 0);
+            c->flags = LYS_IMPLICIT;
+            c->module = module;
+            c->nodetype = LYS_CASE;
+            c->prev = (struct lys_node*)c;
+            lys_node_addchild(parent, module, (struct lys_node*)c);
+            parent = (struct lys_node*)c;
+        }
         /* connect the child correctly */
         if (!parent) {
             if (module->data) {
