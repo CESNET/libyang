@@ -47,7 +47,7 @@ help(int shortout)
         "  -v, --version         Show version number and exit.\n"
         "  -V, --verbose         Show verbose messages, can be used multiple times to\n"
         "                        increase verbosity.\n"
-        "  -p PATH, --path=PATH  Separated search path for yin and yang modules.\n\n"
+        "  -p PATH, --path=PATH  Separated search path for yin and yang modules. Can be set multiple times.\n\n"
         "  -s, --strict          Strict data parsing (do not skip unknown data),\n"
         "                        has no effect for schemas.\n\n"
         "  -f FORMAT, --format=FORMAT\n"
@@ -178,7 +178,7 @@ main_ni(int argc, char* argv[])
     LYS_OUTFORMAT outformat_s = 0;
     LYS_INFORMAT informat_s;
     LYD_FORMAT informat_d, outformat_d = 0, ylformat = 0;
-    char *searchpath = NULL;
+    struct ly_set *searchpaths = NULL;
     char **feat = NULL, *ptr, *featlist, *ylpath = NULL;
     struct stat st;
     uint32_t u;
@@ -279,15 +279,18 @@ main_ni(int argc, char* argv[])
             }
             break;
         case 'p':
-            searchpath = optarg;
-            if (stat(searchpath, &st) == -1) {
-                fprintf(stderr, "Unable to use search path (%s) - %s.\n", searchpath, strerror(errno));
+            if (stat(optarg, &st) == -1) {
+                fprintf(stderr, "Unable to use search path (%s) - %s.\n", optarg, strerror(errno));
                 goto cleanup;
             }
             if (!S_ISDIR(st.st_mode)) {
                 fprintf(stderr, "Provided search path is not a directory.\n");
                 goto cleanup;
             }
+            if (!searchpaths) {
+                searchpaths = ly_set_new();
+            }
+            ly_set_add(searchpaths, optarg, 0);
             break;
         case 's':
             options_parser |= LYD_OPT_STRICT;
@@ -381,12 +384,19 @@ main_ni(int argc, char* argv[])
 
     /* create libyang context */
     if (ylpath) {
-        ctx = ly_ctx_new_ylpath(searchpath, ylpath, ylformat);
+        ctx = ly_ctx_new_ylpath(searchpaths ? (const char*)searchpaths->set.g[0] : NULL, ylpath, ylformat);
     } else {
-        ctx = ly_ctx_new(searchpath);
+        ctx = ly_ctx_new(NULL);
     }
     if (!ctx) {
         goto cleanup;
+    }
+
+    /* set searchpaths */
+    if (searchpaths) {
+        for (u = 0; u < searchpaths->number; u++) {
+            ly_ctx_set_searchdir(ctx, (const char*)searchpaths->set.g[u]);
+        }
     }
 
     /* set context options */
@@ -607,6 +617,7 @@ cleanup:
         fclose(out);
     }
     ly_set_free(mods);
+    ly_set_free(searchpaths);
     for (i = 0; i < featsize; i++) {
         free(feat[i]);
     }

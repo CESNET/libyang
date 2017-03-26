@@ -44,7 +44,7 @@ void
 cmd_clear_help(void)
 {
     printf("clear [<yang-library>]\n");
-    printf("\t Replace the current context with an empty one, searchpath is kept.\n");
+    printf("\t Replace the current context with an empty one, searchpaths are not kept.\n");
     printf("\t If <yang-library> path specified, load the modules according to the yang library data.\n");
 }
 
@@ -123,7 +123,7 @@ cmd_feature_help(void)
 void
 cmd_searchpath_help(void)
 {
-    printf("searchpath <model-dir-path>\n");
+    printf("searchpath <model-dir-path> | --clear\n");
 }
 
 void
@@ -1207,10 +1207,21 @@ cmd_searchpath(const char *arg)
         fprintf(stderr, "Missing the search path.\n");
         return 1;
     }
-    path = strchr(arg, ' ')+1;
+    path = strchr(arg, ' ');
+    while (path[0] == ' ') {
+        path = &path[1];
+    }
+    if (path[0] == '\0') {
+        fprintf(stderr, "Missing the search path.\n");
+        return 1;
+    }
 
-    if (!strcmp(path, "-h") || !strcmp(path, "--help")) {
+    if ((!strncmp(path, "-h", 2) && (path[2] == '\0' || path[2] == ' ')) ||
+        (!strncmp(path, "--help", 6) && (path[6] == '\0' || path[6] == ' '))) {
         cmd_searchpath_help();
+        return 0;
+    } else if (!strncmp(path, "--clear", 7) && (path[7] == '\0' || path[7] == ' ')) {
+        ly_ctx_unset_searchdirs(ctx);
         return 0;
     }
 
@@ -1251,7 +1262,7 @@ cmd_clear(const char *arg)
         free(ylpath);
     } else {
 create_empty:
-        ctx_new = ly_ctx_new(ly_ctx_get_searchdir(ctx));
+        ctx_new = ly_ctx_new(NULL);
     }
 
     if (!ctx_new) {
