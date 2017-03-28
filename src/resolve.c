@@ -6147,11 +6147,11 @@ resolve_when(struct lyd_node *node, int *result, int ignore_fail)
 
             lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, lys_node_module(sparent), LYXP_WHEN);
             if (!set.val.bool) {
-                node->when_status |= LYD_WHEN_FALSE;
                 if ((ignore_fail == 1) || ((sparent->flags & LYS_XPATH_DEP) || (ignore_fail == 2))) {
                     LOGVRB("When condition \"%s\" is not satisfied, but it is not required.",
                         ((struct lys_node_uses *)sparent)->when->cond);
                 } else {
+                    node->when_status |= LYD_WHEN_FALSE;
                     LOGVAL(LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_uses *)sparent)->when->cond);
                     goto cleanup;
                 }
