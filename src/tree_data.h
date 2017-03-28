@@ -436,17 +436,20 @@ char *lyd_qualified_path(const struct lyd_node *node);
                                      Validation modifications:
                                      - mandatory nodes can be omitted
                                      - leafrefs and instance-identifier resolution is allowed to fail
-                                     - list's keys/unique nodes are not required (so duplication is not checked) */
+                                     - list's keys/unique nodes are not required (so duplication is not checked)
+                                     - must and when evaluation skipped */
 #define LYD_OPT_GETCONFIG  0x04 /**< Data content from a NETCONF reply message to the NETCONF \<get-config\> operation
                                      Validation modifications:
                                      - mandatory nodes can be omitted
                                      - leafrefs and instance-identifier resolution is allowed to fail
                                      - list's keys/unique nodes are not required (so duplication is not checked)
+                                     - must and when evaluation skipped
                                      - status data are not allowed */
 #define LYD_OPT_EDIT       0x08 /**< Content of the NETCONF \<edit-config\>'s config element.
                                      Validation modifications:
                                      - mandatory nodes can be omitted
                                      - leafrefs and instance-identifier resolution is allowed to fail
+                                     - must and when evaluation skipped
                                      - status data are not allowed */
 #define LYD_OPT_RPC        0x10 /**< Data represents RPC or action input parameters. */
 #define LYD_OPT_RPCREPLY   0x20 /**< Data represents RPC or action output parameters (maps to NETCONF <rpc-reply> data). */

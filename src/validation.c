@@ -82,7 +82,8 @@ lyv_data_context(const struct lyd_node *node, int options, struct unres_data *un
     }
 
     /* check all relevant when conditions */
-    if (!(options & LYD_OPT_TRUSTED) && (node->when_status & LYD_WHEN)) {
+    if (!(options & (LYD_OPT_TRUSTED | LYD_OPT_NOTIF_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG))
+            && (node->when_status & LYD_WHEN)) {
         if (unres_data_add(unres, (struct lyd_node *)node, UNRES_WHEN)) {
             return EXIT_FAILURE;
         }
