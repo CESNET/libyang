@@ -97,9 +97,9 @@ lyv_data_context(const struct lyd_node *node, int options, struct unres_data *un
     /* check elements order in case of RPC's input and output */
     if (!(options & (LYD_OPT_TRUSTED | LYD_OPT_NOTIF_FILTER)) && (node->validity & LYD_VAL_MAND) && lyp_is_rpc_action(node->schema)) {
         if ((node->prev != node) && node->prev->next) {
-            for (siter = lys_getnext(node->schema, lys_parent(node->schema), node->schema->module, LYS_GETNEXT_PARENTUSES);
+            for (siter = lys_getnext(node->schema, lys_parent(node->schema), lyd_node_module(node), LYS_GETNEXT_PARENTUSES);
                     siter;
-                    siter = lys_getnext(siter, lys_parent(siter), siter->module, 0)) {
+                    siter = lys_getnext(siter, lys_parent(node->schema), lyd_node_module(node), LYS_GETNEXT_PARENTUSES)) {
                 if (siter == node->prev->schema) {
                     /* data predecessor has the schema node after
                      * the schema node of the data node being checked */
