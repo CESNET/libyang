@@ -18,6 +18,10 @@
 #include <sys/types.h>
 #include <stdio.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @defgroup xmlparser XML Parser
  *
@@ -297,4 +301,9 @@ const char *lyxml_get_attr(const struct lyxml_elem *elem, const char *name, cons
 const struct lyxml_ns *lyxml_get_ns(const struct lyxml_elem *elem, const char *prefix);
 
 /**@}*/
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* LY_XML_H_ */
