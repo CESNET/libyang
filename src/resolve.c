@@ -1797,14 +1797,14 @@ resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *star
     }
 
     start_parent = lys_parent(start);
-    while (start_parent && (start_parent->nodetype == LYS_USES)) {
+    while ((start_parent->nodetype == LYS_USES) && lys_parent(start_parent)) {
         start_parent = lys_parent(start_parent);
     }
 
     while (1) {
         sibling = NULL;
         while ((sibling = lys_getnext(sibling, start_parent, module,
-                                      LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE))) {
+                                      LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_PARENTUSES))) {
             /* name match */
             if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
                 r = schema_nodeid_siblingcheck(sibling, &shorthand, id, module, mod_name, mod_name_len, 0, &start_parent);
