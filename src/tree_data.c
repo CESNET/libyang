@@ -1661,7 +1661,9 @@ lys_get_schema_inctx(struct lys_node *schema, struct ly_ctx *ctx)
     for (parent = schema; parent; parent = lys_parent(parent)) {
         /* note - augments are skipped so we will work only with the implemented modules
          * (where the augments are applied) */
-        ly_set_add(parents, parent, LY_SET_OPT_USEASLIST);
+        if (parent->nodetype != LYS_USES) {
+            ly_set_add(parents, parent, LY_SET_OPT_USEASLIST);
+        }
     }
     assert(parents->number);
     index = parents->number - 1;
