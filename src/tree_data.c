@@ -2009,9 +2009,8 @@ src_skip:
                 /* no children (or the whole subtree will be inserted), try siblings */
                 if (src_elem == src) {
                     /* we are done, src has no children ... */
-                    if ((src_elem->schema->nodetype == LYS_CONTAINER)
-                        || ((src_elem->schema->nodetype & (LYS_LEAF | LYS_ANYDATA)) && trg_child)) {
-                        /* and it's a container (empty one) or an already-updated leaf/anydata, nothing else to do */
+                    if ((src_elem->schema->nodetype & (LYS_LEAF | LYS_ANYDATA)) && trg_child) {
+                        /* and it's an already-updated leaf/anydata, nothing else to do */
                         break;
                     } else {
                         /* ... but we still need to insert it */
