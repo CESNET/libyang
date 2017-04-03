@@ -47,7 +47,7 @@ help(int shortout)
         "  -v, --version         Show version number and exit.\n"
         "  -V, --verbose         Show verbose messages, can be used multiple times to\n"
         "                        increase verbosity.\n"
-        "  -p PATH, --path=PATH  Separated search path for yin and yang modules. Can be set multiple times.\n\n"
+        "  -p PATH, --path=PATH  Search path for schema (YANG/YIN) modules. The option can be used multiple times.\n\n"
         "  -s, --strict          Strict data parsing (do not skip unknown data),\n"
         "                        has no effect for schemas.\n\n"
         "  -f FORMAT, --format=FORMAT\n"
