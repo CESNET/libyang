@@ -2008,10 +2008,9 @@ lyd_merge_parent_children(struct lyd_node *target, struct lyd_node *source, int 
 src_skip:
                 /* no children (or the whole subtree will be inserted), try siblings */
                 if (src_elem == src) {
-                    /* we are done, src has no children ... */
-                    if ((src_elem->schema->nodetype == LYS_CONTAINER)
-                        || ((src_elem->schema->nodetype & (LYS_LEAF | LYS_ANYDATA)) && trg_child)) {
-                        /* and it's a container (empty one) or an already-updated leaf/anydata, nothing else to do */
+                    /* we are done with this subtree */
+                    if ((src_elem->schema->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_ANYDATA)) && trg_child) {
+                        /* it's an empty container or an already-updated leaf/anydata, nothing else to do */
                         break;
                     } else {
                         /* ... but we still need to insert it */
