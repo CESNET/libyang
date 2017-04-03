@@ -1668,9 +1668,6 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
         module = start_mod = start->module;
 
         start_parent = lys_parent(start);
-        while (start_parent && (start_parent->nodetype == LYS_USES)) {
-            start_parent = lys_parent(start_parent);
-        }
 
     /* absolute-schema-nodeid */
     } else {
@@ -1700,7 +1697,7 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
         sibling = NULL;
         mod_name_prev = mod_name;
         while ((sibling = lys_getnext(sibling, start_parent, start_mod,
-                                      LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT))) {
+                LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT | LYS_GETNEXT_PARENTUSES))) {
             /* name match */
             if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
                 r = schema_nodeid_siblingcheck(sibling, &shorthand, id, module, mod_name, mod_name_len,
