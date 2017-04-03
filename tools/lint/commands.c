@@ -1321,12 +1321,11 @@ int
 cmd_debug(const char *arg)
 {
     const char *beg, *end;
+    int grps = 0;
     if (strlen(arg) < 6) {
         cmd_debug_help();
         return 1;
     }
-
-    ly_verb_dbg(0);
 
     end = arg + 6;
     while (end[0]) {
@@ -1338,20 +1337,21 @@ cmd_debug(const char *arg)
         for (end = beg; (end[0] && !isspace(end[0])); ++end);
 
         if (!strncmp(beg, "dict", end - beg)) {
-            ly_verb_dbg(LY_LDGDICT);
+            grps |= LY_LDGDICT;
         } else if (!strncmp(beg, "yang", end - beg)) {
-            ly_verb_dbg(LY_LDGYANG);
+            grps |= LY_LDGYANG;
         } else if (!strncmp(beg, "yin", end - beg)) {
-            ly_verb_dbg(LY_LDGYIN);
+            grps |= LY_LDGYIN;
         } else if (!strncmp(beg, "xpath", end - beg)) {
-            ly_verb_dbg(LY_LDGXPATH);
+            grps |= LY_LDGXPATH;
         } else if (!strncmp(beg, "diff", end - beg)) {
-            ly_verb_dbg(LY_LDGDIFF);
+            grps |= LY_LDGDIFF;
         } else {
             fprintf(stderr, "Unknown debug group \"%.*s\"\n", (int)(end - beg), beg);
             return 1;
         }
     }
+    ly_verb_dbg(grps);
 
     return 0;
 }
