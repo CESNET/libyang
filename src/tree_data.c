@@ -800,9 +800,6 @@ check_leaf_list_backlinks(struct lyd_node *node, int op)
     if (node->parent) {
         node->parent->validity = LYD_VAL_MAND;
     }
-
-    /* update parent's default flag if needed */
-    lyd_wd_update_parents(node);
 }
 
 API int
@@ -5990,8 +5987,8 @@ lyd_wd_add_subtree(struct lyd_node **root, struct lyd_node *last_parent, struct 
         return EXIT_SUCCESS;
     }
 
-    /* skip disabled parts of schema */
     if (!subroot) {
+        /* skip disabled parts of schema */
         if (schema->parent && schema->parent->nodetype == LYS_AUGMENT) {
             if (lys_is_disabled(schema->parent, 0)) {
                 /* ignore disabled augment */
@@ -6004,6 +6001,7 @@ lyd_wd_add_subtree(struct lyd_node **root, struct lyd_node *last_parent, struct 
         }
     }
 
+    /* go recursively */
     switch (schema->nodetype) {
     case LYS_LIST:
         if (!subroot) {
@@ -6044,6 +6042,10 @@ lyd_wd_add_subtree(struct lyd_node **root, struct lyd_node *last_parent, struct 
                     goto error;
                 }
             }
+        } else if (!((struct lys_node_container *)schema)->presence) {
+            /* fix default flag on existing containers - set it on all non-presence containers and in case we will
+             * have in recursion function some non-default node, it will unset it */
+            subroot->dflt = 1;
         }
         /* no break */
     case LYS_CASE:
@@ -6080,6 +6082,19 @@ lyd_wd_add_subtree(struct lyd_node **root, struct lyd_node *last_parent, struct 
                             }
                         }
                     } /* else LYS_LEAF - nothing to do */
+
+                    /* fix default flag (2nd part) - for non-default node with default parent, unset the default flag
+                     * from the parents (starting from subroot node) */
+                    if (subroot->dflt) {
+                        for (i = 0; i < (signed)present->number; i++) {
+                            if (!present->set.d[i]->dflt) {
+                                for (iter = subroot; iter && iter->dflt; iter = iter->parent) {
+                                    iter->dflt = 0;
+                                }
+                                break;
+                            }
+                        }
+                    }
                     ly_set_clean(present);
                 } else {
                     /* no instance */
