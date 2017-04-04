@@ -724,6 +724,11 @@ lyd_new_leaf(struct lyd_node *parent, const struct lys_module *module, const cha
     return _lyd_new_leaf(parent, snode, val_str, 0);
 }
 
+/**
+ * @brief Update (add) default flag of the parents of the added node.
+ *
+ * @param[in] node Added node
+ */
 static void
 lyd_wd_update_parents(struct lyd_node *node)
 {
@@ -5937,6 +5942,21 @@ lyd_wd_leaflist_cleanup(struct ly_set *set)
     }
 }
 
+/**
+ * @brief Process (add/clean flags) default nodes in the schema subtree
+ *
+ * @param[in,out] root Pointer to the root node of the complete data tree, the root node can be NULL if the data tree
+ *                     is empty
+ * @param[in] last_parent The closest parent in the data tree to the currently processed \p schema node
+ * @param[in] subroot  The root node of a data subtree, the node is instance of the \p schema node, NULL in case the
+ *                     schema node is not instantiated in the data tree
+ * @param[in] schema The schema node to be processed
+ * @param[in] toplevel Flag for processing top level schema nodes when \p last_parent and \p subroot are consider as
+ *                     unknown
+ * @param[in] options  Parser options to know the data tree type, see @ref parseroptions.
+ * @param[in] unres    Unresolved data list, the newly added default nodes may need to add some unresolved items
+ * @return EXIT_SUCCESS or EXIT_FAILURE
+ */
 static int
 lyd_wd_add_subtree(struct lyd_node **root, struct lyd_node *last_parent, struct lyd_node *subroot,
                    struct lys_node *schema, int toplevel, int options, struct unres_data *unres)
@@ -6182,6 +6202,15 @@ error:
     return EXIT_FAILURE;
 }
 
+/**
+ * @brief Covering function to process (add/clean) default nodes in the data tree
+ * @param[in,out] root Pointer to the root node of the complete data tree, the root node can be NULL if the data tree
+ *                     is empty
+ * @param[in] ctx      Context for the case the data tree is empty (in that case \p ctx must not be NULL)
+ * @param[in] options  Parser options to know the data tree type, see @ref parseroptions.
+ * @param[in] unres    Unresolved data list, the newly added default nodes may need to add some unresolved items
+ * @return EXIT_SUCCESS or EXIT_FAILURE
+ */
 static int
 lyd_wd_add(struct lyd_node **root, struct ly_ctx *ctx, struct unres_data *unres, int options)
 {
@@ -6254,6 +6283,21 @@ lyd_wd_add(struct lyd_node **root, struct ly_ctx *ctx, struct unres_data *unres,
     return EXIT_SUCCESS;
 }
 
+/**
+ * @brief Process (add/clean) default nodes in the data tree and resolve the unresolved items
+ *
+ * @param[in,out] root  Pointer to the root node of the complete data tree, the root node can be NULL if the data tree
+ *                      is empty
+ * @param[in] options   Parser options to know the data tree type, see @ref parseroptions.
+ * @param[in] ctx       Context for the case the data tree is empty (in that case \p ctx must not be NULL)
+ * @param[in] data_tree Additional data tree for validating RPC/action/notification. The tree is used to satisfy
+ *                      possible references to the datastore content.
+ * @param[in] act_notif In case of nested action/notification, pointer to the subroot of the action/notification. Note
+ *                      that in this case the \p root points to the top level data tree node which provides the context
+ *                      for the nested action/notification
+ * @param[in] unres     Unresolved data list, the newly added default nodes may need to add some unresolved items
+ * @return EXIT_SUCCESS or EXIT_FAILURE
+ */
 int
 lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, const struct lyd_node *data_tree,
                        struct lyd_node *act_notif, struct unres_data *unres)
