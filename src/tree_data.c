@@ -809,10 +809,8 @@ API int
 lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
 {
     const char *backup;
-    lyd_val backup_val;
     struct lyd_node *parent;
     struct lys_node_list *slist;
-    LY_DATA_TYPE backup_type;
     uint32_t i;
 
     if (!leaf) {
@@ -837,8 +835,6 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
     }
 
     backup = leaf->value_str;
-    backup_type = leaf->value_type;
-    memcpy(&backup_val, &leaf->value, sizeof backup);
     leaf->value_str = lydict_insert(leaf->schema->module->ctx, val_str ? val_str : "", 0);
     /* leaf->value is erased by lyp_parse_value() */
 
@@ -846,11 +842,7 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
     if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, NULL, leaf, NULL, 1, 0)) {
         lydict_remove(leaf->schema->module->ctx, leaf->value_str);
         leaf->value_str = backup;
-        memcpy(&leaf->value, &backup_val, sizeof backup);
         return EXIT_FAILURE;
-    }
-    if (backup_type == LY_TYPE_BITS) {
-        free(backup_val.bit);
     }
 
     /* value is correct, remove backup */
