@@ -47,10 +47,12 @@ help(int shortout)
         "  -v, --version         Show version number and exit.\n"
         "  -V, --verbose         Show verbose messages, can be used multiple times to\n"
         "                        increase verbosity.\n"
+#ifndef NDEBUG
         "  -G GROUPS, --debug=GROUPS\n"
         "                        Enable printing of specific debugging message group\n"
         "                        (nothing will be printed unless verbosity is set to debug):\n"
         "                        <group>[,<group>]* (dict, yang, yin, xpath, diff)\n\n"
+#endif
         "  -p PATH, --path=PATH  Search path for schema (YANG/YIN) modules. The option can be used multiple times.\n\n"
         "  -s, --strict          Strict data parsing (do not skip unknown data),\n"
         "                        has no effect for schemas.\n\n"
@@ -172,7 +174,9 @@ main_ni(int argc, char* argv[])
         {"strict",           no_argument,       NULL, 's'},
         {"version",          no_argument,       NULL, 'v'},
         {"verbose",          no_argument,       NULL, 'V'},
+#ifndef NDEBUG
         {"debug",            required_argument, NULL, 'G'},
+#endif
         {"type",             required_argument, NULL, 't'},
         {NULL,               required_argument, NULL, 'y'},
         {NULL,               0,                 NULL, 0}
@@ -199,7 +203,12 @@ main_ni(int argc, char* argv[])
     void *p;
 
     opterr = 0;
-    while ((opt = getopt_long(argc, argv, "d:f:F:ghHio:p:st:vVG:y:", options, &opt_index)) != -1) {
+#ifndef NDEBUG
+    while ((opt = getopt_long(argc, argv, "d:f:F:ghHio:p:st:vVG:y:", options, &opt_index)) != -1)
+#else
+    while ((opt = getopt_long(argc, argv, "d:f:F:ghHio:p:st:vVy:", options, &opt_index)) != -1)
+#endif
+    {
         switch (opt) {
         case 'd':
             if (!strcmp(optarg, "all")) {
@@ -326,6 +335,7 @@ main_ni(int argc, char* argv[])
         case 'V':
             verbose++;
             break;
+#ifndef NDEBUG
         case 'G':
             u = 0;
             ptr = optarg;
@@ -357,6 +367,7 @@ main_ni(int argc, char* argv[])
             }
             ly_verb_dbg(u);
             break;
+#endif
         case 'y':
             ptr = strrchr(optarg, '.');
             if (ptr) {
