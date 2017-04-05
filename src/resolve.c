@@ -6246,14 +6246,14 @@ check_leafref_features(struct lys_type *type)
     features = ly_set_new();
 
     /* get parents chain of source (leafref) */
-    for (iter = (struct lys_node *)type->parent; iter; iter = iter->parent) {
+    for (iter = (struct lys_node *)type->parent; iter; iter = lys_parent(iter)) {
         if (iter->nodetype & (LYS_INPUT | LYS_OUTPUT)) {
             continue;
         }
         ly_set_add(src_parents, iter, LY_SET_OPT_USEASLIST);
     }
     /* get parents chain of target */
-    for (iter = (struct lys_node *)type->info.lref.target; iter; iter = iter->parent) {
+    for (iter = (struct lys_node *)type->info.lref.target; iter; iter = lys_parent(iter)) {
         if (iter->nodetype & (LYS_INPUT | LYS_OUTPUT)) {
             continue;
         }
