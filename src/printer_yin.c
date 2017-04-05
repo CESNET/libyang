@@ -447,6 +447,7 @@ yin_print_type(struct lyout *out, int level, const struct lys_module *module, co
     switch (type->base) {
     case LY_TYPE_BINARY:
         if (type->info.binary.length) {
+            yin_print_close_parent(out, &content);
             yin_print_typerestr(out, level, module, type->info.binary.length, "length");
         }
         break;
