@@ -4368,8 +4368,11 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct 
     }
 
     if (!aug->child) {
-        /* nothing to do */
+        /* empty augment, warn about it ... */
         LOGWRN("Augment \"%s\" without children.", aug->target_name);
+        /* ... but use it, since it has no child, no reconnection work is needed */
+        aug->target = (struct lys_node *)aug_target;
+
         goto success;
     }
 
