@@ -3445,6 +3445,12 @@ lyp_ctx_check_module(struct lys_module *module)
                     || !strcmp(ctx->models.list[i]->rev[0].date, last_rev)) {
 
                 LOGVRB("Module \"%s\" already in context.", ctx->models.list[i]->name);
+
+                /* if disabled, enable first */
+                if (ctx->models.list[i]->disabled) {
+                    lys_set_enabled(ctx->models.list[i]);
+                }
+
                 to_implement = module->implemented;
                 match_i = i;
                 if (to_implement && !ctx->models.list[i]->implemented) {
