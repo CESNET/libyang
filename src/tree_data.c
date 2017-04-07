@@ -1110,7 +1110,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
     const char *mod_name, *name, *val_name, *val, *node_mod_name, *id;
     struct lyd_node *ret = NULL, *node, *parent = NULL;
     struct lyd_node_anydata *any;
-    const struct lys_node *schild, *sparent;
+    const struct lys_node *schild, *sparent, *tmp;
     const struct lys_node_list *slist;
     const struct lys_module *module, *prev_mod;
     int r, i, parsed = 0, mod_name_len, nam_len, val_name_len, val_len;
@@ -1321,13 +1321,14 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
                 }
 
                 /* RPC/action in/out check */
-                if (lys_parent(schild)) {
+                for (tmp = lys_parent(schild); tmp && (tmp->nodetype == LYS_USES); tmp = lys_parent(tmp));
+                if (tmp) {
                     if (options & LYD_PATH_OPT_OUTPUT) {
-                        if (lys_parent(schild)->nodetype == LYS_INPUT) {
+                        if (tmp->nodetype == LYS_INPUT) {
                             continue;
                         }
                     } else {
-                        if (lys_parent(schild)->nodetype == LYS_OUTPUT) {
+                        if (tmp->nodetype == LYS_OUTPUT) {
                             continue;
                         }
                     }
