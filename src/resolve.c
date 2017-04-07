@@ -1510,7 +1510,6 @@ resolve_data_descendant_schema_nodeid(const char *nodeid, struct lyd_node *start
     char *str, *token, *p;
     struct lyd_node *result = NULL, *iter;
     const struct lys_node *schema = NULL;
-    int shorthand = 0;
 
     assert(nodeid && start);
 
@@ -1535,7 +1534,7 @@ resolve_data_descendant_schema_nodeid(const char *nodeid, struct lyd_node *start
         if (p) {
             /* inner node */
             if (resolve_descendant_schema_nodeid(token, schema ? schema->child : start->schema,
-                                                 LYS_CONTAINER | LYS_CHOICE | LYS_CASE | LYS_LEAF, 0, 0, &schema)
+                                                 LYS_CONTAINER | LYS_CHOICE | LYS_CASE | LYS_LEAF, 0, &schema)
                     || !schema) {
                 result = NULL;
                 break;
@@ -1543,25 +1542,10 @@ resolve_data_descendant_schema_nodeid(const char *nodeid, struct lyd_node *start
 
             if (schema->nodetype & (LYS_CHOICE | LYS_CASE)) {
                 continue;
-            } else if (lys_parent(schema)->nodetype == LYS_CHOICE) {
-                /* shorthand case */
-                if (!shorthand) {
-                    shorthand = 1;
-                    schema = lys_parent(schema);
-                    continue;
-                } else {
-                    shorthand = 0;
-                    if (schema->nodetype == LYS_LEAF) {
-                        /* should not be here, since we have leaf, which is not a shorthand nor final node */
-                        result = NULL;
-                        break;
-                    }
-                }
             }
         } else {
             /* final node */
-            if (resolve_descendant_schema_nodeid(token, schema ? schema->child : start->schema, LYS_LEAF,
-                                                 shorthand ? 0 : 1, 0, &schema)
+            if (resolve_descendant_schema_nodeid(token, schema ? schema->child : start->schema, LYS_LEAF, 0, &schema)
                     || !schema) {
                 result = NULL;
                 break;
@@ -1592,9 +1576,9 @@ resolve_data_descendant_schema_nodeid(const char *nodeid, struct lyd_node *start
  * -1 - error
  */
 static int
-schema_nodeid_siblingcheck(const struct lys_node *sibling, int8_t *shorthand, const char *id,
-                           const struct lys_module *module, const char *mod_name, int mod_name_len,
-                           int implemented_mod, const struct lys_node **start_parent)
+schema_nodeid_siblingcheck(const struct lys_node *sibling, const char *id, const struct lys_module *module,
+                           const char *mod_name, int mod_name_len, int implemented_mod,
+                           const struct lys_node **start_parent)
 {
     const struct lys_module *prefix_mod;
 
@@ -1610,28 +1594,16 @@ schema_nodeid_siblingcheck(const struct lys_node *sibling, int8_t *shorthand, co
         return 1;
     }
 
-    /* check for shorthand cases - then 'start' does not change */
-    if (lys_parent(sibling) && (lys_parent(sibling)->nodetype == LYS_CHOICE) && (sibling->nodetype != LYS_CASE)) {
-        if (*shorthand != -1) {
-            *shorthand = *shorthand ? 0 : 1;
-        }
-    }
-
     /* the result node? */
     if (!id[0]) {
-        if (*shorthand == 1) {
-            return 1;
-        }
         return 0;
     }
 
-    if (!(*shorthand)) {
-        /* move down the tree, if possible */
-        if (sibling->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
-            return -1;
-        }
-        *start_parent = sibling;
+    /* move down the tree, if possible */
+    if (sibling->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
+        return -1;
     }
+    *start_parent = sibling;
 
     return 2;
 }
@@ -1646,7 +1618,6 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
     const char *name, *mod_name, *mod_name_prev, *id;
     const struct lys_node *sibling, *start_parent;
     int r, nam_len, mod_name_len, is_relative = -1;
-    int8_t shorthand = 0;
     /* resolved import module from the start module, it must match the next node-name-match sibling */
     const struct lys_module *start_mod, *aux_mod;
 
@@ -1700,8 +1671,7 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
                 LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT | LYS_GETNEXT_PARENTUSES))) {
             /* name match */
             if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
-                r = schema_nodeid_siblingcheck(sibling, &shorthand, id, module, mod_name, mod_name_len,
-                                               implement, &start_parent);
+                r = schema_nodeid_siblingcheck(sibling, id, module, mod_name, mod_name_len, implement, &start_parent);
                 if (r == 0) {
                     *ret = sibling;
                     return EXIT_SUCCESS;
@@ -1764,12 +1734,11 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
  * -2  - violated no_innerlist  */
 int
 resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *start, int ret_nodetype,
-                                 int check_shorthand, int no_innerlist, const struct lys_node **ret)
+                                 int no_innerlist, const struct lys_node **ret)
 {
     const char *name, *mod_name, *id;
     const struct lys_node *sibling, *start_parent;
     int r, nam_len, mod_name_len, is_relative = -1;
-    int8_t shorthand = check_shorthand ? 0 : -1;
     /* resolved import module from the start module, it must match the next node-name-match sibling */
     const struct lys_module *module;
 
@@ -1804,7 +1773,7 @@ resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *star
                                       LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_PARENTUSES))) {
             /* name match */
             if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
-                r = schema_nodeid_siblingcheck(sibling, &shorthand, id, module, mod_name, mod_name_len, 0, &start_parent);
+                r = schema_nodeid_siblingcheck(sibling, id, module, mod_name, mod_name_len, 0, &start_parent);
                 if (r == 0) {
                     if (!(sibling->nodetype & ret_nodetype)) {
                         /* wrong node type, too bad */
@@ -1851,7 +1820,7 @@ resolve_choice_default_schema_nodeid(const char *nodeid, const struct lys_node *
         return -1;
     }
 
-    return resolve_descendant_schema_nodeid(nodeid, start, LYS_NO_RPC_NOTIF_NODE, 1, 0, ret);
+    return resolve_descendant_schema_nodeid(nodeid, start, LYS_NO_RPC_NOTIF_NODE, 0, ret);
 }
 
 /* uses, -1 error, EXIT_SUCCESS ok (but ret can still be NULL), >0 unexpected char on ret - 1 */
@@ -1887,7 +1856,6 @@ resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *modu
     const char *name, *mod_name, *id;
     const struct lys_node *sibling, *start_parent;
     int r, nam_len, mod_name_len, is_relative = -1;
-    int8_t shorthand = 0;
     const struct lys_module *abs_start_mod;
 
     assert(nodeid && module && ret);
@@ -1916,7 +1884,7 @@ resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *modu
                                       | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT | LYS_GETNEXT_WITHGROUPING))) {
             /* name match */
             if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
-                r = schema_nodeid_siblingcheck(sibling, &shorthand, id, module, mod_name, mod_name_len, 0, &start_parent);
+                r = schema_nodeid_siblingcheck(sibling, id, module, mod_name, mod_name_len, 0, &start_parent);
                 if (r == 0) {
                     if (!(sibling->nodetype & ret_nodetype)) {
                         /* wrong node type, too bad */
@@ -1994,7 +1962,7 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
     char *module_name = ly_buf(), *buf_backup = NULL, *str;
     const char *name, *mod_name, *id;
     const struct lys_node *sibling, *start_parent;
-    int r, nam_len, mod_name_len, is_relative = -1, has_predicate, shorthand = 0;
+    int r, nam_len, mod_name_len, is_relative = -1, has_predicate;
     /* resolved import module from the start module, it must match the next node-name-match sibling */
     const struct lys_module *prefix_mod, *module, *prev_mod;
 
@@ -2124,32 +2092,17 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
                     id += r;
                 }
 
-                /* check for shorthand cases - then 'start_parent' does not change */
-                if (lys_parent(sibling) && (lys_parent(sibling)->nodetype == LYS_CHOICE) && (sibling->nodetype != LYS_CASE)) {
-                    shorthand = ~shorthand;
-                }
-
                 /* the result node? */
                 if (!id[0]) {
-                    if (shorthand) {
-                        /* wrong path for shorthand */
-                        str = strndup(nodeid, (name + nam_len) - nodeid);
-                        LOGVAL(LYE_PATH_INNODE, LY_VLOG_STR, str);
-                        LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Schema shorthand case path must include the virtual case statement.");
-                        free(str);
-                        return NULL;
-                    }
                     return sibling;
                 }
 
-                if (!shorthand) {
-                    /* move down the tree, if possible */
-                    if (sibling->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
-                        LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[0], id);
-                        return NULL;
-                    }
-                    start_parent = sibling;
+                /* move down the tree, if possible */
+                if (sibling->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
+                    LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[0], id);
+                    return NULL;
                 }
+                start_parent = sibling;
 
                 /* update prev mod */
                 prev_mod = (start_parent ? start_parent->child->module : module);
@@ -3278,7 +3231,7 @@ resolve_unique(struct lys_node *parent, const char *uniq_str_path, uint8_t *trg_
     int rc;
     const struct lys_node *leaf = NULL;
 
-    rc = resolve_descendant_schema_nodeid(uniq_str_path, *lys_child(parent, LYS_LEAF), LYS_LEAF, 1, 1, &leaf);
+    rc = resolve_descendant_schema_nodeid(uniq_str_path, *lys_child(parent, LYS_LEAF), LYS_LEAF, 1, &leaf);
     if (rc || !leaf) {
         if (rc) {
             LOGVAL(LYE_INARG, LY_VLOG_LYS, parent, uniq_str_path, "unique");
@@ -4853,7 +4806,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
         rfn = &uses->refine[i];
         rc = resolve_descendant_schema_nodeid(rfn->target_name, uses->child,
                                               LYS_NO_RPC_NOTIF_NODE | LYS_ACTION | LYS_NOTIF,
-                                              1, 0, (const struct lys_node **)&node);
+                                              0, (const struct lys_node **)&node);
         if (rc || !node) {
             LOGVAL(LYE_INARG, LY_VLOG_LYS, uses, rfn->target_name, "refine");
             goto fail;

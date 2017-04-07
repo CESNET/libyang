@@ -4959,7 +4959,7 @@ lyd_get_unique_default(const char* unique_expr, struct lyd_node *list)
 
     assert(unique_expr);
 
-    if (resolve_descendant_schema_nodeid(unique_expr, list->schema->child, LYS_LEAF, 1, 1, &parent) || !parent) {
+    if (resolve_descendant_schema_nodeid(unique_expr, list->schema->child, LYS_LEAF, 1, &parent) || !parent) {
         /* error, but unique expression was checked when the schema was parsed so this should not happened */
         LOGINT;
         return NULL;
@@ -5122,14 +5122,6 @@ lyd_build_relative_data_path(const struct lyd_node *node, const char *schema_id,
                 assert(snode->nodetype != LYS_LIST);
                 if (!(snode->nodetype & (LYS_CHOICE | LYS_CASE))) {
                     len += sprintf(&buf[len], "%s%s", (len ? "/" : ""), snode->name);
-                }
-                /* shorthand case, skip it in schema */
-                if (lys_parent(snode) && (lys_parent(snode)->nodetype == LYS_CHOICE) && (snode->nodetype != LYS_CASE)) {
-                    schema_id = end + 1;
-                    end = strchr(schema_id, '/');
-                    if (!end) {
-                        end = schema_id + strlen(schema_id);
-                    }
                 }
                 schema = snode;
                 break;

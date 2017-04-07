@@ -166,7 +166,7 @@ int resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *sta
                                   int implement, const struct lys_node **ret);
 
 int resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *start, int ret_nodetype,
-                                     int check_shorthand, int no_innerlist, const struct lys_node **ret);
+                                     int no_innerlist, const struct lys_node **ret);
 
 int resolve_choice_default_schema_nodeid(const char *nodeid, const struct lys_node *start, const struct lys_node **ret);
 

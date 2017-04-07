@@ -1144,7 +1144,7 @@ info_print_model(struct lyout *out, const struct lys_module *module, const char 
         /* find the node in the grouping */
         if (spec_target) {
             rc = resolve_descendant_schema_nodeid(spec_target, target->child, LYS_NO_RPC_NOTIF_NODE,
-                                                  1, 0, (const struct lys_node **)&target);
+                                                  0, (const struct lys_node **)&target);
             if (rc || !target) {
                 ly_print(out, "Grouping %s child \"%s\" not found.\n", target_node + 9, spec_target);
                 return EXIT_FAILURE;
