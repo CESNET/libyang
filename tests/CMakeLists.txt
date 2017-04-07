@@ -1,4 +1,7 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 2.8.12)
+
+# Correct RPATH usage on OS X
+set(CMAKE_MACOSX_RPATH TRUE)
 
 set(api_tests test_libyang test_tree_schema test_xml test_dict test_tree_data test_tree_data_dup test_tree_data_merge test_xpath test_xpath_1.1 test_diff)
 set(data_tests test_data_initialization test_leafref_remove test_instid_remove test_keys test_autodel test_when test_when_1.1 test_must_1.1 test_defaults test_emptycont test_unique test_mandatory test_json test_parse_print test_values test_metadata)

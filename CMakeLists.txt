@@ -1,9 +1,12 @@
-cmake_minimum_required(VERSION 2.8.9)
+cmake_minimum_required(VERSION 2.8.12)
 project(libyang C)
 
 include(GNUInstallDirs)
 
 set(LIBYANG_DESCRIPTION "libyang is YANG data modelling language parser and toolkit written (and providing API) in C.")
+
+# Correct RPATH usage on OS X
+set(CMAKE_MACOSX_RPATH TRUE)
 
 # set version
 set(LIBYANG_MAJOR_VERSION 0)
