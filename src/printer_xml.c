@@ -561,6 +561,7 @@ int
 xml_print_data(struct lyout *out, const struct lyd_node *root, int options)
 {
     const struct lyd_node *node, *next;
+    struct lys_node *parent = NULL;
     int level, action_input = 0;
 
     assert(root);
@@ -580,11 +581,15 @@ xml_print_data(struct lyout *out, const struct lyd_node *root, int options)
             node = root;
         }
 
-        if (node && (node->schema->nodetype & (LYS_RPC | LYS_ACTION))) {
-            if (node->child && (node->child->schema->parent->nodetype == LYS_OUTPUT)) {
-                /* skip the container */
+        if (node) {
+            if (node->child) {
+                for (parent = lys_parent(node->child->schema); parent && (parent->nodetype == LYS_USES); parent = lys_parent(parent));
+            }
+            if (parent && (parent->nodetype == LYS_OUTPUT)) {
+                /* rpc/action output - skip the container */
                 root = node->child;
             } else if (node->schema->nodetype == LYS_ACTION) {
+                /* action input - print top-level action element */
                 action_input = 1;
             }
         }
