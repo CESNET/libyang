@@ -61,10 +61,9 @@ ly_err_free(void *ptr)
      * so this check is for programs terminating the main()
      * function by pthread_exit() :)
      */
-    if (e != &ly_err_main) {
-#else
-    {
+    if (e != &ly_err_main)
 #endif
+    {
         free(e);
     }
 }
@@ -92,10 +91,9 @@ ly_err_location(void)
         if (getpid() == syscall(SYS_gettid)) {
             /* main thread - use global variable instead of thread-specific variable. */
             e = &ly_err_main;
-        } else {
-#else
-        {
+        } else
 #endif /* __linux__ */
+        {
             e = calloc(1, sizeof *e);
         }
         pthread_setspecific(ly_err_key, e);
