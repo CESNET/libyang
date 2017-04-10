@@ -818,6 +818,10 @@ ctx_modules_redo_backlinks(struct ly_set *mods)
 
         /* leafrefs */
         LY_TREE_DFS_BEGIN(mod->data, next, elem) {
+            if (elem->nodetype == LYS_GROUPING) {
+                goto next_sibling;
+            }
+
             if (elem->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
                 type = &((struct lys_node_leaf *)elem)->type; /* shortcut */
                 if (type->base == LY_TYPE_LEAFREF) {
@@ -825,7 +829,34 @@ ctx_modules_redo_backlinks(struct ly_set *mods)
                 }
             }
 
-            LY_TREE_DFS_END(mod->data, next, elem);
+            /* select element for the next run - children first */
+            next = elem->child;
+
+            /* child exception for leafs, leaflists and anyxml without children */
+            if (elem->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
+                next = NULL;
+            }
+            if (!next) {
+next_sibling:
+                /* no children */
+                if (elem == mod->data) {
+                    /* we are done, (START) has no children */
+                    break;
+                }
+                /* try siblings */
+                next = elem->next;
+            }
+            while (!next) {
+                /* parent is already processed, go to its sibling */
+                elem = lys_parent(elem);
+
+                /* no siblings, go back through parents */
+                if (lys_parent(elem) == lys_parent(mod->data)) {
+                    /* we are done, no next element to process */
+                    break;
+                }
+                next = elem->next;
+            }
         }
     }
 
