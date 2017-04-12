@@ -597,7 +597,6 @@ main_ni(int argc, char* argv[])
                 } else {
                     fprintf(stderr, "yanglint error: invalid top-level element \"%s\" for data type autodetection.\n",
                             xml->name);
-                    lyxml_free(ctx, xml);
                     goto cleanup;
                 }
 
