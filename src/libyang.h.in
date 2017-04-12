@@ -1380,6 +1380,8 @@ void ly_ctx_clean(struct ly_ctx *ctx, void (*private_destructor)(const struct ly
  * @param[in] ctx libyang context to destroy
  * @param[in] private_destructor Optional destructor function for private objects assigned
  * to the nodes via lys_set_private(). If NULL, the private objects are not freed by libyang.
+ * Remember the differences between the structures derived from ::lys_node and always check
+ * ::lys_node#nodetype.
  */
 void ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_node *node, void *priv));
 

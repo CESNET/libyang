@@ -28,7 +28,8 @@ static int yang_check_nodes(struct lys_module *module, struct lys_node *parent, 
                             int options, struct unres_schema *unres);
 static int yang_fill_ext_substm_index(struct lys_ext_instance_complex *ext, LY_STMT stmt, enum yytokentype keyword);
 static void yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node);
-void lys_iffeature_free(struct ly_ctx *ctx, struct lys_iffeature *iffeature, uint8_t iffeature_size);
+void lys_iffeature_free(struct ly_ctx *ctx, struct lys_iffeature *iffeature, uint8_t iffeature_size,
+                        void (*private_destructor)(const struct lys_node *node, void *priv));
 
 static int
 yang_check_string(struct lys_module *module, const char **target, char *what,
@@ -157,7 +158,7 @@ error:
     free(value);
     lydict_remove(module->ctx, imp_old->dsc);
     lydict_remove(module->ctx, imp_old->ref);
-    lys_extension_instances_free(module->ctx, imp_old->ext, imp_old->ext_size);
+    lys_extension_instances_free(module->ctx, imp_old->ext, imp_old->ext_size, NULL);
     return EXIT_FAILURE;
 }
 
@@ -1912,7 +1913,7 @@ yang_check_deviate_must(struct lys_module *module, struct unres_schema *unres,
             for (i = 0; i < *trg_must_size; i++) {
                 if (ly_strequal(deviate->must[j].expr, (*trg_must)[i].expr, 1)) {
                     /* we have a match, free the must structure ... */
-                    lys_restr_free(module->ctx, &((*trg_must)[i]));
+                    lys_restr_free(module->ctx, &((*trg_must)[i]), NULL);
                     /* ... and maintain the array */
                     (*trg_must_size)--;
                     if (i != *trg_must_size) {
@@ -1950,7 +1951,7 @@ yang_check_deviate_must(struct lys_module *module, struct unres_schema *unres,
 error:
     if (deviate->mod == LY_DEVIATE_ADD && erase_must) {
         for (i = 0; i < deviate->must_size; ++i) {
-            lys_restr_free(module->ctx, &deviate->must[i]);
+            lys_restr_free(module->ctx, &deviate->must[i], NULL);
         }
         free(deviate->must);
     }
@@ -2093,7 +2094,7 @@ yang_fill_include(struct lys_module *trg, char *value, struct lys_include *inc,
         }
         trg->inc_size++;
     } else if (rc == -1) {
-        lys_extension_instances_free(trg->ctx, inc->ext, inc->ext_size);
+        lys_extension_instances_free(trg->ctx, inc->ext, inc->ext_size, NULL);
         ret = -1;
     }
 
@@ -2885,7 +2886,7 @@ yang_type_free(struct ly_ctx *ctx, struct lys_type *type)
         free(stype);
         type->der = NULL;
     }
-    lys_type_free(ctx, type);
+    lys_type_free(ctx, type, NULL);
     type->base = LY_TYPE_DER;
     type->ext_size = 0;
     type->ext = NULL;
@@ -2910,7 +2911,7 @@ yang_tpdf_free(struct ly_ctx *ctx, struct lys_tpdf *tpdf, uint8_t start, uint8_t
 
         lydict_remove(ctx, tpdf[i].units);
         lydict_remove(ctx, tpdf[i].dflt);
-        lys_extension_instances_free(ctx, tpdf[i].ext, tpdf[i].ext_size);
+        lys_extension_instances_free(ctx, tpdf[i].ext, tpdf[i].ext_size, NULL);
     }
 }
 
@@ -2924,7 +2925,7 @@ yang_free_import(struct ly_ctx *ctx, struct lys_import *imp, uint8_t start, uint
         lydict_remove(ctx, imp[i].prefix);
         lydict_remove(ctx, imp[i].dsc);
         lydict_remove(ctx, imp[i].ref);
-        lys_extension_instances_free(ctx, imp[i].ext, imp[i].ext_size);
+        lys_extension_instances_free(ctx, imp[i].ext, imp[i].ext_size, NULL);
     }
 }
 
@@ -2937,7 +2938,7 @@ yang_free_include(struct ly_ctx *ctx, struct lys_include *inc, uint8_t start, ui
         free((char *)inc[i].submodule);
         lydict_remove(ctx, inc[i].dsc);
         lydict_remove(ctx, inc[i].ref);
-        lys_extension_instances_free(ctx, inc[i].ext, inc[i].ext_size);
+        lys_extension_instances_free(ctx, inc[i].ext, inc[i].ext_size, NULL);
     }
 }
 
@@ -2972,11 +2973,11 @@ yang_free_container(struct ly_ctx *ctx, struct lys_node_container * cont)
     lydict_remove(ctx, cont->presence);
 
     for (i = 0; i < cont->must_size; ++i) {
-        lys_restr_free(ctx, &cont->must[i]);
+        lys_restr_free(ctx, &cont->must[i], NULL);
     }
     free(cont->must);
 
-    lys_when_free(ctx, cont->when);
+    lys_when_free(ctx, cont->when, NULL);
 }
 
 static void
@@ -2985,11 +2986,11 @@ yang_free_leaf(struct ly_ctx *ctx, struct lys_node_leaf *leaf)
     uint8_t i;
 
     for (i = 0; i < leaf->must_size; i++) {
-        lys_restr_free(ctx, &leaf->must[i]);
+        lys_restr_free(ctx, &leaf->must[i], NULL);
     }
     free(leaf->must);
 
-    lys_when_free(ctx, leaf->when);
+    lys_when_free(ctx, leaf->when, NULL);
 
     yang_type_free(ctx, &leaf->type);
     lydict_remove(ctx, leaf->units);
@@ -3002,7 +3003,7 @@ yang_free_leaflist(struct ly_ctx *ctx, struct lys_node_leaflist *leaflist)
     uint8_t i;
 
     for (i = 0; i < leaflist->must_size; i++) {
-        lys_restr_free(ctx, &leaflist->must[i]);
+        lys_restr_free(ctx, &leaflist->must[i], NULL);
     }
     free(leaflist->must);
 
@@ -3011,7 +3012,7 @@ yang_free_leaflist(struct ly_ctx *ctx, struct lys_node_leaflist *leaflist)
     }
     free(leaflist->dflt);
 
-    lys_when_free(ctx, leaflist->when);
+    lys_when_free(ctx, leaflist->when, NULL);
 
     yang_type_free(ctx, &leaflist->type);
     lydict_remove(ctx, leaflist->units);
@@ -3026,11 +3027,11 @@ yang_free_list(struct ly_ctx *ctx, struct lys_node_list *list)
     free(list->tpdf);
 
     for (i = 0; i < list->must_size; ++i) {
-        lys_restr_free(ctx, &list->must[i]);
+        lys_restr_free(ctx, &list->must[i], NULL);
     }
     free(list->must);
 
-    lys_when_free(ctx, list->when);
+    lys_when_free(ctx, list->when, NULL);
 
     for (i = 0; i < list->unique_size; ++i) {
         free(list->unique[i].expr);
@@ -3044,7 +3045,7 @@ static void
 yang_free_choice(struct ly_ctx *ctx, struct lys_node_choice *choice)
 {
     free(choice->dflt);
-    lys_when_free(ctx, choice->when);
+    lys_when_free(ctx, choice->when, NULL);
 }
 
 static void
@@ -3053,11 +3054,11 @@ yang_free_anydata(struct ly_ctx *ctx, struct lys_node_anydata *anydata)
     uint8_t i;
 
     for (i = 0; i < anydata->must_size; ++i) {
-        lys_restr_free(ctx, &anydata->must[i]);
+        lys_restr_free(ctx, &anydata->must[i], NULL);
     }
     free(anydata->must);
 
-    lys_when_free(ctx, anydata->when);
+    lys_when_free(ctx, anydata->when, NULL);
 }
 
 static void
@@ -3069,7 +3070,7 @@ yang_free_inout(struct ly_ctx *ctx, struct lys_node_inout *inout)
     free(inout->tpdf);
 
     for (i = 0; i < inout->must_size; ++i) {
-        lys_restr_free(ctx, &inout->must[i]);
+        lys_restr_free(ctx, &inout->must[i], NULL);
     }
     free(inout->must);
 }
@@ -3083,7 +3084,7 @@ yang_free_notif(struct ly_ctx *ctx, struct lys_node_notif *notif)
     free(notif->tpdf);
 
     for (i = 0; i < notif->must_size; ++i) {
-        lys_restr_free(ctx, &notif->must[i]);
+        lys_restr_free(ctx, &notif->must[i], NULL);
     }
     free(notif->must);
 }
@@ -3099,7 +3100,7 @@ yang_free_uses(struct ly_ctx *ctx, struct lys_node_uses *uses)
         lydict_remove(ctx, uses->refine[i].ref);
 
         for (j = 0; j < uses->refine[i].must_size; j++) {
-            lys_restr_free(ctx, &uses->refine[i].must[j]);
+            lys_restr_free(ctx, &uses->refine[i].must[j], NULL);
         }
         free(uses->refine[i].must);
 
@@ -3111,11 +3112,11 @@ yang_free_uses(struct ly_ctx *ctx, struct lys_node_uses *uses)
         if (uses->refine[i].target_type & LYS_CONTAINER) {
             lydict_remove(ctx, uses->refine[i].mod.presence);
         }
-        lys_extension_instances_free(ctx, uses->refine[i].ext, uses->refine[i].ext_size);
+        lys_extension_instances_free(ctx, uses->refine[i].ext, uses->refine[i].ext_size, NULL);
     }
     free(uses->refine);
 
-    lys_when_free(ctx, uses->when);
+    lys_when_free(ctx, uses->when, NULL);
 }
 
 static void
@@ -3134,7 +3135,7 @@ yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node)
         /* common part */
         lydict_remove(ctx, tmp->name);
         if (!(tmp->nodetype & (LYS_INPUT | LYS_OUTPUT))) {
-            lys_iffeature_free(ctx, tmp->iffeature, tmp->iffeature_size);
+            lys_iffeature_free(ctx, tmp->iffeature, tmp->iffeature_size, NULL);
             lydict_remove(ctx, tmp->dsc);
             lydict_remove(ctx, tmp->ref);
         }
@@ -3161,7 +3162,7 @@ yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node)
             yang_free_choice(ctx, (struct lys_node_choice *)tmp);
             break;
         case LYS_CASE:
-            lys_when_free(ctx, ((struct lys_node_case *)tmp)->when);
+            lys_when_free(ctx, ((struct lys_node_case *)tmp)->when, NULL);
             break;
         case LYS_ANYXML:
         case LYS_ANYDATA:
@@ -3180,7 +3181,7 @@ yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node)
         default:
             break;
         }
-        lys_extension_instances_free(ctx, tmp->ext, tmp->ext_size);
+        lys_extension_instances_free(ctx, tmp->ext, tmp->ext_size, NULL);
         yang_free_nodes(ctx, child);
         free(tmp);
         tmp = sibling;
@@ -3194,10 +3195,10 @@ yang_free_augment(struct ly_ctx *ctx, struct lys_node_augment *aug)
     lydict_remove(ctx, aug->dsc);
     lydict_remove(ctx, aug->ref);
 
-    lys_iffeature_free(ctx, aug->iffeature, aug->iffeature_size);
-    lys_when_free(ctx, aug->when);
+    lys_iffeature_free(ctx, aug->iffeature, aug->iffeature_size, NULL);
+    lys_when_free(ctx, aug->when, NULL);
     yang_free_nodes(ctx, aug->child);
-    lys_extension_instances_free(ctx, aug->ext, aug->ext_size);
+    lys_extension_instances_free(ctx, aug->ext, aug->ext_size, NULL);
 }
 
 static void
@@ -3218,7 +3219,7 @@ yang_free_deviate(struct ly_ctx *ctx, struct lys_deviation *dev, uint index)
         free(dev->deviate[i].dflt);
 
         for (j = 0; j < dev->deviate[i].must_size; ++j) {
-            lys_restr_free(ctx, &dev->deviate[i].must[j]);
+            lys_restr_free(ctx, &dev->deviate[i].must[j], NULL);
         }
         free(dev->deviate[i].must);
 
@@ -3226,7 +3227,7 @@ yang_free_deviate(struct ly_ctx *ctx, struct lys_deviation *dev, uint index)
             free(dev->deviate[i].unique[j].expr);
         }
         free(dev->deviate[i].unique);
-        lys_extension_instances_free(ctx, dev->deviate[i].ext, dev->deviate[i].ext_size);
+        lys_extension_instances_free(ctx, dev->deviate[i].ext, dev->deviate[i].ext_size, NULL);
     }
 }
 
@@ -4371,7 +4372,7 @@ yang_check_deviate(struct lys_module *module, struct unres_schema *unres, struct
         }
         /* remove type and initialize it */
         tmp_parent = type->parent;
-        lys_type_free(module->ctx, type);
+        lys_type_free(module->ctx, type, NULL);
         memcpy(type, deviate->type, sizeof *deviate->type);
         free(deviate->type);
         deviate->type = type;

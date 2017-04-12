@@ -38,7 +38,7 @@
 #include "parser_yang.h"
 
 static int lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, struct lys_type *old,
-                        int in_grp, struct unres_schema *unres);
+                        int in_grp, int shallow, struct unres_schema *unres);
 
 API const struct lys_node *
 lys_is_disabled(const struct lys_node *node, int recursive)
@@ -1276,8 +1276,8 @@ lys_ext_iter(struct lys_ext_instance **ext, uint8_t ext_size, uint8_t start, LYE
  * duplicate extension instance
  */
 int
-lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, uint8_t size,
-            void *parent, LYEXT_PAR parent_type, struct lys_ext_instance ***new, struct unres_schema *unres)
+lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, uint8_t size, void *parent, LYEXT_PAR parent_type,
+            struct lys_ext_instance ***new, int shallow, struct unres_schema *unres)
 {
     int i;
     uint8_t u = 0;
@@ -1297,8 +1297,6 @@ lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, uint8_t size
 
     (*new) = result = calloc(size, sizeof *result);
     for (u = 0; u < size; u++) {
-        /* TODO cover complex extension instances */
-
         if (orig[u]) {
             /* resolved extension instance, just duplicate it */
             switch(orig[u]->ext_type) {
@@ -1307,8 +1305,6 @@ lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, uint8_t size
                 break;
             case LYEXT_COMPLEX:
                 result[u] = calloc(1, ((struct lyext_plugin_complex*)orig[u]->def->plugin)->instance_size);
-                ((struct lys_ext_instance_complex*)result[u])->nodetype = LYS_EXT;
-                ((struct lys_ext_instance_complex*)result[u])->module = mod;
                 ((struct lys_ext_instance_complex*)result[u])->substmt = ((struct lyext_plugin_complex*)orig[u]->def->plugin)->substmt;
                 /* TODO duplicate data in extension instance content */
                 break;
@@ -1322,13 +1318,21 @@ lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, uint8_t size
             result[u]->insubstmt = orig[u]->insubstmt;
             result[u]->insubstmt_index = orig[u]->insubstmt_index;
             result[u]->ext_type = orig[u]->ext_type;
+            ((struct lys_ext_instance_complex*)result[u])->nodetype = LYS_EXT;
+            ((struct lys_ext_instance_complex*)result[u])->module = mod;
 
             /* extensions */
             orig[u]->ext = NULL;
             result[u]->ext_size = orig[u]->ext_size;
             if (lys_ext_dup(mod, orig[u]->ext, orig[u]->ext_size, result[u],
-                            LYEXT_PAR_EXTINST, &result[u]->ext, unres)) {
+                            LYEXT_PAR_EXTINST, &result[u]->ext, shallow, unres)) {
                 goto error;
+            }
+
+            /* in case of shallow copy (duplication for deviation), duplicate only the link to private data
+             * in a new copy, otherwise (grouping instantiation) do not duplicate the private data */
+            if (shallow) {
+                result[u]->priv = orig[u]->priv;
             }
         } else {
             /* original extension is not yet resolved, so duplicate it in unres */
@@ -1358,12 +1362,12 @@ lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, uint8_t size
 
 error:
     (*new) = NULL;
-    lys_extension_instances_free(mod->ctx, result, u);
+    lys_extension_instances_free(mod->ctx, result, u, NULL);
     return EXIT_FAILURE;
 }
 
 static struct lys_restr *
-lys_restr_dup(struct lys_module *mod, struct lys_restr *old, int size, struct unres_schema *unres)
+lys_restr_dup(struct lys_module *mod, struct lys_restr *old, int size, int shallow, struct unres_schema *unres)
 {
     struct lys_restr *result;
     int i;
@@ -1379,7 +1383,7 @@ lys_restr_dup(struct lys_module *mod, struct lys_restr *old, int size, struct un
     }
     for (i = 0; i < size; i++) {
         result[i].ext_size = old[i].ext_size;
-        lys_ext_dup(mod, old[i].ext, old[i].ext_size, &result[i], LYEXT_PAR_RESTR, &result[i].ext, unres);
+        lys_ext_dup(mod, old[i].ext, old[i].ext_size, &result[i], LYEXT_PAR_RESTR, &result[i].ext, shallow, unres);
         result[i].expr = lydict_insert(mod->ctx, old[i].expr, 0);
         result[i].dsc = lydict_insert(mod->ctx, old[i].dsc, 0);
         result[i].ref = lydict_insert(mod->ctx, old[i].ref, 0);
@@ -1391,14 +1395,15 @@ lys_restr_dup(struct lys_module *mod, struct lys_restr *old, int size, struct un
 }
 
 void
-lys_restr_free(struct ly_ctx *ctx, struct lys_restr *restr)
+lys_restr_free(struct ly_ctx *ctx, struct lys_restr *restr,
+               void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     assert(ctx);
     if (!restr) {
         return;
     }
 
-    lys_extension_instances_free(ctx, restr->ext, restr->ext_size);
+    lys_extension_instances_free(ctx, restr->ext, restr->ext_size, private_destructor);
     lydict_remove(ctx, restr->expr);
     lydict_remove(ctx, restr->dsc);
     lydict_remove(ctx, restr->ref);
@@ -1407,12 +1412,13 @@ lys_restr_free(struct ly_ctx *ctx, struct lys_restr *restr)
 }
 
 void
-lys_iffeature_free(struct ly_ctx *ctx, struct lys_iffeature *iffeature, uint8_t iffeature_size)
+lys_iffeature_free(struct ly_ctx *ctx, struct lys_iffeature *iffeature, uint8_t iffeature_size,
+                   void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     uint8_t i;
 
     for (i = 0; i < iffeature_size; ++i) {
-        lys_extension_instances_free(ctx, iffeature[i].ext, iffeature[i].ext_size);
+        lys_extension_instances_free(ctx, iffeature[i].ext, iffeature[i].ext_size, private_destructor);
         free(iffeature[i].expr);
         free(iffeature[i].features);
     }
@@ -1421,14 +1427,14 @@ lys_iffeature_free(struct ly_ctx *ctx, struct lys_iffeature *iffeature, uint8_t 
 
 static int
 type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, struct lys_type *old,
-              LY_DATA_TYPE base, int in_grp, struct unres_schema *unres)
+              LY_DATA_TYPE base, int in_grp, int shallow, struct unres_schema *unres)
 {
     int i;
 
     switch (base) {
         case LY_TYPE_BINARY:
             if (old->info.binary.length) {
-                new->info.binary.length = lys_restr_dup(mod, old->info.binary.length, 1, unres);
+                new->info.binary.length = lys_restr_dup(mod, old->info.binary.length, 1, shallow, unres);
             }
             break;
 
@@ -1449,7 +1455,7 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
                     new->info.bits.bit[i].ext_size = old->info.bits.bit[i].ext_size;
                     if (lys_ext_dup(mod, old->info.bits.bit[i].ext, old->info.bits.bit[i].ext_size,
                                     &new->info.bits.bit[i], LYEXT_PAR_TYPE_BIT,
-                                    &new->info.bits.bit[i].ext, unres)) {
+                                    &new->info.bits.bit[i].ext, shallow, unres)) {
                         return -1;
                     }
                 }
@@ -1460,7 +1466,7 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
             new->info.dec64.dig = old->info.dec64.dig;
             new->info.dec64.div = old->info.dec64.div;
             if (old->info.dec64.range) {
-                new->info.dec64.range = lys_restr_dup(mod, old->info.dec64.range, 1, unres);
+                new->info.dec64.range = lys_restr_dup(mod, old->info.dec64.range, 1, shallow, unres);
             }
             break;
 
@@ -1481,7 +1487,7 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
                     new->info.enums.enm[i].ext_size = old->info.enums.enm[i].ext_size;
                     if (lys_ext_dup(mod, old->info.enums.enm[i].ext, old->info.enums.enm[i].ext_size,
                                     &new->info.enums.enm[i], LYEXT_PAR_TYPE_ENUM,
-                                    &new->info.enums.enm[i].ext, unres)) {
+                                    &new->info.enums.enm[i].ext, shallow, unres)) {
                         return -1;
                     }
                 }
@@ -1525,7 +1531,7 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
         case LY_TYPE_UINT32:
         case LY_TYPE_UINT64:
             if (old->info.num.range) {
-                new->info.num.range = lys_restr_dup(mod, old->info.num.range, 1, unres);
+                new->info.num.range = lys_restr_dup(mod, old->info.num.range, 1, shallow, unres);
             }
             break;
 
@@ -1540,9 +1546,9 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
 
         case LY_TYPE_STRING:
             if (old->info.str.length) {
-                new->info.str.length = lys_restr_dup(mod, old->info.str.length, 1, unres);
+                new->info.str.length = lys_restr_dup(mod, old->info.str.length, 1, shallow, unres);
             }
-            new->info.str.patterns = lys_restr_dup(mod, old->info.str.patterns, old->info.str.pat_count, unres);
+            new->info.str.patterns = lys_restr_dup(mod, old->info.str.patterns, old->info.str.pat_count, shallow, unres);
             new->info.str.pat_count = old->info.str.pat_count;
             break;
 
@@ -1555,7 +1561,8 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
                     return -1;
                 }
                 for (i = 0; i < new->info.uni.count; i++) {
-                    if (lys_type_dup(mod, parent, &(new->info.uni.types[i]), &(old->info.uni.types[i]), in_grp, unres)) {
+                    if (lys_type_dup(mod, parent, &(new->info.uni.types[i]), &(old->info.uni.types[i]),
+                                     in_grp, shallow, unres)) {
                         return -1;
                     }
                 }
@@ -1571,7 +1578,7 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
 
 struct yang_type *
 lys_yang_type_dup(struct lys_module *module, struct lys_node *parent, struct yang_type *old, struct lys_type *type,
-                  int in_grp, struct unres_schema *unres)
+                  int in_grp, int shallow, struct unres_schema *unres)
 {
     struct yang_type *new;
 
@@ -1588,9 +1595,9 @@ lys_yang_type_dup(struct lys_module *module, struct lys_node *parent, struct yan
         LOGMEM;
         goto error;
     }
-    if (type_dup(module, parent, type, old->type, new->base, in_grp, unres)) {
+    if (type_dup(module, parent, type, old->type, new->base, in_grp, shallow, unres)) {
         new->type->base = new->base;
-        lys_type_free(module->ctx, new->type);
+        lys_type_free(module->ctx, new->type, NULL);
         memset(&new->type->info, 0, sizeof new->type->info);
         goto error;
     }
@@ -1888,7 +1895,7 @@ lys_ext_instance_substmt(const struct lys_ext_instance *ext)
 
 static int
 lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, struct lys_type *old,
-            int in_grp, struct unres_schema *unres)
+            int in_grp, int shallow, struct unres_schema *unres)
 {
     int i;
 
@@ -1897,7 +1904,7 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
     new->der = old->der;
     new->parent = (struct lys_tpdf *)parent;
     new->ext_size = old->ext_size;
-    if (lys_ext_dup(mod, old->ext, old->ext_size, new, LYEXT_PAR_TYPE, &new->ext, unres)) {
+    if (lys_ext_dup(mod, old->ext, old->ext_size, new, LYEXT_PAR_TYPE, &new->ext, shallow, unres)) {
         return -1;
     }
 
@@ -1906,7 +1913,8 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
         /* HACK (serious one) for unres */
         /* nothing else we can do but duplicate it immediately */
         if (((struct lyxml_elem *)old->der)->flags & LY_YANG_STRUCTURE_FLAG) {
-            new->der = (struct lys_tpdf *)lys_yang_type_dup(mod, parent, (struct yang_type *)old->der, new, in_grp, unres);
+            new->der = (struct lys_tpdf *)lys_yang_type_dup(mod, parent, (struct yang_type *)old->der, new, in_grp,
+                                                            shallow, unres);
         } else {
             new->der = (struct lys_tpdf *)lyxml_dup_elem(mod->ctx, (struct lyxml_elem *)old->der, NULL, 1);
         }
@@ -1917,11 +1925,12 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
         return EXIT_SUCCESS;
     }
 
-    return type_dup(mod, parent, new, old, new->base, in_grp, unres);
+    return type_dup(mod, parent, new, old, new->base, in_grp, shallow, unres);
 }
 
 void
-lys_type_free(struct ly_ctx *ctx, struct lys_type *type)
+lys_type_free(struct ly_ctx *ctx, struct lys_type *type,
+              void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     int i;
 
@@ -1932,11 +1941,11 @@ lys_type_free(struct ly_ctx *ctx, struct lys_type *type)
 
     lydict_remove(ctx, type->module_name);
 
-    lys_extension_instances_free(ctx, type->ext, type->ext_size);
+    lys_extension_instances_free(ctx, type->ext, type->ext_size, private_destructor);
 
     switch (type->base) {
     case LY_TYPE_BINARY:
-        lys_restr_free(ctx, type->info.binary.length);
+        lys_restr_free(ctx, type->info.binary.length, private_destructor);
         free(type->info.binary.length);
         break;
     case LY_TYPE_BITS:
@@ -1944,14 +1953,16 @@ lys_type_free(struct ly_ctx *ctx, struct lys_type *type)
             lydict_remove(ctx, type->info.bits.bit[i].name);
             lydict_remove(ctx, type->info.bits.bit[i].dsc);
             lydict_remove(ctx, type->info.bits.bit[i].ref);
-            lys_iffeature_free(ctx, type->info.bits.bit[i].iffeature, type->info.bits.bit[i].iffeature_size);
-            lys_extension_instances_free(ctx, type->info.bits.bit[i].ext, type->info.bits.bit[i].ext_size);
+            lys_iffeature_free(ctx, type->info.bits.bit[i].iffeature, type->info.bits.bit[i].iffeature_size,
+                               private_destructor);
+            lys_extension_instances_free(ctx, type->info.bits.bit[i].ext, type->info.bits.bit[i].ext_size,
+                                         private_destructor);
         }
         free(type->info.bits.bit);
         break;
 
     case LY_TYPE_DEC64:
-        lys_restr_free(ctx, type->info.dec64.range);
+        lys_restr_free(ctx, type->info.dec64.range, private_destructor);
         free(type->info.dec64.range);
         break;
 
@@ -1960,8 +1971,10 @@ lys_type_free(struct ly_ctx *ctx, struct lys_type *type)
             lydict_remove(ctx, type->info.enums.enm[i].name);
             lydict_remove(ctx, type->info.enums.enm[i].dsc);
             lydict_remove(ctx, type->info.enums.enm[i].ref);
-            lys_iffeature_free(ctx, type->info.enums.enm[i].iffeature, type->info.enums.enm[i].iffeature_size);
-            lys_extension_instances_free(ctx, type->info.enums.enm[i].ext, type->info.enums.enm[i].ext_size);
+            lys_iffeature_free(ctx, type->info.enums.enm[i].iffeature, type->info.enums.enm[i].iffeature_size,
+                               private_destructor);
+            lys_extension_instances_free(ctx, type->info.enums.enm[i].ext, type->info.enums.enm[i].ext_size,
+                                         private_destructor);
         }
         free(type->info.enums.enm);
         break;
@@ -1974,7 +1987,7 @@ lys_type_free(struct ly_ctx *ctx, struct lys_type *type)
     case LY_TYPE_UINT16:
     case LY_TYPE_UINT32:
     case LY_TYPE_UINT64:
-        lys_restr_free(ctx, type->info.num.range);
+        lys_restr_free(ctx, type->info.num.range, private_destructor);
         free(type->info.num.range);
         break;
 
@@ -1983,17 +1996,17 @@ lys_type_free(struct ly_ctx *ctx, struct lys_type *type)
         break;
 
     case LY_TYPE_STRING:
-        lys_restr_free(ctx, type->info.str.length);
+        lys_restr_free(ctx, type->info.str.length, private_destructor);
         free(type->info.str.length);
         for (i = 0; i < type->info.str.pat_count; i++) {
-            lys_restr_free(ctx, &type->info.str.patterns[i]);
+            lys_restr_free(ctx, &type->info.str.patterns[i], private_destructor);
         }
         free(type->info.str.patterns);
         break;
 
     case LY_TYPE_UNION:
         for (i = 0; i < type->info.uni.count; i++) {
-            lys_type_free(ctx, &type->info.uni.types[i]);
+            lys_type_free(ctx, &type->info.uni.types[i], private_destructor);
         }
         free(type->info.uni.types);
         break;
@@ -2009,7 +2022,8 @@ lys_type_free(struct ly_ctx *ctx, struct lys_type *type)
 }
 
 static void
-lys_tpdf_free(struct ly_ctx *ctx, struct lys_tpdf *tpdf)
+lys_tpdf_free(struct ly_ctx *ctx, struct lys_tpdf *tpdf,
+              void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     assert(ctx);
     if (!tpdf) {
@@ -2020,16 +2034,16 @@ lys_tpdf_free(struct ly_ctx *ctx, struct lys_tpdf *tpdf)
     lydict_remove(ctx, tpdf->dsc);
     lydict_remove(ctx, tpdf->ref);
 
-    lys_type_free(ctx, &tpdf->type);
+    lys_type_free(ctx, &tpdf->type, private_destructor);
 
     lydict_remove(ctx, tpdf->units);
     lydict_remove(ctx, tpdf->dflt);
 
-    lys_extension_instances_free(ctx, tpdf->ext, tpdf->ext_size);
+    lys_extension_instances_free(ctx, tpdf->ext, tpdf->ext_size, private_destructor);
 }
 
 static struct lys_when *
-lys_when_dup(struct lys_module *mod, struct lys_when *old, struct unres_schema *unres)
+lys_when_dup(struct lys_module *mod, struct lys_when *old, int shallow, struct unres_schema *unres)
 {
     struct lys_when *new;
 
@@ -2046,19 +2060,20 @@ lys_when_dup(struct lys_module *mod, struct lys_when *old, struct unres_schema *
     new->dsc = lydict_insert(mod->ctx, old->dsc, 0);
     new->ref = lydict_insert(mod->ctx, old->ref, 0);
     new->ext_size = old->ext_size;
-    lys_ext_dup(mod, old->ext, old->ext_size, new, LYEXT_PAR_WHEN, &new->ext, unres);
+    lys_ext_dup(mod, old->ext, old->ext_size, new, LYEXT_PAR_WHEN, &new->ext, shallow, unres);
 
     return new;
 }
 
 void
-lys_when_free(struct ly_ctx *ctx, struct lys_when *w)
+lys_when_free(struct ly_ctx *ctx, struct lys_when *w,
+              void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     if (!w) {
         return;
     }
 
-    lys_extension_instances_free(ctx, w->ext, w->ext_size);
+    lys_extension_instances_free(ctx, w->ext, w->ext_size, private_destructor);
     lydict_remove(ctx, w->cond);
     lydict_remove(ctx, w->dsc);
     lydict_remove(ctx, w->ref);
@@ -2067,7 +2082,8 @@ lys_when_free(struct ly_ctx *ctx, struct lys_when *w)
 }
 
 static void
-lys_augment_free(struct ly_ctx *ctx, struct lys_node_augment *aug, void (*private_destructor)(const struct lys_node *node, void *priv))
+lys_augment_free(struct ly_ctx *ctx, struct lys_node_augment *aug,
+                 void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     struct lys_node *next, *sub;
 
@@ -2082,14 +2098,15 @@ lys_augment_free(struct ly_ctx *ctx, struct lys_node_augment *aug, void (*privat
     lydict_remove(ctx, aug->dsc);
     lydict_remove(ctx, aug->ref);
 
-    lys_iffeature_free(ctx, aug->iffeature, aug->iffeature_size);
-    lys_extension_instances_free(ctx, aug->ext, aug->ext_size);
+    lys_iffeature_free(ctx, aug->iffeature, aug->iffeature_size, private_destructor);
+    lys_extension_instances_free(ctx, aug->ext, aug->ext_size, private_destructor);
 
-    lys_when_free(ctx, aug->when);
+    lys_when_free(ctx, aug->when, private_destructor);
 }
 
 static void
-lys_ident_free(struct ly_ctx *ctx, struct lys_ident *ident)
+lys_ident_free(struct ly_ctx *ctx, struct lys_ident *ident,
+               void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     assert(ctx);
     if (!ident) {
@@ -2101,70 +2118,75 @@ lys_ident_free(struct ly_ctx *ctx, struct lys_ident *ident)
     lydict_remove(ctx, ident->name);
     lydict_remove(ctx, ident->dsc);
     lydict_remove(ctx, ident->ref);
-    lys_iffeature_free(ctx, ident->iffeature, ident->iffeature_size);
-    lys_extension_instances_free(ctx, ident->ext, ident->ext_size);
+    lys_iffeature_free(ctx, ident->iffeature, ident->iffeature_size, private_destructor);
+    lys_extension_instances_free(ctx, ident->ext, ident->ext_size, private_destructor);
 
 }
 
 static void
-lys_grp_free(struct ly_ctx *ctx, struct lys_node_grp *grp)
+lys_grp_free(struct ly_ctx *ctx, struct lys_node_grp *grp,
+             void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     int i;
 
     /* handle only specific parts for LYS_GROUPING */
     for (i = 0; i < grp->tpdf_size; i++) {
-        lys_tpdf_free(ctx, &grp->tpdf[i]);
+        lys_tpdf_free(ctx, &grp->tpdf[i], private_destructor);
     }
     free(grp->tpdf);
 }
 
 static void
-lys_inout_free(struct ly_ctx *ctx, struct lys_node_inout *io)
+lys_inout_free(struct ly_ctx *ctx, struct lys_node_inout *io,
+               void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     int i;
 
     /* handle only specific parts for LYS_INPUT and LYS_OUTPUT */
     for (i = 0; i < io->tpdf_size; i++) {
-        lys_tpdf_free(ctx, &io->tpdf[i]);
+        lys_tpdf_free(ctx, &io->tpdf[i], private_destructor);
     }
     free(io->tpdf);
 
     for (i = 0; i < io->must_size; i++) {
-        lys_restr_free(ctx, &io->must[i]);
+        lys_restr_free(ctx, &io->must[i], private_destructor);
     }
     free(io->must);
 }
 
 static void
-lys_notif_free(struct ly_ctx *ctx, struct lys_node_notif *notif)
+lys_notif_free(struct ly_ctx *ctx, struct lys_node_notif *notif,
+               void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     int i;
 
     for (i = 0; i < notif->must_size; i++) {
-        lys_restr_free(ctx, &notif->must[i]);
+        lys_restr_free(ctx, &notif->must[i], private_destructor);
     }
     free(notif->must);
 
     for (i = 0; i < notif->tpdf_size; i++) {
-        lys_tpdf_free(ctx, &notif->tpdf[i]);
+        lys_tpdf_free(ctx, &notif->tpdf[i], private_destructor);
     }
     free(notif->tpdf);
 }
 static void
-lys_anydata_free(struct ly_ctx *ctx, struct lys_node_anydata *anyxml)
+lys_anydata_free(struct ly_ctx *ctx, struct lys_node_anydata *anyxml,
+                 void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     int i;
 
     for (i = 0; i < anyxml->must_size; i++) {
-        lys_restr_free(ctx, &anyxml->must[i]);
+        lys_restr_free(ctx, &anyxml->must[i], private_destructor);
     }
     free(anyxml->must);
 
-    lys_when_free(ctx, anyxml->when);
+    lys_when_free(ctx, anyxml->when, private_destructor);
 }
 
 static void
-lys_leaf_free(struct ly_ctx *ctx, struct lys_node_leaf *leaf)
+lys_leaf_free(struct ly_ctx *ctx, struct lys_node_leaf *leaf,
+              void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     int i;
 
@@ -2172,19 +2194,20 @@ lys_leaf_free(struct ly_ctx *ctx, struct lys_node_leaf *leaf)
     ly_set_free((struct ly_set *)leaf->backlinks);
 
     for (i = 0; i < leaf->must_size; i++) {
-        lys_restr_free(ctx, &leaf->must[i]);
+        lys_restr_free(ctx, &leaf->must[i], private_destructor);
     }
     free(leaf->must);
 
-    lys_when_free(ctx, leaf->when);
+    lys_when_free(ctx, leaf->when, private_destructor);
 
-    lys_type_free(ctx, &leaf->type);
+    lys_type_free(ctx, &leaf->type, private_destructor);
     lydict_remove(ctx, leaf->units);
     lydict_remove(ctx, leaf->dflt);
 }
 
 static void
-lys_leaflist_free(struct ly_ctx *ctx, struct lys_node_leaflist *llist)
+lys_leaflist_free(struct ly_ctx *ctx, struct lys_node_leaflist *llist,
+                  void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     int i;
 
@@ -2194,7 +2217,7 @@ lys_leaflist_free(struct ly_ctx *ctx, struct lys_node_leaflist *llist)
     }
 
     for (i = 0; i < llist->must_size; i++) {
-        lys_restr_free(ctx, &llist->must[i]);
+        lys_restr_free(ctx, &llist->must[i], private_destructor);
     }
     free(llist->must);
 
@@ -2203,29 +2226,30 @@ lys_leaflist_free(struct ly_ctx *ctx, struct lys_node_leaflist *llist)
     }
     free(llist->dflt);
 
-    lys_when_free(ctx, llist->when);
+    lys_when_free(ctx, llist->when, private_destructor);
 
-    lys_type_free(ctx, &llist->type);
+    lys_type_free(ctx, &llist->type, private_destructor);
     lydict_remove(ctx, llist->units);
 }
 
 static void
-lys_list_free(struct ly_ctx *ctx, struct lys_node_list *list)
+lys_list_free(struct ly_ctx *ctx, struct lys_node_list *list,
+              void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     int i, j;
 
     /* handle only specific parts for LY_NODE_LIST */
     for (i = 0; i < list->tpdf_size; i++) {
-        lys_tpdf_free(ctx, &list->tpdf[i]);
+        lys_tpdf_free(ctx, &list->tpdf[i], private_destructor);
     }
     free(list->tpdf);
 
     for (i = 0; i < list->must_size; i++) {
-        lys_restr_free(ctx, &list->must[i]);
+        lys_restr_free(ctx, &list->must[i], private_destructor);
     }
     free(list->must);
 
-    lys_when_free(ctx, list->when);
+    lys_when_free(ctx, list->when, private_destructor);
 
     for (i = 0; i < list->unique_size; i++) {
         for (j = 0; j < list->unique[i].expr_size; j++) {
@@ -2239,7 +2263,8 @@ lys_list_free(struct ly_ctx *ctx, struct lys_node_list *list)
 }
 
 static void
-lys_container_free(struct ly_ctx *ctx, struct lys_node_container *cont)
+lys_container_free(struct ly_ctx *ctx, struct lys_node_container *cont,
+                   void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     int i;
 
@@ -2247,41 +2272,44 @@ lys_container_free(struct ly_ctx *ctx, struct lys_node_container *cont)
     lydict_remove(ctx, cont->presence);
 
     for (i = 0; i < cont->tpdf_size; i++) {
-        lys_tpdf_free(ctx, &cont->tpdf[i]);
+        lys_tpdf_free(ctx, &cont->tpdf[i], private_destructor);
     }
     free(cont->tpdf);
 
     for (i = 0; i < cont->must_size; i++) {
-        lys_restr_free(ctx, &cont->must[i]);
+        lys_restr_free(ctx, &cont->must[i], private_destructor);
     }
     free(cont->must);
 
-    lys_when_free(ctx, cont->when);
+    lys_when_free(ctx, cont->when, private_destructor);
 }
 
 static void
-lys_feature_free(struct ly_ctx *ctx, struct lys_feature *f)
+lys_feature_free(struct ly_ctx *ctx, struct lys_feature *f,
+                 void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     lydict_remove(ctx, f->name);
     lydict_remove(ctx, f->dsc);
     lydict_remove(ctx, f->ref);
-    lys_iffeature_free(ctx, f->iffeature, f->iffeature_size);
+    lys_iffeature_free(ctx, f->iffeature, f->iffeature_size, private_destructor);
     ly_set_free(f->depfeatures);
-    lys_extension_instances_free(ctx, f->ext, f->ext_size);
+    lys_extension_instances_free(ctx, f->ext, f->ext_size, private_destructor);
 }
 
 static void
-lys_extension_free(struct ly_ctx *ctx, struct lys_ext *e)
+lys_extension_free(struct ly_ctx *ctx, struct lys_ext *e,
+                   void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     lydict_remove(ctx, e->name);
     lydict_remove(ctx, e->dsc);
     lydict_remove(ctx, e->ref);
     lydict_remove(ctx, e->argument);
-    lys_extension_instances_free(ctx, e->ext, e->ext_size);
+    lys_extension_instances_free(ctx, e->ext, e->ext_size, private_destructor);
 }
 
 static void
-lys_deviation_free(struct lys_module *module, struct lys_deviation *dev)
+lys_deviation_free(struct lys_module *module, struct lys_deviation *dev,
+                   void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     int i, j, k;
     struct ly_ctx *ctx;
@@ -2292,7 +2320,7 @@ lys_deviation_free(struct lys_module *module, struct lys_deviation *dev)
     lydict_remove(ctx, dev->target_name);
     lydict_remove(ctx, dev->dsc);
     lydict_remove(ctx, dev->ref);
-    lys_extension_instances_free(ctx, dev->ext, dev->ext_size);
+    lys_extension_instances_free(ctx, dev->ext, dev->ext_size, private_destructor);
 
     if (!dev->deviate) {
         return ;
@@ -2314,7 +2342,7 @@ lys_deviation_free(struct lys_module *module, struct lys_deviation *dev)
     }
 
     for (i = 0; i < dev->deviate_size; i++) {
-        lys_extension_instances_free(ctx, dev->deviate[i].ext, dev->deviate[i].ext_size);
+        lys_extension_instances_free(ctx, dev->deviate[i].ext, dev->deviate[i].ext_size, private_destructor);
 
         for (j = 0; j < dev->deviate[i].dflt_size; j++) {
             lydict_remove(ctx, dev->deviate[i].dflt[j]);
@@ -2325,7 +2353,7 @@ lys_deviation_free(struct lys_module *module, struct lys_deviation *dev)
 
         if (dev->deviate[i].mod == LY_DEVIATE_DEL) {
             for (j = 0; j < dev->deviate[i].must_size; j++) {
-                lys_restr_free(ctx, &dev->deviate[i].must[j]);
+                lys_restr_free(ctx, &dev->deviate[i].must[j], private_destructor);
             }
             free(dev->deviate[i].must);
 
@@ -2342,7 +2370,8 @@ lys_deviation_free(struct lys_module *module, struct lys_deviation *dev)
 }
 
 static void
-lys_uses_free(struct ly_ctx *ctx, struct lys_node_uses *uses, void (*private_destructor)(const struct lys_node *node, void *priv))
+lys_uses_free(struct ly_ctx *ctx, struct lys_node_uses *uses,
+              void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     int i, j;
 
@@ -2352,7 +2381,7 @@ lys_uses_free(struct ly_ctx *ctx, struct lys_node_uses *uses, void (*private_des
         lydict_remove(ctx, uses->refine[i].ref);
 
         for (j = 0; j < uses->refine[i].must_size; j++) {
-            lys_restr_free(ctx, &uses->refine[i].must[j]);
+            lys_restr_free(ctx, &uses->refine[i].must[j], private_destructor);
         }
         free(uses->refine[i].must);
 
@@ -2361,7 +2390,7 @@ lys_uses_free(struct ly_ctx *ctx, struct lys_node_uses *uses, void (*private_des
         }
         free(uses->refine[i].dflt);
 
-        lys_extension_instances_free(ctx, uses->refine[i].ext, uses->refine[i].ext_size);
+        lys_extension_instances_free(ctx, uses->refine[i].ext, uses->refine[i].ext_size, private_destructor);
 
         if (uses->refine[i].target_type & LYS_CONTAINER) {
             lydict_remove(ctx, uses->refine[i].mod.presence);
@@ -2374,7 +2403,7 @@ lys_uses_free(struct ly_ctx *ctx, struct lys_node_uses *uses, void (*private_des
     }
     free(uses->augment);
 
-    lys_when_free(ctx, uses->when);
+    lys_when_free(ctx, uses->when, private_destructor);
 }
 
 void
@@ -2400,7 +2429,7 @@ lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys
     /* common part */
     lydict_remove(ctx, node->name);
     if (!(node->nodetype & (LYS_INPUT | LYS_OUTPUT))) {
-        lys_iffeature_free(ctx, node->iffeature, node->iffeature_size);
+        lys_iffeature_free(ctx, node->iffeature, node->iffeature_size, private_destructor);
         lydict_remove(ctx, node->dsc);
         lydict_remove(ctx, node->ref);
     }
@@ -2411,34 +2440,34 @@ lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys
         }
     }
 
-    lys_extension_instances_free(ctx, node->ext, node->ext_size);
+    lys_extension_instances_free(ctx, node->ext, node->ext_size, private_destructor);
 
     /* specific part */
     switch (node->nodetype) {
     case LYS_CONTAINER:
-        lys_container_free(ctx, (struct lys_node_container *)node);
+        lys_container_free(ctx, (struct lys_node_container *)node, private_destructor);
         break;
     case LYS_CHOICE:
-        lys_when_free(ctx, ((struct lys_node_choice *)node)->when);
+        lys_when_free(ctx, ((struct lys_node_choice *)node)->when, private_destructor);
         break;
     case LYS_LEAF:
-        lys_leaf_free(ctx, (struct lys_node_leaf *)node);
+        lys_leaf_free(ctx, (struct lys_node_leaf *)node, private_destructor);
         break;
     case LYS_LEAFLIST:
-        lys_leaflist_free(ctx, (struct lys_node_leaflist *)node);
+        lys_leaflist_free(ctx, (struct lys_node_leaflist *)node, private_destructor);
         break;
     case LYS_LIST:
-        lys_list_free(ctx, (struct lys_node_list *)node);
+        lys_list_free(ctx, (struct lys_node_list *)node, private_destructor);
         break;
     case LYS_ANYXML:
     case LYS_ANYDATA:
-        lys_anydata_free(ctx, (struct lys_node_anydata *)node);
+        lys_anydata_free(ctx, (struct lys_node_anydata *)node, private_destructor);
         break;
     case LYS_USES:
         lys_uses_free(ctx, (struct lys_node_uses *)node, private_destructor);
         break;
     case LYS_CASE:
-        lys_when_free(ctx, ((struct lys_node_case *)node)->when);
+        lys_when_free(ctx, ((struct lys_node_case *)node)->when, private_destructor);
         break;
     case LYS_AUGMENT:
         /* do nothing */
@@ -2446,14 +2475,14 @@ lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys
     case LYS_GROUPING:
     case LYS_RPC:
     case LYS_ACTION:
-        lys_grp_free(ctx, (struct lys_node_grp *)node);
+        lys_grp_free(ctx, (struct lys_node_grp *)node, private_destructor);
         break;
     case LYS_NOTIF:
-        lys_notif_free(ctx, (struct lys_node_notif *)node);
+        lys_notif_free(ctx, (struct lys_node_notif *)node, private_destructor);
         break;
     case LYS_INPUT:
     case LYS_OUTPUT:
-        lys_inout_free(ctx, (struct lys_node_inout *)node);
+        lys_inout_free(ctx, (struct lys_node_inout *)node, private_destructor);
         break;
     case LYS_EXT:
     case LYS_UNKNOWN:
@@ -2587,7 +2616,7 @@ module_free_common(struct lys_module *module, void (*private_destructor)(const s
         lydict_remove(ctx, module->imp[i].prefix);
         lydict_remove(ctx, module->imp[i].dsc);
         lydict_remove(ctx, module->imp[i].ref);
-        lys_extension_instances_free(ctx, module->imp[i].ext, module->imp[i].ext_size);
+        lys_extension_instances_free(ctx, module->imp[i].ext, module->imp[i].ext_size, private_destructor);
     }
     free(module->imp);
 
@@ -2607,7 +2636,7 @@ module_free_common(struct lys_module *module, void (*private_destructor)(const s
 
     /* revisions */
     for (i = 0; i < module->rev_size; i++) {
-        lys_extension_instances_free(ctx, module->rev[i].ext, module->rev[i].ext_size);
+        lys_extension_instances_free(ctx, module->rev[i].ext, module->rev[i].ext_size, private_destructor);
         lydict_remove(ctx, module->rev[i].dsc);
         lydict_remove(ctx, module->rev[i].ref);
     }
@@ -2615,25 +2644,25 @@ module_free_common(struct lys_module *module, void (*private_destructor)(const s
 
     /* identities */
     for (i = 0; i < module->ident_size; i++) {
-        lys_ident_free(ctx, &module->ident[i]);
+        lys_ident_free(ctx, &module->ident[i], private_destructor);
     }
     module->ident_size = 0;
     free(module->ident);
 
     /* typedefs */
     for (i = 0; i < module->tpdf_size; i++) {
-        lys_tpdf_free(ctx, &module->tpdf[i]);
+        lys_tpdf_free(ctx, &module->tpdf[i], private_destructor);
     }
     free(module->tpdf);
 
     /* extension instances */
-    lys_extension_instances_free(ctx, module->ext, module->ext_size);
+    lys_extension_instances_free(ctx, module->ext, module->ext_size, private_destructor);
 
     /* include */
     for (i = 0; i < module->inc_size; i++) {
         lydict_remove(ctx, module->inc[i].dsc);
         lydict_remove(ctx, module->inc[i].ref);
-        lys_extension_instances_free(ctx, module->inc[i].ext, module->inc[i].ext_size);
+        lys_extension_instances_free(ctx, module->inc[i].ext, module->inc[i].ext_size, private_destructor);
         /* complete submodule free is done only from main module since
          * submodules propagate their includes to the main module */
         if (!module->type) {
@@ -2650,19 +2679,19 @@ module_free_common(struct lys_module *module, void (*private_destructor)(const s
 
     /* features */
     for (i = 0; i < module->features_size; i++) {
-        lys_feature_free(ctx, &module->features[i]);
+        lys_feature_free(ctx, &module->features[i], private_destructor);
     }
     free(module->features);
 
     /* deviations */
     for (i = 0; i < module->deviation_size; i++) {
-        lys_deviation_free(module, &module->deviation[i]);
+        lys_deviation_free(module, &module->deviation[i], private_destructor);
     }
     free(module->deviation);
 
     /* extensions */
     for (i = 0; i < module->extensions_size; i++) {
-        lys_extension_free(ctx, &module->extensions[i]);
+        lys_extension_free(ctx, &module->extensions[i], private_destructor);
     }
     free(module->extensions);
 
@@ -2821,7 +2850,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
     retval->prev = retval;
 
     retval->ext_size = node->ext_size;
-    if (lys_ext_dup(module, node->ext, node->ext_size, retval, LYEXT_PAR_NODE, &retval->ext, unres)) {
+    if (lys_ext_dup(module, node->ext, node->ext_size, retval, LYEXT_PAR_NODE, &retval->ext, shallow, unres)) {
         goto error;
     }
 
@@ -2867,7 +2896,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
             /* duplicate if-feature's extensions */
             retval->iffeature[i].ext_size = node->iffeature[i].ext_size;
             if (lys_ext_dup(module, node->iffeature[i].ext, node->iffeature[i].ext_size,
-                            &retval->iffeature[i], LYEXT_PAR_IFFEATURE, &retval->iffeature[i].ext, unres)) {
+                            &retval->iffeature[i], LYEXT_PAR_IFFEATURE, &retval->iffeature[i].ext, shallow, unres)) {
                 goto error;
             }
         }
@@ -2946,19 +2975,19 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
     switch (node->nodetype) {
     case LYS_CONTAINER:
         if (cont_orig->when) {
-            cont->when = lys_when_dup(module, cont_orig->when, unres);
+            cont->when = lys_when_dup(module, cont_orig->when, shallow, unres);
         }
         cont->presence = lydict_insert(ctx, cont_orig->presence, 0);
 
         cont->must_size = cont_orig->must_size;
-        cont->must = lys_restr_dup(module, cont_orig->must, cont->must_size, unres);
+        cont->must = lys_restr_dup(module, cont_orig->must, cont->must_size, shallow, unres);
 
         /* typedefs are not needed in instantiated grouping, nor the deviation's shallow copy */
 
         break;
     case LYS_CHOICE:
         if (choice_orig->when) {
-            choice->when = lys_when_dup(module, choice_orig->when, unres);
+            choice->when = lys_when_dup(module, choice_orig->when, shallow, unres);
         }
 
         if (!shallow) {
@@ -2985,7 +3014,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         break;
 
     case LYS_LEAF:
-        if (lys_type_dup(module, retval, &(leaf->type), &(leaf_orig->type), ingrouping(retval), unres)) {
+        if (lys_type_dup(module, retval, &(leaf->type), &(leaf_orig->type), ingrouping(retval), shallow, unres)) {
             goto error;
         }
         leaf->units = lydict_insert(module->ctx, leaf_orig->units, 0);
@@ -3008,15 +3037,15 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         }
 
         leaf->must_size = leaf_orig->must_size;
-        leaf->must = lys_restr_dup(module, leaf_orig->must, leaf->must_size, unres);
+        leaf->must = lys_restr_dup(module, leaf_orig->must, leaf->must_size, shallow, unres);
 
         if (leaf_orig->when) {
-            leaf->when = lys_when_dup(module, leaf_orig->when, unres);
+            leaf->when = lys_when_dup(module, leaf_orig->when, shallow, unres);
         }
         break;
 
     case LYS_LEAFLIST:
-        if (lys_type_dup(module, retval, &(llist->type), &(llist_orig->type), ingrouping(retval), unres)) {
+        if (lys_type_dup(module, retval, &(llist->type), &(llist_orig->type), ingrouping(retval), shallow, unres)) {
             goto error;
         }
         llist->units = lydict_insert(module->ctx, llist_orig->units, 0);
@@ -3025,7 +3054,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         llist->max = llist_orig->max;
 
         llist->must_size = llist_orig->must_size;
-        llist->must = lys_restr_dup(module, llist_orig->must, llist->must_size, unres);
+        llist->must = lys_restr_dup(module, llist_orig->must, llist->must_size, shallow, unres);
 
         llist->dflt_size = llist_orig->dflt_size;
         llist->dflt = malloc(llist->dflt_size * sizeof *llist->dflt);
@@ -3045,7 +3074,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         }
 
         if (llist_orig->when) {
-            llist->when = lys_when_dup(module, llist_orig->when, unres);
+            llist->when = lys_when_dup(module, llist_orig->when, shallow, unres);
         }
         break;
 
@@ -3054,7 +3083,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         list->max = list_orig->max;
 
         list->must_size = list_orig->must_size;
-        list->must = lys_restr_dup(module, list_orig->must, list->must_size, unres);
+        list->must = lys_restr_dup(module, list_orig->must, list->must_size, shallow, unres);
 
         /* typedefs are not needed in instantiated grouping, nor the deviation's shallow copy */
 
@@ -3105,17 +3134,17 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         }
 
         if (list_orig->when) {
-            list->when = lys_when_dup(module, list_orig->when, unres);
+            list->when = lys_when_dup(module, list_orig->when, shallow, unres);
         }
         break;
 
     case LYS_ANYXML:
     case LYS_ANYDATA:
         any->must_size = any_orig->must_size;
-        any->must = lys_restr_dup(module, any_orig->must, any->must_size, unres);
+        any->must = lys_restr_dup(module, any_orig->must, any->must_size, shallow, unres);
 
         if (any_orig->when) {
-            any->when = lys_when_dup(module, any_orig->when, unres);
+            any->when = lys_when_dup(module, any_orig->when, shallow, unres);
         }
         break;
 
@@ -3123,14 +3152,14 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         uses->grp = uses_orig->grp;
 
         if (uses_orig->when) {
-            uses->when = lys_when_dup(module, uses_orig->when, unres);
+            uses->when = lys_when_dup(module, uses_orig->when, shallow, unres);
         }
         /* it is not needed to duplicate refine, nor augment. They are already applied to the uses children */
         break;
 
     case LYS_CASE:
         if (cs_orig->when) {
-            cs->when = lys_when_dup(module, cs_orig->when, unres);
+            cs->when = lys_when_dup(module, cs_orig->when, shallow, unres);
         }
         break;
 
@@ -4544,7 +4573,8 @@ lys_extcomplex_free_str(struct ly_ctx *ctx, struct lys_ext_instance_complex *ext
     }
 }
 void
-lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, unsigned int size)
+lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, unsigned int size,
+                             void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     unsigned int i, j, k;
     struct lyext_substmt *substmt;
@@ -4556,12 +4586,12 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
     if (!pp || !(*pp)) { break; }                                                             \
     if (substmt[j].cardinality >= LY_STMT_CARD_SOME) { /* process array */                    \
         for (start = pp = *pp; *pp; pp++) {                                                   \
-            FUNC(ctx, (TYPE *)(*pp), ##ARGS);                                                 \
+            FUNC(ctx, (TYPE *)(*pp), ##ARGS, private_destructor);                             \
             if (FREE) { free(*pp); }                                                          \
         }                                                                                     \
         free(start);                                                                          \
     } else { /* single item */                                                                \
-        FUNC(ctx, (TYPE *)(*pp), ##ARGS);                                                     \
+        FUNC(ctx, (TYPE *)(*pp), ##ARGS, private_destructor);                                 \
         if (FREE) { free(*pp); }                                                              \
     }
 
@@ -4582,7 +4612,11 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
                 e[i]->def = NULL;
                 yang_free_ext_data((struct yang_ext_substmt *)e[i]->parent); /* remove backup part of yang file */
             }
-            lys_extension_instances_free(ctx, e[i]->ext, e[i]->ext_size);
+            /* remove private object */
+            if (e[i]->priv && private_destructor) {
+                private_destructor((struct lys_node*)e[i], e[i]->priv);
+            }
+            lys_extension_instances_free(ctx, e[i]->ext, e[i]->ext_size, private_destructor);
             lydict_remove(ctx, e[i]->arg_value);
         }
 
@@ -4707,7 +4741,7 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
                             lydict_remove(ctx, (*(struct lys_revision**)pp)->dsc);
                             lydict_remove(ctx, (*(struct lys_revision**)pp)->ref);
                             lys_extension_instances_free(ctx, (*(struct lys_revision**)pp)->ext,
-                                                         (*(struct lys_revision**)pp)->ext_size);
+                                                         (*(struct lys_revision**)pp)->ext_size, private_destructor);
                             free(*pp);
                         }
                         free(start);
@@ -4715,7 +4749,7 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
                         lydict_remove(ctx, (*(struct lys_revision**)pp)->dsc);
                         lydict_remove(ctx, (*(struct lys_revision**)pp)->ref);
                         lys_extension_instances_free(ctx, (*(struct lys_revision**)pp)->ext,
-                                                     (*(struct lys_revision**)pp)->ext_size);
+                                                     (*(struct lys_revision**)pp)->ext_size, private_destructor);
                         free(*pp);
                     }
                     break;

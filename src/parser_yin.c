@@ -1479,7 +1479,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             if (rc) {
                 /* even if we got EXIT_FAILURE, throw it all away, too much trouble doing something else */
                 for (i = 0; i < type->info.uni.count; ++i) {
-                    lys_type_free(module->ctx, &type->info.uni.types[i]);
+                    lys_type_free(module->ctx, &type->info.uni.types[i], NULL);
                 }
                 free(type->info.uni.types);
                 type->info.uni.types = NULL;
@@ -2471,7 +2471,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 }
 
                 /* replace */
-                lys_type_free(ctx, t);
+                lys_type_free(ctx, t, NULL);
                 /* HACK for unres */
                 t->der = (struct lys_tpdf *)child;
                 if (unres_schema_add_node(module, unres, t, UNRES_TYPE_DER, dev_target) == -1) {
@@ -2720,7 +2720,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                     for (i = 0; i < *trg_must_size; i++) {
                         if (ly_strequal(d->must[d->must_size].expr, (*trg_must)[i].expr, 1)) {
                             /* we have a match, free the must structure ... */
-                            lys_restr_free(ctx, &((*trg_must)[i]));
+                            lys_restr_free(ctx, &((*trg_must)[i]), NULL);
                             /* ... and maintain the array */
                             (*trg_must_size)--;
                             if (i != *trg_must_size) {
@@ -3958,7 +3958,7 @@ read_yin_when(struct lys_module *module, struct lyxml_elem *yin, struct unres_sc
 
 error:
 
-    lys_when_free(module->ctx, retval);
+    lys_when_free(module->ctx, retval, NULL);
     return NULL;
 }
 

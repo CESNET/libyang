@@ -2880,7 +2880,7 @@ lyp_ext_instance_rm(struct ly_ctx *ctx, struct lys_ext_instance ***ext, uint8_t 
 {
     uint8_t i;
 
-    lys_extension_instances_free(ctx, (*ext)[index]->ext, (*ext)[index]->ext_size);
+    lys_extension_instances_free(ctx, (*ext)[index]->ext, (*ext)[index]->ext_size, NULL);
     lydict_remove(ctx, (*ext)[index]->arg_value);
     free((*ext)[index]);
 
@@ -2952,7 +2952,7 @@ lyp_rfn_apply_ext_(struct lys_refine *rfn, struct lys_node *target, LYEXT_SUBSTM
             target->ext[n]->insubstmt = substmt;
         } else {
             /* replacing - first remove the allocated data from target */
-            lys_extension_instances_free(ctx, target->ext[n]->ext, target->ext[n]->ext_size);
+            lys_extension_instances_free(ctx, target->ext[n]->ext, target->ext[n]->ext_size, NULL);
             lydict_remove(ctx, target->ext[n]->arg_value);
         }
         /* common part for adding and replacing */
@@ -2962,7 +2962,7 @@ lyp_rfn_apply_ext_(struct lys_refine *rfn, struct lys_node *target, LYEXT_SUBSTM
         /* flags do not change */
         target->ext[n]->ext_size = rfn->ext[m]->ext_size;
         lys_ext_dup(target->module, rfn->ext[m]->ext, rfn->ext[m]->ext_size, target, LYEXT_PAR_NODE,
-                    &target->ext[n]->ext, NULL);
+                    &target->ext[n]->ext, 0, NULL);
         /* substmt does not change, but the index must be taken from the refine */
         target->ext[n]->insubstmt_index = rfn->ext[m]->insubstmt_index;
     }
@@ -3245,9 +3245,6 @@ lyp_deviate_apply_ext(struct lys_deviate *dev, struct lys_node *target, LYEXT_SU
             } while (n != -1 && substmt == LYEXT_SUBSTMT_SELF && target->ext[n]->def != extdef);
         }
 
-        /* TODO cover complex extension instances
-           ((struct lys_ext_instance_complex*)(target->ext[n])->module = target->module;
-         */
         if (n == -1) {
             /* nothing to replace, we are going to add it - reallocate */
             new = malloc(sizeof **target->ext);
@@ -3268,7 +3265,7 @@ lyp_deviate_apply_ext(struct lys_deviate *dev, struct lys_node *target, LYEXT_SU
         } else {
             /* replacing - the original set of extensions is actually backuped together with the
              * node itself, so we are supposed only to free the allocated data here ... */
-            lys_extension_instances_free(ctx, target->ext[n]->ext, target->ext[n]->ext_size);
+            lys_extension_instances_free(ctx, target->ext[n]->ext, target->ext[n]->ext_size, NULL);
             lydict_remove(ctx, target->ext[n]->arg_value);
             free(target->ext[n]);
 
@@ -3279,7 +3276,7 @@ lyp_deviate_apply_ext(struct lys_deviate *dev, struct lys_node *target, LYEXT_SU
                 return EXIT_FAILURE;
             }
         }
-        /* common part for adding and replacing - fill the newly created / replaceing cell */
+        /* common part for adding and replacing - fill the newly created / replaced cell */
         target->ext[n] = new;
         target->ext[n]->def = dev->ext[m]->def;
         target->ext[n]->arg_value = lydict_insert(ctx, dev->ext[m]->arg_value, 0);
@@ -3290,7 +3287,11 @@ lyp_deviate_apply_ext(struct lys_deviate *dev, struct lys_node *target, LYEXT_SU
         target->ext[n]->insubstmt_index = dev->ext[m]->insubstmt_index;
         target->ext[n]->ext_size = dev->ext[m]->ext_size;
         lys_ext_dup(target->module, dev->ext[m]->ext, dev->ext[m]->ext_size, target, LYEXT_PAR_NODE,
-                    &target->ext[n]->ext, NULL);
+                    &target->ext[n]->ext, 1, NULL);
+        target->ext[n]->nodetype = LYS_EXT;
+        ((struct lys_ext_instance_complex*)(target->ext[n]))->module = target->module;
+
+        /* TODO cover complex extension instances */
     }
 
     /* remove the rest of extensions belonging to the original substatement in the target node,

@@ -4537,6 +4537,9 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
             (*ext)->arg_value = lydict_insert(mod->ctx, (*ext)->arg_value, 0);
         }
 
+        ((struct lys_ext_instance_complex*)(*ext))->nodetype = LYS_EXT;
+        ((struct lys_ext_instance_complex*)(*ext))->module = info->mod;
+
         /* extension type-specific part - parsing content */
         switch (etype) {
         case LYEXT_FLAG:
@@ -4571,8 +4574,6 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
             }
             break;
         case LYEXT_COMPLEX:
-            ((struct lys_ext_instance_complex*)(*ext))->nodetype = LYS_EXT;
-            ((struct lys_ext_instance_complex*)(*ext))->module = info->mod;
             ((struct lys_ext_instance_complex*)(*ext))->substmt = ((struct lyext_plugin_complex*)e->plugin)->substmt;
             if (lyp_yin_parse_complex_ext(info->mod, (struct lys_ext_instance_complex*)(*ext), info->data.yin, unres)) {
                 /* TODO memory cleanup */
@@ -4647,6 +4648,9 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
             goto error;
         }
 
+        ((struct lys_ext_instance_complex*)(*ext))->module = info->mod;
+        ((struct lys_ext_instance_complex*)(*ext))->nodetype = LYS_EXT;
+
         /* extension type-specific part */
         if (e->plugin) {
             etype = e->plugin->type;
@@ -4666,9 +4670,7 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
             }
             memset((char *)tmp_ext + sizeof **ext, 0, ((struct lyext_plugin_complex*)e->plugin)->instance_size - sizeof **ext);
             (*ext) = tmp_ext;
-            ((struct lys_ext_instance_complex*)(*ext))->module = info->mod;
             ((struct lys_ext_instance_complex*)(*ext))->substmt = ((struct lyext_plugin_complex*)e->plugin)->substmt;
-            ((struct lys_ext_instance_complex*)(*ext))->nodetype = LYS_EXT;
             if (info->data.yang) {
                 *tmp = ':';
                 if (yang_parse_ext_substatement(info->mod, unres, info->data.yang->ext_substmt, ext_prefix,
@@ -4962,7 +4964,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
             for (k = 0, j = *old_size; k < rfn->must_size; k++, j++) {
                 must[j].ext_size = rfn->must[k].ext_size;
                 lys_ext_dup(rfn->module, rfn->must[k].ext, rfn->must[k].ext_size, &rfn->must[k], LYEXT_PAR_RESTR,
-                            &must[j].ext, unres);
+                            &must[j].ext, 0, unres);
                 must[j].expr = lydict_insert(ctx, rfn->must[k].expr, 0);
                 must[j].dsc = lydict_insert(ctx, rfn->must[k].dsc, 0);
                 must[j].ref = lydict_insert(ctx, rfn->must[k].ref, 0);
