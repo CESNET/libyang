@@ -1318,8 +1318,9 @@ lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, uint8_t size
             result[u]->insubstmt = orig[u]->insubstmt;
             result[u]->insubstmt_index = orig[u]->insubstmt_index;
             result[u]->ext_type = orig[u]->ext_type;
-            ((struct lys_ext_instance_complex*)result[u])->nodetype = LYS_EXT;
-            ((struct lys_ext_instance_complex*)result[u])->module = mod;
+            result[u]->priv = NULL;
+            result[u]->nodetype = LYS_EXT;
+            result[u]->module = mod;
 
             /* extensions */
             orig[u]->ext = NULL;

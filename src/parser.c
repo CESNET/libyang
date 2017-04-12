@@ -2924,9 +2924,7 @@ lyp_rfn_apply_ext_(struct lys_refine *rfn, struct lys_node *target, LYEXT_SUBSTM
             n = lys_ext_iter(target->ext, target->ext_size, n + 1, substmt);
         } while (n != -1 && substmt == LYEXT_SUBSTMT_SELF && target->ext[n]->def != extdef);
 
-        /* TODO cover complex extension instances
-           ((struct lys_ext_instance_complex*)(target->ext[n])->module = target->module;
-         */
+        /* TODO cover complex extension instances */
         if (n == -1) {
             /* nothing to replace, we are going to add it - reallocate */
             new = malloc(sizeof **target->ext);
@@ -2950,6 +2948,9 @@ lyp_rfn_apply_ext_(struct lys_refine *rfn, struct lys_node *target, LYEXT_SUBSTM
             target->ext[n]->parent_type = LYEXT_PAR_NODE;
             target->ext[n]->flags = 0;
             target->ext[n]->insubstmt = substmt;
+            target->ext[n]->priv = NULL;
+            target->ext[n]->nodetype = LYS_EXT;
+            target->ext[n]->module = target->module;
         } else {
             /* replacing - first remove the allocated data from target */
             lys_extension_instances_free(ctx, target->ext[n]->ext, target->ext[n]->ext_size, NULL);
@@ -3289,7 +3290,8 @@ lyp_deviate_apply_ext(struct lys_deviate *dev, struct lys_node *target, LYEXT_SU
         lys_ext_dup(target->module, dev->ext[m]->ext, dev->ext[m]->ext_size, target, LYEXT_PAR_NODE,
                     &target->ext[n]->ext, 1, NULL);
         target->ext[n]->nodetype = LYS_EXT;
-        ((struct lys_ext_instance_complex*)(target->ext[n]))->module = target->module;
+        target->ext[n]->module = target->module;
+        target->ext[n]->priv = NULL;
 
         /* TODO cover complex extension instances */
     }

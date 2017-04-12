@@ -4537,8 +4537,8 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
             (*ext)->arg_value = lydict_insert(mod->ctx, (*ext)->arg_value, 0);
         }
 
-        ((struct lys_ext_instance_complex*)(*ext))->nodetype = LYS_EXT;
-        ((struct lys_ext_instance_complex*)(*ext))->module = info->mod;
+        (*ext)->nodetype = LYS_EXT;
+        (*ext)->module = info->mod;
 
         /* extension type-specific part - parsing content */
         switch (etype) {
@@ -4648,8 +4648,8 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
             goto error;
         }
 
-        ((struct lys_ext_instance_complex*)(*ext))->module = info->mod;
-        ((struct lys_ext_instance_complex*)(*ext))->nodetype = LYS_EXT;
+        (*ext)->module = info->mod;
+        (*ext)->nodetype = LYS_EXT;
 
         /* extension type-specific part */
         if (e->plugin) {
