@@ -285,6 +285,104 @@ lyp_munmap(void *addr, size_t length)
     return munmap(addr, length);
 }
 
+int
+lyp_add_ietf_netconf_annotations(struct lys_module *mod)
+{
+    void *reallocated;
+    struct lys_ext_instance_complex *op;
+    struct lys_type **type;
+    int i;
+    struct ly_ctx *ctx = mod->ctx; /* shortcut */
+
+    reallocated = realloc(mod->ext, (mod->ext_size + 3) * sizeof *mod->ext);
+    if (!reallocated) {
+        LOGMEM;
+        return EXIT_FAILURE;
+    }
+    mod->ext = reallocated;
+    /* 1) edit-config's operation */
+    op = calloc(1, sizeof(struct lys_ext_instance_complex) + 5 * sizeof(void*) + sizeof(uint16_t));
+    mod->ext[mod->ext_size] = (struct lys_ext_instance *)op;
+    op->arg_value = lydict_insert(ctx, "operation", 9);
+    op->def = &ctx->models.list[0]->extensions[0];
+    op->ext_type = LYEXT_COMPLEX;
+    op->module = op->parent = mod;
+    op->parent_type = LYEXT_PAR_MODULE;
+    op->substmt = ((struct lyext_plugin_complex *)op->def->plugin)->substmt;
+    op->nodetype = LYS_EXT;
+    type = (struct lys_type**)&op->content; /* type is stored at offset 0 */
+    *type = calloc(1, sizeof(struct lys_type));
+    (*type)->base = LY_TYPE_ENUM;
+    (*type)->der = ly_types[LY_TYPE_ENUM];
+    (*type)->parent = (struct lys_tpdf *)op;
+    (*type)->info.enums.count = 5;
+    (*type)->info.enums.enm = calloc(5, sizeof *(*type)->info.enums.enm);
+    (*type)->info.enums.enm[0].value = 0;
+    (*type)->info.enums.enm[0].name = lydict_insert(ctx, "merge", 5);
+    (*type)->info.enums.enm[1].value = 1;
+    (*type)->info.enums.enm[1].name = lydict_insert(ctx, "replace", 7);
+    (*type)->info.enums.enm[2].value = 2;
+    (*type)->info.enums.enm[2].name = lydict_insert(ctx, "create", 6);
+    (*type)->info.enums.enm[3].value = 3;
+    (*type)->info.enums.enm[3].name = lydict_insert(ctx, "delete", 6);
+    (*type)->info.enums.enm[4].value = 4;
+    (*type)->info.enums.enm[4].name = lydict_insert(ctx, "remove", 6);
+    mod->ext_size++;
+
+    /* 2) filter's type */
+    op = calloc(1, sizeof(struct lys_ext_instance_complex) + 5 * sizeof(void*) + sizeof(uint16_t));
+    mod->ext[mod->ext_size] = (struct lys_ext_instance *)op;
+    op->arg_value = lydict_insert(ctx, "type", 4);
+    op->def = &ctx->models.list[0]->extensions[0];
+    op->ext_type = LYEXT_COMPLEX;
+    op->module = op->parent = mod;
+    op->parent_type = LYEXT_PAR_MODULE;
+    op->substmt = ((struct lyext_plugin_complex *)op->def->plugin)->substmt;
+    op->nodetype = LYS_EXT;
+    type = (struct lys_type**)&op->content; /* type is stored at offset 0 */
+    *type = calloc(1, sizeof(struct lys_type));
+    (*type)->base = LY_TYPE_ENUM;
+    (*type)->der = ly_types[LY_TYPE_ENUM];
+    (*type)->parent = (struct lys_tpdf *)op;
+    (*type)->info.enums.count = 2;
+    (*type)->info.enums.enm = calloc(2, sizeof *(*type)->info.enums.enm);
+    (*type)->info.enums.enm[0].value = 0;
+    (*type)->info.enums.enm[0].name = lydict_insert(ctx, "subtree", 7);
+    (*type)->info.enums.enm[1].value = 1;
+    (*type)->info.enums.enm[1].name = lydict_insert(ctx, "xpath", 5);
+    for (i = mod->features_size; i > 0; i--) {
+        if (!strcmp(mod->features[i - 1].name, "xpath")) {
+            (*type)->info.enums.enm[1].iffeature_size = 1;
+            (*type)->info.enums.enm[1].iffeature = calloc(1, sizeof(struct lys_feature));
+            (*type)->info.enums.enm[1].iffeature[0].expr = malloc(sizeof(uint8_t));
+            *(*type)->info.enums.enm[1].iffeature[0].expr = 3; /* LYS_IFF_F */
+            (*type)->info.enums.enm[1].iffeature[0].features = malloc(sizeof(struct lys_feature*));
+            (*type)->info.enums.enm[1].iffeature[0].features[0] = &mod->features[i - 1];
+            break;
+        }
+    }
+    mod->ext_size++;
+
+    /* 3) filter's select */
+    op = calloc(1, sizeof(struct lys_ext_instance_complex) + 5 * sizeof(void*) + sizeof(uint16_t));
+    mod->ext[mod->ext_size] = (struct lys_ext_instance *)op;
+    op->arg_value = lydict_insert(ctx, "select", 6);
+    op->def = &ctx->models.list[0]->extensions[0];
+    op->ext_type = LYEXT_COMPLEX;
+    op->module = op->parent = mod;
+    op->parent_type = LYEXT_PAR_MODULE;
+    op->substmt = ((struct lyext_plugin_complex *)op->def->plugin)->substmt;
+    op->nodetype = LYS_EXT;
+    type = (struct lys_type**)&op->content; /* type is stored at offset 0 */
+    *type = calloc(1, sizeof(struct lys_type));
+    (*type)->base = LY_TYPE_STRING;
+    (*type)->der = ly_types[LY_TYPE_STRING];
+    (*type)->parent = (struct lys_tpdf *)op;
+    mod->ext_size++;
+
+    return EXIT_SUCCESS;
+}
+
 /**
  * @brief Alternative for lys_read() + lys_parse() in case of import
  *
@@ -323,6 +421,18 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const char *rev
         break;
     }
     lyp_munmap(addr, length);
+
+    /* hack for NETCONF's edit-config's operation attribute. It is not defined in the schema, but since libyang
+     * implements YANG metadata (annotations), we need its definition. Because the ietf-netconf schema is not the
+     * internal part of libyang, we cannot add the annotation into the schema source, but we do it here to have
+     * the anotation definitions available in the internal schema structure. There is another hack in schema
+     * printers to do not print this internally added annotation. */
+    if (module && ly_strequal(module->name, "ietf-netconf", 0)) {
+        if (lyp_add_ietf_netconf_annotations(module)) {
+            lys_free(module, NULL, 1);
+            return NULL;
+        }
+    }
 
     return module;
 }

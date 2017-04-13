@@ -159,6 +159,11 @@ int lyp_ctx_check_module(struct lys_module *module);
 int lyp_ctx_add_module(struct lys_module *module);
 
 /**
+ * @brief Add annotations definitions of attributes used in ietf-netconf RPCs.
+ */
+int lyp_add_ietf_netconf_annotations(struct lys_module *mod);
+
+/**
  * @brief mmap() wrapper for parsers. To unmap, use lyp_munmap().
  *
  * @param[in] prot The desired memory protection as in case of mmap().
