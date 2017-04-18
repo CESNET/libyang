@@ -504,6 +504,9 @@ void lys_sub_module_apply_devs_augs(struct lys_module *module);
 
 void lys_submodule_module_data_free(struct lys_submodule *submodule);
 
+const struct lys_module *lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int internal,
+                                        int implement);
+
 /**
  * @brief Get know if the \p leaf is a key of the \p list
  * @return 0 for false, position of the key otherwise

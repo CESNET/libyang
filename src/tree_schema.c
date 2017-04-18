@@ -930,8 +930,8 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
     return EXIT_SUCCESS;
 }
 
-static const struct lys_module *
-lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int internal)
+const struct lys_module *
+lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int internal, int implement)
 {
     char *enlarged_data = NULL;
     struct lys_module *mod = NULL;
@@ -959,10 +959,10 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int in
 
     switch (format) {
     case LYS_IN_YIN:
-        mod = yin_read_module(ctx, data, NULL, 1);
+        mod = yin_read_module(ctx, data, NULL, implement);
         break;
     case LYS_IN_YANG:
-        mod = yang_read_module(ctx, data, 0, NULL, 1);
+        mod = yang_read_module(ctx, data, 0, NULL, implement);
         break;
     default:
         LOGERR(LY_EINVAL, "Invalid schema input format.");
@@ -989,7 +989,7 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int in
 API const struct lys_module *
 lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
 {
-    return lys_parse_mem_(ctx, data, format, 0);
+    return lys_parse_mem_(ctx, data, format, 0, 1);
 }
 
 struct lys_submodule *
@@ -1116,7 +1116,7 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
         return NULL;
     }
 
-    module = lys_parse_mem_(ctx, addr, format, 1);
+    module = lys_parse_mem_(ctx, addr, format, 1, 1);
     lyp_munmap(addr, length);
 
     if (module && !module->filepath) {
