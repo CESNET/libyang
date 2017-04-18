@@ -7347,6 +7347,16 @@ resolve_instid(struct lyd_node *data, const char *path, int req_inst, struct lyd
                 /* no instance exists */
                 break;
             }
+        } else if (node_match.count) {
+            /* check that we are not addressing lists */
+            for (j = 0; (unsigned)j < node_match.count; ++j) {
+                if (node_match.node[j]->schema->nodetype == LYS_LIST) {
+                    unres_data_del(&node_match, j--);
+                }
+            }
+            if (!node_match.count) {
+                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Instance identifier is missing list keys.");
+            }
         }
     }
 
