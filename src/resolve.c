@@ -4893,11 +4893,13 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
             if (rfn->flags & LYS_MAND_TRUE) {
                 /* check if node has default value */
                 if ((node->nodetype & LYS_LEAF) && ((struct lys_node_leaf *)node)->dflt) {
-                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The \"mandatory\" statement is forbidden on leaf with \"default\".");
+                    LOGVAL(LYE_SPEC, LY_VLOG_LYS, uses,
+                           "The \"mandatory\" statement is forbidden on leaf with \"default\".");
                     goto fail;
                 }
                 if ((node->nodetype & LYS_CHOICE) && ((struct lys_node_choice *)node)->dflt) {
-                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The \"mandatory\" statement is forbidden on choices with \"default\".");
+                    LOGVAL(LYE_SPEC, LY_VLOG_LYS, uses,
+                           "The \"mandatory\" statement is forbidden on choices with \"default\".");
                     goto fail;
                 }
             }
@@ -5105,14 +5107,14 @@ nextsibling:
         /* min/max-elements on list or leaf-list */
         if (node->nodetype == LYS_LIST && ((struct lys_node_list *)node)->max) {
             if (((struct lys_node_list *)node)->min > ((struct lys_node_list *)node)->max) {
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", rfn->mod.list.min, "min-elements");
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"min-elements\" is bigger than \"max-elements\".");
+                LOGVAL(LYE_SPEC, LY_VLOG_LYS, uses, "Invalid value \"%d\" of \"%s\".", rfn->mod.list.min, "min-elements");
+                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "\"min-elements\" is bigger than \"max-elements\".");
                 goto fail;
             }
         } else if (node->nodetype == LYS_LEAFLIST && ((struct lys_node_leaflist *)node)->max) {
             if (((struct lys_node_leaflist *)node)->min > ((struct lys_node_leaflist *)node)->max) {
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", rfn->mod.list.min, "min-elements");
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"min-elements\" is bigger than \"max-elements\".");
+                LOGVAL(LYE_SPEC, LY_VLOG_LYS, uses, "Invalid value \"%d\" of \"%s\".", rfn->mod.list.min, "min-elements");
+                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "\"min-elements\" is bigger than \"max-elements\".");
                 goto fail;
             }
         }
@@ -5122,16 +5124,16 @@ nextsibling:
         if (node->nodetype == LYS_LEAFLIST) {
             llist = (struct lys_node_leaflist *)node;
             if (llist->dflt_size && llist->min) {
-                LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, rfn->dflt_size ? "default" : "min-elements", "refine");
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
+                LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, uses, rfn->dflt_size ? "default" : "min-elements", "refine");
+                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL,
                        "The \"min-elements\" statement with non-zero value is forbidden on leaf-lists with the \"default\" statement.");
                 goto fail;
             }
         } else if (node->nodetype == LYS_LEAF) {
             leaf = (struct lys_node_leaf *)node;
             if (leaf->dflt && (leaf->flags & LYS_MAND_TRUE)) {
-                LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, rfn->dflt_size ? "default" : "mandatory", "refine");
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL,
+                LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, uses, rfn->dflt_size ? "default" : "mandatory", "refine");
+                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL,
                        "The \"mandatory\" statement is forbidden on leafs with the \"default\" statement.");
                 goto fail;
             }
