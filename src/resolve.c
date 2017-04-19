@@ -5103,13 +5103,13 @@ nextsibling:
         }
 
         /* min/max-elements on list or leaf-list */
-        if (node->nodetype == LYS_LIST) {
+        if (node->nodetype == LYS_LIST && ((struct lys_node_list *)node)->max) {
             if (((struct lys_node_list *)node)->min > ((struct lys_node_list *)node)->max) {
                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", rfn->mod.list.min, "min-elements");
                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"min-elements\" is bigger than \"max-elements\".");
                 goto fail;
             }
-        } else if (node->nodetype == LYS_LEAFLIST) {
+        } else if (node->nodetype == LYS_LEAFLIST && ((struct lys_node_leaflist *)node)->max) {
             if (((struct lys_node_leaflist *)node)->min > ((struct lys_node_leaflist *)node)->max) {
                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", rfn->mod.list.min, "min-elements");
                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "\"min-elements\" is bigger than \"max-elements\".");
