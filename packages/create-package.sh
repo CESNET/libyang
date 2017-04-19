@@ -1,16 +1,21 @@
 #!/usr/bin/env bash
 
-if [ "$TRAVIS_PULL_REQUEST" == "true" ] ; then
+if [ "$TRAVIS_PULL_REQUEST" == "true" -o "$TRAVIS_EVENT_TYPE" != "cron"] ; then
     exit 0
 fi
-echo -e "[general]\napiurl = https://api.opensuse.org\n\n[https://api.opensuse.org]\nuser = $user\npass = $password" >~/.oscrc
+# check osb_user and osb_pass
+if [ -z "${osb_user}" -o -z "${osb_pass}" ]; then
+    exit 0
+fi
+
+echo -e "[general]\napiurl = https://api.opensuse.org\n\n[https://api.opensuse.org]\nuser = ${osb_user}\npass = ${osb_pass}" >~/.oscrc
 cd $HOME/build/$TRAVIS_REPO_SLUG/build
-osc checkout home:xvican01
+osc checkout home:liberouter
 if [ $TRAVIS_BRANCH == "devel" ]; then
-	package="home:xvican01/libyang-experimental"
+	package="home:liberouter/libyang-experimental"
 	name="libyang-experimental"
 else
-	package="home:xvican01/libyang"
+	package="home:liberouter/libyang"
 	name="libyang"
 fi
 cp packages/* $package
