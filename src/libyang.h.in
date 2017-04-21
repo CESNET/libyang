@@ -98,7 +98,7 @@ extern "C" {
  * When creating a new context, search dir can be specified (NULL is accepted) to provide directory
  * where libyang will automatically search for schemas being imported or included. The search path
  * can be later changed via ly_ctx_set_searchdir() and ly_ctx_unset_searchidrs() functions. If the search dir
- * is specified, it is explored first. Except the searchpath, also all its subdirectories (and symlinks) are 
+ * is specified, it is explored first. Except the searchpath, also all its subdirectories (and symlinks) are
  * taken into account. In case the module is not found, libyang tries to find the (sub)module also in current
  * working working directory. Note, that in this case only the current directory without any other subdirectory
  * is examinde. This automatic searching can be completely avoided when the caller sets module searching callback
@@ -1002,6 +1002,11 @@ extern "C" {
  * - #ly_errno
  * - #ly_vecode
  */
+
+/**
+ * @brief Number of internal modules, which are always in every context and cannot be removed nor disabled.
+ */
+#define LY_INTERNAL_MODULE_COUNT 5
 
 /**
  * @defgroup context Context

@@ -48,14 +48,13 @@ extern unsigned int ext_plugins_ref;
 #include IETF_YANG_TYPES_PATH
 #include IETF_YANG_LIB_PATH
 
-#define INTERNAL_MODULES_COUNT 5
 static struct internal_modules_s {
     const char *name;
     const char *revision;
     const char *data;
     uint8_t implemented;
     LYS_INFORMAT format;
-} internal_modules[INTERNAL_MODULES_COUNT] = {
+} internal_modules[LY_INTERNAL_MODULE_COUNT] = {
     {"ietf-yang-metadata", "2016-08-05", (const char*)ietf_yang_metadata_2016_08_05_yin, 0, LYS_IN_YIN},
     {"yang", "2017-02-20", (const char*)yang_2017_02_20_yin, 1, LYS_IN_YIN},
     {"ietf-inet-types", "2013-07-15", (const char*)ietf_inet_types_2013_07_15_yin, 0, LYS_IN_YIN},
@@ -114,7 +113,7 @@ ly_ctx_new(const char *search_dir)
     ctx->models.module_set_id = 1;
 
     /* load internal modules */
-    for (i = 0; i < INTERNAL_MODULES_COUNT; i++) {
+    for (i = 0; i < LY_INTERNAL_MODULE_COUNT; i++) {
         module = (struct lys_module *)lys_parse_mem(ctx, internal_modules[i].data, internal_modules[i].format);
         if (!module) {
             ly_ctx_destroy(ctx, NULL);
@@ -597,7 +596,7 @@ ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char
 
     if (!module) {
         /* exception for internal modules */
-        for (i = 0; i < INTERNAL_MODULES_COUNT; i++) {
+        for (i = 0; i < LY_INTERNAL_MODULE_COUNT; i++) {
             if (ly_strequal(name, internal_modules[i].name, 0)) {
                 if (!revision || ly_strequal(revision, internal_modules[i].revision, 0)) {
                     /* return internal module */
@@ -609,7 +608,7 @@ ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char
             /* try to get the schema with the specific revision from the context,
              * include the disabled modules in the search to avoid their duplication,
              * they are enabled by the subsequent call to lys_set_implemented() */
-            for (i = INTERNAL_MODULES_COUNT, mod = NULL; i < ctx->models.used; i++) {
+            for (i = LY_INTERNAL_MODULE_COUNT, mod = NULL; i < ctx->models.used; i++) {
                 mod = ctx->models.list[i]; /* shortcut */
                 if (ly_strequal(name, mod->name, 0) && mod->rev_size && !strcmp(revision, mod->rev[0].date)) {
                     break;
@@ -692,7 +691,7 @@ ctx_modules_undo_backlinks(struct ly_ctx *ctx, struct ly_set *mods)
     struct lys_node_leaf *leaf;
 
     /* maintain backlinks (start with internal ietf-yang-library which have leafs as possible targets of leafrefs */
-    for (o = INTERNAL_MODULES_COUNT - 1; o < ctx->models.used; o++) {
+    for (o = LY_INTERNAL_MODULE_COUNT - 1; o < ctx->models.used; o++) {
         mod = ctx->models.list[o]; /* shortcut */
 
         /* 1) features */
@@ -884,9 +883,9 @@ lys_set_disabled(const struct lys_module *module)
     ctx = mod->ctx;
 
     /* avoid disabling internal modules */
-    for (i = 0; i < INTERNAL_MODULES_COUNT; i++) {
+    for (i = 0; i < LY_INTERNAL_MODULE_COUNT; i++) {
         if (mod == ctx->models.list[i]) {
-            LOGERR(LY_EINVAL, "Internal module \"%s\" cannot be removed.", mod->name);
+            LOGERR(LY_EINVAL, "Internal module \"%s\" cannot be disabled.", mod->name);
             return EXIT_FAILURE;
         }
     }
@@ -900,7 +899,7 @@ lys_set_disabled(const struct lys_module *module)
     mods = ly_set_new();
     ly_set_add(mods, mod, 0);
 checkdependency:
-    for (i = INTERNAL_MODULES_COUNT; i < ctx->models.used; i++) {
+    for (i = LY_INTERNAL_MODULE_COUNT; i < ctx->models.used; i++) {
         mod = ctx->models.list[i]; /* shortcut */
         if (mod->disabled) {
             /* skip the already disabled modules */
@@ -923,7 +922,7 @@ checkdependency:
         /* check if the imported module is used in any module supposed to be kept */
         if (!mod->implemented) {
             imported = 0;
-            for (o = INTERNAL_MODULES_COUNT; o < ctx->models.used; o++) {
+            for (o = LY_INTERNAL_MODULE_COUNT; o < ctx->models.used; o++) {
                 if (ctx->models.list[o]->disabled) {
                     /* skip modules already disabled */
                     continue;
@@ -1019,7 +1018,7 @@ lys_set_enabled(const struct lys_module *module)
     ctx = mod->ctx;
 
     /* avoid disabling internal modules */
-    for (i = 0; i < INTERNAL_MODULES_COUNT; i++) {
+    for (i = 0; i < LY_INTERNAL_MODULE_COUNT; i++) {
         if (mod == ctx->models.list[i]) {
             LOGERR(LY_EINVAL, "Internal module \"%s\" cannot be removed.", mod->name);
             return EXIT_FAILURE;
@@ -1037,7 +1036,7 @@ lys_set_enabled(const struct lys_module *module)
      * it is going to be also enabled. This way we try to revert everething that was possibly done by
      * lys_set_disabled(). */
 checkdependency:
-    for (i = INTERNAL_MODULES_COUNT; i < ctx->models.used; i++) {
+    for (i = LY_INTERNAL_MODULE_COUNT; i < ctx->models.used; i++) {
         mod = ctx->models.list[i]; /* shortcut */
         if (!mod->disabled || ly_set_contains(disabled, mod) != -1) {
             /* skip the enabled modules */
@@ -1118,14 +1117,14 @@ ly_ctx_remove_module(const struct lys_module *module,
     ctx = mod->ctx;
 
     /* avoid removing internal modules ... */
-    for (i = 0; i < INTERNAL_MODULES_COUNT; i++) {
+    for (i = 0; i < LY_INTERNAL_MODULE_COUNT; i++) {
         if (mod == ctx->models.list[i]) {
             LOGERR(LY_EINVAL, "Internal module \"%s\" cannot be removed.", mod->name);
             return EXIT_FAILURE;
         }
     }
     /* ... and hide the module from the further processing of the context modules list */
-    for (i = INTERNAL_MODULES_COUNT; i < ctx->models.used; i++) {
+    for (i = LY_INTERNAL_MODULE_COUNT; i < ctx->models.used; i++) {
         if (mod == ctx->models.list[i]) {
             ctx->models.list[i] = NULL;
             break;
@@ -1138,7 +1137,7 @@ ly_ctx_remove_module(const struct lys_module *module,
     mods = ly_set_new();
     ly_set_add(mods, mod, 0);
 checkdependency:
-    for (i = INTERNAL_MODULES_COUNT; i < ctx->models.used; i++) {
+    for (i = LY_INTERNAL_MODULE_COUNT; i < ctx->models.used; i++) {
         mod = ctx->models.list[i]; /* shortcut */
         if (!mod) {
             /* skip modules already selected for removing */
@@ -1161,7 +1160,7 @@ checkdependency:
         /* check if the imported module is used in any module supposed to be kept */
         if (!mod->implemented) {
             imported = 0;
-            for (o = INTERNAL_MODULES_COUNT; o < ctx->models.used; o++) {
+            for (o = LY_INTERNAL_MODULE_COUNT; o < ctx->models.used; o++) {
                 if (!ctx->models.list[o]) {
                     /* skip modules already selected for removing */
                     continue;
@@ -1193,7 +1192,7 @@ imported:
 
 
     /* consolidate the modules list */
-    for (i = o = INTERNAL_MODULES_COUNT; i < ctx->models.used; i++) {
+    for (i = o = LY_INTERNAL_MODULE_COUNT; i < ctx->models.used; i++) {
         if (ctx->models.list[o]) {
             /* used cell */
             o++;
@@ -1233,7 +1232,7 @@ ly_ctx_clean(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_nod
     }
 
     /* models list */
-    for (; ctx->models.used > INTERNAL_MODULES_COUNT; ctx->models.used--) {
+    for (; ctx->models.used > LY_INTERNAL_MODULE_COUNT; ctx->models.used--) {
         /* remove the applied deviations and augments */
         lys_sub_module_remove_devs_augs(ctx->models.list[ctx->models.used - 1]);
         /* remove the module */

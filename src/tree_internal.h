@@ -23,21 +23,6 @@
 /* this is used to distinguish lyxml_elem * from a YANG temporary parsing structure, the first byte is compared */
 #define LY_YANG_STRUCTURE_FLAG 0x80
 
-#define LY_INTERNAL_MODULE_COUNT 3
-
-/**
- * @brief Internal list of internal modules that are a part
- *        of every context and must never be freed. Structure
- *        instance defined in "tree.c".
- */
-struct internal_modules {
-    const struct {
-        const char *name;
-        const char *revision;
-    } modules[LY_INTERNAL_MODULE_COUNT];
-    const uint8_t count;
-};
-
 /**
  * @brief YANG namespace
  */
