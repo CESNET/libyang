@@ -1575,7 +1575,7 @@ resolve_data_descendant_schema_nodeid(const char *nodeid, struct lyd_node *start
  *  2 - break
  * -1 - error
  */
-static int
+int
 schema_nodeid_siblingcheck(const struct lys_node *sibling, const char *id, const struct lys_module *module,
                            const char *mod_name, int mod_name_len, int implemented_mod,
                            const struct lys_node **start_parent)

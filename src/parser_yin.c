@@ -1888,15 +1888,16 @@ static int
 fill_yin_unique(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, struct lys_unique *unique,
                 struct unres_schema *unres)
 {
-    int i, j;
-    const char *value, *vaux;
+    int i, j, ret = EXIT_FAILURE;
+    const char *orig;
+    char *value, *vaux, *start, c;
     struct unres_list_uniq *unique_info;
 
     /* get unique value (list of leafs supposed to be unique */
-    GETVAL(value, yin, "tag");
+    GETVAL(orig, yin, "tag");
 
     /* count the number of unique leafs in the value */
-    vaux = value;
+    start = value = vaux = strdup(orig);
     while ((vaux = strpbrk(vaux, " \t\n"))) {
         unique->expr_size++;
         while (isspace(*vaux)) {
@@ -1912,13 +1913,16 @@ fill_yin_unique(struct lys_module *module, struct lys_node *parent, struct lyxml
 
     for (i = 0; i < unique->expr_size; i++) {
         vaux = strpbrk(value, " \t\n");
-        if (!vaux) {
-            /* the last token, lydict_insert() will count its size on its own */
-            vaux = value;
+        if (vaux) {
+            c = *vaux;
+            *vaux = '\0';
         }
 
         /* store token into unique structure */
-        unique->expr[i] = lydict_insert(module->ctx, value, vaux - value);
+        unique->expr[i] = transform_schema2json(module, value);
+        if (vaux) {
+            *vaux = c;
+        }
 
         /* check that the expression does not repeat */
         for (j = 0; j < i; j++) {
@@ -1946,15 +1950,16 @@ fill_yin_unique(struct lys_module *module, struct lys_node *parent, struct lyxml
 
         /* move to next token */
         value = vaux;
-        while(isspace(*value)) {
+        while(value && isspace(*value)) {
             value++;
         }
     }
 
-    return EXIT_SUCCESS;
+    ret =  EXIT_SUCCESS;
 
 error:
-    return EXIT_FAILURE;
+    free(start);
+    return ret;
 }
 
 /* logs directly

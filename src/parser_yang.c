@@ -499,7 +499,7 @@ int
 yang_fill_unique(struct lys_module *module, struct lys_node_list *list, struct lys_unique *unique, char *value, struct unres_schema *unres)
 {
     int i, j;
-    char *vaux;
+    char *vaux, c;
     struct unres_list_uniq *unique_info;
 
     /* count the number of unique leafs in the value */
@@ -519,13 +519,16 @@ yang_fill_unique(struct lys_module *module, struct lys_node_list *list, struct l
 
     for (i = 0; i < unique->expr_size; i++) {
         vaux = strpbrk(value, " \t\n");
-        if (!vaux) {
-            /* the last token, lydict_insert() will count its size on its own */
-            vaux = value;
+        if (vaux) {
+            c = *vaux;
+            *vaux = '\0';
         }
 
-        /* store token into unique structure */
-        unique->expr[i] = lydict_insert(module->ctx, value, vaux - value);
+        /* store token into unique structure (includes converting prefix to the module name) */
+        unique->expr[i] = transform_schema2json(module, value);
+        if (vaux) {
+            *vaux = c;
+        }
 
         /* check that the expression does not repeat */
         for (j = 0; j < i; j++) {
@@ -552,7 +555,7 @@ yang_fill_unique(struct lys_module *module, struct lys_node_list *list, struct l
 
         /* move to next token */
         value = vaux;
-        while(isspace(*value)) {
+        while(value && isspace(*value)) {
             value++;
         }
     }

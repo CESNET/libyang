@@ -5102,44 +5102,50 @@ lyd_qualified_path(const struct lyd_node *node)
 }
 
 static int
-lyd_build_relative_data_path(const struct lyd_node *node, const char *schema_id, char *buf)
+lyd_build_relative_data_path(const struct lys_module *module, const struct lyd_node *node, const char *schema_id,
+                             char *buf)
 {
     const struct lys_node *snode, *schema;
-    const char *end;
-    int len = 0;
+    const char *mod_name, *name;
+    int mod_name_len, name_len, len = 0;
+    int r, is_relative = -1;
 
+    assert(schema_id && buf);
     schema = node->schema;
 
-    while (1) {
-        end = strchr(schema_id, '/');
-        if (!end) {
-            end = schema_id + strlen(schema_id);
+    while (*schema_id) {
+        if ((r = parse_schema_nodeid(schema_id, &mod_name, &mod_name_len, &name, &name_len, &is_relative, NULL)) < 1) {
+            LOGINT;
+            return -1;
         }
+        schema_id += r;
 
         snode = NULL;
         while ((snode = lys_getnext(snode, schema, NULL, LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE))) {
-            if (!strncmp(snode->name, schema_id, end - schema_id) && !snode->name[end - schema_id]) {
-                assert(snode->nodetype != LYS_LIST);
-                if (!(snode->nodetype & (LYS_CHOICE | LYS_CASE))) {
-                    len += sprintf(&buf[len], "%s%s", (len ? "/" : ""), snode->name);
+            /* name match */
+            if (!strncmp(name, snode->name, name_len) && !snode->name[name_len]) {
+                r = schema_nodeid_siblingcheck(snode, schema_id, module, mod_name, mod_name_len, 0, &schema);
+                if (r == 0 || r == 2) {
+                    break;
+                } else if (r == 1) {
+                    continue;
+                } else {
+                    return -1;
                 }
-                schema = snode;
-                break;
             }
         }
-        if (!snode) {
+        /* no match */
+        if (!snode || (!schema_id[0] && snode->nodetype != LYS_LEAF)) {
             LOGINT;
             return -1;
         }
 
-        if (!end[0]) {
-            return len;
+        if (!(snode->nodetype & (LYS_CHOICE | LYS_CASE))) {
+            len += sprintf(&buf[len], "%s%s", (len ? "/" : ""), snode->name);
         }
-        schema_id = end + 1;
     }
 
-    LOGINT;
-    return -1;
+    return len;
 }
 
 /*
@@ -5161,7 +5167,7 @@ lyd_list_equal(struct lyd_node *first, struct lyd_node *second, int action, int 
     const char *val1, *val2;
     char *path1, *path2, *uniq_str = ly_buf(), *buf_backup = NULL;
     uint16_t idx1, idx2, idx_uniq;
-    int i, j;
+    int i, j, r;
 
     assert(first && (first->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)));
     assert(second && (second->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)));
@@ -5262,7 +5268,12 @@ uniquecheck:
                         if (j) {
                             uniq_str[idx_uniq++] = ' ';
                         }
-                        idx_uniq += lyd_build_relative_data_path(first, slist->unique[i].expr[j], &uniq_str[idx_uniq]);
+                        r = lyd_build_relative_data_path(slist->module, first, slist->unique[i].expr[j],
+                                                         &uniq_str[idx_uniq]);
+                        if (r == -1) {
+                            return 1;
+                        }
+                        idx_uniq += r;
                     }
 
                     LOGVAL(LYE_NOUNIQ, LY_VLOG_LYD, second, uniq_str, &path1[idx1], &path2[idx2]);
