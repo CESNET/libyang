@@ -5271,12 +5271,13 @@ uniquecheck:
                         r = lyd_build_relative_data_path(slist->module, first, slist->unique[i].expr[j],
                                                          &uniq_str[idx_uniq]);
                         if (r == -1) {
-                            return 1;
+                            goto unique_errmsg_cleanup;
                         }
                         idx_uniq += r;
                     }
 
                     LOGVAL(LYE_NOUNIQ, LY_VLOG_LYD, second, uniq_str, &path1[idx1], &path2[idx2]);
+unique_errmsg_cleanup:
                     free(path1);
                     free(path2);
                     if (buf_backup) {
