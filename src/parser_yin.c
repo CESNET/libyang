@@ -1890,7 +1890,7 @@ fill_yin_unique(struct lys_module *module, struct lys_node *parent, struct lyxml
 {
     int i, j, ret = EXIT_FAILURE;
     const char *orig;
-    char *value, *vaux, *start, c;
+    char *value, *vaux, *start = NULL, c;
     struct unres_list_uniq *unique_info;
 
     /* get unique value (list of leafs supposed to be unique */
