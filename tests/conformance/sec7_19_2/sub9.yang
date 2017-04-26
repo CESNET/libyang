@@ -15,6 +15,11 @@ submodule sub9 {
         status deprecated;
     }
 
+    identity i2 {
+        base i3;
+        status deprecated;
+    }
+
     grouping gg {
         status deprecated;
         container connect {

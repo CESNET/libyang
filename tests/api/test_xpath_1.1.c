@@ -32,7 +32,7 @@ static const char *data1 =
     "<str2>aabb</str2>"
     "<lref>aabbcc</lref>"
     "<instid>/xp:top/xp:str2</instid>"
-    "<identref>ident1</identref>"
+    "<identref>ident2</identref>"
     "<enum>two</enum>"
     "<bits>flag1 flag3</bits>"
 "</top>"
@@ -136,7 +136,7 @@ test_func_derived_from1(void **state)
 
     st->set = lyd_find_xpath(st->dt, "/xpath-1.1:top/*[derived-from(., 'ident1')]");
     assert_ptr_not_equal(st->set, NULL);
-    assert_int_equal(st->set->number, 0);
+    assert_int_equal(st->set->number, 1);
 }
 
 static void
@@ -201,7 +201,7 @@ test_func_derived_from_or_self2(void **state)
 
     st->set = lyd_find_xpath(st->dt, "/xpath-1.1:top/*[derived-from-or-self(., 'ident2')]");
     assert_ptr_not_equal(st->set, NULL);
-    assert_int_equal(st->set->number, 0);
+    assert_int_equal(st->set->number, 1);
 }
 
 static void

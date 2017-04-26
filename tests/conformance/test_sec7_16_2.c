@@ -28,8 +28,8 @@
 #define TEST_NAME test_sec7_16_2
 #define TEST_SCHEMA_COUNT 5
 #define TEST_SCHEMA_LOAD_FAIL 0,1,1,1,0
-#define TEST_DATA_FILE_COUNT 5
-#define TEST_DATA_FILE_LOAD_FAIL 0,1,0,1,0
+#define TEST_DATA_FILE_COUNT 6
+#define TEST_DATA_FILE_LOAD_FAIL 0,1,0,1,0,1
 
 struct state {
     struct ly_ctx *ctx;

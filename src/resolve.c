@@ -5398,18 +5398,14 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
         mod_name_len = strlen(mod_name);
     }
 
-    /* go through all the bases in all the derived types */
+    /* go through all the derived types of all the bases */
     while (type->der) {
         for (i = 0; i < type->info.ident.count; ++i) {
             cur = type->info.ident.ref[i];
             mod_name_iter = lys_main_module(cur->module)->name;
-            if (!strcmp(cur->name, name) &&
-                    !strncmp(mod_name_iter, mod_name, mod_name_len) && !mod_name_iter[mod_name_len]) {
-                goto match;
-            }
 
             if (cur->der) {
-                /* there are also some derived identities */
+                /* there are some derived identities */
                 for (u = 0; u < cur->der->number; u++) {
                     der = (struct lys_ident *)cur->der->set.g[u]; /* shortcut */
                     mod_name_iter = lys_main_module(der->module)->name;

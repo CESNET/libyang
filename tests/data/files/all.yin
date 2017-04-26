@@ -12,10 +12,10 @@
     <status value="obsolete"/>
   </feature>
   <feature name="feat2"/>
-  <identity name="ident1">
-    <base name="ident2"/>
+  <identity name="ident2">
+    <base name="ident1"/>
   </identity>
-  <identity name="ident2"/>
+  <identity name="ident1"/>
   <typedef name="tdef1">
     <type name="tdef2">
       <length value="3..9 | 30..40"/>
