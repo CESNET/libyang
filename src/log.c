@@ -517,11 +517,11 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
                             len = strlen(diter->schema->name);
                             (*index) -= len;
                             memcpy(&path[(*index)], diter->schema->name, len);
-                            if (prefix_all || (dlist->schema->module != diter->schema->module)) {
+                            if (prefix_all || (lyd_node_module(dlist) != lyd_node_module(diter))) {
                                 path[--(*index)] = ':';
-                                len = strlen(diter->schema->module->name);
+                                len = strlen(lyd_node_module(diter)->name);
                                 (*index) -= len;
-                                memcpy(&path[(*index)], diter->schema->module->name, len);
+                                memcpy(&path[(*index)], lyd_node_module(diter)->name, len);
                             }
                             path[--(*index)] = '[';
                         }
