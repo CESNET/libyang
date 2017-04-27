@@ -4815,6 +4815,10 @@ lyd_insert_attr(struct lyd_node *parent, const struct lys_module *mod, const cha
     } else if (!mod && (!strcmp(name, "type") || !strcmp(name, "select")) && !strcmp(parent->schema->name, "filter")) {
         /* special case of inserting unqualified filter attributes "type" and "select" */
         module = ly_ctx_get_module(ctx, "ietf-netconf", NULL);
+        if (!module) {
+            LOGERR(LY_EINVAL, "Attribute prefix does not match any schema in the context.");
+            return NULL;
+        }
     } else {
         /* no prefix -> module is the same as for the parent */
         module = parent->schema->module;
