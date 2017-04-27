@@ -1677,7 +1677,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             type->parent->flags |= LYS_DFLTJSON;
         }
 
-        ident = resolve_identref(type, value, contextnode, mod);
+        ident = resolve_identref(type, value, contextnode, mod, dflt);
         if (!ident) {
             goto cleanup;
         } else if (store) {

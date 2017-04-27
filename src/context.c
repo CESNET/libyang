@@ -795,9 +795,11 @@ ctx_modules_redo_backlinks(struct ly_set *mods)
         mod = (struct lys_module *)mods->set.g[i]; /* shortcut */
 
         /* identities */
-        for (j = 0; j < mod->ident_size; j++) {
-            for (k = 0; k < mod->ident[j].base_size; k++) {
-                resolve_identity_backlink_update(&mod->ident[j], mod->ident[j].base[k]);
+        if (mod->implemented) {
+            for (j = 0; j < mod->ident_size; j++) {
+                for (k = 0; k < mod->ident[j].base_size; k++) {
+                    resolve_identity_backlink_update(&mod->ident[j], mod->ident[j].base[k]);
+                }
             }
         }
 

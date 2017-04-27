@@ -4250,7 +4250,7 @@ static int
 lys_set_implemented_recursion(struct lys_module *module, struct unres_schema *unres)
 {
     struct lys_node *root, *next, *node;
-    uint8_t i;
+    uint16_t i, j;
 
     for (i = 0; i < module->augment_size; i++) {
         /* apply augment */
@@ -4259,6 +4259,14 @@ lys_set_implemented_recursion(struct lys_module *module, struct unres_schema *un
             return -1;
         }
     }
+
+    /* identities */
+    for (i = 0; i < module->ident_size; i++) {
+        for (j = 0; j < module->ident[i].base_size; j++) {
+            resolve_identity_backlink_update(&module->ident[i], module->ident[i].base[j]);
+        }
+    }
+
     LY_TREE_FOR(module->data, root) {
         /* handle leafrefs and recursively change the implemented flags in the leafref targets */
         LY_TREE_DFS_BEGIN(root, next, node) {
@@ -4311,7 +4319,7 @@ lys_set_implemented(const struct lys_module *module)
 {
     struct ly_ctx *ctx;
     struct unres_schema *unres;
-    int i, j, disabled = 0;
+    int i, j, k, disabled = 0;
 
     if (!module) {
         ly_errno = LY_EINVAL;
@@ -4369,6 +4377,14 @@ lys_set_implemented(const struct lys_module *module)
                                               &module->inc[i].submodule->augment[j], UNRES_AUGMENT, NULL) == -1)) {
 
                 goto error;
+            }
+        }
+
+        /* identities */
+        for (j = 0; j < module->inc[i].submodule->ident_size; j++) {
+            for (k = 0; k < module->inc[i].submodule->ident[j].base_size; k++) {
+                resolve_identity_backlink_update(&module->inc[i].submodule->ident[j],
+                                                 module->inc[i].submodule->ident[j].base[k]);
             }
         }
     }

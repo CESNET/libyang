@@ -202,7 +202,7 @@ int resolve_applies_when(const struct lys_node *schema, int mode, const struct l
 int resolve_applies_must(const struct lyd_node *node);
 
 struct lys_ident *resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node *node,
-                                   struct lys_module *mod);
+                                   struct lys_module *mod, int dflt);
 
 int resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres);
 

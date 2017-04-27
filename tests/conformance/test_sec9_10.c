@@ -28,8 +28,8 @@
 #define TEST_NAME test_sec9_10
 #define TEST_SCHEMA_COUNT 3
 #define TEST_SCHEMA_LOAD_FAIL 1,1,0
-#define TEST_DATA_FILE_COUNT 5
-#define TEST_DATA_FILE_LOAD_FAIL 1,1,0,1,0
+#define TEST_DATA_FILE_COUNT 6
+#define TEST_DATA_FILE_LOAD_FAIL 1,1,0,1,0,1
 
 struct state {
     struct ly_ctx *ctx;
@@ -133,11 +133,53 @@ TEST_IDENTITYREF(void **state)
     }
 }
 
+/* in data6.xml we have value defined in mod.yang which is just imported in previous test and
+ * the data are not valid. Here, mod.yang is loaded as import by mod-dflt.yang, but since it
+ * uses identity value from mod.yang as its default, the mod.yang is change to be implemented.
+ */
+static void
+TEST_IDENTITYREF2(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    const char *middle_data = "<test xmlns=\"urn:cesnet:mod3\" xmlns:mm=\"urn:cesnet:mod-middle\">mm:j4</test>";
+
+    /* mod is imported */
+    mod = lys_parse_path(st->ctx, TESTS_DIR "/conformance/" TEST_DIR "/mod3.yang", LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    /* invalid identityref value from not-implemented schema */
+    st->node = lyd_parse_path(st->ctx, TESTS_DIR "/conformance/" TEST_DIR "/data6.xml", LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_equal(st->node, NULL);
+
+    mod = lys_parse_path(st->ctx, TESTS_DIR "/conformance/" TEST_DIR "/mod-dflt-invalid.yang", LYS_IN_YANG);
+    assert_ptr_equal(mod, NULL);
+
+    /* mod is set to be implemented */
+    mod = lys_parse_path(st->ctx, TESTS_DIR "/conformance/" TEST_DIR "/mod-dflt.yang", LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    /* mod is implemented so the identityref value is valid here */
+    st->node = lyd_parse_path(st->ctx, TESTS_DIR "/conformance/" TEST_DIR "/data6.xml", LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->node, NULL);
+    lyd_free_withsiblings(st->node);
+
+    /* but mod-middle is still not implemented, so mod-middle:j1 value is invalid */
+    st->node = lyd_parse_mem(st->ctx, middle_data, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_equal(st->node, NULL);
+
+    /* but making it implemented the data can be loaded */
+    assert_int_equal(lys_set_implemented(ly_ctx_get_module(st->ctx, "mod-middle", NULL)), 0);
+    st->node = lyd_parse_mem(st->ctx, middle_data, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->node, NULL);
+}
+
 int
 main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(TEST_IDENTITYREF, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(TEST_IDENTITYREF2, setup_f, teardown_f),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

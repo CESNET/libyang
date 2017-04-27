@@ -2984,6 +2984,7 @@ check_default(struct lys_type *type, const char **value, struct lys_module *modu
     struct lys_tpdf *base_tpdf = NULL;
     struct lyd_node_leaf_list node;
     const char *dflt = NULL;
+    char *s;
     int ret = EXIT_SUCCESS;
 
     assert(value);
@@ -2991,6 +2992,24 @@ check_default(struct lys_type *type, const char **value, struct lys_module *modu
     if (type->base <= LY_TYPE_DER) {
         /* the type was not resolved yet, nothing to do for now */
         return EXIT_FAILURE;
+    } else if (!tpdf && !lys_main_module(module)->implemented) {
+        /* do not check defaults in not implemented module's data */
+        return EXIT_SUCCESS;
+    } else if (tpdf && !lys_main_module(module)->implemented && type->base == LY_TYPE_IDENT) {
+        /* identityrefs are checked when instantiated in data instead of typedef,
+         * but in typedef the value has to be modified to include the prefix */
+        if (*value) {
+            if (strchr(*value, ':')) {
+                dflt = transform_schema2json(module, *value);
+            } else {
+                /* default prefix of the module where the typedef is defined */
+                asprintf(&s, "%s:%s", lys_main_module(module)->name, *value);
+                dflt = lydict_insert_zc(module->ctx, s);
+            }
+            lydict_remove(module->ctx, *value);
+            *value = dflt;
+        }
+        return EXIT_SUCCESS;
     } else if (type->base == LY_TYPE_LEAFREF && tpdf) {
         /* leafref in typedef cannot be checked */
         return EXIT_SUCCESS;
@@ -3014,6 +3033,15 @@ check_default(struct lys_type *type, const char **value, struct lys_module *modu
         /* so there is a default value in a base type, but can the default value be no longer valid (did we define some new restrictions)? */
         switch (type->base) {
         case LY_TYPE_IDENT:
+            if (lys_main_module(base_tpdf->type.parent->module)->implemented) {
+                return EXIT_SUCCESS;
+            } else {
+                /* check the default value from typedef, but use also the typedef's module
+                 * due to possible searching in imported modules which is expected in
+                 * typedef's module instead of module where the typedef is used */
+                module = base_tpdf->module;
+            }
+            break;
         case LY_TYPE_INST:
         case LY_TYPE_LEAFREF:
         case LY_TYPE_BOOL:
@@ -5347,9 +5375,13 @@ resolve_base_ident(const struct lys_module *module, struct lys_ident *ident, con
             rc = -1;
         } else if (ident) {
             ident->base[ident->base_size++] = *ret;
-
-            /* maintain backlinks to the derived identities */
-            resolve_identity_backlink_update(ident, *ret);
+            if (lys_main_module(mod)->implemented) {
+                /* in case of the implemented identity, maintain backlinks to it
+                 * from the base identities to make it available when resolving
+                 * data with the identity values (not implemented identity is not
+                 * allowed as an identityref value). */
+                resolve_identity_backlink_update(ident, *ret);
+            }
         }
     } else if (rc == EXIT_FAILURE) {
         LOGVAL(LYE_INRESOLV, LY_VLOG_NONE, NULL, parent, basename);
@@ -5361,24 +5393,49 @@ resolve_base_ident(const struct lys_module *module, struct lys_ident *ident, con
     return rc;
 }
 
+/*
+ * 1 - true (der is derived from base)
+ * 0 - false (der is not derived from base)
+ */
+static int
+search_base_identity(struct lys_ident *der, struct lys_ident *base)
+{
+    int i;
+
+    if (der == base) {
+        return 1;
+    } else {
+        for(i = 0; i < der->base_size; i++) {
+            if (search_base_identity(der->base[i], base) == 1) {
+                return 1;
+            }
+        }
+    }
+
+    return 0;
+}
+
 /**
  * @brief Resolve JSON data format identityref. Logs directly.
  *
  * @param[in] type Identityref type.
  * @param[in] ident_name Identityref name.
  * @param[in] node Node where the identityref is being resolved
+ * @param[in] dflt flag if we are resolving default value in the schema
  *
  * @return Pointer to the identity resolvent, NULL on error.
  */
 struct lys_ident *
-resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node *node, struct lys_module *mod)
+resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node *node, struct lys_module *mod, int dflt)
 {
-    const char *mod_name, *name, *mod_name_iter;
-    int mod_name_len, rc, i;
+    const char *mod_name, *name;
+    int mod_name_len, rc, i, j;
+    int make_implemented = 0;
     unsigned int u;
     struct lys_ident *der, *cur;
+    struct lys_module *imod = NULL, *m;
 
-    assert(type && ident_name && node);
+    assert(type && ident_name && node && mod);
 
     if (!type || (!type->info.ident.count && !type->der) || !ident_name) {
         return NULL;
@@ -5392,25 +5449,88 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
         LOGVAL(LYE_INCHAR, LY_VLOG_LYD, node, ident_name[rc], &ident_name[rc]);
         return NULL;
     }
-    if (!mod_name) {
-        /* no prefix, identity must be defined in the same module as node */
-        mod_name = lys_main_module(mod)->name;
-        mod_name_len = strlen(mod_name);
+
+    m = lys_main_module(mod); /* shortcut */
+    if (!mod_name || (!strncmp(mod_name, m->name, mod_name_len) && !m->name[mod_name_len])) {
+        /* identity is defined in the same module as node */
+        imod = m;
+    } else if (dflt) {
+        /* solving identityref in default definition in schema -
+         * find the identity's module in the imported modules list to have a correct revision */
+        for (i = 0; i < mod->imp_size; i++) {
+            if (!strncmp(mod_name, mod->imp[i].module->name, mod_name_len) && !mod->imp[i].module->name[mod_name_len]) {
+                imod = mod->imp[i].module;
+                break;
+            }
+        }
+    } else {
+        /* solving identityref in data - get the (implemented) module from the context */
+        u = 0;
+        while ((imod = (struct lys_module*)ly_ctx_get_module_iter(mod->ctx, &u))) {
+            if (imod->implemented && !strncmp(mod_name, imod->name, mod_name_len) && !imod->name[mod_name_len]) {
+                break;
+            }
+        }
+    }
+    if (!imod) {
+        goto fail;
+    }
+
+    if (dflt && (m != imod || lys_main_module(type->parent->module) != mod)) {
+        /* we are solving default statement in schema AND the type is not referencing the same schema,
+         * THEN, we may need to make the module with the identity implemented, but only if it really
+         * contains the identity */
+        if (!imod->implemented) {
+            cur = NULL;
+            /* get the identity in the module */
+            for (i = 0; i < imod->ident_size; i++) {
+                if (!strcmp(name, imod->ident[i].name)) {
+                    cur = &imod->ident[i];
+                    break;
+                }
+            }
+            if (!cur) {
+                /* go through includes */
+                for (j = 0; j < imod->inc_size; j++) {
+                    for (i = 0; i < imod->inc[j].submodule->ident_size; i++) {
+                        if (!strcmp(name, imod->inc[j].submodule->ident[i].name)) {
+                            cur = &imod->inc[j].submodule->ident[i];
+                            break;
+                        }
+                    }
+                }
+                if (!cur) {
+                    goto fail;
+                }
+            }
+
+            /* check that identity is derived from one of the type's base */
+            while (type->der) {
+                for (i = 0; i < type->info.ident.count; i++) {
+                    if (search_base_identity(cur, type->info.ident.ref[i])) {
+                        /* cur's base matches the type's base */
+                        make_implemented = 1;
+                        goto match;
+                    }
+                }
+                type = &type->der->type;
+            }
+            /* matching base not found */
+            LOGVAL(LYE_SPEC, LY_VLOG_LYD, node, "Identity used as identityref value is not implemented.");
+            goto fail;
+        }
     }
 
     /* go through all the derived types of all the bases */
     while (type->der) {
         for (i = 0; i < type->info.ident.count; ++i) {
             cur = type->info.ident.ref[i];
-            mod_name_iter = lys_main_module(cur->module)->name;
 
             if (cur->der) {
                 /* there are some derived identities */
                 for (u = 0; u < cur->der->number; u++) {
                     der = (struct lys_ident *)cur->der->set.g[u]; /* shortcut */
-                    mod_name_iter = lys_main_module(der->module)->name;
-                    if (!strcmp(der->name, name) &&
-                            !strncmp(mod_name_iter, mod_name, mod_name_len) && !mod_name_iter[mod_name_len]) {
+                    if (!strcmp(der->name, name) && lys_main_module(der->module) == imod) {
                         /* we have match */
                         cur = der;
                         goto match;
@@ -5421,6 +5541,7 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
         type = &type->der->type;
     }
 
+fail:
     LOGVAL(LYE_INRESOLV, LY_VLOG_LYD, node, "identityref", ident_name);
     return NULL;
 
@@ -5430,6 +5551,16 @@ match:
             LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, cur->name, node->schema->name);
             LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Identity \"%s\" is disabled by its if-feature condition.", cur->name);
             return NULL;
+        }
+    }
+    if (make_implemented) {
+        LOGVRB("Making \"%s\" module implemented because of identityref default value \"%s\" used in the implemented \"%s\" module",
+               imod->name, cur->name, mod->name);
+        if (lys_set_implemented(imod)) {
+            LOGERR(ly_errno, "Setting the module \"%s\" implemented because of used default identity \"%s\" failed.",
+                   imod->name, cur->name);
+            LOGVAL(LYE_SPEC, LY_VLOG_LYD, node, "Identity used as identityref value is not implemented.");
+            goto fail;
         }
     }
     return cur;
@@ -6481,7 +6612,6 @@ featurecheckdone:
         /* no break */
     case UNRES_TYPE_DFLT:
         stype = item;
-
         rc = check_default(stype, (const char **)str_snode, mod, parent_type);
         break;
     case UNRES_CHOICE_DFLT:

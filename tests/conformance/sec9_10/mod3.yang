@@ -14,6 +14,10 @@ module mod3 {
         }
     }
 
+    identity j4 {
+        base mod:j1;
+    }
+
     leaf-list llist {
         type my;
     }
@@ -22,7 +26,7 @@ module mod3 {
         type identityref {
             base mod:j1;
         }
-        default mod:j3;
+        default abc:j4;
     }
 
     leaf test2 {
@@ -30,7 +34,7 @@ module mod3 {
             base sub2;
         }
 
-        when "../test = 'mod:j3'";
+        when "../test = 'j4'";
     }
 
     identity i3 {
