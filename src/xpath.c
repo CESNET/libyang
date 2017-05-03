@@ -2441,14 +2441,22 @@ lyxp_parse_expr(const char *expr)
         } else if (expr[parsed] == '\'') {
 
             /* Literal with ' */
-            for (tok_len = 1; expr[parsed + tok_len] != '\''; ++tok_len);
+            for (tok_len = 1; (expr[parsed + tok_len] != '\0') && (expr[parsed + tok_len] != '\''); ++tok_len);
+            if (expr[parsed + tok_len] == '\0') {
+                LOGVAL(LYE_XPATH_NOEND, LY_VLOG_NONE, NULL, expr[parsed], &expr[parsed]);
+                goto error;
+            }
             ++tok_len;
             tok_type = LYXP_TOKEN_LITERAL;
 
         } else if (expr[parsed] == '\"') {
 
             /* Literal with " */
-            for (tok_len = 1; expr[parsed + tok_len] != '\"'; ++tok_len);
+            for (tok_len = 1; (expr[parsed + tok_len] != '\0') && (expr[parsed + tok_len] != '\"'); ++tok_len);
+            if (expr[parsed + tok_len] == '\0') {
+                LOGVAL(LYE_XPATH_NOEND, LY_VLOG_NONE, NULL, expr[parsed], &expr[parsed]);
+                goto error;
+            }
             ++tok_len;
             tok_type = LYXP_TOKEN_LITERAL;
 
