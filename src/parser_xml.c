@@ -539,7 +539,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     struct unres_data *unres = NULL;
     const struct lyd_node *rpc_act = NULL, *data_tree = NULL;
     struct lyd_node *result = NULL, *iter, *last, *reply_parent = NULL, *reply_top = NULL, *act_notif = NULL;
-    struct lyxml_elem *xmlstart, *xmlelem, *xmlaux;
+    struct lyxml_elem *xmlstart, *xmlelem, *xmlaux, *xmlfree = NULL;
     struct ly_set *set;
 
     ly_err_clean(1);
@@ -633,6 +633,10 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
             && !strcmp(xmlstart->name, "action") && !strcmp(xmlstart->ns->value, "urn:ietf:params:xml:ns:yang:1")) {
         /* it's an action, not a simple RPC */
         xmlstart = xmlstart->child;
+        if (options & LYD_OPT_DESTRUCT) {
+            /* free it later */
+            xmlfree = xmlstart->parent;
+        }
     }
 
     iter = last = NULL;
@@ -704,6 +708,9 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
         goto error;
     }
 
+    if (xmlfree) {
+        lyxml_free(ctx, xmlfree);
+    }
     free(unres->node);
     free(unres->type);
     free(unres);
@@ -713,6 +720,9 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
 
 error:
     lyd_free_withsiblings(result);
+    if (xmlfree) {
+        lyxml_free(ctx, xmlfree);
+    }
     free(unres->node);
     free(unres->type);
     free(unres);
