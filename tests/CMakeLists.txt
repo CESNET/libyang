@@ -52,7 +52,7 @@ if(ENABLE_VALGRIND_TESTS)
     find_program(valgrind_FOUND valgrind)
     if(valgrind_FOUND)
         foreach(test_name IN LISTS api_tests data_tests schema_yin_tests schema_tests conformance_tests)
-            add_test(${test_name}_valgrind valgrind --leak-check=full --show-leak-kinds=all
+            add_test(${test_name}_valgrind valgrind --leak-check=full --show-leak-kinds=all --error-exitcode=1
                  ${CMAKE_BINARY_DIR}/tests/${test_name})
             set_tests_properties(${test_name}_valgrind PROPERTIES ENVIRONMENT "LIBYANG_EXTENSIONS_PLUGINS_DIR=${CMAKE_BINARY_DIR}/src/extensions")
         endforeach(test_name)
