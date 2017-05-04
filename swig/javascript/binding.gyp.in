@@ -1,9 +1,9 @@
 {
 	'targets': [{
-		'target_name': 'libyang',
+		'target_name': 'lib@JAVASCRIPT_BUILD_TYPE@',
 		'sources': [
 			@libyang_LIB_SRCS_GYP@
-			'src/libyang_javascriptJAVASCRIPT_wrap.cxx' ],
+			'src/libyang_javascript_wrap.cxx' ],
 		'include_dirs': [@libyang_LIB_INCLUDE_DIRS_GYP@],
 		'libraries': ['-lpcre',],
 		'conditions': [

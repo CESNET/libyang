@@ -1,6 +1,6 @@
 ## Requirements
 
-* cmake >= 3.1
+* cmake >= 2.8.12
 * swig
 * node >= 0.10.x <7.0.x
 * npm

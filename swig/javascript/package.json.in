@@ -1,6 +1,6 @@
 {
-	"name" : "libyang",
-	"version": "1@LIBYANG_MAJOR_VERSION@.@LIBYANG_MINOR_VERSION@.@LIBYANG_MICRO_VERSION@",
+	"name" : "lib@JAVASCRIPT_BUILD_TYPE@",
+	"version": "@LIBYANG_MAJOR_VERSION@.@LIBYANG_MINOR_VERSION@.@LIBYANG_MICRO_VERSION@",
 	"description": "yang library for nodejs",
 	"license": "BSD-3-Clause",
 	"author": "Mislav Novakovic <mislav.novakovic@sartura.hr>",
