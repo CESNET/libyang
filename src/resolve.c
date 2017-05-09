@@ -7866,7 +7866,7 @@ unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM 
 int
 resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options)
 {
-    uint32_t i, j, first = 1, resolved = 0, del_items = 0, when_stmt = 0;
+    uint32_t i, j, first, resolved, del_items, stmt_count;
     int rc, progress, ignore_fail;
     struct lyd_node *parent;
 
@@ -7889,16 +7889,20 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
     ly_vlog_hide(1);
 
     /* when-stmt first */
+    first = 1;
+    stmt_count = 0;
+    resolved = 0;
+    del_items = 0;
     do {
         ly_err_clean(1);
         progress = 0;
         for (i = 0; i < unres->count; i++) {
-            if (unres->type[i] != UNRES_WHEN && unres->type[i] != UNRES_LEAFREF) {
+            if (unres->type[i] != UNRES_WHEN) {
                 continue;
             }
             if (first) {
                 /* count when-stmt nodes in unres list */
-                when_stmt++;
+                stmt_count++;
             }
 
             /* resolve when condition only when all parent when conditions are already resolved */
@@ -7989,10 +7993,10 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
             } /* else forward reference */
         }
         first = 0;
-    } while (progress && resolved < when_stmt);
+    } while (progress && resolved < stmt_count);
 
     /* do we have some unresolved when-stmt? */
-    if (when_stmt > resolved) {
+    if (stmt_count > resolved) {
         ly_vlog_hide(0);
         ly_err_repeat();
         return -1;
@@ -8014,6 +8018,45 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
         unres->type[i] = UNRES_RESOLVED;
         del_items--;
     }
+
+    /* now leafrefs */
+    first = 1;
+    stmt_count = 0;
+    resolved = 0;
+    do {
+        progress = 0;
+        for (i = 0; i < unres->count; i++) {
+            if (unres->type[i] != UNRES_LEAFREF) {
+                continue;
+            }
+            if (first) {
+                /* count leafref nodes in unres list */
+                stmt_count++;
+            }
+
+            rc = resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fail);
+            if (!rc) {
+                unres->type[i] = UNRES_RESOLVED;
+                ly_err_clean(1);
+                resolved++;
+                progress = 1;
+            } else if (rc == -1) {
+                ly_vlog_hide(0);
+                /* print only this last error */
+                resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fail);
+                return -1;
+            } /* else forward reference */
+        }
+        first = 0;
+    } while (progress && resolved < stmt_count);
+
+    /* do we have some unresolved leafrefs? */
+    if (stmt_count > resolved) {
+        ly_vlog_hide(0);
+        ly_err_repeat();
+        return -1;
+    }
+
     ly_vlog_hide(0);
 
     /* rest */
