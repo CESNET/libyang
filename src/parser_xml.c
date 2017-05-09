@@ -184,10 +184,15 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         /* parsing some internal node, we start with parent's schema pointer */
         schema = xml_data_search_schemanode(xml, parent->schema->child, options);
 
-        if (schema) {
-            if (!lys_node_module(schema)->implemented && ctx->data_clb) {
+        if (ctx->data_clb) {
+            if (schema && !lys_node_module(schema)->implemented) {
                 ctx->data_clb(ctx, lys_node_module(schema)->name, lys_node_module(schema)->ns,
                               LY_MODCLB_NOT_IMPLEMENTED, ctx->data_clb_data);
+            } else if (!schema) {
+                if (ctx->data_clb(ctx, NULL, xml->ns->value, 0, ctx->data_clb_data)) {
+                    /* context was updated, so try to find the schema node again */
+                    schema = xml_data_search_schemanode(xml, parent->schema->child, options);
+                }
             }
         }
     }
