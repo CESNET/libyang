@@ -235,7 +235,7 @@ info_print_typedef_with_include(struct lyout *out, const struct lys_module *mod)
     for (i = 0; i < mod->inc_size; ++i) {
         if (mod->inc[i].submodule->tpdf_size) {
             if (first) {
-                ly_print(out, "%s\n", mod->inc[i].submodule->tpdf[0].name);
+                ly_print(out, "%s (%s)\n", mod->inc[i].submodule->tpdf[0].name, mod->inc[i].submodule->name);
                 j = 1;
             } else {
                 j = 0;
@@ -243,7 +243,7 @@ info_print_typedef_with_include(struct lyout *out, const struct lys_module *mod)
             first = 0;
 
             for (; j < mod->inc[i].submodule->tpdf_size; ++j) {
-                ly_print(out, "%*s%s\n", INDENT_LEN, "", mod->inc[i].submodule->tpdf[j].name);
+                ly_print(out, "%*s%s (%s)\n", INDENT_LEN, "", mod->inc[i].submodule->tpdf[j].name, mod->inc[i].submodule->name);
             }
         }
     }
@@ -475,8 +475,8 @@ info_print_import_with_include(struct lyout *out, const struct lys_module *mod)
     for (j = 0; j < mod->inc_size; ++j) {
         if (mod->inc[j].submodule->imp_size) {
             if (first) {
-                ly_print(out, "%s:%s\n",
-                        mod->inc[j].submodule->imp[0].prefix, mod->inc[j].submodule->imp[0].module->name);
+                ly_print(out, "%s:%s (%s)\n",
+                        mod->inc[j].submodule->imp[0].prefix, mod->inc[j].submodule->imp[0].module->name, mod->inc[j].submodule->name);
                 i = 1;
             } else {
                 i = 0;
@@ -484,8 +484,8 @@ info_print_import_with_include(struct lyout *out, const struct lys_module *mod)
             first = 0;
 
             for (; i < mod->inc[j].submodule->imp_size; ++i) {
-                ly_print(out, "%*s%s:%s\n", INDENT_LEN, "",
-                        mod->inc[j].submodule->imp[i].prefix, mod->inc[j].submodule->imp[i].module->name);
+                ly_print(out, "%*s%s:%s (%s)\n", INDENT_LEN, "",
+                        mod->inc[j].submodule->imp[i].prefix, mod->inc[j].submodule->imp[i].module->name, mod->inc[j].submodule->name);
             }
         }
     }
@@ -577,7 +577,7 @@ info_print_ident_with_include(struct lyout *out, const struct lys_module *mod)
     for (j = 0; j < mod->inc_size; ++j) {
         if (mod->inc[j].submodule->ident_size) {
             if (first) {
-                ly_print(out, "%s\n", mod->inc[j].submodule->ident[0].name);
+                ly_print(out, "%s (%s)\n", mod->inc[j].submodule->ident[0].name, mod->inc[j].submodule->name);
                 i = 1;
             } else {
                 i = 0;
@@ -585,7 +585,7 @@ info_print_ident_with_include(struct lyout *out, const struct lys_module *mod)
             first = 0;
 
             for (; i < (signed)mod->inc[j].submodule->ident_size; ++i) {
-                ly_print(out, "%*s%s\n", INDENT_LEN, "", mod->inc[j].submodule->ident[i].name);
+                ly_print(out, "%*s%s (%s)\n", INDENT_LEN, "", mod->inc[j].submodule->ident[i].name, mod->inc[j].submodule->name);
             }
         }
     }
@@ -614,7 +614,7 @@ info_print_features_with_include(struct lyout *out, const struct lys_module *mod
     for (j = 0; j < mod->inc_size; ++j) {
         if (mod->inc[j].submodule->features_size) {
             if (first) {
-                ly_print(out, "%s\n", mod->inc[j].submodule->features[0].name);
+                ly_print(out, "%s (%s)\n", mod->inc[j].submodule->features[0].name, mod->inc[j].submodule->name);
                 i = 1;
             } else {
                 i = 0;
@@ -622,7 +622,7 @@ info_print_features_with_include(struct lyout *out, const struct lys_module *mod
             first = 0;
 
             for (; i < mod->inc[j].submodule->features_size; ++i) {
-                ly_print(out, "%*s%s\n", INDENT_LEN, "", mod->inc[j].submodule->features[i].name);
+                ly_print(out, "%*s%s (%s)\n", INDENT_LEN, "", mod->inc[j].submodule->features[i].name, mod->inc[j].submodule->name);
             }
         }
     }
@@ -633,10 +633,9 @@ info_print_features_with_include(struct lyout *out, const struct lys_module *mod
 }
 
 static void
-info_print_data_with_include(struct lyout *out, const struct lys_module *mod)
-
+info_print_data_mainmod_with_include(struct lyout *out, const struct lys_module *mod)
 {
-    int first = 1;
+    int first = 1, from_include;
     struct lys_node *node;
     const struct lys_module *mainmod = lys_main_module(mod);
 
@@ -645,14 +644,22 @@ info_print_data_with_include(struct lyout *out, const struct lys_module *mod)
     if (mainmod->data) {
         LY_TREE_FOR(mainmod->data, node) {
             if (node->module != mod) {
-                continue;
+                if (mainmod != mod) {
+                    continue;
+                } else {
+                    from_include = 1;
+                }
+            } else {
+                from_include = 0;
             }
 
             if (first) {
-                ly_print(out, "%s \"%s\"\n", strnodetype(node->nodetype), node->name);
+                ly_print(out, "%s \"%s\"%s%s%s\n", strnodetype(node->nodetype), node->name, (from_include ? " (" : ""),
+                                                   (from_include ? node->module->name : ""), (from_include ? ")" : ""));
                 first = 0;
             } else {
-                ly_print(out, "%*s%s \"%s\"\n", INDENT_LEN, "", strnodetype(node->nodetype), node->name);
+                ly_print(out, "%*s%s \"%s\"%s%s%s\n", INDENT_LEN, "", strnodetype(node->nodetype), node->name,
+                        (from_include ? " (" : ""), (from_include ? node->module->name : ""), (from_include ? ")" : ""));
             }
         }
     }
@@ -740,7 +747,7 @@ info_print_module(struct lyout *out, const struct lys_module *module)
     info_print_augment(out, module);
     info_print_deviation(out, module);
 
-    info_print_data_with_include(out, module);
+    info_print_data_mainmod_with_include(out, module);
 }
 
 static void
@@ -770,7 +777,7 @@ info_print_submodule(struct lyout *out, const struct lys_submodule *module)
     info_print_augment(out, (struct lys_module *)module);
     info_print_deviation(out, (struct lys_module *)module);
 
-    info_print_data_with_include(out, (struct lys_module *)module);
+    info_print_data_mainmod_with_include(out, (struct lys_module *)module);
 }
 
 static void
