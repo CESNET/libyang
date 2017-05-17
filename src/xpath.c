@@ -4251,20 +4251,14 @@ moveto_snode_get_root(const struct lys_node *cur_node, int options, enum lyxp_no
 
     if (options & LYXP_SNODE) {
         /* general root that can access everything */
-        for (root = cur_node; lys_parent(root); root = lys_parent(root));
-        root = lys_getnext(NULL, NULL, root->module, 0);
         *root_type = LYXP_NODE_ROOT;
-        return root;
-    }
-
-    if (cur_node->flags & LYS_CONFIG_W) {
+    } else if (cur_node->flags & LYS_CONFIG_W) {
         *root_type = LYXP_NODE_ROOT_CONFIG;
     } else {
         *root_type = LYXP_NODE_ROOT;
     }
 
-    for (root = cur_node; lys_parent(root); root = lys_parent(root));
-    root = lys_getnext(NULL, NULL, lys_node_module(root), 0);
+    root = lys_getnext(NULL, NULL, lys_node_module(cur_node), 0);
 
     return root;
 }
@@ -7635,6 +7629,8 @@ int
 lyxp_atomize(const char *expr, const struct lys_node *cur_snode, enum lyxp_node_type cur_snode_type,
              struct lyxp_set *set, int options)
 {
+    struct lys_node *ctx_snode;
+    enum lyxp_node_type ctx_snode_type;
     struct lyxp_expr *exp;
     uint16_t exp_idx = 0;
     int rc = -1;
@@ -7658,12 +7654,20 @@ lyxp_atomize(const char *expr, const struct lys_node *cur_snode, enum lyxp_node_
 
     print_expr_struct_debug(exp);
 
+    if (options & LYXP_SNODE_WHEN) {
+        /* for when the context node may need to be changed */
+        resolve_when_ctx_snode(cur_snode, &ctx_snode, &ctx_snode_type);
+    } else {
+        ctx_snode = (struct lys_node *)cur_snode;
+        ctx_snode_type = cur_snode_type;
+    }
+
     exp_idx = 0;
     memset(set, 0, sizeof *set);
     set->type = LYXP_SET_SNODE_SET;
-    set_snode_insert_node(set, cur_snode, cur_snode_type);
+    set_snode_insert_node(set, ctx_snode, ctx_snode_type);
 
-    rc = eval_expr(exp, &exp_idx, (struct lyd_node *)cur_snode, lys_node_module(cur_snode), set, options);
+    rc = eval_expr(exp, &exp_idx, (struct lyd_node *)ctx_snode, lys_node_module(ctx_snode), set, options);
 
 finish:
     lyxp_expr_free(exp);
@@ -7673,8 +7677,7 @@ finish:
 int
 lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int warn_on_fwd_ref)
 {
-    struct lys_node *ctx_snode;
-    enum lyxp_node_type ctx_snode_type;
+    struct lys_node *parent;
     struct lyxp_set tmp_set;
     uint8_t must_size = 0;
     uint32_t i;
@@ -7690,8 +7693,8 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int warn_on
 
     /* check if we will be traversing RPC output */
     opts = 0;
-    for (ctx_snode = (struct lys_node *)node; ctx_snode && (ctx_snode->nodetype != LYS_OUTPUT); ctx_snode = lys_parent(ctx_snode));
-    if (ctx_snode) {
+    for (parent = (struct lys_node *)node; parent && (parent->nodetype != LYS_OUTPUT); parent = lys_parent(parent));
+    if (parent) {
         opts |= LYXP_SNODE_OUTPUT;
     }
 
@@ -7755,8 +7758,7 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int warn_on
 
     /* check "when" */
     if (when) {
-        resolve_when_ctx_snode(node, &ctx_snode, &ctx_snode_type);
-        if (lyxp_atomize(when->cond, ctx_snode, ctx_snode_type, &tmp_set, LYXP_SNODE_WHEN | opts)) {
+        if (lyxp_atomize(when->cond, node, LYXP_NODE_ELEM, &tmp_set, LYXP_SNODE_WHEN | opts)) {
             free(tmp_set.val.snodes);
             if ((ly_errno != LY_EVALID) || ((ly_vecode != LYVE_XPATH_INSNODE) && (ly_vecode != LYVE_XPATH_INMOD))) {
                 LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "Invalid when condition \"%s\".", when->cond);

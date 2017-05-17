@@ -2105,7 +2105,7 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
                 start_parent = sibling;
 
                 /* update prev mod */
-                prev_mod = (start_parent->child ? start_parent->child->module : module);
+                prev_mod = (start_parent->child ? lys_node_module(start_parent->child) : module);
                 break;
             }
         }
@@ -3370,7 +3370,7 @@ resolve_data(const struct lys_module *mod, const char *name, int nam_len, struct
         }
         flag = 0;
         LY_TREE_FOR(parents->node[i] ? parents->node[i]->child : start, node) {
-            if (node->schema->module == mod && !strncmp(node->schema->name, name, nam_len)
+            if (lyd_node_module(node) == mod && !strncmp(node->schema->name, name, nam_len)
                     && node->schema->name[nam_len] == '\0') {
                 /* matching target */
                 if (!flag) {
@@ -3438,7 +3438,7 @@ resolve_data_node(const char *mod_name, int mod_name_len, const char *name, int 
         }
     } else {
         /* no prefix, module is the same as of current node */
-        mod = start->schema->module;
+        mod = lyd_node_module(start);
     }
 
     return resolve_data(mod, name, name_len, start, parents);

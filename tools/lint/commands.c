@@ -111,7 +111,8 @@ cmd_xpath_help(void)
 void
 cmd_list_help(void)
 {
-    printf("list [-f (xml | json)]\n");
+    printf("list [-f (xml | json)]\n\n");
+    printf("\tBasic list output (no -f): i - imported module, I - implemented module\n");
 }
 
 void
@@ -1016,10 +1017,22 @@ error:
         if (!strcmp(module->schema->name, "module")) {
             has_modules = 1;
 
+            /* conformance print */
+            LY_TREE_FOR(module->child, node) {
+                if (!strcmp(node->schema->name, "conformance-type")) {
+                    if (!strcmp(((struct lyd_node_leaf_list *)node)->value_str, "implement")) {
+                        printf("\tI");
+                    } else {
+                        printf("\ti");
+                    }
+                    break;
+                }
+            }
+
             /* module print */
             LY_TREE_FOR(module->child, node) {
                 if (!strcmp(node->schema->name, "name")) {
-                    printf("\t%s", ((struct lyd_node_leaf_list *)node)->value_str);
+                    printf(" %s", ((struct lyd_node_leaf_list *)node)->value_str);
                 } else if (!strcmp(node->schema->name, "revision")) {
                     if (((struct lyd_node_leaf_list *)node)->value_str[0] != '\0') {
                         printf("@%s", ((struct lyd_node_leaf_list *)node)->value_str);
