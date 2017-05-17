@@ -4251,20 +4251,14 @@ moveto_snode_get_root(const struct lys_node *cur_node, int options, enum lyxp_no
 
     if (options & LYXP_SNODE) {
         /* general root that can access everything */
-        for (root = cur_node; lys_parent(root); root = lys_parent(root));
-        root = lys_getnext(NULL, NULL, root->module, 0);
         *root_type = LYXP_NODE_ROOT;
-        return root;
-    }
-
-    if (cur_node->flags & LYS_CONFIG_W) {
+    } else if (cur_node->flags & LYS_CONFIG_W) {
         *root_type = LYXP_NODE_ROOT_CONFIG;
     } else {
         *root_type = LYXP_NODE_ROOT;
     }
 
-    for (root = cur_node; lys_parent(root); root = lys_parent(root));
-    root = lys_getnext(NULL, NULL, lys_node_module(root), 0);
+    root = lys_getnext(NULL, NULL, lys_node_module(cur_node), 0);
 
     return root;
 }
