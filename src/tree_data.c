@@ -1640,7 +1640,7 @@ error:
 static struct lys_node *
 lys_get_schema_inctx(struct lys_node *schema, struct ly_ctx *ctx)
 {
-    const struct lys_module *mod;
+    const struct lys_module *mod, *trg_mod;
     struct lys_node *parent, *first_sibling, *iter = NULL;
     struct ly_set *parents;
     unsigned int index;
@@ -1668,14 +1668,15 @@ lys_get_schema_inctx(struct lys_node *schema, struct ly_ctx *ctx)
     parent = parents->set.s[index];
     idx = 0;
     while ((mod = ly_ctx_get_module_iter(ctx, &idx))) {
+        trg_mod = lys_node_module(parent);
         /* check module name */
-        if (strcmp(mod->name, parent->module->name)) {
+        if (strcmp(mod->name, trg_mod->name)) {
             continue;
         }
 
         /* check revision */
-        if ((!mod->rev_size && !parent->module->rev_size) ||
-                (mod->rev_size && parent->module->rev_size && !strcmp(mod->rev[0].date, parent->module->rev[0].date))) {
+        if ((!mod->rev_size && !trg_mod->rev_size) ||
+                (mod->rev_size && trg_mod->rev_size && !strcmp(mod->rev[0].date, trg_mod->rev[0].date))) {
             /* we have match */
             break;
         }
@@ -1688,7 +1689,7 @@ lys_get_schema_inctx(struct lys_node *schema, struct ly_ctx *ctx)
 
     /* now search in the schema tree for the matching node */
     while (1) {
-        lys_get_sibling(first_sibling, parent->module->name, 0, parent->name, 0, parent->nodetype,
+        lys_get_sibling(first_sibling, trg_mod->name, 0, parent->name, 0, parent->nodetype,
                         (const struct lys_node **)&iter);
         if (!iter) {
             /* not found, iter will be used as NULL result */
@@ -1892,7 +1893,7 @@ lyd_merge_node_equal(struct lyd_node *node1, struct lyd_node *node2)
         sch1 = lyd_get_schema_inctx(node1, node2->schema->module->ctx);
         if (!sch1) {
             LOGERR(LY_EINVAL, "Target context does not contain schema node for the data node being "
-                   "merged (%s:%s).", node1->schema->module->name, node1->schema->name);
+                   "merged (%s:%s).", lyd_node_module(node1)->name, node1->schema->name);
             return 0;
         } else if (sch1 != node2->schema) {
             /* not matching nodes */
@@ -1931,7 +1932,7 @@ lyd_merge_node_equal(struct lyd_node *node1, struct lyd_node *node2)
                     child1_sch =  lyd_get_schema_inctx(child1, node2->schema->module->ctx);
                     if (!child1_sch) {
                         LOGERR(LY_EINVAL, "Target context does not contain schema node for the data node being "
-                               "merged (%s:%s).", child1->schema->module->name, child1->schema->name);
+                               "merged (%s:%s).", lyd_node_module(child1)->name, child1->schema->name);
                         return 0;
                     }
                 } else {
@@ -2251,7 +2252,7 @@ lyd_merge_to_ctx(struct lyd_node **trg, const struct lyd_node *src, int options,
                     sch = lys_get_schema_inctx(src_snode, ctx);
                     if (!sch) {
                         LOGERR(LY_EINVAL, "Target context does not contain schema node for the data node being "
-                               "merged (%s:%s).", src_snode->module->name, src_snode->name);
+                               "merged (%s:%s).", lys_node_module(src_snode)->name, src_snode->name);
                         goto error;
                     }
                 } else {
@@ -2279,7 +2280,7 @@ lyd_merge_to_ctx(struct lyd_node **trg, const struct lyd_node *src, int options,
             src_snode = lys_get_schema_inctx(src_snode, ctx);
             if (!src_snode) {
                 LOGERR(LY_EINVAL, "Target context does not contain schema node for the data node being "
-                       "merged (%s:%s).", src_snode->module->name, src_snode->name);
+                       "merged (%s:%s).", lys_node_module(src_snode)->name, src_snode->name);
                 goto error;
             }
         }
@@ -4460,8 +4461,8 @@ lyd_dup_common(struct lyd_node *parent, struct lyd_node *new, const struct lyd_n
     if (ctx) {
         /* we are changing the context, so we have to get the correct schema node in the new context */
         if (parent) {
-            trg_mod = lys_get_import_module(lys_node_module(parent->schema), NULL, 0, orig->schema->module->name,
-                                            strlen(orig->schema->module->name));
+            trg_mod = lys_get_import_module(parent->schema->module, NULL, 0, lyd_node_module(orig)->name,
+                                            strlen(lyd_node_module(orig)->name));
             if (!trg_mod) {
                 LOGINT;
                 return EXIT_FAILURE;
@@ -4476,7 +4477,7 @@ lyd_dup_common(struct lyd_node *parent, struct lyd_node *new, const struct lyd_n
 
         if (!new->schema) {
             LOGERR(LY_EINVAL, "Target context does not contain schema node for the data node being duplicated "
-                   "(%s:%s).", orig->schema->module->name, orig->schema->name);
+                   "(%s:%s).", lyd_node_module(orig)->name, orig->schema->name);
             return EXIT_FAILURE;
         }
     } else {
@@ -4821,7 +4822,7 @@ lyd_insert_attr(struct lyd_node *parent, const struct lys_module *mod, const cha
         }
     } else {
         /* no prefix -> module is the same as for the parent */
-        module = parent->schema->module;
+        module = lyd_node_module(parent);
     }
 
     pos = -1;
@@ -5275,8 +5276,8 @@ uniquecheck:
                         if (j) {
                             uniq_str[idx_uniq++] = ' ';
                         }
-                        r = lyd_build_relative_data_path(slist->module, first, slist->unique[i].expr[j],
-                                                         &uniq_str[idx_uniq]);
+                        r = lyd_build_relative_data_path(lys_node_module((struct lys_node *)slist), first,
+                                                         slist->unique[i].expr[j], &uniq_str[idx_uniq]);
                         if (r == -1) {
                             goto unique_errmsg_cleanup;
                         }
