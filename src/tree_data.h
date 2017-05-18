@@ -1062,6 +1062,18 @@ struct lyd_node *lyd_first_sibling(struct lyd_node *node);
 int lyd_validate(struct lyd_node **node, int options, void *var_arg);
 
 /**
+ * @brief Check restrictions applicable to the particular leaf/leaf-list on the given string value.
+ *
+ * Validates the value only using the types' restrictions. Do not check the rest of restrictions dependent on the
+ * data tree (must, when statements or uniqueness of the leaf-list item).
+ *
+ * @param[in] node Schema node of the leaf or leaf-list eventually holding the \p value.
+ * @param[in] value Value to be checked (NULL is checked as empty string).
+ * @return EXIT_SUCCESS if the \p value conforms to the restrictions, EXIT_FAILURE otherwise.
+ */
+int lyd_validate_value(struct lys_node *node, const char *value);
+
+/**
  * @brief Get know if the node contain (despite implicit or explicit) default value.
  *
  * @param[in] node The leaf or leaf-list to check. Note, that leaf-list is marked as default only when the complete

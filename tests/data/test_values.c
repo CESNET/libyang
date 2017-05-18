@@ -288,6 +288,61 @@ test_canonical(void **state)
     assert_string_equal(st->data, result);
 }
 
+static void
+test_validate_value(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    struct lys_node *a, *b, *c;
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  leaf target {"
+                    "    type string {"
+                    "      length 2..4;"
+                    "      pattern \'a*\';"
+                    "    }"
+                    "  }"
+                    "  leaf a {"
+                    "    type leafref {"
+                    "      path /x:target;"
+                    "    }"
+                    "  }"
+                    "  leaf b {"
+                    "    type int8 {"
+                    "      range -1..1;"
+                    "    }"
+                    "  }"
+                    "  leaf c {"
+                    "    type enumeration {"
+                    "      enum alfa;"
+                    "    }"
+                    "  }"
+                    "}";
+
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    a = mod->data->next;
+    assert_int_equal(lyd_validate_value(a, NULL), EXIT_FAILURE); /* empty string is too short */
+    assert_int_equal(lyd_validate_value(a, "a"), EXIT_FAILURE); /* a is still too short */
+    assert_int_equal(lyd_validate_value(a, "bbb"), EXIT_FAILURE); /* does not match the pattern */
+    assert_int_equal(lyd_validate_value(a, "aaaaa"), EXIT_FAILURE); /* too long */
+    assert_int_equal(lyd_validate_value(a, "aaa"), EXIT_SUCCESS); /* ok */
+
+    b = a->next;
+    assert_int_equal(lyd_validate_value(b, "2"), EXIT_FAILURE); /* too high */
+    assert_int_equal(lyd_validate_value(b, "-"), EXIT_FAILURE); /* does not match the type (yet) */
+    assert_int_equal(lyd_validate_value(b, "-2"), EXIT_FAILURE); /* too low */
+    assert_int_equal(lyd_validate_value(b, "0"), EXIT_SUCCESS); /* ok */
+
+    c = b->next;
+    assert_int_equal(lyd_validate_value(c, "a"), EXIT_FAILURE);
+    assert_int_equal(lyd_validate_value(c, "al"), EXIT_FAILURE);
+    assert_int_equal(lyd_validate_value(c, "alf"), EXIT_FAILURE);
+    assert_int_equal(lyd_validate_value(c, "alfa"), EXIT_SUCCESS); /* ok */
+    assert_int_equal(lyd_validate_value(c, "alfa "), EXIT_FAILURE);
+}
 
 int main(void)
 {
@@ -296,7 +351,8 @@ int main(void)
                     cmocka_unit_test_setup_teardown(test_xmltojson_identityref, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_xmltojson_identityref2, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_xmltojson_instanceid, setup_f, teardown_f),
-                    cmocka_unit_test_setup_teardown(test_canonical, setup_f, teardown_f),};
+                    cmocka_unit_test_setup_teardown(test_canonical, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_validate_value, setup_f, teardown_f),};
 
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
