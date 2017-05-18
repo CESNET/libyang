@@ -7761,17 +7761,19 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int warn_on
         if (lyxp_atomize(when->cond, node, LYXP_NODE_ELEM, &tmp_set, LYXP_SNODE_WHEN | opts)) {
             free(tmp_set.val.snodes);
             if ((ly_errno != LY_EVALID) || ((ly_vecode != LYVE_XPATH_INSNODE) && (ly_vecode != LYVE_XPATH_INMOD))) {
-                LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "Invalid when condition \"%s\".", when->cond);
+                LOGVAL(LYE_SPEC, LY_VLOG_LYS, (node->nodetype == LYS_AUGMENT ? ((struct lys_node_augment *)node)->target : node),
+                       "Invalid when condition \"%s\".", when->cond);
                 ret = -1;
                 goto finish;
             } else if (!warn_on_fwd_ref) {
-                LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "Invalid when condition \"%s\".", when->cond);
+                LOGVAL(LYE_SPEC, LY_VLOG_LYS, (node->nodetype == LYS_AUGMENT ? ((struct lys_node_augment *)node)->target : node),
+                       "Invalid when condition \"%s\".", when->cond);
                 ret = EXIT_FAILURE;
                 goto finish;
             }
             ly_vlog_hide(0);
             LOGWRN(ly_errmsg());
-            path = lys_path(node);
+            path = lys_path(node->nodetype == LYS_AUGMENT ? ((struct lys_node_augment *)node)->target : node);
             LOGWRN("Invalid when condition \"%s\". (%s)", when->cond, path);
             free(path);
             ly_vlog_hide(1);
