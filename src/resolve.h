@@ -158,6 +158,8 @@ int resolve_iffeature_compile(struct lys_iffeature *iffeat_expr, const char *val
                               int infeature, struct unres_schema *unres);
 uint8_t iff_getop(uint8_t *list, int pos);
 
+int inherit_config_flag(struct lys_node *node, int flags, int clear);
+
 void resolve_identity_backlink_update(struct lys_ident *der, struct lys_ident *base);
 
 struct lyd_node *resolve_data_descendant_schema_nodeid(const char *nodeid, struct lyd_node *start);
@@ -223,7 +225,7 @@ int unres_schema_dup(struct lys_module *mod, struct unres_schema *unres, void *i
  */
 int unres_schema_find(struct unres_schema *unres, int start_on_backwards, void *item, enum UNRES_ITEM type);
 
-void unres_schema_free(struct lys_module *module, struct unres_schema **unres);
+void unres_schema_free(struct lys_module *module, struct unres_schema **unres, int all);
 
 int resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int store, int ignore_fail,
                   struct lys_type **resolved_type);

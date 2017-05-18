@@ -485,7 +485,10 @@ int lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *c
 void lys_switch_deviations(struct lys_module *module);
 
 void lys_sub_module_remove_devs_augs(struct lys_module *module);
+
 void lys_sub_module_apply_devs_augs(struct lys_module *module);
+
+int apply_aug(struct lys_node_augment *augment, struct unres_schema *unres);
 
 void lys_submodule_module_data_free(struct lys_submodule *submodule);
 

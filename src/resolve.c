@@ -4160,14 +4160,8 @@ lys_check_xpath(struct lys_node *node, int check_place, int warn_on_fwd_ref)
             }
             if (parent->nodetype == LYS_AUGMENT) {
                 if (!((struct lys_node_augment *)parent)->target) {
-                    /* unresolved augment */
-                    if (parent->module->implemented) {
-                        /* skip for now (will be checked later) */
-                        return EXIT_FAILURE;
-                    } else {
-                        /* not implemented augment, skip resolving */
-                        return EXIT_SUCCESS;
-                    }
+                    /* unresolved augment, skip for now (will be checked later) */
+                    return EXIT_FAILURE;
                 } else {
                     parent = ((struct lys_node_augment *)parent)->target;
                     continue;
@@ -4234,7 +4228,7 @@ check_leafref_config(struct lys_node_leaf *leaf, struct lys_type *type)
 
 /**
  * @brief Passes config flag down to children, skips nodes without config flags.
- * Does not log.
+ * Logs.
  *
  * @param[in] node Siblings and their children to have flags changed.
  * @param[in] clear Flag to clear all config flags if parent is LYS_NOTIF, LYS_INPUT, LYS_OUTPUT, LYS_RPC.
@@ -4243,8 +4237,8 @@ check_leafref_config(struct lys_node_leaf *leaf, struct lys_type *type)
  *
  * @return 0 on success, -1 on error.
  */
-static int
-inherit_config_flag(struct lys_node *node, int flags, int clear, struct unres_schema *unres)
+int
+inherit_config_flag(struct lys_node *node, int flags, int clear)
 {
     struct lys_node_leaf *leaf;
 
@@ -4275,7 +4269,7 @@ inherit_config_flag(struct lys_node *node, int flags, int clear, struct unres_sc
             }
         }
         if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
-            if (inherit_config_flag(node->child, flags, clear, unres)) {
+            if (inherit_config_flag(node->child, flags, clear)) {
                 return -1;
             }
         } else if (node->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
@@ -4301,147 +4295,89 @@ inherit_config_flag(struct lys_node *node, int flags, int clear, struct unres_sc
 static int
 resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct unres_schema *unres)
 {
-    int rc, clear_config;
-    unsigned int u;
+    int rc;
     struct lys_node *sub;
-    const struct lys_node *aug_target, *parent;
     struct lys_module *mod;
-    struct lys_ext_instance *ext;
 
     assert(aug && !aug->target);
     mod = lys_main_module(aug->module);
 
     /* resolve target node */
-    rc = resolve_augment_schema_nodeid(aug->target_name, siblings, (siblings ? NULL : aug->module), mod->implemented, &aug_target);
+    rc = resolve_augment_schema_nodeid(aug->target_name, siblings, (siblings ? NULL : aug->module), mod->implemented,
+                                       (const struct lys_node **)&aug->target);
     if (rc == -1) {
         return -1;
     } else if (rc > 0) {
         LOGVAL(LYE_INCHAR, LY_VLOG_LYS, aug, aug->target_name[rc - 1], &aug->target_name[rc - 1]);
         return -1;
-    } else if (rc == 0 && aug->target) {
-        /* augment was resolved as a side effect of setting module implemented when
-         * resolving augment schema nodeid, so we are done here */
-        return 0;
     }
-    if (!aug_target && mod->implemented) {
+    if (!aug->target) {
         LOGVAL(LYE_INRESOLV, LY_VLOG_LYS, aug, "augment", aug->target_name);
         return EXIT_FAILURE;
     }
-    /* check that we want to connect augment into its target */
-    if (!mod->implemented) {
-        /* it must be augment only to the same module,
-         * otherwise we do not apply augment in not-implemented
-         * module. If the module is set to be implemented in future,
-         * the augment is being resolved and checked again */
-        if (!aug_target) {
-            /* target was not even resolved */
-            return EXIT_SUCCESS;
-        }
-        /* target was resolved, but it may refer another module */
-        for (sub = (struct lys_node *)aug_target; sub; sub = lys_parent(sub)) {
-            if (lys_node_module(sub) != mod) {
-                /* this is not an implemented module and the augment
-                 * target some other module, so avoid its connecting
-                 * to the target */
-                return EXIT_SUCCESS;
-            }
-        }
-    }
 
-    if (!aug->child) {
-        /* empty augment, warn about it ... */
-        LOGWRN("Augment \"%s\" without children.", aug->target_name);
-        /* ... but use it, since it has no child, no reconnection work is needed */
-        aug->target = (struct lys_node *)aug_target;
-
-        goto success;
-    }
+    /* set it as not applied for now */
+    aug->flags |= LYS_NOTAPPLIED;
 
     /* check for mandatory nodes - if the target node is in another module
      * the added nodes cannot be mandatory
      */
-    if (!aug->parent && (lys_node_module((struct lys_node *)aug) != lys_node_module(aug_target))
-            && (rc = lyp_check_mandatory_augment(aug, aug_target))) {
+    if (!aug->parent && (lys_node_module((struct lys_node *)aug) != lys_node_module(aug->target))
+            && (rc = lyp_check_mandatory_augment(aug, aug->target))) {
         return rc;
     }
 
     /* check augment target type and then augment nodes type */
-    if (aug_target->nodetype & (LYS_CONTAINER | LYS_LIST)) {
+    if (aug->target->nodetype & (LYS_CONTAINER | LYS_LIST)) {
         LY_TREE_FOR(aug->child, sub) {
             if (!(sub->nodetype & (LYS_ANYDATA | LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_USES
                                    | LYS_CHOICE | LYS_ACTION | LYS_NOTIF))) {
                 LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, aug, strnodetype(sub->nodetype), "augment");
                 LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Cannot augment \"%s\" with a \"%s\".",
-                       strnodetype(aug_target->nodetype), strnodetype(sub->nodetype));
+                       strnodetype(aug->target->nodetype), strnodetype(sub->nodetype));
                 return -1;
             }
         }
-    } else if (aug_target->nodetype & (LYS_CASE | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF)) {
+    } else if (aug->target->nodetype & (LYS_CASE | LYS_INPUT | LYS_OUTPUT | LYS_NOTIF)) {
         LY_TREE_FOR(aug->child, sub) {
             if (!(sub->nodetype & (LYS_ANYDATA | LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_USES | LYS_CHOICE))) {
                 LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, aug, strnodetype(sub->nodetype), "augment");
                 LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Cannot augment \"%s\" with a \"%s\".",
-                       strnodetype(aug_target->nodetype), strnodetype(sub->nodetype));
+                       strnodetype(aug->target->nodetype), strnodetype(sub->nodetype));
                 return -1;
             }
         }
-    } else if (aug_target->nodetype == LYS_CHOICE) {
+    } else if (aug->target->nodetype == LYS_CHOICE) {
         LY_TREE_FOR(aug->child, sub) {
             if (!(sub->nodetype & (LYS_CASE | LYS_ANYDATA | LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST))) {
                 LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, aug, strnodetype(sub->nodetype), "augment");
                 LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Cannot augment \"%s\" with a \"%s\".",
-                       strnodetype(aug_target->nodetype), strnodetype(sub->nodetype));
+                       strnodetype(aug->target->nodetype), strnodetype(sub->nodetype));
                 return -1;
             }
         }
     } else {
         LOGVAL(LYE_INARG, LY_VLOG_LYS, aug, aug->target_name, "target-node");
-        LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Invalid augment target node type \"%s\".", strnodetype(aug_target->nodetype));
+        LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Invalid augment target node type \"%s\".", strnodetype(aug->target->nodetype));
         return -1;
     }
 
     /* check identifier uniqueness as in lys_node_addchild() */
     LY_TREE_FOR(aug->child, sub) {
-        if (lys_check_id(sub, (struct lys_node *)aug_target, NULL)) {
+        if (lys_check_id(sub, aug->target, NULL)) {
             return -1;
         }
     }
 
-    /* finally reconnect augmenting data into the target - add them to the target child list,
-     * by setting aug->target we know the augment is fully resolved now */
-    aug->target = (struct lys_node *)aug_target;
-    if (aug->target->child) {
-        sub = aug->target->child->prev; /* remember current target's last node */
-        sub->next = aug->child;         /* connect augmenting data after target's last node */
-        aug->target->child->prev = aug->child->prev; /* new target's last node is last augmenting node */
-        aug->child->prev = sub;         /* finish connecting of both child lists */
-    } else {
-        aug->target->child = aug->child;
+    if (!aug->child) {
+        /* empty augment, nothing to connect, but it is techincally applied */
+        LOGWRN("Augment \"%s\" without children.", aug->target_name);
+        aug->flags &= ~LYS_NOTAPPLIED;
+    } else if (mod->implemented && apply_aug(aug, unres)) {
+        /* we tried to connect it, we failed */
+        return -1;
     }
 
-    /* inherit config information from actual parent */
-    for(parent = aug_target; parent && !(parent->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT | LYS_RPC)); parent = lys_parent(parent));
-    clear_config = (parent) ? 1 : 0;
-    LY_TREE_FOR(aug->child, sub) {
-        if (inherit_config_flag(sub, aug_target->flags & LYS_CONFIG_MASK, clear_config, unres)) {
-            return -1;
-        }
-    }
-
-    /* inherit extensions if any */
-    for (u = 0; u < aug->target->ext_size; u++) {
-        ext = aug->target->ext[u]; /* shortcut */
-        if (ext && ext->def->plugin && (ext->def->plugin->flags & LYEXT_OPT_INHERIT)) {
-            if (unres_schema_add_node(mod, unres, &ext, UNRES_EXT_FINALIZE, NULL) == -1) {
-                /* something really bad happend since the extension finalization is not actually
-                 * being resolved while adding into unres, so something more serious with the unres
-                 * list itself must happened */
-                return -1;
-            }
-        }
-    }
-
-success:
     if (mod->implemented) {
         /* make target modules also implemented */
         for (sub = aug->target; sub; sub = lys_parent(sub)) {
@@ -7307,7 +7243,7 @@ unres_schema_free_item(struct ly_ctx *ctx, struct unres_schema *unres, uint32_t 
 }
 
 void
-unres_schema_free(struct lys_module *module, struct unres_schema **unres)
+unres_schema_free(struct lys_module *module, struct unres_schema **unres, int all)
 {
     uint32_t i;
     unsigned int unresolved = 0;
@@ -7316,10 +7252,10 @@ unres_schema_free(struct lys_module *module, struct unres_schema **unres)
         return;
     }
 
-    assert(module || (*unres)->count == 0);
+    assert(module || ((*unres)->count == 0));
 
     for (i = 0; i < (*unres)->count; ++i) {
-        if ((*unres)->module[i] != module) {
+        if (!all && ((*unres)->module[i] != module)) {
             if ((*unres)->type[i] != UNRES_RESOLVED) {
                 unresolved++;
             }
@@ -7331,7 +7267,7 @@ unres_schema_free(struct lys_module *module, struct unres_schema **unres)
     }
 
     /* free it all */
-    if (!module || (!unresolved && !module->type)) {
+    if (!module || all || (!unresolved && !module->type)) {
         free((*unres)->item);
         free((*unres)->type);
         free((*unres)->str_snode);

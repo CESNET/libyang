@@ -2687,14 +2687,14 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
         lys_free(tmp_mod, NULL, 0);
     }
 
-    unres_schema_free(NULL, &unres);
+    unres_schema_free(NULL, &unres, 0);
     lyp_check_circmod_pop(ctx);
     LOGVRB("Module \"%s\" successfully parsed.", module->name);
     return module;
 
 error:
     /* cleanup */
-    unres_schema_free(module, &unres);
+    unres_schema_free(module, &unres, 1);
     if (!module || !module->name) {
         free(module);
         if (ly_vecode != LYVE_SUBMODULE) {
@@ -2752,7 +2752,7 @@ yang_read_submodule(struct lys_module *module, const char *data, unsigned int si
 
 error:
     /* cleanup */
-    unres_schema_free((struct lys_module *)submodule, &unres);
+    unres_schema_free((struct lys_module *)submodule, &unres, 0);
 
     if (!submodule || !submodule->name) {
         free(submodule);

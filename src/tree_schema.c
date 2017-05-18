@@ -3953,25 +3953,52 @@ next_iter:
     return ret_set;
 }
 
-static void
-apply_aug(struct lys_node_augment *augment)
+/* logs */
+int
+apply_aug(struct lys_node_augment *augment, struct unres_schema *unres)
 {
-    struct lys_node *last;
+    struct lys_node *child, *parent;
+    int clear_config;
+    unsigned int u;
+    struct lys_ext_instance *ext;
 
     assert(augment->target && (augment->flags & LYS_NOTAPPLIED));
 
     /* reconnect augmenting data into the target - add them to the target child list */
     if (augment->target->child) {
-        last = augment->target->child->prev;
-        last->next = augment->child;
+        child = augment->target->child->prev;
+        child->next = augment->child;
         augment->target->child->prev = augment->child->prev;
-        augment->child->prev = last;
+        augment->child->prev = child;
     } else {
         augment->target->child = augment->child;
     }
 
+    /* inherit config information from actual parent */
+    for (parent = augment->target; parent && !(parent->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT | LYS_RPC)); parent = lys_parent(parent));
+    clear_config = (parent) ? 1 : 0;
+    LY_TREE_FOR(augment->child, child) {
+        if (inherit_config_flag(child, augment->target->flags & LYS_CONFIG_MASK, clear_config)) {
+            return -1;
+        }
+    }
+
+    /* inherit extensions if any */
+    for (u = 0; u < augment->target->ext_size; u++) {
+        ext = augment->target->ext[u]; /* shortcut */
+        if (ext && ext->def->plugin && (ext->def->plugin->flags & LYEXT_OPT_INHERIT)) {
+            if (unres_schema_add_node(lys_main_module(augment->module), unres, &ext, UNRES_EXT_FINALIZE, NULL) == -1) {
+                /* something really bad happend since the extension finalization is not actually
+                 * being resolved while adding into unres, so something more serious with the unres
+                 * list itself must happened */
+                return -1;
+            }
+        }
+    }
+
     /* remove the flag about not applicability */
     augment->flags &= ~LYS_NOTAPPLIED;
+    return EXIT_SUCCESS;
 }
 
 static void
@@ -3979,8 +4006,8 @@ remove_aug(struct lys_node_augment *augment)
 {
     struct lys_node *last, *elem;
 
-    if (!augment->target || (augment->flags & LYS_NOTAPPLIED)) {
-        /* skip not resolved augments OR already not applied augment */
+    if (augment->flags & LYS_NOTAPPLIED) {
+        /* skip already not applied augment */
         return;
     }
 
@@ -4024,14 +4051,14 @@ remove_aug(struct lys_node_augment *augment)
  * @param[in] module - the module where the deviation is defined
  */
 static void
-lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module)
+lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module, struct unres_schema *unres)
 {
     int ret;
     char *parent_path;
     struct lys_node *target = NULL, *parent;
 
     if (!dev->deviate) {
-        return ;
+        return;
     }
 
     if (dev->deviate[0].mod == LY_DEVIATE_NO) {
@@ -4054,7 +4081,7 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module)
                         if (parent->child == dev->orig_node) {
                             /* the only node in augment */
                             dev->orig_node->flags |= LYS_NOTAPPLIED;
-                            apply_aug((struct lys_node_augment *)parent);
+                            apply_aug((struct lys_node_augment *)parent, unres);
                         } else {
                             /* other nodes from augment applied, nothing more needed in target, everything was done
                              * by lys_node_addchild() */
@@ -4122,8 +4149,15 @@ lys_switch_deviations(struct lys_module *module)
     uint32_t i = 0, j;
     const struct lys_module *mod;
     const char *ptr;
+    struct unres_schema *unres;
 
     if (module->deviated) {
+        unres = calloc(1, sizeof *unres);
+        if (!unres) {
+            LOGMEM;
+            return;
+        }
+
         while ((mod = ly_ctx_get_module_iter(module->ctx, &i))) {
             if (mod == module) {
                 continue;
@@ -4132,7 +4166,7 @@ lys_switch_deviations(struct lys_module *module)
             for (j = 0; j < mod->deviation_size; ++j) {
                 ptr = strstr(mod->deviation[j].target_name, module->name);
                 if (ptr && ptr[strlen(module->name)] == ':') {
-                    lys_switch_deviation(&mod->deviation[j], mod);
+                    lys_switch_deviation(&mod->deviation[j], mod, unres);
                 }
             }
         }
@@ -4142,20 +4176,25 @@ lys_switch_deviations(struct lys_module *module)
         } else {
             module->deviated = 2;
         }
+
+        if (unres->count) {
+            resolve_unres_schema(module, unres);
+        }
+        unres_schema_free(module, &unres, 1);
     }
 }
 
 static void
-apply_dev(struct lys_deviation *dev, const struct lys_module *module)
+apply_dev(struct lys_deviation *dev, const struct lys_module *module, struct unres_schema *unres)
 {
-    lys_switch_deviation(dev, module);
+    lys_switch_deviation(dev, module, unres);
 
     assert(dev->orig_node);
     lys_node_module(dev->orig_node)->deviated = 1;
 }
 
 static void
-remove_dev(struct lys_deviation *dev, const struct lys_module *module)
+remove_dev(struct lys_deviation *dev, const struct lys_module *module, struct unres_schema *unres)
 {
     uint32_t idx = 0, j;
     const struct lys_module *mod;
@@ -4168,7 +4207,7 @@ remove_dev(struct lys_deviation *dev, const struct lys_module *module)
         LOGINT;
         return;
     }
-    lys_switch_deviation(dev, module);
+    lys_switch_deviation(dev, module, unres);
 
     /* clear the deviation flag if possible */
     while ((mod = ly_ctx_get_module_iter(module->ctx, &idx))) {
@@ -4198,36 +4237,56 @@ void
 lys_sub_module_apply_devs_augs(struct lys_module *module)
 {
     uint8_t u, v;
+    struct unres_schema *unres;
+
+    unres = calloc(1, sizeof *unres);
+    if (!unres) {
+        LOGMEM;
+        return;
+    }
 
     /* remove applied deviations */
     for (u = 0; u < module->deviation_size; ++u) {
-        apply_dev(&module->deviation[u], module);
+        apply_dev(&module->deviation[u], module, unres);
     }
     /* remove applied augments */
     for (u = 0; u < module->augment_size; ++u) {
-        apply_aug(&module->augment[u]);
+        apply_aug(&module->augment[u], unres);
     }
 
     /* remove deviation and augments defined in submodules */
     for (v = 0; v < module->inc_size; ++v) {
         for (u = 0; u < module->inc[v].submodule->deviation_size; ++u) {
-            apply_dev(&module->inc[v].submodule->deviation[u], module);
+            apply_dev(&module->inc[v].submodule->deviation[u], module, unres);
         }
 
         for (u = 0; u < module->inc[v].submodule->augment_size; ++u) {
-            apply_aug(&module->inc[v].submodule->augment[u]);
+            apply_aug(&module->inc[v].submodule->augment[u], unres);
         }
     }
+
+    if (unres->count) {
+        resolve_unres_schema(module, unres);
+    }
+    /* nothing else left to do even if something is not resolved */
+    unres_schema_free(module, &unres, 1);
 }
 
 void
 lys_sub_module_remove_devs_augs(struct lys_module *module)
 {
     uint8_t u, v;
+    struct unres_schema *unres;
+
+    unres = calloc(1, sizeof *unres);
+    if (!unres) {
+        LOGMEM;
+        return;
+    }
 
     /* remove applied deviations */
     for (u = 0; u < module->deviation_size; ++u) {
-        remove_dev(&module->deviation[u], module);
+        remove_dev(&module->deviation[u], module, unres);
     }
     /* remove applied augments */
     for (u = 0; u < module->augment_size; ++u) {
@@ -4237,13 +4296,19 @@ lys_sub_module_remove_devs_augs(struct lys_module *module)
     /* remove deviation and augments defined in submodules */
     for (v = 0; v < module->inc_size && module->inc[v].submodule; ++v) {
         for (u = 0; u < module->inc[v].submodule->deviation_size; ++u) {
-            remove_dev(&module->inc[v].submodule->deviation[u], module);
+            remove_dev(&module->inc[v].submodule->deviation[u], module, unres);
         }
 
         for (u = 0; u < module->inc[v].submodule->augment_size; ++u) {
             remove_aug(&module->inc[v].submodule->augment[u]);
         }
     }
+
+    if (unres->count) {
+        resolve_unres_schema(module, unres);
+    }
+    /* nothing else left to do even if something is not resolved */
+    unres_schema_free(module, &unres, 1);
 }
 
 static int
@@ -4254,9 +4319,9 @@ lys_set_implemented_recursion(struct lys_module *module, struct unres_schema *un
 
     for (i = 0; i < module->augment_size; i++) {
         /* apply augment */
-        if (!module->augment[i].target
-                && (unres_schema_add_node(module, unres, &module->augment[i], UNRES_AUGMENT, NULL) == -1)) {
-            return -1;
+        assert(module->augment[i].target);
+        if (apply_aug(&module->augment[i], unres)) {
+            return EXIT_FAILURE;
         }
     }
 
@@ -4372,10 +4437,8 @@ lys_set_implemented(const struct lys_module *module)
     for (i = 0; i < module->inc_size && module->inc[i].submodule; ++i) {
         for (j = 0; j < module->inc[i].submodule->augment_size; j++) {
             /* apply augment */
-            if (!module->inc[i].submodule->augment[j].target
-                    && (unres_schema_add_node((struct lys_module *)module->inc[j].submodule, unres,
-                                              &module->inc[i].submodule->augment[j], UNRES_AUGMENT, NULL) == -1)) {
-
+            assert(module->inc[i].submodule->augment[j].target);
+            if (apply_aug(&module->inc[i].submodule->augment[j], unres)) {
                 goto error;
             }
         }
@@ -4395,19 +4458,18 @@ lys_set_implemented(const struct lys_module *module)
     if (unres->count && resolve_unres_schema((struct lys_module *)module, unres)) {
         goto error;
     }
-    unres_schema_free((struct lys_module *)module, &unres);
+    unres_schema_free(NULL, &unres, 0);
 
     return EXIT_SUCCESS;
 
 error:
-
     if (disabled) {
         /* set it back disabled */
         lys_set_disabled(module);
     }
 
     ((struct lys_module *)module)->implemented = 0;
-    unres_schema_free((struct lys_module *)module, &unres);
+    unres_schema_free((struct lys_module *)module, &unres, 1);
     return EXIT_FAILURE;
 }
 

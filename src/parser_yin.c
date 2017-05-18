@@ -7222,7 +7222,7 @@ yin_read_submodule(struct lys_module *module, const char *data, struct unres_sch
 
 error:
     /* cleanup */
-    unres_schema_free((struct lys_module *)submodule, &unres);
+    unres_schema_free((struct lys_module *)submodule, &unres, 0);
     lyxml_free(module->ctx, yin);
 
     if (!submodule) {
@@ -7346,14 +7346,14 @@ yin_read_module_(struct ly_ctx *ctx, struct lyxml_elem *yin, const char *revisio
         assert(module);
     }
 
-    unres_schema_free(NULL, &unres);
+    unres_schema_free(NULL, &unres, 0);
     lyp_check_circmod_pop(ctx);
     LOGVRB("Module \"%s\" successfully parsed.", module->name);
     return module;
 
 error:
     /* cleanup */
-    unres_schema_free(module, &unres);
+    unres_schema_free(module, &unres, 1);
 
     if (!module) {
         if (ly_vecode != LYVE_SUBMODULE) {
