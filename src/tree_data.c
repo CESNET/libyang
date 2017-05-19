@@ -1155,12 +1155,41 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
                         ly_errno = LY_EINVAL;
                         return NULL;
                     }
-                    if (!value || strcmp(((struct lyd_node_leaf_list *)parent)->value_str, value)) {
-                        r = lyd_change_leaf((struct lyd_node_leaf_list *)parent, value);
-                        if (r) {
-                            return NULL;
+                    const char * const tree_value_str = ((struct lyd_node_leaf_list *)parent)->value_str;
+                    if (!value || strcmp(tree_value_str, value)) {
+                        int are_the_same = 0;
+                        if (((struct lys_node_leaf *)parent->schema)->type.base == LY_TYPE_DEC64
+                                || (((struct lys_node_leaf *)parent->schema)->type.base == LY_TYPE_LEAFREF
+                                    && ((struct lys_node_leaf *)parent->schema)->type.info.lref.target->type.base == LY_TYPE_DEC64)) {
+                            /* Floating point numbers are troublesome, and even though decimal64 is not a floating point
+                             * number, it is pretty troublesome, too. Various callers might produce value_str with a
+                             * different precision because some libraries such as sysrepo actually implement decimal64
+                             * as a double and do not track the number of digits.
+                             *
+                             * If the prefix matches and the rest are zeros, they should be considered equal, though.
+                             *
+                             * Oh, and we must check not just decimal64, but also leafrefs which point to a decimal64.
+                             */
+                            const size_t tree_val_size = strlen(tree_value_str);
+                            const size_t other_size = strlen(value);
+                            const size_t smaller_size = tree_val_size >= other_size ? other_size : tree_val_size;
+                            const size_t bigger_size = tree_val_size >= other_size ? tree_val_size : other_size;
+                            const char * const val_shorter = tree_val_size >= other_size ? value : tree_value_str;
+                            const char * const val_longer = tree_val_size >= other_size ? tree_value_str : value;
+
+                            are_the_same = strncmp(val_shorter, val_longer, smaller_size) == 0;
+                            for (size_t i = smaller_size; are_the_same && (i < bigger_size); ++i) {
+                                are_the_same &= (val_longer[i] == '0');
+                            }
                         }
-                        return parent;
+
+                        if (!are_the_same) {
+                            r = lyd_change_leaf((struct lyd_node_leaf_list *)parent, value);
+                            if (r) {
+                                return NULL;
+                            }
+                            return parent;
+                        }
                     }
                     break;
                 case LYS_ANYXML:
