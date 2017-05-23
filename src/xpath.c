@@ -4507,8 +4507,9 @@ moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, const char *qname,
 {
     int i, orig_used, pref_len, idx, temp_ctx = 0;
     const char *ptr, *name_dict = NULL; /* optimalization - so we can do (==) instead (!strncmp(...)) in moveto_node_check() */
-    struct lys_module *moveto_mod;
-    const struct lys_node *sub;
+    struct lys_module *moveto_mod, *tmp_mod;
+    const struct lys_node *sub, *start_parent;
+    struct lys_node_augment *last_aug;
     struct ly_ctx *ctx;
     enum lyxp_node_type root_type;
 
@@ -4548,11 +4549,13 @@ moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, const char *qname,
         }
         set->val.snodes[i].in_ctx = 0;
 
+        start_parent = set->val.snodes[i].snode;
+
         if ((set->val.snodes[i].type == LYXP_NODE_ROOT_CONFIG) || (set->val.snodes[i].type == LYXP_NODE_ROOT)) {
             /* it can actually be in any module, it's all <running>, but we know it's moveto_mod (if set),
              * so use it directly (root node itself is useless in this case) */
             sub = NULL;
-            while ((sub = lys_getnext(sub, NULL, (moveto_mod ? moveto_mod : lys_node_module(set->val.snodes[i].snode)), 0))) {
+            while ((sub = lys_getnext(sub, NULL, (moveto_mod ? moveto_mod : lys_node_module(start_parent)), 0))) {
                 if (!moveto_snode_check(sub, root_type, name_dict, moveto_mod, options)) {
                     idx = set_snode_insert_node(set, sub, LYXP_NODE_ELEM);
                     /* we need to prevent these nodes to be considered in this moveto */
@@ -4564,9 +4567,22 @@ moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, const char *qname,
             }
 
         /* skip nodes without children - leaves, leaflists, and anyxmls (ouput root will eval to true) */
-        } else if (!(set->val.snodes[i].snode->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
+        } else if (!(start_parent->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
+            /* the target may be from an augment that was not connected */
+            last_aug = NULL;
+            if ((moveto_mod && !moveto_mod->implemented) || (!moveto_mod && !lys_node_module(start_parent)->implemented)) {
+                if (moveto_mod) {
+                    tmp_mod = moveto_mod;
+                } else {
+                    tmp_mod = lys_node_module(start_parent);
+                }
+
+get_next_augment:
+                last_aug = lys_getnext_target_aug(last_aug, tmp_mod, start_parent);
+            }
+
             sub = NULL;
-            while ((sub = lys_getnext(sub, set->val.snodes[i].snode, NULL, 0))) {
+            while ((sub = lys_getnext(sub, (last_aug ? (struct lys_node *)last_aug : start_parent), NULL, 0))) {
                 if (!moveto_snode_check(sub, root_type, name_dict, moveto_mod, options)) {
                     idx = set_snode_insert_node(set, sub, LYXP_NODE_ELEM);
                     if ((idx < orig_used) && (idx > i)) {
@@ -4574,6 +4590,11 @@ moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, const char *qname,
                         temp_ctx = 1;
                     }
                 }
+            }
+
+            if (last_aug) {
+                /* try also other augments */
+                goto get_next_augment;
             }
         }
     }

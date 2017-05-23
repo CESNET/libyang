@@ -387,7 +387,7 @@ const struct lys_module *lys_get_import_module(const struct lys_module *module, 
                                                const char *name, int name_len);
 
 /**
- * @Brief Find an import from \p module with matching namespace, the \p module itself is also considered.
+ * @brief Find an import from \p module with matching namespace, the \p module itself is also considered.
  *
  * @param[in] module Module with imports.
  * @param[in] ns Namespace to be found.
@@ -415,11 +415,10 @@ int lys_get_sibling(const struct lys_node *siblings, const char *mod_name, int m
                     int nam_len, LYS_NODE type, const struct lys_node **ret);
 
 /**
- * @brief Find a specific sibling that can appear in the data. Does not log.
+ * @brief Find a specific node that can only appear in the data. Does not log.
  *
- * @param[in] mod Main module with the node.
- * @param[in] siblings Siblings to consider. They are first adjusted to
- *                     point to the first sibling.
+ * @param[in] mod Main module with the node. Must be set if \p parent == NULL (top-level node).
+ * @param[in] parent Parent of the node. Must be set if \p mod == NULL (nested node).
  * @param[in] name Node name.
  * @param[in] nam_len Node \p name length.
  * @param[in] type ORed desired type of the node. 0 means any (data node) type.
@@ -427,8 +426,8 @@ int lys_get_sibling(const struct lys_node *siblings, const char *mod_name, int m
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on fail.
  */
-int lys_get_data_sibling(const struct lys_module *mod, const struct lys_node *siblings, const char *name, int nam_len,
-                         LYS_NODE type, const struct lys_node **ret);
+int lys_getnext_data(const struct lys_module *mod, const struct lys_node *parent, const char *name, int nam_len,
+                     LYS_NODE type, const struct lys_node **ret);
 
 /**
  * @brief Compare 2 list or leaf-list data nodes if they are the same from the YANG point of view. Logs directly.
@@ -501,6 +500,11 @@ const struct lys_module *lys_parse_mem_(struct ly_ctx *ctx, const char *data, LY
  */
 int lys_is_key(struct lys_node_list *list, struct lys_node_leaf *leaf);
 
+/**
+ * @brief Get next augment from \p mod augmenting \p aug_target
+ */
+struct lys_node_augment *lys_getnext_target_aug(struct lys_node_augment *last, const struct lys_module *mod,
+                                                const struct lys_node *aug_target);
 
 LY_STMT lys_snode2stmt(LYS_NODE nodetype);
 struct lys_node ** lys_child(const struct lys_node *node, LYS_NODE nodetype);

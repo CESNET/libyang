@@ -3445,8 +3445,7 @@ lyp_deviation_apply_ext(struct lys_module *module)
 
     for (i = 0; i < module->deviation_size; i++) {
         target = NULL;
-        resolve_augment_schema_nodeid(module->deviation[i].target_name, NULL, module, 0,
-                                      (const struct lys_node **)&target);
+        resolve_augment_schema_nodeid(module->deviation[i].target_name, NULL, module, (const struct lys_node **)&target);
         if (!target) {
             /* LY_DEVIATE_NO */
             continue;
@@ -3604,6 +3603,19 @@ lyp_ctx_add_module(struct lys_module *module)
     int i;
 
     assert(!lyp_ctx_check_module(module));
+
+#ifndef NDEBUG
+    int j;
+    /* check that all augments are resolved */
+    for (i = 0; i < module->augment_size; ++i) {
+        assert(module->augment[i].target);
+    }
+    for (i = 0; i < module->inc_size; ++i) {
+        for (j = 0; j < module->inc[i].submodule->augment_size; ++j) {
+            assert(module->inc[i].submodule->augment[j].target);
+        }
+    }
+#endif
 
     /* add to the context's list of modules */
     if (module->ctx->models.used == module->ctx->models.size) {

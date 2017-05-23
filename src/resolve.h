@@ -165,7 +165,7 @@ void resolve_identity_backlink_update(struct lys_ident *der, struct lys_ident *b
 struct lyd_node *resolve_data_descendant_schema_nodeid(const char *nodeid, struct lyd_node *start);
 
 int resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, const struct lys_module *module,
-                                  int implement, const struct lys_node **ret);
+                                  const struct lys_node **ret);
 
 int resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *start, int ret_nodetype,
                                      int no_innerlist, const struct lys_node **ret);
@@ -238,7 +238,6 @@ void unres_data_del(struct unres_data *unres, uint32_t i);
 
 int resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options);
 int schema_nodeid_siblingcheck(const struct lys_node *sibling, const char *id, const struct lys_module *module,
-                               const char *mod_name, int mod_name_len, int implemented_mod,
-                               const struct lys_node **start_parent);
+                               const char *mod_name, int mod_name_len, const struct lys_node **start_parent);
 
 #endif /* _RESOLVE_H */

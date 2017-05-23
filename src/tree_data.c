@@ -630,8 +630,8 @@ lyd_new(struct lyd_node *parent, const struct lys_module *module, const char *na
         return NULL;
     }
 
-    if (lys_get_data_sibling(module, siblings, name, strlen(name), LYS_CONTAINER | LYS_LIST | LYS_NOTIF | LYS_RPC | LYS_ACTION, &snode)
-            || !snode) {
+    if (lys_getnext_data(module, lys_parent(siblings), name, strlen(name), LYS_CONTAINER | LYS_LIST | LYS_NOTIF
+                         | LYS_RPC | LYS_ACTION, &snode) || !snode) {
         ly_errno = LY_EINVAL;
         return NULL;
     }
@@ -716,7 +716,7 @@ lyd_new_leaf(struct lyd_node *parent, const struct lys_module *module, const cha
         return NULL;
     }
 
-    if (lys_get_data_sibling(module, siblings, name, strlen(name), LYS_LEAFLIST | LYS_LEAF, &snode) || !snode) {
+    if (lys_getnext_data(module, lys_parent(siblings), name, strlen(name), LYS_LEAFLIST | LYS_LEAF, &snode) || !snode) {
         ly_errno = LY_EINVAL;
         return NULL;
     }
@@ -951,7 +951,7 @@ lyd_new_anydata(struct lyd_node *parent, const struct lys_module *module, const 
         return NULL;
     }
 
-    if (lys_get_data_sibling(module, siblings, name, strlen(name), LYS_ANYDATA, &snode) || !snode) {
+    if (lys_getnext_data(module, lys_parent(siblings), name, strlen(name), LYS_ANYDATA, &snode) || !snode) {
         return NULL;
     }
 
@@ -974,8 +974,8 @@ lyd_new_output(struct lyd_node *parent, const struct lys_module *module, const c
         return NULL;
     }
 
-    if (lys_get_data_sibling(module, siblings, name, strlen(name), LYS_CONTAINER | LYS_LIST | LYS_NOTIF | LYS_RPC | LYS_ACTION, &snode)
-            || !snode) {
+    if (lys_getnext_data(module, lys_parent(siblings), name, strlen(name), LYS_CONTAINER | LYS_LIST | LYS_NOTIF
+                         | LYS_RPC | LYS_ACTION, &snode) || !snode) {
         return NULL;
     }
 
@@ -998,7 +998,7 @@ lyd_new_output_leaf(struct lyd_node *parent, const struct lys_module *module, co
         return NULL;
     }
 
-    if (lys_get_data_sibling(module, siblings, name, strlen(name), LYS_LEAFLIST | LYS_LEAF, &snode) || !snode) {
+    if (lys_getnext_data(module, lys_parent(siblings), name, strlen(name), LYS_LEAFLIST | LYS_LEAF, &snode) || !snode) {
         ly_errno = LY_EINVAL;
         return NULL;
     }
@@ -1023,7 +1023,7 @@ lyd_new_output_anydata(struct lyd_node *parent, const struct lys_module *module,
         return NULL;
     }
 
-    if (lys_get_data_sibling(module, siblings, name, strlen(name), LYS_ANYDATA, &snode) || !snode) {
+    if (lys_getnext_data(module, lys_parent(siblings), name, strlen(name), LYS_ANYDATA, &snode) || !snode) {
         return NULL;
     }
 
@@ -4506,8 +4506,8 @@ lyd_dup_common(struct lyd_node *parent, struct lyd_node *new, const struct lyd_n
                 return EXIT_FAILURE;
             }
             /* we know its parent, so we can start with it */
-            lys_get_data_sibling(trg_mod, parent->schema->child, orig->schema->name, strlen(orig->schema->name),
-                                 orig->schema->nodetype, (const struct lys_node **)&new->schema);
+            lys_getnext_data(trg_mod, parent->schema, orig->schema->name, strlen(orig->schema->name),
+                             orig->schema->nodetype, (const struct lys_node **)&new->schema);
         } else {
             /* we have to search in complete context */
             new->schema = lyd_get_schema_inctx(orig, ctx);
@@ -5170,7 +5170,7 @@ lyd_build_relative_data_path(const struct lys_module *module, const struct lyd_n
         while ((snode = lys_getnext(snode, schema, NULL, LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE))) {
             /* name match */
             if (!strncmp(name, snode->name, name_len) && !snode->name[name_len]) {
-                r = schema_nodeid_siblingcheck(snode, schema_id, module, mod_name, mod_name_len, 0, &schema);
+                r = schema_nodeid_siblingcheck(snode, schema_id, module, mod_name, mod_name_len, &schema);
                 if (r == 0 || r == 2) {
                     break;
                 } else if (r == 1) {

@@ -163,21 +163,16 @@ lys_get_sibling(const struct lys_node *siblings, const char *mod_name, int mod_n
 }
 
 int
-lys_get_data_sibling(const struct lys_module *mod, const struct lys_node *siblings, const char *name, int nam_len,
-                     LYS_NODE type, const struct lys_node **ret)
+lys_getnext_data(const struct lys_module *mod, const struct lys_node *parent, const char *name, int nam_len,
+                 LYS_NODE type, const struct lys_node **ret)
 {
-    const struct lys_node *node, *parent;
+    const struct lys_node *node;
 
-    assert(siblings && name);
+    assert((mod || parent) && name);
     assert(!(type & (LYS_AUGMENT | LYS_USES | LYS_GROUPING | LYS_CHOICE | LYS_CASE | LYS_INPUT | LYS_OUTPUT)));
 
-    parent = lys_parent(siblings);
-    while (parent && (parent->nodetype == LYS_USES)) {
-        parent = lys_parent(parent);
-    }
-
     if (!mod) {
-        mod = siblings->module;
+        mod = lys_node_module(parent);
     }
 
     /* try to find the node */
@@ -3964,6 +3959,17 @@ apply_aug(struct lys_node_augment *augment, struct unres_schema *unres)
 
     assert(augment->target && (augment->flags & LYS_NOTAPPLIED));
 
+    /* check that all the modules are implemented */
+    for (parent = augment->target; parent; parent = lys_parent(parent)) {
+        if (!lys_node_module(parent)->implemented) {
+            if (lys_set_implemented(lys_node_module(parent))) {
+                LOGERR(ly_errno, "Making the augment target module \"%s\" implemented failed.", lys_node_module(parent)->name);
+                return -1;
+            }
+            LOGVRB("Augment target module \"%s\" now implemented.", lys_node_module(parent)->name);
+        }
+    }
+
     /* reconnect augmenting data into the target - add them to the target child list */
     if (augment->target->child) {
         child = augment->target->child->prev;
@@ -4094,8 +4100,7 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module,
                 } else {
                     /* non-augment, non-toplevel */
                     parent_path = strndup(dev->target_name, strrchr(dev->target_name, '/') - dev->target_name);
-                    ret = resolve_augment_schema_nodeid(parent_path, NULL, module, 1,
-                                                        (const struct lys_node **)&target);
+                    ret = resolve_augment_schema_nodeid(parent_path, NULL, module, (const struct lys_node **)&target);
                     free(parent_path);
                     if (ret || !target) {
                         LOGINT;
@@ -4111,8 +4116,7 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module,
             dev->orig_node = NULL;
         } else {
             /* adding not-supported deviation */
-            ret = resolve_augment_schema_nodeid(dev->target_name, NULL, module, 1,
-                                                (const struct lys_node **)&target);
+            ret = resolve_augment_schema_nodeid(dev->target_name, NULL, module, (const struct lys_node **)&target);
             if (ret || !target) {
                 LOGINT;
                 return;
@@ -4130,8 +4134,7 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module,
             dev->orig_node = target;
         }
     } else {
-        ret = resolve_augment_schema_nodeid(dev->target_name, NULL, module, 1,
-                                            (const struct lys_node **)&target);
+        ret = resolve_augment_schema_nodeid(dev->target_name, NULL, module, (const struct lys_node **)&target);
         if (ret || !target) {
             LOGINT;
             return;
@@ -4530,6 +4533,59 @@ lys_path(const struct lys_node *node)
     ly_buf_used--;
 
     return result;
+}
+
+struct lys_node_augment *
+lys_getnext_target_aug(struct lys_node_augment *last, const struct lys_module *mod, const struct lys_node *aug_target)
+{
+    int i, j, last_found;
+
+    if (!last) {
+        last_found = 1;
+    } else {
+        last_found = 0;
+    }
+
+    /* search module augments */
+    for (i = 0; i < mod->augment_size; ++i) {
+        if (!mod->augment[i].target) {
+            /* still unresolved, skip */
+            continue;
+        }
+
+        if (mod->augment[i].target == aug_target) {
+            if (last_found) {
+                /* next match after last */
+                return &mod->augment[i];
+            }
+
+            if (&mod->augment[i] == last) {
+                last_found = 1;
+            }
+        }
+    }
+
+    /* search submodule augments */
+    for (i = 0; i < mod->inc_size; ++i) {
+        for (j = 0; j < mod->inc[i].submodule->augment_size; ++j) {
+            if (!mod->inc[i].submodule->augment[j].target) {
+                continue;
+            }
+
+            if (mod->inc[i].submodule->augment[j].target == aug_target) {
+                if (last_found) {
+                    /* next match after last */
+                    return &mod->inc[i].submodule->augment[j];
+                }
+
+                if (&mod->inc[i].submodule->augment[j] == last) {
+                    last_found = 1;
+                }
+            }
+        }
+    }
+
+    return NULL;
 }
 
 static void
