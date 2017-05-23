@@ -1102,6 +1102,101 @@ check_parsed_values:
     return 0;
 }
 
+static struct lyd_node *
+lyd_new_path_update(struct lyd_node *node, void *value, LYD_ANYDATA_VALUETYPE value_type)
+{
+    struct ly_ctx *ctx = node->schema->module->ctx;
+    struct lyd_node_anydata *any;
+    int r;
+
+    switch (node->schema->nodetype) {
+    case LYS_LEAF:
+        if (value_type > LYD_ANYDATA_STRING) {
+            ly_errno = LY_EINVAL;
+            return NULL;
+        }
+
+        if (!value || strcmp(((struct lyd_node_leaf_list *)node)->value_str, value)) {
+            r = lyd_change_leaf((struct lyd_node_leaf_list *)node, value);
+            /* was there any actual change? */
+            if ((r < 0) || (r == 1)) {
+                return NULL;
+            }
+            return node;
+        }
+        break;
+    case LYS_ANYXML:
+    case LYS_ANYDATA:
+        /* the nodes are the same if:
+         * 1) the value types are strings (LYD_ANYDATA_STRING and LYD_ANYDATA_CONSTSTRING equals)
+         *    and the strings equals
+         * 2) the value types are the same, but not strings and the pointers (not the content) are the
+         *    same
+         */
+        any = (struct lyd_node_anydata *)node;
+        if (any->value_type <= LYD_ANYDATA_STRING && value_type <= LYD_ANYDATA_STRING) {
+            if (ly_strequal(any->value.str, (char *)value, 0)) {
+                /* values are the same */
+                return NULL;
+            }
+        } else if (any->value_type == value_type) {
+            /* compare pointers */
+            if ((void *)any->value.tree == value) {
+                /* values are the same */
+                return NULL;
+            }
+        }
+
+        /* values are not the same - 1) remove the old one ... */
+        switch (any->value_type) {
+        case LYD_ANYDATA_CONSTSTRING:
+        case LYD_ANYDATA_SXML:
+        case LYD_ANYDATA_JSON:
+            lydict_remove(ctx, any->value.str);
+            break;
+        case LYD_ANYDATA_DATATREE:
+            lyd_free_withsiblings(any->value.tree);
+            break;
+        case LYD_ANYDATA_XML:
+            lyxml_free_withsiblings(ctx, any->value.xml);
+            break;
+        case LYD_ANYDATA_STRING:
+        case LYD_ANYDATA_SXMLD:
+        case LYD_ANYDATA_JSOND:
+            /* dynamic strings are used only as input parameters */
+            assert(0);
+            break;
+        }
+        /* ... and 2) store the new one */
+        switch (value_type) {
+        case LYD_ANYDATA_CONSTSTRING:
+        case LYD_ANYDATA_SXML:
+        case LYD_ANYDATA_JSON:
+            any->value.str = lydict_insert(ctx, (const char *)value, 0);
+            break;
+        case LYD_ANYDATA_STRING:
+        case LYD_ANYDATA_SXMLD:
+        case LYD_ANYDATA_JSOND:
+            any->value.str = lydict_insert_zc(ctx, (char *)value);
+            value_type &= ~LYD_ANYDATA_STRING; /* make const string from string */
+            break;
+        case LYD_ANYDATA_DATATREE:
+            any->value.tree = value;
+            break;
+        case LYD_ANYDATA_XML:
+            any->value.xml = value;
+            break;
+        }
+        return node;
+    default:
+        /* nothing needed - containers, lists and leaf-lists do not have value or it cannot be changed */
+        break;
+    }
+
+    /* not updated */
+    return NULL;
+}
+
 API struct lyd_node *
 lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, void *value,
              LYD_ANYDATA_VALUETYPE value_type, int options)
@@ -1109,7 +1204,6 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
     char *module_name = ly_buf(), *buf_backup = NULL, *str;
     const char *mod_name, *name, *val_name, *val, *node_mod_name, *id;
     struct lyd_node *ret = NULL, *node, *parent = NULL;
-    struct lyd_node_anydata *any;
     const struct lys_node *schild, *sparent, *tmp;
     const struct lys_node_list *slist;
     const struct lys_module *module, *prev_mod;
@@ -1148,91 +1242,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
                     return NULL;
                 }
 
-                /* update the value if needed */
-                switch (parent->schema->nodetype) {
-                case LYS_LEAF:
-                    if (value_type > LYD_ANYDATA_STRING) {
-                        ly_errno = LY_EINVAL;
-                        return NULL;
-                    }
-                    if (!value || strcmp(((struct lyd_node_leaf_list *)parent)->value_str, value)) {
-                        r = lyd_change_leaf((struct lyd_node_leaf_list *)parent, value);
-                        if (r) {
-                            return NULL;
-                        }
-                        return parent;
-                    }
-                    break;
-                case LYS_ANYXML:
-                case LYS_ANYDATA:
-                    /* the nodes are the same if:
-                     * 1) the value types are strings (LYD_ANYDATA_STRING and LYD_ANYDATA_CONSTSTRING equals)
-                     *    and the strings equals
-                     * 2) the value types are the same, but not strings and the pointers (not the content) are the
-                     *    same
-                     */
-                    any = (struct lyd_node_anydata *)parent;
-                    if (any->value_type <= LYD_ANYDATA_STRING && value_type <= LYD_ANYDATA_STRING) {
-                        if (ly_strequal(any->value.str, (char*)value, 0)) {
-                            /* values are the same */
-                            return NULL;
-                        }
-                    } else if (any->value_type == value_type) {
-                        /* compare pointers */
-                        if ((void*)any->value.tree == value) {
-                            /* values are the same */
-                            return NULL;
-                        }
-                    }
-
-                    /* values are not the same - 1) remove the old one ... */
-                    switch (any->value_type) {
-                    case LYD_ANYDATA_CONSTSTRING:
-                    case LYD_ANYDATA_SXML:
-                    case LYD_ANYDATA_JSON:
-                        lydict_remove(ctx, any->value.str);
-                        break;
-                    case LYD_ANYDATA_DATATREE:
-                        lyd_free_withsiblings(any->value.tree);
-                        break;
-                    case LYD_ANYDATA_XML:
-                        lyxml_free_withsiblings(ctx, any->value.xml);
-                        break;
-                    case LYD_ANYDATA_STRING:
-                    case LYD_ANYDATA_SXMLD:
-                    case LYD_ANYDATA_JSOND:
-                        /* dynamic strings are used only as input parameters */
-                        assert(0);
-                        break;
-                    }
-                    /* ... and 2) store the new one */
-                    switch (value_type) {
-                    case LYD_ANYDATA_CONSTSTRING:
-                    case LYD_ANYDATA_SXML:
-                    case LYD_ANYDATA_JSON:
-                        any->value.str = lydict_insert(ctx, (const char*)value, 0);
-                        break;
-                    case LYD_ANYDATA_STRING:
-                    case LYD_ANYDATA_SXMLD:
-                    case LYD_ANYDATA_JSOND:
-                        any->value.str = lydict_insert_zc(ctx, (char*)value);
-                        value_type &= ~LYD_ANYDATA_STRING; /* make const string from string */
-                        break;
-                    case LYD_ANYDATA_DATATREE:
-                        any->value.tree = value;
-                        break;
-                    case LYD_ANYDATA_XML:
-                        any->value.xml = value;
-                        break;
-                    }
-                    return parent;
-                default:
-                    /* nothing needed - containers, lists and leaf-lists do not have value or it cannot be changed */
-                    break;
-                }
-
-                /* not updated */
-                return NULL;
+                return lyd_new_path_update(parent, value, value_type);
             }
         }
     }
