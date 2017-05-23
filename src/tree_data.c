@@ -817,23 +817,7 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
 
     if (!leaf) {
         ly_errno = LY_EINVAL;
-        return EXIT_FAILURE;
-    }
-
-    /* key value cannot be changed */
-    if (leaf->parent && (leaf->parent->schema->nodetype == LYS_LIST)) {
-        slist = (struct lys_node_list *)leaf->parent->schema;
-        for (i = 0; i < slist->keys_size; ++i) {
-            if (ly_strequal(slist->keys[i]->name, leaf->schema->name, 1)) {
-                LOGVAL(LYE_SPEC, LY_VLOG_LYD, leaf, "List key value cannot be changed.");
-                return EXIT_FAILURE;
-            }
-        }
-    }
-
-    if (!strcmp(leaf->value_str, val_str ? val_str : "")) {
-        /* the value remains the same */
-        return EXIT_SUCCESS;
+        return -1;
     }
 
     backup = leaf->value_str;
@@ -844,7 +828,26 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
     if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, NULL, leaf, NULL, 1, 0)) {
         lydict_remove(leaf->schema->module->ctx, leaf->value_str);
         leaf->value_str = backup;
-        return EXIT_FAILURE;
+        return -1;
+    }
+
+    if (!strcmp(backup, leaf->value_str)) {
+        /* the value remains the same */
+        lydict_remove(leaf->schema->module->ctx, backup);
+        return 1;
+    }
+
+    /* key value cannot be changed */
+    if (leaf->parent && (leaf->parent->schema->nodetype == LYS_LIST)) {
+        slist = (struct lys_node_list *)leaf->parent->schema;
+        for (i = 0; i < slist->keys_size; ++i) {
+            if (ly_strequal(slist->keys[i]->name, leaf->schema->name, 1)) {
+                LOGVAL(LYE_SPEC, LY_VLOG_LYD, leaf, "List key value cannot be changed.");
+                lydict_remove(leaf->schema->module->ctx, leaf->value_str);
+                leaf->value_str = backup;
+                return -1;
+            }
+        }
     }
 
     /* value is correct, remove backup */
@@ -873,7 +876,7 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
         }
     }
 
-    return EXIT_SUCCESS;
+    return 0;
 }
 
 static struct lyd_node *
