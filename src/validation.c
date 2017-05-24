@@ -321,6 +321,35 @@ unique_cleanup:
     return ret;
 }
 
+static struct lys_type *
+find_orig_type(struct lys_type *par_type, LY_DATA_TYPE base_type)
+{
+    struct lys_type *type, *prev_type, *tmp_type;
+    int found;
+
+    /* go through typedefs */
+    for (type = par_type; type->der->type.der; type = &type->der->type);
+
+    if (type->base == base_type) {
+        /* we have the result */
+        return type;
+    } else if (type->base == LY_TYPE_UNION) {
+        /* go through all the union types */
+        prev_type = NULL;
+        found = 0;
+        while ((prev_type = lyp_get_next_union_type(type, prev_type, &found))) {
+            tmp_type = find_orig_type(prev_type, base_type);
+            if (tmp_type) {
+                return tmp_type;
+            }
+            found = 0;
+        }
+    }
+
+    /* not found */
+    return NULL;
+}
+
 int
 lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
 {
@@ -432,7 +461,7 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
         case LY_TYPE_BITS:
             id = "Bit";
             /* get the count of bits */
-            for (type = &((struct lys_node_leaf *)leaf->schema)->type; !type->info.bits.count; type = &type->der->type);
+            type = find_orig_type(&((struct lys_node_leaf *)leaf->schema)->type, LY_TYPE_BITS);
             for (j = iff_size = 0; j < type->info.bits.count; j++) {
                 if (!leaf->value.bit[j]) {
                     continue;
