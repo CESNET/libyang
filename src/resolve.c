@@ -5518,6 +5518,7 @@ resolve_list_keys(struct lys_node_list *list, const char *keys_str)
 {
     int i, len, rc;
     const char *value;
+    char *s = NULL;
 
     for (i = 0; i < list->keys_size; ++i) {
         if (!list->child) {
@@ -5535,10 +5536,15 @@ resolve_list_keys(struct lys_node_list *list, const char *keys_str)
             len = strlen(keys_str);
         }
 
+        if (list->keys[i]) {
+            /* skip already resolved keys */
+            goto next;
+        }
+
         rc = lys_getnext_data(lys_node_module((struct lys_node *)list), (struct lys_node *)list, keys_str, len, LYS_LEAF,
                               (const struct lys_node **)&list->keys[i]);
         if (rc) {
-            LOGVAL(LYE_INRESOLV, LY_VLOG_LYS, list, "list keys", keys_str);
+            LOGVAL(LYE_INRESOLV, LY_VLOG_LYS, list, "list key", keys_str);
             return EXIT_FAILURE;
         }
 
@@ -5554,6 +5560,20 @@ resolve_list_keys(struct lys_node_list *list, const char *keys_str)
             return -1;
         }
 
+        /* default value - is ignored, keep it but print a warning */
+        if (list->keys[i]->dflt) {
+            /* log is not hidden only in case this resolving fails and in such a case
+             * we cannot get here
+             */
+            assert(*ly_vlog_hide_location());
+            ly_vlog_hide(0);
+            LOGWRN("Default value \"%s\" in the list key \"%s\" is ignored. (%s)", list->keys[i]->dflt,
+                   list->keys[i]->name, s = lys_path((struct lys_node*)list));
+            ly_vlog_hide(1);
+            free(s);
+        }
+
+next:
         /* prepare for next iteration */
         while (value && isspace(value[0])) {
             value++;
