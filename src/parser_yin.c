@@ -556,19 +556,8 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
          * unresolved item left inside the grouping, LY_TYPE_ERR used as a flag for types inside a grouping. */
         for (siter = parent; siter && (siter->nodetype != LYS_GROUPING); siter = lys_parent(siter));
         if (siter) {
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-            if (!((uint8_t*)&((struct lys_node_grp *)siter)->flags)[1]) {
-                LOGINT;
-                goto error;
-            }
-            ((uint8_t*)&((struct lys_node_grp *)siter)->flags)[1]--;
-#else
-            if (!((uint8_t*)&((struct lys_node_grp *)siter)->flags)[0]) {
-                LOGINT;
-                goto error;
-            }
-            ((uint8_t*)&((struct lys_node_grp *)siter)->flags)[0]--;
-#endif
+            assert(((struct lys_node_grp *)siter)->unres_count);
+            ((struct lys_node_grp *)siter)->unres_count--;
         } else {
             LOGINT;
             goto error;

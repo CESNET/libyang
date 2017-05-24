@@ -4655,14 +4655,8 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
 
     assert(uses->grp);
 
-    /* HACK just check that the grouping is resolved
-     * - the higher byte in flags is always empty in grouping (no flags there apply to the groupings)
-     * so we use it to count unresolved uses inside the grouping */
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    assert(!((uint8_t*)&uses->grp->flags)[1]);
-#else
-    assert(!((uint8_t*)&uses->grp->flags)[0]);
-#endif
+    /* check that the grouping is resolved (no unresolved uses inside) */
+    assert(!uses->grp->unres_count);
 
     if (!uses->grp->child) {
         /* grouping without children, warning was already displayed */
@@ -5445,20 +5439,13 @@ match:
 static int
 resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres)
 {
-    int rc, endian_idx;
+    int rc;
     struct lys_node *par_grp;
 
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-    endian_idx = 1;
-#else
-    endian_idx = 0;
-#endif
-
     /* HACK: when a grouping has uses inside, all such uses have to be resolved before the grouping itself is used
-     *       in some uses. When we see such a uses, the grouping's higher byte of the flags member (not used in
-     *       grouping) is used to store number of so far unresolved uses. The grouping cannot be used unless this
-     *       counter is decreased back to 0. To remember that the uses already increased grouping's counter, the
-     *       LYS_USESGRP flag is used. */
+     *       in some uses. When we see such a uses, the grouping's unres counter is used to store number of so far
+     *       unresolved uses. The grouping cannot be used unless this counter is decreased back to 0. To remember
+     *       that the uses already increased grouping's counter, the LYS_USESGRP flag is used. */
     for (par_grp = lys_parent((struct lys_node *)uses); par_grp && (par_grp->nodetype != LYS_GROUPING); par_grp = lys_parent(par_grp));
 
     if (!uses->grp) {
@@ -5471,10 +5458,10 @@ resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres
             return -1;
         } else if (!uses->grp) {
             if (par_grp && !(uses->flags & LYS_USESGRP)) {
-                /* hack - in contrast to lys_node, lys_node_grp has bigger nacm field
-                 * (and smaller flags - it uses only a limited set of flags)
-                 */
-                ((uint8_t*)&((struct lys_node_grp *)par_grp)->flags)[endian_idx]++;
+                if (++((struct lys_node_grp *)par_grp)->unres_count == 0) {
+                    LOGERR(LY_EINT, "Too many unresolved items (uses) inside a grouping.");
+                    return -1;
+                }
                 uses->flags |= LYS_USESGRP;
             }
             LOGVAL(LYE_INRESOLV, LY_VLOG_LYS, uses, "uses", uses->name);
@@ -5482,9 +5469,12 @@ resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres
         }
     }
 
-    if (((uint8_t*)&uses->grp->flags)[endian_idx]) {
+    if (uses->grp->unres_count) {
         if (par_grp && !(uses->flags & LYS_USESGRP)) {
-            ((uint8_t*)&((struct lys_node_grp *)par_grp)->flags)[endian_idx]++;
+            if (++((struct lys_node_grp *)par_grp)->unres_count == 0) {
+                LOGERR(LY_EINT, "Too many unresolved items (uses) inside a grouping.");
+                return -1;
+            }
             uses->flags |= LYS_USESGRP;
         } else {
             /* instantiate grouping only when it is completely resolved */
@@ -5497,11 +5487,8 @@ resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres
     if (!rc) {
         /* decrease unres count only if not first try */
         if (par_grp && (uses->flags & LYS_USESGRP)) {
-            if (!((uint8_t*)&((struct lys_node_grp *)par_grp)->flags)[endian_idx]) {
-                LOGINT;
-                return -1;
-            }
-            ((uint8_t*)&((struct lys_node_grp *)par_grp)->flags)[endian_idx]--;
+            assert(((struct lys_node_grp *)par_grp)->unres_count);
+            ((struct lys_node_grp *)par_grp)->unres_count--;
             uses->flags &= ~LYS_USESGRP;
         }
 
@@ -6403,17 +6390,15 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         } else if (rc == EXIT_FAILURE && stype->base != LY_TYPE_ERR) {
             /* forward reference - in case the type is in grouping, we have to make the grouping unusable
              * by uses statement until the type is resolved. We do that the same way as uses statements inside
-             * grouping - the grouping's nacm member (not used un grouping) is used to increase the number of
-             * so far unresolved items (uses and types). The grouping cannot be used unless the nacm value is 0.
-             * To remember that the grouping already increased grouping's nacm, the LY_TYPE_ERR is used as value
+             * grouping. The grouping cannot be used unless the unres counter is 0.
+             * To remember that the grouping already increased the counter, the LY_TYPE_ERR is used as value
              * of the type's base member. */
             for (par_grp = node; par_grp && (par_grp->nodetype != LYS_GROUPING); par_grp = lys_parent(par_grp));
             if (par_grp) {
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-                ((uint8_t*)&((struct lys_node_grp *)par_grp)->flags)[1]++;
-#else
-                ((uint8_t*)&((struct lys_node_grp *)par_grp)->flags)[0]++;
-#endif
+                if (++((struct lys_node_grp *)par_grp)->unres_count == 0) {
+                    LOGERR(LY_EINT, "Too many unresolved items (type) inside a grouping.");
+                    return -1;
+                }
                 stype->base = LY_TYPE_ERR;
             }
         }

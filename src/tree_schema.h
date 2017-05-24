@@ -1032,15 +1032,15 @@ struct lys_iffeature {
  *     8 LYS_MAND_FALSE   | |x|x| | |x| | | | | | | | | | | |x| |
  *       LYS_INCL_STATUS  |x| | | |x| | | | | | | | | | | | | | |
  *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *     9 LYS_USERORDERED  | | | |x|x| | | | | | |r| | | | | |r| |
- *       LYS_UNIQUE       | | |x| | | | | | | | |r| | | | | |r| |
- *       LYS_FENABLED     | | | | | | | | | | | |r| | |x| | |r| |
+ *     9 LYS_USERORDERED  | | | |x|x| | | | | | | | | | | | |r| |
+ *       LYS_UNIQUE       | | |x| | | | | | | | | | | | | | |r| |
+ *       LYS_FENABLED     | | | | | | | | | | | | | | |x| | |r| |
  *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *    10 LYS_XPATH_DEP    |x|x|x|x|x|x|x|x|x|x|x|r|x|x| | | |r| |
+ *    10 LYS_XPATH_DEP    |x|x|x|x|x|x|x|x|x|x|x| |x|x| | | |r| |
  *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *    11 LYS_LEAFREF_DEP  |x|x|x|x|x|x|x|x|x|x|x|r|x|x| | | |r| |
+ *    11 LYS_LEAFREF_DEP  |x|x|x|x|x|x|x|x|x|x|x| |x|x| | | |r| |
  *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *    12 LYS_DFLTJSON     | | |x|x| | | | | | | |r| | | |x| |r| |
+ *    12 LYS_DFLTJSON     | | |x|x| | | | | | | | | | | |x| |r| |
  *    --------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  *    x - used
@@ -1485,7 +1485,8 @@ struct lys_node_grp {
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
     /* non compatible 32b with ::lys_node */
-    uint8_t padding[3];              /**< padding for 32b alignment */
+    uint16_t unres_count;            /**< internal counter for unresolved uses, should be always 0 when the module is parsed */
+    uint8_t padding[1];              /**< padding for 32b alignment */
     uint8_t tpdf_size;               /**< number of elements in #tpdf array */
 
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
