@@ -1317,7 +1317,7 @@ yang_print_list(struct lyout *out, int level, const struct lys_node *node)
         }
         yang_print_open(out, &flag);
         yang_print_snode(out, level, sub, LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
-                         LYS_USES | LYS_GROUPING | LYS_ANYDATA);
+                         LYS_USES | LYS_ANYDATA);
     }
 
     LY_TREE_FOR(node->child, sub) {
