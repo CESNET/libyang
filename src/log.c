@@ -307,6 +307,7 @@ const char *ly_errs[] = {
 /* LYE_XPATH_INARGCOUNT */ "Invalid number of arguments (%d) for the XPath function %.*s.",
 /* LYE_XPATH_INARGTYPE */ "Wrong type of argument #%d (%s) for the XPath function %s.",
 /* LYE_XPATH_DUMMY */   "Accessing the value of the dummy node \"%s\".",
+/* LYE_XPATH_NOEND */   "Unterminated string delimited with %c (%.15s).",
 
 /* LYE_PATH_INCHAR */  "Unexpected character(s) '%c' (\"%s\").",
 /* LYE_PATH_INMOD */   "Module not found.",
@@ -401,6 +402,7 @@ static const LY_VECODE ecode2vecode[] = {
     LYVE_XPATH_INARGCOUNT, /* LYE_XPATH_INARGCOUNT */
     LYVE_XPATH_INARGTYPE, /* LYE_XPATH_INARGTYPE */
     LYVE_XPATH_DUMMY,  /* LYE_XPATH_DUMMY */
+    LYVE_XPATH_NOEND,  /* LYE_XPATH_NOEND */
 
     LYVE_PATH_INCHAR,  /* LYE_PATH_INCHAR */
     LYVE_PATH_INMOD,   /* LYE_PATH_INMOD */
@@ -457,8 +459,13 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
             } else {
                 name = ((struct lys_node *)elem)->name;
             }
-            if (prefix_all || !(sparent = lys_parent((struct lys_node *)elem)) ||
-                    lys_node_module((struct lys_node *)elem) != lys_node_module(sparent)) {
+
+            /* find schema printed parent */
+            for (sparent = lys_parent((struct lys_node *)elem);
+                 sparent && (sparent->nodetype == LYS_USES);
+                 sparent = lys_parent(sparent));
+
+            if (prefix_all || !sparent || (lys_node_module((struct lys_node *)elem) != lys_node_module(sparent))) {
                 prefix = lys_node_module((struct lys_node *)elem)->name;
             } else {
                 prefix = NULL;
@@ -472,6 +479,8 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
                 }
                 break;
             }
+
+            /* need to find the parent again because we don't want to skip augments */
             do {
                 sparent = ((struct lys_node *)elem)->parent;
                 elem = lys_parent((struct lys_node *)elem);
@@ -517,11 +526,11 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
                             len = strlen(diter->schema->name);
                             (*index) -= len;
                             memcpy(&path[(*index)], diter->schema->name, len);
-                            if (prefix_all || (dlist->schema->module != diter->schema->module)) {
+                            if (prefix_all || (lyd_node_module(dlist) != lyd_node_module(diter))) {
                                 path[--(*index)] = ':';
-                                len = strlen(diter->schema->module->name);
+                                len = strlen(lyd_node_module(diter)->name);
                                 (*index) -= len;
-                                memcpy(&path[(*index)], diter->schema->module->name, len);
+                                memcpy(&path[(*index)], lyd_node_module(diter)->name, len);
                             }
                             path[--(*index)] = '[';
                         }

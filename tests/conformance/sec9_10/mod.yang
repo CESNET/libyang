@@ -11,4 +11,10 @@ module mod {
     identity j2 {
         base j1;
     }
+
+    typedef myid {
+        type identityref {
+            base j1;
+        }
+    }
 }

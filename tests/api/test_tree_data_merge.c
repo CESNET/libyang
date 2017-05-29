@@ -230,6 +230,85 @@ test_merge2(void **state)
 }
 
 static void
+test_merge3(void **state)
+{
+    struct state *st = (*state);
+    const char *sch = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "    container A {"
+                    "      leaf f1 {type string;}"
+                    "      container B {"
+                    "        leaf f2 {type string;}"
+                    "      }"
+                    "    }"
+                    "  }";
+    const char *trg = "<A xmlns=\"urn:x\"> <f1>block</f1> </A>";
+    const char *src = "<A xmlns=\"urn:x\"> <f1>aa</f1> <B> <f2>bb</f2> </B> </A>";
+    const char *result = "<A xmlns=\"urn:x\"><f1>aa</f1><B><f2>bb</f2></B></A>";
+    char *printed = NULL;
+
+    assert_ptr_not_equal(lys_parse_mem(st->ctx1, sch, LYS_IN_YANG), NULL);
+
+    st->source = lyd_parse_mem(st->ctx1, src, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->source, NULL);
+
+    st->target = lyd_parse_mem(st->ctx1, trg, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->target, NULL);
+
+    /* merge them */
+    assert_int_equal(lyd_merge(st->target, st->source, 0), 0);
+    assert_int_equal(lyd_validate(&st->target, LYD_OPT_CONFIG, NULL), 0);
+
+    /* check the result */
+    lyd_print_mem(&printed, st->target, LYD_XML, LYP_WITHSIBLINGS);
+    assert_string_equal(printed, result);
+    free(printed);
+}
+
+static void
+test_merge4(void **state)
+{
+    struct state *st = (*state);
+    const char *sch =
+        "module A {"
+            "namespace \"aa:A\";"
+            "prefix A;"
+            "container A {"
+                "leaf f1 {type string;}"
+                "container B {"
+                    "leaf f2 {type string;}"
+                "}"
+                "container C {"
+                    "leaf f3 {type string;}"
+                "}"
+            "}"
+        "}";
+
+    const char *trg = "<A xmlns=\"aa:A\"> <B> <f2>aaa</f2> </B> </A>";
+    const char *src = "<A xmlns=\"aa:A\"> <C> <f3>bbb</f3> </C> </A>";
+    const char *result = "<A xmlns=\"aa:A\"><B><f2>aaa</f2></B><C><f3>bbb</f3></C></A>";
+    char *printed = NULL;
+
+    assert_ptr_not_equal(lys_parse_mem(st->ctx1, sch, LYS_IN_YANG), NULL);
+
+    st->source = lyd_parse_mem(st->ctx1, src, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->source, NULL);
+
+    st->target = lyd_parse_mem(st->ctx1, trg, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->target, NULL);
+
+    /* merge them */
+    assert_int_equal(lyd_merge(st->target, st->source, 0), 0);
+    assert_int_equal(lyd_validate(&st->target, LYD_OPT_CONFIG, NULL), 0);
+
+    /* check the result */
+    lyd_print_mem(&printed, st->target, LYD_XML, LYP_WITHSIBLINGS);
+    assert_string_equal(printed, result);
+    free(printed);
+}
+
+static void
 test_merge_dflt1(void **state)
 {
     struct state *st = (*state);
@@ -415,6 +494,8 @@ int main(void)
     const struct CMUnitTest tests[] = {
                     cmocka_unit_test_setup_teardown(test_merge, setup_dflt, teardown_dflt),
                     cmocka_unit_test_setup_teardown(test_merge2, setup_dflt, teardown_dflt),
+                    cmocka_unit_test_setup_teardown(test_merge3, setup_dflt, teardown_dflt),
+                    cmocka_unit_test_setup_teardown(test_merge4, setup_dflt, teardown_dflt),
                     cmocka_unit_test_setup_teardown(test_merge_dflt1, setup_dflt, teardown_dflt),
                     cmocka_unit_test_setup_teardown(test_merge_dflt2, setup_dflt, teardown_dflt),
                     cmocka_unit_test_setup_teardown(test_merge_to_trgctx1, setup_mctx, teardown_mctx),

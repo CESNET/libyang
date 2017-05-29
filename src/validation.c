@@ -82,7 +82,8 @@ lyv_data_context(const struct lyd_node *node, int options, struct unres_data *un
     }
 
     /* check all relevant when conditions */
-    if (!(options & LYD_OPT_TRUSTED) && (node->when_status & LYD_WHEN)) {
+    if (!(options & (LYD_OPT_TRUSTED | LYD_OPT_NOTIF_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG))
+            && (node->when_status & LYD_WHEN)) {
         if (unres_data_add(unres, (struct lyd_node *)node, UNRES_WHEN)) {
             return EXIT_FAILURE;
         }
@@ -97,9 +98,9 @@ lyv_data_context(const struct lyd_node *node, int options, struct unres_data *un
     /* check elements order in case of RPC's input and output */
     if (!(options & (LYD_OPT_TRUSTED | LYD_OPT_NOTIF_FILTER)) && (node->validity & LYD_VAL_MAND) && lyp_is_rpc_action(node->schema)) {
         if ((node->prev != node) && node->prev->next) {
-            for (siter = lys_getnext(node->schema, lys_parent(node->schema), node->schema->module, LYS_GETNEXT_PARENTUSES);
+            for (siter = lys_getnext(node->schema, lys_parent(node->schema), lyd_node_module(node), LYS_GETNEXT_PARENTUSES);
                     siter;
-                    siter = lys_getnext(siter, lys_parent(siter), siter->module, 0)) {
+                    siter = lys_getnext(siter, lys_parent(node->schema), lyd_node_module(node), LYS_GETNEXT_PARENTUSES)) {
                 if (siter == node->prev->schema) {
                     /* data predecessor has the schema node after
                      * the schema node of the data node being checked */
@@ -320,6 +321,35 @@ unique_cleanup:
     return ret;
 }
 
+static struct lys_type *
+find_orig_type(struct lys_type *par_type, LY_DATA_TYPE base_type)
+{
+    struct lys_type *type, *prev_type, *tmp_type;
+    int found;
+
+    /* go through typedefs */
+    for (type = par_type; type->der->type.der; type = &type->der->type);
+
+    if (type->base == base_type) {
+        /* we have the result */
+        return type;
+    } else if (type->base == LY_TYPE_UNION) {
+        /* go through all the union types */
+        prev_type = NULL;
+        found = 0;
+        while ((prev_type = lyp_get_next_union_type(type, prev_type, &found))) {
+            tmp_type = find_orig_type(prev_type, base_type);
+            if (tmp_type) {
+                return tmp_type;
+            }
+            found = 0;
+        }
+    }
+
+    /* not found */
+    return NULL;
+}
+
 int
 lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
 {
@@ -431,7 +461,7 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
         case LY_TYPE_BITS:
             id = "Bit";
             /* get the count of bits */
-            for (type = &((struct lys_node_leaf *)leaf->schema)->type; !type->info.bits.count; type = &type->der->type);
+            type = find_orig_type(&((struct lys_node_leaf *)leaf->schema)->type, LY_TYPE_BITS);
             for (j = iff_size = 0; j < type->info.bits.count; j++) {
                 if (!leaf->value.bit[j]) {
                     continue;

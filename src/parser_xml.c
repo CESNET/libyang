@@ -184,10 +184,15 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         /* parsing some internal node, we start with parent's schema pointer */
         schema = xml_data_search_schemanode(xml, parent->schema->child, options);
 
-        if (schema) {
-            if (!lys_node_module(schema)->implemented && ctx->data_clb) {
+        if (ctx->data_clb) {
+            if (schema && !lys_node_module(schema)->implemented) {
                 ctx->data_clb(ctx, lys_node_module(schema)->name, lys_node_module(schema)->ns,
                               LY_MODCLB_NOT_IMPLEMENTED, ctx->data_clb_data);
+            } else if (!schema) {
+                if (ctx->data_clb(ctx, NULL, xml->ns->value, 0, ctx->data_clb_data)) {
+                    /* context was updated, so try to find the schema node again */
+                    schema = xml_data_search_schemanode(xml, parent->schema->child, options);
+                }
             }
         }
     }
@@ -539,7 +544,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     struct unres_data *unres = NULL;
     const struct lyd_node *rpc_act = NULL, *data_tree = NULL;
     struct lyd_node *result = NULL, *iter, *last, *reply_parent = NULL, *reply_top = NULL, *act_notif = NULL;
-    struct lyxml_elem *xmlstart, *xmlelem, *xmlaux;
+    struct lyxml_elem *xmlstart, *xmlelem, *xmlaux, *xmlfree = NULL;
     struct ly_set *set;
 
     ly_err_clean(1);
@@ -633,6 +638,10 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
             && !strcmp(xmlstart->name, "action") && !strcmp(xmlstart->ns->value, "urn:ietf:params:xml:ns:yang:1")) {
         /* it's an action, not a simple RPC */
         xmlstart = xmlstart->child;
+        if (options & LYD_OPT_DESTRUCT) {
+            /* free it later */
+            xmlfree = xmlstart->parent;
+        }
     }
 
     iter = last = NULL;
@@ -704,6 +713,9 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
         goto error;
     }
 
+    if (xmlfree) {
+        lyxml_free(ctx, xmlfree);
+    }
     free(unres->node);
     free(unres->type);
     free(unres);
@@ -713,6 +725,9 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
 
 error:
     lyd_free_withsiblings(result);
+    if (xmlfree) {
+        lyxml_free(ctx, xmlfree);
+    }
     free(unres->node);
     free(unres->type);
     free(unres);

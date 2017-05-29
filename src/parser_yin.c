@@ -1479,7 +1479,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             if (rc) {
                 /* even if we got EXIT_FAILURE, throw it all away, too much trouble doing something else */
                 for (i = 0; i < type->info.uni.count; ++i) {
-                    lys_type_free(module->ctx, &type->info.uni.types[i]);
+                    lys_type_free(module->ctx, &type->info.uni.types[i], NULL);
                 }
                 free(type->info.uni.types);
                 type->info.uni.types = NULL;
@@ -1888,15 +1888,16 @@ static int
 fill_yin_unique(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, struct lys_unique *unique,
                 struct unres_schema *unres)
 {
-    int i, j;
-    const char *value, *vaux;
+    int i, j, ret = EXIT_FAILURE;
+    const char *orig;
+    char *value, *vaux, *start = NULL, c;
     struct unres_list_uniq *unique_info;
 
     /* get unique value (list of leafs supposed to be unique */
-    GETVAL(value, yin, "tag");
+    GETVAL(orig, yin, "tag");
 
     /* count the number of unique leafs in the value */
-    vaux = value;
+    start = value = vaux = strdup(orig);
     while ((vaux = strpbrk(vaux, " \t\n"))) {
         unique->expr_size++;
         while (isspace(*vaux)) {
@@ -1912,13 +1913,16 @@ fill_yin_unique(struct lys_module *module, struct lys_node *parent, struct lyxml
 
     for (i = 0; i < unique->expr_size; i++) {
         vaux = strpbrk(value, " \t\n");
-        if (!vaux) {
-            /* the last token, lydict_insert() will count its size on its own */
-            vaux = value;
+        if (vaux) {
+            c = *vaux;
+            *vaux = '\0';
         }
 
         /* store token into unique structure */
-        unique->expr[i] = lydict_insert(module->ctx, value, vaux - value);
+        unique->expr[i] = transform_schema2json(module, value);
+        if (vaux) {
+            *vaux = c;
+        }
 
         /* check that the expression does not repeat */
         for (j = 0; j < i; j++) {
@@ -1946,15 +1950,16 @@ fill_yin_unique(struct lys_module *module, struct lys_node *parent, struct lyxml
 
         /* move to next token */
         value = vaux;
-        while(isspace(*value)) {
+        while(value && isspace(*value)) {
             value++;
         }
     }
 
-    return EXIT_SUCCESS;
+    ret =  EXIT_SUCCESS;
 
 error:
-    return EXIT_FAILURE;
+    free(start);
+    return ret;
 }
 
 /* logs directly
@@ -2087,7 +2092,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     }
 
     /* resolve target node */
-    rc = resolve_augment_schema_nodeid(dev->target_name, NULL, module, 1, (const struct lys_node **)&dev_target);
+    rc = resolve_augment_schema_nodeid(dev->target_name, NULL, module, (const struct lys_node **)&dev_target);
     if (rc || !dev_target) {
         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, dev->target_name, yin->name);
         goto error;
@@ -2471,7 +2476,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 }
 
                 /* replace */
-                lys_type_free(ctx, t);
+                lys_type_free(ctx, t, NULL);
                 /* HACK for unres */
                 t->der = (struct lys_tpdf *)child;
                 if (unres_schema_add_node(module, unres, t, UNRES_TYPE_DER, dev_target) == -1) {
@@ -2720,7 +2725,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                     for (i = 0; i < *trg_must_size; i++) {
                         if (ly_strequal(d->must[d->must_size].expr, (*trg_must)[i].expr, 1)) {
                             /* we have a match, free the must structure ... */
-                            lys_restr_free(ctx, &((*trg_must)[i]));
+                            lys_restr_free(ctx, &((*trg_must)[i]), NULL);
                             /* ... and maintain the array */
                             (*trg_must_size)--;
                             if (i != *trg_must_size) {
@@ -3958,7 +3963,7 @@ read_yin_when(struct lys_module *module, struct lyxml_elem *yin, struct unres_sc
 
 error:
 
-    lys_when_free(module->ctx, retval);
+    lys_when_free(module->ctx, retval, NULL);
     return NULL;
 }
 
@@ -7217,7 +7222,7 @@ yin_read_submodule(struct lys_module *module, const char *data, struct unres_sch
 
 error:
     /* cleanup */
-    unres_schema_free((struct lys_module *)submodule, &unres);
+    unres_schema_free((struct lys_module *)submodule, &unres, 0);
     lyxml_free(module->ctx, yin);
 
     if (!submodule) {
@@ -7341,14 +7346,14 @@ yin_read_module_(struct ly_ctx *ctx, struct lyxml_elem *yin, const char *revisio
         assert(module);
     }
 
-    unres_schema_free(NULL, &unres);
+    unres_schema_free(NULL, &unres, 0);
     lyp_check_circmod_pop(ctx);
     LOGVRB("Module \"%s\" successfully parsed.", module->name);
     return module;
 
 error:
     /* cleanup */
-    unres_schema_free(module, &unres);
+    unres_schema_free(module, &unres, 1);
 
     if (!module) {
         if (ly_vecode != LYVE_SUBMODULE) {

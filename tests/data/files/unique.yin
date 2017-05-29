@@ -7,8 +7,8 @@
   <container name="un">
     <list name="list">
       <key value="name"/>
-      <unique tag="value select/a/a"/>
-      <unique tag="input/x input/select/y/y"/>
+      <unique tag="un:value select/a/a"/>
+      <unique tag="input/un:x input/select/y/y"/>
       <leaf name="name">
         <type name="string"/>
       </leaf>

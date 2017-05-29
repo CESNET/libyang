@@ -285,6 +285,104 @@ lyp_munmap(void *addr, size_t length)
     return munmap(addr, length);
 }
 
+int
+lyp_add_ietf_netconf_annotations(struct lys_module *mod)
+{
+    void *reallocated;
+    struct lys_ext_instance_complex *op;
+    struct lys_type **type;
+    int i;
+    struct ly_ctx *ctx = mod->ctx; /* shortcut */
+
+    reallocated = realloc(mod->ext, (mod->ext_size + 3) * sizeof *mod->ext);
+    if (!reallocated) {
+        LOGMEM;
+        return EXIT_FAILURE;
+    }
+    mod->ext = reallocated;
+    /* 1) edit-config's operation */
+    op = calloc(1, sizeof(struct lys_ext_instance_complex) + 5 * sizeof(void*) + sizeof(uint16_t));
+    mod->ext[mod->ext_size] = (struct lys_ext_instance *)op;
+    op->arg_value = lydict_insert(ctx, "operation", 9);
+    op->def = &ctx->models.list[0]->extensions[0];
+    op->ext_type = LYEXT_COMPLEX;
+    op->module = op->parent = mod;
+    op->parent_type = LYEXT_PAR_MODULE;
+    op->substmt = ((struct lyext_plugin_complex *)op->def->plugin)->substmt;
+    op->nodetype = LYS_EXT;
+    type = (struct lys_type**)&op->content; /* type is stored at offset 0 */
+    *type = calloc(1, sizeof(struct lys_type));
+    (*type)->base = LY_TYPE_ENUM;
+    (*type)->der = ly_types[LY_TYPE_ENUM];
+    (*type)->parent = (struct lys_tpdf *)op;
+    (*type)->info.enums.count = 5;
+    (*type)->info.enums.enm = calloc(5, sizeof *(*type)->info.enums.enm);
+    (*type)->info.enums.enm[0].value = 0;
+    (*type)->info.enums.enm[0].name = lydict_insert(ctx, "merge", 5);
+    (*type)->info.enums.enm[1].value = 1;
+    (*type)->info.enums.enm[1].name = lydict_insert(ctx, "replace", 7);
+    (*type)->info.enums.enm[2].value = 2;
+    (*type)->info.enums.enm[2].name = lydict_insert(ctx, "create", 6);
+    (*type)->info.enums.enm[3].value = 3;
+    (*type)->info.enums.enm[3].name = lydict_insert(ctx, "delete", 6);
+    (*type)->info.enums.enm[4].value = 4;
+    (*type)->info.enums.enm[4].name = lydict_insert(ctx, "remove", 6);
+    mod->ext_size++;
+
+    /* 2) filter's type */
+    op = calloc(1, sizeof(struct lys_ext_instance_complex) + 5 * sizeof(void*) + sizeof(uint16_t));
+    mod->ext[mod->ext_size] = (struct lys_ext_instance *)op;
+    op->arg_value = lydict_insert(ctx, "type", 4);
+    op->def = &ctx->models.list[0]->extensions[0];
+    op->ext_type = LYEXT_COMPLEX;
+    op->module = op->parent = mod;
+    op->parent_type = LYEXT_PAR_MODULE;
+    op->substmt = ((struct lyext_plugin_complex *)op->def->plugin)->substmt;
+    op->nodetype = LYS_EXT;
+    type = (struct lys_type**)&op->content; /* type is stored at offset 0 */
+    *type = calloc(1, sizeof(struct lys_type));
+    (*type)->base = LY_TYPE_ENUM;
+    (*type)->der = ly_types[LY_TYPE_ENUM];
+    (*type)->parent = (struct lys_tpdf *)op;
+    (*type)->info.enums.count = 2;
+    (*type)->info.enums.enm = calloc(2, sizeof *(*type)->info.enums.enm);
+    (*type)->info.enums.enm[0].value = 0;
+    (*type)->info.enums.enm[0].name = lydict_insert(ctx, "subtree", 7);
+    (*type)->info.enums.enm[1].value = 1;
+    (*type)->info.enums.enm[1].name = lydict_insert(ctx, "xpath", 5);
+    for (i = mod->features_size; i > 0; i--) {
+        if (!strcmp(mod->features[i - 1].name, "xpath")) {
+            (*type)->info.enums.enm[1].iffeature_size = 1;
+            (*type)->info.enums.enm[1].iffeature = calloc(1, sizeof(struct lys_feature));
+            (*type)->info.enums.enm[1].iffeature[0].expr = malloc(sizeof(uint8_t));
+            *(*type)->info.enums.enm[1].iffeature[0].expr = 3; /* LYS_IFF_F */
+            (*type)->info.enums.enm[1].iffeature[0].features = malloc(sizeof(struct lys_feature*));
+            (*type)->info.enums.enm[1].iffeature[0].features[0] = &mod->features[i - 1];
+            break;
+        }
+    }
+    mod->ext_size++;
+
+    /* 3) filter's select */
+    op = calloc(1, sizeof(struct lys_ext_instance_complex) + 5 * sizeof(void*) + sizeof(uint16_t));
+    mod->ext[mod->ext_size] = (struct lys_ext_instance *)op;
+    op->arg_value = lydict_insert(ctx, "select", 6);
+    op->def = &ctx->models.list[0]->extensions[0];
+    op->ext_type = LYEXT_COMPLEX;
+    op->module = op->parent = mod;
+    op->parent_type = LYEXT_PAR_MODULE;
+    op->substmt = ((struct lyext_plugin_complex *)op->def->plugin)->substmt;
+    op->nodetype = LYS_EXT;
+    type = (struct lys_type**)&op->content; /* type is stored at offset 0 */
+    *type = calloc(1, sizeof(struct lys_type));
+    (*type)->base = LY_TYPE_STRING;
+    (*type)->der = ly_types[LY_TYPE_STRING];
+    (*type)->parent = (struct lys_tpdf *)op;
+    mod->ext_size++;
+
+    return EXIT_SUCCESS;
+}
+
 /**
  * @brief Alternative for lys_read() + lys_parse() in case of import
  *
@@ -324,6 +422,18 @@ lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const char *rev
     }
     lyp_munmap(addr, length);
 
+    /* hack for NETCONF's edit-config's operation attribute. It is not defined in the schema, but since libyang
+     * implements YANG metadata (annotations), we need its definition. Because the ietf-netconf schema is not the
+     * internal part of libyang, we cannot add the annotation into the schema source, but we do it here to have
+     * the anotation definitions available in the internal schema structure. There is another hack in schema
+     * printers to do not print this internally added annotation. */
+    if (module && ly_strequal(module->name, "ietf-netconf", 0)) {
+        if (lyp_add_ietf_netconf_annotations(module)) {
+            lys_free(module, NULL, 1);
+            return NULL;
+        }
+    }
+
     return module;
 }
 
@@ -360,13 +470,15 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
     } else if (ly_set_add(dirs, wd, 0) == -1) {
         goto cleanup;
     }
-    if (ctx->models.search_path) {
-        wd = strdup(ctx->models.search_path);
-        if (!wd) {
-            LOGMEM;
-            goto cleanup;
-        } else if (ly_set_add(dirs, wd, 0) == -1) {
-            goto cleanup;
+    if (ctx->models.search_paths) {
+        for (i = 0; ctx->models.search_paths[i]; i++) {
+            wd = strdup(ctx->models.search_paths[i]);
+            if (!wd) {
+                LOGMEM;
+                goto cleanup;
+            } else if (ly_set_add(dirs, wd, 0) == -1) {
+                goto cleanup;
+            }
         }
     }
     wd = NULL;
@@ -489,7 +601,7 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
             result = (struct lys_module *)ly_ctx_get_module(ctx, name, revision);
         }
         if (!result) {
-            LOGERR(LY_ESYS, "Data model \"%s\" not found.", name, ctx->models.search_path, wd);
+            LOGERR(LY_ESYS, "Data model \"%s\" not found.", name);
         }
         goto cleanup;
     }
@@ -1565,7 +1677,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             type->parent->flags |= LYS_DFLTJSON;
         }
 
-        ident = resolve_identref(type, value, contextnode, mod);
+        ident = resolve_identref(type, value, contextnode, mod, dflt);
         if (!ident) {
             goto cleanup;
         } else if (store) {
@@ -2878,7 +2990,7 @@ lyp_ext_instance_rm(struct ly_ctx *ctx, struct lys_ext_instance ***ext, uint8_t 
 {
     uint8_t i;
 
-    lys_extension_instances_free(ctx, (*ext)[index]->ext, (*ext)[index]->ext_size);
+    lys_extension_instances_free(ctx, (*ext)[index]->ext, (*ext)[index]->ext_size, NULL);
     lydict_remove(ctx, (*ext)[index]->arg_value);
     free((*ext)[index]);
 
@@ -2922,9 +3034,7 @@ lyp_rfn_apply_ext_(struct lys_refine *rfn, struct lys_node *target, LYEXT_SUBSTM
             n = lys_ext_iter(target->ext, target->ext_size, n + 1, substmt);
         } while (n != -1 && substmt == LYEXT_SUBSTMT_SELF && target->ext[n]->def != extdef);
 
-        /* TODO cover complex extension instances
-           ((struct lys_ext_instance_complex*)(target->ext[n])->module = target->module;
-         */
+        /* TODO cover complex extension instances */
         if (n == -1) {
             /* nothing to replace, we are going to add it - reallocate */
             new = malloc(sizeof **target->ext);
@@ -2948,9 +3058,12 @@ lyp_rfn_apply_ext_(struct lys_refine *rfn, struct lys_node *target, LYEXT_SUBSTM
             target->ext[n]->parent_type = LYEXT_PAR_NODE;
             target->ext[n]->flags = 0;
             target->ext[n]->insubstmt = substmt;
+            target->ext[n]->priv = NULL;
+            target->ext[n]->nodetype = LYS_EXT;
+            target->ext[n]->module = target->module;
         } else {
             /* replacing - first remove the allocated data from target */
-            lys_extension_instances_free(ctx, target->ext[n]->ext, target->ext[n]->ext_size);
+            lys_extension_instances_free(ctx, target->ext[n]->ext, target->ext[n]->ext_size, NULL);
             lydict_remove(ctx, target->ext[n]->arg_value);
         }
         /* common part for adding and replacing */
@@ -2960,7 +3073,7 @@ lyp_rfn_apply_ext_(struct lys_refine *rfn, struct lys_node *target, LYEXT_SUBSTM
         /* flags do not change */
         target->ext[n]->ext_size = rfn->ext[m]->ext_size;
         lys_ext_dup(target->module, rfn->ext[m]->ext, rfn->ext[m]->ext_size, target, LYEXT_PAR_NODE,
-                    &target->ext[n]->ext, NULL);
+                    &target->ext[n]->ext, 0, NULL);
         /* substmt does not change, but the index must be taken from the refine */
         target->ext[n]->insubstmt_index = rfn->ext[m]->insubstmt_index;
     }
@@ -3014,7 +3127,7 @@ lyp_rfn_apply_ext(struct lys_module *module)
                     target = NULL;
                     resolve_descendant_schema_nodeid(rfn->target_name, uses->child,
                                                      LYS_NO_RPC_NOTIF_NODE | LYS_ACTION | LYS_NOTIF,
-                                                     1, 0, (const struct lys_node **)&target);
+                                                     0, (const struct lys_node **)&target);
                     if (!target) {
                         /* it should always succeed since the target_name was already resolved at least
                          * once when the refine itself was being resolved */
@@ -3243,9 +3356,6 @@ lyp_deviate_apply_ext(struct lys_deviate *dev, struct lys_node *target, LYEXT_SU
             } while (n != -1 && substmt == LYEXT_SUBSTMT_SELF && target->ext[n]->def != extdef);
         }
 
-        /* TODO cover complex extension instances
-           ((struct lys_ext_instance_complex*)(target->ext[n])->module = target->module;
-         */
         if (n == -1) {
             /* nothing to replace, we are going to add it - reallocate */
             new = malloc(sizeof **target->ext);
@@ -3266,7 +3376,7 @@ lyp_deviate_apply_ext(struct lys_deviate *dev, struct lys_node *target, LYEXT_SU
         } else {
             /* replacing - the original set of extensions is actually backuped together with the
              * node itself, so we are supposed only to free the allocated data here ... */
-            lys_extension_instances_free(ctx, target->ext[n]->ext, target->ext[n]->ext_size);
+            lys_extension_instances_free(ctx, target->ext[n]->ext, target->ext[n]->ext_size, NULL);
             lydict_remove(ctx, target->ext[n]->arg_value);
             free(target->ext[n]);
 
@@ -3277,7 +3387,7 @@ lyp_deviate_apply_ext(struct lys_deviate *dev, struct lys_node *target, LYEXT_SU
                 return EXIT_FAILURE;
             }
         }
-        /* common part for adding and replacing - fill the newly created / replaceing cell */
+        /* common part for adding and replacing - fill the newly created / replaced cell */
         target->ext[n] = new;
         target->ext[n]->def = dev->ext[m]->def;
         target->ext[n]->arg_value = lydict_insert(ctx, dev->ext[m]->arg_value, 0);
@@ -3288,7 +3398,12 @@ lyp_deviate_apply_ext(struct lys_deviate *dev, struct lys_node *target, LYEXT_SU
         target->ext[n]->insubstmt_index = dev->ext[m]->insubstmt_index;
         target->ext[n]->ext_size = dev->ext[m]->ext_size;
         lys_ext_dup(target->module, dev->ext[m]->ext, dev->ext[m]->ext_size, target, LYEXT_PAR_NODE,
-                    &target->ext[n]->ext, NULL);
+                    &target->ext[n]->ext, 1, NULL);
+        target->ext[n]->nodetype = LYS_EXT;
+        target->ext[n]->module = target->module;
+        target->ext[n]->priv = NULL;
+
+        /* TODO cover complex extension instances */
     }
 
     /* remove the rest of extensions belonging to the original substatement in the target node,
@@ -3330,8 +3445,7 @@ lyp_deviation_apply_ext(struct lys_module *module)
 
     for (i = 0; i < module->deviation_size; i++) {
         target = NULL;
-        resolve_augment_schema_nodeid(module->deviation[i].target_name, NULL, module, 0,
-                                      (const struct lys_node **)&target);
+        resolve_augment_schema_nodeid(module->deviation[i].target_name, NULL, module, (const struct lys_node **)&target);
         if (!target) {
             /* LY_DEVIATE_NO */
             continue;
@@ -3443,6 +3557,12 @@ lyp_ctx_check_module(struct lys_module *module)
                     || !strcmp(ctx->models.list[i]->rev[0].date, last_rev)) {
 
                 LOGVRB("Module \"%s\" already in context.", ctx->models.list[i]->name);
+
+                /* if disabled, enable first */
+                if (ctx->models.list[i]->disabled) {
+                    lys_set_enabled(ctx->models.list[i]);
+                }
+
                 to_implement = module->implemented;
                 match_i = i;
                 if (to_implement && !ctx->models.list[i]->implemented) {
@@ -3483,6 +3603,19 @@ lyp_ctx_add_module(struct lys_module *module)
     int i;
 
     assert(!lyp_ctx_check_module(module));
+
+#ifndef NDEBUG
+    int j;
+    /* check that all augments are resolved */
+    for (i = 0; i < module->augment_size; ++i) {
+        assert(module->augment[i].target);
+    }
+    for (i = 0; i < module->inc_size; ++i) {
+        for (j = 0; j < module->inc[i].submodule->augment_size; ++j) {
+            assert(module->inc[i].submodule->augment[j].target);
+        }
+    }
+#endif
 
     /* add to the context's list of modules */
     if (module->ctx->models.used == module->ctx->models.size) {

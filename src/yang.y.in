@@ -4333,6 +4333,7 @@ type_ext_alloc: @EMPTYDIR@ { struct lys_type **type;
                              /* HACK for unres */
                              (*type)->parent = (struct lys_tpdf *)ext_instance;
                              $$ = actual = *type;
+                             is_ext_instance = 0;
                             }
 
 typedef_ext_alloc: @EMPTYDIR@ { struct lys_tpdf **tpdf;
@@ -4345,6 +4346,7 @@ typedef_ext_alloc: @EMPTYDIR@ { struct lys_tpdf **tpdf;
                                 /* allocate typedef structure */
                                 (*tpdf) = calloc(1, sizeof **tpdf);
                                 $$ = actual = *tpdf;
+                                is_ext_instance = 0;
                               }
 
 iffeature_ext_alloc: @EMPTYDIR@ { struct lys_iffeature **iffeature;
@@ -4444,6 +4446,7 @@ datadef_ext_check: @EMPTYDIR@ { LY_STMT stmt;
                                 }
                                 actual = NULL;
                                 s = NULL;
+                                is_ext_instance = 0;
                               }
 
 not_supported_ext_check: not_supported_ext { LOGERR(LY_SUCCESS, "Extension's substatement \"%s\" not supported.", yyget_text(scanner)); }
@@ -4578,6 +4581,7 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
          YYABORT;
        }
        actual = ext_instance;
+       is_ext_instance = 1;
      }
   |  ext_substatements typedef_ext_alloc typedef_stmt stmtsep
      { struct lys_tpdf *tpdf = $2;
@@ -4597,6 +4601,7 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
          YYABORT;
        }
        actual = ext_instance;
+       is_ext_instance = 1;
      }
   |  ext_substatements status_stmt { if (yang_fill_extcomplex_flags(ext_instance, ext_name, "status", LY_STMT_STATUS,
                                                                     $2, LYS_STATUS_MASK)) {
@@ -4749,7 +4754,9 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
        }
        actual = ext_instance;
      }
-  |  ext_substatements datadef_ext_check datadef_ext_stmt stmtsep { actual = ext_instance; }
+  |  ext_substatements datadef_ext_check datadef_ext_stmt stmtsep { actual = ext_instance;
+                                                                    is_ext_instance = 1;
+                                                                  }
   |  ext_substatements not_supported_ext_check unknown_string unknown_statement3_opt_end
 
 %%

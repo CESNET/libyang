@@ -449,6 +449,9 @@ struct lys_ext_instance {
     uint8_t ext_type;                /**< extension type (#LYEXT_TYPE) */
     uint8_t padding;                 /**< 32b padding */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
+    void *priv;                      /**< private caller's data, not used by libyang */
+    struct lys_module *module;       /**< pointer to the extension instance's module (mandatory) */
+    LYS_NODE nodetype;               /**< LYS_EXT */
 };
 
 /**
@@ -478,11 +481,12 @@ struct lys_ext_instance_complex {
     uint8_t ext_type;                /**< extension type (#LYEXT_TYPE) */
     uint8_t padding;                 /**< 32b padding */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
+    void *priv;                      /**< private caller's data, not used by libyang */
+    struct lys_module *module;       /**< pointer to the extension instance's module (mandatory) */
+    LYS_NODE nodetype;               /**< LYS_EXT */
 
     /* to this point the structure is compatible with the generic ::lys_ext_instance structure */
     struct lyext_substmt *substmt;   /**< pointer to the plugin's list of substatements' information */
-    struct lys_module *module;       /**< pointer to the extension instance's module (mandatory) */
-    LYS_NODE nodetype;               /**< type of the node for the case the extension instance contains schema nodes, */
     char content[];                  /**< content of the extension instance */
 };
 
@@ -1006,12 +1010,11 @@ struct lys_iffeature {
  *     -------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *     1 LYS_USESGRP      | | | | | | | | | | | | |x| | | | | | |
  *       LYS_AUTOASSIGNED | | | | | | | | | | | | | | | |x| | | |
- *       LYS_IMPLICIT     | | | | | | | | | |x|x| | | | | | | | |
- *       LYS_CONFIG_W     |x|x|x|x|x|x| | | | | | | | | | | |x| |
+ *       LYS_CONFIG_W     |x|x|x|x|x|x|x| | | | | | | | | | |x| |
  *       LYS_NOTAPPLIED   | | | | | | | | | | | | | |x| | | | | |
  *       LYS_YINELEM      | | | | | | | | | | | | | | | | | | |x|
  *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *     2 LYS_CONFIG_R     |x|x|x|x|x|x| | | | | | | | | | | |x| |
+ *     2 LYS_CONFIG_R     |x|x|x|x|x|x|x| | | | | | | | | | |x| |
  *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *     3 LYS_CONFIG_SET   |x|x|x|x|x|x| | | | | | | | | | | | | |
  *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -1024,6 +1027,7 @@ struct lys_iffeature {
  *     6 LYS_STATUS_OBSLT |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |x|
  *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *     7 LYS_MAND_TRUE    | |x|x| | |x| | | | | | | | | | | |x| |
+ *       LYS_IMPLICIT     | | | | | | |x| | |x|x| | | | | | | | |
  *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *     8 LYS_MAND_FALSE   | |x|x| | |x| | | | | | | | | | | |x| |
  *       LYS_INCL_STATUS  |x| | | |x| | | | | | | | | | | | | | |
@@ -1067,7 +1071,7 @@ struct lys_iffeature {
 #define LYS_AUTOASSIGNED 0x01        /**< value was auto-assigned, applicable only to
                                           ::lys_type enum and bits flags */
 #define LYS_USESGRP      0x01        /**< flag for resolving uses in groupings, applicable only to ::lys_node_uses */
-#define LYS_IMPLICIT     0x01        /**< flag for implicitely created LYS_INPUT and LYS_OUTPUT nodes */
+#define LYS_IMPLICIT     0x40        /**< flag for implicitely created LYS_INPUT, LYS_OUTPUT and LYS_CASE nodes */
 #define LYS_XPATH_DEP    0x200       /**< flag marking nodes, whose validation (when, must expressions)
                                           depends on nodes outside their subtree (applicable only to RPCs,
                                           notifications, and actions) */

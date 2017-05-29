@@ -447,6 +447,7 @@ yin_print_type(struct lyout *out, int level, const struct lys_module *module, co
     switch (type->base) {
     case LY_TYPE_BINARY:
         if (type->info.binary.length) {
+            yin_print_close_parent(out, &content);
             yin_print_typerestr(out, level, module, type->info.binary.length, "length");
         }
         break;
@@ -996,17 +997,22 @@ yin_print_case(struct lyout *out, int level, const struct lys_node *node)
     struct lys_node *sub;
     struct lys_node_case *cas = (struct lys_node_case *)node;
 
-    yin_print_open(out, level, NULL, "case", "name", cas->name, content);
-    level++;
+    if (!(node->flags & LYS_IMPLICIT)) {
+        yin_print_open(out, level, NULL, "case", "name", cas->name, content);
+        level++;
 
-    yin_print_snode_common(out, level, node, node->module, &content, SNODE_COMMON_EXT);
-    if (cas->when) {
-        yin_print_close_parent(out, &content);
-        yin_print_when(out, level, node->module, cas->when);
+        yin_print_snode_common(out, level, node, node->module, &content, SNODE_COMMON_EXT);
+        if (cas->when) {
+            yin_print_close_parent(out, &content);
+            yin_print_when(out, level, node->module, cas->when);
+        }
+        yin_print_snode_common(out, level, node, node->module, &content,
+                               SNODE_COMMON_IFF | SNODE_COMMON_STATUS | SNODE_COMMON_DSC | SNODE_COMMON_REF);
+    } else {
+        content = 1;
     }
-    yin_print_snode_common(out, level, node, node->module, &content,
-                           SNODE_COMMON_IFF | SNODE_COMMON_STATUS | SNODE_COMMON_DSC | SNODE_COMMON_REF);
 
+    /* print children */
     LY_TREE_FOR(node->child, sub) {
         /* augments */
         if (sub->parent != node) {
@@ -1016,6 +1022,11 @@ yin_print_case(struct lyout *out, int level, const struct lys_node *node)
         yin_print_snode(out, level, sub,
                         LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
                         LYS_USES | LYS_ANYDATA);
+    }
+
+    if (node->flags & LYS_IMPLICIT) {
+        /* do not print anything about the case, it was implicitely added by libyang */
+        return;
     }
 
     level--;
@@ -1292,7 +1303,7 @@ yin_print_list(struct lyout *out, int level, const struct lys_node *node)
         }
         yin_print_close_parent(out, &content);
         yin_print_snode(out, level, sub, LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST |
-                         LYS_USES | LYS_GROUPING | LYS_ANYDATA);
+                        LYS_USES | LYS_ANYDATA);
     }
 
     LY_TREE_FOR(node->child, sub) {

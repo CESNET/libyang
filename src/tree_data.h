@@ -436,17 +436,20 @@ char *lyd_qualified_path(const struct lyd_node *node);
                                      Validation modifications:
                                      - mandatory nodes can be omitted
                                      - leafrefs and instance-identifier resolution is allowed to fail
-                                     - list's keys/unique nodes are not required (so duplication is not checked) */
+                                     - list's keys/unique nodes are not required (so duplication is not checked)
+                                     - must and when evaluation skipped */
 #define LYD_OPT_GETCONFIG  0x04 /**< Data content from a NETCONF reply message to the NETCONF \<get-config\> operation
                                      Validation modifications:
                                      - mandatory nodes can be omitted
                                      - leafrefs and instance-identifier resolution is allowed to fail
                                      - list's keys/unique nodes are not required (so duplication is not checked)
+                                     - must and when evaluation skipped
                                      - status data are not allowed */
 #define LYD_OPT_EDIT       0x08 /**< Content of the NETCONF \<edit-config\>'s config element.
                                      Validation modifications:
                                      - mandatory nodes can be omitted
                                      - leafrefs and instance-identifier resolution is allowed to fail
+                                     - must and when evaluation skipped
                                      - status data are not allowed */
 #define LYD_OPT_RPC        0x10 /**< Data represents RPC or action input parameters. */
 #define LYD_OPT_RPCREPLY   0x20 /**< Data represents RPC or action output parameters (maps to NETCONF <rpc-reply> data). */
@@ -1057,6 +1060,18 @@ struct lyd_node *lyd_first_sibling(struct lyd_node *node);
  * @return 0 on success, nonzero in case of an error.
  */
 int lyd_validate(struct lyd_node **node, int options, void *var_arg);
+
+/**
+ * @brief Check restrictions applicable to the particular leaf/leaf-list on the given string value.
+ *
+ * Validates the value only using the types' restrictions. Do not check the rest of restrictions dependent on the
+ * data tree (must, when statements or uniqueness of the leaf-list item).
+ *
+ * @param[in] node Schema node of the leaf or leaf-list eventually holding the \p value.
+ * @param[in] value Value to be checked (NULL is checked as empty string).
+ * @return EXIT_SUCCESS if the \p value conforms to the restrictions, EXIT_FAILURE otherwise.
+ */
+int lyd_validate_value(struct lys_node *node, const char *value);
 
 /**
  * @brief Get know if the node contain (despite implicit or explicit) default value.

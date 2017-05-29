@@ -120,7 +120,7 @@ static void
 test_implemented2_yin(void **state)
 {
     struct ly_ctx *ctx = *state;
-    const struct lys_module *a, *b, *b2, *c, *c2;
+    const struct lys_module *a, *b2;
 
     ly_ctx_set_searchdir(ctx, SCHEMA_FOLDER_YIN);
 
@@ -129,33 +129,16 @@ test_implemented2_yin(void **state)
     assert_ptr_not_equal(b2, NULL);
     assert_int_equal(b2->implemented, 1);
 
-    /* loads a.yin (impl), b@2015-01-01.yin (imp) and c@2015-01-01.yin (imp)
-     * b@2015-04-04 is augmented by a */
+    /* loads a.yin (impl), b@2015-04-04 is augmented by a, but cannot be implemented */
     a = lys_parse_path(ctx, SCHEMA_FOLDER_YIN"/a.yin", LYS_IN_YIN);
-    assert_ptr_not_equal(a, NULL);
-    assert_int_equal(a->implemented, 1);
-
-    c = ly_ctx_get_module(ctx, "c", NULL);
-    assert_ptr_not_equal(c, NULL);
-    assert_int_equal(c->implemented, 0);
-
-    b = ly_ctx_get_module(ctx, "b", "2015-01-01");
-    assert_ptr_not_equal(b, NULL);
-    assert_int_equal(b->implemented, 0);
-    assert_ptr_equal(b2->data->child->next, a->augment[0].child);
-
-    /* we load the newest c, which is already loaded and now it is going to be marked as implemented */
-    c2 = ly_ctx_load_module(ctx, "c", NULL);
-    assert_ptr_not_equal(c2, NULL);
-    assert_int_equal(c2->implemented, 1);
-    assert_ptr_equal(c, c2);
+    assert_ptr_equal(a, NULL);
 }
 
 static void
 test_implemented2_yang(void **state)
 {
     struct ly_ctx *ctx = *state;
-    const struct lys_module *a, *b, *b2, *c, *c2;
+    const struct lys_module *a, *b2;
 
     ly_ctx_set_searchdir(ctx, SCHEMA_FOLDER_YANG);
 
@@ -164,26 +147,9 @@ test_implemented2_yang(void **state)
     assert_ptr_not_equal(b2, NULL);
     assert_int_equal(b2->implemented, 1);
 
-    /* loads a.yang (impl), b@2015-01-01.yang (imp) and c@2015-01-01.yang (imp)
-     * b@2015-04-04 is augmented by a */
+    /* loads a.yin (impl), b@2015-04-04 is augmented by a, but cannot be implemented */
     a = lys_parse_path(ctx, SCHEMA_FOLDER_YANG"/a.yang", LYS_IN_YANG);
-    assert_ptr_not_equal(a, NULL);
-    assert_int_equal(a->implemented, 1);
-
-    c = ly_ctx_get_module(ctx, "c", NULL);
-    assert_ptr_not_equal(c, NULL);
-    assert_int_equal(c->implemented, 0);
-
-    b = ly_ctx_get_module(ctx, "b", "2015-01-01");
-    assert_ptr_not_equal(b, NULL);
-    assert_int_equal(b->implemented, 0);
-    assert_ptr_equal(b2->data->child->next, a->augment[0].child);
-
-    /* we load the newest c, which is already loaded and now it is going to be marked as implemented */
-    c2 = ly_ctx_load_module(ctx, "c", NULL);
-    assert_ptr_not_equal(c2, NULL);
-    assert_int_equal(c2->implemented, 1);
-    assert_ptr_equal(c, c2);
+    assert_ptr_equal(a, NULL);
 }
 
 static void

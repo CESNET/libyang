@@ -12,6 +12,10 @@ module mod5 {
         base mod:j2;
     }
 
+    identity i2 {
+        base i1;
+    }
+
     leaf-list llist {
         type identityref  {
             base mod:j2;
@@ -32,7 +36,7 @@ module mod5 {
 
     leaf leaf2 {
         type identityref {
-            base sub_i1;
+            base sub_i2;
         }
     }
 

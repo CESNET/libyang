@@ -13,11 +13,11 @@ module all {
 
   feature feat2;
 
-  identity ident1 {
-    base ident2;
+  identity ident2 {
+    base ident1;
   }
 
-  identity ident2;
+  identity ident1;
 
   typedef tdef1 {
     type tdef2 {

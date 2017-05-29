@@ -12,4 +12,8 @@ submodule sub3 {
     identity sub2 {
         base mod:j1;
     }
+
+    identity k1 {
+        base sub2;
+    }
 }

@@ -47,7 +47,13 @@ help(int shortout)
         "  -v, --version         Show version number and exit.\n"
         "  -V, --verbose         Show verbose messages, can be used multiple times to\n"
         "                        increase verbosity.\n"
-        "  -p PATH, --path=PATH  Separated search path for yin and yang modules.\n\n"
+#ifndef NDEBUG
+        "  -G GROUPS, --debug=GROUPS\n"
+        "                        Enable printing of specific debugging message group\n"
+        "                        (nothing will be printed unless verbosity is set to debug):\n"
+        "                        <group>[,<group>]* (dict, yang, yin, xpath, diff)\n\n"
+#endif
+        "  -p PATH, --path=PATH  Search path for schema (YANG/YIN) modules. The option can be used multiple times.\n\n"
         "  -s, --strict          Strict data parsing (do not skip unknown data),\n"
         "                        has no effect for schemas.\n\n"
         "  -f FORMAT, --format=FORMAT\n"
@@ -168,6 +174,9 @@ main_ni(int argc, char* argv[])
         {"strict",           no_argument,       NULL, 's'},
         {"version",          no_argument,       NULL, 'v'},
         {"verbose",          no_argument,       NULL, 'V'},
+#ifndef NDEBUG
+        {"debug",            required_argument, NULL, 'G'},
+#endif
         {"type",             required_argument, NULL, 't'},
         {NULL,               required_argument, NULL, 'y'},
         {NULL,               0,                 NULL, 0}
@@ -178,7 +187,7 @@ main_ni(int argc, char* argv[])
     LYS_OUTFORMAT outformat_s = 0;
     LYS_INFORMAT informat_s;
     LYD_FORMAT informat_d, outformat_d = 0, ylformat = 0;
-    char *searchpath = NULL;
+    struct ly_set *searchpaths = NULL;
     char **feat = NULL, *ptr, *featlist, *ylpath = NULL;
     struct stat st;
     uint32_t u;
@@ -194,7 +203,12 @@ main_ni(int argc, char* argv[])
     void *p;
 
     opterr = 0;
-    while ((opt = getopt_long(argc, argv, "d:f:F:ghHio:p:st:vVy:", options, &opt_index)) != -1) {
+#ifndef NDEBUG
+    while ((opt = getopt_long(argc, argv, "d:f:F:ghHio:p:st:vVG:y:", options, &opt_index)) != -1)
+#else
+    while ((opt = getopt_long(argc, argv, "d:f:F:ghHio:p:st:vVy:", options, &opt_index)) != -1)
+#endif
+    {
         switch (opt) {
         case 'd':
             if (!strcmp(optarg, "all")) {
@@ -279,15 +293,18 @@ main_ni(int argc, char* argv[])
             }
             break;
         case 'p':
-            searchpath = optarg;
-            if (stat(searchpath, &st) == -1) {
-                fprintf(stderr, "Unable to use search path (%s) - %s.\n", searchpath, strerror(errno));
+            if (stat(optarg, &st) == -1) {
+                fprintf(stderr, "Unable to use search path (%s) - %s.\n", optarg, strerror(errno));
                 goto cleanup;
             }
             if (!S_ISDIR(st.st_mode)) {
                 fprintf(stderr, "Provided search path is not a directory.\n");
                 goto cleanup;
             }
+            if (!searchpaths) {
+                searchpaths = ly_set_new();
+            }
+            ly_set_add(searchpaths, optarg, 0);
             break;
         case 's':
             options_parser |= LYD_OPT_STRICT;
@@ -318,6 +335,39 @@ main_ni(int argc, char* argv[])
         case 'V':
             verbose++;
             break;
+#ifndef NDEBUG
+        case 'G':
+            u = 0;
+            ptr = optarg;
+            while (ptr[0]) {
+                if (!strncmp(ptr, "dict", 4)) {
+                    u |= LY_LDGDICT;
+                    ptr += 4;
+                } else if (!strncmp(ptr, "yang", 4)) {
+                    u |= LY_LDGYANG;
+                    ptr += 4;
+                } else if (!strncmp(ptr, "yin", 3)) {
+                    u |= LY_LDGYIN;
+                    ptr += 3;
+                } else if (!strncmp(ptr, "xpath", 5)) {
+                    u |= LY_LDGXPATH;
+                    ptr += 5;
+                } else if (!strncmp(ptr, "diff", 4)) {
+                    u |= LY_LDGDIFF;
+                    ptr += 4;
+                }
+
+                if (ptr[0]) {
+                    if (ptr[0] != ',') {
+                        fprintf(stderr, "yanglint error: unknown debug group string \"%s\"\n", optarg);
+                        goto cleanup;
+                    }
+                    ++ptr;
+                }
+            }
+            ly_verb_dbg(u);
+            break;
+#endif
         case 'y':
             ptr = strrchr(optarg, '.');
             if (ptr) {
@@ -381,12 +431,19 @@ main_ni(int argc, char* argv[])
 
     /* create libyang context */
     if (ylpath) {
-        ctx = ly_ctx_new_ylpath(searchpath, ylpath, ylformat);
+        ctx = ly_ctx_new_ylpath(searchpaths ? (const char*)searchpaths->set.g[0] : NULL, ylpath, ylformat);
     } else {
-        ctx = ly_ctx_new(searchpath);
+        ctx = ly_ctx_new(NULL);
     }
     if (!ctx) {
         goto cleanup;
+    }
+
+    /* set searchpaths */
+    if (searchpaths) {
+        for (u = 0; u < searchpaths->number; u++) {
+            ly_ctx_set_searchdir(ctx, (const char*)searchpaths->set.g[u]);
+        }
     }
 
     /* set context options */
@@ -540,7 +597,6 @@ main_ni(int argc, char* argv[])
                 } else {
                     fprintf(stderr, "yanglint error: invalid top-level element \"%s\" for data type autodetection.\n",
                             xml->name);
-                    lyxml_free(ctx, xml);
                     goto cleanup;
                 }
 
@@ -607,6 +663,7 @@ cleanup:
         fclose(out);
     }
     ly_set_free(mods);
+    ly_set_free(searchpaths);
     for (i = 0; i < featsize; i++) {
         free(feat[i]);
     }

@@ -153,10 +153,15 @@ void lyp_ext_instance_rm(struct ly_ctx *ctx, struct lys_ext_instance ***ext, uin
  */
 int lyp_propagate_submodule(struct lys_module *module, struct lys_include *inc);
 
-/* return: -1 = error, 0 = succes, 1 = already there */
+/* return: -1 = error, 0 = succes, 1 = already there (if it was disabled, it is enabled first) */
 int lyp_ctx_check_module(struct lys_module *module);
 
 int lyp_ctx_add_module(struct lys_module *module);
+
+/**
+ * @brief Add annotations definitions of attributes used in ietf-netconf RPCs.
+ */
+int lyp_add_ietf_netconf_annotations(struct lys_module *mod);
 
 /**
  * @brief mmap() wrapper for parsers. To unmap, use lyp_munmap().
