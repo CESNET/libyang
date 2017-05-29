@@ -2,51 +2,15 @@
 # -*- makefile -*-
 # Uncomment this to turn on verbose mode.
 export DH_VERBOSE=1
-SHELL = /bin/bash
 
-build:
-	dh_testdir
-	cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr -D CMAKE_BUILD_TYPE:String="@BUILD_TYPE@" .
-	dh_auto_build
+%:
+	dh $@
 
-check:
-	dh_testdir
-	dh_testroot
-	make test
+override_dh_strip:
+	dh_strip --dbg-package=@PACKAGE_NAME@-dbg
 
-clean:
-	dh_testdir
-	dh_testroot
-	rm -f configure-stamp build-stamp
-	dh_clean
+override_dh_auto_configure:
+	cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr -D CMAKE_BUILD_TYPE:String="Package" .
 
-install: build check
-	dh_testdir
-	dh_testroot
-	dh_prep
-	dh_installdirs
-	dh_auto_install
-	dh_strip -k --dbg-package=@PACKAGE_NAME@-dbg
-	dh_install --list-missing -s --sourcedir=debian/tmp
-
-# Build architecture-dependent files here.
-binary-arch: build install
-	dh_testdir
-	dh_testroot
-	dh_installdocs
-	dh_installexamples
-	dh_installman
-	dh_link
-	dh_strip
-	dh_compress
-	dh_fixperms
-	dh_makeshlibs -V
-	dh_installdeb
-	dh_shlibdeps
-	dh_gencontrol
-	dh_md5sums
-	dh_builddeb
-
-
-binary: binary-arch
-.PHONY: build clean check binary-arch binary install
+override_dh_auto_test:
+	ctest -V

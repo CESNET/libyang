@@ -7,5 +7,4 @@ Architecture: any
 Standards-Version: 3.8.2
 Homepage: https://github.com/CESNET/libyang
 Vcs-Git: https://github.com/CESNET/libyang
-Build-Depends: debhelper (>= 8), make, gcc, valgrind, doxygen, cmake, pkg-config, libpcre3-dev, libcmocka-dev
-# DEBTRANSFORM-RELEASE: 0
+Build-Depends: debhelper (>= 9), make, gcc, doxygen, cmake, pkg-config, libpcre3-dev, libcmocka-dev

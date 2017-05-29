@@ -5,22 +5,20 @@ Standards-Version: 3.8.2
 Homepage: https://github.com/CESNET/libyang
 
 Package: @PACKAGE_NAME@
-Depends: libpcre3-dev
+Depends: libpcre3
+Conflicts: @CONFLICT_PACKAGE_NAME@ (= @LIBYANG_MAJOR_VERSION@.@LIBYANG_MINOR_VERSION@)
 Section: libs
-Version: @LIBYANG_VERSION@
 Architecture: any
 Description: Libyang is YANG data modelling language parser and toolkit written (and providing API) in C.
 
 Package: @PACKAGE_NAME@-dev
-Depends: libpcre3-dev, libyang
+Depends: libpcre3-dev, libyang (=@LIBYANG_VERSION@)
 Section: libs
-Version: @LIBYANG_VERSION@
 Architecture: any
 Description: Headers of libyang library.
 
 Package: @PACKAGE_NAME@-dbg
-Depends: libpcre3-dev, libyang
-Section: libs
-Version: @LIBYANG_VERSION@
+Depends: libyang (=@LIBYANG_VERSION@)
+Section: debug
 Architecture: any
-Description: Debug info of libyang library.
+Description: Debug symbols of libyang library.
