@@ -6,4 +6,4 @@ libyang (0.12.130) stable; urgency=low
 
   * schema tree BUGFIX missing include
 
--- Michal Vasko <mvasko@cesnet.cz>  Fri, 24 Mar 2017 11:24:21 +0100
+ -- Michal Vasko <mvasko@cesnet.cz>  Fri, 24 Mar 2017 11:24:21 +0100
