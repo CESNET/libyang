@@ -29,6 +29,8 @@ as well as YANG 1.1 ([RFC 7950](https://tools.ietf.org/html/rfc7950)).
 ## Requirements
 
 * cmake >= 2.8.9
+* flex
+* bison
 * libpcre
  * note, that PCRE is supposed to be compiled with unicode support (configure's options
    `--enable-utf` and `--enable-unicode-properties`)
