@@ -95,6 +95,12 @@ ly_err_location(void)
 #endif /* __linux__ */
         {
             e = calloc(1, sizeof *e);
+            if (!e) {
+                fprintf(stderr, "libyang[%d]: Memory allocation failed (%s())\n", LY_LLERR, __func__);
+                /* the function is used via macros so its usage does not allow checking the return
+                 * value. Anyway, this is fatal error and application must exit anyway. */
+                abort();
+            }
         }
         pthread_setspecific(ly_err_key, e);
     }
@@ -214,12 +220,17 @@ ly_buf(void)
 
 #ifndef  __USE_GNU
 
-char *get_current_dir_name(void)
+char *
+get_current_dir_name(void)
 {
     char tmp[PATH_MAX];
+    char *retval;
 
-    if (getcwd(tmp, sizeof(tmp)))
-        return strdup(tmp);
+    if (getcwd(tmp, sizeof(tmp))) {
+        retval = strdup(tmp);
+        LY_CHECK_ERR_RETURN(!retval, LOGMEM, NULL);
+        return retval;
+    }
     return NULL;
 }
 
@@ -340,17 +351,11 @@ _transform_json2xml(const struct lys_module *module, const char *expr, int schem
 
     out_size = strlen(expr) + 1;
     out = malloc(out_size);
-    if (!out) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!out, LOGMEM, NULL);
     out_used = 0;
 
     exp = lyxp_parse_expr(expr);
-    if (!exp) {
-        free(out);
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!exp, free(out), NULL);
 
     for (i = 0; i < exp->used; ++i) {
         cur_expr = &exp->expr[exp->expr_pos[i]];
@@ -393,15 +398,9 @@ _transform_json2xml(const struct lys_module *module, const char *expr, int schem
                 if (j == *ns_count) {
                     ++(*ns_count);
                     *prefixes = ly_realloc(*prefixes, *ns_count * sizeof **prefixes);
-                    if (!(*prefixes)) {
-                        LOGMEM;
-                        goto error;
-                    }
+                    LY_CHECK_ERR_GOTO(!(*prefixes), LOGMEM, error);
                     *namespaces = ly_realloc(*namespaces, *ns_count * sizeof **namespaces);
-                    if (!(*namespaces)) {
-                        LOGMEM;
-                        goto error;
-                    }
+                    LY_CHECK_ERR_GOTO(!(*namespaces), LOGMEM, error);
                     (*prefixes)[*ns_count - 1] = mod->prefix;
                     (*namespaces)[*ns_count - 1] = mod->ns;
                 }
@@ -410,10 +409,7 @@ _transform_json2xml(const struct lys_module *module, const char *expr, int schem
             /* adjust out size (it can even decrease in some strange cases) */
             out_size += strlen(prefix) - name_len;
             out = ly_realloc(out, out_size);
-            if (!out) {
-                LOGMEM;
-                goto error;
-            }
+            LY_CHECK_ERR_GOTO(!out, LOGMEM, error);
 
             /* copy the model name */
             strcpy(&out[out_used], prefix);
@@ -455,15 +451,9 @@ _transform_json2xml(const struct lys_module *module, const char *expr, int schem
                     if (j == *ns_count) {
                         ++(*ns_count);
                         *prefixes = ly_realloc(*prefixes, *ns_count * sizeof **prefixes);
-                        if (!(*prefixes)) {
-                            LOGMEM;
-                            goto error;
-                        }
+                        LY_CHECK_ERR_GOTO(!(*prefixes), LOGMEM, error);
                         *namespaces = ly_realloc(*namespaces, *ns_count * sizeof **namespaces);
-                        if (!(*namespaces)) {
-                            LOGMEM;
-                            goto error;
-                        }
+                        LY_CHECK_ERR_GOTO(!(*namespaces), LOGMEM, error);
                         (*prefixes)[*ns_count - 1] = mod->prefix;
                         (*namespaces)[*ns_count - 1] = mod->ns;
                     }
@@ -472,10 +462,7 @@ _transform_json2xml(const struct lys_module *module, const char *expr, int schem
                 /* adjust out size (it can even decrease in some strange cases) */
                 out_size += strlen(prefix) - name_len;
                 out = ly_realloc(out, out_size);
-                if (!out) {
-                    LOGMEM;
-                    goto error;
-                }
+                LY_CHECK_ERR_GOTO(!out, LOGMEM, error);
 
                 /* copy any beginning */
                 strncpy(&out[out_used], cur_expr, ptr - cur_expr);
@@ -695,16 +682,11 @@ transform_schema2json(const struct lys_module *module, const char *expr)
 
     out_size = strlen(expr) + 1;
     out = malloc(out_size);
-    if (!out) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!out, LOGMEM, NULL);
     out_used = 0;
 
     exp = lyxp_parse_expr(expr);
-    if (!exp) {
-        goto error;
-    }
+    LY_CHECK_ERR_GOTO(!exp, , error);
 
     for (i = 0; i < exp->used; ++i) {
         cur_expr = &exp->expr[exp->expr_pos[i]];
@@ -727,10 +709,7 @@ transform_schema2json(const struct lys_module *module, const char *expr)
             /* adjust out size (it can even decrease in some strange cases) */
             out_size += strlen(mod->name) - pref_len;
             out = ly_realloc(out, out_size);
-            if (!out) {
-                LOGMEM;
-                goto error;
-            }
+            LY_CHECK_ERR_GOTO(!out, LOGMEM, error);
 
             /* copy the model name */
             strcpy(&out[out_used], mod->name);
@@ -752,10 +731,7 @@ transform_schema2json(const struct lys_module *module, const char *expr)
                 /* adjust out size (it can even decrease in some strange cases) */
                 out_size += strlen(mod->name) - pref_len;
                 out = ly_realloc(out, out_size);
-                if (!out) {
-                    LOGMEM;
-                    goto error;
-                }
+                LY_CHECK_ERR_GOTO(!out, LOGMEM, error);
 
                 /* copy any beginning */
                 strncpy(&out[out_used], cur_expr, ptr - cur_expr);
@@ -799,10 +775,7 @@ transform_iffeat_schema2json(const struct lys_module *module, const char *expr)
     in = expr;
     out_size = strlen(in) + 1;
     out = malloc(out_size);
-    if (!out) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!out, LOGMEM, NULL);
     out_used = 0;
 
     while (1) {
@@ -837,10 +810,7 @@ transform_iffeat_schema2json(const struct lys_module *module, const char *expr)
         /* adjust out size (it can even decrease in some strange cases) */
         out_size += strlen(mod->name) - id_len;
         out = ly_realloc(out, out_size);
-        if (!out) {
-            LOGMEM;
-            return NULL;
-        }
+        LY_CHECK_ERR_RETURN(!out, LOGMEM, NULL);
 
         /* copy the data before prefix */
         strncpy(&out[out_used], in, id - in);

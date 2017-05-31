@@ -295,13 +295,11 @@ lyp_add_ietf_netconf_annotations(struct lys_module *mod)
     struct ly_ctx *ctx = mod->ctx; /* shortcut */
 
     reallocated = realloc(mod->ext, (mod->ext_size + 3) * sizeof *mod->ext);
-    if (!reallocated) {
-        LOGMEM;
-        return EXIT_FAILURE;
-    }
+    LY_CHECK_ERR_RETURN(!reallocated, LOGMEM, EXIT_FAILURE);
     mod->ext = reallocated;
     /* 1) edit-config's operation */
     op = calloc(1, sizeof(struct lys_ext_instance_complex) + 5 * sizeof(void*) + sizeof(uint16_t));
+    LY_CHECK_ERR_RETURN(!op, LOGMEM, EXIT_FAILURE);
     mod->ext[mod->ext_size] = (struct lys_ext_instance *)op;
     op->arg_value = lydict_insert(ctx, "operation", 9);
     op->def = &ctx->models.list[0]->extensions[0];
@@ -312,11 +310,13 @@ lyp_add_ietf_netconf_annotations(struct lys_module *mod)
     op->nodetype = LYS_EXT;
     type = (struct lys_type**)&op->content; /* type is stored at offset 0 */
     *type = calloc(1, sizeof(struct lys_type));
+    LY_CHECK_ERR_RETURN(!*type, LOGMEM, EXIT_FAILURE);
     (*type)->base = LY_TYPE_ENUM;
     (*type)->der = ly_types[LY_TYPE_ENUM];
     (*type)->parent = (struct lys_tpdf *)op;
     (*type)->info.enums.count = 5;
     (*type)->info.enums.enm = calloc(5, sizeof *(*type)->info.enums.enm);
+    LY_CHECK_ERR_RETURN(!(*type)->info.enums.enm, LOGMEM, EXIT_FAILURE);
     (*type)->info.enums.enm[0].value = 0;
     (*type)->info.enums.enm[0].name = lydict_insert(ctx, "merge", 5);
     (*type)->info.enums.enm[1].value = 1;
@@ -331,6 +331,7 @@ lyp_add_ietf_netconf_annotations(struct lys_module *mod)
 
     /* 2) filter's type */
     op = calloc(1, sizeof(struct lys_ext_instance_complex) + 5 * sizeof(void*) + sizeof(uint16_t));
+    LY_CHECK_ERR_RETURN(!op, LOGMEM, EXIT_FAILURE);
     mod->ext[mod->ext_size] = (struct lys_ext_instance *)op;
     op->arg_value = lydict_insert(ctx, "type", 4);
     op->def = &ctx->models.list[0]->extensions[0];
@@ -341,11 +342,13 @@ lyp_add_ietf_netconf_annotations(struct lys_module *mod)
     op->nodetype = LYS_EXT;
     type = (struct lys_type**)&op->content; /* type is stored at offset 0 */
     *type = calloc(1, sizeof(struct lys_type));
+    LY_CHECK_ERR_RETURN(!*type, LOGMEM, EXIT_FAILURE);
     (*type)->base = LY_TYPE_ENUM;
     (*type)->der = ly_types[LY_TYPE_ENUM];
     (*type)->parent = (struct lys_tpdf *)op;
     (*type)->info.enums.count = 2;
     (*type)->info.enums.enm = calloc(2, sizeof *(*type)->info.enums.enm);
+    LY_CHECK_ERR_RETURN(!(*type)->info.enums.enm, LOGMEM, EXIT_FAILURE);
     (*type)->info.enums.enm[0].value = 0;
     (*type)->info.enums.enm[0].name = lydict_insert(ctx, "subtree", 7);
     (*type)->info.enums.enm[1].value = 1;
@@ -354,9 +357,12 @@ lyp_add_ietf_netconf_annotations(struct lys_module *mod)
         if (!strcmp(mod->features[i - 1].name, "xpath")) {
             (*type)->info.enums.enm[1].iffeature_size = 1;
             (*type)->info.enums.enm[1].iffeature = calloc(1, sizeof(struct lys_feature));
+            LY_CHECK_ERR_RETURN(!(*type)->info.enums.enm[1].iffeature, LOGMEM, EXIT_FAILURE);
             (*type)->info.enums.enm[1].iffeature[0].expr = malloc(sizeof(uint8_t));
+            LY_CHECK_ERR_RETURN(!(*type)->info.enums.enm[1].iffeature[0].expr, LOGMEM, EXIT_FAILURE);
             *(*type)->info.enums.enm[1].iffeature[0].expr = 3; /* LYS_IFF_F */
             (*type)->info.enums.enm[1].iffeature[0].features = malloc(sizeof(struct lys_feature*));
+            LY_CHECK_ERR_RETURN(!(*type)->info.enums.enm[1].iffeature[0].features, LOGMEM, EXIT_FAILURE);
             (*type)->info.enums.enm[1].iffeature[0].features[0] = &mod->features[i - 1];
             break;
         }
@@ -365,6 +371,7 @@ lyp_add_ietf_netconf_annotations(struct lys_module *mod)
 
     /* 3) filter's select */
     op = calloc(1, sizeof(struct lys_ext_instance_complex) + 5 * sizeof(void*) + sizeof(uint16_t));
+    LY_CHECK_ERR_RETURN(!op, LOGMEM, EXIT_FAILURE);
     mod->ext[mod->ext_size] = (struct lys_ext_instance *)op;
     op->arg_value = lydict_insert(ctx, "select", 6);
     op->def = &ctx->models.list[0]->extensions[0];
@@ -375,6 +382,7 @@ lyp_add_ietf_netconf_annotations(struct lys_module *mod)
     op->nodetype = LYS_EXT;
     type = (struct lys_type**)&op->content; /* type is stored at offset 0 */
     *type = calloc(1, sizeof(struct lys_type));
+    LY_CHECK_ERR_RETURN(!*type, LOGMEM, EXIT_FAILURE);
     (*type)->base = LY_TYPE_STRING;
     (*type)->der = ly_types[LY_TYPE_STRING];
     (*type)->parent = (struct lys_tpdf *)op;
@@ -1119,10 +1127,7 @@ lyp_check_pattern(const char *pattern, pcre **pcre_precomp)
      * http://www.w3.org/TR/2004/REC-xmlschema-2-20041028/#regexs
      */
     perl_regex = malloc((strlen(pattern) + 2) * sizeof(char));
-    if (!perl_regex) {
-        LOGMEM;
-        return EXIT_FAILURE;
-    }
+    LY_CHECK_ERR_RETURN(!perl_regex, LOGMEM, EXIT_FAILURE);
     strcpy(perl_regex, pattern);
     if (strncmp(pattern + strlen(pattern) - 2, ".*", 2)) {
         strcat(perl_regex, "$");
@@ -1144,11 +1149,7 @@ lyp_check_pattern(const char *pattern, pcre **pcre_precomp)
         /* need more space */
         if (end - start < LYP_URANGE_LEN) {
             perl_regex = ly_realloc(perl_regex, strlen(perl_regex) + (LYP_URANGE_LEN - (end - start)) + 1);
-            if (!perl_regex) {
-                LOGMEM;
-                free(perl_regex);
-                return EXIT_FAILURE;
-            }
+            LY_CHECK_ERR_RETURN(!perl_regex, LOGMEM; free(perl_regex), EXIT_FAILURE);
         }
 
         /* find our range */
@@ -1234,6 +1235,7 @@ make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, vo
             }
             if (buf[0]) {
                 str = strdup(buf);
+                LY_CHECK_ERR_GOTO(!str, LOGMEM, cleanup);
                 sprintf(buf, "%s %s", str, bits[i]->name);
                 free(str);
             } else {
@@ -1457,10 +1459,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         if (value || store) {
             /* allocate the array of pointers to bits definition */
             bits = calloc(type->info.bits.count, sizeof *bits);
-            if (!bits) {
-                LOGMEM;
-                goto cleanup;
-            }
+            LY_CHECK_ERR_GOTO(!bits, LOGMEM, cleanup);
         }
 
         if (!value) {
@@ -2080,10 +2079,8 @@ lyp_fill_attr(struct ly_ctx *ctx, struct lyd_node *parent, const char *module_ns
 
     /* allocate and fill the data attribute structure */
     dattr = calloc(1, sizeof *dattr);
-    if (!dattr) {
-        LOGMEM;
-        return -1;
-    }
+    LY_CHECK_ERR_RETURN(!dattr, LOGMEM, -1);
+
     dattr->parent = parent;
     dattr->next = NULL;
     dattr->annotation = submod ? (struct lys_ext_instance_complex *)submod->ext[pos] :
@@ -2646,10 +2643,7 @@ lyp_add_includedup(struct lys_module *sub_mod, struct lys_submodule *parsed_subm
         ++models->parsed_submodules_count;
         models->parsed_submodules = ly_realloc(models->parsed_submodules,
                                                models->parsed_submodules_count * sizeof *models->parsed_submodules);
-        if (!models->parsed_submodules) {
-            LOGMEM;
-            return;
-        }
+        LY_CHECK_ERR_RETURN(!models->parsed_submodules, LOGMEM, );
         models->parsed_submodules[models->parsed_submodules_count - 1] = lys_main_module(sub_mod);
     }
 
@@ -2657,10 +2651,7 @@ lyp_add_includedup(struct lys_module *sub_mod, struct lys_submodule *parsed_subm
     ++models->parsed_submodules_count;
     models->parsed_submodules = ly_realloc(models->parsed_submodules,
                                            models->parsed_submodules_count * sizeof *models->parsed_submodules);
-    if (!models->parsed_submodules) {
-        LOGMEM;
-        return;
-    }
+    LY_CHECK_ERR_RETURN(!models->parsed_submodules, LOGMEM, );
     models->parsed_submodules[models->parsed_submodules_count - 1] = (struct lys_module *)parsed_submod;
 }
 
@@ -2700,10 +2691,7 @@ lyp_check_circmod_add(struct lys_module *module)
     ++models->parsing_sub_modules_count;
     models->parsing_sub_modules = ly_realloc(models->parsing_sub_modules,
                                              models->parsing_sub_modules_count * sizeof *models->parsing_sub_modules);
-    if (!models->parsing_sub_modules) {
-        LOGMEM;
-        return -1;
-    }
+    LY_CHECK_ERR_RETURN(!models->parsing_sub_modules, LOGMEM, -1);
     models->parsing_sub_modules[models->parsing_sub_modules_count - 1] = module;
 
     return 0;
@@ -2847,10 +2835,7 @@ lyp_check_include_missing_recursive(struct lys_module *main_module, struct lys_s
             }
             main_module->inc_size++;
             reallocated = realloc(main_module->inc, main_module->inc_size * sizeof *main_module->inc);
-            if (!reallocated) {
-                LOGMEM;
-                return EXIT_FAILURE;
-            }
+            LY_CHECK_ERR_RETURN(!reallocated, LOGMEM, EXIT_FAILURE);
             main_module->inc = reallocated;
             memset(&main_module->inc[main_module->inc_size - 1], 0, sizeof *main_module->inc);
             /* to avoid unexpected consequences, copy just a link to the submodule and the revision,
@@ -3038,16 +3023,9 @@ lyp_rfn_apply_ext_(struct lys_refine *rfn, struct lys_node *target, LYEXT_SUBSTM
         if (n == -1) {
             /* nothing to replace, we are going to add it - reallocate */
             new = malloc(sizeof **target->ext);
-            if (!new) {
-                LOGMEM;
-                return EXIT_FAILURE;
-            }
+            LY_CHECK_ERR_RETURN(!new, LOGMEM, EXIT_FAILURE);
             reallocated = realloc(target->ext, (target->ext_size + 1) * sizeof *target->ext);
-            if (!reallocated) {
-                LOGMEM;
-                free(new);
-                return EXIT_FAILURE;
-            }
+            LY_CHECK_ERR_RETURN(!reallocated, LOGMEM; free(new), EXIT_FAILURE);
             target->ext = reallocated;
             target->ext_size++;
 
@@ -3359,16 +3337,9 @@ lyp_deviate_apply_ext(struct lys_deviate *dev, struct lys_node *target, LYEXT_SU
         if (n == -1) {
             /* nothing to replace, we are going to add it - reallocate */
             new = malloc(sizeof **target->ext);
-            if (!new) {
-                LOGMEM;
-                return EXIT_FAILURE;
-            }
+            LY_CHECK_ERR_RETURN(!new, LOGMEM, EXIT_FAILURE);
             reallocated = realloc(target->ext, (target->ext_size + 1) * sizeof *target->ext);
-            if (!reallocated) {
-                LOGMEM;
-                free(new);
-                return EXIT_FAILURE;
-            }
+            LY_CHECK_ERR_RETURN(!reallocated, LOGMEM; free(new), EXIT_FAILURE);
             target->ext = reallocated;
             target->ext_size++;
 
@@ -3382,10 +3353,7 @@ lyp_deviate_apply_ext(struct lys_deviate *dev, struct lys_node *target, LYEXT_SU
 
             /* and prepare the new structure */
             new = malloc(sizeof **target->ext);
-            if (!new) {
-                LOGMEM;
-                return EXIT_FAILURE;
-            }
+            LY_CHECK_ERR_RETURN(!new, LOGMEM, EXIT_FAILURE);
         }
         /* common part for adding and replacing - fill the newly created / replaced cell */
         target->ext[n] = new;

@@ -73,18 +73,12 @@ lyjson_parse_text(const char *data, unsigned int *len)
             if (result) {
                 size = size + o;
                 aux = ly_realloc(result, size + 1);
-                if (!aux) {
-                    LOGMEM;
-                    return NULL;
-                }
+                LY_CHECK_ERR_RETURN(!aux, LOGMEM, NULL);
                 result = aux;
             } else {
                 size = o;
                 result = malloc((size + 1) * sizeof *result);
-                if (!result) {
-                    LOGMEM;
-                    return NULL;
-                }
+                LY_CHECK_ERR_RETURN(!result, LOGMEM, NULL);
             }
             memcpy(&result[size - o], buf, o);
 
@@ -178,18 +172,12 @@ lyjson_parse_text(const char *data, unsigned int *len)
         if (result) {
             size = size + o;
             aux = ly_realloc(result, size + 1);
-            if (!aux) {
-                LOGMEM;
-                return NULL;
-            }
+            LY_CHECK_ERR_RETURN(!aux, LOGMEM, NULL);
             result = aux;
         } else {
             size = o;
             result = malloc((size + 1) * sizeof *result);
-            if (!result) {
-                LOGMEM;
-                return NULL;
-            }
+            LY_CHECK_ERR_RETURN(!result, LOGMEM, NULL);
         }
         memcpy(&result[size - o], buf, o);
     }
@@ -198,6 +186,7 @@ lyjson_parse_text(const char *data, unsigned int *len)
     } else {
         size = 0;
         result = strdup("");
+        LY_CHECK_ERR_RETURN(!result, LOGMEM, NULL);
     }
 
     return result;
@@ -312,11 +301,7 @@ lyjson_convert_enumber(const char *number, unsigned int num_len, char *e_ptr)
         /* XXX[.]XXXX(XXX.) */
         num = malloc((minus ? 1 : 0) + (dot_pos - (ptr ? 2 : 1)) + 1);
     }
-
-    if (!num) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!num, LOGMEM, NULL);
     if (minus) {
         strcpy(num, "-");
     } else {
@@ -548,10 +533,8 @@ repeat:
 
             /* another instance of the leaf-list */
             new = calloc(1, sizeof(struct lyd_node_leaf_list));
-            if (!new) {
-                LOGMEM;
-                return 0;
-            }
+            LY_CHECK_ERR_RETURN(!new, LOGMEM, 0);
+
             new->parent = leaf->parent;
             new->prev = (struct lyd_node *)leaf;
             leaf->next = (struct lyd_node *)new;
@@ -964,10 +947,7 @@ attr_repeat:
 
         if (attr) {
             attrs_aux = malloc(sizeof *attrs_aux);
-            if (!attrs_aux) {
-                LOGMEM;
-                goto error;
-            }
+            LY_CHECK_ERR_GOTO(!attrs_aux, LOGMEM, error);
             attrs_aux->attr = attr;
             attrs_aux->index = flag_leaflist;
             attrs_aux->schema = schema;
@@ -1013,10 +993,7 @@ attr_repeat:
         LOGINT;
         goto error;
     }
-    if (!result) {
-        LOGMEM;
-        goto error;
-    }
+    LY_CHECK_ERR_GOTO(!result, LOGMEM, error);
 
     result->prev = result;
     result->schema = schema;
@@ -1212,9 +1189,7 @@ attr_repeat:
 
                 /* another instance of the list */
                 new = calloc(1, sizeof *new);
-                if (!new) {
-                    goto error;
-                }
+                LY_CHECK_ERR_GOTO(!new, LOGMEM, error);
                 new->parent = list->parent;
                 new->prev = list;
                 list->next = new;
@@ -1323,10 +1298,7 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
     }
 
     unres = calloc(1, sizeof *unres);
-    if (!unres) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!unres, LOGMEM, NULL);
 
     /* create RPC/action reply part that is not in the parsed data */
     if (rpc_act) {

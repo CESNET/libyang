@@ -684,14 +684,14 @@ static const yytype_uint16 yyrline[] =
     4279,  4280,  4281,  4282,  4283,  4284,  4285,  4286,  4287,  4288,
     4289,  4290,  4291,  4292,  4293,  4294,  4295,  4296,  4297,  4298,
     4299,  4300,  4301,  4302,  4303,  4304,  4305,  4306,  4307,  4309,
-    4316,  4323,  4339,  4352,  4364,  4387,  4394,  4412,  4452,  4454,
-    4455,  4456,  4457,  4458,  4459,  4460,  4461,  4462,  4463,  4464,
-    4465,  4466,  4468,  4469,  4470,  4471,  4472,  4473,  4474,  4475,
-    4476,  4477,  4478,  4479,  4480,  4481,  4483,  4484,  4485,  4486,
-    4488,  4496,  4497,  4502,  4507,  4512,  4517,  4522,  4527,  4532,
-    4537,  4542,  4547,  4552,  4557,  4562,  4567,  4572,  4586,  4606,
-    4611,  4616,  4621,  4634,  4639,  4643,  4653,  4664,  4675,  4686,
-    4697,  4713,  4728,  4729,  4735,  4742,  4757,  4760
+    4316,  4323,  4343,  4361,  4377,  4404,  4411,  4429,  4469,  4471,
+    4472,  4473,  4474,  4475,  4476,  4477,  4478,  4479,  4480,  4481,
+    4482,  4483,  4485,  4486,  4487,  4488,  4489,  4490,  4491,  4492,
+    4493,  4494,  4495,  4496,  4497,  4498,  4500,  4501,  4502,  4503,
+    4505,  4513,  4514,  4519,  4524,  4529,  4534,  4539,  4544,  4549,
+    4554,  4559,  4564,  4569,  4574,  4579,  4584,  4589,  4603,  4623,
+    4628,  4633,  4638,  4651,  4656,  4660,  4670,  4685,  4700,  4715,
+    4730,  4750,  4765,  4766,  4772,  4779,  4794,  4797
 };
 #endif
 
@@ -8221,6 +8221,10 @@ yyreduce:
                              }
                              /* allocate type structure */
                              (*type) = calloc(1, sizeof **type);
+                             if (!*type) {
+                               LOGMEM;
+                               YYABORT;
+                             }
 
                              /* HACK for unres */
                              (*type)->parent = (struct lys_tpdf *)ext_instance;
@@ -8241,6 +8245,11 @@ yyreduce:
                                 }
                                 /* allocate typedef structure */
                                 (*tpdf) = calloc(1, sizeof **tpdf);
+                                if (!*tpdf) {
+                                  LOGMEM;
+                                  YYABORT;
+                                }
+                                
                                 (yyval.v) = actual = *tpdf;
                                 is_ext_instance = 0;
                               }
@@ -8258,6 +8267,10 @@ yyreduce:
                                  }
                                  /* allocate typedef structure */
                                  (*iffeature) = calloc(1, sizeof **iffeature);
+                                 if (!*iffeature) {
+                                   LOGMEM;
+                                   YYABORT;
+                                 }
                                  (yyval.v) = actual = *iffeature;
                                }
 
@@ -8284,6 +8297,10 @@ yyreduce:
                                     }
                                     /* allocate structure for must */
                                     (*restr) = calloc(1, sizeof(struct lys_restr));
+                                    if (!*restr) {
+                                      LOGMEM;
+                                      YYABORT;
+                                    }
                                     (yyval.v) = actual = *restr;
                                     s = NULL;
                                   }
@@ -8312,7 +8329,7 @@ yyreduce:
                                    YYABORT;
                                  }
                                  rev[i] = calloc(1, sizeof **rev);
-                                 if (!*rev) {
+                                 if (!rev[i]) {
                                    LOGMEM;
                                    YYABORT;
                                  }
@@ -8670,6 +8687,10 @@ yyreduce:
                                            }
                                            /* store the value */
                                            *val = malloc(sizeof(uint32_t));
+                                           if (!*val) {
+                                             LOGMEM;
+                                             YYABORT;
+                                           }
                                            **val = (yyvsp[0].uint);
                                          }
 
@@ -8686,6 +8707,10 @@ yyreduce:
                                            }
                                            /* store the value */
                                            *val = malloc(sizeof(uint32_t));
+                                           if (!*val) {
+                                             LOGMEM;
+                                             YYABORT;
+                                           }
                                            **val = (yyvsp[0].uint);
                                          }
 
@@ -8702,6 +8727,10 @@ yyreduce:
                                        }
                                        /* store the value */
                                        *val = malloc(sizeof(uint32_t));
+                                       if (!*val) {
+                                         LOGMEM;
+                                         YYABORT;
+                                       }
                                        **val = (yyvsp[0].uint);
                                      }
 
@@ -8718,6 +8747,10 @@ yyreduce:
                                     }
                                     /* store the value */
                                     *val = malloc(sizeof(int32_t));
+                                    if (!*val) {
+                                      LOGMEM;
+                                      YYABORT;
+                                    }
                                     **val = (yyvsp[0].i);
                                   }
 
@@ -8734,6 +8767,10 @@ yyreduce:
                                        YYABORT;
                                      }
                                      *unique = calloc(1, sizeof(struct lys_unique));
+                                     if (!*unique) {
+                                       LOGMEM;
+                                       YYABORT;
+                                     }
                                      rc = yang_fill_unique(trg, (struct lys_node_list *)ext_instance, *unique, s, param->unres);
                                      free(s);
                                      s = NULL;

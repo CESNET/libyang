@@ -50,10 +50,7 @@ modlist_add(struct mlist **mlist, const struct lys_module *mod)
 
     if (!iter) {
         iter = malloc(sizeof *iter);
-        if (!iter) {
-            LOGMEM;
-            return EXIT_FAILURE;
-        }
+        LY_CHECK_ERR_RETURN(!iter, LOGMEM, EXIT_FAILURE);
         iter->next = *mlist;
         iter->module = (struct lys_module *)mod;
         *mlist = iter;

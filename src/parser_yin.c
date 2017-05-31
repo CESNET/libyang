@@ -83,6 +83,7 @@ lyp_yin_fill_ext(void *parent, LYEXT_PAR parent_type, LYEXT_SUBSTMT substmt, uin
     struct unres_ext *info;
 
     info = malloc(sizeof *info);
+    LY_CHECK_ERR_RETURN(!info, LOGMEM, EXIT_FAILURE);
     lyxml_unlink(module->ctx, yin);
     info->data.yin = yin;
     info->datatype = LYS_IN_YIN;
@@ -225,10 +226,7 @@ parseext:
 
         /* first, allocate a space for the extension instance in the parent elem */
         reallocated = realloc(*ext, (1 + (*ext_size)) * sizeof **ext);
-        if (!reallocated) {
-            LOGMEM;
-            return EXIT_FAILURE;
-        }
+        LY_CHECK_ERR_RETURN(!reallocated, LOGMEM, EXIT_FAILURE);
         (*ext) = reallocated;
 
         /* init memory */
@@ -288,10 +286,7 @@ error:
     }
     if (c_ext) {
         iffeat->ext = calloc(c_ext, sizeof *iffeat->ext);
-        if (!iffeat->ext) {
-            LOGMEM;
-            return EXIT_FAILURE;
-        }
+        LY_CHECK_ERR_RETURN(!iffeat->ext, LOGMEM, EXIT_FAILURE);
         LY_TREE_FOR_SAFE(yin->child, next, node) {
             /* extensions */
             r = lyp_yin_fill_ext(iffeat, LYEXT_PAR_IDENT, 0, 0, parent->module, node,
@@ -353,25 +348,16 @@ fill_yin_identity(struct lys_module *module, struct lyxml_elem *yin, struct lys_
     if (c_base) {
         ident->base_size = 0;
         ident->base = calloc(c_base, sizeof *ident->base);
-        if (!ident->base) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!ident->base, LOGMEM, error);
     }
     if (c_ftrs) {
         ident->iffeature = calloc(c_ftrs, sizeof *ident->iffeature);
-        if (!ident->iffeature) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!ident->iffeature, LOGMEM, error);
     }
     if (c_ext) {
         /* some extensions may be already present from the substatements */
         reallocated = realloc(ident->ext, (c_ext + ident->ext_size) * sizeof *ident->ext);
-        if (!reallocated) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!reallocated, LOGMEM, error);
         ident->ext = reallocated;
 
         /* init memory */
@@ -588,10 +574,8 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     }
     if (c_ext) {
         type->ext = calloc(c_ext, sizeof *type->ext);
-        if (!type->ext) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!type->ext, LOGMEM, error);
+
         LY_TREE_FOR_SAFE(exts.child, next, node) {
             rc = lyp_yin_fill_ext(type, LYEXT_PAR_TYPE, 0, 0, module, node, &type->ext, type->ext_size, unres);
             type->ext_size++;
@@ -634,10 +618,8 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
 
         type->info.bits.bit = calloc(type->info.bits.count, sizeof *type->info.bits.bit);
-        if (!type->info.bits.bit) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!type->info.bits.bit, LOGMEM, error);
+
         p = 0;
         i = -1;
         LY_TREE_FOR(yin->child, next) {
@@ -818,10 +800,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
                 GETVAL(value, node, "value");
                 type->info.dec64.range = calloc(1, sizeof *type->info.dec64.range);
-                if (!type->info.dec64.range) {
-                    LOGMEM;
-                    goto error;
-                }
+                LY_CHECK_ERR_GOTO(!type->info.dec64.range, LOGMEM, error);
                 type->info.dec64.range->expr = lydict_insert(module->ctx, value, 0);
 
                 /* get possible substatements */
@@ -914,10 +893,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
 
         type->info.enums.enm = calloc(type->info.enums.count, sizeof *type->info.enums.enm);
-        if (!type->info.enums.enm) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!type->info.enums.enm, LOGMEM, error);
 
         v = 0;
         i = -1;
@@ -1210,10 +1186,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                     goto error;
                 }
                 *restrs = calloc(1, sizeof **restrs);
-                if (!(*restrs)) {
-                    LOGMEM;
-                    goto error;
-                }
+                LY_CHECK_ERR_GOTO(!(*restrs), LOGMEM, error);
                 (*restrs)->expr = lydict_insert(module->ctx, value, 0);
 
                 /* get possible substatements */
@@ -1327,10 +1300,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                     goto error;
                 }
                 type->info.str.length = calloc(1, sizeof *type->info.str.length);
-                if (!type->info.str.length) {
-                    LOGMEM;
-                    goto error;
-                }
+                LY_CHECK_ERR_GOTO(!type->info.str.length, LOGMEM, error);
                 type->info.str.length->expr = lydict_insert(module->ctx, value, 0);
 
                 /* get possible sub-statements */
@@ -1348,15 +1318,10 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         /* store patterns in array */
         if (i) {
             type->info.str.patterns = calloc(i, sizeof *type->info.str.patterns);
-            if (!type->info.str.patterns) {
-                LOGMEM;
-                goto error;
-            }
+            LY_CHECK_ERR_GOTO(!type->info.str.patterns, LOGMEM, error);
             LY_TREE_FOR(yin->child, node) {
                 GETVAL(value, node, "value");
                 if (lyp_check_pattern(value, NULL)) {
-                    free(type->info.str.patterns);
-                    type->info.str.patterns = NULL;
                     goto error;
                 }
                 restr = &type->info.str.patterns[type->info.str.pat_count]; /* shortcut */
@@ -1391,6 +1356,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
                 len = strlen(value);
                 buf = malloc((len + 2) * sizeof *buf); /* modifier byte + value + terminating NULL byte */
+                LY_CHECK_ERR_GOTO(!buf, LOGMEM, error);
                 buf[0] = modifier;
                 strcpy(&buf[1], value);
 
@@ -1398,8 +1364,6 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
                 /* get possible sub-statements */
                 if (read_restr_substmt(module, restr, node, unres)) {
-                    free(type->info.str.patterns);
-                    type->info.str.patterns = NULL;
                     goto error;
                 }
                 type->info.str.pat_count++;
@@ -1438,10 +1402,8 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
         /* allocate array for union's types ... */
         type->info.uni.types = calloc(i, sizeof *type->info.uni.types);
-        if (!type->info.uni.types) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!type->info.uni.types, LOGMEM, error);
+
         /* ... and fill the structures */
         LY_TREE_FOR(yin->child, node) {
             type->info.uni.types[type->info.uni.count].parent = type->parent;
@@ -1598,10 +1560,7 @@ fill_yin_typedef(struct lys_module *module, struct lys_node *parent, struct lyxm
     if (c_ext) {
         /* some extensions may be already present from the substatements */
         reallocated = realloc(tpdf->ext, (c_ext + tpdf->ext_size) * sizeof *tpdf->ext);
-        if (!reallocated) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!reallocated, LOGMEM, error);
         tpdf->ext = reallocated;
 
         /* init memory */
@@ -1683,10 +1642,7 @@ fill_yin_extension(struct lys_module *module, struct lyxml_elem *yin, struct lys
     if (c_ext) {
         /* some extensions may be already present from the substatements */
         reallocated = realloc(ext->ext, (c_ext + ext->ext_size) * sizeof *ext->ext);
-        if (!reallocated) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!reallocated, LOGMEM, error);
         ext->ext = reallocated;
 
         /* init memory */
@@ -1745,18 +1701,12 @@ fill_yin_feature(struct lys_module *module, struct lyxml_elem *yin, struct lys_f
 
     if (c_ftrs) {
         f->iffeature = calloc(c_ftrs, sizeof *f->iffeature);
-        if (!f->iffeature) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!f->iffeature, LOGMEM, error);
     }
     if (c_ext) {
         /* some extensions may be already present from the substatements */
         reallocated = realloc(f->ext, (c_ext + f->ext_size) * sizeof *f->ext);
-        if (!reallocated) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!reallocated, LOGMEM, error);
         f->ext = reallocated;
 
         /* init memory */
@@ -1887,6 +1837,7 @@ fill_yin_unique(struct lys_module *module, struct lys_node *parent, struct lyxml
 
     /* count the number of unique leafs in the value */
     start = value = vaux = strdup(orig);
+    LY_CHECK_ERR_GOTO(!vaux, LOGMEM, error);
     while ((vaux = strpbrk(vaux, " \t\n"))) {
         unique->expr_size++;
         while (isspace(*vaux)) {
@@ -1895,10 +1846,7 @@ fill_yin_unique(struct lys_module *module, struct lys_node *parent, struct lyxml
     }
     unique->expr_size++;
     unique->expr = calloc(unique->expr_size, sizeof *unique->expr);
-    if (!unique->expr) {
-        LOGMEM;
-        goto error;
-    }
+    LY_CHECK_ERR_GOTO(!unique->expr, LOGMEM, error);
 
     for (i = 0; i < unique->expr_size; i++) {
         vaux = strpbrk(value, " \t\n");
@@ -1925,6 +1873,7 @@ fill_yin_unique(struct lys_module *module, struct lys_node *parent, struct lyxml
         /* try to resolve leaf */
         if (unres) {
             unique_info = malloc(sizeof *unique_info);
+            LY_CHECK_ERR_GOTO(!unique_info, LOGMEM, error);
             unique_info->list = parent;
             unique_info->expr = unique->expr[i];
             unique_info->trg_type = &unique->trg_type;
@@ -2143,10 +2092,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
 
     if (c_dev) {
         dev->deviate = calloc(c_dev, sizeof *dev->deviate);
-        if (!dev->deviate) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!dev->deviate, LOGMEM, error);
     } else {
         LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "deviate", "deviation");
         goto error;
@@ -2154,10 +2100,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     if (c_ext) {
         /* some extensions may be already present from the substatements */
         reallocated = realloc(dev->ext, (c_ext + dev->ext_size) * sizeof *dev->ext);
-        if (!reallocated) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!reallocated, LOGMEM, error);
         dev->ext = reallocated;
 
         /* init memory */
@@ -2589,20 +2532,14 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
             } else if (d->mod == LY_DEVIATE_ADD) {
                 /* reallocate the must array of the target */
                 d->must = ly_realloc(*trg_must, (c_must + *trg_must_size) * sizeof *d->must);
-                if (!d->must) {
-                    LOGMEM;
-                    goto error;
-                }
+                LY_CHECK_ERR_GOTO(!d->must, LOGMEM, error);
                 *trg_must = d->must;
                 d->must = &((*trg_must)[*trg_must_size]);
                 d->must_size = c_must;
             } else { /* LY_DEVIATE_DEL */
                 d->must = calloc(c_must, sizeof *d->must);
             }
-            if (!d->must) {
-                LOGMEM;
-                goto error;
-            }
+            LY_CHECK_ERR_GOTO(!d->must, LOGMEM, error);
         }
         if (c_uniq) {
             /* replace unique is forbidden */
@@ -2622,15 +2559,13 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
             if (d->mod == LY_DEVIATE_ADD) {
                 /* reallocate the unique array of the target */
                 d->unique = ly_realloc(list->unique, (c_uniq + list->unique_size) * sizeof *d->unique);
+                LY_CHECK_ERR_GOTO(!d->unique, LOGMEM, error);
                 list->unique = d->unique;
                 d->unique = &list->unique[list->unique_size];
                 d->unique_size = c_uniq;
             } else { /* LY_DEVIATE_DEL */
                 d->unique = calloc(c_uniq, sizeof *d->unique);
-            }
-            if (!d->unique) {
-                LOGMEM;
-                goto error;
+                LY_CHECK_ERR_GOTO(!d->unique, LOGMEM, error);
             }
         }
         if (c_dflt) {
@@ -2668,6 +2603,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 if (d->mod == LY_DEVIATE_ADD) {
                     /* reallocate (enlarge) the unique array of the target */
                     llist->dflt = ly_realloc(llist->dflt, (c_dflt + llist->dflt_size) * sizeof *d->dflt);
+                    LY_CHECK_ERR_GOTO(!llist->dflt, LOGMEM, error);
                 } else if (d->mod == LY_DEVIATE_RPL) {
                     /* reallocate (replace) the unique array of the target */
                     for (i = 0; i < llist->dflt_size; i++) {
@@ -2675,21 +2611,16 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                     }
                     llist->dflt = ly_realloc(llist->dflt, c_dflt * sizeof *d->dflt);
                     llist->dflt_size = 0;
+                    LY_CHECK_ERR_GOTO(!llist->dflt, LOGMEM, error);
                 }
             }
             d->dflt = calloc(c_dflt, sizeof *d->dflt);
-            if (!d->dflt) {
-                LOGMEM;
-                goto error;
-            }
+            LY_CHECK_ERR_GOTO(!d->dflt, LOGMEM, error);
         }
         if (c_ext) {
             /* some extensions may be already present from the substatements */
             reallocated = realloc(d->ext, (c_ext + d->ext_size) * sizeof *d->ext);
-            if (!reallocated) {
-                LOGMEM;
-                goto error;
-            }
+            LY_CHECK_ERR_GOTO(!reallocated, LOGMEM, error);
             d->ext = reallocated;
 
             /* init memory */
@@ -3092,18 +3023,12 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
 
     if (c_ftrs) {
         aug->iffeature = calloc(c_ftrs, sizeof *aug->iffeature);
-        if (!aug->iffeature) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!aug->iffeature, LOGMEM, error);
     }
     if (c_ext) {
         /* some extensions may be already present from the substatements */
         reallocated = realloc(aug->ext, (c_ext + aug->ext_size) * sizeof *aug->ext);
-        if (!reallocated) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!reallocated, LOGMEM, error);
         aug->ext = reallocated;
 
         /* init memory */
@@ -3463,32 +3388,20 @@ fill_yin_refine(struct lys_node *uses, struct lyxml_elem *yin, struct lys_refine
     /* process nodes with cardinality of 0..n */
     if (c_must) {
         rfn->must = calloc(c_must, sizeof *rfn->must);
-        if (!rfn->must) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!rfn->must, LOGMEM, error);
     }
     if (c_ftrs) {
         rfn->iffeature = calloc(c_ftrs, sizeof *rfn->iffeature);
-        if (!rfn->iffeature) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!rfn->iffeature, LOGMEM, error);
     }
     if (c_dflt) {
         rfn->dflt = calloc(c_dflt, sizeof *rfn->dflt);
-        if (!rfn->dflt) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!rfn->dflt, LOGMEM, error);
     }
     if (c_ext) {
         /* some extensions may be already present from the substatements */
         reallocated = realloc(rfn->ext, (c_ext + rfn->ext_size) * sizeof *rfn->ext);
-        if (!reallocated) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!reallocated, LOGMEM, error);
         rfn->ext = reallocated;
 
         /* init memory */
@@ -3622,10 +3535,7 @@ fill_yin_import(struct lys_module *module, struct lyxml_elem *yin, struct lys_im
     if (c_ext) {
         /* some extensions may be already present from the substatements */
         reallocated = realloc(imp->ext, (c_ext + imp->ext_size) * sizeof *imp->ext);
-        if (!reallocated) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!reallocated, LOGMEM, error);
         imp->ext = reallocated;
 
         /* init memory */
@@ -3726,10 +3636,7 @@ fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, str
     if (c_ext) {
         /* some extensions may be already present from the substatements */
         reallocated = realloc(inc->ext, (c_ext + inc->ext_size) * sizeof *inc->ext);
-        if (!reallocated) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!reallocated, LOGMEM, error);
         inc->ext = reallocated;
 
         /* init memory */
@@ -3894,10 +3801,7 @@ read_yin_when(struct lys_module *module, struct lyxml_elem *yin, struct unres_sc
     const char *value;
 
     retval = calloc(1, sizeof *retval);
-    if (!retval) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!retval, LOGMEM, NULL);
 
     GETVAL(value, yin, "condition");
     retval->cond = transform_schema2json(module, value);
@@ -3971,10 +3875,7 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     memset(&root, 0, sizeof root);
 
     cs = calloc(1, sizeof *cs);
-    if (!cs) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!cs, LOGMEM, NULL);
     cs->nodetype = LYS_CASE;
     cs->prev = (struct lys_node *)cs;
     retval = (struct lys_node *)cs;
@@ -4029,18 +3930,12 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
     if (c_ftrs) {
         cs->iffeature = calloc(c_ftrs, sizeof *cs->iffeature);
-        if (!cs->iffeature) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!cs->iffeature, LOGMEM, error);
     }
     if (c_ext) {
         /* some extensions may be already present from the substatements */
         reallocated = realloc(retval->ext, (c_ext + retval->ext_size) * sizeof *retval->ext);
-        if (!reallocated) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!reallocated, LOGMEM, error);
         retval->ext = reallocated;
 
         /* init memory */
@@ -4130,10 +4025,8 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
     void *reallocated;
 
     choice = calloc(1, sizeof *choice);
-    if (!choice) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!choice, LOGMEM, NULL);
+
     choice->nodetype = LYS_CHOICE;
     choice->prev = (struct lys_node *)choice;
     retval = (struct lys_node *)choice;
@@ -4255,18 +4148,12 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
 
     if (c_ftrs) {
         choice->iffeature = calloc(c_ftrs, sizeof *choice->iffeature);
-        if (!choice->iffeature) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!choice->iffeature, LOGMEM, error);
     }
     if (c_ext) {
         /* some extensions may be already present from the substatements */
         reallocated = realloc(retval->ext, (c_ext + retval->ext_size) * sizeof *retval->ext);
-        if (!reallocated) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!reallocated, LOGMEM, error);
         retval->ext = reallocated;
 
         /* init memory */
@@ -4344,10 +4231,8 @@ read_yin_anydata(struct lys_module *module, struct lys_node *parent, struct lyxm
     void *reallocated;
 
     anyxml = calloc(1, sizeof *anyxml);
-    if (!anyxml) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!anyxml, LOGMEM, NULL);
+
     anyxml->nodetype = type;
     anyxml->prev = (struct lys_node *)anyxml;
     retval = (struct lys_node *)anyxml;
@@ -4421,25 +4306,16 @@ read_yin_anydata(struct lys_module *module, struct lys_node *parent, struct lyxm
     /* middle part - process nodes with cardinality of 0..n */
     if (c_must) {
         anyxml->must = calloc(c_must, sizeof *anyxml->must);
-        if (!anyxml->must) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!anyxml->must, LOGMEM, error);
     }
     if (c_ftrs) {
         anyxml->iffeature = calloc(c_ftrs, sizeof *anyxml->iffeature);
-        if (!anyxml->iffeature) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!anyxml->iffeature, LOGMEM, error);
     }
     if (c_ext) {
         /* some extensions may be already present from the substatements */
         reallocated = realloc(retval->ext, (c_ext + retval->ext_size) * sizeof *retval->ext);
-        if (!reallocated) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!reallocated, LOGMEM, error);
         retval->ext = reallocated;
 
         /* init memory */
@@ -4505,10 +4381,8 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     void *reallocated;
 
     leaf = calloc(1, sizeof *leaf);
-    if (!leaf) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!leaf, LOGMEM, NULL);
+
     leaf->nodetype = LYS_LEAF;
     leaf->prev = (struct lys_node *)leaf;
     retval = (struct lys_node *)leaf;
@@ -4629,25 +4503,16 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     /* middle part - process nodes with cardinality of 0..n */
     if (c_must) {
         leaf->must = calloc(c_must, sizeof *leaf->must);
-        if (!leaf->must) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!leaf->must, LOGMEM, error);
     }
     if (c_ftrs) {
         leaf->iffeature = calloc(c_ftrs, sizeof *leaf->iffeature);
-        if (!leaf->iffeature) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!leaf->iffeature, LOGMEM, error);
     }
     if (c_ext) {
         /* some extensions may be already present from the substatements */
         reallocated = realloc(retval->ext, (c_ext + retval->ext_size) * sizeof *retval->ext);
-        if (!reallocated) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!reallocated, LOGMEM, error);
         retval->ext = reallocated;
 
         /* init memory */
@@ -4730,10 +4595,8 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
     void *reallocated;
 
     llist = calloc(1, sizeof *llist);
-    if (!llist) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!llist, LOGMEM, NULL);
+
     llist->nodetype = LYS_LEAFLIST;
     llist->prev = (struct lys_node *)llist;
     retval = (struct lys_node *)llist;
@@ -4914,32 +4777,20 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
     /* middle part - process nodes with cardinality of 0..n */
     if (c_must) {
         llist->must = calloc(c_must, sizeof *llist->must);
-        if (!llist->must) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!llist->must, LOGMEM, error);
     }
     if (c_ftrs) {
         llist->iffeature = calloc(c_ftrs, sizeof *llist->iffeature);
-        if (!llist->iffeature) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!llist->iffeature, LOGMEM, error);
     }
     if (c_dflt) {
         llist->dflt = calloc(c_dflt, sizeof *llist->dflt);
-        if (!llist->dflt) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!llist->dflt, LOGMEM, error);
     }
     if (c_ext) {
         /* some extensions may be already present from the substatements */
         reallocated = realloc(retval->ext, (c_ext + retval->ext_size) * sizeof *retval->ext);
-        if (!reallocated) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!reallocated, LOGMEM, error);
         retval->ext = reallocated;
 
         /* init memory */
@@ -5050,10 +4901,8 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     memset(&uniq, 0, sizeof uniq);
 
     list = calloc(1, sizeof *list);
-    if (!list) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!list, LOGMEM, NULL);
+
     list->nodetype = LYS_LIST;
     list->prev = (struct lys_node *)list;
     retval = (struct lys_node *)list;
@@ -5113,10 +4962,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             }
             list->keys_size++;
             list->keys = calloc(list->keys_size, sizeof *list->keys);
-            if (!list->keys) {
-                LOGMEM;
-                goto error;
-            }
+            LY_CHECK_ERR_GOTO(!list->keys, LOGMEM, error);
 
             if (lyp_yin_parse_subnode_ext(module, retval, LYEXT_PAR_NODE, sub, LYEXT_SUBSTMT_KEY, 0, unres)) {
                 goto error;
@@ -5258,32 +5104,20 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     /* middle part - process nodes with cardinality of 0..n except the data nodes */
     if (c_tpdf) {
         list->tpdf = calloc(c_tpdf, sizeof *list->tpdf);
-        if (!list->tpdf) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!list->tpdf, LOGMEM, error);
     }
     if (c_must) {
         list->must = calloc(c_must, sizeof *list->must);
-        if (!list->must) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!list->must, LOGMEM, error);
     }
     if (c_ftrs) {
         list->iffeature = calloc(c_ftrs, sizeof *list->iffeature);
-        if (!list->iffeature) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!list->iffeature, LOGMEM, error);
     }
     if (c_ext) {
         /* some extensions may be already present from the substatements */
         reallocated = realloc(retval->ext, (c_ext + retval->ext_size) * sizeof *retval->ext);
-        if (!reallocated) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!reallocated, LOGMEM, error);
         retval->ext = reallocated;
 
         /* init memory */
@@ -5365,10 +5199,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     /* process unique statements */
     if (c_uniq) {
         list->unique = calloc(c_uniq, sizeof *list->unique);
-        if (!list->unique) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!list->unique, LOGMEM, error);
 
         LY_TREE_FOR_SAFE(uniq.child, next, sub) {
             r = fill_yin_unique(module, retval, sub, &list->unique[list->unique_size], unres);
@@ -5431,10 +5262,8 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
     memset(&root, 0, sizeof root);
 
     cont = calloc(1, sizeof *cont);
-    if (!cont) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!cont, LOGMEM, NULL);
+
     cont->nodetype = LYS_CONTAINER;
     cont->prev = (struct lys_node *)cont;
     retval = (struct lys_node *)cont;
@@ -5514,32 +5343,20 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
     /* middle part - process nodes with cardinality of 0..n except the data nodes */
     if (c_tpdf) {
         cont->tpdf = calloc(c_tpdf, sizeof *cont->tpdf);
-        if (!cont->tpdf) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!cont->tpdf, LOGMEM, error);
     }
     if (c_must) {
         cont->must = calloc(c_must, sizeof *cont->must);
-        if (!cont->must) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!cont->must, LOGMEM, error);
     }
     if (c_ftrs) {
         cont->iffeature = calloc(c_ftrs, sizeof *cont->iffeature);
-        if (!cont->iffeature) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!cont->iffeature, LOGMEM, error);
     }
     if (c_ext) {
         /* some extensions may be already present from the substatements */
         reallocated = realloc(retval->ext, (c_ext + retval->ext_size) * sizeof *retval->ext);
-        if (!reallocated) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!reallocated, LOGMEM, error);
         retval->ext = reallocated;
 
         /* init memory */
@@ -5649,10 +5466,8 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
     memset(&root, 0, sizeof root);
 
     grp = calloc(1, sizeof *grp);
-    if (!grp) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!grp, LOGMEM, NULL);
+
     grp->nodetype = LYS_GROUPING;
     grp->prev = (struct lys_node *)grp;
     retval = (struct lys_node *)grp;
@@ -5700,18 +5515,12 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
     /* middle part - process nodes with cardinality of 0..n except the data nodes */
     if (c_tpdf) {
         grp->tpdf = calloc(c_tpdf, sizeof *grp->tpdf);
-        if (!grp->tpdf) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!grp->tpdf, LOGMEM, error);
     }
     if (c_ext) {
         /* some extensions may be already present from the substatements */
         reallocated = realloc(retval->ext, (c_ext + retval->ext_size) * sizeof *retval->ext);
-        if (!reallocated) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!reallocated, LOGMEM, error);
         retval->ext = reallocated;
 
         /* init memory */
@@ -5799,10 +5608,7 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
     memset(&root, 0, sizeof root);
 
     inout = calloc(1, sizeof *inout);
-    if (!inout) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!inout, LOGMEM, NULL);
     inout->prev = (struct lys_node *)inout;
 
     if (!strcmp(yin->name, "input")) {
@@ -5863,24 +5669,15 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
     /* middle part - process nodes with cardinality of 0..n except the data nodes */
     if (c_tpdf) {
         inout->tpdf = calloc(c_tpdf, sizeof *inout->tpdf);
-        if (!inout->tpdf) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!inout->tpdf, LOGMEM, error);
     }
     if (c_must) {
         inout->must = calloc(c_must, sizeof *inout->must);
-        if (!inout->must) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!inout->must, LOGMEM, error);
     }
     if (c_ext) {
         inout->ext = calloc(c_ext, sizeof *inout->ext);
-        if (!inout->ext) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!inout->ext, LOGMEM, error);
     }
 
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
@@ -5981,10 +5778,8 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
     memset(&root, 0, sizeof root);
 
     notif = calloc(1, sizeof *notif);
-    if (!notif) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!notif, LOGMEM, NULL);
+
     notif->nodetype = LYS_NOTIF;
     notif->prev = (struct lys_node *)notif;
     retval = (struct lys_node *)notif;
@@ -6036,32 +5831,20 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
     /* middle part - process nodes with cardinality of 0..n except the data nodes */
     if (c_tpdf) {
         notif->tpdf = calloc(c_tpdf, sizeof *notif->tpdf);
-        if (!notif->tpdf) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!notif->tpdf, LOGMEM, error);
     }
     if (c_ftrs) {
         notif->iffeature = calloc(c_ftrs, sizeof *notif->iffeature);
-        if (!notif->iffeature) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!notif->iffeature, LOGMEM, error);
     }
     if (c_must) {
         notif->must = calloc(c_must, sizeof *notif->must);
-        if (!notif->must) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!notif->must, LOGMEM, error);
     }
     if (c_ext) {
         /* some extensions may be already present from the substatements */
         reallocated = realloc(retval->ext, (c_ext + retval->ext_size) * sizeof *retval->ext);
-        if (!reallocated) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!reallocated, LOGMEM, error);
         retval->ext = reallocated;
 
         /* init memory */
@@ -6182,10 +5965,8 @@ read_yin_rpc_action(struct lys_module *module, struct lys_node *parent, struct l
     memset(&root, 0, sizeof root);
 
     rpc = calloc(1, sizeof *rpc);
-    if (!rpc) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!rpc, LOGMEM, NULL);
+
     rpc->nodetype = (!strcmp(yin->name, "rpc") ? LYS_RPC : LYS_ACTION);
     rpc->prev = (struct lys_node *)rpc;
     retval = (struct lys_node *)rpc;
@@ -6243,25 +6024,16 @@ read_yin_rpc_action(struct lys_module *module, struct lys_node *parent, struct l
     /* middle part - process nodes with cardinality of 0..n except the data nodes */
     if (c_tpdf) {
         rpc->tpdf = calloc(c_tpdf, sizeof *rpc->tpdf);
-        if (!rpc->tpdf) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!rpc->tpdf, LOGMEM, error);
     }
     if (c_ftrs) {
         rpc->iffeature = calloc(c_ftrs, sizeof *rpc->iffeature);
-        if (!rpc->iffeature) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!rpc->iffeature, LOGMEM, error);
     }
     if (c_ext) {
         /* some extensions may be already present from the substatements */
         reallocated = realloc(retval->ext, (c_ext + retval->ext_size) * sizeof *retval->ext);
-        if (!reallocated) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!reallocated, LOGMEM, error);
         retval->ext = reallocated;
 
         /* init memory */
@@ -6336,10 +6108,8 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     void *reallocated;
 
     uses = calloc(1, sizeof *uses);
-    if (!uses) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!uses, LOGMEM, NULL);
+
     uses->nodetype = LYS_USES;
     uses->prev = (struct lys_node *)uses;
     retval = (struct lys_node *)uses;
@@ -6391,32 +6161,20 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     /* process properties with cardinality 0..n */
     if (c_ref) {
         uses->refine = calloc(c_ref, sizeof *uses->refine);
-        if (!uses->refine) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!uses->refine, LOGMEM, error);
     }
     if (c_aug) {
         uses->augment = calloc(c_aug, sizeof *uses->augment);
-        if (!uses->augment) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!uses->augment, LOGMEM, error);
     }
     if (c_ftrs) {
         uses->iffeature = calloc(c_ftrs, sizeof *uses->iffeature);
-        if (!uses->iffeature) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!uses->iffeature, LOGMEM, error);
     }
     if (c_ext) {
         /* some extensions may be already present from the substatements */
         reallocated = realloc(retval->ext, (c_ext + retval->ext_size) * sizeof *retval->ext);
-        if (!reallocated) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!reallocated, LOGMEM, error);
         retval->ext = reallocated;
 
         /* init memory */
@@ -6905,66 +6663,39 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
     /* allocate arrays for elements with cardinality of 0..n */
     if (c_imp) {
         trg->imp = calloc(c_imp, sizeof *trg->imp);
-        if (!trg->imp) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!trg->imp, LOGMEM, error);
     }
     if (c_rev) {
         trg->rev = calloc(c_rev, sizeof *trg->rev);
-        if (!trg->rev) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!trg->rev, LOGMEM, error);
     }
     if (c_tpdf) {
         trg->tpdf = calloc(c_tpdf, sizeof *trg->tpdf);
-        if (!trg->tpdf) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!trg->tpdf, LOGMEM, error);
     }
     if (c_ident) {
         trg->ident = calloc(c_ident, sizeof *trg->ident);
-        if (!trg->ident) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!trg->ident, LOGMEM, error);
     }
     if (c_inc) {
         trg->inc = calloc(c_inc, sizeof *trg->inc);
-        if (!trg->inc) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!trg->inc, LOGMEM, error);
     }
     if (c_aug) {
         trg->augment = calloc(c_aug, sizeof *trg->augment);
-        if (!trg->augment) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!trg->augment, LOGMEM, error);
     }
     if (c_ftrs) {
         trg->features = calloc(c_ftrs, sizeof *trg->features);
-        if (!trg->features) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!trg->features, LOGMEM, error);
     }
     if (c_dev) {
         trg->deviation = calloc(c_dev, sizeof *trg->deviation);
-        if (!trg->deviation) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!trg->deviation, LOGMEM, error);
     }
     if (c_ext) {
         trg->extensions = calloc(c_ext, sizeof *trg->extensions);
-        if (!trg->extensions) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!trg->extensions, LOGMEM, error);
     }
 
     /* middle part 1 - process revision and then check whether this (sub)module was not already parsed, add it there */
@@ -7057,10 +6788,7 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
     if (c_extinst) {
         /* some extensions may be already present from the substatements */
         reallocated = realloc(trg->ext, (c_extinst + trg->ext_size) * sizeof *trg->ext);
-        if (!reallocated) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!reallocated, LOGMEM, error);
         trg->ext = reallocated;
 
         /* init memory */
@@ -7179,10 +6907,7 @@ yin_read_submodule(struct lys_module *module, const char *data, struct unres_sch
     }
 
     submodule = calloc(1, sizeof *submodule);
-    if (!submodule) {
-        LOGMEM;
-        goto error;
-    }
+    LY_CHECK_ERR_GOTO(!submodule, LOGMEM, error);
 
     submodule->ctx = module->ctx;
     submodule->name = lydict_insert(submodule->ctx, value, strlen(value));
@@ -7238,10 +6963,7 @@ yin_read_module_(struct ly_ctx *ctx, struct lyxml_elem *yin, const char *revisio
     int ret;
 
     unres = calloc(1, sizeof *unres);
-    if (!unres) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!unres, LOGMEM, NULL);
 
     /* check root element */
     if (!yin->name || strcmp(yin->name, "module")) {
@@ -7259,10 +6981,7 @@ yin_read_module_(struct ly_ctx *ctx, struct lyxml_elem *yin, const char *revisio
     }
 
     module = calloc(1, sizeof *module);
-    if (!module) {
-        LOGMEM;
-        goto error;
-    }
+    LY_CHECK_ERR_GOTO(!module, LOGMEM, error);
 
     module->ctx = ctx;
     module->name = lydict_insert(ctx, value, strlen(value));
@@ -7452,12 +7171,15 @@ yin_parse_extcomplex_str(struct lys_module *mod, struct lyxml_elem *node,
         if (!p[0]) {
             /* allocate initial array */
             p[0] = malloc(2 * sizeof(const char *));
+            LY_CHECK_ERR_RETURN(!p[0], LOGMEM, EXIT_FAILURE);
             if (stmt == LY_STMT_BELONGSTO) {
                 /* allocate another array for the belongs-to's prefixes */
                 p[1] = malloc(2 * sizeof(const char *));
+                LY_CHECK_ERR_RETURN(!p[1], LOGMEM, EXIT_FAILURE);
             } else if (stmt == LY_STMT_ARGUMENT) {
                 /* allocate another array for the yin element */
                 ((uint8_t **)p)[1] = malloc(2 * sizeof(uint8_t));
+                LY_CHECK_ERR_RETURN(!p[1], LOGMEM, EXIT_FAILURE);
             }
         } else {
             /* get the index in the array to add new item */
@@ -7688,6 +7410,7 @@ yin_getplace_for_extcomplex_struct(struct lyxml_elem *node, struct lys_ext_insta
         if (!data) {
             /* allocate initial array */
             *p = data = malloc(2 * sizeof(void *));
+            LY_CHECK_ERR_RETURN(!data, LOGMEM, NULL);
         } else {
             for (c = 0; *data; data++, c++);
         }
@@ -7696,10 +7419,7 @@ yin_getplace_for_extcomplex_struct(struct lyxml_elem *node, struct lys_ext_insta
     if (p) {
         /* enlarge the array */
         reallocated = realloc(*p, (c + 2) * sizeof(void *));
-        if (!reallocated) {
-            LOGMEM;
-            return NULL;
-        }
+        LY_CHECK_ERR_RETURN(!reallocated, LOGMEM, NULL);
         *p = reallocated;
         data = *p;
         data[c + 1] = NULL;
@@ -7723,6 +7443,11 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
     unsigned long u;
     int i, j;
 
+#define YIN_STORE_VALUE(TYPE, FROM, TO)           \
+    *(TYPE **)TO = malloc(sizeof(TYPE));          \
+    if (!*(TYPE **)TO) { LOGMEM; goto error; }    \
+    (**(TYPE **)TO) = (TYPE)FROM;
+
 #define YIN_EXTCOMPLEX_GETPLACE(STMT, TYPE)                                          \
     p = lys_ext_complex_get_substmt(STMT, ext, &info);                               \
     if (!p) {                                                                        \
@@ -7739,6 +7464,7 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
         pp = p;                                                                      \
         if (!(*pp)) {                                                                \
             *pp = malloc(2 * sizeof(TYPE)); /* allocate initial array */             \
+            LY_CHECK_ERR_GOTO(!*pp, LOGMEM, error);                                  \
         } else {                                                                     \
             for (i = 0; (*(TYPE**)pp)[i]; i++);                                      \
         }                                                                            \
@@ -7748,10 +7474,7 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
     if (pp) {                                                \
         /* enlarge the array */                              \
         reallocated = realloc(*pp, (i + 2) * sizeof(TYPE*)); \
-        if (!reallocated) {                                  \
-           LOGMEM;                                           \
-           goto error;                                       \
-        }                                                    \
+        LY_CHECK_ERR_GOTO(!reallocated, LOGMEM, error);      \
         *pp = reallocated;                                   \
         (*(TYPE**)pp)[i + 1] = 0;                            \
     }
@@ -7763,6 +7486,7 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
     YIN_EXTCOMPLEX_GETPLACE(STMT, struct lys_restr*);                                \
     GETVAL(value, node, "value");                                                    \
     *(struct lys_restr **)p = calloc(1, sizeof(struct lys_restr));                   \
+    LY_CHECK_ERR_GOTO(!*(struct lys_restr **)p, LOGMEM, error);                      \
     (*(struct lys_restr **)p)->expr = lydict_insert(mod->ctx, value, 0);             \
     if (read_restr_substmt(mod, *(struct lys_restr **)p, node, unres)) {             \
         goto error;                                                                  \
@@ -7804,6 +7528,7 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             }
             /* allocate type structure */
             (*type) = calloc(1, sizeof **type);
+            LY_CHECK_ERR_GOTO(!*type, LOGMEM, error);
 
             /* HACK for unres */
             lyxml_unlink(mod->ctx, node);
@@ -7822,6 +7547,7 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             }
             /* allocate typedef structure */
             (*pp) = calloc(1, sizeof(struct lys_tpdf));
+            LY_CHECK_ERR_GOTO(!*pp, LOGMEM, error);
 
             if (fill_yin_typedef(mod, (struct lys_node *)ext, node, *((struct lys_tpdf **)pp), unres)) {
                 goto error;
@@ -7833,6 +7559,7 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             }
             /* allocate iffeature structure */
             (*pp) = calloc(1, sizeof(struct lys_iffeature));
+            LY_CHECK_ERR_GOTO(!*pp, LOGMEM, error);
 
             if (fill_yin_iffeature((struct lys_node *)ext, 0, node, *((struct lys_iffeature **)pp), unres)) {
                 goto error;
@@ -7982,8 +7709,7 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             }
 
             /* store the value */
-            *(uint32_t **)p = malloc(sizeof(uint32_t));
-            (**(uint32_t **)p) = (uint32_t)u;
+            YIN_STORE_VALUE(uint32_t, u, p)
 
             YIN_EXTCOMPLEX_ENLARGE(uint32_t*);
         } else if (!strcmp(node->name, "min-elements")) {
@@ -8008,8 +7734,7 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             }
 
             /* store the value */
-            *(uint32_t **)p = malloc(sizeof(uint32_t));
-            (**(uint32_t **)p) = (uint32_t)u;
+            YIN_STORE_VALUE(uint32_t, u, p)
 
             YIN_EXTCOMPLEX_ENLARGE(uint32_t*);
         } else if (!strcmp(node->name, "value")) {
@@ -8034,8 +7759,7 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             }
 
             /* store the value */
-            *(int32_t **)p = malloc(sizeof(int32_t));
-            (**(int32_t **)p) = (int32_t)ll;
+            YIN_STORE_VALUE(int32_t, ll, p)
 
             YIN_EXTCOMPLEX_ENLARGE(int32_t*);
         } else if (!strcmp(node->name, "position")) {
@@ -8055,8 +7779,7 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             }
 
             /* store the value */
-            *(uint32_t **)p = malloc(sizeof(uint32_t));
-            (**(uint32_t **)p) = (uint32_t)ll;
+            YIN_STORE_VALUE(uint32_t, ll, p)
 
             YIN_EXTCOMPLEX_ENLARGE(uint32_t*);
         } else if (!strcmp(node->name, "module")) {
@@ -8082,6 +7805,7 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             YIN_EXTCOMPLEX_GETPLACE(LY_STMT_REVISION, struct lys_revision*);
 
             *(struct lys_revision**)p = calloc(1, sizeof(struct lys_revision));
+            LY_CHECK_ERR_GOTO(!*(struct lys_revision**)p, LOGMEM, error);
             if (fill_yin_revision(mod, node, *(struct lys_revision**)p, unres)) {
                 goto error;
             }
@@ -8100,6 +7824,7 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             YIN_EXTCOMPLEX_GETPLACE(LY_STMT_UNIQUE, struct lys_unique*);
 
             *(struct lys_unique**)p = calloc(1, sizeof(struct lys_unique));
+            LY_CHECK_ERR_GOTO(!*(struct lys_unique**)p, LOGMEM, error);
             if (fill_yin_unique(mod, (struct lys_node*)ext, node, *(struct lys_unique**)p, unres)) {
                 goto error;
             }
@@ -8145,6 +7870,7 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             }
             /* allocate structure for must */
             (*pp) = calloc(1, sizeof(struct lys_restr));
+            LY_CHECK_ERR_GOTO(!*pp, LOGMEM, error);
 
             if (fill_yin_must(mod, node, *((struct lys_restr **)pp), unres)) {
                 goto error;
@@ -8157,6 +7883,7 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
             }
 
             *(struct lys_restr **)p = calloc(1, sizeof(struct lys_restr));
+            LY_CHECK_ERR_GOTO(!*(struct lys_restr **)p, LOGMEM, error);
             (*(struct lys_restr **)p)->expr = lydict_insert(mod->ctx, value, 0);
 
             modifier = 0x06; /* ACK */
@@ -8187,6 +7914,7 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
 
             /* store the value: modifier byte + value + terminating NULL byte */
             (*(struct lys_restr **)p)->expr = malloc((strlen(value) + 2) * sizeof(char));
+            LY_CHECK_ERR_GOTO(!(*(struct lys_restr **)p)->expr, LOGMEM, error);
             ((char *)(*(struct lys_restr **)p)->expr)[0] = modifier;
             strcpy(&((char *)(*(struct lys_restr **)p)->expr)[1], value);
             lydict_insert_zc(mod->ctx, (char *)(*(struct lys_restr **)p)->expr);

@@ -547,10 +547,7 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
                     }
 
                     str = malloc(len + 1);
-                    if (!str) {
-                        LOGMEM;
-                        return;
-                    }
+                    LY_CHECK_ERR_RETURN(!str, LOGMEM, );
                     sprintf(str, "%d", i);
 
                     (*index) -= len;

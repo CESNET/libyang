@@ -1206,11 +1206,7 @@ iff_stack_push(struct iff_stack *stack, uint8_t value)
     if (stack->index == stack->size) {
         stack->size += 4;
         stack->stack = ly_realloc(stack->stack, stack->size * sizeof *stack->stack);
-        if (!stack->stack) {
-            LOGMEM;
-            stack->size = 0;
-            return EXIT_FAILURE;
-        }
+        LY_CHECK_ERR_RETURN(!stack->stack, LOGMEM; stack->size = 0, EXIT_FAILURE);
     }
 
     stack->stack[stack->index++] = value;
@@ -1401,12 +1397,9 @@ resolve_iffeature_compile(struct lys_iffeature *iffeat_expr, const char *value, 
     /* allocate the memory */
     iffeat_expr->expr = calloc((j = (expr_size / 4) + ((expr_size % 4) ? 1 : 0)), sizeof *iffeat_expr->expr);
     iffeat_expr->features = calloc(f_size, sizeof *iffeat_expr->features);
-    stack.size = expr_size;
     stack.stack = malloc(expr_size * sizeof *stack.stack);
-    if (!stack.stack || !iffeat_expr->expr || !iffeat_expr->features) {
-        LOGMEM;
-        goto error;
-    }
+    LY_CHECK_ERR_GOTO(!stack.stack || !iffeat_expr->expr || !iffeat_expr->features, LOGMEM, error);
+    stack.size = expr_size;
     f_size--; expr_size--; /* used as indexes from now */
 
     for (i--; i >= 0; i--) {
@@ -1464,6 +1457,7 @@ resolve_iffeature_compile(struct lys_iffeature *iffeat_expr, const char *value, 
              * forward referenced, we have to keep the feature name in auxiliary
              * structure passed into unres */
             iff_data = malloc(sizeof *iff_data);
+            LY_CHECK_ERR_GOTO(!iff_data, LOGMEM, error);
             iff_data->node = node;
             iff_data->fname = lydict_insert(node->module->ctx, &c[i], j - i);
             iff_data->infeature = infeature;
@@ -1518,10 +1512,7 @@ resolve_data_descendant_schema_nodeid(const char *nodeid, struct lyd_node *start
     }
 
     str = p = strdup(nodeid);
-    if (!str) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!str, LOGMEM, NULL);
 
     while (p) {
         token = p;
@@ -2595,10 +2586,7 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct le
             tmp_local_intv->next = malloc(sizeof *tmp_local_intv);
             tmp_local_intv = tmp_local_intv->next;
         }
-        if (!tmp_local_intv) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!tmp_local_intv, LOGMEM, error);
 
         tmp_local_intv->kind = kind;
         tmp_local_intv->type = type;
@@ -3087,16 +3075,9 @@ check_default(struct lys_type *type, const char **value, struct lys_module *modu
     node.value_str = dflt;
     node.value_type = type->base;
     node.schema = calloc(1, sizeof (struct lys_node_leaf));
-    if (!node.schema) {
-        LOGMEM;
-        return -1;
-    }
+    LY_CHECK_ERR_RETURN(!node.schema, LOGMEM, -1);
     node.schema->name = strdup("fake-default");
-    if (!node.schema->name) {
-        LOGMEM;
-        free(node.schema);
-        return -1;
-    }
+    LY_CHECK_ERR_RETURN(!node.schema->name, LOGMEM; free(node.schema), -1);
     node.schema->module = module;
     memcpy(&((struct lys_node_leaf *)node.schema)->type, type, sizeof *type);
 
@@ -3170,10 +3151,7 @@ check_key(struct lys_node_list *list, int index, const char *name, int len)
     if (!key) {
         if (name[len] != '\0') {
             dup = strdup(name);
-            if (!dup) {
-                LOGMEM;
-                return -1;
-            }
+            LY_CHECK_ERR_RETURN(!dup, LOGMEM, -1);
             dup[len] = '\0';
             name = dup;
         }
@@ -3338,10 +3316,7 @@ resolve_data(const struct lys_module *mod, const char *name, int nam_len, struct
     if (!parents->count) {
         parents->count = 1;
         parents->node = malloc(sizeof *parents->node);
-        if (!parents->node) {
-            LOGMEM;
-            return -1;
-        }
+        LY_CHECK_ERR_RETURN(!parents->node, LOGMEM, -1);
         parents->node[0] = NULL;
     }
     for (i = 0; i < parents->count;) {
@@ -3363,9 +3338,7 @@ resolve_data(const struct lys_module *mod, const char *name, int nam_len, struct
                     /* multiple matching, so create a new node */
                     ++parents->count;
                     parents->node = ly_realloc(parents->node, parents->count * sizeof *parents->node);
-                    if (!parents->node) {
-                        return EXIT_FAILURE;
-                    }
+                    LY_CHECK_ERR_RETURN(!parents->node, LOGMEM, EXIT_FAILURE);
                     parents->node[parents->count-1] = node;
                     ++i;
                 }
@@ -3453,16 +3426,11 @@ resolve_path_predicate_data(const char *pred, struct lyd_node *node, struct unre
 
     source_match.count = 1;
     source_match.node = malloc(sizeof *source_match.node);
-    if (!source_match.node) {
-        LOGMEM;
-        return -1;
-    }
+    LY_CHECK_ERR_RETURN(!source_match.node, LOGMEM, -1);
+
     dest_match.count = 1;
     dest_match.node = malloc(sizeof *dest_match.node);
-    if (!dest_match.node) {
-        LOGMEM;
-        return -1;
-    }
+    LY_CHECK_ERR_RETURN(!dest_match.node, LOGMEM, -1);
 
     do {
         if ((i = parse_path_predicate(pred, &sour_pref, &sour_pref_len, &source, &sour_len, &path_key_expr,
@@ -4415,6 +4383,7 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
             LOGINT;
             return -1;
         }
+        LY_CHECK_ERR_RETURN(!*ext, LOGMEM, -1);
 
         /* common part for all extension types */
         (*ext)->def = e;
@@ -4560,10 +4529,7 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
             break;
         case LYEXT_COMPLEX:
             tmp_ext = realloc(*ext, ((struct lyext_plugin_complex*)e->plugin)->instance_size);
-            if (!tmp_ext) {
-                LOGMEM;
-                goto error;
-            }
+            LY_CHECK_ERR_GOTO(!tmp_ext, LOGMEM, error);
             memset((char *)tmp_ext + sizeof **ext, 0, ((struct lyext_plugin_complex*)e->plugin)->instance_size - sizeof **ext);
             (*ext) = tmp_ext;
             ((struct lys_ext_instance_complex*)(*ext))->substmt = ((struct lyext_plugin_complex*)e->plugin)->substmt;
@@ -4687,10 +4653,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
 
     if (uses->refine_size) {
         refine_nodes = malloc(uses->refine_size * sizeof *refine_nodes);
-        if (!refine_nodes) {
-            LOGMEM;
-            goto fail;
-        }
+        LY_CHECK_ERR_GOTO(!refine_nodes, LOGMEM, fail);
     }
 
     /* apply refines */
@@ -4756,8 +4719,9 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
                 free(llist->dflt);
 
                 /* copy the default set from refine */
+                llist->dflt = malloc(rfn->dflt_size * sizeof *llist->dflt);
+                LY_CHECK_ERR_GOTO(!llist->dflt, LOGMEM, fail);
                 llist->dflt_size = rfn->dflt_size;
-                llist->dflt = malloc(llist->dflt_size * sizeof *llist->dflt);
                 for (j = 0; j < llist->dflt_size; j++) {
                     llist->dflt[j] = lydict_insert(ctx, rfn->dflt[j], 0);
                 }
@@ -4849,10 +4813,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
 
             size = *old_size + rfn->must_size;
             must = realloc(*old_must, size * sizeof *rfn->must);
-            if (!must) {
-                LOGMEM;
-                goto fail;
-            }
+            LY_CHECK_ERR_GOTO(!must, LOGMEM, fail);
             for (k = 0, j = *old_size; k < rfn->must_size; k++, j++) {
                 must[j].ext_size = rfn->must[k].ext_size;
                 lys_ext_dup(rfn->module, rfn->must[k].ext, rfn->must[k].ext_size, &rfn->must[k], LYEXT_PAR_RESTR,
@@ -4880,10 +4841,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
 
             size = *old_size + rfn->iffeature_size;
             iff = realloc(*old_iff, size * sizeof *rfn->iffeature);
-            if (!iff) {
-                LOGMEM;
-                goto fail;
-            }
+            LY_CHECK_ERR_GOTO(!iff, LOGMEM, fail);
             for (k = 0, j = *old_size; k < rfn->iffeature_size; k++, j++) {
                 resolve_iffeature_getsizes(&rfn->iffeature[k], &usize1, &usize2);
                 if (usize1) {
@@ -4891,10 +4849,12 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
                     /* duplicate compiled expression */
                     usize = (usize1 / 4) + (usize1 % 4) ? 1 : 0;
                     iff[j].expr = malloc(usize * sizeof *iff[j].expr);
+                    LY_CHECK_ERR_GOTO(!iff[j].expr, LOGMEM, fail);
                     memcpy(iff[j].expr, rfn->iffeature[k].expr, usize * sizeof *iff[j].expr);
 
                     /* duplicate list of feature pointers */
                     iff[j].features = malloc(usize2 * sizeof *iff[k].features);
+                    LY_CHECK_ERR_GOTO(!iff[j].expr, LOGMEM, fail);
                     memcpy(iff[j].features, rfn->iffeature[k].features, usize2 * sizeof *iff[j].features);
                 }
             }
@@ -5192,10 +5152,7 @@ resolve_base_ident(const struct lys_module *module, struct lys_ident *ident, con
         /* have type to fill */
         ++type->info.ident.count;
         type->info.ident.ref = ly_realloc(type->info.ident.ref, type->info.ident.count * sizeof *type->info.ident.ref);
-        if (!type->info.ident.ref) {
-            LOGMEM;
-            return -1;
-        }
+        LY_CHECK_ERR_RETURN(!type->info.ident.ref, LOGMEM, -1);
 
         ret = &type->info.ident.ref[type->info.ident.count - 1];
         flags = type->parent->flags;
@@ -6535,6 +6492,7 @@ featurecheckdone:
             if (eplugin) {
                 if (eplugin->check_result || (eplugin->flags & LYEXT_OPT_INHERIT)) {
                     u = malloc(sizeof *u);
+                    LY_CHECK_ERR_RETURN(!u, LOGMEM, -1);
                     (*u) = ext_data->ext_index;
                     if (unres_schema_add_node(mod, unres, item, UNRES_EXT_FINALIZE, (struct lys_node *)u) == -1) {
                         /* something really bad happend since the extension finalization is not actually
@@ -6599,16 +6557,9 @@ featurecheckdone:
 
                     /* inherit the extension */
                     extlist = realloc(node->ext, (node->ext_size + 1) * sizeof *node->ext);
-                    if (!extlist) {
-                        LOGMEM;
-                        return -1;
-                    }
+                    LY_CHECK_ERR_RETURN(!extlist, LOGMEM, -1);
                     extlist[node->ext_size] = malloc(sizeof **extlist);
-                    if (!extlist[node->ext_size]) {
-                        LOGMEM;
-                        node->ext = extlist;
-                        return -1;
-                    }
+                    LY_CHECK_ERR_RETURN(!extlist[node->ext_size], LOGMEM; node->ext = extlist, -1);
                     memcpy(extlist[node->ext_size], ext, sizeof *ext);
                     extlist[node->ext_size]->flags |= LYEXT_OPT_INHERIT;
 
@@ -7023,28 +6974,16 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
 
     unres->count++;
     unres->item = ly_realloc(unres->item, unres->count*sizeof *unres->item);
-    if (!unres->item) {
-        LOGMEM;
-        return -1;
-    }
+    LY_CHECK_ERR_RETURN(!unres->item, LOGMEM, -1);
     unres->item[unres->count-1] = item;
     unres->type = ly_realloc(unres->type, unres->count*sizeof *unres->type);
-    if (!unres->type) {
-        LOGMEM;
-        return -1;
-    }
+    LY_CHECK_ERR_RETURN(!unres->type, LOGMEM, -1);
     unres->type[unres->count-1] = type;
     unres->str_snode = ly_realloc(unres->str_snode, unres->count*sizeof *unres->str_snode);
-    if (!unres->str_snode) {
-        LOGMEM;
-        return -1;
-    }
+    LY_CHECK_ERR_RETURN(!unres->str_snode, LOGMEM, -1);
     unres->str_snode[unres->count-1] = snode;
     unres->module = ly_realloc(unres->module, unres->count*sizeof *unres->module);
-    if (!unres->module) {
-        LOGMEM;
-        return -1;
-    }
+    LY_CHECK_ERR_RETURN(!unres->module, LOGMEM, -1);
     unres->module[unres->count-1] = mod;
 
     return rc;
@@ -7094,6 +7033,7 @@ unres_schema_dup(struct lys_module *mod, struct unres_schema *unres, void *item,
     } else if (type == UNRES_IFFEAT) {
         /* duplicate unres_iffeature_data */
         iff_data = malloc(sizeof *iff_data);
+        LY_CHECK_ERR_RETURN(!iff_data, LOGMEM, -1);
         iff_data->fname = lydict_insert(mod->ctx, ((struct unres_iffeat_data *)unres->str_snode[i])->fname, 0);
         iff_data->node = ((struct unres_iffeat_data *)unres->str_snode[i])->node;
         if (unres_schema_add_node(mod, unres, new_item, type, (struct lys_node *)iff_data) == -1) {
@@ -7711,16 +7651,10 @@ unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM 
 
     unres->count++;
     unres->node = ly_realloc(unres->node, unres->count * sizeof *unres->node);
-    if (!unres->node) {
-        LOGMEM;
-        return -1;
-    }
+    LY_CHECK_ERR_RETURN(!unres->node, LOGMEM, -1);
     unres->node[unres->count - 1] = node;
     unres->type = ly_realloc(unres->type, unres->count * sizeof *unres->type);
-    if (!unres->type) {
-        LOGMEM;
-        return -1;
-    }
+    LY_CHECK_ERR_RETURN(!unres->type, LOGMEM, -1);
     unres->type[unres->count - 1] = type;
 
     if (type == UNRES_WHEN) {
