@@ -826,6 +826,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
             /* create the implicit case to allow it to serve as a target of the augments,
              * it won't be printed, but it will be present in the tree */
             c = calloc(1, sizeof *c);
+            LY_CHECK_ERR_RETURN(!c, LOGMEM, EXIT_FAILURE);
             c->name = lydict_insert(module->ctx, child->name, 0);
             c->flags = LYS_IMPLICIT;
             c->module = module;
@@ -909,11 +910,17 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
     /* create implicit input/output nodes to have available them as possible target for augment */
     if (child->nodetype & (LYS_RPC | LYS_ACTION)) {
         in = calloc(1, sizeof *in);
+        out = calloc(1, sizeof *out);
+        if (!in || !out) {
+            LOGMEM;
+            free(in);
+            free(out);
+            return EXIT_FAILURE;
+        }
         in->nodetype = LYS_INPUT;
         in->name = lydict_insert(child->module->ctx, "input", 5);
-        out = calloc(1, sizeof *out);
-        out->name = lydict_insert(child->module->ctx, "output", 6);
         out->nodetype = LYS_OUTPUT;
+        out->name = lydict_insert(child->module->ctx, "output", 6);
         in->module = out->module = child->module;
         in->parent = out->parent = child;
         in->flags = out->flags = LYS_IMPLICIT;
@@ -943,10 +950,7 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int in
         /* enlarge data by 2 bytes for flex */
         len = strlen(data);
         enlarged_data = malloc((len + 2) * sizeof *enlarged_data);
-        if (!enlarged_data) {
-            LOGMEM;
-            return NULL;
-        }
+        LY_CHECK_ERR_RETURN(!enlarged_data, LOGMEM, NULL);
         memcpy(enlarged_data, data, len);
         enlarged_data[len] = enlarged_data[len + 1] = '\0';
         data = enlarged_data;
@@ -1001,10 +1005,7 @@ lys_sub_parse_mem(struct lys_module *module, const char *data, LYS_INFORMAT form
         /* enlarge data by 2 bytes for flex */
         len = strlen(data);
         enlarged_data = malloc((len + 2) * sizeof *enlarged_data);
-        if (!enlarged_data) {
-            LOGMEM;
-            return NULL;
-        }
+        LY_CHECK_ERR_RETURN(!enlarged_data, LOGMEM, NULL);
         memcpy(enlarged_data, data, len);
         enlarged_data[len] = enlarged_data[len + 1] = '\0';
         data = enlarged_data;
@@ -1205,15 +1206,19 @@ lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, uint8_t size
     }
 
     (*new) = result = calloc(size, sizeof *result);
+    LY_CHECK_ERR_RETURN(!result, LOGMEM, EXIT_FAILURE);
     for (u = 0; u < size; u++) {
         if (orig[u]) {
             /* resolved extension instance, just duplicate it */
             switch(orig[u]->ext_type) {
             case LYEXT_FLAG:
                 result[u] = malloc(sizeof(struct lys_ext_instance));
+                LY_CHECK_ERR_GOTO(!result[u], LOGMEM, error);
                 break;
             case LYEXT_COMPLEX:
                 result[u] = calloc(1, ((struct lyext_plugin_complex*)orig[u]->def->plugin)->instance_size);
+                LY_CHECK_ERR_GOTO(!result[u], LOGMEM, error);
+
                 ((struct lys_ext_instance_complex*)result[u])->substmt = ((struct lyext_plugin_complex*)orig[u]->def->plugin)->substmt;
                 /* TODO duplicate data in extension instance content */
                 break;
@@ -1254,6 +1259,7 @@ lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, uint8_t size
             }
             info_orig = unres->str_snode[i];
             info = malloc(sizeof *info);
+            LY_CHECK_ERR_GOTO(!info, LOGMEM, error);
             info->datatype = info_orig->datatype;
             if (info->datatype == LYS_IN_YIN) {
                 info->data.yin = lyxml_dup_elem(mod->ctx, info_orig->data.yin, NULL, 1);
@@ -1287,10 +1293,8 @@ lys_restr_dup(struct lys_module *mod, struct lys_restr *old, int size, int shall
     }
 
     result = calloc(size, sizeof *result);
-    if (!result) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!result, LOGMEM, NULL);
+
     for (i = 0; i < size; i++) {
         result[i].ext_size = old[i].ext_size;
         lys_ext_dup(mod, old[i].ext, old[i].ext_size, &result[i], LYEXT_PAR_RESTR, &result[i].ext, shallow, unres);
@@ -1352,10 +1356,8 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
             new->info.bits.count = old->info.bits.count;
             if (new->info.bits.count) {
                 new->info.bits.bit = calloc(new->info.bits.count, sizeof *new->info.bits.bit);
-                if (!new->info.bits.bit) {
-                    LOGMEM;
-                    return -1;
-                }
+                LY_CHECK_ERR_RETURN(!new->info.bits.bit, LOGMEM, -1);
+
                 for (i = 0; i < new->info.bits.count; i++) {
                     new->info.bits.bit[i].name = lydict_insert(mod->ctx, old->info.bits.bit[i].name, 0);
                     new->info.bits.bit[i].dsc = lydict_insert(mod->ctx, old->info.bits.bit[i].dsc, 0);
@@ -1384,10 +1386,8 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
             new->info.enums.count = old->info.enums.count;
             if (new->info.enums.count) {
                 new->info.enums.enm = calloc(new->info.enums.count, sizeof *new->info.enums.enm);
-                if (!new->info.enums.enm) {
-                    LOGMEM;
-                    return -1;
-                }
+                LY_CHECK_ERR_RETURN(!new->info.enums.enm, LOGMEM, -1);
+
                 for (i = 0; i < new->info.enums.count; i++) {
                     new->info.enums.enm[i].name = lydict_insert(mod->ctx, old->info.enums.enm[i].name, 0);
                     new->info.enums.enm[i].dsc = lydict_insert(mod->ctx, old->info.enums.enm[i].dsc, 0);
@@ -1408,10 +1408,7 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
             new->info.ident.count = old->info.ident.count;
             if (old->info.ident.count) {
                 new->info.ident.ref = malloc(old->info.ident.count * sizeof *new->info.ident.ref);
-                if (!new->info.ident.ref) {
-                    LOGMEM;
-                    return -1;
-                }
+                LY_CHECK_ERR_RETURN(!new->info.ident.ref, LOGMEM, -1);
                 memcpy(new->info.ident.ref, old->info.ident.ref, old->info.ident.count * sizeof *new->info.ident.ref);
             } else {
                 /* there can be several unresolved base identities, duplicate them all */
@@ -1466,10 +1463,8 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
             new->info.uni.count = old->info.uni.count;
             if (new->info.uni.count) {
                 new->info.uni.types = calloc(new->info.uni.count, sizeof *new->info.uni.types);
-                if (!new->info.uni.types) {
-                    LOGMEM;
-                    return -1;
-                }
+                LY_CHECK_ERR_RETURN(!new->info.uni.types, LOGMEM, -1);
+
                 for (i = 0; i < new->info.uni.count; i++) {
                     if (lys_type_dup(mod, parent, &(new->info.uni.types[i]), &(old->info.uni.types[i]),
                                      in_grp, shallow, unres)) {
@@ -1493,10 +1488,7 @@ lys_yang_type_dup(struct lys_module *module, struct lys_node *parent, struct yan
     struct yang_type *new;
 
     new = calloc(1, sizeof *new);
-    if (!new) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!new, LOGMEM, NULL);
     new->flags = old->flags;
     new->base = old->base;
     new->name = lydict_insert(module->ctx, old->name, 0);
@@ -2044,10 +2036,7 @@ lys_when_dup(struct lys_module *mod, struct lys_when *old, int shallow, struct u
     }
 
     new = calloc(1, sizeof *new);
-    if (!new) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!new, LOGMEM, NULL);
     new->cond = lydict_insert(mod->ctx, old->cond, 0);
     new->dsc = lydict_insert(mod->ctx, old->dsc, 0);
     new->ref = lydict_insert(mod->ctx, old->ref, 0);
@@ -2822,11 +2811,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         LOGINT;
         goto error;
     }
-
-    if (!retval) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!retval, LOGMEM, NULL);
 
     /*
      * duplicate generic part of the structure
@@ -2849,10 +2834,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
     if (node->iffeature_size) {
         retval->iffeature_size = node->iffeature_size;
         retval->iffeature = calloc(retval->iffeature_size, sizeof *retval->iffeature);
-        if (!retval->iffeature) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!retval->iffeature, LOGMEM, error);
     }
 
     if (!shallow) {
@@ -2864,10 +2846,13 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
                 /* duplicate compiled expression */
                 size = (size1 / 4) + (size1 % 4) ? 1 : 0;
                 retval->iffeature[i].expr = malloc(size * sizeof *retval->iffeature[i].expr);
+                LY_CHECK_ERR_GOTO(!retval->iffeature[i].expr, LOGMEM, error);
                 memcpy(retval->iffeature[i].expr, node->iffeature[i].expr, size * sizeof *retval->iffeature[i].expr);
 
                 /* list of feature pointer must be updated to point to the resulting tree */
                 retval->iffeature[i].features = calloc(size2, sizeof *retval->iffeature[i].features);
+                LY_CHECK_ERR_GOTO(!retval->iffeature[i].features, LOGMEM; free(retval->iffeature[i].expr), error);
+
                 for (j = 0; (unsigned int)j < size2; j++) {
                     rc = unres_schema_dup(module, unres, &node->iffeature[i].features[j], UNRES_IFFEAT,
                                           &retval->iffeature[i].features[j]);
@@ -2968,11 +2953,15 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
     case LYS_CONTAINER:
         if (cont_orig->when) {
             cont->when = lys_when_dup(module, cont_orig->when, shallow, unres);
+            LY_CHECK_GOTO(!cont->when, error);
         }
         cont->presence = lydict_insert(ctx, cont_orig->presence, 0);
 
-        cont->must_size = cont_orig->must_size;
-        cont->must = lys_restr_dup(module, cont_orig->must, cont->must_size, shallow, unres);
+        if (cont_orig->must) {
+            cont->must = lys_restr_dup(module, cont_orig->must, cont_orig->must_size, shallow, unres);
+            LY_CHECK_GOTO(!cont->must, error);
+            cont->must_size = cont_orig->must_size;
+        }
 
         /* typedefs are not needed in instantiated grouping, nor the deviation's shallow copy */
 
@@ -2980,6 +2969,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
     case LYS_CHOICE:
         if (choice_orig->when) {
             choice->when = lys_when_dup(module, choice_orig->when, shallow, unres);
+            LY_CHECK_GOTO(!choice->when, error);
         }
 
         if (!shallow) {
@@ -3028,11 +3018,15 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
             }
         }
 
-        leaf->must_size = leaf_orig->must_size;
-        leaf->must = lys_restr_dup(module, leaf_orig->must, leaf->must_size, shallow, unres);
+        if (leaf_orig->must) {
+            leaf->must = lys_restr_dup(module, leaf_orig->must, leaf_orig->must_size, shallow, unres);
+            LY_CHECK_GOTO(!leaf->must, error);
+            leaf->must_size = leaf_orig->must_size;
+        }
 
         if (leaf_orig->when) {
             leaf->when = lys_when_dup(module, leaf_orig->when, shallow, unres);
+            LY_CHECK_GOTO(!leaf->when, error);
         }
         break;
 
@@ -3045,11 +3039,18 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         llist->min = llist_orig->min;
         llist->max = llist_orig->max;
 
-        llist->must_size = llist_orig->must_size;
-        llist->must = lys_restr_dup(module, llist_orig->must, llist->must_size, shallow, unres);
+        if (llist_orig->must) {
+            llist->must = lys_restr_dup(module, llist_orig->must, llist_orig->must_size, shallow, unres);
+            LY_CHECK_GOTO(!llist->must, error);
+            llist->must_size = llist_orig->must_size;
+        }
 
-        llist->dflt_size = llist_orig->dflt_size;
-        llist->dflt = malloc(llist->dflt_size * sizeof *llist->dflt);
+        if (llist_orig->dflt) {
+            llist->dflt = malloc(llist_orig->dflt_size * sizeof *llist->dflt);
+            LY_CHECK_ERR_GOTO(!llist->dflt, LOGMEM, error);
+            llist->dflt_size = llist_orig->dflt_size;
+        }
+
         for (i = 0; i < llist->dflt_size; i++) {
             llist->dflt[i] = lydict_insert(ctx, llist_orig->dflt[i], 0);
             if (!ingrouping(retval) || (llist->type.base != LY_TYPE_LEAFREF)) {
@@ -3074,19 +3075,19 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         list->min = list_orig->min;
         list->max = list_orig->max;
 
-        list->must_size = list_orig->must_size;
-        list->must = lys_restr_dup(module, list_orig->must, list->must_size, shallow, unres);
+        if (list_orig->must) {
+            list->must = lys_restr_dup(module, list_orig->must, list_orig->must_size, shallow, unres);
+            LY_CHECK_GOTO(!list->must, error);
+            list->must_size = list_orig->must_size;
+        }
 
         /* typedefs are not needed in instantiated grouping, nor the deviation's shallow copy */
 
-        list->keys_size = list_orig->keys_size;
-        if (list->keys_size) {
-            list->keys = calloc(list->keys_size, sizeof *list->keys);
+        if (list_orig->keys_size) {
+            list->keys = calloc(list_orig->keys_size, sizeof *list->keys);
+            LY_CHECK_ERR_GOTO(!list->keys, LOGMEM, error);
             list->keys_str = lydict_insert(ctx, list_orig->keys_str, 0);
-            if (!list->keys) {
-                LOGMEM;
-                goto error;
-            }
+            list->keys_size = list_orig->keys_size;
 
             if (!shallow) {
                 /* the keys are going to be resolved only if the list is instantiated in data tree, not just
@@ -3096,28 +3097,25 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
                     goto error;
                 }
             } else {
-                memcpy(list->keys, list_orig->keys, list->keys_size * sizeof *list->keys);
+                memcpy(list->keys, list_orig->keys, list_orig->keys_size * sizeof *list->keys);
             }
         }
 
-        list->unique_size = list_orig->unique_size;
-        list->unique = malloc(list->unique_size * sizeof *list->unique);
-        if (!list->unique) {
-            LOGMEM;
-            goto error;
+        if (list_orig->unique) {
+            list->unique = malloc(list_orig->unique_size * sizeof *list->unique);
+            LY_CHECK_ERR_GOTO(!list->unique, LOGMEM, error);
+            list->unique_size = list_orig->unique_size;
         }
         for (i = 0; i < list->unique_size; ++i) {
+            list->unique[i].expr = malloc(list_orig->unique[i].expr_size * sizeof *list->unique[i].expr);
+            LY_CHECK_ERR_GOTO(!list->unique[i].expr, LOGMEM, error);
             list->unique[i].expr_size = list_orig->unique[i].expr_size;
-            list->unique[i].expr = malloc(list->unique[i].expr_size * sizeof *list->unique[i].expr);
-            if (!list->unique[i].expr) {
-                LOGMEM;
-                goto error;
-            }
             for (j = 0; j < list->unique[i].expr_size; j++) {
                 list->unique[i].expr[j] = lydict_insert(ctx, list_orig->unique[i].expr[j], 0);
 
                 /* if it stays in unres list, duplicate it also there */
                 unique_info = malloc(sizeof *unique_info);
+                LY_CHECK_ERR_GOTO(!unique_info, LOGMEM, error);
                 unique_info->list = (struct lys_node *)list;
                 unique_info->expr = list->unique[i].expr[j];
                 unique_info->trg_type = &list->unique[i].trg_type;
@@ -3127,16 +3125,21 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
 
         if (list_orig->when) {
             list->when = lys_when_dup(module, list_orig->when, shallow, unres);
+            LY_CHECK_GOTO(!list->when, error);
         }
         break;
 
     case LYS_ANYXML:
     case LYS_ANYDATA:
-        any->must_size = any_orig->must_size;
-        any->must = lys_restr_dup(module, any_orig->must, any->must_size, shallow, unres);
+        if (any_orig->must) {
+            any->must = lys_restr_dup(module, any_orig->must, any_orig->must_size, shallow, unres);
+            LY_CHECK_GOTO(!any->must, error);
+            any->must_size = any_orig->must_size;
+        }
 
         if (any_orig->when) {
             any->when = lys_when_dup(module, any_orig->when, shallow, unres);
+            LY_CHECK_GOTO(!any->when, error);
         }
         break;
 
@@ -3145,6 +3148,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
 
         if (uses_orig->when) {
             uses->when = lys_when_dup(module, uses_orig->when, shallow, unres);
+            LY_CHECK_GOTO(!uses->when, error);
         }
         /* it is not needed to duplicate refine, nor augment. They are already applied to the uses children */
         break;
@@ -3152,6 +3156,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
     case LYS_CASE:
         if (cs_orig->when) {
             cs->when = lys_when_dup(module, cs_orig->when, shallow, unres);
+            LY_CHECK_GOTO(!cs->when, error);
         }
         break;
 
@@ -3612,17 +3617,11 @@ lys_features_list(const struct lys_module *module, uint8_t **states)
         count += module->inc[i].submodule->features_size;
     }
     result = malloc((count + 1) * sizeof *result);
-    if (!result) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!result, LOGMEM, NULL);
+
     if (states) {
         *states = malloc((count + 1) * sizeof **states);
-        if (!(*states)) {
-            LOGMEM;
-            free(result);
-            return NULL;
-        }
+        LY_CHECK_ERR_RETURN(!(*states), LOGMEM; free(result), NULL);
     }
     count = 0;
 
@@ -4238,10 +4237,7 @@ lys_switch_deviations(struct lys_module *module)
 
     if (module->deviated) {
         unres = calloc(1, sizeof *unres);
-        if (!unres) {
-            LOGMEM;
-            return;
-        }
+        LY_CHECK_ERR_RETURN(!unres, LOGMEM, );
 
         while ((mod = ly_ctx_get_module_iter(module->ctx, &i))) {
             if (mod == module) {
@@ -4325,10 +4321,7 @@ lys_sub_module_apply_devs_augs(struct lys_module *module)
     struct unres_schema *unres;
 
     unres = calloc(1, sizeof *unres);
-    if (!unres) {
-        LOGMEM;
-        return;
-    }
+    LY_CHECK_ERR_RETURN(!unres, LOGMEM, );
 
     /* remove applied deviations */
     for (u = 0; u < module->deviation_size; ++u) {
@@ -4364,10 +4357,7 @@ lys_sub_module_remove_devs_augs(struct lys_module *module)
     struct unres_schema *unres;
 
     unres = calloc(1, sizeof *unres);
-    if (!unres) {
-        LOGMEM;
-        return;
-    }
+    LY_CHECK_ERR_RETURN(!unres, LOGMEM, );
 
     /* remove applied deviations */
     for (u = 0; u < module->deviation_size; ++u) {
@@ -4606,6 +4596,10 @@ lys_path(const struct lys_node *node)
     buf[index] = '\0';
     ly_vlog_build_path_reverse(LY_VLOG_LYS, node, buf, &index, 0);
     result = strdup(&buf[index]);
+    if (!result) {
+        LOGMEM;
+        /* pass through to cleanup */
+    }
 
     /* restore the shared internal buffer */
     if (buf_backup) {

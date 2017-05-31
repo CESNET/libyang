@@ -45,6 +45,11 @@
 #  endif
 #endif
 
+#define LY_CHECK_GOTO(COND, GOTO) if (COND) {goto GOTO;}
+#define LY_CHECK_ERR_GOTO(COND, ERR, GOTO) if (COND) {ERR; goto GOTO;}
+#define LY_CHECK_RETURN(COND, RETVAL) if (COND) {return RETVAL;}
+#define LY_CHECK_ERR_RETURN(COND, ERR, RETVAL) if (COND) {ERR; return RETVAL;}
+
 /*
  * If the compiler supports attribute to mark objects as hidden, mark all
  * objects as hidden and export only objects explicitly marked to be part of

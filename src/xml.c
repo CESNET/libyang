@@ -121,10 +121,8 @@ lyxml_dup_attr(struct ly_ctx *ctx, struct lyxml_elem *parent, struct lyxml_attr 
     } else {
         result = calloc(1, sizeof (struct lyxml_attr));
     }
-    if (!result) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!result, LOGMEM, NULL);
+
     result->value = lydict_insert(ctx, attr->value, 0);
     result->name = lydict_insert(ctx, attr->name, 0);
     result->type = attr->type;
@@ -205,10 +203,7 @@ lyxml_dup_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, struct lyxml_elem *p
     }
 
     result = calloc(1, sizeof *result);
-    if (!result) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!result, LOGMEM, NULL);
     result->content = lydict_insert(ctx, elem->content, 0);
     result->name = lydict_insert(ctx, elem->name, 0);
     result->flags = elem->flags;
@@ -604,16 +599,12 @@ loop:
             /* add buffer into the result */
             if (result) {
                 size = size + o;
-                aux = ly_realloc(result, size + 1);
-                result = aux;
+                result = ly_realloc(result, size + 1);
             } else {
                 size = o;
                 result = malloc((size + 1) * sizeof *result);
             }
-            if (!result) {
-                LOGMEM;
-                return NULL;
-            }
+            LY_CHECK_ERR_RETURN(!result, LOGMEM, NULL);
             memcpy(&result[size - o], buf, o);
 
             /* write again into the beginning of the buffer */
@@ -718,10 +709,7 @@ loop:
             size = o;
             result = malloc((size + 1) * sizeof *result);
         }
-        if (!result) {
-            LOGMEM;
-            return NULL;
-        }
+        LY_CHECK_ERR_RETURN(!result, LOGMEM, NULL);
         memcpy(&result[size - o], buf, o);
     }
     if (result) {
@@ -729,6 +717,7 @@ loop:
     } else {
         size = 0;
         result = strdup("");
+        LY_CHECK_ERR_RETURN(!result, LOGMEM, NULL)
     }
 
     return result;
@@ -752,10 +741,8 @@ parse_attr(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml
     if (!strncmp(c, "xmlns", 5)) {
         /* namespace */
         attr = calloc(1, sizeof (struct lyxml_ns));
-        if (!attr) {
-            LOGMEM;
-            return NULL;
-        }
+        LY_CHECK_ERR_RETURN(!attr, LOGMEM, NULL);
+
         attr->type = LYXML_ATTR_NS;
         ((struct lyxml_ns *)attr)->parent = parent;
         c += 5;
@@ -767,10 +754,8 @@ parse_attr(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml
     } else {
         /* attribute */
         attr = calloc(1, sizeof *attr);
-        if (!attr) {
-            LOGMEM;
-            return NULL;
-        }
+        LY_CHECK_ERR_RETURN(!attr, LOGMEM, NULL);
+
         attr->type = LYXML_ATTR_STD;
     }
 
@@ -899,10 +884,8 @@ lyxml_parse_elem(struct ly_ctx *ctx, const char *data, unsigned int *len, struct
 
     /* allocate element structure */
     elem = calloc(1, sizeof *elem);
-    if (!elem) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!elem, LOGMEM, NULL);
+
     elem->next = NULL;
     elem->prev = elem;
     if (parent) {
@@ -968,10 +951,7 @@ process:
                 /* check that it corresponds to opening tag */
                 size = e - c;
                 str = malloc((size + 1) * sizeof *str);
-                if (!str) {
-                    LOGMEM;
-                    goto error;
-                }
+                LY_CHECK_ERR_GOTO(!str, LOGMEM, error);
                 memcpy(str, c, e - c);
                 str[e - c] = '\0';
                 if (size != strlen(elem->name) || memcmp(str, elem->name, size)) {
@@ -1038,10 +1018,7 @@ process:
                         goto error;
                     }
                     child = calloc(1, sizeof *child);
-                    if (!child) {
-                        LOGMEM;
-                        goto error;
-                    }
+                    LY_CHECK_ERR_GOTO(!child, LOGMEM, error);
                     child->content = elem->content;
                     elem->content = NULL;
                     lyxml_add_child(ctx, elem, child);
@@ -1076,10 +1053,7 @@ store_content:
                         goto error;
                     }
                     child = calloc(1, sizeof *child);
-                    if (!child) {
-                        LOGMEM;
-                        goto error;
-                    }
+                    LY_CHECK_ERR_GOTO(!child, LOGMEM, error);
                     child->content = elem->content;
                     elem->content = NULL;
                     lyxml_add_child(ctx, elem, child);

@@ -231,10 +231,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         LOGINT;
         return -1;
     }
-    if (!(*result)) {
-        LOGMEM;
-        return -1;
-    }
+    LY_CHECK_ERR_RETURN(!(*result), LOGMEM, -1);
 
     (*result)->prev = *result;
     (*result)->schema = schema;
@@ -566,10 +563,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     }
 
     unres = calloc(1, sizeof *unres);
-    if (!unres) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!unres, LOGMEM, NULL);
 
     va_start(ap, options);
     if (options & LYD_OPT_RPCREPLY) {

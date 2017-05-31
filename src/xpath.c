@@ -298,11 +298,7 @@ print_set_debug(struct lyxp_set *set)
                 str_num = NULL;
             }
         }
-
-        if (!str_num) {
-            LOGMEM;
-            return;
-        }
+        LY_CHECK_ERR_RETURN(!str_num, LOGMEM, );
 
         LOGDBG(LY_LDGXPATH, "\t%s", str_num);
         free(str_num);
@@ -327,9 +323,7 @@ cast_string_realloc(uint16_t needed, char **str, uint16_t *used, uint16_t *size)
             *size += LYXP_STRING_CAST_SIZE_STEP;
         } while (*size - *used < needed);
         *str = ly_realloc(*str, *size * sizeof(char));
-        if (!(*str)) {
-            LOGMEM;
-        }
+        LY_CHECK_ERR_RETURN(!(*str), LOGMEM, );
     }
 }
 
@@ -417,22 +411,24 @@ cast_string_recursive(struct lyd_node *node, struct lys_module *local_mod, int f
         if (!(void*)any->value.tree) {
             /* no content */
             buf = strdup("");
+            LY_CHECK_ERR_RETURN(!buf, LOGMEM, );
         } else {
             switch (any->value_type) {
             case LYD_ANYDATA_CONSTSTRING:
             case LYD_ANYDATA_SXML:
             case LYD_ANYDATA_JSON:
                 buf = strdup(any->value.str);
-                if (!buf) {
-                    LOGMEM;
+                LY_CHECK_ERR_RETURN(!buf, LOGMEM, );
+                break;
+            case LYD_ANYDATA_DATATREE:
+                if (lyd_print_mem(&buf, any->value.tree, LYD_XML, LYP_WITHSIBLINGS)) {
                     return;
                 }
                 break;
-            case LYD_ANYDATA_DATATREE:
-                lyd_print_mem(&buf, any->value.tree, LYD_XML, LYP_WITHSIBLINGS);
-                break;
             case LYD_ANYDATA_XML:
-                lyxml_print_mem(&buf, any->value.xml, LYXML_PRINT_SIBLINGS);
+                if (lyxml_print_mem(&buf, any->value.xml, LYXML_PRINT_SIBLINGS)) {
+                    return;
+                }
                 break;
             case LYD_ANYDATA_STRING:
             case LYD_ANYDATA_SXMLD:
@@ -489,10 +485,7 @@ cast_string_elem(struct lyd_node *node, struct lys_module *local_mod, int fake_c
     uint16_t used, size;
 
     str = malloc(LYXP_STRING_CAST_SIZE_START * sizeof(char));
-    if (!str) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!str, LOGMEM, NULL);
     str[0] = '\0';
     used = 1;
     size = LYXP_STRING_CAST_SIZE_START;
@@ -501,10 +494,7 @@ cast_string_elem(struct lyd_node *node, struct lys_module *local_mod, int fake_c
 
     if (size > used) {
         str = ly_realloc(str, used * sizeof(char));
-        if (!str) {
-            LOGMEM;
-            return NULL;
-        }
+        LY_CHECK_ERR_RETURN(!str, LOGMEM, NULL);
     }
     return str;
 }
@@ -523,6 +513,7 @@ static char *
 cast_node_set_to_string(struct lyxp_set *set, struct lyd_node *cur_node, struct lys_module *local_mod, int options)
 {
     enum lyxp_node_type root_type;
+    char *str;
 
     if ((set->val.nodes[0].type != LYXP_NODE_ATTR) && (set->val.nodes[0].node->validity & LYD_VAL_INUSE)) {
         LOGVAL(LYE_XPATH_DUMMY, LY_VLOG_LYD, set->val.nodes[0].node, set->val.nodes[0].node->schema->name);
@@ -539,7 +530,11 @@ cast_node_set_to_string(struct lyxp_set *set, struct lyd_node *cur_node, struct 
     case LYXP_NODE_TEXT:
         return cast_string_elem(set->val.nodes[0].node, local_mod, 0, root_type);
     case LYXP_NODE_ATTR:
-        return strdup(set->val.attrs[0].attr->value_str);
+        str = strdup(set->val.attrs[0].attr->value_str);
+        if (!str) {
+            LOGMEM;
+        }
+        return str;
     }
 
     LOGINT;
@@ -588,18 +583,12 @@ set_copy(struct lyxp_set *set)
     }
 
     ret = malloc(sizeof *ret);
-    if (!ret) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!ret, LOGMEM, NULL);
+
     if ((set->type == LYXP_SET_NODE_SET) || (set->type == LYXP_SET_SNODE_SET)) {
         ret->type = set->type;
         ret->val.nodes = malloc(set->used * sizeof *ret->val.nodes);
-        if (!ret->val.nodes) {
-            LOGMEM;
-            free(ret);
-            return NULL;
-        }
+        LY_CHECK_ERR_RETURN(!ret->val.nodes, LOGMEM; free(ret), NULL);
         memcpy(ret->val.nodes, set->val.nodes, set->used * sizeof *ret->val.nodes);
 
         ret->used = ret->size = set->used;
@@ -609,6 +598,7 @@ set_copy(struct lyxp_set *set)
        memcpy(ret, set, sizeof *ret);
        if (set->type == LYXP_SET_STRING) {
            ret->val.str = strdup(set->val.str);
+           LY_CHECK_ERR_RETURN(!ret->val.str, LOGMEM; free(ret), NULL);
        }
     }
 
@@ -697,12 +687,7 @@ set_fill_set(struct lyxp_set *trg, struct lyxp_set *src)
         trg->size = src->used;
 
         trg->val.snodes = ly_realloc(trg->val.snodes, trg->size * sizeof *trg->val.nodes);
-        if (!trg->val.nodes) {
-            LOGMEM;
-            memset(trg, 0, sizeof *trg);
-            return;
-        }
-
+        LY_CHECK_ERR_RETURN(!trg->val.nodes, LOGMEM; memset(trg, 0, sizeof *trg), );
         memcpy(trg->val.nodes, src->val.nodes, src->used * sizeof *src->val.nodes);
     } else if (src->type == LYXP_SET_BOOLEAN) {
         set_fill_boolean(trg, src->val.bool);
@@ -729,11 +714,7 @@ set_fill_set(struct lyxp_set *trg, struct lyxp_set *src)
             trg->ctx_size = src->ctx_size;
 
             trg->val.nodes = malloc(trg->used * sizeof *trg->val.nodes);
-            if (!trg->val.nodes) {
-                LOGMEM;
-                memset(trg, 0, sizeof *trg);
-                return;
-            }
+            LY_CHECK_ERR_RETURN(!trg->val.nodes, LOGMEM; memset(trg, 0, sizeof *trg), );
 
             memcpy(trg->val.nodes, src->val.nodes, src->used * sizeof *src->val.nodes);
         }
@@ -844,10 +825,7 @@ set_snode_merge(struct lyxp_set *set1, struct lyxp_set *set2)
     if (set1->used + set2->used > set1->size) {
         set1->size = set1->used + set2->used;
         set1->val.snodes = ly_realloc(set1->val.snodes, set1->size * sizeof *set1->val.snodes);
-        if (!set1->val.snodes) {
-            LOGMEM;
-            return;
-        }
+        LY_CHECK_ERR_RETURN(!set1->val.snodes, LOGMEM, );
     }
 
     orig_used = set1->used;
@@ -892,10 +870,7 @@ set_insert_node(struct lyxp_set *set, const void *node, uint32_t pos, enum lyxp_
             idx = 0;
         }
         set->val.nodes = malloc(LYXP_SET_SIZE_START * sizeof *set->val.nodes);
-        if (!set->val.nodes) {
-            LOGMEM;
-            return;
-        }
+        LY_CHECK_ERR_RETURN(!set->val.nodes, LOGMEM, );
         set->type = LYXP_SET_NODE_SET;
         set->used = 0;
         set->size = LYXP_SET_SIZE_START;
@@ -907,10 +882,7 @@ set_insert_node(struct lyxp_set *set, const void *node, uint32_t pos, enum lyxp_
 
             /* set is full */
             set->val.nodes = ly_realloc(set->val.nodes, (set->size + LYXP_SET_SIZE_STEP) * sizeof *set->val.nodes);
-            if (!set->val.nodes) {
-                LOGMEM;
-                return;
-            }
+            LY_CHECK_ERR_RETURN(!set->val.nodes, LOGMEM, );
             set->size += LYXP_SET_SIZE_STEP;
         }
 
@@ -945,10 +917,7 @@ set_snode_insert_node(struct lyxp_set *set, const struct lys_node *node, enum ly
     } else {
         if (set->used == set->size) {
             set->val.snodes = ly_realloc(set->val.snodes, (set->size + LYXP_SET_SIZE_STEP) * sizeof *set->val.snodes);
-            if (!set->val.snodes) {
-                LOGMEM;
-                return -1;
-            }
+            LY_CHECK_ERR_RETURN(!set->val.snodes, LOGMEM, -1);
             set->size += LYXP_SET_SIZE_STEP;
         }
 
@@ -1408,10 +1377,7 @@ set_sorted_merge(struct lyxp_set *trg, struct lyxp_set *src, struct lyd_node *cu
         trg->size = trg->used + src->used;
 
         trg->val.nodes = ly_realloc(trg->val.nodes, trg->size * sizeof *trg->val.nodes);
-        if (!trg->val.nodes) {
-            LOGMEM;
-            return -1;
-        }
+        LY_CHECK_ERR_RETURN(!trg->val.nodes, LOGMEM, -1);
     }
 
     i = 0;
@@ -1498,20 +1464,11 @@ exp_add_token(struct lyxp_expr *exp, enum lyxp_token token, uint16_t expr_pos, u
     if (exp->used == exp->size) {
         exp->size += LYXP_EXPR_SIZE_STEP;
         exp->tokens = ly_realloc(exp->tokens, exp->size * sizeof *exp->tokens);
-        if (!exp->tokens) {
-            LOGMEM;
-            return;
-        }
+        LY_CHECK_ERR_RETURN(!exp->tokens, LOGMEM, );
         exp->expr_pos = ly_realloc(exp->expr_pos, exp->size * sizeof *exp->expr_pos);
-        if (!exp->expr_pos) {
-            LOGMEM;
-            return;
-        }
+        LY_CHECK_ERR_RETURN(!exp->expr_pos, LOGMEM, );
         exp->tok_len = ly_realloc(exp->tok_len, exp->size * sizeof *exp->tok_len);
-        if (!exp->tok_len) {
-            LOGMEM;
-            return;
-        }
+        LY_CHECK_ERR_RETURN(!exp->tok_len, LOGMEM, );
     }
 
     exp->tokens[exp->used] = token;
@@ -1611,18 +1568,12 @@ exp_repeat_push(struct lyxp_expr *exp, uint16_t exp_idx, uint16_t repeat_op_idx)
     if (exp->repeat[exp_idx]) {
         for (i = 0; exp->repeat[exp_idx][i]; ++i);
         exp->repeat[exp_idx] = realloc(exp->repeat[exp_idx], (i + 2) * sizeof *exp->repeat[exp_idx]);
-        if (!exp->repeat[exp_idx]) {
-            LOGMEM;
-            return;
-        }
+        LY_CHECK_ERR_RETURN(!exp->repeat[exp_idx], LOGMEM, );
         exp->repeat[exp_idx][i] = repeat_op_idx;
         exp->repeat[exp_idx][i + 1] = 0;
     } else {
         exp->repeat[exp_idx] = calloc(2, sizeof *exp->repeat[exp_idx]);
-        if (!exp->repeat[exp_idx]) {
-            LOGMEM;
-            return;
-        }
+        LY_CHECK_ERR_RETURN(!exp->repeat[exp_idx], LOGMEM, );
         exp->repeat[exp_idx][0] = repeat_op_idx;
     }
 }
@@ -2344,32 +2295,19 @@ lyxp_parse_expr(const char *expr)
 
     /* init lyxp_expr structure */
     ret = calloc(1, sizeof *ret);
-    if (!ret) {
-        LOGMEM;
-        goto error;
-    }
+    LY_CHECK_ERR_GOTO(!ret, LOGMEM, error);
     ret->expr = strdup(expr);
-    if (!ret->expr) {
-        LOGMEM;
-        goto error;
-    }
+    LY_CHECK_ERR_GOTO(!ret->expr, LOGMEM, error);
     ret->used = 0;
     ret->size = LYXP_EXPR_SIZE_START;
     ret->tokens = malloc(ret->size * sizeof *ret->tokens);
-    if (!ret->tokens) {
-        LOGMEM;
-        goto error;
-    }
+    LY_CHECK_ERR_GOTO(!ret->tokens, LOGMEM, error);
+
     ret->expr_pos = malloc(ret->size * sizeof *ret->expr_pos);
-    if (!ret->expr_pos) {
-        LOGMEM;
-        goto error;
-    }
+    LY_CHECK_ERR_GOTO(!ret->expr_pos, LOGMEM, error);
+
     ret->tok_len = malloc(ret->size * sizeof *ret->tok_len);
-    if (!ret->tok_len) {
-        LOGMEM;
-        goto error;
-    }
+    LY_CHECK_ERR_GOTO(!ret->tok_len, LOGMEM, error);
 
     while (is_xmlws(expr[parsed])) {
         ++parsed;
@@ -2585,10 +2523,7 @@ lyxp_parse_expr(const char *expr)
 
     /* prealloc repeat */
     ret->repeat = calloc(ret->size, sizeof *ret->repeat);
-    if (!ret->repeat) {
-        LOGMEM;
-        goto error;
-    }
+    LY_CHECK_ERR_GOTO(!ret->repeat, LOGMEM, error);
 
     return ret;
 
@@ -2723,10 +2658,7 @@ xpath_concat(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_no
         }
 
         str = ly_realloc(str, (used + strlen(args[i]->val.str)) * sizeof(char));
-        if (!str) {
-            LOGMEM;
-            return -1;
-        }
+        LY_CHECK_ERR_RETURN(!str, LOGMEM, -1);
         strcpy(str + used - 1, args[i]->val.str);
         used += strlen(args[i]->val.str);
     }
@@ -3479,10 +3411,7 @@ xpath_normalize_space(struct lyxp_set **args, uint16_t arg_count, struct lyd_nod
     if (have_spaces) {
         /* it's enough, at least one character will go, makes space for ending '\0' */
         new = malloc(strlen(set->val.str) * sizeof(char));
-        if (!new) {
-            LOGMEM;
-            return -1;
-        }
+        LY_CHECK_ERR_RETURN(!new, LOGMEM, -1);
         new_used = 0;
 
         space_before = 0;
@@ -3508,10 +3437,7 @@ xpath_normalize_space(struct lyxp_set **args, uint16_t arg_count, struct lyd_nod
         }
 
         new = ly_realloc(new, (new_used + 1) * sizeof(char));
-        if (!new) {
-            LOGMEM;
-            return -1;
-        }
+        LY_CHECK_ERR_RETURN(!new, LOGMEM, -1);
         new[new_used] = '\0';
 
         free(set->val.str);
@@ -3953,10 +3879,7 @@ xpath_sum(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd_node *c
 
     set_item.type = LYXP_SET_NODE_SET;
     set_item.val.nodes = malloc(sizeof *set_item.val.nodes);
-    if (!set_item.val.nodes) {
-        LOGMEM;
-        return -1;
-    }
+    LY_CHECK_ERR_RETURN(!set_item.val.nodes, LOGMEM, -1);
 
     set_item.used = 1;
     set_item.size = 1;
@@ -4063,10 +3986,7 @@ xpath_translate(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd_n
     }
 
     new = malloc((strlen(args[0]->val.str) + 1) * sizeof(char));
-    if (!new) {
-        LOGMEM;
-        return -1;
-    }
+    LY_CHECK_ERR_RETURN(!new, LOGMEM, -1);
     new_used = 0;
 
     have_removed = 0;
@@ -4098,10 +4018,7 @@ xpath_translate(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd_n
 
     if (have_removed) {
         new = ly_realloc(new, (new_used + 1) * sizeof(char));
-        if (!new) {
-            LOGMEM;
-            return -1;
-        }
+        LY_CHECK_ERR_RETURN(!new, LOGMEM, -1);
     }
     new[new_used] = '\0';
 
@@ -4570,6 +4487,7 @@ moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, const char *qname,
         } else if (!(start_parent->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
             /* the target may be from an augment that was not connected */
             last_aug = NULL;
+            tmp_mod = NULL;
             if ((moveto_mod && !moveto_mod->implemented) || (!moveto_mod && !lys_node_module(start_parent)->implemented)) {
                 if (moveto_mod) {
                     tmp_mod = moveto_mod;
@@ -5884,10 +5802,8 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
 
         /* copy predicate repeats, since they get deleted each time (probably not an ideal solution) */
         pred_repeat = calloc(brack2_exp - orig_exp, sizeof *pred_repeat);
-        if (!pred_repeat) {
-            LOGMEM;
-            return -1;
-        }
+        LY_CHECK_ERR_RETURN(!pred_repeat, LOGMEM, -1);
+
         for (j = 0; j < brack2_exp - orig_exp; ++j) {
             if (exp->repeat[orig_exp + j]) {
                 for (rep_size = 0; exp->repeat[orig_exp + j][rep_size]; ++rep_size);
@@ -5976,10 +5892,8 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
 
         /* copy predicate repeats, since they get deleted each time (probably not an ideal solution) */
         pred_repeat = calloc(brack2_exp - orig_exp, sizeof *pred_repeat);
-        if (!pred_repeat) {
-            LOGMEM;
-            return -1;
-        }
+        LY_CHECK_ERR_RETURN(!pred_repeat, LOGMEM, -1);
+
         for (j = 0; j < brack2_exp - orig_exp; ++j) {
             if (exp->repeat[orig_exp + j]) {
                 for (rep_size = 0; exp->repeat[orig_exp + j][rep_size]; ++rep_size);
@@ -6393,10 +6307,7 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
     if (exp->tokens[*exp_idx] != LYXP_TOKEN_PAR2) {
         if (set) {
             args = malloc(sizeof *args);
-            if (!args) {
-                LOGMEM;
-                goto cleanup;
-            }
+            LY_CHECK_ERR_GOTO(!args, LOGMEM, cleanup);
             arg_count = 1;
             args[0] = set_copy(set);
             if (!args[0]) {
@@ -6420,11 +6331,7 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
         if (set) {
             ++arg_count;
             args_aux = realloc(args, arg_count * sizeof *args);
-            if (!args_aux) {
-                arg_count--;
-                LOGMEM;
-                goto cleanup;
-            }
+            LY_CHECK_ERR_GOTO(!args_aux, arg_count--; LOGMEM, cleanup);
             args = args_aux;
             args[arg_count - 1] = set_copy(set);
             if (!args[arg_count - 1]) {
@@ -7507,12 +7414,16 @@ lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target, const struct lyd_
         case LYXP_SET_NUMBER:
             if (isnan(set->val.num)) {
                 set->val.str = strdup("NaN");
+                LY_CHECK_ERR_RETURN(!set->val.str, LOGMEM, -1);
             } else if ((set->val.num == 0) || (set->val.num == -0.0f)) {
                 set->val.str = strdup("0");
+                LY_CHECK_ERR_RETURN(!set->val.str, LOGMEM, -1);
             } else if (isinf(set->val.num) && !signbit(set->val.num)) {
                 set->val.str = strdup("Infinity");
+                LY_CHECK_ERR_RETURN(!set->val.str, LOGMEM, -1);
             } else if (isinf(set->val.num) && signbit(set->val.num)) {
                 set->val.str = strdup("-Infinity");
+                LY_CHECK_ERR_RETURN(!set->val.str, LOGMEM, -1);
             } else if ((long long)set->val.num == set->val.num) {
                 if (asprintf(&str, "%lld", (long long)set->val.num) == -1) {
                     LOGMEM;
@@ -7533,6 +7444,7 @@ lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target, const struct lyd_
             } else {
                 set->val.str = strdup("false");
             }
+            LY_CHECK_ERR_RETURN(!set->val.str, LOGMEM, -1);
             break;
         case LYXP_SET_NODE_SET:
             assert(set->used);
@@ -7553,10 +7465,7 @@ lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target, const struct lyd_
             break;
         case LYXP_SET_EMPTY:
             set->val.str = strdup("");
-            if (!set->val.str) {
-                LOGMEM;
-                return -1;
-            }
+            LY_CHECK_ERR_RETURN(!set->val.str, LOGMEM, -1);
             break;
         default:
             LOGINT;

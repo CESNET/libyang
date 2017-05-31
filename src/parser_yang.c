@@ -297,11 +297,7 @@ yang_read_when(struct lys_module *module, struct lys_node *node, enum yytokentyp
     struct lys_when *retval;
 
     retval = calloc(1, sizeof *retval);
-    if (!retval) {
-        LOGMEM;
-        free(value);
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!retval, LOGMEM; free(value), NULL);
     retval->cond = transform_schema2json(module, value);
     if (!retval->cond) {
         goto error;
@@ -395,11 +391,8 @@ yang_read_node(struct lys_module *module, struct lys_node *parent, struct lys_no
     struct lys_node *node, **child;
 
     node = calloc(1, sizeof_struct);
-    if (!node) {
-        free(value);
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!node, LOGMEM; free(value), NULL);
+
     LOGDBG(LY_LDGYANG, "parsing %s statement \"%s\"", strnodetype(nodetype), value);
     node->name = lydict_insert_zc(module->ctx, value);
     node->module = module;
@@ -484,10 +477,8 @@ yang_read_key(struct lys_module *module, struct lys_node_list *list, struct unre
 
     list->keys_str = lydict_insert_zc(module->ctx, exp);
     list->keys = calloc(list->keys_size, sizeof *list->keys);
-    if (!list->keys) {
-        LOGMEM;
-        return EXIT_FAILURE;
-    }
+    LY_CHECK_ERR_RETURN(!list->keys, LOGMEM, EXIT_FAILURE);
+
     for (node = list->parent; node && node->nodetype != LYS_GROUPING; node = lys_parent(node));
     if (!node && unres_schema_add_node(module, unres, list, UNRES_LIST_KEYS, NULL) == -1) {
         return EXIT_FAILURE;
@@ -512,10 +503,7 @@ yang_fill_unique(struct lys_module *module, struct lys_node_list *list, struct l
     }
     unique->expr_size++;
     unique->expr = calloc(unique->expr_size, sizeof *unique->expr);
-    if (!unique->expr) {
-        LOGMEM;
-        goto error;
-    }
+    LY_CHECK_ERR_GOTO(!unique->expr, LOGMEM, error);
 
     for (i = 0; i < unique->expr_size; i++) {
         vaux = strpbrk(value, " \t\n");
@@ -541,6 +529,7 @@ yang_fill_unique(struct lys_module *module, struct lys_node_list *list, struct l
         /* try to resolve leaf */
         if (unres) {
             unique_info = malloc(sizeof *unique_info);
+            LY_CHECK_ERR_GOTO(!unique_info, LOGMEM, error);
             unique_info->list = (struct lys_node *)list;
             unique_info->expr = unique->expr[i];
             unique_info->trg_type = &unique->trg_type;
@@ -1064,10 +1053,7 @@ yang_read_type(struct lys_module *module, void *parent, char *value, enum yytoke
     struct lys_deviate *dev;
 
     typ = calloc(1, sizeof *typ);
-    if (!typ) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!typ, LOGMEM, NULL);
 
     typ->flags = LY_YANG_STRUCTURE_FLAG;
     switch (type) {
@@ -1109,10 +1095,7 @@ yang_read_type(struct lys_module *module, void *parent, char *value, enum yytoke
             goto error;
         }
         dev->type = calloc(1, sizeof *dev->type);
-        if (!dev->type) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!dev->type, LOGMEM, error);
         dev->type->der = (struct lys_tpdf *)typ;
         typ->type = dev->type;
         break;
@@ -1153,10 +1136,7 @@ yang_read_length(struct lys_module *module, struct yang_type *stype, char *value
             goto error;
         }
         length = calloc(1, sizeof *length);
-        if (!length) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!length, LOGMEM, error);
         stype->type->info.str.length = length;
     }
     length->expr = lydict_insert_zc(module->ctx, value);
@@ -1180,12 +1160,7 @@ yang_read_pattern(struct lys_module *module, struct lys_restr *pattern, char *va
 
     len = strlen(value);
     buf = malloc((len + 2) * sizeof *buf); /* modifier byte + value + terminating NULL byte */
-
-    if (!buf) {
-        LOGMEM;
-        free(value);
-        return EXIT_FAILURE;
-    }
+    LY_CHECK_ERR_RETURN(!buf, LOGMEM; free(value), EXIT_FAILURE);
 
     buf[0] = modifier;
     strcpy(&buf[1], value);
@@ -1213,10 +1188,7 @@ yang_read_range(struct  lys_module *module, struct yang_type *stype, char *value
             goto error;
         }
         range = calloc(1, sizeof *range);
-        if (!range) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!range, LOGMEM, error);
         stype->type->info.dec64.range = range;
     }
     range->expr = lydict_insert_zc(module->ctx, value);
@@ -1403,10 +1375,7 @@ yang_read_deviate_unsupported(struct lys_deviation *dev)
         return NULL;
     }
     dev->deviate = calloc(1, sizeof *dev->deviate);
-    if (!dev->deviate) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!dev->deviate, LOGMEM, NULL);
     dev->deviate[dev->deviate_size].mod = LY_DEVIATE_NO;
     dev->deviate_size = 1;
     return dev->deviate;
@@ -1424,10 +1393,7 @@ yang_read_deviate(struct lys_deviation *dev, LYS_DEVIATE_TYPE mod)
     }
     if (!(dev->deviate_size % LY_YANG_ARRAY_SIZE)) {
         deviate = realloc(dev->deviate, (LY_YANG_ARRAY_SIZE + dev->deviate_size) * sizeof *deviate);
-        if (!deviate) {
-            LOGMEM;
-            return NULL;
-        }
+        LY_CHECK_ERR_RETURN(!deviate, LOGMEM, NULL);
         memset(deviate + dev->deviate_size, 0, LY_YANG_ARRAY_SIZE * sizeof *deviate);
         dev->deviate = deviate;
     }
@@ -1513,10 +1479,7 @@ yang_read_deviate_unique(struct lys_deviate *deviate, struct lys_node *dev_targe
     if (deviate->mod == LY_DEVIATE_ADD) {
         /* reallocate the unique array of the target */
         unique = ly_realloc(list->unique, (deviate->unique_size + list->unique_size) * sizeof *unique);
-        if (!unique) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!unique, LOGMEM, error);
         list->unique = unique;
         memset(unique + list->unique_size, 0, deviate->unique_size * sizeof *unique);
     }
@@ -1706,10 +1669,7 @@ yang_read_deviate_default(struct lys_module *module, struct lys_deviate *deviate
         if (deviate->mod == LY_DEVIATE_ADD) {
             /* reallocate (enlarge) the unique array of the target */
             dflt = realloc(llist->dflt, (deviate->dflt_size + llist->dflt_size) * sizeof *dflt);
-            if (!dflt) {
-                LOGMEM;
-                goto error;
-            }
+            LY_CHECK_ERR_GOTO(!dflt, LOGMEM, error);
             llist->dflt = dflt;
         } else if (deviate->mod == LY_DEVIATE_RPL) {
             /* reallocate (replace) the unique array of the target */
@@ -1717,10 +1677,7 @@ yang_read_deviate_default(struct lys_module *module, struct lys_deviate *deviate
                 lydict_remove(llist->module->ctx, llist->dflt[i]);
             }
             dflt = realloc(llist->dflt, deviate->dflt_size * sizeof *dflt);
-            if (!dflt) {
-                LOGMEM;
-                goto error;
-            }
+            LY_CHECK_ERR_GOTO(!dflt, LOGMEM, error);
             llist->dflt = dflt;
             llist->dflt_size = 0;
         }
@@ -1900,10 +1857,7 @@ yang_check_deviate_must(struct lys_module *module, struct unres_schema *unres,
     if (deviate->mod == LY_DEVIATE_ADD) {
         /* reallocate the must array of the target */
         must = ly_realloc(*trg_must, (deviate->must_size + *trg_must_size) * sizeof *must);
-        if (!must) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!must, LOGMEM, error);
         *trg_must = must;
         memcpy(&(*trg_must)[*trg_must_size], deviate->must, deviate->must_size * sizeof *must);
         free(deviate->must);
@@ -2601,16 +2555,10 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
     int ret;
 
     unres = calloc(1, sizeof *unres);
-    if (!unres) {
-        LOGMEM;
-        goto error;
-    }
+    LY_CHECK_ERR_GOTO(!unres, LOGMEM, error);
 
     module = calloc(1, sizeof *module);
-    if (!module) {
-        LOGMEM;
-        goto error;
-    }
+    LY_CHECK_ERR_GOTO(!module, LOGMEM, error);
 
     /* initiale module */
     module->ctx = ctx;
@@ -2719,10 +2667,7 @@ yang_read_submodule(struct lys_module *module, const char *data, unsigned int si
     struct lys_node *node = NULL;
 
     submodule = calloc(1, sizeof *submodule);
-    if (!submodule) {
-        LOGMEM;
-        goto error;
-    }
+    LY_CHECK_ERR_GOTO(!submodule, LOGMEM, error);
 
     submodule->ctx = module->ctx;
     submodule->type = 1;
@@ -2851,10 +2796,7 @@ yang_read_string(const char *input, char *output, int size, int offset, int inde
     output[out_index] = '\0';
     if (size != out_index) {
         output = realloc(output, out_index + 1);
-        if (!output) {
-            LOGMEM;
-            return NULL;
-        }
+        LY_CHECK_ERR_RETURN(!output, LOGMEM, NULL);
     }
     return output;
 }
@@ -3284,6 +3226,7 @@ yang_check_ext_instance(struct lys_module *module, struct lys_ext_instance ***ex
 
     for (i = 0; i < size; ++i) {
         info = malloc(sizeof *info);
+        LY_CHECK_ERR_RETURN(!info, LOGMEM, EXIT_FAILURE);
         info->data.yang = (*ext)[i]->parent;
         info->datatype = LYS_IN_YANG;
         info->parent = parent;
@@ -3316,19 +3259,13 @@ yang_check_imports(struct lys_module *module, struct unres_schema *unres)
     if (imp_size) {
         module->imp = calloc(imp_size, sizeof *module->imp);
         module->imp_size = 0;
-        if (!module->imp) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!module->imp, LOGMEM, error);
     }
 
     if (inc_size) {
         module->inc = calloc(inc_size, sizeof *module->inc);
         module->inc_size = 0;
-        if (!module->inc) {
-            LOGMEM;
-            goto error;
-        }
+        LY_CHECK_ERR_GOTO(!module->inc, LOGMEM, error);
     }
 
     for (i = 0; i < imp_size; ++i) {
@@ -4630,13 +4567,11 @@ yang_read_extcomplex_str(struct lys_module *module, struct lys_ext_instance_comp
         str = lys_ext_complex_get_substmt(stmt, ext, &info);
         if (!str) {
             LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, arg_name, parent_name);
-            free(value);
-            return EXIT_FAILURE;
+            goto error;
         }
         if (info->cardinality < LY_STMT_CARD_SOME && *str) {
             LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, arg_name, parent_name);
-            free(value);
-            return EXIT_FAILURE;
+            goto error;
         }
 
         if (info->cardinality >= LY_STMT_CARD_SOME) {
@@ -4645,12 +4580,15 @@ yang_read_extcomplex_str(struct lys_module *module, struct lys_ext_instance_comp
             if (!p[0]) {
                 /* allocate initial array */
                 p[0] = calloc(2, sizeof(const char *));
+                LY_CHECK_ERR_GOTO(!p[0], LOGMEM, error);
                 if (stmt == LY_STMT_BELONGSTO) {
                     /* allocate another array for the belongs-to's prefixes */
                     p[1] = calloc(2, sizeof(const char *));
+                    LY_CHECK_ERR_GOTO(!p[1], LOGMEM, error);
                 } else if (stmt == LY_STMT_ARGUMENT) {
                     /* allocate another array for the yin element */
                     ((uint8_t **)p)[1] = calloc(2, sizeof(uint8_t));
+                    LY_CHECK_ERR_GOTO(!p[1], LOGMEM, error);
                     /* default value of yin element */
                     ((uint8_t *)p[1])[0] = 2;
                 }
@@ -4662,6 +4600,7 @@ yang_read_extcomplex_str(struct lys_module *module, struct lys_ext_instance_comp
         }
 
         str[c] = lydict_insert_zc(module->ctx, value);
+        value = NULL;
 
         if (c) {
             /* enlarge the array(s) */
@@ -4701,6 +4640,10 @@ yang_read_extcomplex_str(struct lys_module *module, struct lys_ext_instance_comp
     }
 
     return EXIT_SUCCESS;
+
+error:
+    free(value);
+    return EXIT_FAILURE;
 }
 
 static int
@@ -4758,6 +4701,7 @@ yang_getplace_for_extcomplex_struct(struct lys_ext_instance_complex *ext, int *i
         if (!data) {
             /* allocate initial array */
             *p = data = calloc(2, sizeof(void *));
+            LY_CHECK_ERR_RETURN(!data, LOGMEM, NULL);
         } else {
             for (c = 0; *data; data++, c++);
         }
@@ -4766,10 +4710,7 @@ yang_getplace_for_extcomplex_struct(struct lys_ext_instance_complex *ext, int *i
     if (c) {
         /* enlarge the array */
         reallocated = realloc(*p, (c + 2) * sizeof(void *));
-        if (!reallocated) {
-            LOGMEM;
-            return NULL;
-        }
+        LY_CHECK_ERR_RETURN(!reallocated, LOGMEM, NULL);
         *p = reallocated;
         data = *p;
         data[c + 1] = NULL;
@@ -4828,6 +4769,7 @@ yang_fill_extcomplex_uint8(struct lys_ext_instance_complex *ext, char *parent_na
             pp = (uint8_t**)val;
             if (!(*pp)) {
                 *pp = calloc(2, sizeof(uint8_t)); /* allocate initial array */
+                LY_CHECK_ERR_RETURN(!*pp, LOGMEM, EXIT_FAILURE);
             } else {
                 for (i = 0; (*pp)[i]; i++);
             }
@@ -4840,10 +4782,7 @@ yang_fill_extcomplex_uint8(struct lys_ext_instance_complex *ext, char *parent_na
         if (i) {
             /* enlarge the array */
             reallocated = realloc(*pp, (i + 2) * sizeof *val);
-            if (!reallocated) {
-                LOGMEM;
-                return EXIT_FAILURE;
-            }
+            LY_CHECK_ERR_RETURN(!reallocated, LOGMEM, EXIT_FAILURE);
             *pp = reallocated;
             (*pp)[i + 1] = 0;
         }
@@ -4921,6 +4860,7 @@ yang_fill_extcomplex_module(struct ly_ctx *ctx, struct lys_ext_instance_complex 
             if (!modules) {
                 /* allocate initial array */
                 *p = modules = calloc(2, sizeof(struct lys_module *));
+                LY_CHECK_ERR_RETURN(!*p, LOGMEM, EXIT_FAILURE);
             } else {
                 for (c = 0; *modules; modules++, c++);
             }
@@ -4929,10 +4869,7 @@ yang_fill_extcomplex_module(struct ly_ctx *ctx, struct lys_ext_instance_complex 
         if (c) {
             /* enlarge the array */
             reallocated = realloc(*p, (c + 2) * sizeof(struct lys_module *));
-            if (!reallocated) {
-                LOGMEM;
-                return EXIT_FAILURE;
-            }
+            LY_CHECK_ERR_RETURN(!reallocated, LOGMEM, EXIT_FAILURE);
             *p = (struct lys_module **)reallocated;
             modules = *p;
             modules[c + 1] = NULL;
