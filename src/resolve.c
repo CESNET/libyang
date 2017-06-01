@@ -2962,10 +2962,10 @@ check_default(struct lys_type *type, const char **value, struct lys_module *modu
     if (type->base <= LY_TYPE_DER) {
         /* the type was not resolved yet, nothing to do for now */
         return EXIT_FAILURE;
-    } else if (!tpdf && !lys_main_module(module)->implemented) {
+    } else if (!tpdf && !module->implemented) {
         /* do not check defaults in not implemented module's data */
         return EXIT_SUCCESS;
-    } else if (tpdf && !lys_main_module(module)->implemented && type->base == LY_TYPE_IDENT) {
+    } else if (tpdf && !module->implemented && type->base == LY_TYPE_IDENT) {
         /* identityrefs are checked when instantiated in data instead of typedef,
          * but in typedef the value has to be modified to include the prefix */
         if (*value) {

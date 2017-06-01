@@ -868,7 +868,7 @@ lys_set_disabled(const struct lys_module *module)
     struct ly_set *mods;
     uint8_t j, imported;
     int i, o;
-    unsigned int u;
+    unsigned int u, v;
 
     if (!module) {
         ly_errno = LY_EINVAL;
@@ -964,9 +964,13 @@ imported:
         lys_sub_module_remove_devs_augs((struct lys_module *)mods->set.g[u]);
     }
 
-    /* now again disable the modules to disable */
+    /* now again disable the modules to disable and disable also all its submodules */
     for (u = 0; u < mods->number; u++) {
-        ((struct lys_module *)mods->set.g[u])->disabled = 1;
+        mod = (struct lys_module *)mods->set.g[u];
+        mod->disabled = 1;
+        for (v = 0; v < mod->inc_size; v++) {
+            mod->inc[v].submodule->disabled = 1;
+        }
     }
 
     /* free the set */
@@ -986,6 +990,10 @@ lys_set_enabled_(struct ly_set *mods, struct lys_module *mod)
     ly_set_add(mods, mod, 0);
     mod->disabled = 0;
 
+    for (i = 0; i < mod->inc_size; i++) {
+        mod->inc[i].submodule->disabled = 0;
+    }
+
     /* go recursively */
     for (i = 0; i < mod->imp_size; i++) {
         if (!mod->imp[i].module->disabled) {
@@ -1003,7 +1011,7 @@ lys_set_enabled(const struct lys_module *module)
     struct lys_module *mod;
     struct ly_set *mods, *disabled;
     int i;
-    unsigned int u, v;
+    unsigned int u, v, w;
 
     if (!module) {
         ly_errno = LY_EINVAL;
@@ -1062,6 +1070,9 @@ checkdependency:
                      * know that there is no disabled import to enable */
                     mod->disabled = 0;
                     ly_set_add(mods, mod, 0);
+                    for (w = 0; w < mod->inc_size; w++) {
+                        mod->inc[w].submodule->disabled = 0;
+                    }
                     /* we have to start again because some of the already checked modules can
                      * depend on the one we have just decided to enable */
                     goto checkdependency;

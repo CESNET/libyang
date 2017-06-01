@@ -663,7 +663,16 @@ struct lys_submodule {
     const char *contact;             /**< contact information for the submodule */
     const char *filepath;            /**< path to the file from which the submodule was read */
     uint8_t type:1;                  /**< 1 - structure type used to distinguish structure from ::lys_module */
-    uint8_t padding:7;               /**< not used, kept for compatibility with ::lys_module */
+    uint8_t version:3;               /**< yang-version:
+                                          - 0 = not specified, YANG 1.0 as default,
+                                          - 1 = YANG 1.0,
+                                          - 2 = YANG 1.1 */
+    uint8_t deviated:2;              /**< deviated flag (same as in main module):
+                                          - 0 = not deviated,
+                                          - 1 = the module is deviated by another module,
+                                          - 2 = deviation applied to this module are temporarily off */
+    uint8_t disabled:1;              /**< flag if the module is disabled in the context (same as in main module) */
+    uint8_t implemented:1;           /**< flag if the module is implemented, not just imported (same as in main module) */
 
     /* array sizes */
     uint8_t rev_size;                /**< number of elements in #rev array */

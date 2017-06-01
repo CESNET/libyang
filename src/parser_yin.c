@@ -2924,7 +2924,8 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     for(parent = dev_target; parent; parent = lys_parent(parent)) {
         mod = lys_node_module(parent);
         if (module != mod) {
-            mod->deviated = 1;
+            mod->deviated = 1;            /* main module */
+            parent->module->deviated = 1; /* possible submodule */
             if (lys_set_implemented(mod)) {
                 LOGERR(ly_errno, "Setting the deviated module \"%s\" implemented failed.", mod->name);
                 goto error;
@@ -6598,6 +6599,7 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                         LOGVAL(LYE_INVER, LY_VLOG_NONE, NULL);
                         goto error;
                     }
+                    submodule->version = 1;
                 } else {
                     module->version = 1;
                 }
@@ -6607,6 +6609,7 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                         LOGVAL(LYE_INVER, LY_VLOG_NONE, NULL);
                         goto error;
                     }
+                    submodule->version = 2;
                 } else {
                     module->version = 2;
                 }
@@ -6912,6 +6915,7 @@ yin_read_submodule(struct lys_module *module, const char *data, struct unres_sch
     submodule->ctx = module->ctx;
     submodule->name = lydict_insert(submodule->ctx, value, strlen(value));
     submodule->type = 1;
+    submodule->implemented = module->implemented;
     submodule->belongsto = module;
 
     /* add into the list of processed modules */

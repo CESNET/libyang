@@ -4175,6 +4175,11 @@ lys_switch_deviations(struct lys_module *module)
         } else {
             module->deviated = 2;
         }
+        for (j = 0; j < module->inc_size; j++) {
+            if (module->inc[j].submodule->deviated) {
+                module->inc[j].submodule->deviated = module->deviated;
+            }
+        }
 
         if (unres->count) {
             resolve_unres_schema(module, unres);
@@ -4189,7 +4194,8 @@ apply_dev(struct lys_deviation *dev, const struct lys_module *module, struct unr
     lys_switch_deviation(dev, module, unres);
 
     assert(dev->orig_node);
-    lys_node_module(dev->orig_node)->deviated = 1;
+    lys_node_module(dev->orig_node)->deviated = 1; /* main module */
+    dev->orig_node->module->deviated = 1;          /* possible submodule */
 }
 
 static void
@@ -4197,11 +4203,12 @@ remove_dev(struct lys_deviation *dev, const struct lys_module *module, struct un
 {
     uint32_t idx = 0, j;
     const struct lys_module *mod;
-    struct lys_module *target_mod;
+    struct lys_module *target_mod, *target_submod;
     const char *ptr;
 
     if (dev->orig_node) {
         target_mod = lys_node_module(dev->orig_node);
+        target_submod = dev->orig_node->module;
     } else {
         LOGINT;
         return;
@@ -4228,7 +4235,8 @@ remove_dev(struct lys_deviation *dev, const struct lys_module *module, struct un
     }
 
     if (!mod) {
-        target_mod->deviated = 0;
+        target_mod->deviated = 0;    /* main module */
+        target_submod->deviated = 0; /* possible submodule */
     }
 }
 
@@ -4452,6 +4460,11 @@ lys_set_implemented(const struct lys_module *module)
         goto error;
     }
     unres_schema_free(NULL, &unres, 0);
+
+    /* reflect implemented flag in submodules */
+    for (i = 0; i < module->inc_size; i++) {
+        module->inc[i].submodule->implemented = 1;
+    }
 
     return EXIT_SUCCESS;
 

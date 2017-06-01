@@ -761,10 +761,9 @@ info_print_submodule(struct lyout *out, const struct lys_submodule *module)
     info_print_text(out, module->org, "Org: ");
     info_print_text(out, module->contact, "Contact: ");
 
-    /* inherited from main module */
-    ly_print(out, "%-*s%s\n", INDENT_LEN, "YANG ver: ", (module->belongsto->version == 2 ? "1.1" : "1.0"));
-    ly_print(out, "%-*s%s\n", INDENT_LEN, "Deviated: ", (module->belongsto->deviated ? "yes" : "no"));
-    ly_print(out, "%-*s%s\n", INDENT_LEN, "Implement: ", (module->belongsto->implemented ? "yes" : "no"));
+    ly_print(out, "%-*s%s\n", INDENT_LEN, "YANG ver: ", (module->version == 2 ? "1.1" : "1.0"));
+    ly_print(out, "%-*s%s\n", INDENT_LEN, "Deviated: ", (module->deviated ? "yes" : "no"));
+    ly_print(out, "%-*s%s\n", INDENT_LEN, "Implement: ", (module->implemented ? "yes" : "no"));
 
     info_print_text(out, module->filepath, "URI: file://");
 

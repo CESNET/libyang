@@ -88,6 +88,7 @@ yang_check_version(struct lys_module *module, struct lys_submodule *submodule, c
                     LOGVAL(LYE_INVER, LY_VLOG_NONE, NULL);
                     ret = EXIT_FAILURE;
                  }
+                submodule->version = 1;
             } else {
                 module->version = 1;
             }
@@ -97,6 +98,7 @@ yang_check_version(struct lys_module *module, struct lys_submodule *submodule, c
                     LOGVAL(LYE_INVER, LY_VLOG_NONE, NULL);
                     ret = EXIT_FAILURE;
                 }
+                submodule->version = 2;
             } else {
                 module->version = 2;
             }
@@ -2660,6 +2662,7 @@ yang_read_submodule(struct lys_module *module, const char *data, unsigned int si
 
     submodule->ctx = module->ctx;
     submodule->type = 1;
+    submodule->implemented = module->implemented;
     submodule->belongsto = module;
 
     /* add into the list of processed modules */
@@ -4423,14 +4426,18 @@ yang_check_deviation(struct lys_module *module, struct unres_schema *unres, stru
     }
     ly_set_free(dflt_check);
 
-    /* mark all the affected modules as deviated and implemented*/
-    for(parent = dev_target; parent; parent = lys_parent(parent)) {
+    /* mark all the affected modules as deviated and implemented */
+    for (parent = dev_target; parent; parent = lys_parent(parent)) {
         mod = lys_node_module(parent);
         if (module != mod) {
-        mod->deviated = 1;
-        lys_set_implemented(mod);
+            mod->deviated = 1;            /* main module */
+            parent->module->deviated = 1; /* possible submodule */
+            if (lys_set_implemented(mod)) {
+                LOGERR(ly_errno, "Setting the deviated module \"%s\" implemented failed.", mod->name);
+                goto error;
+            }
+        }
     }
-}
 
     return EXIT_SUCCESS;
 error:

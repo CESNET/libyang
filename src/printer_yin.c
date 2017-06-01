@@ -1626,10 +1626,8 @@ yin_print_model_(struct lyout *out, int level, const struct lys_module *module)
         ly_print(out, ">\n");
 
         level++;
-        if (lys_main_module(module)->version > 1 ||
-                lys_ext_iter(module->ext, module->ext_size, 0, LYEXT_SUBSTMT_VERSION) != -1) {
-            yin_print_substmt(out, level, LYEXT_SUBSTMT_VERSION, 0,
-                              ((struct lys_submodule *)module)->belongsto->version == 2 ? "1.1" : "1",
+        if (module->version > 1 || lys_ext_iter(module->ext, module->ext_size, 0, LYEXT_SUBSTMT_VERSION) != -1) {
+            yin_print_substmt(out, level, LYEXT_SUBSTMT_VERSION, 0, module->version == 2 ? "1.1" : "1",
                               module, module->ext, module->ext_size);
         }
         yin_print_open(out, level, NULL, "belongs-to", "module", ((struct lys_submodule *)module)->belongsto->name, 1);
