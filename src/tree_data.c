@@ -5595,10 +5595,7 @@ ly_set_add(struct ly_set *set, void *node, int options)
 
     if (set->size == set->number) {
         new = realloc(set->set.g, (set->size + 8) * sizeof *(set->set.g));
-        if (!new) {
-            LOGMEM;
-            return -1;
-        }
+        LY_CHECK_ERR_RETURN(!new, LOGMEM, -1);
         set->size += 8;
         set->set.g = new;
     }

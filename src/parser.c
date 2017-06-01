@@ -3588,10 +3588,7 @@ lyp_ctx_add_module(struct lys_module *module)
     /* add to the context's list of modules */
     if (module->ctx->models.used == module->ctx->models.size) {
         newlist = realloc(module->ctx->models.list, (2 * module->ctx->models.size) * sizeof *newlist);
-        if (!newlist) {
-            LOGMEM;
-            return -1;
-        }
+        LY_CHECK_ERR_RETURN(!newlist, LOGMEM, -1);
         for (i = module->ctx->models.size; i < module->ctx->models.size * 2; i++) {
             newlist[i] = NULL;
         }
