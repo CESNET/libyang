@@ -5478,6 +5478,8 @@ resolve_list_keys(struct lys_node_list *list, const char *keys_str)
     char *s = NULL;
 
     for (i = 0; i < list->keys_size; ++i) {
+        assert(keys_str);
+
         if (!list->child) {
             /* no child, possible forward reference */
             LOGVAL(LYE_INRESOLV, LY_VLOG_LYS, list, "list keys", keys_str);
