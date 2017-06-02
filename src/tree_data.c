@@ -2825,6 +2825,7 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
 
     /* initiate resulting structure */
     result = lyd_diff_init_difflist(&size);
+    LY_CHECK_ERR_GOTO(!result, , error);
 
     /* the records about created and moved items are created in
      * bad order, so the records about created nodes (and their
@@ -2832,15 +2833,17 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
      * main result at the end.
      */
     result2 = lyd_diff_init_difflist(&size2);
+    LY_CHECK_ERR_GOTO(!result2, , error);
 
     matchlist = malloc(sizeof *matchlist);
-    LY_CHECK_ERR_RETURN(!matchlist, LOGMEM, NULL);
+    LY_CHECK_ERR_GOTO(!matchlist, LOGMEM, error);
 
     matchlist->i = 0;
     matchlist->match = ly_set_new();
     matchlist->prev = NULL;
 
     ordset = ly_set_new();
+    LY_CHECK_ERR_GOTO(!ordset, , error);
 
     /*
      * compare trees
