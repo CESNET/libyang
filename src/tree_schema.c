@@ -2967,19 +2967,19 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
             llist->dflt = malloc(llist_orig->dflt_size * sizeof *llist->dflt);
             LY_CHECK_ERR_GOTO(!llist->dflt, LOGMEM, error);
             llist->dflt_size = llist_orig->dflt_size;
-        }
 
-        for (i = 0; i < llist->dflt_size; i++) {
-            llist->dflt[i] = lydict_insert(ctx, llist_orig->dflt[i], 0);
-            if (!ingrouping(retval) || (llist->type.base != LY_TYPE_LEAFREF)) {
-                if ((llist->type.base == LY_TYPE_IDENT) && !strchr(llist->dflt[i], ':') && (module != llist_orig->module)) {
-                    tmp_mod = llist_orig->module;
-                } else {
-                    tmp_mod = module;
-                }
-                if (unres_schema_add_node(tmp_mod, unres, &llist->type, UNRES_TYPE_DFLT,
-                                          (struct lys_node *)(&llist->dflt[i])) == -1) {
-                    goto error;
+            for (i = 0; i < llist->dflt_size; i++) {
+                llist->dflt[i] = lydict_insert(ctx, llist_orig->dflt[i], 0);
+                if (!ingrouping(retval) || (llist->type.base != LY_TYPE_LEAFREF)) {
+                    if ((llist->type.base == LY_TYPE_IDENT) && !strchr(llist->dflt[i], ':') && (module != llist_orig->module)) {
+                        tmp_mod = llist_orig->module;
+                    } else {
+                        tmp_mod = module;
+                    }
+                    if (unres_schema_add_node(tmp_mod, unres, &llist->type, UNRES_TYPE_DFLT,
+                                              (struct lys_node *)(&llist->dflt[i])) == -1) {
+                        goto error;
+                    }
                 }
             }
         }
@@ -3023,21 +3023,22 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
             list->unique = malloc(list_orig->unique_size * sizeof *list->unique);
             LY_CHECK_ERR_GOTO(!list->unique, LOGMEM, error);
             list->unique_size = list_orig->unique_size;
-        }
-        for (i = 0; i < list->unique_size; ++i) {
-            list->unique[i].expr = malloc(list_orig->unique[i].expr_size * sizeof *list->unique[i].expr);
-            LY_CHECK_ERR_GOTO(!list->unique[i].expr, LOGMEM, error);
-            list->unique[i].expr_size = list_orig->unique[i].expr_size;
-            for (j = 0; j < list->unique[i].expr_size; j++) {
-                list->unique[i].expr[j] = lydict_insert(ctx, list_orig->unique[i].expr[j], 0);
 
-                /* if it stays in unres list, duplicate it also there */
-                unique_info = malloc(sizeof *unique_info);
-                LY_CHECK_ERR_GOTO(!unique_info, LOGMEM, error);
-                unique_info->list = (struct lys_node *)list;
-                unique_info->expr = list->unique[i].expr[j];
-                unique_info->trg_type = &list->unique[i].trg_type;
-                unres_schema_dup(module, unres, &list_orig, UNRES_LIST_UNIQ, unique_info);
+            for (i = 0; i < list->unique_size; ++i) {
+                list->unique[i].expr = malloc(list_orig->unique[i].expr_size * sizeof *list->unique[i].expr);
+                LY_CHECK_ERR_GOTO(!list->unique[i].expr, LOGMEM, error);
+                list->unique[i].expr_size = list_orig->unique[i].expr_size;
+                for (j = 0; j < list->unique[i].expr_size; j++) {
+                    list->unique[i].expr[j] = lydict_insert(ctx, list_orig->unique[i].expr[j], 0);
+
+                    /* if it stays in unres list, duplicate it also there */
+                    unique_info = malloc(sizeof *unique_info);
+                    LY_CHECK_ERR_GOTO(!unique_info, LOGMEM, error);
+                    unique_info->list = (struct lys_node *)list;
+                    unique_info->expr = list->unique[i].expr[j];
+                    unique_info->trg_type = &list->unique[i].trg_type;
+                    unres_schema_dup(module, unres, &list_orig, UNRES_LIST_UNIQ, unique_info);
+                }
             }
         }
 
