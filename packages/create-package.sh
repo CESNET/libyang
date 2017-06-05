@@ -23,6 +23,10 @@ cp packages/* $package
 VERSION=$(cat CMakeCache.txt | grep "LIBYANG_VERSION:STRING=" | sed 's/LIBYANG_VERSION:STRING=//')
 cd $package
 OLDVERSION=$(cat ../libyang.spec | grep "Version: " | awk '{print $NF}')
+# check different version
+if [ "$VERSION" == "$OLDVERSION" ]; then
+    exit 0
+fi
 logtime=$(git log -i --grep="VERSION .* $OLDVERSION" | grep "Date: " | sed 's/Date:[ ]*//')
 echo -e "$name ($VERSION) stable; urgency=low\n" >debian.changelog
 git log --since="$logtime" --pretty=format:"  * %s (%aN)%n" | grep "BUGFIX\|CHANGE\|FEATURE" >>debian.changelog
