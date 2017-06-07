@@ -35,7 +35,7 @@ cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr -D CMAKE_BUILD_TYPE:String="@BUILD_TYPE@"
 make
 
 %check
-ctest -V
+ctest --output-on-failure
 
 %install
 make DESTDIR=%{buildroot} install
