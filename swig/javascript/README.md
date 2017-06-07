@@ -10,6 +10,7 @@
 ```
 $ cmake -DJAVASCRIPT_BINDING=ON ..
 $ make
+$ make install #necessary for plugin's
 $ cd javascript
 $ npm install --unsafe-perm
 ```

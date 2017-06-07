@@ -27,6 +27,8 @@
 		"files",
 		"test.js",
 		"index.js",
+		"run.sh",
+		"plugin",
 		"README.md"
 	]
 }

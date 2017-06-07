@@ -6,6 +6,15 @@
 			'src/libyang_javascript_wrap.cxx' ],
 		'include_dirs': [@libyang_LIB_INCLUDE_DIRS_GYP@],
 		'libraries': ['-lpcre',],
+		'actions': [
+			{
+				'action_name': 'set_plugin_path',
+				'message': 'Set the new plugin path for libyang',
+				'inputs': ['src/extensions_config.h'],
+				'outputs': [ 'src/extensions_config.h'],
+				'action': ['bash', 'run.sh'],
+			},
+		],
 		'conditions': [
 			[ 'OS!="win"', {
 				'include_dirs': [ 'config/win' ],
