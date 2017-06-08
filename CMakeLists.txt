@@ -28,6 +28,8 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMakeModules/")
 
 find_package(FLEX)
 find_package(BISON)
+find_program (DEB_BUILDER NAMES debuild)
+find_program (RPM_BUILDER NAMES rpmbuild)
 find_program (SED_TOOL NAMES sed)
 
 if(NOT BISON_FOUND)
@@ -84,20 +86,28 @@ configure_file(${PROJECT_SOURCE_DIR}/packages/libyang.dsc.in ${PROJECT_BINARY_DI
 configure_file(${PROJECT_SOURCE_DIR}/packages/debian.control.in ${PROJECT_BINARY_DIR}/build-packages/debian.control @ONLY)
 configure_file(${PROJECT_SOURCE_DIR}/packages/debian.rules.in ${PROJECT_BINARY_DIR}/build-packages/debian.rules)
 
-# target for local build rpm package
-string(REPLACE ${PROJECT_SOURCE_DIR} "." EXCLUDE_BUILD_DIR ${PROJECT_BINARY_DIR})
-add_custom_target(build-rpm
-	WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
-	COMMAND build-packages/local-rpm.sh
-)
-configure_file(${PROJECT_SOURCE_DIR}/packages/local-rpm.sh.in ${PROJECT_BINARY_DIR}/build-packages/local-rpm.sh @ONLY)
+if (NOT DEB_BUILDER)
+	message(WARNING "Missing tools (devscripts, debhelper package) for building deb package.\nYou won't be able to generate deb package from source code.\nCompiling libyang should still works fine.")
+else ()
+	# target for local build deb package
+	add_custom_target(build-deb
+					  WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
+					  COMMAND build-packages/local-deb.sh
+	)
+	configure_file(${PROJECT_SOURCE_DIR}/packages/local-deb.sh.in ${PROJECT_BINARY_DIR}/build-packages/local-deb.sh @ONLY)
+endif()
 
-# target for local build deb package
-add_custom_target(build-deb
-	WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
-	COMMAND build-packages/local-deb.sh
-)
-configure_file(${PROJECT_SOURCE_DIR}/packages/local-deb.sh.in ${PROJECT_BINARY_DIR}/build-packages/local-deb.sh @ONLY)
+if (NOT RPM_BUILDER)
+	message(WARNING "Missing tools (rpm package) for building rpm package. \nYou won't be able to generate rpm package from source code.\nCompiling libyang should still works fine.")
+else ()
+	# target for local build rpm package
+	string(REPLACE ${PROJECT_SOURCE_DIR} "." EXCLUDE_BUILD_DIR ${PROJECT_BINARY_DIR})
+	add_custom_target(build-rpm
+					  WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
+					  COMMAND build-packages/local-rpm.sh
+	)
+	configure_file(${PROJECT_SOURCE_DIR}/packages/local-rpm.sh.in ${PROJECT_BINARY_DIR}/build-packages/local-rpm.sh @ONLY)
+endif()
 
 # check the supported platform
 if(NOT UNIX)
