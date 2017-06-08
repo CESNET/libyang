@@ -70,8 +70,6 @@ else()
 	option(ENABLE_BUILD_TESTS "Build tests" OFF)
 	option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" OFF)
 endif()
-option(ENABLE_STATIC "Build static (.a) library" ON)
-option(YANGLINT_STATIC "Link yanglint with static libraries" OFF)
 
 set(libsrc
 	src/common.c
@@ -141,18 +139,6 @@ find_package(PCRE REQUIRED)
 include_directories(${PCRE_INCLUDE_DIRS})
 target_link_libraries(yang ${PCRE_LIBRARIES})
 
-# create static libyang library
-if(ENABLE_STATIC)
-    add_library(yang_static STATIC ${libsrc})
-    set_target_properties(yang_static PROPERTIES OUTPUT_NAME yang)
-    set_target_properties(yang_static PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
-    target_link_libraries(yang_static m)
-    target_link_libraries(yang_static ${CMAKE_DL_LIBS})
-    target_link_libraries(yang_static ${CMAKE_THREAD_LIBS_INIT})
-    target_link_libraries(yang_static ${PCRE_LIBRARIES})
-    install(TARGETS yang_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
-endif(ENABLE_STATIC)
-
 install(TARGETS yang DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${headers} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libyang)
 
@@ -194,11 +180,7 @@ add_subdirectory(src/extensions)
 
 # yanglint
 add_executable(yanglint ${lintsrc})
-if(YANGLINT_STATIC)
-	target_link_libraries(yanglint yang_static)
-else()
-	target_link_libraries(yanglint yang)
-endif()
+target_link_libraries(yanglint yang)
 install(TARGETS yanglint DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/tools/lint/yanglint.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 
