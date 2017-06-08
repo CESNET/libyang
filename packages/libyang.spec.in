@@ -13,6 +13,7 @@ BuildRequires:  doxygen
 BuildRequires:  pcre-devel
 BuildRequires:  valgrind
 BuildRequires:  libcmocka-devel
+BuildRequires:  gcc
 
 Conflicts: @CONFLICT_PACKAGE_NAME@ = @LIBYANG_MAJOR_VERSION@.@LIBYANG_MINOR_VERSION@
 
