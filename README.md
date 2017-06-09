@@ -26,13 +26,32 @@ providing API) in C. The library is used e.g. in [libnetconf2](https://github.co
 Current implementation covers YANG 1.0 ([RFC 6020](https://tools.ietf.org/html/rfc6020))
 as well as YANG 1.1 ([RFC 7950](https://tools.ietf.org/html/rfc7950)).
 
+## Packages
+
+We are using openSUSE Build Service to automaticaly prepare binary packages for number of GNU/Linux distros. Check
+[this](https://software.opensuse.org//download.html?project=home%3Aliberouter&package=libyang) page and follow the
+instroctions for your distro to install `libyang` package. The `libyang` package is built once a day from the
+master branch. If you want the latest code from the devel branch, install `libyang-experimental` package.
+
 ## Requirements
 
+### Build Requirements
+
+* C compiler (gcc, clang, ...)
 * cmake >= 2.8.9
-* libpcre
+* libpcre (devel package)
  * note, that PCRE is supposed to be compiled with unicode support (configure's options
    `--enable-utf` and `--enable-unicode-properties`)
 * cmocka >= 1.0.0 (for tests only, see [Tests](#Tests))
+
+#### Optional
+
+* doxygen (for generating documentation)
+* valgrind (for enhanced testing)
+
+### Runtime Requirements
+
+* libpcre
 
 ## Building
 
