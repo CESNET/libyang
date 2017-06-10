@@ -1193,6 +1193,7 @@ lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, uint8_t size
     uint8_t u = 0;
     struct lys_ext_instance **result;
     struct unres_ext *info, *info_orig;
+    size_t len;
 
     assert(new);
 
@@ -1216,16 +1217,18 @@ lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, uint8_t size
                 LY_CHECK_ERR_GOTO(!result[u], LOGMEM, error);
                 break;
             case LYEXT_COMPLEX:
-                result[u] = calloc(1, ((struct lyext_plugin_complex*)orig[u]->def->plugin)->instance_size);
+                len = ((struct lyext_plugin_complex*)orig[u]->def->plugin)->instance_size;
+                result[u] = calloc(1, len);
                 LY_CHECK_ERR_GOTO(!result[u], LOGMEM, error);
 
                 ((struct lys_ext_instance_complex*)result[u])->substmt = ((struct lyext_plugin_complex*)orig[u]->def->plugin)->substmt;
                 /* TODO duplicate data in extension instance content */
+                memcpy((void*)result[u] + sizeof(**orig), (void*)orig[u] + sizeof(**orig), len - sizeof(**orig));
                 break;
             }
             /* generic part */
             result[u]->def = orig[u]->def;
-            result[u]->flags = 0;
+            result[u]->flags = LYEXT_OPT_CONTENT;
             result[u]->arg_value = lydict_insert(mod->ctx, orig[u]->arg_value, 0);
             result[u]->parent = parent;
             result[u]->parent_type = parent_type;
@@ -4677,7 +4680,8 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
             lydict_remove(ctx, e[i]->arg_value);
         }
 
-        if (e[i]->def && e[i]->def->plugin && e[i]->def->plugin->type == LYEXT_COMPLEX) {
+        if (e[i]->def && e[i]->def->plugin && e[i]->def->plugin->type == LYEXT_COMPLEX
+                && ((e[i]->flags & LYEXT_OPT_CONTENT) == 0)) {
             substmt = ((struct lys_ext_instance_complex *)e[i])->substmt;
             for (j = 0; substmt[j].stmt; j++) {
                 switch(substmt[j].stmt) {
