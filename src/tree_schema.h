@@ -379,6 +379,7 @@ typedef enum {
                                           copy of the original extension instance in some of the parents. */
 /** @cond INTERNAL */
 #define LYEXT_OPT_YANG       0x02    /**< temporarily stored pointer to string, which contain prefix and name of extension */
+#define LYEXT_OPT_CONTENT    0x04    /**< content of lys_ext_instance_complex is copied from source (not dup, just memcpy). */
 /** @endcond */
 #define LYEXT_OPT_PLUGIN1    0x0100  /**< reserved flag for plugin-specific use */
 #define LYEXT_OPT_PLUGIN2    0x0200  /**< reserved flag for plugin-specific use */
