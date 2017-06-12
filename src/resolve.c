@@ -4241,24 +4241,27 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct 
     struct lys_node *sub;
     struct lys_module *mod;
 
-    assert(aug && !aug->target);
+    assert(aug);
     mod = lys_main_module(aug->module);
 
     /* set it as not applied for now */
     aug->flags |= LYS_NOTAPPLIED;
 
-    /* resolve target node */
-    rc = resolve_augment_schema_nodeid(aug->target_name, siblings, (siblings ? NULL : aug->module),
-                                       (const struct lys_node **)&aug->target);
-    if (rc == -1) {
-        return -1;
-    } else if (rc > 0) {
-        LOGVAL(LYE_INCHAR, LY_VLOG_LYS, aug, aug->target_name[rc - 1], &aug->target_name[rc - 1]);
-        return -1;
-    }
+    /* it can already be resolved in case we returned EXIT_FAILURE from if block below */
     if (!aug->target) {
-        LOGVAL(LYE_INRESOLV, LY_VLOG_LYS, aug, "augment", aug->target_name);
-        return EXIT_FAILURE;
+        /* resolve target node */
+        rc = resolve_augment_schema_nodeid(aug->target_name, siblings, (siblings ? NULL : aug->module),
+                                        (const struct lys_node **)&aug->target);
+        if (rc == -1) {
+            return -1;
+        } else if (rc > 0) {
+            LOGVAL(LYE_INCHAR, LY_VLOG_LYS, aug, aug->target_name[rc - 1], &aug->target_name[rc - 1]);
+            return -1;
+        }
+        if (!aug->target) {
+            LOGVAL(LYE_INRESOLV, LY_VLOG_LYS, aug, "augment", aug->target_name);
+            return EXIT_FAILURE;
+        }
     }
 
     /* check for mandatory nodes - if the target node is in another module
