@@ -31,10 +31,13 @@ static volatile int path_flag = 1;
 volatile int ly_log_dbg_groups = 0;
 #endif
 
-API void
+API LY_LOG_LEVEL
 ly_verb(LY_LOG_LEVEL level)
 {
+    LY_LOG_LEVEL prev = ly_log_level;
+
     ly_log_level = level;
+    return prev;
 }
 
 API void

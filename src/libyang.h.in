@@ -1572,8 +1572,9 @@ typedef enum {
 /**
  * @brief Set logger verbosity level.
  * @param[in] level Verbosity level.
+ * @return Previous verbosity level.
  */
-void ly_verb(LY_LOG_LEVEL level);
+LY_LOG_LEVEL ly_verb(LY_LOG_LEVEL level);
 
 #ifndef NDEBUG
 
