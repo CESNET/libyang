@@ -679,7 +679,7 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
         return NULL;
     }
 
-    return ly_ctx_load_sub_module(ctx, NULL, name, revision, 1, NULL);
+    return ly_ctx_load_sub_module(ctx, NULL, name, revision && revision[0] ? revision : NULL, 1, NULL);
 }
 
 /*
