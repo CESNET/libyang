@@ -1257,6 +1257,7 @@ cmd_clear(const char *arg)
 {
     int i;
     char *ylpath;
+    const char * const *searchpaths;
     struct ly_ctx *ctx_new;
     LYD_FORMAT format;
 
@@ -1270,8 +1271,8 @@ cmd_clear(const char *arg)
             fprintf(stderr, "Unable to resolve format of the yang library file, please add \".xml\" or \".json\" suffix.\n");
             goto create_empty;
         }
-
-        ctx_new = ly_ctx_new_ylpath(ly_ctx_get_searchdir(ctx), ylpath, format);
+        searchpaths = ly_ctx_get_searchdirs(ctx);
+        ctx_new = ly_ctx_new_ylpath(searchpaths ? searchpaths[0] : NULL, ylpath, format);
         free(ylpath);
     } else {
 create_empty:

@@ -240,7 +240,7 @@ ly_ctx_unset_allimplemented(struct ly_ctx *ctx)
 API void
 ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
 {
-    char *cwd = NULL;
+    char *cwd = NULL, *new;
     int index = 0;
     void *r;
 
@@ -256,19 +256,28 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
             goto cleanup;
         }
 
+        new = get_current_dir_name();
         if (!ctx->models.search_paths) {
             ctx->models.search_paths = malloc(2 * sizeof *ctx->models.search_paths);
             LY_CHECK_ERR_GOTO(!ctx->models.search_paths, LOGMEM, cleanup);
             index = 0;
         } else {
-            for (index = 0; ctx->models.search_paths[index]; index++);
+            for (index = 0; ctx->models.search_paths[index]; index++) {
+                /* check for duplicities */
+                if (!strcmp(new, ctx->models.search_paths[index])) {
+                    /* path is already present */
+                    free(new);
+                    goto success;
+                }
+            }
             r = realloc(ctx->models.search_paths, (index + 2) * sizeof *ctx->models.search_paths);
             LY_CHECK_ERR_GOTO(!r, LOGMEM, cleanup);
             ctx->models.search_paths = r;
         }
-        ctx->models.search_paths[index] = get_current_dir_name();
+        ctx->models.search_paths[index] = new;
         ctx->models.search_paths[index + 1] = NULL;
 
+success:
         if (chdir(cwd)) {
             LOGWRN("Unable to return back to working directory \"%s\" (%s)",
                    cwd, strerror(errno));
@@ -279,14 +288,14 @@ cleanup:
     free(cwd);
 }
 
-API const char *
-ly_ctx_get_searchdir(const struct ly_ctx *ctx)
+API const char * const *
+ly_ctx_get_searchdirs(const struct ly_ctx *ctx)
 {
     if (!ctx) {
         ly_errno = LY_EINVAL;
         return NULL;
     }
-    return ctx->models.search_paths ? ctx->models.search_paths[0] : NULL;
+    return (const char * const *)ctx->models.search_paths;
 }
 
 API void

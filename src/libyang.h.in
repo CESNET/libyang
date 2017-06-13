@@ -1109,12 +1109,12 @@ void ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir);
 void ly_ctx_unset_searchdirs(struct ly_ctx *ctx);
 
 /**
- * @brief Get value of the search path in libyang context
+ * @brief Get the NULL-terminated list of the search paths in libyang context.
  *
  * @param[in] ctx Context to query.
- * @return Current value of the search path.
+ * @return NULL-terminated list (array) of the search paths, NULL if no searchpath was set.
  */
-const char *ly_ctx_get_searchdir(const struct ly_ctx *ctx);
+const char * const *ly_ctx_get_searchdirs(const struct ly_ctx *ctx);
 
 /**
  * @brief Make context to set all the imported modules to be implemented. By default,

@@ -183,9 +183,9 @@ test_ly_ctx_new_invalid(void **state)
 }
 
 static void
-test_ly_ctx_get_searchdir(void **state)
+test_ly_ctx_get_searchdirs(void **state)
 {
-    const char *result;
+    const char * const *result;
     char yang_folder[PATH_MAX];
     (void) state; /* unused */
 
@@ -196,11 +196,12 @@ test_ly_ctx_get_searchdir(void **state)
         fail();
     }
 
-    result = ly_ctx_get_searchdir(ctx);
+    result = ly_ctx_get_searchdirs(ctx);
     if (!result) {
         fail();
     }
-    assert_string_equal(yang_folder, result);
+    assert_string_equal(yang_folder, result[0]);
+    assert_ptr_equal(NULL, result[1]);
 
     ly_ctx_destroy(ctx, NULL);
 }
@@ -208,7 +209,7 @@ test_ly_ctx_get_searchdir(void **state)
 static void
 test_ly_ctx_set_searchdir(void **state)
 {
-    const char *result;
+    const char * const *result;
     char yang_folder[PATH_MAX];
     char new_yang_folder[PATH_MAX];
     (void) state; /* unused */
@@ -221,14 +222,15 @@ test_ly_ctx_set_searchdir(void **state)
         fail();
     }
 
-    ly_ctx_unset_searchdirs(ctx);
     ly_ctx_set_searchdir(ctx, new_yang_folder);
-    result = ly_ctx_get_searchdir(ctx);
+    result = ly_ctx_get_searchdirs(ctx);
     if (!result) {
         fail();
     }
 
-    assert_string_equal(new_yang_folder, result);
+    assert_string_equal(yang_folder, result[0]);
+    assert_string_equal(new_yang_folder, result[1]);
+    assert_ptr_equal(NULL, result[2]);
 
     ly_ctx_destroy(ctx, NULL);
 }
@@ -236,7 +238,7 @@ test_ly_ctx_set_searchdir(void **state)
 static void
 test_ly_ctx_set_searchdir_invalid(void **state)
 {
-    const char *result;
+    const char * const *result;
     char yang_folder[PATH_MAX];
     char *new_yang_folder = "INVALID_PATH";
     (void) state; /* unused */
@@ -248,23 +250,26 @@ test_ly_ctx_set_searchdir_invalid(void **state)
         fail();
     }
 
+    /* adding duplicity - the path is not duplicated */
     ly_ctx_set_searchdir(NULL, yang_folder);
-    result = ly_ctx_get_searchdir(ctx);
+    result = ly_ctx_get_searchdirs(ctx);
     if (!result) {
         fail();
     }
-    assert_string_equal(yang_folder, result);
+    assert_string_equal(yang_folder, result[0]);
+    assert_ptr_equal(NULL, result[1]);
 
+    /* adding invalid path, previous is kept */
     ly_ctx_set_searchdir(ctx, new_yang_folder);
-    result = ly_ctx_get_searchdir(ctx);
+    result = ly_ctx_get_searchdirs(ctx);
     if (!result) {
         fail();
     }
-
-    assert_string_equal(yang_folder, result);
+    assert_string_equal(yang_folder, result[0]);
+    assert_ptr_equal(NULL, result[1]);
 
     ly_ctx_unset_searchdirs(ctx);
-    result = ly_ctx_get_searchdir(ctx);
+    result = ly_ctx_get_searchdirs(ctx);
     if (result) {
         fail();
     }
@@ -1116,7 +1121,7 @@ int main(void)
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_ly_ctx_new),
         cmocka_unit_test(test_ly_ctx_new_invalid),
-        cmocka_unit_test(test_ly_ctx_get_searchdir),
+        cmocka_unit_test(test_ly_ctx_get_searchdirs),
         cmocka_unit_test(test_ly_ctx_set_searchdir),
         cmocka_unit_test(test_ly_ctx_set_searchdir_invalid),
         cmocka_unit_test_setup_teardown(test_ly_ctx_info, setup_f, teardown_f),
