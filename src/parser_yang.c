@@ -2634,15 +2634,18 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
 error:
     /* cleanup */
     unres_schema_free(module, &unres, 1);
-    if (!module || !module->name) {
-        free(module);
+    if (!module) {
         if (ly_vecode != LYVE_SUBMODULE) {
             LOGERR(ly_errno, "Module parsing failed.");
         }
         return NULL;
     }
 
-    LOGERR(ly_errno, "Module \"%s\" parsing failed.", module->name);
+    if (module->name) {
+        LOGERR(ly_errno, "Module \"%s\" parsing failed.", module->name);
+    } else {
+        LOGERR(ly_errno, "Module parsing failed.");
+    }
 
     lyp_check_circmod_pop(ctx);
     lyp_del_includedup(module);
