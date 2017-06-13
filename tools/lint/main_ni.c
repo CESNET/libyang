@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <errno.h>
+#include <libgen.h>
 #include <sys/stat.h>
 #include <sys/times.h>
 #include <sys/types.h>
@@ -53,7 +54,8 @@ help(int shortout)
         "                        (nothing will be printed unless verbosity is set to debug):\n"
         "                        <group>[,<group>]* (dict, yang, yin, xpath, diff)\n\n"
 #endif
-        "  -p PATH, --path=PATH  Search path for schema (YANG/YIN) modules. The option can be used multiple times.\n\n"
+        "  -p PATH, --path=PATH  Search path for schema (YANG/YIN) modules. The option can be used multiple times.\n"
+        "                        Current working directory and path of the module being added is used implicitly.\n\n"
         "  -s, --strict          Strict data parsing (do not skip unknown data),\n"
         "                        has no effect for schemas.\n\n"
         "  -f FORMAT, --format=FORMAT\n"
@@ -188,7 +190,7 @@ main_ni(int argc, char* argv[])
     LYS_INFORMAT informat_s;
     LYD_FORMAT informat_d, outformat_d = 0, ylformat = 0;
     struct ly_set *searchpaths = NULL;
-    char **feat = NULL, *ptr, *featlist, *ylpath = NULL;
+    char **feat = NULL, *ptr, *featlist, *ylpath = NULL, *dir;
     struct stat st;
     uint32_t u;
     int options_dflt = 0, options_parser = 0, options_allimplemented = 0;
@@ -201,6 +203,7 @@ main_ni(int argc, char* argv[])
     struct lyd_node *root = NULL, *node = NULL, *next, *subroot;
     struct lyxml_elem *xml = NULL;
     void *p;
+    int index = 0;
 
     opterr = 0;
 #ifndef NDEBUG
@@ -444,6 +447,7 @@ main_ni(int argc, char* argv[])
         for (u = 0; u < searchpaths->number; u++) {
             ly_ctx_set_searchdir(ctx, (const char*)searchpaths->set.g[u]);
         }
+        index = u + 1;
     }
 
     /* set context options */
@@ -455,6 +459,7 @@ main_ni(int argc, char* argv[])
     ly_verb(verbose);
 
     mods = ly_set_new();
+
 
     /* divide input files */
     for (i = 0; i < argc - optind; i++) {
@@ -488,7 +493,11 @@ main_ni(int argc, char* argv[])
             if (verbose >= 2) {
                 fprintf(stdout, "Validating %s schema file.\n", argv[optind + i]);
             }
+            dir = strdup(argv[optind + i]);
+            ly_ctx_set_searchdir(ctx, dirname(dir));
             mod = lys_parse_path(ctx, argv[optind + i], informat_s);
+            ly_ctx_unset_searchdirs(ctx, index);
+            free(dir);
             if (!mod) {
                 goto cleanup;
             }

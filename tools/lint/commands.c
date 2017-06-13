@@ -21,6 +21,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <libgen.h>
 
 #include "commands.h"
 #include "../../src/libyang.h"
@@ -167,8 +168,9 @@ get_schema_format(const char *path)
 int
 cmd_add(const char *arg)
 {
-    int path_len, ret = 1;
-    char *path, *s, *arg_ptr;
+    int path_len, ret = 1, index = 0;
+    char *path, *dir, *s, *arg_ptr;
+    const char * const *searchpaths;
     const struct lys_module *model;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
 
@@ -195,8 +197,12 @@ cmd_add(const char *arg)
     } else {
         path_len = strlen(arg_ptr);
     }
-
     path = strndup(arg_ptr, path_len);
+
+    searchpaths = ly_ctx_get_searchdirs(ctx);
+    if (searchpaths) {
+        for (index = 0; searchpaths[index]; index++);
+    }
 
     while (path) {
         format = get_schema_format(path);
@@ -205,8 +211,12 @@ cmd_add(const char *arg)
             goto cleanup;
         }
 
+        dir = strdup(path);
+        ly_ctx_set_searchdir(ctx, dirname(dir));
         model = lys_parse_path(ctx, path, format);
+        ly_ctx_unset_searchdirs(ctx, index);
         free(path);
+        free(dir);
 
         if (!model) {
             /* libyang printed the error messages */

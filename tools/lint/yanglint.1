@@ -43,8 +43,9 @@ each appearance it adds: warnings, verbose messages, debug messages (if compiled
 with debug information).
 .TP
 .BR "\-p \fIPATH\fP\fR,\fP \-\^\-path=\fIPATH\fP"
-Specifies search path for getting imported modules or included submodules. It
-is not possible to specify multiple search paths.
+Specifies search path for getting imported modules or included submodules. The option
+can be used multiple times. The current working directory and path of the module
+being added is used implicitly.
 .TP
 .BR "\-s\fR,\fP \-\^\-strict"
 Changes handling of unknown data nodes - instead of silently ignoring unknown data,
