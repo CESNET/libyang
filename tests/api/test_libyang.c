@@ -232,6 +232,10 @@ test_ly_ctx_set_searchdir(void **state)
     assert_string_equal(new_yang_folder, result[1]);
     assert_ptr_equal(NULL, result[2]);
 
+    ly_ctx_unset_searchdirs(ctx, 0);
+    assert_string_equal(new_yang_folder, result[0]);
+    assert_ptr_equal(NULL, result[1]);
+
     ly_ctx_destroy(ctx, NULL);
 }
 
@@ -268,7 +272,7 @@ test_ly_ctx_set_searchdir_invalid(void **state)
     assert_string_equal(yang_folder, result[0]);
     assert_ptr_equal(NULL, result[1]);
 
-    ly_ctx_unset_searchdirs(ctx);
+    ly_ctx_unset_searchdirs(ctx, -1);
     result = ly_ctx_get_searchdirs(ctx);
     if (result) {
         fail();

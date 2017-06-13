@@ -1102,11 +1102,13 @@ struct ly_ctx *ly_ctx_new_ylmem(const char *search_dir, const char *data, LYD_FO
 void ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir);
 
 /**
- * @brief Clean all the search paths set in libyang context
+ * @brief Clean the search path(s) from the libyang context
  *
  * @param[in] ctx Context to be modified.
+ * @param[in] index Index of the search path to be removed, use negative value to remove them all.
+ *            Correct index value can be checked via ly_ctx_get_searchdirs().
  */
-void ly_ctx_unset_searchdirs(struct ly_ctx *ctx);
+void ly_ctx_unset_searchdirs(struct ly_ctx *ctx, int index);
 
 /**
  * @brief Get the NULL-terminated list of the search paths in libyang context.

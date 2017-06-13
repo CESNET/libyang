@@ -299,7 +299,7 @@ ly_ctx_get_searchdirs(const struct ly_ctx *ctx)
 }
 
 API void
-ly_ctx_unset_searchdirs(struct ly_ctx *ctx)
+ly_ctx_unset_searchdirs(struct ly_ctx *ctx, int index)
 {
     int i;
 
@@ -308,10 +308,18 @@ ly_ctx_unset_searchdirs(struct ly_ctx *ctx)
     }
 
     for (i = 0; ctx->models.search_paths[i]; i++) {
-        free(ctx->models.search_paths[i]);
+        if (index < 0 || index == i) {
+            free(ctx->models.search_paths[i]);
+            ctx->models.search_paths[i] = NULL;
+        } else if (i > index) {
+            ctx->models.search_paths[i - 1] = ctx->models.search_paths[i];
+            ctx->models.search_paths[i] = NULL;
+        }
     }
-    free(ctx->models.search_paths);
-    ctx->models.search_paths = NULL;
+    if (index < 0 || !ctx->models.search_paths[0]) {
+        free(ctx->models.search_paths);
+        ctx->models.search_paths = NULL;
+    }
 }
 
 API void

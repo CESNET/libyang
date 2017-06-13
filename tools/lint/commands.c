@@ -1234,7 +1234,7 @@ cmd_searchpath(const char *arg)
         cmd_searchpath_help();
         return 0;
     } else if (!strncmp(path, "--clear", 7) && (path[7] == '\0' || path[7] == ' ')) {
-        ly_ctx_unset_searchdirs(ctx);
+        ly_ctx_unset_searchdirs(ctx, -1);
         return 0;
     }
 
