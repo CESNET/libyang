@@ -13,13 +13,13 @@ Architecture: any
 Description: Libyang is YANG data modelling language parser and toolkit written (and providing API) in C.
 
 Package: @PACKAGE_NAME@-dev
-Depends: libpcre3-dev, libyang (=@LIBYANG_VERSION@)
+Depends: libpcre3-dev, @PACKAGE_NAME@ (=@LIBYANG_VERSION@)
 Section: libdevel
 Architecture: any
 Description: Headers of libyang library.
 
 Package: @PACKAGE_NAME@-dbg
-Depends: libyang (=@LIBYANG_VERSION@)
+Depends: @PACKAGE_NAME@ (=@LIBYANG_VERSION@)
 Section: debug
 Architecture: any
 Description: Debug symbols of libyang library.
