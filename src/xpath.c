@@ -5824,7 +5824,7 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
         orig_pos = 0;
         orig_size = set->used;
         orig_parent = NULL;
-        for (i = 0; i < set->used; ++orig_pos) {
+        for (i = 0; i < set->used; ) {
             set2.type = LYXP_SET_EMPTY;
             set_insert_node(&set2, set->val.nodes[i].node, set->val.nodes[i].pos, set->val.nodes[i].type, 0);
             /* remember the node context position for position() and context size for last(),

@@ -296,7 +296,7 @@ test_functions_operators(void **state)
     ly_set_free(st->set);
     st->set = NULL;
 
-    st->set = lyd_find_xpath(st->dt, "/ietf-interfaces:interfaces/interface/name[round(ceiling(1.8)+0.4)+floor(0.28)]");
+    st->set = lyd_find_xpath(st->dt, "(/ietf-interfaces:interfaces/interface/name)[round(ceiling(1.8)+0.4)+floor(0.28)]");
     assert_ptr_not_equal(st->set, NULL);
     assert_int_equal(st->set->number, 1);
     assert_string_equal(((struct lyd_node_leaf_list *)st->set->set.d[0])->value_str, "iface2");
@@ -316,14 +316,14 @@ test_functions_operators(void **state)
     ly_set_free(st->set);
     st->set = NULL;
 
-    st->set = lyd_find_xpath(st->dt, "//ip[position() = last()]");
+    st->set = lyd_find_xpath(st->dt, "(//ip)[position() = last()]");
     assert_ptr_not_equal(st->set, NULL);
     assert_int_equal(st->set->number, 1);
     assert_string_equal(((struct lyd_node_leaf_list *)st->set->set.d[0])->value_str, "2001:abcd:ef01:2345:6789:0:1:1");
     ly_set_free(st->set);
     st->set = NULL;
 
-    st->set = lyd_find_xpath(st->dt, "//ip[count(//*[.='52'])]");
+    st->set = lyd_find_xpath(st->dt, "(//ip)[count(//*[.='52'])]");
     assert_ptr_not_equal(st->set, NULL);
     assert_int_equal(st->set->number, 1);
     assert_string_equal(((struct lyd_node_leaf_list *)st->set->set.d[0])->value_str, "10.0.0.1");
@@ -353,7 +353,7 @@ test_functions_operators(void **state)
     ly_set_free(st->set);
     st->set = NULL;
 
-    st->set = lyd_find_xpath(st->dt, "//*[1] | //*[last()] | //*[10] | //*[8]//.");
+    st->set = lyd_find_xpath(st->dt, "(//*)[1] | (//*)[last()] | (//*)[10] | (//*)[8]//.");
     assert_ptr_not_equal(st->set, NULL);
     assert_int_equal(st->set->number, 15);
     ly_set_free(st->set);
