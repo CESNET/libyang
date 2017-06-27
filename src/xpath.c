@@ -5850,13 +5850,14 @@ eval_node_test(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
  */
 static int
 eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lys_module *local_mod,
-               struct lyxp_set *set, int options)
+               struct lyxp_set *set, int options, int parent_pos_pred)
 {
     int ret;
     uint16_t i, j, orig_exp, brack2_exp;
     uint32_t orig_pos, orig_size, pred_in_ctx;
     uint8_t **pred_repeat, rep_size;
     struct lyxp_set set2;
+    struct lyd_node *orig_parent;
 
     /* '[' */
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
@@ -5904,11 +5905,22 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
             }
         }
 
+        orig_pos = 0;
         orig_size = set->used;
-        for (i = 0, orig_pos = 1; i < set->used; ++orig_pos) {
+        orig_parent = NULL;
+        for (i = 0; i < set->used; ++orig_pos) {
             set2.type = LYXP_SET_EMPTY;
             set_insert_node(&set2, set->val.nodes[i].node, set->val.nodes[i].pos, set->val.nodes[i].type, 0);
-            /* remember the node context position for position() and context size for last() */
+            /* remember the node context position for position() and context size for last(),
+             * predicates should always be evaluated with respect to the child axis (since we do
+             * not support explicit axes) so we assign positions based on their parents */
+            if (parent_pos_pred && (set->val.nodes[i].node->parent != orig_parent)) {
+                orig_parent = set->val.nodes[i].node->parent;
+                orig_pos = 1;
+            } else {
+                ++orig_pos;
+            }
+
             set2.ctx_pos = orig_pos;
             set2.ctx_size = orig_size;
             *exp_idx = orig_exp;
@@ -6139,7 +6151,7 @@ step:
                 return ret;
             }
             while ((exp->used > *exp_idx) && (exp->tokens[*exp_idx] == LYXP_TOKEN_BRACK1)) {
-                ret = eval_predicate(exp, exp_idx, cur_node, local_mod, set, options);
+                ret = eval_predicate(exp, exp_idx, cur_node, local_mod, set, options, 1);
                 if (ret) {
                     return ret;
                 }
@@ -6510,7 +6522,7 @@ static int
 eval_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lys_module *local_mod,
                struct lyxp_set *set, int options)
 {
-    int all_desc, ret;
+    int all_desc, ret, parent_pos_pred;
 
     switch (exp->tokens[*exp_idx]) {
     case LYXP_TOKEN_PAR1:
@@ -6532,6 +6544,7 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
         ++(*exp_idx);
 
+        parent_pos_pred = 0;
         goto predicate;
 
     case LYXP_TOKEN_DOT:
@@ -6571,6 +6584,7 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
             return ret;
         }
 
+        parent_pos_pred = 1;
         goto predicate;
 
     case LYXP_TOKEN_OPERATOR_PATH:
@@ -6592,6 +6606,7 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
             eval_literal(exp, exp_idx, set);
         }
 
+        parent_pos_pred = 1;
         goto predicate;
 
     case LYXP_TOKEN_NUMBER:
@@ -6608,6 +6623,7 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
             return ret;
         }
 
+        parent_pos_pred = 1;
         goto predicate;
 
     default:
@@ -6621,7 +6637,7 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
 predicate:
     /* Predicate* */
     while ((exp->used > *exp_idx) && (exp->tokens[*exp_idx] == LYXP_TOKEN_BRACK1)) {
-        ret = eval_predicate(exp, exp_idx, cur_node, local_mod, set, options);
+        ret = eval_predicate(exp, exp_idx, cur_node, local_mod, set, options, parent_pos_pred);
         if (ret) {
             return ret;
         }
