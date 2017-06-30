@@ -277,7 +277,7 @@ test_advanced(void **state)
     ly_set_free(st->set);
     st->set = NULL;
 
-    st->set = lyd_find_xpath(st->dt, "//interface[name='iface1']/ipv4//*");
+    st->set = lyd_find_xpath(st->dt, "//interface[name='iface1']/ietf-ip:ipv4//*");
     assert_ptr_not_equal(st->set, NULL);
     assert_int_equal(st->set->number, 12);
     ly_set_free(st->set);
