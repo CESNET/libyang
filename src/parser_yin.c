@@ -1401,8 +1401,10 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
 
         /* allocate array for union's types ... */
-        type->info.uni.types = calloc(i, sizeof *type->info.uni.types);
-        LY_CHECK_ERR_GOTO(!type->info.uni.types, LOGMEM, error);
+        if (i) {
+            type->info.uni.types = calloc(i, sizeof *type->info.uni.types);
+            LY_CHECK_ERR_GOTO(!type->info.uni.types, LOGMEM, error);
+        }
 
         /* ... and fill the structures */
         LY_TREE_FOR(yin->child, node) {
