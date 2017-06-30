@@ -6274,6 +6274,34 @@ cleanup:
     return ret;
 }
 
+static int
+check_type_union_leafref(struct lys_type *type)
+{
+    uint8_t i;
+
+    if ((type->base == LY_TYPE_UNION) && type->info.uni.count) {
+        /* go through unions and look for leafref */
+        for (i = 0; i < type->info.uni.count; ++i) {
+            switch (type->info.uni.types[i].base) {
+            case LY_TYPE_LEAFREF:
+                return 1;
+            case LY_TYPE_UNION:
+                if (check_type_union_leafref(&type->info.uni.types[i])) {
+                    return 1;
+                }
+                break;
+            default:
+                break;
+            }
+        }
+
+        return 0;
+    }
+
+    /* just inherit the flag value */
+    return type->der->has_union_leafref;
+}
+
 /**
  * @brief Resolve a single unres schema item. Logs indirectly.
  *
@@ -6402,6 +6430,17 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
             /* it does not make sense to have leaf-list of empty type */
             if (!parent_type && node->nodetype == LYS_LEAFLIST && stype->base == LY_TYPE_EMPTY) {
                 LOGWRN("The leaf-list \"%s\" is of \"empty\" type, which does not make sense.", node->name);
+            }
+
+            if ((type == UNRES_TYPE_DER_TPDF) && (stype->base == LY_TYPE_UNION)) {
+                /* fill typedef union leafref flag */
+                ((struct lys_tpdf *)stype->parent)->has_union_leafref = check_type_union_leafref(stype);
+            } else if ((type == UNRES_TYPE_DER) && stype->der->has_union_leafref) {
+                /* copy the type in case it has union leafref flag */
+                if (lys_copy_union_leafrefs(mod, node, stype, NULL, unres)) {
+                    LOGERR(LY_EINT, "Failed to duplicate type.");
+                    return -1;
+                }
             }
         } else if (rc == EXIT_FAILURE && stype->base != LY_TYPE_ERR) {
             /* forward reference - in case the type is in grouping, we have to make the grouping unusable
