@@ -4241,7 +4241,7 @@ moveto_node_check(struct lyd_node *node, enum lyxp_node_type root_type, const ch
                   struct lys_module *moveto_mod, int options)
 {
     /* module check */
-    if (moveto_mod && (lys_node_module(node->schema) != moveto_mod)) {
+    if (strcmp(node_name, "*") && (lyd_node_module(node) != moveto_mod)) {
         return -1;
     }
 
@@ -4251,7 +4251,7 @@ moveto_node_check(struct lyd_node *node, enum lyxp_node_type root_type, const ch
     }
 
     /* name check */
-    if (!ly_strequal(node->schema->name, node_name, 1) && strcmp(node_name, "*")) {
+    if (strcmp(node_name, "*") && !ly_strequal(node->schema->name, node_name, 1)) {
         return -1;
     }
 
@@ -4342,7 +4342,7 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
     int replaced, pref_len, ret;
     const char *ptr, *name_dict = NULL; /* optimalization - so we can do (==) instead (!strncmp(...)) in moveto_node_check() */
     struct lys_module *moveto_mod;
-    struct lyd_node *sub;
+    struct lyd_node *sub, *parent;
     struct ly_ctx *ctx;
     enum lyxp_node_type root_type;
 
@@ -4382,7 +4382,8 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
 
         if ((set->val.nodes[i].type == LYXP_NODE_ROOT_CONFIG) || (set->val.nodes[i].type == LYXP_NODE_ROOT)) {
             LY_TREE_FOR(set->val.nodes[i].node, sub) {
-                ret = moveto_node_check(sub, root_type, name_dict, moveto_mod, options);
+                ret = moveto_node_check(sub, root_type, name_dict,
+                                        moveto_mod ? moveto_mod : lyd_node_module(cur_node), options);
                 if (!ret) {
                     /* pos filled later */
                     moveto_node_add(set, sub, 0, i, &replaced);
@@ -4397,8 +4398,10 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
         } else if (!(set->val.nodes[i].node->validity & LYD_VAL_INUSE)
                 && !(set->val.nodes[i].node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
 
+            parent = set->val.nodes[i].node;
             LY_TREE_FOR(set->val.nodes[i].node->child, sub) {
-                ret = moveto_node_check(sub, root_type, name_dict, moveto_mod, options);
+                ret = moveto_node_check(sub, root_type, name_dict,
+                                        moveto_mod ? moveto_mod : lyd_node_module(parent), options);
                 if (!ret) {
                     moveto_node_add(set, sub, 0, i, &replaced);
                     ++i;
@@ -4578,7 +4581,7 @@ moveto_node_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
         moveto_mod = NULL;
     }
 
-    /* replace the original nodes (and throws away all text and attr nodes, root is replaced by a child) */
+    /* special internal path, replace the original nodes (and throws away all text and attr nodes, root is replaced by a child) */
     ret = moveto_node(set, cur_node, "*", 1, options);
     if (ret) {
         return ret;
