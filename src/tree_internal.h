@@ -491,6 +491,9 @@ int apply_aug(struct lys_node_augment *augment, struct unres_schema *unres);
 
 void lys_submodule_module_data_free(struct lys_submodule *submodule);
 
+int lys_copy_union_leafrefs(struct lys_module *mod, struct lys_node *parent, struct lys_type *type,
+                            struct lys_type *prev_new, struct unres_schema *unres);
+
 const struct lys_module *lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int internal,
                                         int implement);
 

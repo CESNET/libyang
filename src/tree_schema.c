@@ -1515,6 +1515,88 @@ lys_yang_type_dup(struct lys_module *module, struct lys_node *parent, struct yan
     return NULL;
 }
 
+int
+lys_copy_union_leafrefs(struct lys_module *mod, struct lys_node *parent, struct lys_type *type, struct lys_type *prev_new,
+                        struct unres_schema *unres)
+{
+    struct lys_type new;
+    int i, top_type;
+    struct lys_ext_instance **ext;
+    uint8_t ext_size;
+    void *reloc;
+
+    if (!prev_new) {
+        /* this is the "top-level" type, meaning it is a real type and no typedef directly above */
+        top_type = 1;
+
+        memset(&new, 0, sizeof new);
+
+        new.module_name = lydict_insert(mod->ctx, type->module_name, 0);
+        new.base = type->base;
+        new.parent = (struct lys_tpdf *)parent;
+
+        prev_new = &new;
+    } else {
+        /* this is not top-level type, just a type of a typedef */
+        top_type = 0;
+    }
+
+    if (type->der && type->der->module) {
+        /* typedef, skip it, but keep the extensions */
+        ext_size = type->ext_size;
+        if (lys_ext_dup(mod, type->ext, type->ext_size, (prev_new ? prev_new : &new), LYEXT_PAR_TYPE, &ext, 0, unres)) {
+            return -1;
+        }
+        if (prev_new->ext) {
+            reloc = realloc(prev_new->ext, (prev_new->ext_size + ext_size) * sizeof *prev_new->ext);
+            LY_CHECK_ERR_RETURN(!reloc, LOGMEM, -1);
+
+            memcpy(prev_new->ext + prev_new->ext_size, ext, ext_size * sizeof *ext);
+            free(ext);
+
+            prev_new->ext_size += ext_size;
+        } else {
+            prev_new->ext = ext;
+            prev_new->ext_size = ext_size;
+        }
+
+        if (lys_copy_union_leafrefs(mod, parent, &type->der->type, prev_new, unres)) {
+            return -1;
+        }
+    } else {
+        /* type, just make a deep copy */
+        switch (type->base) {
+        case LY_TYPE_UNION:
+            prev_new->info.uni.has_ptr_type = type->info.uni.has_ptr_type;
+            prev_new->info.uni.count = type->info.uni.count;
+            /* this cannot be a typedef anymore */
+            assert(prev_new->info.uni.count);
+
+            prev_new->info.uni.types = calloc(prev_new->info.uni.count, sizeof *prev_new->info.uni.types);
+            LY_CHECK_ERR_RETURN(!prev_new->info.uni.types, LOGMEM, -1);
+
+            for (i = 0; i < prev_new->info.uni.count; i++) {
+                if (lys_copy_union_leafrefs(mod, parent, &(type->info.uni.types[i]), &(prev_new->info.uni.types[i]), unres)) {
+                    return -1;
+                }
+            }
+
+            prev_new->der = type->der;
+            break;
+        default:
+            if (lys_type_dup(mod, parent, prev_new, type, 0, 0, unres)) {
+                return -1;
+            }
+            break;
+        }
+    }
+
+    if (top_type) {
+        memcpy(type, prev_new, sizeof *type);
+    }
+    return EXIT_SUCCESS;
+}
+
 API const void *
 lys_ext_instance_substmt(const struct lys_ext_instance *ext)
 {

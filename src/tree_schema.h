@@ -1875,9 +1875,10 @@ struct lys_tpdf {
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_ and LYS_DFLTJSON values (or 0) are allowed */
     uint8_t ext_size;                /**< number of elements in #ext array */
     uint8_t padding_iffsize;         /**< padding byte for the ::lys_node's iffeature_size */
+    uint8_t has_union_leafref;       /**< flag to mark typedefs with a leafref inside a union */
 
-    /* 32b padding for compatibility with ::lys_node */
-    uint8_t padding[4];              /**< padding for 32b alignment */
+    /* 24b padding for compatibility with ::lys_node */
+    uint8_t padding[3];              /**< padding for 32b alignment */
 
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     const char *units;               /**< units of the newly defined type (optional) */
