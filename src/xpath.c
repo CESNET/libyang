@@ -4365,7 +4365,7 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
         pref_len = ptr - qname;
         moveto_mod = moveto_resolve_model(qname, pref_len, ctx, NULL, 1);
         if (!moveto_mod) {
-            LOGINT;
+            LOGVAL(LYE_XPATH_INMOD, LY_VLOG_NONE, NULL, pref_len, qname);
             return -1;
         }
         qname += pref_len + 1;
@@ -4572,7 +4572,7 @@ moveto_node_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
         pref_len = strnchr(qname, ':', qname_len) - qname;
         moveto_mod = moveto_resolve_model(qname, pref_len, cur_node->schema->module->ctx, NULL, 1);
         if (!moveto_mod) {
-            LOGINT;
+            LOGVAL(LYE_XPATH_INMOD, LY_VLOG_NONE, NULL, pref_len, qname);
             return -1;
         }
         qname += pref_len + 1;
@@ -4854,7 +4854,7 @@ moveto_attr(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
         pref_len = strnchr(qname, ':', qname_len) - qname;
         moveto_mod = moveto_resolve_model(qname, pref_len, cur_node->schema->module->ctx, NULL, 1);
         if (!moveto_mod) {
-            LOGINT;
+            LOGVAL(LYE_XPATH_INMOD, LY_VLOG_NONE, NULL, pref_len, qname);
             return -1;
         }
         qname += pref_len + 1;
@@ -4989,7 +4989,7 @@ moveto_attr_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
         pref_len = strnchr(qname, ':', qname_len) - qname;
         moveto_mod = moveto_resolve_model(qname, pref_len, cur_node->schema->module->ctx, NULL, 1);
         if (!moveto_mod) {
-            LOGINT;
+            LOGVAL(LYE_XPATH_INMOD, LY_VLOG_NONE, NULL, pref_len, qname);
             return -1;
         }
         qname += pref_len + 1;
