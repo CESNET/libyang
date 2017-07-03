@@ -3844,24 +3844,16 @@ lys_data_path_reverse(const struct lys_node *node, char * const buf, uint32_t bu
 #endif
 
 API struct ly_set *
-lys_find_xpath(struct ly_ctx *ctx, const struct lys_node *node, const char *expr, int options)
+lys_find_xpath(const struct lys_node *ctx_node, const char *expr, int options)
 {
     struct lyxp_set set;
     struct ly_set *ret_set;
     uint32_t i;
     int opts;
 
-    if ((!ctx && !node) || !expr) {
+    if (!ctx_node || !expr) {
         ly_errno = LY_EINVAL;
         return NULL;
-    }
-
-    if (!node) {
-        node = ly_ctx_get_node(ctx, NULL, "/ietf-yang-library:modules-state");
-        if (!node) {
-            ly_errno = LY_EINT;
-            return NULL;
-        }
     }
 
     memset(&set, 0, sizeof set);
@@ -3871,16 +3863,16 @@ lys_find_xpath(struct ly_ctx *ctx, const struct lys_node *node, const char *expr
         opts |= LYXP_SNODE_OUTPUT;
     }
 
-    if (lyxp_atomize(expr, node, LYXP_NODE_ELEM, &set, opts, NULL)) {
+    if (lyxp_atomize(expr, ctx_node, LYXP_NODE_ELEM, &set, opts, NULL)) {
         /* just find a relevant node to put in path, if it fails, use the original one */
         for (i = 0; i < set.used; ++i) {
             if (set.val.snodes[i].in_ctx == 1) {
-                node = set.val.snodes[i].snode;
+                ctx_node = set.val.snodes[i].snode;
                 break;
             }
         }
         free(set.val.snodes);
-        LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "Resolving XPath expression \"%s\" failed.", expr);
+        LOGVAL(LYE_SPEC, LY_VLOG_LYS, ctx_node, "Resolving XPath expression \"%s\" failed.", expr);
         return NULL;
     }
 
@@ -3911,21 +3903,21 @@ lys_find_xpath(struct ly_ctx *ctx, const struct lys_node *node, const char *expr
 }
 
 API struct ly_set *
-lys_xpath_atomize(const struct lys_node *cur_snode, enum lyxp_node_type cur_snode_type, const char *expr, int options)
+lys_xpath_atomize(const struct lys_node *ctx_node, enum lyxp_node_type ctx_node_type, const char *expr, int options)
 {
     struct lyxp_set set;
     struct ly_set *ret_set;
     uint32_t i;
 
-    if (!cur_snode || !expr) {
+    if (!ctx_node || !expr) {
         return NULL;
     }
 
     /* adjust the root */
-    if ((cur_snode_type == LYXP_NODE_ROOT) || (cur_snode_type == LYXP_NODE_ROOT_CONFIG)) {
+    if ((ctx_node_type == LYXP_NODE_ROOT) || (ctx_node_type == LYXP_NODE_ROOT_CONFIG)) {
         do {
-            cur_snode = lys_getnext(NULL, NULL, lys_node_module(cur_snode), 0);
-        } while ((cur_snode_type == LYXP_NODE_ROOT_CONFIG) && (cur_snode->flags & LYS_CONFIG_R));
+            ctx_node = lys_getnext(NULL, NULL, lys_node_module(ctx_node), 0);
+        } while ((ctx_node_type == LYXP_NODE_ROOT_CONFIG) && (ctx_node->flags & LYS_CONFIG_R));
     }
 
     memset(&set, 0, sizeof set);
@@ -3940,9 +3932,9 @@ lys_xpath_atomize(const struct lys_node *cur_snode, enum lyxp_node_type cur_snod
         options |= LYXP_SNODE;
     }
 
-    if (lyxp_atomize(expr, cur_snode, cur_snode_type, &set, options, NULL)) {
+    if (lyxp_atomize(expr, ctx_node, ctx_node_type, &set, options, NULL)) {
         free(set.val.snodes);
-        LOGVAL(LYE_SPEC, LY_VLOG_LYS, cur_snode, "Resolving XPath expression \"%s\" failed.", expr);
+        LOGVAL(LYE_SPEC, LY_VLOG_LYS, ctx_node, "Resolving XPath expression \"%s\" failed.", expr);
         return NULL;
     }
 

@@ -2104,18 +2104,17 @@ const struct lys_node *lys_getnext(const struct lys_node *last, const struct lys
 /**
  * @brief Search for schema nodes matching the provided XPath expression.
  *
- * XPath always requires a context node to be able to evaluate an expression. However, if \p expr is absolute,
- * the context node can almost always be arbitrary, so you can only set \p ctx and leave \p node empty. But, if
- * \p expr is relative and \p node will not be set, you will likely get unexpected results.
+ * XPath always requires a context node to be able to evaluate an expression because
+ * non-prefixed node names will use its module prefix. However, if \p expr is absolute
+ * and all the node names are prefixed, the context node can be an arbitrary node.
  *
- * @param[in] ctx Context to use. Must be set if \p node is NULL.
- * @param[in] node Context schema node if \p expr is relative, otherwise any node. Must be set if \p ctx is NULL.
+ * @param[in] ctx_node Context schema node.
  * @param[in] expr XPath expression filtering the matching nodes.
  * @param[in] options Bitmask of LYS_FIND_* options.
  * @return Set of found schema nodes. If no nodes are matching \p expr or the result
  * would be a number, a string, or a boolean, the returned set is empty. In case of an error, NULL is returned.
  */
-struct ly_set *lys_find_xpath(struct ly_ctx *ctx, const struct lys_node *node, const char *expr, int options);
+struct ly_set *lys_find_xpath(const struct lys_node *ctx_node, const char *expr, int options);
 
 #define LYS_FIND_OUTPUT 0x01 /**< lys_find_xpath() option to search RPC output nodes instead input ones */
 
@@ -2136,16 +2135,16 @@ enum lyxp_node_type {
 /**
  * @brief Get all the partial XPath nodes (atoms) that are required for \p expr to be evaluated.
  *
- * @param[in] cur_snode Current (context) schema node. Fake roots are distinguished using \p cur_snode_type
+ * @param[in] ctx_node Context (current) schema node. Fake roots are distinguished using \p cur_snode_type
  * and then this node can be any node from the module (so, for example, do not put node added by an augment from another module).
- * @param[in] cur_snode_type Current (context) schema node type. Most commonly is #LYXP_NODE_ELEM, but if
+ * @param[in] ctx_node_type Context (current) schema node type. Most commonly is #LYXP_NODE_ELEM, but if
  * your context node is supposed to be the root, you can specify what kind of root it is.
  * @param[in] expr XPath expression to be evaluated. Must be in JSON data format (prefixes are model names).
  * @param[in] options Whether to apply some evaluation restrictions #LYXP_MUST or #LYXP_WHEN.
  *
  * @return Set of atoms (schema nodes), NULL on error.
  */
-struct ly_set *lys_xpath_atomize(const struct lys_node *cur_snode, enum lyxp_node_type cur_snode_type,
+struct ly_set *lys_xpath_atomize(const struct lys_node *ctx_node, enum lyxp_node_type ctx_node_type,
                                  const char *expr, int options);
 
 #define LYXP_MUST 0x01 /**< lys_xpath_atomize() option to apply must statement data tree access restrictions */
