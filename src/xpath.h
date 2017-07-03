@@ -232,11 +232,12 @@ int lyxp_eval(const char *expr, const struct lyd_node *cur_node, enum lyxp_node_
  * LYXP_SNODE_MUST - apply must data tree access restrictions.
  * LYXP_SNODE_WHEN - apply when data tree access restrictions.
  * LYXP_SNODE_OUTPUT - search RPC/action output instead input
+ * @param[out] ctx_snode Actual context node for the expression (it often changes for "when" expressions).
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
 int lyxp_atomize(const char *expr, const struct lys_node *cur_snode, enum lyxp_node_type cur_snode_type,
-                 struct lyxp_set *set, int options);
+                 struct lyxp_set *set, int options, const struct lys_node **ctx_snode);
 
 /* these are used only internally */
 #define LYXP_SNODE 0x04

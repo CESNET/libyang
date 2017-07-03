@@ -7576,9 +7576,9 @@ lyxp_set_free(struct lyxp_set *set)
 
 int
 lyxp_atomize(const char *expr, const struct lys_node *cur_snode, enum lyxp_node_type cur_snode_type,
-             struct lyxp_set *set, int options)
+             struct lyxp_set *set, int options, const struct lys_node **ctx_snode)
 {
-    struct lys_node *ctx_snode;
+    struct lys_node *_ctx_snode;
     enum lyxp_node_type ctx_snode_type;
     struct lyxp_expr *exp;
     uint16_t exp_idx = 0;
@@ -7605,18 +7605,22 @@ lyxp_atomize(const char *expr, const struct lys_node *cur_snode, enum lyxp_node_
 
     if (options & LYXP_SNODE_WHEN) {
         /* for when the context node may need to be changed */
-        resolve_when_ctx_snode(cur_snode, &ctx_snode, &ctx_snode_type);
+        resolve_when_ctx_snode(cur_snode, &_ctx_snode, &ctx_snode_type);
     } else {
-        ctx_snode = (struct lys_node *)cur_snode;
+        _ctx_snode = (struct lys_node *)cur_snode;
         ctx_snode_type = cur_snode_type;
+    }
+
+    if (ctx_snode) {
+        *ctx_snode = _ctx_snode;
     }
 
     exp_idx = 0;
     memset(set, 0, sizeof *set);
     set->type = LYXP_SET_SNODE_SET;
-    set_snode_insert_node(set, ctx_snode, ctx_snode_type);
+    set_snode_insert_node(set, _ctx_snode, ctx_snode_type);
 
-    rc = eval_expr(exp, &exp_idx, (struct lyd_node *)ctx_snode, lys_node_module(ctx_snode), set, options);
+    rc = eval_expr(exp, &exp_idx, (struct lyd_node *)_ctx_snode, lys_node_module(_ctx_snode), set, options);
 
 finish:
     lyxp_expr_free(exp);
@@ -7627,13 +7631,14 @@ int
 lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int warn_on_fwd_ref)
 {
     struct lys_node *parent;
+    const struct lys_node *ctx_snode;
     struct lyxp_set tmp_set;
     uint8_t must_size = 0;
     uint32_t i;
     int opts, ret = EXIT_SUCCESS;
     struct lys_when *when = NULL;
     struct lys_restr *must = NULL;
-    char *path;
+    char *path = NULL;
 
     assert(!warn_on_fwd_ref || !*ly_vlog_hide_location());
 
@@ -7707,26 +7712,25 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int warn_on
 
     /* check "when" */
     if (when) {
-        if (lyxp_atomize(when->cond, node, LYXP_NODE_ELEM, &tmp_set, LYXP_SNODE_WHEN | opts)) {
+        if (lyxp_atomize(when->cond, node, LYXP_NODE_ELEM, &tmp_set, LYXP_SNODE_WHEN | opts, &ctx_snode)) {
             free(tmp_set.val.snodes);
+            path = lys_path(ctx_snode);
             if ((ly_errno != LY_EVALID) || ((ly_vecode != LYVE_XPATH_INSNODE) && (ly_vecode != LYVE_XPATH_INMOD))) {
-                LOGVAL(LYE_SPEC, LY_VLOG_LYS, (node->nodetype == LYS_AUGMENT ? ((struct lys_node_augment *)node)->target : node),
-                       "Invalid when condition \"%s\".", when->cond);
+                LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "Invalid when condition \"%s\" with context node \"%s\".", when->cond, path);
                 ret = -1;
                 goto finish;
             } else if (!warn_on_fwd_ref) {
-                LOGVAL(LYE_SPEC, LY_VLOG_LYS, (node->nodetype == LYS_AUGMENT ? ((struct lys_node_augment *)node)->target : node),
-                       "Invalid when condition \"%s\".", when->cond);
+                LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "Invalid when condition \"%s\" with context node \"%s\".", when->cond, path);
                 ret = EXIT_FAILURE;
                 goto finish;
             }
             ly_vlog_hide(0);
             LOGWRN(ly_errmsg());
-            path = lys_path(node->nodetype == LYS_AUGMENT ? ((struct lys_node_augment *)node)->target : node);
-            LOGWRN("Invalid when condition \"%s\". (%s)", when->cond, path);
-            free(path);
+            LOGWRN("Invalid when condition \"%s\" with context node \"%s\".", when->cond, path);
             ly_vlog_hide(1);
 
+            free(path);
+            path = NULL;
             ret = EXIT_FAILURE;
             memset(&tmp_set, 0, sizeof tmp_set);
         } else {
@@ -7737,24 +7741,25 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int warn_on
 
     /* check "must" */
     for (i = 0; i < must_size; ++i) {
-        if (lyxp_atomize(must[i].expr, node, LYXP_NODE_ELEM, &tmp_set, LYXP_SNODE_MUST | opts)) {
+        if (lyxp_atomize(must[i].expr, node, LYXP_NODE_ELEM, &tmp_set, LYXP_SNODE_MUST | opts, &ctx_snode)) {
             free(tmp_set.val.snodes);
+            path = lys_path(ctx_snode);
             if ((ly_errno != LY_EVALID) || (ly_vecode != LYVE_XPATH_INSNODE)) {
-                LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "Invalid must restriction \"%s\".", must[i].expr);
+                LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "Invalid must restriction \"%s\" with context node \"%s\".", must[i].expr, path);
                 ret = -1;
                 goto finish;
             } else if (!warn_on_fwd_ref) {
-                LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "Invalid must restriction \"%s\".", must[i].expr);
+                LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "Invalid must restriction \"%s\" with context node \"%s\".", must[i].expr, path);
                 ret = EXIT_FAILURE;
                 goto finish;
             }
             ly_vlog_hide(0);
             LOGWRN(ly_errmsg());
-            path = lys_path(node);
-            LOGWRN("Invalid must restriction \"%s\". (%s)", must[i].expr, path);
-            free(path);
+            LOGWRN("Invalid must restriction \"%s\" with context node \"%s\".", must[i].expr, path);
             ly_vlog_hide(1);
 
+            free(path);
+            path = NULL;
             ret = EXIT_FAILURE;
             memset(&tmp_set, 0, sizeof tmp_set);
         } else {
@@ -7771,6 +7776,7 @@ finish:
         free(set->val.snodes);
         memset(set, 0, sizeof *set);
     }
+    free(path);
     return ret;
 }
 
