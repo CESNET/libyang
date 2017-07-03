@@ -5353,20 +5353,20 @@ unique_errmsg_cleanup:
 }
 
 API struct ly_set *
-lyd_find_xpath(const struct lyd_node *data, const char *expr)
+lyd_find_xpath(const struct lyd_node *ctx_node, const char *expr)
 {
     struct lyxp_set xp_set;
     struct ly_set *set;
     uint16_t i;
 
-    if (!data || !expr) {
+    if (!ctx_node || !expr) {
         ly_errno = LY_EINVAL;
         return NULL;
     }
 
     memset(&xp_set, 0, sizeof xp_set);
 
-    if (lyxp_eval(expr, data, LYXP_NODE_ELEM, lyd_node_module(data), &xp_set, 0) != EXIT_SUCCESS) {
+    if (lyxp_eval(expr, ctx_node, LYXP_NODE_ELEM, lyd_node_module(ctx_node), &xp_set, 0) != EXIT_SUCCESS) {
         return NULL;
     }
 
@@ -5388,7 +5388,7 @@ lyd_find_xpath(const struct lyd_node *data, const char *expr)
         }
     }
     /* free xp_set content */
-    lyxp_set_cast(&xp_set, LYXP_SET_EMPTY, data, NULL, 0);
+    lyxp_set_cast(&xp_set, LYXP_SET_EMPTY, ctx_node, NULL, 0);
 
     return set;
 }
