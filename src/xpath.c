@@ -4283,7 +4283,7 @@ moveto_snode_check(const struct lys_node *node, enum lyxp_node_type root_type, c
     }
 
     /* module check */
-    if (moveto_mod && (lys_node_module(node) != moveto_mod)) {
+    if (strcmp(node_name, "*") && (lys_node_module(node) != moveto_mod)) {
         return -1;
     }
 
@@ -4293,7 +4293,7 @@ moveto_snode_check(const struct lys_node *node, enum lyxp_node_type root_type, c
     }
 
     /* name check */
-    if (!ly_strequal(node->name, node_name, 1) && strcmp(node_name, "*")) {
+    if (strcmp(node_name, "*") && !ly_strequal(node->name, node_name, 1)) {
         return -1;
     }
 
@@ -4342,7 +4342,7 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
     int replaced, pref_len, ret;
     const char *ptr, *name_dict = NULL; /* optimalization - so we can do (==) instead (!strncmp(...)) in moveto_node_check() */
     struct lys_module *moveto_mod;
-    struct lyd_node *sub, *parent;
+    struct lyd_node *sub;
     struct ly_ctx *ctx;
     enum lyxp_node_type root_type;
 
@@ -4398,10 +4398,9 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
         } else if (!(set->val.nodes[i].node->validity & LYD_VAL_INUSE)
                 && !(set->val.nodes[i].node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
 
-            parent = set->val.nodes[i].node;
             LY_TREE_FOR(set->val.nodes[i].node->child, sub) {
                 ret = moveto_node_check(sub, root_type, name_dict,
-                                        moveto_mod ? moveto_mod : lyd_node_module(parent), options);
+                                        moveto_mod ? moveto_mod : lyd_node_module(cur_node), options);
                 if (!ret) {
                     moveto_node_add(set, sub, 0, i, &replaced);
                     ++i;
@@ -4475,8 +4474,8 @@ moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, const char *qname,
             /* it can actually be in any module, it's all <running>, but we know it's moveto_mod (if set),
              * so use it directly (root node itself is useless in this case) */
             sub = NULL;
-            while ((sub = lys_getnext(sub, NULL, (moveto_mod ? moveto_mod : lys_node_module(start_parent)), 0))) {
-                if (!moveto_snode_check(sub, root_type, name_dict, moveto_mod, options)) {
+            while ((sub = lys_getnext(sub, NULL, (moveto_mod ? moveto_mod : lys_node_module(cur_node)), 0))) {
+                if (!moveto_snode_check(sub, root_type, name_dict, (moveto_mod ? moveto_mod : lys_node_module(cur_node)), options)) {
                     idx = set_snode_insert_node(set, sub, LYXP_NODE_ELEM);
                     /* we need to prevent these nodes to be considered in this moveto */
                     if ((idx < orig_used) && (idx > i)) {
@@ -4491,11 +4490,11 @@ moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, const char *qname,
             /* the target may be from an augment that was not connected */
             last_aug = NULL;
             tmp_mod = NULL;
-            if ((moveto_mod && !moveto_mod->implemented) || (!moveto_mod && !lys_node_module(start_parent)->implemented)) {
+            if ((moveto_mod && !moveto_mod->implemented) || (!moveto_mod && !lys_node_module(cur_node)->implemented)) {
                 if (moveto_mod) {
                     tmp_mod = moveto_mod;
                 } else {
-                    tmp_mod = lys_node_module(start_parent);
+                    tmp_mod = lys_node_module(cur_node);
                 }
 
 get_next_augment:
@@ -4504,7 +4503,7 @@ get_next_augment:
 
             sub = NULL;
             while ((sub = lys_getnext(sub, (last_aug ? (struct lys_node *)last_aug : start_parent), NULL, 0))) {
-                if (!moveto_snode_check(sub, root_type, name_dict, moveto_mod, options)) {
+                if (!moveto_snode_check(sub, root_type, name_dict, (moveto_mod ? moveto_mod : lys_node_module(cur_node)), options)) {
                     idx = set_snode_insert_node(set, sub, LYXP_NODE_ELEM);
                     if ((idx < orig_used) && (idx > i)) {
                         set->val.snodes[idx].in_ctx = 2;
@@ -4607,8 +4606,12 @@ moveto_node_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
             match = 1;
 
             /* module check */
-            if (moveto_mod && (lys_node_module(elem->schema) != moveto_mod)) {
-                match = 0;
+            if (!all) {
+                if (moveto_mod && (lys_node_module(elem->schema) != moveto_mod)) {
+                    match = 0;
+                } else if (!moveto_mod && (lys_node_module(elem->schema) != lyd_node_module(cur_node))) {
+                    match = 0;
+                }
             }
 
             /* name check */
@@ -4763,8 +4766,12 @@ moveto_snode_alldesc(struct lyxp_set *set, struct lys_node *cur_node, const char
             match = 1;
 
             /* module check */
-            if (moveto_mod && (lys_node_module(elem) != moveto_mod)) {
-                match = 0;
+            if (!all) {
+                if (moveto_mod && (lys_node_module(elem) != moveto_mod)) {
+                    match = 0;
+                } else if (!moveto_mod && (lys_node_module(elem) != lys_node_module(cur_node))) {
+                    match = 0;
+                }
             }
 
             /* name check */

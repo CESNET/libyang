@@ -229,13 +229,13 @@ test_simple(void **state)
     ly_set_free(st->set);
     st->set = NULL;
 
-    st->set = lyd_find_xpath(st->dt, "/ietf-interfaces:interfaces/interface[name='iface1']/ietf-ip:ipv4/address");
+    st->set = lyd_find_xpath(st->dt, "/ietf-interfaces:interfaces/interface[name='iface1']/ietf-ip:ipv4/ietf-ip:address");
     assert_ptr_not_equal(st->set, NULL);
     assert_int_equal(st->set->number, 2);
     ly_set_free(st->set);
     st->set = NULL;
 
-    st->set = lyd_find_xpath(st->dt, "/ietf-interfaces:interfaces/interface[name='iface1']/ietf-ip:ipv4/address[ip='10.0.0.1']");
+    st->set = lyd_find_xpath(st->dt, "/ietf-interfaces:interfaces/interface[name='iface1']/ietf-ip:ipv4/ietf-ip:address[ietf-ip:ip='10.0.0.1']");
     assert_ptr_not_equal(st->set, NULL);
     assert_int_equal(st->set->number, 1);
     ly_set_free(st->set);
@@ -247,7 +247,7 @@ test_advanced(void **state)
 {
     struct state *st = (*state);
 
-    st->set = lyd_find_xpath(st->dt, "/ietf-interfaces:interfaces/interface[name='iface1']/ietf-ip:ipv4/*[ip]");
+    st->set = lyd_find_xpath(st->dt, "/ietf-interfaces:interfaces/interface[name='iface1']/ietf-ip:ipv4/*[ietf-ip:ip]");
     assert_ptr_not_equal(st->set, NULL);
     assert_int_equal(st->set->number, 3);
     ly_set_free(st->set);
@@ -310,20 +310,20 @@ test_functions_operators(void **state)
     ly_set_free(st->set);
     st->set = NULL;
 
-    st->set = lyd_find_xpath(st->dt, "//*[neighbor/link-layer-address = translate(normalize-space('\t\n01   .34    .56\t.78.9a\n\r.bc.de.f0  \t'), '. ', ':')]");
+    st->set = lyd_find_xpath(st->dt, "//*[ietf-ip:neighbor/ietf-ip:link-layer-address = translate(normalize-space('\t\n01   .34    .56\t.78.9a\n\r.bc.de.f0  \t'), '. ', ':')]");
     assert_ptr_not_equal(st->set, NULL);
     assert_int_equal(st->set->number, 2);
     ly_set_free(st->set);
     st->set = NULL;
 
-    st->set = lyd_find_xpath(st->dt, "(//ip)[position() = last()]");
+    st->set = lyd_find_xpath(st->dt, "(//ietf-ip:ip)[position() = last()]");
     assert_ptr_not_equal(st->set, NULL);
     assert_int_equal(st->set->number, 1);
     assert_string_equal(((struct lyd_node_leaf_list *)st->set->set.d[0])->value_str, "2001:abcd:ef01:2345:6789:0:1:1");
     ly_set_free(st->set);
     st->set = NULL;
 
-    st->set = lyd_find_xpath(st->dt, "(//ip)[count(//*[.='52'])]");
+    st->set = lyd_find_xpath(st->dt, "(//ietf-ip:ip)[count(//*[.='52'])]");
     assert_ptr_not_equal(st->set, NULL);
     assert_int_equal(st->set->number, 1);
     assert_string_equal(((struct lyd_node_leaf_list *)st->set->set.d[0])->value_str, "10.0.0.1");
@@ -342,7 +342,7 @@ test_functions_operators(void **state)
     ly_set_free(st->set);
     st->set = NULL;
 
-    st->set = lyd_find_xpath(st->dt, "//ip[position() mod 2 = 1] | //ip[position() mod 2 = 0]");
+    st->set = lyd_find_xpath(st->dt, "//ietf-ip:ip[position() mod 2 = 1] | //ietf-ip:ip[position() mod 2 = 0]");
     assert_ptr_not_equal(st->set, NULL);
     assert_int_equal(st->set->number, 10);
     assert_string_equal(((struct lyd_node_leaf_list *)st->set->set.d[0])->value_str, "10.0.0.1");

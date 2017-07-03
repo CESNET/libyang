@@ -142,7 +142,7 @@ module mod5 {
         must "../user/username = 'admin' and " +
                  "/user/password  ";
 
-        must "/lib:modules-state/module-set-id = 1";
+        must "/lib:modules-state/lib:module-set-id = 1";
     }
 
     notification notif {
