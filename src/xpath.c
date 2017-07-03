@@ -5783,7 +5783,7 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
     int ret;
     uint16_t i, j, orig_exp, brack2_exp;
     uint32_t orig_pos, orig_size, pred_in_ctx;
-    uint8_t **pred_repeat, rep_size;
+    uint8_t **pred_repeat, rep_size, open_brack;
     struct lyxp_set set2;
     struct lyd_node *orig_parent;
 
@@ -5808,7 +5808,14 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
         orig_exp = *exp_idx;
 
         /* find the predicate end */
-        for (brack2_exp = orig_exp; exp->tokens[brack2_exp] != LYXP_TOKEN_BRACK2; ++brack2_exp);
+        open_brack = 0;
+        for (brack2_exp = orig_exp; open_brack || (exp->tokens[brack2_exp] != LYXP_TOKEN_BRACK2); ++brack2_exp) {
+            if (exp->tokens[brack2_exp] == LYXP_TOKEN_BRACK1) {
+                ++open_brack;
+            } else if (exp->tokens[brack2_exp] == LYXP_TOKEN_BRACK2) {
+                --open_brack;
+            }
+        }
 
         /* copy predicate repeats, since they get deleted each time (probably not an ideal solution) */
         pred_repeat = calloc(brack2_exp - orig_exp, sizeof *pred_repeat);
@@ -5898,7 +5905,14 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
         orig_exp = *exp_idx;
 
         /* find the predicate end */
-        for (brack2_exp = orig_exp; exp->tokens[brack2_exp] != LYXP_TOKEN_BRACK2; ++brack2_exp);
+        open_brack = 0;
+        for (brack2_exp = orig_exp; open_brack || (exp->tokens[brack2_exp] != LYXP_TOKEN_BRACK2); ++brack2_exp) {
+            if (exp->tokens[brack2_exp] == LYXP_TOKEN_BRACK1) {
+                ++open_brack;
+            } else if (exp->tokens[brack2_exp] == LYXP_TOKEN_BRACK2) {
+                --open_brack;
+            }
+        }
 
         /* copy predicate repeats, since they get deleted each time (probably not an ideal solution) */
         pred_repeat = calloc(brack2_exp - orig_exp, sizeof *pred_repeat);
