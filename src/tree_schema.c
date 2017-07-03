@@ -216,7 +216,7 @@ lys_getnext(const struct lys_node *last, const struct lys_node *parent, const st
             /* schema subtree */
             snode = lys_child(parent, LYS_UNKNOWN);
             /* do not return anything if the augment does not have any children */
-            if (!snode || ((parent->nodetype == LYS_AUGMENT) && ((*snode)->parent != parent))) {
+            if (!snode || !(*snode) || ((parent->nodetype == LYS_AUGMENT) && ((*snode)->parent != parent))) {
                 return NULL;
             }
             next = last = *snode;
