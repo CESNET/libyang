@@ -871,16 +871,28 @@ extern "C" {
  *
  * - get __list__ instance with __key1__ of value __1__ and __key2__ of value __2__ (this can return more __list__ instances if there are more keys than __key1__ and __key2__)
  *
- *       /module-name:container/list[key1='1'][key2='2']
+ *       /module-name:container/module-name:list[module-name:key1='1'][module-name:key2='2']
  *
  * - get __leaf-list__ instance with the value __val__
  *
- *       /module-name:container/leaf-list[.='val']
+ *       /module-name:container/module-name:leaf-list[.='val']
  *
  * - get __aug-leaf__, which was added to __module-name__ from an augment module __augment-module__
  *
- *       /module-name:container/container2/augment-module:aug-cont/aug-leaf
+ *       /module-name:container/module-name:container2/augment-module:aug-cont/augment-module:aug-leaf
  *
+ * It is important to know what prefix is used for node names without one. It is the prefix of the context node, not
+ * of the parent or any other. Example:
+ *
+ * - get __child__ of __container__ having __container__ as the context node (either of the two)
+ *
+ *       /container/child
+ *       /child
+ *
+ * - get __aug-leaf__, which was added to __container__ from an augment module __augment-module__ having __container__
+ *   as the context node
+ *
+ *       /container/augment-module:aug-leaf
  *
  * A very small subset of this full XPath is recognized by lyd_new_path(). Basically, only a relative or absolute
  * path can be specified to identify a new data node. However, lists must be identified by either all their keys and created
@@ -889,21 +901,21 @@ extern "C" {
  * ordered and all the keys must be specified. Every predicate includes a single key with its value. If an instance
  * with such particular set of keys or with such relative position does not exist or no predicate is specified, list
  * instance is created. Optionally, leaves and leaf-lists can have predicates specifying their value in the path itself.
- * All these paths are valid XPath expressions. Example:
+ * All these paths are valid XPath expressions. Example (ietf-yang-library:modules-state is the context node):
  *
- *     /ietf-yang-library:modules-state/module[name='ietf-yang-library'][revision='']/conformance[.='implement']
- *     /ietf-yang-library:modules-state/module[1]/conformance[.='implement']
+ *     /modules-state/module[name='ietf-yang-library'][revision='']/conformance[.='implement']
+ *     /modules-state/module[1]/conformance[.='implement']
  *
  * Almost the same XPath is accepted by ly_ctx_get_node(). The difference is that it is not used on data, but schema,
  * which means there are no key values and only one node matches one path. In effect, lists do not have to have any
  * predicates. If they do, they do not need to have all the keys specified and if values are included, they are ignored.
  * Nevertheless, any such expression is still a valid XPath, but can return more nodes if executed on a data tree.
- * Examples (all returning the same node):
+ * Examples (all returning the same node, ietf-yang-library:modules-state is the context node):
  *
- *     /ietf-yang-library:modules-state/module/submodules
- *     /ietf-yang-library:modules-state/module[name]/submodules
- *     /ietf-yang-library:modules-state/module[name][revision]/submodules
- *     /ietf-yang-library:modules-state/module[name='ietf-yang-library'][revision]/submodules
+ *     /modules-state/module/submodules
+ *     /modules-state/module[name]/submodules
+ *     /modules-state/module[name][revision]/submodules
+ *     /modules-state/module[name='ietf-yang-library'][revision]/submodules
  *
  * Also, `choice`, `case`, `input`, and `output` nodes need to be specified and cannot be skipped in schema XPaths. Use
  * lys_find_xpath() if you want to search based on a data XPath.
