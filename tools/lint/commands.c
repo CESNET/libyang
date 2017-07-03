@@ -531,13 +531,12 @@ parse_data(char *filepath, int options, struct lyd_node *val_tree, const char *r
 
         /* merge with ietf-yang-library */
         root = ly_ctx_info(ctx);
-        if (lyd_merge(root, data, LYD_OPT_DESTRUCT | LYD_OPT_EXPLICIT)) {
+        if (lyd_merge(data, root, LYD_OPT_DESTRUCT | LYD_OPT_EXPLICIT)) {
             fprintf(stderr, "Merging input data with ietf-yang-library failed.\n");
             lyd_free_withsiblings(root);
             lyd_free_withsiblings(data);
             return EXIT_FAILURE;
         }
-        data = root;
 
         /* invalidate all data - do not believe to the source */
         LY_TREE_FOR(data, root) {
