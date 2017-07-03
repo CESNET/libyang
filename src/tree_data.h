@@ -1005,16 +1005,15 @@ int lyd_schema_sort(struct lyd_node *sibling, int recursive);
  * The XPath expression is evaluated on data -> skip all non-data nodes (input, output, choice, case).
  *
  * Expr examples:
- *      "/ietf-yang-library:modules-state/module[name = 'ietf-yang-library']/namespace"
- *      "/ietf-netconf:get-config/source"
+ *      "/modules-state/module[name = 'ietf-yang-library']/namespace" with context node "ietf-yang-library:modules-state"
+ *      "/ietf-netconf:get-config/ietf-netconf:source" with an arbitrary context node (all node names are prefixed)
  *
- * @param[in] data Node in the data tree considered the context node if \p expr is relative,
- * otherwise any node.
+ * @param[in] ctx_node Context node.
  * @param[in] expr XPath expression filtering the matching nodes.
  * @return Set of found data nodes. If no nodes are matching \p expr or the result
  * would be a number, a string, or a boolean, the returned set is empty. In case of an error, NULL is returned.
  */
-struct ly_set *lyd_find_xpath(const struct lyd_node *data, const char *expr);
+struct ly_set *lyd_find_xpath(const struct lyd_node *ctx_node, const char *expr);
 
 /**
  * @brief Search in the given data for instances of the provided schema node.
