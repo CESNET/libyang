@@ -2941,6 +2941,8 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
             LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, value, "import");
             LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Importing multiple revisions of module \"%s\".", value);
             return -1;
+        } else {
+            LOGWRN("Module \"%s\" is imported by \"%s\" multiple times with different prefixes.", dup->name, module->name);
         }
     }
 
