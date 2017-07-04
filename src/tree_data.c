@@ -1025,17 +1025,19 @@ lyd_new_output_anydata(struct lyd_node *parent, const struct lys_module *module,
 }
 
 static int
-lyd_new_path_list_predicate(struct lyd_node *list, const char *list_name, const char *predicate, int *parsed)
+lyd_new_path_list_predicate(struct lyd_node *list, const char *list_name, const char *predicate,
+                            const struct lys_module *cur_module, int *parsed)
 {
-    const char *name, *value;
+    const char *mod_name, *name, *value;
     char *key_val;
-    int r, i, nam_len, val_len, has_predicate;
+    int r, i, mod_name_len, nam_len, val_len, has_predicate;
     struct lys_node_list *slist;
+    struct lys_node *key;
 
     slist = (struct lys_node_list *)list->schema;
 
     /* is the predicate a number? */
-    if (((r = parse_schema_json_predicate(predicate, &name, &nam_len, &value, &val_len, &has_predicate)) < 1)
+    if (((r = parse_schema_json_predicate(predicate, &mod_name, &mod_name_len, &name, &nam_len, &value, &val_len, &has_predicate)) < 1)
             || !strncmp(name, ".", nam_len)) {
         LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, predicate[-r], &predicate[-r]);
         return -1;
@@ -1063,17 +1065,20 @@ lyd_new_path_list_predicate(struct lyd_node *list, const char *list_name, const 
             return -1;
         }
 
-        if (((r = parse_schema_json_predicate(predicate, &name, &nam_len, &value, &val_len, &has_predicate)) < 1)
+        if (((r = parse_schema_json_predicate(predicate, &mod_name, &mod_name_len, &name, &nam_len, &value, &val_len, &has_predicate)) < 1)
                 || !strncmp(name, ".", nam_len)) {
             LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, predicate[-r], &predicate[-r]);
             return -1;
         }
 
 check_parsed_values:
+        key = (struct lys_node *)slist->keys[i];
         *parsed += r;
         predicate += r;
 
-        if (!value || strncmp(slist->keys[i]->name, name, nam_len) || slist->keys[i]->name[nam_len]) {
+        if (!value || (!mod_name && strcmp(lys_node_module(key)->name, cur_module->name))
+                || (mod_name && (strncmp(lys_node_module(key)->name, mod_name, mod_name_len) || lys_node_module(key)->name[mod_name_len]))
+                || strncmp(key->name, name, nam_len) || key->name[nam_len]) {
             LOGVAL(LYE_PATH_INKEY, LY_VLOG_NONE, NULL, name);
             return -1;
         }
@@ -1083,7 +1088,7 @@ check_parsed_values:
         strncpy(key_val, value, val_len);
         key_val[val_len] = '\0';
 
-        if (!_lyd_new_leaf(list, (const struct lys_node *)slist->keys[i], key_val, 0)) {
+        if (!_lyd_new_leaf(list, key, key_val, 0)) {
             free(key_val);
             return -1;
         }
@@ -1103,7 +1108,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
     struct lyd_node_anydata *any;
     const struct lys_node *schild, *sparent, *tmp;
     const struct lys_node_list *slist;
-    const struct lys_module *module, *prev_mod;
+    const struct lys_module *cur_module;
     int r, i, parsed = 0, mod_name_len, nam_len, val_name_len, val_len;
     int is_relative = -1, has_predicate, first_iter = 1;
 
@@ -1245,8 +1250,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
             parent = data_tree;
         }
         sparent = parent->schema;
-        module = lys_node_module(sparent);
-        prev_mod = module;
+        cur_module = lys_node_module(sparent);
     } else {
         /* we are starting from scratch, absolute path */
         assert(!parent);
@@ -1267,7 +1271,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
 
         memmove(module_name, mod_name, mod_name_len);
         module_name[mod_name_len] = '\0';
-        module = ly_ctx_get_module(ctx, module_name, NULL);
+        cur_module = ly_ctx_get_module(ctx, module_name, NULL);
 
         if (buf_backup) {
             /* return previous internal buffer content */
@@ -1276,7 +1280,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
         }
         ly_buf_used--;
 
-        if (!module) {
+        if (!cur_module) {
             str = strndup(path, (mod_name + mod_name_len) - path);
             LOGVAL(LYE_PATH_INMOD, LY_VLOG_STR, str);
             free(str);
@@ -1284,7 +1288,6 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
         }
         mod_name = NULL;
         mod_name_len = 0;
-        prev_mod = module;
 
         sparent = NULL;
     }
@@ -1293,7 +1296,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
     while (1) {
         /* find the schema node */
         schild = NULL;
-        while ((schild = lys_getnext(schild, sparent, module, 0))) {
+        while ((schild = lys_getnext(schild, sparent, cur_module, 0))) {
             if (schild->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST
                                     | LYS_ANYDATA | LYS_NOTIF | LYS_RPC | LYS_ACTION)) {
                 /* module comparison */
@@ -1302,7 +1305,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
                     if (strncmp(node_mod_name, mod_name, mod_name_len) || node_mod_name[mod_name_len]) {
                         continue;
                     }
-                } else if (lys_node_module(schild) != prev_mod) {
+                } else if (lys_node_module(schild) != cur_module) {
                     continue;
                 }
 
@@ -1350,7 +1353,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
         case LYS_LEAFLIST:
             str = NULL;
             if (has_predicate) {
-                if ((r = parse_schema_json_predicate(id, &val_name, &val_name_len, &val, &val_len, &has_predicate)) < 1) {
+                if ((r = parse_schema_json_predicate(id, NULL, NULL, &val_name, &val_name_len, &val, &val_len, &has_predicate)) < 1) {
                     LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
                     lyd_free(ret);
                     return NULL;
@@ -1437,7 +1440,8 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
         }
 
         parsed = 0;
-        if ((schild->nodetype == LYS_LIST) && has_predicate && lyd_new_path_list_predicate(node, name, id, &parsed)) {
+        if ((schild->nodetype == LYS_LIST) && has_predicate
+                && lyd_new_path_list_predicate(node, name, id, cur_module, &parsed)) {
             lyd_free(ret);
             return NULL;
         }
@@ -1457,7 +1461,6 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
         /* prepare for another iteration */
         parent = node;
         sparent = schild;
-        prev_mod = lys_node_module(schild);
 
         /* parse another node */
         if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, &has_predicate)) < 1) {
