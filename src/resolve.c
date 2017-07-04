@@ -911,12 +911,14 @@ parse_schema_nodeid(const char *id, const char **mod_name, int *mod_name_len, co
  * @brief Parse schema predicate (special format internally used).
  *
  * predicate           = "[" *WSP predicate-expr *WSP "]"
- * predicate-expr      = "." / identifier / positive-integer / key-with-value
+ * predicate-expr      = "." / [prefix:]identifier / positive-integer / key-with-value
  * key-with-value      = identifier *WSP "=" *WSP
  *                       ((DQUOTE string DQUOTE) /
  *                        (SQUOTE string SQUOTE))
  *
  * @param[in] id Identifier to use.
+ * @param[out] mod_name Points to the list key module name.
+ * @param[out] mod_name_len Length of \p mod_name.
  * @param[out] name Points to the list key name.
  * @param[out] nam_len Length of \p name.
  * @param[out] value Points to the key value. If specified, key-with-value is expected.
@@ -924,14 +926,20 @@ parse_schema_nodeid(const char *id, const char **mod_name, int *mod_name_len, co
  * @param[out] has_predicate Flag to mark whether there is another predicate specified.
  */
 int
-parse_schema_json_predicate(const char *id, const char **name, int *nam_len, const char **value, int *val_len,
-                            int *has_predicate)
+parse_schema_json_predicate(const char *id, const char **mod_name, int *mod_name_len, const char **name, int *nam_len,
+                            const char **value, int *val_len, int *has_predicate)
 {
     const char *ptr;
     int parsed = 0, ret;
     char quote;
 
     assert(id);
+    if (mod_name) {
+        *mod_name = NULL;
+    }
+    if (mod_name_len) {
+        *mod_name_len = 0;
+    }
     if (name) {
         *name = NULL;
     }
@@ -963,6 +971,13 @@ parse_schema_json_predicate(const char *id, const char **name, int *nam_len, con
     /* identifier */
     if (id[0] == '.') {
         ret = 1;
+
+        if (name) {
+            *name = id;
+        }
+        if (nam_len) {
+            *nam_len = ret;
+        }
     } else if (isdigit(id[0])) {
         if (id[0] == '0') {
             return -parsed;
@@ -971,14 +986,15 @@ parse_schema_json_predicate(const char *id, const char **name, int *nam_len, con
         while (isdigit(id[ret])) {
             ++ret;
         }
-    } else if ((ret = parse_identifier(id)) < 1) {
+
+        if (name) {
+            *name = id;
+        }
+        if (nam_len) {
+            *nam_len = ret;
+        }
+    } else if ((ret = parse_node_identifier(id, mod_name, mod_name_len, name, nam_len)) < 1) {
         return -parsed + ret;
-    }
-    if (name) {
-        *name = id;
-    }
-    if (nam_len) {
-        *nam_len = ret;
     }
 
     parsed += ret;
@@ -1893,12 +1909,14 @@ resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *modu
 }
 
 static int
-resolve_json_schema_list_predicate(const char *predicate, const struct lys_node_list *list, int *parsed)
+resolve_json_schema_list_predicate(const char *predicate, const struct lys_node_list *list,
+                                   const struct lys_module *cur_module, int *parsed)
 {
-    const char *name;
-    int nam_len, has_predicate, i;
+    const char *mod_name, *name;
+    int mod_name_len, nam_len, has_predicate, i;
+    struct lys_node *key;
 
-    if (((i = parse_schema_json_predicate(predicate, &name, &nam_len, NULL, NULL, &has_predicate)) < 1)
+    if (((i = parse_schema_json_predicate(predicate, &mod_name, &mod_name_len, &name, &nam_len, NULL, NULL, &has_predicate)) < 1)
             || !strncmp(name, ".", nam_len)) {
         LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, predicate[-i], &predicate[-i]);
         return -1;
@@ -1909,8 +1927,17 @@ resolve_json_schema_list_predicate(const char *predicate, const struct lys_node_
 
     if (!isdigit(name[0])) {
         for (i = 0; i < list->keys_size; ++i) {
-            if (!strncmp(list->keys[i]->name, name, nam_len) && !list->keys[i]->name[nam_len]) {
-                break;
+            key = (struct lys_node *)list->keys[i];
+            if (!strncmp(key->name, name, nam_len) && !key->name[nam_len]) {
+                if (mod_name) {
+                    if (!strncmp(lys_node_module(key)->name, mod_name, mod_name_len) && !lys_node_module(key)->name[mod_name_len]) {
+                        break;
+                    }
+                } else {
+                    if (!strcmp(lys_node_module(key)->name, cur_module->name)) {
+                        break;
+                    }
+                }
             }
         }
 
@@ -1922,7 +1949,7 @@ resolve_json_schema_list_predicate(const char *predicate, const struct lys_node_
 
     /* more predicates? */
     if (has_predicate) {
-        return resolve_json_schema_list_predicate(predicate, list, parsed);
+        return resolve_json_schema_list_predicate(predicate, list, cur_module, parsed);
     }
 
     return 0;
@@ -1937,7 +1964,7 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
     const struct lys_node *sibling, *start_parent;
     int r, nam_len, mod_name_len, is_relative = -1, has_predicate;
     /* resolved import module from the start module, it must match the next node-name-match sibling */
-    const struct lys_module *prefix_mod, *module, *prev_mod;
+    const struct lys_module *prefix_mod, *cur_module;
 
     assert(nodeid && (ctx || start));
     if (!ctx) {
@@ -1958,7 +1985,7 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
         while (start_parent && (start_parent->nodetype == LYS_USES)) {
             start_parent = lys_parent(start_parent);
         }
-        module = start->module;
+        cur_module = start->module;
     } else {
         if (!mod_name) {
             str = strndup(nodeid, (name + nam_len) - nodeid);
@@ -1977,7 +2004,7 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
 
         memmove(module_name, mod_name, mod_name_len);
         module_name[mod_name_len] = '\0';
-        module = ly_ctx_get_module(ctx, module_name, NULL);
+        cur_module = ly_ctx_get_module(ctx, module_name, NULL);
 
         if (buf_backup) {
             /* return previous internal buffer content */
@@ -1987,7 +2014,7 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
         }
         ly_buf_used--;
 
-        if (!module) {
+        if (!cur_module) {
             str = strndup(nodeid, (mod_name + mod_name_len) - nodeid);
             LOGVAL(LYE_PATH_INMOD, LY_VLOG_STR, str);
             free(str);
@@ -2000,11 +2027,9 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
         mod_name_len = 0;
     }
 
-    prev_mod = module;
-
     while (1) {
         sibling = NULL;
-        while ((sibling = lys_getnext(sibling, start_parent, module,
+        while ((sibling = lys_getnext(sibling, start_parent, cur_module,
                 LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT))) {
             /* name match */
             if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
@@ -2040,7 +2065,7 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
                         return NULL;
                     }
                 } else {
-                    prefix_mod = prev_mod;
+                    prefix_mod = cur_module;
                 }
                 if (prefix_mod != lys_node_module(sibling)) {
                     continue;
@@ -2050,12 +2075,12 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
                 if (has_predicate) {
                     r = 0;
                     if (sibling->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
-                        if ((r = parse_schema_json_predicate(id, NULL, NULL, NULL, NULL, &has_predicate)) < 1) {
+                        if ((r = parse_schema_json_predicate(id, NULL, NULL, NULL, NULL, NULL, NULL, &has_predicate)) < 1) {
                             LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
                             return NULL;
                         }
                     } else if (sibling->nodetype == LYS_LIST) {
-                        if (resolve_json_schema_list_predicate(id, (const struct lys_node_list *)sibling, &r)) {
+                        if (resolve_json_schema_list_predicate(id, (const struct lys_node_list *)sibling, cur_module, &r)) {
                             return NULL;
                         }
                     } else {
@@ -2076,9 +2101,6 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
                     return NULL;
                 }
                 start_parent = sibling;
-
-                /* update prev mod */
-                prev_mod = (start_parent->child ? lys_node_module(start_parent->child) : module);
                 break;
             }
         }
@@ -2105,10 +2127,10 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
 
 static int
 resolve_partial_json_data_list_predicate(const char *predicate, const char *node_name, struct lyd_node *node,
-                                         int position, int *parsed)
+                                         int position, const struct lys_module *cur_module, int *parsed)
 {
-    const char *name, *value, *key_val;
-    int nam_len, val_len, has_predicate = 1, r;
+    const char *mod_name, *name, *value, *key_val;
+    int mod_name_len, nam_len, val_len, has_predicate = 1, r;
     uint16_t i;
     struct lyd_node_leaf_list *key;
 
@@ -2116,7 +2138,7 @@ resolve_partial_json_data_list_predicate(const char *predicate, const char *node
     assert(node->schema->nodetype == LYS_LIST);
 
     /* is the predicate a number? */
-    if (((r = parse_schema_json_predicate(predicate, &name, &nam_len, &value, &val_len, &has_predicate)) < 1)
+    if (((r = parse_schema_json_predicate(predicate, &mod_name, &mod_name_len, &name, &nam_len, &value, &val_len, &has_predicate)) < 1)
             || !strncmp(name, ".", nam_len)) {
         LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, predicate[-r], &predicate[-r]);
         return -1;
@@ -2154,7 +2176,7 @@ resolve_partial_json_data_list_predicate(const char *predicate, const char *node
             return -1;
         }
 
-        if (((r = parse_schema_json_predicate(predicate, &name, &nam_len, &value, &val_len, &has_predicate)) < 1)
+        if (((r = parse_schema_json_predicate(predicate, &mod_name, &mod_name_len, &name, &nam_len, &value, &val_len, &has_predicate)) < 1)
                 || !strncmp(name, ".", nam_len)) {
             LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, predicate[-r], &predicate[-r]);
             return -1;
@@ -2167,6 +2189,19 @@ check_parsed_values:
         if (strncmp(key->schema->name, name, nam_len) || key->schema->name[nam_len]) {
             LOGVAL(LYE_PATH_INKEY, LY_VLOG_NONE, NULL, name);
             return -1;
+        }
+
+        if (mod_name) {
+            if (strncmp(lyd_node_module((struct lyd_node *)key)->name, mod_name, mod_name_len)
+                    || lyd_node_module((struct lyd_node *)key)->name[mod_name_len]) {
+                LOGVAL(LYE_PATH_INKEY, LY_VLOG_NONE, NULL, name);
+                return -1;
+            }
+        } else {
+            if (strcmp(lyd_node_module((struct lyd_node *)key)->name, cur_module->name)) {
+                LOGVAL(LYE_PATH_INKEY, LY_VLOG_NONE, NULL, name);
+                return -1;
+            }
         }
 
         /* make value canonical */
@@ -2213,7 +2248,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
     int has_predicate, last_parsed, llval_len, pred_name_len, last_has_pred;
     struct lyd_node *sibling, *last_match = NULL;
     struct lyd_node_leaf_list *llist;
-    const struct lys_module *prefix_mod, *prev_mod;
+    const struct lys_module *prefix_mod, *cur_module;
     struct ly_ctx *ctx;
 
     assert(nodeid && start && parsed);
@@ -2231,11 +2266,11 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
     last_parsed = r;
 
     if (is_relative) {
-        prev_mod = lyd_node_module(start);
+        cur_module = lyd_node_module(start);
         start = start->child;
     } else {
         for (; start->parent; start = start->parent);
-        prev_mod = lyd_node_module(start);
+        cur_module = lyd_node_module(start);
     }
 
     while (1) {
@@ -2296,7 +2331,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
                         return NULL;
                     }
                 } else {
-                    prefix_mod = prev_mod;
+                    prefix_mod = cur_module;
                 }
                 if (prefix_mod != lyd_node_module(sibling)) {
                     continue;
@@ -2308,7 +2343,8 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
 
                     last_has_pred = 0;
                     if (has_predicate) {
-                        if ((r = parse_schema_json_predicate(id, &pred_name, &pred_name_len, &llist_value, &llval_len, &last_has_pred)) < 1) {
+                        if ((r = parse_schema_json_predicate(id, NULL, NULL, &pred_name, &pred_name_len, &llist_value,
+                                                             &llval_len, &last_has_pred)) < 1) {
                             LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[0], id);
                             *parsed = -1;
                             return NULL;
@@ -2352,7 +2388,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
 
                     ++list_instance_position;
                     r = 0;
-                    ret = resolve_partial_json_data_list_predicate(id, name, sibling, list_instance_position, &r);
+                    ret = resolve_partial_json_data_list_predicate(id, name, sibling, list_instance_position, cur_module, &r);
                     if (ret == -1) {
                         *parsed = -1;
                         return NULL;
@@ -2378,7 +2414,6 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
                     return NULL;
                 }
                 last_match = sibling;
-                prev_mod = lyd_node_module(sibling);
                 start = sibling->child;
                 break;
             }

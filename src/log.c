@@ -429,8 +429,9 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
 {
     int i, j;
     struct lys_node_list *slist;
-    struct lys_node *sparent = NULL;
+    struct lys_node *sparent;
     struct lyd_node *dlist, *diter;
+    struct lys_module *top_module = NULL;
     const char *name, *prefix = NULL, *val_end, *val_start;
     char *str;
     size_t len;
@@ -443,6 +444,16 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
             elem = ((struct lyxml_elem *)elem)->parent;
             break;
         case LY_VLOG_LYS:
+            if (!top_module) {
+                /* find and store the top-level node module */
+                if (((struct lys_node *)elem)->nodetype == LYS_EXT) {
+                    top_module = ((struct lys_ext_instance *)elem)->module;
+                } else {
+                    for (sparent = (struct lys_node *)elem; lys_parent(sparent); sparent = lys_parent(sparent));
+                    top_module = lys_node_module(sparent);
+                }
+            }
+
             if (((struct lys_node *)elem)->nodetype & (LYS_AUGMENT | LYS_GROUPING)) {
                 --(*index);
                 path[*index] = ']';
@@ -463,12 +474,7 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
                 name = ((struct lys_node *)elem)->name;
             }
 
-            /* find schema printed parent */
-            for (sparent = lys_parent((struct lys_node *)elem);
-                 sparent && (sparent->nodetype == LYS_USES);
-                 sparent = lys_parent(sparent));
-
-            if (prefix_all || !sparent || (lys_node_module((struct lys_node *)elem) != lys_node_module(sparent))) {
+            if (prefix_all || !lys_parent((struct lys_node *)elem) || (lys_node_module((struct lys_node *)elem) != top_module)) {
                 prefix = lys_node_module((struct lys_node *)elem)->name;
             } else {
                 prefix = NULL;
@@ -490,9 +496,14 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
             } while (elem && (((struct lys_node *)elem)->nodetype == LYS_USES));
             break;
         case LY_VLOG_LYD:
+            if (!top_module) {
+                /* find and store the top-level node module */
+                for (diter = (struct lyd_node *)elem; diter->parent; diter = diter->parent);
+                top_module = lyd_node_module(diter);
+            }
+
             name = ((struct lyd_node *)elem)->schema->name;
-            if (prefix_all || !((struct lyd_node *)elem)->parent ||
-                    lyd_node_module((struct lyd_node *)elem) != lyd_node_module(((struct lyd_node *)elem)->parent)) {
+            if (prefix_all || !((struct lyd_node *)elem)->parent || (lyd_node_module((struct lyd_node *)elem) != top_module)) {
                 prefix = lyd_node_module((struct lyd_node *)elem)->name;
             } else {
                 prefix = NULL;
@@ -529,7 +540,7 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
                             len = strlen(diter->schema->name);
                             (*index) -= len;
                             memcpy(&path[(*index)], diter->schema->name, len);
-                            if (prefix_all || (lyd_node_module(dlist) != lyd_node_module(diter))) {
+                            if (prefix_all || (lyd_node_module(diter) != top_module)) {
                                 path[--(*index)] = ':';
                                 len = strlen(lyd_node_module(diter)->name);
                                 (*index) -= len;
