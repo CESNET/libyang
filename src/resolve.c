@@ -1584,7 +1584,7 @@ resolve_data_descendant_schema_nodeid(const char *nodeid, struct lyd_node *start
  */
 int
 schema_nodeid_siblingcheck(const struct lys_node *sibling, const char *id, const struct lys_module *module,
-                           const char *mod_name, int mod_name_len, const struct lys_node **start_parent)
+                           const char *mod_name, int mod_name_len)
 {
     const struct lys_module *prefix_mod;
 
@@ -1606,7 +1606,6 @@ schema_nodeid_siblingcheck(const struct lys_node *sibling, const char *id, const
     if (sibling->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
         return -1;
     }
-    *start_parent = sibling;
 
     return 2;
 }
@@ -1656,18 +1655,18 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
         last_aug = NULL;
 
         if (start_parent) {
-            if (mod_name && (strncmp(mod_name, lys_node_module(start_parent)->name, mod_name_len)
-                    || (mod_name_len != (signed) strlen(lys_node_module(start_parent)->name)))) {
+            if (mod_name && (strncmp(mod_name, cur_module->name, mod_name_len)
+                    || (mod_name_len != (signed)strlen(cur_module->name)))) {
                 /* we are getting into another module (augment) */
                 aux_mod = lys_get_import_module(cur_module, NULL, 0, mod_name, mod_name_len);
                 if (!aux_mod) {
                     return -1;
                 }
             } else {
-                /* there is no mod_name or it matches the previous one, so why are we checking augments again?
+                /* there is no mod_name, so why are we checking augments again?
                  * because this module may be not implemented and it augments something in another module and
                  * there is another augment augmenting that previous one */
-                aux_mod = lys_node_module(start_parent);
+                aux_mod = cur_module;
             }
 
             /* if the module is implemented, all the augments will be connected */
@@ -1681,13 +1680,14 @@ get_next_augment:
                 LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT | LYS_GETNEXT_PARENTUSES))) {
             /* name match */
             if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
-                r = schema_nodeid_siblingcheck(sibling, id, cur_module, mod_name, mod_name_len, &start_parent);
+                r = schema_nodeid_siblingcheck(sibling, id, cur_module, mod_name, mod_name_len);
                 if (r == 0) {
                     *ret = sibling;
                     return EXIT_SUCCESS;
                 } else if (r == 1) {
                     continue;
                 } else if (r == 2) {
+                    start_parent = sibling;
                     break;
                 } else {
                     return -1;
@@ -1762,7 +1762,7 @@ resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *star
                                       LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_PARENTUSES))) {
             /* name match */
             if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
-                r = schema_nodeid_siblingcheck(sibling, id, module, mod_name, mod_name_len, &start_parent);
+                r = schema_nodeid_siblingcheck(sibling, id, module, mod_name, mod_name_len);
                 if (r == 0) {
                     if (!(sibling->nodetype & ret_nodetype)) {
                         /* wrong node type, too bad */
@@ -1773,6 +1773,7 @@ resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *star
                 } else if (r == 1) {
                     continue;
                 } else if (r == 2) {
+                    start_parent = sibling;
                     break;
                 } else {
                     return -1;
@@ -1873,7 +1874,7 @@ resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *modu
                                       | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT | LYS_GETNEXT_WITHGROUPING))) {
             /* name match */
             if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
-                r = schema_nodeid_siblingcheck(sibling, id, module, mod_name, mod_name_len, &start_parent);
+                r = schema_nodeid_siblingcheck(sibling, id, module, mod_name, mod_name_len);
                 if (r == 0) {
                     if (!(sibling->nodetype & ret_nodetype)) {
                         /* wrong node type, too bad */
@@ -1884,6 +1885,7 @@ resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *modu
                 } else if (r == 1) {
                     continue;
                 } else if (r == 2) {
+                    start_parent = sibling;
                     break;
                 } else {
                     return -1;
@@ -3473,6 +3475,14 @@ resolve_schema_leafref_predicate(const char *path, const struct lys_node *contex
         pke_parsed += i;
 
         for (i = 0, dst_node = parent; i < dest_parent_times; ++i) {
+            if (dst_node->parent && (dst_node->parent->nodetype == LYS_AUGMENT)
+                    && !((struct lys_node_augment *)dst_node->parent)->target) {
+                /* we are in an unresolved augment, cannot evaluate */
+                LOGVAL(LYE_SPEC, LY_VLOG_LYS, dst_node->parent,
+                       "Cannot resolve leafref predicate \"%s\" because it is in an unresolved augment.", path_key_expr);
+                return 0;
+            }
+
             /* path is supposed to be evaluated in data tree, so we have to skip
              * all schema nodes that cannot be instantiated in data tree */
             for (dst_node = lys_parent(dst_node);
@@ -3581,6 +3591,14 @@ resolve_schema_leafref(const char *path, struct lys_node *parent, const struct l
             } else if (parent_times > 0) {
                 /* we are looking for the right parent */
                 for (i = 0, node = parent; i < parent_times; i++) {
+                    if (node->parent && (node->parent->nodetype == LYS_AUGMENT)
+                            && !((struct lys_node_augment *)node->parent)->target) {
+                        /* we are in an unresolved augment, cannot evaluate */
+                        LOGVAL(LYE_SPEC, LY_VLOG_LYS, node->parent,
+                               "Cannot resolve leafref \"%s\" because it is in an unresolved augment.", path);
+                        return EXIT_FAILURE;
+                    }
+
                     /* path is supposed to be evaluated in data tree, so we have to skip
                      * all schema nodes that cannot be instantiated in data tree */
                     for (node = lys_parent(node);

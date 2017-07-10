@@ -5164,8 +5164,9 @@ lyd_build_relative_data_path(const struct lys_module *module, const struct lyd_n
         while ((snode = lys_getnext(snode, schema, NULL, LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE))) {
             /* name match */
             if (!strncmp(name, snode->name, name_len) && !snode->name[name_len]) {
-                r = schema_nodeid_siblingcheck(snode, schema_id, module, mod_name, mod_name_len, &schema);
+                r = schema_nodeid_siblingcheck(snode, schema_id, module, mod_name, mod_name_len);
                 if (r == 0 || r == 2) {
+                    schema = snode;
                     break;
                 } else if (r == 1) {
                     continue;

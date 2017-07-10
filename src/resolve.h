@@ -238,6 +238,6 @@ void unres_data_del(struct unres_data *unres, uint32_t i);
 
 int resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options);
 int schema_nodeid_siblingcheck(const struct lys_node *sibling, const char *id, const struct lys_module *module,
-                               const char *mod_name, int mod_name_len, const struct lys_node **start_parent);
+                               const char *mod_name, int mod_name_len);
 
 #endif /* _RESOLVE_H */
