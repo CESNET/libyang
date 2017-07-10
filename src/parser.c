@@ -2749,9 +2749,6 @@ lyp_check_includedup(struct lys_module *mod, const char *name, struct lys_includ
                 return 1;
             }
         }
-
-        /* if we are submodule, the last module must be our main */
-        assert(!mod->type || (parsed_sub[i] == ((struct lys_submodule *)mod)->belongsto));
     }
 
     /* no duplicity found */
