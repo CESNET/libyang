@@ -3391,293 +3391,6 @@ resolve_data(const struct lys_module *mod, const char *name, int nam_len, struct
     return parents->count ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
-/**
- * @brief Resolve (find) a data node. Does not log.
- *
- * @param[in] mod_name Module name of the data node.
- * @param[in] mod_name_len Length of the module name.
- * @param[in] name Name of the data node.
- * @param[in] nam_len Length of the name.
- * @param[in] start Data node to start the search from.
- * @param[in,out] parents Resolved nodes. If there are some parents,
- *                        they are replaced (!!) with the resolvents.
- *
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 otherwise.
- */
-static int
-resolve_data_node(const char *mod_name, int mod_name_len, const char *name, int name_len, struct lyd_node *start,
-                    struct unres_data *parents)
-{
-    const struct lys_module *mod;
-    char *str;
-
-    assert(start);
-
-    if (mod_name) {
-        /* we have mod_name, find appropriate module */
-        str = strndup(mod_name, mod_name_len);
-        if (!str) {
-            LOGMEM;
-            return -1;
-        }
-        mod = ly_ctx_get_module(start->schema->module->ctx, str, NULL);
-        free(str);
-        if (!mod) {
-            /* invalid prefix */
-            return -1;
-        }
-    } else {
-        /* no prefix, module is the same as of current node */
-        mod = lyd_node_module(start);
-    }
-
-    return resolve_data(mod, name, name_len, start, parents);
-}
-
-/**
- * @brief Resolve a path predicate (leafref) in JSON data context. Logs directly
- *        only specific errors, general no-resolvent error is left to the caller.
- *
- * @param[in] pred Predicate to use.
- * @param[in] node Node from which the predicate is being resolved
- * @param[in,out] node_match Nodes satisfying the restriction
- *                           without the predicate. Nodes not
- *                           satisfying the predicate are removed.
- * @param[out] parsed Number of characters parsed, negative on error.
- *
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
- */
-static int
-resolve_path_predicate_data(const char *pred, struct lyd_node *node, struct unres_data *node_match,
-                            int *parsed)
-{
-    /* ... /node[source = destination] ... */
-    struct unres_data source_match, dest_match;
-    const char *path_key_expr, *source, *sour_pref, *dest, *dest_pref;
-    int pke_len, sour_len, sour_pref_len, dest_len, dest_pref_len, parsed_loc = 0, pke_parsed = 0;
-    int has_predicate, dest_parent_times, i, rc;
-    uint32_t j;
-    struct lyd_node_leaf_list *leaf_dst, *leaf_src;
-
-    source_match.count = 1;
-    source_match.node = malloc(sizeof *source_match.node);
-    LY_CHECK_ERR_RETURN(!source_match.node, LOGMEM, -1);
-
-    dest_match.count = 1;
-    dest_match.node = malloc(sizeof *dest_match.node);
-    LY_CHECK_ERR_RETURN(!dest_match.node, LOGMEM, -1);
-
-    do {
-        if ((i = parse_path_predicate(pred, &sour_pref, &sour_pref_len, &source, &sour_len, &path_key_expr,
-                                      &pke_len, &has_predicate)) < 1) {
-            LOGVAL(LYE_INCHAR, LY_VLOG_LYD, node, pred[-i], &pred[-i]);
-            rc = -1;
-            goto error;
-        }
-        parsed_loc += i;
-        pred += i;
-
-        for (j = 0; j < node_match->count;) {
-            /* source */
-            source_match.node[0] = node_match->node[j];
-
-            /* must be leaf (key of a list) */
-            if ((rc = resolve_data_node(sour_pref, sour_pref_len, source, sour_len, node_match->node[j],
-                    &source_match)) || (source_match.count != 1) || (source_match.node[0]->schema->nodetype != LYS_LEAF)) {
-                i = 0;
-                goto error;
-            }
-
-            /* destination */
-            dest_match.node[0] = node;
-            dest_parent_times = 0;
-            if ((i = parse_path_key_expr(path_key_expr, &dest_pref, &dest_pref_len, &dest, &dest_len,
-                                            &dest_parent_times)) < 1) {
-                LOGVAL(LYE_INCHAR, LY_VLOG_LYD, node, path_key_expr[-i], &path_key_expr[-i]);
-                rc = -1;
-                goto error;
-            }
-            pke_parsed = i;
-            for (i = 0; i < dest_parent_times; ++i) {
-                dest_match.node[0] = dest_match.node[0]->parent;
-                if (!dest_match.node[0]) {
-                    i = 0;
-                    rc = EXIT_FAILURE;
-                    goto error;
-                }
-            }
-            while (1) {
-                if ((rc = resolve_data_node(dest_pref, dest_pref_len, dest, dest_len, dest_match.node[0],
-                        &dest_match)) || (dest_match.count != 1)) {
-                    i = 0;
-                    goto error;
-                }
-
-                if (pke_len == pke_parsed) {
-                    break;
-                }
-                if ((i = parse_path_key_expr(path_key_expr+pke_parsed, &dest_pref, &dest_pref_len, &dest, &dest_len,
-                                             &dest_parent_times)) < 1) {
-                    LOGVAL(LYE_INCHAR, LY_VLOG_LYD, node, path_key_expr[-i], &path_key_expr[-i]);
-                    rc = -1;
-                    goto error;
-                }
-                pke_parsed += i;
-            }
-
-            /* check match between source and destination nodes */
-            leaf_dst = (struct lyd_node_leaf_list *)dest_match.node[0];
-            while (leaf_dst && leaf_dst->value_type == LY_TYPE_LEAFREF) {
-                leaf_dst = (struct lyd_node_leaf_list *)leaf_dst->value.leafref;
-            }
-            leaf_src = (struct lyd_node_leaf_list *)source_match.node[0];
-            while (leaf_src && leaf_src->value_type == LY_TYPE_LEAFREF) {
-                leaf_src = (struct lyd_node_leaf_list *)leaf_src->value.leafref;
-            }
-            if (!leaf_src || !leaf_dst) {
-                /* not yet resolved leafrefs */
-                return EXIT_FAILURE;
-            }
-            if ((leaf_src->value_type & LY_DATA_TYPE_MASK) != (leaf_dst->value_type & LY_DATA_TYPE_MASK)) {
-                goto remove_leafref;
-            }
-
-            if (!ly_strequal(leaf_src->value_str, leaf_dst->value_str, 1)) {
-                goto remove_leafref;
-            }
-
-            /* leafref is ok, continue check with next leafref */
-            ++j;
-            continue;
-
-remove_leafref:
-            /* does not fulfill conditions, remove leafref record */
-            unres_data_del(node_match, j);
-        }
-    } while (has_predicate);
-
-    free(source_match.node);
-    free(dest_match.node);
-    if (parsed) {
-        *parsed = parsed_loc;
-    }
-    return EXIT_SUCCESS;
-
-error:
-
-    if (source_match.count) {
-        free(source_match.node);
-    }
-    if (dest_match.count) {
-        free(dest_match.node);
-    }
-    if (parsed) {
-        *parsed = -parsed_loc+i;
-    }
-    return rc;
-}
-
-/**
- * @brief Resolve a path (leafref) in JSON data context. Logs directly.
- *
- * @param[in] node Leafref data node.
- * @param[in] path Path of the leafref.
- * @param[out] ret Matching nodes. Expects an empty, but allocated structure.
- *
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 otherwise.
- */
-static int
-resolve_path_arg_data(struct lyd_node *node, const char *path, struct unres_data *ret)
-{
-    struct lyd_node *data = NULL;
-    const char *prefix, *name;
-    int pref_len, nam_len, has_predicate, parent_times, i, parsed, rc;
-    uint32_t j;
-
-    assert(node && path && ret && !ret->count);
-
-    parent_times = 0;
-    parsed = 0;
-
-    /* searching for nodeset */
-    do {
-        if ((i = parse_path_arg(node->schema->module, path, &prefix, &pref_len, &name, &nam_len, &parent_times, &has_predicate)) < 1) {
-            LOGVAL(LYE_INCHAR, LY_VLOG_LYD, node, path[-i], &path[-i]);
-            rc = -1;
-            goto error;
-        }
-        path += i;
-        parsed += i;
-
-        if (!ret->count) {
-            if (parent_times > 0) {
-                data = node;
-                for (i = 1; i < parent_times; ++i) {
-                    data = data->parent;
-                }
-            } else if (!parent_times) {
-                data = node->child;
-            } else {
-                /* absolute path */
-                for (data = node; data->parent; data = data->parent);
-            }
-
-            /* we may still be parsing it and the pointer is not correct yet */
-            if (data->prev) {
-                while (data->prev->next) {
-                    data = data->prev;
-                }
-            }
-        }
-
-        /* node identifier */
-        if ((rc = resolve_data_node(prefix, pref_len, name, nam_len, data, ret))) {
-            if (rc == -1) {
-                LOGVAL(LYE_INELEM_LEN, LY_VLOG_LYD, node, nam_len, name);
-            }
-            goto error;
-        }
-
-        if (has_predicate) {
-            /* we have predicate, so the current results must be lists */
-            for (j = 0; j < ret->count;) {
-                if (ret->node[j]->schema->nodetype == LYS_LIST &&
-                        ((struct lys_node_list *)ret->node[0]->schema)->keys) {
-                    /* leafref is ok, continue check with next leafref */
-                    ++j;
-                    continue;
-                }
-
-                /* does not fulfill conditions, remove leafref record */
-                unres_data_del(ret, j);
-            }
-            if ((rc = resolve_path_predicate_data(path, node, ret, &i))) {
-                if (rc == -1) {
-                    LOGVAL(LYE_NORESOLV, LY_VLOG_LYD, node, "leafref", path);
-                }
-                goto error;
-            }
-            path += i;
-            parsed += i;
-
-            if (!ret->count) {
-                rc = EXIT_FAILURE;
-                goto error;
-            }
-        }
-    } while (path[0] != '\0');
-
-    return EXIT_SUCCESS;
-
-error:
-
-    free(ret->node);
-    ret->node = NULL;
-    ret->count = 0;
-
-    return rc;
-}
-
 static int
 resolve_schema_leafref_valid_dep_flag(const struct lys_node *op_node, const struct lys_node *first_node, int abs_path)
 {
@@ -7418,30 +7131,32 @@ error:
 static int
 resolve_leafref(struct lyd_node_leaf_list *leaf, const char *path, int req_inst, struct lyd_node **ret)
 {
-    struct unres_data matches;
+    struct ly_set *set;
     uint32_t i;
 
-    /* init */
-    memset(&matches, 0, sizeof matches);
     *ret = NULL;
 
-    /* EXIT_FAILURE return keeps leaf->value.lefref NULL, handled later */
-    if (resolve_path_arg_data((struct lyd_node *)leaf, path, &matches) == -1) {
+    /* syntax was already checked, so just evaluate the path using standard XPath */
+    set = lyd_find_xpath((struct lyd_node *)leaf, path);
+    if (!set) {
         return -1;
     }
 
-    /* check that value matches */
-    for (i = 0; i < matches.count; ++i) {
+    for (i = 0; i < set->number; ++i) {
+        if (!(set->set.d[i]->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+            continue;
+        }
+
         /* not that the value is already in canonical form since the parsers does the conversion,
          * so we can simply compare just the values */
-        if (ly_strequal(leaf->value_str, ((struct lyd_node_leaf_list *)matches.node[i])->value_str, 1)) {
+        if (ly_strequal(leaf->value_str, ((struct lyd_node_leaf_list *)set->set.d[i])->value_str, 1)) {
             /* we have the match */
-            *ret = matches.node[i];
+            *ret = set->set.d[i];
             break;
         }
     }
 
-    free(matches.node);
+    ly_set_free(set);
 
     if (!*ret) {
         /* reference not found */
