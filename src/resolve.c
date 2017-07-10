@@ -3475,6 +3475,14 @@ resolve_schema_leafref_predicate(const char *path, const struct lys_node *contex
         pke_parsed += i;
 
         for (i = 0, dst_node = parent; i < dest_parent_times; ++i) {
+            if (dst_node->parent && (dst_node->parent->nodetype == LYS_AUGMENT)
+                    && !((struct lys_node_augment *)dst_node->parent)->target) {
+                /* we are in an unresolved augment, cannot evaluate */
+                LOGVAL(LYE_SPEC, LY_VLOG_LYS, dst_node->parent,
+                       "Cannot resolve leafref predicate \"%s\" because it is in an unresolved augment.", path_key_expr);
+                return 0;
+            }
+
             /* path is supposed to be evaluated in data tree, so we have to skip
              * all schema nodes that cannot be instantiated in data tree */
             for (dst_node = lys_parent(dst_node);
@@ -3583,6 +3591,14 @@ resolve_schema_leafref(const char *path, struct lys_node *parent, const struct l
             } else if (parent_times > 0) {
                 /* we are looking for the right parent */
                 for (i = 0, node = parent; i < parent_times; i++) {
+                    if (node->parent && (node->parent->nodetype == LYS_AUGMENT)
+                            && !((struct lys_node_augment *)node->parent)->target) {
+                        /* we are in an unresolved augment, cannot evaluate */
+                        LOGVAL(LYE_SPEC, LY_VLOG_LYS, node->parent,
+                               "Cannot resolve leafref \"%s\" because it is in an unresolved augment.", path);
+                        return EXIT_FAILURE;
+                    }
+
                     /* path is supposed to be evaluated in data tree, so we have to skip
                      * all schema nodes that cannot be instantiated in data tree */
                     for (node = lys_parent(node);
