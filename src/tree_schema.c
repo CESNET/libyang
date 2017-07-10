@@ -1240,7 +1240,6 @@ lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, uint8_t size
             result[u]->module = mod;
 
             /* extensions */
-            orig[u]->ext = NULL;
             result[u]->ext_size = orig[u]->ext_size;
             if (lys_ext_dup(mod, orig[u]->ext, orig[u]->ext_size, result[u],
                             LYEXT_PAR_EXTINST, &result[u]->ext, shallow, unres)) {
