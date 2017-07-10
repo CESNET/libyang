@@ -510,7 +510,7 @@ parse_path_key_expr(const char *id, const char **prefix, int *pref_len, const ch
  *         positive on success, negative on failure.
  */
 static int
-parse_path_arg(struct lys_module *mod, const char *id, const char **prefix, int *pref_len,
+parse_path_arg(const struct lys_module *mod, const char *id, const char **prefix, int *pref_len,
                const char **name, int *nam_len, int *parent_times, int *has_predicate)
 {
     int parsed = 0, ret, par_times = 0;
@@ -567,7 +567,7 @@ parse_path_arg(struct lys_module *mod, const char *id, const char **prefix, int 
     if ((ret = parse_node_identifier(id, prefix, pref_len, name, nam_len)) < 1) {
         return -parsed-ret;
     }
-    if (!(*prefix)) {
+    if (prefix && !(*prefix)) {
         /* actually we always need prefix even it is not specified */
         *prefix = lys_main_module(mod)->name;
         *pref_len = strlen(*prefix);
@@ -1614,7 +1614,7 @@ schema_nodeid_siblingcheck(const struct lys_node *sibling, const char *id, const
 /* start - relative, module - absolute, -1 error, EXIT_SUCCESS ok (but ret can still be NULL), >0 unexpected char on ret - 1
  */
 int
-resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, const struct lys_module *module,
+resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, const struct lys_module *cur_module,
                               const struct lys_node **ret)
 {
     const char *name, *mod_name, *id;
@@ -1624,7 +1624,7 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
     /* resolved import module from the start module, it must match the next node-name-match sibling */
     const struct lys_module *start_mod, *aux_mod;
 
-    assert(nodeid && (start || module) && !(start && module) && ret);
+    assert(nodeid && (start || cur_module) && !(start && cur_module) && ret);
 
     id = nodeid;
 
@@ -1633,18 +1633,18 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
     }
     id += r;
 
-    if ((is_relative && !start) || (!is_relative && !module)) {
+    if ((is_relative && !start) || (!is_relative && !cur_module)) {
         return -1;
     }
 
     /* descendant-schema-nodeid */
     if (is_relative) {
-        module = start_mod = start->module;
+        cur_module = start_mod = start->module;
         start_parent = lys_parent(start);
 
     /* absolute-schema-nodeid */
     } else {
-        start_mod = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
+        start_mod = lys_get_import_module(cur_module, NULL, 0, mod_name, mod_name_len);
         if (!start_mod) {
             return -1;
         }
@@ -1659,7 +1659,7 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
             if (mod_name && (strncmp(mod_name, lys_node_module(start_parent)->name, mod_name_len)
                     || (mod_name_len != (signed) strlen(lys_node_module(start_parent)->name)))) {
                 /* we are getting into another module (augment) */
-                aux_mod = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
+                aux_mod = lys_get_import_module(cur_module, NULL, 0, mod_name, mod_name_len);
                 if (!aux_mod) {
                     return -1;
                 }
@@ -1681,7 +1681,7 @@ get_next_augment:
                 LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT | LYS_GETNEXT_PARENTUSES))) {
             /* name match */
             if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
-                r = schema_nodeid_siblingcheck(sibling, id, module, mod_name, mod_name_len, &start_parent);
+                r = schema_nodeid_siblingcheck(sibling, id, cur_module, mod_name, mod_name_len, &start_parent);
                 if (r == 0) {
                     *ret = sibling;
                     return EXIT_SUCCESS;
@@ -3830,8 +3830,7 @@ resolve_schema_leafref(const char *path, struct lys_node *parent, const struct l
 {
     const struct lys_node *node, *op_node = NULL;
     struct lys_node_augment *last_aug;
-    const struct lys_module *cur_mod;
-    struct lys_module *mod_start;
+    const struct lys_module *tmp_mod, *cur_module;
     const char *id, *prefix, *name;
     int pref_len, nam_len, parent_times, has_predicate;
     int i, first_iter, rc;
@@ -3845,17 +3844,17 @@ resolve_schema_leafref(const char *path, struct lys_node *parent, const struct l
          op_node && !(op_node->nodetype & (LYS_ACTION | LYS_NOTIF | LYS_RPC));
          op_node = lys_parent(op_node));
 
-    mod_start = lys_node_module(parent);
+    cur_module = lys_node_module(parent);
     do {
-        if ((i = parse_path_arg(mod_start, id, &prefix, &pref_len, &name, &nam_len, &parent_times, &has_predicate)) < 1) {
+        if ((i = parse_path_arg(cur_module, id, &prefix, &pref_len, &name, &nam_len, &parent_times, &has_predicate)) < 1) {
             LOGVAL(LYE_INCHAR, LY_VLOG_LYS, parent, id[-i], &id[-i]);
             return -1;
         }
         id += i;
 
         /* get the current module */
-        cur_mod = prefix ? lys_get_import_module(mod_start, NULL, 0, prefix, pref_len) : mod_start;
-        if (!cur_mod) {
+        tmp_mod = prefix ? lys_get_import_module(cur_module, NULL, 0, prefix, pref_len) : cur_module;
+        if (!tmp_mod) {
             LOGVAL(LYE_NORESOLV, LY_VLOG_LYS, parent, "leafref", path);
             return EXIT_FAILURE;
         }
@@ -3894,12 +3893,12 @@ resolve_schema_leafref(const char *path, struct lys_node *parent, const struct l
 
         /* find the next node (either in unconnected augment or as a schema sibling, node is NULL for top-level node -
          * - useless to search for that in augments) */
-        if (!cur_mod->implemented && node) {
+        if (!tmp_mod->implemented && node) {
 get_next_augment:
-            last_aug = lys_getnext_target_aug(last_aug, cur_mod, node);
+            last_aug = lys_getnext_target_aug(last_aug, tmp_mod, node);
         }
 
-        rc = lys_getnext_data(cur_mod, (last_aug ? (struct lys_node *)last_aug : node), name, nam_len, LYS_LIST
+        rc = lys_getnext_data(tmp_mod, (last_aug ? (struct lys_node *)last_aug : node), name, nam_len, LYS_LIST
                               | LYS_CONTAINER | LYS_RPC | LYS_ACTION | LYS_NOTIF | LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA, &node);
         if (rc) {
             if (last_aug) {
