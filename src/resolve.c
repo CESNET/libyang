@@ -2636,9 +2636,9 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct le
         }
         if (isdigit(ptr[0]) || (ptr[0] == '+') || (ptr[0] == '-')) {
             if (kind == 0) {
-                tmp_local_intv->value.uval.min = strtol(ptr, (char **)&ptr, 10);
+                tmp_local_intv->value.uval.min = strtoll(ptr, (char **)&ptr, 10);
             } else if (kind == 1) {
-                tmp_local_intv->value.sval.min = strtol(ptr, (char **)&ptr, 10);
+                tmp_local_intv->value.sval.min = strtoll(ptr, (char **)&ptr, 10);
             } else if (kind == 2) {
                 if (parse_range_dec64(&ptr, local_fdig, &tmp_local_intv->value.fval.min)) {
                     LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, ptr, "range");
@@ -2693,9 +2693,9 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct le
             /* max */
             if (isdigit(ptr[0]) || (ptr[0] == '+') || (ptr[0] == '-')) {
                 if (kind == 0) {
-                    tmp_local_intv->value.uval.max = strtol(ptr, (char **)&ptr, 10);
+                    tmp_local_intv->value.uval.max = strtoll(ptr, (char **)&ptr, 10);
                 } else if (kind == 1) {
-                    tmp_local_intv->value.sval.max = strtol(ptr, (char **)&ptr, 10);
+                    tmp_local_intv->value.sval.max = strtoll(ptr, (char **)&ptr, 10);
                 } else if (kind == 2) {
                     if (parse_range_dec64(&ptr, local_fdig, &tmp_local_intv->value.fval.max)) {
                         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, ptr, "range");
