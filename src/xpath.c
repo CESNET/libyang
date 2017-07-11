@@ -5745,11 +5745,13 @@ eval_node_test(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
         ++(*exp_idx);
 
         /* '(' */
+        assert(exp->tokens[*exp_idx] == LYXP_TOKEN_PAR1);
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
         ++(*exp_idx);
 
         /* ')' */
+        assert(exp->tokens[*exp_idx] == LYXP_TOKEN_PAR2);
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
         ++(*exp_idx);
@@ -6000,6 +6002,7 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
     }
 
     /* ']' */
+    assert(exp->tokens[*exp_idx] == LYXP_TOKEN_BRACK2);
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
            print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
     ++(*exp_idx);
@@ -6323,6 +6326,7 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
     ++(*exp_idx);
 
     /* '(' */
+    assert(exp->tokens[*exp_idx] == LYXP_TOKEN_PAR1);
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
     ++(*exp_idx);
@@ -6373,6 +6377,7 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
     }
 
     /* ')' */
+    assert(exp->tokens[*exp_idx] == LYXP_TOKEN_PAR2);
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
     ++(*exp_idx);
@@ -6471,6 +6476,7 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
         }
 
         /* ')' */
+        assert(exp->tokens[*exp_idx] == LYXP_TOKEN_PAR2);
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
         ++(*exp_idx);
