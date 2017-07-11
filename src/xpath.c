@@ -6383,8 +6383,23 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
     ++(*exp_idx);
 
     if (set) {
-        /* evaluate function */
-        rc = xpath_func(args, arg_count, cur_node, local_mod, set, options);
+        if (options & LYXP_SNODE_ALL) {
+            /* merge all nodes from arg evaluations */
+            for (i = 0; i < arg_count; ++i) {
+                set_snode_merge(set, args[i]);
+            }
+
+            /* the only function returning node-set - thus relevant */
+            if ((xpath_func == xpath_current) || (xpath_func == xpath_deref)) {
+                rc = xpath_func(args, arg_count, cur_node, local_mod, set, options);
+            } else {
+                set_snode_clear_ctx(set);
+                rc = EXIT_SUCCESS;
+            }
+        } else {
+            /* evaluate function */
+            rc = xpath_func(args, arg_count, cur_node, local_mod, set, options);
+        }
     } else {
         rc = EXIT_SUCCESS;
     }
@@ -6498,21 +6513,7 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
 
     case LYXP_TOKEN_FUNCNAME:
         /* FunctionCall */
-        if (!set || (options & LYXP_SNODE_ALL)) {
-            if (set) {
-                /* the only function returning node-set - thus relevant */
-                if ((exp->tok_len[*exp_idx] == 7) && !strncmp(&exp->expr[exp->expr_pos[*exp_idx]], "current", 7)) {
-                    xpath_current(NULL, 0, cur_node, local_mod, set, options);
-                } else if ((exp->tok_len[*exp_idx] == 5) && !strncmp(&exp->expr[exp->expr_pos[*exp_idx]], "deref", 5)) {
-                    ret = eval_function_call(exp, exp_idx, cur_node, local_mod, set, options);
-                    if (ret) {
-                        return ret;
-                    }
-                    goto predicate;
-                } else {
-                    set_snode_clear_ctx(set);
-                }
-            }
+        if (!set) {
             ret = eval_function_call(exp, exp_idx, cur_node, local_mod, NULL, options);
         } else {
             ret = eval_function_call(exp, exp_idx, cur_node, local_mod, set, options);
