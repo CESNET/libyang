@@ -1656,8 +1656,8 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
         last_aug = NULL;
 
         if (start_parent) {
-            if (mod_name && (strncmp(mod_name, cur_module->name, mod_name_len)
-                    || (mod_name_len != (signed)strlen(cur_module->name)))) {
+            if (mod_name && (strncmp(mod_name, module->name, mod_name_len)
+                    || (mod_name_len != (signed)strlen(module->name)))) {
                 /* we are getting into another module (augment) */
                 aux_mod = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
                 if (!aux_mod) {
@@ -1667,7 +1667,7 @@ resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, 
                 /* there is no mod_name, so why are we checking augments again?
                  * because this module may be not implemented and it augments something in another module and
                  * there is another augment augmenting that previous one */
-                aux_mod = cur_module;
+                aux_mod = module;
             }
 
             /* if the module is implemented, all the augments will be connected */
