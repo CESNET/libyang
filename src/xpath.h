@@ -111,7 +111,7 @@ struct lyxp_expr {
     enum lyxp_token *tokens; /* array of tokens */
     uint16_t *expr_pos;      /* array of pointers to the expression in expr (idx of the beginning) */
     uint8_t *tok_len;        /* array of token lengths in expr */
-    uint8_t **repeat;        /* array of the operator token indices that succeed this expression ended with 0,
+    uint16_t **repeat;       /* array of the operator token indices that succeed this expression ended with 0,
                                 more in the comment after this declaration */
     uint16_t used;           /* used array items */
     uint16_t size;           /* allocated array items */
