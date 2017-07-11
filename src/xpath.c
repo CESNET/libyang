@@ -5785,7 +5785,7 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
     int ret;
     uint16_t i, j, orig_exp, brack2_exp;
     uint32_t orig_pos, orig_size, pred_in_ctx;
-    uint8_t **pred_repeat, rep_size, open_brack;
+    uint16_t **pred_repeat, rep_size, open_brack;
     struct lyxp_set set2;
     struct lyd_node *orig_parent;
 
