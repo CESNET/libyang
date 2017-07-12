@@ -167,6 +167,9 @@ set(lintsrc
 	tools/lint/completion.c
 	linenoise/linenoise.c)
 
+set(resrc
+	tools/re/main.c)
+
 set(yang2yinsrc
 	tools/yang2yin/main.c)
 
@@ -244,6 +247,11 @@ add_executable(yanglint ${lintsrc})
 target_link_libraries(yanglint yang)
 install(TARGETS yanglint DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/tools/lint/yanglint.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
+
+#yangre
+add_executable(yangre ${resrc})
+target_link_libraries(yangre yang)
+install(TARGETS yangre DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 # yang2yin
 add_executable(yang2yin ${yang2yinsrc})
