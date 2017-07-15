@@ -61,7 +61,7 @@ generic_init(char *yang_file, char *yang_folder)
 
     yang_format = LYS_IN_YIN;
 
-    ctx = ly_ctx_new(yang_folder);
+    ctx = ly_ctx_new(yang_folder, 0);
     if (!ctx) {
         goto error;
     }

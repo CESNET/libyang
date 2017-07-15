@@ -51,7 +51,7 @@ setup_ctx(void **state, const char *searchdir)
     }
 
     /* libyang context */
-    st->ctx = ly_ctx_new(searchdir);
+    st->ctx = ly_ctx_new(searchdir, 0);
     if (!st->ctx) {
         fprintf(stderr, "Failed to create context.\n");
         goto error;

@@ -54,7 +54,7 @@ generic_init(char *config_file, char *yin_file, char *yang_file, char *yang_fold
 
     in_format = LYD_XML;
 
-    ctx = ly_ctx_new(yang_folder);
+    ctx = ly_ctx_new(yang_folder, 0);
     if (!ctx) {
         goto error;
     }
@@ -163,7 +163,7 @@ test_ly_ctx_new(void **state)
 {
     char *yang_folder = TESTS_DIR"/data/files";
     (void) state; /* unused */
-    ctx = ly_ctx_new(yang_folder);
+    ctx = ly_ctx_new(yang_folder, 0);
     if (!ctx) {
         fail();
     }
@@ -176,7 +176,7 @@ test_ly_ctx_new_invalid(void **state)
 {
     char *yang_folder = "INVALID_PATH";
     (void) state; /* unused */
-    ctx = ly_ctx_new(yang_folder);
+    ctx = ly_ctx_new(yang_folder, 0);
     if (ctx) {
         fail();
     }
@@ -191,7 +191,7 @@ test_ly_ctx_get_searchdirs(void **state)
 
     assert_ptr_not_equal(realpath(TESTS_DIR"/data/files", yang_folder), NULL);
 
-    ctx = ly_ctx_new(yang_folder);
+    ctx = ly_ctx_new(yang_folder, 0);
     if (!ctx) {
         fail();
     }
@@ -217,7 +217,7 @@ test_ly_ctx_set_searchdir(void **state)
     assert_ptr_not_equal(realpath(TESTS_DIR"/data/files", yang_folder), NULL);
     assert_ptr_not_equal(realpath(TESTS_DIR"/schema/yin", new_yang_folder), NULL);
 
-    ctx = ly_ctx_new(yang_folder);
+    ctx = ly_ctx_new(yang_folder, 0);
     if (!ctx) {
         fail();
     }
@@ -249,7 +249,7 @@ test_ly_ctx_set_searchdir_invalid(void **state)
 
     assert_ptr_not_equal(realpath(TESTS_DIR"/data/files", yang_folder), NULL);
 
-    ctx = ly_ctx_new(yang_folder);
+    ctx = ly_ctx_new(yang_folder, 0);
     if (!ctx) {
         fail();
     }
@@ -458,7 +458,7 @@ test_ly_ctx_clean(void **state)
     uint16_t setid;
     int modules_count;
 
-    ctx = ly_ctx_new(TESTS_DIR"/api/files/");
+    ctx = ly_ctx_new(TESTS_DIR"/api/files/", 0);
     /* remember starting values */
     setid = ctx->models.module_set_id;
     modules_count = ctx->models.used;
@@ -507,7 +507,7 @@ test_ly_ctx_clean2(void **state)
     const struct lys_module *mod;
     struct lys_node_leaf *leaf;
 
-    ctx = ly_ctx_new(NULL);
+    ctx = ly_ctx_new(NULL, 0);
     assert_ptr_not_equal(ctx, NULL);
 
     /* load module depending by leafref on internal ietf-yang-library */
@@ -538,7 +538,7 @@ test_ly_ctx_remove_module(void **state)
     uint16_t setid;
     int modules_count;
 
-    ctx = ly_ctx_new(TESTS_DIR"/api/files/");
+    ctx = ly_ctx_new(TESTS_DIR"/api/files/", 0);
     /* remember starting values */
     setid = ctx->models.module_set_id;
     modules_count = ctx->models.used;
@@ -636,7 +636,7 @@ test_ly_ctx_remove_module2(void **state)
     const struct lys_module *mod;
     struct lys_node_leaf *leaf;
 
-    ctx = ly_ctx_new(NULL);
+    ctx = ly_ctx_new(NULL, 0);
     assert_ptr_not_equal(ctx, NULL);
 
     /* load both modules, y depends on x and x will contain several backlinks to y */
@@ -671,7 +671,7 @@ test_lys_set_enabled(void **state)
     (void) state; /* unused */
     const struct lys_module *mod;
 
-    ctx = ly_ctx_new(NULL);
+    ctx = ly_ctx_new(NULL, 0);
     assert_ptr_not_equal(ctx, NULL);
 
     /* test failures - invalid input */
@@ -700,7 +700,7 @@ test_lys_set_disabled(void **state)
                     "  augment /x:x {"
                     "    leaf y { type string;}}}";
 
-    ctx = ly_ctx_new(NULL);
+    ctx = ly_ctx_new(NULL, 0);
     assert_ptr_not_equal(ctx, NULL);
 
     /* test failures - invalid input */
@@ -1079,7 +1079,7 @@ test_ly_errno_location(void **state)
 
     assert_int_equal(LY_SUCCESS, *error);
 
-    ctx = ly_ctx_new(yang_folder);
+    ctx = ly_ctx_new(yang_folder, 0);
     if (ctx) {
         fail();
     }
@@ -1098,7 +1098,7 @@ test_ly_errmsg(void **state)
     char *yang_folder = "INVALID_PATH";
     char *compare = "Unable to use search directory \"INVALID_PATH\" (No such file or directory)";
 
-    ctx = ly_ctx_new(yang_folder);
+    ctx = ly_ctx_new(yang_folder, 0);
     if (ctx) {
         fail();
     }

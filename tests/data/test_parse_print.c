@@ -49,7 +49,7 @@ setup_f(void **state)
     }
 
     /* libyang context */
-    st->ctx = ly_ctx_new(TESTS_DIR"/data/files");
+    st->ctx = ly_ctx_new(TESTS_DIR"/data/files", 0);
     if (!st->ctx) {
         fprintf(stderr, "Failed to create context.\n");
         goto error;
@@ -109,7 +109,7 @@ test_parse_print_yin(void **state)
     *state = st = calloc(1, sizeof *st);
     assert_ptr_not_equal(st, NULL);
 
-    st->ctx = ly_ctx_new(TESTS_DIR"/data/files");
+    st->ctx = ly_ctx_new(TESTS_DIR"/data/files", 0);
     assert_ptr_not_equal(st->ctx, NULL);
 
     st->mod = lys_parse_path(st->ctx, TESTS_DIR"/data/files/all.yin", LYS_IN_YIN);
@@ -161,7 +161,7 @@ test_parse_print_yang(void **state)
     *state = st = calloc(1, sizeof *st);
     assert_ptr_not_equal(st, NULL);
 
-    st->ctx = ly_ctx_new(TESTS_DIR"/data/files");
+    st->ctx = ly_ctx_new(TESTS_DIR"/data/files", 0);
     assert_ptr_not_equal(st->ctx, NULL);
 
     st->mod = lys_parse_path(st->ctx, TESTS_DIR"/data/files/all.yang", LYS_IN_YANG);
@@ -608,7 +608,7 @@ test_parse_noncharacters_xml(void **state)
     const char* data = "<x xmlns=\"urn:x\">----------</x>";
 
     assert_ptr_not_equal(((*state) = st = calloc(1, sizeof *st)), NULL);
-    assert_ptr_not_equal((st->ctx = ly_ctx_new(NULL)), NULL);
+    assert_ptr_not_equal((st->ctx = ly_ctx_new(NULL, 0)), NULL);
 
     /* test detection of invalid characters according to RFC 7950, sec 9.4 */
     assert_ptr_not_equal(lys_parse_mem(st->ctx, mod, LYS_IN_YANG), 0);

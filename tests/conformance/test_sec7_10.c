@@ -48,7 +48,7 @@ setup_f(void **state)
     }
 
     /* libyang context */
-    st->ctx = ly_ctx_new(TESTS_DIR "/conformance/" TEST_DIR);
+    st->ctx = ly_ctx_new(TESTS_DIR "/conformance/" TEST_DIR, 0);
     if (!st->ctx) {
         fprintf(stderr, "Failed to create context.\n");
         return -1;

@@ -1035,6 +1035,21 @@ extern "C" {
 struct ly_ctx;
 
 /**
+ * @defgroup contextoptions Context options
+ * @ingroup context
+ *
+ * Options to change context behavior.
+ */
+
+#define LY_CTX_ALLIMPLEMENTED 0x01 /**< All the imports of the schema being parsed are treated implemented. */
+#define LY_CTX_TRUSTED        0x02 /**< Handle the schema being parsed as trusted and skip its validation
+                                        tests. Note that while this option improves performance, it can
+                                        lead to an undefined behavior if the schema is not correct. */
+
+
+/**@} contextoptions */
+
+/**
  * @brief Create libyang context
  *
  * Context is used to hold all information about schemas. Usually, the application is supposed
@@ -1051,10 +1066,11 @@ struct ly_ctx;
  *
  * @param[in] search_dir Directory where libyang will search for the imported or included modules
  * and submodules. If no such directory is available, NULL is accepted.
+ * @param[in] options Context options, see @ref contextoptions.
  *
  * @return Pointer to the created libyang context, NULL in case of error.
  */
-struct ly_ctx *ly_ctx_new(const char *search_dir);
+struct ly_ctx *ly_ctx_new(const char *search_dir, int options);
 
 /**
  * @brief Create libyang context according to the content of the given yang-library data.
@@ -1075,9 +1091,10 @@ struct ly_ctx *ly_ctx_new(const char *search_dir);
  * and submodules. If no such directory is available, NULL is accepted.
  * @param[in] path Path to the file containing yang-library data in the specified \p format.
  * @param[in] format Format of the data in the provided file.
+ * @param[in] options Context options, see @ref contextoptions.
  * @return Pointer to the created libyang context, NULL in case of error.
  */
-struct ly_ctx *ly_ctx_new_ylpath(const char *search_dir, const char *path, LYD_FORMAT format);
+struct ly_ctx *ly_ctx_new_ylpath(const char *search_dir, const char *path, LYD_FORMAT format, int options);
 
 /**
  * @brief Create libyang context according to the content of the given yang-library data.
@@ -1098,9 +1115,10 @@ struct ly_ctx *ly_ctx_new_ylpath(const char *search_dir, const char *path, LYD_F
  * and submodules. If no such directory is available, NULL is accepted.
  * @param[in] data String containing yang-library data in the specified \p format.
  * @param[in] format Format of the data in the provided file.
+ * @param[in] options Context options, see @ref contextoptions.
  * @return Pointer to the created libyang context, NULL in case of error.
  */
-struct ly_ctx *ly_ctx_new_ylmem(const char *search_dir, const char *data, LYD_FORMAT format);
+struct ly_ctx *ly_ctx_new_ylmem(const char *search_dir, const char *data, LYD_FORMAT format, int options);
 
 /**
  * @brief Add the search path into libyang context
@@ -1135,6 +1153,9 @@ const char * const *ly_ctx_get_searchdirs(const struct ly_ctx *ctx);
  * if the imported module is not used in leafref's path, augment or deviation, it is
  * imported and its data tree is not taken into account.
  *
+ * The same effect is achieved by using #LY_CTX_ALLIMPLEMENTED option when creating new context or parsing
+ * a specific schema.
+ *
  * Note, that function does not make the currently loaded modules, it just change the
  * schema parser behavior for the future parsing. This flag can be unset by ly_ctx_unset_allimplemented().
  *
@@ -1148,6 +1169,27 @@ void ly_ctx_set_allimplemented(struct ly_ctx *ctx);
  * @param[in] ctx Context to be modified.
  */
 void ly_ctx_unset_allimplemented(struct ly_ctx *ctx);
+
+/**
+ * @brief Change the schema parser behavior when parsing new schemas forcing it to skip some of the schema
+ * validation checks to improve performance. Note that parsing invalid schemas this way may lead to an
+ * undefined behavior later, e.g. when working with data trees.
+ *
+ * The same effect is achieved by using #LY_CTX_TRUSTED option when creating new context or parsing
+ * a specific schema.
+ *
+ * This flag can be unset by ly_ctx_unset_trusted().
+ *
+ * @param[in] ctx Context to be modified.
+ */
+void ly_ctx_set_trusted(struct ly_ctx *ctx);
+
+/**
+ * @brief Reverse function to ly_ctx_set_trusted().
+ *
+ * @param[in] ctx Context to be modified.
+ */
+void ly_ctx_unset_trusted(struct ly_ctx *ctx);
 
 /**
  * @brief Get data of an internal ietf-yang-library module.

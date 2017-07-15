@@ -42,7 +42,7 @@ setup_f(void **state)
     }
 
     /* libyang context */
-    st->ctx = ly_ctx_new(ietfdir);
+    st->ctx = ly_ctx_new(ietfdir, 0);
     if (!st->ctx) {
         fprintf(stderr, "Failed to create context.\n");
         goto error;
@@ -84,7 +84,7 @@ setup_clean_f(void **state)
     }
 
     /* libyang context */
-    st->ctx = ly_ctx_new(ietfdir);
+    st->ctx = ly_ctx_new(ietfdir, 0);
     if (!st->ctx) {
         fprintf(stderr, "Failed to create context.\n");
         goto error;

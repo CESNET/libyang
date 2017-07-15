@@ -43,9 +43,9 @@ setup_ctx(void **state, int format)
 {
     //ly_verb(LY_LLVRB);
     if (format == LYS_IN_YANG){
-        (*state) = ly_ctx_new(SCHEMA_FOLDER_YANG);
+        (*state) = ly_ctx_new(SCHEMA_FOLDER_YANG, 0);
     } else {
-        (*state) = ly_ctx_new(SCHEMA_FOLDER_YIN);
+        (*state) = ly_ctx_new(SCHEMA_FOLDER_YIN, 0);
     }
     if (!(*state)) {
         return -1;

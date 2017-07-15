@@ -38,7 +38,7 @@ setup_f(void **state)
     }
 
     /* libyang context */
-    st->ctx = ly_ctx_new(TESTS_DIR"/schema/yang/ietf/");
+    st->ctx = ly_ctx_new(TESTS_DIR"/schema/yang/ietf/", 0);
     if (!st->ctx) {
         fprintf(stderr, "Failed to create context.\n");
         goto error;

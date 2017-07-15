@@ -1281,11 +1281,11 @@ cmd_clear(const char *arg)
             goto create_empty;
         }
         searchpaths = ly_ctx_get_searchdirs(ctx);
-        ctx_new = ly_ctx_new_ylpath(searchpaths ? searchpaths[0] : NULL, ylpath, format);
+        ctx_new = ly_ctx_new_ylpath(searchpaths ? searchpaths[0] : NULL, ylpath, format, 0);
         free(ylpath);
     } else {
 create_empty:
-        ctx_new = ly_ctx_new(NULL);
+        ctx_new = ly_ctx_new(NULL, 0);
     }
 
     if (!ctx_new) {

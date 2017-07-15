@@ -34,7 +34,7 @@
 static int
 setup_ctx(void **state)
 {
-    *state = ly_ctx_new(NULL);
+    *state = ly_ctx_new(NULL, 0);
     if (!*state) {
         return -1;
     }

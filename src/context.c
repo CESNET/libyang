@@ -63,7 +63,7 @@ static struct internal_modules_s {
 };
 
 API struct ly_ctx *
-ly_ctx_new(const char *search_dir)
+ly_ctx_new(const char *search_dir, int options)
 {
     struct ly_ctx *ctx = NULL;
     struct lys_module *module;
@@ -83,6 +83,7 @@ ly_ctx_new(const char *search_dir)
     ctx->models.list = calloc(16, sizeof *ctx->models.list);
     LY_CHECK_ERR_RETURN(!ctx->models.list, LOGMEM; free(ctx), NULL);
     ext_plugins_ref++;
+    ctx->models.flags = options;
     ctx->models.used = 0;
     ctx->models.size = 16;
     if (search_dir) {
@@ -124,7 +125,7 @@ error:
 }
 
 static struct ly_ctx *
-ly_ctx_new_yl_common(const char *search_dir, const char *input, LYD_FORMAT format,
+ly_ctx_new_yl_common(const char *search_dir, const char *input, LYD_FORMAT format, int options,
                      struct lyd_node* (*parser_func)(struct ly_ctx*, const char*, LYD_FORMAT, int,...))
 {
     unsigned int u;
@@ -136,7 +137,7 @@ ly_ctx_new_yl_common(const char *search_dir, const char *input, LYD_FORMAT forma
     struct ly_ctx *ctx = NULL;
 
     /* create empty (with internal modules including ietf-yang-library) context */
-    ctx = ly_ctx_new(search_dir);
+    ctx = ly_ctx_new(search_dir, options);
     if (!ctx) {
         goto error;
     }
@@ -206,35 +207,59 @@ error:
 }
 
 API struct ly_ctx *
-ly_ctx_new_ylpath(const char *search_dir, const char *path, LYD_FORMAT format)
+ly_ctx_new_ylpath(const char *search_dir, const char *path, LYD_FORMAT format, int options)
 {
-    return ly_ctx_new_yl_common(search_dir, path, format, lyd_parse_path);
+    return ly_ctx_new_yl_common(search_dir, path, format, options, lyd_parse_path);
 }
 
 API struct ly_ctx *
-ly_ctx_new_ylmem(const char *search_dir, const char *data, LYD_FORMAT format)
+ly_ctx_new_ylmem(const char *search_dir, const char *data, LYD_FORMAT format, int options)
 {
-    return ly_ctx_new_yl_common(search_dir, data, format, lyd_parse_mem);
+    return ly_ctx_new_yl_common(search_dir, data, format, options, lyd_parse_mem);
+}
+
+static void
+ly_ctx_set_option(struct ly_ctx *ctx, int options)
+{
+    if (!ctx) {
+        return;
+    }
+
+    ctx->models.flags |= options;
+}
+
+static void
+ly_ctx_unset_option(struct ly_ctx *ctx, int options)
+{
+    if (!ctx) {
+        return;
+    }
+
+    ctx->models.flags &= ~options;
 }
 
 API void
 ly_ctx_set_allimplemented(struct ly_ctx *ctx)
 {
-    if (!ctx) {
-        return;
-    }
-
-    ctx->models.flags |= LY_CTX_ALLIMPLEMENTED;
+    ly_ctx_set_option(ctx, LY_CTX_ALLIMPLEMENTED);
 }
 
 API void
 ly_ctx_unset_allimplemented(struct ly_ctx *ctx)
 {
-    if (!ctx) {
-        return;
-    }
+    ly_ctx_unset_option(ctx, LY_CTX_ALLIMPLEMENTED);
+}
 
-    ctx->models.flags &= ~LY_CTX_ALLIMPLEMENTED;
+API void
+ly_ctx_set_trusted(struct ly_ctx *ctx)
+{
+    ly_ctx_set_option(ctx, LY_CTX_TRUSTED);
+}
+
+API void
+ly_ctx_unset_trusted(struct ly_ctx *ctx)
+{
+    ly_ctx_unset_option(ctx, LY_CTX_TRUSTED);
 }
 
 API void

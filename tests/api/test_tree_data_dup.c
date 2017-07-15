@@ -39,8 +39,8 @@ setup_f(void **state)
     }
 
     /* libyang context */
-    st->ctx1 = ly_ctx_new(NULL);
-    st->ctx2 = ly_ctx_new(NULL);
+    st->ctx1 = ly_ctx_new(NULL, 0);
+    st->ctx2 = ly_ctx_new(NULL, 0);
     if (!st->ctx1 || !st->ctx2) {
         fprintf(stderr, "Failed to create context.\n");
         return -1;

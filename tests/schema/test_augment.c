@@ -47,7 +47,7 @@ setup_ctx_yin(void **state)
     assert_non_null(*state);
     memcpy(*state, SCHEMA_FOLDER_YIN, strlen(SCHEMA_FOLDER_YIN) + 1);
 
-    ctx = ly_ctx_new(NULL);
+    ctx = ly_ctx_new(NULL, 0);
     if (!ctx) {
         return -1;
     }
@@ -62,7 +62,7 @@ setup_ctx_yang(void **state)
     assert_non_null(*state);
     memcpy(*state, SCHEMA_FOLDER_YANG, strlen(SCHEMA_FOLDER_YANG) + 1);
 
-    ctx = ly_ctx_new(NULL);
+    ctx = ly_ctx_new(NULL, 0);
     if (!ctx) {
         return -1;
     }

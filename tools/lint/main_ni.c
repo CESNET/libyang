@@ -193,7 +193,7 @@ main_ni(int argc, char* argv[])
     char **feat = NULL, *ptr, *featlist, *ylpath = NULL, *dir;
     struct stat st;
     uint32_t u;
-    int options_dflt = 0, options_parser = 0, options_allimplemented = 0;
+    int options_dflt = 0, options_parser = 0, options_ctx = 0;
     struct dataitem {
         const char *filename;
         LYD_FORMAT format;
@@ -283,7 +283,7 @@ main_ni(int argc, char* argv[])
             ret = EXIT_SUCCESS;
             goto cleanup;
         case 'i':
-            options_allimplemented = 1;
+            options_ctx |= LY_CTX_ALLIMPLEMENTED;
             break;
         case 'o':
             if (out != stdout) {
@@ -434,9 +434,9 @@ main_ni(int argc, char* argv[])
 
     /* create libyang context */
     if (ylpath) {
-        ctx = ly_ctx_new_ylpath(searchpaths ? (const char*)searchpaths->set.g[0] : NULL, ylpath, ylformat);
+        ctx = ly_ctx_new_ylpath(searchpaths ? (const char*)searchpaths->set.g[0] : NULL, ylpath, ylformat, options_ctx);
     } else {
-        ctx = ly_ctx_new(NULL);
+        ctx = ly_ctx_new(NULL, options_ctx);
     }
     if (!ctx) {
         goto cleanup;
@@ -448,11 +448,6 @@ main_ni(int argc, char* argv[])
             ly_ctx_set_searchdir(ctx, (const char*)searchpaths->set.g[u]);
         }
         index = u + 1;
-    }
-
-    /* set context options */
-    if (options_allimplemented) {
-        ly_ctx_set_allimplemented(ctx);
     }
 
     /* derefered setting of verbosity in libyang after context initiation */

@@ -45,7 +45,7 @@ setup_dflt(void **state)
     }
 
     /* libyang context */
-    st->ctx1 = ly_ctx_new(TESTS_DIR "/api/files");
+    st->ctx1 = ly_ctx_new(TESTS_DIR "/api/files", 0);
     if (!st->ctx1) {
         fprintf(stderr, "Failed to create context.\n");
         goto error;
@@ -90,9 +90,9 @@ setup_mctx(void **state)
     }
 
     /* libyang context */
-    st->ctx1 = ly_ctx_new(NULL);
-    st->ctx2 = ly_ctx_new(NULL);
-    st->ctx3 = ly_ctx_new(NULL);
+    st->ctx1 = ly_ctx_new(NULL, 0);
+    st->ctx2 = ly_ctx_new(NULL, 0);
+    st->ctx3 = ly_ctx_new(NULL, 0);
     if (!st->ctx1 || !st->ctx2 || !st->ctx3) {
         fprintf(stderr, "Failed to create context.\n");
         return -1;
