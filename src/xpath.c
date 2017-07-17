@@ -45,6 +45,7 @@ static const  struct lyd_node *moveto_get_root(const struct lyd_node *cur_node, 
 static int eval_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_node, struct lys_module *local_mod,
                      struct lyxp_set *set, int options);
 static int reparse_expr(struct lyxp_expr *exp, uint16_t *exp_idx);
+static int set_snode_insert_node(struct lyxp_set *set, const struct lys_node *node, enum lyxp_node_type node_type);
 
 void
 lyxp_expr_free(struct lyxp_expr *expr)
@@ -577,6 +578,7 @@ static struct lyxp_set *
 set_copy(struct lyxp_set *set)
 {
     struct lyxp_set *ret;
+    uint16_t i;
 
     if (!set) {
         return NULL;
@@ -585,7 +587,19 @@ set_copy(struct lyxp_set *set)
     ret = malloc(sizeof *ret);
     LY_CHECK_ERR_RETURN(!ret, LOGMEM, NULL);
 
-    if ((set->type == LYXP_SET_NODE_SET) || (set->type == LYXP_SET_SNODE_SET)) {
+    if (set->type == LYXP_SET_SNODE_SET) {
+        memset(ret, 0, sizeof *ret);
+        ret->type = set->type;
+
+        for (i = 0; i < set->used; ++i) {
+            if (set->val.snodes[i].in_ctx == 1) {
+                if (set_snode_insert_node(ret, set->val.snodes[i].snode, set->val.snodes[i].type)) {
+                    lyxp_set_free(ret);
+                    return NULL;
+                }
+            }
+        }
+    } else if (set->type == LYXP_SET_NODE_SET) {
         ret->type = set->type;
         ret->val.nodes = malloc(set->used * sizeof *ret->val.nodes);
         LY_CHECK_ERR_RETURN(!ret->val.nodes, LOGMEM; free(ret), NULL);
