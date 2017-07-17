@@ -6398,17 +6398,17 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cu
 
     if (set) {
         if (options & LYXP_SNODE_ALL) {
-            /* merge all nodes from arg evaluations */
-            for (i = 0; i < arg_count; ++i) {
-                set_snode_merge(set, args[i]);
-            }
-
             /* the only function returning node-set - thus relevant */
             if ((xpath_func == xpath_current) || (xpath_func == xpath_deref)) {
                 rc = xpath_func(args, arg_count, cur_node, local_mod, set, options);
             } else {
                 set_snode_clear_ctx(set);
                 rc = EXIT_SUCCESS;
+            }
+
+            /* merge all nodes from arg evaluations */
+            for (i = 0; i < arg_count; ++i) {
+                set_snode_merge(set, args[i]);
             }
         } else {
             /* evaluate function */
