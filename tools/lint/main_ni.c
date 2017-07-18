@@ -63,6 +63,8 @@ help(int shortout)
         "                        tree, yin, yang for schemas,\n"
         "                        xml, json for data.\n\n"
         "  -i, --allimplemented  Make all the imported modules implemented.\n\n"
+        "  -l, --list=FORMAT     Print list of the schemas in the YANG Library data format (XML or JSON).\n"
+        "                        This option cannot be combined with -f option.\n\n"
         "  -o OUTFILE, --output=OUTFILE\n"
         "                        Write the output to OUTFILE instead of stdout.\n\n"
         "  -F FEATURES, --features=FEATURES\n"
@@ -171,6 +173,7 @@ main_ni(int argc, char* argv[])
         {"help",             no_argument,       NULL, 'h'},
         {"tree-help",        no_argument,       NULL, 'H'},
         {"allimplemented",   no_argument,       NULL, 'i'},
+        {"list",             required_argument, NULL, 'l'},
         {"output",           required_argument, NULL, 'o'},
         {"path",             required_argument, NULL, 'p'},
         {"strict",           no_argument,       NULL, 's'},
@@ -204,12 +207,13 @@ main_ni(int argc, char* argv[])
     struct lyxml_elem *xml = NULL;
     void *p;
     int index = 0;
+    LYD_FORMAT listformat = LYD_UNKNOWN;
 
     opterr = 0;
 #ifndef NDEBUG
-    while ((opt = getopt_long(argc, argv, "d:f:F:ghHio:p:st:vVG:y:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "d:f:F:ghHil:o:p:st:vVG:y:", options, &opt_index)) != -1)
 #else
-    while ((opt = getopt_long(argc, argv, "d:f:F:ghHio:p:st:vVy:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "d:f:F:ghHil:o:p:st:vVy:", options, &opt_index)) != -1)
 #endif
     {
         switch (opt) {
@@ -229,6 +233,10 @@ main_ni(int argc, char* argv[])
             }
             break;
         case 'f':
+            if (listformat) {
+                fprintf(stderr, "Options -l and -f cannot be combined.\n");
+                goto cleanup;
+            }
             if (!strcasecmp(optarg, "tree")) {
                 outformat_s = LYS_OUT_TREE;
                 outformat_d = 0;
@@ -284,6 +292,20 @@ main_ni(int argc, char* argv[])
             goto cleanup;
         case 'i':
             options_ctx |= LY_CTX_ALLIMPLEMENTED;
+            break;
+        case 'l':
+            if (outformat_s) {
+                fprintf(stderr, "Options -l and -f cannot be combined.\n");
+                goto cleanup;
+            }
+            if (!strcasecmp(optarg, "xml")) {
+                listformat = LYD_XML;
+            } else if (!strcasecmp(optarg, "json")) {
+                listformat = LYD_JSON;
+            } else {
+                fprintf(stderr, "Unknown list format \"%s\".\n", optarg);
+                goto cleanup;
+            }
             break;
         case 'o':
             if (out != stdout) {
@@ -401,7 +423,7 @@ main_ni(int argc, char* argv[])
     }
 
     /* check options compatibility */
-    if (optind >= argc) {
+    if (optind >= argc && !ylpath) {
         help(1);
         fprintf(stderr, "yanglint error: missing <file> to process\n");
         goto cleanup;;
@@ -658,6 +680,14 @@ main_ni(int argc, char* argv[])
         if (outformat_d && root) {
             lyd_print_file(out, root, outformat_d, LYP_WITHSIBLINGS | LYP_FORMAT | options_dflt);
         }
+    } else if (listformat) {
+        root = ly_ctx_info(ctx);
+        if (!root) {
+            fprintf(stderr, "Getting context info (ietf-yang-library data) failed.\n");
+            goto cleanup;
+        }
+
+        lyd_print_file(stdout, root, listformat, LYP_WITHSIBLINGS | LYP_FORMAT);
     }
 
     ret = EXIT_SUCCESS;
