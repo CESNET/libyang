@@ -491,6 +491,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     int64_t v, v_;
     int64_t p, p_;
     size_t len;
+    int in_grp = 0;
     char *buf, modifier;
 
     /* init */
@@ -1317,14 +1318,33 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
         /* store patterns in array */
         if (i) {
+            if (parent && lys_ingrouping(parent)) {
+                in_grp = 1;
+            }
             type->info.str.patterns = calloc(i, sizeof *type->info.str.patterns);
-            LY_CHECK_ERR_GOTO(!type->info.str.patterns, LOGMEM, error);
+            if (!in_grp) {
+                /* do not compile patterns in groupings */
+                type->info.str.patterns_pcre = malloc(2 * i * sizeof *type->info.str.patterns_pcre);
+            }
+            LY_CHECK_ERR_GOTO(!type->info.str.patterns || (!in_grp && !type->info.str.patterns_pcre), LOGMEM, error);
             LY_TREE_FOR(yin->child, node) {
                 GETVAL(value, node, "value");
-                if (lyp_check_pattern(value, NULL)) {
-                    goto error;
+
+                if (in_grp) {
+                    /* in grouping, just check the pattern syntax */
+                    if (lyp_check_pattern(value, NULL)) {
+                        goto error;
+                    }
+                } else {
+                    /* outside grouping, check syntax and precompile pattern for later use by libpcre */
+                    if (lyp_precompile_pattern(value,
+                                               (pcre**)&type->info.str.patterns_pcre[type->info.str.pat_count * 2],
+                                               (pcre_extra**)&type->info.str.patterns_pcre[type->info.str.pat_count * 2 + 1])) {
+                        goto error;
+                    }
                 }
                 restr = &type->info.str.patterns[type->info.str.pat_count]; /* shortcut */
+                type->info.str.pat_count++;
 
                 modifier = 0x06; /* ACK */
                 name = NULL;
@@ -1366,7 +1386,6 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 if (read_restr_substmt(module, restr, node, unres)) {
                     goto error;
                 }
-                type->info.str.pat_count++;
             }
         }
         break;

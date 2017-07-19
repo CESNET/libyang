@@ -907,7 +907,6 @@ static int
 validate_pattern(const char *val_str, struct lys_type *type, struct lyd_node *node)
 {
     int i, rc;
-    pcre *precomp;
 
     assert(type->base == LY_TYPE_STRING);
 
@@ -920,12 +919,8 @@ validate_pattern(const char *val_str, struct lys_type *type, struct lyd_node *no
     }
 
     for (i = 0; i < type->info.str.pat_count; ++i) {
-        if (lyp_check_pattern(&type->info.str.patterns[i].expr[1], &precomp)) {
-            LOGINT;
-            return EXIT_FAILURE;
-        }
-
-        rc = pcre_exec(precomp, NULL, val_str, strlen(val_str), 0, 0, NULL, 0);
+        rc = pcre_exec((pcre*)type->info.str.patterns_pcre[2 * i], (pcre_extra*)type->info.str.patterns_pcre[2 * i + 1],
+                       val_str, strlen(val_str), 0, 0, NULL, 0);
         if ((rc && type->info.str.patterns[i].expr[0] == 0x06) || (!rc && type->info.str.patterns[i].expr[0] == 0x15)) {
             LOGVAL(LYE_NOCONSTR, LY_VLOG_LYD, node, val_str, &type->info.str.patterns[i].expr[1]);
             if (type->info.str.patterns[i].emsg) {
@@ -934,10 +929,8 @@ validate_pattern(const char *val_str, struct lys_type *type, struct lyd_node *no
             if (type->info.str.patterns[i].eapptag) {
                 strncpy(((struct ly_err *)&ly_errno)->apptag, type->info.str.patterns[i].eapptag, LY_APPTAG_LEN - 1);
             }
-            free(precomp);
             return EXIT_FAILURE;
         }
-        free(precomp);
     }
 
     return EXIT_SUCCESS;
@@ -1172,16 +1165,36 @@ lyp_check_pattern(const char *pattern, pcre **pcre_precomp)
     /* must return 0, already checked during parsing */
     precomp = pcre_compile(perl_regex, PCRE_ANCHORED | PCRE_DOLLAR_ENDONLY | PCRE_NO_AUTO_CAPTURE,
                            &err_msg, &err_offset, NULL);
-    free(perl_regex);
     if (!precomp) {
-        LOGVAL(LYE_INREGEX, LY_VLOG_NONE, NULL, pattern, pattern + err_offset, err_msg);
+        LOGVAL(LYE_INREGEX, LY_VLOG_NONE, NULL, pattern, perl_regex + err_offset, err_msg);
+        free(perl_regex);
         return EXIT_FAILURE;
     }
+    free(perl_regex);
 
     if (pcre_precomp) {
         *pcre_precomp = precomp;
     } else {
         free(precomp);
+    }
+
+    return EXIT_SUCCESS;
+}
+
+int
+lyp_precompile_pattern(const char *pattern, pcre** pcre_cmp, pcre_extra **pcre_std)
+{
+    const char *err_msg = NULL;
+
+    if (lyp_check_pattern(pattern, pcre_cmp)) {
+        return EXIT_FAILURE;
+    }
+
+    if (pcre_std && pcre_cmp) {
+        (*pcre_std) = pcre_study(*pcre_cmp, 0, &err_msg);
+        if (err_msg) {
+            LOGWRN("Studying pattern \"%s\" failed (%s).", pattern, err_msg);
+        }
     }
 
     return EXIT_SUCCESS;

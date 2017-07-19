@@ -137,7 +137,7 @@ int yang_read_leafref_path(struct lys_module *module, struct yang_type *stype, c
 
 int yang_read_require_instance(struct yang_type *stype, int req);
 
-int yang_read_pattern(struct lys_module *module, struct lys_restr *pattern, char *value, char modifier);
+int yang_read_pattern(struct lys_module *module, struct lys_restr *pattern, void **precomp, char *value, char modifier);
 
 void *yang_read_range(struct  lys_module *module, struct yang_type *stype, char *value, int is_ext_instance);
 

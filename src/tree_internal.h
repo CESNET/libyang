@@ -464,6 +464,14 @@ const char *lyd_get_unique_default(const char* unique_expr, struct lyd_node *lis
 int lyd_check_mandatory_tree(struct lyd_node *root, struct ly_ctx *ctx, int options);
 
 /**
+ * @brief Check if the provided node is inside a grouping.
+ *
+ * @param[in] node Schema node to check.
+ * @return 0 as false, 1 as true
+ */
+int lys_ingrouping(const struct lys_node *node);
+
+/**
  * @brief Add default values, \p resolve unres, and finally
  * remove any redundant default values based on \p options.
  *

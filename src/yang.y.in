@@ -1313,15 +1313,23 @@ type_end: ';'
 
 type_body_stmts: some_restrictions { if (((struct yang_type *)actual)->base == LY_TYPE_STRING &&
                                          ((struct yang_type *)actual)->type->info.str.pat_count) {
-                                       struct lys_restr *tmp;
+                                       void *tmp;
 
                                        tmp = realloc(((struct yang_type *)actual)->type->info.str.patterns,
-                                                     ((struct yang_type *)actual)->type->info.str.pat_count * sizeof *tmp);
+                                                     ((struct yang_type *)actual)->type->info.str.pat_count * sizeof *((struct yang_type *)actual)->type->info.str.patterns);
                                        if (!tmp) {
                                          LOGMEM;
                                          YYABORT;
                                        }
                                        ((struct yang_type *)actual)->type->info.str.patterns = tmp;
+                                       
+                                       tmp = realloc(((struct yang_type *)actual)->type->info.str.patterns_pcre,
+                                                     2 * ((struct yang_type *)actual)->type->info.str.pat_count * sizeof *((struct yang_type *)actual)->type->info.str.patterns_pcre);
+                                       if (!tmp) {
+                                         LOGMEM;
+                                         YYABORT;
+                                       }
+                                       ((struct yang_type *)actual)->type->info.str.patterns_pcre = tmp;
                                      }
                                      if (((struct yang_type *)actual)->base == LY_TYPE_UNION) {
                                        struct lys_type *tmp;
@@ -1488,7 +1496,13 @@ pattern_sep: sep { $$.token = actual_type;
                    $$.actual = actual;
                  }
 
-pattern_stmt: PATTERN_KEYWORD pattern_sep pattern_arg_str pattern_end  { if (yang_read_pattern(trg, actual, $3, $4)) {
+pattern_stmt: PATTERN_KEYWORD pattern_sep pattern_arg_str pattern_end  {struct lys_restr *pattern = actual;
+                                                                        actual = NULL;
+                                                                        if ($2.token != EXTENSION_INSTANCE) {
+                                                                          int c = 2 * (((struct yang_type *)$2.actual)->type->info.str.pat_count - 1);
+                                                                          YANG_ADDELEM(((struct yang_type *)$2.actual)->type->info.str.patterns_pcre, c);
+                                                                        }
+                                                                        if (yang_read_pattern(trg, pattern, actual, $3, $4)) {
                                                                           YYABORT;
                                                                         }
                                                                         actual_type = $2.token;

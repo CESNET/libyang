@@ -1139,12 +1139,12 @@ error:
 }
 
 int
-yang_read_pattern(struct lys_module *module, struct lys_restr *pattern, char *value, char modifier)
+yang_read_pattern(struct lys_module *module, struct lys_restr *pattern, void **precomp, char *value, char modifier)
 {
     char *buf;
     size_t len;
 
-    if (lyp_check_pattern(value, NULL)) {
+    if (lyp_precompile_pattern(value, (pcre**)&precomp[0], (pcre_extra**)&precomp[1])) {
         free(value);
         return EXIT_FAILURE;
     }
