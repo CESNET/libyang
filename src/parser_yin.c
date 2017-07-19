@@ -1318,7 +1318,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
         /* store patterns in array */
         if (i) {
-            if (parent && lys_ingrouping(parent)) {
+            if (!parenttype && parent && lys_ingrouping(parent)) {
                 in_grp = 1;
             }
             type->info.str.patterns = calloc(i, sizeof *type->info.str.patterns);
