@@ -399,6 +399,7 @@ yang_read_node(struct lys_module *module, struct lys_node *parent, struct lys_no
     node->name = lydict_insert_zc(module->ctx, value);
     node->module = module;
     node->nodetype = nodetype;
+    node->parent = parent;
 
     /* insert the node into the schema tree */
     child = (parent) ? &parent->child : root;
@@ -1144,7 +1145,7 @@ yang_read_pattern(struct lys_module *module, struct lys_restr *pattern, void **p
     char *buf;
     size_t len;
 
-    if (lyp_precompile_pattern(value, (pcre**)&precomp[0], (pcre_extra**)&precomp[1])) {
+    if (precomp && lyp_precompile_pattern(value, (pcre**)&precomp[0], (pcre_extra**)&precomp[1])) {
         free(value);
         return EXIT_FAILURE;
     }
@@ -4095,6 +4096,7 @@ yang_check_nodes(struct lys_module *module, struct lys_node *parent, struct lys_
         child = node->child;
         node->next = NULL;
         node->child = NULL;
+        node->parent = NULL;
         node->prev = node;
 
         if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, node)) {
