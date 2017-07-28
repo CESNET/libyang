@@ -378,23 +378,13 @@ struct lyd_difflist *lyd_diff(struct lyd_node *first, struct lyd_node *second, i
 /**@} diffoptions */
 
 /**
- * @brief Build path (usable as XPath) of the data node.
+ * @brief Build data path (usable as path, see @ref howtoxpath) of the data node.
  * @param[in] node Data node to be processed. Note that the node should be from a complete data tree, having a subtree
  *            (after using lyd_unlink()) can cause generating invalid paths.
  * @return NULL on error, on success the buffer for the resulting path is allocated and caller is supposed to free it
  * with free().
  */
 char *lyd_path(const struct lyd_node *node);
-
-/**
- * @brief Build path (usable as instance-identified) of the data node with all the nodes fully qualified (having their
- * model as prefix).
- * @param[in] node Data node to be processed. Note that the node should be from a complete data tree, having a subtree
- *            (after using lyd_unlink()) can cause generating invalid paths.
- * @return NULL on error, on success the buffer for the resulting path is allocated and caller is supposed to free it
- * with free().
- */
-char *lyd_qualified_path(const struct lyd_node *node);
 
 /**
  * @defgroup parseroptions Data parser options
@@ -784,13 +774,12 @@ struct lyd_node *lyd_new_output_anydata(struct lyd_node *parent, const struct ly
  * @param[in] data_tree Existing data tree to add to/modify. If creating RPCs/actions, there should only be one
  * RPC/action and either input or output, not both. Can be NULL.
  * @param[in] ctx Context to use. Mandatory if \p data_tree is NULL.
- * @param[in] path Simple absolute data XPath of the new node. It can contain only simple node addressing with optional
- * module names as prefixes. List nodes can have predicates, one for each list key in the correct order and
- * with its value as well or using specific instance position, leaves and leaf-lists can have predicates too that
- * have preference over \p value, see @ref howtoxpath.
+ * @param[in] path Simple data path (see @ref howtoxpath). List nodes can have predicates, one for each list key
+ * in the correct order and with its value as well or using specific instance position, leaves and leaf-lists
+ * can have predicates too that have preference over \p value.
  * @param[in] value Value of the new leaf/lealf-list (const char*). If creating anydata or anyxml, the following
- *            \p value_type parameter is required to be specified correctly. If creating nodes of other types, the
- *            parameter is ignored.
+ * \p value_type parameter is required to be specified correctly. If creating nodes of other types, the
+ * parameter is ignored.
  * @param[in] value_type Type of the provided \p value parameter in case of creating anydata or anyxml node.
  * @param[in] options Bitmask of options flags, see @ref pathoptions.
  * @return First created (or updated with #LYD_PATH_OPT_UPDATE) node,
@@ -1000,20 +989,16 @@ int lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node);
 int lyd_schema_sort(struct lyd_node *sibling, int recursive);
 
 /**
- * @brief Search in the given data for instances of nodes matching the provided XPath expression.
+ * @brief Search in the given data for instances of nodes matching the provided path.
  *
- * The XPath expression is evaluated on data -> skip all non-data nodes (input, output, choice, case).
+ * Learn more about the path format on page @ref howtoxpath.
  *
- * Expr examples:
- *      "/modules-state/module[name = 'ietf-yang-library']/namespace" with context node "ietf-yang-library:modules-state"
- *      "/ietf-netconf:get-config/ietf-netconf:source" with an arbitrary context node (all node names are prefixed)
- *
- * @param[in] ctx_node Context node.
- * @param[in] expr XPath expression filtering the matching nodes.
- * @return Set of found data nodes. If no nodes are matching \p expr or the result
+ * @param[in] ctx_node Path context node.
+ * @param[in] path Data path expression filtering the matching nodes.
+ * @return Set of found data nodes. If no nodes are matching \p path or the result
  * would be a number, a string, or a boolean, the returned set is empty. In case of an error, NULL is returned.
  */
-struct ly_set *lyd_find_xpath(const struct lyd_node *ctx_node, const char *expr);
+struct ly_set *lyd_find_path(const struct lyd_node *ctx_node, const char *path);
 
 /**
  * @brief Search in the given data for instances of the provided schema node.

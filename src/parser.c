@@ -3412,11 +3412,18 @@ lyp_deviation_apply_ext(struct lys_module *module)
 
     for (i = 0; i < module->deviation_size; i++) {
         target = NULL;
-        resolve_augment_schema_nodeid(module->deviation[i].target_name, NULL, module, (const struct lys_node **)&target);
-        if (!target) {
+        extset = NULL;
+        j = resolve_schema_nodeid(module->deviation[i].target_name, NULL, module, &extset, 0, 0);
+        if (j == -1) {
+            return EXIT_FAILURE;
+        } else if (!extset) {
             /* LY_DEVIATE_NO */
+            ly_set_free(extset);
             continue;
         }
+        target = extset->set.s[0];
+        ly_set_free(extset);
+
         for (j = 0; j < module->deviation[i].deviate_size; j++) {
             dev = &module->deviation[i].deviate[j];
             if (!dev->ext_size) {

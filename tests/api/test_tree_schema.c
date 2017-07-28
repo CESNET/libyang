@@ -74,7 +74,11 @@ const char *lys_module_a = \
   </container>                                        \
   <augment target-node=\"/x\">                        \
     <if-feature name=\"bar\"/>                        \
-    <container name=\"bar-y\"/>                       \
+    <container name=\"bar-y\">                        \
+      <leaf name=\"ll\">                              \
+        <type name=\"string\"/>                       \
+      </leaf>                                         \
+    </container>                                      \
   </augment>                                          \
   <rpc name=\"bar-rpc\">                              \
     <if-feature name=\"bar\"/>                        \
@@ -158,7 +162,11 @@ const char *lys_module_a_with_typo = \
   </container>                                        \
   <augment target-node=\"/x\">                        \
     <if-feature name=\"bar\"/>                        \
-    <container name=\"bar-y\"/>                       \
+    <container name=\"bar-y\">                        \
+      <leaf name=\"ll\">                              \
+        <type name=\"string\"/>                       \
+      </leaf>                                         \
+    </container>                                      \
   </augment>                                          \
   <rpc name=\"bar-rpc\">                              \
     <if-feature name=\"bar\"/>                        \
@@ -219,7 +227,11 @@ module a {\n\
 \n\
   augment \"/x\" {\n\
     if-feature \"bar\";\n\
-    container bar-y;\n\
+    container bar-y {\n\
+      leaf ll {\n\
+        type string;\n\
+      }\n\
+    }\n\
   }\n\
 \n\
   rpc bar-rpc {\n\
@@ -272,7 +284,11 @@ char *result_yin = "\
   </container>\n\
   <augment target-node=\"/x\">\n\
     <if-feature name=\"bar\"/>\n\
-    <container name=\"bar-y\"/>\n\
+    <container name=\"bar-y\">\n\
+      <leaf name=\"ll\">\n\
+        <type name=\"string\"/>\n\
+      </leaf>\n\
+    </container>\n\
   </augment>\n\
   <rpc name=\"bar-rpc\">\n\
     <if-feature name=\"bar\"/>\n\
@@ -1242,6 +1258,57 @@ error:
     fail();
 }
 
+static void
+test_lys_find_path(void **state)
+{
+    (void) state; /* unused */
+    LYS_INFORMAT yang_format = LYS_IN_YIN;
+    const struct lys_module *module;
+    struct ly_set *set;
+
+    module = lys_parse_mem(ctx, lys_module_a, yang_format);
+    assert_ptr_not_equal(module, NULL);
+
+    set = lys_find_path(module, NULL, "/x/*");
+    assert_ptr_not_equal(set, NULL);
+    assert_int_equal(set->number, 5);
+    ly_set_free(set);
+
+    set = lys_find_path(module, NULL, "/x//*");
+    assert_ptr_not_equal(set, NULL);
+    assert_int_equal(set->number, 6);
+    ly_set_free(set);
+
+    set = lys_find_path(module, NULL, "/x//.");
+    assert_ptr_not_equal(set, NULL);
+    assert_int_equal(set->number, 7);
+    ly_set_free(set);
+}
+
+static void
+test_lys_path(void **state)
+{
+    (void) state; /* unused */
+    LYS_INFORMAT yang_format = LYS_IN_YIN;
+    const struct lys_node *node;
+    const struct lys_module *module;
+    char *path;
+    struct ly_set *set;
+    const char *template;
+
+    module = lys_parse_mem(ctx, lys_module_a, yang_format);
+    assert_ptr_not_equal(module, NULL);
+
+    template = "/x/bar-gggg";
+    set = lys_find_path(module, NULL, template);
+    assert_ptr_not_equal(set, NULL);
+    node = set->set.s[0];
+    ly_set_free(set);
+    path = lys_path(node);
+    assert_string_equal(template, path);
+    free(path);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1268,6 +1335,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_lys_print_file_yin, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lys_print_file_yang, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lys_print_file_info, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_lys_find_path, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_lys_path, setup_f, teardown_f),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

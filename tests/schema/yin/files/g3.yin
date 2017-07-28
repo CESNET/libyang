@@ -20,7 +20,7 @@
       </type>
     </leaf>
     <leaf name="l4">
-      <must condition="/g2:top/g3:cont1/l1 = 'bb'"/>
+      <must condition="/g2:top/g3:cont1/g3:l1 = 'bb'"/>
       <type name="leafref">
         <path value="../cont2/l2"/>
       </type>
@@ -28,7 +28,7 @@
   </grouping>
   <augment target-node="/g2:top">
     <container name="cont1">
-      <must condition="../g3:cont1/l1 != 'aa'"/>
+      <must condition="../cont1/l1 != 'aa'"/>
       <leaf name="l1">
         <type name="string"/>
       </leaf>

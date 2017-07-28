@@ -3843,65 +3843,6 @@ lys_data_path_reverse(const struct lys_node *node, char * const buf, uint32_t bu
 #endif
 
 API struct ly_set *
-lys_find_xpath(const struct lys_node *ctx_node, const char *expr, int options)
-{
-    struct lyxp_set set;
-    struct ly_set *ret_set;
-    uint32_t i;
-    int opts;
-
-    if (!ctx_node || !expr) {
-        ly_errno = LY_EINVAL;
-        return NULL;
-    }
-
-    memset(&set, 0, sizeof set);
-
-    opts = LYXP_SNODE;
-    if (options & LYS_FIND_OUTPUT) {
-        opts |= LYXP_SNODE_OUTPUT;
-    }
-
-    if (lyxp_atomize(expr, ctx_node, LYXP_NODE_ELEM, &set, opts, NULL)) {
-        /* just find a relevant node to put in path, if it fails, use the original one */
-        for (i = 0; i < set.used; ++i) {
-            if (set.val.snodes[i].in_ctx == 1) {
-                ctx_node = set.val.snodes[i].snode;
-                break;
-            }
-        }
-        free(set.val.snodes);
-        LOGVAL(LYE_SPEC, LY_VLOG_LYS, ctx_node, "Resolving XPath expression \"%s\" failed.", expr);
-        return NULL;
-    }
-
-    ret_set = ly_set_new();
-
-    for (i = 0; i < set.used; ++i) {
-        if (!set.val.snodes[i].in_ctx) {
-            continue;
-        }
-        assert(set.val.snodes[i].in_ctx == 1);
-
-        switch (set.val.snodes[i].type) {
-        case LYXP_NODE_ELEM:
-            if (ly_set_add(ret_set, set.val.snodes[i].snode, LY_SET_OPT_USEASLIST) == -1) {
-                ly_set_free(ret_set);
-                free(set.val.snodes);
-                return NULL;
-            }
-            break;
-        default:
-            /* ignore roots, text and attr should not ever appear */
-            break;
-        }
-    }
-
-    free(set.val.snodes);
-    return ret_set;
-}
-
-API struct ly_set *
 lys_xpath_atomize(const struct lys_node *ctx_node, enum lyxp_node_type ctx_node_type, const char *expr, int options)
 {
     struct lyxp_set set;
@@ -4140,6 +4081,7 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module,
     int ret;
     char *parent_path;
     struct lys_node *target = NULL, *parent;
+    struct ly_set *set;
 
     if (!dev->deviate) {
         return;
@@ -4178,12 +4120,16 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module,
                 } else {
                     /* non-augment, non-toplevel */
                     parent_path = strndup(dev->target_name, strrchr(dev->target_name, '/') - dev->target_name);
-                    ret = resolve_augment_schema_nodeid(parent_path, NULL, module, (const struct lys_node **)&target);
+                    ret = resolve_schema_nodeid(parent_path, NULL, module, &set, 0, 1);
                     free(parent_path);
-                    if (ret || !target) {
+                    if (ret == -1) {
                         LOGINT;
+                        ly_set_free(set);
                         return;
                     }
+                    target = set->set.s[0];
+                    ly_set_free(set);
+
                     lys_node_addchild(target, NULL, dev->orig_node);
                 }
             } else {
@@ -4194,11 +4140,14 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module,
             dev->orig_node = NULL;
         } else {
             /* adding not-supported deviation */
-            ret = resolve_augment_schema_nodeid(dev->target_name, NULL, module, (const struct lys_node **)&target);
-            if (ret || !target) {
+            ret = resolve_schema_nodeid(dev->target_name, NULL, module, &set, 0, 1);
+            if (ret == -1) {
                 LOGINT;
+                ly_set_free(set);
                 return;
             }
+            target = set->set.s[0];
+            ly_set_free(set);
 
             /* unlink and store the original node */
             parent = target->parent;
@@ -4212,11 +4161,14 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module,
             dev->orig_node = target;
         }
     } else {
-        ret = resolve_augment_schema_nodeid(dev->target_name, NULL, module, (const struct lys_node **)&target);
-        if (ret || !target) {
+        ret = resolve_schema_nodeid(dev->target_name, NULL, module, &set, 0, 1);
+        if (ret == -1) {
             LOGINT;
+            ly_set_free(set);
             return;
         }
+        target = set->set.s[0];
+        ly_set_free(set);
 
         lys_node_switch(target, dev->orig_node);
         dev->orig_node = target;
@@ -4604,13 +4556,66 @@ lys_path(const struct lys_node *node)
 
     /* build the path */
     buf[index] = '\0';
-    ly_vlog_build_path_reverse(LY_VLOG_LYS, node, buf, &index, 0);
+    ly_vlog_build_path_reverse(LY_VLOG_LYS, node, buf, &index);
     result = strdup(&buf[index]);
     if (!result) {
         LOGMEM;
         /* pass through to cleanup */
     }
 
+    /* restore the shared internal buffer */
+    if (buf_backup) {
+        strcpy(buf, buf_backup);
+        free(buf_backup);
+    }
+    ly_buf_used--;
+
+    return result;
+}
+
+API char *
+lys_data_path(const struct lys_node *node)
+{
+    char *buf_backup = NULL, *buf = ly_buf(), *result = NULL;
+    int i, used;
+    struct ly_set *set;
+    const struct lys_module *prev_mod;
+
+    if (!node) {
+        LOGERR(LY_EINVAL, "%s: NULL node parameter", __func__);
+        return NULL;
+    }
+
+    /* backup the shared internal buffer */
+    if (ly_buf_used && buf[0]) {
+        buf_backup = strndup(buf, LY_BUF_SIZE - 1);
+    }
+    ly_buf_used++;
+
+    set = ly_set_new();
+    LY_CHECK_ERR_GOTO(!set, LOGMEM, error);
+
+    while (node) {
+        ly_set_add(set, (void *)node, 0);
+        do {
+            node = lys_parent(node);
+        } while (node && (node->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE | LYS_INPUT | LYS_OUTPUT)));
+    }
+
+    prev_mod = NULL;
+    used = 0;
+    for (i = set->number - 1; i > -1; --i) {
+        node = set->set.s[i];
+        used += sprintf(buf + used, "/%s%s%s", (lys_node_module(node) == prev_mod ? "" : lys_node_module(node)->name),
+                        (lys_node_module(node) == prev_mod ? "" : ":"), node->name);
+        prev_mod = lys_node_module(node);
+    }
+
+    result = strdup(buf);
+    LY_CHECK_ERR_GOTO(!result, LOGMEM, error);
+
+error:
+    ly_set_free(set);
     /* restore the shared internal buffer */
     if (buf_backup) {
         strcpy(buf, buf_backup);
@@ -4672,6 +4677,24 @@ lys_getnext_target_aug(struct lys_node_augment *last, const struct lys_module *m
     }
 
     return NULL;
+}
+
+API struct ly_set *
+lys_find_path(const struct lys_module *cur_module, const struct lys_node *cur_node, const char *path)
+{
+    struct ly_set *ret;
+    int rc;
+
+    if ((!cur_module && !cur_node) || !path) {
+        return NULL;
+    }
+
+    rc = resolve_schema_nodeid(path, cur_node, cur_module, &ret, 1, 1);
+    if (rc == -1) {
+        return NULL;
+    }
+
+    return ret;
 }
 
 static void

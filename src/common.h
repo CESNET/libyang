@@ -265,7 +265,7 @@ void ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...);
 #define LOGPATH(elem_type, elem)                                    \
     ly_vlog(LYE_PATH, elem_type, elem);
 
-void ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *path, uint16_t *index, int prefix_all);
+void ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *path, uint16_t *index);
 
 /*
  * - if \p module specified, it searches for submodules, they can be loaded only from a file or via module callback,
@@ -372,6 +372,12 @@ const char *transform_schema2json(const struct lys_module *module, const char *e
  *        are not valid XPath expressions.
  */
 const char *transform_iffeat_schema2json(const struct lys_module *module, const char *expr);
+
+/**
+ * @brief Transform an XPath expression in JSON node naming conventions into
+ *        standard YANG XPath.
+ */
+char *transform_json2xpath(const struct lys_module *cur_module, const char *expr);
 
 /**
  * @brief Get a new node (non-validated) validity value.

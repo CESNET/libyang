@@ -1028,8 +1028,7 @@ lyd_new_output_anydata(struct lyd_node *parent, const struct lys_module *module,
 }
 
 static int
-lyd_new_path_list_predicate(struct lyd_node *list, const char *list_name, const char *predicate,
-                            const struct lys_module *cur_module, int *parsed)
+lyd_new_path_list_predicate(struct lyd_node *list, const char *list_name, const char *predicate, int *parsed)
 {
     const char *mod_name, *name, *value;
     char *key_val;
@@ -1079,7 +1078,7 @@ check_parsed_values:
         *parsed += r;
         predicate += r;
 
-        if (!value || (!mod_name && strcmp(lys_node_module(key)->name, cur_module->name))
+        if (!value || (!mod_name && (lys_node_module(key) != lys_node_module((struct lys_node *)slist)))
                 || (mod_name && (strncmp(lys_node_module(key)->name, mod_name, mod_name_len) || lys_node_module(key)->name[mod_name_len]))
                 || strncmp(key->name, name, nam_len) || key->name[nam_len]) {
             LOGVAL(LYE_PATH_INKEY, LY_VLOG_NONE, NULL, name);
@@ -1205,7 +1204,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
     struct lyd_node *ret = NULL, *node, *parent = NULL;
     const struct lys_node *schild, *sparent, *tmp;
     const struct lys_node_list *slist;
-    const struct lys_module *cur_module;
+    const struct lys_module *module, *prev_mod;
     int r, i, parsed = 0, mod_name_len, nam_len, val_name_len, val_len;
     int is_relative = -1, has_predicate, first_iter = 1;
 
@@ -1246,7 +1245,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
         }
     }
 
-    if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, &has_predicate)) < 1) {
+    if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, &has_predicate, NULL, 0)) < 1) {
         LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
         return NULL;
     }
@@ -1263,7 +1262,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
             parent = data_tree;
         }
         sparent = parent->schema;
-        cur_module = lys_node_module(sparent);
+        module = prev_mod = lys_node_module(sparent);
     } else {
         /* we are starting from scratch, absolute path */
         assert(!parent);
@@ -1284,7 +1283,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
 
         memmove(module_name, mod_name, mod_name_len);
         module_name[mod_name_len] = '\0';
-        cur_module = ly_ctx_get_module(ctx, module_name, NULL);
+        module = ly_ctx_get_module(ctx, module_name, NULL);
 
         if (buf_backup) {
             /* return previous internal buffer content */
@@ -1293,7 +1292,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
         }
         ly_buf_used--;
 
-        if (!cur_module) {
+        if (!module) {
             str = strndup(path, (mod_name + mod_name_len) - path);
             LOGVAL(LYE_PATH_INMOD, LY_VLOG_STR, str);
             free(str);
@@ -1301,6 +1300,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
         }
         mod_name = NULL;
         mod_name_len = 0;
+        prev_mod = module;
 
         sparent = NULL;
     }
@@ -1309,7 +1309,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
     while (1) {
         /* find the schema node */
         schild = NULL;
-        while ((schild = lys_getnext(schild, sparent, cur_module, 0))) {
+        while ((schild = lys_getnext(schild, sparent, module, 0))) {
             if (schild->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST
                                     | LYS_ANYDATA | LYS_NOTIF | LYS_RPC | LYS_ACTION)) {
                 /* module comparison */
@@ -1318,7 +1318,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
                     if (strncmp(node_mod_name, mod_name, mod_name_len) || node_mod_name[mod_name_len]) {
                         continue;
                     }
-                } else if (lys_node_module(schild) != cur_module) {
+                } else if (lys_node_module(schild) != prev_mod) {
                     continue;
                 }
 
@@ -1453,8 +1453,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
         }
 
         parsed = 0;
-        if ((schild->nodetype == LYS_LIST) && has_predicate
-                && lyd_new_path_list_predicate(node, name, id, cur_module, &parsed)) {
+        if ((schild->nodetype == LYS_LIST) && has_predicate && lyd_new_path_list_predicate(node, name, id, &parsed)) {
             lyd_free(ret);
             return NULL;
         }
@@ -1474,9 +1473,10 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
         /* prepare for another iteration */
         parent = node;
         sparent = schild;
+        prev_mod = lys_node_module(schild);
 
         /* parse another node */
-        if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, &has_predicate)) < 1) {
+        if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, &has_predicate, NULL, 0)) < 1) {
             LOGVAL(LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
             lyd_free(ret);
             return NULL;
@@ -5035,7 +5035,7 @@ lyd_get_unique_default(const char* unique_expr, struct lyd_node *list)
         case LYS_CONTAINER:
             if (last) {
                 /* find instance in the data */
-                r = lyd_find_xpath(last, parent->name);
+                r = lyd_find_path(last, parent->name);
                 if (!r || r->number > 1) {
                     ly_set_free(r);
                     LOGINT;
@@ -5093,8 +5093,8 @@ end:
     return dflt;
 }
 
-static char *
-_lyd_path(const struct lyd_node *node, int prefix_all)
+API char *
+lyd_path(const struct lyd_node *node)
 {
     char *buf_backup = NULL, *buf = ly_buf(), *result = NULL;
     uint16_t index = LY_BUF_SIZE - 1;
@@ -5112,7 +5112,7 @@ _lyd_path(const struct lyd_node *node, int prefix_all)
 
     /* build the path */
     buf[index] = '\0';
-    ly_vlog_build_path_reverse(LY_VLOG_LYD, node, buf, &index, prefix_all);
+    ly_vlog_build_path_reverse(LY_VLOG_LYD, node, buf, &index);
     result = strdup(&buf[index]);
     if (!result) {
         LOGMEM;
@@ -5129,18 +5129,6 @@ _lyd_path(const struct lyd_node *node, int prefix_all)
     return result;
 }
 
-API char *
-lyd_path(const struct lyd_node *node)
-{
-    return _lyd_path(node, 0);
-}
-
-API char *
-lyd_qualified_path(const struct lyd_node *node)
-{
-    return _lyd_path(node, 1);
-}
-
 static int
 lyd_build_relative_data_path(const struct lys_module *module, const struct lyd_node *node, const char *schema_id,
                              char *buf)
@@ -5154,7 +5142,7 @@ lyd_build_relative_data_path(const struct lys_module *module, const struct lyd_n
     schema = node->schema;
 
     while (*schema_id) {
-        if ((r = parse_schema_nodeid(schema_id, &mod_name, &mod_name_len, &name, &name_len, &is_relative, NULL)) < 1) {
+        if ((r = parse_schema_nodeid(schema_id, &mod_name, &mod_name_len, &name, &name_len, &is_relative, NULL, NULL, 0)) < 1) {
             LOGINT;
             return -1;
         }
@@ -5162,17 +5150,14 @@ lyd_build_relative_data_path(const struct lys_module *module, const struct lyd_n
 
         snode = NULL;
         while ((snode = lys_getnext(snode, schema, NULL, LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE))) {
-            /* name match */
-            if (!strncmp(name, snode->name, name_len) && !snode->name[name_len]) {
-                r = schema_nodeid_siblingcheck(snode, schema_id, module, mod_name, mod_name_len);
-                if (r == 0 || r == 2) {
-                    schema = snode;
-                    break;
-                } else if (r == 1) {
-                    continue;
-                } else {
-                    return -1;
-                }
+            r = schema_nodeid_siblingcheck(snode, module, mod_name, mod_name_len, name, name_len);
+            if (r == 0) {
+                schema = snode;
+                break;
+            } else if (r == 1) {
+                continue;
+            } else {
+                return -1;
             }
         }
         /* no match */
@@ -5295,8 +5280,8 @@ uniquecheck:
                     idx1 = idx2 = LY_BUF_SIZE - 1;
                     path1[idx1] = '\0';
                     path2[idx2] = '\0';
-                    ly_vlog_build_path_reverse(LY_VLOG_LYD, first, path1, &idx1, 0);
-                    ly_vlog_build_path_reverse(LY_VLOG_LYD, second, path2, &idx2, 0);
+                    ly_vlog_build_path_reverse(LY_VLOG_LYD, first, path1, &idx1);
+                    ly_vlog_build_path_reverse(LY_VLOG_LYD, second, path2, &idx2);
 
                     /* use internal buffer to rebuild the unique string */
                     if (ly_buf_used && uniq_str[0]) {
@@ -5373,28 +5358,34 @@ unique_errmsg_cleanup:
 }
 
 API struct ly_set *
-lyd_find_xpath(const struct lyd_node *ctx_node, const char *expr)
+lyd_find_path(const struct lyd_node *ctx_node, const char *path)
 {
     struct lyxp_set xp_set;
     struct ly_set *set;
+    char *yang_xpath;
     uint16_t i;
 
-    if (!ctx_node || !expr) {
+    if (!ctx_node || !path) {
         ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    /* transform JSON into YANG XPATH */
+    yang_xpath = transform_json2xpath(lyd_node_module(ctx_node), path);
+    if (!yang_xpath) {
         return NULL;
     }
 
     memset(&xp_set, 0, sizeof xp_set);
 
-    if (lyxp_eval(expr, ctx_node, LYXP_NODE_ELEM, lyd_node_module(ctx_node), &xp_set, 0) != EXIT_SUCCESS) {
+    if (lyxp_eval(yang_xpath, ctx_node, LYXP_NODE_ELEM, lyd_node_module(ctx_node), &xp_set, 0) != EXIT_SUCCESS) {
+        free(yang_xpath);
         return NULL;
     }
+    free(yang_xpath);
 
     set = ly_set_new();
-    if (!set) {
-        LOGMEM;
-        return NULL;
-    }
+    LY_CHECK_ERR_RETURN(!set, LOGMEM, NULL);
 
     if (xp_set.type == LYXP_SET_NODE_SET) {
         for (i = 0; i < xp_set.used; ++i) {

@@ -143,7 +143,7 @@ int parse_range_dec64(const char **str_num, uint8_t dig, int64_t *num);
 int parse_identifier(const char *id);
 
 int parse_schema_nodeid(const char *id, const char **mod_name, int *mod_name_len, const char **name, int *nam_len,
-                        int *is_relative, int *has_predicate);
+                        int *is_relative, int *has_predicate, int *all_desc, int extended);
 
 int parse_schema_json_predicate(const char *id, const char **mod_name, int *mod_name_len, const char **name,
                                 int *nam_len, const char **value, int *val_len, int *has_predicate);
@@ -164,8 +164,8 @@ void resolve_identity_backlink_update(struct lys_ident *der, struct lys_ident *b
 
 struct lyd_node *resolve_data_descendant_schema_nodeid(const char *nodeid, struct lyd_node *start);
 
-int resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, const struct lys_module *module,
-                                  const struct lys_node **ret);
+int resolve_schema_nodeid(const char *nodeid, const struct lys_node *start, const struct lys_module *cur_module,
+                          struct ly_set **ret, int extended, int no_node_error);
 
 int resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *start, int ret_nodetype,
                                      int no_innerlist, const struct lys_node **ret);
@@ -237,7 +237,7 @@ int unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_I
 void unres_data_del(struct unres_data *unres, uint32_t i);
 
 int resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options);
-int schema_nodeid_siblingcheck(const struct lys_node *sibling, const char *id, const struct lys_module *module,
-                               const char *mod_name, int mod_name_len);
+int schema_nodeid_siblingcheck(const struct lys_node *sibling, const struct lys_module *cur_module,
+                           const char *mod_name, int mod_name_len, const char *name, int nam_len);
 
 #endif /* _RESOLVE_H */

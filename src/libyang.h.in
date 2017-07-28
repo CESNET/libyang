@@ -856,10 +856,27 @@ extern "C" {
 /**
  * @page howtoxpath XPath Addressing
  *
- * Internally, XPath evaluation is performed on \b when and \b must conditions in the schema. For that almost
- * a full XPath 1.0 evaluator was implemented except that only node sets are returned. This XPath implementation
- * is available on data trees by calling lyd_find_xpath() and on schema trees by calling lys_find_xpath().
- * This XPath conforms to the YANG specification (RFC 6020 section 6.4). Some useful examples:
+ * Internally, XPath evaluation is performed on __when__ and __must__ conditions in the schema. For that almost
+ * a full XPath 1.0 evaluator was implemented. In YANG models you can also find paths identifying __augment__
+ * targets, __leafref__ targets, and trivial paths in __choice default__ and __unique__ statements argument.
+ * The exact format of all those paths can be found in the relevant RFCs. Further will only be discussed
+ * paths that are used directly in libyang API functions.
+ *
+ * Schema
+ * ======
+ *
+ * Regarding identifying schema nodes, we use a slightly modified version of YANG __augment__ target path:
+ *   - strictly speaking, most XPath expressions are not accepted, only simple paths (no predicates,
+ *     numbers, literals, operators, ...),
+ *   - whenever a prefix is used for a node, it is not the import prefix, but the __module name__ itself,
+ *   - __current module__ is specified separately for _absolute_ paths and is the module of the start
+ *     (current) node for _relative_ paths,
+ *   - unprefixed nodes all use the prefix of the __current module__ so all nodes from other modules than
+ *     the __current module__ _MUST_ have prefixes,
+ *   - nodes from the __current module__ _MAY_ have prefixes,
+ *
+ * Examples
+ * --------
  *
  * - get all top-level nodes of the __module-name__
  *
@@ -869,67 +886,53 @@ extern "C" {
  *
  *       /module-name:container//\asterisk
  *
- * - get __list__ instance with __key1__ of value __1__ and __key2__ of value __2__ (this can return more __list__ instances if there are more keys than __key1__ and __key2__)
- *
- *       /module-name:container/module-name:list[module-name:key1='1'][module-name:key2='2']
- *
- * - get __leaf-list__ instance with the value __val__
- *
- *       /module-name:container/module-name:leaf-list[.='val']
- *
  * - get __aug-leaf__, which was added to __module-name__ from an augment module __augment-module__
  *
- *       /module-name:container/module-name:container2/augment-module:aug-cont/augment-module:aug-leaf
- *
- * It is important to know what prefix is used for node names without one. It is the prefix of the context node, not
- * of the parent or any other. Example:
- *
- * - get __child__ of __container__ having __container__ as the context node (either of the two)
- *
- *       /container/child
- *       /child
- *
- * - get __aug-leaf__, which was added to __container__ from an augment module __augment-module__ having __container__
- *   as the context node
- *
- *       /container/augment-module:aug-leaf
- *
- * A very small subset of this full XPath is recognized by lyd_new_path(). Basically, only a relative or absolute
- * path can be specified to identify a new data node. However, lists must be identified by either all their keys and created
- * with all of them or using their relative position on their level starting from 1, so for those cases predicates are
- * allowed. List positions can be learned using lyd_list_pos(). Key predicates must be ordered the way the keys are
- * ordered and all the keys must be specified. Every predicate includes a single key with its value. If an instance
- * with such particular set of keys or with such relative position does not exist or no predicate is specified, list
- * instance is created. Optionally, leaves and leaf-lists can have predicates specifying their value in the path itself.
- * All these paths are valid XPath expressions. Example (ietf-yang-library:modules-state is the context node):
- *
- *     /modules-state/module[name='ietf-yang-library'][revision='']/conformance[.='implement']
- *     /modules-state/module[1]/conformance[.='implement']
- *
- * Almost the same XPath is accepted by ly_ctx_get_node(). The difference is that it is not used on data, but schema,
- * which means there are no key values and only one node matches one path. In effect, lists do not have to have any
- * predicates. If they do, they do not need to have all the keys specified and if values are included, they are ignored.
- * Nevertheless, any such expression is still a valid XPath, but can return more nodes if executed on a data tree.
- * Examples (all returning the same node, ietf-yang-library:modules-state is the context node):
- *
- *     /modules-state/module/submodules
- *     /modules-state/module[name]/submodules
- *     /modules-state/module[name][revision]/submodules
- *     /modules-state/module[name='ietf-yang-library'][revision]/submodules
- *
- * Also, `choice`, `case`, `input`, and `output` nodes need to be specified and cannot be skipped in schema XPaths. Use
- * lys_find_xpath() if you want to search based on a data XPath.
- *
- * Also note, that in all cases the node's prefix is specified as the name of the appropriate YANG schema. Any node
- * can be prefixed by the module name. However, if the prefix is omitted, the module name is inherited from the previous
- * (parent) node. It means, that the first node in the path is always supposed to have a prefix.
+ *       /module-name:container/container2/augment-module:aug-cont/augment-module:aug-leaf
  *
  * Functions List
  * --------------
- * - lyd_find_xpath()
- * - lys_find_xpath()
+ * - lys_find_path()
+ * - lys_path()
+ *
+ *
+ * Data
+ * ====
+ *
+ * As for paths evaluated on YANG data, we opted for standardized JSON paths ([RFC 7951](https://tools.ietf.org/html/rfc7951#section-6.11)). Summarized, it follows these conventions:
+ *   - generally, you can use almost a full XPath in these paths where it makes sense, but only data nodes (node sets)
+ *     will always be returned (except for paths, predicates are mostly used),
+ *   - as per the specification, prefixes are actually __module names__,
+ *   - also in the specification, for _absolute_ paths, the first (leftmost) node _MUST_ have a prefix,
+ *   - for _relative_ paths, you specify the __context node__, which then acts as a parent for the first node in the path,
+ *   - nodes always inherit their module (prefix) from their __parent node__ so whenever a node is from a different
+ *     module than its parent, it _MUST_ have a prefix,
+ *   - nodes from the same module as their __parent__ _MUST NOT_ have a prefix,
+ *   - different from schema paths, non-data nodes (choice, case, uses, input, output) are skipped and not included
+ *     in the path.
+ *
+ * Examples
+ * --------
+ *
+ * - get __list__ instance with __key1__ of value __1__ and __key2__ of value __2__ (this can return more __list__ instances if there are more keys than __key1__ and __key2__)
+ *
+ *       /module-name:container/list[key1='1'][key2='2']
+ *
+ * - get __leaf-list__ instance with the value __val__
+ *
+ *       /module-name:container/leaf-list[.='val']
+ *
+ * - get __aug-list__ with __aug-list-key__, which was added to __module-name__ from an augment module __augment-module__
+ *
+ *       /module-name:container/container2/augment-module:aug-cont/aug-list[aug-list-key='value']
+ *
+ * Functions List
+ * --------------
+ * - lyd_find_path()
  * - lyd_new_path()
- * - ly_ctx_get_node()
+ * - lyd_path()
+ * - lys_data_path()
+ *
  */
 
 /**
@@ -1335,30 +1338,6 @@ const struct lys_submodule *ly_ctx_get_submodule(const struct ly_ctx *ctx, const
  * @return Pointer to the data model structure.
  */
 const struct lys_submodule *ly_ctx_get_submodule2(const struct lys_module *main_module, const char *submodule);
-
-/**
- * @brief Get schema node according to the given schema node identifier in JSON format.
- *
- * If the \p nodeid is absolute, the first node identifier must be prefixed with
- * the module name. Then every other identifier either has an explicit module name or
- * the module name of the previous node is assumed. Examples:
- *
- * /ietf-netconf-monitoring:get-schema/input/identifier
- * /ietf-interfaces:interfaces/interface/ietf-ip:ipv4/address/ip
- *
- * If the \p nodeid is relative, \p start is mandatory and is the starting point
- * for the resolution. The first node identifier does not need a module name.
- *
- * Predicates on lists are accepted (ignored) in the form of "<key>(=<value>)"
- * and on leaves/leaf-lists ".(=<value>)".
- *
- * @param[in] ctx Context to work in.
- * @param[in] start Starting node for a relative schema node identifier, in which
- * case it is mandatory.
- * @param[in] nodeid JSON schema node identifier.
- * @return Resolved schema node or NULL.
- */
-const struct lys_node *ly_ctx_get_node(struct ly_ctx *ctx, const struct lys_node *start, const char *nodeid);
 
 /**
  * @brief Remove the specified module from its context.

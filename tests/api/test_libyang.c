@@ -859,44 +859,48 @@ test_ly_ctx_get_submodule2(void **state)
 }
 
 static void
-test_ly_ctx_get_node(void **state)
+test_lys_find_path(void **state)
 {
     (void) state; /* unused */
-    const struct lys_node *node;
-    const char *nodeid1 = "/a:x/bubba";
-    const char *nodeid2 = "/b:x/bubba";
-    const char *nodeid3 = "/a:x/choic/con/con/lef";
+    struct ly_set *set;
+    const char *nodeid1 = "/x/bubba";
+    const char *nodeid2 = "/b:x/b:bubba";
+    const char *nodeid3 = "/x/choic/con/con/lef";
 
-    node = ly_ctx_get_node(NULL, root->schema, nodeid1);
-    if (node) {
+    set = lys_find_path(NULL, root->schema, nodeid1);
+    if (!set || (set->number != 1)) {
+        fail();
+    }
+    ly_set_free(set);
+
+    set = lys_find_path(NULL, root->schema, NULL);
+    if (set) {
         fail();
     }
 
-    node = ly_ctx_get_node(ctx, root->schema, NULL);
-    if (node) {
+    set = lys_find_path(root->schema->module, root->schema, nodeid1);
+    if (!set || (set->number != 1)) {
         fail();
     }
 
-    node = ly_ctx_get_node(ctx, root->schema, nodeid1);
-    if (!node) {
+    assert_string_equal("bubba", set->set.s[0]->name);
+    ly_set_free(set);
+
+    set = lys_find_path(root->schema->module, root->schema, nodeid2);
+    if (!set || (set->number != 1)) {
         fail();
     }
 
-    assert_string_equal("bubba", node->name);
+    assert_string_equal("bubba", set->set.s[0]->name);
+    ly_set_free(set);
 
-    node = ly_ctx_get_node(ctx, root->schema, nodeid2);
-    if (!node) {
+    set = lys_find_path(root->schema->module, root->schema, nodeid3);
+    if (!set || (set->number != 1)) {
         fail();
     }
 
-    assert_string_equal("bubba", node->name);
-
-    node = ly_ctx_get_node(ctx, root->schema, nodeid3);
-    if (!node) {
-        fail();
-    }
-
-    assert_string_equal("lef", node->name);
+    assert_string_equal("lef", set->set.s[0]->name);
+    ly_set_free(set);
 }
 
 static void
@@ -1141,7 +1145,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_module_by_ns, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_submodule, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_submodule2, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_ly_ctx_get_node, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_lys_find_path, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_set_new, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_set_add, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_set_rm, setup_f, teardown_f),
