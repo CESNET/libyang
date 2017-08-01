@@ -349,6 +349,11 @@ _transform_json2xml(const struct lys_module *module, const char *expr, int schem
         *namespaces = NULL;
     }
 
+    if (!expr[0]) {
+        /* empty value */
+        return lydict_insert(module->ctx, expr, 0);
+    }
+
     out_size = strlen(expr) + 1;
     out = malloc(out_size);
     LY_CHECK_ERR_RETURN(!out, LOGMEM, NULL);

@@ -7177,6 +7177,11 @@ check_instid_ext_dep(const struct lys_node *sleaf, const char *json_instid)
     char *buf;
     int ret = 0;
 
+    if (!json_instid || !json_instid[0]) {
+        /* no/empty value */
+        return 0;
+    }
+
     for (op_node = lys_parent(sleaf);
          op_node && !(op_node->nodetype & (LYS_NOTIF | LYS_RPC | LYS_ACTION));
          op_node = lys_parent(op_node));
@@ -7446,6 +7451,9 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int store,
             break;
         case LY_TYPE_INST:
             ext_dep = check_instid_ext_dep(leaf->schema, (json_val ? json_val : leaf->value_str));
+            if (ext_dep == -1) {
+                return -1;
+            }
             if ((ignore_fail == 1) || (ext_dep && (ignore_fail == 2))) {
                 req_inst = -1;
             } else {
