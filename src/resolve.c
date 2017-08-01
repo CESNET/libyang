@@ -6318,10 +6318,10 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         break;
     case UNRES_TYPE_DER_EXT:
         parent_type++;
-        /* no break */
+        /* falls through */
     case UNRES_TYPE_DER_TPDF:
         parent_type++;
-        /* no break */
+        /* falls through */
     case UNRES_TYPE_DER:
         /* parent */
         node = str_snode;
@@ -6454,7 +6454,7 @@ featurecheckdone:
         break;
     case UNRES_TYPEDEF_DFLT:
         parent_type++;
-        /* no break */
+        /* falls through */
     case UNRES_TYPE_DFLT:
         stype = item;
         rc = check_default(stype, (const char **)str_snode, mod, parent_type);

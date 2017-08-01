@@ -14,6 +14,7 @@
 
 #define _GNU_SOURCE
 #define _BSD_SOURCE
+#define _DEFAULT_SOURCE
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>

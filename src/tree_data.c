@@ -2546,7 +2546,7 @@ lyd_diff_compare(struct lyd_node *first, struct lyd_node *second,
             diff_ordset_insert(first, ordset);
         }
 
-        /* no break, fall through */
+        /* falls through */
     case LYS_CONTAINER:
         second->validity |= LYD_VAL_INUSE;
         /* remember the matching node in first for keeping correct pointer in first
@@ -4611,7 +4611,7 @@ lyd_dup_to_ctx(const struct lyd_node *node, int recursive, struct ly_ctx *ctx)
                     new_leaf->value = ((struct lyd_node_leaf_list *)elem)->value;
                     break;
                 }
-                /* no break */
+                /* falls through */
             case LY_TYPE_IDENT:
             case LY_TYPE_BITS:
                 /* in case of duplicating bits (no matter if in the same context or not) or enum and identityref into
@@ -6068,7 +6068,7 @@ lyd_wd_add_subtree(struct lyd_node **root, struct lyd_node *last_parent, struct 
             /* stop recursion */
             break;
         }
-        /* no break */
+        /* falls through */
     case LYS_CONTAINER:
         if (!subroot) {
             /* container does not exists, continue only in case of non presence container */
@@ -6107,7 +6107,7 @@ lyd_wd_add_subtree(struct lyd_node **root, struct lyd_node *last_parent, struct 
              * have in recursion function some non-default node, it will unset it */
             subroot->dflt = 1;
         }
-        /* no break */
+        /* falls through */
     case LYS_CASE:
     case LYS_USES:
     case LYS_INPUT:
