@@ -85,7 +85,9 @@ help(int shortout)
         "        config          - Configuration datastore (without status data).\n"
         "        get             - Result of the NETCONF <get> operation.\n"
         "        getconfig       - Result of the NETCONF <get-config> operation.\n"
-        "        edit            - Content of the NETCONF <edit-config> operation.\n\n"
+        "        edit            - Content of the NETCONF <edit-config> operation.\n"
+        "        rpc             - Content of the NETCONF <rpc> message, defined as YANG's rpc input statement.\n"
+        "        notif           - Notification instance (content of the <notification> element without <eventTime>.\n\n"
         "  -y YANGLIB_PATH       - Path to a yang-library data describing the initial context.\n\n"
         "Tree output specific options:\n"
         "  --tree-help           Print help on tree symbols and exit.\n"
@@ -325,6 +327,10 @@ main_ni(int argc, char* argv[])
                 options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_EDIT;
             } else if (!strcmp(optarg, "data")) {
                 options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_DATA;
+            } else if (!strcmp(optarg, "rpc")) {
+                options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPC;
+            } else if (!strcmp(optarg, "notif")) {
+                options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_NOTIF;
             } else {
                 fprintf(stderr, "yanglint error: unknown data tree type %s\n", optarg);
                 help(1);
@@ -603,15 +609,25 @@ main_ni(int argc, char* argv[])
                         fprintf(stdout, "Parsing %s as <edit-config> data.\n", data_item->filename);
                     }
                     options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_EDIT;
+                } else if (!strcmp(xml->name, "rpc")) {
+                    if (verbose >= 2) {
+                        fprintf(stdout, "Parsing %s as <rpc> data.\n", data_item->filename);
+                    }
+                    options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPC;
+                } else if (!strcmp(xml->name, "notification")) {
+                    if (verbose >= 2) {
+                        fprintf(stdout, "Parsing %s as <notification> data.\n", data_item->filename);
+                    }
+                    options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_NOTIF;
                 } else {
                     fprintf(stderr, "yanglint error: invalid top-level element \"%s\" for data type autodetection.\n",
                             xml->name);
                     goto cleanup;
                 }
 
-                node = lyd_parse_xml(ctx, &xml->child, LYD_OPT_TRUSTED | options_parser);
+                node = lyd_parse_xml(ctx, &xml->child, LYD_OPT_TRUSTED | options_parser, NULL);
             } else {
-                node = lyd_parse_path(ctx, data_item->filename, data_item->format, LYD_OPT_TRUSTED | options_parser);
+                node = lyd_parse_path(ctx, data_item->filename, data_item->format, LYD_OPT_TRUSTED | options_parser, NULL);
             }
             if (ly_errno) {
                 goto cleanup;
@@ -641,7 +657,7 @@ main_ni(int argc, char* argv[])
                         break;
                     case LYS_LIST:
                         node->validity |= LYD_VAL_UNIQUE;
-                        /* fallthrough */
+                        /* falls through */
                     case LYS_CONTAINER:
                     case LYS_NOTIF:
                     case LYS_RPC:
@@ -654,7 +670,7 @@ main_ni(int argc, char* argv[])
                     LY_TREE_DFS_END(subroot, next, node)
                 }
             }
-            if (lyd_validate(&root, options_parser, ctx)) {
+            if (lyd_validate(&root, options_parser, (options_parser & (LYD_OPT_RPC | LYD_OPT_NOTIF)) ? NULL : ctx)) {
                 goto cleanup;
             }
         }
