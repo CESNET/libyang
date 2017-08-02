@@ -88,6 +88,10 @@ help(int shortout)
         "        edit            - Content of the NETCONF <edit-config> operation.\n"
         "        rpc             - Content of the NETCONF <rpc> message, defined as YANG's rpc input statement.\n"
         "        notif           - Notification instance (content of the <notification> element without <eventTime>.\n\n"
+        "  -r FILE, --running=FILE\n"
+        "                        - Optional parameter for 'rpc' and 'notif' TYPEs, the FILE contains running\n"
+        "                          configuration datastore data referenced from the RPC/Notification. The same data\n"
+        "                          apply to all input data <file>s. Note that the file is validated as 'data' TYPE.\n\n"
         "  -y YANGLIB_PATH       - Path to a yang-library data describing the initial context.\n\n"
         "Tree output specific options:\n"
         "  --tree-help           Print help on tree symbols and exit.\n"
@@ -160,6 +164,57 @@ libyang_verbclb(LY_LOG_LEVEL level, const char *msg, const char *path)
     }
 }
 
+/*
+ * return:
+ * 0 - error
+ * 1 - schema format
+ * 2 - data format
+ */
+static int
+get_fileformat(const char *filename, LYS_INFORMAT *schema, LYD_FORMAT *data)
+{
+    char *ptr;
+    LYS_INFORMAT informat_s;
+    LYD_FORMAT informat_d;
+
+    /* get the file format */
+    if ((ptr = strrchr(filename, '.')) != NULL) {
+        ++ptr;
+        if (!strcmp(ptr, "yin")) {
+            informat_s = LYS_IN_YIN;
+            informat_d = 0;
+        } else if (!strcmp(ptr, "yang")) {
+            informat_s = LYS_IN_YANG;
+            informat_d = 0;
+        } else if (!strcmp(ptr, "xml")) {
+            informat_s = 0;
+            informat_d = LYD_XML;
+        } else if (!strcmp(ptr, "json")) {
+            informat_s = 0;
+            informat_d = LYD_JSON;
+        } else {
+            fprintf(stderr, "yanglint error: input file in an unknown format \"%s\".\n", ptr);
+            return 0;
+        }
+    } else {
+        fprintf(stderr, "yanglint error: input file \"%s\" without file extension - unknown format.\n", filename);
+        return 0;
+    }
+
+    if (data) {
+        (*data) = informat_d;
+    }
+    if (schema) {
+        (*schema) = informat_s;
+    }
+
+    if (informat_s) {
+        return 1;
+    } else {
+        return 2;
+    }
+}
+
 int
 main_ni(int argc, char* argv[])
 {
@@ -175,6 +230,7 @@ main_ni(int argc, char* argv[])
         {"allimplemented",   no_argument,       NULL, 'i'},
         {"output",           required_argument, NULL, 'o'},
         {"path",             required_argument, NULL, 'p'},
+        {"running",          required_argument, NULL, 'r'},
         {"strict",           no_argument,       NULL, 's'},
         {"version",          no_argument,       NULL, 'v'},
         {"verbose",          no_argument,       NULL, 'V'},
@@ -192,6 +248,7 @@ main_ni(int argc, char* argv[])
     LYS_INFORMAT informat_s;
     LYD_FORMAT informat_d, outformat_d = 0, ylformat = 0;
     struct ly_set *searchpaths = NULL;
+    const char *running_file = NULL;
     char **feat = NULL, *ptr, *featlist, *ylpath = NULL, *dir;
     struct stat st;
     uint32_t u;
@@ -202,16 +259,16 @@ main_ni(int argc, char* argv[])
         struct dataitem *next;
     } *data = NULL, *data_item;
     struct ly_set *mods = NULL;
-    struct lyd_node *root = NULL, *node = NULL, *next, *subroot;
+    struct lyd_node *root = NULL, *node = NULL, *running = NULL;
     struct lyxml_elem *xml = NULL;
     void *p;
     int index = 0;
 
     opterr = 0;
 #ifndef NDEBUG
-    while ((opt = getopt_long(argc, argv, "d:f:F:ghHio:p:st:vVG:y:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "d:f:F:ghHio:p:r:st:vVG:y:", options, &opt_index)) != -1)
 #else
-    while ((opt = getopt_long(argc, argv, "d:f:F:ghHio:p:st:vVy:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "d:f:F:ghHio:p:r:st:vVy:", options, &opt_index)) != -1)
 #endif
     {
         switch (opt) {
@@ -260,14 +317,14 @@ main_ni(int argc, char* argv[])
                 p = realloc(feat, featsize * sizeof *feat);
             }
             if (!p) {
-                fprintf(stderr, "Memory allocation failed (%s:%d, %s)", __FILE__, __LINE__, strerror(errno));
+                fprintf(stderr, "yanglint error: Memory allocation failed (%s:%d, %s)", __FILE__, __LINE__, strerror(errno));
                 goto cleanup;
             }
             feat = p;
             feat[featsize - 1] = strdup(optarg);
             ptr = strchr(feat[featsize - 1], ':');
             if (!ptr) {
-                fprintf(stderr, "Invalid format of the features specification (%s)", optarg);
+                fprintf(stderr, "yanglint error: Invalid format of the features specification (%s)", optarg);
                 goto cleanup;
             }
             *ptr = '\0';
@@ -299,17 +356,24 @@ main_ni(int argc, char* argv[])
             break;
         case 'p':
             if (stat(optarg, &st) == -1) {
-                fprintf(stderr, "Unable to use search path (%s) - %s.\n", optarg, strerror(errno));
+                fprintf(stderr, "yanglint error: Unable to use search path (%s) - %s.\n", optarg, strerror(errno));
                 goto cleanup;
             }
             if (!S_ISDIR(st.st_mode)) {
-                fprintf(stderr, "Provided search path is not a directory.\n");
+                fprintf(stderr, "yanglint error: Provided search path is not a directory.\n");
                 goto cleanup;
             }
             if (!searchpaths) {
                 searchpaths = ly_set_new();
             }
             ly_set_add(searchpaths, optarg, 0);
+            break;
+        case 'r':
+            if (running_file) {
+                fprintf(stderr, "yanglint error: The running datastore (-r) cannot be set multiple times.\n");
+                goto cleanup;
+            }
+            running_file = optarg;
             break;
         case 's':
             options_parser |= LYD_OPT_STRICT;
@@ -434,6 +498,11 @@ main_ni(int argc, char* argv[])
         /* we have options for printing data tree, but output is schema */
         fprintf(stderr, "yanglint warning: parser option is ignored when printing schema.\n");
     }
+    if (running_file && !(options_parser & (LYD_OPT_RPC | LYD_OPT_NOTIF))) {
+        fprintf(stderr, "yanglint warning: running datastor applies only to RPCs or Notifications.\n");
+        /* ignore running datastore file */
+        running_file = NULL;
+    }
     if ((options_parser & LYD_OPT_TYPEMASK) == LYD_OPT_DATA) {
         /* add option to ignore ietf-yang-library data for implicit data type */
         options_parser |= LYD_OPT_DATA_NO_YANGLIB;
@@ -474,27 +543,7 @@ main_ni(int argc, char* argv[])
     /* divide input files */
     for (i = 0; i < argc - optind; i++) {
         /* get the file format */
-        if ((ptr = strrchr(argv[optind + i], '.')) != NULL) {
-            ++ptr;
-            if (!strcmp(ptr, "yin")) {
-                informat_s = LYS_IN_YIN;
-                informat_d = 0;
-            } else if (!strcmp(ptr, "yang")) {
-                informat_s = LYS_IN_YANG;
-                informat_d = 0;
-            } else if (!strcmp(ptr, "xml")) {
-                informat_s = 0;
-                informat_d = LYD_XML;
-            } else if (!strcmp(ptr, "json")) {
-                informat_s = 0;
-                informat_d = LYD_JSON;
-            } else {
-                fprintf(stderr, "yanglint error: input file in an unknown format \"%s\".\n", ptr);
-                goto cleanup;
-            }
-        } else {
-            fprintf(stderr, "yanglint error: input file \"%s\" without file extension - unknown format.\n",
-                    argv[optind + i]);
+        if (!get_fileformat(argv[optind + i], &informat_s, &informat_d)) {
             goto cleanup;
         }
 
@@ -573,6 +622,23 @@ main_ni(int argc, char* argv[])
         }
     } else if (data) {
         ly_errno = 0;
+
+        /* prepare running datastore when specified for RPC/Notification */
+        if (running_file) {
+            /* get the file format */
+            if (!get_fileformat(running_file, NULL, &informat_d)) {
+                goto cleanup;
+            } else if (!informat_d) {
+                fprintf(stderr, "yanglint error: The running data are expected in XML or JSON format.\n");
+                goto cleanup;
+            }
+            running = lyd_parse_path(ctx, running_file, informat_d, LYD_OPT_DATA_NO_YANGLIB);
+            if (!running) {
+                fprintf(stderr, "yanglint error: Failed to parse the running datastore file for RPC/Notification validation.\n");
+                goto cleanup;
+            }
+        }
+
         for (data_item = data; data_item; data_item = data_item->next) {
             /* parse data file - via LYD_OPT_TRUSTED postpone validation when all data are loaded and merged */
             if ((options_parser & LYD_OPT_TYPEMASK) == LYD_OPT_TYPEMASK) {
