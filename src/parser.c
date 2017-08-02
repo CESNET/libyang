@@ -1265,7 +1265,7 @@ make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, vo
                  * (one for 0. and also keep the correct with of num according
                  * to fraction-digits value)
                  * for (num<0) - extra character for '-' sign */
-                count = sprintf(buf, "%0*"PRId64" ", (num>0)?c+1:c+2, num);
+                count = sprintf(buf, "%0*"PRId64" ", (num > 0) ? (c + 1) : (c + 2), num);
             }
             for (i = c, j = 1; i > 0 ; i--) {
                 if (j && i > 1 && buf[count - 2] == '0') {
