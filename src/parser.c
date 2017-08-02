@@ -217,19 +217,25 @@ lyp_is_rpc_action(struct lys_node *node)
 }
 
 int
-lyp_check_options(int options)
+lyp_check_options(int options, const char *func)
 {
     int x = options & LYD_OPT_TYPEMASK;
 
     /* LYD_OPT_NOAUTODEL can be used only with LYD_OPT_DATA or LYD_OPT_CONFIG */
     if (options & LYD_OPT_NOAUTODEL) {
         if (x != LYD_OPT_DATA && x != LYD_OPT_CONFIG) {
+            LOGERR(LY_EINVAL, "%s: Invalid options 0x%x (LYD_OPT_DATA_NOAUTODEL can be used only with LYD_OPT_DATA or LYD_OPT_CONFIG)", func, options);
             return 1;
         }
     }
 
     /* "is power of 2" algorithm, with 0 exception */
-    return x ? !(x && !(x & (x - 1))) : 0;
+    if (x && !(x && !(x & (x - 1)))) {
+        LOGERR(LY_EINVAL, "%s: Invalid options 0x%x (multiple data type flags set).", func, options);
+        return 1;
+    }
+
+    return 0;
 }
 
 void *

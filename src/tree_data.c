@@ -447,8 +447,7 @@ lyd_parse_data_(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int opt
 {
     const struct lyd_node *rpc_act = NULL, *data_tree = NULL, *iter;
 
-    if (lyp_check_options(options)) {
-        LOGERR(LY_EINVAL, "%s: Invalid options (multiple data type flags set).", __func__);
+    if (lyp_check_options(options, __func__)) {
         return NULL;
     }
 
