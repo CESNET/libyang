@@ -7176,6 +7176,7 @@ check_instid_ext_dep(const struct lys_node *sleaf, const char *json_instid)
     struct lys_node *op_node, *first_node;
     char *buf;
     int ret = 0;
+    LY_LOG_LEVEL verb;
 
     for (op_node = lys_parent(sleaf);
          op_node && !(op_node->nodetype & (LYS_NOTIF | LYS_RPC | LYS_ACTION));
@@ -7199,11 +7200,15 @@ check_instid_ext_dep(const struct lys_node *sleaf, const char *json_instid)
         *strchr(buf, '[') = '\0';
     }
 
+    /* it is not an error if not found, do not print */
+    verb = ly_verb(LY_LLSILENT);
     /* find the first schema node */
     set = lys_find_path(NULL, sleaf, buf);
+    ly_verb(verb);
     if (!set || !set->number) {
         free(buf);
         ly_set_free(set);
+        ly_errno = LY_SUCCESS;
         return 1;
     }
     free(buf);
