@@ -1259,11 +1259,13 @@ make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, vo
         c = *((uint8_t *)data2);
         if (num) {
             count = sprintf(buf, "%"PRId64" ", num);
-            if ((count - 1) <= c) {
+            if ( (num > 0 && (count - 1) <= c) 
+                 || (count - 2) <= c ) {
                 /* we have 0. value, print the value with the leading zeros
                  * (one for 0. and also keep the correct with of num according
-                 * to fraction-digits value) */
-                count = sprintf(buf, "0%0*"PRId64" ", c, num);
+                 * to fraction-digits value)
+                 * for (num<0) - extra character for '-' sign */
+                count = sprintf(buf, "%0*"PRId64" ", (num > 0) ? (c + 1) : (c + 2), num);
             }
             for (i = c, j = 1; i > 0 ; i--) {
                 if (j && i > 1 && buf[count - 2] == '0') {
