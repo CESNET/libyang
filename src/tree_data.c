@@ -6414,7 +6414,6 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
         if (data_tree && (options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF))) {
             if (act_notif) {
                 /* fun case */
-                assert(act_notif->parent);
 
                 msg_parent = NULL;
                 msg_sibling = *root;
@@ -6453,6 +6452,7 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
                         }
                         if (msg_sibling->schema->nodetype & (LYS_ACTION | LYS_NOTIF)) {
                             /* we are done */
+                            assert(act_notif->parent);
                             assert(act_notif->parent->schema == data_tree_parent->schema);
                             assert(msg_sibling == act_notif);
                             break;
