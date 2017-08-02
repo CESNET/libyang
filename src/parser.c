@@ -229,6 +229,13 @@ lyp_check_options(int options, const char *func)
         }
     }
 
+    if (options & (LYD_OPT_DATA_ADD_YANGLIB | LYD_OPT_DATA_NO_YANGLIB)) {
+        if (x != LYD_OPT_DATA) {
+            LOGERR(LY_EINVAL, "%s: Invalid options 0x%x (LYD_OPT_DATA_*_YANGLIB can be used only with LYD_OPT_DATA)", func, options);
+            return 1;
+        }
+    }
+
     /* "is power of 2" algorithm, with 0 exception */
     if (x && !(x && !(x & (x - 1)))) {
         LOGERR(LY_EINVAL, "%s: Invalid options 0x%x (multiple data type flags set).", func, options);

@@ -326,7 +326,7 @@ main_ni(int argc, char* argv[])
             } else if (!strcmp(optarg, "edit")) {
                 options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_EDIT;
             } else if (!strcmp(optarg, "data")) {
-                options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_DATA;
+                options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_DATA_NO_YANGLIB;
             } else if (!strcmp(optarg, "rpc")) {
                 options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPC;
             } else if (!strcmp(optarg, "notif")) {
@@ -433,6 +433,10 @@ main_ni(int argc, char* argv[])
     if (!outformat_d && options_parser) {
         /* we have options for printing data tree, but output is schema */
         fprintf(stderr, "yanglint warning: parser option is ignored when printing schema.\n");
+    }
+    if ((options_parser & LYD_OPT_TYPEMASK) == LYD_OPT_DATA) {
+        /* add option to ignore ietf-yang-library data for implicit data type */
+        options_parser |= LYD_OPT_DATA_NO_YANGLIB;
     }
 
     /* set callback for printing libyang messages */
@@ -569,10 +573,6 @@ main_ni(int argc, char* argv[])
         }
     } else if (data) {
         ly_errno = 0;
-        if (!(options_parser & LYD_OPT_TYPEMASK)) {
-            /* LYD_OPT_DATA - status data for ietf-yang-library are needed */
-            root = ly_ctx_info(ctx);
-        }
         for (data_item = data; data_item; data_item = data_item->next) {
             /* parse data file - via LYD_OPT_TRUSTED postpone validation when all data are loaded and merged */
             if ((options_parser & LYD_OPT_TYPEMASK) == LYD_OPT_TYPEMASK) {
@@ -588,7 +588,7 @@ main_ni(int argc, char* argv[])
                     if (verbose >= 2) {
                         fprintf(stdout, "Parsing %s as complete datastore.\n", data_item->filename);
                     }
-                    options_parser = (options_parser & ~LYD_OPT_TYPEMASK);
+                    options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_DATA_NO_YANGLIB;
                 } else if (!strcmp(xml->name, "config")) {
                     if (verbose >= 2) {
                         fprintf(stdout, "Parsing %s as config data.\n", data_item->filename);
@@ -625,9 +625,9 @@ main_ni(int argc, char* argv[])
                     goto cleanup;
                 }
 
-                node = lyd_parse_xml(ctx, &xml->child, LYD_OPT_TRUSTED | options_parser, NULL);
+                node = lyd_parse_xml(ctx, &xml->child, options_parser, running);
             } else {
-                node = lyd_parse_path(ctx, data_item->filename, data_item->format, LYD_OPT_TRUSTED | options_parser, NULL);
+                node = lyd_parse_path(ctx, data_item->filename, data_item->format, options_parser, running);
             }
             if (ly_errno) {
                 goto cleanup;
@@ -640,38 +640,6 @@ main_ni(int argc, char* argv[])
                     fprintf(stderr, "yanglint error: merging multiple data trees failed.\n");
                     goto cleanup;
                 }
-            }
-        }
-        /* validate the data */
-        if (data) {
-            /* do not trust the input, invalidate all the data first */
-            LY_TREE_FOR(root, subroot) {
-                LY_TREE_DFS_BEGIN(subroot, next, node) {
-                    node->validity = LYD_VAL_OK;
-                    switch (node->schema->nodetype) {
-                    case LYS_LEAFLIST:
-                    case LYS_LEAF:
-                        if (((struct lys_node_leaf *)node->schema)->type.base == LY_TYPE_LEAFREF) {
-                            node->validity |= LYD_VAL_LEAFREF;
-                        }
-                        break;
-                    case LYS_LIST:
-                        node->validity |= LYD_VAL_UNIQUE;
-                        /* falls through */
-                    case LYS_CONTAINER:
-                    case LYS_NOTIF:
-                    case LYS_RPC:
-                    case LYS_ACTION:
-                        node->validity |= LYD_VAL_MAND;
-                        break;
-                    default:
-                        break;
-                    }
-                    LY_TREE_DFS_END(subroot, next, node)
-                }
-            }
-            if (lyd_validate(&root, options_parser, (options_parser & (LYD_OPT_RPC | LYD_OPT_NOTIF)) ? NULL : ctx)) {
-                goto cleanup;
             }
         }
 

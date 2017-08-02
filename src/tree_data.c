@@ -352,7 +352,9 @@ lyd_check_mandatory_tree(struct lyd_node *root, struct ly_ctx *ctx, int options)
                 return EXIT_FAILURE;
             }
         } else {
-            for (i = 0; i < ctx->models.used; i++) {
+            for (i = (options & LYD_OPT_DATA_NO_YANGLIB) ? LY_INTERNAL_MODULE_COUNT : LY_INTERNAL_MODULE_COUNT - 1;
+                 i < ctx->models.used;
+                 i++) {
                 /* skip not implemented and disabled modules */
                 if (!ctx->models.list[i]->implemented || ctx->models.list[i]->disabled) {
                     continue;
@@ -4129,6 +4131,10 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
         return EXIT_FAILURE;
     }
 
+    if (lyp_check_options(options, __func__)) {
+        return EXIT_FAILURE;
+    }
+
     unres = calloc(1, sizeof *unres);
     LY_CHECK_ERR_RETURN(!unres, LOGMEM, EXIT_FAILURE);
 
@@ -4293,6 +4299,11 @@ nextsiblings:
      * only the inner instances were tested in lyv_data_content() */
     set = ly_set_new();
     LY_TREE_FOR(*node, root) {
+        if ((options & LYD_OPT_DATA_ADD_YANGLIB) && root->schema->module == ctx->models.list[LY_INTERNAL_MODULE_COUNT - 1]) {
+            /* ietf-yang-library data present, so ignore the option to add them */
+            options &= ~LYD_OPT_DATA_ADD_YANGLIB;
+        }
+
         if (!(root->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) || !(root->validity & LYD_VAL_UNIQUE)) {
             continue;
         }
@@ -4310,6 +4321,16 @@ nextsiblings:
         }
     }
     ly_set_free(set);
+
+    /* add missing ietf-yang-library if requested */
+    if (options & LYD_OPT_DATA_ADD_YANGLIB) {
+        if (!(*node)) {
+            (*node) = ly_ctx_info(ctx);
+        } else if (lyd_merge((*node), ly_ctx_info(ctx), LYD_OPT_DESTRUCT | LYD_OPT_EXPLICIT)) {
+            LOGERR(LY_EINT, "Adding ietf-yang-library data failed.");
+            goto cleanup;
+        }
+    }
 
     /* add default values, resolve unres and check for mandatory nodes in final tree */
     if (lyd_defaults_add_unres(node, options, ctx, data_tree, act_notif, unres)) {

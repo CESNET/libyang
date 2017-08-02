@@ -70,13 +70,14 @@ cmd_data_help(void)
     printf("Accepted TYPEs:\n");
     printf("\tauto       - resolve data type (one of the following) automatically (as pyang does),\n");
     printf("\t             this option is applicable only in case of XML input data.\n");
-    printf("\tconfig     - LYD_OPT_CONFIG\n");
-    printf("\tget        - LYD_OPT_GET\n");
-    printf("\tgetconfig  - LYD_OPT_GETCONFIG\n");
-    printf("\tedit       - LYD_OPT_EDIT\n");
-    printf("\trpc        - LYD_OPT_RPC\n");
+    printf("\tdata       - LYD_OPT_DATA (default value) - complete datastore including status data.\n");
+    printf("\tconfig     - LYD_OPT_CONFIG - complete configuration datastore.\n");
+    printf("\tget        - LYD_OPT_GET - <get> operation result.\n");
+    printf("\tgetconfig  - LYD_OPT_GETCONFIG - <get-config> operation result.\n");
+    printf("\tedit       - LYD_OPT_EDIT - <edit-config>'s data (content of its <config> element).\n");
+    printf("\trpc        - LYD_OPT_RPC - NETCONF RPC message.\n");
     printf("\trpcreply   - LYD_OPT_RPCREPLY (last parameter mandatory in this case)\n");
-    printf("\tnotif      - LYD_OPT_NOTIF\n\n");
+    printf("\tnotif      - LYD_OPT_NOTIF - NETCONF Notification message.\n\n");
     printf("Accepted DEFAULTS:\n");
     printf("\tall        - add missing default nodes\n");
     printf("\tall-tagged - add missing default nodes and mark all the default nodes with the attribute.\n");
@@ -85,7 +86,7 @@ cmd_data_help(void)
     printf("Option -x:\n");
     printf("\tIf RPC/action/notification/RPC reply (for TYPEs 'rpc', 'rpcreply', and 'notif') includes\n");
     printf("\tan XPath expression (when/must) that needs access to the configuration data, you can provide\n");
-    printf("\tthem in a file, which will be parsed as 'config'.\n");
+    printf("\tthem in a file, which will be parsed as 'data' TYPE.\n");
 }
 
 void
@@ -693,7 +694,7 @@ cmd_data(const char *arg)
             }
             break;
         case 'x':
-            val_tree = lyd_parse_path(ctx, optarg, LYD_XML, LYD_OPT_CONFIG);
+            val_tree = lyd_parse_path(ctx, optarg, LYD_XML, LYD_OPT_DATA_NO_YANGLIB);
             if (!val_tree) {
                 fprintf(stderr, "Failed to parse the additional data tree for validation.\n");
                 goto cleanup;
