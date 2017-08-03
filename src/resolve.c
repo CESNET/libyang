@@ -2141,11 +2141,11 @@ resolve_json_schema_list_predicate(const char *predicate, const struct lys_node_
 
 /* cannot return LYS_GROUPING, LYS_AUGMENT, LYS_USES, logs directly */
 const struct lys_node *
-resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_node *start)
+resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_node *start, int output)
 {
     char *module_name = ly_buf(), *buf_backup = NULL, *str;
     const char *name, *mod_name, *id;
-    const struct lys_node *sibling, *start_parent;
+    const struct lys_node *sibling, *start_parent, *parent;
     int r, nam_len, mod_name_len, is_relative = -1, has_predicate;
     /* resolved import module from the start module, it must match the next node-name-match sibling */
     const struct lys_module *prefix_mod, *module, *prev_mod;
@@ -2215,10 +2215,19 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
 
     while (1) {
         sibling = NULL;
-        while ((sibling = lys_getnext(sibling, start_parent, module,
-                LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT))) {
+        while ((sibling = lys_getnext(sibling, start_parent, module, 0))) {
             /* name match */
             if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
+                /* output check */
+                for (parent = lys_parent(sibling); parent && !(parent->nodetype & (LYS_INPUT | LYS_OUTPUT)); parent = lys_parent(parent));
+                if (parent) {
+                    if (output && (parent->nodetype == LYS_INPUT)) {
+                        continue;
+                    } else if (!output && (parent->nodetype == LYS_OUTPUT)) {
+                        continue;
+                    }
+                }
+
                 /* module check */
                 if (mod_name) {
                     if (mod_name_len > LY_BUF_SIZE - 1) {

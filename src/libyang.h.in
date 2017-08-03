@@ -932,6 +932,7 @@ extern "C" {
  * - lyd_new_path()
  * - lyd_path()
  * - lys_data_path()
+ * - ly_ctx_get_node()
  *
  */
 
@@ -1338,6 +1339,21 @@ const struct lys_submodule *ly_ctx_get_submodule(const struct ly_ctx *ctx, const
  * @return Pointer to the data model structure.
  */
 const struct lys_submodule *ly_ctx_get_submodule2(const struct lys_module *main_module, const char *submodule);
+
+/**
+ * @brief Get schema node according to the given data path (JSON format, see @ref howtoxpath).
+ *
+ * This function is primarily meant as a utility function to ease getting specific schema nodes
+ * directly from context having data_path a const immutable string.
+ *
+ * @param[in] ctx Context to work in.
+ * @param[in] start Starting node for a relative schema node identifier, in which
+ * case it is mandatory.
+ * @param[in] data_path JSON schema node identifier.
+ * @param[in] output Search operation output instead input.
+ * @return Resolved schema node or NULL.
+ */
+const struct lys_node *ly_ctx_get_node(struct ly_ctx *ctx, const struct lys_node *start, const char *data_path, int output);
 
 /**
  * @brief Remove the specified module from its context.
