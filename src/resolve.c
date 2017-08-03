@@ -645,7 +645,7 @@ parse_path_arg(const struct lys_module *mod, const char *id, const char **prefix
 
 /**
  * @brief Parse instance-identifier in JSON data format. That means that prefixes
- *        (which are mandatory for every node-identifier) are actually model names.
+ *        are actually model names.
  *
  * instance-identifier = 1*("/" (node-identifier *predicate))
  *
@@ -665,6 +665,8 @@ parse_instance_identifier(const char *id, const char **model, int *mod_len, cons
 {
     int parsed = 0, ret;
 
+    assert(id && model && mod_len && name && nam_len);
+
     if (has_predicate) {
         *has_predicate = 0;
     }
@@ -680,28 +682,30 @@ parse_instance_identifier(const char *id, const char **model, int *mod_len, cons
         return ret;
     }
 
-    *model = id;
-    *mod_len = ret;
-
-    parsed += ret;
-    id += ret;
-
-    if (id[0] != ':') {
-        return -parsed;
-    }
-
-    ++parsed;
-    ++id;
-
-    if ((ret = parse_identifier(id)) < 1) {
-        return ret;
-    }
-
     *name = id;
     *nam_len = ret;
 
     parsed += ret;
     id += ret;
+
+    if (id[0] == ':') {
+        /* we have prefix */
+        *model = *name;
+        *mod_len = *nam_len;
+
+        ++parsed;
+        ++id;
+
+        if ((ret = parse_identifier(id)) < 1) {
+            return ret;
+        }
+
+        *name = id;
+        *nam_len = ret;
+
+        parsed += ret;
+        id += ret;
+    }
 
     if (id[0] == '[' && has_predicate) {
         *has_predicate = 1;
@@ -743,21 +747,18 @@ parse_predicate(const char *id, const char **model, int *mod_len, const char **n
 
     assert(id);
     if (model) {
+        assert(mod_len);
         *model = NULL;
-    }
-    if (mod_len) {
         *mod_len = 0;
     }
     if (name) {
+        assert(nam_len);
         *name = NULL;
-    }
-    if (nam_len) {
         *nam_len = 0;
     }
     if (value) {
+        assert(val_len);
         *value = NULL;
-    }
-    if (val_len) {
         *val_len = 0;
     }
     if (has_predicate) {
@@ -810,9 +811,7 @@ parse_predicate(const char *id, const char **model, int *mod_len, const char **n
 
         } else {
             if ((ret = parse_node_identifier(id, model, mod_len, name, nam_len, NULL, 0)) < 1) {
-                return -parsed+ret;
-            } else if (model && !*model) {
-                return -parsed;
+                return -parsed + ret;
             }
 
             parsed += ret;
@@ -846,7 +845,7 @@ parse_predicate(const char *id, const char **model, int *mod_len, const char **n
             if ((ptr = strchr(id, quote)) == NULL) {
                 return -parsed;
             }
-            ret = ptr-id;
+            ret = ptr - id;
 
             if (value) {
                 *value = id;
@@ -855,8 +854,8 @@ parse_predicate(const char *id, const char **model, int *mod_len, const char **n
                 *val_len = ret;
             }
 
-            parsed += ret+1;
-            id += ret+1;
+            parsed += ret + 1;
+            id += ret + 1;
         } else {
             return -parsed;
         }
@@ -3887,6 +3886,7 @@ get_next_augment:
  * @brief Resolve instance-identifier predicate in JSON data format.
  *        Does not log.
  *
+ * @param[in] prev_mod Previous module to use in case there is no prefix.
  * @param[in] pred Predicate to use.
  * @param[in,out] node_match Nodes matching the restriction without
  *                           the predicate. Nodes not satisfying
@@ -3896,7 +3896,7 @@ get_next_augment:
  *         positive on success, negative on failure.
  */
 static int
-resolve_instid_predicate(const char *pred, struct unres_data *node_match)
+resolve_instid_predicate(const struct lys_module *prev_mod, const char *pred, struct unres_data *node_match)
 {
     /* ... /node[target = value] ... */
     struct lyd_node *target;
@@ -3962,11 +3962,6 @@ resolve_instid_predicate(const char *pred, struct unres_data *node_match)
                     goto remove_instid;
                 }
 
-                /* key module must match the list module */
-                if (strncmp(node_match->node[j]->schema->module->name, model, mod_len)
-                        || node_match->node[j]->schema->module->name[mod_len]) {
-                    goto remove_instid;
-                }
                 /* find the key leaf */
                 for (k = 1, target = node_match->node[j]->child; target && (k < pred_iter); k++, target = target->next);
                 if (!target) {
@@ -3975,6 +3970,23 @@ resolve_instid_predicate(const char *pred, struct unres_data *node_match)
                 if ((struct lys_node_leaf *)target->schema !=
                         ((struct lys_node_list *)node_match->node[j]->schema)->keys[pred_iter - 1]) {
                     goto remove_instid;
+                }
+
+                /* check name */
+                if (strncmp(target->schema->name, name, nam_len) || target->schema->name[nam_len]) {
+                    goto remove_instid;
+                }
+
+                /* check module */
+                if (model) {
+                    if (strncmp(target->schema->module->name, model, mod_len)
+                            || target->schema->module->name[mod_len]) {
+                        goto remove_instid;
+                    }
+                } else {
+                    if (target->schema->module != prev_mod) {
+                        goto remove_instid;
+                    }
                 }
 
                 /* check the value */
@@ -7247,7 +7259,7 @@ static int
 resolve_instid(struct lyd_node *data, const char *path, int req_inst, struct lyd_node **ret)
 {
     int i = 0, j;
-    const struct lys_module *mod;
+    const struct lys_module *mod, *prev_mod = NULL;
     struct ly_ctx *ctx = data->schema->module->ctx;
     const char *model, *name;
     char *str;
@@ -7273,23 +7285,32 @@ resolve_instid(struct lyd_node *data, const char *path, int req_inst, struct lyd
         }
         i += j;
 
-        str = strndup(model, mod_len);
-        if (!str) {
-            LOGMEM;
-            goto error;
-        }
-        mod = ly_ctx_get_module(ctx, str, NULL);
-        if (ctx->data_clb) {
-            if (!mod) {
-                mod = ctx->data_clb(ctx, str, NULL, 0, ctx->data_clb_data);
-            } else if (!mod->implemented) {
-                mod = ctx->data_clb(ctx, mod->name, mod->ns, LY_MODCLB_NOT_IMPLEMENTED, ctx->data_clb_data);
+        if (model) {
+            str = strndup(model, mod_len);
+            if (!str) {
+                LOGMEM;
+                goto error;
             }
-        }
-        free(str);
+            mod = ly_ctx_get_module(ctx, str, NULL);
+            if (ctx->data_clb) {
+                if (!mod) {
+                    mod = ctx->data_clb(ctx, str, NULL, 0, ctx->data_clb_data);
+                } else if (!mod->implemented) {
+                    mod = ctx->data_clb(ctx, mod->name, mod->ns, LY_MODCLB_NOT_IMPLEMENTED, ctx->data_clb_data);
+                }
+            }
+            free(str);
 
-        if (!mod || !mod->implemented || mod->disabled) {
-            break;
+            if (!mod || !mod->implemented || mod->disabled) {
+                break;
+            }
+        } else if (!prev_mod) {
+            /* first iteration and we are missing module name */
+            LOGVAL(LYE_INELEM_LEN, LY_VLOG_NONE, NULL, name_len, name);
+            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Instane-identifier is missing prefix in the first node.");
+            goto error;
+        } else {
+            mod = prev_mod;
         }
 
         if (resolve_data(mod, name, name_len, data, &node_match)) {
@@ -7299,7 +7320,7 @@ resolve_instid(struct lyd_node *data, const char *path, int req_inst, struct lyd
 
         if (has_predicate) {
             /* we have predicate, so the current results must be list or leaf-list */
-            j = resolve_instid_predicate(&path[i], &node_match);
+            j = resolve_instid_predicate(mod, &path[i], &node_match);
             if (j < 1) {
                 LOGVAL(LYE_INPRED, LY_VLOG_LYD, data, &path[i-j]);
                 goto error;
@@ -7321,6 +7342,8 @@ resolve_instid(struct lyd_node *data, const char *path, int req_inst, struct lyd
                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Instance identifier is missing list keys.");
             }
         }
+
+        prev_mod = mod;
     }
 
     if (!node_match.count) {
