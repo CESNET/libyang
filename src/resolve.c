@@ -7190,13 +7190,14 @@ unres_schema_free(struct lys_module *module, struct unres_schema **unres, int al
     }
 }
 
+/* check whether instance-identifier points outside its data subtree (for operation it is any node
+ * outside the operation subtree, otherwise it is a node from a foreign model) */
 static int
 check_instid_ext_dep(const struct lys_node *sleaf, const char *json_instid)
 {
-    struct ly_set *set;
-    struct lys_node *op_node, *first_node;
+    const struct lys_node *op_node, *first_node;
     char *buf;
-    int ret = 0;
+    int ret = 0, hidden;
 
     if (!json_instid || !json_instid[0]) {
         /* no/empty value */
@@ -7219,36 +7220,30 @@ check_instid_ext_dep(const struct lys_node *sleaf, const char *json_instid)
         return -1;
     }
 
-    /* there is a predicate, remove it */
-    if (buf[strlen(buf) - 1] == ']') {
-        assert(strchr(buf, '['));
-        *strchr(buf, '[') = '\0';
+    /* find the first schema node, do not log */
+    hidden = *ly_vlog_hide_location();
+    if (!hidden) {
+        ly_vlog_hide(1);
+    }
+    first_node = ly_ctx_get_node(NULL, sleaf, buf, 0);
+    if (!hidden) {
+        ly_vlog_hide(0);
     }
 
-    /* find the first schema node */
-    set = lys_find_path(NULL, sleaf, buf);
-    if (!set || !set->number) {
+    if (!first_node) {
+        /* unknown path, say it is not external */
         free(buf);
-        ly_set_free(set);
-        return 1;
+        ly_errno = LYE_SUCCESS;
+        return 0;
     }
     free(buf);
 
-    first_node = set->set.s[0];
-
     /* based on the first schema node in the path we can decide whether it points to an external tree or not */
 
-    if (op_node) {
-        /* it is an operation, so we're good if it points somewhere inside it */
-        if (op_node == first_node) {
-            assert(set->number == 1);
-        } else {
-            ret = 1;
-        }
+    if (op_node && (op_node != first_node)) {
+        /* it is a top-level operation, so we're good if it points somewhere inside it */
+        ret = 1;
     }
-
-    /* cleanup */
-    ly_set_free(set);
 
     /* we cannot know whether it points to a tree that is going to be unlinked (application must handle
      * this itself), so we say it's not external */
