@@ -65,7 +65,7 @@ cmd_print_help(void)
 void
 cmd_data_help(void)
 {
-    printf("data [-(-s)trict] [-t TYPE] [-d DEFAULTS] [-o <output-file>] [-f (xml | json)] [-x <additional-tree-file-name>]\n");
+    printf("data [-(-s)trict] [-t TYPE] [-d DEFAULTS] [-o <output-file>] [-f (xml | json)] [-r <running-file-name>]\n");
     printf("     <data-file-name> [<RPC/action-data-file-name>]\n");
     printf("Accepted TYPEs:\n");
     printf("\tauto       - resolve data type (one of the following) automatically (as pyang does),\n");
@@ -83,10 +83,13 @@ cmd_data_help(void)
     printf("\tall-tagged - add missing default nodes and mark all the default nodes with the attribute.\n");
     printf("\ttrim       - remove all nodes with a default value\n");
     printf("\timplicit-tagged    - add missing nodes and mark them with the attribute\n\n");
-    printf("Option -x:\n");
-    printf("\tIf RPC/action/notification/RPC reply (for TYPEs 'rpc', 'rpcreply', and 'notif') includes\n");
+    printf("Option -r:\n");
+    printf("\tOptional parameter for 'rpc', 'rpcreply' and 'notif' TYPEs, the file contains running\n");
+    printf("\tconfiguration datastore data referenced from the RPC/Notification. Note that the file is\n");
+    printf("\tvalidated as 'data' TYPE. Special value '!' can be used as argument to ignore the\n");
+    printf("\texternal references.\n\n");
     printf("\tan XPath expression (when/must) that needs access to the configuration data, you can provide\n");
-    printf("\tthem in a file, which will be parsed as 'data' TYPE.\n");
+    printf("\tthem in a file, which will be parsed as 'data' TYPE.\n\n");
 }
 
 void
@@ -604,8 +607,8 @@ cmd_data(const char *arg)
         {"format", required_argument, 0, 'f'},
         {"option", required_argument, 0, 't'},
         {"output", required_argument, 0, 'o'},
+        {"running", required_argument, 0, 'r'},
         {"strict", no_argument, 0, 's'},
-        {"validation-tree", required_argument, 0, 'x'},
         {NULL, 0, 0, 0}
     };
     void *rlcd;
@@ -628,7 +631,7 @@ cmd_data(const char *arg)
     optind = 0;
     while (1) {
         option_index = 0;
-        c = getopt_long(argc, argv, "d:hf:o:st:x:", long_options, &option_index);
+        c = getopt_long(argc, argv, "d:hf:o:st:r:", long_options, &option_index);
         if (c == -1) {
             break;
         }
@@ -666,6 +669,23 @@ cmd_data(const char *arg)
             }
             out_path = optarg;
             break;
+        case 'r':
+            if (val_tree || (options & LYD_OPT_NOEXTDEPS)) {
+                fprintf(stderr, "The running datastore (-r) cannot be set multiple times.\n");
+                goto cleanup;
+            }
+            if (optarg[0] == '!') {
+                /* ignore extenral dependencies to the running datastore */
+                options |= LYD_OPT_NOEXTDEPS;
+            } else {
+                /* external file with the running datastore */
+                val_tree = lyd_parse_path(ctx, optarg, LYD_XML, LYD_OPT_DATA_NO_YANGLIB);
+                if (!val_tree) {
+                    fprintf(stderr, "Failed to parse the additional data tree for validation.\n");
+                    goto cleanup;
+                }
+            }
+            break;
         case 's':
             options |= LYD_OPT_STRICT;
             options |= LYD_OPT_OBSOLETE;
@@ -690,13 +710,6 @@ cmd_data(const char *arg)
             } else {
                 fprintf(stderr, "Invalid parser option \"%s\".\n", optarg);
                 cmd_data_help();
-                goto cleanup;
-            }
-            break;
-        case 'x':
-            val_tree = lyd_parse_path(ctx, optarg, LYD_XML, LYD_OPT_DATA_NO_YANGLIB);
-            if (!val_tree) {
-                fprintf(stderr, "Failed to parse the additional data tree for validation.\n");
                 goto cleanup;
             }
             break;

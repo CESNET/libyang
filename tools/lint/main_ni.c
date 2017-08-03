@@ -88,15 +88,16 @@ help(int shortout)
         "        getconfig       - Result of the NETCONF <get-config> operation.\n"
         "        edit            - Content of the NETCONF <edit-config> operation.\n"
         "        rpc             - Content of the NETCONF <rpc> message, defined as YANG's rpc input statement.\n"
-        "        rpcreply        - Reply to the RPC. This is just a virtual TYPE, for parsing replies, 'auto' must be\n"
-        "                          used since the data <file>s are expected in pairs - first <file> is expected as\n"
-        "                          'rpc' TYPE, the second <file> is expected as reply to the previous RPC.\n"
+        "        rpcreply        - Reply to the RPC. The input data <file>s are expected in pairs - each RPC reply\n"
+        "                          input data <file> must be followed by the origin RPC input data <file> for the reply."
+        "                          The same rule of pairing applies also in case of 'auto' TYPE and input data file\n"
+        "                          containing RPC reply.\n"
         "        notif           - Notification instance (content of the <notification> element without <eventTime>.\n\n"
-        "  -r [FILE], --running[=FILE]\n"
-        "                        - Optional parameter for 'rpc' and 'notif' TYPEs, the FILE contains running\n"
+        "  -r FILE, --running=FILE\n"
+        "                        - Optional parameter for 'rpc', 'rpcreply' and 'notif' TYPEs, the FILE contains running\n"
         "                          configuration datastore data referenced from the RPC/Notification. The same data\n"
         "                          apply to all input data <file>s. Note that the file is validated as 'data' TYPE.\n"
-        "                          If the option is used without the FILE argument, the external references are ignored.\n\n"
+        "                          Special value '!' can be used as FILE argument to ignore the external references.\n\n"
         "  -y YANGLIB_PATH       - Path to a yang-library data describing the initial context.\n\n"
         "Tree output specific options:\n"
         "  --tree-help           Print help on tree symbols and exit.\n"
@@ -236,7 +237,7 @@ main_ni(int argc, char* argv[])
         {"allimplemented",   no_argument,       NULL, 'i'},
         {"output",           required_argument, NULL, 'o'},
         {"path",             required_argument, NULL, 'p'},
-        {"running",          optional_argument, NULL, 'r'},
+        {"running",          required_argument, NULL, 'r'},
         {"strict",           no_argument,       NULL, 's'},
         {"version",          no_argument,       NULL, 'v'},
         {"verbose",          no_argument,       NULL, 'V'},
@@ -258,25 +259,25 @@ main_ni(int argc, char* argv[])
     char **feat = NULL, *ptr, *featlist, *ylpath = NULL, *dir;
     struct stat st;
     uint32_t u;
-    int options_dflt = 0, options_parser = 0, options_allimplemented = 0, envelope = 0;
+    int options_dflt = 0, options_parser = 0, options_allimplemented = 0, envelope = 0, autodetection = 0;
     struct dataitem {
         const char *filename;
-        LYD_FORMAT format;
-        int type;
+        struct lyxml_elem *xml;
         struct lyd_node *tree;
         struct dataitem *next;
+        LYD_FORMAT format;
+        int type;
     } *data = NULL, *data_item, *data_prev = NULL;
     struct ly_set *mods = NULL;
     struct lyd_node *running = NULL;
-    struct lyxml_elem *xml = NULL;
     void *p;
     int index = 0;
 
     opterr = 0;
 #ifndef NDEBUG
-    while ((opt = getopt_long(argc, argv, "ad:f:F:ghHio:p:r::st:vVG:y:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "ad:f:F:ghHio:p:r:st:vVG:y:", options, &opt_index)) != -1)
 #else
-    while ((opt = getopt_long(argc, argv, "ad:f:F:ghHio:p:r::st:vVy:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "ad:f:F:ghHio:p:r:st:vVy:", options, &opt_index)) != -1)
 #endif
     {
         switch (opt) {
@@ -384,12 +385,12 @@ main_ni(int argc, char* argv[])
                 fprintf(stderr, "yanglint error: The running datastore (-r) cannot be set multiple times.\n");
                 goto cleanup;
             }
-            if (optarg) {
-                /* external file with the running datastore */
-                running_file = optarg;
-            } else {
+            if (optarg[0] == '!') {
                 /* ignore extenral dependencies to the running datastore */
                 options_parser |= LYD_OPT_NOEXTDEPS;
+            } else {
+                /* external file with the running datastore */
+                running_file = optarg;
             }
             break;
         case 's':
@@ -397,7 +398,8 @@ main_ni(int argc, char* argv[])
             break;
         case 't':
             if (!strcmp(optarg, "auto")) {
-                options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_TYPEMASK;
+                options_parser = (options_parser & ~LYD_OPT_TYPEMASK);
+                autodetection = 1;
             } else if (!strcmp(optarg, "config")) {
                 options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_CONFIG;
             } else if (!strcmp(optarg, "get")) {
@@ -495,9 +497,6 @@ main_ni(int argc, char* argv[])
         fprintf(stderr, "yanglint error: missing <file> to process\n");
         goto cleanup;;
     }
-    if ((options_parser & LYD_OPT_TYPEMASK) == LYD_OPT_RPCREPLY) {
-
-    }
     if (outformat_s && outformat_s != LYS_OUT_TREE && (optind + 1) < argc) {
         /* we have multiple schemas to be printed as YIN or YANG */
         fprintf(stderr, "yanglint error: too many schemas to convert and store.\n");
@@ -516,12 +515,12 @@ main_ni(int argc, char* argv[])
         /* we have options for printing default nodes, but data output not specified */
         fprintf(stderr, "yanglint warning: default mode is ignored when not printing data.\n");
     }
-    if (outformat_s && options_parser) {
+    if (outformat_s && (options_parser || autodetection)) {
         /* we have options for printing data tree, but output is schema */
         fprintf(stderr, "yanglint warning: data parser options are ignored when printing schema.\n");
     }
-    if (running_file && !(options_parser & (LYD_OPT_RPC | LYD_OPT_NOTIF))) {
-        fprintf(stderr, "yanglint warning: running datastor applies only to RPCs or Notifications.\n");
+    if (running_file && (!autodetection && !(options_parser & (LYD_OPT_RPC | LYD_OPT_NOTIF)))) {
+        fprintf(stderr, "yanglint warning: running datastore applies only to RPCs or Notifications.\n");
         /* ignore running datastore file */
         running_file = NULL;
     }
@@ -584,7 +583,7 @@ main_ni(int argc, char* argv[])
             }
             ly_set_add(mods, (void *)mod, 0);
         } else {
-            if ((options_parser & LYD_OPT_TYPEMASK) == LYD_OPT_TYPEMASK && informat_d != LYD_XML) {
+            if (autodetection && informat_d != LYD_XML) {
                 /* data file content autodetection is possible only for XML input */
                 fprintf(stderr, "yanglint error: data type autodetection is applicable only to XML files.\n");
                 goto cleanup;
@@ -602,6 +601,7 @@ main_ni(int argc, char* argv[])
             data_item->format = informat_d;
             data_item->type = options_parser & LYD_OPT_TYPEMASK;
             data_item->tree = NULL;
+            data_item->xml = NULL;
             data_item->next = NULL;
         }
     }
@@ -665,62 +665,65 @@ main_ni(int argc, char* argv[])
 
         for (data_item = data, data_prev = NULL; data_item; data_prev = data_item, data_item = data_item->next) {
             /* parse data file - via LYD_OPT_TRUSTED postpone validation when all data are loaded and merged */
-            if ((options_parser & LYD_OPT_TYPEMASK) == LYD_OPT_TYPEMASK) {
+            if (autodetection) {
+                /* erase option not covered by LYD_OPT_TYPEMASK, but used according to the type */
+                options_parser &= ~LYD_OPT_DATA_NO_YANGLIB;
                 /* automatically detect data type from the data top level */
-                xml = lyxml_parse_path(ctx, data_item->filename, 0);
-                if (!xml) {
+                data_item->xml = lyxml_parse_path(ctx, data_item->filename, 0);
+                if (!data_item->xml) {
                     fprintf(stderr, "yanglint error: parsing XML data for data type autodetection failed.\n");
                     goto cleanup;
                 }
 
                 /* NOTE: namespace is ignored to simplify usage of this feature */
-                if (!strcmp(xml->name, "data")) {
+                if (!strcmp(data_item->xml->name, "data")) {
                     if (verbose >= 2) {
                         fprintf(stdout, "Parsing %s as complete datastore.\n", data_item->filename);
                     }
                     options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_DATA_NO_YANGLIB;
                     data_item->type = LYD_OPT_DATA;
-                } else if (!strcmp(xml->name, "config")) {
+                } else if (!strcmp(data_item->xml->name, "config")) {
                     if (verbose >= 2) {
                         fprintf(stdout, "Parsing %s as config data.\n", data_item->filename);
                     }
                     options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_CONFIG;
                     data_item->type = LYD_OPT_CONFIG;
-                } else if (!strcmp(xml->name, "get-reply")) {
+                } else if (!strcmp(data_item->xml->name, "get-reply")) {
                     if (verbose >= 2) {
                         fprintf(stdout, "Parsing %s as <get> reply data.\n", data_item->filename);
                     }
                     options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_GET;
                     data_item->type = LYD_OPT_GET;
-                } else if (!strcmp(xml->name, "get-config-reply")) {
+                } else if (!strcmp(data_item->xml->name, "get-config-reply")) {
                     if (verbose >= 2) {
                         fprintf(stdout, "Parsing %s as <get-config> reply data.\n", data_item->filename);
                     }
                     options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_GETCONFIG;
                     data_item->type = LYD_OPT_GETCONFIG;
-                } else if (!strcmp(xml->name, "edit-config")) {
+                } else if (!strcmp(data_item->xml->name, "edit-config")) {
                     if (verbose >= 2) {
                         fprintf(stdout, "Parsing %s as <edit-config> data.\n", data_item->filename);
                     }
                     options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_EDIT;
                     data_item->type = LYD_OPT_EDIT;
-                } else if (!strcmp(xml->name, "rpc")) {
+                } else if (!strcmp(data_item->xml->name, "rpc")) {
                     if (verbose >= 2) {
                         fprintf(stdout, "Parsing %s as <rpc> data.\n", data_item->filename);
                     }
                     options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPC;
                     data_item->type = LYD_OPT_RPC;
-                } else if (!strcmp(xml->name, "rpc-reply")) {
+                } else if (!strcmp(data_item->xml->name, "rpc-reply")) {
                     if (verbose >= 2) {
                         fprintf(stdout, "Parsing %s as <rpc-reply> data.\n", data_item->filename);
                     }
-                    if (!data_prev || data_prev->type != LYD_OPT_RPC) {
-                        fprintf(stderr, "RPC reply (%s) must be coupled with the original RPC, see help.\n", data_item->filename);
+
+                    data_item->type = LYD_OPT_RPCREPLY;
+                    if (!data_item->next || (data_prev && !data_prev->tree)) {
+                        fprintf(stderr, "RPC reply (%s) must be paired with the original RPC, see help.\n", data_item->filename);
                         goto cleanup;
                     }
-                    options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPCREPLY;
-                    data_item->type = LYD_OPT_RPCREPLY;
-                } else if (!strcmp(xml->name, "notification")) {
+                    continue;
+                } else if (!strcmp(data_item->xml->name, "notification")) {
                     if (verbose >= 2) {
                         fprintf(stdout, "Parsing %s as <notification> data.\n", data_item->filename);
                     }
@@ -728,21 +731,46 @@ main_ni(int argc, char* argv[])
                     data_item->type = LYD_OPT_NOTIF;
 
                     /* ignore eventTime element if present */
-                    while (xml->child && !strcmp(xml->child->name, "eventTime")) {
-                        lyxml_free(ctx, xml->child);
+                    while (data_item->xml->child && !strcmp(data_item->xml->child->name, "eventTime")) {
+                        lyxml_free(ctx, data_item->xml->child);
                     }
                 } else {
                     fprintf(stderr, "yanglint error: invalid top-level element \"%s\" for data type autodetection.\n",
-                            xml->name);
+                            data_item->xml->name);
                     goto cleanup;
                 }
 
-                if (data_item->type == LYD_OPT_RPCREPLY) {
-                    data_item->tree = lyd_parse_xml(ctx, &xml->child, options_parser, data_prev->tree, running);
-                } else {
-                    data_item->tree = lyd_parse_xml(ctx, &xml->child, options_parser, running);
+                data_item->tree = lyd_parse_xml(ctx, &data_item->xml->child, options_parser, running);
+                if (data_prev && data_prev->type == LYD_OPT_RPCREPLY) {
+parse_reply:
+                    /* check result of the RPC parsing, we are going to do another parsing in this step */
+                    if (ly_errno) {
+                        goto cleanup;
+                    }
+
+                    /* check that we really have RPC for the reply */
+                    if (data_item->type != LYD_OPT_RPC) {
+                        fprintf(stderr, "RPC reply (%s) must be paired with the original RPC, see help.\n", data_item->filename);
+                        goto cleanup;
+                    }
+
+                    /* finally, parse RPC reply from the previous step */
+                    options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPCREPLY;
+                    data_prev->tree = lyd_parse_xml(ctx, &data_prev->xml->child, options_parser, data_item->tree, running);
                 }
-                options_parser |= LYD_OPT_TYPEMASK;
+            } else if ((options_parser & LYD_OPT_TYPEMASK) == LYD_OPT_RPCREPLY) {
+                if (data_prev && !data_prev->tree) {
+                    /* now we should have RPC for the preceding RPC reply */
+                    data_item->tree = lyd_parse_xml(ctx, &data_item->xml->child, options_parser, running);
+                    goto parse_reply;
+                } else {
+                    /* now we have RPC reply which will be parsed in next step together with its RPC */
+                    if (!data_item->next) {
+                        fprintf(stderr, "RPC reply (%s) must be paired with the original RPC, see help.\n", data_item->filename);
+                        goto cleanup;
+                    }
+                    continue;
+                }
             } else {
                 data_item->tree = lyd_parse_path(ctx, data_item->filename, data_item->format, options_parser, running);
             }
@@ -816,10 +844,10 @@ cleanup:
     free(feat);
     for (; data; data = data_item) {
         data_item = data->next;
+        lyxml_free(ctx, data->xml);
         lyd_free_withsiblings(data->tree);
         free(data);
     }
-    lyxml_free(ctx, xml);
     ly_ctx_destroy(ctx, NULL);
 
     return ret;
