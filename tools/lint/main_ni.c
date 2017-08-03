@@ -719,6 +719,11 @@ main_ni(int argc, char* argv[])
                     }
                     options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_NOTIF;
                     data_item->type = LYD_OPT_NOTIF;
+
+                    /* ignore eventTime element if present */
+                    while (xml->child && !strcmp(xml->child->name, "eventTime")) {
+                        lyxml_free(ctx, xml->child);
+                    }
                 } else {
                     fprintf(stderr, "yanglint error: invalid top-level element \"%s\" for data type autodetection.\n",
                             xml->name);
