@@ -92,10 +92,11 @@ help(int shortout)
         "                          used since the data <file>s are expected in pairs - first <file> is expected as\n"
         "                          'rpc' TYPE, the second <file> is expected as reply to the previous RPC.\n"
         "        notif           - Notification instance (content of the <notification> element without <eventTime>.\n\n"
-        "  -r FILE, --running=FILE\n"
+        "  -r [FILE], --running[=FILE]\n"
         "                        - Optional parameter for 'rpc' and 'notif' TYPEs, the FILE contains running\n"
         "                          configuration datastore data referenced from the RPC/Notification. The same data\n"
-        "                          apply to all input data <file>s. Note that the file is validated as 'data' TYPE.\n\n"
+        "                          apply to all input data <file>s. Note that the file is validated as 'data' TYPE.\n"
+        "                          If the option is used without the FILE argument, the external references are ignored.\n\n"
         "  -y YANGLIB_PATH       - Path to a yang-library data describing the initial context.\n\n"
         "Tree output specific options:\n"
         "  --tree-help           Print help on tree symbols and exit.\n"
@@ -235,7 +236,7 @@ main_ni(int argc, char* argv[])
         {"allimplemented",   no_argument,       NULL, 'i'},
         {"output",           required_argument, NULL, 'o'},
         {"path",             required_argument, NULL, 'p'},
-        {"running",          required_argument, NULL, 'r'},
+        {"running",          optional_argument, NULL, 'r'},
         {"strict",           no_argument,       NULL, 's'},
         {"version",          no_argument,       NULL, 'v'},
         {"verbose",          no_argument,       NULL, 'V'},
@@ -273,9 +274,9 @@ main_ni(int argc, char* argv[])
 
     opterr = 0;
 #ifndef NDEBUG
-    while ((opt = getopt_long(argc, argv, "ad:f:F:ghHio:p:r:st:vVG:y:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "ad:f:F:ghHio:p:r::st:vVG:y:", options, &opt_index)) != -1)
 #else
-    while ((opt = getopt_long(argc, argv, "ad:f:F:ghHio:p:r:st:vVy:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "ad:f:F:ghHio:p:r::st:vVy:", options, &opt_index)) != -1)
 #endif
     {
         switch (opt) {
@@ -379,11 +380,17 @@ main_ni(int argc, char* argv[])
             ly_set_add(searchpaths, optarg, 0);
             break;
         case 'r':
-            if (running_file) {
+            if (running_file || (options_parser & LYD_OPT_NOEXTDEPS)) {
                 fprintf(stderr, "yanglint error: The running datastore (-r) cannot be set multiple times.\n");
                 goto cleanup;
             }
-            running_file = optarg;
+            if (optarg) {
+                /* external file with the running datastore */
+                running_file = optarg;
+            } else {
+                /* ignore extenral dependencies to the running datastore */
+                options_parser |= LYD_OPT_NOEXTDEPS;
+            }
             break;
         case 's':
             options_parser |= LYD_OPT_STRICT;
