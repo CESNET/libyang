@@ -61,7 +61,8 @@ help(int shortout)
         "  -f FORMAT, --format=FORMAT\n"
         "                        Convert to FORMAT. Supported formats: \n"
         "                        tree, yin, yang for schemas,\n"
-        "                        xml, json for data.\n\n"
+        "                        xml, json for data.\n"
+        "  -a, --auto            Modify the xml output by adding envelopes for autodetection.\n\n"
         "  -i, --allimplemented  Make all the imported modules implemented.\n\n"
         "  -o OUTFILE, --output=OUTFILE\n"
         "                        Write the output to OUTFILE instead of stdout.\n\n"
@@ -87,6 +88,9 @@ help(int shortout)
         "        getconfig       - Result of the NETCONF <get-config> operation.\n"
         "        edit            - Content of the NETCONF <edit-config> operation.\n"
         "        rpc             - Content of the NETCONF <rpc> message, defined as YANG's rpc input statement.\n"
+        "        rpcreply        - Reply to the RPC. This is just a virtual TYPE, for parsing replies, 'auto' must be\n"
+        "                          used since the data <file>s are expected in pairs - first <file> is expected as\n"
+        "                          'rpc' TYPE, the second <file> is expected as reply to the previous RPC.\n"
         "        notif           - Notification instance (content of the <notification> element without <eventTime>.\n\n"
         "  -r FILE, --running=FILE\n"
         "                        - Optional parameter for 'rpc' and 'notif' TYPEs, the FILE contains running\n"
@@ -221,6 +225,7 @@ main_ni(int argc, char* argv[])
     int ret = EXIT_FAILURE;
     int opt, opt_index = 0, i, featsize = 0, grps = 0;
     struct option options[] = {
+        {"auto",             no_argument,       NULL, 'a'},
         {"default",          required_argument, NULL, 'd'},
         {"format",           required_argument, NULL, 'f'},
         {"features",         required_argument, NULL, 'F'},
@@ -248,30 +253,35 @@ main_ni(int argc, char* argv[])
     LYS_INFORMAT informat_s;
     LYD_FORMAT informat_d, outformat_d = 0, ylformat = 0;
     struct ly_set *searchpaths = NULL;
-    const char *running_file = NULL;
+    const char *running_file = NULL, *envelope_s = NULL;
     char **feat = NULL, *ptr, *featlist, *ylpath = NULL, *dir;
     struct stat st;
     uint32_t u;
-    int options_dflt = 0, options_parser = 0, options_allimplemented = 0;
+    int options_dflt = 0, options_parser = 0, options_allimplemented = 0, envelope = 0;
     struct dataitem {
         const char *filename;
         LYD_FORMAT format;
+        int type;
+        struct lyd_node *tree;
         struct dataitem *next;
-    } *data = NULL, *data_item;
+    } *data = NULL, *data_item, *data_prev = NULL;
     struct ly_set *mods = NULL;
-    struct lyd_node *root = NULL, *node = NULL, *running = NULL;
+    struct lyd_node *running = NULL;
     struct lyxml_elem *xml = NULL;
     void *p;
     int index = 0;
 
     opterr = 0;
 #ifndef NDEBUG
-    while ((opt = getopt_long(argc, argv, "d:f:F:ghHio:p:r:st:vVG:y:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "ad:f:F:ghHio:p:r:st:vVG:y:", options, &opt_index)) != -1)
 #else
-    while ((opt = getopt_long(argc, argv, "d:f:F:ghHio:p:r:st:vVy:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "ad:f:F:ghHio:p:r:st:vVy:", options, &opt_index)) != -1)
 #endif
     {
         switch (opt) {
+        case 'a':
+            envelope = 1;
+            break;
         case 'd':
             if (!strcmp(optarg, "all")) {
                 options_dflt = (options_dflt & ~LYP_WD_MASK) | LYP_WD_ALL;
@@ -393,6 +403,8 @@ main_ni(int argc, char* argv[])
                 options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_DATA_NO_YANGLIB;
             } else if (!strcmp(optarg, "rpc")) {
                 options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPC;
+            } else if (!strcmp(optarg, "rpcreply")) {
+                options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPCREPLY;
             } else if (!strcmp(optarg, "notif")) {
                 options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_NOTIF;
             } else {
@@ -475,6 +487,9 @@ main_ni(int argc, char* argv[])
         help(1);
         fprintf(stderr, "yanglint error: missing <file> to process\n");
         goto cleanup;;
+    }
+    if ((options_parser & LYD_OPT_TYPEMASK) == LYD_OPT_RPCREPLY) {
+
     }
     if (outformat_s && outformat_s != LYS_OUT_TREE && (optind + 1) < argc) {
         /* we have multiple schemas to be printed as YIN or YANG */
@@ -578,6 +593,8 @@ main_ni(int argc, char* argv[])
             }
             data_item->filename = argv[optind + i];
             data_item->format = informat_d;
+            data_item->type = options_parser & LYD_OPT_TYPEMASK;
+            data_item->tree = NULL;
             data_item->next = NULL;
         }
     }
@@ -639,7 +656,7 @@ main_ni(int argc, char* argv[])
             }
         }
 
-        for (data_item = data; data_item; data_item = data_item->next) {
+        for (data_item = data, data_prev = NULL; data_item; data_prev = data_item, data_item = data_item->next) {
             /* parse data file - via LYD_OPT_TRUSTED postpone validation when all data are loaded and merged */
             if ((options_parser & LYD_OPT_TYPEMASK) == LYD_OPT_TYPEMASK) {
                 /* automatically detect data type from the data top level */
@@ -655,63 +672,121 @@ main_ni(int argc, char* argv[])
                         fprintf(stdout, "Parsing %s as complete datastore.\n", data_item->filename);
                     }
                     options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_DATA_NO_YANGLIB;
+                    data_item->type = LYD_OPT_DATA;
                 } else if (!strcmp(xml->name, "config")) {
                     if (verbose >= 2) {
                         fprintf(stdout, "Parsing %s as config data.\n", data_item->filename);
                     }
                     options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_CONFIG;
+                    data_item->type = LYD_OPT_CONFIG;
                 } else if (!strcmp(xml->name, "get-reply")) {
                     if (verbose >= 2) {
                         fprintf(stdout, "Parsing %s as <get> reply data.\n", data_item->filename);
                     }
                     options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_GET;
+                    data_item->type = LYD_OPT_GET;
                 } else if (!strcmp(xml->name, "get-config-reply")) {
                     if (verbose >= 2) {
                         fprintf(stdout, "Parsing %s as <get-config> reply data.\n", data_item->filename);
                     }
                     options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_GETCONFIG;
+                    data_item->type = LYD_OPT_GETCONFIG;
                 } else if (!strcmp(xml->name, "edit-config")) {
                     if (verbose >= 2) {
                         fprintf(stdout, "Parsing %s as <edit-config> data.\n", data_item->filename);
                     }
                     options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_EDIT;
+                    data_item->type = LYD_OPT_EDIT;
                 } else if (!strcmp(xml->name, "rpc")) {
                     if (verbose >= 2) {
                         fprintf(stdout, "Parsing %s as <rpc> data.\n", data_item->filename);
                     }
                     options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPC;
+                    data_item->type = LYD_OPT_RPC;
+                } else if (!strcmp(xml->name, "rpc-reply")) {
+                    if (verbose >= 2) {
+                        fprintf(stdout, "Parsing %s as <rpc-reply> data.\n", data_item->filename);
+                    }
+                    if (!data_prev || data_prev->type != LYD_OPT_RPC) {
+                        fprintf(stderr, "RPC reply (%s) must be coupled with the original RPC, see help.\n", data_item->filename);
+                        goto cleanup;
+                    }
+                    options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPCREPLY;
+                    data_item->type = LYD_OPT_RPCREPLY;
                 } else if (!strcmp(xml->name, "notification")) {
                     if (verbose >= 2) {
                         fprintf(stdout, "Parsing %s as <notification> data.\n", data_item->filename);
                     }
                     options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_NOTIF;
+                    data_item->type = LYD_OPT_NOTIF;
                 } else {
                     fprintf(stderr, "yanglint error: invalid top-level element \"%s\" for data type autodetection.\n",
                             xml->name);
                     goto cleanup;
                 }
 
-                node = lyd_parse_xml(ctx, &xml->child, options_parser, running);
+                if (data_item->type == LYD_OPT_RPCREPLY) {
+                    data_item->tree = lyd_parse_xml(ctx, &xml->child, options_parser, data_prev->tree, running);
+                } else {
+                    data_item->tree = lyd_parse_xml(ctx, &xml->child, options_parser, running);
+                }
+                options_parser |= LYD_OPT_TYPEMASK;
             } else {
-                node = lyd_parse_path(ctx, data_item->filename, data_item->format, options_parser, running);
+                data_item->tree = lyd_parse_path(ctx, data_item->filename, data_item->format, options_parser, running);
             }
             if (ly_errno) {
                 goto cleanup;
             }
-            if (!root) {
-                root = node;
-            } else if (node) {
-                /* merge results */
-                if (lyd_merge(root, node, LYD_OPT_DESTRUCT | LYD_OPT_EXPLICIT)) {
-                    fprintf(stderr, "yanglint error: merging multiple data trees failed.\n");
-                    goto cleanup;
-                }
-            }
         }
 
         /* print only if data output format specified */
-        if (outformat_d && root) {
-            lyd_print_file(out, root, outformat_d, LYP_WITHSIBLINGS | LYP_FORMAT | options_dflt);
+        if (outformat_d) {
+            for (data_item = data; data_item; data_item = data_item->next) {
+                if (verbose >= 2) {
+                    fprintf(stdout, "File %s:\n", data_item->filename);
+                }
+                if (outformat_d == LYD_XML && envelope) {
+                    switch (data_item->type) {
+                    case LYD_OPT_DATA:
+                        envelope_s = "data";
+                        break;
+                    case LYD_OPT_CONFIG:
+                        envelope_s = "config";
+                        break;
+                    case LYD_OPT_GET:
+                        envelope_s = "get-reply";
+                        break;
+                    case LYD_OPT_GETCONFIG:
+                        envelope_s = "get-config-reply";
+                        break;
+                    case LYD_OPT_EDIT:
+                        envelope_s = "edit-config";
+                        break;
+                    case LYD_OPT_RPC:
+                        envelope_s = "rpc";
+                        break;
+                    case LYD_OPT_RPCREPLY:
+                        envelope_s = "rpc-reply";
+                        break;
+                    case LYD_OPT_NOTIF:
+                        envelope_s = "notification";
+                        break;
+                    }
+                    fprintf(out, "<%s>\n", envelope_s);
+                    if (data_item->type == LYD_OPT_RPC && data_item->tree->schema->nodetype != LYS_RPC) {
+                        /* action */
+                        fprintf(out, "<action xmlns=\"urn:ietf:params:xml:ns:yang:1\">\n");
+                    }
+                }
+                lyd_print_file(out, (data_item->type == LYD_OPT_RPCREPLY) ? data_item->tree->child : data_item->tree,
+                               outformat_d, LYP_WITHSIBLINGS | LYP_FORMAT | options_dflt);
+                if (envelope_s) {
+                    if (data_item->type == LYD_OPT_RPC && data_item->tree->schema->nodetype != LYS_RPC) {
+                        fprintf(out, "</action>\n");
+                    }
+                    fprintf(out, "</%s>\n", envelope_s);
+                }
+            }
         }
     }
 
@@ -729,10 +804,10 @@ cleanup:
     free(feat);
     for (; data; data = data_item) {
         data_item = data->next;
+        lyd_free_withsiblings(data->tree);
         free(data);
     }
     lyxml_free(ctx, xml);
-    lyd_free_withsiblings(root);
     ly_ctx_destroy(ctx, NULL);
 
     return ret;

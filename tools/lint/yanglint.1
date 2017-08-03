@@ -84,6 +84,15 @@ Specify data tree type in the input data \fIFILE\fPs. The \fITYPE\fP is one of t
  \[bu] \fBget\fP             - Result of the NETCONF <get> operation.
  \[bu] \fBgetconfig\fP       - Result of the NETCONF <get-config> operation.
  \[bu] \fBedit\fP            - Content of the NETCONF <edit-config> operation.
+ \[bu] \fBrpc\fP             - Content of the NETCONF <rpc> message, defined as YANG's rpc input statement.
+ \[bu] \fBrpcreply\fP        - Reply to the RPC. This is just a virtual \fITYPE\fP, for parsing replies, '\fBauto\fP' must be used since the data \fIFILE\fPs are expected in pairs.
+.br
+                     The first input data \fIFILE\fP is expected as '\fBrpc\fP' \fITYPE\fP, the second \fIFILE\fP is expected as reply to the previous RPC.
+ \[bu] \fBnotif\fP           - Notification instance (content of the <notification> element without <eventTime>.
+.TP
+.BR "\-r \fIFILE\fP\fR,\fP \-\^\-running=\fIFILE\fP"
+Optional parameter for '\fBrpc\fP' and '\fBnotif\fP' \fITYPE\fPs, the \fIFILE\fP contains running configuration datastore data referenced from the
+RPC/Notification. The same data apply to all input data \fIFILE\fPs. Note that the file is validated as '\fBdata\fP' \fITYPE\fP.
 .TP
 .BR "\-y \fIYANGLIB_PATH\fP"
 Specify path to a yang-library data file (XML or JSON) describing the initial context.
