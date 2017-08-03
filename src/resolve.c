@@ -7244,6 +7244,7 @@ resolve_instid(struct lyd_node *data, const char *path, int req_inst, struct lyd
     int i = 0, j;
     const struct lys_module *mod;
     struct ly_ctx *ctx = data->schema->module->ctx;
+    struct lyd_node *root;
     const char *model, *name;
     char *str;
     int mod_len, name_len, has_predicate;
@@ -7253,10 +7254,10 @@ resolve_instid(struct lyd_node *data, const char *path, int req_inst, struct lyd
     *ret = NULL;
 
     /* we need root to resolve absolute path */
-    for (; data->parent; data = data->parent);
+    for (root = data; root->parent; root = root->parent);
     /* we're still parsing it and the pointer is not correct yet */
-    if (data->prev) {
-        for (; data->prev->next; data = data->prev);
+    if (root->prev) {
+        for (; root->prev->next; root = root->prev);
     }
 
     /* search for the instance node */
@@ -7287,7 +7288,7 @@ resolve_instid(struct lyd_node *data, const char *path, int req_inst, struct lyd
             break;
         }
 
-        if (resolve_data(mod, name, name_len, data, &node_match)) {
+        if (resolve_data(mod, name, name_len, root, &node_match)) {
             /* no instance exists */
             break;
         }
@@ -7313,7 +7314,7 @@ resolve_instid(struct lyd_node *data, const char *path, int req_inst, struct lyd
                 }
             }
             if (!node_match.count) {
-                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Instance identifier is missing list keys.");
+                LOGVAL(LYE_SPEC, LY_VLOG_LYD, data, "Instance identifier is missing list keys.");
             }
         }
     }
@@ -7321,7 +7322,7 @@ resolve_instid(struct lyd_node *data, const char *path, int req_inst, struct lyd
     if (!node_match.count) {
         /* no instance exists */
         if (req_inst > -1) {
-            LOGVAL(LYE_NOREQINS, LY_VLOG_NONE, NULL, path);
+            LOGVAL(LYE_NOREQINS, LY_VLOG_LYD, data, path);
             return EXIT_FAILURE;
         }
         LOGVRB("There is no instance of \"%s\", but it is not required.", path);
