@@ -765,9 +765,9 @@ parse_uint(const char *val_str, uint64_t max, int base, uint64_t *ret, struct ly
 {
     char *strptr;
 
-    if (!val_str || !val_str[0]) {
+    if (!val_str || !val_str[0] || val_str[0] == '-') {
         if (node) {
-            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, "", node->schema->name);
+            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, val_str ? val_str : "", node->schema->name);
         } else {
             ly_errno = LY_EVALID;
             ly_vecode = LYVE_INVAL;
