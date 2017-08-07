@@ -764,44 +764,39 @@ static int
 parse_uint(const char *val_str, uint64_t max, int base, uint64_t *ret, struct lyd_node *node)
 {
     char *strptr;
+    uint64_t u;
 
-    if (!val_str || !val_str[0] || val_str[0] == '-') {
-        if (node) {
-            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, val_str ? val_str : "", node->schema->name);
-        } else {
-            ly_errno = LY_EVALID;
-            ly_vecode = LYVE_INVAL;
-        }
-        return EXIT_FAILURE;
+    if (!val_str || !val_str[0]) {
+        goto error;
     }
 
     errno = 0;
     strptr = NULL;
-    *ret = strtoull(val_str, &strptr, base);
-    if (errno || (*ret > max)) {
-        if (node) {
-            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, val_str, node->schema->name);
-        } else {
-            ly_errno = LY_EVALID;
-            ly_vecode = LYVE_INVAL;
-        }
-        return EXIT_FAILURE;
+    u = strtoull(val_str, &strptr, base);
+    if (errno || (u > max)) {
+        goto error;
     } else if (strptr && *strptr) {
         while (isspace(*strptr)) {
             ++strptr;
         }
         if (*strptr) {
-            if (node) {
-                LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, val_str, node->schema->name);
-            } else {
-                ly_errno = LY_EVALID;
-                ly_vecode = LYVE_INVAL;
-            }
-            return EXIT_FAILURE;
+            goto error;
         }
+    } else if (u != 0 && val_str[0] == '-') {
+        goto error;
     }
 
+    *ret = u;
     return EXIT_SUCCESS;
+
+error:
+    if (node) {
+        LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, val_str ? val_str : "", node->schema->name);
+    } else {
+        ly_errno = LY_EVALID;
+        ly_vecode = LYVE_INVAL;
+    }
+    return EXIT_FAILURE;
 }
 
 /* logs directly
