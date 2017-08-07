@@ -418,12 +418,12 @@ main_ni(int argc, char* argv[])
         }
     }
     if (!outformat_d && options_dflt) {
-        /* we have options for printing default nodes, but output is schema */
-        fprintf(stderr, "yanglint warning: default mode is ignored when printing schema.\n");
+        /* we have options for printing default nodes, but data output not specified */
+        fprintf(stderr, "yanglint warning: default mode is ignored when not printing data.\n");
     }
-    if (!outformat_d && options_parser) {
+    if (outformat_s && options_parser) {
         /* we have options for printing data tree, but output is schema */
-        fprintf(stderr, "yanglint warning: parser option is ignored when printing schema.\n");
+        fprintf(stderr, "yanglint warning: data parser options are ignored when printing schema.\n");
     }
 
     /* set callback for printing libyang messages */
