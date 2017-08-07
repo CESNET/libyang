@@ -36,7 +36,7 @@ parse_range_dec64(const char **str_num, uint8_t dig, int64_t *num)
 {
     const char *ptr;
     int minus = 0;
-    int64_t ret = 0;
+    int64_t ret = 0, prev_ret;
     int8_t str_exp, str_dig = -1, trailing_zeros = 0;
 
     ptr = *str_num;
@@ -65,7 +65,18 @@ parse_range_dec64(const char **str_num, uint8_t dig, int64_t *num)
             }
             ++str_dig;
         } else {
-            ret = ret * 10 + (ptr[0] - '0');
+            prev_ret = ret;
+            if (minus) {
+                ret = ret * 10 - (ptr[0] - '0');
+                if (ret > prev_ret) {
+                    return 1;
+                }
+            } else {
+                ret = ret * 10 + (ptr[0] - '0');
+                if (ret < prev_ret) {
+                    return 1;
+                }
+            }
             if (str_dig > -1) {
                 ++str_dig;
                 if (ptr[0] == '0') {
@@ -97,15 +108,17 @@ parse_range_dec64(const char **str_num, uint8_t dig, int64_t *num)
         if ((str_exp - 1) + (dig - str_dig) > 18) {
             return 1;
         }
+        prev_ret = ret;
         ret *= dec_pow(dig - str_dig);
+        if ((minus && (ret > prev_ret)) || (!minus && (ret < prev_ret))) {
+            return 1;
+        }
+
     }
     if (str_dig > dig) {
         return 1;
     }
 
-    if (minus) {
-        ret *= -1;
-    }
     *str_num = ptr;
     *num = ret;
 
