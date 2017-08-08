@@ -555,10 +555,18 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
         return NULL;
     }
 
-    if (!(*root)) {
-        /* empty tree - no work is needed */
-        lyd_validate(&result, options, ctx);
-        return result;
+    if (!(*root) && !(options & LYD_OPT_RPCREPLY)) {
+        /* empty tree */
+        if (options & (LYD_OPT_RPC | LYD_OPT_NOTIF)) {
+            /* error, top level node identify RPC and Notification */
+            LOGERR(LY_EINVAL, "%s: *root identifies RPC/Notification so it cannot be NULL.", __func__);
+            return NULL;
+        } else if (!(options & LYD_OPT_RPCREPLY)) {
+            /* others - no work is needed, just check for missing mandatory nodes */
+            lyd_validate(&result, options, ctx);
+            return result;
+        }
+        /* continue with empty RPC reply, for which we need RPC */
     }
 
     unres = calloc(1, sizeof *unres);
@@ -613,7 +621,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
         }
     }
 
-    if (!(options & LYD_OPT_NOSIBLINGS)) {
+    if ((*root) && !(options & LYD_OPT_NOSIBLINGS)) {
         /* locate the first root to process */
         if ((*root)->parent) {
             xmlstart = (*root)->parent->child;
