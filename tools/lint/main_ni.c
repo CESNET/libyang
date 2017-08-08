@@ -58,6 +58,8 @@ help(int shortout)
         "                        Current working directory and path of the module being added is used implicitly.\n\n"
         "  -s, --strict          Strict data parsing (do not skip unknown data),\n"
         "                        has no effect for schemas.\n\n"
+        "  -m, --merge           Merge input data files into a single tree and validate at once,\n"
+        "                        has no effect for the auto, rpc, rpcreply and notif TYPEs.\n\n"
         "  -f FORMAT, --format=FORMAT\n"
         "                        Convert to FORMAT. Supported formats: \n"
         "                        tree, yin, yang for schemas,\n"
@@ -235,6 +237,7 @@ main_ni(int argc, char* argv[])
         {"help",             no_argument,       NULL, 'h'},
         {"tree-help",        no_argument,       NULL, 'H'},
         {"allimplemented",   no_argument,       NULL, 'i'},
+        {"merge",            no_argument,       NULL, 'm'},
         {"output",           required_argument, NULL, 'o'},
         {"path",             required_argument, NULL, 'p'},
         {"running",          required_argument, NULL, 'r'},
@@ -259,7 +262,7 @@ main_ni(int argc, char* argv[])
     char **feat = NULL, *ptr, *featlist, *ylpath = NULL, *dir;
     struct stat st;
     uint32_t u;
-    int options_dflt = 0, options_parser = 0, options_allimplemented = 0, envelope = 0, autodetection = 0;
+    int options_dflt = 0, options_parser = 0, options_allimplemented = 0, envelope = 0, autodetection = 0, merge = 0;
     struct dataitem {
         const char *filename;
         struct lyxml_elem *xml;
@@ -269,15 +272,15 @@ main_ni(int argc, char* argv[])
         int type;
     } *data = NULL, *data_item, *data_prev = NULL;
     struct ly_set *mods = NULL;
-    struct lyd_node *running = NULL;
+    struct lyd_node *running = NULL, *subroot, *next, *node;
     void *p;
     int index = 0;
 
     opterr = 0;
 #ifndef NDEBUG
-    while ((opt = getopt_long(argc, argv, "ad:f:F:ghHio:p:r:st:vVG:y:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "ad:f:F:ghHimo:p:r:st:vVG:y:", options, &opt_index)) != -1)
 #else
-    while ((opt = getopt_long(argc, argv, "ad:f:F:ghHio:p:r:st:vVy:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "ad:f:F:ghHimo:p:r:st:vVy:", options, &opt_index)) != -1)
 #endif
     {
         switch (opt) {
@@ -355,6 +358,9 @@ main_ni(int argc, char* argv[])
             goto cleanup;
         case 'i':
             options_allimplemented = 1;
+            break;
+        case 'm':
+            merge = 1;
             break;
         case 'o':
             if (out != stdout) {
@@ -509,6 +515,16 @@ main_ni(int argc, char* argv[])
                     "yanglint warning: --tree-print-groupings option takes effect only in case of the tree output format.\n");
         } else {
             outformat_s = LYS_OUT_TREE_GRPS;
+        }
+    }
+    if (merge) {
+        if (autodetection || (options_parser & (LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF))) {
+            fprintf(stderr, "yanglint warning: merging not allowed, ignoring option -m.\n");
+            merge = 0;
+        } else {
+            /* first, files will be parsed as trusted to allow missing data, then the data trees will be merged
+             * and the result will be validated */
+            options_parser |= LYD_OPT_TRUSTED;
         }
     }
     if (!outformat_d && options_dflt) {
@@ -777,12 +793,57 @@ parse_reply:
             if (ly_errno) {
                 goto cleanup;
             }
+
+            if (merge && data != data_item) {
+                if (!data->tree) {
+                    data->tree = data_item->tree;
+                } else if (data_item->tree) {
+                    /* merge results */
+                    if (lyd_merge(data->tree, data_item->tree, LYD_OPT_DESTRUCT | LYD_OPT_EXPLICIT)) {
+                        fprintf(stderr, "yanglint error: merging multiple data trees failed.\n");
+                        goto cleanup;
+                    }
+                }
+                data_item->tree = NULL;
+            }
+        }
+
+        if (merge) {
+            /* validate the merged data tree, do not trust the input, invalidate all the data first */
+            LY_TREE_FOR(data->tree, subroot) {
+                LY_TREE_DFS_BEGIN(subroot, next, node) {
+                    node->validity = LYD_VAL_OK;
+                    switch (node->schema->nodetype) {
+                    case LYS_LEAFLIST:
+                    case LYS_LEAF:
+                        if (((struct lys_node_leaf *)node->schema)->type.base == LY_TYPE_LEAFREF) {
+                            node->validity |= LYD_VAL_LEAFREF;
+                        }
+                        break;
+                    case LYS_LIST:
+                        node->validity |= LYD_VAL_UNIQUE;
+                        /* falls through */
+                    case LYS_CONTAINER:
+                    case LYS_NOTIF:
+                    case LYS_RPC:
+                    case LYS_ACTION:
+                        node->validity |= LYD_VAL_MAND;
+                        break;
+                    default:
+                        break;
+                    }
+                    LY_TREE_DFS_END(subroot, next, node)
+                }
+            }
+            if (lyd_validate(&data->tree, options_parser & ~LYD_OPT_TRUSTED, ctx)) {
+                goto cleanup;
+            }
         }
 
         /* print only if data output format specified */
         if (outformat_d) {
             for (data_item = data; data_item; data_item = data_item->next) {
-                if (verbose >= 2) {
+                if (!merge && verbose >= 2) {
                     fprintf(stdout, "File %s:\n", data_item->filename);
                 }
                 if (outformat_d == LYD_XML && envelope) {
@@ -825,6 +886,10 @@ parse_reply:
                         fprintf(out, "</action>\n");
                     }
                     fprintf(out, "</%s>\n", envelope_s);
+                }
+                if (merge) {
+                    /* stop after first item */
+                    break;
                 }
             }
         }
