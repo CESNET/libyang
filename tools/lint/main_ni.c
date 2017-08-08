@@ -29,6 +29,9 @@
 
 volatile int verbose = 0;
 
+/* from commands.c */
+int print_list(FILE *out, struct ly_ctx *ctx, LYD_FORMAT outformat);
+
 void
 help(int shortout)
 {
@@ -66,6 +69,9 @@ help(int shortout)
         "                        xml, json for data.\n"
         "  -a, --auto            Modify the xml output by adding envelopes for autodetection.\n\n"
         "  -i, --allimplemented  Make all the imported modules implemented.\n\n"
+        "  -l, --list            Print info about the loaded schemas in ietf-yang-library format,\n"
+        "                        the -f option applies here to specify data encoding.\n"
+        "                        (i - imported module, I - implemented module)\n\n"
         "  -o OUTFILE, --output=OUTFILE\n"
         "                        Write the output to OUTFILE instead of stdout.\n\n"
         "  -F FEATURES, --features=FEATURES\n"
@@ -262,7 +268,7 @@ main_ni(int argc, char* argv[])
     char **feat = NULL, *ptr, *featlist, *ylpath = NULL, *dir;
     struct stat st;
     uint32_t u;
-    int options_dflt = 0, options_parser = 0, options_allimplemented = 0, envelope = 0, autodetection = 0, merge = 0;
+    int options_dflt = 0, options_parser = 0, options_allimplemented = 0, envelope = 0, autodetection = 0, merge = 0, list = 0;
     struct dataitem {
         const char *filename;
         struct lyxml_elem *xml;
@@ -278,9 +284,9 @@ main_ni(int argc, char* argv[])
 
     opterr = 0;
 #ifndef NDEBUG
-    while ((opt = getopt_long(argc, argv, "ad:f:F:ghHimo:p:r:st:vVG:y:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "ad:f:F:ghHilmo:p:r:st:vVG:y:", options, &opt_index)) != -1)
 #else
-    while ((opt = getopt_long(argc, argv, "ad:f:F:ghHimo:p:r:st:vVy:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "ad:f:F:ghHilmo:p:r:st:vVy:", options, &opt_index)) != -1)
 #endif
     {
         switch (opt) {
@@ -358,6 +364,9 @@ main_ni(int argc, char* argv[])
             goto cleanup;
         case 'i':
             options_allimplemented = 1;
+            break;
+        case 'l':
+            list = 1;
             break;
         case 'm':
             merge = 1;
@@ -498,7 +507,7 @@ main_ni(int argc, char* argv[])
     }
 
     /* check options compatibility */
-    if (optind >= argc) {
+    if (!list && optind >= argc) {
         help(1);
         fprintf(stderr, "yanglint error: missing <file> to process\n");
         goto cleanup;;
@@ -622,7 +631,7 @@ main_ni(int argc, char* argv[])
         }
     }
 
-    if (outformat_d && !data) {
+    if (outformat_d && !data && !list) {
         fprintf(stderr, "yanglint error: no input data file for the specified data output format.\n");
         goto cleanup;
     }
@@ -893,6 +902,10 @@ parse_reply:
                 }
             }
         }
+    }
+
+    if (list) {
+        print_list(out, ctx, outformat_d);
     }
 
     ret = EXIT_SUCCESS;

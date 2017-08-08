@@ -948,10 +948,96 @@ cleanup:
 }
 
 int
+print_list(FILE *out, struct ly_ctx *ctx, LYD_FORMAT outformat)
+{
+    int has_modules = 0, flag;
+    struct lyd_node *ylib, *node, *module, *submodule;
+
+    ylib = ly_ctx_info(ctx);
+    if (!ylib) {
+        fprintf(stderr, "Getting context info (ietf-yang-library data) failed.\n");
+        return 1;
+    }
+
+    if (outformat != LYD_UNKNOWN) {
+        lyd_print_file(out, ylib, outformat, LYP_WITHSIBLINGS | LYP_FORMAT);
+        lyd_free(ylib);
+        return 0;
+    }
+
+    LY_TREE_FOR(ylib->child, node) {
+        if (!strcmp(node->schema->name, "module-set-id")) {
+            fprintf(out, "List of the loaded models (mod-set-id %s):\n", ((struct lyd_node_leaf_list *)node)->value_str);
+            break;
+        }
+    }
+    assert(node);
+
+    LY_TREE_FOR(ylib->child, module) {
+        if (!strcmp(module->schema->name, "module")) {
+            has_modules = 1;
+
+            /* conformance print */
+            LY_TREE_FOR(module->child, node) {
+                if (!strcmp(node->schema->name, "conformance-type")) {
+                    if (!strcmp(((struct lyd_node_leaf_list *)node)->value_str, "implement")) {
+                        fprintf(out, "\tI");
+                    } else {
+                        fprintf(out, "\ti");
+                    }
+                    break;
+                }
+            }
+
+            /* module print */
+            LY_TREE_FOR(module->child, node) {
+                if (!strcmp(node->schema->name, "name")) {
+                    fprintf(out, " %s", ((struct lyd_node_leaf_list *)node)->value_str);
+                } else if (!strcmp(node->schema->name, "revision")) {
+                    if (((struct lyd_node_leaf_list *)node)->value_str[0] != '\0') {
+                        fprintf(out, "@%s", ((struct lyd_node_leaf_list *)node)->value_str);
+                    }
+                }
+            }
+
+            /* submodules print */
+            LY_TREE_FOR(module->child, submodule) {
+                if (!strcmp(submodule->schema->name, "submodule")) {
+                    fprintf(out, " (");
+                    flag = 0;
+                    LY_TREE_FOR(submodule, submodule) {
+                        if (!strcmp(submodule->schema->name, "submodule")) {
+                            LY_TREE_FOR(submodule->child, node) {
+                                if (!strcmp(node->schema->name, "name")) {
+                                    fprintf(out, "%s%s", flag ? "," : "", ((struct lyd_node_leaf_list *)node)->value_str);
+                                } else if (!strcmp(node->schema->name, "revision")) {
+                                    if (((struct lyd_node_leaf_list *)node)->value_str[0] != '\0') {
+                                        fprintf(out, "@%s", ((struct lyd_node_leaf_list *)node)->value_str);
+                                    }
+                                }
+                            }
+                            flag++;
+                        }
+                    }
+                    fprintf(out, ")");
+                    break;
+                }
+            }
+            fprintf(out, "\n");
+        }
+    }
+
+    if (!has_modules) {
+        fprintf(out, "\t(none)\n");
+    }
+
+    lyd_free(ylib);
+    return 0;
+}
+
+int
 cmd_list(const char *arg)
 {
-    struct lyd_node *ylib = NULL, *module, *submodule, *node;
-    int has_modules = 0, flag;
     char **argv = NULL, *ptr;
     int c, argc, option_index;
     LYD_FORMAT outformat = LYD_UNKNOWN;
@@ -1016,86 +1102,7 @@ error:
     free(*argv);
     free(argv);
 
-    ylib = ly_ctx_info(ctx);
-    if (!ylib) {
-        fprintf(stderr, "Getting context info (ietf-yang-library data) failed.\n");
-        return 1;
-    }
-
-    if (outformat != LYD_UNKNOWN) {
-        lyd_print_file(stdout, ylib, outformat, LYP_WITHSIBLINGS | LYP_FORMAT);
-        lyd_free(ylib);
-        return 0;
-    }
-
-    LY_TREE_FOR(ylib->child, node) {
-        if (!strcmp(node->schema->name, "module-set-id")) {
-            printf("List of the loaded models (mod-set-id %s):\n", ((struct lyd_node_leaf_list *)node)->value_str);
-            break;
-        }
-    }
-    assert(node);
-
-    LY_TREE_FOR(ylib->child, module) {
-        if (!strcmp(module->schema->name, "module")) {
-            has_modules = 1;
-
-            /* conformance print */
-            LY_TREE_FOR(module->child, node) {
-                if (!strcmp(node->schema->name, "conformance-type")) {
-                    if (!strcmp(((struct lyd_node_leaf_list *)node)->value_str, "implement")) {
-                        printf("\tI");
-                    } else {
-                        printf("\ti");
-                    }
-                    break;
-                }
-            }
-
-            /* module print */
-            LY_TREE_FOR(module->child, node) {
-                if (!strcmp(node->schema->name, "name")) {
-                    printf(" %s", ((struct lyd_node_leaf_list *)node)->value_str);
-                } else if (!strcmp(node->schema->name, "revision")) {
-                    if (((struct lyd_node_leaf_list *)node)->value_str[0] != '\0') {
-                        printf("@%s", ((struct lyd_node_leaf_list *)node)->value_str);
-                    }
-                }
-            }
-
-            /* submodules print */
-            LY_TREE_FOR(module->child, submodule) {
-                if (!strcmp(submodule->schema->name, "submodule")) {
-                    printf(" (");
-                    flag = 0;
-                    LY_TREE_FOR(submodule, submodule) {
-                        if (!strcmp(submodule->schema->name, "submodule")) {
-                            LY_TREE_FOR(submodule->child, node) {
-                                if (!strcmp(node->schema->name, "name")) {
-                                    printf("%s%s", flag ? "," : "", ((struct lyd_node_leaf_list *)node)->value_str);
-                                } else if (!strcmp(node->schema->name, "revision")) {
-                                    if (((struct lyd_node_leaf_list *)node)->value_str[0] != '\0') {
-                                        printf("@%s", ((struct lyd_node_leaf_list *)node)->value_str);
-                                    }
-                                }
-                            }
-                            flag++;
-                        }
-                    }
-                    printf(")");
-                    break;
-                }
-            }
-            printf("\n");
-        }
-    }
-
-    if (!has_modules) {
-        printf("\t(none)\n");
-    }
-
-    lyd_free(ylib);
-    return 0;
+    return print_list(stdout, ctx, outformat);
 }
 
 int
