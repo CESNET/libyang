@@ -281,6 +281,7 @@ main_ni(int argc, char* argv[])
     struct lyd_node *running = NULL, *subroot, *next, *node;
     void *p;
     int index = 0;
+    struct lyxml_elem *iter, *elem;
 
     opterr = 0;
 #ifndef NDEBUG
@@ -544,7 +545,7 @@ main_ni(int argc, char* argv[])
         /* we have options for printing data tree, but output is schema */
         fprintf(stderr, "yanglint warning: data parser options are ignored when printing schema.\n");
     }
-    if (running_file && (!autodetection && !(options_parser & (LYD_OPT_RPC | LYD_OPT_NOTIF)))) {
+    if (running_file && (!autodetection && !(options_parser & (LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF)))) {
         fprintf(stderr, "yanglint warning: running datastore applies only to RPCs or Notifications.\n");
         /* ignore running datastore file */
         running_file = NULL;
@@ -747,6 +748,7 @@ main_ni(int argc, char* argv[])
                         fprintf(stderr, "RPC reply (%s) must be paired with the original RPC, see help.\n", data_item->filename);
                         goto cleanup;
                     }
+
                     continue;
                 } else if (!strcmp(data_item->xml->name, "notification")) {
                     if (verbose >= 2) {
@@ -775,24 +777,66 @@ parse_reply:
 
                     /* check that we really have RPC for the reply */
                     if (data_item->type != LYD_OPT_RPC) {
-                        fprintf(stderr, "RPC reply (%s) must be paired with the original RPC, see help.\n", data_item->filename);
+                        fprintf(stderr, "yanglint error: RPC reply (%s) must be paired with the original RPC, see help.\n", data_prev->filename);
                         goto cleanup;
                     }
 
+                    /* ignore <ok> and <rpc-error> elements if present */
+                    u = 0;
+                    LY_TREE_FOR_SAFE(data_prev->xml->child, iter, elem) {
+                        if (!strcmp(data_prev->xml->child->name, "ok")) {
+                            if (u) {
+                                /* rpc-error or ok already present */
+                                u = 0x8; /* error flag */
+                            } else {
+                                u = 0x1 | 0x4; /* <ok> flag with lyxml_free() flag */
+                            }
+                        } else if (!strcmp(data_prev->xml->child->name, "rpc-error")) {
+                            if (u && (u & 0x1)) {
+                                /* ok already present, rpc-error can be present multiple times */
+                                u = 0x8; /* error flag */
+                            } else {
+                                u = 0x2 | 0x4; /* <rpc-error> flag with lyxml_free() flag */
+                            }
+                        }
+
+                        if (u == 0x8) {
+                            fprintf(stderr, "yanglint error: Invalid RPC reply (%s) content.\n", data_prev->filename);
+                            goto cleanup;
+                        } else if (u & 0x4) {
+                            lyxml_free(ctx, data_prev->xml->child);
+                            u &= ~0x4; /* unset lyxml_free() flag */
+                        }
+                    }
+
                     /* finally, parse RPC reply from the previous step */
-                    options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPCREPLY;
-                    data_prev->tree = lyd_parse_xml(ctx, &data_prev->xml->child, options_parser, data_item->tree, running);
+                    data_prev->tree = lyd_parse_xml(ctx, &data_prev->xml->child,
+                                                    (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPCREPLY, data_item->tree, running);
                 }
             } else if ((options_parser & LYD_OPT_TYPEMASK) == LYD_OPT_RPCREPLY) {
                 if (data_prev && !data_prev->tree) {
                     /* now we should have RPC for the preceding RPC reply */
-                    data_item->tree = lyd_parse_xml(ctx, &data_item->xml->child, options_parser, running);
+                    data_item->tree = lyd_parse_path(ctx, data_item->filename, data_item->format,
+                                                     (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPC, running);
+                    data_item->type = LYD_OPT_RPC;
                     goto parse_reply;
                 } else {
                     /* now we have RPC reply which will be parsed in next step together with its RPC */
                     if (!data_item->next) {
-                        fprintf(stderr, "RPC reply (%s) must be paired with the original RPC, see help.\n", data_item->filename);
+                        fprintf(stderr, "yanglint error: RPC reply (%s) must be paired with the original RPC, see help.\n", data_item->filename);
                         goto cleanup;
+                    }
+                    /* create rpc-reply container to unify handling with autodetection */
+                    data_item->xml = calloc(1, sizeof *data_item->xml);
+                    if (!data_item->xml) {
+                        fprintf(stderr, "yanglint error: Memory allocation failed failed.\n");
+                        goto cleanup;
+                    }
+                    data_item->xml->name = lydict_insert(ctx, "rpc-reply", 9);
+                    data_item->xml->prev = data_item->xml;
+                    data_item->xml->child = lyxml_parse_path(ctx, data_item->filename, LYXML_PARSE_MULTIROOT | LYXML_PARSE_NOMIXEDCONTENT);
+                    if (data_item->xml->child) {
+                        data_item->xml->child->parent = data_item->xml;
                     }
                     continue;
                 }
@@ -926,6 +970,7 @@ cleanup:
         lyd_free_withsiblings(data->tree);
         free(data);
     }
+    lyd_free_withsiblings(running);
     ly_ctx_destroy(ctx, NULL);
 
     return ret;
