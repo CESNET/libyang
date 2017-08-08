@@ -293,7 +293,7 @@ test_validate_value(void **state)
 {
     struct state *st = (*state);
     const struct lys_module *mod;
-    struct lys_node *a, *b, *c;
+    struct lys_node *node;
     const char *yang = "module x {"
                     "  namespace urn:x;"
                     "  prefix x;"
@@ -318,30 +318,75 @@ test_validate_value(void **state)
                     "      enum alfa;"
                     "    }"
                     "  }"
+                    "  leaf d {"
+                    "    type decimal64 {"
+                    "      fraction-digits 1;"
+                    "    }"
+                    "  }"
+                    "  leaf e {"
+                    "    type decimal64 {"
+                    "      fraction-digits 10;"
+                    "    }"
+                    "  }"
+                    "  leaf f {"
+                    "    type decimal64 {"
+                    "      fraction-digits 18;"
+                    "    }"
+                    "  }"
                     "}";
 
     mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
     assert_ptr_not_equal(mod, NULL);
 
-    a = mod->data->next;
-    assert_int_equal(lyd_validate_value(a, NULL), EXIT_FAILURE); /* empty string is too short */
-    assert_int_equal(lyd_validate_value(a, "a"), EXIT_FAILURE); /* a is still too short */
-    assert_int_equal(lyd_validate_value(a, "bbb"), EXIT_FAILURE); /* does not match the pattern */
-    assert_int_equal(lyd_validate_value(a, "aaaaa"), EXIT_FAILURE); /* too long */
-    assert_int_equal(lyd_validate_value(a, "aaa"), EXIT_SUCCESS); /* ok */
+    /* a */
+    node = mod->data->next;
+    assert_int_equal(lyd_validate_value(node, NULL), EXIT_FAILURE); /* empty string is too short */
+    assert_int_equal(lyd_validate_value(node, "a"), EXIT_FAILURE); /* a is still too short */
+    assert_int_equal(lyd_validate_value(node, "bbb"), EXIT_FAILURE); /* does not match the pattern */
+    assert_int_equal(lyd_validate_value(node, "aaaaa"), EXIT_FAILURE); /* too long */
+    assert_int_equal(lyd_validate_value(node, "aaa"), EXIT_SUCCESS); /* ok */
 
-    b = a->next;
-    assert_int_equal(lyd_validate_value(b, "2"), EXIT_FAILURE); /* too high */
-    assert_int_equal(lyd_validate_value(b, "-"), EXIT_FAILURE); /* does not match the type (yet) */
-    assert_int_equal(lyd_validate_value(b, "-2"), EXIT_FAILURE); /* too low */
-    assert_int_equal(lyd_validate_value(b, "0"), EXIT_SUCCESS); /* ok */
+    /* b */
+    node = node->next;
+    assert_int_equal(lyd_validate_value(node, "2"), EXIT_FAILURE); /* too high */
+    assert_int_equal(lyd_validate_value(node, "-"), EXIT_FAILURE); /* does not match the type (yet) */
+    assert_int_equal(lyd_validate_value(node, "-2"), EXIT_FAILURE); /* too low */
+    assert_int_equal(lyd_validate_value(node, "0"), EXIT_SUCCESS); /* ok */
 
-    c = b->next;
-    assert_int_equal(lyd_validate_value(c, "a"), EXIT_FAILURE);
-    assert_int_equal(lyd_validate_value(c, "al"), EXIT_FAILURE);
-    assert_int_equal(lyd_validate_value(c, "alf"), EXIT_FAILURE);
-    assert_int_equal(lyd_validate_value(c, "alfa"), EXIT_SUCCESS); /* ok */
-    assert_int_equal(lyd_validate_value(c, "alfa "), EXIT_FAILURE);
+    /* c */
+    node = node->next;
+    assert_int_equal(lyd_validate_value(node, "a"), EXIT_FAILURE);
+    assert_int_equal(lyd_validate_value(node, "al"), EXIT_FAILURE);
+    assert_int_equal(lyd_validate_value(node, "alf"), EXIT_FAILURE);
+    assert_int_equal(lyd_validate_value(node, "alfa"), EXIT_SUCCESS); /* ok */
+    assert_int_equal(lyd_validate_value(node, "alfa "), EXIT_FAILURE);
+
+    /* d */
+    node = node->next;
+    assert_int_equal(lyd_validate_value(node, "-922337203685477580.9"), EXIT_FAILURE);
+    assert_int_equal(lyd_validate_value(node, "-925337203685477580"), EXIT_FAILURE);
+    assert_int_equal(lyd_validate_value(node, "922337203685477580.8"), EXIT_FAILURE);
+    assert_int_equal(lyd_validate_value(node, "932337203685477580"), EXIT_FAILURE);
+    assert_int_equal(lyd_validate_value(node, "-922337203685477580.8"), EXIT_SUCCESS); /* ok */
+    assert_int_equal(lyd_validate_value(node, "922337203685477580.7"), EXIT_SUCCESS); /* ok */
+
+    /* e */
+    node = node->next;
+    assert_int_equal(lyd_validate_value(node, "-922337203.6854775818"), EXIT_FAILURE);
+    assert_int_equal(lyd_validate_value(node, "-9223372031"), EXIT_FAILURE);
+    assert_int_equal(lyd_validate_value(node, "922337203.6854785807"), EXIT_FAILURE);
+    assert_int_equal(lyd_validate_value(node, "1922337203"), EXIT_FAILURE);
+    assert_int_equal(lyd_validate_value(node, "-922337203.6854775808"), EXIT_SUCCESS); /* ok */
+    assert_int_equal(lyd_validate_value(node, "922337203.6854775807"), EXIT_SUCCESS); /* ok */
+
+    /* f */
+    node = node->next;
+    assert_int_equal(lyd_validate_value(node, "-9.223372036854776808"), EXIT_FAILURE);
+    assert_int_equal(lyd_validate_value(node, "-10"), EXIT_FAILURE);
+    assert_int_equal(lyd_validate_value(node, "9.223372136854775807"), EXIT_FAILURE);
+    assert_int_equal(lyd_validate_value(node, "11"), EXIT_FAILURE);
+    assert_int_equal(lyd_validate_value(node, "-9.223372036854775808"), EXIT_SUCCESS); /* ok */
+    assert_int_equal(lyd_validate_value(node, "9.223372036854775807"), EXIT_SUCCESS); /* ok */
 }
 
 int main(void)

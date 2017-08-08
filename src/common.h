@@ -318,6 +318,7 @@ const char *transform_module_name2import_prefix(const struct lys_module *module,
  *
  * @param[in] module Module with imports to use.
  * @param[in] expr JSON expression.
+ * @param[in] inst_id Whether to add prefixes to all node names (XML instance-identifier).
  * @param[out] prefixes Array of pointers to prefixes. After use free them with free(*prefixes).
  * Can be NULL.
  * @param[out] namespaces Array of pointers to full namespaces. After use free them with
@@ -327,8 +328,8 @@ const char *transform_module_name2import_prefix(const struct lys_module *module,
  *
  * @return Transformed XML expression in the dictionary, NULL on error.
  */
-const char *transform_json2xml(const struct lys_module *module, const char *expr, const char ***prefixes, const char ***namespaces,
-                               uint32_t *ns_count);
+const char *transform_json2xml(const struct lys_module *module, const char *expr, int inst_id, const char ***prefixes,
+                               const char ***namespaces, uint32_t *ns_count);
 
 /**
  * @brief Transform expression from JSON format to schema format.
@@ -349,12 +350,14 @@ const char *transform_json2schema(const struct lys_module *module, const char *e
  * @param[in] ctx libyang context to use.
  * @param[in] expr XML expression.
  * @param[in] xml XML element with the expression.
+ * @param[in] inst_id Whether all the node names must have a prefix (XML instance-identifier).
  * @param[in] use_ctx_data_clb Whether to use data_clb in \p ctx if an unknown module namespace is found.
  * @param[in] log Whether to log errors or not.
  *
  * @return Transformed JSON expression in the dictionary, NULL on error.
  */
-const char *transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml, int use_ctx_data_clb, int log);
+const char *transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml, int inst_id,
+                               int use_ctx_data_clb, int log);
 
 /**
  * @brief Transform expression from the schema format (prefixes of imports) to

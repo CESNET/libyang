@@ -36,7 +36,7 @@ parse_range_dec64(const char **str_num, uint8_t dig, int64_t *num)
 {
     const char *ptr;
     int minus = 0;
-    int64_t ret = 0;
+    int64_t ret = 0, prev_ret;
     int8_t str_exp, str_dig = -1, trailing_zeros = 0;
 
     ptr = *str_num;
@@ -65,7 +65,18 @@ parse_range_dec64(const char **str_num, uint8_t dig, int64_t *num)
             }
             ++str_dig;
         } else {
-            ret = ret * 10 + (ptr[0] - '0');
+            prev_ret = ret;
+            if (minus) {
+                ret = ret * 10 - (ptr[0] - '0');
+                if (ret > prev_ret) {
+                    return 1;
+                }
+            } else {
+                ret = ret * 10 + (ptr[0] - '0');
+                if (ret < prev_ret) {
+                    return 1;
+                }
+            }
             if (str_dig > -1) {
                 ++str_dig;
                 if (ptr[0] == '0') {
@@ -97,15 +108,17 @@ parse_range_dec64(const char **str_num, uint8_t dig, int64_t *num)
         if ((str_exp - 1) + (dig - str_dig) > 18) {
             return 1;
         }
+        prev_ret = ret;
         ret *= dec_pow(dig - str_dig);
+        if ((minus && (ret > prev_ret)) || (!minus && (ret < prev_ret))) {
+            return 1;
+        }
+
     }
     if (str_dig > dig) {
         return 1;
     }
 
-    if (minus) {
-        ret *= -1;
-    }
     *str_num = ptr;
     *num = ret;
 
@@ -645,7 +658,7 @@ parse_path_arg(const struct lys_module *mod, const char *id, const char **prefix
 
 /**
  * @brief Parse instance-identifier in JSON data format. That means that prefixes
- *        (which are mandatory for every node-identifier) are actually model names.
+ *        are actually model names.
  *
  * instance-identifier = 1*("/" (node-identifier *predicate))
  *
@@ -665,6 +678,8 @@ parse_instance_identifier(const char *id, const char **model, int *mod_len, cons
 {
     int parsed = 0, ret;
 
+    assert(id && model && mod_len && name && nam_len);
+
     if (has_predicate) {
         *has_predicate = 0;
     }
@@ -680,28 +695,30 @@ parse_instance_identifier(const char *id, const char **model, int *mod_len, cons
         return ret;
     }
 
-    *model = id;
-    *mod_len = ret;
-
-    parsed += ret;
-    id += ret;
-
-    if (id[0] != ':') {
-        return -parsed;
-    }
-
-    ++parsed;
-    ++id;
-
-    if ((ret = parse_identifier(id)) < 1) {
-        return ret;
-    }
-
     *name = id;
     *nam_len = ret;
 
     parsed += ret;
     id += ret;
+
+    if (id[0] == ':') {
+        /* we have prefix */
+        *model = *name;
+        *mod_len = *nam_len;
+
+        ++parsed;
+        ++id;
+
+        if ((ret = parse_identifier(id)) < 1) {
+            return ret;
+        }
+
+        *name = id;
+        *nam_len = ret;
+
+        parsed += ret;
+        id += ret;
+    }
 
     if (id[0] == '[' && has_predicate) {
         *has_predicate = 1;
@@ -743,21 +760,18 @@ parse_predicate(const char *id, const char **model, int *mod_len, const char **n
 
     assert(id);
     if (model) {
+        assert(mod_len);
         *model = NULL;
-    }
-    if (mod_len) {
         *mod_len = 0;
     }
     if (name) {
+        assert(nam_len);
         *name = NULL;
-    }
-    if (nam_len) {
         *nam_len = 0;
     }
     if (value) {
+        assert(val_len);
         *value = NULL;
-    }
-    if (val_len) {
         *val_len = 0;
     }
     if (has_predicate) {
@@ -810,9 +824,7 @@ parse_predicate(const char *id, const char **model, int *mod_len, const char **n
 
         } else {
             if ((ret = parse_node_identifier(id, model, mod_len, name, nam_len, NULL, 0)) < 1) {
-                return -parsed+ret;
-            } else if (model && !*model) {
-                return -parsed;
+                return -parsed + ret;
             }
 
             parsed += ret;
@@ -846,7 +858,7 @@ parse_predicate(const char *id, const char **model, int *mod_len, const char **n
             if ((ptr = strchr(id, quote)) == NULL) {
                 return -parsed;
             }
-            ret = ptr-id;
+            ret = ptr - id;
 
             if (value) {
                 *value = id;
@@ -855,8 +867,8 @@ parse_predicate(const char *id, const char **model, int *mod_len, const char **n
                 *val_len = ret;
             }
 
-            parsed += ret+1;
-            id += ret+1;
+            parsed += ret + 1;
+            id += ret + 1;
         } else {
             return -parsed;
         }
@@ -2142,11 +2154,11 @@ resolve_json_schema_list_predicate(const char *predicate, const struct lys_node_
 
 /* cannot return LYS_GROUPING, LYS_AUGMENT, LYS_USES, logs directly */
 const struct lys_node *
-resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_node *start)
+resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_node *start, int output)
 {
     char *module_name = ly_buf(), *buf_backup = NULL, *str;
     const char *name, *mod_name, *id;
-    const struct lys_node *sibling, *start_parent;
+    const struct lys_node *sibling, *start_parent, *parent;
     int r, nam_len, mod_name_len, is_relative = -1, has_predicate;
     /* resolved import module from the start module, it must match the next node-name-match sibling */
     const struct lys_module *prefix_mod, *module, *prev_mod;
@@ -2216,10 +2228,19 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
 
     while (1) {
         sibling = NULL;
-        while ((sibling = lys_getnext(sibling, start_parent, module,
-                LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT))) {
+        while ((sibling = lys_getnext(sibling, start_parent, module, 0))) {
             /* name match */
             if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
+                /* output check */
+                for (parent = lys_parent(sibling); parent && !(parent->nodetype & (LYS_INPUT | LYS_OUTPUT)); parent = lys_parent(parent));
+                if (parent) {
+                    if (output && (parent->nodetype == LYS_INPUT)) {
+                        continue;
+                    } else if (!output && (parent->nodetype == LYS_OUTPUT)) {
+                        continue;
+                    }
+                }
+
                 /* module check */
                 if (mod_name) {
                     if (mod_name_len > LY_BUF_SIZE - 1) {
@@ -3887,6 +3908,7 @@ get_next_augment:
  * @brief Resolve instance-identifier predicate in JSON data format.
  *        Does not log.
  *
+ * @param[in] prev_mod Previous module to use in case there is no prefix.
  * @param[in] pred Predicate to use.
  * @param[in,out] node_match Nodes matching the restriction without
  *                           the predicate. Nodes not satisfying
@@ -3896,7 +3918,7 @@ get_next_augment:
  *         positive on success, negative on failure.
  */
 static int
-resolve_instid_predicate(const char *pred, struct unres_data *node_match)
+resolve_instid_predicate(const struct lys_module *prev_mod, const char *pred, struct unres_data *node_match)
 {
     /* ... /node[target = value] ... */
     struct lyd_node *target;
@@ -3962,11 +3984,6 @@ resolve_instid_predicate(const char *pred, struct unres_data *node_match)
                     goto remove_instid;
                 }
 
-                /* key module must match the list module */
-                if (strncmp(node_match->node[j]->schema->module->name, model, mod_len)
-                        || node_match->node[j]->schema->module->name[mod_len]) {
-                    goto remove_instid;
-                }
                 /* find the key leaf */
                 for (k = 1, target = node_match->node[j]->child; target && (k < pred_iter); k++, target = target->next);
                 if (!target) {
@@ -3975,6 +3992,23 @@ resolve_instid_predicate(const char *pred, struct unres_data *node_match)
                 if ((struct lys_node_leaf *)target->schema !=
                         ((struct lys_node_list *)node_match->node[j]->schema)->keys[pred_iter - 1]) {
                     goto remove_instid;
+                }
+
+                /* check name */
+                if (strncmp(target->schema->name, name, nam_len) || target->schema->name[nam_len]) {
+                    goto remove_instid;
+                }
+
+                /* check module */
+                if (model) {
+                    if (strncmp(target->schema->module->name, model, mod_len)
+                            || target->schema->module->name[mod_len]) {
+                        goto remove_instid;
+                    }
+                } else {
+                    if (target->schema->module != prev_mod) {
+                        goto remove_instid;
+                    }
                 }
 
                 /* check the value */
@@ -7169,13 +7203,19 @@ unres_schema_free(struct lys_module *module, struct unres_schema **unres, int al
     }
 }
 
+/* check whether instance-identifier points outside its data subtree (for operation it is any node
+ * outside the operation subtree, otherwise it is a node from a foreign model) */
 static int
 check_instid_ext_dep(const struct lys_node *sleaf, const char *json_instid)
 {
-    struct ly_set *set;
-    struct lys_node *op_node, *first_node;
+    const struct lys_node *op_node, *first_node;
     char *buf;
-    int ret = 0;
+    int ret = 0, hidden;
+
+    if (!json_instid || !json_instid[0]) {
+        /* no/empty value */
+        return 0;
+    }
 
     for (op_node = lys_parent(sleaf);
          op_node && !(op_node->nodetype & (LYS_NOTIF | LYS_RPC | LYS_ACTION));
@@ -7193,36 +7233,30 @@ check_instid_ext_dep(const struct lys_node *sleaf, const char *json_instid)
         return -1;
     }
 
-    /* there is a predicate, remove it */
-    if (buf[strlen(buf) - 1] == ']') {
-        assert(strchr(buf, '['));
-        *strchr(buf, '[') = '\0';
+    /* find the first schema node, do not log */
+    hidden = *ly_vlog_hide_location();
+    if (!hidden) {
+        ly_vlog_hide(1);
+    }
+    first_node = ly_ctx_get_node(NULL, sleaf, buf, 0);
+    if (!hidden) {
+        ly_vlog_hide(0);
     }
 
-    /* find the first schema node */
-    set = lys_find_path(NULL, sleaf, buf);
-    if (!set || !set->number) {
+    if (!first_node) {
+        /* unknown path, say it is not external */
         free(buf);
-        ly_set_free(set);
-        return 1;
+        ly_errno = LYE_SUCCESS;
+        return 0;
     }
     free(buf);
 
-    first_node = set->set.s[0];
-
     /* based on the first schema node in the path we can decide whether it points to an external tree or not */
 
-    if (op_node) {
-        /* it is an operation, so we're good if it points somewhere inside it */
-        if (op_node == first_node) {
-            assert(set->number == 1);
-        } else {
-            ret = 1;
-        }
+    if (op_node && (op_node != first_node)) {
+        /* it is a top-level operation, so we're good if it points somewhere inside it */
+        ret = 1;
     }
-
-    /* cleanup */
-    ly_set_free(set);
 
     /* we cannot know whether it points to a tree that is going to be unlinked (application must handle
      * this itself), so we say it's not external */
@@ -7242,7 +7276,7 @@ static int
 resolve_instid(struct lyd_node *data, const char *path, int req_inst, struct lyd_node **ret)
 {
     int i = 0, j;
-    const struct lys_module *mod;
+    const struct lys_module *mod, *prev_mod = NULL;
     struct ly_ctx *ctx = data->schema->module->ctx;
     struct lyd_node *root;
     const char *model, *name;
@@ -7269,23 +7303,32 @@ resolve_instid(struct lyd_node *data, const char *path, int req_inst, struct lyd
         }
         i += j;
 
-        str = strndup(model, mod_len);
-        if (!str) {
-            LOGMEM;
-            goto error;
-        }
-        mod = ly_ctx_get_module(ctx, str, NULL);
-        if (ctx->data_clb) {
-            if (!mod) {
-                mod = ctx->data_clb(ctx, str, NULL, 0, ctx->data_clb_data);
-            } else if (!mod->implemented) {
-                mod = ctx->data_clb(ctx, mod->name, mod->ns, LY_MODCLB_NOT_IMPLEMENTED, ctx->data_clb_data);
+        if (model) {
+            str = strndup(model, mod_len);
+            if (!str) {
+                LOGMEM;
+                goto error;
             }
-        }
-        free(str);
+            mod = ly_ctx_get_module(ctx, str, NULL);
+            if (ctx->data_clb) {
+                if (!mod) {
+                    mod = ctx->data_clb(ctx, str, NULL, 0, ctx->data_clb_data);
+                } else if (!mod->implemented) {
+                    mod = ctx->data_clb(ctx, mod->name, mod->ns, LY_MODCLB_NOT_IMPLEMENTED, ctx->data_clb_data);
+                }
+            }
+            free(str);
 
-        if (!mod || !mod->implemented || mod->disabled) {
-            break;
+            if (!mod || !mod->implemented || mod->disabled) {
+                break;
+            }
+        } else if (!prev_mod) {
+            /* first iteration and we are missing module name */
+            LOGVAL(LYE_INELEM_LEN, LY_VLOG_NONE, NULL, name_len, name);
+            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Instane-identifier is missing prefix in the first node.");
+            goto error;
+        } else {
+            mod = prev_mod;
         }
 
         if (resolve_data(mod, name, name_len, root, &node_match)) {
@@ -7295,7 +7338,7 @@ resolve_instid(struct lyd_node *data, const char *path, int req_inst, struct lyd
 
         if (has_predicate) {
             /* we have predicate, so the current results must be list or leaf-list */
-            j = resolve_instid_predicate(&path[i], &node_match);
+            j = resolve_instid_predicate(mod, &path[i], &node_match);
             if (j < 1) {
                 LOGVAL(LYE_INPRED, LY_VLOG_LYD, data, &path[i-j]);
                 goto error;
@@ -7317,6 +7360,8 @@ resolve_instid(struct lyd_node *data, const char *path, int req_inst, struct lyd
                 LOGVAL(LYE_SPEC, LY_VLOG_LYD, data, "Instance identifier is missing list keys.");
             }
         }
+
+        prev_mod = mod;
     }
 
     if (!node_match.count) {
@@ -7447,6 +7492,9 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int store,
             break;
         case LY_TYPE_INST:
             ext_dep = check_instid_ext_dep(leaf->schema, (json_val ? json_val : leaf->value_str));
+            if (ext_dep == -1) {
+                return -1;
+            }
             if ((ignore_fail == 1) || (ext_dep && (ignore_fail == 2))) {
                 req_inst = -1;
             } else {

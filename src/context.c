@@ -1511,3 +1511,19 @@ ly_ctx_info(struct ly_ctx *ctx)
 
     return root;
 }
+
+API const struct lys_node *
+ly_ctx_get_node(struct ly_ctx *ctx, const struct lys_node *start, const char *nodeid, int output)
+{
+    const struct lys_node *node;
+
+    if (!ctx || !nodeid || ((nodeid[0] != '/') && !start)) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    /* sets error and everything */
+    node = resolve_json_nodeid(nodeid, ctx, start, output);
+
+    return node;
+}

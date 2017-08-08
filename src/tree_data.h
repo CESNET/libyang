@@ -1056,6 +1056,10 @@ int lyd_validate(struct lyd_node **node, int options, void *var_arg);
  * Validates the value only using the types' restrictions. Do not check the rest of restrictions dependent on the
  * data tree (must, when statements or uniqueness of the leaf-list item).
  *
+ * The format of the data must follow rules for the lexical representation of the specific YANG type. Note
+ * that if there are some extensions of the lexical representation for the YANG module (default value), they are
+ * not supported by this function - it strictly follows rules for the lexical representations in data trees.
+ *
  * @param[in] node Schema node of the leaf or leaf-list eventually holding the \p value.
  * @param[in] value Value to be checked (NULL is checked as empty string).
  * @return EXIT_SUCCESS if the \p value conforms to the restrictions, EXIT_FAILURE otherwise.

@@ -329,7 +329,7 @@ attr_error:
 
         /* special case of xpath in the value, we want to convert it to JSON */
         if (filterflag && !strcmp(attr->name, "select")) {
-            dattr->value.string = transform_xml2json(ctx, dattr->value_str, xml, 0, 1);
+            dattr->value.string = transform_xml2json(ctx, dattr->value_str, xml, 0, 0, 1);
             if (!dattr->value.string) {
                 /* problem with resolving value as xpath */
                 dattr->value.string = dattr->value_str;

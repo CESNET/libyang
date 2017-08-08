@@ -162,7 +162,7 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
             /* exception for NETCONF's filter's attributes */
             if (!strcmp(attr->name, "select")) {
                 /* xpath content, we have to convert the JSON format into XML first */
-                xml_expr = transform_json2xml(node->schema->module, attr->value_str, &prefs, &nss, &ns_count);
+                xml_expr = transform_json2xml(node->schema->module, attr->value_str, 0, &prefs, &nss, &ns_count);
                 if (!xml_expr) {
                     /* error */
                     ly_print(out, "\"(!error!)\"");
@@ -218,7 +218,7 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
             break;
         case LY_TYPE_INST:
 printinst:
-            xml_expr = transform_json2xml(node->schema->module, ((struct lyd_node_leaf_list *)node)->value_str,
+            xml_expr = transform_json2xml(node->schema->module, ((struct lyd_node_leaf_list *)node)->value_str, 1,
                                           &prefs, &nss, &ns_count);
             if (!xml_expr) {
                 /* error */
@@ -330,7 +330,7 @@ printvalue:
         }
         break;
     case LY_TYPE_INST:
-        xml_expr = transform_json2xml(node->schema->module, ((struct lyd_node_leaf_list *)node)->value_str,
+        xml_expr = transform_json2xml(node->schema->module, ((struct lyd_node_leaf_list *)node)->value_str, 1,
                                       &prefs, &nss, &ns_count);
         if (!xml_expr) {
             /* error */

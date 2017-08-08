@@ -777,44 +777,39 @@ static int
 parse_uint(const char *val_str, uint64_t max, int base, uint64_t *ret, struct lyd_node *node)
 {
     char *strptr;
+    uint64_t u;
 
     if (!val_str || !val_str[0]) {
-        if (node) {
-            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, "", node->schema->name);
-        } else {
-            ly_errno = LY_EVALID;
-            ly_vecode = LYVE_INVAL;
-        }
-        return EXIT_FAILURE;
+        goto error;
     }
 
     errno = 0;
     strptr = NULL;
-    *ret = strtoull(val_str, &strptr, base);
-    if (errno || (*ret > max)) {
-        if (node) {
-            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, val_str, node->schema->name);
-        } else {
-            ly_errno = LY_EVALID;
-            ly_vecode = LYVE_INVAL;
-        }
-        return EXIT_FAILURE;
+    u = strtoull(val_str, &strptr, base);
+    if (errno || (u > max)) {
+        goto error;
     } else if (strptr && *strptr) {
         while (isspace(*strptr)) {
             ++strptr;
         }
         if (*strptr) {
-            if (node) {
-                LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, val_str, node->schema->name);
-            } else {
-                ly_errno = LY_EVALID;
-                ly_vecode = LYVE_INVAL;
-            }
-            return EXIT_FAILURE;
+            goto error;
         }
+    } else if (u != 0 && val_str[0] == '-') {
+        goto error;
     }
 
+    *ret = u;
     return EXIT_SUCCESS;
+
+error:
+    if (node) {
+        LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, val_str ? val_str : "", node->schema->name);
+    } else {
+        ly_errno = LY_EVALID;
+        ly_vecode = LYVE_INVAL;
+    }
+    return EXIT_FAILURE;
 }
 
 /* logs directly
@@ -1649,7 +1644,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         if (xml) {
             /* first, convert value into the json format */
-            value = transform_xml2json(type->parent->module->ctx, value, xml, 0, 0);
+            value = transform_xml2json(type->parent->module->ctx, value, xml, 0, 0, 0);
             if (!value) {
                 /* invalid identityref format */
                 LOGVAL(LYE_INVAL, LY_VLOG_LYD, contextnode, *value_, itemname);
@@ -1716,7 +1711,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         if (xml) {
             /* first, convert value into the json format */
-            value = transform_xml2json(type->parent->module->ctx, value, xml, 1, 0);
+            value = transform_xml2json(type->parent->module->ctx, value, xml, 1, 1, 0);
             if (!value) {
                 /* invalid instance-identifier format */
                 LOGVAL(LYE_INVAL, LY_VLOG_LYD, contextnode, *value_, itemname);
@@ -1936,11 +1931,10 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
              * the type without resolving it -> we return the union type (resolve it with resolve_union()) */
             if (xml) {
                 /* in case it should resolve into a instance-identifier, we can only do the JSON conversion here */
-                val->string = transform_xml2json(type->parent->module->ctx, value, xml, 1, 0);
+                val->string = transform_xml2json(type->parent->module->ctx, value, xml, 1, 1, 0);
                 if (!val->string) {
-                    /* invalid instance-identifier format */
-                    LOGVAL(LYE_INVAL, LY_VLOG_LYD, contextnode, *value_, itemname);
-                    goto cleanup;
+                    /* invalid instance-identifier format, likely some other type */
+                    val->string = lydict_insert(type->parent->module->ctx, value, 0);
                 }
             }
             break;
