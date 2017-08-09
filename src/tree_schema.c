@@ -3725,7 +3725,7 @@ lys_child(const struct lys_node *node, LYS_NODE nodetype)
             return NULL;
         }
         return (struct lys_node **)pp;
-    } else if (node->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+    } else if (node->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
         return NULL;
     } else {
         return (struct lys_node **)&node->child;
