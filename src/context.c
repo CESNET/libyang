@@ -241,7 +241,7 @@ ly_ctx_unset_allimplemented(struct ly_ctx *ctx)
 API void
 ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
 {
-    char *cwd = NULL, *new;
+    char *cwd = NULL, *new = NULL;
     int index = 0;
     void *r;
 
@@ -267,7 +267,6 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
                 /* check for duplicities */
                 if (!strcmp(new, ctx->models.search_paths[index])) {
                     /* path is already present */
-                    free(new);
                     goto success;
                 }
             }
@@ -276,6 +275,7 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
             ctx->models.search_paths = r;
         }
         ctx->models.search_paths[index] = new;
+        new = NULL;
         ctx->models.search_paths[index + 1] = NULL;
 
 success:
@@ -287,6 +287,7 @@ success:
 
 cleanup:
     free(cwd);
+    free(new);
 }
 
 API const char * const *
