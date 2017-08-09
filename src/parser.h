@@ -121,9 +121,10 @@ int lyp_is_rpc_action(struct lys_node *node);
  * @brief Check validity of parser options.
  *
  * @param options Parser options to be checked.
+ * @param func name of the function where called
  * @return 0 for ok, 1 when multiple data types bits are set, or incompatible options are used together.
  */
-int lyp_check_options(int options);
+int lyp_check_options(int options, const char *func);
 
 int lyp_check_identifier(const char *id, enum LY_IDENT type, struct lys_module *module, struct lys_node *parent);
 int lyp_check_date(const char *date);

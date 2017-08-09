@@ -217,19 +217,32 @@ lyp_is_rpc_action(struct lys_node *node)
 }
 
 int
-lyp_check_options(int options)
+lyp_check_options(int options, const char *func)
 {
     int x = options & LYD_OPT_TYPEMASK;
 
     /* LYD_OPT_NOAUTODEL can be used only with LYD_OPT_DATA or LYD_OPT_CONFIG */
     if (options & LYD_OPT_NOAUTODEL) {
         if (x != LYD_OPT_DATA && x != LYD_OPT_CONFIG) {
+            LOGERR(LY_EINVAL, "%s: Invalid options 0x%x (LYD_OPT_DATA_NOAUTODEL can be used only with LYD_OPT_DATA or LYD_OPT_CONFIG)", func, options);
+            return 1;
+        }
+    }
+
+    if (options & (LYD_OPT_DATA_ADD_YANGLIB | LYD_OPT_DATA_NO_YANGLIB)) {
+        if (x != LYD_OPT_DATA) {
+            LOGERR(LY_EINVAL, "%s: Invalid options 0x%x (LYD_OPT_DATA_*_YANGLIB can be used only with LYD_OPT_DATA)", func, options);
             return 1;
         }
     }
 
     /* "is power of 2" algorithm, with 0 exception */
-    return x ? !(x && !(x & (x - 1))) : 0;
+    if (x && !(x && !(x & (x - 1)))) {
+        LOGERR(LY_EINVAL, "%s: Invalid options 0x%x (multiple data type flags set).", func, options);
+        return 1;
+    }
+
+    return 0;
 }
 
 void *
@@ -1373,8 +1386,8 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
     struct lys_type *ret = NULL, *t;
     int c, i, j, len, found = 0, hidden;
     int64_t num;
-    uint64_t unum;
-    const char *ptr, *ptr2, *value = *value_, *itemname;
+    uint64_t unum, uind, u;
+    const char *ptr, *value = *value_, *itemname;
     struct lys_type_bit **bits = NULL;
     struct lys_ident *ident;
     struct lys_module *mod;
@@ -1409,15 +1422,40 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
     case LY_TYPE_BINARY:
         /* get number of octets for length validation */
         unum = 0;
+        ptr = NULL;
         if (value) {
-            ptr = value;
-            ptr2 = strchr(value, '\n');
-            while (ptr2) {
-                unum += ptr2 - ptr;
-                ptr = ptr2 + 1;
-                ptr2 = strchr(ptr, '\n');
+            /* silently skip leading/trailing whitespaces */
+            for (uind = 0; isspace(value[uind]); ++uind);
+            ptr = &value[uind];
+            u = strlen(ptr);
+            while(u && isspace(ptr[u - 1])) {
+                --u;
             }
-            unum += strlen(ptr);
+            unum = u;
+            for (uind = 0; uind < u; ++uind) {
+                if (ptr[uind] == '\n') {
+                    unum--;
+                } else if ((ptr[uind] < '/' && ptr[uind] != '+') ||
+                    (ptr[uind] > '9' && ptr[uind] < 'A') ||
+                    (ptr[uind] > 'Z' && ptr[uind] < 'a') || ptr[uind] > 'z') {
+                    if (ptr[uind] == '=') {
+                        /* padding */
+                        if (uind == u - 2 && ptr[uind + 1] == '=') {
+                            found = 2;
+                            uind++;
+                        } else if (uind == u - 1) {
+                            found = 1;
+                        }
+                    }
+                    if (!found) {
+                        /* error */
+                        LOGVAL(LYE_INCHAR, LY_VLOG_LYD, contextnode, ptr[uind], &ptr[uind]);
+                        LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Invalid Base64 character.");
+                        goto cleanup;
+                    }
+                }
+            }
+            unum = u;
         }
 
         if (unum & 3) {
@@ -1426,18 +1464,18 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Base64 encoded value length must be divisible by 4.");
             goto cleanup;
         }
-        len = (unum / 4) * 3;
-        /* check padding */
-        if (unum) {
-            if (ptr[strlen(ptr) - 1] == '=') {
-                len--;
-            }
-            if (ptr[strlen(ptr) - 2] == '=') {
-                len--;
-            }
-        }
+
+        /* length of the encoded string */
+        len = ((unum / 4) * 3) - found;
         if (validate_length_range(0, len, 0, 0, 0, type, value, contextnode)) {
             goto cleanup;
+        }
+
+        if (ptr != value || ptr[u] != '\0') {
+            /* update the changed value */
+            ptr = lydict_insert(type->parent->module->ctx, ptr, u);
+            lydict_remove(type->parent->module->ctx, *value_);
+            *value_ = ptr;
         }
 
         if (store) {

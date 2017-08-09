@@ -1365,6 +1365,10 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
         if (!result) {
             for (iter = next; iter && iter->prev->next; iter = iter->prev);
             result = iter;
+            if (iter && (options & LYD_OPT_DATA_ADD_YANGLIB) && iter->schema->module == ctx->models.list[LY_INTERNAL_MODULE_COUNT - 1]) {
+                /* ietf-yang-library data present, so ignore the option to add them */
+                options &= ~LYD_OPT_DATA_ADD_YANGLIB;
+            }
         }
         if (next) {
             iter = next;
@@ -1410,6 +1414,16 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
         ly_vecode = LYVE_INELEM;
         LOGVAL(LYE_SPEC, LY_VLOG_LYD, result, "Missing %s node.", (options & LYD_OPT_RPC ? "action" : "notification"));
         goto error;
+    }
+
+    /* add missing ietf-yang-library if requested */
+    if (options & LYD_OPT_DATA_ADD_YANGLIB) {
+        if (!result) {
+            result = ly_ctx_info(ctx);
+        } else if (lyd_merge(result, ly_ctx_info(ctx), LYD_OPT_DESTRUCT | LYD_OPT_EXPLICIT)) {
+            LOGERR(LY_EINT, "Adding ietf-yang-library data failed.");
+            goto error;
+        }
     }
 
     /* check for uniquness of top-level lists/leaflists because

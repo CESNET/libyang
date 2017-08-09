@@ -65,27 +65,31 @@ cmd_print_help(void)
 void
 cmd_data_help(void)
 {
-    printf("data [-(-s)trict] [-t TYPE] [-d DEFAULTS] [-o <output-file>] [-f (xml | json)] [-x <additional-tree-file-name>]\n");
+    printf("data [-(-s)trict] [-t TYPE] [-d DEFAULTS] [-o <output-file>] [-f (xml | json)] [-r <running-file-name>]\n");
     printf("     <data-file-name> [<RPC/action-data-file-name>]\n");
     printf("Accepted TYPEs:\n");
     printf("\tauto       - resolve data type (one of the following) automatically (as pyang does),\n");
     printf("\t             this option is applicable only in case of XML input data.\n");
-    printf("\tconfig     - LYD_OPT_CONFIG\n");
-    printf("\tget        - LYD_OPT_GET\n");
-    printf("\tgetconfig  - LYD_OPT_GETCONFIG\n");
-    printf("\tedit       - LYD_OPT_EDIT\n");
-    printf("\trpc        - LYD_OPT_RPC\n");
+    printf("\tdata       - LYD_OPT_DATA (default value) - complete datastore including status data.\n");
+    printf("\tconfig     - LYD_OPT_CONFIG - complete configuration datastore.\n");
+    printf("\tget        - LYD_OPT_GET - <get> operation result.\n");
+    printf("\tgetconfig  - LYD_OPT_GETCONFIG - <get-config> operation result.\n");
+    printf("\tedit       - LYD_OPT_EDIT - <edit-config>'s data (content of its <config> element).\n");
+    printf("\trpc        - LYD_OPT_RPC - NETCONF RPC message.\n");
     printf("\trpcreply   - LYD_OPT_RPCREPLY (last parameter mandatory in this case)\n");
-    printf("\tnotif      - LYD_OPT_NOTIF\n\n");
+    printf("\tnotif      - LYD_OPT_NOTIF - NETCONF Notification message.\n\n");
     printf("Accepted DEFAULTS:\n");
     printf("\tall        - add missing default nodes\n");
     printf("\tall-tagged - add missing default nodes and mark all the default nodes with the attribute.\n");
     printf("\ttrim       - remove all nodes with a default value\n");
     printf("\timplicit-tagged    - add missing nodes and mark them with the attribute\n\n");
-    printf("Option -x:\n");
-    printf("\tIf RPC/action/notification/RPC reply (for TYPEs 'rpc', 'rpcreply', and 'notif') includes\n");
+    printf("Option -r:\n");
+    printf("\tOptional parameter for 'rpc', 'rpcreply' and 'notif' TYPEs, the file contains running\n");
+    printf("\tconfiguration datastore data referenced from the RPC/Notification. Note that the file is\n");
+    printf("\tvalidated as 'data' TYPE. Special value '!' can be used as argument to ignore the\n");
+    printf("\texternal references.\n\n");
     printf("\tan XPath expression (when/must) that needs access to the configuration data, you can provide\n");
-    printf("\tthem in a file, which will be parsed as 'config'.\n");
+    printf("\tthem in a file, which will be parsed as 'data' TYPE.\n\n");
 }
 
 void
@@ -603,8 +607,8 @@ cmd_data(const char *arg)
         {"format", required_argument, 0, 'f'},
         {"option", required_argument, 0, 't'},
         {"output", required_argument, 0, 'o'},
+        {"running", required_argument, 0, 'r'},
         {"strict", no_argument, 0, 's'},
-        {"validation-tree", required_argument, 0, 'x'},
         {NULL, 0, 0, 0}
     };
     void *rlcd;
@@ -627,7 +631,7 @@ cmd_data(const char *arg)
     optind = 0;
     while (1) {
         option_index = 0;
-        c = getopt_long(argc, argv, "d:hf:o:st:x:", long_options, &option_index);
+        c = getopt_long(argc, argv, "d:hf:o:st:r:", long_options, &option_index);
         if (c == -1) {
             break;
         }
@@ -665,6 +669,23 @@ cmd_data(const char *arg)
             }
             out_path = optarg;
             break;
+        case 'r':
+            if (val_tree || (options & LYD_OPT_NOEXTDEPS)) {
+                fprintf(stderr, "The running datastore (-r) cannot be set multiple times.\n");
+                goto cleanup;
+            }
+            if (optarg[0] == '!') {
+                /* ignore extenral dependencies to the running datastore */
+                options |= LYD_OPT_NOEXTDEPS;
+            } else {
+                /* external file with the running datastore */
+                val_tree = lyd_parse_path(ctx, optarg, LYD_XML, LYD_OPT_DATA_NO_YANGLIB);
+                if (!val_tree) {
+                    fprintf(stderr, "Failed to parse the additional data tree for validation.\n");
+                    goto cleanup;
+                }
+            }
+            break;
         case 's':
             options |= LYD_OPT_STRICT;
             options |= LYD_OPT_OBSOLETE;
@@ -689,13 +710,6 @@ cmd_data(const char *arg)
             } else {
                 fprintf(stderr, "Invalid parser option \"%s\".\n", optarg);
                 cmd_data_help();
-                goto cleanup;
-            }
-            break;
-        case 'x':
-            val_tree = lyd_parse_path(ctx, optarg, LYD_XML, LYD_OPT_CONFIG);
-            if (!val_tree) {
-                fprintf(stderr, "Failed to parse the additional data tree for validation.\n");
                 goto cleanup;
             }
             break;
@@ -934,10 +948,96 @@ cleanup:
 }
 
 int
+print_list(FILE *out, struct ly_ctx *ctx, LYD_FORMAT outformat)
+{
+    int has_modules = 0, flag;
+    struct lyd_node *ylib, *node, *module, *submodule;
+
+    ylib = ly_ctx_info(ctx);
+    if (!ylib) {
+        fprintf(stderr, "Getting context info (ietf-yang-library data) failed.\n");
+        return 1;
+    }
+
+    if (outformat != LYD_UNKNOWN) {
+        lyd_print_file(out, ylib, outformat, LYP_WITHSIBLINGS | LYP_FORMAT);
+        lyd_free(ylib);
+        return 0;
+    }
+
+    LY_TREE_FOR(ylib->child, node) {
+        if (!strcmp(node->schema->name, "module-set-id")) {
+            fprintf(out, "List of the loaded models (mod-set-id %s):\n", ((struct lyd_node_leaf_list *)node)->value_str);
+            break;
+        }
+    }
+    assert(node);
+
+    LY_TREE_FOR(ylib->child, module) {
+        if (!strcmp(module->schema->name, "module")) {
+            has_modules = 1;
+
+            /* conformance print */
+            LY_TREE_FOR(module->child, node) {
+                if (!strcmp(node->schema->name, "conformance-type")) {
+                    if (!strcmp(((struct lyd_node_leaf_list *)node)->value_str, "implement")) {
+                        fprintf(out, "\tI");
+                    } else {
+                        fprintf(out, "\ti");
+                    }
+                    break;
+                }
+            }
+
+            /* module print */
+            LY_TREE_FOR(module->child, node) {
+                if (!strcmp(node->schema->name, "name")) {
+                    fprintf(out, " %s", ((struct lyd_node_leaf_list *)node)->value_str);
+                } else if (!strcmp(node->schema->name, "revision")) {
+                    if (((struct lyd_node_leaf_list *)node)->value_str[0] != '\0') {
+                        fprintf(out, "@%s", ((struct lyd_node_leaf_list *)node)->value_str);
+                    }
+                }
+            }
+
+            /* submodules print */
+            LY_TREE_FOR(module->child, submodule) {
+                if (!strcmp(submodule->schema->name, "submodule")) {
+                    fprintf(out, " (");
+                    flag = 0;
+                    LY_TREE_FOR(submodule, submodule) {
+                        if (!strcmp(submodule->schema->name, "submodule")) {
+                            LY_TREE_FOR(submodule->child, node) {
+                                if (!strcmp(node->schema->name, "name")) {
+                                    fprintf(out, "%s%s", flag ? "," : "", ((struct lyd_node_leaf_list *)node)->value_str);
+                                } else if (!strcmp(node->schema->name, "revision")) {
+                                    if (((struct lyd_node_leaf_list *)node)->value_str[0] != '\0') {
+                                        fprintf(out, "@%s", ((struct lyd_node_leaf_list *)node)->value_str);
+                                    }
+                                }
+                            }
+                            flag++;
+                        }
+                    }
+                    fprintf(out, ")");
+                    break;
+                }
+            }
+            fprintf(out, "\n");
+        }
+    }
+
+    if (!has_modules) {
+        fprintf(out, "\t(none)\n");
+    }
+
+    lyd_free(ylib);
+    return 0;
+}
+
+int
 cmd_list(const char *arg)
 {
-    struct lyd_node *ylib = NULL, *module, *submodule, *node;
-    int has_modules = 0, flag;
     char **argv = NULL, *ptr;
     int c, argc, option_index;
     LYD_FORMAT outformat = LYD_UNKNOWN;
@@ -1002,86 +1102,7 @@ error:
     free(*argv);
     free(argv);
 
-    ylib = ly_ctx_info(ctx);
-    if (!ylib) {
-        fprintf(stderr, "Getting context info (ietf-yang-library data) failed.\n");
-        return 1;
-    }
-
-    if (outformat != LYD_UNKNOWN) {
-        lyd_print_file(stdout, ylib, outformat, LYP_WITHSIBLINGS | LYP_FORMAT);
-        lyd_free(ylib);
-        return 0;
-    }
-
-    LY_TREE_FOR(ylib->child, node) {
-        if (!strcmp(node->schema->name, "module-set-id")) {
-            printf("List of the loaded models (mod-set-id %s):\n", ((struct lyd_node_leaf_list *)node)->value_str);
-            break;
-        }
-    }
-    assert(node);
-
-    LY_TREE_FOR(ylib->child, module) {
-        if (!strcmp(module->schema->name, "module")) {
-            has_modules = 1;
-
-            /* conformance print */
-            LY_TREE_FOR(module->child, node) {
-                if (!strcmp(node->schema->name, "conformance-type")) {
-                    if (!strcmp(((struct lyd_node_leaf_list *)node)->value_str, "implement")) {
-                        printf("\tI");
-                    } else {
-                        printf("\ti");
-                    }
-                    break;
-                }
-            }
-
-            /* module print */
-            LY_TREE_FOR(module->child, node) {
-                if (!strcmp(node->schema->name, "name")) {
-                    printf(" %s", ((struct lyd_node_leaf_list *)node)->value_str);
-                } else if (!strcmp(node->schema->name, "revision")) {
-                    if (((struct lyd_node_leaf_list *)node)->value_str[0] != '\0') {
-                        printf("@%s", ((struct lyd_node_leaf_list *)node)->value_str);
-                    }
-                }
-            }
-
-            /* submodules print */
-            LY_TREE_FOR(module->child, submodule) {
-                if (!strcmp(submodule->schema->name, "submodule")) {
-                    printf(" (");
-                    flag = 0;
-                    LY_TREE_FOR(submodule, submodule) {
-                        if (!strcmp(submodule->schema->name, "submodule")) {
-                            LY_TREE_FOR(submodule->child, node) {
-                                if (!strcmp(node->schema->name, "name")) {
-                                    printf("%s%s", flag ? "," : "", ((struct lyd_node_leaf_list *)node)->value_str);
-                                } else if (!strcmp(node->schema->name, "revision")) {
-                                    if (((struct lyd_node_leaf_list *)node)->value_str[0] != '\0') {
-                                        printf("@%s", ((struct lyd_node_leaf_list *)node)->value_str);
-                                    }
-                                }
-                            }
-                            flag++;
-                        }
-                    }
-                    printf(")");
-                    break;
-                }
-            }
-            printf("\n");
-        }
-    }
-
-    if (!has_modules) {
-        printf("\t(none)\n");
-    }
-
-    lyd_free(ylib);
-    return 0;
+    return print_list(stdout, ctx, outformat);
 }
 
 int

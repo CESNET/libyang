@@ -551,15 +551,22 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
         return NULL;
     }
 
-    if (lyp_check_options(options)) {
-        LOGERR(LY_EINVAL, "%s: Invalid options (multiple data type flags set).", __func__);
+    if (lyp_check_options(options, __func__)) {
         return NULL;
     }
 
-    if (!(*root)) {
-        /* empty tree - no work is needed */
-        lyd_validate(&result, options, ctx);
-        return result;
+    if (!(*root) && !(options & LYD_OPT_RPCREPLY)) {
+        /* empty tree */
+        if (options & (LYD_OPT_RPC | LYD_OPT_NOTIF)) {
+            /* error, top level node identify RPC and Notification */
+            LOGERR(LY_EINVAL, "%s: *root identifies RPC/Notification so it cannot be NULL.", __func__);
+            return NULL;
+        } else if (!(options & LYD_OPT_RPCREPLY)) {
+            /* others - no work is needed, just check for missing mandatory nodes */
+            lyd_validate(&result, options, ctx);
+            return result;
+        }
+        /* continue with empty RPC reply, for which we need RPC */
     }
 
     unres = calloc(1, sizeof *unres);
@@ -614,7 +621,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
         }
     }
 
-    if (!(options & LYD_OPT_NOSIBLINGS)) {
+    if ((*root) && !(options & LYD_OPT_NOSIBLINGS)) {
         /* locate the first root to process */
         if ((*root)->parent) {
             xmlstart = (*root)->parent->child;
@@ -652,6 +659,10 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
         }
         if (iter) {
             last = iter;
+            if ((options & LYD_OPT_DATA_ADD_YANGLIB) && iter->schema->module == ctx->models.list[LY_INTERNAL_MODULE_COUNT - 1]) {
+                /* ietf-yang-library data present, so ignore the option to add them */
+                options &= ~LYD_OPT_DATA_ADD_YANGLIB;
+            }
         }
         if (!result) {
             result = iter;
@@ -676,7 +687,17 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
         goto error;
     }
 
-    /* check for uniquness of top-level lists/leaflists because
+    /* add missing ietf-yang-library if requested */
+    if (options & LYD_OPT_DATA_ADD_YANGLIB) {
+        if (!result) {
+            result = ly_ctx_info(ctx);
+        } else if (lyd_merge(result, ly_ctx_info(ctx), LYD_OPT_DESTRUCT | LYD_OPT_EXPLICIT)) {
+            LOGERR(LY_EINT, "Adding ietf-yang-library data failed.");
+            goto error;
+        }
+    }
+
+    /* check for uniqueness of top-level lists/leaflists because
      * only the inner instances were tested in lyv_data_content() */
     set = ly_set_new();
     LY_TREE_FOR(result, iter) {

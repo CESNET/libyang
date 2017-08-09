@@ -352,7 +352,9 @@ lyd_check_mandatory_tree(struct lyd_node *root, struct ly_ctx *ctx, int options)
                 return EXIT_FAILURE;
             }
         } else {
-            for (i = 0; i < ctx->models.used; i++) {
+            for (i = (options & LYD_OPT_DATA_NO_YANGLIB) ? LY_INTERNAL_MODULE_COUNT : LY_INTERNAL_MODULE_COUNT - 1;
+                 i < ctx->models.used;
+                 i++) {
                 /* skip not implemented and disabled modules */
                 if (!ctx->models.list[i]->implemented || ctx->models.list[i]->disabled) {
                     continue;
@@ -447,8 +449,7 @@ lyd_parse_data_(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int opt
 {
     const struct lyd_node *rpc_act = NULL, *data_tree = NULL, *iter;
 
-    if (lyp_check_options(options)) {
-        LOGERR(LY_EINVAL, "%s: Invalid options (multiple data type flags set).", __func__);
+    if (lyp_check_options(options, __func__)) {
         return NULL;
     }
 
@@ -4130,6 +4131,10 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
         return EXIT_FAILURE;
     }
 
+    if (lyp_check_options(options, __func__)) {
+        return EXIT_FAILURE;
+    }
+
     unres = calloc(1, sizeof *unres);
     LY_CHECK_ERR_RETURN(!unres, LOGMEM, EXIT_FAILURE);
 
@@ -4294,6 +4299,11 @@ nextsiblings:
      * only the inner instances were tested in lyv_data_content() */
     set = ly_set_new();
     LY_TREE_FOR(*node, root) {
+        if ((options & LYD_OPT_DATA_ADD_YANGLIB) && root->schema->module == ctx->models.list[LY_INTERNAL_MODULE_COUNT - 1]) {
+            /* ietf-yang-library data present, so ignore the option to add them */
+            options &= ~LYD_OPT_DATA_ADD_YANGLIB;
+        }
+
         if (!(root->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) || !(root->validity & LYD_VAL_UNIQUE)) {
             continue;
         }
@@ -4311,6 +4321,16 @@ nextsiblings:
         }
     }
     ly_set_free(set);
+
+    /* add missing ietf-yang-library if requested */
+    if (options & LYD_OPT_DATA_ADD_YANGLIB) {
+        if (!(*node)) {
+            (*node) = ly_ctx_info(ctx);
+        } else if (lyd_merge((*node), ly_ctx_info(ctx), LYD_OPT_DESTRUCT | LYD_OPT_EXPLICIT)) {
+            LOGERR(LY_EINT, "Adding ietf-yang-library data failed.");
+            goto cleanup;
+        }
+    }
 
     /* add default values, resolve unres and check for mandatory nodes in final tree */
     if (lyd_defaults_add_unres(node, options, ctx, data_tree, act_notif, unres)) {
@@ -6394,7 +6414,6 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
         if (data_tree && (options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF))) {
             if (act_notif) {
                 /* fun case */
-                assert(act_notif->parent);
 
                 msg_parent = NULL;
                 msg_sibling = *root;
@@ -6433,6 +6452,7 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
                         }
                         if (msg_sibling->schema->nodetype & (LYS_ACTION | LYS_NOTIF)) {
                             /* we are done */
+                            assert(act_notif->parent);
                             assert(act_notif->parent->schema == data_tree_parent->schema);
                             assert(msg_sibling == act_notif);
                             break;

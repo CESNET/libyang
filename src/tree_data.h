@@ -418,7 +418,8 @@ char *lyd_path(const struct lyd_node *node);
  */
 
 #define LYD_OPT_DATA       0x00 /**< Default type of data - complete datastore content with configuration as well as
-                                     state data. */
+                                     state data. To handle possibly missing (but by default required) ietf-yang-library
+                                     data, use #LYD_OPT_DATA_NO_YANGLIB or #LYD_OPT_DATA_ADD_YANGLIB options. */
 #define LYD_OPT_CONFIG     0x01 /**< A configuration datastore - complete datastore without state data.
                                      Validation modifications:
                                      - status data are not allowed */
@@ -453,7 +454,7 @@ char *lyd_path(const struct lyd_node *node);
 /* 0x100 reserved, used internally */
 #define LYD_OPT_STRICT     0x0200 /**< Instead of silent ignoring data without schema definition, raise an error. */
 #define LYD_OPT_DESTRUCT   0x0400 /**< Free the provided XML tree during parsing the data. With this option, the
-                                       provided XML tree is affected and all succesfully parsed data are freed.
+                                       provided XML tree is affected and all successfully parsed data are freed.
                                        This option is applicable only to lyd_parse_xml() function. */
 #define LYD_OPT_OBSOLETE   0x0800 /**< Raise an error when an obsolete statement (status set to obsolete) is used. */
 #define LYD_OPT_NOSIBLINGS 0x1000 /**< Parse only a single XML tree from the input. This option applies only to
@@ -468,6 +469,10 @@ char *lyd_path(const struct lyd_node *node);
                                        constrained subtree. */
 #define LYD_OPT_NOEXTDEPS  0x8000 /**< Allow external dependencies (external leafrefs, instance-identifiers, must,
                                        and when) to not be resolved/satisfied during validation. */
+#define LYD_OPT_DATA_NO_YANGLIB  0x10000 /**< Ignore (possibly) missing ietf-yang-library data. Applicable only with #LYD_OPT_DATA. */
+#define LYD_OPT_DATA_ADD_YANGLIB 0x20000 /**< Add missing ietf-yang-library data into the validated data tree. Applicable
+                                              only with #LYD_OPT_DATA. If some ietf-yang-library data are present, they are
+                                              preserved and option is ignored. */
 
 /**@} parseroptions */
 
