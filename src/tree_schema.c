@@ -1544,7 +1544,7 @@ lys_copy_union_leafrefs(struct lys_module *mod, struct lys_node *parent, struct 
     if (type->der->module) {
         /* typedef, skip it, but keep the extensions */
         ext_size = type->ext_size;
-        if (lys_ext_dup(mod, type->ext, type->ext_size, (prev_new ? prev_new : &new), LYEXT_PAR_TYPE, &ext, 0, unres)) {
+        if (lys_ext_dup(mod, type->ext, type->ext_size, prev_new, LYEXT_PAR_TYPE, &ext, 0, unres)) {
             return -1;
         }
         if (prev_new->ext) {
