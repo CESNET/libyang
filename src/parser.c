@@ -1435,7 +1435,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             for (uind = 0; uind < u; ++uind) {
                 if (ptr[uind] == '\n') {
                     unum--;
-                } else if ((ptr[uind] < '/' && ptr[uind] != '+' && ptr[uind] != '-') ||
+                } else if ((ptr[uind] < '/' && ptr[uind] != '+') ||
                     (ptr[uind] > '9' && ptr[uind] < 'A') ||
                     (ptr[uind] > 'Z' && ptr[uind] < 'a') || ptr[uind] > 'z') {
                     if (ptr[uind] == '=') {
