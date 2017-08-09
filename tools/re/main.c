@@ -92,6 +92,8 @@ add_pattern(char ***patterns, int **inverts, int *counter, char *pattern)
     reallocated2 = realloc(*inverts, *counter * sizeof **inverts);
     if (!reallocated1 || !reallocated2) {
         fprintf(stderr, "yangre error: memory allocation error.\n");
+        free(reallocated1);
+        free(reallocated2);
         return EXIT_FAILURE;
     }
     (*patterns) = reallocated1;
