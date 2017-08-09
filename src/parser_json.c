@@ -1287,6 +1287,9 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
 
     /* no data (or whitespaces only) are fine */
     if (!data[len]) {
+        if (options & LYD_OPT_DATA_ADD_YANGLIB) {
+            result = ly_ctx_info(ctx);
+        }
         lyd_validate(&result, options, ctx);
         return result;
     }
@@ -1418,9 +1421,7 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
 
     /* add missing ietf-yang-library if requested */
     if (options & LYD_OPT_DATA_ADD_YANGLIB) {
-        if (!result) {
-            result = ly_ctx_info(ctx);
-        } else if (lyd_merge(result, ly_ctx_info(ctx), LYD_OPT_DESTRUCT | LYD_OPT_EXPLICIT)) {
+        if (lyd_merge(result, ly_ctx_info(ctx), LYD_OPT_DESTRUCT | LYD_OPT_EXPLICIT)) {
             LOGERR(LY_EINT, "Adding ietf-yang-library data failed.");
             goto error;
         }
