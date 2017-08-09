@@ -1550,6 +1550,7 @@ lys_copy_union_leafrefs(struct lys_module *mod, struct lys_node *parent, struct 
         if (prev_new->ext) {
             reloc = realloc(prev_new->ext, (prev_new->ext_size + ext_size) * sizeof *prev_new->ext);
             LY_CHECK_ERR_RETURN(!reloc, LOGMEM, -1);
+            prev_new->ext = reloc;
 
             memcpy(prev_new->ext + prev_new->ext_size, ext, ext_size * sizeof *ext);
             free(ext);
