@@ -1471,7 +1471,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             goto cleanup;
         }
 
-        if (ptr != value || ptr[u] != '\0') {
+        if (value && (ptr != value || ptr[u] != '\0')) {
             /* update the changed value */
             ptr = lydict_insert(type->parent->module->ctx, ptr, u);
             lydict_remove(type->parent->module->ctx, *value_);
