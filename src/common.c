@@ -395,7 +395,12 @@ _transform_json2xml(const struct lys_module *module, const char *expr, int schem
                 }
                 prefix = mod->prefix;
             } else {
-                name_len = end - cur_expr;
+                if (end) {
+                    name_len = end - cur_expr;
+                } else {
+                    name_len = strlen(cur_expr);
+                    end = cur_expr;
+                }
                 name = strndup(cur_expr, name_len);
                 prefix = transform_module_name2import_prefix(module, name);
                 free(name);
