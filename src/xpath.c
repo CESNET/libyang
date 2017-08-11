@@ -7670,13 +7670,13 @@ finish:
 }
 
 int
-lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int warn_on_fwd_ref)
+lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int warn_on_fwd_ref, int set_ext_dep_flags)
 {
-    struct lys_node *parent;
+    struct lys_node *parent, *elem;
     const struct lys_node *ctx_snode;
     struct lyxp_set tmp_set;
     uint8_t must_size = 0;
-    uint32_t i;
+    uint32_t i, j;
     int opts, ret = EXIT_SUCCESS;
     struct lys_when *when = NULL;
     struct lys_restr *must = NULL;
@@ -7752,6 +7752,13 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int warn_on
         ly_vlog_hide(1);
     }
 
+    if (set_ext_dep_flags) {
+        /* find operation if in one, used later */
+        for (parent = (struct lys_node *)node;
+             parent && !(parent->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF));
+             parent = lys_parent(parent));
+    }
+
     /* check "when" */
     if (when) {
         if (lyxp_atomize(when->cond, node, LYXP_NODE_ELEM, &tmp_set, LYXP_SNODE_WHEN | opts, &ctx_snode)) {
@@ -7776,6 +7783,28 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int warn_on
             ret = EXIT_FAILURE;
             memset(&tmp_set, 0, sizeof tmp_set);
         } else {
+            if (set_ext_dep_flags) {
+                for (j = 0; j < tmp_set.used; ++j) {
+                    /* skip roots'n'stuff */
+                    if (tmp_set.val.snodes[j].type == LYXP_NODE_ELEM) {
+                        /* XPath expression cannot reference "lower" status than the node that has the definition */
+                        if (lyp_check_status(node->flags, lys_node_module(node), node->name, tmp_set.val.snodes[j].snode->flags,
+                                lys_node_module(tmp_set.val.snodes[j].snode), tmp_set.val.snodes[j].snode->name, node)) {
+                            return -1;
+                        }
+
+                        if (parent) {
+                            for (elem = tmp_set.val.snodes[j].snode; elem && (elem != parent); elem = lys_parent(elem));
+                            if (!elem) {
+                                /* not in node's RPC or notification subtree, set the flag */
+                                when->flags |= LYS_XPATH_DEP;
+                                ((struct lys_node *)node)->flags |= LYS_XPATH_DEP;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
             set_snode_merge(set, &tmp_set);
             memset(&tmp_set, 0, sizeof tmp_set);
         }
@@ -7805,6 +7834,28 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int warn_on
             ret = EXIT_FAILURE;
             memset(&tmp_set, 0, sizeof tmp_set);
         } else {
+            if (set_ext_dep_flags) {
+                for (j = 0; j < tmp_set.used; ++j) {
+                    /* skip roots'n'stuff */
+                    if (tmp_set.val.snodes[j].type == LYXP_NODE_ELEM) {
+                        /* XPath expression cannot reference "lower" status than the node that has the definition */
+                        if (lyp_check_status(node->flags, lys_node_module(node), node->name, tmp_set.val.snodes[j].snode->flags,
+                                lys_node_module(tmp_set.val.snodes[j].snode), tmp_set.val.snodes[j].snode->name, node)) {
+                            return -1;
+                        }
+
+                        if (parent) {
+                            for (elem = tmp_set.val.snodes[j].snode; elem && (elem != parent); elem = lys_parent(elem));
+                            if (!elem) {
+                                /* not in node's RPC or notification subtree, set the flag */
+                                must[i].flags |= LYS_XPATH_DEP;
+                                ((struct lys_node *)node)->flags |= LYS_XPATH_DEP;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
             set_snode_merge(set, &tmp_set);
             memset(&tmp_set, 0, sizeof tmp_set);
         }

@@ -256,10 +256,12 @@ int lyxp_atomize(const char *expr, const struct lys_node *cur_snode, enum lyxp_n
  * Will be cleared before use.
  * @param[in] warn_on_fwd_ref Setting this flag causes no errors to be printed and
  * only warning is printed on forward reference paths (addressing a non-existing node).
+ * @param[in] set_ext_dep_flags Set #LYS_XPATH_DEP for conditions that require foreign subtree and
+ * also for the node itself, if it has any such condition.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
-int lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int warn_on_fwd_ref);
+int lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int warn_on_fwd_ref, int set_ext_dep_flags);
 
 /**
  * @brief Check syntax of all the XPath expressions of the node.

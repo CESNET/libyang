@@ -103,7 +103,7 @@ lyd_check_mandatory_data(struct lyd_node *root, struct lyd_node *last_parent,
                 }
                 for (current = dummy; current; current = current->child) {
                     ly_vlog_hide(1);
-                    resolve_when(current, 0);
+                    resolve_when(current, 0, NULL);
                     ly_vlog_hide(0);
                     if (current->when_status & LYD_WHEN_FALSE) {
                         /* when evaluates to false */
