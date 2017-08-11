@@ -602,6 +602,12 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     if (options & (LYD_OPT_RPC | LYD_OPT_NOTIF | LYD_OPT_RPCREPLY)) {
         data_tree = va_arg(ap, const struct lyd_node *);
         if (data_tree) {
+            if (options & LYD_OPT_NOEXTDEPS) {
+                LOGERR(LY_EINVAL, "%s: invalid parameter (variable arg const struct lyd_node *data_tree and LYD_OPT_NOEXTDEPS set).",
+                       __func__);
+                goto cleanup;
+            }
+
             LY_TREE_FOR((struct lyd_node *)data_tree, iter) {
                 if (iter->parent) {
                     /* a sibling is not top-level */
@@ -618,10 +624,6 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
                 LOGERR(LY_EINVAL, "%s: invalid parameter (variable arg const struct lyd_node *data_tree with LYD_OPT_NOSIBLINGS).", __func__);
                 goto error;
             }
-        } else if (options & LYD_OPT_NOEXTDEPS) {
-            LOGERR(LY_EINVAL, "%s: invalid parameter (no variable arg const struct lyd_node *data_tree but LYD_OPT_NOEXTDEPS set).",
-                   __func__);
-            goto error;
         }
     }
 

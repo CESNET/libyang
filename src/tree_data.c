@@ -462,6 +462,12 @@ lyd_parse_data_(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int opt
     if (options & (LYD_OPT_RPC | LYD_OPT_NOTIF | LYD_OPT_RPCREPLY)) {
         data_tree = va_arg(ap, const struct lyd_node *);
         if (data_tree) {
+            if (options & LYD_OPT_NOEXTDEPS) {
+                LOGERR(LY_EINVAL, "%s: invalid parameter (variable arg const struct lyd_node *data_tree and LYD_OPT_NOEXTDEPS set).",
+                       __func__);
+                return NULL;
+            }
+
             LY_TREE_FOR(data_tree, iter) {
                 if (iter->parent) {
                     /* a sibling is not top-level */
@@ -478,10 +484,6 @@ lyd_parse_data_(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int opt
                 LOGERR(LY_EINVAL, "%s: invalid parameter (variable arg const struct lyd_node *data_tree with LYD_OPT_NOSIBLINGS).", __func__);
                 return NULL;
             }
-        } else if (options & LYD_OPT_NOEXTDEPS) {
-            LOGERR(LY_EINVAL, "%s: invalid parameter (no variable arg const struct lyd_node *data_tree but LYD_OPT_NOEXTDEPS set).",
-                   __func__);
-            return NULL;
         }
     }
 
@@ -4163,6 +4165,12 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
         /* get the additional data tree if given */
         data_tree = (struct lyd_node *)var_arg;
         if (data_tree) {
+            else if (options & LYD_OPT_NOEXTDEPS) {
+                LOGERR(LY_EINVAL, "%s: invalid parameter (variable arg const struct lyd_node *data_tree and LYD_OPT_NOEXTDEPS set).",
+                       __func__);
+                goto cleanup;
+            }
+
             LY_TREE_FOR(data_tree, iter) {
                 if (iter->parent) {
                     /* a sibling is not top-level */
@@ -4173,10 +4181,6 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
 
             /* move it to the beginning */
             for (; data_tree->prev->next; data_tree = data_tree->prev);
-        } else if (options & LYD_OPT_NOEXTDEPS) {
-            LOGERR(LY_EINVAL, "%s: invalid parameter (no variable arg const struct lyd_node *data_tree but LYD_OPT_NOEXTDEPS set).",
-                   __func__);
-            goto cleanup;
         }
     }
 
