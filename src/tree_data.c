@@ -4165,7 +4165,7 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
         /* get the additional data tree if given */
         data_tree = (struct lyd_node *)var_arg;
         if (data_tree) {
-            else if (options & LYD_OPT_NOEXTDEPS) {
+            if (options & LYD_OPT_NOEXTDEPS) {
                 LOGERR(LY_EINVAL, "%s: invalid parameter (variable arg const struct lyd_node *data_tree and LYD_OPT_NOEXTDEPS set).",
                        __func__);
                 goto cleanup;

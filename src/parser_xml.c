@@ -605,7 +605,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
             if (options & LYD_OPT_NOEXTDEPS) {
                 LOGERR(LY_EINVAL, "%s: invalid parameter (variable arg const struct lyd_node *data_tree and LYD_OPT_NOEXTDEPS set).",
                        __func__);
-                goto cleanup;
+                goto error;
             }
 
             LY_TREE_FOR((struct lyd_node *)data_tree, iter) {
