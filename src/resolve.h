@@ -208,7 +208,7 @@ struct lys_ident *resolve_identref(struct lys_type *type, const char *ident_name
 
 int resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres);
 
-int resolve_when(struct lyd_node *node, int *result, int ignore_fail);
+int resolve_when(struct lyd_node *node, int ignore_fail);
 
 int unres_schema_add_str(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
                          const char *str);

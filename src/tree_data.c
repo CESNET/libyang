@@ -76,7 +76,6 @@ lyd_check_mandatory_data(struct lyd_node *root, struct lyd_node *last_parent,
                          struct ly_set *instances, struct lys_node *schema, int options)
 {
     struct lyd_node *dummy, *current;
-    int state;
     uint32_t limit;
 
     if (!instances->number) {
@@ -104,9 +103,9 @@ lyd_check_mandatory_data(struct lyd_node *root, struct lyd_node *last_parent,
                 }
                 for (current = dummy; current; current = current->child) {
                     ly_vlog_hide(1);
-                    resolve_when(current, &state, 0);
+                    resolve_when(current, 0);
                     ly_vlog_hide(0);
-                    if (!state) {
+                    if (current->when_status & LYD_WHEN_FALSE) {
                         /* when evaluates to false */
                         lyd_free(dummy);
                         ly_err_clean(1);
@@ -479,6 +478,10 @@ lyd_parse_data_(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int opt
                 LOGERR(LY_EINVAL, "%s: invalid parameter (variable arg const struct lyd_node *data_tree with LYD_OPT_NOSIBLINGS).", __func__);
                 return NULL;
             }
+        } else if (options & LYD_OPT_NOEXTDEPS) {
+            LOGERR(LY_EINVAL, "%s: invalid parameter (no variable arg const struct lyd_node *data_tree but LYD_OPT_NOEXTDEPS set).",
+                   __func__);
+            return NULL;
         }
     }
 
@@ -4170,6 +4173,10 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
 
             /* move it to the beginning */
             for (; data_tree->prev->next; data_tree = data_tree->prev);
+        } else if (options & LYD_OPT_NOEXTDEPS) {
+            LOGERR(LY_EINVAL, "%s: invalid parameter (no variable arg const struct lyd_node *data_tree but LYD_OPT_NOEXTDEPS set).",
+                   __func__);
+            goto cleanup;
         }
     }
 

@@ -5974,6 +5974,8 @@ check_augment:
  * Logs directly.
  *
  * @param[in] node Data node, whose conditional reference, if such, is being decided.
+ * @param[in] ignore_fail 1 if when does not have to be satisfied, 2 if it does not have to be satisfied
+ * only when requiring external dependencies.
  *
  * @return
  *  -1 - error, ly_errno is set
@@ -5982,7 +5984,7 @@ check_augment:
  *   1, ly_vecode = LYVE_INWHEN - nodes needed to resolve are conditional and not yet resolved (under another "when")
  */
 int
-resolve_when(struct lyd_node *node, int *result, int ignore_fail)
+resolve_when(struct lyd_node *node, int ignore_fail)
 {
     struct lyd_node *ctx_node = NULL, *unlinked_nodes, *tmp_node;
     struct lys_node *sparent;
@@ -6139,15 +6141,6 @@ check_augment:
 cleanup:
     /* free xpath set content */
     lyxp_set_cast(&set, LYXP_SET_EMPTY, ctx_node ? ctx_node : node, NULL, 0);
-
-    if (result) {
-        if (node->when_status & LYD_WHEN_TRUE) {
-            *result = 1;
-        } else {
-            *result = 0;
-        }
-    }
-
     return rc;
 }
 
@@ -7668,7 +7661,7 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int ignore_
         return resolve_union(leaf, &sleaf->type, 1, ignore_fail, NULL);
 
     case UNRES_WHEN:
-        if ((rc = resolve_when(node, NULL, ignore_fail))) {
+        if ((rc = resolve_when(node, ignore_fail))) {
             return rc;
         }
         break;
@@ -7786,7 +7779,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
                  parent = parent->parent) {
                 if (!parent->parent && (parent->when_status & LYD_WHEN_FALSE)) {
                     /* the parent node was already unlinked, do not resolve this node,
-                     *  it will be removed anyway, so just mark it as resolved
+                     * it will be removed anyway, so just mark it as resolved
                      */
                     unres->node[i]->when_status |= LYD_WHEN_FALSE;
                     unres->type[i] = UNRES_RESOLVED;
@@ -7800,7 +7793,10 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
 
             rc = resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fail);
             if (!rc) {
-                if (unres->node[i]->when_status & LYD_WHEN_FALSE) {
+                /* finish with error/delete the node only if when was false, an external dependency was required,
+                 * and it was not provided (the flag would not be passed down otherwise, checked in upper fucntions) */
+                if ((unres->node[i]->when_status & LYD_WHEN_FALSE)
+                        && (!(unres->node[i]->schema->flags & LYS_XPATH_DEP) || !(options & LYD_OPT_NOEXTDEPS))) {
                     if ((options & LYD_OPT_NOAUTODEL) && !unres->node[i]->dflt) {
                         /* false when condition */
                         ly_vlog_hide(0);
