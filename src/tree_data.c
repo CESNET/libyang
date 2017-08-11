@@ -449,7 +449,7 @@ lyd_parse_data_(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int opt
 {
     const struct lyd_node *rpc_act = NULL, *data_tree = NULL, *iter;
 
-    if (lyp_check_options(options, __func__)) {
+    if (lyp_data_check_options(options, __func__)) {
         return NULL;
     }
 
@@ -4131,7 +4131,7 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
         return EXIT_FAILURE;
     }
 
-    if (lyp_check_options(options, __func__)) {
+    if (lyp_data_check_options(options, __func__)) {
         return EXIT_FAILURE;
     }
 

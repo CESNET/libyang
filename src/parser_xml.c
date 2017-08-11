@@ -551,7 +551,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
         return NULL;
     }
 
-    if (lyp_check_options(options, __func__)) {
+    if (lyp_data_check_options(options, __func__)) {
         return NULL;
     }
 

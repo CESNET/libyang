@@ -217,13 +217,13 @@ lyp_is_rpc_action(struct lys_node *node)
 }
 
 int
-lyp_check_options(int options, const char *func)
+lyp_data_check_options(int options, const char *func)
 {
     int x = options & LYD_OPT_TYPEMASK;
 
     /* LYD_OPT_NOAUTODEL can be used only with LYD_OPT_DATA or LYD_OPT_CONFIG */
     if (options & LYD_OPT_NOAUTODEL) {
-        if (x != LYD_OPT_DATA && x != LYD_OPT_CONFIG) {
+        if ((x == LYD_OPT_EDIT) || (x == LYD_OPT_NOTIF_FILTER)) {
             LOGERR(LY_EINVAL, "%s: Invalid options 0x%x (LYD_OPT_DATA_NOAUTODEL can be used only with LYD_OPT_DATA or LYD_OPT_CONFIG)", func, options);
             return 1;
         }
@@ -1267,7 +1267,7 @@ make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, vo
         c = *((uint8_t *)data2);
         if (num) {
             count = sprintf(buf, "%"PRId64" ", num);
-            if ( (num > 0 && (count - 1) <= c) 
+            if ( (num > 0 && (count - 1) <= c)
                  || (count - 2) <= c ) {
                 /* we have 0. value, print the value with the leading zeros
                  * (one for 0. and also keep the correct with of num according
