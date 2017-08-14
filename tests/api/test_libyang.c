@@ -183,9 +183,9 @@ test_ly_ctx_new_invalid(void **state)
 }
 
 static void
-test_ly_ctx_get_searchdir(void **state)
+test_ly_ctx_get_searchdirs(void **state)
 {
-    const char *result;
+    const char * const *result;
     char yang_folder[PATH_MAX];
     (void) state; /* unused */
 
@@ -196,11 +196,12 @@ test_ly_ctx_get_searchdir(void **state)
         fail();
     }
 
-    result = ly_ctx_get_searchdir(ctx);
+    result = ly_ctx_get_searchdirs(ctx);
     if (!result) {
         fail();
     }
-    assert_string_equal(yang_folder, result);
+    assert_string_equal(yang_folder, result[0]);
+    assert_ptr_equal(NULL, result[1]);
 
     ly_ctx_destroy(ctx, NULL);
 }
@@ -208,7 +209,7 @@ test_ly_ctx_get_searchdir(void **state)
 static void
 test_ly_ctx_set_searchdir(void **state)
 {
-    const char *result;
+    const char * const *result;
     char yang_folder[PATH_MAX];
     char new_yang_folder[PATH_MAX];
     (void) state; /* unused */
@@ -221,14 +222,19 @@ test_ly_ctx_set_searchdir(void **state)
         fail();
     }
 
-    ly_ctx_unset_searchdirs(ctx);
     ly_ctx_set_searchdir(ctx, new_yang_folder);
-    result = ly_ctx_get_searchdir(ctx);
+    result = ly_ctx_get_searchdirs(ctx);
     if (!result) {
         fail();
     }
 
-    assert_string_equal(new_yang_folder, result);
+    assert_string_equal(yang_folder, result[0]);
+    assert_string_equal(new_yang_folder, result[1]);
+    assert_ptr_equal(NULL, result[2]);
+
+    ly_ctx_unset_searchdirs(ctx, 0);
+    assert_string_equal(new_yang_folder, result[0]);
+    assert_ptr_equal(NULL, result[1]);
 
     ly_ctx_destroy(ctx, NULL);
 }
@@ -236,7 +242,7 @@ test_ly_ctx_set_searchdir(void **state)
 static void
 test_ly_ctx_set_searchdir_invalid(void **state)
 {
-    const char *result;
+    const char * const *result;
     char yang_folder[PATH_MAX];
     char *new_yang_folder = "INVALID_PATH";
     (void) state; /* unused */
@@ -248,23 +254,26 @@ test_ly_ctx_set_searchdir_invalid(void **state)
         fail();
     }
 
+    /* adding duplicity - the path is not duplicated */
     ly_ctx_set_searchdir(NULL, yang_folder);
-    result = ly_ctx_get_searchdir(ctx);
+    result = ly_ctx_get_searchdirs(ctx);
     if (!result) {
         fail();
     }
-    assert_string_equal(yang_folder, result);
+    assert_string_equal(yang_folder, result[0]);
+    assert_ptr_equal(NULL, result[1]);
 
+    /* adding invalid path, previous is kept */
     ly_ctx_set_searchdir(ctx, new_yang_folder);
-    result = ly_ctx_get_searchdir(ctx);
+    result = ly_ctx_get_searchdirs(ctx);
     if (!result) {
         fail();
     }
+    assert_string_equal(yang_folder, result[0]);
+    assert_ptr_equal(NULL, result[1]);
 
-    assert_string_equal(yang_folder, result);
-
-    ly_ctx_unset_searchdirs(ctx);
-    result = ly_ctx_get_searchdir(ctx);
+    ly_ctx_unset_searchdirs(ctx, -1);
+    result = ly_ctx_get_searchdirs(ctx);
     if (result) {
         fail();
     }
@@ -850,44 +859,48 @@ test_ly_ctx_get_submodule2(void **state)
 }
 
 static void
-test_ly_ctx_get_node(void **state)
+test_lys_find_path(void **state)
 {
     (void) state; /* unused */
-    const struct lys_node *node;
-    const char *nodeid1 = "/a:x/bubba";
-    const char *nodeid2 = "/b:x/bubba";
-    const char *nodeid3 = "/a:x/choic/con/con/lef";
+    struct ly_set *set;
+    const char *nodeid1 = "/x/bubba";
+    const char *nodeid2 = "/b:x/b:bubba";
+    const char *nodeid3 = "/x/choic/con/con/lef";
 
-    node = ly_ctx_get_node(NULL, root->schema, nodeid1);
-    if (node) {
+    set = lys_find_path(NULL, root->schema, nodeid1);
+    if (!set || (set->number != 1)) {
+        fail();
+    }
+    ly_set_free(set);
+
+    set = lys_find_path(NULL, root->schema, NULL);
+    if (set) {
         fail();
     }
 
-    node = ly_ctx_get_node(ctx, root->schema, NULL);
-    if (node) {
+    set = lys_find_path(root->schema->module, root->schema, nodeid1);
+    if (!set || (set->number != 1)) {
         fail();
     }
 
-    node = ly_ctx_get_node(ctx, root->schema, nodeid1);
-    if (!node) {
+    assert_string_equal("bubba", set->set.s[0]->name);
+    ly_set_free(set);
+
+    set = lys_find_path(root->schema->module, root->schema, nodeid2);
+    if (!set || (set->number != 1)) {
         fail();
     }
 
-    assert_string_equal("bubba", node->name);
+    assert_string_equal("bubba", set->set.s[0]->name);
+    ly_set_free(set);
 
-    node = ly_ctx_get_node(ctx, root->schema, nodeid2);
-    if (!node) {
+    set = lys_find_path(root->schema->module, root->schema, nodeid3);
+    if (!set || (set->number != 1)) {
         fail();
     }
 
-    assert_string_equal("bubba", node->name);
-
-    node = ly_ctx_get_node(ctx, root->schema, nodeid3);
-    if (!node) {
-        fail();
-    }
-
-    assert_string_equal("lef", node->name);
+    assert_string_equal("lef", set->set.s[0]->name);
+    ly_set_free(set);
 }
 
 static void
@@ -1116,7 +1129,7 @@ int main(void)
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_ly_ctx_new),
         cmocka_unit_test(test_ly_ctx_new_invalid),
-        cmocka_unit_test(test_ly_ctx_get_searchdir),
+        cmocka_unit_test(test_ly_ctx_get_searchdirs),
         cmocka_unit_test(test_ly_ctx_set_searchdir),
         cmocka_unit_test(test_ly_ctx_set_searchdir_invalid),
         cmocka_unit_test_setup_teardown(test_ly_ctx_info, setup_f, teardown_f),
@@ -1132,7 +1145,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_module_by_ns, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_submodule, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_submodule2, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_ly_ctx_get_node, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_lys_find_path, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_set_new, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_set_add, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_set_rm, setup_f, teardown_f),

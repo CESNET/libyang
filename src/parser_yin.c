@@ -542,19 +542,8 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
          * unresolved item left inside the grouping, LY_TYPE_ERR used as a flag for types inside a grouping. */
         for (siter = parent; siter && (siter->nodetype != LYS_GROUPING); siter = lys_parent(siter));
         if (siter) {
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-            if (!((uint8_t*)&((struct lys_node_grp *)siter)->flags)[1]) {
-                LOGINT;
-                goto error;
-            }
-            ((uint8_t*)&((struct lys_node_grp *)siter)->flags)[1]--;
-#else
-            if (!((uint8_t*)&((struct lys_node_grp *)siter)->flags)[0]) {
-                LOGINT;
-                goto error;
-            }
-            ((uint8_t*)&((struct lys_node_grp *)siter)->flags)[0]--;
-#endif
+            assert(((struct lys_node_grp *)siter)->unres_count);
+            ((struct lys_node_grp *)siter)->unres_count--;
         } else {
             LOGINT;
             goto error;
@@ -1412,8 +1401,10 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         }
 
         /* allocate array for union's types ... */
-        type->info.uni.types = calloc(i, sizeof *type->info.uni.types);
-        LY_CHECK_ERR_GOTO(!type->info.uni.types, LOGMEM, error);
+        if (i) {
+            type->info.uni.types = calloc(i, sizeof *type->info.uni.types);
+            LY_CHECK_ERR_GOTO(!type->info.uni.types, LOGMEM, error);
+        }
 
         /* ... and fill the structures */
         LY_TREE_FOR(yin->child, node) {
@@ -2022,7 +2013,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     struct lys_node *node = NULL, *parent, *dev_target = NULL;
     struct lys_node_choice *choice = NULL;
     struct lys_node_leaf *leaf = NULL;
-    struct ly_set *dflt_check = ly_set_new();
+    struct ly_set *dflt_check = ly_set_new(), *set;
     struct lys_node_list *list = NULL;
     struct lys_node_leaflist *llist = NULL;
     struct lys_type *t = NULL;
@@ -2041,11 +2032,15 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     }
 
     /* resolve target node */
-    rc = resolve_augment_schema_nodeid(dev->target_name, NULL, module, (const struct lys_node **)&dev_target);
-    if (rc || !dev_target) {
+    rc = resolve_schema_nodeid(dev->target_name, NULL, module, &set, 0, 1);
+    if (rc == -1) {
         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, dev->target_name, yin->name);
+        ly_set_free(set);
         goto error;
     }
+    dev_target = set->set.s[0];
+    ly_set_free(set);
+
     if (dev_target->module == lys_main_module(module)) {
         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, dev->target_name, yin->name);
         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Deviating own module is not allowed.");
@@ -2935,7 +2930,8 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     for(parent = dev_target; parent; parent = lys_parent(parent)) {
         mod = lys_node_module(parent);
         if (module != mod) {
-            mod->deviated = 1;
+            mod->deviated = 1;            /* main module */
+            parent->module->deviated = 1; /* possible submodule */
             if (lys_set_implemented(mod)) {
                 LOGERR(ly_errno, "Setting the deviated module \"%s\" implemented failed.", mod->name);
                 goto error;
@@ -6609,6 +6605,7 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                         LOGVAL(LYE_INVER, LY_VLOG_NONE, NULL);
                         goto error;
                     }
+                    submodule->version = 1;
                 } else {
                     module->version = 1;
                 }
@@ -6618,6 +6615,7 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                         LOGVAL(LYE_INVER, LY_VLOG_NONE, NULL);
                         goto error;
                     }
+                    submodule->version = 2;
                 } else {
                     module->version = 2;
                 }
@@ -6923,6 +6921,7 @@ yin_read_submodule(struct lys_module *module, const char *data, struct unres_sch
     submodule->ctx = module->ctx;
     submodule->name = lydict_insert(submodule->ctx, value, strlen(value));
     submodule->type = 1;
+    submodule->implemented = module->implemented;
     submodule->belongsto = module;
 
     /* add into the list of processed modules */

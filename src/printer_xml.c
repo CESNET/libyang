@@ -126,7 +126,7 @@ print:
     }
 }
 
-static void
+static int
 xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
 {
     struct lyd_attr *attr;
@@ -162,11 +162,11 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
             /* exception for NETCONF's filter's attributes */
             if (!strcmp(attr->name, "select")) {
                 /* xpath content, we have to convert the JSON format into XML first */
-                xml_expr = transform_json2xml(node->schema->module, attr->value_str, &prefs, &nss, &ns_count);
+                xml_expr = transform_json2xml(node->schema->module, attr->value_str, 0, &prefs, &nss, &ns_count);
                 if (!xml_expr) {
                     /* error */
                     ly_print(out, "\"(!error!)\"");
-                    return;
+                    return EXIT_FAILURE;
                 }
 
                 for (i = 0; i < ns_count; ++i) {
@@ -218,12 +218,12 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
             break;
         case LY_TYPE_INST:
 printinst:
-            xml_expr = transform_json2xml(node->schema->module, ((struct lyd_node_leaf_list *)node)->value_str,
+            xml_expr = transform_json2xml(node->schema->module, ((struct lyd_node_leaf_list *)node)->value_str, 1,
                                           &prefs, &nss, &ns_count);
             if (!xml_expr) {
                 /* error */
                 ly_print(out, "(!error!)");
-                return;
+                return EXIT_FAILURE;
             }
 
             for (i = 0; i < ns_count; ++i) {
@@ -243,6 +243,7 @@ printinst:
         default:
             /* error */
             ly_print(out, "(!error!)");
+            return EXIT_FAILURE;
         }
 
         ly_print(out, "\"");
@@ -251,9 +252,11 @@ printinst:
             lydict_remove(node->schema->module->ctx, xml_expr);
         }
     }
+
+    return EXIT_SUCCESS;
 }
 
-static void
+static int
 xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int toplevel, int options)
 {
     const struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node, *iter;
@@ -278,7 +281,9 @@ xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int to
         xml_print_ns(out, node, options);
     }
 
-    xml_print_attrs(out, node, options);
+    if (xml_print_attrs(out, node, options)) {
+        return EXIT_FAILURE;
+    }
     datatype = leaf->value_type & LY_DATA_TYPE_MASK;
 printvalue:
     switch (datatype) {
@@ -325,12 +330,12 @@ printvalue:
         }
         break;
     case LY_TYPE_INST:
-        xml_expr = transform_json2xml(node->schema->module, ((struct lyd_node_leaf_list *)node)->value_str,
+        xml_expr = transform_json2xml(node->schema->module, ((struct lyd_node_leaf_list *)node)->value_str, 1,
                                       &prefs, &nss, &ns_count);
         if (!xml_expr) {
             /* error */
             ly_print(out, "\"(!error!)\"");
-            return;
+            return EXIT_FAILURE;
         }
 
         for (i = 0; i < ns_count; ++i) {
@@ -360,7 +365,7 @@ printvalue:
             if (!type) {
                 /* error */
                 ly_print(out, "\"(!error!)\"");
-                return;
+                return EXIT_FAILURE;
             }
             datatype = type->base;
         } else {
@@ -375,14 +380,17 @@ printvalue:
     default:
         /* error */
         ly_print(out, "\"(!error!)\"");
+        return EXIT_FAILURE;
     }
 
     if (level) {
         ly_print(out, "\n");
     }
+
+    return EXIT_SUCCESS;
 }
 
-static void
+static int
 xml_print_container(struct lyout *out, int level, const struct lyd_node *node, int toplevel, int options)
 {
     struct lyd_node *child;
@@ -400,22 +408,28 @@ xml_print_container(struct lyout *out, int level, const struct lyd_node *node, i
         xml_print_ns(out, node, options);
     }
 
-    xml_print_attrs(out, node, options);
+    if (xml_print_attrs(out, node, options)) {
+        return EXIT_FAILURE;
+    }
 
     if (!node->child) {
         ly_print(out, "/>%s", level ? "\n" : "");
-        return;
+        return EXIT_SUCCESS;
     }
     ly_print(out, ">%s", level ? "\n" : "");
 
     LY_TREE_FOR(node->child, child) {
-        xml_print_node(out, level ? level + 1 : 0, child, 0, options);
+        if (xml_print_node(out, level ? level + 1 : 0, child, 0, options)) {
+            return EXIT_FAILURE;
+        }
     }
 
     ly_print(out, "%*s</%s>%s", LEVEL, INDENT, node->schema->name, level ? "\n" : "");
+
+    return EXIT_SUCCESS;
 }
 
-static void
+static int
 xml_print_list(struct lyout *out, int level, const struct lyd_node *node, int is_list, int toplevel, int options)
 {
     struct lyd_node *child;
@@ -434,16 +448,20 @@ xml_print_list(struct lyout *out, int level, const struct lyd_node *node, int is
         if (toplevel) {
             xml_print_ns(out, node, options);
         }
-        xml_print_attrs(out, node, options);
+        if (xml_print_attrs(out, node, options)) {
+            return EXIT_FAILURE;
+        }
 
         if (!node->child) {
             ly_print(out, "/>%s", level ? "\n" : "");
-            return;
+            return EXIT_SUCCESS;
         }
         ly_print(out, ">%s", level ? "\n" : "");
 
         LY_TREE_FOR(node->child, child) {
-            xml_print_node(out, level ? level + 1 : 0, child, 0, options);
+            if (xml_print_node(out, level ? level + 1 : 0, child, 0, options)) {
+                return EXIT_FAILURE;
+            }
         }
 
         ly_print(out, "%*s</%s>%s", LEVEL, INDENT, node->schema->name, level ? "\n" : "");
@@ -451,9 +469,11 @@ xml_print_list(struct lyout *out, int level, const struct lyd_node *node, int is
         /* leaf-list print */
         xml_print_leaf(out, level, node, toplevel, options);
     }
+
+    return EXIT_SUCCESS;
 }
 
-static void
+static int
 xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int toplevel, int options)
 {
     char *buf;
@@ -472,7 +492,9 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
     if (toplevel) {
         xml_print_ns(out, node, options);
     }
-    xml_print_attrs(out, node, options);
+    if (xml_print_attrs(out, node, options)) {
+        return EXIT_FAILURE;
+    }
     if (!(void*)any->value.tree || (any->value_type == LYD_ANYDATA_CONSTSTRING && !any->value.str[0])) {
         /* no content */
         ly_print(out, "/>%s", level ? "\n" : "");
@@ -490,7 +512,9 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
                     ly_print(out, "\n");
                 }
                 LY_TREE_FOR(any->value.tree, iter) {
-                    xml_print_node(out, level ? level + 1 : 0, iter, 0, (options & ~(LYP_WITHSIBLINGS | LYP_NETCONF)));
+                    if (xml_print_node(out, level ? level + 1 : 0, iter, 0, (options & ~(LYP_WITHSIBLINGS | LYP_NETCONF)))) {
+                        return EXIT_FAILURE;
+                    }
                 }
             }
             break;
@@ -519,13 +543,18 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
         /* closing tag */
         ly_print(out, "</%s>%s", node->schema->name, level ? "\n" : "");
     }
+
+    return EXIT_SUCCESS;
 }
 
-void
+int
 xml_print_node(struct lyout *out, int level, const struct lyd_node *node, int toplevel, int options)
 {
+    int ret = EXIT_SUCCESS;
+
     if (!lyd_wd_toprint(node, options)) {
-        return;
+        /* wd says do not print */
+        return EXIT_SUCCESS;
     }
 
     switch (node->schema->nodetype) {
@@ -533,25 +562,28 @@ xml_print_node(struct lyout *out, int level, const struct lyd_node *node, int to
     case LYS_RPC:
     case LYS_ACTION:
     case LYS_CONTAINER:
-        xml_print_container(out, level, node, toplevel, options);
+        ret = xml_print_container(out, level, node, toplevel, options);
         break;
     case LYS_LEAF:
-        xml_print_leaf(out, level, node, toplevel, options);
+        ret = xml_print_leaf(out, level, node, toplevel, options);
         break;
     case LYS_LEAFLIST:
-        xml_print_list(out, level, node, 0, toplevel, options);
+        ret = xml_print_list(out, level, node, 0, toplevel, options);
         break;
     case LYS_LIST:
-        xml_print_list(out, level, node, 1, toplevel, options);
+        ret = xml_print_list(out, level, node, 1, toplevel, options);
         break;
     case LYS_ANYXML:
     case LYS_ANYDATA:
-        xml_print_anydata(out, level, node, toplevel, options);
+        ret = xml_print_anydata(out, level, node, toplevel, options);
         break;
     default:
         LOGINT;
+        ret = EXIT_FAILURE;
         break;
     }
+
+    return ret;
 }
 
 int
@@ -601,7 +633,9 @@ xml_print_data(struct lyout *out, const struct lyd_node *root, int options)
 
     /* content */
     LY_TREE_FOR(root, node) {
-        xml_print_node(out, level, node, 1, options);
+        if (xml_print_node(out, level, node, 1, options)) {
+            return EXIT_FAILURE;
+        }
         if (!(options & LYP_WITHSIBLINGS)) {
             break;
         }

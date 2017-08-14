@@ -873,13 +873,13 @@ test_lyd_schema_sort(void **state)
 }
 
 static void
-test_lyd_find_xpath(void **state)
+test_lyd_find_path(void **state)
 {
     (void) state; /* unused */
     struct ly_set *set = NULL;
     struct lyd_node_leaf_list *result;
 
-    set = lyd_find_xpath(root->child, "/a:x/bubba");
+    set = lyd_find_path(root->child, "/a:x/bubba");
 
     struct lyd_node *node = *set->set.d;
     result = (struct lyd_node_leaf_list *) node;
@@ -1504,23 +1504,6 @@ test_lyd_path(void **state)
 }
 
 static void
-test_lyd_qualified_path(void **state)
-{
-    (void) state; /* unused */
-    char *str;
-
-    str = lyd_qualified_path(root);
-    assert_ptr_not_equal(str, NULL);
-    assert_string_equal(str, "/a:x");
-    free(str);
-
-    str = lyd_qualified_path(root->child);
-    assert_ptr_not_equal(str, NULL);
-    assert_string_equal(str, "/a:x/a:bubba");
-    free(str);
-}
-
-static void
 test_lyd_leaf_type(void **state)
 {
     struct ly_ctx *ctx = (struct ly_ctx *)*state;
@@ -1577,7 +1560,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_lyd_insert_before, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_insert_after, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_schema_sort, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_lyd_find_xpath, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_lyd_find_path, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_find_instance, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_validate, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_unlink, setup_f, teardown_f),
@@ -1598,7 +1581,6 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_lyd_print_clb_xml_format, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_print_clb_json, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_path, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_lyd_qualified_path, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_leaf_type, setup_f2, teardown_f2),
     };
 

@@ -143,7 +143,7 @@ int parse_range_dec64(const char **str_num, uint8_t dig, int64_t *num);
 int parse_identifier(const char *id);
 
 int parse_schema_nodeid(const char *id, const char **mod_name, int *mod_name_len, const char **name, int *nam_len,
-                        int *is_relative, int *has_predicate);
+                        int *is_relative, int *has_predicate, int *all_desc, int extended);
 
 int parse_schema_json_predicate(const char *id, const char **mod_name, int *mod_name_len, const char **name,
                                 int *nam_len, const char **value, int *val_len, int *has_predicate);
@@ -164,8 +164,8 @@ void resolve_identity_backlink_update(struct lys_ident *der, struct lys_ident *b
 
 struct lyd_node *resolve_data_descendant_schema_nodeid(const char *nodeid, struct lyd_node *start);
 
-int resolve_augment_schema_nodeid(const char *nodeid, const struct lys_node *start, const struct lys_module *module,
-                                  const struct lys_node **ret);
+int resolve_schema_nodeid(const char *nodeid, const struct lys_node *start, const struct lys_module *cur_module,
+                          struct ly_set **ret, int extended, int no_node_error);
 
 int resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *start, int ret_nodetype,
                                      int no_innerlist, const struct lys_node **ret);
@@ -175,7 +175,7 @@ int resolve_choice_default_schema_nodeid(const char *nodeid, const struct lys_no
 int resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *module, int ret_nodetype,
                                    const struct lys_node **ret);
 
-const struct lys_node *resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_node *start);
+const struct lys_node *resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_node *start, int output);
 
 struct lyd_node *resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, struct lyd_node *start,
                                                   int options, int *parsed);
@@ -208,7 +208,7 @@ struct lys_ident *resolve_identref(struct lys_type *type, const char *ident_name
 
 int resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres);
 
-int resolve_when(struct lyd_node *node, int *result, int ignore_fail);
+int resolve_when(struct lyd_node *node, int ignore_fail, struct lys_when **failed_when);
 
 int unres_schema_add_str(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
                          const char *str);
@@ -230,14 +230,14 @@ void unres_schema_free(struct lys_module *module, struct unres_schema **unres, i
 int resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int store, int ignore_fail,
                   struct lys_type **resolved_type);
 
-int resolve_unres_data_item(struct lyd_node *dnode, enum UNRES_ITEM type, int ignore_fail);
+int resolve_unres_data_item(struct lyd_node *dnode, enum UNRES_ITEM type, int ignore_fail, struct lys_when **failed_when);
 
 int unres_data_addonly(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM type);
 int unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM type);
 void unres_data_del(struct unres_data *unres, uint32_t i);
 
 int resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options);
-int schema_nodeid_siblingcheck(const struct lys_node *sibling, const char *id, const struct lys_module *module,
-                               const char *mod_name, int mod_name_len, const struct lys_node **start_parent);
+int schema_nodeid_siblingcheck(const struct lys_node *sibling, const struct lys_module *cur_module,
+                           const char *mod_name, int mod_name_len, const char *name, int nam_len);
 
 #endif /* _RESOLVE_H */

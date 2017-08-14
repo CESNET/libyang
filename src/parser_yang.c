@@ -88,6 +88,7 @@ yang_check_version(struct lys_module *module, struct lys_submodule *submodule, c
                     LOGVAL(LYE_INVER, LY_VLOG_NONE, NULL);
                     ret = EXIT_FAILURE;
                  }
+                submodule->version = 1;
             } else {
                 module->version = 1;
             }
@@ -97,6 +98,7 @@ yang_check_version(struct lys_module *module, struct lys_submodule *submodule, c
                     LOGVAL(LYE_INVER, LY_VLOG_NONE, NULL);
                     ret = EXIT_FAILURE;
                 }
+                submodule->version = 2;
             } else {
                 module->version = 2;
             }
@@ -669,19 +671,8 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
          * unresolved item left inside the grouping, LY_TYPE_ERR used as a flag for types inside a grouping.  */
         for (siter = parent; siter && (siter->nodetype != LYS_GROUPING); siter = lys_parent(siter));
         if (siter) {
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-            if (!((uint8_t*)&((struct lys_node_grp *)siter)->flags)[1]) {
-                LOGINT;
-                goto error;
-            }
-            ((uint8_t*)&((struct lys_node_grp *)siter)->flags)[1]--;
-#else
-            if (!((uint8_t*)&((struct lys_node_grp *)siter)->flags)[0]) {
-                LOGINT;
-                goto error;
-            }
-            ((uint8_t*)&((struct lys_node_grp *)siter)->flags)[0]--;
-#endif
+            assert(((struct lys_node_grp *)siter)->unres_count);
+            ((struct lys_node_grp *)siter)->unres_count--;
         } else {
             LOGINT;
             goto error;
@@ -2643,15 +2634,18 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
 error:
     /* cleanup */
     unres_schema_free(module, &unres, 1);
-    if (!module || !module->name) {
-        free(module);
+    if (!module) {
         if (ly_vecode != LYVE_SUBMODULE) {
             LOGERR(ly_errno, "Module parsing failed.");
         }
         return NULL;
     }
 
-    LOGERR(ly_errno, "Module \"%s\" parsing failed.", module->name);
+    if (module->name) {
+        LOGERR(ly_errno, "Module \"%s\" parsing failed.", module->name);
+    } else {
+        LOGERR(ly_errno, "Module parsing failed.");
+    }
 
     lyp_check_circmod_pop(ctx);
     lyp_del_includedup(module);
@@ -2671,6 +2665,7 @@ yang_read_submodule(struct lys_module *module, const char *data, unsigned int si
 
     submodule->ctx = module->ctx;
     submodule->type = 1;
+    submodule->implemented = module->implemented;
     submodule->belongsto = module;
 
     /* add into the list of processed modules */
@@ -4341,7 +4336,7 @@ yang_check_deviation(struct lys_module *module, struct unres_schema *unres, stru
     int rc;
     uint i;
     struct lys_node *dev_target = NULL, *parent;
-    struct ly_set *dflt_check = ly_set_new();
+    struct ly_set *dflt_check = ly_set_new(), *set;
     unsigned int u;
     const char *value, *target_name;
     struct lys_node_leaflist *llist;
@@ -4350,12 +4345,15 @@ yang_check_deviation(struct lys_module *module, struct unres_schema *unres, stru
     struct lys_module *mod;
 
     /* resolve target node */
-
-    rc = resolve_augment_schema_nodeid(dev->target_name, NULL, module, (const struct lys_node **)&dev_target);
-    if (rc || !dev_target) {
+    rc = resolve_schema_nodeid(dev->target_name, NULL, module, &set, 0, 1);
+    if (rc == -1) {
         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, dev->target_name, "deviation");
+        ly_set_free(set);
         goto error;
     }
+    dev_target = set->set.s[0];
+    ly_set_free(set);
+
     if (dev_target->module == lys_main_module(module)) {
         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, dev->target_name, "deviation");
         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Deviating own module is not allowed.");
@@ -4434,14 +4432,18 @@ yang_check_deviation(struct lys_module *module, struct unres_schema *unres, stru
     }
     ly_set_free(dflt_check);
 
-    /* mark all the affected modules as deviated and implemented*/
-    for(parent = dev_target; parent; parent = lys_parent(parent)) {
+    /* mark all the affected modules as deviated and implemented */
+    for (parent = dev_target; parent; parent = lys_parent(parent)) {
         mod = lys_node_module(parent);
         if (module != mod) {
-        mod->deviated = 1;
-        lys_set_implemented(mod);
+            mod->deviated = 1;            /* main module */
+            parent->module->deviated = 1; /* possible submodule */
+            if (lys_set_implemented(mod)) {
+                LOGERR(ly_errno, "Setting the deviated module \"%s\" implemented failed.", mod->name);
+                goto error;
+            }
+        }
     }
-}
 
     return EXIT_SUCCESS;
 error:

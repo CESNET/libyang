@@ -379,6 +379,7 @@ typedef enum {
                                           copy of the original extension instance in some of the parents. */
 /** @cond INTERNAL */
 #define LYEXT_OPT_YANG       0x02    /**< temporarily stored pointer to string, which contain prefix and name of extension */
+#define LYEXT_OPT_CONTENT    0x04    /**< content of lys_ext_instance_complex is copied from source (not dup, just memcpy). */
 /** @endcond */
 #define LYEXT_OPT_PLUGIN1    0x0100  /**< reserved flag for plugin-specific use */
 #define LYEXT_OPT_PLUGIN2    0x0200  /**< reserved flag for plugin-specific use */
@@ -663,7 +664,16 @@ struct lys_submodule {
     const char *contact;             /**< contact information for the submodule */
     const char *filepath;            /**< path to the file from which the submodule was read */
     uint8_t type:1;                  /**< 1 - structure type used to distinguish structure from ::lys_module */
-    uint8_t padding:7;               /**< not used, kept for compatibility with ::lys_module */
+    uint8_t version:3;               /**< yang-version:
+                                          - 0 = not specified, YANG 1.0 as default,
+                                          - 1 = YANG 1.0,
+                                          - 2 = YANG 1.1 */
+    uint8_t deviated:2;              /**< deviated flag (same as in main module):
+                                          - 0 = not deviated,
+                                          - 1 = the module is deviated by another module,
+                                          - 2 = deviation applied to this module are temporarily off */
+    uint8_t disabled:1;              /**< flag if the module is disabled in the context (same as in main module) */
+    uint8_t implemented:1;           /**< flag if the module is implemented, not just imported (same as in main module) */
 
     /* array sizes */
     uint8_t rev_size;                /**< number of elements in #rev array */
@@ -1032,15 +1042,15 @@ struct lys_iffeature {
  *     8 LYS_MAND_FALSE   | |x|x| | |x| | | | | | | | | | | |x| |
  *       LYS_INCL_STATUS  |x| | | |x| | | | | | | | | | | | | | |
  *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *     9 LYS_USERORDERED  | | | |x|x| | | | | | |r| | | | | |r| |
- *       LYS_UNIQUE       | | |x| | | | | | | | |r| | | | | |r| |
- *       LYS_FENABLED     | | | | | | | | | | | |r| | |x| | |r| |
+ *     9 LYS_USERORDERED  | | | |x|x| | | | | | | | | | | | |r| |
+ *       LYS_UNIQUE       | | |x| | | | | | | | | | | | | | |r| |
+ *       LYS_FENABLED     | | | | | | | | | | | | | | |x| | |r| |
  *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *    10 LYS_XPATH_DEP    |x|x|x|x|x|x|x|x|x|x|x|r|x|x| | | |r| |
+ *    10 LYS_XPATH_DEP    |x|x|x|x|x|x|x|x|x|x|x| |x|x| | | |r| |
  *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *    11 LYS_LEAFREF_DEP  |x|x|x|x|x|x|x|x|x|x|x|r|x|x| | | |r| |
+ *    11 LYS_LEAFREF_DEP  |x|x|x|x|x|x|x|x|x|x|x| |x|x| | | |r| |
  *                        +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *    12 LYS_DFLTJSON     | | |x|x| | | | | | | |r| | | |x| |r| |
+ *    12 LYS_DFLTJSON     | | |x|x| | | | | | | | | | | |x| |r| |
  *    --------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  *    x - used
@@ -1485,7 +1495,8 @@ struct lys_node_grp {
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
     /* non compatible 32b with ::lys_node */
-    uint8_t padding[3];              /**< padding for 32b alignment */
+    uint16_t unres_count;            /**< internal counter for unresolved uses, should be always 0 when the module is parsed */
+    uint8_t padding[1];              /**< padding for 32b alignment */
     uint8_t tpdf_size;               /**< number of elements in #tpdf array */
 
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
@@ -1922,6 +1933,7 @@ struct lys_restr {
     const char *emsg;                /**< error-message (optional) */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     uint8_t ext_size;                /**< number of elements in #ext array */
+    uint8_t flags;                   /**< only one flag can be specified, #LYS_XPATH_DEP */
 };
 
 /**
@@ -1933,6 +1945,7 @@ struct lys_when {
     const char *ref;                 /**< reference (optional) */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     uint8_t ext_size;                /**< number of elements in #ext array */
+    uint8_t flags;                   /**< only one flag can be specified, #LYS_XPATH_DEP */
 };
 
 /**
@@ -2091,22 +2104,18 @@ const struct lys_node *lys_getnext(const struct lys_node *last, const struct lys
 #define LYS_GETNEXT_PARENTUSES   0x80 /**< lys_getnext() option to allow parent to be #LYS_USES, in which case only the direct children are traversed */
 
 /**
- * @brief Search for schema nodes matching the provided XPath expression.
+ * @brief Search for schema nodes matching the provided path.
  *
- * XPath always requires a context node to be able to evaluate an expression. However, if \p expr is absolute,
- * the context node can almost always be arbitrary, so you can only set \p ctx and leave \p node empty. But, if
- * \p expr is relative and \p node will not be set, you will likely get unexpected results.
+ * Learn more about the path format at page @ref howtoxpath.
+ * Either \p cur_module or \p cur_node must be set.
  *
- * @param[in] ctx Context to use. Must be set if \p node is NULL.
- * @param[in] node Context schema node if \p expr is relative, otherwise any node. Must be set if \p ctx is NULL.
- * @param[in] expr XPath expression filtering the matching nodes.
- * @param[in] options Bitmask of LYS_FIND_* options.
- * @return Set of found schema nodes. If no nodes are matching \p expr or the result
- * would be a number, a string, or a boolean, the returned set is empty. In case of an error, NULL is returned.
+ * @param[in] cur_module Current module name.
+ * @param[in] cur_node Current (context) schema node.
+ * @param[in] path Schema path expression filtering the matching nodes.
+ * @return Set of found schema nodes. If no nodes are matching \p path the returned set is empty.
+ * In case of an error, NULL is returned.
  */
-struct ly_set *lys_find_xpath(struct ly_ctx *ctx, const struct lys_node *node, const char *expr, int options);
-
-#define LYS_FIND_OUTPUT 0x01 /**< lys_find_xpath() option to search RPC output nodes instead input ones */
+struct ly_set *lys_find_path(const struct lys_module *cur_module, const struct lys_node *cur_node, const char *path);
 
 /**
  * @brief Types of context nodes, #LYXP_NODE_ROOT_CONFIG used only in when or must conditions.
@@ -2125,16 +2134,17 @@ enum lyxp_node_type {
 /**
  * @brief Get all the partial XPath nodes (atoms) that are required for \p expr to be evaluated.
  *
- * @param[in] cur_snode Current (context) schema node. Fake roots are distinguished using \p cur_snode_type
+ * @param[in] ctx_node Context (current) schema node. Fake roots are distinguished using \p cur_snode_type
  * and then this node can be any node from the module (so, for example, do not put node added by an augment from another module).
- * @param[in] cur_snode_type Current (context) schema node type. Most commonly is #LYXP_NODE_ELEM, but if
+ * @param[in] ctx_node_type Context (current) schema node type. Most commonly is #LYXP_NODE_ELEM, but if
  * your context node is supposed to be the root, you can specify what kind of root it is.
- * @param[in] expr XPath expression to be evaluated. Must be in JSON data format (prefixes are model names).
+ * @param[in] expr XPath expression to be evaluated. Must be in JSON data format (prefixes are model names). Otherwise
+ * follows must or when YANG expression syntax (XPath 1.0).
  * @param[in] options Whether to apply some evaluation restrictions #LYXP_MUST or #LYXP_WHEN.
  *
  * @return Set of atoms (schema nodes), NULL on error.
  */
-struct ly_set *lys_xpath_atomize(const struct lys_node *cur_snode, enum lyxp_node_type cur_snode_type,
+struct ly_set *lys_xpath_atomize(const struct lys_node *ctx_node, enum lyxp_node_type ctx_node_type,
                                  const char *expr, int options);
 
 #define LYXP_MUST 0x01 /**< lys_xpath_atomize() option to apply must statement data tree access restrictions */
@@ -2153,12 +2163,20 @@ struct ly_set *lys_node_xpath_atomize(const struct lys_node *node, int options);
 #define LYXP_NO_LOCAL 0x02  /**< lys_node_xpath_atomize() option to discard schema node dependencies from the local subtree */
 
 /**
- * @brief Build path (usable as XPath) of the schema node.
+ * @brief Build schema path (usable as path, see @ref howtoxpath) of the schema node.
  * @param[in] node Schema node to be processed.
  * @return NULL on error, on success the buffer for the resulting path is allocated and caller is supposed to free it
  * with free().
  */
 char *lys_path(const struct lys_node *node);
+
+/**
+ * @brief Build data path (usable as path, see @ref howtoxpath) of the schema node.
+ * @param[in] node Schema node to be processed.
+ * @return NULL on error, on success the buffer for the resulting path is allocated and caller is supposed to free it
+ * with free().
+ */
+char *lys_data_path(const struct lys_node *node);
 
 /**
  * @brief Return parent node in the schema tree.

@@ -1623,10 +1623,8 @@ yang_print_model_(struct lyout *out, int level, const struct lys_module *module)
         ly_print(out, "%*ssubmodule %s {%s\n", LEVEL, INDENT, module->name,
                  (module->deviated == 1 ? " // DEVIATED" : ""));
         level++;
-        if (lys_main_module(module)->version > 1 ||
-                lys_ext_iter(module->ext, module->ext_size, 0, LYEXT_SUBSTMT_VERSION) != -1) {
-            yang_print_substmt(out, level, LYEXT_SUBSTMT_VERSION, 0,
-                               ((struct lys_submodule *)module)->belongsto->version == 2 ? "1.1" : "1",
+        if (module->version > 1 || lys_ext_iter(module->ext, module->ext_size, 0, LYEXT_SUBSTMT_VERSION) != -1) {
+            yang_print_substmt(out, level, LYEXT_SUBSTMT_VERSION, 0, module->version == 2 ? "1.1" : "1",
                                module, module->ext, module->ext_size);
         }
         ly_print(out, "%*sbelongs-to %s {\n", LEVEL, INDENT, ((struct lys_submodule *)module)->belongsto->name);

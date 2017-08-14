@@ -201,7 +201,7 @@ write_iff(struct lyout *out, const struct lys_module *module, struct lys_iffeatu
                 brackets_flag = 0;
             }
         }
-        /* no break */
+        /* falls through */
     case LYS_IFF_OR:
         if (brackets_flag) {
             count += ly_print(out, "(");
@@ -248,7 +248,7 @@ lys_print_(struct lyout *out, const struct lys_module *module, LYS_OUTFORMAT for
         break;
     case LYS_OUT_TREE_GRPS:
         grps = 1;
-        /* no break */
+        /* falls through */
     case LYS_OUT_TREE:
         ret = tree_print_model(out, module, grps);
         break;

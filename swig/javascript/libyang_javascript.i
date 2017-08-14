@@ -33,7 +33,9 @@ void ly_ctx_destroy(struct ly_ctx *ctx) {
 %feature("immutable","1") contact;
 %feature("immutable","1") org;
 %feature("immutable","1") ns;
-
+%feature("immutable","1") argument;
+%feature("immutable","1") arg_value;
+%feature("immutable","1") keys_str;
 
 %feature("immutable","1") value;
 %feature("immutable","1") binary;

@@ -761,10 +761,9 @@ info_print_submodule(struct lyout *out, const struct lys_submodule *module)
     info_print_text(out, module->org, "Org: ");
     info_print_text(out, module->contact, "Contact: ");
 
-    /* inherited from main module */
-    ly_print(out, "%-*s%s\n", INDENT_LEN, "YANG ver: ", (module->belongsto->version == 2 ? "1.1" : "1.0"));
-    ly_print(out, "%-*s%s\n", INDENT_LEN, "Deviated: ", (module->belongsto->deviated ? "yes" : "no"));
-    ly_print(out, "%-*s%s\n", INDENT_LEN, "Implement: ", (module->belongsto->implemented ? "yes" : "no"));
+    ly_print(out, "%-*s%s\n", INDENT_LEN, "YANG ver: ", (module->version == 2 ? "1.1" : "1.0"));
+    ly_print(out, "%-*s%s\n", INDENT_LEN, "Deviated: ", (module->deviated ? "yes" : "no"));
+    ly_print(out, "%-*s%s\n", INDENT_LEN, "Implement: ", (module->implemented ? "yes" : "no"));
 
     info_print_text(out, module->filepath, "URI: file://");
 
@@ -1018,8 +1017,9 @@ info_print_model(struct lyout *out, const struct lys_module *module, const char 
         }
     } else {
         if ((target_node[0] == '/') || !strncmp(target_node, "type/", 5)) {
-            target = (struct lys_node *)resolve_json_nodeid((target_node[0] == '/' ? target_node : target_node + 4), module->ctx, NULL);
-            if (!target) {
+            rc = resolve_absolute_schema_nodeid((target_node[0] == '/' ? target_node : target_node + 4), module,
+                                                LYS_ANY, (const struct lys_node **)&target);
+            if (rc || !target) {
                 ly_print(out, "Target %s could not be resolved.\n", (target_node[0] == '/' ? target_node : target_node + 4));
                 return EXIT_FAILURE;
             }

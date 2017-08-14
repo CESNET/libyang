@@ -10,8 +10,8 @@ set(CMAKE_MACOSX_RPATH TRUE)
 
 # set version
 set(LIBYANG_MAJOR_VERSION 0)
-set(LIBYANG_MINOR_VERSION 12)
-set(LIBYANG_MICRO_VERSION 203)
+set(LIBYANG_MINOR_VERSION 13)
+set(LIBYANG_MICRO_VERSION 42)
 set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION})
 configure_file(${PROJECT_SOURCE_DIR}/src/libyang.h.in ${PROJECT_SOURCE_DIR}/src/libyang.h)
@@ -167,6 +167,9 @@ set(lintsrc
 	tools/lint/completion.c
 	linenoise/linenoise.c)
 
+set(resrc
+	tools/re/main.c)
+
 set(yang2yinsrc
 	tools/yang2yin/main.c)
 
@@ -177,18 +180,6 @@ set(headers
 	src/extensions.h
 	src/xml.h
 	src/dict.h)
-
-# create static libyang library
-if(STATIC)
-    add_library(yang_static STATIC ${libsrc})
-    set_target_properties(yang_static PROPERTIES OUTPUT_NAME yang)
-    set_target_properties(yang_static PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
-    target_link_libraries(yang_static m)
-    target_link_libraries(yang_static ${CMAKE_DL_LIBS})
-    target_link_libraries(yang_static ${CMAKE_THREAD_LIBS_INIT})
-    target_link_libraries(yang_static ${PCRE_LIBRARIES})
-    install(TARGETS yang_static DESTINATION ${CMAKE_INSTALL_LIBDIR})
-endif(STATIC)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 add_library(yangobj OBJECT ${libsrc})
@@ -256,6 +247,11 @@ add_executable(yanglint ${lintsrc})
 target_link_libraries(yanglint yang)
 install(TARGETS yanglint DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/tools/lint/yanglint.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
+
+#yangre
+add_executable(yangre ${resrc})
+target_link_libraries(yangre yang)
+install(TARGETS yangre DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 # yang2yin
 add_executable(yang2yin ${yang2yinsrc})
