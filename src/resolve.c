@@ -2115,8 +2115,7 @@ resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *modu
 }
 
 static int
-resolve_json_schema_list_predicate(const char *predicate, const struct lys_node_list *list,
-                                   const struct lys_module *cur_module, int *parsed)
+resolve_json_schema_list_predicate(const char *predicate, const struct lys_node_list *list, int *parsed)
 {
     const char *mod_name, *name;
     int mod_name_len, nam_len, has_predicate, i;
@@ -2147,7 +2146,7 @@ resolve_json_schema_list_predicate(const char *predicate, const struct lys_node_
 
     /* more predicates? */
     if (has_predicate) {
-        return resolve_json_schema_list_predicate(predicate, list, cur_module, parsed);
+        return resolve_json_schema_list_predicate(predicate, list, parsed);
     }
 
     return 0;
@@ -2162,7 +2161,7 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
     const struct lys_node *sibling, *start_parent, *parent;
     int r, nam_len, mod_name_len, is_relative = -1, has_predicate;
     /* resolved import module from the start module, it must match the next node-name-match sibling */
-    const struct lys_module *prefix_mod, *cur_module;
+    const struct lys_module *prefix_mod, *module, *prev_mod;
 
     assert(nodeid && (ctx || start));
     if (!ctx) {
@@ -2183,7 +2182,7 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
         while (start_parent && (start_parent->nodetype == LYS_USES)) {
             start_parent = lys_parent(start_parent);
         }
-        cur_module = start->module;
+        module = start->module;
     } else {
         if (!mod_name) {
             str = strndup(nodeid, (name + nam_len) - nodeid);
@@ -2202,7 +2201,7 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
 
         memmove(module_name, mod_name, mod_name_len);
         module_name[mod_name_len] = '\0';
-        cur_module = ly_ctx_get_module(ctx, module_name, NULL);
+        module = ly_ctx_get_module(ctx, module_name, NULL);
 
         if (buf_backup) {
             /* return previous internal buffer content */
@@ -2212,7 +2211,7 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
         }
         ly_buf_used--;
 
-        if (!cur_module) {
+        if (!module) {
             str = strndup(nodeid, (mod_name + mod_name_len) - nodeid);
             LOGVAL(LYE_PATH_INMOD, LY_VLOG_STR, str);
             free(str);
@@ -2225,9 +2224,11 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
         mod_name_len = 0;
     }
 
+    prev_mod = module;
+
     while (1) {
         sibling = NULL;
-        while ((sibling = lys_getnext(sibling, start_parent, cur_module, 0))) {
+        while ((sibling = lys_getnext(sibling, start_parent, module, 0))) {
             /* name match */
             if (sibling->name && !strncmp(name, sibling->name, nam_len) && !sibling->name[nam_len]) {
                 /* output check */
@@ -2272,7 +2273,7 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
                         return NULL;
                     }
                 } else {
-                    prefix_mod = cur_module;
+                    prefix_mod = prev_mod;
                 }
                 if (prefix_mod != lys_node_module(sibling)) {
                     continue;
@@ -2287,7 +2288,7 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
                             return NULL;
                         }
                     } else if (sibling->nodetype == LYS_LIST) {
-                        if (resolve_json_schema_list_predicate(id, (const struct lys_node_list *)sibling, cur_module, &r)) {
+                        if (resolve_json_schema_list_predicate(id, (const struct lys_node_list *)sibling, &r)) {
                             return NULL;
                         }
                     } else {
@@ -2308,6 +2309,9 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
                     return NULL;
                 }
                 start_parent = sibling;
+
+                /* update prev mod */
+                prev_mod = (start_parent->child ? lys_node_module(start_parent->child) : module);
                 break;
             }
         }
@@ -2463,7 +2467,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
     int has_predicate, last_parsed, llval_len, pred_name_len, last_has_pred;
     struct lyd_node *sibling, *last_match = NULL;
     struct lyd_node_leaf_list *llist;
-    const struct lys_module *prefix_mod, *cur_module;
+    const struct lys_module *prefix_mod, *prev_mod;
     struct ly_ctx *ctx;
 
     assert(nodeid && start && parsed);
@@ -2481,11 +2485,11 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
     last_parsed = r;
 
     if (is_relative) {
-        cur_module = lyd_node_module(start);
+        prev_mod = lyd_node_module(start);
         start = start->child;
     } else {
         for (; start->parent; start = start->parent);
-        cur_module = lyd_node_module(start);
+        prev_mod = lyd_node_module(start);
     }
 
     while (1) {
@@ -2546,7 +2550,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
                         return NULL;
                     }
                 } else {
-                    prefix_mod = cur_module;
+                    prefix_mod = prev_mod;
                 }
                 if (prefix_mod != lyd_node_module(sibling)) {
                     continue;
@@ -2629,6 +2633,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
                     return NULL;
                 }
                 last_match = sibling;
+                prev_mod = lyd_node_module(sibling);
                 start = sibling->child;
                 break;
             }
