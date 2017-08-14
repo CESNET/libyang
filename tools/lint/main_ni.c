@@ -541,7 +541,6 @@ main_ni(int argc, char* argv[])
         /* we have options for printing default nodes, but data output not specified */
         fprintf(stderr, "yanglint warning: default mode is ignored when not printing data.\n");
     }
-
     if (outformat_s && (options_parser || autodetection)) {
         /* we have options for printing data tree, but output is schema */
         fprintf(stderr, "yanglint warning: data parser options are ignored when printing schema.\n");

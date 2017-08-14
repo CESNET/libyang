@@ -1459,8 +1459,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
         }
 
         parsed = 0;
-        if ((schild->nodetype == LYS_LIST) && has_predicate
-                && lyd_new_path_list_predicate(node, name, id, &parsed)) {
+        if ((schild->nodetype == LYS_LIST) && has_predicate && lyd_new_path_list_predicate(node, name, id, &parsed)) {
             lyd_free(ret);
             return NULL;
         }
@@ -1480,6 +1479,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
         /* prepare for another iteration */
         parent = node;
         sparent = schild;
+        prev_mod = lys_node_module(schild);
 
         /* parse another node */
         if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, &has_predicate, NULL, 0)) < 1) {

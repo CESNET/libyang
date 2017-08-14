@@ -430,7 +430,7 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
 {
     int i, j;
     struct lys_node_list *slist;
-    struct lys_node *sparent;
+    struct lys_node *sparent = NULL;
     struct lyd_node *dlist, *diter;
     const struct lys_module *top_smodule = NULL;
     const char *name, *prefix = NULL, *val_end, *val_start;
