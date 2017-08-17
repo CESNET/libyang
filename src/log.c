@@ -300,7 +300,7 @@ const char *ly_errs[] = {
 /* LYE_NOLEAFREF */    "Leafref \"%s\" of value \"%s\" points to a non-existing leaf.",
 /* LYE_NOMANDCHOICE */ "Mandatory choice \"%s\" missing a case branch.",
 
-/* LYE_XPATH_INSNODE */"Schema node \"%.*s\" not found (%.*s).",
+/* LYE_XPATH_INSNODE */"Schema node \"%.*s\" not found (%.*s) with context node \"%s\".",
 /* LYE_XPATH_INTOK */  "Unexpected XPath token %s (%.15s).",
 /* LYE_XPATH_EOF */    "Unexpected XPath expression end.",
 /* LYE_XPATH_INOP_1 */ "Cannot apply XPath operation %s on %s.",

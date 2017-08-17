@@ -4050,7 +4050,7 @@ remove_instid:
 }
 
 int
-lys_check_xpath(struct lys_node *node, int check_place, int warn_on_fwd_ref)
+lys_check_xpath(struct lys_node *node, int check_place)
 {
     struct lys_node *parent;
     struct lyxp_set set;
@@ -4076,7 +4076,7 @@ lys_check_xpath(struct lys_node *node, int check_place, int warn_on_fwd_ref)
         }
     }
 
-    ret = lyxp_node_atomize(node, &set, warn_on_fwd_ref, 1);
+    ret = lyxp_node_atomize(node, &set, 1);
     if (ret == -1) {
         return -1;
     }
@@ -6255,7 +6255,7 @@ check_type_union_leafref(struct lys_type *type)
  */
 static int
 resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM type, void *str_snode,
-                          struct unres_schema *unres, int final_fail)
+                          struct unres_schema *unres)
 {
     /* has_str - whether the str_snode is a string in a dictionary that needs to be freed */
     int rc = -1, has_str = 0, parent_type = 0, i, k;
@@ -6496,7 +6496,7 @@ featurecheckdone:
         break;
     case UNRES_XPATH:
         node = (struct lys_node *)item;
-        rc = lys_check_xpath(node, 1, final_fail);
+        rc = lys_check_xpath(node, 1);
         break;
     case UNRES_EXT:
         ext_data = (struct unres_ext *)str_snode;
@@ -6762,7 +6762,7 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
              * UNRES_AUGMENT, UNRES_CHOICE_DFLT and UNRES_IDENT */
 
             ++unres_count;
-            rc = resolve_unres_schema_item(unres->module[i], unres->item[i], unres->type[i], unres->str_snode[i], unres, 0);
+            rc = resolve_unres_schema_item(unres->module[i], unres->item[i], unres->type[i], unres->str_snode[i], unres);
             if (!rc) {
                 unres->type[i] = UNRES_RESOLVED;
                 ++resolved;
@@ -6791,7 +6791,7 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
             if (unres->type[i] > UNRES_IDENT) {
                 continue;
             }
-            resolve_unres_schema_item(unres->module[i], unres->item[i], unres->type[i], unres->str_snode[i], unres, 1);
+            resolve_unres_schema_item(unres->module[i], unres->item[i], unres->type[i], unres->str_snode[i], unres);
             if (unres->type[i] == UNRES_TYPE_DER_EXT) {
                 yin = (struct lyxml_elem*)((struct lys_type *)unres->item[i])->der;
                 if (yin->flags & LY_YANG_STRUCTURE_FLAG) {
@@ -6810,13 +6810,13 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
         return -1;
     }
 
-    /* the rest except finalizing extensions */
+    /* the rest except finalizing extensions and xpath */
     for (i = 0; i < unres->count; ++i) {
-        if (unres->type[i] == UNRES_RESOLVED || unres->type[i] == UNRES_EXT_FINALIZE) {
+        if ((unres->type[i] == UNRES_RESOLVED) || (unres->type[i] == UNRES_EXT_FINALIZE) || (unres->type[i] == UNRES_XPATH)) {
             continue;
         }
 
-        rc = resolve_unres_schema_item(unres->module[i], unres->item[i], unres->type[i], unres->str_snode[i], unres, 0);
+        rc = resolve_unres_schema_item(unres->module[i], unres->item[i], unres->type[i], unres->str_snode[i], unres);
         if (rc == 0) {
             if (unres->type[i] == UNRES_LIST_UNIQ) {
                 /* free the allocated structure */
@@ -6847,7 +6847,7 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
             continue;
         }
 
-        rc =  resolve_unres_schema_item(unres->module[i], unres->item[i], unres->type[i], unres->str_snode[i], unres, 0);
+        rc = resolve_unres_schema_item(unres->module[i], unres->item[i], unres->type[i], unres->str_snode[i], unres);
         unres->type[i] = UNRES_RESOLVED;
         if (rc == 0) {
             ++resolved;
@@ -6860,13 +6860,13 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
 
     if (resolved < unres->count) {
         /* try to resolve the unresolved nodes again, it will not resolve anything, but it will print
-         * all the validation errors
+         * all the validation errors, xpath is resolved only here to properly print all the messages
          */
         for (i = 0; i < unres->count; ++i) {
             if (unres->type[i] == UNRES_RESOLVED) {
                 continue;
             }
-            resolve_unres_schema_item(unres->module[i], unres->item[i], unres->type[i], unres->str_snode[i], unres, 1);
+            resolve_unres_schema_item(unres->module[i], unres->item[i], unres->type[i], unres->str_snode[i], unres);
             if (unres->type[i] == UNRES_XPATH) {
                 /* XPath referencing an unknown node is actually supposed to be just a warning */
                 unres->type[i] = UNRES_RESOLVED;
@@ -6919,7 +6919,7 @@ unres_schema_add_str(struct lys_module *mod, struct unres_schema *unres, void *i
  * @param[in] type Type of the unresolved item. UNRES_TYPE_DER is handled specially!
  * @param[in] snode Schema node argument.
  *
- * @return EXIT_SUCCESS on success, EXIT_FIALURE on storing the item in unres, -1 on error, -2 if the unres item
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on storing the item in unres, -1 on error, -2 if the unres item
  * is already in the unres list.
  */
 int
@@ -6945,8 +6945,9 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
     }
 #endif
 
-    if (type == UNRES_EXT_FINALIZE) {
-        /* extension finalization is not even tried when adding the item into the inres list */
+    if ((type == UNRES_EXT_FINALIZE) || (type == UNRES_XPATH)) {
+        /* extension finalization is not even tried when adding the item into the inres list,
+         * xpath is not tried because it would hide some potential warnings */
         rc = EXIT_FAILURE;
     } else {
         if (*ly_vlog_hide_location()) {
@@ -6955,7 +6956,7 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
             log_hidden = 0;
             ly_vlog_hide(1);
         }
-        rc = resolve_unres_schema_item(mod, item, type, snode, unres, 0);
+        rc = resolve_unres_schema_item(mod, item, type, snode, unres);
         if (!log_hidden) {
             ly_vlog_hide(0);
         }
