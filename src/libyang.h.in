@@ -1747,22 +1747,22 @@ typedef enum {
 
 /**
  * @cond INTERNAL
- * Get address of (thread-specific) `ly_errno' variable.
+ * Get address of (thread-specific) `ly_errno' and `ly_vecode` variable.
  */
-LY_ERR *ly_errno_location(void);
+LY_ERR *ly_errno_address(void);
 
-LY_VECODE *ly_vecode_location(void);
+LY_VECODE *ly_vecode_address(void);
 
 /**
  * @endcond INTERNAL
  * @brief libyang specific (thread-safe) errno (see #LY_ERR for the list of possible values and their meaning).
  */
-#define ly_errno (*ly_errno_location())
+#define ly_errno (*ly_errno_address())
 
 /**
  * @brief libyang's validation error code
  */
-#define ly_vecode (*ly_vecode_location())
+#define ly_vecode (*ly_vecode_address())
 
 /**
  * @brief Get the last (thread-specific) error message. If the coresponding module defined

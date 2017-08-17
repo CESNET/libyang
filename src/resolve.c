@@ -5500,7 +5500,7 @@ resolve_list_keys(struct lys_node_list *list, const char *keys_str)
             /* log is not hidden only in case this resolving fails and in such a case
              * we cannot get here
              */
-            assert(*ly_vlog_hide_location());
+            assert(ly_err_main.vlog_hide);
             ly_vlog_hide(0);
             LOGWRN("Default value \"%s\" in the list key \"%s\" is ignored. (%s)", list->keys[i]->dflt,
                    list->keys[i]->name, s = lys_path((struct lys_node*)list));
@@ -6739,7 +6739,7 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
     assert(unres);
 
     LOGVRB("Resolving \"%s\" unresolved schema nodes and their constraints...", mod->name);
-    if (*ly_vlog_hide_location()) {
+    if (ly_vlog_hidden) {
         log_hidden = 1;
     } else {
         log_hidden = 0;
@@ -6950,7 +6950,7 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
          * xpath is not tried because it would hide some potential warnings */
         rc = EXIT_FAILURE;
     } else {
-        if (*ly_vlog_hide_location()) {
+        if (ly_vlog_hidden) {
             log_hidden = 1;
         } else {
             log_hidden = 0;
@@ -7212,7 +7212,7 @@ check_instid_ext_dep(const struct lys_node *sleaf, const char *json_instid)
     }
 
     /* find the first schema node, do not log */
-    hidden = *ly_vlog_hide_location();
+    hidden = ly_vlog_hidden;
     if (!hidden) {
         ly_vlog_hide(1);
     }
@@ -7435,7 +7435,7 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int store,
     }
 
     /* turn logging off, we are going to try to validate the value with all the types in order */
-    hidden = *ly_vlog_hide_location();
+    hidden = ly_vlog_hidden;
     ly_vlog_hide(1);
 
     t = NULL;

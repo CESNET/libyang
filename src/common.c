@@ -3,7 +3,7 @@
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief common libyang routines implementations
  *
- * Copyright (c) 2015 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2017 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -31,81 +31,36 @@
 #include "context.h"
 #include "libyang.h"
 
-/* libyang errno */
-LY_ERR ly_errno_int = LY_EINT;
-LY_VECODE ly_vecode_unkn = LYVE_SUCCESS;
-uint8_t ly_vlog_hide_def;
-static pthread_once_t ly_err_once = PTHREAD_ONCE_INIT;
-static pthread_key_t ly_err_key;
-#ifdef __linux__
-struct ly_err ly_err_main = {LY_SUCCESS, LYVE_SUCCESS, 0, 0, 0, NULL, {0}, {0}, {0}, {0}};
-#endif
+THREAD_LOCAL struct ly_err ly_err_main;
 
-static void
-ly_err_free(void *ptr)
+API LY_ERR *
+ly_errno_address(void)
 {
-    struct ly_err *e = (struct ly_err *)ptr;
-    struct ly_err_item *i, *next;
-
-    /* clean the error list */
-    for (i = e->errlist; i; i = next) {
-        next = i->next;
-        free(i->msg);
-        free(i->path);
-        free(i);
-    }
-    e->errlist = NULL;
-
-#ifdef __linux__
-    /* in __linux__ we use static memory in the main thread,
-     * so this check is for programs terminating the main()
-     * function by pthread_exit() :)
-     */
-    if (e != &ly_err_main)
-#endif
-    {
-        free(e);
-    }
+    return &ly_err_main.no;
 }
 
-static void
-ly_err_createkey(void)
+API LY_VECODE *
+ly_vecode_address(void)
 {
-    int r;
-
-    /* initiate */
-    while ((r = pthread_key_create(&ly_err_key, ly_err_free)) == EAGAIN);
-    pthread_setspecific(ly_err_key, NULL);
+    return &ly_err_main.code;
 }
 
-struct ly_err *
-ly_err_location(void)
+API const char *
+ly_errmsg(void)
 {
-    struct ly_err *e;
+    return ly_err_main.msg;
+}
 
-    pthread_once(&ly_err_once, ly_err_createkey);
-    e = pthread_getspecific(ly_err_key);
-    if (!e) {
-        /* prepare ly_err storage */
-#ifdef __linux__
-        if (getpid() == syscall(SYS_gettid)) {
-            /* main thread - use global variable instead of thread-specific variable. */
-            e = &ly_err_main;
-        } else
-#endif /* __linux__ */
-        {
-            e = calloc(1, sizeof *e);
-            if (!e) {
-                fprintf(stderr, "libyang[%d]: Memory allocation failed (%s())\n", LY_LLERR, __func__);
-                /* the function is used via macros so its usage does not allow checking the return
-                 * value. Anyway, this is fatal error and application must exit anyway. */
-                abort();
-            }
-        }
-        pthread_setspecific(ly_err_key, e);
-    }
+API const char *
+ly_errpath(void)
+{
+    return &ly_err_main.path[ly_err_main.path_index];
+}
 
-    return e;
+API const char *
+ly_errapptag(void)
+{
+    return ly_err_main.apptag;
 }
 
 void
@@ -113,8 +68,8 @@ ly_err_clean(int with_errno)
 {
     struct ly_err_item *i, *next;
 
-    i = ly_err_location()->errlist;
-    ly_err_location()->errlist = NULL;
+    i = ly_err_main.errlist;
+    ly_err_main.errlist = NULL;
     for (; i; i = next) {
         next = i->next;
         free(i->msg);
@@ -123,99 +78,16 @@ ly_err_clean(int with_errno)
     }
 
     if (with_errno) {
-        ly_err_location()->no = LY_SUCCESS;
-        ly_err_location()->code = LYVE_SUCCESS;
+        ly_err_main.no = LY_SUCCESS;
+        ly_err_main.code = LYVE_SUCCESS;
     }
 }
 
-API LY_ERR *
-ly_errno_location(void)
-{
-    struct ly_err *e;
-
-    e = ly_err_location();
-    if (!e) {
-        return &ly_errno_int;
-    }
-    return &(e->no);
-}
-
-API LY_VECODE *
-ly_vecode_location(void)
-{
-    struct ly_err *e;
-
-    e = ly_err_location();
-    if (!e) {
-        return &ly_vecode_unkn;
-    }
-    return &(e->code);
-}
-
-API const char *
-ly_errmsg(void)
-{
-    struct ly_err *e;
-
-    e = ly_err_location();
-    if (!e) {
-        return NULL;
-    }
-    return e->msg;
-}
-
-API const char *
-ly_errpath(void)
-{
-    struct ly_err *e;
-
-    e = ly_err_location();
-    if (!e) {
-        return NULL;
-    }
-    return &e->path[e->path_index];
-}
-
-API const char *
-ly_errapptag(void)
-{
-    struct ly_err *e;
-
-    e = ly_err_location();
-    if (!e) {
-        return NULL;
-    }
-    return e->apptag;
-}
-
-uint8_t *
-ly_vlog_hide_location(void)
-{
-    struct ly_err *e;
-
-    e = ly_err_location();
-    if (!e) {
-        return &ly_vlog_hide_def;
-    }
-    return &(e->vlog_hide);
-}
-
-uint8_t *
-ly_buf_used_location(void)
-{
-    struct ly_err *e;
-
-    e = ly_err_location();
-    return &(e->buf_used);
-}
 
 char *
 ly_buf(void)
 {
-    struct ly_err *e;
-
-    e = ly_err_location();
-    return e->buf;
+    return ly_err_main.buf;
 }
 
 #ifndef  __USE_GNU

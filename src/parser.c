@@ -1685,7 +1685,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             }
         } else if (dflt) {
             /* turn logging off */
-            hidden = *ly_vlog_hide_location();
+            hidden = ly_vlog_hidden;
             ly_vlog_hide(1);
 
             /* the value actually uses module's prefixes instead of the module names as in JSON format,
@@ -1744,7 +1744,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             }
         } else if (dflt) {
             /* turn logging off */
-            hidden = *ly_vlog_hide_location();
+            hidden = ly_vlog_hidden;
             ly_vlog_hide(1);
 
             /* the value actually uses module's prefixes instead of the module names as in JSON format,
@@ -1969,7 +1969,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         found = 0;
 
         /* turn logging off, we are going to try to validate the value with all the types in order */
-        hidden = *ly_vlog_hide_location();
+        hidden = ly_vlog_hidden;
         ly_vlog_hide(1);
 
         while ((t = lyp_get_next_union_type(type, t, &found))) {

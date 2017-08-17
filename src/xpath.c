@@ -2689,7 +2689,7 @@ warn_equality_value(struct lyxp_expr *exp, struct lyxp_set *set, uint16_t val_ex
         }
 
         /* we want to print our message and more importantly a warning, not an error */
-        if (*ly_vlog_hide_location()) {
+        if (ly_vlog_hidden) {
             hidden = 1;
         } else {
             hidden = 0;

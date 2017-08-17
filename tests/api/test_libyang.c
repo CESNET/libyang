@@ -1079,7 +1079,7 @@ test_ly_errno_location(void **state)
 
     LY_ERR *error;
 
-    error = ly_errno_location();
+    error = ly_errno_address();
 
     assert_int_equal(LY_SUCCESS, *error);
 
@@ -1088,7 +1088,7 @@ test_ly_errno_location(void **state)
         fail();
     }
 
-    error = ly_errno_location();
+    error = ly_errno_address();
 
     assert_int_equal(LY_ESYS, *error);
     ly_ctx_destroy(ctx, NULL);

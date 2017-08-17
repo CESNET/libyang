@@ -3,7 +3,7 @@
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief common internal definitions for libyang
  *
- * Copyright (c) 2015 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2017 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -25,6 +25,16 @@
 #  define UNUSED(x) UNUSED_ ## x __attribute__((__unused__))
 #else
 #  define UNUSED(x) UNUSED_ ## x
+#endif
+
+#if __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
+# define THREAD_LOCAL _Thread_local
+#elif defined __GNUC__ || \
+      defined __SUNPRO_C || \
+      defined __xlC__
+# define THREAD_LOCAL __thread
+#else
+# error "Cannot define THREAD_LOCAL"
 #endif
 
 #ifndef __WORDSIZE
@@ -86,9 +96,10 @@ struct ly_err {
     char apptag[LY_APPTAG_LEN];
     char buf[LY_BUF_SIZE];
 };
-struct ly_err *ly_err_location(void);
 void ly_err_clean(int with_errno);
 void ly_err_repeat(void);
+
+extern THREAD_LOCAL struct ly_err ly_err_main;
 
 /**
  * @brief libyang internal thread-specific buffer of LY_BUF_SIZE size
@@ -99,9 +110,9 @@ void ly_err_repeat(void);
  * possible to duplicate the buffer content and write string back to
  * the buffer when leaving.
  */
-uint8_t *ly_buf_used_location(void);
 char *ly_buf(void);
-#define ly_buf_used (*ly_buf_used_location())
+
+#define ly_buf_used (ly_err_main.buf_used)
 
 /*
  * logger
@@ -138,6 +149,8 @@ void ly_log(LY_LOG_LEVEL level, const char *format, ...);
 void ly_log_dbg(LY_LOG_DBG_GROUP group, const char *format, ...);
 
 #endif
+
+#define ly_vlog_hidden (ly_err_main.vlog_hide)
 
 #define LOGMEM LOGERR(LY_EMEM, "Memory allocation failed (%s()).", __func__)
 
@@ -257,7 +270,6 @@ enum LY_VLOG_ELEM {
  */
 void ly_vlog_hide(uint8_t hide);
 
-uint8_t *ly_vlog_hide_location(void);
 void ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...);
 #define LOGVAL(code, elem_type, elem, args...)                      \
     ly_vlog(code, elem_type, elem, ##args);

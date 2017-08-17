@@ -24,7 +24,6 @@
 #include "common.h"
 #include "tree_internal.h"
 
-extern LY_ERR ly_errno_int;
 volatile int8_t ly_log_level = LY_LLERR;
 static void (*ly_log_clb)(LY_LOG_LEVEL level, const char *msg, const char *path);
 static volatile int path_flag = 1;
@@ -68,21 +67,18 @@ static void
 log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *path, va_list args)
 {
     char *msg, *bufdup = NULL;
-    struct ly_err *e = ly_err_location();
     struct ly_err_item *eitem;
 
-    if (&ly_errno == &ly_errno_int) {
-        msg = "Internal logger error";
-    } else if (!format) {
+    if (!format) {
         /* postponed print of path related to the previous error, do not rewrite stored original message */
         msg = "Path is related to the previous error message.";
     } else {
         if (level == LY_LLERR) {
             /* store error message into msg buffer ... */
-            msg = e->msg;
+            msg = ly_err_main.msg;
         } else if (!hide) {
             /* other messages are stored in working string buffer and not available for later access */
-            msg = e->buf;
+            msg = ly_err_main.buf;
             if (ly_buf_used && msg[0]) {
                 bufdup = strndup(msg, LY_BUF_SIZE - 1);
             }
@@ -98,17 +94,17 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
     if (level == LY_LLERR) {
         if (!path) {
             /* erase previous path */
-            e->path_index = LY_BUF_SIZE - 1;
+            ly_err_main.path_index = LY_BUF_SIZE - 1;
         }
 
         /* if the error-app-tag should be set, do it after calling LOGVAL */
-        e->apptag[0] = '\0';
+        ly_err_main.apptag[0] = '\0';
 
         /* store error information into a list */
-        if (!e->errlist) {
-            eitem = e->errlist = malloc(sizeof *eitem);
+        if (!ly_err_main.errlist) {
+            eitem = ly_err_main.errlist = malloc(sizeof *eitem);
         } else {
-            for (eitem = e->errlist; eitem->next; eitem = eitem->next);
+            for (eitem = ly_err_main.errlist; eitem->next; eitem = eitem->next);
             eitem->next = malloc(sizeof *eitem->next);
             eitem = eitem->next;
         }
@@ -153,7 +149,7 @@ ly_log(LY_LOG_LEVEL level, const char *format, ...)
     va_list ap;
 
     va_start(ap, format);
-    log_vprintf(level, (*ly_vlog_hide_location()), format, NULL, ap);
+    log_vprintf(level, ly_err_main.vlog_hide, format, NULL, ap);
     va_end(ap);
 }
 
@@ -197,7 +193,7 @@ ly_log_dbg(LY_LOG_DBG_GROUP group, const char *format, ...)
     }
 
     va_start(ap, format);
-    log_vprintf(LY_LLDBG, (*ly_vlog_hide_location()), dbg_format, NULL, ap);
+    log_vprintf(LY_LLDBG, ly_err_main.vlog_hide, dbg_format, NULL, ap);
     va_end(ap);
 }
 
@@ -223,7 +219,7 @@ lyext_log(LY_LOG_LEVEL level, const char *plugin, const char *function, const ch
     }
 
     va_start(ap, format);
-    log_vprintf(level, (*ly_vlog_hide_location()), plugin_msg, NULL, ap);
+    log_vprintf(level, ly_err_main.vlog_hide, plugin_msg, NULL, ap);
     va_end(ap);
 
     free(plugin_msg);
@@ -422,7 +418,7 @@ static const LY_VECODE ecode2vecode[] = {
 void
 ly_vlog_hide(uint8_t hide)
 {
-    (*ly_vlog_hide_location()) = hide;
+    ly_err_main.vlog_hide = hide;
 }
 
 void
@@ -661,13 +657,13 @@ log:
     switch (code) {
     case LYE_SPEC:
         fmt = va_arg(ap, char *);
-        log_vprintf(LY_LLERR, (*ly_vlog_hide_location()), fmt, index && path[(*index)] ? &path[(*index)] : NULL, ap);
+        log_vprintf(LY_LLERR, ly_err_main.vlog_hide, fmt, index && path[(*index)] ? &path[(*index)] : NULL, ap);
         break;
     case LYE_PATH:
-        log_vprintf(LY_LLERR, (*ly_vlog_hide_location()), NULL, &path[(*index)], ap);
+        log_vprintf(LY_LLERR, ly_err_main.vlog_hide, NULL, &path[(*index)], ap);
         break;
     default:
-        log_vprintf(LY_LLERR, (*ly_vlog_hide_location()), ly_errs[code],
+        log_vprintf(LY_LLERR, ly_err_main.vlog_hide, ly_errs[code],
                     index && path[(*index)] ? &path[(*index)] : NULL, ap);
         break;
     }
@@ -679,8 +675,8 @@ ly_err_repeat(void)
 {
     struct ly_err_item *i;
 
-    if ((ly_log_level >= LY_LLERR) && !*ly_vlog_hide_location()) {
-        for (i = ly_err_location()->errlist; i; i = i->next) {
+    if ((ly_log_level >= LY_LLERR) && !ly_err_main.vlog_hide) {
+        for (i = ly_err_main.errlist; i; i = i->next) {
             if (ly_log_clb) {
                 ly_log_clb(LY_LLERR, i->msg, i->path);
             } else {
