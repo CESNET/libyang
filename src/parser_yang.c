@@ -1891,7 +1891,7 @@ yang_check_deviate_must(struct lys_module *module, struct unres_schema *unres,
         goto error;
     }
     /* check XPath dependencies */
-    if (*trg_must_size && unres_schema_add_node(module, unres, dev_target, UNRES_XPATH, NULL)) {
+    if (*trg_must_size && (unres_schema_add_node(module, unres, dev_target, UNRES_XPATH, NULL) == -1)) {
         goto error;
     }
 
