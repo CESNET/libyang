@@ -116,12 +116,12 @@ extern "C" {
 #define LY_TREE_DFS_END(START, NEXT, ELEM)                                    \
     /* select element for the next run - children first */                    \
     (NEXT) = (ELEM)->child;                                                   \
-    if (sizeof(typeof(*(START))) == sizeof(struct lyd_node)) {                \
+    if (sizeof(__typeof__(*(START))) == sizeof(struct lyd_node)) {            \
         /* child exception for leafs, leaflists and anyxml without children */\
         if (((struct lyd_node *)(ELEM))->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) { \
             (NEXT) = NULL;                                                    \
         }                                                                     \
-    } else if (sizeof(typeof(*(START))) == sizeof(struct lys_node)) {         \
+    } else if (sizeof(__typeof__(*(START))) == sizeof(struct lys_node)) {     \
         /* child exception for leafs, leaflists and anyxml without children */\
         if (((struct lys_node *)(ELEM))->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) { \
             (NEXT) = NULL;                                                    \
@@ -138,14 +138,14 @@ extern "C" {
     }                                                                         \
     while (!(NEXT)) {                                                         \
         /* parent is already processed, go to its sibling */                  \
-        if ((sizeof(typeof(*(START))) == sizeof(struct lys_node))             \
+        if ((sizeof(__typeof__(*(START))) == sizeof(struct lys_node))         \
                 && (((struct lys_node *)(ELEM)->parent)->nodetype == LYS_AUGMENT)) {  \
             (ELEM) = (ELEM)->parent->prev;                                    \
         } else {                                                              \
             (ELEM) = (ELEM)->parent;                                          \
         }                                                                     \
         /* no siblings, go back through parents */                            \
-        if (sizeof(typeof(*(START))) == sizeof(struct lys_node)) {            \
+        if (sizeof(__typeof__(*(START))) == sizeof(struct lys_node)) {        \
             /* due to possible augments */                                    \
             if (lys_parent((struct lys_node *)(ELEM)) == lys_parent((struct lys_node *)(START))) { \
                 /* we are done, no next element to process */                 \
