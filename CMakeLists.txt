@@ -124,6 +124,7 @@ set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
 set(CMAKE_C_FLAGS_PACKAGE "-g -O2 -DNDEBUG")
 set(CMAKE_C_FLAGS_DEBUG   "-g -O0")
 
+# options
 if((CMAKE_BUILD_TYPE STREQUAL debug) OR (CMAKE_BUILD_TYPE STREQUAL Package))
 	option(ENABLE_BUILD_TESTS "Build tests" ON)
 	option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" ON)
@@ -131,6 +132,13 @@ else()
 	option(ENABLE_BUILD_TESTS "Build tests" OFF)
 	option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" OFF)
 endif()
+
+option(ENABLE_CACHE "Enable schema caching (time-efficient at the cost of increased space-complexity)" OFF)
+if(ENABLE_CACHE)
+    set(ENABLE_CACHE_MACRO "#define LY_ENABLED_CACHE")
+endif()
+
+configure_file("src/common.h.in" "src/common.h" @ONLY)
 
 set(libsrc
 	src/common.c
