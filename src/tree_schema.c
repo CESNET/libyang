@@ -1460,6 +1460,7 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
         if (old->info.str.pat_count) {
             new->info.str.patterns = lys_restr_dup(mod, old->info.str.patterns, old->info.str.pat_count, shallow, unres);
             new->info.str.pat_count = old->info.str.pat_count;
+#ifdef LY_ENABLED_CACHE
             if (!in_grp) {
                 new->info.str.patterns_pcre = malloc(new->info.str.pat_count * 2 * sizeof *new->info.str.patterns_pcre);
                 LY_CHECK_ERR_RETURN(!new->info.str.patterns_pcre, LOGMEM, -1);
@@ -1473,6 +1474,7 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
                     }
                 }
             }
+#endif
         }
         break;
 
@@ -2003,13 +2005,17 @@ lys_type_free(struct ly_ctx *ctx, struct lys_type *type,
         free(type->info.str.length);
         for (i = 0; i < type->info.str.pat_count; i++) {
             lys_restr_free(ctx, &type->info.str.patterns[i], private_destructor);
+#ifdef LY_ENABLED_CACHE
             if (type->info.str.patterns_pcre) {
                 pcre_free((pcre*)type->info.str.patterns_pcre[2 * i]);
                 pcre_free_study((pcre_extra*)type->info.str.patterns_pcre[2 * i + 1]);
             }
+#endif
         }
         free(type->info.str.patterns);
+#ifdef LY_ENABLED_CACHE
         free(type->info.str.patterns_pcre);
+#endif
         break;
 
     case LY_TYPE_UNION:

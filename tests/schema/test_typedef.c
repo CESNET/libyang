@@ -1154,7 +1154,9 @@ test_typedef_patterns_optimizations_schema(struct state *st, const struct lys_mo
     assert_ptr_not_equal(mod->tpdf, NULL);
     assert_int_equal(mod->tpdf[0].type.base, LY_TYPE_STRING);
     assert_int_equal(mod->tpdf[0].type.info.str.pat_count, 1);
+#ifdef LY_ENABLED_CACHE
     assert_ptr_not_equal(mod->tpdf[0].type.info.str.patterns_pcre, NULL);
+#endif
 
     /* 2. grouping's typedef has PCRE data */
     LY_TREE_FOR(mod->data, iter) {
@@ -1168,7 +1170,9 @@ test_typedef_patterns_optimizations_schema(struct state *st, const struct lys_mo
     assert_ptr_not_equal(grp->tpdf, NULL);
     assert_int_equal(grp->tpdf[0].type.base, LY_TYPE_STRING);
     assert_int_equal(grp->tpdf[0].type.info.str.pat_count, 1);
+#ifdef LY_ENABLED_CACHE
     assert_ptr_not_equal(grp->tpdf[0].type.info.str.patterns_pcre, NULL);
+#endif
 
     /* 3. grouping's leaf does not have PCRE data */
     LY_TREE_FOR(mod->data, iter) {
@@ -1180,7 +1184,9 @@ test_typedef_patterns_optimizations_schema(struct state *st, const struct lys_mo
     assert_ptr_not_equal(leaf, NULL);
     assert_int_equal(leaf->type.base, LY_TYPE_STRING);
     assert_int_equal(leaf->type.info.str.pat_count, 1);
+#ifdef LY_ENABLED_CACHE
     assert_ptr_equal(leaf->type.info.str.patterns_pcre, NULL);
+#endif
     leaf = NULL;
 
     /* 4. but it's instantiated copy does have PCRE data */
@@ -1193,7 +1199,9 @@ test_typedef_patterns_optimizations_schema(struct state *st, const struct lys_mo
     assert_ptr_not_equal(leaf, NULL);
     assert_int_equal(leaf->type.base, LY_TYPE_STRING);
     assert_int_equal(leaf->type.info.str.pat_count, 1);
+#ifdef LY_ENABLED_CACHE
     assert_ptr_not_equal(leaf->type.info.str.patterns_pcre, NULL);
+#endif
 
     /* check data */
     data = lyd_parse_mem(st->ctx, valid, LYD_XML, LYD_OPT_CONFIG);

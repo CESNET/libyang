@@ -18,9 +18,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "tree_schema.h"
+#include "libyang.h"
 #include "resolve.h"
 #include "common.h"
+#include "tree_schema.h"
 #include "context.h"
 
 #define LYS_SYSTEMORDERED 0x40
@@ -172,7 +173,7 @@ void *yang_read_ext(struct lys_module *module, void *actual, char *ext_name, cha
 int yang_check_ext_instance(struct lys_module *module, struct lys_ext_instance ***ext, uint size,
                             void *parent, struct unres_schema *unres);
 
-int yang_read_extcomplex_str(struct lys_module *module, struct lys_ext_instance_complex *ext, const char *arg_name, 
+int yang_read_extcomplex_str(struct lys_module *module, struct lys_ext_instance_complex *ext, const char *arg_name,
                              const char *parent_name, char *value, int parent_stmt, LY_STMT stmt);
 
 void **yang_getplace_for_extcomplex_struct(struct lys_ext_instance_complex *ext, int *index,

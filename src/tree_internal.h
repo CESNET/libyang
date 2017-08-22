@@ -16,6 +16,7 @@
 #ifndef LY_TREE_INTERNAL_H_
 #define LY_TREE_INTERNAL_H_
 
+#include "libyang.h"
 #include "tree_schema.h"
 #include "tree_data.h"
 #include "resolve.h"

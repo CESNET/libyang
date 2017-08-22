@@ -1322,26 +1322,34 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 in_grp = 1;
             }
             type->info.str.patterns = calloc(i, sizeof *type->info.str.patterns);
+            LY_CHECK_ERR_GOTO(!type->info.str.patterns, LOGMEM, error);
+#ifdef LY_ENABLED_CACHE
             if (!in_grp) {
                 /* do not compile patterns in groupings */
                 type->info.str.patterns_pcre = malloc(2 * i * sizeof *type->info.str.patterns_pcre);
+                LY_CHECK_ERR_GOTO(!type->info.str.patterns_pcre, LOGMEM, error);
             }
-            LY_CHECK_ERR_GOTO(!type->info.str.patterns || (!in_grp && !type->info.str.patterns_pcre), LOGMEM, error);
+#endif
             LY_TREE_FOR(yin->child, node) {
                 GETVAL(value, node, "value");
 
-                if (in_grp) {
-                    /* in grouping, just check the pattern syntax */
-                    if (lyp_check_pattern(value, NULL)) {
-                        goto error;
+                if (!(module->ctx->models.flags & LY_CTX_TRUSTED)) {
+                    if (in_grp) {
+                        /* in grouping, just check the pattern syntax */
+                        if (lyp_check_pattern(value, NULL)) {
+                            goto error;
+                        }
                     }
-                } else {
-                    /* outside grouping, check syntax and precompile pattern for later use by libpcre */
-                    if (lyp_precompile_pattern(value,
-                                               (pcre**)&type->info.str.patterns_pcre[type->info.str.pat_count * 2],
-                                               (pcre_extra**)&type->info.str.patterns_pcre[type->info.str.pat_count * 2 + 1])) {
-                        goto error;
+#ifdef LY_ENABLED_CACHE
+                    else {
+                        /* outside grouping, check syntax and precompile pattern for later use by libpcre */
+                        if (lyp_precompile_pattern(value,
+                                (pcre**)&type->info.str.patterns_pcre[type->info.str.pat_count * 2],
+                                (pcre_extra**)&type->info.str.patterns_pcre[type->info.str.pat_count * 2 + 1])) {
+                            goto error;
+                        }
                     }
+#endif
                 }
                 restr = &type->info.str.patterns[type->info.str.pat_count]; /* shortcut */
                 type->info.str.pat_count++;

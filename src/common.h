@@ -17,11 +17,9 @@
 
 #include <stdint.h>
 
-#include "dict_private.h"
 #include "libyang.h"
+#include "dict_private.h"
 #include "resolve.h"
-
-@ENABLE_CACHE_MACRO@
 
 #ifdef __GNUC__
 #  define UNUSED(x) UNUSED_ ## x __attribute__((__unused__))

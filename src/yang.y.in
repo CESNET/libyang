@@ -25,9 +25,10 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
+#include "libyang.h"
+#include "common.h"
 #include "context.h"
 #include "resolve.h"
-#include "common.h"
 #include "parser_yang.h"
 #include "parser_yang_lex.h"
 #include "parser.h"
@@ -1322,8 +1323,9 @@ type_body_stmts: some_restrictions { if (((struct yang_type *)actual)->base == L
                                          YYABORT;
                                        }
                                        ((struct yang_type *)actual)->type->info.str.patterns = tmp;
-                                       
-                                       if (((struct yang_type *)actual)->type->info.str.patterns_pcre) {
+
+#ifdef LY_ENABLED_CACHE
+                                       if (!(trg->ctx->models.flags & LY_CTX_TRUSTED) && ((struct yang_type *)actual)->type->info.str.patterns_pcre) {
                                          tmp = realloc(((struct yang_type *)actual)->type->info.str.patterns_pcre,
                                                        2 * ((struct yang_type *)actual)->type->info.str.pat_count * sizeof *((struct yang_type *)actual)->type->info.str.patterns_pcre);
                                          if (!tmp) {
@@ -1332,6 +1334,7 @@ type_body_stmts: some_restrictions { if (((struct yang_type *)actual)->base == L
                                          }
                                          ((struct yang_type *)actual)->type->info.str.patterns_pcre = tmp;
                                        }
+#endif
                                      }
                                      if (((struct yang_type *)actual)->base == LY_TYPE_UNION) {
                                        struct lys_type *tmp;
@@ -1500,11 +1503,13 @@ pattern_sep: sep { $$.token = actual_type;
 
 pattern_stmt: PATTERN_KEYWORD pattern_sep pattern_arg_str pattern_end  {struct lys_restr *pattern = actual;
                                                                         actual = NULL;
+#ifdef LY_ENABLED_CACHE
                                                                         if ($2.token != EXTENSION_INSTANCE &&
                                                                             !(data_node && data_node->nodetype != LYS_GROUPING && lys_ingrouping(data_node))) {
                                                                           int c = 2 * (((struct yang_type *)$2.actual)->type->info.str.pat_count - 1);
                                                                           YANG_ADDELEM(((struct yang_type *)$2.actual)->type->info.str.patterns_pcre, c);
                                                                         }
+#endif
                                                                         if (yang_read_pattern(trg, pattern, actual, $3, $4)) {
                                                                           YYABORT;
                                                                         }
@@ -4370,7 +4375,7 @@ typedef_ext_alloc: @EMPTYDIR@ { struct lys_tpdf **tpdf;
                                   LOGMEM;
                                   YYABORT;
                                 }
-                                
+
                                 $$ = actual = *tpdf;
                                 is_ext_instance = 0;
                               }

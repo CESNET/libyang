@@ -17,6 +17,8 @@
 
 #include <stdio.h>
 
+@ENABLE_CACHE_MACRO@
+
 #include "tree_schema.h"
 #include "tree_data.h"
 #include "xml.h"
