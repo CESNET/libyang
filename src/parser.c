@@ -1514,6 +1514,10 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             while (isspace(value[c])) {
                 c++;
             }
+            if (!value[c]) {
+                /* trailing white spaces */
+                break;
+            }
 
             /* get the length of the bit identifier */
             for (len = 0; value[c] && !isspace(value[c]); c++, len++);
