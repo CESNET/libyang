@@ -908,7 +908,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
     }
 
     /* create implicit input/output nodes to have available them as possible target for augment */
-    if (child->nodetype & (LYS_RPC | LYS_ACTION)) {
+    if ((child->nodetype & (LYS_RPC | LYS_ACTION)) && !child->child) {
         in = calloc(1, sizeof *in);
         out = calloc(1, sizeof *out);
         if (!in || !out) {
