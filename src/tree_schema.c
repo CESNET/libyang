@@ -369,7 +369,7 @@ lys_node_unlink(struct lys_node *node)
     if (parent && (parent->nodetype == LYS_AUGMENT)) {
         /* handle augments - first, unlink it from the augment parent ... */
         if (parent->child == node) {
-            parent->child = node->next;
+            parent->child = (node->next && node->next->parent == parent) ? node->next : NULL;
         }
 
         if (parent->flags & LYS_NOTAPPLIED) {
@@ -687,7 +687,7 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
 int
 lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys_node *child)
 {
-    struct lys_node *iter, *next, **pchild;
+    struct lys_node *iter, **pchild;
     struct lys_node_inout *in, *out, *inout;
     struct lys_node_case *c;
     int type, shortcase = 0;
@@ -845,21 +845,14 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
                 module->data = child;
             }
         } else {
-            next = NULL;
             pchild = lys_child(parent, child->nodetype);
             assert(pchild);
 
+            child->parent = parent;
             if (!(*pchild)) {
                 /* the only/first child of the parent */
                 *pchild = child;
-                child->parent = parent;
                 iter = child;
-            } else if (type == LYS_AUGMENT) {
-                /* add a new child as a last child of the augment (no matter if applied or not) */
-                for (iter = (*pchild)->prev; iter->parent != parent; iter = iter->prev);
-                next = iter->next;
-                iter->next = child;
-                child->prev = iter;
             } else {
                 /* add a new child at the end of parent's child list */
                 iter = (*pchild)->prev;
@@ -870,13 +863,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
                 iter = iter->next;
                 iter->parent = parent;
             }
-            if (next) {
-                /* we are in applied augment, its target has some additional nodes after the nodes from this augment */
-                iter->next = next;
-                next->prev = iter;
-            } else {
-                (*pchild)->prev = iter;
-            }
+            (*pchild)->prev = iter;
         }
     }
 
@@ -3982,6 +3969,11 @@ apply_aug(struct lys_node_augment *augment, struct unres_schema *unres)
 
     assert(augment->target && (augment->flags & LYS_NOTAPPLIED));
 
+    if (!augment->child) {
+        /* nothing to apply */
+        goto success;
+    }
+
     /* check that all the modules are implemented */
     for (parent = augment->target; parent; parent = lys_parent(parent)) {
         if (!lys_node_module(parent)->implemented) {
@@ -4025,6 +4017,7 @@ apply_aug(struct lys_node_augment *augment, struct unres_schema *unres)
         }
     }
 
+success:
     /* remove the flag about not applicability */
     augment->flags &= ~LYS_NOTAPPLIED;
     return EXIT_SUCCESS;
@@ -4082,7 +4075,7 @@ remove_aug(struct lys_node_augment *augment)
 static void
 lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module, struct unres_schema *unres)
 {
-    int ret;
+    int ret, reapply = 0;
     char *parent_path;
     struct lys_node *target = NULL, *parent;
     struct ly_set *set;
@@ -4100,26 +4093,28 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module,
                 /* reconnect to its previous position */
                 parent = dev->orig_node->parent;
                 if (parent) {
+                    dev->orig_node->parent = NULL;
                     /* the original node was actually from augment, we have to get know if the augment is
                      * applied (its module is enabled and implemented). If yes, the node will be connected
                      * to the augment and the linkage with the target will be fixed if needed, otherwise
                      * it will be connected only to the augment */
-                    /* first, connect it into the augment */
+                    if (!(parent->flags & LYS_NOTAPPLIED)) {
+                        /* start with removing augment if applied before adding nodes, we have to make sure
+                         * that everything will be connect correctly */
+                        remove_aug((struct lys_node_augment *)parent);
+                        reapply = 1;
+                    }
+                    /* connect the deviated node back into the augment */
                     lys_node_addchild(parent, NULL, dev->orig_node);
-                    if (!parent->module->disabled && parent->module->implemented) {
+                    if (reapply) {
                         /* augment is supposed to be applied, so fix pointers in target and the status of the original node */
                         if (parent->child == dev->orig_node) {
                             /* the only node in augment */
-                            dev->orig_node->flags |= LYS_NOTAPPLIED;
+                            parent->flags |= LYS_NOTAPPLIED; /* allow apply_aug() */
                             apply_aug((struct lys_node_augment *)parent, unres);
-                        } else {
-                            /* other nodes from augment applied, nothing more needed in target, everything was done
+                            /* else other nodes from augment applied, nothing more needed in target, everything was done
                              * by lys_node_addchild() */
-                            dev->orig_node->flags |= parent->child->flags & LYS_NOTAPPLIED;
                         }
-                    } else {
-                        /* augment is not supposed to be applied */
-                        dev->orig_node->flags |= LYS_NOTAPPLIED;
                     }
                 } else {
                     /* non-augment, non-toplevel */
