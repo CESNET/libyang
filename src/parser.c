@@ -1455,7 +1455,6 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                     }
                 }
             }
-            unum = u;
         }
 
         if (unum & 3) {
