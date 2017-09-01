@@ -4557,6 +4557,9 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
             return EXIT_FAILURE;
         }
 
+        (*ext)->flags &= ~LYEXT_OPT_YANG;
+        (*ext)->def = NULL;
+
         /* we have the extension definition, so now it cannot be forward referenced and error is always fatal */
 
         if (e->plugin && e->plugin->check_position) {
@@ -4569,7 +4572,6 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
         }
 
         /* extension common part */
-        (*ext)->flags &= ~LYEXT_OPT_YANG;
         (*ext)->def = e;
         (*ext)->parent = info->parent;
         (*ext)->ext_type = e->plugin ? e->plugin->type : LYEXT_FLAG;
@@ -7303,6 +7305,8 @@ unres_schema_free_item(struct ly_ctx *ctx, struct unres_schema *unres, uint32_t 
     case UNRES_EXT:
         free(unres->str_snode[i]);
         break;
+    case UNRES_EXT_FINALIZE:
+        free(unres->str_snode[i]);
     default:
         break;
     }
