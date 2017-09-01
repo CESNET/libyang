@@ -4448,13 +4448,24 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
         (*ext)->insubstmt_index = info->substmt_index;
         (*ext)->ext_type = e->plugin ? e->plugin->type : LYEXT_FLAG;
 
-        if (!(e->flags & LYS_YINELEM) && e->argument) {
-            (*ext)->arg_value = lyxml_get_attr(info->data.yin, e->argument, NULL);
-            if (!(*ext)->arg_value) {
-                LOGVAL(LYE_MISSARG, LY_VLOG_NONE, NULL, e->argument, info->data.yin->name);
-                return -1;
+        if (e->argument) {
+            if (!(e->flags & LYS_YINELEM)) {
+                (*ext)->arg_value = lyxml_get_attr(info->data.yin, e->argument, NULL);
+                if (!(*ext)->arg_value) {
+                    LOGVAL(LYE_MISSARG, LY_VLOG_NONE, NULL, e->argument, info->data.yin->name);
+                    return -1;
+                }
+
+                (*ext)->arg_value = lydict_insert(mod->ctx, (*ext)->arg_value, 0);
+            } else {
+                LY_TREE_FOR_SAFE(info->data.yin->child, next_yin, yin) {
+                    if (ly_strequal(yin->name, e->argument, 1)) {
+                        (*ext)->arg_value = lydict_insert(mod->ctx, yin->content, 0);
+                        lyxml_free(mod->ctx, yin);
+                        break;
+                    }
+                }
             }
-            (*ext)->arg_value = lydict_insert(mod->ctx, (*ext)->arg_value, 0);
         }
 
         (*ext)->nodetype = LYS_EXT;
