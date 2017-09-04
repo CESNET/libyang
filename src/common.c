@@ -64,17 +64,28 @@ ly_errapptag(void)
 }
 
 void
-ly_err_clean(int with_errno)
+ly_err_free(void *ptr)
 {
     struct ly_err_item *i, *next;
 
-    i = ly_err_main.errlist;
-    ly_err_main.errlist = NULL;
-    for (; i; i = next) {
+    /* clean the error list */
+    for (i = (struct ly_err_item *)ptr; i; i = next) {
         next = i->next;
         free(i->msg);
         free(i->path);
         free(i);
+    }
+}
+
+void
+ly_err_clean(struct ly_ctx *ctx, int with_errno)
+{
+    struct ly_err_item *i;
+
+    if (ctx) {
+        i = pthread_getspecific(ctx->errlist_key);
+        pthread_setspecific(ctx->errlist_key, NULL);
+        ly_err_free(i);
     }
 
     if (with_errno) {

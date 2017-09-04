@@ -49,6 +49,20 @@ struct lyd_node *lyd_parse_json(struct ly_ctx *ctx, const char *data, int option
 /**@} jsondata */
 
 /**
+ * thread-specific information describing the parser's current context
+ */
+struct ly_parser {
+    struct ly_ctx *ctx;
+/* TODO
+    union {
+        struct lys_node *schema;
+        struct lyd_node *data;
+    } node;
+*/
+};
+extern THREAD_LOCAL struct ly_parser ly_parser_data;
+
+/**
  * internal options values for schema parsers
  */
 #define LYS_PARSE_OPT_CFG_NOINHERIT 0x01 /**< do not inherit config flag */

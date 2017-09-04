@@ -498,7 +498,7 @@ attr_error:
     }
 
     /* rest of validation checks */
-    ly_err_clean(1);
+    ly_err_clean(ly_parser_data.ctx, 1);
     if (lyv_data_content(*result, options, unres) ||
              lyv_multicases(*result, NULL, prev ? &first_sibling : NULL, 0, NULL)) {
         if (ly_errno) {
@@ -543,8 +543,9 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     struct lyd_node *result = NULL, *iter, *last, *reply_parent = NULL, *reply_top = NULL, *act_notif = NULL;
     struct lyxml_elem *xmlstart, *xmlelem, *xmlaux, *xmlfree = NULL;
     struct ly_set *set;
+    struct ly_ctx *ctx_prev = ly_parser_data.ctx;
 
-    ly_err_clean(1);
+    ly_err_clean(ctx, 1);
 
     if (!ctx || !root) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
@@ -555,16 +556,23 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
         return NULL;
     }
 
+    /* set parser context */
+    ly_parser_data.ctx = ctx;
+
     if (!(*root) && !(options & LYD_OPT_RPCREPLY)) {
         /* empty tree */
         if (options & (LYD_OPT_RPC | LYD_OPT_NOTIF)) {
             /* error, top level node identify RPC and Notification */
             LOGERR(LY_EINVAL, "%s: *root identifies RPC/Notification so it cannot be NULL.", __func__);
+
+            /* reset parser context */
+            ly_parser_data.ctx = ctx_prev;
+
             return NULL;
         } else if (!(options & LYD_OPT_RPCREPLY)) {
             /* others - no work is needed, just check for missing mandatory nodes */
             lyd_validate(&result, options, ctx);
-            return result;
+            goto success;
         }
         /* continue with empty RPC reply, for which we need RPC */
     }
@@ -742,6 +750,10 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     free(unres);
     va_end(ap);
 
+success:
+    /* reset parser context */
+    ly_parser_data.ctx = ctx_prev;
+
     return result;
 
 error:
@@ -753,6 +765,9 @@ error:
     free(unres->type);
     free(unres);
     va_end(ap);
+
+    /* reset parser context */
+    ly_parser_data.ctx = ctx_prev;
 
     return NULL;
 }

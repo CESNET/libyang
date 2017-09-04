@@ -523,7 +523,7 @@ repeat:
                 return 0;
             }
 
-            ly_err_clean(1);
+            ly_err_clean(ly_parser_data.ctx, 1);
             if (lyv_data_content((struct lyd_node*)leaf, options, unres) ||
                      lyv_multicases((struct lyd_node*)leaf, NULL, first_sibling, 0, NULL)) {
                 if (ly_errno) {
@@ -1179,7 +1179,7 @@ attr_repeat:
                     goto error;
                 }
 
-                ly_err_clean(1);
+                ly_err_clean(ly_parser_data.ctx, 1);
                 if (lyv_data_content(list, options, unres) ||
                          lyv_multicases(list, NULL, prev ? &first_sibling : NULL, 0, NULL)) {
                     if (ly_errno) {
@@ -1220,7 +1220,7 @@ attr_repeat:
         goto error;
     }
 
-    ly_err_clean(1);
+    ly_err_clean(ly_parser_data.ctx, 1);
     if (lyv_data_content(result, options, unres) ||
              lyv_multicases(result, NULL, prev ? &first_sibling : NULL, 0, NULL)) {
         if (ly_errno) {
@@ -1275,7 +1275,7 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
     struct attr_cont *attrs = NULL;
     struct ly_set *set;
 
-    ly_err_clean(1);
+    ly_err_clean(ly_parser_data.ctx, 1);
 
     if (!ctx || !data) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);

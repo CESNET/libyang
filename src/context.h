@@ -15,6 +15,9 @@
 #ifndef LY_CONTEXT_H_
 #define LY_CONTEXT_H_
 
+#include <pthread.h>
+
+#include "common.h"
 #include "dict_private.h"
 #include "tree_schema.h"
 #include "libyang.h"
@@ -37,6 +40,14 @@ struct ly_modules_list {
 #define LY_CTX_ALLIMPLEMENTED 0x01 /**< all modules are implemented despite they were loaded explicitly or implicitly
                                         via import statement */
 
+struct ly_err_item {
+    LY_ERR no;
+    LY_VECODE code;
+    char *msg;
+    char *path;
+    struct ly_err_item *next;
+};
+
 struct ly_ctx {
     struct dict_table dict;
     struct ly_modules_list models;
@@ -44,6 +55,7 @@ struct ly_ctx {
     void *imp_clb_data;
     ly_module_data_clb data_clb;
     void *data_clb_data;
+    pthread_key_t errlist_key;
 };
 
 #endif /* LY_CONTEXT_H_ */

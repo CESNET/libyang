@@ -897,7 +897,7 @@ lyxml_parse_elem(struct ly_ctx *ctx, const char *data, unsigned int *len, struct
     c = e;
 
 process:
-    ly_err_clean(1);
+    ly_err_clean(ly_parser_data.ctx, 1);
     ign_xmlws(c);
     if (!strncmp("/>", c, 2)) {
         /* we are done, it was EmptyElemTag */
@@ -1115,13 +1115,17 @@ lyxml_parse_mem(struct ly_ctx *ctx, const char *data, int options)
     const char *c = data;
     unsigned int len;
     struct lyxml_elem *root, *first = NULL, *next;
+    struct ly_ctx *ctx_prev = ly_parser_data.ctx;
 
-    ly_err_clean(1);
+    ly_err_clean(ctx, 1);
 
     if (!ctx) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
         return NULL;
     }
+
+    /* set parser context */
+    ly_parser_data.ctx = ctx;
 
 repeat:
     /* process document */
@@ -1136,21 +1140,21 @@ repeat:
             /* XMLDecl or PI - ignore it */
             c += 2;
             if (parse_ignore(c, "?>", &len)) {
-                return NULL;
+                goto error;
             }
             c += len;
         } else if (!strncmp(c, "<!--", 4)) {
             /* Comment - ignore it */
             c += 2;
             if (parse_ignore(c, "-->", &len)) {
-                return NULL;
+                goto error;
             }
             c += len;
         } else if (!strncmp(c, "<!", 2)) {
             /* DOCTYPE */
             /* TODO - standalone ignore counting < and > */
             LOGERR(LY_EINVAL, "DOCTYPE not supported in XML documents.");
-            return NULL;
+            goto error;
         } else if (*c == '<') {
             /* element - process it in next loop to strictly follow XML
              * format
@@ -1158,18 +1162,13 @@ repeat:
             break;
         } else {
             LOGVAL(LYE_XML_INCHAR, LY_VLOG_NONE, NULL, c);
-            return NULL;
+            goto error;
         }
     }
 
     root = lyxml_parse_elem(ctx, c, &len, NULL, options);
     if (!root) {
-        if (first) {
-            LY_TREE_FOR_SAFE(first, next, root) {
-                lyxml_free(ctx, root);
-            }
-        }
-        return NULL;
+        goto error;
     } else if (!first) {
         first = root;
     } else {
@@ -1191,7 +1190,20 @@ repeat:
         }
     }
 
+    /* reset parser context */
+    ly_parser_data.ctx = ctx_prev;
+
     return first;
+
+error:
+    LY_TREE_FOR_SAFE(first, next, root) {
+        lyxml_free(ctx, root);
+    }
+
+    /* reset parser context */
+    ly_parser_data.ctx = ctx_prev;
+
+    return NULL;
 }
 
 API struct lyxml_elem *

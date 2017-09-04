@@ -6772,11 +6772,11 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
                     ly_vlog_hide(0);
                 }
                 /* print the error */
-                ly_err_repeat();
+                ly_err_repeat(ly_parser_data.ctx);
                 return -1;
             } else {
                 /* forward reference, erase ly_errno */
-                ly_err_clean(1);
+                ly_err_clean(ly_parser_data.ctx, 1);
             }
         }
     } while (res_count && (res_count < unres_count));
@@ -6829,11 +6829,11 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
                 ly_vlog_hide(0);
             }
             /* print the error */
-            ly_err_repeat();
+            ly_err_repeat(ly_parser_data.ctx);
             return -1;
         } else {
             /* forward reference, erase ly_errno */
-            ly_err_clean(1);
+            ly_err_clean(ly_parser_data.ctx, 1);
         }
     }
 
@@ -6963,7 +6963,7 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
 
         if (rc != EXIT_FAILURE) {
             if (rc == -1) {
-                ly_err_repeat();
+                ly_err_repeat(ly_parser_data.ctx);
             }
             if (type == UNRES_LIST_UNIQ) {
                 /* free the allocated structure */
@@ -6975,7 +6975,7 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
             return rc;
         } else {
             /* erase info about validation errors */
-            ly_err_clean(1);
+            ly_err_clean(ly_parser_data.ctx, 1);
         }
 
         print_unres_schema_item_fail(item, type, snode);
@@ -7520,7 +7520,7 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int store,
 
         /* erase information about errors - they are false or irrelevant
          * and will be replaced by a single error messages */
-        ly_err_clean(1);
+        ly_err_clean(ly_parser_data.ctx, 1);
 
         /* erase possible present and invalid value data */
         if (store) {
@@ -7748,7 +7748,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
     resolved = 0;
     del_items = 0;
     do {
-        ly_err_clean(1);
+        ly_err_clean(ly_parser_data.ctx, 1);
         progress = 0;
         for (i = 0; i < unres->count; i++) {
             if (unres->type[i] != UNRES_WHEN) {
@@ -7786,7 +7786,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
                     if ((options & LYD_OPT_NOAUTODEL) && !unres->node[i]->dflt) {
                         /* false when condition */
                         ly_vlog_hide(0);
-                        ly_err_repeat();
+                        ly_err_repeat(ly_parser_data.ctx);
                         return -1;
                     } /* follows else */
 
@@ -7839,7 +7839,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
                 } else {
                     unres->type[i] = UNRES_RESOLVED;
                 }
-                ly_err_clean(1);
+                ly_err_clean(ly_parser_data.ctx, 1);
                 resolved++;
                 progress = 1;
             } else if (rc == -1) {
@@ -7855,7 +7855,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
     /* do we have some unresolved when-stmt? */
     if (stmt_count > resolved) {
         ly_vlog_hide(0);
-        ly_err_repeat();
+        ly_err_repeat(ly_parser_data.ctx);
         return -1;
     }
 
@@ -7894,7 +7894,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
             rc = resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fail, NULL);
             if (!rc) {
                 unres->type[i] = UNRES_RESOLVED;
-                ly_err_clean(1);
+                ly_err_clean(ly_parser_data.ctx, 1);
                 resolved++;
                 progress = 1;
             } else if (rc == -1) {
@@ -7910,7 +7910,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
     /* do we have some unresolved leafrefs? */
     if (stmt_count > resolved) {
         ly_vlog_hide(0);
-        ly_err_repeat();
+        ly_err_repeat(ly_parser_data.ctx);
         return -1;
     }
 

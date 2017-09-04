@@ -77,28 +77,20 @@ char *get_current_dir_name(void);
 
 #define LY_BUF_SIZE 1024
 #define LY_APPTAG_LEN 128
-struct ly_err_item {
-    LY_ERR no;
-    LY_VECODE code;
-    char *msg;
-    char *path;
-    struct ly_err_item *next;
-};
 struct ly_err {
     LY_ERR no;
     LY_VECODE code;
     uint8_t vlog_hide;
     uint8_t buf_used;
     uint16_t path_index;
-    struct ly_err_item *errlist; /* list of stored errors */
     char msg[LY_BUF_SIZE];
     char path[LY_BUF_SIZE];
     char apptag[LY_APPTAG_LEN];
     char buf[LY_BUF_SIZE];
 };
-void ly_err_clean(int with_errno);
-void ly_err_repeat(void);
-
+void ly_err_free(void *ptr);
+void ly_err_clean(struct ly_ctx *ctx, int with_errno);
+void ly_err_repeat(struct ly_ctx *ctx);
 extern THREAD_LOCAL struct ly_err ly_err_main;
 
 /**

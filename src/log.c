@@ -22,6 +22,8 @@
 #include <string.h>
 
 #include "common.h"
+#include "parser.h"
+#include "context.h"
 #include "tree_internal.h"
 
 volatile int8_t ly_log_level = LY_LLERR;
@@ -101,23 +103,27 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
         ly_err_main.apptag[0] = '\0';
 
         /* store error information into a list */
-        if (!ly_err_main.errlist) {
-            eitem = ly_err_main.errlist = malloc(sizeof *eitem);
-        } else {
-            for (eitem = ly_err_main.errlist; eitem->next; eitem = eitem->next);
-            eitem->next = malloc(sizeof *eitem->next);
-            eitem = eitem->next;
-        }
-        if (eitem) {
-            eitem->no = ly_errno;
-            eitem->code = ly_vecode;
-            eitem->msg = strdup(msg);
-            if (path) {
-                eitem->path = strdup(path);
+        if (ly_parser_data.ctx) {
+            eitem = pthread_getspecific(ly_parser_data.ctx->errlist_key);
+            if (!eitem) {
+                eitem = malloc(sizeof *eitem);
+                pthread_setspecific(ly_parser_data.ctx->errlist_key, eitem);
             } else {
-                eitem->path = NULL;
+                for (; eitem->next; eitem = eitem->next);
+                eitem->next = malloc(sizeof *eitem->next);
+                eitem = eitem->next;
             }
-            eitem->next = NULL;
+            if (eitem) {
+                eitem->no = ly_errno;
+                eitem->code = ly_vecode;
+                eitem->msg = strdup(msg);
+                if (path) {
+                    eitem->path = strdup(path);
+                } else {
+                    eitem->path = NULL;
+                }
+                eitem->next = NULL;
+            }
         }
     }
 
@@ -671,12 +677,12 @@ log:
 }
 
 void
-ly_err_repeat(void)
+ly_err_repeat(struct ly_ctx *ctx)
 {
     struct ly_err_item *i;
 
     if ((ly_log_level >= LY_LLERR) && !ly_err_main.vlog_hide) {
-        for (i = ly_err_main.errlist; i; i = i->next) {
+        for (i = pthread_getspecific(ctx->errlist_key); i; i = i->next) {
             if (ly_log_clb) {
                 ly_log_clb(LY_LLERR, i->msg, i->path);
             } else {

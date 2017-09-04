@@ -13,6 +13,7 @@
  */
 
 #define _GNU_SOURCE
+#include <pthread.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
@@ -79,6 +80,9 @@ ly_ctx_new(const char *search_dir)
 
     /* plugins */
     lyext_load_plugins();
+
+    /* initialize thread-specific key */
+    while ((i = pthread_key_create(&ctx->errlist_key, ly_err_free)) == EAGAIN);
 
     /* models list */
     ctx->models.list = calloc(16, sizeof *ctx->models.list);
@@ -348,15 +352,16 @@ ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_n
     }
     free(ctx->models.list);
 
+    /* clean the error list */
+    ly_err_clean(ctx, 0);
+    pthread_key_delete(ctx->errlist_key);
+
     /* dictionary */
     lydict_clean(&ctx->dict);
 
     /* plugins - will be removed only if this is the last context */
     ext_plugins_ref--;
     lyext_clean_plugins();
-
-    /* clean the error list */
-    ly_err_clean(0);
 
     free(ctx);
 }

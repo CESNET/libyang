@@ -925,13 +925,17 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int in
     char *enlarged_data = NULL;
     struct lys_module *mod = NULL;
     unsigned int len;
+    struct ly_ctx *ctx_prev = ly_parser_data.ctx;
 
-    ly_err_clean(1);
+    ly_err_clean(ctx, 1);
 
     if (!ctx || !data) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
         return NULL;
     }
+
+    /* set parser context */
+    ly_parser_data.ctx = ctx;
 
     if (!internal && format == LYS_IN_YANG) {
         /* enlarge data by 2 bytes for flex */
@@ -968,6 +972,9 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int in
             return NULL;
         }
     }
+
+    /* reset parser context */
+    ly_parser_data.ctx = ctx_prev;
 
     return mod;
 }
