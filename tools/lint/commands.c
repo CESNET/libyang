@@ -27,7 +27,6 @@
 #include "../../src/libyang.h"
 #include "../../src/tree_schema.h"
 #include "../../src/tree_data.h"
-#include "../../src/parser.h"
 #include "../../src/xpath.h"
 
 COMMAND commands[];
