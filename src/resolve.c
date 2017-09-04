@@ -4799,6 +4799,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
                 must[j].ref = lydict_insert(ctx, rfn->must[k].ref, 0);
                 must[j].eapptag = lydict_insert(ctx, rfn->must[k].eapptag, 0);
                 must[j].emsg = lydict_insert(ctx, rfn->must[k].emsg, 0);
+                must[j].flags = rfn->must[k].flags;
             }
 
             *old_must = must;
