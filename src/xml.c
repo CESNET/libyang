@@ -1132,7 +1132,7 @@ repeat:
     while (1) {
         if (!*c) {
             /* eof */
-            return first;
+            goto restore;
         } else if (is_xmlws(*c)) {
             /* skip whitespaces */
             ign_xmlws(c);
@@ -1190,6 +1190,7 @@ repeat:
         }
     }
 
+restore:
     /* reset parser context */
     ly_parser_data.ctx = ctx_prev;
 
