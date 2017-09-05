@@ -523,7 +523,7 @@ repeat:
                 return 0;
             }
 
-            ly_err_clean(1);
+            ly_err_clean(ly_parser_data.ctx, 1);
             if (lyv_data_content((struct lyd_node*)leaf, options, unres) ||
                      lyv_multicases((struct lyd_node*)leaf, NULL, first_sibling, 0, NULL)) {
                 if (ly_errno) {
@@ -1179,7 +1179,7 @@ attr_repeat:
                     goto error;
                 }
 
-                ly_err_clean(1);
+                ly_err_clean(ly_parser_data.ctx, 1);
                 if (lyv_data_content(list, options, unres) ||
                          lyv_multicases(list, NULL, prev ? &first_sibling : NULL, 0, NULL)) {
                     if (ly_errno) {
@@ -1220,7 +1220,7 @@ attr_repeat:
         goto error;
     }
 
-    ly_err_clean(1);
+    ly_err_clean(ly_parser_data.ctx, 1);
     if (lyv_data_content(result, options, unres) ||
              lyv_multicases(result, NULL, prev ? &first_sibling : NULL, 0, NULL)) {
         if (ly_errno) {
@@ -1275,7 +1275,7 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
     struct attr_cont *attrs = NULL;
     struct ly_set *set;
 
-    ly_err_clean(1);
+    ly_err_clean(ly_parser_data.ctx, 1);
 
     if (!ctx || !data) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
@@ -1287,6 +1287,9 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
 
     /* no data (or whitespaces only) are fine */
     if (!data[len]) {
+        if (options & LYD_OPT_DATA_ADD_YANGLIB) {
+            result = ly_ctx_info(ctx);
+        }
         lyd_validate(&result, options, ctx);
         return result;
     }
@@ -1365,6 +1368,10 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
         if (!result) {
             for (iter = next; iter && iter->prev->next; iter = iter->prev);
             result = iter;
+            if (iter && (options & LYD_OPT_DATA_ADD_YANGLIB) && iter->schema->module == ctx->models.list[LY_INTERNAL_MODULE_COUNT - 1]) {
+                /* ietf-yang-library data present, so ignore the option to add them */
+                options &= ~LYD_OPT_DATA_ADD_YANGLIB;
+            }
         }
         if (next) {
             iter = next;
@@ -1410,6 +1417,14 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
         ly_vecode = LYVE_INELEM;
         LOGVAL(LYE_SPEC, LY_VLOG_LYD, result, "Missing %s node.", (options & LYD_OPT_RPC ? "action" : "notification"));
         goto error;
+    }
+
+    /* add missing ietf-yang-library if requested */
+    if (options & LYD_OPT_DATA_ADD_YANGLIB) {
+        if (lyd_merge(result, ly_ctx_info(ctx), LYD_OPT_DESTRUCT | LYD_OPT_EXPLICIT)) {
+            LOGERR(LY_EINT, "Adding ietf-yang-library data failed.");
+            goto error;
+        }
     }
 
     /* check for uniquness of top-level lists/leaflists because

@@ -221,6 +221,9 @@ int lyxp_eval(const char *expr, const struct lyd_node *cur_node, enum lyxp_node_
 /**
  * @brief Get all the partial XPath nodes (atoms) that are required for \p expr to be evaluated.
  *
+ * If any LYXP_SNODE* options is set, only fatal errors are printed, otherwise they are downgraded
+ * to warnings.
+ *
  * @param[in] expr XPath expression to be evaluated. Must be in JSON format (prefixes are model names).
  * @param[in] cur_snode Current (context) schema node.
  * @param[in] cur_snode_type Current (context) schema node type.
@@ -255,12 +258,12 @@ int lyxp_atomize(const char *expr, const struct lys_node *cur_snode, enum lyxp_n
  * @param[in] node Node to examine.
  * @param[in,out] set Resulting set of atoms merged from all the expressions.
  * Will be cleared before use.
- * @param[in] warn_on_fwd_ref Setting this flag causes no errors to be printed and
- * only warning is printed on forward reference paths (addressing a non-existing node).
+ * @param[in] set_ext_dep_flags Set #LYS_XPATH_DEP for conditions that require foreign subtree and
+ * also for the node itself, if it has any such condition.
  *
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
+ * @return EXIT_SUCCESS on success, -1 on error.
  */
-int lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int warn_on_fwd_ref);
+int lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int set_ext_dep_flags);
 
 /**
  * @brief Check syntax of all the XPath expressions of the node.

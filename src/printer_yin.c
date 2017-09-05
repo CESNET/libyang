@@ -617,7 +617,7 @@ yin_print_refine(struct lyout *out, int level, const struct lys_module *module, 
     int i, content = 0;
     const char *str;
 
-    str = transform_json2xml(module, refine->target_name, NULL, NULL, NULL);
+    str = transform_json2xml(module, refine->target_name, 0, NULL, NULL, NULL);
     yin_print_open(out, level, NULL, "refine", "target-node", str, content);
     lydict_remove(module->ctx, str);
 

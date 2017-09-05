@@ -369,7 +369,7 @@ lys_node_unlink(struct lys_node *node)
     if (parent && (parent->nodetype == LYS_AUGMENT)) {
         /* handle augments - first, unlink it from the augment parent ... */
         if (parent->child == node) {
-            parent->child = node->next;
+            parent->child = (node->next && node->next->parent == parent) ? node->next : NULL;
         }
 
         if (parent->flags & LYS_NOTAPPLIED) {
@@ -687,7 +687,7 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
 int
 lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys_node *child)
 {
-    struct lys_node *iter, *next, **pchild;
+    struct lys_node *iter, **pchild;
     struct lys_node_inout *in, *out, *inout;
     struct lys_node_case *c;
     int type, shortcase = 0;
@@ -845,21 +845,14 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
                 module->data = child;
             }
         } else {
-            next = NULL;
             pchild = lys_child(parent, child->nodetype);
             assert(pchild);
 
+            child->parent = parent;
             if (!(*pchild)) {
                 /* the only/first child of the parent */
                 *pchild = child;
-                child->parent = parent;
                 iter = child;
-            } else if (type == LYS_AUGMENT) {
-                /* add a new child as a last child of the augment (no matter if applied or not) */
-                for (iter = (*pchild)->prev; iter->parent != parent; iter = iter->prev);
-                next = iter->next;
-                iter->next = child;
-                child->prev = iter;
             } else {
                 /* add a new child at the end of parent's child list */
                 iter = (*pchild)->prev;
@@ -870,13 +863,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
                 iter = iter->next;
                 iter->parent = parent;
             }
-            if (next) {
-                /* we are in applied augment, its target has some additional nodes after the nodes from this augment */
-                iter->next = next;
-                next->prev = iter;
-            } else {
-                (*pchild)->prev = iter;
-            }
+            (*pchild)->prev = iter;
         }
     }
 
@@ -908,7 +895,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
     }
 
     /* create implicit input/output nodes to have available them as possible target for augment */
-    if (child->nodetype & (LYS_RPC | LYS_ACTION)) {
+    if ((child->nodetype & (LYS_RPC | LYS_ACTION)) && !child->child) {
         in = calloc(1, sizeof *in);
         out = calloc(1, sizeof *out);
         if (!in || !out) {
@@ -938,13 +925,17 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int in
     char *enlarged_data = NULL;
     struct lys_module *mod = NULL;
     unsigned int len;
+    struct ly_ctx *ctx_prev = ly_parser_data.ctx;
 
-    ly_err_clean(1);
+    ly_err_clean(ctx, 1);
 
     if (!ctx || !data) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
         return NULL;
     }
+
+    /* set parser context */
+    ly_parser_data.ctx = ctx;
 
     if (!internal && format == LYS_IN_YANG) {
         /* enlarge data by 2 bytes for flex */
@@ -981,6 +972,9 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int in
             return NULL;
         }
     }
+
+    /* reset parser context */
+    ly_parser_data.ctx = ctx_prev;
 
     return mod;
 }
@@ -1557,15 +1551,17 @@ lys_copy_union_leafrefs(struct lys_module *mod, struct lys_node *parent, struct 
         top_type = 0;
     }
 
-    if (type->der && type->der->module) {
+    assert(type->der);
+    if (type->der->module) {
         /* typedef, skip it, but keep the extensions */
         ext_size = type->ext_size;
-        if (lys_ext_dup(mod, type->ext, type->ext_size, (prev_new ? prev_new : &new), LYEXT_PAR_TYPE, &ext, 0, unres)) {
+        if (lys_ext_dup(mod, type->ext, type->ext_size, prev_new, LYEXT_PAR_TYPE, &ext, 0, unres)) {
             return -1;
         }
         if (prev_new->ext) {
             reloc = realloc(prev_new->ext, (prev_new->ext_size + ext_size) * sizeof *prev_new->ext);
             LY_CHECK_ERR_RETURN(!reloc, LOGMEM, -1);
+            prev_new->ext = reloc;
 
             memcpy(prev_new->ext + prev_new->ext_size, ext, ext_size * sizeof *ext);
             free(ext);
@@ -3749,6 +3745,8 @@ lys_child(const struct lys_node *node, LYS_NODE nodetype)
             return NULL;
         }
         return (struct lys_node **)pp;
+    } else if (node->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
+        return NULL;
     } else {
         return (struct lys_node **)&node->child;
     }
@@ -3867,65 +3865,6 @@ lys_data_path_reverse(const struct lys_node *node, char * const buf, uint32_t bu
 }
 
 #endif
-
-API struct ly_set *
-lys_find_xpath(const struct lys_node *ctx_node, const char *expr, int options)
-{
-    struct lyxp_set set;
-    struct ly_set *ret_set;
-    uint32_t i;
-    int opts;
-
-    if (!ctx_node || !expr) {
-        ly_errno = LY_EINVAL;
-        return NULL;
-    }
-
-    memset(&set, 0, sizeof set);
-
-    opts = LYXP_SNODE;
-    if (options & LYS_FIND_OUTPUT) {
-        opts |= LYXP_SNODE_OUTPUT;
-    }
-
-    if (lyxp_atomize(expr, ctx_node, LYXP_NODE_ELEM, &set, opts, NULL)) {
-        /* just find a relevant node to put in path, if it fails, use the original one */
-        for (i = 0; i < set.used; ++i) {
-            if (set.val.snodes[i].in_ctx == 1) {
-                ctx_node = set.val.snodes[i].snode;
-                break;
-            }
-        }
-        free(set.val.snodes);
-        LOGVAL(LYE_SPEC, LY_VLOG_LYS, ctx_node, "Resolving XPath expression \"%s\" failed.", expr);
-        return NULL;
-    }
-
-    ret_set = ly_set_new();
-
-    for (i = 0; i < set.used; ++i) {
-        if (!set.val.snodes[i].in_ctx) {
-            continue;
-        }
-        assert(set.val.snodes[i].in_ctx == 1);
-
-        switch (set.val.snodes[i].type) {
-        case LYXP_NODE_ELEM:
-            if (ly_set_add(ret_set, set.val.snodes[i].snode, LY_SET_OPT_USEASLIST) == -1) {
-                ly_set_free(ret_set);
-                free(set.val.snodes);
-                return NULL;
-            }
-            break;
-        default:
-            /* ignore roots, text and attr should not ever appear */
-            break;
-        }
-    }
-
-    free(set.val.snodes);
-    return ret_set;
-}
 
 API struct ly_set *
 lys_xpath_atomize(const struct lys_node *ctx_node, enum lyxp_node_type ctx_node_type, const char *expr, int options)
@@ -4063,6 +4002,11 @@ apply_aug(struct lys_node_augment *augment, struct unres_schema *unres)
 
     assert(augment->target && (augment->flags & LYS_NOTAPPLIED));
 
+    if (!augment->child) {
+        /* nothing to apply */
+        goto success;
+    }
+
     /* check that all the modules are implemented */
     for (parent = augment->target; parent; parent = lys_parent(parent)) {
         if (!lys_node_module(parent)->implemented) {
@@ -4106,6 +4050,7 @@ apply_aug(struct lys_node_augment *augment, struct unres_schema *unres)
         }
     }
 
+success:
     /* remove the flag about not applicability */
     augment->flags &= ~LYS_NOTAPPLIED;
     return EXIT_SUCCESS;
@@ -4163,9 +4108,10 @@ remove_aug(struct lys_node_augment *augment)
 static void
 lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module, struct unres_schema *unres)
 {
-    int ret;
+    int ret, reapply = 0;
     char *parent_path;
     struct lys_node *target = NULL, *parent;
+    struct ly_set *set;
 
     if (!dev->deviate) {
         return;
@@ -4180,36 +4126,42 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module,
                 /* reconnect to its previous position */
                 parent = dev->orig_node->parent;
                 if (parent) {
+                    dev->orig_node->parent = NULL;
                     /* the original node was actually from augment, we have to get know if the augment is
                      * applied (its module is enabled and implemented). If yes, the node will be connected
                      * to the augment and the linkage with the target will be fixed if needed, otherwise
                      * it will be connected only to the augment */
-                    /* first, connect it into the augment */
+                    if (!(parent->flags & LYS_NOTAPPLIED)) {
+                        /* start with removing augment if applied before adding nodes, we have to make sure
+                         * that everything will be connect correctly */
+                        remove_aug((struct lys_node_augment *)parent);
+                        reapply = 1;
+                    }
+                    /* connect the deviated node back into the augment */
                     lys_node_addchild(parent, NULL, dev->orig_node);
-                    if (!parent->module->disabled && parent->module->implemented) {
+                    if (reapply) {
                         /* augment is supposed to be applied, so fix pointers in target and the status of the original node */
                         if (parent->child == dev->orig_node) {
                             /* the only node in augment */
-                            dev->orig_node->flags |= LYS_NOTAPPLIED;
+                            parent->flags |= LYS_NOTAPPLIED; /* allow apply_aug() */
                             apply_aug((struct lys_node_augment *)parent, unres);
-                        } else {
-                            /* other nodes from augment applied, nothing more needed in target, everything was done
+                            /* else other nodes from augment applied, nothing more needed in target, everything was done
                              * by lys_node_addchild() */
-                            dev->orig_node->flags |= parent->child->flags & LYS_NOTAPPLIED;
                         }
-                    } else {
-                        /* augment is not supposed to be applied */
-                        dev->orig_node->flags |= LYS_NOTAPPLIED;
                     }
                 } else {
                     /* non-augment, non-toplevel */
                     parent_path = strndup(dev->target_name, strrchr(dev->target_name, '/') - dev->target_name);
-                    ret = resolve_augment_schema_nodeid(parent_path, NULL, module, (const struct lys_node **)&target);
+                    ret = resolve_schema_nodeid(parent_path, NULL, module, &set, 0, 1);
                     free(parent_path);
-                    if (ret || !target) {
+                    if (ret == -1) {
                         LOGINT;
+                        ly_set_free(set);
                         return;
                     }
+                    target = set->set.s[0];
+                    ly_set_free(set);
+
                     lys_node_addchild(target, NULL, dev->orig_node);
                 }
             } else {
@@ -4220,11 +4172,14 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module,
             dev->orig_node = NULL;
         } else {
             /* adding not-supported deviation */
-            ret = resolve_augment_schema_nodeid(dev->target_name, NULL, module, (const struct lys_node **)&target);
-            if (ret || !target) {
+            ret = resolve_schema_nodeid(dev->target_name, NULL, module, &set, 0, 1);
+            if (ret == -1) {
                 LOGINT;
+                ly_set_free(set);
                 return;
             }
+            target = set->set.s[0];
+            ly_set_free(set);
 
             /* unlink and store the original node */
             parent = target->parent;
@@ -4238,11 +4193,14 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module,
             dev->orig_node = target;
         }
     } else {
-        ret = resolve_augment_schema_nodeid(dev->target_name, NULL, module, (const struct lys_node **)&target);
-        if (ret || !target) {
+        ret = resolve_schema_nodeid(dev->target_name, NULL, module, &set, 0, 1);
+        if (ret == -1) {
             LOGINT;
+            ly_set_free(set);
             return;
         }
+        target = set->set.s[0];
+        ly_set_free(set);
 
         lys_node_switch(target, dev->orig_node);
         dev->orig_node = target;
@@ -4630,13 +4588,66 @@ lys_path(const struct lys_node *node)
 
     /* build the path */
     buf[index] = '\0';
-    ly_vlog_build_path_reverse(LY_VLOG_LYS, node, buf, &index, 0);
+    ly_vlog_build_path_reverse(LY_VLOG_LYS, node, buf, &index);
     result = strdup(&buf[index]);
     if (!result) {
         LOGMEM;
         /* pass through to cleanup */
     }
 
+    /* restore the shared internal buffer */
+    if (buf_backup) {
+        strcpy(buf, buf_backup);
+        free(buf_backup);
+    }
+    ly_buf_used--;
+
+    return result;
+}
+
+API char *
+lys_data_path(const struct lys_node *node)
+{
+    char *buf_backup = NULL, *buf = ly_buf(), *result = NULL;
+    int i, used;
+    struct ly_set *set;
+    const struct lys_module *prev_mod;
+
+    if (!node) {
+        LOGERR(LY_EINVAL, "%s: NULL node parameter", __func__);
+        return NULL;
+    }
+
+    /* backup the shared internal buffer */
+    if (ly_buf_used && buf[0]) {
+        buf_backup = strndup(buf, LY_BUF_SIZE - 1);
+    }
+    ly_buf_used++;
+
+    set = ly_set_new();
+    LY_CHECK_ERR_GOTO(!set, LOGMEM, error);
+
+    while (node) {
+        ly_set_add(set, (void *)node, 0);
+        do {
+            node = lys_parent(node);
+        } while (node && (node->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE | LYS_INPUT | LYS_OUTPUT)));
+    }
+
+    prev_mod = NULL;
+    used = 0;
+    for (i = set->number - 1; i > -1; --i) {
+        node = set->set.s[i];
+        used += sprintf(buf + used, "/%s%s%s", (lys_node_module(node) == prev_mod ? "" : lys_node_module(node)->name),
+                        (lys_node_module(node) == prev_mod ? "" : ":"), node->name);
+        prev_mod = lys_node_module(node);
+    }
+
+    result = strdup(buf);
+    LY_CHECK_ERR_GOTO(!result, LOGMEM, error);
+
+error:
+    ly_set_free(set);
     /* restore the shared internal buffer */
     if (buf_backup) {
         strcpy(buf, buf_backup);
@@ -4698,6 +4709,24 @@ lys_getnext_target_aug(struct lys_node_augment *last, const struct lys_module *m
     }
 
     return NULL;
+}
+
+API struct ly_set *
+lys_find_path(const struct lys_module *cur_module, const struct lys_node *cur_node, const char *path)
+{
+    struct ly_set *ret;
+    int rc;
+
+    if ((!cur_module && !cur_node) || !path) {
+        return NULL;
+    }
+
+    rc = resolve_schema_nodeid(path, cur_node, cur_module, &ret, 1, 1);
+    if (rc == -1) {
+        return NULL;
+    }
+
+    return ret;
 }
 
 static void

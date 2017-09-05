@@ -27,6 +27,16 @@
 #  define UNUSED(x) UNUSED_ ## x
 #endif
 
+#if __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
+# define THREAD_LOCAL _Thread_local
+#elif defined __GNUC__ || \
+      defined __SUNPRO_C || \
+      defined __xlC__
+# define THREAD_LOCAL __thread
+#else
+# error "Cannot define THREAD_LOCAL"
+#endif
+
 #ifndef __WORDSIZE
 #  if defined __x86_64__ && !defined __ILP32__
 #   define __WORDSIZE 64
@@ -67,28 +77,21 @@ char *get_current_dir_name(void);
 
 #define LY_BUF_SIZE 1024
 #define LY_APPTAG_LEN 128
-struct ly_err_item {
-    LY_ERR no;
-    LY_VECODE code;
-    char *msg;
-    char *path;
-    struct ly_err_item *next;
-};
 struct ly_err {
     LY_ERR no;
     LY_VECODE code;
     uint8_t vlog_hide;
     uint8_t buf_used;
     uint16_t path_index;
-    struct ly_err_item *errlist; /* list of stored errors */
     char msg[LY_BUF_SIZE];
     char path[LY_BUF_SIZE];
     char apptag[LY_APPTAG_LEN];
     char buf[LY_BUF_SIZE];
 };
-struct ly_err *ly_err_location(void);
-void ly_err_clean(int with_errno);
-void ly_err_repeat(void);
+void ly_err_free(void *ptr);
+void ly_err_clean(struct ly_ctx *ctx, int with_errno);
+void ly_err_repeat(struct ly_ctx *ctx);
+extern THREAD_LOCAL struct ly_err ly_err_main;
 
 /**
  * @brief libyang internal thread-specific buffer of LY_BUF_SIZE size
@@ -99,9 +102,9 @@ void ly_err_repeat(void);
  * possible to duplicate the buffer content and write string back to
  * the buffer when leaving.
  */
-uint8_t *ly_buf_used_location(void);
 char *ly_buf(void);
-#define ly_buf_used (*ly_buf_used_location())
+
+#define ly_buf_used (ly_err_main.buf_used)
 
 /*
  * logger
@@ -138,6 +141,8 @@ void ly_log(LY_LOG_LEVEL level, const char *format, ...);
 void ly_log_dbg(LY_LOG_DBG_GROUP group, const char *format, ...);
 
 #endif
+
+#define ly_vlog_hidden (ly_err_main.vlog_hide)
 
 #define LOGMEM LOGERR(LY_EMEM, "Memory allocation failed (%s()).", __func__)
 
@@ -257,7 +262,6 @@ enum LY_VLOG_ELEM {
  */
 void ly_vlog_hide(uint8_t hide);
 
-uint8_t *ly_vlog_hide_location(void);
 void ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...);
 #define LOGVAL(code, elem_type, elem, args...)                      \
     ly_vlog(code, elem_type, elem, ##args);
@@ -265,7 +269,7 @@ void ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...);
 #define LOGPATH(elem_type, elem)                                    \
     ly_vlog(LYE_PATH, elem_type, elem);
 
-void ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *path, uint16_t *index, int prefix_all);
+void ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *path, uint16_t *index);
 
 /*
  * - if \p module specified, it searches for submodules, they can be loaded only from a file or via module callback,
@@ -318,6 +322,7 @@ const char *transform_module_name2import_prefix(const struct lys_module *module,
  *
  * @param[in] module Module with imports to use.
  * @param[in] expr JSON expression.
+ * @param[in] inst_id Whether to add prefixes to all node names (XML instance-identifier).
  * @param[out] prefixes Array of pointers to prefixes. After use free them with free(*prefixes).
  * Can be NULL.
  * @param[out] namespaces Array of pointers to full namespaces. After use free them with
@@ -327,8 +332,8 @@ const char *transform_module_name2import_prefix(const struct lys_module *module,
  *
  * @return Transformed XML expression in the dictionary, NULL on error.
  */
-const char *transform_json2xml(const struct lys_module *module, const char *expr, const char ***prefixes, const char ***namespaces,
-                               uint32_t *ns_count);
+const char *transform_json2xml(const struct lys_module *module, const char *expr, int inst_id, const char ***prefixes,
+                               const char ***namespaces, uint32_t *ns_count);
 
 /**
  * @brief Transform expression from JSON format to schema format.
@@ -349,12 +354,14 @@ const char *transform_json2schema(const struct lys_module *module, const char *e
  * @param[in] ctx libyang context to use.
  * @param[in] expr XML expression.
  * @param[in] xml XML element with the expression.
+ * @param[in] inst_id Whether all the node names must have a prefix (XML instance-identifier).
  * @param[in] use_ctx_data_clb Whether to use data_clb in \p ctx if an unknown module namespace is found.
  * @param[in] log Whether to log errors or not.
  *
  * @return Transformed JSON expression in the dictionary, NULL on error.
  */
-const char *transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml, int use_ctx_data_clb, int log);
+const char *transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml, int inst_id,
+                               int use_ctx_data_clb, int log);
 
 /**
  * @brief Transform expression from the schema format (prefixes of imports) to
@@ -372,6 +379,12 @@ const char *transform_schema2json(const struct lys_module *module, const char *e
  *        are not valid XPath expressions.
  */
 const char *transform_iffeat_schema2json(const struct lys_module *module, const char *expr);
+
+/**
+ * @brief Transform an XPath expression in JSON node naming conventions into
+ *        standard YANG XPath.
+ */
+char *transform_json2xpath(const struct lys_module *cur_module, const char *expr);
 
 /**
  * @brief Get a new node (non-validated) validity value.

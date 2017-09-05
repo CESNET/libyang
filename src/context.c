@@ -13,6 +13,7 @@
  */
 
 #define _GNU_SOURCE
+#include <pthread.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
@@ -59,6 +60,7 @@ static struct internal_modules_s {
     {"yang", "2017-02-20", (const char*)yang_2017_02_20_yin, 1, LYS_IN_YIN},
     {"ietf-inet-types", "2013-07-15", (const char*)ietf_inet_types_2013_07_15_yin, 0, LYS_IN_YIN},
     {"ietf-yang-types", "2013-07-15", (const char*)ietf_yang_types_2013_07_15_yin, 0, LYS_IN_YIN},
+    /* ietf-yang-library is expected at (LY_INTERNAL_MODULE_COUNT - 1) position! */
     {"ietf-yang-library", "2016-06-21", (const char*)ietf_yang_library_2016_06_21_yin, 1, LYS_IN_YIN}
 };
 
@@ -78,6 +80,9 @@ ly_ctx_new(const char *search_dir, int options)
 
     /* plugins */
     lyext_load_plugins();
+
+    /* initialize thread-specific key */
+    while ((i = pthread_key_create(&ctx->errlist_key, ly_err_free)) == EAGAIN);
 
     /* models list */
     ctx->models.list = calloc(16, sizeof *ctx->models.list);
@@ -265,7 +270,7 @@ ly_ctx_unset_trusted(struct ly_ctx *ctx)
 API void
 ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
 {
-    char *cwd = NULL, *new;
+    char *cwd = NULL, *new = NULL;
     int index = 0;
     void *r;
 
@@ -291,7 +296,6 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
                 /* check for duplicities */
                 if (!strcmp(new, ctx->models.search_paths[index])) {
                     /* path is already present */
-                    free(new);
                     goto success;
                 }
             }
@@ -300,6 +304,7 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
             ctx->models.search_paths = r;
         }
         ctx->models.search_paths[index] = new;
+        new = NULL;
         ctx->models.search_paths[index + 1] = NULL;
 
 success:
@@ -311,6 +316,7 @@ success:
 
 cleanup:
     free(cwd);
+    free(new);
 }
 
 API const char * const *
@@ -371,15 +377,16 @@ ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_n
     }
     free(ctx->models.list);
 
+    /* clean the error list */
+    ly_err_clean(ctx, 0);
+    pthread_key_delete(ctx->errlist_key);
+
     /* dictionary */
     lydict_clean(&ctx->dict);
 
     /* plugins - will be removed only if this is the last context */
     ext_plugins_ref--;
     lyext_clean_plugins();
-
-    /* clean the error list */
-    ly_err_clean(0);
 
     free(ctx);
 }
@@ -1537,7 +1544,7 @@ ly_ctx_info(struct ly_ctx *ctx)
 }
 
 API const struct lys_node *
-ly_ctx_get_node(struct ly_ctx *ctx, const struct lys_node *start, const char *nodeid)
+ly_ctx_get_node(struct ly_ctx *ctx, const struct lys_node *start, const char *nodeid, int output)
 {
     const struct lys_node *node;
 
@@ -1547,7 +1554,7 @@ ly_ctx_get_node(struct ly_ctx *ctx, const struct lys_node *start, const char *no
     }
 
     /* sets error and everything */
-    node = resolve_json_nodeid(nodeid, ctx, start);
+    node = resolve_json_nodeid(nodeid, ctx, start, output);
 
     return node;
 }

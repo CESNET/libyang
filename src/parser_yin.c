@@ -2040,7 +2040,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     struct lys_node *node = NULL, *parent, *dev_target = NULL;
     struct lys_node_choice *choice = NULL;
     struct lys_node_leaf *leaf = NULL;
-    struct ly_set *dflt_check = ly_set_new();
+    struct ly_set *dflt_check = ly_set_new(), *set;
     struct lys_node_list *list = NULL;
     struct lys_node_leaflist *llist = NULL;
     struct lys_type *t = NULL;
@@ -2059,11 +2059,15 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     }
 
     /* resolve target node */
-    rc = resolve_augment_schema_nodeid(dev->target_name, NULL, module, (const struct lys_node **)&dev_target);
-    if (rc || !dev_target) {
+    rc = resolve_schema_nodeid(dev->target_name, NULL, module, &set, 0, 1);
+    if (rc == -1) {
         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, dev->target_name, yin->name);
+        ly_set_free(set);
         goto error;
     }
+    dev_target = set->set.s[0];
+    ly_set_free(set);
+
     if (dev_target->module == lys_main_module(module)) {
         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, dev->target_name, yin->name);
         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Deviating own module is not allowed.");
@@ -2716,7 +2720,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 }
 
                 /* check XPath dependencies again */
-                if (*trg_must_size && unres_schema_add_node(module, unres, dev_target, UNRES_XPATH, NULL)) {
+                if (*trg_must_size && (unres_schema_add_node(module, unres, dev_target, UNRES_XPATH, NULL) == -1)) {
                     goto error;
                 }
             } else if (!strcmp(child->name, "unique")) {

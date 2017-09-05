@@ -38,6 +38,8 @@
 
 #define LYP_URANGE_LEN 19
 
+THREAD_LOCAL struct ly_parser ly_parser_data;
+
 static char *lyp_ublock2urange[][2] = {
     {"BasicLatin", "[\\x{0000}-\\x{007F}]"},
     {"Latin-1Supplement", "[\\x{0080}-\\x{00FF}]"},
@@ -217,19 +219,32 @@ lyp_is_rpc_action(struct lys_node *node)
 }
 
 int
-lyp_check_options(int options)
+lyp_data_check_options(int options, const char *func)
 {
     int x = options & LYD_OPT_TYPEMASK;
 
     /* LYD_OPT_NOAUTODEL can be used only with LYD_OPT_DATA or LYD_OPT_CONFIG */
     if (options & LYD_OPT_NOAUTODEL) {
-        if (x != LYD_OPT_DATA && x != LYD_OPT_CONFIG) {
+        if ((x == LYD_OPT_EDIT) || (x == LYD_OPT_NOTIF_FILTER)) {
+            LOGERR(LY_EINVAL, "%s: Invalid options 0x%x (LYD_OPT_DATA_NOAUTODEL can be used only with LYD_OPT_DATA or LYD_OPT_CONFIG)", func, options);
+            return 1;
+        }
+    }
+
+    if (options & (LYD_OPT_DATA_ADD_YANGLIB | LYD_OPT_DATA_NO_YANGLIB)) {
+        if (x != LYD_OPT_DATA) {
+            LOGERR(LY_EINVAL, "%s: Invalid options 0x%x (LYD_OPT_DATA_*_YANGLIB can be used only with LYD_OPT_DATA)", func, options);
             return 1;
         }
     }
 
     /* "is power of 2" algorithm, with 0 exception */
-    return x ? !(x && !(x & (x - 1))) : 0;
+    if (x && !(x && !(x & (x - 1)))) {
+        LOGERR(LY_EINVAL, "%s: Invalid options 0x%x (multiple data type flags set).", func, options);
+        return 1;
+    }
+
+    return 0;
 }
 
 void *
@@ -764,44 +779,39 @@ static int
 parse_uint(const char *val_str, uint64_t max, int base, uint64_t *ret, struct lyd_node *node)
 {
     char *strptr;
+    uint64_t u;
 
     if (!val_str || !val_str[0]) {
-        if (node) {
-            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, "", node->schema->name);
-        } else {
-            ly_errno = LY_EVALID;
-            ly_vecode = LYVE_INVAL;
-        }
-        return EXIT_FAILURE;
+        goto error;
     }
 
     errno = 0;
     strptr = NULL;
-    *ret = strtoull(val_str, &strptr, base);
-    if (errno || (*ret > max)) {
-        if (node) {
-            LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, val_str, node->schema->name);
-        } else {
-            ly_errno = LY_EVALID;
-            ly_vecode = LYVE_INVAL;
-        }
-        return EXIT_FAILURE;
+    u = strtoull(val_str, &strptr, base);
+    if (errno || (u > max)) {
+        goto error;
     } else if (strptr && *strptr) {
         while (isspace(*strptr)) {
             ++strptr;
         }
         if (*strptr) {
-            if (node) {
-                LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, val_str, node->schema->name);
-            } else {
-                ly_errno = LY_EVALID;
-                ly_vecode = LYVE_INVAL;
-            }
-            return EXIT_FAILURE;
+            goto error;
         }
+    } else if (u != 0 && val_str[0] == '-') {
+        goto error;
     }
 
+    *ret = u;
     return EXIT_SUCCESS;
+
+error:
+    if (node) {
+        LOGVAL(LYE_INVAL, LY_VLOG_LYD, node, val_str ? val_str : "", node->schema->name);
+    } else {
+        ly_errno = LY_EVALID;
+        ly_vecode = LYVE_INVAL;
+    }
+    return EXIT_FAILURE;
 }
 
 /* logs directly
@@ -1299,11 +1309,13 @@ make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, vo
         c = *((uint8_t *)data2);
         if (num) {
             count = sprintf(buf, "%"PRId64" ", num);
-            if ((count - 1) <= c) {
+            if ( (num > 0 && (count - 1) <= c)
+                 || (count - 2) <= c ) {
                 /* we have 0. value, print the value with the leading zeros
                  * (one for 0. and also keep the correct with of num according
-                 * to fraction-digits value) */
-                count = sprintf(buf, "0%0*"PRId64" ", c, num);
+                 * to fraction-digits value)
+                 * for (num<0) - extra character for '-' sign */
+                count = sprintf(buf, "%0*"PRId64" ", (num > 0) ? (c + 1) : (c + 2), num);
             }
             for (i = c, j = 1; i > 0 ; i--) {
                 if (j && i > 1 && buf[count - 2] == '0') {
@@ -1416,8 +1428,8 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
     struct lys_type *ret = NULL, *t;
     int c, i, j, len, found = 0, hidden;
     int64_t num;
-    uint64_t unum;
-    const char *ptr, *ptr2, *value = *value_, *itemname;
+    uint64_t unum, uind, u;
+    const char *ptr, *value = *value_, *itemname;
     struct lys_type_bit **bits = NULL;
     struct lys_ident *ident;
     struct lys_module *mod;
@@ -1452,15 +1464,39 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
     case LY_TYPE_BINARY:
         /* get number of octets for length validation */
         unum = 0;
+        ptr = NULL;
         if (value) {
-            ptr = value;
-            ptr2 = strchr(value, '\n');
-            while (ptr2) {
-                unum += ptr2 - ptr;
-                ptr = ptr2 + 1;
-                ptr2 = strchr(ptr, '\n');
+            /* silently skip leading/trailing whitespaces */
+            for (uind = 0; isspace(value[uind]); ++uind);
+            ptr = &value[uind];
+            u = strlen(ptr);
+            while(u && isspace(ptr[u - 1])) {
+                --u;
             }
-            unum += strlen(ptr);
+            unum = u;
+            for (uind = 0; uind < u; ++uind) {
+                if (ptr[uind] == '\n') {
+                    unum--;
+                } else if ((ptr[uind] < '/' && ptr[uind] != '+') ||
+                    (ptr[uind] > '9' && ptr[uind] < 'A') ||
+                    (ptr[uind] > 'Z' && ptr[uind] < 'a') || ptr[uind] > 'z') {
+                    if (ptr[uind] == '=') {
+                        /* padding */
+                        if (uind == u - 2 && ptr[uind + 1] == '=') {
+                            found = 2;
+                            uind++;
+                        } else if (uind == u - 1) {
+                            found = 1;
+                        }
+                    }
+                    if (!found) {
+                        /* error */
+                        LOGVAL(LYE_INCHAR, LY_VLOG_LYD, contextnode, ptr[uind], &ptr[uind]);
+                        LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Invalid Base64 character.");
+                        goto cleanup;
+                    }
+                }
+            }
         }
 
         if (unum & 3) {
@@ -1469,18 +1505,18 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Base64 encoded value length must be divisible by 4.");
             goto cleanup;
         }
-        len = (unum / 4) * 3;
-        /* check padding */
-        if (unum) {
-            if (ptr[strlen(ptr) - 1] == '=') {
-                len--;
-            }
-            if (ptr[strlen(ptr) - 2] == '=') {
-                len--;
-            }
-        }
+
+        /* length of the encoded string */
+        len = ((unum / 4) * 3) - found;
         if (validate_length_range(0, len, 0, 0, 0, type, value, contextnode)) {
             goto cleanup;
+        }
+
+        if (value && (ptr != value || ptr[u] != '\0')) {
+            /* update the changed value */
+            ptr = lydict_insert(type->parent->module->ctx, ptr, u);
+            lydict_remove(type->parent->module->ctx, *value_);
+            *value_ = ptr;
         }
 
         if (store) {
@@ -1518,6 +1554,10 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             /* skip leading whitespaces */
             while (isspace(value[c])) {
                 c++;
+            }
+            if (!value[c]) {
+                /* trailing white spaces */
+                break;
             }
 
             /* get the length of the bit identifier */
@@ -1674,7 +1714,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         if (xml) {
             /* first, convert value into the json format */
-            value = transform_xml2json(type->parent->module->ctx, value, xml, 0, 0);
+            value = transform_xml2json(type->parent->module->ctx, value, xml, 0, 0, 0);
             if (!value) {
                 /* invalid identityref format */
                 LOGVAL(LYE_INVAL, LY_VLOG_LYD, contextnode, *value_, itemname);
@@ -1690,7 +1730,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             }
         } else if (dflt) {
             /* turn logging off */
-            hidden = *ly_vlog_hide_location();
+            hidden = ly_vlog_hidden;
             ly_vlog_hide(1);
 
             /* the value actually uses module's prefixes instead of the module names as in JSON format,
@@ -1700,7 +1740,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                 /* invalid identityref format or it was already transformed, so ignore the error here */
                 value = lydict_insert(type->parent->module->ctx, *value_, 0);
                 /* erase error information */
-                ly_err_clean(1);
+                ly_err_clean(ly_parser_data.ctx, 1);
             }
             /* turn logging back on */
             if (!hidden) {
@@ -1741,7 +1781,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         if (xml) {
             /* first, convert value into the json format */
-            value = transform_xml2json(type->parent->module->ctx, value, xml, 1, 0);
+            value = transform_xml2json(type->parent->module->ctx, value, xml, 1, 1, 0);
             if (!value) {
                 /* invalid instance-identifier format */
                 LOGVAL(LYE_INVAL, LY_VLOG_LYD, contextnode, *value_, itemname);
@@ -1749,7 +1789,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             }
         } else if (dflt) {
             /* turn logging off */
-            hidden = *ly_vlog_hide_location();
+            hidden = ly_vlog_hidden;
             ly_vlog_hide(1);
 
             /* the value actually uses module's prefixes instead of the module names as in JSON format,
@@ -1759,7 +1799,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                 /* invalid identityref format or it was already transformed, so ignore the error here */
                 value = *value_;
                 /* erase error information */
-                ly_err_clean(1);
+                ly_err_clean(ly_parser_data.ctx, 1);
             } else if (value == *value_) {
                 /* we have actually created the same expression (prefixes are the same as the module names)
                  * so we have just increased dictionary's refcount - fix it */
@@ -1961,11 +2001,10 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
              * the type without resolving it -> we return the union type (resolve it with resolve_union()) */
             if (xml) {
                 /* in case it should resolve into a instance-identifier, we can only do the JSON conversion here */
-                val->string = transform_xml2json(type->parent->module->ctx, value, xml, 1, 0);
+                val->string = transform_xml2json(type->parent->module->ctx, value, xml, 1, 1, 0);
                 if (!val->string) {
-                    /* invalid instance-identifier format */
-                    LOGVAL(LYE_INVAL, LY_VLOG_LYD, contextnode, *value_, itemname);
-                    goto cleanup;
+                    /* invalid instance-identifier format, likely some other type */
+                    val->string = lydict_insert(type->parent->module->ctx, value, 0);
                 }
             }
             break;
@@ -1975,7 +2014,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         found = 0;
 
         /* turn logging off, we are going to try to validate the value with all the types in order */
-        hidden = *ly_vlog_hide_location();
+        hidden = ly_vlog_hidden;
         ly_vlog_hide(1);
 
         while ((t = lyp_get_next_union_type(type, t, &found))) {
@@ -1988,7 +2027,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             }
             /* erase information about errors - they are false or irrelevant
              * and will be replaced by a single error messages */
-            ly_err_clean(1);
+            ly_err_clean(ly_parser_data.ctx, 1);
 
             if (store) {
                 /* erase possible present and invalid value data */
@@ -2893,7 +2932,7 @@ lyp_check_include_missing(struct lys_module *main_module)
 {
     uint8_t i;
 
-    ly_err_clean(1);
+    ly_err_clean(ly_parser_data.ctx, 1);
 
     /* in YANG 1.1, all the submodules must be in the main module, check it even for
      * 1.0 where it will be printed as warning and the include will be added into the main module */
@@ -3452,11 +3491,18 @@ lyp_deviation_apply_ext(struct lys_module *module)
 
     for (i = 0; i < module->deviation_size; i++) {
         target = NULL;
-        resolve_augment_schema_nodeid(module->deviation[i].target_name, NULL, module, (const struct lys_node **)&target);
-        if (!target) {
+        extset = NULL;
+        j = resolve_schema_nodeid(module->deviation[i].target_name, NULL, module, &extset, 0, 0);
+        if (j == -1) {
+            return EXIT_FAILURE;
+        } else if (!extset) {
             /* LY_DEVIATE_NO */
+            ly_set_free(extset);
             continue;
         }
+        target = extset->set.s[0];
+        ly_set_free(extset);
+
         for (j = 0; j < module->deviation[i].deviate_size; j++) {
             dev = &module->deviation[i].deviate[j];
             if (!dev->ext_size) {

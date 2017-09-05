@@ -14,6 +14,7 @@
 
 #define _GNU_SOURCE
 #define _BSD_SOURCE
+#define _DEFAULT_SOURCE
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,9 +22,10 @@
 #include <string.h>
 
 #include "common.h"
+#include "parser.h"
+#include "context.h"
 #include "tree_internal.h"
 
-extern LY_ERR ly_errno_int;
 volatile int8_t ly_log_level = LY_LLERR;
 static void (*ly_log_clb)(LY_LOG_LEVEL level, const char *msg, const char *path);
 static volatile int path_flag = 1;
@@ -67,21 +69,18 @@ static void
 log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *path, va_list args)
 {
     char *msg, *bufdup = NULL;
-    struct ly_err *e = ly_err_location();
     struct ly_err_item *eitem;
 
-    if (&ly_errno == &ly_errno_int) {
-        msg = "Internal logger error";
-    } else if (!format) {
+    if (!format) {
         /* postponed print of path related to the previous error, do not rewrite stored original message */
         msg = "Path is related to the previous error message.";
     } else {
         if (level == LY_LLERR) {
             /* store error message into msg buffer ... */
-            msg = e->msg;
+            msg = ly_err_main.msg;
         } else if (!hide) {
             /* other messages are stored in working string buffer and not available for later access */
-            msg = e->buf;
+            msg = ly_err_main.buf;
             if (ly_buf_used && msg[0]) {
                 bufdup = strndup(msg, LY_BUF_SIZE - 1);
             }
@@ -97,30 +96,34 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
     if (level == LY_LLERR) {
         if (!path) {
             /* erase previous path */
-            e->path_index = LY_BUF_SIZE - 1;
+            ly_err_main.path_index = LY_BUF_SIZE - 1;
         }
 
         /* if the error-app-tag should be set, do it after calling LOGVAL */
-        e->apptag[0] = '\0';
+        ly_err_main.apptag[0] = '\0';
 
         /* store error information into a list */
-        if (!e->errlist) {
-            eitem = e->errlist = malloc(sizeof *eitem);
-        } else {
-            for (eitem = e->errlist; eitem->next; eitem = eitem->next);
-            eitem->next = malloc(sizeof *eitem->next);
-            eitem = eitem->next;
-        }
-        if (eitem) {
-            eitem->no = ly_errno;
-            eitem->code = ly_vecode;
-            eitem->msg = strdup(msg);
-            if (path) {
-                eitem->path = strdup(path);
+        if (ly_parser_data.ctx) {
+            eitem = pthread_getspecific(ly_parser_data.ctx->errlist_key);
+            if (!eitem) {
+                eitem = malloc(sizeof *eitem);
+                pthread_setspecific(ly_parser_data.ctx->errlist_key, eitem);
             } else {
-                eitem->path = NULL;
+                for (; eitem->next; eitem = eitem->next);
+                eitem->next = malloc(sizeof *eitem->next);
+                eitem = eitem->next;
             }
-            eitem->next = NULL;
+            if (eitem) {
+                eitem->no = ly_errno;
+                eitem->code = ly_vecode;
+                eitem->msg = strdup(msg);
+                if (path) {
+                    eitem->path = strdup(path);
+                } else {
+                    eitem->path = NULL;
+                }
+                eitem->next = NULL;
+            }
         }
     }
 
@@ -152,7 +155,7 @@ ly_log(LY_LOG_LEVEL level, const char *format, ...)
     va_list ap;
 
     va_start(ap, format);
-    log_vprintf(level, (*ly_vlog_hide_location()), format, NULL, ap);
+    log_vprintf(level, ly_err_main.vlog_hide, format, NULL, ap);
     va_end(ap);
 }
 
@@ -196,7 +199,7 @@ ly_log_dbg(LY_LOG_DBG_GROUP group, const char *format, ...)
     }
 
     va_start(ap, format);
-    log_vprintf(LY_LLDBG, (*ly_vlog_hide_location()), dbg_format, NULL, ap);
+    log_vprintf(LY_LLDBG, ly_err_main.vlog_hide, dbg_format, NULL, ap);
     va_end(ap);
 }
 
@@ -222,7 +225,7 @@ lyext_log(LY_LOG_LEVEL level, const char *plugin, const char *function, const ch
     }
 
     va_start(ap, format);
-    log_vprintf(level, (*ly_vlog_hide_location()), plugin_msg, NULL, ap);
+    log_vprintf(level, ly_err_main.vlog_hide, plugin_msg, NULL, ap);
     va_end(ap);
 
     free(plugin_msg);
@@ -299,7 +302,7 @@ const char *ly_errs[] = {
 /* LYE_NOLEAFREF */    "Leafref \"%s\" of value \"%s\" points to a non-existing leaf.",
 /* LYE_NOMANDCHOICE */ "Mandatory choice \"%s\" missing a case branch.",
 
-/* LYE_XPATH_INSNODE */"Schema node \"%.*s\" not found (%.*s).",
+/* LYE_XPATH_INSNODE */"Schema node \"%.*s\" not found (%.*s) with context node \"%s\".",
 /* LYE_XPATH_INTOK */  "Unexpected XPath token %s (%.15s).",
 /* LYE_XPATH_EOF */    "Unexpected XPath expression end.",
 /* LYE_XPATH_INOP_1 */ "Cannot apply XPath operation %s on %s.",
@@ -421,17 +424,17 @@ static const LY_VECODE ecode2vecode[] = {
 void
 ly_vlog_hide(uint8_t hide)
 {
-    (*ly_vlog_hide_location()) = hide;
+    ly_err_main.vlog_hide = hide;
 }
 
 void
-ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *path, uint16_t *index, int prefix_all)
+ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *path, uint16_t *index)
 {
     int i, j;
     struct lys_node_list *slist;
-    struct lys_node *sparent;
+    struct lys_node *sparent = NULL;
     struct lyd_node *dlist, *diter;
-    struct lys_module *top_module = NULL;
+    const struct lys_module *top_smodule = NULL;
     const char *name, *prefix = NULL, *val_end, *val_start;
     char *str;
     size_t len;
@@ -444,14 +447,9 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
             elem = ((struct lyxml_elem *)elem)->parent;
             break;
         case LY_VLOG_LYS:
-            if (!top_module) {
-                /* find and store the top-level node module */
-                if (((struct lys_node *)elem)->nodetype == LYS_EXT) {
-                    top_module = ((struct lys_ext_instance *)elem)->module;
-                } else {
-                    for (sparent = (struct lys_node *)elem; lys_parent(sparent); sparent = lys_parent(sparent));
-                    top_module = lys_node_module(sparent);
-                }
+            if (!top_smodule) {
+                /* remember the top module, it will act as the current module */
+                top_smodule = lys_node_module((struct lys_node *)elem);
             }
 
             if (((struct lys_node *)elem)->nodetype & (LYS_AUGMENT | LYS_GROUPING)) {
@@ -474,7 +472,7 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
                 name = ((struct lys_node *)elem)->name;
             }
 
-            if (prefix_all || !lys_parent((struct lys_node *)elem) || (lys_node_module((struct lys_node *)elem) != top_module)) {
+            if (lys_node_module((struct lys_node *)elem) != top_smodule) {
                 prefix = lys_node_module((struct lys_node *)elem)->name;
             } else {
                 prefix = NULL;
@@ -496,14 +494,9 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
             } while (elem && (((struct lys_node *)elem)->nodetype == LYS_USES));
             break;
         case LY_VLOG_LYD:
-            if (!top_module) {
-                /* find and store the top-level node module */
-                for (diter = (struct lyd_node *)elem; diter->parent; diter = diter->parent);
-                top_module = lyd_node_module(diter);
-            }
-
             name = ((struct lyd_node *)elem)->schema->name;
-            if (prefix_all || !((struct lyd_node *)elem)->parent || (lyd_node_module((struct lyd_node *)elem) != top_module)) {
+            if (!((struct lyd_node *)elem)->parent ||
+                    lyd_node_module((struct lyd_node *)elem) != lyd_node_module(((struct lyd_node *)elem)->parent)) {
                 prefix = lyd_node_module((struct lyd_node *)elem)->name;
             } else {
                 prefix = NULL;
@@ -540,7 +533,7 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
                             len = strlen(diter->schema->name);
                             (*index) -= len;
                             memcpy(&path[(*index)], diter->schema->name, len);
-                            if (prefix_all || (lyd_node_module(diter) != top_module)) {
+                            if (lyd_node_module(dlist) != lyd_node_module(diter)) {
                                 path[--(*index)] = ':';
                                 len = strlen(lyd_node_module(diter)->name);
                                 (*index) -= len;
@@ -658,7 +651,7 @@ ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
             /* top-level */
             path[--(*index)] = '/';
         } else {
-            ly_vlog_build_path_reverse(elem_type, elem, path, index, 0);
+            ly_vlog_build_path_reverse(elem_type, elem, path, index);
         }
     } else if (elem_type == LY_VLOG_NONE) {
         /* erase path, the rest will be erased by log_vprintf() since it will get NULL path parameter */
@@ -670,13 +663,13 @@ log:
     switch (code) {
     case LYE_SPEC:
         fmt = va_arg(ap, char *);
-        log_vprintf(LY_LLERR, (*ly_vlog_hide_location()), fmt, index && path[(*index)] ? &path[(*index)] : NULL, ap);
+        log_vprintf(LY_LLERR, ly_err_main.vlog_hide, fmt, index && path[(*index)] ? &path[(*index)] : NULL, ap);
         break;
     case LYE_PATH:
-        log_vprintf(LY_LLERR, (*ly_vlog_hide_location()), NULL, &path[(*index)], ap);
+        log_vprintf(LY_LLERR, ly_err_main.vlog_hide, NULL, &path[(*index)], ap);
         break;
     default:
-        log_vprintf(LY_LLERR, (*ly_vlog_hide_location()), ly_errs[code],
+        log_vprintf(LY_LLERR, ly_err_main.vlog_hide, ly_errs[code],
                     index && path[(*index)] ? &path[(*index)] : NULL, ap);
         break;
     }
@@ -684,12 +677,12 @@ log:
 }
 
 void
-ly_err_repeat(void)
+ly_err_repeat(struct ly_ctx *ctx)
 {
     struct ly_err_item *i;
 
-    if ((ly_log_level >= LY_LLERR) && !*ly_vlog_hide_location()) {
-        for (i = ly_err_location()->errlist; i; i = i->next) {
+    if ((ly_log_level >= LY_LLERR) && !ly_err_main.vlog_hide) {
+        for (i = pthread_getspecific(ctx->errlist_key); i; i = i->next) {
             if (ly_log_clb) {
                 ly_log_clb(LY_LLERR, i->msg, i->path);
             } else {

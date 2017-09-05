@@ -208,7 +208,8 @@ test_parse_print_xml(void **state)
 {
     struct state *st = (*state);
     struct stat s;
-    const struct lys_node *rpc_schema;
+    struct ly_set *set;
+    const struct lys_module *mod;
     int fd;
     const char *data = TESTS_DIR"/data/files/all-data.xml";
     const char *rpc = TESTS_DIR"/data/files/all-rpc.xml";
@@ -270,9 +271,12 @@ test_parse_print_xml(void **state)
     assert_int_equal(read(fd, st->str1, s.st_size), s.st_size);
     st->str1[s.st_size] = '\0';
 
-    rpc_schema = ly_ctx_get_node(st->ctx, NULL, "/all:rpc1");
-    assert_ptr_not_equal(rpc_schema, NULL);
-    assert_int_equal(rpc_schema->nodetype, LYS_RPC);
+    mod = ly_ctx_get_module(st->ctx, "all", NULL);
+    assert_ptr_not_equal(mod, NULL);
+    set = lys_find_path(mod, NULL, "/rpc1");
+    assert_ptr_not_equal(set, NULL);
+    assert_int_equal(set->set.s[0]->nodetype, LYS_RPC);
+    ly_set_free(set);
 
     st->dt = lyd_parse_path(st->ctx, rpcreply, LYD_XML, LYD_OPT_RPCREPLY, st->rpc_act, NULL);
     assert_ptr_not_equal(st->dt, NULL);
@@ -320,9 +324,10 @@ test_parse_print_xml(void **state)
     assert_int_equal(read(fd, st->str1, s.st_size), s.st_size);
     st->str1[s.st_size] = '\0';
 
-    rpc_schema = ly_ctx_get_node(st->ctx, NULL, "/all:cont1/list1/act1");
-    assert_ptr_not_equal(rpc_schema, NULL);
-    assert_int_equal(rpc_schema->nodetype, LYS_ACTION);
+    set = lys_find_path(mod, NULL, "/cont1/list1/act1");
+    assert_ptr_not_equal(set, NULL);
+    assert_int_equal(set->set.s[0]->nodetype, LYS_ACTION);
+    ly_set_free(set);
 
     st->dt = lyd_parse_path(st->ctx, actreply, LYD_XML, LYD_OPT_RPCREPLY, st->rpc_act, NULL);
     assert_ptr_not_equal(st->dt, NULL);
@@ -384,7 +389,8 @@ test_parse_print_json(void **state)
 {
     struct state *st = (*state);
     struct stat s;
-    const struct lys_node *rpc_schema;
+    const struct lys_module *mod;
+    struct ly_set *set;
     int fd;
     const char *data = TESTS_DIR"/data/files/all-data.json";
     const char *rpc = TESTS_DIR"/data/files/all-rpc.json";
@@ -446,9 +452,12 @@ test_parse_print_json(void **state)
     assert_int_equal(read(fd, st->str1, s.st_size), s.st_size);
     st->str1[s.st_size] = '\0';
 
-    rpc_schema = ly_ctx_get_node(st->ctx, NULL, "/all:rpc1");
-    assert_ptr_not_equal(rpc_schema, NULL);
-    assert_int_equal(rpc_schema->nodetype, LYS_RPC);
+    mod = ly_ctx_get_module(st->ctx, "all", NULL);
+    assert_ptr_not_equal(mod, NULL);
+    set = lys_find_path(mod, NULL, "/rpc1");
+    assert_ptr_not_equal(set, NULL);
+    assert_int_equal(set->set.s[0]->nodetype, LYS_RPC);
+    ly_set_free(set);
 
     st->dt = lyd_parse_path(st->ctx, rpcreply, LYD_JSON, LYD_OPT_RPCREPLY, st->rpc_act, NULL);
     assert_ptr_not_equal(st->dt, NULL);
@@ -496,9 +505,10 @@ test_parse_print_json(void **state)
     assert_int_equal(read(fd, st->str1, s.st_size), s.st_size);
     st->str1[s.st_size] = '\0';
 
-    rpc_schema = ly_ctx_get_node(st->ctx, NULL, "/all:cont1/list1/act1");
-    assert_ptr_not_equal(rpc_schema, NULL);
-    assert_int_equal(rpc_schema->nodetype, LYS_ACTION);
+    set = lys_find_path(mod, NULL, "/all:cont1/list1/act1");
+    assert_ptr_not_equal(set, NULL);
+    assert_int_equal(set->set.s[0]->nodetype, LYS_ACTION);
+    ly_set_free(set);
 
     st->dt = lyd_parse_path(st->ctx, actreply, LYD_JSON, LYD_OPT_RPCREPLY, st->rpc_act, NULL);
     assert_ptr_not_equal(st->dt, NULL);

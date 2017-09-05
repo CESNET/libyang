@@ -379,23 +379,13 @@ struct lyd_difflist *lyd_diff(struct lyd_node *first, struct lyd_node *second, i
 /**@} diffoptions */
 
 /**
- * @brief Build path (usable as XPath) of the data node.
+ * @brief Build data path (usable as path, see @ref howtoxpath) of the data node.
  * @param[in] node Data node to be processed. Note that the node should be from a complete data tree, having a subtree
  *            (after using lyd_unlink()) can cause generating invalid paths.
  * @return NULL on error, on success the buffer for the resulting path is allocated and caller is supposed to free it
  * with free().
  */
 char *lyd_path(const struct lyd_node *node);
-
-/**
- * @brief Build path (usable as instance-identified) of the data node with all the nodes fully qualified (having their
- * model as prefix).
- * @param[in] node Data node to be processed. Note that the node should be from a complete data tree, having a subtree
- *            (after using lyd_unlink()) can cause generating invalid paths.
- * @return NULL on error, on success the buffer for the resulting path is allocated and caller is supposed to free it
- * with free().
- */
-char *lyd_qualified_path(const struct lyd_node *node);
 
 /**
  * @defgroup parseroptions Data parser options
@@ -429,7 +419,8 @@ char *lyd_qualified_path(const struct lyd_node *node);
  */
 
 #define LYD_OPT_DATA       0x00 /**< Default type of data - complete datastore content with configuration as well as
-                                     state data. */
+                                     state data. To handle possibly missing (but by default required) ietf-yang-library
+                                     data, use #LYD_OPT_DATA_NO_YANGLIB or #LYD_OPT_DATA_ADD_YANGLIB options. */
 #define LYD_OPT_CONFIG     0x01 /**< A configuration datastore - complete datastore without state data.
                                      Validation modifications:
                                      - status data are not allowed */
@@ -464,7 +455,7 @@ char *lyd_qualified_path(const struct lyd_node *node);
 /* 0x100 reserved, used internally */
 #define LYD_OPT_STRICT     0x0200 /**< Instead of silent ignoring data without schema definition, raise an error. */
 #define LYD_OPT_DESTRUCT   0x0400 /**< Free the provided XML tree during parsing the data. With this option, the
-                                       provided XML tree is affected and all succesfully parsed data are freed.
+                                       provided XML tree is affected and all successfully parsed data are freed.
                                        This option is applicable only to lyd_parse_xml() function. */
 #define LYD_OPT_OBSOLETE   0x0800 /**< Raise an error when an obsolete statement (status set to obsolete) is used. */
 #define LYD_OPT_NOSIBLINGS 0x1000 /**< Parse only a single XML tree from the input. This option applies only to
@@ -479,6 +470,10 @@ char *lyd_qualified_path(const struct lyd_node *node);
                                        constrained subtree. */
 #define LYD_OPT_NOEXTDEPS  0x8000 /**< Allow external dependencies (external leafrefs, instance-identifiers, must,
                                        and when) to not be resolved/satisfied during validation. */
+#define LYD_OPT_DATA_NO_YANGLIB  0x10000 /**< Ignore (possibly) missing ietf-yang-library data. Applicable only with #LYD_OPT_DATA. */
+#define LYD_OPT_DATA_ADD_YANGLIB 0x20000 /**< Add missing ietf-yang-library data into the validated data tree. Applicable
+                                              only with #LYD_OPT_DATA. If some ietf-yang-library data are present, they are
+                                              preserved and option is ignored. */
 
 /**@} parseroptions */
 
@@ -785,13 +780,12 @@ struct lyd_node *lyd_new_output_anydata(struct lyd_node *parent, const struct ly
  * @param[in] data_tree Existing data tree to add to/modify. If creating RPCs/actions, there should only be one
  * RPC/action and either input or output, not both. Can be NULL.
  * @param[in] ctx Context to use. Mandatory if \p data_tree is NULL.
- * @param[in] path Simple absolute data XPath of the new node. It can contain only simple node addressing with optional
- * module names as prefixes. List nodes can have predicates, one for each list key in the correct order and
- * with its value as well or using specific instance position, leaves and leaf-lists can have predicates too that
- * have preference over \p value, see @ref howtoxpath.
+ * @param[in] path Simple data path (see @ref howtoxpath). List nodes can have predicates, one for each list key
+ * in the correct order and with its value as well or using specific instance position, leaves and leaf-lists
+ * can have predicates too that have preference over \p value.
  * @param[in] value Value of the new leaf/lealf-list (const char*). If creating anydata or anyxml, the following
- *            \p value_type parameter is required to be specified correctly. If creating nodes of other types, the
- *            parameter is ignored.
+ * \p value_type parameter is required to be specified correctly. If creating nodes of other types, the
+ * parameter is ignored.
  * @param[in] value_type Type of the provided \p value parameter in case of creating anydata or anyxml node.
  * @param[in] options Bitmask of options flags, see @ref pathoptions.
  * @return First created (or updated with #LYD_PATH_OPT_UPDATE) node,
@@ -1001,20 +995,16 @@ int lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node);
 int lyd_schema_sort(struct lyd_node *sibling, int recursive);
 
 /**
- * @brief Search in the given data for instances of nodes matching the provided XPath expression.
+ * @brief Search in the given data for instances of nodes matching the provided path.
  *
- * The XPath expression is evaluated on data -> skip all non-data nodes (input, output, choice, case).
+ * Learn more about the path format on page @ref howtoxpath.
  *
- * Expr examples:
- *      "/modules-state/module[name = 'ietf-yang-library']/namespace" with context node "ietf-yang-library:modules-state"
- *      "/ietf-netconf:get-config/ietf-netconf:source" with an arbitrary context node (all node names are prefixed)
- *
- * @param[in] ctx_node Context node.
- * @param[in] expr XPath expression filtering the matching nodes.
- * @return Set of found data nodes. If no nodes are matching \p expr or the result
+ * @param[in] ctx_node Path context node.
+ * @param[in] path Data path expression filtering the matching nodes.
+ * @return Set of found data nodes. If no nodes are matching \p path or the result
  * would be a number, a string, or a boolean, the returned set is empty. In case of an error, NULL is returned.
  */
-struct ly_set *lyd_find_xpath(const struct lyd_node *ctx_node, const char *expr);
+struct ly_set *lyd_find_path(const struct lyd_node *ctx_node, const char *path);
 
 /**
  * @brief Search in the given data for instances of the provided schema node.
@@ -1066,6 +1056,10 @@ int lyd_validate(struct lyd_node **node, int options, void *var_arg);
  *
  * Validates the value only using the types' restrictions. Do not check the rest of restrictions dependent on the
  * data tree (must, when statements or uniqueness of the leaf-list item).
+ *
+ * The format of the data must follow rules for the lexical representation of the specific YANG type. Note
+ * that if there are some extensions of the lexical representation for the YANG module (default value), they are
+ * not supported by this function - it strictly follows rules for the lexical representations in data trees.
  *
  * @param[in] node Schema node of the leaf or leaf-list eventually holding the \p value.
  * @param[in] value Value to be checked (NULL is checked as empty string).

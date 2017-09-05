@@ -1892,7 +1892,7 @@ yang_check_deviate_must(struct lys_module *module, struct unres_schema *unres,
         goto error;
     }
     /* check XPath dependencies */
-    if (*trg_must_size && unres_schema_add_node(module, unres, dev_target, UNRES_XPATH, NULL)) {
+    if (*trg_must_size && (unres_schema_add_node(module, unres, dev_target, UNRES_XPATH, NULL) == -1)) {
         goto error;
     }
 
@@ -4338,7 +4338,7 @@ yang_check_deviation(struct lys_module *module, struct unres_schema *unres, stru
     int rc;
     uint i;
     struct lys_node *dev_target = NULL, *parent;
-    struct ly_set *dflt_check = ly_set_new();
+    struct ly_set *dflt_check = ly_set_new(), *set;
     unsigned int u;
     const char *value, *target_name;
     struct lys_node_leaflist *llist;
@@ -4347,12 +4347,15 @@ yang_check_deviation(struct lys_module *module, struct unres_schema *unres, stru
     struct lys_module *mod;
 
     /* resolve target node */
-
-    rc = resolve_augment_schema_nodeid(dev->target_name, NULL, module, (const struct lys_node **)&dev_target);
-    if (rc || !dev_target) {
+    rc = resolve_schema_nodeid(dev->target_name, NULL, module, &set, 0, 1);
+    if (rc == -1) {
         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, dev->target_name, "deviation");
+        ly_set_free(set);
         goto error;
     }
+    dev_target = set->set.s[0];
+    ly_set_free(set);
+
     if (dev_target->module == lys_main_module(module)) {
         LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, dev->target_name, "deviation");
         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Deviating own module is not allowed.");
@@ -4376,7 +4379,14 @@ yang_check_deviation(struct lys_module *module, struct unres_schema *unres, stru
             }
         }
         /* unlink and store the original node */
+        parent = dev_target->parent;
         lys_node_unlink(dev_target);
+        if (parent && parent->nodetype == LYS_AUGMENT) {
+            /* hack for augment, because when the original will be sometime reconnected back, we actually need
+             * to reconnect it to both - the augment and its target (which is deduced from the deviations target
+             * path), so we need to remember the augment as an addition */
+            dev_target->parent = parent;
+        }
         dev->orig_node = dev_target;
     } else {
         /* store a shallow copy of the original node */

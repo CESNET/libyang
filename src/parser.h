@@ -49,6 +49,20 @@ struct lyd_node *lyd_parse_json(struct ly_ctx *ctx, const char *data, int option
 /**@} jsondata */
 
 /**
+ * thread-specific information describing the parser's current context
+ */
+struct ly_parser {
+    struct ly_ctx *ctx;
+/* TODO
+    union {
+        struct lys_node *schema;
+        struct lyd_node *data;
+    } node;
+*/
+};
+extern THREAD_LOCAL struct ly_parser ly_parser_data;
+
+/**
  * internal options values for schema parsers
  */
 #define LYS_PARSE_OPT_CFG_NOINHERIT 0x01 /**< do not inherit config flag */
@@ -119,12 +133,13 @@ int dup_identities_check(const char *id, struct lys_module *module);
 int lyp_is_rpc_action(struct lys_node *node);
 
 /**
- * @brief Check validity of parser options.
+ * @brief Check validity of data parser options.
  *
  * @param options Parser options to be checked.
+ * @param func name of the function where called
  * @return 0 for ok, 1 when multiple data types bits are set, or incompatible options are used together.
  */
-int lyp_check_options(int options);
+int lyp_data_check_options(int options, const char *func);
 
 int lyp_check_identifier(const char *id, enum LY_IDENT type, struct lys_module *module, struct lys_node *parent);
 int lyp_check_date(const char *date);

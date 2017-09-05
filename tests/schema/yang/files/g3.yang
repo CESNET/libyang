@@ -20,7 +20,7 @@ module g3 {
         }
 
         leaf l4 {
-            must "/g2:top/g3:cont1/l1 = 'bb'";
+            must "/g2:top/g3:cont1/g3:l1 = 'bb'";
             type leafref {
                 path "../cont2/l2";
             }
@@ -29,7 +29,7 @@ module g3 {
 
     augment "/g2:top" {
         container cont1 {
-            must "../g3:cont1/l1 != 'aa'";
+            must "../cont1/l1 != 'aa'";
             leaf l1 {
                 type string;
             }
