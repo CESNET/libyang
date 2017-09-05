@@ -1,19 +1,19 @@
-/* A Bison parser, made by GNU Bison 2.7.  */
+/* A Bison parser, made by GNU Bison 3.0.4.  */
 
 /* Bison implementation for Yacc-like parsers in C
-   
-      Copyright (C) 1984, 1989-1990, 2000-2012 Free Software Foundation, Inc.
-   
+
+   Copyright (C) 1984, 1989-1990, 2000-2015 Free Software Foundation, Inc.
+
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
    the Free Software Foundation, either version 3 of the License, or
    (at your option) any later version.
-   
+
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-   
+
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
@@ -26,7 +26,7 @@
    special exception, which will cause the skeleton and the resulting
    Bison output files to be licensed under the GNU General Public
    License without this special exception.
-   
+
    This special exception was added by the Free Software Foundation in
    version 2.2 of Bison.  */
 
@@ -44,7 +44,7 @@
 #define YYBISON 1
 
 /* Bison version.  */
-#define YYBISON_VERSION "2.7"
+#define YYBISON_VERSION "3.0.4"
 
 /* Skeleton name.  */
 #define YYSKELETON_NAME "yacc.c"
@@ -96,11 +96,11 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 
 
 
-# ifndef YY_NULL
+# ifndef YY_NULLPTR
 #  if defined __cplusplus && 201103L <= __cplusplus
-#   define YY_NULL nullptr
+#   define YY_NULLPTR nullptr
 #  else
-#   define YY_NULL 0
+#   define YY_NULLPTR 0
 #  endif
 # endif
 
@@ -116,7 +116,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
    by #include "parser_yang_bis.h".  */
 #ifndef YY_YY_PARSER_YANG_BIS_H_INCLUDED
 # define YY_YY_PARSER_YANG_BIS_H_INCLUDED
-/* Enabling traces.  */
+/* Debug traces.  */
 #ifndef YYDEBUG
 # define YYDEBUG 0
 #endif
@@ -124,118 +124,118 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 extern int yydebug;
 #endif
 
-/* Tokens.  */
+/* Token type.  */
 #ifndef YYTOKENTYPE
 # define YYTOKENTYPE
-   /* Put the tokens into the symbol table, so that GDB and other debuggers
-      know about them.  */
-   enum yytokentype {
-     UNION_KEYWORD = 258,
-     ANYXML_KEYWORD = 259,
-     WHITESPACE = 260,
-     ERROR = 261,
-     EOL = 262,
-     STRING = 263,
-     STRINGS = 264,
-     IDENTIFIER = 265,
-     IDENTIFIERPREFIX = 266,
-     REVISION_DATE = 267,
-     TAB = 268,
-     DOUBLEDOT = 269,
-     URI = 270,
-     INTEGER = 271,
-     NON_NEGATIVE_INTEGER = 272,
-     ZERO = 273,
-     DECIMAL = 274,
-     ARGUMENT_KEYWORD = 275,
-     AUGMENT_KEYWORD = 276,
-     BASE_KEYWORD = 277,
-     BELONGS_TO_KEYWORD = 278,
-     BIT_KEYWORD = 279,
-     CASE_KEYWORD = 280,
-     CHOICE_KEYWORD = 281,
-     CONFIG_KEYWORD = 282,
-     CONTACT_KEYWORD = 283,
-     CONTAINER_KEYWORD = 284,
-     DEFAULT_KEYWORD = 285,
-     DESCRIPTION_KEYWORD = 286,
-     ENUM_KEYWORD = 287,
-     ERROR_APP_TAG_KEYWORD = 288,
-     ERROR_MESSAGE_KEYWORD = 289,
-     EXTENSION_KEYWORD = 290,
-     DEVIATION_KEYWORD = 291,
-     DEVIATE_KEYWORD = 292,
-     FEATURE_KEYWORD = 293,
-     FRACTION_DIGITS_KEYWORD = 294,
-     GROUPING_KEYWORD = 295,
-     IDENTITY_KEYWORD = 296,
-     IF_FEATURE_KEYWORD = 297,
-     IMPORT_KEYWORD = 298,
-     INCLUDE_KEYWORD = 299,
-     INPUT_KEYWORD = 300,
-     KEY_KEYWORD = 301,
-     LEAF_KEYWORD = 302,
-     LEAF_LIST_KEYWORD = 303,
-     LENGTH_KEYWORD = 304,
-     LIST_KEYWORD = 305,
-     MANDATORY_KEYWORD = 306,
-     MAX_ELEMENTS_KEYWORD = 307,
-     MIN_ELEMENTS_KEYWORD = 308,
-     MODULE_KEYWORD = 309,
-     MUST_KEYWORD = 310,
-     NAMESPACE_KEYWORD = 311,
-     NOTIFICATION_KEYWORD = 312,
-     ORDERED_BY_KEYWORD = 313,
-     ORGANIZATION_KEYWORD = 314,
-     OUTPUT_KEYWORD = 315,
-     PATH_KEYWORD = 316,
-     PATTERN_KEYWORD = 317,
-     POSITION_KEYWORD = 318,
-     PREFIX_KEYWORD = 319,
-     PRESENCE_KEYWORD = 320,
-     RANGE_KEYWORD = 321,
-     REFERENCE_KEYWORD = 322,
-     REFINE_KEYWORD = 323,
-     REQUIRE_INSTANCE_KEYWORD = 324,
-     REVISION_KEYWORD = 325,
-     REVISION_DATE_KEYWORD = 326,
-     RPC_KEYWORD = 327,
-     STATUS_KEYWORD = 328,
-     SUBMODULE_KEYWORD = 329,
-     TYPE_KEYWORD = 330,
-     TYPEDEF_KEYWORD = 331,
-     UNIQUE_KEYWORD = 332,
-     UNITS_KEYWORD = 333,
-     USES_KEYWORD = 334,
-     VALUE_KEYWORD = 335,
-     WHEN_KEYWORD = 336,
-     YANG_VERSION_KEYWORD = 337,
-     YIN_ELEMENT_KEYWORD = 338,
-     ADD_KEYWORD = 339,
-     CURRENT_KEYWORD = 340,
-     DELETE_KEYWORD = 341,
-     DEPRECATED_KEYWORD = 342,
-     FALSE_KEYWORD = 343,
-     NOT_SUPPORTED_KEYWORD = 344,
-     OBSOLETE_KEYWORD = 345,
-     REPLACE_KEYWORD = 346,
-     SYSTEM_KEYWORD = 347,
-     TRUE_KEYWORD = 348,
-     UNBOUNDED_KEYWORD = 349,
-     USER_KEYWORD = 350,
-     ACTION_KEYWORD = 351,
-     MODIFIER_KEYWORD = 352,
-     ANYDATA_KEYWORD = 353,
-     NODE = 354,
-     NODE_PRINT = 355,
-     EXTENSION_INSTANCE = 356,
-     SUBMODULE_EXT_KEYWORD = 357
-   };
+  enum yytokentype
+  {
+    UNION_KEYWORD = 258,
+    ANYXML_KEYWORD = 259,
+    WHITESPACE = 260,
+    ERROR = 261,
+    EOL = 262,
+    STRING = 263,
+    STRINGS = 264,
+    IDENTIFIER = 265,
+    IDENTIFIERPREFIX = 266,
+    REVISION_DATE = 267,
+    TAB = 268,
+    DOUBLEDOT = 269,
+    URI = 270,
+    INTEGER = 271,
+    NON_NEGATIVE_INTEGER = 272,
+    ZERO = 273,
+    DECIMAL = 274,
+    ARGUMENT_KEYWORD = 275,
+    AUGMENT_KEYWORD = 276,
+    BASE_KEYWORD = 277,
+    BELONGS_TO_KEYWORD = 278,
+    BIT_KEYWORD = 279,
+    CASE_KEYWORD = 280,
+    CHOICE_KEYWORD = 281,
+    CONFIG_KEYWORD = 282,
+    CONTACT_KEYWORD = 283,
+    CONTAINER_KEYWORD = 284,
+    DEFAULT_KEYWORD = 285,
+    DESCRIPTION_KEYWORD = 286,
+    ENUM_KEYWORD = 287,
+    ERROR_APP_TAG_KEYWORD = 288,
+    ERROR_MESSAGE_KEYWORD = 289,
+    EXTENSION_KEYWORD = 290,
+    DEVIATION_KEYWORD = 291,
+    DEVIATE_KEYWORD = 292,
+    FEATURE_KEYWORD = 293,
+    FRACTION_DIGITS_KEYWORD = 294,
+    GROUPING_KEYWORD = 295,
+    IDENTITY_KEYWORD = 296,
+    IF_FEATURE_KEYWORD = 297,
+    IMPORT_KEYWORD = 298,
+    INCLUDE_KEYWORD = 299,
+    INPUT_KEYWORD = 300,
+    KEY_KEYWORD = 301,
+    LEAF_KEYWORD = 302,
+    LEAF_LIST_KEYWORD = 303,
+    LENGTH_KEYWORD = 304,
+    LIST_KEYWORD = 305,
+    MANDATORY_KEYWORD = 306,
+    MAX_ELEMENTS_KEYWORD = 307,
+    MIN_ELEMENTS_KEYWORD = 308,
+    MODULE_KEYWORD = 309,
+    MUST_KEYWORD = 310,
+    NAMESPACE_KEYWORD = 311,
+    NOTIFICATION_KEYWORD = 312,
+    ORDERED_BY_KEYWORD = 313,
+    ORGANIZATION_KEYWORD = 314,
+    OUTPUT_KEYWORD = 315,
+    PATH_KEYWORD = 316,
+    PATTERN_KEYWORD = 317,
+    POSITION_KEYWORD = 318,
+    PREFIX_KEYWORD = 319,
+    PRESENCE_KEYWORD = 320,
+    RANGE_KEYWORD = 321,
+    REFERENCE_KEYWORD = 322,
+    REFINE_KEYWORD = 323,
+    REQUIRE_INSTANCE_KEYWORD = 324,
+    REVISION_KEYWORD = 325,
+    REVISION_DATE_KEYWORD = 326,
+    RPC_KEYWORD = 327,
+    STATUS_KEYWORD = 328,
+    SUBMODULE_KEYWORD = 329,
+    TYPE_KEYWORD = 330,
+    TYPEDEF_KEYWORD = 331,
+    UNIQUE_KEYWORD = 332,
+    UNITS_KEYWORD = 333,
+    USES_KEYWORD = 334,
+    VALUE_KEYWORD = 335,
+    WHEN_KEYWORD = 336,
+    YANG_VERSION_KEYWORD = 337,
+    YIN_ELEMENT_KEYWORD = 338,
+    ADD_KEYWORD = 339,
+    CURRENT_KEYWORD = 340,
+    DELETE_KEYWORD = 341,
+    DEPRECATED_KEYWORD = 342,
+    FALSE_KEYWORD = 343,
+    NOT_SUPPORTED_KEYWORD = 344,
+    OBSOLETE_KEYWORD = 345,
+    REPLACE_KEYWORD = 346,
+    SYSTEM_KEYWORD = 347,
+    TRUE_KEYWORD = 348,
+    UNBOUNDED_KEYWORD = 349,
+    USER_KEYWORD = 350,
+    ACTION_KEYWORD = 351,
+    MODIFIER_KEYWORD = 352,
+    ANYDATA_KEYWORD = 353,
+    NODE = 354,
+    NODE_PRINT = 355,
+    EXTENSION_INSTANCE = 356,
+    SUBMODULE_EXT_KEYWORD = 357
+  };
 #endif
 
-
+/* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
-typedef union YYSTYPE
+
+union YYSTYPE
 {
 
 
@@ -272,40 +272,30 @@ typedef union YYSTYPE
   } revisions;
 
 
+};
 
-} YYSTYPE;
+typedef union YYSTYPE YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
-# define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1
 #endif
 
+/* Location type.  */
 #if ! defined YYLTYPE && ! defined YYLTYPE_IS_DECLARED
-typedef struct YYLTYPE
+typedef struct YYLTYPE YYLTYPE;
+struct YYLTYPE
 {
   int first_line;
   int first_column;
   int last_line;
   int last_column;
-} YYLTYPE;
-# define yyltype YYLTYPE /* obsolescent; will be withdrawn */
+};
 # define YYLTYPE_IS_DECLARED 1
 # define YYLTYPE_IS_TRIVIAL 1
 #endif
 
 
-#ifdef YYPARSE_PARAM
-#if defined __STDC__ || defined __cplusplus
-int yyparse (void *YYPARSE_PARAM);
-#else
-int yyparse ();
-#endif
-#else /* ! YYPARSE_PARAM */
-#if defined __STDC__ || defined __cplusplus
+
 int yyparse (void *scanner, struct yang_parameter *param);
-#else
-int yyparse ();
-#endif
-#endif /* ! YYPARSE_PARAM */
 
 #endif /* !YY_YY_PARSER_YANG_BIS_H_INCLUDED  */
 
@@ -325,11 +315,8 @@ typedef unsigned char yytype_uint8;
 
 #ifdef YYTYPE_INT8
 typedef YYTYPE_INT8 yytype_int8;
-#elif (defined __STDC__ || defined __C99__FUNC__ \
-     || defined __cplusplus || defined _MSC_VER)
-typedef signed char yytype_int8;
 #else
-typedef short int yytype_int8;
+typedef signed char yytype_int8;
 #endif
 
 #ifdef YYTYPE_UINT16
@@ -349,8 +336,7 @@ typedef short int yytype_int16;
 #  define YYSIZE_T __SIZE_TYPE__
 # elif defined size_t
 #  define YYSIZE_T size_t
-# elif ! defined YYSIZE_T && (defined __STDC__ || defined __C99__FUNC__ \
-     || defined __cplusplus || defined _MSC_VER)
+# elif ! defined YYSIZE_T
 #  include <stddef.h> /* INFRINGES ON USER NAME SPACE */
 #  define YYSIZE_T size_t
 # else
@@ -372,6 +358,33 @@ typedef short int yytype_int16;
 # endif
 #endif
 
+#ifndef YY_ATTRIBUTE
+# if (defined __GNUC__                                               \
+      && (2 < __GNUC__ || (__GNUC__ == 2 && 96 <= __GNUC_MINOR__)))  \
+     || defined __SUNPRO_C && 0x5110 <= __SUNPRO_C
+#  define YY_ATTRIBUTE(Spec) __attribute__(Spec)
+# else
+#  define YY_ATTRIBUTE(Spec) /* empty */
+# endif
+#endif
+
+#ifndef YY_ATTRIBUTE_PURE
+# define YY_ATTRIBUTE_PURE   YY_ATTRIBUTE ((__pure__))
+#endif
+
+#ifndef YY_ATTRIBUTE_UNUSED
+# define YY_ATTRIBUTE_UNUSED YY_ATTRIBUTE ((__unused__))
+#endif
+
+#if !defined _Noreturn \
+     && (!defined __STDC_VERSION__ || __STDC_VERSION__ < 201112)
+# if defined _MSC_VER && 1200 <= _MSC_VER
+#  define _Noreturn __declspec (noreturn)
+# else
+#  define _Noreturn YY_ATTRIBUTE ((__noreturn__))
+# endif
+#endif
+
 /* Suppress unused-variable warnings by "using" E.  */
 #if ! defined lint || defined __GNUC__
 # define YYUSE(E) ((void) (E))
@@ -379,23 +392,25 @@ typedef short int yytype_int16;
 # define YYUSE(E) /* empty */
 #endif
 
-/* Identity function, used to suppress warnings about constant conditions.  */
-#ifndef lint
-# define YYID(N) (N)
+#if defined __GNUC__ && 407 <= __GNUC__ * 100 + __GNUC_MINOR__
+/* Suppress an incorrect diagnostic about yylval being uninitialized.  */
+# define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN \
+    _Pragma ("GCC diagnostic push") \
+    _Pragma ("GCC diagnostic ignored \"-Wuninitialized\"")\
+    _Pragma ("GCC diagnostic ignored \"-Wmaybe-uninitialized\"")
+# define YY_IGNORE_MAYBE_UNINITIALIZED_END \
+    _Pragma ("GCC diagnostic pop")
 #else
-#if (defined __STDC__ || defined __C99__FUNC__ \
-     || defined __cplusplus || defined _MSC_VER)
-static int
-YYID (int yyi)
-#else
-static int
-YYID (yyi)
-    int yyi;
+# define YY_INITIAL_VALUE(Value) Value
 #endif
-{
-  return yyi;
-}
+#ifndef YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
+# define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
+# define YY_IGNORE_MAYBE_UNINITIALIZED_END
 #endif
+#ifndef YY_INITIAL_VALUE
+# define YY_INITIAL_VALUE(Value) /* Nothing. */
+#endif
+
 
 #if ! defined yyoverflow || YYERROR_VERBOSE
 
@@ -414,8 +429,7 @@ YYID (yyi)
 #    define alloca _alloca
 #   else
 #    define YYSTACK_ALLOC alloca
-#    if ! defined _ALLOCA_H && ! defined EXIT_SUCCESS && (defined __STDC__ || defined __C99__FUNC__ \
-     || defined __cplusplus || defined _MSC_VER)
+#    if ! defined _ALLOCA_H && ! defined EXIT_SUCCESS
 #     include <stdlib.h> /* INFRINGES ON USER NAME SPACE */
       /* Use EXIT_SUCCESS as a witness for stdlib.h.  */
 #     ifndef EXIT_SUCCESS
@@ -427,8 +441,8 @@ YYID (yyi)
 # endif
 
 # ifdef YYSTACK_ALLOC
-   /* Pacify GCC's `empty if-body' warning.  */
-#  define YYSTACK_FREE(Ptr) do { /* empty */; } while (YYID (0))
+   /* Pacify GCC's 'empty if-body' warning.  */
+#  define YYSTACK_FREE(Ptr) do { /* empty */; } while (0)
 #  ifndef YYSTACK_ALLOC_MAXIMUM
     /* The OS might guarantee only one guard page at the bottom of the stack,
        and a page size can be as small as 4096 bytes.  So we cannot safely
@@ -444,7 +458,7 @@ YYID (yyi)
 #  endif
 #  if (defined __cplusplus && ! defined EXIT_SUCCESS \
        && ! ((defined YYMALLOC || defined malloc) \
-	     && (defined YYFREE || defined free)))
+             && (defined YYFREE || defined free)))
 #   include <stdlib.h> /* INFRINGES ON USER NAME SPACE */
 #   ifndef EXIT_SUCCESS
 #    define EXIT_SUCCESS 0
@@ -452,15 +466,13 @@ YYID (yyi)
 #  endif
 #  ifndef YYMALLOC
 #   define YYMALLOC malloc
-#   if ! defined malloc && ! defined EXIT_SUCCESS && (defined __STDC__ || defined __C99__FUNC__ \
-     || defined __cplusplus || defined _MSC_VER)
+#   if ! defined malloc && ! defined EXIT_SUCCESS
 void *malloc (YYSIZE_T); /* INFRINGES ON USER NAME SPACE */
 #   endif
 #  endif
 #  ifndef YYFREE
 #   define YYFREE free
-#   if ! defined free && ! defined EXIT_SUCCESS && (defined __STDC__ || defined __C99__FUNC__ \
-     || defined __cplusplus || defined _MSC_VER)
+#   if ! defined free && ! defined EXIT_SUCCESS
 void free (void *); /* INFRINGES ON USER NAME SPACE */
 #   endif
 #  endif
@@ -470,8 +482,8 @@ void free (void *); /* INFRINGES ON USER NAME SPACE */
 
 #if (! defined yyoverflow \
      && (! defined __cplusplus \
-	 || (defined YYLTYPE_IS_TRIVIAL && YYLTYPE_IS_TRIVIAL \
-	     && defined YYSTYPE_IS_TRIVIAL && YYSTYPE_IS_TRIVIAL)))
+         || (defined YYLTYPE_IS_TRIVIAL && YYLTYPE_IS_TRIVIAL \
+             && defined YYSTYPE_IS_TRIVIAL && YYSTYPE_IS_TRIVIAL)))
 
 /* A type that is properly aligned for any stack member.  */
 union yyalloc
@@ -497,16 +509,16 @@ union yyalloc
    elements in the stack, and YYPTR gives the new location of the
    stack.  Advance YYPTR to a properly aligned location for the next
    stack.  */
-# define YYSTACK_RELOCATE(Stack_alloc, Stack)				\
-    do									\
-      {									\
-	YYSIZE_T yynewbytes;						\
-	YYCOPY (&yyptr->Stack_alloc, Stack, yysize);			\
-	Stack = &yyptr->Stack_alloc;					\
-	yynewbytes = yystacksize * sizeof (*Stack) + YYSTACK_GAP_MAXIMUM; \
-	yyptr += yynewbytes / sizeof (*yyptr);				\
-      }									\
-    while (YYID (0))
+# define YYSTACK_RELOCATE(Stack_alloc, Stack)                           \
+    do                                                                  \
+      {                                                                 \
+        YYSIZE_T yynewbytes;                                            \
+        YYCOPY (&yyptr->Stack_alloc, Stack, yysize);                    \
+        Stack = &yyptr->Stack_alloc;                                    \
+        yynewbytes = yystacksize * sizeof (*Stack) + YYSTACK_GAP_MAXIMUM; \
+        yyptr += yynewbytes / sizeof (*yyptr);                          \
+      }                                                                 \
+    while (0)
 
 #endif
 
@@ -525,7 +537,7 @@ union yyalloc
           for (yyi = 0; yyi < (Count); yyi++)   \
             (Dst)[yyi] = (Src)[yyi];            \
         }                                       \
-      while (YYID (0))
+      while (0)
 #  endif
 # endif
 #endif /* !YYCOPY_NEEDED */
@@ -541,17 +553,19 @@ union yyalloc
 #define YYNNTS  329
 /* YYNRULES -- Number of rules.  */
 #define YYNRULES  827
-/* YYNRULES -- Number of states.  */
+/* YYNSTATES -- Number of states.  */
 #define YYNSTATES  1320
 
-/* YYTRANSLATE(YYLEX) -- Bison symbol number corresponding to YYLEX.  */
+/* YYTRANSLATE[YYX] -- Symbol number corresponding to YYX as returned
+   by yylex, with out-of-bounds checking.  */
 #define YYUNDEFTOK  2
 #define YYMAXUTOK   357
 
-#define YYTRANSLATE(YYX)						\
+#define YYTRANSLATE(YYX)                                                \
   ((unsigned int) (YYX) <= YYMAXUTOK ? yytranslate[YYX] : YYUNDEFTOK)
 
-/* YYTRANSLATE[YYLEX] -- Bison symbol number corresponding to YYLEX.  */
+/* YYTRANSLATE[TOKEN-NUM] -- Symbol number corresponding to TOKEN-NUM
+   as returned by yylex, without out-of-bounds checking.  */
 static const yytype_uint8 yytranslate[] =
 {
        0,     2,     2,     2,     2,     2,     2,     2,     2,     2,
@@ -593,344 +607,7 @@ static const yytype_uint8 yytranslate[] =
 };
 
 #if YYDEBUG
-/* YYPRHS[YYN] -- Index of the first RHS symbol of rule number YYN in
-   YYRHS.  */
-static const yytype_uint16 yyprhs[] =
-{
-       0,     0,     3,     5,     7,     9,    11,    15,    16,    17,
-      24,    26,    40,    42,    43,    46,    49,    52,    54,    68,
-      70,    71,    74,    78,    80,    85,    87,    92,    93,    97,
-     101,   109,   111,   112,   115,   118,   121,   124,   126,   131,
-     133,   138,   139,   142,   145,   148,   150,   155,   157,   165,
-     167,   172,   173,   176,   179,   182,   185,   187,   192,   194,
-     199,   201,   206,   208,   213,   215,   217,   218,   222,   227,
-     229,   234,   235,   238,   241,   242,   246,   248,   250,   251,
-     255,   257,   259,   261,   263,   265,   267,   269,   271,   273,
-     275,   277,   282,   284,   289,   290,   294,   297,   300,   303,
-     305,   310,   312,   317,   319,   320,   325,   328,   331,   333,
-     335,   340,   343,   346,   349,   351,   353,   358,   360,   365,
-     366,   370,   373,   376,   379,   381,   386,   388,   392,   394,
-     399,   401,   406,   407,   410,   414,   417,   420,   423,   425,
-     430,   432,   440,   441,   445,   448,   451,   454,   457,   460,
-     465,   467,   469,   474,   476,   478,   480,   481,   484,   487,
-     490,   494,   498,   501,   505,   509,   512,   513,   515,   520,
-     523,   525,   530,   532,   534,   539,   540,   543,   546,   549,
-     552,   554,   559,   561,   563,   568,   569,   572,   575,   578,
-     581,   584,   586,   591,   595,   596,   600,   605,   607,   609,
-     614,   615,   619,   622,   625,   628,   631,   633,   638,   641,
-     643,   648,   650,   655,   657,   662,   664,   669,   672,   675,
-     677,   680,   681,   684,   690,   692,   694,   699,   700,   704,
-     707,   710,   713,   716,   718,   723,   726,   728,   730,   735,
-     737,   742,   744,   749,   751,   756,   758,   763,   765,   770,
-     771,   774,   777,   780,   784,   788,   792,   796,   800,   802,
-     804,   806,   808,   810,   812,   814,   816,   818,   823,   825,
-     830,   831,   835,   839,   843,   846,   849,   852,   855,   858,
-     862,   866,   870,   874,   878,   886,   888,   889,   893,   897,
-     901,   904,   908,   911,   914,   917,   920,   923,   926,   928,
-     936,   937,   941,   945,   949,   952,   955,   959,   962,   965,
-     968,   971,   974,   977,   980,   982,   990,   991,   995,   999,
-    1003,  1006,  1009,  1012,  1015,  1018,  1021,  1024,  1027,  1030,
-    1034,  1038,  1042,  1046,  1050,  1052,  1057,  1059,  1064,  1065,
-    1069,  1073,  1076,  1079,  1082,  1085,  1088,  1091,  1095,  1097,
-    1099,  1101,  1103,  1105,  1107,  1109,  1111,  1113,  1115,  1120,
-    1122,  1127,  1128,  1132,  1136,  1139,  1142,  1145,  1149,  1151,
-    1156,  1158,  1163,  1165,  1170,  1171,  1175,  1179,  1183,  1186,
-    1189,  1192,  1195,  1198,  1200,  1205,  1207,  1212,  1213,  1217,
-    1221,  1224,  1227,  1230,  1234,  1238,  1241,  1243,  1245,  1250,
-    1252,  1257,  1258,  1262,  1266,  1269,  1272,  1275,  1278,  1281,
-    1284,  1287,  1290,  1293,  1295,  1297,  1305,  1308,  1310,  1312,
-    1320,  1321,  1325,  1329,  1332,  1335,  1338,  1342,  1346,  1350,
-    1354,  1356,  1361,  1363,  1368,  1370,  1375,  1376,  1380,  1383,
-    1386,  1389,  1393,  1397,  1401,  1405,  1408,  1414,  1415,  1419,
-    1423,  1427,  1431,  1434,  1440,  1442,  1447,  1449,  1454,  1455,
-    1459,  1463,  1466,  1469,  1472,  1476,  1480,  1484,  1486,  1494,
-    1495,  1498,  1501,  1507,  1510,  1512,  1514,  1516,  1518,  1522,
-    1524,  1528,  1530,  1532,  1534,  1536,  1540,  1542,  1547,  1548,
-    1551,  1555,  1558,  1561,  1564,  1567,  1570,  1573,  1575,  1579,
-    1581,  1586,  1587,  1590,  1594,  1597,  1600,  1602,  1606,  1608,
-    1613,  1614,  1618,  1621,  1624,  1627,  1630,  1633,  1636,  1638,
-    1643,  1645,  1650,  1651,  1654,  1657,  1659,  1664,  1667,  1670,
-    1672,  1674,  1679,  1682,  1685,  1687,  1689,  1694,  1696,  1701,
-    1704,  1706,  1708,  1713,  1716,  1719,  1721,  1723,  1728,  1731,
-    1734,  1736,  1738,  1743,  1745,  1750,  1752,  1757,  1760,  1762,
-    1764,  1769,  1770,  1774,  1776,  1778,  1781,  1784,  1785,  1788,
-    1789,  1793,  1794,  1797,  1798,  1801,  1803,  1807,  1810,  1811,
-    1814,  1818,  1821,  1822,  1825,  1828,  1829,  1832,  1833,  1840,
-    1846,  1852,  1858,  1863,  1864,  1867,  1868,  1874,  1880,  1882,
-    1884,  1886,  1888,  1890,  1892,  1894,  1896,  1899,  1902,  1904,
-    1906,  1908,  1911,  1914,  1916,  1919,  1924,  1926,  1928,  1930,
-    1931,  1934,  1937,  1941,  1944,  1946,  1947,  1949,  1950,  1953,
-    1954,  1957,  1961,  1962,  1968,  1970,  1975,  1976,  1980,  1982,
-    1986,  1990,  1992,  1997,  1999,  2001,  2002,  2007,  2010,  2016,
-    2018,  2020,  2021,  2024,  2027,  2028,  2030,  2031,  2035,  2037,
-    2039,  2041,  2043,  2045,  2047,  2049,  2051,  2053,  2055,  2057,
-    2059,  2061,  2063,  2065,  2067,  2069,  2071,  2073,  2075,  2077,
-    2079,  2081,  2083,  2085,  2087,  2089,  2091,  2093,  2095,  2097,
-    2099,  2101,  2103,  2105,  2107,  2109,  2111,  2113,  2115,  2117,
-    2119,  2121,  2123,  2125,  2127,  2129,  2131,  2133,  2135,  2137,
-    2139,  2141,  2143,  2145,  2147,  2149,  2151,  2153,  2155,  2157,
-    2159,  2161,  2163,  2165,  2167,  2169,  2171,  2173,  2175,  2177,
-    2179,  2181,  2183,  2185,  2187,  2189,  2191,  2193,  2195,  2197,
-    2199,  2201,  2203,  2205,  2207,  2209,  2211,  2213,  2215,  2217,
-    2219,  2221,  2222,  2223,  2224,  2225,  2226,  2227,  2228,  2230,
-    2232,  2234,  2236,  2238,  2240,  2242,  2244,  2246,  2248,  2250,
-    2252,  2254,  2256,  2258,  2260,  2262,  2264,  2266,  2268,  2270,
-    2272,  2274,  2276,  2278,  2280,  2282,  2284,  2286,  2288,  2290,
-    2292,  2293,  2297,  2300,  2303,  2306,  2309,  2312,  2315,  2318,
-    2321,  2324,  2327,  2330,  2333,  2336,  2339,  2342,  2347,  2352,
-    2355,  2358,  2361,  2364,  2367,  2370,  2373,  2376,  2379,  2382,
-    2385,  2388,  2393,  2397,  2402,  2407,  2412,  2417
-};
-
-/* YYRHS -- A `-1'-separated list of the rules' RHS.  */
-static const yytype_int16 yyrhs[] =
-{
-     114,     0,    -1,   120,    -1,   124,    -1,   441,    -1,     8,
-      -1,   115,   419,   117,    -1,    -1,    -1,   117,   103,   419,
-       8,   118,   419,    -1,   395,    -1,   419,    54,   420,   119,
-     104,   402,   121,   131,   145,   154,   162,   105,   419,    -1,
-     122,    -1,    -1,   122,   128,    -1,   122,   130,    -1,   122,
-     144,    -1,   395,    -1,   419,    74,   420,   123,   104,   402,
-     125,   131,   145,   154,   162,   105,   419,    -1,   126,    -1,
-      -1,   126,   128,    -1,   126,   142,   402,    -1,   422,    -1,
-      82,   420,   127,   398,    -1,   422,    -1,    56,   420,   129,
-     398,    -1,    -1,   131,   132,   402,    -1,   131,   136,   402,
-      -1,    43,   420,   133,   104,   402,   134,   105,    -1,   395,
-      -1,    -1,   134,   144,    -1,   134,   151,    -1,   134,   153,
-      -1,   134,   140,    -1,   395,    -1,    44,   420,   135,   137,
-      -1,   106,    -1,   104,   402,   138,   105,    -1,    -1,   138,
-     151,    -1,   138,   153,    -1,   138,   140,    -1,   160,    -1,
-      71,   420,   139,   398,    -1,   395,    -1,    23,   420,   141,
-     104,   402,   144,   105,    -1,   394,    -1,    64,   420,   143,
-     398,    -1,    -1,   145,   147,    -1,   145,   149,    -1,   145,
-     151,    -1,   145,   153,    -1,   422,    -1,    59,   420,   146,
-     398,    -1,   422,    -1,    28,   420,   148,   398,    -1,   422,
-      -1,    31,   420,   150,   398,    -1,   422,    -1,    67,   420,
-     152,   398,    -1,   156,    -1,   160,    -1,    -1,   156,   157,
-     402,    -1,    70,   420,   155,   158,    -1,   106,    -1,   104,
-     402,   159,   105,    -1,    -1,   159,   151,    -1,   159,   153,
-      -1,    -1,    12,   161,   419,    -1,   116,    -1,   163,    -1,
-      -1,   163,   164,   402,    -1,   166,    -1,   179,    -1,   186,
-      -1,   192,    -1,   249,    -1,   252,    -1,   296,    -1,   301,
-      -1,   310,    -1,   314,    -1,   395,    -1,    35,   420,   165,
-     167,    -1,   106,    -1,   104,   402,   168,   105,    -1,    -1,
-     168,   170,   402,    -1,   168,   176,    -1,   168,   151,    -1,
-     168,   153,    -1,   395,    -1,    20,   420,   169,   171,    -1,
-     106,    -1,   104,   402,   173,   105,    -1,   174,    -1,    -1,
-      83,   420,   172,   398,    -1,    93,   419,    -1,    88,   419,
-      -1,   116,    -1,   177,    -1,    73,   420,   175,   398,    -1,
-      85,   419,    -1,    90,   419,    -1,    87,   419,    -1,   116,
-      -1,   395,    -1,    38,   420,   178,   180,    -1,   106,    -1,
-     104,   402,   181,   105,    -1,    -1,   181,   183,   402,    -1,
-     181,   176,    -1,   181,   151,    -1,   181,   153,    -1,   422,
-      -1,    42,   420,   182,   184,    -1,   106,    -1,   104,   402,
-     105,    -1,   395,    -1,    41,   420,   185,   187,    -1,   106,
-      -1,   104,   402,   188,   105,    -1,    -1,   188,   190,    -1,
-     188,   183,   402,    -1,   188,   176,    -1,   188,   151,    -1,
-     188,   153,    -1,   397,    -1,    22,   420,   189,   398,    -1,
-     395,    -1,    76,   420,   191,   104,   402,   193,   105,    -1,
-      -1,   193,   194,   402,    -1,   193,   245,    -1,   193,   247,
-      -1,   193,   176,    -1,   193,   151,    -1,   193,   153,    -1,
-      75,   420,   195,   196,    -1,   397,    -1,   106,    -1,   104,
-     402,   197,   105,    -1,   198,    -1,   215,    -1,   231,    -1,
-      -1,   198,   229,    -1,   198,   227,    -1,   198,   190,    -1,
-     198,   204,   402,    -1,   198,   209,   402,    -1,   198,   202,
-      -1,   198,   224,   402,    -1,   198,   199,   402,    -1,   200,
-     194,    -1,    -1,   203,    -1,    39,   420,   201,   398,    -1,
-     390,   419,    -1,   116,    -1,    49,   420,   205,   206,    -1,
-     422,    -1,   106,    -1,   104,   402,   207,   105,    -1,    -1,
-     207,   241,    -1,   207,   243,    -1,   207,   151,    -1,   207,
-     153,    -1,   420,    -1,    62,   208,   210,   211,    -1,   422,
-      -1,   106,    -1,   104,   402,   212,   105,    -1,    -1,   212,
-     214,    -1,   212,   241,    -1,   212,   243,    -1,   212,   151,
-      -1,   212,   153,    -1,   422,    -1,    97,   420,   213,   398,
-      -1,   217,   402,   216,    -1,    -1,   216,   217,   402,    -1,
-      32,   420,   218,   219,    -1,   422,    -1,   106,    -1,   104,
-     402,   220,   105,    -1,    -1,   220,   183,   402,    -1,   220,
-     222,    -1,   220,   176,    -1,   220,   151,    -1,   220,   153,
-      -1,   223,    -1,    80,   420,   221,   398,    -1,   392,   419,
-      -1,   116,    -1,    66,   420,   365,   225,    -1,   106,    -1,
-     104,   402,   207,   105,    -1,   371,    -1,    61,   420,   226,
-     398,    -1,   230,    -1,    69,   420,   228,   398,    -1,    93,
-     419,    -1,    88,   419,    -1,   116,    -1,   233,   232,    -1,
-      -1,   232,   233,    -1,    24,   420,   234,   235,   402,    -1,
-     395,    -1,   106,    -1,   104,   402,   236,   105,    -1,    -1,
-     236,   183,   402,    -1,   236,   238,    -1,   236,   176,    -1,
-     236,   151,    -1,   236,   153,    -1,   239,    -1,    63,   420,
-     237,   398,    -1,   391,   419,    -1,   116,    -1,   422,    -1,
-      34,   420,   240,   398,    -1,   422,    -1,    33,   420,   242,
-     398,    -1,   422,    -1,    78,   420,   244,   398,    -1,   422,
-      -1,    30,   420,   246,   398,    -1,   395,    -1,    40,   420,
-     248,   250,    -1,   106,    -1,   104,   402,   251,   105,    -1,
-      -1,   251,   176,    -1,   251,   151,    -1,   251,   153,    -1,
-     251,   249,   402,    -1,   251,   192,   402,    -1,   251,   252,
-     402,    -1,   251,   299,   402,    -1,   251,   310,   402,    -1,
-     254,    -1,   257,    -1,   261,    -1,   264,    -1,   267,    -1,
-     277,    -1,   279,    -1,   283,    -1,   395,    -1,    29,   420,
-     253,   255,    -1,   106,    -1,   104,   402,   256,   105,    -1,
-      -1,   256,   335,   402,    -1,   256,   183,   402,    -1,   256,
-     356,   402,    -1,   256,   345,    -1,   256,   339,    -1,   256,
-     176,    -1,   256,   151,    -1,   256,   153,    -1,   256,   249,
-     402,    -1,   256,   299,   402,    -1,   256,   310,   402,    -1,
-     256,   192,   402,    -1,   256,   252,   402,    -1,    47,   420,
-     258,   104,   402,   259,   105,    -1,   395,    -1,    -1,   259,
-     335,   402,    -1,   259,   183,   402,    -1,   259,   194,   402,
-      -1,   259,   245,    -1,   259,   356,   402,    -1,   259,   247,
-      -1,   259,   339,    -1,   259,   342,    -1,   259,   176,    -1,
-     259,   151,    -1,   259,   153,    -1,   395,    -1,    48,   420,
-     260,   104,   402,   262,   105,    -1,    -1,   262,   335,   402,
-      -1,   262,   183,   402,    -1,   262,   194,   402,    -1,   262,
-     247,    -1,   262,   245,    -1,   262,   356,   402,    -1,   262,
-     339,    -1,   262,   347,    -1,   262,   350,    -1,   262,   353,
-      -1,   262,   176,    -1,   262,   151,    -1,   262,   153,    -1,
-     395,    -1,    50,   420,   263,   104,   402,   265,   105,    -1,
-      -1,   265,   335,   402,    -1,   265,   183,   402,    -1,   265,
-     356,   402,    -1,   265,   362,    -1,   265,   359,    -1,   265,
-     339,    -1,   265,   347,    -1,   265,   350,    -1,   265,   353,
-      -1,   265,   176,    -1,   265,   151,    -1,   265,   153,    -1,
-     265,   192,   402,    -1,   265,   249,   402,    -1,   265,   299,
-     402,    -1,   265,   310,   402,    -1,   265,   252,   402,    -1,
-     395,    -1,    26,   420,   266,   268,    -1,   106,    -1,   104,
-     402,   269,   105,    -1,    -1,   269,   335,   402,    -1,   269,
-     183,   402,    -1,   269,   247,    -1,   269,   339,    -1,   269,
-     342,    -1,   269,   176,    -1,   269,   151,    -1,   269,   153,
-      -1,   269,   270,   402,    -1,   271,    -1,   273,    -1,   254,
-      -1,   257,    -1,   261,    -1,   264,    -1,   277,    -1,   279,
-      -1,   267,    -1,   395,    -1,    25,   420,   272,   274,    -1,
-     106,    -1,   104,   402,   275,   105,    -1,    -1,   275,   335,
-     402,    -1,   275,   183,   402,    -1,   275,   176,    -1,   275,
-     151,    -1,   275,   153,    -1,   275,   252,   402,    -1,   395,
-      -1,     4,   420,   276,   280,    -1,   395,    -1,    98,   420,
-     278,   280,    -1,   106,    -1,   104,   402,   281,   105,    -1,
-      -1,   281,   335,   402,    -1,   281,   183,   402,    -1,   281,
-     356,   402,    -1,   281,   339,    -1,   281,   342,    -1,   281,
-     176,    -1,   281,   151,    -1,   281,   153,    -1,   397,    -1,
-      79,   420,   282,   284,    -1,   106,    -1,   104,   402,   285,
-     105,    -1,    -1,   285,   335,   402,    -1,   285,   183,   402,
-      -1,   285,   176,    -1,   285,   151,    -1,   285,   153,    -1,
-     285,   288,   402,    -1,   285,   293,   402,    -1,   369,   419,
-      -1,   116,    -1,   286,    -1,    68,   420,   287,   289,    -1,
-     106,    -1,   104,   402,   290,   105,    -1,    -1,   290,   356,
-     402,    -1,   290,   183,   402,    -1,   290,   345,    -1,   290,
-     247,    -1,   290,   339,    -1,   290,   342,    -1,   290,   347,
-      -1,   290,   350,    -1,   290,   151,    -1,   290,   153,    -1,
-     369,   419,    -1,   116,    -1,   291,    -1,    21,   420,   292,
-     104,   402,   297,   105,    -1,   367,   419,    -1,   116,    -1,
-     294,    -1,    21,   420,   295,   104,   402,   297,   105,    -1,
-      -1,   297,   335,   402,    -1,   297,   183,   402,    -1,   297,
-     176,    -1,   297,   151,    -1,   297,   153,    -1,   297,   252,
-     402,    -1,   297,   299,   402,    -1,   297,   310,   402,    -1,
-     297,   273,   402,    -1,   395,    -1,    96,   420,   298,   302,
-      -1,   395,    -1,    72,   420,   300,   302,    -1,   106,    -1,
-     104,   402,   303,   105,    -1,    -1,   303,   183,   402,    -1,
-     303,   176,    -1,   303,   151,    -1,   303,   153,    -1,   303,
-     192,   402,    -1,   303,   249,   402,    -1,   303,   305,   402,
-      -1,   303,   308,   402,    -1,    45,   419,    -1,   304,   104,
-     402,   306,   105,    -1,    -1,   306,   356,   402,    -1,   306,
-     192,   402,    -1,   306,   249,   402,    -1,   306,   252,   402,
-      -1,    60,   419,    -1,   307,   104,   402,   306,   105,    -1,
-     395,    -1,    57,   420,   309,   311,    -1,   106,    -1,   104,
-     402,   312,   105,    -1,    -1,   312,   356,   402,    -1,   312,
-     183,   402,    -1,   312,   176,    -1,   312,   151,    -1,   312,
-     153,    -1,   312,   192,   402,    -1,   312,   249,   402,    -1,
-     312,   252,   402,    -1,   316,    -1,    36,   420,   313,   104,
-     402,   315,   105,    -1,    -1,   315,   151,    -1,   315,   153,
-      -1,   315,    37,   420,   317,   402,    -1,   367,   419,    -1,
-     116,    -1,   319,    -1,   321,    -1,    89,    -1,   318,   419,
-     320,    -1,   106,    -1,   104,   402,   105,    -1,   323,    -1,
-     331,    -1,   327,    -1,    84,    -1,   322,   419,   324,    -1,
-     106,    -1,   104,   402,   325,   105,    -1,    -1,   325,   245,
-      -1,   325,   356,   402,    -1,   325,   359,    -1,   325,   247,
-      -1,   325,   339,    -1,   325,   342,    -1,   325,   347,    -1,
-     325,   350,    -1,    86,    -1,   326,   419,   328,    -1,   106,
-      -1,   104,   402,   329,   105,    -1,    -1,   329,   245,    -1,
-     329,   356,   402,    -1,   329,   359,    -1,   329,   247,    -1,
-      91,    -1,   330,   419,   332,    -1,   106,    -1,   104,   402,
-     333,   105,    -1,    -1,   333,   194,   402,    -1,   333,   245,
-      -1,   333,   247,    -1,   333,   339,    -1,   333,   342,    -1,
-     333,   347,    -1,   333,   350,    -1,   422,    -1,    81,   420,
-     334,   336,    -1,   106,    -1,   104,   402,   337,   105,    -1,
-      -1,   337,   151,    -1,   337,   153,    -1,   340,    -1,    27,
-     420,   338,   398,    -1,    93,   419,    -1,    88,   419,    -1,
-     116,    -1,   343,    -1,    51,   420,   341,   398,    -1,    93,
-     419,    -1,    88,   419,    -1,   116,    -1,   422,    -1,    65,
-     420,   344,   398,    -1,   348,    -1,    53,   420,   346,   398,
-      -1,   391,   419,    -1,   116,    -1,   351,    -1,    52,   420,
-     349,   398,    -1,    94,   419,    -1,   390,   419,    -1,   116,
-      -1,   354,    -1,    58,   420,   352,   398,    -1,    95,   419,
-      -1,    92,   419,    -1,   116,    -1,   422,    -1,    55,   420,
-     355,   357,    -1,   106,    -1,   104,   402,   207,   105,    -1,
-     360,    -1,    77,   420,   358,   398,    -1,   369,   419,    -1,
-     116,    -1,   363,    -1,    46,   420,   361,   398,    -1,    -1,
-     396,   364,   419,    -1,   116,    -1,   422,    -1,   107,   396,
-      -1,   366,   368,    -1,    -1,   368,   366,    -1,    -1,   396,
-     370,   368,    -1,    -1,   372,   375,    -1,    -1,   373,   377,
-      -1,   116,    -1,   107,   396,   382,    -1,   374,   376,    -1,
-      -1,   376,   374,    -1,   378,   379,   380,    -1,    14,   107,
-      -1,    -1,   379,   378,    -1,   396,   381,    -1,    -1,   382,
-     375,    -1,    -1,   382,   108,   421,   383,   421,   109,    -1,
-     396,   421,   110,   421,   384,    -1,   389,   421,   107,   421,
-     385,    -1,   386,   387,   396,   388,   396,    -1,    14,   421,
-     107,   421,    -1,    -1,   387,   386,    -1,    -1,   388,   421,
-     107,   421,   396,    -1,    85,   421,   111,   421,   112,    -1,
-      17,    -1,    18,    -1,   390,    -1,    18,    -1,   393,    -1,
-      16,    -1,    17,    -1,   116,    -1,   428,   419,    -1,   428,
-     419,    -1,   116,    -1,   425,    -1,    11,    -1,   428,   419,
-      -1,   429,   419,    -1,   116,    -1,   399,   402,    -1,   401,
-     402,   400,   402,    -1,   106,    -1,   105,    -1,   104,    -1,
-      -1,   402,   418,    -1,   402,   403,    -1,   429,   404,   410,
-      -1,   405,   406,    -1,   419,    -1,    -1,   422,    -1,    -1,
-     420,   408,    -1,    -1,   424,   419,    -1,     8,   419,   409,
-      -1,    -1,   409,   103,   419,     8,   419,    -1,   106,    -1,
-     104,   419,   411,   105,    -1,    -1,   411,   412,   419,    -1,
-     403,    -1,   414,   407,   413,    -1,   415,   407,   413,    -1,
-     106,    -1,   104,   419,   416,   105,    -1,   427,    -1,    54,
-      -1,    -1,   416,   396,   407,   417,    -1,   106,   419,    -1,
-     104,   419,   416,   105,   419,    -1,     5,    -1,     7,    -1,
-      -1,   419,   418,    -1,   418,   419,    -1,    -1,     5,    -1,
-      -1,   424,   423,   419,    -1,   116,    -1,     9,    -1,    12,
-      -1,   425,    -1,    11,    -1,    18,    -1,    16,    -1,    17,
-      -1,    54,    -1,   426,    -1,   427,    -1,    10,    -1,    85,
-      -1,    87,    -1,    88,    -1,    89,    -1,    90,    -1,    92,
-      -1,    93,    -1,    94,    -1,    95,    -1,     4,    -1,    20,
-      -1,    21,    -1,    22,    -1,    23,    -1,    24,    -1,    25,
-      -1,    26,    -1,    27,    -1,    28,    -1,    29,    -1,    30,
-      -1,    31,    -1,    32,    -1,    33,    -1,    34,    -1,    35,
-      -1,    36,    -1,    37,    -1,    38,    -1,    39,    -1,    40,
-      -1,    41,    -1,    42,    -1,    43,    -1,    44,    -1,    45,
-      -1,    46,    -1,    47,    -1,    48,    -1,    49,    -1,    50,
-      -1,    51,    -1,    52,    -1,    53,    -1,    55,    -1,    56,
-      -1,    57,    -1,    58,    -1,    59,    -1,    60,    -1,    61,
-      -1,    62,    -1,    63,    -1,    64,    -1,    65,    -1,    66,
-      -1,    67,    -1,    68,    -1,    69,    -1,    70,    -1,    71,
-      -1,    72,    -1,    73,    -1,    74,    -1,    75,    -1,    76,
-      -1,    77,    -1,    78,    -1,    79,    -1,    80,    -1,    81,
-      -1,    82,    -1,    83,    -1,    84,    -1,    86,    -1,    91,
-      -1,    96,    -1,    97,    -1,    98,    -1,   425,    -1,    11,
-      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,   438,    -1,
-      82,    -1,    83,    -1,    24,    -1,    32,    -1,    21,    -1,
-      36,    -1,    37,    -1,    35,    -1,    38,    -1,    41,    -1,
-      43,    -1,    44,    -1,   102,    -1,   299,    -1,   279,    -1,
-     277,    -1,   273,    -1,   267,    -1,   254,    -1,   249,    -1,
-     305,    -1,   257,    -1,   261,    -1,   264,    -1,   310,    -1,
-     308,    -1,   283,    -1,   356,    -1,   209,    -1,   224,    -1,
-     204,    -1,    -1,   441,   142,   402,    -1,   441,   144,    -1,
-     441,   151,    -1,   441,   153,    -1,   441,   245,    -1,   441,
-     190,    -1,   441,   149,    -1,   441,   247,    -1,   441,   241,
-      -1,   441,   243,    -1,   441,   362,    -1,   441,   130,    -1,
-     441,   147,    -1,   441,   227,    -1,   441,   345,    -1,   441,
-     140,    -1,   441,   430,   194,   402,    -1,   441,   431,   192,
-     402,    -1,   441,   176,    -1,   441,   339,    -1,   441,   342,
-      -1,   441,   353,    -1,   441,   229,    -1,   441,   214,    -1,
-     441,   202,    -1,   441,   347,    -1,   441,   350,    -1,   441,
-     238,    -1,   441,   222,    -1,   441,   359,    -1,   441,   432,
-     183,   402,    -1,   441,   170,   402,    -1,   441,   433,   440,
-     402,    -1,   441,   434,   335,   402,    -1,   441,   435,   157,
-     402,    -1,   441,   436,   439,   402,    -1,   441,   437,   407,
-     417,    -1
-};
-
-/* YYRLINE[YYN] -- source line where rule number YYN was defined.  */
+  /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_uint16 yyrline[] =
 {
        0,   334,   334,   335,   336,   338,   361,   364,   366,   365,
@@ -1145,13 +822,13 @@ static const char *const yytname[] =
   "iffeature_ext_alloc", "restriction_ext_alloc", "when_ext_alloc",
   "revision_ext_alloc", "datadef_ext_check", "not_supported_ext_check",
   "not_supported_ext", "datadef_ext_stmt", "restriction_ext_stmt",
-  "ext_substatements", YY_NULL
+  "ext_substatements", YY_NULLPTR
 };
 #endif
 
 # ifdef YYPRINT
-/* YYTOKNUM[YYLEX-NUM] -- Internal token number corresponding to
-   token YYLEX-NUM.  */
+/* YYTOKNUM[NUM] -- (External) token number corresponding to the
+   (internal) symbol number NUM (which must be that of a token).  */
 static const yytype_uint16 yytoknum[] =
 {
        0,   256,   257,   258,   259,   260,   261,   262,   263,   264,
@@ -1169,362 +846,18 @@ static const yytype_uint16 yytoknum[] =
 };
 # endif
 
-/* YYR1[YYN] -- Symbol number of symbol that rule YYN derives.  */
-static const yytype_uint16 yyr1[] =
-{
-       0,   113,   114,   114,   114,   115,   116,   117,   118,   117,
-     119,   120,   121,   122,   122,   122,   122,   123,   124,   125,
-     126,   126,   126,   127,   128,   129,   130,   131,   131,   131,
-     132,   133,   134,   134,   134,   134,   134,   135,   136,   137,
-     137,   138,   138,   138,   138,   139,   140,   141,   142,   143,
-     144,   145,   145,   145,   145,   145,   146,   147,   148,   149,
-     150,   151,   152,   153,   154,   155,   156,   156,   157,   158,
-     158,   159,   159,   159,   161,   160,   160,   162,   163,   163,
-     164,   164,   164,   164,   164,   164,   164,   164,   164,   164,
-     165,   166,   167,   167,   168,   168,   168,   168,   168,   169,
-     170,   171,   171,   172,   173,   173,   174,   174,   174,   175,
-     176,   177,   177,   177,   177,   178,   179,   180,   180,   181,
-     181,   181,   181,   181,   182,   183,   184,   184,   185,   186,
-     187,   187,   188,   188,   188,   188,   188,   188,   189,   190,
-     191,   192,   193,   193,   193,   193,   193,   193,   193,   194,
-     195,   196,   196,   197,   197,   197,   198,   198,   198,   198,
-     198,   198,   198,   198,   198,   199,   200,   201,   202,   203,
-     203,   204,   205,   206,   206,   207,   207,   207,   207,   207,
-     208,   209,   210,   211,   211,   212,   212,   212,   212,   212,
-     212,   213,   214,   215,   216,   216,   217,   218,   219,   219,
-     220,   220,   220,   220,   220,   220,   221,   222,   223,   223,
-     224,   225,   225,   226,   227,   228,   229,   230,   230,   230,
-     231,   232,   232,   233,   234,   235,   235,   236,   236,   236,
-     236,   236,   236,   237,   238,   239,   239,   240,   241,   242,
-     243,   244,   245,   246,   247,   248,   249,   250,   250,   251,
-     251,   251,   251,   251,   251,   251,   251,   251,   252,   252,
-     252,   252,   252,   252,   252,   252,   253,   254,   255,   255,
-     256,   256,   256,   256,   256,   256,   256,   256,   256,   256,
-     256,   256,   256,   256,   257,   258,   259,   259,   259,   259,
-     259,   259,   259,   259,   259,   259,   259,   259,   260,   261,
-     262,   262,   262,   262,   262,   262,   262,   262,   262,   262,
-     262,   262,   262,   262,   263,   264,   265,   265,   265,   265,
-     265,   265,   265,   265,   265,   265,   265,   265,   265,   265,
-     265,   265,   265,   265,   266,   267,   268,   268,   269,   269,
-     269,   269,   269,   269,   269,   269,   269,   269,   270,   270,
-     271,   271,   271,   271,   271,   271,   271,   272,   273,   274,
-     274,   275,   275,   275,   275,   275,   275,   275,   276,   277,
-     278,   279,   280,   280,   281,   281,   281,   281,   281,   281,
-     281,   281,   281,   282,   283,   284,   284,   285,   285,   285,
-     285,   285,   285,   285,   285,   286,   286,   287,   288,   289,
-     289,   290,   290,   290,   290,   290,   290,   290,   290,   290,
-     290,   290,   291,   291,   292,   293,   294,   294,   295,   296,
-     297,   297,   297,   297,   297,   297,   297,   297,   297,   297,
-     298,   299,   300,   301,   302,   302,   303,   303,   303,   303,
-     303,   303,   303,   303,   303,   304,   305,   306,   306,   306,
-     306,   306,   307,   308,   309,   310,   311,   311,   312,   312,
-     312,   312,   312,   312,   312,   312,   312,   313,   314,   315,
-     315,   315,   315,   316,   316,   317,   317,   318,   319,   320,
-     320,   321,   321,   321,   322,   323,   324,   324,   325,   325,
-     325,   325,   325,   325,   325,   325,   325,   326,   327,   328,
-     328,   329,   329,   329,   329,   329,   330,   331,   332,   332,
-     333,   333,   333,   333,   333,   333,   333,   333,   334,   335,
-     336,   336,   337,   337,   337,   338,   339,   340,   340,   340,
-     341,   342,   343,   343,   343,   344,   345,   346,   347,   348,
-     348,   349,   350,   351,   351,   351,   352,   353,   354,   354,
-     354,   355,   356,   357,   357,   358,   359,   360,   360,   361,
-     362,   364,   363,   363,   365,   366,   367,   368,   368,   370,
-     369,   372,   371,   373,   371,   371,   374,   375,   376,   376,
-     377,   378,   379,   379,   380,   381,   381,   382,   382,   383,
-     384,   385,   386,   387,   387,   388,   388,   389,   390,   391,
-     391,   392,   392,   393,   393,   394,   394,   395,   395,   396,
-     396,   397,   397,   397,   398,   398,   399,   400,   401,   402,
-     402,   402,   403,   404,   405,   406,   406,   407,   407,   408,
-     408,   408,   409,   409,   410,   410,   411,   411,   412,   412,
-     412,   413,   413,   414,   415,   416,   416,   417,   417,   418,
-     418,   419,   419,   420,   421,   421,   423,   422,   422,   424,
-     424,   424,   424,   424,   424,   424,   425,   425,   425,   426,
-     426,   426,   426,   426,   426,   426,   426,   426,   426,   427,
-     427,   427,   427,   427,   427,   427,   427,   427,   427,   427,
-     427,   427,   427,   427,   427,   427,   427,   427,   427,   427,
-     427,   427,   427,   427,   427,   427,   427,   427,   427,   427,
-     427,   427,   427,   427,   427,   427,   427,   427,   427,   427,
-     427,   427,   427,   427,   427,   427,   427,   427,   427,   427,
-     427,   427,   427,   427,   427,   427,   427,   427,   427,   427,
-     427,   427,   427,   427,   427,   427,   427,   427,   427,   428,
-     429,   430,   431,   432,   433,   434,   435,   436,   437,   438,
-     438,   438,   438,   438,   438,   438,   438,   438,   438,   438,
-     438,   438,   439,   439,   439,   439,   439,   439,   439,   439,
-     439,   439,   439,   439,   439,   439,   440,   440,   440,   440,
-     441,   441,   441,   441,   441,   441,   441,   441,   441,   441,
-     441,   441,   441,   441,   441,   441,   441,   441,   441,   441,
-     441,   441,   441,   441,   441,   441,   441,   441,   441,   441,
-     441,   441,   441,   441,   441,   441,   441,   441
-};
-
-/* YYR2[YYN] -- Number of symbols composing right hand side of rule YYN.  */
-static const yytype_uint8 yyr2[] =
-{
-       0,     2,     1,     1,     1,     1,     3,     0,     0,     6,
-       1,    13,     1,     0,     2,     2,     2,     1,    13,     1,
-       0,     2,     3,     1,     4,     1,     4,     0,     3,     3,
-       7,     1,     0,     2,     2,     2,     2,     1,     4,     1,
-       4,     0,     2,     2,     2,     1,     4,     1,     7,     1,
-       4,     0,     2,     2,     2,     2,     1,     4,     1,     4,
-       1,     4,     1,     4,     1,     1,     0,     3,     4,     1,
-       4,     0,     2,     2,     0,     3,     1,     1,     0,     3,
-       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
-       1,     4,     1,     4,     0,     3,     2,     2,     2,     1,
-       4,     1,     4,     1,     0,     4,     2,     2,     1,     1,
-       4,     2,     2,     2,     1,     1,     4,     1,     4,     0,
-       3,     2,     2,     2,     1,     4,     1,     3,     1,     4,
-       1,     4,     0,     2,     3,     2,     2,     2,     1,     4,
-       1,     7,     0,     3,     2,     2,     2,     2,     2,     4,
-       1,     1,     4,     1,     1,     1,     0,     2,     2,     2,
-       3,     3,     2,     3,     3,     2,     0,     1,     4,     2,
-       1,     4,     1,     1,     4,     0,     2,     2,     2,     2,
-       1,     4,     1,     1,     4,     0,     2,     2,     2,     2,
-       2,     1,     4,     3,     0,     3,     4,     1,     1,     4,
-       0,     3,     2,     2,     2,     2,     1,     4,     2,     1,
-       4,     1,     4,     1,     4,     1,     4,     2,     2,     1,
-       2,     0,     2,     5,     1,     1,     4,     0,     3,     2,
-       2,     2,     2,     1,     4,     2,     1,     1,     4,     1,
-       4,     1,     4,     1,     4,     1,     4,     1,     4,     0,
-       2,     2,     2,     3,     3,     3,     3,     3,     1,     1,
-       1,     1,     1,     1,     1,     1,     1,     4,     1,     4,
-       0,     3,     3,     3,     2,     2,     2,     2,     2,     3,
-       3,     3,     3,     3,     7,     1,     0,     3,     3,     3,
-       2,     3,     2,     2,     2,     2,     2,     2,     1,     7,
-       0,     3,     3,     3,     2,     2,     3,     2,     2,     2,
-       2,     2,     2,     2,     1,     7,     0,     3,     3,     3,
-       2,     2,     2,     2,     2,     2,     2,     2,     2,     3,
-       3,     3,     3,     3,     1,     4,     1,     4,     0,     3,
-       3,     2,     2,     2,     2,     2,     2,     3,     1,     1,
-       1,     1,     1,     1,     1,     1,     1,     1,     4,     1,
-       4,     0,     3,     3,     2,     2,     2,     3,     1,     4,
-       1,     4,     1,     4,     0,     3,     3,     3,     2,     2,
-       2,     2,     2,     1,     4,     1,     4,     0,     3,     3,
-       2,     2,     2,     3,     3,     2,     1,     1,     4,     1,
-       4,     0,     3,     3,     2,     2,     2,     2,     2,     2,
-       2,     2,     2,     1,     1,     7,     2,     1,     1,     7,
-       0,     3,     3,     2,     2,     2,     3,     3,     3,     3,
-       1,     4,     1,     4,     1,     4,     0,     3,     2,     2,
-       2,     3,     3,     3,     3,     2,     5,     0,     3,     3,
-       3,     3,     2,     5,     1,     4,     1,     4,     0,     3,
-       3,     2,     2,     2,     3,     3,     3,     1,     7,     0,
-       2,     2,     5,     2,     1,     1,     1,     1,     3,     1,
-       3,     1,     1,     1,     1,     3,     1,     4,     0,     2,
-       3,     2,     2,     2,     2,     2,     2,     1,     3,     1,
-       4,     0,     2,     3,     2,     2,     1,     3,     1,     4,
-       0,     3,     2,     2,     2,     2,     2,     2,     1,     4,
-       1,     4,     0,     2,     2,     1,     4,     2,     2,     1,
-       1,     4,     2,     2,     1,     1,     4,     1,     4,     2,
-       1,     1,     4,     2,     2,     1,     1,     4,     2,     2,
-       1,     1,     4,     1,     4,     1,     4,     2,     1,     1,
-       4,     0,     3,     1,     1,     2,     2,     0,     2,     0,
-       3,     0,     2,     0,     2,     1,     3,     2,     0,     2,
-       3,     2,     0,     2,     2,     0,     2,     0,     6,     5,
-       5,     5,     4,     0,     2,     0,     5,     5,     1,     1,
-       1,     1,     1,     1,     1,     1,     2,     2,     1,     1,
-       1,     2,     2,     1,     2,     4,     1,     1,     1,     0,
-       2,     2,     3,     2,     1,     0,     1,     0,     2,     0,
-       2,     3,     0,     5,     1,     4,     0,     3,     1,     3,
-       3,     1,     4,     1,     1,     0,     4,     2,     5,     1,
-       1,     0,     2,     2,     0,     1,     0,     3,     1,     1,
-       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
-       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
-       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
-       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
-       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
-       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
-       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
-       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
-       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
-       1,     0,     0,     0,     0,     0,     0,     0,     1,     1,
-       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
-       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
-       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
-       0,     3,     2,     2,     2,     2,     2,     2,     2,     2,
-       2,     2,     2,     2,     2,     2,     2,     4,     4,     2,
-       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-       2,     4,     3,     4,     4,     4,     4,     4
-};
-
-/* YYDEFACT[STATE-NAME] -- Default reduction number in state STATE-NUM.
-   Performed when YYTABLE doesn't specify something else to do.  Zero
-   means the default is an error.  */
-static const yytype_uint16 yydefact[] =
-{
-     790,     0,     2,     3,     0,   757,     1,   649,   650,     0,
-       0,   652,     0,   763,     0,     0,   761,     0,     0,     0,
-       0,   762,     0,     0,   766,   764,   765,   767,     0,   768,
-     769,   770,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-     759,   760,     0,   771,   802,   806,   619,   792,   803,   797,
-     793,   794,   619,   809,   796,   815,   814,   819,   804,   813,
-     818,   799,   800,   795,   798,   810,   811,   805,   816,   817,
-     812,   820,   801,     0,     0,     0,     0,     0,     0,     0,
-     627,   758,   651,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,   571,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,   791,   822,     0,   619,     0,   619,
-       0,   619,     0,     0,     0,     0,   789,   787,   788,   786,
-     619,     0,   619,     0,   619,     0,     0,     0,     0,     0,
-     651,     0,     0,     0,     0,   651,     0,     0,     0,   778,
-     777,   780,   781,   782,   776,   775,   774,   773,   785,   772,
-       0,   779,     0,   784,   783,   619,     0,   629,   653,   679,
-       5,   669,   680,   681,   682,   683,   684,   685,   686,   687,
-     688,   689,   690,   691,   692,   693,   694,   695,   696,   697,
-     698,   699,   700,   701,   702,   703,   704,   705,   706,   707,
-     708,   709,   710,   711,   712,   713,   666,   714,   715,   716,
-     717,   718,   719,   720,   721,   722,   723,   724,   725,   726,
-     727,   728,   729,   730,   731,   732,   733,   734,   735,   736,
-     737,   738,   739,   740,   741,   742,   743,   670,   744,   671,
-     672,   673,   674,   745,   675,   676,   677,   678,   746,   747,
-     748,   651,   608,     0,    10,   749,   667,   668,   651,     0,
-      17,     0,    99,   750,   613,     0,   138,   651,   651,     0,
-      47,   651,   651,   529,     0,   525,   659,   662,   660,   664,
-     665,   663,   658,     0,    58,   656,   661,     0,   243,     0,
-      60,     0,   239,     0,   237,   598,   170,     0,   167,   651,
-     610,   563,     0,   559,   561,   609,   651,   651,   534,     0,
-     530,   651,   545,     0,   541,   651,   599,   540,     0,   537,
-     600,   651,     0,    25,   651,   651,   550,     0,   546,     0,
-      56,   575,     0,   213,     0,     0,   236,     0,   233,   651,
-     605,     0,    49,   651,     0,   535,     0,    62,   651,   651,
-     219,     0,   215,    74,    76,     0,    45,   651,   651,   651,
-     114,     0,   109,   558,     0,   555,   651,   569,     0,   241,
-     603,   604,   601,   209,     0,   206,   651,   602,     0,   191,
-     621,   620,   651,     0,   807,     0,   808,     0,   821,     0,
-       0,     0,   180,     0,   823,     0,   824,     0,   825,     0,
-       0,     0,     0,     0,   445,     0,     0,     0,     0,   452,
-       0,     0,     0,   619,   619,   826,   651,   651,   827,   651,
-     628,   651,     7,   619,   607,   619,   619,   101,   100,   618,
-     616,   139,   619,   619,   611,   612,   619,   528,   527,   526,
-      59,   651,   244,    61,   240,   238,   168,   169,   560,   651,
-     533,   532,   531,   543,   542,   544,   538,   539,    26,   549,
-     548,   547,    57,   214,     0,   578,   572,     0,   574,   582,
-     234,   235,    50,   606,   536,    63,   218,   217,   216,   651,
-      46,   111,   113,   112,   110,   556,   557,   567,   242,   207,
-     208,   192,     0,   625,   624,     0,   150,     0,   140,     0,
-     124,     0,   172,     0,   551,     0,   182,     0,   564,     0,
-     518,     0,    65,     0,   368,     0,   357,     0,   334,     0,
-     266,     0,   245,     0,   285,     0,   298,     0,   314,     0,
-     454,     0,   383,     0,   430,     0,   370,   447,   447,   645,
-     647,   632,   630,     6,    13,    20,   104,   614,     0,     0,
-     657,   562,   587,   577,   581,     0,    75,   570,   651,   634,
-     622,   623,   626,   619,   151,   149,   619,   619,   126,   125,
-     619,   173,   171,   619,   553,   552,   619,   183,   181,   619,
-     211,   210,   619,   520,   519,   619,    69,    68,   619,   372,
-     369,   619,   359,   358,   619,   336,   335,   619,   268,   267,
-     619,   247,   246,   619,   619,   619,   619,   456,   455,   619,
-     385,   384,   619,   434,   431,   371,     0,     0,     0,   631,
-     651,    27,    12,    27,    19,     0,     0,   617,   619,     0,
-     576,   579,   583,   580,   585,     0,   568,   636,   156,   142,
-       0,   175,   175,   185,   175,   522,    71,   374,   361,   338,
-     270,   249,   286,   300,   316,   458,   387,   436,   446,   619,
-     619,   619,   258,   259,   260,   261,   262,   263,   264,   265,
-     619,   453,   651,   627,   651,     0,    51,     0,    14,    15,
-      16,    51,    21,   619,     0,   102,   615,    48,   654,   584,
-       0,   565,     0,     0,     0,     0,   153,   154,   619,   155,
-     221,     0,   127,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-     449,   450,   451,   448,   648,     0,     0,     8,     0,     0,
-     619,   619,    66,     0,    66,    22,   651,   651,   108,     0,
-     103,   655,     0,   586,   644,   635,   638,   651,   627,   627,
-     643,     0,     0,   152,   159,   619,     0,   162,   619,   619,
-     619,   158,   157,   194,   220,   141,   147,   148,   146,   619,
-     144,   145,   174,   178,   179,   176,   177,   554,   184,   189,
-     190,   186,   187,   188,   212,   521,   523,   524,    70,    72,
-      73,   373,   381,   382,   380,   619,   619,   378,   379,   619,
-     360,   365,   366,   364,   619,   619,   619,   337,   345,   346,
-     344,   619,   341,   350,   351,   352,   353,   356,   619,   348,
-     349,   354,   355,   619,   342,   343,   269,   277,   278,   276,
-     619,   619,   619,   619,   619,   619,   619,   275,   274,   619,
-     248,   251,   252,   250,   619,   619,   619,   619,   619,   284,
-     296,   297,   295,   619,   619,   290,   292,   619,   293,   294,
-     619,   299,   312,   313,   311,   619,   619,   305,   304,   619,
-     307,   308,   309,   310,   619,   315,   327,   328,   326,   619,
-     619,   619,   619,   619,   619,   619,   322,   323,   324,   325,
-     619,   321,   320,   457,   462,   463,   461,   619,   619,   619,
-     619,   619,     0,     0,   386,   391,   392,   390,   619,   619,
-     619,   619,   435,   439,   440,   438,   619,   619,   619,   619,
-     619,   646,   651,   651,     0,     0,    28,    29,    52,    53,
-      54,    55,    78,    64,     0,    23,    78,   107,   106,   105,
-     654,   654,   637,     0,     0,     0,   224,     0,   197,   164,
-     165,   160,   161,   163,   193,   222,   143,   376,   375,   377,
-     363,   367,   362,   340,   347,   339,   272,   282,   279,   283,
-     280,   281,   271,   273,   254,   253,   255,   256,   257,   288,
-     289,   287,   291,   302,   303,   301,   306,   318,   329,   330,
-     333,   331,   332,   317,   319,   460,   464,   465,   466,   459,
-       0,     0,   389,   393,   394,   388,   437,   441,   442,   443,
-     444,   633,     9,     0,    31,     0,    37,     0,    77,   619,
-      24,     0,     0,     0,   651,   641,   639,   640,   619,   225,
-     619,   619,   198,   196,   619,   413,   414,     0,   651,   396,
-     397,     0,   651,   619,   619,    39,    38,   651,     0,     0,
-       0,     0,     0,     0,   619,    80,    81,    82,    83,    84,
-      85,    86,    87,    88,    89,    67,   651,   588,   654,   645,
-     227,   223,   200,   195,   619,   412,   619,   399,   398,   395,
-      32,    41,    11,     0,     0,     0,     0,     0,     0,    79,
-      18,     0,     0,     0,     0,   420,   401,     0,     0,   417,
-     418,     0,   567,   651,     0,    90,   474,     0,   467,   651,
-       0,   115,     0,   128,     0,   432,   654,   589,   654,   642,
-     226,   231,   232,   230,   619,   229,   199,   204,   205,   203,
-     619,   202,     0,     0,    30,    36,    33,    34,    35,    40,
-      44,    42,    43,   619,   566,   416,   619,    92,    91,   619,
-     473,   619,   117,   116,   619,   130,   129,   433,     0,     0,
-     228,   201,   415,   424,   425,   423,   619,   619,   619,   619,
-     619,   619,   400,   410,   411,   619,   405,   406,   407,   404,
-     408,   409,   619,   420,    94,   469,   119,   132,   654,   654,
-     422,   426,   429,   427,   428,   421,   403,   402,     0,     0,
-       0,     0,     0,     0,     0,   419,    93,    97,    98,   619,
-      96,     0,   468,   470,   471,   118,   122,   123,   121,   619,
-     131,   136,   137,   135,   619,   133,   597,   654,   590,   593,
-      95,     0,   120,   134,     0,     0,   484,   497,   477,   506,
-     619,   651,   475,   476,   651,   481,   651,   483,   651,   482,
-     654,   594,   595,   472,     0,     0,     0,     0,   592,   654,
-     619,   479,   478,   619,   486,   485,   619,   499,   498,   619,
-     508,   507,   591,     0,     0,   488,   501,   510,   654,   480,
-       0,     0,     0,     0,   487,   489,   492,   493,   494,   495,
-     496,   619,   491,   500,   502,   505,   619,   504,   509,   619,
-     512,   513,   514,   515,   516,   517,   596,   490,   503,   511
-};
-
-/* YYDEFGOTO[NTERM-NUM].  */
-static const yytype_int16 yydefgoto[] =
-{
-      -1,     1,   261,   262,   553,   933,   263,     2,   631,   632,
-     269,     3,   633,   634,   944,   688,   332,    54,   686,   740,
-    1023,  1107,  1025,   741,  1056,  1108,   365,    55,   279,    56,
-     351,    57,   742,   339,   938,   293,   939,   299,   783,   356,
-     784,   942,   521,   943,   144,   597,   718,   366,   489,  1027,
-    1028,  1064,  1114,  1065,  1158,  1209,   271,    62,   438,   749,
-     636,   750,   371,  1175,   372,  1120,  1066,  1163,  1211,   509,
-    1176,   579,  1122,  1067,  1166,  1212,   275,    64,   507,   669,
-     711,   127,   505,   575,   705,   706,   765,   766,   307,    65,
-     308,   136,   511,   582,   713,   401,   137,   515,   588,   715,
-     388,    66,   707,   964,   708,   957,  1043,  1104,   384,    67,
-     385,   138,   591,   342,    68,   361,    69,   362,   709,   774,
-     710,   955,  1040,  1103,   347,    70,   348,   303,   785,   301,
-     786,   378,    73,   297,    74,   531,   670,   612,   723,   671,
-     529,   672,   609,   722,   673,   533,   724,   535,   674,   725,
-     537,   675,   726,   527,   676,   606,   721,   828,   829,   525,
-    1178,   603,   720,   523,   677,   545,   678,   600,   719,   541,
-     679,   621,   728,  1050,  1051,   919,  1088,  1143,  1046,  1047,
-     920,  1110,  1111,  1071,  1142,   543,  1179,  1124,  1072,   624,
-     729,   170,   171,   626,   172,   173,   539,  1180,   618,   727,
-    1117,  1074,  1210,  1118,  1250,  1251,  1252,  1272,  1253,  1254,
-    1255,  1275,  1290,  1256,  1257,  1278,  1291,  1258,  1259,  1281,
-    1292,   519,  1181,   594,   717,   284,    75,   285,   319,    76,
-     320,   354,    77,   328,    78,   329,   323,    79,   324,   337,
-      80,   338,   513,   680,   585,   374,    81,   375,   312,    82,
-     313,   459,   517,   646,  1113,   567,   376,   497,   343,   344,
-     345,   475,   476,   563,   478,   479,   565,   643,   699,   640,
-     950,  1127,  1238,  1239,  1245,  1269,  1128,   330,   331,   386,
-     387,   352,   264,   377,   276,   441,   442,   638,   443,   124,
-     390,   502,   503,   571,   176,   430,   629,   570,   702,   757,
-    1036,   758,   759,   628,   428,   391,     4,   177,   752,   294,
-     451,   295,   265,   266,   267,   268,   392,    83,    84,    85,
-      86,    87,    88,    89,    90,    91,   175,   140,     5
-};
-
-/* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
-   STATE-NUM.  */
 #define YYPACT_NINF -706
+
+#define yypact_value_is_default(Yystate) \
+  (!!((Yystate) == (-706)))
+
+#define YYTABLE_NINF -757
+
+#define yytable_value_is_error(Yytable_value) \
+  0
+
+  /* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
+     STATE-NUM.  */
 static const yytype_int16 yypact[] =
 {
      349,    27,  -706,  -706,   352,  1787,  -706,  -706,  -706,    53,
@@ -1661,7 +994,146 @@ static const yytype_int16 yypact[] =
     -706,  -706,  -706,  -706,  -706,  -706,  -706,   373,   373,   373
 };
 
-/* YYPGOTO[NTERM-NUM].  */
+  /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
+     Performed when YYTABLE does not specify something else to do.  Zero
+     means the default is an error.  */
+static const yytype_uint16 yydefact[] =
+{
+     790,     0,     2,     3,     0,   757,     1,   649,   650,     0,
+       0,   652,     0,   763,     0,     0,   761,     0,     0,     0,
+       0,   762,     0,     0,   766,   764,   765,   767,     0,   768,
+     769,   770,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+     759,   760,     0,   771,   802,   806,   619,   792,   803,   797,
+     793,   794,   619,   809,   796,   815,   814,   819,   804,   813,
+     818,   799,   800,   795,   798,   810,   811,   805,   816,   817,
+     812,   820,   801,     0,     0,     0,     0,     0,     0,     0,
+     627,   758,   651,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,   571,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,   791,   822,     0,   619,     0,   619,
+       0,   619,     0,     0,     0,     0,   789,   787,   788,   786,
+     619,     0,   619,     0,   619,     0,     0,     0,     0,     0,
+     651,     0,     0,     0,     0,   651,     0,     0,     0,   778,
+     777,   780,   781,   782,   776,   775,   774,   773,   785,   772,
+       0,   779,     0,   784,   783,   619,     0,   629,   653,   679,
+       5,   669,   680,   681,   682,   683,   684,   685,   686,   687,
+     688,   689,   690,   691,   692,   693,   694,   695,   696,   697,
+     698,   699,   700,   701,   702,   703,   704,   705,   706,   707,
+     708,   709,   710,   711,   712,   713,   666,   714,   715,   716,
+     717,   718,   719,   720,   721,   722,   723,   724,   725,   726,
+     727,   728,   729,   730,   731,   732,   733,   734,   735,   736,
+     737,   738,   739,   740,   741,   742,   743,   670,   744,   671,
+     672,   673,   674,   745,   675,   676,   677,   678,   746,   747,
+     748,   651,   608,     0,    10,   749,   667,   668,   651,     0,
+      17,     0,    99,   750,   613,     0,   138,   651,   651,     0,
+      47,   651,   651,   529,     0,   525,   659,   662,   660,   664,
+     665,   663,   658,     0,    58,   656,   661,     0,   243,     0,
+      60,     0,   239,     0,   237,   598,   170,     0,   167,   651,
+     610,   563,     0,   559,   561,   609,   651,   651,   534,     0,
+     530,   651,   545,     0,   541,   651,   599,   540,     0,   537,
+     600,   651,     0,    25,   651,   651,   550,     0,   546,     0,
+      56,   575,     0,   213,     0,     0,   236,     0,   233,   651,
+     605,     0,    49,   651,     0,   535,     0,    62,   651,   651,
+     219,     0,   215,    74,    76,     0,    45,   651,   651,   651,
+     114,     0,   109,   558,     0,   555,   651,   569,     0,   241,
+     603,   604,   601,   209,     0,   206,   651,   602,     0,   191,
+     621,   620,   651,     0,   807,     0,   808,     0,   821,     0,
+       0,     0,   180,     0,   823,     0,   824,     0,   825,     0,
+       0,     0,     0,     0,   445,     0,     0,     0,     0,   452,
+       0,     0,     0,   619,   619,   826,   651,   651,   827,   651,
+     628,   651,     7,   619,   607,   619,   619,   101,   100,   618,
+     616,   139,   619,   619,   611,   612,   619,   528,   527,   526,
+      59,   651,   244,    61,   240,   238,   168,   169,   560,   651,
+     533,   532,   531,   543,   542,   544,   538,   539,    26,   549,
+     548,   547,    57,   214,     0,   578,   572,     0,   574,   582,
+     234,   235,    50,   606,   536,    63,   218,   217,   216,   651,
+      46,   111,   113,   112,   110,   556,   557,   567,   242,   207,
+     208,   192,     0,   625,   624,     0,   150,     0,   140,     0,
+     124,     0,   172,     0,   551,     0,   182,     0,   564,     0,
+     518,     0,    65,     0,   368,     0,   357,     0,   334,     0,
+     266,     0,   245,     0,   285,     0,   298,     0,   314,     0,
+     454,     0,   383,     0,   430,     0,   370,   447,   447,   645,
+     647,   632,   630,     6,    13,    20,   104,   614,     0,     0,
+     657,   562,   587,   577,   581,     0,    75,   570,   651,   634,
+     622,   623,   626,   619,   151,   149,   619,   619,   126,   125,
+     619,   173,   171,   619,   553,   552,   619,   183,   181,   619,
+     211,   210,   619,   520,   519,   619,    69,    68,   619,   372,
+     369,   619,   359,   358,   619,   336,   335,   619,   268,   267,
+     619,   247,   246,   619,   619,   619,   619,   456,   455,   619,
+     385,   384,   619,   434,   431,   371,     0,     0,     0,   631,
+     651,    27,    12,    27,    19,     0,     0,   617,   619,     0,
+     576,   579,   583,   580,   585,     0,   568,   636,   156,   142,
+       0,   175,   175,   185,   175,   522,    71,   374,   361,   338,
+     270,   249,   286,   300,   316,   458,   387,   436,   446,   619,
+     619,   619,   258,   259,   260,   261,   262,   263,   264,   265,
+     619,   453,   651,   627,   651,     0,    51,     0,    14,    15,
+      16,    51,    21,   619,     0,   102,   615,    48,   654,   584,
+       0,   565,     0,     0,     0,     0,   153,   154,   619,   155,
+     221,     0,   127,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+     449,   450,   451,   448,   648,     0,     0,     8,     0,     0,
+     619,   619,    66,     0,    66,    22,   651,   651,   108,     0,
+     103,   655,     0,   586,   644,   635,   638,   651,   627,   627,
+     643,     0,     0,   152,   159,   619,     0,   162,   619,   619,
+     619,   158,   157,   194,   220,   141,   147,   148,   146,   619,
+     144,   145,   174,   178,   179,   176,   177,   554,   184,   189,
+     190,   186,   187,   188,   212,   521,   523,   524,    70,    72,
+      73,   373,   381,   382,   380,   619,   619,   378,   379,   619,
+     360,   365,   366,   364,   619,   619,   619,   337,   345,   346,
+     344,   619,   341,   350,   351,   352,   353,   356,   619,   348,
+     349,   354,   355,   619,   342,   343,   269,   277,   278,   276,
+     619,   619,   619,   619,   619,   619,   619,   275,   274,   619,
+     248,   251,   252,   250,   619,   619,   619,   619,   619,   284,
+     296,   297,   295,   619,   619,   290,   292,   619,   293,   294,
+     619,   299,   312,   313,   311,   619,   619,   305,   304,   619,
+     307,   308,   309,   310,   619,   315,   327,   328,   326,   619,
+     619,   619,   619,   619,   619,   619,   322,   323,   324,   325,
+     619,   321,   320,   457,   462,   463,   461,   619,   619,   619,
+     619,   619,     0,     0,   386,   391,   392,   390,   619,   619,
+     619,   619,   435,   439,   440,   438,   619,   619,   619,   619,
+     619,   646,   651,   651,     0,     0,    28,    29,    52,    53,
+      54,    55,    78,    64,     0,    23,    78,   107,   106,   105,
+     654,   654,   637,     0,     0,     0,   224,     0,   197,   164,
+     165,   160,   161,   163,   193,   222,   143,   376,   375,   377,
+     363,   367,   362,   340,   347,   339,   272,   282,   279,   283,
+     280,   281,   271,   273,   254,   253,   255,   256,   257,   288,
+     289,   287,   291,   302,   303,   301,   306,   318,   329,   330,
+     333,   331,   332,   317,   319,   460,   464,   465,   466,   459,
+       0,     0,   389,   393,   394,   388,   437,   441,   442,   443,
+     444,   633,     9,     0,    31,     0,    37,     0,    77,   619,
+      24,     0,     0,     0,   651,   641,   639,   640,   619,   225,
+     619,   619,   198,   196,   619,   413,   414,     0,   651,   396,
+     397,     0,   651,   619,   619,    39,    38,   651,     0,     0,
+       0,     0,     0,     0,   619,    80,    81,    82,    83,    84,
+      85,    86,    87,    88,    89,    67,   651,   588,   654,   645,
+     227,   223,   200,   195,   619,   412,   619,   399,   398,   395,
+      32,    41,    11,     0,     0,     0,     0,     0,     0,    79,
+      18,     0,     0,     0,     0,   420,   401,     0,     0,   417,
+     418,     0,   567,   651,     0,    90,   474,     0,   467,   651,
+       0,   115,     0,   128,     0,   432,   654,   589,   654,   642,
+     226,   231,   232,   230,   619,   229,   199,   204,   205,   203,
+     619,   202,     0,     0,    30,    36,    33,    34,    35,    40,
+      44,    42,    43,   619,   566,   416,   619,    92,    91,   619,
+     473,   619,   117,   116,   619,   130,   129,   433,     0,     0,
+     228,   201,   415,   424,   425,   423,   619,   619,   619,   619,
+     619,   619,   400,   410,   411,   619,   405,   406,   407,   404,
+     408,   409,   619,   420,    94,   469,   119,   132,   654,   654,
+     422,   426,   429,   427,   428,   421,   403,   402,     0,     0,
+       0,     0,     0,     0,     0,   419,    93,    97,    98,   619,
+      96,     0,   468,   470,   471,   118,   122,   123,   121,   619,
+     131,   136,   137,   135,   619,   133,   597,   654,   590,   593,
+      95,     0,   120,   134,     0,     0,   484,   497,   477,   506,
+     619,   651,   475,   476,   651,   481,   651,   483,   651,   482,
+     654,   594,   595,   472,     0,     0,     0,     0,   592,   654,
+     619,   479,   478,   619,   486,   485,   619,   499,   498,   619,
+     508,   507,   591,     0,     0,   488,   501,   510,   654,   480,
+       0,     0,     0,     0,   487,   489,   492,   493,   494,   495,
+     496,   619,   491,   500,   502,   505,   619,   504,   509,   619,
+     512,   513,   514,   515,   516,   517,   596,   490,   503,   511
+};
+
+  /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int16 yypgoto[] =
 {
     -706,  -706,  -706,  1286,  -706,  -706,  -706,  -706,  -706,  -706,
@@ -1699,10 +1171,47 @@ static const yytype_int16 yypgoto[] =
     -706,  -706,  -706,  -706,  -706,  -706,  -706,  -706,  -706
 };
 
-/* YYTABLE[YYPACT[STATE-NUM]].  What to do in state STATE-NUM.  If
-   positive, shift that token.  If negative, reduce the rule which
-   number is the opposite.  If YYTABLE_NINF, syntax error.  */
-#define YYTABLE_NINF -757
+  /* YYDEFGOTO[NTERM-NUM].  */
+static const yytype_int16 yydefgoto[] =
+{
+      -1,     1,   261,   262,   553,   933,   263,     2,   631,   632,
+     269,     3,   633,   634,   944,   688,   332,    54,   686,   740,
+    1023,  1107,  1025,   741,  1056,  1108,   365,    55,   279,    56,
+     351,    57,   742,   339,   938,   293,   939,   299,   783,   356,
+     784,   942,   521,   943,   144,   597,   718,   366,   489,  1027,
+    1028,  1064,  1114,  1065,  1158,  1209,   271,    62,   438,   749,
+     636,   750,   371,  1175,   372,  1120,  1066,  1163,  1211,   509,
+    1176,   579,  1122,  1067,  1166,  1212,   275,    64,   507,   669,
+     711,   127,   505,   575,   705,   706,   765,   766,   307,    65,
+     308,   136,   511,   582,   713,   401,   137,   515,   588,   715,
+     388,    66,   707,   964,   708,   957,  1043,  1104,   384,    67,
+     385,   138,   591,   342,    68,   361,    69,   362,   709,   774,
+     710,   955,  1040,  1103,   347,    70,   348,   303,   785,   301,
+     786,   378,    73,   297,    74,   531,   670,   612,   723,   671,
+     529,   672,   609,   722,   673,   533,   724,   535,   674,   725,
+     537,   675,   726,   527,   676,   606,   721,   828,   829,   525,
+    1178,   603,   720,   523,   677,   545,   678,   600,   719,   541,
+     679,   621,   728,  1050,  1051,   919,  1088,  1143,  1046,  1047,
+     920,  1110,  1111,  1071,  1142,   543,  1179,  1124,  1072,   624,
+     729,   170,   171,   626,   172,   173,   539,  1180,   618,   727,
+    1117,  1074,  1210,  1118,  1250,  1251,  1252,  1272,  1253,  1254,
+    1255,  1275,  1290,  1256,  1257,  1278,  1291,  1258,  1259,  1281,
+    1292,   519,  1181,   594,   717,   284,    75,   285,   319,    76,
+     320,   354,    77,   328,    78,   329,   323,    79,   324,   337,
+      80,   338,   513,   680,   585,   374,    81,   375,   312,    82,
+     313,   459,   517,   646,  1113,   567,   376,   497,   343,   344,
+     345,   475,   476,   563,   478,   479,   565,   643,   699,   640,
+     950,  1127,  1238,  1239,  1245,  1269,  1128,   330,   331,   386,
+     387,   352,   264,   377,   276,   441,   442,   638,   443,   124,
+     390,   502,   503,   571,   176,   430,   629,   570,   702,   757,
+    1036,   758,   759,   628,   428,   391,     4,   177,   752,   294,
+     451,   295,   265,   266,   267,   268,   392,    83,    84,    85,
+      86,    87,    88,    89,    90,    91,   175,   140,     5
+};
+
+  /* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
+     positive, shift that token.  If negative, reduce the rule whose
+     number is the opposite.  If YYTABLE_NINF, syntax error.  */
 static const yytype_int16 yytable[] =
 {
       11,   160,    71,    60,    72,    92,    92,   174,    92,   139,
@@ -2050,12 +1559,6 @@ static const yytype_int16 yytable[] =
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
        0,     0,     0,     0,     0,     0,     0,     0,     0,   859
 };
-
-#define yypact_value_is_default(Yystate) \
-  (!!((Yystate) == (-706)))
-
-#define yytable_value_is_error(Yytable_value) \
-  YYID (0)
 
 static const yytype_int16 yycheck[] =
 {
@@ -2405,8 +1908,8 @@ static const yytype_int16 yycheck[] =
       -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,   105
 };
 
-/* YYSTOS[STATE-NUM] -- The (internal number of the) accessing
-   symbol of state STATE-NUM.  */
+  /* YYSTOS[STATE-NUM] -- The (internal number of the) accessing
+     symbol of state STATE-NUM.  */
 static const yytype_uint16 yystos[] =
 {
        0,   114,   120,   124,   419,   441,     0,     5,     7,    54,
@@ -2543,30 +2046,192 @@ static const yytype_uint16 yystos[] =
      245,   247,   339,   342,   347,   350,   396,   402,   402,   402
 };
 
-#define yyerrok		(yyerrstatus = 0)
-#define yyclearin	(yychar = YYEMPTY)
-#define YYEMPTY		(-2)
-#define YYEOF		0
+  /* YYR1[YYN] -- Symbol number of symbol that rule YYN derives.  */
+static const yytype_uint16 yyr1[] =
+{
+       0,   113,   114,   114,   114,   115,   116,   117,   118,   117,
+     119,   120,   121,   122,   122,   122,   122,   123,   124,   125,
+     126,   126,   126,   127,   128,   129,   130,   131,   131,   131,
+     132,   133,   134,   134,   134,   134,   134,   135,   136,   137,
+     137,   138,   138,   138,   138,   139,   140,   141,   142,   143,
+     144,   145,   145,   145,   145,   145,   146,   147,   148,   149,
+     150,   151,   152,   153,   154,   155,   156,   156,   157,   158,
+     158,   159,   159,   159,   161,   160,   160,   162,   163,   163,
+     164,   164,   164,   164,   164,   164,   164,   164,   164,   164,
+     165,   166,   167,   167,   168,   168,   168,   168,   168,   169,
+     170,   171,   171,   172,   173,   173,   174,   174,   174,   175,
+     176,   177,   177,   177,   177,   178,   179,   180,   180,   181,
+     181,   181,   181,   181,   182,   183,   184,   184,   185,   186,
+     187,   187,   188,   188,   188,   188,   188,   188,   189,   190,
+     191,   192,   193,   193,   193,   193,   193,   193,   193,   194,
+     195,   196,   196,   197,   197,   197,   198,   198,   198,   198,
+     198,   198,   198,   198,   198,   199,   200,   201,   202,   203,
+     203,   204,   205,   206,   206,   207,   207,   207,   207,   207,
+     208,   209,   210,   211,   211,   212,   212,   212,   212,   212,
+     212,   213,   214,   215,   216,   216,   217,   218,   219,   219,
+     220,   220,   220,   220,   220,   220,   221,   222,   223,   223,
+     224,   225,   225,   226,   227,   228,   229,   230,   230,   230,
+     231,   232,   232,   233,   234,   235,   235,   236,   236,   236,
+     236,   236,   236,   237,   238,   239,   239,   240,   241,   242,
+     243,   244,   245,   246,   247,   248,   249,   250,   250,   251,
+     251,   251,   251,   251,   251,   251,   251,   251,   252,   252,
+     252,   252,   252,   252,   252,   252,   253,   254,   255,   255,
+     256,   256,   256,   256,   256,   256,   256,   256,   256,   256,
+     256,   256,   256,   256,   257,   258,   259,   259,   259,   259,
+     259,   259,   259,   259,   259,   259,   259,   259,   260,   261,
+     262,   262,   262,   262,   262,   262,   262,   262,   262,   262,
+     262,   262,   262,   262,   263,   264,   265,   265,   265,   265,
+     265,   265,   265,   265,   265,   265,   265,   265,   265,   265,
+     265,   265,   265,   265,   266,   267,   268,   268,   269,   269,
+     269,   269,   269,   269,   269,   269,   269,   269,   270,   270,
+     271,   271,   271,   271,   271,   271,   271,   272,   273,   274,
+     274,   275,   275,   275,   275,   275,   275,   275,   276,   277,
+     278,   279,   280,   280,   281,   281,   281,   281,   281,   281,
+     281,   281,   281,   282,   283,   284,   284,   285,   285,   285,
+     285,   285,   285,   285,   285,   286,   286,   287,   288,   289,
+     289,   290,   290,   290,   290,   290,   290,   290,   290,   290,
+     290,   290,   291,   291,   292,   293,   294,   294,   295,   296,
+     297,   297,   297,   297,   297,   297,   297,   297,   297,   297,
+     298,   299,   300,   301,   302,   302,   303,   303,   303,   303,
+     303,   303,   303,   303,   303,   304,   305,   306,   306,   306,
+     306,   306,   307,   308,   309,   310,   311,   311,   312,   312,
+     312,   312,   312,   312,   312,   312,   312,   313,   314,   315,
+     315,   315,   315,   316,   316,   317,   317,   318,   319,   320,
+     320,   321,   321,   321,   322,   323,   324,   324,   325,   325,
+     325,   325,   325,   325,   325,   325,   325,   326,   327,   328,
+     328,   329,   329,   329,   329,   329,   330,   331,   332,   332,
+     333,   333,   333,   333,   333,   333,   333,   333,   334,   335,
+     336,   336,   337,   337,   337,   338,   339,   340,   340,   340,
+     341,   342,   343,   343,   343,   344,   345,   346,   347,   348,
+     348,   349,   350,   351,   351,   351,   352,   353,   354,   354,
+     354,   355,   356,   357,   357,   358,   359,   360,   360,   361,
+     362,   364,   363,   363,   365,   366,   367,   368,   368,   370,
+     369,   372,   371,   373,   371,   371,   374,   375,   376,   376,
+     377,   378,   379,   379,   380,   381,   381,   382,   382,   383,
+     384,   385,   386,   387,   387,   388,   388,   389,   390,   391,
+     391,   392,   392,   393,   393,   394,   394,   395,   395,   396,
+     396,   397,   397,   397,   398,   398,   399,   400,   401,   402,
+     402,   402,   403,   404,   405,   406,   406,   407,   407,   408,
+     408,   408,   409,   409,   410,   410,   411,   411,   412,   412,
+     412,   413,   413,   414,   415,   416,   416,   417,   417,   418,
+     418,   419,   419,   420,   421,   421,   423,   422,   422,   424,
+     424,   424,   424,   424,   424,   424,   425,   425,   425,   426,
+     426,   426,   426,   426,   426,   426,   426,   426,   426,   427,
+     427,   427,   427,   427,   427,   427,   427,   427,   427,   427,
+     427,   427,   427,   427,   427,   427,   427,   427,   427,   427,
+     427,   427,   427,   427,   427,   427,   427,   427,   427,   427,
+     427,   427,   427,   427,   427,   427,   427,   427,   427,   427,
+     427,   427,   427,   427,   427,   427,   427,   427,   427,   427,
+     427,   427,   427,   427,   427,   427,   427,   427,   427,   427,
+     427,   427,   427,   427,   427,   427,   427,   427,   427,   428,
+     429,   430,   431,   432,   433,   434,   435,   436,   437,   438,
+     438,   438,   438,   438,   438,   438,   438,   438,   438,   438,
+     438,   438,   439,   439,   439,   439,   439,   439,   439,   439,
+     439,   439,   439,   439,   439,   439,   440,   440,   440,   440,
+     441,   441,   441,   441,   441,   441,   441,   441,   441,   441,
+     441,   441,   441,   441,   441,   441,   441,   441,   441,   441,
+     441,   441,   441,   441,   441,   441,   441,   441,   441,   441,
+     441,   441,   441,   441,   441,   441,   441,   441
+};
 
-#define YYACCEPT	goto yyacceptlab
-#define YYABORT		goto yyabortlab
-#define YYERROR		goto yyerrorlab
+  /* YYR2[YYN] -- Number of symbols on the right hand side of rule YYN.  */
+static const yytype_uint8 yyr2[] =
+{
+       0,     2,     1,     1,     1,     1,     3,     0,     0,     6,
+       1,    13,     1,     0,     2,     2,     2,     1,    13,     1,
+       0,     2,     3,     1,     4,     1,     4,     0,     3,     3,
+       7,     1,     0,     2,     2,     2,     2,     1,     4,     1,
+       4,     0,     2,     2,     2,     1,     4,     1,     7,     1,
+       4,     0,     2,     2,     2,     2,     1,     4,     1,     4,
+       1,     4,     1,     4,     1,     1,     0,     3,     4,     1,
+       4,     0,     2,     2,     0,     3,     1,     1,     0,     3,
+       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
+       1,     4,     1,     4,     0,     3,     2,     2,     2,     1,
+       4,     1,     4,     1,     0,     4,     2,     2,     1,     1,
+       4,     2,     2,     2,     1,     1,     4,     1,     4,     0,
+       3,     2,     2,     2,     1,     4,     1,     3,     1,     4,
+       1,     4,     0,     2,     3,     2,     2,     2,     1,     4,
+       1,     7,     0,     3,     2,     2,     2,     2,     2,     4,
+       1,     1,     4,     1,     1,     1,     0,     2,     2,     2,
+       3,     3,     2,     3,     3,     2,     0,     1,     4,     2,
+       1,     4,     1,     1,     4,     0,     2,     2,     2,     2,
+       1,     4,     1,     1,     4,     0,     2,     2,     2,     2,
+       2,     1,     4,     3,     0,     3,     4,     1,     1,     4,
+       0,     3,     2,     2,     2,     2,     1,     4,     2,     1,
+       4,     1,     4,     1,     4,     1,     4,     2,     2,     1,
+       2,     0,     2,     5,     1,     1,     4,     0,     3,     2,
+       2,     2,     2,     1,     4,     2,     1,     1,     4,     1,
+       4,     1,     4,     1,     4,     1,     4,     1,     4,     0,
+       2,     2,     2,     3,     3,     3,     3,     3,     1,     1,
+       1,     1,     1,     1,     1,     1,     1,     4,     1,     4,
+       0,     3,     3,     3,     2,     2,     2,     2,     2,     3,
+       3,     3,     3,     3,     7,     1,     0,     3,     3,     3,
+       2,     3,     2,     2,     2,     2,     2,     2,     1,     7,
+       0,     3,     3,     3,     2,     2,     3,     2,     2,     2,
+       2,     2,     2,     2,     1,     7,     0,     3,     3,     3,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     3,
+       3,     3,     3,     3,     1,     4,     1,     4,     0,     3,
+       3,     2,     2,     2,     2,     2,     2,     3,     1,     1,
+       1,     1,     1,     1,     1,     1,     1,     1,     4,     1,
+       4,     0,     3,     3,     2,     2,     2,     3,     1,     4,
+       1,     4,     1,     4,     0,     3,     3,     3,     2,     2,
+       2,     2,     2,     1,     4,     1,     4,     0,     3,     3,
+       2,     2,     2,     3,     3,     2,     1,     1,     4,     1,
+       4,     0,     3,     3,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     1,     1,     7,     2,     1,     1,     7,
+       0,     3,     3,     2,     2,     2,     3,     3,     3,     3,
+       1,     4,     1,     4,     1,     4,     0,     3,     2,     2,
+       2,     3,     3,     3,     3,     2,     5,     0,     3,     3,
+       3,     3,     2,     5,     1,     4,     1,     4,     0,     3,
+       3,     2,     2,     2,     3,     3,     3,     1,     7,     0,
+       2,     2,     5,     2,     1,     1,     1,     1,     3,     1,
+       3,     1,     1,     1,     1,     3,     1,     4,     0,     2,
+       3,     2,     2,     2,     2,     2,     2,     1,     3,     1,
+       4,     0,     2,     3,     2,     2,     1,     3,     1,     4,
+       0,     3,     2,     2,     2,     2,     2,     2,     1,     4,
+       1,     4,     0,     2,     2,     1,     4,     2,     2,     1,
+       1,     4,     2,     2,     1,     1,     4,     1,     4,     2,
+       1,     1,     4,     2,     2,     1,     1,     4,     2,     2,
+       1,     1,     4,     1,     4,     1,     4,     2,     1,     1,
+       4,     0,     3,     1,     1,     2,     2,     0,     2,     0,
+       3,     0,     2,     0,     2,     1,     3,     2,     0,     2,
+       3,     2,     0,     2,     2,     0,     2,     0,     6,     5,
+       5,     5,     4,     0,     2,     0,     5,     5,     1,     1,
+       1,     1,     1,     1,     1,     1,     2,     2,     1,     1,
+       1,     2,     2,     1,     2,     4,     1,     1,     1,     0,
+       2,     2,     3,     2,     1,     0,     1,     0,     2,     0,
+       2,     3,     0,     5,     1,     4,     0,     3,     1,     3,
+       3,     1,     4,     1,     1,     0,     4,     2,     5,     1,
+       1,     0,     2,     2,     0,     1,     0,     3,     1,     1,
+       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
+       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
+       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
+       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
+       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
+       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
+       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
+       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
+       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
+       1,     0,     0,     0,     0,     0,     0,     0,     1,     1,
+       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
+       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
+       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
+       0,     3,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     4,     4,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     4,     3,     4,     4,     4,     4,     4
+};
 
 
-/* Like YYERROR except do call yyerror.  This remains here temporarily
-   to ease the transition to the new meaning of YYERROR, for GCC.
-   Once GCC version 2 has supplanted version 1, this can go.  However,
-   YYFAIL appears to be in use.  Nevertheless, it is formally deprecated
-   in Bison 2.4.2's NEWS entry, where a plan to phase it out is
-   discussed.  */
+#define yyerrok         (yyerrstatus = 0)
+#define yyclearin       (yychar = YYEMPTY)
+#define YYEMPTY         (-2)
+#define YYEOF           0
 
-#define YYFAIL		goto yyerrlab
-#if defined YYFAIL
-  /* This is here to suppress warnings from the GCC cpp's
-     -Wunused-macros.  Normally we don't worry about that warning, but
-     some users do, and we want to make it easy for users to remove
-     YYFAIL uses, which will produce warnings from Bison 2.5.  */
-#endif
+#define YYACCEPT        goto yyacceptlab
+#define YYABORT         goto yyabortlab
+#define YYERROR         goto yyerrorlab
+
 
 #define YYRECOVERING()  (!!yyerrstatus)
 
@@ -2583,13 +2248,13 @@ do                                                              \
   else                                                          \
     {                                                           \
       yyerror (&yylloc, scanner, param, YY_("syntax error: cannot back up")); \
-      YYERROR;							\
-    }								\
-while (YYID (0))
+      YYERROR;                                                  \
+    }                                                           \
+while (0)
 
 /* Error token number */
-#define YYTERROR	1
-#define YYERRCODE	256
+#define YYTERROR        1
+#define YYERRCODE       256
 
 
 /* YYLLOC_DEFAULT -- Set CURRENT to span from RHS[1] to RHS[N].
@@ -2599,7 +2264,7 @@ while (YYID (0))
 #ifndef YYLLOC_DEFAULT
 # define YYLLOC_DEFAULT(Current, Rhs, N)                                \
     do                                                                  \
-      if (YYID (N))                                                     \
+      if (N)                                                            \
         {                                                               \
           (Current).first_line   = YYRHSLOC (Rhs, 1).first_line;        \
           (Current).first_column = YYRHSLOC (Rhs, 1).first_column;      \
@@ -2613,10 +2278,25 @@ while (YYID (0))
           (Current).first_column = (Current).last_column =              \
             YYRHSLOC (Rhs, 0).last_column;                              \
         }                                                               \
-    while (YYID (0))
+    while (0)
 #endif
 
 #define YYRHSLOC(Rhs, K) ((Rhs)[K])
+
+
+/* Enable debugging if requested.  */
+#if YYDEBUG
+
+# ifndef YYFPRINTF
+#  include <stdio.h> /* INFRINGES ON USER NAME SPACE */
+#  define YYFPRINTF fprintf
+# endif
+
+# define YYDPRINTF(Args)                        \
+do {                                            \
+  if (yydebug)                                  \
+    YYFPRINTF Args;                             \
+} while (0)
 
 
 /* YY_LOCATION_PRINT -- Print the location on the stream.
@@ -2628,36 +2308,28 @@ while (YYID (0))
 
 /* Print *YYLOCP on YYO.  Private, do not rely on its existence. */
 
-__attribute__((__unused__))
-#if (defined __STDC__ || defined __C99__FUNC__ \
-     || defined __cplusplus || defined _MSC_VER)
+YY_ATTRIBUTE_UNUSED
 static unsigned
 yy_location_print_ (FILE *yyo, YYLTYPE const * const yylocp)
-#else
-static unsigned
-yy_location_print_ (yyo, yylocp)
-    FILE *yyo;
-    YYLTYPE const * const yylocp;
-#endif
 {
   unsigned res = 0;
   int end_col = 0 != yylocp->last_column ? yylocp->last_column - 1 : 0;
   if (0 <= yylocp->first_line)
     {
-      res += fprintf (yyo, "%d", yylocp->first_line);
+      res += YYFPRINTF (yyo, "%d", yylocp->first_line);
       if (0 <= yylocp->first_column)
-        res += fprintf (yyo, ".%d", yylocp->first_column);
+        res += YYFPRINTF (yyo, ".%d", yylocp->first_column);
     }
   if (0 <= yylocp->last_line)
     {
       if (yylocp->first_line < yylocp->last_line)
         {
-          res += fprintf (yyo, "-%d", yylocp->last_line);
+          res += YYFPRINTF (yyo, "-%d", yylocp->last_line);
           if (0 <= end_col)
-            res += fprintf (yyo, ".%d", end_col);
+            res += YYFPRINTF (yyo, ".%d", end_col);
         }
       else if (0 <= end_col && yylocp->first_column < end_col)
-        res += fprintf (yyo, "-%d", end_col);
+        res += YYFPRINTF (yyo, "-%d", end_col);
     }
   return res;
  }
@@ -2671,77 +2343,37 @@ yy_location_print_ (yyo, yylocp)
 #endif
 
 
-/* YYLEX -- calling `yylex' with the right arguments.  */
-#ifdef YYLEX_PARAM
-# define YYLEX yylex (&yylval, &yylloc, YYLEX_PARAM)
-#else
-# define YYLEX yylex (&yylval, &yylloc, scanner)
-#endif
-
-/* Enable debugging if requested.  */
-#if YYDEBUG
-
-# ifndef YYFPRINTF
-#  include <stdio.h> /* INFRINGES ON USER NAME SPACE */
-#  define YYFPRINTF fprintf
-# endif
-
-# define YYDPRINTF(Args)			\
-do {						\
-  if (yydebug)					\
-    YYFPRINTF Args;				\
-} while (YYID (0))
-
-# define YY_SYMBOL_PRINT(Title, Type, Value, Location)			  \
-do {									  \
-  if (yydebug)								  \
-    {									  \
-      YYFPRINTF (stderr, "%s ", Title);					  \
-      yy_symbol_print (stderr,						  \
-		  Type, Value, Location, scanner, param); \
-      YYFPRINTF (stderr, "\n");						  \
-    }									  \
-} while (YYID (0))
+# define YY_SYMBOL_PRINT(Title, Type, Value, Location)                    \
+do {                                                                      \
+  if (yydebug)                                                            \
+    {                                                                     \
+      YYFPRINTF (stderr, "%s ", Title);                                   \
+      yy_symbol_print (stderr,                                            \
+                  Type, Value, Location, scanner, param); \
+      YYFPRINTF (stderr, "\n");                                           \
+    }                                                                     \
+} while (0)
 
 
-/*--------------------------------.
-| Print this symbol on YYOUTPUT.  |
-`--------------------------------*/
+/*----------------------------------------.
+| Print this symbol's value on YYOUTPUT.  |
+`----------------------------------------*/
 
-/*ARGSUSED*/
-#if (defined __STDC__ || defined __C99__FUNC__ \
-     || defined __cplusplus || defined _MSC_VER)
 static void
 yy_symbol_value_print (FILE *yyoutput, int yytype, YYSTYPE const * const yyvaluep, YYLTYPE const * const yylocationp, void *scanner, struct yang_parameter *param)
-#else
-static void
-yy_symbol_value_print (yyoutput, yytype, yyvaluep, yylocationp, scanner, param)
-    FILE *yyoutput;
-    int yytype;
-    YYSTYPE const * const yyvaluep;
-    YYLTYPE const * const yylocationp;
-    void *scanner;
-    struct yang_parameter *param;
-#endif
 {
   FILE *yyo = yyoutput;
   YYUSE (yyo);
-  if (!yyvaluep)
-    return;
   YYUSE (yylocationp);
   YYUSE (scanner);
   YYUSE (param);
+  if (!yyvaluep)
+    return;
 # ifdef YYPRINT
   if (yytype < YYNTOKENS)
     YYPRINT (yyoutput, yytoknum[yytype], *yyvaluep);
-# else
-  YYUSE (yyoutput);
 # endif
-  switch (yytype)
-    {
-      default:
-        break;
-    }
+  YYUSE (yytype);
 }
 
 
@@ -2749,25 +2381,11 @@ yy_symbol_value_print (yyoutput, yytype, yyvaluep, yylocationp, scanner, param)
 | Print this symbol on YYOUTPUT.  |
 `--------------------------------*/
 
-#if (defined __STDC__ || defined __C99__FUNC__ \
-     || defined __cplusplus || defined _MSC_VER)
 static void
 yy_symbol_print (FILE *yyoutput, int yytype, YYSTYPE const * const yyvaluep, YYLTYPE const * const yylocationp, void *scanner, struct yang_parameter *param)
-#else
-static void
-yy_symbol_print (yyoutput, yytype, yyvaluep, yylocationp, scanner, param)
-    FILE *yyoutput;
-    int yytype;
-    YYSTYPE const * const yyvaluep;
-    YYLTYPE const * const yylocationp;
-    void *scanner;
-    struct yang_parameter *param;
-#endif
 {
-  if (yytype < YYNTOKENS)
-    YYFPRINTF (yyoutput, "token %s (", yytname[yytype]);
-  else
-    YYFPRINTF (yyoutput, "nterm %s (", yytname[yytype]);
+  YYFPRINTF (yyoutput, "%s %s (",
+             yytype < YYNTOKENS ? "token" : "nterm", yytname[yytype]);
 
   YY_LOCATION_PRINT (yyoutput, *yylocationp);
   YYFPRINTF (yyoutput, ": ");
@@ -2780,16 +2398,8 @@ yy_symbol_print (yyoutput, yytype, yyvaluep, yylocationp, scanner, param)
 | TOP (included).                                                   |
 `------------------------------------------------------------------*/
 
-#if (defined __STDC__ || defined __C99__FUNC__ \
-     || defined __cplusplus || defined _MSC_VER)
 static void
 yy_stack_print (yytype_int16 *yybottom, yytype_int16 *yytop)
-#else
-static void
-yy_stack_print (yybottom, yytop)
-    yytype_int16 *yybottom;
-    yytype_int16 *yytop;
-#endif
 {
   YYFPRINTF (stderr, "Stack now");
   for (; yybottom <= yytop; yybottom++)
@@ -2800,52 +2410,42 @@ yy_stack_print (yybottom, yytop)
   YYFPRINTF (stderr, "\n");
 }
 
-# define YY_STACK_PRINT(Bottom, Top)				\
-do {								\
-  if (yydebug)							\
-    yy_stack_print ((Bottom), (Top));				\
-} while (YYID (0))
+# define YY_STACK_PRINT(Bottom, Top)                            \
+do {                                                            \
+  if (yydebug)                                                  \
+    yy_stack_print ((Bottom), (Top));                           \
+} while (0)
 
 
 /*------------------------------------------------.
 | Report that the YYRULE is going to be reduced.  |
 `------------------------------------------------*/
 
-#if (defined __STDC__ || defined __C99__FUNC__ \
-     || defined __cplusplus || defined _MSC_VER)
 static void
-yy_reduce_print (YYSTYPE *yyvsp, YYLTYPE *yylsp, int yyrule, void *scanner, struct yang_parameter *param)
-#else
-static void
-yy_reduce_print (yyvsp, yylsp, yyrule, scanner, param)
-    YYSTYPE *yyvsp;
-    YYLTYPE *yylsp;
-    int yyrule;
-    void *scanner;
-    struct yang_parameter *param;
-#endif
+yy_reduce_print (yytype_int16 *yyssp, YYSTYPE *yyvsp, YYLTYPE *yylsp, int yyrule, void *scanner, struct yang_parameter *param)
 {
+  unsigned long int yylno = yyrline[yyrule];
   int yynrhs = yyr2[yyrule];
   int yyi;
-  unsigned long int yylno = yyrline[yyrule];
   YYFPRINTF (stderr, "Reducing stack by rule %d (line %lu):\n",
-	     yyrule - 1, yylno);
+             yyrule - 1, yylno);
   /* The symbols being reduced.  */
   for (yyi = 0; yyi < yynrhs; yyi++)
     {
       YYFPRINTF (stderr, "   $%d = ", yyi + 1);
-      yy_symbol_print (stderr, yyrhs[yyprhs[yyrule] + yyi],
-		       &(yyvsp[(yyi + 1) - (yynrhs)])
-		       , &(yylsp[(yyi + 1) - (yynrhs)])		       , scanner, param);
+      yy_symbol_print (stderr,
+                       yystos[yyssp[yyi + 1 - yynrhs]],
+                       &(yyvsp[(yyi + 1) - (yynrhs)])
+                       , &(yylsp[(yyi + 1) - (yynrhs)])                       , scanner, param);
       YYFPRINTF (stderr, "\n");
     }
 }
 
-# define YY_REDUCE_PRINT(Rule)		\
-do {					\
-  if (yydebug)				\
-    yy_reduce_print (yyvsp, yylsp, Rule, scanner, param); \
-} while (YYID (0))
+# define YY_REDUCE_PRINT(Rule)          \
+do {                                    \
+  if (yydebug)                          \
+    yy_reduce_print (yyssp, yyvsp, yylsp, Rule, scanner, param); \
+} while (0)
 
 /* Nonzero means print parse trace.  It is left uninitialized so that
    multiple parsers can coexist.  */
@@ -2859,7 +2459,7 @@ int yydebug;
 
 
 /* YYINITDEPTH -- initial size of the parser's stacks.  */
-#ifndef	YYINITDEPTH
+#ifndef YYINITDEPTH
 # define YYINITDEPTH 200
 #endif
 
@@ -2882,15 +2482,8 @@ int yydebug;
 #   define yystrlen strlen
 #  else
 /* Return the length of YYSTR.  */
-#if (defined __STDC__ || defined __C99__FUNC__ \
-     || defined __cplusplus || defined _MSC_VER)
 static YYSIZE_T
 yystrlen (const char *yystr)
-#else
-static YYSIZE_T
-yystrlen (yystr)
-    const char *yystr;
-#endif
 {
   YYSIZE_T yylen;
   for (yylen = 0; yystr[yylen]; yylen++)
@@ -2906,16 +2499,8 @@ yystrlen (yystr)
 #  else
 /* Copy YYSRC to YYDEST, returning the address of the terminating '\0' in
    YYDEST.  */
-#if (defined __STDC__ || defined __C99__FUNC__ \
-     || defined __cplusplus || defined _MSC_VER)
 static char *
 yystpcpy (char *yydest, const char *yysrc)
-#else
-static char *
-yystpcpy (yydest, yysrc)
-    char *yydest;
-    const char *yysrc;
-#endif
 {
   char *yyd = yydest;
   const char *yys = yysrc;
@@ -2945,27 +2530,27 @@ yytnamerr (char *yyres, const char *yystr)
       char const *yyp = yystr;
 
       for (;;)
-	switch (*++yyp)
-	  {
-	  case '\'':
-	  case ',':
-	    goto do_not_strip_quotes;
+        switch (*++yyp)
+          {
+          case '\'':
+          case ',':
+            goto do_not_strip_quotes;
 
-	  case '\\':
-	    if (*++yyp != '\\')
-	      goto do_not_strip_quotes;
-	    /* Fall through.  */
-	  default:
-	    if (yyres)
-	      yyres[yyn] = *yyp;
-	    yyn++;
-	    break;
+          case '\\':
+            if (*++yyp != '\\')
+              goto do_not_strip_quotes;
+            /* Fall through.  */
+          default:
+            if (yyres)
+              yyres[yyn] = *yyp;
+            yyn++;
+            break;
 
-	  case '"':
-	    if (yyres)
-	      yyres[yyn] = '\0';
-	    return yyn;
-	  }
+          case '"':
+            if (yyres)
+              yyres[yyn] = '\0';
+            return yyn;
+          }
     do_not_strip_quotes: ;
     }
 
@@ -2988,11 +2573,11 @@ static int
 yysyntax_error (YYSIZE_T *yymsg_alloc, char **yymsg,
                 yytype_int16 *yyssp, int yytoken)
 {
-  YYSIZE_T yysize0 = yytnamerr (YY_NULL, yytname[yytoken]);
+  YYSIZE_T yysize0 = yytnamerr (YY_NULLPTR, yytname[yytoken]);
   YYSIZE_T yysize = yysize0;
   enum { YYERROR_VERBOSE_ARGS_MAXIMUM = 5 };
   /* Internationalized format string. */
-  const char *yyformat = YY_NULL;
+  const char *yyformat = YY_NULLPTR;
   /* Arguments of yyformat. */
   char const *yyarg[YYERROR_VERBOSE_ARGS_MAXIMUM];
   /* Number of reported tokens (one for the "unexpected", one per
@@ -3000,10 +2585,6 @@ yysyntax_error (YYSIZE_T *yymsg_alloc, char **yymsg,
   int yycount = 0;
 
   /* There are many possibilities here to consider:
-     - Assume YYFAIL is not used.  It's too flawed to consider.  See
-       <http://lists.gnu.org/archive/html/bison-patches/2009-12/msg00024.html>
-       for details.  YYERROR is fine as it does not invoke this
-       function.
      - If this state is a consistent state with a default action, then
        the only way this function was invoked is if the default action
        is an error action.  In that case, don't check for expected
@@ -3053,7 +2634,7 @@ yysyntax_error (YYSIZE_T *yymsg_alloc, char **yymsg,
                   }
                 yyarg[yycount++] = yytname[yyx];
                 {
-                  YYSIZE_T yysize1 = yysize + yytnamerr (YY_NULL, yytname[yyx]);
+                  YYSIZE_T yysize1 = yysize + yytnamerr (YY_NULLPTR, yytname[yyx]);
                   if (! (yysize <= yysize1
                          && yysize1 <= YYSTACK_ALLOC_MAXIMUM))
                     return 2;
@@ -3120,72 +2701,67 @@ yysyntax_error (YYSIZE_T *yymsg_alloc, char **yymsg,
 | Release the memory associated to this symbol.  |
 `-----------------------------------------------*/
 
-/*ARGSUSED*/
-#if (defined __STDC__ || defined __C99__FUNC__ \
-     || defined __cplusplus || defined _MSC_VER)
 static void
 yydestruct (const char *yymsg, int yytype, YYSTYPE *yyvaluep, YYLTYPE *yylocationp, void *scanner, struct yang_parameter *param)
-#else
-static void
-yydestruct (yymsg, yytype, yyvaluep, yylocationp, scanner, param)
-    const char *yymsg;
-    int yytype;
-    YYSTYPE *yyvaluep;
-    YYLTYPE *yylocationp;
-    void *scanner;
-    struct yang_parameter *param;
-#endif
 {
   YYUSE (yyvaluep);
   YYUSE (yylocationp);
   YYUSE (scanner);
   YYUSE (param);
-
   if (!yymsg)
     yymsg = "Deleting";
   YY_SYMBOL_PRINT (yymsg, yytype, yyvaluep, yylocationp);
 
+  YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
   switch (yytype)
     {
-      case 115: /* tmp_string */
+          case 115: /* tmp_string  */
 
-        { free((((*yyvaluep).p_str)) ? *((*yyvaluep).p_str) : NULL); };
-
-        break;
-      case 210: /* pattern_arg_str */
-
-        { free(((*yyvaluep).str)); };
+      { free((((*yyvaluep).p_str)) ? *((*yyvaluep).p_str) : NULL); }
 
         break;
-      case 399: /* semicolom */
 
-        { free(((*yyvaluep).str)); };
+    case 210: /* pattern_arg_str  */
 
-        break;
-      case 401: /* curly_bracket_open */
-
-        { free(((*yyvaluep).str)); };
+      { free(((*yyvaluep).str)); }
 
         break;
-      case 405: /* string_opt_part1 */
 
-        { free(((*yyvaluep).str)); };
+    case 399: /* semicolom  */
 
-        break;
-      case 430: /* type_ext_alloc */
-
-        { yang_type_free(param->module->ctx, ((*yyvaluep).v)); };
+      { free(((*yyvaluep).str)); }
 
         break;
-      case 431: /* typedef_ext_alloc */
 
-        { yang_type_free(param->module->ctx, &((struct lys_tpdf *)((*yyvaluep).v))->type); };
+    case 401: /* curly_bracket_open  */
+
+      { free(((*yyvaluep).str)); }
 
         break;
+
+    case 405: /* string_opt_part1  */
+
+      { free(((*yyvaluep).str)); }
+
+        break;
+
+    case 430: /* type_ext_alloc  */
+
+      { yang_type_free(param->module->ctx, ((*yyvaluep).v)); }
+
+        break;
+
+    case 431: /* typedef_ext_alloc  */
+
+      { yang_type_free(param->module->ctx, &((struct lys_tpdf *)((*yyvaluep).v))->type); }
+
+        break;
+
 
       default:
         break;
     }
+  YY_IGNORE_MAYBE_UNINITIALIZED_END
 }
 
 
@@ -3195,28 +2771,8 @@ yydestruct (yymsg, yytype, yyvaluep, yylocationp, scanner, param)
 | yyparse.  |
 `----------*/
 
-#ifdef YYPARSE_PARAM
-#if (defined __STDC__ || defined __C99__FUNC__ \
-     || defined __cplusplus || defined _MSC_VER)
-int
-yyparse (void *YYPARSE_PARAM)
-#else
-int
-yyparse (YYPARSE_PARAM)
-    void *YYPARSE_PARAM;
-#endif
-#else /* ! YYPARSE_PARAM */
-#if (defined __STDC__ || defined __C99__FUNC__ \
-     || defined __cplusplus || defined _MSC_VER)
 int
 yyparse (void *scanner, struct yang_parameter *param)
-#else
-int
-yyparse (scanner, param)
-    void *scanner;
-    struct yang_parameter *param;
-#endif
-#endif
 {
 /* The lookahead symbol.  */
 int yychar;
@@ -3232,39 +2788,19 @@ int is_value = 0;
 void *yang_type = NULL;
 
 
-#if defined __GNUC__ && 407 <= __GNUC__ * 100 + __GNUC_MINOR__
-/* Suppress an incorrect diagnostic about yylval being uninitialized.  */
-# define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN \
-    _Pragma ("GCC diagnostic push") \
-    _Pragma ("GCC diagnostic ignored \"-Wuninitialized\"")\
-    _Pragma ("GCC diagnostic ignored \"-Wmaybe-uninitialized\"")
-# define YY_IGNORE_MAYBE_UNINITIALIZED_END \
-    _Pragma ("GCC diagnostic pop")
-#else
+/* The semantic value of the lookahead symbol.  */
 /* Default value used for initialization, for pacifying older GCCs
    or non-GCC compilers.  */
-static YYSTYPE yyval_default;
-# define YY_INITIAL_VALUE(Value) = Value
-#endif
+YY_INITIAL_VALUE (static YYSTYPE yyval_default;)
+YYSTYPE yylval YY_INITIAL_VALUE (= yyval_default);
+
+/* Location data for the lookahead symbol.  */
 static YYLTYPE yyloc_default
 # if defined YYLTYPE_IS_TRIVIAL && YYLTYPE_IS_TRIVIAL
   = { 1, 1, 1, 1 }
 # endif
 ;
-#ifndef YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
-# define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
-# define YY_IGNORE_MAYBE_UNINITIALIZED_END
-#endif
-#ifndef YY_INITIAL_VALUE
-# define YY_INITIAL_VALUE(Value) /* Nothing. */
-#endif
-
-/* The semantic value of the lookahead symbol.  */
-YYSTYPE yylval YY_INITIAL_VALUE(yyval_default);
-
-/* Location data for the lookahead symbol.  */
 YYLTYPE yylloc = yyloc_default;
-
 
     /* Number of syntax errors so far.  */
     int yynerrs;
@@ -3274,9 +2810,9 @@ YYLTYPE yylloc = yyloc_default;
     int yyerrstatus;
 
     /* The stacks and their tools:
-       `yyss': related to states.
-       `yyvs': related to semantic values.
-       `yyls': related to locations.
+       'yyss': related to states.
+       'yyvs': related to semantic values.
+       'yyls': related to locations.
 
        Refer to the stacks through separate pointers, to allow yyoverflow
        to reallocate them elsewhere.  */
@@ -3353,6 +2889,7 @@ YYLTYPE yylloc = yyloc_default;
                   trg = (param->submodule) ? (struct lys_module *)param->submodule : param->module;
                 }
 
+
   yylsp[0] = yylloc;
   goto yysetstate;
 
@@ -3374,26 +2911,26 @@ YYLTYPE yylloc = yyloc_default;
 
 #ifdef yyoverflow
       {
-	/* Give user a chance to reallocate the stack.  Use copies of
-	   these so that the &'s don't force the real ones into
-	   memory.  */
-	YYSTYPE *yyvs1 = yyvs;
-	yytype_int16 *yyss1 = yyss;
-	YYLTYPE *yyls1 = yyls;
+        /* Give user a chance to reallocate the stack.  Use copies of
+           these so that the &'s don't force the real ones into
+           memory.  */
+        YYSTYPE *yyvs1 = yyvs;
+        yytype_int16 *yyss1 = yyss;
+        YYLTYPE *yyls1 = yyls;
 
-	/* Each stack pointer address is followed by the size of the
-	   data in use in that stack, in bytes.  This used to be a
-	   conditional around just the two extra args, but that might
-	   be undefined if yyoverflow is a macro.  */
-	yyoverflow (YY_("memory exhausted"),
-		    &yyss1, yysize * sizeof (*yyssp),
-		    &yyvs1, yysize * sizeof (*yyvsp),
-		    &yyls1, yysize * sizeof (*yylsp),
-		    &yystacksize);
+        /* Each stack pointer address is followed by the size of the
+           data in use in that stack, in bytes.  This used to be a
+           conditional around just the two extra args, but that might
+           be undefined if yyoverflow is a macro.  */
+        yyoverflow (YY_("memory exhausted"),
+                    &yyss1, yysize * sizeof (*yyssp),
+                    &yyvs1, yysize * sizeof (*yyvsp),
+                    &yyls1, yysize * sizeof (*yylsp),
+                    &yystacksize);
 
-	yyls = yyls1;
-	yyss = yyss1;
-	yyvs = yyvs1;
+        yyls = yyls1;
+        yyss = yyss1;
+        yyvs = yyvs1;
       }
 #else /* no yyoverflow */
 # ifndef YYSTACK_RELOCATE
@@ -3401,23 +2938,23 @@ YYLTYPE yylloc = yyloc_default;
 # else
       /* Extend the stack our own way.  */
       if (YYMAXDEPTH <= yystacksize)
-	goto yyexhaustedlab;
+        goto yyexhaustedlab;
       yystacksize *= 2;
       if (YYMAXDEPTH < yystacksize)
-	yystacksize = YYMAXDEPTH;
+        yystacksize = YYMAXDEPTH;
 
       {
-	yytype_int16 *yyss1 = yyss;
-	union yyalloc *yyptr =
-	  (union yyalloc *) YYSTACK_ALLOC (YYSTACK_BYTES (yystacksize));
-	if (! yyptr)
-	  goto yyexhaustedlab;
-	YYSTACK_RELOCATE (yyss_alloc, yyss);
-	YYSTACK_RELOCATE (yyvs_alloc, yyvs);
-	YYSTACK_RELOCATE (yyls_alloc, yyls);
+        yytype_int16 *yyss1 = yyss;
+        union yyalloc *yyptr =
+          (union yyalloc *) YYSTACK_ALLOC (YYSTACK_BYTES (yystacksize));
+        if (! yyptr)
+          goto yyexhaustedlab;
+        YYSTACK_RELOCATE (yyss_alloc, yyss);
+        YYSTACK_RELOCATE (yyvs_alloc, yyvs);
+        YYSTACK_RELOCATE (yyls_alloc, yyls);
 #  undef YYSTACK_RELOCATE
-	if (yyss1 != yyssa)
-	  YYSTACK_FREE (yyss1);
+        if (yyss1 != yyssa)
+          YYSTACK_FREE (yyss1);
       }
 # endif
 #endif /* no yyoverflow */
@@ -3427,10 +2964,10 @@ YYLTYPE yylloc = yyloc_default;
       yylsp = yyls + yysize - 1;
 
       YYDPRINTF ((stderr, "Stack size increased to %lu\n",
-		  (unsigned long int) yystacksize));
+                  (unsigned long int) yystacksize));
 
       if (yyss + yystacksize - 1 <= yyssp)
-	YYABORT;
+        YYABORT;
     }
 
   YYDPRINTF ((stderr, "Entering state %d\n", yystate));
@@ -3459,7 +2996,7 @@ yybackup:
   if (yychar == YYEMPTY)
     {
       YYDPRINTF ((stderr, "Reading a token: "));
-      yychar = YYLEX;
+      yychar = yylex (&yylval, &yylloc, scanner);
     }
 
   if (yychar <= YYEOF)
@@ -3524,7 +3061,7 @@ yyreduce:
   yylen = yyr2[yyn];
 
   /* If YYLEN is nonzero, implement the default value of the action:
-     `$$ = $1'.
+     '$$ = $1'.
 
      Otherwise, the following line sets YYVAL to garbage.
      This behavior is undocumented and Bison
@@ -3562,6 +3099,7 @@ yyreduce:
                     }
                     (yyval.p_str) = &s;
                   }
+
     break;
 
   case 8:
@@ -3587,6 +3125,7 @@ yyreduce:
                 }
               }
             }
+
     break;
 
   case 10:
@@ -3601,6 +3140,7 @@ yyreduce:
                                      s = NULL;
                                      actual_type = MODULE_KEYWORD;
                                    }
+
     break;
 
   case 12:
@@ -3614,21 +3154,24 @@ yyreduce:
                                             YYABORT;
                                           }
                                         }
+
     break;
 
   case 13:
 
     { (yyval.i) = 0; }
+
     break;
 
   case 14:
 
-    { if (yang_check_version(param->module, param->submodule, s, (yyvsp[(1) - (2)].i))) {
+    { if (yang_check_version(param->module, param->submodule, s, (yyvsp[-1].i))) {
                                               YYABORT;
                                             }
                                             (yyval.i) = 1;
                                             s = NULL;
                                           }
+
     break;
 
   case 15:
@@ -3638,6 +3181,7 @@ yyreduce:
                                          }
                                          s = NULL;
                                        }
+
     break;
 
   case 16:
@@ -3647,6 +3191,7 @@ yyreduce:
                                       }
                                       s = NULL;
                                     }
+
     break;
 
   case 17:
@@ -3661,6 +3206,7 @@ yyreduce:
                                         s = NULL;
                                         actual_type = SUBMODULE_KEYWORD;
                                       }
+
     break;
 
   case 19:
@@ -3669,7 +3215,7 @@ yyreduce:
                                                   LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "belongs-to", "submodule");
                                                   YYABORT;
                                                 }
-                                                if (!(yyvsp[(1) - (1)].i)) {
+                                                if (!(yyvsp[0].i)) {
                                                   /* check version compatibility with the main module */
                                                   if (param->module->version > 1) {
                                                       LOGVAL(LYE_INVER, LY_VLOG_NONE, NULL);
@@ -3677,21 +3223,24 @@ yyreduce:
                                                   }
                                                 }
                                               }
+
     break;
 
   case 20:
 
     { (yyval.i) = 0; }
+
     break;
 
   case 21:
 
-    { if (yang_check_version(param->module, param->submodule, s, (yyvsp[(1) - (2)].i))) {
+    { if (yang_check_version(param->module, param->submodule, s, (yyvsp[-1].i))) {
                                                  YYABORT;
                                                }
                                                (yyval.i) = 1;
                                                s = NULL;
                                              }
+
     break;
 
   case 23:
@@ -3699,6 +3248,7 @@ yyreduce:
     { backup_type = actual_type;
                            actual_type = YANG_VERSION_KEYWORD;
                          }
+
     break;
 
   case 25:
@@ -3706,14 +3256,16 @@ yyreduce:
     { backup_type = actual_type;
                             actual_type = NAMESPACE_KEYWORD;
                           }
+
     break;
 
   case 30:
 
-    { actual_type = (yyvsp[(3) - (7)].token);
+    { actual_type = (yyvsp[-4].token);
                    backup_type = NODE;
                    actual = NULL;
                  }
+
     break;
 
   case 31:
@@ -3725,11 +3277,13 @@ yyreduce:
                                      (yyval.token) = actual_type;
                                      actual_type = IMPORT_KEYWORD;
                                    }
+
     break;
 
   case 32:
 
     { (yyval.i) = 0; }
+
     break;
 
   case 33:
@@ -3739,6 +3293,7 @@ yyreduce:
                                    }
                                    s = NULL;
                                  }
+
     break;
 
   case 34:
@@ -3752,8 +3307,9 @@ yyreduce:
                                           YYABORT;
                                         }
                                         s = NULL;
-                                        (yyval.i) = (yyvsp[(1) - (2)].i);
+                                        (yyval.i) = (yyvsp[-1].i);
                                       }
+
     break;
 
   case 35:
@@ -3767,13 +3323,14 @@ yyreduce:
                                         YYABORT;
                                       }
                                       s = NULL;
-                                      (yyval.i) = (yyvsp[(1) - (2)].i);
+                                      (yyval.i) = (yyvsp[-1].i);
                                     }
+
     break;
 
   case 36:
 
-    { if ((yyvsp[(1) - (2)].i)) {
+    { if ((yyvsp[-1].i)) {
                                             LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "revision-date", "import");
                                             free(s);
                                             YYABORT;
@@ -3783,6 +3340,7 @@ yyreduce:
                                           s = NULL;
                                           (yyval.i) = 1;
                                         }
+
     break;
 
   case 37:
@@ -3794,19 +3352,22 @@ yyreduce:
                                      (yyval.token) = actual_type;
                                      actual_type = INCLUDE_KEYWORD;
                                    }
+
     break;
 
   case 38:
 
-    { actual_type = (yyvsp[(3) - (4)].token);
+    { actual_type = (yyvsp[-1].token);
                                                                 backup_type = NODE;
                                                                 actual = NULL;
                                                               }
+
     break;
 
   case 41:
 
     { (yyval.i) = 0; }
+
     break;
 
   case 42:
@@ -3820,8 +3381,9 @@ yyreduce:
                                             YYABORT;
                                          }
                                          s = NULL;
-                                         (yyval.i) = (yyvsp[(1) - (2)].i);
+                                         (yyval.i) = (yyvsp[-1].i);
                                        }
+
     break;
 
   case 43:
@@ -3835,13 +3397,14 @@ yyreduce:
                                          YYABORT;
                                        }
                                        s = NULL;
-                                       (yyval.i) = (yyvsp[(1) - (2)].i);
+                                       (yyval.i) = (yyvsp[-1].i);
                                      }
+
     break;
 
   case 44:
 
-    { if ((yyvsp[(1) - (2)].i)) {
+    { if ((yyvsp[-1].i)) {
                                              LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "revision-date", "include");
                                              free(s);
                                              YYABORT;
@@ -3851,6 +3414,7 @@ yyreduce:
                                            s = NULL;
                                            (yyval.i) = 1;
                                          }
+
     break;
 
   case 45:
@@ -3858,6 +3422,7 @@ yyreduce:
     { backup_type = actual_type;
                                   actual_type = REVISION_DATE_KEYWORD;
                                 }
+
     break;
 
   case 47:
@@ -3884,6 +3449,7 @@ yyreduce:
                                          s = NULL;
                                          actual_type = BELONGS_TO_KEYWORD;
                                        }
+
     break;
 
   case 48:
@@ -3899,8 +3465,9 @@ yyreduce:
                          }
                        }
                        s = NULL;
-                       actual_type = (yyvsp[(3) - (7)].token);
+                       actual_type = (yyvsp[-4].token);
                      }
+
     break;
 
   case 49:
@@ -3908,6 +3475,7 @@ yyreduce:
     { backup_type = actual_type;
                              actual_type = PREFIX_KEYWORD;
                            }
+
     break;
 
   case 52:
@@ -3917,6 +3485,7 @@ yyreduce:
                                     }
                                     s = NULL;
                                   }
+
     break;
 
   case 53:
@@ -3926,6 +3495,7 @@ yyreduce:
                                }
                                s = NULL;
                              }
+
     break;
 
   case 54:
@@ -3935,6 +3505,7 @@ yyreduce:
                                    }
                                    s = NULL;
                                  }
+
     break;
 
   case 55:
@@ -3944,6 +3515,7 @@ yyreduce:
                                  }
                                  s=NULL;
                                }
+
     break;
 
   case 56:
@@ -3951,6 +3523,7 @@ yyreduce:
     { backup_type = actual_type;
                            actual_type = ORGANIZATION_KEYWORD;
                          }
+
     break;
 
   case 58:
@@ -3958,6 +3531,7 @@ yyreduce:
     { backup_type = actual_type;
                       actual_type = CONTACT_KEYWORD;
                     }
+
     break;
 
   case 60:
@@ -3965,6 +3539,7 @@ yyreduce:
     { backup_type = actual_type;
                           actual_type = DESCRIPTION_KEYWORD;
                         }
+
     break;
 
   case 62:
@@ -3972,6 +3547,7 @@ yyreduce:
     { backup_type = actual_type;
                         actual_type = REFERENCE_KEYWORD;
                       }
+
     break;
 
   case 64:
@@ -3987,6 +3563,7 @@ yyreduce:
                                       trg->rev = tmp;
                                     }
                                   }
+
     break;
 
   case 65:
@@ -4001,6 +3578,7 @@ yyreduce:
                                   s = NULL;
                                   actual_type = REVISION_KEYWORD;
                                 }
+
     break;
 
   case 67:
@@ -4015,13 +3593,15 @@ yyreduce:
                                                   }
                                                 }
                                               }
+
     break;
 
   case 68:
 
-    { actual_type = (yyvsp[(3) - (4)].backup_token).token;
-                                                                     actual = (yyvsp[(3) - (4)].backup_token).actual;
+    { actual_type = (yyvsp[-1].backup_token).token;
+                                                                     actual = (yyvsp[-1].backup_token).actual;
                                                                    }
+
     break;
 
   case 72:
@@ -4031,6 +3611,7 @@ yyreduce:
                                           }
                                           s = NULL;
                                         }
+
     break;
 
   case 73:
@@ -4040,6 +3621,7 @@ yyreduce:
                                         }
                                         s = NULL;
                                       }
+
     break;
 
   case 74:
@@ -4050,6 +3632,7 @@ yyreduce:
                                 YYABORT;
                               }
                             }
+
     break;
 
   case 76:
@@ -4059,6 +3642,7 @@ yyreduce:
                    YYABORT;
                }
              }
+
     break;
 
   case 77:
@@ -4110,6 +3694,7 @@ yyreduce:
                                trg->extensions = tmp;
                              }
                            }
+
     break;
 
   case 78:
@@ -4133,11 +3718,13 @@ yyreduce:
                          }
                          actual = NULL;
                        }
+
     break;
 
   case 79:
 
     { actual = NULL; }
+
     break;
 
   case 90:
@@ -4156,15 +3743,17 @@ yyreduce:
                                         s = NULL;
                                         actual_type = EXTENSION_KEYWORD;
                                       }
+
     break;
 
   case 91:
 
     { struct lys_ext *ext = actual;
                   ext->plugin = ext_get_plugin(ext->name, ext->module->name, ext->module->rev ? ext->module->rev[0].date : NULL);
-                  actual_type = (yyvsp[(3) - (4)].backup_token).token;
-                  actual = (yyvsp[(3) - (4)].backup_token).actual;
+                  actual_type = (yyvsp[-1].backup_token).token;
+                  actual = (yyvsp[-1].backup_token).actual;
                 }
+
     break;
 
   case 96:
@@ -4173,8 +3762,9 @@ yyreduce:
                                         LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "extension");
                                         YYABORT;
                                       }
-                                      ((struct lys_ext *)actual)->flags |= (yyvsp[(2) - (2)].i);
+                                      ((struct lys_ext *)actual)->flags |= (yyvsp[0].i);
                                     }
+
     break;
 
   case 97:
@@ -4184,6 +3774,7 @@ yyreduce:
                                            }
                                            s = NULL;
                                          }
+
     break;
 
   case 98:
@@ -4193,6 +3784,7 @@ yyreduce:
                                          }
                                          s = NULL;
                                        }
+
     break;
 
   case 99:
@@ -4214,19 +3806,22 @@ yyreduce:
                                    s = NULL;
                                    actual_type = ARGUMENT_KEYWORD;
                                  }
+
     break;
 
   case 100:
 
-    { actual_type = (yyvsp[(3) - (4)].token); }
+    { actual_type = (yyvsp[-1].token); }
+
     break;
 
   case 103:
 
-    { (yyval.uint) = (yyvsp[(1) - (1)].uint);
+    { (yyval.uint) = (yyvsp[0].uint);
                                        backup_type = actual_type;
                                        actual_type = YIN_ELEMENT_KEYWORD;
                                      }
+
     break;
 
   case 105:
@@ -4246,21 +3841,24 @@ yyreduce:
          } else {
            val = (uint8_t *)(p + 1);
          }
-         val[c] = ((yyvsp[(3) - (4)].uint) == LYS_YINELEM) ? 1 : 2;
+         val[c] = ((yyvsp[-1].uint) == LYS_YINELEM) ? 1 : 2;
        } else {
-         ((struct lys_ext *)actual)->flags |= (yyvsp[(3) - (4)].uint);
+         ((struct lys_ext *)actual)->flags |= (yyvsp[-1].uint);
        }
      }
+
     break;
 
   case 106:
 
     { (yyval.uint) = LYS_YINELEM; }
+
     break;
 
   case 107:
 
     { (yyval.uint) = 0; }
+
     break;
 
   case 108:
@@ -4277,34 +3875,40 @@ yyreduce:
                free(s);
                s = NULL;
              }
+
     break;
 
   case 109:
 
-    { (yyval.i) = (yyvsp[(1) - (1)].i);
+    { (yyval.i) = (yyvsp[0].i);
                              backup_type = actual_type;
                              actual_type = STATUS_KEYWORD;
                            }
+
     break;
 
   case 110:
 
-    { (yyval.i) = (yyvsp[(3) - (4)].i); }
+    { (yyval.i) = (yyvsp[-1].i); }
+
     break;
 
   case 111:
 
     { (yyval.i) = LYS_STATUS_CURR; }
+
     break;
 
   case 112:
 
     { (yyval.i) = LYS_STATUS_OBSLT; }
+
     break;
 
   case 113:
 
     { (yyval.i) = LYS_STATUS_DEPRC; }
+
     break;
 
   case 114:
@@ -4323,6 +3927,7 @@ yyreduce:
                free(s);
                s = NULL;
              }
+
     break;
 
   case 115:
@@ -4340,13 +3945,15 @@ yyreduce:
                                       s = NULL;
                                       actual_type = FEATURE_KEYWORD;
                                     }
+
     break;
 
   case 116:
 
-    { actual = (yyvsp[(3) - (4)].backup_token).actual;
-                actual_type = (yyvsp[(3) - (4)].backup_token).token;
+    { actual = (yyvsp[-1].backup_token).actual;
+                actual_type = (yyvsp[-1].backup_token).token;
               }
+
     break;
 
   case 118:
@@ -4363,6 +3970,7 @@ yyreduce:
             ((struct lys_feature *)actual)->iffeature = tmp;
           }
         }
+
     break;
 
   case 121:
@@ -4371,8 +3979,9 @@ yyreduce:
                                       LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "feature");
                                       YYABORT;
                                     }
-                                    ((struct lys_feature *)actual)->flags |= (yyvsp[(2) - (2)].i);
+                                    ((struct lys_feature *)actual)->flags |= (yyvsp[0].i);
                                   }
+
     break;
 
   case 122:
@@ -4382,6 +3991,7 @@ yyreduce:
                                          }
                                          s = NULL;
                                        }
+
     break;
 
   case 123:
@@ -4391,6 +4001,7 @@ yyreduce:
                                        }
                                        s = NULL;
                                      }
+
     break;
 
   case 124:
@@ -4451,13 +4062,15 @@ yyreduce:
                          s = NULL;
                          actual_type = IF_FEATURE_KEYWORD;
                        }
+
     break;
 
   case 125:
 
-    { actual = (yyvsp[(3) - (4)].backup_token).actual;
-                   actual_type = (yyvsp[(3) - (4)].backup_token).token;
+    { actual = (yyvsp[-1].backup_token).actual;
+                   actual_type = (yyvsp[-1].backup_token).token;
                  }
+
     break;
 
   case 128:
@@ -4477,13 +4090,15 @@ yyreduce:
                                        ((struct lys_ident *)actual)->module = trg;
                                        actual_type = IDENTITY_KEYWORD;
                                      }
+
     break;
 
   case 129:
 
-    { actual = (yyvsp[(3) - (4)].backup_token).actual;
-                 actual_type = (yyvsp[(3) - (4)].backup_token).token;
+    { actual = (yyvsp[-1].backup_token).actual;
+                 actual_type = (yyvsp[-1].backup_token).token;
                }
+
     break;
 
   case 131:
@@ -4510,6 +4125,7 @@ yyreduce:
              ((struct lys_ident *)actual)->iffeature = tmp;
            }
          }
+
     break;
 
   case 133:
@@ -4528,6 +4144,7 @@ yyreduce:
                                    s = NULL;
                                    actual = identity;
                                  }
+
     break;
 
   case 135:
@@ -4536,8 +4153,9 @@ yyreduce:
                                        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "identity");
                                        YYABORT;
                                      }
-                                     ((struct lys_ident *)actual)->flags |= (yyvsp[(2) - (2)].i);
+                                     ((struct lys_ident *)actual)->flags |= (yyvsp[0].i);
                                    }
+
     break;
 
   case 136:
@@ -4547,6 +4165,7 @@ yyreduce:
                                           }
                                           s = NULL;
                                         }
+
     break;
 
   case 137:
@@ -4556,6 +4175,7 @@ yyreduce:
                                         }
                                         s = NULL;
                                       }
+
     break;
 
   case 138:
@@ -4563,6 +4183,7 @@ yyreduce:
     { backup_type = actual_type;
                                    actual_type = BASE_KEYWORD;
                                  }
+
     break;
 
   case 140:
@@ -4619,17 +4240,19 @@ yyreduce:
                                       s = NULL;
                                       actual_type = TYPEDEF_KEYWORD;
                                     }
+
     break;
 
   case 141:
 
-    { if (!((yyvsp[(6) - (7)].nodes).node.flag & LYS_TYPE_DEF)) {
+    { if (!((yyvsp[-1].nodes).node.flag & LYS_TYPE_DEF)) {
                       LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "type", "typedef");
                       YYABORT;
                     }
-                    actual_type = (yyvsp[(3) - (7)].backup_token).token;
-                    actual = (yyvsp[(3) - (7)].backup_token).actual;
+                    actual_type = (yyvsp[-4].backup_token).token;
+                    actual = (yyvsp[-4].backup_token).actual;
                   }
+
     break;
 
   case 142:
@@ -4637,66 +4260,74 @@ yyreduce:
     { (yyval.nodes).node.ptr_tpdf = actual;
                             (yyval.nodes).node.flag = 0;
                           }
+
     break;
 
   case 143:
 
-    { (yyvsp[(1) - (3)].nodes).node.flag |= LYS_TYPE_DEF;
-                                       (yyval.nodes) = (yyvsp[(1) - (3)].nodes);
+    { (yyvsp[-2].nodes).node.flag |= LYS_TYPE_DEF;
+                                       (yyval.nodes) = (yyvsp[-2].nodes);
                                      }
+
     break;
 
   case 144:
 
-    { if (yang_read_units(trg, (yyvsp[(1) - (2)].nodes).node.ptr_tpdf, s, TYPEDEF_KEYWORD)) {
+    { if (yang_read_units(trg, (yyvsp[-1].nodes).node.ptr_tpdf, s, TYPEDEF_KEYWORD)) {
                                   YYABORT;
                                 }
                                 s = NULL;
                               }
+
     break;
 
   case 145:
 
-    { if (yang_read_default(trg, (yyvsp[(1) - (2)].nodes).node.ptr_tpdf, s, TYPEDEF_KEYWORD)) {
+    { if (yang_read_default(trg, (yyvsp[-1].nodes).node.ptr_tpdf, s, TYPEDEF_KEYWORD)) {
                                     YYABORT;
                                   }
                                   s = NULL;
                                 }
+
     break;
 
   case 146:
 
-    { if ((yyvsp[(1) - (2)].nodes).node.ptr_tpdf->flags & LYS_STATUS_MASK) {
+    { if ((yyvsp[-1].nodes).node.ptr_tpdf->flags & LYS_STATUS_MASK) {
                                    LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "typedef");
                                    YYABORT;
                                  }
-                                 (yyvsp[(1) - (2)].nodes).node.ptr_tpdf->flags |= (yyvsp[(2) - (2)].i);
+                                 (yyvsp[-1].nodes).node.ptr_tpdf->flags |= (yyvsp[0].i);
                                }
+
     break;
 
   case 147:
 
-    { if (yang_read_description(trg, (yyvsp[(1) - (2)].nodes).node.ptr_tpdf, s, "typedef", NODE)) {
+    { if (yang_read_description(trg, (yyvsp[-1].nodes).node.ptr_tpdf, s, "typedef", NODE)) {
                                         YYABORT;
                                       }
                                       s = NULL;
                                     }
+
     break;
 
   case 148:
 
-    { if (yang_read_reference(trg, (yyvsp[(1) - (2)].nodes).node.ptr_tpdf, s, "typedef", NODE)) {
+    { if (yang_read_reference(trg, (yyvsp[-1].nodes).node.ptr_tpdf, s, "typedef", NODE)) {
                                       YYABORT;
                                     }
                                     s = NULL;
                                   }
+
     break;
 
   case 149:
 
-    { actual_type = (yyvsp[(3) - (4)].backup_token).token;
-             actual = (yyvsp[(3) - (4)].backup_token).actual;
+    { actual_type = (yyvsp[-1].backup_token).token;
+             actual = (yyvsp[-1].backup_token).actual;
            }
+
     break;
 
   case 150:
@@ -4709,6 +4340,7 @@ yyreduce:
                                        s = NULL;
                                        actual_type = TYPE_KEYWORD;
                                      }
+
     break;
 
   case 153:
@@ -4760,14 +4392,16 @@ yyreduce:
                                        ((struct yang_type *)actual)->type->info.ident.ref = tmp;
                                      }
                                    }
+
     break;
 
   case 157:
 
-    { if (yang_read_require_instance(actual, (yyvsp[(2) - (2)].i))) {
+    { if (yang_read_require_instance(actual, (yyvsp[0].i))) {
                                                  YYABORT;
                                                }
                                              }
+
     break;
 
   case 158:
@@ -4778,6 +4412,7 @@ yyreduce:
                                    }
                                    s = NULL;
                                  }
+
     break;
 
   case 159:
@@ -4795,21 +4430,24 @@ yyreduce:
                                    actual = yang_type;
                                    s = NULL;
                                  }
+
     break;
 
   case 162:
 
-    { if (yang_read_fraction(actual, (yyvsp[(2) - (2)].uint))) {
+    { if (yang_read_fraction(actual, (yyvsp[0].uint))) {
                                                 YYABORT;
                                               }
                                             }
+
     break;
 
   case 165:
 
-    { actual_type = (yyvsp[(1) - (2)].backup_token).token;
-                                   actual = (yyvsp[(1) - (2)].backup_token).actual;
+    { actual_type = (yyvsp[-1].backup_token).token;
+                                   actual = (yyvsp[-1].backup_token).actual;
                                  }
+
     break;
 
   case 166:
@@ -4831,24 +4469,28 @@ yyreduce:
                          YANG_ADDELEM(stype->type->info.uni.types, stype->type->info.uni.count)
                          actual_type = UNION_KEYWORD;
                        }
+
     break;
 
   case 167:
 
-    { (yyval.uint) = (yyvsp[(1) - (1)].uint);
+    { (yyval.uint) = (yyvsp[0].uint);
                                                backup_type = actual_type;
                                                actual_type = FRACTION_DIGITS_KEYWORD;
                                              }
+
     break;
 
   case 168:
 
-    { (yyval.uint) = (yyvsp[(3) - (4)].uint); }
+    { (yyval.uint) = (yyvsp[-1].uint); }
+
     break;
 
   case 169:
 
-    { (yyval.uint) = (yyvsp[(1) - (2)].uint); }
+    { (yyval.uint) = (yyvsp[-1].uint); }
+
     break;
 
   case 170:
@@ -4868,13 +4510,15 @@ yyreduce:
                free(s);
                s =NULL;
              }
+
     break;
 
   case 171:
 
-    { actual = (yyvsp[(3) - (4)].backup_token).actual;
-               actual_type = (yyvsp[(3) - (4)].backup_token).token;
+    { actual = (yyvsp[-1].backup_token).actual;
+               actual_type = (yyvsp[-1].backup_token).token;
              }
+
     break;
 
   case 172:
@@ -4887,6 +4531,7 @@ yyreduce:
                          actual_type = LENGTH_KEYWORD;
                          s = NULL;
                        }
+
     break;
 
   case 175:
@@ -4907,42 +4552,47 @@ yyreduce:
                                  break;
                                }
                              }
+
     break;
 
   case 176:
 
-    { if (yang_read_message(trg, actual, s, (yyvsp[(1) - (2)].str), ERROR_MESSAGE_KEYWORD)) {
+    { if (yang_read_message(trg, actual, s, (yyvsp[-1].str), ERROR_MESSAGE_KEYWORD)) {
                                              YYABORT;
                                            }
                                            s = NULL;
                                          }
+
     break;
 
   case 177:
 
-    { if (yang_read_message(trg, actual, s, (yyvsp[(1) - (2)].str), ERROR_APP_TAG_KEYWORD)) {
+    { if (yang_read_message(trg, actual, s, (yyvsp[-1].str), ERROR_APP_TAG_KEYWORD)) {
                                              YYABORT;
                                            }
                                            s = NULL;
                                          }
+
     break;
 
   case 178:
 
-    { if (yang_read_description(trg, actual, s, (yyvsp[(1) - (2)].str), NODE)) {
+    { if (yang_read_description(trg, actual, s, (yyvsp[-1].str), NODE)) {
                                            YYABORT;
                                           }
                                           s = NULL;
                                         }
+
     break;
 
   case 179:
 
-    { if (yang_read_reference(trg, actual, s, (yyvsp[(1) - (2)].str), NODE)) {
+    { if (yang_read_reference(trg, actual, s, (yyvsp[-1].str), NODE)) {
                                          YYABORT;
                                        }
                                        s = NULL;
                                      }
+
     break;
 
   case 180:
@@ -4950,6 +4600,7 @@ yyreduce:
     { (yyval.backup_token).token = actual_type;
                    (yyval.backup_token).actual = actual;
                  }
+
     break;
 
   case 181:
@@ -4957,18 +4608,19 @@ yyreduce:
     {struct lys_restr *pattern = actual;
                                                                         actual = NULL;
 #ifdef LY_ENABLED_CACHE
-                                                                        if ((yyvsp[(2) - (4)].backup_token).token != EXTENSION_INSTANCE &&
+                                                                        if ((yyvsp[-2].backup_token).token != EXTENSION_INSTANCE &&
                                                                             !(data_node && data_node->nodetype != LYS_GROUPING && lys_ingrouping(data_node))) {
-                                                                          int c = 2 * (((struct yang_type *)(yyvsp[(2) - (4)].backup_token).actual)->type->info.str.pat_count - 1);
-                                                                          YANG_ADDELEM(((struct yang_type *)(yyvsp[(2) - (4)].backup_token).actual)->type->info.str.patterns_pcre, c);
+                                                                          int c = 2 * (((struct yang_type *)(yyvsp[-2].backup_token).actual)->type->info.str.pat_count - 1);
+                                                                          YANG_ADDELEM(((struct yang_type *)(yyvsp[-2].backup_token).actual)->type->info.str.patterns_pcre, c);
                                                                         }
 #endif
-                                                                        if (yang_read_pattern(trg, pattern, actual, (yyvsp[(3) - (4)].str), (yyvsp[(4) - (4)].ch))) {
+                                                                        if (yang_read_pattern(trg, pattern, actual, (yyvsp[-1].str), (yyvsp[0].ch))) {
                                                                           YYABORT;
                                                                         }
-                                                                        actual_type = (yyvsp[(2) - (4)].backup_token).token;
-                                                                        actual = (yyvsp[(2) - (4)].backup_token).actual;
+                                                                        actual_type = (yyvsp[-2].backup_token).token;
+                                                                        actual = (yyvsp[-2].backup_token).actual;
                                                                       }
+
     break;
 
   case 182:
@@ -4987,21 +4639,25 @@ yyreduce:
                           s = NULL;
                           actual_type = PATTERN_KEYWORD;
                         }
+
     break;
 
   case 183:
 
     { (yyval.ch) = 0x06; }
+
     break;
 
   case 184:
 
-    { (yyval.ch) = (yyvsp[(3) - (4)].ch); }
+    { (yyval.ch) = (yyvsp[-1].ch); }
+
     break;
 
   case 185:
 
     { (yyval.ch) = 0x06; /* ACK */ }
+
     break;
 
   case 186:
@@ -5010,12 +4666,13 @@ yyreduce:
                                         LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "modifier");
                                         YYABORT;
                                       }
-                                      if ((yyvsp[(1) - (2)].ch) != 0x06) {
+                                      if ((yyvsp[-1].ch) != 0x06) {
                                         LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "modifier", "pattern");
                                         YYABORT;
                                       }
-                                      (yyval.ch) = (yyvsp[(2) - (2)].ch);
+                                      (yyval.ch) = (yyvsp[0].ch);
                                     }
+
     break;
 
   case 187:
@@ -5025,6 +4682,7 @@ yyreduce:
                                            }
                                            s = NULL;
                                          }
+
     break;
 
   case 188:
@@ -5034,6 +4692,7 @@ yyreduce:
                                            }
                                            s = NULL;
                                          }
+
     break;
 
   case 189:
@@ -5043,6 +4702,7 @@ yyreduce:
                                           }
                                           s = NULL;
                                         }
+
     break;
 
   case 190:
@@ -5052,6 +4712,7 @@ yyreduce:
                                        }
                                        s = NULL;
                                      }
+
     break;
 
   case 191:
@@ -5059,6 +4720,7 @@ yyreduce:
     { backup_type = actual_type;
                        actual_type = MODIFIER_KEYWORD;
                      }
+
     break;
 
   case 192:
@@ -5073,6 +4735,7 @@ yyreduce:
                                                              YYABORT;
                                                            }
                                                          }
+
     break;
 
   case 193:
@@ -5088,6 +4751,7 @@ yyreduce:
                                                    }
                                                    ((struct yang_type *)actual)->type->info.enums.enm = tmp;
                                                  }
+
     break;
 
   case 196:
@@ -5095,9 +4759,10 @@ yyreduce:
     { if (yang_check_enum(yang_type, actual, &cnt_val, is_value)) {
                YYABORT;
              }
-             actual = (yyvsp[(3) - (4)].backup_token).actual;
-             actual_type = (yyvsp[(3) - (4)].backup_token).token;
+             actual = (yyvsp[-1].backup_token).actual;
+             actual_type = (yyvsp[-1].backup_token).token;
            }
+
     break;
 
   case 197:
@@ -5112,6 +4777,7 @@ yyreduce:
                        is_value = 0;
                        actual_type = ENUM_KEYWORD;
                      }
+
     break;
 
   case 199:
@@ -5128,6 +4794,7 @@ yyreduce:
              ((struct lys_type_enum *)actual)->iffeature = tmp;
            }
          }
+
     break;
 
   case 202:
@@ -5136,14 +4803,15 @@ yyreduce:
                                   LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "value", "enum");
                                   YYABORT;
                                 }
-                                ((struct lys_type_enum *)actual)->value = (yyvsp[(2) - (2)].i);
+                                ((struct lys_type_enum *)actual)->value = (yyvsp[0].i);
 
                                 /* keep the highest enum value for automatic increment */
-                                if ((yyvsp[(2) - (2)].i) >= cnt_val) {
-                                  cnt_val = (yyvsp[(2) - (2)].i) + 1;
+                                if ((yyvsp[0].i) >= cnt_val) {
+                                  cnt_val = (yyvsp[0].i) + 1;
                                 }
                                 is_value = 1;
                               }
+
     break;
 
   case 203:
@@ -5152,8 +4820,9 @@ yyreduce:
                                    LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "enum");
                                    YYABORT;
                                  }
-                                 ((struct lys_type_enum *)actual)->flags |= (yyvsp[(2) - (2)].i);
+                                 ((struct lys_type_enum *)actual)->flags |= (yyvsp[0].i);
                                }
+
     break;
 
   case 204:
@@ -5163,6 +4832,7 @@ yyreduce:
                                       }
                                       s = NULL;
                                     }
+
     break;
 
   case 205:
@@ -5172,24 +4842,28 @@ yyreduce:
                                     }
                                     s = NULL;
                                   }
+
     break;
 
   case 206:
 
-    { (yyval.i) = (yyvsp[(1) - (1)].i);
+    { (yyval.i) = (yyvsp[0].i);
                                    backup_type = actual_type;
                                    actual_type = VALUE_KEYWORD;
                                  }
+
     break;
 
   case 207:
 
-    { (yyval.i) = (yyvsp[(3) - (4)].i); }
+    { (yyval.i) = (yyvsp[-1].i); }
+
     break;
 
   case 208:
 
-    { (yyval.i) = (yyvsp[(1) - (2)].i); }
+    { (yyval.i) = (yyvsp[-1].i); }
+
     break;
 
   case 209:
@@ -5208,13 +4882,15 @@ yyreduce:
                 s = NULL;
                 (yyval.i) = (int32_t) val;
              }
+
     break;
 
   case 210:
 
-    { actual_type = (yyvsp[(3) - (4)].backup_token).token;
-                                                        actual = (yyvsp[(3) - (4)].backup_token).actual;
+    { actual_type = (yyvsp[-1].backup_token).token;
+                                                        actual = (yyvsp[-1].backup_token).actual;
                                                       }
+
     break;
 
   case 213:
@@ -5222,29 +4898,34 @@ yyreduce:
     { backup_type = actual_type;
                          actual_type = PATH_KEYWORD;
                        }
+
     break;
 
   case 215:
 
-    { (yyval.i) = (yyvsp[(1) - (1)].i);
+    { (yyval.i) = (yyvsp[0].i);
                                                  backup_type = actual_type;
                                                  actual_type = REQUIRE_INSTANCE_KEYWORD;
                                                }
+
     break;
 
   case 216:
 
-    { (yyval.i) = (yyvsp[(3) - (4)].i); }
+    { (yyval.i) = (yyvsp[-1].i); }
+
     break;
 
   case 217:
 
     { (yyval.i) = 1; }
+
     break;
 
   case 218:
 
     { (yyval.i) = -1; }
+
     break;
 
   case 219:
@@ -5261,6 +4942,7 @@ yyreduce:
                 free(s);
                 s = NULL;
               }
+
     break;
 
   case 220:
@@ -5276,6 +4958,7 @@ yyreduce:
                                          }
                                          ((struct yang_type *)actual)->type->info.bits.bit = tmp;
                                        }
+
     break;
 
   case 223:
@@ -5283,9 +4966,10 @@ yyreduce:
     { if (yang_check_bit(yang_type, actual, &cnt_val, is_value)) {
                       YYABORT;
                     }
-                    actual = (yyvsp[(3) - (5)].backup_token).actual;
-                    actual_type = (yyvsp[(3) - (5)].backup_token).token;
+                    actual = (yyvsp[-2].backup_token).actual;
+                    actual_type = (yyvsp[-2].backup_token).token;
                   }
+
     break;
 
   case 224:
@@ -5301,6 +4985,7 @@ yyreduce:
                                   is_value = 0;
                                   actual_type = BIT_KEYWORD;
                                 }
+
     break;
 
   case 226:
@@ -5317,6 +5002,7 @@ yyreduce:
              ((struct lys_type_bit *)actual)->iffeature = tmp;
            }
          }
+
     break;
 
   case 229:
@@ -5325,14 +5011,15 @@ yyreduce:
                                     LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "position", "bit");
                                     YYABORT;
                                   }
-                                  ((struct lys_type_bit *)actual)->pos = (yyvsp[(2) - (2)].uint);
+                                  ((struct lys_type_bit *)actual)->pos = (yyvsp[0].uint);
 
                                   /* keep the highest position value for automatic increment */
-                                  if ((yyvsp[(2) - (2)].uint) >= cnt_val) {
-                                    cnt_val = (yyvsp[(2) - (2)].uint) + 1;
+                                  if ((yyvsp[0].uint) >= cnt_val) {
+                                    cnt_val = (yyvsp[0].uint) + 1;
                                   }
                                   is_value = 1;
                                 }
+
     break;
 
   case 230:
@@ -5341,8 +5028,9 @@ yyreduce:
                                    LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "bit");
                                    YYABORT;
                                  }
-                                 ((struct lys_type_bit *)actual)->flags |= (yyvsp[(2) - (2)].i);
+                                 ((struct lys_type_bit *)actual)->flags |= (yyvsp[0].i);
                               }
+
     break;
 
   case 231:
@@ -5352,6 +5040,7 @@ yyreduce:
                                      }
                                      s = NULL;
                                    }
+
     break;
 
   case 232:
@@ -5361,24 +5050,28 @@ yyreduce:
                                    }
                                    s = NULL;
                                  }
+
     break;
 
   case 233:
 
-    { (yyval.uint) = (yyvsp[(1) - (1)].uint);
+    { (yyval.uint) = (yyvsp[0].uint);
                                              backup_type = actual_type;
                                              actual_type = POSITION_KEYWORD;
                                            }
+
     break;
 
   case 234:
 
-    { (yyval.uint) = (yyvsp[(3) - (4)].uint); }
+    { (yyval.uint) = (yyvsp[-1].uint); }
+
     break;
 
   case 235:
 
-    { (yyval.uint) = (yyvsp[(1) - (2)].uint); }
+    { (yyval.uint) = (yyvsp[-1].uint); }
+
     break;
 
   case 236:
@@ -5398,6 +5091,7 @@ yyreduce:
                 s = NULL;
                 (yyval.uint) = (uint32_t) val;
               }
+
     break;
 
   case 237:
@@ -5405,6 +5099,7 @@ yyreduce:
     { backup_type = actual_type;
                             actual_type = ERROR_MESSAGE_KEYWORD;
                           }
+
     break;
 
   case 239:
@@ -5412,6 +5107,7 @@ yyreduce:
     { backup_type = actual_type;
                             actual_type = ERROR_APP_TAG_KEYWORD;
                           }
+
     break;
 
   case 241:
@@ -5419,6 +5115,7 @@ yyreduce:
     { backup_type = actual_type;
                     actual_type = UNITS_KEYWORD;
                   }
+
     break;
 
   case 243:
@@ -5426,6 +5123,7 @@ yyreduce:
     { backup_type = actual_type;
                       actual_type = DEFAULT_KEYWORD;
                     }
+
     break;
 
   case 245:
@@ -5439,57 +5137,64 @@ yyreduce:
                                        data_node = actual;
                                        actual_type = GROUPING_KEYWORD;
                                      }
+
     break;
 
   case 246:
 
     { LOGDBG(LY_LDGYANG, "finished parsing grouping statement \"%s\"", data_node->name);
-                 actual_type = (yyvsp[(3) - (4)].backup_token).token;
-                 actual = (yyvsp[(3) - (4)].backup_token).actual;
-                 data_node = (yyvsp[(3) - (4)].backup_token).actual;
+                 actual_type = (yyvsp[-1].backup_token).token;
+                 actual = (yyvsp[-1].backup_token).actual;
+                 data_node = (yyvsp[-1].backup_token).actual;
                }
+
     break;
 
   case 249:
 
     { (yyval.nodes).grouping = actual; }
+
     break;
 
   case 250:
 
-    { if ((yyvsp[(1) - (2)].nodes).grouping->flags & LYS_STATUS_MASK) {
-                                       LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).grouping, "status", "grouping");
+    { if ((yyvsp[-1].nodes).grouping->flags & LYS_STATUS_MASK) {
+                                       LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).grouping, "status", "grouping");
                                        YYABORT;
                                      }
-                                     (yyvsp[(1) - (2)].nodes).grouping->flags |= (yyvsp[(2) - (2)].i);
+                                     (yyvsp[-1].nodes).grouping->flags |= (yyvsp[0].i);
                                    }
+
     break;
 
   case 251:
 
-    { if (yang_read_description(trg, (yyvsp[(1) - (2)].nodes).grouping, s, "grouping", NODE_PRINT)) {
+    { if (yang_read_description(trg, (yyvsp[-1].nodes).grouping, s, "grouping", NODE_PRINT)) {
                                             YYABORT;
                                           }
                                           s = NULL;
                                         }
+
     break;
 
   case 252:
 
-    { if (yang_read_reference(trg, (yyvsp[(1) - (2)].nodes).grouping, s, "grouping", NODE_PRINT)) {
+    { if (yang_read_reference(trg, (yyvsp[-1].nodes).grouping, s, "grouping", NODE_PRINT)) {
                                           YYABORT;
                                         }
                                         s = NULL;
                                       }
+
     break;
 
   case 257:
 
     { if (trg->version < 2) {
-                                                     LOGVAL(LYE_INSTMT, LY_VLOG_LYS, (yyvsp[(1) - (3)].nodes).grouping, "notification");
+                                                     LOGVAL(LYE_INSTMT, LY_VLOG_LYS, (yyvsp[-2].nodes).grouping, "notification");
                                                      YYABORT;
                                                    }
                                                  }
+
     break;
 
   case 266:
@@ -5503,140 +5208,151 @@ yyreduce:
                                         s = NULL;
                                         actual_type = CONTAINER_KEYWORD;
                                       }
+
     break;
 
   case 267:
 
     { LOGDBG(LY_LDGYANG, "finished parsing container statement \"%s\"", data_node->name);
-                  actual_type = (yyvsp[(3) - (4)].backup_token).token;
-                  actual = (yyvsp[(3) - (4)].backup_token).actual;
-                  data_node = (yyvsp[(3) - (4)].backup_token).actual;
+                  actual_type = (yyvsp[-1].backup_token).token;
+                  actual = (yyvsp[-1].backup_token).actual;
+                  data_node = (yyvsp[-1].backup_token).actual;
                 }
+
     break;
 
   case 269:
 
     { void *tmp;
 
-            if ((yyvsp[(3) - (4)].nodes).container->iffeature_size) {
-              tmp = realloc((yyvsp[(3) - (4)].nodes).container->iffeature, (yyvsp[(3) - (4)].nodes).container->iffeature_size * sizeof *(yyvsp[(3) - (4)].nodes).container->iffeature);
+            if ((yyvsp[-1].nodes).container->iffeature_size) {
+              tmp = realloc((yyvsp[-1].nodes).container->iffeature, (yyvsp[-1].nodes).container->iffeature_size * sizeof *(yyvsp[-1].nodes).container->iffeature);
               if (!tmp) {
                 LOGMEM;
                 YYABORT;
               }
-              (yyvsp[(3) - (4)].nodes).container->iffeature = tmp;
+              (yyvsp[-1].nodes).container->iffeature = tmp;
             }
 
-            if ((yyvsp[(3) - (4)].nodes).container->must_size) {
-              tmp = realloc((yyvsp[(3) - (4)].nodes).container->must, (yyvsp[(3) - (4)].nodes).container->must_size * sizeof *(yyvsp[(3) - (4)].nodes).container->must);
+            if ((yyvsp[-1].nodes).container->must_size) {
+              tmp = realloc((yyvsp[-1].nodes).container->must, (yyvsp[-1].nodes).container->must_size * sizeof *(yyvsp[-1].nodes).container->must);
               if (!tmp) {
                 LOGMEM;
                 YYABORT;
               }
-              (yyvsp[(3) - (4)].nodes).container->must = tmp;
+              (yyvsp[-1].nodes).container->must = tmp;
             }
           }
+
     break;
 
   case 270:
 
     { (yyval.nodes).container = actual; }
+
     break;
 
   case 274:
 
-    { if (yang_read_presence(trg, (yyvsp[(1) - (2)].nodes).container, s)) {
+    { if (yang_read_presence(trg, (yyvsp[-1].nodes).container, s)) {
                                           YYABORT;
                                         }
                                         s = NULL;
                                       }
+
     break;
 
   case 275:
 
-    { if ((yyvsp[(1) - (2)].nodes).container->flags & LYS_CONFIG_MASK) {
-                                        LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).container, "config", "container");
+    { if ((yyvsp[-1].nodes).container->flags & LYS_CONFIG_MASK) {
+                                        LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).container, "config", "container");
                                         YYABORT;
                                       }
-                                      (yyvsp[(1) - (2)].nodes).container->flags |= (yyvsp[(2) - (2)].i);
+                                      (yyvsp[-1].nodes).container->flags |= (yyvsp[0].i);
                                     }
+
     break;
 
   case 276:
 
-    { if ((yyvsp[(1) - (2)].nodes).container->flags & LYS_STATUS_MASK) {
-                                        LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).container, "status", "container");
+    { if ((yyvsp[-1].nodes).container->flags & LYS_STATUS_MASK) {
+                                        LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).container, "status", "container");
                                         YYABORT;
                                       }
-                                      (yyvsp[(1) - (2)].nodes).container->flags |= (yyvsp[(2) - (2)].i);
+                                      (yyvsp[-1].nodes).container->flags |= (yyvsp[0].i);
                                     }
+
     break;
 
   case 277:
 
-    { if (yang_read_description(trg, (yyvsp[(1) - (2)].nodes).container, s, "container", NODE_PRINT)) {
+    { if (yang_read_description(trg, (yyvsp[-1].nodes).container, s, "container", NODE_PRINT)) {
                                              YYABORT;
                                            }
                                            s = NULL;
                                          }
+
     break;
 
   case 278:
 
-    { if (yang_read_reference(trg, (yyvsp[(1) - (2)].nodes).container, s, "container", NODE_PRINT)) {
+    { if (yang_read_reference(trg, (yyvsp[-1].nodes).container, s, "container", NODE_PRINT)) {
                                            YYABORT;
                                          }
                                          s = NULL;
                                        }
+
     break;
 
   case 281:
 
     { if (trg->version < 2) {
-                                                      LOGVAL(LYE_INSTMT, LY_VLOG_LYS, (yyvsp[(1) - (3)].nodes).container, "notification");
+                                                      LOGVAL(LYE_INSTMT, LY_VLOG_LYS, (yyvsp[-2].nodes).container, "notification");
                                                       YYABORT;
                                                     }
                                                   }
+
     break;
 
   case 284:
 
     { void *tmp;
 
-                  if (!((yyvsp[(6) - (7)].nodes).node.flag & LYS_TYPE_DEF)) {
-                    LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, (yyvsp[(6) - (7)].nodes).node.ptr_leaf, "type", "leaf");
+                  if (!((yyvsp[-1].nodes).node.flag & LYS_TYPE_DEF)) {
+                    LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaf, "type", "leaf");
                     YYABORT;
                   }
-                  if ((yyvsp[(6) - (7)].nodes).node.ptr_leaf->dflt && ((yyvsp[(6) - (7)].nodes).node.ptr_leaf->flags & LYS_MAND_TRUE)) {
+                  if ((yyvsp[-1].nodes).node.ptr_leaf->dflt && ((yyvsp[-1].nodes).node.ptr_leaf->flags & LYS_MAND_TRUE)) {
                     /* RFC 6020, 7.6.4 - default statement must not with mandatory true */
-                    LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, (yyvsp[(6) - (7)].nodes).node.ptr_leaf, "mandatory", "leaf");
-                    LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[(6) - (7)].nodes).node.ptr_leaf, "The \"mandatory\" statement is forbidden on leaf with \"default\".");
+                    LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaf, "mandatory", "leaf");
+                    LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaf, "The \"mandatory\" statement is forbidden on leaf with \"default\".");
                     YYABORT;
                   }
 
-                  if ((yyvsp[(6) - (7)].nodes).node.ptr_leaf->iffeature_size) {
-                    tmp = realloc((yyvsp[(6) - (7)].nodes).node.ptr_leaf->iffeature, (yyvsp[(6) - (7)].nodes).node.ptr_leaf->iffeature_size * sizeof *(yyvsp[(6) - (7)].nodes).node.ptr_leaf->iffeature);
+                  if ((yyvsp[-1].nodes).node.ptr_leaf->iffeature_size) {
+                    tmp = realloc((yyvsp[-1].nodes).node.ptr_leaf->iffeature, (yyvsp[-1].nodes).node.ptr_leaf->iffeature_size * sizeof *(yyvsp[-1].nodes).node.ptr_leaf->iffeature);
                     if (!tmp) {
                       LOGMEM;
                       YYABORT;
                     }
-                    (yyvsp[(6) - (7)].nodes).node.ptr_leaf->iffeature = tmp;
+                    (yyvsp[-1].nodes).node.ptr_leaf->iffeature = tmp;
                   }
 
-                  if ((yyvsp[(6) - (7)].nodes).node.ptr_leaf->must_size) {
-                    tmp = realloc((yyvsp[(6) - (7)].nodes).node.ptr_leaf->must, (yyvsp[(6) - (7)].nodes).node.ptr_leaf->must_size * sizeof *(yyvsp[(6) - (7)].nodes).node.ptr_leaf->must);
+                  if ((yyvsp[-1].nodes).node.ptr_leaf->must_size) {
+                    tmp = realloc((yyvsp[-1].nodes).node.ptr_leaf->must, (yyvsp[-1].nodes).node.ptr_leaf->must_size * sizeof *(yyvsp[-1].nodes).node.ptr_leaf->must);
                     if (!tmp) {
                       LOGMEM;
                       YYABORT;
                     }
-                    (yyvsp[(6) - (7)].nodes).node.ptr_leaf->must = tmp;
+                    (yyvsp[-1].nodes).node.ptr_leaf->must = tmp;
                   }
 
                   LOGDBG(LY_LDGYANG, "finished parsing leaf statement \"%s\"", data_node->name);
-                  actual_type = (yyvsp[(3) - (7)].backup_token).token;
-                  actual = (yyvsp[(3) - (7)].backup_token).actual;
-                  data_node = (yyvsp[(3) - (7)].backup_token).actual;
+                  actual_type = (yyvsp[-4].backup_token).token;
+                  actual = (yyvsp[-4].backup_token).actual;
+                  data_node = (yyvsp[-4].backup_token).actual;
                 }
+
     break;
 
   case 285:
@@ -5650,6 +5366,7 @@ yyreduce:
                                    s = NULL;
                                    actual_type = LEAF_KEYWORD;
                                  }
+
     break;
 
   case 286:
@@ -5657,79 +5374,88 @@ yyreduce:
     { (yyval.nodes).node.ptr_leaf = actual;
                             (yyval.nodes).node.flag = 0;
                           }
+
     break;
 
   case 289:
 
-    { (yyvsp[(1) - (3)].nodes).node.flag |= LYS_TYPE_DEF;
-                                       (yyval.nodes) = (yyvsp[(1) - (3)].nodes);
+    { (yyvsp[-2].nodes).node.flag |= LYS_TYPE_DEF;
+                                       (yyval.nodes) = (yyvsp[-2].nodes);
                                      }
+
     break;
 
   case 290:
 
-    { if (yang_read_units(trg, (yyvsp[(1) - (2)].nodes).node.ptr_leaf, s, LEAF_KEYWORD)) {
+    { if (yang_read_units(trg, (yyvsp[-1].nodes).node.ptr_leaf, s, LEAF_KEYWORD)) {
                                   YYABORT;
                                 }
                                 s = NULL;
                               }
+
     break;
 
   case 292:
 
-    { if (yang_read_default(trg, (yyvsp[(1) - (2)].nodes).node.ptr_leaf, s, LEAF_KEYWORD)) {
+    { if (yang_read_default(trg, (yyvsp[-1].nodes).node.ptr_leaf, s, LEAF_KEYWORD)) {
                                     YYABORT;
                                   }
                                   s = NULL;
                                 }
+
     break;
 
   case 293:
 
-    { if ((yyvsp[(1) - (2)].nodes).node.ptr_leaf->flags & LYS_CONFIG_MASK) {
-                                   LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_leaf, "config", "leaf");
+    { if ((yyvsp[-1].nodes).node.ptr_leaf->flags & LYS_CONFIG_MASK) {
+                                   LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaf, "config", "leaf");
                                    YYABORT;
                                  }
-                                 (yyvsp[(1) - (2)].nodes).node.ptr_leaf->flags |= (yyvsp[(2) - (2)].i);
+                                 (yyvsp[-1].nodes).node.ptr_leaf->flags |= (yyvsp[0].i);
                                }
+
     break;
 
   case 294:
 
-    { if ((yyvsp[(1) - (2)].nodes).node.ptr_leaf->flags & LYS_MAND_MASK) {
-                                      LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_leaf, "mandatory", "leaf");
+    { if ((yyvsp[-1].nodes).node.ptr_leaf->flags & LYS_MAND_MASK) {
+                                      LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaf, "mandatory", "leaf");
                                       YYABORT;
                                     }
-                                    (yyvsp[(1) - (2)].nodes).node.ptr_leaf->flags |= (yyvsp[(2) - (2)].i);
+                                    (yyvsp[-1].nodes).node.ptr_leaf->flags |= (yyvsp[0].i);
                                   }
+
     break;
 
   case 295:
 
-    { if ((yyvsp[(1) - (2)].nodes).node.ptr_leaf->flags & LYS_STATUS_MASK) {
-                                   LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_leaf, "status", "leaf");
+    { if ((yyvsp[-1].nodes).node.ptr_leaf->flags & LYS_STATUS_MASK) {
+                                   LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaf, "status", "leaf");
                                    YYABORT;
                                  }
-                                 (yyvsp[(1) - (2)].nodes).node.ptr_leaf->flags |= (yyvsp[(2) - (2)].i);
+                                 (yyvsp[-1].nodes).node.ptr_leaf->flags |= (yyvsp[0].i);
                                }
+
     break;
 
   case 296:
 
-    { if (yang_read_description(trg, (yyvsp[(1) - (2)].nodes).node.ptr_leaf, s, "leaf", NODE_PRINT)) {
+    { if (yang_read_description(trg, (yyvsp[-1].nodes).node.ptr_leaf, s, "leaf", NODE_PRINT)) {
                                         YYABORT;
                                       }
                                       s = NULL;
                                     }
+
     break;
 
   case 297:
 
-    { if (yang_read_reference(trg, (yyvsp[(1) - (2)].nodes).node.ptr_leaf, s, "leaf", NODE_PRINT)) {
+    { if (yang_read_reference(trg, (yyvsp[-1].nodes).node.ptr_leaf, s, "leaf", NODE_PRINT)) {
                                       YYABORT;
                                     }
                                     s = NULL;
                                   }
+
     break;
 
   case 298:
@@ -5743,61 +5469,63 @@ yyreduce:
                                         s = NULL;
                                         actual_type = LEAF_LIST_KEYWORD;
                                       }
+
     break;
 
   case 299:
 
     { void *tmp;
 
-                        if ((yyvsp[(6) - (7)].nodes).node.ptr_leaflist->flags & LYS_CONFIG_R) {
+                        if ((yyvsp[-1].nodes).node.ptr_leaflist->flags & LYS_CONFIG_R) {
                           /* RFC 6020, 7.7.5 - ignore ordering when the list represents state data
                            * ignore oredering MASK - 0x7F
                            */
-                          (yyvsp[(6) - (7)].nodes).node.ptr_leaflist->flags &= 0x7F;
+                          (yyvsp[-1].nodes).node.ptr_leaflist->flags &= 0x7F;
                         }
-                        if (!((yyvsp[(6) - (7)].nodes).node.flag & LYS_TYPE_DEF)) {
-                          LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, (yyvsp[(6) - (7)].nodes).node.ptr_leaflist, "type", "leaf-list");
+                        if (!((yyvsp[-1].nodes).node.flag & LYS_TYPE_DEF)) {
+                          LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "type", "leaf-list");
                           YYABORT;
                         }
-                        if ((yyvsp[(6) - (7)].nodes).node.ptr_leaflist->dflt_size && (yyvsp[(6) - (7)].nodes).node.ptr_leaflist->min) {
-                          LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, (yyvsp[(6) - (7)].nodes).node.ptr_leaflist, "min-elements", "leaf-list");
-                          LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[(6) - (7)].nodes).node.ptr_leaflist,
+                        if ((yyvsp[-1].nodes).node.ptr_leaflist->dflt_size && (yyvsp[-1].nodes).node.ptr_leaflist->min) {
+                          LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "min-elements", "leaf-list");
+                          LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist,
                                  "The \"min-elements\" statement with non-zero value is forbidden on leaf-lists with the \"default\" statement.");
                           YYABORT;
                         }
 
-                        if ((yyvsp[(6) - (7)].nodes).node.ptr_leaflist->iffeature_size) {
-                          tmp = realloc((yyvsp[(6) - (7)].nodes).node.ptr_leaflist->iffeature, (yyvsp[(6) - (7)].nodes).node.ptr_leaflist->iffeature_size * sizeof *(yyvsp[(6) - (7)].nodes).node.ptr_leaflist->iffeature);
+                        if ((yyvsp[-1].nodes).node.ptr_leaflist->iffeature_size) {
+                          tmp = realloc((yyvsp[-1].nodes).node.ptr_leaflist->iffeature, (yyvsp[-1].nodes).node.ptr_leaflist->iffeature_size * sizeof *(yyvsp[-1].nodes).node.ptr_leaflist->iffeature);
                           if (!tmp) {
                             LOGMEM;
                             YYABORT;
                           }
-                          (yyvsp[(6) - (7)].nodes).node.ptr_leaflist->iffeature = tmp;
+                          (yyvsp[-1].nodes).node.ptr_leaflist->iffeature = tmp;
                         }
 
-                        if ((yyvsp[(6) - (7)].nodes).node.ptr_leaflist->must_size) {
-                          tmp = realloc((yyvsp[(6) - (7)].nodes).node.ptr_leaflist->must, (yyvsp[(6) - (7)].nodes).node.ptr_leaflist->must_size * sizeof *(yyvsp[(6) - (7)].nodes).node.ptr_leaflist->must);
+                        if ((yyvsp[-1].nodes).node.ptr_leaflist->must_size) {
+                          tmp = realloc((yyvsp[-1].nodes).node.ptr_leaflist->must, (yyvsp[-1].nodes).node.ptr_leaflist->must_size * sizeof *(yyvsp[-1].nodes).node.ptr_leaflist->must);
                           if (!tmp) {
                             LOGMEM;
                             YYABORT;
                           }
-                          (yyvsp[(6) - (7)].nodes).node.ptr_leaflist->must = tmp;
+                          (yyvsp[-1].nodes).node.ptr_leaflist->must = tmp;
                         }
 
-                        if ((yyvsp[(6) - (7)].nodes).node.ptr_leaflist->dflt_size) {
-                          tmp = realloc((yyvsp[(6) - (7)].nodes).node.ptr_leaflist->dflt, (yyvsp[(6) - (7)].nodes).node.ptr_leaflist->dflt_size * sizeof *(yyvsp[(6) - (7)].nodes).node.ptr_leaflist->dflt);
+                        if ((yyvsp[-1].nodes).node.ptr_leaflist->dflt_size) {
+                          tmp = realloc((yyvsp[-1].nodes).node.ptr_leaflist->dflt, (yyvsp[-1].nodes).node.ptr_leaflist->dflt_size * sizeof *(yyvsp[-1].nodes).node.ptr_leaflist->dflt);
                           if (!tmp) {
                             LOGMEM;
                             YYABORT;
                           }
-                          (yyvsp[(6) - (7)].nodes).node.ptr_leaflist->dflt = tmp;
+                          (yyvsp[-1].nodes).node.ptr_leaflist->dflt = tmp;
                         }
 
                         LOGDBG(LY_LDGYANG, "finished parsing leaf-list statement \"%s\"", data_node->name);
-                        actual_type = (yyvsp[(3) - (7)].backup_token).token;
-                        actual = (yyvsp[(3) - (7)].backup_token).actual;
-                        data_node = (yyvsp[(3) - (7)].backup_token).actual;
+                        actual_type = (yyvsp[-4].backup_token).token;
+                        actual = (yyvsp[-4].backup_token).actual;
+                        data_node = (yyvsp[-4].backup_token).actual;
                       }
+
     break;
 
   case 300:
@@ -5805,123 +5533,134 @@ yyreduce:
     { (yyval.nodes).node.ptr_leaflist = actual;
                                  (yyval.nodes).node.flag = 0;
                                }
+
     break;
 
   case 303:
 
-    { (yyvsp[(1) - (3)].nodes).node.flag |= LYS_TYPE_DEF;
-                                            (yyval.nodes) = (yyvsp[(1) - (3)].nodes);
+    { (yyvsp[-2].nodes).node.flag |= LYS_TYPE_DEF;
+                                            (yyval.nodes) = (yyvsp[-2].nodes);
                                           }
+
     break;
 
   case 304:
 
     { if (trg->version < 2) {
                                          free(s);
-                                         LOGVAL(LYE_INSTMT, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_leaflist, "default");
+                                         LOGVAL(LYE_INSTMT, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "default");
                                          YYABORT;
                                        }
-                                       YANG_ADDELEM((yyvsp[(1) - (2)].nodes).node.ptr_leaflist->dflt,
-                                                    (yyvsp[(1) - (2)].nodes).node.ptr_leaflist->dflt_size);
+                                       YANG_ADDELEM((yyvsp[-1].nodes).node.ptr_leaflist->dflt,
+                                                    (yyvsp[-1].nodes).node.ptr_leaflist->dflt_size);
                                        (*(const char **)actual) = lydict_insert_zc(param->module->ctx, s);
                                        s = NULL;
-                                       actual = (yyvsp[(1) - (2)].nodes).node.ptr_leaflist;
+                                       actual = (yyvsp[-1].nodes).node.ptr_leaflist;
                                      }
+
     break;
 
   case 305:
 
-    { if (yang_read_units(trg, (yyvsp[(1) - (2)].nodes).node.ptr_leaflist, s, LEAF_LIST_KEYWORD)) {
+    { if (yang_read_units(trg, (yyvsp[-1].nodes).node.ptr_leaflist, s, LEAF_LIST_KEYWORD)) {
                                        YYABORT;
                                      }
                                      s = NULL;
                                    }
+
     break;
 
   case 307:
 
-    { if ((yyvsp[(1) - (2)].nodes).node.ptr_leaflist->flags & LYS_CONFIG_MASK) {
-                                        LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_leaflist, "config", "leaf-list");
+    { if ((yyvsp[-1].nodes).node.ptr_leaflist->flags & LYS_CONFIG_MASK) {
+                                        LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "config", "leaf-list");
                                         YYABORT;
                                       }
-                                      (yyvsp[(1) - (2)].nodes).node.ptr_leaflist->flags |= (yyvsp[(2) - (2)].i);
+                                      (yyvsp[-1].nodes).node.ptr_leaflist->flags |= (yyvsp[0].i);
                                     }
+
     break;
 
   case 308:
 
-    { if ((yyvsp[(1) - (2)].nodes).node.flag & LYS_MIN_ELEMENTS) {
-                                              LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_leaflist, "min-elements", "leaf-list");
+    { if ((yyvsp[-1].nodes).node.flag & LYS_MIN_ELEMENTS) {
+                                              LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "min-elements", "leaf-list");
                                               YYABORT;
                                             }
-                                            (yyvsp[(1) - (2)].nodes).node.ptr_leaflist->min = (yyvsp[(2) - (2)].uint);
-                                            (yyvsp[(1) - (2)].nodes).node.flag |= LYS_MIN_ELEMENTS;
-                                            (yyval.nodes) = (yyvsp[(1) - (2)].nodes);
-                                            if ((yyvsp[(1) - (2)].nodes).node.ptr_leaflist->max && ((yyvsp[(1) - (2)].nodes).node.ptr_leaflist->min > (yyvsp[(1) - (2)].nodes).node.ptr_leaflist->max)) {
-                                              LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_leaflist, "Invalid value \"%d\" of \"%s\".", (yyvsp[(2) - (2)].uint), "min-elements");
-                                              LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_leaflist, "\"min-elements\" is bigger than \"max-elements\".");
+                                            (yyvsp[-1].nodes).node.ptr_leaflist->min = (yyvsp[0].uint);
+                                            (yyvsp[-1].nodes).node.flag |= LYS_MIN_ELEMENTS;
+                                            (yyval.nodes) = (yyvsp[-1].nodes);
+                                            if ((yyvsp[-1].nodes).node.ptr_leaflist->max && ((yyvsp[-1].nodes).node.ptr_leaflist->min > (yyvsp[-1].nodes).node.ptr_leaflist->max)) {
+                                              LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "Invalid value \"%d\" of \"%s\".", (yyvsp[0].uint), "min-elements");
+                                              LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "\"min-elements\" is bigger than \"max-elements\".");
                                               YYABORT;
                                             }
                                           }
+
     break;
 
   case 309:
 
-    { if ((yyvsp[(1) - (2)].nodes).node.flag & LYS_MAX_ELEMENTS) {
-                                              LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_leaflist, "max-elements", "leaf-list");
+    { if ((yyvsp[-1].nodes).node.flag & LYS_MAX_ELEMENTS) {
+                                              LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "max-elements", "leaf-list");
                                               YYABORT;
                                             }
-                                            (yyvsp[(1) - (2)].nodes).node.ptr_leaflist->max = (yyvsp[(2) - (2)].uint);
-                                            (yyvsp[(1) - (2)].nodes).node.flag |= LYS_MAX_ELEMENTS;
-                                            (yyval.nodes) = (yyvsp[(1) - (2)].nodes);
-                                            if ((yyvsp[(1) - (2)].nodes).node.ptr_leaflist->min > (yyvsp[(1) - (2)].nodes).node.ptr_leaflist->max) {
-                                              LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_leaflist, "Invalid value \"%d\" of \"%s\".", (yyvsp[(2) - (2)].uint), "max-elements");
-                                              LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_leaflist, "\"max-elements\" is smaller than \"min-elements\".");
+                                            (yyvsp[-1].nodes).node.ptr_leaflist->max = (yyvsp[0].uint);
+                                            (yyvsp[-1].nodes).node.flag |= LYS_MAX_ELEMENTS;
+                                            (yyval.nodes) = (yyvsp[-1].nodes);
+                                            if ((yyvsp[-1].nodes).node.ptr_leaflist->min > (yyvsp[-1].nodes).node.ptr_leaflist->max) {
+                                              LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "Invalid value \"%d\" of \"%s\".", (yyvsp[0].uint), "max-elements");
+                                              LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "\"max-elements\" is smaller than \"min-elements\".");
                                               YYABORT;
                                             }
                                           }
+
     break;
 
   case 310:
 
-    { if ((yyvsp[(1) - (2)].nodes).node.flag & LYS_ORDERED_MASK) {
-                                            LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_leaflist, "ordered by", "leaf-list");
+    { if ((yyvsp[-1].nodes).node.flag & LYS_ORDERED_MASK) {
+                                            LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "ordered by", "leaf-list");
                                             YYABORT;
                                           }
-                                          if ((yyvsp[(2) - (2)].i) & LYS_USERORDERED) {
-                                            (yyvsp[(1) - (2)].nodes).node.ptr_leaflist->flags |= LYS_USERORDERED;
+                                          if ((yyvsp[0].i) & LYS_USERORDERED) {
+                                            (yyvsp[-1].nodes).node.ptr_leaflist->flags |= LYS_USERORDERED;
                                           }
-                                          (yyvsp[(1) - (2)].nodes).node.flag |= (yyvsp[(2) - (2)].i);
-                                          (yyval.nodes) = (yyvsp[(1) - (2)].nodes);
+                                          (yyvsp[-1].nodes).node.flag |= (yyvsp[0].i);
+                                          (yyval.nodes) = (yyvsp[-1].nodes);
                                         }
+
     break;
 
   case 311:
 
-    { if ((yyvsp[(1) - (2)].nodes).node.ptr_leaflist->flags & LYS_STATUS_MASK) {
-                                        LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_leaflist, "status", "leaf-list");
+    { if ((yyvsp[-1].nodes).node.ptr_leaflist->flags & LYS_STATUS_MASK) {
+                                        LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "status", "leaf-list");
                                         YYABORT;
                                       }
-                                      (yyvsp[(1) - (2)].nodes).node.ptr_leaflist->flags |= (yyvsp[(2) - (2)].i);
+                                      (yyvsp[-1].nodes).node.ptr_leaflist->flags |= (yyvsp[0].i);
                                     }
+
     break;
 
   case 312:
 
-    { if (yang_read_description(trg, (yyvsp[(1) - (2)].nodes).node.ptr_leaflist, s, "leaf-list", NODE_PRINT)) {
+    { if (yang_read_description(trg, (yyvsp[-1].nodes).node.ptr_leaflist, s, "leaf-list", NODE_PRINT)) {
                                              YYABORT;
                                            }
                                            s = NULL;
                                          }
+
     break;
 
   case 313:
 
-    { if (yang_read_reference(trg, (yyvsp[(1) - (2)].nodes).node.ptr_leaflist, s, "leaf-list", NODE_PRINT)) {
+    { if (yang_read_reference(trg, (yyvsp[-1].nodes).node.ptr_leaflist, s, "leaf-list", NODE_PRINT)) {
                                            YYABORT;
                                          }
                                          s = NULL;
                                        }
+
     break;
 
   case 314:
@@ -5935,53 +5674,55 @@ yyreduce:
                                    s = NULL;
                                    actual_type = LIST_KEYWORD;
                                  }
+
     break;
 
   case 315:
 
     { void *tmp;
 
-                  if ((yyvsp[(6) - (7)].nodes).node.ptr_list->iffeature_size) {
-                    tmp = realloc((yyvsp[(6) - (7)].nodes).node.ptr_list->iffeature, (yyvsp[(6) - (7)].nodes).node.ptr_list->iffeature_size * sizeof *(yyvsp[(6) - (7)].nodes).node.ptr_list->iffeature);
+                  if ((yyvsp[-1].nodes).node.ptr_list->iffeature_size) {
+                    tmp = realloc((yyvsp[-1].nodes).node.ptr_list->iffeature, (yyvsp[-1].nodes).node.ptr_list->iffeature_size * sizeof *(yyvsp[-1].nodes).node.ptr_list->iffeature);
                     if (!tmp) {
                       LOGMEM;
                       YYABORT;
                     }
-                    (yyvsp[(6) - (7)].nodes).node.ptr_list->iffeature = tmp;
+                    (yyvsp[-1].nodes).node.ptr_list->iffeature = tmp;
                   }
 
-                  if ((yyvsp[(6) - (7)].nodes).node.ptr_list->must_size) {
-                    tmp = realloc((yyvsp[(6) - (7)].nodes).node.ptr_list->must, (yyvsp[(6) - (7)].nodes).node.ptr_list->must_size * sizeof *(yyvsp[(6) - (7)].nodes).node.ptr_list->must);
+                  if ((yyvsp[-1].nodes).node.ptr_list->must_size) {
+                    tmp = realloc((yyvsp[-1].nodes).node.ptr_list->must, (yyvsp[-1].nodes).node.ptr_list->must_size * sizeof *(yyvsp[-1].nodes).node.ptr_list->must);
                     if (!tmp) {
                       LOGMEM;
                       YYABORT;
                     }
-                    (yyvsp[(6) - (7)].nodes).node.ptr_list->must = tmp;
+                    (yyvsp[-1].nodes).node.ptr_list->must = tmp;
                   }
 
-                  if ((yyvsp[(6) - (7)].nodes).node.ptr_list->tpdf_size) {
-                    tmp = realloc((yyvsp[(6) - (7)].nodes).node.ptr_list->tpdf, (yyvsp[(6) - (7)].nodes).node.ptr_list->tpdf_size * sizeof *(yyvsp[(6) - (7)].nodes).node.ptr_list->tpdf);
+                  if ((yyvsp[-1].nodes).node.ptr_list->tpdf_size) {
+                    tmp = realloc((yyvsp[-1].nodes).node.ptr_list->tpdf, (yyvsp[-1].nodes).node.ptr_list->tpdf_size * sizeof *(yyvsp[-1].nodes).node.ptr_list->tpdf);
                     if (!tmp) {
                       LOGMEM;
                       YYABORT;
                     }
-                    (yyvsp[(6) - (7)].nodes).node.ptr_list->tpdf = tmp;
+                    (yyvsp[-1].nodes).node.ptr_list->tpdf = tmp;
                   }
 
-                  if ((yyvsp[(6) - (7)].nodes).node.ptr_list->unique_size) {
-                    tmp = realloc((yyvsp[(6) - (7)].nodes).node.ptr_list->unique, (yyvsp[(6) - (7)].nodes).node.ptr_list->unique_size * sizeof *(yyvsp[(6) - (7)].nodes).node.ptr_list->unique);
+                  if ((yyvsp[-1].nodes).node.ptr_list->unique_size) {
+                    tmp = realloc((yyvsp[-1].nodes).node.ptr_list->unique, (yyvsp[-1].nodes).node.ptr_list->unique_size * sizeof *(yyvsp[-1].nodes).node.ptr_list->unique);
                     if (!tmp) {
                       LOGMEM;
                       YYABORT;
                     }
-                    (yyvsp[(6) - (7)].nodes).node.ptr_list->unique = tmp;
+                    (yyvsp[-1].nodes).node.ptr_list->unique = tmp;
                   }
 
                   LOGDBG(LY_LDGYANG, "finished parsing list statement \"%s\"", data_node->name);
-                  actual_type = (yyvsp[(3) - (7)].backup_token).token;
-                  actual = (yyvsp[(3) - (7)].backup_token).actual;
-                  data_node = (yyvsp[(3) - (7)].backup_token).actual;
+                  actual_type = (yyvsp[-4].backup_token).token;
+                  actual = (yyvsp[-4].backup_token).actual;
+                  data_node = (yyvsp[-4].backup_token).actual;
                 }
+
     break;
 
   case 316:
@@ -5989,124 +5730,135 @@ yyreduce:
     { (yyval.nodes).node.ptr_list = actual;
                             (yyval.nodes).node.flag = 0;
                           }
+
     break;
 
   case 320:
 
-    { if ((yyvsp[(1) - (2)].nodes).node.ptr_list->keys) {
-                                  LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_list, "key", "list");
+    { if ((yyvsp[-1].nodes).node.ptr_list->keys) {
+                                  LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "key", "list");
                                   free(s);
                                   YYABORT;
                               }
-                              (yyvsp[(1) - (2)].nodes).node.ptr_list->keys = (struct lys_node_leaf **)s;
-                              (yyval.nodes) = (yyvsp[(1) - (2)].nodes);
+                              (yyvsp[-1].nodes).node.ptr_list->keys = (struct lys_node_leaf **)s;
+                              (yyval.nodes) = (yyvsp[-1].nodes);
                               s = NULL;
                             }
+
     break;
 
   case 321:
 
-    { YANG_ADDELEM((yyvsp[(1) - (2)].nodes).node.ptr_list->unique, (yyvsp[(1) - (2)].nodes).node.ptr_list->unique_size);
+    { YANG_ADDELEM((yyvsp[-1].nodes).node.ptr_list->unique, (yyvsp[-1].nodes).node.ptr_list->unique_size);
                                  ((struct lys_unique *)actual)->expr = (const char **)s;
-                                 (yyval.nodes) = (yyvsp[(1) - (2)].nodes);
+                                 (yyval.nodes) = (yyvsp[-1].nodes);
                                  s = NULL;
-                                 actual = (yyvsp[(1) - (2)].nodes).node.ptr_list;
+                                 actual = (yyvsp[-1].nodes).node.ptr_list;
                                }
+
     break;
 
   case 322:
 
-    { if ((yyvsp[(1) - (2)].nodes).node.ptr_list->flags & LYS_CONFIG_MASK) {
-                                   LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_list, "config", "list");
+    { if ((yyvsp[-1].nodes).node.ptr_list->flags & LYS_CONFIG_MASK) {
+                                   LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "config", "list");
                                    YYABORT;
                                  }
-                                 (yyvsp[(1) - (2)].nodes).node.ptr_list->flags |= (yyvsp[(2) - (2)].i);
+                                 (yyvsp[-1].nodes).node.ptr_list->flags |= (yyvsp[0].i);
                                }
+
     break;
 
   case 323:
 
-    { if ((yyvsp[(1) - (2)].nodes).node.flag & LYS_MIN_ELEMENTS) {
-                                         LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_list, "min-elements", "list");
+    { if ((yyvsp[-1].nodes).node.flag & LYS_MIN_ELEMENTS) {
+                                         LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "min-elements", "list");
                                          YYABORT;
                                        }
-                                       (yyvsp[(1) - (2)].nodes).node.ptr_list->min = (yyvsp[(2) - (2)].uint);
-                                       (yyvsp[(1) - (2)].nodes).node.flag |= LYS_MIN_ELEMENTS;
-                                       (yyval.nodes) = (yyvsp[(1) - (2)].nodes);
-                                       if ((yyvsp[(1) - (2)].nodes).node.ptr_list->max && ((yyvsp[(1) - (2)].nodes).node.ptr_list->min > (yyvsp[(1) - (2)].nodes).node.ptr_list->max)) {
-                                         LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_list, "Invalid value \"%d\" of \"%s\".", (yyvsp[(2) - (2)].uint), "min-elements");
-                                         LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_list, "\"min-elements\" is bigger than \"max-elements\".");
+                                       (yyvsp[-1].nodes).node.ptr_list->min = (yyvsp[0].uint);
+                                       (yyvsp[-1].nodes).node.flag |= LYS_MIN_ELEMENTS;
+                                       (yyval.nodes) = (yyvsp[-1].nodes);
+                                       if ((yyvsp[-1].nodes).node.ptr_list->max && ((yyvsp[-1].nodes).node.ptr_list->min > (yyvsp[-1].nodes).node.ptr_list->max)) {
+                                         LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "Invalid value \"%d\" of \"%s\".", (yyvsp[0].uint), "min-elements");
+                                         LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "\"min-elements\" is bigger than \"max-elements\".");
                                          YYABORT;
                                        }
                                      }
+
     break;
 
   case 324:
 
-    { if ((yyvsp[(1) - (2)].nodes).node.flag & LYS_MAX_ELEMENTS) {
-                                         LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_list, "max-elements", "list");
+    { if ((yyvsp[-1].nodes).node.flag & LYS_MAX_ELEMENTS) {
+                                         LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "max-elements", "list");
                                          YYABORT;
                                        }
-                                       (yyvsp[(1) - (2)].nodes).node.ptr_list->max = (yyvsp[(2) - (2)].uint);
-                                       (yyvsp[(1) - (2)].nodes).node.flag |= LYS_MAX_ELEMENTS;
-                                       (yyval.nodes) = (yyvsp[(1) - (2)].nodes);
-                                       if ((yyvsp[(1) - (2)].nodes).node.ptr_list->min > (yyvsp[(1) - (2)].nodes).node.ptr_list->max) {
-                                         LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_list, "Invalid value \"%d\" of \"%s\".", (yyvsp[(2) - (2)].uint), "min-elements");
-                                         LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_list, "\"max-elements\" is smaller than \"min-elements\".");
+                                       (yyvsp[-1].nodes).node.ptr_list->max = (yyvsp[0].uint);
+                                       (yyvsp[-1].nodes).node.flag |= LYS_MAX_ELEMENTS;
+                                       (yyval.nodes) = (yyvsp[-1].nodes);
+                                       if ((yyvsp[-1].nodes).node.ptr_list->min > (yyvsp[-1].nodes).node.ptr_list->max) {
+                                         LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "Invalid value \"%d\" of \"%s\".", (yyvsp[0].uint), "min-elements");
+                                         LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "\"max-elements\" is smaller than \"min-elements\".");
                                          YYABORT;
                                        }
                                      }
+
     break;
 
   case 325:
 
-    { if ((yyvsp[(1) - (2)].nodes).node.flag & LYS_ORDERED_MASK) {
-                                       LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_list, "ordered by", "list");
+    { if ((yyvsp[-1].nodes).node.flag & LYS_ORDERED_MASK) {
+                                       LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "ordered by", "list");
                                        YYABORT;
                                      }
-                                     if ((yyvsp[(2) - (2)].i) & LYS_USERORDERED) {
-                                       (yyvsp[(1) - (2)].nodes).node.ptr_list->flags |= LYS_USERORDERED;
+                                     if ((yyvsp[0].i) & LYS_USERORDERED) {
+                                       (yyvsp[-1].nodes).node.ptr_list->flags |= LYS_USERORDERED;
                                      }
-                                     (yyvsp[(1) - (2)].nodes).node.flag |= (yyvsp[(2) - (2)].i);
-                                     (yyval.nodes) = (yyvsp[(1) - (2)].nodes);
+                                     (yyvsp[-1].nodes).node.flag |= (yyvsp[0].i);
+                                     (yyval.nodes) = (yyvsp[-1].nodes);
                                    }
+
     break;
 
   case 326:
 
-    { if ((yyvsp[(1) - (2)].nodes).node.ptr_list->flags & LYS_STATUS_MASK) {
-                                   LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_list, "status", "list");
+    { if ((yyvsp[-1].nodes).node.ptr_list->flags & LYS_STATUS_MASK) {
+                                   LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "status", "list");
                                    YYABORT;
                                  }
-                                 (yyvsp[(1) - (2)].nodes).node.ptr_list->flags |= (yyvsp[(2) - (2)].i);
+                                 (yyvsp[-1].nodes).node.ptr_list->flags |= (yyvsp[0].i);
                                }
+
     break;
 
   case 327:
 
-    { if (yang_read_description(trg, (yyvsp[(1) - (2)].nodes).node.ptr_list, s, "list", NODE_PRINT)) {
+    { if (yang_read_description(trg, (yyvsp[-1].nodes).node.ptr_list, s, "list", NODE_PRINT)) {
                                         YYABORT;
                                       }
                                       s = NULL;
                                     }
+
     break;
 
   case 328:
 
-    { if (yang_read_reference(trg, (yyvsp[(1) - (2)].nodes).node.ptr_list, s, "list", NODE_PRINT)) {
+    { if (yang_read_reference(trg, (yyvsp[-1].nodes).node.ptr_list, s, "list", NODE_PRINT)) {
                                       YYABORT;
                                     }
                                     s = NULL;
                                   }
+
     break;
 
   case 332:
 
     { if (trg->version < 2) {
-                                                 LOGVAL(LYE_INSTMT, LY_VLOG_LYS, (yyvsp[(1) - (3)].nodes).node.ptr_list, "notification");
+                                                 LOGVAL(LYE_INSTMT, LY_VLOG_LYS, (yyvsp[-2].nodes).node.ptr_list, "notification");
                                                  YYABORT;
                                                }
                                              }
+
     break;
 
   case 334:
@@ -6120,36 +5872,39 @@ yyreduce:
                                      s = NULL;
                                      actual_type = CHOICE_KEYWORD;
                                    }
+
     break;
 
   case 335:
 
     { LOGDBG(LY_LDGYANG, "finished parsing choice statement \"%s\"", data_node->name);
-               actual_type = (yyvsp[(3) - (4)].backup_token).token;
-               actual = (yyvsp[(3) - (4)].backup_token).actual;
-               data_node = (yyvsp[(3) - (4)].backup_token).actual;
+               actual_type = (yyvsp[-1].backup_token).token;
+               actual = (yyvsp[-1].backup_token).actual;
+               data_node = (yyvsp[-1].backup_token).actual;
              }
+
     break;
 
   case 337:
 
     { struct lys_iffeature *tmp;
 
-           if (((yyvsp[(3) - (4)].nodes).node.ptr_choice->flags & LYS_MAND_TRUE) && (yyvsp[(3) - (4)].nodes).node.ptr_choice->dflt) {
-              LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, (yyvsp[(3) - (4)].nodes).node.ptr_choice, "default", "choice");
-              LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[(3) - (4)].nodes).node.ptr_choice, "The \"default\" statement is forbidden on choices with \"mandatory\".");
+           if (((yyvsp[-1].nodes).node.ptr_choice->flags & LYS_MAND_TRUE) && (yyvsp[-1].nodes).node.ptr_choice->dflt) {
+              LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_choice, "default", "choice");
+              LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_choice, "The \"default\" statement is forbidden on choices with \"mandatory\".");
               YYABORT;
             }
 
-           if ((yyvsp[(3) - (4)].nodes).node.ptr_choice->iffeature_size) {
-             tmp = realloc((yyvsp[(3) - (4)].nodes).node.ptr_choice->iffeature, (yyvsp[(3) - (4)].nodes).node.ptr_choice->iffeature_size * sizeof *tmp);
+           if ((yyvsp[-1].nodes).node.ptr_choice->iffeature_size) {
+             tmp = realloc((yyvsp[-1].nodes).node.ptr_choice->iffeature, (yyvsp[-1].nodes).node.ptr_choice->iffeature_size * sizeof *tmp);
              if (!tmp) {
                LOGMEM;
                YYABORT;
              }
-             (yyvsp[(3) - (4)].nodes).node.ptr_choice->iffeature = tmp;
+             (yyvsp[-1].nodes).node.ptr_choice->iffeature = tmp;
            }
          }
+
     break;
 
   case 338:
@@ -6157,73 +5912,80 @@ yyreduce:
     { (yyval.nodes).node.ptr_choice = actual;
                               (yyval.nodes).node.flag = 0;
                             }
+
     break;
 
   case 341:
 
-    { if ((yyvsp[(1) - (2)].nodes).node.flag & LYS_CHOICE_DEFAULT) {
-                                      LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_choice, "default", "choice");
+    { if ((yyvsp[-1].nodes).node.flag & LYS_CHOICE_DEFAULT) {
+                                      LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_choice, "default", "choice");
                                       free(s);
                                       YYABORT;
                                     }
-                                    (yyvsp[(1) - (2)].nodes).node.ptr_choice->dflt = (struct lys_node *) s;
+                                    (yyvsp[-1].nodes).node.ptr_choice->dflt = (struct lys_node *) s;
                                     s = NULL;
-                                    (yyval.nodes) = (yyvsp[(1) - (2)].nodes);
+                                    (yyval.nodes) = (yyvsp[-1].nodes);
                                     (yyval.nodes).node.flag |= LYS_CHOICE_DEFAULT;
                                   }
+
     break;
 
   case 342:
 
-    { if ((yyvsp[(1) - (2)].nodes).node.ptr_choice->flags & LYS_CONFIG_MASK) {
-                                     LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_choice, "config", "choice");
+    { if ((yyvsp[-1].nodes).node.ptr_choice->flags & LYS_CONFIG_MASK) {
+                                     LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_choice, "config", "choice");
                                      YYABORT;
                                    }
-                                   (yyvsp[(1) - (2)].nodes).node.ptr_choice->flags |= (yyvsp[(2) - (2)].i);
-                                   (yyval.nodes) = (yyvsp[(1) - (2)].nodes);
+                                   (yyvsp[-1].nodes).node.ptr_choice->flags |= (yyvsp[0].i);
+                                   (yyval.nodes) = (yyvsp[-1].nodes);
                                  }
+
     break;
 
   case 343:
 
-    { if ((yyvsp[(1) - (2)].nodes).node.ptr_choice->flags & LYS_MAND_MASK) {
-                                      LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_choice, "mandatory", "choice");
+    { if ((yyvsp[-1].nodes).node.ptr_choice->flags & LYS_MAND_MASK) {
+                                      LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_choice, "mandatory", "choice");
                                       YYABORT;
                                     }
-                                    (yyvsp[(1) - (2)].nodes).node.ptr_choice->flags |= (yyvsp[(2) - (2)].i);
-                                    (yyval.nodes) = (yyvsp[(1) - (2)].nodes);
+                                    (yyvsp[-1].nodes).node.ptr_choice->flags |= (yyvsp[0].i);
+                                    (yyval.nodes) = (yyvsp[-1].nodes);
                                   }
+
     break;
 
   case 344:
 
-    { if ((yyvsp[(1) - (2)].nodes).node.ptr_choice->flags & LYS_STATUS_MASK) {
-                                     LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_choice, "status", "choice");
+    { if ((yyvsp[-1].nodes).node.ptr_choice->flags & LYS_STATUS_MASK) {
+                                     LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_choice, "status", "choice");
                                      YYABORT;
                                    }
-                                   (yyvsp[(1) - (2)].nodes).node.ptr_choice->flags |= (yyvsp[(2) - (2)].i);
-                                   (yyval.nodes) = (yyvsp[(1) - (2)].nodes);
+                                   (yyvsp[-1].nodes).node.ptr_choice->flags |= (yyvsp[0].i);
+                                   (yyval.nodes) = (yyvsp[-1].nodes);
                                  }
+
     break;
 
   case 345:
 
-    { if (yang_read_description(trg, (yyvsp[(1) - (2)].nodes).node.ptr_choice, s, "choice", NODE_PRINT)) {
+    { if (yang_read_description(trg, (yyvsp[-1].nodes).node.ptr_choice, s, "choice", NODE_PRINT)) {
                                           YYABORT;
                                         }
                                         s = NULL;
-                                        (yyval.nodes) = (yyvsp[(1) - (2)].nodes);
+                                        (yyval.nodes) = (yyvsp[-1].nodes);
                                       }
+
     break;
 
   case 346:
 
-    { if (yang_read_reference(trg, (yyvsp[(1) - (2)].nodes).node.ptr_choice, s, "choice", NODE_PRINT)) {
+    { if (yang_read_reference(trg, (yyvsp[-1].nodes).node.ptr_choice, s, "choice", NODE_PRINT)) {
                                         YYABORT;
                                       }
                                       s = NULL;
-                                      (yyval.nodes) = (yyvsp[(1) - (2)].nodes);
+                                      (yyval.nodes) = (yyvsp[-1].nodes);
                                     }
+
     break;
 
   case 356:
@@ -6233,6 +5995,7 @@ yyreduce:
                      YYABORT;
                    }
                  }
+
     break;
 
   case 357:
@@ -6246,63 +6009,70 @@ yyreduce:
                                    s = NULL;
                                    actual_type = CASE_KEYWORD;
                                  }
+
     break;
 
   case 358:
 
     { LOGDBG(LY_LDGYANG, "finished parsing case statement \"%s\"", data_node->name);
-             actual_type = (yyvsp[(3) - (4)].backup_token).token;
-             actual = (yyvsp[(3) - (4)].backup_token).actual;
-             data_node = (yyvsp[(3) - (4)].backup_token).actual;
+             actual_type = (yyvsp[-1].backup_token).token;
+             actual = (yyvsp[-1].backup_token).actual;
+             data_node = (yyvsp[-1].backup_token).actual;
            }
+
     break;
 
   case 360:
 
     { struct lys_iffeature *tmp;
 
-           if ((yyvsp[(3) - (4)].nodes).cs->iffeature_size) {
-             tmp = realloc((yyvsp[(3) - (4)].nodes).cs->iffeature, (yyvsp[(3) - (4)].nodes).cs->iffeature_size * sizeof *tmp);
+           if ((yyvsp[-1].nodes).cs->iffeature_size) {
+             tmp = realloc((yyvsp[-1].nodes).cs->iffeature, (yyvsp[-1].nodes).cs->iffeature_size * sizeof *tmp);
              if (!tmp) {
                LOGMEM;
                YYABORT;
              }
-             (yyvsp[(3) - (4)].nodes).cs->iffeature = tmp;
+             (yyvsp[-1].nodes).cs->iffeature = tmp;
            }
           }
+
     break;
 
   case 361:
 
     { (yyval.nodes).cs = actual; }
+
     break;
 
   case 364:
 
-    { if ((yyvsp[(1) - (2)].nodes).cs->flags & LYS_STATUS_MASK) {
-                                   LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).cs, "status", "case");
+    { if ((yyvsp[-1].nodes).cs->flags & LYS_STATUS_MASK) {
+                                   LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).cs, "status", "case");
                                    YYABORT;
                                  }
-                                 (yyvsp[(1) - (2)].nodes).cs->flags |= (yyvsp[(2) - (2)].i);
+                                 (yyvsp[-1].nodes).cs->flags |= (yyvsp[0].i);
                                }
+
     break;
 
   case 365:
 
-    { if (yang_read_description(trg, (yyvsp[(1) - (2)].nodes).cs, s, "case", NODE_PRINT)) {
+    { if (yang_read_description(trg, (yyvsp[-1].nodes).cs, s, "case", NODE_PRINT)) {
                                         YYABORT;
                                       }
                                       s = NULL;
                                     }
+
     break;
 
   case 366:
 
-    { if (yang_read_reference(trg, (yyvsp[(1) - (2)].nodes).cs, s, "case", NODE_PRINT)) {
+    { if (yang_read_reference(trg, (yyvsp[-1].nodes).cs, s, "case", NODE_PRINT)) {
                                       YYABORT;
                                     }
                                     s = NULL;
                                   }
+
     break;
 
   case 368:
@@ -6316,15 +6086,17 @@ yyreduce:
                                      s = NULL;
                                      actual_type = ANYXML_KEYWORD;
                                    }
+
     break;
 
   case 369:
 
     { LOGDBG(LY_LDGYANG, "finished parsing anyxml statement \"%s\"", data_node->name);
-               actual_type = (yyvsp[(3) - (4)].backup_token).token;
-               actual = (yyvsp[(3) - (4)].backup_token).actual;
-               data_node = (yyvsp[(3) - (4)].backup_token).actual;
+               actual_type = (yyvsp[-1].backup_token).token;
+               actual = (yyvsp[-1].backup_token).actual;
+               data_node = (yyvsp[-1].backup_token).actual;
              }
+
     break;
 
   case 370:
@@ -6338,39 +6110,42 @@ yyreduce:
                                       s = NULL;
                                       actual_type = ANYDATA_KEYWORD;
                                     }
+
     break;
 
   case 371:
 
     { LOGDBG(LY_LDGYANG, "finished parsing anydata statement \"%s\"", data_node->name);
-                actual_type = (yyvsp[(3) - (4)].backup_token).token;
-                actual = (yyvsp[(3) - (4)].backup_token).actual;
-                data_node = (yyvsp[(3) - (4)].backup_token).actual;
+                actual_type = (yyvsp[-1].backup_token).token;
+                actual = (yyvsp[-1].backup_token).actual;
+                data_node = (yyvsp[-1].backup_token).actual;
               }
+
     break;
 
   case 373:
 
     { void *tmp;
 
-           if ((yyvsp[(3) - (4)].nodes).node.ptr_anydata->iffeature_size) {
-             tmp = realloc((yyvsp[(3) - (4)].nodes).node.ptr_anydata->iffeature, (yyvsp[(3) - (4)].nodes).node.ptr_anydata->iffeature_size * sizeof *(yyvsp[(3) - (4)].nodes).node.ptr_anydata->iffeature);
+           if ((yyvsp[-1].nodes).node.ptr_anydata->iffeature_size) {
+             tmp = realloc((yyvsp[-1].nodes).node.ptr_anydata->iffeature, (yyvsp[-1].nodes).node.ptr_anydata->iffeature_size * sizeof *(yyvsp[-1].nodes).node.ptr_anydata->iffeature);
              if (!tmp) {
                LOGMEM;
                YYABORT;
              }
-             (yyvsp[(3) - (4)].nodes).node.ptr_anydata->iffeature = tmp;
+             (yyvsp[-1].nodes).node.ptr_anydata->iffeature = tmp;
            }
 
-           if ((yyvsp[(3) - (4)].nodes).node.ptr_anydata->must_size) {
-             tmp = realloc((yyvsp[(3) - (4)].nodes).node.ptr_anydata->must, (yyvsp[(3) - (4)].nodes).node.ptr_anydata->must_size * sizeof *(yyvsp[(3) - (4)].nodes).node.ptr_anydata->must);
+           if ((yyvsp[-1].nodes).node.ptr_anydata->must_size) {
+             tmp = realloc((yyvsp[-1].nodes).node.ptr_anydata->must, (yyvsp[-1].nodes).node.ptr_anydata->must_size * sizeof *(yyvsp[-1].nodes).node.ptr_anydata->must);
              if (!tmp) {
                LOGMEM;
                YYABORT;
              }
-             (yyvsp[(3) - (4)].nodes).node.ptr_anydata->must = tmp;
+             (yyvsp[-1].nodes).node.ptr_anydata->must = tmp;
            }
          }
+
     break;
 
   case 374:
@@ -6378,57 +6153,63 @@ yyreduce:
     { (yyval.nodes).node.ptr_anydata = actual;
                               (yyval.nodes).node.flag = actual_type;
                             }
+
     break;
 
   case 378:
 
-    { if ((yyvsp[(1) - (2)].nodes).node.ptr_anydata->flags & LYS_CONFIG_MASK) {
-                                     LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_anydata, "config",
-                                            ((yyvsp[(1) - (2)].nodes).node.flag == ANYXML_KEYWORD) ? "anyxml" : "anydata");
+    { if ((yyvsp[-1].nodes).node.ptr_anydata->flags & LYS_CONFIG_MASK) {
+                                     LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_anydata, "config",
+                                            ((yyvsp[-1].nodes).node.flag == ANYXML_KEYWORD) ? "anyxml" : "anydata");
                                      YYABORT;
                                    }
-                                   (yyvsp[(1) - (2)].nodes).node.ptr_anydata->flags |= (yyvsp[(2) - (2)].i);
+                                   (yyvsp[-1].nodes).node.ptr_anydata->flags |= (yyvsp[0].i);
                                  }
+
     break;
 
   case 379:
 
-    { if ((yyvsp[(1) - (2)].nodes).node.ptr_anydata->flags & LYS_MAND_MASK) {
-                                        LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_anydata, "mandatory",
-                                               ((yyvsp[(1) - (2)].nodes).node.flag == ANYXML_KEYWORD) ? "anyxml" : "anydata");
+    { if ((yyvsp[-1].nodes).node.ptr_anydata->flags & LYS_MAND_MASK) {
+                                        LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_anydata, "mandatory",
+                                               ((yyvsp[-1].nodes).node.flag == ANYXML_KEYWORD) ? "anyxml" : "anydata");
                                         YYABORT;
                                       }
-                                      (yyvsp[(1) - (2)].nodes).node.ptr_anydata->flags |= (yyvsp[(2) - (2)].i);
+                                      (yyvsp[-1].nodes).node.ptr_anydata->flags |= (yyvsp[0].i);
                                     }
+
     break;
 
   case 380:
 
-    { if ((yyvsp[(1) - (2)].nodes).node.ptr_anydata->flags & LYS_STATUS_MASK) {
-                                     LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_anydata, "status",
-                                            ((yyvsp[(1) - (2)].nodes).node.flag == ANYXML_KEYWORD) ? "anyxml" : "anydata");
+    { if ((yyvsp[-1].nodes).node.ptr_anydata->flags & LYS_STATUS_MASK) {
+                                     LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_anydata, "status",
+                                            ((yyvsp[-1].nodes).node.flag == ANYXML_KEYWORD) ? "anyxml" : "anydata");
                                      YYABORT;
                                    }
-                                   (yyvsp[(1) - (2)].nodes).node.ptr_anydata->flags |= (yyvsp[(2) - (2)].i);
+                                   (yyvsp[-1].nodes).node.ptr_anydata->flags |= (yyvsp[0].i);
                                  }
+
     break;
 
   case 381:
 
-    { if (yang_read_description(trg, (yyvsp[(1) - (2)].nodes).node.ptr_anydata, s, ((yyvsp[(1) - (2)].nodes).node.flag == ANYXML_KEYWORD) ? "anyxml" : "anydata", NODE_PRINT)) {
+    { if (yang_read_description(trg, (yyvsp[-1].nodes).node.ptr_anydata, s, ((yyvsp[-1].nodes).node.flag == ANYXML_KEYWORD) ? "anyxml" : "anydata", NODE_PRINT)) {
                                           YYABORT;
                                         }
                                         s = NULL;
                                       }
+
     break;
 
   case 382:
 
-    { if (yang_read_reference(trg, (yyvsp[(1) - (2)].nodes).node.ptr_anydata, s, ((yyvsp[(1) - (2)].nodes).node.flag == ANYXML_KEYWORD) ? "anyxml" : "anydata", NODE_PRINT)) {
+    { if (yang_read_reference(trg, (yyvsp[-1].nodes).node.ptr_anydata, s, ((yyvsp[-1].nodes).node.flag == ANYXML_KEYWORD) ? "anyxml" : "anydata", NODE_PRINT)) {
                                         YYABORT;
                                       }
                                       s = NULL;
                                     }
+
     break;
 
   case 383:
@@ -6442,81 +6223,88 @@ yyreduce:
                                        s = NULL;
                                        actual_type = USES_KEYWORD;
                                      }
+
     break;
 
   case 384:
 
     { LOGDBG(LY_LDGYANG, "finished parsing uses statement \"%s\"", data_node->name);
-             actual_type = (yyvsp[(3) - (4)].backup_token).token;
-             actual = (yyvsp[(3) - (4)].backup_token).actual;
-             data_node = (yyvsp[(3) - (4)].backup_token).actual;
+             actual_type = (yyvsp[-1].backup_token).token;
+             actual = (yyvsp[-1].backup_token).actual;
+             data_node = (yyvsp[-1].backup_token).actual;
            }
+
     break;
 
   case 386:
 
     { void *tmp;
 
-           if ((yyvsp[(3) - (4)].nodes).uses->iffeature_size) {
-             tmp = realloc((yyvsp[(3) - (4)].nodes).uses->iffeature, (yyvsp[(3) - (4)].nodes).uses->iffeature_size * sizeof *(yyvsp[(3) - (4)].nodes).uses->iffeature);
+           if ((yyvsp[-1].nodes).uses->iffeature_size) {
+             tmp = realloc((yyvsp[-1].nodes).uses->iffeature, (yyvsp[-1].nodes).uses->iffeature_size * sizeof *(yyvsp[-1].nodes).uses->iffeature);
              if (!tmp) {
                LOGMEM;
                YYABORT;
              }
-             (yyvsp[(3) - (4)].nodes).uses->iffeature = tmp;
+             (yyvsp[-1].nodes).uses->iffeature = tmp;
            }
 
-           if ((yyvsp[(3) - (4)].nodes).uses->refine_size) {
-             tmp = realloc((yyvsp[(3) - (4)].nodes).uses->refine, (yyvsp[(3) - (4)].nodes).uses->refine_size * sizeof *(yyvsp[(3) - (4)].nodes).uses->refine);
+           if ((yyvsp[-1].nodes).uses->refine_size) {
+             tmp = realloc((yyvsp[-1].nodes).uses->refine, (yyvsp[-1].nodes).uses->refine_size * sizeof *(yyvsp[-1].nodes).uses->refine);
              if (!tmp) {
                LOGMEM;
                YYABORT;
              }
-             (yyvsp[(3) - (4)].nodes).uses->refine = tmp;
+             (yyvsp[-1].nodes).uses->refine = tmp;
            }
 
-           if ((yyvsp[(3) - (4)].nodes).uses->augment_size) {
-             tmp = realloc((yyvsp[(3) - (4)].nodes).uses->augment, (yyvsp[(3) - (4)].nodes).uses->augment_size * sizeof *(yyvsp[(3) - (4)].nodes).uses->augment);
+           if ((yyvsp[-1].nodes).uses->augment_size) {
+             tmp = realloc((yyvsp[-1].nodes).uses->augment, (yyvsp[-1].nodes).uses->augment_size * sizeof *(yyvsp[-1].nodes).uses->augment);
              if (!tmp) {
                LOGMEM;
                YYABORT;
              }
-             (yyvsp[(3) - (4)].nodes).uses->augment = tmp;
+             (yyvsp[-1].nodes).uses->augment = tmp;
            }
          }
+
     break;
 
   case 387:
 
     { (yyval.nodes).uses = actual; }
+
     break;
 
   case 390:
 
-    { if ((yyvsp[(1) - (2)].nodes).uses->flags & LYS_STATUS_MASK) {
-                                   LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).uses, "status", "uses");
+    { if ((yyvsp[-1].nodes).uses->flags & LYS_STATUS_MASK) {
+                                   LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).uses, "status", "uses");
                                    YYABORT;
                                  }
-                                 (yyvsp[(1) - (2)].nodes).uses->flags |= (yyvsp[(2) - (2)].i);
+                                 (yyvsp[-1].nodes).uses->flags |= (yyvsp[0].i);
                                }
+
     break;
 
   case 391:
 
-    { if (yang_read_description(trg, (yyvsp[(1) - (2)].nodes).uses, s, "uses", NODE_PRINT)) {
+    { if (yang_read_description(trg, (yyvsp[-1].nodes).uses, s, "uses", NODE_PRINT)) {
                                         YYABORT;
                                       }
                                       s = NULL;
                                     }
+
     break;
 
   case 392:
 
-    { if (yang_read_reference(trg, (yyvsp[(1) - (2)].nodes).uses, s, "uses", NODE_PRINT)) {
+    { if (yang_read_reference(trg, (yyvsp[-1].nodes).uses, s, "uses", NODE_PRINT)) {
                                       YYABORT;
                                     }
                                     s = NULL;
                                   }
+
     break;
 
   case 397:
@@ -6533,46 +6321,49 @@ yyreduce:
                                   }
                                   actual_type = REFINE_KEYWORD;
                                 }
+
     break;
 
   case 398:
 
-    { actual_type = (yyvsp[(3) - (4)].backup_token).token;
-               actual = (yyvsp[(3) - (4)].backup_token).actual;
+    { actual_type = (yyvsp[-1].backup_token).token;
+               actual = (yyvsp[-1].backup_token).actual;
              }
+
     break;
 
   case 400:
 
     { void *tmp;
 
-           if ((yyvsp[(3) - (4)].nodes).refine->iffeature_size) {
-             tmp = realloc((yyvsp[(3) - (4)].nodes).refine->iffeature, (yyvsp[(3) - (4)].nodes).refine->iffeature_size * sizeof *(yyvsp[(3) - (4)].nodes).refine->iffeature);
+           if ((yyvsp[-1].nodes).refine->iffeature_size) {
+             tmp = realloc((yyvsp[-1].nodes).refine->iffeature, (yyvsp[-1].nodes).refine->iffeature_size * sizeof *(yyvsp[-1].nodes).refine->iffeature);
              if (!tmp) {
                LOGMEM;
                YYABORT;
              }
-             (yyvsp[(3) - (4)].nodes).refine->iffeature = tmp;
+             (yyvsp[-1].nodes).refine->iffeature = tmp;
            }
 
-           if ((yyvsp[(3) - (4)].nodes).refine->must_size) {
-             tmp = realloc((yyvsp[(3) - (4)].nodes).refine->must, (yyvsp[(3) - (4)].nodes).refine->must_size * sizeof *(yyvsp[(3) - (4)].nodes).refine->must);
+           if ((yyvsp[-1].nodes).refine->must_size) {
+             tmp = realloc((yyvsp[-1].nodes).refine->must, (yyvsp[-1].nodes).refine->must_size * sizeof *(yyvsp[-1].nodes).refine->must);
              if (!tmp) {
                LOGMEM;
                YYABORT;
              }
-             (yyvsp[(3) - (4)].nodes).refine->must = tmp;
+             (yyvsp[-1].nodes).refine->must = tmp;
            }
 
-           if ((yyvsp[(3) - (4)].nodes).refine->dflt_size) {
-             tmp = realloc((yyvsp[(3) - (4)].nodes).refine->dflt, (yyvsp[(3) - (4)].nodes).refine->dflt_size * sizeof *(yyvsp[(3) - (4)].nodes).refine->dflt);
+           if ((yyvsp[-1].nodes).refine->dflt_size) {
+             tmp = realloc((yyvsp[-1].nodes).refine->dflt, (yyvsp[-1].nodes).refine->dflt_size * sizeof *(yyvsp[-1].nodes).refine->dflt);
              if (!tmp) {
                LOGMEM;
                YYABORT;
              }
-             (yyvsp[(3) - (4)].nodes).refine->dflt = tmp;
+             (yyvsp[-1].nodes).refine->dflt = tmp;
            }
          }
+
     break;
 
   case 401:
@@ -6580,33 +6371,35 @@ yyreduce:
     { (yyval.nodes).refine = actual;
                                     actual_type = REFINE_KEYWORD;
                                   }
+
     break;
 
   case 402:
 
-    { actual = (yyvsp[(1) - (3)].nodes).refine;
+    { actual = (yyvsp[-2].nodes).refine;
                                                actual_type = REFINE_KEYWORD;
-                                               if ((yyvsp[(1) - (3)].nodes).refine->target_type) {
-                                                 if ((yyvsp[(1) - (3)].nodes).refine->target_type & (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYXML)) {
-                                                   (yyvsp[(1) - (3)].nodes).refine->target_type &= (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYXML);
+                                               if ((yyvsp[-2].nodes).refine->target_type) {
+                                                 if ((yyvsp[-2].nodes).refine->target_type & (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYXML)) {
+                                                   (yyvsp[-2].nodes).refine->target_type &= (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYXML);
                                                  } else {
                                                    LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "must", "refine");
                                                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
                                                    YYABORT;
                                                  }
                                                } else {
-                                                 (yyvsp[(1) - (3)].nodes).refine->target_type = LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYXML;
+                                                 (yyvsp[-2].nodes).refine->target_type = LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYXML;
                                                }
                                              }
+
     break;
 
   case 403:
 
     { /* leaf, leaf-list, list, container or anyxml */
                /* check possibility of statements combination */
-               if ((yyvsp[(1) - (3)].nodes).refine->target_type) {
-                 if ((yyvsp[(1) - (3)].nodes).refine->target_type & (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYDATA)) {
-                   (yyvsp[(1) - (3)].nodes).refine->target_type &= (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYDATA);
+               if ((yyvsp[-2].nodes).refine->target_type) {
+                 if ((yyvsp[-2].nodes).refine->target_type & (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYDATA)) {
+                   (yyvsp[-2].nodes).refine->target_type &= (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYDATA);
                  } else {
                    free(s);
                    LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "if-feature", "refine");
@@ -6614,22 +6407,23 @@ yyreduce:
                    YYABORT;
                  }
                } else {
-                 (yyvsp[(1) - (3)].nodes).refine->target_type = LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYDATA;
+                 (yyvsp[-2].nodes).refine->target_type = LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYDATA;
                }
              }
+
     break;
 
   case 404:
 
-    { if ((yyvsp[(1) - (2)].nodes).refine->target_type) {
-                                             if ((yyvsp[(1) - (2)].nodes).refine->target_type & LYS_CONTAINER) {
-                                               if ((yyvsp[(1) - (2)].nodes).refine->mod.presence) {
+    { if ((yyvsp[-1].nodes).refine->target_type) {
+                                             if ((yyvsp[-1].nodes).refine->target_type & LYS_CONTAINER) {
+                                               if ((yyvsp[-1].nodes).refine->mod.presence) {
                                                  LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "presence", "refine");
                                                  free(s);
                                                  YYABORT;
                                                }
-                                               (yyvsp[(1) - (2)].nodes).refine->target_type = LYS_CONTAINER;
-                                               (yyvsp[(1) - (2)].nodes).refine->mod.presence = lydict_insert_zc(trg->ctx, s);
+                                               (yyvsp[-1].nodes).refine->target_type = LYS_CONTAINER;
+                                               (yyvsp[-1].nodes).refine->mod.presence = lydict_insert_zc(trg->ctx, s);
                                              } else {
                                                free(s);
                                                LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "presence", "refine");
@@ -6637,25 +6431,26 @@ yyreduce:
                                                YYABORT;
                                              }
                                            } else {
-                                             (yyvsp[(1) - (2)].nodes).refine->target_type = LYS_CONTAINER;
-                                             (yyvsp[(1) - (2)].nodes).refine->mod.presence = lydict_insert_zc(trg->ctx, s);
+                                             (yyvsp[-1].nodes).refine->target_type = LYS_CONTAINER;
+                                             (yyvsp[-1].nodes).refine->mod.presence = lydict_insert_zc(trg->ctx, s);
                                            }
                                            s = NULL;
-                                           (yyval.nodes) = (yyvsp[(1) - (2)].nodes);
+                                           (yyval.nodes) = (yyvsp[-1].nodes);
                                          }
+
     break;
 
   case 405:
 
     { int i;
 
-                                          if ((yyvsp[(1) - (2)].nodes).refine->dflt_size) {
+                                          if ((yyvsp[-1].nodes).refine->dflt_size) {
                                             if (trg->version < 2) {
                                               LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "default", "refine");
                                               YYABORT;
                                             }
-                                            if ((yyvsp[(1) - (2)].nodes).refine->target_type & LYS_LEAFLIST) {
-                                              (yyvsp[(1) - (2)].nodes).refine->target_type = LYS_LEAFLIST;
+                                            if ((yyvsp[-1].nodes).refine->target_type & LYS_LEAFLIST) {
+                                              (yyvsp[-1].nodes).refine->target_type = LYS_LEAFLIST;
                                             } else {
                                               free(s);
                                               LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "default", "refine");
@@ -6663,12 +6458,12 @@ yyreduce:
                                               YYABORT;
                                             }
                                           } else {
-                                            if ((yyvsp[(1) - (2)].nodes).refine->target_type) {
-                                              if (trg->version < 2 && ((yyvsp[(1) - (2)].nodes).refine->target_type & (LYS_LEAF | LYS_CHOICE))) {
-                                                (yyvsp[(1) - (2)].nodes).refine->target_type &= (LYS_LEAF | LYS_CHOICE);
-                                              } if (trg->version > 1 && ((yyvsp[(1) - (2)].nodes).refine->target_type & (LYS_LEAF | LYS_LEAFLIST | LYS_CHOICE))) {
+                                            if ((yyvsp[-1].nodes).refine->target_type) {
+                                              if (trg->version < 2 && ((yyvsp[-1].nodes).refine->target_type & (LYS_LEAF | LYS_CHOICE))) {
+                                                (yyvsp[-1].nodes).refine->target_type &= (LYS_LEAF | LYS_CHOICE);
+                                              } if (trg->version > 1 && ((yyvsp[-1].nodes).refine->target_type & (LYS_LEAF | LYS_LEAFLIST | LYS_CHOICE))) {
                                                 /* YANG 1.1 */
-                                                (yyvsp[(1) - (2)].nodes).refine->target_type &= (LYS_LEAF | LYS_LEAFLIST | LYS_CHOICE);
+                                                (yyvsp[-1].nodes).refine->target_type &= (LYS_LEAF | LYS_LEAFLIST | LYS_CHOICE);
                                               } else {
                                                 free(s);
                                                 LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "default", "refine");
@@ -6677,141 +6472,148 @@ yyreduce:
                                               }
                                             } else {
                                               if (trg->version < 2) {
-                                                (yyvsp[(1) - (2)].nodes).refine->target_type = LYS_LEAF | LYS_CHOICE;
+                                                (yyvsp[-1].nodes).refine->target_type = LYS_LEAF | LYS_CHOICE;
                                               } else {
                                                 /* YANG 1.1 */
-                                                (yyvsp[(1) - (2)].nodes).refine->target_type = LYS_LEAF | LYS_LEAFLIST | LYS_CHOICE;
+                                                (yyvsp[-1].nodes).refine->target_type = LYS_LEAF | LYS_LEAFLIST | LYS_CHOICE;
                                               }
                                             }
                                           }
                                           /* check for duplicity */
-                                          for (i = 0; i < (yyvsp[(1) - (2)].nodes).refine->dflt_size; ++i) {
-                                              if (ly_strequal((yyvsp[(1) - (2)].nodes).refine->dflt[i], s, 0)) {
+                                          for (i = 0; i < (yyvsp[-1].nodes).refine->dflt_size; ++i) {
+                                              if (ly_strequal((yyvsp[-1].nodes).refine->dflt[i], s, 0)) {
                                                   LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "default");
                                                   LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Duplicated default value \"%s\".", s);
                                                   YYABORT;
                                               }
                                           }
-                                          YANG_ADDELEM((yyvsp[(1) - (2)].nodes).refine->dflt, (yyvsp[(1) - (2)].nodes).refine->dflt_size);
+                                          YANG_ADDELEM((yyvsp[-1].nodes).refine->dflt, (yyvsp[-1].nodes).refine->dflt_size);
                                           *((const char **)actual) = lydict_insert_zc(trg->ctx, s);
-                                          actual = (yyvsp[(1) - (2)].nodes).refine;
+                                          actual = (yyvsp[-1].nodes).refine;
                                           s = NULL;
-                                          (yyval.nodes) = (yyvsp[(1) - (2)].nodes);
+                                          (yyval.nodes) = (yyvsp[-1].nodes);
                                         }
+
     break;
 
   case 406:
 
-    { if ((yyvsp[(1) - (2)].nodes).refine->target_type) {
-                                           if ((yyvsp[(1) - (2)].nodes).refine->target_type & (LYS_LEAF | LYS_CHOICE | LYS_LIST | LYS_CONTAINER | LYS_LEAFLIST)) {
-                                             (yyvsp[(1) - (2)].nodes).refine->target_type &= (LYS_LEAF | LYS_CHOICE | LYS_LIST | LYS_CONTAINER | LYS_LEAFLIST);
-                                             if ((yyvsp[(1) - (2)].nodes).refine->flags & LYS_CONFIG_MASK) {
+    { if ((yyvsp[-1].nodes).refine->target_type) {
+                                           if ((yyvsp[-1].nodes).refine->target_type & (LYS_LEAF | LYS_CHOICE | LYS_LIST | LYS_CONTAINER | LYS_LEAFLIST)) {
+                                             (yyvsp[-1].nodes).refine->target_type &= (LYS_LEAF | LYS_CHOICE | LYS_LIST | LYS_CONTAINER | LYS_LEAFLIST);
+                                             if ((yyvsp[-1].nodes).refine->flags & LYS_CONFIG_MASK) {
                                                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "config", "refine");
                                                YYABORT;
                                              }
-                                             (yyvsp[(1) - (2)].nodes).refine->flags |= (yyvsp[(2) - (2)].i);
+                                             (yyvsp[-1].nodes).refine->flags |= (yyvsp[0].i);
                                            } else {
                                              LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "config", "refine");
                                              LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
                                              YYABORT;
                                            }
                                          } else {
-                                           (yyvsp[(1) - (2)].nodes).refine->target_type = LYS_LEAF | LYS_CHOICE | LYS_LIST | LYS_CONTAINER | LYS_LEAFLIST;
-                                           (yyvsp[(1) - (2)].nodes).refine->flags |= (yyvsp[(2) - (2)].i);
+                                           (yyvsp[-1].nodes).refine->target_type = LYS_LEAF | LYS_CHOICE | LYS_LIST | LYS_CONTAINER | LYS_LEAFLIST;
+                                           (yyvsp[-1].nodes).refine->flags |= (yyvsp[0].i);
                                          }
-                                         (yyval.nodes) = (yyvsp[(1) - (2)].nodes);
+                                         (yyval.nodes) = (yyvsp[-1].nodes);
                                        }
+
     break;
 
   case 407:
 
-    { if ((yyvsp[(1) - (2)].nodes).refine->target_type) {
-                                              if ((yyvsp[(1) - (2)].nodes).refine->target_type & (LYS_LEAF | LYS_CHOICE | LYS_ANYXML)) {
-                                                (yyvsp[(1) - (2)].nodes).refine->target_type &= (LYS_LEAF | LYS_CHOICE | LYS_ANYXML);
-                                                if ((yyvsp[(1) - (2)].nodes).refine->flags & LYS_MAND_MASK) {
+    { if ((yyvsp[-1].nodes).refine->target_type) {
+                                              if ((yyvsp[-1].nodes).refine->target_type & (LYS_LEAF | LYS_CHOICE | LYS_ANYXML)) {
+                                                (yyvsp[-1].nodes).refine->target_type &= (LYS_LEAF | LYS_CHOICE | LYS_ANYXML);
+                                                if ((yyvsp[-1].nodes).refine->flags & LYS_MAND_MASK) {
                                                   LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "mandatory", "refine");
                                                   YYABORT;
                                                 }
-                                                (yyvsp[(1) - (2)].nodes).refine->flags |= (yyvsp[(2) - (2)].i);
+                                                (yyvsp[-1].nodes).refine->flags |= (yyvsp[0].i);
                                               } else {
                                                 LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "mandatory", "refine");
                                                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
                                                 YYABORT;
                                               }
                                             } else {
-                                              (yyvsp[(1) - (2)].nodes).refine->target_type = LYS_LEAF | LYS_CHOICE | LYS_ANYXML;
-                                              (yyvsp[(1) - (2)].nodes).refine->flags |= (yyvsp[(2) - (2)].i);
+                                              (yyvsp[-1].nodes).refine->target_type = LYS_LEAF | LYS_CHOICE | LYS_ANYXML;
+                                              (yyvsp[-1].nodes).refine->flags |= (yyvsp[0].i);
                                             }
-                                            (yyval.nodes) = (yyvsp[(1) - (2)].nodes);
+                                            (yyval.nodes) = (yyvsp[-1].nodes);
                                           }
+
     break;
 
   case 408:
 
-    { if ((yyvsp[(1) - (2)].nodes).refine->target_type) {
-                                                 if ((yyvsp[(1) - (2)].nodes).refine->target_type & (LYS_LIST | LYS_LEAFLIST)) {
-                                                   (yyvsp[(1) - (2)].nodes).refine->target_type &= (LYS_LIST | LYS_LEAFLIST);
-                                                   if ((yyvsp[(1) - (2)].nodes).refine->flags & LYS_RFN_MINSET) {
+    { if ((yyvsp[-1].nodes).refine->target_type) {
+                                                 if ((yyvsp[-1].nodes).refine->target_type & (LYS_LIST | LYS_LEAFLIST)) {
+                                                   (yyvsp[-1].nodes).refine->target_type &= (LYS_LIST | LYS_LEAFLIST);
+                                                   if ((yyvsp[-1].nodes).refine->flags & LYS_RFN_MINSET) {
                                                      LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "min-elements", "refine");
                                                      YYABORT;
                                                    }
-                                                   (yyvsp[(1) - (2)].nodes).refine->flags |= LYS_RFN_MINSET;
-                                                   (yyvsp[(1) - (2)].nodes).refine->mod.list.min = (yyvsp[(2) - (2)].uint);
+                                                   (yyvsp[-1].nodes).refine->flags |= LYS_RFN_MINSET;
+                                                   (yyvsp[-1].nodes).refine->mod.list.min = (yyvsp[0].uint);
                                                  } else {
                                                    LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "min-elements", "refine");
                                                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
                                                    YYABORT;
                                                  }
                                                } else {
-                                                 (yyvsp[(1) - (2)].nodes).refine->target_type = LYS_LIST | LYS_LEAFLIST;
-                                                 (yyvsp[(1) - (2)].nodes).refine->flags |= LYS_RFN_MINSET;
-                                                 (yyvsp[(1) - (2)].nodes).refine->mod.list.min = (yyvsp[(2) - (2)].uint);
+                                                 (yyvsp[-1].nodes).refine->target_type = LYS_LIST | LYS_LEAFLIST;
+                                                 (yyvsp[-1].nodes).refine->flags |= LYS_RFN_MINSET;
+                                                 (yyvsp[-1].nodes).refine->mod.list.min = (yyvsp[0].uint);
                                                }
-                                               (yyval.nodes) = (yyvsp[(1) - (2)].nodes);
+                                               (yyval.nodes) = (yyvsp[-1].nodes);
                                              }
+
     break;
 
   case 409:
 
-    { if ((yyvsp[(1) - (2)].nodes).refine->target_type) {
-                                                 if ((yyvsp[(1) - (2)].nodes).refine->target_type & (LYS_LIST | LYS_LEAFLIST)) {
-                                                   (yyvsp[(1) - (2)].nodes).refine->target_type &= (LYS_LIST | LYS_LEAFLIST);
-                                                   if ((yyvsp[(1) - (2)].nodes).refine->flags & LYS_RFN_MAXSET) {
+    { if ((yyvsp[-1].nodes).refine->target_type) {
+                                                 if ((yyvsp[-1].nodes).refine->target_type & (LYS_LIST | LYS_LEAFLIST)) {
+                                                   (yyvsp[-1].nodes).refine->target_type &= (LYS_LIST | LYS_LEAFLIST);
+                                                   if ((yyvsp[-1].nodes).refine->flags & LYS_RFN_MAXSET) {
                                                      LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "max-elements", "refine");
                                                      YYABORT;
                                                    }
-                                                   (yyvsp[(1) - (2)].nodes).refine->flags |= LYS_RFN_MAXSET;
-                                                   (yyvsp[(1) - (2)].nodes).refine->mod.list.max = (yyvsp[(2) - (2)].uint);
+                                                   (yyvsp[-1].nodes).refine->flags |= LYS_RFN_MAXSET;
+                                                   (yyvsp[-1].nodes).refine->mod.list.max = (yyvsp[0].uint);
                                                  } else {
                                                    LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "max-elements", "refine");
                                                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
                                                    YYABORT;
                                                  }
                                                } else {
-                                                 (yyvsp[(1) - (2)].nodes).refine->target_type = LYS_LIST | LYS_LEAFLIST;
-                                                 (yyvsp[(1) - (2)].nodes).refine->flags |= LYS_RFN_MAXSET;
-                                                 (yyvsp[(1) - (2)].nodes).refine->mod.list.max = (yyvsp[(2) - (2)].uint);
+                                                 (yyvsp[-1].nodes).refine->target_type = LYS_LIST | LYS_LEAFLIST;
+                                                 (yyvsp[-1].nodes).refine->flags |= LYS_RFN_MAXSET;
+                                                 (yyvsp[-1].nodes).refine->mod.list.max = (yyvsp[0].uint);
                                                }
-                                               (yyval.nodes) = (yyvsp[(1) - (2)].nodes);
+                                               (yyval.nodes) = (yyvsp[-1].nodes);
                                              }
+
     break;
 
   case 410:
 
-    { if (yang_read_description(trg, (yyvsp[(1) - (2)].nodes).refine, s, "refine", NODE)) {
+    { if (yang_read_description(trg, (yyvsp[-1].nodes).refine, s, "refine", NODE)) {
                                                 YYABORT;
                                               }
                                               s = NULL;
                                             }
+
     break;
 
   case 411:
 
-    { if (yang_read_reference(trg, (yyvsp[(1) - (2)].nodes).refine, s, "refine", NODE)) {
+    { if (yang_read_reference(trg, (yyvsp[-1].nodes).refine, s, "refine", NODE)) {
                                               YYABORT;
                                             }
                                             s = NULL;
                                           }
+
     break;
 
   case 414:
@@ -6830,15 +6632,17 @@ yyreduce:
                                          s = NULL;
                                          actual_type = AUGMENT_KEYWORD;
                                        }
+
     break;
 
   case 415:
 
     { LOGDBG(LY_LDGYANG, "finished parsing augment statement \"%s\"", data_node->name);
-                         actual_type = (yyvsp[(3) - (7)].backup_token).token;
-                         actual = (yyvsp[(3) - (7)].backup_token).actual;
-                         data_node = (yyvsp[(3) - (7)].backup_token).actual;
+                         actual_type = (yyvsp[-4].backup_token).token;
+                         actual = (yyvsp[-4].backup_token).actual;
+                         data_node = (yyvsp[-4].backup_token).actual;
                        }
+
     break;
 
   case 418:
@@ -6853,57 +6657,64 @@ yyreduce:
                                s = NULL;
                                actual_type = AUGMENT_KEYWORD;
                              }
+
     break;
 
   case 419:
 
     { LOGDBG(LY_LDGYANG, "finished parsing augment statement \"%s\"", data_node->name);
-                    actual_type = (yyvsp[(3) - (7)].backup_token).token;
-                    actual = (yyvsp[(3) - (7)].backup_token).actual;
-                    data_node = (yyvsp[(3) - (7)].backup_token).actual;
+                    actual_type = (yyvsp[-4].backup_token).token;
+                    actual = (yyvsp[-4].backup_token).actual;
+                    data_node = (yyvsp[-4].backup_token).actual;
                   }
+
     break;
 
   case 420:
 
     { (yyval.nodes).augment = actual; }
+
     break;
 
   case 423:
 
-    { if ((yyvsp[(1) - (2)].nodes).augment->flags & LYS_STATUS_MASK) {
-                                      LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).augment, "status", "augment");
+    { if ((yyvsp[-1].nodes).augment->flags & LYS_STATUS_MASK) {
+                                      LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).augment, "status", "augment");
                                       YYABORT;
                                     }
-                                    (yyvsp[(1) - (2)].nodes).augment->flags |= (yyvsp[(2) - (2)].i);
+                                    (yyvsp[-1].nodes).augment->flags |= (yyvsp[0].i);
                                   }
+
     break;
 
   case 424:
 
-    { if (yang_read_description(trg, (yyvsp[(1) - (2)].nodes).augment, s, "augment", NODE_PRINT)) {
+    { if (yang_read_description(trg, (yyvsp[-1].nodes).augment, s, "augment", NODE_PRINT)) {
                                            YYABORT;
                                          }
                                          s = NULL;
                                        }
+
     break;
 
   case 425:
 
-    { if (yang_read_reference(trg, (yyvsp[(1) - (2)].nodes).augment, s, "augment", NODE_PRINT)) {
+    { if (yang_read_reference(trg, (yyvsp[-1].nodes).augment, s, "augment", NODE_PRINT)) {
                                          YYABORT;
                                        }
                                        s = NULL;
                                      }
+
     break;
 
   case 428:
 
     { if (trg->version < 2) {
-                                                    LOGVAL(LYE_INSTMT, LY_VLOG_LYS, (yyvsp[(1) - (3)].nodes).augment, "notification");
+                                                    LOGVAL(LYE_INSTMT, LY_VLOG_LYS, (yyvsp[-2].nodes).augment, "notification");
                                                     YYABORT;
                                                   }
                                                 }
+
     break;
 
   case 430:
@@ -6922,15 +6733,17 @@ yyreduce:
                                      s = NULL;
                                      actual_type = ACTION_KEYWORD;
                                    }
+
     break;
 
   case 431:
 
     { LOGDBG(LY_LDGYANG, "finished parsing action statement \"%s\"", data_node->name);
-               actual_type = (yyvsp[(3) - (4)].backup_token).token;
-               actual = (yyvsp[(3) - (4)].backup_token).actual;
-               data_node = (yyvsp[(3) - (4)].backup_token).actual;
+               actual_type = (yyvsp[-1].backup_token).token;
+               actual = (yyvsp[-1].backup_token).actual;
+               data_node = (yyvsp[-1].backup_token).actual;
              }
+
     break;
 
   case 432:
@@ -6944,39 +6757,42 @@ yyreduce:
                                   s = NULL;
                                   actual_type = RPC_KEYWORD;
                                 }
+
     break;
 
   case 433:
 
     { LOGDBG(LY_LDGYANG, "finished parsing rpc statement \"%s\"", data_node->name);
-            actual_type = (yyvsp[(3) - (4)].backup_token).token;
-            actual = (yyvsp[(3) - (4)].backup_token).actual;
-            data_node = (yyvsp[(3) - (4)].backup_token).actual;
+            actual_type = (yyvsp[-1].backup_token).token;
+            actual = (yyvsp[-1].backup_token).actual;
+            data_node = (yyvsp[-1].backup_token).actual;
           }
+
     break;
 
   case 435:
 
     { void *tmp;
 
-            if ((yyvsp[(3) - (4)].nodes).node.ptr_rpc->iffeature_size) {
-              tmp = realloc((yyvsp[(3) - (4)].nodes).node.ptr_rpc->iffeature, (yyvsp[(3) - (4)].nodes).node.ptr_rpc->iffeature_size * sizeof *(yyvsp[(3) - (4)].nodes).node.ptr_rpc->iffeature);
+            if ((yyvsp[-1].nodes).node.ptr_rpc->iffeature_size) {
+              tmp = realloc((yyvsp[-1].nodes).node.ptr_rpc->iffeature, (yyvsp[-1].nodes).node.ptr_rpc->iffeature_size * sizeof *(yyvsp[-1].nodes).node.ptr_rpc->iffeature);
               if (!tmp) {
                 LOGMEM;
                 YYABORT;
               }
-              (yyvsp[(3) - (4)].nodes).node.ptr_rpc->iffeature = tmp;
+              (yyvsp[-1].nodes).node.ptr_rpc->iffeature = tmp;
             }
 
-            if ((yyvsp[(3) - (4)].nodes).node.ptr_rpc->tpdf_size) {
-              tmp = realloc((yyvsp[(3) - (4)].nodes).node.ptr_rpc->tpdf, (yyvsp[(3) - (4)].nodes).node.ptr_rpc->tpdf_size * sizeof *(yyvsp[(3) - (4)].nodes).node.ptr_rpc->tpdf);
+            if ((yyvsp[-1].nodes).node.ptr_rpc->tpdf_size) {
+              tmp = realloc((yyvsp[-1].nodes).node.ptr_rpc->tpdf, (yyvsp[-1].nodes).node.ptr_rpc->tpdf_size * sizeof *(yyvsp[-1].nodes).node.ptr_rpc->tpdf);
               if (!tmp) {
                 LOGMEM;
                 YYABORT;
               }
-              (yyvsp[(3) - (4)].nodes).node.ptr_rpc->tpdf = tmp;
+              (yyvsp[-1].nodes).node.ptr_rpc->tpdf = tmp;
             }
           }
+
     break;
 
   case 436:
@@ -6984,56 +6800,62 @@ yyreduce:
     { (yyval.nodes).node.ptr_rpc = actual;
                            (yyval.nodes).node.flag = 0;
                          }
+
     break;
 
   case 438:
 
-    { if ((yyvsp[(1) - (2)].nodes).node.ptr_rpc->flags & LYS_STATUS_MASK) {
-                                  LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).node.ptr_rpc, "status", "rpc");
+    { if ((yyvsp[-1].nodes).node.ptr_rpc->flags & LYS_STATUS_MASK) {
+                                  LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_rpc, "status", "rpc");
                                   YYABORT;
                                 }
-                                (yyvsp[(1) - (2)].nodes).node.ptr_rpc->flags |= (yyvsp[(2) - (2)].i);
+                                (yyvsp[-1].nodes).node.ptr_rpc->flags |= (yyvsp[0].i);
                              }
+
     break;
 
   case 439:
 
-    { if (yang_read_description(trg, (yyvsp[(1) - (2)].nodes).node.ptr_rpc, s, "rpc", NODE_PRINT)) {
+    { if (yang_read_description(trg, (yyvsp[-1].nodes).node.ptr_rpc, s, "rpc", NODE_PRINT)) {
                                        YYABORT;
                                      }
                                      s = NULL;
                                    }
+
     break;
 
   case 440:
 
-    { if (yang_read_reference(trg, (yyvsp[(1) - (2)].nodes).node.ptr_rpc, s, "rpc", NODE_PRINT)) {
+    { if (yang_read_reference(trg, (yyvsp[-1].nodes).node.ptr_rpc, s, "rpc", NODE_PRINT)) {
                                      YYABORT;
                                    }
                                    s = NULL;
                                  }
+
     break;
 
   case 443:
 
-    { if ((yyvsp[(1) - (3)].nodes).node.flag & LYS_RPC_INPUT) {
-                                         LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (3)].nodes).node.ptr_rpc, "input", "rpc");
+    { if ((yyvsp[-2].nodes).node.flag & LYS_RPC_INPUT) {
+                                         LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-2].nodes).node.ptr_rpc, "input", "rpc");
                                          YYABORT;
                                        }
-                                       (yyvsp[(1) - (3)].nodes).node.flag |= LYS_RPC_INPUT;
-                                       (yyval.nodes) = (yyvsp[(1) - (3)].nodes);
+                                       (yyvsp[-2].nodes).node.flag |= LYS_RPC_INPUT;
+                                       (yyval.nodes) = (yyvsp[-2].nodes);
                                      }
+
     break;
 
   case 444:
 
-    { if ((yyvsp[(1) - (3)].nodes).node.flag & LYS_RPC_OUTPUT) {
-                                          LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (3)].nodes).node.ptr_rpc, "output", "rpc");
+    { if ((yyvsp[-2].nodes).node.flag & LYS_RPC_OUTPUT) {
+                                          LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-2].nodes).node.ptr_rpc, "output", "rpc");
                                           YYABORT;
                                         }
-                                        (yyvsp[(1) - (3)].nodes).node.flag |= LYS_RPC_OUTPUT;
-                                        (yyval.nodes) = (yyvsp[(1) - (3)].nodes);
+                                        (yyvsp[-2].nodes).node.flag |= LYS_RPC_OUTPUT;
+                                        (yyval.nodes) = (yyvsp[-2].nodes);
                                       }
+
     break;
 
   case 445:
@@ -7052,6 +6874,7 @@ yyreduce:
                                   s = NULL;
                                   actual_type = INPUT_KEYWORD;
                                 }
+
     break;
 
   case 446:
@@ -7078,10 +6901,11 @@ yyreduce:
                   }
 
                   LOGDBG(LY_LDGYANG, "finished parsing input statement \"%s\"", data_node->name);
-                  actual_type = (yyvsp[(1) - (5)].backup_token).token;
-                  actual = (yyvsp[(1) - (5)].backup_token).actual;
-                  data_node = (yyvsp[(1) - (5)].backup_token).actual;
+                  actual_type = (yyvsp[-4].backup_token).token;
+                  actual = (yyvsp[-4].backup_token).actual;
+                  data_node = (yyvsp[-4].backup_token).actual;
                 }
+
     break;
 
   case 452:
@@ -7100,6 +6924,7 @@ yyreduce:
                                     s = NULL;
                                     actual_type = OUTPUT_KEYWORD;
                                   }
+
     break;
 
   case 453:
@@ -7126,10 +6951,11 @@ yyreduce:
                    }
 
                    LOGDBG(LY_LDGYANG, "finished parsing output statement \"%s\"", data_node->name);
-                   actual_type = (yyvsp[(1) - (5)].backup_token).token;
-                   actual = (yyvsp[(1) - (5)].backup_token).actual;
-                   data_node = (yyvsp[(1) - (5)].backup_token).actual;
+                   actual_type = (yyvsp[-4].backup_token).token;
+                   actual = (yyvsp[-4].backup_token).actual;
+                   data_node = (yyvsp[-4].backup_token).actual;
                  }
+
     break;
 
   case 454:
@@ -7142,81 +6968,88 @@ yyreduce:
                                            data_node = actual;
                                            actual_type = NOTIFICATION_KEYWORD;
                                          }
+
     break;
 
   case 455:
 
     { LOGDBG(LY_LDGYANG, "finished parsing notification statement \"%s\"", data_node->name);
-                     actual_type = (yyvsp[(3) - (4)].backup_token).token;
-                     actual = (yyvsp[(3) - (4)].backup_token).actual;
-                     data_node = (yyvsp[(3) - (4)].backup_token).actual;
+                     actual_type = (yyvsp[-1].backup_token).token;
+                     actual = (yyvsp[-1].backup_token).actual;
+                     data_node = (yyvsp[-1].backup_token).actual;
                    }
+
     break;
 
   case 457:
 
     { void *tmp;
 
-            if ((yyvsp[(3) - (4)].nodes).notif->must_size) {
-              tmp = realloc((yyvsp[(3) - (4)].nodes).notif->must, (yyvsp[(3) - (4)].nodes).notif->must_size * sizeof *(yyvsp[(3) - (4)].nodes).notif->must);
+            if ((yyvsp[-1].nodes).notif->must_size) {
+              tmp = realloc((yyvsp[-1].nodes).notif->must, (yyvsp[-1].nodes).notif->must_size * sizeof *(yyvsp[-1].nodes).notif->must);
               if (!tmp) {
                 LOGMEM;
                 YYABORT;
               }
-              (yyvsp[(3) - (4)].nodes).notif->must = tmp;
+              (yyvsp[-1].nodes).notif->must = tmp;
             }
 
-           if ((yyvsp[(3) - (4)].nodes).notif->iffeature_size) {
-             tmp = realloc((yyvsp[(3) - (4)].nodes).notif->iffeature, (yyvsp[(3) - (4)].nodes).notif->iffeature_size * sizeof *(yyvsp[(3) - (4)].nodes).notif->iffeature);
+           if ((yyvsp[-1].nodes).notif->iffeature_size) {
+             tmp = realloc((yyvsp[-1].nodes).notif->iffeature, (yyvsp[-1].nodes).notif->iffeature_size * sizeof *(yyvsp[-1].nodes).notif->iffeature);
              if (!tmp) {
                LOGMEM;
                YYABORT;
              }
-             (yyvsp[(3) - (4)].nodes).notif->iffeature = tmp;
+             (yyvsp[-1].nodes).notif->iffeature = tmp;
            }
 
-           if ((yyvsp[(3) - (4)].nodes).notif->tpdf_size) {
-             tmp = realloc((yyvsp[(3) - (4)].nodes).notif->tpdf, (yyvsp[(3) - (4)].nodes).notif->tpdf_size * sizeof *(yyvsp[(3) - (4)].nodes).notif->tpdf);
+           if ((yyvsp[-1].nodes).notif->tpdf_size) {
+             tmp = realloc((yyvsp[-1].nodes).notif->tpdf, (yyvsp[-1].nodes).notif->tpdf_size * sizeof *(yyvsp[-1].nodes).notif->tpdf);
              if (!tmp) {
                LOGMEM;
                YYABORT;
              }
-             (yyvsp[(3) - (4)].nodes).notif->tpdf = tmp;
+             (yyvsp[-1].nodes).notif->tpdf = tmp;
            }
           }
+
     break;
 
   case 458:
 
     { (yyval.nodes).notif = actual; }
+
     break;
 
   case 461:
 
-    { if ((yyvsp[(1) - (2)].nodes).notif->flags & LYS_STATUS_MASK) {
-                                           LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[(1) - (2)].nodes).notif, "status", "notification");
+    { if ((yyvsp[-1].nodes).notif->flags & LYS_STATUS_MASK) {
+                                           LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).notif, "status", "notification");
                                            YYABORT;
                                          }
-                                         (yyvsp[(1) - (2)].nodes).notif->flags |= (yyvsp[(2) - (2)].i);
+                                         (yyvsp[-1].nodes).notif->flags |= (yyvsp[0].i);
                                        }
+
     break;
 
   case 462:
 
-    { if (yang_read_description(trg, (yyvsp[(1) - (2)].nodes).notif, s, "notification", NODE_PRINT)) {
+    { if (yang_read_description(trg, (yyvsp[-1].nodes).notif, s, "notification", NODE_PRINT)) {
                                                 YYABORT;
                                               }
                                               s = NULL;
                                             }
+
     break;
 
   case 463:
 
-    { if (yang_read_reference(trg, (yyvsp[(1) - (2)].nodes).notif, s, "notification", NODE_PRINT)) {
+    { if (yang_read_reference(trg, (yyvsp[-1].nodes).notif, s, "notification", NODE_PRINT)) {
                                               YYABORT;
                                             }
                                             s = NULL;
                                           }
+
     break;
 
   case 467:
@@ -7232,51 +7065,56 @@ yyreduce:
                                    s = NULL;
                                    actual_type = DEVIATION_KEYWORD;
                                  }
+
     break;
 
   case 468:
 
     { void *tmp;
 
-                      if ((yyvsp[(6) - (7)].dev)->deviate_size) {
-                        tmp = realloc((yyvsp[(6) - (7)].dev)->deviate, (yyvsp[(6) - (7)].dev)->deviate_size * sizeof *(yyvsp[(6) - (7)].dev)->deviate);
+                      if ((yyvsp[-1].dev)->deviate_size) {
+                        tmp = realloc((yyvsp[-1].dev)->deviate, (yyvsp[-1].dev)->deviate_size * sizeof *(yyvsp[-1].dev)->deviate);
                         if (!tmp) {
                           LOGINT;
                           YYABORT;
                         }
-                        (yyvsp[(6) - (7)].dev)->deviate = tmp;
+                        (yyvsp[-1].dev)->deviate = tmp;
                       } else {
                         LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "deviate", "deviation");
                         YYABORT;
                       }
-                      actual_type = (yyvsp[(3) - (7)].backup_token).token;
-                      actual = (yyvsp[(3) - (7)].backup_token).actual;
+                      actual_type = (yyvsp[-4].backup_token).token;
+                      actual = (yyvsp[-4].backup_token).actual;
                     }
+
     break;
 
   case 469:
 
     { (yyval.dev) = actual; }
+
     break;
 
   case 470:
 
-    { if (yang_read_description(trg, (yyvsp[(1) - (2)].dev), s, "deviation", NODE)) {
+    { if (yang_read_description(trg, (yyvsp[-1].dev), s, "deviation", NODE)) {
                                              YYABORT;
                                            }
                                            s = NULL;
-                                           (yyval.dev) = (yyvsp[(1) - (2)].dev);
+                                           (yyval.dev) = (yyvsp[-1].dev);
                                          }
+
     break;
 
   case 471:
 
-    { if (yang_read_reference(trg, (yyvsp[(1) - (2)].dev), s, "deviation", NODE)) {
+    { if (yang_read_reference(trg, (yyvsp[-1].dev), s, "deviation", NODE)) {
                                            YYABORT;
                                          }
                                          s = NULL;
-                                         (yyval.dev) = (yyvsp[(1) - (2)].dev);
+                                         (yyval.dev) = (yyvsp[-1].dev);
                                        }
+
     break;
 
   case 477:
@@ -7288,13 +7126,15 @@ yyreduce:
                                                }
                                                actual_type = NOT_SUPPORTED_KEYWORD;
                                              }
+
     break;
 
   case 478:
 
-    { actual_type = (yyvsp[(1) - (3)].backup_token).token;
-                              actual = (yyvsp[(1) - (3)].backup_token).actual;
+    { actual_type = (yyvsp[-2].backup_token).token;
+                              actual = (yyvsp[-2].backup_token).actual;
                             }
+
     break;
 
   case 484:
@@ -7306,51 +7146,55 @@ yyreduce:
                            }
                            actual_type = ADD_KEYWORD;
                          }
+
     break;
 
   case 485:
 
-    { actual_type = (yyvsp[(1) - (3)].backup_token).token;
-                    actual = (yyvsp[(1) - (3)].backup_token).actual;
+    { actual_type = (yyvsp[-2].backup_token).token;
+                    actual = (yyvsp[-2].backup_token).actual;
                   }
+
     break;
 
   case 487:
 
     { void *tmp;
 
-           if ((yyvsp[(3) - (4)].deviate)->must_size) {
-             tmp = realloc((yyvsp[(3) - (4)].deviate)->must, (yyvsp[(3) - (4)].deviate)->must_size * sizeof *(yyvsp[(3) - (4)].deviate)->must);
+           if ((yyvsp[-1].deviate)->must_size) {
+             tmp = realloc((yyvsp[-1].deviate)->must, (yyvsp[-1].deviate)->must_size * sizeof *(yyvsp[-1].deviate)->must);
              if (!tmp) {
                LOGMEM;
                YYABORT;
              }
-             (yyvsp[(3) - (4)].deviate)->must = tmp;
+             (yyvsp[-1].deviate)->must = tmp;
            }
 
-           if ((yyvsp[(3) - (4)].deviate)->unique_size) {
-             tmp = realloc((yyvsp[(3) - (4)].deviate)->unique, (yyvsp[(3) - (4)].deviate)->unique_size * sizeof *(yyvsp[(3) - (4)].deviate)->unique);
+           if ((yyvsp[-1].deviate)->unique_size) {
+             tmp = realloc((yyvsp[-1].deviate)->unique, (yyvsp[-1].deviate)->unique_size * sizeof *(yyvsp[-1].deviate)->unique);
              if (!tmp) {
                LOGMEM;
                YYABORT;
              }
-             (yyvsp[(3) - (4)].deviate)->unique = tmp;
+             (yyvsp[-1].deviate)->unique = tmp;
            }
 
-           if ((yyvsp[(3) - (4)].deviate)->dflt_size) {
-             tmp = realloc((yyvsp[(3) - (4)].deviate)->dflt, (yyvsp[(3) - (4)].deviate)->dflt_size * sizeof *(yyvsp[(3) - (4)].deviate)->dflt);
+           if ((yyvsp[-1].deviate)->dflt_size) {
+             tmp = realloc((yyvsp[-1].deviate)->dflt, (yyvsp[-1].deviate)->dflt_size * sizeof *(yyvsp[-1].deviate)->dflt);
              if (!tmp) {
                LOGMEM;
                YYABORT;
              }
-             (yyvsp[(3) - (4)].deviate)->dflt = tmp;
+             (yyvsp[-1].deviate)->dflt = tmp;
            }
          }
+
     break;
 
   case 488:
 
     { (yyval.deviate) = actual; }
+
     break;
 
   case 489:
@@ -7359,74 +7203,81 @@ yyreduce:
                                          YYABORT;
                                        }
                                        s = NULL;
-                                       (yyval.deviate) = (yyvsp[(1) - (2)].deviate);
+                                       (yyval.deviate) = (yyvsp[-1].deviate);
                                      }
+
     break;
 
   case 491:
 
-    { YANG_ADDELEM((yyvsp[(1) - (2)].deviate)->unique, (yyvsp[(1) - (2)].deviate)->unique_size);
+    { YANG_ADDELEM((yyvsp[-1].deviate)->unique, (yyvsp[-1].deviate)->unique_size);
                                         ((struct lys_unique *)actual)->expr = (const char **)s;
                                         s = NULL;
-                                        actual = (yyvsp[(1) - (2)].deviate);
-                                        (yyval.deviate)= (yyvsp[(1) - (2)].deviate);
+                                        actual = (yyvsp[-1].deviate);
+                                        (yyval.deviate)= (yyvsp[-1].deviate);
                                       }
+
     break;
 
   case 492:
 
-    { YANG_ADDELEM((yyvsp[(1) - (2)].deviate)->dflt, (yyvsp[(1) - (2)].deviate)->dflt_size);
+    { YANG_ADDELEM((yyvsp[-1].deviate)->dflt, (yyvsp[-1].deviate)->dflt_size);
                                          *((const char **)actual) = lydict_insert_zc(trg->ctx, s);
                                          s = NULL;
-                                         actual = (yyvsp[(1) - (2)].deviate);
-                                         (yyval.deviate) = (yyvsp[(1) - (2)].deviate);
+                                         actual = (yyvsp[-1].deviate);
+                                         (yyval.deviate) = (yyvsp[-1].deviate);
                                        }
+
     break;
 
   case 493:
 
-    { if ((yyvsp[(1) - (2)].deviate)->flags & LYS_CONFIG_MASK) {
+    { if ((yyvsp[-1].deviate)->flags & LYS_CONFIG_MASK) {
                                           LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "config", "deviate");
                                           YYABORT;
                                         }
-                                        (yyvsp[(1) - (2)].deviate)->flags = (yyvsp[(2) - (2)].i);
-                                        (yyval.deviate) = (yyvsp[(1) - (2)].deviate);
+                                        (yyvsp[-1].deviate)->flags = (yyvsp[0].i);
+                                        (yyval.deviate) = (yyvsp[-1].deviate);
                                       }
+
     break;
 
   case 494:
 
-    { if ((yyvsp[(1) - (2)].deviate)->flags & LYS_MAND_MASK) {
+    { if ((yyvsp[-1].deviate)->flags & LYS_MAND_MASK) {
                                              LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "mandatory", "deviate");
                                              YYABORT;
                                            }
-                                           (yyvsp[(1) - (2)].deviate)->flags = (yyvsp[(2) - (2)].i);
-                                           (yyval.deviate) = (yyvsp[(1) - (2)].deviate);
+                                           (yyvsp[-1].deviate)->flags = (yyvsp[0].i);
+                                           (yyval.deviate) = (yyvsp[-1].deviate);
                                          }
+
     break;
 
   case 495:
 
-    { if ((yyvsp[(1) - (2)].deviate)->min_set) {
+    { if ((yyvsp[-1].deviate)->min_set) {
                                                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "min-elements", "deviation");
                                                 YYABORT;
                                               }
-                                              (yyvsp[(1) - (2)].deviate)->min = (yyvsp[(2) - (2)].uint);
-                                              (yyvsp[(1) - (2)].deviate)->min_set = 1;
-                                              (yyval.deviate) =  (yyvsp[(1) - (2)].deviate);
+                                              (yyvsp[-1].deviate)->min = (yyvsp[0].uint);
+                                              (yyvsp[-1].deviate)->min_set = 1;
+                                              (yyval.deviate) =  (yyvsp[-1].deviate);
                                             }
+
     break;
 
   case 496:
 
-    { if ((yyvsp[(1) - (2)].deviate)->max_set) {
+    { if ((yyvsp[-1].deviate)->max_set) {
                                                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "max-elements", "deviation");
                                                 YYABORT;
                                               }
-                                              (yyvsp[(1) - (2)].deviate)->max = (yyvsp[(2) - (2)].uint);
-                                              (yyvsp[(1) - (2)].deviate)->max_set = 1;
-                                              (yyval.deviate) =  (yyvsp[(1) - (2)].deviate);
+                                              (yyvsp[-1].deviate)->max = (yyvsp[0].uint);
+                                              (yyvsp[-1].deviate)->max_set = 1;
+                                              (yyval.deviate) =  (yyvsp[-1].deviate);
                                             }
+
     break;
 
   case 497:
@@ -7438,51 +7289,55 @@ yyreduce:
                                  }
                                  actual_type = DELETE_KEYWORD;
                                }
+
     break;
 
   case 498:
 
-    { actual_type = (yyvsp[(1) - (3)].backup_token).token;
-                       actual = (yyvsp[(1) - (3)].backup_token).actual;
+    { actual_type = (yyvsp[-2].backup_token).token;
+                       actual = (yyvsp[-2].backup_token).actual;
                      }
+
     break;
 
   case 500:
 
     { void *tmp;
 
-            if ((yyvsp[(3) - (4)].deviate)->must_size) {
-              tmp = realloc((yyvsp[(3) - (4)].deviate)->must, (yyvsp[(3) - (4)].deviate)->must_size * sizeof *(yyvsp[(3) - (4)].deviate)->must);
+            if ((yyvsp[-1].deviate)->must_size) {
+              tmp = realloc((yyvsp[-1].deviate)->must, (yyvsp[-1].deviate)->must_size * sizeof *(yyvsp[-1].deviate)->must);
               if (!tmp) {
                 LOGMEM;
                 YYABORT;
               }
-              (yyvsp[(3) - (4)].deviate)->must = tmp;
+              (yyvsp[-1].deviate)->must = tmp;
             }
 
-            if ((yyvsp[(3) - (4)].deviate)->unique_size) {
-              tmp = realloc((yyvsp[(3) - (4)].deviate)->unique, (yyvsp[(3) - (4)].deviate)->unique_size * sizeof *(yyvsp[(3) - (4)].deviate)->unique);
+            if ((yyvsp[-1].deviate)->unique_size) {
+              tmp = realloc((yyvsp[-1].deviate)->unique, (yyvsp[-1].deviate)->unique_size * sizeof *(yyvsp[-1].deviate)->unique);
               if (!tmp) {
                 LOGMEM;
                 YYABORT;
               }
-              (yyvsp[(3) - (4)].deviate)->unique = tmp;
+              (yyvsp[-1].deviate)->unique = tmp;
             }
 
-            if ((yyvsp[(3) - (4)].deviate)->dflt_size) {
-              tmp = realloc((yyvsp[(3) - (4)].deviate)->dflt, (yyvsp[(3) - (4)].deviate)->dflt_size * sizeof *(yyvsp[(3) - (4)].deviate)->dflt);
+            if ((yyvsp[-1].deviate)->dflt_size) {
+              tmp = realloc((yyvsp[-1].deviate)->dflt, (yyvsp[-1].deviate)->dflt_size * sizeof *(yyvsp[-1].deviate)->dflt);
               if (!tmp) {
                 LOGMEM;
                 YYABORT;
               }
-              (yyvsp[(3) - (4)].deviate)->dflt = tmp;
+              (yyvsp[-1].deviate)->dflt = tmp;
             }
           }
+
     break;
 
   case 501:
 
     { (yyval.deviate) = actual; }
+
     break;
 
   case 502:
@@ -7491,28 +7346,31 @@ yyreduce:
                                             YYABORT;
                                           }
                                           s = NULL;
-                                          (yyval.deviate) = (yyvsp[(1) - (2)].deviate);
+                                          (yyval.deviate) = (yyvsp[-1].deviate);
                                         }
+
     break;
 
   case 504:
 
-    { YANG_ADDELEM((yyvsp[(1) - (2)].deviate)->unique, (yyvsp[(1) - (2)].deviate)->unique_size);
+    { YANG_ADDELEM((yyvsp[-1].deviate)->unique, (yyvsp[-1].deviate)->unique_size);
                                            ((struct lys_unique *)actual)->expr = (const char **)s;
                                            s = NULL;
-                                           actual = (yyvsp[(1) - (2)].deviate);
-                                           (yyval.deviate) = (yyvsp[(1) - (2)].deviate);
+                                           actual = (yyvsp[-1].deviate);
+                                           (yyval.deviate) = (yyvsp[-1].deviate);
                                          }
+
     break;
 
   case 505:
 
-    { YANG_ADDELEM((yyvsp[(1) - (2)].deviate)->dflt, (yyvsp[(1) - (2)].deviate)->dflt_size);
+    { YANG_ADDELEM((yyvsp[-1].deviate)->dflt, (yyvsp[-1].deviate)->dflt_size);
                                             *((const char **)actual) = lydict_insert_zc(trg->ctx, s);
                                             s = NULL;
-                                            actual = (yyvsp[(1) - (2)].deviate);
-                                            (yyval.deviate) = (yyvsp[(1) - (2)].deviate);
+                                            actual = (yyvsp[-1].deviate);
+                                            (yyval.deviate) = (yyvsp[-1].deviate);
                                           }
+
     break;
 
   case 506:
@@ -7524,33 +7382,37 @@ yyreduce:
                                    }
                                    actual_type = REPLACE_KEYWORD;
                                  }
+
     break;
 
   case 507:
 
-    { actual_type = (yyvsp[(1) - (3)].backup_token).token;
-                        actual = (yyvsp[(1) - (3)].backup_token).actual;
+    { actual_type = (yyvsp[-2].backup_token).token;
+                        actual = (yyvsp[-2].backup_token).actual;
                       }
+
     break;
 
   case 509:
 
     { void *tmp;
 
-           if ((yyvsp[(3) - (4)].deviate)->dflt_size) {
-             tmp = realloc((yyvsp[(3) - (4)].deviate)->dflt, (yyvsp[(3) - (4)].deviate)->dflt_size * sizeof *(yyvsp[(3) - (4)].deviate)->dflt);
+           if ((yyvsp[-1].deviate)->dflt_size) {
+             tmp = realloc((yyvsp[-1].deviate)->dflt, (yyvsp[-1].deviate)->dflt_size * sizeof *(yyvsp[-1].deviate)->dflt);
              if (!tmp) {
                LOGMEM;
                YYABORT;
              }
-             (yyvsp[(3) - (4)].deviate)->dflt = tmp;
+             (yyvsp[-1].deviate)->dflt = tmp;
            }
          }
+
     break;
 
   case 510:
 
     { (yyval.deviate) = actual; }
+
     break;
 
   case 512:
@@ -7559,64 +7421,70 @@ yyreduce:
                                              YYABORT;
                                            }
                                            s = NULL;
-                                           (yyval.deviate) = (yyvsp[(1) - (2)].deviate);
+                                           (yyval.deviate) = (yyvsp[-1].deviate);
                                          }
+
     break;
 
   case 513:
 
-    { YANG_ADDELEM((yyvsp[(1) - (2)].deviate)->dflt, (yyvsp[(1) - (2)].deviate)->dflt_size);
+    { YANG_ADDELEM((yyvsp[-1].deviate)->dflt, (yyvsp[-1].deviate)->dflt_size);
                                              *((const char **)actual) = lydict_insert_zc(trg->ctx, s);
                                              s = NULL;
-                                             actual = (yyvsp[(1) - (2)].deviate);
-                                             (yyval.deviate) = (yyvsp[(1) - (2)].deviate);
+                                             actual = (yyvsp[-1].deviate);
+                                             (yyval.deviate) = (yyvsp[-1].deviate);
                                            }
+
     break;
 
   case 514:
 
-    { if ((yyvsp[(1) - (2)].deviate)->flags & LYS_CONFIG_MASK) {
+    { if ((yyvsp[-1].deviate)->flags & LYS_CONFIG_MASK) {
                                               LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "config", "deviate");
                                               YYABORT;
                                             }
-                                            (yyvsp[(1) - (2)].deviate)->flags = (yyvsp[(2) - (2)].i);
-                                            (yyval.deviate) = (yyvsp[(1) - (2)].deviate);
+                                            (yyvsp[-1].deviate)->flags = (yyvsp[0].i);
+                                            (yyval.deviate) = (yyvsp[-1].deviate);
                                           }
+
     break;
 
   case 515:
 
-    { if ((yyvsp[(1) - (2)].deviate)->flags & LYS_MAND_MASK) {
+    { if ((yyvsp[-1].deviate)->flags & LYS_MAND_MASK) {
                                                  LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "mandatory", "deviate");
                                                  YYABORT;
                                                }
-                                               (yyvsp[(1) - (2)].deviate)->flags = (yyvsp[(2) - (2)].i);
-                                               (yyval.deviate) = (yyvsp[(1) - (2)].deviate);
+                                               (yyvsp[-1].deviate)->flags = (yyvsp[0].i);
+                                               (yyval.deviate) = (yyvsp[-1].deviate);
                                              }
+
     break;
 
   case 516:
 
-    { if ((yyvsp[(1) - (2)].deviate)->min_set) {
+    { if ((yyvsp[-1].deviate)->min_set) {
                                                     LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "min-elements", "deviation");
                                                     YYABORT;
                                                   }
-                                                  (yyvsp[(1) - (2)].deviate)->min = (yyvsp[(2) - (2)].uint);
-                                                  (yyvsp[(1) - (2)].deviate)->min_set = 1;
-                                                  (yyval.deviate) =  (yyvsp[(1) - (2)].deviate);
+                                                  (yyvsp[-1].deviate)->min = (yyvsp[0].uint);
+                                                  (yyvsp[-1].deviate)->min_set = 1;
+                                                  (yyval.deviate) =  (yyvsp[-1].deviate);
                                                 }
+
     break;
 
   case 517:
 
-    { if ((yyvsp[(1) - (2)].deviate)->max_set) {
+    { if ((yyvsp[-1].deviate)->max_set) {
                                                     LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "max-elements", "deviation");
                                                     YYABORT;
                                                   }
-                                                  (yyvsp[(1) - (2)].deviate)->max = (yyvsp[(2) - (2)].uint);
-                                                  (yyvsp[(1) - (2)].deviate)->max_set = 1;
-                                                  (yyval.deviate) =  (yyvsp[(1) - (2)].deviate);
+                                                  (yyvsp[-1].deviate)->max = (yyvsp[0].uint);
+                                                  (yyvsp[-1].deviate)->max_set = 1;
+                                                  (yyval.deviate) =  (yyvsp[-1].deviate);
                                                 }
+
     break;
 
   case 518:
@@ -7629,13 +7497,15 @@ yyreduce:
                         s = NULL;
                         actual_type = WHEN_KEYWORD;
                       }
+
     break;
 
   case 519:
 
-    { actual_type = (yyvsp[(3) - (4)].backup_token).token;
-             actual = (yyvsp[(3) - (4)].backup_token).actual;
+    { actual_type = (yyvsp[-1].backup_token).token;
+             actual = (yyvsp[-1].backup_token).actual;
            }
+
     break;
 
   case 523:
@@ -7645,6 +7515,7 @@ yyreduce:
                                       }
                                       s = NULL;
                                     }
+
     break;
 
   case 524:
@@ -7654,29 +7525,34 @@ yyreduce:
                                     }
                                     s = NULL;
                                   }
+
     break;
 
   case 525:
 
-    { (yyval.i) = (yyvsp[(1) - (1)].i);
+    { (yyval.i) = (yyvsp[0].i);
                              backup_type = actual_type;
                              actual_type = CONFIG_KEYWORD;
                            }
+
     break;
 
   case 526:
 
-    { (yyval.i) = (yyvsp[(3) - (4)].i); }
+    { (yyval.i) = (yyvsp[-1].i); }
+
     break;
 
   case 527:
 
     { (yyval.i) = LYS_CONFIG_W | LYS_CONFIG_SET; }
+
     break;
 
   case 528:
 
     { (yyval.i) = LYS_CONFIG_R | LYS_CONFIG_SET; }
+
     break;
 
   case 529:
@@ -7693,29 +7569,34 @@ yyreduce:
                 free(s);
                 s = NULL;
               }
+
     break;
 
   case 530:
 
-    { (yyval.i) = (yyvsp[(1) - (1)].i);
+    { (yyval.i) = (yyvsp[0].i);
                                    backup_type = actual_type;
                                    actual_type = MANDATORY_KEYWORD;
                                  }
+
     break;
 
   case 531:
 
-    { (yyval.i) = (yyvsp[(3) - (4)].i); }
+    { (yyval.i) = (yyvsp[-1].i); }
+
     break;
 
   case 532:
 
     { (yyval.i) = LYS_MAND_TRUE; }
+
     break;
 
   case 533:
 
     { (yyval.i) = LYS_MAND_FALSE; }
+
     break;
 
   case 534:
@@ -7732,6 +7613,7 @@ yyreduce:
                 free(s);
                 s = NULL;
               }
+
     break;
 
   case 535:
@@ -7739,24 +7621,28 @@ yyreduce:
     { backup_type = actual_type;
                        actual_type = PRESENCE_KEYWORD;
                      }
+
     break;
 
   case 537:
 
-    { (yyval.uint) = (yyvsp[(1) - (1)].uint);
+    { (yyval.uint) = (yyvsp[0].uint);
                                    backup_type = actual_type;
                                    actual_type = MIN_ELEMENTS_KEYWORD;
                                  }
+
     break;
 
   case 538:
 
-    { (yyval.uint) = (yyvsp[(3) - (4)].uint); }
+    { (yyval.uint) = (yyvsp[-1].uint); }
+
     break;
 
   case 539:
 
-    { (yyval.uint) = (yyvsp[(1) - (2)].uint); }
+    { (yyval.uint) = (yyvsp[-1].uint); }
+
     break;
 
   case 540:
@@ -7780,29 +7666,34 @@ yyreduce:
                 free(s);
                 s = NULL;
               }
+
     break;
 
   case 541:
 
-    { (yyval.uint) = (yyvsp[(1) - (1)].uint);
+    { (yyval.uint) = (yyvsp[0].uint);
                                    backup_type = actual_type;
                                    actual_type = MAX_ELEMENTS_KEYWORD;
                                  }
+
     break;
 
   case 542:
 
-    { (yyval.uint) = (yyvsp[(3) - (4)].uint); }
+    { (yyval.uint) = (yyvsp[-1].uint); }
+
     break;
 
   case 543:
 
     { (yyval.uint) = 0; }
+
     break;
 
   case 544:
 
-    { (yyval.uint) = (yyvsp[(1) - (2)].uint); }
+    { (yyval.uint) = (yyvsp[-1].uint); }
+
     break;
 
   case 545:
@@ -7826,29 +7717,34 @@ yyreduce:
                 free(s);
                 s = NULL;
               }
+
     break;
 
   case 546:
 
-    { (yyval.i) = (yyvsp[(1) - (1)].i);
+    { (yyval.i) = (yyvsp[0].i);
                                      backup_type = actual_type;
                                      actual_type = ORDERED_BY_KEYWORD;
                                    }
+
     break;
 
   case 547:
 
-    { (yyval.i) = (yyvsp[(3) - (4)].i); }
+    { (yyval.i) = (yyvsp[-1].i); }
+
     break;
 
   case 548:
 
     { (yyval.i) = LYS_USERORDERED; }
+
     break;
 
   case 549:
 
     { (yyval.i) = LYS_SYSTEMORDERED; }
+
     break;
 
   case 550:
@@ -7864,6 +7760,7 @@ yyreduce:
                 free(s);
                 s=NULL;
               }
+
     break;
 
   case 551:
@@ -7936,13 +7833,15 @@ yyreduce:
                        s = NULL;
                        actual_type = MUST_KEYWORD;
                      }
+
     break;
 
   case 552:
 
-    { actual_type = (yyvsp[(3) - (4)].backup_token).token;
-             actual = (yyvsp[(3) - (4)].backup_token).actual;
+    { actual_type = (yyvsp[-1].backup_token).token;
+             actual = (yyvsp[-1].backup_token).actual;
            }
+
     break;
 
   case 555:
@@ -7950,6 +7849,7 @@ yyreduce:
     { backup_type = actual_type;
                              actual_type = UNIQUE_KEYWORD;
                            }
+
     break;
 
   case 559:
@@ -7957,6 +7857,7 @@ yyreduce:
     { backup_type = actual_type;
                        actual_type = KEY_KEYWORD;
                      }
+
     break;
 
   case 561:
@@ -7967,6 +7868,7 @@ yyreduce:
                                  YYABORT;
                                }
                              }
+
     break;
 
   case 564:
@@ -7979,6 +7881,7 @@ yyreduce:
                         actual_type = RANGE_KEYWORD;
                         s = NULL;
                       }
+
     break;
 
   case 565:
@@ -8001,6 +7904,7 @@ yyreduce:
                                                 memcpy(s + 1, yyget_text(scanner), yyget_leng(scanner) + 1);
                                               }
                                             }
+
     break;
 
   case 569:
@@ -8020,11 +7924,13 @@ yyreduce:
                                               }
                                             }
                                           }
+
     break;
 
   case 571:
 
     { tmp_s = yyget_text(scanner); }
+
     break;
 
   case 572:
@@ -8036,11 +7942,13 @@ yyreduce:
                                                                 }
                                                                 s[strlen(s) - 1] = '\0';
                                                              }
+
     break;
 
   case 573:
 
     { tmp_s = yyget_text(scanner); }
+
     break;
 
   case 574:
@@ -8052,6 +7960,7 @@ yyreduce:
                                                       }
                                                       s[strlen(s) - 1] = '\0';
                                                     }
+
     break;
 
   case 598:
@@ -8066,21 +7975,25 @@ yyreduce:
                                                 }
                                                 (yyval.uint) = (uint32_t) val;
                                              }
+
     break;
 
   case 599:
 
     { (yyval.uint) = 0; }
+
     break;
 
   case 600:
 
-    { (yyval.uint) = (yyvsp[(1) - (1)].uint); }
+    { (yyval.uint) = (yyvsp[0].uint); }
+
     break;
 
   case 601:
 
     { (yyval.i) = 0; }
+
     break;
 
   case 602:
@@ -8095,6 +8008,7 @@ yyreduce:
                              }
                              (yyval.i) = (int32_t) val;
                            }
+
     break;
 
   case 608:
@@ -8104,6 +8018,7 @@ yyreduce:
                     YYABORT;
                 }
               }
+
     break;
 
   case 613:
@@ -8131,16 +8046,19 @@ yyreduce:
                  }
                }
              }
+
     break;
 
   case 614:
 
-    { s = (yyvsp[(1) - (2)].str); }
+    { s = (yyvsp[-1].str); }
+
     break;
 
   case 615:
 
-    { s = (yyvsp[(1) - (4)].str); }
+    { s = (yyvsp[-3].str); }
+
     break;
 
   case 616:
@@ -8150,6 +8068,7 @@ yyreduce:
                  (yyval.str) = s;
                  s = NULL;
                }
+
     break;
 
   case 617:
@@ -8157,6 +8076,7 @@ yyreduce:
     { actual_type = backup_type;
                            backup_type = NODE;
                          }
+
     break;
 
   case 618:
@@ -8164,31 +8084,35 @@ yyreduce:
     { (yyval.str) = s;
                           s = NULL;
                         }
+
     break;
 
   case 622:
 
-    { actual_type = (yyvsp[(2) - (3)].backup_token).token;
-                     actual = (yyvsp[(2) - (3)].backup_token).actual;
+    { actual_type = (yyvsp[-1].backup_token).token;
+                     actual = (yyvsp[-1].backup_token).actual;
                    }
+
     break;
 
   case 623:
 
     { (yyval.backup_token).token = actual_type;
                                                 (yyval.backup_token).actual = actual;
-                                                if (!(actual = yang_read_ext(trg, (actual) ? actual : trg, (yyvsp[(1) - (2)].str), s,
+                                                if (!(actual = yang_read_ext(trg, (actual) ? actual : trg, (yyvsp[-1].str), s,
                                                                              actual_type, backup_type, is_ext_instance))) {
                                                   YYABORT;
                                                 }
                                                 s = NULL;
                                                 actual_type = EXTENSION_INSTANCE;
                                               }
+
     break;
 
   case 624:
 
     { (yyval.str) = s; s = NULL; }
+
     break;
 
   case 639:
@@ -8205,7 +8129,7 @@ yyreduce:
           }
           ((struct lys_ext_instance *)actual)->parent = substmt;
         }
-        length = strlen((yyvsp[(1) - (3)].str));
+        length = strlen((yyvsp[-2].str));
         old_length = (substmt->ext_substmt) ? strlen(substmt->ext_substmt) + 2 : 2;
         tmp_value = realloc(substmt->ext_substmt, old_length + length + 1);
         if (!tmp_value) {
@@ -8214,11 +8138,12 @@ yyreduce:
         }
         substmt->ext_substmt = tmp_value;
         tmp_value += old_length - 2;
-        memcpy(tmp_value, (yyvsp[(1) - (3)].str), length);
+        memcpy(tmp_value, (yyvsp[-2].str), length);
         tmp_value[length] = ' ';
         tmp_value[length + 1] = '\0';
         tmp_value[length + 2] = '\0';
       }
+
     break;
 
   case 640:
@@ -8236,7 +8161,7 @@ yyreduce:
           }
           ((struct lys_ext_instance *)actual)->parent = substmt;
         }
-        length = strlen((yyvsp[(1) - (3)].str));
+        length = strlen((yyvsp[-2].str));
         if (!substmt->ext_modules) {
           array = malloc(2 * sizeof *substmt->ext_modules);
         } else {
@@ -8255,20 +8180,23 @@ yyreduce:
           YYABORT;
         }
         array[i] = tmp_value;
-        memcpy(tmp_value, (yyvsp[(1) - (3)].str), length);
+        memcpy(tmp_value, (yyvsp[-2].str), length);
         tmp_value[length] = '\0';
         tmp_value[length + 1] = '\0';
       }
+
     break;
 
   case 643:
 
     { (yyval.str) = yyget_text(scanner); }
+
     break;
 
   case 644:
 
     { (yyval.str) = yyget_text(scanner); }
+
     break;
 
   case 656:
@@ -8279,6 +8207,7 @@ yyreduce:
                     YYABORT;
                   }
                 }
+
     break;
 
   case 749:
@@ -8289,6 +8218,7 @@ yyreduce:
                             YYABORT;
                           }
                         }
+
     break;
 
   case 750:
@@ -8299,6 +8229,7 @@ yyreduce:
                                       YYABORT;
                                     }
                                   }
+
     break;
 
   case 751:
@@ -8322,6 +8253,7 @@ yyreduce:
                              (yyval.v) = actual = *type;
                              is_ext_instance = 0;
                             }
+
     break;
 
   case 752:
@@ -8343,6 +8275,7 @@ yyreduce:
                                 (yyval.v) = actual = *tpdf;
                                 is_ext_instance = 0;
                               }
+
     break;
 
   case 753:
@@ -8362,6 +8295,7 @@ yyreduce:
                                  }
                                  (yyval.v) = actual = *iffeature;
                                }
+
     break;
 
   case 754:
@@ -8392,6 +8326,7 @@ yyreduce:
                                     (yyval.v) = actual = *restr;
                                     s = NULL;
                                   }
+
     break;
 
   case 755:
@@ -8402,6 +8337,7 @@ yyreduce:
                              }
                              (yyval.v) = actual;
                            }
+
     break;
 
   case 756:
@@ -8423,6 +8359,7 @@ yyreduce:
                                  (yyval.revisions).revision = rev;
                                  (yyval.revisions).index = i;
                                }
+
     break;
 
   case 757:
@@ -8466,11 +8403,13 @@ yyreduce:
                                 s = NULL;
                                 is_ext_instance = 0;
                               }
+
     break;
 
   case 758:
 
     { LOGERR(LY_SUCCESS, "Extension's substatement \"%s\" not supported.", yyget_text(scanner)); }
+
     break;
 
   case 790:
@@ -8483,6 +8422,7 @@ yyreduce:
                                 }
                                 (yyval.i) = 0;
                               }
+
     break;
 
   case 792:
@@ -8492,6 +8432,7 @@ yyreduce:
                                        YYABORT;
                                      }
                                    }
+
     break;
 
   case 793:
@@ -8501,6 +8442,7 @@ yyreduce:
                                             YYABORT;
                                           }
                                         }
+
     break;
 
   case 794:
@@ -8510,6 +8452,7 @@ yyreduce:
                                           YYABORT;
                                         }
                                       }
+
     break;
 
   case 795:
@@ -8519,6 +8462,7 @@ yyreduce:
                                       YYABORT;
                                     }
                                   }
+
     break;
 
   case 796:
@@ -8528,6 +8472,7 @@ yyreduce:
                                      YYABORT;
                                    }
                                  }
+
     break;
 
   case 797:
@@ -8537,6 +8482,7 @@ yyreduce:
                                         YYABORT;
                                       }
                                     }
+
     break;
 
   case 798:
@@ -8546,6 +8492,7 @@ yyreduce:
                                         YYABORT;
                                       }
                                     }
+
     break;
 
   case 799:
@@ -8555,6 +8502,7 @@ yyreduce:
                                               YYABORT;
                                             }
                                           }
+
     break;
 
   case 800:
@@ -8564,6 +8512,7 @@ yyreduce:
                                               YYABORT;
                                             }
                                           }
+
     break;
 
   case 801:
@@ -8573,6 +8522,7 @@ yyreduce:
                                     YYABORT;
                                   }
                                 }
+
     break;
 
   case 802:
@@ -8582,6 +8532,7 @@ yyreduce:
                                           YYABORT;
                                         }
                                       }
+
     break;
 
   case 803:
@@ -8591,6 +8542,7 @@ yyreduce:
                                              YYABORT;
                                            }
                                          }
+
     break;
 
   case 804:
@@ -8600,6 +8552,7 @@ yyreduce:
                                      YYABORT;
                                    }
                                  }
+
     break;
 
   case 805:
@@ -8609,6 +8562,7 @@ yyreduce:
                                          YYABORT;
                                        }
                                      }
+
     break;
 
   case 806:
@@ -8618,11 +8572,12 @@ yyreduce:
                                               YYABORT;
                                             }
                                           }
+
     break;
 
   case 807:
 
-    { struct lys_type *type = (yyvsp[(2) - (4)].v);
+    { struct lys_type *type = (yyvsp[-2].v);
 
        if (yang_fill_type(trg, type, (struct yang_type *)type->der, ext_instance, param->unres)) {
          yang_type_free(trg->ctx, type);
@@ -8635,11 +8590,12 @@ yyreduce:
        actual = ext_instance;
        is_ext_instance = 1;
      }
+
     break;
 
   case 808:
 
-    { struct lys_tpdf *tpdf = (yyvsp[(2) - (4)].v);
+    { struct lys_tpdf *tpdf = (yyvsp[-2].v);
 
        if (yang_fill_type(trg, &tpdf->type, (struct yang_type *)tpdf->type.der, tpdf, param->unres)) {
          yang_type_free(trg->ctx, &tpdf->type);
@@ -8658,59 +8614,65 @@ yyreduce:
        actual = ext_instance;
        is_ext_instance = 1;
      }
+
     break;
 
   case 809:
 
     { if (yang_fill_extcomplex_flags(ext_instance, ext_name, "status", LY_STMT_STATUS,
-                                                                    (yyvsp[(2) - (2)].i), LYS_STATUS_MASK)) {
+                                                                    (yyvsp[0].i), LYS_STATUS_MASK)) {
                                        YYABORT;
                                      }
                                    }
+
     break;
 
   case 810:
 
     { if (yang_fill_extcomplex_flags(ext_instance, ext_name, "config", LY_STMT_CONFIG,
-                                                                    (yyvsp[(2) - (2)].i), LYS_CONFIG_MASK)) {
+                                                                    (yyvsp[0].i), LYS_CONFIG_MASK)) {
                                        YYABORT;
                                      }
                                    }
+
     break;
 
   case 811:
 
     { if (yang_fill_extcomplex_flags(ext_instance, ext_name, "mandatory", LY_STMT_MANDATORY,
-                                                                       (yyvsp[(2) - (2)].i), LYS_MAND_MASK)) {
+                                                                       (yyvsp[0].i), LYS_MAND_MASK)) {
                                           YYABORT;
                                         }
                                       }
+
     break;
 
   case 812:
 
-    { if ((yyvsp[(1) - (2)].i) & LYS_ORDERED_MASK) {
+    { if ((yyvsp[-1].i) & LYS_ORDERED_MASK) {
                                             LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "ordered by", ext_name);
                                             YYABORT;
                                          }
-                                         if ((yyvsp[(2) - (2)].i) & LYS_USERORDERED) {
+                                         if ((yyvsp[0].i) & LYS_USERORDERED) {
                                            if (yang_fill_extcomplex_flags(ext_instance, ext_name, "ordered-by", LY_STMT_ORDEREDBY,
-                                                                          (yyvsp[(2) - (2)].i), LYS_USERORDERED)) {
+                                                                          (yyvsp[0].i), LYS_USERORDERED)) {
                                              YYABORT;
                                            }
                                          }
-                                         (yyvsp[(1) - (2)].i) |= (yyvsp[(2) - (2)].i);
-                                         (yyval.i) = (yyvsp[(1) - (2)].i);
+                                         (yyvsp[-1].i) |= (yyvsp[0].i);
+                                         (yyval.i) = (yyvsp[-1].i);
                                        }
+
     break;
 
   case 813:
 
     { if (yang_fill_extcomplex_uint8(ext_instance, ext_name, "require-instance",
-                                                                              LY_STMT_REQINSTANCE, (yyvsp[(2) - (2)].i))) {
+                                                                              LY_STMT_REQINSTANCE, (yyvsp[0].i))) {
                                                  YYABORT;
                                                }
                                              }
+
     break;
 
   case 814:
@@ -8719,19 +8681,21 @@ yyreduce:
                                          YYABORT;
                                        }
                                      }
+
     break;
 
   case 815:
 
     { /* range check */
-       if ((yyvsp[(2) - (2)].uint) < 1 || (yyvsp[(2) - (2)].uint) > 18) {
-         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", (yyvsp[(2) - (2)].uint), "fraction-digits");
+       if ((yyvsp[0].uint) < 1 || (yyvsp[0].uint) > 18) {
+         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", (yyvsp[0].uint), "fraction-digits");
          YYABORT;
        }
-       if (yang_fill_extcomplex_uint8(ext_instance, ext_name, "fraction-digits", LY_STMT_DIGITS, (yyvsp[(2) - (2)].uint))) {
+       if (yang_fill_extcomplex_uint8(ext_instance, ext_name, "fraction-digits", LY_STMT_DIGITS, (yyvsp[0].uint))) {
          YYABORT;
        }
      }
+
     break;
 
   case 816:
@@ -8749,8 +8713,9 @@ yyreduce:
                                              LOGMEM;
                                              YYABORT;
                                            }
-                                           **val = (yyvsp[(2) - (2)].uint);
+                                           **val = (yyvsp[0].uint);
                                          }
+
     break;
 
   case 817:
@@ -8768,8 +8733,9 @@ yyreduce:
                                              LOGMEM;
                                              YYABORT;
                                            }
-                                           **val = (yyvsp[(2) - (2)].uint);
+                                           **val = (yyvsp[0].uint);
                                          }
+
     break;
 
   case 818:
@@ -8787,8 +8753,9 @@ yyreduce:
                                          LOGMEM;
                                          YYABORT;
                                        }
-                                       **val = (yyvsp[(2) - (2)].uint);
+                                       **val = (yyvsp[0].uint);
                                      }
+
     break;
 
   case 819:
@@ -8806,8 +8773,9 @@ yyreduce:
                                       LOGMEM;
                                       YYABORT;
                                     }
-                                    **val = (yyvsp[(2) - (2)].i);
+                                    **val = (yyvsp[0].i);
                                   }
+
     break;
 
   case 820:
@@ -8832,13 +8800,14 @@ yyreduce:
                                        YYABORT;
                                      }
                                    }
+
     break;
 
   case 821:
 
     { struct lys_iffeature *iffeature;
 
-       iffeature = (yyvsp[(2) - (4)].v);
+       iffeature = (yyvsp[-2].v);
        s = (char *)iffeature->features;
        iffeature->features = NULL;
        if (yang_fill_iffeature(trg, iffeature, ext_instance, s, param->unres, 0)) {
@@ -8850,43 +8819,47 @@ yyreduce:
        s = NULL;
        actual = ext_instance;
      }
+
     break;
 
   case 823:
 
-    { if (yang_check_ext_instance(trg, &((struct lys_restr *)(yyvsp[(2) - (4)].v))->ext, ((struct lys_restr *)(yyvsp[(2) - (4)].v))->ext_size, (yyvsp[(2) - (4)].v), param->unres)) {
+    { if (yang_check_ext_instance(trg, &((struct lys_restr *)(yyvsp[-2].v))->ext, ((struct lys_restr *)(yyvsp[-2].v))->ext_size, (yyvsp[-2].v), param->unres)) {
          YYABORT;
        }
        actual = ext_instance;
      }
+
     break;
 
   case 824:
 
-    { if (yang_check_ext_instance(trg, &(*(struct lys_when **)(yyvsp[(2) - (4)].v))->ext, (*(struct lys_when **)(yyvsp[(2) - (4)].v))->ext_size,
-                                   *(struct lys_when **)(yyvsp[(2) - (4)].v), param->unres)) {
+    { if (yang_check_ext_instance(trg, &(*(struct lys_when **)(yyvsp[-2].v))->ext, (*(struct lys_when **)(yyvsp[-2].v))->ext_size,
+                                   *(struct lys_when **)(yyvsp[-2].v), param->unres)) {
          YYABORT;
        }
        actual = ext_instance;
      }
+
     break;
 
   case 825:
 
     { int i;
 
-       for (i = 0; i < (yyvsp[(2) - (4)].revisions).index; ++i) {
-         if (!strcmp((yyvsp[(2) - (4)].revisions).revision[i]->date, (yyvsp[(2) - (4)].revisions).revision[(yyvsp[(2) - (4)].revisions).index]->date)) {
-           LOGWRN("Module's revisions are not unique (%s).", (yyvsp[(2) - (4)].revisions).revision[i]->date);
+       for (i = 0; i < (yyvsp[-2].revisions).index; ++i) {
+         if (!strcmp((yyvsp[-2].revisions).revision[i]->date, (yyvsp[-2].revisions).revision[(yyvsp[-2].revisions).index]->date)) {
+           LOGWRN("Module's revisions are not unique (%s).", (yyvsp[-2].revisions).revision[i]->date);
            break;
          }
        }
-       if (yang_check_ext_instance(trg, &(yyvsp[(2) - (4)].revisions).revision[(yyvsp[(2) - (4)].revisions).index]->ext, (yyvsp[(2) - (4)].revisions).revision[(yyvsp[(2) - (4)].revisions).index]->ext_size,
-                                   &(yyvsp[(2) - (4)].revisions).revision[(yyvsp[(2) - (4)].revisions).index], param->unres)) {
+       if (yang_check_ext_instance(trg, &(yyvsp[-2].revisions).revision[(yyvsp[-2].revisions).index]->ext, (yyvsp[-2].revisions).revision[(yyvsp[-2].revisions).index]->ext_size,
+                                   &(yyvsp[-2].revisions).revision[(yyvsp[-2].revisions).index], param->unres)) {
          YYABORT;
        }
        actual = ext_instance;
      }
+
     break;
 
   case 826:
@@ -8894,6 +8867,7 @@ yyreduce:
     { actual = ext_instance;
                                                                     is_ext_instance = 1;
                                                                   }
+
     break;
 
 
@@ -8920,7 +8894,7 @@ yyreduce:
   *++yyvsp = yyval;
   *++yylsp = yyloc;
 
-  /* Now `shift' the result of the reduction.  Determine what state
+  /* Now 'shift' the result of the reduction.  Determine what state
      that goes to, based on the state we popped back to and the rule
      number reduced by.  */
 
@@ -8935,9 +8909,9 @@ yyreduce:
   goto yynewstate;
 
 
-/*------------------------------------.
-| yyerrlab -- here on detecting error |
-`------------------------------------*/
+/*--------------------------------------.
+| yyerrlab -- here on detecting error.  |
+`--------------------------------------*/
 yyerrlab:
   /* Make sure we have latest lookahead translation.  See comments at
      user semantic actions for why this is necessary.  */
@@ -8988,20 +8962,20 @@ yyerrlab:
   if (yyerrstatus == 3)
     {
       /* If just tried and failed to reuse lookahead token after an
-	 error, discard it.  */
+         error, discard it.  */
 
       if (yychar <= YYEOF)
-	{
-	  /* Return failure if at end of input.  */
-	  if (yychar == YYEOF)
-	    YYABORT;
-	}
+        {
+          /* Return failure if at end of input.  */
+          if (yychar == YYEOF)
+            YYABORT;
+        }
       else
-	{
-	  yydestruct ("Error: discarding",
-		      yytoken, &yylval, &yylloc, scanner, param);
-	  yychar = YYEMPTY;
-	}
+        {
+          yydestruct ("Error: discarding",
+                      yytoken, &yylval, &yylloc, scanner, param);
+          yychar = YYEMPTY;
+        }
     }
 
   /* Else will try to reuse lookahead token after shifting the error
@@ -9021,7 +8995,7 @@ yyerrorlab:
      goto yyerrorlab;
 
   yyerror_range[1] = yylsp[1-yylen];
-  /* Do not reclaim the symbols of the rule which action triggered
+  /* Do not reclaim the symbols of the rule whose action triggered
      this YYERROR.  */
   YYPOPSTACK (yylen);
   yylen = 0;
@@ -9034,29 +9008,29 @@ yyerrorlab:
 | yyerrlab1 -- common code for both syntax error and YYERROR.  |
 `-------------------------------------------------------------*/
 yyerrlab1:
-  yyerrstatus = 3;	/* Each real token shifted decrements this.  */
+  yyerrstatus = 3;      /* Each real token shifted decrements this.  */
 
   for (;;)
     {
       yyn = yypact[yystate];
       if (!yypact_value_is_default (yyn))
-	{
-	  yyn += YYTERROR;
-	  if (0 <= yyn && yyn <= YYLAST && yycheck[yyn] == YYTERROR)
-	    {
-	      yyn = yytable[yyn];
-	      if (0 < yyn)
-		break;
-	    }
-	}
+        {
+          yyn += YYTERROR;
+          if (0 <= yyn && yyn <= YYLAST && yycheck[yyn] == YYTERROR)
+            {
+              yyn = yytable[yyn];
+              if (0 < yyn)
+                break;
+            }
+        }
 
       /* Pop the current state because it cannot handle the error token.  */
       if (yyssp == yyss)
-	YYABORT;
+        YYABORT;
 
       yyerror_range[1] = *yylsp;
       yydestruct ("Error: popping",
-		  yystos[yystate], yyvsp, yylsp, scanner, param);
+                  yystos[yystate], yyvsp, yylsp, scanner, param);
       YYPOPSTACK (1);
       yystate = *yyssp;
       YY_STACK_PRINT (yyss, yyssp);
@@ -9112,14 +9086,14 @@ yyreturn:
       yydestruct ("Cleanup: discarding lookahead",
                   yytoken, &yylval, &yylloc, scanner, param);
     }
-  /* Do not reclaim the symbols of the rule which action triggered
+  /* Do not reclaim the symbols of the rule whose action triggered
      this YYABORT or YYACCEPT.  */
   YYPOPSTACK (yylen);
   YY_STACK_PRINT (yyss, yyssp);
   while (yyssp != yyss)
     {
       yydestruct ("Cleanup: popping",
-		  yystos[*yyssp], yyvsp, yylsp, scanner, param);
+                  yystos[*yyssp], yyvsp, yylsp, scanner, param);
       YYPOPSTACK (1);
     }
 #ifndef yyoverflow
@@ -9130,11 +9104,8 @@ yyreturn:
   if (yymsg != yymsgbuf)
     YYSTACK_FREE (yymsg);
 #endif
-  /* Make sure YYID is used.  */
-  return YYID (yyresult);
+  return yyresult;
 }
-
-
 
 
 
