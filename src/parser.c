@@ -946,6 +946,7 @@ validate_pattern(const char *val_str, struct lys_type *type, struct lyd_node *no
             return EXIT_FAILURE;
         }
         rc = pcre_exec(precomp, NULL, val_str, strlen(val_str), 0, 0, NULL, 0);
+        free(precomp);
 #endif
         if ((rc && type->info.str.patterns[i].expr[0] == 0x06) || (!rc && type->info.str.patterns[i].expr[0] == 0x15)) {
             LOGVAL(LYE_NOCONSTR, LY_VLOG_LYD, node, val_str, &type->info.str.patterns[i].expr[1]);
