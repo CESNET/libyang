@@ -813,7 +813,7 @@ test_lyd_schema_sort(void **state)
     const struct lys_module *module;
     struct lyd_node *root, *node, *node2;
 
-    module = ly_ctx_get_module(ctx, "a", NULL);
+    module = ly_ctx_get_module(ctx, "a", NULL, 0);
     assert_non_null(module);
 
     root = lyd_new(NULL, module, "l");

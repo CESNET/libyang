@@ -311,53 +311,53 @@ test_ly_ctx_get_module(void **state)
     const char *name2 = "b";
     const char *revision = "2016-03-01";
 
-    module = ly_ctx_get_module(NULL, name1, NULL);
+    module = ly_ctx_get_module(NULL, name1, NULL, 0);
     if (module) {
         fail();
     }
 
-    module = ly_ctx_get_module(ctx, NULL, NULL);
+    module = ly_ctx_get_module(ctx, NULL, NULL, 0);
     if (module) {
         fail();
     }
 
-    module = ly_ctx_get_module(ctx, "invalid", NULL);
+    module = ly_ctx_get_module(ctx, "invalid", NULL, 0);
     if (module) {
         fail();
     }
 
-    module = ly_ctx_get_module(ctx, name1, NULL);
+    module = ly_ctx_get_module(ctx, name1, NULL, 0);
     if (!module) {
         fail();
     }
 
     assert_string_equal("a", module->name);
 
-    module = ly_ctx_get_module(ctx, name1, "invalid");
+    module = ly_ctx_get_module(ctx, name1, "invalid", 0);
     if (module) {
         fail();
     }
 
-    module = ly_ctx_get_module(ctx, name1, revision);
+    module = ly_ctx_get_module(ctx, name1, revision, 0);
     if (!module) {
         fail();
     }
 
     assert_string_equal(revision, module->rev->date);
 
-    module = ly_ctx_get_module(ctx, name2, NULL);
+    module = ly_ctx_get_module(ctx, name2, NULL, 0);
     if (!module) {
         fail();
     }
 
     assert_string_equal("b", module->name);
 
-    module = ly_ctx_get_module(ctx, name2, "invalid");
+    module = ly_ctx_get_module(ctx, name2, "invalid", 0);
     if (module) {
         fail();
     }
 
-    module = ly_ctx_get_module(ctx, name2, revision);
+    module = ly_ctx_get_module(ctx, name2, revision, 0);
     if (!module) {
         fail();
     }
@@ -433,14 +433,14 @@ test_ly_ctx_load_module(void **state)
 
     assert_string_equal("c", module->name);
 
-    module = ly_ctx_get_module(ctx, "a", revision);
+    module = ly_ctx_get_module(ctx, "a", revision, 0);
     if (!module) {
         fail();
     }
 
     assert_string_equal("a", module->name);
 
-    module = ly_ctx_get_module(ctx, "b", revision);
+    module = ly_ctx_get_module(ctx, "b", revision, 0);
     if (!module) {
         fail();
     }
@@ -514,9 +514,9 @@ test_ly_ctx_clean2(void **state)
     assert_ptr_not_equal(lys_parse_mem(ctx, yang_dep, LYS_IN_YANG), NULL);
 
     /* get the target leaf in ietf-yang-library */
-    mod = ctx->models.list[4];
+    mod = ctx->models.list[ctx->internal_module_count - 1];
     /* magic: leaf = /yl:modules-state/yl:module/yl:name */
-    leaf = (struct lys_node_leaf *)mod->data->next->child->next->child->prev->child->child;
+    leaf = (struct lys_node_leaf *)mod->data->prev->prev->child->next->child->prev->child->child;
     assert_true(leaf->backlinks && leaf->backlinks->number == 1);
 
     /* clean the context ... */
@@ -556,7 +556,7 @@ test_ly_ctx_remove_module(void **state)
     assert_int_not_equal(dict_used, ctx->dict.used);
 
     /* remove the imported module (x), that should cause removing also the loaded module (y) */
-    mod = ly_ctx_get_module(ctx, "x", NULL);
+    mod = ly_ctx_get_module(ctx, "x", NULL, 0);
     assert_ptr_not_equal(mod, NULL);
     ly_ctx_remove_module(mod, NULL);
     assert_true(setid < ctx->models.module_set_id);
@@ -650,12 +650,12 @@ test_ly_ctx_remove_module2(void **state)
     assert_true(leaf->backlinks && leaf->backlinks->number);
 
     /* remove y ... */
-    mod = ly_ctx_get_module(ctx, "y", NULL);
+    mod = ly_ctx_get_module(ctx, "y", NULL, 0);
     assert_ptr_not_equal(mod, NULL);
     assert_int_equal(ly_ctx_remove_module(mod, NULL), 0);
 
     /* ... make sure that x is still present ... */
-    mod = ly_ctx_get_module(ctx, "x", NULL);
+    mod = ly_ctx_get_module(ctx, "x", NULL, 0);
     assert_ptr_not_equal(mod, NULL);
     leaf = (struct lys_node_leaf *)mod->data;
 
@@ -678,7 +678,7 @@ test_lys_set_enabled(void **state)
     assert_int_not_equal(lys_set_enabled(NULL), 0);
 
     /* test success - enabled module */
-    mod = ly_ctx_get_module(ctx, "ietf-yang-library", NULL);
+    mod = ly_ctx_get_module(ctx, "ietf-yang-library", NULL, 0);
     assert_ptr_not_equal(mod, NULL);
     assert_int_equal(lys_set_enabled(mod), 0);
 }
@@ -707,7 +707,7 @@ test_lys_set_disabled(void **state)
     assert_int_not_equal(lys_set_disabled(NULL), 0);
 
     /* test failures - internal module */
-    mod = ly_ctx_get_module(ctx, "ietf-yang-library", NULL);
+    mod = ly_ctx_get_module(ctx, "ietf-yang-library", NULL, 0);
     assert_ptr_not_equal(mod, NULL);
     assert_int_not_equal(lys_set_disabled(mod), 0);
 
@@ -761,24 +761,24 @@ test_ly_ctx_get_module_by_ns(void **state)
     const char *ns = "urn:a";
     const char *revision = NULL;
 
-    module = ly_ctx_get_module_by_ns(NULL, ns, revision);
+    module = ly_ctx_get_module_by_ns(NULL, ns, revision, 0);
     if (module) {
         fail();
     }
 
-    module = ly_ctx_get_module_by_ns(ctx, NULL, revision);
+    module = ly_ctx_get_module_by_ns(ctx, NULL, revision, 0);
     if (module) {
         fail();
     }
 
-    module = ly_ctx_get_module_by_ns(ctx, ns, revision);
+    module = ly_ctx_get_module_by_ns(ctx, ns, revision, 0);
     if (!module) {
         fail();
     }
 
     assert_string_equal("a", module->name);
 
-    module = ly_ctx_get_module_by_ns(ctx, "urn:b", revision);
+    module = ly_ctx_get_module_by_ns(ctx, "urn:b", revision, 0);
     if (!module) {
         fail();
     }

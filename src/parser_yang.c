@@ -2620,7 +2620,7 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
         tmp_mod = module;
 
         /* get the model from the context */
-        module = (struct lys_module *)ly_ctx_get_module(ctx, module->name, revision);
+        module = (struct lys_module *)ly_ctx_get_module(ctx, module->name, revision, 0);
         assert(module);
 
         /* free what was parsed */

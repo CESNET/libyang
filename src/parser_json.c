@@ -608,7 +608,7 @@ repeat:
         *name = '\0';
         name++;
         prefix = str;
-        module = (struct lys_module *)ly_ctx_get_module(parent_module->ctx, prefix, NULL);
+        module = (struct lys_module *)ly_ctx_get_module(parent_module->ctx, prefix, NULL, 1);
         if (!module) {
             LOGVAL(LYE_INELEM, LY_VLOG_NONE, NULL, name);
             goto error;
@@ -862,7 +862,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
     if (!(*parent)) {
         /* starting in root */
         /* get the proper schema */
-        module = ly_ctx_get_module(ctx, prefix, NULL);
+        module = ly_ctx_get_module(ctx, prefix, NULL, 1);
         if (ctx->data_clb) {
             if (!module) {
                 module = ctx->data_clb(ctx, prefix, NULL, 0, ctx->data_clb_data);
@@ -881,7 +881,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
     } else {
         if (prefix) {
             /* get the proper module to give the chance to load/implement it */
-            module = ly_ctx_get_module(ctx, prefix, NULL);
+            module = ly_ctx_get_module(ctx, prefix, NULL, 1);
             if (ctx->data_clb) {
                 if (!module) {
                     ctx->data_clb(ctx, prefix, NULL, 0, ctx->data_clb_data);
@@ -1368,7 +1368,7 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
         if (!result) {
             for (iter = next; iter && iter->prev->next; iter = iter->prev);
             result = iter;
-            if (iter && (options & LYD_OPT_DATA_ADD_YANGLIB) && iter->schema->module == ctx->models.list[LY_INTERNAL_MODULE_COUNT - 1]) {
+            if (iter && (options & LYD_OPT_DATA_ADD_YANGLIB) && iter->schema->module == ctx->models.list[ctx->internal_module_count - 1]) {
                 /* ietf-yang-library data present, so ignore the option to add them */
                 options &= ~LYD_OPT_DATA_ADD_YANGLIB;
             }

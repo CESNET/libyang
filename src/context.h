@@ -53,6 +53,7 @@ struct ly_ctx {
     ly_module_data_clb data_clb;
     void *data_clb_data;
     pthread_key_t errlist_key;
+    uint8_t internal_module_count;
 };
 
 #endif /* LY_CONTEXT_H_ */

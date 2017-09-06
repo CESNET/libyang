@@ -136,7 +136,7 @@ test_parse_print_yin(void **state)
     free(st->str2);
     st->str2 = NULL;
 
-    st->mod = ly_ctx_get_module(st->ctx, "all", NULL);
+    st->mod = ly_ctx_get_module(st->ctx, "all", NULL, 0);
     assert_ptr_not_equal(st->mod, NULL);
 
     fd = open(TESTS_DIR"/data/files/all.yin", O_RDONLY);
@@ -188,7 +188,7 @@ test_parse_print_yang(void **state)
     free(st->str2);
     st->str2 = NULL;
 
-    st->mod = ly_ctx_get_module(st->ctx, "all", NULL);
+    st->mod = ly_ctx_get_module(st->ctx, "all", NULL, 0);
     assert_ptr_not_equal(st->mod, NULL);
 
     fd = open(TESTS_DIR"/data/files/all.yang", O_RDONLY);
@@ -271,7 +271,7 @@ test_parse_print_xml(void **state)
     assert_int_equal(read(fd, st->str1, s.st_size), s.st_size);
     st->str1[s.st_size] = '\0';
 
-    mod = ly_ctx_get_module(st->ctx, "all", NULL);
+    mod = ly_ctx_get_module(st->ctx, "all", NULL, 1);
     assert_ptr_not_equal(mod, NULL);
     set = lys_find_path(mod, NULL, "/rpc1");
     assert_ptr_not_equal(set, NULL);
@@ -452,7 +452,7 @@ test_parse_print_json(void **state)
     assert_int_equal(read(fd, st->str1, s.st_size), s.st_size);
     st->str1[s.st_size] = '\0';
 
-    mod = ly_ctx_get_module(st->ctx, "all", NULL);
+    mod = ly_ctx_get_module(st->ctx, "all", NULL, 1);
     assert_ptr_not_equal(mod, NULL);
     set = lys_find_path(mod, NULL, "/rpc1");
     assert_ptr_not_equal(set, NULL);

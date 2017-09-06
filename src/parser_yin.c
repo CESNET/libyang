@@ -7087,7 +7087,7 @@ yin_read_module_(struct ly_ctx *ctx, struct lyxml_elem *yin, const char *revisio
         lys_free(module, NULL, 0);
 
         /* get the model from the context */
-        module = (struct lys_module *)ly_ctx_get_module(ctx, value, revision);
+        module = (struct lys_module *)ly_ctx_get_module(ctx, value, revision, 0);
         assert(module);
     }
 

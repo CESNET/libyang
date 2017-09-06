@@ -90,7 +90,7 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node, int options)
     if (!(node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
         if (options & (LYP_WD_ALL_TAG | LYP_WD_IMPL_TAG)) {
             /* get with-defaults module and print its namespace */
-            wdmod = ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf-with-defaults", NULL);
+            wdmod = ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf-with-defaults", NULL, 1);
             if (wdmod && modlist_add(&mlist, wdmod)) {
                 goto print;
             }
@@ -144,7 +144,7 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
                 (!node->dflt && (options & LYP_WD_ALL_TAG) && lyd_wd_default((struct lyd_node_leaf_list *)node))) {
             /* we have implicit OR explicit default node */
             /* get with-defaults module */
-            wdmod = ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf-with-defaults", NULL);
+            wdmod = ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf-with-defaults", NULL, 1);
             if (wdmod) {
                 /* print attribute only if context include with-defaults schema */
                 ly_print(out, " %s:default=\"true\"", wdmod->prefix);

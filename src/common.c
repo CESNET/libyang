@@ -260,7 +260,7 @@ _transform_json2xml(const struct lys_module *module, const char *expr, int schem
                 if (end) {
                     name_len = end - cur_expr;
                     name = strndup(cur_expr, name_len);
-                    mod = ly_ctx_get_module(module->ctx, name, NULL);
+                    mod = ly_ctx_get_module(module->ctx, name, NULL, 1);
                     free(name);
                     if (!mod) {
                         LOGVAL(LYE_INMOD_LEN, LY_VLOG_NONE, NULL, name_len, cur_expr);
@@ -340,7 +340,7 @@ _transform_json2xml(const struct lys_module *module, const char *expr, int schem
             if (!schema) {
                 prefix = NULL;
                 name = strndup(ptr, name_len);
-                mod = ly_ctx_get_module(module->ctx, name, NULL);
+                mod = ly_ctx_get_module(module->ctx, name, NULL, 1);
                 free(name);
                 if (mod) {
                     prefix = mod->prefix;
@@ -479,7 +479,7 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
                 }
                 goto error;
             }
-            mod = ly_ctx_get_module_by_ns(ctx, ns->value, NULL);
+            mod = ly_ctx_get_module_by_ns(ctx, ns->value, NULL, 1);
             if (use_ctx_data_clb && ctx->data_clb) {
                 if (!mod) {
                     mod = ctx->data_clb(ctx, NULL, ns->value, 0, ctx->data_clb_data);
@@ -553,7 +553,7 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
                 }
                 goto error;
             }
-            mod = ly_ctx_get_module_by_ns(ctx, ns->value, NULL);
+            mod = ly_ctx_get_module_by_ns(ctx, ns->value, NULL, 1);
             if (mod) {
                 /* adjust out size (it can even decrease in some strange cases) */
                 out_size += strlen(mod->name) - pref_len;
@@ -800,7 +800,7 @@ transform_json2xpath_subexpr(const struct lys_module *cur_module, const struct l
                 /* there is a prefix, get the module */
                 name_len = end - cur_expr;
                 name = strndup(cur_expr, name_len);
-                prev_mod = ly_ctx_get_module(cur_module->ctx, name, NULL);
+                prev_mod = ly_ctx_get_module(cur_module->ctx, name, NULL, 1);
                 free(name);
                 if (!prev_mod) {
                     LOGVAL(LYE_INMOD_LEN, LY_VLOG_NONE, NULL, name_len ? name_len : exp->tok_len[*i], cur_expr);
@@ -842,7 +842,7 @@ transform_json2xpath_subexpr(const struct lys_module *cur_module, const struct l
             /* get the module, but it may actually not be a module name */
             name_len = end - ptr;
             name = strndup(ptr, name_len);
-            mod = ly_ctx_get_module(cur_module->ctx, name, NULL);
+            mod = ly_ctx_get_module(cur_module->ctx, name, NULL, 1);
             free(name);
 
             if (mod && (mod != cur_module)) {

@@ -169,7 +169,7 @@ TEST_IDENTITYREF2(void **state)
     assert_ptr_equal(st->node, NULL);
 
     /* but making it implemented the data can be loaded */
-    assert_int_equal(lys_set_implemented(ly_ctx_get_module(st->ctx, "mod-middle", NULL)), 0);
+    assert_int_equal(lys_set_implemented(ly_ctx_get_module(st->ctx, "mod-middle", NULL, 0)), 0);
     st->node = lyd_parse_mem(st->ctx, middle_data, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(st->node, NULL);
 }

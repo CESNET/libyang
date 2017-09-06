@@ -144,7 +144,7 @@ setup_f(void **state)
     }
     lys_features_enable(mod, "*");
 
-    mod = ly_ctx_get_module(st->ctx, "ietf-interfaces", NULL);
+    mod = ly_ctx_get_module(st->ctx, "ietf-interfaces", NULL, 0);
     if (!mod) {
         fprintf(stderr, "Failed to get data module \"ietf-interfaces\".\n");
         goto error;

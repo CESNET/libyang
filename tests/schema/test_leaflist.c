@@ -104,7 +104,7 @@ test_multdfltvalues_yin(void **state)
     assert_ptr_not_equal(root, NULL); /* ietf-yang-library */
     assert_ptr_not_equal(root->next, NULL); /* added default nodes from module x */
 
-    lyd_print_mem(&printed, root->next, LYD_XML, LYP_WD_ALL);
+    lyd_print_mem(&printed, root->prev, LYD_XML, LYP_WD_ALL); /* print only the default nodes from module x */
     assert_string_equal(printed, xml);
 
     free(printed);
@@ -168,7 +168,7 @@ test_multdfltvalues_yang(void **state)
     assert_ptr_not_equal(root, NULL); /* ietf-yang-library */
     assert_ptr_not_equal(root->next, NULL); /* added default nodes from module x */
 
-    lyd_print_mem(&printed, root->next, LYD_XML, LYP_WD_ALL);
+    lyd_print_mem(&printed, root->prev, LYD_XML, LYP_WD_ALL); /* print only the default nodes from module x */
     assert_string_equal(printed, xml);
 
     free(printed);

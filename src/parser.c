@@ -621,7 +621,7 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
     if (!match_name) {
         if (!module && !revision) {
             /* otherwise the module would be already taken from the context */
-            result = (struct lys_module *)ly_ctx_get_module(ctx, name, revision);
+            result = (struct lys_module *)ly_ctx_get_module(ctx, name, NULL, 0);
         }
         if (!result) {
             LOGERR(LY_ESYS, "Data model \"%s\" not found.", name);
@@ -1398,7 +1398,7 @@ ident_val_add_module_prefix(const char *value, const struct lyxml_elem *xml, str
     }
 
     /* find module */
-    mod = ly_ctx_get_module_by_ns(ctx, ns->value, NULL);
+    mod = ly_ctx_get_module_by_ns(ctx, ns->value, NULL, 1);
     if (!mod) {
         LOGINT;
         return NULL;
@@ -2111,9 +2111,9 @@ lyp_fill_attr(struct ly_ctx *ctx, struct lyd_node *parent, const char *module_ns
 
     /* first, get module where the annotation should be defined */
     if (module_ns) {
-        mod = (struct lys_module *)ly_ctx_get_module_by_ns(ctx, module_ns, NULL);
+        mod = (struct lys_module *)ly_ctx_get_module_by_ns(ctx, module_ns, NULL, 1);
     } else if (module_name) {
-        mod = (struct lys_module *)ly_ctx_get_module(ctx, module_name, NULL);
+        mod = (struct lys_module *)ly_ctx_get_module(ctx, module_name, NULL, 1);
     } else {
         LOGINT;
         return -1;
