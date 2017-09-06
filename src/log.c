@@ -472,7 +472,7 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
                 name = ((struct lys_node *)elem)->name;
             }
 
-            if (lys_node_module((struct lys_node *)elem) != top_smodule) {
+            if (!((struct lys_node *)elem)->parent || lys_node_module((struct lys_node *)elem) != top_smodule) {
                 prefix = lys_node_module((struct lys_node *)elem)->name;
             } else {
                 prefix = NULL;
