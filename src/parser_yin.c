@@ -3681,6 +3681,7 @@ read_yin_common(struct lys_module *module, struct lys_node *parent, void *stmt, 
     const char *value;
     struct lyxml_elem *sub, *next;
     struct ly_ctx *const ctx = module->ctx;
+    char *str;
 
     if (opt & OPT_MODULE) {
         node->module = module;
@@ -3789,6 +3790,33 @@ read_yin_common(struct lys_module *module, struct lys_node *parent, void *stmt, 
         } else if (!parent) {
             /* default config is true */
             node->flags |= LYS_CONFIG_W;
+        }
+    }
+
+    if (parent && (parent->flags & (LYS_STATUS_DEPRC | LYS_STATUS_OBSLT))) {
+        /* status is not inherited by specification, but it not make sense to have
+         * current in deprecated or deprecated in obsolete, so we print warning
+         * and fix the schema by inheriting */
+        if (!(node->flags & (LYS_STATUS_MASK))) {
+            /* status not explicitely specified on the current node -> inherit */
+            str = lys_path(parent);
+            LOGWRN("Missing status in %s subtree (%s), inheriting.", parent->flags & LYS_STATUS_DEPRC ? "deprecated" : "obsolete", str);
+            free(str);
+            node->flags |= parent->flags & LYS_STATUS_MASK;
+        } else if ((parent->flags & LYS_STATUS_MASK) > (node->flags & LYS_STATUS_MASK)) {
+            /* invalid combination of statuses */
+            switch (node->flags & LYS_STATUS_MASK) {
+            case 0:
+            case LYS_STATUS_CURR:
+                LOGVAL(LYE_INSTATUS, LY_VLOG_LYS, parent, "current", xmlnode->name, "is child of",
+                       parent->flags & LYS_STATUS_DEPRC ? "deprecated" : "obsolete", parent->name);
+                break;
+            case LYS_STATUS_DEPRC:
+                LOGVAL(LYE_INSTATUS, LY_VLOG_LYS, parent, "deprecated", xmlnode->name, "is child of",
+                       "obsolete", parent->name);
+                break;
+            }
+            goto error;
         }
     }
 

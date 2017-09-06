@@ -63,4 +63,16 @@
       <type name="empty"/>
       <mandatory value="true"/>
   </leaf>
+  <container name="top-obsolete">
+    <status value="obsolete"/>
+    <leaf name="obsolete">
+      <type name="string"/>
+      <status value="obsolete"/>
+      <mandatory value="true"/>
+    </leaf>
+    <leaf name="obsolete-inherited">
+      <type name="string"/>
+      <mandatory value="true"/>
+    </leaf>
+  </container>
 </module>

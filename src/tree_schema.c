@@ -2906,6 +2906,10 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
             if (retval->nodetype != LYS_USES) {
                 retval->flags = (retval->flags & ~LYS_CONFIG_MASK) | flags;
             }
+
+            /* inherit status */
+            retval->flags &= ~LYS_STATUS_MASK;
+            retval->flags |= (parent->flags & LYS_STATUS_MASK);
             break;
         case 2:
             /* erase config flags */
@@ -3253,6 +3257,10 @@ lys_has_xpath(const struct lys_node *node)
     return 0;
 }
 
+/*
+ * shallow -
+ *         - do not inherit status from the parent
+ */
 struct lys_node *
 lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct lys_node *node,
              struct unres_schema *unres, int shallow)
