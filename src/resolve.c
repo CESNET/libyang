@@ -7225,7 +7225,7 @@ check_instid_ext_dep(const struct lys_node *sleaf, const char *json_instid)
     if (!first_node) {
         /* unknown path, say it is not external */
         free(buf);
-        ly_errno = LYE_SUCCESS;
+        ly_errno = LY_SUCCESS;
         return 0;
     }
     free(buf);
