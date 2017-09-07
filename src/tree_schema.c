@@ -2908,8 +2908,11 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
             }
 
             /* inherit status */
-            retval->flags &= ~LYS_STATUS_MASK;
-            retval->flags |= (parent->flags & LYS_STATUS_MASK);
+            if ((parent->flags & LYS_STATUS_MASK) > (retval->flags & LYS_STATUS_MASK)) {
+                /* but do it only in case the parent has a stonger status */
+                retval->flags &= ~LYS_STATUS_MASK;
+                retval->flags |= (parent->flags & LYS_STATUS_MASK);
+            }
             break;
         case 2:
             /* erase config flags */

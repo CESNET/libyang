@@ -80,9 +80,17 @@ test_status_yin(void **state)
         "<namespace uri=\"urn:status\"/>"
         "<prefix value=\"st\"/>"
         "<grouping name=\"g\">"
-        "  <leaf name=\"gl\">"
+        "  <leaf name=\"gl1\">"
         "    <type name=\"string\"/>"
         "    <mandatory value=\"true\"/>"
+        "  </leaf>"
+        "  <leaf name=\"gl2\">"
+        "    <type name=\"string\"/>"
+        "    <status value=\"deprecated\"/>"
+        "  </leaf>"
+        "  <leaf name=\"gl3\">"
+        "    <type name=\"string\"/>"
+        "    <status value=\"obsolete\"/>"
         "  </leaf>"
         "</grouping>"
         "<container name=\"a\">"
@@ -107,8 +115,11 @@ test_status_yin(void **state)
         "    <mandatory value=\"true\"/>"
         "    <type name=\"string\"/>"
         "  </leaf>"
+        "  <uses name=\"g\"/>"
         "</container>"
         "</module>";
+    const char *xml1 = "<a xmlns=\"urn:status\"><gl2>x</gl2><gl3>y</gl3></a>";
+    const char *xml2 = "<c xmlns=\"urn:status\"><gl2>x</gl2><gl3>y</gl3></c>";
 
     const char *yin_fail1 = "<module name=\"status\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
         "<namespace uri=\"urn:status\"/>"
@@ -162,6 +173,22 @@ test_status_yin(void **state)
     /* status is inherited so all the mandatory statements should be ignored and empty data tree is fine */
     assert_ptr_not_equal(NULL, lys_parse_mem(st->ctx, yin, LYS_IN_YIN));
     assert_int_equal(0, lyd_validate(&st->dt, LYD_OPT_CONFIG, st->ctx));
+
+    /* xml1 - deprecated is applied to gl1, so it is not mandatory,
+     *        gl2 is deprecated so it can appear in data,
+     *        but gl3 is obsolete (not changed) so it cannot appear */
+    assert_ptr_equal(NULL, lyd_parse_mem(st->ctx, xml1, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_OBSOLETE));
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_OBSDATA);
+    assert_string_equal(ly_errpath(), "/status:a/gl3");
+
+    /* xml2 - obsolete is applied to gl1, so it is not mandatory,
+     *        gl2 is obsolete so it cannot appear in data and here the error should raise,
+     *        gl3 is obsolete (not changed) so it cannot appear */
+    assert_ptr_equal(NULL, lyd_parse_mem(st->ctx, xml2, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_OBSOLETE));
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_OBSDATA);
+    assert_string_equal(ly_errpath(), "/status:c/gl2");
 }
 
 static void
@@ -172,9 +199,17 @@ test_status_yang(void **state)
         "  namespace urn:status;"
         "  prefix st;"
         "  grouping g {"
-        "    leaf gl {"
+        "    leaf gl1 {"
         "      type string;"
         "      mandatory true;"
+        "    }"
+        "    leaf gl2 {"
+        "      type string;"
+        "      status deprecated;"
+        "    }"
+        "    leaf gl3 {"
+        "      type string;"
+        "      status obsolete;"
         "    }"
         "  }"
         "  container a {"
@@ -199,8 +234,11 @@ test_status_yang(void **state)
         "      type string;"
         "      mandatory true;"
         "    }"
+        "    uses g;"
         "  }"
         "}";
+    const char *xml1 = "<a xmlns=\"urn:status\"><gl2>x</gl2><gl3>y</gl3></a>";
+    const char *xml2 = "<c xmlns=\"urn:status\"><gl2>x</gl2><gl3>y</gl3></c>";
     const char *yang_fail1 = "module status {"
         "  namespace urn:status;"
         "  prefix st;"
@@ -253,6 +291,22 @@ test_status_yang(void **state)
     /* status is inherited so all the mandatory statements should be ignored and empty data tree is fine */
     assert_ptr_not_equal(NULL, lys_parse_mem(st->ctx, yang, LYS_IN_YANG));
     assert_int_equal(0, lyd_validate(&st->dt, LYD_OPT_CONFIG, st->ctx));
+
+    /* xml1 - deprecated is applied to gl1, so it is not mandatory,
+     *        gl2 is deprecated so it can appear in data,
+     *        but gl3 is obsolete (not changed) so it cannot appear */
+    assert_ptr_equal(NULL, lyd_parse_mem(st->ctx, xml1, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_OBSOLETE));
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_OBSDATA);
+    assert_string_equal(ly_errpath(), "/status:a/gl3");
+
+    /* xml2 - obsolete is applied to gl1, so it is not mandatory,
+     *        gl2 is obsolete so it cannot appear in data and here the error should raise,
+     *        gl3 is obsolete (not changed) so it cannot appear */
+    assert_ptr_equal(NULL, lyd_parse_mem(st->ctx, xml2, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_OBSOLETE));
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode, LYVE_OBSDATA);
+    assert_string_equal(ly_errpath(), "/status:c/gl2");
 }
 
 int
