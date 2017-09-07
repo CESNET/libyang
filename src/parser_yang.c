@@ -2416,6 +2416,42 @@ yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext
     return instance;
 }
 
+static int
+check_status_flag(struct lys_node *node, struct lys_node *parent)
+{
+    char *str;
+
+    if (parent && (parent->flags & (LYS_STATUS_DEPRC | LYS_STATUS_OBSLT))) {
+        /* status is not inherited by specification, but it not make sense to have
+         * current in deprecated or deprecated in obsolete, so we print warning
+         * and fix the schema by inheriting */
+        if (!(node->flags & (LYS_STATUS_MASK))) {
+            /* status not explicitely specified on the current node -> inherit */
+            str = lys_path(parent);
+            LOGWRN("Missing status in %s subtree (%s), inheriting.",
+                   parent->flags & LYS_STATUS_DEPRC ? "deprecated" : "obsolete", str);
+            free(str);
+            node->flags |= parent->flags & LYS_STATUS_MASK;
+        } else if ((parent->flags & LYS_STATUS_MASK) > (node->flags & LYS_STATUS_MASK)) {
+            /* invalid combination of statuses */
+            switch (node->flags & LYS_STATUS_MASK) {
+                case 0:
+                case LYS_STATUS_CURR:
+                    LOGVAL(LYE_INSTATUS, LY_VLOG_LYS, parent, "current", strnodetype(node->nodetype), "is child of",
+                           parent->flags & LYS_STATUS_DEPRC ? "deprecated" : "obsolete", parent->name);
+                    break;
+                case LYS_STATUS_DEPRC:
+                    LOGVAL(LYE_INSTATUS, LY_VLOG_LYS, parent, "deprecated", strnodetype(node->nodetype), "is child of",
+                           "obsolete", parent->name);
+                    break;
+            }
+            return EXIT_FAILURE;
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
 int
 store_config_flag(struct lys_node *node, int options)
 {
@@ -4097,7 +4133,8 @@ yang_check_nodes(struct lys_module *module, struct lys_node *parent, struct lys_
         node->child = NULL;
         node->prev = node;
 
-        if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, node)) {
+        if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, node) ||
+            check_status_flag(node, parent)) {
             lys_node_unlink(node);
             yang_free_nodes(module->ctx, node);
             goto error;
