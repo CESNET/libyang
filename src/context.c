@@ -70,6 +70,8 @@ ly_ctx_new(const char *search_dir)
     struct ly_ctx *ctx = NULL;
     struct lys_module *module;
     char *cwd = NULL;
+    char *search_dir_list;
+    char *sep, *dir;
     int i;
 
     ctx = calloc(1, sizeof *ctx);
@@ -91,20 +93,19 @@ ly_ctx_new(const char *search_dir)
     ctx->models.used = 0;
     ctx->models.size = 16;
     if (search_dir) {
-        cwd = get_current_dir_name();
-        if (chdir(search_dir)) {
-            LOGERR(LY_ESYS, "Unable to use search directory \"%s\" (%s)",
-                   search_dir, strerror(errno));
-            goto error;
+        ctx->models.search_paths = NULL;
+
+        search_dir_list = strdup(search_dir);
+        LY_CHECK_ERR_GOTO(!search_dir_list, LOGMEM, error);
+
+        for (dir = search_dir_list; (sep = strchr(dir, ':')) != NULL; dir = sep + 1) {
+            *sep = 0;
+            ly_ctx_set_searchdir(ctx, dir);
         }
-        ctx->models.search_paths = malloc(2 * sizeof *ctx->models.search_paths);
-        LY_CHECK_ERR_GOTO(!ctx->models.search_paths, LOGMEM, error);
-        ctx->models.search_paths[0] = get_current_dir_name();
-        ctx->models.search_paths[1] = NULL;
-        if (chdir(cwd)) {
-            LOGWRN("Unable to return back to working directory \"%s\" (%s)",
-                   cwd, strerror(errno));
+        if (*dir) {
+            ly_ctx_set_searchdir(ctx, dir);
         }
+        free(search_dir_list);
     }
     ctx->models.module_set_id = 1;
 
