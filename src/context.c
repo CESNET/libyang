@@ -93,20 +93,18 @@ ly_ctx_new(const char *search_dir)
     ctx->models.used = 0;
     ctx->models.size = 16;
     if (search_dir) {
-        ctx->models.search_paths = malloc(sizeof *ctx->models.search_paths);
-        LY_CHECK_ERR_GOTO(!ctx->models.search_paths, LOGMEM, error);
-        ctx->models.search_paths[0] = NULL;
+        ctx->models.search_paths = NULL;
 
         search_dir_list = strdup(search_dir);
         LY_CHECK_ERR_GOTO(!search_dir_list, LOGMEM, error);
 
-        for (dir = search_dir_list; (sep = strchr(dir, ':')) != NULL; dir = sep + 1)
-        {
+        for (dir = search_dir_list; (sep = strchr(dir, ':')) != NULL; dir = sep + 1) {
             *sep = 0;
             ly_ctx_set_searchdir(ctx, dir);
         }
-        if (*dir)
+        if (*dir) {
             ly_ctx_set_searchdir(ctx, dir);
+        }
         free(search_dir_list);
     }
     ctx->models.module_set_id = 1;
