@@ -1329,11 +1329,10 @@ lys_iffeature_free(struct ly_ctx *ctx, struct lys_iffeature *iffeature, uint8_t 
 
     for (i = 0; i < iffeature_size; ++i) {
         lys_extension_instances_free(ctx, iffeature[i].ext, iffeature[i].ext_size, private_destructor);
-        if ( !shallow )
-        {
-        free(iffeature[i].expr);
-        free(iffeature[i].features);
-    }
+        if ( !shallow ) {
+            free(iffeature[i].expr);
+            free(iffeature[i].features);
+        }
     }
     free(iffeature);
 }
