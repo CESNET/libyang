@@ -105,7 +105,9 @@ extern "C" {
  * Works for all types of nodes despite it is data or schema tree, but all the
  * parameters must be pointers to the same type - basic type of the tree (struct
  * lys_node*, struct lyd_node* or struct lyxml_elem*). Use the same parameters for
- * #LY_TREE_DFS_BEGIN and #LY_TREE_DFS_END.
+ * #LY_TREE_DFS_BEGIN and #LY_TREE_DFS_END. If the START parameter is a derived
+ * type (e.g. lys_node_leaf), caller is supposed to cast it to the base type
+ * identical to the other parameters.
  *
  * Use with closing curly bracket '}' after the macro.
  *
@@ -116,12 +118,12 @@ extern "C" {
 #define LY_TREE_DFS_END(START, NEXT, ELEM)                                    \
     /* select element for the next run - children first */                    \
     (NEXT) = (ELEM)->child;                                                   \
-    if (sizeof(__typeof__(*(START))) == sizeof(struct lyd_node)) {            \
+    if (sizeof(__typeof__(*(ELEM))) == sizeof(struct lyd_node)) {             \
         /* child exception for leafs, leaflists and anyxml without children */\
         if (((struct lyd_node *)(ELEM))->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) { \
             (NEXT) = NULL;                                                    \
         }                                                                     \
-    } else if (sizeof(__typeof__(*(START))) == sizeof(struct lys_node)) {     \
+    } else if (sizeof(__typeof__(*(ELEM))) == sizeof(struct lys_node)) {      \
         /* child exception for leafs, leaflists and anyxml without children */\
         if (((struct lys_node *)(ELEM))->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) { \
             (NEXT) = NULL;                                                    \
@@ -138,14 +140,14 @@ extern "C" {
     }                                                                         \
     while (!(NEXT)) {                                                         \
         /* parent is already processed, go to its sibling */                  \
-        if ((sizeof(__typeof__(*(START))) == sizeof(struct lys_node))         \
+        if ((sizeof(__typeof__(*(ELEM))) == sizeof(struct lys_node))          \
                 && (((struct lys_node *)(ELEM)->parent)->nodetype == LYS_AUGMENT)) {  \
             (ELEM) = (ELEM)->parent->prev;                                    \
         } else {                                                              \
             (ELEM) = (ELEM)->parent;                                          \
         }                                                                     \
         /* no siblings, go back through parents */                            \
-        if (sizeof(__typeof__(*(START))) == sizeof(struct lys_node)) {        \
+        if (sizeof(__typeof__(*(ELEM))) == sizeof(struct lys_node)) {         \
             /* due to possible augments */                                    \
             if (lys_parent((struct lys_node *)(ELEM)) == lys_parent((struct lys_node *)(START))) { \
                 /* we are done, no next element to process */                 \
