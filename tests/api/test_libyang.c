@@ -161,13 +161,26 @@ teardown_f(void **state)
 static void
 test_ly_ctx_new(void **state)
 {
-    char *yang_folder = TESTS_DIR"/data/files";
+    char *yang_folder1 = TESTS_DIR"/data/files";
+    char *yang_folder2 = TESTS_DIR"/data:"TESTS_DIR"/data/files";
+    const char * const *list = NULL;
     (void) state; /* unused */
-    ctx = ly_ctx_new(yang_folder);
-    if (!ctx) {
-        fail();
-    }
 
+    ctx = ly_ctx_new(yang_folder1);
+    assert_ptr_not_equal(NULL, ctx);
+    list = ly_ctx_get_searchdirs(ctx);
+    assert_ptr_not_equal(NULL, list);
+    assert_ptr_not_equal(NULL, list[0]);
+    assert_ptr_equal(NULL, list[1]);
+    ly_ctx_destroy(ctx, NULL);
+
+    ctx = ly_ctx_new(yang_folder2);
+    assert_ptr_not_equal(NULL, ctx);
+    list = ly_ctx_get_searchdirs(ctx);
+    assert_ptr_not_equal(NULL, list);
+    assert_ptr_not_equal(NULL, list[0]);
+    assert_ptr_not_equal(NULL, list[1]);
+    assert_ptr_equal(NULL, list[2]);
     ly_ctx_destroy(ctx, NULL);
 }
 
