@@ -1299,7 +1299,7 @@ test_lys_path(void **state)
     module = lys_parse_mem(ctx, lys_module_a, yang_format);
     assert_ptr_not_equal(module, NULL);
 
-    template = "/x/bar-gggg";
+    template = "/a:x/bar-gggg";
     set = lys_find_path(module, NULL, template);
     assert_ptr_not_equal(set, NULL);
     node = set->set.s[0];

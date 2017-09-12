@@ -77,12 +77,14 @@ lyd_check_mandatory_data(struct lyd_node *root, struct lyd_node *last_parent,
 {
     struct lyd_node *dummy, *current;
     uint32_t limit;
+    uint16_t status;
 
     if (!instances->number) {
         /* no instance in the data tree - check if the instantiating is enabled
          * (check: if-feature, when, status data in non-status data tree)
          */
-        if (lys_is_disabled(schema, 2)) {
+        status = (schema->flags & LYS_STATUS_MASK);
+        if (lys_is_disabled(schema, 2) || (status && status != LYS_STATUS_CURR)) {
             /* disabled by if-feature */
             return EXIT_SUCCESS;
         } else if ((options & LYD_OPT_TRUSTED) || ((options & LYD_OPT_TYPEMASK) && (schema->flags & LYS_CONFIG_R))) {
