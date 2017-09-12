@@ -37,8 +37,9 @@ foreach(test_name IN LISTS schema_tests)
     target_link_libraries(${test_name} ${CMOCKA_LIBRARIES} yang)
     add_test(NAME ${test_name} COMMAND $<TARGET_FILE:${test_name}>)
     set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "LIBYANG_EXTENSIONS_PLUGINS_DIR=${CMAKE_BINARY_DIR}/src/extensions")
-    set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "MALLOC_CHECK_=3")
 endforeach(test_name)
+
+set_tests_properties(test_deviation PROPERTIES ENVIRONMENT "MALLOC_CHECK_=3")
 
 foreach(test_name IN LISTS conformance_tests)
     add_executable(${test_name} conformance/${test_name}.c)
