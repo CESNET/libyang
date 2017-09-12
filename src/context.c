@@ -294,6 +294,9 @@ success:
                    cwd, strerror(errno));
         }
         rc = EXIT_SUCCESS;
+    } else {
+        /* consider that no change is not actually an error */
+        return EXIT_SUCCESS;
     }
 
 cleanup:
