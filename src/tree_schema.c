@@ -1340,6 +1340,7 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
          LY_DATA_TYPE base, int in_grp, int shallow, struct unres_schema *unres)
 {
     int i;
+    unsigned int u;
 
     switch (base) {
     case LY_TYPE_BINARY:
@@ -1354,16 +1355,16 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
             new->info.bits.bit = calloc(new->info.bits.count, sizeof *new->info.bits.bit);
             LY_CHECK_ERR_RETURN(!new->info.bits.bit, LOGMEM, -1);
 
-            for (i = 0; i < new->info.bits.count; i++) {
-                new->info.bits.bit[i].name = lydict_insert(mod->ctx, old->info.bits.bit[i].name, 0);
-                new->info.bits.bit[i].dsc = lydict_insert(mod->ctx, old->info.bits.bit[i].dsc, 0);
-                new->info.bits.bit[i].ref = lydict_insert(mod->ctx, old->info.bits.bit[i].ref, 0);
-                new->info.bits.bit[i].flags = old->info.bits.bit[i].flags;
-                new->info.bits.bit[i].pos = old->info.bits.bit[i].pos;
-                new->info.bits.bit[i].ext_size = old->info.bits.bit[i].ext_size;
-                if (lys_ext_dup(mod, old->info.bits.bit[i].ext, old->info.bits.bit[i].ext_size,
-                                &new->info.bits.bit[i], LYEXT_PAR_TYPE_BIT,
-                                &new->info.bits.bit[i].ext, shallow, unres)) {
+            for (u = 0; u < new->info.bits.count; u++) {
+                new->info.bits.bit[u].name = lydict_insert(mod->ctx, old->info.bits.bit[u].name, 0);
+                new->info.bits.bit[u].dsc = lydict_insert(mod->ctx, old->info.bits.bit[u].dsc, 0);
+                new->info.bits.bit[u].ref = lydict_insert(mod->ctx, old->info.bits.bit[u].ref, 0);
+                new->info.bits.bit[u].flags = old->info.bits.bit[u].flags;
+                new->info.bits.bit[u].pos = old->info.bits.bit[u].pos;
+                new->info.bits.bit[u].ext_size = old->info.bits.bit[u].ext_size;
+                if (lys_ext_dup(mod, old->info.bits.bit[u].ext, old->info.bits.bit[u].ext_size,
+                                &new->info.bits.bit[u], LYEXT_PAR_TYPE_BIT,
+                                &new->info.bits.bit[u].ext, shallow, unres)) {
                     return -1;
                 }
             }
@@ -1384,16 +1385,16 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
             new->info.enums.enm = calloc(new->info.enums.count, sizeof *new->info.enums.enm);
             LY_CHECK_ERR_RETURN(!new->info.enums.enm, LOGMEM, -1);
 
-            for (i = 0; i < new->info.enums.count; i++) {
-                new->info.enums.enm[i].name = lydict_insert(mod->ctx, old->info.enums.enm[i].name, 0);
-                new->info.enums.enm[i].dsc = lydict_insert(mod->ctx, old->info.enums.enm[i].dsc, 0);
-                new->info.enums.enm[i].ref = lydict_insert(mod->ctx, old->info.enums.enm[i].ref, 0);
-                new->info.enums.enm[i].flags = old->info.enums.enm[i].flags;
-                new->info.enums.enm[i].value = old->info.enums.enm[i].value;
-                new->info.enums.enm[i].ext_size = old->info.enums.enm[i].ext_size;
-                if (lys_ext_dup(mod, old->info.enums.enm[i].ext, old->info.enums.enm[i].ext_size,
-                                &new->info.enums.enm[i], LYEXT_PAR_TYPE_ENUM,
-                                &new->info.enums.enm[i].ext, shallow, unres)) {
+            for (u = 0; u < new->info.enums.count; u++) {
+                new->info.enums.enm[u].name = lydict_insert(mod->ctx, old->info.enums.enm[u].name, 0);
+                new->info.enums.enm[u].dsc = lydict_insert(mod->ctx, old->info.enums.enm[u].dsc, 0);
+                new->info.enums.enm[u].ref = lydict_insert(mod->ctx, old->info.enums.enm[u].ref, 0);
+                new->info.enums.enm[u].flags = old->info.enums.enm[u].flags;
+                new->info.enums.enm[u].value = old->info.enums.enm[u].value;
+                new->info.enums.enm[u].ext_size = old->info.enums.enm[u].ext_size;
+                if (lys_ext_dup(mod, old->info.enums.enm[u].ext, old->info.enums.enm[u].ext_size,
+                                &new->info.enums.enm[u], LYEXT_PAR_TYPE_ENUM,
+                                &new->info.enums.enm[u].ext, shallow, unres)) {
                     return -1;
                 }
             }
@@ -1462,8 +1463,8 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
             new->info.uni.types = calloc(new->info.uni.count, sizeof *new->info.uni.types);
             LY_CHECK_ERR_RETURN(!new->info.uni.types, LOGMEM, -1);
 
-            for (i = 0; i < new->info.uni.count; i++) {
-                if (lys_type_dup(mod, parent, &(new->info.uni.types[i]), &(old->info.uni.types[i]), in_grp,
+            for (u = 0; u < new->info.uni.count; u++) {
+                if (lys_type_dup(mod, parent, &(new->info.uni.types[u]), &(old->info.uni.types[u]), in_grp,
                         shallow, unres)) {
                     return -1;
                 }
@@ -1513,7 +1514,7 @@ lys_copy_union_leafrefs(struct lys_module *mod, struct lys_node *parent, struct 
                         struct unres_schema *unres)
 {
     struct lys_type new;
-    int i, top_type;
+    unsigned int i, top_type;
     struct lys_ext_instance **ext;
     uint8_t ext_size;
     void *reloc;
@@ -1916,7 +1917,7 @@ void
 lys_type_free(struct ly_ctx *ctx, struct lys_type *type,
               void (*private_destructor)(const struct lys_node *node, void *priv))
 {
-    int i;
+    unsigned int i;
 
     assert(ctx);
     if (!type) {

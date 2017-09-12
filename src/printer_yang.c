@@ -453,7 +453,7 @@ yang_print_signed(struct lyout *out, int level, LYEXT_SUBSTMT substmt, uint8_t s
 static void
 yang_print_type(struct lyout *out, int level, const struct lys_module *module, const struct lys_type *type)
 {
-    int i;
+    unsigned int i;
     int flag = 0, flag2;
     const char *str;
     char *s;

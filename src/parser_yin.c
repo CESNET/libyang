@@ -486,7 +486,8 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     struct lys_type_bit bit, *bits_sc = NULL;
     struct lys_type_enum *enms_sc = NULL; /* shortcut */
     struct lys_type *dertype;
-    int i, j, rc, val_set, c_ftrs, c_ext = 0;
+    int rc, val_set, c_ftrs, c_ext = 0;
+    unsigned int i, j;
     int ret = -1;
     int64_t v, v_;
     int64_t p, p_;
@@ -6432,7 +6433,11 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 goto error;
             }
             substmt_group = 1;
-
+            if (c_imp == LY_ARRAY_MAX(trg->imp_size)) {
+                LOGERR(LY_EINT, "Reached limit (%"PRIu64") for storing imports in %s.",
+                       LY_ARRAY_MAX(trg->imp_size), submodule ? "submodule" : "module");
+                goto error;
+            }
             c_imp++;
 
             substmt_prev = "import";
@@ -6444,7 +6449,11 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 goto error;
             }
             substmt_group = 3;
-
+            if (c_rev == LY_ARRAY_MAX(trg->rev_size)) {
+                LOGERR(LY_EINT, "Reached limit (%"PRIu64") for storing revisions in %s.",
+                       LY_ARRAY_MAX(trg->rev_size), submodule ? "submodule" : "module");
+                goto error;
+            }
             c_rev++;
 
             lyxml_unlink_elem(ctx, child, 2);
@@ -6453,13 +6462,21 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             substmt_prev = "revision";
         } else if (!strcmp(child->name, "typedef")) {
             substmt_group = 4;
-
+            if (c_tpdf == LY_ARRAY_MAX(trg->tpdf_size)) {
+                LOGERR(LY_EINT, "Reached limit (%"PRIu64") for storing typedefs in %s.",
+                       LY_ARRAY_MAX(trg->tpdf_size), submodule ? "submodule" : "module");
+                goto error;
+            }
             c_tpdf++;
 
             substmt_prev = "typedef";
         } else if (!strcmp(child->name, "identity")) {
             substmt_group = 4;
-
+            if (c_ident == LY_ARRAY_MAX(trg->ident_size)) {
+                LOGERR(LY_EINT, "Reached limit (%"PRIu64") for storing identities in %s.",
+                       LY_ARRAY_MAX(trg->ident_size), submodule ? "submodule" : "module");
+                goto error;
+            }
             c_ident++;
 
             substmt_prev = "identity";
@@ -6471,13 +6488,21 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 goto error;
             }
             substmt_group = 1;
-
+            if (c_inc == LY_ARRAY_MAX(trg->inc_size)) {
+                LOGERR(LY_EINT, "Reached limit (%"PRIu64") for storing includes in %s.",
+                       LY_ARRAY_MAX(trg->inc_size), submodule ? "submodule" : "module");
+                goto error;
+            }
             c_inc++;
 
             substmt_prev = "include";
         } else if (!strcmp(child->name, "augment")) {
             substmt_group = 4;
-
+            if (c_aug == LY_ARRAY_MAX(trg->augment_size)) {
+                LOGERR(LY_EINT, "Reached limit (%"PRIu64") for storing augments in %s.",
+                       LY_ARRAY_MAX(trg->augment_size), submodule ? "submodule" : "module");
+                goto error;
+            }
             c_aug++;
             /* keep augments separated, processed last */
             lyxml_unlink_elem(ctx, child, 2);
@@ -6486,7 +6511,11 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             substmt_prev = "augment";
         } else if (!strcmp(child->name, "feature")) {
             substmt_group = 4;
-
+            if (c_ftrs == LY_ARRAY_MAX(trg->features_size)) {
+                LOGERR(LY_EINT, "Reached limit (%"PRIu64") for storing features in %s.",
+                       LY_ARRAY_MAX(trg->features_size), submodule ? "submodule" : "module");
+                goto error;
+            }
             c_ftrs++;
 
             substmt_prev = "feature";
@@ -6657,13 +6686,21 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             substmt_prev = "yang-version";
         } else if (!strcmp(child->name, "extension")) {
             substmt_group = 4;
-
+            if (c_ext == LY_ARRAY_MAX(trg->ext_size)) {
+                LOGERR(LY_EINT, "Reached limit (%"PRIu64") for storing extensions in %s.",
+                       LY_ARRAY_MAX(trg->ext_size), submodule ? "submodule" : "module");
+                goto error;
+            }
             c_ext++;
 
             substmt_prev = "extension";
         } else if (!strcmp(child->name, "deviation")) {
             substmt_group = 4;
-
+            if (c_dev == LY_ARRAY_MAX(trg->deviation_size)) {
+                LOGERR(LY_EINT, "Reached limit (%"PRIu64") for storing deviations in %s.",
+                       LY_ARRAY_MAX(trg->deviation_size), submodule ? "submodule" : "module");
+                goto error;
+            }
             c_dev++;
 
             substmt_prev = "deviation";

@@ -359,7 +359,7 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
     struct lys_tpdf *tpdf;
     struct lys_type *type = NULL;
     struct lyd_node_leaf_list *leaf;
-    int i, j = 0;
+    unsigned int i, j = 0;
     uint8_t iff_size;
     struct lys_iffeature *iff;
     const char *id, *idname;

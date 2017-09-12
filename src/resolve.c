@@ -136,10 +136,10 @@ parse_range_dec64(const char **str_num, uint8_t dig, int64_t *num)
  *
  * @return Number of characters successfully parsed.
  */
-int
+unsigned int
 parse_identifier(const char *id)
 {
-    int parsed = 0;
+    unsigned int parsed = 0;
 
     assert(id);
 
@@ -4088,7 +4088,7 @@ lys_check_xpath(struct lys_node *node, int check_place)
 static int
 check_leafref_config(struct lys_node_leaf *leaf, struct lys_type *type)
 {
-    int i;
+    unsigned int i;
 
     if (type->base == LY_TYPE_LEAFREF) {
         if ((leaf->flags & LYS_CONFIG_W) && type->info.lref.target && type->info.lref.req != -1 &&
@@ -5225,9 +5225,9 @@ struct lys_ident *
 resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node *node, struct lys_module *mod, int dflt)
 {
     const char *mod_name, *name;
-    int mod_name_len, nam_len, rc, i, j;
+    int mod_name_len, nam_len, rc;
     int make_implemented = 0;
-    unsigned int u;
+    unsigned int u, i, j;
     struct lys_ident *der, *cur;
     struct lys_module *imod = NULL, *m;
 
