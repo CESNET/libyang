@@ -70,6 +70,9 @@ ly_ctx_new(const char *search_dir)
     struct ly_ctx *ctx = NULL;
     struct lys_module *module;
     char *cwd = NULL;
+    char *search_dir_list;
+    char *sep, *dir;
+    int rc = EXIT_SUCCESS;
     int i;
 
     ctx = calloc(1, sizeof *ctx);
@@ -91,19 +94,20 @@ ly_ctx_new(const char *search_dir)
     ctx->models.used = 0;
     ctx->models.size = 16;
     if (search_dir) {
-        cwd = get_current_dir_name();
-        if (chdir(search_dir)) {
-            LOGERR(LY_ESYS, "Unable to use search directory \"%s\" (%s)",
-                   search_dir, strerror(errno));
-            goto error;
+        search_dir_list = strdup(search_dir);
+        LY_CHECK_ERR_GOTO(!search_dir_list, LOGMEM, error);
+
+        for (dir = search_dir_list; (sep = strchr(dir, ':')) != NULL && rc == EXIT_SUCCESS; dir = sep + 1) {
+            *sep = 0;
+            rc = ly_ctx_set_searchdir(ctx, dir);
         }
-        ctx->models.search_paths = malloc(2 * sizeof *ctx->models.search_paths);
-        LY_CHECK_ERR_GOTO(!ctx->models.search_paths, LOGMEM, error);
-        ctx->models.search_paths[0] = get_current_dir_name();
-        ctx->models.search_paths[1] = NULL;
-        if (chdir(cwd)) {
-            LOGWRN("Unable to return back to working directory \"%s\" (%s)",
-                   cwd, strerror(errno));
+        if (*dir && rc == EXIT_SUCCESS) {
+            rc = ly_ctx_set_searchdir(ctx, dir);
+        }
+        free(search_dir_list);
+        /* If ly_ctx_set_searchdir() failed, the error is already logged. Just exit */
+        if (rc != EXIT_SUCCESS) {
+            goto error;
         }
     }
     ctx->models.module_set_id = 1;
@@ -242,15 +246,17 @@ ly_ctx_unset_allimplemented(struct ly_ctx *ctx)
     ctx->models.flags &= ~LY_CTX_ALLIMPLEMENTED;
 }
 
-API void
+API int
 ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
 {
     char *cwd = NULL, *new = NULL;
     int index = 0;
     void *r;
+    int rc = EXIT_FAILURE;
 
     if (!ctx) {
-        return;
+        LOGERR(LY_EINVAL, "%s: Invalid ctx parameter", __func__);
+        return EXIT_FAILURE;
     }
 
     if (search_dir) {
@@ -287,18 +293,23 @@ success:
             LOGWRN("Unable to return back to working directory \"%s\" (%s)",
                    cwd, strerror(errno));
         }
+        rc = EXIT_SUCCESS;
+    } else {
+        /* consider that no change is not actually an error */
+        return EXIT_SUCCESS;
     }
 
 cleanup:
     free(cwd);
     free(new);
+    return rc;
 }
 
 API const char * const *
 ly_ctx_get_searchdirs(const struct ly_ctx *ctx)
 {
     if (!ctx) {
-        ly_errno = LY_EINVAL;
+        LOGERR(LY_EINVAL, "%s: Invalid ctx parameter", __func__);
         return NULL;
     }
     return (const char * const *)ctx->models.search_paths;
