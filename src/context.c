@@ -255,7 +255,7 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
     int rc = EXIT_FAILURE;
 
     if (!ctx) {
-        LOGERR(LY_EINVAL, "Got ctx=NULL", strerror(errno));
+        LOGERR(LY_EINVAL, "%s: Invalid ctx parameter", __func__);
         return EXIT_FAILURE;
     }
 
@@ -306,7 +306,7 @@ API const char * const *
 ly_ctx_get_searchdirs(const struct ly_ctx *ctx)
 {
     if (!ctx) {
-        ly_errno = LY_EINVAL;
+        LOGERR(LY_EINVAL, "%s: Invalid ctx parameter", __func__);
         return NULL;
     }
     return (const char * const *)ctx->models.search_paths;
