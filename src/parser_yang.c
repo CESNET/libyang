@@ -616,7 +616,8 @@ yang_read_require_instance(struct yang_type *stype, int req)
 int
 yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_type *typ, struct lys_type *type, int tpdftype, struct unres_schema *unres)
 {
-    int i, j, rc, ret = -1;
+    int rc, ret = -1;
+    unsigned int i, j;
     int8_t req;
     const char *name, *value;
     LY_DATA_TYPE base = 0, base_tmp;
@@ -855,8 +856,8 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
             }
         }
 
-        for (i = type->info.bits.count - 1; i > 0; i--) {
-            j = i;
+        for (i = type->info.bits.count; i > 0; i--) {
+            j = i - 1;
 
             /* keep them ordered by position */
             while (j && type->info.bits.bit[j - 1].pos > type->info.bits.bit[j].pos) {
@@ -1022,7 +1023,7 @@ yang_free_type_union(struct ly_ctx *ctx, struct lys_type *type)
 {
     struct lys_type *stype;
     struct yang_type *yang;
-    int i;
+    unsigned int i;
 
     for (i = 0; i < type->info.uni.count; ++i) {
         stype = &type->info.uni.types[i];
@@ -2838,7 +2839,7 @@ void
 yang_type_free(struct ly_ctx *ctx, struct lys_type *type)
 {
     struct yang_type *stype = (struct yang_type *)type->der;
-    int i;
+    unsigned int i;
 
     if (!stype) {
         return ;
@@ -3434,7 +3435,7 @@ int
 yang_fill_type(struct lys_module *module, struct lys_type *type, struct yang_type *stype,
                void *parent, struct unres_schema *unres)
 {
-    int i;
+    unsigned int i;
 
     type->parent = parent;
     if (yang_check_ext_instance(module, &type->ext, type->ext_size, type, unres)) {
