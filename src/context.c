@@ -72,7 +72,7 @@ ly_ctx_new(const char *search_dir)
     char *cwd = NULL;
     char *search_dir_list;
     char *sep, *dir;
-    int rc = LY_SUCCESS;
+    int rc = EXIT_SUCCESS;
     int i;
 
     ctx = calloc(1, sizeof *ctx);
@@ -97,17 +97,18 @@ ly_ctx_new(const char *search_dir)
         search_dir_list = strdup(search_dir);
         LY_CHECK_ERR_GOTO(!search_dir_list, LOGMEM, error);
 
-        for (dir = search_dir_list; (sep = strchr(dir, ':')) != NULL && rc == LY_SUCCESS; dir = sep + 1) {
+        for (dir = search_dir_list; (sep = strchr(dir, ':')) != NULL && rc == EXIT_SUCCESS; dir = sep + 1) {
             *sep = 0;
             rc = ly_ctx_set_searchdir(ctx, dir);
         }
-        if (*dir && rc == LY_SUCCESS) {
+        if (*dir && rc == EXIT_SUCCESS) {
             rc = ly_ctx_set_searchdir(ctx, dir);
         }
         free(search_dir_list);
         /* If ly_ctx_set_searchdir() failed, the error is already logged. Just exit */
-        if (rc)
+        if (rc != EXIT_SUCCESS) {
             goto error;
+        }
     }
     ctx->models.module_set_id = 1;
 
@@ -251,10 +252,11 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
     char *cwd = NULL, *new = NULL;
     int index = 0;
     void *r;
-    LY_ERR rc = LY_EMEM;
+    int rc = EXIT_FAILURE;
 
     if (!ctx) {
-        return LY_EINVAL;
+        LOGERR(LY_EINVAL, "Got ctx=NULL", strerror(errno));
+        return EXIT_FAILURE;
     }
 
     if (search_dir) {
@@ -291,7 +293,7 @@ success:
             LOGWRN("Unable to return back to working directory \"%s\" (%s)",
                    cwd, strerror(errno));
         }
-        rc = LY_SUCCESS;
+        rc = EXIT_SUCCESS;
     }
 
 cleanup:
