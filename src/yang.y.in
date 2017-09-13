@@ -33,7 +33,11 @@
 #include "parser.h"
 
 #define YANG_ADDELEM(current_ptr, size)                                                  \
-    if (!(size % LY_YANG_ARRAY_SIZE)) {                                                  \
+    if (size == LY_ARRAY_MAX(size)) {                                                    \
+         LOGERR(LY_EINT, "Reached limit (%"PRIu64") for storing typedefs.", LY_ARRAY_MAX(trg->tpdf_size));\
+         free(s);                                                                        \
+         YYABORT;                                                                        \
+    } else if (!(size % LY_YANG_ARRAY_SIZE)) {                                           \
         void *tmp;                                                                       \
                                                                                          \
         tmp = realloc(current_ptr, (sizeof *current_ptr) * (size + LY_YANG_ARRAY_SIZE)); \

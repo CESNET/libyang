@@ -256,7 +256,7 @@ info_print_typedef_with_include(struct lyout *out, const struct lys_module *mod)
 static void
 info_print_type_detail(struct lyout *out, const struct lys_type *type, int uni)
 {
-    int i;
+    unsigned int i;
 
     if (uni) {
         ly_print(out, "  ");

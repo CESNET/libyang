@@ -16,6 +16,7 @@
 #define LY_COMMON_H_
 
 #include <stdint.h>
+#include <inttypes.h>
 
 #include "dict_private.h"
 #include "libyang.h"

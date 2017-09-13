@@ -916,7 +916,8 @@ validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, int64_t fnum, u
 static int
 validate_pattern(const char *val_str, struct lys_type *type, struct lyd_node *node)
 {
-    int i, rc;
+    int rc;
+    unsigned int i;
     pcre *precomp;
 
     assert(type->base == LY_TYPE_STRING);
@@ -1386,7 +1387,8 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                 int store, int dflt)
 {
     struct lys_type *ret = NULL, *t;
-    int c, i, j, len, found = 0, hidden;
+    int c, len, found = 0, hidden;
+    unsigned int i, j;
     int64_t num;
     uint64_t unum, uind, u;
     const char *ptr, *value = *value_, *itemname;
@@ -2028,7 +2030,7 @@ cleanup:
 struct lys_type *
 lyp_get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *found)
 {
-    int i;
+    unsigned int i;
     struct lys_type *ret = NULL;
 
     while (!type->info.uni.count) {

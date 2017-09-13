@@ -136,10 +136,10 @@ parse_range_dec64(const char **str_num, uint8_t dig, int64_t *num)
  *
  * @return Number of characters successfully parsed.
  */
-int
+unsigned int
 parse_identifier(const char *id)
 {
-    int parsed = 0;
+    unsigned int parsed = 0;
 
     assert(id);
 
@@ -4088,7 +4088,7 @@ lys_check_xpath(struct lys_node *node, int check_place)
 static int
 check_leafref_config(struct lys_node_leaf *leaf, struct lys_type *type)
 {
-    int i;
+    unsigned int i;
 
     if (type->base == LY_TYPE_LEAFREF) {
         if ((leaf->flags & LYS_CONFIG_W) && type->info.lref.target && type->info.lref.req != -1 &&
@@ -4819,6 +4819,8 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
             size = *old_size + rfn->iffeature_size;
             iff = realloc(*old_iff, size * sizeof *rfn->iffeature);
             LY_CHECK_ERR_GOTO(!iff, LOGMEM, fail);
+            *old_iff = iff;
+
             for (k = 0, j = *old_size; k < rfn->iffeature_size; k++, j++) {
                 resolve_iffeature_getsizes(&rfn->iffeature[k], &usize1, &usize2);
                 if (usize1) {
@@ -4833,11 +4835,15 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
                     iff[j].features = malloc(usize2 * sizeof *iff[k].features);
                     LY_CHECK_ERR_GOTO(!iff[j].expr, LOGMEM, fail);
                     memcpy(iff[j].features, rfn->iffeature[k].features, usize2 * sizeof *iff[j].features);
-                }
-            }
 
-            *old_iff = iff;
-            *old_size = size;
+                    /* duplicate extensions */
+                    iff[j].ext_size = rfn->iffeature[k].ext_size;
+                    lys_ext_dup(rfn->module, rfn->iffeature[k].ext, rfn->iffeature[k].ext_size,
+                                &rfn->iffeature[k], LYEXT_PAR_IFFEATURE, &iff[j].ext, 0, unres);
+                }
+                (*old_size)++;
+            }
+            assert(*old_size == size);
         }
     }
 
@@ -5225,9 +5231,9 @@ struct lys_ident *
 resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node *node, struct lys_module *mod, int dflt)
 {
     const char *mod_name, *name;
-    int mod_name_len, nam_len, rc, i, j;
+    int mod_name_len, nam_len, rc;
     int make_implemented = 0;
-    unsigned int u;
+    unsigned int u, i, j;
     struct lys_ident *der, *cur;
     struct lys_module *imod = NULL, *m;
 

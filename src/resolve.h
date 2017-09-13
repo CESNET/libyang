@@ -140,7 +140,7 @@ struct len_ran_intv {
  */
 int parse_range_dec64(const char **str_num, uint8_t dig, int64_t *num);
 
-int parse_identifier(const char *id);
+unsigned int parse_identifier(const char *id);
 
 int parse_schema_nodeid(const char *id, const char **mod_name, int *mod_name_len, const char **name, int *nam_len,
                         int *is_relative, int *has_predicate, int *all_desc, int extended);

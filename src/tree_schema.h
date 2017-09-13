@@ -21,6 +21,7 @@
   #include <endian.h>
 #endif
 
+#include <limits.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -105,7 +106,9 @@ extern "C" {
  * Works for all types of nodes despite it is data or schema tree, but all the
  * parameters must be pointers to the same type - basic type of the tree (struct
  * lys_node*, struct lyd_node* or struct lyxml_elem*). Use the same parameters for
- * #LY_TREE_DFS_BEGIN and #LY_TREE_DFS_END.
+ * #LY_TREE_DFS_BEGIN and #LY_TREE_DFS_END. If the START parameter is a derived
+ * type (e.g. lys_node_leaf), caller is supposed to cast it to the base type
+ * identical to the other parameters.
  *
  * Use with closing curly bracket '}' after the macro.
  *
@@ -116,12 +119,12 @@ extern "C" {
 #define LY_TREE_DFS_END(START, NEXT, ELEM)                                    \
     /* select element for the next run - children first */                    \
     (NEXT) = (ELEM)->child;                                                   \
-    if (sizeof(__typeof__(*(START))) == sizeof(struct lyd_node)) {            \
+    if (sizeof(__typeof__(*(ELEM))) == sizeof(struct lyd_node)) {             \
         /* child exception for leafs, leaflists and anyxml without children */\
         if (((struct lyd_node *)(ELEM))->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) { \
             (NEXT) = NULL;                                                    \
         }                                                                     \
-    } else if (sizeof(__typeof__(*(START))) == sizeof(struct lys_node)) {     \
+    } else if (sizeof(__typeof__(*(ELEM))) == sizeof(struct lys_node)) {      \
         /* child exception for leafs, leaflists and anyxml without children */\
         if (((struct lys_node *)(ELEM))->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) { \
             (NEXT) = NULL;                                                    \
@@ -138,14 +141,14 @@ extern "C" {
     }                                                                         \
     while (!(NEXT)) {                                                         \
         /* parent is already processed, go to its sibling */                  \
-        if ((sizeof(__typeof__(*(START))) == sizeof(struct lys_node))         \
+        if ((sizeof(__typeof__(*(ELEM))) == sizeof(struct lys_node))          \
                 && (((struct lys_node *)(ELEM)->parent)->nodetype == LYS_AUGMENT)) {  \
             (ELEM) = (ELEM)->parent->prev;                                    \
         } else {                                                              \
             (ELEM) = (ELEM)->parent;                                          \
         }                                                                     \
         /* no siblings, go back through parents */                            \
-        if (sizeof(__typeof__(*(START))) == sizeof(struct lys_node)) {        \
+        if (sizeof(__typeof__(*(ELEM))) == sizeof(struct lys_node)) {         \
             /* due to possible augments */                                    \
             if (lys_parent((struct lys_node *)(ELEM)) == lys_parent((struct lys_node *)(START))) { \
                 /* we are done, no next element to process */                 \
@@ -164,6 +167,8 @@ extern "C" {
  *
  * Data structures and functions to manipulate and access schema tree.
  */
+
+#define LY_ARRAY_MAX(var) (sizeof(var) == 8 ? ULLONG_MAX : ((1ULL << (sizeof(var) * 8)) - 1)) /**< maximal index the size_var is able to hold */
 
 #define LY_REV_SIZE 11   /**< revision data string length (including terminating NULL byte) */
 
@@ -772,7 +777,7 @@ struct lys_type_bit {
  */
 struct lys_type_info_bits {
     struct lys_type_bit *bit;/**< array of bit definitions */
-    int count;               /**< number of bit definitions in the bit array */
+    unsigned int count;      /**< number of bit definitions in the bit array */
 };
 
 /**
@@ -812,7 +817,7 @@ struct lys_type_enum {
  */
 struct lys_type_info_enums {
     struct lys_type_enum *enm;/**< array of enum definitions */
-    int count;               /**< number of enum definitions in the enm array */
+    unsigned int count;       /**< number of enum definitions in the enm array */
 };
 
 /**
@@ -820,7 +825,7 @@ struct lys_type_info_enums {
  */
 struct lys_type_info_ident {
     struct lys_ident **ref;   /**< array of pointers (reference) to the identity definition (mandatory) */
-    int count;                /**< number of base identity references */
+    unsigned int count;       /**< number of base identity references */
 };
 
 /**
@@ -867,7 +872,7 @@ struct lys_type_info_str {
                                   - 0x06 (ACK) for match
                                   - 0x15 (NACK) for invert-match
                                   So the expression itself always starts at expr[1] */
-    int pat_count;           /**< number of pattern definitions in the patterns array */
+    unsigned int pat_count;  /**< number of pattern definitions in the patterns array */
 };
 
 /**
@@ -875,7 +880,7 @@ struct lys_type_info_str {
  */
 struct lys_type_info_union {
     struct lys_type *types;  /**< array of union's subtypes */
-    int count;               /**< number of subtype definitions in types array */
+    unsigned int count;      /**< number of subtype definitions in types array */
     int has_ptr_type;        /**< types include an instance-identifier or leafref meaning the union must always be resolved
                                   after parsing */
 };
@@ -927,7 +932,7 @@ struct lys_type {
      *   uint32_t bits.bit[i].pos;        bit's position (mandatory)
      *   struct lys_iffeature *bits.bit[i].iffeature;   array of bit's if-feature expressions
      *   struct lys_ext_instance **bits.bit[i].ext;     array of pointers to the bit's extension instances (optional)
-     * int bits.count;                    number of bit definitions in the bit array
+     * unsigned int bits.count;           number of bit definitions in the bit array
      * -----------------------------------------------------------------------------------------------------------------
      * LY_TYPE_DEC64 (dec64)
      * struct lys_restr *dec64.range;     range restriction (optional), see
@@ -950,11 +955,11 @@ struct lys_type {
      *   int32_t enums.enm[i].value;      enum's value (mandatory)
      *   struct lys_iffeature *enums.enum[i].iffeature; array of bit's if-feature expressions
      *   struct lys_ext_instance **enums.enum[i].ext;   array of pointers to the bit's extension instances (optional)
-     * int enums.count;                   number of enum definitions in the enm array
+     * unsigned int enums.count;          number of enum definitions in the enm array
      * -----------------------------------------------------------------------------------------------------------------
      * LY_TYPE_IDENT (ident)
      * struct lys_ident **ident.ref;      array of pointers (reference) to the identity definition (mandatory)
-     * int ident.count;                   number of base identity references
+     * unsigned int ident.count;          number of base identity references
      * -----------------------------------------------------------------------------------------------------------------
      * LY_TYPE_INST (inst)
      * int8_t inst.req;                   require-identifier restriction, see
@@ -978,11 +983,11 @@ struct lys_type {
      *                                    [RFC 6020 sec. 9.4.4](http://tools.ietf.org/html/rfc6020#section-9.4.4)
      * struct lys_restr *str.patterns;    array of pattern restrictions (optional), see
      *                                    [RFC 6020 sec. 9.4.6](http://tools.ietf.org/html/rfc6020#section-9.4.6)
-     * int str.pat_count;                 number of pattern definitions in the patterns array
+     * unsigned int str.pat_count;        number of pattern definitions in the patterns array
      * -----------------------------------------------------------------------------------------------------------------
      * LY_TYPE_UNION (uni)
      * struct lys_type *uni.types;        array of union's subtypes
-     * int uni.count;                     number of subtype definitions in types array
+     * unsigned int uni.count;            number of subtype definitions in types array
      * int uni.has_ptr_type;              types recursively include an instance-identifier or leafref (union must always
      *                                    be resolved after it is parsed)
      */

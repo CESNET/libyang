@@ -1323,14 +1323,16 @@ lys_restr_free(struct ly_ctx *ctx, struct lys_restr *restr,
 
 void
 lys_iffeature_free(struct ly_ctx *ctx, struct lys_iffeature *iffeature, uint8_t iffeature_size,
-                   void (*private_destructor)(const struct lys_node *node, void *priv))
+                   int shallow, void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     uint8_t i;
 
     for (i = 0; i < iffeature_size; ++i) {
         lys_extension_instances_free(ctx, iffeature[i].ext, iffeature[i].ext_size, private_destructor);
-        free(iffeature[i].expr);
-        free(iffeature[i].features);
+        if ( !shallow ) {
+            free(iffeature[i].expr);
+            free(iffeature[i].features);
+        }
     }
     free(iffeature);
 }
@@ -1340,6 +1342,7 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
          LY_DATA_TYPE base, int in_grp, int shallow, struct unres_schema *unres)
 {
     int i;
+    unsigned int u;
 
     switch (base) {
     case LY_TYPE_BINARY:
@@ -1354,16 +1357,16 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
             new->info.bits.bit = calloc(new->info.bits.count, sizeof *new->info.bits.bit);
             LY_CHECK_ERR_RETURN(!new->info.bits.bit, LOGMEM, -1);
 
-            for (i = 0; i < new->info.bits.count; i++) {
-                new->info.bits.bit[i].name = lydict_insert(mod->ctx, old->info.bits.bit[i].name, 0);
-                new->info.bits.bit[i].dsc = lydict_insert(mod->ctx, old->info.bits.bit[i].dsc, 0);
-                new->info.bits.bit[i].ref = lydict_insert(mod->ctx, old->info.bits.bit[i].ref, 0);
-                new->info.bits.bit[i].flags = old->info.bits.bit[i].flags;
-                new->info.bits.bit[i].pos = old->info.bits.bit[i].pos;
-                new->info.bits.bit[i].ext_size = old->info.bits.bit[i].ext_size;
-                if (lys_ext_dup(mod, old->info.bits.bit[i].ext, old->info.bits.bit[i].ext_size,
-                                &new->info.bits.bit[i], LYEXT_PAR_TYPE_BIT,
-                                &new->info.bits.bit[i].ext, shallow, unres)) {
+            for (u = 0; u < new->info.bits.count; u++) {
+                new->info.bits.bit[u].name = lydict_insert(mod->ctx, old->info.bits.bit[u].name, 0);
+                new->info.bits.bit[u].dsc = lydict_insert(mod->ctx, old->info.bits.bit[u].dsc, 0);
+                new->info.bits.bit[u].ref = lydict_insert(mod->ctx, old->info.bits.bit[u].ref, 0);
+                new->info.bits.bit[u].flags = old->info.bits.bit[u].flags;
+                new->info.bits.bit[u].pos = old->info.bits.bit[u].pos;
+                new->info.bits.bit[u].ext_size = old->info.bits.bit[u].ext_size;
+                if (lys_ext_dup(mod, old->info.bits.bit[u].ext, old->info.bits.bit[u].ext_size,
+                                &new->info.bits.bit[u], LYEXT_PAR_TYPE_BIT,
+                                &new->info.bits.bit[u].ext, shallow, unres)) {
                     return -1;
                 }
             }
@@ -1384,16 +1387,16 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
             new->info.enums.enm = calloc(new->info.enums.count, sizeof *new->info.enums.enm);
             LY_CHECK_ERR_RETURN(!new->info.enums.enm, LOGMEM, -1);
 
-            for (i = 0; i < new->info.enums.count; i++) {
-                new->info.enums.enm[i].name = lydict_insert(mod->ctx, old->info.enums.enm[i].name, 0);
-                new->info.enums.enm[i].dsc = lydict_insert(mod->ctx, old->info.enums.enm[i].dsc, 0);
-                new->info.enums.enm[i].ref = lydict_insert(mod->ctx, old->info.enums.enm[i].ref, 0);
-                new->info.enums.enm[i].flags = old->info.enums.enm[i].flags;
-                new->info.enums.enm[i].value = old->info.enums.enm[i].value;
-                new->info.enums.enm[i].ext_size = old->info.enums.enm[i].ext_size;
-                if (lys_ext_dup(mod, old->info.enums.enm[i].ext, old->info.enums.enm[i].ext_size,
-                                &new->info.enums.enm[i], LYEXT_PAR_TYPE_ENUM,
-                                &new->info.enums.enm[i].ext, shallow, unres)) {
+            for (u = 0; u < new->info.enums.count; u++) {
+                new->info.enums.enm[u].name = lydict_insert(mod->ctx, old->info.enums.enm[u].name, 0);
+                new->info.enums.enm[u].dsc = lydict_insert(mod->ctx, old->info.enums.enm[u].dsc, 0);
+                new->info.enums.enm[u].ref = lydict_insert(mod->ctx, old->info.enums.enm[u].ref, 0);
+                new->info.enums.enm[u].flags = old->info.enums.enm[u].flags;
+                new->info.enums.enm[u].value = old->info.enums.enm[u].value;
+                new->info.enums.enm[u].ext_size = old->info.enums.enm[u].ext_size;
+                if (lys_ext_dup(mod, old->info.enums.enm[u].ext, old->info.enums.enm[u].ext_size,
+                                &new->info.enums.enm[u], LYEXT_PAR_TYPE_ENUM,
+                                &new->info.enums.enm[u].ext, shallow, unres)) {
                     return -1;
                 }
             }
@@ -1462,8 +1465,8 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
             new->info.uni.types = calloc(new->info.uni.count, sizeof *new->info.uni.types);
             LY_CHECK_ERR_RETURN(!new->info.uni.types, LOGMEM, -1);
 
-            for (i = 0; i < new->info.uni.count; i++) {
-                if (lys_type_dup(mod, parent, &(new->info.uni.types[i]), &(old->info.uni.types[i]), in_grp,
+            for (u = 0; u < new->info.uni.count; u++) {
+                if (lys_type_dup(mod, parent, &(new->info.uni.types[u]), &(old->info.uni.types[u]), in_grp,
                         shallow, unres)) {
                     return -1;
                 }
@@ -1513,7 +1516,7 @@ lys_copy_union_leafrefs(struct lys_module *mod, struct lys_node *parent, struct 
                         struct unres_schema *unres)
 {
     struct lys_type new;
-    int i, top_type;
+    unsigned int i, top_type;
     struct lys_ext_instance **ext;
     uint8_t ext_size;
     void *reloc;
@@ -1916,7 +1919,7 @@ void
 lys_type_free(struct ly_ctx *ctx, struct lys_type *type,
               void (*private_destructor)(const struct lys_node *node, void *priv))
 {
-    int i;
+    unsigned int i;
 
     assert(ctx);
     if (!type) {
@@ -1937,7 +1940,7 @@ lys_type_free(struct ly_ctx *ctx, struct lys_type *type,
             lydict_remove(ctx, type->info.bits.bit[i].name);
             lydict_remove(ctx, type->info.bits.bit[i].dsc);
             lydict_remove(ctx, type->info.bits.bit[i].ref);
-            lys_iffeature_free(ctx, type->info.bits.bit[i].iffeature, type->info.bits.bit[i].iffeature_size,
+            lys_iffeature_free(ctx, type->info.bits.bit[i].iffeature, type->info.bits.bit[i].iffeature_size, 0,
                                private_destructor);
             lys_extension_instances_free(ctx, type->info.bits.bit[i].ext, type->info.bits.bit[i].ext_size,
                                          private_destructor);
@@ -1955,7 +1958,7 @@ lys_type_free(struct ly_ctx *ctx, struct lys_type *type,
             lydict_remove(ctx, type->info.enums.enm[i].name);
             lydict_remove(ctx, type->info.enums.enm[i].dsc);
             lydict_remove(ctx, type->info.enums.enm[i].ref);
-            lys_iffeature_free(ctx, type->info.enums.enm[i].iffeature, type->info.enums.enm[i].iffeature_size,
+            lys_iffeature_free(ctx, type->info.enums.enm[i].iffeature, type->info.enums.enm[i].iffeature_size, 0,
                                private_destructor);
             lys_extension_instances_free(ctx, type->info.enums.enm[i].ext, type->info.enums.enm[i].ext_size,
                                          private_destructor);
@@ -2079,7 +2082,7 @@ lys_augment_free(struct ly_ctx *ctx, struct lys_node_augment *aug,
     lydict_remove(ctx, aug->dsc);
     lydict_remove(ctx, aug->ref);
 
-    lys_iffeature_free(ctx, aug->iffeature, aug->iffeature_size, private_destructor);
+    lys_iffeature_free(ctx, aug->iffeature, aug->iffeature_size, 0, private_destructor);
     lys_extension_instances_free(ctx, aug->ext, aug->ext_size, private_destructor);
 
     lys_when_free(ctx, aug->when, private_destructor);
@@ -2099,7 +2102,7 @@ lys_ident_free(struct ly_ctx *ctx, struct lys_ident *ident,
     lydict_remove(ctx, ident->name);
     lydict_remove(ctx, ident->dsc);
     lydict_remove(ctx, ident->ref);
-    lys_iffeature_free(ctx, ident->iffeature, ident->iffeature_size, private_destructor);
+    lys_iffeature_free(ctx, ident->iffeature, ident->iffeature_size, 0, private_destructor);
     lys_extension_instances_free(ctx, ident->ext, ident->ext_size, private_destructor);
 
 }
@@ -2272,7 +2275,7 @@ lys_feature_free(struct ly_ctx *ctx, struct lys_feature *f,
     lydict_remove(ctx, f->name);
     lydict_remove(ctx, f->dsc);
     lydict_remove(ctx, f->ref);
-    lys_iffeature_free(ctx, f->iffeature, f->iffeature_size, private_destructor);
+    lys_iffeature_free(ctx, f->iffeature, f->iffeature_size, 0, private_destructor);
     ly_set_free(f->depfeatures);
     lys_extension_instances_free(ctx, f->ext, f->ext_size, private_destructor);
 }
@@ -2361,6 +2364,8 @@ lys_uses_free(struct ly_ctx *ctx, struct lys_node_uses *uses,
         lydict_remove(ctx, uses->refine[i].dsc);
         lydict_remove(ctx, uses->refine[i].ref);
 
+        lys_iffeature_free(ctx, uses->refine[i].iffeature, uses->refine[i].iffeature_size, 0, private_destructor);
+
         for (j = 0; j < uses->refine[i].must_size; j++) {
             lys_restr_free(ctx, &uses->refine[i].must[j], private_destructor);
         }
@@ -2410,7 +2415,7 @@ lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys
     /* common part */
     lydict_remove(ctx, node->name);
     if (!(node->nodetype & (LYS_INPUT | LYS_OUTPUT))) {
-        lys_iffeature_free(ctx, node->iffeature, node->iffeature_size, private_destructor);
+        lys_iffeature_free(ctx, node->iffeature, node->iffeature_size, shallow, private_destructor);
         lydict_remove(ctx, node->dsc);
         lydict_remove(ctx, node->ref);
     }
@@ -4826,7 +4831,7 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
                     EXTCOMPLEX_FREE_STRUCT(LY_STMT_TYPEDEF, struct lys_tpdf, lys_tpdf_free, 1);
                     break;
                 case LY_STMT_IFFEATURE:
-                    EXTCOMPLEX_FREE_STRUCT(LY_STMT_IFFEATURE, struct lys_iffeature, lys_iffeature_free, 0, 1);
+                    EXTCOMPLEX_FREE_STRUCT(LY_STMT_IFFEATURE, struct lys_iffeature, lys_iffeature_free, 0, 1, 0);
                     break;
                 case LY_STMT_MAX:
                 case LY_STMT_MIN:

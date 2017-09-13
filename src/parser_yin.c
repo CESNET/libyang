@@ -35,9 +35,22 @@
 #define GETVAL(value, node, arg)                                                 \
     value = lyxml_get_attr(node, arg, NULL);                                     \
     if (!value) {                                                                \
-        LOGVAL(LYE_MISSARG, LY_VLOG_NONE, NULL, arg, node->name);  \
+        LOGVAL(LYE_MISSARG, LY_VLOG_NONE, NULL, arg, node->name);                \
         goto error;                                                              \
     }
+
+#define YIN_CHECK_ARRAY_OVERFLOW_CODE(counter, storage, name, parent, code)      \
+    if ((counter) == LY_ARRAY_MAX(storage)) {                                    \
+        LOGERR(LY_EINT, "Reached limit (%"PRIu64") for storing %s in %s statement.", \
+               LY_ARRAY_MAX(storage), name, parent);                             \
+        code;                                                                    \
+    }
+
+#define YIN_CHECK_ARRAY_OVERFLOW_RETURN(counter, storage, name, parent, retval)  \
+    YIN_CHECK_ARRAY_OVERFLOW_CODE(counter, storage, name, parent, return retval)
+
+#define YIN_CHECK_ARRAY_OVERFLOW_GOTO(counter, storage, name, parent, target)    \
+    YIN_CHECK_ARRAY_OVERFLOW_CODE(counter, storage, name, parent, goto target)
 
 #define OPT_IDENT       0x01
 #define OPT_CFG_PARSE   0x02
@@ -129,79 +142,98 @@ lyp_yin_parse_subnode_ext(struct lys_module *mod, void *elem, LYEXT_PAR elem_typ
     int r;
     struct lys_ext_instance ***ext;
     uint8_t *ext_size;
+    const char *statement;
 
     switch (elem_type) {
     case LYEXT_PAR_MODULE:
         ext_size = &((struct lys_module *)elem)->ext_size;
         ext = &((struct lys_module *)elem)->ext;
+        statement = ((struct lys_module *)elem)->type ? "submodule" : "module";
         break;
     case LYEXT_PAR_IMPORT:
         ext_size = &((struct lys_import *)elem)->ext_size;
         ext = &((struct lys_import *)elem)->ext;
+        statement = "import";
         break;
     case LYEXT_PAR_INCLUDE:
         ext_size = &((struct lys_include *)elem)->ext_size;
         ext = &((struct lys_include *)elem)->ext;
+        statement = "include";
         break;
     case LYEXT_PAR_REVISION:
         ext_size = &((struct lys_revision *)elem)->ext_size;
         ext = &((struct lys_revision *)elem)->ext;
+        statement = "revision";
         break;
     case LYEXT_PAR_NODE:
         ext_size = &((struct lys_node *)elem)->ext_size;
         ext = &((struct lys_node *)elem)->ext;
+        statement = strnodetype(((struct lys_node *)elem)->nodetype);
         break;
     case LYEXT_PAR_IDENT:
         ext_size = &((struct lys_ident *)elem)->ext_size;
         ext = &((struct lys_ident *)elem)->ext;
+        statement = "identity";
         break;
     case LYEXT_PAR_TYPE:
         ext_size = &((struct lys_type *)elem)->ext_size;
         ext = &((struct lys_type *)elem)->ext;
+        statement = "type";
         break;
     case LYEXT_PAR_TYPE_BIT:
         ext_size = &((struct lys_type_bit *)elem)->ext_size;
         ext = &((struct lys_type_bit *)elem)->ext;
+        statement = "bit";
         break;
     case LYEXT_PAR_TYPE_ENUM:
         ext_size = &((struct lys_type_enum *)elem)->ext_size;
         ext = &((struct lys_type_enum *)elem)->ext;
+        statement = "enum";
         break;
     case LYEXT_PAR_TPDF:
         ext_size = &((struct lys_tpdf *)elem)->ext_size;
         ext = &((struct lys_tpdf *)elem)->ext;
+        statement = " typedef";
         break;
     case LYEXT_PAR_EXT:
         ext_size = &((struct lys_ext *)elem)->ext_size;
         ext = &((struct lys_ext *)elem)->ext;
+        statement = "extension";
         break;
     case LYEXT_PAR_EXTINST:
         ext_size = &((struct lys_ext_instance *)elem)->ext_size;
         ext = &((struct lys_ext_instance *)elem)->ext;
+        statement = "extension instance";
         break;
     case LYEXT_PAR_FEATURE:
         ext_size = &((struct lys_feature *)elem)->ext_size;
         ext = &((struct lys_feature *)elem)->ext;
+        statement = "feature";
         break;
     case LYEXT_PAR_REFINE:
         ext_size = &((struct lys_refine *)elem)->ext_size;
         ext = &((struct lys_refine *)elem)->ext;
+        statement = "refine";
         break;
     case LYEXT_PAR_RESTR:
         ext_size = &((struct lys_restr *)elem)->ext_size;
         ext = &((struct lys_restr *)elem)->ext;
+        statement = "YANG restriction";
         break;
     case LYEXT_PAR_WHEN:
         ext_size = &((struct lys_when *)elem)->ext_size;
         ext = &((struct lys_when *)elem)->ext;
+        statement = "when";
         break;
     case LYEXT_PAR_DEVIATE:
         ext_size = &((struct lys_deviate *)elem)->ext_size;
         ext = &((struct lys_deviate *)elem)->ext;
+        statement = "deviate";
         break;
     case LYEXT_PAR_DEVIATION:
         ext_size = &((struct lys_deviation *)elem)->ext_size;
         ext = &((struct lys_deviation *)elem)->ext;
+        statement = "deviation";
         break;
     default:
         LOGERR(LY_EINT, "parent type %d", elem_type);
@@ -224,6 +256,7 @@ lyp_yin_parse_subnode_ext(struct lys_module *mod, void *elem, LYEXT_PAR elem_typ
         /* parse it as extension */
 parseext:
 
+        YIN_CHECK_ARRAY_OVERFLOW_RETURN(*ext_size, *ext_size, "extension", statement, EXIT_FAILURE);
         /* first, allocate a space for the extension instance in the parent elem */
         reallocated = realloc(*ext, (1 + (*ext_size)) * sizeof **ext);
         LY_CHECK_ERR_RETURN(!reallocated, LOGMEM, EXIT_FAILURE);
@@ -278,6 +311,7 @@ error:
             lyxml_free(parent->module->ctx, node);
         } else if (strcmp(node->ns->value, LY_NSYIN)) {
             /* extension */
+            YIN_CHECK_ARRAY_OVERFLOW_RETURN(c_ext, iffeat->ext_size, "extensions", "if-feature", EXIT_FAILURE);
             c_ext++;
         } else {
             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, node->name, "if-feature");
@@ -325,18 +359,21 @@ fill_yin_identity(struct lys_module *module, struct lyxml_elem *yin, struct lys_
     LY_TREE_FOR(yin->child, node) {
         if (strcmp(node->ns->value, LY_NSYIN)) {
             /* extension */
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ext, ident->ext_size, "extensions", "identity", error);
             c_ext++;
         } else if (!strcmp(node->name, "base")) {
             if (c_base && (module->version < 2)) {
                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "base", "identity");
                 goto error;
             }
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_base, ident->base_size, "bases", "identity", error);
             if (lyp_yin_parse_subnode_ext(module, ident, LYEXT_PAR_IDENT, node, LYEXT_SUBSTMT_BASE, c_base, unres)) {
                 goto error;
             }
             c_base++;
 
         } else if ((module->version >= 2) && !strcmp(node->name, "if-feature")) {
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ftrs, ident->iffeature_size, "if-features", "identity", error);
             c_ftrs++;
 
         } else {
@@ -486,7 +523,8 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     struct lys_type_bit bit, *bits_sc = NULL;
     struct lys_type_enum *enms_sc = NULL; /* shortcut */
     struct lys_type *dertype;
-    int i, j, rc, val_set, c_ftrs, c_ext = 0;
+    int rc, val_set, c_ftrs, c_ext = 0;
+    unsigned int i, j;
     int ret = -1;
     int64_t v, v_;
     int64_t p, p_;
@@ -568,6 +606,8 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             continue;
         }
 
+        YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ext, type->ext_size, "extensions", "type", error);
+
         lyxml_unlink_elem(module->ctx, node, 2);
         lyxml_add_child(module->ctx, &exts, node);
         c_ext++;
@@ -592,6 +632,8 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         /* get bit specifications, at least one must be present */
         LY_TREE_FOR_SAFE(yin->child, next, node) {
             if (!strcmp(node->name, "bit")) {
+                YIN_CHECK_ARRAY_OVERFLOW_CODE(type->info.bits.count, type->info.bits.count, "bits", "type",
+                                              type->info.bits.count = 0; goto error);
                 type->info.bits.count++;
             } else {
                 LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, node->name);
@@ -715,6 +757,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                         goto error;
                     }
                 } else if ((module->version >= 2) && !strcmp(node->name, "if-feature")) {
+                    YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ftrs, type->info.bits.bit[i].iffeature_size, "if-features", "bit", error);
                     c_ftrs++;
                 } else {
                     LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, node->name);
@@ -867,6 +910,8 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         LY_TREE_FOR_SAFE(yin->child, next, node) {
 
             if (!strcmp(node->name, "enum")) {
+                YIN_CHECK_ARRAY_OVERFLOW_CODE(type->info.enums.count, type->info.enums.count, "enums", "type",
+                                              type->info.enums.count = 0; goto error);
                 type->info.enums.count++;
             } else {
                 LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, node->name);
@@ -1005,6 +1050,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                         goto error;
                     }
                 } else if ((module->version >= 2) && !strcmp(node->name, "if-feature")) {
+                    YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ftrs, type->info.enums.enm[i].iffeature_size, "if-features", "enum", error);
                     c_ftrs++;
 
                 } else {
@@ -1309,6 +1355,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 }
                 lyxml_free(module->ctx, node);
             } else if (!strcmp(node->name, "pattern")) {
+                YIN_CHECK_ARRAY_OVERFLOW_GOTO(i, type->info.str.pat_count, "patterns", "type", error);
                 i++;
             } else {
                 LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, node->name);
@@ -1383,6 +1430,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                     LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "type", "derived type");
                     goto error;
                 }
+                YIN_CHECK_ARRAY_OVERFLOW_GOTO(i, type->info.uni.count, "types", "type", error);
                 i++;
             } else {
                 LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, node->name);
@@ -1499,6 +1547,7 @@ fill_yin_typedef(struct lys_module *module, struct lys_node *parent, struct lyxm
     LY_TREE_FOR_SAFE(yin->child, next, node) {
         if (strcmp(node->ns->value, LY_NSYIN)) {
             /* extension */
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ext, tpdf->ext_size, "extensions", "typedef", error);
             c_ext++;
             continue;
         } else if (!strcmp(node->name, "type")) {
@@ -1606,6 +1655,7 @@ fill_yin_extension(struct lys_module *module, struct lyxml_elem *yin, struct lys
     LY_TREE_FOR_SAFE(yin->child, next, node) {
         if (strcmp(node->ns->value, LY_NSYIN)) {
             /* possible extension instance */
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ext, ext->ext_size, "extensions", "extension", error);
             c_ext++;
         } else if (!strcmp(node->name, "argument")) {
             /* argument */
@@ -1692,8 +1742,10 @@ fill_yin_feature(struct lys_module *module, struct lyxml_elem *yin, struct lys_f
     LY_TREE_FOR(yin->child, child) {
         if (strcmp(child->ns->value, LY_NSYIN)) {
             /* extension */
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ext, f->ext_size, "extensions", "feature", error);
             c_ext++;
         } else if (!strcmp(child->name, "if-feature")) {
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ftrs, f->iffeature_size, "if-feature", "feature", error);
             c_ftrs++;
         } else {
             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, child->name);
@@ -1841,6 +1893,8 @@ fill_yin_unique(struct lys_module *module, struct lys_node *parent, struct lyxml
     start = value = vaux = strdup(orig);
     LY_CHECK_ERR_GOTO(!vaux, LOGMEM, error);
     while ((vaux = strpbrk(vaux, " \t\n"))) {
+        YIN_CHECK_ARRAY_OVERFLOW_CODE(unique->expr_size, unique->expr_size, "referenced items", "unique",
+                                      unique->expr_size = 0; goto error);
         unique->expr_size++;
         while (isspace(*vaux)) {
             vaux++;
@@ -2054,6 +2108,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
             continue;
         } else if (strcmp(child->ns->value, LY_NSYIN)) {
             /* extension */
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ext, dev->ext_size, "extensions", "deviation", error);
             c_ext++;
             continue;
         } else if (!strcmp(child->name, "description")) {
@@ -2081,6 +2136,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 goto error;
             }
         } else if (!strcmp(child->name, "deviate")) {
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_dev, dev->deviate_size, "deviates", "deviation", error);
             c_dev++;
 
             /* skip lyxml_free() at the end of the loop, node will be
@@ -2200,6 +2256,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 continue;
             } else if  (strcmp(child->ns->value, LY_NSYIN)) {
                 /* extensions */
+                YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ext, d->ext_size, "extensions", "deviate", error);
                 c_ext++;
             } else if (d->mod == LY_DEVIATE_NO) {
                 /* no YIN substatement expected in this case */
@@ -2245,6 +2302,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 if (lyp_yin_parse_subnode_ext(module, d, LYEXT_PAR_DEVIATE, child, LYEXT_SUBSTMT_DEFAULT, c_dflt, unres)) {
                     goto error;
                 }
+                YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_dflt, d->dflt_size, "defaults", "deviate", error);
                 c_dflt++;
 
                 /* check target node type */
@@ -2378,6 +2436,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                     goto error;
                 }
             } else if (!strcmp(child->name, "must")) {
+                YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_must, d->must_size, "musts", "deviate", error);
                 c_must++;
                 /* skip lyxml_free() at the end of the loop, this node will be processed later */
                 continue;
@@ -2425,6 +2484,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 if (lyp_yin_parse_subnode_ext(module, d, LYEXT_PAR_DEVIATE, child, LYEXT_SUBSTMT_UNIQUE, c_uniq, unres)) {
                     goto error;
                 }
+                YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_uniq, d->unique_size, "uniques", "deviate", error);
                 c_uniq++;
                 /* skip lyxml_free() at the end of the loop, this node will be processed later */
                 continue;
@@ -2973,9 +3033,11 @@ fill_yin_augment(struct lys_module *module, struct lys_node *parent, struct lyxm
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (strcmp(sub->ns->value, LY_NSYIN)) {
             /* extension */
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ext, aug->ext_size, "extensions", "augment", error);
             c_ext++;
             continue;
         } else if (!strcmp(sub->name, "if-feature")) {
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ftrs, aug->iffeature_size, "if-features", "augment", error);
             c_ftrs++;
             continue;
         } else if (!strcmp(sub->name, "when")) {
@@ -3120,6 +3182,7 @@ fill_yin_refine(struct lys_node *uses, struct lyxml_elem *yin, struct lys_refine
             /* garbage */
         } else if (strcmp(sub->ns->value, LY_NSYIN)) {
             /* extension */
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ext, rfn->ext_size, "extensions", "refine", error);
             c_ext++;
             continue;
 
@@ -3204,6 +3267,7 @@ fill_yin_refine(struct lys_node *uses, struct lyxml_elem *yin, struct lys_refine
                 }
             }
 
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_dflt, rfn->dflt_size, "defaults", "refine", error);
             if (lyp_yin_parse_subnode_ext(module, rfn, LYEXT_PAR_REFINE, sub, LYEXT_SUBSTMT_DEFAULT, c_dflt, unres)) {
                 goto error;
             }
@@ -3365,6 +3429,7 @@ fill_yin_refine(struct lys_node *uses, struct lyxml_elem *yin, struct lys_refine
                 rfn->target_type = LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYDATA;
             }
 
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_must, rfn->must_size, "musts", "refine", error);
             c_must++;
             continue;
 
@@ -3382,6 +3447,7 @@ fill_yin_refine(struct lys_node *uses, struct lyxml_elem *yin, struct lys_refine
                 rfn->target_type = LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYDATA;
             }
 
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ftrs, rfn->iffeature_size, "if-feature", "refine", error);
             c_ftrs++;
             continue;
         } else {
@@ -3475,6 +3541,7 @@ fill_yin_import(struct lys_module *module, struct lyxml_elem *yin, struct lys_im
             continue;
         } else if (strcmp(child->ns->value, LY_NSYIN)) {
             /* extension */
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ext, imp->ext_size, "extensions", "import", error);
             c_ext++;
             lyxml_unlink_elem(module->ctx, child, 2);
             lyxml_add_child(module->ctx, &exts, child);
@@ -3592,6 +3659,7 @@ fill_yin_include(struct lys_module *module, struct lys_submodule *submodule, str
             continue;
         } else if (strcmp(child->ns->value, LY_NSYIN)) {
             /* extension */
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ext, inc->ext_size, "extensions", "include", error);
             c_ext++;
             lyxml_unlink_elem(module->ctx, child, 2);
             lyxml_add_child(module->ctx, &exts, child);
@@ -3931,6 +3999,7 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (strcmp(sub->ns->value, LY_NSYIN)) {
             /* extension */
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ext, retval->ext_size, "extensions", "case", error);
             c_ext++;
         } else if (!strcmp(sub->name, "container") ||
                 !strcmp(sub->name, "leaf-list") ||
@@ -3944,6 +4013,7 @@ read_yin_case(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             lyxml_unlink_elem(module->ctx, sub, 2);
             lyxml_add_child(module->ctx, &root, sub);
         } else if (!strcmp(sub->name, "if-feature")) {
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ftrs, retval->iffeature_size, "if-features", "case", error);
             c_ftrs++;
         } else if (!strcmp(sub->name, "when")) {
             if (cs->when) {
@@ -4084,6 +4154,7 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (strcmp(sub->ns->value, LY_NSYIN)) {
             /* extension */
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ext, retval->ext_size, "extensions", "choice", error);
             c_ext++;
             /* keep it for later processing, skip lyxml_free() */
             continue;
@@ -4164,6 +4235,7 @@ read_yin_choice(struct lys_module *module, struct lys_node *parent, struct lyxml
                 goto error;
             }
         } else if (!strcmp(sub->name, "if-feature")) {
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ftrs, retval->iffeature_size, "if-features", "choice", error);
             c_ftrs++;
 
             /* skip lyxml_free() at the end of the loop, the sub node is processed later */
@@ -4289,6 +4361,7 @@ read_yin_anydata(struct lys_module *module, struct lys_node *parent, struct lyxm
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (strcmp(sub->ns->value, LY_NSYIN)) {
             /* extension */
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ext, retval->ext_size, "extensions", "anydata", error);
             c_ext++;
         } else if (!strcmp(sub->name, "mandatory")) {
             if (f_mand) {
@@ -4328,8 +4401,10 @@ read_yin_anydata(struct lys_module *module, struct lys_node *parent, struct lyxm
             }
             lyxml_free(module->ctx, sub);
         } else if (!strcmp(sub->name, "must")) {
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_must, anyxml->must_size, "musts", "anydata", error);
             c_must++;
         } else if (!strcmp(sub->name, "if-feature")) {
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ftrs, retval->iffeature_size, "if-features", "anydata", error);
             c_ftrs++;
 
         } else {
@@ -4439,6 +4514,7 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (strcmp(sub->ns->value, LY_NSYIN)) {
             /* extension */
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ext, retval->ext_size, "extensions", "leaf", error);
             c_ext++;
             continue;
         } else if (!strcmp(sub->name, "type")) {
@@ -4509,9 +4585,11 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             }
 
         } else if (!strcmp(sub->name, "must")) {
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_must, leaf->must_size, "musts", "leaf", error);
             c_must++;
             continue;
         } else if (!strcmp(sub->name, "if-feature")) {
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ftrs, retval->iffeature_size, "musts", "leaf", error);
             c_ftrs++;
             continue;
 
@@ -4653,6 +4731,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (strcmp(sub->ns->value, LY_NSYIN)) {
             /* extension */
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ext, retval->ext_size, "extensions", "leaf-list", error);
             c_ext++;
             continue;
         } else if (!strcmp(sub->name, "type")) {
@@ -4707,9 +4786,11 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
                 goto error;
             }
         } else if (!strcmp(sub->name, "must")) {
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_must, llist->must_size, "musts", "leaf-list", error);
             c_must++;
             continue;
         } else if (!strcmp(sub->name, "if-feature")) {
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ftrs, retval->iffeature_size, "if-features", "leaf-list", error);
             c_ftrs++;
             continue;
         } else if ((module->version >= 2) && !strcmp(sub->name, "default")) {
@@ -4718,6 +4799,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
                 goto error;
             }
 
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_dflt, llist->dflt_size, "defaults", "leaf-list", error);
             c_dflt++;
             continue;
 
@@ -4960,6 +5042,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (strcmp(sub->ns->value, LY_NSYIN)) {
             /* extension */
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ext, retval->ext_size, "extensions", "list", error);
             c_ext++;
             continue;
 
@@ -5004,14 +5087,18 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             }
             lyxml_free(module->ctx, sub);
         } else if (!strcmp(sub->name, "unique")) {
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_uniq, list->unique_size, "uniques", "list", error);
             c_uniq++;
             lyxml_unlink_elem(module->ctx, sub, 2);
             lyxml_add_child(module->ctx, &uniq, sub);
         } else if (!strcmp(sub->name, "typedef")) {
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_tpdf, list->tpdf_size, "typedefs", "list", error);
             c_tpdf++;
         } else if (!strcmp(sub->name, "must")) {
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_must, list->must_size, "musts", "list", error);
             c_must++;
         } else if (!strcmp(sub->name, "if-feature")) {
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ftrs, retval->iffeature_size, "if-features", "list", error);
             c_ftrs++;
 
             /* optional stetments */
@@ -5321,6 +5408,7 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (strcmp(sub->ns->value, LY_NSYIN)) {
             /* extension */
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ext, retval->ext_size, "extensions", "container", error);
             c_ext++;
         } else if (!strcmp(sub->name, "presence")) {
             if (cont->presence) {
@@ -5364,10 +5452,13 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
 
             /* array counters */
         } else if (!strcmp(sub->name, "typedef")) {
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_tpdf, cont->tpdf_size, "typedefs", "container", error);
             c_tpdf++;
         } else if (!strcmp(sub->name, "must")) {
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_must, cont->must_size, "musts", "container", error);
             c_must++;
         } else if (!strcmp(sub->name, "if-feature")) {
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ftrs, retval->iffeature_size, "if-features", "container", error);
             c_ftrs++;
         } else {
             LOGVAL(LYE_INSTMT, LY_VLOG_LYS, retval, sub->name);
@@ -5521,6 +5612,7 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (strcmp(sub->ns->value, LY_NSYIN)) {
             /* extension */
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ext, retval->ext_size, "extensions", "grouping", error);
             c_ext++;
 
         /* data statements */
@@ -5540,6 +5632,7 @@ read_yin_grouping(struct lys_module *module, struct lys_node *parent, struct lyx
 
             /* array counters */
         } else if (!strcmp(sub->name, "typedef")) {
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_tpdf, grp->tpdf_size, "typedefs", "grouping", error);
             c_tpdf++;
         } else {
             LOGVAL(LYE_INSTMT, LY_VLOG_LYS, retval, sub->name);
@@ -5675,6 +5768,8 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
             lyxml_free(module->ctx, sub);
         } else if (strcmp(sub->ns->value, LY_NSYIN)) {
             /* extension */
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ext, retval->ext_size, "extensions",
+                                          inout->nodetype == LYS_INPUT ? "input" : "output", error);
             c_ext++;
         } else if (!strcmp(sub->name, "container") ||
                 !strcmp(sub->name, "leaf-list") ||
@@ -5690,9 +5785,13 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
 
             /* array counters */
         } else if (!strcmp(sub->name, "typedef")) {
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_tpdf, inout->tpdf_size, "typedefs",
+                                          inout->nodetype == LYS_INPUT ? "input" : "output", error);
             c_tpdf++;
 
         } else if ((module->version >= 2) && !strcmp(sub->name, "must")) {
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_must, inout->must_size, "musts",
+                                          inout->nodetype == LYS_INPUT ? "input" : "output", error);
             c_must++;
 
         } else {
@@ -5834,6 +5933,7 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (strcmp(sub->ns->value, LY_NSYIN)) {
             /* extension */
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ext, retval->ext_size, "extensions", "notification", error);
             c_ext++;
             continue;
 
@@ -5852,10 +5952,13 @@ read_yin_notif(struct lys_module *module, struct lys_node *parent, struct lyxml_
 
             /* array counters */
         } else if (!strcmp(sub->name, "typedef")) {
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_tpdf, notif->tpdf_size, "typedefs", "notification", error);
             c_tpdf++;
         } else if (!strcmp(sub->name, "if-feature")) {
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ftrs, retval->iffeature_size, "if-features", "notification", error);
             c_ftrs++;
         } else if ((module->version >= 2) && !strcmp(sub->name, "must")) {
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_must, notif->must_size, "musts", "notification", error);
             c_must++;
         } else {
             LOGVAL(LYE_INSTMT, LY_VLOG_LYS, retval, sub->name);
@@ -6021,6 +6124,8 @@ read_yin_rpc_action(struct lys_module *module, struct lys_node *parent, struct l
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (strcmp(sub->ns->value, LY_NSYIN)) {
             /* extension */
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ext, retval->ext_size, "extensions",
+                                          rpc->nodetype == LYS_RPC ? "rpc" : "action", error);
             c_ext++;
             continue;
         } else if (!strcmp(sub->name, "input")) {
@@ -6047,8 +6152,12 @@ read_yin_rpc_action(struct lys_module *module, struct lys_node *parent, struct l
 
             /* array counters */
         } else if (!strcmp(sub->name, "typedef")) {
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_tpdf, rpc->tpdf_size, "typedefs",
+                                          rpc->nodetype == LYS_RPC ? "rpc" : "action", error);
             c_tpdf++;
         } else if (!strcmp(sub->name, "if-feature")) {
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ftrs, retval->iffeature_size, "if-features",
+                                          rpc->nodetype == LYS_RPC ? "rpc" : "action", error);
             c_ftrs++;
         } else {
             LOGVAL(LYE_INSTMT, LY_VLOG_LYS, retval, sub->name);
@@ -6167,13 +6276,17 @@ read_yin_uses(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     LY_TREE_FOR_SAFE(yin->child, next, sub) {
         if (strcmp(sub->ns->value, LY_NSYIN)) {
             /* extension */
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ext, retval->ext_size, "extensions", "uses", error);
             c_ext++;
             continue;
         } else if (!strcmp(sub->name, "refine")) {
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ref, uses->refine_size, "refines", "uses", error);
             c_ref++;
         } else if (!strcmp(sub->name, "augment")) {
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_aug, uses->augment_size, "augments", "uses", error);
             c_aug++;
         } else if (!strcmp(sub->name, "if-feature")) {
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ftrs, retval->iffeature_size, "if-features", "uses", error);
             c_ftrs++;
         } else if (!strcmp(sub->name, "when")) {
             if (uses->when) {
@@ -6323,6 +6436,8 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             continue;
         } else if (strcmp(child->ns->value, LY_NSYIN)) {
             /* possible extension instance */
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_extinst, trg->ext_size, "extension instances",
+                                          submodule ? "submodule" : "module", error);
             lyxml_unlink_elem(module->ctx, child, 2);
             lyxml_add_child(module->ctx, &exts, child);
             c_extinst++;
@@ -6432,7 +6547,8 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 goto error;
             }
             substmt_group = 1;
-
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_imp, trg->imp_size, "imports",
+                                          submodule ? "submodule" : "module", error);
             c_imp++;
 
             substmt_prev = "import";
@@ -6444,7 +6560,8 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 goto error;
             }
             substmt_group = 3;
-
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_rev, trg->rev_size, "revisions",
+                                          submodule ? "submodule" : "module", error);
             c_rev++;
 
             lyxml_unlink_elem(ctx, child, 2);
@@ -6453,13 +6570,15 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             substmt_prev = "revision";
         } else if (!strcmp(child->name, "typedef")) {
             substmt_group = 4;
-
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_tpdf, trg->tpdf_size, "typedefs",
+                                          submodule ? "submodule" : "module", error);
             c_tpdf++;
 
             substmt_prev = "typedef";
         } else if (!strcmp(child->name, "identity")) {
             substmt_group = 4;
-
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ident, trg->ident_size, "identities",
+                                          submodule ? "submodule" : "module", error);
             c_ident++;
 
             substmt_prev = "identity";
@@ -6471,13 +6590,15 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
                 goto error;
             }
             substmt_group = 1;
-
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_inc, trg->inc_size, "includes",
+                                          submodule ? "submodule" : "module", error);
             c_inc++;
 
             substmt_prev = "include";
         } else if (!strcmp(child->name, "augment")) {
             substmt_group = 4;
-
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_aug, trg->augment_size, "augments",
+                                          submodule ? "submodule" : "module", error);
             c_aug++;
             /* keep augments separated, processed last */
             lyxml_unlink_elem(ctx, child, 2);
@@ -6486,7 +6607,8 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             substmt_prev = "augment";
         } else if (!strcmp(child->name, "feature")) {
             substmt_group = 4;
-
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ftrs, trg->features_size, "features",
+                                          submodule ? "submodule" : "module", error);
             c_ftrs++;
 
             substmt_prev = "feature";
@@ -6657,13 +6779,15 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             substmt_prev = "yang-version";
         } else if (!strcmp(child->name, "extension")) {
             substmt_group = 4;
-
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_ext, trg->extensions_size, "extensions",
+                                          submodule ? "submodule" : "module", error);
             c_ext++;
 
             substmt_prev = "extension";
         } else if (!strcmp(child->name, "deviation")) {
             substmt_group = 4;
-
+            YIN_CHECK_ARRAY_OVERFLOW_GOTO(c_dev, trg->deviation_size, "deviations",
+                                          submodule ? "submodule" : "module", error);
             c_dev++;
 
             substmt_prev = "deviation";

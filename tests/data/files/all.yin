@@ -12,6 +12,7 @@
     <status value="obsolete"/>
   </feature>
   <feature name="feat2"/>
+  <feature name="feat3"/>
   <identity name="ident2">
     <base name="ident1"/>
   </identity>
@@ -44,6 +45,7 @@
     <uses name="group1">
       <if-feature name="feat2"/>
       <refine target-node="leaf1">
+        <if-feature name="feat3"/>
         <must condition="24 - 4 = number('20')"/>
         <default value="25"/>
         <config value="true"/>
