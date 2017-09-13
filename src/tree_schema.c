@@ -2364,6 +2364,8 @@ lys_uses_free(struct ly_ctx *ctx, struct lys_node_uses *uses,
         lydict_remove(ctx, uses->refine[i].dsc);
         lydict_remove(ctx, uses->refine[i].ref);
 
+        lys_iffeature_free(ctx, uses->refine[i].iffeature, uses->refine[i].iffeature_size, 0, private_destructor);
+
         for (j = 0; j < uses->refine[i].must_size; j++) {
             lys_restr_free(ctx, &uses->refine[i].must[j], private_destructor);
         }
