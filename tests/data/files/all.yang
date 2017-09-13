@@ -13,6 +13,8 @@ module all {
 
   feature feat2;
 
+  feature feat3;
+
   identity ident2 {
     base ident1;
   }
@@ -51,6 +53,7 @@ module all {
     uses group1 {
       if-feature "feat2";
       refine "leaf1" {
+        if-feature "feat3";
         must "24 - 4 = number('20')";
         default "25";
         config true;
