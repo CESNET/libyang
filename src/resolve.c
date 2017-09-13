@@ -4819,6 +4819,8 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
             size = *old_size + rfn->iffeature_size;
             iff = realloc(*old_iff, size * sizeof *rfn->iffeature);
             LY_CHECK_ERR_GOTO(!iff, LOGMEM, fail);
+            *old_iff = iff;
+
             for (k = 0, j = *old_size; k < rfn->iffeature_size; k++, j++) {
                 resolve_iffeature_getsizes(&rfn->iffeature[k], &usize1, &usize2);
                 if (usize1) {
@@ -4833,11 +4835,15 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
                     iff[j].features = malloc(usize2 * sizeof *iff[k].features);
                     LY_CHECK_ERR_GOTO(!iff[j].expr, LOGMEM, fail);
                     memcpy(iff[j].features, rfn->iffeature[k].features, usize2 * sizeof *iff[j].features);
-                }
-            }
 
-            *old_iff = iff;
-            *old_size = size;
+                    /* duplicate extensions */
+                    iff[j].ext_size = rfn->iffeature[k].ext_size;
+                    lys_ext_dup(rfn->module, rfn->iffeature[k].ext, rfn->iffeature[k].ext_size,
+                                &rfn->iffeature[k], LYEXT_PAR_IFFEATURE, &iff[j].ext, 0, unres);
+                }
+                (*old_size)++;
+            }
+            assert(*old_size == size);
         }
     }
 
