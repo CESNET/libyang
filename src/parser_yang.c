@@ -28,7 +28,7 @@ static int yang_check_nodes(struct lys_module *module, struct lys_node *parent, 
                             int options, struct unres_schema *unres);
 static int yang_fill_ext_substm_index(struct lys_ext_instance_complex *ext, LY_STMT stmt, enum yytokentype keyword);
 static void yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node);
-void lys_iffeature_free(struct ly_ctx *ctx, struct lys_iffeature *iffeature, uint8_t iffeature_size,
+void lys_iffeature_free(struct ly_ctx *ctx, struct lys_iffeature *iffeature, uint8_t iffeature_size, int shallow,
                         void (*private_destructor)(const struct lys_node *node, void *priv));
 
 static int
@@ -3112,7 +3112,7 @@ yang_free_nodes(struct ly_ctx *ctx, struct lys_node *node)
         /* common part */
         lydict_remove(ctx, tmp->name);
         if (!(tmp->nodetype & (LYS_INPUT | LYS_OUTPUT))) {
-            lys_iffeature_free(ctx, tmp->iffeature, tmp->iffeature_size, NULL);
+            lys_iffeature_free(ctx, tmp->iffeature, tmp->iffeature_size, 0, NULL);
             lydict_remove(ctx, tmp->dsc);
             lydict_remove(ctx, tmp->ref);
         }
@@ -3172,7 +3172,7 @@ yang_free_augment(struct ly_ctx *ctx, struct lys_node_augment *aug)
     lydict_remove(ctx, aug->dsc);
     lydict_remove(ctx, aug->ref);
 
-    lys_iffeature_free(ctx, aug->iffeature, aug->iffeature_size, NULL);
+    lys_iffeature_free(ctx, aug->iffeature, aug->iffeature_size, 0, NULL);
     lys_when_free(ctx, aug->when, NULL);
     yang_free_nodes(ctx, aug->child);
     lys_extension_instances_free(ctx, aug->ext, aug->ext_size, NULL);

@@ -1323,14 +1323,16 @@ lys_restr_free(struct ly_ctx *ctx, struct lys_restr *restr,
 
 void
 lys_iffeature_free(struct ly_ctx *ctx, struct lys_iffeature *iffeature, uint8_t iffeature_size,
-                   void (*private_destructor)(const struct lys_node *node, void *priv))
+                   int shallow, void (*private_destructor)(const struct lys_node *node, void *priv))
 {
     uint8_t i;
 
     for (i = 0; i < iffeature_size; ++i) {
         lys_extension_instances_free(ctx, iffeature[i].ext, iffeature[i].ext_size, private_destructor);
-        free(iffeature[i].expr);
-        free(iffeature[i].features);
+        if ( !shallow ) {
+            free(iffeature[i].expr);
+            free(iffeature[i].features);
+        }
     }
     free(iffeature);
 }
@@ -1938,7 +1940,7 @@ lys_type_free(struct ly_ctx *ctx, struct lys_type *type,
             lydict_remove(ctx, type->info.bits.bit[i].name);
             lydict_remove(ctx, type->info.bits.bit[i].dsc);
             lydict_remove(ctx, type->info.bits.bit[i].ref);
-            lys_iffeature_free(ctx, type->info.bits.bit[i].iffeature, type->info.bits.bit[i].iffeature_size,
+            lys_iffeature_free(ctx, type->info.bits.bit[i].iffeature, type->info.bits.bit[i].iffeature_size, 0,
                                private_destructor);
             lys_extension_instances_free(ctx, type->info.bits.bit[i].ext, type->info.bits.bit[i].ext_size,
                                          private_destructor);
@@ -1956,7 +1958,7 @@ lys_type_free(struct ly_ctx *ctx, struct lys_type *type,
             lydict_remove(ctx, type->info.enums.enm[i].name);
             lydict_remove(ctx, type->info.enums.enm[i].dsc);
             lydict_remove(ctx, type->info.enums.enm[i].ref);
-            lys_iffeature_free(ctx, type->info.enums.enm[i].iffeature, type->info.enums.enm[i].iffeature_size,
+            lys_iffeature_free(ctx, type->info.enums.enm[i].iffeature, type->info.enums.enm[i].iffeature_size, 0,
                                private_destructor);
             lys_extension_instances_free(ctx, type->info.enums.enm[i].ext, type->info.enums.enm[i].ext_size,
                                          private_destructor);
@@ -2080,7 +2082,7 @@ lys_augment_free(struct ly_ctx *ctx, struct lys_node_augment *aug,
     lydict_remove(ctx, aug->dsc);
     lydict_remove(ctx, aug->ref);
 
-    lys_iffeature_free(ctx, aug->iffeature, aug->iffeature_size, private_destructor);
+    lys_iffeature_free(ctx, aug->iffeature, aug->iffeature_size, 0, private_destructor);
     lys_extension_instances_free(ctx, aug->ext, aug->ext_size, private_destructor);
 
     lys_when_free(ctx, aug->when, private_destructor);
@@ -2100,7 +2102,7 @@ lys_ident_free(struct ly_ctx *ctx, struct lys_ident *ident,
     lydict_remove(ctx, ident->name);
     lydict_remove(ctx, ident->dsc);
     lydict_remove(ctx, ident->ref);
-    lys_iffeature_free(ctx, ident->iffeature, ident->iffeature_size, private_destructor);
+    lys_iffeature_free(ctx, ident->iffeature, ident->iffeature_size, 0, private_destructor);
     lys_extension_instances_free(ctx, ident->ext, ident->ext_size, private_destructor);
 
 }
@@ -2273,7 +2275,7 @@ lys_feature_free(struct ly_ctx *ctx, struct lys_feature *f,
     lydict_remove(ctx, f->name);
     lydict_remove(ctx, f->dsc);
     lydict_remove(ctx, f->ref);
-    lys_iffeature_free(ctx, f->iffeature, f->iffeature_size, private_destructor);
+    lys_iffeature_free(ctx, f->iffeature, f->iffeature_size, 0, private_destructor);
     ly_set_free(f->depfeatures);
     lys_extension_instances_free(ctx, f->ext, f->ext_size, private_destructor);
 }
@@ -2411,7 +2413,7 @@ lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys
     /* common part */
     lydict_remove(ctx, node->name);
     if (!(node->nodetype & (LYS_INPUT | LYS_OUTPUT))) {
-        lys_iffeature_free(ctx, node->iffeature, node->iffeature_size, private_destructor);
+        lys_iffeature_free(ctx, node->iffeature, node->iffeature_size, shallow, private_destructor);
         lydict_remove(ctx, node->dsc);
         lydict_remove(ctx, node->ref);
     }
@@ -4827,7 +4829,7 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
                     EXTCOMPLEX_FREE_STRUCT(LY_STMT_TYPEDEF, struct lys_tpdf, lys_tpdf_free, 1);
                     break;
                 case LY_STMT_IFFEATURE:
-                    EXTCOMPLEX_FREE_STRUCT(LY_STMT_IFFEATURE, struct lys_iffeature, lys_iffeature_free, 0, 1);
+                    EXTCOMPLEX_FREE_STRUCT(LY_STMT_IFFEATURE, struct lys_iffeature, lys_iffeature_free, 0, 1, 0);
                     break;
                 case LY_STMT_MAX:
                 case LY_STMT_MIN:
