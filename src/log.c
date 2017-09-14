@@ -551,7 +551,6 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
                     }
                 } else {
                     /* schema list without keys - use instance position */
-
                     i = j = lyd_list_pos(dlist);
                     len = 1;
                     while (j > 9) {
@@ -563,7 +562,7 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
                     LY_CHECK_ERR_RETURN(!str, LOGMEM, );
                     sprintf(str, "%d", i);
 
-                    LY_CHECK_ERR_RETURN((*index) < len + 2, LOGERR(LY_SUCCESS, "%s: path is too long."),);
+                    LY_CHECK_ERR_RETURN((*index) < len + 2, free(str); LOGERR(LY_SUCCESS, "%s: path is too long."),);
                     path[--(*index)] = ']';
                     (*index) -= len;
                     strncpy(&path[(*index)], str, len);
