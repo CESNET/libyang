@@ -6374,7 +6374,7 @@ eval_node_test(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
                                              exp->tok_len[*exp_idx], options);
                 }
             } else {
-                if (set && (options & LYXP_SNODE_ALL)) {
+                if (set && (set->type == LYXP_SET_SNODE_SET)) {
                     rc = moveto_snode(set, (struct lys_node *)cur_node, &exp->expr[exp->expr_pos[*exp_idx]],
                                       exp->tok_len[*exp_idx], options);
                 } else {
@@ -6390,11 +6390,20 @@ eval_node_test(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
                     }
                 }
                 if (i == -1) {
-                    path = lys_path((struct lys_node *)cur_node);
-                    LOGWRN("Schema node \"%.*s\" not found (%.*s) with context node \"%s\".",
-                           exp->tok_len[*exp_idx], &exp->expr[exp->expr_pos[*exp_idx]],
-                           exp->expr_pos[*exp_idx] + exp->tok_len[*exp_idx], exp->expr, path);
-                    free(path);
+                    if (options & LYXP_SNODE_ALL) {
+                        path = lys_path((struct lys_node *)cur_node);
+                        LOGWRN("Schema node \"%.*s\" not found (%.*s) with context node \"%s\".",
+                               exp->tok_len[*exp_idx], &exp->expr[exp->expr_pos[*exp_idx]],
+                               exp->expr_pos[*exp_idx] + exp->tok_len[*exp_idx], exp->expr, path);
+                        free(path);
+                    } else {
+                        path = lyd_path(cur_node);
+                        LOGVAL(LYE_XPATH_INSNODE, LY_VLOG_NONE, NULL,
+                               exp->tok_len[*exp_idx], &exp->expr[exp->expr_pos[*exp_idx]],
+                               exp->expr_pos[*exp_idx] + exp->tok_len[*exp_idx], exp->expr, path);
+                        free(path);
+                        return -1;
+                    }
                 }
             }
         }
