@@ -1347,9 +1347,9 @@ const struct lys_submodule *ly_ctx_get_submodule2(const struct lys_module *main_
  * This function is primarily meant as a utility function to ease getting specific schema nodes
  * directly from context having data_path a const immutable string.
  *
- * @param[in] ctx Context to work in.
+ * @param[in] ctx Context to work in. Must be set if \p start is NULL.
  * @param[in] start Starting node for a relative schema node identifier, in which
- * case it is mandatory.
+ * case it is mandatory and \p ctx can be NULL.
  * @param[in] data_path JSON schema node identifier.
  * @param[in] output Search operation output instead input.
  * @return Resolved schema node or NULL.
