@@ -1534,9 +1534,13 @@ ly_ctx_get_node(struct ly_ctx *ctx, const struct lys_node *start, const char *no
 {
     const struct lys_node *node;
 
-    if (!ctx || !nodeid || ((nodeid[0] != '/') && !start)) {
+    if ((!ctx && !start) || !nodeid || ((nodeid[0] != '/') && !start)) {
         ly_errno = LY_EINVAL;
         return NULL;
+    }
+
+    if (!ctx) {
+        ctx = start->module->ctx;
     }
 
     /* sets error and everything */
