@@ -227,7 +227,7 @@ test_parse_print_xml(void **state)
     assert_int_equal(read(fd, st->str1, s.st_size), s.st_size);
     st->str1[s.st_size] = '\0';
 
-    st->dt = lyd_parse_path(st->ctx, data, LYD_XML, LYD_OPT_CONFIG);
+    st->dt = lyd_parse_path(st->ctx, data, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_STRICT);
     assert_ptr_not_equal(st->dt, NULL);
     lyd_print_mem(&(st->str2), st->dt, LYD_XML, LYP_FORMAT);
 

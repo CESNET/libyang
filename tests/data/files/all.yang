@@ -199,6 +199,21 @@ module all {
       ordered-by user;
     }
 
+    list list2 {
+      key "leaf27 leaf28";
+      leaf leaf27 {
+        type uint8;
+      }
+
+      leaf leaf28 {
+        type uint8;
+      }
+    }
+
+    leaf leaf29 {
+      type instance-identifier;
+    }
+
     leaf leaf23 {
       type empty;
     }
