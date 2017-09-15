@@ -175,6 +175,18 @@
       <type name="tdef1"/>
       <ordered-by value="user"/>
     </leaf-list>
+    <list name="list2">
+      <key value="leaf27 leaf28"/>
+      <leaf name="leaf27">
+        <type name="uint8"/>
+      </leaf>
+      <leaf name="leaf28">
+        <type name="uint8"/>
+      </leaf>
+    </list>
+    <leaf name="leaf29">
+      <type name="instance-identifier"/>
+    </leaf>
     <leaf name="leaf23">
       <type name="empty"/>
     </leaf>

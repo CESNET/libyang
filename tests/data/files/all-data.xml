@@ -33,4 +33,9 @@
   <llist1>aaa</llist1>
   <llist1>aaaa</llist1>
   <llist1>aaaaaaaaa</llist1>
+  <list2>
+    <leaf27>3</leaf27>
+    <leaf28>4</leaf28>
+  </list2>
+  <leaf29 xmlns:all_mod="urn:all">/all_mod:cont1/all_mod:list2[all_mod:leaf28='4'][all_mod:leaf27='3']</leaf29>
 </cont1>

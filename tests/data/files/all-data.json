@@ -15,7 +15,7 @@
     "leaf13": "aGVsbG8h",
     "leaf14": "ident2",
     "leaf15": [null],
-    "leaf16": "/all:cont1/all:leaf2",
+    "leaf16": "/all:cont1/leaf2",
     "leaf17": "ident2",
     "list1": [
       {
@@ -34,6 +34,13 @@
       "aaa",
       "aaaa",
       "aaaaaaaaa"
-    ]
+    ],
+    "list2": [
+      {
+        "leaf27": 3,
+        "leaf28": 4
+      }
+    ],
+    "leaf29": "/all:cont1/list2[leaf28='4'][leaf27='3']"
   }
 }
