@@ -2606,6 +2606,26 @@ warn_is_numeric_type_base(LY_DATA_TYPE base)
 }
 
 /**
+ * @brief Test whether a type base is string-like - no integers, decimal64 or binary.
+ *
+ * @return 1 if string, 0 otherwise.
+ */
+static int
+warn_is_string_type_base(LY_DATA_TYPE base)
+{
+    switch (base & LY_DATA_TYPE_MASK) {
+    case LY_TYPE_BITS:
+    case LY_TYPE_ENUM:
+    case LY_TYPE_IDENT:
+    case LY_TYPE_INST:
+    case LY_TYPE_STRING:
+        return 1;
+    default:
+        return 0;
+    }
+}
+
+/**
  * @brief Check both operands of comparison operators.
  *
  * @param[in] set1 First operand set.
@@ -2749,8 +2769,8 @@ xpath_bit_is_set(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd_
             if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 LOGWRN("Argument #2 of %s is a %s node \"%s\".", __func__, strnodetype(sleaf->nodetype), sleaf->name);
                 ret = EXIT_FAILURE;
-            } else if (sleaf->type.base != LY_TYPE_STRING) {
-                LOGWRN("Argument #2 of %s is node \"%s\", not of type \"string\".", __func__, sleaf->name);
+            } else if (!warn_is_string_type_base(sleaf->type.base)) {
+                LOGWRN("Argument #2 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
                 ret = EXIT_FAILURE;
             }
         }
@@ -2886,8 +2906,8 @@ xpath_concat(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_no
                     LOGWRN("Argument #%u of %s is a %s node \"%s\".",
                            i + 1, __func__, strnodetype(sleaf->nodetype), sleaf->name);
                     ret = EXIT_FAILURE;
-                } else if (sleaf->type.base != LY_TYPE_STRING) {
-                    LOGWRN("Argument #%u of %s is node \"%s\", not of type \"string\".", __func__, i + 1, sleaf->name);
+                } else if (!warn_is_string_type_base(sleaf->type.base)) {
+                    LOGWRN("Argument #%u of %s is node \"%s\", not of string-type.", __func__, i + 1, sleaf->name);
                     ret = EXIT_FAILURE;
                 }
             }
@@ -2941,8 +2961,8 @@ xpath_contains(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd_no
             if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 LOGWRN("Argument #1 of %s is a %s node \"%s\".", __func__, strnodetype(sleaf->nodetype), sleaf->name);
                 ret = EXIT_FAILURE;
-            } else if (sleaf->type.base != LY_TYPE_STRING) {
-                LOGWRN("Argument #1 of %s is node \"%s\", not of type \"string\".", __func__, sleaf->name);
+            } else if (!warn_is_string_type_base(sleaf->type.base)) {
+                LOGWRN("Argument #1 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
                 ret = EXIT_FAILURE;
             }
         }
@@ -2951,8 +2971,8 @@ xpath_contains(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd_no
             if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 LOGWRN("Argument #2 of %s is a %s node \"%s\".", __func__, strnodetype(sleaf->nodetype), sleaf->name);
                 ret = EXIT_FAILURE;
-            } else if (sleaf->type.base != LY_TYPE_STRING) {
-                LOGWRN("Argument #2 of %s is node \"%s\", not of type \"string\".", __func__, sleaf->name);
+            } else if (!warn_is_string_type_base(sleaf->type.base)) {
+                LOGWRN("Argument #2 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
                 ret = EXIT_FAILURE;
             }
         }
@@ -3185,8 +3205,8 @@ xpath_derived_from(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct ly
             if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 LOGWRN("Argument #2 of %s is a %s node \"%s\".", __func__, strnodetype(sleaf->nodetype), sleaf->name);
                 ret = EXIT_FAILURE;
-            } else if (sleaf->type.base != LY_TYPE_STRING) {
-                LOGWRN("Argument #2 of %s is node \"%s\", not of type \"string\".", __func__, sleaf->name);
+            } else if (!warn_is_string_type_base(sleaf->type.base)) {
+                LOGWRN("Argument #2 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
                 ret = EXIT_FAILURE;
             }
         }
@@ -3263,8 +3283,8 @@ xpath_derived_from_or_self(struct lyxp_set **args, uint16_t UNUSED(arg_count), s
             if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 LOGWRN("Argument #2 of %s is a %s node \"%s\".", __func__, strnodetype(sleaf->nodetype), sleaf->name);
                 ret = EXIT_FAILURE;
-            } else if (sleaf->type.base != LY_TYPE_STRING) {
-                LOGWRN("Argument #2 of %s is node \"%s\", not of type \"string\".", __func__, sleaf->name);
+            } else if (!warn_is_string_type_base(sleaf->type.base)) {
+                LOGWRN("Argument #2 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
                 ret = EXIT_FAILURE;
             }
         }
@@ -3437,8 +3457,8 @@ xpath_lang(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd_node *
             if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 LOGWRN("Argument #1 of %s is a %s node \"%s\".", __func__, strnodetype(sleaf->nodetype), sleaf->name);
                 ret = EXIT_FAILURE;
-            } else if (sleaf->type.base != LY_TYPE_STRING) {
-                LOGWRN("Argument #1 of %s is node \"%s\", not of type \"string\".", __func__, sleaf->name);
+            } else if (!warn_is_string_type_base(sleaf->type.base)) {
+                LOGWRN("Argument #1 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
                 ret = EXIT_FAILURE;
             }
         }
@@ -3792,8 +3812,8 @@ xpath_normalize_space(struct lyxp_set **args, uint16_t arg_count, struct lyd_nod
             if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 LOGWRN("Argument #1 of %s is a %s node \"%s\".", __func__, strnodetype(sleaf->nodetype), sleaf->name);
                 ret = EXIT_FAILURE;
-            } else if (sleaf->type.base != LY_TYPE_STRING) {
-                LOGWRN("Argument #1 of %s is node \"%s\", not of type \"string\".", __func__, sleaf->name);
+            } else if (!warn_is_string_type_base(sleaf->type.base)) {
+                LOGWRN("Argument #1 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
                 ret = EXIT_FAILURE;
             }
         }
@@ -3990,8 +4010,8 @@ xpath_re_match(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd_no
             if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 LOGWRN("Argument #1 of %s is a %s node \"%s\".", __func__, strnodetype(sleaf->nodetype), sleaf->name);
                 ret = EXIT_FAILURE;
-            } else if (sleaf->type.base != LY_TYPE_STRING) {
-                LOGWRN("Argument #1 of %s is node \"%s\", not of type \"string\".", __func__, sleaf->name);
+            } else if (!warn_is_string_type_base(sleaf->type.base)) {
+                LOGWRN("Argument #1 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
                 ret = EXIT_FAILURE;
             }
         }
@@ -4000,8 +4020,8 @@ xpath_re_match(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd_no
             if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 LOGWRN("Argument #2 of %s is a %s node \"%s\".", __func__, strnodetype(sleaf->nodetype), sleaf->name);
                 ret = EXIT_FAILURE;
-            } else if (sleaf->type.base != LY_TYPE_STRING) {
-                LOGWRN("Argument #2 of %s is node \"%s\", not of type \"string\".", __func__, sleaf->name);
+            } else if (!warn_is_string_type_base(sleaf->type.base)) {
+                LOGWRN("Argument #2 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
                 ret = EXIT_FAILURE;
             }
         }
@@ -4107,8 +4127,8 @@ xpath_starts_with(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd
             if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 LOGWRN("Argument #1 of %s is a %s node \"%s\".", __func__, strnodetype(sleaf->nodetype), sleaf->name);
                 ret = EXIT_FAILURE;
-            } else if (sleaf->type.base != LY_TYPE_STRING) {
-                LOGWRN("Argument #1 of %s is node \"%s\", not of type \"string\".", __func__, sleaf->name);
+            } else if (!warn_is_string_type_base(sleaf->type.base)) {
+                LOGWRN("Argument #1 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
                 ret = EXIT_FAILURE;
             }
         }
@@ -4117,8 +4137,8 @@ xpath_starts_with(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd
             if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 LOGWRN("Argument #2 of %s is a %s node \"%s\".", __func__, strnodetype(sleaf->nodetype), sleaf->name);
                 ret = EXIT_FAILURE;
-            } else if (sleaf->type.base != LY_TYPE_STRING) {
-                LOGWRN("Argument #2 of %s is node \"%s\", not of type \"string\".", __func__, sleaf->name);
+            } else if (!warn_is_string_type_base(sleaf->type.base)) {
+                LOGWRN("Argument #2 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
                 ret = EXIT_FAILURE;
             }
         }
@@ -4201,8 +4221,8 @@ xpath_string_length(struct lyxp_set **args, uint16_t arg_count, struct lyd_node 
             if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 LOGWRN("Argument #1 of %s is a %s node \"%s\".", __func__, strnodetype(sleaf->nodetype), sleaf->name);
                 ret = EXIT_FAILURE;
-            } else if (sleaf->type.base != LY_TYPE_STRING) {
-                LOGWRN("Argument #1 of %s is node \"%s\", not of type \"string\".", __func__, sleaf->name);
+            } else if (!warn_is_string_type_base(sleaf->type.base)) {
+                LOGWRN("Argument #1 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
                 ret = EXIT_FAILURE;
             }
         }
@@ -4210,8 +4230,8 @@ xpath_string_length(struct lyxp_set **args, uint16_t arg_count, struct lyd_node 
             if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 LOGWRN("Argument #0 of %s is a %s node \"%s\".", __func__, strnodetype(sleaf->nodetype), sleaf->name);
                 ret = EXIT_FAILURE;
-            } else if (sleaf->type.base != LY_TYPE_STRING) {
-                LOGWRN("Argument #0 of %s is node \"%s\", not of type \"string\".", __func__, sleaf->name);
+            } else if (!warn_is_string_type_base(sleaf->type.base)) {
+                LOGWRN("Argument #0 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
                 ret = EXIT_FAILURE;
             }
         }
@@ -4262,8 +4282,8 @@ xpath_substring(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur
             if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 LOGWRN("Argument #1 of %s is a %s node \"%s\".", __func__, strnodetype(sleaf->nodetype), sleaf->name);
                 ret = EXIT_FAILURE;
-            } else if (sleaf->type.base != LY_TYPE_STRING) {
-                LOGWRN("Argument #1 of %s is node \"%s\", not of type \"string\".", __func__, sleaf->name);
+            } else if (!warn_is_string_type_base(sleaf->type.base)) {
+                LOGWRN("Argument #1 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
                 ret = EXIT_FAILURE;
             }
         }
@@ -4366,8 +4386,8 @@ xpath_substring_after(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct
             if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 LOGWRN("Argument #1 of %s is a %s node \"%s\".", __func__, strnodetype(sleaf->nodetype), sleaf->name);
                 ret = EXIT_FAILURE;
-            } else if (sleaf->type.base != LY_TYPE_STRING) {
-                LOGWRN("Argument #1 of %s is node \"%s\", not of type \"string\".", __func__, sleaf->name);
+            } else if (!warn_is_string_type_base(sleaf->type.base)) {
+                LOGWRN("Argument #1 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
                 ret = EXIT_FAILURE;
             }
         }
@@ -4376,8 +4396,8 @@ xpath_substring_after(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct
             if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 LOGWRN("Argument #2 of %s is a %s node \"%s\".", __func__, strnodetype(sleaf->nodetype), sleaf->name);
                 ret = EXIT_FAILURE;
-            } else if (sleaf->type.base != LY_TYPE_STRING) {
-                LOGWRN("Argument #2 of %s is node \"%s\", not of type \"string\".", __func__, sleaf->name);
+            } else if (!warn_is_string_type_base(sleaf->type.base)) {
+                LOGWRN("Argument #2 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
                 ret = EXIT_FAILURE;
             }
         }
@@ -4428,8 +4448,8 @@ xpath_substring_before(struct lyxp_set **args, uint16_t UNUSED(arg_count), struc
             if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 LOGWRN("Argument #1 of %s is a %s node \"%s\".", __func__, strnodetype(sleaf->nodetype), sleaf->name);
                 ret = EXIT_FAILURE;
-            } else if (sleaf->type.base != LY_TYPE_STRING) {
-                LOGWRN("Argument #1 of %s is node \"%s\", not of type \"string\".", __func__, sleaf->name);
+            } else if (!warn_is_string_type_base(sleaf->type.base)) {
+                LOGWRN("Argument #1 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
                 ret = EXIT_FAILURE;
             }
         }
@@ -4438,8 +4458,8 @@ xpath_substring_before(struct lyxp_set **args, uint16_t UNUSED(arg_count), struc
             if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 LOGWRN("Argument #2 of %s is a %s node \"%s\".", __func__, strnodetype(sleaf->nodetype), sleaf->name);
                 ret = EXIT_FAILURE;
-            } else if (sleaf->type.base != LY_TYPE_STRING) {
-                LOGWRN("Argument #2 of %s is node \"%s\", not of type \"string\".", __func__, sleaf->name);
+            } else if (!warn_is_string_type_base(sleaf->type.base)) {
+                LOGWRN("Argument #2 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
                 ret = EXIT_FAILURE;
             }
         }
@@ -4626,8 +4646,8 @@ xpath_translate(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd_n
             if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 LOGWRN("Argument #1 of %s is a %s node \"%s\".", __func__, strnodetype(sleaf->nodetype), sleaf->name);
                 ret = EXIT_FAILURE;
-            } else if (sleaf->type.base != LY_TYPE_STRING) {
-                LOGWRN("Argument #1 of %s is node \"%s\", not of type \"string\".", __func__, sleaf->name);
+            } else if (!warn_is_string_type_base(sleaf->type.base)) {
+                LOGWRN("Argument #1 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
                 ret = EXIT_FAILURE;
             }
         }
@@ -4636,8 +4656,8 @@ xpath_translate(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd_n
             if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 LOGWRN("Argument #2 of %s is a %s node \"%s\".", __func__, strnodetype(sleaf->nodetype), sleaf->name);
                 ret = EXIT_FAILURE;
-            } else if (sleaf->type.base != LY_TYPE_STRING) {
-                LOGWRN("Argument #2 of %s is node \"%s\", not of type \"string\".", __func__, sleaf->name);
+            } else if (!warn_is_string_type_base(sleaf->type.base)) {
+                LOGWRN("Argument #2 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
                 ret = EXIT_FAILURE;
             }
         }
@@ -4646,8 +4666,8 @@ xpath_translate(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd_n
             if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 LOGWRN("Argument #3 of %s is a %s node \"%s\".", __func__, strnodetype(sleaf->nodetype), sleaf->name);
                 ret = EXIT_FAILURE;
-            } else if (sleaf->type.base != LY_TYPE_STRING) {
-                LOGWRN("Argument #3 of %s is node \"%s\", not of type \"string\".", __func__, sleaf->name);
+            } else if (!warn_is_string_type_base(sleaf->type.base)) {
+                LOGWRN("Argument #3 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
                 ret = EXIT_FAILURE;
             }
         }
