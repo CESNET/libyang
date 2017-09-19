@@ -146,6 +146,38 @@ test_leafref(void **state)
 }
 
 static void
+test_leafref_w_feature1(void **state)
+{
+    int length;
+    char *path = *state;
+    const struct lys_module *module;
+
+    ly_ctx_set_searchdir(ctx, path);
+    length = strlen(path);
+    strcpy(path + length, "/leafref_w_feature1-mod3.yang");
+    if (!(module = lys_parse_path(ctx, path, LYS_IN_YANG))) {
+        fail();
+    }
+    lys_print_mem(&yang_modules[YANG_MOD_IDX(0)], module, LYS_OUT_YANG, NULL);
+}
+
+static void
+test_leafref_w_feature2(void **state)
+{
+    int length;
+    char *path = *state;
+    const struct lys_module *module;
+
+    ly_ctx_set_searchdir(ctx, path);
+    length = strlen(path);
+    strcpy(path + length, "/leafref_w_feature2-mod1.yang");
+    if (!(module = lys_parse_path(ctx, path, LYS_IN_YANG))) {
+        fail();
+    }
+    lys_print_mem(&yang_modules[YANG_MOD_IDX(0)], module, LYS_OUT_YANG, NULL);
+}
+
+static void
 test_target_augment(void **state)
 {
     int length;
@@ -291,6 +323,8 @@ main(void)
         cmocka_unit_test_setup_teardown(test_target_include_submodule, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_leafref, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_target_augment, setup_ctx_yin, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_leafref_w_feature1, setup_ctx_yang, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_leafref_w_feature2, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_unres_augment, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_import_augment_target, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_target_include_submodule, setup_ctx_yang, teardown_ctx),
