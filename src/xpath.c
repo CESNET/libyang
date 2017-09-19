@@ -3917,7 +3917,7 @@ xpath_not(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd_node *c
 }
 
 /**
- * @brief Execute the XPath bumber(object?) function. Returns LYXP_SET_NUMBER
+ * @brief Execute the XPath number(object?) function. Returns LYXP_SET_NUMBER
  *        with the number representation of either the argument or the context.
  *
  * @param[in] args Array of arguments.
