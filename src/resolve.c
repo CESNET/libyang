@@ -2580,8 +2580,8 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
                         }
                     }
 
-                    /* make value canonical */
-                    if ((llist->value_type & LY_TYPE_IDENT)
+                    /* make value canonical (remove module name prefix) unless it was specified with it */
+                    if (!strchr(llist_value, ':') && (llist->value_type & LY_TYPE_IDENT)
                             && !strncmp(llist->value_str, lyd_node_module(sibling)->name, strlen(lyd_node_module(sibling)->name))
                             && (llist->value_str[strlen(lyd_node_module(sibling)->name)] == ':')) {
                         data_val = llist->value_str + strlen(lyd_node_module(sibling)->name) + 1;
