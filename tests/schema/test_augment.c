@@ -43,7 +43,7 @@ char *yin_modules[2 * MOD_COUNT] = {0};
 static int
 setup_ctx_yin(void **state)
 {
-    *state = malloc(strlen(TESTS_DIR) + 40);
+    *state = malloc(strlen(TESTS_DIR) + 100);
     assert_non_null(*state);
     memcpy(*state, SCHEMA_FOLDER_YIN, strlen(SCHEMA_FOLDER_YIN) + 1);
 
@@ -58,7 +58,7 @@ setup_ctx_yin(void **state)
 static int
 setup_ctx_yang(void **state)
 {
-    *state = malloc(strlen(TESTS_DIR) + 40);
+    *state = malloc(strlen(TESTS_DIR) + 100);
     assert_non_null(*state);
     memcpy(*state, SCHEMA_FOLDER_YANG, strlen(SCHEMA_FOLDER_YANG) + 1);
 
@@ -142,6 +142,36 @@ test_leafref(void **state)
         }
         lys_print_mem(&yang_modules[YANG_MOD_IDX(2)], module, LYS_OUT_YANG, NULL);
         lys_print_mem(&yang_modules[YIN_MOD_IDX(2)], module, LYS_OUT_YIN, NULL);
+    }
+}
+
+static void
+test_leafref_w_feature1(void **state)
+{
+    int length;
+    char *path = *state;
+    const struct lys_module *module;
+
+    ly_ctx_set_searchdir(ctx, path);
+    length = strlen(path);
+    strcpy(path + length, "/leafref_w_feature1-mod3.yang");
+    if (!(module = lys_parse_path(ctx, path, LYS_IN_YANG))) {
+        fail();
+    }
+}
+
+static void
+test_leafref_w_feature2(void **state)
+{
+    int length;
+    char *path = *state;
+    const struct lys_module *module;
+
+    ly_ctx_set_searchdir(ctx, path);
+    length = strlen(path);
+    strcpy(path + length, "/leafref_w_feature2-mod1.yang");
+    if (!(module = lys_parse_path(ctx, path, LYS_IN_YANG))) {
+        fail();
     }
 }
 
@@ -298,6 +328,8 @@ main(void)
         cmocka_unit_test_setup_teardown(test_target_augment, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_unres_augment, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_import_augment_target, setup_ctx_yang, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_leafref_w_feature1, setup_ctx_yang, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_leafref_w_feature2, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_teardown(compare_output, teardown_output),
     };
 

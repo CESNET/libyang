@@ -6157,7 +6157,8 @@ static int
 check_leafref_features(struct lys_type *type)
 {
     struct lys_node *iter;
-    struct ly_set *src_parents, *trg_parents, *features;
+    struct lys_node_augment *aug;
+    struct ly_set *src_parents, *trg_parents, *features, *resolved;
     unsigned int i, j, size, x;
     int ret = EXIT_SUCCESS;
 
@@ -6172,12 +6173,38 @@ check_leafref_features(struct lys_type *type)
         if (iter->nodetype & (LYS_INPUT | LYS_OUTPUT)) {
             continue;
         }
+        if (iter->parent && iter->parent->nodetype == LYS_AUGMENT) {
+            aug = (struct lys_node_augment*)iter->parent;
+            if (!aug->target) {
+                resolve_schema_nodeid(aug->target_name, NULL, aug->module, &resolved, 0, 0);
+
+                if (!resolved) {
+                    LOGVAL(LYE_INRESOLV, LY_VLOG_LYS, aug, "augment", aug->target_name);
+                    return EXIT_FAILURE;
+                }
+                aug->target = resolved->set.s[0];
+                ly_set_free(resolved);
+            }
+        }
         ly_set_add(src_parents, iter, LY_SET_OPT_USEASLIST);
     }
     /* get parents chain of target */
     for (iter = (struct lys_node *)type->info.lref.target; iter; iter = lys_parent(iter)) {
         if (iter->nodetype & (LYS_INPUT | LYS_OUTPUT)) {
             continue;
+        }
+        if (iter->parent && iter->parent->nodetype == LYS_AUGMENT) {
+            aug = (struct lys_node_augment*)iter->parent;
+            if (!aug->target) {
+                resolve_schema_nodeid(aug->target_name, NULL, aug->module, &resolved, 0, 0);
+
+                if (!resolved) {
+                    LOGVAL(LYE_INRESOLV, LY_VLOG_LYS, aug, "augment", aug->target_name);
+                    return EXIT_FAILURE;
+                }
+                aug->target = resolved->set.s[0];
+                ly_set_free(resolved);
+            }
         }
         ly_set_add(trg_parents, iter, LY_SET_OPT_USEASLIST);
     }
