@@ -2604,7 +2604,7 @@ lys_get_import_module(const struct lys_module *module, const char *prefix, int p
             LOGMEM;
             return NULL;
         }
-        main_module = ly_ctx_get_module(module->ctx, str, NULL, 1);
+        main_module = ly_ctx_get_module(module->ctx, str, NULL, 0);
         free(str);
         return main_module;
     }
