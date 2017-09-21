@@ -599,7 +599,7 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
                 len = (*index);
             }
             (*index) = (*index) - len;
-            memcpy(&path[(*index)], (const char *)elem, len - 1);
+            memcpy(&path[(*index)], (const char *)elem, len);
             return;
         default:
             /* shouldn't be here */
