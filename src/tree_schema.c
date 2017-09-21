@@ -4050,7 +4050,7 @@ remove_aug(struct lys_node_augment *augment)
 {
     struct lys_node *last, *elem;
 
-    if (augment->flags & LYS_NOTAPPLIED) {
+    if ((augment->flags & LYS_NOTAPPLIED) || !augment->target) {
         /* skip already not applied augment */
         return;
     }

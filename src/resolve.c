@@ -6158,6 +6158,7 @@ check_leafref_features(struct lys_type *type)
 {
     struct lys_node *iter;
     struct ly_set *src_parents, *trg_parents, *features;
+    struct lys_node_augment *aug;
     unsigned int i, j, size, x;
     int ret = EXIT_SUCCESS;
 
@@ -6172,12 +6173,28 @@ check_leafref_features(struct lys_type *type)
         if (iter->nodetype & (LYS_INPUT | LYS_OUTPUT)) {
             continue;
         }
+        if (iter->parent && (iter->parent->nodetype == LYS_AUGMENT) && lys_node_module(iter->parent)->implemented) {
+            aug = (struct lys_node_augment *)iter->parent;
+            if ((aug->flags & LYS_NOTAPPLIED) || !aug->target) {
+                /* unresolved augment, wait until it's resolved */
+                ret = EXIT_FAILURE;
+                goto cleanup;
+            }
+        }
         ly_set_add(src_parents, iter, LY_SET_OPT_USEASLIST);
     }
     /* get parents chain of target */
     for (iter = (struct lys_node *)type->info.lref.target; iter; iter = lys_parent(iter)) {
         if (iter->nodetype & (LYS_INPUT | LYS_OUTPUT)) {
             continue;
+        }
+        if (iter->parent && (iter->parent->nodetype == LYS_AUGMENT) && lys_node_module(iter->parent)->implemented) {
+            aug = (struct lys_node_augment *)iter->parent;
+            if ((aug->flags & LYS_NOTAPPLIED) || !aug->target) {
+                /* unresolved augment, wait until it's resolved */
+                ret = EXIT_FAILURE;
+                goto cleanup;
+            }
         }
         ly_set_add(trg_parents, iter, LY_SET_OPT_USEASLIST);
     }
@@ -6324,11 +6341,6 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         rc = resolve_schema_leafref(stype->info.lref.path, node, (const struct lys_node **)&stype->info.lref.target);
         if (!rc) {
             assert(stype->info.lref.target);
-            /* check if leafref and its target are under a common if-features */
-            rc = check_leafref_features(stype);
-            if (rc) {
-                break;
-            }
 
             if (lys_node_module(node)->implemented) {
                 /* make all the modules on the path implemented, print verbose messages */
@@ -6362,6 +6374,9 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
                     break;
                 }
             }
+
+            /* check if leafref and its target are under common if-features */
+            rc = check_leafref_features(stype);
         }
 
         break;
