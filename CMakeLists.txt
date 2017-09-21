@@ -14,7 +14,15 @@ set(LIBYANG_MINOR_VERSION 13)
 set(LIBYANG_MICRO_VERSION 67)
 set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION})
-configure_file(${PROJECT_SOURCE_DIR}/src/libyang.h.in ${PROJECT_SOURCE_DIR}/src/libyang.h)
+
+option(ENABLE_CACHE "Enable schema caching (time-efficient at the cost of increased space-complexity)" OFF)
+if(ENABLE_CACHE)
+    set(ENABLE_CACHE_MACRO "/**\n * @brief Cache of some temporary information will be used.\n */\n#define LY_ENABLED_CACHE")
+else()
+    set(ENABLE_CACHE_MACRO "/**\n * @brief Cache of some temporary information will not be used.\n */")
+endif()
+
+configure_file(${PROJECT_SOURCE_DIR}/src/libyang.h.in ${PROJECT_SOURCE_DIR}/src/libyang.h @ONLY)
 
 if(PLUGINS_DIR)
 	set(LIBYANG_EXT_PLUGINS_DIR ${PLUGINS_DIR})
@@ -124,6 +132,7 @@ set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
 set(CMAKE_C_FLAGS_PACKAGE "-g -O2 -DNDEBUG")
 set(CMAKE_C_FLAGS_DEBUG   "-g -O0")
 
+# options
 if((CMAKE_BUILD_TYPE STREQUAL debug) OR (CMAKE_BUILD_TYPE STREQUAL Package))
 	option(ENABLE_BUILD_TESTS "Build tests" ON)
 	option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" ON)

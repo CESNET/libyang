@@ -140,7 +140,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 
     /* find schema node */
     if (!parent) {
-        mod = ly_ctx_get_module_by_ns(ctx, xml->ns->value, NULL);
+        mod = ly_ctx_get_module_by_ns(ctx, xml->ns->value, NULL, 1);
         if (ctx->data_clb) {
             if (!mod) {
                 mod = ctx->data_clb(ctx, NULL, xml->ns->value, 0, ctx->data_clb_data);
@@ -673,7 +673,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
         }
         if (iter) {
             last = iter;
-            if ((options & LYD_OPT_DATA_ADD_YANGLIB) && iter->schema->module == ctx->models.list[LY_INTERNAL_MODULE_COUNT - 1]) {
+            if ((options & LYD_OPT_DATA_ADD_YANGLIB) && iter->schema->module == ctx->models.list[ctx->internal_module_count - 1]) {
                 /* ietf-yang-library data present, so ignore the option to add them */
                 options &= ~LYD_OPT_DATA_ADD_YANGLIB;
             }

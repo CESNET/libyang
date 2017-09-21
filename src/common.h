@@ -18,8 +18,8 @@
 #include <stdint.h>
 #include <inttypes.h>
 
-#include "dict_private.h"
 #include "libyang.h"
+#include "dict_private.h"
 #include "resolve.h"
 
 #ifdef __GNUC__
@@ -224,7 +224,6 @@ typedef enum {
     LYE_NOLEAFREF,
     LYE_NOMANDCHOICE,
 
-    LYE_XPATH_INSNODE,
     LYE_XPATH_INTOK,
     LYE_XPATH_EOF,
     LYE_XPATH_INOP_1,

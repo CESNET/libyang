@@ -65,7 +65,7 @@ static int
 setup_ctx(void **state)
 {
     //ly_verb(LY_LLVRB);
-    (*state) = ly_ctx_new(SCHEMA_FOLDER);
+    (*state) = ly_ctx_new(SCHEMA_FOLDER, 0);
     if (!(*state)) {
         return -1;
     }

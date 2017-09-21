@@ -43,9 +43,10 @@ cmd_add_help(void)
 void
 cmd_clear_help(void)
 {
-    printf("clear [<yang-library>]\n");
+    printf("clear [<yang-library> | -e]\n");
     printf("\t Replace the current context with an empty one, searchpaths are not kept.\n");
     printf("\t If <yang-library> path specified, load the modules according to the yang library data.\n");
+    printf("\t Option '-e' causes ietf-yang-library will not be loaded.\n");
 }
 
 void
@@ -361,7 +362,7 @@ cmd_print(const char *arg)
         ++revision;
     }
 
-    module = ly_ctx_get_module(ctx, model_name, revision);
+    module = ly_ctx_get_module(ctx, model_name, revision, 0);
     if (!module) {
         /* not a module, try to find it as a submodule */
         module = (const struct lys_module *)ly_ctx_get_submodule(ctx, NULL, NULL, model_name, revision);
@@ -949,88 +950,61 @@ cleanup:
 int
 print_list(FILE *out, struct ly_ctx *ctx, LYD_FORMAT outformat)
 {
-    int has_modules = 0, flag;
-    struct lyd_node *ylib, *node, *module, *submodule;
-
-    ylib = ly_ctx_info(ctx);
-    if (!ylib) {
-        fprintf(stderr, "Getting context info (ietf-yang-library data) failed.\n");
-        return 1;
-    }
+    struct lyd_node *ylib;
+    uint32_t idx = 0, has_modules = 0;
+    uint8_t u;
+    const struct lys_module *mod;
 
     if (outformat != LYD_UNKNOWN) {
+        ylib = ly_ctx_info(ctx);
+        if (!ylib) {
+            fprintf(stderr, "Getting context info (ietf-yang-library data) failed.\n");
+            return 1;
+        }
+
         lyd_print_file(out, ylib, outformat, LYP_WITHSIBLINGS | LYP_FORMAT);
-        lyd_free(ylib);
+        lyd_free_withsiblings(ylib);
         return 0;
     }
 
-    LY_TREE_FOR(ylib->child, node) {
-        if (!strcmp(node->schema->name, "module-set-id")) {
-            fprintf(out, "List of the loaded models (mod-set-id %s):\n", ((struct lyd_node_leaf_list *)node)->value_str);
-            break;
+    /* iterate schemas in context and provide just the basic info */
+    fprintf(out, "List of the loaded models:\n");
+    while ((mod = ly_ctx_get_module_iter(ctx, &idx))) {
+        has_modules++;
+
+        /* conformance print */
+        if (mod->implemented) {
+            fprintf(out, "\tI");
+        } else {
+            fprintf(out, "\ti");
         }
-    }
-    assert(node);
 
-    LY_TREE_FOR(ylib->child, module) {
-        if (!strcmp(module->schema->name, "module")) {
-            has_modules = 1;
-
-            /* conformance print */
-            LY_TREE_FOR(module->child, node) {
-                if (!strcmp(node->schema->name, "conformance-type")) {
-                    if (!strcmp(((struct lyd_node_leaf_list *)node)->value_str, "implement")) {
-                        fprintf(out, "\tI");
-                    } else {
-                        fprintf(out, "\ti");
-                    }
-                    break;
-                }
-            }
-
-            /* module print */
-            LY_TREE_FOR(module->child, node) {
-                if (!strcmp(node->schema->name, "name")) {
-                    fprintf(out, " %s", ((struct lyd_node_leaf_list *)node)->value_str);
-                } else if (!strcmp(node->schema->name, "revision")) {
-                    if (((struct lyd_node_leaf_list *)node)->value_str[0] != '\0') {
-                        fprintf(out, "@%s", ((struct lyd_node_leaf_list *)node)->value_str);
-                    }
-                }
-            }
-
-            /* submodules print */
-            LY_TREE_FOR(module->child, submodule) {
-                if (!strcmp(submodule->schema->name, "submodule")) {
-                    fprintf(out, " (");
-                    flag = 0;
-                    LY_TREE_FOR(submodule, submodule) {
-                        if (!strcmp(submodule->schema->name, "submodule")) {
-                            LY_TREE_FOR(submodule->child, node) {
-                                if (!strcmp(node->schema->name, "name")) {
-                                    fprintf(out, "%s%s", flag ? "," : "", ((struct lyd_node_leaf_list *)node)->value_str);
-                                } else if (!strcmp(node->schema->name, "revision")) {
-                                    if (((struct lyd_node_leaf_list *)node)->value_str[0] != '\0') {
-                                        fprintf(out, "@%s", ((struct lyd_node_leaf_list *)node)->value_str);
-                                    }
-                                }
-                            }
-                            flag++;
-                        }
-                    }
-                    fprintf(out, ")");
-                    break;
-                }
-            }
-            fprintf(out, "\n");
+        /* module print */
+        fprintf(out, " %s", mod->name);
+        if (mod->rev_size) {
+            fprintf(out, "@%s", mod->rev[0].date);
         }
+
+        /* submodules print */
+        if (mod->inc_size) {
+            fprintf(out, " (");
+            for (u = 0; u < mod->inc_size; u++) {
+                fprintf(out, "%s%s", !u ? "" : ",", mod->inc[u].submodule->name);
+                if (mod->inc[u].submodule->rev_size) {
+                    fprintf(out, "@%s", mod->inc[u].submodule->rev[0].date);
+                }
+            }
+            fprintf(out, ")");
+        }
+
+        /* finish the line */
+        fprintf(out, "\n");
     }
 
     if (!has_modules) {
         fprintf(out, "\t(none)\n");
     }
 
-    lyd_free(ylib);
     return 0;
 }
 
@@ -1185,7 +1159,7 @@ cmd_feature(const char *arg)
         ++revision;
     }
 
-    module = ly_ctx_get_module(ctx, model_name, revision);
+    module = ly_ctx_get_module(ctx, model_name, revision, 0);
     if (!module) {
         /* not a module, try to find it as a submodule */
         module = (const struct lys_module *)ly_ctx_get_submodule(ctx, NULL, NULL, model_name, revision);
@@ -1284,7 +1258,7 @@ cmd_searchpath(const char *arg)
 int
 cmd_clear(const char *arg)
 {
-    int i;
+    int i, options = 0;
     char *ylpath;
     const char * const *searchpaths;
     struct ly_ctx *ctx_new;
@@ -1293,19 +1267,24 @@ cmd_clear(const char *arg)
     /* get optional yang library file name */
     for (i = 5; arg[i] && isspace(arg[i]); i++);
     if (arg[i]) {
-        ylpath = strdup(&arg[i]);
-        format = detect_data_format(ylpath);
-        if (format == LYD_UNKNOWN) {
-            free(ylpath);
-            fprintf(stderr, "Unable to resolve format of the yang library file, please add \".xml\" or \".json\" suffix.\n");
+        if (arg[i] == '-' && arg[i + 1] == 'e') {
+            options = LY_CTX_NOYANGLIBRARY;
             goto create_empty;
+        } else {
+            ylpath = strdup(&arg[i]);
+            format = detect_data_format(ylpath);
+            if (format == LYD_UNKNOWN) {
+                free(ylpath);
+                fprintf(stderr, "Unable to resolve format of the yang library file, please add \".xml\" or \".json\" suffix.\n");
+                goto create_empty;
+            }
+            searchpaths = ly_ctx_get_searchdirs(ctx);
+            ctx_new = ly_ctx_new_ylpath(searchpaths ? searchpaths[0] : NULL, ylpath, format, 0);
+            free(ylpath);
         }
-        searchpaths = ly_ctx_get_searchdirs(ctx);
-        ctx_new = ly_ctx_new_ylpath(searchpaths ? searchpaths[0] : NULL, ylpath, format);
-        free(ylpath);
     } else {
 create_empty:
-        ctx_new = ly_ctx_new(NULL);
+        ctx_new = ly_ctx_new(NULL, options);
     }
 
     if (!ctx_new) {

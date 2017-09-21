@@ -353,7 +353,7 @@ lyd_check_mandatory_tree(struct lyd_node *root, struct ly_ctx *ctx, int options)
                 return EXIT_FAILURE;
             }
         } else {
-            for (i = (options & LYD_OPT_DATA_NO_YANGLIB) ? LY_INTERNAL_MODULE_COUNT : LY_INTERNAL_MODULE_COUNT - 1;
+            for (i = (options & LYD_OPT_DATA_NO_YANGLIB) ? ctx->internal_module_count : ctx->internal_module_count - 1;
                  i < ctx->models.used;
                  i++) {
                 /* skip not implemented and disabled modules */
@@ -779,6 +779,7 @@ check_leaf_list_backlinks(struct lyd_node *node, int op)
     struct lyd_node_leaf_list *leaf_list;
     struct ly_set *set, *data;
     uint32_t i, j;
+    int validity_changed = 0;
 
     assert((op == 0) || (op == 1) || (op == 2));
 
@@ -796,6 +797,7 @@ check_leaf_list_backlinks(struct lyd_node *node, int op)
                                 || ((op != 1) && (leaf_list->value_type & LY_TYPE_LEAFREF_UNRES))) {
                             /* invalidate the leafref, a change concerning it happened */
                             leaf_list->validity |= LYD_VAL_LEAFREF;
+                            validity_changed = 1;
                             if (leaf_list->value_type == LY_TYPE_LEAFREF) {
                                 /* remove invalid link */
                                 leaf_list->value.leafref = NULL;
@@ -813,7 +815,7 @@ check_leaf_list_backlinks(struct lyd_node *node, int op)
     }
 
     /* invalidate parent to make sure it will be checked in future validation */
-    if (node->parent) {
+    if (validity_changed && node->parent) {
         node->parent->validity = LYD_VAL_MAND;
     }
 }
@@ -1298,7 +1300,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
 
         memmove(module_name, mod_name, mod_name_len);
         module_name[mod_name_len] = '\0';
-        module = ly_ctx_get_module(ctx, module_name, NULL);
+        module = ly_ctx_get_module(ctx, module_name, NULL, 1);
 
         if (buf_backup) {
             /* return previous internal buffer content */
@@ -4156,7 +4158,7 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
 
     data_tree = *node;
 
-    if ((!options || (options & (LYD_OPT_DATA | LYD_OPT_CONFIG | LYD_OPT_GET | LYD_OPT_GETCONFIG | LYD_OPT_EDIT))) && !(*node)) {
+    if ((!(options & LYD_OPT_TYPEMASK) || (options & (LYD_OPT_DATA | LYD_OPT_CONFIG | LYD_OPT_GET | LYD_OPT_GETCONFIG | LYD_OPT_EDIT))) && !(*node)) {
         /* get context with schemas from the var_arg */
         ctx = (struct ly_ctx *)var_arg;
         if (!ctx) {
@@ -4323,7 +4325,7 @@ nextsiblings:
      * only the inner instances were tested in lyv_data_content() */
     set = ly_set_new();
     LY_TREE_FOR(*node, root) {
-        if ((options & LYD_OPT_DATA_ADD_YANGLIB) && root->schema->module == ctx->models.list[LY_INTERNAL_MODULE_COUNT - 1]) {
+        if ((options & LYD_OPT_DATA_ADD_YANGLIB) && root->schema->module == ctx->models.list[ctx->internal_module_count - 1]) {
             /* ietf-yang-library data present, so ignore the option to add them */
             options &= ~LYD_OPT_DATA_ADD_YANGLIB;
         }
@@ -4880,22 +4882,22 @@ lyd_insert_attr(struct lyd_node *parent, const struct lys_module *mod, const cha
             LOGMEM;
             return NULL;
         }
-        module = ly_ctx_get_module(ctx, aux, NULL);
+        module = ly_ctx_get_module(ctx, aux, NULL, 1);
         free(aux);
         name = p + 1;
 
         if (!module) {
             /* module not found */
-            LOGERR(LY_EINVAL, "Attribute prefix does not match any schema in the context.");
+            LOGERR(LY_EINVAL, "Attribute prefix does not match any implemented schema in the context.");
             return NULL;
         }
     } else if (mod) {
         module = mod;
     } else if (!mod && (!strcmp(name, "type") || !strcmp(name, "select")) && !strcmp(parent->schema->name, "filter")) {
         /* special case of inserting unqualified filter attributes "type" and "select" */
-        module = ly_ctx_get_module(ctx, "ietf-netconf", NULL);
+        module = ly_ctx_get_module(ctx, "ietf-netconf", NULL, 1);
         if (!module) {
-            LOGERR(LY_EINVAL, "Attribute prefix does not match any schema in the context.");
+            LOGERR(LY_EINVAL, "Attribute prefix does not match any implemented schema in the context.");
             return NULL;
         }
     } else {
@@ -6393,7 +6395,7 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
     int ret = EXIT_FAILURE;
 
     assert(root && unres && !(options & LYD_OPT_ACT_NOTIF));
-    assert(!data_tree || !data_tree->prev->next);
+    //assert(!data_tree || !data_tree->prev->next);
 
     if ((options & LYD_OPT_NOSIBLINGS) && !(*root)) {
         LOGERR(LY_EINVAL, "Cannot add default values for one module (LYD_OPT_NOSIBLINGS) without any data.");

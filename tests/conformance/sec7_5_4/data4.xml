@@ -9,3 +9,6 @@
 <modules-state xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
     <module-set-id>1</module-set-id>
 </modules-state>
+<yang-library xmlns="urn:ietf:params:xml:ns:yang:ietf-yang-library">
+    <checksum>1</checksum>
+</yang-library>

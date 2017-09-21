@@ -2201,7 +2201,7 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
 
         memmove(module_name, mod_name, mod_name_len);
         module_name[mod_name_len] = '\0';
-        module = ly_ctx_get_module(ctx, module_name, NULL);
+        module = ly_ctx_get_module(ctx, module_name, NULL, 1);
 
         if (buf_backup) {
             /* return previous internal buffer content */
@@ -2256,7 +2256,7 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
                     memmove(module_name, mod_name, mod_name_len);
                     module_name[mod_name_len] = '\0';
                     /* will also find an augment module */
-                    prefix_mod = ly_ctx_get_module(ctx, module_name, NULL);
+                    prefix_mod = ly_ctx_get_module(ctx, module_name, NULL, 1);
 
                     if (buf_backup) {
                         /* return previous internal buffer content */
@@ -2532,7 +2532,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
                     memmove(module_name, mod_name, mod_name_len);
                     module_name[mod_name_len] = '\0';
                     /* will also find an augment module */
-                    prefix_mod = ly_ctx_get_module(ctx, module_name, NULL);
+                    prefix_mod = ly_ctx_get_module(ctx, module_name, NULL, 1);
 
                     if (buf_backup) {
                         /* return previous internal buffer content */
@@ -7340,7 +7340,7 @@ resolve_instid(struct lyd_node *data, const char *path, int req_inst, struct lyd
                 LOGMEM;
                 goto error;
             }
-            mod = ly_ctx_get_module(ctx, str, NULL);
+            mod = ly_ctx_get_module(ctx, str, NULL, 1);
             if (ctx->data_clb) {
                 if (!mod) {
                     mod = ctx->data_clb(ctx, str, NULL, 0, ctx->data_clb_data);

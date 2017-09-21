@@ -46,7 +46,7 @@ setup_ctx(void **state)
     }
 
     /* libyang context */
-    st->ctx = ly_ctx_new(NULL);
+    st->ctx = ly_ctx_new(NULL, 0);
     if (!st->ctx) {
         fprintf(stderr, "Failed to create context.\n");
         goto error;
@@ -1134,6 +1134,109 @@ test_typedef_11_union_empty_yang(void **state)
     lyd_free_withsiblings(root);
 }
 
+static void
+test_typedef_patterns_optimizations_schema(struct state *st, const struct lys_module *mod)
+{
+    const char *valid = "<a xmlns=\"urn:libyang:tests:patterns\">a</a>"
+                        "<b xmlns=\"urn:libyang:tests:patterns\">2</b>"
+                        "<c xmlns=\"urn:libyang:tests:patterns\">C</c>";
+    const char *invalid1 = "<a xmlns=\"urn:libyang:tests:patterns\">1</a>";
+    const char *invalid2 = "<b xmlns=\"urn:libyang:tests:patterns\">b</b>";
+    const char *invalid3 = "<c xmlns=\"urn:libyang:tests:patterns\">c</c>";
+    struct lys_node_grp *grp = NULL;
+    struct lys_node_leaf *leaf = NULL;
+    struct lys_node *iter;
+    struct lyd_node *data;
+
+    /* check optimizations */
+    /* 1. module's typedef has PCRE data */
+    assert_int_equal(mod->tpdf_size, 1);
+    assert_ptr_not_equal(mod->tpdf, NULL);
+    assert_int_equal(mod->tpdf[0].type.base, LY_TYPE_STRING);
+    assert_int_equal(mod->tpdf[0].type.info.str.pat_count, 1);
+#ifdef LY_ENABLED_CACHE
+    assert_ptr_not_equal(mod->tpdf[0].type.info.str.patterns_pcre, NULL);
+#endif
+
+    /* 2. grouping's typedef has PCRE data */
+    LY_TREE_FOR(mod->data, iter) {
+        if (iter->nodetype == LYS_GROUPING && !strcmp(iter->name, "a")) {
+            grp = (struct lys_node_grp*)iter;
+            break;
+        }
+    }
+    assert_ptr_not_equal(grp, NULL);
+    assert_int_equal(grp->tpdf_size, 1);
+    assert_ptr_not_equal(grp->tpdf, NULL);
+    assert_int_equal(grp->tpdf[0].type.base, LY_TYPE_STRING);
+    assert_int_equal(grp->tpdf[0].type.info.str.pat_count, 1);
+#ifdef LY_ENABLED_CACHE
+    assert_ptr_not_equal(grp->tpdf[0].type.info.str.patterns_pcre, NULL);
+#endif
+
+    /* 3. grouping's leaf does not have PCRE data */
+    LY_TREE_FOR(mod->data, iter) {
+        if (iter->nodetype == LYS_GROUPING && !strcmp(iter->name, "b")) {
+            leaf = (struct lys_node_leaf*)iter->child;
+            break;
+        }
+    }
+    assert_ptr_not_equal(leaf, NULL);
+    assert_int_equal(leaf->type.base, LY_TYPE_STRING);
+    assert_int_equal(leaf->type.info.str.pat_count, 1);
+#ifdef LY_ENABLED_CACHE
+    assert_ptr_equal(leaf->type.info.str.patterns_pcre, NULL);
+#endif
+    leaf = NULL;
+
+    /* 4. but it's instantiated copy does have PCRE data */
+    LY_TREE_FOR(mod->data, iter) {
+        if (iter->nodetype == LYS_USES && !strcmp(iter->name, "b")) {
+            leaf = (struct lys_node_leaf*)iter->child;
+            break;
+        }
+    }
+    assert_ptr_not_equal(leaf, NULL);
+    assert_int_equal(leaf->type.base, LY_TYPE_STRING);
+    assert_int_equal(leaf->type.info.str.pat_count, 1);
+#ifdef LY_ENABLED_CACHE
+    assert_ptr_not_equal(leaf->type.info.str.patterns_pcre, NULL);
+#endif
+
+    /* check data */
+    data = lyd_parse_mem(st->ctx, valid, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(data, NULL);
+    lyd_free_withsiblings(data);
+
+    assert_ptr_equal(lyd_parse_mem(st->ctx, invalid1, LYD_XML, LYD_OPT_CONFIG), NULL);
+    assert_ptr_equal(lyd_parse_mem(st->ctx, invalid2, LYD_XML, LYD_OPT_CONFIG), NULL);
+    assert_ptr_equal(lyd_parse_mem(st->ctx, invalid3, LYD_XML, LYD_OPT_CONFIG), NULL);
+}
+
+static void
+test_typedef_patterns_optimizations_yang(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+
+    mod = lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/files/patterns.yang", LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    test_typedef_patterns_optimizations_schema(st, mod);
+}
+
+static void
+test_typedef_patterns_optimizations_yin(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+
+    mod = lys_parse_path(st->ctx, TESTS_DIR"/schema/yin/files/patterns.yin", LYS_IN_YIN);
+    assert_ptr_not_equal(mod, NULL);
+
+    test_typedef_patterns_optimizations_schema(st, mod);
+}
+
 int
 main(void)
 {
@@ -1159,6 +1262,8 @@ main(void)
         cmocka_unit_test_setup_teardown(test_typedef_11_union_leafref_yang, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_typedef_11_union_empty_yin, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_typedef_11_union_empty_yang, setup_ctx, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_typedef_patterns_optimizations_yin, setup_ctx, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_typedef_patterns_optimizations_yang, setup_ctx, teardown_ctx),
     };
 
     return cmocka_run_group_tests(cmut, NULL, NULL);

@@ -170,7 +170,7 @@ generic_init(char *config_file, const char *module, char *yang_folder)
     yang_format = LYS_IN_YIN;
     in_format = LYD_XML;
 
-    ctx = ly_ctx_new(yang_folder);
+    ctx = ly_ctx_new(yang_folder, 0);
     if (!ctx) {
         goto error;
     }
@@ -216,7 +216,7 @@ error:
 static int
 setup_f2(void **state)
 {
-    *state = ly_ctx_new(NULL);
+    *state = ly_ctx_new(NULL, 0);
     if (!*state) {
         return -1;
     }
@@ -270,7 +270,7 @@ test_lyd_parse_mem(void **state)
     struct ly_ctx *ctx = NULL;
     struct lyd_node *root = NULL;
 
-    ctx = ly_ctx_new(yang_folder);
+    ctx = ly_ctx_new(yang_folder, 0);
     if (!ctx) {
         goto error;
     }
@@ -313,7 +313,7 @@ test_lyd_parse_fd(void **state)
     struct stat sb;
     int fd = -1;
 
-    ctx = ly_ctx_new(yang_folder);
+    ctx = ly_ctx_new(yang_folder, 0);
     if (!ctx) {
         goto error;
     }
@@ -362,7 +362,7 @@ test_lyd_parse_path(void **state)
     struct ly_ctx *ctx = NULL;
     struct lyd_node *root = NULL;
 
-    ctx = ly_ctx_new(yang_folder);
+    ctx = ly_ctx_new(yang_folder, 0);
     if (!ctx) {
         goto error;
     }
@@ -402,7 +402,7 @@ test_lyd_parse_xml(void **state)
     LYS_INFORMAT yang_format = LYS_IN_YIN;
     struct ly_ctx *ctx = NULL;
 
-    ctx = ly_ctx_new(yang_folder);
+    ctx = ly_ctx_new(yang_folder, 0);
     if (!ctx) {
         goto error;
     }
@@ -813,7 +813,7 @@ test_lyd_schema_sort(void **state)
     const struct lys_module *module;
     struct lyd_node *root, *node, *node2;
 
-    module = ly_ctx_get_module(ctx, "a", NULL);
+    module = ly_ctx_get_module(ctx, "a", NULL, 0);
     assert_non_null(module);
 
     root = lyd_new(NULL, module, "l");

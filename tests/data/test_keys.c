@@ -37,7 +37,7 @@ setup_f(void **state)
     }
 
     /* libyang context */
-    st->ctx = ly_ctx_new(NULL);
+    st->ctx = ly_ctx_new(NULL, 0);
     if (!st->ctx) {
         fprintf(stderr, "Failed to create context.\n");
         return -1;
@@ -83,7 +83,7 @@ test_keys_correct2(void **state)
     struct lyd_node *node;
     int rc;
 
-    st->dt = lyd_new(NULL, ly_ctx_get_module(st->ctx, "keys", NULL), "l");
+    st->dt = lyd_new(NULL, ly_ctx_get_module(st->ctx, "keys", NULL, 1), "l");
     assert_ptr_not_equal(st->dt, NULL);
 
     node = lyd_new_leaf(st->dt, NULL, "key1", "1");
@@ -120,7 +120,7 @@ test_keys_missing2(void **state)
     struct lyd_node *node;
     int rc;
 
-    st->dt = lyd_new(NULL, ly_ctx_get_module(st->ctx, "keys", NULL), "l");
+    st->dt = lyd_new(NULL, ly_ctx_get_module(st->ctx, "keys", NULL, 1), "l");
     assert_ptr_not_equal(st->dt, NULL);
 
     node = lyd_new_leaf(st->dt, NULL, "key1", "1");
@@ -179,7 +179,7 @@ test_keys_inorder2(void **state)
     struct state *st = (*state);
     struct lyd_node *node;
 
-    st->dt = lyd_new(NULL, ly_ctx_get_module(st->ctx, "keys", NULL), "l");
+    st->dt = lyd_new(NULL, ly_ctx_get_module(st->ctx, "keys", NULL, 1), "l");
     assert_ptr_not_equal(st->dt, NULL);
 
     /* libyang is able to put the keys into a correct order */

@@ -42,7 +42,7 @@ setup_f(void **state)
     }
 
     /* libyang context */
-    st->ctx = ly_ctx_new(ietfdir);
+    st->ctx = ly_ctx_new(ietfdir, 0);
     if (!st->ctx) {
         fprintf(stderr, "Failed to create context.\n");
         goto error;
@@ -84,7 +84,7 @@ setup_clean_f(void **state)
     }
 
     /* libyang context */
-    st->ctx = ly_ctx_new(ietfdir);
+    st->ctx = ly_ctx_new(ietfdir, 0);
     if (!st->ctx) {
         fprintf(stderr, "Failed to create context.\n");
         goto error;
@@ -144,19 +144,13 @@ static void
 test_status(void **state)
 {
     struct state *st = (*state);
-    const char *xml_min = "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
-                          "<module-set-id>5</module-set-id>"
-                          "</modules-state>";
-
-    const char *xml = "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">"
-                        "<module-set-id>5</module-set-id>"
-                      "</modules-state><df xmlns=\"urn:libyang:tests:defaults\">"
+    const char *xml = "<df xmlns=\"urn:libyang:tests:defaults\">"
                         "<b1_status>42</b1_status>"
                       "</df><hidden xmlns=\"urn:libyang:tests:defaults\">"
                         "<papa>42</papa></hidden>";
 
-    assert_ptr_not_equal((st->dt = lyd_parse_mem(st->ctx, xml_min, LYD_XML, LYD_OPT_DATA)), NULL);
-    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_DATA, st->ctx), 0);
+    st->dt = NULL;
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_DATA | LYD_OPT_DATA_NO_YANGLIB, st->ctx), 0);
     assert_ptr_not_equal(st->dt, NULL);
 
     assert_int_equal(lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_EXPLICIT), 0);

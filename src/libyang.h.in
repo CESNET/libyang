@@ -17,6 +17,8 @@
 
 #include <stdio.h>
 
+@ENABLE_CACHE_MACRO@
+
 #include "tree_schema.h"
 #include "tree_data.h"
 #include "xml.h"
@@ -1020,11 +1022,6 @@ extern "C" {
  */
 
 /**
- * @brief Number of internal modules, which are always in every context and cannot be removed nor disabled.
- */
-#define LY_INTERNAL_MODULE_COUNT 5
-
-/**
  * @defgroup context Context
  * @{
  *
@@ -1037,6 +1034,26 @@ extern "C" {
  * @brief libyang context handler.
  */
 struct ly_ctx;
+
+/**
+ * @defgroup contextoptions Context options
+ * @ingroup context
+ *
+ * Options to change context behavior.
+ */
+
+#define LY_CTX_ALLIMPLEMENTED 0x01 /**< All the imports of the schema being parsed are treated implemented. */
+#define LY_CTX_TRUSTED        0x02 /**< Handle the schema being parsed as trusted and skip its validation
+                                        tests. Note that while this option improves performance, it can
+                                        lead to an undefined behavior if the schema is not correct. */
+#define LY_CTX_NOYANGLIBRARY  0x04 /**< Do not internally implement ietf-yang-library module. The option
+                                        causes that function ly_ctx_info() does not work (returns NULL) until
+                                        the ietf-yang-library module is loaded manually. While any revision
+                                        of this schema can be loaded with this option, note that the only
+                                        revisions implemented by ly_ctx_info() are 2016-06-21 and 2017-08-17.
+                                        This option cannot be used with ly_ctx_new_yl*() functions. */
+
+/**@} contextoptions */
 
 /**
  * @brief Create libyang context
@@ -1055,10 +1072,11 @@ struct ly_ctx;
  *
  * @param[in] search_dir Directory where libyang will search for the imported or included modules
  * and submodules. If no such directory is available, NULL is accepted.
+ * @param[in] options Context options, see @ref contextoptions.
  *
  * @return Pointer to the created libyang context, NULL in case of error.
  */
-struct ly_ctx *ly_ctx_new(const char *search_dir);
+struct ly_ctx *ly_ctx_new(const char *search_dir, int options);
 
 /**
  * @brief Create libyang context according to the content of the given yang-library data.
@@ -1079,9 +1097,10 @@ struct ly_ctx *ly_ctx_new(const char *search_dir);
  * and submodules. If no such directory is available, NULL is accepted.
  * @param[in] path Path to the file containing yang-library data in the specified \p format.
  * @param[in] format Format of the data in the provided file.
+ * @param[in] options Context options, see @ref contextoptions.
  * @return Pointer to the created libyang context, NULL in case of error.
  */
-struct ly_ctx *ly_ctx_new_ylpath(const char *search_dir, const char *path, LYD_FORMAT format);
+struct ly_ctx *ly_ctx_new_ylpath(const char *search_dir, const char *path, LYD_FORMAT format, int options);
 
 /**
  * @brief Create libyang context according to the content of the given yang-library data.
@@ -1102,9 +1121,17 @@ struct ly_ctx *ly_ctx_new_ylpath(const char *search_dir, const char *path, LYD_F
  * and submodules. If no such directory is available, NULL is accepted.
  * @param[in] data String containing yang-library data in the specified \p format.
  * @param[in] format Format of the data in the provided file.
+ * @param[in] options Context options, see @ref contextoptions.
  * @return Pointer to the created libyang context, NULL in case of error.
  */
-struct ly_ctx *ly_ctx_new_ylmem(const char *search_dir, const char *data, LYD_FORMAT format);
+struct ly_ctx *ly_ctx_new_ylmem(const char *search_dir, const char *data, LYD_FORMAT format, int options);
+
+/**
+ * @brief Number of internal modules, which are in the context and cannot be removed nor disabled.
+ * @param[in] ctx Context to investigate.
+ * @return Number of internal modules, 0 in case of invalid parameter.
+ */
+unsigned int ly_ctx_internal_modules_count(struct ly_ctx *ctx);
 
 /**
  * @brief Add the search path into libyang context
@@ -1140,6 +1167,9 @@ const char * const *ly_ctx_get_searchdirs(const struct ly_ctx *ctx);
  * if the imported module is not used in leafref's path, augment or deviation, it is
  * imported and its data tree is not taken into account.
  *
+ * The same effect is achieved by using #LY_CTX_ALLIMPLEMENTED option when creating new context or parsing
+ * a specific schema.
+ *
  * Note, that function does not make the currently loaded modules, it just change the
  * schema parser behavior for the future parsing. This flag can be unset by ly_ctx_unset_allimplemented().
  *
@@ -1153,6 +1183,27 @@ void ly_ctx_set_allimplemented(struct ly_ctx *ctx);
  * @param[in] ctx Context to be modified.
  */
 void ly_ctx_unset_allimplemented(struct ly_ctx *ctx);
+
+/**
+ * @brief Change the schema parser behavior when parsing new schemas forcing it to skip some of the schema
+ * validation checks to improve performance. Note that parsing invalid schemas this way may lead to an
+ * undefined behavior later, e.g. when working with data trees.
+ *
+ * The same effect is achieved by using #LY_CTX_TRUSTED option when creating new context or parsing
+ * a specific schema.
+ *
+ * This flag can be unset by ly_ctx_unset_trusted().
+ *
+ * @param[in] ctx Context to be modified.
+ */
+void ly_ctx_set_trusted(struct ly_ctx *ctx);
+
+/**
+ * @brief Reverse function to ly_ctx_set_trusted().
+ *
+ * @param[in] ctx Context to be modified.
+ */
+void ly_ctx_unset_trusted(struct ly_ctx *ctx);
 
 /**
  * @brief Get data of an internal ietf-yang-library module.
@@ -1187,11 +1238,13 @@ const struct lys_module *ly_ctx_get_disabled_module_iter(const struct ly_ctx *ct
  * @param[in] ctx Context to work in.
  * @param[in] name Name of the YANG module to get.
  * @param[in] revision Optional revision date of the YANG module to get. If not specified,
- * the schema in the newest revision is returned if any.
+ * the schema in the newest/implemented revision (see \p implemented parameter) is returned if any.
+ * @param[in] implemented In case the revision is not specified, require the implemented module
+ * instead of the newest revision of the module.
  * @return Pointer to the data model structure, NULL if no schema following the name and
  * revision requirements is present in the context.
  */
-const struct lys_module *ly_ctx_get_module(const struct ly_ctx *ctx, const char *name, const char *revision);
+const struct lys_module *ly_ctx_get_module(const struct ly_ctx *ctx, const char *name, const char *revision, int implemented);
 
 /**
  * @brief Get pointer to the older schema tree to the specified one in the provided context.
@@ -1306,11 +1359,13 @@ ly_module_data_clb ly_ctx_get_module_data_clb(const struct ly_ctx *ctx, void **u
  * @param[in] ctx Context to work in.
  * @param[in] ns Namespace of the YANG module to get.
  * @param[in] revision Optional revision date of the YANG module to get. If not specified,
- * the schema in the newest revision is returned if any.
+ * the schema in the newest/implemented revision (see \p implemented parameter) is returned if any.
+ * @param[in] implemented In case the revision is not specified, require the implemented module
+ * instead of the newest revision of the module.
  * @return Pointer to the data model structure, NULL if no schema following the namespace and
  * revision requirements is present in the context.
  */
-const struct lys_module *ly_ctx_get_module_by_ns(const struct ly_ctx *ctx, const char *ns, const char *revision);
+const struct lys_module *ly_ctx_get_module_by_ns(const struct ly_ctx *ctx, const char *ns, const char *revision, int implemented);
 
 /**
  * @brief Get submodule of a main module.
@@ -1723,7 +1778,6 @@ typedef enum {
     LYVE_NOLEAFREF,    /**< leaf pointed to by leafref does not exist (data) */
     LYVE_NOMANDCHOICE, /**< no mandatory choice case branch exists (data) */
 
-    LYVE_XPATH_INSNODE,/**< schema node not found */
     LYVE_XPATH_INTOK,  /**< unexpected XPath token */
     LYVE_XPATH_EOF,    /**< unexpected end of an XPath expression */
     LYVE_XPATH_INOP,   /**< invalid XPath operation operands */

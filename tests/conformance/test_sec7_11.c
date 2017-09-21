@@ -48,7 +48,7 @@ setup_f(void **state)
     }
 
     /* libyang context */
-    st->ctx = ly_ctx_new(TESTS_DIR "/conformance/" TEST_DIR);
+    st->ctx = ly_ctx_new(TESTS_DIR "/conformance/" TEST_DIR, 0);
     if (!st->ctx) {
         fprintf(stderr, "Failed to create context.\n");
         return -1;
@@ -91,7 +91,7 @@ TEST_GROUPING(void **state)
                 assert_ptr_not_equal(mod, NULL);
             }
         }
-        lys_set_implemented(ly_ctx_get_module(st->ctx, "mod", NULL));
+        lys_set_implemented(ly_ctx_get_module(st->ctx, "mod", NULL, 0));
 
         for (j = 0; j < TEST_DATA_FILE_COUNT; ++j) {
             sprintf(buf, TESTS_DIR "/conformance/" TEST_DIR "/data%d.xml", j + 1);

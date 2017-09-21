@@ -313,7 +313,7 @@ setup_f(void **state)
     (void) state; /* unused */
     char *yang_folder = TESTS_DIR"/api/files";
 
-    ctx = ly_ctx_new(yang_folder);
+    ctx = ly_ctx_new(yang_folder, 0);
     if (!ctx) {
         return -1;
     }
@@ -344,7 +344,7 @@ test_lys_parse_mem(void **state)
 
     module = NULL;
     ctx = NULL;
-    ctx = ly_ctx_new(yang_folder);
+    ctx = ly_ctx_new(yang_folder, 0);
     module = lys_parse_mem(ctx, lys_module_a, yang_format);
     if (!module) {
         fail();
@@ -381,7 +381,7 @@ test_lys_parse_fd(void **state)
     char *yang_file = TESTS_DIR"/api/files/b.yang";
     int fd = -1;
 
-    ctx = ly_ctx_new(yang_folder);
+    ctx = ly_ctx_new(yang_folder, 0);
 
     fd = open(yin_file, O_RDONLY);
     if (fd == -1) {
@@ -440,7 +440,7 @@ test_lys_parse_path(void **state)
     }
     close(fd);
 
-    ctx = ly_ctx_new(yang_folder);
+    ctx = ly_ctx_new(yang_folder, 0);
     module = lys_parse_path(ctx, yin_file, LYS_IN_YIN);
     if (!module) {
         fail();

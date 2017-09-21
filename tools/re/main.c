@@ -241,7 +241,7 @@ main(int argc, char* argv[])
     }
     modstr = s;
 
-    ctx = ly_ctx_new(NULL);
+    ctx = ly_ctx_new(NULL, 0);
     if (!ctx) {
         goto cleanup;
     }

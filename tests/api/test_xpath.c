@@ -130,7 +130,7 @@ setup_f(void **state)
     }
 
     /* libyang context */
-    st->ctx = ly_ctx_new(ietfdir);
+    st->ctx = ly_ctx_new(ietfdir, 0);
     if (!st->ctx) {
         fprintf(stderr, "Failed to create context.\n");
         goto error;
@@ -144,7 +144,7 @@ setup_f(void **state)
     }
     lys_features_enable(mod, "*");
 
-    mod = ly_ctx_get_module(st->ctx, "ietf-interfaces", NULL);
+    mod = ly_ctx_get_module(st->ctx, "ietf-interfaces", NULL, 0);
     if (!mod) {
         fprintf(stderr, "Failed to get data module \"ietf-interfaces\".\n");
         goto error;

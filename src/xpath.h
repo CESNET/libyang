@@ -17,6 +17,7 @@
 
 #include <stdint.h>
 
+#include "libyang.h"
 #include "tree_schema.h"
 #include "tree_data.h"
 

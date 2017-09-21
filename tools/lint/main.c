@@ -43,7 +43,7 @@ main(int argc, char* argv[])
 
     /* continue in interactive mode */
     linenoiseSetCompletionCallback(complete_cmd);
-    ctx = ly_ctx_new(NULL);
+    ctx = ly_ctx_new(NULL, 0);
     if (!ctx) {
         fprintf(stderr, "Failed to create context.\n");
         return 1;

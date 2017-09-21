@@ -150,7 +150,7 @@ json_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int o
             (!node->dflt && (options & LYP_WD_ALL_TAG) && lyd_wd_default(leaf))) {
         /* we have implicit OR explicit default node */
         /* get with-defaults module */
-        wdmod = ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf-with-defaults", NULL);
+        wdmod = ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf-with-defaults", NULL, 1);
     }
 
     if (!onlyvalue) {

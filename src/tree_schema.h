@@ -873,6 +873,11 @@ struct lys_type_info_str {
                                   - 0x15 (NACK) for invert-match
                                   So the expression itself always starts at expr[1] */
     unsigned int pat_count;  /**< number of pattern definitions in the patterns array */
+#ifdef LY_ENABLED_CACHE
+    void **patterns_pcre;    /**< array of compiled patterns to optimize its evaluation, represented as
+                                  array of pointers to results of pcre_compile() and pcre_study().
+                                  For internal use only. */
+#endif
 };
 
 /**

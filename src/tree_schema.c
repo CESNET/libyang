@@ -1454,8 +1454,25 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
         if (old->info.str.length) {
             new->info.str.length = lys_restr_dup(mod, old->info.str.length, 1, shallow, unres);
         }
-        new->info.str.patterns = lys_restr_dup(mod, old->info.str.patterns, old->info.str.pat_count, shallow, unres);
-        new->info.str.pat_count = old->info.str.pat_count;
+        if (old->info.str.pat_count) {
+            new->info.str.patterns = lys_restr_dup(mod, old->info.str.patterns, old->info.str.pat_count, shallow, unres);
+            new->info.str.pat_count = old->info.str.pat_count;
+#ifdef LY_ENABLED_CACHE
+            if (!in_grp) {
+                new->info.str.patterns_pcre = malloc(new->info.str.pat_count * 2 * sizeof *new->info.str.patterns_pcre);
+                LY_CHECK_ERR_RETURN(!new->info.str.patterns_pcre, LOGMEM, -1);
+                for (i = 0; i < new->info.str.pat_count; i++) {
+                    if (lyp_precompile_pattern(&new->info.str.patterns[i].expr[1],
+                                              (pcre**)&new->info.str.patterns_pcre[2 * i],
+                                              (pcre_extra**)&new->info.str.patterns_pcre[2 * i + 1])) {
+                        free(new->info.str.patterns_pcre);
+                        new->info.str.patterns_pcre = NULL;
+                        return -1;
+                    }
+                }
+            }
+#endif
+        }
         break;
 
     case LY_TYPE_UNION:
@@ -1987,8 +2004,17 @@ lys_type_free(struct ly_ctx *ctx, struct lys_type *type,
         free(type->info.str.length);
         for (i = 0; i < type->info.str.pat_count; i++) {
             lys_restr_free(ctx, &type->info.str.patterns[i], private_destructor);
+#ifdef LY_ENABLED_CACHE
+            if (type->info.str.patterns_pcre) {
+                pcre_free((pcre*)type->info.str.patterns_pcre[2 * i]);
+                pcre_free_study((pcre_extra*)type->info.str.patterns_pcre[2 * i + 1]);
+            }
+#endif
         }
         free(type->info.str.patterns);
+#ifdef LY_ENABLED_CACHE
+        free(type->info.str.patterns_pcre);
+#endif
         break;
 
     case LY_TYPE_UNION:
@@ -2578,7 +2604,7 @@ lys_get_import_module(const struct lys_module *module, const char *prefix, int p
             LOGMEM;
             return NULL;
         }
-        main_module = ly_ctx_get_module(module->ctx, str, NULL);
+        main_module = ly_ctx_get_module(module->ctx, str, NULL, 1);
         free(str);
         return main_module;
     }
@@ -2700,8 +2726,8 @@ lys_submodule_free(struct lys_submodule *submodule, void (*private_destructor)(c
     free(submodule);
 }
 
-static int
-ingrouping(const struct lys_node *node)
+int
+lys_ingrouping(const struct lys_node *node)
 {
     const struct lys_node *iter = node;
     assert(node);
@@ -3008,14 +3034,14 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         break;
 
     case LYS_LEAF:
-        if (lys_type_dup(module, retval, &(leaf->type), &(leaf_orig->type), ingrouping(retval), shallow, unres)) {
+        if (lys_type_dup(module, retval, &(leaf->type), &(leaf_orig->type), lys_ingrouping(retval), shallow, unres)) {
             goto error;
         }
         leaf->units = lydict_insert(module->ctx, leaf_orig->units, 0);
 
         if (leaf_orig->dflt) {
             leaf->dflt = lydict_insert(ctx, leaf_orig->dflt, 0);
-            if (!ingrouping(retval) || (leaf->type.base != LY_TYPE_LEAFREF)) {
+            if (!lys_ingrouping(retval) || (leaf->type.base != LY_TYPE_LEAFREF)) {
                 /* problem is when it is an identityref referencing an identity from a module
                  * and we are using the grouping in a different module */
                 if (leaf->type.base == LY_TYPE_IDENT) {
@@ -3043,7 +3069,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         break;
 
     case LYS_LEAFLIST:
-        if (lys_type_dup(module, retval, &(llist->type), &(llist_orig->type), ingrouping(retval), shallow, unres)) {
+        if (lys_type_dup(module, retval, &(llist->type), &(llist_orig->type), lys_ingrouping(retval), shallow, unres)) {
             goto error;
         }
         llist->units = lydict_insert(module->ctx, llist_orig->units, 0);
@@ -3064,7 +3090,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
 
             for (i = 0; i < llist->dflt_size; i++) {
                 llist->dflt[i] = lydict_insert(ctx, llist_orig->dflt[i], 0);
-                if (!ingrouping(retval) || (llist->type.base != LY_TYPE_LEAFREF)) {
+                if (!lys_ingrouping(retval) || (llist->type.base != LY_TYPE_LEAFREF)) {
                     if ((llist->type.base == LY_TYPE_IDENT) && !strchr(llist->dflt[i], ':') && (module != llist_orig->module)) {
                         tmp_mod = llist_orig->module;
                     } else {

@@ -109,6 +109,7 @@ struct lys_type *lyp_parse_value(struct lys_type *type, const char **value_, str
 int lyp_check_length_range(const char *expr, struct lys_type *type);
 
 int lyp_check_pattern(const char *pattern, pcre **pcre_precomp);
+int lyp_precompile_pattern(const char *pattern, pcre** pcre_cmp, pcre_extra **pcre_std);
 
 int fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, struct lys_type *type,
                   int tpdftype, struct unres_schema *unres);
