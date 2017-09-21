@@ -6283,7 +6283,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
                           struct unres_schema *unres)
 {
     /* has_str - whether the str_snode is a string in a dictionary that needs to be freed */
-    int rc = -1, has_str = 0, parent_type = 0, i, k;
+    int rc = -1, has_str = 0, parent_type = 0, i, k, hidden;
     unsigned int j;
     struct lys_node *root, *next, *node, *par_grp;
     const char *expr;
@@ -6331,7 +6331,12 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
             }
 
             if (lys_node_module(node)->implemented) {
-                /* make all the modules on the path implemented */
+                /* make all the modules on the path implemented, print verbose messages */
+                hidden = ly_vlog_hidden;
+                if (hidden) {
+                    ly_vlog_hide(0);
+                }
+
                 for (next = (struct lys_node *)stype->info.lref.target; next; next = lys_parent(next)) {
                     if (!lys_node_module(next)->implemented) {
                         if (lys_set_implemented(lys_node_module(next))) {
@@ -6347,6 +6352,14 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
                 /* store the backlink from leafref target */
                 if (lys_leaf_add_leafref_target(stype->info.lref.target, (struct lys_node *)stype->parent)) {
                     rc = -1;
+                }
+
+                if (hidden) {
+                    ly_vlog_hide(1);
+                }
+
+                if (rc) {
+                    break;
                 }
             }
         }

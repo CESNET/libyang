@@ -2665,7 +2665,8 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
 
     unres_schema_free(NULL, &unres, 0);
     lyp_check_circmod_pop(ctx);
-    LOGVRB("Module \"%s\" successfully parsed.", module->name);
+    LOGVRB("Module \"%s%s%s\" successfully parsed as %s.", module->name, (module->rev_size ? "@" : ""),
+           (module->rev_size ? module->rev[0].date : ""), (module->implemented ? "implemented" : "imported"));
     return module;
 
 error:

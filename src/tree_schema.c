@@ -4004,7 +4004,6 @@ apply_aug(struct lys_node_augment *augment, struct unres_schema *unres)
                 LOGERR(ly_errno, "Making the augment target module \"%s\" implemented failed.", lys_node_module(parent)->name);
                 return -1;
             }
-            LOGVRB("Augment target module \"%s\" now implemented.", lys_node_module(parent)->name);
         }
     }
 
@@ -4519,6 +4518,8 @@ lys_set_implemented(const struct lys_module *module)
         module->inc[i].submodule->implemented = 1;
     }
 
+    LOGVRB("Module \"%s%s%s\" now implemented.", module->name, (module->rev_size ? "@" : ""),
+           (module->rev_size ? module->rev[0].date : ""));
     return EXIT_SUCCESS;
 
 error:
