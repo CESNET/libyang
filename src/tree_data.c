@@ -4200,11 +4200,10 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
     }
 
     if (*node) {
-        if (options & LYD_OPT_NOSIBLINGS) {
-            /* ctx is NULL */
-        } else {
+        if (!ctx) {
             ctx = (*node)->schema->module->ctx;
-
+        }
+        if (!(options & LYD_OPT_NOSIBLINGS)) {
             /* check that the node is the first sibling */
             while ((*node)->prev->next) {
                 *node = (*node)->prev;
@@ -4323,33 +4322,35 @@ nextsiblings:
         options &= ~LYD_OPT_ACT_NOTIF;
     }
 
-    /* check for uniquness of top-level lists/leaflists because
-     * only the inner instances were tested in lyv_data_content() */
-    set = ly_set_new();
-    yanglib_mod = ly_ctx_get_module(ctx ? ctx : (*node)->schema->module->ctx, "ietf-yang-library", NULL, 1);
-    LY_TREE_FOR(*node, root) {
-        if ((options & LYD_OPT_DATA_ADD_YANGLIB) && yanglib_mod && (root->schema->module == yanglib_mod)) {
-            /* ietf-yang-library data present, so ignore the option to add them */
-            options &= ~LYD_OPT_DATA_ADD_YANGLIB;
-        }
+    if (*node) {
+        /* check for uniqueness of top-level lists/leaflists because
+         * only the inner instances were tested in lyv_data_content() */
+        set = ly_set_new();
+        yanglib_mod = ly_ctx_get_module(ctx ? ctx : (*node)->schema->module->ctx, "ietf-yang-library", NULL, 1);
+        LY_TREE_FOR(*node, root) {
+            if ((options & LYD_OPT_DATA_ADD_YANGLIB) && yanglib_mod && (root->schema->module == yanglib_mod)) {
+                /* ietf-yang-library data present, so ignore the option to add them */
+                options &= ~LYD_OPT_DATA_ADD_YANGLIB;
+            }
 
-        if (!(root->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) || !(root->validity & LYD_VAL_UNIQUE)) {
-            continue;
-        }
+            if (!(root->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) || !(root->validity & LYD_VAL_UNIQUE)) {
+                continue;
+            }
 
-        /* check each list/leaflist only once */
-        i = set->number;
-        if (ly_set_add(set, root->schema, 0) != i) {
-            /* already checked */
-            continue;
-        }
+            /* check each list/leaflist only once */
+            i = set->number;
+            if (ly_set_add(set, root->schema, 0) != i) {
+                /* already checked */
+                continue;
+            }
 
-        if (lyv_data_unique(root, *node)) {
-            ly_set_free(set);
-            goto cleanup;
+            if (lyv_data_unique(root, *node)) {
+                ly_set_free(set);
+                goto cleanup;
+            }
         }
+        ly_set_free(set);
     }
-    ly_set_free(set);
 
     /* add missing ietf-yang-library if requested */
     if (options & LYD_OPT_DATA_ADD_YANGLIB) {
