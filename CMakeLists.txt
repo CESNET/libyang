@@ -165,6 +165,7 @@ set(lintsrc
 	tools/lint/main_ni.c
 	tools/lint/commands.c
 	tools/lint/completion.c
+	tools/lint/configuration.c
 	linenoise/linenoise.c)
 
 set(resrc
