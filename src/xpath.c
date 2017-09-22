@@ -3128,7 +3128,7 @@ static int
 xpath_count(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd_node *UNUSED(cur_node),
             struct lys_module *UNUSED(local_mod), struct lyxp_set *set, int options)
 {
-    struct lys_node *snode, *sparent;
+    struct lys_node *snode = NULL, *sparent;
     int ret = EXIT_SUCCESS;
 
     if (options & LYXP_SNODE_ALL) {
@@ -3137,11 +3137,13 @@ xpath_count(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd_node 
             ret = EXIT_FAILURE;
         }
 
-        for (sparent = snode; sparent && !(sparent->nodetype & (LYS_LIST | LYS_LEAFLIST)); sparent = lys_parent(sparent));
-        if (!sparent) {
-            LOGWRN("Argument #1 of %s is a %s node \"%s\" without a list node parent.",
-                   __func__, strnodetype(snode->nodetype), snode->name);
-            ret = EXIT_FAILURE;
+        if (snode) {
+            for (sparent = snode; sparent && !(sparent->nodetype & (LYS_LIST | LYS_LEAFLIST)); sparent = lys_parent(sparent));
+            if (!sparent) {
+                LOGWRN("Argument #1 of %s is a %s node \"%s\" without a list node parent.",
+                    __func__, strnodetype(snode->nodetype), snode->name);
+                ret = EXIT_FAILURE;
+            }
         }
         set_snode_clear_ctx(set);
         return ret;
