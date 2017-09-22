@@ -1738,7 +1738,7 @@ resolve_schema_nodeid(const char *nodeid, const struct lys_node *start, const st
     struct lys_node_augment *last_aug;
     int r, nam_len, mod_name_len = 0, is_relative = -1, all_desc, has_predicate, nodeid_end = 0;
     /* resolved import module from the start module, it must match the next node-name-match sibling */
-    const struct lys_module *start_mod, *aux_mod;
+    const struct lys_module *start_mod, *aux_mod = NULL;
     char *str;
 
     assert(nodeid && (start || cur_module) && ret);
@@ -7310,7 +7310,7 @@ resolve_instid(struct lyd_node *data, const char *path, int req_inst, struct lyd
     const struct lys_module *mod, *prev_mod = NULL;
     struct ly_ctx *ctx = data->schema->module->ctx;
     struct lyd_node *root, *node;
-    const char *model, *name;
+    const char *model = NULL, *name;
     char *str;
     int mod_len, name_len, has_predicate;
     struct unres_data node_match;
@@ -7369,7 +7369,7 @@ resolve_instid(struct lyd_node *data, const char *path, int req_inst, struct lyd
 
         if (has_predicate) {
             /* we have predicate, so the current results must be list or leaf-list */
-            j = 0;
+            parsed = j = 0;
             /* index of the current node (for lists with position predicates) */
             cur_idx = 1;
             while (j < (signed)node_match.count) {

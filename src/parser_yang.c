@@ -3508,7 +3508,7 @@ int
 yang_check_typedef(struct lys_module *module, struct lys_node *parent, struct unres_schema *unres)
 {
     struct lys_tpdf *tpdf;
-    uint8_t *ptr_tpdf_size;
+    uint8_t *ptr_tpdf_size = NULL;
     uint16_t i, tpdf_size, *ptr_tpdf_size16 = NULL;
 
     if (!parent) {

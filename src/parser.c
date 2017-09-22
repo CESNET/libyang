@@ -1430,7 +1430,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
     int c, len, found = 0, hidden;
     unsigned int i, j;
     int64_t num;
-    uint64_t unum, uind, u;
+    uint64_t unum, uind, u = 0;
     const char *ptr, *value = *value_, *itemname;
     struct lys_type_bit **bits = NULL;
     struct lys_ident *ident;

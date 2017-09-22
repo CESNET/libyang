@@ -1490,7 +1490,7 @@ ly_ctx_info(struct ly_ctx *ctx)
     char id[8];
     char *str;
     const struct lys_module *mod;
-    struct lyd_node *root, *root_bis = NULL, *cont, *cont_bis;
+    struct lyd_node *root, *root_bis = NULL, *cont = NULL, *cont_bis = NULL;
 
     if (!ctx) {
         ly_errno = LY_EINVAL;
