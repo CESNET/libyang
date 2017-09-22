@@ -4138,6 +4138,7 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
     struct ly_ctx *ctx = NULL;
     int ret = EXIT_FAILURE, i;
     struct unres_data *unres = NULL;
+    const struct lys_module *yanglib_mod;
     struct ly_set *set;
     struct ly_ctx *ctx_prev = ly_parser_data.ctx;
 
@@ -4158,7 +4159,8 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
 
     data_tree = *node;
 
-    if ((!(options & LYD_OPT_TYPEMASK) || (options & (LYD_OPT_DATA | LYD_OPT_CONFIG | LYD_OPT_GET | LYD_OPT_GETCONFIG | LYD_OPT_EDIT))) && !(*node)) {
+    if ((!(options & LYD_OPT_TYPEMASK)
+            || (options & (LYD_OPT_DATA | LYD_OPT_CONFIG | LYD_OPT_GET | LYD_OPT_GETCONFIG | LYD_OPT_EDIT))) && !(*node)) {
         /* get context with schemas from the var_arg */
         ctx = (struct ly_ctx *)var_arg;
         if (!ctx) {
@@ -4324,8 +4326,9 @@ nextsiblings:
     /* check for uniquness of top-level lists/leaflists because
      * only the inner instances were tested in lyv_data_content() */
     set = ly_set_new();
+    yanglib_mod = ly_ctx_get_module(ctx ? ctx : (*node)->schema->module->ctx, "ietf-yang-library", NULL, 1);
     LY_TREE_FOR(*node, root) {
-        if ((options & LYD_OPT_DATA_ADD_YANGLIB) && root->schema->module == ctx->models.list[ctx->internal_module_count - 1]) {
+        if ((options & LYD_OPT_DATA_ADD_YANGLIB) && yanglib_mod && (root->schema->module == yanglib_mod)) {
             /* ietf-yang-library data present, so ignore the option to add them */
             options &= ~LYD_OPT_DATA_ADD_YANGLIB;
         }
