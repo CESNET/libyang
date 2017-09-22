@@ -77,6 +77,7 @@ load_config(void)
     history_file = malloc(strlen(yl_dir) + 9);
     if (!history_file) {
         fprintf(stderr, "Memory allocation failed (%s).\n", strerror(errno));
+        free(yl_dir);
         return;
     }
 
@@ -103,6 +104,7 @@ store_config(void)
     history_file = malloc(strlen(yl_dir) + 9);
     if (!history_file) {
         fprintf(stderr, "Memory allocation failed (%s).\n", strerror(errno));
+        free(yl_dir);
         return;
     }
 
