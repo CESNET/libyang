@@ -32,20 +32,29 @@
 #include "../../src/context.h"
 #include "../config.h"
 
+#define SCHEMA_COUNT 17
+
 #define SCHEMA_FOLDER_YIN TESTS_DIR"/schema/yin/ietf"
 #define SCHEMA_FOLDER_YANG TESTS_DIR"/schema/yang/ietf"
 
+char files[SCHEMA_COUNT][32] = { "iana-crypt-hash", "iana-if-type",
+                           "ietf-inet-types", "ietf-interfaces", "ietf-ipfix-psamp", "ietf-ip",
+                           "ietf-netconf-acm", "ietf-netconf-monitoring", "ietf-netconf-notifications",
+                           "ietf-netconf-partial-lock", "ietf-netconf-with-defaults", "ietf-netconf",
+                           "ietf-snmp", "ietf-system", "ietf-x509-cert-to-name", "ietf-yang-smiv2",
+                           "ietf-yang-types"
+                         };
 char yang_files[34][50] = {};
 char yin_files[34][50] = {};
 
 static int
-setup_ctx(void **state, int format)
+setup_ctx(void **state, int format, int flags)
 {
     //ly_verb(LY_LLVRB);
     if (format == LYS_IN_YANG){
-        (*state) = ly_ctx_new(SCHEMA_FOLDER_YANG, 0);
+        (*state) = ly_ctx_new(SCHEMA_FOLDER_YANG, flags);
     } else {
-        (*state) = ly_ctx_new(SCHEMA_FOLDER_YIN, 0);
+        (*state) = ly_ctx_new(SCHEMA_FOLDER_YIN, flags);
     }
     if (!(*state)) {
         return -1;
@@ -57,13 +66,25 @@ setup_ctx(void **state, int format)
 static int
 setup_ctx_yin(void **state)
 {
-    return setup_ctx(state, LYS_IN_YIN);
+    return setup_ctx(state, LYS_IN_YIN, 0);
 }
 
 static int
 setup_ctx_yang(void **state)
 {
-    return setup_ctx(state, LYS_IN_YANG);
+    return setup_ctx(state, LYS_IN_YANG, 0);
+}
+
+static int
+setup_ctx_yin_trusted(void **state)
+{
+    return setup_ctx(state, LYS_IN_YIN, LY_CTX_TRUSTED);
+}
+
+static int
+setup_ctx_yang_trusted(void **state)
+{
+    return setup_ctx(state, LYS_IN_YANG, LY_CTX_TRUSTED);
 }
 
 static int
@@ -98,14 +119,6 @@ test_modules(void **state)
     struct ly_ctx *ctx = *state;
     char *extension, path[PATH_MAX];
     const struct lys_module *module;
-
-    char files[17][32] = { "iana-crypt-hash", "iana-if-type",
-                           "ietf-inet-types", "ietf-interfaces", "ietf-ipfix-psamp", "ietf-ip",
-                           "ietf-netconf-acm", "ietf-netconf-monitoring", "ietf-netconf-notifications",
-                           "ietf-netconf-partial-lock", "ietf-netconf-with-defaults", "ietf-netconf",
-                           "ietf-snmp", "ietf-system", "ietf-x509-cert-to-name", "ietf-yang-smiv2",
-                           "ietf-yang-types"
-                         };
     int i, format;
 
     if (!strcmp(ctx->models.search_paths[0], realpath(SCHEMA_FOLDER_YIN, path))) {
@@ -121,10 +134,10 @@ test_modules(void **state)
         fail();
     }
 
-    for (i = 0; i < 17; i++) {
-        strcat(files[i], extension);
-        fprintf(stdout, "Loading \"%s\" module ... ", files[i]);
-        if (!(module = lys_parse_path(ctx, files[i], format))) {
+    for (i = 0; i < SCHEMA_COUNT; i++) {
+        sprintf(path, "%s%s", files[i], extension);
+        fprintf(stdout, "Loading \"%s\" module ... ", path);
+        if (!(module = lys_parse_path(ctx, path, format))) {
             fprintf(stdout, "failed\n");
             fail();
         }
@@ -133,8 +146,8 @@ test_modules(void **state)
             write_file(yang_files[i], "tmp1", module, LYS_OUT_YANG);
             write_file(yin_files[i], "tmp3", module, LYS_OUT_YIN);
         } else {
-            write_file(yang_files[i + 17], "tmp2", module, LYS_OUT_YANG);
-            write_file(yin_files[i + 17], "tmp4", module, LYS_OUT_YIN);
+            write_file(yang_files[i + SCHEMA_COUNT], "tmp2", module, LYS_OUT_YANG);
+            write_file(yin_files[i + SCHEMA_COUNT], "tmp4", module, LYS_OUT_YIN);
         }
     }
 }
@@ -145,9 +158,9 @@ compare_modules(void **state)
     int i, ch1, ch2;
     FILE *f1, *f2;
     char filename[1024];
-    char (*files)[34][50] = *state;
+    char (*files)[2 * SCHEMA_COUNT][50] = *state;
 
-    for (i = 0; i < 17; ++i) {
+    for (i = 0; i < SCHEMA_COUNT; ++i) {
         if (!(*files)[i]) {
             fprintf(stderr, "missing file name.\n");
             fail();
@@ -164,12 +177,12 @@ compare_modules(void **state)
         }
         strcpy(filename, SCHEMA_FOLDER_YANG);
         strcat(filename, "/");
-        strcat(filename, (*files)[i + 17]);
+        strcat(filename, (*files)[i + SCHEMA_COUNT]);
         f2 = fopen(filename, "r");
         if (!f2) {
             fclose(f1);
             fprintf(stdout, "failed\n");
-            fprintf(stderr, "unable to open \"%s\" file.\n", (*files)[i + 17]);
+            fprintf(stderr, "unable to open \"%s\" file.\n", (*files)[i + SCHEMA_COUNT]);
             fail();
         }
 
@@ -211,12 +224,12 @@ teardown_files(void **state)
 
     (void)state; /* unused */
     chdir(SCHEMA_FOLDER_YIN);
-    for (i = 0; i < 17; ++i) {
+    for (i = 0; i < SCHEMA_COUNT; ++i) {
         remove(yang_files[i]);
         remove(yin_files[i]);
     }
     chdir(SCHEMA_FOLDER_YANG);
-    for (i = 17; i < 34; ++i) {
+    for (i = SCHEMA_COUNT; i < 2 * SCHEMA_COUNT; ++i) {
         remove(yang_files[i]);
         remove(yin_files[i]);
     }
@@ -229,6 +242,10 @@ main(void)
     const struct CMUnitTest cmut[] = {
         cmocka_unit_test_setup_teardown(test_modules, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_modules, setup_ctx_yang, teardown_ctx),
+        cmocka_unit_test_setup_teardown(compare_modules, setup_files_yang, NULL),
+        cmocka_unit_test_setup_teardown(compare_modules, setup_files_yin, NULL),
+        cmocka_unit_test_setup_teardown(test_modules, setup_ctx_yin_trusted, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_modules, setup_ctx_yang_trusted, teardown_ctx),
         cmocka_unit_test_setup_teardown(compare_modules, setup_files_yang, NULL),
         cmocka_unit_test_setup_teardown(compare_modules, setup_files_yin, NULL)
     };

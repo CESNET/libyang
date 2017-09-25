@@ -790,7 +790,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
     }
 
     /* check identifier uniqueness */
-    if (lys_check_id(child, parent, module)) {
+    if (!(module->ctx->models.flags & LY_CTX_TRUSTED) && lys_check_id(child, parent, module)) {
         return EXIT_FAILURE;
     }
 
@@ -1329,7 +1329,7 @@ lys_iffeature_free(struct ly_ctx *ctx, struct lys_iffeature *iffeature, uint8_t 
 
     for (i = 0; i < iffeature_size; ++i) {
         lys_extension_instances_free(ctx, iffeature[i].ext, iffeature[i].ext_size, private_destructor);
-        if ( !shallow ) {
+        if (!shallow) {
             free(iffeature[i].expr);
             free(iffeature[i].features);
         }
