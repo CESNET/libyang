@@ -2486,6 +2486,10 @@ lyxp_parse_expr(const char *expr)
 
             } else {
                 LOGVAL(LYE_INCHAR, LY_VLOG_NONE, NULL, expr[parsed], &expr[parsed]);
+                if (prev_function_check) {
+                    LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Perhaps \"%.*s\" is supposed to be a function call.",
+                           ret->tok_len[ret->used - 1], &ret->expr[ret->expr_pos[ret->used - 1]]);
+                }
                 goto error;
             }
         } else if (expr[parsed] == '*') {
