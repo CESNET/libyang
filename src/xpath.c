@@ -2372,7 +2372,7 @@ lyxp_parse_expr(const char *expr)
             tok_len = 2;
             tok_type = LYXP_TOKEN_DDOT;
 
-        } else if ((expr[parsed] == '.') && (!isdigit(expr[parsed+1]))) {
+        } else if ((expr[parsed] == '.') && (!isdigit(expr[parsed + 1]))) {
 
             /* '.' */
             tok_len = 1;
@@ -2520,7 +2520,7 @@ lyxp_parse_expr(const char *expr)
                 prev_function_check = 0;
                 tok_type = LYXP_TOKEN_NAMETEST;
             } else {
-                /* there is no prefix so it can still be NodeType/FunctioName, we can't finally decide now */
+                /* there is no prefix so it can still be NodeType/FunctionName, we can't finally decide now */
                 prev_function_check = 1;
                 tok_type = LYXP_TOKEN_NAMETEST;
             }
