@@ -2011,6 +2011,7 @@ lyd_merge_parent_children(struct lyd_node *target, struct lyd_node *source, int 
                     }
                     break;
                 } else if (ly_errno) {
+                    lyd_free_withsiblings(source);
                     return EXIT_FAILURE;
                 }
             }
@@ -2127,6 +2128,7 @@ lyd_merge_siblings(struct lyd_node *target, struct lyd_node *source, int options
                 }
                 break;
             } else if (ly_errno) {
+                lyd_free_withsiblings(source);
                 return EXIT_FAILURE;
             }
         }
@@ -2373,6 +2375,8 @@ lyd_merge_to_ctx(struct lyd_node **trg, const struct lyd_node *src, int options,
         /* !! src_merge start is a (top-level) sibling(s) of trg_merge_start */
         ret = lyd_merge_siblings(trg_merge_start, src_merge_start, options);
     }
+    /* it was freed whatever the return value */
+    src_merge_start = NULL;
     if (ret) {
         goto error;
     }
