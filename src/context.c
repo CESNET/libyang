@@ -673,8 +673,8 @@ const struct lys_module *
 ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char *name, const char *revision,
                        int implement, struct unres_schema *unres)
 {
-    const struct lys_module *mod;
-    char *module_data;
+    struct lys_module *mod;
+    char *module_data = NULL;
     int i;
     void (*module_data_free)(void *module_data) = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
@@ -689,52 +689,54 @@ ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char
                 }
             }
         }
-        if (revision) {
-            /* try to get the schema with the specific revision from the context,
-             * include the disabled modules in the search to avoid their duplication,
-             * they are enabled by the subsequent call to lys_set_implemented() */
-            for (i = ctx->internal_module_count, mod = NULL; i < ctx->models.used; i++) {
-                mod = ctx->models.list[i]; /* shortcut */
-                if (ly_strequal(name, mod->name, 0) && mod->rev_size && !strcmp(revision, mod->rev[0].date)) {
+        /* try to get the schema from the context (with or without revision),
+         * include the disabled modules in the search to avoid their duplication,
+         * they are enabled by the subsequent call to lys_set_implemented() */
+        for (i = ctx->internal_module_count, mod = NULL; i < ctx->models.used; i++) {
+            mod = ctx->models.list[i]; /* shortcut */
+            if (ly_strequal(name, mod->name, 0)) {
+                if (revision && mod->rev_size && !strcmp(revision, mod->rev[0].date)) {
+                    /* the specific revision was already loaded */
+                    break;
+                } else if (!revision && mod->latest_revision) {
+                    /* the latest revision of this module was already loaded */
                     break;
                 }
+            }
+            mod = NULL;
+        }
+        if (mod) {
+            /* module must be enabled */
+            if (mod->disabled) {
+                lys_set_enabled(mod);
+            }
+            /* module is supposed to be implemented */
+            if (implement && lys_set_implemented(mod)) {
+                /* the schema cannot be implemented */
                 mod = NULL;
             }
-            if (mod) {
-                /* we get such a module, make it implemented */
-                if (lys_set_implemented(mod)) {
-                    /* the schema cannot be implemented */
-                    mod = NULL;
-                }
-                return mod;
-            }
+            return mod;
         }
     }
 
+    /* module is not yet in context, use the user callback or try to find the schema on our own */
     if (ctx->imp_clb) {
+        ly_errno = LY_SUCCESS;
         if (module) {
             mod = lys_main_module(module);
             module_data = ctx->imp_clb(mod->name, (mod->rev_size ? mod->rev[0].date : NULL), name, revision, ctx->imp_clb_data, &format, &module_data_free);
         } else {
             module_data = ctx->imp_clb(name, revision, NULL, NULL, ctx->imp_clb_data, &format, &module_data_free);
         }
-        if (!module_data) {
-            if (module || revision) {
-                /* we already know that the specified revision is not present in context, and we have no other
-                 * option in case of submodules */
-                LOGERR(LY_ESYS, "User module retrieval callback failed!");
-                return NULL;
-            } else {
-                /* get the newest revision from the context */
-                mod = ly_ctx_get_module_by(ctx, name, offsetof(struct lys_module, name), revision, 1, 0);
-                if (mod && mod->disabled) {
-                    /* enable the required module */
-                    lys_set_enabled(mod);
-                }
-                return mod;
-            }
+        if (!module_data && (ly_errno != LY_SUCCESS)) {
+            /* callback encountered an error, do not change it */
+            LOGERR(LY_SUCCESS, "User module retrieval callback failed!");
+            return NULL;
         }
+    }
 
+    if (module_data) {
+        /* we got the module from the callback */
         if (module) {
             mod = (struct lys_module *)lys_sub_parse_mem(module, module_data, format, unres);
         } else {
@@ -745,8 +747,16 @@ ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char
             module_data_free(module_data);
         }
     } else {
+        /* module was not received from the callback or there is no callback set */
         mod = lyp_search_file(ctx, module, name, revision, implement, unres);
     }
+
+#ifdef LY_ENABLED_LATEST_REVISIONS
+    if (!revision && mod) {
+        /* module is the latest revision found */
+        mod->latest_revision = 1;
+    }
+#endif
 
     return mod;
 }

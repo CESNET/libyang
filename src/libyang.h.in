@@ -19,6 +19,8 @@
 
 @ENABLE_CACHE_MACRO@
 
+@ENABLE_LATEST_REVISIONS_MACRO@
+
 #include "tree_schema.h"
 #include "tree_data.h"
 #include "xml.h"
@@ -101,10 +103,10 @@ extern "C" {
  * where libyang will automatically search for schemas being imported or included. The search path
  * can be later changed via ly_ctx_set_searchdir() and ly_ctx_unset_searchdrs() functions. If the search dir
  * is specified, it is explored first. Except the searchpath, also all its subdirectories (and symlinks) are
- * taken into account. In case the module is not found, libyang tries to find the (sub)module also in current
+ * taken into account. In case the module is not found, libyang tries to find the (sub)module also in the current
  * working working directory. Note, that in this case only the current directory without any other subdirectory
  * is examined. This automatic searching can be completely avoided when the caller sets module searching callback
- * (#ly_module_imp_clb) via ly_ctx_set_module_imp_clb().
+ * (#ly_module_imp_clb) via ly_ctx_set_module_imp_clb(), but both approaches can also be combined.
  *
  * Schemas are added into the context using [parser functions](@ref howtoschemasparsers) - \b lys_parse_*().
  * In case of schemas, also ly_ctx_load_module() can be used - in that case the #ly_module_imp_clb or automatic
@@ -122,11 +124,18 @@ extern "C" {
  * a module (and no other) as target of leafref, augment or deviation. All modules with deviation definition are always
  * marked as implemented. The imported (not implemented) module can be set implemented by lys_set_implemented(). But
  * the implemented module cannot be changed back to just imported module. The imported modules are used only as a
- * source of definitions for types (including identities) and uses statements. The data in such a modules are
- * ignored - caller is not allowed to create the data defined in the model via data parsers, the default nodes are
- * not added into any data tree and mandatory nodes are not checked in the data trees. This can be changed by
- * ly_ctx_set_allimplemented() function which causes that all the imported modules are automatically set to be
- * implemented.
+ * source of definitions for types and groupings for uses statements. The data in such modules are ignored - caller
+ * is not allowed to create the data (including instantiating identities) defined in the model via data parsers,
+ * the default nodes are not added into any data tree and mandatory nodes are not checked in the data trees. This
+ * can be changed by ly_ctx_set_allimplemented() function, which causes that all the imported modules are automatically
+ * set to be implemented.
+ *
+ * When loading/importing a module without revision, the latest revision of the required module is supposed to load.
+ * For a context, the first time the latest revision of a module is requested, it is properly searched for and loaded.
+ * However, when this module is requested (without revision) the second time, the one found previously is returned.
+ * This has the advantage of not searching for the module repeatedly but the drawback that if a later revision
+ * of the module is later made available, this context will not use it. If you are aware of a case when this
+ * optimization could cause problems, you can disable it using a cmake(1) build option (variable).
  *
  * Context holds all modules and their submodules internally. To get
  * a specific module or submodule, use ly_ctx_get_module() and ly_ctx_get_submodule(). There are some additional
@@ -1291,7 +1300,9 @@ const struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *name
  * @param[in] user_data User-supplied callback data.
  * @param[out] format Format of the returned module data.
  * @param[out] free_module_data Callback for freeing the returned module data. If not set, the data will be left untouched.
- * @return Requested module data or NULL if the callback is not able to provide the requested schema content for any reason.
+ * @return Requested module data, NULL if the module is supposed to be loaded
+ * using standard mechanisms (searched for in the filesystem), NULL and #ly_errno set if
+ * the callback failed resulting in the module failing to load.
  */
 typedef char *(*ly_module_imp_clb)(const char *mod_name, const char *mod_rev, const char *submod_name, const char *sub_rev,
                                    void *user_data, LYS_INFORMAT *format, void (**free_module_data)(void *model_data));
@@ -1691,13 +1702,13 @@ void (*ly_get_log_clb(void))(LY_LOG_LEVEL, const char *, const char *);
  * @ingroup logger
  */
 typedef enum {
-    LY_SUCCESS,    /**< no error, not set by functions, included just to complete #LY_ERR enumeration */
-    LY_EMEM,       /**< Memory allocation failure */
-    LY_ESYS,       /**< System call failure */
-    LY_EINVAL,     /**< Invalid value */
-    LY_EINT,       /**< Internal error */
-    LY_EVALID,     /**< Validation failure */
-    LY_EEXT        /**< Extension error reported by an extension plugin */
+    LY_SUCCESS = 0, /**< no error, not set by functions, included just to complete #LY_ERR enumeration */
+    LY_EMEM,        /**< Memory allocation failure */
+    LY_ESYS,        /**< System call failure */
+    LY_EINVAL,      /**< Invalid value */
+    LY_EINT,        /**< Internal error */
+    LY_EVALID,      /**< Validation failure */
+    LY_EEXT         /**< Extension error reported by an extension plugin */
 } LY_ERR;
 
 /**

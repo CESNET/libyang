@@ -619,6 +619,10 @@ struct lys_module {
                                           - 2 = deviation applied to this module are temporarily off */
     uint8_t disabled:1;              /**< flag if the module is disabled in the context */
     uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
+    uint8_t latest_revision:1;       /**< flag if the module was loaded without specific revision and is
+                                          the latest revision found */
+    uint8_t padding1:7;              /**< padding for 32b alignment */
+    uint8_t padding2[2];
 
     /* array sizes */
     uint8_t rev_size;                /**< number of elements in #rev array */
@@ -629,8 +633,6 @@ struct lys_module {
     uint16_t tpdf_size;              /**< number of elements in #tpdf array */
 
     uint8_t features_size;           /**< number of elements in #features array */
-    uint8_t padding[3];              /**< padding for 32b alignment */
-
     uint8_t augment_size;            /**< number of elements in #augment array */
     uint8_t deviation_size;          /**< number of elements in #deviation array */
     uint8_t extensions_size;         /**< number of elements in #extensions array */
@@ -681,6 +683,7 @@ struct lys_submodule {
                                           - 2 = deviation applied to this module are temporarily off */
     uint8_t disabled:1;              /**< flag if the module is disabled in the context (same as in main module) */
     uint8_t implemented:1;           /**< flag if the module is implemented, not just imported (same as in main module) */
+    uint8_t padding[3];              /**< padding for 32b alignment */
 
     /* array sizes */
     uint8_t rev_size;                /**< number of elements in #rev array */
@@ -691,8 +694,6 @@ struct lys_submodule {
     uint16_t tpdf_size;              /**< number of elements in #tpdf array */
 
     uint8_t features_size;           /**< number of elements in #features array */
-    uint8_t padding[3];              /**< padding for 32b alignment */
-
     uint8_t augment_size;            /**< number of elements in #augment array */
     uint8_t deviation_size;          /**< number of elements in #deviation array */
     uint8_t extensions_size;         /**< number of elements in #extensions array */
