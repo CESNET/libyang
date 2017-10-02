@@ -5147,35 +5147,34 @@ end:
 API char *
 lyd_path(const struct lyd_node *node)
 {
-    char *buf_backup = NULL, *buf = ly_buf(), *result = NULL;
-    uint16_t index = LY_BUF_SIZE - 1;
+    char *buf, *result;
+    uint16_t start_idx, len;
 
     if (!node) {
         LOGERR(LY_EINVAL, "%s: NULL node parameter", __func__);
         return NULL;
     }
 
-    /* backup the shared internal buffer */
-    if (ly_buf_used && buf[0]) {
-        buf_backup = strndup(buf, LY_BUF_SIZE - 1);
-    }
-    ly_buf_used++;
+    buf = malloc(LY_BUF_SIZE);
+    LY_CHECK_ERR_RETURN(!buf, LOGMEM, NULL);
+    start_idx = LY_BUF_SIZE - 1;
 
-    /* build the path */
-    buf[index] = '\0';
-    ly_vlog_build_path_reverse(LY_VLOG_LYD, node, buf, &index);
-    result = strdup(&buf[index]);
+    buf[start_idx] = '\0';
+    if (ly_vlog_build_path_reverse(LY_VLOG_LYD, node, &buf, &start_idx, &len, 1)) {
+        free(buf);
+        return NULL;
+    }
+
+    result = malloc(len + 1);
     if (!result) {
         LOGMEM;
-        /* pass through to cleanup */
+        free(buf);
+        return NULL;
     }
 
-    /* restore the shared internal buffer */
-    if (buf_backup) {
-        strncpy(buf, buf_backup, LY_BUF_SIZE - 1);
-        free(buf_backup);
-    }
-    ly_buf_used--;
+    result = memcpy(result, &buf[start_idx], len);
+    result[len] = '\0';
+    free(buf);
 
     return result;
 }
@@ -5331,8 +5330,8 @@ uniquecheck:
                     idx1 = idx2 = LY_BUF_SIZE - 1;
                     path1[idx1] = '\0';
                     path2[idx2] = '\0';
-                    ly_vlog_build_path_reverse(LY_VLOG_LYD, first, path1, &idx1);
-                    ly_vlog_build_path_reverse(LY_VLOG_LYD, second, path2, &idx2);
+                    ly_vlog_build_path_reverse(LY_VLOG_LYD, first, &path1, &idx1, NULL, 0);
+                    ly_vlog_build_path_reverse(LY_VLOG_LYD, second, &path2, &idx2, NULL, 0);
 
                     /* use internal buffer to rebuild the unique string */
                     if (ly_buf_used && uniq_str[0]) {
