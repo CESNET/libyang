@@ -3923,7 +3923,7 @@ resolve_instid_predicate(const struct lys_module *prev_mod, const char *pred, st
     /* ... /node[key=value] ... */
     struct lyd_node_leaf_list *key;
     struct lys_node_leaf **list_keys = NULL;
-    struct lys_node_list *slist;
+    struct lys_node_list *slist = NULL;
     const char *model, *name, *value;
     int mod_len, nam_len, val_len, i, has_predicate, parsed;
 
