@@ -3936,6 +3936,11 @@ resolve_instid_predicate(const struct lys_module *prev_mod, const char *pred, st
         }
         parsed += i;
 
+        if (!(*node)) {
+            /* just parse it all */
+            continue;
+        }
+
         /* target */
         if (name[0] == '.') {
             /* leaf-list value */
@@ -4043,7 +4048,8 @@ resolve_instid_predicate(const struct lys_module *prev_mod, const char *pred, st
             /* check the value */
             if (strncmp(key->value_str, value, val_len) || key->value_str[val_len]) {
                 *node = NULL;
-                goto cleanup;
+                /* we still want to parse the whole predicate */
+                continue;
             }
 
             /* everything is fine, mark this key as resolved */
@@ -4052,7 +4058,7 @@ resolve_instid_predicate(const struct lys_module *prev_mod, const char *pred, st
     } while (has_predicate);
 
     /* check that all list keys were specified */
-    if (list_keys) {
+    if (*node && list_keys) {
         for (i = 0; i < slist->keys_size; ++i) {
             if (list_keys[i]) {
                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Instance identifier is missing list key \"%s\".", list_keys[i]->name);
