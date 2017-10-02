@@ -425,8 +425,39 @@ ly_vlog_hide(uint8_t hide)
     ly_err_main.vlog_hide = hide;
 }
 
-void
-ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *path, uint16_t *index)
+static int
+ly_vlog_build_path_reverse_print(char **path, uint16_t *index, const char *str, uint16_t str_len, uint16_t *length, int enlarge)
+{
+    void *mem;
+
+    if ((*index) < str_len) {
+        if (enlarge) {
+            /* enlarge buffer */
+            mem = realloc(*path, *length + *index + LY_BUF_SIZE);
+            LY_CHECK_ERR_RETURN(!mem, LOGMEM, -1);
+            *path = mem;
+
+            /* move data, lengths */
+            memmove(&(*path)[*index], &(*path)[*index + LY_BUF_SIZE], *length);
+            (*index) += LY_BUF_SIZE;
+        } else {
+            LOGERR(LY_SUCCESS, "%s: path is too long.", __func__);
+            return -1;
+        }
+    }
+
+    (*index) -= str_len;
+    memcpy(&(*path)[*index], str, str_len);
+    if (length) {
+        *length += str_len;
+    }
+
+    return 0;
+}
+
+int
+ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char **path, uint16_t *index, uint16_t *length,
+                           int enlarge)
 {
     int i, j;
     struct lys_node_list *slist;
@@ -436,6 +467,14 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
     const char *name, *prefix = NULL, *val_end, *val_start;
     char *str;
     size_t len;
+
+    if (length) {
+        *length = 0;
+    } else if (enlarge) {
+        /* we need to use length if we are to enlarge path */
+        LOGINT;
+        return -1;
+    }
 
     while (elem) {
         switch (elem_type) {
@@ -451,15 +490,14 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
             }
 
             if (((struct lys_node *)elem)->nodetype & (LYS_AUGMENT | LYS_GROUPING)) {
-                LY_CHECK_ERR_RETURN((*index) < 1, LOGERR(LY_SUCCESS, "%s: path is too long."),);
-                --(*index);
-                path[*index] = ']';
+                if (ly_vlog_build_path_reverse_print(path, index, "]", 1, length, enlarge)) {
+                    return -1;
+                }
 
                 name = ((struct lys_node *)elem)->name;
-                len = strlen(name);
-                LY_CHECK_ERR_RETURN((*index) < len, LOGERR(LY_SUCCESS, "%s: path is too long."),);
-                (*index) -= len;
-                memcpy(&path[*index], name, len);
+                if (ly_vlog_build_path_reverse_print(path, index, name, strlen(name), length, enlarge)) {
+                    return -1;
+                }
 
                 if (((struct lys_node *)elem)->nodetype == LYS_GROUPING) {
                     name = "{grouping}[";
@@ -523,28 +561,38 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
                                 val_end = "']";
                             }
 
+                            /* print value */
+                            if (ly_vlog_build_path_reverse_print(path, index, val_end, 2, length, enlarge)) {
+                                return -1;
+                            }
                             len = strlen(((struct lyd_node_leaf_list *)diter)->value_str);
-                            LY_CHECK_ERR_RETURN((*index) < len + 2, LOGERR(LY_SUCCESS, "%s: path is too long."),);
-                            (*index) -= 2;
-                            memcpy(&path[(*index)], val_end, 2);
-                            (*index) -= len;
-                            memcpy(&path[(*index)], ((struct lyd_node_leaf_list *)diter)->value_str, len);
+                            if (ly_vlog_build_path_reverse_print(path, index,
+                                    ((struct lyd_node_leaf_list *)diter)->value_str, len, length, enlarge)) {
+                                return -1;
+                            }
 
+                            /* print schema name */
+                            if (ly_vlog_build_path_reverse_print(path, index, val_start, 2, length, enlarge)) {
+                                return -1;
+                            }
                             len = strlen(diter->schema->name);
-                            LY_CHECK_ERR_RETURN((*index) < len + 3, LOGERR(LY_SUCCESS, "%s: path is too long."),);
-                            (*index) -= 2;
-                            memcpy(&path[(*index)], val_start, 2);
-                            (*index) -= len;
-                            memcpy(&path[(*index)], diter->schema->name, len);
+                            if (ly_vlog_build_path_reverse_print(path, index, diter->schema->name, len, length, enlarge)) {
+                                return -1;
+                            }
 
                             if (lyd_node_module(dlist) != lyd_node_module(diter)) {
+                                if (ly_vlog_build_path_reverse_print(path, index, ":", 1, length, enlarge)) {
+                                    return -1;
+                                }
                                 len = strlen(lyd_node_module(diter)->name);
-                                LY_CHECK_ERR_RETURN((*index) < len + 2, LOGERR(LY_SUCCESS, "%s: path is too long."),);
-                                path[--(*index)] = ':';
-                                (*index) -= len;
-                                memcpy(&path[(*index)], lyd_node_module(diter)->name, len);
+                                if (ly_vlog_build_path_reverse_print(path, index, lyd_node_module(diter)->name, len, length, enlarge)) {
+                                    return -1;
+                                }
                             }
-                            path[--(*index)] = '[';
+
+                            if (ly_vlog_build_path_reverse_print(path, index, "[", 1, length, enlarge)) {
+                                return -1;
+                            }
                         }
                     }
                 } else {
@@ -556,19 +604,23 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
                         j /= 10;
                     }
 
+                    if (ly_vlog_build_path_reverse_print(path, index, "]", 1, length, enlarge)) {
+                        return -1;
+                    }
+
                     str = malloc(len + 1);
-                    LY_CHECK_ERR_RETURN(!str, LOGMEM, );
+                    LY_CHECK_ERR_RETURN(!str, LOGMEM, -1);
                     sprintf(str, "%d", i);
 
-                    LY_CHECK_ERR_RETURN((*index) < len + 2, free(str); LOGERR(LY_SUCCESS, "%s: path is too long."),);
-                    path[--(*index)] = ']';
-                    (*index) -= len;
-                    strncpy(&path[(*index)], str, len);
-
+                    if (ly_vlog_build_path_reverse_print(path, index, str, len, length, enlarge)) {
+                        free(str);
+                        return -1;
+                    }
                     free(str);
 
-                    --(*index);
-                    path[*index] = '[';
+                    if (ly_vlog_build_path_reverse_print(path, index, "[", 1, length, enlarge)) {
+                        return -1;
+                    }
                 }
             } else if (((struct lyd_node *)elem)->schema->nodetype == LYS_LEAFLIST &&
                     ((struct lyd_node_leaf_list *)elem)->value_str) {
@@ -580,54 +632,62 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
                     val_end = "']";
                 }
 
+                if (ly_vlog_build_path_reverse_print(path, index, val_end, 2, length, enlarge)) {
+                    return -1;
+                }
                 len = strlen(((struct lyd_node_leaf_list *)elem)->value_str);
-                LY_CHECK_ERR_RETURN((*index) < len + 6, LOGERR(LY_SUCCESS, "%s: path is too long."),);
-                (*index) -= 2;
-                memcpy(&path[(*index)], val_end, 2);
-                (*index) -= len;
-                memcpy(&path[(*index)], ((struct lyd_node_leaf_list *)elem)->value_str, len);
-                (*index) -= 4;
-                memcpy(&path[(*index)], val_start, 4);
+                if (ly_vlog_build_path_reverse_print(path, index, ((struct lyd_node_leaf_list *)elem)->value_str, len, length, enlarge)) {
+                    return -1;
+                }
+                if (ly_vlog_build_path_reverse_print(path, index, val_start, 4, length, enlarge)) {
+                    return -1;
+                }
             }
 
             elem = ((struct lyd_node *)elem)->parent;
             break;
         case LY_VLOG_STR:
+            i = 0;
             len = strlen((const char *)elem) + 1;
-            if ((*index) < len) {
-                LOGERR(LY_SUCCESS, "%s: path is too long.")
-                len = (*index);
+            if (ly_vlog_build_path_reverse_print(path, index, (const char *)elem, len, length, enlarge)) {
+                i = -1;
+                if (!enlarge) {
+                    /* print at least what we can */
+                    len = (*index);
+                    ly_vlog_build_path_reverse_print(path, index, (const char *)elem, len, length, enlarge);
+                }
             }
-            (*index) = (*index) - len;
-            memcpy(&path[(*index)], (const char *)elem, len);
-            return;
+            return i;
         default:
             /* shouldn't be here */
             LOGINT;
-            return;
+            return -1;
         }
         if (name) {
-            len = strlen(name);
-            LY_CHECK_ERR_RETURN((*index) < len, LOGERR(LY_SUCCESS, "%s: path is too long."),);
-            (*index) -= len;
-            memcpy(&path[*index], name, len);
+            if (ly_vlog_build_path_reverse_print(path, index, name, strlen(name), length, enlarge)) {
+                return -1;
+            }
             if (prefix) {
-                len = strlen(prefix);
-                LY_CHECK_ERR_RETURN((*index) < len + 1, LOGERR(LY_SUCCESS, "%s: path is too long."),);
-                path[--(*index)] = ':';
-                (*index) -= len;
-                memcpy(&path[(*index)], prefix, len);
+                if (ly_vlog_build_path_reverse_print(path, index, ":", 1, length, enlarge)) {
+                    return -1;
+                }
+                if (ly_vlog_build_path_reverse_print(path, index, prefix, strlen(prefix), length, enlarge)) {
+                    return -1;
+                }
             }
         }
-        LY_CHECK_ERR_RETURN((*index) < 1, LOGERR(LY_SUCCESS, "%s: path is too long."),);
-        path[--(*index)] = '/';
-        if (elem_type == LY_VLOG_LYS && !elem && sparent && sparent->nodetype == LYS_AUGMENT) {
+        if (ly_vlog_build_path_reverse_print(path, index, "/", 1, length, enlarge)) {
+            return -1;
+        }
+        if ((elem_type == LY_VLOG_LYS) && !elem && sparent && (sparent->nodetype == LYS_AUGMENT)) {
             len = strlen(((struct lys_node_augment *)sparent)->target_name);
-            LY_CHECK_ERR_RETURN((*index) < len, LOGERR(LY_SUCCESS, "%s: path is too long."),);
-            (*index) -= len;
-            memcpy(&path[(*index)], ((struct lys_node_augment *)sparent)->target_name, len);
+            if (ly_vlog_build_path_reverse_print(path, index, ((struct lys_node_augment *)sparent)->target_name, len, length, enlarge)) {
+                return -1;
+            }
         }
     }
+
+    return 0;
 }
 
 void
@@ -662,7 +722,7 @@ ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
             /* top-level */
             path[--(*index)] = '/';
         } else {
-            ly_vlog_build_path_reverse(elem_type, elem, path, index);
+            ly_vlog_build_path_reverse(elem_type, elem, &path, index, NULL, 0);
         }
     } else if (elem_type == LY_VLOG_NONE) {
         /* erase path, the rest will be erased by log_vprintf() since it will get NULL path parameter */
