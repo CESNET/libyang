@@ -5256,7 +5256,7 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
 {
     const char *mod_name, *name;
     int mod_name_len, nam_len, rc;
-    int make_implemented = 0;
+    int need_implemented = 0;
     unsigned int u, i, j;
     struct lys_ident *der, *cur;
     struct lys_module *imod = NULL, *m;
@@ -5292,8 +5292,8 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
     } else {
         /* solving identityref in data - get the (implemented) module from the context */
         u = 0;
-        while ((imod = (struct lys_module*)ly_ctx_get_module_iter(mod->ctx, &u))) {
-            if (imod->implemented && !strncmp(mod_name, imod->name, mod_name_len) && !imod->name[mod_name_len]) {
+        while ((imod = (struct lys_module *)ly_ctx_get_module_iter(mod->ctx, &u))) {
+            if (!strncmp(mod_name, imod->name, mod_name_len) && !imod->name[mod_name_len]) {
                 break;
             }
         }
@@ -5302,7 +5302,7 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
         goto fail;
     }
 
-    if (dflt && (m != imod || lys_main_module(type->parent->module) != mod)) {
+    if (m != imod || lys_main_module(type->parent->module) != mod) {
         /* we are solving default statement in schema AND the type is not referencing the same schema,
          * THEN, we may need to make the module with the identity implemented, but only if it really
          * contains the identity */
@@ -5335,7 +5335,7 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
                 for (i = 0; i < type->info.ident.count; i++) {
                     if (search_base_identity(cur, type->info.ident.ref[i])) {
                         /* cur's base matches the type's base */
-                        make_implemented = 1;
+                        need_implemented = 1;
                         goto match;
                     }
                 }
@@ -5379,13 +5379,21 @@ match:
             return NULL;
         }
     }
-    if (make_implemented) {
-        LOGVRB("Making \"%s\" module implemented because of identityref default value \"%s\" used in the implemented \"%s\" module",
-               imod->name, cur->name, mod->name);
-        if (lys_set_implemented(imod)) {
-            LOGERR(ly_errno, "Setting the module \"%s\" implemented because of used default identity \"%s\" failed.",
-                   imod->name, cur->name);
-            LOGVAL(LYE_SPEC, LY_VLOG_LYD, node, "Identity used as identityref value is not implemented.");
+    if (need_implemented) {
+        if (dflt) {
+            /* try to make the module implemented */
+            LOGVRB("Making \"%s\" module implemented because of identityref default value \"%s\" used in the implemented \"%s\" module",
+                   imod->name, cur->name, mod->name);
+            if (lys_set_implemented(imod)) {
+                LOGERR(ly_errno, "Setting the module \"%s\" implemented because of used default identity \"%s\" failed.",
+                       imod->name, cur->name);
+                LOGVAL(LYE_SPEC, LY_VLOG_LYD, node, "Identity used as identityref value is not implemented.");
+                goto fail;
+            }
+        } else {
+            /* just say that it was found, but in a non-implemented module */
+            LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Identity found, but in a non-implemented module \"%s\".",
+                   lys_main_module(cur->module)->name);
             goto fail;
         }
     }
