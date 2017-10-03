@@ -3900,6 +3900,60 @@ get_next_augment:
 }
 
 /**
+ * @brief Compare 2 data node values.
+ *
+ * Comparison performed on canonical forms, the first value
+ * is first transformed into canonical form.
+ *
+ * @param[in] node Leaf/leaf-list with these values.
+ * @param[in] noncan_val Non-canonical value.
+ * @param[in] noncan_val_len Length of \p noncal_val.
+ * @param[in] can_val Canonical value.
+ * @return 1 if equal, 0 if not, -1 on error (logged).
+ */
+static int
+valequal(struct lys_node *node, const char *noncan_val, int noncan_val_len, const char *can_val)
+{
+    int ret;
+    struct lyd_node_leaf_list leaf;
+    struct lys_node_leaf *sleaf = (struct lys_node_leaf*)node;
+
+    /* dummy leaf */
+    memset(&leaf, 0, sizeof leaf);
+    leaf.value_str = lydict_insert(node->module->ctx, noncan_val, noncan_val_len);
+
+repeat:
+    leaf.value_type = sleaf->type.base;
+    leaf.schema = node;
+
+    if (leaf.value_type == LY_TYPE_LEAFREF) {
+        if (!sleaf->type.info.lref.target) {
+            /* it should either be unresolved leafref (leaf.value_type are ORed flags) or it will be resolved */
+            LOGINT;
+            ret = -1;
+            goto finish;
+        }
+        sleaf = sleaf->type.info.lref.target;
+        goto repeat;
+    } else {
+        if (!lyp_parse_value(&sleaf->type, &leaf.value_str, NULL, &leaf, NULL, 0, 0)) {
+            ret = -1;
+            goto finish;
+        }
+    }
+
+    if (!strcmp(leaf.value_str, can_val)) {
+        ret = 1;
+    } else {
+        ret = 0;
+    }
+
+finish:
+    lydict_remove(node->module->ctx, leaf.value_str);
+    return ret;
+}
+
+/**
  * @brief Resolve instance-identifier predicate in JSON data format.
  *        Does not log.
  *
@@ -3947,8 +4001,7 @@ resolve_instid_predicate(const struct lys_module *prev_mod, const char *pred, st
             }
 
             /* check the value */
-            if (strncmp(((struct lyd_node_leaf_list *)*node)->value_str, value, val_len)
-                    || ((struct lyd_node_leaf_list *)*node)->value_str[val_len]) {
+            if (!valequal((*node)->schema, value, val_len, ((struct lyd_node_leaf_list *)*node)->value_str)) {
                 *node = NULL;
                 goto cleanup;
             }
@@ -4041,7 +4094,7 @@ resolve_instid_predicate(const struct lys_module *prev_mod, const char *pred, st
             }
 
             /* check the value */
-            if (strncmp(key->value_str, value, val_len) || key->value_str[val_len]) {
+            if (!valequal(key->schema, value, val_len, key->value_str)) {
                 *node = NULL;
                 /* we still want to parse the whole predicate */
                 continue;
