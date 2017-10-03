@@ -4414,6 +4414,8 @@ repeat:
 
     if (leaf.value_type == LY_TYPE_LEAFREF) {
         if (!sleaf->type.info.lref.target) {
+            /* it should either be unresolved leafref (leaf.value_type are ORed flags) or it will be resolved */
+            LOGINT;
             return EXIT_FAILURE;
         }
         sleaf = sleaf->type.info.lref.target;
