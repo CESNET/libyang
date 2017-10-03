@@ -2785,14 +2785,12 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct le
         }
         break;
     default:
-        LOGINT;
         return -1;
     }
 
     /* process superior types */
     if (type->der) {
         if (resolve_len_ran_interval(NULL, &type->der->type, &intv)) {
-            LOGINT;
             return -1;
         }
         assert(!intv || (intv->kind == kind));
@@ -2884,7 +2882,6 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct le
 
             ptr += 3;
         } else {
-            LOGINT;
             goto error;
         }
 
@@ -2929,11 +2926,9 @@ resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct le
                     tmp_local_intv->value.fval.max = local_fmax;
                 }
             } else {
-                LOGINT;
                 goto error;
             }
         } else {
-            LOGINT;
             goto error;
         }
 
