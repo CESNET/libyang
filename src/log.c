@@ -71,6 +71,16 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
     char *msg, *bufdup = NULL;
     struct ly_err_item *eitem;
 
+    if ((hide == 0xff) && (level == LY_LLERR)) {
+        if (LY_LLWRN > ly_log_level) {
+            /* nothing will be printed */
+            return;
+        } else {
+            /* change error to warning */
+            level = LY_LLWRN;
+        }
+    }
+
     if (!format) {
         /* postponed print of path related to the previous error, do not rewrite stored original message */
         msg = "Path is related to the previous error message.";
@@ -78,7 +88,7 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
         if (level == LY_LLERR) {
             /* store error message into msg buffer ... */
             msg = ly_err_main.msg;
-        } else if (!hide) {
+        } else if (!hide || (hide == 0xff)) {
             /* other messages are stored in working string buffer and not available for later access */
             msg = ly_err_main.buf;
             if (ly_buf_used && msg[0]) {
@@ -127,7 +137,7 @@ log_vprintf(LY_LOG_LEVEL level, uint8_t hide, const char *format, const char *pa
         }
     }
 
-    if (hide || (level > ly_log_level)) {
+    if ((hide && (hide != 0xff)) || (level > ly_log_level)) {
         /* do not print the message */
         goto clean;
     }
