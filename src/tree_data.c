@@ -4670,8 +4670,10 @@ lyd_dup_to_ctx(const struct lyd_node *node, int recursive, struct ly_ctx *ctx)
                 /* in case of duplicating bits (no matter if in the same context or not) or enum and identityref into
                  * a different context, searching for the type and duplicating the data is almost as same as resolving
                  * the string value, so due to a simplicity, parse the value for the duplicated leaf */
-                lyp_parse_value(&((struct lys_node_leaf *)new_leaf->schema)->type, &new_leaf->value_str, NULL,
-                                new_leaf, NULL, 1, node->dflt);
+                if (!lyp_parse_value(&((struct lys_node_leaf *)new_leaf->schema)->type, &new_leaf->value_str, NULL,
+                                     new_leaf, NULL, 1, node->dflt)) {
+                    goto error;
+                }
                 break;
             default:
                 new_leaf->value = ((struct lyd_node_leaf_list *)elem)->value;
