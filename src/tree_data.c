@@ -4563,7 +4563,8 @@ lyd_dup_common(struct lyd_node *parent, struct lyd_node *new, const struct lyd_n
             trg_mod = lys_get_import_module(parent->schema->module, NULL, 0, lyd_node_module(orig)->name,
                                             strlen(lyd_node_module(orig)->name));
             if (!trg_mod) {
-                LOGINT;
+                LOGERR(LY_EINVAL, "Target context does not contain model for the data node being duplicated (%s).",
+                       lyd_node_module(orig)->name);
                 return EXIT_FAILURE;
             }
             /* we know its parent, so we can start with it */
