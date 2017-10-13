@@ -226,4 +226,29 @@ unsigned int copyutf8(char *dst, const char *src);
  */
 struct lyext_plugin *ext_get_plugin(const char *name, const char *module, const char *revision);
 
+/**
+ * @brief Find a module. First, imports from \p module with matching \p prefix, \p name, or both are checked,
+ * \p module itself is also compared, and lastly a callback is used if allowed.
+ *
+ * @param[in] module Module with imports.
+ * @param[in] prefix Module prefix to search for.
+ * @param[in] pref_len Module \p prefix length. If 0, the whole prefix is used, if not NULL.
+ * @param[in] name Module name to search for.
+ * @param[in] name_len Module \p name length. If 0, the whole name is used, if not NULL.
+ * @param[in] in_data Whether to use data callback if not found after trying all the rest.
+ * Import callback is never used because there is no use-case for that.
+ *
+ * @return Matching module, NULL if not found.
+ */
+const struct lys_module *lyp_get_module(const struct lys_module *module, const char *prefix, int pref_len,
+                                               const char *name, int name_len, int in_data);
+
+/**
+ * @brief Find an import from \p module with matching namespace, the \p module itself is also considered.
+ *
+ * @param[in] module Module with imports.
+ * @param[in] ns Namespace to be found.
+ */
+const struct lys_module *lyp_get_import_module_ns(const struct lys_module *module, const char *ns);
+
 #endif /* LY_PARSER_H_ */

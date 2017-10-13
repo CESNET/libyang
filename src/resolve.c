@@ -1146,7 +1146,7 @@ resolve_feature(const char *feat_name, uint16_t len, const struct lys_node *node
         return -1;
     }
 
-    module = lys_get_import_module(lys_node_module(node), NULL, 0, mod_name, mod_name_len);
+    module = lyp_get_module(lys_node_module(node), NULL, 0, mod_name, mod_name_len, 0);
     if (!module) {
         /* identity refers unknown data model */
         LOGVAL(LYE_INMOD_LEN, LY_VLOG_NONE, NULL, mod_name_len, mod_name);
@@ -1644,7 +1644,7 @@ schema_nodeid_siblingcheck(const struct lys_node *sibling, const struct lys_modu
 
     /* module check */
     if (mod_name) {
-        prefix_mod = lys_get_import_module(cur_module, NULL, 0, mod_name, mod_name_len);
+        prefix_mod = lyp_get_module(cur_module, NULL, 0, mod_name, mod_name_len, 0);
         if (!prefix_mod) {
             return -1;
         }
@@ -1769,7 +1769,7 @@ resolve_schema_nodeid(const char *nodeid, const struct lys_node *start, const st
 
     /* absolute-schema-nodeid */
     } else {
-        start_mod = lys_get_import_module(cur_module, NULL, 0, mod_name, mod_name_len);
+        start_mod = lyp_get_module(cur_module, NULL, 0, mod_name, mod_name_len, 0);
         if (!start_mod) {
             str = strndup(mod_name, mod_name_len);
             LOGVAL(LYE_PATH_INMOD, LY_VLOG_STR, str);
@@ -1787,7 +1787,7 @@ resolve_schema_nodeid(const char *nodeid, const struct lys_node *start, const st
             if (mod_name && (strncmp(mod_name, cur_module->name, mod_name_len)
                     || (mod_name_len != (signed)strlen(cur_module->name)))) {
                 /* we are getting into another module (augment) */
-                aux_mod = lys_get_import_module(cur_module, NULL, 0, mod_name, mod_name_len);
+                aux_mod = lyp_get_module(cur_module, NULL, 0, mod_name, mod_name_len, 0);
                 if (!aux_mod) {
                     str = strndup(mod_name, mod_name_len);
                     LOGVAL(LYE_PATH_INMOD, LY_VLOG_STR, str);
@@ -2032,7 +2032,7 @@ resolve_uses_schema_nodeid(const char *nodeid, const struct lys_node *start, con
         return -i + 1;
     }
 
-    module = lys_get_import_module(start->module, mod_prefix, mod_prefix_len, NULL, 0);
+    module = lyp_get_module(start->module, mod_prefix, mod_prefix_len, NULL, 0, 0);
     if (!module) {
         return -1;
     }
@@ -2069,7 +2069,7 @@ resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *modu
         return -1;
     }
 
-    abs_start_mod = lys_get_import_module(module, NULL, 0, mod_name, mod_name_len);
+    abs_start_mod = lyp_get_module(module, NULL, 0, mod_name, mod_name_len, 0);
     if (!abs_start_mod) {
         return -1;
     }
@@ -3150,7 +3150,7 @@ resolve_superior_type(const char *name, const char *mod_name, const struct lys_m
         }
     } else {
         /* get module where to search */
-        module = lys_get_import_module(module, NULL, 0, mod_name, 0);
+        module = lyp_get_module(module, NULL, 0, mod_name, 0, 0);
         if (!module) {
             return -1;
         }
@@ -3667,7 +3667,7 @@ resolve_schema_leafref_predicate(const char *path, const struct lys_node *contex
 
         /* source (must be leaf) */
         if (sour_pref) {
-            trg_mod = lys_get_import_module(lys_node_module(parent), NULL, 0, sour_pref, sour_pref_len);
+            trg_mod = lyp_get_module(lys_node_module(parent), NULL, 0, sour_pref, sour_pref_len, 0);
         } else {
             trg_mod = NULL;
         }
@@ -3710,7 +3710,7 @@ resolve_schema_leafref_predicate(const char *path, const struct lys_node *contex
         first_iter = 1;
         while (1) {
             if (dest_pref) {
-                trg_mod = lys_get_import_module(lys_node_module(parent), NULL, 0, dest_pref, dest_pref_len);
+                trg_mod = lyp_get_module(lys_node_module(parent), NULL, 0, dest_pref, dest_pref_len, 0);
             } else {
                 trg_mod = NULL;
             }
@@ -3789,7 +3789,7 @@ resolve_schema_leafref(const char *path, struct lys_node *parent, const struct l
         id += i;
 
         /* get the current module */
-        tmp_mod = prefix ? lys_get_import_module(cur_module, NULL, 0, prefix, pref_len) : cur_module;
+        tmp_mod = prefix ? lyp_get_module(cur_module, NULL, 0, prefix, pref_len, 0) : cur_module;
         if (!tmp_mod) {
             LOGVAL(LYE_NORESOLV, LY_VLOG_LYS, parent, "leafref", path);
             return EXIT_FAILURE;
@@ -4373,7 +4373,7 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
         /* YIN */
 
         /* get the module where the extension is supposed to be defined */
-        mod = lys_get_import_module_ns(info->mod, info->data.yin->ns->value);
+        mod = lyp_get_import_module_ns(info->mod, info->data.yin->ns->value);
         if (!mod) {
             LOGVAL(LYE_INSTMT, vlog_type, vlog_node, info->data.yin->name);
             return EXIT_FAILURE;
@@ -4511,7 +4511,7 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
         ext_name = tmp + 1;
 
         /* get the module where the extension is supposed to be defined */
-        mod = lys_get_import_module(info->mod, ext_prefix, tmp - ext_prefix, NULL, 0);
+        mod = lyp_get_module(info->mod, ext_prefix, tmp - ext_prefix, NULL, 0, 0);
         if (!mod) {
             LOGVAL(LYE_INSTMT, vlog_type, vlog_node, ext_prefix);
             return EXIT_FAILURE;
@@ -5231,7 +5231,7 @@ resolve_base_ident(const struct lys_module *module, struct lys_ident *ident, con
     }
 
     /* get module where to search */
-    module = lys_get_import_module(module, NULL, 0, mod_name_len ? basename : NULL, mod_name_len);
+    module = lyp_get_module(module, NULL, 0, mod_name_len ? basename : NULL, mod_name_len, 0);
     if (!module) {
         /* identity refers unknown data model */
         LOGVAL(LYE_INMOD, LY_VLOG_NONE, NULL, basename);

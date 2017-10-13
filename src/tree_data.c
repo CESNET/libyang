@@ -4560,8 +4560,8 @@ lyd_dup_common(struct lyd_node *parent, struct lyd_node *new, const struct lyd_n
     if (ctx) {
         /* we are changing the context, so we have to get the correct schema node in the new context */
         if (parent) {
-            trg_mod = lys_get_import_module(parent->schema->module, NULL, 0, lyd_node_module(orig)->name,
-                                            strlen(lyd_node_module(orig)->name));
+            trg_mod = lyp_get_module(parent->schema->module, NULL, 0, lyd_node_module(orig)->name,
+                                     strlen(lyd_node_module(orig)->name), 1);
             if (!trg_mod) {
                 LOGERR(LY_EINVAL, "Target context does not contain model for the data node being duplicated (%s).",
                        lyd_node_module(orig)->name);

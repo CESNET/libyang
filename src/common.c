@@ -26,10 +26,9 @@
 #include <unistd.h>
 
 #include "common.h"
-#include "tree_internal.h"
+#include "parser.h"
 #include "xpath.h"
 #include "context.h"
-#include "libyang.h"
 
 THREAD_LOCAL struct ly_err ly_err_main;
 
@@ -626,7 +625,7 @@ transform_schema2json(const struct lys_module *module, const char *expr)
         if ((exp->tokens[i] == LYXP_TOKEN_NAMETEST) && (end = strnchr(cur_expr, ':', exp->tok_len[i]))) {
             /* get the module */
             pref_len = end - cur_expr;
-            mod = lys_get_import_module(module, cur_expr, pref_len, NULL, 0);
+            mod = lyp_get_module(module, cur_expr, pref_len, NULL, 0, 0);
             if (!mod) {
                 LOGVAL(LYE_INMOD_LEN, LY_VLOG_NONE, NULL, pref_len, cur_expr);
                 goto error;
@@ -652,7 +651,7 @@ transform_schema2json(const struct lys_module *module, const char *expr)
 
             /* get the module */
             pref_len = end - ptr;
-            mod = lys_get_import_module(module, ptr, pref_len, NULL, 0);
+            mod = lyp_get_module(module, ptr, pref_len, NULL, 0, 0);
             if (mod) {
                 /* adjust out size (it can even decrease in some strange cases) */
                 out_size += strlen(mod->name) - pref_len;
@@ -726,7 +725,7 @@ transform_iffeat_schema2json(const struct lys_module *module, const char *expr)
         }
 
         /* get the module */
-        mod = lys_get_import_module(module, id, id_len, NULL, 0);
+        mod = lyp_get_module(module, id, id_len, NULL, 0, 0);
         if (!mod) {
             LOGVAL(LYE_INMOD_LEN, LY_VLOG_NONE, NULL, id_len, id);
             free(out);
