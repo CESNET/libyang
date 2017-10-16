@@ -382,14 +382,14 @@ S_Module Ext::module() NEW(_ext, module, Module);
 
 Refine_Mod_List::Refine_Mod_List(struct lys_refine_mod_list *list, S_Deleter deleter) {
     _list = list;
-    _deleter = _deleter;
+    _deleter = deleter;
 }
 Refine_Mod_List::~Refine_Mod_List() {};
 
 Refine_Mod::Refine_Mod(union lys_refine_mod mod, uint16_t target_type, S_Deleter deleter) {
     _mod = mod;;
     _target_type = target_type;
-    _deleter = _deleter;
+    _deleter = deleter;
 }
 Refine_Mod::~Refine_Mod() {};
 //TODO check which type's to accept
@@ -397,7 +397,7 @@ S_Refine_Mod_List Refine_Mod::list() {return _target_type != LYS_CONTAINER ? S_R
 
 Refine::Refine(struct lys_refine *refine, S_Deleter deleter) {
     _refine = refine;
-    _deleter = _deleter;
+    _deleter = deleter;
 }
 Refine::~Refine() {};
 std::vector<S_Ext_Instance> *Refine::ext() NEW_P_LIST(_refine, ext, ext_size, Ext_Instance);
@@ -407,7 +407,7 @@ S_Refine_Mod Refine::mod() {S_Refine_Mod(new Refine_Mod(_refine->mod, _refine->t
 
 Deviate::Deviate(struct lys_deviate *deviate, S_Deleter deleter) {
     _deviate = deviate;
-    _deleter = _deleter;
+    _deleter = deleter;
 }
 Deviate::~Deviate() {};
 std::vector<S_Ext_Instance> *Deviate::ext() NEW_P_LIST(_deviate, ext, ext_size, Ext_Instance);
@@ -417,7 +417,7 @@ S_Type Deviate::type() {return _deviate->type ? S_Type(new Type(_deviate->type, 
 
 Deviation::Deviation(struct lys_deviation *deviation, S_Deleter deleter) {
     _deviation = deviation;
-    _deleter = _deleter;
+    _deleter = deleter;
 }
 Deviation::~Deviation() {};
 S_Schema_Node Deviation::orig_node() NEW(_deviation, orig_node, Schema_Node);
