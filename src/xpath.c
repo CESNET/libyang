@@ -6637,6 +6637,7 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
     ++(*exp_idx);
 
     if (!set) {
+only_parse:
         ret = eval_expr(exp, exp_idx, cur_node, local_mod, NULL, options);
         if (ret) {
             return ret;
@@ -6648,6 +6649,10 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
             LOGERR(LY_EINT, "XPath set was expected to be sorted, but is not (%s).", __func__);
         }
 #endif
+        /* empty set, nothing to evaluate */
+        if (!set->used) {
+            goto only_parse;
+        }
 
         orig_exp = *exp_idx;
 
@@ -6746,6 +6751,17 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
         free(pred_repeat);
 
     } else if (set->type == LYXP_SET_SNODE_SET) {
+        for (i = 0; i < set->used; ++i) {
+            if (set->val.snodes[i].in_ctx == 1) {
+                /* there is a currently-valid node */
+                break;
+            }
+        }
+        /* empty set, nothing to evaluate */
+        if (i == set->used) {
+            goto only_parse;
+        }
+
         orig_exp = *exp_idx;
 
         /* find the predicate end */
