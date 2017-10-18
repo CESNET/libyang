@@ -2153,7 +2153,7 @@ enum lyxp_node_type {
  * @param[in] ctx_node_type Context (current) schema node type. Most commonly is #LYXP_NODE_ELEM, but if
  * your context node is supposed to be the root, you can specify what kind of root it is.
  * @param[in] expr XPath expression to be evaluated. Must be in JSON data format (prefixes are model names). Otherwise
- * follows must or when YANG expression syntax (XPath 1.0).
+ * follows full __must__ or __when__ YANG expression syntax (see schema path @ref howtoxpath, but is not limited to that).
  * @param[in] options Whether to apply some evaluation restrictions #LYXP_MUST or #LYXP_WHEN.
  *
  * @return Set of atoms (schema nodes), NULL on error.
