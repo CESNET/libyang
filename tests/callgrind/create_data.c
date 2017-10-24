@@ -1,6 +1,6 @@
 #include <stdlib.h>
 
-#include <libyang/libyang.h>
+#include "../../libyang/libyang.h"
 
 #define SCHEMA "files/ietf-interfaces.yang"
 #define SCHEMA2 "files/ietf-ip.yang"
