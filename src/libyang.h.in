@@ -905,6 +905,7 @@ extern "C" {
  * --------------
  * - lys_find_path()
  * - lys_path()
+ * - ly_path_data2schema()
  *
  *
  * Data
@@ -1465,6 +1466,17 @@ void ly_ctx_clean(struct ly_ctx *ctx, void (*private_destructor)(const struct ly
  * ::lys_node#nodetype.
  */
 void ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_node *node, void *priv));
+
+/**
+ * @brief Transform a data path into schema path (see @ref howtoxpath).
+ *
+ * Only simple paths can be used, no complex XPath expressions.
+ *
+ * @param[in] ctx Context to work in.
+ * @param[in] data_path Data path to be transformed.
+ * @return Created schema path, NULL on error.
+ */
+char *ly_path_data2schema(const struct ly_ctx *ctx, const char *data_path);
 
 /**@} context */
 

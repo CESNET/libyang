@@ -909,6 +909,144 @@ error:
     return NULL;
 }
 
+API char *
+ly_path_data2schema(const struct ly_ctx *ctx, const char *data_path)
+{
+    struct lyxp_expr *exp;
+    const struct lys_module *cur_mod;
+    const struct lys_node *parent, *node, *node2;
+    uint16_t i, j, k, out_used, len, slash;
+    char *out = NULL, *str = NULL, *col;
+
+    if (!ctx || !data_path) {
+        LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
+        return NULL;
+    }
+
+    exp = lyxp_parse_expr(data_path);
+    if (!exp) {
+        return NULL;
+    }
+
+    out_used = 1;
+    out = malloc(1);
+    LY_CHECK_ERR_GOTO(!out, LOGMEM, error);
+
+    parent = NULL;
+    for (i = 0; i < exp->used; ++i) {
+        switch (exp->tokens[i]) {
+        case LYXP_TOKEN_DOT:
+        case LYXP_TOKEN_NAMETEST:
+            str = strndup(exp->expr + exp->expr_pos[i], exp->tok_len[i]);
+            LY_CHECK_ERR_GOTO(!str, LOGMEM, error);
+
+            col = strchr(str, ':');
+            if (col) {
+                *col = '\0';
+                ++col;
+            }
+
+            /* first node */
+            if (!parent) {
+                if (!col) {
+                    LOGVAL(LYE_PATH_MISSMOD, LY_VLOG_NONE, NULL);
+                    goto error;
+                }
+
+                cur_mod = ly_ctx_get_module(ctx, str, NULL, 0);
+                if (!cur_mod) {
+                    LOGVAL(LYE_PATH_INMOD, LY_VLOG_NONE, NULL);
+                    goto error;
+                }
+            }
+
+            if (((col ? col[0] : str[0]) == '.') || ((col ? col[0] : str[0]) == '*')) {
+                /* path ends, just copy the rest and finish (if it is the first node, it must have had a prefix before) */
+                len = strlen(exp->expr + exp->expr_pos[i]);
+                out = ly_realloc(out, out_used + len);
+                LY_CHECK_ERR_GOTO(!out, LOGMEM, error);
+                sprintf(out + out_used - 1, "%.*s", len, exp->expr + exp->expr_pos[i]);
+                out_used += len;
+
+                free(str);
+                i = exp->used;
+                break;
+            }
+
+            /* create schema path for this data node */
+            node = NULL;
+            while ((node = lys_getnext(node, parent, cur_mod, 0))) {
+                if (strcmp(node->name, col ? col : str)) {
+                    continue;
+                }
+
+                if (col && strcmp(lys_node_module(node)->name, str)) {
+                    continue;
+                }
+                if (!col && (lys_node_module(node) != lys_node_module(parent))) {
+                    continue;
+                }
+
+                /* determine how deep the node actually is, we must generate the path from the highest parent */
+                for (j = 0, node2 = node; node2 != parent; node2 = lys_parent(node2), ++j);
+
+                /* first node, do not print '/' */
+                slash = 0;
+                while (j) {
+                    for (k = j - 1, node2 = node; k; node2 = lys_parent(node2), --k);
+
+                    if ((lys_node_module(node2) != cur_mod) || !parent) {
+                        /* module name and node name */
+                        len = slash + strlen(lys_node_module(node2)->name) + 1 + strlen(node2->name);
+                        out = ly_realloc(out, out_used + len);
+                        LY_CHECK_ERR_GOTO(!out, LOGMEM, error);
+                        sprintf(out + out_used - 1, "%s%s:%s", slash ? "/" : "", lys_node_module(node2)->name, node2->name);
+                        out_used += len;
+                    } else {
+                        /* only node name */
+                        len = slash + strlen(node2->name);
+                        out = ly_realloc(out, out_used + len);
+                        LY_CHECK_ERR_GOTO(!out, LOGMEM, error);
+                        sprintf(out + out_used - 1, "%s%s", slash ? "/" : "", node2->name);
+                        out_used += len;
+                    }
+
+                    slash = 1;
+                    --j;
+                }
+
+                break;
+            }
+
+            /* next iteration */
+            free(str);
+            str = NULL;
+            parent = node;
+            break;
+        case LYXP_TOKEN_OPERATOR_PATH:
+            /* just copy it */
+            len = exp->tok_len[i];
+            out = ly_realloc(out, out_used + len);
+            LY_CHECK_ERR_GOTO(!out, LOGMEM, error);
+            sprintf(out + out_used - 1, "%.*s", exp->tok_len[i], exp->expr + exp->expr_pos[i]);
+            out_used += len;
+            break;
+        default:
+            LOGERR(LY_EINVAL, "%s: Invalid token used (%.*s).", __func__, exp->tok_len[i], exp->expr + exp->expr_pos[i]);
+            goto error;
+        }
+    }
+
+    lyxp_expr_free(exp);
+    return out;
+
+error:
+    free(out);
+    free(str);
+    lyxp_expr_free(exp);
+    return NULL;
+}
+
 int
 ly_new_node_validity(const struct lys_node *schema)
 {

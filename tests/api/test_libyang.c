@@ -1137,6 +1137,29 @@ test_ly_errpath(void **state)
     assert_string_equal(compare, path);
 }
 
+static void
+test_ly_path_data2schema(void **state)
+{
+    (void) state; /* unused */
+    char *schema_path;
+
+    schema_path = ly_path_data2schema(ctx, "/a:x/con/lef");
+    assert_string_equal(schema_path, "/a:x/choic/con/con/lef");
+    free(schema_path);
+
+    schema_path = ly_path_data2schema(ctx, "/a:*");
+    assert_string_equal(schema_path, "/a:*");
+    free(schema_path);
+
+    schema_path = ly_path_data2schema(ctx, "/a:*//*");
+    assert_string_equal(schema_path, "/a:*//*");
+    free(schema_path);
+
+    schema_path = ly_path_data2schema(ctx, "/a:x//.");
+    assert_string_equal(schema_path, "/a:x//.");
+    free(schema_path);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1170,6 +1193,7 @@ int main(void)
         cmocka_unit_test(test_ly_errno_location),
         cmocka_unit_test(test_ly_errmsg),
         cmocka_unit_test_setup_teardown(test_ly_errpath, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_ly_path_data2schema, setup_f, teardown_f),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
