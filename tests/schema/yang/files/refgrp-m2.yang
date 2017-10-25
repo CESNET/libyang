@@ -23,7 +23,7 @@ module refgrp-m2 {
     }
   }
 
-  grouping ntf1 {
+  grouping grp2 {
     uses rg-m4:grp1 {
       augment "choice1/case1" {
         uses rg-m2:grp1;
