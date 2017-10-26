@@ -7047,31 +7047,29 @@ unres_schema_add_str(struct lys_module *mod, struct unres_schema *unres, void *i
  * @param[in] type Type of the unresolved item. UNRES_TYPE_DER is handled specially!
  * @param[in] snode Schema node argument.
  *
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on storing the item in unres, -1 on error, -2 if the unres item
- * is already in the unres list.
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on storing the item in unres, -1 on error.
  */
 int
 unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *item, enum UNRES_ITEM type,
                       struct lys_node *snode)
 {
     int rc, log_hidden;
+    uint32_t u;
     struct lyxml_elem *yin;
 
     assert(unres && item && ((type != UNRES_LEAFREF) && (type != UNRES_INSTID) && (type != UNRES_WHEN)
            && (type != UNRES_MUST)));
 
-#ifndef NDEBUG
-    uint32_t u;
-
     /* check for duplicities in unres */
     for (u = 0; u < unres->count; u++) {
         if (unres->type[u] == type && unres->item[u] == item &&
                 unres->str_snode[u] == snode && unres->module[u] == mod) {
-            /* duplication, should not happen */
-            assert(0);
+            /* duplication can happen when the node contains multiple statements of the same type to check,
+             * this can happen for example when refinement is being applied, so we just postpone the processing
+             * and do not duplicate the information */
+            return EXIT_FAILURE;
         }
     }
-#endif
 
     if ((type == UNRES_EXT_FINALIZE) || (type == UNRES_XPATH)) {
         /* extension finalization is not even tried when adding the item into the inres list,
