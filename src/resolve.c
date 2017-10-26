@@ -4331,8 +4331,9 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct 
         /* empty augment, nothing to connect, but it is techincally applied */
         LOGWRN("Augment \"%s\" without children.", aug->target_name);
         aug->flags &= ~LYS_NOTAPPLIED;
-    } else if (mod->implemented && apply_aug(aug, unres)) {
-        /* we tried to connect it, we failed */
+    } else if ((aug->parent || mod->implemented) && apply_aug(aug, unres)) {
+        /* we try to connect the augment only in case the module is implemented or
+         * the augment applies on the used grouping, anyway we failed here */
         return -1;
     }
 
@@ -4658,7 +4659,6 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
     struct ly_ctx *ctx = uses->module->ctx; /* shortcut */
     struct lys_node *node = NULL, *next, *iter, **refine_nodes = NULL;
     struct lys_node *node_aux, *parent, *tmp;
-    struct lys_node_uses * node_uses = NULL;
     struct lys_node_leaflist *llist;
     struct lys_node_leaf *leaf;
     struct lys_refine *rfn;
@@ -4684,20 +4684,6 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
             /* do not instantiate groupings from groupings */
             continue;
         }
-        /* ensure that augments recursively be resolved before refines try to access them */
-        if ( node_aux->nodetype & LYS_USES ) {
-
-            node_uses = (struct lys_node_uses*)node_aux;
-
-            for (i = 0; i < node_uses->augment_size; i++) {
-
-                if (node_uses->augment[i].flags & LYS_NOTAPPLIED) {
-
-                    apply_aug(&node_uses->augment[i], unres);
-                }
-            }
-        }
-
         node = lys_node_dup(uses->module, (struct lys_node *)uses, node_aux, unres, 0);
         if (!node) {
             LOGVAL(LYE_INARG, LY_VLOG_LYS, uses, uses->grp->name, "uses");
