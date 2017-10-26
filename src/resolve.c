@@ -4331,8 +4331,9 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct 
         /* empty augment, nothing to connect, but it is techincally applied */
         LOGWRN("Augment \"%s\" without children.", aug->target_name);
         aug->flags &= ~LYS_NOTAPPLIED;
-    } else if (mod->implemented && apply_aug(aug, unres)) {
-        /* we tried to connect it, we failed */
+    } else if ((aug->parent || mod->implemented) && apply_aug(aug, unres)) {
+        /* we try to connect the augment only in case the module is implemented or
+         * the augment applies on the used grouping, anyway we failed here */
         return -1;
     }
 
