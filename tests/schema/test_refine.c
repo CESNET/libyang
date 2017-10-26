@@ -34,7 +34,6 @@
 #define YANG_MOD_IDX(idx) (idx)
 
 struct ly_ctx *ctx;
-char *yang_modules[2 * MOD_COUNT] = {0};
 
 static int
 setup_ctx_yang(void **state)
@@ -75,7 +74,6 @@ test_refine(void **state)
     if (!(module = lys_parse_path(ctx, path, LYS_IN_YANG))) {
         fail();
     }
-    lys_print_mem(&yang_modules[YANG_MOD_IDX(0)], module, LYS_OUT_YANG, NULL);
 }
 
 int
