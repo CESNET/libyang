@@ -5347,6 +5347,21 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
             }
             imod = NULL;
         }
+        if (!imod && mod->ctx->models.parsing_sub_modules_count) {
+            /* we are currently parsing some module and checking XPath or a default value,
+             * so take this module into account */
+            for (i = 0; i < mod->ctx->models.parsing_sub_modules_count; i++) {
+                imod = mod->ctx->models.parsing_sub_modules[i];
+                if (imod->type) {
+                    /* skip submodules */
+                    continue;
+                }
+                if (!strncmp(mod_name, imod->name, mod_name_len) && !imod->name[mod_name_len]) {
+                    break;
+                }
+                imod = NULL;
+            }
+        }
     }
 
     if (!dflt && (!imod || !imod->implemented) && mod->ctx->data_clb) {
