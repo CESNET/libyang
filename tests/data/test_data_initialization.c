@@ -25,8 +25,8 @@
 #include <unistd.h>
 #include <string.h>
 
-#include "../config.h"
-#include "../../src/libyang.h"
+#include "tests/config.h"
+#include "libyang.h"
 
 struct ly_ctx *ctx = NULL;
 struct lyd_node *root = NULL;

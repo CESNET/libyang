@@ -20,8 +20,8 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-#include "../config.h"
-#include "../../src/libyang.h"
+#include "tests/config.h"
+#include "libyang.h"
 
 struct state {
     struct ly_ctx *ctx1;

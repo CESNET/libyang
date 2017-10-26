@@ -1,6 +1,6 @@
 #include <stdlib.h>
 
-#include "../../src/libyang.h"
+#include "libyang.h"
 
 #define SCHEMA "files/lists.yang"
 #define DATA1 "files/lists.xml"

@@ -23,7 +23,7 @@
 #include <getopt.h>
 #include <unistd.h>
 
-#include "../../src/libyang.h"
+#include "libyang.h"
 
 void
 help(void)

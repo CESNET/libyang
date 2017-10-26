@@ -48,14 +48,15 @@ else()
     set(ENABLE_CACHE_MACRO "/**\n * @brief Cache of some temporary information will not be used.\n */")
 endif()
 
-configure_file(${PROJECT_SOURCE_DIR}/src/libyang.h.in ${PROJECT_SOURCE_DIR}/src/libyang.h @ONLY)
+include_directories(${PROJECT_BINARY_DIR}/src ${PROJECT_SOURCE_DIR}/src)
+configure_file(${PROJECT_SOURCE_DIR}/src/libyang.h.in ${PROJECT_BINARY_DIR}/src/libyang.h @ONLY)
 
 if(PLUGINS_DIR)
     set(LIBYANG_EXT_PLUGINS_DIR ${PLUGINS_DIR})
 else()
     set(LIBYANG_EXT_PLUGINS_DIR ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libyang)
 endif()
-configure_file(${PROJECT_SOURCE_DIR}/src/extensions_config.h.in ${PROJECT_SOURCE_DIR}/src/extensions_config.h)
+configure_file(${PROJECT_SOURCE_DIR}/src/extensions_config.h.in ${PROJECT_BINARY_DIR}/src/extensions_config.h)
 
 # include custom Modules
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMakeModules/")
@@ -84,7 +85,7 @@ else()
     else ()
         set(EMPTYDIR "%empty")
     endif()
-    configure_file(${PROJECT_SOURCE_DIR}/src/yang.y.in ${PROJECT_SOURCE_DIR}/src/yang.y)
+    configure_file(${PROJECT_SOURCE_DIR}/src/yang.y.in ${PROJECT_BINARY_DIR}/src/yang.y)
     add_custom_target(bison
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
         COMMAND bison -l -o parser_yang_bis.c --defines=parser_yang_bis.h yang.y
@@ -199,7 +200,6 @@ set(yang2yinsrc
     tools/yang2yin/main.c)
 
 set(headers
-    src/libyang.h
     src/tree_schema.h
     src/tree_data.h
     src/extensions.h
@@ -229,7 +229,7 @@ include_directories(${PCRE_INCLUDE_DIRS})
 target_link_libraries(yang ${PCRE_LIBRARIES})
 
 install(TARGETS yang DESTINATION ${CMAKE_INSTALL_LIBDIR})
-install(FILES ${headers} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libyang)
+install(FILES ${headers} ${PROJECT_BINARY_DIR}/src/libyang.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libyang)
 
 find_package(PkgConfig)
 if(PKG_CONFIG_FOUND)

@@ -20,8 +20,8 @@
 #include <cmocka.h>
 #include <string.h>
 
-#include "../config.h"
-#include "../../src/libyang.h"
+#include "tests/config.h"
+#include "libyang.h"
 
 #define TEST_DIR "sec6_1_3"
 #define TEST_NAME test_sec6_1_3

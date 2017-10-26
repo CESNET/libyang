@@ -25,8 +25,8 @@
 
 #include <cmocka.h>
 
-#include "../../src/libyang.h"
-#include "../config.h"
+#include "libyang.h"
+#include "tests/config.h"
 
 static int
 setup_ctx(void **state)
