@@ -5369,7 +5369,7 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
         /* the needed module was not found, but it may have been expected so call the data callback */
         if (imod) {
             mod->ctx->data_clb(mod->ctx, imod->name, imod->ns, LY_MODCLB_NOT_IMPLEMENTED, mod->ctx->data_clb_data);
-        } else {
+        } else if (mod_name) {
             str = strndup(mod_name, mod_name_len);
             imod = (struct lys_module *)mod->ctx->data_clb(mod->ctx, str, NULL, 0, mod->ctx->data_clb_data);
             free(str);
