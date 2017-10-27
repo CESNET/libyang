@@ -781,37 +781,42 @@ parse_reply:
                         goto cleanup;
                     }
 
-                    /* ignore <ok> and <rpc-error> elements if present */
-                    u = 0;
-                    LY_TREE_FOR_SAFE(data_prev->xml->child, iter, elem) {
-                        if (!strcmp(data_prev->xml->child->name, "ok")) {
-                            if (u) {
-                                /* rpc-error or ok already present */
-                                u = 0x8; /* error flag */
-                            } else {
-                                u = 0x1 | 0x4; /* <ok> flag with lyxml_free() flag */
+                    if (data_prev->format == LYD_XML) {
+                        /* ignore <ok> and <rpc-error> elements if present */
+                        u = 0;
+                        LY_TREE_FOR_SAFE(data_prev->xml->child, iter, elem) {
+                            if (!strcmp(data_prev->xml->child->name, "ok")) {
+                                if (u) {
+                                    /* rpc-error or ok already present */
+                                    u = 0x8; /* error flag */
+                                } else {
+                                    u = 0x1 | 0x4; /* <ok> flag with lyxml_free() flag */
+                                }
+                            } else if (!strcmp(data_prev->xml->child->name, "rpc-error")) {
+                                if (u && (u & 0x1)) {
+                                    /* ok already present, rpc-error can be present multiple times */
+                                    u = 0x8; /* error flag */
+                                } else {
+                                    u = 0x2 | 0x4; /* <rpc-error> flag with lyxml_free() flag */
+                                }
                             }
-                        } else if (!strcmp(data_prev->xml->child->name, "rpc-error")) {
-                            if (u && (u & 0x1)) {
-                                /* ok already present, rpc-error can be present multiple times */
-                                u = 0x8; /* error flag */
-                            } else {
-                                u = 0x2 | 0x4; /* <rpc-error> flag with lyxml_free() flag */
+
+                            if (u == 0x8) {
+                                fprintf(stderr, "yanglint error: Invalid RPC reply (%s) content.\n", data_prev->filename);
+                                goto cleanup;
+                            } else if (u & 0x4) {
+                                lyxml_free(ctx, data_prev->xml->child);
+                                u &= ~0x4; /* unset lyxml_free() flag */
                             }
                         }
 
-                        if (u == 0x8) {
-                            fprintf(stderr, "yanglint error: Invalid RPC reply (%s) content.\n", data_prev->filename);
-                            goto cleanup;
-                        } else if (u & 0x4) {
-                            lyxml_free(ctx, data_prev->xml->child);
-                            u &= ~0x4; /* unset lyxml_free() flag */
-                        }
+                        /* finally, parse RPC reply from the previous step */
+                        data_prev->tree = lyd_parse_xml(ctx, &data_prev->xml->child,
+                                                        (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPCREPLY, data_item->tree, running);
+                    } else { /* LYD_JSON */
+                        data_prev->tree = lyd_parse_path(ctx, data_prev->filename, data_item->format,
+                                                         (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPCREPLY, data_item->tree, running);
                     }
-
-                    /* finally, parse RPC reply from the previous step */
-                    data_prev->tree = lyd_parse_xml(ctx, &data_prev->xml->child,
-                                                    (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPCREPLY, data_item->tree, running);
                 }
             } else if ((options_parser & LYD_OPT_TYPEMASK) == LYD_OPT_RPCREPLY) {
                 if (data_prev && !data_prev->tree) {
@@ -826,17 +831,19 @@ parse_reply:
                         fprintf(stderr, "yanglint error: RPC reply (%s) must be paired with the original RPC, see help.\n", data_item->filename);
                         goto cleanup;
                     }
-                    /* create rpc-reply container to unify handling with autodetection */
-                    data_item->xml = calloc(1, sizeof *data_item->xml);
-                    if (!data_item->xml) {
-                        fprintf(stderr, "yanglint error: Memory allocation failed failed.\n");
-                        goto cleanup;
-                    }
-                    data_item->xml->name = lydict_insert(ctx, "rpc-reply", 9);
-                    data_item->xml->prev = data_item->xml;
-                    data_item->xml->child = lyxml_parse_path(ctx, data_item->filename, LYXML_PARSE_MULTIROOT | LYXML_PARSE_NOMIXEDCONTENT);
-                    if (data_item->xml->child) {
-                        data_item->xml->child->parent = data_item->xml;
+                    if (data_item->format == LYD_XML) {
+                        /* create rpc-reply container to unify handling with autodetection */
+                        data_item->xml = calloc(1, sizeof *data_item->xml);
+                        if (!data_item->xml) {
+                            fprintf(stderr, "yanglint error: Memory allocation failed failed.\n");
+                            goto cleanup;
+                        }
+                        data_item->xml->name = lydict_insert(ctx, "rpc-reply", 9);
+                        data_item->xml->prev = data_item->xml;
+                        data_item->xml->child = lyxml_parse_path(ctx, data_item->filename, LYXML_PARSE_MULTIROOT | LYXML_PARSE_NOMIXEDCONTENT);
+                        if (data_item->xml->child) {
+                            data_item->xml->child->parent = data_item->xml;
+                        }
                     }
                     continue;
                 }
