@@ -155,7 +155,7 @@
 #include <memory>
 
 extern "C" {
-#include "../../../src/libyang.h"
+#include "libyang.h"
 }
 
 #define typeof(x) __typeof__(x)

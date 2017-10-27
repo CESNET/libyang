@@ -21,8 +21,8 @@
 #include "Tree_Schema.hpp"
 
 extern "C" {
-#include "../../../src/libyang.h"
-#include "../../../src/tree_schema.h"
+#include "libyang.h"
+#include "tree_schema.h"
 }
 
 using namespace std;

@@ -19,9 +19,9 @@
 #include "Tree_Data.hpp"
 
 extern "C" {
-#include "../../../src/libyang.h"
-#include "../../../src/tree_data.h"
-#include "../../../src/tree_schema.h"
+#include "libyang.h"
+#include "tree_data.h"
+#include "tree_schema.h"
 }
 
 using namespace std;

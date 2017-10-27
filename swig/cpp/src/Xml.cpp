@@ -21,8 +21,8 @@
 #include "Xml.hpp"
 
 extern "C" {
-#include "../../../src/libyang.h"
-#include "../../../src/xml.h"
+#include "libyang.h"
+#include "xml.h"
 }
 
 using namespace std;

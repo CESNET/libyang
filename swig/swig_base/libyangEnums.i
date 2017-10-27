@@ -4,15 +4,15 @@
 %rename("$ignore", "not lyd_node", "not" %$isenum, "not" %$isconstant, "not" %$isenumitem, regextarget=1, fullname=1) "";
 
 %{
-#include "./src/libyang.h"
-#include "./src/tree_schema.h"
-#include "./src/tree_data.h"
-#include "./src/extensions.h"
-#include "./src/xml.h"
+#include "libyang.h"
+#include "tree_schema.h"
+#include "tree_data.h"
+#include "extensions.h"
+#include "xml.h"
 %}
 
-%include "./src/libyang.h"
-%include "./src/tree_schema.h"
-%include "./src/tree_data.h"
-%include "./src/extensions.h"
-%include "./src/xml.h"
+%include "libyang.h"
+%include "tree_schema.h"
+%include "tree_data.h"
+%include "extensions.h"
+%include "xml.h"

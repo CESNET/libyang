@@ -2,8 +2,8 @@
 
 %{
     extern "C" {
-        #include "../../src/libyang.h"
-        #include "../../src/tree_data.h"
+        #include "libyang.h"
+        #include "tree_data.h"
     }
 %}
 
@@ -12,7 +12,7 @@
 
 %inline %{
 #include <unistd.h>
-#include "../../src/libyang.h"
+#include "libyang.h"
 #include <signal.h>
 #include <vector>
 #include <memory>
