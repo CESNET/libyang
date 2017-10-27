@@ -39,7 +39,8 @@ foreach(test_name IN LISTS api_tests data_tests schema_yin_tests schema_tests co
     set_property(TEST ${test_name} APPEND PROPERTY ENVIRONMENT "MALLOC_CHECK_=3")
 endforeach(test_name)
 
-configure_file("${PROJECT_SOURCE_DIR}/tests/config.h.in" "${PROJECT_SOURCE_DIR}/tests/config.h" ESCAPE_QUOTES @ONLY)
+configure_file("${PROJECT_SOURCE_DIR}/tests/config.h.in" "${PROJECT_BINARY_DIR}/tests/config.h" ESCAPE_QUOTES @ONLY)
+include_directories(${PROJECT_BINARY_DIR})
 
 if(ENABLE_VALGRIND_TESTS)
     find_program(valgrind_FOUND valgrind)

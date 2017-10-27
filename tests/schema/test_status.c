@@ -25,8 +25,8 @@
 #include <stdarg.h>
 #include <cmocka.h>
 
-#include "../../src/libyang.h"
-#include "../config.h"
+#include "libyang.h"
+#include "tests/config.h"
 
 struct state {
     struct ly_ctx *ctx;

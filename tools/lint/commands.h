@@ -23,7 +23,7 @@
 
 #include <stdlib.h>
 
-#include "../../src/libyang.h"
+#include "libyang.h"
 
 #define PROMPT "> "
 

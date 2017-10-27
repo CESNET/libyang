@@ -25,7 +25,7 @@
 #include <unistd.h>
 
 #include "commands.h"
-#include "../../src/libyang.h"
+#include "libyang.h"
 
 volatile int verbose = 0;
 

@@ -21,8 +21,8 @@
 #include <string.h>
 #include <sys/wait.h>
 
-#include "../config.h"
-#include "../../src/libyang.h"
+#include "tests/config.h"
+#include "libyang.h"
 
 #define TEST_DIR "sec6_2_1"
 #define TEST_NAME test_sec6_2_1

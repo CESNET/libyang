@@ -27,8 +27,8 @@
 
 #include <cmocka.h>
 
-#include "../../../src/libyang.h"
-#include "../../config.h"
+#include "libyang.h"
+#include "../tests/config.h"
 
 #define SCHEMA_FOLDER TESTS_DIR"/schema/yin/files"
 

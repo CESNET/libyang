@@ -1,6 +1,6 @@
 #include <stdlib.h>
 
-#include "../../src/libyang.h"
+#include "libyang.h"
 
 int
 main(int argc, char **argv)

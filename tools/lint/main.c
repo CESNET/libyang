@@ -22,7 +22,7 @@
 #include "configuration.h"
 #include "completion.h"
 #include "../../linenoise/linenoise.h"
-#include "../../src/libyang.h"
+#include "libyang.h"
 
 int done;
 struct ly_ctx *ctx = NULL;

@@ -28,8 +28,8 @@
 #include <string.h>
 #include <limits.h>
 
-#include "../config.h"
-#include "../../src/libyang.h"
+#include "tests/config.h"
+#include "libyang.h"
 
 /* include private header to be able to check internal values */
 #include "../../src/context.h"

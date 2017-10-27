@@ -24,7 +24,7 @@
 #include <libgen.h>
 
 #include "commands.h"
-#include "../../src/libyang.h"
+#include "libyang.h"
 #include "../../src/tree_schema.h"
 #include "../../src/tree_data.h"
 #include "../../src/xpath.h"

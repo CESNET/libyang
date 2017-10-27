@@ -28,9 +28,9 @@
 
 #include <cmocka.h>
 
-#include "../../src/libyang.h"
+#include "libyang.h"
 #include "../../src/context.h"
-#include "../config.h"
+#include "tests/config.h"
 
 #define SCHEMA_COUNT 17
 
