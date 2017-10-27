@@ -97,7 +97,7 @@ help(int shortout)
         "        edit            - Content of the NETCONF <edit-config> operation.\n"
         "        rpc             - Content of the NETCONF <rpc> message, defined as YANG's rpc input statement.\n"
         "        rpcreply        - Reply to the RPC. The input data <file>s are expected in pairs - each RPC reply\n"
-        "                          input data <file> must be followed by the origin RPC input data <file> for the reply."
+        "                          input data <file> must be followed by the origin RPC input data <file> for the reply.\n"
         "                          The same rule of pairing applies also in case of 'auto' TYPE and input data file\n"
         "                          containing RPC reply.\n"
         "        notif           - Notification instance (content of the <notification> element without <eventTime>.\n\n"
