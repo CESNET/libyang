@@ -1320,7 +1320,6 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
             }
             if (!reply_parent) {
                 LOGERR(LY_EINVAL, "%s: invalid variable parameter (const struct lyd_node *rpc_act).", __func__);
-                lyd_free_withsiblings(reply_top);
                 goto error;
             }
             lyd_free_withsiblings(reply_parent->child);
@@ -1339,14 +1338,12 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
                 len += skip_ws(&data[len]);
                 if (data[len] != ':') {
                     LOGVAL(LYE_XML_INVAL, LY_VLOG_NONE, NULL, "JSON data (missing top-level begin-object)");
-                    lyd_free_withsiblings(reply_top);
                     goto error;
                 }
                 ++len;
                 len += skip_ws(&data[len]);
                 if (data[len] != '{') {
                     LOGVAL(LYE_XML_INVAL, LY_VLOG_NONE, NULL, "JSON data (missing top level yang:action object)");
-                    lyd_free_withsiblings(reply_top);
                     goto error;
                 }
                 ++len;
@@ -1360,7 +1357,6 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
 
         r = json_parse_data(ctx, &data[len], NULL, &next, result, iter, &attrs, options, unres, &act_notif);
         if (!r) {
-            lyd_free_withsiblings(reply_top);
             goto error;
         }
         len += r;
@@ -1468,6 +1464,9 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
 
 error:
     lyd_free_withsiblings(result);
+    if (reply_top && result != reply_top) {
+        lyd_free_withsiblings(reply_top);
+    }
     free(unres->node);
     free(unres->type);
     free(unres);
