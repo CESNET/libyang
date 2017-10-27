@@ -1362,17 +1362,24 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
         len += r;
 
         if (!result) {
-            for (iter = next; iter && iter->prev->next; iter = iter->prev);
-            result = iter;
-            if (iter && (options & LYD_OPT_DATA_ADD_YANGLIB) && iter->schema->module == ctx->models.list[ctx->internal_module_count - 1]) {
-                /* ietf-yang-library data present, so ignore the option to add them */
-                options &= ~LYD_OPT_DATA_ADD_YANGLIB;
+            if (reply_parent) {
+                result = next->child;
+                iter = next->child;
+            } else {
+                for (iter = next; iter && iter->prev->next; iter = iter->prev);
+                result = iter;
+                if (iter && (options & LYD_OPT_DATA_ADD_YANGLIB) && iter->schema->module == ctx->models.list[ctx->internal_module_count - 1]) {
+                    /* ietf-yang-library data present, so ignore the option to add them */
+                    options &= ~LYD_OPT_DATA_ADD_YANGLIB;
+                }
+                iter = next;
             }
+        } else {
+            iter = result->prev;
         }
-        if (next) {
-            iter = next;
+        if (!reply_parent) {
+            next = NULL;
         }
-        next = NULL;
     } while (data[len] == ',');
 
     if (data[len] != '}') {
