@@ -110,11 +110,6 @@ lyext_load_plugins(void)
     pthread_mutex_lock(&ext_lock);
 
     while ((file = readdir(dir))) {
-        if (file->d_type != DT_REG && file->d_type != DT_LNK) {
-            /* other files than regular and symbolic links are ignored */
-            continue;
-        }
-
         /* required format of the filename is *LYEXT_PLUGIN_SUFFIX */
         len = strlen(file->d_name);
         if (len < LYEXT_PLUGIN_SUFFIX_LEN + 1 ||
