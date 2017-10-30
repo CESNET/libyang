@@ -2424,13 +2424,17 @@ check_status_flag(struct lys_node *node, struct lys_node *parent)
 {
     char *str;
 
+    if (node->nodetype & (LYS_OUTPUT | LYS_INPUT)) {
+        return EXIT_SUCCESS;
+    }
+
     if (parent && (parent->flags & (LYS_STATUS_DEPRC | LYS_STATUS_OBSLT))) {
         /* status is not inherited by specification, but it not make sense to have
          * current in deprecated or deprecated in obsolete, so we print warning
          * and fix the schema by inheriting */
         if (!(node->flags & (LYS_STATUS_MASK))) {
             /* status not explicitely specified on the current node -> inherit */
-            str = lys_path(parent);
+            str = lys_path(node);
             LOGWRN("Missing status in %s subtree (%s), inheriting.",
                    parent->flags & LYS_STATUS_DEPRC ? "deprecated" : "obsolete", str);
             free(str);
