@@ -701,6 +701,9 @@ ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char
                 } else if (!revision && mod->latest_revision) {
                     /* the latest revision of this module was already loaded */
                     break;
+                } else if (implement && mod->implemented && !revision) {
+                    /* we are not able to implement another module, so consider this module as the latest one */
+                    break;
                 }
             }
             mod = NULL;
