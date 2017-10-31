@@ -466,7 +466,7 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
                 int implement, struct unres_schema *unres)
 {
     size_t len, flen, match_len = 0, dir_len;
-    int fd, i;
+    int fd, i, implicit_cwd = 0;
     char *wd, *wn = NULL;
     DIR *dir = NULL;
     struct dirent *file;
@@ -490,11 +490,21 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
     if (!wd) {
         LOGMEM;
         goto cleanup;
-    } else if (ly_set_add(dirs, wd, 0) == -1) {
-        goto cleanup;
+    } else {
+        /* add implicit current working directory (./) to be searched,
+         * this directory is not searched recursively */
+        if (ly_set_add(dirs, wd, 0) == -1) {
+            goto cleanup;
+        }
+        implicit_cwd = 1;
     }
     if (ctx->models.search_paths) {
         for (i = 0; ctx->models.search_paths[i]; i++) {
+            /* check for duplicities with the implicit current working directory */
+            if (implicit_cwd && !strcmp(dirs->set.g[0], ctx->models.search_paths[i])) {
+                implicit_cwd = 0;
+                continue;
+            }
             wd = strdup(ctx->models.search_paths[i]);
             if (!wd) {
                 LOGMEM;
@@ -539,7 +549,7 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
                            file->d_name, wd, strerror(errno));
                     continue;
                 }
-                if (S_ISDIR(st.st_mode) && dirs->number) {
+                if (S_ISDIR(st.st_mode) && (dirs->number || !implicit_cwd)) {
                     /* we have another subdirectory in searchpath to explore,
                      * subdirectories are not taken into account in current working dir (dirs->set.g[0]) */
                     if (ly_set_add(dirs, wn, 0) == -1) {
