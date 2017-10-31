@@ -1010,7 +1010,7 @@ extern "C" {
  *
  * For some specific cases, a YANG schema can define error message and/or error tag (mainly for
  * use in NETCONF). If a message is set, it is provided via ly_errmsg(). If a tag is set in schema,
- * it is available via ly_erraptag() (if not set, the returned string is empty).
+ * it is available via ly_errapptag() (if not set, the returned string is empty).
  *
  * By default, all libyang messages are printed to `stderr`. However, the caller is able to set their own logging
  * callback function. In that case, instead of printing messages, libyang passes error level, message and path
