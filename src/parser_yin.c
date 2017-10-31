@@ -1373,7 +1373,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 #ifdef LY_ENABLED_CACHE
             if (!in_grp) {
                 /* do not compile patterns in groupings */
-                type->info.str.patterns_pcre = malloc(2 * i * sizeof *type->info.str.patterns_pcre);
+                type->info.str.patterns_pcre = calloc(2 * i, sizeof *type->info.str.patterns_pcre);
                 LY_CHECK_ERR_GOTO(!type->info.str.patterns_pcre, LOGMEM, error);
             }
 #endif
