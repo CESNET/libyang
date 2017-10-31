@@ -762,6 +762,7 @@ struct lyd_node *lyd_new_output_anydata(struct lyd_node *parent, const struct ly
                                         If the target node exists and is not a leaf, NULL is returned and no error set. */
 #define LYD_PATH_OPT_NOPARENT 0x02 /**< If any parents of the target node exist, return an error. */
 #define LYD_PATH_OPT_OUTPUT   0x04 /**< Changes the behavior to ignoring RPC/action input schema nodes and using only output ones. */
+#define LYD_PATH_OPT_DFLT     0x08 /**< The created node (nodes, if also creating the parents) is a default one. If working with data tree of type #LYD_OPT_DATA, #LYD_OPT_CONFIG, #LYD_OPT_RPC, #LYD_OPT_RPCREPLY, or #LYD_OPT_NOTIF, this flag is never needed and therefore should not be used. However, if the tree is #LYD_OPT_GET, #LYD_OPT_GETCONFIG, or #LYD_OPT_EDIT, the default nodes are not created during validation and using this flag one can set them (see @ref howtodatawd). */
 
 /** @} pathoptions */
 

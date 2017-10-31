@@ -1377,7 +1377,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
         case LYS_NOTIF:
         case LYS_RPC:
         case LYS_ACTION:
-            node = _lyd_new(is_relative ? parent : NULL, schild, 0);
+            node = _lyd_new(is_relative ? parent : NULL, schild, (options & LYD_PATH_OPT_DFLT) ? 1 : 0);
             break;
         case LYS_LEAF:
         case LYS_LEAFLIST:
@@ -1409,7 +1409,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
                 lyd_free(ret);
                 return NULL;
             }
-            node = _lyd_new_leaf(is_relative ? parent : NULL, schild, (str ? str : value), 0);
+            node = _lyd_new_leaf(is_relative ? parent : NULL, schild, (str ? str : value), (options & LYD_PATH_OPT_DFLT) ? 1 : 0);
             free(str);
             break;
         case LYS_ANYXML:
