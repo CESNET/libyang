@@ -5740,7 +5740,7 @@ lyd_wd_default(struct lyd_node_leaf_list *node)
     }
 
     if (node->schema->nodetype == LYS_LEAF) {
-        leaf = (struct lys_node_leaf*)node->schema;
+        leaf = (struct lys_node_leaf *)node->schema;
 
         /* get know if there is a default value */
         if (leaf->dflt) {
@@ -5762,7 +5762,7 @@ lyd_wd_default(struct lyd_node_leaf_list *node)
             return 0;
         }
     } else if (node->schema->module->version >= 2) { /* LYS_LEAFLIST */
-        llist = (struct lys_node_leaflist*)node->schema;
+        llist = (struct lys_node_leaflist *)node->schema;
 
         /* get know if there is a default value */
         if (llist->dflt_size) {
