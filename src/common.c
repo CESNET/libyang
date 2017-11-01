@@ -981,12 +981,26 @@ ly_path_data2schema_subexp(const struct ly_ctx *ctx, const struct lys_node *orig
                 }
 
                 /* determine how deep the node actually is, we must generate the path from the highest parent */
-                for (j = 0, node2 = node; node2 != parent; node2 = lys_parent(node2), ++j);
+                j = 0;
+                node2 = node;
+                while (node2 != parent) {
+                    node2 = lys_parent(node2);
+                    if (!node2 || (node2->nodetype != LYS_USES)) {
+                        ++j;
+                    }
+                }
 
                 /* first node, do not print '/' */
                 slash = 0;
                 while (j) {
-                    for (k = j - 1, node2 = node; k; node2 = lys_parent(node2), --k);
+                    k = j - 1;
+                    node2 = node;
+                    while (k) {
+                        node2 = lys_parent(node2);
+                        if (!node2 || (node2->nodetype != LYS_USES)) {
+                            --k;
+                        }
+                    }
 
                     if ((lys_node_module(node2) != cur_mod) || !parent) {
                         /* module name and node name */

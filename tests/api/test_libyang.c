@@ -1162,6 +1162,10 @@ test_ly_path_data2schema(void **state)
     schema_path = ly_path_data2schema(ctx, "/a:x[bar-leaf='aa']//.");
     assert_string_equal(schema_path, "/a:x[bar-leaf='aa']//.");
     free(schema_path);
+
+    schema_path = ly_path_data2schema(ctx, "/a:x/bar-gggg");
+    assert_string_equal(schema_path, "/a:x/bar-gggg");
+    free(schema_path);
 }
 
 int main(void)
