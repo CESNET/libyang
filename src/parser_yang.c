@@ -2606,7 +2606,12 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
 
     ret = yang_parse_mem(module, NULL, unres, data, size, &node);
     if (ret == -1) {
-        free_yang_common(module, node);
+        if (ly_vecode == LYVE_SUBMODULE) {
+            free(module);
+            module = NULL;
+        } else {
+            free_yang_common(module, node);
+        }
         goto error;
     } else if (ret == 1) {
         assert(!unres->count);
