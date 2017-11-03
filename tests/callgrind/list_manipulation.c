@@ -1,10 +1,12 @@
 #include <stdlib.h>
+#include <valgrind/callgrind.h>
 
+#include "tests/config.h"
 #include "libyang.h"
 
-#define SCHEMA "files/lists.yang"
-#define DATA1 "files/lists.xml"
-#define DATA2 "files/lists2.xml"
+#define SCHEMA TESTS_DIR "/callgrind/files/lists.yang"
+#define DATA1 TESTS_DIR "/callgrind/files/lists.xml"
+#define DATA2 TESTS_DIR "/callgrind/files/lists2.xml"
 
 int
 main(void)
@@ -37,6 +39,7 @@ main(void)
         goto finish;
     }
 
+    CALLGRIND_START_INSTRUMENTATION;
     diff = lyd_diff(data1, data2, 0);
     if (!diff) {
         ret = 1;
@@ -61,6 +64,7 @@ main(void)
         ret = 1;
         goto finish;
     }
+    CALLGRIND_STOP_INSTRUMENTATION;
 
 finish:
     lyd_free_diff(diff);

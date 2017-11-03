@@ -1,10 +1,12 @@
 #include <stdlib.h>
+#include <valgrind/callgrind.h>
 
 #include "libyang.h"
+#include "tests/config.h"
 
-#define SCHEMA "files/ietf-interfaces.yang"
-#define SCHEMA2 "files/ietf-ip.yang"
-#define SCHEMA3 "files/iana-if-type.yang"
+#define SCHEMA TESTS_DIR "/callgrind/files/ietf-interfaces.yang"
+#define SCHEMA2 TESTS_DIR "/callgrind/files/ietf-ip.yang"
+#define SCHEMA3 TESTS_DIR "/callgrind/files/iana-if-type.yang"
 
 int
 main(void)
@@ -34,6 +36,7 @@ main(void)
         goto finish;
     }
 
+    CALLGRIND_START_INSTRUMENTATION;
     data = lyd_new_path(NULL, ctx, "/ietf-interfaces:interfaces/interface[name='eth0']/ietf-ip:ipv4/ietf-ip:address[ietf-ip:ip='47.250.10.1']/ietf-ip:prefix-length", "16", LYD_ANYDATA_CONSTSTRING, 0);
     if (!data) {
         ret = 1;
@@ -62,6 +65,7 @@ main(void)
         ret = 1;
         goto finish;
     }
+    CALLGRIND_STOP_INSTRUMENTATION;
 
 finish:
     lyd_free_withsiblings(data);

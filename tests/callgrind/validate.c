@@ -1,11 +1,17 @@
-#include <stdlib.h>
+#define _GNU_SOURCE
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <valgrind/callgrind.h>
+
+#include "tests/config.h"
 #include "libyang.h"
 
 int
 main(int argc, char **argv)
 {
     int i;
+    char *path;
     struct ly_ctx *ctx;
     struct lyd_node *data;
 
@@ -19,13 +25,22 @@ main(int argc, char **argv)
     }
 
     for (i = 1; i < argc - 1; ++i) {
-        if (!lys_parse_path(ctx, argv[i], LYS_YANG)) {
+        asprintf(&path, "%s/callgrind/files/%s", TESTS_DIR, argv[i]);
+        if (!lys_parse_path(ctx, path, LYS_YANG)) {
+            free(path);
             ly_ctx_destroy(ctx, NULL);
             return 1;
         }
+        free(path);
     }
 
-    data = lyd_parse_path(ctx, argv[argc - 1], LYD_XML, LYD_OPT_STRICT | LYD_OPT_DATA_NO_YANGLIB);
+    asprintf(&path, "%s/callgrind/files/%s", TESTS_DIR, argv[argc - 1]);
+
+    CALLGRIND_START_INSTRUMENTATION;
+    data = lyd_parse_path(ctx, path, LYD_XML, LYD_OPT_STRICT | LYD_OPT_DATA_NO_YANGLIB);
+    CALLGRIND_STOP_INSTRUMENTATION;
+
+    free(path);
     if (!data) {
         ly_ctx_destroy(ctx, NULL);
         return 1;

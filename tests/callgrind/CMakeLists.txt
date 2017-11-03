@@ -10,12 +10,12 @@ target_link_libraries(list_manipulation yang)
 add_executable(create_data create_data.c)
 target_link_libraries(create_data yang)
 
-set(CALLGRIND_EXEC valgrind --tool=callgrind)
+set(CALLGRIND_EXEC valgrind --tool=callgrind --instr-atstart=no)
 add_custom_target(callgrind
-    COMMAND ${CALLGRIND_EXEC} ./validate files/all-validation.yang files/all-validation.xml
-    COMMAND ${CALLGRIND_EXEC} ./validate files/ietf-interfaces.yang files/iana-if-type.yang files/ietf-ip.yang files/ietf-interfaces.xml
-    COMMAND ${CALLGRIND_EXEC} ./validate files/lists.yang files/lists.xml
-    COMMAND ${CALLGRIND_EXEC} ./validate files/xpath.yang files/xpath.xml
+    COMMAND ${CALLGRIND_EXEC} ./validate all-validation.yang all-validation.xml
+    COMMAND ${CALLGRIND_EXEC} ./validate ietf-interfaces.yang iana-if-type.yang ietf-ip.yang ietf-interfaces.xml
+    COMMAND ${CALLGRIND_EXEC} ./validate lists.yang lists.xml
+    COMMAND ${CALLGRIND_EXEC} ./validate xpath.yang xpath.xml
     COMMAND ${CALLGRIND_EXEC} ./list_manipulation
     COMMAND ${CALLGRIND_EXEC} ./create_data
     DEPENDS validate list_manipulation create_data

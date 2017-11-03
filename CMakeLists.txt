@@ -33,6 +33,7 @@ else()
     option(ENABLE_BUILD_TESTS "Build tests" OFF)
     option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" OFF)
 endif()
+option(ENABLE_CALLGRIND_TESTS "Build performance tests to be run with callgrind" OFF)
 option(ENABLE_LATEST_REVISIONS "Enable reusing of latest revisions of schemas" ON)
 option(ENABLE_CACHE "Enable data caching for schemas (time-efficient at the cost of increased space-complexity)" OFF)
 
