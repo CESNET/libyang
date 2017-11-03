@@ -966,6 +966,7 @@ lyd_new_anydata(struct lyd_node *parent, const struct lys_module *module, const 
     }
 
     if (lys_getnext_data(module, lys_parent(siblings), name, strlen(name), LYS_ANYDATA, &snode) || !snode) {
+        ly_errno = LY_EINVAL;
         return NULL;
     }
 
@@ -990,6 +991,7 @@ lyd_new_output(struct lyd_node *parent, const struct lys_module *module, const c
 
     if (lys_getnext_data(module, lys_parent(siblings), name, strlen(name), LYS_CONTAINER | LYS_LIST | LYS_NOTIF
                          | LYS_RPC | LYS_ACTION, &snode) || !snode) {
+        ly_errno = LY_EINVAL;
         return NULL;
     }
 
@@ -1038,6 +1040,7 @@ lyd_new_output_anydata(struct lyd_node *parent, const struct lys_module *module,
     }
 
     if (lys_getnext_data(module, lys_parent(siblings), name, strlen(name), LYS_ANYDATA, &snode) || !snode) {
+        ly_errno = LY_EINVAL;
         return NULL;
     }
 
