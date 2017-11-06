@@ -1127,9 +1127,9 @@ error:
 int
 lyp_check_pattern(const char *pattern, pcre **pcre_precomp)
 {
-    int idx, start, end, err_offset;
+    int idx, start, end, err_offset, dol_count;
     char *perl_regex, *ptr;
-    const char *err_msg;
+    const char *err_msg, *orig_ptr;
     pcre *precomp;
 
     /*
@@ -1137,11 +1137,36 @@ lyp_check_pattern(const char *pattern, pcre **pcre_precomp)
      *
      * http://www.w3.org/TR/2004/REC-xmlschema-2-20041028/#regexs
      */
-    perl_regex = malloc((strlen(pattern) + 2) * sizeof(char));
+
+    /* we need to replace all "$" with "\$", count them now */
+    for (dol_count = 0, ptr = strchr(pattern, '$'); ptr; ++dol_count, ptr = strchr(ptr + 1, '$'));
+
+    perl_regex = malloc((strlen(pattern) + 4 + dol_count) * sizeof(char));
     LY_CHECK_ERR_RETURN(!perl_regex, LOGMEM, EXIT_FAILURE);
-    strcpy(perl_regex, pattern);
+    perl_regex[0] = '\0';
+
+    ptr = perl_regex;
+
     if (strncmp(pattern + strlen(pattern) - 2, ".*", 2)) {
-        strcat(perl_regex, "$");
+        /* we wil add line-end anchoring */
+        ptr[0] = '(';
+        ++ptr;
+    }
+
+    for (orig_ptr = pattern; orig_ptr[0]; ++orig_ptr) {
+        if (orig_ptr[0] == '$') {
+            ptr += sprintf(ptr, "\\$");
+        } else {
+            ptr[0] = orig_ptr[0];
+            ++ptr;
+        }
+    }
+
+    if (strncmp(pattern + strlen(pattern) - 2, ".*", 2)) {
+        ptr += sprintf(ptr, ")$");
+    } else {
+        ptr[0] = '\0';
+        ++ptr;
     }
 
     /* substitute Unicode Character Blocks with exact Character Ranges */
