@@ -35,35 +35,37 @@
  *
  * Modified full grammar:
  *
- * [1] LocationPath ::= RelativeLocationPath | AbsoluteLocationPath
- * [2] AbsoluteLocationPath ::= '/' RelativeLocationPath? | '//' RelativeLocationPath
- * [3] RelativeLocationPath ::= Step | RelativeLocationPath '/' Step | RelativeLocationPath '//' Step
- * [4] Step ::= '@'? NodeTest Predicate* | '.' | '..'
- * [5] NodeTest ::= NameTest | NodeType '(' ')'
- * [6] Predicate ::= '[' Expr ']'
- * [7] PrimaryExpr ::= '(' Expr ')' | Literal | Number | FunctionCall
- * [8] FunctionCall ::= FunctionName '(' ( Expr ( ',' Expr )* )? ')'
- * [9] PathExpr ::= LocationPath | PrimaryExpr Predicate*
+ * [1] Expr ::= OrExpr // just an alias
+ *
+ * [2] LocationPath ::= RelativeLocationPath | AbsoluteLocationPath
+ * [3] AbsoluteLocationPath ::= '/' RelativeLocationPath? | '//' RelativeLocationPath
+ * [4] RelativeLocationPath ::= Step | RelativeLocationPath '/' Step | RelativeLocationPath '//' Step
+ * [5] Step ::= '@'? NodeTest Predicate* | '.' | '..'
+ * [6] NodeTest ::= NameTest | NodeType '(' ')'
+ * [7] Predicate ::= '[' Expr ']'
+ * [8] PrimaryExpr ::= '(' Expr ')' | Literal | Number | FunctionCall
+ * [9] FunctionCall ::= FunctionName '(' ( Expr ( ',' Expr )* )? ')'
+ * [10] PathExpr ::= LocationPath | PrimaryExpr Predicate*
  *                 | PrimaryExpr Predicate* '/' RelativeLocationPath
  *                 | PrimaryExpr Predicate* '//' RelativeLocationPath
- * [10] Expr ::= AndExpr | Expr 'or' AndExpr
- * [11] AndExpr ::= EqualityExpr | AndExpr 'and' EqualityExpr
- * [12] EqualityExpr ::= RelationalExpr | EqualityExpr '=' RelationalExpr
+ * [11] OrExpr ::= AndExpr | OrExpr 'or' AndExpr
+ * [12] AndExpr ::= EqualityExpr | AndExpr 'and' EqualityExpr
+ * [13] EqualityExpr ::= RelationalExpr | EqualityExpr '=' RelationalExpr
  *                     | EqualityExpr '!=' RelationalExpr
- * [13] RelationalExpr ::= AdditiveExpr
+ * [14] RelationalExpr ::= AdditiveExpr
  *                       | RelationalExpr '<' AdditiveExpr
  *                       | RelationalExpr '>' AdditiveExpr
  *                       | RelationalExpr '<=' AdditiveExpr
  *                       | RelationalExpr '>=' AdditiveExpr
- * [14] AdditiveExpr ::= MultiplicativeExpr
+ * [15] AdditiveExpr ::= MultiplicativeExpr
  *                     | AdditiveExpr '+' MultiplicativeExpr
  *                     | AdditiveExpr '-' MultiplicativeExpr
- * [15] MultiplicativeExpr ::= UnaryExpr
+ * [16] MultiplicativeExpr ::= UnaryExpr
  *                     | MultiplicativeExpr '*' UnaryExpr
  *                     | MultiplicativeExpr 'div' UnaryExpr
  *                     | MultiplicativeExpr 'mod' UnaryExpr
- * [16] UnaryExpr ::= UnionExpr | '-' UnaryExpr
- * [17] UnionExpr ::= PathExpr | UnionExpr '|' PathExpr
+ * [17] UnaryExpr ::= UnionExpr | '-' UnaryExpr
+ * [18] UnionExpr ::= PathExpr | UnionExpr '|' PathExpr
  */
 
 /* expression tokens allocation */
@@ -106,14 +108,28 @@ enum lyxp_token {
 };
 
 /**
+ * @brief XPath (sub)expressions that can be repeated.
+ */
+enum lyxp_expr_type {
+    LYXP_EXPR_NONE = 0,
+    LYXP_EXPR_OR,
+    LYXP_EXPR_AND,
+    LYXP_EXPR_EQUALITY,
+    LYXP_EXPR_RELATIONAL,
+    LYXP_EXPR_ADDITIVE,
+    LYXP_EXPR_MULTIPLICATIVE,
+    LYXP_EXPR_UNION,
+};
+
+/**
  * @brief Structure holding a parsed XPath expression.
  */
 struct lyxp_expr {
     enum lyxp_token *tokens; /* array of tokens */
     uint16_t *expr_pos;      /* array of pointers to the expression in expr (idx of the beginning) */
     uint8_t *tok_len;        /* array of token lengths in expr */
-    uint16_t **repeat;       /* array of the operator token indices that succeed this expression ended with 0,
-                                more in the comment after this declaration */
+    enum lyxp_expr_type **repeat; /* array of expression types that this token begins and is repeated ended with 0,
+                                     more in the comment after this declaration */
     uint16_t used;           /* used array items */
     uint16_t size;           /* allocated array items */
 
@@ -125,18 +141,24 @@ struct lyxp_expr {
  *
  * This value is NULL for all the tokens that do not begin an
  * expression which can be repeated. Otherwise it is an array
- * of indices in the tokens array that are an operator for
- * which the current expression is an operand. These values
+ * of expression types that this token begins. These values
  * are used during evaluation to know whether we need to
- * duplicate the current context or not. Examples:
+ * duplicate the current context or not and to decide what
+ * the current expression is (for example, if we are only
+ * starting the parsing and the first token has no repeat,
+ * we do not parse it as an OrExpr but directly as PathExpr).
+ * Examples:
  *
  * Expression: "/ *[key1 and key2 or key1 < key2]"
- * Tokens: '/',  '*',  '[',  NameTest,  'and', NameTest, 'or', NameTest, '<',  NameTest, ']'
- * Repeat: NULL, NULL, NULL, [4, 6, 0], NULL,  NULL,     NULL, [8, 0],   NULL, NULL,     NULL
+ * Tokens: '/',  '*',  '[',  NameTest,  'and', NameTest, 'or', NameTest,        '<',  NameTest, ']'
+ * Repeat: NULL, NULL, NULL, [AndExpr,  NULL,  NULL,     NULL, [RelationalExpr, NULL, NULL,     NULL
+ *                            OrExpr,                           0],
+ *                            0],
  *
  * Expression: "//node[key and node2]/key | /cont"
- * Tokens: '//',   'NameTest', '[',  'NameTest', 'and', 'NameTest', ']',  '/',  'NameTest', '|',  '/',  'NameTest'
- * Repeat: [9, 0], NULL,       NULL, [4, 0],     NULL,  NULL,       NULL, NULL, NULL,       NULL, NULL, NULL
+ * Tokens: '//',       'NameTest', '[',  'NameTest', 'and', 'NameTest', ']',  '/',  'NameTest', '|',  '/',  'NameTest'
+ * Repeat: [UnionExpr, NULL,       NULL, [AndExpr,   NULL,  NULL,       NULL, NULL, NULL,       NULL, NULL, NULL
+ *          0],                           0],
  *
  * Operators between expressions which this concerns:
  *     'or', 'and', '=', '!=', '<', '>', '<=', '>=', '+', '-', '*', 'div', 'mod', '|'
