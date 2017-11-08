@@ -1764,7 +1764,8 @@ resolve_schema_nodeid(const char *nodeid, const struct lys_node *start, const st
 
     /* descendant-schema-nodeid */
     if (is_relative) {
-        cur_module = start_mod = start->module;
+        // cur_module = start_mod = start->module;
+        cur_module = start_mod = lys_main_module(start->module);
         start_parent = lys_parent(start);
 
     /* absolute-schema-nodeid */
