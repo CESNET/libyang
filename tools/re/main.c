@@ -150,19 +150,19 @@ main(int argc, char* argv[])
             }
 
             while((l = getline(&str, &len, infile)) != -1) {
-                if (str[0] == '\n') {
+                if (!blankline && str[0] == '\n') {
                     /* blank line */
                     blankline = 1;
                     continue;
                 }
-                if (str[l - 1] == '\n') {
+                if (str[0] != '\n' && str[l - 1] == '\n') {
                     /* remove ending newline */
                     str[l - 1] = '\0';
                 }
                 if (blankline) {
                     /* done - str is now the string to check */
+                    blankline = 0;
                     break;
-
                     /* else read the patterns */
                 } else if (add_pattern(&patterns, &invert_match, &patterns_count,
                                        str[0] == ' ' ? &str[1] : str)) {
@@ -172,6 +172,13 @@ main(int argc, char* argv[])
                     /* set invert-match */
                     invert_match[patterns_count - 1] = 1;
                 }
+            }
+            if (blankline) {
+              /* corner case, no input after blankline meaning the pattern to check is empty */
+              if (str != NULL)
+                free(str);
+              str = malloc(sizeof(char));
+              str[0] = '\0';
             }
             break;
         case 'i':
