@@ -2874,9 +2874,7 @@ yang_type_free(struct ly_ctx *ctx, struct lys_type *type)
         type->der = NULL;
     }
     lys_type_free(ctx, type, NULL);
-    type->base = LY_TYPE_DER;
-    type->ext_size = 0;
-    type->ext = NULL;
+    memset(type, 0, sizeof (struct lys_type));
 }
 
 static void

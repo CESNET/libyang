@@ -2474,8 +2474,10 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
 
                 /* replace */
                 lys_type_free(ctx, t, NULL);
+                memset(t, 0, sizeof (struct lys_type));
                 /* HACK for unres */
                 t->der = (struct lys_tpdf *)child;
+                t->parent = (struct lys_tpdf *)dev_target;
                 if (unres_schema_add_node(module, unres, t, UNRES_TYPE_DER, dev_target) == -1) {
                     goto error;
                 }
