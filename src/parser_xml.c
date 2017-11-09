@@ -214,6 +214,10 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     case LYS_NOTIF:
     case LYS_RPC:
     case LYS_ACTION:
+        if ((options & LYD_OPT_STRICT) && xml->content && xml->content[0]) {
+            LOGVAL(LYE_XML_INVAL, LY_VLOG_XML, xml, "node with text data");
+            return -1;
+        }
         *result = calloc(1, sizeof **result);
         havechildren = 1;
         break;
