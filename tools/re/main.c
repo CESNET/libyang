@@ -45,9 +45,10 @@ help(void)
         "  -f, --file=\"FILE\"     List of patterns and the <string> (separated by an\n"
         "                          empty line) are taken from <file>. Invert-match is\n"
         "                          indicated by the single space character at the \n"
-        "                          beginning of the pattern line. YANG quotation is\n"
-        "                          still expected, but that avoids issues with reading\n"
-        "                          quotation by shell.");
+        "                          beginning of the pattern line. YANG quotation around\n"
+        "                          patterns is still expected, but that avoids issues with\n"
+        "                          reading quotation by shell. Avoid newline at the end\n"
+        "                          of the string line to represent empty <string>.");
     fprintf(stdout, "Examples:\n"
         "  pattern \"[0-9a-fA-F]*\";      -> yangre -p '\"[0-9a-fA-F]*\"' '1F'\n"
         "  pattern '[a-zA-Z0-9\\-_.]*';  -> yangre -p \"'[a-zA-Z0-9\\-_.]*'\" 'a-b'\n"
@@ -150,19 +151,19 @@ main(int argc, char* argv[])
             }
 
             while((l = getline(&str, &len, infile)) != -1) {
-                if (str[0] == '\n') {
+                if (!blankline && str[0] == '\n') {
                     /* blank line */
                     blankline = 1;
                     continue;
                 }
-                if (str[l - 1] == '\n') {
+                if (str[0] != '\n' && str[l - 1] == '\n') {
                     /* remove ending newline */
                     str[l - 1] = '\0';
                 }
                 if (blankline) {
                     /* done - str is now the string to check */
+                    blankline = 0;
                     break;
-
                     /* else read the patterns */
                 } else if (add_pattern(&patterns, &invert_match, &patterns_count,
                                        str[0] == ' ' ? &str[1] : str)) {
@@ -172,6 +173,14 @@ main(int argc, char* argv[])
                     /* set invert-match */
                     invert_match[patterns_count - 1] = 1;
                 }
+            }
+            if (blankline) {
+                /* corner case, no input after blankline meaning the pattern to check is empty */
+                if (str != NULL) {
+                    free(str);
+                }
+                str = malloc(sizeof(char));
+                str[0] = '\0';
             }
             break;
         case 'i':
