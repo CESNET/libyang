@@ -174,11 +174,12 @@ main(int argc, char* argv[])
                 }
             }
             if (blankline) {
-              /* corner case, no input after blankline meaning the pattern to check is empty */
-              if (str != NULL)
-                free(str);
-              str = malloc(sizeof(char));
-              str[0] = '\0';
+                /* corner case, no input after blankline meaning the pattern to check is empty */
+                if (str != NULL) {
+                    free(str);
+                }
+                str = malloc(sizeof(char));
+                str[0] = '\0';
             }
             break;
         case 'i':
