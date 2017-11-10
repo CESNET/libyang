@@ -45,9 +45,10 @@ help(void)
         "  -f, --file=\"FILE\"     List of patterns and the <string> (separated by an\n"
         "                          empty line) are taken from <file>. Invert-match is\n"
         "                          indicated by the single space character at the \n"
-        "                          beginning of the pattern line. YANG quotation is\n"
-        "                          still expected, but that avoids issues with reading\n"
-        "                          quotation by shell.");
+        "                          beginning of the pattern line. YANG quotation around\n"
+        "                          patterns is still expected, but that avoids issues with\n"
+        "                          reading quotation by shell. Avoid newline at the end\n"
+        "                          of the string line to represent empty <string>.");
     fprintf(stdout, "Examples:\n"
         "  pattern \"[0-9a-fA-F]*\";      -> yangre -p '\"[0-9a-fA-F]*\"' '1F'\n"
         "  pattern '[a-zA-Z0-9\\-_.]*';  -> yangre -p \"'[a-zA-Z0-9\\-_.]*'\" 'a-b'\n"
