@@ -6,7 +6,7 @@ add_compile_options(-std=c++11)
 
 # find SWIG package
 if(GEN_LANGUAGE_BINDINGS)
-    find_package(SWIG)
+    find_package(SWIG REQUIRED)
     if(NOT SWIG_FOUND)
         message(WARNING "SWIG library not found")
     else()
