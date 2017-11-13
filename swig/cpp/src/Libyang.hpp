@@ -45,24 +45,24 @@ class Error
 /* add custom deleter for Context class */
 public:
     Error() {
-        _err = ly_errno;
-        _vecode = ly_vecode;
-        _errmsg = ly_errmsg();
-        _errpath = ly_errpath();
-        _errapptag = ly_errapptag();
+        libyang_err = ly_errno;
+        libyang_vecode = ly_vecode;
+        libyang_errmsg = ly_errmsg();
+        libyang_errpath = ly_errpath();
+        libyang_errapptag = ly_errapptag();
     };
     ~Error() {};
-    LY_ERR err() throw() {return _err;};
-    LY_VECODE vecode() throw() {return _vecode;};
-    const char *errmsg() const throw() {return _errmsg;};
-    const char *errpath() const throw() {return _errpath;};
-    const char *errapptag() const throw() {return _errapptag;};
+    LY_ERR err() throw() {return libyang_err;};
+    LY_VECODE vecode() throw() {return libyang_vecode;};
+    const char *errmsg() const throw() {return libyang_errmsg;};
+    const char *errpath() const throw() {return libyang_errpath;};
+    const char *errapptag() const throw() {return libyang_errapptag;};
 private:
-    LY_ERR _err;
-    LY_VECODE _vecode;
-    const char *_errmsg;
-    const char *_errpath;
-    const char *_errapptag;
+    LY_ERR libyang_err;
+    LY_VECODE libyang_vecode;
+    const char *libyang_errmsg;
+    const char *libyang_errpath;
+    const char *libyang_errapptag;
 };
 
 class Context
@@ -73,11 +73,11 @@ public:
     Context(const char *search_dir, const char *path, LYD_FORMAT format, int options = 0);
     Context(const char *search_dir, LYD_FORMAT format, const char *data, int options = 0);
     ~Context();
-    int set_searchdir(const char *search_dir) {return ly_ctx_set_searchdir(_ctx, search_dir);};
-    void unset_searchdirs(int idx) {return ly_ctx_unset_searchdirs(_ctx, idx);};
+    int set_searchdir(const char *search_dir) {return ly_ctx_set_searchdir(ctx, search_dir);};
+    void unset_searchdirs(int idx) {return ly_ctx_unset_searchdirs(ctx, idx);};
     std::vector<std::string> *get_searchdirs();
-    void set_allimplemented() {return ly_ctx_set_allimplemented(_ctx);};
-    void unset_allimplemented() {return ly_ctx_unset_allimplemented(_ctx);};
+    void set_allimplemented() {return ly_ctx_set_allimplemented(ctx);};
+    void unset_allimplemented() {return ly_ctx_unset_allimplemented(ctx);};
     S_Data_Node info();
     std::vector<S_Module> *get_module_iter();
     std::vector<S_Module> *get_disabled_module_iter();
@@ -101,8 +101,8 @@ public:
     friend Deleter;
 
 private:
-    struct ly_ctx *_ctx;
-    S_Deleter _deleter;
+    struct ly_ctx *ctx;
+    S_Deleter deleter;
 };
 
 class Set
@@ -111,8 +111,8 @@ public:
     Set(struct ly_set *set, S_Deleter);
     Set();
     ~Set();
-    unsigned int size() {return _set->size;};
-    unsigned int number() {return _set->number;};
+    unsigned int size() {return set->size;};
+    unsigned int number() {return set->number;};
     std::vector<S_Data_Node> *data();
     std::vector<S_Schema_Node> *schema();
 
@@ -128,8 +128,8 @@ public:
     int rm_index(unsigned int index);
 
 private:
-    struct ly_set *_set;
-    S_Deleter _deleter;
+    struct ly_set *set;
+    S_Deleter deleter;
 };
 
 #endif

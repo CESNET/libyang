@@ -85,15 +85,15 @@
 #define S_Restr                  std::shared_ptr<Restr>
 #define S_Ident                  std::shared_ptr<Ident>
 
-#define NEW(data, element, class)                                                                                                                    \
+#define LY_NEW(data, element, class)                                                                                                                 \
     {                                                                                                                                                \
-        return data->element ? S_##class(new class(data->element, _deleter)) : nullptr;                                                              \
+        return data->element ? S_##class(new class(data->element, deleter)) : nullptr;                                                               \
     };
 
 #define LY_NEW_CASTED(cast, data, element, class)                                                                                                    \
     {                                                                                                                                                \
-        cast *node = (struct cast *) data;                                                                                                           \
-        return node->element ? S_##class(new class(node->element, _deleter)) : nullptr;                                                              \
+        cast *casted = (struct cast *) data;                                                                                                         \
+        return casted->element ? S_##class(new class(casted->element, deleter)) : nullptr;                                                           \
     };
 
 #define LY_NEW_LIST(data, element, size, class)                                                                                                      \
@@ -101,7 +101,7 @@
         auto s_vector = new std::vector<S_##class>;                                                                                                  \
                                                                                                                                                      \
         for (uint8_t i = 0; i < data->size; i++) {                                                                                                   \
-            s_vector->push_back(S_##class(new class(&data->element[i], _deleter)));                                                                  \
+            s_vector->push_back(S_##class(new class(&data->element[i], deleter)));                                                                   \
         }                                                                                                                                            \
                                                                                                                                                      \
         return s_vector;                                                                                                                             \
@@ -109,8 +109,8 @@
 
 #define LY_NEW_LIST_CASTED(cast, data, element, size, class)                                                                                         \
     {                                                                                                                                                \
-        struct cast *node = (struct cast *) data;                                                                                                    \
-        LY_NEW_LIST(node, element, size, class);                                                                                                     \
+        struct cast *casted = (struct cast *) data;                                                                                                  \
+        LY_NEW_LIST(casted, element, size, class);                                                                                                   \
     };
 
 #define LY_NEW_P_LIST(data, element, size, class)                                                                                                    \
@@ -118,7 +118,7 @@
         auto s_vector = new std::vector<S_##class>;                                                                                                  \
                                                                                                                                                      \
         for (uint8_t i = 0; i < data->size; i++) {                                                                                                   \
-            s_vector->push_back(S_##class(new class(data->element[i], _deleter)));                                                                   \
+            s_vector->push_back(S_##class(new class(data->element[i], deleter)));                                                                    \
         }                                                                                                                                            \
                                                                                                                                                      \
         return s_vector;                                                                                                                             \
@@ -126,8 +126,8 @@
 
 #define LY_NEW_P_LIST_CASTED(cast, data, element, size, class)                                                                                       \
     {                                                                                                                                                \
-        struct cast *node = (struct cast *) data;                                                                                                    \
-        LY_NEW_P_LIST(node, element, size, class);                                                                                                   \
+        struct cast *casted = (struct cast *) data;                                                                                                  \
+        LY_NEW_P_LIST(casted, element, size, class);                                                                                                 \
     };
 
 #define LY_NEW_STRING_LIST(data, element, size)                                                                                                      \
@@ -192,10 +192,10 @@ public:
     ~Deleter();
 
 private:
-    S_Context _context;
-    value_t _v;
-    free_type_t _t;
-    S_Deleter _parent;
+    S_Context context;
+    value_t v;
+    free_type_t t;
+    S_Deleter parent;
 };
 
 #endif
