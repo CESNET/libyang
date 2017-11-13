@@ -27,8 +27,6 @@ extern "C" {
 #include "xml.h"
 }
 
-using namespace std;
-
 /* defined */
 class Xml_Ns;
 class Xml_Attr;

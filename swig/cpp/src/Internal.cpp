@@ -24,7 +24,6 @@ extern "C" {
 #include "tree_schema.h"
 }
 
-using namespace std;
 Deleter::Deleter(ly_ctx *ctx, S_Deleter parent) {
     _v.ctx = ctx;
     _t = CONTEXT;

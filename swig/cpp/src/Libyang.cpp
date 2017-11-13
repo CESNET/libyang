@@ -29,8 +29,6 @@ extern "C" {
 #include "tree_schema.h"
 }
 
-using namespace std;
-
 Context::Context(ly_ctx *ctx, S_Deleter deleter) {
     _ctx = ctx;
     _deleter = deleter;
@@ -38,21 +36,21 @@ Context::Context(ly_ctx *ctx, S_Deleter deleter) {
 Context::Context(const char *search_dir, int options) {
     _ctx = ly_ctx_new(search_dir, options);
     if (nullptr == _ctx) {
-        throw runtime_error("can not create new context");
+        throw std::runtime_error("can not create new context");
     }
     _deleter = S_Deleter(new Deleter(_ctx));
 }
 Context::Context(const char *search_dir, const char *path, LYD_FORMAT format, int options) {
     _ctx = ly_ctx_new_ylpath(search_dir, path, format, options);
     if (nullptr == _ctx) {
-        throw runtime_error("can not create new context");
+        throw std::runtime_error("can not create new context");
     }
     _deleter = S_Deleter(new Deleter(_ctx));
 }
 Context::Context(const char *search_dir, LYD_FORMAT format, const char *data, int options) {
     _ctx = ly_ctx_new_ylmem(search_dir, data, format, options);
     if (nullptr == _ctx) {
-        throw runtime_error("can not create new context");
+        throw std::runtime_error("can not create new context");
     }
     _deleter = S_Deleter(new Deleter(_ctx));
 }
@@ -77,11 +75,11 @@ S_Module Context::get_module_by_ns(const char *ns, const char *revision, int imp
     const struct lys_module *module = ly_ctx_get_module_by_ns(_ctx, ns, revision, implemented);
     return module ? S_Module(new Module((lys_module *) module, _deleter)) : nullptr;
 }
-vector<S_Module> *Context::get_module_iter() {
+std::vector<S_Module> *Context::get_module_iter() {
     const struct lys_module *mod = nullptr;
     uint32_t i = 0;
 
-    auto s_vector = new vector<S_Module>;
+    auto s_vector = new std::vector<S_Module>;
 
     while ((mod = ly_ctx_get_module_iter(_ctx, &i))) {
         if (mod == nullptr) {
@@ -92,11 +90,11 @@ vector<S_Module> *Context::get_module_iter() {
 
     return s_vector;
 }
-vector<S_Module> *Context::get_disabled_module_iter() {
+std::vector<S_Module> *Context::get_disabled_module_iter() {
     const struct lys_module *mod = nullptr;
     uint32_t i = 0;
 
-    auto s_vector = new vector<S_Module>;
+    auto s_vector = new std::vector<S_Module>;
 
     while ((mod = ly_ctx_get_disabled_module_iter(_ctx, &i))) {
         if (mod == nullptr) {
@@ -110,13 +108,13 @@ vector<S_Module> *Context::get_disabled_module_iter() {
 void Context::clean() {
     return ly_ctx_clean(_ctx, nullptr);
 }
-vector<string> *Context::get_searchdirs() {
+std::vector<std::string> *Context::get_searchdirs() {
     const char * const *data = ly_ctx_get_searchdirs(_ctx);
     if (nullptr == data) {
         return nullptr;
     }
 
-    auto s_vector = new vector<string>;
+    auto s_vector = new std::vector<std::string>;
 
     int size = 0;
     while (true) {
@@ -209,7 +207,7 @@ S_Data_Node Context::parse_xml(S_Xml_Elem elem, int options) {
 Set::Set() {
     struct ly_set *set = ly_set_new();
     if (nullptr == _set) {
-        throw runtime_error("can not create new set");
+        throw std::runtime_error("can not create new set");
     }
 
     _set = set;
@@ -220,8 +218,8 @@ Set::Set(struct ly_set *set, S_Deleter deleter) {
     _deleter = deleter;
 }
 Set::~Set() {}
-vector<S_Data_Node> *Set::data() {
-    auto s_vector = new vector<S_Data_Node>;
+std::vector<S_Data_Node> *Set::data() {
+    auto s_vector = new std::vector<S_Data_Node>;
 
     unsigned int i;
     for (i = 0; i < _set->number; i++){
@@ -230,8 +228,8 @@ vector<S_Data_Node> *Set::data() {
 
     return s_vector;
 };
-vector<S_Schema_Node> *Set::schema() {
-    auto s_vector = new vector<S_Schema_Node>;
+std::vector<S_Schema_Node> *Set::schema() {
+    auto s_vector = new std::vector<S_Schema_Node>;
 
     unsigned int i;
     for (i = 0; i < _set->number; i++){

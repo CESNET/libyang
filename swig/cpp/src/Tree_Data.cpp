@@ -15,6 +15,7 @@
 #include <iostream>
 #include <memory>
 #include <stdexcept>
+#include <vector>
 
 #include "Xml.hpp"
 #include "Libyang.hpp"
@@ -26,8 +27,6 @@ extern "C" {
 #include "tree_data.h"
 #include "tree_schema.h"
 }
-
-using namespace std;
 
 Value::Value(lyd_val value, uint16_t value_type, S_Deleter deleter) {
     _value = value;
@@ -248,7 +247,7 @@ std::string Data_Node::print_mem(LYD_FORMAT format, int options) {
 
 }
 std::vector<S_Data_Node> *Data_Node::tree_for() {
-    auto s_vector = new vector<S_Data_Node>;
+    auto s_vector = new std::vector<S_Data_Node>;
 
     struct lyd_node *elem = nullptr;
     LY_TREE_FOR(_node, elem) {
@@ -258,7 +257,7 @@ std::vector<S_Data_Node> *Data_Node::tree_for() {
     return s_vector;
 }
 std::vector<S_Data_Node> *Data_Node::tree_dfs() {
-    auto s_vector = new vector<S_Data_Node>;
+    auto s_vector = new std::vector<S_Data_Node>;
 
     struct lyd_node *elem = nullptr, *next = nullptr;
     LY_TREE_DFS_BEGIN(_node, next, elem) {
@@ -317,7 +316,7 @@ std::vector<S_Data_Node> *Difflist::first() {
         return nullptr;
     }
 
-    auto s_vector = new vector<S_Data_Node>;
+    auto s_vector = new std::vector<S_Data_Node>;
 
     for(i = 0; i < sizeof(*_diff->first); i++) {
         s_vector->push_back(S_Data_Node(new Data_Node(*_diff->first, _deleter)));
@@ -331,7 +330,7 @@ std::vector<S_Data_Node> *Difflist::second() {
         return nullptr;
     }
 
-    auto s_vector = new vector<S_Data_Node>;
+    auto s_vector = new std::vector<S_Data_Node>;
 
     for(i = 0; i < sizeof(*_diff->second); i++) {
         s_vector->push_back(S_Data_Node(new Data_Node(*_diff->second, _deleter)));

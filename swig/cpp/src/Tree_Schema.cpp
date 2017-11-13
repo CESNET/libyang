@@ -15,6 +15,7 @@
 #include <iostream>
 #include <memory>
 #include <stdexcept>
+#include <vector>
 
 #include "Internal.hpp"
 #include "Libyang.hpp"
@@ -24,8 +25,6 @@ extern "C" {
 #include "libyang.h"
 #include "tree_schema.h"
 }
-
-using namespace std;
 
 Module::Module(struct lys_module *module, S_Deleter deleter) {
     _module = module;
@@ -167,7 +166,7 @@ Iffeature::Iffeature(struct lys_iffeature *iffeature, S_Deleter deleter) {
 };
 Iffeature::~Iffeature() {};
 std::vector<S_Feature> *Iffeature::features() {
-    auto s_vector = new vector<S_Feature>;
+    auto s_vector = new std::vector<S_Feature>;
 
     //TODO check if sizeof can be used
     for (size_t i = 0; i < sizeof(*_iffeature->features); i++) {
@@ -228,7 +227,7 @@ S_Set Schema_Node::xpath_atomize(int options) {
     return S_Set(new Set(set, _deleter));
 }
 std::vector<S_Schema_Node> *Schema_Node::tree_for() {
-    auto s_vector = new vector<S_Schema_Node>;
+    auto s_vector = new std::vector<S_Schema_Node>;
 
     struct lys_node *elem = nullptr;
     LY_TREE_FOR(_node, elem) {
@@ -238,7 +237,7 @@ std::vector<S_Schema_Node> *Schema_Node::tree_for() {
     return s_vector;
 }
 std::vector<S_Schema_Node> *Schema_Node::tree_dfs() {
-    auto s_vector = new vector<S_Schema_Node>;
+    auto s_vector = new std::vector<S_Schema_Node>;
 
     struct lys_node *elem = nullptr, *next = nullptr;
     LY_TREE_DFS_BEGIN(_node, next, elem) {
@@ -289,7 +288,7 @@ std::vector<S_Tpdf> *Schema_Node_List::tpdf() LY_NEW_LIST_CASTED(lys_node_list, 
 std::vector<S_Schema_Node_Leaf> *Schema_Node_List::keys() {
     auto list = (struct lys_node_list *) _node;
 
-    auto s_vector = new vector<S_Schema_Node_Leaf>;
+    auto s_vector = new std::vector<S_Schema_Node_Leaf>;
 
     for (uint8_t i = 0; i < list->keys_size; i++) {
         s_vector->push_back(S_Schema_Node_Leaf(new Schema_Node_Leaf((struct lys_node *) list->keys[i], _deleter)));
@@ -309,7 +308,7 @@ std::vector<S_Refine> *Schema_Node_Uses::refine() LY_NEW_LIST_CASTED(lys_node_us
 std::vector<S_Schema_Node_Augment> *Schema_Node_Uses::augment() {
     auto uses = (struct lys_node_uses *) _node;
 
-    auto s_vector = new vector<S_Schema_Node_Augment>;
+    auto s_vector = new std::vector<S_Schema_Node_Augment>;
 
     for (uint8_t i = 0; i < uses->augment_size; i++) {
         s_vector->push_back(S_Schema_Node_Augment(new Schema_Node_Augment((struct lys_node *) &uses->augment[i], _deleter)));

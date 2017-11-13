@@ -18,6 +18,7 @@
 #include <iostream>
 #include <memory>
 #include <exception>
+#include <vector>
 
 #include "Internal.hpp"
 #include "Libyang.hpp"
@@ -26,8 +27,6 @@ extern "C" {
 #include "libyang.h"
 #include "tree_schema.h"
 }
-
-using namespace std;
 
 /* defined */
 class Module;
@@ -512,7 +511,7 @@ public:
     std::vector<S_Restr> *must();
     S_Type type();
     const char *units() {return ((struct lys_node_leaflist *)_node)->units;};
-    vector<std::string> *dflt();
+    std::vector<std::string> *dflt();
     uint32_t min() {return ((struct lys_node_leaflist *)_node)->min;};
     uint32_t max() {return ((struct lys_node_leaflist *)_node)->max;};
     S_Schema_Node child() {return nullptr;};
@@ -760,7 +759,7 @@ public:
     std::vector<S_Iffeature> *iffeature() LY_NEW_LIST(_refine, iffeature, iffeature_size, Iffeature);
     S_Module module();
     std::vector<S_Restr> *must();
-    vector<std::string> *dflt() LY_NEW_STRING_LIST(_refine, dflt, dflt_size);
+    std::vector<std::string> *dflt() LY_NEW_STRING_LIST(_refine, dflt, dflt_size);
     S_Refine_Mod mod();
 
 private:
@@ -787,7 +786,7 @@ public:
     S_Unique unique();
     S_Type type();
     const char *units() {return _deviate->units;};
-    vector<std::string> *dflt() LY_NEW_STRING_LIST(_deviate, dflt, dflt_size);
+    std::vector<std::string> *dflt() LY_NEW_STRING_LIST(_deviate, dflt, dflt_size);
     std::vector<S_Ext_Instance> *ext();
 
 private:

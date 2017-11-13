@@ -25,8 +25,6 @@ extern "C" {
 #include "xml.h"
 }
 
-using namespace std;
-
 Xml_Ns::Xml_Ns(const struct lyxml_ns *ns, S_Deleter deleter) {
     _ns = (struct lyxml_ns *) ns;
     _deleter = deleter;
@@ -75,7 +73,7 @@ std::string Xml_Elem::print_mem(int options) {
 }
 
 std::vector<S_Xml_Elem> *Xml_Elem::tree_for() {
-    auto s_vector = new vector<S_Xml_Elem>;
+    auto s_vector = new std::vector<S_Xml_Elem>;
 
     struct lyxml_elem *elem = nullptr;
     LY_TREE_FOR(_elem, elem) {
@@ -85,7 +83,7 @@ std::vector<S_Xml_Elem> *Xml_Elem::tree_for() {
     return s_vector;
 }
 std::vector<S_Xml_Elem> *Xml_Elem::tree_dfs() {
-    auto s_vector = new vector<S_Xml_Elem>;
+    auto s_vector = new std::vector<S_Xml_Elem>;
 
     struct lyxml_elem *elem = nullptr, *next = nullptr;
     LY_TREE_DFS_BEGIN(_elem, next, elem) {

@@ -18,6 +18,7 @@
 #include <iostream>
 #include <memory>
 #include <exception>
+#include <vector>
 
 #include "Internal.hpp"
 #include "Tree_Schema.hpp"
@@ -27,7 +28,6 @@ extern "C" {
 #include "tree_data.h"
 }
 
-using namespace std;
 
 /* defined */
 class Value;

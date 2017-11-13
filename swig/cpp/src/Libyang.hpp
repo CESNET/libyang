@@ -26,8 +26,6 @@ extern "C" {
 #include "libyang.h"
 }
 
-using namespace std;
-
 /* defined */
 class Context;
 class Error;
@@ -77,12 +75,12 @@ public:
     ~Context();
     int set_searchdir(const char *search_dir) {return ly_ctx_set_searchdir(_ctx, search_dir);};
     void unset_searchdirs(int idx) {return ly_ctx_unset_searchdirs(_ctx, idx);};
-    vector<string> *get_searchdirs();
+    std::vector<std::string> *get_searchdirs();
     void set_allimplemented() {return ly_ctx_set_allimplemented(_ctx);};
     void unset_allimplemented() {return ly_ctx_unset_allimplemented(_ctx);};
     S_Data_Node info();
-    vector<S_Module> *get_module_iter();
-    vector<S_Module> *get_disabled_module_iter();
+    std::vector<S_Module> *get_module_iter();
+    std::vector<S_Module> *get_disabled_module_iter();
     S_Module get_module(const char *name, const char *revision = nullptr, int implemented = 0);
     S_Module get_module_older(S_Module module);
     S_Module load_module(const char *name, const char *revision = nullptr);
@@ -115,8 +113,8 @@ public:
     ~Set();
     unsigned int size() {return _set->size;};
     unsigned int number() {return _set->number;};
-    vector<S_Data_Node> *data();
-    vector<S_Schema_Node> *schema();
+    std::vector<S_Data_Node> *data();
+    std::vector<S_Schema_Node> *schema();
 
     /* functions */
     S_Set dup();
