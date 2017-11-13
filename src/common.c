@@ -1050,8 +1050,7 @@ ly_path_data2schema_subexp(const struct ly_ctx *ctx, const struct lys_node *orig
                 /* we are done */
                 goto finish;
             }
-            LOGERR(LY_EINVAL, "Invalid token used (%.*s).",
-                   __func__, exp->tok_len[*cur_exp], exp->expr + exp->expr_pos[*cur_exp]);
+            LOGERR(LY_EINVAL, "Invalid token used (%.*s).", exp->tok_len[*cur_exp], exp->expr + exp->expr_pos[*cur_exp]);
             goto error;
         }
 
@@ -1073,8 +1072,7 @@ finish:
     if (end_token) {
         for (j = *cur_exp; (j < exp->used) && (exp->tokens[j] != end_token); ++j);
         if (j == exp->used) {
-            LOGERR(LY_EINVAL, "Invalid token used (%.*s).",
-                   __func__, exp->tok_len[*cur_exp], exp->expr + exp->expr_pos[*cur_exp]);
+            LOGERR(LY_EINVAL, "Invalid token used (%.*s).", exp->tok_len[*cur_exp], exp->expr + exp->expr_pos[*cur_exp]);
             goto error;
         }
 
