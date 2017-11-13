@@ -157,8 +157,6 @@ extern "C" {
 #include "libyang.h"
 }
 
-#define typeof(x) __typeof__(x)
-
 using namespace std;
 
 /* defined */
