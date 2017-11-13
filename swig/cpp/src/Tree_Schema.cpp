@@ -168,9 +168,6 @@ Iffeature::Iffeature(struct lys_iffeature *iffeature, S_Deleter deleter) {
 Iffeature::~Iffeature() {};
 std::vector<S_Feature> *Iffeature::features() {
     auto s_vector = new vector<S_Feature>;
-    if (nullptr == s_vector) {
-        return nullptr;
-    }
 
     //TODO check if sizeof can be used
     for (size_t i = 0; i < sizeof(*_iffeature->features); i++) {
@@ -233,10 +230,6 @@ S_Set Schema_Node::xpath_atomize(int options) {
 std::vector<S_Schema_Node> *Schema_Node::tree_for() {
     auto s_vector = new vector<S_Schema_Node>;
 
-    if (nullptr == s_vector) {
-        return nullptr;
-    }
-
     struct lys_node *elem = nullptr;
     LY_TREE_FOR(_node, elem) {
         s_vector->push_back(S_Schema_Node(new Schema_Node(elem, _deleter)));
@@ -246,10 +239,6 @@ std::vector<S_Schema_Node> *Schema_Node::tree_for() {
 }
 std::vector<S_Schema_Node> *Schema_Node::tree_dfs() {
     auto s_vector = new vector<S_Schema_Node>;
-
-    if (nullptr == s_vector) {
-        return nullptr;
-    }
 
     struct lys_node *elem = nullptr, *next = nullptr;
     LY_TREE_DFS_BEGIN(_node, next, elem) {
@@ -301,9 +290,6 @@ std::vector<S_Schema_Node_Leaf> *Schema_Node_List::keys() {
     auto list = (struct lys_node_list *) _node;
 
     auto s_vector = new vector<S_Schema_Node_Leaf>;
-    if (nullptr == s_vector) {
-        return nullptr;
-    }
 
     for (uint8_t i = 0; i < list->keys_size; i++) {
         s_vector->push_back(S_Schema_Node_Leaf(new Schema_Node_Leaf((struct lys_node *) list->keys[i], _deleter)));
@@ -324,9 +310,6 @@ std::vector<S_Schema_Node_Augment> *Schema_Node_Uses::augment() {
     auto uses = (struct lys_node_uses *) _node;
 
     auto s_vector = new vector<S_Schema_Node_Augment>;
-    if (nullptr == s_vector) {
-        return nullptr;
-    }
 
     for (uint8_t i = 0; i < uses->augment_size; i++) {
         s_vector->push_back(S_Schema_Node_Augment(new Schema_Node_Augment((struct lys_node *) &uses->augment[i], _deleter)));

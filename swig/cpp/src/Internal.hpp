@@ -99,9 +99,6 @@
 #define LY_NEW_LIST(data, element, size, class)                                                                                                      \
     {                                                                                                                                                \
         auto s_vector = new vector<S_##class>;                                                                                                       \
-        if (nullptr == s_vector) {                                                                                                                   \
-            return nullptr;                                                                                                                          \
-        }                                                                                                                                            \
                                                                                                                                                      \
         for (uint8_t i = 0; i < data->size; i++) {                                                                                                   \
             s_vector->push_back(S_##class(new class(&data->element[i], _deleter)));                                                                  \
@@ -119,9 +116,6 @@
 #define LY_NEW_P_LIST(data, element, size, class)                                                                                                    \
     {                                                                                                                                                \
         auto s_vector = new vector<S_##class>;                                                                                                       \
-        if (nullptr == s_vector) {                                                                                                                   \
-            return nullptr;                                                                                                                          \
-        }                                                                                                                                            \
                                                                                                                                                      \
         for (uint8_t i = 0; i < data->size; i++) {                                                                                                   \
             s_vector->push_back(S_##class(new class(data->element[i], _deleter)));                                                                   \
@@ -139,9 +133,6 @@
 #define LY_NEW_STRING_LIST(data, element, size)                                                                                                      \
     {                                                                                                                                                \
         auto s_vector = new vector<std::string>;                                                                                                     \
-        if (nullptr == s_vector) {                                                                                                                   \
-            return nullptr;                                                                                                                          \
-        }                                                                                                                                            \
                                                                                                                                                      \
         for (uint8_t i = 0; i < data->size; i++) {                                                                                                   \
             s_vector->push_back(std::string(data->element[i]));                                                                                      \

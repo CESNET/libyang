@@ -77,10 +77,6 @@ std::string Xml_Elem::print_mem(int options) {
 std::vector<S_Xml_Elem> *Xml_Elem::tree_for() {
     auto s_vector = new vector<S_Xml_Elem>;
 
-    if (nullptr == s_vector) {
-        return nullptr;
-    }
-
     struct lyxml_elem *elem = nullptr;
     LY_TREE_FOR(_elem, elem) {
         s_vector->push_back(S_Xml_Elem(new Xml_Elem(_context, elem, _deleter)));
@@ -90,10 +86,6 @@ std::vector<S_Xml_Elem> *Xml_Elem::tree_for() {
 }
 std::vector<S_Xml_Elem> *Xml_Elem::tree_dfs() {
     auto s_vector = new vector<S_Xml_Elem>;
-
-    if (nullptr == s_vector) {
-        return nullptr;
-    }
 
     struct lyxml_elem *elem = nullptr, *next = nullptr;
     LY_TREE_DFS_BEGIN(_elem, next, elem) {

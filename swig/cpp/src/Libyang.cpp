@@ -82,9 +82,6 @@ vector<S_Module> *Context::get_module_iter() {
     uint32_t i = 0;
 
     auto s_vector = new vector<S_Module>;
-    if (nullptr == s_vector) {
-        return nullptr;
-    }
 
     while ((mod = ly_ctx_get_module_iter(_ctx, &i))) {
         if (mod == nullptr) {
@@ -100,9 +97,6 @@ vector<S_Module> *Context::get_disabled_module_iter() {
     uint32_t i = 0;
 
     auto s_vector = new vector<S_Module>;
-    if (nullptr == s_vector) {
-        return nullptr;
-    }
 
     while ((mod = ly_ctx_get_disabled_module_iter(_ctx, &i))) {
         if (mod == nullptr) {
@@ -123,9 +117,6 @@ vector<string> *Context::get_searchdirs() {
     }
 
     auto s_vector = new vector<string>;
-    if (nullptr == s_vector) {
-        return nullptr;
-    }
 
     int size = 0;
     while (true) {
@@ -231,9 +222,6 @@ Set::Set(struct ly_set *set, S_Deleter deleter) {
 Set::~Set() {}
 vector<S_Data_Node> *Set::data() {
     auto s_vector = new vector<S_Data_Node>;
-    if (nullptr == s_vector) {
-        return nullptr;
-    }
 
     unsigned int i;
     for (i = 0; i < _set->number; i++){
@@ -244,9 +232,6 @@ vector<S_Data_Node> *Set::data() {
 };
 vector<S_Schema_Node> *Set::schema() {
     auto s_vector = new vector<S_Schema_Node>;
-    if (nullptr == s_vector) {
-        return nullptr;
-    }
 
     unsigned int i;
     for (i = 0; i < _set->number; i++){

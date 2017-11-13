@@ -250,10 +250,6 @@ std::string Data_Node::print_mem(LYD_FORMAT format, int options) {
 std::vector<S_Data_Node> *Data_Node::tree_for() {
     auto s_vector = new vector<S_Data_Node>;
 
-    if (nullptr == s_vector) {
-        return nullptr;
-    }
-
     struct lyd_node *elem = nullptr;
     LY_TREE_FOR(_node, elem) {
         s_vector->push_back(S_Data_Node(new Data_Node(elem, _deleter)));
@@ -263,10 +259,6 @@ std::vector<S_Data_Node> *Data_Node::tree_for() {
 }
 std::vector<S_Data_Node> *Data_Node::tree_dfs() {
     auto s_vector = new vector<S_Data_Node>;
-
-    if (nullptr == s_vector) {
-        return nullptr;
-    }
 
     struct lyd_node *elem = nullptr, *next = nullptr;
     LY_TREE_DFS_BEGIN(_node, next, elem) {
@@ -326,9 +318,6 @@ std::vector<S_Data_Node> *Difflist::first() {
     }
 
     auto s_vector = new vector<S_Data_Node>;
-    if (nullptr == s_vector) {
-        return nullptr;
-    }
 
     for(i = 0; i < sizeof(*_diff->first); i++) {
         s_vector->push_back(S_Data_Node(new Data_Node(*_diff->first, _deleter)));
@@ -343,9 +332,6 @@ std::vector<S_Data_Node> *Difflist::second() {
     }
 
     auto s_vector = new vector<S_Data_Node>;
-    if (nullptr == s_vector) {
-        return nullptr;
-    }
 
     for(i = 0; i < sizeof(*_diff->second); i++) {
         s_vector->push_back(S_Data_Node(new Data_Node(*_diff->second, _deleter)));
