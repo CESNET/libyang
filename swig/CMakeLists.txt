@@ -44,7 +44,7 @@ set(LIBYANG_CPP_SOURCES
     ${CMAKE_SOURCE_DIR}/swig/cpp/src/Tree_Schema.cpp
     ${CMAKE_SOURCE_DIR}/swig/cpp/src/Internal.cpp)
 
-set(LIBYANG_H_SOURCES
+set(LIBYANG_HPP_SOURCES
     ${CMAKE_SOURCE_DIR}/swig/cpp/src/Xml.hpp
     ${CMAKE_SOURCE_DIR}/swig/cpp/src/Libyang.hpp
     ${CMAKE_SOURCE_DIR}/swig/cpp/src/Tree_Data.hpp
@@ -74,8 +74,7 @@ target_link_libraries(libyang_cpp yang)
 
 # install binary
 install(TARGETS libyang_cpp DESTINATION ${CMAKE_INSTALL_LIBDIR})
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/cpp/src/" DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libyang
-    FILES_MATCHING PATTERN "*.hpp")
+install(FILES ${LIBYANG_HPP_SOURCES} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libyang)
 
 if (GEN_CPP_BINDINGS)
     add_subdirectory(cpp/examples)
