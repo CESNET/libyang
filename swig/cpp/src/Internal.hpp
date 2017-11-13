@@ -88,20 +88,20 @@
 
 #define NEW(data, element, class)                                                                                                                    \
     {                                                                                                                                                \
-        return data->element ? S_##class(new class(data->element, _deleter)) : NULL;                                                                 \
+        return data->element ? S_##class(new class(data->element, _deleter)) : nullptr;                                                              \
     };
 
 #define NEW_CASTED(cast, data, element, class)                                                                                                       \
     {                                                                                                                                                \
         cast *node = (struct cast *) data;                                                                                                           \
-        return node->element ? S_##class(new class(node->element, _deleter)) : NULL;                                                                 \
+        return node->element ? S_##class(new class(node->element, _deleter)) : nullptr;                                                              \
     };
 
 #define NEW_LIST(data, element, size, class)                                                                                                         \
     {                                                                                                                                                \
         auto s_vector = new vector<S_##class>;                                                                                                       \
-        if (NULL == s_vector) {                                                                                                                      \
-            return NULL;                                                                                                                             \
+        if (nullptr == s_vector) {                                                                                                                   \
+            return nullptr;                                                                                                                          \
         }                                                                                                                                            \
                                                                                                                                                      \
         for (uint8_t i = 0; i < data->size; i++) {                                                                                                   \
@@ -120,8 +120,8 @@
 #define NEW_P_LIST(data, element, size, class)                                                                                                       \
     {                                                                                                                                                \
         auto s_vector = new vector<S_##class>;                                                                                                       \
-        if (NULL == s_vector) {                                                                                                                      \
-            return NULL;                                                                                                                             \
+        if (nullptr == s_vector) {                                                                                                                   \
+            return nullptr;                                                                                                                          \
         }                                                                                                                                            \
                                                                                                                                                      \
         for (uint8_t i = 0; i < data->size; i++) {                                                                                                   \
@@ -140,8 +140,8 @@
 #define NEW_STRING_LIST(data, element, size)                                                                                                         \
     {                                                                                                                                                \
         auto s_vector = new vector<S_String>;                                                                                                        \
-        if (NULL == s_vector) {                                                                                                                      \
-            return NULL;                                                                                                                             \
+        if (nullptr == s_vector) {                                                                                                                   \
+            return nullptr;                                                                                                                          \
         }                                                                                                                                            \
                                                                                                                                                      \
         for (uint8_t i = 0; i < data->size; i++) {                                                                                                   \
@@ -194,14 +194,14 @@ typedef union value_e {
 class Deleter
 {
 public:
-    Deleter(ly_ctx *ctx, S_Deleter parent = NULL);
-    Deleter(struct lyd_node *data, S_Deleter parent = NULL);
-    Deleter(struct lys_node *schema, S_Deleter parent = NULL);
-    Deleter(struct lys_module *module, S_Deleter parent = NULL);
-    Deleter(struct lys_submodule *submodule, S_Deleter parent = NULL);
-    Deleter(S_Context context, struct lyxml_elem *elem, S_Deleter parent = NULL);
-    Deleter(struct ly_set *set, S_Deleter parent = NULL);
-    Deleter(struct lyd_difflist *diff, S_Deleter parent = NULL);
+    Deleter(ly_ctx *ctx, S_Deleter parent = nullptr);
+    Deleter(struct lyd_node *data, S_Deleter parent = nullptr);
+    Deleter(struct lys_node *schema, S_Deleter parent = nullptr);
+    Deleter(struct lys_module *module, S_Deleter parent = nullptr);
+    Deleter(struct lys_submodule *submodule, S_Deleter parent = nullptr);
+    Deleter(S_Context context, struct lyxml_elem *elem, S_Deleter parent = nullptr);
+    Deleter(struct ly_set *set, S_Deleter parent = nullptr);
+    Deleter(struct lyd_difflist *diff, S_Deleter parent = nullptr);
     ~Deleter();
 
 private:

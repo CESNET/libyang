@@ -37,15 +37,15 @@ Value::Value(lyd_val value, uint16_t value_type, S_Deleter deleter) {
 Value::~Value() {};
 S_Data_Node Value::instance() {
     if (LY_TYPE_INST != _type) {
-        return NULL;
+        return nullptr;
     }
-    return _value.instance ? S_Data_Node(new Data_Node(_value.instance, _deleter)) : NULL;
+    return _value.instance ? S_Data_Node(new Data_Node(_value.instance, _deleter)) : nullptr;
 }
 S_Data_Node Value::leafref() {
     if (LY_TYPE_LEAFREF != _type) {
-        return NULL;
+        return nullptr;
     }
-    return _value.leafref ? S_Data_Node(new Data_Node(_value.leafref, _deleter)) : NULL;
+    return _value.leafref ? S_Data_Node(new Data_Node(_value.leafref, _deleter)) : nullptr;
 }
 
 Data_Node::Data_Node(struct lyd_node *node, S_Deleter deleter) {
@@ -53,88 +53,88 @@ Data_Node::Data_Node(struct lyd_node *node, S_Deleter deleter) {
     _deleter = deleter;
 };
 Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name) {
-    lyd_node *node = NULL;
+    lyd_node *node = nullptr;
 
-    if (NULL == module) {
+    if (nullptr == module) {
         throw std::invalid_argument("Module can not be empty");
     }
 
     node = lyd_new(parent->_node, module->_module, name);
-    if (NULL == node) {
+    if (nullptr == node) {
         throw std::invalid_argument("libyang could not create new data node, invalid argument");
     }
 
     _node = node;
-    _deleter = NULL;
+    _deleter = nullptr;
 };
 Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, const char *val_str) {
-    lyd_node *node = NULL;
+    lyd_node *node = nullptr;
 
-    if (NULL == module) {
+    if (nullptr == module) {
         throw std::invalid_argument("Module can not be empty");
     }
 
     node = lyd_new_leaf(parent->_node, module->_module, name, val_str);
-    if (NULL == node) {
+    if (nullptr == node) {
         throw std::invalid_argument("libyang could not create new data node, invalid argument");
     }
 
     _node = node;
-    _deleter = NULL;
+    _deleter = nullptr;
 };
 Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, const char *value, LYD_ANYDATA_VALUETYPE value_type) {
-    lyd_node *node = NULL;
+    lyd_node *node = nullptr;
 
-    if (NULL == module) {
+    if (nullptr == module) {
         throw std::invalid_argument("Module can not be empty");
     }
 
     node = lyd_new_anydata(parent->_node, module->_module, name, (void *) value, value_type);
-    if (NULL == node) {
+    if (nullptr == node) {
         throw std::invalid_argument("libyang could not create new data node, invalid argument");
     }
 
     _node = node;
-    _deleter = NULL;
+    _deleter = nullptr;
 };
 Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Data_Node value, LYD_ANYDATA_VALUETYPE value_type) {
-    lyd_node *node = NULL;
+    lyd_node *node = nullptr;
 
-    if (NULL == module) {
+    if (nullptr == module) {
         throw std::invalid_argument("Module can not be empty");
     }
 
     node = lyd_new_anydata(parent->_node, module->_module, name, (void *) value->_node, value_type);
-    if (NULL == node) {
+    if (nullptr == node) {
         throw std::invalid_argument("libyang could not create new data node, invalid argument");
     }
 
     _node = node;
-    _deleter = NULL;
+    _deleter = nullptr;
 };
 Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Xml_Elem value, LYD_ANYDATA_VALUETYPE value_type) {
-    lyd_node *node = NULL;
+    lyd_node *node = nullptr;
 
-    if (NULL == module) {
+    if (nullptr == module) {
         throw std::invalid_argument("Module can not be empty");
     }
 
     node = lyd_new_anydata(parent->_node, module->_module, name, (void *) value->_elem, value_type);
-    if (NULL == node) {
+    if (nullptr == node) {
         throw std::invalid_argument("libyang could not create new data node, invalid argument");
     }
 
     _node = node;
-    _deleter = NULL;
+    _deleter = nullptr;
 }
 Data_Node::~Data_Node() {};
 S_Attr Data_Node::attr() NEW(_node, attr, Attr);
 S_String Data_Node::path() {
-    char *path = NULL;
+    char *path = nullptr;
 
     path = lyd_path(_node);
-    if (NULL == path) {
-        return NULL;
+    if (nullptr == path) {
+        return nullptr;
     }
 
     S_String s_path = path;
@@ -142,18 +142,18 @@ S_String Data_Node::path() {
     return s_path;
 }
 S_Data_Node Data_Node::dup(int recursive) {
-    struct lyd_node *node = NULL;
+    struct lyd_node *node = nullptr;
 
     node = lyd_dup(_node, recursive);
 
-    return node ? S_Data_Node(new Data_Node(node, _deleter)) : NULL;
+    return node ? S_Data_Node(new Data_Node(node, _deleter)) : nullptr;
 }
 S_Data_Node Data_Node::dup_to_ctx(int recursive, S_Context context) {
-    struct lyd_node *node = NULL;
+    struct lyd_node *node = nullptr;
 
     node = lyd_dup_to_ctx(_node, recursive, context->_ctx);
 
-    return node ? S_Data_Node(new Data_Node(node, _deleter)) : NULL;
+    return node ? S_Data_Node(new Data_Node(node, _deleter)) : nullptr;
 }
 int Data_Node::merge(S_Data_Node source, int options) {
     return lyd_merge(_node, source->_node, options);
@@ -178,26 +178,26 @@ int Data_Node::schema_sort(int recursive) {
 }
 S_Set Data_Node::find_path(const char *expr) {
     struct ly_set *set = lyd_find_path(_node, expr);
-    if (NULL == set) {
-        return NULL;
+    if (nullptr == set) {
+        return nullptr;
     }
 
     return S_Set(new Set(set, S_Deleter(new Deleter(set, _deleter))));
 }
 S_Set Data_Node::find_instance(S_Schema_Node schema) {
     struct ly_set *set = lyd_find_instance(_node, schema->_node);
-    if (NULL == set) {
-        return NULL;
+    if (nullptr == set) {
+        return nullptr;
     }
 
     return S_Set(new Set(set, S_Deleter(new Deleter(set, _deleter))));
 }
 S_Data_Node Data_Node::first_sibling() {
-    struct lyd_node *node = NULL;
+    struct lyd_node *node = nullptr;
 
     node = lyd_first_sibling(_node);
 
-    return node ? S_Data_Node(new Data_Node(node, _deleter)) : NULL;
+    return node ? S_Data_Node(new Data_Node(node, _deleter)) : nullptr;
 }
 int Data_Node::validate(int options, S_Context var_arg) {
     return lyd_validate(&_node, options, (void *) var_arg->_ctx);
@@ -210,36 +210,36 @@ S_Difflist Data_Node::diff(S_Data_Node second, int options) {
 
     diff = lyd_diff(_node, second->_node, options);
 
-    return diff ? S_Difflist(new Difflist(diff, _deleter)) : NULL;
+    return diff ? S_Difflist(new Difflist(diff, _deleter)) : nullptr;
 }
 S_Data_Node Data_Node::new_path(S_Context ctx, const char *path, void *value, LYD_ANYDATA_VALUETYPE value_type, int options) {
-    struct lyd_node *node = NULL;
+    struct lyd_node *node = nullptr;
 
     node = lyd_new_path(_node, ctx->_ctx, path, value, value_type, options);
 
-    return node ? S_Data_Node(new Data_Node(node, _deleter)) : NULL;
+    return node ? S_Data_Node(new Data_Node(node, _deleter)) : nullptr;
 }
 S_Attr Data_Node::insert_attr(S_Module module, const char *name, const char *value) {
-    struct lyd_attr *attr = NULL;
+    struct lyd_attr *attr = nullptr;
 
     attr = lyd_insert_attr(_node, module->_module, name, value);
 
-    return attr ? S_Attr(new Attr(attr, _deleter)) : NULL;
+    return attr ? S_Attr(new Attr(attr, _deleter)) : nullptr;
 }
 S_Module Data_Node::node_module() {
-    struct lys_module *module = NULL;
+    struct lys_module *module = nullptr;
 
     module = lyd_node_module(_node);
 
-    return module ? S_Module(new Module(module, _deleter)) : NULL;
+    return module ? S_Module(new Module(module, _deleter)) : nullptr;
 }
 S_String Data_Node::print_mem(LYD_FORMAT format, int options) {
-    char *strp = NULL;
+    char *strp = nullptr;
     int rc = 0;
 
     rc = lyd_print_mem(&strp, _node, format, options);
     if (0 != rc) {
-        return NULL;
+        return nullptr;
     }
 
     S_String s_strp = strp;
@@ -250,11 +250,11 @@ S_String Data_Node::print_mem(LYD_FORMAT format, int options) {
 std::vector<S_Data_Node> *Data_Node::tree_for() {
     auto s_vector = new vector<S_Data_Node>;
 
-    if (NULL == s_vector) {
-        return NULL;
+    if (nullptr == s_vector) {
+        return nullptr;
     }
 
-    struct lyd_node *elem = NULL;
+    struct lyd_node *elem = nullptr;
     LY_TREE_FOR(_node, elem) {
         s_vector->push_back(S_Data_Node(new Data_Node(elem, _deleter)));
     }
@@ -264,11 +264,11 @@ std::vector<S_Data_Node> *Data_Node::tree_for() {
 std::vector<S_Data_Node> *Data_Node::tree_dfs() {
     auto s_vector = new vector<S_Data_Node>;
 
-    if (NULL == s_vector) {
-        return NULL;
+    if (nullptr == s_vector) {
+        return nullptr;
     }
 
-    struct lyd_node *elem = NULL, *next = NULL;
+    struct lyd_node *elem = nullptr, *next = nullptr;
     LY_TREE_DFS_BEGIN(_node, next, elem) {
         s_vector->push_back(S_Data_Node(new Data_Node(elem, _deleter)));
         LY_TREE_DFS_END(_node, next, elem)
@@ -321,13 +321,13 @@ Difflist::Difflist(struct lyd_difflist *diff, S_Deleter deleter) {
 Difflist::~Difflist() {};
 std::vector<S_Data_Node> *Difflist::first() {
     unsigned int i = 0;
-    if (NULL == *_diff->first) {
-        return NULL;
+    if (nullptr == *_diff->first) {
+        return nullptr;
     }
 
     auto s_vector = new vector<S_Data_Node>;
-    if (NULL == s_vector) {
-        return NULL;
+    if (nullptr == s_vector) {
+        return nullptr;
     }
 
     for(i = 0; i < sizeof(*_diff->first); i++) {
@@ -338,13 +338,13 @@ std::vector<S_Data_Node> *Difflist::first() {
 }
 std::vector<S_Data_Node> *Difflist::second() {
     unsigned int i = 0;
-    if (NULL == *_diff->second) {
-        return NULL;
+    if (nullptr == *_diff->second) {
+        return nullptr;
     }
 
     auto s_vector = new vector<S_Data_Node>;
-    if (NULL == s_vector) {
-        return NULL;
+    if (nullptr == s_vector) {
+        return nullptr;
     }
 
     for(i = 0; i < sizeof(*_diff->second); i++) {
@@ -355,5 +355,5 @@ std::vector<S_Data_Node> *Difflist::second() {
 }
 
 S_Data_Node create_new_Data_Node(struct lyd_node *node) {
-    return node ? S_Data_Node(new Data_Node(node, NULL)) : NULL;
+    return node ? S_Data_Node(new Data_Node(node, nullptr)) : nullptr;
 }

@@ -69,12 +69,12 @@ Deleter::Deleter(struct lyd_difflist *diff, S_Deleter parent) {
 Deleter::~Deleter() {
     switch(_t) {
     case CONTEXT:
-        if (_v.ctx) ly_ctx_destroy(_v.ctx, NULL);
-        _v.ctx = NULL;
+        if (_v.ctx) ly_ctx_destroy(_v.ctx, nullptr);
+        _v.ctx = nullptr;
         break;
     case DATA_NODE:
         if (_v.data) lyd_free(_v.data);
-        _v.data = NULL;
+        _v.data = nullptr;
         break;
     case SCHEMA_NODE:
         break;
@@ -84,14 +84,14 @@ Deleter::~Deleter() {
         break;
     case XML:
         if (_v.elem) lyxml_free(_context->_ctx, _v.elem);
-        _v.elem = NULL;
+        _v.elem = nullptr;
         break;
     case SET:
         if (_v.set) ly_set_free(_v.set);
-        _v.set = NULL;
+        _v.set = nullptr;
         break;
     case DIFFLIST:
         if (_v.diff) lyd_free_diff(_v.diff);
-        _v.diff = NULL;
+        _v.diff = nullptr;
     }
 };

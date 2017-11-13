@@ -78,7 +78,7 @@ private:
 class Data_Node
 {
 public:
-    Data_Node(struct lyd_node *node, S_Deleter deleter = NULL);
+    Data_Node(struct lyd_node *node, S_Deleter deleter = nullptr);
     Data_Node(S_Data_Node parent, S_Module module, const char *name);
     Data_Node(S_Data_Node parent, S_Module module, const char *name, const char *val_str);
     Data_Node(S_Data_Node parent, S_Module module, const char *name, const char *value, LYD_ANYDATA_VALUETYPE value_type);
@@ -149,12 +149,12 @@ S_Data_Node create_new_Data_Node(struct lyd_node *node);
 class Data_Node_Leaf_List : public Data_Node
 {
 public:
-    Data_Node_Leaf_List(struct lyd_node *node, S_Deleter deleter = NULL);
+    Data_Node_Leaf_List(struct lyd_node *node, S_Deleter deleter = nullptr);
     ~Data_Node_Leaf_List();
     const char *value_str() {return ((struct lyd_node_leaf_list *) _node)->value_str;};
     S_Value value();
     uint16_t value_type() {return ((struct lyd_node_leaf_list *) _node)->value_type;};
-    S_Data_Node child() {return NULL;};
+    S_Data_Node child() {return nullptr;};
 
     /* functions */
     int change_leaf(const char *val_str);
@@ -169,11 +169,11 @@ private:
 class Data_Node_Anydata : public Data_Node
 {
 public:
-    Data_Node_Anydata(struct lyd_node *node, S_Deleter deleter = NULL);
+    Data_Node_Anydata(struct lyd_node *node, S_Deleter deleter = nullptr);
     ~Data_Node_Anydata();
     LYD_ANYDATA_VALUETYPE value_type() {return ((struct lyd_node_anydata *) _node)->value_type;};
     //union value
-    S_Data_Node child() {return NULL;};
+    S_Data_Node child() {return nullptr;};
 
 private:
     struct lyd_node *_node;
@@ -183,7 +183,7 @@ private:
 class Attr
 {
 public:
-    Attr(struct lyd_attr *attr, S_Deleter deleter = NULL);
+    Attr(struct lyd_attr *attr, S_Deleter deleter = nullptr);
     ~Attr();
     S_Data_Node parent() NEW(_attr, parent, Data_Node);
     S_Attr next();

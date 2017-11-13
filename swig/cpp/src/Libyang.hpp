@@ -71,7 +71,7 @@ class Context
 {
 public:
     Context(struct ly_ctx *ctx, S_Deleter deleter);
-    Context(const char *search_dir = NULL, int options = 0);
+    Context(const char *search_dir = nullptr, int options = 0);
     Context(const char *search_dir, const char *path, LYD_FORMAT format, int options = 0);
     Context(const char *search_dir, LYD_FORMAT format, const char *data, int options = 0);
     ~Context();
@@ -83,12 +83,12 @@ public:
     S_Data_Node info();
     vector<S_Module> *get_module_iter();
     vector<S_Module> *get_disabled_module_iter();
-    S_Module get_module(const char *name, const char *revision = NULL, int implemented = 0);
+    S_Module get_module(const char *name, const char *revision = nullptr, int implemented = 0);
     S_Module get_module_older(S_Module module);
-    S_Module load_module(const char *name, const char *revision = NULL);
-    S_Module get_module_by_ns(const char *ns, const char *revision = NULL, int implemented = 0);
-    S_Submodule get_submodule(const char *module, const char *revision = NULL, const char *submodule = NULL, const char *sub_revision = NULL);
-    S_Submodule get_submodule2(S_Module main_module, const char *submodule = NULL);
+    S_Module load_module(const char *name, const char *revision = nullptr);
+    S_Module get_module_by_ns(const char *ns, const char *revision = nullptr, int implemented = 0);
+    S_Submodule get_submodule(const char *module, const char *revision = nullptr, const char *submodule = nullptr, const char *sub_revision = nullptr);
+    S_Submodule get_submodule2(S_Module main_module, const char *submodule = nullptr);
     S_Schema_Node get_node(S_Schema_Node start, const char *data_path, int output = 0);
     void clean();
 

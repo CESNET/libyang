@@ -490,7 +490,7 @@ public:
     S_Type type();
     const char *units() {return ((struct lys_node_leaf *)_node)->units;};
     const char *dflt() {return ((struct lys_node_leaf *)_node)->dflt;};
-    S_Schema_Node child() {return NULL;};
+    S_Schema_Node child() {return nullptr;};
 
 private:
     struct lys_node *_node;
@@ -515,7 +515,7 @@ public:
     vector<S_String> *dflt();
     uint32_t min() {return ((struct lys_node_leaflist *)_node)->min;};
     uint32_t max() {return ((struct lys_node_leaflist *)_node)->max;};
-    S_Schema_Node child() {return NULL;};
+    S_Schema_Node child() {return nullptr;};
 
 private:
     struct lys_node *_node;
@@ -733,7 +733,7 @@ class Refine_Mod
 public:
     Refine_Mod(union lys_refine_mod mod, uint16_t target_type, S_Deleter deleter);
     ~Refine_Mod();
-    const char *presence() {return _target_type == LYS_CONTAINER ? _mod.presence : NULL;};
+    const char *presence() {return _target_type == LYS_CONTAINER ? _mod.presence : nullptr;};
     S_Refine_Mod_List list();
 
 private:
@@ -943,7 +943,7 @@ private:
 class When
 {
 public:
-    When(struct lys_when *when, S_Deleter deleter = NULL);
+    When(struct lys_when *when, S_Deleter deleter = nullptr);
     ~When();
     const char *cond() {return _when->cond;};
     const char *dsc() {return _when->dsc;};
