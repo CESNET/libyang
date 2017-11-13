@@ -5064,6 +5064,7 @@ moveto_snode_root(struct lyxp_set *set, struct lys_node *cur_node, int options)
  * @brief Check \p node as a part of NameTest processing.
  *
  * @param[in] node Node to check.
+ * @param[in] root_type XPath root node type.
  * @param[in] node_name Node name to move to. Must be in the dictionary!
  * @param[in] moveto_mod Expected module of the node.
  * @param[in] options Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
@@ -5075,7 +5076,7 @@ moveto_node_check(struct lyd_node *node, enum lyxp_node_type root_type, const ch
                   struct lys_module *moveto_mod, int options)
 {
     /* module check */
-    if (strcmp(node_name, "*") && (lyd_node_module(node) != moveto_mod)) {
+    if (moveto_mod && (lyd_node_module(node) != moveto_mod)) {
         return -1;
     }
 
@@ -5166,11 +5167,12 @@ moveto_node_add(struct lyxp_set *set, struct lyd_node *node, uint32_t pos, uint3
  * @param[in] qname Qualified node name to move to.
  * @param[in] qname_len Length of \p qname.
  * @param[in] options Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
+ * @param[in] all_ns Flag simulating an expression in the form "*:qname", which is not a valid XPath.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on unresolved when, -1 on error.
  */
 static int
-moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, uint16_t qname_len, int options)
+moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, uint16_t qname_len, int options, int all_ns)
 {
     uint32_t i;
     int replaced, pref_len, ret;
@@ -5205,7 +5207,7 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
         qname += pref_len + 1;
         qname_len -= pref_len + 1;
     } else {
-        moveto_mod = NULL;
+        moveto_mod = lyd_node_module(cur_node);
     }
 
     /* name */
@@ -5216,8 +5218,7 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
 
         if ((set->val.nodes[i].type == LYXP_NODE_ROOT_CONFIG) || (set->val.nodes[i].type == LYXP_NODE_ROOT)) {
             LY_TREE_FOR(set->val.nodes[i].node, sub) {
-                ret = moveto_node_check(sub, root_type, name_dict,
-                                        moveto_mod ? moveto_mod : lyd_node_module(cur_node), options);
+                ret = moveto_node_check(sub, root_type, name_dict, all_ns ? NULL : moveto_mod, options);
                 if (!ret) {
                     /* pos filled later */
                     moveto_node_add(set, sub, 0, i, &replaced);
@@ -5233,8 +5234,7 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
                 && !(set->val.nodes[i].node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
 
             LY_TREE_FOR(set->val.nodes[i].node->child, sub) {
-                ret = moveto_node_check(sub, root_type, name_dict,
-                                        moveto_mod ? moveto_mod : lyd_node_module(cur_node), options);
+                ret = moveto_node_check(sub, root_type, name_dict, all_ns ? NULL : moveto_mod, options);
                 if (!ret) {
                     moveto_node_add(set, sub, 0, i, &replaced);
                     ++i;
@@ -5414,8 +5414,8 @@ moveto_node_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
         moveto_mod = NULL;
     }
 
-    /* special internal path, replace the original nodes (and throws away all text and attr nodes, root is replaced by a child) */
-    ret = moveto_node(set, cur_node, "*", 1, options);
+    /* special path, replace the original nodes (and throws away all text and attr nodes, root is replaced by a child) */
+    ret = moveto_node(set, cur_node, "*", 1, options, 1);
     if (ret) {
         return ret;
     }
@@ -6528,7 +6528,7 @@ eval_node_test(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
                                       exp->tok_len[*exp_idx], options);
                 } else {
                     rc = moveto_node(set, cur_node, &exp->expr[exp->expr_pos[*exp_idx]], exp->tok_len[*exp_idx],
-                                     options);
+                                     options, 0);
                 }
             }
 
