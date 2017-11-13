@@ -424,7 +424,7 @@
 %include "Tree_Data.hpp"
 %include "Tree_Schema.hpp"
 
-%template(vectorS_String) std::vector<S_String>;
+%template(vector_String) std::vector<std::string>;
 %template(vectorModules) std::vector<S_Module>;
 %template(vectorType) std::vector<S_Type>;
 %template(vectorData_Node) std::vector<S_Data_Node>;

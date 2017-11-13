@@ -61,7 +61,7 @@ S_Xml_Ns Xml_Elem::get_ns(const char *prefix) {
     const struct lyxml_ns *ns = lyxml_get_ns(_elem, prefix);
     return _elem->ns ? S_Xml_Ns(new Xml_Ns((struct lyxml_ns *)ns, _deleter)) : nullptr;
 }
-S_String Xml_Elem::print_mem(int options) {
+std::string Xml_Elem::print_mem(int options) {
     char *data = nullptr;
 
     lyxml_print_mem(&data, (const struct lyxml_elem *) _elem, options);
@@ -69,7 +69,7 @@ S_String Xml_Elem::print_mem(int options) {
         return nullptr;
     }
 
-    S_String s_data = data;
+    std::string s_data = data;
     free(data);
     return s_data;
 }

@@ -15,7 +15,6 @@
 #ifndef INTERNAL_H
 #define INTERNAL_H
 
-#define S_String                 std::string
 #define S_Deleter                std::shared_ptr<Deleter>
 
 /* Xml.hpp */
@@ -139,7 +138,7 @@
 
 #define NEW_STRING_LIST(data, element, size)                                                                                                         \
     {                                                                                                                                                \
-        auto s_vector = new vector<S_String>;                                                                                                        \
+        auto s_vector = new vector<std::string>;                                                                                                     \
         if (nullptr == s_vector) {                                                                                                                   \
             return nullptr;                                                                                                                          \
         }                                                                                                                                            \

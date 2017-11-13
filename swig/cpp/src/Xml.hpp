@@ -88,7 +88,7 @@ public:
     /* methods */
     const char *get_attr(const char *name, const char *ns = nullptr);
     S_Xml_Ns get_ns(const char *prefix);
-    S_String print_mem(int options);
+    std::string print_mem(int options);
     //int lyxml_print_fd(int fd, const struct lyxml_elem *elem, int options);
     //int lyxml_print_file(FILE * stream, const struct lyxml_elem *elem, int options);
 

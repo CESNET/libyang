@@ -129,7 +129,7 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Xm
 }
 Data_Node::~Data_Node() {};
 S_Attr Data_Node::attr() NEW(_node, attr, Attr);
-S_String Data_Node::path() {
+std::string Data_Node::path() {
     char *path = nullptr;
 
     path = lyd_path(_node);
@@ -137,7 +137,7 @@ S_String Data_Node::path() {
         return nullptr;
     }
 
-    S_String s_path = path;
+    std::string s_path = path;
     free(path);
     return s_path;
 }
@@ -233,7 +233,7 @@ S_Module Data_Node::node_module() {
 
     return module ? S_Module(new Module(module, _deleter)) : nullptr;
 }
-S_String Data_Node::print_mem(LYD_FORMAT format, int options) {
+std::string Data_Node::print_mem(LYD_FORMAT format, int options) {
     char *strp = nullptr;
     int rc = 0;
 
@@ -242,7 +242,7 @@ S_String Data_Node::print_mem(LYD_FORMAT format, int options) {
         return nullptr;
     }
 
-    S_String s_strp = strp;
+    std::string s_strp = strp;
     free(strp);
     return s_strp;
 

@@ -286,7 +286,7 @@ S_Type Schema_Node_Leaf::type() {return S_Type(new Type(&((struct lys_node_leaf 
 Schema_Node_Leaflist::~Schema_Node_Leaflist() {};
 S_Set Schema_Node_Leaflist::backlinks() NEW_CASTED(lys_node_leaflist, _node, backlinks, Set);
 S_When Schema_Node_Leaflist::when() NEW_CASTED(lys_node_leaflist, _node, when, When);
-std::vector<S_String> *Schema_Node_Leaflist::dflt() {
+std::vector<std::string> *Schema_Node_Leaflist::dflt() {
     struct lys_node_leaflist *node = (struct lys_node_leaflist *)_node;
     NEW_STRING_LIST(node, dflt, dflt_size);
 }

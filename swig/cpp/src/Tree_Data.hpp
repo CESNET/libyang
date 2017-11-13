@@ -102,7 +102,7 @@ public:
     virtual S_Data_Node child() NEW(_node, child, Data_Node);
 
     /* functions */
-    S_String path();
+    std::string path();
     S_Data_Node dup(int recursive);
     S_Data_Node dup_to_ctx(int recursive, S_Context context);
     int merge(S_Data_Node source, int options);
@@ -124,7 +124,7 @@ public:
     int unlink() {return lyd_unlink(_node);};
     S_Attr insert_attr(S_Module module, const char *name, const char *value);
     S_Module node_module();
-    S_String print_mem(LYD_FORMAT format, int options);
+    std::string print_mem(LYD_FORMAT format, int options);
 
     /* emulate TREE macro's */
     std::vector<S_Data_Node> *tree_for();

@@ -44,8 +44,8 @@ int main() {
         cout << e.what() << endl;
     }
 
-    auto folders = std::shared_ptr<std::vector<S_String>>(ctx->get_searchdirs());
-    std::vector<S_String>::iterator elem;
+    auto folders = std::shared_ptr<std::vector<std::string>>(ctx->get_searchdirs());
+    std::vector<std::string>::iterator elem;
     for(elem = folders->begin() ; elem != folders->end() ; ++elem) {
         cout << (*elem) << endl;
     }

@@ -512,7 +512,7 @@ public:
     std::vector<S_Restr> *must();
     S_Type type();
     const char *units() {return ((struct lys_node_leaflist *)_node)->units;};
-    vector<S_String> *dflt();
+    vector<std::string> *dflt();
     uint32_t min() {return ((struct lys_node_leaflist *)_node)->min;};
     uint32_t max() {return ((struct lys_node_leaflist *)_node)->max;};
     S_Schema_Node child() {return nullptr;};
@@ -760,7 +760,7 @@ public:
     std::vector<S_Iffeature> *iffeature() NEW_LIST(_refine, iffeature, iffeature_size, Iffeature);
     S_Module module();
     std::vector<S_Restr> *must();
-    vector<S_String> *dflt() NEW_STRING_LIST(_refine, dflt, dflt_size);
+    vector<std::string> *dflt() NEW_STRING_LIST(_refine, dflt, dflt_size);
     S_Refine_Mod mod();
 
 private:
@@ -787,7 +787,7 @@ public:
     S_Unique unique();
     S_Type type();
     const char *units() {return _deviate->units;};
-    vector<S_String> *dflt() NEW_STRING_LIST(_deviate, dflt, dflt_size);
+    vector<std::string> *dflt() NEW_STRING_LIST(_deviate, dflt, dflt_size);
     std::vector<S_Ext_Instance> *ext();
 
 private:
@@ -892,7 +892,7 @@ class Unique
 public:
     Unique(struct lys_unique *unique, S_Deleter deleter);
     ~Unique();
-    std::vector<S_String> *expr() NEW_STRING_LIST(_unique, expr, expr_size);
+    std::vector<std::string> *expr() NEW_STRING_LIST(_unique, expr, expr_size);
     uint8_t expr_size() {return _unique->expr_size;};
     uint8_t trg_type() {return _unique->trg_type;};
 
