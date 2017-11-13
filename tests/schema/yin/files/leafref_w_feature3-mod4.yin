@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module name="leafref_w_feature3-mod4"
+        xmlns="urn:ietf:params:xml:ns:yang:yin:1"
+        xmlns:m4="urn:fri:params:xml:ns:yang:leafref_w_feature3-mod4"
+        xmlns:m3="urn:fri:params:xml:ns:yang:leafref_w_feature3-mod3">
+  <namespace uri="urn:fri:params:xml:ns:yang:leafref_w_feature3-mod4"/>
+  <prefix value="m4"/>
+  <import module="leafref_w_feature3-mod3">
+    <prefix value="m3"/>
+  </import>
+  <typedef name="leafref_t1">
+    <type name="leafref">
+      <path value="/m3:cont1/m4:a_cont1/m4:a_leaf1"/>
+    </type>
+  </typedef>
+  <augment target-node="/m3:cont1">
+    <container name="a_cont1">
+      <if-feature name="m3:feature1"/>
+      <leaf name="a_leaf1">
+        <type name="string"/>
+      </leaf>
+    </container>
+  </augment>
+</module>

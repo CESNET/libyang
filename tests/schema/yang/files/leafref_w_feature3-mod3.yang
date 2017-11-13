@@ -1,0 +1,14 @@
+module leafref_w_feature3-mod3 {
+
+  namespace "urn:fri:params:xml:ns:yang:leafref_w_feature3-mod3";
+  prefix m3;
+  
+  feature feature1 {
+  }
+
+  container cont1 {
+    if-feature feature1;
+  }
+}
+  
+

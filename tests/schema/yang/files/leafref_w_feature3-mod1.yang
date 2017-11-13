@@ -1,0 +1,9 @@
+module leafref_w_feature3-mod1 {
+
+  namespace "urn:fri:params:xml:ns:yang:leafref_w_feature3-mod1";
+  prefix m1;
+
+  import leafref_w_feature3-mod2 {
+    prefix m2;
+  }
+}
