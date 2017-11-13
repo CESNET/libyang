@@ -90,13 +90,13 @@
         return data->element ? S_##class(new class(data->element, _deleter)) : nullptr;                                                              \
     };
 
-#define NEW_CASTED(cast, data, element, class)                                                                                                       \
+#define LY_NEW_CASTED(cast, data, element, class)                                                                                                    \
     {                                                                                                                                                \
         cast *node = (struct cast *) data;                                                                                                           \
         return node->element ? S_##class(new class(node->element, _deleter)) : nullptr;                                                              \
     };
 
-#define NEW_LIST(data, element, size, class)                                                                                                         \
+#define LY_NEW_LIST(data, element, size, class)                                                                                                      \
     {                                                                                                                                                \
         auto s_vector = new vector<S_##class>;                                                                                                       \
         if (nullptr == s_vector) {                                                                                                                   \
@@ -110,13 +110,13 @@
         return s_vector;                                                                                                                             \
     };
 
-#define NEW_LIST_CASTED(cast, data, element, size, class)                                                                                            \
+#define LY_NEW_LIST_CASTED(cast, data, element, size, class)                                                                                         \
     {                                                                                                                                                \
         struct cast *node = (struct cast *) data;                                                                                                    \
-        NEW_LIST(node, element, size, class);                                                                                                        \
+        LY_NEW_LIST(node, element, size, class);                                                                                                     \
     };
 
-#define NEW_P_LIST(data, element, size, class)                                                                                                       \
+#define LY_NEW_P_LIST(data, element, size, class)                                                                                                    \
     {                                                                                                                                                \
         auto s_vector = new vector<S_##class>;                                                                                                       \
         if (nullptr == s_vector) {                                                                                                                   \
@@ -130,13 +130,13 @@
         return s_vector;                                                                                                                             \
     };
 
-#define NEW_P_LIST_CASTED(cast, data, element, size, class)                                                                                          \
+#define LY_NEW_P_LIST_CASTED(cast, data, element, size, class)                                                                                       \
     {                                                                                                                                                \
         struct cast *node = (struct cast *) data;                                                                                                    \
-        NEW_P_LIST(node, element, size, class);                                                                                                      \
+        LY_NEW_P_LIST(node, element, size, class);                                                                                                   \
     };
 
-#define NEW_STRING_LIST(data, element, size)                                                                                                         \
+#define LY_NEW_STRING_LIST(data, element, size)                                                                                                      \
     {                                                                                                                                                \
         auto s_vector = new vector<std::string>;                                                                                                     \
         if (nullptr == s_vector) {                                                                                                                   \

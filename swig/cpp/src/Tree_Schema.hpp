@@ -414,7 +414,7 @@ public:
     uint8_t ext_size() {return _node->ext_size;};
     uint8_t iffeature_size() {return _node->iffeature_size;};
     std::vector<S_Ext_Instance> *ext();
-    std::vector<S_Iffeature> *iffeature() NEW_LIST(_node, iffeature, iffeature_size, Iffeature);
+    std::vector<S_Iffeature> *iffeature() LY_NEW_LIST(_node, iffeature, iffeature_size, Iffeature);
     S_Module module();
     LYS_NODE nodetype() {return _node->nodetype;};
     virtual S_Schema_Node parent();
@@ -676,7 +676,7 @@ public:
 	};
     ~Schema_Node_Augment();
     S_When when();
-    S_Schema_Node target() NEW_CASTED(lys_node_augment, _node, target, Schema_Node);
+    S_Schema_Node target() LY_NEW_CASTED(lys_node_augment, _node, target, Schema_Node);
 
 private:
     struct lys_node *_node;
@@ -757,10 +757,10 @@ public:
     uint8_t must_size() {return _refine->must_size;};
     uint8_t dflt_size() {return _refine->dflt_size;};
     std::vector<S_Ext_Instance> *ext();
-    std::vector<S_Iffeature> *iffeature() NEW_LIST(_refine, iffeature, iffeature_size, Iffeature);
+    std::vector<S_Iffeature> *iffeature() LY_NEW_LIST(_refine, iffeature, iffeature_size, Iffeature);
     S_Module module();
     std::vector<S_Restr> *must();
-    vector<std::string> *dflt() NEW_STRING_LIST(_refine, dflt, dflt_size);
+    vector<std::string> *dflt() LY_NEW_STRING_LIST(_refine, dflt, dflt_size);
     S_Refine_Mod mod();
 
 private:
@@ -787,7 +787,7 @@ public:
     S_Unique unique();
     S_Type type();
     const char *units() {return _deviate->units;};
-    vector<std::string> *dflt() NEW_STRING_LIST(_deviate, dflt, dflt_size);
+    vector<std::string> *dflt() LY_NEW_STRING_LIST(_deviate, dflt, dflt_size);
     std::vector<S_Ext_Instance> *ext();
 
 private:
@@ -823,7 +823,7 @@ public:
     const char *prefix() {return _import->prefix;};
     char *rev() {return &_import->rev[0];};
     uint8_t ext_size() {return _import->ext_size;};
-    std::vector<S_Ext_Instance> *ext() NEW_P_LIST(_import, ext, ext_size, Ext_Instance);
+    std::vector<S_Ext_Instance> *ext() LY_NEW_P_LIST(_import, ext, ext_size, Ext_Instance);
     const char *dsc() {return _import->dsc;};
     const char *ref() {return _import->ref;};
 
@@ -840,7 +840,7 @@ public:
     S_Submodule submodule() NEW(_include, submodule, Submodule);
     char *rev() {return &_include->rev[0];};
     uint8_t ext_size() {return _include->ext_size;};
-    std::vector<S_Ext_Instance> *ext() NEW_P_LIST(_include, ext, ext_size, Ext_Instance);
+    std::vector<S_Ext_Instance> *ext() LY_NEW_P_LIST(_include, ext, ext_size, Ext_Instance);
     const char *dsc() {return _include->dsc;};
     const char *ref() {return _include->ref;};
 
@@ -876,7 +876,7 @@ public:
     uint8_t ext_size() {return _tpdf->ext_size;};
     uint8_t padding_iffsize() {return _tpdf->padding_iffsize;};
     uint8_t has_union_leafref() {return _tpdf->has_union_leafref;};
-    std::vector<S_Ext_Instance> *ext() NEW_P_LIST(_tpdf, ext, ext_size, Ext_Instance);
+    std::vector<S_Ext_Instance> *ext() LY_NEW_P_LIST(_tpdf, ext, ext_size, Ext_Instance);
     const char *units() {return _tpdf->units;};
     S_Module module() NEW(_tpdf, module, Module);
     S_Type type();
@@ -892,7 +892,7 @@ class Unique
 public:
     Unique(struct lys_unique *unique, S_Deleter deleter);
     ~Unique();
-    std::vector<std::string> *expr() NEW_STRING_LIST(_unique, expr, expr_size);
+    std::vector<std::string> *expr() LY_NEW_STRING_LIST(_unique, expr, expr_size);
     uint8_t expr_size() {return _unique->expr_size;};
     uint8_t trg_type() {return _unique->trg_type;};
 
@@ -912,8 +912,8 @@ public:
     uint16_t flags() {return _feature->flags;};
     uint8_t ext_size() {return _feature->ext_size;};
     uint8_t iffeature_size() {return _feature->iffeature_size;};
-    std::vector<S_Ext_Instance> *ext() NEW_P_LIST(_feature, ext, ext_size, Ext_Instance);
-    std::vector<S_Iffeature> *iffeature() NEW_LIST(_feature, iffeature, iffeature_size, Iffeature);
+    std::vector<S_Ext_Instance> *ext() LY_NEW_P_LIST(_feature, ext, ext_size, Ext_Instance);
+    std::vector<S_Iffeature> *iffeature() LY_NEW_LIST(_feature, iffeature, iffeature_size, Iffeature);
     S_Module module() NEW(_feature, module, Module);
     S_Set depfeatures() NEW(_feature, depfeatures, Set);
 
@@ -932,7 +932,7 @@ public:
     const char *ref() {return _restr->ref;};
     const char *eapptag() {return _restr->eapptag;};
     const char *emsg() {return _restr->emsg;};
-    std::vector<S_Ext_Instance> *ext() NEW_P_LIST(_restr, ext, ext_size, Ext_Instance);
+    std::vector<S_Ext_Instance> *ext() LY_NEW_P_LIST(_restr, ext, ext_size, Ext_Instance);
     uint8_t ext_size() {return _restr->ext_size;};
 
 private:
@@ -968,8 +968,8 @@ public:
     uint8_t ext_size() {return _ident->ext_size;};
     uint8_t iffeature_size() {return _ident->iffeature_size;};
     uint8_t base_size() {return _ident->base_size;};
-    std::vector<S_Ext_Instance> *ext() NEW_P_LIST(_ident, ext, ext_size, Ext_Instance);
-    std::vector<S_Iffeature> *iffeature() NEW_LIST(_ident, iffeature, iffeature_size, Iffeature);
+    std::vector<S_Ext_Instance> *ext() LY_NEW_P_LIST(_ident, ext, ext_size, Ext_Instance);
+    std::vector<S_Iffeature> *iffeature() LY_NEW_LIST(_ident, iffeature, iffeature_size, Iffeature);
     S_Module module() NEW(_ident, module, Module);
     std::vector<S_Ident> *base();
     S_Set der() NEW(_ident, der, Set);
