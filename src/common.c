@@ -910,6 +910,20 @@ error:
 }
 
 static int
+ly_path_data2schema_copy_token(struct lyxp_expr *exp, uint16_t cur_exp, char **out, uint16_t *out_used)
+{
+    uint16_t len;
+
+    for (len = exp->tok_len[cur_exp]; isspace(exp->expr[exp->expr_pos[cur_exp] + len]); ++len);
+    *out = ly_realloc(*out, *out_used + len);
+    LY_CHECK_ERR_RETURN(!(*out), LOGMEM, -1);
+    sprintf(*out + *out_used - 1, "%.*s", len, exp->expr + exp->expr_pos[cur_exp]);
+    *out_used += len;
+
+    return 0;
+}
+
+static int
 ly_path_data2schema_subexp(const struct ly_ctx *ctx, const struct lys_node *orig_parent, const struct lys_module *cur_mod,
                            struct lyxp_expr *exp, uint16_t *cur_exp, char **out, uint16_t *out_used)
 {
@@ -917,22 +931,47 @@ ly_path_data2schema_subexp(const struct ly_ctx *ctx, const struct lys_node *orig
     char *str = NULL, *col;
     const struct lys_node *node, *node2, *parent;
     enum lyxp_token end_token = 0;
+    int first, path_lost;
 
-    if (exp->tokens[*cur_exp] == LYXP_TOKEN_BRACK1) {
+    switch (exp->tokens[*cur_exp]) {
+    case LYXP_TOKEN_BRACK1:
         end_token = LYXP_TOKEN_BRACK2;
 
-        *out = ly_realloc(*out, *out_used + 1);
-        LY_CHECK_ERR_GOTO(!(*out), LOGMEM, error);
-        sprintf(*out + *out_used - 1, "[");
-        *out_used += 1;
+        if (ly_path_data2schema_copy_token(exp, *cur_exp, out, out_used)) {
+            goto error;
+        }
         ++(*cur_exp);
+        first = 0;
+        break;
+    case LYXP_TOKEN_PAR1:
+        end_token = LYXP_TOKEN_PAR2;
+
+        if (ly_path_data2schema_copy_token(exp, *cur_exp, out, out_used)) {
+            goto error;
+        }
+        ++(*cur_exp);
+        first = 0;
+        break;
+    default:
+        first = 1;
+        break;
     }
 
+    path_lost = 0;
     parent = orig_parent;
     while (*cur_exp < exp->used) {
         switch (exp->tokens[*cur_exp]) {
         case LYXP_TOKEN_DOT:
+        case LYXP_TOKEN_DDOT:
         case LYXP_TOKEN_NAMETEST:
+            if (path_lost) {
+                /* we do not know anything anymore, just copy it */
+                if (ly_path_data2schema_copy_token(exp, *cur_exp, out, out_used)) {
+                    goto error;
+                }
+                break;
+            }
+
             str = strndup(exp->expr + exp->expr_pos[*cur_exp], exp->tok_len[*cur_exp]);
             LY_CHECK_ERR_GOTO(!str, LOGMEM, error);
 
@@ -943,7 +982,7 @@ ly_path_data2schema_subexp(const struct ly_ctx *ctx, const struct lys_node *orig
             }
 
             /* first node */
-            if (!parent) {
+            if (first) {
                 if (!col) {
                     LOGVAL(LYE_PATH_MISSMOD, LY_VLOG_NONE, NULL);
                     goto error;
@@ -954,16 +993,25 @@ ly_path_data2schema_subexp(const struct ly_ctx *ctx, const struct lys_node *orig
                     LOGVAL(LYE_XPATH_INMOD, LY_VLOG_NONE, NULL, strlen(str), str);
                     goto error;
                 }
+
+                first = 0;
             }
 
             if (((col ? col[0] : str[0]) == '.') || ((col ? col[0] : str[0]) == '*')) {
+                free(str);
+                str = NULL;
+
                 if (end_token) {
                     LOGERR(LY_EINVAL, "Invalid path used (%s in a subexpression).", str);
                     goto error;
                 }
 
-                /* path ends, just copy the rest and finish (if it is the first node, it must have had a prefix before) */
-                goto finish;
+                /* we can no longer evaluate the path, so just copy the rest */
+                path_lost = 1;
+                if (ly_path_data2schema_copy_token(exp, *cur_exp, out, out_used)) {
+                    goto error;
+                }
+                break;
             }
 
             /* create schema path for this data node */
@@ -1025,30 +1073,60 @@ ly_path_data2schema_subexp(const struct ly_ctx *ctx, const struct lys_node *orig
                 break;
             }
 
+            /* copy any whitespaces */
+            for (len = 0; isspace(exp->expr[exp->expr_pos[*cur_exp] + exp->tok_len[*cur_exp] + len]); ++len);
+            if (len) {
+                *out = ly_realloc(*out, *out_used + len);
+                LY_CHECK_ERR_GOTO(!(*out), LOGMEM, error);
+                sprintf(*out + *out_used - 1, "%*s", len, " ");
+                *out_used += len;
+            }
+
             /* next iteration */
             free(str);
             str = NULL;
             parent = node;
             break;
+        case LYXP_TOKEN_COMMA:
+        case LYXP_TOKEN_OPERATOR_LOG:
+        case LYXP_TOKEN_OPERATOR_COMP:
+        case LYXP_TOKEN_OPERATOR_MATH:
+        case LYXP_TOKEN_OPERATOR_UNI:
+            /* reset the processing */
+            first = 1;
+            path_lost = 0;
+            parent = orig_parent;
+
+            /* fallthrough */
         case LYXP_TOKEN_OPERATOR_PATH:
+            if ((exp->tokens[*cur_exp] == LYXP_TOKEN_OPERATOR_PATH) && (exp->tok_len[*cur_exp] == 2)) {
+                /* we can no longer evaluate the path further */
+                path_lost = 1;
+            }
+            /* fallthrough */
+        case LYXP_TOKEN_NODETYPE:
+        case LYXP_TOKEN_FUNCNAME:
+        case LYXP_TOKEN_LITERAL:
+        case LYXP_TOKEN_NUMBER:
             /* just copy it */
-            len = exp->tok_len[*cur_exp];
-            *out = ly_realloc(*out, *out_used + len);
-            LY_CHECK_ERR_GOTO(!(*out), LOGMEM, error);
-            sprintf(*out + *out_used - 1, "%.*s", exp->tok_len[*cur_exp], exp->expr + exp->expr_pos[*cur_exp]);
-            *out_used += len;
+            if (ly_path_data2schema_copy_token(exp, *cur_exp, out, out_used)) {
+                goto error;
+            }
             break;
         case LYXP_TOKEN_BRACK1:
+        case LYXP_TOKEN_PAR1:
             if (ly_path_data2schema_subexp(ctx, parent, cur_mod, exp, cur_exp, out, out_used)) {
                 goto error;
             }
             break;
-        case LYXP_TOKEN_OPERATOR_COMP:
-            goto finish;
         default:
             if (end_token && (exp->tokens[*cur_exp] == end_token)) {
-                /* we are done */
-                goto finish;
+                /* we are done (with this subexpression) */
+                if (ly_path_data2schema_copy_token(exp, *cur_exp, out, out_used)) {
+                    goto error;
+                }
+
+                return 0;
             }
             LOGERR(LY_EINVAL, "Invalid token used (%.*s).", exp->tok_len[*cur_exp], exp->expr + exp->expr_pos[*cur_exp]);
             goto error;
@@ -1067,32 +1145,6 @@ ly_path_data2schema_subexp(const struct ly_ctx *ctx, const struct lys_node *orig
 error:
     free(str);
     return -1;
-
-finish:
-    if (end_token) {
-        for (j = *cur_exp; (j < exp->used) && (exp->tokens[j] != end_token); ++j);
-        if (j == exp->used) {
-            LOGERR(LY_EINVAL, "Invalid token used (%.*s).", exp->tok_len[*cur_exp], exp->expr + exp->expr_pos[*cur_exp]);
-            goto error;
-        }
-
-        len = (exp->expr_pos[j] + exp->tok_len[j]) - exp->expr_pos[*cur_exp];
-        *out = ly_realloc(*out, *out_used + len);
-        LY_CHECK_ERR_GOTO(!(*out), LOGMEM, error);
-        sprintf(*out + *out_used - 1, "%.*s", len, exp->expr + exp->expr_pos[*cur_exp]);
-        *out_used += len;
-        *cur_exp = j;
-    } else {
-        len = strlen(exp->expr + exp->expr_pos[*cur_exp]);
-        *out = ly_realloc(*out, *out_used + len);
-        LY_CHECK_ERR_GOTO(!(*out), LOGMEM, error);
-        sprintf(*out + *out_used - 1, "%.*s", len, exp->expr + exp->expr_pos[*cur_exp]);
-        *out_used += len;
-        *cur_exp = exp->used - 1;
-    }
-
-    free(str);
-    return 0;
 }
 
 API char *

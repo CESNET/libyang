@@ -1166,6 +1166,14 @@ test_ly_path_data2schema(void **state)
     schema_path = ly_path_data2schema(ctx, "/a:x/bar-gggg");
     assert_string_equal(schema_path, "/a:x/bar-gggg");
     free(schema_path);
+
+    schema_path = ly_path_data2schema(ctx, "/a:x/bar-gggg | /a:x");
+    assert_string_equal(schema_path, "/a:x/bar-gggg | /a:x");
+    free(schema_path);
+
+    schema_path = ly_path_data2schema(ctx, "/a:x/bar-gggg and ( /a:x/bar-gggg or /a:x)");
+    assert_string_equal(schema_path, "/a:x/bar-gggg and ( /a:x/bar-gggg or /a:x)");
+    free(schema_path);
 }
 
 int main(void)
