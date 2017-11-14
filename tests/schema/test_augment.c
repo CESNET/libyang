@@ -189,6 +189,33 @@ test_leafref_w_feature2(void **state)
     }
 }
 
+/* Test case to verify the solution for an augment resolution issue:
+   An augment having a relative nodeid couldn't be resolved, if a grouping
+   which is declared in a submodule uses a grouping of an imported module
+   and augments it. Please have a look at all imp_aug_m* schema files.
+ */
+static void
+test_imp_aug(void **state)
+{
+    int length;
+    char *path = *state;
+    const struct lys_module *module;
+
+    ly_ctx_set_searchdir(ctx, path);
+    length = strlen(path);
+    if (!strcmp(path, SCHEMA_FOLDER_YIN)) {
+        strcpy(path + length, "/imp_aug_m1.yin");
+        if (!(module = lys_parse_path(ctx, path, LYS_IN_YIN))) {
+            fail();
+        }
+    } else {
+        strcpy(path + length, "/imp_aug_m1.yang");
+        if (!(module = lys_parse_path(ctx, path, LYS_IN_YANG))) {
+            fail();
+        }
+    }
+}
+
 static void
 test_target_augment(void **state)
 {
@@ -339,6 +366,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_import_augment_target, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_leafref_w_feature1, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_leafref_w_feature2, setup_ctx_yin, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_imp_aug, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_target_include_submodule, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_leafref, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_target_augment, setup_ctx_yang, teardown_ctx),
@@ -346,6 +374,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_import_augment_target, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_leafref_w_feature1, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_leafref_w_feature2, setup_ctx_yang, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_imp_aug, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_teardown(compare_output, teardown_output),
     };
 
