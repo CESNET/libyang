@@ -87,20 +87,20 @@
 
 #define LY_NEW(data, element, class)\
     {\
-        return data->element ? S_##class(new class(data->element, deleter)) : nullptr;\
+        return data->element ? std::make_shared<class>(data->element, deleter) : nullptr;\
     };
 
 #define LY_NEW_CASTED(cast, data, element, class)\
     {\
         cast *casted = (struct cast *) data;\
-        return casted->element ? S_##class(new class(casted->element, deleter)) : nullptr;\
+        return casted->element ? std::make_shared<class>(casted->element, deleter) : nullptr;\
     };
 
 #define LY_NEW_LIST(data, element, size, class)\
     {\
         auto s_vector = new std::vector<S_##class>;\
         for (uint8_t i = 0; i < data->size; i++) {\
-            s_vector->push_back(S_##class(new class(&data->element[i], deleter)));\
+            s_vector->push_back(std::make_shared<class>(&data->element[i], deleter));\
         }\
         return s_vector;\
     };
@@ -115,7 +115,7 @@
     {\
         auto s_vector = new std::vector<S_##class>;\
         for (uint8_t i = 0; i < data->size; i++) {\
-            s_vector->push_back(S_##class(new class(data->element[i], deleter)));\
+            s_vector->push_back(std::make_shared<class>(data->element[i], deleter));\
         }\
         return s_vector;\
     };

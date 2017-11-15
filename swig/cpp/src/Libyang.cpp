@@ -38,42 +38,42 @@ Context::Context(const char *search_dir, int options) {
     if (nullptr == ctx) {
         throw std::runtime_error("can not create new context");
     }
-    deleter = S_Deleter(new Deleter(ctx));
+    deleter = std::make_shared<Deleter>(ctx);
 }
 Context::Context(const char *search_dir, const char *path, LYD_FORMAT format, int options) {
     ctx = ly_ctx_new_ylpath(search_dir, path, format, options);
     if (nullptr == ctx) {
         throw std::runtime_error("can not create new context");
     }
-    deleter = S_Deleter(new Deleter(ctx));
+    deleter = std::make_shared<Deleter>(ctx);
 }
 Context::Context(const char *search_dir, LYD_FORMAT format, const char *data, int options) {
     ctx = ly_ctx_new_ylmem(search_dir, data, format, options);
     if (nullptr == ctx) {
         throw std::runtime_error("can not create new context");
     }
-    deleter = S_Deleter(new Deleter(ctx));
+    deleter = std::make_shared<Deleter>(ctx);
 }
 Context::~Context() {}
 S_Data_Node Context::info() {
     struct lyd_node *new_node = ly_ctx_info(ctx);
-    return new_node ? S_Data_Node(new Data_Node(new_node, deleter)) : nullptr;
+    return new_node ? std::make_shared<Data_Node>(new_node, deleter) : nullptr;
 }
 S_Module Context::get_module(const char *name, const char *revision, int implemented) {
     const struct lys_module *module = ly_ctx_get_module(ctx, name, revision, implemented);
-    return module ? S_Module(new Module((lys_module *) module, deleter)) : nullptr;
+    return module ? std::make_shared<Module>((lys_module *) module, deleter) : nullptr;
 }
 S_Module Context::get_module_older(S_Module module) {
     const struct lys_module *new_module = ly_ctx_get_module_older(ctx, module->module);
-    return new_module ? S_Module(new Module((lys_module *) new_module, deleter)) : nullptr;
+    return new_module ? std::make_shared<Module>((lys_module *) new_module, deleter) : nullptr;
 }
 S_Module Context::load_module(const char *name, const char *revision) {
     const struct lys_module *module = ly_ctx_load_module(ctx, name, revision);
-    return module ? S_Module(new Module((lys_module *) module, deleter)) : nullptr;
+    return module ? std::make_shared<Module>((lys_module *) module, deleter) : nullptr;
 }
 S_Module Context::get_module_by_ns(const char *ns, const char *revision, int implemented) {
     const struct lys_module *module = ly_ctx_get_module_by_ns(ctx, ns, revision, implemented);
-    return module ? S_Module(new Module((lys_module *) module, deleter)) : nullptr;
+    return module ? std::make_shared<Module>((lys_module *) module, deleter) : nullptr;
 }
 std::vector<S_Module> *Context::get_module_iter() {
     const struct lys_module *mod = nullptr;
@@ -85,7 +85,7 @@ std::vector<S_Module> *Context::get_module_iter() {
         if (mod == nullptr) {
             break;
         }
-        s_vector->push_back(S_Module(new Module((lys_module *) mod, deleter)));
+        s_vector->push_back(std::make_shared<Module>((lys_module *) mod, deleter));
     }
 
     return s_vector;
@@ -100,7 +100,7 @@ std::vector<S_Module> *Context::get_disabled_module_iter() {
         if (mod == nullptr) {
             break;
         }
-        s_vector->push_back(S_Module(new Module((lys_module *) mod, deleter)));
+        s_vector->push_back(std::make_shared<Module>((lys_module *) mod, deleter));
     }
 
     return s_vector;
@@ -132,21 +132,21 @@ S_Submodule Context::get_submodule(const char *module, const char *revision, con
 
     tmp_submodule = ly_ctx_get_submodule(ctx, module, revision, submodule, sub_revision);
 
-    return tmp_submodule ? S_Submodule(new Submodule((struct lys_submodule *) tmp_submodule, deleter)) : nullptr;
+    return tmp_submodule ? std::make_shared<Submodule>((struct lys_submodule *) tmp_submodule, deleter) : nullptr;
 }
 S_Submodule Context::get_submodule2(S_Module main_module, const char *submodule) {
     const struct lys_submodule *tmp_submodule = nullptr;
 
     tmp_submodule = ly_ctx_get_submodule2(main_module->module, submodule);
 
-    return tmp_submodule ? S_Submodule(new Submodule((struct lys_submodule *) tmp_submodule, deleter)) : nullptr;
+    return tmp_submodule ? std::make_shared<Submodule>((struct lys_submodule *) tmp_submodule, deleter) : nullptr;
 }
 S_Schema_Node Context::get_node(S_Schema_Node start, const char *data_path, int output) {
     const struct lys_node *node = nullptr;
 
     node = ly_ctx_get_node(ctx, start->node, data_path, output);
 
-    return node ? S_Schema_Node(new Schema_Node((struct lys_node *) node, deleter)) : nullptr;
+    return node ? std::make_shared<Schema_Node>((struct lys_node *) node, deleter) : nullptr;
 }
 S_Data_Node Context::parse_mem(const char *data, LYD_FORMAT format, int options) {
     struct lyd_node *new_node = nullptr;
@@ -156,8 +156,8 @@ S_Data_Node Context::parse_mem(const char *data, LYD_FORMAT format, int options)
         return nullptr;
     }
 
-    S_Deleter new_deleter = S_Deleter(new Deleter(new_node, deleter));
-    return S_Data_Node(new Data_Node(new_node, new_deleter));
+    S_Deleter new_deleter = std::make_shared<Deleter>(new_node, deleter);
+    return std::make_shared<Data_Node>(new_node, new_deleter);
 }
 S_Data_Node Context::parse_fd(int fd, LYD_FORMAT format, int options) {
     struct lyd_node *new_node = nullptr;
@@ -167,8 +167,8 @@ S_Data_Node Context::parse_fd(int fd, LYD_FORMAT format, int options) {
         return nullptr;
     }
 
-    S_Deleter new_deleter = S_Deleter(new Deleter(new_node, deleter));
-    return S_Data_Node(new Data_Node(new_node, new_deleter));
+    S_Deleter new_deleter = std::make_shared<Deleter>(new_node, deleter);
+    return std::make_shared<Data_Node>(new_node, new_deleter);
 }
 S_Module Context::parse_path(const char *path, LYS_INFORMAT format) {
     struct lys_module *module = nullptr;
@@ -178,8 +178,8 @@ S_Module Context::parse_path(const char *path, LYS_INFORMAT format) {
         return nullptr;
     }
 
-    S_Deleter new_deleter = S_Deleter(new Deleter(module, deleter));
-    return S_Module(new Module(module, new_deleter));
+    S_Deleter new_deleter = std::make_shared<Deleter>(module, deleter);
+    return std::make_shared<Module>(module, new_deleter);
 }
 S_Data_Node Context::parse_data_path(const char *path, LYD_FORMAT format, int options) {
     struct lyd_node *new_node = nullptr;
@@ -189,8 +189,8 @@ S_Data_Node Context::parse_data_path(const char *path, LYD_FORMAT format, int op
         return nullptr;
     }
 
-    S_Deleter new_deleter = S_Deleter(new Deleter(new_node, deleter));
-    return S_Data_Node(new Data_Node(new_node, new_deleter));
+    S_Deleter new_deleter = std::make_shared<Deleter>(new_node, deleter);
+    return std::make_shared<Data_Node>(new_node, new_deleter);
 }
 S_Data_Node Context::parse_xml(S_Xml_Elem elem, int options) {
     struct lyd_node *new_node = nullptr;
@@ -200,8 +200,8 @@ S_Data_Node Context::parse_xml(S_Xml_Elem elem, int options) {
         return nullptr;
     }
 
-    S_Deleter new_deleter = S_Deleter(new Deleter(new_node, deleter));
-    return S_Data_Node(new Data_Node(new_node, new_deleter));
+    S_Deleter new_deleter = std::make_shared<Deleter>(new_node, deleter);
+    return std::make_shared<Data_Node>(new_node, new_deleter);
 }
 
 Set::Set() {
@@ -211,7 +211,7 @@ Set::Set() {
     }
 
     set = set;
-    deleter = S_Deleter(new Deleter(set));
+    deleter = std::make_shared<Deleter>(set);
 }
 Set::Set(struct ly_set *set, S_Deleter deleter):
     set(set),
@@ -223,7 +223,7 @@ std::vector<S_Data_Node> *Set::data() {
 
     unsigned int i;
     for (i = 0; i < set->number; i++){
-        s_vector->push_back(S_Data_Node(new Data_Node(set->set.d[i], deleter)));
+        s_vector->push_back(std::make_shared<Data_Node>(set->set.d[i], deleter));
     }
 
     return s_vector;
@@ -233,7 +233,7 @@ std::vector<S_Schema_Node> *Set::schema() {
 
     unsigned int i;
     for (i = 0; i < set->number; i++){
-        s_vector->push_back(S_Schema_Node(new Schema_Node(set->set.s[i], deleter)));
+        s_vector->push_back(std::make_shared<Schema_Node>(set->set.s[i], deleter));
     }
 
     return s_vector;
@@ -244,8 +244,8 @@ S_Set Set::dup() {
         return nullptr;
     }
 
-    auto deleter = S_Deleter(new Deleter(new_set));
-    return S_Set(new Set(new_set, deleter));
+    auto deleter = std::make_shared<Deleter>(new_set);
+    return std::make_shared<Set>(new_set, deleter);
 }
 int Set::add(S_Data_Node node, int options) {
     return ly_set_add(set, (void *) node->node, options);

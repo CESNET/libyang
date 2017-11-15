@@ -55,8 +55,8 @@ public:
     //its size is always the number of defined bits in the schema
     int8_t bln() {return LY_TYPE_BOOL == type ? value.bln : throw "wrong type";};
     int64_t dec64() {return LY_TYPE_DEC64 == type ? value.dec64 : throw "wrong type";};
-    S_Type_Enum enm() {return LY_TYPE_ENUM == type ? S_Type_Enum(new Type_Enum(value.enm, deleter)) : throw "wrong type";};
-    S_Ident ident() {return LY_TYPE_IDENT == type ? S_Ident(new Ident(value.ident, deleter)) : throw "wrong type";};
+    S_Type_Enum enm() {return LY_TYPE_ENUM == type ? std::make_shared<Type_Enum>(value.enm, deleter) : throw "wrong type";};
+    S_Ident ident() {return LY_TYPE_IDENT == type ? std::make_shared<Ident>(value.ident, deleter) : throw "wrong type";};
     S_Data_Node instance();
     int8_t int8() {return LY_TYPE_INT8 == type ? value.int8 : throw "wrong type";};
     int16_t int16() {return LY_TYPE_INT16 == type ? value.int16 : throw "wrong type";};
