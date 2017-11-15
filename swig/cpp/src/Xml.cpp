@@ -63,7 +63,7 @@ std::string Xml_Elem::print_mem(int options) {
     char *data = nullptr;
 
     lyxml_print_mem(&data, (const struct lyxml_elem *) elem, options);
-    if (nullptr == data) {
+    if (!data) {
         return nullptr;
     }
 

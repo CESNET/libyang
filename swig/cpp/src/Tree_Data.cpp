@@ -54,12 +54,12 @@ Data_Node::Data_Node(struct lyd_node *node, S_Deleter deleter):
 Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name) {
     lyd_node *new_node = nullptr;
 
-    if (nullptr == module) {
+    if (!module) {
         throw std::invalid_argument("Module can not be empty");
     }
 
     new_node = lyd_new(parent->node, module->module, name);
-    if (nullptr == new_node) {
+    if (!new_node) {
         throw std::invalid_argument("libyang could not create new data node, invalid argument");
     }
 
@@ -69,12 +69,12 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name) {
 Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, const char *val_str) {
     lyd_node *new_node = nullptr;
 
-    if (nullptr == module) {
+    if (!module) {
         throw std::invalid_argument("Module can not be empty");
     }
 
     new_node = lyd_new_leaf(parent->node, module->module, name, val_str);
-    if (nullptr == new_node) {
+    if (!new_node) {
         throw std::invalid_argument("libyang could not create new data node, invalid argument");
     }
 
@@ -84,12 +84,12 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, cons
 Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, const char *value, LYD_ANYDATA_VALUETYPE value_type) {
     lyd_node *new_node = nullptr;
 
-    if (nullptr == module) {
+    if (!module) {
         throw std::invalid_argument("Module can not be empty");
     }
 
     new_node = lyd_new_anydata(parent->node, module->module, name, (void *) value, value_type);
-    if (nullptr == new_node) {
+    if (!new_node) {
         throw std::invalid_argument("libyang could not create new data node, invalid argument");
     }
 
@@ -99,12 +99,12 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, cons
 Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Data_Node value, LYD_ANYDATA_VALUETYPE value_type) {
     lyd_node *new_node = nullptr;
 
-    if (nullptr == module) {
+    if (!module) {
         throw std::invalid_argument("Module can not be empty");
     }
 
     new_node = lyd_new_anydata(parent->node, module->module, name, (void *) value->node, value_type);
-    if (nullptr == new_node) {
+    if (!new_node) {
         throw std::invalid_argument("libyang could not create new data node, invalid argument");
     }
 
@@ -114,12 +114,12 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Da
 Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Xml_Elem value, LYD_ANYDATA_VALUETYPE value_type) {
     lyd_node *new_node = nullptr;
 
-    if (nullptr == module) {
+    if (!module) {
         throw std::invalid_argument("Module can not be empty");
     }
 
     new_node = lyd_new_anydata(parent->node, module->module, name, (void *) value->elem, value_type);
-    if (nullptr == new_node) {
+    if (!new_node) {
         throw std::invalid_argument("libyang could not create new data node, invalid argument");
     }
 
@@ -132,7 +132,7 @@ std::string Data_Node::path() {
     char *path = nullptr;
 
     path = lyd_path(node);
-    if (nullptr == path) {
+    if (!path) {
         return nullptr;
     }
 
@@ -177,7 +177,7 @@ int Data_Node::schema_sort(int recursive) {
 }
 S_Set Data_Node::find_path(const char *expr) {
     struct ly_set *set = lyd_find_path(node, expr);
-    if (nullptr == set) {
+    if (!set) {
         return nullptr;
     }
 
@@ -185,7 +185,7 @@ S_Set Data_Node::find_path(const char *expr) {
 }
 S_Set Data_Node::find_instance(S_Schema_Node schema) {
     struct ly_set *set = lyd_find_instance(node, schema->node);
-    if (nullptr == set) {
+    if (!set) {
         return nullptr;
     }
 
@@ -314,7 +314,7 @@ Difflist::Difflist(struct lyd_difflist *diff, S_Deleter deleter) {
 Difflist::~Difflist() {};
 std::vector<S_Data_Node> *Difflist::first() {
     unsigned int i = 0;
-    if (nullptr == *diff->first) {
+    if (!*diff->first) {
         return nullptr;
     }
 
@@ -328,7 +328,7 @@ std::vector<S_Data_Node> *Difflist::first() {
 }
 std::vector<S_Data_Node> *Difflist::second() {
     unsigned int i = 0;
-    if (nullptr == *diff->second) {
+    if (!*diff->second) {
         return nullptr;
     }
 

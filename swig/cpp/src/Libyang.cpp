@@ -35,21 +35,21 @@ Context::Context(ly_ctx *ctx, S_Deleter deleter):
 {};
 Context::Context(const char *search_dir, int options) {
     ctx = ly_ctx_new(search_dir, options);
-    if (nullptr == ctx) {
+    if (!ctx) {
         throw std::runtime_error("can not create new context");
     }
     deleter = std::make_shared<Deleter>(ctx);
 }
 Context::Context(const char *search_dir, const char *path, LYD_FORMAT format, int options) {
     ctx = ly_ctx_new_ylpath(search_dir, path, format, options);
-    if (nullptr == ctx) {
+    if (!ctx) {
         throw std::runtime_error("can not create new context");
     }
     deleter = std::make_shared<Deleter>(ctx);
 }
 Context::Context(const char *search_dir, LYD_FORMAT format, const char *data, int options) {
     ctx = ly_ctx_new_ylmem(search_dir, data, format, options);
-    if (nullptr == ctx) {
+    if (!ctx) {
         throw std::runtime_error("can not create new context");
     }
     deleter = std::make_shared<Deleter>(ctx);
@@ -110,7 +110,7 @@ void Context::clean() {
 }
 std::vector<std::string> *Context::get_searchdirs() {
     const char * const *data = ly_ctx_get_searchdirs(ctx);
-    if (nullptr == data) {
+    if (!data) {
         return nullptr;
     }
 
@@ -152,7 +152,7 @@ S_Data_Node Context::parse_mem(const char *data, LYD_FORMAT format, int options)
     struct lyd_node *new_node = nullptr;
 
     new_node = lyd_parse_mem(ctx, data, format, options);
-    if (nullptr == new_node) {
+    if (!new_node) {
         return nullptr;
     }
 
@@ -163,7 +163,7 @@ S_Data_Node Context::parse_fd(int fd, LYD_FORMAT format, int options) {
     struct lyd_node *new_node = nullptr;
 
     new_node = lyd_parse_fd(ctx, fd, format, options);
-    if (nullptr == new_node) {
+    if (!new_node) {
         return nullptr;
     }
 
@@ -174,7 +174,7 @@ S_Module Context::parse_path(const char *path, LYS_INFORMAT format) {
     struct lys_module *module = nullptr;
 
     module = (struct lys_module *) lys_parse_path(ctx, path, format);
-    if (nullptr == module) {
+    if (!module) {
         return nullptr;
     }
 
@@ -185,7 +185,7 @@ S_Data_Node Context::parse_data_path(const char *path, LYD_FORMAT format, int op
     struct lyd_node *new_node = nullptr;
 
     new_node = lyd_parse_path(ctx, path, format, options);
-    if (nullptr == new_node) {
+    if (!new_node) {
         return nullptr;
     }
 
@@ -196,7 +196,7 @@ S_Data_Node Context::parse_xml(S_Xml_Elem elem, int options) {
     struct lyd_node *new_node = nullptr;
 
     new_node = lyd_parse_xml(ctx, &elem->elem, options);
-    if (nullptr == new_node) {
+    if (!new_node) {
         return nullptr;
     }
 
@@ -206,7 +206,7 @@ S_Data_Node Context::parse_xml(S_Xml_Elem elem, int options) {
 
 Set::Set() {
     struct ly_set *set = ly_set_new();
-    if (nullptr == set) {
+    if (!set) {
         throw std::runtime_error("can not create new set");
     }
 
@@ -240,7 +240,7 @@ std::vector<S_Schema_Node> *Set::schema() {
 };
 S_Set Set::dup() {
     ly_set *new_set = ly_set_dup(set);
-    if (nullptr == new_set) {
+    if (!new_set) {
         return nullptr;
     }
 

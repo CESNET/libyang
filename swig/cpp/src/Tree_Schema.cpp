@@ -203,7 +203,7 @@ S_Schema_Node Schema_Node::next() LY_NEW(node, next, Schema_Node);
 S_Schema_Node Schema_Node::prev() LY_NEW(node, prev, Schema_Node);
 S_Set Schema_Node::find_xpath(const char *path) {
     struct ly_set *set = lys_find_path(node->module, node, path);
-    if (nullptr == set) {
+    if (!set) {
         return nullptr;
     }
 
@@ -212,7 +212,7 @@ S_Set Schema_Node::find_xpath(const char *path) {
 
 S_Set Schema_Node::xpath_atomize(enum lyxp_node_type ctx_node_type, const char *expr, int options) {
     struct ly_set *set = lys_xpath_atomize(node, ctx_node_type, expr, options);
-    if (nullptr == set) {
+    if (!set) {
         return nullptr;
     }
 
@@ -220,7 +220,7 @@ S_Set Schema_Node::xpath_atomize(enum lyxp_node_type ctx_node_type, const char *
 }
 S_Set Schema_Node::xpath_atomize(int options) {
     struct ly_set *set = lys_node_xpath_atomize(node, options);
-    if (nullptr == set) {
+    if (!set) {
         return nullptr;
     }
 
