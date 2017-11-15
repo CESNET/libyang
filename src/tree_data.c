@@ -4309,6 +4309,9 @@ nextsiblings:
         if (to_free) {
             if ((*node) == to_free) {
                 *node = NULL;
+                if (data_tree == to_free) {
+                    data_tree = NULL;
+                }
             }
             lyd_free(to_free);
             to_free = NULL;
