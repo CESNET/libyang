@@ -69,7 +69,7 @@ class Context
 {
 public:
     Context(struct ly_ctx *ctx, S_Deleter deleter);
-    Context(const char *search_dir = nullptr, int options = 0);
+    explicit Context(const char *search_dir = nullptr, int options = 0);
     Context(const char *search_dir, const char *path, LYD_FORMAT format, int options = 0);
     Context(const char *search_dir, LYD_FORMAT format, const char *data, int options = 0);
     ~Context();
