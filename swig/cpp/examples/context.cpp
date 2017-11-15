@@ -25,7 +25,7 @@ using namespace std;
 
 int main() {
 
-    S_Context ctx = NULL;
+    S_Context ctx = nullptr;
     try {
         ctx = S_Context(new Context("/etc/sysrepo2/yang"));
     } catch( const std::exception& e ) {
@@ -52,11 +52,11 @@ int main() {
     cout << endl;
 
     auto module = ctx->get_module("ietf-interfaces");
-    if (NULL != module) {
+    if (module) {
         cout << module->name() << endl;
     } else {
         module = ctx->load_module("ietf-interfaces");
-        if (NULL != module) {
+        if (module) {
             cout << module->name() << endl;
         }
     }

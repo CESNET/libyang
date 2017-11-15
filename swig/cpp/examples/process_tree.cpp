@@ -25,7 +25,7 @@ using namespace std;
 
 int main() {
 
-    S_Context ctx = NULL;
+    S_Context ctx = nullptr;
     try {
         ctx = S_Context(new Context("/etc/sysrepo/yang"));
     } catch( const std::exception& e ) {
@@ -40,25 +40,25 @@ int main() {
     }
 
     auto module = ctx->get_module("turing-machine");
-    if (NULL != module) {
+    if (module) {
         cout << module->name() << endl;
     } else {
         module = ctx->load_module("turing-machine");
     }
 
-    S_Data_Node node = NULL;
+    S_Data_Node node = nullptr;
     try {
         node = ctx->parse_data_path("/etc/sysrepo/data/turing-machine.startup", LYD_XML, LYD_OPT_CONFIG);
     } catch( const std::exception& e ) {
         cout << e.what() << endl;
     }
 
-    if (NULL == node) {
+    if (!node) {
         cout << "parse_path did not return any nodes" << endl;
     } else {
         cout << "tree_dfs\n" << endl;
         auto data_list = std::shared_ptr<std::vector<S_Data_Node>>(node->tree_dfs());
-        if (NULL != data_list) {
+        if (data_list) {
             std::vector<S_Data_Node>::iterator elem;
             for(elem = data_list->begin() ; elem != data_list->end() ; ++elem) {
                 cout << "name: " << (*elem)->schema()->name() << " type: " << (*elem)->schema()->nodetype() << endl;
@@ -70,7 +70,7 @@ int main() {
         cout << "tree_for\n" << endl;
 
         data_list = std::shared_ptr<std::vector<S_Data_Node>>(node->child()->child()->tree_dfs());
-        if (NULL != data_list) {
+        if (data_list) {
             std::vector<S_Data_Node>::iterator elem;
             for(elem = data_list->begin() ; elem != data_list->end() ; ++elem) {
                 cout << "child of " << node->child()->schema()->name() << " is: " << (*elem)->schema()->name() << " type: " << (*elem)->schema()->nodetype() << endl;
@@ -79,7 +79,7 @@ int main() {
 
         cout << "\n schema tree_dfs\n" << endl;
         auto schema_list = std::shared_ptr<std::vector<S_Schema_Node>>(node->schema()->tree_dfs());
-        if (NULL != schema_list) {
+        if (schema_list) {
             std::vector<S_Schema_Node>::iterator elem;
             for(elem = schema_list->begin() ; elem != schema_list->end() ; ++elem) {
                 cout << "schema name " << (*elem)->name() << " type " << (*elem)->nodetype() << endl;

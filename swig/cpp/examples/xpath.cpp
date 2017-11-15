@@ -25,7 +25,7 @@ using namespace std;
 
 int main() {
 
-    S_Context ctx = NULL;
+    S_Context ctx = nullptr;
     try {
         ctx = S_Context(new Context("/etc/sysrepo/yang"));
     } catch( const std::exception& e ) {
@@ -33,13 +33,13 @@ int main() {
         return -1;
     }
 
-    auto module = ctx->load_module("turing-machine", NULL);
-    if (NULL == module) {
+    auto module = ctx->load_module("turing-machine", nullptr);
+    if (!module) {
         printf("module not loaded\n");
         return -1;
     }
 
-    S_Data_Node node = NULL;
+    S_Data_Node node = nullptr;
     try {
         node = ctx->parse_data_path("/etc/sysrepo/data/turing-machine.startup", LYD_XML, LYD_OPT_CONFIG);
     } catch( const std::exception& e ) {
@@ -48,7 +48,7 @@ int main() {
     }
 
     auto node_set = node->find_path("/turing-machine:turing-machine/transition-function/delta[label='left summand']/*");\
-    if (NULL == node_set) {
+    if (!node_set) {
         printf("could not find data for xpath\n");
         return -1;
     }
