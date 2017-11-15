@@ -446,7 +446,10 @@ private:
 class Schema_Node_Container : public Schema_Node
 {
 public:
-    using Schema_Node::Schema_Node;
+    Schema_Node_Container(struct lys_node *node, S_Deleter deleter) : Schema_Node(node, deleter) {
+		_node = node;
+		_deleter = deleter;
+	};
     ~Schema_Node_Container();
     S_When when();
     S_Restr must();
@@ -461,7 +464,10 @@ private:
 class Schema_Node_Choice : public Schema_Node
 {
 public:
-    using Schema_Node::Schema_Node;
+    Schema_Node_Choice(struct lys_node *node, S_Deleter deleter) : Schema_Node(node, deleter) {
+		_node = node;
+		_deleter = deleter;
+	};
     ~Schema_Node_Choice();
     S_When when();
     S_Schema_Node dflt();
@@ -474,7 +480,10 @@ private:
 class Schema_Node_Leaf : public Schema_Node
 {
 public:
-    using Schema_Node::Schema_Node;
+    Schema_Node_Leaf(struct lys_node *node, S_Deleter deleter) : Schema_Node(node, deleter) {
+		_node = node;
+		_deleter = deleter;
+	};
     ~Schema_Node_Leaf();
     S_Set backlinks();
     S_When when();
@@ -491,7 +500,10 @@ private:
 class Schema_Node_Leaflist : public Schema_Node
 {
 public:
-    using Schema_Node::Schema_Node;
+    Schema_Node_Leaflist(struct lys_node *node, S_Deleter deleter) : Schema_Node(node, deleter) {
+		_node = node;
+		_deleter = deleter;
+	};
     ~Schema_Node_Leaflist();
     uint8_t dflt_size() {return ((struct lys_node_leaflist *)_node)->dflt_size;};
     uint8_t must_size() {return ((struct lys_node_leaflist *)_node)->must_size;};
@@ -513,7 +525,10 @@ private:
 class Schema_Node_List : public Schema_Node
 {
 public:
-    using Schema_Node::Schema_Node;
+    Schema_Node_List(struct lys_node *node, S_Deleter deleter) : Schema_Node(node, deleter) {
+		_node = node;
+		_deleter = deleter;
+	};
     ~Schema_Node_List();
     uint8_t must_size() {return ((struct lys_node_list *)_node)->must_size;};
     uint8_t tpdf_size() {return ((struct lys_node_list *)_node)->tpdf_size;};
@@ -536,7 +551,10 @@ private:
 class Schema_Node_Anydata : public Schema_Node
 {
 public:
-    using Schema_Node::Schema_Node;
+    Schema_Node_Anydata(struct lys_node *node, S_Deleter deleter) : Schema_Node(node, deleter) {
+		_node = node;
+		_deleter = deleter;
+	};
     ~Schema_Node_Anydata();
     uint8_t must_size() {return ((struct lys_node_list *)_node)->must_size;};
     S_When when();
@@ -550,7 +568,10 @@ private:
 class Schema_Node_Uses : public Schema_Node
 {
 public:
-    using Schema_Node::Schema_Node;
+    Schema_Node_Uses(struct lys_node *node, S_Deleter deleter) : Schema_Node(node, deleter) {
+		_node = node;
+		_deleter = deleter;
+	};
     ~Schema_Node_Uses();
     uint8_t augment_size() {return ((struct lys_node_uses *)_node)->augment_size;};
     S_When when();
@@ -566,7 +587,10 @@ private:
 class Schema_Node_Grp : public Schema_Node
 {
 public:
-    using Schema_Node::Schema_Node;
+    Schema_Node_Grp(struct lys_node *node, S_Deleter deleter) : Schema_Node(node, deleter) {
+		_node = node;
+		_deleter = deleter;
+	};
     ~Schema_Node_Grp();
     uint8_t tpdf_size() {return ((struct lys_node_grp *)_node)->tpdf_size;};
     std::vector<S_Tpdf> *tpdf();
@@ -579,7 +603,10 @@ private:
 class Schema_Node_Case : public Schema_Node
 {
 public:
-    using Schema_Node::Schema_Node;
+    Schema_Node_Case(struct lys_node *node, S_Deleter deleter) : Schema_Node(node, deleter) {
+		_node = node;
+		_deleter = deleter;
+	};
     ~Schema_Node_Case();
     S_When when();
 
@@ -591,7 +618,10 @@ private:
 class Schema_Node_Inout : public Schema_Node
 {
 public:
-    using Schema_Node::Schema_Node;
+    Schema_Node_Inout(struct lys_node *node, S_Deleter deleter) : Schema_Node(node, deleter) {
+		_node = node;
+		_deleter = deleter;
+	};
     ~Schema_Node_Inout();
     uint8_t tpdf_size() {return ((struct lys_node_inout *)_node)->tpdf_size;};
     uint8_t must_size() {return ((struct lys_node_inout *)_node)->must_size;};
@@ -606,7 +636,10 @@ private:
 class Schema_Node_Notif : public Schema_Node
 {
 public:
-    using Schema_Node::Schema_Node;
+    Schema_Node_Notif(struct lys_node *node, S_Deleter deleter) : Schema_Node(node, deleter) {
+		_node = node;
+		_deleter = deleter;
+	};
     ~Schema_Node_Notif();
     uint8_t tpdf_size() {return ((struct lys_node_notif *)_node)->tpdf_size;};
     uint8_t must_size() {return ((struct lys_node_notif *)_node)->must_size;};
@@ -621,7 +654,10 @@ private:
 class Schema_Node_Rpc_Action : public Schema_Node
 {
 public:
-    using Schema_Node::Schema_Node;
+    Schema_Node_Rpc_Action(struct lys_node *node, S_Deleter deleter) : Schema_Node(node, deleter) {
+		_node = node;
+		_deleter = deleter;
+	};
     ~Schema_Node_Rpc_Action();
     uint8_t tpdf_size() {return ((struct lys_node_rpc_action *)_node)->tpdf_size;};
     std::vector<S_Tpdf> *tpdf();
@@ -634,7 +670,10 @@ private:
 class Schema_Node_Augment : public Schema_Node
 {
 public:
-    using Schema_Node::Schema_Node;
+    Schema_Node_Augment(struct lys_node *node, S_Deleter deleter) : Schema_Node(node, deleter) {
+		_node = node;
+		_deleter = deleter;
+	};
     ~Schema_Node_Augment();
     S_When when();
     S_Schema_Node target() NEW_CASTED(lys_node_augment, _node, target, Schema_Node);
