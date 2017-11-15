@@ -155,7 +155,7 @@ class Deleter;
 /* used */
 class Context;
 
-typedef enum free_type_e {
+enum class Free_Type {
     CONTEXT,
     DATA_NODE,
     //TODO DATA_NODE_WITHSIBLINGS,
@@ -165,7 +165,7 @@ typedef enum free_type_e {
     XML,
     SET,
     DIFFLIST,
-} free_type_t;
+};
 
 typedef union value_e {
     struct ly_ctx *ctx;
@@ -194,7 +194,7 @@ public:
 private:
     S_Context context;
     value_t v;
-    free_type_t t;
+    Free_Type t;
     S_Deleter parent;
 };
 

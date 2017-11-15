@@ -25,56 +25,56 @@ extern "C" {
 }
 
 Deleter::Deleter(ly_ctx *ctx, S_Deleter parent):
-    t(CONTEXT),
+    t(Free_Type::CONTEXT),
     parent(parent),
     context(nullptr)
 {
     v.ctx = ctx;
 };
 Deleter::Deleter(struct lyd_node *data, S_Deleter parent):
-    t(DATA_NODE),
+    t(Free_Type::DATA_NODE),
     parent(parent),
     context(nullptr)
 {
     v.data = data;
 };
 Deleter::Deleter(struct lys_node *schema, S_Deleter parent):
-    t(SCHEMA_NODE),
+    t(Free_Type::SCHEMA_NODE),
     parent(parent),
     context(nullptr)
 {
     v.schema = schema;
 };
 Deleter::Deleter(struct lys_module *module, S_Deleter parent):
-    t(MODULE),
+    t(Free_Type::MODULE),
     parent(parent),
     context(nullptr)
 {
     v.module = module;
 };
 Deleter::Deleter(struct lys_submodule *submodule, S_Deleter parent):
-    t(SUBMODULE),
+    t(Free_Type::SUBMODULE),
     parent(parent),
     context(nullptr)
 {
     v.submodule = submodule;
 };
 Deleter::Deleter(S_Context context, struct lyxml_elem *elem, S_Deleter parent):
-    t(XML),
+    t(Free_Type::XML),
     parent(parent),
     context(context)
 {
     v.elem = elem;
 };
 Deleter::Deleter(struct ly_set *set, S_Deleter parent):
-    t(SET),
+    t(Free_Type::SET),
     parent(parent),
     context(nullptr)
 {
     v.set = set;
 }
 Deleter::Deleter(struct lyd_difflist *diff, S_Deleter parent):
-    t(DIFFLIST),
+    t(Free_Type::DIFFLIST),
     parent(parent),
     context(nullptr)
 {
@@ -82,30 +82,31 @@ Deleter::Deleter(struct lyd_difflist *diff, S_Deleter parent):
 }
 Deleter::~Deleter() {
     switch(t) {
-    case CONTEXT:
+    case Free_Type::CONTEXT:
         if (v.ctx) ly_ctx_destroy(v.ctx, nullptr);
         v.ctx = nullptr;
         break;
-    case DATA_NODE:
+    case Free_Type::DATA_NODE:
         if (v.data) lyd_free(v.data);
         v.data = nullptr;
         break;
-    case SCHEMA_NODE:
+    case Free_Type::SCHEMA_NODE:
         break;
-    case MODULE:
+    case Free_Type::MODULE:
         break;
-    case SUBMODULE:
+    case Free_Type::SUBMODULE:
         break;
-    case XML:
+    case Free_Type::XML:
         if (v.elem) lyxml_free(context->ctx, v.elem);
         v.elem = nullptr;
         break;
-    case SET:
+    case Free_Type::SET:
         if (v.set) ly_set_free(v.set);
         v.set = nullptr;
         break;
-    case DIFFLIST:
+    case Free_Type::DIFFLIST:
         if (v.diff) lyd_free_diff(v.diff);
         v.diff = nullptr;
+        break;
     }
 };
