@@ -7541,7 +7541,7 @@ eval_multiplicative_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint16_t repe
 finish:
     lyxp_set_cast(&orig_set, LYXP_SET_EMPTY, cur_node, local_mod, options);
     lyxp_set_cast(&set2, LYXP_SET_EMPTY, cur_node, local_mod, options);
-    return EXIT_SUCCESS;
+    return ret;
 }
 
 /**
