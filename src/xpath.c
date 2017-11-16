@@ -2044,15 +2044,16 @@ reparse_unary_expr(struct lyxp_expr *exp, uint16_t *exp_idx)
 {
     uint16_t prev_exp;
 
-    prev_exp = *exp_idx;
-
     /* ('-')* */
+    prev_exp = *exp_idx;
     while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_MATH, 0)
             && (exp->expr[exp->expr_pos[*exp_idx]] == '-')) {
+        exp_repeat_push(exp, prev_exp, LYXP_EXPR_UNARY);
         ++(*exp_idx);
     }
 
     /* PathExpr */
+    prev_exp = *exp_idx;
     if (reparse_path_expr(exp, exp_idx)) {
         return -1;
     }
@@ -7346,10 +7347,78 @@ predicate:
 }
 
 /**
+ * @brief Evaluate UnionExpr. Logs directly on error.
+ *
+ * [18] UnionExpr ::= PathExpr | UnionExpr '|' PathExpr
+ *
+ * @param[in] exp Parsed XPath expression.
+ * @param[in] exp_idx Position in the expression \p exp.
+ * @param[in] cur_node Start node for the expression \p exp.
+ * @param[in,out] set Context and result set. On NULL the rule is only parsed.
+ * @param[in] options Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
+ *
+ * @return EXIT_SUCCESS on success, EXIT_FAILURE on unresolved when, -1 on error.
+ */
+static int
+eval_union_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint16_t repeat, struct lyd_node *cur_node,
+                struct lys_module *local_mod, struct lyxp_set *set, int options)
+{
+    int ret;
+    struct lyxp_set orig_set, set2;
+    uint16_t i;
+
+    assert(repeat);
+
+    memset(&orig_set, 0, sizeof orig_set);
+    memset(&set2, 0, sizeof set2);
+
+    set_fill_set(&orig_set, set);
+
+    ret = eval_expr_select(exp, exp_idx, LYXP_EXPR_UNION, cur_node, local_mod, set, options);
+    if (ret) {
+        goto finish;
+    }
+
+    /* ('|' PathExpr)* */
+    for (i = 0; i < repeat; ++i) {
+        assert(exp->tokens[*exp_idx] == LYXP_TOKEN_OPERATOR_UNI);
+        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
+               print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
+        ++(*exp_idx);
+
+        if (!set) {
+            ret = eval_expr_select(exp, exp_idx, LYXP_EXPR_UNION, cur_node, local_mod, NULL, options);
+            if (ret) {
+                goto finish;
+            }
+            continue;
+        }
+
+        set_fill_set(&set2, &orig_set);
+        ret = eval_expr_select(exp, exp_idx, LYXP_EXPR_UNION, cur_node, local_mod, &set2, options);
+        if (ret) {
+            goto finish;
+        }
+
+        /* eval */
+        if (options & LYXP_SNODE_ALL) {
+            set_snode_merge(set, &set2);
+        } else if (moveto_union(set, &set2, cur_node, options)) {
+            ret = -1;
+            goto finish;
+        }
+    }
+
+finish:
+    lyxp_set_cast(&orig_set, LYXP_SET_EMPTY, cur_node, local_mod, options);
+    lyxp_set_cast(&set2, LYXP_SET_EMPTY, cur_node, local_mod, options);
+    return ret;
+}
+
+/**
  * @brief Evaluate UnaryExpr. Logs directly on error.
  *
  * [17] UnaryExpr ::= UnionExpr | '-' UnaryExpr
- * [18] UnionExpr ::= PathExpr | UnionExpr '|' PathExpr
  *
  * @param[in] exp Parsed XPath expression.
  * @param[in] exp_idx Position in the expression \p exp.
@@ -7363,86 +7432,37 @@ static int
 eval_unary_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint16_t repeat, struct lyd_node *cur_node,
                 struct lys_module *local_mod, struct lyxp_set *set, int options)
 {
-    int unary_minus, ret;
-    struct lyxp_set orig_set, set2;
-    uint16_t i;
+    int ret;
+    uint16_t this_op, i;
 
     assert(repeat);
 
-    /* ('-')* */
-    unary_minus = -1;
-    while (!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_MATH, 0)
-            && (exp->expr[exp->expr_pos[*exp_idx]] == '-')) {
-        if (unary_minus == -1) {
-            unary_minus = *exp_idx;
-        } else {
-            /* double '-' makes '+', ignore */
-            unary_minus = -1;
-        }
-        LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
-        ++(*exp_idx);
-    }
-
-    memset(&orig_set, 0, sizeof orig_set);
-    memset(&set2, 0, sizeof set2);
-
-    set_fill_set(&orig_set, set);
-
-    ret = eval_expr_select(exp, exp_idx, LYXP_EXPR_UNION, cur_node, local_mod, set, options);
-    if (ret) {
-        goto fail;
-    }
-
-    /* ('|' PathExpr)* */
+    /* ('-')+ */
+    this_op = *exp_idx;
     for (i = 0; i < repeat; ++i) {
-        assert(exp->tokens[*exp_idx] == LYXP_TOKEN_OPERATOR_UNI);
+        assert(!exp_check_token(exp, *exp_idx, LYXP_TOKEN_OPERATOR_MATH, 0) && (exp->expr[exp->expr_pos[*exp_idx]] == '-'));
+
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                print_token(exp->tokens[*exp_idx]), exp->expr_pos[*exp_idx]);
         ++(*exp_idx);
-
-        if (!set) {
-            ret = eval_expr_select(exp, exp_idx, LYXP_EXPR_UNION, cur_node, local_mod, NULL, options);
-            if (ret) {
-                goto fail;
-            }
-            continue;
-        }
-
-        set_fill_set(&set2, &orig_set);
-        ret = eval_expr_select(exp, exp_idx, LYXP_EXPR_UNION, cur_node, local_mod, &set2, options);
-        if (ret) {
-            goto fail;
-        }
-
-        /* eval */
-        if (options & LYXP_SNODE_ALL) {
-            set_snode_merge(set, &set2);
-        } else if (moveto_union(set, &set2, cur_node, options)) {
-            ret = -1;
-            goto fail;
-        }
     }
 
-    lyxp_set_cast(&orig_set, LYXP_SET_EMPTY, cur_node, local_mod, options);
-    /* now we have all the unions in set and no other memory allocated */
+    ret = eval_expr_select(exp, exp_idx, LYXP_EXPR_UNARY, cur_node, local_mod, set, options);
+    if (ret) {
+        return ret;
+    }
 
-    if (set && (unary_minus > -1)) {
+    if (set && (repeat % 2)) {
         if (options & LYXP_SNODE_ALL) {
-            warn_operands(set, NULL, 1, exp->expr, exp->expr_pos[unary_minus]);
+            warn_operands(set, NULL, 1, exp->expr, exp->expr_pos[this_op]);
         } else {
-            if (moveto_op_math(set, NULL, &exp->expr[exp->expr_pos[unary_minus]], cur_node, local_mod, options)) {
+            if (moveto_op_math(set, NULL, &exp->expr[exp->expr_pos[this_op]], cur_node, local_mod, options)) {
                 return -1;
             }
         }
     }
 
     return EXIT_SUCCESS;
-
-fail:
-    lyxp_set_cast(&orig_set, LYXP_SET_EMPTY, cur_node, local_mod, options);
-    lyxp_set_cast(&set2, LYXP_SET_EMPTY, cur_node, local_mod, options);
-    return ret;
 }
 
 /**
@@ -7975,8 +7995,11 @@ eval_expr_select(struct lyxp_expr *exp, uint16_t *exp_idx, enum lyxp_expr_type e
     case LYXP_EXPR_MULTIPLICATIVE:
         ret = eval_multiplicative_expr(exp, exp_idx, count, cur_node, local_mod, set, options);
         break;
-    case LYXP_EXPR_UNION:
+    case LYXP_EXPR_UNARY:
         ret = eval_unary_expr(exp, exp_idx, count, cur_node, local_mod, set, options);
+        break;
+    case LYXP_EXPR_UNION:
+        ret = eval_union_expr(exp, exp_idx, count, cur_node, local_mod, set, options);
         break;
     case LYXP_EXPR_NONE:
         ret = eval_path_expr(exp, exp_idx, cur_node, local_mod, set, options);
