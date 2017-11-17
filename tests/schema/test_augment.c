@@ -26,6 +26,8 @@
 #include <cmocka.h>
 
 #include "libyang.h"
+#include "context.h"
+//#include "tree_schema.h"
 #include "tests/config.h"
 
 #define SCHEMA_FOLDER_YIN TESTS_DIR"/schema/yin/files"
@@ -148,7 +150,7 @@ test_leafref(void **state)
 static void
 test_leafref_w_feature1(void **state)
 {
-    int length;
+    int length, i;
     char *path = *state;
     const struct lys_module *module;
 
@@ -165,12 +167,17 @@ test_leafref_w_feature1(void **state)
             fail();
         }
     }
+    for ( i=0; i<ctx->models.used; i++ ) {
+        if ( strncmp("leafref_w_feature1-mod",ctx->models.list[i]->name,strlen("leafref_w_feature1-mod")) == 0 ) {
+            assert_null(ctx->models.list[i]->implemented);
+        }
+    }
 }
 
 static void
 test_leafref_w_feature2(void **state)
 {
-    int length;
+    int length, i;
     char *path = *state;
     const struct lys_module *module;
 
@@ -185,6 +192,38 @@ test_leafref_w_feature2(void **state)
         strcpy(path + length, "/leafref_w_feature2-mod1.yang");
         if (!(module = lys_parse_path(ctx, path, LYS_IN_YANG))) {
             fail();
+        }
+    }
+    for ( i=0; i<ctx->models.used; i++ ) {
+        if ( strncmp("leafref_w_feature2-mod",ctx->models.list[i]->name,strlen("leafref_w_feature2-mod")) == 0 ) {
+            assert_non_null(ctx->models.list[i]->implemented);
+        }
+    }
+}
+
+static void
+test_leafref_w_feature3(void **state)
+{
+    int length, i;
+    char *path = *state;
+    const struct lys_module *module;
+
+    ly_ctx_set_searchdir(ctx, path);
+    length = strlen(path);
+    if (!strcmp(path, SCHEMA_FOLDER_YIN)) {
+        strcpy(path + length, "/leafref_w_feature1-mod4.yin");
+        if (!(module = lys_parse_path(ctx, path, LYS_IN_YIN))) {
+            fail();
+        }
+    } else {
+        strcpy(path + length, "/leafref_w_feature1-mod4.yang");
+        if (!(module = lys_parse_path(ctx, path, LYS_IN_YANG))) {
+            fail();
+        }
+    }
+    for ( i=0; i<ctx->models.used; i++ ) {
+        if ( strncmp("leafref_w_feature1-mod",ctx->models.list[i]->name,strlen("leafref_w_feature1-mod")) == 0 ) {
+            assert_null(ctx->models.list[i]->implemented);
         }
     }
 }
@@ -366,6 +405,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_import_augment_target, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_leafref_w_feature1, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_leafref_w_feature2, setup_ctx_yin, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_leafref_w_feature3, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_imp_aug, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_target_include_submodule, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_leafref, setup_ctx_yang, teardown_ctx),
@@ -374,6 +414,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_import_augment_target, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_leafref_w_feature1, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_leafref_w_feature2, setup_ctx_yang, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_leafref_w_feature3, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_imp_aug, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_teardown(compare_output, teardown_output),
     };
