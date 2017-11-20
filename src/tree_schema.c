@@ -3659,7 +3659,12 @@ lys_parent(const struct lys_node *node)
             return NULL;
         }
         parent = (struct lys_node*)((struct lys_ext_instance_complex*)node)->parent;
-    } else if (!node->parent) {
+    }
+    else if (node->nodetype == LYS_AUGMENT)
+    {
+        return ((struct lys_node_augment *)node)->target;
+    }
+    else if (!node->parent) {
         return NULL;
     } else {
         parent = node->parent;
