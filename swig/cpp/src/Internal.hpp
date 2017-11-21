@@ -15,7 +15,6 @@
 #ifndef INTERNAL_H
 #define INTERNAL_H
 
-#define S_String                 std::string
 #define S_Deleter                std::shared_ptr<Deleter>
 
 /* Xml.hpp */
@@ -86,81 +85,63 @@
 #define S_Restr                  std::shared_ptr<Restr>
 #define S_Ident                  std::shared_ptr<Ident>
 
-#define NEW(data, element, class)                                                                                                                    \
-    {                                                                                                                                                \
-        return data->element ? S_##class(new class(data->element, _deleter)) : NULL;                                                                 \
+#define LY_NEW(data, element, class)\
+    {\
+        return data->element ? std::make_shared<class>(data->element, deleter) : nullptr;\
     };
 
-#define NEW_CASTED(cast, data, element, class)                                                                                                       \
-    {                                                                                                                                                \
-        cast *node = (struct cast *) data;                                                                                                           \
-        return node->element ? S_##class(new class(node->element, _deleter)) : NULL;                                                                 \
+#define LY_NEW_CASTED(cast, data, element, class)\
+    {\
+        cast *casted = (struct cast *) data;\
+        return casted->element ? std::make_shared<class>(casted->element, deleter) : nullptr;\
     };
 
-#define NEW_LIST(data, element, size, class)                                                                                                         \
-    {                                                                                                                                                \
-        auto s_vector = new vector<S_##class>;                                                                                                       \
-        if (NULL == s_vector) {                                                                                                                      \
-            return NULL;                                                                                                                             \
-        }                                                                                                                                            \
-                                                                                                                                                     \
-        for (uint8_t i = 0; i < data->size; i++) {                                                                                                   \
-            s_vector->push_back(S_##class(new class(&data->element[i], _deleter)));                                                                  \
-        }                                                                                                                                            \
-                                                                                                                                                     \
-        return s_vector;                                                                                                                             \
+#define LY_NEW_LIST(data, element, size, class)\
+    {\
+        auto s_vector = new std::vector<S_##class>;\
+        for (uint8_t i = 0; i < data->size; i++) {\
+            s_vector->push_back(std::make_shared<class>(&data->element[i], deleter));\
+        }\
+        return s_vector;\
     };
 
-#define NEW_LIST_CASTED(cast, data, element, size, class)                                                                                            \
-    {                                                                                                                                                \
-        struct cast *node = (struct cast *) data;                                                                                                    \
-        NEW_LIST(node, element, size, class);                                                                                                        \
+#define LY_NEW_LIST_CASTED(cast, data, element, size, class)\
+    {\
+        struct cast *casted = (struct cast *) data;\
+        LY_NEW_LIST(casted, element, size, class);\
     };
 
-#define NEW_P_LIST(data, element, size, class)                                                                                                       \
-    {                                                                                                                                                \
-        auto s_vector = new vector<S_##class>;                                                                                                       \
-        if (NULL == s_vector) {                                                                                                                      \
-            return NULL;                                                                                                                             \
-        }                                                                                                                                            \
-                                                                                                                                                     \
-        for (uint8_t i = 0; i < data->size; i++) {                                                                                                   \
-            s_vector->push_back(S_##class(new class(data->element[i], _deleter)));                                                                   \
-        }                                                                                                                                            \
-                                                                                                                                                     \
-        return s_vector;                                                                                                                             \
+#define LY_NEW_P_LIST(data, element, size, class)\
+    {\
+        auto s_vector = new std::vector<S_##class>;\
+        for (uint8_t i = 0; i < data->size; i++) {\
+            s_vector->push_back(std::make_shared<class>(data->element[i], deleter));\
+        }\
+        return s_vector;\
     };
 
-#define NEW_P_LIST_CASTED(cast, data, element, size, class)                                                                                          \
-    {                                                                                                                                                \
-        struct cast *node = (struct cast *) data;                                                                                                    \
-        NEW_P_LIST(node, element, size, class);                                                                                                      \
+#define LY_NEW_P_LIST_CASTED(cast, data, element, size, class)\
+    {\
+        struct cast *casted = (struct cast *) data;\
+        LY_NEW_P_LIST(casted, element, size, class);\
     };
 
-#define NEW_STRING_LIST(data, element, size)                                                                                                         \
-    {                                                                                                                                                \
-        auto s_vector = new vector<S_String>;                                                                                                        \
-        if (NULL == s_vector) {                                                                                                                      \
-            return NULL;                                                                                                                             \
-        }                                                                                                                                            \
-                                                                                                                                                     \
-        for (uint8_t i = 0; i < data->size; i++) {                                                                                                   \
-            s_vector->push_back(std::string(data->element[i]));                                                                                      \
-        }                                                                                                                                            \
-                                                                                                                                                     \
-        return s_vector;                                                                                                                             \
+#define LY_NEW_STRING_LIST(data, element, size)\
+    {\
+        auto s_vector = new std::vector<std::string>;\
+        for (uint8_t i = 0; i < data->size; i++) {\
+            s_vector->push_back(std::string(data->element[i]));\
+        }\
+        return s_vector;\
     };
 
 #include <iostream>
 #include <memory>
+#include <vector>
 
 extern "C" {
 #include "libyang.h"
 }
-
-#define typeof(x) __typeof__(x)
-
-using namespace std;
 
 /* defined */
 class Deleter;
@@ -168,7 +149,7 @@ class Deleter;
 /* used */
 class Context;
 
-typedef enum free_type_e {
+enum class Free_Type {
     CONTEXT,
     DATA_NODE,
     //TODO DATA_NODE_WITHSIBLINGS,
@@ -178,7 +159,7 @@ typedef enum free_type_e {
     XML,
     SET,
     DIFFLIST,
-} free_type_t;
+};
 
 typedef union value_e {
     struct ly_ctx *ctx;
@@ -194,21 +175,21 @@ typedef union value_e {
 class Deleter
 {
 public:
-    Deleter(ly_ctx *ctx, S_Deleter parent = NULL);
-    Deleter(struct lyd_node *data, S_Deleter parent = NULL);
-    Deleter(struct lys_node *schema, S_Deleter parent = NULL);
-    Deleter(struct lys_module *module, S_Deleter parent = NULL);
-    Deleter(struct lys_submodule *submodule, S_Deleter parent = NULL);
-    Deleter(S_Context context, struct lyxml_elem *elem, S_Deleter parent = NULL);
-    Deleter(struct ly_set *set, S_Deleter parent = NULL);
-    Deleter(struct lyd_difflist *diff, S_Deleter parent = NULL);
+    Deleter(ly_ctx *ctx, S_Deleter parent = nullptr);
+    Deleter(struct lyd_node *data, S_Deleter parent = nullptr);
+    Deleter(struct lys_node *schema, S_Deleter parent = nullptr);
+    Deleter(struct lys_module *module, S_Deleter parent = nullptr);
+    Deleter(struct lys_submodule *submodule, S_Deleter parent = nullptr);
+    Deleter(S_Context context, struct lyxml_elem *elem, S_Deleter parent = nullptr);
+    Deleter(struct ly_set *set, S_Deleter parent = nullptr);
+    Deleter(struct lyd_difflist *diff, S_Deleter parent = nullptr);
     ~Deleter();
 
 private:
-    S_Context _context;
-    value_t _v;
-    free_type_t _t;
-    S_Deleter _parent;
+    S_Context context;
+    value_t v;
+    Free_Type t;
+    S_Deleter parent;
 };
 
 #endif

@@ -27,8 +27,6 @@ extern "C" {
 #include "xml.h"
 }
 
-using namespace std;
-
 /* defined */
 class Xml_Ns;
 class Xml_Attr;
@@ -43,15 +41,15 @@ class Xml_Ns
 public:
     Xml_Ns(const struct lyxml_ns *ns, S_Deleter deleter);
     ~Xml_Ns();
-    LYXML_ATTR_TYPE type() {return _ns->type;};
+    LYXML_ATTR_TYPE type() {return ns->type;};
     S_Xml_Ns next();
     //struct lyxml_elem *parent;       /**< parent node of the attribute */
-    const char *prefix() {return _ns->prefix;};
-    const char *value() {return _ns->value;};
+    const char *prefix() {return ns->prefix;};
+    const char *value() {return ns->value;};
 
 private:
-    struct lyxml_ns *_ns;
-    S_Deleter _deleter;
+    struct lyxml_ns *ns;
+    S_Deleter deleter;
 };
 
 class Xml_Attr
@@ -59,15 +57,15 @@ class Xml_Attr
 public:
     Xml_Attr(struct lyxml_attr *attr, S_Deleter deleter);
     ~Xml_Attr();
-    LYXML_ATTR_TYPE type() {return _attr->type;};
+    LYXML_ATTR_TYPE type() {return attr->type;};
     S_Xml_Attr next();
     S_Xml_Ns ns();
-    const char *name() {return _attr->name;};
-    const char *value() {return _attr->value;};
+    const char *name() {return attr->name;};
+    const char *value() {return attr->value;};
 
 private:
-    struct lyxml_attr *_attr;
-    S_Deleter _deleter;
+    struct lyxml_attr *attr;
+    S_Deleter deleter;
 };
 
 class Xml_Elem
@@ -75,20 +73,20 @@ class Xml_Elem
 public:
     Xml_Elem(S_Context context, struct lyxml_elem *elem, S_Deleter deleter);
     ~Xml_Elem();
-    char flags() {return _elem->flags;};
+    char flags() {return elem->flags;};
     S_Xml_Elem parent();
     S_Xml_Attr attr();
     S_Xml_Elem child();
     S_Xml_Elem next();
     S_Xml_Elem prev();
-    const char *name() {return _elem->name;};
+    const char *name() {return elem->name;};
     S_Xml_Ns ns();
-    const char *content() {return _elem->content;};
+    const char *content() {return elem->content;};
 
     /* methods */
-    const char *get_attr(const char *name, const char *ns = NULL);
+    const char *get_attr(const char *name, const char *ns = nullptr);
     S_Xml_Ns get_ns(const char *prefix);
-    S_String print_mem(int options);
+    std::string print_mem(int options);
     //int lyxml_print_fd(int fd, const struct lyxml_elem *elem, int options);
     //int lyxml_print_file(FILE * stream, const struct lyxml_elem *elem, int options);
 
@@ -106,9 +104,9 @@ public:
     friend Context;
 
 private:
-    S_Context _context;
-    struct lyxml_elem *_elem;
-    S_Deleter _deleter;
+    S_Context context;
+    struct lyxml_elem *elem;
+    S_Deleter deleter;
 };
 
 #endif
