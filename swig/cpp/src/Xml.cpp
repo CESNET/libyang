@@ -25,80 +25,70 @@ extern "C" {
 #include "xml.h"
 }
 
-using namespace std;
-
-Xml_Ns::Xml_Ns(const struct lyxml_ns *ns, S_Deleter deleter) {
-    _ns = (struct lyxml_ns *) ns;
-    _deleter = deleter;
-}
+Xml_Ns::Xml_Ns(const struct lyxml_ns *ns, S_Deleter deleter):
+    ns((struct lyxml_ns *) ns),
+    deleter(deleter)
+{}
 Xml_Ns::~Xml_Ns() {}
-S_Xml_Ns Xml_Ns::next() NEW(_ns, next, Xml_Ns);
+S_Xml_Ns Xml_Ns::next() LY_NEW(ns, next, Xml_Ns);
 
-Xml_Attr::Xml_Attr(struct lyxml_attr *attr, S_Deleter deleter) {
-    _attr = attr;
-    _deleter = deleter;
-}
+Xml_Attr::Xml_Attr(struct lyxml_attr *attr, S_Deleter deleter):
+    attr(attr),
+    deleter(deleter)
+{}
 Xml_Attr::~Xml_Attr() {}
-S_Xml_Attr Xml_Attr::next() NEW(_attr, next, Xml_Attr);
-S_Xml_Ns Xml_Attr::ns() NEW(_attr, ns, Xml_Ns);
+S_Xml_Attr Xml_Attr::next() LY_NEW(attr, next, Xml_Attr);
+S_Xml_Ns Xml_Attr::ns() LY_NEW(attr, ns, Xml_Ns);
 
-Xml_Elem::Xml_Elem(S_Context context, struct lyxml_elem *elem, S_Deleter deleter) {
-    _context = context;
-    _elem = elem;
-    _deleter = deleter;
-}
+Xml_Elem::Xml_Elem(S_Context context, struct lyxml_elem *elem, S_Deleter deleter):
+    context(context),
+    elem(elem),
+    deleter(deleter)
+{}
 Xml_Elem::~Xml_Elem() {}
-S_Xml_Elem Xml_Elem::parent() {return _elem->parent ? S_Xml_Elem(new Xml_Elem(_context, _elem->parent, _deleter)) : NULL;}
-S_Xml_Attr Xml_Elem::attr() NEW(_elem, attr, Xml_Attr);
-S_Xml_Elem Xml_Elem::child() {return _elem->child ? S_Xml_Elem(new Xml_Elem(_context, _elem->child, _deleter)) : NULL;}
-S_Xml_Elem Xml_Elem::next() {return _elem->next ? S_Xml_Elem(new Xml_Elem(_context, _elem->next, _deleter)) : NULL;}
-S_Xml_Elem Xml_Elem::prev() {return _elem->prev ? S_Xml_Elem(new Xml_Elem(_context, _elem->prev, _deleter)) : NULL;}
-S_Xml_Ns Xml_Elem::ns() NEW(_elem, ns, Xml_Ns);
+S_Xml_Elem Xml_Elem::parent() {return elem->parent ? std::make_shared<Xml_Elem>(context, elem->parent, deleter) : nullptr;}
+S_Xml_Attr Xml_Elem::attr() LY_NEW(elem, attr, Xml_Attr);
+S_Xml_Elem Xml_Elem::child() {return elem->child ? std::make_shared<Xml_Elem>(context, elem->child, deleter) : nullptr;}
+S_Xml_Elem Xml_Elem::next() {return elem->next ? std::make_shared<Xml_Elem>(context, elem->next, deleter) : nullptr;}
+S_Xml_Elem Xml_Elem::prev() {return elem->prev ? std::make_shared<Xml_Elem>(context, elem->prev, deleter) : nullptr;}
+S_Xml_Ns Xml_Elem::ns() LY_NEW(elem, ns, Xml_Ns);
 const char *Xml_Elem::get_attr(const char *name, const char *ns) {
-    return lyxml_get_attr(_elem, name, ns);
+    return lyxml_get_attr(elem, name, ns);
 }
 S_Xml_Ns Xml_Elem::get_ns(const char *prefix) {
-    const struct lyxml_ns *ns = lyxml_get_ns(_elem, prefix);
-    return _elem->ns ? S_Xml_Ns(new Xml_Ns((struct lyxml_ns *)ns, _deleter)) : NULL;
+    const struct lyxml_ns *ns = lyxml_get_ns(elem, prefix);
+    return elem->ns ? std::make_shared<Xml_Ns>((struct lyxml_ns *)ns, deleter) : nullptr;
 }
-S_String Xml_Elem::print_mem(int options) {
-    char *data = NULL;
+std::string Xml_Elem::print_mem(int options) {
+    char *data = nullptr;
 
-    lyxml_print_mem(&data, (const struct lyxml_elem *) _elem, options);
-    if (NULL == data) {
-        return NULL;
+    lyxml_print_mem(&data, (const struct lyxml_elem *) elem, options);
+    if (!data) {
+        return nullptr;
     }
 
-    S_String s_data = data;
+    std::string s_data = data;
     free(data);
     return s_data;
 }
 
 std::vector<S_Xml_Elem> *Xml_Elem::tree_for() {
-    auto s_vector = new vector<S_Xml_Elem>;
+    auto s_vector = new std::vector<S_Xml_Elem>;
 
-    if (NULL == s_vector) {
-        return NULL;
-    }
-
-    struct lyxml_elem *elem = NULL;
-    LY_TREE_FOR(_elem, elem) {
-        s_vector->push_back(S_Xml_Elem(new Xml_Elem(_context, elem, _deleter)));
+    struct lyxml_elem *elem = nullptr;
+    LY_TREE_FOR(elem, elem) {
+        s_vector->push_back(std::make_shared<Xml_Elem>(context, elem, deleter));
     }
 
     return s_vector;
 }
 std::vector<S_Xml_Elem> *Xml_Elem::tree_dfs() {
-    auto s_vector = new vector<S_Xml_Elem>;
+    auto s_vector = new std::vector<S_Xml_Elem>;
 
-    if (NULL == s_vector) {
-        return NULL;
-    }
-
-    struct lyxml_elem *elem = NULL, *next = NULL;
-    LY_TREE_DFS_BEGIN(_elem, next, elem) {
-        s_vector->push_back(S_Xml_Elem(new Xml_Elem(_context, elem, _deleter)));
-        LY_TREE_DFS_END(_elem, next, elem)
+    struct lyxml_elem *elem = nullptr, *next = nullptr;
+    LY_TREE_DFS_BEGIN(elem, next, elem) {
+        s_vector->push_back(std::make_shared<Xml_Elem>(context, elem, deleter));
+        LY_TREE_DFS_END(elem, next, elem)
     }
 
     return s_vector;
