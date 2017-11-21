@@ -6264,9 +6264,9 @@ check_leafref_features(struct lys_type *type)
         if (iter->nodetype & (LYS_INPUT | LYS_OUTPUT)) {
             continue;
         }
-        if (iter->parent && (iter->parent->nodetype == LYS_AUGMENT) && lys_node_module(iter->parent)->implemented) {
+        if (iter->parent && (iter->parent->nodetype == LYS_AUGMENT)) {
             aug = (struct lys_node_augment *)iter->parent;
-            if ((aug->flags & LYS_NOTAPPLIED) || !aug->target) {
+            if ((aug->module->implemented && (aug->flags & LYS_NOTAPPLIED)) || !aug->target) {
                 /* unresolved augment, wait until it's resolved */
                 ret = EXIT_FAILURE;
                 goto cleanup;
@@ -6279,9 +6279,9 @@ check_leafref_features(struct lys_type *type)
         if (iter->nodetype & (LYS_INPUT | LYS_OUTPUT)) {
             continue;
         }
-        if (iter->parent && (iter->parent->nodetype == LYS_AUGMENT) && lys_node_module(iter->parent)->implemented) {
+        if (iter->parent && (iter->parent->nodetype == LYS_AUGMENT)) {
             aug = (struct lys_node_augment *)iter->parent;
-            if ((aug->flags & LYS_NOTAPPLIED) || !aug->target) {
+            if ((aug->module->implemented && (aug->flags & LYS_NOTAPPLIED)) || !aug->target) {
                 /* unresolved augment, wait until it's resolved */
                 ret = EXIT_FAILURE;
                 goto cleanup;
