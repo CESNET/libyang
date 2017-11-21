@@ -6268,6 +6268,8 @@ check_leafref_features(struct lys_type *type)
             aug = (struct lys_node_augment *)iter->parent;
             if ((aug->module->implemented && (aug->flags & LYS_NOTAPPLIED)) || !aug->target) {
                 /* unresolved augment, wait until it's resolved */
+                LOGVAL(LYE_SPEC, LY_VLOG_LYS, aug,
+                       "Cannot check leafref \"%s\" if-feature consistency because of an unresolved augment.", type->info.lref.path);
                 ret = EXIT_FAILURE;
                 goto cleanup;
             }
@@ -6283,6 +6285,8 @@ check_leafref_features(struct lys_type *type)
             aug = (struct lys_node_augment *)iter->parent;
             if ((aug->module->implemented && (aug->flags & LYS_NOTAPPLIED)) || !aug->target) {
                 /* unresolved augment, wait until it's resolved */
+                LOGVAL(LYE_SPEC, LY_VLOG_LYS, aug,
+                       "Cannot check leafref \"%s\" if-feature consistency because of an unresolved augment.", type->info.lref.path);
                 ret = EXIT_FAILURE;
                 goto cleanup;
             }
