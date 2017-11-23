@@ -169,7 +169,7 @@ test_leafref_w_feature1(void **state)
             fail();
         }
     }
-    for (i=0; i<ctx->models.used; i++) {
+    for (i = 0; i < ctx->models.used; i++) {
         if (strncmp("leafref_w_feature1-mod",ctx->models.list[i]->name,strlen("leafref_w_feature1-mod")) == 0) {
             assert_non_null(ctx->models.list[i]->implemented);
         }
@@ -200,7 +200,7 @@ test_leafref_w_feature2(void **state)
             fail();
         }
     }
-    for (i=0; i<ctx->models.used; i++) {
+    for (i = 0; i < ctx->models.used; i++) {
         if (strncmp("leafref_w_feature2-mod",ctx->models.list[i]->name,strlen("leafref_w_feature2-mod")) == 0) {
             assert_non_null(ctx->models.list[i]->implemented);
         }
@@ -232,14 +232,11 @@ test_leafref_w_feature3(void **state)
             fail();
         }
     }
-    for (i=0; i<ctx->models.used; i++) {
+    for (i = 0; i < ctx->models.used; i++) {
         if (strcmp("leafref_w_feature1-mod4",ctx->models.list[i]->name) == 0) {
             assert_non_null(ctx->models.list[i]->implemented);
-        }
-        else {
-            if (strncmp("leafref_w_feature1-mod",ctx->models.list[i]->name,strlen("leafref_w_feature1-mod")) == 0) {
-                assert_null(ctx->models.list[i]->implemented);
-            }
+        } else if (strncmp("leafref_w_feature1-mod",ctx->models.list[i]->name,strlen("leafref_w_feature1-mod")) == 0) {
+            assert_null(ctx->models.list[i]->implemented);
         }
     }
 }
