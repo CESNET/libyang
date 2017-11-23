@@ -27,7 +27,6 @@
 
 #include "libyang.h"
 #include "context.h"
-//#include "tree_schema.h"
 #include "tests/config.h"
 
 #define SCHEMA_FOLDER_YIN TESTS_DIR"/schema/yin/files"
@@ -147,6 +146,9 @@ test_leafref(void **state)
     }
 }
 
+/* Test case to verify the solution for an augment resolution issue:
+   The iffeature consistency check for leafrefs failed because
+   some of the imported augments have not yet been applied.  */
 static void
 test_leafref_w_feature1(void **state)
 {
@@ -167,13 +169,17 @@ test_leafref_w_feature1(void **state)
             fail();
         }
     }
-    for ( i=0; i<ctx->models.used; i++ ) {
+    for (i=0; i<ctx->models.used; i++) {
         if ( strncmp("leafref_w_feature1-mod",ctx->models.list[i]->name,strlen("leafref_w_feature1-mod")) == 0 ) {
-            assert_null(ctx->models.list[i]->implemented);
+            assert_non_null(ctx->models.list[i]->implemented);
         }
     }
 }
 
+/* Test case to verify the solution for an augment resolution issue:
+   The iffeature consistency check for leafrefs failed because
+   some of the augments have not yet been applied, due to an
+   ordering problem in resolution (similar as in test_leafref_w_feature1()) */
 static void
 test_leafref_w_feature2(void **state)
 {
@@ -194,13 +200,18 @@ test_leafref_w_feature2(void **state)
             fail();
         }
     }
-    for ( i=0; i<ctx->models.used; i++ ) {
+    for (i=0; i<ctx->models.used; i++) {
         if ( strncmp("leafref_w_feature2-mod",ctx->models.list[i]->name,strlen("leafref_w_feature2-mod")) == 0 ) {
             assert_non_null(ctx->models.list[i]->implemented);
         }
     }
 }
 
+/* Test case to verify the solution for an augment resolution issue:
+   The iffeature consistency check for leafrefs failed for augments
+   which are in imported modules and which are not going to be
+   implemented/applied. This prevented the module to be installed from
+   being installed */
 static void
 test_leafref_w_feature3(void **state)
 {
@@ -221,9 +232,14 @@ test_leafref_w_feature3(void **state)
             fail();
         }
     }
-    for ( i=0; i<ctx->models.used; i++ ) {
-        if ( strncmp("leafref_w_feature1-mod",ctx->models.list[i]->name,strlen("leafref_w_feature1-mod")) == 0 ) {
-            assert_null(ctx->models.list[i]->implemented);
+    for (i=0; i<ctx->models.used; i++) {
+        if ( strcmp("leafref_w_feature1-mod4",ctx->models.list[i]->name) == 0 ) {
+            assert_non_null(ctx->models.list[i]->implemented);
+        }
+        else {
+            if ( strncmp("leafref_w_feature1-mod",ctx->models.list[i]->name,strlen("leafref_w_feature1-mod")) == 0 ) {
+                assert_null(ctx->models.list[i]->implemented);
+            }
         }
     }
 }
