@@ -1933,6 +1933,8 @@ lyd_merge_node_equal(struct lyd_node *node1, struct lyd_node *node2)
     case LYS_LEAF:
     case LYS_ANYXML:
     case LYS_ANYDATA:
+    case LYS_RPC:
+    case LYS_ACTION:
         return 1;
     case LYS_LEAFLIST:
         if (!strcmp(((struct lyd_node_leaf_list *)node1)->value_str, ((struct lyd_node_leaf_list *)node2)->value_str)
@@ -6409,11 +6411,12 @@ int
 lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, const struct lyd_node *data_tree,
                        struct lyd_node *act_notif, struct unres_data *unres)
 {
-    struct lyd_node *msg_sibling = NULL, *msg_parent = NULL, *data_tree_sibling = NULL, *data_tree_parent = NULL;
+    struct lyd_node *msg_sibling, *msg_parent, *data_tree_sibling, *data_tree_parent;
+    struct lys_node *msg_op;
+    struct ly_set *set;
     int ret = EXIT_FAILURE;
 
     assert(root && unres && !(options & LYD_OPT_ACT_NOTIF));
-    //assert(!data_tree || !data_tree->prev->next);
 
     if ((options & LYD_OPT_NOSIBLINGS) && !(*root)) {
         LOGERR(LY_EINVAL, "Cannot add default values for one module (LYD_OPT_NOSIBLINGS) without any data.");
@@ -6437,6 +6440,9 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
             LOGERR(LY_EINVAL, "Not valid notification data.");
             return EXIT_FAILURE;
         }
+
+        /* remember the operation/notification schema */
+        msg_op = act_notif ? act_notif->schema : (*root)->schema;
     } else if (*root && (*root)->parent) {
         /* we have inner node, so it will be considered as
          * a root of subtree where to add default nodes and
@@ -6459,11 +6465,12 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
 
         /* temporarily link the additional data tree to the RPC/action/notification */
         if (data_tree && (options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF))) {
+            /* duplicate the message tree - if it gets deleted we would not be able to positively identify it */
+            msg_parent = NULL;
+            msg_sibling = *root;
+
             if (act_notif) {
                 /* fun case */
-
-                msg_parent = NULL;
-                msg_sibling = *root;
                 data_tree_parent = NULL;
                 data_tree_sibling = (struct lyd_node *)data_tree;
                 while (data_tree_sibling) {
@@ -6484,18 +6491,12 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
                         data_tree_sibling = data_tree_sibling->child;
 
                         /* find new action sibling to search for later (skip list keys) */
-                        if (!msg_sibling->child) {
-                            LOGINT;
-                            goto unlink_datatree;
-                        }
                         msg_parent = msg_sibling;
+                        assert(msg_sibling->child);
                         for (msg_sibling = msg_sibling->child;
                                 msg_sibling->schema->nodetype == LYS_LEAF;
                                 msg_sibling = msg_sibling->next) {
-                            if (!msg_sibling->next) {
-                                LOGINT;
-                                goto unlink_datatree;
-                            }
+                            assert(msg_sibling->next);
                         }
                         if (msg_sibling->schema->nodetype & (LYS_ACTION | LYS_NOTIF)) {
                             /* we are done */
@@ -6515,31 +6516,23 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
             } else {
                 /* easy case */
                 data_tree_parent = NULL;
-                msg_sibling = *root;
                 data_tree_sibling = (struct lyd_node *)data_tree;
             }
 
             /* unlink msg_sibling if needed (won't do anything otherwise) */
             lyd_unlink_internal(msg_sibling, 0);
 
-            /* now we can link msg_sibling into data_tree_parent or next to data_tree_sibling */
+            /* now we can insert msg_sibling into data_tree_parent or next to data_tree_sibling */
             assert(data_tree_parent || data_tree_sibling);
             if (data_tree_parent) {
-                if (!data_tree_parent->child) {
-                    data_tree_parent->child = msg_sibling;
-                } else {
-                    /* last child of data_tree_parent */
-                    data_tree_parent->child->prev->next = msg_sibling;
-                    msg_sibling->prev = data_tree_parent->child->prev;
-                    data_tree_parent->child->prev = msg_sibling;
+                if (lyd_insert(data_tree_parent, msg_sibling)) {
+                    goto unlink_datatree;
                 }
-                msg_sibling->parent = data_tree_parent;
             } else {
-                /* last sibling of data_tree_sibling */
                 assert(!data_tree_sibling->parent);
-                msg_sibling->prev = data_tree_sibling->prev;
-                data_tree_sibling->prev->next = msg_sibling;
-                data_tree_sibling->prev = msg_sibling;
+                if (lyd_insert_after(data_tree_sibling->prev, msg_sibling)) {
+                    goto unlink_datatree;
+                }
             }
         }
 
@@ -6550,34 +6543,31 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
         /* we are done */
         ret = EXIT_SUCCESS;
 
+        /* check that the operation/notification tree was not removed */
+        if (options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF)) {
+            set = NULL;
+            if (data_tree) {
+                set = lyd_find_instance(data_tree_parent ? data_tree_parent : data_tree_sibling, msg_op);
+                assert(set && ((set->number == 0) || (set->number == 1)));
+            } else if (*root) {
+                set = lyd_find_instance(*root, msg_op);
+                assert(set && ((set->number == 0) || (set->number == 1)));
+            }
+            if (!set || !set->number) {
+                /* it was removed, handle specially */
+                LOGVAL(LYE_SPEC, LY_VLOG_LYS, msg_op, "Operation/notification not supported because of the current configuration.");
+                ret = EXIT_FAILURE;
+            }
+            ly_set_free(set);
+        }
+
 unlink_datatree:
         /* put the trees back in order */
         if (data_tree && (options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF))) {
-            /* unlink it back */
-            if (data_tree_parent) {
-                assert(data_tree_parent->child->prev == msg_sibling);
-                data_tree_parent->child->prev = msg_sibling->prev;
-                data_tree_parent->child->prev->next = NULL;
-                msg_sibling->prev = msg_sibling;
-                msg_sibling->parent = NULL;
-            } else {
-                assert(data_tree_sibling->prev == msg_sibling);
-                data_tree_sibling->prev = msg_sibling->prev;
-                data_tree_sibling->prev->next = NULL;
-                msg_sibling->prev = msg_sibling;
-            }
-
-            /* link it back, if there is a parent to link to */
+            /* unlink and insert it back, if there is a parent  */
+            lyd_unlink_internal(msg_sibling, 0);
             if (msg_parent) {
-                /* it must always be last */
-                if (!msg_parent->child) {
-                    msg_parent->child = msg_sibling;
-                } else {
-                    msg_parent->child->prev->next = msg_sibling;
-                    msg_sibling->prev = msg_parent->child->prev;
-                    msg_parent->child->prev = msg_sibling;
-                }
-                msg_sibling->parent = msg_parent;
+                lyd_insert(msg_parent, msg_sibling);
             }
         }
     } else {
