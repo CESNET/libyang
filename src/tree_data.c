@@ -5673,6 +5673,50 @@ ly_set_add(struct ly_set *set, void *node, int options)
 }
 
 API int
+ly_set_merge(struct ly_set *trg, struct ly_set *src, int options)
+{
+    unsigned int i, ret;
+    void **new;
+
+    if (!trg) {
+        ly_errno = LY_EINVAL;
+        return -1;
+    }
+
+    if (!src) {
+        return 0;
+    }
+
+    if (!(options & LY_SET_OPT_USEASLIST)) {
+        /* remove duplicates */
+        i = 0;
+        while (i < src->number) {
+            if (ly_set_contains(trg, src->set.g[i]) > -1) {
+                ly_set_rm_index(src, i);
+            } else {
+                ++i;
+            }
+        }
+    }
+
+    /* allocate more memory if needed */
+    if (trg->size < trg->number + src->number) {
+        new = realloc(trg->set.g, (trg->number + src->number) * sizeof *(trg->set.g));
+        LY_CHECK_ERR_RETURN(!new, LOGMEM, -1);
+        trg->size = trg->number + src->number;
+        trg->set.g = new;
+    }
+
+    /* copy contents from src into trg */
+    memcpy(trg->set.g + trg->number, src->set.g, src->number * sizeof *(src->set.g));
+    ret = src->number;
+
+    /* cleanup */
+    ly_set_free(src);
+    return ret;
+}
+
+API int
 ly_set_rm_index(struct ly_set *set, unsigned int index)
 {
     if (!set || (index + 1) > set->number) {

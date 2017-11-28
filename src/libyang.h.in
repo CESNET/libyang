@@ -1553,6 +1553,20 @@ struct ly_set *ly_set_dup(const struct ly_set *set);
 int ly_set_add(struct ly_set *set, void *node, int options);
 
 /**
+ * @brief Add all objects from \p src to \p trg.
+ *
+ * Since it is a set, the function checks for duplicities.
+ * After success, \p src is completely freed.
+ *
+ * @param[in] trg Target (result) set.
+ * @param[in] src Source set.
+ * @param[in] options Options to change behavior of the function. Accepted options are:
+ * - #LY_SET_OPT_USEASLIST - do not check for duplicities
+ * @return -1 on failure, number of objects added into \p trg on success.
+ */
+int ly_set_merge(struct ly_set *trg, struct ly_set *src, int options);
+
+/**
  * @brief Get know if the set contains the specified object.
  * @param[in] set Set to explore.
  * @param[in] node Object to be found in the set.
