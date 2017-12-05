@@ -1462,6 +1462,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                 int store, int dflt)
 {
     struct lys_type *ret = NULL, *t;
+    struct lys_tpdf *tpdf;
     int c, len, found = 0, hidden;
     unsigned int i, j;
     int64_t num;
@@ -1896,6 +1897,26 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         if (validate_pattern(value, type, contextnode)) {
             goto cleanup;
+        }
+
+        /* special handling of ietf-yang-types xpath1.0 */
+        for (tpdf = type->der;
+             tpdf->module && strcmp(tpdf->name, "xpath1.0") && strcmp(tpdf->module->name, "ietf-yang-types");
+             tpdf = tpdf->type.der);
+        if (tpdf->module && xml) {
+            /* convert value into the json format */
+            value = transform_xml2json(type->parent->module->ctx, value, xml, 1, 1, 0);
+            if (!value) {
+                /* invalid instance-identifier format */
+                LOGVAL(LYE_INVAL, LY_VLOG_LYD, contextnode, *value_, itemname);
+                goto cleanup;
+            }
+
+            if (value != *value_) {
+                /* update the changed value */
+                lydict_remove(type->parent->module->ctx, *value_);
+                *value_ = value;
+            }
         }
 
         if (store) {
