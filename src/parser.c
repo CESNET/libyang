@@ -1901,7 +1901,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         /* special handling of ietf-yang-types xpath1.0 */
         for (tpdf = type->der;
-             tpdf->module && strcmp(tpdf->name, "xpath1.0") && strcmp(tpdf->module->name, "ietf-yang-types");
+             tpdf->module && (strcmp(tpdf->name, "xpath1.0") || strcmp(tpdf->module->name, "ietf-yang-types"));
              tpdf = tpdf->type.der);
         if (tpdf->module && xml) {
             /* convert value into the json format */

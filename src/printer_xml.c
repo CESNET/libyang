@@ -296,7 +296,7 @@ printvalue:
             return EXIT_FAILURE;
         }
         for (tpdf = type->der;
-             tpdf->module && strcmp(tpdf->name, "xpath1.0") && strcmp(tpdf->module->name, "ietf-yang-types");
+             tpdf->module && (strcmp(tpdf->name, "xpath1.0") || strcmp(tpdf->module->name, "ietf-yang-types"));
              tpdf = tpdf->type.der);
         /* special handling of ietf-yang-types xpath1.0 */
         if (tpdf->module) {
