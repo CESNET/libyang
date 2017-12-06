@@ -259,7 +259,14 @@ _transform_json2xml(const struct lys_module *module, const char *expr, int schem
                 if (end) {
                     name_len = end - cur_expr;
                     name = strndup(cur_expr, name_len);
-                    mod = ly_ctx_get_module(module->ctx, name, NULL, 1);
+                    mod = ly_ctx_get_module(module->ctx, name, NULL, 0);
+                    if (module->ctx->data_clb) {
+                        if (!mod) {
+                            mod = module->ctx->data_clb(module->ctx, name, NULL, 0, module->ctx->data_clb_data);
+                        } else if (!mod->implemented) {
+                            mod = module->ctx->data_clb(module->ctx, name, mod->ns, LY_MODCLB_NOT_IMPLEMENTED, module->ctx->data_clb_data);
+                        }
+                    }
                     free(name);
                     if (!mod) {
                         LOGVAL(LYE_INMOD_LEN, LY_VLOG_NONE, NULL, name_len, cur_expr);
@@ -339,7 +346,14 @@ _transform_json2xml(const struct lys_module *module, const char *expr, int schem
             if (!schema) {
                 prefix = NULL;
                 name = strndup(ptr, name_len);
-                mod = ly_ctx_get_module(module->ctx, name, NULL, 1);
+                mod = ly_ctx_get_module(module->ctx, name, NULL, 0);
+                if (module->ctx->data_clb) {
+                    if (!mod) {
+                        mod = module->ctx->data_clb(module->ctx, name, NULL, 0, module->ctx->data_clb_data);
+                    } else if (!mod->implemented) {
+                        mod = module->ctx->data_clb(module->ctx, name, mod->ns, LY_MODCLB_NOT_IMPLEMENTED, module->ctx->data_clb_data);
+                    }
+                }
                 free(name);
                 if (mod) {
                     prefix = mod->prefix;
@@ -478,7 +492,7 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
                 }
                 goto error;
             }
-            mod = ly_ctx_get_module_by_ns(ctx, ns->value, NULL, 1);
+            mod = ly_ctx_get_module_by_ns(ctx, ns->value, NULL, 0);
             if (use_ctx_data_clb && ctx->data_clb) {
                 if (!mod) {
                     mod = ctx->data_clb(ctx, NULL, ns->value, 0, ctx->data_clb_data);
