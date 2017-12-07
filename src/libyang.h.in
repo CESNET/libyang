@@ -17,6 +17,10 @@
 
 #include <stdio.h>
 
+@ENABLE_CACHE_MACRO@
+
+@ENABLE_LATEST_REVISIONS_MACRO@
+
 #include "tree_schema.h"
 #include "tree_data.h"
 #include "xml.h"
@@ -99,10 +103,10 @@ extern "C" {
  * where libyang will automatically search for schemas being imported or included. The search path
  * can be later changed via ly_ctx_set_searchdir() and ly_ctx_unset_searchdrs() functions. If the search dir
  * is specified, it is explored first. Except the searchpath, also all its subdirectories (and symlinks) are
- * taken into account. In case the module is not found, libyang tries to find the (sub)module also in current
+ * taken into account. In case the module is not found, libyang tries to find the (sub)module also in the current
  * working working directory. Note, that in this case only the current directory without any other subdirectory
  * is examined. This automatic searching can be completely avoided when the caller sets module searching callback
- * (#ly_module_imp_clb) via ly_ctx_set_module_imp_clb().
+ * (#ly_module_imp_clb) via ly_ctx_set_module_imp_clb(), but both approaches can also be combined.
  *
  * Schemas are added into the context using [parser functions](@ref howtoschemasparsers) - \b lys_parse_*().
  * In case of schemas, also ly_ctx_load_module() can be used - in that case the #ly_module_imp_clb or automatic
@@ -120,11 +124,18 @@ extern "C" {
  * a module (and no other) as target of leafref, augment or deviation. All modules with deviation definition are always
  * marked as implemented. The imported (not implemented) module can be set implemented by lys_set_implemented(). But
  * the implemented module cannot be changed back to just imported module. The imported modules are used only as a
- * source of definitions for types (including identities) and uses statements. The data in such a modules are
- * ignored - caller is not allowed to create the data defined in the model via data parsers, the default nodes are
- * not added into any data tree and mandatory nodes are not checked in the data trees. This can be changed by
- * ly_ctx_set_allimplemented() function which causes that all the imported modules are automatically set to be
- * implemented.
+ * source of definitions for types and groupings for uses statements. The data in such modules are ignored - caller
+ * is not allowed to create the data (including instantiating identities) defined in the model via data parsers,
+ * the default nodes are not added into any data tree and mandatory nodes are not checked in the data trees. This
+ * can be changed by ly_ctx_set_allimplemented() function, which causes that all the imported modules are automatically
+ * set to be implemented.
+ *
+ * When loading/importing a module without revision, the latest revision of the required module is supposed to load.
+ * For a context, the first time the latest revision of a module is requested, it is properly searched for and loaded.
+ * However, when this module is requested (without revision) the second time, the one found previously is returned.
+ * This has the advantage of not searching for the module repeatedly but the drawback that if a later revision
+ * of the module is later made available, this context will not use it. If you are aware of a case when this
+ * optimization could cause problems, you can disable it using a cmake(1) build option (variable).
  *
  * Context holds all modules and their submodules internally. To get
  * a specific module or submodule, use ly_ctx_get_module() and ly_ctx_get_submodule(). There are some additional
@@ -894,6 +905,7 @@ extern "C" {
  * --------------
  * - lys_find_path()
  * - lys_path()
+ * - ly_path_data2schema()
  *
  *
  * Data
@@ -998,7 +1010,7 @@ extern "C" {
  *
  * For some specific cases, a YANG schema can define error message and/or error tag (mainly for
  * use in NETCONF). If a message is set, it is provided via ly_errmsg(). If a tag is set in schema,
- * it is available via ly_erraptag() (if not set, the returned string is empty).
+ * it is available via ly_errapptag() (if not set, the returned string is empty).
  *
  * By default, all libyang messages are printed to `stderr`. However, the caller is able to set their own logging
  * callback function. In that case, instead of printing messages, libyang passes error level, message and path
@@ -1020,11 +1032,6 @@ extern "C" {
  */
 
 /**
- * @brief Number of internal modules, which are always in every context and cannot be removed nor disabled.
- */
-#define LY_INTERNAL_MODULE_COUNT 5
-
-/**
  * @defgroup context Context
  * @{
  *
@@ -1037,6 +1044,26 @@ extern "C" {
  * @brief libyang context handler.
  */
 struct ly_ctx;
+
+/**
+ * @defgroup contextoptions Context options
+ * @ingroup context
+ *
+ * Options to change context behavior.
+ */
+
+#define LY_CTX_ALLIMPLEMENTED 0x01 /**< All the imports of the schema being parsed are treated implemented. */
+#define LY_CTX_TRUSTED        0x02 /**< Handle the schema being parsed as trusted and skip its validation
+                                        tests. Note that while this option improves performance, it can
+                                        lead to an undefined behavior if the schema is not correct. */
+#define LY_CTX_NOYANGLIBRARY  0x04 /**< Do not internally implement ietf-yang-library module. The option
+                                        causes that function ly_ctx_info() does not work (returns NULL) until
+                                        the ietf-yang-library module is loaded manually. While any revision
+                                        of this schema can be loaded with this option, note that the only
+                                        revisions implemented by ly_ctx_info() are 2016-06-21 and 2017-08-17.
+                                        This option cannot be used with ly_ctx_new_yl*() functions. */
+
+/**@} contextoptions */
 
 /**
  * @brief Create libyang context
@@ -1055,10 +1082,11 @@ struct ly_ctx;
  *
  * @param[in] search_dir Directory where libyang will search for the imported or included modules
  * and submodules. If no such directory is available, NULL is accepted.
+ * @param[in] options Context options, see @ref contextoptions.
  *
  * @return Pointer to the created libyang context, NULL in case of error.
  */
-struct ly_ctx *ly_ctx_new(const char *search_dir);
+struct ly_ctx *ly_ctx_new(const char *search_dir, int options);
 
 /**
  * @brief Create libyang context according to the content of the given yang-library data.
@@ -1079,9 +1107,10 @@ struct ly_ctx *ly_ctx_new(const char *search_dir);
  * and submodules. If no such directory is available, NULL is accepted.
  * @param[in] path Path to the file containing yang-library data in the specified \p format.
  * @param[in] format Format of the data in the provided file.
+ * @param[in] options Context options, see @ref contextoptions.
  * @return Pointer to the created libyang context, NULL in case of error.
  */
-struct ly_ctx *ly_ctx_new_ylpath(const char *search_dir, const char *path, LYD_FORMAT format);
+struct ly_ctx *ly_ctx_new_ylpath(const char *search_dir, const char *path, LYD_FORMAT format, int options);
 
 /**
  * @brief Create libyang context according to the content of the given yang-library data.
@@ -1102,9 +1131,17 @@ struct ly_ctx *ly_ctx_new_ylpath(const char *search_dir, const char *path, LYD_F
  * and submodules. If no such directory is available, NULL is accepted.
  * @param[in] data String containing yang-library data in the specified \p format.
  * @param[in] format Format of the data in the provided file.
+ * @param[in] options Context options, see @ref contextoptions.
  * @return Pointer to the created libyang context, NULL in case of error.
  */
-struct ly_ctx *ly_ctx_new_ylmem(const char *search_dir, const char *data, LYD_FORMAT format);
+struct ly_ctx *ly_ctx_new_ylmem(const char *search_dir, const char *data, LYD_FORMAT format, int options);
+
+/**
+ * @brief Number of internal modules, which are in the context and cannot be removed nor disabled.
+ * @param[in] ctx Context to investigate.
+ * @return Number of internal modules, 0 in case of invalid parameter.
+ */
+unsigned int ly_ctx_internal_modules_count(struct ly_ctx *ctx);
 
 /**
  * @brief Add the search path into libyang context
@@ -1140,6 +1177,9 @@ const char * const *ly_ctx_get_searchdirs(const struct ly_ctx *ctx);
  * if the imported module is not used in leafref's path, augment or deviation, it is
  * imported and its data tree is not taken into account.
  *
+ * The same effect is achieved by using #LY_CTX_ALLIMPLEMENTED option when creating new context or parsing
+ * a specific schema.
+ *
  * Note, that function does not make the currently loaded modules, it just change the
  * schema parser behavior for the future parsing. This flag can be unset by ly_ctx_unset_allimplemented().
  *
@@ -1153,6 +1193,27 @@ void ly_ctx_set_allimplemented(struct ly_ctx *ctx);
  * @param[in] ctx Context to be modified.
  */
 void ly_ctx_unset_allimplemented(struct ly_ctx *ctx);
+
+/**
+ * @brief Change the schema parser behavior when parsing new schemas forcing it to skip some of the schema
+ * validation checks to improve performance. Note that parsing invalid schemas this way may lead to an
+ * undefined behavior later, e.g. when working with data trees.
+ *
+ * The same effect is achieved by using #LY_CTX_TRUSTED option when creating new context or parsing
+ * a specific schema.
+ *
+ * This flag can be unset by ly_ctx_unset_trusted().
+ *
+ * @param[in] ctx Context to be modified.
+ */
+void ly_ctx_set_trusted(struct ly_ctx *ctx);
+
+/**
+ * @brief Reverse function to ly_ctx_set_trusted().
+ *
+ * @param[in] ctx Context to be modified.
+ */
+void ly_ctx_unset_trusted(struct ly_ctx *ctx);
 
 /**
  * @brief Get data of an internal ietf-yang-library module.
@@ -1187,11 +1248,13 @@ const struct lys_module *ly_ctx_get_disabled_module_iter(const struct ly_ctx *ct
  * @param[in] ctx Context to work in.
  * @param[in] name Name of the YANG module to get.
  * @param[in] revision Optional revision date of the YANG module to get. If not specified,
- * the schema in the newest revision is returned if any.
+ * the schema in the newest/implemented revision (see \p implemented parameter) is returned if any.
+ * @param[in] implemented In case the revision is not specified, require the implemented module
+ * instead of the newest revision of the module.
  * @return Pointer to the data model structure, NULL if no schema following the name and
  * revision requirements is present in the context.
  */
-const struct lys_module *ly_ctx_get_module(const struct ly_ctx *ctx, const char *name, const char *revision);
+const struct lys_module *ly_ctx_get_module(const struct ly_ctx *ctx, const char *name, const char *revision, int implemented);
 
 /**
  * @brief Get pointer to the older schema tree to the specified one in the provided context.
@@ -1238,7 +1301,9 @@ const struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *name
  * @param[in] user_data User-supplied callback data.
  * @param[out] format Format of the returned module data.
  * @param[out] free_module_data Callback for freeing the returned module data. If not set, the data will be left untouched.
- * @return Requested module data or NULL if the callback is not able to provide the requested schema content for any reason.
+ * @return Requested module data, NULL if the module is supposed to be loaded
+ * using standard mechanisms (searched for in the filesystem), NULL and #ly_errno set if
+ * the callback failed resulting in the module failing to load.
  */
 typedef char *(*ly_module_imp_clb)(const char *mod_name, const char *mod_rev, const char *submod_name, const char *sub_rev,
                                    void *user_data, LYS_INFORMAT *format, void (**free_module_data)(void *model_data));
@@ -1306,11 +1371,13 @@ ly_module_data_clb ly_ctx_get_module_data_clb(const struct ly_ctx *ctx, void **u
  * @param[in] ctx Context to work in.
  * @param[in] ns Namespace of the YANG module to get.
  * @param[in] revision Optional revision date of the YANG module to get. If not specified,
- * the schema in the newest revision is returned if any.
+ * the schema in the newest/implemented revision (see \p implemented parameter) is returned if any.
+ * @param[in] implemented In case the revision is not specified, require the implemented module
+ * instead of the newest revision of the module.
  * @return Pointer to the data model structure, NULL if no schema following the namespace and
  * revision requirements is present in the context.
  */
-const struct lys_module *ly_ctx_get_module_by_ns(const struct ly_ctx *ctx, const char *ns, const char *revision);
+const struct lys_module *ly_ctx_get_module_by_ns(const struct ly_ctx *ctx, const char *ns, const char *revision, int implemented);
 
 /**
  * @brief Get submodule of a main module.
@@ -1400,6 +1467,17 @@ void ly_ctx_clean(struct ly_ctx *ctx, void (*private_destructor)(const struct ly
  */
 void ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_node *node, void *priv));
 
+/**
+ * @brief Transform a data path into schema path (see @ref howtoxpath).
+ *
+ * Only simple paths can be used, no complex XPath expressions.
+ *
+ * @param[in] ctx Context to work in.
+ * @param[in] data_path Data path to be transformed.
+ * @return Created schema path, NULL on error.
+ */
+char *ly_path_data2schema(const struct ly_ctx *ctx, const char *data_path);
+
 /**@} context */
 
 /**
@@ -1473,6 +1551,20 @@ struct ly_set *ly_set_dup(const struct ly_set *set);
  * @return -1 on failure, index of the \p node in the set on success
  */
 int ly_set_add(struct ly_set *set, void *node, int options);
+
+/**
+ * @brief Add all objects from \p src to \p trg.
+ *
+ * Since it is a set, the function checks for duplicities.
+ * After success, \p src is completely freed.
+ *
+ * @param[in] trg Target (result) set.
+ * @param[in] src Source set.
+ * @param[in] options Options to change behavior of the function. Accepted options are:
+ * - #LY_SET_OPT_USEASLIST - do not check for duplicities
+ * @return -1 on failure, number of objects added into \p trg on success.
+ */
+int ly_set_merge(struct ly_set *trg, struct ly_set *src, int options);
 
 /**
  * @brief Get know if the set contains the specified object.
@@ -1636,13 +1728,13 @@ void (*ly_get_log_clb(void))(LY_LOG_LEVEL, const char *, const char *);
  * @ingroup logger
  */
 typedef enum {
-    LY_SUCCESS,    /**< no error, not set by functions, included just to complete #LY_ERR enumeration */
-    LY_EMEM,       /**< Memory allocation failure */
-    LY_ESYS,       /**< System call failure */
-    LY_EINVAL,     /**< Invalid value */
-    LY_EINT,       /**< Internal error */
-    LY_EVALID,     /**< Validation failure */
-    LY_EEXT        /**< Extension error reported by an extension plugin */
+    LY_SUCCESS = 0, /**< no error, not set by functions, included just to complete #LY_ERR enumeration */
+    LY_EMEM,        /**< Memory allocation failure */
+    LY_ESYS,        /**< System call failure */
+    LY_EINVAL,      /**< Invalid value */
+    LY_EINT,        /**< Internal error */
+    LY_EVALID,      /**< Validation failure */
+    LY_EEXT         /**< Extension error reported by an extension plugin */
 } LY_ERR;
 
 /**
@@ -1723,7 +1815,6 @@ typedef enum {
     LYVE_NOLEAFREF,    /**< leaf pointed to by leafref does not exist (data) */
     LYVE_NOMANDCHOICE, /**< no mandatory choice case branch exists (data) */
 
-    LYVE_XPATH_INSNODE,/**< schema node not found */
     LYVE_XPATH_INTOK,  /**< unexpected XPath token */
     LYVE_XPATH_EOF,    /**< unexpected end of an XPath expression */
     LYVE_XPATH_INOP,   /**< invalid XPath operation operands */

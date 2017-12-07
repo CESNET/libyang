@@ -466,7 +466,7 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
                 int implement, struct unres_schema *unres)
 {
     size_t len, flen, match_len = 0, dir_len;
-    int fd, i;
+    int fd, i, implicit_cwd = 0;
     char *wd, *wn = NULL;
     DIR *dir = NULL;
     struct dirent *file;
@@ -490,11 +490,21 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
     if (!wd) {
         LOGMEM;
         goto cleanup;
-    } else if (ly_set_add(dirs, wd, 0) == -1) {
-        goto cleanup;
+    } else {
+        /* add implicit current working directory (./) to be searched,
+         * this directory is not searched recursively */
+        if (ly_set_add(dirs, wd, 0) == -1) {
+            goto cleanup;
+        }
+        implicit_cwd = 1;
     }
     if (ctx->models.search_paths) {
         for (i = 0; ctx->models.search_paths[i]; i++) {
+            /* check for duplicities with the implicit current working directory */
+            if (implicit_cwd && !strcmp(dirs->set.g[0], ctx->models.search_paths[i])) {
+                implicit_cwd = 0;
+                continue;
+            }
             wd = strdup(ctx->models.search_paths[i]);
             if (!wd) {
                 LOGMEM;
@@ -539,7 +549,7 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
                            file->d_name, wd, strerror(errno));
                     continue;
                 }
-                if (S_ISDIR(st.st_mode) && dirs->number) {
+                if (S_ISDIR(st.st_mode) && (dirs->number || !implicit_cwd)) {
                     /* we have another subdirectory in searchpath to explore,
                      * subdirectories are not taken into account in current working dir (dirs->set.g[0]) */
                     if (ly_set_add(dirs, wn, 0) == -1) {
@@ -621,7 +631,7 @@ lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
     if (!match_name) {
         if (!module && !revision) {
             /* otherwise the module would be already taken from the context */
-            result = (struct lys_module *)ly_ctx_get_module(ctx, name, revision);
+            result = (struct lys_module *)ly_ctx_get_module(ctx, name, NULL, 0);
         }
         if (!result) {
             LOGERR(LY_ESYS, "Data model \"%s\" not found.", name);
@@ -918,7 +928,9 @@ validate_pattern(const char *val_str, struct lys_type *type, struct lyd_node *no
 {
     int rc;
     unsigned int i;
+#ifndef LY_ENABLED_CACHE
     pcre *precomp;
+#endif
 
     assert(type->base == LY_TYPE_STRING);
 
@@ -930,13 +942,33 @@ validate_pattern(const char *val_str, struct lys_type *type, struct lyd_node *no
         return EXIT_FAILURE;
     }
 
+#ifdef LY_ENABLED_CACHE
+    /* there is no cache, build it */
+    if (!type->info.str.patterns_pcre && type->info.str.pat_count) {
+        type->info.str.patterns_pcre = malloc(2 * type->info.str.pat_count * sizeof *type->info.str.patterns_pcre);
+        LY_CHECK_ERR_RETURN(!type->info.str.patterns_pcre, LOGMEM, -1);
+
+        for (i = 0; i < type->info.str.pat_count; ++i) {
+            if (lyp_precompile_pattern(&type->info.str.patterns[i].expr[1],
+                                       (pcre**)&type->info.str.patterns_pcre[i * 2],
+                                       (pcre_extra**)&type->info.str.patterns_pcre[i * 2 + 1])) {
+                return EXIT_FAILURE;
+            }
+        }
+    }
+#endif
+
     for (i = 0; i < type->info.str.pat_count; ++i) {
+#ifdef LY_ENABLED_CACHE
+        rc = pcre_exec((pcre *)type->info.str.patterns_pcre[2 * i], (pcre_extra *)type->info.str.patterns_pcre[2 * i + 1],
+                       val_str, strlen(val_str), 0, 0, NULL, 0);
+#else
         if (lyp_check_pattern(&type->info.str.patterns[i].expr[1], &precomp)) {
-            LOGINT;
             return EXIT_FAILURE;
         }
-
         rc = pcre_exec(precomp, NULL, val_str, strlen(val_str), 0, 0, NULL, 0);
+        free(precomp);
+#endif
         if ((rc && type->info.str.patterns[i].expr[0] == 0x06) || (!rc && type->info.str.patterns[i].expr[0] == 0x15)) {
             LOGVAL(LYE_NOCONSTR, LY_VLOG_LYD, node, val_str, &type->info.str.patterns[i].expr[1]);
             if (type->info.str.patterns[i].emsg) {
@@ -945,10 +977,8 @@ validate_pattern(const char *val_str, struct lys_type *type, struct lyd_node *no
             if (type->info.str.patterns[i].eapptag) {
                 strncpy(((struct ly_err *)&ly_errno)->apptag, type->info.str.patterns[i].eapptag, LY_APPTAG_LEN - 1);
             }
-            free(precomp);
             return EXIT_FAILURE;
         }
-        free(precomp);
     }
 
     return EXIT_SUCCESS;
@@ -1208,16 +1238,36 @@ lyp_check_pattern(const char *pattern, pcre **pcre_precomp)
     /* must return 0, already checked during parsing */
     precomp = pcre_compile(perl_regex, PCRE_ANCHORED | PCRE_DOLLAR_ENDONLY | PCRE_NO_AUTO_CAPTURE,
                            &err_msg, &err_offset, NULL);
-    free(perl_regex);
     if (!precomp) {
-        LOGVAL(LYE_INREGEX, LY_VLOG_NONE, NULL, pattern, pattern + err_offset, err_msg);
+        LOGVAL(LYE_INREGEX, LY_VLOG_NONE, NULL, pattern, perl_regex + err_offset, err_msg);
+        free(perl_regex);
         return EXIT_FAILURE;
     }
+    free(perl_regex);
 
     if (pcre_precomp) {
         *pcre_precomp = precomp;
     } else {
         free(precomp);
+    }
+
+    return EXIT_SUCCESS;
+}
+
+int
+lyp_precompile_pattern(const char *pattern, pcre** pcre_cmp, pcre_extra **pcre_std)
+{
+    const char *err_msg = NULL;
+
+    if (lyp_check_pattern(pattern, pcre_cmp)) {
+        return EXIT_FAILURE;
+    }
+
+    if (pcre_std && pcre_cmp) {
+        (*pcre_std) = pcre_study(*pcre_cmp, 0, &err_msg);
+        if (err_msg) {
+            LOGWRN("Studying pattern \"%s\" failed (%s).", pattern, err_msg);
+        }
     }
 
     return EXIT_SUCCESS;
@@ -1384,7 +1434,7 @@ ident_val_add_module_prefix(const char *value, const struct lyxml_elem *xml, str
     }
 
     /* find module */
-    mod = ly_ctx_get_module_by_ns(ctx, ns->value, NULL);
+    mod = ly_ctx_get_module_by_ns(ctx, ns->value, NULL, 1);
     if (!mod) {
         LOGINT;
         return NULL;
@@ -1412,10 +1462,11 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                 int store, int dflt)
 {
     struct lys_type *ret = NULL, *t;
+    struct lys_tpdf *tpdf;
     int c, len, found = 0, hidden;
     unsigned int i, j;
     int64_t num;
-    uint64_t unum, uind, u;
+    uint64_t unum, uind, u = 0;
     const char *ptr, *value = *value_, *itemname;
     struct lys_type_bit **bits = NULL;
     struct lys_ident *ident;
@@ -1848,6 +1899,26 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             goto cleanup;
         }
 
+        /* special handling of ietf-yang-types xpath1.0 */
+        for (tpdf = type->der;
+             tpdf->module && (strcmp(tpdf->name, "xpath1.0") || strcmp(tpdf->module->name, "ietf-yang-types"));
+             tpdf = tpdf->type.der);
+        if (tpdf->module && xml) {
+            /* convert value into the json format */
+            value = transform_xml2json(type->parent->module->ctx, value, xml, 1, 1, 0);
+            if (!value) {
+                /* invalid instance-identifier format */
+                LOGVAL(LYE_INVAL, LY_VLOG_LYD, contextnode, *value_, itemname);
+                goto cleanup;
+            }
+
+            if (value != *value_) {
+                /* update the changed value */
+                lydict_remove(type->parent->module->ctx, *value_);
+                *value_ = value;
+            }
+        }
+
         if (store) {
             /* store the result */
             val->string = value;
@@ -2098,9 +2169,9 @@ lyp_fill_attr(struct ly_ctx *ctx, struct lyd_node *parent, const char *module_ns
 
     /* first, get module where the annotation should be defined */
     if (module_ns) {
-        mod = (struct lys_module *)ly_ctx_get_module_by_ns(ctx, module_ns, NULL);
+        mod = (struct lys_module *)ly_ctx_get_module_by_ns(ctx, module_ns, NULL, 1);
     } else if (module_name) {
-        mod = (struct lys_module *)ly_ctx_get_module(ctx, module_name, NULL);
+        mod = (struct lys_module *)ly_ctx_get_module(ctx, module_name, NULL, 1);
     } else {
         LOGINT;
         return -1;
@@ -3803,4 +3874,88 @@ copyutf8(char *dst, const char *src)
         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 leading byte 0x%02x", src[0]);
         return 0;
     }
+}
+
+const struct lys_module *
+lyp_get_module(const struct lys_module *module, const char *prefix, int pref_len, const char *name, int name_len, int in_data)
+{
+    const struct lys_module *main_module;
+    char *str;
+    int i;
+
+    assert(!prefix || !name);
+
+    if (prefix && !pref_len) {
+        pref_len = strlen(prefix);
+    }
+    if (name && !name_len) {
+        name_len = strlen(name);
+    }
+
+    main_module = lys_main_module(module);
+
+    /* module own prefix, submodule own prefix, (sub)module own name */
+    if ((!prefix || (!module->type && !strncmp(main_module->prefix, prefix, pref_len) && !main_module->prefix[pref_len])
+                 || (module->type && !strncmp(module->prefix, prefix, pref_len) && !module->prefix[pref_len]))
+            && (!name || (!strncmp(main_module->name, name, name_len) && !main_module->name[name_len]))) {
+        return main_module;
+    }
+
+    /* standard import */
+    for (i = 0; i < module->imp_size; ++i) {
+        if ((!prefix || (!strncmp(module->imp[i].prefix, prefix, pref_len) && !module->imp[i].prefix[pref_len]))
+                && (!name || (!strncmp(module->imp[i].module->name, name, name_len) && !module->imp[i].module->name[name_len]))) {
+            return module->imp[i].module;
+        }
+    }
+
+    /* module required by a foreign grouping, deviation, or submodule */
+    if (name) {
+        str = strndup(name, name_len);
+        if (!str) {
+            LOGMEM;
+            return NULL;
+        }
+        main_module = ly_ctx_get_module(module->ctx, str, NULL, 0);
+
+        /* try data callback */
+        if (!main_module && in_data && module->ctx->data_clb) {
+            main_module = module->ctx->data_clb(module->ctx, str, NULL, 0, module->ctx->data_clb_data);
+        }
+
+        free(str);
+        return main_module;
+    }
+
+    return NULL;
+}
+
+const struct lys_module *
+lyp_get_import_module_ns(const struct lys_module *module, const char *ns)
+{
+    int i;
+    const struct lys_module *mod = NULL;
+
+    assert(module && ns);
+
+    if (module->type) {
+        /* the module is actually submodule and to get the namespace, we need the main module */
+        if (ly_strequal(((struct lys_submodule *)module)->belongsto->ns, ns, 0)) {
+            return ((struct lys_submodule *)module)->belongsto;
+        }
+    } else {
+        /* module's own namespace */
+        if (ly_strequal(module->ns, ns, 0)) {
+            return module;
+        }
+    }
+
+    /* imported modules */
+    for (i = 0; i < module->imp_size; ++i) {
+        if (ly_strequal(module->imp[i].module->ns, ns, 0)) {
+            return module->imp[i].module;
+        }
+    }
+
+    return mod;
 }

@@ -58,7 +58,7 @@ master branch. If you want the latest code from the devel branch, install `libya
 ```
 $ mkdir build; cd build
 $ cmake ..
-$ make 
+$ make
 # make install
 ```
 
@@ -125,6 +125,26 @@ The directory path can be also changed runtime via environment variable, e.g.:
 $ LIBYANG_EXTENSIONS_PLUGINS_DIR=`pwd`/my/relative/path yanglint
 ```
 
+#### Optimizations
+
+Whenever the latest revision of a schema is supposed to be loaded (import without specific revision),
+it is performed in the standard way, the first time. By default, every other time when the latest
+revision of the same schema is needed, the one initially loaded is reused. If you know this can cause
+problems meaning the latest available revision of a schema can change during operation, you can force
+libyang to always search for the schema anew by:
+
+```
+$ cmake -DENABLE_LATEST_REVISIONS=OFF ..
+```
+
+Also, it can be efficient to store certain information about schemas that is generated during parsing
+so that it does not need to be generated every time the schema is used, but it will consume some
+additional space. You can enable this cache with:
+
+```
+$ cmake -DENABLE_CACHE=ON ..
+```
+
 ### CMake Notes
 
 Note that, with CMake, if you want to change the compiler or its options after
@@ -158,7 +178,7 @@ libyang project includes features rich tool called `yanglint(1)` for validation
 and conversion of the schemas and YANG modeled data. The source codes are
 located at [`/tools/lint`](./tools/lint) and can be used to explore how an
 application is supposed to use the libyang library. `yanglint(1)` binary as
-well as its man page are installed together with the library itself. 
+well as its man page are installed together with the library itself.
 
 There is also [README](./tools/lint/examples/README.md) describing some examples of
 using `yanglint`.

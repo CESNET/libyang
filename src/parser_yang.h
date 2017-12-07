@@ -18,9 +18,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "tree_schema.h"
+#include "libyang.h"
 #include "resolve.h"
 #include "common.h"
+#include "tree_schema.h"
 #include "context.h"
 
 #define LYS_SYSTEMORDERED 0x40
@@ -137,7 +138,7 @@ int yang_read_leafref_path(struct lys_module *module, struct yang_type *stype, c
 
 int yang_read_require_instance(struct yang_type *stype, int req);
 
-int yang_read_pattern(struct lys_module *module, struct lys_restr *pattern, char *value, char modifier);
+int yang_read_pattern(struct lys_module *module, struct lys_restr *pattern, void **precomp, char *value, char modifier);
 
 void *yang_read_range(struct  lys_module *module, struct yang_type *stype, char *value, int is_ext_instance);
 
@@ -172,7 +173,7 @@ void *yang_read_ext(struct lys_module *module, void *actual, char *ext_name, cha
 int yang_check_ext_instance(struct lys_module *module, struct lys_ext_instance ***ext, uint size,
                             void *parent, struct unres_schema *unres);
 
-int yang_read_extcomplex_str(struct lys_module *module, struct lys_ext_instance_complex *ext, const char *arg_name, 
+int yang_read_extcomplex_str(struct lys_module *module, struct lys_ext_instance_complex *ext, const char *arg_name,
                              const char *parent_name, char *value, int parent_stmt, LY_STMT stmt);
 
 void **yang_getplace_for_extcomplex_struct(struct lys_ext_instance_complex *ext, int *index,

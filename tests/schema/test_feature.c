@@ -25,8 +25,8 @@
 
 #include <cmocka.h>
 
-#include "../../src/libyang.h"
-#include "../config.h"
+#include "libyang.h"
+#include "tests/config.h"
 
 #define SCHEMA_FOLDER_YIN TESTS_DIR"/schema/yin/files"
 #define SCHEMA_FOLDER_YANG TESTS_DIR"/schema/yang/files"
@@ -37,7 +37,7 @@ setup_ctx_yin(void **state)
 {
     struct ly_ctx *ctx;
 
-    ctx = ly_ctx_new(SCHEMA_FOLDER_YIN);
+    ctx = ly_ctx_new(SCHEMA_FOLDER_YIN, 0);
     assert_non_null(ctx);
 
     *state = ctx;
@@ -49,7 +49,7 @@ setup_ctx_yang(void **state)
 {
     struct ly_ctx *ctx;
 
-    ctx = ly_ctx_new(SCHEMA_FOLDER_YANG);
+    ctx = ly_ctx_new(SCHEMA_FOLDER_YANG, 0);
     assert_non_null(ctx);
 
     *state = ctx;

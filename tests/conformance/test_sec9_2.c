@@ -21,8 +21,8 @@
 #include <string.h>
 #include <sys/wait.h>
 
-#include "../config.h"
-#include "../../src/libyang.h"
+#include "tests/config.h"
+#include "libyang.h"
 
 #define TEST_DIR "sec9_2"
 #define TEST_NAME test_sec7_9_2
@@ -48,7 +48,7 @@ setup_f(void **state)
     }
 
     /* libyang context */
-    st->ctx = ly_ctx_new(TESTS_DIR "/conformance/" TEST_DIR);
+    st->ctx = ly_ctx_new(TESTS_DIR "/conformance/" TEST_DIR, 0);
     if (!st->ctx) {
         fprintf(stderr, "Failed to create context.\n");
         return -1;

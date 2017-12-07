@@ -16,6 +16,7 @@
 #ifndef LY_TREE_INTERNAL_H_
 #define LY_TREE_INTERNAL_H_
 
+#include "libyang.h"
 #include "tree_schema.h"
 #include "tree_data.h"
 #include "resolve.h"
@@ -371,29 +372,6 @@ int lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct
 int lyd_insert_nextto(struct lyd_node *sibling, struct lyd_node *node, int before, int invalidate);
 
 /**
- * @brief Find an import from \p module with matching \p prefix, \p name, or both,
- * \p module itself is also compared.
- *
- * @param[in] module Module with imports.
- * @param[in] prefix Module prefix to search for.
- * @param[in] pref_len Module \p prefix length. If 0, the whole prefix is used, if not NULL.
- * @param[in] name Module name to search for.
- * @param[in] name_len Module \p name length. If 0, the whole name is used, if not NULL.
- *
- * @return Matching module, NULL if not found.
- */
-const struct lys_module *lys_get_import_module(const struct lys_module *module, const char *prefix, int pref_len,
-                                               const char *name, int name_len);
-
-/**
- * @brief Find an import from \p module with matching namespace, the \p module itself is also considered.
- *
- * @param[in] module Module with imports.
- * @param[in] ns Namespace to be found.
- */
-const struct lys_module *lys_get_import_module_ns(const struct lys_module *module, const char *ns);
-
-/**
  * @brief Find a specific sibling. Does not log.
  *
  * Since \p mod_name is mandatory, augments are handled.
@@ -461,6 +439,14 @@ const char *lyd_get_unique_default(const char* unique_expr, struct lyd_node *lis
  * @return EXIT_SUCCESS or EXIT_FAILURE.
  */
 int lyd_check_mandatory_tree(struct lyd_node *root, struct ly_ctx *ctx, int options);
+
+/**
+ * @brief Check if the provided node is inside a grouping.
+ *
+ * @param[in] node Schema node to check.
+ * @return 0 as false, 1 as true
+ */
+int lys_ingrouping(const struct lys_node *node);
 
 /**
  * @brief Add default values, \p resolve unres, and finally

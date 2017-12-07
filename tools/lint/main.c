@@ -22,7 +22,7 @@
 #include "configuration.h"
 #include "completion.h"
 #include "../../linenoise/linenoise.h"
-#include "../../src/libyang.h"
+#include "libyang.h"
 
 int done;
 struct ly_ctx *ctx = NULL;
@@ -45,7 +45,7 @@ main(int argc, char* argv[])
     linenoiseSetCompletionCallback(complete_cmd);
     load_config();
 
-    ctx = ly_ctx_new(NULL);
+    ctx = ly_ctx_new(NULL, 0);
     if (!ctx) {
         fprintf(stderr, "Failed to create context.\n");
         return 1;

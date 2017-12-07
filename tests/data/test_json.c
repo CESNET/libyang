@@ -17,8 +17,8 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-#include "../config.h"
-#include "../../src/libyang.h"
+#include "tests/config.h"
+#include "libyang.h"
 
 struct state {
     struct ly_ctx *ctx;
@@ -182,7 +182,7 @@ setup_f(struct state **state, const char *search_dir, const char **modules, int 
     }
 
     /* libyang context */
-    (*state)->ctx = ly_ctx_new(search_dir);
+    (*state)->ctx = ly_ctx_new(search_dir, 0);
     if (!(*state)->ctx) {
         fprintf(stderr, "Failed to create context.\n");
         goto error;

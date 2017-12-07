@@ -25,8 +25,8 @@
 #include <stdarg.h>
 #include <cmocka.h>
 
-#include "../../src/libyang.h"
-#include "../config.h"
+#include "libyang.h"
+#include "tests/config.h"
 
 struct state {
     struct ly_ctx *ctx;
@@ -44,7 +44,7 @@ setup_ctx(void **state)
     }
 
     /* libyang context */
-    st->ctx = ly_ctx_new(NULL);
+    st->ctx = ly_ctx_new(NULL, 0);
     if (!st->ctx) {
         fprintf(stderr, "Failed to create context.\n");
         goto error;

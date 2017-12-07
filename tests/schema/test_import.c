@@ -25,8 +25,8 @@
 
 #include <cmocka.h>
 
-#include "../../src/libyang.h"
-#include "../config.h"
+#include "libyang.h"
+#include "tests/config.h"
 
 #define SCHEMA_FOLDER_YIN TESTS_DIR"/schema/yin/files"
 #define SCHEMA_FOLDER_YANG TESTS_DIR"/schema/yang/files"
@@ -34,7 +34,7 @@
 static int
 setup_ctx(void **state)
 {
-    *state = ly_ctx_new(NULL);
+    *state = ly_ctx_new(NULL, 0);
     if (!*state) {
         return -1;
     }
@@ -86,7 +86,7 @@ test_mult_revisions(void **state)
     assert_ptr_not_equal(lys_parse_mem(ctx, sch_correct_yang, LYS_IN_YANG), NULL);
 
     ly_ctx_destroy(*state, NULL);
-    *state = ctx = ly_ctx_new(SCHEMA_FOLDER_YIN);
+    *state = ctx = ly_ctx_new(SCHEMA_FOLDER_YIN, 0);
 
     assert_ptr_equal(lys_parse_mem(ctx, sch_yin, LYS_IN_YIN), NULL);
     assert_ptr_not_equal(lys_parse_mem(ctx, sch_correct_yin, LYS_IN_YIN), NULL);

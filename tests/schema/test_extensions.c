@@ -26,8 +26,8 @@
 
 #include <cmocka.h>
 
-#include "../../src/libyang.h"
-#include "../config.h"
+#include "libyang.h"
+#include "tests/config.h"
 
 #define SCHEMA_FOLDER_YIN TESTS_DIR"/schema/yin/files"
 #define SCHEMA_FOLDER_YANG TESTS_DIR"/schema/yang/files"
@@ -51,7 +51,7 @@ setup_ctx(void **state, const char *searchdir)
     }
 
     /* libyang context */
-    st->ctx = ly_ctx_new(searchdir);
+    st->ctx = ly_ctx_new(searchdir, 0);
     if (!st->ctx) {
         fprintf(stderr, "Failed to create context.\n");
         goto error;

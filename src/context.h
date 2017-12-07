@@ -17,10 +17,10 @@
 
 #include <pthread.h>
 
+#include "libyang.h"
 #include "common.h"
 #include "dict_private.h"
 #include "tree_schema.h"
-#include "libyang.h"
 
 struct ly_modules_list {
     char **search_paths;
@@ -34,11 +34,8 @@ struct ly_modules_list {
     uint8_t parsing_sub_modules_count;
     uint8_t parsed_submodules_count;
     uint16_t module_set_id;
-    uint32_t flags;
+    int flags;
 };
-
-#define LY_CTX_ALLIMPLEMENTED 0x01 /**< all modules are implemented despite they were loaded explicitly or implicitly
-                                        via import statement */
 
 struct ly_err_item {
     LY_ERR no;
@@ -56,6 +53,7 @@ struct ly_ctx {
     ly_module_data_clb data_clb;
     void *data_clb_data;
     pthread_key_t errlist_key;
+    uint8_t internal_module_count;
 };
 
 #endif /* LY_CONTEXT_H_ */

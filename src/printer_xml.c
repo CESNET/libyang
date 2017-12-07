@@ -90,7 +90,7 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node, int options)
     if (!(node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
         if (options & (LYP_WD_ALL_TAG | LYP_WD_IMPL_TAG)) {
             /* get with-defaults module and print its namespace */
-            wdmod = ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf-with-defaults", NULL);
+            wdmod = ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf-with-defaults", NULL, 1);
             if (wdmod && modlist_add(&mlist, wdmod)) {
                 goto print;
             }
@@ -144,7 +144,7 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
                 (!node->dflt && (options & LYP_WD_ALL_TAG) && lyd_wd_default((struct lyd_node_leaf_list *)node))) {
             /* we have implicit OR explicit default node */
             /* get with-defaults module */
-            wdmod = ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf-with-defaults", NULL);
+            wdmod = ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf-with-defaults", NULL, 1);
             if (wdmod) {
                 /* print attribute only if context include with-defaults schema */
                 ly_print(out, " %s:default=\"true\"", wdmod->prefix);
@@ -261,6 +261,7 @@ xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int to
 {
     const struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node, *iter;
     const struct lys_type *type;
+    struct lys_tpdf *tpdf;
     const char *ns, *mod_name;
     const char **prefs, **nss;
     const char *xml_expr;
@@ -287,8 +288,24 @@ xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int to
     datatype = leaf->value_type & LY_DATA_TYPE_MASK;
 printvalue:
     switch (datatype) {
-    case LY_TYPE_BINARY:
     case LY_TYPE_STRING:
+        type = lyd_leaf_type((struct lyd_node_leaf_list *)leaf);
+        if (!type) {
+            /* error */
+            ly_print(out, "\"(!error!)\"");
+            return EXIT_FAILURE;
+        }
+        for (tpdf = type->der;
+             tpdf->module && (strcmp(tpdf->name, "xpath1.0") || strcmp(tpdf->module->name, "ietf-yang-types"));
+             tpdf = tpdf->type.der);
+        /* special handling of ietf-yang-types xpath1.0 */
+        if (tpdf->module) {
+            /* avoid code duplication - use instance-identifier printer which gets necessary namespaces to print */
+            datatype = LY_TYPE_INST;
+            goto printvalue;
+        }
+        /* fallthrough */
+    case LY_TYPE_BINARY:
     case LY_TYPE_BITS:
     case LY_TYPE_ENUM:
     case LY_TYPE_BOOL:

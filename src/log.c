@@ -312,7 +312,6 @@ const char *ly_errs[] = {
 /* LYE_NOLEAFREF */    "Leafref \"%s\" of value \"%s\" points to a non-existing leaf.",
 /* LYE_NOMANDCHOICE */ "Mandatory choice \"%s\" missing a case branch.",
 
-/* LYE_XPATH_INSNODE */"Schema node \"%.*s\" not found (%.*s) with context node \"%s\".",
 /* LYE_XPATH_INTOK */  "Unexpected XPath token %s (%.15s).",
 /* LYE_XPATH_EOF */    "Unexpected XPath expression end.",
 /* LYE_XPATH_INOP_1 */ "Cannot apply XPath operation %s on %s.",
@@ -407,7 +406,6 @@ static const LY_VECODE ecode2vecode[] = {
     LYVE_NOLEAFREF,    /* LYE_NOLEAFREF */
     LYVE_NOMANDCHOICE, /* LYE_NOMANDCHOICE */
 
-    LYVE_XPATH_INSNODE,/* LYE_XPATH_INSNODE */
     LYVE_XPATH_INTOK,  /* LYE_XPATH_INTOK */
     LYVE_XPATH_EOF,    /* LYE_XPATH_EOF */
     LYVE_XPATH_INOP,   /* LYE_XPATH_INOP_1 */

@@ -21,7 +21,7 @@
 
 #include "commands.h"
 #include "../../linenoise/linenoise.h"
-#include "../../src/libyang.h"
+#include "libyang.h"
 
 extern struct ly_ctx *ctx;
 

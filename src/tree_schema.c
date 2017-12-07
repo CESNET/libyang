@@ -790,7 +790,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
     }
 
     /* check identifier uniqueness */
-    if (lys_check_id(child, parent, module)) {
+    if (!(module->ctx->models.flags & LY_CTX_TRUSTED) && lys_check_id(child, parent, module)) {
         return EXIT_FAILURE;
     }
 
@@ -1329,7 +1329,7 @@ lys_iffeature_free(struct ly_ctx *ctx, struct lys_iffeature *iffeature, uint8_t 
 
     for (i = 0; i < iffeature_size; ++i) {
         lys_extension_instances_free(ctx, iffeature[i].ext, iffeature[i].ext_size, private_destructor);
-        if ( !shallow ) {
+        if (!shallow) {
             free(iffeature[i].expr);
             free(iffeature[i].features);
         }
@@ -1454,8 +1454,25 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
         if (old->info.str.length) {
             new->info.str.length = lys_restr_dup(mod, old->info.str.length, 1, shallow, unres);
         }
-        new->info.str.patterns = lys_restr_dup(mod, old->info.str.patterns, old->info.str.pat_count, shallow, unres);
-        new->info.str.pat_count = old->info.str.pat_count;
+        if (old->info.str.pat_count) {
+            new->info.str.patterns = lys_restr_dup(mod, old->info.str.patterns, old->info.str.pat_count, shallow, unres);
+            new->info.str.pat_count = old->info.str.pat_count;
+#ifdef LY_ENABLED_CACHE
+            if (!in_grp) {
+                new->info.str.patterns_pcre = malloc(new->info.str.pat_count * 2 * sizeof *new->info.str.patterns_pcre);
+                LY_CHECK_ERR_RETURN(!new->info.str.patterns_pcre, LOGMEM, -1);
+                for (u = 0; u < new->info.str.pat_count; u++) {
+                    if (lyp_precompile_pattern(&new->info.str.patterns[u].expr[1],
+                                              (pcre**)&new->info.str.patterns_pcre[2 * u],
+                                              (pcre_extra**)&new->info.str.patterns_pcre[2 * u + 1])) {
+                        free(new->info.str.patterns_pcre);
+                        new->info.str.patterns_pcre = NULL;
+                        return -1;
+                    }
+                }
+            }
+#endif
+        }
         break;
 
     case LY_TYPE_UNION:
@@ -1987,8 +2004,17 @@ lys_type_free(struct ly_ctx *ctx, struct lys_type *type,
         free(type->info.str.length);
         for (i = 0; i < type->info.str.pat_count; i++) {
             lys_restr_free(ctx, &type->info.str.patterns[i], private_destructor);
+#ifdef LY_ENABLED_CACHE
+            if (type->info.str.patterns_pcre) {
+                pcre_free((pcre*)type->info.str.patterns_pcre[2 * i]);
+                pcre_free_study((pcre_extra*)type->info.str.patterns_pcre[2 * i + 1]);
+            }
+#endif
         }
         free(type->info.str.patterns);
+#ifdef LY_ENABLED_CACHE
+        free(type->info.str.patterns_pcre);
+#endif
         break;
 
     case LY_TYPE_UNION:
@@ -2509,83 +2535,6 @@ lys_implemented_module(const struct lys_module *mod)
     return (struct lys_module *)mod;
 }
 
-const struct lys_module *
-lys_get_import_module_ns(const struct lys_module *module, const char *ns)
-{
-    int i;
-
-    assert(module && ns);
-
-    if (module->type) {
-        /* the module is actually submodule and to get the namespace, we need the main module */
-        if (ly_strequal(((struct lys_submodule *)module)->belongsto->ns, ns, 0)) {
-            return ((struct lys_submodule *)module)->belongsto;
-        }
-    } else {
-        /* modul's own namespace */
-        if (ly_strequal(module->ns, ns, 0)) {
-            return module;
-        }
-    }
-
-    /* imported modules */
-    for (i = 0; i < module->imp_size; ++i) {
-        if (ly_strequal(module->imp[i].module->ns, ns, 0)) {
-            return module->imp[i].module;
-        }
-    }
-
-    return NULL;
-}
-
-const struct lys_module *
-lys_get_import_module(const struct lys_module *module, const char *prefix, int pref_len, const char *name, int name_len)
-{
-    const struct lys_module *main_module;
-    char *str;
-    int i;
-
-    assert(!prefix || !name);
-
-    if (prefix && !pref_len) {
-        pref_len = strlen(prefix);
-    }
-    if (name && !name_len) {
-        name_len = strlen(name);
-    }
-
-    main_module = lys_main_module(module);
-
-    /* module own prefix, submodule own prefix, (sub)module own name */
-    if ((!prefix || (!module->type && !strncmp(main_module->prefix, prefix, pref_len) && !main_module->prefix[pref_len])
-                 || (module->type && !strncmp(module->prefix, prefix, pref_len) && !module->prefix[pref_len]))
-            && (!name || (!strncmp(main_module->name, name, name_len) && !main_module->name[name_len]))) {
-        return main_module;
-    }
-
-    /* standard import */
-    for (i = 0; i < module->imp_size; ++i) {
-        if ((!prefix || (!strncmp(module->imp[i].prefix, prefix, pref_len) && !module->imp[i].prefix[pref_len]))
-                && (!name || (!strncmp(module->imp[i].module->name, name, name_len) && !module->imp[i].module->name[name_len]))) {
-            return module->imp[i].module;
-        }
-    }
-
-    /* module required by a foreign grouping, deviation, or submodule */
-    if (name) {
-        str = strndup(name, name_len);
-        if (!str) {
-            LOGMEM;
-            return NULL;
-        }
-        main_module = ly_ctx_get_module(module->ctx, str, NULL);
-        free(str);
-        return main_module;
-    }
-
-    return NULL;
-}
-
 /* free_int_mods - flag whether to free the internal modules as well */
 static void
 module_free_common(struct lys_module *module, void (*private_destructor)(const struct lys_node *node, void *priv))
@@ -2700,8 +2649,8 @@ lys_submodule_free(struct lys_submodule *submodule, void (*private_destructor)(c
     free(submodule);
 }
 
-static int
-ingrouping(const struct lys_node *node)
+int
+lys_ingrouping(const struct lys_node *node)
 {
     const struct lys_node *iter = node;
     assert(node);
@@ -3008,14 +2957,14 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         break;
 
     case LYS_LEAF:
-        if (lys_type_dup(module, retval, &(leaf->type), &(leaf_orig->type), ingrouping(retval), shallow, unres)) {
+        if (lys_type_dup(module, retval, &(leaf->type), &(leaf_orig->type), lys_ingrouping(retval), shallow, unres)) {
             goto error;
         }
         leaf->units = lydict_insert(module->ctx, leaf_orig->units, 0);
 
         if (leaf_orig->dflt) {
             leaf->dflt = lydict_insert(ctx, leaf_orig->dflt, 0);
-            if (!ingrouping(retval) || (leaf->type.base != LY_TYPE_LEAFREF)) {
+            if (!lys_ingrouping(retval) || (leaf->type.base != LY_TYPE_LEAFREF)) {
                 /* problem is when it is an identityref referencing an identity from a module
                  * and we are using the grouping in a different module */
                 if (leaf->type.base == LY_TYPE_IDENT) {
@@ -3043,7 +2992,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         break;
 
     case LYS_LEAFLIST:
-        if (lys_type_dup(module, retval, &(llist->type), &(llist_orig->type), ingrouping(retval), shallow, unres)) {
+        if (lys_type_dup(module, retval, &(llist->type), &(llist_orig->type), lys_ingrouping(retval), shallow, unres)) {
             goto error;
         }
         llist->units = lydict_insert(module->ctx, llist_orig->units, 0);
@@ -3064,7 +3013,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
 
             for (i = 0; i < llist->dflt_size; i++) {
                 llist->dflt[i] = lydict_insert(ctx, llist_orig->dflt[i], 0);
-                if (!ingrouping(retval) || (llist->type.base != LY_TYPE_LEAFREF)) {
+                if (!lys_ingrouping(retval) || (llist->type.base != LY_TYPE_LEAFREF)) {
                     if ((llist->type.base == LY_TYPE_IDENT) && !strchr(llist->dflt[i], ':') && (module != llist_orig->module)) {
                         tmp_mod = llist_orig->module;
                     } else {

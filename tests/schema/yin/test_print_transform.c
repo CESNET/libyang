@@ -27,8 +27,8 @@
 
 #include <cmocka.h>
 
-#include "../../../src/libyang.h"
-#include "../../config.h"
+#include "libyang.h"
+#include "../tests/config.h"
 
 #define SCHEMA_FOLDER TESTS_DIR"/schema/yin/files"
 
@@ -65,7 +65,7 @@ static int
 setup_ctx(void **state)
 {
     //ly_verb(LY_LLVRB);
-    (*state) = ly_ctx_new(SCHEMA_FOLDER);
+    (*state) = ly_ctx_new(SCHEMA_FOLDER, 0);
     if (!(*state)) {
         return -1;
     }

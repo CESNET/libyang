@@ -26,10 +26,9 @@
 #include <unistd.h>
 
 #include "common.h"
-#include "tree_internal.h"
+#include "parser.h"
 #include "xpath.h"
 #include "context.h"
-#include "libyang.h"
 
 THREAD_LOCAL struct ly_err ly_err_main;
 
@@ -260,7 +259,14 @@ _transform_json2xml(const struct lys_module *module, const char *expr, int schem
                 if (end) {
                     name_len = end - cur_expr;
                     name = strndup(cur_expr, name_len);
-                    mod = ly_ctx_get_module(module->ctx, name, NULL);
+                    mod = ly_ctx_get_module(module->ctx, name, NULL, 0);
+                    if (module->ctx->data_clb) {
+                        if (!mod) {
+                            mod = module->ctx->data_clb(module->ctx, name, NULL, 0, module->ctx->data_clb_data);
+                        } else if (!mod->implemented) {
+                            mod = module->ctx->data_clb(module->ctx, name, mod->ns, LY_MODCLB_NOT_IMPLEMENTED, module->ctx->data_clb_data);
+                        }
+                    }
                     free(name);
                     if (!mod) {
                         LOGVAL(LYE_INMOD_LEN, LY_VLOG_NONE, NULL, name_len, cur_expr);
@@ -340,7 +346,14 @@ _transform_json2xml(const struct lys_module *module, const char *expr, int schem
             if (!schema) {
                 prefix = NULL;
                 name = strndup(ptr, name_len);
-                mod = ly_ctx_get_module(module->ctx, name, NULL);
+                mod = ly_ctx_get_module(module->ctx, name, NULL, 0);
+                if (module->ctx->data_clb) {
+                    if (!mod) {
+                        mod = module->ctx->data_clb(module->ctx, name, NULL, 0, module->ctx->data_clb_data);
+                    } else if (!mod->implemented) {
+                        mod = module->ctx->data_clb(module->ctx, name, mod->ns, LY_MODCLB_NOT_IMPLEMENTED, module->ctx->data_clb_data);
+                    }
+                }
                 free(name);
                 if (mod) {
                     prefix = mod->prefix;
@@ -479,7 +492,7 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
                 }
                 goto error;
             }
-            mod = ly_ctx_get_module_by_ns(ctx, ns->value, NULL);
+            mod = ly_ctx_get_module_by_ns(ctx, ns->value, NULL, 0);
             if (use_ctx_data_clb && ctx->data_clb) {
                 if (!mod) {
                     mod = ctx->data_clb(ctx, NULL, ns->value, 0, ctx->data_clb_data);
@@ -553,7 +566,7 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
                 }
                 goto error;
             }
-            mod = ly_ctx_get_module_by_ns(ctx, ns->value, NULL);
+            mod = ly_ctx_get_module_by_ns(ctx, ns->value, NULL, 1);
             if (mod) {
                 /* adjust out size (it can even decrease in some strange cases) */
                 out_size += strlen(mod->name) - pref_len;
@@ -626,7 +639,7 @@ transform_schema2json(const struct lys_module *module, const char *expr)
         if ((exp->tokens[i] == LYXP_TOKEN_NAMETEST) && (end = strnchr(cur_expr, ':', exp->tok_len[i]))) {
             /* get the module */
             pref_len = end - cur_expr;
-            mod = lys_get_import_module(module, cur_expr, pref_len, NULL, 0);
+            mod = lyp_get_module(module, cur_expr, pref_len, NULL, 0, 0);
             if (!mod) {
                 LOGVAL(LYE_INMOD_LEN, LY_VLOG_NONE, NULL, pref_len, cur_expr);
                 goto error;
@@ -652,7 +665,7 @@ transform_schema2json(const struct lys_module *module, const char *expr)
 
             /* get the module */
             pref_len = end - ptr;
-            mod = lys_get_import_module(module, ptr, pref_len, NULL, 0);
+            mod = lyp_get_module(module, ptr, pref_len, NULL, 0, 0);
             if (mod) {
                 /* adjust out size (it can even decrease in some strange cases) */
                 out_size += strlen(mod->name) - pref_len;
@@ -726,7 +739,7 @@ transform_iffeat_schema2json(const struct lys_module *module, const char *expr)
         }
 
         /* get the module */
-        mod = lys_get_import_module(module, id, id_len, NULL, 0);
+        mod = lyp_get_module(module, id, id_len, NULL, 0, 0);
         if (!mod) {
             LOGVAL(LYE_INMOD_LEN, LY_VLOG_NONE, NULL, id_len, id);
             free(out);
@@ -800,7 +813,7 @@ transform_json2xpath_subexpr(const struct lys_module *cur_module, const struct l
                 /* there is a prefix, get the module */
                 name_len = end - cur_expr;
                 name = strndup(cur_expr, name_len);
-                prev_mod = ly_ctx_get_module(cur_module->ctx, name, NULL);
+                prev_mod = ly_ctx_get_module(cur_module->ctx, name, NULL, 1);
                 free(name);
                 if (!prev_mod) {
                     LOGVAL(LYE_INMOD_LEN, LY_VLOG_NONE, NULL, name_len ? name_len : exp->tok_len[*i], cur_expr);
@@ -842,7 +855,7 @@ transform_json2xpath_subexpr(const struct lys_module *cur_module, const struct l
             /* get the module, but it may actually not be a module name */
             name_len = end - ptr;
             name = strndup(ptr, name_len);
-            mod = ly_ctx_get_module(cur_module->ctx, name, NULL);
+            mod = ly_ctx_get_module(cur_module->ctx, name, NULL, 1);
             free(name);
 
             if (mod && (mod != cur_module)) {
@@ -908,6 +921,276 @@ error:
     free(out);
     lyxp_expr_free(exp);
     return NULL;
+}
+
+static int
+ly_path_data2schema_copy_token(struct lyxp_expr *exp, uint16_t cur_exp, char **out, uint16_t *out_used)
+{
+    uint16_t len;
+
+    for (len = exp->tok_len[cur_exp]; isspace(exp->expr[exp->expr_pos[cur_exp] + len]); ++len);
+    *out = ly_realloc(*out, *out_used + len);
+    LY_CHECK_ERR_RETURN(!(*out), LOGMEM, -1);
+    sprintf(*out + *out_used - 1, "%.*s", len, exp->expr + exp->expr_pos[cur_exp]);
+    *out_used += len;
+
+    return 0;
+}
+
+static int
+ly_path_data2schema_subexp(const struct ly_ctx *ctx, const struct lys_node *orig_parent, const struct lys_module *cur_mod,
+                           struct lyxp_expr *exp, uint16_t *cur_exp, char **out, uint16_t *out_used)
+{
+    uint16_t j, k, len, slash;
+    char *str = NULL, *col;
+    const struct lys_node *node, *node2, *parent;
+    enum lyxp_token end_token = 0;
+    int first, path_lost;
+
+    switch (exp->tokens[*cur_exp]) {
+    case LYXP_TOKEN_BRACK1:
+        end_token = LYXP_TOKEN_BRACK2;
+
+        if (ly_path_data2schema_copy_token(exp, *cur_exp, out, out_used)) {
+            goto error;
+        }
+        ++(*cur_exp);
+        first = 0;
+        break;
+    case LYXP_TOKEN_PAR1:
+        end_token = LYXP_TOKEN_PAR2;
+
+        if (ly_path_data2schema_copy_token(exp, *cur_exp, out, out_used)) {
+            goto error;
+        }
+        ++(*cur_exp);
+        first = 0;
+        break;
+    default:
+        first = 1;
+        break;
+    }
+
+    path_lost = 0;
+    parent = orig_parent;
+    while (*cur_exp < exp->used) {
+        switch (exp->tokens[*cur_exp]) {
+        case LYXP_TOKEN_DOT:
+        case LYXP_TOKEN_DDOT:
+        case LYXP_TOKEN_NAMETEST:
+            if (path_lost) {
+                /* we do not know anything anymore, just copy it */
+                if (ly_path_data2schema_copy_token(exp, *cur_exp, out, out_used)) {
+                    goto error;
+                }
+                break;
+            }
+
+            str = strndup(exp->expr + exp->expr_pos[*cur_exp], exp->tok_len[*cur_exp]);
+            LY_CHECK_ERR_GOTO(!str, LOGMEM, error);
+
+            col = strchr(str, ':');
+            if (col) {
+                *col = '\0';
+                ++col;
+            }
+
+            /* first node */
+            if (first) {
+                if (!col) {
+                    LOGVAL(LYE_PATH_MISSMOD, LY_VLOG_NONE, NULL);
+                    goto error;
+                }
+
+                cur_mod = ly_ctx_get_module(ctx, str, NULL, 0);
+                if (!cur_mod) {
+                    LOGVAL(LYE_XPATH_INMOD, LY_VLOG_NONE, NULL, strlen(str), str);
+                    goto error;
+                }
+
+                first = 0;
+            }
+
+            if (((col ? col[0] : str[0]) == '.') || ((col ? col[0] : str[0]) == '*')) {
+                free(str);
+                str = NULL;
+
+                if (end_token) {
+                    LOGERR(LY_EINVAL, "Invalid path used (%s in a subexpression).", str);
+                    goto error;
+                }
+
+                /* we can no longer evaluate the path, so just copy the rest */
+                path_lost = 1;
+                if (ly_path_data2schema_copy_token(exp, *cur_exp, out, out_used)) {
+                    goto error;
+                }
+                break;
+            }
+
+            /* create schema path for this data node */
+            node = NULL;
+            while ((node = lys_getnext(node, parent, cur_mod, 0))) {
+                if (strcmp(node->name, col ? col : str)) {
+                    continue;
+                }
+
+                if (col && strcmp(lys_node_module(node)->name, str)) {
+                    continue;
+                }
+                if (!col && (lys_node_module(node) != lys_node_module(parent))) {
+                    continue;
+                }
+
+                /* determine how deep the node actually is, we must generate the path from the highest parent */
+                j = 0;
+                node2 = node;
+                while (node2 != parent) {
+                    node2 = lys_parent(node2);
+                    if (!node2 || (node2->nodetype != LYS_USES)) {
+                        ++j;
+                    }
+                }
+
+                /* first node, do not print '/' */
+                slash = 0;
+                while (j) {
+                    k = j - 1;
+                    node2 = node;
+                    while (k) {
+                        node2 = lys_parent(node2);
+                        if (!node2 || (node2->nodetype != LYS_USES)) {
+                            --k;
+                        }
+                    }
+
+                    if ((lys_node_module(node2) != cur_mod) || !parent) {
+                        /* module name and node name */
+                        len = slash + strlen(lys_node_module(node2)->name) + 1 + strlen(node2->name);
+                        *out = ly_realloc(*out, *out_used + len);
+                        LY_CHECK_ERR_GOTO(!(*out), LOGMEM, error);
+                        sprintf(*out + *out_used - 1, "%s%s:%s", slash ? "/" : "", lys_node_module(node2)->name, node2->name);
+                        *out_used += len;
+                    } else {
+                        /* only node name */
+                        len = slash + strlen(node2->name);
+                        *out = ly_realloc(*out, *out_used + len);
+                        LY_CHECK_ERR_GOTO(!(*out), LOGMEM, error);
+                        sprintf(*out + *out_used - 1, "%s%s", slash ? "/" : "", node2->name);
+                        *out_used += len;
+                    }
+
+                    slash = 1;
+                    --j;
+                }
+
+                break;
+            }
+
+            /* copy any whitespaces */
+            for (len = 0; isspace(exp->expr[exp->expr_pos[*cur_exp] + exp->tok_len[*cur_exp] + len]); ++len);
+            if (len) {
+                *out = ly_realloc(*out, *out_used + len);
+                LY_CHECK_ERR_GOTO(!(*out), LOGMEM, error);
+                sprintf(*out + *out_used - 1, "%*s", len, " ");
+                *out_used += len;
+            }
+
+            /* next iteration */
+            free(str);
+            str = NULL;
+            parent = node;
+            break;
+        case LYXP_TOKEN_COMMA:
+        case LYXP_TOKEN_OPERATOR_LOG:
+        case LYXP_TOKEN_OPERATOR_COMP:
+        case LYXP_TOKEN_OPERATOR_MATH:
+        case LYXP_TOKEN_OPERATOR_UNI:
+            /* reset the processing */
+            first = 1;
+            path_lost = 0;
+            parent = orig_parent;
+
+            /* fallthrough */
+        case LYXP_TOKEN_OPERATOR_PATH:
+            if ((exp->tokens[*cur_exp] == LYXP_TOKEN_OPERATOR_PATH) && (exp->tok_len[*cur_exp] == 2)) {
+                /* we can no longer evaluate the path further */
+                path_lost = 1;
+            }
+            /* fallthrough */
+        case LYXP_TOKEN_NODETYPE:
+        case LYXP_TOKEN_FUNCNAME:
+        case LYXP_TOKEN_LITERAL:
+        case LYXP_TOKEN_NUMBER:
+            /* just copy it */
+            if (ly_path_data2schema_copy_token(exp, *cur_exp, out, out_used)) {
+                goto error;
+            }
+            break;
+        case LYXP_TOKEN_BRACK1:
+        case LYXP_TOKEN_PAR1:
+            if (ly_path_data2schema_subexp(ctx, parent, cur_mod, exp, cur_exp, out, out_used)) {
+                goto error;
+            }
+            break;
+        default:
+            if (end_token && (exp->tokens[*cur_exp] == end_token)) {
+                /* we are done (with this subexpression) */
+                if (ly_path_data2schema_copy_token(exp, *cur_exp, out, out_used)) {
+                    goto error;
+                }
+
+                return 0;
+            }
+            LOGERR(LY_EINVAL, "Invalid token used (%.*s).", exp->tok_len[*cur_exp], exp->expr + exp->expr_pos[*cur_exp]);
+            goto error;
+        }
+
+        ++(*cur_exp);
+    }
+
+    if (end_token) {
+        LOGVAL(LYE_XPATH_EOF, LY_VLOG_NONE, NULL);
+        return -1;
+    }
+
+    return 0;
+
+error:
+    free(str);
+    return -1;
+}
+
+API char *
+ly_path_data2schema(const struct ly_ctx *ctx, const char *data_path)
+{
+    struct lyxp_expr *exp;
+    uint16_t out_used, cur_exp;
+    char *out;
+
+    if (!ctx || !data_path) {
+        LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
+        return NULL;
+    }
+
+    cur_exp = 0;
+    out_used = 1;
+    out = malloc(1);
+    LY_CHECK_ERR_RETURN(!out, LOGMEM, NULL);
+
+    exp = lyxp_parse_expr(data_path);
+    if (!exp) {
+        free(out);
+        return NULL;
+    }
+
+    if (ly_path_data2schema_subexp(ctx, NULL, NULL, exp, &cur_exp, &out, &out_used)) {
+        free(out);
+        out = NULL;
+    }
+
+    lyxp_expr_free(exp);
+    return out;
 }
 
 int
