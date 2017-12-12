@@ -6,7 +6,7 @@
 [![Coverity Scan Build Status](https://scan.coverity.com/projects/5259/badge.svg)](https://scan.coverity.com/projects/5259)
 [![Ohloh Project Status](https://www.openhub.net/p/libyang/widgets/project_thin_badge.gif)](https://www.openhub.net/p/libyang)
 
-libyang is YANG data modelling language parser and toolkit written (and
+libyang is a YANG data modelling language parser and toolkit written (and
 providing API) in C. The library is used e.g. in [libnetconf2](https://github.com/CESNET/libnetconf2),
 [Netopeer2](https://github.com/CESNET/Netopeer2) or [sysrepo](https://github.com/sysrepo/sysrepo) projects.
 
@@ -21,7 +21,7 @@ providing API) in C. The library is used e.g. in [libnetconf2](https://github.co
 * Support for default values in the instance data ([RFC 6243](https://tools.ietf.org/html/rfc6243)).
 * Support for YANG extensions.
 * Support for YANG Metadata ([RFC 7952](https://tools.ietf.org/html/rfc6243)).
-* [yanglint](#yanglint) - features rich YANG tool.
+* [yanglint](#yanglint) - feature-rich YANG tool.
 
 Current implementation covers YANG 1.0 ([RFC 6020](https://tools.ietf.org/html/rfc6020))
 as well as YANG 1.1 ([RFC 7950](https://tools.ietf.org/html/rfc7950)).
@@ -30,7 +30,7 @@ as well as YANG 1.1 ([RFC 7950](https://tools.ietf.org/html/rfc7950)).
 
 We are using openSUSE Build Service to automaticaly prepare binary packages for number of GNU/Linux distros. Check
 [this](https://software.opensuse.org//download.html?project=home%3Aliberouter&package=libyang) page and follow the
-instroctions for your distro to install `libyang` package. The `libyang` package is built once a day from the
+instructions for your distro to install `libyang` package. The `libyang` package is built once a day from the
 master branch. If you want the latest code from the devel branch, install `libyang-experimental` package.
 
 ## Requirements
@@ -111,7 +111,7 @@ $ cmake -D CMAKE_BUILD_TYPE:String="Release" ..
 
 #### Changing Extensions Plugins Directory
 
-For the YANG extensions, libyang loads the extension plugins. By default, the
+As for YANG extensions, libyang allows loading extension plugins. By default, the
 directory to store the plugins is LIBDIR/libyang. To change it, use the following
 cmake option with the value specifying the desired directory:
 
@@ -174,7 +174,7 @@ If you are using `cmake` in you project, it is also possible to use the provided
 
 ## yanglint
 
-libyang project includes features rich tool called `yanglint(1)` for validation
+libyang project includes a feature-rich tool called `yanglint(1)` for validation
 and conversion of the schemas and YANG modeled data. The source codes are
 located at [`/tools/lint`](./tools/lint) and can be used to explore how an
 application is supposed to use the libyang library. `yanglint(1)` binary as
