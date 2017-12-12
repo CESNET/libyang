@@ -805,6 +805,11 @@ transform_json2xpath_subexpr(const struct lys_module *cur_module, const struct l
                 return -1;
             }
 
+            if (*i >= exp->used) {
+                LOGVAL(LYE_XPATH_EOF, LY_VLOG_NONE, NULL);
+                return -1;
+            }
+
             /* copy "]" */
             strncpy(*out + *out_used, &exp->expr[exp->expr_pos[*i]], exp->tok_len[*i]);
             *out_used += exp->tok_len[*i];
