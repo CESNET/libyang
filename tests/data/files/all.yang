@@ -3,6 +3,10 @@ module all {
   namespace "urn:all";
   prefix all_mod;
 
+  import all-imp {
+    prefix all_imp;
+  }
+
   revision 2016-05-23;
   revision 2016-05-22;
 
@@ -222,8 +226,9 @@ module all {
   augment "/cont1" {
     leaf leaf17 {
       type identityref {
-        base ident1;
+        base all_imp:ident4;
       }
+      must "../leaf17 = 'all_imp:ident5'";
     }
   }
 

@@ -40,6 +40,7 @@ setup_f(void **state)
 {
     struct state *st;
     const char *schema = TESTS_DIR"/data/files/all.yin";
+    const char *schemaimp = TESTS_DIR"/data/files/all-imp.yin";
     const char *schemadev = TESTS_DIR"/data/files/all-dev.yin";
 
     (*state) = st = calloc(1, sizeof *st);
@@ -63,6 +64,12 @@ setup_f(void **state)
     }
     lys_features_enable(st->mod, "feat2");
     lys_features_enable(st->mod, "*");
+
+    st->mod = lys_parse_path(st->ctx, schemaimp, LYS_IN_YIN);
+    if (!st->mod) {
+        fprintf(stderr, "Failed to load data model \"%s\".\n", schemaimp);
+        goto error;
+    }
 
     st->mod = lys_parse_path(st->ctx, schemadev, LYS_IN_YIN);
     if (!st->mod) {

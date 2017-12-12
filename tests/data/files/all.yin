@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module name="all"
         xmlns="urn:ietf:params:xml:ns:yang:yin:1"
-        xmlns:all_mod="urn:all">
+        xmlns:all_mod="urn:all"
+        xmlns:all_imp="urn:all-imp">
   <yang-version value="1.1"/>
   <namespace uri="urn:all"/>
   <prefix value="all_mod"/>
+  <import module="all-imp">
+    <prefix value="all_imp"/>
+  </import>
   <revision date="2016-05-23"/>
   <revision date="2016-05-22"/>
   <feature name="feat1">
@@ -194,8 +198,9 @@
   <augment target-node="/cont1">
     <leaf name="leaf17">
       <type name="identityref">
-        <base name="ident1"/>
+        <base name="all_imp:ident4"/>
       </type>
+      <must condition="../leaf17 = 'all_imp:ident5'"/>
     </leaf>
   </augment>
   <rpc name="rpc1">
