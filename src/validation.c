@@ -350,6 +350,110 @@ find_orig_type(struct lys_type *par_type, LY_DATA_TYPE base_type)
     return NULL;
 }
 
+static int
+lyv_extension(struct lys_ext_instance **ext, uint8_t size, struct lyd_node *node)
+{
+    uint i;
+
+    for (i = 0; i < size; ++i) {
+        if ((ext[i]->flags & LYEXT_OPT_VALID) && ext[i]->def->plugin->valid_data) {
+            if (ext[i]->def->plugin->valid_data(ext[i], node)) {
+                return EXIT_FAILURE;
+            }
+        }
+    }
+    return 0;
+}
+
+static int
+lyv_type_extension(struct lyd_node_leaf_list *leaf, struct lys_type *type, int first_type)
+{
+    struct lyd_node *node = (struct lyd_node *)leaf;
+    unsigned int i;
+
+    switch (type->base) {
+        case LY_TYPE_ENUM:
+            if (first_type && lyv_extension(leaf->value.enm->ext, leaf->value.enm->ext_size, node)) {
+                return EXIT_FAILURE;
+            }
+            break;
+        case LY_TYPE_STRING:
+            if (type->info.str.length &&
+                lyv_extension(type->info.str.length->ext, type->info.str.length->ext_size, node)) {
+                return EXIT_FAILURE;
+            }
+            for(i = 0; i < type->info.str.pat_count; ++i) {
+                if (lyv_extension(type->info.str.patterns[i].ext, type->info.str.patterns[i].ext_size, node)) {
+                    return EXIT_FAILURE;
+                }
+            }
+            break;
+        case LY_TYPE_DEC64:
+            if (type->info.dec64.range &&
+                lyv_extension(type->info.dec64.range->ext, type->info.dec64.range->ext_size, node)) {
+                return EXIT_FAILURE;
+            }
+            break;
+        case LY_TYPE_INT8:
+        case LY_TYPE_INT16:
+        case LY_TYPE_INT32:
+        case LY_TYPE_INT64:
+        case LY_TYPE_UINT8:
+        case LY_TYPE_UINT16:
+        case LY_TYPE_UINT32:
+        case LY_TYPE_UINT64:
+            if (type->info.num.range &&
+                lyv_extension(type->info.num.range->ext, type->info.num.range->ext_size, node)) {
+                return EXIT_FAILURE;
+            }
+            break;
+        case LY_TYPE_BITS:
+            if (first_type) {
+                /* get the count of bits */
+                type = find_orig_type(&((struct lys_node_leaf *) leaf->schema)->type, LY_TYPE_BITS);
+                for (i = 0; i < type->info.bits.count; ++i) {
+                    if (!leaf->value.bit[i]) {
+                        continue;
+                    }
+                    if (lyv_extension(leaf->value.bit[i]->ext, leaf->value.bit[i]->ext_size, node)) {
+                        return EXIT_FAILURE;
+                    }
+                }
+            }
+            break;
+        case LY_TYPE_UNION:
+            for (i = 0; i < type->info.uni.count; ++i) {
+                if (type->info.uni.types[i].base == leaf->value_type) {
+                    break;
+                }
+            }
+            if (i < type->info.uni.count &&
+                lyv_type_extension(leaf, &type->info.uni.types[i], first_type)) {
+                return EXIT_FAILURE;
+            }
+            break;
+        default:
+            break;
+    }
+
+
+    if (lyv_extension(type->ext, type->ext_size, node)) {
+        return EXIT_FAILURE;
+    }
+
+    while (type->der->type.der) {
+        type = &type->der->type;
+        if ((type->parent->flags & LYS_VALID_DATA)) {
+            if(lyv_type_extension(leaf, type, 0) ||
+               lyv_extension(type->parent->ext, type->parent->ext_size, node)) {
+                return EXIT_FAILURE;
+            }
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
 int
 lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
 {
@@ -428,6 +532,24 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
                     }
                 }
             }
+        }
+
+        /* check validation function for extension */
+        if (schema->flags & LYS_VALID_DATA) {
+            // check extension in node
+            if (lyv_extension(schema->ext, schema->ext_size, node)) {
+                return EXIT_FAILURE;
+            }
+
+            if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+                type = &((struct lys_node_leaf *) schema)->type;
+                leaf = (struct lyd_node_leaf_list *) node;
+                if (lyv_type_extension(leaf, type, 1)) {
+                    return EXIT_FAILURE;
+                }
+            }
+
+
         }
 
         /* remove the flag */
