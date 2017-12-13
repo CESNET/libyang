@@ -155,13 +155,14 @@ static struct ly_ctx *
 ly_ctx_new_yl_common(const char *search_dir, const char *input, LYD_FORMAT format, int options,
                      struct lyd_node* (*parser_func)(struct ly_ctx*, const char*, LYD_FORMAT, int,...))
 {
-    unsigned int u;
+    unsigned int i, u;
     struct lyd_node *module, *node;
     const char *name, *revision;
     struct ly_set features = {0, 0, {NULL}};
     const struct lys_module *mod;
     struct lyd_node *yltree = NULL;
     struct ly_ctx *ctx = NULL;
+    struct ly_set *set = NULL;
 
     /* create empty (with internal modules including ietf-yang-library) context */
     ctx = ly_ctx_new(search_dir, options);
@@ -175,12 +176,14 @@ ly_ctx_new_yl_common(const char *search_dir, const char *input, LYD_FORMAT forma
         goto error;
     }
 
+    set = lyd_find_path(yltree, "/ietf-yang-library:yang-library/modules/module");
+    if (!set) {
+        goto error;
+    }
+
     /* process the data tree */
-    LY_TREE_FOR(yltree->child, module) {
-        if (module->schema->nodetype == LYS_LEAF) {
-            /* module-set-id - ignore it */
-            continue;
-        }
+    for (i = 0; i < set->number; ++i) {
+        module = set->set.d[i];
 
         /* initiate */
         name = NULL;
@@ -198,7 +201,7 @@ ly_ctx_new_yl_common(const char *search_dir, const char *input, LYD_FORMAT forma
                     ((struct lyd_node_leaf_list*)node)->value.enm->value) {
                 /* imported module - skip it, it will be loaded as a side effect
                  * of loading another module */
-                goto next_module;
+                continue;
             }
         }
 
@@ -213,8 +216,6 @@ ly_ctx_new_yl_common(const char *search_dir, const char *input, LYD_FORMAT forma
         for (u = 0; u < features.number; u++) {
             lys_features_enable(mod, ((struct lyd_node_leaf_list*)features.set.d[u])->value_str);
         }
-
-next_module:;
     }
 
     if (0) {
@@ -228,6 +229,9 @@ error:
     if (yltree) {
         /* yang library data tree */
         lyd_free_withsiblings(yltree);
+    }
+    if (set) {
+        ly_set_free(set);
     }
 
     return ctx;
