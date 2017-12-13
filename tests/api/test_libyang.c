@@ -38,89 +38,6 @@ struct ly_ctx *ctx = NULL;
 struct lyd_node *root = NULL;
 const struct lys_module *module = NULL;
 
-int
-generic_init(char *config_file, char *yin_file, char *yang_file, char *yang_folder)
-{
-    LYD_FORMAT in_format;
-    char *schema1 = NULL;
-    char *schema2 = NULL;
-    char *config = NULL;
-    struct stat sb_schema1, sb_schema2, sb_config;
-    int fd = -1;
-
-    if (!config_file || !yang_file || !yin_file || !yang_folder) {
-        goto error;
-    }
-
-    in_format = LYD_XML;
-
-    ctx = ly_ctx_new(yang_folder, 0);
-    if (!ctx) {
-        goto error;
-    }
-
-    fd = open(yin_file, O_RDONLY);
-    if (fd == -1 || fstat(fd, &sb_schema1) == -1 || !S_ISREG(sb_schema1.st_mode)) {
-        goto error;
-    }
-
-    schema1 = mmap(NULL, sb_schema1.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    close(fd);
-
-    fd = open(yang_file, O_RDONLY);
-    if (fd == -1 || fstat(fd, &sb_schema2) == -1 || !S_ISREG(sb_schema2.st_mode)) {
-        goto error;
-    }
-
-    schema2 = mmap(NULL, sb_schema2.st_size + 2, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
-    close(fd);
-
-    fd = open(config_file, O_RDONLY);
-    if (fd == -1 || fstat(fd, &sb_config) == -1 || !S_ISREG(sb_config.st_mode)) {
-        goto error;
-    }
-
-    config = mmap(NULL, sb_config.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-    close(fd);
-    fd = -1;
-
-    if (!lys_parse_mem(ctx, schema1, LYS_IN_YIN)) {
-        goto error;
-    }
-
-    if (!(module = lys_parse_mem(ctx, schema2, LYS_IN_YANG))) {
-        goto error;
-    }
-
-    root = lyd_parse_mem(ctx, config, in_format, LYD_OPT_CONFIG | LYD_OPT_STRICT);
-    if (!root) {
-        goto error;
-    }
-
-    /* cleanup */
-    munmap(config, sb_config.st_size);
-    munmap(schema1, sb_schema1.st_size);
-    munmap(schema2, sb_schema2.st_size + 2);
-
-    return 0;
-
-error:
-    if (schema1) {
-        munmap(schema1, sb_schema1.st_size);
-    }
-    if (schema2) {
-        munmap(schema2, sb_schema2.st_size + 2);
-    }
-    if (config) {
-        munmap(config, sb_config.st_size);
-    }
-    if (fd != -1) {
-        close(fd);
-    }
-
-    return -1;
-}
-
 static int
 setup_f(void **state)
 {
@@ -128,12 +45,28 @@ setup_f(void **state)
     char *config_file = TESTS_DIR"/api/files/a.xml";
     char *yin_file = TESTS_DIR"/api/files/a.yin";
     char *yang_file = TESTS_DIR"/api/files/b.yang";
+    char *yang_dev_file = TESTS_DIR"/api/files/b-dev.yang";
     char *yang_folder = TESTS_DIR"/api/files";
-    int rc;
 
-    rc = generic_init(config_file, yin_file, yang_file, yang_folder);
+    ctx = ly_ctx_new(yang_folder, 0);
+    if (!ctx) {
+        return -1;
+    }
 
-    if (rc) {
+    if (!lys_parse_path(ctx, yin_file, LYS_IN_YIN)) {
+        return -1;
+    }
+
+    if (!(module = lys_parse_path(ctx, yang_file, LYS_IN_YANG))) {
+        return -1;
+    }
+
+    if (!lys_parse_path(ctx, yang_dev_file, LYS_IN_YANG)) {
+        return -1;
+    }
+
+    root = lyd_parse_path(ctx, config_file, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_STRICT);
+    if (!root) {
         return -1;
     }
 
@@ -313,6 +246,62 @@ test_ly_ctx_info(void **state)
     assert_int_equal(LYD_VAL_OK, node->validity);
 
     lyd_free_withsiblings(node);
+}
+
+static void
+test_ly_ctx_new_ylmem(void **state)
+{
+    struct lyd_node *node;
+    char *mem;
+    struct ly_ctx *new_ctx;
+    (void) state; /* unused */
+
+    node = ly_ctx_info(ctx);
+    if (!node) {
+        fail();
+    }
+
+    if (lyd_print_mem(&mem, node, LYD_XML, LYP_WITHSIBLINGS)) {
+        fail();
+    }
+
+    new_ctx = ly_ctx_new_ylmem(TESTS_DIR"/api/files", mem, LYD_XML, 0);
+    if (!new_ctx) {
+        fail();
+    }
+
+    lyd_free_withsiblings(node);
+    free(mem);
+    ly_ctx_destroy(new_ctx, NULL);
+}
+
+static void
+test_ly_ctx_module_clb(void **state)
+{
+    (void) state;
+    void *clb, *data;
+
+    assert_ptr_equal(clb = ly_ctx_get_module_imp_clb(ctx, &data), NULL);
+    assert_ptr_equal(data, NULL);
+
+    clb = (intptr_t *)64;
+    data = (intptr_t *)128;
+    ly_ctx_set_module_imp_clb(ctx, clb, data);
+
+    assert_ptr_equal(ly_ctx_get_module_imp_clb(ctx, &data), clb);
+    assert_ptr_equal(data, (intptr_t *)128);
+    ly_ctx_set_module_imp_clb(ctx, NULL, NULL);
+
+    assert_ptr_equal(clb = ly_ctx_get_module_data_clb(ctx, &data), NULL);
+    assert_ptr_equal(data, NULL);
+
+    clb = (intptr_t *)64;
+    data = (intptr_t *)128;
+    ly_ctx_set_module_data_clb(ctx, clb, data);
+
+    assert_ptr_equal(ly_ctx_get_module_data_clb(ctx, &data), clb);
+    assert_ptr_equal(data, (intptr_t *)128);
+    ly_ctx_set_module_data_clb(ctx, NULL, NULL);
 }
 
 static void
@@ -701,6 +690,7 @@ static void
 test_lys_set_disabled(void **state)
 {
     (void) state; /* unused */
+    uint32_t idx;
     const struct lys_module *mod, *modx, *mody;
     const char *yang_x = "module x {"
                     "  namespace uri:x;"
@@ -757,6 +747,13 @@ test_lys_set_disabled(void **state)
     assert_int_equal(modx->disabled, 1);
     /* ... and y's augment disappeared from x */
     assert_ptr_equal(modx->data->child, NULL);
+
+    /* iterate through all disabled modules */
+    idx = 0;
+    mod = ly_ctx_get_disabled_module_iter(ctx, &idx);
+    assert_ptr_not_equal(mod, NULL);
+    assert_int_equal(mod->disabled, 1);
+    assert_string_equal(mod->name, "x");
 
     /* by enabling it, everything goes back */
     assert_int_equal(lys_set_enabled(modx), 0);
@@ -1185,6 +1182,8 @@ int main(void)
         cmocka_unit_test(test_ly_ctx_set_searchdir),
         cmocka_unit_test(test_ly_ctx_set_searchdir_invalid),
         cmocka_unit_test_setup_teardown(test_ly_ctx_info, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_ly_ctx_new_ylmem, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_ly_ctx_module_clb, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_module, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_get_module_older, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_ctx_load_module, setup_f, teardown_f),
