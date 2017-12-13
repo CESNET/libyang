@@ -4499,6 +4499,7 @@ yang_check_deviation(struct lys_module *module, struct unres_schema *unres, stru
             }
         }
         ly_set_free(dflt_check);
+        dflt_check = NULL;
     }
 
     /* mark all the affected modules as deviated and implemented */
