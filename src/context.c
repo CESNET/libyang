@@ -771,12 +771,18 @@ ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char
 API const struct lys_module *
 ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
 {
+    const struct lys_module *mod;
+    struct ly_ctx *ctx_prev = ly_parser_data.ctx;
+
     if (!ctx || !name) {
         ly_errno = LY_EINVAL;
         return NULL;
     }
 
-    return ly_ctx_load_sub_module(ctx, NULL, name, revision && revision[0] ? revision : NULL, 1, NULL);
+    ly_parser_data.ctx = ctx;
+    mod = ly_ctx_load_sub_module(ctx, NULL, name, revision && revision[0] ? revision : NULL, 1, NULL);
+    ly_parser_data.ctx = ctx_prev;
+    return mod;
 }
 
 /*
