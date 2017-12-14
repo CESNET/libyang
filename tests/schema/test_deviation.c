@@ -30,20 +30,14 @@
 
 #define SCHEMA_FOLDER_YANG TESTS_DIR"/schema/yang/files"
 
-#define MOD_COUNT 7
-#define YANG_MOD_IDX(idx) (idx)
-
 struct ly_ctx *ctx;
-char *yang_modules[2 * MOD_COUNT] = {0};
 
 static int
 setup_ctx_yang(void **state)
 {
-    *state = malloc(strlen(TESTS_DIR) + 40);
-    assert_non_null(*state);
-    memcpy(*state, SCHEMA_FOLDER_YANG, strlen(SCHEMA_FOLDER_YANG) + 1);
+    (void)state;
 
-    ctx = ly_ctx_new(NULL, 0);
+    ctx = ly_ctx_new(SCHEMA_FOLDER_YANG, 0);
     if (!ctx) {
         return -1;
     }
@@ -54,7 +48,8 @@ setup_ctx_yang(void **state)
 static int
 teardown_ctx(void **state)
 {
-    free(*state);
+    (void)state;
+
     ly_ctx_destroy(ctx, NULL);
 
     return 0;
@@ -63,17 +58,34 @@ teardown_ctx(void **state)
 static void
 test_deviation(void **state)
 {
-    int length;
-    char *path = *state;
+    (void)state;
+    char *str;
     const struct lys_module *module;
 
-    ly_ctx_set_searchdir(ctx, path);
-    length = strlen(path);
-    strcpy(path + length, "/deviation1-dv.yang");
-    if (!(module = lys_parse_path(ctx, path, LYS_IN_YANG))) {
+    if (!(module = ly_ctx_load_module(ctx, "deviation1-dv", NULL))) {
         fail();
     }
-    lys_print_mem(&yang_modules[YANG_MOD_IDX(0)], module, LYS_OUT_YANG, NULL);
+    lys_print_mem(&str, module, LYS_OUT_YANG, NULL);
+    free(str);
+    assert_int_equal(ly_errno, 0);
+}
+
+static void
+test_augment_deviation(void **state)
+{
+    (void)state;
+    char *str;
+    const struct lys_module *mod;
+
+    if (!ly_ctx_load_module(ctx, "z-dev", NULL)) {
+        fail();
+    }
+    mod = ly_ctx_get_module(ctx, "z", NULL, 0);
+    assert_ptr_not_equal(mod, NULL);
+
+    lys_print_mem(&str, mod, LYS_YANG, NULL);
+    free(str);
+    assert_int_equal(ly_errno, 0);
 }
 
 int
@@ -82,6 +94,7 @@ main(void)
     ly_verb(LY_LLWRN);
     const struct CMUnitTest cmut[] = {
         cmocka_unit_test_setup_teardown(test_deviation, setup_ctx_yang, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_augment_deviation, setup_ctx_yang, teardown_ctx),
     };
 
     return cmocka_run_group_tests(cmut, NULL, NULL);
