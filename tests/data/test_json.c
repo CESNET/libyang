@@ -169,6 +169,26 @@ static const char *num_data =
 "}"
 ;
 
+static const char* notif =
+"{"
+  "\"notif:root\":{"
+    "\"list\":["
+	  "{"
+		"\"name\":\"a\","
+		"\"notif\":{"
+		  "\"f1\":\"aaaa\""
+		"}"
+	  "},"
+	  "{"
+		"\"name\":\"b\","
+		"\"notif\":{"
+		  "\"f1\":\"bbbb\""
+		"}"
+	  "}"
+	"]"
+  "}"
+"}";
+
 static int
 setup_f(struct state **state, const char *search_dir, const char **modules, int module_count)
 {
@@ -293,12 +313,33 @@ test_parse_numbers(void **state)
 
 }
 
+static void
+test_parse_notif(void **state)
+{
+    struct lyd_node_leaf_list *leaf;
+    struct state *st;
+    const char *modules[] = {"notif"};
+    int module_count = 1;
+
+    if (setup_f(&st, TESTS_DIR "/data/files", modules, module_count)) {
+        fail();
+    }
+
+    (*state) = st;
+
+    st->dt = lyd_parse_mem(st->ctx, notif, LYD_JSON, LYD_OPT_NOTIF, NULL);
+    assert_ptr_not_equal(st->dt, NULL);
+
+    assert_int_equal(0, lyd_validate(&st->dt, LYD_OPT_NOTIF, NULL));
+}
+
 int
 main(void)
 {
     const struct CMUnitTest tests[] = {
                     cmocka_unit_test_teardown(test_parse_if, teardown_f),
                     cmocka_unit_test_teardown(test_parse_numbers, teardown_f),
+                    cmocka_unit_test_teardown(test_parse_notif, teardown_f),
                     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
