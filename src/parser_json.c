@@ -1021,6 +1021,11 @@ attr_repeat:
             result->next = diter;
         }
     }
+
+    if (*parent && (*parent)->child && schema->nodetype == LYS_NOTIF && (*parent)->schema->nodetype == LYS_LIST) {
+        *act_notif = NULL;
+    }
+
     if (!diter) {
         /* simplified (faster) insert as the last node */
         if (*parent && !(*parent)->child) {
