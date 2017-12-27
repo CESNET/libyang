@@ -1077,7 +1077,7 @@ attr_repeat:
             }
             *act_notif = result;
         } else if (schema->nodetype == LYS_NOTIF) {
-            if (!(options & LYD_OPT_NOTIF) || *act_notif) {
+        	if (!(options & LYD_OPT_NOTIF) || (*act_notif && (*parent)->schema->nodetype != LYS_LIST )) {
                 LOGVAL(LYE_INELEM, LY_VLOG_LYD, result, schema->name);
                 LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Unexpected notification node \"%s\".", schema->name);
                 goto error;

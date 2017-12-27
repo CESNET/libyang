@@ -329,6 +329,8 @@ test_parse_notif(void **state)
 
     st->dt = lyd_parse_mem(st->ctx, notif, LYD_JSON, LYD_OPT_NOTIF, NULL);
     assert_ptr_not_equal(st->dt, NULL);
+
+    assert_int_equal(0, lyd_validate(&st->dt, LYD_OPT_NOTIF, NULL));
 }
 
 int
