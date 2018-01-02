@@ -1287,6 +1287,7 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
 
     /* no data (or whitespaces only) are fine */
     if (!data[len]) {
+empty:
         if (options & LYD_OPT_DATA_ADD_YANGLIB) {
             result = ly_ctx_info(ctx);
         }
@@ -1298,6 +1299,13 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
     if (data[len] != '{') {
         LOGVAL(LYE_XML_INVAL, LY_VLOG_NONE, NULL, "JSON data (missing top level begin-object)");
         return NULL;
+    }
+
+    /* check for empty object */
+    r = len + 1;
+    r += skip_ws(&data[r]);
+    if (data[r] == '}') {
+        goto empty;
     }
 
     unres = calloc(1, sizeof *unres);
