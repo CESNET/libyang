@@ -322,7 +322,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         } else if (r == 1) {
 attr_error:
             if (options & LYD_OPT_STRICT) {
-                LOGVAL(LYE_INMETA, LY_VLOG_LYD, *result, (attr->ns ? attr->ns->prefix : "<none>"), attr->name, attr->value);
+                LOGVAL(LYE_INATTR, LY_VLOG_LYD, *result, attr->name);
                 goto error;
             }
 
