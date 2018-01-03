@@ -112,7 +112,7 @@ test_unknown_metadata_xml(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_STRICT, NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INMETA);
+    assert_int_equal(ly_vecode, LYVE_INATTR);
 
     /* parse input without strict - passes, but the attribute is not present */
     st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_CONFIG, NULL);
@@ -220,7 +220,7 @@ test_nc_filter3_xml(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_RPC | LYD_OPT_STRICT, NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INMETA);
+    assert_int_equal(ly_vecode, LYVE_INATTR);
 
     st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_RPC, NULL);
     assert_ptr_not_equal(st->data, NULL);
@@ -251,7 +251,7 @@ test_nc_filter4_xml(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_RPC, NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INVAL);
+    assert_int_equal(ly_vecode, LYVE_INMETA);
 }
 
 /*
@@ -278,7 +278,7 @@ test_nc_filter5_xml(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_RPC, NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INVAL);
+    assert_int_equal(ly_vecode, LYVE_INMETA);
 }
 
 /*
@@ -365,7 +365,7 @@ test_nc_editconfig1_xml(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT , NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INVAL);
+    assert_int_equal(ly_vecode, LYVE_INMETA);
 }
 
 static void
@@ -396,7 +396,7 @@ test_nc_editconfig1_json(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_EDIT , NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INVAL);
+    assert_int_equal(ly_vecode, LYVE_INMETA);
 }
 
 /*
