@@ -732,7 +732,7 @@ static struct lyxml_attr *
 parse_attr(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml_elem *parent)
 {
     const char *c = data, *start, *delim;
-    char prefix[32];
+    char prefix[32], xml_flag;
     int uc;
     struct lyxml_attr *attr = NULL, *a;
     unsigned int size;
@@ -767,17 +767,28 @@ parse_attr(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml
         free(attr);
         return NULL;
     }
+    xml_flag = 4;
+    if (*c == 'x') {
+        xml_flag = 1;
+    }
     c += size;
     uc = lyxml_getutf8(c, &size);
     while (is_xmlnamechar(uc)) {
-        if (attr->type == LYXML_ATTR_STD && *c == ':') {
-            /* attribute in a namespace */
-            start = c + 1;
+        if (attr->type == LYXML_ATTR_STD) {
+            if ((*c == ':') && (xml_flag != 3)) {
+                /* attribute in a namespace (but disregard the special "xml" namespace) */
+                start = c + 1;
 
-            /* look for the prefix in namespaces */
-            memcpy(prefix, data, c - data);
-            prefix[c - data] = '\0';
-            attr->ns = lyxml_get_ns(parent, prefix);
+                /* look for the prefix in namespaces */
+                memcpy(prefix, data, c - data);
+                prefix[c - data] = '\0';
+                attr->ns = lyxml_get_ns(parent, prefix);
+            } else if (((*c == 'm') && (xml_flag == 1)) ||
+                    ((*c == 'l') && (xml_flag == 2))) {
+                ++xml_flag;
+            } else {
+                xml_flag = 4;
+            }
         }
         c += size;
         uc = lyxml_getutf8(c, &size);
