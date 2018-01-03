@@ -4439,10 +4439,11 @@ yang_check_deviation(struct lys_module *module, struct unres_schema *unres, stru
         /* unlink and store the original node */
         parent = dev_target->parent;
         lys_node_unlink(dev_target);
-        if (parent && parent->nodetype == LYS_AUGMENT) {
+        if (parent && (parent->nodetype & (LYS_AUGMENT | LYS_USES))) {
             /* hack for augment, because when the original will be sometime reconnected back, we actually need
              * to reconnect it to both - the augment and its target (which is deduced from the deviations target
              * path), so we need to remember the augment as an addition */
+            /* remember uses parent so we can reconnect to it */
             dev_target->parent = parent;
         }
         dev->orig_node = dev_target;

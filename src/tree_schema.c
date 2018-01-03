@@ -4063,7 +4063,7 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module,
 
                 /* reconnect to its previous position */
                 parent = dev->orig_node->parent;
-                if (parent) {
+                if (parent && (parent->nodetype == LYS_AUGMENT)) {
                     dev->orig_node->parent = NULL;
                     /* the original node was actually from augment, we have to get know if the augment is
                      * applied (its module is enabled and implemented). If yes, the node will be connected
@@ -4082,6 +4082,9 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module,
                         parent->flags |= LYS_NOTAPPLIED; /* allow apply_aug() */
                         apply_aug((struct lys_node_augment *)parent, unres);
                     }
+                } else if (parent && (parent->nodetype == LYS_USES)) {
+                    /* uses child */
+                    lys_node_addchild(parent, NULL, dev->orig_node);
                 } else {
                     /* non-augment, non-toplevel */
                     parent_path = strndup(dev->target_name, strrchr(dev->target_name, '/') - dev->target_name);
@@ -4117,10 +4120,11 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module,
             /* unlink and store the original node */
             parent = target->parent;
             lys_node_unlink(target);
-            if (parent && parent->nodetype == LYS_AUGMENT) {
+            if (parent && (parent->nodetype & (LYS_AUGMENT | LYS_USES))) {
                 /* hack for augment, because when the original will be sometime reconnected back, we actually need
                  * to reconnect it to both - the augment and its target (which is deduced from the deviations target
                  * path), so we need to remember the augment as an addition */
+                /* we also need to remember the parent uses so that we connect it back to it when switching deviation state */
                 target->parent = parent;
             }
             dev->orig_node = target;
