@@ -476,7 +476,7 @@ test_ly_ctx_clean(void **state)
     ly_ctx_clean(ctx, NULL);
     assert_int_equal(setid + 2, ctx->models.module_set_id);
     assert_int_equal(modules_count, ctx->models.used);
-    assert_int_equal(dict_used, ctx->dict.used);
+    assert_int_equal(dict_used + 1, ctx->dict.used);
 
     /* add a module again ... */
     mod = ly_ctx_load_module(ctx, "x", NULL);
@@ -490,7 +490,7 @@ test_ly_ctx_clean(void **state)
     ly_ctx_clean(ctx, NULL);
     assert_int_equal(setid + 4, ctx->models.module_set_id);
     assert_int_equal(modules_count, ctx->models.used);
-    assert_int_equal(dict_used + 1, ctx->dict.used);
+    assert_int_equal(dict_used + 2, ctx->dict.used);
 
     /* cleanup */
     ly_ctx_destroy(ctx, NULL);
@@ -564,7 +564,7 @@ test_ly_ctx_remove_module(void **state)
     assert_true(setid < ctx->models.module_set_id);
     setid = ctx->models.module_set_id;
     assert_int_equal(modules_count, ctx->models.used);
-    assert_int_equal(dict_used, ctx->dict.used);
+    assert_int_equal(dict_used + 2, ctx->dict.used);
 
     /* add a module again ... */
     mod = ly_ctx_load_module(ctx, "y", NULL);
@@ -579,7 +579,7 @@ test_ly_ctx_remove_module(void **state)
     assert_true(setid < ctx->models.module_set_id);
     setid = ctx->models.module_set_id;
     assert_int_equal(modules_count, ctx->models.used);
-    assert_int_equal(dict_used, ctx->dict.used);
+    assert_int_equal(dict_used + 2, ctx->dict.used);
 
     /* add a module again ... */
     mod = ly_ctx_load_module(ctx, "y", NULL);
@@ -595,7 +595,7 @@ test_ly_ctx_remove_module(void **state)
     assert_true(setid < ctx->models.module_set_id);
     setid = ctx->models.module_set_id;
     assert_int_equal(modules_count + 1, ctx->models.used);
-    assert_int_not_equal(dict_used, ctx->dict.used);
+    assert_int_not_equal(dict_used + 2, ctx->dict.used);
     ly_ctx_clean(ctx, NULL);
 
     /* add a module again ... */
@@ -603,7 +603,7 @@ test_ly_ctx_remove_module(void **state)
     assert_true(setid < ctx->models.module_set_id);
     setid = ctx->models.module_set_id;
     assert_int_equal(modules_count + 2, ctx->models.used);
-    assert_int_not_equal(dict_used, ctx->dict.used);
+    assert_int_not_equal(dict_used + 2, ctx->dict.used);
     /* and add another one also importing module 'x' ... */
     assert_ptr_not_equal(ly_ctx_load_module(ctx, "z", NULL), NULL);
     assert_true(setid < ctx->models.module_set_id);

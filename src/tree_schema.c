@@ -920,7 +920,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
 }
 
 const struct lys_module *
-lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int internal, int implement)
+lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const char *revision, int internal, int implement)
 {
     char *enlarged_data = NULL;
     struct lys_module *mod = NULL;
@@ -949,10 +949,10 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int in
 
     switch (format) {
     case LYS_IN_YIN:
-        mod = yin_read_module(ctx, data, NULL, implement);
+        mod = yin_read_module(ctx, data, revision, implement);
         break;
     case LYS_IN_YANG:
-        mod = yang_read_module(ctx, data, 0, NULL, implement);
+        mod = yang_read_module(ctx, data, 0, revision, implement);
         break;
     default:
         LOGERR(LY_EINVAL, "Invalid schema input format.");
@@ -982,7 +982,7 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int in
 API const struct lys_module *
 lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
 {
-    return lys_parse_mem_(ctx, data, format, 0, 1);
+    return lys_parse_mem_(ctx, data, format, NULL, 0, 1);
 }
 
 struct lys_submodule *
@@ -1086,6 +1086,12 @@ lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format)
 API const struct lys_module *
 lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
 {
+    return lys_parse_fd_(ctx, fd, format, NULL, 1);
+}
+
+const struct lys_module *
+lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const char *revision, int implement)
+{
     const struct lys_module *module;
     size_t length;
     char *addr;
@@ -1106,7 +1112,7 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
         return NULL;
     }
 
-    module = lys_parse_mem_(ctx, addr, format, 1, 1);
+    module = lys_parse_mem_(ctx, addr, format, revision, 1, implement);
     lyp_munmap(addr, length);
 
     if (module && !module->filepath) {

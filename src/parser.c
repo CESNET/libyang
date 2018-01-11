@@ -406,60 +406,6 @@ lyp_add_ietf_netconf_annotations(struct lys_module *mod)
     return EXIT_SUCCESS;
 }
 
-/**
- * @brief Alternative for lys_read() + lys_parse() in case of import
- *
- * @param[in] fd MUST be a regular file (will be used by mmap)
- */
-struct lys_module *
-lys_read_import(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const char *revision, int implement)
-{
-    struct lys_module *module = NULL;
-    size_t length;
-    char *addr;
-
-    if (!ctx || fd < 0) {
-        LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
-        return NULL;
-    }
-
-    addr = lyp_mmap(fd, 1, &length);
-    if (addr == MAP_FAILED) {
-        LOGERR(LY_ESYS, "Mapping file descriptor into memory failed (%s()).", __func__);
-        return NULL;
-    } else if (!addr) {
-        LOGERR(LY_EINVAL, "Empty schema file.");
-        return NULL;
-    }
-
-    switch (format) {
-    case LYS_IN_YIN:
-        module = yin_read_module(ctx, addr, revision, implement);
-        break;
-    case LYS_IN_YANG:
-        module = yang_read_module(ctx, addr, length, revision, implement);
-        break;
-    default:
-        LOGERR(LY_EINVAL, "%s: Invalid format parameter.", __func__);
-        break;
-    }
-    lyp_munmap(addr, length);
-
-    /* hack for NETCONF's edit-config's operation attribute. It is not defined in the schema, but since libyang
-     * implements YANG metadata (annotations), we need its definition. Because the ietf-netconf schema is not the
-     * internal part of libyang, we cannot add the annotation into the schema source, but we do it here to have
-     * the anotation definitions available in the internal schema structure. There is another hack in schema
-     * printers to do not print this internally added annotation. */
-    if (module && ly_strequal(module->name, "ietf-netconf", 0)) {
-        if (lyp_add_ietf_netconf_annotations(module)) {
-            lys_free(module, NULL, 1);
-            return NULL;
-        }
-    }
-
-    return module;
-}
-
 /* if module is !NULL, then the function searches for submodule */
 struct lys_module *
 lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name, const char *revision,
@@ -681,7 +627,7 @@ matched:
     if (module) {
         result = (struct lys_module *)lys_sub_parse_fd(module, fd, match_format, unres);
     } else {
-        result = lys_read_import(ctx, fd, match_format, revision, implement);
+        result = (struct lys_module *)lys_parse_fd_(ctx, fd, match_format, revision, implement);
     }
     close(fd);
 
