@@ -3324,12 +3324,17 @@ check_default(struct lys_type *type, const char **value, struct lys_module *modu
     memset(&node, 0, sizeof node);
     node.value_str = dflt;
     node.value_type = type->base;
-    node.schema = calloc(1, sizeof (struct lys_node_leaf));
-    LY_CHECK_ERR_RETURN(!node.schema, LOGMEM, -1);
-    node.schema->name = strdup("fake-default");
-    LY_CHECK_ERR_RETURN(!node.schema->name, LOGMEM; free(node.schema), -1);
-    node.schema->module = module;
-    memcpy(&((struct lys_node_leaf *)node.schema)->type, type, sizeof *type);
+
+    if (tpdf) {
+        node.schema = calloc(1, sizeof (struct lys_node_leaf));
+        LY_CHECK_ERR_RETURN(!node.schema, LOGMEM, -1);
+        asprintf((char **)&node.schema->name, "typedef-%s-default", ((struct lys_tpdf *)type->parent)->name);
+        LY_CHECK_ERR_RETURN(!node.schema->name, LOGMEM; free(node.schema), -1);
+        node.schema->module = module;
+        memcpy(&((struct lys_node_leaf *)node.schema)->type, type, sizeof *type);
+    } else {
+        node.schema = (struct lys_node *)type->parent;
+    }
 
     if (type->base == LY_TYPE_LEAFREF) {
         if (!type->info.lref.target) {
@@ -3344,7 +3349,7 @@ check_default(struct lys_type *type, const char **value, struct lys_module *modu
             }
         }
     } else {
-        if (!lyp_parse_value(&((struct lys_node_leaf *)node.schema)->type, &node.value_str, NULL, &node, NULL, 1, 1)) {
+        if (!lyp_parse_value(type, &node.value_str, NULL, &node, NULL, module, 1, 1)) {
             /* possible forward reference */
             ret = 1;
             if (base_tpdf) {
@@ -3372,8 +3377,10 @@ finish:
     if (node.value_type == LY_TYPE_BITS) {
         free(node.value.bit);
     }
-    free((char *)node.schema->name);
-    free(node.schema);
+    if (tpdf) {
+        free((char *)node.schema->name);
+        free(node.schema);
+    }
 
     return ret;
 }
@@ -3936,7 +3943,7 @@ repeat:
         sleaf = sleaf->type.info.lref.target;
         goto repeat;
     } else {
-        if (!lyp_parse_value(&sleaf->type, &leaf.value_str, NULL, &leaf, NULL, 0, 0)) {
+        if (!lyp_parse_value(&sleaf->type, &leaf.value_str, NULL, &leaf, NULL, NULL, 0, 0)) {
             ret = -1;
             goto finish;
         }
@@ -7615,7 +7622,7 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int store,
                         leaf->value_type = LY_TYPE_LEAFREF;
                     } else {
                         /* valid unresolved */
-                        if (!lyp_parse_value(t, &leaf->value_str, NULL, leaf, NULL, 1, 0)) {
+                        if (!lyp_parse_value(t, &leaf->value_str, NULL, leaf, NULL, NULL, 1, 0)) {
                             return -1;
                         }
                     }
@@ -7664,7 +7671,7 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int store,
             }
             break;
         default:
-            if (lyp_parse_value(t, &leaf->value_str, NULL, leaf, NULL, store, 0)) {
+            if (lyp_parse_value(t, &leaf->value_str, NULL, leaf, NULL, NULL, store, 0)) {
                 success = 1;
             }
             break;
@@ -7758,7 +7765,7 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int ignore_
             } else {
                 /* valid unresolved */
                 if (!(leaf->value_type & LY_TYPE_LEAFREF_UNRES)) {
-                    if (!lyp_parse_value(&sleaf->type, &leaf->value_str, NULL, leaf, NULL, 1, 0)) {
+                    if (!lyp_parse_value(&sleaf->type, &leaf->value_str, NULL, leaf, NULL, NULL, 1, 0)) {
                         return -1;
                     }
                 }

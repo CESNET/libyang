@@ -1399,12 +1399,13 @@ ident_val_add_module_prefix(const char *value, const struct lyxml_elem *xml, str
  * xml  - optional for converting instance-identifier and identityref into JSON format
  * leaf - mandatory to know the context (necessary e.g. for prefixes in idenitytref values)
  * attr - alternative to leaf in case of parsing value in annotations (attributes)
+ * local_mod - optional if the local module dos not match the module of leaf/attr
  * store - flag for union resolution - we do not want to store the result, we are just learning the type
  * dflt - whether the value is a default value from the schema
  */
 struct lys_type *
 lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *xml,
-                struct lyd_node_leaf_list *leaf, struct lyd_attr *attr,
+                struct lyd_node_leaf_list *leaf, struct lyd_attr *attr, struct lys_module *local_mod,
                 int store, int dflt)
 {
     struct lys_type *ret = NULL, *t;
@@ -1416,7 +1417,6 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
     const char *ptr, *value = *value_, *itemname;
     struct lys_type_bit **bits = NULL;
     struct lys_ident *ident;
-    struct lys_module *mod;
     lyd_val *val;
     uint16_t *val_type;
     struct lyd_node *contextnode;
@@ -1425,14 +1425,18 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
     if (leaf) {
         assert(!attr);
-        mod = leaf->schema->module;
+        if (!local_mod) {
+            local_mod = leaf->schema->module;
+        }
         val = &leaf->value;
         val_type = &leaf->value_type;
         contextnode = (struct lyd_node *)leaf;
         itemname = leaf->schema->name;
     } else {
         assert(!leaf);
-        mod = attr->annotation->module;
+        if (!local_mod) {
+            local_mod = attr->annotation->module;
+        }
         val = &attr->value;
         val_type = &attr->value_type;
         contextnode = attr->parent;
@@ -1767,7 +1771,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
             /* the value actually uses module's prefixes instead of the module names as in JSON format,
              * we have to convert it */
-            value = transform_schema2json(mod, value);
+            value = transform_schema2json(local_mod, value);
             if (!value) {
                 /* invalid identityref format or it was already transformed, so ignore the error here */
                 value = lydict_insert(type->parent->module->ctx, *value_, 0);
@@ -1788,7 +1792,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             type->parent->flags |= LYS_DFLTJSON;
         }
 
-        ident = resolve_identref(type, value, contextnode, mod, dflt);
+        ident = resolve_identref(type, value, contextnode, local_mod, dflt);
         if (!ident) {
             goto cleanup;
         } else if (store) {
@@ -1798,7 +1802,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         }
 
         make_canonical(type->parent->module->ctx, LY_TYPE_IDENT, &value,
-                       (void*)lys_main_module(mod)->name, NULL);
+                       (void*)lys_main_module(local_mod)->name, NULL);
 
         /* replace the old value with the new one (even if they may be the same) */
         lydict_remove(type->parent->module->ctx, *value_);
@@ -1834,7 +1838,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
             /* the value actually uses module's prefixes instead of the module names as in JSON format,
              * we have to convert it */
-            value = transform_schema2json(mod, value);
+            value = transform_schema2json(local_mod, value);
             if (!value) {
                 /* invalid identityref format or it was already transformed, so ignore the error here */
                 value = *value_;
@@ -1881,7 +1885,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         /* it is called not only to get the final type, but mainly to update value to canonical or JSON form
          * if needed */
-        t = lyp_parse_value(&type->info.lref.target->type, value_, xml, leaf, attr, store, dflt);
+        t = lyp_parse_value(&type->info.lref.target->type, value_, xml, leaf, attr, NULL, store, dflt);
         value = *value_; /* refresh possibly changed value */
         if (!t) {
             if (leaf) {
@@ -2091,7 +2095,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         while ((t = lyp_get_next_union_type(type, t, &found))) {
             found = 0;
-            ret = lyp_parse_value(t, value_, xml, leaf, attr, store, dflt);
+            ret = lyp_parse_value(t, value_, xml, leaf, attr, NULL, store, dflt);
             if (ret) {
                 /* we have the result */
                 type = ret;
@@ -2246,7 +2250,7 @@ lyp_fill_attr(struct ly_ctx *ctx, struct lyd_node *parent, const char *module_ns
     /* the value is here converted to a JSON format if needed in case of LY_TYPE_IDENT and LY_TYPE_INST or to a
      * canonical form of the value */
     type = lys_ext_complex_get_substmt(LY_STMT_TYPE, dattr->annotation, NULL);
-    if (!type || !lyp_parse_value(*type, &dattr->value_str, xml, NULL, dattr, 1, 0)) {
+    if (!type || !lyp_parse_value(*type, &dattr->value_str, xml, NULL, dattr, NULL, 1, 0)) {
         free(dattr);
         return -1;
     }
