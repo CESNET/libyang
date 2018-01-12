@@ -2887,6 +2887,7 @@ lyp_check_includedup(struct lys_module *mod, const char *name, struct lys_includ
     }
 
     if (parsed_sub_count) {
+        assert(!parsed_sub[0]->type);
         for (i = parsed_sub_count - 1; parsed_sub[i]->type; --i) {
             if (ly_strequal(parsed_sub[i]->name, name, 1)) {
                 /* check revisions, including multiple revisions of a single module is error */
