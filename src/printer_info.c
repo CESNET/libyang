@@ -257,6 +257,7 @@ static void
 info_print_type_detail(struct lyout *out, const struct lys_type *type, int uni)
 {
     unsigned int i;
+    struct lys_type *orig;
 
     if (uni) {
         ly_print(out, "  ");
@@ -299,13 +300,15 @@ info_print_type_detail(struct lyout *out, const struct lys_type *type, int uni)
     case LY_TYPE_ENUM:
         ly_print(out, "%-*s%s\n", INDENT_LEN, "Base type: ", "enumeration");
 
-        assert(type->info.enums.count);
+        for (orig = (struct lys_type *)type; orig->der->module; orig = &orig->der->type);
+
+        assert(orig->info.enums.count);
         if (!uni) {
             ly_print(out, "%-*s%s (%d)\n", INDENT_LEN, "Values: ",
-                     type->info.enums.enm[0].name, type->info.enums.enm[0].value);
-            for (i = 1; i < type->info.enums.count; ++i) {
+                     orig->info.enums.enm[0].name, orig->info.enums.enm[0].value);
+            for (i = 1; i < orig->info.enums.count; ++i) {
                 ly_print(out, "%*s%s (%d)\n", INDENT_LEN, "",
-                         type->info.enums.enm[i].name, type->info.enums.enm[i].value);
+                         orig->info.enums.enm[i].name, orig->info.enums.enm[i].value);
             }
         }
 
