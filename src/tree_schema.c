@@ -968,7 +968,7 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const 
      * printers to do not print this internally added annotation. */
     if (mod && ly_strequal(mod->name, "ietf-netconf", 0)) {
         if (lyp_add_ietf_netconf_annotations(mod)) {
-            lys_free(mod, NULL, 1);
+            lys_free(mod, NULL, 1, 1);
             return NULL;
         }
     }
@@ -2599,19 +2599,6 @@ module_free_common(struct lys_module *module, void (*private_destructor)(const s
     /* extension instances */
     lys_extension_instances_free(ctx, module->ext, module->ext_size, private_destructor);
 
-    /* include */
-    for (i = 0; i < module->inc_size; i++) {
-        lydict_remove(ctx, module->inc[i].dsc);
-        lydict_remove(ctx, module->inc[i].ref);
-        lys_extension_instances_free(ctx, module->inc[i].ext, module->inc[i].ext_size, private_destructor);
-        /* complete submodule free is done only from main module since
-         * submodules propagate their includes to the main module */
-        if (!module->type) {
-            lys_submodule_free(module->inc[i].submodule, private_destructor);
-        }
-    }
-    free(module->inc);
-
     /* augment */
     for (i = 0; i < module->augment_size; i++) {
         lys_augment_free(ctx, &module->augment[i], private_destructor);
@@ -2643,6 +2630,8 @@ module_free_common(struct lys_module *module, void (*private_destructor)(const s
 void
 lys_submodule_free(struct lys_submodule *submodule, void (*private_destructor)(const struct lys_node *node, void *priv))
 {
+    int i;
+
     if (!submodule) {
         return;
     }
@@ -2650,7 +2639,15 @@ lys_submodule_free(struct lys_submodule *submodule, void (*private_destructor)(c
     /* common part with struct ly_module */
     module_free_common((struct lys_module *)submodule, private_destructor);
 
-    /* no specific items to free */
+    /* include */
+    for (i = 0; i < submodule->inc_size; i++) {
+        lydict_remove(submodule->ctx, submodule->inc[i].dsc);
+        lydict_remove(submodule->ctx, submodule->inc[i].ref);
+        lys_extension_instances_free(submodule->ctx, submodule->inc[i].ext, submodule->inc[i].ext_size, private_destructor);
+        /* complete submodule free is done only from main module since
+         * submodules propagate their includes to the main module */
+    }
+    free(submodule->inc);
 
     free(submodule);
 }
@@ -3375,7 +3372,7 @@ lys_node_switch(struct lys_node *dst, struct lys_node *src)
 }
 
 void
-lys_free(struct lys_module *module, void (*private_destructor)(const struct lys_node *node, void *priv), int remove_from_ctx)
+lys_free(struct lys_module *module, void (*private_destructor)(const struct lys_node *node, void *priv), int free_subs, int remove_from_ctx)
 {
     struct ly_ctx *ctx;
     int i;
@@ -3401,6 +3398,19 @@ lys_free(struct lys_module *module, void (*private_destructor)(const struct lys_
 
     /* common part with struct ly_submodule */
     module_free_common(module, private_destructor);
+
+    /* include */
+    for (i = 0; i < module->inc_size; i++) {
+        lydict_remove(ctx, module->inc[i].dsc);
+        lydict_remove(ctx, module->inc[i].ref);
+        lys_extension_instances_free(ctx, module->inc[i].ext, module->inc[i].ext_size, private_destructor);
+        /* complete submodule free is done only from main module since
+         * submodules propagate their includes to the main module */
+        if (free_subs) {
+            lys_submodule_free(module->inc[i].submodule, private_destructor);
+        }
+    }
+    free(module->inc);
 
     /* specific items to free */
     lydict_remove(ctx, module->ns);

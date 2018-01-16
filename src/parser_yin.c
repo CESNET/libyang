@@ -7213,9 +7213,6 @@ yin_read_module_(struct ly_ctx *ctx, struct lyxml_elem *yin, const char *revisio
         if (lyp_check_include_missing(module)) {
             goto error;
         }
-
-        /* remove our submodules from the parsed submodules list */
-        lyp_del_includedup(module);
     }
 
     lyp_sort_revisions(module);
@@ -7247,9 +7244,12 @@ yin_read_module_(struct ly_ctx *ctx, struct lyxml_elem *yin, const char *revisio
         if (lyp_ctx_add_module(module)) {
             goto error;
         }
+
+        /* remove our submodules from the parsed submodules list */
+        lyp_del_includedup(module, 0);
     } else {
         /* free what was parsed */
-        lys_free(module, NULL, 0);
+        lys_free(module, NULL, 0, 0);
 
         /* get the model from the context */
         module = (struct lys_module *)ly_ctx_get_module(ctx, value, revision, 0);
@@ -7276,9 +7276,9 @@ error:
     LOGERR(ly_errno, "Module \"%s\" parsing failed.", module->name);
 
     lyp_check_circmod_pop(ctx);
-    lyp_del_includedup(module);
     lys_sub_module_remove_devs_augs(module);
-    lys_free(module, NULL, 1);
+    lyp_del_includedup(module, 1);
+    lys_free(module, NULL, 0, 1);
     return NULL;
 }
 

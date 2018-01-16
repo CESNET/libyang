@@ -2643,10 +2643,6 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
             goto error;
         }
 
-        /* remove our submodules from the parsed submodules list */
-        lyp_del_includedup(module);
-
-
         if (lyp_rfn_apply_ext(module) || lyp_deviation_apply_ext(module)) {
             goto error;
         }
@@ -2663,6 +2659,9 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
                 goto error;
             }
         }
+
+        /* remove our submodules from the parsed submodules list */
+        lyp_del_includedup(module, 0);
     } else {
         tmp_mod = module;
 
@@ -2671,7 +2670,7 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
         assert(module);
 
         /* free what was parsed */
-        lys_free(tmp_mod, NULL, 0);
+        lys_free(tmp_mod, NULL, 0, 0);
     }
 
     unres_schema_free(NULL, &unres, 0);
@@ -2697,9 +2696,9 @@ error:
     }
 
     lyp_check_circmod_pop(ctx);
-    lyp_del_includedup(module);
     lys_sub_module_remove_devs_augs(module);
-    lys_free(module, NULL, 1);
+    lyp_del_includedup(module, 1);
+    lys_free(module, NULL, 0, 1);
     return NULL;
 }
 
