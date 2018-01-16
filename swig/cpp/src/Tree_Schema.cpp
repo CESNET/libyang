@@ -201,6 +201,16 @@ S_Schema_Node Schema_Node::parent() LY_NEW(node, parent, Schema_Node);
 S_Schema_Node Schema_Node::child() LY_NEW(node, child, Schema_Node);
 S_Schema_Node Schema_Node::next() LY_NEW(node, next, Schema_Node);
 S_Schema_Node Schema_Node::prev() LY_NEW(node, prev, Schema_Node);
+std::vector<S_Schema_Node> *Schema_Node::child_instantiables(int options) {
+    auto s_vector = new std::vector<S_Schema_Node>;
+    struct lys_node *iter = NULL;
+
+    while ((iter = (struct lys_node *)lys_getnext(iter, node, node->module, options))) {
+        s_vector->push_back(std::make_shared<Schema_Node>(iter, deleter));
+    }
+
+    return s_vector;
+}
 S_Set Schema_Node::find_xpath(const char *path) {
     struct ly_set *set = lys_find_path(node->module, node, path);
     if (!set) {

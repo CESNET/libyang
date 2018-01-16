@@ -201,6 +201,7 @@
 %newobject Schema_Node::next;
 %newobject Schema_Node::prev;
 %newobject Schema_Node::module;
+%newobject Schema_Node::child_instantiables;
 %newobject Schema_Node::find_xpath;
 %newobject Schema_Node::xpath_atomize;
 %ignore    Schema_Node::swig_node;
