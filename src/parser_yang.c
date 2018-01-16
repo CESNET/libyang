@@ -2741,8 +2741,6 @@ yang_read_submodule(struct lys_module *module, const char *data, unsigned int si
 
 error:
     /* cleanup */
-    unres_schema_free((struct lys_module *)submodule, &unres, 0);
-
     if (!submodule || !submodule->name) {
         free(submodule);
         LOGERR(ly_errno, "Submodule parsing failed.");
@@ -2751,6 +2749,7 @@ error:
 
     LOGERR(ly_errno, "Submodule \"%s\" parsing failed.", submodule->name);
 
+    unres_schema_free((struct lys_module *)submodule, &unres, 0);
     lyp_check_circmod_pop(module->ctx);
     lys_sub_module_remove_devs_augs((struct lys_module *)submodule);
     lys_submodule_module_data_free(submodule);
