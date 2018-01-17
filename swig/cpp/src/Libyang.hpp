@@ -73,7 +73,7 @@ public:
     Context(const char *search_dir, const char *path, LYD_FORMAT format, int options = 0);
     Context(const char *search_dir, LYD_FORMAT format, const char *data, int options = 0);
     ~Context();
-    int set_searchdir(const char *search_dir) {return ly_ctx_set_searchdir(ctx, search_dir);};
+    int set_searchdir(const char *search_dir);
     void unset_searchdirs(int idx) {return ly_ctx_unset_searchdirs(ctx, idx);};
     std::vector<std::string> *get_searchdirs();
     void set_allimplemented() {return ly_ctx_set_allimplemented(ctx);};

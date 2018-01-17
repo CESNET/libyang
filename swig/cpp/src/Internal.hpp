@@ -143,6 +143,8 @@ extern "C" {
 #include "libyang.h"
 }
 
+void check_libyang_error();
+
 /* defined */
 class Deleter;
 

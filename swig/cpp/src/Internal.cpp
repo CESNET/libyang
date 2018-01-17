@@ -24,6 +24,14 @@ extern "C" {
 #include "tree_schema.h"
 }
 
+void check_libyang_error() {
+    const char *errmsg = ly_errmsg();
+
+    if (errmsg) {
+        throw std::runtime_error(errmsg);
+    }
+};
+
 Deleter::Deleter(ly_ctx *ctx, S_Deleter parent):
     t(Free_Type::CONTEXT),
     parent(parent),
