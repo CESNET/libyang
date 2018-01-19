@@ -2179,10 +2179,14 @@ struct ly_set *lys_node_xpath_atomize(const struct lys_node *node, int options);
 /**
  * @brief Build schema path (usable as path, see @ref howtoxpath) of the schema node.
  * @param[in] node Schema node to be processed.
+ * @param[in] shorten Whether to shorten the schema path by not including prefixes for nodes
+ * from the same module as \p node except the first node in the path. If shortened, the path is
+ * not usable without a specific current module or node (more at @ref howtoxpath) at hence less
+ * suitable for further processing but better for displaying.
  * @return NULL on error, on success the buffer for the resulting path is allocated and caller is supposed to free it
  * with free().
  */
-char *lys_path(const struct lys_node *node);
+char *lys_path(const struct lys_node *node, int shorten);
 
 /**
  * @brief Build data path (usable as path, see @ref howtoxpath) of the schema node.

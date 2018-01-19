@@ -5179,7 +5179,7 @@ lyd_path(const struct lyd_node *node)
     start_idx = LY_BUF_SIZE - 1;
 
     buf[start_idx] = '\0';
-    if (ly_vlog_build_path_reverse(LY_VLOG_LYD, node, &buf, &start_idx, &len, 1)) {
+    if (ly_vlog_build_path_reverse(LY_VLOG_LYD, node, &buf, &start_idx, &len, 1, 0)) {
         free(buf);
         return NULL;
     }
@@ -5349,8 +5349,8 @@ uniquecheck:
                     idx1 = idx2 = LY_BUF_SIZE - 1;
                     path1[idx1] = '\0';
                     path2[idx2] = '\0';
-                    ly_vlog_build_path_reverse(LY_VLOG_LYD, first, &path1, &idx1, NULL, 0);
-                    ly_vlog_build_path_reverse(LY_VLOG_LYD, second, &path2, &idx2, NULL, 0);
+                    ly_vlog_build_path_reverse(LY_VLOG_LYD, first, &path1, &idx1, NULL, 0, 0);
+                    ly_vlog_build_path_reverse(LY_VLOG_LYD, second, &path2, &idx2, NULL, 0, 0);
 
                     /* use internal buffer to rebuild the unique string */
                     if (ly_buf_used && uniq_str[0]) {

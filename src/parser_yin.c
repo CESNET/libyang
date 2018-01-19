@@ -3904,10 +3904,10 @@ read_yin_common(struct lys_module *module, struct lys_node *parent, void *stmt, 
             if (stmt_type == LYEXT_PAR_NODE) {
                 p = node->parent;
                 node->parent = parent;
-                str = lys_path(node);
+                str = lys_path(node, 1);
                 node->parent = p;
             } else {
-                str = lys_path(parent);
+                str = lys_path(parent, 1);
             }
             LOGWRN("Missing status in %s subtree (%s), inheriting.", parent->flags & LYS_STATUS_DEPRC ? "deprecated" : "obsolete", str);
             free(str);

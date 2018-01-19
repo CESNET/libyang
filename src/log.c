@@ -467,7 +467,7 @@ ly_vlog_build_path_reverse_print(char **path, uint16_t *index, const char *str, 
 
 int
 ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char **path, uint16_t *index, uint16_t *length,
-                           int enlarge)
+                           int enlarge, int schema_all_prefixes)
 {
     int i, j;
     struct lys_node_list *slist;
@@ -494,7 +494,7 @@ ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char *
             elem = ((struct lyxml_elem *)elem)->parent;
             break;
         case LY_VLOG_LYS:
-            if (!top_smodule) {
+            if (!top_smodule && !schema_all_prefixes) {
                 /* remember the top module, it will act as the current module */
                 top_smodule = lys_node_module((struct lys_node *)elem);
             }
@@ -732,7 +732,7 @@ ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...)
             /* top-level */
             path[--(*index)] = '/';
         } else {
-            ly_vlog_build_path_reverse(elem_type, elem, &path, index, NULL, 0);
+            ly_vlog_build_path_reverse(elem_type, elem, &path, index, NULL, 0, 1);
         }
     } else if (elem_type == LY_VLOG_NONE) {
         /* erase path, the rest will be erased by log_vprintf() since it will get NULL path parameter */
