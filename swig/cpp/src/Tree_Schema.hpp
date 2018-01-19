@@ -107,6 +107,7 @@ public:
     const char *ns() {return module->ns;};
     S_Revision rev();
     std::vector<S_Deviation> *deviation();
+    S_Schema_Node data() LY_NEW(module, data, Schema_Node);
 
     friend class Context;
     friend class Data_Node;

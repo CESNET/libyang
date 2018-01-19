@@ -134,6 +134,7 @@
 /* Tree_Schema.hpp */
 %shared_ptr(Module);
 %newobject Module::rev;
+%newobject Module::data;
 
 %shared_ptr(Submodule);
 %newobject Submodule::ctx;
