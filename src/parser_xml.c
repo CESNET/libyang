@@ -115,6 +115,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     int i, j, havechildren, r, editbits = 0, pos, filterflag = 0, found;
     int ret = 0;
     const char *str = NULL;
+    char *msg;
 
     assert(xml);
     assert(result);
@@ -215,7 +216,11 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     case LYS_RPC:
     case LYS_ACTION:
         if ((options & LYD_OPT_STRICT) && xml->content && xml->content[0]) {
-            LOGVAL(LYE_XML_INVAL, LY_VLOG_XML, xml, "node with text data");
+            msg = malloc(22 + strlen(xml->content) + 1);
+            LY_CHECK_ERR_RETURN(!msg, LOGMEM, -1);
+            sprintf(msg, "node with text data \"%s\"", xml->content);
+            LOGVAL(LYE_XML_INVAL, LY_VLOG_XML, xml, msg);
+            free(msg);
             return -1;
         }
         *result = calloc(1, sizeof **result);
