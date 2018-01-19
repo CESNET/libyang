@@ -201,6 +201,18 @@ S_Schema_Node Schema_Node::parent() LY_NEW(node, parent, Schema_Node);
 S_Schema_Node Schema_Node::child() LY_NEW(node, child, Schema_Node);
 S_Schema_Node Schema_Node::next() LY_NEW(node, next, Schema_Node);
 S_Schema_Node Schema_Node::prev() LY_NEW(node, prev, Schema_Node);
+std::string Schema_Node::path() {
+    char *path = nullptr;
+
+    path = lys_path(node);
+    if (!path) {
+        return nullptr;
+    }
+
+    std::string s_path = path;
+    free(path);
+    return s_path;
+}
 std::vector<S_Schema_Node> *Schema_Node::child_instantiables(int options) {
     auto s_vector = new std::vector<S_Schema_Node>;
     struct lys_node *iter = NULL;
