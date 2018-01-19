@@ -424,7 +424,7 @@ public:
     std::string path();
     int validate_value(const char *value) {return lyd_validate_value(node, value);};
     std::vector<S_Schema_Node> *child_instantiables(int options);
-    S_Set find_xpath(const char *path);
+    S_Set find_path(const char *path);
     S_Set xpath_atomize(enum lyxp_node_type ctx_node_type, const char *expr, int options);
     S_Set xpath_atomize(int options);
     // void *priv;

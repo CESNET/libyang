@@ -223,7 +223,7 @@ std::vector<S_Schema_Node> *Schema_Node::child_instantiables(int options) {
 
     return s_vector;
 }
-S_Set Schema_Node::find_xpath(const char *path) {
+S_Set Schema_Node::find_path(const char *path) {
     struct ly_set *set = lys_find_path(node->module, node, path);
     if (!set) {
         return nullptr;
