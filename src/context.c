@@ -400,7 +400,7 @@ ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_n
         /* remove the applied deviations and augments */
         lys_sub_module_remove_devs_augs(ctx->models.list[ctx->models.used - 1]);
         /* remove the module */
-        lys_free(ctx->models.list[ctx->models.used - 1], private_destructor, 0);
+        lys_free(ctx->models.list[ctx->models.used - 1], private_destructor, 1, 0);
     }
     if (ctx->models.search_paths) {
         for(i = 0; ctx->models.search_paths[i]; i++) {
@@ -1338,7 +1338,7 @@ imported:
         /* remove the applied deviations and augments */
         lys_sub_module_remove_devs_augs((struct lys_module *)mods->set.g[u]);
         /* remove the module */
-        lys_free((struct lys_module *)mods->set.g[u], private_destructor, 0);
+        lys_free((struct lys_module *)mods->set.g[u], private_destructor, 1, 0);
     }
     ly_set_free(mods);
 
@@ -1357,7 +1357,7 @@ ly_ctx_clean(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_nod
         /* remove the applied deviations and augments */
         lys_sub_module_remove_devs_augs(ctx->models.list[ctx->models.used - 1]);
         /* remove the module */
-        lys_free(ctx->models.list[ctx->models.used - 1], private_destructor, 0);
+        lys_free(ctx->models.list[ctx->models.used - 1], private_destructor, 1, 0);
         /* clean it for safer future use */
         ctx->models.list[ctx->models.used - 1] = NULL;
     }
