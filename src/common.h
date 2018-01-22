@@ -280,10 +280,11 @@ void ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...);
  * @param[in,out] index Where to start printing, the end of \p path.
  * @param[out] length Final length of \p path.
  * @param[in] enlarge Whether to allow \p path to be reallocated and enlarged.
+ * @param[in] schema_all_prefixes Whether to include prefixes for all the nodes (only for schema paths).
  * @return 0 on success, -1 on error.
  */
 int ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char **path, uint16_t *index,
-                               uint16_t *length, int enlarge);
+                               uint16_t *length, int enlarge, int schema_all_prefixes);
 
 /*
  * - if \p module specified, it searches for submodules, they can be loaded only from a file or via module callback,

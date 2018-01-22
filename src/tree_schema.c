@@ -4525,7 +4525,7 @@ lys_is_key(struct lys_node_list *list, struct lys_node_leaf *leaf)
 }
 
 API char *
-lys_path(const struct lys_node *node)
+lys_path(const struct lys_node *node, int options)
 {
     char *buf, *result;
     uint16_t start_idx, len;
@@ -4540,7 +4540,7 @@ lys_path(const struct lys_node *node)
     start_idx = LY_BUF_SIZE - 1;
 
     buf[start_idx] = '\0';
-    if (ly_vlog_build_path_reverse(LY_VLOG_LYS, node, &buf, &start_idx, &len, 1)) {
+    if (ly_vlog_build_path_reverse(LY_VLOG_LYS, node, &buf, &start_idx, &len, 1, !options)) {
         free(buf);
         return NULL;
     }

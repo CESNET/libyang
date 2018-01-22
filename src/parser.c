@@ -3457,7 +3457,7 @@ lyp_deviate_del_ext(struct lys_node *target, struct lys_ext_instance *ext)
     }
 
     if (!found) {
-        path = lys_path(target);
+        path = lys_path(target, LYS_PATH_FIRST_PREFIX);
         LOGERR(LY_EVALID, "Extension deviation: extension \"%s\" to delete not found in \"%s\".", ext->def->name, path)
         free(path);
         return EXIT_FAILURE;

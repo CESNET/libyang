@@ -6501,7 +6501,7 @@ eval_node_test(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
                     }
                 }
                 if (i == -1) {
-                    path = lys_path((struct lys_node *)cur_node);
+                    path = lys_path((struct lys_node *)cur_node, LYS_PATH_FIRST_PREFIX);
                     LOGWRN("Schema node \"%.*s\" not found (%.*s) with context node \"%s\".",
                            exp->tok_len[*exp_idx], &exp->expr[exp->expr_pos[*exp_idx]],
                            exp->expr_pos[*exp_idx] + exp->tok_len[*exp_idx], exp->expr, path);
@@ -8482,7 +8482,7 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int set_ext
     if (when) {
         if (lyxp_atomize(when->cond, node, LYXP_NODE_ELEM, &tmp_set, LYXP_SNODE_WHEN | opts, &ctx_snode)) {
             free(tmp_set.val.snodes);
-            path = lys_path(ctx_snode);
+            path = lys_path(ctx_snode, LYS_PATH_FIRST_PREFIX);
             LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "Invalid when condition \"%s\" with context node \"%s\".", when->cond, path);
             ret = -1;
             goto finish;
@@ -8519,7 +8519,7 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int set_ext
     for (i = 0; i < must_size; ++i) {
         if (lyxp_atomize(must[i].expr, node, LYXP_NODE_ELEM, &tmp_set, LYXP_SNODE_MUST | opts, &ctx_snode)) {
             free(tmp_set.val.snodes);
-            path = lys_path(ctx_snode);
+            path = lys_path(ctx_snode, LYS_PATH_FIRST_PREFIX);
             LOGVAL(LYE_SPEC, LY_VLOG_LYS, node, "Invalid must restriction \"%s\" with context node \"%s\".", must[i].expr, path);
             ret = -1;
             goto finish;

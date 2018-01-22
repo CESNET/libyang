@@ -1304,7 +1304,16 @@ test_lys_path(void **state)
     assert_ptr_not_equal(set, NULL);
     node = set->set.s[0];
     ly_set_free(set);
-    path = lys_path(node);
+    path = lys_path(node, 1);
+    assert_string_equal(template, path);
+    free(path);
+
+    template = "/a:x/a:bar-gggg";
+    set = lys_find_path(module, NULL, template);
+    assert_ptr_not_equal(set, NULL);
+    node = set->set.s[0];
+    ly_set_free(set);
+    path = lys_path(node, 0);
     assert_string_equal(template, path);
     free(path);
 }
