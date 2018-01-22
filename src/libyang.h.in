@@ -1411,13 +1411,15 @@ const struct lys_submodule *ly_ctx_get_submodule2(const struct lys_module *main_
 /**
  * @brief Get schema node according to the given data path (JSON format, see @ref howtoxpath).
  *
- * This function is primarily meant as a utility function to ease getting specific schema nodes
- * directly from context having data_path a const immutable string.
+ * This function is meant as a utility function to ease getting a specific schema node
+ * directly from context having \p data_path a const immutable string. Generally,
+ * it is better to use lyd_find_path(), lys_find_path(), or ly_ctx_find_path(). Also,
+ * it is possible to transform data paths into schema paths using ly_path_data2schema().
  *
  * @param[in] ctx Context to work in. Must be set if \p start is NULL.
- * @param[in] start Starting node for a relative schema node identifier, in which
+ * @param[in] start Starting node for a relative data node identifier, in which
  * case it is mandatory and \p ctx can be NULL.
- * @param[in] data_path JSON schema node identifier.
+ * @param[in] data_path JSON data path of the node to get.
  * @param[in] output Search operation output instead input.
  * @return Resolved schema node or NULL.
  */
@@ -1470,7 +1472,9 @@ void ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct 
 /**
  * @brief Transform a data path into schema path (see @ref howtoxpath).
  *
- * Only simple paths can be used, no complex XPath expressions.
+ * Some XPath tokens such as "*" or "//" should not be used because they cannot be properly
+ * transformed into schema path. If used, any following nodes will not be transformed and simply copied,
+ * so use at your own risk! It causes no problems if the path ends with the aforementioned tokens.
  *
  * @param[in] ctx Context to work in.
  * @param[in] data_path Data path to be transformed.
