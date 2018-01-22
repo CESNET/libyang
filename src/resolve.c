@@ -5626,7 +5626,7 @@ resolve_list_keys(struct lys_node_list *list, const char *keys_str)
             assert(ly_err_main.vlog_hide);
             ly_vlog_hide(0);
             LOGWRN("Default value \"%s\" in the list key \"%s\" is ignored. (%s)", list->keys[i]->dflt,
-                   list->keys[i]->name, s = lys_path((struct lys_node*)list, 1));
+                   list->keys[i]->name, s = lys_path((struct lys_node*)list, LYS_PATH_FIRST_PREFIX));
             ly_vlog_hide(1);
             free(s);
         }

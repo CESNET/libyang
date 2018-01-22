@@ -2178,15 +2178,20 @@ struct ly_set *lys_node_xpath_atomize(const struct lys_node *node, int options);
 
 /**
  * @brief Build schema path (usable as path, see @ref howtoxpath) of the schema node.
+ *
+ * The path includes prefixes of all the nodes and is hence unequivocal in any context.
+ * Options can be specified to use a different format of the path.
+ *
  * @param[in] node Schema node to be processed.
- * @param[in] shorten Whether to shorten the schema path by not including prefixes for nodes
- * from the same module as \p node except the first node in the path. If shortened, the path is
- * not usable without a specific current module or node (more at @ref howtoxpath) at hence less
- * suitable for further processing but better for displaying.
+ * @param[in] options Additional path modification options (#LYS_PATH_FIRST_PREFIX).
  * @return NULL on error, on success the buffer for the resulting path is allocated and caller is supposed to free it
  * with free().
  */
-char *lys_path(const struct lys_node *node, int shorten);
+char *lys_path(const struct lys_node *node, int options);
+
+#define LYS_PATH_FIRST_PREFIX 0x01 /**< lys_path() option for the path not to include prefixes of all the nodes,
+ * but only for the first one that will be interpreted as the current module (more at @ref howtoxpath). This path is
+ * less suitable for further processing but better for displaying as it is shorter. */
 
 /**
  * @brief Build data path (usable as path, see @ref howtoxpath) of the schema node.

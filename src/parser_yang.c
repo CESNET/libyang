@@ -2434,7 +2434,7 @@ check_status_flag(struct lys_node *node, struct lys_node *parent)
          * and fix the schema by inheriting */
         if (!(node->flags & (LYS_STATUS_MASK))) {
             /* status not explicitely specified on the current node -> inherit */
-            str = lys_path(node, 1);
+            str = lys_path(node, LYS_PATH_FIRST_PREFIX);
             LOGWRN("Missing status in %s subtree (%s), inheriting.",
                    parent->flags & LYS_STATUS_DEPRC ? "deprecated" : "obsolete", str);
             free(str);
