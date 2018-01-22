@@ -3953,6 +3953,7 @@ apply_aug(struct lys_node_augment *augment, struct unres_schema *unres)
     struct lys_node *child, *parent;
     int clear_config;
     unsigned int u;
+    uint8_t *v;
     struct lys_ext_instance *ext;
 
     assert(augment->target && (augment->flags & LYS_NOTAPPLIED));
@@ -3995,7 +3996,11 @@ apply_aug(struct lys_node_augment *augment, struct unres_schema *unres)
     for (u = 0; u < augment->target->ext_size; u++) {
         ext = augment->target->ext[u]; /* shortcut */
         if (ext && ext->def->plugin && (ext->def->plugin->flags & LYEXT_OPT_INHERIT)) {
-            if (unres_schema_add_node(lys_main_module(augment->module), unres, &ext, UNRES_EXT_FINALIZE, NULL) == -1) {
+            v = malloc(sizeof *v);
+            LY_CHECK_ERR_RETURN(!v, LOGMEM, -1);
+            *v = u;
+            if (unres_schema_add_node(lys_main_module(augment->module), unres, &augment->target->ext,
+                    UNRES_EXT_FINALIZE, (struct lys_node *)v) == -1) {
                 /* something really bad happend since the extension finalization is not actually
                  * being resolved while adding into unres, so something more serious with the unres
                  * list itself must happened */
