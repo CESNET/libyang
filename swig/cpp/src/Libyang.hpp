@@ -88,7 +88,7 @@ public:
     S_Submodule get_submodule(const char *module, const char *revision = nullptr, const char *submodule = nullptr, const char *sub_revision = nullptr);
     S_Submodule get_submodule2(S_Module main_module, const char *submodule = nullptr);
     S_Schema_Node get_node(S_Schema_Node start, const char *data_path, int output = 0);
-    S_Schema_Node get_node(const char *schema_path);
+    S_Set find_path(const char *schema_path);
     void clean();
 
     /* functions */

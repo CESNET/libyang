@@ -1704,26 +1704,17 @@ ly_ctx_get_node(struct ly_ctx *ctx, const struct lys_node *start, const char *no
     return node;
 }
 
-API const struct lys_node *
-ly_ctx_get_node2(struct ly_ctx *ctx, const char *path)
+API struct ly_set *
+ly_ctx_find_path(struct ly_ctx *ctx, const char *path)
 {
     struct ly_set *resultset = NULL;
-    const struct lys_node *snode;
-    int rc;
 
-    if (!ctx) {
+    if (!ctx || !path) {
         ly_errno = LY_EINVAL;
         return NULL;
     }
 
     /* start in internal module without data to make sure that all the nodes are prefixed */
-    rc = resolve_schema_nodeid(path, NULL, ctx->models.list[0], &resultset, 1, 1);
-    if (rc == -1 || resultset->number != 1) {
-        ly_set_free(resultset);
-        return NULL;
-    }
-
-    snode = resultset->set.s[0];
-    ly_set_free(resultset);
-    return snode;
+    resolve_schema_nodeid(path, NULL, ctx->models.list[0], &resultset, 1, 1);
+    return resultset;
 }

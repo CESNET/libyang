@@ -44,7 +44,7 @@
 %newobject Context::parse_xml;
 %newobject Context::get_submodule;
 %newobject Context::get_submodule2;
-%newobject Context::get_node;
+%newobject Context::find_path;
 
 %shared_ptr(Set);
 %newobject Set::dup;
