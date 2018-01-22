@@ -36,27 +36,37 @@ Context::Context(ly_ctx *ctx, S_Deleter deleter):
 Context::Context(const char *search_dir, int options) {
     ctx = ly_ctx_new(search_dir, options);
     if (!ctx) {
-        throw std::runtime_error("can not create new context");
+        check_libyang_error();
     }
     deleter = std::make_shared<Deleter>(ctx);
 }
 Context::Context(const char *search_dir, const char *path, LYD_FORMAT format, int options) {
     ctx = ly_ctx_new_ylpath(search_dir, path, format, options);
     if (!ctx) {
-        throw std::runtime_error("can not create new context");
+        check_libyang_error();
     }
     deleter = std::make_shared<Deleter>(ctx);
 }
 Context::Context(const char *search_dir, LYD_FORMAT format, const char *data, int options) {
     ctx = ly_ctx_new_ylmem(search_dir, data, format, options);
     if (!ctx) {
-        throw std::runtime_error("can not create new context");
+        check_libyang_error();
     }
     deleter = std::make_shared<Deleter>(ctx);
 }
 Context::~Context() {}
+int Context::set_searchdir(const char *search_dir) {
+    int ret = ly_ctx_set_searchdir(ctx, search_dir);
+    if (ret) {
+        check_libyang_error();
+    }
+    return ret;
+}
 S_Data_Node Context::info() {
     struct lyd_node *new_node = ly_ctx_info(ctx);
+    if (!new_node) {
+        check_libyang_error();
+    }
     return new_node ? std::make_shared<Data_Node>(new_node, deleter) : nullptr;
 }
 S_Module Context::get_module(const char *name, const char *revision, int implemented) {
@@ -69,6 +79,9 @@ S_Module Context::get_module_older(S_Module module) {
 }
 S_Module Context::load_module(const char *name, const char *revision) {
     const struct lys_module *module = ly_ctx_load_module(ctx, name, revision);
+    if (!module) {
+        check_libyang_error();
+    }
     return module ? std::make_shared<Module>((lys_module *) module, deleter) : nullptr;
 }
 S_Module Context::get_module_by_ns(const char *ns, const char *revision, int implemented) {
@@ -161,6 +174,7 @@ S_Data_Node Context::parse_mem(const char *data, LYD_FORMAT format, int options)
 
     new_node = lyd_parse_mem(ctx, data, format, options);
     if (!new_node) {
+        check_libyang_error();
         return nullptr;
     }
 
@@ -172,6 +186,7 @@ S_Data_Node Context::parse_fd(int fd, LYD_FORMAT format, int options) {
 
     new_node = lyd_parse_fd(ctx, fd, format, options);
     if (!new_node) {
+        check_libyang_error();
         return nullptr;
     }
 
@@ -183,6 +198,7 @@ S_Module Context::parse_path(const char *path, LYS_INFORMAT format) {
 
     module = (struct lys_module *) lys_parse_path(ctx, path, format);
     if (!module) {
+        check_libyang_error();
         return nullptr;
     }
 
@@ -194,6 +210,7 @@ S_Data_Node Context::parse_data_path(const char *path, LYD_FORMAT format, int op
 
     new_node = lyd_parse_path(ctx, path, format, options);
     if (!new_node) {
+        check_libyang_error();
         return nullptr;
     }
 
@@ -205,6 +222,7 @@ S_Data_Node Context::parse_xml(S_Xml_Elem elem, int options) {
 
     new_node = lyd_parse_xml(ctx, &elem->elem, options);
     if (!new_node) {
+        check_libyang_error();
         return nullptr;
     }
 
@@ -215,7 +233,7 @@ S_Data_Node Context::parse_xml(S_Xml_Elem elem, int options) {
 Set::Set() {
     struct ly_set *set = ly_set_new();
     if (!set) {
-        throw std::runtime_error("can not create new set");
+        check_libyang_error();
     }
 
     set = set;
@@ -278,4 +296,9 @@ int Set::rm(S_Schema_Node node) {
 }
 int Set::rm_index(unsigned int index) {
     return ly_set_rm_index(set, index);
+}
+
+/* API for wrapping struct ly_ctx from libnetconf2 python bindings */
+S_Context create_new_Context(struct ly_ctx *new_ctx) {
+    return new_ctx ? std::make_shared<Context>(new_ctx, nullptr) : nullptr;
 }

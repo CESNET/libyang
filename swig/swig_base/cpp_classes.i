@@ -49,6 +49,7 @@
 %shared_ptr(Set);
 %newobject Set::dup;
 
+%newobject create_new_Context;
 
 /* Tree_Data.hpp */
 %newobject create_new_Data_Node;
