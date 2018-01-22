@@ -148,6 +148,13 @@ S_Schema_Node Context::get_node(S_Schema_Node start, const char *data_path, int 
 
     return node ? std::make_shared<Schema_Node>((struct lys_node *) node, deleter) : nullptr;
 }
+S_Schema_Node Context::get_node(const char *schema_path) {
+    const struct lys_node *node = nullptr;
+
+    node = ly_ctx_get_node2(ctx, schema_path);
+
+    return node ? std::make_shared<Schema_Node>((struct lys_node *) node, deleter) : nullptr;
+}
 S_Data_Node Context::parse_mem(const char *data, LYD_FORMAT format, int options) {
     struct lyd_node *new_node = nullptr;
 
