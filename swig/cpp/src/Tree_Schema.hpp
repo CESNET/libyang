@@ -422,7 +422,7 @@ public:
     virtual S_Schema_Node next();
     virtual S_Schema_Node prev();
 
-    std::string path();
+    std::string path(int options = 0);
     int validate_value(const char *value) {return lyd_validate_value(node, value);};
     std::vector<S_Schema_Node> *child_instantiables(int options);
     S_Set find_path(const char *path);
