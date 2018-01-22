@@ -289,3 +289,8 @@ int Set::rm(S_Schema_Node node) {
 int Set::rm_index(unsigned int index) {
     return ly_set_rm_index(set, index);
 }
+
+/* API for wrapping struct ly_ctx from libnetconf2 python bindings */
+S_Context create_new_Context(struct ly_ctx *new_ctx) {
+    return new_ctx ? std::make_shared<Context>(new_ctx, nullptr) : nullptr;
+}

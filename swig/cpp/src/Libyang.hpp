@@ -105,6 +105,8 @@ private:
     S_Deleter deleter;
 };
 
+S_Context create_new_Context(struct ly_ctx *ctx);
+
 class Set
 {
 public:
