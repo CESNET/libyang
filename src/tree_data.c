@@ -1768,10 +1768,13 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
             src_leaf->value_str = NULL;
             trg_leaf->value_type = src_leaf->value_type;
             src_leaf->value_type = 0;
-            if (trg_leaf->value_type == LY_TYPE_LEAFREF) {
+            if ((trg_leaf->value_type & LY_DATA_TYPE_MASK) == LY_TYPE_LEAFREF) {
                 trg_leaf->validity |= LYD_VAL_LEAFREF;
                 trg_leaf->value.leafref = NULL;
             } else {
+                if ((trg_leaf->value_type & LY_DATA_TYPE_MASK) == LY_TYPE_BITS) {
+                    free(trg_leaf->value.bit);
+                }
                 trg_leaf->value = src_leaf->value;
             }
             src_leaf->value = (lyd_val)0;
@@ -1816,6 +1819,9 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
 
             lydict_remove(ctx, trg_leaf->value_str);
             trg_leaf->value_str = lydict_insert(ctx, src_leaf->value_str, 0);
+            if ((trg_leaf->value_type & LY_DATA_TYPE_MASK) == LY_TYPE_BITS) {
+                free(trg_leaf->value.bit);
+            }
             trg_leaf->value_type = src_leaf->value_type;
             trg_leaf->dflt = src_leaf->dflt;
 
