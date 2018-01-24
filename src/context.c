@@ -1703,3 +1703,18 @@ ly_ctx_get_node(struct ly_ctx *ctx, const struct lys_node *start, const char *no
 
     return node;
 }
+
+API struct ly_set *
+ly_ctx_find_path(struct ly_ctx *ctx, const char *path)
+{
+    struct ly_set *resultset = NULL;
+
+    if (!ctx || !path) {
+        ly_errno = LY_EINVAL;
+        return NULL;
+    }
+
+    /* start in internal module without data to make sure that all the nodes are prefixed */
+    resolve_schema_nodeid(path, NULL, ctx->models.list[0], &resultset, 1, 1);
+    return resultset;
+}

@@ -117,11 +117,11 @@ public:
     S_Data_Node first_sibling();
     int validate(int options, S_Context var_arg);
     int validate(int options, S_Data_Node var_arg);
-    int validate_value(const char *value) {return lyd_validate_value(node->schema, value);};
+    int validate_value(const char *value);
     S_Difflist diff(S_Data_Node second, int options);
     S_Data_Node new_path(S_Context ctx, const char *path, void *value, LYD_ANYDATA_VALUETYPE value_type, int options);
-    unsigned int list_pos() {return lyd_list_pos(node);};
-    int unlink() {return lyd_unlink(node);};
+    unsigned int list_pos();
+    int unlink();
     S_Attr insert_attr(S_Module module, const char *name, const char *value);
     S_Module node_module();
     std::string print_mem(LYD_FORMAT format, int options);

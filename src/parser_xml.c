@@ -112,7 +112,8 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     struct lyd_attr *dattr, *dattr_iter;
     struct lyxml_attr *attr;
     struct lyxml_elem *child, *next;
-    int i, j, havechildren, r, editbits = 0, pos, filterflag = 0, found;
+    int i, j, havechildren, r, editbits = 0, filterflag = 0, found;
+    uint8_t pos;
     int ret = 0;
     const char *str = NULL;
     char *msg;
@@ -246,12 +247,10 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     (*result)->schema = schema;
     (*result)->parent = parent;
     diter = NULL;
-    if (parent && parent->child && schema->nodetype == LYS_LEAF && parent->schema->nodetype == LYS_LIST &&
-        (pos = lys_is_key((struct lys_node_list *)parent->schema, (struct lys_node_leaf *)schema))) {
+    if (schema->nodetype == LYS_LEAF && lys_is_key((struct lys_node_leaf *)schema, &pos)) {
         /* it is key and we need to insert it into a correct place */
         for (i = 0, diter = parent->child;
-                diter && i < (pos - 1) && diter->schema->nodetype == LYS_LEAF &&
-                    lys_is_key((struct lys_node_list *)parent->schema, (struct lys_node_leaf *)diter->schema);
+                diter && i < pos && diter->schema->nodetype == LYS_LEAF && lys_is_key((struct lys_node_leaf *)diter->schema, NULL);
                 i++, diter = diter->next);
         if (diter) {
             /* out of order insertion - insert list's key to the correct position, before the diter */
