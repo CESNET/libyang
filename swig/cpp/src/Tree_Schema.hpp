@@ -498,6 +498,7 @@ public:
     const char *units() {return ((struct lys_node_leaf *)node)->units;};
     const char *dflt() {return ((struct lys_node_leaf *)node)->dflt;};
     S_Schema_Node child() {return nullptr;};
+    int is_key();
 
 private:
     struct lys_node *node;

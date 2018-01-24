@@ -295,6 +295,15 @@ Schema_Node_Leaf::~Schema_Node_Leaf() {};
 S_Set Schema_Node_Leaf::backlinks() LY_NEW_CASTED(lys_node_leaf, node, backlinks, Set);
 S_When Schema_Node_Leaf::when() LY_NEW_CASTED(lys_node_leaf, node, when, When);
 S_Type Schema_Node_Leaf::type() {return std::make_shared<Type>(&((struct lys_node_leaf *)node)->type, deleter);}
+int Schema_Node_Leaf::is_key() {
+    uint8_t pos;
+
+    if (lys_is_key((struct lys_node_leaf *)node, &pos)) {
+        return pos;
+    } else {
+        return -1;
+    }
+}
 
 Schema_Node_Leaflist::~Schema_Node_Leaflist() {};
 S_Set Schema_Node_Leaflist::backlinks() LY_NEW_CASTED(lys_node_leaflist, node, backlinks, Set);

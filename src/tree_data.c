@@ -3508,7 +3508,8 @@ lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd
     struct lyd_node *start, *iter, *ins, *next1, *next2;
     int invalid = 0, isrpc = 0, clrdflt = 0;
     struct ly_set *llists = NULL;
-    int pos, i;
+    int i;
+    uint8_t pos;
     int stype = LYS_INPUT | LYS_OUTPUT;
 
     assert(parent || sibling);
@@ -3592,11 +3593,10 @@ lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd
         }
 
         /* are we inserting list key? */
-        if (!ins->dflt && parent && parent->schema->nodetype == LYS_LIST && ins->schema->nodetype == LYS_LEAF
-                && (pos = lys_is_key((struct lys_node_list *)parent->schema, (struct lys_node_leaf *)ins->schema))) {
+        if (!ins->dflt && ins->schema->nodetype == LYS_LEAF && lys_is_key((struct lys_node_leaf *)ins->schema, &pos)) {
             /* yes, we have a key, get know its position */
             for (i = 0, iter = parent->child;
-                    iter && i < (pos - 1) && iter->schema->nodetype == LYS_LEAF;
+                    iter && i < pos && iter->schema->nodetype == LYS_LEAF;
                     i++, iter = iter->next) ;
             if (iter) {
                 /* insert list's key to the correct position - before the iter */

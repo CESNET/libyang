@@ -40,6 +40,37 @@
 static int lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, struct lys_type *old,
                         int in_grp, int shallow, struct unres_schema *unres);
 
+API const struct lys_node_list *
+lys_is_key(const struct lys_node_leaf *node, uint8_t *index)
+{
+    struct lys_node *parent = (struct lys_node *)node;
+    struct lys_node_list *list;
+    uint8_t i;
+
+    if (!node || node->nodetype != LYS_LEAF) {
+        return NULL;
+    }
+
+    do {
+        parent = lys_parent(parent);
+    } while (parent && parent->nodetype == LYS_USES);
+
+    if (!parent || parent->nodetype != LYS_LIST) {
+        return NULL;
+    }
+
+    list = (struct lys_node_list*)parent;
+    for (i = 0; i < list->keys_size; i++) {
+        if (list->keys[i] == node) {
+            if (index) {
+                (*index) = i;
+            }
+            return list;
+        }
+    }
+    return NULL;
+}
+
 API const struct lys_node *
 lys_is_disabled(const struct lys_node *node, int recursive)
 {
@@ -4508,20 +4539,6 @@ lys_submodule_module_data_free(struct lys_submodule *submodule)
             lys_node_free(elem, NULL, 0);
         }
     }
-}
-
-int
-lys_is_key(struct lys_node_list *list, struct lys_node_leaf *leaf)
-{
-    uint8_t i;
-
-    for (i = 0; i < list->keys_size; i++) {
-        if (list->keys[i] == leaf) {
-            return i + 1;
-        }
-    }
-
-    return 0;
 }
 
 API char *

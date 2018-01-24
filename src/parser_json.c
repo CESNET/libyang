@@ -778,7 +778,8 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
     unsigned int len = 0;
     unsigned int r;
     unsigned int flag_leaflist = 0;
-    int i, pos;
+    int i;
+    uint8_t pos;
     char *name, *prefix = NULL, *str = NULL;
     const struct lys_module *module = NULL;
     struct lys_node *schema = NULL;
@@ -999,12 +1000,10 @@ attr_repeat:
     result->schema = schema;
     result->parent = *parent;
     diter = NULL;
-    if (*parent && (*parent)->child && schema->nodetype == LYS_LEAF && (*parent)->schema->nodetype == LYS_LIST &&
-        (pos = lys_is_key((struct lys_node_list *)(*parent)->schema, (struct lys_node_leaf *)schema))) {
+    if (schema->nodetype == LYS_LEAF && lys_is_key((struct lys_node_leaf *)schema, &pos)) {
         /* it is key and we need to insert it into a correct place */
         for (i = 0, diter = (*parent)->child;
-                diter && i < (pos - 1) && diter->schema->nodetype == LYS_LEAF &&
-                    lys_is_key((struct lys_node_list *)(*parent)->schema, (struct lys_node_leaf *)diter->schema);
+                diter && i < pos && diter->schema->nodetype == LYS_LEAF && lys_is_key((struct lys_node_leaf *)diter->schema, NULL);
                 i++, diter = diter->next);
         if (diter) {
             /* out of order insertion - insert list's key to the correct position, before the diter */

@@ -487,12 +487,6 @@ const struct lys_module *lys_parse_mem_(struct ly_ctx *ctx, const char *data, LY
                                         int internal, int implement);
 
 /**
- * @brief Get know if the \p leaf is a key of the \p list
- * @return 0 for false, position of the key otherwise
- */
-int lys_is_key(struct lys_node_list *list, struct lys_node_leaf *leaf);
-
-/**
  * @brief Get next augment from \p mod augmenting \p aug_target
  */
 struct lys_node_augment *lys_getnext_target_aug(struct lys_node_augment *last, const struct lys_module *mod,
