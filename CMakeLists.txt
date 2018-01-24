@@ -50,6 +50,8 @@ else()
 endif()
 
 include_directories(${PROJECT_BINARY_DIR}/src ${PROJECT_SOURCE_DIR}/src)
+
+set(LIBYANG_SOURCE_DIR ${PROJECT_SOURCE_DIR}/src)
 configure_file(${PROJECT_SOURCE_DIR}/src/libyang.h.in ${PROJECT_BINARY_DIR}/src/libyang.h @ONLY)
 
 if(PLUGINS_DIR)

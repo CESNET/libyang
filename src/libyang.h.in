@@ -21,10 +21,10 @@
 
 @ENABLE_LATEST_REVISIONS_MACRO@
 
-#include "tree_schema.h"
-#include "tree_data.h"
-#include "xml.h"
-#include "dict.h"
+#include "@LIBYANG_SOURCE_DIR@/tree_schema.h"
+#include "@LIBYANG_SOURCE_DIR@/tree_data.h"
+#include "@LIBYANG_SOURCE_DIR@/xml.h"
+#include "@LIBYANG_SOURCE_DIR@/dict.h"
 
 #ifdef __cplusplus
 extern "C" {
