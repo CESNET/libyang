@@ -335,8 +335,8 @@ _transform_json2xml_subexp(const struct lys_module *module, const char *expr, ch
 
             /* parse literals as subexpressions if possible, otherwise treat as a literal */
             if (_transform_json2xml_subexp(module, literal, out, out_used, out_size, schema, inst_id, prefixes, namespaces, ns_count)) {
-                strncpy(&(*out)[*out_used], &exp->expr[exp->expr_pos[i]], exp->tok_len[i]);
-                *out_used += exp->tok_len[i];
+                strncpy(&(*out)[*out_used], literal, exp->tok_len[i] - 2);
+                *out_used += exp->tok_len[i] - 2;
             }
 
             lydict_remove(module->ctx, literal);
@@ -510,8 +510,8 @@ transform_xml2json_subexp(struct ly_ctx *ctx, const char *expr, char **out, size
 
             /* parse literals as subexpressions if possible, otherwise treat as a literal */
             if (transform_xml2json_subexp(ctx, literal, out, out_used, out_size, xml, inst_id, use_ctx_data_clb, 0)) {
-                strncpy(&(*out)[*out_used], &exp->expr[exp->expr_pos[i]], exp->tok_len[i]);
-                *out_used += exp->tok_len[i];
+                strncpy(&(*out)[*out_used], literal, exp->tok_len[i] - 2);
+                *out_used += exp->tok_len[i] - 2;
             }
 
             lydict_remove(ctx, literal);
