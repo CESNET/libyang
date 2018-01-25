@@ -212,13 +212,13 @@ transform_module_name2import_prefix(const struct lys_module *module, const char 
     return NULL;
 }
 
-static const char *
-_transform_json2xml(const struct lys_module *module, const char *expr, int schema, int inst_id, const char ***prefixes,
+static int
+_transform_json2xml_subexp(const struct lys_module *module, const char *expr, char **out, size_t *out_used, size_t *out_size, int schema, int inst_id, const char ***prefixes,
                     const char ***namespaces, uint32_t *ns_count)
 {
-    const char *cur_expr, *end, *prefix, *ptr;
-    char *out, *name;
-    size_t out_size, out_used, name_len;
+    const char *cur_expr, *end, *prefix, *literal;
+    char *name;
+    size_t name_len;
     const struct lys_module *mod = NULL, *prev_mod = NULL;
     uint32_t i, j;
     struct lyxp_expr *exp;
@@ -231,26 +231,16 @@ _transform_json2xml(const struct lys_module *module, const char *expr, int schem
         *namespaces = NULL;
     }
 
-    if (!expr[0]) {
-        /* empty value */
-        return lydict_insert(module->ctx, expr, 0);
-    }
-
-    out_size = strlen(expr) + 1;
-    out = malloc(out_size);
-    LY_CHECK_ERR_RETURN(!out, LOGMEM, NULL);
-    out_used = 0;
-
     exp = lyxp_parse_expr(expr);
-    LY_CHECK_ERR_RETURN(!exp, free(out), NULL);
+    LY_CHECK_RETURN(!exp, 1);
 
     for (i = 0; i < exp->used; ++i) {
         cur_expr = &exp->expr[exp->expr_pos[i]];
 
         /* copy WS */
         if (i && ((end = exp->expr + exp->expr_pos[i - 1] + exp->tok_len[i - 1]) != cur_expr)) {
-            strncpy(&out[out_used], end, cur_expr - end);
-            out_used += cur_expr - end;
+            strncpy(&(*out)[*out_used], end, cur_expr - end);
+            (*out_used) += cur_expr - end;
         }
 
         if ((exp->tokens[i] == LYXP_TOKEN_NAMETEST) && ((end = strnchr(cur_expr, ':', exp->tok_len[i])) || inst_id)) {
@@ -318,108 +308,87 @@ _transform_json2xml(const struct lys_module *module, const char *expr, int schem
             }
 
             /* adjust out size (it can even decrease in some strange cases) */
-            out_size += strlen(prefix) + 1 - name_len;
-            out = ly_realloc(out, out_size);
-            LY_CHECK_ERR_GOTO(!out, LOGMEM, error);
+            *out_size += strlen(prefix) + 1 - name_len;
+            *out = ly_realloc(*out, *out_size);
+            LY_CHECK_ERR_GOTO(!(*out), LOGMEM, error);
 
             /* copy the model name */
-            strcpy(&out[out_used], prefix);
-            out_used += strlen(prefix);
+            strcpy(&(*out)[*out_used], prefix);
+            *out_used += strlen(prefix);
 
             if (!name_len) {
                 /* we are adding the prefix, so also ':' */
-                out[out_used] = ':';
-                ++out_used;
+                (*out)[*out_used] = ':';
+                ++(*out_used);
             }
 
             /* copy the rest */
-            strncpy(&out[out_used], end, exp->tok_len[i] - name_len);
-            out_used += exp->tok_len[i] - name_len;
+            strncpy(&(*out)[*out_used], end, exp->tok_len[i] - name_len);
+            *out_used += exp->tok_len[i] - name_len;
         } else if ((exp->tokens[i] == LYXP_TOKEN_LITERAL) && (end = strnchr(cur_expr, ':', exp->tok_len[i]))) {
-            ptr = end;
-            while (isalnum(ptr[-1]) || (ptr[-1] == '_') || (ptr[-1] == '-') || (ptr[-1] == '.')) {
-                --ptr;
+            /* copy begin quote */
+            (*out)[*out_used] = cur_expr[0];
+            ++(*out_used);
+
+            /* skip quotes */
+            literal = lydict_insert(module->ctx, cur_expr + 1, exp->tok_len[i] - 2);
+
+            /* parse literals as subexpressions if possible, otherwise treat as a literal */
+            if (_transform_json2xml_subexp(module, literal, out, out_used, out_size, schema, inst_id, prefixes, namespaces, ns_count)) {
+                strncpy(&(*out)[*out_used], &exp->expr[exp->expr_pos[i]], exp->tok_len[i]);
+                *out_used += exp->tok_len[i];
             }
 
-            /* get the module */
-            name_len = end - ptr;
-            if (!schema) {
-                prefix = NULL;
-                name = strndup(ptr, name_len);
-                mod = ly_ctx_get_module(module->ctx, name, NULL, 0);
-                if (module->ctx->data_clb) {
-                    if (!mod) {
-                        mod = module->ctx->data_clb(module->ctx, name, NULL, 0, module->ctx->data_clb_data);
-                    } else if (!mod->implemented) {
-                        mod = module->ctx->data_clb(module->ctx, name, mod->ns, LY_MODCLB_NOT_IMPLEMENTED, module->ctx->data_clb_data);
-                    }
-                }
-                free(name);
-                if (mod) {
-                    prefix = mod->prefix;
-                }
-            } else {
-                name = strndup(ptr, name_len);
-                prefix = transform_module_name2import_prefix(module, name);
-                free(name);
-            }
+            lydict_remove(module->ctx, literal);
 
-            if (prefix) {
-                /* remember the namespace definition (only if it's new) */
-                if (!schema && ns_count) {
-                    for (j = 0; j < *ns_count; ++j) {
-                        if (ly_strequal((*namespaces)[j], mod->ns, 1)) {
-                            break;
-                        }
-                    }
-                    if (j == *ns_count) {
-                        ++(*ns_count);
-                        *prefixes = ly_realloc(*prefixes, *ns_count * sizeof **prefixes);
-                        LY_CHECK_ERR_GOTO(!(*prefixes), LOGMEM, error);
-                        *namespaces = ly_realloc(*namespaces, *ns_count * sizeof **namespaces);
-                        LY_CHECK_ERR_GOTO(!(*namespaces), LOGMEM, error);
-                        (*prefixes)[*ns_count - 1] = mod->prefix;
-                        (*namespaces)[*ns_count - 1] = mod->ns;
-                    }
-                }
-
-                /* adjust out size (it can even decrease in some strange cases) */
-                out_size += strlen(prefix) - name_len;
-                out = ly_realloc(out, out_size);
-                LY_CHECK_ERR_GOTO(!out, LOGMEM, error);
-
-                /* copy any beginning */
-                strncpy(&out[out_used], cur_expr, ptr - cur_expr);
-                out_used += ptr - cur_expr;
-
-                /* copy the model name */
-                strcpy(&out[out_used], prefix);
-                out_used += strlen(prefix);
-
-                /* copy the rest */
-                strncpy(&out[out_used], end, (exp->tok_len[i] - name_len) - (ptr - cur_expr));
-                out_used += (exp->tok_len[i] - name_len) - (ptr - cur_expr);
-            } else {
-                strncpy(&out[out_used], &exp->expr[exp->expr_pos[i]], exp->tok_len[i]);
-                out_used += exp->tok_len[i];
-            }
+            /* copy end quote */
+            (*out)[*out_used] = cur_expr[exp->tok_len[i] - 1];
+            ++(*out_used);
         } else {
-            strncpy(&out[out_used], &exp->expr[exp->expr_pos[i]], exp->tok_len[i]);
-            out_used += exp->tok_len[i];
+            strncpy(&(*out)[*out_used], &exp->expr[exp->expr_pos[i]], exp->tok_len[i]);
+            *out_used += exp->tok_len[i];
         }
     }
-    out[out_used] = '\0';
 
     lyxp_expr_free(exp);
-    return lydict_insert_zc(module->ctx, out);
+    return 0;
 
 error:
     if (!schema && ns_count) {
         free(*prefixes);
         free(*namespaces);
     }
-    free(out);
     lyxp_expr_free(exp);
+    return 1;
+}
+
+static const char *
+_transform_json2xml(const struct lys_module *module, const char *expr, int schema, int inst_id, const char ***prefixes,
+                    const char ***namespaces, uint32_t *ns_count)
+{
+    char *out;
+    size_t out_size, out_used;
+    int ret;
+
+    assert(module && expr && ((!prefixes && !namespaces && !ns_count) || (prefixes && namespaces && ns_count)));
+
+    if (!expr[0]) {
+        /* empty value */
+        return lydict_insert(module->ctx, expr, 0);
+    }
+
+    out_size = strlen(expr) + 1;
+    out = malloc(out_size);
+    LY_CHECK_ERR_RETURN(!out, LOGMEM, NULL);
+    out_used = 0;
+
+    ret = _transform_json2xml_subexp(module, expr, &out, &out_used, &out_size, schema, inst_id, prefixes, namespaces, ns_count);
+    if (!ret) {
+        out[out_used] = '\0';
+        return lydict_insert_zc(module->ctx, out);
+    }
+
+    free(out);
     return NULL;
 }
 
