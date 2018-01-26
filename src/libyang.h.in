@@ -1060,7 +1060,7 @@ struct ly_ctx;
                                         causes that function ly_ctx_info() does not work (returns NULL) until
                                         the ietf-yang-library module is loaded manually. While any revision
                                         of this schema can be loaded with this option, note that the only
-                                        revisions implemented by ly_ctx_info() are 2016-06-21 and 2017-08-17.
+                                        revisions implemented by ly_ctx_info() are 2016-04-09 and 2018-01-17.
                                         This option cannot be used with ly_ctx_new_yl*() functions. */
 
 /**@} contextoptions */
@@ -1096,6 +1096,10 @@ struct ly_ctx *ly_ctx_new(const char *search_dir, int options);
  * ly_ctx_new() by loading modules specified in the ietf-yang-library form into the context
  * being created.
  *
+ * The preferred tree model revision is 2018-01-17. However, only the first module-set is processed
+ * and loaded into the context. If there are no matching nodes from this tree, the legacy tree
+ * (originally from model revision 2016-04-09) is processed.
+ *
  * Note, that the modules are loaded the same way as in case of ly_ctx_load_module(), so the schema
  * paths in the yang-library data are ignored and the modules are loaded from the context's search
  * locations. On the other hand, YANG features of the modules are set as specified in the yang-library
@@ -1119,6 +1123,10 @@ struct ly_ctx *ly_ctx_new_ylpath(const char *search_dir, const char *path, LYD_F
  * as path to a file holding the data, use ly_ctx_new_ylpath(). Both functions extend functionality of
  * ly_ctx_new() by loading modules specified in the ietf-yang-library form into the context
  * being created.
+ *
+ * The preferred tree model revision is 2018-01-17. However, only the first module-set is processed
+ * and loaded into the context. If there are no matching nodes from this tree, the legacy tree
+ * (originally from model revision 2016-04-09) is processed.
  *
  * Note, that the modules are loaded the same way as in case of ly_ctx_load_module(), so the schema
  * paths in the yang-library data are ignored and the modules are loaded from the context's search
