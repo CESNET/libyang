@@ -144,7 +144,7 @@ extern "C" {
  * the most efficient way. Alternatively, the ly_ctx_info() function can be used to get complex information
  * about the schemas in the context in the form of data tree defined by
  * <a href="https://tools.ietf.org/html/draft-ietf-netconf-yang-library-04">ietf-yang-library</a> schema.
- * To get a specific node defined in a module in the context, ly_ctx_get_node() can be used.
+ * To get a specific node defined in a module in the context, ly_ctx_find_path() or ly_ctx_get_node() can be used.
  *
  * Modules held by a context can be removed by ly_ctx_remove_module(). Besides removing the module, it is possible
  * just to disable it with lys_set_disabled(). In this case the module is hidden in the context (disabled modules can
@@ -181,6 +181,7 @@ extern "C" {
  * - ly_ctx_get_submodule()
  * - ly_ctx_get_submodule2()
  * - ly_ctx_get_node()
+ * - ly_ctx_find_path()
  * - ly_ctx_remove_module()
  * - ly_ctx_clean()
  * - ly_ctx_destroy()
@@ -945,6 +946,7 @@ extern "C" {
  * - lyd_path()
  * - lys_data_path()
  * - ly_ctx_get_node()
+ * - ly_ctx_find_path()
  *
  */
 
@@ -1432,6 +1434,19 @@ const struct lys_submodule *ly_ctx_get_submodule2(const struct lys_module *main_
  * @return Resolved schema node or NULL.
  */
 const struct lys_node *ly_ctx_get_node(struct ly_ctx *ctx, const struct lys_node *start, const char *data_path, int output);
+
+/**
+ * @brief Get schema node according to the given schema path (see @ref howtoxpath).
+ *
+ * Note that the given path must be absolute and fully prefixed (which is the default output
+ * of lys_path() function). To get node specified by a relative path, use lys_find_path() instead.
+ *
+ * @param[in] ctx Context to work in.
+ * @param[in] path Schema path of the node to find.
+ * @return Set of found schema nodes. If no nodes are matching \p path the returned set is empty.
+ * In case of an error, NULL is returned.
+ */
+struct ly_set *ly_ctx_find_path(struct ly_ctx *ctx, const char *path);
 
 /**
  * @brief Remove the specified module from its context.

@@ -201,9 +201,32 @@ S_Schema_Node Schema_Node::parent() LY_NEW(node, parent, Schema_Node);
 S_Schema_Node Schema_Node::child() LY_NEW(node, child, Schema_Node);
 S_Schema_Node Schema_Node::next() LY_NEW(node, next, Schema_Node);
 S_Schema_Node Schema_Node::prev() LY_NEW(node, prev, Schema_Node);
-S_Set Schema_Node::find_xpath(const char *path) {
+std::string Schema_Node::path(int options) {
+    char *path = nullptr;
+
+    path = lys_path(node, options);
+    if (!path) {
+        return nullptr;
+    }
+
+    std::string s_path = path;
+    free(path);
+    return s_path;
+}
+std::vector<S_Schema_Node> *Schema_Node::child_instantiables(int options) {
+    auto s_vector = new std::vector<S_Schema_Node>;
+    struct lys_node *iter = NULL;
+
+    while ((iter = (struct lys_node *)lys_getnext(iter, node, node->module, options))) {
+        s_vector->push_back(std::make_shared<Schema_Node>(iter, deleter));
+    }
+
+    return s_vector;
+}
+S_Set Schema_Node::find_path(const char *path) {
     struct ly_set *set = lys_find_path(node->module, node, path);
     if (!set) {
+        check_libyang_error();
         return nullptr;
     }
 
@@ -213,6 +236,7 @@ S_Set Schema_Node::find_xpath(const char *path) {
 S_Set Schema_Node::xpath_atomize(enum lyxp_node_type ctx_node_type, const char *expr, int options) {
     struct ly_set *set = lys_xpath_atomize(node, ctx_node_type, expr, options);
     if (!set) {
+        check_libyang_error();
         return nullptr;
     }
 
@@ -221,6 +245,7 @@ S_Set Schema_Node::xpath_atomize(enum lyxp_node_type ctx_node_type, const char *
 S_Set Schema_Node::xpath_atomize(int options) {
     struct ly_set *set = lys_node_xpath_atomize(node, options);
     if (!set) {
+        check_libyang_error();
         return nullptr;
     }
 
@@ -270,6 +295,15 @@ Schema_Node_Leaf::~Schema_Node_Leaf() {};
 S_Set Schema_Node_Leaf::backlinks() LY_NEW_CASTED(lys_node_leaf, node, backlinks, Set);
 S_When Schema_Node_Leaf::when() LY_NEW_CASTED(lys_node_leaf, node, when, When);
 S_Type Schema_Node_Leaf::type() {return std::make_shared<Type>(&((struct lys_node_leaf *)node)->type, deleter);}
+int Schema_Node_Leaf::is_key() {
+    uint8_t pos;
+
+    if (lys_is_key((struct lys_node_leaf *)node, &pos)) {
+        return pos;
+    } else {
+        return -1;
+    }
+}
 
 Schema_Node_Leaflist::~Schema_Node_Leaflist() {};
 S_Set Schema_Node_Leaflist::backlinks() LY_NEW_CASTED(lys_node_leaflist, node, backlinks, Set);

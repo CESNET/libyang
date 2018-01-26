@@ -2090,6 +2090,15 @@ int lys_features_state(const struct lys_module *module, const char *feature);
 const struct lys_node *lys_is_disabled(const struct lys_node *node, int recursive);
 
 /**
+ * @brief Check if the schema leaf node is used as a key for a list.
+ *
+ * @param[in] node Schema leaf node to check
+ * @param[out] index Optional parameter to return position in the list's keys array.
+ * @return NULL if the \p node is not a key, pointer to the list if the \p node is the key of this list
+ */
+const struct lys_node_list *lys_is_key(const struct lys_node_leaf *node, uint8_t *index);
+
+/**
  * @brief Get next schema tree (sibling) node element that can be instantiated in a data tree. Returned node can
  * be from an augment.
  *

@@ -107,6 +107,7 @@ public:
     const char *ns() {return module->ns;};
     S_Revision rev();
     std::vector<S_Deviation> *deviation();
+    S_Schema_Node data() LY_NEW(module, data, Schema_Node);
 
     friend class Context;
     friend class Data_Node;
@@ -420,7 +421,11 @@ public:
     virtual S_Schema_Node child();
     virtual S_Schema_Node next();
     virtual S_Schema_Node prev();
-    S_Set find_xpath(const char *path);
+
+    std::string path(int options = 0);
+    int validate_value(const char *value) {return lyd_validate_value(node, value);};
+    std::vector<S_Schema_Node> *child_instantiables(int options);
+    S_Set find_path(const char *path);
     S_Set xpath_atomize(enum lyxp_node_type ctx_node_type, const char *expr, int options);
     S_Set xpath_atomize(int options);
     // void *priv;
@@ -493,6 +498,7 @@ public:
     const char *units() {return ((struct lys_node_leaf *)node)->units;};
     const char *dflt() {return ((struct lys_node_leaf *)node)->dflt;};
     S_Schema_Node child() {return nullptr;};
+    int is_key();
 
 private:
     struct lys_node *node;
