@@ -56,8 +56,8 @@ diff(const char *data, FILE *model)
     return 0;
 
 fail:
+    fprintf(stderr, "diff failed on:\n\"%s\"\nand\n\"%s\"\n", data, data2);
     free(data2);
-    fprintf(stderr, "diff failed on:\n\"%s\"\n", data);
     return 1;
 }
 
@@ -95,7 +95,7 @@ test_modules(void **state)
     assert_non_null(module);
 
     /* YANG */
-    ret = lys_print_mem(&new, module, LYS_OUT_YANG, NULL);
+    ret = lys_print_mem(&new, module, LYS_OUT_YANG, NULL, 0, 0);
     assert_int_equal(ret, 0);
 
     file = fopen(SCHEMA_FOLDER"/d2_output.yang", "r");
@@ -107,7 +107,7 @@ test_modules(void **state)
     assert_int_equal(ret, 0);
 
     /* YIN */
-    ret = lys_print_mem(&new, module, LYS_OUT_YIN, NULL);
+    ret = lys_print_mem(&new, module, LYS_OUT_YIN, NULL, 0, 0);
     assert_int_equal(ret, 0);
 
     file = fopen(SCHEMA_FOLDER"/d2_output.yin", "r");

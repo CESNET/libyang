@@ -132,7 +132,7 @@ test_parse_print_yin(void **state)
     assert_int_equal(read(fd, st->str1, s.st_size), s.st_size);
     st->str1[s.st_size] = '\0';
 
-    lys_print_mem(&(st->str2), st->mod, LYS_OUT_YIN, NULL);
+    lys_print_mem(&(st->str2), st->mod, LYS_OUT_YIN, NULL, 0, 0);
 
     assert_string_equal(st->str1, st->str2);
 
@@ -153,7 +153,7 @@ test_parse_print_yin(void **state)
     assert_int_equal(read(fd, st->str1, s.st_size), s.st_size);
     st->str1[s.st_size] = '\0';
 
-    lys_print_mem(&(st->str2), st->mod, LYS_OUT_YIN, NULL);
+    lys_print_mem(&(st->str2), st->mod, LYS_OUT_YIN, NULL, 0, 0);
 
     assert_string_equal(st->str1, st->str2);
 }
@@ -184,7 +184,7 @@ test_parse_print_yang(void **state)
     assert_int_equal(read(fd, st->str1, s.st_size), s.st_size);
     st->str1[s.st_size] = '\0';
 
-    lys_print_mem(&(st->str2), st->mod, LYS_OUT_YANG, NULL);
+    lys_print_mem(&(st->str2), st->mod, LYS_OUT_YANG, NULL, 0, 0);
 
     assert_string_equal(st->str1, st->str2);
 
@@ -205,7 +205,7 @@ test_parse_print_yang(void **state)
     assert_int_equal(read(fd, st->str1, s.st_size), s.st_size);
     st->str1[s.st_size] = '\0';
 
-    lys_print_mem(&(st->str2), st->mod, LYS_OUT_YANG, NULL);
+    lys_print_mem(&(st->str2), st->mod, LYS_OUT_YANG, NULL, 0, 0);
 
     assert_string_equal(st->str1, st->str2);
 }

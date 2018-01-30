@@ -620,7 +620,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
     int rc, ret = -1;
     unsigned int i, j;
     int8_t req;
-    const char *name, *value;
+    const char *name, *value, *module_name = NULL;
     LY_DATA_TYPE base = 0, base_tmp;
     struct lys_node *siter;
     struct lys_type *dertype;
@@ -643,29 +643,33 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
     /* module name */
     name = value;
     if (value[i]) {
-        type->module_name = lydict_insert(module->ctx, value, i);
+        module_name = lydict_insert(module->ctx, value, i);
         name += i;
         if ((name[0] != ':') || (parse_identifier(name + 1) < 1)) {
             LOGVAL(LYE_INCHAR, LY_VLOG_NONE, NULL, name[0], name);
+            lydict_remove(module->ctx, module_name);
             lydict_remove(module->ctx, value);
             goto error;
         }
         ++name;
     }
 
-    rc = resolve_superior_type(name, type->module_name, module, parent, &type->der);
+    rc = resolve_superior_type(name, module_name, module, parent, &type->der);
     if (rc == -1) {
-        LOGVAL(LYE_INMOD, LY_VLOG_NONE, NULL, type->module_name);
+        LOGVAL(LYE_INMOD, LY_VLOG_NONE, NULL, module_name);
+        lydict_remove(module->ctx, module_name);
         lydict_remove(module->ctx, value);
         goto error;
 
     /* the type could not be resolved or it was resolved to an unresolved typedef or leafref */
     } else if (rc == EXIT_FAILURE) {
         LOGVAL(LYE_NORESOLV, LY_VLOG_NONE, NULL, "type", name);
+        lydict_remove(module->ctx, module_name);
         lydict_remove(module->ctx, value);
         ret = EXIT_FAILURE;
         goto error;
     }
+    lydict_remove(module->ctx, module_name);
     lydict_remove(module->ctx, value);
 
     if (type->base == LY_TYPE_ERR) {
@@ -1009,10 +1013,6 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
     return EXIT_SUCCESS;
 
 error:
-    if (type->module_name) {
-        lydict_remove(module->ctx, type->module_name);
-        type->module_name = NULL;
-    }
     if (base) {
         type->base = base_tmp;
     }

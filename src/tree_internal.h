@@ -175,6 +175,14 @@ int lys_check_xpath(struct lys_node *node, int check_place);
 int lys_has_xpath(const struct lys_node *node);
 
 /**
+ * @brief Learn if \p type is defined in the local module or from an import.
+ *
+ * @param[in] type Type to examine.
+ * @return non-zero if local, 0 if from an import.
+ */
+int lys_type_is_local(const struct lys_type *type);
+
+/**
  * @brief Create a copy of the specified schema tree \p node
  *
  * @param[in] module Target module for the duplicated node.

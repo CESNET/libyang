@@ -403,8 +403,8 @@ int_range:
     }
     ly_print(out, "%-*s", INDENT_LEN, "Superior: ");
     if (type->der) {
-        if (type->module_name) {
-            ly_print(out, "%s:", type->module_name);
+        if (!lys_type_is_local(type)) {
+            ly_print(out, "%s:", type->der->module->name);
         }
         ly_print(out, "%s\n", type->der->name);
     } else {
@@ -1004,7 +1004,7 @@ info_print_action(struct lyout *out, const struct lys_node *node)
 }
 
 int
-info_print_model(struct lyout *out, const struct lys_module *module, const char *target_node)
+info_print_model(struct lyout *out, const struct lys_module *module, const char *target_schema_path)
 {
     int i, rc;
     char *spec_target = NULL;
@@ -1012,45 +1012,45 @@ info_print_model(struct lyout *out, const struct lys_module *module, const char 
     struct lys_tpdf *tpdf = NULL;
     uint8_t tpdf_size = 0;
 
-    if (!target_node) {
+    if (!target_schema_path) {
         if (module->type == 0) {
             info_print_module(out, module);
         } else {
             info_print_submodule(out, (struct lys_submodule *)module);
         }
     } else {
-        if ((target_node[0] == '/') || !strncmp(target_node, "type/", 5)) {
-            rc = resolve_absolute_schema_nodeid((target_node[0] == '/' ? target_node : target_node + 4), module,
+        if ((target_schema_path[0] == '/') || !strncmp(target_schema_path, "type/", 5)) {
+            rc = resolve_absolute_schema_nodeid((target_schema_path[0] == '/' ? target_schema_path : target_schema_path + 4), module,
                                                 LYS_ANY & ~(LYS_USES | LYS_AUGMENT | LYS_GROUPING), (const struct lys_node **)&target);
             if (rc || !target) {
-                ly_print(out, "Target %s could not be resolved.\n", (target_node[0] == '/' ? target_node : target_node + 4));
+                ly_print(out, "Target %s could not be resolved.\n", (target_schema_path[0] == '/' ? target_schema_path : target_schema_path + 4));
                 return EXIT_FAILURE;
             }
-        } else if (!strncmp(target_node, "grouping/", 9)) {
+        } else if (!strncmp(target_schema_path, "grouping/", 9)) {
             /* cut the data part off */
-            if ((spec_target = strchr(target_node + 9, '/'))) {
+            if ((spec_target = strchr(target_schema_path + 9, '/'))) {
                 /* HACK only temporary */
                 spec_target[0] = '\0';
                 ++spec_target;
             }
-            rc = resolve_absolute_schema_nodeid(target_node + 8, module, LYS_GROUPING, (const struct lys_node **)&target);
+            rc = resolve_absolute_schema_nodeid(target_schema_path + 8, module, LYS_GROUPING, (const struct lys_node **)&target);
             if (rc || !target) {
-                ly_print(out, "Grouping %s not found.\n", target_node + 8);
+                ly_print(out, "Grouping %s not found.\n", target_schema_path + 8);
                 return EXIT_FAILURE;
             }
-        } else if (!strncmp(target_node, "typedef/", 8)) {
-            if ((spec_target = strrchr(target_node + 8, '/'))) {
+        } else if (!strncmp(target_schema_path, "typedef/", 8)) {
+            if ((spec_target = strrchr(target_schema_path + 8, '/'))) {
                 /* schema node typedef */
                 /* HACK only temporary */
                 spec_target[0] = '\0';
                 ++spec_target;
 
-                rc = resolve_absolute_schema_nodeid(target_node + 7, module,
+                rc = resolve_absolute_schema_nodeid(target_schema_path + 7, module,
                                                     LYS_CONTAINER | LYS_LIST | LYS_NOTIF | LYS_RPC | LYS_ACTION,
                                                     (const struct lys_node **)&target);
                 if (rc || !target) {
                     /* perhaps it's in a grouping */
-                    rc = resolve_absolute_schema_nodeid(target_node + 7, module, LYS_GROUPING,
+                    rc = resolve_absolute_schema_nodeid(target_schema_path + 7, module, LYS_GROUPING,
                                                         (const struct lys_node **)&target);
                 }
                 if (!rc && target) {
@@ -1083,7 +1083,7 @@ info_print_model(struct lyout *out, const struct lys_module *module, const char 
                 }
             } else {
                 /* module typedef */
-                spec_target = (char *)target_node + 8;
+                spec_target = (char *)target_schema_path + 8;
                 tpdf = module->tpdf;
                 tpdf_size = module->tpdf_size;
             }
@@ -1099,35 +1099,35 @@ info_print_model(struct lyout *out, const struct lys_module *module, const char 
             spec_target[0] = '/';
 
             if (i == tpdf_size) {
-                ly_print(out, "Typedef %s not found.\n", target_node);
+                ly_print(out, "Typedef %s not found.\n", target_schema_path);
                 return EXIT_FAILURE;
             }
             return EXIT_SUCCESS;
 
-        } else if (!strncmp(target_node, "identity/", 9)) {
-            target_node += 9;
+        } else if (!strncmp(target_schema_path, "identity/", 9)) {
+            target_schema_path += 9;
             for (i = 0; i < (signed)module->ident_size; ++i) {
-                if (!strcmp(module->ident[i].name, target_node)) {
+                if (!strcmp(module->ident[i].name, target_schema_path)) {
                     break;
                 }
             }
             if (i == (signed)module->ident_size) {
-                ly_print(out, "Identity %s not found.\n", target_node);
+                ly_print(out, "Identity %s not found.\n", target_schema_path);
                 return EXIT_FAILURE;
             }
 
             info_print_ident_detail(out, &module->ident[i]);
             return EXIT_SUCCESS;
 
-        } else if (!strncmp(target_node, "feature/", 8)) {
-            target_node += 8;
+        } else if (!strncmp(target_schema_path, "feature/", 8)) {
+            target_schema_path += 8;
             for (i = 0; i < module->features_size; ++i) {
-                if (!strcmp(module->features[i].name, target_node)) {
+                if (!strcmp(module->features[i].name, target_schema_path)) {
                     break;
                 }
             }
             if (i == module->features_size) {
-                ly_print(out, "Feature %s not found.\n", target_node);
+                ly_print(out, "Feature %s not found.\n", target_schema_path);
                 return EXIT_FAILURE;
             }
 
@@ -1138,14 +1138,14 @@ info_print_model(struct lyout *out, const struct lys_module *module, const char 
             return EXIT_FAILURE;
         }
 
-        if (!strncmp(target_node, "type/", 5)) {
+        if (!strncmp(target_schema_path, "type/", 5)) {
             if (!(target->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
                 ly_print(out, "Target is not a leaf or a leaf-list.\n");
                 return EXIT_FAILURE;
             }
             info_print_type_detail(out, &((struct lys_node_leaf *)target)->type, 0);
             return EXIT_SUCCESS;
-        } else if (!strncmp(target_node, "grouping/", 9) && !spec_target) {
+        } else if (!strncmp(target_schema_path, "grouping/", 9) && !spec_target) {
             info_print_grouping(out, target);
             return EXIT_SUCCESS;
         }
@@ -1155,7 +1155,7 @@ info_print_model(struct lyout *out, const struct lys_module *module, const char 
             rc = resolve_descendant_schema_nodeid(spec_target, target->child, LYS_NO_RPC_NOTIF_NODE,
                                                   0, (const struct lys_node **)&target);
             if (rc || !target) {
-                ly_print(out, "Grouping %s child \"%s\" not found.\n", target_node + 9, spec_target);
+                ly_print(out, "Grouping %s child \"%s\" not found.\n", target_schema_path + 9, spec_target);
                 return EXIT_FAILURE;
             }
             /* HACK return previous hack */

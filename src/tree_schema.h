@@ -189,9 +189,16 @@ typedef enum {
     LYS_OUT_YANG = 1,    /**< YANG schema output format */
     LYS_OUT_YIN = 2,     /**< YIN schema output format */
     LYS_OUT_TREE,        /**< Tree schema output format, for more information see the [printers](@ref howtoschemasprinters) page */
-    LYS_OUT_TREE_GRPS,   /**< Tree schema output format with printing groupings */
     LYS_OUT_INFO,        /**< Info schema output format, for more information see the [printers](@ref howtoschemasprinters) page */
 } LYS_OUTFORMAT;
+
+/**
+ * @brief Schema output options accepted by libyang [printer functions](@ref howtoschemasprinters).
+ */
+#define LYS_OUTOPT_TREE_RFC        0x01 /**< Conform to the RFC TODO tree output */
+#define LYS_OUTOPT_TREE_GROUPING   0x02 /**< Print groupings separately */
+#define LYS_OUTOPT_TREE_USES       0x04 /**< Print only uses instead the resolved grouping nodes */
+#define LYS_OUTOPT_TREE_NO_LEAFREF 0x08 /**< Do not print the target of leafrefs */
 
 /* shortcuts for common in and out formats */
 #define LYS_YANG 1       /**< YANG schema format, used for #LYS_INFORMAT and #LYS_OUTFORMAT */
@@ -915,7 +922,6 @@ union lys_type_info {
  * @brief YANG type structure providing information from the schema
  */
 struct lys_type {
-    const char *module_name;         /**< module name of the type referenced in der pointer*/
     LY_DATA_TYPE base;               /**< base type */
     uint8_t ext_size;                /**< number of elements in #ext array */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
@@ -1507,14 +1513,14 @@ struct lys_node_grp {
     const char *ref;                 /**< reference statement (optional) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values are allowed */
     uint8_t ext_size;                /**< number of elements in #ext array */
-    uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
+    uint8_t padding_iffsize;         /**< padding byte for the ::lys_node's iffeature_size */
 
     /* non compatible 32b with ::lys_node */
     uint16_t unres_count;            /**< internal counter for unresolved uses, should be always 0 when the module is parsed */
     uint16_t tpdf_size;              /**< number of elements in #tpdf array */
 
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
-    struct lys_iffeature *iffeature; /**< array of if-feature expressions */
+    void *padding_iff;               /**< padding pointer for the ::lys_node's iffeature pointer */
     struct lys_module *module;       /**< pointer to the node's module (mandatory) */
 
     LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_GROUPING */
@@ -1598,7 +1604,7 @@ struct lys_node_inout {
     uint16_t tpdf_size;              /**< number of elements in the #tpdf array */
 
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
-    void* padding_iff;               /**< padding pointer for the ::lys_node's iffeature pointer */
+    void *padding_iff;               /**< padding pointer for the ::lys_node's iffeature pointer */
     struct lys_module *module;       /**< link to the node's data model */
 
     LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_INPUT or #LYS_OUTPUT */
@@ -2328,63 +2334,66 @@ int lys_set_enabled(const struct lys_module *module);
 void *lys_set_private(const struct lys_node *node, void *priv);
 
 /**
- * @brief Print schema tree in the specified format.
- *
- * Same as lys_print(),  but it allocates memory and store the data into it.
+ * @brief Print schema tree in the specified format into a memory block.
  * It is up to caller to free the returned string by free().
  *
  * @param[out] strp Pointer to store the resulting dump.
  * @param[in] module Schema tree to print.
  * @param[in] format Schema output format.
- * @param[in] target_node Optional parameter for ::LYS_OUT_INFO format. It specifies which particular
- * node in the module will be printed.
+ * @param[in] target_node Optional parameter. It specifies which particular node/subtree in the module will be printed.
+ * Use fully qualified schema path (@ref howtoxpath).
+ * @param[in] line_length Maximum characters to be printed on a line. 0 for unlimited.
+ * @param[in] options Schema output options.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lys_print_mem(char **strp, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
+int lys_print_mem(char **strp, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node,
+                  int line_length, int options);
 
 /**
- * @brief Print schema tree in the specified format.
- *
- * Same as lys_print(), but output is written into the specified file descriptor.
+ * @brief Print schema tree in the specified format into a file descriptor.
  *
  * @param[in] module Schema tree to print.
  * @param[in] fd File descriptor where to print the data.
  * @param[in] format Schema output format.
- * @param[in] target_node Optional parameter for ::LYS_OUT_INFO format. It specifies which particular
- * node in the module will be printed.
+ * @param[in] target_node Optional parameter. It specifies which particular node/subtree in the module will be printed.
+ * Use fully qualified schema path (@ref howtoxpath).
+ * @param[in] line_length Maximum characters to be printed on a line. 0 for unlimited.
+ * @param[in] options Schema output options.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lys_print_fd(int fd, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
+int lys_print_fd(int fd, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node,
+                 int line_length, int options);
 
 /**
- * @brief Print schema tree in the specified format.
- *
- * To write data into a file descriptor, use lys_print_fd().
+ * @brief Print schema tree in the specified format into a file stream.
  *
  * @param[in] module Schema tree to print.
  * @param[in] f File stream where to print the schema.
  * @param[in] format Schema output format.
- * @param[in] target_node Optional parameter for ::LYS_OUT_INFO format. It specifies which particular
- * node in the module will be printed.
+ * @param[in] target_node Optional parameter. It specifies which particular node/subtree in the module will be printed.
+ * Use fully qualified schema path (@ref howtoxpath).
+ * @param[in] line_length Maximum characters to be printed on a line. 0 for unlimited.
+ * @param[in] options Schema output options.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lys_print_file(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
+int lys_print_file(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node,
+                   int line_length, int options);
 
 /**
- * @brief Print schema tree in the specified format.
- *
- * Same as lys_print(), but output is written via provided callback.
+ * @brief Print schema tree in the specified format using a provided callback.
  *
  * @param[in] module Schema tree to print.
  * @param[in] writeclb Callback function to write the data (see write(1)).
  * @param[in] arg Optional caller-specific argument to be passed to the \p writeclb callback.
  * @param[in] format Schema output format.
- * @param[in] target_node Optional parameter for ::LYS_OUT_INFO format. It specifies which particular
- * node in the module will be printed.
+ * @param[in] target_node Optional parameter. It specifies which particular node/subtree in the module will be printed.
+ * Use fully qualified schema path (@ref howtoxpath).
+ * @param[in] line_length Maximum characters to be printed on a line. 0 for unlimited.
+ * @param[in] options Schema output options.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
 int lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
-                  const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node);
+                  const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node, int line_length, int options);
 
 /**@} */
 

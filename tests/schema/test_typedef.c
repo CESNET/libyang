@@ -97,7 +97,7 @@ test_typedef_yin(void **state)
     assert_int_equal(read(st->fd, st->str1, s.st_size), s.st_size);
     st->str1[s.st_size] = '\0';
 
-    lys_print_mem(&(st->str2), mod, LYS_OUT_YIN, NULL);
+    lys_print_mem(&(st->str2), mod, LYS_OUT_YIN, NULL, 0, 0);
 
     assert_string_equal(st->str1, st->str2);
 }
@@ -120,7 +120,7 @@ test_typedef_yang(void **state)
     assert_int_equal(read(st->fd, st->str1, s.st_size), s.st_size);
     st->str1[s.st_size] = '\0';
 
-    lys_print_mem(&(st->str2), mod, LYS_OUT_YANG, NULL);
+    lys_print_mem(&(st->str2), mod, LYS_OUT_YANG, NULL, 0, 0);
 
     assert_string_equal(st->str1, st->str2);
 }
@@ -801,7 +801,7 @@ test_typedef_11_pattern_yin(void **state)
     mod = lys_parse_mem(st->ctx, modstr, LYS_IN_YIN);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&printed, mod, LYS_OUT_YIN, NULL);
+    lys_print_mem(&printed, mod, LYS_OUT_YIN, NULL, 0, 0);
     assert_ptr_not_equal(printed, NULL);
     assert_string_equal(printed, modstr);
     free(printed);
@@ -843,7 +843,7 @@ test_typedef_11_pattern_yang(void **state)
 
     mod = lys_parse_mem(st->ctx, modstr, LYS_IN_YANG);
     assert_ptr_not_equal(mod, NULL);
-    lys_print_mem(&printed, mod, LYS_OUT_YANG, NULL);
+    lys_print_mem(&printed, mod, LYS_OUT_YANG, NULL, 0, 0);
     assert_ptr_not_equal(printed, NULL);
     assert_string_equal(printed, modstr);
     free(printed);

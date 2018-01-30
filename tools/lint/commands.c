@@ -52,14 +52,22 @@ cmd_clear_help(void)
 void
 cmd_print_help(void)
 {
-    printf("print [-f (yang | yin | tree [--tree-print-groupings] | info [-t <info-target-node>])] [-o <output-file>]"
-           " <model-name>[@<revision>]\n\n");
-    printf("\tinfo-target-node: <absolute-schema-node> | typedef[<absolute-schema-nodeid]/<typedef-name> |\n");
-    printf("\t                  | identity/<identity-name> | feature/<feature-name> |\n");
-    printf("\t                  | grouping/<grouping-name>(<absolute-schema-nodeid>) |\n");
-    printf("\t                  | type/<absolute-schema-node-leaf-or-leaflist>\n");
+    printf("print [-f (yang | yin | tree [<tree-options>] | info [-t <info-path>])] [-o <output-file>]"
+           " <model-name>[@<revision>]\n");
     printf("\n");
-    printf("\tabsolute-schema-nodeid: ( /(<import-prefix>:)<node-identifier> )+\n");
+    printf("\ttree-options:\t--tree-print-groupings\t(print top-level groupings in a separate section)\n");
+    printf("\t             \t--tree-print-uses\t(print uses nodes instead the resolved grouping nodes)\n");
+    printf("\t             \t--tree-no-leafref-target\t(do not print the target nodes of leafrefs)\n");
+    printf("\t             \t--tree-path <schema-path>\t(print only the specified subtree)\n");
+    printf("\t             \t--tree-line-length <line-length>\t(wrap lines if longer than line-length,\n");
+    printf("\t             \t\tnot a strict limit, longer lines can often appear)\n");
+    printf("\n");
+    printf("\tinfo-path:\t<schema-path> | typedef[<schema-path>]/<typedef-name> |\n");
+    printf("\t          \t| identity/<identity-name> | feature/<feature-name> |\n");
+    printf("\t          \t| grouping/<grouping-name>(<schema-path>) |\n");
+    printf("\t          \t| type/<schema-path-leaf-or-leaflist>\n");
+    printf("\n");
+    printf("\tschema-path:\t( /<module-name>:<node-identifier> )+\n");
 }
 
 void
@@ -261,8 +269,8 @@ cleanup:
 int
 cmd_print(const char *arg)
 {
-    int c, argc, option_index, ret = 1, grps = 0;
-    char **argv = NULL, *ptr, *target_node = NULL, *model_name, *revision;
+    int c, argc, option_index, ret = 1, tree_ll = 0, tree_opts = 0;
+    char **argv = NULL, *ptr, *target_path = NULL, *model_name, *revision;
     const char *out_path = NULL;
     const struct lys_module *module;
     LYS_OUTFORMAT format = LYS_OUT_TREE;
@@ -271,8 +279,12 @@ cmd_print(const char *arg)
         {"help", no_argument, 0, 'h'},
         {"format", required_argument, 0, 'f'},
         {"output", required_argument, 0, 'o'},
-        {"target-node", required_argument, 0, 't'},
         {"tree-print-groupings", no_argument, 0, 'g'},
+        {"tree-print-uses", no_argument, 0, 'u'},
+        {"tree-no-leafref-target", no_argument, 0, 'n'},
+        {"tree-path", required_argument, 0, 'P'},
+        {"info-path", required_argument, 0, 'P'},
+        {"tree-line-length", required_argument, 0, 'L'},
         {NULL, 0, 0, 0}
     };
     void *rlcd;
@@ -295,7 +307,7 @@ cmd_print(const char *arg)
     optind = 0;
     while (1) {
         option_index = 0;
-        c = getopt_long(argc, argv, "hf:go:t:", long_options, &option_index);
+        c = getopt_long(argc, argv, "hf:go:guP:L:", long_options, &option_index);
         if (c == -1) {
             break;
         }
@@ -312,15 +324,15 @@ cmd_print(const char *arg)
                 format = LYS_OUT_YIN;
             } else if (!strcmp(optarg, "tree")) {
                 format = LYS_OUT_TREE;
+            } else if (!strcmp(optarg, "tree-rfc")) {
+                format = LYS_OUT_TREE;
+                tree_opts |= LYS_OUTOPT_TREE_RFC;
             } else if (!strcmp(optarg, "info")) {
                 format = LYS_OUT_INFO;
             } else {
                 fprintf(stderr, "Unknown output format \"%s\".\n", optarg);
                 goto cleanup;
             }
-            break;
-        case 'g':
-            grps = 1;
             break;
         case 'o':
             if (out_path) {
@@ -329,8 +341,20 @@ cmd_print(const char *arg)
             }
             out_path = optarg;
             break;
-        case 't':
-            target_node = optarg;
+        case 'g':
+            tree_opts |= LYS_OUTOPT_TREE_GROUPING;
+            break;
+        case 'u':
+            tree_opts |= LYS_OUTOPT_TREE_USES;
+            break;
+        case 'n':
+            tree_opts |= LYS_OUTOPT_TREE_NO_LEAFREF;
+            break;
+        case 'P':
+            target_path = optarg;
+            break;
+        case 'L':
+            tree_ll = atoi(optarg);
             break;
         case '?':
             fprintf(stderr, "Unknown option \"%d\".\n", (char)c);
@@ -345,12 +369,8 @@ cmd_print(const char *arg)
     }
 
     /* tree fromat with or without gropings */
-    if (grps) {
-        if (format == LYS_OUT_TREE) {
-            format = LYS_OUT_TREE_GRPS;
-        } else {
-            fprintf(stderr, "--tree-print-groupings option takes effect only in case of the tree output format");
-        }
+    if ((tree_opts || tree_ll) && format != LYS_OUT_TREE) {
+        fprintf(stderr, "--tree options take effect only in case of the tree output format.\n");
     }
 
     /* module, revision */
@@ -385,7 +405,7 @@ cmd_print(const char *arg)
         }
     }
 
-    ret = lys_print_file(output, module, format, target_node);
+    ret = lys_print_file(output, module, format, target_path, tree_ll, tree_opts);
 
 cleanup:
     free(*argv);

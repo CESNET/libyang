@@ -1581,7 +1581,6 @@ lys_copy_union_leafrefs(struct lys_module *mod, struct lys_node *parent, struct 
 
         memset(&new, 0, sizeof new);
 
-        new.module_name = lydict_insert(mod->ctx, type->module_name, 0);
         new.base = type->base;
         new.parent = (struct lys_tpdf *)parent;
 
@@ -1940,7 +1939,6 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
 {
     int i;
 
-    new->module_name = lydict_insert(mod->ctx, old->module_name, 0);
     new->base = old->base;
     new->der = old->der;
     new->parent = (struct lys_tpdf *)parent;
@@ -1979,8 +1977,6 @@ lys_type_free(struct ly_ctx *ctx, struct lys_type *type,
     if (!type) {
         return;
     }
-
-    lydict_remove(ctx, type->module_name);
 
     lys_extension_instances_free(ctx, type->ext, type->ext_size, private_destructor);
 
@@ -3246,6 +3242,17 @@ lys_has_xpath(const struct lys_node *node)
     }
 
     return 0;
+}
+
+int
+lys_type_is_local(const struct lys_type *type)
+{
+    if (!type->der->module) {
+        /* build-in type */
+        return 1;
+    }
+    /* type->parent can be either a typedef or leaf/leaf-list, but module pointers are compatible */
+    return (lys_main_module(type->der->module) == lys_main_module(((struct lys_tpdf *)type->parent)->module));
 }
 
 /*

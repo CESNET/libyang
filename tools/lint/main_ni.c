@@ -36,7 +36,7 @@ void
 help(int shortout)
 {
     fprintf(stdout, "Usage:\n");
-    fprintf(stdout, "    yanglint [options] [-f { yang | yin | tree }] <file>...\n");
+    fprintf(stdout, "    yanglint [options] [-f { yang | yin | tree | tree-rfc }] <file>...\n");
     fprintf(stdout, "        Validates the YANG module in <file>, and all its dependencies.\n\n");
     fprintf(stdout, "    yanglint [options] [-f { xml | json }] <schema>... <file>...\n");
     fprintf(stdout, "        Validates the YANG modeled data in <file> according to the <schema>.\n\n");
@@ -108,9 +108,18 @@ help(int shortout)
         "                          Special value '!' can be used as FILE argument to ignore the external references.\n\n"
         "  -y YANGLIB_PATH       - Path to a yang-library data describing the initial context.\n\n"
         "Tree output specific options:\n"
-        "  --tree-help           Print help on tree symbols and exit.\n"
+        "  --tree-help           - Print help on tree symbols and exit.\n"
         "  --tree-print-groupings\n"
-        "                        Print groupings.\n\n");
+        "                        Print top-level groupings in a separate section.\n"
+        "  --tree-print-uses     - Print uses nodes instead the resolved grouping nodes.\n"
+        "  --tree-no-leafref-target\n"
+        "                        Do not print target nodes of leafrefs.\n"
+        "  --tree-path=SCHEMA_PATH\n"
+        "                        Print only the specified subtree.\n"
+        "  --tree-line-length=LINE_LENGTH\n"
+        "                        Wrap lines if longer than the specified length (it is not a strict limit, longer lines\n"
+        "                        can often appear).\n"
+        "\n");
 }
 
 void
@@ -233,13 +242,17 @@ int
 main_ni(int argc, char* argv[])
 {
     int ret = EXIT_FAILURE;
-    int opt, opt_index = 0, i, featsize = 0, grps = 0;
+    int opt, opt_index = 0, i, featsize = 0;
     struct option options[] = {
         {"auto",             no_argument,       NULL, 'a'},
         {"default",          required_argument, NULL, 'd'},
         {"format",           required_argument, NULL, 'f'},
         {"features",         required_argument, NULL, 'F'},
         {"tree-print-groupings", no_argument,   NULL, 'g'},
+        {"tree-print-uses",  no_argument,       NULL, 'u'},
+        {"tree-no-leafref-target", no_argument, NULL, 'n'},
+        {"tree-path",        required_argument, NULL, 'P'},
+        {"tree-line-length", required_argument, NULL, 'L'},
         {"help",             no_argument,       NULL, 'h'},
         {"tree-help",        no_argument,       NULL, 'H'},
         {"allimplemented",   no_argument,       NULL, 'i'},
@@ -249,12 +262,12 @@ main_ni(int argc, char* argv[])
         {"path",             required_argument, NULL, 'p'},
         {"running",          required_argument, NULL, 'r'},
         {"strict",           no_argument,       NULL, 's'},
+        {"type",             required_argument, NULL, 't'},
         {"version",          no_argument,       NULL, 'v'},
         {"verbose",          no_argument,       NULL, 'V'},
 #ifndef NDEBUG
         {"debug",            required_argument, NULL, 'G'},
 #endif
-        {"type",             required_argument, NULL, 't'},
         {NULL,               required_argument, NULL, 'y'},
         {NULL,               0,                 NULL, 0}
     };
@@ -265,11 +278,12 @@ main_ni(int argc, char* argv[])
     LYS_INFORMAT informat_s;
     LYD_FORMAT informat_d, outformat_d = 0, ylformat = 0;
     struct ly_set *searchpaths = NULL;
-    const char *running_file = NULL, *envelope_s = NULL;
+    const char *running_file = NULL, *envelope_s = NULL, *outtarget_s = NULL;
     char **feat = NULL, *ptr, *featlist, *ylpath = NULL, *dir;
     struct stat st;
     uint32_t u;
     int options_dflt = 0, options_parser = 0, options_ctx = 0, envelope = 0, autodetection = 0, merge = 0, list = 0;
+    int outoptions_s = 0, outline_length_s = 0;
     struct dataitem {
         const char *filename;
         struct lyxml_elem *xml;
@@ -286,9 +300,9 @@ main_ni(int argc, char* argv[])
 
     opterr = 0;
 #ifndef NDEBUG
-    while ((opt = getopt_long(argc, argv, "ad:f:F:ghHilmo:p:r:st:vVG:y:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "ad:f:F:gunP:L:hHilmo:p:r:st:vVG:y:", options, &opt_index)) != -1)
 #else
-    while ((opt = getopt_long(argc, argv, "ad:f:F:ghHilmo:p:r:st:vVy:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "ad:f:F:gunP:L:hHilmo:p:r:st:vVy:", options, &opt_index)) != -1)
 #endif
     {
         switch (opt) {
@@ -313,6 +327,10 @@ main_ni(int argc, char* argv[])
         case 'f':
             if (!strcasecmp(optarg, "tree")) {
                 outformat_s = LYS_OUT_TREE;
+                outformat_d = 0;
+            } else if (!strcasecmp(optarg, "tree-rfc")) {
+                outformat_s = LYS_OUT_TREE;
+                outoptions_s |= LYS_OUTOPT_TREE_RFC;
                 outformat_d = 0;
             } else if (!strcasecmp(optarg, "yin")) {
                 outformat_s = LYS_OUT_YIN;
@@ -354,7 +372,19 @@ main_ni(int argc, char* argv[])
 
             break;
         case 'g':
-            grps = 1;
+            outoptions_s |= LYS_OUTOPT_TREE_GROUPING;
+            break;
+        case 'u':
+            outoptions_s |= LYS_OUTOPT_TREE_USES;
+            break;
+        case 'n':
+            outoptions_s |= LYS_OUTOPT_TREE_NO_LEAFREF;
+            break;
+        case 'P':
+            outtarget_s = optarg;
+            break;
+        case 'L':
+            outline_length_s = atoi(optarg);
             break;
         case 'h':
             help(0);
@@ -519,13 +549,11 @@ main_ni(int argc, char* argv[])
         fprintf(stderr, "yanglint error: too many schemas to convert and store.\n");
         goto cleanup;
     }
-    if (grps) {
+    if (outoptions_s || outtarget_s || outline_length_s) {
         if (outformat_d || (outformat_s && outformat_s != LYS_OUT_TREE)) {
             /* we have --tree-print-grouping with other output format than tree */
             fprintf(stderr,
-                    "yanglint warning: --tree-print-groupings option takes effect only in case of the tree output format.\n");
-        } else {
-            outformat_s = LYS_OUT_TREE_GRPS;
+                    "yanglint warning: --tree options take effect only in case of the tree output format.\n");
         }
     }
     if (merge) {
@@ -664,7 +692,7 @@ main_ni(int argc, char* argv[])
     /* convert (print) to FORMAT */
     if (outformat_s) {
         for (u = 0; u < mods->number; u++) {
-            lys_print_file(out, (struct lys_module *)mods->set.g[u], outformat_s, NULL);
+            lys_print_file(out, (struct lys_module *)mods->set.g[u], outformat_s, outtarget_s, outline_length_s, outoptions_s);
         }
     } else if (data) {
         ly_errno = 0;

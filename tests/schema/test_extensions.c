@@ -159,7 +159,7 @@ test_module_sub_yin(void **state)
     mod = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL);
+    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL, 0, 0);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yin);
 }
@@ -212,7 +212,7 @@ test_module_sub_yang(void **state)
     mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL);
+    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL, 0, 0);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yang);
 }
@@ -254,7 +254,7 @@ test_container_sub_yin(void **state)
     mod = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL);
+    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL, 0, 0);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yin);
 }
@@ -284,7 +284,7 @@ test_container_sub_yang(void **state)
     mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL);
+    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL, 0, 0);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yang);
 }
@@ -392,7 +392,7 @@ test_leaf_sub_yin(void **state)
     mod = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL);
+    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL, 0, 0);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yin);
 }
@@ -469,7 +469,7 @@ test_leaf_sub_yang(void **state)
     mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL);
+    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL, 0, 0);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yang);
 }
@@ -605,7 +605,7 @@ test_leaflist_sub_yin(void **state)
     mod = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL);
+    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL, 0, 0);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yin);
 }
@@ -701,7 +701,7 @@ test_leaflist_sub_yang(void **state)
     mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL);
+    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL, 0, 0);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yang);
 }
@@ -783,7 +783,7 @@ test_list_sub_yin(void **state)
     mod = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL);
+    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL, 0, 0);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yin);
 }
@@ -843,7 +843,7 @@ test_list_sub_yang(void **state)
     mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL);
+    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL, 0, 0);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yang);
 }
@@ -914,7 +914,7 @@ test_anydata_sub_yin(void **state)
     mod = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL);
+    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL, 0, 0);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yin);
 }
@@ -967,7 +967,7 @@ test_anydata_sub_yang(void **state)
     mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL);
+    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL, 0, 0);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yang);
 }
@@ -1071,7 +1071,7 @@ test_choice_sub_yin(void **state)
     mod = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL);
+    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL, 0, 0);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yin);
 }
@@ -1147,7 +1147,7 @@ test_choice_sub_yang(void **state)
     mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL);
+    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL, 0, 0);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yang);
 }
@@ -1299,7 +1299,7 @@ test_uses_sub_yin(void **state)
     mod = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL);
+    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL, 0, 0);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yin);
 
@@ -1415,7 +1415,7 @@ test_uses_sub_yang(void **state)
     mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL);
+    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL, 0, 0);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yang);
 
@@ -1470,7 +1470,7 @@ test_extension_sub_yin(void **state)
     mod = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL);
+    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL, 0, 0);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yin);
 }
@@ -1506,7 +1506,7 @@ test_extension_sub_yang(void **state)
     mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL);
+    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL, 0, 0);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yang);
 }
@@ -1583,7 +1583,7 @@ test_rpc_sub_yin(void **state)
     mod = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL);
+    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL, 0, 0);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yin);
 }
@@ -1639,7 +1639,7 @@ test_rpc_sub_yang(void **state)
     mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL);
+    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL, 0, 0);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yang);
 }
@@ -1698,7 +1698,7 @@ test_notif_sub_yin(void **state)
     mod = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL);
+    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL, 0, 0);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yin);
 }
@@ -1740,7 +1740,7 @@ test_notif_sub_yang(void **state)
     mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL);
+    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL, 0, 0);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yang);
 }
@@ -1840,7 +1840,7 @@ test_deviation_sub_yin(void **state)
     dev = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
     assert_ptr_not_equal(dev, NULL);
 
-    lys_print_mem(&st->str1, dev, LYS_OUT_YIN, NULL);
+    lys_print_mem(&st->str1, dev, LYS_OUT_YIN, NULL, 0, 0);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yin);
 
@@ -1981,7 +1981,7 @@ test_deviation_sub_yang(void **state)
     dev = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
     assert_ptr_not_equal(dev, NULL);
 
-    lys_print_mem(&st->str1, dev, LYS_OUT_YANG, NULL);
+    lys_print_mem(&st->str1, dev, LYS_OUT_YANG, NULL, 0, 0);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yang);
 
@@ -2154,7 +2154,7 @@ test_complex_yin(void **state)
     mod = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL);
+    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL, 0, 0);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yin);
 }
@@ -2231,7 +2231,7 @@ test_complex_yang(void **state)
     mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL);
+    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL, 0, 0);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yang);
 }
@@ -2341,7 +2341,7 @@ test_complex_arrays_yin(void **state)
     mod = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL);
+    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL, 0, 0);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yin);
 }
@@ -2437,7 +2437,7 @@ test_complex_arrays_yang(void **state)
     mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL);
+    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL, 0, 0);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yang);
 }
@@ -2620,7 +2620,7 @@ test_complex_mand_yin(void **state)
     mod = lys_parse_mem(st->ctx, yin_correct, LYS_IN_YIN);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL);
+    lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL, 0, 0);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yin_correct);
 }
@@ -2747,7 +2747,7 @@ test_complex_mand_yang(void **state)
     mod = lys_parse_mem(st->ctx, yang_correct, LYS_IN_YANG);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL);
+    lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL, 0, 0);
     assert_ptr_not_equal(st->str1, NULL);
     assert_string_equal(st->str1, yang_correct);
 }
@@ -3813,7 +3813,7 @@ test_complex_arrays_str_yin(void **state)
         mod = lys_parse_mem(st->ctx, yin[i], LYS_IN_YIN);
         assert_ptr_not_equal(mod, NULL);
 
-        lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL);
+        lys_print_mem(&st->str1, mod, LYS_OUT_YIN, NULL, 0, 0);
         assert_ptr_not_equal(st->str1, NULL);
         assert_string_equal(st->str1, yin[i]);
         free(st->str1);
@@ -4048,7 +4048,7 @@ test_complex_arrays_str_yang(void **state)
         mod = lys_parse_mem(st->ctx, yang[i], LYS_IN_YANG);
         assert_ptr_not_equal(mod, NULL);
 
-        lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL);
+        lys_print_mem(&st->str1, mod, LYS_OUT_YANG, NULL, 0, 0);
         assert_ptr_not_equal(st->str1, NULL);
         assert_string_equal(st->str1, yang[i]);
         free(st->str1);
