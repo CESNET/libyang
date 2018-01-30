@@ -98,7 +98,7 @@ test_fullset(void **state)
     const char *tree_abaa = "module: features\n"
 "  +--rw grp?    string\n"
 "  +--rw cont! {a}?\n"
-"  |  +--rw aug?   string\n"
+"  |  +--rw aug?   string {aa}?\n"
 "  +--rw lf?     string {a and b}?\n"
 "  +--rw ll*     string {a or b}?\n\n"
 "  rpcs:\n"

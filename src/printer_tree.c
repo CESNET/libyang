@@ -390,12 +390,12 @@ tree_print_config(struct lyout *out, const struct lys_node *node, int spec_confi
         break;
     }
 
-    if (spec_config == 0) {
-        ret = ly_print(out, "%s ", (node->flags & LYS_CONFIG_W) ? "rw" : (node->flags & LYS_CONFIG_R) ? "ro" : "--");
-    } else if (spec_config == 1) {
+    if (spec_config == 1) {
         ret = ly_print(out, "-w ");
     } else if (spec_config == 2) {
         ret = ly_print(out, "ro ");
+    } else {
+        ret = ly_print(out, "%s ", (node->flags & LYS_CONFIG_W) ? "rw" : (node->flags & LYS_CONFIG_R) ? "ro" : "--");
     }
 
     if (node->nodetype == LYS_CHOICE) {

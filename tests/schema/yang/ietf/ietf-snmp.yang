@@ -19,7 +19,7 @@ module ietf-snmp {
     revision-date 2014-12-10;
   }
   include ietf-snmp-community {
-    revision-date 2015-01-23;
+    revision-date 2014-12-10;
   }
   include ietf-snmp-usm {
     revision-date 2014-12-10;
