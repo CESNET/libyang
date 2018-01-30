@@ -216,13 +216,15 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     case LYS_NOTIF:
     case LYS_RPC:
     case LYS_ACTION:
-        if ((options & LYD_OPT_STRICT) && xml->content && xml->content[0]) {
-            msg = malloc(22 + strlen(xml->content) + 1);
-            LY_CHECK_ERR_RETURN(!msg, LOGMEM, -1);
-            sprintf(msg, "node with text data \"%s\"", xml->content);
-            LOGVAL(LYE_XML_INVAL, LY_VLOG_XML, xml, msg);
-            free(msg);
-            return -1;
+        for (i = 0; xml->content && xml->content[i]; ++i) {
+            if (!is_xmlws(xml->content[i])) {
+                msg = malloc(22 + strlen(xml->content) + 1);
+                LY_CHECK_ERR_RETURN(!msg, LOGMEM, -1);
+                sprintf(msg, "node with text data \"%s\"", xml->content);
+                LOGVAL(LYE_XML_INVAL, LY_VLOG_XML, xml, msg);
+                free(msg);
+                return -1;
+            }
         }
         *result = calloc(1, sizeof **result);
         havechildren = 1;
