@@ -225,12 +225,6 @@ _transform_json2xml_subexp(const struct lys_module *module, const char *expr, ch
 
     assert(module && expr && ((!prefixes && !namespaces && !ns_count) || (prefixes && namespaces && ns_count)));
 
-    if (ns_count) {
-        *ns_count = 0;
-        *prefixes = NULL;
-        *namespaces = NULL;
-    }
-
     exp = lyxp_parse_expr(expr);
     LY_CHECK_RETURN(!exp, 1);
 
@@ -334,7 +328,7 @@ _transform_json2xml_subexp(const struct lys_module *module, const char *expr, ch
             literal = lydict_insert(module->ctx, cur_expr + 1, exp->tok_len[i] - 2);
 
             /* parse literals as subexpressions if possible, otherwise treat as a literal */
-            if (_transform_json2xml_subexp(module, literal, out, out_used, out_size, schema, inst_id, prefixes, namespaces, ns_count)) {
+            if (_transform_json2xml_subexp(module, literal, out, out_used, out_size, schema, inst_id, NULL, NULL, NULL)) {
                 strncpy(&(*out)[*out_used], literal, exp->tok_len[i] - 2);
                 *out_used += exp->tok_len[i] - 2;
             }
@@ -371,6 +365,12 @@ _transform_json2xml(const struct lys_module *module, const char *expr, int schem
     int ret;
 
     assert(module && expr && ((!prefixes && !namespaces && !ns_count) || (prefixes && namespaces && ns_count)));
+
+    if (ns_count) {
+        *ns_count = 0;
+        *prefixes = NULL;
+        *namespaces = NULL;
+    }
 
     if (!expr[0]) {
         /* empty value */
