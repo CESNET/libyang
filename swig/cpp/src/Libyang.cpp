@@ -27,6 +27,7 @@ extern "C" {
 #include "libyang.h"
 #include "tree_data.h"
 #include "tree_schema.h"
+#include "context.h"
 }
 
 Context::Context(ly_ctx *ctx, S_Deleter deleter):
@@ -168,6 +169,19 @@ S_Set Context::find_path(const char *schema_path) {
     }
 
     return std::make_shared<Set>(set, deleter);
+}
+std::vector<S_Schema_Node> *Context::data_instantiables(int options) {
+    auto s_vector = new std::vector<S_Schema_Node>;
+    struct lys_node *iter = NULL;
+    int i;
+
+    for (i = 0; i < ctx->models.used; i++) {
+        while ((iter = (struct lys_node *)lys_getnext(iter, NULL, ctx->models.list[i], options))) {
+            s_vector->push_back(std::make_shared<Schema_Node>(iter, deleter));
+        }
+    }
+
+    return s_vector;
 }
 S_Data_Node Context::parse_mem(const char *data, LYD_FORMAT format, int options) {
     struct lyd_node *new_node = nullptr;

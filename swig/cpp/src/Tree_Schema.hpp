@@ -108,6 +108,7 @@ public:
     S_Revision rev();
     std::vector<S_Deviation> *deviation();
     S_Schema_Node data() LY_NEW(module, data, Schema_Node);
+    std::vector<S_Schema_Node> *data_instantiables(int options);
 
     friend class Context;
     friend class Data_Node;

@@ -37,6 +37,16 @@ Submodule::Submodule(struct lys_submodule *submodule, S_Deleter deleter):
     submodule(submodule),
     deleter(deleter)
 {};
+std::vector<S_Schema_Node> *Module::data_instantiables(int options) {
+    auto s_vector = new std::vector<S_Schema_Node>;
+    struct lys_node *iter = NULL;
+
+    while ((iter = (struct lys_node *)lys_getnext(iter, NULL, module, options))) {
+        s_vector->push_back(std::make_shared<Schema_Node>(iter, deleter));
+    }
+
+    return s_vector;
+}
 Submodule::~Submodule() {};
 S_Revision Submodule::rev() LY_NEW(submodule, rev, Revision);
 std::vector<S_Deviation> *Submodule::deviation() LY_NEW_LIST(submodule, deviation, deviation_size, Deviation);

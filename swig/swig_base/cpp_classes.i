@@ -45,6 +45,7 @@
 %newobject Context::get_submodule;
 %newobject Context::get_submodule2;
 %newobject Context::find_path;
+%newobject Context::data_instantiables;
 
 %shared_ptr(Set);
 %newobject Set::dup;
@@ -136,6 +137,7 @@
 %shared_ptr(Module);
 %newobject Module::rev;
 %newobject Module::data;
+%newobject Module::data_instantiables;
 
 %shared_ptr(Submodule);
 %newobject Submodule::ctx;
