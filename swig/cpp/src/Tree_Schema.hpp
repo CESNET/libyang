@@ -354,7 +354,6 @@ class Type
 public:
     Type(struct lys_type *type, S_Deleter deleter);
     ~Type();
-    const char *module_name() {return type->module_name;};
     LY_DATA_TYPE base() {return type->base;};
     uint8_t ext_size() {return type->ext_size;};
     std::vector<S_Ext_Instance> *ext();
