@@ -1727,25 +1727,25 @@ resolve_extended_schema_nodeid_predicate(const char *nodeid, const struct lys_no
     return 0;
 }
 
-/* start - relative, module - absolute, -1 error (logged), EXIT_SUCCESS ok
+/* start_parent - relative, module - absolute, -1 error (logged), EXIT_SUCCESS ok
  */
 int
-resolve_schema_nodeid(const char *nodeid, const struct lys_node *start, const struct lys_module *cur_module,
+resolve_schema_nodeid(const char *nodeid, const struct lys_node *start_parent, const struct lys_module *cur_module,
                       struct ly_set **ret, int extended, int no_node_error)
 {
     const char *name, *mod_name, *id;
-    const struct lys_node *sibling, *start_parent, *next, *elem;
+    const struct lys_node *sibling, *next, *elem;
     struct lys_node_augment *last_aug;
     int r, nam_len, mod_name_len = 0, is_relative = -1, all_desc, has_predicate, nodeid_end = 0;
     /* resolved import module from the start module, it must match the next node-name-match sibling */
     const struct lys_module *start_mod, *aux_mod = NULL;
     char *str;
 
-    assert(nodeid && (start || cur_module) && ret);
+    assert(nodeid && (start_parent || cur_module) && ret);
     *ret = NULL;
 
     if (!cur_module) {
-        cur_module = lys_node_module(start);
+        cur_module = lys_node_module(start_parent);
     }
     id = nodeid;
 
@@ -1757,15 +1757,14 @@ resolve_schema_nodeid(const char *nodeid, const struct lys_node *start, const st
     }
     id += r;
 
-    if (is_relative && !start) {
+    if (is_relative && !start_parent) {
         LOGINT;
         return -1;
     }
 
     /* descendant-schema-nodeid */
     if (is_relative) {
-        cur_module = start_mod = lys_node_module(start);
-        start_parent = lys_parent(start);
+        cur_module = start_mod = lys_node_module(start_parent);
 
     /* absolute-schema-nodeid */
     } else {
@@ -4249,13 +4248,13 @@ inherit_config_flag(struct lys_node *node, int flags, int clear)
  * @brief Resolve augment target. Logs directly.
  *
  * @param[in] aug Augment to use.
- * @param[in] siblings Nodes where to start the search in. If set, uses augment, if not, standalone augment.
+ * @param[in] uses Parent where to start the search in. If set, uses augment, if not, standalone augment.
  * @param[in,out] unres List of unresolved items.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
  */
 static int
-resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct unres_schema *unres)
+resolve_augment(struct lys_node_augment *aug, struct lys_node *uses, struct unres_schema *unres)
 {
     int rc;
     struct lys_node *sub;
@@ -4271,7 +4270,7 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *siblings, struct 
     /* it can already be resolved in case we returned EXIT_FAILURE from if block below */
     if (!aug->target) {
         /* resolve target node */
-        rc = resolve_schema_nodeid(aug->target_name, siblings, (siblings ? NULL : lys_node_module((struct lys_node *)aug)), &set, 0, 0);
+        rc = resolve_schema_nodeid(aug->target_name, uses, (uses ? NULL : lys_node_module((struct lys_node *)aug)), &set, 0, 0);
         if (rc == -1) {
             LOGVAL(LYE_PATH, LY_VLOG_LYS, aug);
             return -1;
@@ -4929,7 +4928,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
 
     /* apply augments */
     for (i = 0; i < uses->augment_size; i++) {
-        rc = resolve_augment(&uses->augment[i], uses->child, unres);
+        rc = resolve_augment(&uses->augment[i], (struct lys_node *)uses, unres);
         if (rc) {
             goto fail;
         }
