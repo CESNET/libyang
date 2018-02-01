@@ -1637,8 +1637,15 @@ schema_nodeid_siblingcheck(const struct lys_node *sibling, const struct lys_modu
 {
     const struct lys_module *prefix_mod;
 
+    /* handle special names */
+    if (name[0] == '*') {
+        return 2;
+    } else if (name[0] == '.') {
+        return 3;
+    }
+
     /* name check */
-    if ((name[0] != '*') && (name[0] != '.') && (strncmp(name, sibling->name, nam_len) || sibling->name[nam_len])) {
+    if (strncmp(name, sibling->name, nam_len) || sibling->name[nam_len]) {
         return 1;
     }
 
@@ -1656,14 +1663,7 @@ schema_nodeid_siblingcheck(const struct lys_node *sibling, const struct lys_modu
     }
 
     /* match */
-    switch (name[0]) {
-    case '*':
-        return 2;
-    case '.':
-        return 3;
-    default:
-        return 0;
-    }
+    return 0;
 }
 
 /* keys do not have to be ordered and do not have to be all of them */
