@@ -82,9 +82,11 @@ public:
     Data_Node(S_Data_Node parent, S_Module module, const char *name);
     Data_Node(S_Data_Node parent, S_Module module, const char *name, const char *val_str);
     Data_Node(S_Data_Node parent, S_Module module, const char *name, const char *value, LYD_ANYDATA_VALUETYPE value_type);
-    Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Data_Node value, LYD_ANYDATA_VALUETYPE value_type);
-    Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Xml_Elem value, LYD_ANYDATA_VALUETYPE value_type);
-    Data_Node(S_Context context, const char *path, void *value, LYD_ANYDATA_VALUETYPE value_type, int options);
+    Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Data_Node value);
+    Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Xml_Elem value);
+    Data_Node(S_Context context, const char *path, const char *value, LYD_ANYDATA_VALUETYPE value_type, int options);
+    Data_Node(S_Context context, const char *path, S_Data_Node value, int options);
+    Data_Node(S_Context context, const char *path, S_Xml_Elem value, int options);
     //TODO
     //struct lyd_node *lyd_new_output(struct lyd_node *parent, const struct lys_module *module, const char *name);
     //struct lyd_node *lyd_new_output_leaf(struct lyd_node *parent, const struct lys_module *module, const char *name,
@@ -120,7 +122,9 @@ public:
     int validate(int options, S_Data_Node var_arg);
     int validate_value(const char *value);
     S_Difflist diff(S_Data_Node second, int options);
-    S_Data_Node new_path(S_Context ctx, const char *path, void *value, LYD_ANYDATA_VALUETYPE value_type, int options);
+    S_Data_Node new_path(S_Context ctx, const char *path, const char *value, LYD_ANYDATA_VALUETYPE value_type, int options);
+    S_Data_Node new_path(S_Context ctx, const char *path, S_Data_Node value, int options);
+    S_Data_Node new_path(S_Context ctx, const char *path, S_Xml_Elem value, int options);
     unsigned int list_pos();
     int unlink();
     S_Attr insert_attr(S_Module module, const char *name, const char *value);

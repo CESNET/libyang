@@ -96,14 +96,14 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, cons
     node = new_node;
     deleter = nullptr;
 };
-Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Data_Node value, LYD_ANYDATA_VALUETYPE value_type) {
+Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Data_Node value) {
     lyd_node *new_node = nullptr;
 
     if (!module) {
         throw std::invalid_argument("Module can not be empty");
     }
 
-    new_node = lyd_new_anydata(parent ? parent->node : NULL, module->module, name, (void *) value->node, value_type);
+    new_node = lyd_new_anydata(parent ? parent->node : NULL, module->module, name, (void *) value->node, LYD_ANYDATA_DATATREE);
     if (!new_node) {
         check_libyang_error();
     }
@@ -111,14 +111,14 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Da
     node = new_node;
     deleter = nullptr;
 };
-Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Xml_Elem value, LYD_ANYDATA_VALUETYPE value_type) {
+Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Xml_Elem value) {
     lyd_node *new_node = nullptr;
 
     if (!module) {
         throw std::invalid_argument("Module can not be empty");
     }
 
-    new_node = lyd_new_anydata(parent ? parent->node : NULL, module->module, name, (void *) value->elem, value_type);
+    new_node = lyd_new_anydata(parent ? parent->node : NULL, module->module, name, (void *) value->elem, LYD_ANYDATA_XML);
     if (!new_node) {
         check_libyang_error();
     }
@@ -126,7 +126,7 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Xm
     node = new_node;
     deleter = nullptr;
 }
-Data_Node::Data_Node(S_Context context, const char *path, void *value, LYD_ANYDATA_VALUETYPE value_type, int options) {
+Data_Node::Data_Node(S_Context context, const char *path, const char *value, LYD_ANYDATA_VALUETYPE value_type, int options) {
     lyd_node *new_node = nullptr;
 
     if (!context) {
@@ -136,7 +136,7 @@ Data_Node::Data_Node(S_Context context, const char *path, void *value, LYD_ANYDA
         throw std::invalid_argument("Path can not be empty");
     }
 
-    new_node = lyd_new_path(NULL, context->ctx, path, value, value_type, options);
+    new_node = lyd_new_path(NULL, context->ctx, path, (void *) value, value_type, options);
     if (!new_node) {
         check_libyang_error();
     }
@@ -144,6 +144,43 @@ Data_Node::Data_Node(S_Context context, const char *path, void *value, LYD_ANYDA
     node = new_node;
     deleter = nullptr;
 }
+Data_Node::Data_Node(S_Context context, const char *path, S_Data_Node value, int options) {
+    lyd_node *new_node = nullptr;
+
+    if (!context) {
+        throw std::invalid_argument("Context can not be empty");
+    }
+    if (!path) {
+        throw std::invalid_argument("Path can not be empty");
+    }
+
+    new_node = lyd_new_path(NULL, context->ctx, path, (void *) value->node, LYD_ANYDATA_DATATREE, options);
+    if (!new_node) {
+        check_libyang_error();
+    }
+
+    node = new_node;
+    deleter = nullptr;
+}
+Data_Node::Data_Node(S_Context context, const char *path, S_Xml_Elem value, int options) {
+    lyd_node *new_node = nullptr;
+
+    if (!context) {
+        throw std::invalid_argument("Context can not be empty");
+    }
+    if (!path) {
+        throw std::invalid_argument("Path can not be empty");
+    }
+
+    new_node = lyd_new_path(NULL, context->ctx, path, (void *) value->elem, LYD_ANYDATA_XML, options);
+    if (!new_node) {
+        check_libyang_error();
+    }
+
+    node = new_node;
+    deleter = nullptr;
+}
+
 Data_Node::~Data_Node() {};
 S_Attr Data_Node::attr() LY_NEW(node, attr, Attr);
 std::string Data_Node::path() {
@@ -277,10 +314,30 @@ S_Difflist Data_Node::diff(S_Data_Node second, int options) {
 
     return diff ? std::make_shared<Difflist>(diff, deleter) : nullptr;
 }
-S_Data_Node Data_Node::new_path(S_Context ctx, const char *path, void *value, LYD_ANYDATA_VALUETYPE value_type, int options) {
+S_Data_Node Data_Node::new_path(S_Context ctx, const char *path, const char *value, LYD_ANYDATA_VALUETYPE value_type, int options) {
     struct lyd_node *new_node = nullptr;
 
-    new_node = lyd_new_path(node, ctx->ctx, path, value, value_type, options);
+    new_node = lyd_new_path(node, ctx->ctx, path, (void *)value, value_type, options);
+    if (!new_node) {
+        check_libyang_error();
+    }
+
+    return new_node ? std::make_shared<Data_Node>(new_node, deleter) : nullptr;
+}
+S_Data_Node Data_Node::new_path(S_Context ctx, const char *path, S_Data_Node value, int options) {
+    struct lyd_node *new_node = nullptr;
+
+    new_node = lyd_new_path(node, ctx->ctx, path, (void *)value->node, LYD_ANYDATA_DATATREE, options);
+    if (!new_node) {
+        check_libyang_error();
+    }
+
+    return new_node ? std::make_shared<Data_Node>(new_node, deleter) : nullptr;
+}
+S_Data_Node Data_Node::new_path(S_Context ctx, const char *path, S_Xml_Elem value, int options) {
+    struct lyd_node *new_node = nullptr;
+
+    new_node = lyd_new_path(node, ctx->ctx, path, (void *)value->elem, LYD_ANYDATA_XML, options);
     if (!new_node) {
         check_libyang_error();
     }
