@@ -58,7 +58,7 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name) {
         throw std::invalid_argument("Module can not be empty");
     }
 
-    new_node = lyd_new(parent->node, module->module, name);
+    new_node = lyd_new(parent ? parent->node : NULL, module->module, name);
     if (!new_node) {
         check_libyang_error();
     }
@@ -73,7 +73,7 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, cons
         throw std::invalid_argument("Module can not be empty");
     }
 
-    new_node = lyd_new_leaf(parent->node, module->module, name, val_str);
+    new_node = lyd_new_leaf(parent ? parent->node : NULL, module->module, name, val_str);
     if (!new_node) {
         check_libyang_error();
     }
@@ -88,7 +88,7 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, cons
         throw std::invalid_argument("Module can not be empty");
     }
 
-    new_node = lyd_new_anydata(parent->node, module->module, name, (void *) value, value_type);
+    new_node = lyd_new_anydata(parent ? parent->node : NULL, module->module, name, (void *) value, value_type);
     if (!new_node) {
         check_libyang_error();
     }
@@ -103,7 +103,7 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Da
         throw std::invalid_argument("Module can not be empty");
     }
 
-    new_node = lyd_new_anydata(parent->node, module->module, name, (void *) value->node, value_type);
+    new_node = lyd_new_anydata(parent ? parent->node : NULL, module->module, name, (void *) value->node, value_type);
     if (!new_node) {
         check_libyang_error();
     }
@@ -118,7 +118,7 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Xm
         throw std::invalid_argument("Module can not be empty");
     }
 
-    new_node = lyd_new_anydata(parent->node, module->module, name, (void *) value->elem, value_type);
+    new_node = lyd_new_anydata(parent ? parent->node : NULL, module->module, name, (void *) value->elem, value_type);
     if (!new_node) {
         check_libyang_error();
     }
@@ -286,7 +286,7 @@ int Data_Node::unlink() {
 S_Attr Data_Node::insert_attr(S_Module module, const char *name, const char *value) {
     struct lyd_attr *attr = nullptr;
 
-    attr = lyd_insert_attr(node, module->module, name, value);
+    attr = lyd_insert_attr(node, module ? module->module : NULL, name, value);
     if (!attr) {
         check_libyang_error();
     }
