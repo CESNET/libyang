@@ -762,7 +762,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                         goto error;
                     }
 
-                    for (j = 0; type->info.bits.bit[i].ext_size; ++j) {
+                    for (j = 0; j < type->info.bits.bit[i].ext_size; ++j) {
                         /* set flag, which represent LYEXT_OPT_VALID */
                         if (type->info.bits.bit[i].ext[j]->flags & LYEXT_OPT_VALID) {
                             type->parent->flags |= LYS_VALID_DATA;
@@ -864,7 +864,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 if (read_restr_substmt(module, type->info.dec64.range, node, unres)) {
                     goto error;
                 }
-                for (j = 0; type->info.dec64.range->ext_size; ++j) {
+                for (j = 0; j < type->info.dec64.range->ext_size; ++j) {
                     /* set flag, which represent LYEXT_OPT_VALID */
                     if (type->info.dec64.range->ext[j]->flags & LYEXT_OPT_VALID) {
                         type->parent->flags |= LYS_VALID_DATA;
@@ -1071,7 +1071,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                         goto error;
                     }
 
-                    for (j = 0; type->info.enums.enm[i].ext_size; ++j) {
+                    for (j = 0; j < type->info.enums.enm[i].ext_size; ++j) {
                         /* set flag, which represent LYEXT_OPT_VALID */
                         if (type->info.enums.enm[i].ext[j]->flags & LYEXT_OPT_VALID) {
                             type->parent->flags |= LYS_VALID_DATA;
