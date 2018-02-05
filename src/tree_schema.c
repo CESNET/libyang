@@ -635,7 +635,10 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
                 iter = module->data;
             } else if (iter->nodetype == LYS_EXT) {
                 stop = iter;
-                iter = *lys_child(iter, node->nodetype);
+                iter = (struct lys_node *)lys_child(iter, node->nodetype);
+                if (iter) {
+                    iter = *(struct lys_node **)iter;
+                }
             } else {
                 stop = iter;
                 iter = iter->child;
@@ -4768,7 +4771,7 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
         if (FREE) { free(*pp); }                                                              \
     }
 
-    if (!size || !e || !(*e)) {
+    if (!size || !e) {
         return;
     }
 
