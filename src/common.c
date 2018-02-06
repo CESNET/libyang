@@ -328,7 +328,7 @@ _transform_json2xml_subexp(const struct lys_module *module, const char *expr, ch
             literal = lydict_insert(module->ctx, cur_expr + 1, exp->tok_len[i] - 2);
 
             /* parse literals as subexpressions if possible, otherwise treat as a literal */
-            if (_transform_json2xml_subexp(module, literal, out, out_used, out_size, schema, inst_id, NULL, NULL, NULL)) {
+            if (_transform_json2xml_subexp(module, literal, out, out_used, out_size, schema, inst_id, prefixes, namespaces, ns_count)) {
                 strncpy(&(*out)[*out_used], literal, exp->tok_len[i] - 2);
                 *out_used += exp->tok_len[i] - 2;
             }
