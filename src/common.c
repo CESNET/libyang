@@ -225,12 +225,6 @@ _transform_json2xml_subexp(const struct lys_module *module, const char *expr, ch
 
     assert(module && expr && ((!prefixes && !namespaces && !ns_count) || (prefixes && namespaces && ns_count)));
 
-    if (ns_count) {
-        *ns_count = 0;
-        *prefixes = NULL;
-        *namespaces = NULL;
-    }
-
     exp = lyxp_parse_expr(expr);
     LY_CHECK_RETURN(!exp, 1);
 
@@ -371,6 +365,12 @@ _transform_json2xml(const struct lys_module *module, const char *expr, int schem
     int ret;
 
     assert(module && expr && ((!prefixes && !namespaces && !ns_count) || (prefixes && namespaces && ns_count)));
+
+    if (ns_count) {
+        *ns_count = 0;
+        *prefixes = NULL;
+        *namespaces = NULL;
+    }
 
     if (!expr[0]) {
         /* empty value */
