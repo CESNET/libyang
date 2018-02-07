@@ -36,7 +36,7 @@
 %newobject Context::get_module;
 %newobject Context::get_module_older;
 %newobject Context::load_module;
-%newobject Context::get_module_by_Ns;
+%newobject Context::get_module_by_ns;
 %newobject Context::parse_mem;
 %newobject Context::parse_fd;
 %newobject Context::parse_data_path;
@@ -103,7 +103,7 @@
 %newobject Data_Node_Leaf_List::node_module;
 %newobject Data_Node_Leaf_List::print_mem;
 %newobject Data_Node_Leaf_List::type;
-%newobject Data_Node::C_lyd_node;
+%newobject Data_Node_Leaf_List::C_lyd_node;
 
 %shared_ptr(Data_Node_Anydata);
 %newobject Data_Node_Anydata::schema;
@@ -124,7 +124,7 @@
 %newobject Data_Node_Anydata::new_path;
 %newobject Data_Node_Anydata::node_module;
 %newobject Data_Node_Anydata::print_mem;
-%newobject Data_Node::C_lyd_node;
+%newobject Data_Node_Anydata::C_lyd_node;
 
 %shared_ptr(Attr);
 %newobject Attr::value;
