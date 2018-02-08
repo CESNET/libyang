@@ -1015,7 +1015,8 @@ ly_path_data2schema_subexp(const struct ly_ctx *ctx, const struct lys_node *orig
                     node2 = node;
                     while (k) {
                         node2 = lys_parent(node2);
-                        if (!node2 || (node2->nodetype != LYS_USES)) {
+                        assert(node2);
+                        if (node2->nodetype != LYS_USES) {
                             --k;
                         }
                     }

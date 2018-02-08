@@ -1001,7 +1001,8 @@ attr_repeat:
     result->parent = *parent;
     diter = NULL;
     if (schema->nodetype == LYS_LEAF && lys_is_key((struct lys_node_leaf *)schema, &pos)) {
-        /* it is key and we need to insert it into a correct place */
+        /* it is key and we need to insert it into a correct place (we must have parent then, a key cannot be top-level) */
+        assert(*parent);
         for (i = 0, diter = (*parent)->child;
                 diter && i < pos && diter->schema->nodetype == LYS_LEAF && lys_is_key((struct lys_node_leaf *)diter->schema, NULL);
                 i++, diter = diter->next);

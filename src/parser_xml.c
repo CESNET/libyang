@@ -250,7 +250,8 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     (*result)->parent = parent;
     diter = NULL;
     if (schema->nodetype == LYS_LEAF && lys_is_key((struct lys_node_leaf *)schema, &pos)) {
-        /* it is key and we need to insert it into a correct place */
+        /* it is key and we need to insert it into a correct place (a key must have a parent list) */
+        assert(parent);
         for (i = 0, diter = parent->child;
                 diter && i < pos && diter->schema->nodetype == LYS_LEAF && lys_is_key((struct lys_node_leaf *)diter->schema, NULL);
                 i++, diter = diter->next);
