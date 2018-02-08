@@ -155,7 +155,7 @@ tree_next_indent(int level, const struct lys_node *node, const struct lys_node *
     }
 
     /* clear level indent (it may have been set for some line wrapping) */
-    opts->indent &= ~(uint64_t)(1 << (level - 1));
+    opts->indent &= ~(uint64_t)(1U << (level - 1));
 
     /* this is the direct child of a case */
     if ((node->nodetype != LYS_CASE) && lys_parent(node) && (lys_parent(node)->nodetype & (LYS_CASE | LYS_CHOICE))) {
@@ -170,7 +170,7 @@ tree_next_indent(int level, const struct lys_node *node, const struct lys_node *
 
     /* set level indent */
     if (has_next && !next_is_case) {
-        opts->indent |= (uint64_t)1 << (level - 1);
+        opts->indent |= (uint64_t)1U << (level - 1);
     }
 }
 
