@@ -516,6 +516,12 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
         /* no content */
         ly_print(out, "/>%s", level ? "\n" : "");
     } else {
+        if (any->value_type == LYD_ANYDATA_DATATREE) {
+            /* print namespaces in the anydata data tree */
+            LY_TREE_FOR(any->value.tree, iter) {
+                xml_print_ns(out, iter, options);
+            }
+        }
         /* close opening tag ... */
         ly_print(out, ">");
         /* ... and print anydata content */
