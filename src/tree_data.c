@@ -824,6 +824,7 @@ API int
 lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
 {
     const char *backup;
+    int val_change, dflt_change;
     struct lyd_node *parent;
     struct lys_node_list *slist;
     uint32_t i;
@@ -846,12 +847,13 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
 
     if (!strcmp(backup, leaf->value_str)) {
         /* the value remains the same */
-        lydict_remove(leaf->schema->module->ctx, backup);
-        return 1;
+        val_change = 0;
+    } else {
+        val_change = 1;
     }
 
     /* key value cannot be changed */
-    if (leaf->parent && (leaf->parent->schema->nodetype == LYS_LIST)) {
+    if (val_change && leaf->parent && (leaf->parent->schema->nodetype == LYS_LIST)) {
         slist = (struct lys_node_list *)leaf->parent->schema;
         for (i = 0; i < slist->keys_size; ++i) {
             if (ly_strequal(slist->keys[i]->name, leaf->schema->name, 1)) {
@@ -871,15 +873,20 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
         for (parent = (struct lyd_node *)leaf; parent; parent = parent->parent) {
             parent->dflt = 0;
         }
+        dflt_change = 1;
+    } else {
+        dflt_change = 0;
     }
 
-    /* make the node non-validate */
+    /* make the node non-validated */
     leaf->validity = ly_new_node_validity(leaf->schema);
 
     /* check possible leafref backlinks */
-    check_leaf_list_backlinks((struct lyd_node *)leaf, 2);
+    if (val_change) {
+        check_leaf_list_backlinks((struct lyd_node *)leaf, 2);
+    }
 
-    if (leaf->schema->flags & LYS_UNIQUE) {
+    if (val_change && (leaf->schema->flags & LYS_UNIQUE)) {
         /* locate the first parent list */
         for (parent = leaf->parent; parent && parent->schema->nodetype != LYS_LIST; parent = parent->parent);
 
@@ -889,7 +896,7 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
         }
     }
 
-    return 0;
+    return (val_change || dflt_change ? 0 : 1);
 }
 
 static struct lyd_node *
@@ -1121,11 +1128,10 @@ check_parsed_values:
 }
 
 static struct lyd_node *
-lyd_new_path_update(struct lyd_node *node, void *value, LYD_ANYDATA_VALUETYPE value_type)
+lyd_new_path_update(struct lyd_node *node, void *value, LYD_ANYDATA_VALUETYPE value_type, int dflt)
 {
     struct ly_ctx *ctx = node->schema->module->ctx;
     struct lyd_node_anydata *any;
-    int r;
 
     switch (node->schema->nodetype) {
     case LYS_LEAF:
@@ -1134,14 +1140,20 @@ lyd_new_path_update(struct lyd_node *node, void *value, LYD_ANYDATA_VALUETYPE va
             return NULL;
         }
 
-        if (!value || strcmp(((struct lyd_node_leaf_list *)node)->value_str, value)) {
-            r = lyd_change_leaf((struct lyd_node_leaf_list *)node, value);
-            /* was there any actual change? */
-            if ((r < 0) || (r == 1)) {
-                return NULL;
+        if (lyd_change_leaf((struct lyd_node_leaf_list *)node, value) == 0) {
+            /* there was an actual change */
+            if (dflt) {
+                node->dflt = 1;
             }
             return node;
         }
+
+        if (dflt) {
+            /* maybe the value is the same, but the node is default now */
+            node->dflt = 1;
+            return node;
+        }
+
         break;
     case LYS_ANYXML:
     case LYS_ANYDATA:
@@ -1254,13 +1266,18 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
             id += parsed;
 
             if (!id[0]) {
-                /* the node exists, are we supposed to update it? */
-                if (!(options & LYD_PATH_OPT_UPDATE)) {
+                /* the node exists, are we supposed to update it or is it default? */
+                if (!(options & LYD_PATH_OPT_UPDATE) && (!parent->dflt || (options & LYD_PATH_OPT_DFLT))) {
                     LOGVAL(LYE_PATH_EXISTS, LY_VLOG_STR, path);
                     return NULL;
                 }
 
-                return lyd_new_path_update(parent, value, value_type);
+                /* no change, the default node already exists */
+                if (parent->dflt && (options & LYD_PATH_OPT_DFLT)) {
+                    return NULL;
+                }
+
+                return lyd_new_path_update(parent, value, value_type, options & LYD_PATH_OPT_DFLT);
             }
         }
     }

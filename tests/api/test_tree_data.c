@@ -85,6 +85,10 @@ const char *lys_module_a = \
     <leaf name=\"number64\">                          \
       <type name=\"int64\"/>                          \
     </leaf>                                           \
+    <leaf name=\"def-leaf\">                          \
+      <type name=\"string\"/>                         \
+      <default value=\"def\"/>                        \
+    </leaf>                                           \
   </container>                                        \
   <leaf name=\"y\"><type name=\"string\"/></leaf>     \
   <anyxml name=\"any\"/>                              \
@@ -522,6 +526,21 @@ test_lyd_new_path(void **state)
     assert_string_equal(root->schema->name, "x");
     assert_string_equal(root->child->schema->name, "bar-gggg");
 
+    /* create a default node first, then implicitly rewrite it, then fail to rewrite it again */
+    node = lyd_new_path(root, NULL, "def-leaf", "def", 0, LYD_PATH_OPT_DFLT);
+    assert_non_null(node);
+    assert_string_equal(node->schema->name, "def-leaf");
+    assert_int_equal(node->dflt, 1);
+
+    node = lyd_new_path(root, NULL, "def-leaf", "def", 0, 0);
+    assert_non_null(node);
+    assert_int_equal(node->dflt, 0);
+
+    node = lyd_new_path(root, NULL, "def-leaf", "def", 0, 0);
+    assert_null(node);
+    assert_int_equal(ly_errno, LY_EVALID);
+    ly_errno = 0;
+
     node = lyd_new_path(root, NULL, "bubba", "b", 0, 0);
     assert_non_null(node);
     assert_string_equal(node->schema->name, "bubba");
@@ -920,7 +939,7 @@ test_lyd_validate(void **state)
         fail();
     }
 
-    if (root->child->next) {
+    if (root->child->next->next) {
         fail();
     }
 
