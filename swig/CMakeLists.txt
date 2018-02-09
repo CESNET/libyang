@@ -78,6 +78,9 @@ install(FILES ${LIBYANG_HPP_SOURCES} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/lib
 
 if (GEN_CPP_BINDINGS)
     add_subdirectory(cpp/examples)
+    if (ENABLE_BUILD_TESTS)
+        add_subdirectory(cpp/tests)
+    endif()
 endif()
 
 if(PYTHONLIBS_FOUND AND PYTHONINTERP_FOUND AND (${GEN_PYTHON_VERSION} STREQUAL "2" OR ${GEN_PYTHON_VERSION} STREQUAL "3"))
