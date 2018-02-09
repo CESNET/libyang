@@ -286,19 +286,19 @@ std::vector<S_Schema_Node> *Schema_Node::tree_dfs() {
 Schema_Node_Container::~Schema_Node_Container() {};
 S_When Schema_Node_Container::when() LY_NEW_CASTED(lys_node_container, node, when, When);
 S_Restr Schema_Node_Container::must() {
-    struct lys_node_container *node = (struct lys_node_container *)node;
-    return node->must ? std::make_shared<Restr>(node->must, deleter) : nullptr;
+    struct lys_node_container *node_container = (struct lys_node_container *)node;
+    return node_container->must ? std::make_shared<Restr>(node_container->must, deleter) : nullptr;
 };
 S_Tpdf Schema_Node_Container::ptdf() {
-    struct lys_node_container *node = (struct lys_node_container *)node;
-    return node->tpdf ? std::make_shared<Tpdf>(node->tpdf, deleter) : nullptr;
+    struct lys_node_container *node_container = (struct lys_node_container *)node;
+    return node_container->tpdf ? std::make_shared<Tpdf>(node_container->tpdf, deleter) : nullptr;
 };
 
 Schema_Node_Choice::~Schema_Node_Choice() {};
 S_When Schema_Node_Choice::when() LY_NEW_CASTED(lys_node_choice, node, when, When);
 S_Schema_Node Schema_Node_Choice::dflt() {
-    struct lys_node_choice *node = (struct lys_node_choice *)node;
-    return node->dflt ? std::make_shared<Schema_Node>(node->dflt, deleter) : nullptr;
+    struct lys_node_choice *node_choice = (struct lys_node_choice *)node;
+    return node_choice->dflt ? std::make_shared<Schema_Node>(node_choice->dflt, deleter) : nullptr;
 };
 
 Schema_Node_Leaf::~Schema_Node_Leaf() {};
@@ -319,8 +319,8 @@ Schema_Node_Leaflist::~Schema_Node_Leaflist() {};
 S_Set Schema_Node_Leaflist::backlinks() LY_NEW_CASTED(lys_node_leaflist, node, backlinks, Set);
 S_When Schema_Node_Leaflist::when() LY_NEW_CASTED(lys_node_leaflist, node, when, When);
 std::vector<std::string> *Schema_Node_Leaflist::dflt() {
-    struct lys_node_leaflist *node = (struct lys_node_leaflist *)node;
-    LY_NEW_STRING_LIST(node, dflt, dflt_size);
+    struct lys_node_leaflist *node_leaflist = (struct lys_node_leaflist *)node;
+    LY_NEW_STRING_LIST(node_leaflist, dflt, dflt_size);
 }
 std::vector<S_Restr> *Schema_Node_Leaflist::must() LY_NEW_LIST_CASTED(lys_node_leaflist, node, must, must_size, Restr);
 S_Type Schema_Node_Leaflist::type() {return std::make_shared<Type>(&((struct lys_node_leaflist *)node)->type, deleter);}
