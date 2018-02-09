@@ -194,7 +194,7 @@ public:
     Type_Info_Bits(struct lys_type_info_bits *info_bits, S_Deleter deleter);
     ~Type_Info_Bits();
     std::vector<S_Type_Bit> *bit();
-    int count() {return info_bits->count;};
+    unsigned int count() {return info_bits->count;};
 
 private:
     lys_type_info_bits *info_bits;
@@ -241,7 +241,7 @@ public:
     Type_Info_Enums(struct lys_type_info_enums *info_enums, S_Deleter deleter);
     ~Type_Info_Enums();
     std::vector<S_Type_Enum> *enm();
-    int count() {return info_enums->count;};
+    unsigned int count() {return info_enums->count;};
 
 private:
     lys_type_info_enums *info_enums;
