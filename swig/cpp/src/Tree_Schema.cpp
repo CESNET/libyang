@@ -93,7 +93,7 @@ Type_Info_Enums::Type_Info_Enums(struct lys_type_info_enums *info_enums, S_Delet
     deleter(deleter)
 {};
 Type_Info_Enums::~Type_Info_Enums() {};
-S_Type_Enum Type_Info_Enums::enm() {return info_enums->enm ? std::make_shared<Type_Enum>(info_enums->enm, deleter) : nullptr;};
+std::vector<S_Type_Enum> *Type_Info_Enums::enm() LY_NEW_LIST(info_enums, enm, count, Type_Enum);
 
 Type_Info_Ident::Type_Info_Ident(struct lys_type_info_ident *info_ident, S_Deleter deleter):
     info_ident(info_ident),
