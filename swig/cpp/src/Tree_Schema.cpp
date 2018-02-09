@@ -71,7 +71,7 @@ Type_Info_Bits::Type_Info_Bits(struct lys_type_info_bits *info_bits, S_Deleter d
     deleter(deleter)
 {};
 Type_Info_Bits::~Type_Info_Bits() {};
-S_Type_Bit Type_Info_Bits::bit() {return info_bits->bit ? std::make_shared<Type_Bit>(info_bits->bit, deleter) : nullptr;};
+std::vector<S_Type_Bit> *Type_Info_Bits::bit() LY_NEW_LIST(info_bits, bit, count, Type_Bit);
 
 Type_Info_Dec64::Type_Info_Dec64(struct lys_type_info_dec64 *info_dec64, S_Deleter deleter):
     info_dec64(info_dec64),

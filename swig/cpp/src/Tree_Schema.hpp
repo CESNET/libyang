@@ -193,7 +193,7 @@ class Type_Info_Bits
 public:
     Type_Info_Bits(struct lys_type_info_bits *info_bits, S_Deleter deleter);
     ~Type_Info_Bits();
-    S_Type_Bit bit();
+    std::vector<S_Type_Bit> *bit();
     int count() {return info_bits->count;};
 
 private:
