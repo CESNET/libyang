@@ -150,7 +150,6 @@
 %shared_ptr(Type_Bit);
 
 %shared_ptr(Type_Info_Bits);
-%newobject Type_Info_Bits::bit;
 
 %shared_ptr(Type_Info_Dec64);
 %newobject Type_Info_Dec64::range;
@@ -158,7 +157,6 @@
 %shared_ptr(Type_Enum);
 
 %shared_ptr(Type_Info_Enums);
-%newobject Type_Info_Enums::enm;
 
 %shared_ptr(Type_Info_Ident);
 
@@ -449,4 +447,5 @@
 %template(vectorUnique) std::vector<S_Unique>;
 %template(vectorSchema_Node_Leaf) std::vector<S_Schema_Node_Leaf>;
 %template(vectorSchema_Node_Augment) std::vector<S_Schema_Node_Augment>;
-
+%template(vectorType_Bit) std::vector<S_Type_Bit>;
+%template(vectorType_Enum) std::vector<S_Type_Enum>;
