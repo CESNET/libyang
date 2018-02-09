@@ -98,6 +98,9 @@
 
 #define LY_NEW_LIST(data, element, size, class)\
     {\
+        if (0 >= data->size) {\
+            return nullptr;\
+        }\
         auto s_vector = new std::vector<S_##class>;\
         for (uint8_t i = 0; i < data->size; i++) {\
             s_vector->push_back(std::make_shared<class>(&data->element[i], deleter));\
@@ -113,6 +116,9 @@
 
 #define LY_NEW_P_LIST(data, element, size, class)\
     {\
+        if (0 >= data->size) {\
+            return nullptr;\
+        }\
         auto s_vector = new std::vector<S_##class>;\
         for (uint8_t i = 0; i < data->size; i++) {\
             s_vector->push_back(std::make_shared<class>(data->element[i], deleter));\
@@ -128,6 +134,9 @@
 
 #define LY_NEW_STRING_LIST(data, element, size)\
     {\
+        if (0 >= data->size) {\
+            return nullptr;\
+        }\
         auto s_vector = new std::vector<std::string>;\
         for (uint8_t i = 0; i < data->size; i++) {\
             s_vector->push_back(std::string(data->element[i]));\
