@@ -517,9 +517,14 @@ static void
 test_lyd_new_path(void **state)
 {
     (void) state; /* unused */
+    const struct lys_module *mod;
     struct lyd_node *node, *root;
     char *str;
     struct lyxml_elem *xml;
+
+    mod = ly_ctx_get_module(ctx, "a", NULL, 1);
+    assert_non_null(mod);
+    lys_features_enable(mod, "bar");
 
     root = lyd_new_path(NULL, ctx, "/a:x/bar-gggg", "a", 0, 0);
     assert_non_null(root);
@@ -834,6 +839,7 @@ test_lyd_schema_sort(void **state)
 
     module = ly_ctx_get_module(ctx, "a", NULL, 0);
     assert_non_null(module);
+    lys_features_enable(module, "bar");
 
     root = lyd_new(NULL, module, "l");
     assert_non_null(root);

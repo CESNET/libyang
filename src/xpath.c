@@ -4967,7 +4967,7 @@ moveto_snode_get_root(const struct lys_node *cur_node, int options, enum lyxp_no
         *root_type = LYXP_NODE_ROOT;
     }
 
-    root = lys_getnext(NULL, NULL, lys_node_module(cur_node), 0);
+    root = lys_getnext(NULL, NULL, lys_node_module(cur_node), LYS_GETNEXT_NOSTATECHECK);
 
     return root;
 }
@@ -5270,7 +5270,7 @@ moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, const char *qname,
             /* it can actually be in any module, it's all <running>, but we know it's moveto_mod (if set),
              * so use it directly (root node itself is useless in this case) */
             sub = NULL;
-            while ((sub = lys_getnext(sub, NULL, (moveto_mod ? moveto_mod : lys_node_module(cur_node)), 0))) {
+            while ((sub = lys_getnext(sub, NULL, (moveto_mod ? moveto_mod : lys_node_module(cur_node)), LYS_GETNEXT_NOSTATECHECK))) {
                 if (!moveto_snode_check(sub, root_type, name_dict, (moveto_mod ? moveto_mod : lys_node_module(cur_node)), options)) {
                     idx = set_snode_insert_node(set, sub, LYXP_NODE_ELEM);
                     /* we need to prevent these nodes to be considered in this moveto */
@@ -5298,7 +5298,7 @@ get_next_augment:
             }
 
             sub = NULL;
-            while ((sub = lys_getnext(sub, (last_aug ? (struct lys_node *)last_aug : start_parent), NULL, 0))) {
+            while ((sub = lys_getnext(sub, (last_aug ? (struct lys_node *)last_aug : start_parent), NULL, LYS_GETNEXT_NOSTATECHECK))) {
                 if (!moveto_snode_check(sub, root_type, name_dict, (moveto_mod ? moveto_mod : lys_node_module(cur_node)), options)) {
                     idx = set_snode_insert_node(set, sub, LYXP_NODE_ELEM);
                     if ((idx < orig_used) && (idx > i)) {
@@ -5973,7 +5973,7 @@ moveto_snode_self(struct lyxp_set *set, struct lys_node *cur_node, int all_desc,
         /* add all the children */
         if (set->val.snodes[i].snode->nodetype & (LYS_LIST | LYS_CONTAINER)) {
             sub = NULL;
-            while ((sub = lys_getnext(sub, set->val.snodes[i].snode, NULL, 0))) {
+            while ((sub = lys_getnext(sub, set->val.snodes[i].snode, NULL, LYS_GETNEXT_NOSTATECHECK))) {
                 /* RPC input/output check */
                 if (options & LYXP_SNODE_OUTPUT) {
                     if (lys_parent(sub)->nodetype == LYS_INPUT) {
@@ -6178,7 +6178,7 @@ moveto_snode_parent(struct lyxp_set *set, struct lys_node *cur_node, int all_des
                 new_type = LYXP_NODE_ROOT;
             }
 #ifndef NDEBUG
-            node = (struct lys_node *)lys_getnext(NULL, NULL, lys_node_module(node), 0);
+            node = (struct lys_node *)lys_getnext(NULL, NULL, lys_node_module(node), LYS_GETNEXT_NOSTATECHECK);
             if (node != root) {
                 LOGINT;
             }

@@ -4017,7 +4017,7 @@ lys_module_node_pos_r(struct lys_node *first_sibling, struct lys_node *target, u
     const struct lys_node *next = NULL;
 
     /* the schema nodes are actually from data, lys_getnext skips non-data schema nodes for us (we know the parent will not be uses) */
-    while ((next = lys_getnext(next, lys_parent(first_sibling), lys_node_module(first_sibling), 0))) {
+    while ((next = lys_getnext(next, lys_parent(first_sibling), lys_node_module(first_sibling), LYS_GETNEXT_NOSTATECHECK))) {
         ++(*pos);
         if (target == next) {
             return 0;
@@ -5241,7 +5241,7 @@ lyd_build_relative_data_path(const struct lys_module *module, const struct lyd_n
         schema_id += r;
 
         snode = NULL;
-        while ((snode = lys_getnext(snode, schema, NULL, LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE))) {
+        while ((snode = lys_getnext(snode, schema, NULL, LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_NOSTATECHECK))) {
             r = schema_nodeid_siblingcheck(snode, module, mod_name, mod_name_len, name, name_len);
             if (r == 0) {
                 schema = snode;

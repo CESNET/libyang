@@ -986,7 +986,7 @@ ly_path_data2schema_subexp(const struct ly_ctx *ctx, const struct lys_node *orig
 
             /* create schema path for this data node */
             node = NULL;
-            while ((node = lys_getnext(node, parent, cur_mod, 0))) {
+            while ((node = lys_getnext(node, parent, cur_mod, LYS_GETNEXT_NOSTATECHECK))) {
                 if (strcmp(node->name, col ? col : str)) {
                     continue;
                 }

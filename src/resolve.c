@@ -1808,7 +1808,7 @@ get_next_augment:
         }
 
         while ((sibling = lys_getnext(sibling, (last_aug ? (struct lys_node *)last_aug : start_parent), start_mod,
-                LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT | LYS_GETNEXT_PARENTUSES))) {
+                LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT | LYS_GETNEXT_PARENTUSES | LYS_GETNEXT_NOSTATECHECK))) {
             r = schema_nodeid_siblingcheck(sibling, cur_module, mod_name, mod_name_len, name, nam_len);
 
             /* resolve predicate */
@@ -1966,7 +1966,7 @@ resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *star
     while (1) {
         sibling = NULL;
         while ((sibling = lys_getnext(sibling, start_parent, module,
-                                      LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_PARENTUSES))) {
+                LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_PARENTUSES | LYS_GETNEXT_NOSTATECHECK))) {
             r = schema_nodeid_siblingcheck(sibling, module, mod_name, mod_name_len, name, nam_len);
             if (r == 0) {
                 if (!id[0]) {
@@ -2076,7 +2076,7 @@ resolve_absolute_schema_nodeid(const char *nodeid, const struct lys_module *modu
     while (1) {
         sibling = NULL;
         while ((sibling = lys_getnext(sibling, start_parent, abs_start_mod, LYS_GETNEXT_WITHCHOICE
-                                      | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT | LYS_GETNEXT_WITHGROUPING))) {
+                | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT | LYS_GETNEXT_WITHGROUPING | LYS_GETNEXT_NOSTATECHECK))) {
             r = schema_nodeid_siblingcheck(sibling, module, mod_name, mod_name_len, name, nam_len);
             if (r == 0) {
                 if (!id[0]) {
@@ -3770,12 +3770,12 @@ resolve_schema_leafref_predicate(const char *path, const struct lys_node *contex
 static int
 resolve_schema_leafref(const char *path, struct lys_node *parent, const struct lys_node **ret)
 {
-    const struct lys_node *node, *op_node = NULL;
+    const struct lys_node *node, *op_node = NULL, *tmp_parent;
     struct lys_node_augment *last_aug;
     const struct lys_module *tmp_mod, *cur_module;
     const char *id, *prefix, *name;
     int pref_len, nam_len, parent_times, has_predicate;
-    int i, first_iter, rc;
+    int i, first_iter;
 
     first_iter = 1;
     parent_times = 0;
@@ -3848,9 +3848,19 @@ get_next_augment:
             last_aug = lys_getnext_target_aug(last_aug, tmp_mod, node);
         }
 
-        rc = lys_getnext_data(tmp_mod, (last_aug ? (struct lys_node *)last_aug : node), name, nam_len, LYS_LIST
-                              | LYS_CONTAINER | LYS_RPC | LYS_ACTION | LYS_NOTIF | LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA, &node);
-        if (rc) {
+        tmp_parent = (last_aug ? (struct lys_node *)last_aug : node);
+        node = NULL;
+        while ((node = lys_getnext(node, tmp_parent, tmp_mod, LYS_GETNEXT_NOSTATECHECK))) {
+            if (lys_node_module(node) != lys_main_module(tmp_mod)) {
+                continue;
+            }
+            if (strncmp(node->name, name, nam_len) || node->name[nam_len]) {
+                continue;
+            }
+            /* match */
+            break;
+        }
+        if (!node) {
             if (last_aug) {
                 goto get_next_augment;
             }
@@ -5765,7 +5775,7 @@ resolve_when_ctx_snode(const struct lys_node *schema, struct lys_node **ctx_snod
                 *ctx_snode_type = LYXP_NODE_ROOT;
             }
             /* we need the first top-level sibling, but no uses or groupings */
-            schema = lys_getnext(NULL, NULL, lys_node_module(schema), 0);
+            schema = lys_getnext(NULL, NULL, lys_node_module(schema), LYS_GETNEXT_NOSTATECHECK);
             break;
         }
         schema = sparent;

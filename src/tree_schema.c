@@ -253,7 +253,10 @@ lys_getnext(const struct lys_node *last, const struct lys_node *parent, const st
             next = last = *snode;
         } else {
             /* top level data */
-            assert(module);
+            if (!(options & LYS_GETNEXT_NOSTATECHECK) && (module->disabled || !module->implemented)) {
+                /* nothing to return from a disabled/imported module */
+                return NULL;
+            }
             next = last = module->data;
         }
     } else if ((last->nodetype == LYS_USES) && (options & LYS_GETNEXT_INTOUSES) && last->child) {
@@ -301,6 +304,11 @@ repeat:
         goto repeat;
     } else {
         last = next;
+    }
+
+    if (!(options & LYS_GETNEXT_NOSTATECHECK) && lys_is_disabled(next, 0)) {
+        next = next->next;
+        goto repeat;
     }
 
     switch (next->nodetype) {
@@ -3873,7 +3881,7 @@ lys_xpath_atomize(const struct lys_node *ctx_node, enum lyxp_node_type ctx_node_
     /* adjust the root */
     if ((ctx_node_type == LYXP_NODE_ROOT) || (ctx_node_type == LYXP_NODE_ROOT_CONFIG)) {
         do {
-            ctx_node = lys_getnext(NULL, NULL, lys_node_module(ctx_node), 0);
+            ctx_node = lys_getnext(NULL, NULL, lys_node_module(ctx_node), LYS_GETNEXT_NOSTATECHECK);
         } while ((ctx_node_type == LYXP_NODE_ROOT_CONFIG) && (ctx_node->flags & LYS_CONFIG_R));
     }
 
