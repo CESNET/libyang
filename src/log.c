@@ -325,7 +325,7 @@ const char *ly_errs[] = {
 /* LYE_XPATH_NOEND */   "Unterminated string delimited with %c (%.15s).",
 
 /* LYE_PATH_INCHAR */  "Unexpected character(s) '%c' (\"%s\").",
-/* LYE_PATH_INMOD */   "Module not found.",
+/* LYE_PATH_INMOD */   "Module not found or not implemented.",
 /* LYE_PATH_MISSMOD */ "Missing module name.",
 /* LYE_PATH_INNODE */  "Schema node not found.",
 /* LYE_PATH_INKEY */   "List key not found or on incorrect position (\"%s\").",
