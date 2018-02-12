@@ -6166,14 +6166,25 @@ lyd_wd_add_subtree(struct lyd_node **root, struct lyd_node *last_parent, struct 
         return EXIT_SUCCESS;
     }
 
+    /* skip disabled parts of schema */
     if (!subroot) {
-        /* skip disabled parts of schema */
-        if (schema->parent && schema->parent->nodetype == LYS_AUGMENT) {
-            if (lys_is_disabled(schema->parent, 0)) {
+        /* go through all the uses and check whether they are enabled */
+        for (siter = schema->parent; siter && (siter->nodetype & (LYS_USES | LYS_CHOICE)); siter = siter->parent) {
+            if (lys_is_disabled(siter, 0)) {
+                /* ignore disabled uses nodes */
+                return EXIT_SUCCESS;
+            }
+        }
+
+        /* check augment state */
+        if (siter && siter->nodetype == LYS_AUGMENT) {
+            if (lys_is_disabled(siter, 0)) {
                 /* ignore disabled augment */
                 return EXIT_SUCCESS;
             }
         }
+
+        /* check the node itself */
         if (lys_is_disabled(schema, 0)) {
             /* ignore disabled data */
             return EXIT_SUCCESS;
