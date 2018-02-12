@@ -234,7 +234,7 @@ lys_getnext(const struct lys_node *last, const struct lys_node *parent, const st
     const struct lys_node *next, *aug_parent;
     struct lys_node **snode;
 
-    if ((!parent && !module) || (module && module->type) && (parent && (parent->nodetype == LYS_USES) && !(options & LYS_GETNEXT_PARENTUSES))) {
+    if ((!parent && !module) || (module && module->type) || (parent && (parent->nodetype == LYS_USES) && !(options & LYS_GETNEXT_PARENTUSES))) {
         LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
         return NULL;
     }
