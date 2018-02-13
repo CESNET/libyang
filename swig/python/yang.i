@@ -1,4 +1,4 @@
-%module libyang
+%module yang
 
 %{
     extern "C" {
