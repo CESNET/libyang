@@ -193,12 +193,19 @@ typedef enum {
 } LYS_OUTFORMAT;
 
 /**
- * @brief Schema output options accepted by libyang [printer functions](@ref howtoschemasprinters).
+ * @defgroup schemaprinterflags Schema printer flags
+ * @brief Schema output flags accepted by libyang [printer functions](@ref howtoschemasprinters).
+ *
+ * @{
  */
 #define LYS_OUTOPT_TREE_RFC        0x01 /**< Conform to the RFC TODO tree output */
 #define LYS_OUTOPT_TREE_GROUPING   0x02 /**< Print groupings separately */
 #define LYS_OUTOPT_TREE_USES       0x04 /**< Print only uses instead the resolved grouping nodes */
 #define LYS_OUTOPT_TREE_NO_LEAFREF 0x08 /**< Do not print the target of leafrefs */
+
+/**
+ * @}
+ */
 
 /* shortcuts for common in and out formats */
 #define LYS_YANG 1       /**< YANG schema format, used for #LYS_INFORMAT and #LYS_OUTFORMAT */
@@ -2353,7 +2360,7 @@ void *lys_set_private(const struct lys_node *node, void *priv);
  * @param[in] target_node Optional parameter. It specifies which particular node/subtree in the module will be printed.
  * Only for #LYS_OUT_INFO and #LYS_OUT_TREE formats. Use fully qualified schema path (@ref howtoxpath).
  * @param[in] line_length Maximum characters to be printed on a line, 0 for unlimited. Only for #LYS_OUT_TREE printer.
- * @param[in] options Schema output options.
+ * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
 int lys_print_mem(char **strp, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node,
@@ -2368,7 +2375,7 @@ int lys_print_mem(char **strp, const struct lys_module *module, LYS_OUTFORMAT fo
  * @param[in] target_node Optional parameter. It specifies which particular node/subtree in the module will be printed.
  * Only for #LYS_OUT_INFO and #LYS_OUT_TREE formats. Use fully qualified schema path (@ref howtoxpath).
  * @param[in] line_length Maximum characters to be printed on a line, 0 for unlimited. Only for #LYS_OUT_TREE format.
- * @param[in] options Schema output options.
+ * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
 int lys_print_fd(int fd, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node,
@@ -2383,7 +2390,7 @@ int lys_print_fd(int fd, const struct lys_module *module, LYS_OUTFORMAT format, 
  * @param[in] target_node Optional parameter. It specifies which particular node/subtree in the module will be printed.
  * Only for #LYS_OUT_INFO and #LYS_OUT_TREE formats. Use fully qualified schema path (@ref howtoxpath).
  * @param[in] line_length Maximum characters to be printed on a line, 0 for unlimited. Only for #LYS_OUT_TREE printer.
- * @param[in] options Schema output options.
+ * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
 int lys_print_file(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node,
@@ -2399,7 +2406,7 @@ int lys_print_file(FILE *f, const struct lys_module *module, LYS_OUTFORMAT forma
  * @param[in] target_node Optional parameter. It specifies which particular node/subtree in the module will be printed.
  * Only for #LYS_OUT_INFO and #LYS_OUT_TREE formats. Use fully qualified schema path (@ref howtoxpath).
  * @param[in] line_length Maximum characters to be printed on a line, 0 for unlimited. Only for #LYS_OUT_TREE printer.
- * @param[in] options Schema output options.
+ * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
 int lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
