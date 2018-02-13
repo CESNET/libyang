@@ -151,7 +151,7 @@ tree_next_indent(int level, const struct lys_node *node, const struct lys_node *
     int next_is_case = 0, has_next = 0;
 
     if (level > 64) {
-        LOGINT;
+        LOGINT(node->module->ctx);
         return;
     }
 
@@ -318,7 +318,7 @@ tree_print_type(struct lyout *out, const struct lys_type *type, int options, con
                 if (out_str) {
                     printed = 3 + strlen(str);
                     tmp = malloc(printed + 1);
-                    LY_CHECK_ERR_RETURN(!tmp, LOGMEM, 0);
+                    LY_CHECK_ERR_RETURN(!tmp, LOGMEM(type_mod->ctx), 0);
                     sprintf(tmp, "-> %s", str);
                     *out_str = lydict_insert_zc(type_mod->ctx, tmp);
                 } else {
@@ -329,7 +329,7 @@ tree_print_type(struct lyout *out, const struct lys_type *type, int options, con
                 if (out_str) {
                     printed = 3 + strlen(type->info.lref.path);
                     tmp = malloc(printed + 1);
-                    LY_CHECK_ERR_RETURN(!tmp, LOGMEM, 0);
+                    LY_CHECK_ERR_RETURN(!tmp, LOGMEM(type_mod->ctx), 0);
                     sprintf(tmp, "-> %s", type->info.lref.path);
                     *out_str = lydict_insert_zc(type_mod->ctx, tmp);
                 } else {
@@ -343,7 +343,7 @@ tree_print_type(struct lyout *out, const struct lys_type *type, int options, con
             if (out_str) {
                 printed = strlen(str) + 1 + strlen(type->der->name);
                 tmp = malloc(printed + 1);
-                LY_CHECK_ERR_RETURN(!tmp, LOGMEM, 0);
+                LY_CHECK_ERR_RETURN(!tmp, LOGMEM(type_mod->ctx), 0);
                 sprintf(tmp, "%s:%s", str, type->der->name);
                 *out_str = lydict_insert_zc(type_mod->ctx, tmp);
             } else {
@@ -353,7 +353,7 @@ tree_print_type(struct lyout *out, const struct lys_type *type, int options, con
             if (out_str) {
                 printed = strlen(type->der->module->name) + 1 + strlen(type->der->name);
                 tmp = malloc(printed + 1);
-                LY_CHECK_ERR_RETURN(!tmp, LOGMEM, 0);
+                LY_CHECK_ERR_RETURN(!tmp, LOGMEM(type_mod->ctx), 0);
                 sprintf(tmp, "%s:%s", type->der->module->name, type->der->name);
                 *out_str = lydict_insert_zc(type_mod->ctx, tmp);
             } else {
@@ -418,7 +418,7 @@ tree_print_features(struct lyout *out, struct lys_iffeature *iff1, uint8_t iff1_
 
     if (out_str) {
         o = malloc(sizeof *o);
-        LY_CHECK_ERR_RETURN(!o, LOGMEM, 0);
+        LY_CHECK_ERR_RETURN(!o, LOGMEM(NULL), 0);
         o->type = LYOUT_MEMORY;
         o->method.mem.buf = NULL;
         o->method.mem.len = 0;
@@ -462,7 +462,7 @@ tree_print_keys(struct lyout *out, struct lys_node_leaf **keys, uint8_t keys_siz
 
     if (out_str) {
         o = malloc(sizeof *o);
-        LY_CHECK_ERR_RETURN(!o, LOGMEM, 0);
+        LY_CHECK_ERR_RETURN(!o, LOGMEM(NULL), 0);
         o->type = LYOUT_MEMORY;
         o->method.mem.buf = NULL;
         o->method.mem.len = 0;
@@ -865,11 +865,11 @@ tree_print_model(struct lyout *out, const struct lys_module *module, const char 
         if (!set) {
             return EXIT_FAILURE;
         } else if (set->number != 1) {
-            LOGVAL(LYE_PATH_INNODE, LY_VLOG_NONE, NULL);
+            LOGVAL(module->ctx, LYE_PATH_INNODE, LY_VLOG_NONE, NULL);
             if (set->number == 0) {
-                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Schema path \"%s\" did not match any nodes.", target_schema_path);
+                LOGVAL(module->ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Schema path \"%s\" did not match any nodes.", target_schema_path);
             } else {
-                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Schema path \"%s\" matched more nodes.", target_schema_path);
+                LOGVAL(module->ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Schema path \"%s\" matched more nodes.", target_schema_path);
             }
             ly_set_free(set);
             return EXIT_FAILURE;

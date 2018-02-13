@@ -99,8 +99,8 @@ test_default_int(void **state)
     st->dt = lyd_parse_mem(st->ctx, xml2, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(st->dt, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INVAL);
-    assert_string_equal(ly_errmsg(), "Invalid value \"0xa\" in \"a\" element.");
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INVAL);
+    assert_string_equal(ly_errmsg(st->ctx), "Invalid value \"0xa\" in \"a\" element.");
 
     st->dt = lyd_parse_mem(st->ctx, xml1, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(st->dt, NULL);

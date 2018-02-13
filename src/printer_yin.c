@@ -1814,7 +1814,7 @@ yin_print_extcomplex_bool(struct lyout *out, int level, const struct lys_module 
     } else if (*val == 2) {
         yin_print_substmt(out, level, (LYEXT_SUBSTMT)stmt, 0, false_val, module, ext->ext, ext->ext_size);
     } else {
-        LOGINT;
+        LOGINT(module->ctx);
     }
 }
 

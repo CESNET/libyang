@@ -132,7 +132,7 @@ U4     [\xf0][\x90-\xbf]{U}{U}|[\xf1-\xf3]{U}{U}{U}|[\xf4][\x80-\x8f]{U}{U}
 "anydata" {return ANYDATA_KEYWORD; }
 "{" |
 "}" |
-";" | 
+";" |
 "+"  { return yytext[0];}  /* unsolved problem with concatenate string '+' */
 "\"" {_state = YY_START; BEGIN DOUBLEQUOTES; str = yytext; column = yylloc->first_column; }
 <DOUBLEQUOTES>\t|\\t { tab_count++; size_str += yyleng; }
@@ -147,7 +147,7 @@ U4     [\xf0][\x90-\xbf]{U}{U}|[\xf1-\xf3]{U}{U}{U}|[\xf4][\x80-\x8f]{U}{U}
         /* exclude surrogate blocks %xD800-DFFF */
         /* exclude noncharacters %xFDD0-FDEF */
         /* exclude noncharacters %xFFFE-FFFF */
-        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%08x", value);
+        LOGVAL(yyget_extra(yyscanner), LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%08x", value);
         yylloc->first_line = -1;
         return ERROR;
     }
@@ -159,7 +159,7 @@ U4     [\xf0][\x90-\xbf]{U}{U}|[\xf1-\xf3]{U}{U}{U}|[\xf4][\x80-\x8f]{U}{U}
         /* exclude noncharacters %x1FFFE-1FFFF, %x2FFFE-2FFFF, %x3FFFE-3FFFF, %x4FFFE-4FFFF,
          * %x5FFFE-5FFFF, %x6FFFE-6FFFF, %x7FFFE-7FFFF, %x8FFFE-8FFFF, %x9FFFE-9FFFF, %xAFFFE-AFFFF,
          * %xBFFFE-BFFFF, %xCFFFE-CFFFF, %xDFFFE-DFFFF, %xEFFFE-EFFFF, %xFFFFE-FFFFF, %x10FFFE-10FFFF */
-        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%08x", value);
+        LOGVAL(yyget_extra(yyscanner), LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%08x", value);
         yylloc->first_line = -1;
         return ERROR;
     }
@@ -172,7 +172,7 @@ U4     [\xf0][\x90-\xbf]{U}{U}|[\xf1-\xf3]{U}{U}{U}|[\xf4][\x80-\x8f]{U}{U}
                    yylloc->first_column = column;
                    return STRING;
                  }
-<DOUBLEQUOTES><<EOF>> { LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Unterminated double-quoted string.");
+<DOUBLEQUOTES><<EOF>> { LOGVAL(yyget_extra(yyscanner), LYE_SPEC, LY_VLOG_NONE, NULL, "Unterminated double-quoted string.");
                         yylloc->first_line = -1;
                         return ERROR;
                       }
@@ -188,7 +188,7 @@ U4     [\xf0][\x90-\xbf]{U}{U}|[\xf1-\xf3]{U}{U}{U}|[\xf4][\x80-\x8f]{U}{U}
                     yylloc->first_column = column;
                     return STRING;
                   }
-<SINGLEQUOTES><<EOF>> { LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Unterminated single-quoted string.");
+<SINGLEQUOTES><<EOF>> { LOGVAL(yyget_extra(yyscanner), LYE_SPEC, LY_VLOG_NONE, NULL, "Unterminated single-quoted string.");
                         yylloc->first_line = -1;
                         return ERROR;
                       }
@@ -260,7 +260,7 @@ U4     [\xf0][\x90-\xbf]{U}{U}|[\xf1-\xf3]{U}{U}{U}|[\xf4][\x80-\x8f]{U}{U}
                     /* exclude surrogate blocks %xD800-DFFF */
                     /* exclude noncharacters %xFDD0-FDEF */
                     /* exclude noncharacters %xFFFE-FFFF */
-                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%08x", value);
+                    LOGVAL(yyget_extra(yyscanner), LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%08x", value);
                     yylloc->first_line = -1;
                     return ERROR;
                 }
@@ -272,7 +272,7 @@ U4     [\xf0][\x90-\xbf]{U}{U}|[\xf1-\xf3]{U}{U}{U}|[\xf4][\x80-\x8f]{U}{U}
                     /* exclude noncharacters %x1FFFE-1FFFF, %x2FFFE-2FFFF, %x3FFFE-3FFFF, %x4FFFE-4FFFF,
                      * %x5FFFE-5FFFF, %x6FFFE-6FFFF, %x7FFFE-7FFFF, %x8FFFE-8FFFF, %x9FFFE-9FFFF, %xAFFFE-AFFFF,
                      * %xBFFFE-BFFFF, %xCFFFE-CFFFF, %xDFFFE-DFFFF, %xEFFFE-EFFFF, %xFFFFE-FFFFF, %x10FFFE-10FFFF */
-                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%08x", value);
+                    LOGVAL(yyget_extra(yyscanner), LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%08x", value);
                     yylloc->first_line = -1;
                     return ERROR;
                 }
@@ -287,7 +287,7 @@ U4     [\xf0][\x90-\xbf]{U}{U}|[\xf1-\xf3]{U}{U}{U}|[\xf4][\x80-\x8f]{U}{U}
 [ \t]+ { return WHITESPACE;}
 
 <COMMENT1,COMMENT2,DOUBLEQUOTES,SINGLEQUOTES,INITIAL,PATH>[\x00-\xff] {
-    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 leading byte 0x%02x", yytext[0]);
+    LOGVAL(yyget_extra(yyscanner), LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 leading byte 0x%02x", yytext[0]);
     yylloc->first_line = -1;
     return ERROR;
 }

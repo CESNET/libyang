@@ -236,7 +236,7 @@ std::vector<S_Schema_Node> *Schema_Node::child_instantiables(int options) {
 S_Set Schema_Node::find_path(const char *path) {
     struct ly_set *set = lys_find_path(node->module, node, path);
     if (!set) {
-        check_libyang_error();
+        check_libyang_error(node->module->ctx);
         return nullptr;
     }
 
@@ -246,7 +246,7 @@ S_Set Schema_Node::find_path(const char *path) {
 S_Set Schema_Node::xpath_atomize(enum lyxp_node_type ctx_node_type, const char *expr, int options) {
     struct ly_set *set = lys_xpath_atomize(node, ctx_node_type, expr, options);
     if (!set) {
-        check_libyang_error();
+        check_libyang_error(node->module->ctx);
         return nullptr;
     }
 
@@ -255,7 +255,7 @@ S_Set Schema_Node::xpath_atomize(enum lyxp_node_type ctx_node_type, const char *
 S_Set Schema_Node::xpath_atomize(int options) {
     struct ly_set *set = lys_node_xpath_atomize(node, options);
     if (!set) {
-        check_libyang_error();
+        check_libyang_error(node->module->ctx);
         return nullptr;
     }
 

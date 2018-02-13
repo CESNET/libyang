@@ -30,7 +30,7 @@ int main() {
         ctx = S_Context(new Context("/etc/sysrepo/yang"));
     } catch( const std::exception& e ) {
         cout << e.what() << endl;
-        auto err = Error();
+        auto err = Error(ctx);
         cout << "err: " << err.err() << endl;
         cout << "vecode: " << err.vecode() << endl;
         cout << "errmsg: " << err.errmsg() << endl;

@@ -27,7 +27,7 @@
 #include "commands.h"
 #include "libyang.h"
 
-volatile int verbose = 0;
+volatile uint8_t verbose = 0;
 
 /* from commands.c */
 int print_list(FILE *out, struct ly_ctx *ctx, LYD_FORMAT outformat);

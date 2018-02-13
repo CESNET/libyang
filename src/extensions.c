@@ -102,7 +102,7 @@ lyext_load_plugins(void)
     dir = opendir(pluginsdir);
     if (!dir) {
         /* no directory (or no access to it), no plugins */
-        LOGWRN("libyang extensions plugins directory \"%s\" does not exist.", pluginsdir);
+        LOGWRN(NULL, "libyang extensions plugins directory \"%s\" does not exist.", pluginsdir);
         return;
     }
 
@@ -140,7 +140,7 @@ lyext_load_plugins(void)
         /* ... and if not, load it */
         dlhandler = dlopen(str, RTLD_NOW);
         if (!dlhandler) {
-            LOGERR(LY_ESYS, "Loading \"%s\" as an extension plugin failed (%s).", str, dlerror());
+            LOGERR(NULL, LY_ESYS, "Loading \"%s\" as an extension plugin failed (%s).", str, dlerror());
             free(str);
             continue;
         }
@@ -152,7 +152,7 @@ lyext_load_plugins(void)
         plugin = dlsym(dlhandler, name);
         str = dlerror();
         if (str) {
-            LOGERR(LY_ESYS, "Processing \"%s\" extension plugin failed, missing plugin list object (%s).", name, str);
+            LOGERR(NULL, LY_ESYS, "Processing \"%s\" extension plugin failed, missing plugin list object (%s).", name, str);
             dlclose(dlhandler);
             continue;
         }
@@ -163,7 +163,7 @@ lyext_load_plugins(void)
                 if (!strcmp(plugin[u].name, ext_plugins[v].name) &&
                         !strcmp(plugin[u].module, ext_plugins[v].module) &&
                         (!plugin[u].revision || !ext_plugins[v].revision || !strcmp(plugin[u].revision, ext_plugins[v].revision))) {
-                    LOGERR(LY_ESYS, "Processing \"%s\" extension plugin failed,"
+                    LOGERR(NULL, LY_ESYS, "Processing \"%s\" extension plugin failed,"
                            "implementation collision for extension %s from module %s%s%s.",
                            name, plugin[u].name, plugin[u].module, plugin[u].revision ? "@" : "",
                            plugin[u].revision ? plugin[u].revision : "");
@@ -179,7 +179,7 @@ lyext_load_plugins(void)
                     if (pluginc->substmt[v].stmt >= LY_STMT_SUBMODULE ||
                             pluginc->substmt[v].stmt == LY_STMT_VERSION ||
                             pluginc->substmt[v].stmt == LY_STMT_YINELEM) {
-                        LOGERR(LY_EINVAL,
+                        LOGERR(NULL, LY_EINVAL,
                                "Extension plugin \"%s\" (extension %s) allows not supported extension substatement (%s)",
                                name, plugin[u].name, ly_stmt_str[pluginc->substmt[v].stmt]);
                         dlclose(dlhandler);
@@ -188,7 +188,7 @@ lyext_load_plugins(void)
                     if (pluginc->substmt[v].cardinality > LY_STMT_CARD_MAND &&
                              pluginc->substmt[v].stmt >= LY_STMT_MODIFIER &&
                              pluginc->substmt[v].stmt <= LY_STMT_STATUS) {
-                        LOGERR(LY_EINVAL, "Extension plugin \"%s\" (extension %s) allows multiple instances on \"%s\" "
+                        LOGERR(NULL, LY_EINVAL, "Extension plugin \"%s\" (extension %s) allows multiple instances on \"%s\" "
                                "substatement, which is not supported.",
                                name, plugin[u].name, ly_stmt_str[pluginc->substmt[v].stmt]);
                         dlclose(dlhandler);
@@ -202,7 +202,7 @@ lyext_load_plugins(void)
         /* add the new plugins, we have number of new plugins as u */
         p = realloc(ext_plugins, (ext_plugins_count + u) * sizeof *ext_plugins);
         if (!p) {
-            LOGMEM;
+            LOGMEM(NULL);
             dlclose(dlhandler);
             closedir(dir);
 
@@ -256,7 +256,7 @@ lys_ext_instance_presence(struct lys_ext *def, struct lys_ext_instance **ext, ui
     uint8_t index;
 
     if (!def || (ext_size && !ext)) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return -1;
     }
 
@@ -277,7 +277,7 @@ lys_ext_complex_get_substmt(LY_STMT stmt, struct lys_ext_instance_complex *ext, 
     int i;
 
     if (!ext || !ext->def || !ext->def->plugin || ext->def->plugin->type != LYEXT_COMPLEX) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return NULL;
     }
 

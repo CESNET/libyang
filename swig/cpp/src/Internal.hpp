@@ -152,13 +152,13 @@ extern "C" {
 #include "libyang.h"
 }
 
-void check_libyang_error();
-
 /* defined */
 class Deleter;
 
 /* used */
 class Context;
+
+void check_libyang_error(ly_ctx *ctx);
 
 enum class Free_Type {
     CONTEXT,

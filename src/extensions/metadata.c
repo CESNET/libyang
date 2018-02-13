@@ -65,7 +65,7 @@ annotation_final_check(struct lys_ext_instance *ext)
      */
     type = *(struct lys_type**)lys_ext_complex_get_substmt(LY_STMT_TYPE, (struct lys_ext_instance_complex *)ext, NULL);
     if (type->base == LY_TYPE_LEAFREF) {
-        LYEXT_LOG(LY_LLERR, "Annotations", "The leafref type is not supported for annotations (annotation %s).",
+        LYEXT_LOG(ext->module->ctx, LY_LLERR, "Annotations", "The leafref type is not supported for annotations (annotation %s).",
                   ext->arg_value);
         return 1;
     }
@@ -108,7 +108,7 @@ annotation_final_check(struct lys_ext_instance *ext)
     }
 
     if (c > 1) {
-        LYEXT_LOG(LY_LLERR, "Annotations",
+        LYEXT_LOG(ext->module->ctx, LY_LLERR, "Annotations",
                   "Annotation instance %s is not unique, there are %d instances with the same name in module %s.",
                   ext->arg_value, c, ((struct lys_module *)ext->parent)->name);
         return 1;

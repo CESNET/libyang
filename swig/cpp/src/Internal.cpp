@@ -24,11 +24,13 @@ extern "C" {
 #include "tree_schema.h"
 }
 
-void check_libyang_error() {
-    const char *errmsg = ly_errmsg();
+void check_libyang_error(ly_ctx *ctx) {
+    const char *errmsg = ly_errmsg(ctx);
 
     if (errmsg) {
         throw std::runtime_error(errmsg);
+    } else if (ly_errno) {
+        throw std::runtime_error("Error");
     }
 };
 

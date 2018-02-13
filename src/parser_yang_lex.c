@@ -2491,7 +2491,7 @@ YY_RULE_SETUP
         /* exclude surrogate blocks %xD800-DFFF */
         /* exclude noncharacters %xFDD0-FDEF */
         /* exclude noncharacters %xFFFE-FFFF */
-        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%08x", value);
+        LOGVAL(yyget_extra(yyscanner), LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%08x", value);
         yylloc->first_line = -1;
         return ERROR;
     }
@@ -2506,7 +2506,7 @@ YY_RULE_SETUP
         /* exclude noncharacters %x1FFFE-1FFFF, %x2FFFE-2FFFF, %x3FFFE-3FFFF, %x4FFFE-4FFFF,
          * %x5FFFE-5FFFF, %x6FFFE-6FFFF, %x7FFFE-7FFFF, %x8FFFE-8FFFF, %x9FFFE-9FFFF, %xAFFFE-AFFFF,
          * %xBFFFE-BFFFF, %xCFFFE-CFFFF, %xDFFFE-DFFFF, %xEFFFE-EFFFF, %xFFFFE-FFFFF, %x10FFFE-10FFFF */
-        LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%08x", value);
+        LOGVAL(yyget_extra(yyscanner), LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%08x", value);
         yylloc->first_line = -1;
         return ERROR;
     }
@@ -2524,7 +2524,7 @@ YY_RULE_SETUP
                  }
 	YY_BREAK
 case YY_STATE_EOF(DOUBLEQUOTES):
-{ LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Unterminated double-quoted string.");
+{ LOGVAL(yyget_extra(yyscanner), LYE_SPEC, LY_VLOG_NONE, NULL, "Unterminated double-quoted string.");
                         yylloc->first_line = -1;
                         return ERROR;
                       }
@@ -2551,7 +2551,7 @@ YY_RULE_SETUP
                   }
 	YY_BREAK
 case YY_STATE_EOF(SINGLEQUOTES):
-{ LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Unterminated single-quoted string.");
+{ LOGVAL(yyget_extra(yyscanner), LYE_SPEC, LY_VLOG_NONE, NULL, "Unterminated single-quoted string.");
                         yylloc->first_line = -1;
                         return ERROR;
                       }
@@ -2676,7 +2676,7 @@ YY_RULE_SETUP
                     /* exclude surrogate blocks %xD800-DFFF */
                     /* exclude noncharacters %xFDD0-FDEF */
                     /* exclude noncharacters %xFFFE-FFFF */
-                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%08x", value);
+                    LOGVAL(yyget_extra(yyscanner), LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%08x", value);
                     yylloc->first_line = -1;
                     return ERROR;
                 }
@@ -2688,7 +2688,7 @@ YY_RULE_SETUP
                     /* exclude noncharacters %x1FFFE-1FFFF, %x2FFFE-2FFFF, %x3FFFE-3FFFF, %x4FFFE-4FFFF,
                      * %x5FFFE-5FFFF, %x6FFFE-6FFFF, %x7FFFE-7FFFF, %x8FFFE-8FFFF, %x9FFFE-9FFFF, %xAFFFE-AFFFF,
                      * %xBFFFE-BFFFF, %xCFFFE-CFFFF, %xDFFFE-DFFFF, %xEFFFE-EFFFF, %xFFFFE-FFFFF, %x10FFFE-10FFFF */
-                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%08x", value);
+                    LOGVAL(yyget_extra(yyscanner), LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%08x", value);
                     yylloc->first_line = -1;
                     return ERROR;
                 }
@@ -2714,7 +2714,7 @@ case 131:
 /* rule 131 can match eol */
 YY_RULE_SETUP
 {
-    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 leading byte 0x%02x", yytext[0]);
+    LOGVAL(yyget_extra(yyscanner), LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 leading byte 0x%02x", yytext[0]);
     yylloc->first_line = -1;
     return ERROR;
 }
