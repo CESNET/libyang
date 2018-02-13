@@ -3,7 +3,7 @@
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief libyang logger implementation
  *
- * Copyright (c) 2015 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -773,7 +773,7 @@ ly_vlog(const struct ly_ctx *ctx, LY_ECODE ecode, enum LY_VLOG_ELEM elem_type, c
     switch (ecode) {
     case LYE_SPEC:
         fmt = va_arg(ap, char *);
-        log_vprintf(ctx, LY_LLERR, LY_EVALID, ecode2vecode[ecode], path, fmt, ap);
+        log_vprintf(ctx, LY_LLERR, LY_EVALID, LYVE_SUCCESS, path, fmt, ap);
         break;
     case LYE_PATH:
         assert(path);
