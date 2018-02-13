@@ -47,6 +47,20 @@ std::vector<S_Schema_Node> *Module::data_instantiables(int options) {
 
     return s_vector;
 }
+std::string Module::print_mem(LYS_OUTFORMAT format, int options) {
+    char *strp = nullptr;
+    int rc = 0;
+
+    rc = lys_print_mem(&strp, module, format, NULL, 0, options);
+    if (0 != rc) {
+        check_libyang_error();
+        return nullptr;
+    }
+
+    std::string s_strp = strp;
+    free(strp);
+    return s_strp;
+}
 Submodule::~Submodule() {};
 S_Revision Submodule::rev() LY_NEW(submodule, rev, Revision);
 std::vector<S_Deviation> *Submodule::deviation() LY_NEW_LIST(submodule, deviation, deviation_size, Deviation);
