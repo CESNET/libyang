@@ -791,11 +791,11 @@ ly_err_print(struct ly_err_item *eitem)
 {
     if (ly_log_opts & LY_LOLOG) {
         if (ly_log_clb) {
-            ly_log_clb(last_eitem->level, last_eitem->msg, last_eitem->path);
+            ly_log_clb(eitem->level, eitem->msg, eitem->path);
         } else {
-            fprintf(stderr, "libyang[%d]: %s%s", last_eitem->level, last_eitem->msg, last_eitem->path ? " " : "\n");
-            if (last_eitem->path) {
-                fprintf(stderr, "(path: %s)\n", last_eitem->path);
+            fprintf(stderr, "libyang[%d]: %s%s", eitem->level, eitem->msg, eitem->path ? " " : "\n");
+            if (eitem->path) {
+                fprintf(stderr, "(path: %s)\n", eitem->path);
             }
         }
     }
