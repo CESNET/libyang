@@ -493,16 +493,18 @@ static int
 ly_vlog_build_path_print(char **path, uint16_t *index, const char *str, uint16_t str_len, uint16_t *length)
 {
     void *mem;
+    uint16_t step;
 
     if ((*index) < str_len) {
         /* enlarge buffer */
-        mem = realloc(*path, *length + *index + LY_BUF_STEP);
+        step = (str_len < LY_BUF_STEP) ? LY_BUF_STEP : str_len;
+        mem = realloc(*path, *length + *index + step + 1);
         LY_CHECK_ERR_RETURN(!mem, LOGMEM(NULL), -1);
         *path = mem;
 
         /* move data, lengths */
-        memmove(&(*path)[*index], &(*path)[*index + LY_BUF_STEP], *length);
-        (*index) += LY_BUF_STEP;
+        memmove(&(*path)[*index + step], &(*path)[*index], *length);
+        (*index) += step;
     }
 
     (*index) -= str_len;
@@ -698,7 +700,7 @@ ly_vlog_build_path(enum LY_VLOG_ELEM elem_type, const void *elem, char **path, i
             elem = ((struct lyd_node *)elem)->parent;
             break;
         case LY_VLOG_STR:
-            len = strlen((const char *)elem) + 1;
+            len = strlen((const char *)elem);
             if (ly_vlog_build_path_print(path, &index, (const char *)elem, len, &length)) {
                 return -1;
             }
