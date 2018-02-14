@@ -94,6 +94,10 @@ ly_errapptag(const struct ly_ctx *ctx)
 API struct ly_err_item *
 ly_err_first(const struct ly_ctx *ctx)
 {
+    if (!ctx) {
+        return NULL;
+    }
+
     return pthread_getspecific(ctx->errlist_key);
 }
 
