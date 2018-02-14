@@ -244,6 +244,31 @@ S_Data_Node Context::parse_xml(S_Xml_Elem elem, int options) {
     return std::make_shared<Data_Node>(new_node, new_deleter);
 }
 
+Error::Error(struct ly_err_item *eitem):
+	eitem(eitem)
+{};
+
+std::vector<S_Error> *get_ly_errors(S_Context context)
+{
+    auto s_vector = new std::vector<S_Error>;
+    if (!context) {
+        return s_vector;
+    }
+
+    struct ly_err_item *first_eitem = ly_err_first(context->ctx);
+    if (!first_eitem) {
+        return s_vector;
+    }
+
+    struct ly_err_item *eitem = first_eitem;
+    while (eitem) {
+        s_vector->push_back(std::make_shared<Error>(eitem));
+        eitem = eitem->next;
+    }
+
+    return s_vector;
+}
+
 Set::Set() {
     struct ly_set *set = ly_set_new();
     if (!set) {

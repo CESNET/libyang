@@ -24,6 +24,7 @@
 
 /* Libyang.hpp */
 #define S_Context                std::shared_ptr<Context>
+#define S_Error                  std::shared_ptr<Error>
 #define S_Set                    std::shared_ptr<Set>
 
 /* Tree_Data.hpp */

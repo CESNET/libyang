@@ -450,3 +450,4 @@
 %template(vectorSchema_Node_Augment) std::vector<S_Schema_Node_Augment>;
 %template(vectorType_Bit) std::vector<S_Type_Bit>;
 %template(vectorType_Enum) std::vector<S_Type_Enum>;
+%template(vectorError) std::vector<S_Error>;

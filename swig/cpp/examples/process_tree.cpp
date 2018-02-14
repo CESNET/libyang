@@ -30,12 +30,14 @@ int main() {
         ctx = S_Context(new Context("/etc/sysrepo/yang"));
     } catch( const std::exception& e ) {
         cout << e.what() << endl;
-        auto err = Error(ctx);
-        cout << "err: " << err.err() << endl;
-        cout << "vecode: " << err.vecode() << endl;
-        cout << "errmsg: " << err.errmsg() << endl;
-        cout << "errpath: " << err.errpath() << endl;
-        cout << "errapptag: " << err.errapptag() << endl;
+        auto errors = std::shared_ptr<std::vector<S_Error>>(get_ly_errors(ctx));
+        for(auto error = errors->begin() ; error != errors->end() ; ++error) {
+            cout << "err: " << (*error)->err() << endl;
+            cout << "vecode: " << (*error)->vecode() << endl;
+            cout << "errmsg: " << (*error)->errmsg() << endl;
+            cout << "errpath: " << (*error)->errpath() << endl;
+            cout << "errapptag: " << (*error)->errapptag() << endl;
+        }
         return -1;
     }
 
