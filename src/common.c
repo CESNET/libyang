@@ -154,7 +154,7 @@ get_current_dir_name(void)
 
     if (getcwd(tmp, sizeof(tmp))) {
         retval = strdup(tmp);
-        LY_CHECK_ERR_RETURN(!retval, LOGMEM, NULL);
+        LY_CHECK_ERR_RETURN(!retval, LOGMEM(NULL), NULL);
         return retval;
     }
     return NULL;
