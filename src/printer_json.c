@@ -455,7 +455,7 @@ json_print_anyxml(struct lyout *out, int level, const struct lyd_node *node, int
         break;
     default:
         /* other formats are not supported */
-        LOGWRN("Unable to print anydata content (type %d) as JSON.", any->value_type);
+        LOGWRN(node->schema->module->ctx, "Unable to print anydata content (type %d) as JSON.", any->value_type);
         break;
     }
 
@@ -500,7 +500,7 @@ json_print_anydata(struct lyout *out, int level, const struct lyd_node *node, in
         break;
     default:
         /* other formats are not supported */
-        LOGWRN("Unable to print anydata content (type %d) as JSON.", any->value_type);
+        LOGWRN(node->schema->module->ctx, "Unable to print anydata content (type %d) as JSON.", any->value_type);
         break;
     }
 
@@ -594,7 +594,7 @@ json_print_nodes(struct lyout *out, int level, const struct lyd_node *root, int 
             ret = json_print_anydata(out, level, node, toplevel, options);
             break;
         default:
-            LOGINT;
+            LOGINT(node->schema->module->ctx);
             ret = EXIT_FAILURE;
             break;
         }

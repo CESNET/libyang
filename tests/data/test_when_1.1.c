@@ -161,7 +161,7 @@ test_dummy(void **state)
 
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG, NULL), 1);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_XPATH_DUMMY);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_XPATH_DUMMY);
 }
 
 static void
@@ -213,7 +213,7 @@ test_dependency_circular(void **state)
 
     assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG, NULL), 1);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INWHEN);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INWHEN);
 }
 
 static void

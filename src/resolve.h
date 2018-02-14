@@ -180,7 +180,7 @@ const struct lys_node *resolve_json_nodeid(const char *nodeid, struct ly_ctx *ct
 struct lyd_node *resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, struct lyd_node *start,
                                                   int options, int *parsed);
 
-int resolve_len_ran_interval(const char *str_restr, struct lys_type *type, struct len_ran_intv **ret);
+int resolve_len_ran_interval(struct ly_ctx *ctx, const char *str_restr, struct lys_type *type, struct len_ran_intv **ret);
 
 int resolve_superior_type(const char *name, const char *prefix, const struct lys_module *module,
                           const struct lys_node *parent, struct lys_tpdf **ret);
@@ -236,7 +236,7 @@ int unres_data_addonly(struct unres_data *unres, struct lyd_node *node, enum UNR
 int unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM type);
 void unres_data_del(struct unres_data *unres, uint32_t i);
 
-int resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options);
+int resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node **root, int options);
 int schema_nodeid_siblingcheck(const struct lys_node *sibling, const struct lys_module *cur_module,
                            const char *mod_name, int mod_name_len, const char *name, int nam_len);
 

@@ -78,7 +78,7 @@
 
 #define YANG_ADDELEM(current_ptr, size)                                                  \
     if (size == LY_ARRAY_MAX(size)) {                                                    \
-         LOGERR(LY_EINT, "Reached limit (%"PRIu64") for storing typedefs.", LY_ARRAY_MAX(trg->tpdf_size));\
+         LOGERR(trg->ctx, LY_EINT, "Reached limit (%"PRIu64") for storing typedefs.", LY_ARRAY_MAX(trg->tpdf_size));\
          free(s);                                                                        \
          YYABORT;                                                                        \
     } else if (!(size % LY_YANG_ARRAY_SIZE)) {                                           \
@@ -86,7 +86,7 @@
                                                                                          \
         tmp = realloc(current_ptr, (sizeof *current_ptr) * (size + LY_YANG_ARRAY_SIZE)); \
         if (!tmp) {                                                                      \
-            LOGMEM;                                                                      \
+            LOGMEM(trg->ctx);                                                            \
             free(s);                                                                     \
             YYABORT;                                                                     \
         }                                                                                \
@@ -620,83 +620,83 @@ static const yytype_uint16 yyrline[] =
      501,   509,   517,   518,   523,   534,   545,   556,   564,   569,
      570,   574,   575,   586,   597,   608,   612,   614,   637,   654,
      658,   660,   661,   666,   671,   676,   682,   686,   688,   692,
-     694,   698,   700,   704,   706,   719,   730,   731,   742,   746,
-     747,   751,   752,   757,   764,   764,   771,   777,   825,   844,
-     847,   848,   849,   850,   851,   852,   853,   854,   855,   856,
-     859,   874,   881,   882,   886,   887,   888,   894,   899,   905,
-     923,   925,   926,   930,   935,   936,   958,   959,   960,   973,
-     978,   980,   981,   982,   983,   998,  1012,  1017,  1018,  1033,
-    1034,  1035,  1041,  1046,  1052,  1109,  1114,  1115,  1117,  1133,
-    1138,  1139,  1164,  1165,  1179,  1180,  1186,  1191,  1197,  1201,
-    1203,  1256,  1267,  1270,  1273,  1278,  1283,  1289,  1294,  1300,
-    1305,  1314,  1315,  1319,  1366,  1367,  1369,  1370,  1374,  1380,
-    1393,  1394,  1395,  1399,  1400,  1402,  1406,  1424,  1429,  1431,
-    1432,  1448,  1453,  1462,  1463,  1467,  1483,  1488,  1493,  1498,
-    1504,  1508,  1524,  1539,  1540,  1544,  1545,  1555,  1560,  1565,
-    1570,  1576,  1580,  1591,  1603,  1604,  1607,  1615,  1626,  1627,
-    1642,  1643,  1644,  1656,  1662,  1667,  1673,  1678,  1680,  1681,
-    1696,  1701,  1702,  1707,  1711,  1713,  1718,  1720,  1721,  1722,
-    1735,  1747,  1748,  1750,  1758,  1770,  1771,  1786,  1787,  1788,
-    1800,  1806,  1811,  1817,  1822,  1824,  1825,  1841,  1845,  1847,
-    1851,  1853,  1857,  1859,  1863,  1865,  1875,  1882,  1883,  1887,
-    1888,  1894,  1899,  1904,  1905,  1906,  1907,  1908,  1914,  1915,
-    1916,  1917,  1918,  1919,  1920,  1921,  1924,  1934,  1941,  1942,
-    1965,  1966,  1967,  1968,  1969,  1974,  1980,  1986,  1991,  1996,
-    1997,  1998,  2003,  2004,  2006,  2046,  2056,  2059,  2060,  2061,
-    2064,  2069,  2070,  2075,  2081,  2087,  2093,  2098,  2104,  2114,
-    2169,  2172,  2173,  2174,  2177,  2188,  2193,  2194,  2200,  2213,
-    2226,  2236,  2242,  2247,  2253,  2263,  2310,  2313,  2314,  2315,
-    2316,  2325,  2331,  2337,  2350,  2363,  2373,  2379,  2384,  2389,
-    2390,  2391,  2392,  2397,  2399,  2409,  2416,  2417,  2437,  2440,
-    2441,  2442,  2452,  2459,  2466,  2473,  2479,  2485,  2487,  2488,
-    2490,  2491,  2492,  2493,  2494,  2495,  2496,  2502,  2512,  2519,
-    2520,  2534,  2535,  2536,  2537,  2543,  2548,  2553,  2556,  2566,
-    2573,  2583,  2590,  2591,  2614,  2617,  2618,  2619,  2620,  2627,
-    2634,  2641,  2646,  2652,  2662,  2669,  2670,  2702,  2703,  2704,
-    2705,  2711,  2716,  2721,  2722,  2724,  2725,  2727,  2740,  2745,
-    2746,  2778,  2781,  2795,  2811,  2833,  2884,  2903,  2922,  2943,
-    2964,  2969,  2975,  2976,  2979,  2994,  3003,  3004,  3006,  3017,
-    3026,  3027,  3028,  3029,  3035,  3040,  3045,  3046,  3047,  3052,
-    3054,  3069,  3076,  3086,  3093,  3094,  3118,  3121,  3122,  3128,
-    3133,  3138,  3139,  3140,  3147,  3155,  3170,  3200,  3201,  3202,
-    3203,  3204,  3206,  3221,  3251,  3260,  3267,  3268,  3300,  3301,
-    3302,  3303,  3309,  3314,  3319,  3320,  3321,  3323,  3335,  3355,
-    3356,  3362,  3368,  3370,  3371,  3373,  3374,  3377,  3385,  3390,
-    3391,  3393,  3394,  3395,  3397,  3405,  3410,  3411,  3443,  3444,
-    3450,  3451,  3457,  3463,  3470,  3477,  3485,  3494,  3502,  3507,
-    3508,  3540,  3541,  3547,  3548,  3554,  3561,  3569,  3574,  3575,
-    3589,  3590,  3591,  3597,  3603,  3610,  3617,  3625,  3634,  3643,
-    3648,  3649,  3653,  3654,  3659,  3665,  3670,  3672,  3673,  3674,
-    3687,  3692,  3694,  3695,  3696,  3709,  3713,  3715,  3720,  3722,
-    3723,  3743,  3748,  3750,  3751,  3752,  3772,  3777,  3779,  3780,
-    3781,  3793,  3862,  3867,  3868,  3872,  3876,  3878,  3879,  3881,
-    3885,  3887,  3887,  3894,  3897,  3906,  3925,  3927,  3928,  3931,
-    3931,  3948,  3948,  3955,  3955,  3962,  3965,  3967,  3969,  3970,
-    3972,  3974,  3976,  3977,  3979,  3981,  3982,  3984,  3985,  3987,
-    3989,  3992,  3996,  3998,  3999,  4001,  4002,  4004,  4006,  4017,
-    4018,  4021,  4022,  4033,  4034,  4036,  4037,  4039,  4040,  4046,
-    4047,  4050,  4051,  4052,  4076,  4077,  4080,  4086,  4090,  4095,
-    4096,  4097,  4100,  4105,  4115,  4117,  4118,  4120,  4121,  4123,
-    4124,  4125,  4127,  4128,  4130,  4131,  4133,  4134,  4138,  4139,
-    4166,  4204,  4205,  4207,  4209,  4211,  4212,  4214,  4215,  4217,
-    4218,  4221,  4222,  4225,  4227,  4228,  4231,  4231,  4238,  4240,
-    4241,  4242,  4243,  4244,  4245,  4246,  4248,  4249,  4250,  4252,
-    4253,  4254,  4255,  4256,  4257,  4258,  4259,  4260,  4261,  4264,
-    4265,  4266,  4267,  4268,  4269,  4270,  4271,  4272,  4273,  4274,
-    4275,  4276,  4277,  4278,  4279,  4280,  4281,  4282,  4283,  4284,
-    4285,  4286,  4287,  4288,  4289,  4290,  4291,  4292,  4293,  4294,
-    4295,  4296,  4297,  4298,  4299,  4300,  4301,  4302,  4303,  4304,
-    4305,  4306,  4307,  4308,  4309,  4310,  4311,  4312,  4313,  4314,
-    4315,  4316,  4317,  4318,  4319,  4320,  4321,  4322,  4323,  4324,
-    4325,  4326,  4327,  4328,  4329,  4330,  4331,  4332,  4333,  4335,
-    4342,  4349,  4369,  4387,  4403,  4430,  4437,  4455,  4495,  4497,
-    4498,  4499,  4500,  4501,  4502,  4503,  4504,  4505,  4506,  4507,
-    4508,  4509,  4511,  4512,  4513,  4514,  4515,  4516,  4517,  4518,
-    4519,  4520,  4521,  4522,  4523,  4524,  4526,  4527,  4528,  4529,
-    4531,  4539,  4540,  4545,  4550,  4555,  4560,  4565,  4570,  4575,
-    4580,  4585,  4590,  4595,  4600,  4605,  4610,  4615,  4629,  4649,
-    4654,  4659,  4664,  4677,  4682,  4686,  4696,  4711,  4726,  4741,
-    4756,  4776,  4791,  4792,  4798,  4805,  4820,  4823
+     694,   698,   700,   704,   706,   719,   730,   731,   743,   747,
+     748,   752,   753,   758,   765,   765,   772,   778,   826,   845,
+     848,   849,   850,   851,   852,   853,   854,   855,   856,   857,
+     860,   875,   882,   883,   887,   888,   889,   895,   900,   906,
+     924,   926,   927,   931,   936,   937,   959,   960,   961,   974,
+     979,   981,   982,   983,   984,   999,  1013,  1018,  1019,  1034,
+    1035,  1036,  1042,  1047,  1053,  1110,  1115,  1116,  1118,  1134,
+    1139,  1140,  1165,  1166,  1180,  1181,  1187,  1192,  1198,  1202,
+    1204,  1257,  1268,  1271,  1274,  1279,  1284,  1290,  1295,  1301,
+    1306,  1315,  1316,  1320,  1367,  1368,  1370,  1371,  1375,  1381,
+    1394,  1395,  1396,  1400,  1401,  1403,  1407,  1425,  1430,  1432,
+    1433,  1449,  1454,  1463,  1464,  1468,  1484,  1489,  1494,  1499,
+    1505,  1509,  1525,  1540,  1541,  1545,  1546,  1556,  1561,  1566,
+    1571,  1577,  1581,  1592,  1604,  1605,  1608,  1616,  1627,  1628,
+    1643,  1644,  1645,  1657,  1663,  1668,  1674,  1679,  1681,  1682,
+    1697,  1702,  1703,  1708,  1712,  1714,  1719,  1721,  1722,  1723,
+    1736,  1748,  1749,  1751,  1759,  1771,  1772,  1787,  1788,  1789,
+    1801,  1807,  1812,  1818,  1823,  1825,  1826,  1842,  1846,  1848,
+    1852,  1854,  1858,  1860,  1864,  1866,  1876,  1883,  1884,  1888,
+    1889,  1895,  1900,  1905,  1906,  1907,  1908,  1909,  1915,  1916,
+    1917,  1918,  1919,  1920,  1921,  1922,  1925,  1935,  1942,  1943,
+    1966,  1967,  1968,  1969,  1970,  1975,  1981,  1987,  1992,  1997,
+    1998,  1999,  2004,  2005,  2007,  2047,  2057,  2060,  2061,  2062,
+    2065,  2070,  2071,  2076,  2082,  2088,  2094,  2099,  2105,  2115,
+    2170,  2173,  2174,  2175,  2178,  2189,  2194,  2195,  2201,  2214,
+    2227,  2237,  2243,  2248,  2254,  2264,  2311,  2314,  2315,  2316,
+    2317,  2326,  2332,  2338,  2351,  2364,  2374,  2380,  2385,  2390,
+    2391,  2392,  2393,  2398,  2400,  2410,  2417,  2418,  2438,  2441,
+    2442,  2443,  2453,  2460,  2467,  2474,  2480,  2486,  2488,  2489,
+    2491,  2492,  2493,  2494,  2495,  2496,  2497,  2503,  2513,  2520,
+    2521,  2535,  2536,  2537,  2538,  2544,  2549,  2554,  2557,  2567,
+    2574,  2584,  2591,  2592,  2615,  2618,  2619,  2620,  2621,  2628,
+    2635,  2642,  2647,  2653,  2663,  2670,  2671,  2703,  2704,  2705,
+    2706,  2712,  2717,  2722,  2723,  2725,  2726,  2728,  2741,  2746,
+    2747,  2779,  2782,  2796,  2812,  2834,  2885,  2904,  2923,  2944,
+    2965,  2970,  2976,  2977,  2980,  2995,  3004,  3005,  3007,  3018,
+    3027,  3028,  3029,  3030,  3036,  3041,  3046,  3047,  3048,  3053,
+    3055,  3070,  3077,  3087,  3094,  3095,  3119,  3122,  3123,  3129,
+    3134,  3139,  3140,  3141,  3148,  3156,  3171,  3201,  3202,  3203,
+    3204,  3205,  3207,  3222,  3252,  3261,  3268,  3269,  3301,  3302,
+    3303,  3304,  3310,  3315,  3320,  3321,  3322,  3324,  3336,  3356,
+    3357,  3363,  3369,  3371,  3372,  3374,  3375,  3378,  3386,  3391,
+    3392,  3394,  3395,  3396,  3398,  3406,  3411,  3412,  3444,  3445,
+    3451,  3452,  3458,  3464,  3471,  3478,  3486,  3495,  3503,  3508,
+    3509,  3541,  3542,  3548,  3549,  3555,  3562,  3570,  3575,  3576,
+    3590,  3591,  3592,  3598,  3604,  3611,  3618,  3626,  3635,  3644,
+    3649,  3650,  3654,  3655,  3660,  3666,  3671,  3673,  3674,  3675,
+    3688,  3693,  3695,  3696,  3697,  3710,  3714,  3716,  3721,  3723,
+    3724,  3744,  3749,  3751,  3752,  3753,  3773,  3778,  3780,  3781,
+    3782,  3794,  3863,  3868,  3869,  3873,  3877,  3879,  3880,  3882,
+    3886,  3888,  3888,  3895,  3898,  3907,  3926,  3928,  3929,  3932,
+    3932,  3949,  3949,  3956,  3956,  3963,  3966,  3968,  3970,  3971,
+    3973,  3975,  3977,  3978,  3980,  3982,  3983,  3985,  3986,  3988,
+    3990,  3993,  3997,  3999,  4000,  4002,  4003,  4005,  4007,  4018,
+    4019,  4022,  4023,  4035,  4036,  4038,  4039,  4041,  4042,  4048,
+    4049,  4052,  4053,  4054,  4078,  4079,  4082,  4088,  4092,  4097,
+    4098,  4099,  4102,  4107,  4117,  4119,  4120,  4122,  4123,  4125,
+    4126,  4127,  4129,  4130,  4132,  4133,  4135,  4136,  4140,  4141,
+    4168,  4206,  4207,  4209,  4211,  4213,  4214,  4216,  4217,  4219,
+    4220,  4223,  4224,  4227,  4229,  4230,  4233,  4233,  4240,  4242,
+    4243,  4244,  4245,  4246,  4247,  4248,  4250,  4251,  4252,  4254,
+    4255,  4256,  4257,  4258,  4259,  4260,  4261,  4262,  4263,  4266,
+    4267,  4268,  4269,  4270,  4271,  4272,  4273,  4274,  4275,  4276,
+    4277,  4278,  4279,  4280,  4281,  4282,  4283,  4284,  4285,  4286,
+    4287,  4288,  4289,  4290,  4291,  4292,  4293,  4294,  4295,  4296,
+    4297,  4298,  4299,  4300,  4301,  4302,  4303,  4304,  4305,  4306,
+    4307,  4308,  4309,  4310,  4311,  4312,  4313,  4314,  4315,  4316,
+    4317,  4318,  4319,  4320,  4321,  4322,  4323,  4324,  4325,  4326,
+    4327,  4328,  4329,  4330,  4331,  4332,  4333,  4334,  4335,  4337,
+    4344,  4351,  4371,  4389,  4405,  4432,  4439,  4457,  4497,  4499,
+    4500,  4501,  4502,  4503,  4504,  4505,  4506,  4507,  4508,  4509,
+    4510,  4511,  4513,  4514,  4515,  4516,  4517,  4518,  4519,  4520,
+    4521,  4522,  4523,  4524,  4525,  4526,  4528,  4529,  4530,  4531,
+    4533,  4541,  4542,  4547,  4552,  4557,  4562,  4567,  4572,  4577,
+    4582,  4587,  4592,  4597,  4602,  4607,  4612,  4617,  4631,  4651,
+    4656,  4661,  4666,  4679,  4684,  4688,  4698,  4713,  4728,  4743,
+    4758,  4778,  4793,  4794,  4800,  4807,  4822,  4825
 };
 #endif
 
@@ -3086,17 +3086,17 @@ yyreduce:
 
                       s = malloc(yyget_leng(scanner) - 1 + 7 * yylval.i);
                       if (!s) {
-                        LOGMEM;
+                        LOGMEM(trg->ctx);
                         YYABORT;
                       }
-                      if (!(tmp = yang_read_string(yyget_text(scanner) + 1, s, yyget_leng(scanner) - 2, 0, yylloc.first_column))) {
+                      if (!(tmp = yang_read_string(trg->ctx, yyget_text(scanner) + 1, s, yyget_leng(scanner) - 2, 0, yylloc.first_column))) {
                         YYABORT;
                       }
                       s = tmp;
                     } else {
                       s = calloc(1, yyget_leng(scanner) - 1);
                       if (!s) {
-                        LOGMEM;
+                        LOGMEM(trg->ctx);
                         YYABORT;
                       }
                       memcpy(s, yyget_text(scanner) + 1, yyget_leng(scanner) - 2);
@@ -3114,12 +3114,12 @@ yyreduce:
 
                 tmp = realloc(s, length_s + length_tmp - 1);
                 if (!tmp) {
-                  LOGMEM;
+                  LOGMEM(trg->ctx);
                   YYABORT;
                 }
                 s = tmp;
                 if (yyget_text(scanner)[0] == '"') {
-                  if (!(tmp = yang_read_string(yyget_text(scanner) + 1, s, length_tmp - 2, length_s, yylloc.first_column))) {
+                  if (!(tmp = yang_read_string(trg->ctx, yyget_text(scanner) + 1, s, length_tmp - 2, length_s, yylloc.first_column))) {
                     YYABORT;
                   }
                   s = tmp;
@@ -3136,7 +3136,7 @@ yyreduce:
 
     { if (param->submodule) {
                                        free(s);
-                                       LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "module");
+                                       LOGVAL(trg->ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "module");
                                        YYABORT;
                                      }
                                      trg = param->module;
@@ -3150,11 +3150,11 @@ yyreduce:
   case 12:
 
     { if (!param->module->ns) {
-                                            LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "namespace", "module");
+                                            LOGVAL(trg->ctx, LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "namespace", "module");
                                             YYABORT;
                                           }
                                           if (!param->module->prefix) {
-                                            LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "prefix", "module");
+                                            LOGVAL(trg->ctx, LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "prefix", "module");
                                             YYABORT;
                                           }
                                         }
@@ -3202,7 +3202,7 @@ yyreduce:
 
     { if (!param->submodule) {
                                           free(s);
-                                          LOGVAL(LYE_SUBMODULE, LY_VLOG_NONE, NULL);
+                                          LOGVAL(trg->ctx, LYE_SUBMODULE, LY_VLOG_NONE, NULL);
                                           YYABORT;
                                         }
                                         trg = (struct lys_module *)param->submodule;
@@ -3216,13 +3216,13 @@ yyreduce:
   case 19:
 
     { if (!param->submodule->prefix) {
-                                                  LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "belongs-to", "submodule");
+                                                  LOGVAL(trg->ctx, LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "belongs-to", "submodule");
                                                   YYABORT;
                                                 }
                                                 if (!(yyvsp[0].i)) {
                                                   /* check version compatibility with the main module */
                                                   if (param->module->version > 1) {
-                                                      LOGVAL(LYE_INVER, LY_VLOG_NONE, NULL);
+                                                      LOGVAL(trg->ctx, LYE_INVER, LY_VLOG_NONE, NULL);
                                                       YYABORT;
                                                   }
                                                 }
@@ -3303,7 +3303,7 @@ yyreduce:
   case 34:
 
     { if (trg->version != 2) {
-                                          LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "description");
+                                          LOGVAL(trg->ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "description");
                                           free(s);
                                           YYABORT;
                                         }
@@ -3319,7 +3319,7 @@ yyreduce:
   case 35:
 
     { if (trg->version != 2) {
-                                        LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "reference");
+                                        LOGVAL(trg->ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "reference");
                                         free(s);
                                         YYABORT;
                                       }
@@ -3335,7 +3335,7 @@ yyreduce:
   case 36:
 
     { if ((yyvsp[-1].i)) {
-                                            LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "revision-date", "import");
+                                            LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, "revision-date", "import");
                                             free(s);
                                             YYABORT;
                                           }
@@ -3377,7 +3377,7 @@ yyreduce:
   case 42:
 
     { if (trg->version != 2) {
-                                           LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "description");
+                                           LOGVAL(trg->ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "description");
                                            free(s);
                                            YYABORT;
                                          }
@@ -3393,7 +3393,7 @@ yyreduce:
   case 43:
 
     { if (trg->version != 2) {
-                                         LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "reference");
+                                         LOGVAL(trg->ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "reference");
                                          free(s);
                                          YYABORT;
                                        }
@@ -3409,7 +3409,7 @@ yyreduce:
   case 44:
 
     { if ((yyvsp[-1].i)) {
-                                             LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "revision-date", "include");
+                                             LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, "revision-date", "include");
                                              free(s);
                                              YYABORT;
                                            }
@@ -3439,12 +3439,12 @@ yyreduce:
                                            }
                                          } else {
                                            if (param->submodule->prefix) {
-                                             LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "belongs-to", "submodule");
+                                             LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, "belongs-to", "submodule");
                                              free(s);
                                              YYABORT;
                                            }
                                            if (!ly_strequal(s, param->submodule->belongsto->name, 0)) {
-                                             LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "belongs-to");
+                                             LOGVAL(trg->ctx, LYE_INARG, LY_VLOG_NONE, NULL, s, "belongs-to");
                                              free(s);
                                              YYABORT;
                                            }
@@ -3561,7 +3561,7 @@ yyreduce:
 
                                       tmp = realloc(trg->rev, trg->rev_size * sizeof *trg->rev);
                                       if (!tmp) {
-                                        LOGMEM;
+                                        LOGMEM(trg->ctx);
                                         YYABORT;
                                       }
                                       trg->rev = tmp;
@@ -3592,7 +3592,8 @@ yyreduce:
                                                 /* check uniqueness of the revision date - not required by RFC */
                                                 for (i = 0; i < (trg->rev_size - 1); i++) {
                                                   if (!strcmp(trg->rev[i].date, trg->rev[trg->rev_size - 1].date)) {
-                                                    LOGWRN("Module's revisions are not unique (%s).", trg->rev[trg->rev_size - 1].date);
+                                                    LOGWRN(trg->ctx, "Module's revisions are not unique (%s).",
+                                                           trg->rev[trg->rev_size - 1].date);
                                                     break;
                                                   }
                                                 }
@@ -3632,7 +3633,7 @@ yyreduce:
 
     { s = strdup(yyget_text(scanner));
                               if (!s) {
-                                LOGMEM;
+                                LOGMEM(trg->ctx);
                                 YYABORT;
                               }
                             }
@@ -3641,7 +3642,7 @@ yyreduce:
 
   case 76:
 
-    { if (lyp_check_date(s)) {
+    { if (lyp_check_date(trg->ctx, s)) {
                    free(s);
                    YYABORT;
                }
@@ -3656,7 +3657,7 @@ yyreduce:
                              if (trg->tpdf_size) {
                                tmp = realloc(trg->tpdf, trg->tpdf_size * sizeof *trg->tpdf);
                                if (!tmp) {
-                                 LOGMEM;
+                                 LOGMEM(trg->ctx);
                                  YYABORT;
                                }
                                trg->tpdf = tmp;
@@ -3665,7 +3666,7 @@ yyreduce:
                              if (trg->features_size) {
                                tmp = realloc(trg->features, trg->features_size * sizeof *trg->features);
                                if (!tmp) {
-                                 LOGMEM;
+                                 LOGMEM(trg->ctx);
                                  YYABORT;
                                }
                                trg->features = tmp;
@@ -3674,7 +3675,7 @@ yyreduce:
                              if (trg->ident_size) {
                                tmp = realloc(trg->ident, trg->ident_size * sizeof *trg->ident);
                                if (!tmp) {
-                                 LOGMEM;
+                                 LOGMEM(trg->ctx);
                                  YYABORT;
                                }
                                trg->ident = tmp;
@@ -3683,7 +3684,7 @@ yyreduce:
                              if (trg->augment_size) {
                                tmp = realloc(trg->augment, trg->augment_size * sizeof *trg->augment);
                                if (!tmp) {
-                                 LOGMEM;
+                                 LOGMEM(trg->ctx);
                                  YYABORT;
                                }
                                trg->augment = tmp;
@@ -3692,7 +3693,7 @@ yyreduce:
                              if (trg->extensions_size) {
                                tmp = realloc(trg->extensions, trg->extensions_size * sizeof *trg->extensions);
                                if (!tmp) {
-                                 LOGMEM;
+                                 LOGMEM(trg->ctx);
                                  YYABORT;
                                }
                                trg->extensions = tmp;
@@ -3739,7 +3740,7 @@ yyreduce:
                                         trg->extensions_size--;
                                         ((struct lys_ext *)actual)->name = lydict_insert_zc(param->module->ctx, s);
                                         ((struct lys_ext *)actual)->module = trg;
-                                        if (lyp_check_identifier(((struct lys_ext *)actual)->name, LY_IDENT_EXTENSION, trg, NULL)) {
+                                        if (lyp_check_identifier(trg->ctx, ((struct lys_ext *)actual)->name, LY_IDENT_EXTENSION, trg, NULL)) {
                                           trg->extensions_size++;
                                           YYABORT;
                                         }
@@ -3763,7 +3764,7 @@ yyreduce:
   case 96:
 
     { if (((struct lys_ext *)actual)->flags & LYS_STATUS_MASK) {
-                                        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "extension");
+                                        LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "extension");
                                         YYABORT;
                                       }
                                       ((struct lys_ext *)actual)->flags |= (yyvsp[0].i);
@@ -3801,7 +3802,7 @@ yyreduce:
                                      }
                                    } else {
                                      if (((struct lys_ext *)actual)->argument) {
-                                        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "argument", "extension");
+                                        LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, "argument", "extension");
                                         free(s);
                                         YYABORT;
                                      }
@@ -3872,7 +3873,7 @@ yyreduce:
                } else if (!strcmp(s, "false")) {
                  (yyval.uint) = 0;
                } else {
-                 LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, s);
+                 LOGVAL(trg->ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, s);
                  free(s);
                  YYABORT;
                }
@@ -3924,7 +3925,7 @@ yyreduce:
                } else if (!strcmp(s, "deprecated")) {
                  (yyval.i) = LYS_STATUS_DEPRC;
                } else {
-                 LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, s);
+                 LOGVAL(trg->ctx,LYE_INSTMT, LY_VLOG_NONE, NULL, s);
                  free(s);
                  YYABORT;
                }
@@ -3937,7 +3938,7 @@ yyreduce:
   case 115:
 
     { /* check uniqueness of feature's names */
-                                      if (lyp_check_identifier(s, LY_IDENT_FEATURE, trg, NULL)) {
+                                      if (lyp_check_identifier(trg->ctx, s, LY_IDENT_FEATURE, trg, NULL)) {
                                         free(s);
                                         YYABORT;
                                       }
@@ -3968,7 +3969,7 @@ yyreduce:
             tmp = realloc(((struct lys_feature *)actual)->iffeature,
                           ((struct lys_feature *)actual)->iffeature_size * sizeof *tmp);
             if (!tmp) {
-              LOGMEM;
+              LOGMEM(trg->ctx);
               YYABORT;
             }
             ((struct lys_feature *)actual)->iffeature = tmp;
@@ -3980,7 +3981,7 @@ yyreduce:
   case 121:
 
     { if (((struct lys_feature *)actual)->flags & LYS_STATUS_MASK) {
-                                      LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "feature");
+                                      LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "feature");
                                       YYABORT;
                                     }
                                     ((struct lys_feature *)actual)->flags |= (yyvsp[0].i);
@@ -4019,7 +4020,7 @@ yyreduce:
                            break;
                          case IDENTITY_KEYWORD:
                            if (trg->version < 2) {
-                             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "if-feature", "identity");
+                             LOGVAL(trg->ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "if-feature", "identity");
                              free(s);
                              YYABORT;
                            }
@@ -4028,7 +4029,7 @@ yyreduce:
                            break;
                          case ENUM_KEYWORD:
                            if (trg->version < 2) {
-                             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "if-feature");
+                             LOGVAL(trg->ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "if-feature");
                              free(s);
                              YYABORT;
                            }
@@ -4037,7 +4038,7 @@ yyreduce:
                            break;
                          case BIT_KEYWORD:
                            if (trg->version < 2) {
-                             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "if-feature", "bit");
+                             LOGVAL(trg->ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "if-feature", "bit");
                              free(s);
                              YYABORT;
                            }
@@ -4046,7 +4047,7 @@ yyreduce:
                            break;
                          case REFINE_KEYWORD:
                            if (trg->version < 2) {
-                             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "if-feature");
+                             LOGVAL(trg->ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "if-feature");
                              free(s);
                              YYABORT;
                            }
@@ -4113,7 +4114,7 @@ yyreduce:
              tmp = realloc(((struct lys_ident *)actual)->base,
                            ((struct lys_ident *)actual)->base_size * sizeof *((struct lys_ident *)actual)->base);
              if (!tmp) {
-               LOGMEM;
+               LOGMEM(trg->ctx);
                YYABORT;
              }
              ((struct lys_ident *)actual)->base = tmp;
@@ -4123,7 +4124,7 @@ yyreduce:
              tmp = realloc(((struct lys_ident *)actual)->iffeature,
                            ((struct lys_ident *)actual)->iffeature_size * sizeof *((struct lys_ident *)actual)->iffeature);
              if (!tmp) {
-               LOGMEM;
+               LOGMEM(trg->ctx);
                YYABORT;
              }
              ((struct lys_ident *)actual)->iffeature = tmp;
@@ -4138,7 +4139,7 @@ yyreduce:
 
                                    if ((trg->version < 2) && ((struct lys_ident *)actual)->base_size) {
                                      free(s);
-                                     LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "base", "identity");
+                                     LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, "base", "identity");
                                      YYABORT;
                                    }
                                    identity = actual;
@@ -4154,7 +4155,7 @@ yyreduce:
   case 135:
 
     { if (((struct lys_ident *)actual)->flags & LYS_STATUS_MASK) {
-                                       LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "identity");
+                                       LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "identity");
                                        YYABORT;
                                      }
                                      ((struct lys_ident *)actual)->flags |= (yyvsp[0].i);
@@ -4195,7 +4196,7 @@ yyreduce:
     { tpdf_parent = (actual_type == EXTENSION_INSTANCE) ? ext_instance : actual;
                                       (yyval.backup_token).token = actual_type;
                                       (yyval.backup_token).actual = actual;
-                                      if (lyp_check_identifier(s, LY_IDENT_TYPE, trg, tpdf_parent)) {
+                                      if (lyp_check_identifier(trg->ctx, s, LY_IDENT_TYPE, trg, tpdf_parent)) {
                                         free(s);
                                         YYABORT;
                                       }
@@ -4235,7 +4236,7 @@ yyreduce:
                                         break;
                                       default:
                                         /* another type of nodetype is error*/
-                                        LOGINT;
+                                        LOGINT(trg->ctx);
                                         free(s);
                                         YYABORT;
                                       }
@@ -4250,7 +4251,7 @@ yyreduce:
   case 141:
 
     { if (!((yyvsp[-1].nodes).node.flag & LYS_TYPE_DEF)) {
-                      LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "type", "typedef");
+                      LOGVAL(trg->ctx, LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "type", "typedef");
                       YYABORT;
                     }
                     actual_type = (yyvsp[-4].backup_token).token;
@@ -4298,7 +4299,7 @@ yyreduce:
   case 146:
 
     { if ((yyvsp[-1].nodes).node.ptr_tpdf->flags & LYS_STATUS_MASK) {
-                                   LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "typedef");
+                                   LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "typedef");
                                    YYABORT;
                                  }
                                  (yyvsp[-1].nodes).node.ptr_tpdf->flags |= (yyvsp[0].i);
@@ -4338,7 +4339,7 @@ yyreduce:
 
     { (yyval.backup_token).token = actual_type;
                                        (yyval.backup_token).actual = actual;
-                                       if (!(actual = yang_read_type(trg, actual, s, actual_type))) {
+                                       if (!(actual = yang_read_type(trg->ctx, actual, s, actual_type))) {
                                          YYABORT;
                                        }
                                        s = NULL;
@@ -4356,7 +4357,7 @@ yyreduce:
                                        tmp = realloc(((struct yang_type *)actual)->type->info.str.patterns,
                                                      ((struct yang_type *)actual)->type->info.str.pat_count * sizeof *((struct yang_type *)actual)->type->info.str.patterns);
                                        if (!tmp) {
-                                         LOGMEM;
+                                         LOGMEM(trg->ctx);
                                          YYABORT;
                                        }
                                        ((struct yang_type *)actual)->type->info.str.patterns = tmp;
@@ -4366,7 +4367,7 @@ yyreduce:
                                          tmp = realloc(((struct yang_type *)actual)->type->info.str.patterns_pcre,
                                                        2 * ((struct yang_type *)actual)->type->info.str.pat_count * sizeof *((struct yang_type *)actual)->type->info.str.patterns_pcre);
                                          if (!tmp) {
-                                           LOGMEM;
+                                           LOGMEM(trg->ctx);
                                            YYABORT;
                                          }
                                          ((struct yang_type *)actual)->type->info.str.patterns_pcre = tmp;
@@ -4379,7 +4380,7 @@ yyreduce:
                                        tmp = realloc(((struct yang_type *)actual)->type->info.uni.types,
                                                      ((struct yang_type *)actual)->type->info.uni.count * sizeof *tmp);
                                        if (!tmp) {
-                                         LOGMEM;
+                                         LOGMEM(trg->ctx);
                                          YYABORT;
                                        }
                                        ((struct yang_type *)actual)->type->info.uni.types = tmp;
@@ -4390,7 +4391,7 @@ yyreduce:
                                        tmp = realloc(((struct yang_type *)actual)->type->info.ident.ref,
                                                      ((struct yang_type *)actual)->type->info.ident.count* sizeof *tmp);
                                        if (!tmp) {
-                                         LOGMEM;
+                                         LOGMEM(trg->ctx);
                                          YYABORT;
                                        }
                                        ((struct yang_type *)actual)->type->info.ident.ref = tmp;
@@ -4401,7 +4402,7 @@ yyreduce:
 
   case 157:
 
-    { if (yang_read_require_instance(actual, (yyvsp[0].i))) {
+    { if (yang_read_require_instance(trg->ctx, actual, (yyvsp[0].i))) {
                                                  YYABORT;
                                                }
                                              }
@@ -4423,7 +4424,7 @@ yyreduce:
 
     { /* identityref_specification */
                                    if (((struct yang_type *)actual)->base && ((struct yang_type *)actual)->base != LY_TYPE_IDENT) {
-                                     LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "base");
+                                     LOGVAL(trg->ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "base");
                                      return EXIT_FAILURE;
                                    }
                                    ((struct yang_type *)actual)->base = LY_TYPE_IDENT;
@@ -4439,7 +4440,7 @@ yyreduce:
 
   case 162:
 
-    { if (yang_read_fraction(actual, (yyvsp[0].uint))) {
+    { if (yang_read_fraction(trg->ctx, actual, (yyvsp[0].uint))) {
                                                 YYABORT;
                                               }
                                             }
@@ -4461,13 +4462,13 @@ yyreduce:
                          (yyval.backup_token).token = actual_type;
                          (yyval.backup_token).actual = actual;
                          if (stype->base != 0 && stype->base != LY_TYPE_UNION) {
-                           LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Unexpected type statement.");
+                           LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Unexpected type statement.");
                            YYABORT;
                          }
                          stype->base = LY_TYPE_UNION;
                          if (strcmp(stype->name, "union")) {
                            /* type can be a substatement only in "union" type, not in derived types */
-                           LOGVAL(LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "type", "derived type");
+                           LOGVAL(trg->ctx, LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "type", "derived type");
                            YYABORT;
                          }
                          YANG_ADDELEM(stype->type->info.uni.types, stype->type->info.uni.count)
@@ -4505,7 +4506,7 @@ yyreduce:
 
                val = strtoul(s, &endptr, 10);
                if (*endptr || s[0] == '-' || errno || val == 0 || val > UINT32_MAX) {
-                 LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "fraction-digits");
+                 LOGVAL(trg->ctx, LYE_INARG, LY_VLOG_NONE, NULL, s, "fraction-digits");
                  free(s);
                  s = NULL;
                  YYABORT;
@@ -4529,7 +4530,7 @@ yyreduce:
 
     { (yyval.backup_token).token = actual_type;
                          (yyval.backup_token).actual = actual;
-                         if (!(actual = yang_read_length(trg, actual, s, is_ext_instance))) {
+                         if (!(actual = yang_read_length(trg->ctx, actual, s, is_ext_instance))) {
                            YYABORT;
                          }
                          actual_type = LENGTH_KEYWORD;
@@ -4551,7 +4552,7 @@ yyreduce:
                                  (yyval.str) = "range";
                                  break;
                                default:
-                                 LOGINT;
+                                 LOGINT(trg->ctx);
                                  YYABORT;
                                  break;
                                }
@@ -4618,7 +4619,7 @@ yyreduce:
                                                                           YANG_ADDELEM(((struct yang_type *)(yyvsp[-2].backup_token).actual)->type->info.str.patterns_pcre, c);
                                                                         }
 #endif
-                                                                        if (yang_read_pattern(trg, pattern, actual, (yyvsp[-1].str), (yyvsp[0].ch))) {
+                                                                        if (yang_read_pattern(trg->ctx, pattern, actual, (yyvsp[-1].str), (yyvsp[0].ch))) {
                                                                           YYABORT;
                                                                         }
                                                                         actual_type = (yyvsp[-2].backup_token).token;
@@ -4632,7 +4633,7 @@ yyreduce:
     { if (actual_type != EXTENSION_INSTANCE) {
                             if (((struct yang_type *)actual)->base != 0 && ((struct yang_type *)actual)->base != LY_TYPE_STRING) {
                               free(s);
-                              LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Unexpected pattern statement.");
+                              LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Unexpected pattern statement.");
                               YYABORT;
                             }
                             ((struct yang_type *)actual)->base = LY_TYPE_STRING;
@@ -4667,11 +4668,11 @@ yyreduce:
   case 186:
 
     { if (trg->version < 2) {
-                                        LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, "modifier");
+                                        LOGVAL(trg->ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "modifier");
                                         YYABORT;
                                       }
                                       if ((yyvsp[-1].ch) != 0x06) {
-                                        LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "modifier", "pattern");
+                                        LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, "modifier", "pattern");
                                         YYABORT;
                                       }
                                       (yyval.ch) = (yyvsp[0].ch);
@@ -4734,7 +4735,7 @@ yyreduce:
                                                              free(s);
                                                              s = NULL;
                                                            } else {
-                                                             LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, s);
+                                                             LOGVAL(trg->ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, s);
                                                              free(s);
                                                              YYABORT;
                                                            }
@@ -4750,7 +4751,7 @@ yyreduce:
                                                    tmp = realloc(((struct yang_type *)actual)->type->info.enums.enm,
                                                                  ((struct yang_type *)actual)->type->info.enums.count * sizeof *tmp);
                                                    if (!tmp) {
-                                                     LOGMEM;
+                                                     LOGMEM(trg->ctx);
                                                      YYABORT;
                                                    }
                                                    ((struct yang_type *)actual)->type->info.enums.enm = tmp;
@@ -4760,7 +4761,7 @@ yyreduce:
 
   case 196:
 
-    { if (yang_check_enum(yang_type, actual, &cnt_val, is_value)) {
+    { if (yang_check_enum(trg->ctx, yang_type, actual, &cnt_val, is_value)) {
                YYABORT;
              }
              actual = (yyvsp[-1].backup_token).actual;
@@ -4774,7 +4775,7 @@ yyreduce:
     { (yyval.backup_token).token = actual_type;
                        (yyval.backup_token).actual = yang_type = actual;
                        YANG_ADDELEM(((struct yang_type *)actual)->type->info.enums.enm, ((struct yang_type *)actual)->type->info.enums.count);
-                       if (yang_read_enum(trg, yang_type, actual, s)) {
+                       if (yang_read_enum(trg->ctx, yang_type, actual, s)) {
                          YYABORT;
                        }
                        s = NULL;
@@ -4792,7 +4793,7 @@ yyreduce:
              tmp = realloc(((struct lys_type_enum *)actual)->iffeature,
                            ((struct lys_type_enum *)actual)->iffeature_size * sizeof *tmp);
              if (!tmp) {
-               LOGMEM;
+               LOGMEM(trg->ctx);
                YYABORT;
              }
              ((struct lys_type_enum *)actual)->iffeature = tmp;
@@ -4804,7 +4805,7 @@ yyreduce:
   case 202:
 
     { if (is_value) {
-                                  LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "value", "enum");
+                                  LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, "value", "enum");
                                   YYABORT;
                                 }
                                 ((struct lys_type_enum *)actual)->value = (yyvsp[0].i);
@@ -4821,7 +4822,7 @@ yyreduce:
   case 203:
 
     { if (((struct lys_type_enum *)actual)->flags & LYS_STATUS_MASK) {
-                                   LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "enum");
+                                   LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "enum");
                                    YYABORT;
                                  }
                                  ((struct lys_type_enum *)actual)->flags |= (yyvsp[0].i);
@@ -4878,7 +4879,7 @@ yyreduce:
 
                 val = strtoll(s, &endptr, 10);
                 if (val < INT32_MIN || val > INT32_MAX || *endptr) {
-                    LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "value");
+                    LOGVAL(trg->ctx, LYE_INARG, LY_VLOG_NONE, NULL, s, "value");
                     free(s);
                     YYABORT;
                 }
@@ -4939,7 +4940,7 @@ yyreduce:
                 } else if (!strcmp(s,"false")) {
                   (yyval.i) = -1;
                 } else {
-                  LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "require-instance");
+                  LOGVAL(trg->ctx, LYE_INARG, LY_VLOG_NONE, NULL, s, "require-instance");
                   free(s);
                   YYABORT;
                 }
@@ -4957,7 +4958,7 @@ yyreduce:
                                          tmp = realloc(((struct yang_type *)actual)->type->info.bits.bit,
                                                        ((struct yang_type *)actual)->type->info.bits.count * sizeof *tmp);
                                          if (!tmp) {
-                                           LOGMEM;
+                                           LOGMEM(trg->ctx);
                                            YYABORT;
                                          }
                                          ((struct yang_type *)actual)->type->info.bits.bit = tmp;
@@ -4967,7 +4968,7 @@ yyreduce:
 
   case 223:
 
-    { if (yang_check_bit(yang_type, actual, &cnt_val, is_value)) {
+    { if (yang_check_bit(trg->ctx, yang_type, actual, &cnt_val, is_value)) {
                       YYABORT;
                     }
                     actual = (yyvsp[-2].backup_token).actual;
@@ -4982,7 +4983,7 @@ yyreduce:
                                   (yyval.backup_token).actual = yang_type = actual;
                                   YANG_ADDELEM(((struct yang_type *)actual)->type->info.bits.bit,
                                                ((struct yang_type *)actual)->type->info.bits.count);
-                                  if (yang_read_bit(trg, yang_type, actual, s)) {
+                                  if (yang_read_bit(trg->ctx, yang_type, actual, s)) {
                                     YYABORT;
                                   }
                                   s = NULL;
@@ -5000,7 +5001,7 @@ yyreduce:
              tmp = realloc(((struct lys_type_bit *)actual)->iffeature,
                            ((struct lys_type_bit *)actual)->iffeature_size * sizeof *tmp);
              if (!tmp) {
-               LOGMEM;
+               LOGMEM(trg->ctx);
                YYABORT;
              }
              ((struct lys_type_bit *)actual)->iffeature = tmp;
@@ -5012,7 +5013,7 @@ yyreduce:
   case 229:
 
     { if (is_value) {
-                                    LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "position", "bit");
+                                    LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, "position", "bit");
                                     YYABORT;
                                   }
                                   ((struct lys_type_bit *)actual)->pos = (yyvsp[0].uint);
@@ -5029,7 +5030,7 @@ yyreduce:
   case 230:
 
     { if (((struct lys_type_bit *)actual)->flags & LYS_STATUS_MASK) {
-                                   LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "bit");
+                                   LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, "status", "bit");
                                    YYABORT;
                                  }
                                  ((struct lys_type_bit *)actual)->flags |= (yyvsp[0].i);
@@ -5087,7 +5088,7 @@ yyreduce:
 
                 val = strtoul(s, &endptr, 10);
                 if (s[0] == '-' || *endptr || errno || val > UINT32_MAX) {
-                  LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "position");
+                  LOGVAL(trg->ctx, LYE_INARG, LY_VLOG_NONE, NULL, s, "position");
                   free(s);
                   YYABORT;
                 }
@@ -5163,7 +5164,7 @@ yyreduce:
   case 250:
 
     { if ((yyvsp[-1].nodes).grouping->flags & LYS_STATUS_MASK) {
-                                       LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).grouping, "status", "grouping");
+                                       LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).grouping, "status", "grouping");
                                        YYABORT;
                                      }
                                      (yyvsp[-1].nodes).grouping->flags |= (yyvsp[0].i);
@@ -5194,7 +5195,7 @@ yyreduce:
   case 257:
 
     { if (trg->version < 2) {
-                                                     LOGVAL(LYE_INSTMT, LY_VLOG_LYS, (yyvsp[-2].nodes).grouping, "notification");
+                                                     LOGVAL(trg->ctx, LYE_INSTMT, LY_VLOG_LYS, (yyvsp[-2].nodes).grouping, "notification");
                                                      YYABORT;
                                                    }
                                                  }
@@ -5232,7 +5233,7 @@ yyreduce:
             if ((yyvsp[-1].nodes).container->iffeature_size) {
               tmp = realloc((yyvsp[-1].nodes).container->iffeature, (yyvsp[-1].nodes).container->iffeature_size * sizeof *(yyvsp[-1].nodes).container->iffeature);
               if (!tmp) {
-                LOGMEM;
+                LOGMEM(trg->ctx);
                 YYABORT;
               }
               (yyvsp[-1].nodes).container->iffeature = tmp;
@@ -5241,7 +5242,7 @@ yyreduce:
             if ((yyvsp[-1].nodes).container->must_size) {
               tmp = realloc((yyvsp[-1].nodes).container->must, (yyvsp[-1].nodes).container->must_size * sizeof *(yyvsp[-1].nodes).container->must);
               if (!tmp) {
-                LOGMEM;
+                LOGMEM(trg->ctx);
                 YYABORT;
               }
               (yyvsp[-1].nodes).container->must = tmp;
@@ -5269,7 +5270,7 @@ yyreduce:
   case 275:
 
     { if ((yyvsp[-1].nodes).container->flags & LYS_CONFIG_MASK) {
-                                        LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).container, "config", "container");
+                                        LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).container, "config", "container");
                                         YYABORT;
                                       }
                                       (yyvsp[-1].nodes).container->flags |= (yyvsp[0].i);
@@ -5280,7 +5281,7 @@ yyreduce:
   case 276:
 
     { if ((yyvsp[-1].nodes).container->flags & LYS_STATUS_MASK) {
-                                        LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).container, "status", "container");
+                                        LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).container, "status", "container");
                                         YYABORT;
                                       }
                                       (yyvsp[-1].nodes).container->flags |= (yyvsp[0].i);
@@ -5311,7 +5312,7 @@ yyreduce:
   case 281:
 
     { if (trg->version < 2) {
-                                                      LOGVAL(LYE_INSTMT, LY_VLOG_LYS, (yyvsp[-2].nodes).container, "notification");
+                                                      LOGVAL(trg->ctx, LYE_INSTMT, LY_VLOG_LYS, (yyvsp[-2].nodes).container, "notification");
                                                       YYABORT;
                                                     }
                                                   }
@@ -5323,20 +5324,20 @@ yyreduce:
     { void *tmp;
 
                   if (!((yyvsp[-1].nodes).node.flag & LYS_TYPE_DEF)) {
-                    LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaf, "type", "leaf");
+                    LOGVAL(trg->ctx, LYE_MISSCHILDSTMT, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaf, "type", "leaf");
                     YYABORT;
                   }
                   if ((yyvsp[-1].nodes).node.ptr_leaf->dflt && ((yyvsp[-1].nodes).node.ptr_leaf->flags & LYS_MAND_TRUE)) {
                     /* RFC 6020, 7.6.4 - default statement must not with mandatory true */
-                    LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaf, "mandatory", "leaf");
-                    LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaf, "The \"mandatory\" statement is forbidden on leaf with \"default\".");
+                    LOGVAL(trg->ctx, LYE_INCHILDSTMT, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaf, "mandatory", "leaf");
+                    LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaf, "The \"mandatory\" statement is forbidden on leaf with \"default\".");
                     YYABORT;
                   }
 
                   if ((yyvsp[-1].nodes).node.ptr_leaf->iffeature_size) {
                     tmp = realloc((yyvsp[-1].nodes).node.ptr_leaf->iffeature, (yyvsp[-1].nodes).node.ptr_leaf->iffeature_size * sizeof *(yyvsp[-1].nodes).node.ptr_leaf->iffeature);
                     if (!tmp) {
-                      LOGMEM;
+                      LOGMEM(trg->ctx);
                       YYABORT;
                     }
                     (yyvsp[-1].nodes).node.ptr_leaf->iffeature = tmp;
@@ -5345,7 +5346,7 @@ yyreduce:
                   if ((yyvsp[-1].nodes).node.ptr_leaf->must_size) {
                     tmp = realloc((yyvsp[-1].nodes).node.ptr_leaf->must, (yyvsp[-1].nodes).node.ptr_leaf->must_size * sizeof *(yyvsp[-1].nodes).node.ptr_leaf->must);
                     if (!tmp) {
-                      LOGMEM;
+                      LOGMEM(trg->ctx);
                       YYABORT;
                     }
                     (yyvsp[-1].nodes).node.ptr_leaf->must = tmp;
@@ -5412,7 +5413,7 @@ yyreduce:
   case 293:
 
     { if ((yyvsp[-1].nodes).node.ptr_leaf->flags & LYS_CONFIG_MASK) {
-                                   LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaf, "config", "leaf");
+                                   LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaf, "config", "leaf");
                                    YYABORT;
                                  }
                                  (yyvsp[-1].nodes).node.ptr_leaf->flags |= (yyvsp[0].i);
@@ -5423,7 +5424,7 @@ yyreduce:
   case 294:
 
     { if ((yyvsp[-1].nodes).node.ptr_leaf->flags & LYS_MAND_MASK) {
-                                      LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaf, "mandatory", "leaf");
+                                      LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaf, "mandatory", "leaf");
                                       YYABORT;
                                     }
                                     (yyvsp[-1].nodes).node.ptr_leaf->flags |= (yyvsp[0].i);
@@ -5434,7 +5435,7 @@ yyreduce:
   case 295:
 
     { if ((yyvsp[-1].nodes).node.ptr_leaf->flags & LYS_STATUS_MASK) {
-                                   LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaf, "status", "leaf");
+                                   LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaf, "status", "leaf");
                                    YYABORT;
                                  }
                                  (yyvsp[-1].nodes).node.ptr_leaf->flags |= (yyvsp[0].i);
@@ -5487,12 +5488,12 @@ yyreduce:
                           (yyvsp[-1].nodes).node.ptr_leaflist->flags &= 0x7F;
                         }
                         if (!((yyvsp[-1].nodes).node.flag & LYS_TYPE_DEF)) {
-                          LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "type", "leaf-list");
+                          LOGVAL(trg->ctx, LYE_MISSCHILDSTMT, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "type", "leaf-list");
                           YYABORT;
                         }
                         if ((yyvsp[-1].nodes).node.ptr_leaflist->dflt_size && (yyvsp[-1].nodes).node.ptr_leaflist->min) {
-                          LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "min-elements", "leaf-list");
-                          LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist,
+                          LOGVAL(trg->ctx, LYE_INCHILDSTMT, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "min-elements", "leaf-list");
+                          LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist,
                                  "The \"min-elements\" statement with non-zero value is forbidden on leaf-lists with the \"default\" statement.");
                           YYABORT;
                         }
@@ -5500,7 +5501,7 @@ yyreduce:
                         if ((yyvsp[-1].nodes).node.ptr_leaflist->iffeature_size) {
                           tmp = realloc((yyvsp[-1].nodes).node.ptr_leaflist->iffeature, (yyvsp[-1].nodes).node.ptr_leaflist->iffeature_size * sizeof *(yyvsp[-1].nodes).node.ptr_leaflist->iffeature);
                           if (!tmp) {
-                            LOGMEM;
+                            LOGMEM(trg->ctx);
                             YYABORT;
                           }
                           (yyvsp[-1].nodes).node.ptr_leaflist->iffeature = tmp;
@@ -5509,7 +5510,7 @@ yyreduce:
                         if ((yyvsp[-1].nodes).node.ptr_leaflist->must_size) {
                           tmp = realloc((yyvsp[-1].nodes).node.ptr_leaflist->must, (yyvsp[-1].nodes).node.ptr_leaflist->must_size * sizeof *(yyvsp[-1].nodes).node.ptr_leaflist->must);
                           if (!tmp) {
-                            LOGMEM;
+                            LOGMEM(trg->ctx);
                             YYABORT;
                           }
                           (yyvsp[-1].nodes).node.ptr_leaflist->must = tmp;
@@ -5518,7 +5519,7 @@ yyreduce:
                         if ((yyvsp[-1].nodes).node.ptr_leaflist->dflt_size) {
                           tmp = realloc((yyvsp[-1].nodes).node.ptr_leaflist->dflt, (yyvsp[-1].nodes).node.ptr_leaflist->dflt_size * sizeof *(yyvsp[-1].nodes).node.ptr_leaflist->dflt);
                           if (!tmp) {
-                            LOGMEM;
+                            LOGMEM(trg->ctx);
                             YYABORT;
                           }
                           (yyvsp[-1].nodes).node.ptr_leaflist->dflt = tmp;
@@ -5552,7 +5553,7 @@ yyreduce:
 
     { if (trg->version < 2) {
                                          free(s);
-                                         LOGVAL(LYE_INSTMT, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "default");
+                                         LOGVAL(trg->ctx, LYE_INSTMT, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "default");
                                          YYABORT;
                                        }
                                        YANG_ADDELEM((yyvsp[-1].nodes).node.ptr_leaflist->dflt,
@@ -5577,7 +5578,7 @@ yyreduce:
   case 307:
 
     { if ((yyvsp[-1].nodes).node.ptr_leaflist->flags & LYS_CONFIG_MASK) {
-                                        LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "config", "leaf-list");
+                                        LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "config", "leaf-list");
                                         YYABORT;
                                       }
                                       (yyvsp[-1].nodes).node.ptr_leaflist->flags |= (yyvsp[0].i);
@@ -5588,15 +5589,15 @@ yyreduce:
   case 308:
 
     { if ((yyvsp[-1].nodes).node.flag & LYS_MIN_ELEMENTS) {
-                                              LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "min-elements", "leaf-list");
+                                              LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "min-elements", "leaf-list");
                                               YYABORT;
                                             }
                                             (yyvsp[-1].nodes).node.ptr_leaflist->min = (yyvsp[0].uint);
                                             (yyvsp[-1].nodes).node.flag |= LYS_MIN_ELEMENTS;
                                             (yyval.nodes) = (yyvsp[-1].nodes);
                                             if ((yyvsp[-1].nodes).node.ptr_leaflist->max && ((yyvsp[-1].nodes).node.ptr_leaflist->min > (yyvsp[-1].nodes).node.ptr_leaflist->max)) {
-                                              LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "Invalid value \"%d\" of \"%s\".", (yyvsp[0].uint), "min-elements");
-                                              LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "\"min-elements\" is bigger than \"max-elements\".");
+                                              LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "Invalid value \"%d\" of \"%s\".", (yyvsp[0].uint), "min-elements");
+                                              LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "\"min-elements\" is bigger than \"max-elements\".");
                                               YYABORT;
                                             }
                                           }
@@ -5606,15 +5607,15 @@ yyreduce:
   case 309:
 
     { if ((yyvsp[-1].nodes).node.flag & LYS_MAX_ELEMENTS) {
-                                              LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "max-elements", "leaf-list");
+                                              LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "max-elements", "leaf-list");
                                               YYABORT;
                                             }
                                             (yyvsp[-1].nodes).node.ptr_leaflist->max = (yyvsp[0].uint);
                                             (yyvsp[-1].nodes).node.flag |= LYS_MAX_ELEMENTS;
                                             (yyval.nodes) = (yyvsp[-1].nodes);
                                             if ((yyvsp[-1].nodes).node.ptr_leaflist->min > (yyvsp[-1].nodes).node.ptr_leaflist->max) {
-                                              LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "Invalid value \"%d\" of \"%s\".", (yyvsp[0].uint), "max-elements");
-                                              LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "\"max-elements\" is smaller than \"min-elements\".");
+                                              LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "Invalid value \"%d\" of \"%s\".", (yyvsp[0].uint), "max-elements");
+                                              LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "\"max-elements\" is smaller than \"min-elements\".");
                                               YYABORT;
                                             }
                                           }
@@ -5624,7 +5625,7 @@ yyreduce:
   case 310:
 
     { if ((yyvsp[-1].nodes).node.flag & LYS_ORDERED_MASK) {
-                                            LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "ordered by", "leaf-list");
+                                            LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "ordered by", "leaf-list");
                                             YYABORT;
                                           }
                                           if ((yyvsp[0].i) & LYS_USERORDERED) {
@@ -5639,7 +5640,7 @@ yyreduce:
   case 311:
 
     { if ((yyvsp[-1].nodes).node.ptr_leaflist->flags & LYS_STATUS_MASK) {
-                                        LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "status", "leaf-list");
+                                        LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_leaflist, "status", "leaf-list");
                                         YYABORT;
                                       }
                                       (yyvsp[-1].nodes).node.ptr_leaflist->flags |= (yyvsp[0].i);
@@ -5688,7 +5689,7 @@ yyreduce:
                   if ((yyvsp[-1].nodes).node.ptr_list->iffeature_size) {
                     tmp = realloc((yyvsp[-1].nodes).node.ptr_list->iffeature, (yyvsp[-1].nodes).node.ptr_list->iffeature_size * sizeof *(yyvsp[-1].nodes).node.ptr_list->iffeature);
                     if (!tmp) {
-                      LOGMEM;
+                      LOGMEM(trg->ctx);
                       YYABORT;
                     }
                     (yyvsp[-1].nodes).node.ptr_list->iffeature = tmp;
@@ -5697,7 +5698,7 @@ yyreduce:
                   if ((yyvsp[-1].nodes).node.ptr_list->must_size) {
                     tmp = realloc((yyvsp[-1].nodes).node.ptr_list->must, (yyvsp[-1].nodes).node.ptr_list->must_size * sizeof *(yyvsp[-1].nodes).node.ptr_list->must);
                     if (!tmp) {
-                      LOGMEM;
+                      LOGMEM(trg->ctx);
                       YYABORT;
                     }
                     (yyvsp[-1].nodes).node.ptr_list->must = tmp;
@@ -5706,7 +5707,7 @@ yyreduce:
                   if ((yyvsp[-1].nodes).node.ptr_list->tpdf_size) {
                     tmp = realloc((yyvsp[-1].nodes).node.ptr_list->tpdf, (yyvsp[-1].nodes).node.ptr_list->tpdf_size * sizeof *(yyvsp[-1].nodes).node.ptr_list->tpdf);
                     if (!tmp) {
-                      LOGMEM;
+                      LOGMEM(trg->ctx);
                       YYABORT;
                     }
                     (yyvsp[-1].nodes).node.ptr_list->tpdf = tmp;
@@ -5715,7 +5716,7 @@ yyreduce:
                   if ((yyvsp[-1].nodes).node.ptr_list->unique_size) {
                     tmp = realloc((yyvsp[-1].nodes).node.ptr_list->unique, (yyvsp[-1].nodes).node.ptr_list->unique_size * sizeof *(yyvsp[-1].nodes).node.ptr_list->unique);
                     if (!tmp) {
-                      LOGMEM;
+                      LOGMEM(trg->ctx);
                       YYABORT;
                     }
                     (yyvsp[-1].nodes).node.ptr_list->unique = tmp;
@@ -5740,7 +5741,7 @@ yyreduce:
   case 320:
 
     { if ((yyvsp[-1].nodes).node.ptr_list->keys) {
-                                  LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "key", "list");
+                                  LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "key", "list");
                                   free(s);
                                   YYABORT;
                               }
@@ -5765,7 +5766,7 @@ yyreduce:
   case 322:
 
     { if ((yyvsp[-1].nodes).node.ptr_list->flags & LYS_CONFIG_MASK) {
-                                   LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "config", "list");
+                                   LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "config", "list");
                                    YYABORT;
                                  }
                                  (yyvsp[-1].nodes).node.ptr_list->flags |= (yyvsp[0].i);
@@ -5776,15 +5777,15 @@ yyreduce:
   case 323:
 
     { if ((yyvsp[-1].nodes).node.flag & LYS_MIN_ELEMENTS) {
-                                         LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "min-elements", "list");
+                                         LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "min-elements", "list");
                                          YYABORT;
                                        }
                                        (yyvsp[-1].nodes).node.ptr_list->min = (yyvsp[0].uint);
                                        (yyvsp[-1].nodes).node.flag |= LYS_MIN_ELEMENTS;
                                        (yyval.nodes) = (yyvsp[-1].nodes);
                                        if ((yyvsp[-1].nodes).node.ptr_list->max && ((yyvsp[-1].nodes).node.ptr_list->min > (yyvsp[-1].nodes).node.ptr_list->max)) {
-                                         LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "Invalid value \"%d\" of \"%s\".", (yyvsp[0].uint), "min-elements");
-                                         LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "\"min-elements\" is bigger than \"max-elements\".");
+                                         LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "Invalid value \"%d\" of \"%s\".", (yyvsp[0].uint), "min-elements");
+                                         LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "\"min-elements\" is bigger than \"max-elements\".");
                                          YYABORT;
                                        }
                                      }
@@ -5794,15 +5795,15 @@ yyreduce:
   case 324:
 
     { if ((yyvsp[-1].nodes).node.flag & LYS_MAX_ELEMENTS) {
-                                         LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "max-elements", "list");
+                                         LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "max-elements", "list");
                                          YYABORT;
                                        }
                                        (yyvsp[-1].nodes).node.ptr_list->max = (yyvsp[0].uint);
                                        (yyvsp[-1].nodes).node.flag |= LYS_MAX_ELEMENTS;
                                        (yyval.nodes) = (yyvsp[-1].nodes);
                                        if ((yyvsp[-1].nodes).node.ptr_list->min > (yyvsp[-1].nodes).node.ptr_list->max) {
-                                         LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "Invalid value \"%d\" of \"%s\".", (yyvsp[0].uint), "min-elements");
-                                         LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "\"max-elements\" is smaller than \"min-elements\".");
+                                         LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "Invalid value \"%d\" of \"%s\".", (yyvsp[0].uint), "min-elements");
+                                         LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "\"max-elements\" is smaller than \"min-elements\".");
                                          YYABORT;
                                        }
                                      }
@@ -5812,7 +5813,7 @@ yyreduce:
   case 325:
 
     { if ((yyvsp[-1].nodes).node.flag & LYS_ORDERED_MASK) {
-                                       LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "ordered by", "list");
+                                       LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "ordered by", "list");
                                        YYABORT;
                                      }
                                      if ((yyvsp[0].i) & LYS_USERORDERED) {
@@ -5827,7 +5828,7 @@ yyreduce:
   case 326:
 
     { if ((yyvsp[-1].nodes).node.ptr_list->flags & LYS_STATUS_MASK) {
-                                   LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "status", "list");
+                                   LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_list, "status", "list");
                                    YYABORT;
                                  }
                                  (yyvsp[-1].nodes).node.ptr_list->flags |= (yyvsp[0].i);
@@ -5858,7 +5859,7 @@ yyreduce:
   case 332:
 
     { if (trg->version < 2) {
-                                                 LOGVAL(LYE_INSTMT, LY_VLOG_LYS, (yyvsp[-2].nodes).node.ptr_list, "notification");
+                                                 LOGVAL(trg->ctx, LYE_INSTMT, LY_VLOG_LYS, (yyvsp[-2].nodes).node.ptr_list, "notification");
                                                  YYABORT;
                                                }
                                              }
@@ -5894,15 +5895,15 @@ yyreduce:
     { struct lys_iffeature *tmp;
 
            if (((yyvsp[-1].nodes).node.ptr_choice->flags & LYS_MAND_TRUE) && (yyvsp[-1].nodes).node.ptr_choice->dflt) {
-              LOGVAL(LYE_INCHILDSTMT, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_choice, "default", "choice");
-              LOGVAL(LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_choice, "The \"default\" statement is forbidden on choices with \"mandatory\".");
+              LOGVAL(trg->ctx, LYE_INCHILDSTMT, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_choice, "default", "choice");
+              LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_choice, "The \"default\" statement is forbidden on choices with \"mandatory\".");
               YYABORT;
             }
 
            if ((yyvsp[-1].nodes).node.ptr_choice->iffeature_size) {
              tmp = realloc((yyvsp[-1].nodes).node.ptr_choice->iffeature, (yyvsp[-1].nodes).node.ptr_choice->iffeature_size * sizeof *tmp);
              if (!tmp) {
-               LOGMEM;
+               LOGMEM(trg->ctx);
                YYABORT;
              }
              (yyvsp[-1].nodes).node.ptr_choice->iffeature = tmp;
@@ -5922,7 +5923,7 @@ yyreduce:
   case 341:
 
     { if ((yyvsp[-1].nodes).node.flag & LYS_CHOICE_DEFAULT) {
-                                      LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_choice, "default", "choice");
+                                      LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_choice, "default", "choice");
                                       free(s);
                                       YYABORT;
                                     }
@@ -5937,7 +5938,7 @@ yyreduce:
   case 342:
 
     { if ((yyvsp[-1].nodes).node.ptr_choice->flags & LYS_CONFIG_MASK) {
-                                     LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_choice, "config", "choice");
+                                     LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_choice, "config", "choice");
                                      YYABORT;
                                    }
                                    (yyvsp[-1].nodes).node.ptr_choice->flags |= (yyvsp[0].i);
@@ -5949,7 +5950,7 @@ yyreduce:
   case 343:
 
     { if ((yyvsp[-1].nodes).node.ptr_choice->flags & LYS_MAND_MASK) {
-                                      LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_choice, "mandatory", "choice");
+                                      LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_choice, "mandatory", "choice");
                                       YYABORT;
                                     }
                                     (yyvsp[-1].nodes).node.ptr_choice->flags |= (yyvsp[0].i);
@@ -5961,7 +5962,7 @@ yyreduce:
   case 344:
 
     { if ((yyvsp[-1].nodes).node.ptr_choice->flags & LYS_STATUS_MASK) {
-                                     LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_choice, "status", "choice");
+                                     LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_choice, "status", "choice");
                                      YYABORT;
                                    }
                                    (yyvsp[-1].nodes).node.ptr_choice->flags |= (yyvsp[0].i);
@@ -5995,7 +5996,7 @@ yyreduce:
   case 356:
 
     { if (trg->version < 2 ) {
-                     LOGVAL(LYE_INSTMT, LY_VLOG_LYS, actual, "choice");
+                     LOGVAL(trg->ctx, LYE_INSTMT, LY_VLOG_LYS, actual, "choice");
                      YYABORT;
                    }
                  }
@@ -6033,7 +6034,7 @@ yyreduce:
            if ((yyvsp[-1].nodes).cs->iffeature_size) {
              tmp = realloc((yyvsp[-1].nodes).cs->iffeature, (yyvsp[-1].nodes).cs->iffeature_size * sizeof *tmp);
              if (!tmp) {
-               LOGMEM;
+               LOGMEM(trg->ctx);
                YYABORT;
              }
              (yyvsp[-1].nodes).cs->iffeature = tmp;
@@ -6051,7 +6052,7 @@ yyreduce:
   case 364:
 
     { if ((yyvsp[-1].nodes).cs->flags & LYS_STATUS_MASK) {
-                                   LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).cs, "status", "case");
+                                   LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).cs, "status", "case");
                                    YYABORT;
                                  }
                                  (yyvsp[-1].nodes).cs->flags |= (yyvsp[0].i);
@@ -6134,7 +6135,7 @@ yyreduce:
            if ((yyvsp[-1].nodes).node.ptr_anydata->iffeature_size) {
              tmp = realloc((yyvsp[-1].nodes).node.ptr_anydata->iffeature, (yyvsp[-1].nodes).node.ptr_anydata->iffeature_size * sizeof *(yyvsp[-1].nodes).node.ptr_anydata->iffeature);
              if (!tmp) {
-               LOGMEM;
+               LOGMEM(trg->ctx);
                YYABORT;
              }
              (yyvsp[-1].nodes).node.ptr_anydata->iffeature = tmp;
@@ -6143,7 +6144,7 @@ yyreduce:
            if ((yyvsp[-1].nodes).node.ptr_anydata->must_size) {
              tmp = realloc((yyvsp[-1].nodes).node.ptr_anydata->must, (yyvsp[-1].nodes).node.ptr_anydata->must_size * sizeof *(yyvsp[-1].nodes).node.ptr_anydata->must);
              if (!tmp) {
-               LOGMEM;
+               LOGMEM(trg->ctx);
                YYABORT;
              }
              (yyvsp[-1].nodes).node.ptr_anydata->must = tmp;
@@ -6163,7 +6164,7 @@ yyreduce:
   case 378:
 
     { if ((yyvsp[-1].nodes).node.ptr_anydata->flags & LYS_CONFIG_MASK) {
-                                     LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_anydata, "config",
+                                     LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_anydata, "config",
                                             ((yyvsp[-1].nodes).node.flag == ANYXML_KEYWORD) ? "anyxml" : "anydata");
                                      YYABORT;
                                    }
@@ -6175,7 +6176,7 @@ yyreduce:
   case 379:
 
     { if ((yyvsp[-1].nodes).node.ptr_anydata->flags & LYS_MAND_MASK) {
-                                        LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_anydata, "mandatory",
+                                        LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_anydata, "mandatory",
                                                ((yyvsp[-1].nodes).node.flag == ANYXML_KEYWORD) ? "anyxml" : "anydata");
                                         YYABORT;
                                       }
@@ -6187,7 +6188,7 @@ yyreduce:
   case 380:
 
     { if ((yyvsp[-1].nodes).node.ptr_anydata->flags & LYS_STATUS_MASK) {
-                                     LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_anydata, "status",
+                                     LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_anydata, "status",
                                             ((yyvsp[-1].nodes).node.flag == ANYXML_KEYWORD) ? "anyxml" : "anydata");
                                      YYABORT;
                                    }
@@ -6247,7 +6248,7 @@ yyreduce:
            if ((yyvsp[-1].nodes).uses->iffeature_size) {
              tmp = realloc((yyvsp[-1].nodes).uses->iffeature, (yyvsp[-1].nodes).uses->iffeature_size * sizeof *(yyvsp[-1].nodes).uses->iffeature);
              if (!tmp) {
-               LOGMEM;
+               LOGMEM(trg->ctx);
                YYABORT;
              }
              (yyvsp[-1].nodes).uses->iffeature = tmp;
@@ -6256,7 +6257,7 @@ yyreduce:
            if ((yyvsp[-1].nodes).uses->refine_size) {
              tmp = realloc((yyvsp[-1].nodes).uses->refine, (yyvsp[-1].nodes).uses->refine_size * sizeof *(yyvsp[-1].nodes).uses->refine);
              if (!tmp) {
-               LOGMEM;
+               LOGMEM(trg->ctx);
                YYABORT;
              }
              (yyvsp[-1].nodes).uses->refine = tmp;
@@ -6265,7 +6266,7 @@ yyreduce:
            if ((yyvsp[-1].nodes).uses->augment_size) {
              tmp = realloc((yyvsp[-1].nodes).uses->augment, (yyvsp[-1].nodes).uses->augment_size * sizeof *(yyvsp[-1].nodes).uses->augment);
              if (!tmp) {
-               LOGMEM;
+               LOGMEM(trg->ctx);
                YYABORT;
              }
              (yyvsp[-1].nodes).uses->augment = tmp;
@@ -6283,7 +6284,7 @@ yyreduce:
   case 390:
 
     { if ((yyvsp[-1].nodes).uses->flags & LYS_STATUS_MASK) {
-                                   LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).uses, "status", "uses");
+                                   LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).uses, "status", "uses");
                                    YYABORT;
                                  }
                                  (yyvsp[-1].nodes).uses->flags |= (yyvsp[0].i);
@@ -6343,7 +6344,7 @@ yyreduce:
            if ((yyvsp[-1].nodes).refine->iffeature_size) {
              tmp = realloc((yyvsp[-1].nodes).refine->iffeature, (yyvsp[-1].nodes).refine->iffeature_size * sizeof *(yyvsp[-1].nodes).refine->iffeature);
              if (!tmp) {
-               LOGMEM;
+               LOGMEM(trg->ctx);
                YYABORT;
              }
              (yyvsp[-1].nodes).refine->iffeature = tmp;
@@ -6352,7 +6353,7 @@ yyreduce:
            if ((yyvsp[-1].nodes).refine->must_size) {
              tmp = realloc((yyvsp[-1].nodes).refine->must, (yyvsp[-1].nodes).refine->must_size * sizeof *(yyvsp[-1].nodes).refine->must);
              if (!tmp) {
-               LOGMEM;
+               LOGMEM(trg->ctx);
                YYABORT;
              }
              (yyvsp[-1].nodes).refine->must = tmp;
@@ -6361,7 +6362,7 @@ yyreduce:
            if ((yyvsp[-1].nodes).refine->dflt_size) {
              tmp = realloc((yyvsp[-1].nodes).refine->dflt, (yyvsp[-1].nodes).refine->dflt_size * sizeof *(yyvsp[-1].nodes).refine->dflt);
              if (!tmp) {
-               LOGMEM;
+               LOGMEM(trg->ctx);
                YYABORT;
              }
              (yyvsp[-1].nodes).refine->dflt = tmp;
@@ -6386,8 +6387,8 @@ yyreduce:
                                                  if ((yyvsp[-2].nodes).refine->target_type & (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYXML)) {
                                                    (yyvsp[-2].nodes).refine->target_type &= (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYXML);
                                                  } else {
-                                                   LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "must", "refine");
-                                                   LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
+                                                   LOGVAL(trg->ctx, LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "must", "refine");
+                                                   LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
                                                    YYABORT;
                                                  }
                                                } else {
@@ -6406,8 +6407,8 @@ yyreduce:
                    (yyvsp[-2].nodes).refine->target_type &= (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYDATA);
                  } else {
                    free(s);
-                   LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "if-feature", "refine");
-                   LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
+                   LOGVAL(trg->ctx, LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "if-feature", "refine");
+                   LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
                    YYABORT;
                  }
                } else {
@@ -6422,7 +6423,7 @@ yyreduce:
     { if ((yyvsp[-1].nodes).refine->target_type) {
                                              if ((yyvsp[-1].nodes).refine->target_type & LYS_CONTAINER) {
                                                if ((yyvsp[-1].nodes).refine->mod.presence) {
-                                                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "presence", "refine");
+                                                 LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, "presence", "refine");
                                                  free(s);
                                                  YYABORT;
                                                }
@@ -6430,8 +6431,8 @@ yyreduce:
                                                (yyvsp[-1].nodes).refine->mod.presence = lydict_insert_zc(trg->ctx, s);
                                              } else {
                                                free(s);
-                                               LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "presence", "refine");
-                                               LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
+                                               LOGVAL(trg->ctx, LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "presence", "refine");
+                                               LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
                                                YYABORT;
                                              }
                                            } else {
@@ -6450,15 +6451,15 @@ yyreduce:
 
                                           if ((yyvsp[-1].nodes).refine->dflt_size) {
                                             if (trg->version < 2) {
-                                              LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "default", "refine");
+                                              LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, "default", "refine");
                                               YYABORT;
                                             }
                                             if ((yyvsp[-1].nodes).refine->target_type & LYS_LEAFLIST) {
                                               (yyvsp[-1].nodes).refine->target_type = LYS_LEAFLIST;
                                             } else {
                                               free(s);
-                                              LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "default", "refine");
-                                              LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
+                                              LOGVAL(trg->ctx, LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "default", "refine");
+                                              LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
                                               YYABORT;
                                             }
                                           } else {
@@ -6470,8 +6471,8 @@ yyreduce:
                                                 (yyvsp[-1].nodes).refine->target_type &= (LYS_LEAF | LYS_LEAFLIST | LYS_CHOICE);
                                               } else {
                                                 free(s);
-                                                LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "default", "refine");
-                                                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
+                                                LOGVAL(trg->ctx, LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "default", "refine");
+                                                LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
                                                 YYABORT;
                                               }
                                             } else {
@@ -6486,8 +6487,8 @@ yyreduce:
                                           /* check for duplicity */
                                           for (i = 0; i < (yyvsp[-1].nodes).refine->dflt_size; ++i) {
                                               if (ly_strequal((yyvsp[-1].nodes).refine->dflt[i], s, 0)) {
-                                                  LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "default");
-                                                  LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Duplicated default value \"%s\".", s);
+                                                  LOGVAL(trg->ctx, LYE_INARG, LY_VLOG_NONE, NULL, s, "default");
+                                                  LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Duplicated default value \"%s\".", s);
                                                   YYABORT;
                                               }
                                           }
@@ -6506,13 +6507,13 @@ yyreduce:
                                            if ((yyvsp[-1].nodes).refine->target_type & (LYS_LEAF | LYS_CHOICE | LYS_LIST | LYS_CONTAINER | LYS_LEAFLIST)) {
                                              (yyvsp[-1].nodes).refine->target_type &= (LYS_LEAF | LYS_CHOICE | LYS_LIST | LYS_CONTAINER | LYS_LEAFLIST);
                                              if ((yyvsp[-1].nodes).refine->flags & LYS_CONFIG_MASK) {
-                                               LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "config", "refine");
+                                               LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, "config", "refine");
                                                YYABORT;
                                              }
                                              (yyvsp[-1].nodes).refine->flags |= (yyvsp[0].i);
                                            } else {
-                                             LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "config", "refine");
-                                             LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
+                                             LOGVAL(trg->ctx, LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "config", "refine");
+                                             LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
                                              YYABORT;
                                            }
                                          } else {
@@ -6530,13 +6531,13 @@ yyreduce:
                                               if ((yyvsp[-1].nodes).refine->target_type & (LYS_LEAF | LYS_CHOICE | LYS_ANYXML)) {
                                                 (yyvsp[-1].nodes).refine->target_type &= (LYS_LEAF | LYS_CHOICE | LYS_ANYXML);
                                                 if ((yyvsp[-1].nodes).refine->flags & LYS_MAND_MASK) {
-                                                  LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "mandatory", "refine");
+                                                  LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, "mandatory", "refine");
                                                   YYABORT;
                                                 }
                                                 (yyvsp[-1].nodes).refine->flags |= (yyvsp[0].i);
                                               } else {
-                                                LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "mandatory", "refine");
-                                                LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
+                                                LOGVAL(trg->ctx, LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "mandatory", "refine");
+                                                LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
                                                 YYABORT;
                                               }
                                             } else {
@@ -6554,14 +6555,14 @@ yyreduce:
                                                  if ((yyvsp[-1].nodes).refine->target_type & (LYS_LIST | LYS_LEAFLIST)) {
                                                    (yyvsp[-1].nodes).refine->target_type &= (LYS_LIST | LYS_LEAFLIST);
                                                    if ((yyvsp[-1].nodes).refine->flags & LYS_RFN_MINSET) {
-                                                     LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "min-elements", "refine");
+                                                     LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, "min-elements", "refine");
                                                      YYABORT;
                                                    }
                                                    (yyvsp[-1].nodes).refine->flags |= LYS_RFN_MINSET;
                                                    (yyvsp[-1].nodes).refine->mod.list.min = (yyvsp[0].uint);
                                                  } else {
-                                                   LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "min-elements", "refine");
-                                                   LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
+                                                   LOGVAL(trg->ctx, LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "min-elements", "refine");
+                                                   LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
                                                    YYABORT;
                                                  }
                                                } else {
@@ -6580,14 +6581,14 @@ yyreduce:
                                                  if ((yyvsp[-1].nodes).refine->target_type & (LYS_LIST | LYS_LEAFLIST)) {
                                                    (yyvsp[-1].nodes).refine->target_type &= (LYS_LIST | LYS_LEAFLIST);
                                                    if ((yyvsp[-1].nodes).refine->flags & LYS_RFN_MAXSET) {
-                                                     LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "max-elements", "refine");
+                                                     LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, "max-elements", "refine");
                                                      YYABORT;
                                                    }
                                                    (yyvsp[-1].nodes).refine->flags |= LYS_RFN_MAXSET;
                                                    (yyvsp[-1].nodes).refine->mod.list.max = (yyvsp[0].uint);
                                                  } else {
-                                                   LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "max-elements", "refine");
-                                                   LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
+                                                   LOGVAL(trg->ctx, LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "max-elements", "refine");
+                                                   LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
                                                    YYABORT;
                                                  }
                                                } else {
@@ -6683,7 +6684,7 @@ yyreduce:
   case 423:
 
     { if ((yyvsp[-1].nodes).augment->flags & LYS_STATUS_MASK) {
-                                      LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).augment, "status", "augment");
+                                      LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).augment, "status", "augment");
                                       YYABORT;
                                     }
                                     (yyvsp[-1].nodes).augment->flags |= (yyvsp[0].i);
@@ -6714,7 +6715,7 @@ yyreduce:
   case 428:
 
     { if (trg->version < 2) {
-                                                    LOGVAL(LYE_INSTMT, LY_VLOG_LYS, (yyvsp[-2].nodes).augment, "notification");
+                                                    LOGVAL(trg->ctx, LYE_INSTMT, LY_VLOG_LYS, (yyvsp[-2].nodes).augment, "notification");
                                                     YYABORT;
                                                   }
                                                 }
@@ -6724,7 +6725,7 @@ yyreduce:
   case 430:
 
     { if (param->module->version != 2) {
-                                       LOGVAL(LYE_INSTMT, LY_VLOG_LYS, actual, "action");
+                                       LOGVAL(trg->ctx, LYE_INSTMT, LY_VLOG_LYS, actual, "action");
                                        free(s);
                                        YYABORT;
                                      }
@@ -6781,7 +6782,7 @@ yyreduce:
             if ((yyvsp[-1].nodes).node.ptr_rpc->iffeature_size) {
               tmp = realloc((yyvsp[-1].nodes).node.ptr_rpc->iffeature, (yyvsp[-1].nodes).node.ptr_rpc->iffeature_size * sizeof *(yyvsp[-1].nodes).node.ptr_rpc->iffeature);
               if (!tmp) {
-                LOGMEM;
+                LOGMEM(trg->ctx);
                 YYABORT;
               }
               (yyvsp[-1].nodes).node.ptr_rpc->iffeature = tmp;
@@ -6790,7 +6791,7 @@ yyreduce:
             if ((yyvsp[-1].nodes).node.ptr_rpc->tpdf_size) {
               tmp = realloc((yyvsp[-1].nodes).node.ptr_rpc->tpdf, (yyvsp[-1].nodes).node.ptr_rpc->tpdf_size * sizeof *(yyvsp[-1].nodes).node.ptr_rpc->tpdf);
               if (!tmp) {
-                LOGMEM;
+                LOGMEM(trg->ctx);
                 YYABORT;
               }
               (yyvsp[-1].nodes).node.ptr_rpc->tpdf = tmp;
@@ -6810,7 +6811,7 @@ yyreduce:
   case 438:
 
     { if ((yyvsp[-1].nodes).node.ptr_rpc->flags & LYS_STATUS_MASK) {
-                                  LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_rpc, "status", "rpc");
+                                  LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).node.ptr_rpc, "status", "rpc");
                                   YYABORT;
                                 }
                                 (yyvsp[-1].nodes).node.ptr_rpc->flags |= (yyvsp[0].i);
@@ -6841,7 +6842,7 @@ yyreduce:
   case 443:
 
     { if ((yyvsp[-2].nodes).node.flag & LYS_RPC_INPUT) {
-                                         LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-2].nodes).node.ptr_rpc, "input", "rpc");
+                                         LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-2].nodes).node.ptr_rpc, "input", "rpc");
                                          YYABORT;
                                        }
                                        (yyvsp[-2].nodes).node.flag |= LYS_RPC_INPUT;
@@ -6853,7 +6854,7 @@ yyreduce:
   case 444:
 
     { if ((yyvsp[-2].nodes).node.flag & LYS_RPC_OUTPUT) {
-                                          LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-2].nodes).node.ptr_rpc, "output", "rpc");
+                                          LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-2].nodes).node.ptr_rpc, "output", "rpc");
                                           YYABORT;
                                         }
                                         (yyvsp[-2].nodes).node.flag |= LYS_RPC_OUTPUT;
@@ -6868,7 +6869,7 @@ yyreduce:
                                   (yyval.backup_token).actual = actual;
                                   s = strdup("input");
                                   if (!s) {
-                                    LOGMEM;
+                                    LOGMEM(trg->ctx);
                                     YYABORT;
                                   }
                                   if (!(actual = yang_read_node(trg, actual, param->node, s, LYS_INPUT, sizeof(struct lys_node_inout)))) {
@@ -6889,7 +6890,7 @@ yyreduce:
                   if (input->must_size) {
                     tmp = realloc(input->must, input->must_size * sizeof *input->must);
                     if (!tmp) {
-                      LOGMEM;
+                      LOGMEM(trg->ctx);
                       YYABORT;
                     }
                     input->must = tmp;
@@ -6898,7 +6899,7 @@ yyreduce:
                   if (input->tpdf_size) {
                     tmp = realloc(input->tpdf, input->tpdf_size * sizeof *input->tpdf);
                     if (!tmp) {
-                      LOGMEM;
+                      LOGMEM(trg->ctx);
                       YYABORT;
                     }
                     input->tpdf = tmp;
@@ -6918,7 +6919,7 @@ yyreduce:
                                     (yyval.backup_token).actual = actual;
                                     s = strdup("output");
                                     if (!s) {
-                                      LOGMEM;
+                                      LOGMEM(trg->ctx);
                                       YYABORT;
                                     }
                                     if (!(actual = yang_read_node(trg, actual, param->node, s, LYS_OUTPUT, sizeof(struct lys_node_inout)))) {
@@ -6939,7 +6940,7 @@ yyreduce:
                    if (output->must_size) {
                      tmp = realloc(output->must, output->must_size * sizeof *output->must);
                      if (!tmp) {
-                       LOGMEM;
+                       LOGMEM(trg->ctx);
                        YYABORT;
                      }
                      output->must = tmp;
@@ -6948,7 +6949,7 @@ yyreduce:
                    if (output->tpdf_size) {
                      tmp = realloc(output->tpdf, output->tpdf_size * sizeof *output->tpdf);
                      if (!tmp) {
-                       LOGMEM;
+                       LOGMEM(trg->ctx);
                        YYABORT;
                      }
                      output->tpdf = tmp;
@@ -6992,7 +6993,7 @@ yyreduce:
             if ((yyvsp[-1].nodes).notif->must_size) {
               tmp = realloc((yyvsp[-1].nodes).notif->must, (yyvsp[-1].nodes).notif->must_size * sizeof *(yyvsp[-1].nodes).notif->must);
               if (!tmp) {
-                LOGMEM;
+                LOGMEM(trg->ctx);
                 YYABORT;
               }
               (yyvsp[-1].nodes).notif->must = tmp;
@@ -7001,7 +7002,7 @@ yyreduce:
            if ((yyvsp[-1].nodes).notif->iffeature_size) {
              tmp = realloc((yyvsp[-1].nodes).notif->iffeature, (yyvsp[-1].nodes).notif->iffeature_size * sizeof *(yyvsp[-1].nodes).notif->iffeature);
              if (!tmp) {
-               LOGMEM;
+               LOGMEM(trg->ctx);
                YYABORT;
              }
              (yyvsp[-1].nodes).notif->iffeature = tmp;
@@ -7010,7 +7011,7 @@ yyreduce:
            if ((yyvsp[-1].nodes).notif->tpdf_size) {
              tmp = realloc((yyvsp[-1].nodes).notif->tpdf, (yyvsp[-1].nodes).notif->tpdf_size * sizeof *(yyvsp[-1].nodes).notif->tpdf);
              if (!tmp) {
-               LOGMEM;
+               LOGMEM(trg->ctx);
                YYABORT;
              }
              (yyvsp[-1].nodes).notif->tpdf = tmp;
@@ -7028,7 +7029,7 @@ yyreduce:
   case 461:
 
     { if ((yyvsp[-1].nodes).notif->flags & LYS_STATUS_MASK) {
-                                           LOGVAL(LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).notif, "status", "notification");
+                                           LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_LYS, (yyvsp[-1].nodes).notif, "status", "notification");
                                            YYABORT;
                                          }
                                          (yyvsp[-1].nodes).notif->flags |= (yyvsp[0].i);
@@ -7079,12 +7080,12 @@ yyreduce:
                       if ((yyvsp[-1].dev)->deviate_size) {
                         tmp = realloc((yyvsp[-1].dev)->deviate, (yyvsp[-1].dev)->deviate_size * sizeof *(yyvsp[-1].dev)->deviate);
                         if (!tmp) {
-                          LOGINT;
+                          LOGINT(trg->ctx);
                           YYABORT;
                         }
                         (yyvsp[-1].dev)->deviate = tmp;
                       } else {
-                        LOGVAL(LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "deviate", "deviation");
+                        LOGVAL(trg->ctx, LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "deviate", "deviation");
                         YYABORT;
                       }
                       actual_type = (yyvsp[-4].backup_token).token;
@@ -7125,7 +7126,7 @@ yyreduce:
 
     { (yyval.backup_token).token = actual_type;
                                                (yyval.backup_token).actual = actual;
-                                               if (!(actual = yang_read_deviate_unsupported(actual))) {
+                                               if (!(actual = yang_read_deviate_unsupported(trg->ctx, actual))) {
                                                  YYABORT;
                                                }
                                                actual_type = NOT_SUPPORTED_KEYWORD;
@@ -7145,7 +7146,7 @@ yyreduce:
 
     { (yyval.backup_token).token = actual_type;
                            (yyval.backup_token).actual = actual;
-                           if (!(actual = yang_read_deviate(actual, LY_DEVIATE_ADD))) {
+                           if (!(actual = yang_read_deviate(trg->ctx, actual, LY_DEVIATE_ADD))) {
                              YYABORT;
                            }
                            actual_type = ADD_KEYWORD;
@@ -7168,7 +7169,7 @@ yyreduce:
            if ((yyvsp[-1].deviate)->must_size) {
              tmp = realloc((yyvsp[-1].deviate)->must, (yyvsp[-1].deviate)->must_size * sizeof *(yyvsp[-1].deviate)->must);
              if (!tmp) {
-               LOGMEM;
+               LOGMEM(trg->ctx);
                YYABORT;
              }
              (yyvsp[-1].deviate)->must = tmp;
@@ -7177,7 +7178,7 @@ yyreduce:
            if ((yyvsp[-1].deviate)->unique_size) {
              tmp = realloc((yyvsp[-1].deviate)->unique, (yyvsp[-1].deviate)->unique_size * sizeof *(yyvsp[-1].deviate)->unique);
              if (!tmp) {
-               LOGMEM;
+               LOGMEM(trg->ctx);
                YYABORT;
              }
              (yyvsp[-1].deviate)->unique = tmp;
@@ -7186,7 +7187,7 @@ yyreduce:
            if ((yyvsp[-1].deviate)->dflt_size) {
              tmp = realloc((yyvsp[-1].deviate)->dflt, (yyvsp[-1].deviate)->dflt_size * sizeof *(yyvsp[-1].deviate)->dflt);
              if (!tmp) {
-               LOGMEM;
+               LOGMEM(trg->ctx);
                YYABORT;
              }
              (yyvsp[-1].deviate)->dflt = tmp;
@@ -7237,7 +7238,7 @@ yyreduce:
   case 493:
 
     { if ((yyvsp[-1].deviate)->flags & LYS_CONFIG_MASK) {
-                                          LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "config", "deviate");
+                                          LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, "config", "deviate");
                                           YYABORT;
                                         }
                                         (yyvsp[-1].deviate)->flags = (yyvsp[0].i);
@@ -7249,7 +7250,7 @@ yyreduce:
   case 494:
 
     { if ((yyvsp[-1].deviate)->flags & LYS_MAND_MASK) {
-                                             LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "mandatory", "deviate");
+                                             LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, "mandatory", "deviate");
                                              YYABORT;
                                            }
                                            (yyvsp[-1].deviate)->flags = (yyvsp[0].i);
@@ -7261,7 +7262,7 @@ yyreduce:
   case 495:
 
     { if ((yyvsp[-1].deviate)->min_set) {
-                                                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "min-elements", "deviation");
+                                                LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, "min-elements", "deviation");
                                                 YYABORT;
                                               }
                                               (yyvsp[-1].deviate)->min = (yyvsp[0].uint);
@@ -7274,7 +7275,7 @@ yyreduce:
   case 496:
 
     { if ((yyvsp[-1].deviate)->max_set) {
-                                                LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "max-elements", "deviation");
+                                                LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, "max-elements", "deviation");
                                                 YYABORT;
                                               }
                                               (yyvsp[-1].deviate)->max = (yyvsp[0].uint);
@@ -7288,7 +7289,7 @@ yyreduce:
 
     { (yyval.backup_token).token = actual_type;
                                  (yyval.backup_token).actual = actual;
-                                 if (!(actual = yang_read_deviate(actual, LY_DEVIATE_DEL))) {
+                                 if (!(actual = yang_read_deviate(trg->ctx, actual, LY_DEVIATE_DEL))) {
                                    YYABORT;
                                  }
                                  actual_type = DELETE_KEYWORD;
@@ -7311,7 +7312,7 @@ yyreduce:
             if ((yyvsp[-1].deviate)->must_size) {
               tmp = realloc((yyvsp[-1].deviate)->must, (yyvsp[-1].deviate)->must_size * sizeof *(yyvsp[-1].deviate)->must);
               if (!tmp) {
-                LOGMEM;
+                LOGMEM(trg->ctx);
                 YYABORT;
               }
               (yyvsp[-1].deviate)->must = tmp;
@@ -7320,7 +7321,7 @@ yyreduce:
             if ((yyvsp[-1].deviate)->unique_size) {
               tmp = realloc((yyvsp[-1].deviate)->unique, (yyvsp[-1].deviate)->unique_size * sizeof *(yyvsp[-1].deviate)->unique);
               if (!tmp) {
-                LOGMEM;
+                LOGMEM(trg->ctx);
                 YYABORT;
               }
               (yyvsp[-1].deviate)->unique = tmp;
@@ -7329,7 +7330,7 @@ yyreduce:
             if ((yyvsp[-1].deviate)->dflt_size) {
               tmp = realloc((yyvsp[-1].deviate)->dflt, (yyvsp[-1].deviate)->dflt_size * sizeof *(yyvsp[-1].deviate)->dflt);
               if (!tmp) {
-                LOGMEM;
+                LOGMEM(trg->ctx);
                 YYABORT;
               }
               (yyvsp[-1].deviate)->dflt = tmp;
@@ -7381,7 +7382,7 @@ yyreduce:
 
     { (yyval.backup_token).token = actual_type;
                                    (yyval.backup_token).actual = actual;
-                                   if (!(actual = yang_read_deviate(actual, LY_DEVIATE_RPL))) {
+                                   if (!(actual = yang_read_deviate(trg->ctx, actual, LY_DEVIATE_RPL))) {
                                      YYABORT;
                                    }
                                    actual_type = REPLACE_KEYWORD;
@@ -7404,7 +7405,7 @@ yyreduce:
            if ((yyvsp[-1].deviate)->dflt_size) {
              tmp = realloc((yyvsp[-1].deviate)->dflt, (yyvsp[-1].deviate)->dflt_size * sizeof *(yyvsp[-1].deviate)->dflt);
              if (!tmp) {
-               LOGMEM;
+               LOGMEM(trg->ctx);
                YYABORT;
              }
              (yyvsp[-1].deviate)->dflt = tmp;
@@ -7444,7 +7445,7 @@ yyreduce:
   case 514:
 
     { if ((yyvsp[-1].deviate)->flags & LYS_CONFIG_MASK) {
-                                              LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "config", "deviate");
+                                              LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, "config", "deviate");
                                               YYABORT;
                                             }
                                             (yyvsp[-1].deviate)->flags = (yyvsp[0].i);
@@ -7456,7 +7457,7 @@ yyreduce:
   case 515:
 
     { if ((yyvsp[-1].deviate)->flags & LYS_MAND_MASK) {
-                                                 LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "mandatory", "deviate");
+                                                 LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, "mandatory", "deviate");
                                                  YYABORT;
                                                }
                                                (yyvsp[-1].deviate)->flags = (yyvsp[0].i);
@@ -7468,7 +7469,7 @@ yyreduce:
   case 516:
 
     { if ((yyvsp[-1].deviate)->min_set) {
-                                                    LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "min-elements", "deviation");
+                                                    LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, "min-elements", "deviation");
                                                     YYABORT;
                                                   }
                                                   (yyvsp[-1].deviate)->min = (yyvsp[0].uint);
@@ -7481,7 +7482,7 @@ yyreduce:
   case 517:
 
     { if ((yyvsp[-1].deviate)->max_set) {
-                                                    LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "max-elements", "deviation");
+                                                    LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, "max-elements", "deviation");
                                                     YYABORT;
                                                   }
                                                   (yyvsp[-1].deviate)->max = (yyvsp[0].uint);
@@ -7566,7 +7567,7 @@ yyreduce:
                 } else if (!strcmp(s, "false")) {
                   (yyval.i) = LYS_CONFIG_R | LYS_CONFIG_SET;
                 } else {
-                  LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "config");
+                  LOGVAL(trg->ctx, LYE_INARG, LY_VLOG_NONE, NULL, s, "config");
                   free(s);
                   YYABORT;
                 }
@@ -7610,7 +7611,7 @@ yyreduce:
                 } else if (!strcmp(s, "false")) {
                   (yyval.i) = LYS_MAND_FALSE;
                 } else {
-                  LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "mandatory");
+                  LOGVAL(trg->ctx, LYE_INARG, LY_VLOG_NONE, NULL, s, "mandatory");
                   free(s);
                   YYABORT;
                 }
@@ -7661,7 +7662,7 @@ yyreduce:
 
                   val = strtoul(s, &endptr, 10);
                   if (*endptr || s[0] == '-' || errno || val > UINT32_MAX) {
-                      LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "min-elements");
+                      LOGVAL(trg->ctx, LYE_INARG, LY_VLOG_NONE, NULL, s, "min-elements");
                       free(s);
                       YYABORT;
                   }
@@ -7712,7 +7713,7 @@ yyreduce:
 
                   val = strtoul(s, &endptr, 10);
                   if (*endptr || s[0] == '-' || errno || val == 0 || val > UINT32_MAX) {
-                      LOGVAL(LYE_INARG, LY_VLOG_NONE, NULL, s, "max-elements");
+                      LOGVAL(trg->ctx, LYE_INARG, LY_VLOG_NONE, NULL, s, "max-elements");
                       free(s);
                       YYABORT;
                   }
@@ -7805,7 +7806,7 @@ yyreduce:
                        case NOTIFICATION_KEYWORD:
                          if (trg->version < 2) {
                            free(s);
-                           LOGVAL(LYE_INSTMT, LY_VLOG_LYS, actual, "must");
+                           LOGVAL(trg->ctx, LYE_INSTMT, LY_VLOG_LYS, actual, "must");
                            YYABORT;
                          }
                          YANG_ADDELEM(((struct lys_node_notif *)actual)->must,
@@ -7815,7 +7816,7 @@ yyreduce:
                        case OUTPUT_KEYWORD:
                          if (trg->version < 2) {
                            free(s);
-                           LOGVAL(LYE_INSTMT, LY_VLOG_LYS, actual, "must");
+                           LOGVAL(trg->ctx, LYE_INSTMT, LY_VLOG_LYS, actual, "must");
                            YYABORT;
                          }
                          YANG_ADDELEM(((struct lys_node_inout *)actual)->must,
@@ -7826,7 +7827,7 @@ yyreduce:
                          break;
                        default:
                          free(s);
-                         LOGINT;
+                         LOGINT(trg->ctx);
                          YYABORT;
                        }
                        ((struct lys_restr *)actual)->expr = transform_schema2json(trg, s);
@@ -7868,7 +7869,7 @@ yyreduce:
 
     { s = strdup(yyget_text(scanner));
                                if (!s) {
-                                 LOGMEM;
+                                 LOGMEM(trg->ctx);
                                  YYABORT;
                                }
                              }
@@ -7879,7 +7880,7 @@ yyreduce:
 
     { (yyval.backup_token).token = actual_type;
                         (yyval.backup_token).actual = actual;
-                        if (!(actual = yang_read_range(trg, actual, s, is_ext_instance))) {
+                        if (!(actual = yang_read_range(trg->ctx, actual, s, is_ext_instance))) {
                           YYABORT;
                         }
                         actual_type = RANGE_KEYWORD;
@@ -7893,7 +7894,7 @@ yyreduce:
     { if (s) {
                                                 s = ly_realloc(s,strlen(s) + yyget_leng(scanner) + 2);
                                                 if (!s) {
-                                                  LOGMEM;
+                                                  LOGMEM(trg->ctx);
                                                   YYABORT;
                                                 }
                                                 strcat(s,"/");
@@ -7901,7 +7902,7 @@ yyreduce:
                                               } else {
                                                 s = malloc(yyget_leng(scanner) + 2);
                                                 if (!s) {
-                                                  LOGMEM;
+                                                  LOGMEM(trg->ctx);
                                                   YYABORT;
                                                 }
                                                 s[0]='/';
@@ -7916,14 +7917,14 @@ yyreduce:
     { if (s) {
                                               s = ly_realloc(s,strlen(s) + yyget_leng(scanner) + 1);
                                               if (!s) {
-                                                LOGMEM;
+                                                LOGMEM(trg->ctx);
                                                 YYABORT;
                                               }
                                               strcat(s, yyget_text(scanner));
                                             } else {
                                               s = strdup(yyget_text(scanner));
                                               if (!s) {
-                                                LOGMEM;
+                                                LOGMEM(trg->ctx);
                                                 YYABORT;
                                               }
                                             }
@@ -7941,7 +7942,7 @@ yyreduce:
 
     { s = strdup(tmp_s);
                                                                 if (!s) {
-                                                                  LOGMEM;
+                                                                  LOGMEM(trg->ctx);
                                                                   YYABORT;
                                                                 }
                                                                 s[strlen(s) - 1] = '\0';
@@ -7959,7 +7960,7 @@ yyreduce:
 
     { s = strdup(tmp_s);
                                                       if (!s) {
-                                                        LOGMEM;
+                                                        LOGMEM(trg->ctx);
                                                         YYABORT;
                                                       }
                                                       s[strlen(s) - 1] = '\0';
@@ -7974,7 +7975,7 @@ yyreduce:
 
                                                 val = strtoul(yyget_text(scanner), NULL, 10);
                                                 if (val > UINT32_MAX) {
-                                                    LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Converted number is very long.");
+                                                    LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Converted number is very long.");
                                                     YYABORT;
                                                 }
                                                 (yyval.uint) = (uint32_t) val;
@@ -8007,7 +8008,8 @@ yyreduce:
 
                              val = strtoll(yyget_text(scanner), NULL, 10);
                              if (val < INT32_MIN || val > INT32_MAX) {
-                                 LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "The number is not in the correct range (INT32_MIN..INT32_MAX): \"%d\"",val);
+                                 LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_NONE, NULL,
+                                        "The number is not in the correct range (INT32_MIN..INT32_MAX): \"%d\"",val);
                                  YYABORT;
                              }
                              (yyval.i) = (int32_t) val;
@@ -8017,7 +8019,7 @@ yyreduce:
 
   case 608:
 
-    { if (lyp_check_identifier(s, LY_IDENT_SIMPLE, trg, NULL)) {
+    { if (lyp_check_identifier(trg->ctx, s, LY_IDENT_SIMPLE, trg, NULL)) {
                     free(s);
                     YYABORT;
                 }
@@ -8032,19 +8034,19 @@ yyreduce:
                if ((tmp = strchr(s, ':'))) {
                  *tmp = '\0';
                  /* check prefix */
-                 if (lyp_check_identifier(s, LY_IDENT_SIMPLE, trg, NULL)) {
+                 if (lyp_check_identifier(trg->ctx, s, LY_IDENT_SIMPLE, trg, NULL)) {
                    free(s);
                    YYABORT;
                  }
                  /* check identifier */
-                 if (lyp_check_identifier(tmp + 1, LY_IDENT_SIMPLE, trg, NULL)) {
+                 if (lyp_check_identifier(trg->ctx, tmp + 1, LY_IDENT_SIMPLE, trg, NULL)) {
                    free(s);
                    YYABORT;
                  }
                  *tmp = ':';
                } else {
                  /* check identifier */
-                 if (lyp_check_identifier(s, LY_IDENT_SIMPLE, trg, NULL)) {
+                 if (lyp_check_identifier(trg->ctx, s, LY_IDENT_SIMPLE, trg, NULL)) {
                    free(s);
                    YYABORT;
                  }
@@ -8128,7 +8130,7 @@ yyreduce:
         if (!substmt) {
           substmt = calloc(1, sizeof *substmt);
           if (!substmt) {
-            LOGMEM;
+            LOGMEM(trg->ctx);
             YYABORT;
           }
           ((struct lys_ext_instance *)actual)->parent = substmt;
@@ -8137,7 +8139,7 @@ yyreduce:
         old_length = (substmt->ext_substmt) ? strlen(substmt->ext_substmt) + 2 : 2;
         tmp_value = realloc(substmt->ext_substmt, old_length + length + 1);
         if (!tmp_value) {
-          LOGMEM;
+          LOGMEM(trg->ctx);
           YYABORT;
         }
         substmt->ext_substmt = tmp_value;
@@ -8160,7 +8162,7 @@ yyreduce:
         if (!substmt) {
           substmt = calloc(1, sizeof *substmt);
           if (!substmt) {
-            LOGMEM;
+            LOGMEM(trg->ctx);
             YYABORT;
           }
           ((struct lys_ext_instance *)actual)->parent = substmt;
@@ -8173,14 +8175,14 @@ yyreduce:
           array = realloc(substmt->ext_modules, (i + 2) * sizeof *substmt->ext_modules);
         }
         if (!array) {
-          LOGMEM;
+          LOGMEM(trg->ctx);
           YYABORT;
         }
         substmt->ext_modules = array;
         array[i + 1] = NULL;
         tmp_value = malloc(length + 2);
         if (!tmp_value) {
-          LOGMEM;
+          LOGMEM(trg->ctx);
           YYABORT;
         }
         array[i] = tmp_value;
@@ -8207,7 +8209,7 @@ yyreduce:
 
     { s = strdup(yyget_text(scanner));
                   if (!s) {
-                    LOGMEM;
+                    LOGMEM(trg->ctx);
                     YYABORT;
                   }
                 }
@@ -8218,7 +8220,7 @@ yyreduce:
 
     { s = strdup(yyget_text(scanner));
                           if (!s) {
-                            LOGMEM;
+                            LOGMEM(trg->ctx);
                             YYABORT;
                           }
                         }
@@ -8229,7 +8231,7 @@ yyreduce:
 
     { s = strdup(yyget_text(scanner));
                                     if (!s) {
-                                      LOGMEM;
+                                      LOGMEM(trg->ctx);
                                       YYABORT;
                                     }
                                   }
@@ -8248,7 +8250,7 @@ yyreduce:
                              /* allocate type structure */
                              (*type) = calloc(1, sizeof **type);
                              if (!*type) {
-                               LOGMEM;
+                               LOGMEM(trg->ctx);
                                YYABORT;
                              }
 
@@ -8272,7 +8274,7 @@ yyreduce:
                                 /* allocate typedef structure */
                                 (*tpdf) = calloc(1, sizeof **tpdf);
                                 if (!*tpdf) {
-                                  LOGMEM;
+                                  LOGMEM(trg->ctx);
                                   YYABORT;
                                 }
 
@@ -8294,7 +8296,7 @@ yyreduce:
                                  /* allocate typedef structure */
                                  (*iffeature) = calloc(1, sizeof **iffeature);
                                  if (!*iffeature) {
-                                   LOGMEM;
+                                   LOGMEM(trg->ctx);
                                    YYABORT;
                                  }
                                  (yyval.v) = actual = *iffeature;
@@ -8324,7 +8326,7 @@ yyreduce:
                                     /* allocate structure for must */
                                     (*restr) = calloc(1, sizeof(struct lys_restr));
                                     if (!*restr) {
-                                      LOGMEM;
+                                      LOGMEM(trg->ctx);
                                       YYABORT;
                                     }
                                     (yyval.v) = actual = *restr;
@@ -8356,7 +8358,7 @@ yyreduce:
                                  }
                                  rev[i] = calloc(1, sizeof **rev);
                                  if (!rev[i]) {
-                                   LOGMEM;
+                                   LOGMEM(trg->ctx);
                                    YYABORT;
                                  }
                                  actual = rev[i];
@@ -8412,7 +8414,7 @@ yyreduce:
 
   case 758:
 
-    { LOGERR(LY_SUCCESS, "Extension's substatement \"%s\" not supported.", yyget_text(scanner)); }
+    { LOGERR(trg->ctx, ly_errno, "Extension's substatement \"%s\" not supported.", yyget_text(scanner)); }
 
     break;
 
@@ -8421,7 +8423,7 @@ yyreduce:
     { actual_type = EXTENSION_INSTANCE;
                                 actual = ext_instance;
                                 if (!is_ext_instance) {
-                                  LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, yyget_text(scanner));
+                                  LOGVAL(trg->ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, yyget_text(scanner));
                                   YYABORT;
                                 }
                                 (yyval.i) = 0;
@@ -8654,7 +8656,7 @@ yyreduce:
   case 812:
 
     { if ((yyvsp[-1].i) & LYS_ORDERED_MASK) {
-                                            LOGVAL(LYE_TOOMANY, LY_VLOG_NONE, NULL, "ordered by", ext_name);
+                                            LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, "ordered by", ext_name);
                                             YYABORT;
                                          }
                                          if ((yyvsp[0].i) & LYS_USERORDERED) {
@@ -8692,7 +8694,7 @@ yyreduce:
 
     { /* range check */
        if ((yyvsp[0].uint) < 1 || (yyvsp[0].uint) > 18) {
-         LOGVAL(LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", (yyvsp[0].uint), "fraction-digits");
+         LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid value \"%d\" of \"%s\".", (yyvsp[0].uint), "fraction-digits");
          YYABORT;
        }
        if (yang_fill_extcomplex_uint8(ext_instance, ext_name, "fraction-digits", LY_STMT_DIGITS, (yyvsp[0].uint))) {
@@ -8714,7 +8716,7 @@ yyreduce:
                                            /* store the value */
                                            *val = malloc(sizeof(uint32_t));
                                            if (!*val) {
-                                             LOGMEM;
+                                             LOGMEM(trg->ctx);
                                              YYABORT;
                                            }
                                            **val = (yyvsp[0].uint);
@@ -8734,7 +8736,7 @@ yyreduce:
                                            /* store the value */
                                            *val = malloc(sizeof(uint32_t));
                                            if (!*val) {
-                                             LOGMEM;
+                                             LOGMEM(trg->ctx);
                                              YYABORT;
                                            }
                                            **val = (yyvsp[0].uint);
@@ -8754,7 +8756,7 @@ yyreduce:
                                        /* store the value */
                                        *val = malloc(sizeof(uint32_t));
                                        if (!*val) {
-                                         LOGMEM;
+                                         LOGMEM(trg->ctx);
                                          YYABORT;
                                        }
                                        **val = (yyvsp[0].uint);
@@ -8774,7 +8776,7 @@ yyreduce:
                                     /* store the value */
                                     *val = malloc(sizeof(int32_t));
                                     if (!*val) {
-                                      LOGMEM;
+                                      LOGMEM(trg->ctx);
                                       YYABORT;
                                     }
                                     **val = (yyvsp[0].i);
@@ -8794,7 +8796,7 @@ yyreduce:
                                      }
                                      *unique = calloc(1, sizeof(struct lys_unique));
                                      if (!*unique) {
-                                       LOGMEM;
+                                       LOGMEM(trg->ctx);
                                        YYABORT;
                                      }
                                      rc = yang_fill_unique(trg, (struct lys_node_list *)ext_instance, *unique, s, param->unres);
@@ -8853,7 +8855,7 @@ yyreduce:
 
        for (i = 0; i < (yyvsp[-2].revisions).index; ++i) {
          if (!strcmp((yyvsp[-2].revisions).revision[i]->date, (yyvsp[-2].revisions).revision[(yyvsp[-2].revisions).index]->date)) {
-           LOGWRN("Module's revisions are not unique (%s).", (yyvsp[-2].revisions).revision[i]->date);
+           LOGWRN(trg->ctx, "Module's revisions are not unique (%s).", (yyvsp[-2].revisions).revision[i]->date);
            break;
          }
        }
@@ -9113,14 +9115,15 @@ yyreturn:
 
 
 
-void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...){
-
+void
+yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...)
+{
   free(*param->value);
   if (yylloc->first_line != -1) {
     if (*param->data_node && (*param->data_node) == (*param->actual_node)) {
-      LOGVAL(LYE_INSTMT, LY_VLOG_LYS, *param->data_node, yyget_text(scanner));
+      LOGVAL(param->module->ctx, LYE_INSTMT, LY_VLOG_LYS, *param->data_node, yyget_text(scanner));
     } else {
-      LOGVAL(LYE_INSTMT, LY_VLOG_NONE, NULL, yyget_text(scanner));
+      LOGVAL(param->module->ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, yyget_text(scanner));
     }
   }
 }

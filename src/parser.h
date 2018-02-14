@@ -49,20 +49,6 @@ struct lyd_node *lyd_parse_json(struct ly_ctx *ctx, const char *data, int option
 /**@} jsondata */
 
 /**
- * thread-specific information describing the parser's current context
- */
-struct ly_parser {
-    struct ly_ctx *ctx;
-/* TODO
-    union {
-        struct lys_node *schema;
-        struct lyd_node *data;
-    } node;
-*/
-};
-extern THREAD_LOCAL struct ly_parser ly_parser_data;
-
-/**
  * internal options values for schema parsers
  */
 #define LYS_PARSE_OPT_CFG_NOINHERIT 0x01 /**< do not inherit config flag */
@@ -107,10 +93,10 @@ struct lys_type *lyp_parse_value(struct lys_type *type, const char **value_, str
                                  struct lyd_node_leaf_list *leaf, struct lyd_attr *attr, struct lys_module *local_mod,
                                  int store, int dflt);
 
-int lyp_check_length_range(const char *expr, struct lys_type *type);
+int lyp_check_length_range(struct ly_ctx *ctx, const char *expr, struct lys_type *type);
 
-int lyp_check_pattern(const char *pattern, pcre **pcre_precomp);
-int lyp_precompile_pattern(const char *pattern, pcre** pcre_cmp, pcre_extra **pcre_std);
+int lyp_check_pattern(struct ly_ctx *ctx, const char *pattern, pcre **pcre_precomp);
+int lyp_precompile_pattern(struct ly_ctx *ctx, const char *pattern, pcre** pcre_cmp, pcre_extra **pcre_std);
 
 int fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, struct lys_type *type,
                   int tpdftype, struct unres_schema *unres);
@@ -140,10 +126,10 @@ int lyp_is_rpc_action(struct lys_node *node);
  * @param func name of the function where called
  * @return 0 for ok, 1 when multiple data types bits are set, or incompatible options are used together.
  */
-int lyp_data_check_options(int options, const char *func);
+int lyp_data_check_options(struct ly_ctx *ctx, int options, const char *func);
 
-int lyp_check_identifier(const char *id, enum LY_IDENT type, struct lys_module *module, struct lys_node *parent);
-int lyp_check_date(const char *date);
+int lyp_check_identifier(struct ly_ctx *ctx, const char *id, enum LY_IDENT type, struct lys_module *module, struct lys_node *parent);
+int lyp_check_date(struct ly_ctx *ctx, const char *date);
 int lyp_check_mandatory_augment(struct lys_node_augment *node, const struct lys_node *target);
 int lyp_check_mandatory_choice(struct lys_node *node);
 
@@ -188,11 +174,10 @@ int lyp_add_ietf_netconf_annotations(struct lys_module *mod);
  * @param[in] addsize Number of additional bytes to be allocated (and zeroed) after the implicitly added
  *                    string-terminating NULL byte.
  * @param[out] length length of the allocated memory.
- * @return On success, the pointer to the memory where the file data resists is returned. On error, the value MAP_FAILED
- * is returned and #ly_errno value is set.
+ * @param[out] addr Pointer to the memory where the file data is mapped.
+ * @return 0 on success, non-zero on error.
  */
-void *
-lyp_mmap(int fd, size_t addsize, size_t *length);
+int lyp_mmap(struct ly_ctx *ctx, int fd, size_t addsize, size_t *length, void **addr);
 
 /**
  * @brief Unmap function for the data mapped by lyp_mmap()
@@ -210,8 +195,8 @@ int lyp_munmap(void *addr, size_t length);
  * 00010000 -- 001FFFFF:    11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
  *
  */
-unsigned int pututf8(char *dst, int32_t value);
-unsigned int copyutf8(char *dst, const char *src);
+unsigned int pututf8(struct ly_ctx *ctx, char *dst, int32_t value);
+unsigned int copyutf8(struct ly_ctx *ctx, char *dst, const char *src);
 
 /*
  * Internal functions implementing YANG extensions support

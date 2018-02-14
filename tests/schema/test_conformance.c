@@ -73,7 +73,7 @@ test_implemented1_yin(void **state)
     b2 = lys_parse_path(ctx, SCHEMA_FOLDER_YIN"/b@2015-04-04.yin", LYS_IN_YIN);
     assert_ptr_equal(b2, NULL);
     assert_int_equal(ly_errno, LY_EINVAL);
-    assert_string_equal(ly_errmsg(), "Module \"b\" parsing failed.");
+    assert_string_equal(ly_errmsg(ctx), "Module \"b\" parsing failed.");
 
     /* older c can be loaded and it will be marked as implemented */
     c2 = lys_parse_path(ctx, SCHEMA_FOLDER_YIN"/c@2015-01-01.yin", LYS_IN_YIN);
@@ -107,7 +107,7 @@ test_implemented1_yang(void **state)
     b2 = lys_parse_path(ctx, SCHEMA_FOLDER_YANG"/b@2015-04-04.yang", LYS_IN_YANG);
     assert_ptr_equal(b2, NULL);
     assert_int_equal(ly_errno, LY_EINVAL);
-    assert_string_equal(ly_errmsg(), "Module \"b\" parsing failed.");
+    assert_string_equal(ly_errmsg(ctx), "Module \"b\" parsing failed.");
 
     /* older c can be loaded and it will be marked as implemented */
     c2 = lys_parse_path(ctx, SCHEMA_FOLDER_YANG"/c@2015-01-01.yang", LYS_IN_YANG);

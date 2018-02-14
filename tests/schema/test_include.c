@@ -98,12 +98,12 @@ test_circular_include(void **state)
     ly_ctx_set_searchdir(ctx, SCHEMA_FOLDER_YIN);
 
     assert_ptr_equal(lys_parse_mem(ctx, sch_yin, LYS_IN_YIN), NULL);
-    assert_int_equal(ly_vecode, LYVE_CIRC_INCLUDES);
+    assert_int_equal(ly_vecode(ctx), LYVE_CIRC_INCLUDES);
 
     ly_ctx_set_searchdir(ctx, SCHEMA_FOLDER_YANG);
 
     assert_ptr_equal(lys_parse_mem(ctx, sch_yang, LYS_IN_YANG), NULL);
-    assert_int_equal(ly_vecode, LYVE_CIRC_INCLUDES);
+    assert_int_equal(ly_vecode(ctx), LYVE_CIRC_INCLUDES);
 }
 
 int

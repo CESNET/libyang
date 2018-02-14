@@ -325,11 +325,12 @@ void lyxp_set_free(struct lyxp_set *set);
  *
  * http://www.w3.org/TR/1999/REC-xpath-19991116/ section 3.7
  *
+ * @param[in] ctx Context for errors.
  * @param[in] expr XPath expression to parse. It is duplicated.
  *
  * @return Filled expression structure or NULL on error.
  */
-struct lyxp_expr *lyxp_parse_expr(const char *expr);
+struct lyxp_expr *lyxp_parse_expr(struct ly_ctx *ctx, const char *expr);
 
 /**
  * @brief Frees a parsed XPath expression. \p expr should not be used afterwards.

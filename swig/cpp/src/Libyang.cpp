@@ -37,21 +37,21 @@ Context::Context(ly_ctx *ctx, S_Deleter deleter):
 Context::Context(const char *search_dir, int options) {
     ctx = ly_ctx_new(search_dir, options);
     if (!ctx) {
-        check_libyang_error();
+        check_libyang_error(nullptr);
     }
     deleter = std::make_shared<Deleter>(ctx);
 }
 Context::Context(const char *search_dir, const char *path, LYD_FORMAT format, int options) {
     ctx = ly_ctx_new_ylpath(search_dir, path, format, options);
     if (!ctx) {
-        check_libyang_error();
+        check_libyang_error(nullptr);
     }
     deleter = std::make_shared<Deleter>(ctx);
 }
 Context::Context(const char *search_dir, LYD_FORMAT format, const char *data, int options) {
     ctx = ly_ctx_new_ylmem(search_dir, data, format, options);
     if (!ctx) {
-        check_libyang_error();
+        check_libyang_error(nullptr);
     }
     deleter = std::make_shared<Deleter>(ctx);
 }
@@ -59,14 +59,14 @@ Context::~Context() {}
 int Context::set_searchdir(const char *search_dir) {
     int ret = ly_ctx_set_searchdir(ctx, search_dir);
     if (ret) {
-        check_libyang_error();
+        check_libyang_error(ctx);
     }
     return ret;
 }
 S_Data_Node Context::info() {
     struct lyd_node *new_node = ly_ctx_info(ctx);
     if (!new_node) {
-        check_libyang_error();
+        check_libyang_error(ctx);
     }
     return new_node ? std::make_shared<Data_Node>(new_node, deleter) : nullptr;
 }
@@ -81,7 +81,7 @@ S_Module Context::get_module_older(S_Module module) {
 S_Module Context::load_module(const char *name, const char *revision) {
     const struct lys_module *module = ly_ctx_load_module(ctx, name, revision);
     if (!module) {
-        check_libyang_error();
+        check_libyang_error(ctx);
     }
     return module ? std::make_shared<Module>((lys_module *) module, deleter) : nullptr;
 }
@@ -188,7 +188,7 @@ S_Data_Node Context::parse_mem(const char *data, LYD_FORMAT format, int options)
 
     new_node = lyd_parse_mem(ctx, data, format, options);
     if (!new_node) {
-        check_libyang_error();
+        check_libyang_error(ctx);
         return nullptr;
     }
 
@@ -200,7 +200,7 @@ S_Data_Node Context::parse_fd(int fd, LYD_FORMAT format, int options) {
 
     new_node = lyd_parse_fd(ctx, fd, format, options);
     if (!new_node) {
-        check_libyang_error();
+        check_libyang_error(ctx);
         return nullptr;
     }
 
@@ -212,7 +212,7 @@ S_Module Context::parse_path(const char *path, LYS_INFORMAT format) {
 
     module = (struct lys_module *) lys_parse_path(ctx, path, format);
     if (!module) {
-        check_libyang_error();
+        check_libyang_error(ctx);
         return nullptr;
     }
 
@@ -224,7 +224,7 @@ S_Data_Node Context::parse_data_path(const char *path, LYD_FORMAT format, int op
 
     new_node = lyd_parse_path(ctx, path, format, options);
     if (!new_node) {
-        check_libyang_error();
+        check_libyang_error(ctx);
         return nullptr;
     }
 
@@ -236,7 +236,7 @@ S_Data_Node Context::parse_xml(S_Xml_Elem elem, int options) {
 
     new_node = lyd_parse_xml(ctx, &elem->elem, options);
     if (!new_node) {
-        check_libyang_error();
+        check_libyang_error(ctx);
         return nullptr;
     }
 
@@ -247,7 +247,7 @@ S_Data_Node Context::parse_xml(S_Xml_Elem elem, int options) {
 Set::Set() {
     struct ly_set *set = ly_set_new();
     if (!set) {
-        check_libyang_error();
+        check_libyang_error(nullptr);
     }
 
     set = set;

@@ -100,12 +100,12 @@ test_circular_import(void **state)
     ly_ctx_set_searchdir(ctx, SCHEMA_FOLDER_YANG);
 
     assert_ptr_equal(ly_ctx_load_module(ctx, "circ_imp1", NULL), NULL);
-    assert_int_equal(ly_vecode, LYVE_CIRC_IMPORTS);
+    assert_int_equal(ly_vecode(ctx), LYVE_CIRC_IMPORTS);
 
     ly_ctx_set_searchdir(ctx, SCHEMA_FOLDER_YIN);
 
     assert_ptr_equal(ly_ctx_load_module(ctx, "circ_imp1", NULL), NULL);
-    assert_int_equal(ly_vecode, LYVE_CIRC_IMPORTS);
+    assert_int_equal(ly_vecode(ctx), LYVE_CIRC_IMPORTS);
 }
 
 /*
