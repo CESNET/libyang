@@ -138,6 +138,7 @@
 %newobject Module::rev;
 %newobject Module::data;
 %newobject Module::data_instantiables;
+%newobject Module::print_mem;
 
 %shared_ptr(Submodule);
 %newobject Submodule::ctx;

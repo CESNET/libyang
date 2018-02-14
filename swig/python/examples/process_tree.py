@@ -2,7 +2,7 @@ __author__ = "Mislav Novakovic <mislav.novakovic@sartura.hr>"
 __copyright__ = "Copyright 2017, Deutsche Telekom AG"
 __license__ = "BSD 3-Clause"
 
-import libyang as ly
+import yang as ly
 
 try:
     ctx = ly.Context("/etc/sysrepo/yang")
