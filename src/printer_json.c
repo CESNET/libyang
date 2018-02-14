@@ -530,7 +530,7 @@ json_print_anydata(struct lyout *out, int level, const struct lyd_node *node, in
 static int
 json_print_nodes(struct lyout *out, int level, const struct lyd_node *root, int withsiblings, int toplevel, int options)
 {
-    int ret = EXIT_SUCCESS;
+    int ret = EXIT_SUCCESS,comma_flag = 0;
     const struct lyd_node *node, *iter;
 
     LY_TREE_FOR(root, node) {
@@ -544,14 +544,14 @@ json_print_nodes(struct lyout *out, int level, const struct lyd_node *root, int 
         case LYS_ACTION:
         case LYS_NOTIF:
         case LYS_CONTAINER:
-            if (node->prev->next) {
+            if (comma_flag) {
                 /* print the previous comma */
                 ly_print(out, ",%s", (level ? "\n" : ""));
             }
             ret = json_print_container(out, level, node, toplevel, options);
             break;
         case LYS_LEAF:
-            if (node->prev->next) {
+            if (comma_flag) {
                 /* print the previous comma */
                 ly_print(out, ",%s", (level ? "\n" : ""));
             }
@@ -570,7 +570,7 @@ json_print_nodes(struct lyout *out, int level, const struct lyd_node *root, int 
                 }
             }
             if (!iter->next) {
-                if (node->prev->next) {
+                if (comma_flag) {
                     /* print the previous comma */
                     ly_print(out, ",%s", (level ? "\n" : ""));
                 }
@@ -580,14 +580,14 @@ json_print_nodes(struct lyout *out, int level, const struct lyd_node *root, int 
             }
             break;
         case LYS_ANYXML:
-            if (node->prev->next) {
+            if (comma_flag) {
                 /* print the previous comma */
                 ly_print(out, ",%s", (level ? "\n" : ""));
             }
             ret = json_print_anyxml(out, level, node, toplevel, options);
             break;
         case LYS_ANYDATA:
-            if (node->prev->next) {
+            if (comma_flag) {
                 /* print the previous comma */
                 ly_print(out, ",%s", (level ? "\n" : ""));
             }
@@ -602,6 +602,7 @@ json_print_nodes(struct lyout *out, int level, const struct lyd_node *root, int 
         if (!withsiblings) {
             break;
         }
+        comma_flag = 1;
     }
     if (root && level) {
         ly_print(out, "\n");
