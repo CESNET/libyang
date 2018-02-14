@@ -63,8 +63,7 @@ int main() {
     }
 
     auto modules = std::shared_ptr<std::vector<S_Module>>(ctx->get_module_iter());
-    std::vector<S_Module>::iterator mod;
-    for(mod = modules->begin() ; mod != modules->end() ; ++mod) {
+    for(auto mod = modules->begin() ; mod != modules->end() ; ++mod) {
         cout << "module " << (*mod)->name() << " prefix " << (*mod)->prefix() << " type " << (*mod)->type() << endl;
     }
 

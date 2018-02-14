@@ -123,12 +123,11 @@ void Context::clean() {
     return ly_ctx_clean(ctx, nullptr);
 }
 std::vector<std::string> *Context::get_searchdirs() {
+    auto s_vector = new std::vector<std::string>;
     const char * const *data = ly_ctx_get_searchdirs(ctx);
     if (!data) {
-        return nullptr;
+        return s_vector;
     }
-
-    auto s_vector = new std::vector<std::string>;
 
     int size = 0;
     while (true) {

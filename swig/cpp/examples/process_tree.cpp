@@ -60,11 +60,8 @@ int main() {
     } else {
         cout << "tree_dfs\n" << endl;
         auto data_list = std::shared_ptr<std::vector<S_Data_Node>>(node->tree_dfs());
-        if (data_list) {
-            std::vector<S_Data_Node>::iterator elem;
-            for(elem = data_list->begin() ; elem != data_list->end() ; ++elem) {
-                cout << "name: " << (*elem)->schema()->name() << " type: " << (*elem)->schema()->nodetype() << endl;
-            }
+        for(auto elem = data_list->begin() ; elem != data_list->end() ; ++elem) {
+            cout << "name: " << (*elem)->schema()->name() << " type: " << (*elem)->schema()->nodetype() << endl;
         }
 
         cout << "\nChild of " << node->schema()->name() << " is: " << node->child()->schema()->name() << "\n" << endl;
@@ -72,20 +69,14 @@ int main() {
         cout << "tree_for\n" << endl;
 
         data_list = std::shared_ptr<std::vector<S_Data_Node>>(node->child()->child()->tree_dfs());
-        if (data_list) {
-            std::vector<S_Data_Node>::iterator elem;
-            for(elem = data_list->begin() ; elem != data_list->end() ; ++elem) {
-                cout << "child of " << node->child()->schema()->name() << " is: " << (*elem)->schema()->name() << " type: " << (*elem)->schema()->nodetype() << endl;
-            }
+        for(auto elem = data_list->begin() ; elem != data_list->end() ; ++elem) {
+            cout << "child of " << node->child()->schema()->name() << " is: " << (*elem)->schema()->name() << " type: " << (*elem)->schema()->nodetype() << endl;
         }
 
         cout << "\n schema tree_dfs\n" << endl;
         auto schema_list = std::shared_ptr<std::vector<S_Schema_Node>>(node->schema()->tree_dfs());
-        if (schema_list) {
-            std::vector<S_Schema_Node>::iterator elem;
-            for(elem = schema_list->begin() ; elem != schema_list->end() ; ++elem) {
-                cout << "schema name " << (*elem)->name() << " type " << (*elem)->nodetype() << endl;
-            }
+        for(auto elem = schema_list->begin() ; elem != schema_list->end() ; ++elem) {
+            cout << "schema name " << (*elem)->name() << " type " << (*elem)->nodetype() << endl;
         }
     }
 

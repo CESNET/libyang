@@ -33,26 +33,23 @@ if node is None:
 else:
     print("tree_dfs\n")
     data_list = node.tree_dfs()
-    if data_list is not None:
-        for elem in data_list:
-            schema = elem.schema()
-            print("name: " + schema.name() + " type: " + str(schema.nodetype()))
-            if (ly.LYS_LEAF == schema.nodetype() or ly.LYS_LEAFLIST == schema.nodetype()):
-                casted = elem.subtype()
-                if casted is None:
-                    continue
-                print("node " + casted.schema().name() + " has value " + casted.value_str())
+    for elem in data_list:
+        schema = elem.schema()
+        print("name: " + schema.name() + " type: " + str(schema.nodetype()))
+        if (ly.LYS_LEAF == schema.nodetype() or ly.LYS_LEAFLIST == schema.nodetype()):
+            casted = elem.subtype()
+            if casted is None:
+                continue
+            print("node " + casted.schema().name() + " has value " + casted.value_str())
 
     print("\nChild of " + node.schema().name() + " is " + node.child().schema().name() + " \n ")
 
     print("tree_for\n")
     data_list = node.child().child().tree_for()
-    if data_list is not None:
-        for elem in data_list:
-            print("child of " + node.child().schema().name() + " is: " + elem.schema().name() + " type: " + str(elem.schema().nodetype()))
+    for elem in data_list:
+        print("child of " + node.child().schema().name() + " is: " + elem.schema().name() + " type: " + str(elem.schema().nodetype()))
 
     print("\nschema tree_dfs\n")
     schema_list = node.schema().tree_dfs()
-    if schema_list is not None:
-        for elem in schema_list:
-            print("schema name: " + elem.name() + " type: " + str(elem.nodetype()))
+    for elem in schema_list:
+        print("schema name: " + elem.name() + " type: " + str(elem.nodetype()))
