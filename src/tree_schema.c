@@ -1497,7 +1497,7 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
                 new->info.str.patterns_pcre = malloc(new->info.str.pat_count * 2 * sizeof *new->info.str.patterns_pcre);
                 LY_CHECK_ERR_RETURN(!new->info.str.patterns_pcre, LOGMEM(mod->ctx), -1);
                 for (u = 0; u < new->info.str.pat_count; u++) {
-                    if (lyp_precompile_pattern(&new->info.str.patterns[u].expr[1],
+                    if (lyp_precompile_pattern(mod->ctx, &new->info.str.patterns[u].expr[1],
                                               (pcre**)&new->info.str.patterns_pcre[2 * u],
                                               (pcre_extra**)&new->info.str.patterns_pcre[2 * u + 1])) {
                         free(new->info.str.patterns_pcre);

@@ -1398,7 +1398,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 #ifdef LY_ENABLED_CACHE
                     else {
                         /* outside grouping, check syntax and precompile pattern for later use by libpcre */
-                        if (lyp_precompile_pattern(value,
+                        if (lyp_precompile_pattern(ctx, value,
                                 (pcre**)&type->info.str.patterns_pcre[type->info.str.pat_count * 2],
                                 (pcre_extra**)&type->info.str.patterns_pcre[type->info.str.pat_count * 2 + 1])) {
                             goto error;
