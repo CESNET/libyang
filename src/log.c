@@ -786,6 +786,21 @@ ly_vlog(const struct ly_ctx *ctx, LY_ECODE ecode, enum LY_VLOG_ELEM elem_type, c
     va_end(ap);
 }
 
+API void
+ly_err_print(struct ly_err_item *eitem)
+{
+    if (ly_log_opts & LY_LOLOG) {
+        if (ly_log_clb) {
+            ly_log_clb(last_eitem->level, last_eitem->msg, last_eitem->path);
+        } else {
+            fprintf(stderr, "libyang[%d]: %s%s", last_eitem->level, last_eitem->msg, last_eitem->path ? " " : "\n");
+            if (last_eitem->path) {
+                fprintf(stderr, "(path: %s)\n", last_eitem->path);
+            }
+        }
+    }
+}
+
 static void
 err_print(struct ly_ctx *ctx, struct ly_err_item *last_eitem)
 {
@@ -796,16 +811,9 @@ err_print(struct ly_ctx *ctx, struct ly_err_item *last_eitem)
         last_eitem = last_eitem->next;
     }
 
-    if ((log_opt != ILO_STORE) && (log_opt != ILO_IGNORE) && (ly_log_opts & LY_LOLOG)) {
+    if ((log_opt != ILO_STORE) && (log_opt != ILO_IGNORE)) {
         for (; last_eitem; last_eitem = last_eitem->next) {
-            if (ly_log_clb) {
-                ly_log_clb(last_eitem->level, last_eitem->msg, last_eitem->path);
-            } else {
-                fprintf(stderr, "libyang[%d]: %s%s", last_eitem->level, last_eitem->msg, last_eitem->path ? " " : "\n");
-                if (last_eitem->path) {
-                    fprintf(stderr, "(path: %s)\n", last_eitem->path);
-                }
-            }
+            ly_err_print(last_eitem);
 
             /* also properly update ly_errno */
             if (last_eitem->level == LY_LLERR) {
