@@ -3,7 +3,7 @@
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief libyang's yanglint tool - noninteractive code
  *
- * Copyright (c) 2015-2016 CESNET, z.s.p.o.
+ * Copyright (c) 2015-2018 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -692,6 +692,9 @@ main_ni(int argc, char* argv[])
     /* convert (print) to FORMAT */
     if (outformat_s) {
         for (u = 0; u < mods->number; u++) {
+            if (u) {
+                fputs("\n", out);
+            }
             lys_print_file(out, (struct lys_module *)mods->set.g[u], outformat_s, outtarget_s, outline_length_s, outoptions_s);
         }
     } else if (data) {
