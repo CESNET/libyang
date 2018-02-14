@@ -1094,15 +1094,16 @@ test_ly_log_options(void **state)
 
     assert_int_equal(ly_log_options(LY_LOLOG | LY_LOSTORE_LAST), LY_LOLOG | LY_LOSTORE_LAST);
 
-    i = ly_err_last(ctx);
+    i = ly_err_first(ctx);
     assert_null(i);
 
     mod = ly_ctx_load_module(ctx, "INVALID_NAME", NULL);
     assert_null(mod);
     assert_int_equal(ly_errno, LY_ESYS);
 
-    i = ly_err_last(ctx);
+    i = ly_err_first(ctx);
     assert_non_null(i);
+    i = i->prev;
     assert_int_equal(i->no, LY_ESYS);
     assert_string_equal(i->msg, "Data model \"INVALID_NAME\" not found.");
     assert_null(i->next);
@@ -1111,8 +1112,9 @@ test_ly_log_options(void **state)
     assert_null(mod);
     assert_int_equal(ly_errno, LY_ESYS);
 
-    i = ly_err_last(ctx);
+    i = ly_err_first(ctx);
     assert_non_null(i);
+    i = i->prev;
     assert_int_equal(i->no, LY_ESYS);
     assert_string_equal(i->msg, "Data model \"INVALID_NAME2\" not found.");
     assert_null(i->next);
@@ -1123,8 +1125,9 @@ test_ly_log_options(void **state)
     assert_null(path);
     assert_int_equal(ly_errno, LY_EVALID);
 
-    i = ly_err_last(ctx);
+    i = ly_err_first(ctx);
     assert_non_null(i);
+    i = i->prev;
     assert_int_equal(i->no, LY_EVALID);
     assert_int_equal(i->vecode, LYVE_PATH_INNODE);
     assert_string_equal(i->msg, "Schema node not found.");
@@ -1135,8 +1138,9 @@ test_ly_log_options(void **state)
     assert_null(path);
     assert_int_equal(ly_errno, LY_EVALID);
 
-    i = ly_err_last(ctx);
+    i = ly_err_first(ctx);
     assert_non_null(i);
+    i = i->prev;
     assert_int_equal(i->no, LY_EVALID);
     assert_int_equal(i->vecode, LYVE_PATH_INMOD);
     assert_string_equal(i->msg, "Module not found or not implemented.");
@@ -1150,7 +1154,7 @@ test_ly_log_options(void **state)
 
     ly_err_clean(ctx, NULL);
     assert_int_equal(ly_errno, LY_SUCCESS);
-    i = ly_err_last(ctx);
+    i = ly_err_first(ctx);
     assert_null(i);
 }
 

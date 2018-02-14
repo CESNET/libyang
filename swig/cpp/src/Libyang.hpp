@@ -89,10 +89,11 @@ class Error
 {
 public:
     Error(S_Context context) {
-        struct ly_err_item *eitem = ly_err_last(context->ctx);
+        struct ly_err_item *eitem = ly_err_first(context->ctx);
         if (eitem == nullptr) {
             throw std::invalid_argument("No error stored in the context.");
         }
+        eitem = eitem->prev;
         libyang_err = eitem->no;
         libyang_vecode = eitem->vecode;
         libyang_errmsg = eitem->msg;

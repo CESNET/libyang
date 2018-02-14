@@ -44,9 +44,9 @@ ly_vecode(const struct ly_ctx *ctx)
 {
     struct ly_err_item *i;
 
-    i = ly_err_last(ctx);
+    i = ly_err_first(ctx);
     if (i) {
-        return i->vecode;
+        return i->prev->vecode;
     }
 
     return 0;
@@ -57,9 +57,9 @@ ly_errmsg(const struct ly_ctx *ctx)
 {
     struct ly_err_item *i;
 
-    i = ly_err_last(ctx);
+    i = ly_err_first(ctx);
     if (i) {
-        return i->msg;
+        return i->prev->msg;
     }
 
     return NULL;
@@ -70,9 +70,9 @@ ly_errpath(const struct ly_ctx *ctx)
 {
     struct ly_err_item *i;
 
-    i = ly_err_last(ctx);
+    i = ly_err_first(ctx);
     if (i) {
-        return i->path;
+        return i->prev->path;
     }
 
     return NULL;
@@ -83,35 +83,18 @@ ly_errapptag(const struct ly_ctx *ctx)
 {
     struct ly_err_item *i;
 
-    i = ly_err_last(ctx);
+    i = ly_err_first(ctx);
     if (i) {
-        return i->apptag;
+        return i->prev->apptag;
     }
 
     return NULL;
 }
 
 API struct ly_err_item *
-ly_err_last(const struct ly_ctx *ctx)
+ly_err_first(const struct ly_ctx *ctx)
 {
-    struct ly_err_item *i;
-
-    i = pthread_getspecific(ctx->errlist_key);
-    if (!i) {
-        return NULL;
-    }
-
-    /* get the most recent error (end of the list) */
-    i = i->prev;
-
-    do {
-        if (i->level == LY_LLERR) {
-            return i;
-        }
-        i = i->prev;
-    } while (i->prev->next);
-
-    return NULL;
+    return pthread_getspecific(ctx->errlist_key);
 }
 
 void
@@ -134,7 +117,7 @@ ly_err_clean(struct ly_ctx *ctx, struct ly_err_item *eitem)
 {
     struct ly_err_item *i, *first;
 
-    first = pthread_getspecific(ctx->errlist_key);
+    first = ly_err_first(ctx);
     if (first == eitem) {
         eitem = NULL;
     }

@@ -1021,9 +1021,8 @@ extern "C" {
  * This is the basic way of working with errors but another, more sophisticated is also available. With ly_log_options()
  * you can modify what is done with all the messages. Default flags are #LY_LOLOG and #LY_LOSTORE_LAST so that messages
  * are logged and the last one is stored. If you set the flag #LY_LOSTORE, all the messages will be stored. Be careful
- * because unless you regularly clean them, the error list will grow indefinitely. With ly_err_last() you can retireve
- * the latest error structure ly_err_item. Its attributes will correspond to the values returned by ly_errmsg(),
- * ly_errpath(), ... This is actually a linked-list so you can get to previous errors using the **prev** pointer.
+ * because unless you regularly clean them, the error list will grow indefinitely. With ly_err_first() you can retrieve
+ * the first generated error structure ly_err_item. It is a linked-list so you can get next errors using the **next** pointer.
  * Being processed (for instance printed with ly_err_print()), you can then free them with ly_err_clean().
  *
  * \note API for this group of functions is described in the [logger module](@ref logger).
@@ -1039,7 +1038,7 @@ extern "C" {
  * - ly_errmsg()
  * - ly_errpath()
  * - ly_errapptag()
- * - ly_err_last()
+ * - ly_err_first()
  * - ly_err_print()
  * - ly_err_clean()
  */
@@ -1984,12 +1983,12 @@ struct ly_err_item {
 };
 
 /**
- * @brief Get the last (thread, context-specific) error structure.
+ * @brief Get the first (thread, context-specific) generated error structure.
  *
  * @param[in] ctx Relative context.
- * @return Last error structure (can be NULL), do not modify!
+ * @return First error structure (can be NULL), do not modify!
  */
-struct ly_err_item *ly_err_last(const struct ly_ctx *ctx);
+struct ly_err_item *ly_err_first(const struct ly_ctx *ctx);
 
 /**
  * @brief Print the error structure as if just generated.

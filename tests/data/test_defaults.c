@@ -528,11 +528,11 @@ test_leaflist_in10(void **state)
     ly_log_options(LY_LOSTORE);
     mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
     assert_ptr_equal(mod, NULL);
-    assert_int_equal(ly_err_last(st->ctx)->prev->vecode, LYVE_INSTMT);
+    assert_int_equal(ly_err_first(st->ctx)->vecode, LYVE_INSTMT);
 
     mod = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
     assert_ptr_equal(mod, NULL);
-    assert_int_equal(ly_err_last(st->ctx)->prev->vecode, LYVE_INSTMT);
+    assert_int_equal(ly_err_first(st->ctx)->prev->prev->vecode, LYVE_INSTMT);
     ly_err_clean(st->ctx, NULL);
     ly_log_options(LY_LOLOG | LY_LOSTORE_LAST);
 }

@@ -744,7 +744,7 @@ ly_vlog(const struct ly_ctx *ctx, LY_ECODE ecode, enum LY_VLOG_ELEM elem_type, c
     va_list ap;
     const char *fmt;
     char* path = NULL;
-    const struct ly_err_item *last;
+    const struct ly_err_item *first;
 
     if ((ecode == LYE_PATH) && !path_flag) {
         return;
@@ -753,9 +753,9 @@ ly_vlog(const struct ly_ctx *ctx, LY_ECODE ecode, enum LY_VLOG_ELEM elem_type, c
     if (path_flag && (elem_type != LY_VLOG_NONE)) {
         if (elem_type == LY_VLOG_PREV) {
             /* use previous path */
-            last = ly_err_last(ctx);
-            if (last && last->path) {
-                path = strdup(last->path);
+            first = ly_err_first(ctx);
+            if (first && first->prev->path) {
+                path = strdup(first->prev->path);
             }
         } else {
             /* print path */
@@ -886,7 +886,10 @@ ly_ilo_change(struct ly_ctx *ctx, enum int_log_opts new_ilo, enum int_log_opts *
     if (new_ilo == ILO_STORE) {
         /* only in this case the errors are only temporarily stored */
         assert(ctx && prev_last_eitem);
-        *prev_last_eitem = (struct ly_err_item *)ly_err_last(ctx);
+        *prev_last_eitem = (struct ly_err_item *)ly_err_first(ctx);
+        if (*prev_last_eitem) {
+            *prev_last_eitem = (*prev_last_eitem)->prev;
+        }
     }
 
     if (log_opt != ILO_IGNORE) {
@@ -920,7 +923,7 @@ ly_err_last_set_apptag(const struct ly_ctx *ctx, const char *apptag)
     struct ly_err_item *i;
 
     if (log_opt != ILO_IGNORE) {
-        i = pthread_getspecific(ctx->errlist_key);
+        i = ly_err_first(ctx);
         if (i) {
             i = i->prev;
             i->apptag = strdup(apptag);
