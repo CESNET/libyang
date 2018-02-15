@@ -30,7 +30,10 @@ before_install:
   - if [ "$TRAVIS_OS_NAME" = "linux" -a "$CC" = "gcc" ]; then pip install --user codecov; export CFLAGS="-coverage"; fi
 
 script:
-  - mkdir build && cd build && cmake -DGEN_LANGUAGE_BINDINGS=ON .. && make -j2 && ctest --output-on-failure
+  - mkdir build && cd build
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then cmake ..; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then cmake -DGEN_LANGUAGE_BINDINGS=ON ..; fi
+  - make -j2 && ctest --output-on-failure
   - cd -
 
 after_success:
