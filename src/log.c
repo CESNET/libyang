@@ -396,7 +396,7 @@ const char *ly_errs[] = {
 };
 
 static const LY_VECODE ecode2vecode[] = {
-    LYVE_SUCCESS = 0,  /* LYE_SUCCESS */
+    LYVE_SUCCESS,      /* LYE_SUCCESS */
 
     LYVE_XML_MISS,     /* LYE_XML_MISS */
     LYVE_XML_INVAL,    /* LYE_XML_INVAL */
