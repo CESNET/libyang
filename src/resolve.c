@@ -4871,7 +4871,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
             LY_CHECK_ERR_GOTO(!must, LOGMEM, fail);
             for (k = 0, j = *old_size; k < rfn->must_size; k++, j++) {
                 must[j].ext_size = rfn->must[k].ext_size;
-                lys_ext_dup(rfn->module, rfn->must[k].ext, rfn->must[k].ext_size, &rfn->must[k], LYEXT_PAR_RESTR,
+                lys_ext_dup(ctx, rfn->module, rfn->must[k].ext, rfn->must[k].ext_size, &rfn->must[k], LYEXT_PAR_RESTR,
                             &must[j].ext, 0, unres);
                 must[j].expr = lydict_insert(ctx, rfn->must[k].expr, 0);
                 must[j].dsc = lydict_insert(ctx, rfn->must[k].dsc, 0);
@@ -4917,7 +4917,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
 
                     /* duplicate extensions */
                     iff[j].ext_size = rfn->iffeature[k].ext_size;
-                    lys_ext_dup(rfn->module, rfn->iffeature[k].ext, rfn->iffeature[k].ext_size,
+                    lys_ext_dup(ctx, rfn->module, rfn->iffeature[k].ext, rfn->iffeature[k].ext_size,
                                 &rfn->iffeature[k], LYEXT_PAR_IFFEATURE, &iff[j].ext, 0, unres);
                 }
                 (*old_size)++;

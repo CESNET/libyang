@@ -3217,7 +3217,7 @@ lyp_rfn_apply_ext_(struct lys_refine *rfn, struct lys_node *target, LYEXT_SUBSTM
         target->ext[n]->arg_value = lydict_insert(ctx, rfn->ext[m]->arg_value, 0);
         /* flags do not change */
         target->ext[n]->ext_size = rfn->ext[m]->ext_size;
-        lys_ext_dup(target->module, rfn->ext[m]->ext, rfn->ext[m]->ext_size, target, LYEXT_PAR_NODE,
+        lys_ext_dup(ctx, target->module, rfn->ext[m]->ext, rfn->ext[m]->ext_size, target, LYEXT_PAR_NODE,
                     &target->ext[n]->ext, 0, NULL);
         /* substmt does not change, but the index must be taken from the refine */
         target->ext[n]->insubstmt_index = rfn->ext[m]->insubstmt_index;
@@ -3532,7 +3532,7 @@ lyp_deviate_apply_ext(struct lys_deviate *dev, struct lys_node *target, LYEXT_SU
         target->ext[n]->insubstmt = substmt;
         target->ext[n]->insubstmt_index = dev->ext[m]->insubstmt_index;
         target->ext[n]->ext_size = dev->ext[m]->ext_size;
-        lys_ext_dup(target->module, dev->ext[m]->ext, dev->ext[m]->ext_size, target, LYEXT_PAR_NODE,
+        lys_ext_dup(ctx, target->module, dev->ext[m]->ext, dev->ext[m]->ext_size, target, LYEXT_PAR_NODE,
                     &target->ext[n]->ext, 1, NULL);
         target->ext[n]->nodetype = LYS_EXT;
         target->ext[n]->module = target->module;
