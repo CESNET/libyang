@@ -268,6 +268,16 @@ std::vector<S_Error> *get_ly_errors(S_Context context)
     return s_vector;
 }
 
+int set_log_options(int options)
+{
+    return ly_log_options(options);
+}
+
+LY_LOG_LEVEL set_log_verbosity(LY_LOG_LEVEL level)
+{
+    return ly_verb(level);
+}
+
 Set::Set() {
     struct ly_set *set = ly_set_new();
     if (!set) {

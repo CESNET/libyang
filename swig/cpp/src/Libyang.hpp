@@ -101,6 +101,8 @@ private:
 };
 
 std::vector<S_Error> *get_ly_errors(S_Context context);
+int set_log_options(int options);
+LY_LOG_LEVEL set_log_verbosity(LY_LOG_LEVEL level);
 
 class Set
 {
