@@ -52,7 +52,7 @@ std::string Module::print_mem(LYS_OUTFORMAT format, int options) {
     int rc = 0;
 
     rc = lys_print_mem(&strp, module, format, NULL, 0, options);
-    if (0 != rc) {
+    if (rc) {
         check_libyang_error(module->ctx);
         return nullptr;
     }

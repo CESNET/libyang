@@ -212,49 +212,49 @@ S_Data_Node Data_Node::dup_to_ctx(int recursive, S_Context context) {
 }
 int Data_Node::merge(S_Data_Node source, int options) {
     int ret = lyd_merge(node, source->node, options);
-    if (!ret) {
+    if (ret) {
         check_libyang_error(source->node->schema->module->ctx);
     }
     return ret;
 }
 int Data_Node::merge_to_ctx(S_Data_Node source, int options, S_Context context) {
     int ret = lyd_merge_to_ctx(&node, source->node, options, context->ctx);
-    if (!ret) {
+    if (ret) {
         check_libyang_error(context->ctx);
     }
     return ret;
 }
 int Data_Node::insert(S_Data_Node new_node) {
     int ret = lyd_insert(node, new_node->node);
-    if (!ret) {
+    if (ret) {
         check_libyang_error(node->schema->module->ctx);
     }
     return ret;
 }
 int Data_Node::insert_sibling(S_Data_Node new_node) {
     int ret = lyd_insert_sibling(&node, new_node->node);
-    if (!ret) {
+    if (ret) {
         check_libyang_error(node->schema->module->ctx);
     }
     return ret;
 }
 int Data_Node::insert_before(S_Data_Node new_node) {
     int ret = lyd_insert_before(node, new_node->node);
-    if (!ret) {
+    if (ret) {
         check_libyang_error(node->schema->module->ctx);
     }
     return ret;
 }
 int Data_Node::insert_after(S_Data_Node new_node) {
     int ret = lyd_insert_after(node, new_node->node);
-    if (!ret) {
+    if (ret) {
         check_libyang_error(node->schema->module->ctx);
     }
     return ret;
 }
 int Data_Node::schema_sort(int recursive) {
     int ret = lyd_schema_sort(node, recursive);
-    if (!ret) {
+    if (ret) {
         check_libyang_error(node->schema->module->ctx);
     }
     return ret;
@@ -262,7 +262,7 @@ int Data_Node::schema_sort(int recursive) {
 S_Set Data_Node::find_path(const char *expr) {
     struct ly_set *set = lyd_find_path(node, expr);
     if (!set) {
-        return nullptr;
+        check_libyang_error(node->schema->module->ctx);
     }
 
     return std::make_shared<Set>(set, std::make_shared<Deleter>(set, deleter));
@@ -270,7 +270,7 @@ S_Set Data_Node::find_path(const char *expr) {
 S_Set Data_Node::find_instance(S_Schema_Node schema) {
     struct ly_set *set = lyd_find_instance(node, schema->node);
     if (!set) {
-        return nullptr;
+        check_libyang_error(node->schema->module->ctx);
     }
 
     return std::make_shared<Set>(set, std::make_shared<Deleter>(set, deleter));
@@ -284,14 +284,14 @@ S_Data_Node Data_Node::first_sibling() {
 }
 int Data_Node::validate(int options, S_Context var_arg) {
     int ret = lyd_validate(&node, options, (void *) var_arg->ctx);
-    if (!ret) {
+    if (ret) {
         check_libyang_error(node ? node->schema->module->ctx : var_arg->ctx);
     }
     return ret;
 }
 int Data_Node::validate(int options, S_Data_Node var_arg) {
     int ret = lyd_validate(&node, options, (void *) var_arg->node);
-    if (!ret) {
+    if (ret) {
         check_libyang_error(node->schema->module->ctx);
     }
     return ret;
@@ -299,7 +299,7 @@ int Data_Node::validate(int options, S_Data_Node var_arg) {
 
 int Data_Node::validate_value(const char *value) {
     int ret = lyd_validate_value(node->schema, value);
-    if (!ret) {
+    if (ret != EXIT_SUCCESS) {
         check_libyang_error(node->schema->module->ctx);
     }
     return ret;
@@ -353,7 +353,7 @@ unsigned int Data_Node::list_pos() {
 }
 int Data_Node::unlink() {
     int ret = lyd_unlink(node);
-    if (!ret) {
+    if (ret) {
         check_libyang_error(node->schema->module->ctx);
     }
     return ret;
@@ -383,7 +383,7 @@ std::string Data_Node::print_mem(LYD_FORMAT format, int options) {
     int rc = 0;
 
     rc = lyd_print_mem(&strp, node, format, options);
-    if (0 != rc) {
+    if (rc) {
         check_libyang_error(node->schema->module->ctx);
         return nullptr;
     }
@@ -427,7 +427,7 @@ S_Value Data_Node_Leaf_List::value() {
 }
 int Data_Node_Leaf_List::change_leaf(const char *val_str) {
     int ret = lyd_change_leaf((struct lyd_node_leaf_list *) node, val_str);
-    if (ret) {
+    if (ret < 0) {
         check_libyang_error(node->schema->module->ctx);
     }
     return ret;
