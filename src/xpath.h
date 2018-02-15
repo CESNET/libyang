@@ -128,7 +128,7 @@ enum lyxp_expr_type {
 struct lyxp_expr {
     enum lyxp_token *tokens; /* array of tokens */
     uint16_t *expr_pos;      /* array of pointers to the expression in expr (idx of the beginning) */
-    uint8_t *tok_len;        /* array of token lengths in expr */
+    uint16_t *tok_len;       /* array of token lengths in expr */
     enum lyxp_expr_type **repeat; /* array of expression types that this token begins and is repeated ended with 0,
                                      more in the comment after this declaration */
     uint16_t used;           /* used array items */
