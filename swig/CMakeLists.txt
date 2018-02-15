@@ -6,7 +6,7 @@ add_compile_options(-std=c++11)
 
 # find SWIG package
 if(GEN_LANGUAGE_BINDINGS)
-    find_package(SWIG REQUIRED)
+    find_package(SWIG 3.0.5 REQUIRED)
     if(NOT SWIG_FOUND)
         message(WARNING "SWIG library not found")
     else()
@@ -78,6 +78,9 @@ install(FILES ${LIBYANG_HPP_SOURCES} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/lib
 
 if (GEN_CPP_BINDINGS)
     add_subdirectory(cpp/examples)
+    if (ENABLE_BUILD_TESTS)
+        add_subdirectory(cpp/tests)
+    endif()
 endif()
 
 if(PYTHONLIBS_FOUND AND PYTHONINTERP_FOUND AND (${GEN_PYTHON_VERSION} STREQUAL "2" OR ${GEN_PYTHON_VERSION} STREQUAL "3"))
