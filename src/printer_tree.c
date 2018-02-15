@@ -737,6 +737,11 @@ print_children:
         child_mask = LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_USES | LYS_ACTION | LYS_NOTIF;
         max_child_len = tree_get_max_name_len(node->child, NULL, child_mask, opts);
         break;
+    default:
+        child_mask = 0;
+        max_child_len = 0;
+        LOGINT(node->module->ctx);
+        break;
     }
 
     /* print descendants (children) */

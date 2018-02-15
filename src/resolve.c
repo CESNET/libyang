@@ -3152,7 +3152,7 @@ check_default(struct lys_type *type, const char **value, struct lys_module *modu
     struct lyd_node_leaf_list node;
     const char *dflt = NULL;
     char *s;
-    int ret = EXIT_SUCCESS;
+    int ret = EXIT_SUCCESS, r;
     struct ly_ctx *ctx = module->ctx;
 
     assert(value);
@@ -3171,7 +3171,10 @@ check_default(struct lys_type *type, const char **value, struct lys_module *modu
                 dflt = transform_schema2json(module, *value);
             } else {
                 /* default prefix of the module where the typedef is defined */
-                asprintf(&s, "%s:%s", lys_main_module(module)->name, *value);
+                if (asprintf(&s, "%s:%s", lys_main_module(module)->name, *value) == -1) {
+                    LOGMEM(ctx);
+                    return -1;
+                }
                 dflt = lydict_insert_zc(ctx, s);
             }
             lydict_remove(ctx, *value);
@@ -3276,8 +3279,8 @@ check_default(struct lys_type *type, const char **value, struct lys_module *modu
     if (tpdf) {
         node.schema = calloc(1, sizeof (struct lys_node_leaf));
         LY_CHECK_ERR_RETURN(!node.schema, LOGMEM(ctx), -1);
-        asprintf((char **)&node.schema->name, "typedef-%s-default", ((struct lys_tpdf *)type->parent)->name);
-        LY_CHECK_ERR_RETURN(!node.schema->name, LOGMEM(ctx); free(node.schema), -1);
+        r = asprintf((char **)&node.schema->name, "typedef-%s-default", ((struct lys_tpdf *)type->parent)->name);
+        LY_CHECK_ERR_RETURN(r == -1, LOGMEM(ctx); free(node.schema), -1);
         node.schema->module = module;
         memcpy(&((struct lys_node_leaf *)node.schema)->type, type, sizeof *type);
     } else {

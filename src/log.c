@@ -396,7 +396,7 @@ const char *ly_errs[] = {
 };
 
 static const LY_VECODE ecode2vecode[] = {
-    LYVE_SUCCESS,      /* LYE_SUCCESS */
+    LYVE_SUCCESS = 0,  /* LYE_SUCCESS */
 
     LYVE_XML_MISS,     /* LYE_XML_MISS */
     LYVE_XML_INVAL,    /* LYE_XML_INVAL */
@@ -779,7 +779,7 @@ ly_vlog(const struct ly_ctx *ctx, LY_ECODE ecode, enum LY_VLOG_ELEM elem_type, c
         break;
     case LYE_PATH:
         assert(path);
-        log_vprintf(ctx, LY_LLERR, LY_EVALID, ecode2vecode[ecode], path, NULL, ap);
+        log_vprintf(ctx, LY_LLERR, LY_EVALID, LYVE_SUCCESS, path, NULL, ap);
         break;
     default:
         log_vprintf(ctx, LY_LLERR, LY_EVALID, ecode2vecode[ecode], path, ly_errs[ecode], ap);
