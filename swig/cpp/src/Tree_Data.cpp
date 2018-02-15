@@ -468,12 +468,12 @@ Difflist::Difflist(struct lyd_difflist *diff, S_Deleter deleter) {
 }
 Difflist::~Difflist() {};
 std::vector<S_Data_Node> *Difflist::first() {
-    unsigned int i = 0;
-    if (!*diff->first) {
-        return nullptr;
-    }
-
     auto s_vector = new std::vector<S_Data_Node>;
+    unsigned int i = 0;
+
+    if (!*diff->first) {
+        return s_vector;
+    }
 
     for(i = 0; i < sizeof(*diff->first); i++) {
         s_vector->push_back(std::make_shared<Data_Node>(*diff->first, deleter));
@@ -482,12 +482,12 @@ std::vector<S_Data_Node> *Difflist::first() {
     return s_vector;
 }
 std::vector<S_Data_Node> *Difflist::second() {
-    unsigned int i = 0;
-    if (!*diff->second) {
-        return nullptr;
-    }
-
     auto s_vector = new std::vector<S_Data_Node>;
+    unsigned int i = 0;
+
+    if (!*diff->second) {
+        return s_vector;
+    }
 
     for(i = 0; i < sizeof(*diff->second); i++) {
         s_vector->push_back(std::make_shared<Data_Node>(*diff->second, deleter));

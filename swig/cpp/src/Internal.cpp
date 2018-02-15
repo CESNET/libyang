@@ -25,13 +25,15 @@ extern "C" {
 }
 
 void check_libyang_error(ly_ctx *ctx) {
-    const char *errmsg = ly_errmsg(ctx);
+    const char *errmsg = ctx ? ly_errmsg(ctx) : nullptr;
 
     if (errmsg) {
         throw std::runtime_error(errmsg);
     } else if (ly_errno) {
-        throw std::runtime_error("Error");
-    }
+        throw std::runtime_error("libyang error");
+    } else if (!ctx) {
+        throw std::runtime_error("No Context");
+	}
 };
 
 Deleter::Deleter(ly_ctx *ctx, S_Deleter parent):

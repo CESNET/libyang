@@ -74,6 +74,7 @@ public:
     S_Data_Node parse_xml(S_Xml_Elem elem, int options = 0);
     S_Module parse_path(const char *path, LYS_INFORMAT format);
 
+    friend std::vector<S_Error> *get_ly_errors(S_Context context);
     friend Data_Node;
     friend Deleter;
     friend Error;
@@ -88,31 +89,18 @@ S_Context create_new_Context(struct ly_ctx *ctx);
 class Error
 {
 public:
-    Error(S_Context context) {
-        struct ly_err_item *eitem = ly_err_first(context->ctx);
-        if (eitem == nullptr) {
-            throw std::invalid_argument("No error stored in the context.");
-        }
-        eitem = eitem->prev;
-        libyang_err = eitem->no;
-        libyang_vecode = eitem->vecode;
-        libyang_errmsg = eitem->msg;
-        libyang_errpath = eitem->path;
-        libyang_errapptag = eitem->apptag;
-    };
+    Error(struct ly_err_item *eitem);
     ~Error() {};
-    LY_ERR err() throw() {return libyang_err;};
-    LY_VECODE vecode() throw() {return libyang_vecode;};
-    const char *errmsg() const throw() {return libyang_errmsg;};
-    const char *errpath() const throw() {return libyang_errpath;};
-    const char *errapptag() const throw() {return libyang_errapptag;};
+    LY_ERR err() throw() {return eitem->no;};
+    LY_VECODE vecode() throw() {return eitem->vecode;};
+    const char *errmsg() const throw() {return eitem->msg ? eitem->msg : "";};
+    const char *errpath() const throw() {return eitem->path ? eitem->path : "";};
+    const char *errapptag() const throw() {return eitem->apptag ? eitem->path : "";};
 private:
-    LY_ERR libyang_err;
-    LY_VECODE libyang_vecode;
-    const char *libyang_errmsg;
-    const char *libyang_errpath;
-    const char *libyang_errapptag;
+	struct ly_err_item *eitem;
 };
+
+std::vector<S_Error> *get_ly_errors(S_Context context);
 
 class Set
 {
