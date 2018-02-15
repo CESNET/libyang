@@ -284,7 +284,7 @@ lyp_mmap(struct ly_ctx *ctx, int fd, size_t addsize, size_t *length, void **addr
          * where the anonymous mapping starts. */
         *length = sb.st_size + pagesize;
         *addr = mmap(NULL, *length, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-        *addr = mmap(addr, sb.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_FIXED, fd, 0);
+        *addr = mmap(*addr, sb.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_FIXED, fd, 0);
     }
     if (*addr == MAP_FAILED) {
         LOGERR(ctx, LY_ESYS, "mmap() failed (%s).", strerror(errno));
