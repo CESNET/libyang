@@ -657,8 +657,6 @@ matched:
         }
     }
 
-    result->filepath = lydict_insert_zc(ctx, match_name);
-    match_name = NULL;
     /* success */
 
 cleanup:

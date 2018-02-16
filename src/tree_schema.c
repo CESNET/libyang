@@ -14,6 +14,9 @@
 
 #define _GNU_SOURCE
 
+#ifdef __APPLE__
+#   include <sys/param.h>
+#endif
 #include <assert.h>
 #include <ctype.h>
 #include <limits.h>
@@ -1120,14 +1123,35 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
     return lys_parse_fd_(ctx, fd, format, NULL, 1);
 }
 
+static void
+lys_parse_set_filename(struct ly_ctx *ctx, const char **filename, int fd)
+{
+    int len;
+#ifdef __APPLE__
+    char path[MAXPATHLEN];
+#else
+    char path[PATH_MAX], proc_path[32];
+#endif
+
+#ifdef __APPLE__
+    if (fcntl(fd, F_GETPATH, path) != -1) {
+        *filename = lydict_insert(ctx, path, 0);
+    }
+#else
+    /* get URI if there is /proc */
+    sprintf(proc_path, "/proc/self/fd/%d", fd);
+    if ((len = readlink(proc_path, path, PATH_MAX - 1)) > 0) {
+        *filename = lydict_insert(ctx, path, len);
+    }
+#endif
+}
+
 const struct lys_module *
 lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const char *revision, int implement)
 {
     const struct lys_module *module;
     size_t length;
     char *addr;
-    char buf[PATH_MAX];
-    int len;
 
     if (!ctx || fd < 0) {
         LOGARG;
@@ -1146,14 +1170,7 @@ lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const char *revis
     lyp_munmap(addr, length);
 
     if (module && !module->filepath) {
-        /* get URI if there is /proc */
-        addr = NULL;
-        if (asprintf(&addr, "/proc/self/fd/%d", fd) != -1) {
-            if ((len = readlink(addr, buf, PATH_MAX - 1)) > 0) {
-                ((struct lys_module *)module)->filepath = lydict_insert(ctx, buf, len);
-            }
-            free(addr);
-        }
+        lys_parse_set_filename(ctx, (const char **)&module->filepath, fd);
     }
 
     return module;
@@ -1193,6 +1210,11 @@ lys_sub_parse_fd(struct lys_module *module, int fd, LYS_INFORMAT format, struct 
     }
 
     lyp_munmap(addr, length);
+
+    if (submodule && !submodule->filepath) {
+        lys_parse_set_filename(module->ctx, (const char **)&submodule->filepath, fd);
+    }
+
     return submodule;
 
 }
