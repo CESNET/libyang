@@ -4341,6 +4341,7 @@ lyd_validate_value(struct lys_node *node, const char *value)
 {
     struct lyd_node_leaf_list leaf;
     struct lys_node_leaf *sleaf = (struct lys_node_leaf*)node;
+    int ret = EXIT_SUCCESS;
 
     if (!node || !(node->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
         LOGARG;
@@ -4353,7 +4354,7 @@ lyd_validate_value(struct lys_node *node, const char *value)
 
     /* dummy leaf */
     memset(&leaf, 0, sizeof leaf);
-    leaf.value_str = value;
+    leaf.value_str = lydict_insert(node->module->ctx, value, 0);
 
 repeat:
     leaf.value_type = sleaf->type.base;
@@ -4363,17 +4364,21 @@ repeat:
         if (!sleaf->type.info.lref.target) {
             /* it should either be unresolved leafref (leaf.value_type are ORed flags) or it will be resolved */
             LOGINT(node->module->ctx);
-            return EXIT_FAILURE;
+            ret = EXIT_FAILURE;
+            goto cleanup;
         }
         sleaf = sleaf->type.info.lref.target;
         goto repeat;
     } else {
         if (!lyp_parse_value(&sleaf->type, &leaf.value_str, NULL, &leaf, NULL, NULL, 0, 0)) {
-            return EXIT_FAILURE;
+            ret = EXIT_FAILURE;
+            goto cleanup;
         }
     }
 
-    return EXIT_SUCCESS;
+cleanup:
+    lydict_remove(node->module->ctx, leaf.value_str);
+    return ret;
 }
 
 /* create an attribute copy */

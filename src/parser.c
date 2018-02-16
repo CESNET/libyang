@@ -1757,6 +1757,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         ident = resolve_identref(type, value, contextnode, local_mod, dflt);
         if (!ident) {
+            lydict_remove(ctx, value);
             goto cleanup;
         } else if (store) {
             /* store the result */
@@ -1805,7 +1806,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             if (!value) {
                 /* invalid identityref format or it was already transformed, so ignore the error here */
                 value = *value_;
-            } else if (value == *value_) {
+            } else if (ly_strequal(value, *value_, 1)) {
                 /* we have actually created the same expression (prefixes are the same as the module names)
                  * so we have just increased dictionary's refcount - fix it */
                 lydict_remove(ctx, value);
@@ -1820,7 +1821,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             *val_type = LY_TYPE_INST | LY_TYPE_INST_UNRES;
         }
 
-        if (value != *value_) {
+        if (!ly_strequal(value, *value_, 1)) {
             /* update the changed value */
             lydict_remove(ctx, *value_);
             *value_ = value;
@@ -1891,7 +1892,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                 goto cleanup;
             }
 
-            if (value != *value_) {
+            if (!ly_strequal(value, *value_, 1)) {
                 /* update the changed value */
                 lydict_remove(ctx, *value_);
                 *value_ = value;
@@ -2208,6 +2209,8 @@ lyp_fill_attr(struct ly_ctx *ctx, struct lyd_node *parent, const char *module_ns
      * canonical form of the value */
     type = lys_ext_complex_get_substmt(LY_STMT_TYPE, dattr->annotation, NULL);
     if (!type || !lyp_parse_value(*type, &dattr->value_str, xml, NULL, dattr, NULL, 1, 0)) {
+        lydict_remove(ctx, dattr->name);
+        lydict_remove(ctx, dattr->value_str);
         free(dattr);
         return -1;
     }
