@@ -2302,17 +2302,19 @@ lys_list_free(struct ly_ctx *ctx, struct lys_node_list *list,
     int i, j;
 
     /* handle only specific parts for LY_NODE_LIST */
-    for (i = 0; i < list->tpdf_size; i++) {
-        lys_tpdf_free(ctx, &list->tpdf[i], private_destructor);
-    }
-    free(list->tpdf);
+    lys_when_free(ctx, list->when, private_destructor);
 
     for (i = 0; i < list->must_size; i++) {
         lys_restr_free(ctx, &list->must[i], private_destructor);
     }
     free(list->must);
 
-    lys_when_free(ctx, list->when, private_destructor);
+    for (i = 0; i < list->tpdf_size; i++) {
+        lys_tpdf_free(ctx, &list->tpdf[i], private_destructor);
+    }
+    free(list->tpdf);
+
+    free(list->keys);
 
     for (i = 0; i < list->unique_size; i++) {
         for (j = 0; j < list->unique[i].expr_size; j++) {
@@ -2322,7 +2324,7 @@ lys_list_free(struct ly_ctx *ctx, struct lys_node_list *list,
     }
     free(list->unique);
 
-    free(list->keys);
+    lydict_remove(ctx, list->keys_str);
 }
 
 static void
