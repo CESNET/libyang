@@ -1126,10 +1126,10 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
 static void
 lys_parse_set_filename(struct ly_ctx *ctx, const char **filename, int fd)
 {
-    int len;
 #ifdef __APPLE__
     char path[MAXPATHLEN];
 #else
+    int len;
     char path[PATH_MAX], proc_path[32];
 #endif
 
