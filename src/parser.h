@@ -22,6 +22,10 @@
 #include "tree_schema.h"
 #include "tree_internal.h"
 
+#ifdef __APPLE__
+#define MAP_ANONYMOUS MAP_ANON
+#endif
+
 /**
  * @defgroup yin YIN format support
  * @{
