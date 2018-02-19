@@ -400,6 +400,7 @@ typedef enum {
 #define LYEXT_OPT_YANG       0x02    /**< temporarily stored pointer to string, which contain prefix and name of extension */
 #define LYEXT_OPT_CONTENT    0x04    /**< content of lys_ext_instance_complex is copied from source (not dup, just memcpy). */
 /** @endcond */
+#define LYEXT_OPT_VALID      0x08    /**< needed to call calback for validation */
 #define LYEXT_OPT_PLUGIN1    0x0100  /**< reserved flag for plugin-specific use */
 #define LYEXT_OPT_PLUGIN2    0x0200  /**< reserved flag for plugin-specific use */
 #define LYEXT_OPT_PLUGIN3    0x0400  /**< reserved flag for plugin-specific use */
@@ -1122,6 +1123,8 @@ struct lys_iffeature {
                                           names) */
 #define LYS_NOTAPPLIED   0x01        /**< flag for the not applied augments to allow keeping the resolved target */
 #define LYS_YINELEM      0x01        /**< yin-element true for extension's argument */
+#define LYS_VALID_DATA   0x1000      /**< flag marking nodes, in which need call validation function of extension */
+
 /**
  * @}
  */
