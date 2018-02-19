@@ -37,14 +37,6 @@ struct ly_modules_list {
     int flags;
 };
 
-struct ly_err_item {
-    LY_ERR no;
-    LY_VECODE code;
-    char *msg;
-    char *path;
-    struct ly_err_item *next;
-};
-
 struct ly_ctx {
     struct dict_table dict;
     struct ly_modules_list models;

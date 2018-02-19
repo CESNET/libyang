@@ -193,12 +193,19 @@ typedef enum {
 } LYS_OUTFORMAT;
 
 /**
- * @brief Schema output options accepted by libyang [printer functions](@ref howtoschemasprinters).
+ * @defgroup schemaprinterflags Schema printer flags
+ * @brief Schema output flags accepted by libyang [printer functions](@ref howtoschemasprinters).
+ *
+ * @{
  */
 #define LYS_OUTOPT_TREE_RFC        0x01 /**< Conform to the RFC TODO tree output */
 #define LYS_OUTOPT_TREE_GROUPING   0x02 /**< Print groupings separately */
 #define LYS_OUTOPT_TREE_USES       0x04 /**< Print only uses instead the resolved grouping nodes */
 #define LYS_OUTOPT_TREE_NO_LEAFREF 0x08 /**< Do not print the target of leafrefs */
+
+/**
+ * @}
+ */
 
 /* shortcuts for common in and out formats */
 #define LYS_YANG 1       /**< YANG schema format, used for #LYS_INFORMAT and #LYS_OUTFORMAT */
@@ -2113,12 +2120,17 @@ const struct lys_node_list *lys_is_key(const struct lys_node_leaf *node, uint8_t
  * Consequent calls suppose to provide the previously returned node as the \p last parameter and still the same
  * \p parent and \p module parameters.
  *
+ * Without options, the function is used to traverse only the schema nodes that can be paired with corresponding
+ * data nodes in a data tree. By setting some \p options the behaviour can be modified to the extent that
+ * all the schema nodes are iteratively returned.
+ *
  * @param[in] last Previously returned schema tree node, or NULL in case of the first call.
  * @param[in] parent Parent of the subtree where the function starts processing (__cannot be__ #LYS_USES, use its parent).
  * If it is #LYS_AUGMENT, only the children of that augment are returned.
- * @param[in] module In case of iterating on top level elements, the \p parent is NULL and module must be specified.
+ * @param[in] module In case of iterating on top level elements, the \p parent is NULL and
+ * module must be specified (cannot be submodule).
  * @param[in] options ORed options LYS_GETNEXT_*.
- * @return Next schema tree node that can be instanciated in a data tree, NULL in case there is no such element
+ * @return Next schema tree node that can be instanciated in a data tree, NULL in case there is no such element.
  */
 const struct lys_node *lys_getnext(const struct lys_node *last, const struct lys_node *parent,
                                    const struct lys_module *module, int options);
@@ -2126,11 +2138,16 @@ const struct lys_node *lys_getnext(const struct lys_node *last, const struct lys
 #define LYS_GETNEXT_WITHCHOICE   0x01 /**< lys_getnext() option to allow returning #LYS_CHOICE nodes instead of looking into them */
 #define LYS_GETNEXT_WITHCASE     0x02 /**< lys_getnext() option to allow returning #LYS_CASE nodes instead of looking into them */
 #define LYS_GETNEXT_WITHGROUPING 0x04 /**< lys_getnext() option to allow returning #LYS_GROUPING nodes instead of skipping them */
-#define LYS_GETNEXT_WITHINOUT    0x08 /**< lys_getnext() option to allow returning #LYS_INPUT and #LYS_OUTPUT nodes instead of looking into them */
+#define LYS_GETNEXT_WITHINOUT    0x08 /**< lys_getnext() option to allow returning #LYS_INPUT and #LYS_OUTPUT nodes
+                                           instead of looking into them */
 #define LYS_GETNEXT_WITHUSES     0x10 /**< lys_getnext() option to allow returning #LYS_USES nodes instead of looking into them */
-#define LYS_GETNEXT_INTOUSES     0x20 /**< lys_getnext() option to allow to go into uses, takes effect only with #LYS_GETNEXT_WITHUSES, otherwise it goes into uses automatically */
+#define LYS_GETNEXT_INTOUSES     0x20 /**< lys_getnext() option to allow to go into uses, takes effect only
+                                           with #LYS_GETNEXT_WITHUSES, otherwise it goes into uses automatically */
 #define LYS_GETNEXT_INTONPCONT   0x40 /**< lys_getnext() option to look into non-presence container, instead of returning container itself */
-#define LYS_GETNEXT_PARENTUSES   0x80 /**< lys_getnext() option to allow parent to be #LYS_USES, in which case only the direct children are traversed */
+#define LYS_GETNEXT_PARENTUSES   0x80 /**< lys_getnext() option to allow parent to be #LYS_USES, in which case only
+                                           the direct children are traversed */
+#define LYS_GETNEXT_NOSTATECHECK 0x100 /**< lys_getnext() option to skip checking module validity (import-only, disabled) and
+                                            relevant if-feature conditions state */
 
 /**
  * @brief Search for schema nodes matching the provided path.
@@ -2341,9 +2358,9 @@ void *lys_set_private(const struct lys_node *node, void *priv);
  * @param[in] module Schema tree to print.
  * @param[in] format Schema output format.
  * @param[in] target_node Optional parameter. It specifies which particular node/subtree in the module will be printed.
- * Use fully qualified schema path (@ref howtoxpath).
- * @param[in] line_length Maximum characters to be printed on a line. 0 for unlimited.
- * @param[in] options Schema output options.
+ * Only for #LYS_OUT_INFO and #LYS_OUT_TREE formats. Use fully qualified schema path (@ref howtoxpath).
+ * @param[in] line_length Maximum characters to be printed on a line, 0 for unlimited. Only for #LYS_OUT_TREE printer.
+ * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
 int lys_print_mem(char **strp, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node,
@@ -2356,9 +2373,9 @@ int lys_print_mem(char **strp, const struct lys_module *module, LYS_OUTFORMAT fo
  * @param[in] fd File descriptor where to print the data.
  * @param[in] format Schema output format.
  * @param[in] target_node Optional parameter. It specifies which particular node/subtree in the module will be printed.
- * Use fully qualified schema path (@ref howtoxpath).
- * @param[in] line_length Maximum characters to be printed on a line. 0 for unlimited.
- * @param[in] options Schema output options.
+ * Only for #LYS_OUT_INFO and #LYS_OUT_TREE formats. Use fully qualified schema path (@ref howtoxpath).
+ * @param[in] line_length Maximum characters to be printed on a line, 0 for unlimited. Only for #LYS_OUT_TREE format.
+ * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
 int lys_print_fd(int fd, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node,
@@ -2371,9 +2388,9 @@ int lys_print_fd(int fd, const struct lys_module *module, LYS_OUTFORMAT format, 
  * @param[in] f File stream where to print the schema.
  * @param[in] format Schema output format.
  * @param[in] target_node Optional parameter. It specifies which particular node/subtree in the module will be printed.
- * Use fully qualified schema path (@ref howtoxpath).
- * @param[in] line_length Maximum characters to be printed on a line. 0 for unlimited.
- * @param[in] options Schema output options.
+ * Only for #LYS_OUT_INFO and #LYS_OUT_TREE formats. Use fully qualified schema path (@ref howtoxpath).
+ * @param[in] line_length Maximum characters to be printed on a line, 0 for unlimited. Only for #LYS_OUT_TREE printer.
+ * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
 int lys_print_file(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node,
@@ -2387,15 +2404,15 @@ int lys_print_file(FILE *f, const struct lys_module *module, LYS_OUTFORMAT forma
  * @param[in] arg Optional caller-specific argument to be passed to the \p writeclb callback.
  * @param[in] format Schema output format.
  * @param[in] target_node Optional parameter. It specifies which particular node/subtree in the module will be printed.
- * Use fully qualified schema path (@ref howtoxpath).
- * @param[in] line_length Maximum characters to be printed on a line. 0 for unlimited.
- * @param[in] options Schema output options.
+ * Only for #LYS_OUT_INFO and #LYS_OUT_TREE formats. Use fully qualified schema path (@ref howtoxpath).
+ * @param[in] line_length Maximum characters to be printed on a line, 0 for unlimited. Only for #LYS_OUT_TREE printer.
+ * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
 int lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
                   const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node, int line_length, int options);
 
-/**@} */
+/** @} */
 
 #ifdef __cplusplus
 }

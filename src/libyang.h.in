@@ -997,18 +997,17 @@ extern "C" {
  */
 
 /**
- *
  * @page howtologger Logger
  *
  * There are 4 verbosity levels defined as ::LY_LOG_LEVEL. The level can be
  * changed by the ly_verb() function. By default, the verbosity level is
  * set to #LY_LLERR value.
  *
- * When an error is encountered, the error message and error number are stored for
- * later use. Caller is able to access the last error message via ly_errmsg() and the
- * corresponding last error code via #ly_errno. If that was a validation error (#ly_errno
- * is set to #LY_EVALID), also validation error code (via #ly_vecode) and path to the
- * error node (via ly_errpath()) are available.
+ * All the logging operations are tied to the specific **thread** and **context**.
+ * The default behaviour is that the last message (error or warning, verbose and debug
+ * messages are never stored) is always stored and can be accessed using ly_errmsg(). On error,
+ * #ly_errno is set. If that was a validation error (#ly_errno is set to #LY_EVALID),
+ * also validation error code (via ly_vecode()) and path to the error node (via ly_errpath()) are available.
  *
  * For some specific cases, a YANG schema can define error message and/or error tag (mainly for
  * use in NETCONF). If a message is set, it is provided via ly_errmsg(). If a tag is set in schema,
@@ -1019,6 +1018,13 @@ extern "C" {
  * (if any) to the caller's callback function. In case of error level, the message and path are still
  * automatically stored and available via the functions and macros described above.
  *
+ * This is the basic way of working with errors but another, more sophisticated is also available. With ly_log_options()
+ * you can modify what is done with all the messages. Default flags are #LY_LOLOG and #LY_LOSTORE_LAST so that messages
+ * are logged and the last one is stored. If you set the flag #LY_LOSTORE, all the messages will be stored. Be careful
+ * because unless you regularly clean them, the error list will grow indefinitely. With ly_err_first() you can retrieve
+ * the first generated error structure ly_err_item. It is a linked-list so you can get next errors using the **next** pointer.
+ * Being processed (for instance printed with ly_err_print()), you can then free them with ly_err_clean().
+ *
  * \note API for this group of functions is described in the [logger module](@ref logger).
  *
  * Functions List
@@ -1026,11 +1032,15 @@ extern "C" {
  * - ly_verb()
  * - ly_set_log_clb()
  * - ly_get_log_clb()
+ * - ly_log_options()
+ * - #ly_errno
+ * - ly_vecode()
  * - ly_errmsg()
  * - ly_errpath()
  * - ly_errapptag()
- * - #ly_errno
- * - #ly_vecode
+ * - ly_err_first()
+ * - ly_err_print()
+ * - ly_err_clean()
  */
 
 /**
@@ -1503,7 +1513,7 @@ void ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct 
  * @param[in] data_path Data path to be transformed.
  * @return Created schema path, NULL on error.
  */
-char *ly_path_data2schema(const struct ly_ctx *ctx, const char *data_path);
+char *ly_path_data2schema(struct ly_ctx *ctx, const char *data_path);
 
 /**@} context */
 
@@ -1690,11 +1700,10 @@ void ly_set_free(struct ly_set *set);
  * @brief Verbosity levels of the libyang logger.
  */
 typedef enum {
-    LY_LLSILENT = -1, /**< Print no messages. */
     LY_LLERR = 0,     /**< Print only error messages, default value. */
-    LY_LLWRN,         /**< Print error and warning messages. */
-    LY_LLVRB,         /**< Besides errors and warnings, print some other verbose messages. */
-    LY_LLDBG          /**< Print all messages including some development debug messages (be careful,
+    LY_LLWRN = 1,     /**< Print error and warning messages. */
+    LY_LLVRB = 2,     /**< Besides errors and warnings, print some other verbose messages. */
+    LY_LLDBG = 3      /**< Print all messages including some development debug messages (be careful,
                            without subsequently calling ly_verb_dbg() no debug messages will be printed!). */
 } LY_LOG_LEVEL;
 
@@ -1705,23 +1714,57 @@ typedef enum {
  */
 LY_LOG_LEVEL ly_verb(LY_LOG_LEVEL level);
 
+/**
+ * @defgroup logopts Logging options
+ * @ingroup logger
+ *
+ * Logging option bits of libyang.
+ *
+ * @{
+ */
+#define LY_LOLOG        0x01 /**< Log messages normally, using callback if set. If not set, messages will
+                                  not be printed by libyang. */
+#define LY_LOSTORE      0x02 /**< Store any generated errors or warnings, never verbose or debug messages.
+                                  Note that if #LY_LOLOG is not set then verbose and debug messages are always lost. */
+#define LY_LOSTORE_LAST 0x06 /**< Store any generated errors or warnings but only the last message, always overwrite
+                                  the previous one. */
+
+/**
+ * @}
+ */
+
+/**
+ * @brief Set additional logger options. Default is #LY_LOLOG | #LY_LOSTORE_LAST.
+ *
+ * @param[in] opts Bitfield of @ref logopts.
+ * @return Previous logger options.
+ */
+int ly_log_options(int opts);
+
 #ifndef NDEBUG
 
 /**
- * @typedef LY_LOG_DBG_GROUP
- * @brief Selected displayed debug message groups.
+ * @defgroup dbggroup Debug message groups
+ * @ingroup logger
+ *
+ * Selected displayed debug message groups.
+ *
+ * @{
  */
-typedef enum {
-    LY_LDGDICT = 0x01,  /**< Dictionary additions and deletions. */
-    LY_LDGYANG = 0x02,  /**< YANG parser messages. */
-    LY_LDGYIN = 0x04,   /**< YIN parser messages. */
-    LY_LDGXPATH = 0x08, /**< XPath parsing end evaluation. */
-    LY_LDGDIFF = 0x10   /**< Diff processing and creation. */
-} LY_LOG_DBG_GROUP;
+
+#define LY_LDGDICT  0x01 /**< Dictionary additions and deletions. */
+#define LY_LDGYANG  0x02 /**< YANG parser messages. */
+#define LY_LDGYIN   0x04 /**< YIN parser messages. */
+#define LY_LDGXPATH 0x08 /**< XPath parsing end evaluation. */
+#define LY_LDGDIFF  0x10 /**< Diff processing and creation. */
+
+/**
+ * @}
+ */
 
 /**
  * @brief Enable specific debugging messages (independent of log level).
- * @param[in] dbg_groups Bitfield of #LY_LOG_DBG_GROUP - enabled debug message groups.
+ * @param[in] dbg_groups Bitfield of enabled debug message groups (see @ref dbggroup).
  */
 void ly_verb_dbg(int dbg_groups);
 
@@ -1866,36 +1909,40 @@ typedef enum {
 
 /**
  * @cond INTERNAL
- * Get address of (thread-specific) `ly_errno' and `ly_vecode` variable.
+ * Get address of (thread-specific) `ly_errno' variable.
  */
-LY_ERR *ly_errno_address(void);
-
-LY_VECODE *ly_vecode_address(void);
+LY_ERR *ly_errno_glob_address(void);
 
 /**
  * @endcond INTERNAL
  * @brief libyang specific (thread-safe) errno (see #LY_ERR for the list of possible values and their meaning).
  */
-#define ly_errno (*ly_errno_address())
+#define ly_errno (*ly_errno_glob_address())
 
 /**
- * @brief libyang's validation error code
+ * @brief Get the last (thread, context-specific) validation error code.
+ *
+ * This value is set only if ly_errno is #LY_EVALID.
+ *
+ * @param[in] ctx Relative context.
+ * @return Validation error code.
  */
-#define ly_vecode (*ly_vecode_address())
+LY_VECODE ly_vecode(const struct ly_ctx *ctx);
 
 /**
- * @brief Get the last (thread-specific) error message. If the coresponding module defined
+ * @brief Get the last (thread, context-specific) error message. If the coresponding module defined
  * a specific error message, it will be used instead the default one.
  *
- * Sometimes, the error message is extended with path of the element where is the problem.
+ * Sometimes, the error message is extended with path of the element where the problem is.
  * The path is available via ly_errpath().
  *
+ * @param[in] ctx Relative context.
  * @return Text of the last error message, empty string if there is no error.
  */
-const char *ly_errmsg(void);
+const char *ly_errmsg(const struct ly_ctx *ctx);
 
 /**
- * @brief Get the last (thread-specific) path of the element where was an error.
+ * @brief Get the last (thread, context-specific) path of the element where was an error.
  *
  * The path always corresponds to the error message available via ly_errmsg(), so
  * whenever a subsequent error message is printed, the path is erased or rewritten.
@@ -1904,22 +1951,65 @@ const char *ly_errmsg(void);
  * or XML data, the path can be just XML path. In such a case, the corresponding
  * ly_vecode (value 1-3) is set.
  *
+ * @param[in] ctx Relative context.
  * @return Path of the error element, empty string if error path does not apply to the last error.
  */
-const char *ly_errpath(void);
+const char *ly_errpath(const struct ly_ctx *ctx);
 
 /**
- * @brief Get the last (thread-specific) error-app-tag if there was a specific one defined
+ * @brief Get the last (thread, context-specific) error-app-tag if there was a specific one defined
  * in the module for the last error.
  *
  * The app-tag always corresponds to the error message available via ly_errmsg(), so
  * whenever a subsequent error message is printed, the app-tag is erased or rewritten.
  *
+ * @param[in] ctx Relative context.
  * @return Error-app-tag of the last error, empty string if the error-app-tag does not apply to the last error.
  */
-const char *ly_errapptag(void);
+const char *ly_errapptag(const struct ly_ctx *ctx);
 
-/**@} logger */
+/**
+ * @brief Libyang full error structure.
+ */
+struct ly_err_item {
+    LY_LOG_LEVEL level;
+    LY_ERR no;
+    LY_VECODE vecode;
+    char *msg;
+    char *path;
+    char *apptag;
+    struct ly_err_item *next;
+    struct ly_err_item *prev; /* first item's prev points to the last item */
+};
+
+/**
+ * @brief Get the first (thread, context-specific) generated error structure.
+ *
+ * @param[in] ctx Relative context.
+ * @return First error structure (can be NULL), do not modify!
+ */
+struct ly_err_item *ly_err_first(const struct ly_ctx *ctx);
+
+/**
+ * @brief Print the error structure as if just generated.
+ *
+ * @param[in] eitem Error item structure to print.
+ */
+void ly_err_print(struct ly_err_item *eitem);
+
+/**
+ * @brief Free error structures from a context.
+ *
+ * If \p eitem is not set, free all the error structures.
+ *
+ * @param[in] ctx Relative context.
+ * @param[in] eitem Oldest error structure to remove, optional.
+ */
+void ly_err_clean(struct ly_ctx *ctx, struct ly_err_item *eitem);
+
+/**
+ * @} logger
+ */
 
 #ifdef __cplusplus
 }

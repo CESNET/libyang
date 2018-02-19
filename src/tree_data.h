@@ -668,12 +668,15 @@ struct lyd_node *lyd_new_leaf(struct lyd_node *parent, const struct lys_module *
  * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
  * Despite the prototype allows to provide a leaflist node as \p leaf parameter, only leafs are accepted.
- * Also, changing the value of a list key is prohibited.
+ * Also, changing the value of a list key is prohibited. Moreover, the leaf will never be default after
+ * calling this function successfully.
  *
  * @param[in] leaf A leaf node to change.
  * @param[in] val_str String form of the new value to be set to the \p leaf. In case the type is #LY_TYPE_INST
  * or #LY_TYPE_IDENT, JSON node-id format is expected (nodes are prefixed with module names, not XML namespaces).
- * @return 0 on success, <0 on error, 1 if the (canonical) value matched the original one and no change occured.
+ * @return 0 if the leaf was changed successfully (either its value changed or at least its default flag was cleared),
+ *         <0 on error,
+ *         1 if the (canonical) value matched the original one and no value neither default flag change occured.
  */
 int lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str);
 
@@ -752,14 +755,15 @@ struct lyd_node *lyd_new_output_anydata(struct lyd_node *parent, const struct ly
  * Various options to change lyd_new_path() behavior.
  *
  * Default behavior:
- * - if the target node already exists, an error is returned.
+ * - if the target node already exists (and is not default), an error is returned.
  * - the whole path to the target node is created (with any missing parents) if necessary.
  * - RPC output schema children are completely ignored in all modules. Input is searched and nodes created normally.
  * @{
  */
 
-#define LYD_PATH_OPT_UPDATE   0x01 /**< If the target node exists and is a leaf, it is updated with the new value and returned.
-                                        If the target node exists and is not a leaf, NULL is returned and no error set. */
+#define LYD_PATH_OPT_UPDATE   0x01 /**< If the target node exists, is a leaf, and it is updated with a new value or its
+                                        default flag is changed, it is returned. If the target node exists and is not
+                                        a leaf or generally no change occurs in the \p data_tree, NULL is returned and no error set. */
 #define LYD_PATH_OPT_NOPARENT 0x02 /**< If any parents of the target node exist, return an error. */
 #define LYD_PATH_OPT_OUTPUT   0x04 /**< Changes the behavior to ignoring RPC/action input schema nodes and using only output ones. */
 #define LYD_PATH_OPT_DFLT     0x08 /**< The created node (nodes, if also creating the parents) is a default one. If working with data tree of type #LYD_OPT_DATA, #LYD_OPT_CONFIG, #LYD_OPT_RPC, #LYD_OPT_RPCREPLY, or #LYD_OPT_NOTIF, this flag is never needed and therefore should not be used. However, if the tree is #LYD_OPT_GET, #LYD_OPT_GETCONFIG, or #LYD_OPT_EDIT, the default nodes are not created during validation and using this flag one can set them (see @ref howtodatawd). */

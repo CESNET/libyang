@@ -89,7 +89,7 @@ ly_ctx_new(const char *search_dir, int options)
     int i;
 
     ctx = calloc(1, sizeof *ctx);
-    LY_CHECK_ERR_RETURN(!ctx, LOGMEM, NULL);
+    LY_CHECK_ERR_RETURN(!ctx, LOGMEM(NULL), NULL);
 
     /* dictionary */
     lydict_init(&ctx->dict);
@@ -102,14 +102,14 @@ ly_ctx_new(const char *search_dir, int options)
 
     /* models list */
     ctx->models.list = calloc(16, sizeof *ctx->models.list);
-    LY_CHECK_ERR_RETURN(!ctx->models.list, LOGMEM; free(ctx), NULL);
+    LY_CHECK_ERR_RETURN(!ctx->models.list, LOGMEM(NULL); free(ctx), NULL);
     ext_plugins_ref++;
     ctx->models.flags = options;
     ctx->models.used = 0;
     ctx->models.size = 16;
     if (search_dir) {
         search_dir_list = strdup(search_dir);
-        LY_CHECK_ERR_GOTO(!search_dir_list, LOGMEM, error);
+        LY_CHECK_ERR_GOTO(!search_dir_list, LOGMEM(NULL), error);
 
         for (dir = search_dir_list; (sep = strchr(dir, ':')) != NULL && rc == EXIT_SUCCESS; dir = sep + 1) {
             *sep = 0;
@@ -193,7 +193,7 @@ ly_ctx_new_yl_legacy(struct ly_ctx *ctx, struct lyd_node *yltree)
         /* use the gathered data to load the module */
         mod = ly_ctx_load_module(ctx, name, revision);
         if (!mod) {
-            LOGERR(LY_EINVAL, "Unable to load module specified by yang library data.");
+            LOGERR(ctx, LY_EINVAL, "Unable to load module specified by yang library data.");
             ly_set_free(set);
             return 1;
         }
@@ -266,7 +266,7 @@ ly_ctx_new_yl_common(const char *search_dir, const char *input, LYD_FORMAT forma
             /* use the gathered data to load the module */
             mod = ly_ctx_load_module(ctx, name, revision);
             if (!mod) {
-                LOGERR(LY_EINVAL, "Unable to load module specified by yang library data.");
+                LOGERR(NULL, LY_EINVAL, "Unable to load module specified by yang library data.");
                 goto error;
             }
 
@@ -361,14 +361,14 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
     int rc = EXIT_FAILURE;
 
     if (!ctx) {
-        LOGERR(LY_EINVAL, "%s: Invalid ctx parameter", __func__);
+        LOGARG;
         return EXIT_FAILURE;
     }
 
     if (search_dir) {
         cwd = get_current_dir_name();
         if (chdir(search_dir)) {
-            LOGERR(LY_ESYS, "Unable to use search directory \"%s\" (%s)",
+            LOGERR(ctx, LY_ESYS, "Unable to use search directory \"%s\" (%s)",
                    search_dir, strerror(errno));
             goto cleanup;
         }
@@ -376,7 +376,7 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
         new = get_current_dir_name();
         if (!ctx->models.search_paths) {
             ctx->models.search_paths = malloc(2 * sizeof *ctx->models.search_paths);
-            LY_CHECK_ERR_GOTO(!ctx->models.search_paths, LOGMEM, cleanup);
+            LY_CHECK_ERR_GOTO(!ctx->models.search_paths, LOGMEM(ctx), cleanup);
             index = 0;
         } else {
             for (index = 0; ctx->models.search_paths[index]; index++) {
@@ -387,7 +387,7 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
                 }
             }
             r = realloc(ctx->models.search_paths, (index + 2) * sizeof *ctx->models.search_paths);
-            LY_CHECK_ERR_GOTO(!r, LOGMEM, cleanup);
+            LY_CHECK_ERR_GOTO(!r, LOGMEM(ctx), cleanup);
             ctx->models.search_paths = r;
         }
         ctx->models.search_paths[index] = new;
@@ -396,7 +396,7 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
 
 success:
         if (chdir(cwd)) {
-            LOGWRN("Unable to return back to working directory \"%s\" (%s)",
+            LOGWRN(ctx, "Unable to return back to working directory \"%s\" (%s)",
                    cwd, strerror(errno));
         }
         rc = EXIT_SUCCESS;
@@ -415,7 +415,7 @@ API const char * const *
 ly_ctx_get_searchdirs(const struct ly_ctx *ctx)
 {
     if (!ctx) {
-        LOGERR(LY_EINVAL, "%s: Invalid ctx parameter", __func__);
+        LOGARG;
         return NULL;
     }
     return (const char * const *)ctx->models.search_paths;
@@ -490,7 +490,7 @@ ly_ctx_get_submodule2(const struct lys_module *main_module, const char *submodul
     int i;
 
     if (!main_module || !submodule) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return NULL;
     }
 
@@ -507,7 +507,6 @@ ly_ctx_get_submodule2(const struct lys_module *main_module, const char *submodul
          */
     }
 
-
     return NULL;
 }
 
@@ -520,7 +519,7 @@ ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *r
     uint32_t idx = 0;
 
     if (!ctx || !submodule || (revision && !module)) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return NULL;
     }
 
@@ -564,13 +563,15 @@ ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *r
 }
 
 static const struct lys_module *
-ly_ctx_get_module_by(const struct ly_ctx *ctx, const char *key, int offset, const char *revision, int with_disabled, int implemented)
+ly_ctx_get_module_by(const struct ly_ctx *ctx, const char *key, size_t key_len, int offset, const char *revision,
+                     int with_disabled, int implemented)
 {
     int i;
+    char *val;
     struct lys_module *result = NULL;
 
     if (!ctx || !key) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return NULL;
     }
 
@@ -583,7 +584,8 @@ ly_ctx_get_module_by(const struct ly_ctx *ctx, const char *key, int offset, cons
          * bytes, so we have to cast the pointer to the module to (char*), finally, we want to have
          * string not the pointer to string
          */
-        if (!ctx->models.list[i] || strcmp(key, *(char**)(((char*)ctx->models.list[i]) + offset))) {
+        val = *(char **)(((char *)ctx->models.list[i]) + offset);
+        if (!ctx->models.list[i] || (!key_len && strcmp(key, val)) || (key_len && (strncmp(key, val, key_len) || val[key_len]))) {
             continue;
         }
 
@@ -629,13 +631,19 @@ ly_ctx_get_module_by(const struct ly_ctx *ctx, const char *key, int offset, cons
 API const struct lys_module *
 ly_ctx_get_module_by_ns(const struct ly_ctx *ctx, const char *ns, const char *revision, int implemented)
 {
-    return ly_ctx_get_module_by(ctx, ns, offsetof(struct lys_module, ns), revision, 0, implemented);
+    return ly_ctx_get_module_by(ctx, ns, 0, offsetof(struct lys_module, ns), revision, 0, implemented);
 }
 
 API const struct lys_module *
 ly_ctx_get_module(const struct ly_ctx *ctx, const char *name, const char *revision, int implemented)
 {
-    return ly_ctx_get_module_by(ctx, name, offsetof(struct lys_module, name), revision, 0, implemented);
+    return ly_ctx_get_module_by(ctx, name, 0, offsetof(struct lys_module, name), revision, 0, implemented);
+}
+
+const struct lys_module *
+ly_ctx_nget_module(const struct ly_ctx *ctx, const char *name, size_t name_len, const char *revision, int implemented)
+{
+    return ly_ctx_get_module_by(ctx, name, name_len, offsetof(struct lys_module, name), revision, 0, implemented);
 }
 
 API const struct lys_module *
@@ -645,7 +653,7 @@ ly_ctx_get_module_older(const struct ly_ctx *ctx, const struct lys_module *modul
     const struct lys_module *result = NULL, *iter;
 
     if (!ctx || !module || !module->rev_size) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return NULL;
     }
 
@@ -684,7 +692,7 @@ API void
 ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_imp_clb clb, void *user_data)
 {
     if (!ctx) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return;
     }
 
@@ -696,7 +704,7 @@ API ly_module_imp_clb
 ly_ctx_get_module_imp_clb(const struct ly_ctx *ctx, void **user_data)
 {
     if (!ctx) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return NULL;
     }
 
@@ -710,7 +718,7 @@ API void
 ly_ctx_set_module_data_clb(struct ly_ctx *ctx, ly_module_data_clb clb, void *user_data)
 {
     if (!ctx) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return;
     }
 
@@ -722,7 +730,7 @@ API ly_module_data_clb
 ly_ctx_get_module_data_clb(const struct ly_ctx *ctx, void **user_data)
 {
     if (!ctx) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return NULL;
     }
 
@@ -796,7 +804,7 @@ ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char
         }
         if (!module_data && (ly_errno != LY_SUCCESS)) {
             /* callback encountered an error, do not change it */
-            LOGERR(LY_SUCCESS, "User module retrieval callback failed!");
+            LOGERR(ctx, ly_errno, "User module retrieval callback failed!");
             return NULL;
         }
     }
@@ -830,18 +838,12 @@ ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char
 API const struct lys_module *
 ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
 {
-    const struct lys_module *mod;
-    struct ly_ctx *ctx_prev = ly_parser_data.ctx;
-
     if (!ctx || !name) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return NULL;
     }
 
-    ly_parser_data.ctx = ctx;
-    mod = ly_ctx_load_sub_module(ctx, NULL, name, revision && revision[0] ? revision : NULL, 1, NULL);
-    ly_parser_data.ctx = ctx_prev;
-    return mod;
+    return ly_ctx_load_sub_module(ctx, NULL, name, revision && revision[0] ? revision : NULL, 1, NULL);
 }
 
 /*
@@ -1042,7 +1044,7 @@ lys_set_disabled(const struct lys_module *module)
     unsigned int u, v;
 
     if (!module) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return EXIT_FAILURE;
     } else if (module->disabled) {
         /* already disabled module */
@@ -1054,7 +1056,7 @@ lys_set_disabled(const struct lys_module *module)
     /* avoid disabling internal modules */
     for (i = 0; i < ctx->internal_module_count; i++) {
         if (mod == ctx->models.list[i]) {
-            LOGERR(LY_EINVAL, "Internal module \"%s\" cannot be disabled.", mod->name);
+            LOGERR(ctx, LY_EINVAL, "Internal module \"%s\" cannot be disabled.", mod->name);
             return EXIT_FAILURE;
         }
     }
@@ -1185,7 +1187,7 @@ lys_set_enabled(const struct lys_module *module)
     unsigned int u, v, w;
 
     if (!module) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return EXIT_FAILURE;
     } else if (!module->disabled) {
         /* already enabled module */
@@ -1197,7 +1199,7 @@ lys_set_enabled(const struct lys_module *module)
     /* avoid disabling internal modules */
     for (i = 0; i < ctx->internal_module_count; i++) {
         if (mod == ctx->models.list[i]) {
-            LOGERR(LY_EINVAL, "Internal module \"%s\" cannot be removed.", mod->name);
+            LOGERR(ctx, LY_EINVAL, "Internal module \"%s\" cannot be removed.", mod->name);
             return EXIT_FAILURE;
         }
     }
@@ -1289,7 +1291,7 @@ ly_ctx_remove_module(const struct lys_module *module,
     unsigned int u;
 
     if (!module) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return EXIT_FAILURE;
     }
 
@@ -1299,7 +1301,7 @@ ly_ctx_remove_module(const struct lys_module *module,
     /* avoid removing internal modules ... */
     for (i = 0; i < ctx->internal_module_count; i++) {
         if (mod == ctx->models.list[i]) {
-            LOGERR(LY_EINVAL, "Internal module \"%s\" cannot be removed.", mod->name);
+            LOGERR(ctx, LY_EINVAL, "Internal module \"%s\" cannot be removed.", mod->name);
             return EXIT_FAILURE;
         }
     }
@@ -1430,7 +1432,7 @@ API const struct lys_module *
 ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32_t *idx)
 {
     if (!ctx || !idx) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return NULL;
     }
 
@@ -1447,7 +1449,7 @@ API const struct lys_module *
 ly_ctx_get_disabled_module_iter(const struct ly_ctx *ctx, uint32_t *idx)
 {
     if (!ctx || !idx) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return NULL;
     }
 
@@ -1569,7 +1571,7 @@ ylib_submodules(struct lyd_node *parent, struct lys_module *cur_mod, int bis)
         }
         if (cur_mod->inc[i].submodule->filepath) {
             if (asprintf(&str, "file://%s", cur_mod->inc[i].submodule->filepath) == -1) {
-                LOGMEM;
+                LOGMEM(cur_mod->ctx);
                 return EXIT_FAILURE;
             } else if (!lyd_new_leaf(item, NULL, bis ? "location" : "schema", str)) {
                 free(str);
@@ -1592,13 +1594,13 @@ ly_ctx_info(struct ly_ctx *ctx)
     struct lyd_node *root, *root_bis = NULL, *cont = NULL, *set_bis = NULL;
 
     if (!ctx) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return NULL;
     }
 
     mod = ly_ctx_get_module(ctx, "ietf-yang-library", NULL, 1);
     if (!mod || !mod->data) {
-        LOGERR(LY_EINVAL, "ietf-yang-library is not implemented.");
+        LOGERR(ctx, LY_EINVAL, "ietf-yang-library is not implemented.");
         return NULL;
     }
     if (mod->rev && !strcmp(mod->rev[0].date, "2016-04-09")) {
@@ -1606,7 +1608,7 @@ ly_ctx_info(struct ly_ctx *ctx)
     } else if (mod->rev && !strcmp(mod->rev[0].date, IETF_YANG_LIB_REV)) {
         bis = 1;
     } else {
-        LOGERR(LY_EINVAL, "Incompatible ietf-yang-library version in context.");
+        LOGERR(ctx, LY_EINVAL, "Incompatible ietf-yang-library version in context.");
         return NULL;
     }
 
@@ -1654,7 +1656,7 @@ ly_ctx_info(struct ly_ctx *ctx)
         /* schema */
         if (ctx->models.list[i]->filepath) {
             if (asprintf(&str, "file://%s", ctx->models.list[i]->filepath) == -1) {
-                LOGMEM;
+                LOGMEM(ctx);
                 goto error;
             }
             if (!lyd_new_leaf(cont, NULL, "schema", str)) {
@@ -1713,7 +1715,7 @@ ly_ctx_info(struct ly_ctx *ctx)
             /* location */
             if (ctx->models.list[i]->filepath) {
                 if (asprintf(&str, "file://%s", ctx->models.list[i]->filepath) == -1) {
-                    LOGMEM;
+                    LOGMEM(ctx);
                     goto error;
                 }
                 if (!lyd_new_leaf(cont, NULL, "location", str)) {
@@ -1773,7 +1775,7 @@ ly_ctx_get_node(struct ly_ctx *ctx, const struct lys_node *start, const char *no
     const struct lys_node *node;
 
     if ((!ctx && !start) || !nodeid || ((nodeid[0] != '/') && !start)) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return NULL;
     }
 
@@ -1793,7 +1795,7 @@ ly_ctx_find_path(struct ly_ctx *ctx, const char *path)
     struct ly_set *resultset = NULL;
 
     if (!ctx || !path) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return NULL;
     }
 

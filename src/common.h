@@ -16,6 +16,7 @@
 #define LY_COMMON_H_
 
 #include <stdint.h>
+#include <errno.h>
 #include <inttypes.h>
 
 #include "libyang.h"
@@ -76,78 +77,59 @@ char *get_current_dir_name(void);
 
 #endif
 
-#define LY_BUF_SIZE 1024
-#define LY_APPTAG_LEN 128
-struct ly_err {
-    LY_ERR no;
-    LY_VECODE code;
-    uint8_t vlog_hide;
-    uint8_t buf_used;
-    uint16_t path_index;
-    char msg[LY_BUF_SIZE];
-    char path[LY_BUF_SIZE];
-    char apptag[LY_APPTAG_LEN];
-    char buf[LY_BUF_SIZE];
+/* how many bytes add when enlarging buffers */
+#define LY_BUF_STEP 128
+
+/* internal logging options */
+enum int_log_opts {
+    ILO_LOG = 0, /* log normally */
+    ILO_STORE,   /* only store any messages, they will be processed higher on stack */
+    ILO_IGNORE,  /* completely ignore messages */
+    ILO_ERR2WRN, /* change errors to warnings */
 };
+
 void ly_err_free(void *ptr);
-void ly_err_clean(struct ly_ctx *ctx, int with_errno);
-void ly_err_repeat(struct ly_ctx *ctx);
-extern THREAD_LOCAL struct ly_err ly_err_main;
-
-/**
- * @brief libyang internal thread-specific buffer of LY_BUF_SIZE size
- *
- * Caller is responsible to check and set ly_buf_used to 1 (and set
- * buf[0] to '\0') when starts to use buffer and back to 0 when the
- * buffer is no more needed. If the buffer is already used, it is
- * possible to duplicate the buffer content and write string back to
- * the buffer when leaving.
- */
-char *ly_buf(void);
-
-#define ly_buf_used (ly_err_main.buf_used)
+void ly_err_free_next(struct ly_ctx *ctx, struct ly_err_item *last_eitem);
+void ly_ilo_change(struct ly_ctx *ctx, enum int_log_opts new_ilo, enum int_log_opts *prev_ilo, struct ly_err_item **prev_last_eitem);
+void ly_ilo_restore(struct ly_ctx *ctx, enum int_log_opts prev_ilo, struct ly_err_item *prev_last_eitem, int keep_and_print);
+void ly_err_last_set_apptag(const struct ly_ctx *ctx, const char *apptag);
+extern THREAD_LOCAL enum int_log_opts log_opt;
 
 /*
  * logger
  */
-extern volatile int8_t ly_log_level;
+extern volatile uint8_t ly_log_level;
+extern volatile uint8_t ly_log_opts;
 
-void ly_log(LY_LOG_LEVEL level, const char *format, ...);
+void ly_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, const char *format, ...);
 
-#define LOGERR(errno, str, args...)                                 \
-    if (errno) { ly_errno = errno; }                                \
-    ly_log(LY_LLERR, str, ##args);
+#define LOGERR(ctx, errno, str, args...)                            \
+    ly_log(ctx, LY_LLERR, errno, str, ##args);
 
-#define LOGWRN(str, args...)                                        \
-    if (ly_log_level >= LY_LLWRN) {                                 \
-        ly_log(LY_LLWRN, str, ##args);                              \
-    }
+#define LOGWRN(ctx, str, args...)                                   \
+    ly_log(ctx, LY_LLWRN, 0, str, ##args);
 
 #define LOGVRB(str, args...)                                        \
-    if (ly_log_level >= LY_LLVRB) {                                 \
-        ly_log(LY_LLVRB, str, ##args);                              \
-    }
+    ly_log(NULL, LY_LLVRB, 0, str, ##args);
 
 #ifdef NDEBUG
 
-#define LOGDBG(str, args...)
+#define LOGDBG(dbg_group, str, args...)
 
 #else
 
 #define LOGDBG(dbg_group, str, args...)                             \
-    if (ly_log_level >= LY_LLDBG) {                                 \
-        ly_log_dbg(dbg_group, str, ##args);                         \
-    }
+    ly_log_dbg(dbg_group, str, ##args);
 
-void ly_log_dbg(LY_LOG_DBG_GROUP group, const char *format, ...);
+void ly_log_dbg(int group, const char *format, ...);
 
 #endif
 
-#define ly_vlog_hidden (ly_err_main.vlog_hide)
+#define LOGMEM(ctx) LOGERR(ctx, LY_EMEM, "Memory allocation failed (%s()).", __func__)
 
-#define LOGMEM LOGERR(LY_EMEM, "Memory allocation failed (%s()).", __func__)
+#define LOGINT(ctx) LOGERR(ctx, LY_EINT, "Internal error (%s:%d).", __FILE__, __LINE__)
 
-#define LOGINT LOGERR(LY_EINT, "Internal error (%s:%d).", __FILE__, __LINE__)
+#define LOGARG LOGERR(NULL, LY_EINVAL, "Invalid arguments (%s()).", __func__)
 
 typedef enum {
     LYE_PATH = -2,    /**< error path set */
@@ -255,36 +237,36 @@ enum LY_VLOG_ELEM {
     LY_VLOG_PREV /* use exact same previous path */
 };
 
-/*
- * 0 - normal visibility
- * 1-254 - do not print messages
- * 255 - convert errors to warnings
- */
-void ly_vlog_hide(uint8_t hide);
+void ly_vlog(const struct ly_ctx *ctx, LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...);
+#define LOGVAL(ctx, code, elem_type, elem, args...)                      \
+    ly_vlog(ctx, code, elem_type, elem, ##args);
 
-void ly_vlog(LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...);
-#define LOGVAL(code, elem_type, elem, args...)                      \
-    ly_vlog(code, elem_type, elem, ##args);
-
-#define LOGPATH(elem_type, elem)                                    \
-    ly_vlog(LYE_PATH, elem_type, elem);
+#define LOGPATH(ctx, elem_type, elem)                                    \
+    ly_vlog(ctx, LYE_PATH, elem_type, elem);
 
 /**
  * @brief Build path of \p elem.
  *
- * Either \p length and \p realloc is set or neither is set.
- *
  * @param[in] elem_type What to expect in \p elem.
  * @param[in] elem Element to print.
  * @param[in,out] path Resulting path printed.
- * @param[in,out] index Where to start printing, the end of \p path.
- * @param[out] length Final length of \p path.
- * @param[in] enlarge Whether to allow \p path to be reallocated and enlarged.
  * @param[in] schema_all_prefixes Whether to include prefixes for all the nodes (only for schema paths).
  * @return 0 on success, -1 on error.
  */
-int ly_vlog_build_path_reverse(enum LY_VLOG_ELEM elem_type, const void *elem, char **path, uint16_t *index,
-                               uint16_t *length, int enlarge, int schema_all_prefixes);
+int ly_vlog_build_path(enum LY_VLOG_ELEM elem_type, const void *elem, char **path, int schema_all_prefixes);
+
+/**
+ * @brief Get module from a context based on its name and revision.
+ *
+ * @param[in] ctx Context to search in.
+ * @param[in] name Name of the module.
+ * @param[in] name_len Length of \p name, can be 0 if the name is ended with '\0'.
+ * @param[in] revision Revision of the module, can be NULL for the newest.
+ * @param[in] implemented Whether only implemented modules should be returned.
+ * @return Matching module, NULL if not found.
+ */
+const struct lys_module *ly_ctx_nget_module(const struct ly_ctx *ctx, const char *name, size_t name_len,
+                                            const char *revision, int implemented);
 
 /*
  * - if \p module specified, it searches for submodules, they can be loaded only from a file or via module callback,
@@ -371,12 +353,11 @@ const char *transform_json2schema(const struct lys_module *module, const char *e
  * @param[in] xml XML element with the expression.
  * @param[in] inst_id Whether all the node names must have a prefix (XML instance-identifier).
  * @param[in] use_ctx_data_clb Whether to use data_clb in \p ctx if an unknown module namespace is found.
- * @param[in] log Whether to log errors or not.
  *
  * @return Transformed JSON expression in the dictionary, NULL on error.
  */
 const char *transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml, int inst_id,
-                               int use_ctx_data_clb, int log);
+                               int use_ctx_data_clb);
 
 /**
  * @brief Transform expression from the schema format (prefixes of imports) to

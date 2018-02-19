@@ -25,7 +25,7 @@ void
 lydict_init(struct dict_table *dict)
 {
     if (!dict) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return;
     }
 
@@ -40,7 +40,7 @@ lydict_clean(struct dict_table *dict)
     struct dict_rec *chain, *rec;
 
     if (!dict) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return;
     }
 
@@ -187,7 +187,7 @@ dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
             record->value = value;
         } else {
             record->value = malloc((len + 1) * sizeof *record->value);
-            LY_CHECK_ERR_RETURN(!record->value, LOGMEM, NULL);
+            LY_CHECK_ERR_RETURN(!record->value, LOGMEM(ctx), NULL);
             memcpy(record->value, value, len);
             record->value[len] = '\0';
         }
@@ -223,7 +223,7 @@ dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
         if (match) {
             /* record found */
             if (record->refcount == DICT_REC_MAXCOUNT) {
-                LOGWRN("Refcount overflow detected, duplicating dictionary record");
+                LOGWRN(ctx, "Refcount overflow detected, duplicating dictionary record");
                 break;
             }
             record->refcount++;
@@ -246,12 +246,12 @@ dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
 
     /* create new record and add it behind the last record */
     new = malloc(sizeof *record);
-    LY_CHECK_ERR_RETURN(!new, LOGMEM, NULL);
+    LY_CHECK_ERR_RETURN(!new, LOGMEM(ctx), NULL);
     if (zerocopy) {
         new->value = value;
     } else {
         new->value = malloc((len + 1) * sizeof *record->value);
-        LY_CHECK_ERR_RETURN(!new->value, LOGMEM; free(new), NULL);
+        LY_CHECK_ERR_RETURN(!new->value, LOGMEM(ctx); free(new), NULL);
         memcpy(new->value, value, len);
         new->value[len] = '\0';
     }

@@ -50,7 +50,7 @@ modlist_add(struct mlist **mlist, const struct lys_module *mod)
 
     if (!iter) {
         iter = malloc(sizeof *iter);
-        LY_CHECK_ERR_RETURN(!iter, LOGMEM, EXIT_FAILURE);
+        LY_CHECK_ERR_RETURN(!iter, LOGMEM(mod->ctx), EXIT_FAILURE);
         iter->next = *mlist;
         iter->module = (struct lys_module *)mod;
         *mlist = iter;
@@ -516,6 +516,12 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
         /* no content */
         ly_print(out, "/>%s", level ? "\n" : "");
     } else {
+        if (any->value_type == LYD_ANYDATA_DATATREE) {
+            /* print namespaces in the anydata data tree */
+            LY_TREE_FOR(any->value.tree, iter) {
+                xml_print_ns(out, iter, options);
+            }
+        }
         /* close opening tag ... */
         ly_print(out, ">");
         /* ... and print anydata content */
@@ -547,7 +553,7 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
             break;
         case LYD_ANYDATA_JSON:
             /* JSON format is not supported */
-            LOGWRN("Unable to print anydata content (type %d) as XML.", any->value_type);
+            LOGWRN(node->schema->module->ctx, "Unable to print anydata content (type %d) as XML.", any->value_type);
             break;
         case LYD_ANYDATA_STRING:
         case LYD_ANYDATA_SXMLD:
@@ -595,7 +601,7 @@ xml_print_node(struct lyout *out, int level, const struct lyd_node *node, int to
         ret = xml_print_anydata(out, level, node, toplevel, options);
         break;
     default:
-        LOGINT;
+        LOGINT(node->schema->module->ctx);
         ret = EXIT_FAILURE;
         break;
     }

@@ -40,31 +40,6 @@ class Schema_Node;
 class Xml_Elem;
 class Deleter;
 
-class Error
-{
-/* add custom deleter for Context class */
-public:
-    Error() {
-        libyang_err = ly_errno;
-        libyang_vecode = ly_vecode;
-        libyang_errmsg = ly_errmsg();
-        libyang_errpath = ly_errpath();
-        libyang_errapptag = ly_errapptag();
-    };
-    ~Error() {};
-    LY_ERR err() throw() {return libyang_err;};
-    LY_VECODE vecode() throw() {return libyang_vecode;};
-    const char *errmsg() const throw() {return libyang_errmsg;};
-    const char *errpath() const throw() {return libyang_errpath;};
-    const char *errapptag() const throw() {return libyang_errapptag;};
-private:
-    LY_ERR libyang_err;
-    LY_VECODE libyang_vecode;
-    const char *libyang_errmsg;
-    const char *libyang_errpath;
-    const char *libyang_errapptag;
-};
-
 class Context
 {
 public:
@@ -99,8 +74,10 @@ public:
     S_Data_Node parse_xml(S_Xml_Elem elem, int options = 0);
     S_Module parse_path(const char *path, LYS_INFORMAT format);
 
+    friend std::vector<S_Error> *get_ly_errors(S_Context context);
     friend Data_Node;
     friend Deleter;
+    friend Error;
 
 private:
     struct ly_ctx *ctx;
@@ -108,6 +85,24 @@ private:
 };
 
 S_Context create_new_Context(struct ly_ctx *ctx);
+
+class Error
+{
+public:
+    Error(struct ly_err_item *eitem);
+    ~Error() {};
+    LY_ERR err() throw() {return eitem->no;};
+    LY_VECODE vecode() throw() {return eitem->vecode;};
+    const char *errmsg() const throw() {return eitem->msg ? eitem->msg : "";};
+    const char *errpath() const throw() {return eitem->path ? eitem->path : "";};
+    const char *errapptag() const throw() {return eitem->apptag ? eitem->path : "";};
+private:
+	struct ly_err_item *eitem;
+};
+
+std::vector<S_Error> *get_ly_errors(S_Context context);
+int set_log_options(int options);
+LY_LOG_LEVEL set_log_verbosity(LY_LOG_LEVEL level);
 
 class Set
 {

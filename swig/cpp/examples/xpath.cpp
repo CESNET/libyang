@@ -28,35 +28,32 @@ int main() {
     S_Context ctx = nullptr;
     try {
         ctx = S_Context(new Context("/etc/sysrepo/yang"));
+        auto module = ctx->load_module("turing-machine", nullptr);
+
+        auto node = ctx->parse_data_path("/etc/sysrepo/data/turing-machine.startup", LYD_XML, LYD_OPT_CONFIG);
+
+        auto node_set = node->find_path("/turing-machine:turing-machine/transition--function/delta[label='left summand']/*");\
+        if (!node_set) {
+            cout << "could not find data for xpath" << endl;
+            return -1;
+        }
+
+        auto list = std::shared_ptr<std::vector<S_Data_Node>>(node_set->data());
+        for(auto data_set = list->begin() ; data_set != list->end() ; ++data_set) {
+            cout << "name: " << (*data_set)->schema()->name() << " type: " << (*data_set)->schema()->nodetype() << " path: " << (*data_set)->path() << endl;
+        }
     } catch( const std::exception& e ) {
+        cout << "test" << endl;
         cout << e.what() << endl;
+        auto errors = std::shared_ptr<std::vector<S_Error>>(get_ly_errors(ctx));
+        for(auto error = errors->begin() ; error != errors->end() ; ++error) {
+            cout << "err: " << (*error)->err() << endl;
+            cout << "vecode: " << (*error)->vecode() << endl;
+            cout << "errmsg: " << (*error)->errmsg() << endl;
+            cout << "errpath: " << (*error)->errpath() << endl;
+            cout << "errapptag: " << (*error)->errapptag() << endl;
+        }
         return -1;
-    }
-
-    auto module = ctx->load_module("turing-machine", nullptr);
-    if (!module) {
-        printf("module not loaded\n");
-        return -1;
-    }
-
-    S_Data_Node node = nullptr;
-    try {
-        node = ctx->parse_data_path("/etc/sysrepo/data/turing-machine.startup", LYD_XML, LYD_OPT_CONFIG);
-    } catch( const std::exception& e ) {
-        cout << e.what() << endl;
-        return -1;
-    }
-
-    auto node_set = node->find_path("/turing-machine:turing-machine/transition-function/delta[label='left summand']/*");\
-    if (!node_set) {
-        printf("could not find data for xpath\n");
-        return -1;
-    }
-
-    std::vector<S_Data_Node>::iterator data_set;
-    auto list = std::shared_ptr<std::vector<S_Data_Node>>(node_set->data());
-    for(data_set = list->begin() ; data_set != list->end() ; ++data_set) {
-        cout << "name: " << (*data_set)->schema()->name() << " type: " << (*data_set)->schema()->nodetype() << " path: " << (*data_set)->path() << endl;
     }
 
     return 0;

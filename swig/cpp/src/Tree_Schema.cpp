@@ -47,6 +47,20 @@ std::vector<S_Schema_Node> *Module::data_instantiables(int options) {
 
     return s_vector;
 }
+std::string Module::print_mem(LYS_OUTFORMAT format, int options) {
+    char *strp = nullptr;
+    int rc = 0;
+
+    rc = lys_print_mem(&strp, module, format, NULL, 0, options);
+    if (rc) {
+        check_libyang_error(module->ctx);
+        return nullptr;
+    }
+
+    std::string s_strp = strp;
+    free(strp);
+    return s_strp;
+}
 Submodule::~Submodule() {};
 S_Revision Submodule::rev() LY_NEW(submodule, rev, Revision);
 std::vector<S_Deviation> *Submodule::deviation() LY_NEW_LIST(submodule, deviation, deviation_size, Deviation);
@@ -71,7 +85,7 @@ Type_Info_Bits::Type_Info_Bits(struct lys_type_info_bits *info_bits, S_Deleter d
     deleter(deleter)
 {};
 Type_Info_Bits::~Type_Info_Bits() {};
-S_Type_Bit Type_Info_Bits::bit() {return info_bits->bit ? std::make_shared<Type_Bit>(info_bits->bit, deleter) : nullptr;};
+std::vector<S_Type_Bit> *Type_Info_Bits::bit() LY_NEW_LIST(info_bits, bit, count, Type_Bit);
 
 Type_Info_Dec64::Type_Info_Dec64(struct lys_type_info_dec64 *info_dec64, S_Deleter deleter):
     info_dec64(info_dec64),
@@ -93,7 +107,7 @@ Type_Info_Enums::Type_Info_Enums(struct lys_type_info_enums *info_enums, S_Delet
     deleter(deleter)
 {};
 Type_Info_Enums::~Type_Info_Enums() {};
-S_Type_Enum Type_Info_Enums::enm() {return info_enums->enm ? std::make_shared<Type_Enum>(info_enums->enm, deleter) : nullptr;};
+std::vector<S_Type_Enum> *Type_Info_Enums::enm() LY_NEW_LIST(info_enums, enm, count, Type_Enum);
 
 Type_Info_Ident::Type_Info_Ident(struct lys_type_info_ident *info_ident, S_Deleter deleter):
     info_ident(info_ident),
@@ -236,7 +250,7 @@ std::vector<S_Schema_Node> *Schema_Node::child_instantiables(int options) {
 S_Set Schema_Node::find_path(const char *path) {
     struct ly_set *set = lys_find_path(node->module, node, path);
     if (!set) {
-        check_libyang_error();
+        check_libyang_error(node->module->ctx);
         return nullptr;
     }
 
@@ -246,7 +260,7 @@ S_Set Schema_Node::find_path(const char *path) {
 S_Set Schema_Node::xpath_atomize(enum lyxp_node_type ctx_node_type, const char *expr, int options) {
     struct ly_set *set = lys_xpath_atomize(node, ctx_node_type, expr, options);
     if (!set) {
-        check_libyang_error();
+        check_libyang_error(node->module->ctx);
         return nullptr;
     }
 
@@ -255,7 +269,7 @@ S_Set Schema_Node::xpath_atomize(enum lyxp_node_type ctx_node_type, const char *
 S_Set Schema_Node::xpath_atomize(int options) {
     struct ly_set *set = lys_node_xpath_atomize(node, options);
     if (!set) {
-        check_libyang_error();
+        check_libyang_error(node->module->ctx);
         return nullptr;
     }
 
@@ -286,19 +300,19 @@ std::vector<S_Schema_Node> *Schema_Node::tree_dfs() {
 Schema_Node_Container::~Schema_Node_Container() {};
 S_When Schema_Node_Container::when() LY_NEW_CASTED(lys_node_container, node, when, When);
 S_Restr Schema_Node_Container::must() {
-    struct lys_node_container *node = (struct lys_node_container *)node;
-    return node->must ? std::make_shared<Restr>(node->must, deleter) : nullptr;
+    struct lys_node_container *node_container = (struct lys_node_container *)node;
+    return node_container->must ? std::make_shared<Restr>(node_container->must, deleter) : nullptr;
 };
 S_Tpdf Schema_Node_Container::ptdf() {
-    struct lys_node_container *node = (struct lys_node_container *)node;
-    return node->tpdf ? std::make_shared<Tpdf>(node->tpdf, deleter) : nullptr;
+    struct lys_node_container *node_container = (struct lys_node_container *)node;
+    return node_container->tpdf ? std::make_shared<Tpdf>(node_container->tpdf, deleter) : nullptr;
 };
 
 Schema_Node_Choice::~Schema_Node_Choice() {};
 S_When Schema_Node_Choice::when() LY_NEW_CASTED(lys_node_choice, node, when, When);
 S_Schema_Node Schema_Node_Choice::dflt() {
-    struct lys_node_choice *node = (struct lys_node_choice *)node;
-    return node->dflt ? std::make_shared<Schema_Node>(node->dflt, deleter) : nullptr;
+    struct lys_node_choice *node_choice = (struct lys_node_choice *)node;
+    return node_choice->dflt ? std::make_shared<Schema_Node>(node_choice->dflt, deleter) : nullptr;
 };
 
 Schema_Node_Leaf::~Schema_Node_Leaf() {};
@@ -319,8 +333,8 @@ Schema_Node_Leaflist::~Schema_Node_Leaflist() {};
 S_Set Schema_Node_Leaflist::backlinks() LY_NEW_CASTED(lys_node_leaflist, node, backlinks, Set);
 S_When Schema_Node_Leaflist::when() LY_NEW_CASTED(lys_node_leaflist, node, when, When);
 std::vector<std::string> *Schema_Node_Leaflist::dflt() {
-    struct lys_node_leaflist *node = (struct lys_node_leaflist *)node;
-    LY_NEW_STRING_LIST(node, dflt, dflt_size);
+    struct lys_node_leaflist *node_leaflist = (struct lys_node_leaflist *)node;
+    LY_NEW_STRING_LIST(node_leaflist, dflt, dflt_size);
 }
 std::vector<S_Restr> *Schema_Node_Leaflist::must() LY_NEW_LIST_CASTED(lys_node_leaflist, node, must, must_size, Restr);
 S_Type Schema_Node_Leaflist::type() {return std::make_shared<Type>(&((struct lys_node_leaflist *)node)->type, deleter);}

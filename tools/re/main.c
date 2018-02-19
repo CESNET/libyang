@@ -238,13 +238,19 @@ main(int argc, char* argv[])
     }
 
     for (modstr = (char*)module_start, i = 0; i < patterns_count; i++) {
-        asprintf(&s, "%s pattern %s%s", modstr, patterns[i], invert_match[i] ? module_invertmatch : module_match);
+        if (asprintf(&s, "%s pattern %s%s", modstr, patterns[i], invert_match[i] ? module_invertmatch : module_match) == -1) {
+            fprintf(stderr, "yangre error: memory allocation failed.\n");
+            goto cleanup;
+        }
         if (modstr != module_start) {
             free(modstr);
         }
         modstr = s;
     }
-    asprintf(&s, "%s%s", modstr, module_end);
+    if (asprintf(&s, "%s%s", modstr, module_end) == -1) {
+        fprintf(stderr, "yangre error: memory allocation failed.\n");
+        goto cleanup;
+    }
     if (modstr != module_start) {
         free(modstr);
     }

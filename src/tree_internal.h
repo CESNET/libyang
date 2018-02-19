@@ -198,6 +198,7 @@ struct lys_node *lys_node_dup(struct lys_module *module, struct lys_node *parent
 /**
  * @brief duplicate the list of extension instances.
  *
+ * @param[in] ctx Context to store errors in.
  * @param[in] mod Module where we are
  * @param[in] orig list of the extension instances to duplicate, the size of the array must correspond with \p size
  * @param[in] size number of items in \p old array to duplicate
@@ -208,7 +209,7 @@ struct lys_node *lys_node_dup(struct lys_module *module, struct lys_node *parent
  * @param[in] unres list of unresolved items
  *
  */
-int lys_ext_dup(struct lys_module *mod, struct lys_ext_instance **orig, uint8_t size, void *parent,
+int lys_ext_dup(struct ly_ctx *ctx, struct lys_module *mod, struct lys_ext_instance **orig, uint8_t size, void *parent,
                 LYEXT_PAR parent_type, struct lys_ext_instance ***new, int shallow, struct unres_schema *unres);
 
 /**
@@ -430,14 +431,13 @@ int lys_getnext_data(const struct lys_module *mod, const struct lys_node *parent
  *             0 - compare only keys
  *             n - compare n-th unique
  * @param[in] withdefaults Whether only different dflt flags cause 2 nodes not to be equal.
- * @param[in] log Flag for printing validation errors, useful for internal (non-validation) use of this function
  * @return 1 if both the nodes are the same from the YANG point of view,
  *         0 if they differ,
  *         -1 on error.
  */
-int lyd_list_equal(struct lyd_node *first, struct lyd_node *second, int action, int withdefaults, int log);
+int lyd_list_equal(struct lyd_node *first, struct lyd_node *second, int action, int withdefaults);
 
-const char *lyd_get_unique_default(const char* unique_expr, struct lyd_node *list);
+int lyd_get_unique_default(const char* unique_expr, struct lyd_node *list, const char **dflt);
 
 /**
  * @brief Check for (validate) mandatory nodes of a data tree. Checks recursively whole data tree. Requires all when

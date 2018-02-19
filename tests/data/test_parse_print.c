@@ -591,8 +591,8 @@ test_parse_print_oookeys_xml(void **state)
     /* with strict parsing, it is error since the key is not encoded as the first child */
     st->dt = lyd_parse_mem(st->ctx, xmlin, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_STRICT);
     assert_ptr_equal(st->dt, NULL);
-    assert_int_equal(ly_vecode, LYVE_INORDER);
-    assert_string_equal(ly_errmsg(), "Invalid position of the key \"leaf18\" in a list \"list1\".");
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INORDER);
+    assert_string_equal(ly_errmsg(st->ctx), "Invalid position of the key \"leaf18\" in a list \"list1\".");
 
     /* without strict, it produces only warning, but the data are correctly loaded */
     st->dt = lyd_parse_mem(st->ctx, xmlin, LYD_XML, LYD_OPT_CONFIG);
@@ -637,8 +637,8 @@ test_parse_noncharacters_xml(void **state)
     st->str1[19] = 0x80;
     assert_ptr_equal(lyd_parse_mem(st->ctx, st->str1, LYD_XML, LYD_OPT_CONFIG), NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_XML_INCHAR);
-    assert_string_equal(ly_errmsg(), "Invalid UTF-8 value 0x0000d800");
+    assert_int_equal(ly_vecode(st->ctx), LYVE_XML_INCHAR);
+    assert_string_equal(ly_errmsg(st->ctx), "Invalid UTF-8 value 0x0000d800");
 
     /* exclude noncharacters %xFDD0-FDEF - trying 0xfdd0 */
     st->str1[17] = 0xef;
@@ -646,8 +646,8 @@ test_parse_noncharacters_xml(void **state)
     st->str1[19] = 0x90;
     assert_ptr_equal(lyd_parse_mem(st->ctx, st->str1, LYD_XML, LYD_OPT_CONFIG), NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_XML_INCHAR);
-    assert_string_equal(ly_errmsg(), "Invalid UTF-8 value 0x0000fdd0");
+    assert_int_equal(ly_vecode(st->ctx), LYVE_XML_INCHAR);
+    assert_string_equal(ly_errmsg(st->ctx), "Invalid UTF-8 value 0x0000fdd0");
 
     /* exclude noncharacters %xFFFE-FFFF - trying 0xfffe */
     st->str1[17] = 0xef;
@@ -655,8 +655,8 @@ test_parse_noncharacters_xml(void **state)
     st->str1[19] = 0xbe;
     assert_ptr_equal(lyd_parse_mem(st->ctx, st->str1, LYD_XML, LYD_OPT_CONFIG), NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_XML_INCHAR);
-    assert_string_equal(ly_errmsg(), "Invalid UTF-8 value 0x0000fffe");
+    assert_int_equal(ly_vecode(st->ctx), LYVE_XML_INCHAR);
+    assert_string_equal(ly_errmsg(st->ctx), "Invalid UTF-8 value 0x0000fffe");
 
     /* exclude c0 control characters except tab, carriage return and line feed */
     st->str1[17] = 0x9; /* valid - horizontal tab */
@@ -665,8 +665,8 @@ test_parse_noncharacters_xml(void **state)
     st->str1[20] = 0x6; /* invalid - ack */
     assert_ptr_equal(lyd_parse_mem(st->ctx, st->str1, LYD_XML, LYD_OPT_CONFIG), NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_XML_INCHAR);
-    assert_string_equal(ly_errmsg(), "Invalid UTF-8 value 0x06");
+    assert_int_equal(ly_vecode(st->ctx), LYVE_XML_INCHAR);
+    assert_string_equal(ly_errmsg(st->ctx), "Invalid UTF-8 value 0x06");
 
     /* exclude noncharacters %x?FFFE-?FFFF - trying 0x10ffff */
     st->str1[17] = 0xf4;
@@ -675,8 +675,8 @@ test_parse_noncharacters_xml(void **state)
     st->str1[20] = 0xbf;
     assert_ptr_equal(lyd_parse_mem(st->ctx, st->str1, LYD_XML, LYD_OPT_CONFIG), NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_XML_INCHAR);
-    assert_string_equal(ly_errmsg(), "Invalid UTF-8 value 0x0010ffff");
+    assert_int_equal(ly_vecode(st->ctx), LYVE_XML_INCHAR);
+    assert_string_equal(ly_errmsg(st->ctx), "Invalid UTF-8 value 0x0010ffff");
 
     /* 0x6 */
     st->str1[17] = '&';
@@ -686,8 +686,8 @@ test_parse_noncharacters_xml(void **state)
     st->str1[21] = ';';
     assert_ptr_equal(lyd_parse_mem(st->ctx, st->str1, LYD_XML, LYD_OPT_CONFIG), NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_XML_INVAL);
-    assert_string_equal(ly_errmsg(), "Invalid character reference value.");
+    assert_int_equal(ly_vecode(st->ctx), LYVE_XML_INVAL);
+    assert_string_equal(ly_errmsg(st->ctx), "Invalid character reference value.");
 
     /* 0xdfff */
     st->str1[17] = '&';
@@ -700,8 +700,8 @@ test_parse_noncharacters_xml(void **state)
     st->str1[24] = ';';
     assert_ptr_equal(lyd_parse_mem(st->ctx, st->str1, LYD_XML, LYD_OPT_CONFIG), NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_XML_INVAL);
-    assert_string_equal(ly_errmsg(), "Invalid character reference value.");
+    assert_int_equal(ly_vecode(st->ctx), LYVE_XML_INVAL);
+    assert_string_equal(ly_errmsg(st->ctx), "Invalid character reference value.");
 
     /* 0xfdef */
     st->str1[17] = '&';
@@ -714,8 +714,8 @@ test_parse_noncharacters_xml(void **state)
     st->str1[24] = ';';
     assert_ptr_equal(lyd_parse_mem(st->ctx, st->str1, LYD_XML, LYD_OPT_CONFIG), NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_XML_INVAL);
-    assert_string_equal(ly_errmsg(), "Invalid character reference value.");
+    assert_int_equal(ly_vecode(st->ctx), LYVE_XML_INVAL);
+    assert_string_equal(ly_errmsg(st->ctx), "Invalid character reference value.");
 
     /* 0xffff */
     st->str1[17] = '&';
@@ -728,8 +728,8 @@ test_parse_noncharacters_xml(void **state)
     st->str1[24] = ';';
     assert_ptr_equal(lyd_parse_mem(st->ctx, st->str1, LYD_XML, LYD_OPT_CONFIG), NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_XML_INVAL);
-    assert_string_equal(ly_errmsg(), "Invalid character reference value.");
+    assert_int_equal(ly_vecode(st->ctx), LYVE_XML_INVAL);
+    assert_string_equal(ly_errmsg(st->ctx), "Invalid character reference value.");
 
     /* the same using character reference */
     /* 0x10ffff */
@@ -745,8 +745,8 @@ test_parse_noncharacters_xml(void **state)
     st->str1[26] = ';';
     assert_ptr_equal(lyd_parse_mem(st->ctx, st->str1, LYD_XML, LYD_OPT_CONFIG), NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_XML_INVAL);
-    assert_string_equal(ly_errmsg(), "Invalid character reference value.");
+    assert_int_equal(ly_vecode(st->ctx), LYVE_XML_INVAL);
+    assert_string_equal(ly_errmsg(st->ctx), "Invalid character reference value.");
 
 }
 

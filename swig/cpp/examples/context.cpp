@@ -30,12 +30,14 @@ int main() {
         ctx = S_Context(new Context("/etc/sysrepo2/yang"));
     } catch( const std::exception& e ) {
         cout << e.what() << endl;
-        auto err = Error();
-        cout << "err: " << err.err() << endl;
-        cout << "vecode: " << err.vecode() << endl;
-        cout << "errmsg: " << err.errmsg() << endl;
-        cout << "errpath: " << err.errpath() << endl;
-        cout << "errapptag: " << err.errapptag() << endl;
+        auto errors = std::shared_ptr<std::vector<S_Error>>(get_ly_errors(ctx));
+        for(auto error = errors->begin() ; error != errors->end() ; ++error) {
+            cout << "err: " << (*error)->err() << endl;
+            cout << "vecode: " << (*error)->vecode() << endl;
+            cout << "errmsg: " << (*error)->errmsg() << endl;
+            cout << "errpath: " << (*error)->errpath() << endl;
+            cout << "errapptag: " << (*error)->errapptag() << endl;
+        }
     }
 
     try {
@@ -45,8 +47,7 @@ int main() {
     }
 
     auto folders = std::shared_ptr<std::vector<std::string>>(ctx->get_searchdirs());
-    std::vector<std::string>::iterator elem;
-    for(elem = folders->begin() ; elem != folders->end() ; ++elem) {
+    for(auto elem = folders->begin() ; elem != folders->end() ; ++elem) {
         cout << (*elem) << endl;
     }
     cout << endl;
@@ -62,8 +63,7 @@ int main() {
     }
 
     auto modules = std::shared_ptr<std::vector<S_Module>>(ctx->get_module_iter());
-    std::vector<S_Module>::iterator mod;
-    for(mod = modules->begin() ; mod != modules->end() ; ++mod) {
+    for(auto mod = modules->begin() ; mod != modules->end() ; ++mod) {
         cout << "module " << (*mod)->name() << " prefix " << (*mod)->prefix() << " type " << (*mod)->type() << endl;
     }
 

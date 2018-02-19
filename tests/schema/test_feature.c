@@ -1,4 +1,4 @@
-/**
+/*
  * \file test_feature.c
  * \author Radek Krejci <rkrejci@cesnet.cz>
  * \brief libyang tests - features and if-features
@@ -162,7 +162,7 @@ test_circle1(void **state)
 "  feature c { if-feature \"a or b\"; }}";
 
     assert_null(lys_parse_mem(ctx, yang, LYS_IN_YANG));
-    assert_int_equal(ly_vecode, LYVE_CIRC_FEATURES);
+    assert_int_equal(ly_vecode(ctx), LYVE_CIRC_FEATURES);
 }
 
 static void
@@ -175,7 +175,7 @@ test_circle2(void **state)
 "  feature a { if-feature \"a\"; }}";
 
     assert_null(lys_parse_mem(ctx, yang, LYS_IN_YANG));
-    assert_int_equal(ly_vecode, LYVE_CIRC_FEATURES);
+    assert_int_equal(ly_vecode(ctx), LYVE_CIRC_FEATURES);
 }
 
 static void
@@ -191,7 +191,7 @@ test_inval_expr1(void **state)
 "  feature c { if-feature \"a xor b\"; }}";
 
     assert_null(lys_parse_mem(ctx, yang, LYS_IN_YANG));
-    assert_int_equal(ly_vecode, LYVE_INARG);
+    assert_int_equal(ly_vecode(ctx), LYVE_INARG);
 }
 
 static void
@@ -207,7 +207,7 @@ test_inval_expr2(void **state)
 "  feature c { if-feature \"\"; }}";
 
     assert_null(lys_parse_mem(ctx, yang, LYS_IN_YANG));
-    assert_int_equal(ly_vecode, LYVE_INARG);
+    assert_int_equal(ly_vecode(ctx), LYVE_INARG);
 }
 
 static void
@@ -223,7 +223,7 @@ test_inval_expr3(void **state)
 "  feature c { if-feature \"x\"; }}";
 
     assert_null(lys_parse_mem(ctx, yang, LYS_IN_YANG));
-    assert_int_equal(ly_vecode, LYVE_INRESOLV);
+    assert_int_equal(ly_vecode(ctx), LYVE_INRESOLV);
 }
 
 static void
@@ -239,7 +239,7 @@ test_inval_expr4(void **state)
 "  feature c { if-feature \"a b\"; }}";
 
     assert_null(lys_parse_mem(ctx, yang, LYS_IN_YANG));
-    assert_int_equal(ly_vecode, LYVE_INARG);
+    assert_int_equal(ly_vecode(ctx), LYVE_INARG);
 }
 
 static void
@@ -254,7 +254,7 @@ test_inval_expr5(void **state)
 "  feature c { if-feature \"a and b\"; }}";
 
     assert_null(lys_parse_mem(ctx, yang, LYS_IN_YANG));
-    assert_int_equal(ly_vecode, LYVE_INARG);
+    assert_int_equal(ly_vecode(ctx), LYVE_INARG);
 }
 
 int

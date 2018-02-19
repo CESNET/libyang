@@ -158,17 +158,17 @@ test_status_yin(void **state)
     /* deprecated nodes cannot be in obsolete data (obsolete is stronger) */
     assert_ptr_equal(NULL, lys_parse_mem(st->ctx, yin_fail3, LYS_IN_YIN));
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INSTATUS);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INSTATUS);
 
     /* current nodes cannot be in obsolete data (obsolete is stronger) */
     assert_ptr_equal(NULL, lys_parse_mem(st->ctx, yin_fail2, LYS_IN_YIN));
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INSTATUS);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INSTATUS);
 
     /* current nodes cannot be in deprecated data (deprecated is stronger) */
     assert_ptr_equal(NULL, lys_parse_mem(st->ctx, yin_fail1, LYS_IN_YIN));
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INSTATUS);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INSTATUS);
 
     /* status is inherited so all the mandatory statements should be ignored and empty data tree is fine */
     assert_ptr_not_equal(NULL, lys_parse_mem(st->ctx, yin, LYS_IN_YIN));
@@ -179,16 +179,16 @@ test_status_yin(void **state)
      *        but gl3 is obsolete (not changed) so it cannot appear */
     assert_ptr_equal(NULL, lyd_parse_mem(st->ctx, xml1, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_OBSOLETE));
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_OBSDATA);
-    assert_string_equal(ly_errpath(), "/status:a/gl3");
+    assert_int_equal(ly_vecode(st->ctx), LYVE_OBSDATA);
+    assert_string_equal(ly_errpath(st->ctx), "/status:a/gl3");
 
     /* xml2 - obsolete is applied to gl1, so it is not mandatory,
      *        gl2 is obsolete so it cannot appear in data and here the error should raise,
      *        gl3 is obsolete (not changed) so it cannot appear */
     assert_ptr_equal(NULL, lyd_parse_mem(st->ctx, xml2, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_OBSOLETE));
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_OBSDATA);
-    assert_string_equal(ly_errpath(), "/status:c/gl2");
+    assert_int_equal(ly_vecode(st->ctx), LYVE_OBSDATA);
+    assert_string_equal(ly_errpath(st->ctx), "/status:c/gl2");
 }
 
 static void
@@ -276,17 +276,17 @@ test_status_yang(void **state)
     /* deprecated nodes cannot be in obsolete data (obsolete is stronger) */
     assert_ptr_equal(NULL, lys_parse_mem(st->ctx, yang_fail3, LYS_IN_YANG));
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INSTATUS);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INSTATUS);
 
     /* current nodes cannot be in obsolete data (obsolete is stronger) */
     assert_ptr_equal(NULL, lys_parse_mem(st->ctx, yang_fail2, LYS_IN_YANG));
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INSTATUS);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INSTATUS);
 
     /* current nodes cannot be in deprecated data (deprecated is stronger) */
     assert_ptr_equal(NULL, lys_parse_mem(st->ctx, yang_fail1, LYS_IN_YANG));
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INSTATUS);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INSTATUS);
 
     /* status is inherited so all the mandatory statements should be ignored and empty data tree is fine */
     assert_ptr_not_equal(NULL, lys_parse_mem(st->ctx, yang, LYS_IN_YANG));
@@ -297,16 +297,16 @@ test_status_yang(void **state)
      *        but gl3 is obsolete (not changed) so it cannot appear */
     assert_ptr_equal(NULL, lyd_parse_mem(st->ctx, xml1, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_OBSOLETE));
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_OBSDATA);
-    assert_string_equal(ly_errpath(), "/status:a/gl3");
+    assert_int_equal(ly_vecode(st->ctx), LYVE_OBSDATA);
+    assert_string_equal(ly_errpath(st->ctx), "/status:a/gl3");
 
     /* xml2 - obsolete is applied to gl1, so it is not mandatory,
      *        gl2 is obsolete so it cannot appear in data and here the error should raise,
      *        gl3 is obsolete (not changed) so it cannot appear */
     assert_ptr_equal(NULL, lyd_parse_mem(st->ctx, xml2, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_OBSOLETE));
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_OBSDATA);
-    assert_string_equal(ly_errpath(), "/status:c/gl2");
+    assert_int_equal(ly_vecode(st->ctx), LYVE_OBSDATA);
+    assert_string_equal(ly_errpath(st->ctx), "/status:c/gl2");
 }
 
 int

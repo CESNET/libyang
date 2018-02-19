@@ -24,68 +24,72 @@ extern "C" {
 #include "tree_schema.h"
 }
 
-void check_libyang_error() {
-    const char *errmsg = ly_errmsg();
+void check_libyang_error(ly_ctx *ctx) {
+    const char *errmsg = ctx ? ly_errmsg(ctx) : nullptr;
 
     if (errmsg) {
         throw std::runtime_error(errmsg);
-    }
+    } else if (ly_errno) {
+        throw std::runtime_error("libyang error");
+    } else if (!ctx) {
+        throw std::runtime_error("No Context");
+	}
 };
 
 Deleter::Deleter(ly_ctx *ctx, S_Deleter parent):
     t(Free_Type::CONTEXT),
-    parent(parent),
-    context(nullptr)
+    parent(parent)
 {
+    context = NULL;
     v.ctx = ctx;
 };
 Deleter::Deleter(struct lyd_node *data, S_Deleter parent):
     t(Free_Type::DATA_NODE),
-    parent(parent),
-    context(nullptr)
+    parent(parent)
 {
+    context = NULL;
     v.data = data;
 };
 Deleter::Deleter(struct lys_node *schema, S_Deleter parent):
     t(Free_Type::SCHEMA_NODE),
-    parent(parent),
-    context(nullptr)
+    parent(parent)
 {
+    context = NULL;
     v.schema = schema;
 };
 Deleter::Deleter(struct lys_module *module, S_Deleter parent):
     t(Free_Type::MODULE),
-    parent(parent),
-    context(nullptr)
+    parent(parent)
 {
+    context = NULL;
     v.module = module;
 };
 Deleter::Deleter(struct lys_submodule *submodule, S_Deleter parent):
     t(Free_Type::SUBMODULE),
-    parent(parent),
-    context(nullptr)
+    parent(parent)
 {
+    context = NULL;
     v.submodule = submodule;
 };
 Deleter::Deleter(S_Context context, struct lyxml_elem *elem, S_Deleter parent):
     t(Free_Type::XML),
-    parent(parent),
-    context(context)
+    parent(parent)
 {
+    context = NULL;
     v.elem = elem;
 };
 Deleter::Deleter(struct ly_set *set, S_Deleter parent):
     t(Free_Type::SET),
-    parent(parent),
-    context(nullptr)
+    parent(parent)
 {
+    context = NULL;
     v.set = set;
 }
 Deleter::Deleter(struct lyd_difflist *diff, S_Deleter parent):
     t(Free_Type::DIFFLIST),
-    parent(parent),
-    context(nullptr)
+    parent(parent)
 {
+    context = NULL;
     v.diff = diff;
 }
 Deleter::~Deleter() {

@@ -404,9 +404,12 @@ yin_print_unsigned(struct lyout *out, int level, LYEXT_SUBSTMT substmt, uint8_t 
 {
     char *str;
 
-    asprintf(&str, "%u", attr_value);
-    yin_print_substmt(out, level, substmt, substmt_index, str, module, ext, ext_size);
-    free(str);
+    if (asprintf(&str, "%u", attr_value) == -1) {
+        LOGMEM(module->ctx);
+    } else {
+        yin_print_substmt(out, level, substmt, substmt_index, str, module, ext, ext_size);
+        free(str);
+    }
 }
 
 static void
@@ -416,9 +419,12 @@ yin_print_signed(struct lyout *out, int level, LYEXT_SUBSTMT substmt, uint8_t su
 {
     char *str;
 
-    asprintf(&str, "%d", attr_value);
-    yin_print_substmt(out, level, substmt, substmt_index, str, module, ext, ext_size);
-    free(str);
+    if (asprintf(&str, "%d", attr_value) == -1) {
+        LOGMEM(module->ctx);
+    } else {
+        yin_print_substmt(out, level, substmt, substmt_index, str, module, ext, ext_size);
+        free(str);
+    }
 }
 
 static void
@@ -508,11 +514,14 @@ yin_print_type(struct lyout *out, int level, const struct lys_module *module, co
                     yin_print_substmt(out, level, LYEXT_SUBSTMT_BASE, 0, type->info.ident.ref[i]->name,
                                       module, type->info.ident.ref[i]->ext, type->info.ident.ref[i]->ext_size);
                 } else {
-                    asprintf(&s, "%s:%s", transform_module_name2import_prefix(module, mod->name),
-                             type->info.ident.ref[i]->name);
-                    yin_print_substmt(out, level, LYEXT_SUBSTMT_BASE, 0, s,
-                                      module, type->info.ident.ref[i]->ext, type->info.ident.ref[i]->ext_size);
-                    free(s);
+                    if (asprintf(&s, "%s:%s", transform_module_name2import_prefix(module, mod->name),
+                                 type->info.ident.ref[i]->name) == -1) {
+                        LOGMEM(module->ctx);
+                    } else {
+                        yin_print_substmt(out, level, LYEXT_SUBSTMT_BASE, 0, s,
+                                          module, type->info.ident.ref[i]->ext, type->info.ident.ref[i]->ext_size);
+                        free(s);
+                    }
                 }
             }
         }
@@ -901,10 +910,13 @@ yin_print_identity(struct lyout *out, int level, const struct lys_ident *ident)
             yin_print_substmt(out, level, LYEXT_SUBSTMT_BASE, i, ident->base[i]->name,
                               ident->module, ident->ext, ident->ext_size);
         } else {
-            asprintf(&str, "%s:%s", transform_module_name2import_prefix(ident->module, mod->name), ident->base[i]->name);
-            yin_print_substmt(out, level, LYEXT_SUBSTMT_BASE, i, str,
-                              ident->module, ident->ext, ident->ext_size);
-            free(str);
+            if (asprintf(&str, "%s:%s", transform_module_name2import_prefix(ident->module, mod->name), ident->base[i]->name) == -1) {
+                LOGMEM(mod->ctx);
+            } else {
+                yin_print_substmt(out, level, LYEXT_SUBSTMT_BASE, i, str,
+                                  ident->module, ident->ext, ident->ext_size);
+                free(str);
+            }
         }
     }
     yin_print_snode_common(out, level, (struct lys_node *)ident, ident->module, &content,
@@ -1814,7 +1826,7 @@ yin_print_extcomplex_bool(struct lyout *out, int level, const struct lys_module 
     } else if (*val == 2) {
         yin_print_substmt(out, level, (LYEXT_SUBSTMT)stmt, 0, false_val, module, ext->ext, ext->ext_size);
     } else {
-        LOGINT;
+        LOGINT(module->ctx);
     }
 }
 

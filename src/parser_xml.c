@@ -124,7 +124,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 
     if (xml->flags & LYXML_ELEM_MIXED) {
         if (options & LYD_OPT_STRICT) {
-            LOGVAL(LYE_XML_INVAL, LY_VLOG_XML, xml, "XML element with mixed content");
+            LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_XML, xml, "XML element with mixed content");
             return -1;
         } else {
             return 0;
@@ -133,7 +133,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 
     if (!xml->ns || !xml->ns->value) {
         if (options & LYD_OPT_STRICT) {
-            LOGVAL(LYE_XML_MISS, LY_VLOG_XML, xml, "element's", "namespace");
+            LOGVAL(ctx, LYE_XML_MISS, LY_VLOG_XML, xml, "element's", "namespace");
             return -1;
         } else {
             return 0;
@@ -202,7 +202,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
     mod = lys_node_module(schema);
     if (!mod || !mod->implemented || mod->disabled) {
         if (options & LYD_OPT_STRICT) {
-            LOGVAL(LYE_INELEM, (parent ? LY_VLOG_LYD : LY_VLOG_NONE), parent, xml->name);
+            LOGVAL(ctx, LYE_INELEM, (parent ? LY_VLOG_LYD : LY_VLOG_NONE), parent, xml->name);
             return -1;
         } else {
             return 0;
@@ -219,9 +219,9 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         for (i = 0; xml->content && xml->content[i]; ++i) {
             if (!is_xmlws(xml->content[i])) {
                 msg = malloc(22 + strlen(xml->content) + 1);
-                LY_CHECK_ERR_RETURN(!msg, LOGMEM, -1);
+                LY_CHECK_ERR_RETURN(!msg, LOGMEM(ctx), -1);
                 sprintf(msg, "node with text data \"%s\"", xml->content);
-                LOGVAL(LYE_XML_INVAL, LY_VLOG_XML, xml, msg);
+                LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_XML, xml, msg);
                 free(msg);
                 return -1;
             }
@@ -240,31 +240,32 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         havechildren = 0;
         break;
     default:
-        LOGINT;
+        LOGINT(ctx);
         return -1;
     }
-    LY_CHECK_ERR_RETURN(!(*result), LOGMEM, -1);
+    LY_CHECK_ERR_RETURN(!(*result), LOGMEM(ctx), -1);
 
     (*result)->prev = *result;
     (*result)->schema = schema;
     (*result)->parent = parent;
     diter = NULL;
     if (schema->nodetype == LYS_LEAF && lys_is_key((struct lys_node_leaf *)schema, &pos)) {
-        /* it is key and we need to insert it into a correct place */
+        /* it is key and we need to insert it into a correct place (a key must have a parent list) */
+        assert(parent);
         for (i = 0, diter = parent->child;
                 diter && i < pos && diter->schema->nodetype == LYS_LEAF && lys_is_key((struct lys_node_leaf *)diter->schema, NULL);
                 i++, diter = diter->next);
         if (diter) {
             /* out of order insertion - insert list's key to the correct position, before the diter */
             if (options & LYD_OPT_STRICT) {
-                LOGVAL(LYE_INORDER, LY_VLOG_LYD, *result, schema->name, diter->schema->name);
-                LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Invalid position of the key \"%s\" in a list \"%s\".",
+                LOGVAL(ctx, LYE_INORDER, LY_VLOG_LYD, *result, schema->name, diter->schema->name);
+                LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Invalid position of the key \"%s\" in a list \"%s\".",
                        schema->name, parent->schema->name);
                 free(*result);
                 *result = NULL;
                 return -1;
             } else {
-                LOGWRN("Invalid position of the key \"%s\" in a list \"%s\".", schema->name, parent->schema->name)
+                LOGWRN(ctx, "Invalid position of the key \"%s\" in a list \"%s\".", schema->name, parent->schema->name)
             }
             if (parent->child == diter) {
                 parent->child = *result;
@@ -328,18 +329,18 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         } else if (r == 1) {
 attr_error:
             if (options & LYD_OPT_STRICT) {
-                LOGVAL(LYE_INATTR, LY_VLOG_LYD, *result, attr->name);
+                LOGVAL(ctx, LYE_INATTR, LY_VLOG_LYD, *result, attr->name);
                 goto error;
             }
 
-            LOGWRN("Unknown \"%s:%s\" metadata with value \"%s\", ignoring.",
+            LOGWRN(ctx, "Unknown \"%s:%s\" metadata with value \"%s\", ignoring.",
                    (attr->ns ? attr->ns->prefix : "<none>"), attr->name, attr->value);
             continue;
         }
 
         /* special case of xpath in the value, we want to convert it to JSON */
         if (filterflag && !strcmp(attr->name, "select")) {
-            dattr->value.string = transform_xml2json(ctx, dattr->value_str, xml, 0, 0, 1);
+            dattr->value.string = transform_xml2json(ctx, dattr->value_str, xml, 0, 0);
             if (!dattr->value.string) {
                 /* problem with resolving value as xpath */
                 dattr->value.string = dattr->value_str;
@@ -371,14 +372,14 @@ attr_error:
         LY_TREE_FOR((*result)->attr, dattr_iter) {
             if (!strcmp(dattr_iter->name, "type")) {
                 if ((found == 1) || (found == 2) || (found == 4)) {
-                    LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, (*result), "type", xml->name);
+                    LOGVAL(ctx, LYE_TOOMANY, LY_VLOG_LYD, (*result), "type", xml->name);
                     goto error;
                 }
                 switch (dattr_iter->value.enm->value) {
                 case 0:
                     /* subtree */
                     if (found == 3) {
-                        LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), dattr_iter->name);
+                        LOGVAL(ctx, LYE_INATTR, LY_VLOG_LYD, (*result), dattr_iter->name);
                         goto error;
                     }
 
@@ -395,7 +396,7 @@ attr_error:
                     }
                     break;
                 default:
-                    LOGINT;
+                    LOGINT(ctx);
                     goto error;
                 }
             } else if (!strcmp(dattr_iter->name, "select")) {
@@ -404,17 +405,17 @@ attr_error:
                     found = 3;
                     break;
                 case 1:
-                    LOGVAL(LYE_INATTR, LY_VLOG_LYD, (*result), dattr_iter->name);
+                    LOGVAL(ctx, LYE_INATTR, LY_VLOG_LYD, (*result), dattr_iter->name);
                     goto error;
                 case 2:
                     found = 4;
                     break;
                 case 3:
                 case 4:
-                    LOGVAL(LYE_TOOMANY, LY_VLOG_LYD, (*result), "select", xml->name);
+                    LOGVAL(ctx, LYE_TOOMANY, LY_VLOG_LYD, (*result), "select", xml->name);
                     goto error;
                 default:
-                    LOGINT;
+                    LOGINT(ctx);
                     goto error;
                 }
             }
@@ -427,13 +428,13 @@ attr_error:
             /* ok */
             break;
         case 2:
-            LOGVAL(LYE_MISSATTR, LY_VLOG_LYD, (*result), "select", xml->name);
+            LOGVAL(ctx, LYE_MISSATTR, LY_VLOG_LYD, (*result), "select", xml->name);
             goto error;
         case 3:
-            LOGVAL(LYE_MISSATTR, LY_VLOG_LYD, (*result), "type", xml->name);
+            LOGVAL(ctx, LYE_MISSATTR, LY_VLOG_LYD, (*result), "type", xml->name);
             goto error;
         default:
-            LOGINT;
+            LOGINT(ctx);
             goto error;
         }
     }
@@ -463,16 +464,16 @@ attr_error:
         }
     } else if (schema->nodetype & (LYS_RPC | LYS_ACTION)) {
         if (!(options & LYD_OPT_RPC) || *act_notif) {
-            LOGVAL(LYE_INELEM, LY_VLOG_LYD, (*result), schema->name);
-            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Unexpected %s node \"%s\".",
+            LOGVAL(ctx, LYE_INELEM, LY_VLOG_LYD, (*result), schema->name);
+            LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Unexpected %s node \"%s\".",
                    (schema->nodetype == LYS_RPC ? "rpc" : "action"), schema->name);
             goto error;
         }
         *act_notif = *result;
     } else if (schema->nodetype == LYS_NOTIF) {
         if (!(options & LYD_OPT_NOTIF) || *act_notif) {
-            LOGVAL(LYE_INELEM, LY_VLOG_LYD, (*result), schema->name);
-            LOGVAL(LYE_SPEC, LY_VLOG_PREV, NULL, "Unexpected notification node \"%s\".", schema->name);
+            LOGVAL(ctx, LYE_INELEM, LY_VLOG_LYD, (*result), schema->name);
+            LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Unexpected notification node \"%s\".", schema->name);
             goto error;
         }
         *act_notif = *result;
@@ -508,14 +509,9 @@ attr_error:
     }
 
     /* rest of validation checks */
-    ly_err_clean(ly_parser_data.ctx, 1);
     if (lyv_data_content(*result, options, unres) ||
-             lyv_multicases(*result, NULL, prev ? &first_sibling : NULL, 0, NULL)) {
-        if (ly_errno) {
-            goto error;
-        } else {
-            goto clear;
-        }
+            lyv_multicases(*result, NULL, prev ? &first_sibling : NULL, 0, NULL)) {
+        goto error;
     }
 
     /* validation successful */
@@ -527,9 +523,6 @@ attr_error:
     return ret;
 
 error:
-    ret--;
-
-clear:
     /* cleanup */
     for (i = unres->count - 1; i >= 0; i--) {
         /* remove unres items connected with the node being removed */
@@ -539,8 +532,7 @@ clear:
     }
     lyd_free(*result);
     *result = NULL;
-
-    return ret;
+    return -1;
 }
 
 API struct lyd_node *
@@ -553,48 +545,38 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     struct lyd_node *result = NULL, *iter, *last, *reply_parent = NULL, *reply_top = NULL, *act_notif = NULL;
     struct lyxml_elem *xmlstart, *xmlelem, *xmlaux, *xmlfree = NULL;
     struct ly_set *set;
-    struct ly_ctx *ctx_prev = ly_parser_data.ctx;
-
-    ly_err_clean(ctx, 1);
 
     if (!ctx || !root) {
-        LOGERR(LY_EINVAL, "%s: Invalid parameter.", __func__);
+        LOGARG;
         return NULL;
     }
 
-    if (lyp_data_check_options(options, __func__)) {
+    if (lyp_data_check_options(ctx, options, __func__)) {
         return NULL;
     }
-
-    /* set parser context */
-    ly_parser_data.ctx = ctx;
 
     if (!(*root) && !(options & LYD_OPT_RPCREPLY)) {
         /* empty tree */
         if (options & (LYD_OPT_RPC | LYD_OPT_NOTIF)) {
             /* error, top level node identify RPC and Notification */
-            LOGERR(LY_EINVAL, "%s: *root identifies RPC/Notification so it cannot be NULL.", __func__);
-
-            /* reset parser context */
-            ly_parser_data.ctx = ctx_prev;
-
+            LOGERR(ctx, LY_EINVAL, "%s: *root identifies RPC/Notification so it cannot be NULL.", __func__);
             return NULL;
         } else if (!(options & LYD_OPT_RPCREPLY)) {
             /* others - no work is needed, just check for missing mandatory nodes */
             lyd_validate(&result, options, ctx);
-            goto success;
+            return result;
         }
         /* continue with empty RPC reply, for which we need RPC */
     }
 
     unres = calloc(1, sizeof *unres);
-    LY_CHECK_ERR_RETURN(!unres, LOGMEM, NULL);
+    LY_CHECK_ERR_RETURN(!unres, LOGMEM(ctx), NULL);
 
     va_start(ap, options);
     if (options & LYD_OPT_RPCREPLY) {
         rpc_act = va_arg(ap, const struct lyd_node *);
         if (!rpc_act || rpc_act->parent || !(rpc_act->schema->nodetype & (LYS_RPC | LYS_LIST | LYS_CONTAINER))) {
-            LOGERR(LY_EINVAL, "%s: invalid variable parameter (const struct lyd_node *rpc_act).", __func__);
+            LOGERR(ctx, LY_EINVAL, "%s: invalid variable parameter (const struct lyd_node *rpc_act).", __func__);
             goto error;
         }
         if (rpc_act->schema->nodetype == LYS_RPC) {
@@ -610,7 +592,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
                 LY_TREE_DFS_END(reply_top, iter, reply_parent);
             }
             if (!reply_parent) {
-                LOGERR(LY_EINVAL, "%s: invalid variable parameter (const struct lyd_node *rpc_act).", __func__);
+                LOGERR(ctx, LY_EINVAL, "%s: invalid variable parameter (const struct lyd_node *rpc_act).", __func__);
                 lyd_free_withsiblings(reply_top);
                 goto error;
             }
@@ -621,7 +603,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
         data_tree = va_arg(ap, const struct lyd_node *);
         if (data_tree) {
             if (options & LYD_OPT_NOEXTDEPS) {
-                LOGERR(LY_EINVAL, "%s: invalid parameter (variable arg const struct lyd_node *data_tree and LYD_OPT_NOEXTDEPS set).",
+                LOGERR(ctx, LY_EINVAL, "%s: invalid parameter (variable arg const struct lyd_node *data_tree and LYD_OPT_NOEXTDEPS set).",
                        __func__);
                 goto error;
             }
@@ -629,7 +611,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
             LY_TREE_FOR((struct lyd_node *)data_tree, iter) {
                 if (iter->parent) {
                     /* a sibling is not top-level */
-                    LOGERR(LY_EINVAL, "%s: invalid variable parameter (const struct lyd_node *data_tree).", __func__);
+                    LOGERR(ctx, LY_EINVAL, "%s: invalid variable parameter (const struct lyd_node *data_tree).", __func__);
                     goto error;
                 }
             }
@@ -639,7 +621,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
 
             /* LYD_OPT_NOSIBLINGS cannot be set in this case */
             if (options & LYD_OPT_NOSIBLINGS) {
-                LOGERR(LY_EINVAL, "%s: invalid parameter (variable arg const struct lyd_node *data_tree with LYD_OPT_NOSIBLINGS).", __func__);
+                LOGERR(ctx, LY_EINVAL, "%s: invalid parameter (variable arg const struct lyd_node *data_tree with LYD_OPT_NOSIBLINGS).", __func__);
                 goto error;
             }
         }
@@ -706,8 +688,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
         /* action reply */
         act_notif = reply_parent;
     } else if ((options & (LYD_OPT_RPC | LYD_OPT_NOTIF)) && !act_notif) {
-        ly_vecode = LYVE_INELEM;
-        LOGVAL(LYE_SPEC, LY_VLOG_LYD, result, "Missing %s node.", (options & LYD_OPT_RPC ? "action" : "notification"));
+        LOGVAL(ctx, LYE_INELEM, LY_VLOG_LYD, result, (options & LYD_OPT_RPC ? "action" : "notification"), result->schema->name);
         goto error;
     }
 
@@ -716,7 +697,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
         if (!result) {
             result = ly_ctx_info(ctx);
         } else if (lyd_merge(result, ly_ctx_info(ctx), LYD_OPT_DESTRUCT | LYD_OPT_EXPLICIT)) {
-            LOGERR(LY_EINT, "Adding ietf-yang-library data failed.");
+            LOGERR(ctx, LY_EINT, "Adding ietf-yang-library data failed.");
             goto error;
         }
     }
@@ -759,11 +740,6 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     free(unres->type);
     free(unres);
     va_end(ap);
-
-success:
-    /* reset parser context */
-    ly_parser_data.ctx = ctx_prev;
-
     return result;
 
 error:
@@ -775,9 +751,5 @@ error:
     free(unres->type);
     free(unres);
     va_end(ap);
-
-    /* reset parser context */
-    ly_parser_data.ctx = ctx_prev;
-
     return NULL;
 }

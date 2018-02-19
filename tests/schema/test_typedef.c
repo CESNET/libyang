@@ -191,35 +191,35 @@ test_typedef_11in10(void **state)
 
     mod = lys_parse_mem(st->ctx, yin_enums, LYS_IN_YIN);
     assert_ptr_equal(mod, NULL);
-    assert_int_equal(ly_vecode, LYVE_INSTMT);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INSTMT);
 
     mod = lys_parse_mem(st->ctx, yin_bits, LYS_IN_YIN);
     assert_ptr_equal(mod, NULL);
-    assert_int_equal(ly_vecode, LYVE_INSTMT);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INSTMT);
 
     mod = lys_parse_mem(st->ctx, yin_union1, LYS_IN_YIN);
     assert_ptr_equal(mod, NULL);
-    assert_int_equal(ly_vecode, LYVE_INARG);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INARG);
 
     mod = lys_parse_mem(st->ctx, yin_union2, LYS_IN_YIN);
     assert_ptr_equal(mod, NULL);
-    assert_int_equal(ly_vecode, LYVE_INARG);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INARG);
 
     mod = lys_parse_mem(st->ctx, yang_enums, LYS_IN_YANG);
     assert_ptr_equal(mod, NULL);
-    assert_int_equal(ly_vecode, LYVE_INSTMT);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INSTMT);
 
     mod = lys_parse_mem(st->ctx, yang_bits, LYS_IN_YANG);
     assert_ptr_equal(mod, NULL);
-    assert_int_equal(ly_vecode, LYVE_INSTMT);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INSTMT);
 
     mod = lys_parse_mem(st->ctx, yang_union1, LYS_IN_YANG);
     assert_ptr_equal(mod, NULL);
-    assert_int_equal(ly_vecode, LYVE_INARG);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INARG);
 
     mod = lys_parse_mem(st->ctx, yang_union2, LYS_IN_YANG);
     assert_ptr_equal(mod, NULL);
-    assert_int_equal(ly_vecode, LYVE_INARG);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INARG);
 }
 
 static void
@@ -250,13 +250,13 @@ test_typedef_11_multidents_yang(void **state)
 
     root = lyd_parse_mem(st->ctx, data1, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(root, NULL);
-    assert_string_equal(ly_errmsg(), "Failed to resolve identityref \"des\".");
-    assert_string_equal(ly_errpath(), "/x:l2");
+    assert_string_equal(ly_errmsg(st->ctx), "Failed to resolve identityref \"des\".");
+    assert_string_equal(ly_errpath(st->ctx), "/x:l2");
 
     root = lyd_parse_mem(st->ctx, data2, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(root, NULL);
-    assert_string_equal(ly_errmsg(), "Failed to resolve identityref \"des3\".");
-    assert_string_equal(ly_errpath(), "/x:l2");
+    assert_string_equal(ly_errmsg(st->ctx), "Failed to resolve identityref \"des3\".");
+    assert_string_equal(ly_errpath(st->ctx), "/x:l2");
 
     root = lyd_parse_mem(st->ctx, data3, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(root, NULL);
@@ -290,13 +290,13 @@ test_typedef_11_multidents_yin(void **state)
 
     root = lyd_parse_mem(st->ctx, data1, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(root, NULL);
-    assert_string_equal(ly_errmsg(), "Failed to resolve identityref \"des\".");
-    assert_string_equal(ly_errpath(), "/x:l2");
+    assert_string_equal(ly_errmsg(st->ctx), "Failed to resolve identityref \"des\".");
+    assert_string_equal(ly_errpath(st->ctx), "/x:l2");
 
     root = lyd_parse_mem(st->ctx, data2, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(root, NULL);
-    assert_string_equal(ly_errmsg(), "Failed to resolve identityref \"des3\".");
-    assert_string_equal(ly_errpath(), "/x:l2");
+    assert_string_equal(ly_errmsg(st->ctx), "Failed to resolve identityref \"des3\".");
+    assert_string_equal(ly_errpath(st->ctx), "/x:l2");
 
     root = lyd_parse_mem(st->ctx, data3, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(root, NULL);
@@ -338,15 +338,15 @@ test_typedef_11_enums_yang(void **state)
 
     mod = lys_parse_mem(st->ctx, enums1, LYS_IN_YANG);
     assert_ptr_equal(mod, NULL);
-    assert_int_equal(ly_vecode, LYVE_INVAL);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INVAL);
 
     mod = lys_parse_mem(st->ctx, enums2, LYS_IN_YANG);
     assert_ptr_equal(mod, NULL);
-    assert_int_equal(ly_vecode, LYVE_ENUM_INVAL);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_ENUM_INVAL);
 
     mod = lys_parse_mem(st->ctx, enums3, LYS_IN_YANG);
     assert_ptr_equal(mod, NULL);
-    assert_int_equal(ly_vecode, LYVE_ENUM_INNAME);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_ENUM_INNAME);
 
     mod = lys_parse_mem(st->ctx, enums4, LYS_IN_YANG);
     assert_ptr_not_equal(mod, NULL);
@@ -403,15 +403,15 @@ test_typedef_11_enums_yin(void **state)
 
     mod = lys_parse_mem(st->ctx, enums1, LYS_IN_YIN);
     assert_ptr_equal(mod, NULL);
-    assert_int_equal(ly_vecode, LYVE_INVAL);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INVAL);
 
     mod = lys_parse_mem(st->ctx, enums2, LYS_IN_YIN);
     assert_ptr_equal(mod, NULL);
-    assert_int_equal(ly_vecode, LYVE_ENUM_INVAL);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_ENUM_INVAL);
 
     mod = lys_parse_mem(st->ctx, enums3, LYS_IN_YIN);
     assert_ptr_equal(mod, NULL);
-    assert_int_equal(ly_vecode, LYVE_ENUM_INNAME);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_ENUM_INNAME);
 
     mod = lys_parse_mem(st->ctx, enums4, LYS_IN_YIN);
     assert_ptr_not_equal(mod, NULL);
@@ -453,15 +453,15 @@ test_typedef_11_bits_yang(void **state)
 
     mod = lys_parse_mem(st->ctx, bits1, LYS_IN_YANG);
     assert_ptr_equal(mod, NULL);
-    assert_int_equal(ly_vecode, LYVE_INVAL);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INVAL);
 
     mod = lys_parse_mem(st->ctx, bits2, LYS_IN_YANG);
     assert_ptr_equal(mod, NULL);
-    assert_int_equal(ly_vecode, LYVE_BITS_INVAL);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_BITS_INVAL);
 
     mod = lys_parse_mem(st->ctx, bits3, LYS_IN_YANG);
     assert_ptr_equal(mod, NULL);
-    assert_int_equal(ly_vecode, LYVE_BITS_INNAME);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_BITS_INNAME);
 
     mod = lys_parse_mem(st->ctx, bits4, LYS_IN_YANG);
     assert_ptr_not_equal(mod, NULL);
@@ -519,15 +519,15 @@ test_typedef_11_bits_yin(void **state)
 
     mod = lys_parse_mem(st->ctx, bits1, LYS_IN_YIN);
     assert_ptr_equal(mod, NULL);
-    assert_int_equal(ly_vecode, LYVE_INVAL);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INVAL);
 
     mod = lys_parse_mem(st->ctx, bits2, LYS_IN_YIN);
     assert_ptr_equal(mod, NULL);
-    assert_int_equal(ly_vecode, LYVE_BITS_INVAL);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_BITS_INVAL);
 
     mod = lys_parse_mem(st->ctx, bits3, LYS_IN_YIN);
     assert_ptr_equal(mod, NULL);
-    assert_int_equal(ly_vecode, LYVE_BITS_INNAME);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_BITS_INNAME);
 
     mod = lys_parse_mem(st->ctx, bits4, LYS_IN_YIN);
     assert_ptr_not_equal(mod, NULL);
@@ -558,7 +558,7 @@ test_typedef_11_iff_ident_yang(void **state)
 
     root = lyd_parse_mem(st->ctx, data1, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(root, NULL);
-    assert_int_equal(ly_vecode, LYVE_INVAL);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INVAL);
 
     root = lyd_parse_mem(st->ctx, data2, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(root, NULL);
@@ -570,7 +570,7 @@ test_typedef_11_iff_ident_yang(void **state)
 
     lys_features_disable(mod, "x");
     assert_int_not_equal(lyd_validate(&root, LYD_OPT_CONFIG, NULL), 0);
-    assert_int_equal(ly_vecode, LYVE_INVAL);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INVAL);
 
     lyd_free_withsiblings(root);
 }
@@ -598,7 +598,7 @@ test_typedef_11_iff_ident_yin(void **state)
 
     root = lyd_parse_mem(st->ctx, data1, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(root, NULL);
-    assert_int_equal(ly_vecode, LYVE_INVAL);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INVAL);
 
     root = lyd_parse_mem(st->ctx, data2, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(root, NULL);
@@ -610,7 +610,7 @@ test_typedef_11_iff_ident_yin(void **state)
 
     lys_features_disable(mod, "x");
     assert_int_not_equal(lyd_validate(&root, LYD_OPT_CONFIG, NULL), 0);
-    assert_int_equal(ly_vecode, LYVE_INVAL);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INVAL);
 
     lyd_free_withsiblings(root);
 }
@@ -638,7 +638,7 @@ test_typedef_11_iff_enums_yang(void **state)
 
     root = lyd_parse_mem(st->ctx, data1, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(root, NULL);
-    assert_int_equal(ly_vecode, LYVE_INVAL);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INVAL);
 
     root = lyd_parse_mem(st->ctx, data2, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(root, NULL);
@@ -650,7 +650,7 @@ test_typedef_11_iff_enums_yang(void **state)
 
     lys_features_disable(mod, "x");
     assert_int_not_equal(lyd_validate(&root, LYD_OPT_CONFIG, NULL), 0);
-    assert_int_equal(ly_vecode, LYVE_INVAL);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INVAL);
 
     lyd_free_withsiblings(root);
 }
@@ -678,7 +678,7 @@ test_typedef_11_iff_enums_yin(void **state)
 
     root = lyd_parse_mem(st->ctx, data1, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(root, NULL);
-    assert_int_equal(ly_vecode, LYVE_INVAL);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INVAL);
 
     root = lyd_parse_mem(st->ctx, data2, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(root, NULL);
@@ -690,7 +690,7 @@ test_typedef_11_iff_enums_yin(void **state)
 
     lys_features_disable(mod, "x");
     assert_int_not_equal(lyd_validate(&root, LYD_OPT_CONFIG, NULL), 0);
-    assert_int_equal(ly_vecode, LYVE_INVAL);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INVAL);
 
     lyd_free_withsiblings(root);
 }
@@ -718,7 +718,7 @@ test_typedef_11_iff_bits_yang(void **state)
 
     root = lyd_parse_mem(st->ctx, data1, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(root, NULL);
-    assert_int_equal(ly_vecode, LYVE_INVAL);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INVAL);
 
     root = lyd_parse_mem(st->ctx, data2, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(root, NULL);
@@ -730,7 +730,7 @@ test_typedef_11_iff_bits_yang(void **state)
 
     lys_features_disable(mod, "x");
     assert_int_not_equal(lyd_validate(&root, LYD_OPT_CONFIG, NULL), 0);
-    assert_int_equal(ly_vecode, LYVE_INVAL);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INVAL);
 
     lyd_free_withsiblings(root);
 }
@@ -758,7 +758,7 @@ test_typedef_11_iff_bits_yin(void **state)
 
     root = lyd_parse_mem(st->ctx, data1, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(root, NULL);
-    assert_int_equal(ly_vecode, LYVE_INVAL);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INVAL);
 
     root = lyd_parse_mem(st->ctx, data2, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(root, NULL);
@@ -770,7 +770,7 @@ test_typedef_11_iff_bits_yin(void **state)
 
     lys_features_disable(mod, "x");
     assert_int_not_equal(lyd_validate(&root, LYD_OPT_CONFIG, NULL), 0);
-    assert_int_equal(ly_vecode, LYVE_INVAL);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INVAL);
 
     lyd_free_withsiblings(root);
 }
@@ -808,11 +808,11 @@ test_typedef_11_pattern_yin(void **state)
 
     root = lyd_parse_mem(st->ctx, data3, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(root, NULL);
-    assert_int_equal(ly_vecode, LYVE_NOCONSTR);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_NOCONSTR);
 
     root = lyd_parse_mem(st->ctx, data2, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(root, NULL);
-    assert_int_equal(ly_vecode, LYVE_NOCONSTR);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_NOCONSTR);
 
     root = lyd_parse_mem(st->ctx, data1, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(root, NULL);
@@ -850,11 +850,11 @@ test_typedef_11_pattern_yang(void **state)
 
     root = lyd_parse_mem(st->ctx, data3, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(root, NULL);
-    assert_int_equal(ly_vecode, LYVE_NOCONSTR);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_NOCONSTR);
 
     root = lyd_parse_mem(st->ctx, data2, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(root, NULL);
-    assert_int_equal(ly_vecode, LYVE_NOCONSTR);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_NOCONSTR);
 
     root = lyd_parse_mem(st->ctx, data1, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(root, NULL);
@@ -925,7 +925,7 @@ test_typedef_11_union_leafref_yin(void **state)
 
     root = lyd_parse_mem(st->ctx, data2, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(root, NULL);
-    assert_int_equal(ly_vecode, LYVE_INVAL);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INVAL);
 
     root = lyd_parse_mem(st->ctx, data1, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(root, NULL);
@@ -1005,7 +1005,7 @@ test_typedef_11_union_leafref_yang(void **state)
 
     root = lyd_parse_mem(st->ctx, data2, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(root, NULL);
-    assert_int_equal(ly_vecode, LYVE_INVAL);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INVAL);
 
     root = lyd_parse_mem(st->ctx, data1, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(root, NULL);
@@ -1064,11 +1064,11 @@ test_typedef_11_union_empty_yin(void **state)
 
     root = lyd_parse_mem(st->ctx, data1, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(root, NULL);
-    assert_int_equal(ly_vecode, LYVE_INVAL);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INVAL);
 
     root = lyd_parse_mem(st->ctx, data2, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(root, NULL);
-    assert_int_equal(ly_vecode, LYVE_INVAL);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INVAL);
 
     root = lyd_parse_mem(st->ctx, data3, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(root, NULL);
@@ -1117,11 +1117,11 @@ test_typedef_11_union_empty_yang(void **state)
 
     root = lyd_parse_mem(st->ctx, data1, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(root, NULL);
-    assert_int_equal(ly_vecode, LYVE_INVAL);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INVAL);
 
     root = lyd_parse_mem(st->ctx, data2, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(root, NULL);
-    assert_int_equal(ly_vecode, LYVE_INVAL);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INVAL);
 
     root = lyd_parse_mem(st->ctx, data3, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(root, NULL);

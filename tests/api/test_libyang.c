@@ -476,21 +476,23 @@ test_ly_ctx_clean(void **state)
     ly_ctx_clean(ctx, NULL);
     assert_int_equal(setid + 2, ctx->models.module_set_id);
     assert_int_equal(modules_count, ctx->models.used);
-    assert_int_equal(dict_used + 1, ctx->dict.used);
+    assert_int_equal(dict_used, ctx->dict.used);
 
     /* add a module again ... */
     mod = ly_ctx_load_module(ctx, "x", NULL);
     assert_ptr_not_equal(mod, NULL);
     assert_int_equal(modules_count + 1, ctx->models.used);
     assert_int_not_equal(dict_used, ctx->dict.used);
+
     /* .. and add some string into dictionary */
     assert_ptr_not_equal(lydict_insert(ctx, "qwertyuiop", 0), NULL);
+    ++dict_used;
 
     /* clean the context */
     ly_ctx_clean(ctx, NULL);
     assert_int_equal(setid + 4, ctx->models.module_set_id);
     assert_int_equal(modules_count, ctx->models.used);
-    assert_int_equal(dict_used + 2, ctx->dict.used);
+    assert_int_equal(dict_used, ctx->dict.used);
 
     /* cleanup */
     ly_ctx_destroy(ctx, NULL);
@@ -564,7 +566,7 @@ test_ly_ctx_remove_module(void **state)
     assert_true(setid < ctx->models.module_set_id);
     setid = ctx->models.module_set_id;
     assert_int_equal(modules_count, ctx->models.used);
-    assert_int_equal(dict_used + 2, ctx->dict.used);
+    assert_int_equal(dict_used, ctx->dict.used);
 
     /* add a module again ... */
     mod = ly_ctx_load_module(ctx, "y", NULL);
@@ -579,7 +581,7 @@ test_ly_ctx_remove_module(void **state)
     assert_true(setid < ctx->models.module_set_id);
     setid = ctx->models.module_set_id;
     assert_int_equal(modules_count, ctx->models.used);
-    assert_int_equal(dict_used + 2, ctx->dict.used);
+    assert_int_equal(dict_used, ctx->dict.used);
 
     /* add a module again ... */
     mod = ly_ctx_load_module(ctx, "y", NULL);
@@ -595,7 +597,7 @@ test_ly_ctx_remove_module(void **state)
     assert_true(setid < ctx->models.module_set_id);
     setid = ctx->models.module_set_id;
     assert_int_equal(modules_count + 1, ctx->models.used);
-    assert_int_not_equal(dict_used + 2, ctx->dict.used);
+    assert_int_not_equal(dict_used, ctx->dict.used);
     ly_ctx_clean(ctx, NULL);
 
     /* add a module again ... */
@@ -603,7 +605,7 @@ test_ly_ctx_remove_module(void **state)
     assert_true(setid < ctx->models.module_set_id);
     setid = ctx->models.module_set_id;
     assert_int_equal(modules_count + 2, ctx->models.used);
-    assert_int_not_equal(dict_used + 2, ctx->dict.used);
+    assert_int_not_equal(dict_used, ctx->dict.used);
     /* and add another one also importing module 'x' ... */
     assert_ptr_not_equal(ly_ctx_load_module(ctx, "z", NULL), NULL);
     assert_true(setid < ctx->models.module_set_id);
@@ -1082,56 +1084,80 @@ test_ly_set_log_clb(void **state)
 }
 
 static void
-test_ly_errno_location(void **state)
+test_ly_log_options(void **state)
 {
-    (void) state; /* unused */
-    char *yang_folder = "INVALID_PATH";
+    (void)state;
+    const struct ly_err_item *i;
+    const struct lys_module *mod;
+    char *path;
 
-    LY_ERR *error;
+    /* reset logging with path */
+    ly_set_log_clb(NULL, 1);
 
-    error = ly_errno_address();
+    assert_int_equal(ly_log_options(LY_LOLOG | LY_LOSTORE_LAST), LY_LOLOG | LY_LOSTORE_LAST);
 
-    assert_int_equal(LY_SUCCESS, *error);
+    i = ly_err_first(ctx);
+    assert_null(i);
 
-    ctx = ly_ctx_new(yang_folder, 0);
-    if (ctx) {
-        fail();
-    }
+    mod = ly_ctx_load_module(ctx, "INVALID_NAME", NULL);
+    assert_null(mod);
+    assert_int_equal(ly_errno, LY_ESYS);
 
-    error = ly_errno_address();
+    i = ly_err_first(ctx);
+    assert_non_null(i);
+    i = i->prev;
+    assert_int_equal(i->no, LY_ESYS);
+    assert_string_equal(i->msg, "Data model \"INVALID_NAME\" not found.");
+    assert_null(i->next);
 
-    assert_int_equal(LY_ESYS, *error);
-    ly_ctx_destroy(ctx, NULL);
-}
+    mod = ly_ctx_load_module(ctx, "INVALID_NAME2", NULL);
+    assert_null(mod);
+    assert_int_equal(ly_errno, LY_ESYS);
 
-static void
-test_ly_errmsg(void **state)
-{
-    (void) state; /* unused */
-    const char *msg;
-    char *yang_folder = "INVALID_PATH";
-    char *compare = "Unable to use search directory \"INVALID_PATH\" (No such file or directory)";
+    i = ly_err_first(ctx);
+    assert_non_null(i);
+    i = i->prev;
+    assert_int_equal(i->no, LY_ESYS);
+    assert_string_equal(i->msg, "Data model \"INVALID_NAME2\" not found.");
+    assert_null(i->next);
 
-    ctx = ly_ctx_new(yang_folder, 0);
-    if (ctx) {
-        fail();
-    }
+    ly_log_options(LY_LOSTORE);
 
-    msg = ly_errmsg();
+    path = ly_path_data2schema(ctx, "/a:f/g/h");
+    assert_null(path);
+    assert_int_equal(ly_errno, LY_EVALID);
 
-    assert_string_equal(compare, msg);
-}
+    i = ly_err_first(ctx);
+    assert_non_null(i);
+    i = i->prev;
+    assert_int_equal(i->no, LY_EVALID);
+    assert_int_equal(i->vecode, LYVE_PATH_INNODE);
+    assert_string_equal(i->msg, "Schema node not found.");
+    assert_string_equal(i->path, "f");
+    assert_null(i->next);
 
-static void
-test_ly_errpath(void **state)
-{
-    (void) state; /* unused */
-    const char *path;
-    char *compare = "";
+    path = ly_path_data2schema(ctx, "/fgh:f/g/h");
+    assert_null(path);
+    assert_int_equal(ly_errno, LY_EVALID);
 
-    path = ly_errpath();
+    i = ly_err_first(ctx);
+    assert_non_null(i);
+    i = i->prev;
+    assert_int_equal(i->no, LY_EVALID);
+    assert_int_equal(i->vecode, LYVE_PATH_INMOD);
+    assert_string_equal(i->msg, "Module not found or not implemented.");
+    assert_string_equal(i->path, "fgh");
+    assert_null(i->next);
 
-    assert_string_equal(compare, path);
+    assert_non_null(i->prev->next);
+    assert_non_null(i->prev->prev->next);
+
+    ly_log_options(LY_LOLOG | LY_LOSTORE_LAST);
+
+    ly_err_clean(ctx, NULL);
+    assert_int_equal(ly_errno, LY_SUCCESS);
+    i = ly_err_first(ctx);
+    assert_null(i);
 }
 
 static void
@@ -1205,9 +1231,7 @@ int main(void)
         cmocka_unit_test(test_ly_verb),
         cmocka_unit_test(test_ly_get_log_clb),
         cmocka_unit_test(test_ly_set_log_clb),
-        cmocka_unit_test(test_ly_errno_location),
-        cmocka_unit_test(test_ly_errmsg),
-        cmocka_unit_test_setup_teardown(test_ly_errpath, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_ly_log_options, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_path_data2schema, setup_f, teardown_f),
     };
 

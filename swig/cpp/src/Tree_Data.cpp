@@ -60,7 +60,7 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name) {
 
     new_node = lyd_new(parent ? parent->node : NULL, module->module, name);
     if (!new_node) {
-        check_libyang_error();
+        check_libyang_error(module->module->ctx);
     }
 
     node = new_node;
@@ -75,7 +75,7 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, cons
 
     new_node = lyd_new_leaf(parent ? parent->node : NULL, module->module, name, val_str);
     if (!new_node) {
-        check_libyang_error();
+        check_libyang_error(module->module->ctx);
     }
 
     node = new_node;
@@ -90,7 +90,7 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, cons
 
     new_node = lyd_new_anydata(parent ? parent->node : NULL, module->module, name, (void *) value, value_type);
     if (!new_node) {
-        check_libyang_error();
+        check_libyang_error(module->module->ctx);
     }
 
     node = new_node;
@@ -105,7 +105,7 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Da
 
     new_node = lyd_new_anydata(parent ? parent->node : NULL, module->module, name, (void *) value->node, LYD_ANYDATA_DATATREE);
     if (!new_node) {
-        check_libyang_error();
+        check_libyang_error(module->module->ctx);
     }
 
     node = new_node;
@@ -120,7 +120,7 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Xm
 
     new_node = lyd_new_anydata(parent ? parent->node : NULL, module->module, name, (void *) value->elem, LYD_ANYDATA_XML);
     if (!new_node) {
-        check_libyang_error();
+        check_libyang_error(module->module->ctx);
     }
 
     node = new_node;
@@ -138,7 +138,7 @@ Data_Node::Data_Node(S_Context context, const char *path, const char *value, LYD
 
     new_node = lyd_new_path(NULL, context->ctx, path, (void *) value, value_type, options);
     if (!new_node) {
-        check_libyang_error();
+        check_libyang_error(context->ctx);
     }
 
     node = new_node;
@@ -156,7 +156,7 @@ Data_Node::Data_Node(S_Context context, const char *path, S_Data_Node value, int
 
     new_node = lyd_new_path(NULL, context->ctx, path, (void *) value->node, LYD_ANYDATA_DATATREE, options);
     if (!new_node) {
-        check_libyang_error();
+        check_libyang_error(context->ctx);
     }
 
     node = new_node;
@@ -174,7 +174,7 @@ Data_Node::Data_Node(S_Context context, const char *path, S_Xml_Elem value, int 
 
     new_node = lyd_new_path(NULL, context->ctx, path, (void *) value->elem, LYD_ANYDATA_XML, options);
     if (!new_node) {
-        check_libyang_error();
+        check_libyang_error(context->ctx);
     }
 
     node = new_node;
@@ -188,7 +188,7 @@ std::string Data_Node::path() {
 
     path = lyd_path(node);
     if (!path) {
-        check_libyang_error();
+        check_libyang_error(node->schema->module->ctx);
         return nullptr;
     }
 
@@ -212,57 +212,57 @@ S_Data_Node Data_Node::dup_to_ctx(int recursive, S_Context context) {
 }
 int Data_Node::merge(S_Data_Node source, int options) {
     int ret = lyd_merge(node, source->node, options);
-    if (!ret) {
-        check_libyang_error();
+    if (ret) {
+        check_libyang_error(source->node->schema->module->ctx);
     }
     return ret;
 }
 int Data_Node::merge_to_ctx(S_Data_Node source, int options, S_Context context) {
     int ret = lyd_merge_to_ctx(&node, source->node, options, context->ctx);
-    if (!ret) {
-        check_libyang_error();
+    if (ret) {
+        check_libyang_error(context->ctx);
     }
     return ret;
 }
 int Data_Node::insert(S_Data_Node new_node) {
     int ret = lyd_insert(node, new_node->node);
-    if (!ret) {
-        check_libyang_error();
+    if (ret) {
+        check_libyang_error(node->schema->module->ctx);
     }
     return ret;
 }
 int Data_Node::insert_sibling(S_Data_Node new_node) {
     int ret = lyd_insert_sibling(&node, new_node->node);
-    if (!ret) {
-        check_libyang_error();
+    if (ret) {
+        check_libyang_error(node->schema->module->ctx);
     }
     return ret;
 }
 int Data_Node::insert_before(S_Data_Node new_node) {
     int ret = lyd_insert_before(node, new_node->node);
-    if (!ret) {
-        check_libyang_error();
+    if (ret) {
+        check_libyang_error(node->schema->module->ctx);
     }
     return ret;
 }
 int Data_Node::insert_after(S_Data_Node new_node) {
     int ret = lyd_insert_after(node, new_node->node);
-    if (!ret) {
-        check_libyang_error();
+    if (ret) {
+        check_libyang_error(node->schema->module->ctx);
     }
     return ret;
 }
 int Data_Node::schema_sort(int recursive) {
     int ret = lyd_schema_sort(node, recursive);
-    if (!ret) {
-        check_libyang_error();
+    if (ret) {
+        check_libyang_error(node->schema->module->ctx);
     }
     return ret;
 }
 S_Set Data_Node::find_path(const char *expr) {
     struct ly_set *set = lyd_find_path(node, expr);
     if (!set) {
-        return nullptr;
+        check_libyang_error(node->schema->module->ctx);
     }
 
     return std::make_shared<Set>(set, std::make_shared<Deleter>(set, deleter));
@@ -270,7 +270,7 @@ S_Set Data_Node::find_path(const char *expr) {
 S_Set Data_Node::find_instance(S_Schema_Node schema) {
     struct ly_set *set = lyd_find_instance(node, schema->node);
     if (!set) {
-        return nullptr;
+        check_libyang_error(node->schema->module->ctx);
     }
 
     return std::make_shared<Set>(set, std::make_shared<Deleter>(set, deleter));
@@ -284,23 +284,23 @@ S_Data_Node Data_Node::first_sibling() {
 }
 int Data_Node::validate(int options, S_Context var_arg) {
     int ret = lyd_validate(&node, options, (void *) var_arg->ctx);
-    if (!ret) {
-        check_libyang_error();
+    if (ret) {
+        check_libyang_error(node ? node->schema->module->ctx : var_arg->ctx);
     }
     return ret;
 }
 int Data_Node::validate(int options, S_Data_Node var_arg) {
     int ret = lyd_validate(&node, options, (void *) var_arg->node);
-    if (!ret) {
-        check_libyang_error();
+    if (ret) {
+        check_libyang_error(node->schema->module->ctx);
     }
     return ret;
 }
 
 int Data_Node::validate_value(const char *value) {
     int ret = lyd_validate_value(node->schema, value);
-    if (!ret) {
-        check_libyang_error();
+    if (ret != EXIT_SUCCESS) {
+        check_libyang_error(node->schema->module->ctx);
     }
     return ret;
 }
@@ -309,7 +309,7 @@ S_Difflist Data_Node::diff(S_Data_Node second, int options) {
 
     diff = lyd_diff(node, second->node, options);
     if (!diff) {
-        check_libyang_error();
+        check_libyang_error(node->schema->module->ctx);
     }
 
     return diff ? std::make_shared<Difflist>(diff, deleter) : nullptr;
@@ -319,7 +319,7 @@ S_Data_Node Data_Node::new_path(S_Context ctx, const char *path, const char *val
 
     new_node = lyd_new_path(node, ctx->ctx, path, (void *)value, value_type, options);
     if (!new_node) {
-        check_libyang_error();
+        check_libyang_error(node->schema->module->ctx);
     }
 
     return new_node ? std::make_shared<Data_Node>(new_node, deleter) : nullptr;
@@ -329,7 +329,7 @@ S_Data_Node Data_Node::new_path(S_Context ctx, const char *path, S_Data_Node val
 
     new_node = lyd_new_path(node, ctx->ctx, path, (void *)value->node, LYD_ANYDATA_DATATREE, options);
     if (!new_node) {
-        check_libyang_error();
+        check_libyang_error(node->schema->module->ctx);
     }
 
     return new_node ? std::make_shared<Data_Node>(new_node, deleter) : nullptr;
@@ -339,7 +339,7 @@ S_Data_Node Data_Node::new_path(S_Context ctx, const char *path, S_Xml_Elem valu
 
     new_node = lyd_new_path(node, ctx->ctx, path, (void *)value->elem, LYD_ANYDATA_XML, options);
     if (!new_node) {
-        check_libyang_error();
+        check_libyang_error(node->schema->module->ctx);
     }
 
     return new_node ? std::make_shared<Data_Node>(new_node, deleter) : nullptr;
@@ -347,14 +347,14 @@ S_Data_Node Data_Node::new_path(S_Context ctx, const char *path, S_Xml_Elem valu
 unsigned int Data_Node::list_pos() {
     unsigned int ret = lyd_list_pos(node);
     if (!ret) {
-        check_libyang_error();
+        check_libyang_error(node->schema->module->ctx);
     }
     return ret;
 }
 int Data_Node::unlink() {
     int ret = lyd_unlink(node);
-    if (!ret) {
-        check_libyang_error();
+    if (ret) {
+        check_libyang_error(node->schema->module->ctx);
     }
     return ret;
 }
@@ -363,7 +363,7 @@ S_Attr Data_Node::insert_attr(S_Module module, const char *name, const char *val
 
     attr = lyd_insert_attr(node, module ? module->module : NULL, name, value);
     if (!attr) {
-        check_libyang_error();
+        check_libyang_error(node->schema->module->ctx);
     }
 
     return attr ? std::make_shared<Attr>(attr, deleter) : nullptr;
@@ -373,7 +373,7 @@ S_Module Data_Node::node_module() {
 
     module = lyd_node_module(node);
     if (!module) {
-        check_libyang_error();
+        check_libyang_error(node->schema->module->ctx);
     }
 
     return module ? std::make_shared<Module>(module, deleter) : nullptr;
@@ -383,8 +383,8 @@ std::string Data_Node::print_mem(LYD_FORMAT format, int options) {
     int rc = 0;
 
     rc = lyd_print_mem(&strp, node, format, options);
-    if (0 != rc) {
-        check_libyang_error();
+    if (rc) {
+        check_libyang_error(node->schema->module->ctx);
         return nullptr;
     }
 
@@ -427,8 +427,8 @@ S_Value Data_Node_Leaf_List::value() {
 }
 int Data_Node_Leaf_List::change_leaf(const char *val_str) {
     int ret = lyd_change_leaf((struct lyd_node_leaf_list *) node, val_str);
-    if (ret) {
-        check_libyang_error();
+    if (ret < 0) {
+        check_libyang_error(node->schema->module->ctx);
     }
     return ret;
 }
@@ -438,7 +438,7 @@ int Data_Node_Leaf_List::wd_default() {
 S_Type Data_Node_Leaf_List::leaf_type() {
     const struct lys_type *type = lyd_leaf_type((const struct lyd_node_leaf_list *) node);
     if (!type) {
-        check_libyang_error();
+        check_libyang_error(node->schema->module->ctx);
     }
 
     return std::make_shared<Type>((struct lys_type *) type, deleter);
@@ -468,12 +468,12 @@ Difflist::Difflist(struct lyd_difflist *diff, S_Deleter deleter) {
 }
 Difflist::~Difflist() {};
 std::vector<S_Data_Node> *Difflist::first() {
-    unsigned int i = 0;
-    if (!*diff->first) {
-        return nullptr;
-    }
-
     auto s_vector = new std::vector<S_Data_Node>;
+    unsigned int i = 0;
+
+    if (!*diff->first) {
+        return s_vector;
+    }
 
     for(i = 0; i < sizeof(*diff->first); i++) {
         s_vector->push_back(std::make_shared<Data_Node>(*diff->first, deleter));
@@ -482,12 +482,12 @@ std::vector<S_Data_Node> *Difflist::first() {
     return s_vector;
 }
 std::vector<S_Data_Node> *Difflist::second() {
-    unsigned int i = 0;
-    if (!*diff->second) {
-        return nullptr;
-    }
-
     auto s_vector = new std::vector<S_Data_Node>;
+    unsigned int i = 0;
+
+    if (!*diff->second) {
+        return s_vector;
+    }
 
     for(i = 0; i < sizeof(*diff->second); i++) {
         s_vector->push_back(std::make_shared<Data_Node>(*diff->second, deleter));

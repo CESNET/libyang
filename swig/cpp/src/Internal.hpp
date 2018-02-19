@@ -24,6 +24,7 @@
 
 /* Libyang.hpp */
 #define S_Context                std::shared_ptr<Context>
+#define S_Error                  std::shared_ptr<Error>
 #define S_Set                    std::shared_ptr<Set>
 
 /* Tree_Data.hpp */
@@ -99,6 +100,9 @@
 #define LY_NEW_LIST(data, element, size, class)\
     {\
         auto s_vector = new std::vector<S_##class>;\
+        if (0 >= data->size) {\
+            return s_vector;\
+        }\
         for (uint8_t i = 0; i < data->size; i++) {\
             s_vector->push_back(std::make_shared<class>(&data->element[i], deleter));\
         }\
@@ -114,6 +118,9 @@
 #define LY_NEW_P_LIST(data, element, size, class)\
     {\
         auto s_vector = new std::vector<S_##class>;\
+        if (0 >= data->size) {\
+            return s_vector;\
+        }\
         for (uint8_t i = 0; i < data->size; i++) {\
             s_vector->push_back(std::make_shared<class>(data->element[i], deleter));\
         }\
@@ -129,6 +136,9 @@
 #define LY_NEW_STRING_LIST(data, element, size)\
     {\
         auto s_vector = new std::vector<std::string>;\
+        if (0 >= data->size) {\
+            return s_vector;\
+        }\
         for (uint8_t i = 0; i < data->size; i++) {\
             s_vector->push_back(std::string(data->element[i]));\
         }\
@@ -143,13 +153,13 @@ extern "C" {
 #include "libyang.h"
 }
 
-void check_libyang_error();
-
 /* defined */
 class Deleter;
 
 /* used */
 class Context;
+
+void check_libyang_error(ly_ctx *ctx);
 
 enum class Free_Type {
     CONTEXT,

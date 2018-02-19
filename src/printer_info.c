@@ -393,7 +393,7 @@ int_range:
         break;
     default:
         /* unused outside libyang, we never should be here */
-        LOGINT;
+        LOGINT(type->parent->module->ctx);
         ly_print(out, "%-*s%s\n", INDENT_LEN, "Base type: ", "UNKNOWN");
         break;
     }
@@ -1077,7 +1077,7 @@ info_print_model(struct lyout *out, const struct lys_module *module, const char 
                         tpdf_size = ((struct lys_node_grp *)target)->tpdf_size;
                         break;
                     default:
-                        LOGINT;
+                        LOGINT(module->ctx);
                         return EXIT_FAILURE;
                     }
                 }

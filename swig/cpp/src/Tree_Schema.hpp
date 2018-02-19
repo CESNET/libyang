@@ -109,6 +109,7 @@ public:
     std::vector<S_Deviation> *deviation();
     S_Schema_Node data() LY_NEW(module, data, Schema_Node);
     std::vector<S_Schema_Node> *data_instantiables(int options);
+    std::string print_mem(LYS_OUTFORMAT format, int options);
 
     friend class Context;
     friend class Data_Node;
@@ -193,8 +194,8 @@ class Type_Info_Bits
 public:
     Type_Info_Bits(struct lys_type_info_bits *info_bits, S_Deleter deleter);
     ~Type_Info_Bits();
-    S_Type_Bit bit();
-    int count() {return info_bits->count;};
+    std::vector<S_Type_Bit> *bit();
+    unsigned int count() {return info_bits->count;};
 
 private:
     lys_type_info_bits *info_bits;
@@ -240,8 +241,8 @@ class Type_Info_Enums
 public:
     Type_Info_Enums(struct lys_type_info_enums *info_enums, S_Deleter deleter);
     ~Type_Info_Enums();
-    S_Type_Enum enm();
-    int count() {return info_enums->count;};
+    std::vector<S_Type_Enum> *enm();
+    unsigned int count() {return info_enums->count;};
 
 private:
     lys_type_info_enums *info_enums;
