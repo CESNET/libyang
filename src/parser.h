@@ -44,7 +44,7 @@ struct lyd_node *xml_read_data(struct ly_ctx *ctx, const char *data, int options
  * @{
  */
 struct lyd_node *lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct lyd_node *rpc_act,
-                                const struct lyd_node *data_tree);
+                                const struct lyd_node *data_tree, const char *yang_data_name);
 
 /**@} jsondata */
 

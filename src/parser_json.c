@@ -768,7 +768,7 @@ error:
 static unsigned int
 json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *schema_parent, struct lyd_node **parent,
                 struct lyd_node *first_sibling, struct lyd_node *prev, struct attr_cont **attrs, int options,
-                struct unres_data *unres, struct lyd_node **act_notif)
+                struct unres_data *unres, struct lyd_node **act_notif, const char *yang_data_name)
 {
     unsigned int len = 0;
     unsigned int r;
@@ -778,6 +778,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
     char *name, *prefix = NULL, *str = NULL;
     const struct lys_module *module = NULL;
     struct lys_node *schema = NULL;
+    const struct lys_node *sparent = NULL;
     struct lyd_node *result = NULL, *new, *list, *diter = NULL;
     struct lyd_attr *attr;
     struct attr_cont *attrs_aux;
@@ -867,10 +868,23 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
             }
         }
         if (module && module->implemented) {
-            /* get the proper schema node */
-            while ((schema = (struct lys_node *)lys_getnext(schema, NULL, module, 0))) {
-                if (!strcmp(schema->name, name)) {
-                    break;
+            if (yang_data_name) {
+                sparent = lyp_get_yang_data_template(module, yang_data_name, strlen(yang_data_name));
+                schema = NULL;
+                if (sparent) {
+                    /* get the proper schema node */
+                    while ((schema = (struct lys_node *) lys_getnext(schema, sparent, module, 0))) {
+                        if (!strcmp(schema->name, name)) {
+                            break;
+                        }
+                    }
+                }
+            } else {
+                /* get the proper schema node */
+                while ((schema = (struct lys_node *) lys_getnext(schema, NULL, module, 0))) {
+                    if (!strcmp(schema->name, name)) {
+                        break;
+                    }
                 }
             }
         }
@@ -1091,7 +1105,7 @@ attr_repeat:
                 len++;
                 len += skip_ws(&data[len]);
 
-                r = json_parse_data(ctx, &data[len], NULL, &result, result->child, diter, &attrs_aux, options, unres, act_notif);
+                r = json_parse_data(ctx, &data[len], NULL, &result, result->child, diter, &attrs_aux, options, unres, act_notif, yang_data_name);
                 if (!r) {
                     goto error;
                 }
@@ -1143,7 +1157,7 @@ attr_repeat:
                 len++;
                 len += skip_ws(&data[len]);
 
-                r = json_parse_data(ctx, &data[len], NULL, &list, list->child, diter, &attrs_aux, options, unres, act_notif);
+                r = json_parse_data(ctx, &data[len], NULL, &list, list->child, diter, &attrs_aux, options, unres, act_notif, yang_data_name);
                 if (!r) {
                     goto error;
                 }
@@ -1248,7 +1262,7 @@ error:
 
 struct lyd_node *
 lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct lyd_node *rpc_act,
-               const struct lyd_node *data_tree)
+               const struct lyd_node *data_tree, const char *yang_data_name)
 {
     struct lyd_node *result = NULL, *next, *iter, *reply_parent = NULL, *reply_top = NULL, *act_notif = NULL;
     struct unres_data *unres = NULL;
@@ -1343,7 +1357,7 @@ empty:
             }
         }
 
-        r = json_parse_data(ctx, &data[len], NULL, &next, result, iter, &attrs, options, unres, &act_notif);
+        r = json_parse_data(ctx, &data[len], NULL, &next, result, iter, &attrs, options, unres, &act_notif, yang_data_name);
         if (!r) {
             goto error;
         }

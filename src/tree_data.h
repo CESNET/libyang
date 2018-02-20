@@ -449,8 +449,8 @@ char *lyd_path(const struct lyd_node *node);
 #define LYD_OPT_NOTIF_FILTER 0x80 /**< Data represents a filtered event notification data.
                                        Validation modification:
                                        - the only requirement is that the data tree matches the schema tree */
-#define LYD_OPT_TYPEMASK   0xff /**< Mask to filter data type options. Always only a single data type option (only
-                                     single bit from the lower 8 bits) can be set. */
+#define LYD_OPT_TYPEMASK   0x10000ff /**< Mask to filter data type options. Always only a single data type option (only
+                                          single bit from the lower 8 bits) can be set. */
 
 /* 0x100 reserved, used internally */
 #define LYD_OPT_STRICT     0x0200 /**< Instead of silent ignoring data without schema definition, raise an error. */
@@ -474,6 +474,7 @@ char *lyd_path(const struct lyd_node *node);
 #define LYD_OPT_DATA_ADD_YANGLIB 0x20000 /**< Add missing ietf-yang-library data into the validated data tree. Applicable
                                               only with #LYD_OPT_DATA. If some ietf-yang-library data are present, they are
                                               preserved and option is ignored. */
+#define LYD_OPT_DATA_TEMPLATE 0x1000000 /**< Data represents YANG data template. */
 
 /**@} parseroptions */
 
@@ -747,6 +748,18 @@ struct lyd_node *lyd_new_output_leaf(struct lyd_node *parent, const struct lys_m
  */
 struct lyd_node *lyd_new_output_anydata(struct lyd_node *parent, const struct lys_module *module, const char *name,
                                         void *value, LYD_ANYDATA_VALUETYPE value_type);
+
+/**
+ * @brief Create a new yang-data template in a data tree. It creates container, which name is in third parameter.
+ *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
+ *
+ * @param[in] module Module with the node being created.
+ * @param[in] name_template Yang-data template name. This name is used for searching of yang-data instance.
+ * @param[in] name Schema node name of the new data node. This node is container.
+ * @return New node, NULL on error.
+ */
+struct lyd_node *lyd_new_yangdata(const struct lys_module *module, const char *name_template, const char *name);
 
 /**
  * @defgroup pathoptions Data path creation options

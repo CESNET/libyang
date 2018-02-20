@@ -458,7 +458,7 @@ lyv_type_extension(struct lyd_node_leaf_list *leaf, struct lys_type *type, int f
 int
 lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
 {
-    const struct lys_node *schema, *siter;
+    const struct lys_node *schema, *siter, *parent;
     struct lyd_node *diter, *start = NULL;
     struct lys_ident *ident;
     struct lys_tpdf *tpdf;
@@ -493,8 +493,9 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
                 start = lyd_first_sibling(node);
                 for (diter = start; diter; diter = diter->next) {
                     if (diter->schema == schema && diter != node) {
+                        parent = lys_parent(schema);
                         LOGVAL(ctx, LYE_TOOMANY, LY_VLOG_LYD, node, schema->name,
-                            lys_parent(schema) ? lys_parent(schema)->name : "data tree");
+                               parent ? (parent->nodetype == LYS_EXT) ? ((struct lys_ext_instance *)parent)->arg_value : parent->name : "data tree");
                         return 1;
                     }
                 }

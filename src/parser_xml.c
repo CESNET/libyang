@@ -103,11 +103,12 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int editbits)
 static int
 xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *parent, struct lyd_node *first_sibling,
                struct lyd_node *prev, int options, struct unres_data *unres, struct lyd_node **result,
-               struct lyd_node **act_notif)
+               struct lyd_node **act_notif, const char *yang_data_name)
 {
     const struct lys_module *mod = NULL;
     struct lyd_node *diter, *dlast;
     struct lys_node *schema = NULL, *target;
+    const struct lys_node *ext_node;
     struct lys_node_augment *aug;
     struct lyd_attr *dattr, *dattr_iter;
     struct lyxml_attr *attr;
@@ -153,31 +154,40 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 
         /* get the proper schema node */
         if (mod && mod->implemented && !mod->disabled) {
-            schema = xml_data_search_schemanode(xml, mod->data, options);
-            if (!schema) {
-                /* it still can be the specific case of this module containing an augment of another module
-                * top-level choice or top-level choice's case, bleh */
-                for (j = 0; j < mod->augment_size; ++j) {
-                    aug = &mod->augment[j];
-                    target = aug->target;
-                    if (target->nodetype & (LYS_CHOICE | LYS_CASE)) {
-                        /* 1) okay, the target is choice or case */
-                        while (target && (target->nodetype & (LYS_CHOICE | LYS_CASE | LYS_USES))) {
-                            target = lys_parent(target);
-                        }
-                        /* 2) now, the data node will be top-level, there are only non-data schema nodes */
-                        if (!target) {
-                            while ((schema = (struct lys_node *)lys_getnext(schema, (struct lys_node *)aug, NULL, 0))) {
-                                /* 3) alright, even the name matches, we found our schema node */
-                                if (ly_strequal(schema->name, xml->name, 1)) {
-                                    break;
+            if (options & LYD_OPT_DATA_TEMPLATE) {
+                ext_node = lyp_get_yang_data_template(mod, yang_data_name, strlen(yang_data_name));
+                if (ext_node) {
+                    schema = *((struct lys_node **) lys_ext_complex_get_substmt(LY_STMT_CONTAINER, (struct lys_ext_instance_complex *)ext_node, NULL));
+                    schema = xml_data_search_schemanode(xml, schema, options);
+                }
+            } else {
+                schema = xml_data_search_schemanode(xml, mod->data, options);
+                if (!schema) {
+                    /* it still can be the specific case of this module containing an augment of another module
+                    * top-level choice or top-level choice's case, bleh */
+                    for (j = 0; j < mod->augment_size; ++j) {
+                        aug = &mod->augment[j];
+                        target = aug->target;
+                        if (target->nodetype & (LYS_CHOICE | LYS_CASE)) {
+                            /* 1) okay, the target is choice or case */
+                            while (target && (target->nodetype & (LYS_CHOICE | LYS_CASE | LYS_USES))) {
+                                target = lys_parent(target);
+                            }
+                            /* 2) now, the data node will be top-level, there are only non-data schema nodes */
+                            if (!target) {
+                                while ((schema = (struct lys_node *) lys_getnext(schema, (struct lys_node *) aug, NULL,
+                                                                                 0))) {
+                                    /* 3) alright, even the name matches, we found our schema node */
+                                    if (ly_strequal(schema->name, xml->name, 1)) {
+                                        break;
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    if (schema) {
-                        break;
+                        if (schema) {
+                            break;
+                        }
                     }
                 }
             }
@@ -488,7 +498,7 @@ attr_error:
     if (havechildren && xml->child) {
         diter = dlast = NULL;
         LY_TREE_FOR_SAFE(xml->child, next, child) {
-            r = xml_parse_data(ctx, child, *result, (*result)->child, dlast, options, unres, &diter, act_notif);
+            r = xml_parse_data(ctx, child, *result, (*result)->child, dlast, options, unres, &diter, act_notif, yang_data_name);
             if (r) {
                 goto error;
             } else if (options & LYD_OPT_DESTRUCT) {
@@ -545,6 +555,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     struct lyd_node *result = NULL, *iter, *last, *reply_parent = NULL, *reply_top = NULL, *act_notif = NULL;
     struct lyxml_elem *xmlstart, *xmlelem, *xmlaux, *xmlfree = NULL;
     struct ly_set *set;
+    const char *yang_data_name = NULL;
 
     if (!ctx || !root) {
         LOGARG;
@@ -626,6 +637,9 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
             }
         }
     }
+    if (options & LYD_OPT_DATA_TEMPLATE) {
+        yang_data_name = va_arg(ap, const char *);
+    }
 
     if ((*root) && !(options & LYD_OPT_NOSIBLINGS)) {
         /* locate the first root to process */
@@ -653,7 +667,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
 
     iter = last = NULL;
     LY_TREE_FOR_SAFE(xmlstart, xmlaux, xmlelem) {
-        r = xml_parse_data(ctx, xmlelem, reply_parent, result, last, options, unres, &iter, &act_notif);
+        r = xml_parse_data(ctx, xmlelem, reply_parent, result, last, options, unres, &iter, &act_notif, yang_data_name);
         if (r) {
             if (reply_top) {
                 result = reply_top;
