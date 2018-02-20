@@ -5327,11 +5327,23 @@ lyd_find_path(const struct lyd_node *ctx_node, const char *path)
     struct lyxp_set xp_set;
     struct ly_set *set;
     char *yang_xpath;
+    const char * node_mod_name, *mod_name, *name;
+    int mod_name_len, name_len, is_relative = -1, alldesc;
     uint16_t i;
 
     if (!ctx_node || !path) {
         LOGARG;
         return NULL;
+    }
+
+    if (parse_schema_nodeid(path, &mod_name, &mod_name_len, &name, &name_len, &is_relative, NULL, &alldesc, 1) > 0) {
+        if (name[0] == '#' && !is_relative) {
+            node_mod_name = lyd_node_module(ctx_node)->name;
+            if (strncmp(mod_name, node_mod_name, mod_name_len) || node_mod_name[mod_name_len]) {
+                return NULL;
+            }
+            path = name + name_len;
+        }
     }
 
     /* transform JSON into YANG XPATH */

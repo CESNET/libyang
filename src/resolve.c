@@ -169,7 +169,7 @@ parse_identifier(const char *id)
  * @param[out] name Points to the node name.
  * @param[out] nam_len Length of the node name.
  * @param[out] all_desc Whether the path starts with '/', only supported in extended paths.
- * @param[in] extended Whether to accept an extended path (support for [prefix:]*, /[prefix:]*, /[prefix:].).
+ * @param[in] extended Whether to accept an extended path (support for [prefix:]*, /[prefix:]*, /[prefix:]., prefix:#identifier).
  *
  * @return Number of characters successfully parsed,
  *         positive on success, negative on failure.
@@ -222,7 +222,7 @@ parse_node_identifier(const char *id, const char **mod_name, int *mod_name_len, 
         }
 
         /* parse either "*" or "." */
-        if (!strcmp(id + ret, "*")) {
+        if (*(id + ret) == '*') {
             if (name) {
                 *name = id + ret;
                 *nam_len = 1;
@@ -230,7 +230,7 @@ parse_node_identifier(const char *id, const char **mod_name, int *mod_name_len, 
             ++ret;
 
             return ret;
-        } else if (!strcmp(id + ret, ".")) {
+        } else if (*(id + ret) == '.') {
             if (!*all_desc) {
                 /* /. is redundant expression, we do not accept it */
                 return -ret;
@@ -243,6 +243,18 @@ parse_node_identifier(const char *id, const char **mod_name, int *mod_name_len, 
             ++ret;
 
             return ret;
+        } else if (*(id + ret) == '#') {
+            if (*all_desc || !ret) {
+                /* no prefix */
+                return 0;
+            }
+            parsed = ret + 1;
+            if ((ret = parse_identifier(id + parsed)) < 1) {
+                return -parsed + ret;
+            }
+            *name = id + parsed - 1;
+            *nam_len = ret + 1;
+            return parsed + ret;
         }
         /* else a standard id, parse it all again */
     }
@@ -1735,10 +1747,11 @@ int
 resolve_schema_nodeid(const char *nodeid, const struct lys_node *start_parent, const struct lys_module *cur_module,
                       struct ly_set **ret, int extended, int no_node_error)
 {
-    const char *name, *mod_name, *id;
+    const char *name, *mod_name, *id, *backup_mod_name = NULL, *yang_data_name = NULL;
     const struct lys_node *sibling, *next, *elem;
     struct lys_node_augment *last_aug;
     int r, nam_len, mod_name_len = 0, is_relative = -1, all_desc, has_predicate, nodeid_end = 0;
+    int yang_data_name_len, backup_mod_name_len = 0;
     /* resolved import module from the start module, it must match the next node-name-match sibling */
     const struct lys_module *start_mod, *aux_mod = NULL;
     char *str;
@@ -1753,6 +1766,26 @@ resolve_schema_nodeid(const char *nodeid, const struct lys_node *start_parent, c
     ctx = cur_module->ctx;
     id = nodeid;
 
+    r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL, &all_desc, 1);
+    if (r < 1) {
+        LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[r], &id[r]);
+        return -1;
+    }
+
+    if (name[0] == '#') {
+        if (is_relative) {
+            LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, '#', name);
+            return -1;
+        }
+        yang_data_name = name + 1;
+        yang_data_name_len = nam_len - 1;
+        backup_mod_name = mod_name;
+        backup_mod_name_len = mod_name_len;
+        id += r;
+    } else {
+        is_relative = -1;
+    }
+
     r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, &has_predicate,
                             (extended ? &all_desc : NULL), extended);
     if (r < 1) {
@@ -1760,6 +1793,11 @@ resolve_schema_nodeid(const char *nodeid, const struct lys_node *start_parent, c
         return -1;
     }
     id += r;
+
+    if (backup_mod_name) {
+        mod_name = backup_mod_name;
+        mod_name_len = backup_mod_name_len;
+    }
 
     if (is_relative && !start_parent) {
         LOGVAL(ctx, LYE_SPEC, LY_VLOG_STR, nodeid, "Starting node must be provided for relative paths.");
@@ -1780,6 +1818,15 @@ resolve_schema_nodeid(const char *nodeid, const struct lys_node *start_parent, c
             return -1;
         }
         start_parent = NULL;
+        if (yang_data_name) {
+            start_parent = lyp_get_yang_data_template(start_mod, yang_data_name, yang_data_name_len);
+            if (!start_parent) {
+                str = strndup(nodeid, (yang_data_name + yang_data_name_len) - nodeid);
+                LOGVAL(ctx, LYE_PATH_INNODE, LY_VLOG_STR, str);
+                free(str);
+                return -1;
+            }
+        }
     }
 
     while (1) {
@@ -2160,9 +2207,10 @@ const struct lys_node *
 resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_node *start, int output)
 {
     char *str;
-    const char *name, *mod_name, *id;
+    const char *name, *mod_name, *id, *backup_mod_name = NULL, *yang_data_name = NULL;
     const struct lys_node *sibling, *start_parent, *parent;
-    int r, nam_len, mod_name_len, is_relative = -1, has_predicate;
+    int r, nam_len, mod_name_len, is_relative = -1, has_predicate, alldesc;
+    int yang_data_name_len, backup_mod_name_len;
     /* resolved import module from the start module, it must match the next node-name-match sibling */
     const struct lys_module *prefix_mod, *module, *prev_mod;
 
@@ -2173,11 +2221,35 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
 
     id = nodeid;
 
+    if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL, &alldesc, 1)) < 1) {
+        LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
+        return NULL;
+    }
+
+    if (name[0] == '#') {
+        if (is_relative) {
+            LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, '#', name);
+            return NULL;
+        }
+        yang_data_name = name + 1;
+        yang_data_name_len = nam_len - 1;
+        backup_mod_name = mod_name;
+        backup_mod_name_len = mod_name_len;
+        id += r;
+    } else {
+        is_relative = -1;
+    }
+
     if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, &has_predicate, NULL, 0)) < 1) {
         LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
         return NULL;
     }
     id += r;
+
+    if (backup_mod_name) {
+        mod_name = backup_mod_name;
+        mod_name_len = backup_mod_name_len;
+    }
 
     if (is_relative) {
         assert(start);
@@ -2205,6 +2277,15 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
             return NULL;
         }
         start_parent = NULL;
+        if (yang_data_name) {
+            start_parent = lyp_get_yang_data_template(module, yang_data_name, yang_data_name_len);
+            if (!start_parent) {
+                str = strndup(nodeid, (yang_data_name + yang_data_name_len) - nodeid);
+                LOGVAL(ctx, LYE_PATH_INNODE, LY_VLOG_STR, str);
+                free(str);
+                return NULL;
+            }
+        }
 
         /* now it's as if there was no module name */
         mod_name = NULL;
@@ -2431,9 +2512,10 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
                                  int *parsed)
 {
     char *str;
-    const char *id, *mod_name, *name, *pred_name, *data_val;
+    const char *id, *mod_name, *name, *pred_name, *data_val, *backup_mod_name = NULL, *yang_data_name = NULL, *ext_name;
     int r, ret, mod_name_len, nam_len, is_relative = -1, list_instance_position;
-    int has_predicate, last_parsed, llval_len, pred_name_len, last_has_pred;
+    int has_predicate, last_parsed = 0, llval_len, pred_name_len, last_has_pred, alldesc;
+    int backup_mod_name_len, yang_data_name_len;
     struct lyd_node *sibling, *last_match = NULL;
     struct lyd_node_leaf_list *llist;
     const struct lys_module *prefix_mod, *prev_mod;
@@ -2444,6 +2526,28 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
     ctx = start->schema->module->ctx;
     id = nodeid;
 
+    if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL, &alldesc, 1)) < 1) {
+        *parsed = -1;
+        LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
+        return NULL;
+    }
+
+    if (name[0] == '#') {
+        if (is_relative) {
+            LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, '#', name);
+            *parsed = -1;
+            return NULL;
+        }
+        yang_data_name = name + 1;
+        yang_data_name_len = nam_len - 1;
+        backup_mod_name = mod_name;
+        backup_mod_name_len = mod_name_len;
+        id += r;
+        last_parsed = r;
+    } else {
+        is_relative = -1;
+    }
+
     if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, &has_predicate, NULL, 0)) < 1) {
         LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
         *parsed = -1;
@@ -2451,7 +2555,12 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
     }
     id += r;
     /* add it to parsed only after the data node was actually found */
-    last_parsed = r;
+    last_parsed += r;
+
+    if (backup_mod_name) {
+        mod_name = backup_mod_name;
+        mod_name_len = backup_mod_name_len;
+    }
 
     if (is_relative) {
         prev_mod = lyd_node_module(start);
@@ -2495,6 +2604,14 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
                         free(str);
                         *parsed = -1;
                         return NULL;
+                    }
+
+                    if (yang_data_name) {
+                       ext_name = lyp_get_yang_data_template_name(sibling);
+                       if (!ext_name || (strncmp(ext_name, yang_data_name, yang_data_name_len) || ext_name[yang_data_name_len])) {
+                           continue;
+                       }
+                        yang_data_name = NULL;
                     }
                 } else {
                     prefix_mod = prev_mod;

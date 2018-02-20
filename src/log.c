@@ -517,12 +517,12 @@ ly_vlog_build_path_print(char **path, uint16_t *index, const char *str, uint16_t
 int
 ly_vlog_build_path(enum LY_VLOG_ELEM elem_type, const void *elem, char **path, int schema_all_prefixes)
 {
-    int i, j;
+    int i, j, yang_data_extension = 0;
     struct lys_node_list *slist;
     struct lys_node *sparent = NULL;
     struct lyd_node *dlist, *diter;
     const struct lys_module *top_smodule = NULL;
-    const char *name, *prefix = NULL, *val_end, *val_start;
+    const char *name, *prefix = NULL, *val_end, *val_start, *ext_name;
     char *str;
     uint16_t length = 0, index = 0;
     size_t len;
@@ -542,6 +542,12 @@ ly_vlog_build_path(enum LY_VLOG_ELEM elem_type, const void *elem, char **path, i
                 top_smodule = lys_node_module((struct lys_node *)elem);
             }
 
+            if (!((struct lys_node *)elem)->parent || lys_node_module((struct lys_node *)elem) != top_smodule) {
+                prefix = lys_node_module((struct lys_node *)elem)->name;
+            } else {
+                prefix = NULL;
+            }
+
             if (((struct lys_node *)elem)->nodetype & (LYS_AUGMENT | LYS_GROUPING)) {
                 if (ly_vlog_build_path_print(path, &index, "]", 1, &length)) {
                     return -1;
@@ -559,15 +565,15 @@ ly_vlog_build_path(enum LY_VLOG_ELEM elem_type, const void *elem, char **path, i
                 }
             } else if (((struct lys_node *)elem)->nodetype == LYS_EXT) {
                 name = ((struct lys_ext_instance *)elem)->def->name;
+                if (!strcmp(name, "yang-data")) {
+                    yang_data_extension = 1;
+                    name = ((struct lys_ext_instance *)elem)->arg_value;
+                    prefix = lys_node_module((struct lys_node *)elem)->name;
+                }
             } else {
                 name = ((struct lys_node *)elem)->name;
             }
 
-            if (!((struct lys_node *)elem)->parent || lys_node_module((struct lys_node *)elem) != top_smodule) {
-                prefix = lys_node_module((struct lys_node *)elem)->name;
-            } else {
-                prefix = NULL;
-            }
             if (((struct lys_node *)elem)->nodetype == LYS_EXT) {
                 if (((struct lys_ext_instance*)elem)->parent_type == LYEXT_PAR_NODE) {
                     elem = (struct lys_node*)((struct lys_ext_instance*)elem)->parent;
@@ -697,6 +703,21 @@ ly_vlog_build_path(enum LY_VLOG_ELEM elem_type, const void *elem, char **path, i
                 }
             }
 
+            /* check if it is top element*/
+            if (!((struct lyd_node *)elem)->parent) {
+                ext_name = lyp_get_yang_data_template_name(elem);
+                if (ext_name) {
+                    if (ly_vlog_build_path_print(path, &index, name, strlen(name), &length)) {
+                        return -1;
+                    }
+                    if (ly_vlog_build_path_print(path, &index, "/", 1, &length)) {
+                        return -1;
+                    }
+                    yang_data_extension = 1;
+                    name = ext_name;
+               }
+            }
+
             elem = ((struct lyd_node *)elem)->parent;
             break;
         case LY_VLOG_STR:
@@ -715,6 +736,9 @@ ly_vlog_build_path(enum LY_VLOG_ELEM elem_type, const void *elem, char **path, i
                 return -1;
             }
             if (prefix) {
+                if (yang_data_extension && ly_vlog_build_path_print(path, &index, "#", 1, &length)){
+                    return -1;
+                }
                 if (ly_vlog_build_path_print(path, &index, ":", 1, &length)) {
                     return -1;
                 }

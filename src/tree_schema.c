@@ -4602,6 +4602,7 @@ API char *
 lys_data_path(const struct lys_node *node)
 {
     char *result = NULL, buf[1024];
+    const char *separator, *name;
     int i, used;
     struct ly_set *set;
     const struct lys_module *prev_mod;
@@ -4625,8 +4626,18 @@ lys_data_path(const struct lys_node *node)
     used = 0;
     for (i = set->number - 1; i > -1; --i) {
         node = set->set.s[i];
+        if (node->nodetype == LYS_EXT) {
+            if (strcmp(((struct lys_ext_instance *)node)->def->name, "yang-data")) {
+                continue;
+            }
+            name = ((struct lys_ext_instance *)node)->arg_value;
+            separator = ":#";
+        } else {
+            name = node->name;
+            separator = ":";
+        }
         used += sprintf(buf + used, "/%s%s%s", (lys_node_module(node) == prev_mod ? "" : lys_node_module(node)->name),
-                        (lys_node_module(node) == prev_mod ? "" : ":"), node->name);
+                        (lys_node_module(node) == prev_mod ? "" : separator), name);
         prev_mod = lys_node_module(node);
     }
 
