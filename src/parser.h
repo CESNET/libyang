@@ -145,6 +145,9 @@ int lyp_rfn_apply_ext(struct lys_module *module);
 int lyp_deviation_apply_ext(struct lys_module *module);
 int lyp_mand_check_ext(struct lys_ext_instance_complex *ext, const char *ext_name);
 
+const char *lyp_get_yang_data_template_name(const struct lyd_node *node);
+const struct lys_node *lyp_get_yang_data_template(const struct lys_module *module, const char *yang_data_name, int yang_data_name_len);
+
 void lyp_ext_instance_rm(struct ly_ctx *ctx, struct lys_ext_instance ***ext, uint8_t *size, uint8_t index);
 
 /**
