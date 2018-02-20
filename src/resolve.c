@@ -4680,11 +4680,6 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
     /* check that the grouping is resolved (no unresolved uses inside) */
     assert(!uses->grp->unres_count);
 
-    if (!uses->grp->child) {
-        /* grouping without children, warning was already displayed */
-        return EXIT_SUCCESS;
-    }
-
     /* copy the data nodes from grouping into the uses context */
     LY_TREE_FOR(uses->grp->child, node_aux) {
         if (node_aux->nodetype & LYS_GROUPING) {
