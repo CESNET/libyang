@@ -703,7 +703,7 @@ ly_vlog_build_path(enum LY_VLOG_ELEM elem_type, const void *elem, char **path, i
                 }
             }
 
-            /* check if it is top element*/
+            /* check if it is yang-data top element */
             if (!((struct lyd_node *)elem)->parent) {
                 ext_name = lyp_get_yang_data_template_name(elem);
                 if (ext_name) {
@@ -736,7 +736,7 @@ ly_vlog_build_path(enum LY_VLOG_ELEM elem_type, const void *elem, char **path, i
                 return -1;
             }
             if (prefix) {
-                if (yang_data_extension && ly_vlog_build_path_print(path, &index, "#", 1, &length)){
+                if (yang_data_extension && ly_vlog_build_path_print(path, &index, "#", 1, &length)) {
                     return -1;
                 }
                 if (ly_vlog_build_path_print(path, &index, ":", 1, &length)) {

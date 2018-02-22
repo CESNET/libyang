@@ -564,7 +564,7 @@ yang_read_unique(struct lys_module *module, struct lys_node_list *list, struct u
     uint8_t k;
     char *str;
 
-    for(k=0; k<list->unique_size; k++) {
+    for (k = 0; k < list->unique_size; k++) {
         str = (char *)list->unique[k].expr;
         if (yang_fill_unique(module, list, &list->unique[k], str, unres)) {
             goto error;
@@ -782,7 +782,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
 
             /* restricted enumeration type - the name MUST be used in the base type */
             enms_sc = dertype->info.enums.enm;
-            for(i = 0; i < type->info.enums.count; i++) {
+            for (i = 0; i < type->info.enums.count; i++) {
                 for (j = 0; j < dertype->info.enums.count; j++) {
                     if (ly_strequal(enms_sc[j].name, type->info.enums.enm[i].name, 1)) {
                         break;
@@ -3471,7 +3471,7 @@ yang_fill_type(struct lys_module *module, struct lys_type *type, struct yang_typ
     if (yang_check_ext_instance(module, &type->ext, type->ext_size, type, unres)) {
         return EXIT_FAILURE;
     }
-    for(j = 0; j < type->ext_size; ++j) {
+    for (j = 0; j < type->ext_size; ++j) {
         if (type->ext[j]->flags & LYEXT_OPT_VALID) {
             type->parent->flags |= LYS_VALID_DATA;
             break;
@@ -3488,7 +3488,7 @@ yang_fill_type(struct lys_module *module, struct lys_type *type, struct yang_typ
                                         &type->info.enums.enm[i], unres)) {
                 return EXIT_FAILURE;
             }
-            for(j = 0; j < type->info.enums.enm[i].ext_size; ++j) {
+            for (j = 0; j < type->info.enums.enm[i].ext_size; ++j) {
                 if (type->info.enums.enm[i].ext[j]->flags & LYEXT_OPT_VALID) {
                     type->parent->flags |= LYS_VALID_DATA;
                     break;
@@ -3505,7 +3505,7 @@ yang_fill_type(struct lys_module *module, struct lys_type *type, struct yang_typ
                                         &type->info.bits.bit[i], unres)) {
                 return EXIT_FAILURE;
             }
-            for(j = 0; j < type->info.bits.bit[i].ext_size; ++j) {
+            for (j = 0; j < type->info.bits.bit[i].ext_size; ++j) {
                 if (type->info.bits.bit[i].ext[j]->flags & LYEXT_OPT_VALID) {
                     type->parent->flags |= LYS_VALID_DATA;
                     break;
@@ -3524,7 +3524,7 @@ yang_fill_type(struct lys_module *module, struct lys_type *type, struct yang_typ
                                         type->info.str.length->ext_size, type->info.str.length, unres)) {
                 return EXIT_FAILURE;
             }
-            for(j = 0; j < type->info.str.length->ext_size; ++j) {
+            for (j = 0; j < type->info.str.length->ext_size; ++j) {
                 if (type->info.str.length->ext[j]->flags & LYEXT_OPT_VALID) {
                     type->parent->flags |= LYS_VALID_DATA;
                     break;
@@ -3537,7 +3537,7 @@ yang_fill_type(struct lys_module *module, struct lys_type *type, struct yang_typ
                                         &type->info.str.patterns[i], unres)) {
                 return EXIT_FAILURE;
             }
-            for(j = 0; j < type->info.str.patterns[i].ext_size; ++j) {
+            for (j = 0; j < type->info.str.patterns[i].ext_size; ++j) {
                 if (type->info.str.patterns[i].ext[j]->flags & LYEXT_OPT_VALID) {
                     type->parent->flags |= LYS_VALID_DATA;
                     break;
@@ -3551,7 +3551,7 @@ yang_fill_type(struct lys_module *module, struct lys_type *type, struct yang_typ
                                         type->info.dec64.range->ext_size, type->info.dec64.range, unres)) {
                 return EXIT_FAILURE;
             }
-            for(j = 0; j < type->info.dec64.range->ext_size; ++j) {
+            for (j = 0; j < type->info.dec64.range->ext_size; ++j) {
                 if (type->info.dec64.range->ext[j]->flags & LYEXT_OPT_VALID) {
                     type->parent->flags |= LYS_VALID_DATA;
                     break;
@@ -3638,7 +3638,7 @@ yang_check_typedef(struct lys_module *module, struct lys_node *parent, struct un
         if (yang_check_ext_instance(module, &tpdf[i].ext, tpdf[i].ext_size, &tpdf[i], unres)) {
             goto error;
         }
-        for(j = 0; j < tpdf[i].ext_size; ++j) {
+        for (j = 0; j < tpdf[i].ext_size; ++j) {
             if (tpdf[i].ext[j]->flags & LYEXT_OPT_VALID) {
                 tpdf[i].flags |= LYS_VALID_DATA;
                 break;
@@ -4244,7 +4244,7 @@ yang_check_nodes(struct lys_module *module, struct lys_node *parent, struct lys_
         if (yang_check_ext_instance(module, &node->ext, node->ext_size, node, unres)) {
             goto error;
         }
-        for(i = 0; i < node->ext_size; ++i) {
+        for (i = 0; i < node->ext_size; ++i) {
             if (node->ext[i]->flags & LYEXT_OPT_VALID) {
                 node->flags |= LYS_VALID_DATA;
                 break;
