@@ -1274,7 +1274,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
     const struct lys_module *module, *prev_mod;
     int r, i, parsed = 0, mod_name_len, nam_len, val_name_len, val_len;
     int is_relative = -1, has_predicate, first_iter = 1;
-    int backup_is_relative, backup_mod_name_len, yang_data_name_len, alldesc;
+    int backup_is_relative, backup_mod_name_len, yang_data_name_len;
 
     if (!path || (!data_tree && !ctx)
             || (!data_tree && (path[0] != '/'))) {
@@ -1319,7 +1319,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
     }
 
     backup_is_relative = is_relative;
-    if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL, &alldesc, 1)) < 1) {
+    if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL, NULL, 1)) < 1) {
         LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
         return NULL;
     }
@@ -5420,7 +5420,7 @@ lyd_find_path(const struct lyd_node *ctx_node, const char *path)
     struct ly_set *set;
     char *yang_xpath;
     const char * node_mod_name, *mod_name, *name;
-    int mod_name_len, name_len, is_relative = -1, alldesc;
+    int mod_name_len, name_len, is_relative = -1;
     uint16_t i;
 
     if (!ctx_node || !path) {
@@ -5428,7 +5428,7 @@ lyd_find_path(const struct lyd_node *ctx_node, const char *path)
         return NULL;
     }
 
-    if (parse_schema_nodeid(path, &mod_name, &mod_name_len, &name, &name_len, &is_relative, NULL, &alldesc, 1) > 0) {
+    if (parse_schema_nodeid(path, &mod_name, &mod_name_len, &name, &name_len, &is_relative, NULL, NULL, 1) > 0) {
         if (name[0] == '#' && !is_relative) {
             node_mod_name = lyd_node_module(ctx_node)->name;
             if (strncmp(mod_name, node_mod_name, mod_name_len) || node_mod_name[mod_name_len]) {

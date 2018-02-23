@@ -1169,7 +1169,7 @@ ly_path_data2schema(struct ly_ctx *ctx, const char *data_path)
     struct lyxp_expr *exp;
     uint16_t out_used, cur_exp = 0;
     char *out;
-    int r, mod_name_len, nam_len, is_relative = -1, alldesc;
+    int r, mod_name_len, nam_len, is_relative = -1;
     const char *mod_name, *name;
     const struct lys_module *mod = NULL;
     const struct lys_node *parent = NULL;
@@ -1180,7 +1180,7 @@ ly_path_data2schema(struct ly_ctx *ctx, const char *data_path)
         return NULL;
     }
 
-    if ((r = parse_schema_nodeid(data_path, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL, &alldesc, 1)) < 1) {
+    if ((r = parse_schema_nodeid(data_path, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL, NULL, 1)) < 1) {
         LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, data_path[-r], &data_path[-r]);
         return NULL;
     }

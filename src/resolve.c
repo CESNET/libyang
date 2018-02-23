@@ -178,12 +178,11 @@ static int
 parse_node_identifier(const char *id, const char **mod_name, int *mod_name_len, const char **name, int *nam_len,
                       int *all_desc, int extended)
 {
-    int parsed = 0, ret;
+    int parsed = 0, ret, all_desc_local = 0;
 
     assert(id);
     assert((mod_name && mod_name_len) || (!mod_name && !mod_name_len));
     assert((name && nam_len) || (!name && !nam_len));
-    assert(!extended || all_desc);
 
     if (mod_name) {
         *mod_name = NULL;
@@ -197,28 +196,33 @@ parse_node_identifier(const char *id, const char **mod_name, int *mod_name_len, 
     if (extended) {
         /* try to parse only the extended expressions */
         if (id[parsed] == '/') {
-            *all_desc = 1;
+            if (all_desc) {
+                *all_desc = 1;
+            }
+            all_desc_local = 1;
         } else {
-            *all_desc = 0;
+            if (all_desc) {
+                *all_desc = 0;
+            }
         }
 
         /* is there a prefix? */
-        ret = parse_identifier(id + *all_desc);
+        ret = parse_identifier(id + all_desc_local);
         if (ret > 0) {
-            if (id[*all_desc + ret] != ':') {
+            if (id[all_desc_local + ret] != ':') {
                 /* this is not a prefix, so not an extended id */
                 goto standard_id;
             }
 
             if (mod_name) {
-                *mod_name = id + *all_desc;
+                *mod_name = id + all_desc_local;
                 *mod_name_len = ret;
             }
 
             /* "/" and ":" */
-            ret += *all_desc + 1;
+            ret += all_desc_local + 1;
         } else {
-            ret = *all_desc;
+            ret = all_desc_local;
         }
 
         /* parse either "*" or "." */
@@ -231,7 +235,7 @@ parse_node_identifier(const char *id, const char **mod_name, int *mod_name_len, 
 
             return ret;
         } else if (*(id + ret) == '.') {
-            if (!*all_desc) {
+            if (!all_desc_local) {
                 /* /. is redundant expression, we do not accept it */
                 return -ret;
             }
@@ -244,7 +248,7 @@ parse_node_identifier(const char *id, const char **mod_name, int *mod_name_len, 
 
             return ret;
         } else if (*(id + ret) == '#') {
-            if (*all_desc || !ret) {
+            if (all_desc_local || !ret) {
                 /* no prefix */
                 return 0;
             }
@@ -1766,7 +1770,7 @@ resolve_schema_nodeid(const char *nodeid, const struct lys_node *start_parent, c
     ctx = cur_module->ctx;
     id = nodeid;
 
-    r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL, &all_desc, 1);
+    r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL, NULL, 1);
     if (r < 1) {
         LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[r], &id[r]);
         return -1;
@@ -2209,7 +2213,7 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
     char *str;
     const char *name, *mod_name, *id, *backup_mod_name = NULL, *yang_data_name = NULL;
     const struct lys_node *sibling, *start_parent, *parent;
-    int r, nam_len, mod_name_len, is_relative = -1, has_predicate, alldesc;
+    int r, nam_len, mod_name_len, is_relative = -1, has_predicate;
     int yang_data_name_len, backup_mod_name_len;
     /* resolved import module from the start module, it must match the next node-name-match sibling */
     const struct lys_module *prefix_mod, *module, *prev_mod;
@@ -2221,7 +2225,7 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
 
     id = nodeid;
 
-    if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL, &alldesc, 1)) < 1) {
+    if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL, NULL, 1)) < 1) {
         LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
         return NULL;
     }
@@ -2514,8 +2518,8 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
     char *str;
     const char *id, *mod_name, *name, *pred_name, *data_val, *backup_mod_name = NULL, *yang_data_name = NULL, *ext_name;
     int r, ret, mod_name_len, nam_len, is_relative = -1, list_instance_position;
-    int has_predicate, last_parsed = 0, llval_len, pred_name_len, last_has_pred, alldesc;
     int backup_mod_name_len, yang_data_name_len;
+    int has_predicate, last_parsed = 0, llval_len, pred_name_len, last_has_pred;
     struct lyd_node *sibling, *last_match = NULL;
     struct lyd_node_leaf_list *llist;
     const struct lys_module *prefix_mod, *prev_mod;
@@ -2526,7 +2530,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
     ctx = start->schema->module->ctx;
     id = nodeid;
 
-    if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL, &alldesc, 1)) < 1) {
+    if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL, NULL, 1)) < 1) {
         *parsed = -1;
         LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
         return NULL;
