@@ -282,8 +282,8 @@ main_ni(int argc, char* argv[])
     char **feat = NULL, *ptr, *featlist, *ylpath = NULL, *dir;
     struct stat st;
     uint32_t u;
-    int options_dflt = 0, options_parser = 0, options_ctx = 0, envelope = 0, autodetection = 0, merge = 0, list = 0;
-    int outoptions_s = 0, outline_length_s = 0;
+    int options_dflt = 0, options_parser = 0, options_ctx = LY_CTX_NOYANGLIBRARY, envelope = 0, autodetection = 0;
+    int merge = 0, list = 0, outoptions_s = 0, outline_length_s = 0;
     struct dataitem {
         const char *filename;
         struct lyxml_elem *xml;
