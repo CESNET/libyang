@@ -54,6 +54,9 @@ setup_f(void **state)
                        "        leaf second {\n"
                        "          type string; \n"
                        "        }\n"
+                       "        leaf third {\n"
+                       "          type boolean; \n"
+                       "        }\n"
                        "      }\n"
                        "    }\n"
                        "  }\n"
@@ -105,6 +108,7 @@ test_new_path(void **state)
     st->dt = lyd_new_path(NULL, st->ctx, "/yang-data:#node/test1/first", "50", 0 ,0);
     assert_ptr_not_equal(st->dt, NULL);
     assert_ptr_not_equal(lyd_new_path(st->dt, st->ctx, "/yang-data:#node/test1/second", "test-second", 0 ,0), NULL);
+    assert_ptr_not_equal(lyd_new_path(st->dt, st->ctx, "/yang-data:test1/third", "true", 0 ,0), NULL);
 }
 
 static void
