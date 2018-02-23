@@ -1246,7 +1246,7 @@ error:
 }
 
 int
-lyxml_dump_text(struct lyout *out, const char *text)
+lyxml_dump_text(struct lyout *out, const char *text, LYXML_DATA_TYPE type)
 {
     unsigned int i, n;
 
@@ -1267,8 +1267,11 @@ lyxml_dump_text(struct lyout *out, const char *text)
             n += ly_print(out, "&gt;");
             break;
         case '"':
-            n += ly_print(out, "&quot;");
-            break;
+            if (type == LYXML_DATA_ATTR) {
+                n += ly_print(out, "&quot;");
+                break;
+            }
+            /* falls through */
         default:
             ly_write(out, &text[i], 1);
             n++;
@@ -1290,7 +1293,7 @@ dump_elem(struct lyout *out, const struct lyxml_elem *e, int level, int options,
     if (!e->name) {
         /* mixed content */
         if (e->content) {
-            return lyxml_dump_text(out, e->content);
+            return lyxml_dump_text(out, e->content, LYXML_DATA_ELEM);
         } else {
             return 0;
         }
@@ -1354,7 +1357,7 @@ dump_elem(struct lyout *out, const struct lyxml_elem *e, int level, int options,
         ly_print(out, ">");
         size++;
 
-        size += lyxml_dump_text(out, e->content);
+        size += lyxml_dump_text(out, e->content, LYXML_DATA_ELEM);
 
         if (e->ns && e->ns->prefix) {
             size += ly_print(out, "</%s:%s>%s", e->ns->prefix, e->name, delim);

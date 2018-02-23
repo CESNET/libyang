@@ -47,7 +47,7 @@ yin_print_open(struct lyout *out, int level, const char *elem_prefix, const char
 
     if (attr_name) {
         ly_print(out, " %s=\"", attr_name);
-        lyxml_dump_text(out, attr_value);
+        lyxml_dump_text(out, attr_value, LYXML_DATA_ATTR);
         ly_print(out, "\"%s", endflag == -1 ? "/>\n" : endflag == 1 ? ">\n" : "");
     } else if (endflag) {
         ly_print(out, endflag == -1 ? "/>\n" : ">\n");
@@ -91,7 +91,7 @@ static void
 yin_print_arg(struct lyout *out, int level, const char *arg, const char *text)
 {
     ly_print(out, "%*s<%s>", LEVEL, INDENT, arg);
-    lyxml_dump_text(out, text);
+    lyxml_dump_text(out, text, LYXML_DATA_ELEM);
     ly_print(out, "</%s>\n", arg);
 }
 
@@ -371,7 +371,7 @@ yin_print_when(struct lyout *out, int level, const struct lys_module *module, co
     }
 
     ly_print(out, "%*s<when condition=\"", LEVEL, INDENT);
-    lyxml_dump_text(out, str);
+    lyxml_dump_text(out, str, LYXML_DATA_ATTR);
     ly_print(out, "\"");
     lydict_remove(module->ctx, str);
 
@@ -601,7 +601,7 @@ yin_print_must(struct lyout *out, int level, const struct lys_module *module, co
     }
 
     ly_print(out, "%*s<must condition=\"", LEVEL, INDENT);
-    lyxml_dump_text(out, str);
+    lyxml_dump_text(out, str, LYXML_DATA_ATTR);
     ly_print(out, "\"");
     lydict_remove(module->ctx, str);
 
@@ -1984,7 +1984,7 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
                 yin_print_open(out, level, prefix, ext[u]->def->name, NULL, NULL, content);
                 level++;
                 ly_print(out, "%*s<%s:%s>", LEVEL, INDENT, prefix, ext[u]->def->argument);
-                lyxml_dump_text(out, ext[u]->arg_value);
+                lyxml_dump_text(out, ext[u]->arg_value, LYXML_DATA_ELEM);
                 ly_print(out, "</%s:%s>\n", prefix, ext[u]->def->argument);
                 level--;
             } else {

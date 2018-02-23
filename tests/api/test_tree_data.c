@@ -590,7 +590,7 @@ test_lyd_new_path(void **state)
     str = NULL;
     lyd_print_mem(&str, root, LYD_XML, 0);
     assert_non_null(root);
-    assert_string_equal(str, "<any xmlns=\"urn:a\">test &lt;&amp;&gt;&quot;</any>");
+    assert_string_equal(str, "<any xmlns=\"urn:a\">test &lt;&amp;&gt;\"</any>");
     free(str);
     lyd_free(root);
 

@@ -197,7 +197,7 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
         case LY_TYPE_UINT64:
             if (attr->value_str) {
                 /* xml_expr can contain transformed xpath */
-                lyxml_dump_text(out, xml_expr ? xml_expr : attr->value_str);
+                lyxml_dump_text(out, xml_expr ? xml_expr : attr->value_str, LYXML_DATA_ATTR);
             }
             break;
 
@@ -210,7 +210,7 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
             len = p - attr->value_str;
             mod_name = attr->annotation->module->name;
             if (!strncmp(attr->value_str, mod_name, len) && !mod_name[len]) {
-                lyxml_dump_text(out, ++p);
+                lyxml_dump_text(out, ++p, LYXML_DATA_ATTR);
             } else {
                 /* avoid code duplication - use instance-identifier printer which gets necessary namespaces to print */
                 goto printinst;
@@ -232,7 +232,7 @@ printinst:
             free(prefs);
             free(nss);
 
-            lyxml_dump_text(out, xml_expr);
+            lyxml_dump_text(out, xml_expr, LYXML_DATA_ATTR);
             lydict_remove(node->schema->module->ctx, xml_expr);
             break;
 
@@ -322,7 +322,7 @@ printvalue:
             ly_print(out, "/>");
         } else {
             ly_print(out, ">");
-            lyxml_dump_text(out, leaf->value_str);
+            lyxml_dump_text(out, leaf->value_str, LYXML_DATA_ELEM);
             ly_print(out, "</%s>", node->schema->name);
         }
         break;
@@ -338,7 +338,7 @@ printvalue:
         mod_name = leaf->schema->module->name;
         if (!strncmp(leaf->value_str, mod_name, len) && !mod_name[len]) {
             ly_print(out, ">");
-            lyxml_dump_text(out, ++p);
+            lyxml_dump_text(out, ++p, LYXML_DATA_ELEM);
             ly_print(out, "</%s>", node->schema->name);
         } else {
             /* avoid code duplication - use instance-identifier printer which gets necessary namespaces to print */
@@ -363,7 +363,7 @@ printvalue:
 
         if (xml_expr[0]) {
             ly_print(out, ">");
-            lyxml_dump_text(out, xml_expr);
+            lyxml_dump_text(out, xml_expr, LYXML_DATA_ELEM);
             ly_print(out, "</%s>", node->schema->name);
         } else {
             ly_print(out, "/>");
@@ -527,7 +527,7 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
         /* ... and print anydata content */
         switch (any->value_type) {
         case LYD_ANYDATA_CONSTSTRING:
-            lyxml_dump_text(out, any->value.str);
+            lyxml_dump_text(out, any->value.str, LYXML_DATA_ELEM);
             break;
         case LYD_ANYDATA_DATATREE:
             if (any->value.tree) {

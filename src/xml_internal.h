@@ -128,12 +128,20 @@ void lyxml_unlink_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns)
 int lyxml_getutf8(struct ly_ctx *ctx, const char *buf, unsigned int *read);
 
 /**
+ * @brief Types of the XML data
+ */
+typedef enum lyxml_data_type {
+    LYXML_DATA_ATTR = 1,   /**< XML attribute data */
+    LYXML_DATA_ELEM = 2    /**< XML element data */
+} LYXML_DATA_TYPE;
+
+/**
  * @brief Dump XML text. Converts special characters to their equivalent
  * starting with '&'.
  * @param[in] out Output structure.
  * @param[in] text Text to dump.
  * @return Number of dumped characters.
  */
-int lyxml_dump_text(struct lyout *out, const char *text);
+int lyxml_dump_text(struct lyout *out, const char *text, LYXML_DATA_TYPE type);
 
 #endif /* LY_XML_INTERNAL_H_ */
