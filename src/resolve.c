@@ -2516,9 +2516,8 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
                                  int *parsed)
 {
     char *str;
-    const char *id, *mod_name, *name, *pred_name, *data_val, *backup_mod_name = NULL, *yang_data_name = NULL, *ext_name;
+    const char *id, *mod_name, *name, *pred_name, *data_val;
     int r, ret, mod_name_len, nam_len, is_relative = -1, list_instance_position;
-    int backup_mod_name_len, yang_data_name_len;
     int has_predicate, last_parsed = 0, llval_len, pred_name_len, last_has_pred;
     struct lyd_node *sibling, *last_match = NULL;
     struct lyd_node_leaf_list *llist;
@@ -2542,10 +2541,6 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
             *parsed = -1;
             return NULL;
         }
-        yang_data_name = name + 1;
-        yang_data_name_len = nam_len - 1;
-        backup_mod_name = mod_name;
-        backup_mod_name_len = mod_name_len;
         id += r;
         last_parsed = r;
     } else {
@@ -2560,11 +2555,6 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
     id += r;
     /* add it to parsed only after the data node was actually found */
     last_parsed += r;
-
-    if (backup_mod_name) {
-        mod_name = backup_mod_name;
-        mod_name_len = backup_mod_name_len;
-    }
 
     if (is_relative) {
         prev_mod = lyd_node_module(start);
@@ -2608,14 +2598,6 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
                         free(str);
                         *parsed = -1;
                         return NULL;
-                    }
-
-                    if (yang_data_name) {
-                       ext_name = lyp_get_yang_data_template_name(sibling);
-                       if (!ext_name || (strncmp(ext_name, yang_data_name, yang_data_name_len) || ext_name[yang_data_name_len])) {
-                           continue;
-                       }
-                        yang_data_name = NULL;
                     }
                 } else {
                     prefix_mod = prev_mod;
