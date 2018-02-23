@@ -960,6 +960,9 @@ ly_path_data2schema_subexp(const struct ly_ctx *ctx, const struct lys_node *orig
         ++(*cur_exp);
         first = 0;
         break;
+    case LYXP_TOKEN_OPERATOR_PATH:
+        first = (orig_parent) ? 0 : 1;
+        break;
     default:
         first = 1;
         break;
@@ -1164,18 +1167,72 @@ API char *
 ly_path_data2schema(struct ly_ctx *ctx, const char *data_path)
 {
     struct lyxp_expr *exp;
-    uint16_t out_used, cur_exp;
+    uint16_t out_used, cur_exp = 0;
     char *out;
+    int r, mod_name_len, nam_len, is_relative = -1;
+    const char *mod_name, *name;
+    const struct lys_module *mod = NULL;
+    const struct lys_node *parent = NULL;
+    char *str;
 
     if (!ctx || !data_path) {
         LOGARG;
         return NULL;
     }
 
-    cur_exp = 0;
-    out_used = 1;
-    out = malloc(1);
-    LY_CHECK_ERR_RETURN(!out, LOGMEM(ctx), NULL);
+    if ((r = parse_schema_nodeid(data_path, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL, NULL, 1)) < 1) {
+        LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, data_path[-r], &data_path[-r]);
+        return NULL;
+    }
+
+    if (name[0] == '#') {
+        if (is_relative) {
+            LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, '#', name);
+            return NULL;
+        }
+
+        ++name;
+        --nam_len;
+
+        if (!mod_name) {
+            str = strndup(data_path, (name + nam_len) - data_path);
+            LOGVAL(ctx, LYE_PATH_MISSMOD, LY_VLOG_STR, str);
+            free(str);
+            return NULL;
+        }
+
+        str = strndup(mod_name, mod_name_len);
+        if (!str) {
+            LOGMEM(ctx);
+            return NULL;
+        }
+        mod = ly_ctx_get_module(ctx, str, NULL, 1);
+        free(str);
+        if (!mod) {
+            str = strndup(data_path, (mod_name + mod_name_len) - data_path);
+            LOGVAL(ctx, LYE_PATH_INMOD, LY_VLOG_STR, str);
+            free(str);
+            return NULL;
+        }
+
+        parent = lyp_get_yang_data_template(mod, name, nam_len);
+        if (!parent) {
+            str = strndup(data_path, (name + nam_len) - data_path);
+            LOGVAL(ctx, LYE_PATH_INNODE, LY_VLOG_STR, str);
+            free(str);
+            return NULL;
+        }
+
+        out_used = (name + nam_len) - data_path + 1;
+        out = malloc(out_used);
+        LY_CHECK_ERR_RETURN(!out, LOGMEM(ctx), NULL);
+        memcpy(out, data_path, out_used -1);
+        data_path += r;
+    } else {
+        out_used = 1;
+        out = malloc(1);
+        LY_CHECK_ERR_RETURN(!out, LOGMEM(ctx), NULL);
+    }
 
     exp = lyxp_parse_expr(ctx, data_path);
     if (!exp) {
@@ -1183,9 +1240,16 @@ ly_path_data2schema(struct ly_ctx *ctx, const char *data_path)
         return NULL;
     }
 
-    if (ly_path_data2schema_subexp(ctx, NULL, NULL, exp, &cur_exp, &out, &out_used)) {
-        free(out);
-        out = NULL;
+    if (parent) {
+        if (ly_path_data2schema_subexp(ctx, parent, mod, exp, &cur_exp, &out, &out_used)) {
+            free(out);
+            out = NULL;
+        }
+    } else {
+        if (ly_path_data2schema_subexp(ctx, NULL, NULL, exp, &cur_exp, &out, &out_used)) {
+            free(out);
+            out = NULL;
+        }
     }
 
     lyxp_expr_free(exp);

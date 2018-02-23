@@ -74,7 +74,7 @@ void
 cmd_data_help(void)
 {
     printf("data [-(-s)trict] [-t TYPE] [-d DEFAULTS] [-o <output-file>] [-f (xml | json)] [-r <running-file-name>]\n");
-    printf("     <data-file-name> [<RPC/action-data-file-name>]\n");
+    printf("     <data-file-name> [<RPC/action-data-file-name> | <yang-data name>]\n");
     printf("Accepted TYPEs:\n");
     printf("\tauto       - resolve data type (one of the following) automatically (as pyang does),\n");
     printf("\t             this option is applicable only in case of XML input data.\n");
@@ -86,6 +86,7 @@ cmd_data_help(void)
     printf("\trpc        - LYD_OPT_RPC - NETCONF RPC message.\n");
     printf("\trpcreply   - LYD_OPT_RPCREPLY (last parameter mandatory in this case)\n");
     printf("\tnotif      - LYD_OPT_NOTIF - NETCONF Notification message.\n\n");
+    printf("\tyangdata   - LYD_OPT_DATA_TEMPLATE - yang-data extension (ast parameter mandatory in this case)");
     printf("Accepted DEFAULTS:\n");
     printf("\tall        - add missing default nodes\n");
     printf("\tall-tagged - add missing default nodes and mark all the default nodes with the attribute.\n");
@@ -508,6 +509,14 @@ parse_data(char *filepath, int options, struct lyd_node *val_tree, const char *r
         } else if (!strcmp(xml->name, "notification")) {
             fprintf(stdout, "Parsing %s as <notification> data.\n", filepath);
             options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_NOTIF;
+        } else if (!strcmp(xml->name, "yang-data")) {
+            fprintf(stdout, "Parsing %s as <yang-data> data.\n", filepath);
+            options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_DATA_TEMPLATE;
+            if (!rpc_act_file) {
+                fprintf(stderr, "YANG-DATA require additional argument (name instance of yang-data extension).\n");
+                lyxml_free(ctx, xml);
+                return EXIT_FAILURE;
+            }
         } else {
             fprintf(stderr, "Invalid top-level element for automatic data type recognition.\n");
             lyxml_free(ctx, xml);
@@ -518,6 +527,8 @@ parse_data(char *filepath, int options, struct lyd_node *val_tree, const char *r
             data = lyd_parse_xml(ctx, &xml->child, options, rpc_act, val_tree);
         } else if (options & (LYD_OPT_RPC | LYD_OPT_NOTIF)) {
             data = lyd_parse_xml(ctx, &xml->child, options, val_tree);
+        } else if (options & LYD_OPT_DATA_TEMPLATE) {
+            data = lyd_parse_xml(ctx, &xml->child, options, rpc_act_file);
         } else {
             if ((options & LYD_OPT_TYPEMASK) == LYD_OPT_DATA && !(options & LYD_OPT_STRICT )) {
                 /* we have to include status data from ietf-yang-library which is part of the context,
@@ -541,6 +552,12 @@ parse_data(char *filepath, int options, struct lyd_node *val_tree, const char *r
             data = lyd_parse_path(ctx, filepath, informat, options, rpc_act, val_tree);
         } else if (options & (LYD_OPT_RPC | LYD_OPT_NOTIF)) {
             data = lyd_parse_path(ctx, filepath, informat, options, val_tree);
+        } else if (options & LYD_OPT_DATA_TEMPLATE) {
+            if (!rpc_act_file) {
+                fprintf(stderr, "YANG-DATA require additional argument (name instance of yang-data extension).\n");
+                return EXIT_FAILURE;
+            }
+            data = lyd_parse_path(ctx, filepath, informat, options, rpc_act_file);
         } else {
             if ((options & LYD_OPT_TYPEMASK) == LYD_OPT_DATA && !(options & LYD_OPT_STRICT )) {
                 /* we have to include status data from ietf-yang-library which is part of the context,
@@ -727,6 +744,8 @@ cmd_data(const char *arg)
                 options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPCREPLY;
             } else if (!strcmp(optarg, "notif")) {
                 options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_NOTIF;
+            } else if (!strcmp(optarg, "yangdata")) {
+                options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_DATA_TEMPLATE;
             } else {
                 fprintf(stderr, "Invalid parser option \"%s\".\n", optarg);
                 cmd_data_help();
@@ -868,6 +887,8 @@ cmd_xpath(const char *arg)
                 options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPCREPLY;
             } else if (!strcmp(optarg, "notif")) {
                 options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_NOTIF;
+            } else if (!strcmp(optarg, "yangdata")) {
+                options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_DATA_TEMPLATE;
             } else {
                 fprintf(stderr, "Invalid parser option \"%s\".\n", optarg);
                 cmd_data_help();

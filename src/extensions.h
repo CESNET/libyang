@@ -149,6 +149,17 @@ typedef int (*lyext_check_result_clb)(struct lys_ext_instance *ext);
  */
 typedef int (*lyext_check_inherit_clb)(struct lys_ext_instance *ext, struct lys_node *node);
 
+/**
+ * @brief Callback to decide if data is valid towards to schema.
+ *
+ * @param[in] ext Extension instance to be checked.
+ * @param[in] node Data node, which try to valid.
+ *
+ * @return 0 - valid
+ *         1 - invalid
+ */
+typedef int (*lyext_valid_data_clb)(struct lys_ext_instance *ext, struct lyd_node *node);
+
 struct lyext_plugin {
     LYEXT_TYPE type;                          /**< type of the extension, according to it the structure will be casted */
     uint16_t flags;                           /**< [extension flags](@ref extflags) */
@@ -160,6 +171,7 @@ struct lyext_plugin {
     lyext_check_inherit_clb check_inherit;    /**< callback to decide if the extension is supposed to be inherited into
                                                    the provided node, the callback is used only if the flags contains
                                                    #LYEXT_OPT_INHERIT flag */
+    lyext_valid_data_clb valid_data;          /**< callback to valid if data is valid toward to schema */
 };
 
 struct lyext_plugin_complex {
@@ -173,6 +185,7 @@ struct lyext_plugin_complex {
     lyext_check_inherit_clb check_inherit;    /**< callback to decide if the extension is supposed to be inherited into
                                                    the provided node, the callback is used only if the flags contains
                                                    #LYEXT_OPT_INHERIT flag */
+    lyext_valid_data_clb valid_data;          /**< callback to valid if data is valid toward to schema */
     struct lyext_substmt *substmt;            /**< NULL-terminated array of allowed substatements and restrictions
                                                    to their instantiation inside the extension instance */
     size_t instance_size;                     /**< size of the instance structure to allocate, the structure is

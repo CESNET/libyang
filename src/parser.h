@@ -44,7 +44,7 @@ struct lyd_node *xml_read_data(struct ly_ctx *ctx, const char *data, int options
  * @{
  */
 struct lyd_node *lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct lyd_node *rpc_act,
-                                const struct lyd_node *data_tree);
+                                const struct lyd_node *data_tree, const char *yang_data_name);
 
 /**@} jsondata */
 
@@ -144,6 +144,9 @@ void lyp_sort_revisions(struct lys_module *module);
 int lyp_rfn_apply_ext(struct lys_module *module);
 int lyp_deviation_apply_ext(struct lys_module *module);
 int lyp_mand_check_ext(struct lys_ext_instance_complex *ext, const char *ext_name);
+
+const char *lyp_get_yang_data_template_name(const struct lyd_node *node);
+const struct lys_node *lyp_get_yang_data_template(const struct lys_module *module, const char *yang_data_name, int yang_data_name_len);
 
 void lyp_ext_instance_rm(struct ly_ctx *ctx, struct lys_ext_instance ***ext, uint8_t *size, uint8_t index);
 
