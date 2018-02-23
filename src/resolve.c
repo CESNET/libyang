@@ -6835,8 +6835,8 @@ print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node)
         break;
     case UNRES_TYPEDEF_DFLT:
     case UNRES_TYPE_DFLT:
-        if (str_node) {
-            LOGVRB("Resolving %s \"%s\" failed, it will be attempted later.", "type default", (char *)str_node);
+        if (*(char **)str_node) {
+            LOGVRB("Resolving %s \"%s\" failed, it will be attempted later.", "type default", *(char **)str_node);
         }   /* else no default value in the type itself, but we are checking some restrictions against
              *  possible default value of some base type. The failure is caused by not resolved base type,
              *  so it was already reported */
