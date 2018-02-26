@@ -9,7 +9,7 @@ set(CMAKE_SWIG_OUTDIR ${CMAKE_CURRENT_BINARY_DIR})
 set_source_files_properties(${PYTHON_SWIG_BINDING}.i PROPERTIES CPLUSPLUS ON PREFIX "")
 
 swig_add_module(${PYTHON_SWIG_BINDING} python ${PYTHON_SWIG_BINDING}.i)
-swig_link_libraries(${PYTHON_SWIG_BINDING} ${PYTHON_LIBRARIES} libyang_cpp)
+swig_link_libraries(${PYTHON_SWIG_BINDING} ${PYTHON_LIBRARIES} libyang-cpp)
 
 # Generate header with SWIG run-time functions
 execute_process(COMMAND ${SWIG_EXECUTABLE} -python -external-runtime ${CMAKE_CURRENT_BINARY_DIR}/swigpyrun.h)

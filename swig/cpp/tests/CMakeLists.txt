@@ -6,7 +6,7 @@ set(CPP_TEST_SRC
 macro(ADD_CPP_TEST TEST)
   set(test_name cpp_${TEST})
   add_executable(${test_name} ${TEST}.cpp)
-  target_link_libraries(${test_name} libyang_cpp)
+  target_link_libraries(${test_name} libyang-cpp)
   add_test(NAME ${test_name} COMMAND $<TARGET_FILE:${test_name}>)
   set_property(TEST ${test_name} PROPERTY ENVIRONMENT "LIBYANG_EXTENSIONS_PLUGINS_DIR=${CMAKE_BINARY_DIR}/src/extensions")
   set_property(TEST ${test_name} APPEND PROPERTY ENVIRONMENT "MALLOC_CHECK_=3")

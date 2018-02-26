@@ -36,7 +36,7 @@ if(GEN_PYTHON_BINDINGS AND SWIG_FOUND)
     endif()
 endif()
 
-project(libyang_cpp)
+project(libyang-cpp)
 set(LIBYANG_CPP_SOURCES
     ${CMAKE_SOURCE_DIR}/swig/cpp/src/Xml.cpp
     ${CMAKE_SOURCE_DIR}/swig/cpp/src/Libyang.cpp
@@ -61,8 +61,8 @@ ENDFUNCTION(PREPEND)
 
 PREPEND(abs_libsrc ${CMAKE_SOURCE_DIR} ${libsrc})
 
-add_library(libyang_cpp SHARED ${LIBYANG_CPP_SOURCES})
-SET_TARGET_PROPERTIES(libyang_cpp PROPERTIES
+add_library(libyang-cpp SHARED ${LIBYANG_CPP_SOURCES})
+SET_TARGET_PROPERTIES(libyang-cpp PROPERTIES
     VERSION ${LIBYANG_VERSION} SOVERSION ${LIBYANG_SOVERSION} PREFIX "")
 
 # include custom Modules
@@ -70,10 +70,10 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMakeModules/")
 
 include_directories(${CMAKE_SOURCE_DIR})
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/cpp/src")
-target_link_libraries(libyang_cpp yang)
+target_link_libraries(libyang-cpp yang)
 
 # install binary
-install(TARGETS libyang_cpp DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(TARGETS libyang-cpp DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${LIBYANG_HPP_SOURCES} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libyang)
 
 if (GEN_CPP_BINDINGS)
