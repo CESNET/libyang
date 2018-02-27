@@ -37,11 +37,12 @@ Requires:   %{name} = %{version}-%{release}
 
 %package -n libyang-cpp@PACKAGE_PART_NAME@-devel
 Summary:    Headers of bindings to c++ language
-Requires:   %{name} = %{version}-%{release}
+Requires:   libyang-cpp@PACKAGE_PART_NAME@ = %{version}-%{release}
+Requires:   pcre-devel
 
 %package -n python3-yang@PACKAGE_PART_NAME@
 Summary:    Binding to python
-Requires:   %{name}-cpp = %{version}-%{release}
+Requires:   libyang-cpp@PACKAGE_PART_NAME@ = %{version}-%{release}
 Requires:   %{name} = %{version}-%{release}
 
 %description -n libyang-cpp@PACKAGE_PART_NAME@
