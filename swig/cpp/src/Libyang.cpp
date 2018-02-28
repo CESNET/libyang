@@ -206,6 +206,31 @@ S_Data_Node Context::parse_fd(int fd, LYD_FORMAT format, int options) {
     S_Deleter new_deleter = std::make_shared<Deleter>(new_node, deleter);
     return std::make_shared<Data_Node>(new_node, new_deleter);
 }
+
+S_Module Context::parse_module_mem(const char *data, LYS_INFORMAT format) {
+    struct lys_module *module = nullptr;
+
+    module = (struct lys_module *) lys_parse_mem(ctx, data, format);
+    if (!module) {
+        check_libyang_error(ctx);
+        return nullptr;
+    }
+
+    S_Deleter new_deleter = std::make_shared<Deleter>(module, deleter);
+    return std::make_shared<Module>(module, new_deleter);
+}
+S_Module Context::parse_module_fd(int fd, LYS_INFORMAT format) {
+    struct lys_module *module = nullptr;
+
+    module = (struct lys_module *) lys_parse_fd(ctx, fd, format);
+    if (!module) {
+        check_libyang_error(ctx);
+        return nullptr;
+    }
+
+    S_Deleter new_deleter = std::make_shared<Deleter>(module, deleter);
+    return std::make_shared<Module>(module, new_deleter);
+}
 S_Module Context::parse_path(const char *path, LYS_INFORMAT format) {
     struct lys_module *module = nullptr;
 
