@@ -86,7 +86,7 @@ test_leafref_type(void **state)
 
     mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
     assert_ptr_equal(mod, NULL);
-    assert_int_equal(ly_errno, LY_EEXT);
+    assert_int_equal(ly_errno, LY_EPLUGIN);
 }
 
 /*

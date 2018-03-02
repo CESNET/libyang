@@ -36,6 +36,7 @@ endif()
 option(ENABLE_CALLGRIND_TESTS "Build performance tests to be run with callgrind" OFF)
 option(ENABLE_LATEST_REVISIONS "Enable reusing of latest revisions of schemas" ON)
 option(ENABLE_CACHE "Enable data caching for schemas (time-efficient at the cost of increased space-complexity)" OFF)
+set(PLUGINS_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libyang" CACHE STRING "Directory with libyang plugins (extensions and user types)")
 
 if (ENABLE_LATEST_REVISIONS)
     set(ENABLE_LATEST_REVISIONS_MACRO "/**\n * @brief Latest revisions of loaded schemas will be reused.\n */\n#define LY_ENABLED_LATEST_REVISIONS")
@@ -52,12 +53,9 @@ endif()
 include_directories(${PROJECT_BINARY_DIR}/src ${PROJECT_SOURCE_DIR}/src)
 configure_file(${PROJECT_SOURCE_DIR}/src/libyang.h.in ${PROJECT_BINARY_DIR}/src/libyang.h @ONLY)
 
-if(PLUGINS_DIR)
-    set(LIBYANG_EXT_PLUGINS_DIR ${PLUGINS_DIR})
-else()
-    set(LIBYANG_EXT_PLUGINS_DIR ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libyang)
-endif()
-configure_file(${PROJECT_SOURCE_DIR}/src/extensions_config.h.in ${PROJECT_BINARY_DIR}/src/extensions_config.h)
+set(EXTENSIONS_PLUGINS_DIR_MACRO "${PLUGINS_DIR}/extensions")
+set(USER_TYPES_PLUGINS_DIR_MACRO "${PLUGINS_DIR}/user_types")
+configure_file(${PROJECT_SOURCE_DIR}/src/plugin_config.h.in ${PROJECT_BINARY_DIR}/src/plugin_config.h)
 
 # include custom Modules
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMakeModules/")
@@ -177,7 +175,7 @@ set(libsrc
     src/parser_yang.c
     src/tree_schema.c
     src/tree_data.c
-    src/extensions.c
+    src/plugins.c
     src/printer.c
     src/xpath.c
     src/printer_yang.c
@@ -206,6 +204,7 @@ set(headers
     src/tree_schema.h
     src/tree_data.h
     src/extensions.h
+    src/user_types.h
     src/xml.h
     src/dict.h)
 

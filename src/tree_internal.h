@@ -439,6 +439,8 @@ int lyd_list_equal(struct lyd_node *first, struct lyd_node *second, int action, 
 
 int lyd_get_unique_default(const char* unique_expr, struct lyd_node *list, const char **dflt);
 
+void lyd_free_value(lyd_val value, uint16_t value_type, struct lys_type *type);
+
 /**
  * @brief Check for (validate) mandatory nodes of a data tree. Checks recursively whole data tree. Requires all when
  * statement to be solved.

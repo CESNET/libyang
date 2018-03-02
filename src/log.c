@@ -290,13 +290,13 @@ lyext_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, const char *plugin, cons
         return;
     }
 
-    if (asprintf(&plugin_msg, "%s (reported by extension plugin %s, %s())", format, plugin, function) == -1) {
+    if (asprintf(&plugin_msg, "%s (reported by plugin %s, %s())", format, plugin, function) == -1) {
         LOGMEM(ctx);
         return;
     }
 
     va_start(ap, format);
-    log_vprintf(ctx, level, (level == LY_LLERR ? LY_EEXT : 0), 0, NULL, plugin_msg, ap);
+    log_vprintf(ctx, level, (level == LY_LLERR ? LY_EPLUGIN : 0), 0, NULL, plugin_msg, ap);
     va_end(ap);
 
     free(plugin_msg);

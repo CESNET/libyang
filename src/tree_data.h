@@ -104,6 +104,7 @@ typedef union lyd_value_u {
     uint16_t uint16;             /**< 16-bit signed integer */
     uint32_t uint32;             /**< 32-bit signed integer */
     uint64_t uint64;             /**< 64-bit signed integer */
+    void *ptr;                   /**< arbitrary data stored using a type plugin */
 } lyd_val;
 
 /**

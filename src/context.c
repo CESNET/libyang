@@ -95,7 +95,7 @@ ly_ctx_new(const char *search_dir, int options)
     lydict_init(&ctx->dict);
 
     /* plugins */
-    lyext_load_plugins();
+    ly_load_plugins();
 
     /* initialize thread-specific key */
     while ((i = pthread_key_create(&ctx->errlist_key, ly_err_free)) == EAGAIN);
@@ -103,7 +103,6 @@ ly_ctx_new(const char *search_dir, int options)
     /* models list */
     ctx->models.list = calloc(16, sizeof *ctx->models.list);
     LY_CHECK_ERR_RETURN(!ctx->models.list, LOGMEM(NULL); free(ctx), NULL);
-    ext_plugins_ref++;
     ctx->models.flags = options;
     ctx->models.used = 0;
     ctx->models.size = 16;
@@ -477,8 +476,7 @@ ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_n
     lydict_clean(&ctx->dict);
 
     /* plugins - will be removed only if this is the last context */
-    ext_plugins_ref--;
-    lyext_clean_plugins();
+    ly_clean_plugins();
 
     free(ctx);
 }

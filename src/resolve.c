@@ -3448,9 +3448,7 @@ check_default(struct lys_type *type, const char **value, struct lys_module *modu
     }
 
 cleanup:
-    if (node.value_type == LY_TYPE_BITS) {
-        free(node.value.bit);
-    }
+    lyd_free_value(node.value, node.value_type, type);
     lydict_remove(ctx, node.value_str);
     if (tpdf && node.schema) {
         free((char *)node.schema->name);
@@ -6891,7 +6889,7 @@ inherit_dfs_sibling:
         /* final check */
         if (eplugin->check_result) {
             if ((*eplugin->check_result)(ext)) {
-                LOGERR(ctx, LY_EEXT, "Resolving extension failed.");
+                LOGERR(ctx, LY_EPLUGIN, "Resolving extension failed.");
                 return -1;
             }
         }
@@ -7683,13 +7681,11 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int store,
 
     if ((leaf->value_type == LY_TYPE_UNION) || (leaf->value_type == (LY_TYPE_INST | LY_TYPE_INST_UNRES))) {
         /* either NULL or instid previously converted to JSON */
-        json_val = leaf->value.string;
+        json_val = lydict_insert(ctx, leaf->value.string, 0);
     }
 
     if (store) {
-        if ((leaf->value_type & LY_DATA_TYPE_MASK) == LY_TYPE_BITS) {
-            free(leaf->value.bit);
-        }
+        lyd_free_value(leaf->value, leaf->value_type, &((struct lys_node_leaf *)leaf->schema)->type);
         memset(&leaf->value, 0, sizeof leaf->value);
     }
 
@@ -7777,9 +7773,7 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int store,
 
         /* erase possible present and invalid value data */
         if (store) {
-            if (t->base == LY_TYPE_BITS) {
-                free(leaf->value.bit);
-            }
+            lyd_free_value(leaf->value, leaf->value_type, t);
             memset(&leaf->value, 0, sizeof leaf->value);
         }
     }

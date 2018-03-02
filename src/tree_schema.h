@@ -582,16 +582,16 @@ int lys_ext_instance_presence(struct lys_ext *def, struct lys_ext_instance **ext
 void *lys_ext_complex_get_substmt(LY_STMT stmt, struct lys_ext_instance_complex *ext, struct lyext_substmt **info);
 
 /**
- * @brief Load the available YANG extensions plugins from the plugin directory (LIBDIR/libyang/).
+ * @brief Load the available YANG extension and type plugins from the plugin directory (LIBDIR/libyang/).
  *
  * This function is automatically called whenever a new context is created. Note that the removed plugins are kept
  * in use until all the created contexts are destroyed via ly_ctx_destroy(), so only the newly added plugins are
  * usually loaded by this function.
  */
-void lyext_load_plugins(void);
+void ly_load_plugins(void);
 
 /**
- * @brief Unload all the YANG extensions plugins.
+ * @brief Unload all the YANG extension and type plugins.
  *
  * This function is automatically called whenever the context is destroyed. Note, that in case there is still a
  * libyang context in use, the function does nothing since unloading the plugins would break the context's modules
@@ -599,7 +599,7 @@ void lyext_load_plugins(void);
  *
  * Since the function is called with ly_ctx_destroy(), there is usually no need to call this function manually.
  */
-int lyext_clean_plugins(void);
+int ly_clean_plugins(void);
 
 /**
  * @}
@@ -764,6 +764,7 @@ typedef enum {
                                           the value union is filled as if being the target node's type */
 #define LY_TYPE_INST_UNRES 0x80      /**< flag for unresolved instance-identifier, always used in conjunction with LY_TYPE_INST
                                           and the value union should not be accessed */
+#define LY_TYPE_USER 0x100           /**< flag for a user type stored value */
 
 /**
  *

@@ -1,0 +1,29 @@
+/**
+ * @file plugin_config.h
+ * @author Michal Vasko <mvasko@cesnet.cz>
+ * @brief libyang plugin config file
+ *
+ * Copyright (c) 2018 CESNET, z.s.p.o.
+ *
+ * This source code is licensed under BSD 3-Clause License (the "License").
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://opensource.org/licenses/BSD-3-Clause
+ */
+
+#ifndef LY_PLUGIN_CONFIG_H_
+#define LY_PLUGIN_CONFIG_H_
+
+#define LYEXT_PLUGINS_DIR "@EXTENSIONS_PLUGINS_DIR_MACRO@" /**< directory with YANG extension plugins */
+#define LY_USER_TYPES_PLUGINS_DIR "@USER_TYPES_PLUGINS_DIR_MACRO@" /**< directory with user YANG types plugins */
+
+#if defined __linux__ || defined __unix__
+#  define LY_PLUGIN_SUFFIX ".so"
+#  define LY_PLUGIN_SUFFIX_LEN 3
+#elif defined __APPLE__
+#  define LY_PLUGIN_SUFFIX ".dylib"
+#  define LY_PLUGIN_SUFFIX_LEN 6
+#endif
+
+#endif /* LY_PLUGIN_CONFIG_H_ */

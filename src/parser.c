@@ -1412,9 +1412,8 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         itemname = attr->name;
     }
 
-    if (store && ((*val_type & LY_DATA_TYPE_MASK) == LY_TYPE_BITS)) {
-        free(val->bit);
-        val->bit = NULL;
+    if (store) {
+        lyd_free_value(*val, *val_type, type);
     }
 
     switch (type->base) {
@@ -1427,7 +1426,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             for (uind = 0; isspace(value[uind]); ++uind);
             ptr = &value[uind];
             u = strlen(ptr);
-            while(u && isspace(ptr[u - 1])) {
+            while (u && isspace(ptr[u - 1])) {
                 --u;
             }
             unum = u;
@@ -2067,9 +2066,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
             if (store) {
                 /* erase possible present and invalid value data */
-                if (t->base == LY_TYPE_BITS) {
-                    free(val->bit);
-                }
+                lyd_free_value(*val, *val_type, t);
                 memset(val, 0, sizeof(lyd_val));
             }
         }
@@ -2094,6 +2091,16 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
     default:
         LOGINT(ctx);
         return NULL;
+    }
+
+    /* search user types in case this value is supposed to be stored in a custom way */
+    if (store && type->der && type->der->module) {
+        c = lytype_store(type->der->module, type->der->name, *value_, val);
+        if (c == -1) {
+            return NULL;
+        } else if (!c) {
+            *val_type |= LY_TYPE_USER;
+        }
     }
 
     ret = type;

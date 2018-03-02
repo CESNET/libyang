@@ -201,20 +201,6 @@ int lyp_munmap(void *addr, size_t length);
 unsigned int pututf8(struct ly_ctx *ctx, char *dst, int32_t value);
 unsigned int copyutf8(struct ly_ctx *ctx, char *dst, const char *src);
 
-/*
- * Internal functions implementing YANG extensions support
- * - implemented in extensions.c
- */
-
-/**
- * @brief If available, get the extension plugin for the specified extension
- * @param[in] name Name of the extension
- * @param[in] module Name of the extension's module
- * @param[in] revision Revision of the extension's module
- * @return pointer to the extension plugin structure, NULL if no plugin available
- */
-struct lyext_plugin *ext_get_plugin(const char *name, const char *module, const char *revision);
-
 /**
  * @brief Find a module. First, imports from \p module with matching \p prefix, \p name, or both are checked,
  * \p module itself is also compared, and lastly a callback is used if allowed.
@@ -239,5 +225,40 @@ const struct lys_module *lyp_get_module(const struct lys_module *module, const c
  * @param[in] ns Namespace to be found.
  */
 const struct lys_module *lyp_get_import_module_ns(const struct lys_module *module, const char *ns);
+
+/*
+ * Internal functions implementing YANG (extension and user type) plugin support
+ * - implemented in plugins.c
+ */
+
+/**
+ * @brief If available, get the extension plugin for the specified extension
+ *
+ * @param[in] name Name of the extension
+ * @param[in] module Name of the extension's module
+ * @param[in] revision Revision of the extension's module
+ * @return pointer to the extension plugin structure, NULL if no plugin available
+ */
+struct lyext_plugin *ext_get_plugin(const char *name, const char *module, const char *revision);
+
+/**
+ * @brief Try to store a value as a user type defined by a plugin.
+ *
+ * @param[in] mod Module of the type.
+ * @param[in] type_name Type (typedef) name.
+ * @param[in] value_str Value to store as a string.
+ * @param[in,out] value Filled value to be overwritten by the user store callback.
+ * @return 0 on successful storing, 1 if the type is not a user type, -1 on error.
+ */
+int lytype_store(const struct lys_module *mod, const char *type_name, const char *value_str, lyd_val *value);
+
+/**
+ * @brief Free a user type stored value.
+ *
+ * @param[in] mod Module of the type.
+ * @param[in] type_name Type (typedef) name.
+ * @param[in] value Value union to free.
+ */
+void lytype_free(const struct lys_module *mod, const char *type_name, lyd_val value);
 
 #endif /* LY_PARSER_H_ */
