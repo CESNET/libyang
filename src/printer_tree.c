@@ -94,14 +94,14 @@ tree_sibling_is_valid_child(const struct lys_node *node, int including, const st
         }
 
         if (!lys_is_disabled(cur, 0)) {
-            if (cur->nodetype == LYS_USES) {
+            if ((cur->nodetype == LYS_USES) || ((cur->nodetype == LYS_CASE) && (cur->flags & LYS_IMPLICIT))) {
                 if (tree_sibling_is_valid_child(cur->child, 1, module, NULL, nodetype)) {
                     return 1;
                 }
             } else {
                 switch (nodetype) {
                 case LYS_GROUPING:
-                    /* we are printing groupings, they are printer separately */
+                    /* we are printing groupings, they are printed separately */
                     if (cur->nodetype == LYS_GROUPING) {
                         return 0;
                     }
@@ -510,9 +510,11 @@ tree_print_snode(struct lyout *out, int level, uint16_t max_name_len, const stru
         return;
     }
 
-    /* implicit input/output */
-    if (((node->nodetype & mask) & (LYS_INPUT | LYS_OUTPUT)) && (node->flags & LYS_IMPLICIT)) {
-        return;
+    /* implicit input/output/case */
+    if (((node->nodetype & mask) & (LYS_INPUT | LYS_OUTPUT | LYS_CASE)) && (node->flags & LYS_IMPLICIT)) {
+        if ((node->nodetype != LYS_CASE) || lys_is_disabled(node->child, 0)) {
+            return;
+        }
     }
 
     /* special uses and grouping handling */
