@@ -812,7 +812,7 @@ extern "C" {
  *                 This is the libyang's extension and it is represented by #LYP_WD_IMPL_TAG option.
  *
  * libyang automatically adds/maintain the default nodes when a data tree is being parsed or validated. Note, that in a
- * modified data tree (via e.g. lys_insert() or lys_free()), some of the default nodes can be missing or they can be
+ * modified data tree (via e.g. lyd_insert() or lyd_free()), some of the default nodes can be missing or they can be
  * present by mistake. Such a data tree is again corrected during the next lyd_validate() call.
  *
  * The implicit (default) nodes, created by libyang, are marked with the ::lyd_node#dflt flag which applies to the
