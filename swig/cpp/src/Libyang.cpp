@@ -304,13 +304,13 @@ LY_LOG_LEVEL set_log_verbosity(LY_LOG_LEVEL level)
 }
 
 Set::Set() {
-    struct ly_set *set = ly_set_new();
-    if (!set) {
+    struct ly_set *set_new = ly_set_new();
+    if (!set_new) {
         check_libyang_error(nullptr);
     }
 
-    set = set;
-    deleter = std::make_shared<Deleter>(set);
+    set = set_new;
+    deleter = std::make_shared<Deleter>(set_new);
 }
 Set::Set(struct ly_set *set, S_Deleter deleter):
     set(set),
