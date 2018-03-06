@@ -44,6 +44,7 @@ if(ENABLE_BUILD_TESTS)
     endmacro(ADD_PYTHON_TEST)
 
     ADD_PYTHON_TEST(test_libyang)
+    ADD_PYTHON_TEST(test_tree_data)
 
     add_custom_command(TARGET ${SWIG_MODULE_${PYTHON_SWIG_BINDING}_REAL_NAME} POST_BUILD
         COMMAND cp "${CMAKE_CURRENT_BINARY_DIR}/_${PYTHON_SWIG_BINDING}.so" ${PY2_SWIG_DIR}/tests
