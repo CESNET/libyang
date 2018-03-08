@@ -6684,6 +6684,9 @@ lyd_leaf_type(const struct lyd_node_leaf_list *leaf)
         } else if (type->base == LY_TYPE_UNION) {
             if (type->info.uni.has_ptr_type && leaf->validity) {
                 /* we don't know what it will be after resolution (validation) */
+                LOGVAL(leaf->schema->module->ctx, LYE_SPEC, LY_VLOG_LYD, leaf,
+                       "Unable to determine the type of value \"%s\" from union type \"%s\" prior to validation.",
+                       leaf->value_str, type->der->name);
                 return NULL;
             }
 
