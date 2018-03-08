@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from __future__ import print_function
 
-__author__ = "Mislav Novakovic <mislav.novakovic@sartura.hr>"
+__author__ = "Matija Amidzic <matija.amidzic@sartura.hr>"
 __copyright__ = "Copyright 2018, Deutsche Telekom AG"
 __license__ = "BSD 3-Clause"
 
@@ -147,6 +147,7 @@ class TestUM(unittest.TestCase):
             # Tests
             info = ctx.info()
             self.assertIsNotNone(info)
+            self.assertEqual(ly.LYD_VAL_OK, info.validity())
 
         except Exception as e:
             self.fail(e)

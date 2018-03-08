@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from __future__ import print_function
 
-__author__ = "Mislav Novakovic <mislav.novakovic@sartura.hr>"
+__author__ = "Matija Amidzic <matija.amidzic@sartura.hr>"
 __copyright__ = "Copyright 2018, Deutsche Telekom AG"
 __license__ = "BSD 3-Clause"
 
@@ -548,7 +548,7 @@ class TestUM(unittest.TestCase):
         except Exception as e:
             self.fail(e)
 
-    def test_ly_data_node_print_mem(self):
+    def test_ly_data_node_print_mem_xml(self):
         yang_folder = config.TESTS_DIR + "/api/files"
         config_file = config.TESTS_DIR + "/api/files/a.xml"
         try:
@@ -562,8 +562,41 @@ class TestUM(unittest.TestCase):
             # Tests
             result = root.print_mem(ly.LYD_XML, 0)
             self.assertEqual(result_xml, result)
+
+        except Exception as e:
+            self.fail(e)
+
+    def test_ly_data_node_print_mem_xml_format(self):
+        yang_folder = config.TESTS_DIR + "/api/files"
+        config_file = config.TESTS_DIR + "/api/files/a.xml"
+        try:
+            # Setup
+            ctx = ly.Context(yang_folder)
+            self.assertIsNotNone(ctx)
+            ctx.parse_module_mem(lys_module_a, ly.LYS_IN_YIN)
+            root = ctx.parse_data_path(config_file, ly.LYD_XML, ly.LYD_OPT_CONFIG | ly.LYD_OPT_STRICT)
+            self.assertIsNotNone(root)
+
+            # Tests
             result = root.print_mem(ly.LYD_XML, ly.LYP_FORMAT)
             self.assertEqual(result_xml_format, result)
+
+
+        except Exception as e:
+            self.fail(e)
+
+    def test_ly_data_node_print_mem_json(self):
+        yang_folder = config.TESTS_DIR + "/api/files"
+        config_file = config.TESTS_DIR + "/api/files/a.xml"
+        try:
+            # Setup
+            ctx = ly.Context(yang_folder)
+            self.assertIsNotNone(ctx)
+            ctx.parse_module_mem(lys_module_a, ly.LYS_IN_YIN)
+            root = ctx.parse_data_path(config_file, ly.LYD_XML, ly.LYD_OPT_CONFIG | ly.LYD_OPT_STRICT)
+            self.assertIsNotNone(root)
+
+            # Tests
             result = root.print_mem(ly.LYD_JSON, ly.LYP_FORMAT)
             self.assertEqual(result_json, result)
 
