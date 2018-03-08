@@ -1525,6 +1525,17 @@ void ly_ctx_clean(struct ly_ctx *ctx, void (*private_destructor)(const struct ly
 void ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_node *node, void *priv));
 
 /**
+ * @brief Transform a data path in XML format (node prefixes are XML namespace prefixes of module namespaces)
+ * to JSON format (node prefixes are module names directly).
+ *
+ * @param[in] ctx Context to work in.
+ * @param[in] xml_path Path in XML format to transform.
+ * @param[in] xml XML tree to be used for XML namespace prefix resolution.
+ * @return Transformed JSON data path, needs to be freed. NULL on error.
+ */
+char *ly_path_xml2json(struct ly_ctx *ctx, const char *xml_path, struct lyxml_elem *xml);
+
+/**
  * @brief Transform a data path into schema path (see @ref howtoxpath).
  *
  * Some XPath tokens such as "*" or "//" should not be used because they cannot be properly
@@ -1537,7 +1548,7 @@ void ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct 
  */
 char *ly_path_data2schema(struct ly_ctx *ctx, const char *data_path);
 
-/**@} context */
+/** @} context */
 
 /**
  * @defgroup nodeset Tree nodes set

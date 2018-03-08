@@ -595,6 +595,26 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
     return NULL;
 }
 
+API char *
+ly_path_xml2json(struct ly_ctx *ctx, const char *xml_path, struct lyxml_elem *xml)
+{
+    const char *json_path;
+    char *ret = NULL;
+
+    if (!ctx || !xml_path || !xml) {
+        LOGARG;
+        return NULL;
+    }
+
+    json_path = transform_xml2json(ctx, xml_path, xml, 0, 1);
+    if (json_path) {
+        ret = strdup(json_path);
+        lydict_remove(ctx, json_path);
+    }
+
+    return ret;
+}
+
 const char *
 transform_schema2json(const struct lys_module *module, const char *expr)
 {
