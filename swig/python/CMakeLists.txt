@@ -16,13 +16,9 @@ execute_process(COMMAND ${SWIG_EXECUTABLE} -python -external-runtime ${CMAKE_CUR
 
 file(COPY "examples" DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
-execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "from distutils import sysconfig; print(sysconfig.get_python_lib(plat_specific=True, prefix='${CMAKE_INSTALL_PREFIX}'))"
-                OUTPUT_VARIABLE _ABS_PYTHON_MODULE_PATH
+execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(plat_specific=True))"
+                OUTPUT_VARIABLE PYTHON_MODULE_PATH
                 OUTPUT_STRIP_TRAILING_WHITESPACE )
-
-get_filename_component(_ABS_PYTHON_MODULE_PATH ${_ABS_PYTHON_MODULE_PATH} ABSOLUTE)
-file(RELATIVE_PATH _REL_PYTHON_MODULE_PATH ${CMAKE_INSTALL_PREFIX} ${_ABS_PYTHON_MODULE_PATH})
-set(PYTHON_MODULE_PATH ${_REL_PYTHON_MODULE_PATH})
 
 install( TARGETS _${PYTHON_SWIG_BINDING} DESTINATION ${PYTHON_MODULE_PATH})
 install( FILES "${CMAKE_CURRENT_BINARY_DIR}/${PYTHON_SWIG_BINDING}.py" DESTINATION ${PYTHON_MODULE_PATH})
