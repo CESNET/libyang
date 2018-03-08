@@ -6592,12 +6592,12 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
             /* now we can insert msg_sibling into data_tree_parent or next to data_tree_sibling */
             assert(data_tree_parent || data_tree_sibling);
             if (data_tree_parent) {
-                if (lyd_insert(data_tree_parent, msg_sibling)) {
+                if (lyd_insert_common(data_tree_parent, NULL, msg_sibling, 0)) {
                     goto unlink_datatree;
                 }
             } else {
                 assert(!data_tree_sibling->parent);
-                if (lyd_insert_after(data_tree_sibling->prev, msg_sibling)) {
+                if (lyd_insert_nextto(data_tree_sibling->prev, msg_sibling, 0, 0)) {
                     goto unlink_datatree;
                 }
             }
@@ -6634,7 +6634,7 @@ unlink_datatree:
             /* unlink and insert it back, if there is a parent  */
             lyd_unlink_internal(msg_sibling, 0);
             if (msg_parent) {
-                lyd_insert(msg_parent, msg_sibling);
+                lyd_insert_common(msg_parent, NULL, msg_sibling, 0);
             }
         }
     } else {
