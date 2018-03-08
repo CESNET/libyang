@@ -962,6 +962,8 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
         if (!type->info.uni.types) {
             if (type->der->type.der) {
                 /* this is just a derived type with no additional type specified/required */
+                assert(type->der->type.base == LY_TYPE_UNION);
+                type->info.uni.has_ptr_type = type->der->type.info.uni.has_ptr_type;
                 break;
             }
             LOGVAL(ctx, LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "type", "(union) type");

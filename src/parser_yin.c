@@ -1556,7 +1556,9 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 }
 
                 if ((type->info.uni.types[type->info.uni.count - 1].base == LY_TYPE_INST)
-                        || (type->info.uni.types[type->info.uni.count - 1].base == LY_TYPE_LEAFREF)) {
+                        || (type->info.uni.types[type->info.uni.count - 1].base == LY_TYPE_LEAFREF)
+                        || ((type->info.uni.types[type->info.uni.count - 1].base == LY_TYPE_UNION)
+                        && type->info.uni.types[type->info.uni.count - 1].info.uni.has_ptr_type)) {
                     type->info.uni.has_ptr_type = 1;
                 }
             }
