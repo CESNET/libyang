@@ -33,6 +33,7 @@ ipv4_store_clb(const char *type_name, const char *value_str, lyd_val *value, cha
     return 0;
 }
 
+/* Name of this array must match the file name! */
 struct lytype_plugin_list user_ipv4[] = {
     {"ietf-inet-types", "2013-07-15", "ipv4-address", ipv4_store_clb, free},
     {"ietf-inet-types", "2013-07-15", "ipv4-address-no-zone", ipv4_store_clb, free},
