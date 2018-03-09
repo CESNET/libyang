@@ -8504,10 +8504,15 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int set_ext
                         if (parent) {
                             for (elem = tmp_set.val.snodes[j].snode; elem && (elem != parent); elem = lys_parent(elem));
                             if (!elem) {
-                                /* not in node's RPC or notification subtree, set the flag */
-                                when->flags |= LYS_XPATH_DEP;
-                                ((struct lys_node *)node)->flags |= LYS_XPATH_DEP;
-                                break;
+                                /* not in node's RPC or notification subtree, set the correct dep flag */
+                                if (tmp_set.val.snodes[j].snode->flags & LYS_CONFIG_W) {
+                                    when->flags |= LYS_XPCONF_DEP;
+                                    ((struct lys_node *)node)->flags |= LYS_XPCONF_DEP;
+                                } else {
+                                    assert(tmp_set.val.snodes[j].snode->flags & LYS_CONFIG_R);
+                                    when->flags |= LYS_XPSTATE_DEP;
+                                    ((struct lys_node *)node)->flags |= LYS_XPSTATE_DEP;
+                                }
                             }
                         }
                     }
@@ -8542,10 +8547,15 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int set_ext
                         if (parent) {
                             for (elem = tmp_set.val.snodes[j].snode; elem && (elem != parent); elem = lys_parent(elem));
                             if (!elem) {
-                                /* not in node's RPC or notification subtree, set the flag */
-                                must[i].flags |= LYS_XPATH_DEP;
-                                ((struct lys_node *)node)->flags |= LYS_XPATH_DEP;
-                                break;
+                                /* not in node's RPC or notification subtree, set the correct dep flag */
+                                if (tmp_set.val.snodes[j].snode->flags & LYS_CONFIG_W) {
+                                    must[i].flags |= LYS_XPCONF_DEP;
+                                    ((struct lys_node *)node)->flags |= LYS_XPCONF_DEP;
+                                } else {
+                                    assert(tmp_set.val.snodes[j].snode->flags & LYS_CONFIG_R);
+                                    must[i].flags |= LYS_XPSTATE_DEP;
+                                    ((struct lys_node *)node)->flags |= LYS_XPSTATE_DEP;
+                                }
                             }
                         }
                     }

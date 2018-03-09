@@ -1864,7 +1864,7 @@ yang_check_deviate_must(struct lys_module *module, struct unres_schema *unres,
     }
 
     /* flag will be checked again, clear it for now */
-    dev_target->flags &= ~LYS_XPATH_DEP;
+    dev_target->flags &= ~(LYS_XPCONF_DEP | LYS_XPSTATE_DEP);
 
     if (deviate->mod == LY_DEVIATE_ADD) {
         /* reallocate the must array of the target */

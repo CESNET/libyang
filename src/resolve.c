@@ -5848,7 +5848,7 @@ resolve_must(struct lyd_node *node, int inout_parent, int ignore_fail)
         lyxp_set_cast(&set, LYXP_SET_BOOLEAN, node, lyd_node_module(node), LYXP_MUST);
 
         if (!set.val.bool) {
-            if ((ignore_fail == 1) || ((must[i].flags & LYS_XPATH_DEP) && (ignore_fail == 2))) {
+            if ((ignore_fail == 1) || ((must[i].flags & (LYS_XPCONF_DEP | LYS_XPSTATE_DEP)) && (ignore_fail == 2))) {
                 LOGVRB("Must condition \"%s\" not satisfied, but it is not required.", must[i].expr);
             } else {
                 LOGVAL(ctx, LYE_NOMUST, LY_VLOG_LYD, node, must[i].expr);
@@ -6238,7 +6238,8 @@ resolve_when(struct lyd_node *node, int ignore_fail, struct lys_when **failed_wh
         if (!set.val.bool) {
             node->when_status |= LYD_WHEN_FALSE;
             if ((ignore_fail == 1)
-                    || ((((struct lys_node_container *)node->schema)->when->flags & LYS_XPATH_DEP) && (ignore_fail == 2))) {
+                    || ((((struct lys_node_container *)node->schema)->when->flags & (LYS_XPCONF_DEP | LYS_XPSTATE_DEP))
+                    && (ignore_fail == 2))) {
                 LOGVRB("When condition \"%s\" is not satisfied, but it is not required.",
                        ((struct lys_node_container *)node->schema)->when->cond);
             } else {
@@ -6296,7 +6297,8 @@ resolve_when(struct lyd_node *node, int ignore_fail, struct lys_when **failed_wh
             lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, lys_node_module(sparent), LYXP_WHEN);
             if (!set.val.bool) {
                 if ((ignore_fail == 1)
-                        || ((((struct lys_node_uses *)sparent)->when->flags & LYS_XPATH_DEP) || (ignore_fail == 2))) {
+                        || ((((struct lys_node_uses *)sparent)->when->flags & (LYS_XPCONF_DEP | LYS_XPSTATE_DEP))
+                        || (ignore_fail == 2))) {
                     LOGVRB("When condition \"%s\" is not satisfied, but it is not required.",
                         ((struct lys_node_uses *)sparent)->when->cond);
                 } else {
@@ -6354,7 +6356,8 @@ check_augment:
             if (!set.val.bool) {
                 node->when_status |= LYD_WHEN_FALSE;
                 if ((ignore_fail == 1)
-                        || ((((struct lys_node_augment *)sparent->parent)->when->flags & LYS_XPATH_DEP) && (ignore_fail == 2))) {
+                        || ((((struct lys_node_augment *)sparent->parent)->when->flags & (LYS_XPCONF_DEP | LYS_XPSTATE_DEP))
+                        && (ignore_fail == 2))) {
                     LOGVRB("When condition \"%s\" is not satisfied, but it is not required.",
                            ((struct lys_node_augment *)sparent->parent)->when->cond);
                 } else {
@@ -8033,7 +8036,7 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
                 /* finish with error/delete the node only if when was false, an external dependency was not required,
                  * or it was not provided (the flag would not be passed down otherwise, checked in upper functions) */
                 if ((unres->node[i]->when_status & LYD_WHEN_FALSE)
-                        && (!(when->flags & LYS_XPATH_DEP) || !(options & LYD_OPT_NOEXTDEPS))) {
+                        && (!(when->flags & (LYS_XPCONF_DEP | LYS_XPSTATE_DEP)) || !(options & LYD_OPT_NOEXTDEPS))) {
                     if ((options & LYD_OPT_NOAUTODEL) && !unres->node[i]->dflt) {
                         /* false when condition */
                         goto error;

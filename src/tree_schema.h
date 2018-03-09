@@ -1076,13 +1076,15 @@ struct lys_iffeature {
  *        LYS_UNIQUE       | | |x| | | | | | | | | | | | | | |r| |
  *        LYS_FENABLED     | | | | | | | | | | | | | | |x| | |r| |
  *                         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *     10 LYS_XPATH_DEP    |x|x|x|x|x|x|x|x|x|x|x| |x|x| | | |r| |
+ *     10 LYS_XPCONF_DEP   |x|x|x|x|x|x|x|x|x|x|x| |x|x| | | |r| |
  *                         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *     11 LYS_LEAFREF_DEP  |x|x|x|x|x|x|x|x|x|x|x| |x|x| | | |r| |
+ *     11 LYS_XPSTATE_DEP  |x|x|x|x|x|x|x|x|x|x|x| |x|x| | | |r| |
  *                         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *     12 LYS_DFLTJSON     | | |x|x| | | | | | | | | | | |x| |r| |
+ *     12 LYS_LEAFREF_DEP  |x|x|x|x|x|x|x|x|x|x|x| |x|x| | | |r| |
  *                         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *     13 LYS_VALID_EXT    |x| |x|x|x|x| | | | | | | | | |x| | | |
+ *     13 LYS_DFLTJSON     | | |x|x| | | | | | | | | | | |x| |r| |
+ *                         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     14 LYS_VALID_EXT    |x| |x|x|x|x| | | | | | | | | |x| | | |
  *     --------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  *     x - used
@@ -1114,19 +1116,22 @@ struct lys_iffeature {
                                           ::lys_type enum and bits flags */
 #define LYS_USESGRP      0x01        /**< flag for resolving uses in groupings, applicable only to ::lys_node_uses */
 #define LYS_IMPLICIT     0x40        /**< flag for implicitely created LYS_INPUT, LYS_OUTPUT and LYS_CASE nodes */
-#define LYS_XPATH_DEP    0x200       /**< flag marking nodes, whose validation (when, must expressions)
+#define LYS_XPCONF_DEP   0x200       /**< flag marking nodes, whose validation (when, must expressions)
+                                          depends on configuration data nodes outside their subtree (applicable only
+                                          to RPCs, notifications, and actions) */
+#define LYS_XPSTATE_DEP  0x400       /**< flag marking nodes, whose validation (when, must expressions)
+                                          depends on state data nodes outside their subtree (applicable only to RPCs,
+                                          notifications, and actions) */
+#define LYS_LEAFREF_DEP  0x800       /**< flag marking nodes, whose validation (leafrefs)
                                           depends on nodes outside their subtree (applicable only to RPCs,
                                           notifications, and actions) */
-#define LYS_LEAFREF_DEP  0x400       /**< flag marking nodes, whose validation (leafrefs)
-                                          depends on nodes outside their subtree (applicable only to RPCs,
-                                          notifications, and actions) */
-#define LYS_DFLTJSON     0x800       /**< default value (in ::lys_node_leaf, ::lys_node_leaflist, :lys_tpdf) was
+#define LYS_DFLTJSON     0x1000       /**< default value (in ::lys_node_leaf, ::lys_node_leaflist, :lys_tpdf) was
                                           converted into JSON format, since it contains identityref value which is
                                           being used in JSON format (instead of module prefixes, we use the module
                                           names) */
 #define LYS_NOTAPPLIED   0x01        /**< flag for the not applied augments to allow keeping the resolved target */
 #define LYS_YINELEM      0x01        /**< yin-element true for extension's argument */
-#define LYS_VALID_EXT    0x1000      /**< flag marking nodes that need to be validated using an extension validation function */
+#define LYS_VALID_EXT    0x2000      /**< flag marking nodes that need to be validated using an extension validation function */
 
 /**
  * @}
