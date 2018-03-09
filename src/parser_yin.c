@@ -769,7 +769,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                     for (j = 0; j < type->info.bits.bit[i].ext_size; ++j) {
                         /* set flag, which represent LYEXT_OPT_VALID */
                         if (type->info.bits.bit[i].ext[j]->flags & LYEXT_OPT_VALID) {
-                            type->parent->flags |= LYS_VALID_DATA;
+                            type->parent->flags |= LYS_VALID_EXT;
                             break;
                         }
                     }
@@ -871,7 +871,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 for (j = 0; j < type->info.dec64.range->ext_size; ++j) {
                     /* set flag, which represent LYEXT_OPT_VALID */
                     if (type->info.dec64.range->ext[j]->flags & LYEXT_OPT_VALID) {
-                        type->parent->flags |= LYS_VALID_DATA;
+                        type->parent->flags |= LYS_VALID_EXT;
                         break;
                     }
                 }
@@ -1078,7 +1078,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                     for (j = 0; j < type->info.enums.enm[i].ext_size; ++j) {
                         /* set flag, which represent LYEXT_OPT_VALID */
                         if (type->info.enums.enm[i].ext[j]->flags & LYEXT_OPT_VALID) {
-                            type->parent->flags |= LYS_VALID_DATA;
+                            type->parent->flags |= LYS_VALID_EXT;
                             break;
                         }
                     }
@@ -1276,7 +1276,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 for (j = 0; j < (*restrs)->ext_size; ++j) {
                     /* set flag, which represent LYEXT_OPT_VALID */
                     if ((*restrs)->ext[j]->flags & LYEXT_OPT_VALID) {
-                        type->parent->flags |= LYS_VALID_DATA;
+                        type->parent->flags |= LYS_VALID_EXT;
                         break;
                     }
                 }
@@ -1398,7 +1398,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 for (j = 0; j < type->info.str.length->ext_size; ++j) {
                     /* set flag, which represent LYEXT_OPT_VALID */
                     if (type->info.str.length->ext[j]->flags & LYEXT_OPT_VALID) {
-                        type->parent->flags |= LYS_VALID_DATA;
+                        type->parent->flags |= LYS_VALID_EXT;
                         break;
                     }
                 }
@@ -1493,7 +1493,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 for (j = 0; j < restr->ext_size; ++j) {
                     /* set flag, which represent LYEXT_OPT_VALID */
                     if (restr->ext[j]->flags & LYEXT_OPT_VALID) {
-                        type->parent->flags |= LYS_VALID_DATA;
+                        type->parent->flags |= LYS_VALID_EXT;
                         break;
                     }
                 }
@@ -1599,7 +1599,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     for(j = 0; j < type->ext_size; ++j) {
         /* set flag, which represent LYEXT_OPT_VALID */
         if (type->ext[j]->flags & LYEXT_OPT_VALID) {
-            type->parent->flags |= LYS_VALID_DATA;
+            type->parent->flags |= LYS_VALID_EXT;
             break;
         }
     }
@@ -1607,8 +1607,8 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     /* if derived type has extension, which need validate data */
     dertype = &type->der->type;
     while (dertype->der) {
-        if (dertype->parent->flags & LYS_VALID_DATA) {
-            type->parent->flags |= LYS_VALID_DATA;
+        if (dertype->parent->flags & LYS_VALID_EXT) {
+            type->parent->flags |= LYS_VALID_EXT;
         }
         dertype = &dertype->der->type;
     }
@@ -1728,7 +1728,7 @@ fill_yin_typedef(struct lys_module *module, struct lys_node *parent, struct lyxm
     for (i = 0; i < tpdf->ext_size; ++i) {
         /* set flag, which represent LYEXT_OPT_VALID */
         if (tpdf->ext[i]->flags & LYEXT_OPT_VALID) {
-            tpdf->flags |= LYS_VALID_DATA;
+            tpdf->flags |= LYS_VALID_EXT;
             break;
         }
     }
@@ -4589,7 +4589,7 @@ read_yin_anydata(struct lys_module *module, struct lys_node *parent, struct lyxm
     for (r = 0; r < retval->ext_size; ++r) {
         /* set flag, which represent LYEXT_OPT_VALID */
         if (retval->ext[r]->flags & LYEXT_OPT_VALID) {
-            retval->flags |= LYS_VALID_DATA;
+            retval->flags |= LYS_VALID_EXT;
             break;
         }
     }
@@ -4810,7 +4810,7 @@ read_yin_leaf(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     for (r = 0; r < retval->ext_size; ++r) {
         /* set flag, which represent LYEXT_OPT_VALID */
         if (retval->ext[r]->flags & LYEXT_OPT_VALID) {
-            retval->flags |= LYS_VALID_DATA;
+            retval->flags |= LYS_VALID_EXT;
             break;
         }
     }
@@ -5123,7 +5123,7 @@ read_yin_leaflist(struct lys_module *module, struct lys_node *parent, struct lyx
     for (r = 0; r < retval->ext_size; ++r) {
         /* set flag, which represent LYEXT_OPT_VALID */
         if (retval->ext[r]->flags & LYEXT_OPT_VALID) {
-            retval->flags |= LYS_VALID_DATA;
+            retval->flags |= LYS_VALID_EXT;
             break;
         }
     }
@@ -5493,7 +5493,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     for (r = 0; r < retval->ext_size; ++r) {
         /* set flag, which represent LYEXT_OPT_VALID */
         if (retval->ext[r]->flags & LYEXT_OPT_VALID) {
-            retval->flags |= LYS_VALID_DATA;
+            retval->flags |= LYS_VALID_EXT;
             break;
         }
     }
@@ -5714,7 +5714,7 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
     for (r = 0; r < retval->ext_size; ++r) {
         /* set flag, which represent LYEXT_OPT_VALID */
         if (retval->ext[r]->flags & LYEXT_OPT_VALID) {
-            retval->flags |= LYS_VALID_DATA;
+            retval->flags |= LYS_VALID_EXT;
             break;
         }
     }

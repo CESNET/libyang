@@ -4572,7 +4572,7 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
 
         if ((*ext)->flags & LYEXT_OPT_VALID &&
             (info->parent_type == LYEXT_PAR_NODE || info->parent_type == LYEXT_PAR_TPDF)) {
-            ((struct lys_node *)info->parent)->flags |= LYS_VALID_DATA;
+            ((struct lys_node *)info->parent)->flags |= LYS_VALID_EXT;
         }
 
         (*ext)->nodetype = LYS_EXT;
@@ -4692,7 +4692,7 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
 
         if ((*ext)->flags & LYEXT_OPT_VALID &&
             (info->parent_type == LYEXT_PAR_NODE || info->parent_type == LYEXT_PAR_TPDF)) {
-            ((struct lys_node *)info->parent)->flags |= LYS_VALID_DATA;
+            ((struct lys_node *)info->parent)->flags |= LYS_VALID_EXT;
         }
 
         (*ext)->module = info->mod;

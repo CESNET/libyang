@@ -444,9 +444,8 @@ lyv_type_extension(struct lyd_node_leaf_list *leaf, struct lys_type *type, int f
 
     while (type->der->type.der) {
         type = &type->der->type;
-        if ((type->parent->flags & LYS_VALID_DATA)) {
-            if(lyv_type_extension(leaf, type, 0) ||
-               lyv_extension(type->parent->ext, type->parent->ext_size, node)) {
+        if ((type->parent->flags & LYS_VALID_EXT)) {
+            if (lyv_type_extension(leaf, type, 0) || lyv_extension(type->parent->ext, type->parent->ext_size, node)) {
                 return EXIT_FAILURE;
             }
         }
@@ -539,7 +538,7 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
         }
 
         /* check validation function for extension */
-        if (schema->flags & LYS_VALID_DATA) {
+        if (schema->flags & LYS_VALID_EXT) {
             // check extension in node
             if (lyv_extension(schema->ext, schema->ext_size, node)) {
                 return EXIT_FAILURE;

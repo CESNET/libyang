@@ -1017,8 +1017,8 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
     /* if derived type has extension, which need validate data */
     dertype = &type->der->type;
     while (dertype->der) {
-        if (dertype->parent->flags & LYS_VALID_DATA) {
-            type->parent->flags |= LYS_VALID_DATA;
+        if (dertype->parent->flags & LYS_VALID_EXT) {
+            type->parent->flags |= LYS_VALID_EXT;
         }
         dertype = &dertype->der->type;
     }
@@ -3475,7 +3475,7 @@ yang_fill_type(struct lys_module *module, struct lys_type *type, struct yang_typ
     }
     for (j = 0; j < type->ext_size; ++j) {
         if (type->ext[j]->flags & LYEXT_OPT_VALID) {
-            type->parent->flags |= LYS_VALID_DATA;
+            type->parent->flags |= LYS_VALID_EXT;
             break;
         }
     }
@@ -3492,7 +3492,7 @@ yang_fill_type(struct lys_module *module, struct lys_type *type, struct yang_typ
             }
             for (j = 0; j < type->info.enums.enm[i].ext_size; ++j) {
                 if (type->info.enums.enm[i].ext[j]->flags & LYEXT_OPT_VALID) {
-                    type->parent->flags |= LYS_VALID_DATA;
+                    type->parent->flags |= LYS_VALID_EXT;
                     break;
                 }
             }
@@ -3509,7 +3509,7 @@ yang_fill_type(struct lys_module *module, struct lys_type *type, struct yang_typ
             }
             for (j = 0; j < type->info.bits.bit[i].ext_size; ++j) {
                 if (type->info.bits.bit[i].ext[j]->flags & LYEXT_OPT_VALID) {
-                    type->parent->flags |= LYS_VALID_DATA;
+                    type->parent->flags |= LYS_VALID_EXT;
                     break;
                 }
             }
@@ -3528,7 +3528,7 @@ yang_fill_type(struct lys_module *module, struct lys_type *type, struct yang_typ
             }
             for (j = 0; j < type->info.str.length->ext_size; ++j) {
                 if (type->info.str.length->ext[j]->flags & LYEXT_OPT_VALID) {
-                    type->parent->flags |= LYS_VALID_DATA;
+                    type->parent->flags |= LYS_VALID_EXT;
                     break;
                 }
             }
@@ -3541,7 +3541,7 @@ yang_fill_type(struct lys_module *module, struct lys_type *type, struct yang_typ
             }
             for (j = 0; j < type->info.str.patterns[i].ext_size; ++j) {
                 if (type->info.str.patterns[i].ext[j]->flags & LYEXT_OPT_VALID) {
-                    type->parent->flags |= LYS_VALID_DATA;
+                    type->parent->flags |= LYS_VALID_EXT;
                     break;
                 }
             }
@@ -3555,7 +3555,7 @@ yang_fill_type(struct lys_module *module, struct lys_type *type, struct yang_typ
             }
             for (j = 0; j < type->info.dec64.range->ext_size; ++j) {
                 if (type->info.dec64.range->ext[j]->flags & LYEXT_OPT_VALID) {
-                    type->parent->flags |= LYS_VALID_DATA;
+                    type->parent->flags |= LYS_VALID_EXT;
                     break;
                 }
             }
@@ -3642,7 +3642,7 @@ yang_check_typedef(struct lys_module *module, struct lys_node *parent, struct un
         }
         for (j = 0; j < tpdf[i].ext_size; ++j) {
             if (tpdf[i].ext[j]->flags & LYEXT_OPT_VALID) {
-                tpdf[i].flags |= LYS_VALID_DATA;
+                tpdf[i].flags |= LYS_VALID_EXT;
                 break;
             }
         }
@@ -4248,7 +4248,7 @@ yang_check_nodes(struct lys_module *module, struct lys_node *parent, struct lys_
         }
         for (i = 0; i < node->ext_size; ++i) {
             if (node->ext[i]->flags & LYEXT_OPT_VALID) {
-                node->flags |= LYS_VALID_DATA;
+                node->flags |= LYS_VALID_EXT;
                 break;
             }
         }

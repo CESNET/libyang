@@ -1081,6 +1081,8 @@ struct lys_iffeature {
  *     11 LYS_LEAFREF_DEP  |x|x|x|x|x|x|x|x|x|x|x| |x|x| | | |r| |
  *                         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *     12 LYS_DFLTJSON     | | |x|x| | | | | | | | | | | |x| |r| |
+ *                         +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     13 LYS_VALID_EXT    |x| |x|x|x|x| | | | | | | | | |x| | | |
  *     --------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  *     x - used
@@ -1124,7 +1126,7 @@ struct lys_iffeature {
                                           names) */
 #define LYS_NOTAPPLIED   0x01        /**< flag for the not applied augments to allow keeping the resolved target */
 #define LYS_YINELEM      0x01        /**< yin-element true for extension's argument */
-#define LYS_VALID_DATA   0x1000      /**< flag marking nodes, in which need call validation function of extension */
+#define LYS_VALID_EXT    0x1000      /**< flag marking nodes that need to be validated using an extension validation function */
 
 /**
  * @}
