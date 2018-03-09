@@ -2674,7 +2674,6 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
                        struct unres_schema *unres, int shallow, int finalize)
 {
     struct lys_node *retval = NULL, *iter, *p;
-    struct lys_module *tmp_mod;
     struct ly_ctx *ctx = module->ctx;
     int i, j, rc;
     unsigned int size, size1, size2;
@@ -2967,19 +2966,6 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
 
         if (leaf_orig->dflt) {
             leaf->dflt = lydict_insert(ctx, leaf_orig->dflt, 0);
-            if (!lys_ingrouping(retval) || (leaf->type.base != LY_TYPE_LEAFREF)) {
-                /* problem is when it is an identityref referencing an identity from a module
-                 * and we are using the grouping in a different module */
-                if (leaf->type.base == LY_TYPE_IDENT) {
-                    tmp_mod = leaf_orig->module;
-                } else {
-                    tmp_mod = module;
-                }
-                if (unres_schema_add_node(tmp_mod, unres, &leaf->type, UNRES_TYPE_DFLT,
-                                          (struct lys_node *)(&leaf->dflt)) == -1) {
-                    goto error;
-                }
-            }
         }
 
         if (leaf_orig->must) {
@@ -3016,17 +3002,6 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
 
             for (i = 0; i < llist->dflt_size; i++) {
                 llist->dflt[i] = lydict_insert(ctx, llist_orig->dflt[i], 0);
-                if (!lys_ingrouping(retval) || (llist->type.base != LY_TYPE_LEAFREF)) {
-                    if ((llist->type.base == LY_TYPE_IDENT) && !strchr(llist->dflt[i], ':') && (module != llist_orig->module)) {
-                        tmp_mod = llist_orig->module;
-                    } else {
-                        tmp_mod = module;
-                    }
-                    if (unres_schema_add_node(tmp_mod, unres, &llist->type, UNRES_TYPE_DFLT,
-                                              (struct lys_node *)(&llist->dflt[i])) == -1) {
-                        goto error;
-                    }
-                }
             }
         }
 

@@ -3709,7 +3709,7 @@ yang_check_leaf(struct lys_module *module, struct lys_node_leaf *leaf, int optio
         goto error;
     }
 
-    if (!(options & LYS_PARSE_OPT_INGRP) && !(module->ctx->models.flags & LY_CTX_TRUSTED) &&
+    if (!(module->ctx->models.flags & LY_CTX_TRUSTED) &&
             (unres_schema_add_node(module, unres, &leaf->type, UNRES_TYPE_DFLT, (struct lys_node *)&leaf->dflt) == -1)) {
         goto error;
     }
@@ -3773,7 +3773,7 @@ yang_check_leaflist(struct lys_module *module, struct lys_node_leaflist *leaflis
         }
         /* check default value (if not defined, there still could be some restrictions
          * that need to be checked against a default value from a derived type) */
-        if (!(options & LYS_PARSE_OPT_INGRP) && !(module->ctx->models.flags & LY_CTX_TRUSTED) &&
+        if (!(module->ctx->models.flags & LY_CTX_TRUSTED) &&
                 (unres_schema_add_node(module, unres, &leaflist->type, UNRES_TYPE_DFLT,
                                        (struct lys_node *)(&leaflist->dflt[i])) == -1)) {
             goto error;
