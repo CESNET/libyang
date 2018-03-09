@@ -1877,10 +1877,8 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
              tpdf->module && (strcmp(tpdf->name, "xpath1.0") || strcmp(tpdf->module->name, "ietf-yang-types"));
              tpdf = tpdf->type.der);
         if (tpdf->module && xml) {
-            ly_ilo_change(NULL, ILO_IGNORE, &prev_ilo, NULL);
-            /* convert value into the json format, silently */
+            /* convert value into the json format */
             value = transform_xml2json(ctx, value, xml, 1, 1);
-            ly_ilo_restore(NULL, prev_ilo, NULL, 0);
             if (!value) {
                 /* invalid instance-identifier format */
                 if (leaf) {
