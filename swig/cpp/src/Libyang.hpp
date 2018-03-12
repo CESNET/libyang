@@ -68,13 +68,13 @@ public:
     void clean();
 
     /* functions */
-    S_Data_Node parse_mem(const char *data, LYD_FORMAT format, int options = 0);
-    S_Data_Node parse_fd(int fd, LYD_FORMAT format, int options = 0);
+    S_Data_Node parse_data_mem(const char *data, LYD_FORMAT format, int options = 0);
+    S_Data_Node parse_data_fd(int fd, LYD_FORMAT format, int options = 0);
     S_Data_Node parse_data_path(const char *path, LYD_FORMAT format, int options = 0);
-    S_Data_Node parse_xml(S_Xml_Elem elem, int options = 0);
+    S_Data_Node parse_data_xml(S_Xml_Elem elem, int options = 0);
     S_Module parse_module_mem(const char *data, LYS_INFORMAT format);
     S_Module parse_module_fd(int fd, LYS_INFORMAT format);
-    S_Module parse_path(const char *path, LYS_INFORMAT format);
+    S_Module parse_module_path(const char *path, LYS_INFORMAT format);
 
     friend std::vector<S_Error> *get_ly_errors(S_Context context);
     friend Data_Node;

@@ -149,7 +149,7 @@ class UnexpectedError(Exception):
         self.message = message
 
 class TestUM(unittest.TestCase):
-    def test_ly_ctx_parse_mem(self):
+    def test_ly_ctx_parse_data_mem(self):
         yang_folder = config.TESTS_DIR + "/api/files"
         yin_file = config.TESTS_DIR + "/api/files/a.yin"
 
@@ -157,17 +157,17 @@ class TestUM(unittest.TestCase):
             # Setup
             ctx = ly.Context(yang_folder)
             self.assertIsNotNone(ctx)
-            ctx.parse_path(yin_file, ly.LYS_IN_YIN)
+            ctx.parse_module_path(yin_file, ly.LYS_IN_YIN)
 
             # Tests
-            root = ctx.parse_mem(a_data_xml, ly.LYD_XML, ly.LYD_OPT_NOSIBLINGS | ly.LYD_OPT_STRICT)
+            root = ctx.parse_data_mem(a_data_xml, ly.LYD_XML, ly.LYD_OPT_NOSIBLINGS | ly.LYD_OPT_STRICT)
             self.assertIsNotNone(root)
             self.assertEqual("x", root.schema().name())
 
         except Exception as e:
             self.fail(e)
 
-    def test_ly_ctx_parse_fd(self):
+    def test_ly_ctx_parse_data_fd(self):
         yang_folder = config.TESTS_DIR + "/api/files"
         yin_file = config.TESTS_DIR + "/api/files/a.yin"
         config_file = config.TESTS_DIR + "/api/files/a.xml"
@@ -175,12 +175,12 @@ class TestUM(unittest.TestCase):
             # Setup
             ctx = ly.Context(yang_folder)
             self.assertIsNotNone(ctx)
-            ctx.parse_path(yin_file, ly.LYS_IN_YIN)
+            ctx.parse_module_path(yin_file, ly.LYS_IN_YIN)
 
             # Tests
             f = open(config_file, 'r')
             fd = f.fileno()
-            root = ctx.parse_fd(fd, ly.LYD_XML, ly.LYD_OPT_NOSIBLINGS | ly.LYD_OPT_STRICT)
+            root = ctx.parse_data_fd(fd, ly.LYD_XML, ly.LYD_OPT_NOSIBLINGS | ly.LYD_OPT_STRICT)
             self.assertIsNotNone(root)
             self.assertEqual("x", root.schema().name())
 
@@ -200,7 +200,7 @@ class TestUM(unittest.TestCase):
             # Setup
             ctx = ly.Context(yang_folder)
             self.assertIsNotNone(ctx)
-            module = ctx.parse_path(yin_file, ly.LYS_IN_YIN)
+            module = ctx.parse_module_path(yin_file, ly.LYS_IN_YIN)
             self.assertIsNotNone(module)
             self.assertEqual(module_name, module.name(), "Module names don't match")
 

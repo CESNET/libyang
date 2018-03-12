@@ -293,7 +293,7 @@ class TestUM(unittest.TestCase):
         except Exception as e:
             self.fail(e)
 
-    def test_ly_ctx_parse_path(self):
+    def test_ly_ctx_parse_module_path(self):
         yang_folder = config.TESTS_DIR + "/api/files"
         yin_file = config.TESTS_DIR + "/api/files/a.yin"
         yang_file = config.TESTS_DIR + "/api/files/b.yang"
@@ -306,18 +306,18 @@ class TestUM(unittest.TestCase):
             self.assertIsNotNone(ctx)
 
             # Tests
-            module = ctx.parse_path(yin_file, ly.LYS_IN_YIN)
+            module = ctx.parse_module_path(yin_file, ly.LYS_IN_YIN)
             self.assertIsNotNone(module)
             self.assertEqual(module_name1, module.name(), "Module names don't match")
 
-            module = ctx.parse_path(yang_file, ly.LYS_IN_YANG)
+            module = ctx.parse_module_path(yang_file, ly.LYS_IN_YANG)
             self.assertIsNotNone(module)
             self.assertEqual(module_name2, module.name(), "Module names don't match")
 
         except Exception as e:
             self.fail(e)
 
-    def test_ly_ctx_parse_path_invalid(self):
+    def test_ly_ctx_parse_module_path_invalid(self):
         yang_folder = config.TESTS_DIR + "/api/files"
 
         try:
@@ -326,7 +326,7 @@ class TestUM(unittest.TestCase):
             self.assertIsNotNone(ctx)
 
             # Tests
-            module = ctx.parse_path("INVALID_YANG_FILE", ly.LYS_IN_YANG)
+            module = ctx.parse_module_path("INVALID_YANG_FILE", ly.LYS_IN_YANG)
             raise UnexpectedError("exception not thrown")
 
         except UnexpectedError as e:
@@ -348,7 +348,7 @@ class TestUM(unittest.TestCase):
             # Setup
             ctx = ly.Context(yang_folder)
             self.assertIsNotNone(ctx)
-            ctx.parse_path(yin_file, ly.LYS_IN_YIN)
+            ctx.parse_module_path(yin_file, ly.LYS_IN_YIN)
 
             # Tests
             submodule = ctx.get_submodule(module_name, None, sub_name, None)
@@ -368,7 +368,7 @@ class TestUM(unittest.TestCase):
             # Setup
             ctx = ly.Context(yang_folder)
             self.assertIsNotNone(ctx)
-            ctx.parse_path(yin_file, ly.LYS_IN_YIN)
+            ctx.parse_module_path(yin_file, ly.LYS_IN_YIN)
             root = ctx.parse_data_path(config_file, ly.LYD_XML, ly.LYD_OPT_CONFIG | ly.LYD_OPT_STRICT)
             self.assertIsNotNone(root)
             self.assertIsNotNone(root.schema().module())
@@ -394,11 +394,11 @@ class TestUM(unittest.TestCase):
             self.assertIsNotNone(ctx)
 
             # Tests
-            ctx.parse_path(yang_file, ly.LYS_IN_YANG)
+            ctx.parse_module_path(yang_file, ly.LYS_IN_YANG)
             set = ctx.find_path(schema_path1)
             self.assertIsNotNone(set)
 
-            ctx.parse_path(yin_file, ly.LYS_IN_YIN)
+            ctx.parse_module_path(yin_file, ly.LYS_IN_YIN)
             set = ctx.find_path(schema_path2)
             self.assertIsNotNone(set)
             ly.Set()
@@ -415,7 +415,7 @@ class TestUM(unittest.TestCase):
             # Setup
             ctx = ly.Context(yang_folder)
             self.assertIsNotNone(ctx)
-            ctx.parse_path(yin_file, ly.LYS_IN_YIN)
+            ctx.parse_module_path(yin_file, ly.LYS_IN_YIN)
             root = ctx.parse_data_path(config_file, ly.LYD_XML, ly.LYD_OPT_CONFIG | ly.LYD_OPT_STRICT)
             self.assertIsNotNone(root)
 

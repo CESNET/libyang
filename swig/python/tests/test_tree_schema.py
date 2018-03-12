@@ -407,7 +407,7 @@ class TestUM(unittest.TestCase):
         finally:
             f.close()
 
-    def test_ly_ctx_parse_path(self):
+    def test_ly_ctx_parse_module_path(self):
         yang_folder = config.TESTS_DIR + "/api/files"
         yin_file = config.TESTS_DIR + "/api/files/a.yin"
         yang_file = config.TESTS_DIR + "/api/files/b.yang"
@@ -418,18 +418,18 @@ class TestUM(unittest.TestCase):
             self.assertIsNotNone(ctx)
 
             # Tests
-            module = ctx.parse_path(yin_file, ly.LYS_IN_YIN)
+            module = ctx.parse_module_path(yin_file, ly.LYS_IN_YIN)
             self.assertIsNotNone(module)
             self.assertEqual("a", module.name())
 
-            module = ctx.parse_path(yang_file, ly.LYS_IN_YANG)
+            module = ctx.parse_module_path(yang_file, ly.LYS_IN_YANG)
             self.assertIsNotNone(module)
             self.assertEqual("b", module.name())
 
         except Exception as e:
             self.fail(e)
 
-    def test_ly_ctx_parse_path_invalid(self):
+    def test_ly_ctx_parse_module_path_invalid(self):
         yang_folder = config.TESTS_DIR + "/api/files"
         yin_file = config.TESTS_DIR + "/api/files/a.yin"
 
@@ -440,7 +440,7 @@ class TestUM(unittest.TestCase):
 
             # Tests
             # parsing with wrong format should raise runtime exception
-            module = ctx.parse_path(yin_file, ly.LYS_IN_YANG)
+            module = ctx.parse_module_path(yin_file, ly.LYS_IN_YANG)
             raise UnexpectedError("Exception not thrown")
 
         except UnexpectedError as e:
