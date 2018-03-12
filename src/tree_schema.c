@@ -4597,6 +4597,8 @@ lys_getnext_target_aug(struct lys_node_augment *last, const struct lys_module *m
 {
     int i, j, last_found;
 
+    assert(mod && aug_target);
+
     if (!last) {
         last_found = 1;
     } else {

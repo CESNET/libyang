@@ -3852,6 +3852,8 @@ get_next_augment:
                               | LYS_CONTAINER | LYS_RPC | LYS_ACTION | LYS_NOTIF | LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA, &node);
         if (rc) {
             if (last_aug) {
+                /* restore the correct augment target */
+                node = last_aug->target;
                 goto get_next_augment;
             }
             LOGVAL(LYE_NORESOLV, LY_VLOG_LYS, parent, "leafref", path);
