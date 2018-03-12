@@ -4219,12 +4219,12 @@ cleanup:
     return parsed;
 }
 
-int
-lys_check_xpath(struct lys_node *node, int check_place)
+static int
+check_xpath(struct lys_node *node, int check_place)
 {
     struct lys_node *parent;
     struct lyxp_set set;
-    int ret;
+    enum int_log_opts prev_ilo;
 
     if (check_place) {
         parent = node;
@@ -4246,13 +4246,17 @@ lys_check_xpath(struct lys_node *node, int check_place)
         }
     }
 
-    ret = lyxp_node_atomize(node, &set, 1);
-    if (ret == -1) {
-        return -1;
-    }
+    memset(&set, 0, sizeof set);
 
-    free(set.val.snodes);
-    return ret;
+    /* produce just warnings */
+    ly_ilo_change(NULL, ILO_ERR2WRN, &prev_ilo, NULL);
+    lyxp_node_atomize(node, &set, 1);
+    ly_ilo_restore(NULL, prev_ilo, NULL, 0);
+
+    if (set.val.snodes) {
+        free(set.val.snodes);
+    }
+    return EXIT_SUCCESS;
 }
 
 static int
@@ -6776,7 +6780,7 @@ featurecheckdone:
         break;
     case UNRES_XPATH:
         node = (struct lys_node *)item;
-        rc = lys_check_xpath(node, 1);
+        rc = check_xpath(node, 1);
         break;
     case UNRES_EXT:
         ext_data = (struct unres_ext *)str_snode;
