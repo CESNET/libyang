@@ -3941,6 +3941,8 @@ get_next_augment:
         }
         if (!node) {
             if (last_aug) {
+                /* restore the correct augment target */
+                node = last_aug->target;
                 goto get_next_augment;
             }
             LOGVAL(ctx, LYE_NORESOLV, LY_VLOG_LYS, parent, "leafref", path);
