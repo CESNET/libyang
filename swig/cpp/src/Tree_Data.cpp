@@ -382,6 +382,12 @@ int Data_Node::unlink() {
     if (ret) {
         check_libyang_error(node->schema->module->ctx);
     }
+
+    /* change C++ memory handling after unlink */
+    if (deleter) {
+        deleter = std::make_shared<Deleter>(node, nullptr);
+    }
+
     return ret;
 }
 S_Attr Data_Node::insert_attr(S_Module module, const char *name, const char *value) {
