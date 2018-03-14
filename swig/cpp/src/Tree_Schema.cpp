@@ -254,7 +254,8 @@ S_Set Schema_Node::find_path(const char *path) {
         return nullptr;
     }
 
-    return std::make_shared<Set>(set, deleter);
+    S_Deleter new_deleter = std::make_shared<Deleter>(set, deleter);
+    return std::make_shared<Set>(set, new_deleter);
 }
 
 S_Set Schema_Node::xpath_atomize(enum lyxp_node_type ctx_node_type, const char *expr, int options) {

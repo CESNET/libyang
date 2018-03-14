@@ -67,8 +67,11 @@ S_Data_Node Context::info() {
     struct lyd_node *new_node = ly_ctx_info(ctx);
     if (!new_node) {
         check_libyang_error(ctx);
+        return nullptr;
     }
-    return new_node ? std::make_shared<Data_Node>(new_node, deleter) : nullptr;
+
+    S_Deleter new_deleter = std::make_shared<Deleter>(new_node, deleter);
+    return std::make_shared<Data_Node>(new_node, new_deleter);
 }
 S_Module Context::get_module(const char *name, const char *revision, int implemented) {
     const struct lys_module *module = ly_ctx_get_module(ctx, name, revision, implemented);
@@ -167,7 +170,8 @@ S_Set Context::find_path(const char *schema_path) {
         return nullptr;
     }
 
-    return std::make_shared<Set>(set, deleter);
+    S_Deleter new_deleter = std::make_shared<Deleter>(set, deleter);
+    return std::make_shared<Set>(set, new_deleter);
 }
 std::vector<S_Schema_Node> *Context::data_instantiables(int options) {
     auto s_vector = new std::vector<S_Schema_Node>;

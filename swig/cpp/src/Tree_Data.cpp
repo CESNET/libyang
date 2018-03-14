@@ -142,7 +142,11 @@ Data_Node::Data_Node(S_Context context, const char *path, const char *value, LYD
     }
 
     node = new_node;
-    deleter = nullptr;
+    if (new_node) {
+        deleter = std::make_shared<Deleter>(node, nullptr);
+    } else {
+        deleter = nullptr;
+    }
 }
 Data_Node::Data_Node(S_Context context, const char *path, S_Data_Node value, int options) {
     lyd_node *new_node = nullptr;
@@ -200,8 +204,12 @@ S_Data_Node Data_Node::dup(int recursive) {
     struct lyd_node *new_node = nullptr;
 
     new_node = lyd_dup(node, recursive);
+    if (!new_node) {
+        return nullptr;
+    }
 
-    return new_node ? std::make_shared<Data_Node>(new_node, deleter) : nullptr;
+    S_Deleter new_deleter = std::make_shared<Deleter>(new_node, deleter);
+    return std::make_shared<Data_Node>(new_node, new_deleter);
 }
 S_Data_Node Data_Node::dup_to_ctx(int recursive, S_Context context) {
     struct lyd_node *new_node = nullptr;
