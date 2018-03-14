@@ -182,7 +182,7 @@ std::vector<S_Schema_Node> *Context::data_instantiables(int options) {
 
     return s_vector;
 }
-S_Data_Node Context::parse_mem(const char *data, LYD_FORMAT format, int options) {
+S_Data_Node Context::parse_data_mem(const char *data, LYD_FORMAT format, int options) {
     struct lyd_node *new_node = nullptr;
 
     new_node = lyd_parse_mem(ctx, data, format, options);
@@ -194,7 +194,7 @@ S_Data_Node Context::parse_mem(const char *data, LYD_FORMAT format, int options)
     S_Deleter new_deleter = std::make_shared<Deleter>(new_node, deleter);
     return std::make_shared<Data_Node>(new_node, new_deleter);
 }
-S_Data_Node Context::parse_fd(int fd, LYD_FORMAT format, int options) {
+S_Data_Node Context::parse_data_fd(int fd, LYD_FORMAT format, int options) {
     struct lyd_node *new_node = nullptr;
 
     new_node = lyd_parse_fd(ctx, fd, format, options);
@@ -206,7 +206,32 @@ S_Data_Node Context::parse_fd(int fd, LYD_FORMAT format, int options) {
     S_Deleter new_deleter = std::make_shared<Deleter>(new_node, deleter);
     return std::make_shared<Data_Node>(new_node, new_deleter);
 }
-S_Module Context::parse_path(const char *path, LYS_INFORMAT format) {
+
+S_Module Context::parse_module_mem(const char *data, LYS_INFORMAT format) {
+    struct lys_module *module = nullptr;
+
+    module = (struct lys_module *) lys_parse_mem(ctx, data, format);
+    if (!module) {
+        check_libyang_error(ctx);
+        return nullptr;
+    }
+
+    S_Deleter new_deleter = std::make_shared<Deleter>(module, deleter);
+    return std::make_shared<Module>(module, new_deleter);
+}
+S_Module Context::parse_module_fd(int fd, LYS_INFORMAT format) {
+    struct lys_module *module = nullptr;
+
+    module = (struct lys_module *) lys_parse_fd(ctx, fd, format);
+    if (!module) {
+        check_libyang_error(ctx);
+        return nullptr;
+    }
+
+    S_Deleter new_deleter = std::make_shared<Deleter>(module, deleter);
+    return std::make_shared<Module>(module, new_deleter);
+}
+S_Module Context::parse_module_path(const char *path, LYS_INFORMAT format) {
     struct lys_module *module = nullptr;
 
     module = (struct lys_module *) lys_parse_path(ctx, path, format);
@@ -230,7 +255,7 @@ S_Data_Node Context::parse_data_path(const char *path, LYD_FORMAT format, int op
     S_Deleter new_deleter = std::make_shared<Deleter>(new_node, deleter);
     return std::make_shared<Data_Node>(new_node, new_deleter);
 }
-S_Data_Node Context::parse_xml(S_Xml_Elem elem, int options) {
+S_Data_Node Context::parse_data_xml(S_Xml_Elem elem, int options) {
     struct lyd_node *new_node = nullptr;
 
     new_node = lyd_parse_xml(ctx, &elem->elem, options);
@@ -279,13 +304,13 @@ LY_LOG_LEVEL set_log_verbosity(LY_LOG_LEVEL level)
 }
 
 Set::Set() {
-    struct ly_set *set = ly_set_new();
-    if (!set) {
+    struct ly_set *set_new = ly_set_new();
+    if (!set_new) {
         check_libyang_error(nullptr);
     }
 
-    set = set;
-    deleter = std::make_shared<Deleter>(set);
+    set = set_new;
+    deleter = std::make_shared<Deleter>(set_new);
 }
 Set::Set(struct ly_set *set, S_Deleter deleter):
     set(set),
