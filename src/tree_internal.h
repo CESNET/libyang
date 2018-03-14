@@ -408,27 +408,10 @@ int lys_get_sibling(const struct lys_node *siblings, const char *mod_name, int m
 int lys_getnext_data(const struct lys_module *mod, const struct lys_node *parent, const char *name, int nam_len,
                      LYS_NODE type, const struct lys_node **ret);
 
-/**
- * @brief Compare 2 list or leaf-list data nodes if they are the same from the YANG point of view. Logs directly.
- *
- * - leaf-lists are the same if they are defined by the same schema tree node and they have the same value
- * - lists are the same if they are defined by the same schema tree node, all their keys have identical values,
- *   and all unique sets have the same values
- *
- * @param[in] first First data node to compare.
- * @param[in] second Second node to compare.
- * @param[in] action Option to specify what will be checked:
- *            -1 - compare keys and all uniques
- *             0 - compare only keys
- *             n - compare n-th unique
- * @param[in] withdefaults Whether only different dflt flags cause 2 nodes not to be equal.
- * @return 1 if both the nodes are the same from the YANG point of view,
- *         0 if they differ,
- *         -1 on error.
- */
-int lyd_list_equal(struct lyd_node *first, struct lyd_node *second, int action, int withdefaults);
-
 int lyd_get_unique_default(const char* unique_expr, struct lyd_node *list, const char **dflt);
+
+int lyd_build_relative_data_path(const struct lys_module *module, const struct lyd_node *node, const char *schema_id,
+                                 char *buf);
 
 void lyd_free_value(lyd_val value, uint16_t value_type, struct lys_type *type);
 
