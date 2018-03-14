@@ -6472,8 +6472,8 @@ int
 lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, const struct lyd_node *data_tree,
                        struct lyd_node *act_notif, struct unres_data *unres)
 {
-    struct lyd_node *msg_sibling, *msg_parent, *data_tree_sibling, *data_tree_parent;
-    struct lys_node *msg_op;
+    struct lyd_node *msg_sibling = NULL, *msg_parent = NULL, *data_tree_sibling, *data_tree_parent;
+    struct lys_node *msg_op = NULL;
     struct ly_set *set;
     enum int_log_opts prev_ilo;
     int ret = EXIT_FAILURE;

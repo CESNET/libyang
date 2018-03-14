@@ -390,7 +390,7 @@ repeat:
 void
 lys_node_unlink(struct lys_node *node)
 {
-    struct lys_node *parent, *first, **pp;
+    struct lys_node *parent, *first, **pp = NULL;
     struct lys_module *main_module;
 
     if (!node) {

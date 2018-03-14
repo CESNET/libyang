@@ -2728,9 +2728,9 @@ resolve_len_ran_interval(struct ly_ctx *ctx, const char *str_restr, struct lys_t
 {
     /* 0 - unsigned, 1 - signed, 2 - floating point */
     int kind;
-    int64_t local_smin, local_smax, local_fmin, local_fmax;
-    uint64_t local_umin, local_umax;
-    uint8_t local_fdig;
+    int64_t local_smin = 0, local_smax = 0, local_fmin, local_fmax;
+    uint64_t local_umin, local_umax = 0;
+    uint8_t local_fdig = 0;
     const char *seg_ptr, *ptr;
     struct len_ran_intv *local_intv = NULL, *tmp_local_intv = NULL, *tmp_intv, *intv = NULL;
 

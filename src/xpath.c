@@ -8005,6 +8005,10 @@ eval_expr_select(struct lyxp_expr *exp, uint16_t *exp_idx, enum lyxp_expr_type e
     case LYXP_EXPR_NONE:
         ret = eval_path_expr(exp, exp_idx, cur_node, local_mod, set, options);
         break;
+    default:
+        ret = -1;
+        LOGINT(local_mod ? local_mod->ctx : NULL);
+        break;
     }
 
     return ret;
