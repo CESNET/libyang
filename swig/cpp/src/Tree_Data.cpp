@@ -240,21 +240,39 @@ int Data_Node::insert(S_Data_Node new_node) {
     return ret;
 }
 int Data_Node::insert_sibling(S_Data_Node new_node) {
-    int ret = lyd_insert_sibling(&node, new_node->node);
+    /* because of memory handling in C++ the node is duplicated before insertion */
+    struct lyd_node *dup_node = lyd_dup(new_node->node, 1);
+    if (!dup_node) {
+        check_libyang_error(node->schema->module->ctx);
+    }
+
+    int ret = lyd_insert_sibling(&node, dup_node);
     if (ret) {
         check_libyang_error(node->schema->module->ctx);
     }
     return ret;
 }
 int Data_Node::insert_before(S_Data_Node new_node) {
-    int ret = lyd_insert_before(node, new_node->node);
+    /* because of memory handling in C++ the node is duplicated before insertion */
+    struct lyd_node *dup_node = lyd_dup(new_node->node, 1);
+    if (!dup_node) {
+        check_libyang_error(node->schema->module->ctx);
+    }
+
+    int ret = lyd_insert_before(node, dup_node);
     if (ret) {
         check_libyang_error(node->schema->module->ctx);
     }
     return ret;
 }
 int Data_Node::insert_after(S_Data_Node new_node) {
-    int ret = lyd_insert_after(node, new_node->node);
+    /* because of memory handling in C++ the node is duplicated before insertion */
+    struct lyd_node *dup_node = lyd_dup(new_node->node, 1);
+    if (!dup_node) {
+        check_libyang_error(node->schema->module->ctx);
+    }
+
+    int ret = lyd_insert_after(node, dup_node);
     if (ret) {
         check_libyang_error(node->schema->module->ctx);
     }
