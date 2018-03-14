@@ -519,7 +519,9 @@ TEST(test_ly_schema_node_path)
         const char *path_template = "/a:x/a:bar-gggg";
         auto set = schema_node->find_path(path_template);
         ASSERT_NOTNULL(set);
-        auto schema = set->schema()->at(0); // FIXME: memory leak
+
+        auto schemas = std::shared_ptr<std::vector<S_Schema_Node>>(set->schema());
+        auto schema = schemas->at(0);
         auto path = schema->path(0);
         ASSERT_STREQ(path_template, path);
     } catch (const std::exception& e) {
