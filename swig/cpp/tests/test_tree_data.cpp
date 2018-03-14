@@ -533,10 +533,8 @@ TEST(test_ly_data_node_unlink)
 
 		auto schema = node->prev()->schema();
 		if (LYS_LEAF == schema->nodetype() || LYS_LEAFLIST == schema->nodetype()) {
-			// auto casted = std::dynamic_pointer_cast<Data_Node_Leaf_List>(node->prev());
-        	// ASSERT_STREQ("1", casted->value_str());
-			auto attr = node->prev()->attr();
-        	ASSERT_STREQ("1", attr->value_str()); // FIXME: SEGFAULT
+			auto casted = S_Data_Node_Leaf_List(new Data_Node_Leaf_List(node->prev()));
+        	ASSERT_STREQ("1", casted->value_str());
 		} else {
         	throw std::logic_error("");
 		}

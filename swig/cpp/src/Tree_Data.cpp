@@ -441,6 +441,11 @@ std::vector<S_Data_Node> *Data_Node::tree_dfs() {
     return s_vector;
 }
 
+Data_Node_Leaf_List::Data_Node_Leaf_List(S_Data_Node derived):
+    Data_Node(derived->node, derived->deleter),
+    node(derived->node),
+    deleter(derived->deleter)
+{};
 Data_Node_Leaf_List::Data_Node_Leaf_List(struct lyd_node *node, S_Deleter deleter):
     Data_Node(node, deleter),
     node(node),
@@ -470,6 +475,11 @@ S_Type Data_Node_Leaf_List::leaf_type() {
     return std::make_shared<Type>((struct lys_type *) type, deleter);
 };
 
+Data_Node_Anydata::Data_Node_Anydata(S_Data_Node derived):
+    Data_Node(derived->node, derived->deleter),
+    node(derived->node),
+    deleter(derived->deleter)
+{};
 Data_Node_Anydata::Data_Node_Anydata(struct lyd_node *node, S_Deleter deleter):
     Data_Node(node, deleter),
     node(node),
