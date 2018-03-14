@@ -1,9 +1,9 @@
 /**
- * @file dict.c
+ * @file hash_table.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
- * @brief libyang dictionary for storing strings
+ * @brief libyang dictionary for storing strings and generic hash table
  *
- * Copyright (c) 2015 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -16,10 +16,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <assert.h>
 
 #include "common.h"
 #include "context.h"
-#include "dict_private.h"
+#include "hash_table.h"
 
 void
 lydict_init(struct dict_table *dict)
@@ -304,4 +305,118 @@ lydict_insert_zc(struct ly_ctx *ctx, char *value)
     pthread_mutex_unlock(&ctx->dict.lock);
 
     return result;
+}
+
+struct hash_table *
+lyht_new(uint32_t size, values_equal_cb val_equal, void *cb_data)
+{
+    struct hash_table *ht;
+
+    /* check that 2^x == size (power of 2) */
+    assert(size && !(size & (size - 1)));
+    assert(val_equal);
+
+    ht = malloc(sizeof *ht);
+    LY_CHECK_ERR_RETURN(!ht, LOGMEM(NULL), NULL);
+
+    ht->recs = calloc(size, sizeof *ht->recs);
+    LY_CHECK_ERR_RETURN(!ht->recs, free(ht); LOGMEM(NULL), NULL);
+
+    ht->used = 0;
+    ht->size = size;
+    ht->val_equal = val_equal;
+    ht->cb_data = cb_data;
+    return ht;
+}
+
+void
+lyht_free(struct hash_table *ht)
+{
+    if (ht) {
+        free(ht->recs);
+        free(ht);
+    }
+}
+
+int
+lyht_insert(struct hash_table *ht, void *value, uint32_t hash)
+{
+    uint32_t i, idx, c;
+
+    idx = hash & (ht->size - 1);
+
+    if (ht->recs[idx].value) {
+        /* is it collision or is the cell just filled by an overflow item? */
+        for (i = idx; ht->recs[i].value && (ht->recs[i].hash != hash); i = (i + 1) % ht->size);
+        if (!ht->recs[i].value) {
+            goto first;
+        }
+
+        /* collision or instance duplication */
+        c = ht->recs[i].hits;
+        do {
+            if (ht->recs[i].hash != hash) {
+                i = (i + 1) % ht->size;
+                continue;
+            }
+
+            /* compare nodes */
+            if (ht->val_equal(value, ht->recs[i].value, ht->cb_data)) {
+                /* instance duplication */
+                return 1;
+            }
+        } while (c--);
+
+        /* collision, insert item into next free cell */
+        ++ht->recs[idx].hits;
+        for (i = (i + 1) % ht->size; ht->recs[i].value; i = (i + 1) % ht->size);
+        ht->recs[i].hash = hash;
+        ht->recs[i].value = value;
+    } else {
+first:
+        /* first hash instance */
+        ht->recs[idx].value = value;
+        ht->recs[idx].hash = hash;
+    }
+
+    ++ht->used;
+    return 0;
+}
+
+int
+lyht_remove(struct hash_table *ht, void *value, uint32_t hash)
+{
+    uint32_t i, idx, c;
+
+    idx = hash & (ht->size - 1);
+
+    for (i = idx; ht->recs[i].value && (ht->recs[i].hash != hash); i = (i + 1) % ht->size);
+    if (!ht->recs[i].value) {
+        /* we could not find the value */
+        return 1;
+    }
+
+    /* collision or instance duplication */
+    c = ht->recs[i].hits;
+    do {
+        if (ht->recs[i].hash != hash) {
+            i = (i + 1) % ht->size;
+            continue;
+        }
+
+        /* compare nodes */
+        if (ht->val_equal(value, ht->recs[i].value, ht->cb_data)) {
+            /* instance found, remove it */
+            memset(&(ht->recs[i]), 0, sizeof *ht->recs);
+            if (ht->recs[idx].hits) {
+                assert(idx != i);
+                --ht->recs[idx].hits;
+            }
+            --ht->used;
+            return 0;
+        }
+    } while (c--);
+
+    /* value not found */
+    return 1;
 }

@@ -27,7 +27,7 @@
 #include <fcntl.h>
 
 #include "common.h"
-#include "dict_private.h"
+#include "hash_table.h"
 #include "printer.h"
 #include "parser.h"
 #include "tree_schema.h"

@@ -20,7 +20,7 @@
 #include <inttypes.h>
 
 #include "libyang.h"
-#include "dict_private.h"
+#include "hash_table.h"
 #include "resolve.h"
 
 #ifdef __GNUC__

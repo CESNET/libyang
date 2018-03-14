@@ -25,7 +25,7 @@
 #include "libyang.h"
 #include "common.h"
 #include "context.h"
-#include "dict_private.h"
+#include "hash_table.h"
 #include "xpath.h"
 #include "parser.h"
 #include "resolve.h"

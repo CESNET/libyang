@@ -19,7 +19,7 @@
 
 #include "libyang.h"
 #include "common.h"
-#include "dict_private.h"
+#include "hash_table.h"
 #include "tree_schema.h"
 
 struct ly_modules_list {

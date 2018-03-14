@@ -25,7 +25,7 @@
 
 #include "common.h"
 #include "context.h"
-#include "dict_private.h"
+#include "hash_table.h"
 #include "parser.h"
 #include "tree_internal.h"
 #include "resolve.h"

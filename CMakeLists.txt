@@ -162,7 +162,7 @@ set(libsrc
     src/common.c
     src/context.c
     src/log.c
-    src/dict.c
+    src/hash_table.c
     src/resolve.c
     src/validation.c
     src/xml.c

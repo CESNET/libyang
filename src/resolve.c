@@ -27,7 +27,7 @@
 #include "parser.h"
 #include "parser_yang.h"
 #include "xml_internal.h"
-#include "dict_private.h"
+#include "hash_table.h"
 #include "tree_internal.h"
 #include "extensions.h"
 

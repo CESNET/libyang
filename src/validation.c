@@ -55,19 +55,25 @@ lyv_keys(const struct lyd_node *list)
  * n  - compare n-th unique
  */
 static int
-lyv_list_equal(struct lyd_node *first, struct lyd_node *second, int action)
+lyv_list_equal(void *value1, void *value2, void *cb_data)
 {
     struct ly_ctx *ctx;
     struct lys_node_list *slist;
     const struct lys_node *snode = NULL;
-    struct lyd_node *diter;
+    struct lyd_node *diter, *first, *second;
     const char *val1, *val2;
     char *path1, *path2, *uniq_str;
     uint16_t idx_uniq;
-    int i, j, r;
+    int i, j, r, action;
 
-    assert(first && (first->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)));
-    assert(second && (second->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)));
+    assert(value1 && value2);
+
+    first = (struct lyd_node *)value1;
+    second = (struct lyd_node *)value2;
+    action = (intptr_t)cb_data;
+
+    assert(first->schema->nodetype & (LYS_LIST | LYS_LEAFLIST));
+    assert(second->schema->nodetype & (LYS_LIST | LYS_LEAFLIST));
     assert(first->schema->nodetype == second->schema->nodetype);
 
     ctx = first->schema->module->ctx;
@@ -269,54 +275,6 @@ lyv_data_context(const struct lyd_node *node, int options, struct unres_data *un
     return 0;
 }
 
-struct eq_item {
-    struct lyd_node *node;
-    uint32_t hash;
-    uint32_t over;
-};
-
-static int
-eq_table_insert(struct eq_item *table, struct lyd_node *node, uint32_t hash, uint32_t tablesize, int action)
-{
-    uint32_t i, c;
-
-    if (table[hash].node) {
-        /* is it collision or is the cell just filled by an overflow item? */
-        for (i = hash; table[i].node && table[i].hash != hash; i = (i + 1) % tablesize);
-        if (!table[i].node) {
-            goto first;
-        }
-
-        /* collision or instance duplication */
-        c = table[i].over;
-        do {
-            if (table[i].hash != hash) {
-                i = (i + 1) % tablesize;
-                continue;
-            }
-
-            /* compare nodes */
-            if (lyv_list_equal(node, table[i].node, action)) {
-                /* instance duplication */
-                return 1;
-            }
-        } while (c--);
-
-        /* collision, insert item into next free cell */
-        table[hash].over++;
-        for (i = (i + 1) % tablesize; table[i].node; i = (i + 1) % tablesize);
-        table[i].hash = hash;
-        table[i].node = node;
-    } else {
-first:
-        /* first hash instance */
-        table[hash].node = node;
-        table[hash].hash = hash;
-    }
-
-    return 0;
-}
-
 int
 lyv_data_unique(struct lyd_node *node, struct lyd_node *start)
 {
@@ -324,8 +282,8 @@ lyv_data_unique(struct lyd_node *node, struct lyd_node *start)
     struct lys_node_list *slist;
     struct ly_set *set;
     int i, j, n = 0, ret = 0;
-    uint32_t hash, u, usize = 0, hashmask;
-    struct eq_item *keystable = NULL, **uniquetables = NULL;
+    uint32_t hash, u, usize = 0;
+    struct hash_table *keystable = NULL, **uniquetables = NULL;
     const char *id;
     struct ly_ctx *ctx = node->schema->module->ctx;
 
@@ -351,7 +309,7 @@ lyv_data_unique(struct lyd_node *node, struct lyd_node *start)
 
     if (set->number == 2) {
         /* simple comparison */
-        if (lyv_list_equal(set->set.d[0], set->set.d[1], -1)) {
+        if (lyv_list_equal(set->set.d[0], set->set.d[1], (void *)-1)) {
             /* instance duplication */
             ly_set_free(set);
             return 1;
@@ -367,13 +325,13 @@ lyv_data_unique(struct lyd_node *node, struct lyd_node *start)
             }
         }
         if (u == 0) {
-            usize = hashmask = 0xffffffff;
+            LOGINT(ctx);
+            return 1;
         } else {
             u = 32 - u;
             usize = 1 << u;
-            hashmask = usize - 1;
         }
-        keystable = calloc(usize, sizeof *keystable);
+        keystable = lyht_new(usize, lyv_list_equal, 0);
         if (!keystable) {
             LOGMEM(ctx);
             ret = 1;
@@ -390,7 +348,7 @@ lyv_data_unique(struct lyd_node *node, struct lyd_node *start)
                 goto unique_cleanup;
             }
             for (j = 0; j < n; j++) {
-                uniquetables[j] = calloc(usize, sizeof **uniquetables);
+                uniquetables[j] = lyht_new(usize, lyv_list_equal, (void *)(j + 1L));
                 if (!uniquetables[j]) {
                     LOGMEM(ctx);
                     ret = 1;
@@ -413,10 +371,10 @@ lyv_data_unique(struct lyd_node *node, struct lyd_node *start)
                 }
             }
             /* finish the hash value */
-            hash = dict_hash_multi(hash, NULL, 0) & hashmask;
+            hash = dict_hash_multi(hash, NULL, 0);
 
             /* insert into the hashtable */
-            if (eq_table_insert(keystable, set->set.d[u], hash, usize, 0)) {
+            if (lyht_insert(keystable, set->set.d[u], hash)) {
                 ret = 1;
                 goto unique_cleanup;
             }
@@ -448,10 +406,10 @@ lyv_data_unique(struct lyd_node *node, struct lyd_node *start)
                 }
 
                 /* finish the hash value */
-                hash = dict_hash_multi(hash, NULL, 0) & hashmask;
+                hash = dict_hash_multi(hash, NULL, 0);
 
                 /* insert into the hashtable */
-                if (eq_table_insert(uniquetables[j], set->set.d[u], hash, usize, j + 1)) {
+                if (lyht_insert(uniquetables[j], set->set.d[u], hash)) {
                     ret = 1;
                     goto unique_cleanup;
                 }
@@ -462,13 +420,13 @@ lyv_data_unique(struct lyd_node *node, struct lyd_node *start)
 unique_cleanup:
     /* cleanup */
     ly_set_free(set);
-    free(keystable);
+    lyht_free(keystable);
     for (j = 0; j < n; j++) {
         if (!uniquetables[j]) {
             /* failed when allocating uniquetables[j], following j are not allocated */
             break;
         }
-        free(uniquetables[j]);
+        lyht_free(uniquetables[j]);
     }
     free(uniquetables);
 

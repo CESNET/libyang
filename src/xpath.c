@@ -38,7 +38,7 @@
 #include "resolve.h"
 #include "printer.h"
 #include "parser.h"
-#include "dict_private.h"
+#include "hash_table.h"
 
 static const struct lyd_node *moveto_get_root(const struct lyd_node *cur_node, int options,
                                               enum lyxp_node_type *root_type);
