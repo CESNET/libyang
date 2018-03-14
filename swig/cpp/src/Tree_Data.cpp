@@ -58,13 +58,13 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name) {
         throw std::invalid_argument("Module can not be empty");
     }
 
-    new_node = lyd_new(parent ? parent->node : NULL, module->module, name);
+    new_node = lyd_new(parent ? parent->node : nullptr, module->module, name);
     if (!new_node) {
         check_libyang_error(module->module->ctx);
     }
 
     node = new_node;
-    deleter = nullptr;
+    deleter = !parent ? std::make_shared<Deleter>(node, nullptr) : nullptr;
 };
 Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, const char *val_str) {
     lyd_node *new_node = nullptr;
@@ -73,13 +73,13 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, cons
         throw std::invalid_argument("Module can not be empty");
     }
 
-    new_node = lyd_new_leaf(parent ? parent->node : NULL, module->module, name, val_str);
+    new_node = lyd_new_leaf(parent ? parent->node : nullptr, module->module, name, val_str);
     if (!new_node) {
         check_libyang_error(module->module->ctx);
     }
 
     node = new_node;
-    deleter = nullptr;
+    deleter = !parent ? std::make_shared<Deleter>(node, nullptr) : nullptr;
 };
 Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, const char *value, LYD_ANYDATA_VALUETYPE value_type) {
     lyd_node *new_node = nullptr;
@@ -94,7 +94,7 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, cons
     }
 
     node = new_node;
-    deleter = nullptr;
+    deleter = !parent ? std::make_shared<Deleter>(node, nullptr) : nullptr;
 };
 Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Data_Node value) {
     lyd_node *new_node = nullptr;
@@ -109,7 +109,7 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Da
     }
 
     node = new_node;
-    deleter = nullptr;
+    deleter = !parent ? std::make_shared<Deleter>(node, nullptr) : nullptr;
 };
 Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Xml_Elem value) {
     lyd_node *new_node = nullptr;
@@ -124,7 +124,7 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Xm
     }
 
     node = new_node;
-    deleter = nullptr;
+    deleter = !parent ? std::make_shared<Deleter>(node, nullptr) : nullptr;
 }
 Data_Node::Data_Node(S_Context context, const char *path, const char *value, LYD_ANYDATA_VALUETYPE value_type, int options) {
     lyd_node *new_node = nullptr;
