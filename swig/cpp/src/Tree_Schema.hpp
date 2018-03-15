@@ -61,6 +61,7 @@ class Schema_Node_Inout;
 class Schema_Node_Notif;
 class Schema_Node_Action;
 class Schema_Node_Augment;
+class Schema_Node_Rpc_Action;
 class Substmt;
 class Ext;
 class Refine_Mod_List;
@@ -111,8 +112,8 @@ public:
     std::vector<S_Schema_Node> *data_instantiables(int options);
     std::string print_mem(LYS_OUTFORMAT format, int options);
 
-    friend class Context;
-    friend class Data_Node;
+    friend Context;
+    friend Data_Node;
 
 private:
     struct lys_module *module;
@@ -442,6 +443,20 @@ public:
     friend Set;
     friend Data_Node;
     friend Context;
+    friend Schema_Node_Container;
+    friend Schema_Node_Choice;
+    friend Schema_Node_Leaf;
+    friend Schema_Node_Leaflist;
+    friend Schema_Node_List;
+    friend Schema_Node_Anydata;
+    friend Schema_Node_Uses;
+    friend Schema_Node_Grp;
+    friend Schema_Node_Case;
+    friend Schema_Node_Inout;
+    friend Schema_Node_Notif;
+    friend Schema_Node_Action;
+    friend Schema_Node_Augment;
+    friend Schema_Node_Rpc_Action;
 
 private:
     struct lys_node *node;
@@ -451,6 +466,15 @@ private:
 class Schema_Node_Container : public Schema_Node
 {
 public:
+    Schema_Node_Container(S_Schema_Node derived):
+        Schema_Node(derived->node, derived->deleter),
+        node(derived->node),
+        deleter(derived->deleter)
+    {
+        if (derived->node->nodetype != LYS_CONTAINER) {
+            throw std::invalid_argument("Type must be LYS_CONTAINER");
+        }
+    };
     Schema_Node_Container(struct lys_node *node, S_Deleter deleter):
         Schema_Node(node, deleter),
         node(node),
@@ -470,6 +494,15 @@ private:
 class Schema_Node_Choice : public Schema_Node
 {
 public:
+    Schema_Node_Choice(S_Schema_Node derived):
+        Schema_Node(derived->node, derived->deleter),
+        node(derived->node),
+        deleter(derived->deleter)
+    {
+        if (derived->node->nodetype != LYS_CHOICE) {
+            throw std::invalid_argument("Type must be LYS_CHOICE");
+        }
+    };
     Schema_Node_Choice(struct lys_node *node, S_Deleter deleter):
         Schema_Node(node, deleter),
         node(node),
@@ -487,6 +520,15 @@ private:
 class Schema_Node_Leaf : public Schema_Node
 {
 public:
+    Schema_Node_Leaf(S_Schema_Node derived):
+        Schema_Node(derived->node, derived->deleter),
+        node(derived->node),
+        deleter(derived->deleter)
+    {
+        if (derived->node->nodetype != LYS_LEAF) {
+            throw std::invalid_argument("Type must be LYS_LEAF");
+        }
+    };
     Schema_Node_Leaf(struct lys_node *node, S_Deleter deleter):
         Schema_Node(node, deleter),
         node(node),
@@ -509,6 +551,15 @@ private:
 class Schema_Node_Leaflist : public Schema_Node
 {
 public:
+    Schema_Node_Leaflist(S_Schema_Node derived):
+        Schema_Node(derived->node, derived->deleter),
+        node(derived->node),
+        deleter(derived->deleter)
+    {
+        if (derived->node->nodetype != LYS_LEAFLIST) {
+            throw std::invalid_argument("Type must be LYS_LEAFLIST");
+        }
+    };
     Schema_Node_Leaflist(struct lys_node *node, S_Deleter deleter):
         Schema_Node(node, deleter),
         node(node),
@@ -535,6 +586,15 @@ private:
 class Schema_Node_List : public Schema_Node
 {
 public:
+    Schema_Node_List(S_Schema_Node derived):
+        Schema_Node(derived->node, derived->deleter),
+        node(derived->node),
+        deleter(derived->deleter)
+    {
+        if (derived->node->nodetype != LYS_LIST) {
+            throw std::invalid_argument("Type must be LYS_LIST");
+        }
+    };
     Schema_Node_List(struct lys_node *node, S_Deleter deleter):
         Schema_Node(node, deleter),
         node(node),
@@ -562,6 +622,15 @@ private:
 class Schema_Node_Anydata : public Schema_Node
 {
 public:
+    Schema_Node_Anydata(S_Schema_Node derived):
+        Schema_Node(derived->node, derived->deleter),
+        node(derived->node),
+        deleter(derived->deleter)
+    {
+        if (derived->node->nodetype != LYS_ANYDATA && derived->node->nodetype != LYS_ANYXML) {
+            throw std::invalid_argument("Type must be LYS_ANYDATA or LYS_ANYXML");
+        }
+    };
     Schema_Node_Anydata(struct lys_node *node, S_Deleter deleter):
         Schema_Node(node, deleter),
         node(node),
@@ -580,6 +649,15 @@ private:
 class Schema_Node_Uses : public Schema_Node
 {
 public:
+    Schema_Node_Uses(S_Schema_Node derived):
+        Schema_Node(derived->node, derived->deleter),
+        node(derived->node),
+        deleter(derived->deleter)
+    {
+        if (derived->node->nodetype != LYS_USES) {
+            throw std::invalid_argument("Type must be LYS_USES");
+        }
+    };
     Schema_Node_Uses(struct lys_node *node, S_Deleter deleter):
         Schema_Node(node, deleter),
         node(node),
@@ -600,6 +678,15 @@ private:
 class Schema_Node_Grp : public Schema_Node
 {
 public:
+    Schema_Node_Grp(S_Schema_Node derived):
+        Schema_Node(derived->node, derived->deleter),
+        node(derived->node),
+        deleter(derived->deleter)
+    {
+        if (derived->node->nodetype != LYS_GROUPING) {
+            throw std::invalid_argument("Type must be LYS_GROUPING");
+        }
+    };
     Schema_Node_Grp(struct lys_node *node, S_Deleter deleter):
         Schema_Node(node, deleter),
         node(node),
@@ -617,6 +704,15 @@ private:
 class Schema_Node_Case : public Schema_Node
 {
 public:
+    Schema_Node_Case(S_Schema_Node derived):
+        Schema_Node(derived->node, derived->deleter),
+        node(derived->node),
+        deleter(derived->deleter)
+    {
+        if (derived->node->nodetype != LYS_CASE) {
+            throw std::invalid_argument("Type must be LYS_CASE");
+        }
+    };
     Schema_Node_Case(struct lys_node *node, S_Deleter deleter):
         Schema_Node(node, deleter),
         node(node),
@@ -633,6 +729,15 @@ private:
 class Schema_Node_Inout : public Schema_Node
 {
 public:
+    Schema_Node_Inout(S_Schema_Node derived):
+        Schema_Node(derived->node, derived->deleter),
+        node(derived->node),
+        deleter(derived->deleter)
+    {
+        if (derived->node->nodetype != LYS_INPUT && derived->node->nodetype != LYS_OUTPUT) {
+            throw std::invalid_argument("Type must be LYS_INOUT or LYS_OUTPUT");
+        }
+    };
     Schema_Node_Inout(struct lys_node *node, S_Deleter deleter):
         Schema_Node(node, deleter),
         node(node),
@@ -652,6 +757,15 @@ private:
 class Schema_Node_Notif : public Schema_Node
 {
 public:
+    Schema_Node_Notif(S_Schema_Node derived):
+        Schema_Node(derived->node, derived->deleter),
+        node(derived->node),
+        deleter(derived->deleter)
+    {
+        if (derived->node->nodetype != LYS_NOTIF) {
+            throw std::invalid_argument("Type must be LYS_NOTIF");
+        }
+    };
     Schema_Node_Notif(struct lys_node *node, S_Deleter deleter):
         Schema_Node(node, deleter),
         node(node),
@@ -671,6 +785,15 @@ private:
 class Schema_Node_Rpc_Action : public Schema_Node
 {
 public:
+    Schema_Node_Rpc_Action(S_Schema_Node derived):
+        Schema_Node(derived->node, derived->deleter),
+        node(derived->node),
+        deleter(derived->deleter)
+    {
+        if (derived->node->nodetype != LYS_ACTION && derived->node->nodetype != LYS_RPC) {
+            throw std::invalid_argument("Type must be LYS_ACTION or LYS_RPC");
+        }
+    };
     Schema_Node_Rpc_Action(struct lys_node *node, S_Deleter deleter):
         Schema_Node(node, deleter),
         node(node),
@@ -688,6 +811,15 @@ private:
 class Schema_Node_Augment : public Schema_Node
 {
 public:
+    Schema_Node_Augment(S_Schema_Node derived):
+        Schema_Node(derived->node, derived->deleter),
+        node(derived->node),
+        deleter(derived->deleter)
+    {
+        if (derived->node->nodetype != LYS_AUGMENT) {
+            throw std::invalid_argument("Type must be LYS_AUGMENT");
+        }
+    };
     Schema_Node_Augment(struct lys_node *node, S_Deleter deleter):
         Schema_Node(node, deleter),
         node(node),
