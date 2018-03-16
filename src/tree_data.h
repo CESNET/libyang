@@ -463,10 +463,8 @@ char *lyd_path(const struct lyd_node *node);
                                        XML input data. */
 #define LYD_OPT_TRUSTED    0x2000 /**< Data comes from a trusted source and it is not needed to validate them. Data
                                        are connected with the schema, but the most validation checks (mandatory nodes,
-                                       list instance uniqueness, etc.) are not performed. Unless the context that
-                                       created the data is the same as the context loading them (all relevant models
-                                       present with same features enabled), the resulting data tree may not be valid!
-                                       This option does not make sense for lyd_validate() so it is ignored by this function. */
+                                       list instance uniqueness, etc.) are not performed. This option does not make
+                                       sense for lyd_validate() so it is ignored by this function. */
 #define LYD_OPT_NOAUTODEL  0x4000 /**< Avoid automatic delete of subtrees with false when-stmt condition. The flag is
                                        applicable only in combination with #LYD_OPT_DATA and #LYD_OPT_CONFIG flags.
                                        If used, libyang generates validation error instead of silently removing the
