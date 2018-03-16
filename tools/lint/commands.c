@@ -74,7 +74,7 @@ void
 cmd_data_help(void)
 {
     printf("data [-(-s)trict] [-t TYPE] [-d DEFAULTS] [-o <output-file>] [-f (xml | json)] [-r <running-file-name>]\n");
-    printf("     <data-file-name> [<RPC/action-data-file-name> | <yang-data name>]\n");
+    printf("     <data-file-name> [<RPC/action-data-file-name> | <yang-data name>]\n\n");
     printf("Accepted TYPEs:\n");
     printf("\tauto       - resolve data type (one of the following) automatically (as pyang does),\n");
     printf("\t             this option is applicable only in case of XML input data.\n");
@@ -85,8 +85,8 @@ cmd_data_help(void)
     printf("\tedit       - LYD_OPT_EDIT - <edit-config>'s data (content of its <config> element).\n");
     printf("\trpc        - LYD_OPT_RPC - NETCONF RPC message.\n");
     printf("\trpcreply   - LYD_OPT_RPCREPLY (last parameter mandatory in this case)\n");
-    printf("\tnotif      - LYD_OPT_NOTIF - NETCONF Notification message.\n\n");
-    printf("\tyangdata   - LYD_OPT_DATA_TEMPLATE - yang-data extension (ast parameter mandatory in this case)");
+    printf("\tnotif      - LYD_OPT_NOTIF - NETCONF Notification message.\n");
+    printf("\tyangdata   - LYD_OPT_DATA_TEMPLATE - yang-data extension (last parameter mandatory in this case)\n\n");
     printf("Accepted DEFAULTS:\n");
     printf("\tall        - add missing default nodes\n");
     printf("\tall-tagged - add missing default nodes and mark all the default nodes with the attribute.\n");
@@ -97,7 +97,7 @@ cmd_data_help(void)
     printf("\tconfiguration datastore data referenced from the RPC/Notification. Note that the file is\n");
     printf("\tvalidated as 'data' TYPE. Special value '!' can be used as argument to ignore the\n");
     printf("\texternal references.\n\n");
-    printf("\tan XPath expression (when/must) that needs access to the configuration data, you can provide\n");
+    printf("\tIf an XPath expression (when/must) needs access to configuration data, you can provide\n");
     printf("\tthem in a file, which will be parsed as 'data' TYPE.\n\n");
 }
 
