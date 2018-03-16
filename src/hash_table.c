@@ -313,9 +313,13 @@ lyht_new(uint32_t size, values_equal_cb val_equal, void *cb_data, int resize)
     struct hash_table *ht;
 
     /* check that 2^x == size (power of 2) */
-    assert(size && !(size & (size - 1)) && (size >= LYHT_MIN_SIZE));
+    assert(size && !(size & (size - 1)));
     assert(val_equal);
     assert(resize == 0 || resize == 1);
+
+    if (size < LYHT_MIN_SIZE) {
+        size = LYHT_MIN_SIZE;
+    }
 
     ht = malloc(sizeof *ht);
     LY_CHECK_ERR_RETURN(!ht, LOGMEM(NULL), NULL);
