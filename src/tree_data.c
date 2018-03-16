@@ -5853,12 +5853,14 @@ lyd_wd_add_leaf(struct lyd_node **tree, struct lyd_node *last_parent, struct lys
             if ((current->when_status & LYD_WHEN) && unres_data_add(unres, current, UNRES_WHEN) == -1) {
                 goto error;
             }
-            ret = resolve_applies_must(current);
-            if ((ret & 0x1) && (unres_data_add(unres, current, UNRES_MUST) == -1)) {
-                goto error;
-            }
-            if ((ret & 0x2) && (unres_data_add(unres, current, UNRES_MUST_INOUT) == -1)) {
-                goto error;
+            if (check_when_must == 2) {
+                ret = resolve_applies_must(current);
+                if ((ret & 0x1) && (unres_data_add(unres, current, UNRES_MUST) == -1)) {
+                    goto error;
+                }
+                if ((ret & 0x2) && (unres_data_add(unres, current, UNRES_MUST_INOUT) == -1)) {
+                    goto error;
+                }
             }
         }
 
@@ -5950,12 +5952,14 @@ lyd_wd_add_leaflist(struct lyd_node **tree, struct lyd_node *last_parent, struct
                 if ((current->when_status & LYD_WHEN) && unres_data_add(unres, current, UNRES_WHEN) == -1) {
                     goto error;
                 }
-                ret = resolve_applies_must(current);
-                if ((ret & 0x1) && (unres_data_add(unres, current, UNRES_MUST) == -1)) {
-                    goto error;
-                }
-                if ((ret & 0x2) && (unres_data_add(unres, current, UNRES_MUST_INOUT) == -1)) {
-                    goto error;
+                if (check_when_must == 2) {
+                    ret = resolve_applies_must(current);
+                    if ((ret & 0x1) && (unres_data_add(unres, current, UNRES_MUST) == -1)) {
+                        goto error;
+                    }
+                    if ((ret & 0x2) && (unres_data_add(unres, current, UNRES_MUST_INOUT) == -1)) {
+                        goto error;
+                    }
                 }
             }
 
@@ -6054,10 +6058,12 @@ lyd_wd_add_subtree(struct lyd_node **root, struct lyd_node *last_parent, struct 
         return EXIT_SUCCESS;
     }
 
-    if (options & (LYD_OPT_TRUSTED | LYD_OPT_NOTIF_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
-        check_when_must = 0;
+    if (options & (LYD_OPT_NOTIF_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
+        check_when_must = 0; /* check neither */
+    } else if (options & LYD_OPT_TRUSTED) {
+        check_when_must = 1; /* check only when */
     } else {
-        check_when_must = 1;
+        check_when_must = 2; /* check both when and must */
     }
 
     if (toplevel && (schema->nodetype & (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER))) {
@@ -6146,12 +6152,14 @@ lyd_wd_add_subtree(struct lyd_node **root, struct lyd_node *last_parent, struct 
                 if ((subroot->when_status & LYD_WHEN) && unres_data_add(unres, subroot, UNRES_WHEN) == -1) {
                     goto error;
                 }
-                i = resolve_applies_must(subroot);
-                if ((i & 0x1) && (unres_data_add(unres, subroot, UNRES_MUST) == -1)) {
-                    goto error;
-                }
-                if ((i & 0x2) && (unres_data_add(unres, subroot, UNRES_MUST_INOUT) == -1)) {
-                    goto error;
+                if (check_when_must == 2) {
+                    i = resolve_applies_must(subroot);
+                    if ((i & 0x1) && (unres_data_add(unres, subroot, UNRES_MUST) == -1)) {
+                        goto error;
+                    }
+                    if ((i & 0x2) && (unres_data_add(unres, subroot, UNRES_MUST_INOUT) == -1)) {
+                        goto error;
+                    }
                 }
             }
         } else if (!((struct lys_node_container *)schema)->presence) {
