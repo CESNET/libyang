@@ -2961,7 +2961,7 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
         /* all nodes in second were created,
          * but the second must be top level */
         if (second && second->parent) {
-            LOGERR(NULL, LY_EINVAL, "%s: \"first\" parameter is NULL and \"second\" is not top level.", __func__);
+            LOGERR(second->schema->module->ctx, LY_EINVAL, "%s: \"first\" parameter is NULL and \"second\" is not top level.", __func__);
             return NULL;
         }
         result = lyd_diff_init_difflist(NULL, &size);
