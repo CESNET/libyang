@@ -84,6 +84,18 @@ uint32_t dict_hash_multi(uint32_t hash, const char *key_part, size_t len);
  */
 typedef int (*values_equal_cb)(void *value1, void *value2, void *cb_data);
 
+/** when the table is at least this much percent full, it is enlarged (double the size) */
+#define LYHT_ENLARGE_PERCENTAGE 75
+
+/** only once the table is this much percent full, enable shrinking */
+#define LYHT_FIRST_SHRINK_PERCENTAGE 50
+
+/** when the table is less than this much percent full, it is shrunk (half the size) */
+#define LYHT_SHRINK_PERCENTAGE 25
+
+/** never shrink beyond this size */
+#define LYHT_MIN_SIZE 8
+
 /**
  * @brief Generic hash table.
  */
@@ -91,12 +103,15 @@ struct hash_table {
     struct ht_rec {
         void *value;    /* arbitrary value */
         uint32_t hash;  /* hash of value */
-        uint32_t hits;  /* collision/overflow count */
+        uint8_t hits;   /* collision/overflow count */
     } *recs;
     uint32_t used;      /* number of values stored in the hash table */
-    uint32_t size;      /* always holds 2^x = size (is power of 2) */
+    uint32_t size;      /* always holds 2^x == size (is power of 2) */
     values_equal_cb val_equal; /* callback for testing value equivalence */
     void *cb_data;      /* user data callback arbitrary value */
+    int resize;         /* 0 - resizing is disabled, *
+                         * 1 - enlarging is enabled, *
+                         * 2 - both shrinking and enlarging is enabled */
 };
 
 /**
@@ -105,9 +120,10 @@ struct hash_table {
  * @param[in] size Starting size of the hash table, must be power of 2.
  * @param[in] val_equal Callback for checking value equivalence.
  * @param[in] cb_data User data always passed to \p val_equal.
+ * @param[in] resize Whether to resize the table on too few/too many records taken.
  * @return Empty hash table, NULL on error.
  */
-struct hash_table *lyht_new(uint32_t size, values_equal_cb val_equal, void *cb_data);
+struct hash_table *lyht_new(uint32_t size, values_equal_cb val_equal, void *cb_data, int resize);
 
 /**
  * @brief Free a hash table.

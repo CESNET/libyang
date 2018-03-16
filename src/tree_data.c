@@ -1765,6 +1765,7 @@ lyd_list_equal(struct lyd_node *first, struct lyd_node *second, int withdefaults
             /* same values are allowed for status data */
             return 0;
         }
+
         /* compare values */
         if (ly_strequal(((struct lyd_node_leaf_list *)first)->value_str,
                         ((struct lyd_node_leaf_list *)second)->value_str, 1)

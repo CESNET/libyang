@@ -331,7 +331,7 @@ lyv_data_unique(struct lyd_node *node, struct lyd_node *start)
             u = 32 - u;
             usize = 1 << u;
         }
-        keystable = lyht_new(usize, lyv_list_equal, 0);
+        keystable = lyht_new(usize, lyv_list_equal, 0, 0);
         if (!keystable) {
             LOGMEM(ctx);
             ret = 1;
@@ -348,7 +348,7 @@ lyv_data_unique(struct lyd_node *node, struct lyd_node *start)
                 goto unique_cleanup;
             }
             for (j = 0; j < n; j++) {
-                uniquetables[j] = lyht_new(usize, lyv_list_equal, (void *)(j + 1L));
+                uniquetables[j] = lyht_new(usize, lyv_list_equal, (void *)(j + 1L), 0);
                 if (!uniquetables[j]) {
                     LOGMEM(ctx);
                     ret = 1;

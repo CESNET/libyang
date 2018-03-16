@@ -308,13 +308,14 @@ lydict_insert_zc(struct ly_ctx *ctx, char *value)
 }
 
 struct hash_table *
-lyht_new(uint32_t size, values_equal_cb val_equal, void *cb_data)
+lyht_new(uint32_t size, values_equal_cb val_equal, void *cb_data, int resize)
 {
     struct hash_table *ht;
 
     /* check that 2^x == size (power of 2) */
-    assert(size && !(size & (size - 1)));
+    assert(size && !(size & (size - 1)) && (size >= LYHT_MIN_SIZE));
     assert(val_equal);
+    assert(resize == 0 || resize == 1);
 
     ht = malloc(sizeof *ht);
     LY_CHECK_ERR_RETURN(!ht, LOGMEM(NULL), NULL);
@@ -326,6 +327,7 @@ lyht_new(uint32_t size, values_equal_cb val_equal, void *cb_data)
     ht->size = size;
     ht->val_equal = val_equal;
     ht->cb_data = cb_data;
+    ht->resize = resize;
     return ht;
 }
 
@@ -338,10 +340,46 @@ lyht_free(struct hash_table *ht)
     }
 }
 
+static int
+lyht_resize(struct hash_table *ht, int enlarge)
+{
+    struct ht_rec *old_recs;
+    uint32_t i, new_size;
+
+    old_recs = ht->recs;
+
+    if (enlarge) {
+        /* double the size */
+        new_size = ht->size << 1;
+    } else {
+        /* half the size */
+        new_size = ht->size >> 1;
+    }
+
+    ht->recs = calloc(new_size, sizeof *ht->recs);
+    LY_CHECK_ERR_RETURN(!ht->recs, LOGMEM(NULL); ht->recs = old_recs, -1);
+
+    /* reset used, it will increase again */
+    ht->used = 0;
+
+    /* add all the old records into the new records array */
+    for (i = 0; i < ht->size; ++i) {
+        if (old_recs[i].value) {
+            lyht_insert(ht, old_recs[i].value, old_recs[i].hash);
+        }
+    }
+
+    /* final touches */
+    ht->size = new_size;
+    free(old_recs);
+    return 0;
+}
+
 int
 lyht_insert(struct hash_table *ht, void *value, uint32_t hash)
 {
     uint32_t i, idx, c;
+    int ret = 0;
 
     idx = hash & (ht->size - 1);
 
@@ -368,6 +406,9 @@ lyht_insert(struct hash_table *ht, void *value, uint32_t hash)
         } while (c--);
 
         /* collision, insert item into next free cell */
+        if (ht->recs[idx].hits == UINT8_MAX) {
+            LOGINT(NULL);
+        }
         ++ht->recs[idx].hits;
         for (i = (i + 1) % ht->size; ht->recs[i].value; i = (i + 1) % ht->size);
         ht->recs[i].hash = hash;
@@ -380,13 +421,24 @@ first:
     }
 
     ++ht->used;
-    return 0;
+    if (ht->resize) {
+        c = (ht->used * 100) / ht->size;
+        if ((ht->resize == 1) && (c >= LYHT_FIRST_SHRINK_PERCENTAGE)) {
+            /* enable shrinking */
+            ht->resize = 2;
+        } else if ((ht->resize == 2) && (c >= LYHT_ENLARGE_PERCENTAGE)) {
+            /* enlarge */
+            ret = lyht_resize(ht, 1);
+        }
+    }
+    return ret;
 }
 
 int
 lyht_remove(struct hash_table *ht, void *value, uint32_t hash)
 {
     uint32_t i, idx, c;
+    int ret = 0;
 
     idx = hash & (ht->size - 1);
 
@@ -412,8 +464,16 @@ lyht_remove(struct hash_table *ht, void *value, uint32_t hash)
                 assert(idx != i);
                 --ht->recs[idx].hits;
             }
+
             --ht->used;
-            return 0;
+            if (ht->resize == 2) {
+                c = (ht->used * 100) / ht->size;
+                if ((c < LYHT_SHRINK_PERCENTAGE) && (ht->size > LYHT_MIN_SIZE)) {
+                    /* shrink */
+                    ret = lyht_resize(ht, 0);
+                }
+            }
+            return ret;
         }
     } while (c--);
 
