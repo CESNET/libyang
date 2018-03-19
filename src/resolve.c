@@ -7895,7 +7895,7 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
         return EXIT_SUCCESS;
     }
 
-    if (options & (LYD_OPT_TRUSTED | LYD_OPT_NOTIF_FILTER | LYD_OPT_GET | LYD_OPT_GETCONFIG | LYD_OPT_EDIT)) {
+    if (options & (LYD_OPT_NOTIF_FILTER | LYD_OPT_GET | LYD_OPT_GETCONFIG | LYD_OPT_EDIT)) {
         ignore_fail = 1;
     } else if (options & LYD_OPT_NOEXTDEPS) {
         ignore_fail = 2;
@@ -7904,15 +7904,21 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
     }
 
     LOGVRB("Resolving unresolved data nodes and their constraints...");
-    ly_vlog_hide(1);
+    if (!ignore_fail) {
+        ly_vlog_hide(1);
+    }
 
-    /* when-stmt first */
+    /*
+     * when-stmt first
+     */
     first = 1;
     stmt_count = 0;
     resolved = 0;
     del_items = 0;
     do {
-        ly_err_clean(ly_parser_data.ctx, 1);
+        if (!ignore_fail) {
+            ly_err_clean(ly_parser_data.ctx, 1);
+        }
         progress = 0;
         for (i = 0; i < unres->count; i++) {
             if (unres->type[i] != UNRES_WHEN) {
@@ -8003,7 +8009,9 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
                 } else {
                     unres->type[i] = UNRES_RESOLVED;
                 }
-                ly_err_clean(ly_parser_data.ctx, 1);
+                if (!ignore_fail) {
+                    ly_err_clean(ly_parser_data.ctx, 1);
+                }
                 resolved++;
                 progress = 1;
             } else if (rc == -1) {
@@ -8040,7 +8048,16 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
         del_items--;
     }
 
-    /* now leafrefs */
+    /*
+     * now leafrefs
+     */
+    if (options & LYD_OPT_TRUSTED) {
+        /* we want to attempt to resolve leafrefs */
+        assert(!ignore_fail);
+        ignore_fail = 1;
+
+        ly_vlog_hide(0);
+    }
     first = 1;
     stmt_count = 0;
     resolved = 0;
@@ -8058,7 +8075,9 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
             rc = resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fail, NULL);
             if (!rc) {
                 unres->type[i] = UNRES_RESOLVED;
-                ly_err_clean(ly_parser_data.ctx, 1);
+                if (!ignore_fail) {
+                    ly_err_clean(ly_parser_data.ctx, 1);
+                }
                 resolved++;
                 progress = 1;
             } else if (rc == -1) {
@@ -8078,9 +8097,13 @@ resolve_unres_data(struct unres_data *unres, struct lyd_node **root, int options
         return -1;
     }
 
-    ly_vlog_hide(0);
+    if (!ignore_fail) {
+        ly_vlog_hide(0);
+    }
 
-    /* rest */
+    /*
+     * rest
+     */
     for (i = 0; i < unres->count; ++i) {
         if (unres->type[i] == UNRES_RESOLVED) {
             continue;
