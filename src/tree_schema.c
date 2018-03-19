@@ -4215,7 +4215,7 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module,
 
 /* temporarily removes or applies deviations, updates module deviation flag accordingly */
 void
-lys_switch_deviations(struct lys_module *module)
+lys_enable_deviations(struct lys_module *module)
 {
     uint32_t i = 0, j;
     const struct lys_module *mod;
@@ -4239,11 +4239,54 @@ lys_switch_deviations(struct lys_module *module)
             }
         }
 
-        if (module->deviated == 2) {
-            module->deviated = 1;
-        } else {
-            module->deviated = 2;
+        assert(module->deviated == 2);
+        module->deviated = 1;
+
+        for (j = 0; j < module->inc_size; j++) {
+            if (module->inc[j].submodule->deviated) {
+                module->inc[j].submodule->deviated = module->deviated;
+            }
         }
+
+        if (unres->count) {
+            resolve_unres_schema(module, unres);
+        }
+        unres_schema_free(module, &unres, 1);
+    }
+}
+
+void
+lys_disable_deviations(struct lys_module *module)
+{
+    uint32_t i, j;
+    const struct lys_module *mod;
+    const char *ptr;
+    struct unres_schema *unres;
+
+    if (module->deviated) {
+        unres = calloc(1, sizeof *unres);
+        LY_CHECK_ERR_RETURN(!unres, LOGMEM(module->ctx), );
+
+        i = module->ctx->models.used;
+        while (i--) {
+            mod = module->ctx->models.list[i];
+
+            if (mod == module) {
+                continue;
+            }
+
+            j = mod->deviation_size;
+            while (j--) {
+                ptr = strstr(mod->deviation[j].target_name, module->name);
+                if (ptr && ptr[strlen(module->name)] == ':') {
+                    lys_switch_deviation(&mod->deviation[j], mod, unres);
+                }
+            }
+        }
+
+        assert(module->deviated == 1);
+        module->deviated = 2;
+
         for (j = 0; j < module->inc_size; j++) {
             if (module->inc[j].submodule->deviated) {
                 module->inc[j].submodule->deviated = module->deviated;

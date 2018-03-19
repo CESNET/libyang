@@ -452,7 +452,9 @@ int lys_ingrouping(const struct lys_node *node);
 int lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, const struct lyd_node *data_tree,
                            struct lyd_node *act_notif, struct unres_data *unres);
 
-void lys_switch_deviations(struct lys_module *module);
+void lys_enable_deviations(struct lys_module *module);
+
+void lys_disable_deviations(struct lys_module *module);
 
 void lys_sub_module_remove_devs_augs(struct lys_module *module);
 

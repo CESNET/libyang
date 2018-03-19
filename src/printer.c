@@ -240,14 +240,14 @@ lys_print_(struct lyout *out, const struct lys_module *module, LYS_OUTFORMAT for
 
     switch (format) {
     case LYS_OUT_YIN:
-        lys_switch_deviations((struct lys_module *)module);
+        lys_disable_deviations((struct lys_module *)module);
         ret = yin_print_model(out, module);
-        lys_switch_deviations((struct lys_module *)module);
+        lys_enable_deviations((struct lys_module *)module);
         break;
     case LYS_OUT_YANG:
-        lys_switch_deviations((struct lys_module *)module);
+        lys_disable_deviations((struct lys_module *)module);
         ret = yang_print_model(out, module);
-        lys_switch_deviations((struct lys_module *)module);
+        lys_enable_deviations((struct lys_module *)module);
         break;
     case LYS_OUT_TREE:
         ret = tree_print_model(out, module, target_node, line_length, options);
