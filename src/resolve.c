@@ -7959,8 +7959,9 @@ unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM 
 /**
  * @brief Resolve every unres data item in the structure. Logs directly.
  *
- * If options includes LYD_OPT_TRUSTED, the data are considered trusted (when, must conditions are not expected,
- * unresolved leafrefs/instids are accepted).
+ * If options include #LYD_OPT_TRUSTED, the data are considered trusted (must conditions are not expected,
+ * unresolved leafrefs/instids are accepted, when conditions are normally resolved because at least some implicit
+ * non-presence containers may need to be deleted).
  *
  * If options includes LYD_OPT_NOAUTODEL, the false resulting when condition on non-default nodes, the error is raised.
  *
