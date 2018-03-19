@@ -7989,7 +7989,7 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
         return EXIT_SUCCESS;
     }
 
-    if (options & (LYD_OPT_TRUSTED | LYD_OPT_NOTIF_FILTER | LYD_OPT_GET | LYD_OPT_GETCONFIG | LYD_OPT_EDIT)) {
+    if (options & (LYD_OPT_NOTIF_FILTER | LYD_OPT_GET | LYD_OPT_GETCONFIG | LYD_OPT_EDIT)) {
         ignore_fail = 1;
     } else if (options & LYD_OPT_NOEXTDEPS) {
         ignore_fail = 2;
@@ -7998,17 +7998,23 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
     }
 
     LOGVRB("Resolving unresolved data nodes and their constraints...");
-    /* remember logging state */
-    prev_ly_errno = ly_errno;
-    ly_ilo_change(ctx, ILO_STORE, &prev_ilo, &prev_eitem);
+    if (!ignore_fail) {
+        /* remember logging state only if errors are generated and valid */
+        prev_ly_errno = ly_errno;
+        ly_ilo_change(ctx, ILO_STORE, &prev_ilo, &prev_eitem);
+    }
 
-    /* when-stmt first */
+    /*
+     * when-stmt first
+     */
     first = 1;
     stmt_count = 0;
     resolved = 0;
     del_items = 0;
     do {
-        ly_err_free_next(ctx, prev_eitem);
+        if (!ignore_fail) {
+            ly_err_free_next(ctx, prev_eitem);
+        }
         progress = 0;
         for (i = 0; i < unres->count; i++) {
             if (unres->type[i] != UNRES_WHEN) {
@@ -8096,7 +8102,9 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
                 } else {
                     unres->type[i] = UNRES_RESOLVED;
                 }
-                ly_err_free_next(ctx, prev_eitem);
+                if (!ignore_fail) {
+                    ly_err_free_next(ctx, prev_eitem);
+                }
                 resolved++;
                 progress = 1;
             } else if (rc == -1) {
@@ -8128,7 +8136,17 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
         del_items--;
     }
 
-    /* now leafrefs */
+    /*
+     * now leafrefs
+     */
+    if (options & LYD_OPT_TRUSTED) {
+        /* we want to attempt to resolve leafrefs */
+        assert(!ignore_fail);
+        ignore_fail = 1;
+
+        ly_ilo_restore(ctx, prev_ilo, prev_eitem, 0);
+        ly_errno = prev_ly_errno;
+    }
     first = 1;
     stmt_count = 0;
     resolved = 0;
@@ -8146,7 +8164,9 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
             rc = resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fail, NULL);
             if (!rc) {
                 unres->type[i] = UNRES_RESOLVED;
-                ly_err_free_next(ctx, prev_eitem);
+                if (!ignore_fail) {
+                    ly_err_free_next(ctx, prev_eitem);
+                }
                 resolved++;
                 progress = 1;
             } else if (rc == -1) {
@@ -8161,11 +8181,15 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
         goto error;
     }
 
-    /* log normally now, throw away irrelevant errors */
-    ly_ilo_restore(ctx, prev_ilo, prev_eitem, 0);
-    ly_errno = prev_ly_errno;
+    if (!ignore_fail) {
+        /* log normally now, throw away irrelevant errors */
+        ly_ilo_restore(ctx, prev_ilo, prev_eitem, 0);
+        ly_errno = prev_ly_errno;
+    }
 
-    /* rest */
+    /*
+     * rest
+     */
     for (i = 0; i < unres->count; ++i) {
         if (unres->type[i] == UNRES_RESOLVED) {
             continue;
@@ -8186,8 +8210,10 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
     return EXIT_SUCCESS;
 
 error:
-    /* print all the new errors */
-    ly_ilo_restore(ctx, prev_ilo, prev_eitem, 1);
-    /* do not restore ly_errno, it was udpated properly */
+    if (!ignore_fail) {
+        /* print all the new errors */
+        ly_ilo_restore(ctx, prev_ilo, prev_eitem, 1);
+        /* do not restore ly_errno, it was udpated properly */
+    }
     return -1;
 }
