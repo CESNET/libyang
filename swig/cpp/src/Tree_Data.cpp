@@ -452,8 +452,8 @@ Data_Node_Leaf_List::Data_Node_Leaf_List(S_Data_Node derived):
     node(derived->node),
     deleter(derived->deleter)
 {
-    if (derived->node->schema->nodetype != LYS_LEAFLIST) {
-        throw std::invalid_argument("Type must be LYS_LEAFLIST");
+    if (derived->node->schema->nodetype != LYS_LEAFLIST && derived->node->schema->nodetype != LYS_LEAF) {
+        throw std::invalid_argument("Type must be LYS_LEAFLIST or LYS_LEAF");
     }
 };
 Data_Node_Leaf_List::Data_Node_Leaf_List(struct lyd_node *node, S_Deleter deleter):
@@ -490,8 +490,8 @@ Data_Node_Anydata::Data_Node_Anydata(S_Data_Node derived):
     node(derived->node),
     deleter(derived->deleter)
 {
-    if (derived->node->schema->nodetype != LYS_ANYDATA) {
-        throw std::invalid_argument("Type must be LYS_ANYDATA");
+    if (derived->node->schema->nodetype != LYS_ANYDATA && derived->node->schema->nodetype != LYS_ANYXML) {
+        throw std::invalid_argument("Type must be LYS_ANYDATA or LYS_ANYXML");
     }
 };
 Data_Node_Anydata::Data_Node_Anydata(struct lyd_node *node, S_Deleter deleter):
