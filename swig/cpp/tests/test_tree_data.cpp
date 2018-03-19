@@ -129,7 +129,7 @@ const char *result_json = "\
 }\n\
 ";
 
-TEST(test_ly_ctx_parse_mem)
+TEST(test_ly_ctx_parse_data_mem)
 {
     const char *a_data_xml = "\
                     <x xmlns=\"urn:a\">\n\
@@ -142,9 +142,9 @@ TEST(test_ly_ctx_parse_mem)
     try {
         auto ctx = S_Context(new Context(yang_folder));
         ASSERT_NOTNULL(ctx);
-        ctx->parse_path(yin_file, LYS_IN_YIN);
+        ctx->parse_module_path(yin_file, LYS_IN_YIN);
 
-        auto root = ctx->parse_mem(a_data_xml, LYD_XML, LYD_OPT_NOSIBLINGS | LYD_OPT_STRICT);
+        auto root = ctx->parse_data_mem(a_data_xml, LYD_XML, LYD_OPT_NOSIBLINGS | LYD_OPT_STRICT);
         ASSERT_NOTNULL(root);
         ASSERT_STREQ("x", root->schema()->name());
     } catch( const std::exception& e ) {
@@ -153,7 +153,7 @@ TEST(test_ly_ctx_parse_mem)
     }
 }
 
-TEST(test_ly_ctx_parse_fd)
+TEST(test_ly_ctx_parse_data_fd)
 {
     const char *yang_folder = TESTS_DIR "/api/files";
     const char *yin_file = TESTS_DIR "/api/files/a.yin";
@@ -162,11 +162,11 @@ TEST(test_ly_ctx_parse_fd)
     try {
         auto ctx = S_Context(new Context(yang_folder));
         ASSERT_NOTNULL(ctx);
-        ctx->parse_path(yin_file, LYS_IN_YIN);
+        ctx->parse_module_path(yin_file, LYS_IN_YIN);
 
         FILE *f = fopen(config_file, "r");
         auto fd = f->_fileno;
-        auto root = ctx->parse_fd(fd, LYD_XML, LYD_OPT_NOSIBLINGS | LYD_OPT_STRICT);
+        auto root = ctx->parse_data_fd(fd, LYD_XML, LYD_OPT_NOSIBLINGS | LYD_OPT_STRICT);
         ASSERT_NOTNULL(root);
         ASSERT_STREQ("x", root->schema()->name());
         fclose(f);
@@ -187,7 +187,7 @@ TEST(test_ly_ctx_parse_data_path)
     try {
         auto ctx = S_Context(new Context(yang_folder));
         ASSERT_NOTNULL(ctx);
-        auto module = ctx->parse_path(yin_file, LYS_IN_YIN);
+        auto module = ctx->parse_module_path(yin_file, LYS_IN_YIN);
         ASSERT_NOTNULL(module);
         ASSERT_STREQ(module_name, module->name());
 

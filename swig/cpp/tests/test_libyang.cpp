@@ -292,7 +292,7 @@ TEST(test_ly_ctx_clean)
     }
 }
 
-TEST(test_ly_ctx_parse_path)
+TEST(test_ly_ctx_parse_module_path)
 {
     const char *yang_folder = TESTS_DIR "/api/files";
     const char *yin_file = TESTS_DIR "/api/files/a.yin";
@@ -304,11 +304,11 @@ TEST(test_ly_ctx_parse_path)
         auto ctx = S_Context(new Context(yang_folder));
         ASSERT_NOTNULL(ctx);
 
-        auto module = ctx->parse_path(yin_file, LYS_IN_YIN);
+        auto module = ctx->parse_module_path(yin_file, LYS_IN_YIN);
         ASSERT_NOTNULL(module);
         ASSERT_STREQ(module_name1, module->name());
 
-        module = ctx->parse_path(yang_file, LYS_IN_YANG);
+        module = ctx->parse_module_path(yang_file, LYS_IN_YANG);
         ASSERT_NOTNULL(module);
         ASSERT_STREQ(module_name2, module->name());
     } catch( const std::exception& e ) {
@@ -317,7 +317,7 @@ TEST(test_ly_ctx_parse_path)
     }
 }
 
-TEST(test_ly_ctx_parse_path_invalid)
+TEST(test_ly_ctx_parse_module_path_invalid)
 {
     const char *yang_folder = TESTS_DIR "/api/files";
 
@@ -325,7 +325,7 @@ TEST(test_ly_ctx_parse_path_invalid)
         auto ctx = S_Context(new Context(yang_folder));
         ASSERT_NOTNULL(ctx);
 
-        auto module = ctx->parse_path("INVALID_YANG_FILE", LYS_IN_YANG);
+        auto module = ctx->parse_module_path("INVALID_YANG_FILE", LYS_IN_YANG);
         throw std::logic_error("exception not thrown");
     } catch( const std::logic_error& e ) {
         ASSERT_FALSE(e.what());
@@ -348,7 +348,7 @@ TEST(test_ly_ctx_get_submodule)
     try {
         auto ctx = S_Context(new Context(yang_folder));
         ASSERT_NOTNULL(ctx);
-        ctx->parse_path(yin_file, LYS_IN_YIN);
+        ctx->parse_module_path(yin_file, LYS_IN_YIN);
 
         auto submodule = ctx->get_submodule(module_name, nullptr, sub_name, nullptr);
         ASSERT_NOTNULL(submodule);
@@ -369,7 +369,7 @@ TEST(test_ly_ctx_get_submodule2)
     try {
         auto ctx = S_Context(new Context(yang_folder));
         ASSERT_NOTNULL(ctx);
-        ctx->parse_path(yin_file, LYS_IN_YIN);
+        ctx->parse_module_path(yin_file, LYS_IN_YIN);
 
         auto root = ctx->parse_data_path(config_file, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_STRICT);
         ASSERT_NOTNULL(root);
@@ -396,11 +396,11 @@ TEST(test_ly_ctx_find_path)
         auto ctx = S_Context(new Context(yang_folder));
         ASSERT_NOTNULL(ctx);
 
-        ctx->parse_path(yang_file, LYS_IN_YANG);
+        ctx->parse_module_path(yang_file, LYS_IN_YANG);
         auto set = ctx->find_path(schema_path1);
         ASSERT_NOTNULL(set);
 
-        ctx->parse_path(yin_file, LYS_IN_YIN);
+        ctx->parse_module_path(yin_file, LYS_IN_YIN);
         set = ctx->find_path(schema_path2);
         ASSERT_NOTNULL(set);
         S_Set(new Set());
@@ -419,7 +419,7 @@ TEST(test_ly_set)
     try {
         auto ctx = S_Context(new Context(yang_folder));
         ASSERT_NOTNULL(ctx);
-        ctx->parse_path(yin_file, LYS_IN_YIN);
+        ctx->parse_module_path(yin_file, LYS_IN_YIN);
         auto root = ctx->parse_data_path(config_file, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_STRICT);
         ASSERT_NOTNULL(root);
 

@@ -388,11 +388,11 @@ TEST(test_ly_ctx_parse_module_path)
         auto ctx = S_Context(new Context(yang_folder));
         ASSERT_NOTNULL(ctx);
 
-        auto module = ctx->parse_path(yin_file, LYS_IN_YIN);
+        auto module = ctx->parse_module_path(yin_file, LYS_IN_YIN);
         ASSERT_NOTNULL(module);
         ASSERT_STREQ("a", module->name());
 
-        module = ctx->parse_path(yang_file, LYS_IN_YANG);
+        module = ctx->parse_module_path(yang_file, LYS_IN_YANG);
         ASSERT_NOTNULL(module);
         ASSERT_STREQ("b", module->name());
     } catch (const std::exception& e) {
@@ -410,7 +410,7 @@ TEST(test_ly_ctx_parse_module_path_invalid)
         auto ctx = S_Context(new Context(yang_folder));
         ASSERT_NOTNULL(ctx);
 
-        auto module = ctx->parse_path(yin_file, LYS_IN_YANG);
+        auto module = ctx->parse_module_path(yin_file, LYS_IN_YANG);
         throw std::logic_error("exception not thrown");
     } catch( const std::logic_error& e ) {
         ASSERT_FALSE(e.what());
