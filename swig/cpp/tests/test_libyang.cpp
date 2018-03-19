@@ -19,9 +19,9 @@
 #include <stdexcept>
 #include <vector>
 
-#include <Libyang.hpp>
-#include <Tree_Data.hpp>
-#include <Tree_Schema.hpp>
+#include "Libyang.hpp"
+#include "Tree_Data.hpp"
+#include "Tree_Schema.hpp"
 
 #include "../tests/config.h"
 #include "libyang.h"

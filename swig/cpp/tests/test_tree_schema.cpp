@@ -14,8 +14,8 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include <Libyang.hpp>
-#include <Tree_Schema.hpp>
+#include "Libyang.hpp"
+#include "Tree_Schema.hpp"
 #include "microtest.h"
 #include "../tests/config.h"
 
