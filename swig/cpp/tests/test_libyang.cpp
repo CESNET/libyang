@@ -49,7 +49,7 @@ TEST(test_ly_ctx_new)
         ASSERT_FALSE(nullptr == list);
         ASSERT_EQ(2, list->size());
     } catch( const std::exception& e ) {
-        ASSERT_FALSE(e.what());
+        mt::printFailed(e.what(), stdout);
         return;
     }
 }
@@ -78,7 +78,7 @@ TEST(test_ly_ctx_get_searchdirs)
         ASSERT_EQ(1, list->size());
         ASSERT_EQ(yang_folder, list->at(0));
     } catch( const std::exception& e ) {
-        ASSERT_FALSE(e.what());
+        mt::printFailed(e.what(), stdout);
         return;
     }
 }
@@ -106,7 +106,7 @@ TEST(test_ly_ctx_set_searchdir)
         ASSERT_EQ(1, list->size());
         ASSERT_EQ(new_yang_folder, list->at(0));
     } catch( const std::exception& e ) {
-        ASSERT_FALSE(e.what());
+        mt::printFailed(e.what(), stdout);
         return;
     }
 }
@@ -121,14 +121,9 @@ TEST(test_ly_ctx_set_searchdir_invalid)
         ASSERT_FALSE(nullptr == ctx);
 
         ctx->set_searchdir(new_yang_folder);
-        throw std::logic_error("exception not thrown");
-    } catch( const std::logic_error& e ) {
-        ASSERT_FALSE(e.what());
-        return;
-    } catch( const std::runtime_error& e ) {
-        return;
+        throw std::runtime_error("exception not thrown");
     } catch( const std::exception& e ) {
-        ASSERT_FALSE(e.what());
+        ASSERT_STREQ("Unable to use search directory \"/opt/fork/libyang/testsINVALID_PATH\" (No such file or directory)", e.what())
         return;
     }
 }
@@ -144,7 +139,7 @@ TEST(test_ly_ctx_info)
         ASSERT_FALSE(nullptr == info);
         ASSERT_EQ(LYD_VAL_OK, info->validity());
     } catch( const std::exception& e ) {
-        ASSERT_FALSE(e.what());
+        mt::printFailed(e.what(), stdout);
         return;
     }
 }
@@ -157,14 +152,9 @@ TEST(test_ly_ctx_load_module_invalid)
         ASSERT_FALSE(nullptr == ctx);
 
         auto module = ctx->load_module("invalid", nullptr);
-        throw std::logic_error("exception not thrown");
-    } catch( const std::logic_error& e ) {
-        ASSERT_FALSE(e.what());
-        return;
-    } catch( const std::runtime_error& e ) {
-        return;
+        throw std::runtime_error("exception not thrown");
     } catch( const std::exception& e ) {
-        ASSERT_FALSE(e.what());
+        ASSERT_STREQ("Data model \"invalid\" not found.", e.what())
         return;
     }
 }
@@ -207,7 +197,7 @@ TEST(test_ly_ctx_load_get_module)
         ASSERT_STREQ(name2, module->name());
         ASSERT_STREQ(revision, module->rev()->date());
     } catch( const std::exception& e ) {
-        ASSERT_FALSE(e.what());
+        mt::printFailed(e.what(), stdout);
         return;
     }
 }
@@ -237,7 +227,7 @@ TEST(test_ly_ctx_get_module_older)
         ASSERT_STREQ(name, module_older->name());
         ASSERT_STREQ(revision_older, module_older->rev()->date());
     } catch( const std::exception& e ) {
-        ASSERT_FALSE(e.what());
+        mt::printFailed(e.what(), stdout);
         return;
     }
 }
@@ -260,7 +250,7 @@ TEST(test_ly_ctx_get_module_by_ns)
         ASSERT_NOTNULL(module);
         ASSERT_STREQ(module_name, module->name());
     } catch( const std::exception& e ) {
-        ASSERT_FALSE(e.what());
+        mt::printFailed(e.what(), stdout);
         return;
     }
 }
@@ -287,7 +277,7 @@ TEST(test_ly_ctx_clean)
         module = ctx->get_module(module_name);
         ASSERT_NULL(module);
     } catch( const std::exception& e ) {
-        ASSERT_FALSE(e.what());
+        mt::printFailed(e.what(), stdout);
         return;
     }
 }
@@ -312,7 +302,7 @@ TEST(test_ly_ctx_parse_module_path)
         ASSERT_NOTNULL(module);
         ASSERT_STREQ(module_name2, module->name());
     } catch( const std::exception& e ) {
-        ASSERT_FALSE(e.what());
+        mt::printFailed(e.what(), stdout);
         return;
     }
 }
@@ -327,13 +317,8 @@ TEST(test_ly_ctx_parse_module_path_invalid)
 
         auto module = ctx->parse_module_path("INVALID_YANG_FILE", LYS_IN_YANG);
         throw std::logic_error("exception not thrown");
-    } catch( const std::logic_error& e ) {
-        ASSERT_FALSE(e.what());
-        return;
-    } catch( const std::runtime_error& e ) {
-        return;
     } catch( const std::exception& e ) {
-        ASSERT_FALSE(e.what());
+        ASSERT_STREQ("Opening file \"INVALID_YANG_FILE\" failed (No such file or directory).", e.what())
         return;
     }
 }
@@ -354,7 +339,7 @@ TEST(test_ly_ctx_get_submodule)
         ASSERT_NOTNULL(submodule);
         ASSERT_STREQ(sub_name, submodule->name());
     } catch( const std::exception& e ) {
-        ASSERT_FALSE(e.what());
+        mt::printFailed(e.what(), stdout);
         return;
     }
 }
@@ -379,7 +364,7 @@ TEST(test_ly_ctx_get_submodule2)
         ASSERT_NOTNULL(submodule);
         ASSERT_STREQ(sub_name, submodule->name());
     } catch( const std::exception& e ) {
-        ASSERT_FALSE(e.what());
+        mt::printFailed(e.what(), stdout);
         return;
     }
 }
@@ -405,7 +390,7 @@ TEST(test_ly_ctx_find_path)
         ASSERT_NOTNULL(set);
         S_Set(new Set());
     } catch( const std::exception& e ) {
-        ASSERT_FALSE(e.what());
+        mt::printFailed(e.what(), stdout);
         return;
     }
 }
@@ -445,7 +430,7 @@ TEST(test_ly_set)
         set->clean();
         ASSERT_EQ(0, set->number());
     } catch( const std::exception& e ) {
-        ASSERT_FALSE(e.what());
+        mt::printFailed(e.what(), stdout);
         return;
     }
 }

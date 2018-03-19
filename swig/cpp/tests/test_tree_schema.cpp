@@ -300,7 +300,7 @@ TEST(test_ly_ctx_parse_module_mem)
         ASSERT_NOTNULL(module);
         ASSERT_STREQ("b", module->name());
     } catch (const std::exception& e) {
-        ASSERT_FALSE(e.what());
+        mt::printFailed(e.what(), stdout);
         return;
     }
 }
@@ -314,14 +314,9 @@ TEST(test_ly_ctx_parse_module_mem_invalid)
         ASSERT_NOTNULL(ctx);
 
         ctx->parse_module_mem(lys_module_a_with_typo, LYS_IN_YIN);
-        throw std::logic_error("exception not thrown");
-    } catch( const std::logic_error& e ) {
-        ASSERT_FALSE(e.what());
-        return;
-    } catch( const std::runtime_error& e ) {
-        return;
-    } catch( const std::exception& e ) {
-        ASSERT_FALSE(e.what());
+        throw std::runtime_error("exception not thrown");
+    } catch (const std::exception& e) {
+        ASSERT_STREQ("Module parsing failed.", e.what());
         return;
     }
 }
@@ -349,7 +344,7 @@ TEST(test_ly_ctx_parse_module_fd)
         ASSERT_STREQ("b", module->name());
         fclose(f);
     } catch (const std::exception& e) {
-        ASSERT_FALSE(e.what());
+        mt::printFailed(e.what(), stdout);
         return;
     }
 }
@@ -366,14 +361,9 @@ TEST(test_ly_ctx_parse_module_fd_invalid)
         FILE *f = fopen(yin_file, "r");
         auto fd = f->_fileno;
         auto module = ctx->parse_module_fd(fd, LYS_IN_YANG);
-        throw std::logic_error("exception not thrown");
-    } catch( const std::logic_error& e ) {
-        ASSERT_FALSE(e.what());
-        return;
-    } catch( const std::runtime_error& e ) {
-        return;
+        throw std::runtime_error("exception not thrown");
     } catch( const std::exception& e ) {
-        ASSERT_FALSE(e.what());
+        ASSERT_STREQ("Module parsing failed.", e.what());
         return;
     }
 }
@@ -396,7 +386,7 @@ TEST(test_ly_ctx_parse_module_path)
         ASSERT_NOTNULL(module);
         ASSERT_STREQ("b", module->name());
     } catch (const std::exception& e) {
-        ASSERT_FALSE(e.what());
+        mt::printFailed(e.what(), stdout);
         return;
     }
 }
@@ -411,14 +401,9 @@ TEST(test_ly_ctx_parse_module_path_invalid)
         ASSERT_NOTNULL(ctx);
 
         auto module = ctx->parse_module_path(yin_file, LYS_IN_YANG);
-        throw std::logic_error("exception not thrown");
-    } catch( const std::logic_error& e ) {
-        ASSERT_FALSE(e.what());
-        return;
-    } catch( const std::runtime_error& e ) {
-        return;
+        throw std::runtime_error("exception not thrown");
     } catch( const std::exception& e ) {
-        ASSERT_FALSE(e.what());
+        ASSERT_STREQ("Module parsing failed.", e.what());
         return;
     }
 }
@@ -436,7 +421,7 @@ TEST(test_ly_module_print_mem_tree)
         auto result = module->print_mem(LYS_OUT_TREE, 0);
         ASSERT_STREQ(result_tree, result);
     } catch (const std::exception& e) {
-        ASSERT_FALSE(e.what());
+        mt::printFailed(e.what(), stdout);
         return;
     }
 }
@@ -454,7 +439,7 @@ TEST(test_ly_module_print_mem_yang)
         auto result = module->print_mem(LYS_OUT_YANG, 0);
         ASSERT_STREQ(result_yang, result);
     } catch (const std::exception& e) {
-        ASSERT_FALSE(e.what());
+        mt::printFailed(e.what(), stdout);
         return;
     }
 }
@@ -472,7 +457,7 @@ TEST(test_ly_module_print_mem_yin)
         auto result = module->print_mem(LYS_OUT_YIN, 0);
         ASSERT_STREQ(result_yin, result);
     } catch (const std::exception& e) {
-        ASSERT_FALSE(e.what());
+        mt::printFailed(e.what(), stdout);
         return;
     }
 }
@@ -499,7 +484,7 @@ TEST(test_ly_schema_node_find_path)
         ASSERT_NOTNULL(set);
         ASSERT_EQ(7, set->number());
     } catch (const std::exception& e) {
-        ASSERT_FALSE(e.what());
+        mt::printFailed(e.what(), stdout);
         return;
     }
 }
@@ -525,7 +510,7 @@ TEST(test_ly_schema_node_path)
         auto path = schema->path(0);
         ASSERT_STREQ(path_template, path);
     } catch (const std::exception& e) {
-        ASSERT_FALSE(e.what());
+        mt::printFailed(e.what(), stdout);
         return;
     }
 }
