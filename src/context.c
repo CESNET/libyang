@@ -1131,7 +1131,8 @@ imported:
     ctx_modules_undo_backlinks(ctx, mods);
 
     /* remove the applied deviations and augments */
-    for (u = 0; u < mods->number; u++) {
+    u = mods->number;
+    while (u--) {
         lys_sub_module_remove_devs_augs((struct lys_module *)mods->set.g[u]);
     }
 
