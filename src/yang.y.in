@@ -767,6 +767,10 @@ date_arg_str: REVISION_DATE { s = strdup(yyget_text(scanner));
                                 LOGMEM(trg->ctx);
                                 YYABORT;
                               }
+                              if (lyp_check_date(trg->ctx, s)) {
+                                  free(s);
+                                  YYABORT;
+                              }
                             }
               optsep
   | string_1 { if (lyp_check_date(trg->ctx, s)) {
