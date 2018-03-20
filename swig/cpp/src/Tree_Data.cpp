@@ -64,7 +64,7 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name) {
     }
 
     node = new_node;
-    deleter = !parent ? std::make_shared<Deleter>(node, nullptr) : nullptr;
+    deleter = !parent ? std::make_shared<Deleter>(node, module->deleter) : parent->deleter;
 };
 Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, const char *val_str) {
     lyd_node *new_node = nullptr;
@@ -79,7 +79,7 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, cons
     }
 
     node = new_node;
-    deleter = !parent ? std::make_shared<Deleter>(node, nullptr) : nullptr;
+    deleter = !parent ? std::make_shared<Deleter>(node, module->deleter) : parent->deleter;
 };
 Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, const char *value, LYD_ANYDATA_VALUETYPE value_type) {
     lyd_node *new_node = nullptr;
@@ -94,7 +94,7 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, cons
     }
 
     node = new_node;
-    deleter = !parent ? std::make_shared<Deleter>(node, nullptr) : nullptr;
+    deleter = !parent ? std::make_shared<Deleter>(node, module->deleter) : parent->deleter;
 };
 Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Data_Node value) {
     lyd_node *new_node = nullptr;
@@ -109,7 +109,7 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Da
     }
 
     node = new_node;
-    deleter = !parent ? std::make_shared<Deleter>(node, nullptr) : nullptr;
+    deleter = !parent ? std::make_shared<Deleter>(node, module->deleter) : parent->deleter;
 };
 Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Xml_Elem value) {
     lyd_node *new_node = nullptr;
@@ -124,7 +124,7 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Xm
     }
 
     node = new_node;
-    deleter = !parent ? std::make_shared<Deleter>(node, nullptr) : nullptr;
+    deleter = !parent ? std::make_shared<Deleter>(node, module->deleter) : parent->deleter;
 }
 Data_Node::Data_Node(S_Context context, const char *path, const char *value, LYD_ANYDATA_VALUETYPE value_type, int options) {
     lyd_node *new_node = nullptr;
@@ -142,11 +142,7 @@ Data_Node::Data_Node(S_Context context, const char *path, const char *value, LYD
     }
 
     node = new_node;
-    if (new_node) {
-        deleter = std::make_shared<Deleter>(node, nullptr);
-    } else {
-        deleter = nullptr;
-    }
+    deleter = std::make_shared<Deleter>(node, context->deleter);
 }
 Data_Node::Data_Node(S_Context context, const char *path, S_Data_Node value, int options) {
     lyd_node *new_node = nullptr;
@@ -164,7 +160,7 @@ Data_Node::Data_Node(S_Context context, const char *path, S_Data_Node value, int
     }
 
     node = new_node;
-    deleter = nullptr;
+    deleter = context->deleter;
 }
 Data_Node::Data_Node(S_Context context, const char *path, S_Xml_Elem value, int options) {
     lyd_node *new_node = nullptr;
@@ -182,7 +178,7 @@ Data_Node::Data_Node(S_Context context, const char *path, S_Xml_Elem value, int 
     }
 
     node = new_node;
-    deleter = nullptr;
+    deleter = context->deleter;
 }
 
 Data_Node::~Data_Node() {};
