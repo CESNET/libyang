@@ -18,6 +18,7 @@
 #include <memory>
 #include <stdexcept>
 #include <vector>
+#include <string.h>
 
 #include "Libyang.hpp"
 #include "Tree_Data.hpp"
@@ -62,6 +63,7 @@ TEST(test_ly_ctx_new_invalid)
         auto ctx = S_Context(new Context(yang_folder));
         ASSERT_FALSE("exception not thrown");
     } catch( const std::exception& e ) {
+        ASSERT_NOTNULL(strstr(e.what(), "No Context"));
         return;
     }
 }
@@ -123,7 +125,7 @@ TEST(test_ly_ctx_set_searchdir_invalid)
         ctx->set_searchdir(new_yang_folder);
         throw std::runtime_error("exception not thrown");
     } catch( const std::exception& e ) {
-        ASSERT_STREQ("Unable to use search directory \"/opt/fork/libyang/testsINVALID_PATH\" (No such file or directory)", e.what())
+        ASSERT_NOTNULL(strstr(e.what(), new_yang_folder));
         return;
     }
 }
@@ -154,7 +156,7 @@ TEST(test_ly_ctx_load_module_invalid)
         auto module = ctx->load_module("invalid", nullptr);
         throw std::runtime_error("exception not thrown");
     } catch( const std::exception& e ) {
-        ASSERT_STREQ("Data model \"invalid\" not found.", e.what())
+        ASSERT_NOTNULL(strstr(e.what(), "invalid"));
         return;
     }
 }
@@ -318,7 +320,7 @@ TEST(test_ly_ctx_parse_module_path_invalid)
         auto module = ctx->parse_module_path("INVALID_YANG_FILE", LYS_IN_YANG);
         throw std::logic_error("exception not thrown");
     } catch( const std::exception& e ) {
-        ASSERT_STREQ("Opening file \"INVALID_YANG_FILE\" failed (No such file or directory).", e.what())
+        ASSERT_NOTNULL(strstr(e.what(), "INVALID_YANG_FILE"));
         return;
     }
 }

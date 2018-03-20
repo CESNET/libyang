@@ -19,6 +19,7 @@
 
 #include "../tests/config.h"
 #include "microtest.h"
+#include <string.h>
 
 const char *lys_module_a = \
 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>           \
@@ -211,7 +212,7 @@ TEST(test_ly_ctx_parse_data_path_invalid)
         auto root = ctx->parse_data_path("INVALID_PATH", LYD_XML, LYD_OPT_CONFIG | LYD_OPT_STRICT);
         throw std::runtime_error("exception not thrown");
     } catch( const std::exception& e ) {
-        ASSERT_STREQ("Failed to open data file \"INVALID_PATH\" (No such file or directory).", e.what());
+        ASSERT_NOTNULL(strstr(e.what(), "INVALID_PATH"));
         return;
     }
 }
