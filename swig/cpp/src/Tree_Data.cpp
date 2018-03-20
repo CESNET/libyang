@@ -199,7 +199,7 @@ std::string Data_Node::path() {
 S_Data_Node Data_Node::dup(int recursive) {
     struct lyd_node *new_node = nullptr;
 
-    new_node = lyd_dup(node, recursive);
+    new_node = lyd_dup_to_ctx(node, recursive, node->schema->module->ctx);
     if (!new_node) {
         return nullptr;
     }
