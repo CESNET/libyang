@@ -20,7 +20,7 @@
 #include <time.h>
 #include <ctype.h>
 
-#include <libyang/user_types.h>
+#include "../user_types.h"
 
 #ifdef __GNUC__
 #  define UNUSED(x) UNUSED_ ## x __attribute__((__unused__))
