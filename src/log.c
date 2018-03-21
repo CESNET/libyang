@@ -313,7 +313,7 @@ const char *ly_errs[] = {
 /* LYE_INCHILDSTMT */  "Invalid keyword \"%s\" as a child to \"%s\".",
 /* LYE_INPAR */        "Invalid ancestor \"%s\" of \"%s\".",
 /* LYE_INID */         "Invalid identifier \"%s\" (%s).",
-/* LYE_INDATE */       "Invalid date format of \"%s\", \"YYYY-MM-DD\" expected.",
+/* LYE_INDATE */       "Invalid date \"%s\", valid date in format \"YYYY-MM-DD\" expected.",
 /* LYE_INARG */        "Invalid value \"%s\" of \"%s\".",
 /* LYE_MISSSTMT */     "Missing keyword \"%s\".",
 /* LYE_MISSCHILDSTMT */ "Missing keyword \"%s\" as a child to \"%s\".",
