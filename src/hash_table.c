@@ -307,14 +307,20 @@ lydict_insert_zc(struct ly_ctx *ctx, char *value)
     return result;
 }
 
+static struct ht_rec *
+lyht_get_rec(unsigned char *recs, uint16_t rec_size, uint32_t idx)
+{
+    return (struct ht_rec *)&recs[idx * rec_size];
+}
+
 struct hash_table *
-lyht_new(uint32_t size, values_equal_cb val_equal, void *cb_data, int resize)
+lyht_new(uint32_t size, uint16_t val_size, values_equal_cb val_equal, void *cb_data, int resize)
 {
     struct hash_table *ht;
 
     /* check that 2^x == size (power of 2) */
     assert(size && !(size & (size - 1)));
-    assert(val_equal);
+    assert(val_equal && val_size);
     assert(resize == 0 || resize == 1);
 
     if (size < LYHT_MIN_SIZE) {
@@ -324,14 +330,17 @@ lyht_new(uint32_t size, values_equal_cb val_equal, void *cb_data, int resize)
     ht = malloc(sizeof *ht);
     LY_CHECK_ERR_RETURN(!ht, LOGMEM(NULL), NULL);
 
-    ht->recs = calloc(size, sizeof *ht->recs);
-    LY_CHECK_ERR_RETURN(!ht->recs, free(ht); LOGMEM(NULL), NULL);
-
     ht->used = 0;
     ht->size = size;
     ht->val_equal = val_equal;
     ht->cb_data = cb_data;
-    ht->resize = resize;
+    ht->resize = (uint16_t)resize;
+
+    ht->rec_size = (sizeof(struct ht_rec) - 1) + val_size;
+    /* allocate the records correctly */
+    ht->recs = calloc(size, ht->rec_size);
+    LY_CHECK_ERR_RETURN(!ht->recs, free(ht); LOGMEM(NULL), NULL);
+
     return ht;
 }
 
@@ -347,7 +356,8 @@ lyht_free(struct hash_table *ht)
 static int
 lyht_resize(struct hash_table *ht, int enlarge)
 {
-    struct ht_rec *old_recs;
+    struct ht_rec *rec;
+    unsigned char *old_recs;
     uint32_t i, new_size;
 
     old_recs = ht->recs;
@@ -360,7 +370,7 @@ lyht_resize(struct hash_table *ht, int enlarge)
         new_size = ht->size >> 1;
     }
 
-    ht->recs = calloc(new_size, sizeof *ht->recs);
+    ht->recs = calloc(new_size, ht->rec_size);
     LY_CHECK_ERR_RETURN(!ht->recs, LOGMEM(NULL); ht->recs = old_recs, -1);
 
     /* reset used, it will increase again */
@@ -368,8 +378,9 @@ lyht_resize(struct hash_table *ht, int enlarge)
 
     /* add all the old records into the new records array */
     for (i = 0; i < ht->size; ++i) {
-        if (old_recs[i].value) {
-            lyht_insert(ht, old_recs[i].value, old_recs[i].hash);
+        rec = lyht_get_rec(old_recs, ht->rec_size, i);
+        if (rec->val) {
+            lyht_insert(ht, rec->val, rec->hash);
         }
     }
 
@@ -379,58 +390,93 @@ lyht_resize(struct hash_table *ht, int enlarge)
     return 0;
 }
 
-int
-lyht_insert(struct hash_table *ht, void *value, uint32_t hash)
+/* return: 0 - found, 1 - not found, 2 - not found, but hash collides with another */
+static int
+lyht_find(struct hash_table *ht, void *val_p, uint32_t hash, struct ht_rec **rec_p)
 {
-    uint32_t i, idx, c;
-    int ret = 0;
+    struct ht_rec *rec;
+    uint32_t idx, c;
 
     idx = hash & (ht->size - 1);
+    rec = lyht_get_rec(ht->recs, ht->rec_size, idx);
 
-    if (ht->recs[idx].value) {
-        /* is it collision or is the cell just filled by an overflow item? */
-        for (i = idx; ht->recs[i].value && (ht->recs[i].hash != hash); i = (i + 1) % ht->size);
-        if (!ht->recs[i].value) {
-            goto first;
+    while (rec->hits && (rec->hash != hash)) {
+        idx = (idx + 1) % ht->size;
+        rec = lyht_get_rec(ht->recs, ht->rec_size, idx);
+    }
+    if (!rec->hits) {
+        /* we could not find the value */
+        if (rec_p) {
+            *rec_p = NULL;
         }
-
-        /* collision or instance duplication */
-        c = ht->recs[i].hits;
-        do {
-            if (ht->recs[i].hash != hash) {
-                i = (i + 1) % ht->size;
-                continue;
-            }
-
-            /* compare nodes */
-            if (ht->val_equal(value, ht->recs[i].value, ht->cb_data)) {
-                /* instance duplication */
-                return 1;
-            }
-        } while (c--);
-
-        /* collision, insert item into next free cell */
-        if (ht->recs[idx].hits == UINT8_MAX) {
-            LOGINT(NULL);
-        }
-        ++ht->recs[idx].hits;
-        for (i = (i + 1) % ht->size; ht->recs[i].value; i = (i + 1) % ht->size);
-        ht->recs[i].hash = hash;
-        ht->recs[i].value = value;
-    } else {
-first:
-        /* first hash instance */
-        ht->recs[idx].value = value;
-        ht->recs[idx].hash = hash;
+        return 1;
     }
 
+    /* collision or instance duplication */
+    c = rec->hits - 1;
+    do {
+        if (rec->hash != hash) {
+            idx = (idx + 1) % ht->size;
+            rec = lyht_get_rec(ht->recs, ht->rec_size, idx);
+            continue;
+        }
+
+        /* compare nodes */
+        if (ht->val_equal(val_p, &rec->val, ht->cb_data)) {
+            /* instance found */
+            if (rec_p) {
+                *rec_p = rec;
+            }
+            return 0;
+        }
+    } while (c--);
+
+    /* collision */
+    if (rec_p) {
+        *rec_p = NULL;
+    }
+    return 2;
+}
+
+int
+lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash)
+{
+    struct ht_rec *rec;
+    uint32_t idx, p;
+    int ret;
+
+    if (!(ret = lyht_find(ht, val_p, hash, NULL))) {
+        return 1;
+    }
+
+    /* find the right record */
+    idx = hash & (ht->size - 1);
+    rec = lyht_get_rec(ht->recs, ht->rec_size, idx);
+
+    if (ret == 2) {
+        /* collision, find next free record */
+        if (rec->hits == UINT8_MAX) {
+            LOGINT(NULL);
+        }
+        ++rec->hits;
+        for (idx = (idx + 1) % ht->size; (rec = lyht_get_rec(ht->recs, ht->rec_size, idx))->hits; idx = (idx + 1) % ht->size);
+    }
+
+    /* insert it into the record */
+    rec->hash = hash;
+    ++rec->hits;
+    memcpy(&rec->val, val_p, ht->rec_size - (sizeof(struct ht_rec) - 1));
+
+    /* check size & enlarge if needed */
+    ret = 0;
     ++ht->used;
     if (ht->resize) {
-        c = (ht->used * 100) / ht->size;
-        if ((ht->resize == 1) && (c >= LYHT_FIRST_SHRINK_PERCENTAGE)) {
+        p = (ht->used * 100) / ht->size;
+        if ((ht->resize == 1) && (p >= LYHT_FIRST_SHRINK_PERCENTAGE)) {
             /* enable shrinking */
             ht->resize = 2;
-        } else if ((ht->resize == 2) && (c >= LYHT_ENLARGE_PERCENTAGE)) {
+        }
+        if ((ht->resize == 2) && (p >= LYHT_ENLARGE_PERCENTAGE)) {
             /* enlarge */
             ret = lyht_resize(ht, 1);
         }
@@ -439,48 +485,39 @@ first:
 }
 
 int
-lyht_remove(struct hash_table *ht, void *value, uint32_t hash)
+lyht_remove(struct hash_table *ht, void *val_p, uint32_t hash)
 {
-    uint32_t i, idx, c;
-    int ret = 0;
+    struct ht_rec *rec, *hash_rec;
+    uint32_t idx, p;
+    int ret;
 
-    idx = hash & (ht->size - 1);
-
-    for (i = idx; ht->recs[i].value && (ht->recs[i].hash != hash); i = (i + 1) % ht->size);
-    if (!ht->recs[i].value) {
-        /* we could not find the value */
+    if (lyht_find(ht, val_p, hash, &rec)) {
+        /* value not found */
         return 1;
     }
 
-    /* collision or instance duplication */
-    c = ht->recs[i].hits;
-    do {
-        if (ht->recs[i].hash != hash) {
-            i = (i + 1) % ht->size;
-            continue;
+    /* find the right record */
+    idx = hash & (ht->size - 1);
+    hash_rec = lyht_get_rec(ht->recs, ht->rec_size, idx);
+
+    /* instance found, remove it (keep the hash & value, who cares) */
+    --hash_rec->hits;
+    if (rec != hash_rec) {
+        /* overflow/collision */
+        assert(hash_rec->hits);
+        --rec->hits;
+    }
+
+    /* check size & shrink if needed */
+    ret = 0;
+    --ht->used;
+    if (ht->resize == 2) {
+        p = (ht->used * 100) / ht->size;
+        if ((p < LYHT_SHRINK_PERCENTAGE) && (ht->size > LYHT_MIN_SIZE)) {
+            /* shrink */
+            ret = lyht_resize(ht, 0);
         }
+    }
 
-        /* compare nodes */
-        if (ht->val_equal(value, ht->recs[i].value, ht->cb_data)) {
-            /* instance found, remove it */
-            memset(&(ht->recs[i]), 0, sizeof *ht->recs);
-            if (ht->recs[idx].hits) {
-                assert(idx != i);
-                --ht->recs[idx].hits;
-            }
-
-            --ht->used;
-            if (ht->resize == 2) {
-                c = (ht->used * 100) / ht->size;
-                if ((c < LYHT_SHRINK_PERCENTAGE) && (ht->size > LYHT_MIN_SIZE)) {
-                    /* shrink */
-                    ret = lyht_resize(ht, 0);
-                }
-            }
-            return ret;
-        }
-    } while (c--);
-
-    /* value not found */
-    return 1;
+    return ret;
 }

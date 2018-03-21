@@ -77,12 +77,12 @@ uint32_t dict_hash_multi(uint32_t hash, const char *key_part, size_t len);
 /**
  * @brief Callback for checking hash table values equivalence.
  *
- * @param[in] value1 First value.
- * @param[in] value2 Second value.
+ * @param[in] val1_p Pointer to the first value.
+ * @param[in] val2_p Pointer to the second value.
  * @param[in] cb_data User callback data.
  * @return 0 on non-equal, non-zero on equal.
  */
-typedef int (*values_equal_cb)(void *value1, void *value2, void *cb_data);
+typedef int (*values_equal_cb)(void *val1_p, void *val2_p, void *cb_data);
 
 /** when the table is at least this much percent full, it is enlarged (double the size) */
 #define LYHT_ENLARGE_PERCENTAGE 75
@@ -97,33 +97,40 @@ typedef int (*values_equal_cb)(void *value1, void *value2, void *cb_data);
 #define LYHT_MIN_SIZE 8
 
 /**
- * @brief Generic hash table.
+ * @brief Generic hash table record.
+ */
+struct ht_rec {
+    uint32_t hash;        /* hash of the value */
+    uint32_t hits;        /* collision/overflow value count - 1 (a filled entry has 1 hit) */
+    unsigned char val[1]; /* arbitrary-size value */
+} __attribute__((packed));
+
+/**
+ * @brief (Very) generic hash table.
  */
 struct hash_table {
-    struct ht_rec {
-        void *value;    /* arbitrary value */
-        uint32_t hash;  /* hash of value */
-        uint8_t hits;   /* collision/overflow count */
-    } *recs;
-    uint32_t used;      /* number of values stored in the hash table */
-    uint32_t size;      /* always holds 2^x == size (is power of 2) */
+    uint32_t used;        /* number of values stored in the hash table (filled records) */
+    uint32_t size;        /* always holds 2^x == size (is power of 2), actually number of records allocated */
     values_equal_cb val_equal; /* callback for testing value equivalence */
-    void *cb_data;      /* user data callback arbitrary value */
-    int resize;         /* 0 - resizing is disabled, *
-                         * 1 - enlarging is enabled, *
-                         * 2 - both shrinking and enlarging is enabled */
+    void *cb_data;        /* user data callback arbitrary value */
+    uint16_t resize;      /* 0 - resizing is disabled, *
+                           * 1 - enlarging is enabled, *
+                           * 2 - both shrinking and enlarging is enabled */
+    uint16_t rec_size;    /* real size (in bytes) of one record for accessing recs array */
+    unsigned char *recs;  /* pointer to the hash table itself (array of struct ht_rec) */
 };
 
 /**
  * @brief Create new hash table.
  *
- * @param[in] size Starting size of the hash table, must be power of 2.
+ * @param[in] size Starting size of the hash table (capacity of values), must be power of 2.
+ * @param[in] val_size Size in bytes of value (the stored hashed item).
  * @param[in] val_equal Callback for checking value equivalence.
  * @param[in] cb_data User data always passed to \p val_equal.
  * @param[in] resize Whether to resize the table on too few/too many records taken.
  * @return Empty hash table, NULL on error.
  */
-struct hash_table *lyht_new(uint32_t size, values_equal_cb val_equal, void *cb_data, int resize);
+struct hash_table *lyht_new(uint32_t size, uint16_t val_size, values_equal_cb val_equal, void *cb_data, int resize);
 
 /**
  * @brief Free a hash table.
@@ -136,20 +143,22 @@ void lyht_free(struct hash_table *ht);
  * @brief Insert a value into a hash table.
  *
  * @param[in] ht Hash table to insert into.
- * @param[in] value Value to insert.
- * @param[in] hash Hash of \p value.
+ * @param[in] val_p Pointer to the value to insert. Be careful, if the values stored in the hash table
+ * are pointers, \p val_p must be a pointer to a pointer.
+ * @param[in] hash Hash of the stored value.
  * @return 0 on success, 1 if already inserted.
  */
-int lyht_insert(struct hash_table *ht, void *value, uint32_t hash);
+int lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash);
 
 /**
  * @brief Remove a value from a hash table.
  *
  * @param[in] ht Hash table to remove from.
- * @param[in] value Value to be removed.
- * @param[in] hash Hash of \p value.
+ * @param[in] value_p Pointer to value to be removed. Be careful, if the values stored in the hash table
+ * are pointers, \p value_p must be a pointer to a pointer.
+ * @param[in] hash Hash of the stored value.
  * @return 0 on success, 1 if value was not found.
  */
-int lyht_remove(struct hash_table *ht, void *value, uint32_t hash);
+int lyht_remove(struct hash_table *ht, void *val_p, uint32_t hash);
 
 #endif /* LY_HASH_TABLE_H_ */
