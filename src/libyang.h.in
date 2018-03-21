@@ -481,9 +481,13 @@ extern "C" {
  * the callback is allowed to store anything in the union. Another example, if there are many strings being created and
  * handled, is to store the string length instead having 2 pointers to the same string.
  *
+ * Also, it is possible to perform some additional validation of the value except for the standard YANG one. Even if
+ * the value should only be validated, this callback can be defined and used, it will just keep the #lyd_val value
+ * unchanged.
+ *
  * @subsection typeplugins User Type Plugins
  *
- * There is a simple example user type plugin in `src/user_types` that is not compiled nor installed.
+ * There are simple example user type plugins in `src/user_types`.
  *
  * - ::lytype_plugin_list - plugin is supposed to provide callbacks for:
  *   + @link lytype_store_clb storing the value itself @endlink

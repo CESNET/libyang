@@ -269,6 +269,9 @@ add_custom_target(cclean
 # YANG extensions plugins
 add_subdirectory(src/extensions)
 
+# YANG user types plugins
+add_subdirectory(src/user_types)
+
 # yanglint
 add_executable(yanglint ${lintsrc})
 target_link_libraries(yanglint yang)

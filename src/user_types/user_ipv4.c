@@ -1,7 +1,7 @@
 /**
- * @file user_ipv4.h
+ * @file user_ipv4.c
  * @author Michal Vasko <mvasko@cesnet.cz>
- * @brief example implementation of an ipv4-address as a user type
+ * @brief Example implementation of an ipv4-address as a user type
  *
  * Copyright (c) 2018 CESNET, z.s.p.o.
  *
