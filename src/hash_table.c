@@ -379,7 +379,7 @@ lyht_resize(struct hash_table *ht, int enlarge)
     /* add all the old records into the new records array */
     for (i = 0; i < ht->size; ++i) {
         rec = lyht_get_rec(old_recs, ht->rec_size, i);
-        if (rec->val) {
+        if (rec->hits) {
             lyht_insert(ht, rec->val, rec->hash);
         }
     }
