@@ -1747,17 +1747,14 @@ lyd_list_equal(struct lyd_node *first, struct lyd_node *second, int withdefaults
     const struct lys_node *snode = NULL;
     struct lyd_node *diter;
     const char *val1, *val2;
-    int i;
+    int i, j;
 
     assert(first && (first->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)));
     assert(second && (second->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)));
+    assert(first->schema == second->schema);
     assert(first->schema->nodetype == second->schema->nodetype);
 
     ctx = first->schema->module->ctx;
-
-    if (first->schema != second->schema) {
-        return 0;
-    }
 
     switch (first->schema->nodetype) {
     case LYS_LEAFLIST:
@@ -1784,18 +1781,17 @@ lyd_list_equal(struct lyd_node *first, struct lyd_node *second, int withdefaults
             for (i = 0; i < slist->keys_size; i++) {
                 snode = (struct lys_node *)slist->keys[i];
                 val1 = val2 = NULL;
-                LY_TREE_FOR(first->child, diter) {
-                    if (diter->schema == snode) {
-                        val1 = ((struct lyd_node_leaf_list *)diter)->value_str;
-                        break;
-                    }
+                /* order is guaranteed */
+                for (j = 0, diter = first->child; diter && (j < i); ++j, diter = diter->next);
+                if (diter && (diter->schema == snode)) {
+                    val1 = ((struct lyd_node_leaf_list *)diter)->value_str;
                 }
-                LY_TREE_FOR(second->child, diter) {
-                    if (diter->schema == snode) {
-                        val2 = ((struct lyd_node_leaf_list *)diter)->value_str;
-                        break;
-                    }
+
+                for (j = 0, diter = second->child; diter && (j < i); ++j, diter = diter->next);
+                if (diter && (diter->schema == snode)) {
+                    val2 = ((struct lyd_node_leaf_list *)diter)->value_str;
                 }
+
                 if (!ly_strequal(val1, val2, 1)) {
                     return 0;
                 }
