@@ -26,7 +26,7 @@ before_install:
   - cmake .. && make -j2 && sudo make install
   - cd ../..
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew update; fi
-  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo apt-get update -qq; sudo apt-get install -y valgrind osc; sudo dpkg -i ./swig/swig3.0_3.0.8-0ubuntu3_amd64.deb; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo apt-get update -qq; sudo apt-get install -y valgrind osc gcc-4.9-base; sudo dpkg -i ./swig/swig3.0_3.0.8-0ubuntu3_amd64.deb; fi
   - if [ "$TRAVIS_OS_NAME" = "linux" -a "$CC" = "gcc" ]; then pip install --user codecov; export CFLAGS="-coverage"; fi
 
 script:
