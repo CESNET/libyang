@@ -10,7 +10,14 @@ matrix:
       dist: trusty
       sudo: required
       compiler: gcc
-      evn: CC=gcc-4.9
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-7
+      env:
+        - MATRIX_EVAL="CC=gcc-7 && CXX=g++-7"
     - os: osx
       compiler: gcc
   allow_failures:
@@ -22,6 +29,7 @@ branches:
     - devel
 
 before_install:
+  - eval "${MATRIX_EVAL}"
   - git clone git://git.cryptomilk.org/projects/cmocka.git
   - cd cmocka && mkdir build && cd build
   - cmake .. && make -j2 && sudo make install
