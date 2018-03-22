@@ -116,15 +116,17 @@ extern "C" {
  * @param NEXT Temporary storage, do not use.
  * @param ELEM Iterator intended for use in the block.
  */
+#ifdef __cplusplus
+
 #define LY_TREE_DFS_END(START, NEXT, ELEM)                                    \
     /* select element for the next run - children first */                    \
     (NEXT) = (ELEM)->child;                                                   \
-    if (sizeof(__typeof__(*(ELEM))) == sizeof(struct lyd_node)) {             \
+    if (typeid(*(ELEM)) == typeid(struct lyd_node)) {                         \
         /* child exception for leafs, leaflists and anyxml without children */\
         if (((struct lyd_node *)(ELEM))->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) { \
             (NEXT) = NULL;                                                    \
         }                                                                     \
-    } else if (sizeof(__typeof__(*(ELEM))) == sizeof(struct lys_node)) {      \
+    } else if (typeid(*(ELEM)) == typeid(struct lys_node)) {                  \
         /* child exception for leafs, leaflists and anyxml without children */\
         if (((struct lys_node *)(ELEM))->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) { \
             (NEXT) = NULL;                                                    \
@@ -141,14 +143,14 @@ extern "C" {
     }                                                                         \
     while (!(NEXT)) {                                                         \
         /* parent is already processed, go to its sibling */                  \
-        if ((sizeof(__typeof__(*(ELEM))) == sizeof(struct lys_node))          \
+        if ((typeid(*(ELEM)) == typeid(struct lys_node))                      \
                 && (((struct lys_node *)(ELEM)->parent)->nodetype == LYS_AUGMENT)) {  \
             (ELEM) = (ELEM)->parent->prev;                                    \
         } else {                                                              \
             (ELEM) = (ELEM)->parent;                                          \
         }                                                                     \
         /* no siblings, go back through parents */                            \
-        if (sizeof(__typeof__(*(ELEM))) == sizeof(struct lys_node)) {         \
+        if (typeid(*(ELEM)) == typeid(struct lys_node)) {                     \
             /* due to possible augments */                                    \
             if (lys_parent((struct lys_node *)(ELEM)) == lys_parent((struct lys_node *)(START))) { \
                 /* we are done, no next element to process */                 \
@@ -160,6 +162,55 @@ extern "C" {
         }                                                                     \
         (NEXT) = (ELEM)->next;                                                \
     }
+
+#else
+
+#define LY_TREE_DFS_END(START, NEXT, ELEM)                                    \
+    /* select element for the next run - children first */                    \
+    (NEXT) = (ELEM)->child;                                                   \
+    if (_Generic(*(ELEM), struct lyd_node: 1, default: 0)) {                  \
+        /* child exception for leafs, leaflists and anyxml without children */\
+        if (((struct lyd_node *)(ELEM))->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) { \
+            (NEXT) = NULL;                                                    \
+        }                                                                     \
+    } else if (_Generic(*(ELEM), struct lys_node: 1, default: 0)) {           \
+        /* child exception for leafs, leaflists and anyxml without children */\
+        if (((struct lys_node *)(ELEM))->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) { \
+            (NEXT) = NULL;                                                    \
+        }                                                                     \
+    }                                                                         \
+    if (!(NEXT)) {                                                            \
+        /* no children */                                                     \
+        if ((ELEM) == (START)) {                                              \
+            /* we are done, (START) has no children */                        \
+            break;                                                            \
+        }                                                                     \
+        /* try siblings */                                                    \
+        (NEXT) = (ELEM)->next;                                                \
+    }                                                                         \
+    while (!(NEXT)) {                                                         \
+        /* parent is already processed, go to its sibling */                  \
+        if (_Generic(*(ELEM), struct lys_node: 1, default: 0)                \
+                && (((struct lys_node *)(ELEM)->parent)->nodetype == LYS_AUGMENT)) {  \
+            (ELEM) = (ELEM)->parent->prev;                                    \
+        } else {                                                              \
+            (ELEM) = (ELEM)->parent;                                          \
+        }                                                                     \
+        /* no siblings, go back through parents */                            \
+        if (_Generic(*(ELEM), struct lys_node: 1, default: 0)) {              \
+            /* due to possible augments */                                    \
+            if (lys_parent((struct lys_node *)(ELEM)) == lys_parent((struct lys_node *)(START))) { \
+                /* we are done, no next element to process */                 \
+                break;                                                        \
+            }                                                                 \
+        } else if ((ELEM)->parent == (START)->parent) {                       \
+            /* we are done, no next element to process */                     \
+            break;                                                            \
+        }                                                                     \
+        (NEXT) = (ELEM)->next;                                                \
+    }
+
+#endif
 
 /**
  * @defgroup schematree Schema Tree
