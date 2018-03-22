@@ -836,7 +836,7 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
     struct lys_node_list *slist;
     uint32_t i;
 
-    if (!leaf) {
+    if (!leaf || (leaf->schema->nodetype != LYS_LEAF)) {
         LOGARG;
         return -1;
     }
