@@ -1140,9 +1140,8 @@ lyd_new_path_update(struct lyd_node *node, void *value, LYD_ANYDATA_VALUETYPE va
             if ((r < 0) || (r == 1)) {
                 return NULL;
             }
-            return node;
         }
-        break;
+        return node;
     case LYS_ANYXML:
     case LYS_ANYDATA:
         /* the nodes are the same if:
