@@ -36,6 +36,7 @@ foreach(test_name IN LISTS api_tests data_tests schema_yin_tests schema_tests co
     target_link_libraries(${test_name} ${CMOCKA_LIBRARIES} yang)
     add_test(NAME ${test_name} COMMAND $<TARGET_FILE:${test_name}>)
     set_property(TEST ${test_name} PROPERTY ENVIRONMENT "LIBYANG_EXTENSIONS_PLUGINS_DIR=${CMAKE_BINARY_DIR}/src/extensions")
+    set_property(TEST ${test_name} APPEND PROPERTY ENVIRONMENT "LIBYANG_USER_TYPES_PLUGINS_DIR=${CMAKE_BINARY_DIR}/src/user_types")
     set_property(TEST ${test_name} APPEND PROPERTY ENVIRONMENT "MALLOC_CHECK_=3")
 endforeach(test_name)
 
@@ -50,6 +51,7 @@ if(ENABLE_VALGRIND_TESTS)
             add_test(${test_name}_valgrind valgrind --leak-check=full --show-leak-kinds=all --suppressions=${PROJECT_SOURCE_DIR}/tests/ld.supp --error-exitcode=1
                  ${CMAKE_BINARY_DIR}/tests/${test_name})
             set_property(TEST ${test_name}_valgrind PROPERTY ENVIRONMENT "LIBYANG_EXTENSIONS_PLUGINS_DIR=${CMAKE_BINARY_DIR}/src/extensions")
+            set_property(TEST ${test_name}_valgrind APPEND PROPERTY ENVIRONMENT "LIBYANG_USER_TYPES_PLUGINS_DIR=${CMAKE_BINARY_DIR}/src/user_types")
         endforeach(test_name)
     else(VALGRIND_FOUND)
         message(WARNING "valgrind executable not found! Disabling memory leaks tests.")
