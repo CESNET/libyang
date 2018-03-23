@@ -21,7 +21,6 @@ providing API) in C. The library is used e.g. in [libnetconf2](https://github.co
 * Support for default values in the instance data ([RFC 6243](https://tools.ietf.org/html/rfc6243)).
 * Support for YANG extensions.
 * Support for YANG Metadata ([RFC 7952](https://tools.ietf.org/html/rfc6243)).
-* [yanglint](#yanglint) - feature-rich YANG tool.
 
 Current implementation covers YANG 1.0 ([RFC 6020](https://tools.ietf.org/html/rfc6020))
 as well as YANG 1.1 ([RFC 7950](https://tools.ietf.org/html/rfc7950)).
