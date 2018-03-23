@@ -627,13 +627,16 @@ yang_print_must(struct lyout *out, int level, const struct lys_module *module, c
 }
 
 static void
-yang_print_unique(struct lyout *out, int level, const struct lys_unique *uniq)
+yang_print_unique(struct lyout *out, int level, const struct lys_module *module, const struct lys_unique *uniq)
 {
     int i;
+    const char *str;
 
     ly_print(out, "%*sunique \"", LEVEL, INDENT);
     for (i = 0; i < uniq->expr_size; i++) {
-        ly_print(out, "%s%s", uniq->expr[i], i + 1 < uniq->expr_size ? " " : "");
+        str = transform_json2schema(module, uniq->expr[i]);
+        ly_print(out, "%s%s", str, i + 1 < uniq->expr_size ? " " : "");
+        lydict_remove(module->ctx, str);
     }
     ly_print(out, "\"");
 }
@@ -760,7 +763,7 @@ yang_print_deviation(struct lyout *out, int level, const struct lys_module *modu
         /* unique */
 
         for (j = 0; j < deviation->deviate[i].unique_size; ++j) {
-            yang_print_unique(out, level, &deviation->deviate[i].unique[j]);
+            yang_print_unique(out, level, module, &deviation->deviate[i].unique[j]);
             /* unique's extensions */
             p = -1;
             do {
@@ -1257,7 +1260,7 @@ yang_print_list(struct lyout *out, int level, const struct lys_node *node)
     }
     for (i = 0; i < list->unique_size; i++) {
         yang_print_open(out, &flag);
-        yang_print_unique(out, level, &list->unique[i]);
+        yang_print_unique(out, level, node->module, &list->unique[i]);
         /* unique's extensions */
         p = -1;
         do {
@@ -2180,7 +2183,7 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
                     if (info[i].cardinality >= LY_STMT_CARD_SOME) { /* process array */
                         for (pp = *pp, c = 0; *pp; pp++, c++) {
                             yang_print_open(out, &content);
-                            yang_print_unique(out, level, (struct lys_unique*)(*pp));
+                            yang_print_unique(out, level, module, (struct lys_unique*)(*pp));
                             /* unique's extensions */
                             j = -1; content2 = 0;
                             do {
@@ -2200,7 +2203,7 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
                         }
                     } else { /* single item */
                         yang_print_open(out, &content);
-                        yang_print_unique(out, level, (struct lys_unique*)(*pp));
+                        yang_print_unique(out, level, module, (struct lys_unique*)(*pp));
                         /* unique's extensions */
                         j = -1; content2 = 0;
                         while ((j = lys_ext_iter(ext[u]->ext, ext[u]->ext_size, j + 1, LYEXT_SUBSTMT_UNIQUE)) != -1) {
