@@ -91,11 +91,12 @@ static const char *gmt_offsets[] = {
 static int
 date_and_time_store_clb(const char *UNUSED(type_name), const char *value_str, lyd_val *UNUSED(value), char **err_msg)
 {
-    struct tm tm = {0}, tm2;
+    struct tm tm, tm2;
     uint32_t i, j, k;
 
     /* \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[\+\-]\d{2}:\d{2})
      * 2018-03-21T09:11:05(.5)(Z|+02:00) */
+    memset(&tm, 0, sizeof tm);
     i = 0;
 
     /* year */

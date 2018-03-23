@@ -68,11 +68,25 @@ set(GEN_PYTHON_BINDINGS 1 CACHE BOOL "Enable Python bindings.")
 set(GEN_PYTHON_VERSION "3" CACHE STRING "Python version")
 set(GEN_JAVASCRIPT_BINDINGS 0 CACHE BOOL "Enable JavaScript bindings.")
 
+if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
+    # require at least gcc 4.9
+    if (CMAKE_C_COMPILER_VERSION VERSION_LESS 4.9)
+        message(FATAL_ERROR "GCC version must be at least 4.9!")
+    endif()
+elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang")
+    # require at least clang 3.0
+    if (CMAKE_C_COMPILER_VERSION VERSION_LESS 3.0)
+        message(FATAL_ERROR "Clang version must be at least 3.0!")
+    endif()
+else()
+    message(WARNING "You are using an unknown compiler, it must support C11 standard \"_Generic\" statement.")
+endif()
+
 find_package(FLEX)
 find_package(BISON)
-find_program (DEB_BUILDER NAMES debuild)
-find_program (RPM_BUILDER NAMES rpmbuild)
-find_program (SED_TOOL NAMES sed)
+find_program(DEB_BUILDER NAMES debuild)
+find_program(RPM_BUILDER NAMES rpmbuild)
+find_program(SED_TOOL NAMES sed)
 
 if(NOT BISON_FOUND)
     message(WARNING "Missing Bison.\nYou won't be able to generate source codes from changed flex/bison files.\nCompiling libyang should still works fine.")
