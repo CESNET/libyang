@@ -584,9 +584,9 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     lydict_remove(ctx, module_name);
     lydict_remove(ctx, value);
 
-    if (type->base == LY_TYPE_ERR) {
+    if (type->flags & LYTYPE_GRP) {
         /* resolved type in grouping, decrease the grouping's nacm number to indicate that one less
-         * unresolved item left inside the grouping, LY_TYPE_ERR used as a flag for types inside a grouping. */
+         * unresolved item left inside the grouping, LYTYPE_GRP used as a flag for types inside a grouping. */
         for (siter = parent; siter && (siter->nodetype != LYS_GROUPING); siter = lys_parent(siter));
         if (siter) {
             assert(((struct lys_node_grp *)siter)->unres_count);
@@ -595,6 +595,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             LOGINT(ctx);
             goto error;
         }
+        type->flags &= ~LYTYPE_GRP;
     }
     type->base = type->der->type.base;
 

@@ -21,6 +21,11 @@
 
 @ENABLE_LATEST_REVISIONS_MACRO@
 
+/**
+ * @brief Compiler flag for packed data types.
+ */
+#define _PACKED @COMPILER_PACKED_ATTR@
+
 #include "tree_schema.h"
 #include "tree_data.h"
 #include "xml.h"

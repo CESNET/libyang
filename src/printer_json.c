@@ -85,7 +85,7 @@ json_print_attrs(struct lyout *out, int level, const struct lyd_node *node, cons
             ly_print(out, "%*s\"%s\":", LEVEL, INDENT, attr->name);
         }
         /* leafref is not supported */
-        switch (attr->value_type & LY_DATA_TYPE_MASK) {
+        switch (attr->value_type) {
         case LY_TYPE_BINARY:
         case LY_TYPE_STRING:
         case LY_TYPE_BITS:
@@ -163,7 +163,7 @@ json_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int o
         }
     }
 
-    datatype = leaf->value_type & LY_DATA_TYPE_MASK;
+    datatype = leaf->value_type;
 contentprint:
     switch (datatype) {
     case LY_TYPE_BINARY:
@@ -215,7 +215,7 @@ contentprint:
             }
             datatype = type->base;
         } else {
-            datatype = iter->value_type & LY_DATA_TYPE_MASK;
+            datatype = iter->value_type;
         }
         goto contentprint;
 

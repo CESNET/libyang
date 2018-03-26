@@ -673,9 +673,9 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
     lydict_remove(ctx, module_name);
     lydict_remove(ctx, value);
 
-    if (type->base == LY_TYPE_ERR) {
+    if (type->flags & LYTYPE_GRP) {
         /* resolved type in grouping, decrease the grouping's nacm number to indicate that one less
-         * unresolved item left inside the grouping, LY_TYPE_ERR used as a flag for types inside a grouping.  */
+         * unresolved item left inside the grouping, LYTYPE_GRP used as a flag for types inside a grouping.  */
         for (siter = parent; siter && (siter->nodetype != LYS_GROUPING); siter = lys_parent(siter));
         if (siter) {
             assert(((struct lys_node_grp *)siter)->unres_count);
@@ -684,6 +684,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
             LOGINT(ctx);
             goto error;
         }
+        type->flags &= ~LYTYPE_GRP;
     }
 
     /* check status */
@@ -971,7 +972,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
         }
         for (i = 0; i < type->info.uni.count; i++) {
             dertype = &type->info.uni.types[i];
-            if (dertype->base == LY_TYPE_DER || dertype->base == LY_TYPE_ERR) {
+            if (dertype->base == LY_TYPE_DER) {
                 yang = (struct yang_type *)dertype->der;
                 dertype->der = NULL;
                 dertype->parent = type->parent;
@@ -1041,7 +1042,7 @@ yang_free_type_union(struct ly_ctx *ctx, struct lys_type *type)
 
     for (i = 0; i < type->info.uni.count; ++i) {
         stype = &type->info.uni.types[i];
-        if (stype->base == LY_TYPE_DER || stype->base == LY_TYPE_ERR) {
+        if (stype->base == LY_TYPE_DER) {
             yang = (struct yang_type *)stype->der;
             stype->base = yang->base;
             lydict_remove(ctx, yang->name);
@@ -2878,7 +2879,7 @@ yang_type_free(struct ly_ctx *ctx, struct lys_type *type)
     if (!stype) {
         return ;
     }
-    if (type->base == LY_TYPE_DER || type->base == LY_TYPE_ERR || type->base == LY_TYPE_UNION) {
+    if (type->base == LY_TYPE_DER || type->base == LY_TYPE_UNION) {
         lydict_remove(ctx, stype->name);
         if (stype->base == LY_TYPE_IDENT && (!(stype->flags & LYS_NO_ERASE_IDENTITY))) {
             for (i = 0; i < type->info.ident.count; ++i) {

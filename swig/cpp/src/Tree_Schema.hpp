@@ -331,7 +331,7 @@ private:
 class Type_Info
 {
 public:
-    Type_Info(union lys_type_info info, LY_DATA_TYPE type, S_Deleter deleter);
+    Type_Info(union lys_type_info info, LY_DATA_TYPE *type, uint8_t flags, S_Deleter deleter);
     ~Type_Info();
     S_Type_Info_Binary binary();
     S_Type_Info_Bits bits();
@@ -347,6 +347,7 @@ public:
 private:
     union lys_type_info info;
     LY_DATA_TYPE type;
+    uint8_t flags;
     S_Deleter deleter;
 };
 

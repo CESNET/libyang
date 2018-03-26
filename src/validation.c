@@ -445,6 +445,10 @@ find_orig_type(struct lys_type *par_type, LY_DATA_TYPE base_type)
     if (type->base == base_type) {
         /* we have the result */
         return type;
+    } else if ((type->base == LY_TYPE_LEAFREF) && !(type->flags & LYTYPE_UNRES)) {
+        /* go through the leafref */
+        assert(type->info.lref.target);
+        return find_orig_type(&((struct lys_node_leaf *)type->info.lref.target)->type, base_type);
     } else if (type->base == LY_TYPE_UNION) {
         /* go through all the union types */
         prev_type = NULL;

@@ -47,7 +47,7 @@ class Ident;
 class Value
 {
 public:
-    Value(lyd_val value, uint16_t value_type, S_Deleter deleter);
+    Value(lyd_val value, LY_DATA_TYPE* value_type, uint8_t value_flags, S_Deleter deleter);
     ~Value();
     const char *binary() {return LY_TYPE_BINARY == type ? value.binary : throw "wrong type";};
     //struct lys_type_bit **bit();
@@ -71,7 +71,8 @@ public:
 
 private:
     lyd_val value;
-    uint16_t type;
+    LY_DATA_TYPE type;
+    uint8_t flags;
     S_Deleter deleter;
 };
 

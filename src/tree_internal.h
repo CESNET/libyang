@@ -78,6 +78,11 @@ struct lyd_node_pos {
 #define LYD_WHEN_DONE(status) (!((status) & LYD_WHEN) || ((status) & (LYD_WHEN_TRUE | LYD_WHEN_FALSE)))
 
 /**
+ * @brief Type flag for an unresolved type in a grouping.
+ */
+#define LYTYPE_GRP 0x80
+
+/**
  * @brief Create submodule structure by reading data from memory.
  *
  * @param[in] module Schema tree where to connect the submodule, belongs-to value must match.
@@ -413,7 +418,7 @@ int lyd_get_unique_default(const char* unique_expr, struct lyd_node *list, const
 int lyd_build_relative_data_path(const struct lys_module *module, const struct lyd_node *node, const char *schema_id,
                                  char *buf);
 
-void lyd_free_value(lyd_val value, uint16_t value_type, struct lys_type *type);
+void lyd_free_value(lyd_val value, LY_DATA_TYPE value_type, uint8_t value_flags, struct lys_type *type);
 
 /**
  * @brief Check for (validate) mandatory nodes of a data tree. Checks recursively whole data tree. Requires all when
