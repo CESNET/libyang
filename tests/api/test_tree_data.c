@@ -526,6 +526,10 @@ test_lyd_new_path(void **state)
     assert_non_null(node);
     assert_string_equal(node->schema->name, "bubba");
 
+    node = lyd_new_path(root, NULL, "bubba", "b", 0, LYD_PATH_OPT_UPDATE);
+    assert_non_null(node);
+    assert_string_equal(node->schema->name, "bubba");
+
     node = lyd_new_path(root, NULL, "/a:x/number32", "3", 0, 0);
     assert_non_null(node);
     assert_string_equal(node->schema->name, "number32");
