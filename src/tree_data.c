@@ -5067,7 +5067,7 @@ lyd_insert_attr(struct lyd_node *parent, const struct lys_module *mod, const cha
 void
 lyd_free_value(lyd_val value, uint16_t value_type, struct lys_type *type)
 {
-    if (value_type & LY_TYPE_USER) {
+    if (value_type != (uint16_t)(LY_TYPE_ERR) && (value_type & LY_TYPE_USER)) {
         assert(type->der && type->der->module);
         lytype_free(type->der->module, type->der->name, value);
     } else {
