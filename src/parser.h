@@ -23,7 +23,9 @@
 #include "tree_internal.h"
 
 #ifdef __APPLE__
-#define MAP_ANONYMOUS MAP_ANON
+# ifndef MAP_ANONYMOUS
+#  define MAP_ANONYMOUS MAP_ANON
+# endif
 #endif
 
 /**
