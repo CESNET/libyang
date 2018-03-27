@@ -18,6 +18,7 @@
 #include <stdint.h>
 #include <pthread.h>
 
+#include "common.h"
 #include "dict.h"
 
 /**
@@ -101,12 +102,18 @@ typedef int (*values_equal_cb)(void *val1_p, void *val2_p, void *cb_data);
  */
 struct ht_rec {
     uint32_t hash;        /* hash of the value */
-    uint32_t hits;        /* collision/overflow value count - 1 (a filled entry has 1 hit) */
+    int32_t hits;         /* collision/overflow value count - 1 (a filled entry has 1 hit,
+                           * special value -1 means a deleted record) */
     unsigned char val[1]; /* arbitrary-size value */
-} __attribute__((packed));
+} _PACKED;
 
 /**
  * @brief (Very) generic hash table.
+ *
+ * Hash table with open addressing collision resolution and
+ * linear probing of interval 1 (next free record is used).
+ * Removal is lazy (removed records are only marked), but
+ * if possible, they are fully emptied.
  */
 struct hash_table {
     uint32_t used;        /* number of values stored in the hash table (filled records) */
@@ -140,24 +147,42 @@ struct hash_table *lyht_new(uint32_t size, uint16_t val_size, values_equal_cb va
 void lyht_free(struct hash_table *ht);
 
 /**
+ * @brief Find a value in a hash table.
+ *
+ * @param[in] ht Hash table to search in.
+ * @param[in] val_p Pointer to the value to find.
+ * @param[in] hash Hash of the stored value.
+ * @return 0 on success, 1 on not found.
+ */
+int lyht_find(struct hash_table *ht, void *val_p, uint32_t hash);
+
+/**
  * @brief Insert a value into a hash table.
  *
  * @param[in] ht Hash table to insert into.
  * @param[in] val_p Pointer to the value to insert. Be careful, if the values stored in the hash table
  * are pointers, \p val_p must be a pointer to a pointer.
  * @param[in] hash Hash of the stored value.
- * @return 0 on success, 1 if already inserted.
+ * @return 0 on success, 1 if already inserted, -1 on error.
  */
 int lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash);
 
 /**
  * @brief Remove a value from a hash table.
  *
+ * This operation can be costly under specific circumstances. On every removal,
+ * it is checked whether the record must only be marked deleted or can be safely
+ * emptied (marked records do not hold values but slow down all operations).
+ * If it is emptied, all the previous records are checked whether are not
+ * just marked, in which case they could be emptied, too. In the extreme case
+ * when the removed record was preventing all the other records from being emptied
+ * this removal will traverse ALL the records in O(n).
+ *
  * @param[in] ht Hash table to remove from.
  * @param[in] value_p Pointer to value to be removed. Be careful, if the values stored in the hash table
  * are pointers, \p value_p must be a pointer to a pointer.
  * @param[in] hash Hash of the stored value.
- * @return 0 on success, 1 if value was not found.
+ * @return 0 on success, 1 if value was not found, -1 on error.
  */
 int lyht_remove(struct hash_table *ht, void *val_p, uint32_t hash);
 

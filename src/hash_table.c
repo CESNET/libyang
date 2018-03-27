@@ -358,125 +358,201 @@ lyht_resize(struct hash_table *ht, int enlarge)
 {
     struct ht_rec *rec;
     unsigned char *old_recs;
-    uint32_t i, new_size;
+    uint32_t i, r, old_size;
 
     old_recs = ht->recs;
+    old_size = ht->size;
 
     if (enlarge) {
         /* double the size */
-        new_size = ht->size << 1;
+        ht->size <<= 1;
     } else {
         /* half the size */
-        new_size = ht->size >> 1;
+        ht->size >>= 1;
     }
 
-    ht->recs = calloc(new_size, ht->rec_size);
-    LY_CHECK_ERR_RETURN(!ht->recs, LOGMEM(NULL); ht->recs = old_recs, -1);
+    ht->recs = calloc(ht->size, ht->rec_size);
+    LY_CHECK_ERR_RETURN(!ht->recs, LOGMEM(NULL); ht->recs = old_recs; ht->size = old_size, -1);
 
     /* reset used, it will increase again */
     ht->used = 0;
 
     /* add all the old records into the new records array */
-    for (i = 0; i < ht->size; ++i) {
+    for (i = 0; i < old_size; ++i) {
         rec = lyht_get_rec(old_recs, ht->rec_size, i);
-        if (rec->hits) {
-            lyht_insert(ht, rec->val, rec->hash);
+        if (rec->hits > 0) {
+            r = lyht_insert(ht, rec->val, rec->hash);
+            assert(!r);
         }
     }
 
     /* final touches */
-    ht->size = new_size;
     free(old_recs);
     return 0;
 }
 
-/* return: 0 - found, 1 - not found, 2 - not found, but hash collides with another */
+/* return: 0 - value found, returned its record,
+ *         1 - value not found, returned the record where it would be inserted,
+ *         2 - value not found but a record with matching hash found and returned */
 static int
-lyht_find(struct hash_table *ht, void *val_p, uint32_t hash, struct ht_rec **rec_p)
+lyht_find_first(struct hash_table *ht, void *val_p, uint32_t hash, struct ht_rec **rec_p)
 {
     struct ht_rec *rec;
-    uint32_t idx, c;
+    uint32_t i, idx;
 
-    idx = hash & (ht->size - 1);
+    if (rec_p) {
+        *rec_p = NULL;
+    }
+
+    idx = i = hash & (ht->size - 1);
     rec = lyht_get_rec(ht->recs, ht->rec_size, idx);
 
-    while (rec->hits && (rec->hash != hash)) {
-        idx = (idx + 1) % ht->size;
-        rec = lyht_get_rec(ht->recs, ht->rec_size, idx);
+    /* skip through overflow and deleted records */
+    while ((rec->hits != 0) && ((rec->hits == -1) || ((rec->hash & (ht->size - 1)) != idx))) {
+        if ((rec->hits == -1) && rec_p && !(*rec_p)) {
+            /* remember this record for return */
+            *rec_p = rec;
+        }
+        i = (i + 1) % ht->size;
+        rec = lyht_get_rec(ht->recs, ht->rec_size, i);
     }
-    if (!rec->hits) {
+    if (rec->hits == 0) {
         /* we could not find the value */
-        if (rec_p) {
-            *rec_p = NULL;
+        if (rec_p && !*rec_p) {
+            *rec_p = rec;
         }
         return 1;
     }
 
-    /* collision or instance duplication */
-    c = rec->hits - 1;
-    do {
-        if (rec->hash != hash) {
-            idx = (idx + 1) % ht->size;
-            rec = lyht_get_rec(ht->recs, ht->rec_size, idx);
-            continue;
-        }
+    /* we have found a record with equal hash */
+    if (rec_p) {
+        *rec_p = rec;
+    }
 
-        /* compare nodes */
+    if (ht->val_equal(val_p, &rec->val, ht->cb_data)) {
+        /* even the value matches */
+        return 0;
+    } else {
+        /* value does not match, collision only */
+        return 2;
+    }
+}
+
+/* return: 0 - collision found, returned its record,
+ *         1 - collision not found, returned the record where it would be inserted */
+static int
+lyht_find_collision(struct hash_table *ht, struct ht_rec **last)
+{
+    struct ht_rec *empty = NULL;
+    uint32_t i, idx;
+
+    assert(last && *last);
+
+    idx = (*last)->hash & (ht->size - 1);
+    i = (((unsigned char *)*last) - ht->recs) / ht->rec_size;
+
+    do {
+        i = (i + 1) % ht->size;
+        *last = lyht_get_rec(ht->recs, ht->rec_size, i);
+        if (((*last)->hits == -1) && !empty) {
+            empty = *last;
+        }
+    } while (((*last)->hits != 0) && (((*last)->hits == -1) || (((*last)->hash & (ht->size - 1)) != idx)));
+
+    if ((*last)->hits > 0) {
+        /* we found a collision */
+        assert((*last)->hits == 1);
+        return 0;
+    }
+
+    /* no next collision found, return the record where it would be inserted */
+    if (empty) {
+        *last = empty;
+    } /* else (*last)->hits == 0, it is already correct */
+    return 1;
+}
+
+int
+lyht_find(struct hash_table *ht, void *val_p, uint32_t hash)
+{
+    struct ht_rec *rec;
+    uint32_t i, c;
+    int ret, r;
+
+    if ((ret = lyht_find_first(ht, val_p, hash, &rec)) < 2) {
+        /* found/not found */
+        return ret;
+    }
+
+    /* some collisions, we need to go through them, too */
+    c = rec->hits;
+    for (i = 1; i < c; ++i) {
+        r = lyht_find_collision(ht, &rec);
+        assert(!r);
+
+        /* compare values */
         if (ht->val_equal(val_p, &rec->val, ht->cb_data)) {
-            /* instance found */
-            if (rec_p) {
-                *rec_p = rec;
-            }
             return 0;
         }
-    } while (c--);
-
-    /* collision */
-    if (rec_p) {
-        *rec_p = NULL;
     }
-    return 2;
+
+    /* not found even in collisions */
+    return 1;
 }
 
 int
 lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash)
 {
-    struct ht_rec *rec;
-    uint32_t idx, p;
-    int ret;
+    struct ht_rec *rec, *crec = NULL;
+    int32_t i;
+    int ret, r;
 
-    if (!(ret = lyht_find(ht, val_p, hash, NULL))) {
+    if (!(ret = lyht_find_first(ht, val_p, hash, &rec))) {
         return 1;
     }
 
-    /* find the right record */
-    idx = hash & (ht->size - 1);
-    rec = lyht_get_rec(ht->recs, ht->rec_size, idx);
-
     if (ret == 2) {
-        /* collision, find next free record */
-        if (rec->hits == UINT8_MAX) {
-            LOGINT(NULL);
+        /* some collisions, we need to go through them, too */
+        crec = rec;
+        for (i = 1; i < crec->hits; ++i) {
+            r = lyht_find_collision(ht, &rec);
+            assert(!r);
+
+            /* compare values */
+            if (ht->val_equal(val_p, &rec->val, ht->cb_data)) {
+                return 1;
+            }
         }
-        ++rec->hits;
-        for (idx = (idx + 1) % ht->size; (rec = lyht_get_rec(ht->recs, ht->rec_size, idx))->hits; idx = (idx + 1) % ht->size);
+
+        /* value not found, get the record where it will be inserted */
+        r = lyht_find_collision(ht, &rec);
+        assert(r);
     }
 
-    /* insert it into the record */
+    /* insert it into the returned record */
+    assert(rec->hits < 1);
     rec->hash = hash;
-    ++rec->hits;
+    rec->hits = 1;
     memcpy(&rec->val, val_p, ht->rec_size - (sizeof(struct ht_rec) - 1));
+
+    if (crec) {
+        /* there was a collision, increase hits */
+        if (crec->hits == UINT8_MAX) {
+            LOGINT(NULL);
+        }
+        ++crec->hits;
+    }
 
     /* check size & enlarge if needed */
     ret = 0;
     ++ht->used;
     if (ht->resize) {
-        p = (ht->used * 100) / ht->size;
-        if ((ht->resize == 1) && (p >= LYHT_FIRST_SHRINK_PERCENTAGE)) {
+        r = (ht->used * 100) / ht->size;
+        if ((ht->resize == 1) && (r >= LYHT_FIRST_SHRINK_PERCENTAGE)) {
             /* enable shrinking */
             ht->resize = 2;
         }
-        if ((ht->resize == 2) && (p >= LYHT_ENLARGE_PERCENTAGE)) {
+        if ((ht->resize == 2) && (r >= LYHT_ENLARGE_PERCENTAGE)) {
             /* enlarge */
             ret = lyht_resize(ht, 1);
         }
@@ -484,36 +560,87 @@ lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash)
     return ret;
 }
 
+static void
+lyht_remove_clear(struct hash_table *ht, struct ht_rec *rec)
+{
+    uint32_t i;
+    struct ht_rec *next_rec;
+
+    assert(rec->hits == -1);
+
+    /* learn record index */
+    i = (((unsigned char *)rec) - ht->recs) / ht->rec_size;
+
+    /* get the next record */
+    i = (i + 1) % ht->size;
+    next_rec = lyht_get_rec(ht->recs, ht->rec_size, i);
+
+    /* if the next record is empty or on its correct position (no overflow),
+     * it is safe to make the removed record empty */
+    if ((next_rec->hits == 0) || ((next_rec->hits > 0) && ((next_rec->hash & (ht->size - 1)) == i))) {
+        /* we know we can make the current record empty, but it is now also safe to make empty
+         * all the deleted records before this one */
+        i = i ? (i - 1) : ht->size - 1;
+        do {
+            rec->hits = 0;
+            i = i ? (i - 1) : ht->size - 1;
+            rec = lyht_get_rec(ht->recs, ht->rec_size, i);
+        } while (rec->hits == -1);
+    }
+}
+
 int
 lyht_remove(struct hash_table *ht, void *val_p, uint32_t hash)
 {
-    struct ht_rec *rec, *hash_rec;
-    uint32_t idx, p;
-    int ret;
+    struct ht_rec *rec, *crec;
+    int32_t i;
+    int ret, r;
 
-    if (lyht_find(ht, val_p, hash, &rec)) {
+    if ((ret = lyht_find_first(ht, val_p, hash, &rec)) == 1) {
         /* value not found */
         return 1;
     }
 
-    /* find the right record */
-    idx = hash & (ht->size - 1);
-    hash_rec = lyht_get_rec(ht->recs, ht->rec_size, idx);
+    /* we always need to go through collisions */
+    crec = rec;
+    for (i = 1; i < crec->hits; ++i) {
+        r = lyht_find_collision(ht, &rec);
+        assert(!r);
 
-    /* instance found, remove it (keep the hash & value, who cares) */
-    --hash_rec->hits;
-    if (rec != hash_rec) {
-        /* overflow/collision */
-        assert(hash_rec->hits);
-        --rec->hits;
+        /* compare values */
+        if (ht->val_equal(val_p, &rec->val, ht->cb_data)) {
+            break;
+        }
     }
+
+    if (i < crec->hits) {
+        /* one of collisions matched, reduce collision count, remove the record */
+        assert(ret == 2);
+        --crec->hits;
+        rec->hits = -1;
+    } else if (ret == 0) {
+        /* the first record matches */
+        if (crec != rec) {
+            /* ... so put the last collision in its place */
+            rec->hits = crec->hits - 1;
+            memcpy(crec, rec, ht->rec_size);
+        }
+        rec->hits = -1;
+    } else {
+        /* value not found even in collisions */
+        assert(ret == 2);
+        return 1;
+    }
+
+    /* check whether we cannot make some deleted records empty */
+    lyht_remove_clear(ht, rec);
 
     /* check size & shrink if needed */
     ret = 0;
     --ht->used;
     if (ht->resize == 2) {
-        p = (ht->used * 100) / ht->size;
-        if ((p < LYHT_SHRINK_PERCENTAGE) && (ht->size > LYHT_MIN_SIZE)) {
+        r = (ht->used * 100) / ht->size;
+        if ((r < LYHT_SHRINK_PERCENTAGE) && (ht->size > LYHT_MIN_SIZE)) {
             /* shrink */
             ret = lyht_resize(ht, 0);
         }
