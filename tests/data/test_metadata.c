@@ -1426,6 +1426,40 @@ test_nc_editconfig17_json(void **state)
     assert_int_equal(ly_vecode(st->ctx), LYVE_INATTR);
 }
 
+/*
+ * correctness of parsing and printing NETCONF's edit-config's attributes
+ * - operation delete with an empty XML tag
+ */
+static void
+test_nc_editconfig18_xml(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  leaf a { type string; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input =
+        "<a xmlns=\"urn:x\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" "
+            "nc:operation=\"delete\"></a>";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT , NULL);
+    assert_ptr_not_equal(st->data, NULL);
+    assert_ptr_not_equal(st->data->attr, NULL);
+    assert_ptr_not_equal(st->data->attr->name, NULL);
+    assert_ptr_not_equal(st->data->attr->value_str, NULL);
+    assert_string_equal(st->data->attr->name, "operation");
+    assert_string_equal(st->data->attr->value_str, "delete");
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1473,6 +1507,7 @@ int main(void)
                     cmocka_unit_test_setup_teardown(test_nc_editconfig16_json, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_nc_editconfig17_xml, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_nc_editconfig17_json, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig18_xml, setup_f, teardown_f),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
