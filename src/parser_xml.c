@@ -86,7 +86,7 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int editbits)
     if ((editbits & 0x20) && (node->schema->nodetype & LYS_LEAF) && (!leaf->value_str || !leaf->value_str[0])) {
         /* we have edit-config leaf/leaf-list with delete operation and no (empty) value,
          * this is not a bug since the node is just used as a kind of selection node */
-        leaf->value_type = LY_TYPE_ERR;
+        leaf->value_type = LY_TYPE_UNKNOWN;
         return EXIT_SUCCESS;
     }
 

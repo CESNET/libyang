@@ -2548,7 +2548,7 @@ warn_is_numeric_type(struct lys_type *type)
     struct lys_type *t = NULL;
     int found = 0, ret;
 
-    switch (type->base & LY_DATA_TYPE_MASK) {
+    switch (type->base) {
     case LY_TYPE_DEC64:
     case LY_TYPE_INT8:
     case LY_TYPE_UINT8:
@@ -2588,7 +2588,7 @@ warn_is_string_type(struct lys_type *type)
     struct lys_type *t = NULL;
     int found = 0, ret;
 
-    switch (type->base & LY_DATA_TYPE_MASK) {
+    switch (type->base) {
     case LY_TYPE_BITS:
     case LY_TYPE_ENUM:
     case LY_TYPE_IDENT:
@@ -2623,12 +2623,10 @@ warn_is_specific_type(struct lys_type *type, LY_DATA_TYPE base)
 {
     struct lys_type *t = NULL;
     int found = 0, ret;
-    LY_DATA_TYPE type_base;
 
-    type_base = type->base & LY_DATA_TYPE_MASK;
-    if (type_base == base) {
+    if (type->base == base) {
         return 1;
-    } else if (type_base == LY_TYPE_UNION) {
+    } else if (type->base == LY_TYPE_UNION) {
         while ((t = lyp_get_next_union_type(type, t, &found))) {
             found = 0;
             ret = warn_is_specific_type(t, base);
@@ -2639,7 +2637,7 @@ warn_is_specific_type(struct lys_type *type, LY_DATA_TYPE base)
         }
         /* did not find any suitable type */
         return 0;
-    } else if (type_base == LY_TYPE_LEAFREF) {
+    } else if (type->base == LY_TYPE_LEAFREF) {
         return warn_is_specific_type(&type->info.lref.target->type, base);
     }
 
@@ -2651,7 +2649,7 @@ warn_is_equal_type_next_type(struct lys_type *type, struct lys_type *prev_type)
 {
     int found = 0;
 
-    switch (type->base & LY_DATA_TYPE_MASK) {
+    switch (type->base) {
     case LY_TYPE_UNION:
         /* this can, unfortunately, return leafref */
         return lyp_get_next_union_type(type, prev_type, &found);
@@ -2679,18 +2677,18 @@ warn_is_equal_type(struct lys_type *type1, struct lys_type *type2)
 
     t1 = NULL;
     while ((t1 = warn_is_equal_type_next_type(type1, t1))) {
-        if ((t1->base & LY_DATA_TYPE_MASK) == LY_TYPE_LEAFREF) {
+        if (t1->base == LY_TYPE_LEAFREF) {
             /* we do not check unions with leafrefs, that is just too much... */
             return 1;
         }
 
         t2 = NULL;
         while ((t2 = warn_is_equal_type_next_type(type2, t2))) {
-            if ((t2->base & LY_DATA_TYPE_MASK) == LY_TYPE_LEAFREF) {
+            if (t2->base == LY_TYPE_LEAFREF) {
                 return 1;
             }
 
-            if ((t2->base & LY_DATA_TYPE_MASK) == (t1->base & LY_DATA_TYPE_MASK)) {
+            if (t2->base == t1->base) {
                 /* match found */
                 return 1;
             }
@@ -3205,7 +3203,7 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd_node 
         sleaf = (struct lys_node_leaf *)leaf->schema;
         if ((sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))
                 && ((sleaf->type.base == LY_TYPE_LEAFREF) || (sleaf->type.base == LY_TYPE_INST))) {
-            if (leaf->value_type & (LY_TYPE_LEAFREF_UNRES | LY_TYPE_INST_UNRES)) {
+            if (leaf->value_flags & LYTYPE_UNRES) {
                 /* this is bad */
                 LOGVAL(local_mod->ctx, LYE_SPEC, LY_VLOG_LYD, args[0]->val.nodes[0].node,
                        "Trying to dereference an unresolved leafref or instance-identifier.");

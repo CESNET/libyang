@@ -1,5 +1,6 @@
 %module cpp_classes
 
+#define __attribute__(x)
 %include <std_except.i>
 %catches(std::runtime_error, std::exception, std::string);
 

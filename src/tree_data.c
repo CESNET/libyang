@@ -801,7 +801,7 @@ check_leaf_list_backlinks(struct lyd_node *node, int op)
                     for (j = 0; j < data->number; j++) {
                         leaf_list = (struct lyd_node_leaf_list *)data->set.d[j];
                         if (((op != 0) && (leaf_list->value_type == LY_TYPE_LEAFREF) && (leaf_list->value.leafref == iter))
-                                || ((op != 1) && (leaf_list->value_type & LY_TYPE_LEAFREF_UNRES))) {
+                                || ((op != 1) && (leaf_list->value_flags & LYTYPE_UNRES))) {
                             /* invalidate the leafref, a change concerning it happened */
                             leaf_list->validity |= LYD_VAL_LEAFREF;
                             validity_changed = 1;
@@ -1917,11 +1917,12 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
             src_leaf->value_str = NULL;
             trg_leaf->value_type = src_leaf->value_type;
             src_leaf->value_type = 0;
-            if ((trg_leaf->value_type & LY_DATA_TYPE_MASK) == LY_TYPE_LEAFREF) {
+            if (trg_leaf->value_type == LY_TYPE_LEAFREF) {
                 trg_leaf->validity |= LYD_VAL_LEAFREF;
                 trg_leaf->value.leafref = NULL;
             } else {
-                lyd_free_value(trg_leaf->value, trg_leaf->value_type, &((struct lys_node_leaf *)trg_leaf->schema)->type);
+                lyd_free_value(trg_leaf->value, trg_leaf->value_type, trg_leaf->value_flags,
+                               &((struct lys_node_leaf *)trg_leaf->schema)->type);
                 trg_leaf->value = src_leaf->value;
             }
             src_leaf->value = (lyd_val)0;
@@ -1966,7 +1967,8 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
 
             lydict_remove(ctx, trg_leaf->value_str);
             trg_leaf->value_str = lydict_insert(ctx, src_leaf->value_str, 0);
-            lyd_free_value(trg_leaf->value, trg_leaf->value_type, &((struct lys_node_leaf *)trg_leaf->schema)->type);
+            lyd_free_value(trg_leaf->value, trg_leaf->value_type, trg_leaf->value_flags,
+                           &((struct lys_node_leaf *)trg_leaf->schema)->type);
             trg_leaf->value_type = src_leaf->value_type;
             trg_leaf->dflt = src_leaf->dflt;
 
@@ -3704,7 +3706,7 @@ lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd
             /* yes, we have a key, get know its position */
             for (i = 0, iter = parent->child;
                     iter && i < pos && iter->schema->nodetype == LYS_LEAF;
-                    i++, iter = iter->next) ;
+                    i++, iter = iter->next);
             if (iter) {
                 /* insert list's key to the correct position - before the iter */
                 if (parent->child == iter) {
@@ -4038,7 +4040,6 @@ lyd_insert_nextto(struct lyd_node *sibling, struct lyd_node *node, int before, i
             }
         }
     }
-
 
     return EXIT_SUCCESS;
 
@@ -4956,7 +4957,7 @@ lyd_free_attr(struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_attr *attr
         lydict_remove(ctx, attr->name);
         type = lys_ext_complex_get_substmt(LY_STMT_TYPE, attr->annotation, NULL);
         assert(type);
-        lyd_free_value(attr->value, attr->value_type, *type);
+        lyd_free_value(attr->value, attr->value_type, attr->value_flags, *type);
         lydict_remove(ctx, attr->value_str);
         free(attr);
     }
@@ -5065,20 +5066,20 @@ lyd_insert_attr(struct lyd_node *parent, const struct lys_module *mod, const cha
 }
 
 void
-lyd_free_value(lyd_val value, uint16_t value_type, struct lys_type *type)
+lyd_free_value(lyd_val value, LY_DATA_TYPE value_type, uint8_t value_flags, struct lys_type *type)
 {
-    if (value_type & LY_TYPE_USER) {
+    if (value_flags & LYTYPE_USER) {
         assert(type->der && type->der->module);
         lytype_free(type->der->module, type->der->name, value);
     } else {
-        switch (value_type & LY_DATA_TYPE_MASK) {
+        switch (value_type) {
         case LY_TYPE_BITS:
             if (value.bit) {
                 free(value.bit);
             }
             break;
         case LY_TYPE_INST:
-            if (!(value_type & LY_TYPE_INST_UNRES)) {
+            if (!(value_flags & LYTYPE_UNRES)) {
                 break;
             }
             /* fallthrough */
@@ -5129,7 +5130,7 @@ lyd_free(struct lyd_node *node)
         }
     } else { /* LYS_LEAF | LYS_LEAFLIST */
         leaf = (struct lyd_node_leaf_list *)node;
-        lyd_free_value(leaf->value, leaf->value_type, &((struct lys_node_leaf *)leaf->schema)->type);
+        lyd_free_value(leaf->value, leaf->value_type, leaf->value_flags, &((struct lys_node_leaf *)leaf->schema)->type);
         lydict_remove(leaf->schema->module->ctx, leaf->value_str);
     }
 

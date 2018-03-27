@@ -28,9 +28,10 @@ extern "C" {
 #include "tree_schema.h"
 }
 
-Value::Value(lyd_val value, uint16_t value_type, S_Deleter deleter):
+Value::Value(lyd_val value, LY_DATA_TYPE* value_type, uint8_t value_flags, S_Deleter deleter):
     value(value),
-    type(value_type),
+    type(*value_type),
+    flags(value_flags),
     deleter(deleter)
 {};
 Value::~Value() {};
@@ -423,7 +424,7 @@ Data_Node_Leaf_List::Data_Node_Leaf_List(struct lyd_node *node, S_Deleter delete
 Data_Node_Leaf_List::~Data_Node_Leaf_List() {};
 S_Value Data_Node_Leaf_List::value() {
     struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *) node;
-    return std::make_shared<Value>(leaf->value, leaf->value_type, deleter);
+    return std::make_shared<Value>(leaf->value, &leaf->value_type, leaf->value_flags, deleter);
 }
 int Data_Node_Leaf_List::change_leaf(const char *val_str) {
     int ret = lyd_change_leaf((struct lyd_node_leaf_list *) node, val_str);
@@ -458,7 +459,7 @@ Attr::Attr(struct lyd_attr *attr, S_Deleter deleter):
 Attr::~Attr() {};
 S_Value Attr::value() {
     struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *) attr;
-    return std::make_shared<Value>(leaf->value, leaf->value_type, deleter);
+    return std::make_shared<Value>(leaf->value, &leaf->value_type, leaf->value_flags, deleter);
 }
 S_Attr Attr::next() LY_NEW(attr, next, Attr);
 

@@ -180,7 +180,7 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
             ly_print(out, " %s:%s=\"", attr->annotation->module->prefix, attr->name);
         }
 
-        switch (attr->value_type & LY_DATA_TYPE_MASK) {
+        switch (attr->value_type) {
         case LY_TYPE_BINARY:
         case LY_TYPE_STRING:
         case LY_TYPE_BITS:
@@ -285,7 +285,8 @@ xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int to
     if (xml_print_attrs(out, node, options)) {
         return EXIT_FAILURE;
     }
-    datatype = leaf->value_type & LY_DATA_TYPE_MASK;
+    datatype = leaf->value_type;
+
 printvalue:
     switch (datatype) {
     case LY_TYPE_STRING:
@@ -386,7 +387,7 @@ printvalue:
             }
             datatype = type->base;
         } else {
-            datatype = iter->value_type & LY_DATA_TYPE_MASK;
+            datatype = iter->value_type;
         }
         goto printvalue;
 

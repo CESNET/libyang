@@ -1387,7 +1387,8 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
     struct lys_type_bit **bits = NULL;
     struct lys_ident *ident;
     lyd_val *val;
-    uint16_t *val_type;
+    LY_DATA_TYPE *val_type;
+    uint8_t *val_flags;
     struct lyd_node *contextnode;
     struct ly_ctx *ctx = type->parent->module->ctx;
 
@@ -1400,6 +1401,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         }
         val = &leaf->value;
         val_type = &leaf->value_type;
+        val_flags = &leaf->value_flags;
         contextnode = (struct lyd_node *)leaf;
         itemname = leaf->schema->name;
     } else {
@@ -1409,12 +1411,15 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         }
         val = &attr->value;
         val_type = &attr->value_type;
+        val_flags = &attr->value_flags;
         contextnode = attr->parent;
         itemname = attr->name;
     }
 
+    /* fully clear the value */
     if (store) {
-        lyd_free_value(*val, *val_type, type);
+        lyd_free_value(*val, *val_type, *val_flags, type);
+        *val_flags &= ~LYTYPE_UNRES;
     }
 
     switch (type->base) {
@@ -1818,7 +1823,8 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         if (store) {
             /* note that the data node is an unresolved instance-identifier */
             val->instance = NULL;
-            *val_type = LY_TYPE_INST | LY_TYPE_INST_UNRES;
+            *val_type = LY_TYPE_INST;
+            *val_flags |= LYTYPE_UNRES;
         }
 
         if (!ly_strequal(value, *value_, 1)) {
@@ -1858,7 +1864,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         if (store) {
             /* make the note that the data node is an unresolved leafref (value union was already filled) */
-            *val_type |= LY_TYPE_LEAFREF_UNRES;
+            *val_flags |= LYTYPE_UNRES;
         }
 
         type = t;
@@ -2065,7 +2071,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
             if (store) {
                 /* erase possible present and invalid value data */
-                lyd_free_value(*val, *val_type, t);
+                lyd_free_value(*val, *val_type, *val_flags, t);
                 memset(val, 0, sizeof(lyd_val));
             }
         }
@@ -2076,7 +2082,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         if (!t) {
             /* not found */
             if (store) {
-                *val_type &= ~LY_DATA_TYPE_MASK;
+                *val_type = 0;
             }
             if (leaf) {
                 LOGVAL(ctx, LYE_INVAL, LY_VLOG_LYD, contextnode, *value_ ? *value_ : "", itemname);
@@ -2098,7 +2104,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         if (c == -1) {
             return NULL;
         } else if (!c) {
-            *val_type |= LY_TYPE_USER;
+            *val_flags |= LYTYPE_USER;
         }
     }
 
