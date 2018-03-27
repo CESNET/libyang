@@ -173,6 +173,7 @@ contentprint:
     case LY_TYPE_INST:
     case LY_TYPE_INT64:
     case LY_TYPE_UINT64:
+    case LY_TYPE_UNION:
     case LY_TYPE_DEC64:
         json_print_string(out, leaf->value_str);
         break;

@@ -269,6 +269,7 @@ xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int to
     LY_DATA_TYPE datatype;
     char *p;
     size_t len;
+    enum int_log_opts prev_ilo;
 
     if (toplevel || !node->parent || nscmp(node, node->parent)) {
         /* print "namespace" */
@@ -290,26 +291,26 @@ xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int to
 printvalue:
     switch (datatype) {
     case LY_TYPE_STRING:
+        ly_ilo_change(NULL, ILO_IGNORE, &prev_ilo, NULL);
         type = lyd_leaf_type((struct lyd_node_leaf_list *)leaf);
-        if (!type) {
-            /* error */
-            ly_print(out, "\"(!error!)\"");
-            return EXIT_FAILURE;
-        }
-        for (tpdf = type->der;
-             tpdf->module && (strcmp(tpdf->name, "xpath1.0") || strcmp(tpdf->module->name, "ietf-yang-types"));
-             tpdf = tpdf->type.der);
-        /* special handling of ietf-yang-types xpath1.0 */
-        if (tpdf->module) {
-            /* avoid code duplication - use instance-identifier printer which gets necessary namespaces to print */
-            datatype = LY_TYPE_INST;
-            goto printvalue;
+        ly_ilo_restore(NULL, prev_ilo, NULL, 0);
+        if (type) {
+            for (tpdf = type->der;
+                tpdf->module && (strcmp(tpdf->name, "xpath1.0") || strcmp(tpdf->module->name, "ietf-yang-types"));
+                tpdf = tpdf->type.der);
+            /* special handling of ietf-yang-types xpath1.0 */
+            if (tpdf->module) {
+                /* avoid code duplication - use instance-identifier printer which gets necessary namespaces to print */
+                datatype = LY_TYPE_INST;
+                goto printvalue;
+            }
         }
         /* fallthrough */
     case LY_TYPE_BINARY:
     case LY_TYPE_BITS:
     case LY_TYPE_ENUM:
     case LY_TYPE_BOOL:
+    case LY_TYPE_UNION:
     case LY_TYPE_DEC64:
     case LY_TYPE_INT8:
     case LY_TYPE_INT16:
