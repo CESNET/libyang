@@ -110,7 +110,9 @@ extern "C" {
  * type (e.g. lys_node_leaf), caller is supposed to cast it to the base type
  * identical to the other parameters.
  *
- * Use with closing curly bracket '}' after the macro.
+ * Use with closing curly bracket '}' after the macro. Also, this macro requires
+ * compiler support of a C11 statement _Generic() and should be compiled with
+ * support for C11 standard.
  *
  * @param START Pointer to the starting element processed first.
  * @param NEXT Temporary storage, do not use.
@@ -120,18 +122,24 @@ extern "C" {
 
 #define LY_TREE_DFS_END(START, NEXT, ELEM)                                    \
     /* select element for the next run - children first */                    \
-    (NEXT) = (ELEM)->child;                                                   \
     if (typeid(*(ELEM)) == typeid(struct lyd_node)) {                         \
         /* child exception for leafs, leaflists and anyxml without children */\
         if (((struct lyd_node *)(ELEM))->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) { \
             (NEXT) = NULL;                                                    \
+        } else {                                                              \
+            (NEXT) = (ELEM)->child;                                           \
         }                                                                     \
     } else if (typeid(*(ELEM)) == typeid(struct lys_node)) {                  \
         /* child exception for leafs, leaflists and anyxml without children */\
         if (((struct lys_node *)(ELEM))->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) { \
             (NEXT) = NULL;                                                    \
+        } else {                                                              \
+            (NEXT) = (ELEM)->child;                                           \
         }                                                                     \
+    } else {                                                                  \
+        (NEXT) = (ELEM)->child;                                               \
     }                                                                         \
+                                                                              \
     if (!(NEXT)) {                                                            \
         /* no children */                                                     \
         if ((ELEM) == (START)) {                                              \
@@ -167,18 +175,24 @@ extern "C" {
 
 #define LY_TREE_DFS_END(START, NEXT, ELEM)                                    \
     /* select element for the next run - children first */                    \
-    (NEXT) = (ELEM)->child;                                                   \
     if (_Generic(*(ELEM), struct lyd_node: 1, default: 0)) {                  \
         /* child exception for leafs, leaflists and anyxml without children */\
         if (((struct lyd_node *)(ELEM))->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) { \
             (NEXT) = NULL;                                                    \
+        } else {                                                              \
+            (NEXT) = (ELEM)->child;                                           \
         }                                                                     \
     } else if (_Generic(*(ELEM), struct lys_node: 1, default: 0)) {           \
         /* child exception for leafs, leaflists and anyxml without children */\
         if (((struct lys_node *)(ELEM))->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) { \
             (NEXT) = NULL;                                                    \
+        } else {                                                              \
+            (NEXT) = (ELEM)->child;                                           \
         }                                                                     \
+    } else {                                                                  \
+        (NEXT) = (ELEM)->child;                                               \
     }                                                                         \
+                                                                              \
     if (!(NEXT)) {                                                            \
         /* no children */                                                     \
         if ((ELEM) == (START)) {                                              \
