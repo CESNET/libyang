@@ -286,6 +286,54 @@ test_tree_rfc_line_length(void **state)
     free(str);
 }
 
+static void
+test_parse_yin_with_unique(void **state)
+{
+    (void)state;
+    char *schema = NULL;
+    const struct lys_module *modyang = NULL, *modyang2 = NULL;
+    struct ly_ctx *ctx2 = NULL;
+    int ret = 0;
+
+    modyang = ly_ctx_load_module(ctx, "parse-yin-yang-with-unique", NULL);
+    assert_non_null(modyang);
+
+    ret = lys_print_mem(&schema, modyang, LYS_OUT_YIN, NULL, 0, 0);
+    assert_int_equal(ret, 0);
+    assert_non_null(schema);
+
+    ctx2 = ly_ctx_new(NULL, 0);
+    modyang2 = lys_parse_mem(ctx2, schema, LYS_IN_YIN);
+    assert_non_null(modyang2);
+    ly_ctx_destroy(ctx2, NULL);
+
+    free(schema);
+}
+
+static void
+test_parse_yang_with_unique(void **state)
+{
+    (void)state;
+    char *schema = NULL;
+    const struct lys_module *modyang = NULL, *modyang2 = NULL;
+    struct ly_ctx *ctx2 = NULL;
+    int ret = 0;
+
+    modyang = ly_ctx_load_module(ctx, "parse-yin-yang-with-unique", NULL);
+    assert_non_null(modyang);
+
+    ret = lys_print_mem(&schema, modyang, LYS_OUT_YANG, NULL, 0, 0);
+    assert_int_equal(ret, 0);
+    assert_non_null(schema);
+
+    ctx2 = ly_ctx_new(NULL, 0);
+    modyang2 = lys_parse_mem(ctx2, schema, LYS_IN_YANG);
+    assert_non_null(modyang2);
+    ly_ctx_destroy(ctx2, NULL);
+
+    free(schema);
+}
+
 int
 main(void)
 {
@@ -293,6 +341,8 @@ main(void)
         cmocka_unit_test_setup_teardown(test_tree_rfc, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_tree_rfc_subtree, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_tree_rfc_line_length, setup_ctx, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_parse_yin_with_unique, setup_ctx, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_parse_yang_with_unique, setup_ctx, teardown_ctx),
     };
 
     return cmocka_run_group_tests(cmut, NULL, NULL);
