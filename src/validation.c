@@ -811,7 +811,7 @@ autodelete:
                 }
                 lyd_free(iter);
             } else {
-                LOGVAL(schemanode->module->ctx, LYE_MCASEDATA, node ? LY_VLOG_LYD : LY_VLOG_NONE, node, schoice->name);
+                LOGVAL(schemanode->module->ctx, LYE_MCASEDATA, LY_VLOG_LYD, iter, schoice->name);
                 return 1;
             }
         }

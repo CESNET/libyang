@@ -3743,7 +3743,7 @@ resolve_schema_leafref_predicate(const char *path, const struct lys_node *contex
     do {
         if ((i = parse_path_predicate(path, &sour_pref, &sour_pref_len, &source, &sour_len, &path_key_expr,
                                       &pke_len, &has_predicate)) < 1) {
-            LOGVAL(ctx, LYE_INCHAR, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent, path[-i], path-i);
+            LOGVAL(ctx, LYE_INCHAR, LY_VLOG_LYS, parent, path[-i], path-i);
             return -parsed+i;
         }
         parsed += i;
@@ -3757,7 +3757,7 @@ resolve_schema_leafref_predicate(const char *path, const struct lys_node *contex
         }
         rc = lys_getnext_data(trg_mod, context_node, source, sour_len, LYS_LEAF | LYS_LEAFLIST, &src_node);
         if (rc) {
-            LOGVAL(ctx, LYE_NORESOLV, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent, "leafref predicate", path-parsed);
+            LOGVAL(ctx, LYE_NORESOLV, LY_VLOG_LYS, parent, "leafref predicate", path-parsed);
             return 0;
         }
 
@@ -3766,7 +3766,7 @@ resolve_schema_leafref_predicate(const char *path, const struct lys_node *contex
         pke_parsed = 0;
         if ((i = parse_path_key_expr(path_key_expr, &dest_pref, &dest_pref_len, &dest, &dest_len,
                                      &dest_parent_times)) < 1) {
-            LOGVAL(ctx, LYE_INCHAR, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent, path_key_expr[-i], path_key_expr-i);
+            LOGVAL(ctx, LYE_INCHAR, LY_VLOG_LYS, parent, path_key_expr[-i], path_key_expr-i);
             return -parsed;
         }
         pke_parsed += i;
@@ -3787,7 +3787,7 @@ resolve_schema_leafref_predicate(const char *path, const struct lys_node *contex
                  dst_node = lys_parent(dst_node));
 
             if (!dst_node) {
-                LOGVAL(ctx, LYE_NORESOLV, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent, "leafref predicate", path_key_expr);
+                LOGVAL(ctx, LYE_NORESOLV, LY_VLOG_LYS, parent, "leafref predicate", path_key_expr);
                 return 0;
             }
         }
@@ -3800,7 +3800,7 @@ resolve_schema_leafref_predicate(const char *path, const struct lys_node *contex
             }
             rc = lys_getnext_data(trg_mod, dst_node, dest, dest_len, LYS_CONTAINER | LYS_LIST | LYS_LEAF, &dst_node);
             if (rc) {
-                LOGVAL(ctx, LYE_NORESOLV, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent, "leafref predicate", path_key_expr);
+                LOGVAL(ctx, LYE_NORESOLV, LY_VLOG_LYS, parent, "leafref predicate", path_key_expr);
                 return 0;
             }
 
@@ -3817,7 +3817,7 @@ resolve_schema_leafref_predicate(const char *path, const struct lys_node *contex
 
             if ((i = parse_path_key_expr(path_key_expr + pke_parsed, &dest_pref, &dest_pref_len, &dest, &dest_len,
                                          &dest_parent_times)) < 1) {
-                LOGVAL(ctx, LYE_INCHAR, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent,
+                LOGVAL(ctx, LYE_INCHAR, LY_VLOG_LYS, parent,
                        (path_key_expr + pke_parsed)[-i], (path_key_expr + pke_parsed)-i);
                 return -parsed;
             }
@@ -3826,7 +3826,7 @@ resolve_schema_leafref_predicate(const char *path, const struct lys_node *contex
 
         /* check source - dest match */
         if (dst_node->nodetype != src_node->nodetype) {
-            LOGVAL(ctx, LYE_NORESOLV, parent ? LY_VLOG_LYS : LY_VLOG_NONE, parent, "leafref predicate", path - parsed);
+            LOGVAL(ctx, LYE_NORESOLV, LY_VLOG_LYS, parent, "leafref predicate", path - parsed);
             LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Destination node is not a %s, but a %s.",
                    strnodetype(src_node->nodetype), strnodetype(dst_node->nodetype));
             return -parsed;
@@ -7556,8 +7556,8 @@ resolve_instid(struct lyd_node *data, const char *path, int req_inst, struct lyd
             }
         } else if (!prev_mod) {
             /* first iteration and we are missing module name */
-            LOGVAL(ctx, LYE_INELEM_LEN, LY_VLOG_NONE, NULL, name_len, name);
-            LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Instane-identifier is missing prefix in the first node.");
+            LOGVAL(ctx, LYE_INELEM_LEN, LY_VLOG_LYD, data, name_len, name);
+            LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Instance-identifier is missing prefix in the first node.");
             goto error;
         } else {
             mod = prev_mod;
