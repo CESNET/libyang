@@ -822,7 +822,9 @@ struct lyd_node *lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, co
 unsigned int lyd_list_pos(const struct lyd_node *node);
 
 /**
- * @brief Create a copy of the specified data tree \p node. Schema references are kept the same.
+ * @brief Create a copy of the specified data tree \p node. Schema references are kept the same. Use carefully,
+ * since libyang silently creates default nodes, it is always better to use lyd_dup_withsiblings() to duplicate
+ * the complete data tree.
  *
  * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
@@ -831,6 +833,18 @@ unsigned int lyd_list_pos(const struct lyd_node *node);
  * @return Created copy of the provided data \p node.
  */
 struct lyd_node *lyd_dup(const struct lyd_node *node, int recursive);
+
+/**
+ * @brief Create a copy of the specified data tree and all its siblings (preceding as well as following).
+ * Schema references are kept the same.
+ *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
+ *
+ * @param[in] node Data tree sibling node to be duplicated.
+ * @param[in] recursive 1 if all children of all the siblings are supposed to be also duplicated.
+ * @return Created copy of the provided data \p node and all of its siblings.
+ */
+struct lyd_node *lyd_dup_withsiblings(const struct lyd_node *node, int recursive);
 
 /**
  * @brief Create a copy of the specified data tree \p node in the different context. All the

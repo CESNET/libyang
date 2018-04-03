@@ -4928,6 +4928,58 @@ lyd_dup(const struct lyd_node *node, int recursive)
     return lyd_dup_to_ctx(node, recursive, NULL);
 }
 
+API struct lyd_node *
+lyd_dup_withsiblings(const struct lyd_node *node, int recursive)
+{
+    const struct lyd_node *iter;
+    struct lyd_node *ret, *ret_iter, *tmp;
+
+    if (!node) {
+        return NULL;
+    }
+
+    ret = lyd_dup(node, recursive);
+    if (!ret) {
+        return NULL;
+    }
+
+    /* copy following siblings */
+    ret_iter = ret;
+    LY_TREE_FOR(node->next, iter) {
+        tmp = lyd_dup(iter, recursive);
+        if (!tmp) {
+            lyd_free_withsiblings(ret);
+            return NULL;
+        }
+
+        if (lyd_insert_after(ret_iter, tmp)) {
+            lyd_free_withsiblings(ret);
+            return NULL;
+        }
+        ret_iter = ret_iter->next;
+        assert(ret_iter == tmp);
+    }
+
+    /* copy preceding siblings */
+    ret_iter = ret;
+    for (iter = node->prev; iter->next; iter = iter->prev) {
+        tmp = lyd_dup(iter, recursive);
+        if (!tmp) {
+            lyd_free_withsiblings(ret);
+            return NULL;
+        }
+
+        if (lyd_insert_before(ret_iter, tmp)) {
+            lyd_free_withsiblings(ret);
+            return NULL;
+        }
+        ret_iter = ret_iter->prev;
+        assert(ret_iter == tmp);
+    }
+
+    return ret;
+}
+
 API void
 lyd_free_attr(struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_attr *attr, int recursive)
 {
