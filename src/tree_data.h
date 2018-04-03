@@ -794,8 +794,8 @@ struct lyd_node *lyd_new_yangdata(const struct lys_module *module, const char *n
  * If \p path points to a list key and the list does not exist, the key value from the predicate is used
  * and \p value is ignored.
  *
- * @param[in] data_tree Existing data tree to add to/modify. If creating RPCs/actions, there should only be one
- * RPC/action and either input or output, not both. Can be NULL.
+ * @param[in] data_tree Existing data tree to add to/modify (including siblings). If creating RPCs/actions, there
+ * should only be one RPC/action and either input or output, not both. Can be NULL.
  * @param[in] ctx Context to use. Mandatory if \p data_tree is NULL.
  * @param[in] path Simple data path (see @ref howtoxpath). List nodes can have predicates, one for each list key
  * in the correct order and with its value as well or using specific instance position, leaves and leaf-lists
