@@ -2608,6 +2608,11 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
 
                 /* leaf-list, did we find it with the correct value or not? */
                 if (sibling->schema->nodetype == LYS_LEAFLIST) {
+                    if (sibling->schema->flags & LYS_CONFIG_R) {
+                        /* state leaf-lists will never match */
+                        continue;
+                    }
+
                     llist = (struct lyd_node_leaf_list *)sibling;
 
                     last_has_pred = 0;
@@ -7983,7 +7988,7 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
     int rc, progress, ignore_fail;
     enum int_log_opts prev_ilo;
     struct ly_err_item *prev_eitem;
-    LY_ERR prev_ly_errno;
+    LY_ERR prev_ly_errno = 0;
     struct lyd_node *parent;
     struct lys_when *when;
 

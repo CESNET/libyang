@@ -82,6 +82,20 @@ struct lyd_node_pos {
  */
 #define LYTYPE_GRP 0x80
 
+#ifdef LY_ENABLED_CACHE
+
+/**
+ * @brief Minimum number of children for the parent to create a hash table for them.
+ */
+#   define LY_CACHE_HT_MIN_CHILDREN 4
+
+    int lyd_hash(struct lyd_node *node);
+
+    void lyd_insert_hash(struct lyd_node *node);
+
+    void lyd_unlink_hash(struct lyd_node *node, struct lyd_node *orig_parent);
+#endif
+
 /**
  * @brief Create submodule structure by reading data from memory.
  *
@@ -358,7 +372,9 @@ const struct lyd_node *lyd_attr_parent(const struct lyd_node *root, struct lyd_a
  * @brief Internal version of lyd_unlink().
  *
  * @param[in] node Node to unlink.
- * @param[in] permanent Whether the node is premanently unlinked or will be linked back.
+ * @param[in] permanent 0 - the node will be linked back,
+ *                      1 - the node is premanently unlinked,
+ *                      2 - the node is being freed.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on error.
  */

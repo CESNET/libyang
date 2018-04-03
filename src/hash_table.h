@@ -80,10 +80,11 @@ uint32_t dict_hash_multi(uint32_t hash, const char *key_part, size_t len);
  *
  * @param[in] val1_p Pointer to the first value.
  * @param[in] val2_p Pointer to the second value.
+ * @param[in] mod Whether the operation modifies the hash table (insert or remove) or not (find).
  * @param[in] cb_data User callback data.
  * @return 0 on non-equal, non-zero on equal.
  */
-typedef int (*values_equal_cb)(void *val1_p, void *val2_p, void *cb_data);
+typedef int (*values_equal_cb)(void *val1_p, void *val2_p, int mod, void *cb_data);
 
 /** when the table is at least this much percent full, it is enlarged (double the size) */
 #define LYHT_ENLARGE_PERCENTAGE 75

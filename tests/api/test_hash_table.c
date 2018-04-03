@@ -27,9 +27,10 @@
 static struct hash_table *ht;
 
 static int
-val_equal(void *val1, void *val2, void *cb_data)
+val_equal(void *val1, void *val2, int mod, void *cb_data)
 {
     int *v1, *v2;
+    (void)mod;
     (void)cb_data;
 
     v1 = (int *)val1;
@@ -228,6 +229,10 @@ test_collisions(void **state)
     assert_int_equal(rec->hits, 1);
     assert_int_equal(GET_REC_VAL(rec), 3);
     ++i;
+    for (; i < 6; ++i) {
+        rec = lyht_get_rec(ht->recs, ht->rec_size, i);
+        assert_int_equal(rec->hits, -1);
+    }
     for (; i < 8; ++i) {
         rec = lyht_get_rec(ht->recs, ht->rec_size, i);
         assert_int_equal(rec->hits, 0);
@@ -252,7 +257,15 @@ test_collisions(void **state)
     assert_int_equal(lyht_remove(ht, &i, 2), 0);
 
     /* check all records */
-    for (i = 0; i < 8; ++i) {
+    for (i = 0; i < 2; ++i) {
+        rec = lyht_get_rec(ht->recs, ht->rec_size, i);
+        assert_int_equal(rec->hits, 0);
+    }
+    for (; i < 6; ++i) {
+        rec = lyht_get_rec(ht->recs, ht->rec_size, i);
+        assert_int_equal(rec->hits, -1);
+    }
+    for (; i < 8; ++i) {
         rec = lyht_get_rec(ht->recs, ht->rec_size, i);
         assert_int_equal(rec->hits, 0);
     }
