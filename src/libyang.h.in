@@ -1413,7 +1413,7 @@ const struct lys_submodule *ly_ctx_get_submodule2(const struct lys_module *main_
  *
  * This function is meant as a utility function to ease getting a specific schema node
  * directly from context having \p data_path a const immutable string. Generally,
- * it is better to use lyd_find_path(), lys_find_path(), or ly_ctx_find_path(). Also,
+ * it is better to use lyd_find_path() or lys_find_path(). Also,
  * it is possible to transform data paths into schema paths using ly_path_data2schema().
  *
  * @param[in] ctx Context to work in. Must be set if \p start is NULL.
