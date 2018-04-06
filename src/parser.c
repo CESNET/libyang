@@ -1781,10 +1781,6 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                 value = lydict_insert(type->parent->module->ctx, *value_, 0);
                 /* erase error information */
                 ly_err_clean(ly_parser_data.ctx, 1);
-            } else if (value == *value_) {
-                /* we have actually created the same expression (prefixes are the same as the module names)
-                 * so we have just increased dictionary's refcount - fix it */
-                lydict_remove(type->parent->module->ctx, value);
             }
             /* turn logging back on */
             if (!hidden) {
