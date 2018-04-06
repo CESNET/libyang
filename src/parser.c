@@ -1755,6 +1755,10 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                     LOGVAL(LYE_INMETA, LY_VLOG_LYD, contextnode, "<none>", itemname, *value_);
                 }
                 goto cleanup;
+            } else if (value == *value_) {
+                /* we have actually created the same expression (prefixes are the same as the module names)
+                 * so we have just increased dictionary's refcount - fix it */
+                lydict_remove(type->parent->module->ctx, value);
             }
 
             /* the value has no prefix (default namespace), but the element's namespace has a prefix, find default namespace */
@@ -1777,6 +1781,10 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                 value = lydict_insert(type->parent->module->ctx, *value_, 0);
                 /* erase error information */
                 ly_err_clean(ly_parser_data.ctx, 1);
+            } else if (value == *value_) {
+                /* we have actually created the same expression (prefixes are the same as the module names)
+                 * so we have just increased dictionary's refcount - fix it */
+                lydict_remove(type->parent->module->ctx, value);
             }
             /* turn logging back on */
             if (!hidden) {
@@ -1830,6 +1838,10 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                     LOGVAL(LYE_INMETA, LY_VLOG_LYD, contextnode, "<none>", itemname, *value_);
                 }
                 goto cleanup;
+            } else if (value == *value_) {
+                /* we have actually created the same expression (prefixes are the same as the module names)
+                 * so we have just increased dictionary's refcount - fix it */
+                lydict_remove(type->parent->module->ctx, value);
             }
         } else if (dflt) {
             /* turn logging off */
