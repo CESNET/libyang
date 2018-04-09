@@ -1800,6 +1800,10 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                     LOGVAL(ctx, LYE_INMETA, LY_VLOG_LYD, contextnode, "<none>", itemname, *value_);
                 }
                 goto cleanup;
+            } else if (ly_strequal(value, *value_, 1)) {
+                /* we have actually created the same expression (prefixes are the same as the module names)
+                 * so we have just increased dictionary's refcount - fix it */
+                lydict_remove(ctx, value);
             }
         } else if (dflt) {
             /* turn logging off */
