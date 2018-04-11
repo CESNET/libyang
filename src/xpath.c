@@ -382,14 +382,6 @@ cast_string_recursive(struct lyd_node *node, struct lys_module *local_mod, int f
             value_str = "";
         }
 
-        /* make value canonical */
-        if (((struct lyd_node_leaf_list *)node)->value_type & LY_TYPE_IDENT) {
-            if (!strncmp(value_str, local_mod->name, strlen(local_mod->name))
-                    && (value_str[strlen(local_mod->name)] == ':')) {
-                value_str += strlen(local_mod->name) + 1;
-            }
-        }
-
         /* print indent */
         cast_string_realloc(indent * 2 + strlen(value_str) + 1, str, used, size);
         memset(*str + (*used - 1), ' ', indent * 2);
