@@ -34,7 +34,7 @@ module mod3 {
             base sub2;
         }
 
-        when "../test = 'j4'";
+        when "../test = 'abc:j4'";
     }
 
     identity i3 {
