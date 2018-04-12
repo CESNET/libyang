@@ -4192,7 +4192,7 @@ lys_disable_deviations(struct lys_module *module)
 
     if (module->deviated) {
         unres = calloc(1, sizeof *unres);
-        LY_CHECK_ERR_RETURN(!unres, LOGMEM(module->ctx), );
+        LY_CHECK_ERR_RETURN(!unres, LOGMEM, );
 
         i = module->ctx->models.used;
         while (i--) {
