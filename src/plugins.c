@@ -76,10 +76,12 @@ ly_clean_plugins(void)
     type_plugins = NULL;
     type_plugins_count = 0;
 
+#ifdef HAVE_DLCLOSE
     /* close the dl handlers */
     for (u = 0; u < dlhandlers.number; u++) {
         dlclose(dlhandlers.set.g[u]);
     }
+#endif
     free(dlhandlers.set.g);
     dlhandlers.set.g = NULL;
     dlhandlers.size = 0;
@@ -231,6 +233,7 @@ ly_load_plugins_dir(DIR *dir, const char *dir_path, int ext_or_type)
         /* and construct the filepath */
         asprintf(&str, "%s/%s", dir_path, file->d_name);
 
+#ifdef HAVE_DLCLOSE
         /* load the plugin - first, try if it is already loaded... */
         dlhandler = dlopen(str, RTLD_NOW | RTLD_NOLOAD);
         dlerror();    /* Clear any existing error */
@@ -243,6 +246,7 @@ ly_load_plugins_dir(DIR *dir, const char *dir_path, int ext_or_type)
             dlclose(dlhandler);
             continue;
         }
+#endif
 
         /* ... and if not, load it */
         dlhandler = dlopen(str, RTLD_NOW);
@@ -261,10 +265,14 @@ ly_load_plugins_dir(DIR *dir, const char *dir_path, int ext_or_type)
             ret = lytype_load_plugin(dlhandler, name);
         }
         if (ret == 1) {
+#ifdef HAVE_DLCLOSE
             dlclose(dlhandler);
+#endif
             continue;
         } else if (ret == -1) {
+#ifdef HAVE_DLCLOSE
             dlclose(dlhandler);
+#endif
             break;
         }
 
