@@ -1290,9 +1290,11 @@ yin_print_list(struct lyout *out, int level, const struct lys_node *node)
         yin_print_unsigned(out, level, LYEXT_SUBSTMT_MAX, 0, node->module, node->ext, node->ext_size, list->max);
     }
     if (list->flags & LYS_USERORDERED) {
+        yin_print_close_parent(out, &content);
         yin_print_substmt(out, level, LYEXT_SUBSTMT_ORDEREDBY, 0, "user",
                           node->module, node->ext, node->ext_size);
     } else if (lys_ext_iter(node->ext, node->ext_size, 0, LYEXT_SUBSTMT_ORDEREDBY) != -1) {
+        yin_print_close_parent(out, &content);
         yin_print_substmt(out, level, LYEXT_SUBSTMT_ORDEREDBY, 0, "system",
                           node->module, node->ext, node->ext_size);
     }
