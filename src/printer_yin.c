@@ -1290,9 +1290,11 @@ yin_print_list(struct lyout *out, int level, const struct lys_node *node)
         yin_print_unsigned(out, level, LYEXT_SUBSTMT_MAX, 0, node->module, node->ext, node->ext_size, list->max);
     }
     if (list->flags & LYS_USERORDERED) {
+        yin_print_close_parent(out, &content);
         yin_print_substmt(out, level, LYEXT_SUBSTMT_ORDEREDBY, 0, "user",
                           node->module, node->ext, node->ext_size);
     } else if (lys_ext_iter(node->ext, node->ext_size, 0, LYEXT_SUBSTMT_ORDEREDBY) != -1) {
+        yin_print_close_parent(out, &content);
         yin_print_substmt(out, level, LYEXT_SUBSTMT_ORDEREDBY, 0, "system",
                           node->module, node->ext, node->ext_size);
     }
@@ -1618,6 +1620,8 @@ yin_print_xmlns(struct lyout *out, const struct lys_module *module)
     ly_print(out, "%*sxmlns=\"%s\"", lvl, INDENT, LY_NSYIN);
     if (!module->type) {
         ly_print(out, "\n%*sxmlns:%s=\"%s\"", lvl, INDENT, module->prefix, module->ns);
+    } else {
+        ly_print(out, "\n%*sxmlns:%s=\"%s\"", lvl, INDENT, module->prefix, ((struct lys_submodule*)module)->belongsto->ns);
     }
     for (i = 0; i < module->imp_size; ++i) {
         ly_print(out, "\n%*sxmlns:%s=\"%s\"", lvl, INDENT, module->imp[i].prefix, module->imp[i].module->ns);
