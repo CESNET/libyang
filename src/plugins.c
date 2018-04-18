@@ -231,10 +231,14 @@ ly_load_plugins_dir(DIR *dir, const char *dir_path, int ext_or_type)
         /* and construct the filepath */
         asprintf(&str, "%s/%s", dir_path, file->d_name);
 
-        /* load the plugin - first, try if it is already loaded... */
-        dlhandler = dlopen(str, RTLD_NOW | RTLD_NOLOAD);
-        dlerror();    /* Clear any existing error */
-        if (dlhandler) {
+        /* load the plugin */
+        dlhandler = dlopen(str, RTLD_NOW);
+        if (!dlhandler) {
+            LOGERR(NULL, LY_ESYS, "Loading \"%s\" as a plugin failed (%s).", str, dlerror());
+            free(str);
+            continue;
+        }
+        if (ly_set_contains(&dlhandlers, dlhandler) != -1) {
             /* the plugin is already loaded */
             LOGVRB("Plugin \"%s\" already loaded.", str);
             free(str);
@@ -243,15 +247,6 @@ ly_load_plugins_dir(DIR *dir, const char *dir_path, int ext_or_type)
             dlclose(dlhandler);
             continue;
         }
-
-        /* ... and if not, load it */
-        dlhandler = dlopen(str, RTLD_NOW);
-        if (!dlhandler) {
-            LOGERR(NULL, LY_ESYS, "Loading \"%s\" as a plugin failed (%s).", str, dlerror());
-            free(str);
-            continue;
-        }
-        LOGVRB("Plugin \"%s\" successfully loaded.", str);
         free(str);
         dlerror();    /* Clear any existing error */
 
@@ -267,6 +262,7 @@ ly_load_plugins_dir(DIR *dir, const char *dir_path, int ext_or_type)
             dlclose(dlhandler);
             break;
         }
+        LOGVRB("Plugin \"%s\" successfully loaded.", str);
 
         /* keep the handler */
         ly_set_add(&dlhandlers, dlhandler, LY_SET_OPT_USEASLIST);
