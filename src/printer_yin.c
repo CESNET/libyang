@@ -1618,6 +1618,8 @@ yin_print_xmlns(struct lyout *out, const struct lys_module *module)
     ly_print(out, "%*sxmlns=\"%s\"", lvl, INDENT, LY_NSYIN);
     if (!module->type) {
         ly_print(out, "\n%*sxmlns:%s=\"%s\"", lvl, INDENT, module->prefix, module->ns);
+    } else {
+        ly_print(out, "\n%*sxmlns:%s=\"%s\"", lvl, INDENT, module->prefix, ((struct lys_submodule*)module)->belongsto->ns);
     }
     for (i = 0; i < module->imp_size; ++i) {
         ly_print(out, "\n%*sxmlns:%s=\"%s\"", lvl, INDENT, module->imp[i].prefix, module->imp[i].module->ns);
