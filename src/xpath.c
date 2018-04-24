@@ -7766,6 +7766,23 @@ eval_equality_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint16_t repeat, st
             set_snode_merge(set, &set2);
             set_snode_clear_ctx(set);
         } else {
+            /* special handling of evaluations of identityref comparisons, always compare prefixed identites */
+            if ((set->type == LYXP_SET_NODE_SET) && (set->val.nodes[0].node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))
+                    && (((struct lys_node_leaf *)set->val.nodes[0].node->schema)->type.base == LY_TYPE_IDENT)) {
+                /* left operand is identityref */
+                if ((set2.type == LYXP_SET_STRING) && !strchr(set2.val.str, ':')) {
+                    /* missing prefix in the right operand */
+                    set2.val.str = ly_realloc(set2.val.str, strlen(local_mod->name) + 1 + strlen(set2.val.str) + 1);
+                    if (!set2.val.str) {
+                        goto finish;
+                    }
+
+                    memmove(set2.val.str + strlen(local_mod->name) + 1, set2.val.str, strlen(set2.val.str) + 1);
+                    memcpy(set2.val.str, local_mod->name, strlen(local_mod->name));
+                    set2.val.str[strlen(local_mod->name)] = ':';
+                }
+            }
+
             if (moveto_op_comp(set, &set2, &exp->expr[exp->expr_pos[this_op]], cur_node, local_mod, options)) {
                 ret = -1;
                 goto finish;
