@@ -265,7 +265,10 @@ typedef enum {
                                   - Node is present in the first tree, but not in the second tree.
                                   - To make both trees the same the node in lyd_difflist::first can be deleted from the
                                     first tree. The pointer at the same index in the lyd_difflist::second array is
-                                    NULL */
+                                    NULL.
+                                  - If the deleted node has some children, these do not appear in the resulting diff
+                                    separately. In other words, a deleted node is considered deleted with all
+                                    its children. */
     LYD_DIFF_CHANGED,        /**< value of a leaf or anyxml is changed, the lyd_difflist::first and lyd_difflist::second
                                   points to the leaf/anyxml instances in the first and the second tree respectively. */
     LYD_DIFF_MOVEDAFTER1,    /**< user-ordered (leaf-)list item was moved.
@@ -280,7 +283,10 @@ typedef enum {
                                   - To make both trees the same the node in lyd_difflist::second is supposed to be
                                     inserted (copied via lyd_dup()) into the node (as a child) at the same index in the
                                     lyd_difflist::first array (where is its parent). If the lyd_difflist::first at the
-                                    index is NULL, the missing node is top-level. */
+                                    index is NULL, the missing node is top-level.
+                                  - If the created node has some children, these do not appear in the resulting diff
+                                    separately. In other words, a created node is considered created with all
+                                    its children. */
     LYD_DIFF_MOVEDAFTER2     /**< similar to LYD_DIFF_MOVEDAFTER1, but this time the moved item is in the second tree.
                                   This type is always used in combination with (as a successor of) #LYD_DIFF_CREATED
                                   as an instruction to move the newly created node to a specific position. Note, that
