@@ -1778,8 +1778,19 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
     id = path;
 
     if (data_tree) {
-        parent = resolve_partial_json_data_nodeid(id, value_type > LYD_ANYDATA_STRING ? NULL : value, data_tree,
-                                                  options, &parsed);
+        /* go through all the siblings and try to find the right parent, if exists,
+         * first go through all the next siblings keeping the original order, for positional predicates */
+        LY_TREE_FOR(data_tree, node) {
+            parent = resolve_partial_json_data_nodeid(id, value_type > LYD_ANYDATA_STRING ? NULL : value, node,
+                                                      options, &parsed);
+            if (parsed) {
+                break;
+            }
+        }
+        for (node = data_tree->prev; !parsed && node->next; node = node->prev) {
+            parent = resolve_partial_json_data_nodeid(id, value_type > LYD_ANYDATA_STRING ? NULL : value, node,
+                                                      options, &parsed);
+        }
         if (parsed == -1) {
             return NULL;
         }
@@ -1940,6 +1951,14 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
         case LYS_NOTIF:
         case LYS_RPC:
         case LYS_ACTION:
+            if (options & LYD_PATH_OPT_NOPARENT) {
+                /* these were supposed to exist */
+                str = strndup(path, (name + nam_len) - path);
+                LOGVAL(ctx, LYE_PATH_MISSPAR, LY_VLOG_STR, str);
+                free(str);
+                lyd_free(ret);
+                return NULL;
+            }
             node = _lyd_new(is_relative ? parent : NULL, schild, (options & LYD_PATH_OPT_DFLT) ? 1 : 0);
             break;
         case LYS_LEAF:
@@ -2042,12 +2061,6 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
         if (!id[0]) {
             /* we are done */
             return ret;
-        } else if (options & LYD_PATH_OPT_NOPARENT) {
-            /* we were supposed to be done */
-            str = strndup(path, (name + nam_len) - path);
-            LOGVAL(ctx, LYE_PATH_MISSPAR, LY_VLOG_STR, str);
-            free(str);
-            return NULL;
         }
 
         /* prepare for another iteration */
@@ -5378,6 +5391,58 @@ lyd_dup(const struct lyd_node *node, int recursive)
     return lyd_dup_to_ctx(node, recursive, NULL);
 }
 
+API struct lyd_node *
+lyd_dup_withsiblings(const struct lyd_node *node, int recursive)
+{
+    const struct lyd_node *iter;
+    struct lyd_node *ret, *ret_iter, *tmp;
+
+    if (!node) {
+        return NULL;
+    }
+
+    ret = lyd_dup(node, recursive);
+    if (!ret) {
+        return NULL;
+    }
+
+    /* copy following siblings */
+    ret_iter = ret;
+    LY_TREE_FOR(node->next, iter) {
+        tmp = lyd_dup(iter, recursive);
+        if (!tmp) {
+            lyd_free_withsiblings(ret);
+            return NULL;
+        }
+
+        if (lyd_insert_after(ret_iter, tmp)) {
+            lyd_free_withsiblings(ret);
+            return NULL;
+        }
+        ret_iter = ret_iter->next;
+        assert(ret_iter == tmp);
+    }
+
+    /* copy preceding siblings */
+    ret_iter = ret;
+    for (iter = node->prev; iter->next; iter = iter->prev) {
+        tmp = lyd_dup(iter, recursive);
+        if (!tmp) {
+            lyd_free_withsiblings(ret);
+            return NULL;
+        }
+
+        if (lyd_insert_before(ret_iter, tmp)) {
+            lyd_free_withsiblings(ret);
+            return NULL;
+        }
+        ret_iter = ret_iter->prev;
+        assert(ret_iter == tmp);
+    }
+
+    return ret;
+}
+
 API void
 lyd_free_attr(struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_attr *attr, int recursive)
 {
@@ -6108,6 +6173,7 @@ ly_set_merge(struct ly_set *trg, struct ly_set *src, int options)
     /* copy contents from src into trg */
     memcpy(trg->set.g + trg->number, src->set.g, src->number * sizeof *(src->set.g));
     ret = src->number;
+    trg->number += ret;
 
     /* cleanup */
     ly_set_free(src);

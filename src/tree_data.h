@@ -279,7 +279,10 @@ typedef enum {
                                   - Node is present in the first tree, but not in the second tree.
                                   - To make both trees the same the node in lyd_difflist::first can be deleted from the
                                     first tree. The pointer at the same index in the lyd_difflist::second array is
-                                    NULL */
+                                    NULL.
+                                  - If the deleted node has some children, these do not appear in the resulting diff
+                                    separately. In other words, a deleted node is considered deleted with all
+                                    its children. */
     LYD_DIFF_CHANGED,        /**< value of a leaf or anyxml is changed, the lyd_difflist::first and lyd_difflist::second
                                   points to the leaf/anyxml instances in the first and the second tree respectively. */
     LYD_DIFF_MOVEDAFTER1,    /**< user-ordered (leaf-)list item was moved.
@@ -294,7 +297,10 @@ typedef enum {
                                   - To make both trees the same the node in lyd_difflist::second is supposed to be
                                     inserted (copied via lyd_dup()) into the node (as a child) at the same index in the
                                     lyd_difflist::first array (where is its parent). If the lyd_difflist::first at the
-                                    index is NULL, the missing node is top-level. */
+                                    index is NULL, the missing node is top-level.
+                                  - If the created node has some children, these do not appear in the resulting diff
+                                    separately. In other words, a created node is considered created with all
+                                    its children. */
     LYD_DIFF_MOVEDAFTER2     /**< similar to LYD_DIFF_MOVEDAFTER1, but this time the moved item is in the second tree.
                                   This type is always used in combination with (as a successor of) #LYD_DIFF_CREATED
                                   as an instruction to move the newly created node to a specific position. Note, that
@@ -790,7 +796,7 @@ struct lyd_node *lyd_new_yangdata(const struct lys_module *module, const char *n
 #define LYD_PATH_OPT_UPDATE   0x01 /**< If the target node exists, is a leaf, and it is updated with a new value or its
                                         default flag is changed, it is returned. If the target node exists and is not
                                         a leaf or generally no change occurs in the \p data_tree, NULL is returned and no error set. */
-#define LYD_PATH_OPT_NOPARENT 0x02 /**< If any parents of the target node exist, return an error. */
+#define LYD_PATH_OPT_NOPARENT 0x02 /**< If any parents of the target node do not exist, return an error instead of implicitly creating them. */
 #define LYD_PATH_OPT_OUTPUT   0x04 /**< Changes the behavior to ignoring RPC/action input schema nodes and using only output ones. */
 #define LYD_PATH_OPT_DFLT     0x08 /**< The created node (nodes, if also creating the parents) is a default one. If working with data tree of type #LYD_OPT_DATA, #LYD_OPT_CONFIG, #LYD_OPT_RPC, #LYD_OPT_RPCREPLY, or #LYD_OPT_NOTIF, this flag is never needed and therefore should not be used. However, if the tree is #LYD_OPT_GET, #LYD_OPT_GETCONFIG, or #LYD_OPT_EDIT, the default nodes are not created during validation and using this flag one can set them (see @ref howtodatawd). */
 
@@ -808,8 +814,8 @@ struct lyd_node *lyd_new_yangdata(const struct lys_module *module, const char *n
  * If \p path points to a list key and the list does not exist, the key value from the predicate is used
  * and \p value is ignored.
  *
- * @param[in] data_tree Existing data tree to add to/modify. If creating RPCs/actions, there should only be one
- * RPC/action and either input or output, not both. Can be NULL.
+ * @param[in] data_tree Existing data tree to add to/modify (including siblings). If creating RPCs/actions, there
+ * should only be one RPC/action and either input or output, not both. Can be NULL.
  * @param[in] ctx Context to use. Mandatory if \p data_tree is NULL.
  * @param[in] path Simple data path (see @ref howtoxpath). List nodes can have predicates, one for each list key
  * in the correct order and with its value as well or using specific instance position, leaves and leaf-lists
@@ -836,7 +842,9 @@ struct lyd_node *lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, co
 unsigned int lyd_list_pos(const struct lyd_node *node);
 
 /**
- * @brief Create a copy of the specified data tree \p node. Schema references are kept the same.
+ * @brief Create a copy of the specified data tree \p node. Schema references are kept the same. Use carefully,
+ * since libyang silently creates default nodes, it is always better to use lyd_dup_withsiblings() to duplicate
+ * the complete data tree.
  *
  * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
@@ -845,6 +853,18 @@ unsigned int lyd_list_pos(const struct lyd_node *node);
  * @return Created copy of the provided data \p node.
  */
 struct lyd_node *lyd_dup(const struct lyd_node *node, int recursive);
+
+/**
+ * @brief Create a copy of the specified data tree and all its siblings (preceding as well as following).
+ * Schema references are kept the same.
+ *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
+ *
+ * @param[in] node Data tree sibling node to be duplicated.
+ * @param[in] recursive 1 if all children of all the siblings are supposed to be also duplicated.
+ * @return Created copy of the provided data \p node and all of its siblings.
+ */
+struct lyd_node *lyd_dup_withsiblings(const struct lyd_node *node, int recursive);
 
 /**
  * @brief Create a copy of the specified data tree \p node in the different context. All the

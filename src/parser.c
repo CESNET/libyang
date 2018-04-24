@@ -1800,6 +1800,10 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                     LOGVAL(ctx, LYE_INMETA, LY_VLOG_LYD, contextnode, "<none>", itemname, *value_);
                 }
                 goto cleanup;
+            } else if (ly_strequal(value, *value_, 1)) {
+                /* we have actually created the same expression (prefixes are the same as the module names)
+                 * so we have just increased dictionary's refcount - fix it */
+                lydict_remove(ctx, value);
             }
         } else if (dflt) {
             /* turn logging off */
@@ -2857,6 +2861,11 @@ lyp_check_circmod_add(struct lys_module *module)
 void
 lyp_check_circmod_pop(struct ly_ctx *ctx)
 {
+    if (!ctx->models.parsing_sub_modules_count) {
+        LOGINT(ctx);
+        return;
+    }
+
     /* update the list of currently being parsed modules */
     ctx->models.parsing_sub_modules_count--;
     if (!ctx->models.parsing_sub_modules_count) {

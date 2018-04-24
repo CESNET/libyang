@@ -2697,14 +2697,15 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
         lys_free(tmp_mod, NULL, 0, 0);
     }
 
-    unres_schema_free(NULL, &unres, 0);
     lyp_check_circmod_pop(ctx);
+    unres_schema_free(NULL, &unres, 0);
     LOGVRB("Module \"%s%s%s\" successfully parsed as %s.", module->name, (module->rev_size ? "@" : ""),
            (module->rev_size ? module->rev[0].date : ""), (module->implemented ? "implemented" : "imported"));
     return module;
 
 error:
     /* cleanup */
+    lyp_check_circmod_pop(ctx);
     unres_schema_free(module, &unres, 1);
     if (!module) {
         if (ly_vecode(ctx) != LYVE_SUBMODULE) {
@@ -2719,7 +2720,6 @@ error:
         LOGERR(ctx, ly_errno, "Module parsing failed.");
     }
 
-    lyp_check_circmod_pop(ctx);
     lys_sub_module_remove_devs_augs(module);
     lyp_del_includedup(module, 1);
     lys_free(module, NULL, 0, 1);
