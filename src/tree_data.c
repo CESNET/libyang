@@ -1462,6 +1462,14 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
         case LYS_NOTIF:
         case LYS_RPC:
         case LYS_ACTION:
+            if (options & LYD_PATH_OPT_NOPARENT) {
+                /* these were supposed to exist */
+                str = strndup(path, (name + nam_len) - path);
+                LOGVAL(ctx, LYE_PATH_MISSPAR, LY_VLOG_STR, str);
+                free(str);
+                lyd_free(ret);
+                return NULL;
+            }
             node = _lyd_new(is_relative ? parent : NULL, schild, (options & LYD_PATH_OPT_DFLT) ? 1 : 0);
             break;
         case LYS_LEAF:
@@ -1564,12 +1572,6 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
         if (!id[0]) {
             /* we are done */
             return ret;
-        } else if (options & LYD_PATH_OPT_NOPARENT) {
-            /* we were supposed to be done */
-            str = strndup(path, (name + nam_len) - path);
-            LOGVAL(ctx, LYE_PATH_MISSPAR, LY_VLOG_STR, str);
-            free(str);
-            return NULL;
         }
 
         /* prepare for another iteration */
