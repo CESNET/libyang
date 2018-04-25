@@ -61,7 +61,7 @@ lyd_hash_check(struct lyd_node *node)
             assert(node->ht && (node->ht->used == i));
             LY_TREE_FOR(node->child, iter) {
                 if ((iter->schema->nodetype != LYS_LIST) || lyd_list_has_keys(iter)) {
-                    assert(!lyht_find(node->ht, &iter, iter->hash));
+                    assert(!lyht_find(node->ht, &iter, iter->hash, NULL));
                 }
             }
         } else {

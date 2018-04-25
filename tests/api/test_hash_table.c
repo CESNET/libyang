@@ -84,9 +84,9 @@ test_simple(void **state)
 
     i = 2;
     assert_int_equal(lyht_insert(ht, &i, i), 0);
-    assert_int_equal(lyht_find(ht, &i, i), 0);
+    assert_int_equal(lyht_find(ht, &i, i, NULL), 0);
     assert_int_equal(lyht_remove(ht, &i, i), 0);
-    assert_int_equal(lyht_find(ht, &i, i), 1);
+    assert_int_equal(lyht_find(ht, &i, i, NULL), 1);
     assert_int_equal(lyht_remove(ht, &i, i), 1);
 }
 
@@ -105,26 +105,26 @@ test_half_full(void **state)
     l = 6;
     assert_int_equal(lyht_insert(ht, &l, l), 0);
 
-    assert_int_equal(lyht_find(ht, &i, i), 0);
-    assert_int_equal(lyht_find(ht, &j, j), 0);
-    assert_int_equal(lyht_find(ht, &k, k), 0);
-    assert_int_equal(lyht_find(ht, &l, l), 0);
+    assert_int_equal(lyht_find(ht, &i, i, NULL), 0);
+    assert_int_equal(lyht_find(ht, &j, j, NULL), 0);
+    assert_int_equal(lyht_find(ht, &k, k, NULL), 0);
+    assert_int_equal(lyht_find(ht, &l, l, NULL), 0);
 
     assert_int_equal(lyht_remove(ht, &j, j), 0);
     assert_int_equal(lyht_remove(ht, &k, k), 0);
 
-    assert_int_equal(lyht_find(ht, &i, i), 0);
-    assert_int_equal(lyht_find(ht, &j, j), 1);
-    assert_int_equal(lyht_find(ht, &k, k), 1);
-    assert_int_equal(lyht_find(ht, &l, l), 0);
+    assert_int_equal(lyht_find(ht, &i, i, NULL), 0);
+    assert_int_equal(lyht_find(ht, &j, j, NULL), 1);
+    assert_int_equal(lyht_find(ht, &k, k, NULL), 1);
+    assert_int_equal(lyht_find(ht, &l, l, NULL), 0);
 
     assert_int_equal(lyht_remove(ht, &i, i), 0);
     assert_int_equal(lyht_remove(ht, &l, l), 0);
 
-    assert_int_equal(lyht_find(ht, &i, i), 1);
-    assert_int_equal(lyht_find(ht, &j, j), 1);
-    assert_int_equal(lyht_find(ht, &k, k), 1);
-    assert_int_equal(lyht_find(ht, &l, l), 1);
+    assert_int_equal(lyht_find(ht, &i, i, NULL), 1);
+    assert_int_equal(lyht_find(ht, &j, j, NULL), 1);
+    assert_int_equal(lyht_find(ht, &k, k, NULL), 1);
+    assert_int_equal(lyht_find(ht, &l, l, NULL), 1);
 }
 
 static void
@@ -155,10 +155,10 @@ test_resize(void **state)
     }
 
     for (i = 0; i < 2; ++i) {
-        assert_int_equal(lyht_find(ht, &i, i), 1);
+        assert_int_equal(lyht_find(ht, &i, i, NULL), 1);
     }
     for (; i < 8; ++i) {
-        assert_int_equal(lyht_find(ht, &i, i), 0);
+        assert_int_equal(lyht_find(ht, &i, i, NULL), 0);
     }
 
     for (i = 0; i < 2; ++i) {
@@ -171,7 +171,7 @@ test_resize(void **state)
     assert_int_equal(ht->size, 8);
 
     for (i = 0; i < 8; ++i) {
-        assert_int_equal(lyht_find(ht, &i, i), 1);
+        assert_int_equal(lyht_find(ht, &i, i, NULL), 1);
     }
 }
 
@@ -239,16 +239,16 @@ test_collisions(void **state)
     }
 
     for (i = 0; i < 3; ++i) {
-        assert_int_equal(lyht_find(ht, &i, 2), 1);
+        assert_int_equal(lyht_find(ht, &i, 2, NULL), 1);
     }
-    assert_int_equal(lyht_find(ht, &i, 2), 0);
+    assert_int_equal(lyht_find(ht, &i, 2, NULL), 0);
     ++i;
-    assert_int_equal(lyht_find(ht, &i, 2), 1);
+    assert_int_equal(lyht_find(ht, &i, 2, NULL), 1);
     ++i;
-    assert_int_equal(lyht_find(ht, &i, 2), 0);
+    assert_int_equal(lyht_find(ht, &i, 2, NULL), 0);
     ++i;
     for (; i < 8; ++i) {
-        assert_int_equal(lyht_find(ht, &i, 2), 1);
+        assert_int_equal(lyht_find(ht, &i, 2, NULL), 1);
     }
 
     i = 3;

@@ -3148,9 +3148,7 @@ diff_ordset_free(struct ly_set *set)
  *  1 - first and second not the same
  */
 static int
-lyd_diff_compare(struct lyd_node *first, struct lyd_node *second,
-                 struct lyd_difflist *diff, unsigned int *size, unsigned int *i, struct ly_set *matchset,
-                 struct ly_set *ordset, int options)
+lyd_diff_compare(struct lyd_node *first, struct lyd_node *second, int options)
 {
     int rc;
 
@@ -3160,9 +3158,7 @@ lyd_diff_compare(struct lyd_node *first, struct lyd_node *second,
         return 1;
     }
 
-    switch (first->schema->nodetype) {
-    case LYS_LEAFLIST:
-    case LYS_LIST:
+    if (first->schema->nodetype & (LYS_LEAFLIST | LYS_LIST)) {
         if (first->validity & LYD_VAL_INUSE) {
             /* this node was already matched, it cannot be matched twice (except for state leaf-/lists,
              * which we want to keep the count on this way) */
@@ -3175,8 +3171,24 @@ lyd_diff_compare(struct lyd_node *first, struct lyd_node *second,
         } else if (!rc) {
             /* list instances differs */
             return 1;
-        } /* matches */
+        }
+        /* matches */
+    }
 
+    return 0;
+}
+
+/*
+ * -1 - error
+ *  0 - ok
+ */
+static int
+lyd_diff_match(struct lyd_node *first, struct lyd_node *second, struct lyd_difflist *diff, unsigned int *size,
+               unsigned int *i, struct ly_set *matchset, struct ly_set *ordset, int options)
+{
+    switch (first->schema->nodetype) {
+    case LYS_LEAFLIST:
+    case LYS_LIST:
         /* additional work for future move matching in case of user ordered lists */
         if (first->schema->flags & LYS_USERORDERED) {
             diff_ordset_insert(first, ordset);
@@ -3363,6 +3375,9 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
     struct ly_ctx *ctx;
     int rc;
     struct lyd_node *elem1, *elem2, *iter, *aux, *parent = NULL, *next1, *next2;
+#ifdef LY_ENABLED_CACHE
+    struct lyd_node **iter_p;
+#endif
     struct lyd_difflist *result, *result2 = NULL;
     void *new;
     unsigned int size, size2, index = 0, index2 = 0, i, j, k;
@@ -3486,20 +3501,49 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
             goto cmp_continue;
         }
 
-        /* search for elem2 instance in the first */
-        LY_TREE_FOR(elem1, iter) {
-            if (iter->schema != elem2->schema) {
-                continue;
+#ifdef LY_ENABLED_CACHE
+        if (elem1 && elem1->parent && elem1->parent->ht) {
+            iter = NULL;
+            if (!lyht_find(elem1->parent->ht, &elem2, elem2->hash, (void **)&iter_p)) {
+                iter = *iter_p;
+                /* we found a match */
+                if (iter->dflt && !(options & LYD_DIFFOPT_WITHDEFAULTS)) {
+                    /* the second one cannot be default (see lyd_diff()),
+                     * so the nodes differs (first one is default node) */
+                    iter = NULL;
+                }
+                while (iter && (iter->validity & LYD_VAL_INUSE)) {
+                    /* state lists, find one not-already-found */
+                    assert((iter->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) && (iter->schema->flags & LYS_CONFIG_R));
+                    if (lyht_find_next(elem1->parent->ht, &iter, iter->hash, (void **)&iter_p)) {
+                        iter = NULL;
+                    } else {
+                        iter = *iter_p;
+                    }
+                }
             }
+        } else
+#endif
+        {
+            /* search for elem2 instance in the first */
+            LY_TREE_FOR(elem1, iter) {
+                if (iter->schema != elem2->schema) {
+                    continue;
+                }
 
-            /* elem2 instance found */
-            rc = lyd_diff_compare(iter, elem2, result, &size, &index, matchlist->match, ordset, options);
-            if (rc == -1) {
-                goto error;
-            } else if (rc == 0) {
-                /* match */
-                break;
-            } /* else, continue */
+                /* elem2 instance found */
+                rc = lyd_diff_compare(iter, elem2, options);
+                if (rc == -1) {
+                    goto error;
+                } else if (rc == 0) {
+                    /* match */
+                    break;
+                } /* else, continue */
+            }
+        }
+        /* we have a match */
+        if (iter && lyd_diff_match(iter, elem2, result, &size, &index, matchlist->match, ordset, options)) {
+            goto error;
         }
 
         if (!iter) {
@@ -3565,7 +3609,7 @@ cmp_continue:
             }
 
             /* and then find the first child */
-            for (iter = elem2; iter; iter = iter->next) {
+            LY_TREE_FOR(elem2, iter) {
                 if (!(iter->validity & LYD_VAL_INUSE)) {
                     /* the iter is not present in both trees */
                     continue;
@@ -3645,7 +3689,7 @@ cmp_continue:
 
             /* try to go to a cousin - child of the next parent's sibling */
             mlaux = matchlist->prev;
-            for (iter = elem2->parent->next; iter; iter = iter->next) {
+            LY_TREE_FOR(elem2->parent->next, iter) {
                 if (!(iter->validity & LYD_VAL_INUSE)) {
                     continue;
                 } else if (mlaux->i == mlaux->match->number) {
