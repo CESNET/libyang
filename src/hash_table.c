@@ -599,7 +599,7 @@ lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash)
 
     if (crec) {
         /* there was a collision, increase hits */
-        if (crec->hits == UINT8_MAX) {
+        if (crec->hits == INT32_MAX) {
             LOGINT(NULL);
         }
         ++crec->hits;
