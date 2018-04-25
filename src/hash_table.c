@@ -464,7 +464,7 @@ lyht_find_collision(struct hash_table *ht, struct ht_rec **last)
 }
 
 int
-lyht_find(struct hash_table *ht, void *val_p, uint32_t hash)
+lyht_find(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p)
 {
     struct ht_rec *rec;
     uint32_t i, c;
@@ -476,6 +476,9 @@ lyht_find(struct hash_table *ht, void *val_p, uint32_t hash)
     }
     if (ht->val_equal(val_p, &rec->val, 0, ht->cb_data)) {
         /* even the value matches */
+        if (match_p) {
+            *match_p = rec->val;
+        }
         return 0;
     }
 
@@ -488,11 +491,72 @@ lyht_find(struct hash_table *ht, void *val_p, uint32_t hash)
 
         /* compare values */
         if (ht->val_equal(val_p, &rec->val, 0, ht->cb_data)) {
+            if (match_p) {
+                *match_p = rec->val;
+            }
             return 0;
         }
     }
 
     /* not found even in collisions */
+    return 1;
+}
+
+int
+lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p)
+{
+    struct ht_rec *rec;
+    uint32_t i, c;
+    int r, found = 0;
+
+    if (lyht_find_first(ht, hash, &rec)) {
+        /* not found, cannot happen */
+        assert(0);
+    }
+
+    if (!memcmp(&rec->val, val_p, ht->rec_size - (sizeof(struct ht_rec) - 1))) {
+        /* previously returned value */
+        found = 1;
+    }
+
+    if (rec->hits == 1) {
+        /* there are no more similar values */
+        assert(rec->hash == hash);
+        assert(found);
+        return 1;
+    }
+
+    /* go through collisions and find next one after the previous one */
+    c = rec->hits;
+    for (i = 1; i < c; ++i) {
+        r = lyht_find_collision(ht, &rec);
+        assert(!r);
+        (void)r;
+
+        if (rec->hash != hash) {
+            /* a normal collision, we are not interested in those */
+            continue;
+        }
+
+        if (found) {
+            /* next value with equal hash, found our value */
+            if (match_p) {
+                *match_p = rec->val;
+            }
+            return 0;
+        }
+
+        if (memcmp(&rec->val, val_p, ht->rec_size - (sizeof(struct ht_rec) - 1))) {
+            /* already returned value, skip */
+            continue;
+        }
+
+        /* this one was returned previously, continue looking */
+        found = 1;
+    }
+
+    /* the last equal value was already returned */
+    assert(found);
     return 1;
 }
 

@@ -153,9 +153,21 @@ void lyht_free(struct hash_table *ht);
  * @param[in] ht Hash table to search in.
  * @param[in] val_p Pointer to the value to find.
  * @param[in] hash Hash of the stored value.
+ * @param[out] match_p pointer to the matching value, optional.
  * @return 0 on success, 1 on not found.
  */
-int lyht_find(struct hash_table *ht, void *val_p, uint32_t hash);
+int lyht_find(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p);
+
+/**
+ * @brief Find another equal value in the hash table.
+ *
+ * @param[in] ht Hash table to search in.
+ * @param[in] val_p Pointer to the previously found value in \p ht.
+ * @param[in] hash Hash of the previously found value.
+ * @param[out] match_p pointer to the matching value, optional.
+ * @return 0 on success, 1 on not found.
+ */
+int lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p);
 
 /**
  * @brief Insert a value into a hash table.
