@@ -247,7 +247,6 @@ ly_load_plugins_dir(DIR *dir, const char *dir_path, int ext_or_type)
             dlclose(dlhandler);
             continue;
         }
-        free(str);
         dlerror();    /* Clear any existing error */
 
         if (ext_or_type) {
@@ -256,13 +255,16 @@ ly_load_plugins_dir(DIR *dir, const char *dir_path, int ext_or_type)
             ret = lytype_load_plugin(dlhandler, name);
         }
         if (ret == 1) {
+            free(str);
             dlclose(dlhandler);
             continue;
         } else if (ret == -1) {
+            free(str);
             dlclose(dlhandler);
             break;
         }
         LOGVRB("Plugin \"%s\" successfully loaded.", str);
+        free(str);
 
         /* keep the handler */
         ly_set_add(&dlhandlers, dlhandler, LY_SET_OPT_USEASLIST);
