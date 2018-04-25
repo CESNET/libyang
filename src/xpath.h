@@ -183,12 +183,12 @@ enum lyxp_set_type {
 struct lyxp_set {
     enum lyxp_set_type type;
     union {
-        struct lyxp_set_nodes {
+        struct lyxp_set_node {
             struct lyd_node *node;
             enum lyxp_node_type type;
             uint32_t pos;
         } *nodes;
-        struct lyxp_set_snodes {
+        struct lyxp_set_snode {
             struct lys_node *snode;
             enum lyxp_node_type type;
             /* 0 - snode was traversed, but not currently in the context,
@@ -197,7 +197,7 @@ struct lyxp_set {
              * >=3 - snode is not in context because we are in a predicate and this snode was used/will be used later */
             uint32_t in_ctx;
         } *snodes;
-        struct lyxp_set_attrs {
+        struct lyxp_set_attr {
             struct lyd_attr *attr;
             enum lyxp_node_type type;
             uint32_t pos; /* if node_type is LYXP_SET_NODE_ATTR, it is the parent node position */

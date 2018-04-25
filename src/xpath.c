@@ -192,8 +192,8 @@ print_set_debug(struct lyxp_set *set)
 {
     uint32_t i;
     char *str_num;
-    struct lyxp_set_nodes *item;
-    struct lyxp_set_snodes *sitem;
+    struct lyxp_set_node *item;
+    struct lyxp_set_snode *sitem;
 
     if (ly_log_level < LY_LLDBG) {
         return;
@@ -1151,7 +1151,7 @@ get_attr_pos(struct lyd_attr *attr, const struct lyd_node *parent)
  * @return If 1st > 2nd returns 1, 1st == 2nd returns 0, and 1st < 2nd returns -1.
  */
 static int
-set_sort_compare(struct lyxp_set_nodes *item1, struct lyxp_set_nodes *item2,
+set_sort_compare(struct lyxp_set_node *item1, struct lyxp_set_node *item2,
                  const struct lyd_node *root)
 {
     const struct lyd_node *tmp_node;
@@ -1245,7 +1245,7 @@ set_sort(struct lyxp_set *set, const struct lyd_node *cur_node, int options)
     int ret = 0, cmp, inverted, change;
     const struct lyd_node *root;
     enum lyxp_node_type root_type;
-    struct lyxp_set_nodes item;
+    struct lyxp_set_node item;
 
     if ((set->type != LYXP_SET_NODE_SET) || (set->used == 1)) {
         return 0;
@@ -3659,7 +3659,7 @@ static int
 xpath_local_name(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lys_module *local_mod,
                  struct lyxp_set *set, int options)
 {
-    struct lyxp_set_nodes *item;
+    struct lyxp_set_node *item;
 
     if (options & LYXP_SNODE_ALL) {
         set_snode_clear_ctx(set);
@@ -3763,7 +3763,7 @@ static int
 xpath_namespace_uri(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_node, struct lys_module *local_mod,
                     struct lyxp_set *set, int options)
 {
-    struct lyxp_set_nodes *item;
+    struct lyxp_set_node *item;
     struct lys_module *module;
 
     if (options & LYXP_SNODE_ALL) {
