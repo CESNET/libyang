@@ -100,7 +100,7 @@ Deleter::~Deleter() {
         v.ctx = nullptr;
         break;
     case Free_Type::DATA_NODE:
-        if (v.data) lyd_free(v.data);
+        if (v.data) lyd_free_withsiblings(v.data);
         v.data = nullptr;
         break;
     case Free_Type::SCHEMA_NODE:

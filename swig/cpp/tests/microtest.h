@@ -44,7 +44,7 @@
   }
 
 #define ASSERT_STRNEQ(a, b)\
-  if (std::string(a).compare(std::string(b)) !== 0) {\
+  if (std::string(a).compare(std::string(b)) == 0) {\
     printf("%s{    info} %s", mt::yellow(), mt::def());\
     std::cout << "Actual values: " << a << " == " << b << std::endl;\
     throw mt::AssertFailedException(#a " != " #b, __FILE__, __LINE__);\

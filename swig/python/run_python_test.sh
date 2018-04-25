@@ -25,6 +25,5 @@ TEST_FILE="$4"
 export PATH=$PTH:$PATH
 export PYTHONPATH="$2"
 export LIBYANG_EXTENSIONS_PLUGINS_DIR="$5/src/extensions"
-export MALLOC_CHECK_=3
 
 $PYTHON_EXE $TEST_FILE

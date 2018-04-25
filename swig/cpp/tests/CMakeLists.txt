@@ -1,7 +1,9 @@
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
 set(CPP_TEST_SRC
-  test_libyang)
+  test_libyang
+  test_tree_data
+  test_tree_schema)
 
 macro(ADD_CPP_TEST TEST)
   set(test_name cpp_${TEST})
