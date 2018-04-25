@@ -5929,7 +5929,7 @@ lyd_find_path(const struct lyd_node *ctx_node, const char *path)
     char *yang_xpath;
     const char * node_mod_name, *mod_name, *name;
     int mod_name_len, name_len, is_relative = -1;
-    uint16_t i;
+    uint32_t i;
 
     if (!ctx_node || !path) {
         LOGARG;
