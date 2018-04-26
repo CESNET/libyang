@@ -436,6 +436,8 @@ int lyd_build_relative_data_path(const struct lys_module *module, const struct l
 
 void lyd_free_value(lyd_val value, LY_DATA_TYPE value_type, uint8_t value_flags, struct lys_type *type);
 
+int lyd_list_equal(struct lyd_node *node1, struct lyd_node *node2, int with_defaults);
+
 /**
  * @brief Check for (validate) mandatory nodes of a data tree. Checks recursively whole data tree. Requires all when
  * statement to be solved.

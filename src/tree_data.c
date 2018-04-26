@@ -125,7 +125,7 @@ lyd_leaf_val_equal(struct lyd_node *node1, struct lyd_node *node2, int diff_ctx)
  * 0 - treat default nodes are normal nodes
  * 1 - only change is that if 2 nodes have the same value, but one is default, the other not, they are considered non-equal
  */
-static int
+int
 lyd_list_equal(struct lyd_node *node1, struct lyd_node *node2, int with_defaults)
 {
     int i, diff_ctx;

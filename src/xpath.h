@@ -177,6 +177,18 @@ enum lyxp_set_type {
     LYXP_SET_STRING
 };
 
+#ifdef LY_ENABLED_CACHE
+
+/**
+ * @brief Item stored in an XPath set hash table.
+ */
+struct lyxp_set_hash_node {
+    struct lyd_node *node;
+    enum lyxp_node_type type;
+};
+
+#endif
+
 /**
  * @brief XPath set - (partial) result.
  */
@@ -210,6 +222,9 @@ struct lyxp_set {
     /* this is valid only for type LYXP_SET_NODE_SET and LYXP_SET_SNODE_SET */
     uint32_t used;
     uint32_t size;
+#ifdef LY_ENABLED_CACHE
+    struct hash_table *ht;
+#endif
     /* this is valid only for type LYXP_SET_NODE_SET */
     uint32_t ctx_pos;
     uint32_t ctx_size;
