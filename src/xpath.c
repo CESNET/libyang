@@ -6772,7 +6772,7 @@ only_parse:
         orig_size = set->used;
         orig_parent = NULL;
         for (i = 0; i < set->used; ) {
-            set2.type = LYXP_SET_EMPTY;
+            memset(&set2, 0, sizeof set2);
             set_insert_node(&set2, set->val.nodes[i].node, set->val.nodes[i].pos, set->val.nodes[i].type, 0);
             /* remember the node context position for position() and context size for last(),
              * predicates should always be evaluated with respect to the child axis (since we do
