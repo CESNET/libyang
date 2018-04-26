@@ -245,8 +245,6 @@ class TestUM(unittest.TestCase):
             self.assertIsNotNone(root)
 
             # Tests
-            new_node = ly.Data_Node(root, root.child().schema().module(), "bar-y")
-            self.assertIsNotNone(new_node)
             new_node = ly.Data_Node(root, root.schema().module(), "number32", "100")
             self.assertIsNotNone(new_node)
             dup_node = new_node.dup(0)
@@ -421,6 +419,7 @@ class TestUM(unittest.TestCase):
             self.assertIsNotNone(node)
             rc = root.insert_after(node)
             self.assertEqual(0, rc)
+            node = root.next()
 
             node2 = ly.Data_Node(node, mod, "bubba", "a")
             self.assertIsNotNone(node2)
