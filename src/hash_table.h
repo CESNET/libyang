@@ -66,7 +66,7 @@ void lydict_init(struct dict_table *dict);
 void lydict_clean(struct dict_table *dict);
 
 /**
- * @brief compute hash from (several) string(s)
+ * @brief Compute hash from (several) string(s).
  *
  * Usage:
  * - init hash to 0
@@ -141,6 +141,14 @@ struct hash_table {
 struct hash_table *lyht_new(uint32_t size, uint16_t val_size, values_equal_cb val_equal, void *cb_data, int resize);
 
 /**
+ * @brief Make a duplicate of an existing hash table.
+ *
+ * @param[in] orig Original hash table to duplicate.
+ * @return Duplicated hash table \p orig, NULL on error.
+ */
+struct hash_table *lyht_dup(const struct hash_table *orig);
+
+/**
  * @brief Free a hash table.
  *
  * @param[in] ht Hash table to be freed.
@@ -182,14 +190,6 @@ int lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash);
 
 /**
  * @brief Remove a value from a hash table.
- *
- * This operation can be costly under specific circumstances. On every removal,
- * it is checked whether the record must only be marked deleted or can be safely
- * emptied (marked records do not hold values but slow down all operations).
- * If it is emptied, all the previous records are checked whether are not
- * just marked, in which case they could be emptied, too. In the extreme case
- * when the removed record was preventing all the other records from being emptied
- * this removal will traverse ALL the records in O(n).
  *
  * @param[in] ht Hash table to remove from.
  * @param[in] value_p Pointer to value to be removed. Be careful, if the values stored in the hash table

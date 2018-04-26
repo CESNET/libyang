@@ -344,6 +344,25 @@ lyht_new(uint32_t size, uint16_t val_size, values_equal_cb val_equal, void *cb_d
     return ht;
 }
 
+struct hash_table *
+lyht_dup(const struct hash_table *orig)
+{
+    struct hash_table *ht;
+
+    if (!orig) {
+        return NULL;
+    }
+
+    ht = lyht_new(orig->size, orig->rec_size - (sizeof(struct ht_rec) - 1), orig->val_equal, orig->cb_data, orig->resize ? 1 : 0);
+    if (!ht) {
+        return NULL;
+    }
+
+    memcpy(ht->recs, orig->recs, orig->used * orig->rec_size);
+    ht->used = orig->used;
+    return ht;
+}
+
 void
 lyht_free(struct hash_table *ht)
 {
