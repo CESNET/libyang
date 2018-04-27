@@ -4734,10 +4734,12 @@ API struct lyd_node *
 lyd_dup_to_ctx(const struct lyd_node *node, int recursive, struct ly_ctx *ctx)
 {
     struct ly_ctx *log_ctx;
+    struct lys_node_leaf *sleaf;
     const struct lyd_node *next, *elem;
     struct lyd_node *ret, *parent, *new_node = NULL;
     struct lyd_node_leaf_list *new_leaf;
     struct lyd_node_anydata *new_any, *old_any;
+    int r;
 
     if (!node) {
         LOGARG;
@@ -4777,6 +4779,9 @@ lyd_dup_to_ctx(const struct lyd_node *node, int recursive, struct ly_ctx *ctx)
                 goto error;
             }
 
+            /* get schema from the correct context */
+            sleaf = (struct lys_node_leaf *)new_leaf->schema;
+
             switch (new_leaf->value_type) {
             case LY_TYPE_BINARY:
             case LY_TYPE_STRING:
@@ -4807,14 +4812,22 @@ lyd_dup_to_ctx(const struct lyd_node *node, int recursive, struct ly_ctx *ctx)
                 /* in case of duplicating bits (no matter if in the same context or not) or enum and identityref into
                  * a different context, searching for the type and duplicating the data is almost as same as resolving
                  * the string value, so due to a simplicity, parse the value for the duplicated leaf */
-                if (!lyp_parse_value(&((struct lys_node_leaf *)new_leaf->schema)->type, &new_leaf->value_str, NULL,
-                                     new_leaf, NULL, NULL, 1, node->dflt)) {
+                if (!lyp_parse_value(&sleaf->type, &new_leaf->value_str, NULL, new_leaf, NULL, NULL, 1, node->dflt)) {
                     goto error;
                 }
                 break;
             default:
                 new_leaf->value = ((struct lyd_node_leaf_list *)elem)->value;
                 break;
+            }
+
+            if (sleaf->type.der && sleaf->type.der->module) {
+                r = lytype_store(sleaf->type.der->module, sleaf->type.der->name, new_leaf->value_str, &new_leaf->value);
+                if (r == -1) {
+                    goto error;
+                } else if (!r) {
+                    new_leaf->value_flags |= LYTYPE_USER;
+                }
             }
             break;
         case LYS_ANYXML:
