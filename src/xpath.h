@@ -185,7 +185,7 @@ enum lyxp_set_type {
 struct lyxp_set_hash_node {
     struct lyd_node *node;
     enum lyxp_node_type type;
-};
+} _PACKED;
 
 #endif
 
