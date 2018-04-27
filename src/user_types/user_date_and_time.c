@@ -117,6 +117,7 @@ date_and_time_store_clb(const char *UNUSED(type_name), const char *value_str, ly
 
     /* month */
     tm.tm_mon = atoi(value_str + i);
+    tm.tm_mon -= 1;
     for (j = i + 2; i < j; ++i) {
         if (!isdigit(value_str[i])) {
             asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", a digit expected.", value_str[i], i, value_str);
@@ -203,7 +204,7 @@ date_and_time_store_clb(const char *UNUSED(type_name), const char *value_str, ly
     /* detect changes in the filled values */
     if (memcmp(&tm, &tm2, 6 * sizeof(int))) {
         asprintf(err_msg, "Checking date-and-time value \"%s\" failed, canonical date and time is \"%04d-%02d-%02dT%02d:%02d:%02d\".",
-                 value_str, tm.tm_year + 1900, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+                 value_str, tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
         return 1;
     }
 
