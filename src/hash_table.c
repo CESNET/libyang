@@ -533,7 +533,7 @@ lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p
         assert(0);
     }
 
-    if (!memcmp(&rec->val, val_p, ht->rec_size - (sizeof(struct ht_rec) - 1))) {
+    if (ht->val_equal(val_p, &rec->val, 1, ht->cb_data)) {
         /* previously returned value */
         found = 1;
     }
@@ -565,7 +565,7 @@ lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p
             return 0;
         }
 
-        if (memcmp(&rec->val, val_p, ht->rec_size - (sizeof(struct ht_rec) - 1))) {
+        if (!ht->val_equal(val_p, &rec->val, 1, ht->cb_data)) {
             /* already returned value, skip */
             continue;
         }
