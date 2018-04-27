@@ -583,7 +583,7 @@ set_insert_node_hash(struct lyxp_set *set, struct lyd_node *node, enum lyxp_node
     uint32_t i, hash;
     struct lyxp_set_hash_node hnode;
 
-    if (!set->ht && (set->used == LY_CACHE_HT_MIN_CHILDREN)) {
+    if (!set->ht && (set->used >= LY_CACHE_HT_MIN_CHILDREN)) {
         /* create hash table and add all the nodes */
         set->ht = lyht_new(1, sizeof(struct lyxp_set_hash_node), set_values_equal_cb, NULL, 1);
         for (i = 0; i < set->used; ++i) {
@@ -599,6 +599,8 @@ set_insert_node_hash(struct lyxp_set *set, struct lyd_node *node, enum lyxp_node
             (void)r;
         }
     } else if (set->ht) {
+        assert(node);
+
         /* add the new node into hash table */
         hnode.node = node;
         hnode.type = type;
@@ -640,7 +642,7 @@ set_remove_node_hash(struct lyxp_set *set, struct lyd_node *node, enum lyxp_node
 }
 
 static int
-set_dup_node_hash_check(struct lyxp_set *set, struct lyd_node *node, enum lyxp_node_type type, int skip_idx)
+set_dup_node_hash_check(const struct lyxp_set *set, struct lyd_node *node, enum lyxp_node_type type, int skip_idx)
 {
     struct lyxp_set_hash_node hnode, *match_p;
     uint32_t hash;
@@ -915,7 +917,7 @@ set_remove_node(struct lyxp_set *set, uint32_t idx)
  * @return 0 on success, 1 on duplicate found.
  */
 static int
-set_dup_node_check(struct lyxp_set *set, const struct lyd_node *node, enum lyxp_node_type node_type, int skip_idx)
+set_dup_node_check(const struct lyxp_set *set, const struct lyd_node *node, enum lyxp_node_type node_type, int skip_idx)
 {
     uint32_t i;
 
@@ -5489,10 +5491,11 @@ moveto_node_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
                     int options)
 {
     uint32_t i;
-    int pref_len, all = 0, replace, match, ret;
+    int pref_len, all = 0, match, ret;
     struct lyd_node *next, *elem, *start;
     struct lys_module *moveto_mod;
     enum lyxp_node_type root_type;
+    struct lyxp_set ret_set;
 
     if (!set || (set->type == LYXP_SET_EMPTY)) {
         return EXIT_SUCCESS;
@@ -5531,11 +5534,17 @@ moveto_node_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
 
     /* this loop traverses all the nodes in the set and addds/keeps only
      * those that match qname */
-    for (i = 0; i < set->used; ) {
+    memset(&ret_set, 0, sizeof ret_set);
+    for (i = 0; i < set->used; ++i) {
+
         /* TREE DFS */
         start = set->val.nodes[i].node;
-        replace = 0;
         for (elem = next = start; elem; elem = next) {
+
+            /* when check */
+            if ((options & LYXP_WHEN) && !LYD_WHEN_DONE(elem->when_status)) {
+                return EXIT_FAILURE;
+            }
 
             /* dummy and context check */
             if ((elem->validity & LYD_VAL_INUSE) || ((root_type == LYXP_NODE_ROOT_CONFIG) && (elem->schema->flags & LYS_CONFIG_R))) {
@@ -5554,31 +5563,17 @@ moveto_node_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
             }
 
             /* name check */
-            if (!all && (strncmp(elem->schema->name, qname, qname_len) || elem->schema->name[qname_len])) {
+            if (match && !all && (strncmp(elem->schema->name, qname, qname_len) || elem->schema->name[qname_len])) {
                 match = 0;
             }
 
-            /* when check */
-            if ((options & LYXP_WHEN) && !LYD_WHEN_DONE(elem->when_status)) {
-                return EXIT_FAILURE;
-            }
-
-            if (match && (elem != start)) {
+            if (match) {
+                /* add matching node into result set */
+                set_insert_node(&ret_set, elem, 0, LYXP_NODE_ELEM, ret_set.used);
                 if (set_dup_node_check(set, elem, LYXP_NODE_ELEM, i)) {
-                    /* we'll process it later */
+                    /* the node is a duplicate, we'll process it later in the set */
                     goto skip_children;
-                } else if (replace) {
-                    set->val.nodes[i].node = elem;
-                    assert(set->val.nodes[i].type == LYXP_NODE_ELEM);
-                    set->val.nodes[i].pos = 0;
-                    replace = 0;
-                } else {
-                    set_insert_node(set, elem, 0, LYXP_NODE_ELEM, i + 1);
-                    ++i;
                 }
-            } else if (!match && (elem == start)) {
-                /* we need to replace a node that is already in the set */
-                replace = 1;
             }
 
             /* TREE DFS NEXT ELEM */
@@ -5608,13 +5603,13 @@ skip_children:
                 next = elem->next;
             }
         }
-
-        if (replace) {
-            set_remove_node(set, i);
-        } else {
-            ++i;
-        }
     }
+
+    /* make the temporary set the current one */
+    ret_set.ctx_pos = set->ctx_pos;
+    ret_set.ctx_size = set->ctx_size;
+    set_free_content(set);
+    memcpy(set, &ret_set, sizeof *set);
 
     return EXIT_SUCCESS;
 }
@@ -6005,6 +6000,50 @@ moveto_attr_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
     return EXIT_SUCCESS;
 }
 
+static int
+moveto_self_add_children_r(const struct lyd_node *parent, uint32_t parent_pos, struct lyxp_set *to_set,
+                           const struct lyxp_set *dup_check_set, enum lyxp_node_type root_type, int options)
+{
+    struct lyd_node *sub;
+    int ret;
+
+    /* add all the children ... */
+    if (!(parent->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+        LY_TREE_FOR(parent->child, sub) {
+            /* context check */
+            if ((root_type == LYXP_NODE_ROOT_CONFIG) && (sub->schema->flags & LYS_CONFIG_R)) {
+                continue;
+            }
+
+            /* when check */
+            if ((options & LYXP_WHEN) && !LYD_WHEN_DONE(sub->when_status)) {
+                return EXIT_FAILURE;
+            }
+
+            if (!set_dup_node_check(dup_check_set, sub, LYXP_NODE_ELEM, -1)) {
+                set_insert_node(to_set, sub, 0, LYXP_NODE_ELEM, to_set->used);
+
+                /* also add all the children of this node, recursively */
+                ret = moveto_self_add_children_r(sub, 0, to_set, dup_check_set, root_type, options);
+                if (ret) {
+                    return ret;
+                }
+            }
+        }
+
+    /* ... or add their text node, ... */
+    } else {
+        /* ... but only non-empty */
+        if (((struct lyd_node_leaf_list *)parent)->value_str) {
+            if (!set_dup_node_check(dup_check_set, parent, LYXP_NODE_TEXT, -1)) {
+                set_insert_node(to_set, parent, parent_pos, LYXP_NODE_TEXT, to_set->used);
+            }
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
 /**
  * @brief Move context \p set to self. Handles '/' or '//' and '.'. Result is LYXP_SET_NODE_SET
  *        (or LYXP_SET_EMPTY). Context position aware.
@@ -6019,9 +6058,10 @@ moveto_attr_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
 static int
 moveto_self(struct lyxp_set *set, struct lyd_node *cur_node, int all_desc, int options)
 {
-    struct lyd_node *sub;
-    uint32_t i, cont_i;
+    uint32_t i;
     enum lyxp_node_type root_type;
+    struct lyxp_set ret_set;
+    int ret;
 
     if (!set || (set->type == LYXP_SET_EMPTY)) {
         return EXIT_SUCCESS;
@@ -6040,8 +6080,10 @@ moveto_self(struct lyxp_set *set, struct lyd_node *cur_node, int all_desc, int o
     moveto_get_root(cur_node, options, &root_type);
 
     /* add all the children, they get added recursively */
+    memset(&ret_set, 0, sizeof ret_set);
     for (i = 0; i < set->used; ++i) {
-        cont_i = 0;
+        /* copy the current node to tmp */
+        set_insert_node(&ret_set, set->val.nodes[i].node, set->val.nodes[i].pos, set->val.nodes[i].type, ret_set.used);
 
         /* do not touch attributes and text nodes */
         if ((set->val.nodes[i].type == LYXP_NODE_TEXT) || (set->val.nodes[i].type == LYXP_NODE_ATTR)) {
@@ -6053,36 +6095,19 @@ moveto_self(struct lyxp_set *set, struct lyd_node *cur_node, int all_desc, int o
             continue;
         }
 
-        /* add all the children ... */
-        if (!(set->val.nodes[i].node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
-            LY_TREE_FOR(set->val.nodes[i].node->child, sub) {
-                /* context check */
-                if ((root_type == LYXP_NODE_ROOT_CONFIG) && (sub->schema->flags & LYS_CONFIG_R)) {
-                    continue;
-                }
-
-                /* when check */
-                if ((options & LYXP_WHEN) && !LYD_WHEN_DONE(sub->when_status)) {
-                    return EXIT_FAILURE;
-                }
-
-                if (!set_dup_node_check(set, sub, LYXP_NODE_ELEM, -1)) {
-                    set_insert_node(set, sub, 0, LYXP_NODE_ELEM, i + cont_i + 1);
-                    ++cont_i;
-                }
-            }
-
-        /* ... or add their text node, ... */
-        } else {
-            /* ... but only non-empty */
-            sub = set->val.nodes[i].node;
-            if (((struct lyd_node_leaf_list *)sub)->value_str) {
-                if (!set_dup_node_check(set, sub, LYXP_NODE_TEXT, -1)) {
-                    set_insert_node(set, sub, set->val.nodes[i].pos, LYXP_NODE_TEXT, i + 1);
-                }
-            }
+        /* add all the children */
+        ret = moveto_self_add_children_r(set->val.nodes[i].node, set->val.nodes[i].pos, &ret_set, set, root_type, options);
+        if (ret) {
+            set_free_content(&ret_set);
+            return ret;
         }
     }
+
+    /* use the temporary set as the current one */
+    ret_set.ctx_pos = set->ctx_pos;
+    ret_set.ctx_size = set->ctx_size;
+    set_free_content(set);
+    memcpy(set, &ret_set, sizeof *set);
 
     return EXIT_SUCCESS;
 }
