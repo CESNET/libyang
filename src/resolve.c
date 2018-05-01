@@ -7983,7 +7983,7 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
     int rc, progress, ignore_fail;
     enum int_log_opts prev_ilo;
     struct ly_err_item *prev_eitem;
-    LY_ERR prev_ly_errno;
+    LY_ERR prev_ly_errno = ly_errno;
     struct lyd_node *parent;
     struct lys_when *when;
 
@@ -8005,7 +8005,6 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
     LOGVRB("Resolving unresolved data nodes and their constraints...");
     if (!ignore_fail) {
         /* remember logging state only if errors are generated and valid */
-        prev_ly_errno = ly_errno;
         ly_ilo_change(ctx, ILO_STORE, &prev_ilo, &prev_eitem);
     }
 
