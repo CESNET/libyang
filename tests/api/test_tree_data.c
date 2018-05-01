@@ -90,6 +90,11 @@ const char *lys_module_a = \
       <default value=\"def\"/>                        \
     </leaf>                                           \
   </container>                                        \
+  <container name=\"z\">                              \
+    <leaf name=\"number-z\">                          \
+      <type name=\"int64\"/>                          \
+    </leaf>                                           \
+  </container>                                        \
   <leaf name=\"y\"><type name=\"string\"/></leaf>     \
   <anyxml name=\"any\"/>                              \
   <augment target-node=\"/x\">                        \
@@ -1567,6 +1572,27 @@ test_lyd_leaf_type(void **state)
     lyd_free_withsiblings(data);
 }
 
+static void
+test_lyd_validation_remove_empty_containers(void **state)
+{
+    (void) state; /* unused */
+    struct lyd_node *new = NULL;
+    struct lyd_node *old = root;
+    struct lyd_node *node = root;
+    struct lyd_node_leaf_list *result;
+
+    new = lyd_new(NULL, old->schema->module, "z");
+    lyd_insert_before(old, new);
+    node = new;
+
+    assert_int_equal(lyd_validate(&node, LYD_OPT_CONFIG, ctx), 0);
+    assert_ptr_not_equal(node, NULL);
+    assert_ptr_equal(node, old);
+    assert_ptr_not_equal(node->child, NULL);
+    result = (struct lyd_node_leaf_list *) node->child;
+    assert_string_equal("test", result->value_str);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1607,6 +1633,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_lyd_print_clb_json, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_path, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_leaf_type, setup_f2, teardown_f2),
+        cmocka_unit_test_setup_teardown(test_lyd_validation_remove_empty_containers, setup_f, teardown_f),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
