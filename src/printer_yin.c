@@ -438,7 +438,7 @@ yin_print_type(struct lyout *out, int level, const struct lys_module *module, co
 
     if (!lys_type_is_local(type)) {
         ly_print(out, "%*s<type name=\"%s:%s\"", LEVEL, INDENT,
-                 transform_module_name2import_prefix(module, type->der->module->name), type->der->name);
+                 transform_module_name2import_prefix(module, lys_main_module(type->der->module)->name), type->der->name);
     } else {
         yin_print_open(out, level, NULL, "type", "name", type->der->name, content);
     }
