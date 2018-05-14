@@ -4422,9 +4422,9 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
 
         if (to_free) {
             if ((*node) == to_free) {
-                *node = NULL;
+                *node = to_free->next;
                 if (data_tree == to_free) {
-                    data_tree = NULL;
+                    data_tree = to_free->next;
                 }
             }
             lyd_free(to_free);
