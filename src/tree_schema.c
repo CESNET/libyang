@@ -2398,22 +2398,25 @@ lys_deviation_free(struct lys_module *module, struct lys_deviation *dev,
     lys_extension_instances_free(ctx, dev->ext, dev->ext_size, private_destructor);
 
     if (!dev->deviate) {
-        return ;
+        return;
     }
 
-    /* the module was freed, but we only need the context from orig_node, use ours */
-    if (dev->deviate[0].mod == LY_DEVIATE_NO) {
-        /* it's actually a node subtree, we need to update modules on all the nodes :-/ */
-        LY_TREE_DFS_BEGIN(dev->orig_node, next, elem) {
-            elem->module = module;
+    /* it could not be applied because it failed to be applied */
+    if (dev->orig_node) {
+        /* the module was freed, but we only need the context from orig_node, use ours */
+        if (dev->deviate[0].mod == LY_DEVIATE_NO) {
+            /* it's actually a node subtree, we need to update modules on all the nodes :-/ */
+            LY_TREE_DFS_BEGIN(dev->orig_node, next, elem) {
+                elem->module = module;
 
-            LY_TREE_DFS_END(dev->orig_node, next, elem);
+                LY_TREE_DFS_END(dev->orig_node, next, elem);
+            }
+            lys_node_free(dev->orig_node, NULL, 0);
+        } else {
+            /* it's just a shallow copy, freeing one node */
+            dev->orig_node->module = module;
+            lys_node_free(dev->orig_node, NULL, 1);
         }
-        lys_node_free(dev->orig_node, NULL, 0);
-    } else {
-        /* it's just a shallow copy, freeing one node */
-        dev->orig_node->module = module;
-        lys_node_free(dev->orig_node, NULL, 1);
     }
 
     for (i = 0; i < dev->deviate_size; i++) {
@@ -4399,7 +4402,10 @@ lys_sub_module_remove_devs_augs(struct lys_module *module)
 
     /* remove applied deviations */
     for (u = 0; u < module->deviation_size; ++u) {
-        remove_dev(&module->deviation[u], module, unres);
+        /* the deviation could be not applied because it failed to be applied */
+        if (module->deviation[u].orig_node) {
+            remove_dev(&module->deviation[u], module, unres);
+        }
     }
     /* remove applied augments */
     for (u = 0; u < module->augment_size; ++u) {
@@ -4409,7 +4415,9 @@ lys_sub_module_remove_devs_augs(struct lys_module *module)
     /* remove deviation and augments defined in submodules */
     for (v = 0; v < module->inc_size && module->inc[v].submodule; ++v) {
         for (u = 0; u < module->inc[v].submodule->deviation_size; ++u) {
-            remove_dev(&module->inc[v].submodule->deviation[u], module, unres);
+            if (module->inc[v].submodule->deviation[u].orig_node) {
+                remove_dev(&module->inc[v].submodule->deviation[u], module, unres);
+            }
         }
 
         for (u = 0; u < module->inc[v].submodule->augment_size; ++u) {
