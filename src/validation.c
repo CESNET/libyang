@@ -84,7 +84,7 @@ lyv_list_equal(void *val1_p, void *val2_p, void *cb_data)
 
     switch (first->schema->nodetype) {
     case LYS_LEAFLIST:
-        if ((first->schema->flags & LYS_CONFIG_R) && first->schema->module->version >= 2) {
+        if ((first->schema->flags & LYS_CONFIG_R) && first->schema->module->version >= LYS_VERSION_1_1) {
             /* same values are allowed for status data */
             return 0;
         }

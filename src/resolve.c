@@ -1475,7 +1475,7 @@ resolve_iffeature_compile(struct lys_iffeature *iffeat_expr, const char *value, 
 
     if (checkversion || expr_size > 1) {
         /* check that we have 1.1 module */
-        if (node->module->version != 2) {
+        if (node->module->version != LYS_VERSION_1_1) {
             LOGVAL(ctx, LYE_INARG, LY_VLOG_NONE, NULL, value, "if-feature");
             LOGVAL(ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "YANG 1.1 if-feature expression found in 1.0 module.");
             return EXIT_FAILURE;
@@ -3507,7 +3507,7 @@ check_key(struct lys_node_list *list, int index, const char *name, int len)
     }
 
     /* type of the leaf is not built-in empty */
-    if (key->type.base == LY_TYPE_EMPTY && key->module->version < 2) {
+    if (key->type.base == LY_TYPE_EMPTY && key->module->version < LYS_VERSION_1_1) {
         LOGVAL(ctx, LYE_KEY_TYPE, LY_VLOG_LYS, list, key->name);
         return -1;
     }

@@ -671,13 +671,20 @@ int ly_clean_plugins(void);
  */
 
 /**
+ * @brief supported YANG schema version values
+ */
+typedef enum LYS_VERSION {
+    LYS_VERSION_UNDEF = 0,  /**< no specific version, YANG 1.0 as default */
+    LYS_VERSION_1 = 1,      /**< YANG 1.0 */
+    LYS_VERSION_1_1 = 2     /**< YANG 1.1 */
+} LYS_VERSION;
+
+/**
  * @brief Main schema node structure representing YANG module.
  *
  * Compatible with ::lys_submodule structure with exception of the last, #ns member, which is replaced by
  * ::lys_submodule#belongsto member. Sometimes, ::lys_submodule can be provided casted to ::lys_module. Such a thing
  * can be determined via the #type member value.
- *
- *
  */
 struct lys_module {
     struct ly_ctx *ctx;              /**< libyang context of the module (mandatory) */
@@ -689,7 +696,7 @@ struct lys_module {
     const char *contact;             /**< contact information for the module */
     const char *filepath;            /**< path, if the schema was read from a file, NULL in case of reading from memory */
     uint8_t type:1;                  /**< 0 - structure type used to distinguish structure from ::lys_submodule */
-    uint8_t version:3;               /**< yang-version:
+    uint8_t version:3;               /**< yang-version (LYS_VERSION):
                                           - 0 = not specified, YANG 1.0 as default,
                                           - 1 = YANG 1.0,
                                           - 2 = YANG 1.1 */
@@ -741,7 +748,6 @@ struct lys_module {
  * Compatible with ::lys_module structure with exception of the last, #belongsto member, which is replaced by
  * ::lys_module#data and ::lys_module#ns members. Sometimes, ::lys_submodule can be provided casted to ::lys_module.
  * Such a thing can be determined via the #type member value.
- *
  */
 struct lys_submodule {
     struct ly_ctx *ctx;              /**< libyang context of the submodule (mandatory) */
@@ -753,7 +759,7 @@ struct lys_submodule {
     const char *contact;             /**< contact information for the submodule */
     const char *filepath;            /**< path to the file from which the submodule was read */
     uint8_t type:1;                  /**< 1 - structure type used to distinguish structure from ::lys_module */
-    uint8_t version:3;               /**< yang-version:
+    uint8_t version:3;               /**< yang-version (LYS_VERSION):
                                           - 0 = not specified, YANG 1.0 as default,
                                           - 1 = YANG 1.0,
                                           - 2 = YANG 1.1 */

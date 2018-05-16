@@ -2982,7 +2982,7 @@ lyp_check_include_missing_recursive(struct lys_module *main_module, struct lys_s
 
         if (j == main_module->inc_size) {
             /* match not found */
-            if (main_module->version >= 2) {
+            if (main_module->version >= LYS_VERSION_1_1) {
                 LOGVAL(ctx, LYE_MISSSTMT, LY_VLOG_NONE, NULL, "include");
                 LOGVAL(ctx, LYE_SPEC, LY_VLOG_NONE, NULL,
                        "The main module \"%s\" misses include of the \"%s\" submodule used in another submodule \"%s\".",
