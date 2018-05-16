@@ -4894,9 +4894,9 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
 
         if (to_free) {
             if ((*node) == to_free) {
-                *node = NULL;
+                *node = to_free->next;
                 if (data_tree == to_free) {
-                    data_tree = NULL;
+                    data_tree = to_free->next;
                 }
             }
             lyd_free(to_free);
@@ -6321,7 +6321,7 @@ lyd_wd_default(struct lyd_node_leaf_list *node)
         if (!ly_strequal(dflt, node->value_str, 1)) {
             return 0;
         }
-    } else if (node->schema->module->version >= 2) { /* LYS_LEAFLIST */
+    } else if (node->schema->module->version >= LYS_VERSION_1_1) { /* LYS_LEAFLIST */
         llist = (struct lys_node_leaflist *)node->schema;
 
         /* get know if there is a default value */
@@ -6485,7 +6485,7 @@ lyd_wd_add_leaflist(struct lyd_node **tree, struct lyd_node *last_parent, struct
     uint8_t dflt_size = 0;
     int i, ret;
 
-    if (llist->module->version < 2) {
+    if (llist->module->version < LYS_VERSION_1_1) {
         /* default values on leaf-lists are allowed from YANG 1.1 */
         return EXIT_SUCCESS;
     }

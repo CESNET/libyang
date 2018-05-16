@@ -169,7 +169,7 @@ extern "C" {
  * - ly_ctx_new()
  * - ly_ctx_set_searchdir()
  * - ly_ctx_unset_searchdirs()
- * - ly_ctx_get_searchdir()
+ * - ly_ctx_get_searchdirs()
  * - ly_ctx_set_module_imp_clb()
  * - ly_ctx_get_module_imp_clb()
  * - ly_ctx_set_module_data_clb()
@@ -178,6 +178,7 @@ extern "C" {
  * - ly_ctx_unset_allimplemented()
  * - ly_ctx_load_module()
  * - ly_ctx_info()
+ * - ly_ctx_get_module_set_id()
  * - ly_ctx_get_module_iter()
  * - ly_ctx_get_disabled_module_iter()
  * - ly_ctx_get_module()
@@ -1265,6 +1266,15 @@ void ly_ctx_set_trusted(struct ly_ctx *ctx);
  * @param[in] ctx Context to be modified.
  */
 void ly_ctx_unset_trusted(struct ly_ctx *ctx);
+
+/**
+ * @brief Get current ID of the modules set. The value is available also
+ * as module-set-id in ly_ctx_info() result.
+ *
+ * @param[in] ctx Context to be examined.
+ * @return Numeric identifier of the current context's modules set.
+ */
+uint16_t ly_ctx_get_module_set_id(const struct ly_ctx *ctx);
 
 /**
  * @brief Get data of an internal ietf-yang-library module.

@@ -1583,6 +1583,12 @@ ylib_submodules(struct lyd_node *parent, struct lys_module *cur_mod, int bis)
     return EXIT_SUCCESS;
 }
 
+API uint16_t
+ly_ctx_get_module_set_id(const struct ly_ctx *ctx)
+{
+    return ctx->models.module_set_id;
+}
+
 API struct lyd_node *
 ly_ctx_info(struct ly_ctx *ctx)
 {
