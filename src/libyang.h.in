@@ -1957,6 +1957,7 @@ typedef enum {
     LYVE_PATH_MISSKEY, /**< missing some list keys (path) */
     LYVE_PATH_EXISTS,  /**< target node already exists (path) */
     LYVE_PATH_MISSPAR, /**< some parent of the target node is missing (path) */
+    LYVE_PATH_PREDTOOMANY, /**< too many predicates specified (path) */
 } LY_VECODE;
 
 /**
