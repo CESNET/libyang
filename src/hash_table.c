@@ -344,6 +344,26 @@ lyht_new(uint32_t size, uint16_t val_size, values_equal_cb val_equal, void *cb_d
     return ht;
 }
 
+values_equal_cb
+lyht_set_cb(struct hash_table *ht, values_equal_cb new_val_equal)
+{
+    values_equal_cb prev;
+
+    prev = ht->val_equal;
+    ht->val_equal = new_val_equal;
+    return prev;
+}
+
+void *
+lyht_set_cb_data(struct hash_table *ht, void *new_cb_data)
+{
+    void *prev;
+
+    prev = ht->cb_data;
+    ht->cb_data = new_cb_data;
+    return prev;
+}
+
 struct hash_table *
 lyht_dup(const struct hash_table *orig)
 {

@@ -141,6 +141,24 @@ struct hash_table {
 struct hash_table *lyht_new(uint32_t size, uint16_t val_size, values_equal_cb val_equal, void *cb_data, int resize);
 
 /**
+ * @brief Set hash table value equal callback.
+ *
+ * @param[in] ht Hash table to modify.
+ * @param[in] new_val_equal New callback for checking value equivalence.
+ * @return Previous callback for checking value equivalence.
+ */
+values_equal_cb lyht_set_cb(struct hash_table *ht, values_equal_cb new_val_equal);
+
+/**
+ * @brief Set hash table value equal callback user data.
+ *
+ * @param[in] ht Hash table to modify.
+ * @param[in] new_cb_data New data for values callback.
+ * @return Previous data for values callback.
+ */
+void *lyht_set_cb_data(struct hash_table *ht, void *new_cb_data);
+
+/**
  * @brief Make a duplicate of an existing hash table.
  *
  * @param[in] orig Original hash table to duplicate.
