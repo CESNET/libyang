@@ -2585,25 +2585,69 @@ lyd_merge_parent_children(struct lyd_node *target, struct lyd_node *source, int 
                 goto src_skip;
             }
 
-            LY_TREE_FOR(trg_parent->child, trg_child) {
-                /* schema match, data match? */
-                ret = lyd_merge_node_schema_equal(trg_child, src_elem);
-                if (ret == 1) {
-                    ret = lyd_merge_node_equal(trg_child, src_elem);
-                }
-                if (ret > 0) {
-                    /* equal */
-                    if (trg_child->schema->nodetype & (LYS_LEAF | LYS_ANYDATA)) {
-                        lyd_merge_node_update(trg_child, src_elem);
-                    } else if (ret == 2) {
-                        clear_flag = 1;
+            ret = 0;
+
+#ifdef LY_ENABLED_CACHE
+            struct lyd_node **trg_child_p;
+
+            /* trees are supposed to be validated so all nodes must have their hash */
+            assert(src_elem->hash);
+
+            if (trg_parent->ht) {
+                trg_child = NULL;
+                if (!lyht_find(trg_parent->ht, &src_elem, src_elem->hash, (void **)&trg_child_p)) {
+                    trg_child = *trg_child_p;
+                    ret = 1;
+
+                    /* it is a bit more difficult with keyless state lists and leaf-lists */
+                    if (((trg_child->schema->nodetype == LYS_LIST) && !((struct lys_node_list *)trg_child->schema)->keys_size)
+                            || ((trg_child->schema->nodetype == LYS_LEAFLIST) && (trg_child->schema->flags & LYS_CONFIG_R))) {
+                        assert(trg_child->schema->flags & LYS_CONFIG_R);
+
+                        while (trg_child && (trg_child->validity & LYD_VAL_INUSE)) {
+                            /* state lists, find one not-already-found */
+                            if (lyht_find_next(trg_parent->ht, &trg_child, trg_child->hash, (void **)&trg_child_p)) {
+                                trg_child = NULL;
+                            } else {
+                                trg_child = *trg_child_p;
+                            }
+                        }
+                        if (trg_child) {
+                            /* mark it as matched */
+                            trg_child->validity |= LYD_VAL_INUSE;
+                            ret = 2;
+                        } else {
+                            /* actually, it was matched already and no other instance found, so now not a match */
+                            ret = 0;
+                        }
                     }
-                    break;
-                } else if (ret == -1) {
-                    /* error */
-                    lyd_free_withsiblings(source);
-                    return 1;
-                } /* else not equal, nothing to do */
+                }
+            } else
+#endif
+            {
+                LY_TREE_FOR(trg_parent->child, trg_child) {
+                    /* schema match, data match? */
+                    ret = lyd_merge_node_schema_equal(trg_child, src_elem);
+                    if (ret == 1) {
+                        ret = lyd_merge_node_equal(trg_child, src_elem);
+                    }
+                    if (ret != 0) {
+                        /* even data match */
+                        break;
+                    }
+                }
+            }
+
+            if (ret > 0) {
+                if (trg_child->schema->nodetype & (LYS_LEAF | LYS_ANYDATA)) {
+                    lyd_merge_node_update(trg_child, src_elem);
+                } else if (ret == 2) {
+                    clear_flag = 1;
+                }
+            } else if (ret == -1) {
+                /* error */
+                lyd_free_withsiblings(source);
+                return 1;
             }
 
             /* first prepare for the next iteration */
@@ -3375,9 +3419,6 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
     struct ly_ctx *ctx;
     int rc;
     struct lyd_node *elem1, *elem2, *iter, *aux, *parent = NULL, *next1, *next2;
-#ifdef LY_ENABLED_CACHE
-    struct lyd_node **iter_p;
-#endif
     struct lyd_difflist *result, *result2 = NULL;
     void *new;
     unsigned int size, size2, index = 0, index2 = 0, i, j, k;
@@ -3502,6 +3543,8 @@ lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
         }
 
 #ifdef LY_ENABLED_CACHE
+        struct lyd_node **iter_p;
+
         if (elem1 && elem1->parent && elem1->parent->ht) {
             iter = NULL;
             if (!lyht_find(elem1->parent->ht, &elem2, elem2->hash, (void **)&iter_p)) {
