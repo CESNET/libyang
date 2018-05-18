@@ -5170,11 +5170,6 @@ lyd_unlink_internal(struct lyd_node *node, int permanent)
         }
 
 #ifdef LY_ENABLED_CACHE
-#   ifndef NDEBUG
-        /* always remove from parent hash table if debugging */
-        permanent = 1;
-#   endif
-
         /* do not remove from parent hash table if freeing the whole subtree */
         if (permanent != 2) {
             lyd_unlink_hash(node, node->parent);
@@ -5726,7 +5721,6 @@ lyd_free_internal(struct lyd_node *node, int top)
         }
 #ifdef LY_ENABLED_CACHE
         /* it should be empty because all the children are freed already (only if in debug mode) */
-        assert(!node->ht || !node->ht->used);
         lyht_free(node->ht);
 #endif
     } else if (node->schema->nodetype & LYS_ANYDATA) {
