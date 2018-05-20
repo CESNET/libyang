@@ -17,6 +17,7 @@
 #include <setjmp.h>
 #include <errno.h>
 #include <unistd.h>
+#include <stdarg.h>
 #include <cmocka.h>
 #include <string.h>
 #include <sys/wait.h>
