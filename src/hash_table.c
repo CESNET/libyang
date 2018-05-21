@@ -474,15 +474,22 @@ static int
 lyht_find_collision(struct hash_table *ht, struct ht_rec **last)
 {
     struct ht_rec *empty = NULL;
-    uint32_t i, idx;
+    uint32_t start_i, i, idx;
 
     assert(last && *last);
 
     idx = (*last)->hash & (ht->size - 1);
-    i = (((unsigned char *)*last) - ht->recs) / ht->rec_size;
+    start_i = i = (((unsigned char *)*last) - ht->recs) / ht->rec_size;
 
     do {
         i = (i + 1) % ht->size;
+        if (i == start_i) {
+            /* we went through all the records (very unlikely, but possible when many records are invalid),
+             * just return an invalid record */
+            assert(empty);
+            *last = empty;
+            return 1;
+        }
         *last = lyht_get_rec(ht->recs, ht->rec_size, i);
         if (((*last)->hits == -1) && !empty) {
             empty = *last;
