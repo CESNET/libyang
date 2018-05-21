@@ -49,13 +49,13 @@ lyv_keys(const struct lyd_node *list)
 }
 
 /*
- * actions (only for list):
+ * actions (cb_data, only for list):
  * -1 - compare keys and all uniques
  * 0  - compare only keys
  * n  - compare n-th unique
  */
 static int
-lyv_list_equal(void *val1_p, void *val2_p, void *cb_data)
+lyv_list_equal(void *val1_p, void *val2_p, int UNUSED(mod), void *cb_data)
 {
     struct ly_ctx *ctx;
     struct lys_node_list *slist;
@@ -309,7 +309,7 @@ lyv_data_unique(struct lyd_node *node, struct lyd_node *start)
 
     if (set->number == 2) {
         /* simple comparison */
-        if (lyv_list_equal(&set->set.d[0], &set->set.d[1], (void *)-1)) {
+        if (lyv_list_equal(&set->set.d[0], &set->set.d[1], 0, (void *)-1)) {
             /* instance duplication */
             ly_set_free(set);
             return 1;

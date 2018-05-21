@@ -514,6 +514,12 @@ repeat:
         return 0;
     }
 
+#ifdef LY_ENABLED_CACHE
+    /* calculate the hash and insert it into parent */
+    lyd_hash((struct lyd_node *)leaf);
+    lyd_insert_hash((struct lyd_node *)leaf);
+#endif
+
     if (leaf->schema->nodetype == LYS_LEAFLIST) {
         /* repeat until end-array */
         len += skip_ws(&data[len]);
@@ -1052,26 +1058,41 @@ attr_repeat:
     }
 
     /* type specific processing */
-    if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+    switch (schema->nodetype) {
+    case LYS_LEAF:
+    case LYS_LEAFLIST:
         /* type detection and assigning the value */
         r = json_get_value((struct lyd_node_leaf_list *)result, &first_sibling, &data[len], options, unres);
         if (!r) {
             goto error;
         }
-        while(result->next) {
+        while (result->next) {
             result = result->next;
         }
 
         len += r;
         len += skip_ws(&data[len]);
-    } else if (schema->nodetype & LYS_ANYDATA) {
+        break;
+    case LYS_ANYDATA:
+    case LYS_ANYXML:
         r = json_get_anydata((struct lyd_node_anydata *)result, &data[len]);
         if (!r) {
             goto error;
         }
+
+#ifdef LY_ENABLED_CACHE
+        /* calculate the hash and insert it into parent */
+        lyd_hash(result);
+        lyd_insert_hash(result);
+#endif
+
         len += r;
         len += skip_ws(&data[len]);
-    } else if (schema->nodetype & (LYS_CONTAINER | LYS_RPC | LYS_ACTION | LYS_NOTIF)) {
+        break;
+    case LYS_CONTAINER:
+    case LYS_RPC:
+    case LYS_ACTION:
+    case LYS_NOTIF:
         if (schema->nodetype & (LYS_RPC | LYS_ACTION)) {
             if (!(options & LYD_OPT_RPC) || *act_notif) {
                 LOGVAL(ctx, LYE_INELEM, LY_VLOG_LYD, result, schema->name);
@@ -1088,6 +1109,12 @@ attr_repeat:
             }
             *act_notif = result;
         }
+
+#ifdef LY_ENABLED_CACHE
+        /* calculate the hash and insert it into parent */
+        lyd_hash(result);
+        lyd_insert_hash(result);
+#endif
 
         if (data[len] != '{') {
             LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_LYD, result, "JSON data (missing begin-object)");
@@ -1134,8 +1161,8 @@ attr_repeat:
                 !result->attr && !((struct lys_node_container *)schema)->presence) {
             result->dflt = 1;
         }
-
-    } else if (schema->nodetype == LYS_LIST) {
+        break;
+    case LYS_LIST:
         if (data[len] != '[') {
             LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_LYD, result, "JSON data (missing begin-array)");
             goto error;
@@ -1166,7 +1193,15 @@ attr_repeat:
                 if (list->child) {
                     diter = list->child->prev;
                 }
-            } while(data[len] == ',');
+            } while (data[len] == ',');
+
+#ifdef LY_ENABLED_CACHE
+            /* calculate the hash and insert it into parent */
+            if (!((struct lys_node_list *)list->schema)->keys_size) {
+                lyd_hash(list);
+                lyd_insert_hash(list);
+            }
+#endif
 
             /* store attributes */
             if (store_attrs(ctx, attrs_aux, list->child, options)) {
@@ -1216,6 +1251,10 @@ attr_repeat:
         }
         len++;
         len += skip_ws(&data[len]);
+        break;
+    default:
+        LOGINT(ctx);
+        goto error;
     }
 
     /* various validation checks */

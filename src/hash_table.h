@@ -66,7 +66,7 @@ void lydict_init(struct dict_table *dict);
 void lydict_clean(struct dict_table *dict);
 
 /**
- * @brief compute hash from (several) string(s)
+ * @brief Compute hash from (several) string(s).
  *
  * Usage:
  * - init hash to 0
@@ -80,10 +80,11 @@ uint32_t dict_hash_multi(uint32_t hash, const char *key_part, size_t len);
  *
  * @param[in] val1_p Pointer to the first value.
  * @param[in] val2_p Pointer to the second value.
+ * @param[in] mod Whether the operation modifies the hash table (insert or remove) or not (find).
  * @param[in] cb_data User callback data.
  * @return 0 on non-equal, non-zero on equal.
  */
-typedef int (*values_equal_cb)(void *val1_p, void *val2_p, void *cb_data);
+typedef int (*values_equal_cb)(void *val1_p, void *val2_p, int mod, void *cb_data);
 
 /** when the table is at least this much percent full, it is enlarged (double the size) */
 #define LYHT_ENLARGE_PERCENTAGE 75
@@ -140,6 +141,32 @@ struct hash_table {
 struct hash_table *lyht_new(uint32_t size, uint16_t val_size, values_equal_cb val_equal, void *cb_data, int resize);
 
 /**
+ * @brief Set hash table value equal callback.
+ *
+ * @param[in] ht Hash table to modify.
+ * @param[in] new_val_equal New callback for checking value equivalence.
+ * @return Previous callback for checking value equivalence.
+ */
+values_equal_cb lyht_set_cb(struct hash_table *ht, values_equal_cb new_val_equal);
+
+/**
+ * @brief Set hash table value equal callback user data.
+ *
+ * @param[in] ht Hash table to modify.
+ * @param[in] new_cb_data New data for values callback.
+ * @return Previous data for values callback.
+ */
+void *lyht_set_cb_data(struct hash_table *ht, void *new_cb_data);
+
+/**
+ * @brief Make a duplicate of an existing hash table.
+ *
+ * @param[in] orig Original hash table to duplicate.
+ * @return Duplicated hash table \p orig, NULL on error.
+ */
+struct hash_table *lyht_dup(const struct hash_table *orig);
+
+/**
  * @brief Free a hash table.
  *
  * @param[in] ht Hash table to be freed.
@@ -152,9 +179,21 @@ void lyht_free(struct hash_table *ht);
  * @param[in] ht Hash table to search in.
  * @param[in] val_p Pointer to the value to find.
  * @param[in] hash Hash of the stored value.
+ * @param[out] match_p pointer to the matching value, optional.
  * @return 0 on success, 1 on not found.
  */
-int lyht_find(struct hash_table *ht, void *val_p, uint32_t hash);
+int lyht_find(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p);
+
+/**
+ * @brief Find another equal value in the hash table.
+ *
+ * @param[in] ht Hash table to search in.
+ * @param[in] val_p Pointer to the previously found value in \p ht.
+ * @param[in] hash Hash of the previously found value.
+ * @param[out] match_p pointer to the matching value, optional.
+ * @return 0 on success, 1 on not found.
+ */
+int lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p);
 
 /**
  * @brief Insert a value into a hash table.
@@ -169,14 +208,6 @@ int lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash);
 
 /**
  * @brief Remove a value from a hash table.
- *
- * This operation can be costly under specific circumstances. On every removal,
- * it is checked whether the record must only be marked deleted or can be safely
- * emptied (marked records do not hold values but slow down all operations).
- * If it is emptied, all the previous records are checked whether are not
- * just marked, in which case they could be emptied, too. In the extreme case
- * when the removed record was preventing all the other records from being emptied
- * this removal will traverse ALL the records in O(n).
  *
  * @param[in] ht Hash table to remove from.
  * @param[in] value_p Pointer to value to be removed. Be careful, if the values stored in the hash table

@@ -17,4 +17,8 @@
 #define TESTS_DIR "@CMAKE_SOURCE_DIR@/tests"
 #define BUILD_DIR "@PROJECT_BINARY_DIR@"
 
+#ifdef LY_ENABLED_CACHE
+int lyd_list_has_keys(struct lyd_node *list);
+#endif
+
 #endif /* LYTEST_CONFIG_H_ */

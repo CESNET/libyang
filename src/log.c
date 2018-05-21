@@ -393,6 +393,7 @@ const char *ly_errs[] = {
 /* LYE_PATH_MISSKEY */ "List keys or position missing (\"%s\").",
 /* LYE_PATH_EXISTS */  "Node already exists.",
 /* LYE_PATH_MISSPAR */ "Parent does not exist.",
+/* LYE_PATH_PREDTOOMANY */ "Too many predicates.",
 };
 
 static const LY_VECODE ecode2vecode[] = {
@@ -487,6 +488,7 @@ static const LY_VECODE ecode2vecode[] = {
     LYVE_PATH_MISSKEY, /* LYE_PATH_MISSKEY */
     LYVE_PATH_EXISTS,  /* LYE_PATH_EXISTS */
     LYVE_PATH_MISSPAR, /* LYE_PATH_MISSPAR */
+    LYVE_PATH_PREDTOOMANY, /* LYE_PATH_PREDTOOMANY */
 };
 
 static int

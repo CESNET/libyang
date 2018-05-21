@@ -31,6 +31,20 @@
 #include "tree_internal.h"
 #include "extensions.h"
 
+/* internal parsed predicate structure */
+struct parsed_pred {
+    const struct lys_node *schema;
+    int len;
+    struct {
+        const char *mod_name;
+        int mod_name_len;
+        const char *name;
+        int nam_len;
+        const char *value;
+        int val_len;
+    } *pred;
+};
+
 int
 parse_range_dec64(const char **str_num, uint8_t dig, int64_t *num)
 {
@@ -1134,6 +1148,122 @@ parse_schema_json_predicate(const char *id, const char **mod_name, int *mod_name
 
     return parsed;
 }
+
+#ifdef LY_ENABLED_CACHE
+
+static int
+resolve_hash_table_find_equal(void *val1_p, void *val2_p, int mod, void *UNUSED(cb_data))
+{
+    struct lyd_node *val2, *elem2;
+    struct parsed_pred pp;
+    const char *str;
+    int i;
+
+    assert(!mod);
+
+    pp = *((struct parsed_pred *)val1_p);
+    val2 = *((struct lyd_node **)val2_p);
+
+    if (val2->schema != pp.schema) {
+        return 0;
+    }
+
+    switch (val2->schema->nodetype) {
+    case LYS_CONTAINER:
+    case LYS_LEAF:
+    case LYS_ANYXML:
+    case LYS_ANYDATA:
+        return 1;
+    case LYS_LEAFLIST:
+        str = ((struct lyd_node_leaf_list *)val2)->value_str;
+        if (!strncmp(str, pp.pred[0].value, pp.pred[0].val_len) && !str[pp.pred[0].val_len]) {
+            return 1;
+        }
+        return 0;
+    case LYS_LIST:
+        assert(((struct lys_node_list *)val2->schema)->keys_size);
+        assert(((struct lys_node_list *)val2->schema)->keys_size == pp.len);
+
+        /* lists with keys, their equivalence is based on their keys */
+        elem2 = val2->child;
+        /* the exact data order is guaranteed */
+        for (i = 0; elem2 && (i < pp.len); ++i) {
+            /* module check */
+            if (pp.pred[i].mod_name) {
+                if (strncmp(lyd_node_module(elem2)->name, pp.pred[i].mod_name, pp.pred[i].mod_name_len)
+                        || lyd_node_module(elem2)->name[pp.pred[i].mod_name_len]) {
+                    break;
+                }
+            } else {
+                if (lyd_node_module(elem2) != lys_node_module(pp.schema)) {
+                    break;
+                }
+            }
+
+            /* name check */
+            if (strncmp(elem2->schema->name, pp.pred[i].name, pp.pred[i].nam_len) || elem2->schema->name[pp.pred[i].nam_len]) {
+                break;
+            }
+
+            /* value check */
+            str = ((struct lyd_node_leaf_list *)elem2)->value_str;
+            if (strncmp(str, pp.pred[i].value, pp.pred[i].val_len) || str[pp.pred[i].val_len]) {
+                break;
+            }
+
+            /* next key */
+            elem2 = elem2->next;
+        }
+        if (i == pp.len) {
+            return 1;
+        }
+        return 0;
+    default:
+        break;
+    }
+
+    LOGINT(val2->schema->module->ctx);
+    return 0;
+}
+
+static struct lyd_node *
+resolve_json_data_node_hash(struct lyd_node *parent, struct parsed_pred pp)
+{
+    values_equal_cb prev_cb;
+    struct lyd_node **ret = NULL;
+    uint32_t hash;
+    int i;
+
+    assert(parent && parent->hash);
+
+    /* set our value equivalence callback that does not require data nodes */
+    prev_cb = lyht_set_cb(parent->ht, resolve_hash_table_find_equal);
+
+    /* get the hash of the searched node */
+    hash = dict_hash_multi(0, lys_node_module(pp.schema)->name, strlen(lys_node_module(pp.schema)->name));
+    hash = dict_hash_multi(hash, pp.schema->name, strlen(pp.schema->name));
+    if (pp.schema->nodetype == LYS_LEAFLIST) {
+        assert((pp.len == 1) && (pp.pred[0].name[0] == '.') && (pp.pred[0].nam_len == 1));
+        /* leaf-list value in predicate */
+        hash = dict_hash_multi(hash, pp.pred[0].value, pp.pred[0].val_len);
+    } else if (pp.schema->nodetype == LYS_LIST) {
+        /* list keys in predicates */
+        for (i = 0; i < pp.len; ++i) {
+            hash = dict_hash_multi(hash, pp.pred[i].value, pp.pred[i].val_len);
+        }
+    }
+    hash = dict_hash_multi(hash, NULL, 0);
+
+    /* try to find the node */
+    lyht_find(parent->ht, &pp, hash, (void **)&ret);
+
+    /* restore the original callback */
+    lyht_set_cb(parent->ht, prev_cb);
+
+    return (ret ? *ret : NULL);
+}
+
+#endif
 
 /**
  * @brief Resolve (find) a feature definition. Logs directly.
@@ -2389,30 +2519,25 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
 }
 
 static int
-resolve_partial_json_data_list_predicate(const char *predicate, const char *node_name, struct lyd_node *node,
-                                         int position, int *parsed)
+resolve_partial_json_data_list_predicate(struct parsed_pred pp, struct lyd_node *node, int position)
 {
-    const char *mod_name, *name, *value, *key_val;
-    int mod_name_len, nam_len, val_len, has_predicate = 1, r;
+    const char *key_val;
     uint16_t i;
     struct lyd_node_leaf_list *key;
+    struct lys_node_list *slist;
     struct ly_ctx *ctx;
 
     assert(node);
     assert(node->schema->nodetype == LYS_LIST);
+    assert(pp.len);
+
     ctx = node->schema->module->ctx;
+    slist = (struct lys_node_list *)node->schema;
 
     /* is the predicate a number? */
-    if (((r = parse_schema_json_predicate(predicate, &mod_name, &mod_name_len, &name, &nam_len, &value, &val_len, &has_predicate)) < 1)
-            || !strncmp(name, ".", nam_len)) {
-        LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, predicate[-r], &predicate[-r]);
-        return -1;
-    }
-
-    if (isdigit(name[0])) {
-        if (position == atoi(name)) {
+    if (isdigit(pp.pred[0].name[0])) {
+        if (position == atoi(pp.pred[0].name)) {
             /* match */
-            *parsed += r;
             return 0;
         } else {
             /* not a match */
@@ -2420,9 +2545,13 @@ resolve_partial_json_data_list_predicate(const char *predicate, const char *node
         }
     }
 
-    if (!((struct lys_node_list *)node->schema)->keys_size) {
-        /* no keys in schema - causes an error later */
-        return 0;
+    /* basic checks */
+    if (pp.len > slist->keys_size) {
+        LOGVAL(ctx, LYE_PATH_PREDTOOMANY, LY_VLOG_NONE, NULL);
+        return -1;
+    } else if (pp.len < slist->keys_size) {
+        LOGVAL(ctx, LYE_PATH_MISSKEY, LY_VLOG_NONE, NULL, slist->keys[pp.len]->name);
+        return -1;
     }
 
     key = (struct lyd_node_leaf_list *)node->child;
@@ -2432,47 +2561,29 @@ resolve_partial_json_data_list_predicate(const char *predicate, const char *node
     }
 
     /* go through all the keys */
-    i = 0;
-    goto check_parsed_values;
-
-    for (; i < ((struct lys_node_list *)node->schema)->keys_size; ++i) {
-        if (!has_predicate) {
-            LOGVAL(ctx, LYE_PATH_MISSKEY, LY_VLOG_NONE, NULL, node_name);
+    for (i = 0; i < slist->keys_size; ++i) {
+        if (strncmp(key->schema->name, pp.pred[i].name, pp.pred[i].nam_len) || key->schema->name[pp.pred[i].nam_len]) {
+            LOGVAL(ctx, LYE_PATH_INKEY, LY_VLOG_NONE, NULL, pp.pred[i].name);
             return -1;
         }
 
-        if (((r = parse_schema_json_predicate(predicate, &mod_name, &mod_name_len, &name, &nam_len, &value, &val_len, &has_predicate)) < 1)
-                || !strncmp(name, ".", nam_len)) {
-            LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, predicate[-r], &predicate[-r]);
-            return -1;
-        }
-
-check_parsed_values:
-        predicate += r;
-        *parsed += r;
-
-        if (strncmp(key->schema->name, name, nam_len) || key->schema->name[nam_len]) {
-            LOGVAL(ctx, LYE_PATH_INKEY, LY_VLOG_NONE, NULL, name);
-            return -1;
-        }
-
-        if (mod_name) {
+        if (pp.pred[i].mod_name) {
             /* specific module, check that the found key is from that module */
-            if (strncmp(lyd_node_module((struct lyd_node *)key)->name, mod_name, mod_name_len)
-                    || lyd_node_module((struct lyd_node *)key)->name[mod_name_len]) {
-                LOGVAL(ctx, LYE_PATH_INKEY, LY_VLOG_NONE, NULL, name);
+            if (strncmp(lyd_node_module((struct lyd_node *)key)->name, pp.pred[i].mod_name, pp.pred[i].mod_name_len)
+                    || lyd_node_module((struct lyd_node *)key)->name[pp.pred[i].mod_name_len]) {
+                LOGVAL(ctx, LYE_PATH_INKEY, LY_VLOG_NONE, NULL, pp.pred[i].name);
                 return -1;
             }
 
             /* but if the module is the same as the parent, it should have been omitted */
             if (lyd_node_module((struct lyd_node *)key) == lyd_node_module(node)) {
-                LOGVAL(ctx, LYE_PATH_INKEY, LY_VLOG_NONE, NULL, name);
+                LOGVAL(ctx, LYE_PATH_INKEY, LY_VLOG_NONE, NULL, pp.pred[i].name);
                 return -1;
             }
         } else {
             /* no module, so it must be the same as the list (parent) */
             if (lyd_node_module((struct lyd_node *)key) != lyd_node_module(node)) {
-                LOGVAL(ctx, LYE_PATH_INKEY, LY_VLOG_NONE, NULL, name);
+                LOGVAL(ctx, LYE_PATH_INKEY, LY_VLOG_NONE, NULL, pp.pred[i].name);
                 return -1;
             }
         }
@@ -2487,16 +2598,11 @@ check_parsed_values:
         }
 
         /* value does not match */
-        if (strncmp(key_val, value, val_len) || key_val[val_len]) {
+        if (strncmp(key_val, pp.pred[i].value, pp.pred[i].val_len) || key_val[pp.pred[i].val_len]) {
             return 1;
         }
 
         key = (struct lyd_node_leaf_list *)key->next;
-    }
-
-    if (has_predicate) {
-        LOGVAL(ctx, LYE_PATH_INKEY, LY_VLOG_NONE, NULL, name);
-        return -1;
     }
 
     return 0;
@@ -2515,31 +2621,32 @@ struct lyd_node *
 resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, struct lyd_node *start, int options,
                                  int *parsed)
 {
-    char *str;
-    const char *id, *mod_name, *name, *pred_name, *data_val;
+    const char *id, *mod_name, *name, *data_val, *llval;
     int r, ret, mod_name_len, nam_len, is_relative = -1, list_instance_position;
-    int has_predicate, last_parsed = 0, llval_len, pred_name_len, last_has_pred;
+    int has_predicate, last_parsed = 0, llval_len;
     struct lyd_node *sibling, *last_match = NULL;
     struct lyd_node_leaf_list *llist;
-    const struct lys_module *prefix_mod, *prev_mod;
+    const struct lys_module *prev_mod;
     struct ly_ctx *ctx;
+    const struct lys_node *ssibling;
+    struct parsed_pred pp;
 
     assert(nodeid && start && parsed);
 
+    memset(&pp, 0, sizeof pp);
     ctx = start->schema->module->ctx;
     id = nodeid;
 
+    /* parse first nodeid in case it is yang-data extension */
     if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL, NULL, 1)) < 1) {
-        *parsed = -1;
         LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
-        return NULL;
+        goto error;
     }
 
     if (name[0] == '#') {
         if (is_relative) {
             LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, '#', name);
-            *parsed = -1;
-            return NULL;
+            goto error;
         }
         id += r;
         last_parsed = r;
@@ -2547,10 +2654,10 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
         is_relative = -1;
     }
 
+    /* parse first nodeid */
     if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, &has_predicate, NULL, 0)) < 1) {
         LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
-        *parsed = -1;
-        return NULL;
+        goto error;
     }
     id += r;
     /* add it to parsed only after the data node was actually found */
@@ -2564,74 +2671,110 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
         prev_mod = lyd_node_module(start);
     }
 
+    /* do not duplicate code, use predicate parsing from the loop */
+    goto parse_predicates;
+
     while (1) {
-        list_instance_position = 0;
-
-        LY_TREE_FOR(start, sibling) {
-            /* RPC/action data check, return simply invalid argument, because the data tree is invalid */
-            if (lys_parent(sibling->schema)) {
-                if (options & LYD_PATH_OPT_OUTPUT) {
-                    if (lys_parent(sibling->schema)->nodetype == LYS_INPUT) {
-                        LOGERR(ctx, LY_EINVAL, "Provided data tree includes some RPC input nodes (%s).", sibling->schema->name);
-                        *parsed = -1;
-                        return NULL;
-                    }
-                } else {
-                    if (lys_parent(sibling->schema)->nodetype == LYS_OUTPUT) {
-                        LOGERR(ctx, LY_EINVAL, "Provided data tree includes some RPC output nodes (%s).", sibling->schema->name);
-                        *parsed = -1;
-                        return NULL;
-                    }
-                }
+        /* find the correct schema node first */
+        ssibling = NULL;
+        while ((ssibling = lys_getnext(ssibling, (start && start->parent) ? start->parent->schema : NULL, prev_mod, 0))) {
+            if (!schema_nodeid_siblingcheck(ssibling, prev_mod, mod_name, mod_name_len, name, nam_len)) {
+                break;
             }
+        }
+        if (!ssibling) {
+            /* there is not even such a schema node */
+            free(pp.pred);
+            return last_match;
+        }
+        pp.schema = ssibling;
 
-            /* name match */
-            if (!strncmp(name, sibling->schema->name, nam_len) && !sibling->schema->name[nam_len]) {
+        /* unify leaf-list value - it is possible to specify last-node value as both a predicate or parameter if
+         * is a leaf-list, unify both cases and the value will in both cases be in the predicate structure */
+        if (!id[0] && !pp.len && (ssibling->nodetype == LYS_LEAFLIST)) {
+            pp.len = 1;
+            pp.pred = calloc(1, sizeof *pp.pred);
+            LY_CHECK_ERR_GOTO(!pp.pred, LOGMEM(ctx), error);
 
-                /* module check */
-                if (mod_name) {
-                    prefix_mod = ly_ctx_nget_module(ctx, mod_name, mod_name_len, NULL, 1);
+            pp.pred[0].name = ".";
+            pp.pred[0].nam_len = 1;
+            pp.pred[0].value = (llist_value ? llist_value : "");
+            pp.pred[0].val_len = strlen(pp.pred[0].value);
+        }
 
-                    if (!prefix_mod) {
-                        str = strndup(nodeid, (mod_name + mod_name_len) - nodeid);
-                        LOGVAL(ctx, LYE_PATH_INMOD, LY_VLOG_STR, str);
-                        free(str);
-                        *parsed = -1;
-                        return NULL;
+        if (ssibling->nodetype == LYS_LEAFLIST) {
+            /* check leaf-list predicate */
+            if (pp.len > 1) {
+                LOGVAL(ctx, LYE_PATH_PREDTOOMANY, LY_VLOG_NONE, NULL);
+                goto error;
+            }
+            if ((pp.pred[0].name[0] != '.') || (pp.pred[0].nam_len != 1)) {
+                LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, pp.pred[0].name[0], pp.pred[0].name);
+                goto error;
+            }
+        } else if (ssibling->nodetype == LYS_LIST) {
+            /* list should have predicates */
+            if (!pp.len) {
+                /* none match */
+                return last_match;
+            }
+        } else if (pp.pred) {
+            /* no other nodes allow predicates */
+            LOGVAL(ctx, LYE_PATH_PREDTOOMANY, LY_VLOG_NONE, NULL);
+            goto error;
+        }
+
+#ifdef LY_ENABLED_CACHE
+        /* we will not be matching keyless lists or state leaf-lists this way */
+        if (start->parent && start->parent->ht && ((pp.schema->nodetype != LYS_LIST) || ((struct lys_node_list *)pp.schema)->keys_size)
+                && ((pp.schema->nodetype != LYS_LEAFLIST) || (pp.schema->flags & LYS_CONFIG_W))) {
+            sibling = resolve_json_data_node_hash(start->parent, pp);
+        } else
+#endif
+        {
+            list_instance_position = 0;
+            LY_TREE_FOR(start, sibling) {
+                /* RPC/action data check, return simply invalid argument, because the data tree is invalid */
+                if (lys_parent(sibling->schema)) {
+                    if (options & LYD_PATH_OPT_OUTPUT) {
+                        if (lys_parent(sibling->schema)->nodetype == LYS_INPUT) {
+                            LOGERR(ctx, LY_EINVAL, "Provided data tree includes some RPC input nodes (%s).", sibling->schema->name);
+                            goto error;
+                        }
+                    } else {
+                        if (lys_parent(sibling->schema)->nodetype == LYS_OUTPUT) {
+                            LOGERR(ctx, LY_EINVAL, "Provided data tree includes some RPC output nodes (%s).", sibling->schema->name);
+                            goto error;
+                        }
                     }
-                } else {
-                    prefix_mod = prev_mod;
                 }
-                if (prefix_mod != lyd_node_module(sibling)) {
+
+                if (sibling->schema != ssibling) {
+                    /* wrong schema node */
                     continue;
                 }
 
                 /* leaf-list, did we find it with the correct value or not? */
-                if (sibling->schema->nodetype == LYS_LEAFLIST) {
+                if (ssibling->nodetype == LYS_LEAFLIST) {
+                    if (ssibling->flags & LYS_CONFIG_R) {
+                        /* state leaf-lists will never match */
+                        continue;
+                    }
+
                     llist = (struct lyd_node_leaf_list *)sibling;
 
-                    last_has_pred = 0;
-                    if (has_predicate) {
-                        if ((r = parse_schema_json_predicate(id, NULL, NULL, &pred_name, &pred_name_len, &llist_value,
-                                                             &llval_len, &last_has_pred)) < 1) {
-                            LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[0], id);
-                            *parsed = -1;
-                            return NULL;
-                        }
-                        if ((pred_name[0] != '.') || (pred_name_len != 1)) {
-                            LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[1], id + 1);
-                            *parsed = -1;
-                            return NULL;
-                        }
-                    } else {
-                        r = 0;
-                        if (llist_value) {
-                            llval_len = strlen(llist_value);
-                        }
+                    /* get the expected leaf-list value */
+                    llval = NULL;
+                    llval_len = 0;
+                    if (pp.pred) {
+                        /* it was already checked that it is correct */
+                        llval = pp.pred[0].value;
+                        llval_len = pp.pred[0].val_len;
+
                     }
 
                     /* make value canonical (remove module name prefix) unless it was specified with it */
-                    if (llist_value && !strchr(llist_value, ':') && (llist->value_type & LY_TYPE_IDENT)
+                    if (llval && !strchr(llval, ':') && (llist->value_type & LY_TYPE_IDENT)
                             && !strncmp(llist->value_str, lyd_node_module(sibling)->name, strlen(lyd_node_module(sibling)->name))
                             && (llist->value_str[strlen(lyd_node_module(sibling)->name)] == ':')) {
                         data_val = llist->value_str + strlen(lyd_node_module(sibling)->name) + 1;
@@ -2639,73 +2782,84 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
                         data_val = llist->value_str;
                     }
 
-                    if ((!llist_value && data_val && data_val[0])
-                            || (llist_value && (strncmp(llist_value, data_val, llval_len) || data_val[llval_len]))) {
+                    if ((!llval && data_val && data_val[0]) || (llval && (strncmp(llval, data_val, llval_len)
+                            || data_val[llval_len]))) {
                         continue;
                     }
 
-                    id += r;
-                    last_parsed += r;
-                    has_predicate = last_has_pred;
-
-                } else if (sibling->schema->nodetype == LYS_LIST) {
+                } else if (ssibling->nodetype == LYS_LIST) {
                     /* list, we likely need predicates'n'stuff then, but if without a predicate, we are always creating it */
-                    if (!has_predicate) {
-                        /* none match */
-                        return last_match;
-                    }
-
                     ++list_instance_position;
-                    r = 0;
-                    ret = resolve_partial_json_data_list_predicate(id, name, sibling, list_instance_position, &r);
+                    ret = resolve_partial_json_data_list_predicate(pp, sibling, list_instance_position);
                     if (ret == -1) {
-                        *parsed = -1;
-                        return NULL;
+                        goto error;
                     } else if (ret == 1) {
                         /* this list instance does not match */
                         continue;
                     }
-                    id += r;
-                    last_parsed += r;
                 }
 
-                *parsed += last_parsed;
-
-                /* the result node? */
-                if (!id[0]) {
-                    return sibling;
-                }
-
-                /* move down the tree, if possible */
-                if (sibling->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
-                    LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[0], id);
-                    *parsed = -1;
-                    return NULL;
-                }
-                last_match = sibling;
-                prev_mod = lyd_node_module(sibling);
-                start = sibling->child;
                 break;
             }
         }
 
         /* no match, return last match */
         if (!sibling) {
+            free(pp.pred);
             return last_match;
         }
 
+        /* we found a next matching node */
+        *parsed += last_parsed;
+
+        /* the result node? */
+        if (!id[0]) {
+            free(pp.pred);
+            return sibling;
+        }
+
+        /* move down the tree, if possible */
+        if (ssibling->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
+            LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[0], id);
+            goto error;
+        }
+        last_match = sibling;
+        prev_mod = lyd_node_module(sibling);
+        start = sibling->child;
+
+        /* parse nodeid */
         if ((r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, &has_predicate, NULL, 0)) < 1) {
             LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
-            *parsed = -1;
-            return NULL;
+            goto error;
         }
         id += r;
         last_parsed = r;
+
+parse_predicates:
+        /* parse all the predicates */
+        free(pp.pred);
+        pp.schema = NULL;
+        pp.len = 0;
+        pp.pred = NULL;
+        while (has_predicate) {
+            ++pp.len;
+            pp.pred = ly_realloc(pp.pred, pp.len * sizeof *pp.pred);
+            LY_CHECK_ERR_GOTO(!pp.pred, LOGMEM(ctx), error);
+            if ((r = parse_schema_json_predicate(id, &pp.pred[pp.len - 1].mod_name, &pp.pred[pp.len - 1].mod_name_len,
+                                                 &pp.pred[pp.len - 1].name, &pp.pred[pp.len - 1].nam_len, &pp.pred[pp.len - 1].value,
+                                                 &pp.pred[pp.len - 1].val_len, &has_predicate)) < 1) {
+                LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[0], id);
+                goto error;
+            }
+
+            id += r;
+            last_parsed += r;
+        }
     }
 
-    /* cannot get here */
-    LOGINT(ctx);
+error:
     *parsed = -1;
+    free(pp.pred);
     return NULL;
 }
 

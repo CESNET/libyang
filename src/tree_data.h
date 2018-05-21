@@ -178,6 +178,12 @@ struct lyd_node {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
     struct lyd_node *parent;         /**< pointer to the parent node, NULL in case of root node */
+
+#ifdef LY_ENABLED_CACHE
+    uint32_t hash;                   /**< hash of this particular node (module name + schema name + key string values if list) */
+    struct hash_table *ht;           /**< hash table with all the direct children (except keys for a list, lists without keys) */
+#endif
+
     struct lyd_node *child;          /**< pointer to the first child node \note Since other lyd_node_*
                                           structures represent end nodes, this member
                                           is replaced in those structures. Therefore, be careful with accessing
@@ -211,6 +217,10 @@ struct lyd_node_leaf_list {
                                           node in the list. */
     struct lyd_node *parent;         /**< pointer to the parent node, NULL in case of root node */
 
+#ifdef LY_ENABLED_CACHE
+    uint32_t hash;                   /**< hash of this particular node (module name + schema name + string value if leaf-list) */
+#endif
+
     /* struct lyd_node *child; should be here, but is not */
 
     /* leaflist's specific members */
@@ -243,6 +253,10 @@ struct lyd_node_anydata {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
     struct lyd_node *parent;         /**< pointer to the parent node, NULL in case of root node */
+
+#ifdef LY_ENABLED_CACHE
+    uint32_t hash;                   /**< hash of this particular node (module name + schema name) */
+#endif
 
     /* struct lyd_node *child; should be here, but is not */
 

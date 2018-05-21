@@ -489,6 +489,14 @@ attr_error:
         *act_notif = *result;
     }
 
+#ifdef LY_ENABLED_CACHE
+    /* calculate the hash and insert it into parent (list with keys is handled when its keys are inserted) */
+    if (((*result)->schema->nodetype != LYS_LIST) || !((struct lys_node_list *)(*result)->schema)->keys_size) {
+        lyd_hash(*result);
+        lyd_insert_hash(*result);
+    }
+#endif
+
     /* first part of validation checks */
     if (lyv_data_context(*result, options, unres)) {
         goto error;

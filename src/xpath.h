@@ -177,18 +177,30 @@ enum lyxp_set_type {
     LYXP_SET_STRING
 };
 
+#ifdef LY_ENABLED_CACHE
+
+/**
+ * @brief Item stored in an XPath set hash table.
+ */
+struct lyxp_set_hash_node {
+    struct lyd_node *node;
+    enum lyxp_node_type type;
+} _PACKED;
+
+#endif
+
 /**
  * @brief XPath set - (partial) result.
  */
 struct lyxp_set {
     enum lyxp_set_type type;
     union {
-        struct lyxp_set_nodes {
+        struct lyxp_set_node {
             struct lyd_node *node;
             enum lyxp_node_type type;
             uint32_t pos;
         } *nodes;
-        struct lyxp_set_snodes {
+        struct lyxp_set_snode {
             struct lys_node *snode;
             enum lyxp_node_type type;
             /* 0 - snode was traversed, but not currently in the context,
@@ -197,7 +209,7 @@ struct lyxp_set {
              * >=3 - snode is not in context because we are in a predicate and this snode was used/will be used later */
             uint32_t in_ctx;
         } *snodes;
-        struct lyxp_set_attrs {
+        struct lyxp_set_attr {
             struct lyd_attr *attr;
             enum lyxp_node_type type;
             uint32_t pos; /* if node_type is LYXP_SET_NODE_ATTR, it is the parent node position */
@@ -210,6 +222,9 @@ struct lyxp_set {
     /* this is valid only for type LYXP_SET_NODE_SET and LYXP_SET_SNODE_SET */
     uint32_t used;
     uint32_t size;
+#ifdef LY_ENABLED_CACHE
+    struct hash_table *ht;
+#endif
     /* this is valid only for type LYXP_SET_NODE_SET */
     uint32_t ctx_pos;
     uint32_t ctx_size;
