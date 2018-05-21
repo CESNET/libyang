@@ -229,7 +229,10 @@ ly_load_plugins_dir(DIR *dir, const char *dir_path, int ext_or_type)
         name[len - LY_PLUGIN_SUFFIX_LEN] = '\0';
 
         /* and construct the filepath */
-        asprintf(&str, "%s/%s", dir_path, file->d_name);
+        if (asprintf(&str, "%s/%s", dir_path, file->d_name) == -1) {
+            LOGMEM(NULL);
+            return;
+        }
 
         /* load the plugin */
         dlhandler = dlopen(str, RTLD_NOW);

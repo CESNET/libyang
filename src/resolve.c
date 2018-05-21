@@ -1160,6 +1160,7 @@ resolve_hash_table_find_equal(void *val1_p, void *val2_p, int mod, void *UNUSED(
     int i;
 
     assert(!mod);
+    (void)mod;
 
     pp = *((struct parsed_pred *)val1_p);
     val2 = *((struct lyd_node **)val2_p);

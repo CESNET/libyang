@@ -433,7 +433,10 @@ yang_print_unsigned(struct lyout *out, int level, LYEXT_SUBSTMT substmt, uint8_t
 {
     char *str;
 
-    asprintf(&str, "%u", attr_value);
+    if (asprintf(&str, "%u", attr_value) == -1) {
+        LOGMEM(module->ctx);
+        return;
+    }
     yang_print_substmt(out, level, substmt, substmt_index, str, module, ext, ext_size);
     free(str);
 }
@@ -445,7 +448,10 @@ yang_print_signed(struct lyout *out, int level, LYEXT_SUBSTMT substmt, uint8_t s
 {
     char *str;
 
-    asprintf(&str, "%d", attr_value);
+    if (asprintf(&str, "%d", attr_value) == -1) {
+        LOGMEM(module->ctx);
+        return;
+    }
     yang_print_substmt(out, level, substmt, substmt_index, str, module, ext, ext_size);
     free(str);
 }
@@ -540,8 +546,11 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
                     yang_print_substmt(out, level, LYEXT_SUBSTMT_BASE, 0, type->info.ident.ref[i]->name,
                                        module, type->info.ident.ref[i]->ext, type->info.ident.ref[i]->ext_size);
                 } else {
-                    asprintf(&s, "%s:%s", transform_module_name2import_prefix(module, mod->name),
-                             type->info.ident.ref[i]->name);
+                    if (asprintf(&s, "%s:%s", transform_module_name2import_prefix(module, mod->name),
+                                 type->info.ident.ref[i]->name) == -1) {
+                        LOGMEM(module->ctx);
+                        return;
+                    }
                     yang_print_substmt(out, level, LYEXT_SUBSTMT_BASE, 0, s,
                                        module, type->info.ident.ref[i]->ext, type->info.ident.ref[i]->ext_size);
                     free(s);
@@ -926,7 +935,10 @@ yang_print_identity(struct lyout *out, int level, const struct lys_ident *ident)
             yang_print_substmt(out, level, LYEXT_SUBSTMT_BASE, i, ident->base[i]->name,
                                ident->module, ident->ext, ident->ext_size);
         } else {
-            asprintf(&str, "%s:%s", transform_module_name2import_prefix(ident->module, mod->name), ident->base[i]->name);
+            if (asprintf(&str, "%s:%s", transform_module_name2import_prefix(ident->module, mod->name), ident->base[i]->name) == -1) {
+                LOGMEM(ident->module->ctx);
+                return;
+            }
             yang_print_substmt(out, level, LYEXT_SUBSTMT_BASE, i, str,
                                ident->module, ident->ext, ident->ext_size);
             free(str);

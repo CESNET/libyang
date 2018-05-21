@@ -853,7 +853,7 @@ int
 tree_print_model(struct lyout *out, const struct lys_module *module, const char *target_schema_path,
                  int ll, int options)
 {
-    struct lys_node *node, *data;
+    struct lys_node *node = NULL, *data;
     struct ly_set *set;
     uint16_t max_child_len;
     int have_rpcs = 0, have_notifs = 0, have_grps = 0, have_augs = 0, printed;
