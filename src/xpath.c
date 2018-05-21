@@ -1448,6 +1448,26 @@ set_sort(struct lyxp_set *set, const struct lyd_node *cur_node, int options)
     LOGDBG(LY_LDGXPATH, "SORT END %d", ret);
     print_set_debug(set);
 
+#ifdef LY_ENABLED_CACHE
+    struct lyxp_set_hash_node hnode;
+    uint64_t hash;
+
+    /* check node hashes */
+    if (set->used >= LY_CACHE_HT_MIN_CHILDREN) {
+        assert(set->ht);
+        for (i = 0; i < set->used; ++i) {
+            hnode.node = set->val.nodes[i].node;
+            hnode.type = set->val.nodes[i].type;
+
+            hash = dict_hash_multi(0, (const char *)&hnode.node, sizeof hnode.node);
+            hash = dict_hash_multi(hash, (const char *)&hnode.type, sizeof hnode.type);
+            hash = dict_hash_multi(hash, NULL, 0);
+
+            assert(!lyht_find(set->ht, &hnode, hash, NULL));
+        }
+    }
+#endif
+
     return ret - 1;
 }
 
