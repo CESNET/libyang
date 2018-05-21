@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <setjmp.h>
 #include <string.h>
+#include <stdarg.h>
 #include <cmocka.h>
 
 #include "tests/config.h"
