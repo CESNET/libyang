@@ -1387,7 +1387,7 @@ set_sort_compare(struct lyxp_set_node *item1, struct lyxp_set_node *item2,
  * @param[in] cur_node Original context node.
  * @param[in] options Whether to apply data node access restrictions defined for 'when' and 'must' evaluation.
  *
- * @return How many times the whole set was traversed.
+ * @return How many times the whole set was traversed - 1 (if set was sorted, returns 0).
  */
 static int
 set_sort(struct lyxp_set *set, const struct lyd_node *cur_node, int options)
@@ -1448,7 +1448,7 @@ set_sort(struct lyxp_set *set, const struct lyd_node *cur_node, int options)
     LOGDBG(LY_LDGXPATH, "SORT END %d", ret);
     print_set_debug(set);
 
-    return ret;
+    return ret - 1;
 }
 
 /**
@@ -3811,6 +3811,9 @@ xpath_local_name(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cu
                  struct lyxp_set *set, int options)
 {
     struct lyxp_set_node *item;
+    /* suppress unused variable warning */
+    (void)cur_node;
+    (void)options;
 
     if (options & LYXP_SNODE_ALL) {
         set_snode_clear_ctx(set);
@@ -3827,15 +3830,8 @@ xpath_local_name(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cu
             return -1;
         }
 
-#ifndef NDEBUG
         /* we need the set sorted, it affects the result */
-        if (set_sort(args[0], cur_node, options) > 1) {
-            LOGERR(local_mod->ctx, LY_EINT, "XPath set was expected to be sorted, but is not (%s).", __func__);
-        }
-#else
-    /* suppress unused variable warning */
-    (void)cur_node;
-#endif
+        assert(!set_sort(args[0], cur_node, options));
 
         item = &args[0]->val.nodes[0];
     } else {
@@ -3848,12 +3844,8 @@ xpath_local_name(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cu
             return -1;
         }
 
-#ifndef NDEBUG
         /* we need the set sorted, it affects the result */
-        if (set_sort(set, cur_node, options) > 1) {
-            LOGERR(local_mod->ctx, LY_EINT, "XPath set was expected to be sorted, but is not (%s).", __func__);
-        }
-#endif
+        assert(!set_sort(set, cur_node, options));
 
         item = &set->val.nodes[0];
     }
@@ -3872,8 +3864,6 @@ xpath_local_name(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cu
         break;
     }
 
-    /* UNUSED in 'Release' build type */
-    (void)options;
     return EXIT_SUCCESS;
 }
 
@@ -3916,6 +3906,9 @@ xpath_namespace_uri(struct lyxp_set **args, uint16_t arg_count, struct lyd_node 
 {
     struct lyxp_set_node *item;
     struct lys_module *module;
+    /* suppress unused variable warning */
+    (void)cur_node;
+    (void)options;
 
     if (options & LYXP_SNODE_ALL) {
         set_snode_clear_ctx(set);
@@ -3932,15 +3925,8 @@ xpath_namespace_uri(struct lyxp_set **args, uint16_t arg_count, struct lyd_node 
             return -1;
         }
 
-#ifndef NDEBUG
         /* we need the set sorted, it affects the result */
-        if (set_sort(args[0], cur_node, options) > 1) {
-            LOGERR(local_mod->ctx, LY_EINT, "XPath set was expected to be sorted, but is not (%s).", __func__);
-        }
-#else
-    /* suppress unused variable warning */
-    (void)cur_node;
-#endif
+        assert(!set_sort(args[0], cur_node, options));
 
         item = &args[0]->val.nodes[0];
     } else {
@@ -3953,12 +3939,8 @@ xpath_namespace_uri(struct lyxp_set **args, uint16_t arg_count, struct lyd_node 
             return -1;
         }
 
-#ifndef NDEBUG
         /* we need the set sorted, it affects the result */
-        if (set_sort(set, cur_node, options) > 1) {
-            LOGERR(local_mod->ctx, LY_EINT, "XPath set was expected to be sorted, but is not (%s).", __func__);
-        }
-#endif
+        assert(!set_sort(set, cur_node, options));
 
         item = &set->val.nodes[0];
     }
@@ -3983,8 +3965,6 @@ xpath_namespace_uri(struct lyxp_set **args, uint16_t arg_count, struct lyd_node 
         break;
     }
 
-    /* UNUSED in 'Release' build type */
-    (void)options;
     return EXIT_SUCCESS;
 }
 
@@ -5887,12 +5867,8 @@ moveto_union(struct lyxp_set *set1, struct lyxp_set *set2, struct lyd_node *cur_
         return EXIT_SUCCESS;
     }
 
-#ifndef NDEBUG
     /* we assume sets are sorted */
-    if ((set_sort(set1, cur_node, options) > 1) || (set_sort(set2, cur_node, options) > 1)) {
-        LOGERR(ctx, LY_EINT, "XPath set was expected to be sorted, but is not (%s).", __func__);
-    }
-#endif
+    assert(!set_sort(set1, cur_node, options) && !set_sort(set2, cur_node, options));
 
     /* sort, remove duplicates */
     if (set_sorted_merge(set1, set2, cur_node, options)) {
@@ -6282,14 +6258,7 @@ moveto_parent(struct lyxp_set *set, struct lyd_node *cur_node, int all_desc, int
         }
     }
 
-#ifndef NDEBUG
-    if (set_sort(set, cur_node, options) > 1) {
-        LOGERR(ctx, LY_EINT, "XPath set was expected to be sorted, but is not (%s).", __func__);
-    }
-    if (set_sorted_dup_node_clean(set)) {
-        LOGERR(ctx, LY_EINT, "XPath set includes duplicates (%s).", __func__);
-    }
-#endif
+    assert(!set_sort(set, cur_node, options) && !set_sorted_dup_node_clean(set));
 
     return EXIT_SUCCESS;
 }
@@ -6776,12 +6745,9 @@ only_parse:
             return ret;
         }
     } else if (set->type == LYXP_SET_NODE_SET) {
-#ifndef NDEBUG
         /* we (possibly) need the set sorted, it can affect the result (if the predicate result is a number) */
-        if (set_sort(set, cur_node, options) > 1) {
-            LOGERR(local_mod->ctx, LY_EINT, "XPath set was expected to be sorted, but is not (%s).", __func__);
-        }
-#endif
+        assert(!set_sort(set, cur_node, options));
+
         /* empty set, nothing to evaluate */
         if (!set->used) {
             goto only_parse;
@@ -8418,12 +8384,8 @@ lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target, const struct lyd_
         case LYXP_SET_NODE_SET:
             assert(set->used);
 
-#ifndef NDEBUG
             /* we need the set sorted, it affects the result */
-            if (set_sort(set, cur_node, options) > 1) {
-                LOGERR(local_mod->ctx, LY_EINT, "XPath set was expected to be sorted, but is not (%s).", __func__);
-            }
-#endif
+            assert(!set_sort(set, cur_node, options));
 
             str = cast_node_set_to_string(set, (struct lyd_node *)cur_node, (struct lys_module *)local_mod, options);
             if (!str) {
