@@ -451,6 +451,12 @@ lyht_find_first(struct hash_table *ht, uint32_t hash, struct ht_rec **rec_p)
             *rec_p = rec;
         }
         i = (i + 1) % ht->size;
+        if (i == idx) {
+            /* we went through all the records (very unlikely, but possible when many records are invalid),
+             * just return not found */
+            assert(!rec_p || *rec_p);
+            return 1;
+        }
         rec = lyht_get_rec(ht->recs, ht->rec_size, i);
     }
     if (rec->hits == 0) {
