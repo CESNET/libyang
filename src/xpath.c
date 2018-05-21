@@ -5259,7 +5259,7 @@ moveto_node_add(struct lyxp_set *set, struct lyd_node *node, uint32_t pos, uint3
         set->val.nodes[i].pos = pos;
         *replaced = 1;
 #ifdef LY_ENABLED_CACHE
-        set_remove_node_hash(set, set->val.nodes[i].node, set->val.nodes[i].type);
+        set_insert_node_hash(set, set->val.nodes[i].node, set->val.nodes[i].type);
 #endif
     } else {
         set_insert_node(set, node, pos, LYXP_NODE_ELEM, i);
