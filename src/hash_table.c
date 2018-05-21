@@ -474,29 +474,37 @@ lyht_find_first(struct hash_table *ht, uint32_t hash, struct ht_rec **rec_p)
     return 0;
 }
 
-/* return: 0 - hash collision found, returned its record,
- *         1 - hash collision not found, returned the record where it would be inserted */
+/**
+ * @brief Search for the next collision.
+ *
+ * @param[in] ht Hash table to search in.
+ * @param[in,out] last Last returned collision record.
+ * @param[in] first First collision record (hits > 1).
+ * @return 0 when hash collision found, \p last points to this next collision,
+ *         1 when hash collision not found, \p last points to the record where it would be inserted.
+ */
 static int
-lyht_find_collision(struct hash_table *ht, struct ht_rec **last)
+lyht_find_collision(struct hash_table *ht, struct ht_rec **last, struct ht_rec *first)
 {
     struct ht_rec *empty = NULL;
-    uint32_t start_i, i, idx;
+    uint32_t i, idx;
 
     assert(last && *last);
 
     idx = (*last)->hash & (ht->size - 1);
-    start_i = i = (((unsigned char *)*last) - ht->recs) / ht->rec_size;
+    i = (((unsigned char *)*last) - ht->recs) / ht->rec_size;
 
     do {
         i = (i + 1) % ht->size;
-        if (i == start_i) {
+        *last = lyht_get_rec(ht->recs, ht->rec_size, i);
+        if (*last == first) {
             /* we went through all the records (very unlikely, but possible when many records are invalid),
              * just return an invalid record */
             assert(empty);
             *last = empty;
             return 1;
         }
-        *last = lyht_get_rec(ht->recs, ht->rec_size, i);
+
         if (((*last)->hits == -1) && !empty) {
             empty = *last;
         }
@@ -518,7 +526,7 @@ lyht_find_collision(struct hash_table *ht, struct ht_rec **last)
 int
 lyht_find(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p)
 {
-    struct ht_rec *rec;
+    struct ht_rec *rec, *crec;
     uint32_t i, c;
     int r;
 
@@ -535,9 +543,10 @@ lyht_find(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p)
     }
 
     /* some collisions, we need to go through them, too */
+    crec = rec;
     c = rec->hits;
     for (i = 1; i < c; ++i) {
-        r = lyht_find_collision(ht, &rec);
+        r = lyht_find_collision(ht, &rec, crec);
         assert(!r);
         (void)r;
 
@@ -557,7 +566,7 @@ lyht_find(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p)
 int
 lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p)
 {
-    struct ht_rec *rec;
+    struct ht_rec *rec, *crec;
     uint32_t i, c;
     int r, found = 0;
 
@@ -579,9 +588,10 @@ lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p
     }
 
     /* go through collisions and find next one after the previous one */
+    crec = rec;
     c = rec->hits;
     for (i = 1; i < c; ++i) {
-        r = lyht_find_collision(ht, &rec);
+        r = lyht_find_collision(ht, &rec, crec);
         assert(!r);
         (void)r;
 
@@ -629,7 +639,7 @@ lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash)
         /* some collisions, we need to go through them, too */
         crec = rec;
         for (i = 1; i < crec->hits; ++i) {
-            r = lyht_find_collision(ht, &rec);
+            r = lyht_find_collision(ht, &rec, crec);
             assert(!r);
 
             /* compare values */
@@ -639,7 +649,7 @@ lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash)
         }
 
         /* value not found, get the record where it will be inserted */
-        r = lyht_find_collision(ht, &rec);
+        r = lyht_find_collision(ht, &rec, crec);
         assert(r);
     }
 
@@ -693,7 +703,7 @@ lyht_remove(struct hash_table *ht, void *val_p, uint32_t hash)
     /* we always need to go through collisions */
     crec = rec;
     for (i = 1; i < crec->hits; ++i) {
-        r = lyht_find_collision(ht, &rec);
+        r = lyht_find_collision(ht, &rec, crec);
         assert(!r);
 
         /* compare values */
