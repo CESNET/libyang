@@ -61,6 +61,27 @@ ly_clean_plugins(void)
     unsigned int u;
     int ret = EXIT_SUCCESS;
 
+#ifdef STATIC
+    /* lock the extension plugins list */
+    pthread_mutex_lock(&plugins_lock);
+
+    if(ext_plugins) {
+        free(ext_plugins);
+        ext_plugins = NULL;
+        ext_plugins_count = 0;
+    }
+
+    if(type_plugins) {
+        free(type_plugins);
+        type_plugins = NULL;
+        type_plugins_count = 0;
+    }
+
+    /* unlock the global structures */
+    pthread_mutex_unlock(&plugins_lock);
+    return ret;
+#endif /* STATIC */
+
     /* lock the extension plugins list */
     pthread_mutex_lock(&plugins_lock);
 
@@ -113,6 +134,10 @@ lytype_load_plugin(void *dlhandler, const char *file_name)
     struct lytype_plugin_list *plugin, *p;
     uint32_t u, v;
     char *str;
+
+#ifdef STATIC
+    return 0;
+#endif /* STATIC */
 
     /* get the plugin data */
     plugin = dlsym(dlhandler, file_name);
@@ -242,6 +267,10 @@ ly_load_plugins_dir(DIR *dir, const char *dir_path, int ext_or_type)
     void *dlhandler;
     int ret;
 
+#ifdef STATIC
+    return;
+#endif /* STATIC */
+
     while ((file = readdir(dir))) {
         /* required format of the filename is *LY_PLUGIN_SUFFIX */
         len = strlen(file->d_name);
@@ -311,6 +340,18 @@ ly_load_plugins(void)
 {
     DIR* dir;
     const char *pluginsdir;
+
+#ifdef STATIC
+    /* lock the extension plugins list */
+    pthread_mutex_lock(&plugins_lock);
+
+    ext_plugins = static_load_lyext_plugins(&ext_plugins_count);
+    type_plugins = static_load_lytype_plugins(&type_plugins_count);
+
+    /* unlock the global structures */
+    pthread_mutex_unlock(&plugins_lock);
+    return;
+#endif /* STATIC */
 
     /* lock the extension plugins list */
     pthread_mutex_lock(&plugins_lock);

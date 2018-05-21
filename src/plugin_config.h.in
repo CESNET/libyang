@@ -26,4 +26,41 @@
 #  define LY_PLUGIN_SUFFIX_LEN 6
 #endif
 
+#ifdef STATIC
+@EXTERN_EXTENSIONS_LIST@
+@EXTERN_USER_TYPE_LIST@
+
+struct lyext_plugin_list *static_load_lyext_plugins(uint16_t *count)
+{
+    struct lyext_plugin_list *plugin;
+    uint16_t size = @EXTENSIONS_LIST_SIZE@;
+
+    plugin = malloc(size * (sizeof *plugin));
+    if (!plugin) {
+        LOGMEM(NULL);
+        return NULL;
+    }
+
+    *count = size;
+@MEMCPY_EXTENSIONS_LIST@
+    return plugin;
+}
+
+struct lytype_plugin_list *static_load_lytype_plugins(uint16_t *count)
+{
+    struct lytype_plugin_list *plugin;
+    uint16_t size = @USER_TYPE_LIST_SIZE@;
+
+    plugin = malloc(size * (sizeof *plugin));
+    if (!plugin) {
+        LOGMEM(NULL);
+        return NULL;
+    }
+
+    *count = size;
+@MEMCPY_USER_TYPE_LIST@
+    return plugin;
+}
+#endif /* STATIC */
+
 #endif /* LY_PLUGIN_CONFIG_H_ */

@@ -5,9 +5,9 @@ macro(EXTENSION_PLUGIN PLUGIN_NAME SRCS)
     install(TARGETS ${PLUGIN_NAME} DESTINATION ${EXTENSIONS_PLUGINS_DIR_MACRO})
 endmacro(EXTENSION_PLUGIN)
 
-EXTENSION_PLUGIN(nacm "nacm.c")
-EXTENSION_PLUGIN(metadata "metadata.c")
-EXTENSION_PLUGIN(yangdata "yang-data.c")
+foreach(EXTENSION ${EXTENSIONS_LIST})
+    EXTENSION_PLUGIN(${EXTENSION} "${EXTENSION}.c")
+endforeach()
 
 # special plugin for test_extensions - only built, but not installed
 add_library(libyang_ext_test SHARED ext_test.c)
