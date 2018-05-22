@@ -3259,7 +3259,7 @@ lyd_diff_match(struct lyd_node *first, struct lyd_node *second, struct lyd_diffl
     case LYS_ANYXML:
     case LYS_ANYDATA:
         /* check for anydata/anyxml's modification */
-        if (lyd_anydata_equal(first, second) && lyd_difflist_add(diff, size, (*i)++, LYD_DIFF_CHANGED, first, second)) {
+        if (!lyd_anydata_equal(first, second) && lyd_difflist_add(diff, size, (*i)++, LYD_DIFF_CHANGED, first, second)) {
             return -1;
         }
         break;
