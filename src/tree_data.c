@@ -5422,11 +5422,12 @@ lyd_dup_to_ctx(const struct lyd_node *node, int recursive, struct ly_ctx *ctx)
         }
 
         /* LY_TREE_DFS_END */
-        /* select element for the next run - children first */
-        next = elem->child;
-        /* child exception for lyd_node_leaf and lyd_node_leaflist */
+        /* select element for the next run - children first,
+         * child exception for lyd_node_leaf and lyd_node_leaflist */
         if (elem->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
             next = NULL;
+        } else {
+            next = elem->child;
         }
         if (!next) {
             if (elem->parent == node->parent) {

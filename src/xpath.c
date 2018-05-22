@@ -1160,11 +1160,12 @@ dfs_search:
             ++pos;
 
             /* TREE DFS END */
-            /* select element for the next run - children first */
-            next = elem->child;
-            /* child exception for lyd_node_leaf and lyd_node_leaflist, but not the root */
+            /* select element for the next run - children first,
+             * child exception for lyd_node_leaf and lyd_node_leaflist, but not the root */
             if (elem->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
                 next = NULL;
+            } else {
+                next = elem->child;
             }
             if (!next) {
 skip_children:
@@ -5584,9 +5585,10 @@ moveto_node_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
 
             /* TREE DFS NEXT ELEM */
             /* select element for the next run - children first */
-            next = elem->child;
             if (elem->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
                 next = NULL;
+            } else {
+                next = elem->child;
             }
             if (!next) {
 skip_children:
