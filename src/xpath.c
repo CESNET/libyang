@@ -6027,6 +6027,11 @@ moveto_self_add_children_r(const struct lyd_node *parent, uint32_t parent_pos, s
             if (!set_dup_node_check(dup_check_set, sub, LYXP_NODE_ELEM, -1)) {
                 set_insert_node(to_set, sub, 0, LYXP_NODE_ELEM, to_set->used);
 
+                /* skip anydata/anyxml and dummy nodes */
+                if ((sub->schema->nodetype & LYS_ANYDATA) || (sub->validity & LYD_VAL_INUSE)) {
+                    continue;
+                }
+
                 /* also add all the children of this node, recursively */
                 ret = moveto_self_add_children_r(sub, 0, to_set, dup_check_set, root_type, options);
                 if (ret) {
