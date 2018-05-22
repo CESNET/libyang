@@ -1955,6 +1955,7 @@ typedef enum {
     LYVE_PATH_INNODE,  /**< invalid node name (path) */
     LYVE_PATH_INKEY,   /**< invalid key name (path) */
     LYVE_PATH_MISSKEY, /**< missing some list keys (path) */
+    LYVE_PATH_INIDENTREF, /**< missing module name prefix in identityref predicate value (path) */
     LYVE_PATH_EXISTS,  /**< target node already exists (path) */
     LYVE_PATH_MISSPAR, /**< some parent of the target node is missing (path) */
     LYVE_PATH_PREDTOOMANY, /**< too many predicates specified (path) */

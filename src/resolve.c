@@ -2522,7 +2522,6 @@ resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_nod
 static int
 resolve_partial_json_data_list_predicate(struct parsed_pred pp, struct lyd_node *node, int position)
 {
-    const char *key_val;
     uint16_t i;
     struct lyd_node_leaf_list *key;
     struct lys_node_list *slist;
@@ -2544,15 +2543,6 @@ resolve_partial_json_data_list_predicate(struct parsed_pred pp, struct lyd_node 
             /* not a match */
             return 1;
         }
-    }
-
-    /* basic checks */
-    if (pp.len > slist->keys_size) {
-        LOGVAL(ctx, LYE_PATH_PREDTOOMANY, LY_VLOG_NONE, NULL);
-        return -1;
-    } else if (pp.len < slist->keys_size) {
-        LOGVAL(ctx, LYE_PATH_MISSKEY, LY_VLOG_NONE, NULL, slist->keys[pp.len]->name);
-        return -1;
     }
 
     key = (struct lyd_node_leaf_list *)node->child;
@@ -2589,17 +2579,8 @@ resolve_partial_json_data_list_predicate(struct parsed_pred pp, struct lyd_node 
             }
         }
 
-        /* make value canonical */
-        if ((key->value_type & LY_TYPE_IDENT)
-                && !strncmp(key->value_str, lyd_node_module(node)->name, strlen(lyd_node_module(node)->name))
-                && (key->value_str[strlen(lyd_node_module(node)->name)] == ':')) {
-            key_val = key->value_str + strlen(lyd_node_module(node)->name) + 1;
-        } else {
-            key_val = key->value_str;
-        }
-
         /* value does not match */
-        if (strncmp(key_val, pp.pred[i].value, pp.pred[i].val_len) || key_val[pp.pred[i].val_len]) {
+        if (strncmp(key->value_str, pp.pred[i].value, pp.pred[i].val_len) || key->value_str[pp.pred[i].val_len]) {
             return 1;
         }
 
@@ -2630,6 +2611,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
     const struct lys_module *prev_mod;
     struct ly_ctx *ctx;
     const struct lys_node *ssibling;
+    struct lys_node_list *slist;
     struct parsed_pred pp;
 
     assert(nodeid && start && parsed);
@@ -2703,21 +2685,43 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
             pp.pred[0].val_len = strlen(pp.pred[0].value);
         }
 
-        if (ssibling->nodetype == LYS_LEAFLIST) {
-            /* check leaf-list predicate */
+        if (ssibling->nodetype & (LYS_LEAFLIST | LYS_LEAF)) {
+            /* check leaf/leaf-list predicate */
             if (pp.len > 1) {
                 LOGVAL(ctx, LYE_PATH_PREDTOOMANY, LY_VLOG_NONE, NULL);
                 goto error;
-            }
-            if ((pp.pred[0].name[0] != '.') || (pp.pred[0].nam_len != 1)) {
-                LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, pp.pred[0].name[0], pp.pred[0].name);
-                goto error;
+            } else if (pp.len) {
+                if ((pp.pred[0].name[0] != '.') || (pp.pred[0].nam_len != 1)) {
+                    LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, pp.pred[0].name[0], pp.pred[0].name);
+                    goto error;
+                }
+                if ((((struct lys_node_leaf *)ssibling)->type.base == LY_TYPE_IDENT) && !strnchr(pp.pred[0].value, ':', pp.pred[0].val_len)) {
+                    LOGVAL(ctx, LYE_PATH_INIDENTREF, LY_VLOG_LYS, ssibling, pp.pred[0].val_len, pp.pred[0].value);
+                    goto error;
+                }
             }
         } else if (ssibling->nodetype == LYS_LIST) {
-            /* list should have predicates */
+            /* list should have predicates for all the keys or position */
+            slist = (struct lys_node_list *)ssibling;
             if (!pp.len) {
                 /* none match */
                 return last_match;
+            } else if (!isdigit(pp.pred[0].name[0])) {
+                /* list predicate is not a position, so there must be all the keys */
+                if (pp.len > slist->keys_size) {
+                    LOGVAL(ctx, LYE_PATH_PREDTOOMANY, LY_VLOG_NONE, NULL);
+                    goto error;
+                } else if (pp.len < slist->keys_size) {
+                    LOGVAL(ctx, LYE_PATH_MISSKEY, LY_VLOG_NONE, NULL, slist->keys[pp.len]->name);
+                    goto error;
+                }
+                /* check that all identityrefs have module name, otherwise the hash of the list instance will never match!! */
+                for (r = 0; r < pp.len; ++r) {
+                    if ((slist->keys[r]->type.base == LY_TYPE_IDENT) && !strnchr(pp.pred[r].value, ':', pp.pred[r].val_len)) {
+                        LOGVAL(ctx, LYE_PATH_INIDENTREF, LY_VLOG_LYS, slist->keys[r], pp.pred[r].val_len, pp.pred[r].value);
+                        goto error;
+                    }
+                }
             }
         } else if (pp.pred) {
             /* no other nodes allow predicates */

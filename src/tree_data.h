@@ -819,7 +819,8 @@ struct lyd_node *lyd_new_yangdata(const struct lys_module *module, const char *n
  * @param[in] ctx Context to use. Mandatory if \p data_tree is NULL.
  * @param[in] path Simple data path (see @ref howtoxpath). List nodes can have predicates, one for each list key
  * in the correct order and with its value as well or using specific instance position, leaves and leaf-lists
- * can have predicates too that have preference over \p value.
+ * can have predicates too that have preference over \p value. When specifying an identityref value in a predicate,
+ * you MUST use the module name as the value prefix!
  * @param[in] value Value of the new leaf/lealf-list (const char*). If creating anydata or anyxml, the following
  * \p value_type parameter is required to be specified correctly. If creating nodes of other types, the
  * parameter is ignored.

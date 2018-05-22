@@ -391,6 +391,7 @@ const char *ly_errs[] = {
 /* LYE_PATH_INNODE */  "Schema node not found.",
 /* LYE_PATH_INKEY */   "List key not found or on incorrect position (\"%s\").",
 /* LYE_PATH_MISSKEY */ "List keys or position missing (\"%s\").",
+/* LYE_PATH_INIDENTREF */ "Identityref predicate value \"%.*s\" missing module name.",
 /* LYE_PATH_EXISTS */  "Node already exists.",
 /* LYE_PATH_MISSPAR */ "Parent does not exist.",
 /* LYE_PATH_PREDTOOMANY */ "Too many predicates.",
@@ -486,6 +487,7 @@ static const LY_VECODE ecode2vecode[] = {
     LYVE_PATH_INNODE,  /* LYE_PATH_INNODE */
     LYVE_PATH_INKEY,   /* LYE_PATH_INKEY */
     LYVE_PATH_MISSKEY, /* LYE_PATH_MISSKEY */
+    LYVE_PATH_INIDENTREF, /* LYE_PATH_INIDENTREF */
     LYVE_PATH_EXISTS,  /* LYE_PATH_EXISTS */
     LYVE_PATH_MISSPAR, /* LYE_PATH_MISSPAR */
     LYVE_PATH_PREDTOOMANY, /* LYE_PATH_PREDTOOMANY */
