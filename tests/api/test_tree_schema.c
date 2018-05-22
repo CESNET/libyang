@@ -817,7 +817,7 @@ test_lys_print_fd_tree(void **state)
     }
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
+    strncpy(file_name, TMP_TEMPLATE, sizeof(file_name));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -867,7 +867,7 @@ test_lys_print_fd_yang(void **state)
     }
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
+    strncpy(file_name, TMP_TEMPLATE, sizeof(file_name));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -917,7 +917,7 @@ test_lys_print_fd_yin(void **state)
     }
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
+    strncpy(file_name, TMP_TEMPLATE, sizeof(file_name));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -968,7 +968,7 @@ test_lys_print_fd_info(void **state)
     }
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
+    strncpy(file_name, TMP_TEMPLATE, sizeof(file_name));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1019,7 +1019,7 @@ test_lys_print_file_tree(void **state)
     }
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
+    strncpy(file_name, TMP_TEMPLATE, sizeof(file_name));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1081,7 +1081,7 @@ test_lys_print_file_yin(void **state)
     }
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
+    strncpy(file_name, TMP_TEMPLATE, sizeof(file_name));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1143,7 +1143,7 @@ test_lys_print_file_yang(void **state)
     }
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
+    strncpy(file_name, TMP_TEMPLATE, sizeof(file_name));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1206,7 +1206,7 @@ test_lys_print_file_info(void **state)
     }
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
+    strncpy(file_name, TMP_TEMPLATE, sizeof(file_name));
 
     fd = mkstemp(file_name);
     if (fd < 1) {

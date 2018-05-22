@@ -1138,7 +1138,7 @@ test_lyd_print_fd_xml(void **state)
     int fd;
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
+    strncpy(file_name, TMP_TEMPLATE, sizeof(file_name));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1181,7 +1181,7 @@ test_lyd_print_fd_xml_format(void **state)
     int fd;
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
+    strncpy(file_name, TMP_TEMPLATE, sizeof(file_name));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1224,7 +1224,7 @@ test_lyd_print_fd_json(void **state)
     int fd;
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
+    strncpy(file_name, TMP_TEMPLATE, sizeof(file_name));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1268,7 +1268,7 @@ test_lyd_print_file_xml(void **state)
     int fd;
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
+    strncpy(file_name, TMP_TEMPLATE, sizeof(file_name));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1323,7 +1323,7 @@ test_lyd_print_file_xml_format(void **state)
     int fd;
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
+    strncpy(file_name, TMP_TEMPLATE, sizeof(file_name));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1378,7 +1378,7 @@ test_lyd_print_file_json(void **state)
     int fd = -1;
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
+    strncpy(file_name, TMP_TEMPLATE, sizeof(file_name));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
