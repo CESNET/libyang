@@ -2816,20 +2816,25 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
 
         /* we found a next matching node */
         *parsed += last_parsed;
+        last_match = sibling;
+        prev_mod = lyd_node_module(sibling);
 
         /* the result node? */
         if (!id[0]) {
             free(pp.pred);
-            return sibling;
+            return last_match;
         }
 
-        /* move down the tree, if possible */
+        /* move down the tree, if possible, and continue */
         if (ssibling->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
+            /* there can be no children even through expected, error */
             LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[0], id);
             goto error;
+        } else if (!sibling->child) {
+            /* there could be some children, but are not, return what we found so far */
+            free(pp.pred);
+            return last_match;
         }
-        last_match = sibling;
-        prev_mod = lyd_node_module(sibling);
         start = sibling->child;
 
         /* parse nodeid */
