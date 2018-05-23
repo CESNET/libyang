@@ -318,7 +318,7 @@ else()
 endif()
 
 # YANG user types plugins
-set(USER_TYPE_LIST "user_date_and_time")
+set(USER_TYPE_LIST "user_date_and_time" "user_ipv4")
 if(ENABLE_STATIC)
     list(LENGTH USER_TYPE_LIST USER_TYPE_LIST_SIZE)
     set(ITEM 0)
