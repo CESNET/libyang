@@ -34,23 +34,23 @@
 #include "parser.h"
 
 #define YANG_ADDELEM(current_ptr, size)                                                  \
-    if (size == LY_ARRAY_MAX(size)) {                                                    \
+    if ((size) == LY_ARRAY_MAX(size)) {                                                    \
          LOGERR(trg->ctx, LY_EINT, "Reached limit (%"PRIu64") for storing typedefs.", LY_ARRAY_MAX(trg->tpdf_size));\
          free(s);                                                                        \
          YYABORT;                                                                        \
-    } else if (!(size % LY_YANG_ARRAY_SIZE)) {                                           \
+    } else if (!((size) % LY_YANG_ARRAY_SIZE)) {                                           \
         void *tmp;                                                                       \
                                                                                          \
-        tmp = realloc(current_ptr, (sizeof *current_ptr) * (size + LY_YANG_ARRAY_SIZE)); \
+        tmp = realloc((current_ptr), (sizeof *(current_ptr)) * ((size) + LY_YANG_ARRAY_SIZE)); \
         if (!tmp) {                                                                      \
             LOGMEM(trg->ctx);                                                            \
             free(s);                                                                     \
             YYABORT;                                                                     \
         }                                                                                \
-        memset(tmp + (sizeof *current_ptr) * size, 0, (sizeof *current_ptr) * LY_YANG_ARRAY_SIZE); \
-        current_ptr = tmp;                                                               \
+        memset(tmp + (sizeof *(current_ptr)) * (size), 0, (sizeof *(current_ptr)) * LY_YANG_ARRAY_SIZE); \
+        (current_ptr) = tmp;                                                               \
     }                                                                                    \
-    actual = &current_ptr[size++];                                                       \
+    actual = &(current_ptr)[(size)++];                                                       \
 
 void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 /* pointer on the current parsed element 'actual' */

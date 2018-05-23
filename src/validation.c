@@ -326,7 +326,8 @@ lyv_data_unique(struct lyd_node *node, struct lyd_node *start)
         }
         if (u == 0) {
             LOGINT(ctx);
-            return 1;
+            ret = 1;
+            goto unique_cleanup;
         } else {
             u = 32 - u;
             usize = 1 << u;

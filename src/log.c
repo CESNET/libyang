@@ -528,10 +528,13 @@ ly_vlog_build_path(enum LY_VLOG_ELEM elem_type, const void *elem, char **path, i
     const struct lys_module *top_smodule = NULL;
     const char *name, *prefix = NULL, *val_end, *val_start, *ext_name;
     char *str;
-    uint16_t length = 0, index = 0;
+    uint16_t length, index;
     size_t len;
 
-    *path = NULL;
+    length = 0;
+    *path = malloc(1);
+    LY_CHECK_ERR_RETURN(!(*path), LOGMEM(NULL), -1);
+    index = 0;
 
     while (elem) {
         switch (elem_type) {

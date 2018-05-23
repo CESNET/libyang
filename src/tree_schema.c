@@ -4645,6 +4645,7 @@ lys_data_path(const struct lys_node *node)
         return NULL;
     }
 
+    buf[0] = '\0';
     set = ly_set_new();
     LY_CHECK_ERR_GOTO(!set, LOGMEM(node->module->ctx), cleanup);
 

@@ -155,10 +155,12 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         /* get the proper schema node */
         if (mod && mod->implemented && !mod->disabled) {
             if (options & LYD_OPT_DATA_TEMPLATE) {
-                ext_node = lyp_get_yang_data_template(mod, yang_data_name, strlen(yang_data_name));
-                if (ext_node) {
-                    schema = *((struct lys_node **) lys_ext_complex_get_substmt(LY_STMT_CONTAINER, (struct lys_ext_instance_complex *)ext_node, NULL));
-                    schema = xml_data_search_schemanode(xml, schema, options);
+                if (yang_data_name) {
+                    ext_node = lyp_get_yang_data_template(mod, yang_data_name, strlen(yang_data_name));
+                    if (ext_node) {
+                        schema = *((struct lys_node **) lys_ext_complex_get_substmt(LY_STMT_CONTAINER, (struct lys_ext_instance_complex *)ext_node, NULL));
+                        schema = xml_data_search_schemanode(xml, schema, options);
+                    }
                 }
             } else {
                 schema = xml_data_search_schemanode(xml, mod->data, options);
@@ -710,7 +712,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
         /* action reply */
         act_notif = reply_parent;
     } else if ((options & (LYD_OPT_RPC | LYD_OPT_NOTIF)) && !act_notif) {
-        LOGVAL(ctx, LYE_INELEM, LY_VLOG_LYD, result, (options & LYD_OPT_RPC ? "action" : "notification"), result->schema->name);
+        LOGVAL(ctx, LYE_INELEM, (result ? LY_VLOG_LYD : LY_VLOG_NONE), result, (options & LYD_OPT_RPC ? "action" : "notification"));
         goto error;
     }
 

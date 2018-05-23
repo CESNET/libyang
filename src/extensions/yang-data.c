@@ -173,7 +173,7 @@ int yang_data_result(struct lys_ext_instance *ext) {
     struct lys_node **root;
 
     root = lys_ext_complex_get_substmt(LY_STMT_CONTAINER, (struct lys_ext_instance_complex *)ext, NULL);
-    if ((*root)->next != NULL || check_node(*root)) {
+    if (!root || !(*root) || (*root)->next != NULL || check_node(*root)) {
         return 1;
     }
 

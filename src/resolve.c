@@ -1256,12 +1256,13 @@ resolve_json_data_node_hash(struct lyd_node *parent, struct parsed_pred pp)
     hash = dict_hash_multi(hash, NULL, 0);
 
     /* try to find the node */
-    lyht_find(parent->ht, &pp, hash, (void **)&ret);
+    i = lyht_find(parent->ht, &pp, hash, (void **)&ret);
+    assert(i || *ret);
 
     /* restore the original callback */
     lyht_set_cb(parent->ht, prev_cb);
 
-    return (ret ? *ret : NULL);
+    return (i ? NULL : *ret);
 }
 
 #endif

@@ -2244,6 +2244,7 @@ lys_get_schema_inctx(struct lys_node *schema, struct ly_ctx *ctx)
     struct ly_set *parents;
     unsigned int index;
     uint32_t idx;
+    void **ptr;
 
     if (!ctx || schema->module->ctx == ctx) {
         /* we have the same context */
@@ -2266,7 +2267,12 @@ lys_get_schema_inctx(struct lys_node *schema, struct ly_ctx *ctx)
     /* for the top-level node, we have to locate the module first */
     parent = parents->set.s[index];
     if (parent->nodetype == LYS_EXT) {
-        first_sibling = *((struct lys_node **)lys_ext_complex_get_substmt(LY_STMT_NODE, (struct lys_ext_instance_complex *)parent, NULL));
+        ptr = lys_ext_complex_get_substmt(LY_STMT_NODE, (struct lys_ext_instance_complex *)parent, NULL);
+        if (!ptr) {
+            ly_set_free(parents);
+            return NULL;
+        }
+        first_sibling = *(struct lys_node **)ptr;
         parent = parents->set.s[--index];
     }
     idx = 0;
@@ -3086,6 +3092,7 @@ lyd_difflist_add(struct lyd_difflist *diff, unsigned int *size, unsigned int ind
                  LYD_DIFFTYPE type, struct lyd_node *first, struct lyd_node *second)
 {
     void *new;
+    struct ly_ctx *ctx = (first ? first->schema->module->ctx : second->schema->module->ctx);
 
     assert(diff);
     assert(size && *size);
@@ -3094,15 +3101,15 @@ lyd_difflist_add(struct lyd_difflist *diff, unsigned int *size, unsigned int ind
         /* it's time to enlarge */
         *size = *size + 16;
         new = realloc(diff->type, *size * sizeof *diff->type);
-        LY_CHECK_ERR_RETURN(!new, LOGMEM(first->schema->module->ctx), EXIT_FAILURE);
+        LY_CHECK_ERR_RETURN(!new, LOGMEM(ctx), EXIT_FAILURE);
         diff->type = new;
 
         new = realloc(diff->first, *size * sizeof *diff->first);
-        LY_CHECK_ERR_RETURN(!new, LOGMEM(first->schema->module->ctx), EXIT_FAILURE);
+        LY_CHECK_ERR_RETURN(!new, LOGMEM(ctx), EXIT_FAILURE);
         diff->first = new;
 
         new = realloc(diff->second, *size * sizeof *diff->second);
-        LY_CHECK_ERR_RETURN(!new, LOGMEM(first->schema->module->ctx), EXIT_FAILURE);
+        LY_CHECK_ERR_RETURN(!new, LOGMEM(ctx), EXIT_FAILURE);
         diff->second = new;
     }
 
@@ -4840,7 +4847,6 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
         }
     } else if (options & LYD_OPT_DATA_TEMPLATE) {
         /* get context with schemas from the var_arg */
-        ctx = (*node)->schema->module->ctx;
         if (*node && ((*node)->prev->next || (*node)->next)) {
             /* not allow sibling in top-level */
             LOGERR(NULL, LY_EINVAL, "%s: invalid variable parameter (struct lyd_node *node).", __func__);
