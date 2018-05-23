@@ -303,6 +303,14 @@ add_custom_target(cclean
 
 # YANG extensions plugins
 set(EXTENSIONS_LIST "nacm" "metadata" "yangdata")
+# if the tests are enabled, build libyang_ext_test
+if(ENABLE_BUILD_TESTS)
+    find_package(CMocka 1.0.0)
+    if(CMOCKA_FOUND)
+        list(APPEND EXTENSIONS_LIST "libyang_ext_test")
+    endif(CMOCKA_FOUND)
+endif(ENABLE_BUILD_TESTS)
+
 if(ENABLE_STATIC)
     list(LENGTH EXTENSIONS_LIST EXTENSIONS_LIST_SIZE)
     set(ITEM 0)
@@ -354,7 +362,6 @@ if(ENABLE_VALGRIND_TESTS)
 endif()
 
 if(ENABLE_BUILD_TESTS)
-    find_package(CMocka 1.0.0)
     if(CMOCKA_FOUND)
         enable_testing()
         add_subdirectory(tests)
