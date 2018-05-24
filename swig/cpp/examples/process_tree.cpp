@@ -21,29 +21,27 @@
 #include <Tree_Data.hpp>
 #include <Tree_Schema.hpp>
 
-using namespace std;
-
 int main() {
 
     S_Context ctx = nullptr;
     try {
         ctx = S_Context(new Context("/etc/sysrepo/yang"));
     } catch( const std::exception& e ) {
-        cout << e.what() << endl;
+        std::cout << e.what() << std::endl;
         auto errors = std::shared_ptr<std::vector<S_Error>>(get_ly_errors(ctx));
         for(auto error = errors->begin() ; error != errors->end() ; ++error) {
-            cout << "err: " << (*error)->err() << endl;
-            cout << "vecode: " << (*error)->vecode() << endl;
-            cout << "errmsg: " << (*error)->errmsg() << endl;
-            cout << "errpath: " << (*error)->errpath() << endl;
-            cout << "errapptag: " << (*error)->errapptag() << endl;
+            std::cout << "err: " << (*error)->err() << std::endl;
+            std::cout << "vecode: " << (*error)->vecode() << std::endl;
+            std::cout << "errmsg: " << (*error)->errmsg() << std::endl;
+            std::cout << "errpath: " << (*error)->errpath() << std::endl;
+            std::cout << "errapptag: " << (*error)->errapptag() << std::endl;
         }
         return -1;
     }
 
     auto module = ctx->get_module("turing-machine");
     if (module) {
-        cout << module->name() << endl;
+        std::cout << module->name() << std::endl;
     } else {
         module = ctx->load_module("turing-machine");
     }
@@ -52,31 +50,31 @@ int main() {
     try {
         node = ctx->parse_data_path("/etc/sysrepo/data/turing-machine.startup", LYD_XML, LYD_OPT_CONFIG);
     } catch( const std::exception& e ) {
-        cout << e.what() << endl;
+        std::cout << e.what() << std::endl;
     }
 
     if (!node) {
-        cout << "parse_path did not return any nodes" << endl;
+        std::cout << "parse_path did not return any nodes" << std::endl;
     } else {
-        cout << "tree_dfs\n" << endl;
+        std::cout << "tree_dfs\n" << std::endl;
         auto data_list = std::shared_ptr<std::vector<S_Data_Node>>(node->tree_dfs());
         for(auto elem = data_list->begin() ; elem != data_list->end() ; ++elem) {
-            cout << "name: " << (*elem)->schema()->name() << " type: " << (*elem)->schema()->nodetype() << endl;
+            std::cout << "name: " << (*elem)->schema()->name() << " type: " << (*elem)->schema()->nodetype() << std::endl;
         }
 
-        cout << "\nChild of " << node->schema()->name() << " is: " << node->child()->schema()->name() << "\n" << endl;
+        std::cout << "\nChild of " << node->schema()->name() << " is: " << node->child()->schema()->name() << "\n" << std::endl;
 
-        cout << "tree_for\n" << endl;
+        std::cout << "tree_for\n" << std::endl;
 
         data_list = std::shared_ptr<std::vector<S_Data_Node>>(node->child()->child()->tree_dfs());
         for(auto elem = data_list->begin() ; elem != data_list->end() ; ++elem) {
-            cout << "child of " << node->child()->schema()->name() << " is: " << (*elem)->schema()->name() << " type: " << (*elem)->schema()->nodetype() << endl;
+            std::cout << "child of " << node->child()->schema()->name() << " is: " << (*elem)->schema()->name() << " type: " << (*elem)->schema()->nodetype() << std::endl;
         }
 
-        cout << "\n schema tree_dfs\n" << endl;
+        std::cout << "\n schema tree_dfs\n" << std::endl;
         auto schema_list = std::shared_ptr<std::vector<S_Schema_Node>>(node->schema()->tree_dfs());
         for(auto elem = schema_list->begin() ; elem != schema_list->end() ; ++elem) {
-            cout << "schema name " << (*elem)->name() << " type " << (*elem)->nodetype() << endl;
+            std::cout << "schema name " << (*elem)->name() << " type " << (*elem)->nodetype() << std::endl;
         }
     }
 
