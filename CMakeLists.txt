@@ -244,6 +244,9 @@ else()
     set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
     add_library(yangobj OBJECT ${libsrc})
     add_library(yang SHARED $<TARGET_OBJECTS:yangobj>)
+
+    #link dl
+    target_link_libraries(yang ${CMAKE_DL_LIBS})
 endif(ENABLE_STATIC)
 
 set_target_properties(yang PROPERTIES VERSION ${LIBYANG_VERSION} SOVERSION ${LIBYANG_SOVERSION})
@@ -252,13 +255,14 @@ set_target_properties(yang PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
 # link math
 target_link_libraries(yang m)
 
-#link dl
-target_link_libraries(yang ${CMAKE_DL_LIBS})
-
 # find pthreads
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 find_package(Threads REQUIRED)
-target_link_libraries(yang ${CMAKE_THREAD_LIBS_INIT})
+if(ENABLE_STATIC)
+    target_link_libraries(yang -Wl,--whole-archive ${CMAKE_THREAD_LIBS_INIT} -Wl,--no-whole-archive)
+else()
+    target_link_libraries(yang ${CMAKE_THREAD_LIBS_INIT})
+endif(ENABLE_STATIC)
 
 # find PCRE library
 find_package(PCRE REQUIRED)

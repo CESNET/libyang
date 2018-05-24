@@ -185,6 +185,10 @@ lyext_load_plugin(void *dlhandler, const char *file_name)
     uint32_t u, v;
     char *str;
 
+#ifdef STATIC
+    return 0;
+#endif /* STATIC */
+
     /* get the plugin data */
     plugin = dlsym(dlhandler, file_name);
     str = dlerror();
