@@ -688,8 +688,7 @@ struct lyd_node *lyd_new_leaf(struct lyd_node *parent, const struct lys_module *
  * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
  * Despite the prototype allows to provide a leaflist node as \p leaf parameter, only leafs are accepted.
- * Also, changing the value of a list key is prohibited. Moreover, the leaf will never be default after
- * calling this function successfully.
+ * Also, the leaf will never be default after calling this function successfully.
  *
  * @param[in] leaf A leaf node to change.
  * @param[in] val_str String form of the new value to be set to the \p leaf. In case the type is #LY_TYPE_INST

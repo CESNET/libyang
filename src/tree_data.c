@@ -1344,19 +1344,6 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
         val_change = 1;
     }
 
-    /* key value cannot be changed */
-    if (val_change && leaf->parent && (leaf->parent->schema->nodetype == LYS_LIST)) {
-        slist = (struct lys_node_list *)leaf->parent->schema;
-        for (i = 0; i < slist->keys_size; ++i) {
-            if (ly_strequal(slist->keys[i]->name, leaf->schema->name, 1)) {
-                LOGVAL(leaf->schema->module->ctx, LYE_SPEC, LY_VLOG_LYD, leaf, "List key value cannot be changed.");
-                lydict_remove(leaf->schema->module->ctx, leaf->value_str);
-                leaf->value_str = backup;
-                return -1;
-            }
-        }
-    }
-
     /* value is correct, remove backup */
     lydict_remove(leaf->schema->module->ctx, backup);
 
