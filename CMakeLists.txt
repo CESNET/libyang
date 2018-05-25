@@ -310,9 +310,9 @@ set(EXTENSIONS_LIST "nacm" "metadata" "yangdata")
 # if the tests are enabled, build libyang_ext_test
 if(ENABLE_BUILD_TESTS)
     find_package(CMocka 1.0.0)
-    if(CMOCKA_FOUND)
+    if(CMOCKA_FOUND AND CMAKE_BUILD_TYPE MATCHES debug)
         list(APPEND EXTENSIONS_LIST "libyang_ext_test")
-    endif(CMOCKA_FOUND)
+    endif(CMOCKA_FOUND AND CMAKE_BUILD_TYPE MATCHES debug)
 endif(ENABLE_BUILD_TESTS)
 
 if(ENABLE_STATIC)
