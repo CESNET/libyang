@@ -1184,7 +1184,7 @@ _lyd_new_leaf(struct lyd_node *parent, const struct lys_node *schema, const char
 
     /* resolve the type correctly (after it was connected to parent cause of log) */
     if (!lyp_parse_value(&((struct lys_node_leaf *)ret->schema)->type, &((struct lyd_node_leaf_list *)ret)->value_str,
-                         NULL, (struct lyd_node_leaf_list *)ret, NULL, NULL, 1, 0)) {
+                         NULL, (struct lyd_node_leaf_list *)ret, NULL, NULL, 1, dflt)) {
         lyd_free(ret);
         return NULL;
     }

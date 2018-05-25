@@ -5610,7 +5610,7 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
     int need_implemented = 0;
     unsigned int i, j;
     struct lys_ident *der, *cur;
-    struct lys_module *imod = NULL, *m;
+    struct lys_module *imod = NULL, *m, *tmod;
     struct ly_ctx *ctx;
 
     assert(type && ident_name && node && mod);
@@ -5640,6 +5640,17 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
             if (!strncmp(mod_name, mod->imp[i].module->name, mod_name_len) && !mod->imp[i].module->name[mod_name_len]) {
                 imod = mod->imp[i].module;
                 break;
+            }
+        }
+
+        /* We may need to pull it from the module that the typedef came from */
+        if (!imod && type && type->der) {
+            tmod = type->der->module;
+            for (i = 0; i < tmod->imp_size; i++) {
+                if (!strncmp(mod_name, tmod->imp[i].module->name, mod_name_len) && !tmod->imp[i].module->name[mod_name_len]) {
+                    imod = tmod->imp[i].module;
+                    break;
+                }
             }
         }
     } else {
