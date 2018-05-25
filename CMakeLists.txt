@@ -380,7 +380,3 @@ endif(ENABLE_BUILD_TESTS)
 if(GEN_LANGUAGE_BINDINGS AND GEN_CPP_BINDINGS)
     add_subdirectory(swig)
 endif()
-
-if(GEN_LANGUAGE_BINDINGS AND GEN_JAVASCRIPT_BINDINGS)
-    include(swig/javascript/CMakeLists.txt)
-endif()

@@ -22,13 +22,9 @@
 	"files": [
 		"src",
 		"models",
-		"deps",
 		"binding.gyp",
 		"files",
 		"test.js",
-		"index.js",
-		"run.sh",
-		"plugin",
-		"README.md"
+		"index.js"
 	]
 }

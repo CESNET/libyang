@@ -94,6 +94,6 @@ if(NOT ENABLE_STATIC AND PYTHONLIBS_FOUND AND PYTHONINTERP_FOUND AND (${GEN_PYTH
     add_subdirectory(python)
 endif()
 
-if(GEN_JAVASCRIPT_BINDING)
-    include(javascript/CMakeLists.txt)
+if(ENABLE_STATIC AND GEN_JAVASCRIPT_BINDINGS)
+    add_subdirectory(javascript)
 endif()

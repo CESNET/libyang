@@ -13,8 +13,8 @@ RUN \
       cd /opt/dev && \
       git clone https://github.com/swig/swig.git && \
       cd swig && \
-      git fetch origin pull/968/head:node7 && \
-      git checkout node7 && \
+      git fetch origin git fetch origin pull/236/head:javascript_sharedptr && \
+      git checkout javascript_sharedptr && \
       ./autogen.sh && \
       ./configure --prefix=/usr && \
       make -j2 && \
@@ -27,8 +27,6 @@ RUN \
       make -j2 && \
       make install && \
       cd javascript && \
-      # bugfix for the generate javascript bindings \
-      sed -i -- 's/lys_ext_instance_complex()/lys_ext_instance_complex/g' src/libyang_javascript_wrap.cxx && \
       npm install --unsafe-perm && \
       node test.js && \
       ldconfig
