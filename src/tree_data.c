@@ -1318,8 +1318,6 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
     const char *backup;
     int val_change, dflt_change;
     struct lyd_node *parent;
-    struct lys_node_list *slist;
-    uint32_t i;
 
     if (!leaf || (leaf->schema->nodetype != LYS_LEAF)) {
         LOGARG;
