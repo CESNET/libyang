@@ -36,6 +36,7 @@
 #include "resolve.h"
 #include "tree_internal.h"
 #include "parser_yang.h"
+#include "xpath.h"
 
 #define LYP_URANGE_LEN 19
 
@@ -1225,9 +1226,11 @@ lyp_precompile_pattern(struct ly_ctx *ctx, const char *pattern, pcre** pcre_cmp,
 static int
 make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, void *data2)
 {
-    char buf[512];
+    const uint16_t buf_len = 511;
+    char buf[buf_len + 1];
     struct lys_type_bit **bits = NULL;
-    const char *module_name;
+    struct lyxp_expr *exp;
+    const char *module_name, *cur_expr, *end;
     int i, j, count;
     int64_t num;
     uint64_t unum;
@@ -1260,6 +1263,71 @@ make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, vo
         } else {
             strcpy(buf, *value);
         }
+        break;
+
+    case LY_TYPE_INST:
+        exp = lyxp_parse_expr(ctx, *value);
+        LY_CHECK_ERR_RETURN(!exp, LOGINT(ctx), 0);
+
+        module_name = NULL;
+        count = 0;
+        for (i = 0; (unsigned)i < exp->used; ++i) {
+            cur_expr = &exp->expr[exp->expr_pos[i]];
+
+            /* copy WS */
+            if (i && ((end = exp->expr + exp->expr_pos[i - 1] + exp->tok_len[i - 1]) != cur_expr)) {
+                if (count + (cur_expr - end) > buf_len) {
+                    LOGINT(ctx);
+                    lyxp_expr_free(exp);
+                    return 0;
+                }
+                strncpy(&buf[count], end, cur_expr - end);
+                count += cur_expr - end;
+            }
+
+            if ((exp->tokens[i] == LYXP_TOKEN_NAMETEST) && (end = strnchr(cur_expr, ':', exp->tok_len[i]))) {
+                /* get the module name with ":" */
+                ++end;
+                j = end - cur_expr;
+
+                if (!module_name || strncmp(cur_expr, module_name, j)) {
+                    /* print module name with colon, it does not equal to the parent one */
+                    if (count + j > buf_len) {
+                        LOGINT(ctx);
+                        lyxp_expr_free(exp);
+                        return 0;
+                    }
+                    strncpy(&buf[count], cur_expr, j);
+                    count += j;
+                }
+                module_name = cur_expr;
+
+                /* copy the rest */
+                if (count + (exp->tok_len[i] - j) > buf_len) {
+                    LOGINT(ctx);
+                    lyxp_expr_free(exp);
+                    return 0;
+                }
+                strncpy(&buf[count], end, exp->tok_len[i] - j);
+                count += exp->tok_len[i] - j;
+            } else {
+                if (count + exp->tok_len[i] > buf_len) {
+                    LOGINT(ctx);
+                    lyxp_expr_free(exp);
+                    return 0;
+                }
+                strncpy(&buf[count], &exp->expr[exp->expr_pos[i]], exp->tok_len[i]);
+                count += exp->tok_len[i];
+            }
+        }
+        if (count > buf_len) {
+            LOGINT(ctx);
+            lyxp_expr_free(exp);
+            return 0;
+        }
+        buf[count] = '\0';
+
+        lyxp_expr_free(exp);
         break;
 
     case LY_TYPE_DEC64:
@@ -1822,6 +1890,11 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             }
             /* turn logging back on */
             ly_ilo_restore(NULL, prev_ilo, NULL, 0);
+        } else {
+            if (make_canonical(ctx, LY_TYPE_INST, &value, NULL, NULL)) {
+                /* if a change occured, value was removed from the dicionary so fix the pointers */
+                *value_ = value;
+            }
         }
 
         if (store) {
