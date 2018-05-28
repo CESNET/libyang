@@ -1,8 +1,8 @@
 ## Requirements
 
 * cmake >= 2.8.12
-* swig
-* node >= 0.10.x
+* swig >= 3.0.0
+* node >= 0.10.x < 4.9.0
 * npm
 * libpcre
 

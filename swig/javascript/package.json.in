@@ -13,7 +13,7 @@
 		"node-gyp": "*"
 	},
 	"engines": {
-		"node": ">= 0.10.x"
+		"node": ">= 0.10.x < 4.9.0"
 	},
 	"repository": {
 		"type": "git",
