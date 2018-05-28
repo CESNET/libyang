@@ -368,13 +368,10 @@ static unsigned int
 json_get_anydata(struct lyd_node_anydata *any, const char *data)
 {
     struct ly_ctx *ctx = any->schema->module->ctx;
-    unsigned int len = 0, start, stop, c = 0;
+    unsigned int len = 0, c = 0;
     char *str;
 
-    /* anydata (as well as meaningful anyxml) is supposed to be encoded as object,
-     * anyxml can be a string value, other JSON types are not supported since it is
-     * not clear how they are supposed to be represented/converted into an internal representation */
-    if (data[len] == '"' && any->schema->nodetype == LYS_ANYXML) {
+    if (data[len] == '"') {
         len = 1;
         str = lyjson_parse_text(ctx, &data[len], &c);
         if (!str) {
@@ -391,16 +388,13 @@ json_get_anydata(struct lyd_node_anydata *any, const char *data)
         any->value_type = LYD_ANYDATA_CONSTSTRING;
         return len + c + 1;
     } else if (data[len] != '{') {
-        LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_LYD, any, "Unsupported Anydata/anyxml content (not an object nor string)");
+        LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_LYD, any, "anydata/anyxml content (not an object nor string)");
         return 0;
     }
 
     /* count opening '{' and closing '}' brackets to get the end of the object without its parsing */
-    c = len = 1;
-    len += skip_ws(&data[len]);
-    start = len;
-    stop = start - 1;
-    while (data[len] && c) {
+    c = len = 0;
+    do {
         switch (data[len]) {
         case '{':
             c++;
@@ -409,20 +403,17 @@ json_get_anydata(struct lyd_node_anydata *any, const char *data)
             c--;
             break;
         default:
-            if (!isspace(data[len])) {
-                stop = len;
-            }
+            break;
         }
         len++;
-    }
+    } while (data[len] && c);
     if (c) {
         LOGVAL(ctx, LYE_EOF, LY_VLOG_LYD, any);
         return 0;
     }
+
     any->value_type = LYD_ANYDATA_JSON;
-    if (stop >= start) {
-        any->value.str = lydict_insert(ctx, &data[start], stop - start + 1);
-    } /* else no data */
+    any->value.str = lydict_insert(ctx, data, len);
 
     return len;
 }

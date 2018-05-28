@@ -21,9 +21,11 @@
       {
         "leaf18": "key1",
         "leaf19": 1,
-        "axml1": {
-          "some": "content"
-        }
+        "axml1":
+{
+  "some": "content"
+}
+
       },
       {
         "leaf18": "key2",
