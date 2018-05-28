@@ -1,5 +1,7 @@
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
+add_compile_options(-std=c++11)
+
 set(CPP_TEST_SRC
   test_libyang
   test_tree_data
