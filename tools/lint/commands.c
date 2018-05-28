@@ -732,6 +732,8 @@ cmd_data(const char *arg)
         case 't':
             if (!strcmp(optarg, "auto")) {
                 options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_TYPEMASK;
+            } else if (!strcmp(optarg, "data")) {
+                options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_DATA;
             } else if (!strcmp(optarg, "config")) {
                 options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_CONFIG;
             } else if (!strcmp(optarg, "get")) {
