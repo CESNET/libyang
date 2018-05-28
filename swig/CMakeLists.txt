@@ -10,7 +10,7 @@ project(libyang-cpp)
 
 # find SWIG package
 if(GEN_LANGUAGE_BINDINGS)
-    find_package(SWIG 3.0.5 REQUIRED)
+    find_package(SWIG 3.0.0 REQUIRED)
     if(NOT SWIG_FOUND)
         message(WARNING "SWIG library not found")
     else()
