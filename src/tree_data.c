@@ -4669,7 +4669,7 @@ lyd_schema_sort(struct lyd_node *sibling, int recursive)
 {
     uint32_t len, i;
     struct lyd_node *node;
-    struct lys_node *first_ssibling;
+    struct lys_node *first_ssibling = NULL;
     struct lyd_node_pos *array;
 
     if (!sibling) {
@@ -4681,28 +4681,7 @@ lyd_schema_sort(struct lyd_node *sibling, int recursive)
     if (sibling->prev != sibling) {
 
         /* find the beginning */
-        if (sibling->parent) {
-            sibling = sibling->parent->child;
-        } else {
-            while (sibling->prev->next) {
-                sibling = sibling->prev;
-            }
-        }
-
-        /* find the data node schema parent */
-        first_ssibling = sibling->schema;
-        while (lys_parent(first_ssibling)
-                && (lys_parent(first_ssibling)->nodetype & (LYS_CHOICE | LYS_CASE | LYS_USES))) {
-            first_ssibling = lys_parent(first_ssibling);
-        }
-        /* find the beginning */
-        if (first_ssibling->parent) {
-            first_ssibling = first_ssibling->parent->child;
-        } else {
-            while (first_ssibling->prev->next) {
-                first_ssibling = first_ssibling->prev;
-            }
-        }
+        sibling = lyd_first_sibling(sibling);
 
         /* count siblings */
         len = 0;
@@ -4716,6 +4695,26 @@ lyd_schema_sort(struct lyd_node *sibling, int recursive)
         /* fill arrays with positions and corresponding nodes */
         for (i = 0, node = sibling; i < len; ++i, node = node->next) {
             array[i].pos = 0;
+
+            /* we need to repeat this for every module */
+            if (!first_ssibling || (lyd_node_module(node) != lys_node_module(first_ssibling))) {
+                /* find the data node schema parent */
+                first_ssibling = node->schema;
+                while (lys_parent(first_ssibling)
+                        && (lys_parent(first_ssibling)->nodetype & (LYS_CHOICE | LYS_CASE | LYS_USES))) {
+                    first_ssibling = lys_parent(first_ssibling);
+                }
+
+                /* find the beginning */
+                if (lys_parent(first_ssibling)) {
+                    first_ssibling = lys_parent(first_ssibling)->child;
+                } else {
+                    while (first_ssibling->prev->next) {
+                        first_ssibling = first_ssibling->prev;
+                    }
+                }
+            }
+
             if (lys_module_node_pos_r(first_ssibling, node->schema, &array[i].pos)) {
                 free(array);
                 return -1;
