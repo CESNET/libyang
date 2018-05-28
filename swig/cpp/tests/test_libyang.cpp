@@ -28,7 +28,7 @@
 #include "libyang.h"
 
 /* include private header to be able to check internal values */
-#include "../../src/context.h"
+#include "../../../src/context.h"
 
 #include "microtest.h"
 
