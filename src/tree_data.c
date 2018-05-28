@@ -782,11 +782,16 @@ lyd_check_mandatory_subtree(struct lyd_node *tree, struct lyd_node *subtree, str
             }
         }
         break;
+    case LYS_NOTIF:
+        /* skip if validating a notification */
+        if (!(options & LYD_OPT_NOTIF)) {
+            break;
+        }
+        /* fallthrough */
     case LYS_CASE:
     case LYS_USES:
     case LYS_INPUT:
     case LYS_OUTPUT:
-    case LYS_NOTIF:
         /* go recursively */
         LY_TREE_FOR(schema->child, siter) {
             if (lyd_check_mandatory_subtree(tree, subtree, last_parent, siter, toplevel, options)) {
