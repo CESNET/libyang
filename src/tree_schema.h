@@ -1990,8 +1990,6 @@ struct lys_ident {
 /**
  * @brief Load a schema into the specified context.
  *
- * LY_IN_YANG (YANG) format is not yet supported.
- *
  * @param[in] ctx libyang context where to process the data model.
  * @param[in] data The string containing the dumped data model in the specified
  * format.
@@ -2002,8 +2000,6 @@ const struct lys_module *lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS
 
 /**
  * @brief Read a schema from file descriptor into the specified context.
- *
- * LY_IN_YANG (YANG) format is not yet supported.
  *
  * \note Current implementation supports only reading data from standard (disk) file, not from sockets, pipes, etc.
  *
@@ -2017,8 +2013,6 @@ const struct lys_module *lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT f
 
 /**
  * @brief Load a schema into the specified context from a file.
- *
- * LY_IN_YANG (YANG) format is not yet supported.
  *
  * @param[in] ctx libyang context where to process the data model.
  * @param[in] path Path to the file with the model in the specified format.
