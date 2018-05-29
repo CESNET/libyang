@@ -328,7 +328,7 @@ if(ENABLE_STATIC)
     endforeach()
 else()
     add_subdirectory(src/extensions)
-endif()
+endif(ENABLE_STATIC)
 
 # YANG user types plugins
 set(USER_TYPE_LIST "user_date_and_time" "user_ipv4")
@@ -345,7 +345,7 @@ if(ENABLE_STATIC)
     endforeach()
 else()
     add_subdirectory(src/user_types)
-endif()
+endif(ENABLE_STATIC)
 
 configure_file(${PROJECT_SOURCE_DIR}/src/plugin_config.h.in ${PROJECT_BINARY_DIR}/src/plugin_config.h)
 
