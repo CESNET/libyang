@@ -265,6 +265,7 @@ else()
 endif(ENABLE_STATIC)
 
 # find PCRE library
+unset(PCRE_LIBRARY CACHE)
 find_package(PCRE REQUIRED)
 include_directories(${PCRE_INCLUDE_DIRS})
 target_link_libraries(yang ${PCRE_LIBRARIES})
