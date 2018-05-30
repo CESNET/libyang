@@ -733,7 +733,7 @@ static struct lyxml_attr *
 parse_attr(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml_elem *parent)
 {
     const char *c = data, *start, *delim;
-    char prefix[32], xml_flag, *str;
+    char *prefix = NULL, xml_flag, *str;
     int uc;
     struct lyxml_attr *attr = NULL, *a;
     unsigned int size;
@@ -781,6 +781,8 @@ parse_attr(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml
                 start = c + 1;
 
                 /* look for the prefix in namespaces */
+                prefix = malloc((c - data + 1) * sizeof *prefix);
+                LY_CHECK_ERR_GOTO(!prefix, LOGMEM(ctx), error);
                 memcpy(prefix, data, c - data);
                 prefix[c - data] = '\0';
                 attr->ns = lyxml_get_ns(parent, prefix);
@@ -834,10 +836,12 @@ equal:
         parent->attr = attr;
     }
 
+    free(prefix);
     return attr;
 
 error:
     lyxml_free_attr(ctx, NULL, attr);
+    free(prefix);
     return NULL;
 }
 
@@ -849,7 +853,7 @@ lyxml_parse_elem(struct ly_ctx *ctx, const char *data, unsigned int *len, struct
     const char *lws;    /* leading white space for handling mixed content */
     int uc;
     char *str;
-    char prefix[32] = { 0 };
+    char *prefix = NULL;
     unsigned int prefix_len = 0;
     struct lyxml_elem *elem = NULL, *child;
     struct lyxml_attr *attr;
@@ -883,7 +887,10 @@ lyxml_parse_elem(struct ly_ctx *ctx, const char *data, unsigned int *len, struct
             start = e + 1;
 
             /* look for the prefix in namespaces */
-            memcpy(prefix, c, prefix_len = e - c);
+            prefix_len = e - c;
+            prefix = malloc((prefix_len + 1) * sizeof *prefix);
+            LY_CHECK_ERR_GOTO(!prefix, LOGMEM(ctx), error);
+            memcpy(prefix, c, prefix_len);
             prefix[prefix_len] = '\0';
             c = start;
         }
@@ -892,6 +899,7 @@ lyxml_parse_elem(struct ly_ctx *ctx, const char *data, unsigned int *len, struct
     }
     if (!*e) {
         LOGVAL(ctx, LYE_EOF, LY_VLOG_NONE, NULL);
+        free(prefix);
         return NULL;
     }
 
@@ -945,7 +953,7 @@ process:
                         start = e + 1;
 
                         /* look for the prefix in namespaces */
-                        if (memcmp(prefix, c, e - c)) {
+                        if (!prefix || memcmp(prefix, c, e - c)) {
                             LOGVAL(ctx, LYE_SPEC, LY_VLOG_XML, elem,
                                    "Invalid (different namespaces) opening (%s) and closing element tags.", elem->name);
                             goto error;
@@ -1084,7 +1092,7 @@ store_content:
 
         /* check namespace */
         if (attr->type == LYXML_ATTR_NS) {
-            if (!prefix[0] && !attr->name) {
+            if ((!prefix || !prefix[0]) && !attr->name) {
                 if (attr->value) {
                     /* default prefix */
                     elem->ns = (struct lyxml_ns *)attr;
@@ -1092,7 +1100,7 @@ store_content:
                     /* xmlns="" -> no namespace */
                     nons_flag = 1;
                 }
-            } else if (prefix[0] && attr->name && !strncmp(attr->name, prefix, prefix_len + 1)) {
+            } else if (prefix && prefix[0] && attr->name && !strncmp(attr->name, prefix, prefix_len + 1)) {
                 /* matching namespace with prefix */
                 elem->ns = (struct lyxml_ns *)attr;
             }
@@ -1112,11 +1120,12 @@ store_content:
     if (!elem->ns && !nons_flag && parent) {
         elem->ns = lyxml_get_ns(parent, prefix_len ? prefix : NULL);
     }
-
+    free(prefix);
     return elem;
 
 error:
     lyxml_free(ctx, elem);
+    free(prefix);
     return NULL;
 }
 
