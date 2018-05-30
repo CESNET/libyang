@@ -3585,7 +3585,7 @@ check_default(struct lys_type *type, const char **value, struct lys_module *modu
             }
         }
     } else {
-        if (!lyp_parse_value(type, &node.value_str, NULL, &node, NULL, module, 1, 1)) {
+        if (!lyp_parse_value(type, &node.value_str, NULL, &node, NULL, module, 1, 1, 0)) {
             /* possible forward reference */
             ret = EXIT_FAILURE;
             if (base_tpdf) {
@@ -4198,7 +4198,7 @@ repeat:
         sleaf = sleaf->type.info.lref.target;
         goto repeat;
     } else {
-        if (!lyp_parse_value(&sleaf->type, &leaf.value_str, NULL, &leaf, NULL, NULL, 0, 0)) {
+        if (!lyp_parse_value(&sleaf->type, &leaf.value_str, NULL, &leaf, NULL, NULL, 0, 0, 0)) {
             ret = -1;
             goto finish;
         }
@@ -7899,7 +7899,7 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int store,
                     } else {
                         /* valid unresolved */
                         ly_ilo_restore(NULL, prev_ilo, NULL, 0);
-                        if (!lyp_parse_value(t, &leaf->value_str, NULL, leaf, NULL, NULL, 1, 0)) {
+                        if (!lyp_parse_value(t, &leaf->value_str, NULL, leaf, NULL, NULL, 1, 0, 0)) {
                             return -1;
                         }
                         ly_ilo_change(NULL, ILO_IGNORE, &prev_ilo, NULL);
@@ -7947,7 +7947,7 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int store,
             }
             break;
         default:
-            if (lyp_parse_value(t, &leaf->value_str, NULL, leaf, NULL, NULL, store, 0)) {
+            if (lyp_parse_value(t, &leaf->value_str, NULL, leaf, NULL, NULL, store, 0, 0)) {
                 success = 1;
             }
             break;
@@ -8034,7 +8034,7 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int ignore_
             } else {
                 /* valid unresolved */
                 if (!(leaf->value_flags & LYTYPE_UNRES)) {
-                    if (!lyp_parse_value(&sleaf->type, &leaf->value_str, NULL, leaf, NULL, NULL, 1, 0)) {
+                    if (!lyp_parse_value(&sleaf->type, &leaf->value_str, NULL, leaf, NULL, NULL, 1, 0, 0)) {
                         return -1;
                     }
                 }
