@@ -2140,7 +2140,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         while ((t = lyp_get_next_union_type(type, t, &found))) {
             found = 0;
-            ret = lyp_parse_value(t, value_, xml, leaf, attr, NULL, store, dflt, trusted);
+            ret = lyp_parse_value(t, value_, xml, leaf, attr, NULL, store, dflt, 0);
             if (ret) {
                 /* we have the result */
                 type = ret;
