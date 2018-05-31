@@ -23,7 +23,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
-#include <limits.h>
 
 #include "common.h"
 #include "extensions.h"
@@ -42,10 +41,19 @@ static uint16_t type_plugins_count = 0;
 static struct ly_set dlhandlers = {0, 0, {NULL}};
 static pthread_mutex_t plugins_lock = PTHREAD_MUTEX_INITIALIZER;
 
+static char **loaded_plugins = NULL; /* both ext and type plugin names */
+static uint16_t loaded_plugins_count = 0;
+
 /**
  * @brief reference counter for the plugins, it actually counts number of contexts
  */
 static uint32_t plugin_refs;
+
+API const char * const *
+ly_get_loaded_plugins(void)
+{
+    return (const char * const *)loaded_plugins;
+}
 
 API int
 ly_clean_plugins(void)
@@ -75,6 +83,13 @@ ly_clean_plugins(void)
     free(type_plugins);
     type_plugins = NULL;
     type_plugins_count = 0;
+
+    for (u = 0; u < loaded_plugins_count; ++u) {
+        free(loaded_plugins[u]);
+    }
+    free(loaded_plugins);
+    loaded_plugins = NULL;
+    loaded_plugins_count = 0;
 
     /* close the dl handlers */
     for (u = 0; u < dlhandlers.number; u++) {
@@ -206,13 +221,24 @@ lyext_load_plugin(void *dlhandler, const char *file_name)
     return 0;
 }
 
+/* spends name */
+static void
+ly_add_loaded_plugin(char *name)
+{
+    loaded_plugins = ly_realloc(loaded_plugins, (loaded_plugins_count + 2) * sizeof *loaded_plugins);
+    LY_CHECK_ERR_RETURN(!loaded_plugins, free(name); LOGMEM(NULL), );
+    ++loaded_plugins_count;
+
+    loaded_plugins[loaded_plugins_count - 1] = name;
+    loaded_plugins[loaded_plugins_count] = NULL;
+}
+
 static void
 ly_load_plugins_dir(DIR *dir, const char *dir_path, int ext_or_type)
 {
     struct dirent *file;
     size_t len;
-    char *str;
-    char name[NAME_MAX];
+    char *str, *name;
     void *dlhandler;
     int ret;
 
@@ -223,10 +249,6 @@ ly_load_plugins_dir(DIR *dir, const char *dir_path, int ext_or_type)
                 strcmp(&file->d_name[len - LY_PLUGIN_SUFFIX_LEN], LY_PLUGIN_SUFFIX)) {
             continue;
         }
-
-        /* store the name without the suffix */
-        memcpy(name, file->d_name, len - LY_PLUGIN_SUFFIX_LEN);
-        name[len - LY_PLUGIN_SUFFIX_LEN] = '\0';
 
         /* and construct the filepath */
         if (asprintf(&str, "%s/%s", dir_path, file->d_name) == -1) {
@@ -252,25 +274,35 @@ ly_load_plugins_dir(DIR *dir, const char *dir_path, int ext_or_type)
         }
         dlerror();    /* Clear any existing error */
 
+        /* store the name without the suffix */
+        name = strndup(file->d_name, len - LY_PLUGIN_SUFFIX_LEN);
+        if (!name) {
+            LOGMEM(NULL);
+            free(str);
+            return;
+        }
+
         if (ext_or_type) {
             ret = lyext_load_plugin(dlhandler, name);
         } else {
             ret = lytype_load_plugin(dlhandler, name);
         }
-        if (ret == 1) {
-            free(str);
+        if (!ret) {
+            LOGVRB("Plugin \"%s\" successfully loaded.", str);
+            /* spends name */
+            ly_add_loaded_plugin(name);
+            /* keep the handler */
+            ly_set_add(&dlhandlers, dlhandler, LY_SET_OPT_USEASLIST);
+        } else {
+            free(name);
             dlclose(dlhandler);
-            continue;
-        } else if (ret == -1) {
-            free(str);
-            dlclose(dlhandler);
-            break;
         }
-        LOGVRB("Plugin \"%s\" successfully loaded.", str);
         free(str);
 
-        /* keep the handler */
-        ly_set_add(&dlhandlers, dlhandler, LY_SET_OPT_USEASLIST);
+        if (ret == -1) {
+            /* finish on error */
+            break;
+        }
     }
 }
 

@@ -649,6 +649,13 @@ int lys_ext_instance_presence(struct lys_ext *def, struct lys_ext_instance **ext
 void *lys_ext_complex_get_substmt(LY_STMT stmt, struct lys_ext_instance_complex *ext, struct lyext_substmt **info);
 
 /**
+ * @brief Get list of all the loaded plugins, both extension and user type ones.
+ *
+ * @return Const list of all the plugin names finished with NULL.
+ */
+const char * const *ly_get_loaded_plugins(void);
+
+/**
  * @brief Load the available YANG extension and type plugins from the plugin directory (LIBDIR/libyang/).
  *
  * This function is automatically called whenever a new context is created. Note that the removed plugins are kept
