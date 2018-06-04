@@ -118,6 +118,10 @@ struct lytype_plugin_list *static_load_lytype_plugins(uint16_t *count)
 @MEMCPY_USER_TYPE_LIST@
     return plugin;
 }
+
+uint16_t static_loaded_plugins_count = @STATIC_LOADED_PLUGINS_COUNT@;
+char *static_loaded_plugins[] = {@STATIC_LOADED_PLUGINS@};
+
 #endif /* STATIC */
 
 #endif /* LY_PLUGIN_CONFIG_H_ */

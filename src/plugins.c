@@ -77,6 +77,13 @@ ly_clean_plugins(void)
         type_plugins_count = 0;
     }
 
+    for (u = 0; u < loaded_plugins_count; ++u) {
+        free(loaded_plugins[u]);
+    }
+    free(loaded_plugins);
+    loaded_plugins = NULL;
+    loaded_plugins_count = 0;
+
     /* unlock the global structures */
     pthread_mutex_unlock(&plugins_lock);
     return ret;
@@ -351,6 +358,11 @@ ly_load_plugins(void)
 
     ext_plugins = static_load_lyext_plugins(&ext_plugins_count);
     type_plugins = static_load_lytype_plugins(&type_plugins_count);
+
+    int u;
+    for (u = 0; u < static_loaded_plugins_count; u++) {
+        ly_add_loaded_plugin(strdup(static_loaded_plugins[u]));
+    }
 
     /* unlock the global structures */
     pthread_mutex_unlock(&plugins_lock);
