@@ -1199,6 +1199,48 @@ test_ly_path_data2schema(void **state)
     free(schema_path);
 }
 
+static void
+test_ly_get_loaded_plugins(void **state)
+{
+    (void) state;
+    int i;
+    const char * const *plugins;
+
+    for (i = 0, plugins = ly_get_loaded_plugins(); plugins && plugins[i]; ++i) {
+        fail();
+    }
+
+    ly_load_plugins();
+
+    plugins = ly_get_loaded_plugins();
+    assert_non_null(plugins);
+    for (i = 0; plugins[i]; ++i) {
+        switch (i) {
+        case 0:
+            assert_string_equal(plugins[i], "metadata");
+            break;
+        case 1:
+            assert_string_equal(plugins[i], "yangdata");
+            break;
+        case 2:
+            assert_string_equal(plugins[i], "nacm");
+            break;
+        case 3:
+            assert_string_equal(plugins[i], "user_date_and_time");
+            break;
+        default:
+            fail();
+            break;
+        }
+    }
+
+    ly_clean_plugins();
+
+    for (i = 0, plugins = ly_get_loaded_plugins(); plugins && plugins[i]; ++i) {
+        fail();
+    }
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1233,6 +1275,7 @@ int main(void)
         cmocka_unit_test(test_ly_set_log_clb),
         cmocka_unit_test_setup_teardown(test_ly_log_options, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ly_path_data2schema, setup_f, teardown_f),
+        cmocka_unit_test(test_ly_get_loaded_plugins),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
