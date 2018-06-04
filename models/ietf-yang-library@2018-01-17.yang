@@ -415,6 +415,7 @@
            "Common schema leaf parameter for modules and submodules.";
          leaf schema {
            type inet:uri;
+           status deprecated;
            description
              "Contains a URL that represents the YANG schema
               resource for this module or submodule.
