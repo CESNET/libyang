@@ -21,8 +21,6 @@
 #include <Tree_Data.hpp>
 #include <Tree_Schema.hpp>
 
-using namespace std;
-
 int main() {
 
     S_Context ctx = nullptr;
@@ -34,24 +32,24 @@ int main() {
 
         auto node_set = node->find_path("/turing-machine:turing-machine/transition--function/delta[label='left summand']/*");\
         if (!node_set) {
-            cout << "could not find data for xpath" << endl;
+            std::cout << "could not find data for xpath" << std::endl;
             return -1;
         }
 
         auto list = std::shared_ptr<std::vector<S_Data_Node>>(node_set->data());
         for(auto data_set = list->begin() ; data_set != list->end() ; ++data_set) {
-            cout << "name: " << (*data_set)->schema()->name() << " type: " << (*data_set)->schema()->nodetype() << " path: " << (*data_set)->path() << endl;
+            std::cout << "name: " << (*data_set)->schema()->name() << " type: " << (*data_set)->schema()->nodetype() << " path: " << (*data_set)->path() << std::endl;
         }
     } catch( const std::exception& e ) {
-        cout << "test" << endl;
-        cout << e.what() << endl;
+        std::cout << "test" << std::endl;
+        std::cout << e.what() << std::endl;
         auto errors = std::shared_ptr<std::vector<S_Error>>(get_ly_errors(ctx));
         for(auto error = errors->begin() ; error != errors->end() ; ++error) {
-            cout << "err: " << (*error)->err() << endl;
-            cout << "vecode: " << (*error)->vecode() << endl;
-            cout << "errmsg: " << (*error)->errmsg() << endl;
-            cout << "errpath: " << (*error)->errpath() << endl;
-            cout << "errapptag: " << (*error)->errapptag() << endl;
+            std::cout << "err: " << (*error)->err() << std::endl;
+            std::cout << "vecode: " << (*error)->vecode() << std::endl;
+            std::cout << "errmsg: " << (*error)->errmsg() << std::endl;
+            std::cout << "errpath: " << (*error)->errpath() << std::endl;
+            std::cout << "errapptag: " << (*error)->errapptag() << std::endl;
         }
         return -1;
     }
