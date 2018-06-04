@@ -1214,25 +1214,31 @@ test_ly_get_loaded_plugins(void **state)
 
     plugins = ly_get_loaded_plugins();
     assert_non_null(plugins);
+
     for (i = 0; plugins[i]; ++i) {
-        switch (i) {
-        case 0:
-            assert_string_equal(plugins[i], "metadata");
-            break;
-        case 1:
-            assert_string_equal(plugins[i], "yangdata");
-            break;
-        case 2:
-            assert_string_equal(plugins[i], "nacm");
-            break;
-        case 3:
-            assert_string_equal(plugins[i], "user_date_and_time");
-            break;
-        default:
-            fail();
+        if (!strcmp(plugins[i], "metadata")) {
             break;
         }
     }
+    assert_non_null(plugins[i]);
+    for (i = 0; plugins[i]; ++i) {
+        if (!strcmp(plugins[i], "yangdata")) {
+            break;
+        }
+    }
+    assert_non_null(plugins[i]);
+    for (i = 0; plugins[i]; ++i) {
+        if (!strcmp(plugins[i], "nacm")) {
+            break;
+        }
+    }
+    assert_non_null(plugins[i]);
+    for (i = 0; plugins[i]; ++i) {
+        if (!strcmp(plugins[i], "user_date_and_time")) {
+            break;
+        }
+    }
+    assert_non_null(plugins[i]);
 
     ly_clean_plugins();
 
