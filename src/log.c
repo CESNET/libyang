@@ -27,7 +27,7 @@
 #include "context.h"
 #include "tree_internal.h"
 
-volatile uint8_t ly_log_level = LY_LLERR;
+volatile uint8_t ly_log_level = LY_LLWRN;
 volatile uint8_t ly_log_opts = LY_LOLOG | LY_LOSTORE_LAST;
 static void (*ly_log_clb)(LY_LOG_LEVEL level, const char *msg, const char *path);
 static volatile int path_flag = 1;
