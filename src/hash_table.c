@@ -467,7 +467,7 @@ lyht_find_first(struct hash_table *ht, uint32_t hash, struct ht_rec **rec_p)
         return 1;
     }
 
-    /* we have found a record with equal hash */
+    /* we have found a record with equal (shortened) hash */
     if (rec_p) {
         *rec_p = rec;
     }
@@ -534,7 +534,7 @@ lyht_find(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p)
         /* not found */
         return 1;
     }
-    if (ht->val_equal(val_p, &rec->val, 0, ht->cb_data)) {
+    if ((rec->hash == hash) && ht->val_equal(val_p, &rec->val, 0, ht->cb_data)) {
         /* even the value matches */
         if (match_p) {
             *match_p = rec->val;
@@ -551,7 +551,7 @@ lyht_find(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p)
         (void)r;
 
         /* compare values */
-        if (ht->val_equal(val_p, &rec->val, 0, ht->cb_data)) {
+        if ((rec->hash == hash) && ht->val_equal(val_p, &rec->val, 0, ht->cb_data)) {
             if (match_p) {
                 *match_p = rec->val;
             }
@@ -575,7 +575,7 @@ lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p
         assert(0);
     }
 
-    if (ht->val_equal(val_p, &rec->val, 1, ht->cb_data)) {
+    if ((rec->hash == hash) && ht->val_equal(val_p, &rec->val, 1, ht->cb_data)) {
         /* previously returned value */
         found = 1;
     }
@@ -630,8 +630,8 @@ lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash)
     int r, ret;
 
     if (!lyht_find_first(ht, hash, &rec)) {
-        /* we found matching hash */
-        if (ht->val_equal(val_p, &rec->val, 1, ht->cb_data)) {
+        /* we found matching shortened hash */
+        if ((rec->hash == hash) && ht->val_equal(val_p, &rec->val, 1, ht->cb_data)) {
             /* even the value matches */
             return 1;
         }
@@ -643,7 +643,7 @@ lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash)
             assert(!r);
 
             /* compare values */
-            if (ht->val_equal(val_p, &rec->val, 1, ht->cb_data)) {
+            if ((rec->hash == hash) && ht->val_equal(val_p, &rec->val, 1, ht->cb_data)) {
                 return 1;
             }
         }
@@ -695,7 +695,7 @@ lyht_remove(struct hash_table *ht, void *val_p, uint32_t hash)
         /* hash not found */
         return 1;
     }
-    if (ht->val_equal(val_p, &rec->val, 1, ht->cb_data)) {
+    if ((rec->hash == hash) && ht->val_equal(val_p, &rec->val, 1, ht->cb_data)) {
         /* even the value matches */
         first_matched = 1;
     }
@@ -707,7 +707,7 @@ lyht_remove(struct hash_table *ht, void *val_p, uint32_t hash)
         assert(!r);
 
         /* compare values */
-        if (!first_matched && ht->val_equal(val_p, &rec->val, 1, ht->cb_data)) {
+        if (!first_matched && (rec->hash == hash) && ht->val_equal(val_p, &rec->val, 1, ht->cb_data)) {
             break;
         }
     }
