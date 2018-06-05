@@ -125,7 +125,7 @@ struct lyd_attr {
     const char *value_str;           /**< string representation of value (for comparison, printing,...), always corresponds to value_type */
     lyd_val value;                   /**< node's value representation, always corresponds to schema->type.base */
     LY_DATA_TYPE _PACKED value_type; /**< type of the value in the node, mainly for union to avoid repeating of type detection */
-    uint8_t value_flags;             /**< type flags */
+    uint8_t value_flags;             /**< value type flags */
 };
 
 /**
@@ -227,8 +227,17 @@ struct lyd_node_leaf_list {
     const char *value_str;           /**< string representation of value (for comparison, printing,...), always corresponds to value_type */
     lyd_val value;                   /**< node's value representation, always corresponds to schema->type.base */
     LY_DATA_TYPE _PACKED value_type; /**< type of the value in the node, mainly for union to avoid repeating of type detection */
-    uint8_t value_flags;             /**< type flags */
+    uint8_t value_flags;             /**< value type flags */
 };
+
+/**
+ * @brief Flags for values
+ */
+#define LY_VALUE_UNRES 0x01   /**< flag for unresolved leafref or instance-identifier,
+                                   leafref - value union is filled as if being the target node's type,
+                                   instance-identifier - value union should not be accessed */
+#define LY_VALUE_USER 0x02    /**< flag for a user type stored value */
+/* 0x80 is reserveed for internal use */
 
 /**
  * @brief Structure for data nodes defined as #LYS_ANYDATA or #LYS_ANYXML.

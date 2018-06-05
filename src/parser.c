@@ -1488,7 +1488,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
     /* fully clear the value */
     if (store) {
         lyd_free_value(*val, *val_type, *val_flags, type);
-        *val_flags &= ~LYTYPE_UNRES;
+        *val_flags &= ~LY_VALUE_UNRES;
     }
 
     switch (type->base) {
@@ -1902,7 +1902,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             /* note that the data node is an unresolved instance-identifier */
             val->instance = NULL;
             *val_type = LY_TYPE_INST;
-            *val_flags |= LYTYPE_UNRES;
+            *val_flags |= LY_VALUE_UNRES;
         }
 
         if (!ly_strequal(value, *value_, 1)) {
@@ -1942,7 +1942,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
         if (store) {
             /* make the note that the data node is an unresolved leafref (value union was already filled) */
-            *val_flags |= LYTYPE_UNRES;
+            *val_flags |= LY_VALUE_UNRES;
         }
 
         type = t;
@@ -2182,7 +2182,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         if (c == -1) {
             return NULL;
         } else if (!c) {
-            *val_flags |= LYTYPE_USER;
+            *val_flags |= LY_VALUE_USER;
         }
     }
 

@@ -1291,7 +1291,7 @@ check_leaf_list_backlinks(struct lyd_node *node, int op)
                     for (j = 0; j < data->number; j++) {
                         leaf_list = (struct lyd_node_leaf_list *)data->set.d[j];
                         if (((op != 0) && (leaf_list->value_type == LY_TYPE_LEAFREF) && (leaf_list->value.leafref == iter))
-                                || ((op != 1) && (leaf_list->value_flags & LYTYPE_UNRES))) {
+                                || ((op != 1) && (leaf_list->value_flags & LY_VALUE_UNRES))) {
                             /* invalidate the leafref, a change concerning it happened */
                             leaf_list->validity |= LYD_VAL_LEAFREF;
                             validity_changed = 1;
@@ -5354,7 +5354,7 @@ lyd_dup_to_ctx(const struct lyd_node *node, int recursive, struct ly_ctx *ctx)
                 if (r == -1) {
                     goto error;
                 } else if (!r) {
-                    new_leaf->value_flags |= LYTYPE_USER;
+                    new_leaf->value_flags |= LY_VALUE_USER;
                 }
             }
             break;
@@ -5675,7 +5675,7 @@ lyd_insert_attr(struct lyd_node *parent, const struct lys_module *mod, const cha
 void
 lyd_free_value(lyd_val value, LY_DATA_TYPE value_type, uint8_t value_flags, struct lys_type *type)
 {
-    if (value_flags & LYTYPE_USER) {
+    if (value_flags & LY_VALUE_USER) {
         assert(type->der && type->der->module);
         lytype_free(type->der->module, type->der->name, value);
     } else {
@@ -5686,7 +5686,7 @@ lyd_free_value(lyd_val value, LY_DATA_TYPE value_type, uint8_t value_flags, stru
             }
             break;
         case LY_TYPE_INST:
-            if (!(value_flags & LYTYPE_UNRES)) {
+            if (!(value_flags & LY_VALUE_UNRES)) {
                 break;
             }
             /* fallthrough */

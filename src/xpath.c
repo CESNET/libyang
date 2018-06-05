@@ -3375,7 +3375,7 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd_node 
         sleaf = (struct lys_node_leaf *)leaf->schema;
         if ((sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))
                 && ((sleaf->type.base == LY_TYPE_LEAFREF) || (sleaf->type.base == LY_TYPE_INST))) {
-            if (leaf->value_flags & LYTYPE_UNRES) {
+            if (leaf->value_flags & LY_VALUE_UNRES) {
                 /* this is bad */
                 LOGVAL(local_mod->ctx, LYE_SPEC, LY_VLOG_LYD, args[0]->val.nodes[0].node,
                        "Trying to dereference an unresolved leafref or instance-identifier.");

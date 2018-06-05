@@ -673,7 +673,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
     lydict_remove(ctx, module_name);
     lydict_remove(ctx, value);
 
-    if (type->flags & LYTYPE_GRP) {
+    if (type->value_flags & LY_VALUE_UNRESGRP) {
         /* resolved type in grouping, decrease the grouping's nacm number to indicate that one less
          * unresolved item left inside the grouping, LYTYPE_GRP used as a flag for types inside a grouping.  */
         for (siter = parent; siter && (siter->nodetype != LYS_GROUPING); siter = lys_parent(siter));
@@ -684,7 +684,7 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
             LOGINT(ctx);
             goto error;
         }
-        type->flags &= ~LYTYPE_GRP;
+        type->value_flags &= ~LY_VALUE_UNRESGRP;
     }
 
     /* check status */

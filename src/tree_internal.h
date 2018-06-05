@@ -80,7 +80,7 @@ struct lyd_node_pos {
 /**
  * @brief Type flag for an unresolved type in a grouping.
  */
-#define LYTYPE_GRP 0x80
+#define LY_VALUE_UNRESGRP 0x80
 
 #ifdef LY_ENABLED_CACHE
 

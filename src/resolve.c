@@ -6841,7 +6841,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
                     return -1;
                 }
             }
-        } else if (rc == EXIT_FAILURE && !(stype->flags & LYTYPE_GRP)) {
+        } else if (rc == EXIT_FAILURE && !(stype->value_flags & LY_VALUE_UNRESGRP)) {
             /* forward reference - in case the type is in grouping, we have to make the grouping unusable
              * by uses statement until the type is resolved. We do that the same way as uses statements inside
              * grouping. The grouping cannot be used unless the unres counter is 0.
@@ -6853,7 +6853,7 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
                     LOGERR(ctx, LY_EINT, "Too many unresolved items (type) inside a grouping.");
                     return -1;
                 }
-                stype->flags |= LYTYPE_GRP;
+                stype->value_flags |= LY_VALUE_UNRESGRP;
             }
         }
         break;
@@ -7864,7 +7864,7 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int store,
 
     assert(type->base == LY_TYPE_UNION);
 
-    if ((leaf->value_type == LY_TYPE_UNION) || ((leaf->value_type == LY_TYPE_INST) && (leaf->value_flags & LYTYPE_UNRES))) {
+    if ((leaf->value_type == LY_TYPE_UNION) || ((leaf->value_type == LY_TYPE_INST) && (leaf->value_flags & LY_VALUE_UNRES))) {
         /* either NULL or instid previously converted to JSON */
         json_val = lydict_insert(ctx, leaf->value.string, 0);
     }
@@ -7939,7 +7939,7 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int store,
                             leaf->value.instance = NULL;
                         }
                         leaf->value_type = LY_TYPE_INST;
-                        leaf->value_flags |= LYTYPE_UNRES;
+                        leaf->value_flags |= LY_VALUE_UNRES;
                     }
                 }
 
@@ -8030,10 +8030,10 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int ignore_
                 }
                 leaf->value.leafref = ret;
                 leaf->value_type = LY_TYPE_LEAFREF;
-                leaf->value_flags &= ~LYTYPE_UNRES;
+                leaf->value_flags &= ~LY_VALUE_UNRES;
             } else {
                 /* valid unresolved */
-                if (!(leaf->value_flags & LYTYPE_UNRES)) {
+                if (!(leaf->value_flags & LY_VALUE_UNRES)) {
                     if (!lyp_parse_value(&sleaf->type, &leaf->value_str, NULL, leaf, NULL, NULL, 1, 0, 0)) {
                         return -1;
                     }
@@ -8063,12 +8063,12 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int ignore_
                 /* valid resolved */
                 leaf->value.instance = ret;
                 leaf->value_type = LY_TYPE_INST;
-                leaf->value_flags &= ~LYTYPE_UNRES;
+                leaf->value_flags &= ~LY_VALUE_UNRES;
             } else {
                 /* valid unresolved */
                 leaf->value.instance = NULL;
                 leaf->value_type = LY_TYPE_INST;
-                leaf->value_flags |= LYTYPE_UNRES;
+                leaf->value_flags |= LY_VALUE_UNRES;
             }
         } else {
             return rc;

@@ -3,7 +3,7 @@
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief libyang representation of data model trees.
  *
- * Copyright (c) 2015 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -838,13 +838,6 @@ typedef enum {
 } LY_DATA_TYPE;
 #define LY_DATA_TYPE_COUNT 20 /**< Number of different types */
 
-/* type flags */
-#define LYTYPE_UNRES 0x01   /**< flag for unresolved leafref or instance-identifier,
-                                 leafref - value union is filled as if being the target node's type,
-                                 instance-identifier - value union should not be accessed */
-#define LYTYPE_USER 0x02    /**< flag for a user type stored value */
-/* 0x80 is reserved for internal use */
-
 /**
  *
  */
@@ -1011,7 +1004,7 @@ union lys_type_info {
  */
 struct lys_type {
     LY_DATA_TYPE _PACKED base;       /**< base type */
-    uint8_t flags;                   /**< type flags */
+    uint8_t value_flags;             /**< value type flags */
     uint8_t ext_size;                /**< number of elements in #ext array */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     struct lys_tpdf *der;            /**< pointer to the superior typedef. If NULL,
