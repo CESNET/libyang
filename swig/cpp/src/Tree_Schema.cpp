@@ -183,7 +183,7 @@ Type::~Type() {};
 std::vector<S_Ext_Instance> *Type::ext() LY_NEW_P_LIST(type, ext, ext_size, Ext_Instance);
 S_Tpdf Type::der() {return type->der ? std::make_shared<Tpdf>(type->der, deleter) : nullptr;};
 S_Tpdf Type::parent() {return type->parent ? std::make_shared<Tpdf>(type->parent, deleter) : nullptr;};
-S_Type_Info Type::info() {return std::make_shared<Type_Info>(type->info, &type->base, type->flags, deleter);};
+S_Type_Info Type::info() {return std::make_shared<Type_Info>(type->info, &type->base, type->value_flags, deleter);};
 
 Iffeature::Iffeature(struct lys_iffeature *iffeature, S_Deleter deleter):
     iffeature(iffeature),
