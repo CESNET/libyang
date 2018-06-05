@@ -332,8 +332,8 @@ else()
     add_subdirectory(src/extensions)
 endif(ENABLE_STATIC)
 
-# YANG user types plugins
-set(USER_TYPE_LIST "user_date_and_time" "user_ipv4")
+# YANG user types plugins ("user_ipv4" is just an example, not installed by default)
+set(USER_TYPE_LIST "user_date_and_time")
 if(ENABLE_STATIC)
     set(USER_TYPE_LIST_SIZE " 0 ")
     foreach(USER_TYPE ${USER_TYPE_LIST})
