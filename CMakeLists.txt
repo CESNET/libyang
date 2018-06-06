@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.8.12)
 project(libyang C)
 
 include(GNUInstallDirs)
+include(CheckSymbolExists)
 
 set(LIBYANG_DESCRIPTION "libyang is YANG data modelling language parser and toolkit written (and providing API) in C.")
 
@@ -231,6 +232,11 @@ set(headers
     src/user_types.h
     src/xml.h
     src/dict.h)
+
+check_symbol_exists(vdprintf stdio.h HAVE_VDPRINTF)
+if(HAVE_VDPRINTF)
+    add_definitions(-DHAVE_VDPRINTF)
+endif(HAVE_VDPRINTF)
 
 # create static libyang library
 if(ENABLE_STATIC)
