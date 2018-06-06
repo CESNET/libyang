@@ -12,6 +12,7 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <setjmp.h>
@@ -88,7 +89,7 @@ test_dup_to_ctx(void **state)
     st->dt2 = lyd_dup_to_ctx(st->dt1, 1, st->ctx2);
     assert_ptr_equal(st->dt2, NULL);
     assert_int_equal(ly_errno, LY_EINVAL);
-    assert_string_equal(ly_errmsg(),
+    assert_string_equal(ly_errmsg(st->ctx2),
                         "Target context does not contain schema node for the data node being duplicated (x:x).");
 
     /* case 2 - with the schema present in both contexts, duplication should succeed */

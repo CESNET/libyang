@@ -3,7 +3,7 @@
  * @author Pavol Vican
  * @brief Parsers for libyang
  *
- * Copyright (c) 2015 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -77,7 +77,7 @@ struct yang_type {
 
 #include "parser_yang_bis.h"
 
-char *yang_read_string(const char *input, char *output, int size, int offset, int indent);
+char *yang_read_string(struct ly_ctx *ctx, const char *input, char *output, int size, int offset, int indent);
 
 int yang_read_common(struct lys_module *module,char *value, enum yytokentype type);
 
@@ -121,9 +121,9 @@ int yang_read_key(struct lys_module *module, struct lys_node_list *list, struct 
 
 int yang_read_unique(struct lys_module *module, struct lys_node_list *list, struct unres_schema *unres);
 
-void *yang_read_type(struct lys_module *module, void *parent, char *value, enum yytokentype type);
+void *yang_read_type(struct ly_ctx *ctx, void *parent, char *value, enum yytokentype type);
 
-void *yang_read_length(struct  lys_module *module, struct yang_type *stype, char *value, int is_ext_instance);
+void *yang_read_length(struct ly_ctx *ctx, struct yang_type *stype, char *value, int is_ext_instance);
 
 int yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_type *typ, struct lys_type *type, int tpdftype, struct unres_schema *unres);
 
@@ -136,29 +136,29 @@ void yang_type_free(struct ly_ctx *ctx, struct lys_type *type);
 
 int yang_read_leafref_path(struct lys_module *module, struct yang_type *stype, char *value);
 
-int yang_read_require_instance(struct yang_type *stype, int req);
+int yang_read_require_instance(struct ly_ctx *ctx, struct yang_type *stype, int req);
 
-int yang_read_pattern(struct lys_module *module, struct lys_restr *pattern, void **precomp, char *value, char modifier);
+int yang_read_pattern(struct ly_ctx *ctx, struct lys_restr *pattern, void **precomp, char *value, char modifier);
 
-void *yang_read_range(struct  lys_module *module, struct yang_type *stype, char *value, int is_ext_instance);
+void *yang_read_range(struct ly_ctx *ctx, struct yang_type *stype, char *value, int is_ext_instance);
 
-int yang_read_fraction(struct yang_type *typ, uint32_t value);
+int yang_read_fraction(struct ly_ctx *ctx, struct yang_type *typ, uint32_t value);
 
-int yang_read_enum(struct lys_module *module, struct yang_type *typ, struct lys_type_enum *enm, char *value);
+int yang_read_enum(struct ly_ctx *ctx, struct yang_type *typ, struct lys_type_enum *enm, char *value);
 
-int yang_check_enum(struct yang_type *typ, struct lys_type_enum *enm, int64_t *value, int assign);
+int yang_check_enum(struct ly_ctx *ctx, struct yang_type *typ, struct lys_type_enum *enm, int64_t *value, int assign);
 
-int yang_read_bit(struct lys_module *module, struct yang_type *typ, struct lys_type_bit *bit, char *value);
+int yang_read_bit(struct ly_ctx *ctx, struct yang_type *typ, struct lys_type_bit *bit, char *value);
 
-int yang_check_bit(struct yang_type *typ, struct lys_type_bit *bit, int64_t *value, int assign);
+int yang_check_bit(struct ly_ctx *ctx, struct yang_type *typ, struct lys_type_bit *bit, int64_t *value, int assign);
 
 void *yang_read_typedef(struct lys_module *module, struct lys_node *parent, char *value);
 
 int yang_read_augment(struct lys_module *module, struct lys_node *parent, struct lys_node_augment *aug, char *value);
 
-void *yang_read_deviate(struct lys_deviation *dev, LYS_DEVIATE_TYPE mod);
+void *yang_read_deviate(struct ly_ctx *ctx, struct lys_deviation *dev, LYS_DEVIATE_TYPE mod);
 
-void *yang_read_deviate_unsupported(struct lys_deviation *dev);
+void *yang_read_deviate_unsupported(struct ly_ctx *ctx, struct lys_deviation *dev);
 
 int yang_fill_unique(struct lys_module *module, struct lys_node_list *list, struct lys_unique *unique, char *value, struct unres_schema *unres);
 

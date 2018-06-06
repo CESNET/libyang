@@ -22,6 +22,12 @@
 #include "tree_schema.h"
 #include "tree_internal.h"
 
+#ifdef __APPLE__
+# ifndef MAP_ANONYMOUS
+#  define MAP_ANONYMOUS MAP_ANON
+# endif
+#endif
+
 /**
  * @defgroup yin YIN format support
  * @{
@@ -44,23 +50,9 @@ struct lyd_node *xml_read_data(struct ly_ctx *ctx, const char *data, int options
  * @{
  */
 struct lyd_node *lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct lyd_node *rpc_act,
-                                const struct lyd_node *data_tree);
+                                const struct lyd_node *data_tree, const char *yang_data_name);
 
 /**@} jsondata */
-
-/**
- * thread-specific information describing the parser's current context
- */
-struct ly_parser {
-    struct ly_ctx *ctx;
-/* TODO
-    union {
-        struct lys_node *schema;
-        struct lyd_node *data;
-    } node;
-*/
-};
-extern THREAD_LOCAL struct ly_parser ly_parser_data;
 
 /**
  * internal options values for schema parsers
@@ -99,18 +91,18 @@ struct lys_type *lyp_get_next_union_type(struct lys_type *type, struct lys_type 
 
 /* return: 0 - ret set, ok; 1 - ret not set, no log, unknown meta; -1 - ret not set, log, fatal error */
 int lyp_fill_attr(struct ly_ctx *ctx, struct lyd_node *parent, const char *module_ns, const char *module_name,
-                  const char *attr_name, const char *attr_value, struct lyxml_elem *xml, struct lyd_attr **ret);
+                  const char *attr_name, const char *attr_value, struct lyxml_elem *xml, int options, struct lyd_attr **ret);
 
 int lyp_check_edit_attr(struct ly_ctx *ctx, struct lyd_attr *attr, struct lyd_node *parent, int *editbits);
 
 struct lys_type *lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *xml,
                                  struct lyd_node_leaf_list *leaf, struct lyd_attr *attr, struct lys_module *local_mod,
-                                 int store, int dflt);
+                                 int store, int dflt, int trusted);
 
-int lyp_check_length_range(const char *expr, struct lys_type *type);
+int lyp_check_length_range(struct ly_ctx *ctx, const char *expr, struct lys_type *type);
 
-int lyp_check_pattern(const char *pattern, pcre **pcre_precomp);
-int lyp_precompile_pattern(const char *pattern, pcre** pcre_cmp, pcre_extra **pcre_std);
+int lyp_check_pattern(struct ly_ctx *ctx, const char *pattern, pcre **pcre_precomp);
+int lyp_precompile_pattern(struct ly_ctx *ctx, const char *pattern, pcre** pcre_cmp, pcre_extra **pcre_std);
 
 int fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_elem *yin, struct lys_type *type,
                   int tpdftype, struct unres_schema *unres);
@@ -140,10 +132,10 @@ int lyp_is_rpc_action(struct lys_node *node);
  * @param func name of the function where called
  * @return 0 for ok, 1 when multiple data types bits are set, or incompatible options are used together.
  */
-int lyp_data_check_options(int options, const char *func);
+int lyp_data_check_options(struct ly_ctx *ctx, int options, const char *func);
 
-int lyp_check_identifier(const char *id, enum LY_IDENT type, struct lys_module *module, struct lys_node *parent);
-int lyp_check_date(const char *date);
+int lyp_check_identifier(struct ly_ctx *ctx, const char *id, enum LY_IDENT type, struct lys_module *module, struct lys_node *parent);
+int lyp_check_date(struct ly_ctx *ctx, const char *date);
 int lyp_check_mandatory_augment(struct lys_node_augment *node, const struct lys_node *target);
 int lyp_check_mandatory_choice(struct lys_node *node);
 
@@ -158,6 +150,9 @@ void lyp_sort_revisions(struct lys_module *module);
 int lyp_rfn_apply_ext(struct lys_module *module);
 int lyp_deviation_apply_ext(struct lys_module *module);
 int lyp_mand_check_ext(struct lys_ext_instance_complex *ext, const char *ext_name);
+
+const char *lyp_get_yang_data_template_name(const struct lyd_node *node);
+const struct lys_node *lyp_get_yang_data_template(const struct lys_module *module, const char *yang_data_name, int yang_data_name_len);
 
 void lyp_ext_instance_rm(struct ly_ctx *ctx, struct lys_ext_instance ***ext, uint8_t *size, uint8_t index);
 
@@ -188,11 +183,10 @@ int lyp_add_ietf_netconf_annotations(struct lys_module *mod);
  * @param[in] addsize Number of additional bytes to be allocated (and zeroed) after the implicitly added
  *                    string-terminating NULL byte.
  * @param[out] length length of the allocated memory.
- * @return On success, the pointer to the memory where the file data resists is returned. On error, the value MAP_FAILED
- * is returned and #ly_errno value is set.
+ * @param[out] addr Pointer to the memory where the file data is mapped.
+ * @return 0 on success, non-zero on error.
  */
-void *
-lyp_mmap(int fd, size_t addsize, size_t *length);
+int lyp_mmap(struct ly_ctx *ctx, int fd, size_t addsize, size_t *length, void **addr);
 
 /**
  * @brief Unmap function for the data mapped by lyp_mmap()
@@ -210,22 +204,8 @@ int lyp_munmap(void *addr, size_t length);
  * 00010000 -- 001FFFFF:    11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
  *
  */
-unsigned int pututf8(char *dst, int32_t value);
-unsigned int copyutf8(char *dst, const char *src);
-
-/*
- * Internal functions implementing YANG extensions support
- * - implemented in extensions.c
- */
-
-/**
- * @brief If available, get the extension plugin for the specified extension
- * @param[in] name Name of the extension
- * @param[in] module Name of the extension's module
- * @param[in] revision Revision of the extension's module
- * @return pointer to the extension plugin structure, NULL if no plugin available
- */
-struct lyext_plugin *ext_get_plugin(const char *name, const char *module, const char *revision);
+unsigned int pututf8(struct ly_ctx *ctx, char *dst, int32_t value);
+unsigned int copyutf8(struct ly_ctx *ctx, char *dst, const char *src);
 
 /**
  * @brief Find a module. First, imports from \p module with matching \p prefix, \p name, or both are checked,
@@ -251,5 +231,40 @@ const struct lys_module *lyp_get_module(const struct lys_module *module, const c
  * @param[in] ns Namespace to be found.
  */
 const struct lys_module *lyp_get_import_module_ns(const struct lys_module *module, const char *ns);
+
+/*
+ * Internal functions implementing YANG (extension and user type) plugin support
+ * - implemented in plugins.c
+ */
+
+/**
+ * @brief If available, get the extension plugin for the specified extension
+ *
+ * @param[in] name Name of the extension
+ * @param[in] module Name of the extension's module
+ * @param[in] revision Revision of the extension's module
+ * @return pointer to the extension plugin structure, NULL if no plugin available
+ */
+struct lyext_plugin *ext_get_plugin(const char *name, const char *module, const char *revision);
+
+/**
+ * @brief Try to store a value as a user type defined by a plugin.
+ *
+ * @param[in] mod Module of the type.
+ * @param[in] type_name Type (typedef) name.
+ * @param[in] value_str Value to store as a string.
+ * @param[in,out] value Filled value to be overwritten by the user store callback.
+ * @return 0 on successful storing, 1 if the type is not a user type, -1 on error.
+ */
+int lytype_store(const struct lys_module *mod, const char *type_name, const char *value_str, lyd_val *value);
+
+/**
+ * @brief Free a user type stored value.
+ *
+ * @param[in] mod Module of the type.
+ * @param[in] type_name Type (typedef) name.
+ * @param[in] value Value union to free.
+ */
+void lytype_free(const struct lys_module *mod, const char *type_name, lyd_val value);
 
 #endif /* LY_PARSER_H_ */

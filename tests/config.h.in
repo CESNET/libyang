@@ -3,7 +3,7 @@
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief cmocka tests configuration header.
  *
- * Copyright (c) 2015 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -11,6 +11,14 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
+#ifndef LYTEST_CONFIG_H_
+#define LYTEST_CONFIG_H_
 
 #define TESTS_DIR "@CMAKE_SOURCE_DIR@/tests"
 #define BUILD_DIR "@PROJECT_BINARY_DIR@"
+
+#ifdef LY_ENABLED_CACHE
+int lyd_list_has_keys(struct lyd_node *list);
+#endif
+
+#endif /* LYTEST_CONFIG_H_ */

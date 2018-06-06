@@ -78,6 +78,25 @@ struct lyd_node_pos {
 #define LYD_WHEN_DONE(status) (!((status) & LYD_WHEN) || ((status) & (LYD_WHEN_TRUE | LYD_WHEN_FALSE)))
 
 /**
+ * @brief Type flag for an unresolved type in a grouping.
+ */
+#define LY_VALUE_UNRESGRP 0x80
+
+#ifdef LY_ENABLED_CACHE
+
+/**
+ * @brief Minimum number of children for the parent to create a hash table for them.
+ */
+#   define LY_CACHE_HT_MIN_CHILDREN 4
+
+    int lyd_hash(struct lyd_node *node);
+
+    void lyd_insert_hash(struct lyd_node *node);
+
+    void lyd_unlink_hash(struct lyd_node *node, struct lyd_node *orig_parent);
+#endif
+
+/**
  * @brief Create submodule structure by reading data from memory.
  *
  * @param[in] module Schema tree where to connect the submodule, belongs-to value must match.
@@ -158,21 +177,20 @@ struct lys_node_grp *lys_find_grouping_up(const char *name, struct lys_node *sta
 int lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *module);
 
 /**
- * @brief Check all XPath expressions of a node (when and must), set LYS_XPATH_DEP flag if required.
- *
- * @param[in] node Node to examine.
- * @param[in] check_place Check where the node is placed to get know if the check is supposed to be performed
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on forward reference, -1 on error.
- */
-int lys_check_xpath(struct lys_node *node, int check_place);
-
-/**
  * @brief Get know if the node contains must or when with XPath expression
  *
  * @param[in] node Node to examine.
  * @return 1 if contains, 0 otherwise
  */
 int lys_has_xpath(const struct lys_node *node);
+
+/**
+ * @brief Learn if \p type is defined in the local module or from an import.
+ *
+ * @param[in] type Type to examine.
+ * @return non-zero if local, 0 if from an import.
+ */
+int lys_type_is_local(const struct lys_type *type);
 
 /**
  * @brief Create a copy of the specified schema tree \p node
@@ -354,7 +372,9 @@ const struct lyd_node *lyd_attr_parent(const struct lyd_node *root, struct lyd_a
  * @brief Internal version of lyd_unlink().
  *
  * @param[in] node Node to unlink.
- * @param[in] permanent Whether the node is premanently unlinked or will be linked back.
+ * @param[in] permanent 0 - the node will be linked back,
+ *                      1 - the node is premanently unlinked,
+ *                      2 - the node is being freed.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on error.
  */
@@ -409,28 +429,14 @@ int lys_get_sibling(const struct lys_node *siblings, const char *mod_name, int m
 int lys_getnext_data(const struct lys_module *mod, const struct lys_node *parent, const char *name, int nam_len,
                      LYS_NODE type, const struct lys_node **ret);
 
-/**
- * @brief Compare 2 list or leaf-list data nodes if they are the same from the YANG point of view. Logs directly.
- *
- * - leaf-lists are the same if they are defined by the same schema tree node and they have the same value
- * - lists are the same if they are defined by the same schema tree node, all their keys have identical values,
- *   and all unique sets have the same values
- *
- * @param[in] first First data node to compare.
- * @param[in] second Second node to compare.
- * @param[in] action Option to specify what will be checked:
- *            -1 - compare keys and all uniques
- *             0 - compare only keys
- *             n - compare n-th unique
- * @param[in] withdefaults Whether only different dflt flags cause 2 nodes not to be equal.
- * @param[in] log Flag for printing validation errors, useful for internal (non-validation) use of this function
- * @return 1 if both the nodes are the same from the YANG point of view,
- *         0 if they differ,
- *         -1 on error.
- */
-int lyd_list_equal(struct lyd_node *first, struct lyd_node *second, int action, int withdefaults, int log);
+int lyd_get_unique_default(const char* unique_expr, struct lyd_node *list, const char **dflt);
 
-const char *lyd_get_unique_default(const char* unique_expr, struct lyd_node *list);
+int lyd_build_relative_data_path(const struct lys_module *module, const struct lyd_node *node, const char *schema_id,
+                                 char *buf);
+
+void lyd_free_value(lyd_val value, LY_DATA_TYPE value_type, uint8_t value_flags, struct lys_type *type);
+
+int lyd_list_equal(struct lyd_node *node1, struct lyd_node *node2, int with_defaults);
 
 /**
  * @brief Check for (validate) mandatory nodes of a data tree. Checks recursively whole data tree. Requires all when
@@ -488,12 +494,6 @@ const struct lys_module *lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT 
 
 const struct lys_module *lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const char *revision,
                                         int internal, int implement);
-
-/**
- * @brief Get know if the \p leaf is a key of the \p list
- * @return 0 for false, position of the key otherwise
- */
-int lys_is_key(struct lys_node_list *list, struct lys_node_leaf *leaf);
 
 /**
  * @brief Get next augment from \p mod augmenting \p aug_target

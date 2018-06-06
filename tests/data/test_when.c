@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <setjmp.h>
+#include <stdarg.h>
 #include <cmocka.h>
 
 #include "tests/config.h"
@@ -23,6 +24,8 @@
 struct state {
     struct ly_ctx *ctx;
     const struct lys_module *mod;
+    const struct lys_module *mod2;
+    const struct lys_module *mod3;
     struct lyd_node *dt;
     char *xml;
 };
@@ -163,13 +166,33 @@ test_insert_autodel(void **state)
     assert_string_equal(st->xml, "<topleaf xmlns=\"urn:libyang:tests:when\">X</topleaf>");
 }
 
+static void
+test_value_prefix(void **state) {
+    struct state *st = (struct state *)*state;
+
+    /* schema */
+    st->mod2 = lys_parse_path(st->ctx, TESTS_DIR"/data/files/when-value-prefix.yang", LYS_IN_YANG);
+    assert_ptr_not_equal(st->mod2, NULL);
+    st->mod3 = lys_parse_path(st->ctx, TESTS_DIR"/data/files/when-value-prefix-aug.yang", LYS_IN_YANG);
+    assert_ptr_not_equal(st->mod3, NULL);
+
+    st->dt = lyd_parse_path(st->ctx, TESTS_DIR"/data/files/when-value-prefix.xml", LYD_XML, LYD_OPT_CONFIG | LYD_OPT_STRICT);
+    assert_ptr_not_equal(st->dt, NULL);
+
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_STRICT | LYD_OPT_CONFIG, NULL), 0);
+    lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS);
+    assert_string_equal(st->xml, "<outer xmlns=\"urn:when:value:prefix\"><indicator xmlns:wvpa=\"urn:when:value:prefix:aug\">wvpa:inner-indicator</indicator><inner xmlns=\"urn:when:value:prefix:aug\"><text>any-text</text></inner></outer>");
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
                     cmocka_unit_test_setup_teardown(test_parse, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_parse_autodel, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_insert, setup_f, teardown_f),
-                    cmocka_unit_test_setup_teardown(test_insert_autodel, setup_f, teardown_f), };
+                    cmocka_unit_test_setup_teardown(test_insert_autodel, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_value_prefix, setup_f, teardown_f),
+    };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

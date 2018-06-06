@@ -73,7 +73,7 @@ test_implemented1_yin(void **state)
     b2 = lys_parse_path(ctx, SCHEMA_FOLDER_YIN"/b@2015-04-04.yin", LYS_IN_YIN);
     assert_ptr_equal(b2, NULL);
     assert_int_equal(ly_errno, LY_EINVAL);
-    assert_string_equal(ly_errmsg(), "Module \"b\" parsing failed.");
+    assert_string_equal(ly_errmsg(ctx), "Module \"b\" parsing failed.");
 
     /* older c can be loaded and it will be marked as implemented */
     c2 = lys_parse_path(ctx, SCHEMA_FOLDER_YIN"/c@2015-01-01.yin", LYS_IN_YIN);
@@ -107,7 +107,7 @@ test_implemented1_yang(void **state)
     b2 = lys_parse_path(ctx, SCHEMA_FOLDER_YANG"/b@2015-04-04.yang", LYS_IN_YANG);
     assert_ptr_equal(b2, NULL);
     assert_int_equal(ly_errno, LY_EINVAL);
-    assert_string_equal(ly_errmsg(), "Module \"b\" parsing failed.");
+    assert_string_equal(ly_errmsg(ctx), "Module \"b\" parsing failed.");
 
     /* older c can be loaded and it will be marked as implemented */
     c2 = lys_parse_path(ctx, SCHEMA_FOLDER_YANG"/c@2015-01-01.yang", LYS_IN_YANG);
@@ -160,89 +160,61 @@ test_implemented_info_yin(void **state)
     const struct lys_module *a;
     char *data;
     const char *template = "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">\n"
-"  <modules>\n"
-"    <module>\n"
-"      <id>0</id>\n"
+"  <module-set>\n"
+"    <name>complete</name>\n"
+"    <checksum>10</checksum>\n"
+"    <import-only-module>\n"
 "      <name>ietf-yang-metadata</name>\n"
 "      <revision>2016-08-05</revision>\n"
 "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-metadata</namespace>\n"
-"      <conformance-type>import</conformance-type>\n"
-"    </module>\n"
+"    </import-only-module>\n"
 "    <module>\n"
-"      <id>1</id>\n"
 "      <name>yang</name>\n"
 "      <revision>2017-02-20</revision>\n"
 "      <namespace>urn:ietf:params:xml:ns:yang:1</namespace>\n"
-"      <conformance-type>implement</conformance-type>\n"
 "    </module>\n"
-"    <module>\n"
-"      <id>2</id>\n"
+"    <import-only-module>\n"
 "      <name>ietf-inet-types</name>\n"
 "      <revision>2013-07-15</revision>\n"
 "      <namespace>urn:ietf:params:xml:ns:yang:ietf-inet-types</namespace>\n"
-"      <conformance-type>import</conformance-type>\n"
-"    </module>\n"
-"    <module>\n"
-"      <id>3</id>\n"
+"    </import-only-module>\n"
+"    <import-only-module>\n"
 "      <name>ietf-yang-types</name>\n"
 "      <revision>2013-07-15</revision>\n"
 "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-types</namespace>\n"
-"      <conformance-type>import</conformance-type>\n"
-"    </module>\n"
-"    <module>\n"
-"      <id>4</id>\n"
+"    </import-only-module>\n"
+"    <import-only-module>\n"
 "      <name>ietf-datastores</name>\n"
 "      <revision>2017-08-17</revision>\n"
 "      <namespace>urn:ietf:params:xml:ns:yang:ietf-datastores</namespace>\n"
-"      <conformance-type>import</conformance-type>\n"
-"    </module>\n"
+"    </import-only-module>\n"
 "    <module>\n"
-"      <id>5</id>\n"
 "      <name>ietf-yang-library</name>\n"
-"      <revision>2017-08-17</revision>\n"
+"      <revision>2018-01-17</revision>\n"
 "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-library</namespace>\n"
-"      <conformance-type>implement</conformance-type>\n"
 "    </module>\n"
 "    <module>\n"
-"      <id>6</id>\n"
 "      <name>b</name>\n"
 "      <revision>2015-01-01</revision>\n"
-"      <schema>file://"SCHEMA_FOLDER_YIN"/b@2015-01-01.yin</schema>\n"
 "      <namespace>urn:example:b</namespace>\n"
-"      <conformance-type>implement</conformance-type>\n"
+"      <location>file://"SCHEMA_FOLDER_YIN"/b@2015-01-01.yin</location>\n"
 "    </module>\n"
-"    <module>\n"
-"      <id>7</id>\n"
+"    <import-only-module>\n"
 "      <name>c</name>\n"
 "      <revision>2015-03-03</revision>\n"
-"      <schema>file://"SCHEMA_FOLDER_YIN"/c@2015-03-03.yin</schema>\n"
 "      <namespace>urn:example:c</namespace>\n"
-"      <conformance-type>import</conformance-type>\n"
-"    </module>\n"
+"      <location>file://"SCHEMA_FOLDER_YIN"/c@2015-03-03.yin</location>\n"
+"    </import-only-module>\n"
 "    <module>\n"
-"      <id>8</id>\n"
 "      <name>a</name>\n"
 "      <revision>2015-01-01</revision>\n"
-"      <schema>file://"SCHEMA_FOLDER_YIN"/a.yin</schema>\n"
 "      <namespace>urn:example:a</namespace>\n"
-"      <feature>foo</feature>\n"
-"      <conformance-type>implement</conformance-type>\n"
+"      <location>file://"SCHEMA_FOLDER_YIN"/a.yin</location>\n"
+"      <feature>\n"
+"        <name>foo</name>\n"
+"      </feature>\n"
 "    </module>\n"
-"  </modules>\n"
-"  <module-sets>\n"
-"    <module-set>\n"
-"      <id>complete</id>\n"
-"      <module>0</module>\n"
-"      <module>1</module>\n"
-"      <module>2</module>\n"
-"      <module>3</module>\n"
-"      <module>4</module>\n"
-"      <module>5</module>\n"
-"      <module>6</module>\n"
-"      <module>7</module>\n"
-"      <module>8</module>\n"
-"    </module-set>\n"
-"  </module-sets>\n"
+"  </module-set>\n"
 "  <checksum>10</checksum>\n"
 "</yang-library>\n"
 "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">\n"
@@ -278,7 +250,7 @@ test_implemented_info_yin(void **state)
 "  </module>\n"
 "  <module>\n"
 "    <name>ietf-yang-library</name>\n"
-"    <revision>2017-08-17</revision>\n"
+"    <revision>2018-01-17</revision>\n"
 "    <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-library</namespace>\n"
 "    <conformance-type>implement</conformance-type>\n"
 "  </module>\n"
@@ -331,89 +303,61 @@ test_implemented_info_yang(void **state)
     const struct lys_module *a;
     char *data;
     const char *template = "<yang-library xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">\n"
-"  <modules>\n"
-"    <module>\n"
-"      <id>0</id>\n"
+"  <module-set>\n"
+"    <name>complete</name>\n"
+"    <checksum>10</checksum>\n"
+"    <import-only-module>\n"
 "      <name>ietf-yang-metadata</name>\n"
 "      <revision>2016-08-05</revision>\n"
 "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-metadata</namespace>\n"
-"      <conformance-type>import</conformance-type>\n"
-"    </module>\n"
+"    </import-only-module>\n"
 "    <module>\n"
-"      <id>1</id>\n"
 "      <name>yang</name>\n"
 "      <revision>2017-02-20</revision>\n"
 "      <namespace>urn:ietf:params:xml:ns:yang:1</namespace>\n"
-"      <conformance-type>implement</conformance-type>\n"
 "    </module>\n"
-"    <module>\n"
-"      <id>2</id>\n"
+"    <import-only-module>\n"
 "      <name>ietf-inet-types</name>\n"
 "      <revision>2013-07-15</revision>\n"
 "      <namespace>urn:ietf:params:xml:ns:yang:ietf-inet-types</namespace>\n"
-"      <conformance-type>import</conformance-type>\n"
-"    </module>\n"
-"    <module>\n"
-"      <id>3</id>\n"
+"    </import-only-module>\n"
+"    <import-only-module>\n"
 "      <name>ietf-yang-types</name>\n"
 "      <revision>2013-07-15</revision>\n"
 "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-types</namespace>\n"
-"      <conformance-type>import</conformance-type>\n"
-"    </module>\n"
-"    <module>\n"
-"      <id>4</id>\n"
+"    </import-only-module>\n"
+"    <import-only-module>\n"
 "      <name>ietf-datastores</name>\n"
 "      <revision>2017-08-17</revision>\n"
 "      <namespace>urn:ietf:params:xml:ns:yang:ietf-datastores</namespace>\n"
-"      <conformance-type>import</conformance-type>\n"
-"    </module>\n"
+"    </import-only-module>\n"
 "    <module>\n"
-"      <id>5</id>\n"
 "      <name>ietf-yang-library</name>\n"
-"      <revision>2017-08-17</revision>\n"
+"      <revision>2018-01-17</revision>\n"
 "      <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-library</namespace>\n"
-"      <conformance-type>implement</conformance-type>\n"
 "    </module>\n"
 "    <module>\n"
-"      <id>6</id>\n"
 "      <name>b</name>\n"
 "      <revision>2015-01-01</revision>\n"
-"      <schema>file://"SCHEMA_FOLDER_YANG"/b@2015-01-01.yang</schema>\n"
 "      <namespace>urn:example:b</namespace>\n"
-"      <conformance-type>implement</conformance-type>\n"
+"      <location>file://"SCHEMA_FOLDER_YANG"/b@2015-01-01.yang</location>\n"
 "    </module>\n"
-"    <module>\n"
-"      <id>7</id>\n"
+"    <import-only-module>\n"
 "      <name>c</name>\n"
 "      <revision>2015-03-03</revision>\n"
-"      <schema>file://"SCHEMA_FOLDER_YANG"/c@2015-03-03.yang</schema>\n"
 "      <namespace>urn:example:c</namespace>\n"
-"      <conformance-type>import</conformance-type>\n"
-"    </module>\n"
+"      <location>file://"SCHEMA_FOLDER_YANG"/c@2015-03-03.yang</location>\n"
+"    </import-only-module>\n"
 "    <module>\n"
-"      <id>8</id>\n"
 "      <name>a</name>\n"
 "      <revision>2015-01-01</revision>\n"
-"      <schema>file://"SCHEMA_FOLDER_YANG"/a.yang</schema>\n"
 "      <namespace>urn:example:a</namespace>\n"
-"      <feature>foo</feature>\n"
-"      <conformance-type>implement</conformance-type>\n"
+"      <location>file://"SCHEMA_FOLDER_YANG"/a.yang</location>\n"
+"      <feature>\n"
+"        <name>foo</name>\n"
+"      </feature>\n"
 "    </module>\n"
-"  </modules>\n"
-"  <module-sets>\n"
-"    <module-set>\n"
-"      <id>complete</id>\n"
-"      <module>0</module>\n"
-"      <module>1</module>\n"
-"      <module>2</module>\n"
-"      <module>3</module>\n"
-"      <module>4</module>\n"
-"      <module>5</module>\n"
-"      <module>6</module>\n"
-"      <module>7</module>\n"
-"      <module>8</module>\n"
-"    </module-set>\n"
-"  </module-sets>\n"
+"  </module-set>\n"
 "  <checksum>10</checksum>\n"
 "</yang-library>\n"
 "<modules-state xmlns=\"urn:ietf:params:xml:ns:yang:ietf-yang-library\">\n"
@@ -449,7 +393,7 @@ test_implemented_info_yang(void **state)
 "  </module>\n"
 "  <module>\n"
 "    <name>ietf-yang-library</name>\n"
-"    <revision>2017-08-17</revision>\n"
+"    <revision>2018-01-17</revision>\n"
 "    <namespace>urn:ietf:params:xml:ns:yang:ietf-yang-library</namespace>\n"
 "    <conformance-type>implement</conformance-type>\n"
 "  </module>\n"
@@ -494,6 +438,114 @@ test_implemented_info_yang(void **state)
     free(data);
 }
 
+static void
+test_revision_date_yin(void **state)
+{
+    struct ly_ctx *ctx = *state;
+    const char *yin1 = "<module name=\"x\""
+          "xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\""
+          "xmlns:x=\"urn:cesnet:x\">"
+        "<namespace uri=\"urn:cesnet:x\"/>"
+        "<prefix value=\"x\"/>"
+        "<revision date=\"2018-02-29\"/>"
+        "</module>";
+    const char *yin2 = "<module name=\"x\""
+          "xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\""
+          "xmlns:x=\"urn:cesnet:x\">"
+        "<namespace uri=\"urn:cesnet:x\"/>"
+        "<prefix value=\"x\"/>"
+        "<revision date=\"18-02-28\"/>"
+        "</module>";
+    const char *yin3 = "<module name=\"x\""
+          "xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\""
+          "xmlns:x=\"urn:cesnet:x\">"
+        "<namespace uri=\"urn:cesnet:x\"/>"
+        "<prefix value=\"x\"/>"
+        "<revision date=\"today\"/>"
+        "</module>";
+    const char *yin4 = "<module name=\"x\""
+          "xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\""
+          "xmlns:x=\"urn:cesnet:x\">"
+        "<namespace uri=\"urn:cesnet:x\"/>"
+        "<prefix value=\"x\"/>"
+        "<revision date=\"2018-02-28\"/>"
+        "</module>";
+    const char *yin5 = "<module name=\"y\""
+          "xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\""
+          "xmlns:y=\"urn:cesnet:y\">"
+        "<namespace uri=\"urn:cesnet:y\"/>"
+        "<prefix value=\"y\"/>"
+        "<revision date=\"2016-02-29\"/>"
+        "</module>";
+    const char *yin6 = "<module name=\"z\""
+          "xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\""
+          "xmlns:z=\"urn:cesnet:z\">"
+        "<namespace uri=\"urn:cesnet:z\"/>"
+        "<prefix value=\"z\"/>"
+        "<revision date=\"2000-02-29\"/>"
+        "</module>";
+
+    /* invalid dates */
+    assert_ptr_equal(lys_parse_mem(ctx, yin1, LYS_IN_YIN), NULL);
+    assert_int_equal(ly_vecode(ctx), LYVE_INDATE);
+
+    assert_ptr_equal(lys_parse_mem(ctx, yin2, LYS_IN_YIN), NULL);
+    assert_int_equal(ly_vecode(ctx), LYVE_INDATE);
+
+    assert_ptr_equal(lys_parse_mem(ctx, yin3, LYS_IN_YIN), NULL);
+    assert_int_equal(ly_vecode(ctx), LYVE_INDATE);
+
+    /* valid dates */
+    assert_ptr_not_equal(lys_parse_mem(ctx, yin4, LYS_IN_YIN), NULL);
+    assert_ptr_not_equal(lys_parse_mem(ctx, yin5, LYS_IN_YIN), NULL);
+    assert_ptr_not_equal(lys_parse_mem(ctx, yin6, LYS_IN_YIN), NULL);
+}
+
+static void
+test_revision_date_yang(void **state)
+{
+    struct ly_ctx *ctx = *state;
+    const char *yang1 = "module x {"
+          "namespace urn:cesnet:x;"
+          "prefix x;"
+          "revision \"2018-02-29\";}";
+    const char *yang2 = "module x {"
+          "namespace urn:cesnet:x;"
+          "prefix x;"
+          "revision \"18-02-28\";}";
+    const char *yang3 = "module x {"
+          "namespace urn:cesnet:x;"
+          "prefix x;"
+          "revision \"today\";}";
+    const char *yang4 = "module x {"
+          "namespace urn:cesnet:x;"
+          "prefix x;"
+          "revision \"2018-02-28\";}";
+    const char *yang5 = "module y {"
+          "namespace urn:cesnet:y;"
+          "prefix y;"
+          "revision \"2016-02-29\";}";
+    const char *yang6 = "module z {"
+          "namespace urn:cesnet:z;"
+          "prefix z;"
+          "revision \"2000-02-29\";}";
+
+    /* invalid dates */
+    assert_ptr_equal(lys_parse_mem(ctx, yang1, LYS_IN_YANG), NULL);
+    assert_int_equal(ly_vecode(ctx), LYVE_INDATE);
+
+    assert_ptr_equal(lys_parse_mem(ctx, yang2, LYS_IN_YANG), NULL);
+    assert_int_equal(ly_vecode(ctx), LYVE_INDATE);
+
+    assert_ptr_equal(lys_parse_mem(ctx, yang3, LYS_IN_YANG), NULL);
+    assert_int_equal(ly_vecode(ctx), LYVE_INDATE);
+
+    /* valid dates */
+    assert_ptr_not_equal(lys_parse_mem(ctx, yang4, LYS_IN_YANG), NULL);
+    assert_ptr_not_equal(lys_parse_mem(ctx, yang5, LYS_IN_YANG), NULL);
+    assert_ptr_not_equal(lys_parse_mem(ctx, yang6, LYS_IN_YANG), NULL);
+}
+
 int
 main(void)
 {
@@ -504,6 +556,8 @@ main(void)
         cmocka_unit_test_setup_teardown(test_implemented2_yang, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_implemented_info_yin, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_implemented_info_yang, setup_ctx, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_revision_date_yin, setup_ctx, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_revision_date_yang, setup_ctx, teardown_ctx),
     };
 
     return cmocka_run_group_tests(cmut, NULL, NULL);

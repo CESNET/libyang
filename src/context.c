@@ -25,7 +25,7 @@
 
 #include "common.h"
 #include "context.h"
-#include "dict_private.h"
+#include "hash_table.h"
 #include "parser.h"
 #include "tree_internal.h"
 #include "resolve.h"
@@ -41,8 +41,8 @@ extern unsigned int ext_plugins_ref;
 #define IETF_INET_TYPES_PATH "../models/ietf-inet-types@2013-07-15.h"
 #define IETF_YANG_TYPES_PATH "../models/ietf-yang-types@2013-07-15.h"
 #define IETF_DATASTORES "../models/ietf-datastores@2017-08-17.h"
-#define IETF_YANG_LIB_PATH "../models/ietf-yang-library@2017-08-17.h"
-#define IETF_YANG_LIB_REV "2017-08-17"
+#define IETF_YANG_LIB_PATH "../models/ietf-yang-library@2018-01-17.h"
+#define IETF_YANG_LIB_REV "2018-01-17"
 
 #include IETF_YANG_METADATA_PATH
 #include YANG_PATH
@@ -65,7 +65,7 @@ static struct internal_modules_s {
     {"ietf-yang-types", "2013-07-15", (const char*)ietf_yang_types_2013_07_15_yin, 0, LYS_IN_YIN},
     /* ietf-datastores and ietf-yang-library must be right here at the end of the list! */
     {"ietf-datastores", "2017-08-17", (const char*)ietf_datastores_2017_08_17_yin, 0, LYS_IN_YIN},
-    {"ietf-yang-library", IETF_YANG_LIB_REV, (const char*)ietf_yang_library_2017_08_17_yin, 1, LYS_IN_YIN}
+    {"ietf-yang-library", IETF_YANG_LIB_REV, (const char*)ietf_yang_library_2018_01_17_yin, 1, LYS_IN_YIN}
 };
 
 API unsigned int
@@ -89,27 +89,26 @@ ly_ctx_new(const char *search_dir, int options)
     int i;
 
     ctx = calloc(1, sizeof *ctx);
-    LY_CHECK_ERR_RETURN(!ctx, LOGMEM, NULL);
+    LY_CHECK_ERR_RETURN(!ctx, LOGMEM(NULL), NULL);
 
     /* dictionary */
     lydict_init(&ctx->dict);
 
     /* plugins */
-    lyext_load_plugins();
+    ly_load_plugins();
 
     /* initialize thread-specific key */
     while ((i = pthread_key_create(&ctx->errlist_key, ly_err_free)) == EAGAIN);
 
     /* models list */
     ctx->models.list = calloc(16, sizeof *ctx->models.list);
-    LY_CHECK_ERR_RETURN(!ctx->models.list, LOGMEM; free(ctx), NULL);
-    ext_plugins_ref++;
+    LY_CHECK_ERR_RETURN(!ctx->models.list, LOGMEM(NULL); free(ctx), NULL);
     ctx->models.flags = options;
     ctx->models.used = 0;
     ctx->models.size = 16;
     if (search_dir) {
         search_dir_list = strdup(search_dir);
-        LY_CHECK_ERR_GOTO(!search_dir_list, LOGMEM, error);
+        LY_CHECK_ERR_GOTO(!search_dir_list, LOGMEM(NULL), error);
 
         for (dir = search_dir_list; (sep = strchr(dir, ':')) != NULL && rc == EXIT_SUCCESS; dir = sep + 1) {
             *sep = 0;
@@ -151,34 +150,19 @@ error:
     return NULL;
 }
 
-static struct ly_ctx *
-ly_ctx_new_yl_common(const char *search_dir, const char *input, LYD_FORMAT format, int options,
-                     struct lyd_node* (*parser_func)(struct ly_ctx*, const char*, LYD_FORMAT, int,...))
+static int
+ly_ctx_new_yl_legacy(struct ly_ctx *ctx, struct lyd_node *yltree)
 {
     unsigned int i, u;
     struct lyd_node *module, *node;
+    struct ly_set *set;
     const char *name, *revision;
     struct ly_set features = {0, 0, {NULL}};
     const struct lys_module *mod;
-    struct lyd_node *yltree = NULL;
-    struct ly_ctx *ctx = NULL;
-    struct ly_set *set = NULL;
 
-    /* create empty (with internal modules including ietf-yang-library) context */
-    ctx = ly_ctx_new(search_dir, options);
-    if (!ctx) {
-        goto error;
-    }
-
-    /* parse yang library data tree */
-    yltree = parser_func(ctx, input, format, LYD_OPT_DATA, NULL);
-    if (!yltree) {
-        goto error;
-    }
-
-    set = lyd_find_path(yltree, "/ietf-yang-library:yang-library/modules/module");
+    set = lyd_find_path(yltree, "/ietf-yang-library:yang-library/modules-state/module");
     if (!set) {
-        goto error;
+        return 1;
     }
 
     /* process the data tree */
@@ -208,13 +192,87 @@ ly_ctx_new_yl_common(const char *search_dir, const char *input, LYD_FORMAT forma
         /* use the gathered data to load the module */
         mod = ly_ctx_load_module(ctx, name, revision);
         if (!mod) {
-            LOGERR(LY_EINVAL, "Unable to load module specified by yang library data.");
-            goto error;
+            LOGERR(ctx, LY_EINVAL, "Unable to load module specified by yang library data.");
+            ly_set_free(set);
+            return 1;
         }
 
         /* set features */
         for (u = 0; u < features.number; u++) {
             lys_features_enable(mod, ((struct lyd_node_leaf_list*)features.set.d[u])->value_str);
+        }
+    }
+
+    ly_set_free(set);
+    return 0;
+}
+
+static struct ly_ctx *
+ly_ctx_new_yl_common(const char *search_dir, const char *input, LYD_FORMAT format, int options,
+                     struct lyd_node* (*parser_func)(struct ly_ctx*, const char*, LYD_FORMAT, int,...))
+{
+    unsigned int i, u;
+    struct lyd_node *module, *node;
+    const char *name, *revision;
+    struct ly_set features = {0, 0, {NULL}};
+    const struct lys_module *mod;
+    struct lyd_node *yltree = NULL;
+    struct ly_ctx *ctx = NULL;
+    struct ly_set *set = NULL;
+
+    /* create empty (with internal modules including ietf-yang-library) context */
+    ctx = ly_ctx_new(search_dir, options);
+    if (!ctx) {
+        goto error;
+    }
+
+    /* parse yang library data tree */
+    yltree = parser_func(ctx, input, format, LYD_OPT_DATA, NULL);
+    if (!yltree) {
+        goto error;
+    }
+
+    set = lyd_find_path(yltree, "/ietf-yang-library:yang-library/module-set[1]/module");
+    if (!set) {
+        goto error;
+    }
+
+    if (set->number == 0) {
+        /* perhaps a legacy data tree? */
+        if (ly_ctx_new_yl_legacy(ctx, yltree)) {
+            goto error;
+        }
+    } else {
+        /* process the data tree */
+        for (i = 0; i < set->number; ++i) {
+            module = set->set.d[i];
+
+            /* initiate */
+            name = NULL;
+            revision = NULL;
+            ly_set_clean(&features);
+
+            LY_TREE_FOR(module->child, node) {
+                if (!strcmp(node->schema->name, "name")) {
+                    name = ((struct lyd_node_leaf_list*)node)->value_str;
+                } else if (!strcmp(node->schema->name, "revision")) {
+                    revision = ((struct lyd_node_leaf_list*)node)->value_str;
+                } else if (!strcmp(node->schema->name, "feature")) {
+                    ly_set_add(&features, node->child, LY_SET_OPT_USEASLIST);
+                }
+            }
+
+            /* use the gathered data to load the module */
+            mod = ly_ctx_load_module(ctx, name, revision);
+            if (!mod) {
+                LOGERR(NULL, LY_EINVAL, "Unable to load module specified by yang library data.");
+                goto error;
+            }
+
+            /* set features */
+            for (u = 0; u < features.number; u++) {
+                lys_features_enable(mod, ((struct lyd_node_leaf_list*)features.set.d[u])->value_str);
+            }
         }
     }
 
@@ -302,14 +360,14 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
     int rc = EXIT_FAILURE;
 
     if (!ctx) {
-        LOGERR(LY_EINVAL, "%s: Invalid ctx parameter", __func__);
+        LOGARG;
         return EXIT_FAILURE;
     }
 
     if (search_dir) {
         cwd = get_current_dir_name();
         if (chdir(search_dir)) {
-            LOGERR(LY_ESYS, "Unable to use search directory \"%s\" (%s)",
+            LOGERR(ctx, LY_ESYS, "Unable to use search directory \"%s\" (%s)",
                    search_dir, strerror(errno));
             goto cleanup;
         }
@@ -317,7 +375,7 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
         new = get_current_dir_name();
         if (!ctx->models.search_paths) {
             ctx->models.search_paths = malloc(2 * sizeof *ctx->models.search_paths);
-            LY_CHECK_ERR_GOTO(!ctx->models.search_paths, LOGMEM, cleanup);
+            LY_CHECK_ERR_GOTO(!ctx->models.search_paths, LOGMEM(ctx), cleanup);
             index = 0;
         } else {
             for (index = 0; ctx->models.search_paths[index]; index++) {
@@ -328,7 +386,7 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
                 }
             }
             r = realloc(ctx->models.search_paths, (index + 2) * sizeof *ctx->models.search_paths);
-            LY_CHECK_ERR_GOTO(!r, LOGMEM, cleanup);
+            LY_CHECK_ERR_GOTO(!r, LOGMEM(ctx), cleanup);
             ctx->models.search_paths = r;
         }
         ctx->models.search_paths[index] = new;
@@ -337,7 +395,7 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
 
 success:
         if (chdir(cwd)) {
-            LOGWRN("Unable to return back to working directory \"%s\" (%s)",
+            LOGWRN(ctx, "Unable to return back to working directory \"%s\" (%s)",
                    cwd, strerror(errno));
         }
         rc = EXIT_SUCCESS;
@@ -356,7 +414,7 @@ API const char * const *
 ly_ctx_get_searchdirs(const struct ly_ctx *ctx)
 {
     if (!ctx) {
-        LOGERR(LY_EINVAL, "%s: Invalid ctx parameter", __func__);
+        LOGARG;
         return NULL;
     }
     return (const char * const *)ctx->models.search_paths;
@@ -418,8 +476,7 @@ ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_n
     lydict_clean(&ctx->dict);
 
     /* plugins - will be removed only if this is the last context */
-    ext_plugins_ref--;
-    lyext_clean_plugins();
+    ly_clean_plugins();
 
     free(ctx);
 }
@@ -431,7 +488,7 @@ ly_ctx_get_submodule2(const struct lys_module *main_module, const char *submodul
     int i;
 
     if (!main_module || !submodule) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return NULL;
     }
 
@@ -448,7 +505,6 @@ ly_ctx_get_submodule2(const struct lys_module *main_module, const char *submodul
          */
     }
 
-
     return NULL;
 }
 
@@ -461,7 +517,7 @@ ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *r
     uint32_t idx = 0;
 
     if (!ctx || !submodule || (revision && !module)) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return NULL;
     }
 
@@ -505,13 +561,15 @@ ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *r
 }
 
 static const struct lys_module *
-ly_ctx_get_module_by(const struct ly_ctx *ctx, const char *key, int offset, const char *revision, int with_disabled, int implemented)
+ly_ctx_get_module_by(const struct ly_ctx *ctx, const char *key, size_t key_len, int offset, const char *revision,
+                     int with_disabled, int implemented)
 {
     int i;
+    char *val;
     struct lys_module *result = NULL;
 
     if (!ctx || !key) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return NULL;
     }
 
@@ -524,7 +582,8 @@ ly_ctx_get_module_by(const struct ly_ctx *ctx, const char *key, int offset, cons
          * bytes, so we have to cast the pointer to the module to (char*), finally, we want to have
          * string not the pointer to string
          */
-        if (!ctx->models.list[i] || strcmp(key, *(char**)(((char*)ctx->models.list[i]) + offset))) {
+        val = *(char **)(((char *)ctx->models.list[i]) + offset);
+        if (!ctx->models.list[i] || (!key_len && strcmp(key, val)) || (key_len && (strncmp(key, val, key_len) || val[key_len]))) {
             continue;
         }
 
@@ -570,13 +629,19 @@ ly_ctx_get_module_by(const struct ly_ctx *ctx, const char *key, int offset, cons
 API const struct lys_module *
 ly_ctx_get_module_by_ns(const struct ly_ctx *ctx, const char *ns, const char *revision, int implemented)
 {
-    return ly_ctx_get_module_by(ctx, ns, offsetof(struct lys_module, ns), revision, 0, implemented);
+    return ly_ctx_get_module_by(ctx, ns, 0, offsetof(struct lys_module, ns), revision, 0, implemented);
 }
 
 API const struct lys_module *
 ly_ctx_get_module(const struct ly_ctx *ctx, const char *name, const char *revision, int implemented)
 {
-    return ly_ctx_get_module_by(ctx, name, offsetof(struct lys_module, name), revision, 0, implemented);
+    return ly_ctx_get_module_by(ctx, name, 0, offsetof(struct lys_module, name), revision, 0, implemented);
+}
+
+const struct lys_module *
+ly_ctx_nget_module(const struct ly_ctx *ctx, const char *name, size_t name_len, const char *revision, int implemented)
+{
+    return ly_ctx_get_module_by(ctx, name, name_len, offsetof(struct lys_module, name), revision, 0, implemented);
 }
 
 API const struct lys_module *
@@ -586,7 +651,7 @@ ly_ctx_get_module_older(const struct ly_ctx *ctx, const struct lys_module *modul
     const struct lys_module *result = NULL, *iter;
 
     if (!ctx || !module || !module->rev_size) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return NULL;
     }
 
@@ -625,7 +690,7 @@ API void
 ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_imp_clb clb, void *user_data)
 {
     if (!ctx) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return;
     }
 
@@ -637,7 +702,7 @@ API ly_module_imp_clb
 ly_ctx_get_module_imp_clb(const struct ly_ctx *ctx, void **user_data)
 {
     if (!ctx) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return NULL;
     }
 
@@ -651,7 +716,7 @@ API void
 ly_ctx_set_module_data_clb(struct ly_ctx *ctx, ly_module_data_clb clb, void *user_data)
 {
     if (!ctx) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return;
     }
 
@@ -663,7 +728,7 @@ API ly_module_data_clb
 ly_ctx_get_module_data_clb(const struct ly_ctx *ctx, void **user_data)
 {
     if (!ctx) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return NULL;
     }
 
@@ -737,7 +802,7 @@ ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char
         }
         if (!module_data && (ly_errno != LY_SUCCESS)) {
             /* callback encountered an error, do not change it */
-            LOGERR(LY_SUCCESS, "User module retrieval callback failed!");
+            LOGERR(ctx, ly_errno, "User module retrieval callback failed!");
             return NULL;
         }
     }
@@ -771,18 +836,12 @@ ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char
 API const struct lys_module *
 ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
 {
-    const struct lys_module *mod;
-    struct ly_ctx *ctx_prev = ly_parser_data.ctx;
-
     if (!ctx || !name) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return NULL;
     }
 
-    ly_parser_data.ctx = ctx;
-    mod = ly_ctx_load_sub_module(ctx, NULL, name, revision && revision[0] ? revision : NULL, 1, NULL);
-    ly_parser_data.ctx = ctx_prev;
-    return mod;
+    return ly_ctx_load_sub_module(ctx, NULL, name, revision && revision[0] ? revision : NULL, 1, NULL);
 }
 
 /*
@@ -983,7 +1042,7 @@ lys_set_disabled(const struct lys_module *module)
     unsigned int u, v;
 
     if (!module) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return EXIT_FAILURE;
     } else if (module->disabled) {
         /* already disabled module */
@@ -995,7 +1054,7 @@ lys_set_disabled(const struct lys_module *module)
     /* avoid disabling internal modules */
     for (i = 0; i < ctx->internal_module_count; i++) {
         if (mod == ctx->models.list[i]) {
-            LOGERR(LY_EINVAL, "Internal module \"%s\" cannot be disabled.", mod->name);
+            LOGERR(ctx, LY_EINVAL, "Internal module \"%s\" cannot be disabled.", mod->name);
             return EXIT_FAILURE;
         }
     }
@@ -1127,7 +1186,7 @@ lys_set_enabled(const struct lys_module *module)
     unsigned int u, v, w;
 
     if (!module) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return EXIT_FAILURE;
     } else if (!module->disabled) {
         /* already enabled module */
@@ -1139,7 +1198,7 @@ lys_set_enabled(const struct lys_module *module)
     /* avoid disabling internal modules */
     for (i = 0; i < ctx->internal_module_count; i++) {
         if (mod == ctx->models.list[i]) {
-            LOGERR(LY_EINVAL, "Internal module \"%s\" cannot be removed.", mod->name);
+            LOGERR(ctx, LY_EINVAL, "Internal module \"%s\" cannot be removed.", mod->name);
             return EXIT_FAILURE;
         }
     }
@@ -1231,7 +1290,7 @@ ly_ctx_remove_module(const struct lys_module *module,
     unsigned int u;
 
     if (!module) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return EXIT_FAILURE;
     }
 
@@ -1241,7 +1300,7 @@ ly_ctx_remove_module(const struct lys_module *module,
     /* avoid removing internal modules ... */
     for (i = 0; i < ctx->internal_module_count; i++) {
         if (mod == ctx->models.list[i]) {
-            LOGERR(LY_EINVAL, "Internal module \"%s\" cannot be removed.", mod->name);
+            LOGERR(ctx, LY_EINVAL, "Internal module \"%s\" cannot be removed.", mod->name);
             return EXIT_FAILURE;
         }
     }
@@ -1372,7 +1431,7 @@ API const struct lys_module *
 ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32_t *idx)
 {
     if (!ctx || !idx) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return NULL;
     }
 
@@ -1389,7 +1448,7 @@ API const struct lys_module *
 ly_ctx_get_disabled_module_iter(const struct ly_ctx *ctx, uint32_t *idx)
 {
     if (!ctx || !idx) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return NULL;
     }
 
@@ -1403,9 +1462,10 @@ ly_ctx_get_disabled_module_iter(const struct ly_ctx *ctx, uint32_t *idx)
 }
 
 static int
-ylib_feature(struct lyd_node *parent, struct lys_module *cur_mod)
+ylib_feature(struct lyd_node *parent, struct lys_module *cur_mod, int bis)
 {
     int i, j;
+    struct lyd_node *list;
 
     /* module features */
     for (i = 0; i < cur_mod->features_size; ++i) {
@@ -1413,7 +1473,11 @@ ylib_feature(struct lyd_node *parent, struct lys_module *cur_mod)
             continue;
         }
 
-        if (!lyd_new_leaf(parent, NULL, "feature", cur_mod->features[i].name)) {
+        if (bis) {
+            if (!(list = lyd_new(parent, NULL, "feature")) || !lyd_new_leaf(list, NULL, "name", cur_mod->features[i].name)) {
+                return EXIT_FAILURE;
+            }
+        } else if (!lyd_new_leaf(parent, NULL, "feature", cur_mod->features[i].name)) {
             return EXIT_FAILURE;
         }
     }
@@ -1425,7 +1489,12 @@ ylib_feature(struct lyd_node *parent, struct lys_module *cur_mod)
                 continue;
             }
 
-            if (!lyd_new_leaf(parent, NULL, "feature", cur_mod->inc[i].submodule->features[j].name)) {
+            if (bis) {
+                if (!(list = lyd_new(parent, NULL, "feature"))
+                        || !lyd_new_leaf(list, NULL, "name", cur_mod->inc[i].submodule->features[j].name)) {
+                    return EXIT_FAILURE;
+                }
+            } else if (!lyd_new_leaf(parent, NULL, "feature", cur_mod->inc[i].submodule->features[j].name)) {
                 return EXIT_FAILURE;
             }
         }
@@ -1435,7 +1504,7 @@ ylib_feature(struct lyd_node *parent, struct lys_module *cur_mod)
 }
 
 static int
-ylib_deviation(struct lyd_node *parent, struct lys_module *cur_mod)
+ylib_deviation(struct lyd_node *parent, struct lys_module *cur_mod, int bis)
 {
     uint32_t i = 0, j;
     const struct lys_module *mod;
@@ -1456,11 +1525,17 @@ ylib_deviation(struct lyd_node *parent, struct lys_module *cur_mod)
                         return EXIT_FAILURE;
                     }
 
-                    if (!lyd_new_leaf(cont, NULL, "name", mod->name)) {
-                        return EXIT_FAILURE;
-                    }
-                    if (!lyd_new_leaf(cont, NULL, "revision", (mod->rev_size ? mod->rev[0].date : ""))) {
-                        return EXIT_FAILURE;
+                    if (bis) {
+                        if (!lyd_new_leaf(cont, NULL, "module", mod->name)) {
+                            return EXIT_FAILURE;
+                        }
+                    } else {
+                        if (!lyd_new_leaf(cont, NULL, "name", mod->name)) {
+                            return EXIT_FAILURE;
+                        }
+                        if (!lyd_new_leaf(cont, NULL, "revision", (mod->rev_size ? mod->rev[0].date : ""))) {
+                            return EXIT_FAILURE;
+                        }
                     }
 
                     break;
@@ -1473,7 +1548,7 @@ ylib_deviation(struct lyd_node *parent, struct lys_module *cur_mod)
 }
 
 static int
-ylib_submodules(struct lyd_node *parent, struct lys_module *cur_mod)
+ylib_submodules(struct lyd_node *parent, struct lys_module *cur_mod, int bis)
 {
     int i;
     char *str;
@@ -1488,15 +1563,16 @@ ylib_submodules(struct lyd_node *parent, struct lys_module *cur_mod)
         if (!lyd_new_leaf(item, NULL, "name", cur_mod->inc[i].submodule->name)) {
             return EXIT_FAILURE;
         }
-        if (!lyd_new_leaf(item, NULL, "revision", (cur_mod->inc[i].submodule->rev_size ?
-                          cur_mod->inc[i].submodule->rev[0].date : ""))) {
+        if ((!bis || cur_mod->inc[i].submodule->rev_size)
+                && !lyd_new_leaf(item, NULL, "revision",
+                    (cur_mod->inc[i].submodule->rev_size ? cur_mod->inc[i].submodule->rev[0].date : ""))) {
             return EXIT_FAILURE;
         }
         if (cur_mod->inc[i].submodule->filepath) {
             if (asprintf(&str, "file://%s", cur_mod->inc[i].submodule->filepath) == -1) {
-                LOGMEM;
+                LOGMEM(cur_mod->ctx);
                 return EXIT_FAILURE;
-            } else if (!lyd_new_leaf(item, NULL, "schema", str)) {
+            } else if (!lyd_new_leaf(item, NULL, bis ? "location" : "schema", str)) {
                 free(str);
                 return EXIT_FAILURE;
             }
@@ -1507,6 +1583,12 @@ ylib_submodules(struct lyd_node *parent, struct lys_module *cur_mod)
     return EXIT_SUCCESS;
 }
 
+API uint16_t
+ly_ctx_get_module_set_id(const struct ly_ctx *ctx)
+{
+    return ctx->models.module_set_id;
+}
+
 API struct lyd_node *
 ly_ctx_info(struct ly_ctx *ctx)
 {
@@ -1514,24 +1596,24 @@ ly_ctx_info(struct ly_ctx *ctx)
     char id[8];
     char *str;
     const struct lys_module *mod;
-    struct lyd_node *root, *root_bis = NULL, *cont = NULL, *cont_bis = NULL;
+    struct lyd_node *root, *root_bis = NULL, *cont = NULL, *set_bis = NULL;
 
     if (!ctx) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return NULL;
     }
 
     mod = ly_ctx_get_module(ctx, "ietf-yang-library", NULL, 1);
     if (!mod || !mod->data) {
-        LOGERR(LY_EINVAL, "ietf-yang-library is not implemented.");
+        LOGERR(ctx, LY_EINVAL, "ietf-yang-library is not implemented.");
         return NULL;
     }
-    if (mod->rev && !strcmp(mod->rev[0].date, "2016-06-21")) {
+    if (mod->rev && !strcmp(mod->rev[0].date, "2016-04-09")) {
         bis = 0;
     } else if (mod->rev && !strcmp(mod->rev[0].date, IETF_YANG_LIB_REV)) {
         bis = 1;
     } else {
-        LOGERR(LY_EINVAL, "Incompatible ietf-yang-library version in context.");
+        LOGERR(ctx, LY_EINVAL, "Incompatible ietf-yang-library version in context.");
         return NULL;
     }
 
@@ -1541,8 +1623,16 @@ ly_ctx_info(struct ly_ctx *ctx)
     }
 
     if (bis) {
-        root_bis = lyd_new(NULL, mod, "yang-library");
-        if (!root_bis || !lyd_new(root_bis, mod, "modules") || !lyd_new(root_bis, mod, "module-sets")) {
+        if (!(root_bis = lyd_new(NULL, mod, "yang-library")) || !(set_bis = lyd_new(root_bis, NULL, "module-set"))) {
+            goto error;
+        }
+
+        if (!lyd_new_leaf(set_bis, NULL, "name", "complete")) {
+            goto error;
+        }
+
+        sprintf(id, "%u", ctx->models.module_set_id);
+        if (!lyd_new_leaf(set_bis, NULL, "checksum", id)) {
             goto error;
         }
     }
@@ -1553,115 +1643,114 @@ ly_ctx_info(struct ly_ctx *ctx)
             continue;
         }
 
-        cont = lyd_new(root, mod, "module");
+        /*
+         * deprecated legacy
+         */
+        cont = lyd_new(root, NULL, "module");
         if (!cont) {
             goto error;
         }
-        if (bis) {
-            if (!(cont_bis = lyd_new(root_bis->child, mod, "module"))) {
-                goto error;
-            }
-
-            /* id is present only in yang-library container */
-            sprintf(id, "%d", i);
-            if (!lyd_new_leaf(cont_bis, mod, "id", id)) {
-                goto error;
-            }
-        }
-
         /* name */
-        if (!lyd_new_leaf(cont, mod, "name", ctx->models.list[i]->name)) {
-            goto error;
-        }
-        if (bis && !lyd_new_leaf(cont_bis, mod, "name", ctx->models.list[i]->name)) {
+        if (!lyd_new_leaf(cont, NULL, "name", ctx->models.list[i]->name)) {
             goto error;
         }
         /* revision */
-        if (!lyd_new_leaf(cont, mod, "revision", (ctx->models.list[i]->rev_size ?
-                              ctx->models.list[i]->rev[0].date : ""))) {
-            goto error;
-        }
-        if (bis && !lyd_new_leaf(cont_bis, mod, "revision", (ctx->models.list[i]->rev_size ?
-                                 ctx->models.list[i]->rev[0].date : ""))) {
+        if (!lyd_new_leaf(cont, NULL, "revision", (ctx->models.list[i]->rev_size ? ctx->models.list[i]->rev[0].date : ""))) {
             goto error;
         }
         /* schema */
         if (ctx->models.list[i]->filepath) {
             if (asprintf(&str, "file://%s", ctx->models.list[i]->filepath) == -1) {
-                LOGMEM;
+                LOGMEM(ctx);
                 goto error;
             }
-            if (!lyd_new_leaf(cont, mod, "schema", str)) {
-                free(str);
-                goto error;
-            }
-            if (bis && !lyd_new_leaf(cont_bis, mod, "schema", str)) {
+            if (!lyd_new_leaf(cont, NULL, "schema", str)) {
                 free(str);
                 goto error;
             }
             free(str);
         }
         /* namespace */
-        if (!lyd_new_leaf(cont, mod, "namespace", ctx->models.list[i]->ns)) {
-            goto error;
-        }
-        if (bis && !lyd_new_leaf(cont_bis, mod, "namespace", ctx->models.list[i]->ns)) {
+        if (!lyd_new_leaf(cont, NULL, "namespace", ctx->models.list[i]->ns)) {
             goto error;
         }
         /* feature leaf-list */
-        if (ylib_feature(cont, ctx->models.list[i])) {
-            goto error;
-        }
-        if (bis && ylib_feature(cont_bis, ctx->models.list[i])) {
+        if (ylib_feature(cont, ctx->models.list[i], 0)) {
             goto error;
         }
         /* deviation list */
-        if (ylib_deviation(cont, ctx->models.list[i])) {
-            goto error;
-        }
-        if (bis && ylib_deviation(cont_bis, ctx->models.list[i])) {
+        if (ylib_deviation(cont, ctx->models.list[i], 0)) {
             goto error;
         }
         /* conformance-type */
-        if (!lyd_new_leaf(cont, mod, "conformance-type",
-                          ctx->models.list[i]->implemented ? "implement" : "import")) {
-            goto error;
-        }
-        if (bis && !lyd_new_leaf(cont_bis, mod, "conformance-type",
-                                 ctx->models.list[i]->implemented ? "implement" : "import")) {
+        if (!lyd_new_leaf(cont, NULL, "conformance-type", ctx->models.list[i]->implemented ? "implement" : "import")) {
             goto error;
         }
         /* submodule list */
-        if (ylib_submodules(cont, ctx->models.list[i])) {
+        if (ylib_submodules(cont, ctx->models.list[i], 0)) {
             goto error;
         }
-        if (bis && ylib_submodules(cont_bis, ctx->models.list[i])) {
-            goto error;
-        }
-    }
 
-    if (bis) {
-        /* module-sets - libyang currently has just one module set with all modules */
-        if (!(cont_bis = lyd_new(root_bis->child->next, mod, "module-set"))) {
-            goto error;
-        }
-        if (!lyd_new_leaf(cont_bis, mod, "id", "complete")) {
-            goto error;
-        }
-        /* refer all modules */
-        for (i = 0; i < ctx->models.used; ++i) {
-            sprintf(id, "%d", i);
-            if (!lyd_new_leaf(cont_bis, mod, "module", id)) {
+        /*
+         * current revision
+         */
+        if (bis) {
+            if (ctx->models.list[i]->implemented) {
+                if (!(cont = lyd_new(set_bis, NULL, "module"))) {
+                    goto error;
+                }
+            } else {
+                if (!(cont = lyd_new(set_bis, NULL, "import-only-module"))) {
+                    goto error;
+                }
+            }
+            /* name */
+            if (!lyd_new_leaf(cont, NULL, "name", ctx->models.list[i]->name)) {
                 goto error;
+            }
+            /* revision */
+            if ((!ctx->models.list[i]->implemented || ctx->models.list[i]->rev_size)
+                    && !lyd_new_leaf(cont, NULL, "revision", ctx->models.list[i]->rev[0].date)) {
+                goto error;
+            }
+            /* namespace */
+            if (!lyd_new_leaf(cont, NULL, "namespace", ctx->models.list[i]->ns)) {
+                goto error;
+            }
+            /* location */
+            if (ctx->models.list[i]->filepath) {
+                if (asprintf(&str, "file://%s", ctx->models.list[i]->filepath) == -1) {
+                    LOGMEM(ctx);
+                    goto error;
+                }
+                if (!lyd_new_leaf(cont, NULL, "location", str)) {
+                    free(str);
+                    goto error;
+                }
+                free(str);
+            }
+            /* submodule list */
+            if (ylib_submodules(cont, ctx->models.list[i], 1)) {
+                goto error;
+            }
+            if (ctx->models.list[i]->implemented) {
+                /* feature list */
+                if (ylib_feature(cont, ctx->models.list[i], 1)) {
+                    goto error;
+                }
+                /* deviation */
+                if (ylib_deviation(cont, ctx->models.list[i], 1)) {
+                    goto error;
+                }
             }
         }
     }
 
     sprintf(id, "%u", ctx->models.module_set_id);
-    if (!lyd_new_leaf(root, mod, "module-set-id", id)) {
+    if (!lyd_new_leaf(root, NULL, "module-set-id", id)) {
         goto error;
     }
-    if (bis && !lyd_new_leaf(root_bis, mod, "checksum", id)) {
+    if (bis && !lyd_new_leaf(root_bis, NULL, "checksum", id)) {
         goto error;
     }
 
@@ -1691,7 +1780,7 @@ ly_ctx_get_node(struct ly_ctx *ctx, const struct lys_node *start, const char *no
     const struct lys_node *node;
 
     if ((!ctx && !start) || !nodeid || ((nodeid[0] != '/') && !start)) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return NULL;
     }
 
@@ -1703,4 +1792,19 @@ ly_ctx_get_node(struct ly_ctx *ctx, const struct lys_node *start, const char *no
     node = resolve_json_nodeid(nodeid, ctx, start, output);
 
     return node;
+}
+
+API struct ly_set *
+ly_ctx_find_path(struct ly_ctx *ctx, const char *path)
+{
+    struct ly_set *resultset = NULL;
+
+    if (!ctx || !path) {
+        LOGARG;
+        return NULL;
+    }
+
+    /* start in internal module without data to make sure that all the nodes are prefixed */
+    resolve_schema_nodeid(path, NULL, ctx->models.list[0], &resultset, 1, 1);
+    return resultset;
 }

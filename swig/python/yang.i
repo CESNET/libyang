@@ -1,4 +1,4 @@
-%module libyang
+%module yang
 
 %{
     extern "C" {
@@ -7,6 +7,7 @@
     }
 %}
 
+%include exception.i
 %include <std_except.i>
 %catches(std::runtime_error, std::exception, std::string);
 

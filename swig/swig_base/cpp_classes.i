@@ -1,5 +1,6 @@
 %module cpp_classes
 
+#define __attribute__(x)
 %include <std_except.i>
 %catches(std::runtime_error, std::exception, std::string);
 
@@ -36,7 +37,7 @@
 %newobject Context::get_module;
 %newobject Context::get_module_older;
 %newobject Context::load_module;
-%newobject Context::get_module_by_Ns;
+%newobject Context::get_module_by_ns;
 %newobject Context::parse_mem;
 %newobject Context::parse_fd;
 %newobject Context::parse_data_path;
@@ -44,11 +45,13 @@
 %newobject Context::parse_xml;
 %newobject Context::get_submodule;
 %newobject Context::get_submodule2;
-%newobject Context::get_node;
+%newobject Context::find_path;
+%newobject Context::data_instantiables;
 
 %shared_ptr(Set);
 %newobject Set::dup;
 
+%newobject create_new_Context;
 
 /* Tree_Data.hpp */
 %newobject create_new_Data_Node;
@@ -70,7 +73,7 @@
 %newobject Data_Node::qualifed_path;
 %newobject Data_Node::dup;
 %newobject Data_Node::dup_to_ctx;
-%newobject Data_Node::find_xpath;
+%newobject Data_Node::find_path;
 %newobject Data_Node::find_instance;
 %ignore    Data_Node::swig_node;
 %ignore    Data_Node::swig_deleter;
@@ -92,7 +95,7 @@
 %newobject Data_Node_Leaf_List::qualifed_path;
 %newobject Data_Node_Leaf_List::dup;
 %newobject Data_Node_Leaf_List::dup_to_ctx;
-%newobject Data_Node_Leaf_List::find_xpath;
+%newobject Data_Node_Leaf_List::find_path;
 %newobject Data_Node_Leaf_List::find_instance;
 %ignore    Data_Node_Leaf_List::swig_node;
 %ignore    Data_Node_Leaf_List::swig_deleter;
@@ -101,7 +104,7 @@
 %newobject Data_Node_Leaf_List::node_module;
 %newobject Data_Node_Leaf_List::print_mem;
 %newobject Data_Node_Leaf_List::type;
-%newobject Data_Node::C_lyd_node;
+%newobject Data_Node_Leaf_List::C_lyd_node;
 
 %shared_ptr(Data_Node_Anydata);
 %newobject Data_Node_Anydata::schema;
@@ -114,7 +117,7 @@
 %newobject Data_Node_Anydata::qualifed_path;
 %newobject Data_Node_Anydata::dup;
 %newobject Data_Node_Anydata::dup_to_ctx;
-%newobject Data_Node_Anydata::find_xpath;
+%newobject Data_Node_Anydata::find_path;
 %newobject Data_Node_Anydata::find_instance;
 %ignore    Data_Node_Anydata::swig_node;
 %ignore    Data_Node_Anydata::swig_deleter;
@@ -122,7 +125,7 @@
 %newobject Data_Node_Anydata::new_path;
 %newobject Data_Node_Anydata::node_module;
 %newobject Data_Node_Anydata::print_mem;
-%newobject Data_Node::C_lyd_node;
+%newobject Data_Node_Anydata::C_lyd_node;
 
 %shared_ptr(Attr);
 %newobject Attr::value;
@@ -134,6 +137,9 @@
 /* Tree_Schema.hpp */
 %shared_ptr(Module);
 %newobject Module::rev;
+%newobject Module::data;
+%newobject Module::data_instantiables;
+%newobject Module::print_mem;
 
 %shared_ptr(Submodule);
 %newobject Submodule::ctx;
@@ -146,7 +152,6 @@
 %shared_ptr(Type_Bit);
 
 %shared_ptr(Type_Info_Bits);
-%newobject Type_Info_Bits::bit;
 
 %shared_ptr(Type_Info_Dec64);
 %newobject Type_Info_Dec64::range;
@@ -154,7 +159,6 @@
 %shared_ptr(Type_Enum);
 
 %shared_ptr(Type_Info_Enums);
-%newobject Type_Info_Enums::enm;
 
 %shared_ptr(Type_Info_Ident);
 
@@ -201,7 +205,9 @@
 %newobject Schema_Node::next;
 %newobject Schema_Node::prev;
 %newobject Schema_Node::module;
-%newobject Schema_Node::find_xpath;
+%newobject Schema_Node::path;
+%newobject Schema_Node::child_instantiables;
+%newobject Schema_Node::find_path;
 %newobject Schema_Node::xpath_atomize;
 %ignore    Schema_Node::swig_node;
 %ignore    Schema_Node::swig_deleter;
@@ -212,7 +218,7 @@
 %newobject Schema_Node_Container::next;
 %newobject Schema_Node_Container::prev;
 %newobject Schema_Node_Container::module;
-%newobject Schema_Node_Container::find_xpath;
+%newobject Schema_Node_Container::find_path;
 %newobject Schema_Node_Container::xpath_atomize;
 %ignore    Schema_Node_Container::swig_node;
 %ignore    Schema_Node_Container::swig_deleter;
@@ -225,7 +231,7 @@
 %newobject Schema_Node_Choice::next;
 %newobject Schema_Node_Choice::prev;
 %newobject Schema_Node_Choice::module;
-%newobject Schema_Node_Choice::find_xpath;
+%newobject Schema_Node_Choice::find_path;
 %newobject Schema_Node_Choice::xpath_atomize;
 %ignore    Schema_Node_Choice::swig_node;
 %ignore    Schema_Node_Choice::swig_deleter;
@@ -237,7 +243,7 @@
 %newobject Schema_Node_Leaf::next;
 %newobject Schema_Node_Leaf::prev;
 %newobject Schema_Node_Leaf::module;
-%newobject Schema_Node_Leaf::find_xpath;
+%newobject Schema_Node_Leaf::find_path;
 %newobject Schema_Node_Leaf::xpath_atomize;
 %ignore    Schema_Node_Leaf::swig_node;
 %ignore    Schema_Node_Leaf::swig_deleter;
@@ -249,7 +255,7 @@
 %newobject Schema_Node_Leaflist::next;
 %newobject Schema_Node_Leaflist::prev;
 %newobject Schema_Node_Leaflist::module;
-%newobject Schema_Node_Leaflist::find_xpath;
+%newobject Schema_Node_Leaflist::find_path;
 %newobject Schema_Node_Leaflist::xpath_atomize;
 %ignore    Schema_Node_Leaflist::swig_node;
 %ignore    Schema_Node_Leaflist::swig_deleter;
@@ -261,7 +267,7 @@
 %newobject Schema_Node_List::next;
 %newobject Schema_Node_List::prev;
 %newobject Schema_Node_List::module;
-%newobject Schema_Node_List::find_xpath;
+%newobject Schema_Node_List::find_path;
 %newobject Schema_Node_List::xpath_atomize;
 %ignore    Schema_Node_List::swig_node;
 %ignore    Schema_Node_List::swig_deleter;
@@ -272,7 +278,7 @@
 %newobject Schema_Node_Anydata::next;
 %newobject Schema_Node_Anydata::prev;
 %newobject Schema_Node_Anydata::module;
-%newobject Schema_Node_Anydata::find_xpath;
+%newobject Schema_Node_Anydata::find_path;
 %newobject Schema_Node_Anydata::xpath_atomize;
 %ignore    Schema_Node_Anydata::swig_node;
 %ignore    Schema_Node_Anydata::swig_deleter;
@@ -283,7 +289,7 @@
 %newobject Schema_Node_Uses::next;
 %newobject Schema_Node_Uses::prev;
 %newobject Schema_Node_Uses::module;
-%newobject Schema_Node_Uses::find_xpath;
+%newobject Schema_Node_Uses::find_path;
 %newobject Schema_Node_Uses::xpath_atomize;
 %newobject Schema_Node_Uses::when;
 %ignore    Schema_Node_Uses::swig_node;
@@ -296,7 +302,7 @@
 %newobject Schema_Node_Grp::next;
 %newobject Schema_Node_Grp::prev;
 %newobject Schema_Node_Grp::module;
-%newobject Schema_Node_Grp::find_xpath;
+%newobject Schema_Node_Grp::find_path;
 %newobject Schema_Node_Grp::xpath_atomize;
 %ignore    Schema_Node_Grp::swig_node;
 %ignore    Schema_Node_Grp::swig_deleter;
@@ -307,7 +313,7 @@
 %newobject Schema_Node_Case::next;
 %newobject Schema_Node_Case::prev;
 %newobject Schema_Node_Case::module;
-%newobject Schema_Node_Case::find_xpath;
+%newobject Schema_Node_Case::find_path;
 %newobject Schema_Node_Case::xpath_atomize;
 %ignore    Schema_Node_Case::swig_node;
 %ignore    Schema_Node_Case::swig_deleter;
@@ -318,7 +324,7 @@
 %newobject Schema_Node_Inout::next;
 %newobject Schema_Node_Inout::prev;
 %newobject Schema_Node_Inout::module;
-%newobject Schema_Node_Inout::find_xpath;
+%newobject Schema_Node_Inout::find_path;
 %newobject Schema_Node_Inout::xpath_atomize;
 %ignore    Schema_Node_Inout::swig_node;
 %ignore    Schema_Node_Inout::swig_deleter;
@@ -329,7 +335,7 @@
 %newobject Schema_Node_Notif::next;
 %newobject Schema_Node_Notif::prev;
 %newobject Schema_Node_Notif::module;
-%newobject Schema_Node_Notif::find_xpath;
+%newobject Schema_Node_Notif::find_path;
 %newobject Schema_Node_Notif::xpath_atomize;
 %ignore    Schema_Node_Notif::swig_node;
 %ignore    Schema_Node_Notif::swig_deleter;
@@ -340,7 +346,7 @@
 %newobject Schema_Node_Rpc_Action::next;
 %newobject Schema_Node_Rpc_Action::prev;
 %newobject Schema_Node_Rpc_Action::module;
-%newobject Schema_Node_Rpc_Action::find_xpath;
+%newobject Schema_Node_Rpc_Action::find_path;
 %newobject Schema_Node_Rpc_Action::xpath_atomize;
 %ignore    Schema_Node_Rpc_Action::swig_node;
 %ignore    Schema_Node_Rpc_Action::swig_deleter;
@@ -351,7 +357,7 @@
 %newobject Schema_Node_Augment::next;
 %newobject Schema_Node_Augment::prev;
 %newobject Schema_Node_Augment::module;
-%newobject Schema_Node_Augment::find_xpath;
+%newobject Schema_Node_Augment::find_path;
 %newobject Schema_Node_Augment::xpath_atomize;
 %newobject Schema_Node_Augment::target;
 %ignore    Schema_Node_Augment::swig_node;
@@ -443,4 +449,6 @@
 %template(vectorUnique) std::vector<S_Unique>;
 %template(vectorSchema_Node_Leaf) std::vector<S_Schema_Node_Leaf>;
 %template(vectorSchema_Node_Augment) std::vector<S_Schema_Node_Augment>;
-
+%template(vectorType_Bit) std::vector<S_Type_Bit>;
+%template(vectorType_Enum) std::vector<S_Type_Enum>;
+%template(vectorError) std::vector<S_Error>;

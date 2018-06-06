@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <setjmp.h>
+#include <stdarg.h>
 #include <cmocka.h>
 
 #include "tests/config.h"
@@ -150,7 +151,7 @@ test_insert_fail(void **state)
     assert_int_equal(lyd_validate(&(st->aux), LYD_OPT_CONFIG, NULL), 0);
 
     assert_int_not_equal(lyd_insert_after(st->dt->child, node), 0);
-    assert_string_equal(ly_errmsg(), "Insert request refers node (/autodel:c/a) that is going to be auto-deleted.");
+    assert_string_equal(ly_errmsg(st->ctx), "Insert request refers node (/autodel:c/a) that is going to be auto-deleted.");
 }
 
 static void

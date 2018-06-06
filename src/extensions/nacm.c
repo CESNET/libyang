@@ -112,8 +112,8 @@ nacm_cardinality(struct lys_ext_instance *ext)
     }
 
     if (c > 1) {
-        path = lys_path((struct lys_node *)(ext->parent));
-        LYEXT_LOG(LY_LLERR, "NACM", "Extension nacm:%s can appear only once, but %d instances found in %s.",
+        path = lys_path((struct lys_node *)(ext->parent), LYS_PATH_FIRST_PREFIX);
+        LYEXT_LOG(ext->module->ctx, LY_LLERR, "NACM", "Extension nacm:%s can appear only once, but %d instances found in %s.",
                   ext->def->name, c, path);
         free(path);
         return 1;

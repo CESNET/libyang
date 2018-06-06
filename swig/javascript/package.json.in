@@ -13,7 +13,7 @@
 		"node-gyp": "*"
 	},
 	"engines": {
-		"node": ">= 0.10.x"
+		"node": ">= 0.10.x < 4.9.0"
 	},
 	"repository": {
 		"type": "git",
@@ -22,13 +22,9 @@
 	"files": [
 		"src",
 		"models",
-		"deps",
 		"binding.gyp",
 		"files",
 		"test.js",
-		"index.js",
-		"run.sh",
-		"plugin",
-		"README.md"
+		"index.js"
 	]
 }

@@ -65,7 +65,7 @@ test_deviation(void **state)
     if (!(module = ly_ctx_load_module(ctx, "deviation1-dv", NULL))) {
         fail();
     }
-    lys_print_mem(&str, module, LYS_OUT_YANG, NULL);
+    lys_print_mem(&str, module, LYS_OUT_YANG, NULL, 0, 0);
     free(str);
     assert_int_equal(ly_errno, 0);
 }
@@ -83,7 +83,7 @@ test_augment_deviation(void **state)
     mod = ly_ctx_get_module(ctx, "z", NULL, 0);
     assert_ptr_not_equal(mod, NULL);
 
-    lys_print_mem(&str, mod, LYS_YANG, NULL);
+    lys_print_mem(&str, mod, LYS_YANG, NULL, 0, 0);
     free(str);
     assert_int_equal(ly_errno, 0);
 }

@@ -85,6 +85,15 @@ const char *lys_module_a = \
     <leaf name=\"number64\">                          \
       <type name=\"int64\"/>                          \
     </leaf>                                           \
+    <leaf name=\"def-leaf\">                          \
+      <type name=\"string\"/>                         \
+      <default value=\"def\"/>                        \
+    </leaf>                                           \
+  </container>                                        \
+  <container name=\"z\">                              \
+    <leaf name=\"number-z\">                          \
+      <type name=\"int64\"/>                          \
+    </leaf>                                           \
   </container>                                        \
   <leaf name=\"y\"><type name=\"string\"/></leaf>     \
   <anyxml name=\"any\"/>                              \
@@ -513,14 +522,34 @@ static void
 test_lyd_new_path(void **state)
 {
     (void) state; /* unused */
+    const struct lys_module *mod;
     struct lyd_node *node, *root;
     char *str;
     struct lyxml_elem *xml;
+
+    mod = ly_ctx_get_module(ctx, "a", NULL, 1);
+    assert_non_null(mod);
+    lys_features_enable(mod, "bar");
 
     root = lyd_new_path(NULL, ctx, "/a:x/bar-gggg", "a", 0, 0);
     assert_non_null(root);
     assert_string_equal(root->schema->name, "x");
     assert_string_equal(root->child->schema->name, "bar-gggg");
+
+    /* create a default node first, then implicitly rewrite it, then fail to rewrite it again */
+    node = lyd_new_path(root, NULL, "def-leaf", "def", 0, LYD_PATH_OPT_DFLT);
+    assert_non_null(node);
+    assert_string_equal(node->schema->name, "def-leaf");
+    assert_int_equal(node->dflt, 1);
+
+    node = lyd_new_path(root, NULL, "def-leaf", "def", 0, 0);
+    assert_non_null(node);
+    assert_int_equal(node->dflt, 0);
+
+    node = lyd_new_path(root, NULL, "def-leaf", "def", 0, 0);
+    assert_null(node);
+    assert_int_equal(ly_errno, LY_EVALID);
+    ly_errno = 0;
 
     node = lyd_new_path(root, NULL, "bubba", "b", 0, 0);
     assert_non_null(node);
@@ -566,7 +595,7 @@ test_lyd_new_path(void **state)
     str = NULL;
     lyd_print_mem(&str, root, LYD_XML, 0);
     assert_non_null(root);
-    assert_string_equal(str, "<any xmlns=\"urn:a\">test &lt;&amp;&gt;&quot;</any>");
+    assert_string_equal(str, "<any xmlns=\"urn:a\">test &lt;&amp;&gt;\"</any>");
     free(str);
     lyd_free(root);
 
@@ -815,6 +844,7 @@ test_lyd_schema_sort(void **state)
 
     module = ly_ctx_get_module(ctx, "a", NULL, 0);
     assert_non_null(module);
+    lys_features_enable(module, "bar");
 
     root = lyd_new(NULL, module, "l");
     assert_non_null(root);
@@ -920,7 +950,7 @@ test_lyd_validate(void **state)
         fail();
     }
 
-    if (root->child->next) {
+    if (root->child->next->next) {
         fail();
     }
 
@@ -1108,7 +1138,7 @@ test_lyd_print_fd_xml(void **state)
     int fd;
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
+    strncpy(file_name, TMP_TEMPLATE, sizeof(file_name));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1151,7 +1181,7 @@ test_lyd_print_fd_xml_format(void **state)
     int fd;
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
+    strncpy(file_name, TMP_TEMPLATE, sizeof(file_name));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1194,7 +1224,7 @@ test_lyd_print_fd_json(void **state)
     int fd;
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
+    strncpy(file_name, TMP_TEMPLATE, sizeof(file_name));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1238,7 +1268,7 @@ test_lyd_print_file_xml(void **state)
     int fd;
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
+    strncpy(file_name, TMP_TEMPLATE, sizeof(file_name));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1293,7 +1323,7 @@ test_lyd_print_file_xml_format(void **state)
     int fd;
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
+    strncpy(file_name, TMP_TEMPLATE, sizeof(file_name));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1348,7 +1378,7 @@ test_lyd_print_file_json(void **state)
     int fd = -1;
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
+    strncpy(file_name, TMP_TEMPLATE, sizeof(file_name));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1542,6 +1572,27 @@ test_lyd_leaf_type(void **state)
     lyd_free_withsiblings(data);
 }
 
+static void
+test_lyd_validation_remove_empty_containers(void **state)
+{
+    (void) state; /* unused */
+    struct lyd_node *new = NULL;
+    struct lyd_node *old = root;
+    struct lyd_node *node = root;
+    struct lyd_node_leaf_list *result;
+
+    new = lyd_new(NULL, old->schema->module, "z");
+    lyd_insert_before(old, new);
+    node = new;
+
+    assert_int_equal(lyd_validate(&node, LYD_OPT_CONFIG, ctx), 0);
+    assert_ptr_not_equal(node, NULL);
+    assert_ptr_equal(node, old);
+    assert_ptr_not_equal(node->child, NULL);
+    result = (struct lyd_node_leaf_list *) node->child;
+    assert_string_equal("test", result->value_str);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1582,6 +1633,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_lyd_print_clb_json, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_path, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_leaf_type, setup_f2, teardown_f2),
+        cmocka_unit_test_setup_teardown(test_lyd_validation_remove_empty_containers, setup_f, teardown_f),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -109,7 +109,7 @@ write_file(char *filename, const char *name, const struct lys_module *module, LY
         fprintf(stderr, "unable to open \"%s\" file.\n", filename);
         fail();
     }
-    lys_print_file(f, module, format, NULL);
+    lys_print_file(f, module, format, NULL, 0, 0);
     fclose(f);
 }
 

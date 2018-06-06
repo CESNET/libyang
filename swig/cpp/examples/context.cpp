@@ -21,50 +21,48 @@
 #include <Tree_Data.hpp>
 #include <Tree_Schema.hpp>
 
-using namespace std;
-
 int main() {
 
     S_Context ctx = nullptr;
     try {
         ctx = S_Context(new Context("/etc/sysrepo2/yang"));
     } catch( const std::exception& e ) {
-        cout << e.what() << endl;
-        auto err = Error();
-        cout << "err: " << err.err() << endl;
-        cout << "vecode: " << err.vecode() << endl;
-        cout << "errmsg: " << err.errmsg() << endl;
-        cout << "errpath: " << err.errpath() << endl;
-        cout << "errapptag: " << err.errapptag() << endl;
+        std::cout << e.what() << std::endl;
+        auto errors = std::shared_ptr<std::vector<S_Error>>(get_ly_errors(ctx));
+        for(auto error = errors->begin() ; error != errors->end() ; ++error) {
+            std::cout << "err: " << (*error)->err() << std::endl;
+            std::cout << "vecode: " << (*error)->vecode() << std::endl;
+            std::cout << "errmsg: " << (*error)->errmsg() << std::endl;
+            std::cout << "errpath: " << (*error)->errpath() << std::endl;
+            std::cout << "errapptag: " << (*error)->errapptag() << std::endl;
+        }
     }
 
     try {
         ctx = S_Context(new Context("/etc/sysrepo/yang"));
     } catch( const std::exception& e ) {
-        cout << e.what() << endl;
+        std::cout << e.what() << std::endl;
     }
 
     auto folders = std::shared_ptr<std::vector<std::string>>(ctx->get_searchdirs());
-    std::vector<std::string>::iterator elem;
-    for(elem = folders->begin() ; elem != folders->end() ; ++elem) {
-        cout << (*elem) << endl;
+    for(auto elem = folders->begin() ; elem != folders->end() ; ++elem) {
+        std::cout << (*elem) << std::endl;
     }
-    cout << endl;
+    std::cout << std::endl;
 
     auto module = ctx->get_module("ietf-interfaces");
     if (module) {
-        cout << module->name() << endl;
+        std::cout << module->name() << std::endl;
     } else {
         module = ctx->load_module("ietf-interfaces");
         if (module) {
-            cout << module->name() << endl;
+            std::cout << module->name() << std::endl;
         }
     }
 
     auto modules = std::shared_ptr<std::vector<S_Module>>(ctx->get_module_iter());
-    std::vector<S_Module>::iterator mod;
-    for(mod = modules->begin() ; mod != modules->end() ; ++mod) {
-        cout << "module " << (*mod)->name() << " prefix " << (*mod)->prefix() << " type " << (*mod)->type() << endl;
+    for(auto mod = modules->begin() ; mod != modules->end() ; ++mod) {
+        std::cout << "module " << (*mod)->name() << " prefix " << (*mod)->prefix() << " type " << (*mod)->type() << std::endl;
     }
 
     return 0;

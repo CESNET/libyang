@@ -433,7 +433,10 @@ yang_print_unsigned(struct lyout *out, int level, LYEXT_SUBSTMT substmt, uint8_t
 {
     char *str;
 
-    asprintf(&str, "%u", attr_value);
+    if (asprintf(&str, "%u", attr_value) == -1) {
+        LOGMEM(module->ctx);
+        return;
+    }
     yang_print_substmt(out, level, substmt, substmt_index, str, module, ext, ext_size);
     free(str);
 }
@@ -445,7 +448,10 @@ yang_print_signed(struct lyout *out, int level, LYEXT_SUBSTMT substmt, uint8_t s
 {
     char *str;
 
-    asprintf(&str, "%d", attr_value);
+    if (asprintf(&str, "%d", attr_value) == -1) {
+        LOGMEM(module->ctx);
+        return;
+    }
     yang_print_substmt(out, level, substmt, substmt_index, str, module, ext, ext_size);
     free(str);
 }
@@ -459,9 +465,9 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
     char *s;
     struct lys_module *mod;
 
-    if (type->module_name) {
+    if (!lys_type_is_local(type)) {
         ly_print(out, "%*stype %s:%s", LEVEL, INDENT,
-                 transform_module_name2import_prefix(module, type->module_name), type->der->name);
+                 transform_module_name2import_prefix(module, lys_main_module(type->der->module)->name), type->der->name);
     } else {
         ly_print(out, "%*stype %s", LEVEL, INDENT, type->der->name);
     }
@@ -540,8 +546,11 @@ yang_print_type(struct lyout *out, int level, const struct lys_module *module, c
                     yang_print_substmt(out, level, LYEXT_SUBSTMT_BASE, 0, type->info.ident.ref[i]->name,
                                        module, type->info.ident.ref[i]->ext, type->info.ident.ref[i]->ext_size);
                 } else {
-                    asprintf(&s, "%s:%s", transform_module_name2import_prefix(module, mod->name),
-                             type->info.ident.ref[i]->name);
+                    if (asprintf(&s, "%s:%s", transform_module_name2import_prefix(module, mod->name),
+                                 type->info.ident.ref[i]->name) == -1) {
+                        LOGMEM(module->ctx);
+                        return;
+                    }
                     yang_print_substmt(out, level, LYEXT_SUBSTMT_BASE, 0, s,
                                        module, type->info.ident.ref[i]->ext, type->info.ident.ref[i]->ext_size);
                     free(s);
@@ -627,13 +636,16 @@ yang_print_must(struct lyout *out, int level, const struct lys_module *module, c
 }
 
 static void
-yang_print_unique(struct lyout *out, int level, const struct lys_unique *uniq)
+yang_print_unique(struct lyout *out, int level, const struct lys_module *module, const struct lys_unique *uniq)
 {
     int i;
+    const char *str;
 
     ly_print(out, "%*sunique \"", LEVEL, INDENT);
     for (i = 0; i < uniq->expr_size; i++) {
-        ly_print(out, "%s%s", uniq->expr[i], i + 1 < uniq->expr_size ? " " : "");
+        str = transform_json2schema(module, uniq->expr[i]);
+        ly_print(out, "%s%s", str, i + 1 < uniq->expr_size ? " " : "");
+        lydict_remove(module->ctx, str);
     }
     ly_print(out, "\"");
 }
@@ -760,7 +772,7 @@ yang_print_deviation(struct lyout *out, int level, const struct lys_module *modu
         /* unique */
 
         for (j = 0; j < deviation->deviate[i].unique_size; ++j) {
-            yang_print_unique(out, level, &deviation->deviate[i].unique[j]);
+            yang_print_unique(out, level, module, &deviation->deviate[i].unique[j]);
             /* unique's extensions */
             p = -1;
             do {
@@ -923,7 +935,10 @@ yang_print_identity(struct lyout *out, int level, const struct lys_ident *ident)
             yang_print_substmt(out, level, LYEXT_SUBSTMT_BASE, i, ident->base[i]->name,
                                ident->module, ident->ext, ident->ext_size);
         } else {
-            asprintf(&str, "%s:%s", transform_module_name2import_prefix(ident->module, mod->name), ident->base[i]->name);
+            if (asprintf(&str, "%s:%s", transform_module_name2import_prefix(ident->module, mod->name), ident->base[i]->name) == -1) {
+                LOGMEM(ident->module->ctx);
+                return;
+            }
             yang_print_substmt(out, level, LYEXT_SUBSTMT_BASE, i, str,
                                ident->module, ident->ext, ident->ext_size);
             free(str);
@@ -1257,7 +1272,7 @@ yang_print_list(struct lyout *out, int level, const struct lys_node *node)
     }
     for (i = 0; i < list->unique_size; i++) {
         yang_print_open(out, &flag);
-        yang_print_unique(out, level, &list->unique[i]);
+        yang_print_unique(out, level, node->module, &list->unique[i]);
         /* unique's extensions */
         p = -1;
         do {
@@ -1623,8 +1638,8 @@ yang_print_model_(struct lyout *out, int level, const struct lys_module *module)
         ly_print(out, "%*ssubmodule %s {%s\n", LEVEL, INDENT, module->name,
                  (module->deviated == 1 ? " // DEVIATED" : ""));
         level++;
-        if (module->version > 1 || lys_ext_iter(module->ext, module->ext_size, 0, LYEXT_SUBSTMT_VERSION) != -1) {
-            yang_print_substmt(out, level, LYEXT_SUBSTMT_VERSION, 0, module->version == 2 ? "1.1" : "1",
+        if (module->version || lys_ext_iter(module->ext, module->ext_size, 0, LYEXT_SUBSTMT_VERSION) != -1) {
+            yang_print_substmt(out, level, LYEXT_SUBSTMT_VERSION, 0, module->version == LYS_VERSION_1_1 ? "1.1" : "1",
                                module, module->ext, module->ext_size);
         }
         ly_print(out, "%*sbelongs-to %s {\n", LEVEL, INDENT, ((struct lys_submodule *)module)->belongsto->name);
@@ -1640,7 +1655,7 @@ yang_print_model_(struct lyout *out, int level, const struct lys_module *module)
                  (module->deviated == 1 ? " // DEVIATED" : ""));
         level++;
         if (module->version) {
-            yang_print_substmt(out, level, LYEXT_SUBSTMT_VERSION, 0, module->version == 2 ? "1.1" : "1",
+            yang_print_substmt(out, level, LYEXT_SUBSTMT_VERSION, 0, module->version == LYS_VERSION_1_1 ? "1.1" : "1",
                                module, module->ext, module->ext_size);
         }
         yang_print_substmt(out, level, LYEXT_SUBSTMT_NAMESPACE, 0, module->ns,
@@ -1810,7 +1825,7 @@ yang_print_extcomplex_bool(struct lyout *out, int level, const struct lys_module
     } else if (*val == 2) {
         yang_print_substmt(out, level, (LYEXT_SUBSTMT)stmt, 0, false_val, module, ext->ext, ext->ext_size);
     } else {
-        LOGINT;
+        LOGINT(module->ctx);
     }
 }
 
@@ -2180,7 +2195,7 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
                     if (info[i].cardinality >= LY_STMT_CARD_SOME) { /* process array */
                         for (pp = *pp, c = 0; *pp; pp++, c++) {
                             yang_print_open(out, &content);
-                            yang_print_unique(out, level, (struct lys_unique*)(*pp));
+                            yang_print_unique(out, level, module, (struct lys_unique*)(*pp));
                             /* unique's extensions */
                             j = -1; content2 = 0;
                             do {
@@ -2200,7 +2215,7 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
                         }
                     } else { /* single item */
                         yang_print_open(out, &content);
-                        yang_print_unique(out, level, (struct lys_unique*)(*pp));
+                        yang_print_unique(out, level, module, (struct lys_unique*)(*pp));
                         /* unique's extensions */
                         j = -1; content2 = 0;
                         while ((j = lys_ext_iter(ext[u]->ext, ext[u]->ext_size, j + 1, LYEXT_SUBSTMT_UNIQUE)) != -1) {

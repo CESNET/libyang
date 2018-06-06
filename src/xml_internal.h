@@ -110,7 +110,8 @@ void lyxml_unlink_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns)
 
 /**
  * @brief Get the first UTF-8 character value (4bytes) from buffer
- * @param[in] buf pointr to the current position in input buffer
+ * @param[in] ctx Context to store errors in.
+ * @param[in] buf Pointer to the current position in input buffer.
  * @param[out] read Number of processed bytes in buf (length of UTF-8
  * character).
  * @return UTF-8 value as 4 byte number. 0 means error, only UTF-8 characters
@@ -124,7 +125,15 @@ void lyxml_unlink_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns)
  * 00000800 -- 0000FFFF:    1110xxxx 10xxxxxx 10xxxxxx
  * 00010000 -- 001FFFFF:    11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
  */
-int lyxml_getutf8(const char *buf, unsigned int *read);
+int lyxml_getutf8(struct ly_ctx *ctx, const char *buf, unsigned int *read);
+
+/**
+ * @brief Types of the XML data
+ */
+typedef enum lyxml_data_type {
+    LYXML_DATA_ATTR = 1,   /**< XML attribute data */
+    LYXML_DATA_ELEM = 2    /**< XML element data */
+} LYXML_DATA_TYPE;
 
 /**
  * @brief Dump XML text. Converts special characters to their equivalent
@@ -133,6 +142,6 @@ int lyxml_getutf8(const char *buf, unsigned int *read);
  * @param[in] text Text to dump.
  * @return Number of dumped characters.
  */
-int lyxml_dump_text(struct lyout *out, const char *text);
+int lyxml_dump_text(struct lyout *out, const char *text, LYXML_DATA_TYPE type);
 
 #endif /* LY_XML_INTERNAL_H_ */

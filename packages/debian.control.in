@@ -23,3 +23,33 @@ Depends: @PACKAGE_NAME@ (=@LIBYANG_VERSION@)
 Section: debug
 Architecture: any
 Description: Debug symbols of libyang library.
+
+Package: libyang-cpp@PACKAGE_PART_NAME@
+Depends: @PACKAGE_NAME@ (=@LIBYANG_VERSION@)
+Section: libs
+Architecture: any
+Description: Bindings of libyang library to C++ language.
+
+Package: libyang-cpp@PACKAGE_PART_NAME@-dev
+Depends: libpcre3-dev, libyang-cpp@PACKAGE_PART_NAME@ (=@LIBYANG_VERSION@)
+Section: libdevel
+Architecture: any
+Description: Headers of bindings to c++ language libyang library.
+
+Package: libyang-cpp@PACKAGE_PART_NAME@-dbg
+Depends: libyang-cpp@PACKAGE_PART_NAME@ (=@LIBYANG_VERSION@)
+Section: debug
+Architecture: any
+Description: Debug symbols of c++ bidings of libyang library.
+
+Package: python3-yang@PACKAGE_PART_NAME@
+Depends: @PACKAGE_NAME@ (=@LIBYANG_VERSION@), libyang-cpp@PACKAGE_PART_NAME@ (=@LIBYANG_VERSION@)
+Section: libs
+Architecture: any
+Description: Bindings of libyang library to python3 language.
+
+Package: python3-yang@PACKAGE_PART_NAME@-dbg
+Depends: python3-yang@PACKAGE_PART_NAME@ (=@LIBYANG_VERSION@)
+Section: debug
+Architecture: any
+Description: Debug symbols of python3 bidings of libyang library.

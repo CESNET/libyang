@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <setjmp.h>
+#include <stdarg.h>
 #include <cmocka.h>
 
 #include "tests/config.h"
@@ -118,8 +119,8 @@ test_un_defaults(void **state)
     st->dt = lyd_parse_mem(st->ctx, xml3, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(st->dt, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_NOUNIQ);
-    assert_string_equal(ly_errmsg(), "Unique data leaf(s) \"value a\" not satisfied in \"/unique:un/list[name='x']\" and \"/unique:un/list[name='y']\".");
+    assert_int_equal(ly_vecode(st->ctx), LYVE_NOUNIQ);
+    assert_string_equal(ly_errmsg(st->ctx), "Unique data leaf(s) \"value a\" not satisfied in \"/unique:un/list[name='x']\" and \"/unique:un/list[name='y']\".");
 }
 
 static void

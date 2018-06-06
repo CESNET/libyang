@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <setjmp.h>
+#include <stdarg.h>
 #include <cmocka.h>
 
 #include "tests/config.h"
@@ -99,12 +100,44 @@ test_default_int(void **state)
     st->dt = lyd_parse_mem(st->ctx, xml2, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_equal(st->dt, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INVAL);
-    assert_string_equal(ly_errmsg(), "Invalid value \"0xa\" in \"a\" element.");
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INVAL);
+    assert_string_equal(ly_errmsg(st->ctx), "Invalid value \"0xa\" in \"a\" element.");
 
     st->dt = lyd_parse_mem(st->ctx, xml1, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(st->dt, NULL);
     assert_string_equal(((struct lyd_node_leaf_list *)st->dt)->value_str, "12");
+}
+
+
+/*
+ * Sometimes the default isn't stored in canonical form, so this ensures the default
+ * value is populated properly anyways
+ */
+static void
+test_default_int_trusted(void **state)
+{
+    struct state *st = (*state);
+    ly_ctx_destroy(st->ctx, NULL);
+    st->ctx = ly_ctx_new(NULL, LY_CTX_TRUSTED);
+
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  leaf a { type int8; default 10; }"  // decimal (10)
+                    "  leaf b { type int8; default 012; }" // octal (10)
+                    "  leaf c { type int8; default 0xa; }" // hexadecimal (10)
+                    "}";
+    const char *xml1 = "<a xmlns=\"urn:x\">12</a>";
+    const struct lys_module *mod;
+
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->dt = lyd_parse_mem(st->ctx, xml1, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->dt, NULL);
+    assert_string_equal(((struct lyd_node_leaf_list *)st->dt)->value_str, "12");
+
+    assert_int_equal(lyd_validate(&st->dt, LYD_OPT_CONFIG, st->ctx), EXIT_SUCCESS);
 }
 
 /*
@@ -393,6 +426,7 @@ int main(void)
 {
     const struct CMUnitTest tests[] = {
                     cmocka_unit_test_setup_teardown(test_default_int, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_default_int_trusted, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_xmltojson_identityref, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_xmltojson_identityref2, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_xmltojson_instanceid, setup_f, teardown_f),

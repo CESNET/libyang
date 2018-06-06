@@ -79,12 +79,23 @@ ly_print(struct lyout *out, const char *format, ...)
     int count = 0;
     char *msg = NULL, *aux;
     va_list ap;
+#ifndef HAVE_VDPRINTF
+    FILE *stream;
+#endif
 
     va_start(ap, format);
 
     switch(out->type) {
     case LYOUT_FD:
+#ifdef HAVE_VDPRINTF
         count = vdprintf(out->method.fd, format, ap);
+#else
+        stream = fdopen(dup(out->method.fd), "a+");
+        if (stream) {
+            count = vfprintf(stream, format, ap);
+            fclose(stream);
+        }
+#endif
         break;
     case LYOUT_STREAM:
         count = vfprintf(out->method.f, format, ap);
@@ -97,7 +108,7 @@ ly_print(struct lyout *out, const char *format, ...)
                 out->method.mem.buf = NULL;
                 out->method.mem.len = 0;
                 out->method.mem.size = 0;
-                LOGMEM;
+                LOGMEM(NULL);
                 va_end(ap);
                 return -1;
             }
@@ -152,7 +163,7 @@ ly_write(struct lyout *out, const char *buf, size_t count)
                 out->method.mem.buf = NULL;
                 out->method.mem.len = 0;
                 out->method.mem.size = 0;
-                LOGMEM;
+                LOGMEM(NULL);
                 return -1;
             }
             out->method.mem.buf = aux;
@@ -169,7 +180,7 @@ ly_write(struct lyout *out, const char *buf, size_t count)
 }
 
 static int
-write_iff(struct lyout *out, const struct lys_module *module, struct lys_iffeature *expr, int module_name_or_prefix,
+write_iff(struct lyout *out, const struct lys_module *module, struct lys_iffeature *expr, int prefix_kind,
           int *index_e, int *index_f)
 {
     int count = 0, brackets_flag = *index_e;
@@ -181,10 +192,13 @@ write_iff(struct lyout *out, const struct lys_module *module, struct lys_iffeatu
     switch (op) {
     case LYS_IFF_F:
         if (lys_main_module(expr->features[*index_f]->module) != lys_main_module(module)) {
-            if (module_name_or_prefix) {
+            if (prefix_kind == 0) {
+                count += ly_print(out, "%s:", transform_module_name2import_prefix(module,
+                                  lys_main_module(expr->features[*index_f]->module)->name));
+            } else if (prefix_kind == 1) {
                 count += ly_print(out, "%s:", lys_main_module(expr->features[*index_f]->module)->name);
-            } else {
-                count += ly_print(out, "%s:", transform_module_name2import_prefix(module, lys_main_module(expr->features[*index_f]->module)->name));
+            } else if (prefix_kind == 2) {
+                count += ly_print(out, "%s:", lys_main_module(expr->features[*index_f]->module)->prefix);
             }
         }
         count += ly_print(out, expr->features[*index_f]->name);
@@ -192,7 +206,7 @@ write_iff(struct lyout *out, const struct lys_module *module, struct lys_iffeatu
         break;
     case LYS_IFF_NOT:
         count += ly_print(out, "not ");
-        count += write_iff(out, module, expr, module_name_or_prefix, index_e, index_f);
+        count += write_iff(out, module, expr, prefix_kind, index_e, index_f);
         break;
     case LYS_IFF_AND:
         if (brackets_flag) {
@@ -206,9 +220,9 @@ write_iff(struct lyout *out, const struct lys_module *module, struct lys_iffeatu
         if (brackets_flag) {
             count += ly_print(out, "(");
         }
-        count += write_iff(out, module, expr, module_name_or_prefix, index_e, index_f);
+        count += write_iff(out, module, expr, prefix_kind, index_e, index_f);
         count += ly_print(out, " %s ", op == LYS_IFF_OR ? "or" : "and");
-        count += write_iff(out, module, expr, module_name_or_prefix, index_e, index_f);
+        count += write_iff(out, module, expr, prefix_kind, index_e, index_f);
         if (brackets_flag) {
             count += ly_print(out, ")");
         }
@@ -218,22 +232,22 @@ write_iff(struct lyout *out, const struct lys_module *module, struct lys_iffeatu
 }
 
 int
-ly_print_iffeature(struct lyout *out, const struct lys_module *module, struct lys_iffeature *expr, int module_name_or_prefix)
+ly_print_iffeature(struct lyout *out, const struct lys_module *module, struct lys_iffeature *expr, int prefix_kind)
 {
     int index_e = 0, index_f = 0;
 
     if (expr->expr) {
-        return write_iff(out, module, expr, module_name_or_prefix, &index_e, &index_f);
+        return write_iff(out, module, expr, prefix_kind, &index_e, &index_f);
     }
 
     return 0;
 }
 
 static int
-lys_print_(struct lyout *out, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
+lys_print_(struct lyout *out, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node,
+           int line_length, int options)
 {
     int ret;
-    int grps = 0;
 
     switch (format) {
     case LYS_OUT_YIN:
@@ -246,17 +260,14 @@ lys_print_(struct lyout *out, const struct lys_module *module, LYS_OUTFORMAT for
         ret = yang_print_model(out, module);
         lys_enable_deviations((struct lys_module *)module);
         break;
-    case LYS_OUT_TREE_GRPS:
-        grps = 1;
-        /* falls through */
     case LYS_OUT_TREE:
-        ret = tree_print_model(out, module, grps);
+        ret = tree_print_model(out, module, target_node, line_length, options);
         break;
     case LYS_OUT_INFO:
         ret = info_print_model(out, module, target_node);
         break;
     default:
-        LOGERR(LY_EINVAL, "Unknown output format.");
+        LOGERR(module->ctx, LY_EINVAL, "Unknown output format.");
         ret = EXIT_FAILURE;
         break;
     }
@@ -265,45 +276,48 @@ lys_print_(struct lyout *out, const struct lys_module *module, LYS_OUTFORMAT for
 }
 
 API int
-lys_print_file(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
+lys_print_file(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node,
+               int line_length, int options)
 {
     struct lyout out;
 
     if (!f || !module) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return EXIT_FAILURE;
     }
 
     out.type = LYOUT_STREAM;
     out.method.f = f;
 
-    return lys_print_(&out, module, format, target_node);
+    return lys_print_(&out, module, format, target_node, line_length, options);
 }
 
 API int
-lys_print_fd(int fd, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
+lys_print_fd(int fd, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node,
+             int line_length, int options)
 {
     struct lyout out;
 
     if (fd < 0 || !module) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return EXIT_FAILURE;
     }
 
     out.type = LYOUT_FD;
     out.method.fd = fd;
 
-    return lys_print_(&out, module, format, target_node);
+    return lys_print_(&out, module, format, target_node, line_length, options);
 }
 
 API int
-lys_print_mem(char **strp, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
+lys_print_mem(char **strp, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node,
+              int line_length, int options)
 {
     struct lyout out;
     int r;
 
     if (!strp || !module) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return EXIT_FAILURE;
     }
 
@@ -312,19 +326,20 @@ lys_print_mem(char **strp, const struct lys_module *module, LYS_OUTFORMAT format
     out.method.mem.len = 0;
     out.method.mem.size = 0;
 
-    r = lys_print_(&out, module, format, target_node);
+    r = lys_print_(&out, module, format, target_node, line_length, options);
 
     *strp = out.method.mem.buf;
     return r;
 }
 
 API int
-lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node)
+lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, const struct lys_module *module,
+              LYS_OUTFORMAT format, const char *target_node, int line_length, int options)
 {
     struct lyout out;
 
     if (!writeclb || !module) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return EXIT_FAILURE;
     }
 
@@ -332,7 +347,7 @@ lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), voi
     out.method.clb.f = writeclb;
     out.method.clb.arg = arg;
 
-    return lys_print_(&out, module, format, target_node);
+    return lys_print_(&out, module, format, target_node, line_length, options);
 }
 
 static int
@@ -352,7 +367,7 @@ lyd_print_(struct lyout *out, const struct lyd_node *root, LYD_FORMAT format, in
     case LYD_JSON:
         return json_print_data(out, root, options);
     default:
-        LOGERR(LY_EINVAL, "Unknown output format.");
+        LOGERR(root->schema->module->ctx, LY_EINVAL, "Unknown output format.");
         return EXIT_FAILURE;
     }
 }
@@ -363,7 +378,7 @@ lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format, int opti
     struct lyout out;
 
     if (!f) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return EXIT_FAILURE;
     }
 
@@ -379,7 +394,7 @@ lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format, int options
     struct lyout out;
 
     if (fd < 0) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return EXIT_FAILURE;
     }
 
@@ -396,7 +411,7 @@ lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format, int o
     int r;
 
     if (!strp) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return EXIT_FAILURE;
     }
 
@@ -418,7 +433,7 @@ lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), voi
     struct lyout out;
 
     if (!writeclb) {
-        ly_errno = LY_EINVAL;
+        LOGARG;
         return EXIT_FAILURE;
     }
 

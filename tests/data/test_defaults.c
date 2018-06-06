@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <setjmp.h>
+#include <stdarg.h>
 #include <cmocka.h>
 
 #include "tests/config.h"
@@ -228,7 +229,7 @@ test_df1(void **state)
     /* presence container */
     assert_ptr_not_equal((node = lyd_new(st->dt, NULL, "bar")), NULL);
     assert_int_not_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG, NULL), 0);
-    assert_string_equal(ly_errmsg(), "Missing required element \"ho\" in \"bar\".");
+    assert_string_equal(ly_errmsg(st->ctx), "Missing required element \"ho\" in \"bar\".");
 
     /* manadatory node in bar */
     assert_ptr_not_equal(lyd_new_leaf(node, NULL, "ho", "1"), NULL);
@@ -525,13 +526,16 @@ test_leaflist_in10(void **state)
 "    <default value=\"one\"/>"
 "  </leaf-list></module>";
 
+    ly_log_options(LY_LOSTORE);
     mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
     assert_ptr_equal(mod, NULL);
-    assert_int_equal(ly_vecode, LYVE_INSTMT);
+    assert_int_equal(ly_err_first(st->ctx)->vecode, LYVE_INSTMT);
 
     mod = lys_parse_mem(st->ctx, yin, LYS_IN_YIN);
     assert_ptr_equal(mod, NULL);
-    assert_int_equal(ly_vecode, LYVE_INSTMT);
+    assert_int_equal(ly_err_first(st->ctx)->prev->prev->vecode, LYVE_INSTMT);
+    ly_err_clean(st->ctx, NULL);
+    ly_log_options(LY_LOLOG | LY_LOSTORE_LAST);
 }
 
 static void

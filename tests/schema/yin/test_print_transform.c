@@ -56,8 +56,8 @@ diff(const char *data, FILE *model)
     return 0;
 
 fail:
+    fprintf(stderr, "diff failed on:\n\"%s\"\nand\n\"%s\"\n", data, data2);
     free(data2);
-    fprintf(stderr, "diff failed on:\n\"%s\"\n", data);
     return 1;
 }
 
@@ -83,7 +83,10 @@ teardown_ctx(void **state)
 }
 
 static void
-test_modules(void **state)
+execute_test_with_filenames(void **state,
+                            char *module_name,
+                            char *yang_file,
+                            char *yin_file)
 {
     struct ly_ctx *ctx = *state;
     const struct lys_module *module;
@@ -91,14 +94,14 @@ test_modules(void **state)
     FILE *file;
     int ret;
 
-    module = ly_ctx_load_module(ctx, "d2", NULL);
+    module = ly_ctx_load_module(ctx, module_name, NULL);
     assert_non_null(module);
 
     /* YANG */
-    ret = lys_print_mem(&new, module, LYS_OUT_YANG, NULL);
+    ret = lys_print_mem(&new, module, LYS_OUT_YANG, NULL, 0, 0);
     assert_int_equal(ret, 0);
 
-    file = fopen(SCHEMA_FOLDER"/d2_output.yang", "r");
+    file = fopen(yang_file, "r");
     assert_non_null(file);
 
     ret = diff(new, file);
@@ -107,10 +110,10 @@ test_modules(void **state)
     assert_int_equal(ret, 0);
 
     /* YIN */
-    ret = lys_print_mem(&new, module, LYS_OUT_YIN, NULL);
+    ret = lys_print_mem(&new, module, LYS_OUT_YIN, NULL, 0, 0);
     assert_int_equal(ret, 0);
 
-    file = fopen(SCHEMA_FOLDER"/d2_output.yin", "r");
+    file = fopen(yin_file, "r");
     assert_non_null(file);
 
     ret = diff(new, file);
@@ -119,11 +122,30 @@ test_modules(void **state)
     assert_int_equal(ret, 0);
 }
 
+static void
+test_modules(void **state)
+{
+execute_test_with_filenames(state,
+                            "d2",
+                            SCHEMA_FOLDER"/d2_output.yang",
+                            SCHEMA_FOLDER"/d2_output.yin");
+}
+
+static void
+test_modules_2(void **state)
+{
+execute_test_with_filenames(state,
+                            "compname-int-unit-test",
+                            SCHEMA_FOLDER"/compname-int-unit-test-output.yang",
+                            SCHEMA_FOLDER"/compname-int-unit-test-output.yin");
+}
+
 int
 main(void)
 {
     const struct CMUnitTest cmut[] = {
-        cmocka_unit_test_setup_teardown(test_modules, setup_ctx, teardown_ctx)
+        cmocka_unit_test_setup_teardown(test_modules, setup_ctx, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_modules_2, setup_ctx, teardown_ctx)
     };
 
     return cmocka_run_group_tests(cmut, NULL, NULL);

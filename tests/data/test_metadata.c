@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <setjmp.h>
+#include <stdarg.h>
 #include <cmocka.h>
 
 #include "tests/config.h"
@@ -86,7 +87,7 @@ test_leafref_type(void **state)
 
     mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
     assert_ptr_equal(mod, NULL);
-    assert_int_equal(ly_errno, LY_EEXT);
+    assert_int_equal(ly_errno, LY_EPLUGIN);
 }
 
 /*
@@ -112,7 +113,7 @@ test_unknown_metadata_xml(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_STRICT, NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INATTR);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INATTR);
 
     /* parse input without strict - passes, but the attribute is not present */
     st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_CONFIG, NULL);
@@ -145,7 +146,7 @@ test_unknown_metadata_json(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_CONFIG | LYD_OPT_STRICT, NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INMETA);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INMETA);
 
     /* parse input without strict - passes, but the attribute is not present */
     st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_CONFIG, NULL);
@@ -220,7 +221,7 @@ test_nc_filter3_xml(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_RPC | LYD_OPT_STRICT, NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INATTR);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INATTR);
 
     st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_RPC, NULL);
     assert_ptr_not_equal(st->data, NULL);
@@ -251,7 +252,7 @@ test_nc_filter4_xml(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_RPC, NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INMETA);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INMETA);
 }
 
 /*
@@ -278,7 +279,7 @@ test_nc_filter5_xml(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_RPC, NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INMETA);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INMETA);
 }
 
 /*
@@ -306,7 +307,7 @@ test_nc_filter6_xml(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_RPC, NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_TOOMANY);
 }
 
 /*
@@ -334,7 +335,7 @@ test_nc_filter7_xml(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_RPC, NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_MISSATTR);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_MISSATTR);
 }
 
 /*
@@ -365,7 +366,7 @@ test_nc_editconfig1_xml(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT , NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INMETA);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INMETA);
 }
 
 static void
@@ -396,7 +397,7 @@ test_nc_editconfig1_json(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_EDIT , NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INMETA);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INMETA);
 }
 
 /*
@@ -427,7 +428,7 @@ test_nc_editconfig2_xml(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT, NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_TOOMANY);
 }
 
 static void
@@ -461,7 +462,7 @@ test_nc_editconfig2_json(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_EDIT, NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_TOOMANY);
 }
 
 /*
@@ -553,7 +554,7 @@ test_nc_editconfig4_xml(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT , NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INATTR);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INATTR);
 }
 
 static void
@@ -584,7 +585,7 @@ test_nc_editconfig4_json(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_EDIT , NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INATTR);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INATTR);
 }
 
 /*
@@ -615,7 +616,7 @@ test_nc_editconfig5_xml(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT , NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INATTR);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INATTR);
 }
 
 static void
@@ -646,7 +647,7 @@ test_nc_editconfig5_json(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_EDIT , NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INATTR);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INATTR);
 }
 
 /*
@@ -677,7 +678,7 @@ test_nc_editconfig6_xml(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT , NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_TOOMANY);
 }
 
 static void
@@ -709,7 +710,7 @@ test_nc_editconfig6_json(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_EDIT , NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_TOOMANY);
 }
 
 /*
@@ -740,7 +741,7 @@ test_nc_editconfig7_xml(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT, NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_TOOMANY);
 }
 
 static void
@@ -773,7 +774,7 @@ test_nc_editconfig7_json(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_EDIT, NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_TOOMANY);
 }
 
 /*
@@ -933,7 +934,7 @@ test_nc_editconfig10_xml(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT, NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INATTR);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INATTR);
 }
 
 static void
@@ -967,7 +968,7 @@ test_nc_editconfig10_json(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_EDIT, NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INATTR);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INATTR);
 }
 
 /*
@@ -998,7 +999,7 @@ test_nc_editconfig11_xml(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT , NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INATTR);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INATTR);
 }
 
 static void
@@ -1031,7 +1032,7 @@ test_nc_editconfig11_json(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_EDIT , NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INATTR);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INATTR);
 }
 
 /*
@@ -1062,7 +1063,7 @@ test_nc_editconfig12_xml(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT , NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_TOOMANY);
 }
 
 static void
@@ -1096,7 +1097,7 @@ test_nc_editconfig12_json(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_EDIT , NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_TOOMANY);
 }
 
 /*
@@ -1127,7 +1128,7 @@ test_nc_editconfig13_xml(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT, NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_TOOMANY);
 }
 
 static void
@@ -1162,7 +1163,7 @@ test_nc_editconfig13_json(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_EDIT, NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_TOOMANY);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_TOOMANY);
 }
 
 /*
@@ -1326,7 +1327,7 @@ test_nc_editconfig16_xml(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT, NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INATTR);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INATTR);
 }
 
 static void
@@ -1360,7 +1361,7 @@ test_nc_editconfig16_json(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_EDIT, NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INATTR);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INATTR);
 }
 
 /*
@@ -1391,7 +1392,7 @@ test_nc_editconfig17_xml(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT, NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INATTR);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INATTR);
 }
 
 static void
@@ -1423,7 +1424,41 @@ test_nc_editconfig17_json(void **state)
     st->data = lyd_parse_mem(st->ctx, input, LYD_JSON, LYD_OPT_EDIT, NULL);
     assert_ptr_equal(st->data, NULL);
     assert_int_equal(ly_errno, LY_EVALID);
-    assert_int_equal(ly_vecode, LYVE_INATTR);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_INATTR);
+}
+
+/*
+ * correctness of parsing and printing NETCONF's edit-config's attributes
+ * - operation delete with an empty XML tag
+ */
+static void
+test_nc_editconfig18_xml(void **state)
+{
+    struct state *st = (*state);
+    const char *yang = "module x {"
+                    "  namespace urn:x;"
+                    "  prefix x;"
+                    "  leaf a { type string; }"
+                    "}";
+    const struct lys_module *mod;
+    const char *input =
+        "<a xmlns=\"urn:x\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" "
+            "nc:operation=\"delete\"></a>";
+
+    /* load ietf-netconf schema */
+    assert_ptr_not_equal(lys_parse_path(st->ctx, TESTS_DIR"/schema/yang/ietf/ietf-netconf.yang", LYS_IN_YANG), NULL);
+
+    /* load schema */
+    mod = lys_parse_mem(st->ctx, yang, LYS_IN_YANG);
+    assert_ptr_not_equal(mod, NULL);
+
+    st->data = lyd_parse_mem(st->ctx, input, LYD_XML, LYD_OPT_EDIT , NULL);
+    assert_ptr_not_equal(st->data, NULL);
+    assert_ptr_not_equal(st->data->attr, NULL);
+    assert_ptr_not_equal(st->data->attr->name, NULL);
+    assert_ptr_not_equal(st->data->attr->value_str, NULL);
+    assert_string_equal(st->data->attr->name, "operation");
+    assert_string_equal(st->data->attr->value_str, "delete");
 }
 
 int main(void)
@@ -1473,6 +1508,7 @@ int main(void)
                     cmocka_unit_test_setup_teardown(test_nc_editconfig16_json, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_nc_editconfig17_xml, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_nc_editconfig17_json, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_nc_editconfig18_xml, setup_f, teardown_f),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

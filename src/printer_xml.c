@@ -50,7 +50,7 @@ modlist_add(struct mlist **mlist, const struct lys_module *mod)
 
     if (!iter) {
         iter = malloc(sizeof *iter);
-        LY_CHECK_ERR_RETURN(!iter, LOGMEM, EXIT_FAILURE);
+        LY_CHECK_ERR_RETURN(!iter, LOGMEM(mod->ctx), EXIT_FAILURE);
         iter->next = *mlist;
         iter->module = (struct lys_module *)mod;
         *mlist = iter;
@@ -180,7 +180,7 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
             ly_print(out, " %s:%s=\"", attr->annotation->module->prefix, attr->name);
         }
 
-        switch (attr->value_type & LY_DATA_TYPE_MASK) {
+        switch (attr->value_type) {
         case LY_TYPE_BINARY:
         case LY_TYPE_STRING:
         case LY_TYPE_BITS:
@@ -197,7 +197,7 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
         case LY_TYPE_UINT64:
             if (attr->value_str) {
                 /* xml_expr can contain transformed xpath */
-                lyxml_dump_text(out, xml_expr ? xml_expr : attr->value_str);
+                lyxml_dump_text(out, xml_expr ? xml_expr : attr->value_str, LYXML_DATA_ATTR);
             }
             break;
 
@@ -210,7 +210,7 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
             len = p - attr->value_str;
             mod_name = attr->annotation->module->name;
             if (!strncmp(attr->value_str, mod_name, len) && !mod_name[len]) {
-                lyxml_dump_text(out, ++p);
+                lyxml_dump_text(out, ++p, LYXML_DATA_ATTR);
             } else {
                 /* avoid code duplication - use instance-identifier printer which gets necessary namespaces to print */
                 goto printinst;
@@ -232,7 +232,7 @@ printinst:
             free(prefs);
             free(nss);
 
-            lyxml_dump_text(out, xml_expr);
+            lyxml_dump_text(out, xml_expr, LYXML_DATA_ATTR);
             lydict_remove(node->schema->module->ctx, xml_expr);
             break;
 
@@ -269,6 +269,7 @@ xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int to
     LY_DATA_TYPE datatype;
     char *p;
     size_t len;
+    enum int_log_opts prev_ilo;
 
     if (toplevel || !node->parent || nscmp(node, node->parent)) {
         /* print "namespace" */
@@ -285,30 +286,31 @@ xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int to
     if (xml_print_attrs(out, node, options)) {
         return EXIT_FAILURE;
     }
-    datatype = leaf->value_type & LY_DATA_TYPE_MASK;
+    datatype = leaf->value_type;
+
 printvalue:
     switch (datatype) {
     case LY_TYPE_STRING:
+        ly_ilo_change(NULL, ILO_IGNORE, &prev_ilo, NULL);
         type = lyd_leaf_type((struct lyd_node_leaf_list *)leaf);
-        if (!type) {
-            /* error */
-            ly_print(out, "\"(!error!)\"");
-            return EXIT_FAILURE;
-        }
-        for (tpdf = type->der;
-             tpdf->module && (strcmp(tpdf->name, "xpath1.0") || strcmp(tpdf->module->name, "ietf-yang-types"));
-             tpdf = tpdf->type.der);
-        /* special handling of ietf-yang-types xpath1.0 */
-        if (tpdf->module) {
-            /* avoid code duplication - use instance-identifier printer which gets necessary namespaces to print */
-            datatype = LY_TYPE_INST;
-            goto printvalue;
+        ly_ilo_restore(NULL, prev_ilo, NULL, 0);
+        if (type) {
+            for (tpdf = type->der;
+                tpdf->module && (strcmp(tpdf->name, "xpath1.0") || strcmp(tpdf->module->name, "ietf-yang-types"));
+                tpdf = tpdf->type.der);
+            /* special handling of ietf-yang-types xpath1.0 */
+            if (tpdf->module) {
+                /* avoid code duplication - use instance-identifier printer which gets necessary namespaces to print */
+                datatype = LY_TYPE_INST;
+                goto printvalue;
+            }
         }
         /* fallthrough */
     case LY_TYPE_BINARY:
     case LY_TYPE_BITS:
     case LY_TYPE_ENUM:
     case LY_TYPE_BOOL:
+    case LY_TYPE_UNION:
     case LY_TYPE_DEC64:
     case LY_TYPE_INT8:
     case LY_TYPE_INT16:
@@ -322,7 +324,7 @@ printvalue:
             ly_print(out, "/>");
         } else {
             ly_print(out, ">");
-            lyxml_dump_text(out, leaf->value_str);
+            lyxml_dump_text(out, leaf->value_str, LYXML_DATA_ELEM);
             ly_print(out, "</%s>", node->schema->name);
         }
         break;
@@ -338,7 +340,7 @@ printvalue:
         mod_name = leaf->schema->module->name;
         if (!strncmp(leaf->value_str, mod_name, len) && !mod_name[len]) {
             ly_print(out, ">");
-            lyxml_dump_text(out, ++p);
+            lyxml_dump_text(out, ++p, LYXML_DATA_ELEM);
             ly_print(out, "</%s>", node->schema->name);
         } else {
             /* avoid code duplication - use instance-identifier printer which gets necessary namespaces to print */
@@ -363,7 +365,7 @@ printvalue:
 
         if (xml_expr[0]) {
             ly_print(out, ">");
-            lyxml_dump_text(out, xml_expr);
+            lyxml_dump_text(out, xml_expr, LYXML_DATA_ELEM);
             ly_print(out, "</%s>", node->schema->name);
         } else {
             ly_print(out, "/>");
@@ -386,7 +388,7 @@ printvalue:
             }
             datatype = type->base;
         } else {
-            datatype = iter->value_type & LY_DATA_TYPE_MASK;
+            datatype = iter->value_type;
         }
         goto printvalue;
 
@@ -527,7 +529,7 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
         /* ... and print anydata content */
         switch (any->value_type) {
         case LYD_ANYDATA_CONSTSTRING:
-            lyxml_dump_text(out, any->value.str);
+            lyxml_dump_text(out, any->value.str, LYXML_DATA_ELEM);
             break;
         case LYD_ANYDATA_DATATREE:
             if (any->value.tree) {
@@ -553,7 +555,7 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
             break;
         case LYD_ANYDATA_JSON:
             /* JSON format is not supported */
-            LOGWRN("Unable to print anydata content (type %d) as XML.", any->value_type);
+            LOGWRN(node->schema->module->ctx, "Unable to print anydata content (type %d) as XML.", any->value_type);
             break;
         case LYD_ANYDATA_STRING:
         case LYD_ANYDATA_SXMLD:
@@ -601,7 +603,7 @@ xml_print_node(struct lyout *out, int level, const struct lyd_node *node, int to
         ret = xml_print_anydata(out, level, node, toplevel, options);
         break;
     default:
-        LOGINT;
+        LOGINT(node->schema->module->ctx);
         ret = EXIT_FAILURE;
         break;
     }

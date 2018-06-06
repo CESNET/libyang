@@ -179,10 +179,10 @@ const char *lys_module_a_with_typo = \
 
 char *result_tree = "\
 module: a\n\
-    +--rw top\n\
-    |  +--rw bar-sub2\n\
-    +--rw x\n\
-       +--rw bubba?      string\n";
+  +--rw top\n\
+  |  +--rw bar-sub2\n\
+  +--rw x\n\
+     +--rw bubba?      string\n";
 
 char *result_yang = "\
 module a {\n\
@@ -712,7 +712,6 @@ test_lys_print_mem_tree(void **state)
     (void) state; /* unused */
     const struct lys_module *module;
     LYS_INFORMAT yang_format = LYS_IN_YIN;
-    char *target = "top";
     char *result = NULL;
     int rc;
 
@@ -721,7 +720,7 @@ test_lys_print_mem_tree(void **state)
         fail();
     }
 
-    rc = lys_print_mem(&result, module, LYS_OUT_TREE, target);
+    rc = lys_print_mem(&result, module, LYS_OUT_TREE, NULL, 0, 0);
     if (rc) {
         fail();
     }
@@ -736,7 +735,6 @@ test_lys_print_mem_yang(void **state)
     (void) state; /* unused */
     const struct lys_module *module;
     LYS_INFORMAT yang_format = LYS_IN_YIN;
-    char *target = "top";
     char *result = NULL;
     int rc;
 
@@ -745,7 +743,7 @@ test_lys_print_mem_yang(void **state)
         fail();
     }
 
-    rc = lys_print_mem(&result, module, LYS_OUT_YANG, target);
+    rc = lys_print_mem(&result, module, LYS_OUT_YANG, NULL, 0, 0);
     if (rc) {
         fail();
     }
@@ -760,7 +758,6 @@ test_lys_print_mem_yin(void **state)
     (void) state; /* unused */
     const struct lys_module *module;
     LYS_INFORMAT yang_format = LYS_IN_YIN;
-    char *target = "top";
     char *result = NULL;
     int rc;
 
@@ -769,7 +766,7 @@ test_lys_print_mem_yin(void **state)
         fail();
     }
 
-    rc = lys_print_mem(&result, module, LYS_OUT_YIN, target);
+    rc = lys_print_mem(&result, module, LYS_OUT_YIN, NULL, 0, 0);
     if (rc) {
         fail();
     }
@@ -793,7 +790,7 @@ test_lys_print_mem_info(void **state)
         fail();
     }
 
-    rc = lys_print_mem(&result, module, LYS_OUT_INFO, target);
+    rc = lys_print_mem(&result, module, LYS_OUT_INFO, target, 0, 0);
     if (rc) {
         fail();
     }
@@ -809,7 +806,6 @@ test_lys_print_fd_tree(void **state)
     const struct lys_module *module;
     LYS_INFORMAT yang_format = LYS_IN_YIN;
     struct stat sb;
-    char *target = "top";
     char file_name[20];
     char *result;
     int rc;
@@ -821,14 +817,14 @@ test_lys_print_fd_tree(void **state)
     }
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
+    strncpy(file_name, TMP_TEMPLATE, sizeof(file_name));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
         goto error;
     }
 
-    rc = lys_print_fd(fd, module, LYS_OUT_TREE, target);
+    rc = lys_print_fd(fd, module, LYS_OUT_TREE, NULL, 0, 0);
     if (rc) {
         goto error;
     }
@@ -860,7 +856,6 @@ test_lys_print_fd_yang(void **state)
     const struct lys_module *module;
     LYS_INFORMAT yang_format = LYS_IN_YIN;
     struct stat sb;
-    char *target = "top";
     char file_name[20];
     char *result;
     int rc;
@@ -872,14 +867,14 @@ test_lys_print_fd_yang(void **state)
     }
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
+    strncpy(file_name, TMP_TEMPLATE, sizeof(file_name));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
         goto error;
     }
 
-    rc = lys_print_fd(fd, module, LYS_OUT_YANG, target);
+    rc = lys_print_fd(fd, module, LYS_OUT_YANG, NULL, 0, 0);
     if (rc) {
         goto error;
     }
@@ -911,7 +906,6 @@ test_lys_print_fd_yin(void **state)
     const struct lys_module *module;
     LYS_INFORMAT yang_format = LYS_IN_YIN;
     struct stat sb;
-    char *target = "top";
     char file_name[20];
     char *result;
     int rc;
@@ -923,14 +917,14 @@ test_lys_print_fd_yin(void **state)
     }
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
+    strncpy(file_name, TMP_TEMPLATE, sizeof(file_name));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
         goto error;
     }
 
-    rc = lys_print_fd(fd, module, LYS_OUT_YIN, target);
+    rc = lys_print_fd(fd, module, LYS_OUT_YIN, NULL, 0, 0);
     if (rc) {
         goto error;
     }
@@ -974,14 +968,14 @@ test_lys_print_fd_info(void **state)
     }
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
+    strncpy(file_name, TMP_TEMPLATE, sizeof(file_name));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
         goto error;
     }
 
-    rc = lys_print_fd(fd, module, LYS_OUT_INFO, target);
+    rc = lys_print_fd(fd, module, LYS_OUT_INFO, target, 0, 0);
     if (rc) {
         goto error;
     }
@@ -1013,7 +1007,6 @@ test_lys_print_file_tree(void **state)
     const struct lys_module *module;
     LYS_INFORMAT yang_format = LYS_IN_YIN;
     struct stat sb;
-    char *target = "top";
     char file_name[20];
     char *result;
     FILE *f = NULL;
@@ -1026,7 +1019,7 @@ test_lys_print_file_tree(void **state)
     }
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
+    strncpy(file_name, TMP_TEMPLATE, sizeof(file_name));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1039,7 +1032,7 @@ test_lys_print_file_tree(void **state)
         goto error;
     }
 
-    rc = lys_print_file(f, module, LYS_OUT_TREE, target);
+    rc = lys_print_file(f, module, LYS_OUT_TREE, NULL, 0, 0);
     if (rc) {
         goto error;
     }
@@ -1076,7 +1069,6 @@ test_lys_print_file_yin(void **state)
     const struct lys_module *module;
     LYS_INFORMAT yang_format = LYS_IN_YIN;
     struct stat sb;
-    char *target = "top";
     char file_name[20];
     char *result;
     FILE *f = NULL;
@@ -1089,7 +1081,7 @@ test_lys_print_file_yin(void **state)
     }
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
+    strncpy(file_name, TMP_TEMPLATE, sizeof(file_name));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1102,7 +1094,7 @@ test_lys_print_file_yin(void **state)
         goto error;
     }
 
-    rc = lys_print_file(f, module, LYS_OUT_YIN, target);
+    rc = lys_print_file(f, module, LYS_OUT_YIN, NULL, 0, 0);
     if (rc) {
         goto error;
     }
@@ -1139,7 +1131,6 @@ test_lys_print_file_yang(void **state)
     const struct lys_module *module;
     LYS_INFORMAT yang_format = LYS_IN_YIN;
     struct stat sb;
-    char *target = "top";
     char file_name[20];
     char *result;
     FILE *f = NULL;
@@ -1152,7 +1143,7 @@ test_lys_print_file_yang(void **state)
     }
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
+    strncpy(file_name, TMP_TEMPLATE, sizeof(file_name));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1165,7 +1156,7 @@ test_lys_print_file_yang(void **state)
         goto error;
     }
 
-    rc = lys_print_file(f, module, LYS_OUT_YANG, target);
+    rc = lys_print_file(f, module, LYS_OUT_YANG, NULL, 0, 0);
     if (rc) {
         goto error;
     }
@@ -1215,7 +1206,7 @@ test_lys_print_file_info(void **state)
     }
 
     memset(file_name, 0, sizeof(file_name));
-    strncpy(file_name, TMP_TEMPLATE, strlen(TMP_TEMPLATE));
+    strncpy(file_name, TMP_TEMPLATE, sizeof(file_name));
 
     fd = mkstemp(file_name);
     if (fd < 1) {
@@ -1228,7 +1219,7 @@ test_lys_print_file_info(void **state)
         goto error;
     }
 
-    rc = lys_print_file(f, module, LYS_OUT_INFO, target);
+    rc = lys_print_file(f, module, LYS_OUT_INFO, target, 0, 0);
     if (rc) {
         goto error;
     }
@@ -1304,7 +1295,16 @@ test_lys_path(void **state)
     assert_ptr_not_equal(set, NULL);
     node = set->set.s[0];
     ly_set_free(set);
-    path = lys_path(node);
+    path = lys_path(node, 1);
+    assert_string_equal(template, path);
+    free(path);
+
+    template = "/a:x/a:bar-gggg";
+    set = lys_find_path(module, NULL, template);
+    assert_ptr_not_equal(set, NULL);
+    node = set->set.s[0];
+    ly_set_free(set);
+    path = lys_path(node, 0);
     assert_string_equal(template, path);
     free(path);
 }

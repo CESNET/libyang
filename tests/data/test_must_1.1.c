@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <setjmp.h>
+#include <stdarg.h>
 #include <cmocka.h>
 
 #include "tests/config.h"
@@ -79,7 +80,7 @@ test_dependency_rpc(void **state)
     /* schema */
     st->mod = lys_parse_path(st->ctx, TESTS_DIR"/data/files/must-dependrpc.yin", LYS_IN_YIN);
     assert_ptr_not_equal(st->mod, NULL);
-    if (!(st->mod->data->next->child->child->flags & LYS_XPATH_DEP)) {
+    if (!(st->mod->data->next->child->child->flags & LYS_XPCONF_DEP)) {
         fail();
     }
 
@@ -106,7 +107,7 @@ test_dependency_action(void **state)
     /* schema */
     st->mod = lys_parse_path(st->ctx, TESTS_DIR"/data/files/must-dependact.yin", LYS_IN_YIN);
     assert_ptr_not_equal(st->mod, NULL);
-    if (!(st->mod->data->child->child->next->next->next->child->child->flags & LYS_XPATH_DEP)) {
+    if (!(st->mod->data->child->child->next->next->next->child->child->flags & LYS_XPCONF_DEP)) {
         fail();
     }
 
