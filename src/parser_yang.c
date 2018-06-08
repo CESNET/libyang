@@ -2644,6 +2644,10 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
             goto error;
         }
 
+        if (!implement && module->implemented && lys_make_implemented_r(module, unres)) {
+            goto error;
+        }
+
         if (unres->count && resolve_unres_schema(module, unres)) {
             goto error;
         }
@@ -2673,15 +2677,6 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
 
         if (lyp_ctx_add_module(module)) {
             goto error;
-        }
-
-        if (module->deviation_size && !module->implemented) {
-            LOGVRB("Module \"%s\" includes deviations, changing its conformance to \"implement\".", module->name);
-            /* deviations always causes target to be made implemented,
-             * but augents and leafrefs not, so we have to apply them now */
-            if (lys_set_implemented(module)) {
-                goto error;
-            }
         }
 
         /* remove our submodules from the parsed submodules list */
@@ -4602,9 +4597,11 @@ yang_check_deviation(struct lys_module *module, struct unres_schema *unres, stru
         if (module != mod) {
             mod->deviated = 1;            /* main module */
             parent->module->deviated = 1; /* possible submodule */
-            if (lys_set_implemented(mod)) {
-                LOGERR(module->ctx, ly_errno, "Setting the deviated module \"%s\" implemented failed.", mod->name);
-                goto error;
+            if (!mod->implemented) {
+                mod->implemented = 1;
+                if (unres_schema_add_node(mod, unres, NULL, UNRES_MOD_IMPLEMENT, NULL) == -1) {
+                    goto error;
+                }
             }
         }
     }

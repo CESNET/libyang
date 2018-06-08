@@ -3106,9 +3106,11 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
         if (module != mod) {
             mod->deviated = 1;            /* main module */
             parent->module->deviated = 1; /* possible submodule */
-            if (lys_set_implemented(mod)) {
-                LOGERR(ctx, ly_errno, "Setting the deviated module \"%s\" implemented failed.", mod->name);
-                goto error;
+            if (!mod->implemented) {
+                mod->implemented = 1;
+                if (unres_schema_add_node(mod, unres, NULL, UNRES_MOD_IMPLEMENT, NULL) == -1) {
+                    goto error;
+                }
             }
         }
     }
@@ -7094,6 +7096,9 @@ read_sub_module(struct lys_module *module, struct lys_submodule *submodule, stru
             }
 
         } else if (!strcmp(child->name, "deviation")) {
+            /* must be implemented in this case */
+            trg->implemented = 1;
+
             r = fill_yin_deviation(trg, child, &trg->deviation[trg->deviation_size], unres);
             trg->deviation_size++;
             if (r) {
@@ -7319,6 +7324,11 @@ yin_read_module_(struct ly_ctx *ctx, struct lyxml_elem *yin, const char *revisio
     if (ret == 1) {
         assert(!unres->count);
     } else {
+        /* make this module implemented if was not from start */
+        if (!implement && module->implemented && (unres_schema_add_node(module, unres, NULL, UNRES_MOD_IMPLEMENT, NULL) == -1)) {
+            goto error;
+        }
+
         /* resolve rest of unres items */
         if (unres->count && resolve_unres_schema(module, unres)) {
             goto error;
@@ -7347,15 +7357,6 @@ yin_read_module_(struct ly_ctx *ctx, struct lyxml_elem *yin, const char *revisio
 
     /* add into context if not already there */
     if (!ret) {
-        if (module->deviation_size && !module->implemented) {
-            LOGVRB("Module \"%s\" includes deviations, changing its conformance to \"implement\".", module->name);
-            /* deviations always causes target to be made implemented,
-             * but augents and leafrefs not, so we have to apply them now */
-            if (lys_set_implemented(module)) {
-                goto error;
-            }
-        }
-
         if (lyp_ctx_add_module(module)) {
             goto error;
         }

@@ -4016,9 +4016,8 @@ apply_aug(struct lys_node_augment *augment, struct unres_schema *unres)
     /* check that all the modules are implemented */
     for (parent = augment->target; parent; parent = lys_parent(parent)) {
         if (!lys_node_module(parent)->implemented) {
-            if (lys_set_implemented(lys_node_module(parent))) {
-                LOGERR(augment->module->ctx, ly_errno, "Making the augment target module \"%s\" implemented failed.",
-                       lys_node_module(parent)->name);
+            lys_node_module(parent)->implemented = 1;
+            if (unres_schema_add_node(lys_node_module(parent), unres, NULL, UNRES_MOD_IMPLEMENT, NULL) == -1) {
                 return -1;
             }
         }
@@ -4432,15 +4431,29 @@ lys_sub_module_remove_devs_augs(struct lys_module *module)
     unres_schema_free(module, &unres, 1);
 }
 
-static int
-lys_set_implemented_recursion(struct lys_module *module, struct unres_schema *unres)
+int
+lys_make_implemented_r(struct lys_module *module, struct unres_schema *unres)
 {
+    struct ly_ctx *ctx;
     struct lys_node *root, *next, *node;
-    uint16_t i, j;
+    uint16_t i, j, k;
+
+    assert(module->implemented);
+    ctx = module->ctx;
+
+    for (i = 0; i < ctx->models.used; ++i) {
+        if (module == ctx->models.list[i]) {
+            continue;
+        }
+
+        if (!strcmp(module->name, ctx->models.list[i]->name) && ctx->models.list[i]->implemented) {
+            LOGERR(ctx, LY_EINVAL, "Module \"%s\" in another revision already implemented.", module->name);
+            return EXIT_FAILURE;
+        }
+    }
 
     for (i = 0; i < module->augment_size; i++) {
         /* apply augment */
-        assert(module->augment[i].target);
         if (apply_aug(&module->augment[i], unres)) {
             return EXIT_FAILURE;
         }
@@ -4450,6 +4463,26 @@ lys_set_implemented_recursion(struct lys_module *module, struct unres_schema *un
     for (i = 0; i < module->ident_size; i++) {
         for (j = 0; j < module->ident[i].base_size; j++) {
             resolve_identity_backlink_update(&module->ident[i], module->ident[i].base[j]);
+        }
+    }
+
+    /* process augments in submodules */
+    for (i = 0; i < module->inc_size && module->inc[i].submodule; ++i) {
+        module->inc[i].submodule->implemented = 1;
+
+        for (j = 0; j < module->inc[i].submodule->augment_size; j++) {
+            /* apply augment */
+            if (apply_aug(&module->inc[i].submodule->augment[j], unres)) {
+                return EXIT_FAILURE;
+            }
+        }
+
+        /* identities */
+        for (j = 0; j < module->inc[i].submodule->ident_size; j++) {
+            for (k = 0; k < module->inc[i].submodule->ident[j].base_size; k++) {
+                resolve_identity_backlink_update(&module->inc[i].submodule->ident[j],
+                                                 module->inc[i].submodule->ident[j].base[k]);
+            }
         }
     }
 
@@ -4503,9 +4536,8 @@ nextsibling:
 API int
 lys_set_implemented(const struct lys_module *module)
 {
-    struct ly_ctx *ctx;
     struct unres_schema *unres;
-    int i, j, k, disabled = 0;
+    int disabled = 0;
 
     if (!module) {
         LOGARG;
@@ -4523,26 +4555,9 @@ lys_set_implemented(const struct lys_module *module)
         return EXIT_SUCCESS;
     }
 
-    ctx = module->ctx;
-
-    for (i = 0; i < ctx->models.used; ++i) {
-        if (module == ctx->models.list[i]) {
-            continue;
-        }
-
-        if (!strcmp(module->name, ctx->models.list[i]->name) && ctx->models.list[i]->implemented) {
-            LOGERR(ctx, LY_EINVAL, "Module \"%s\" in another revision already implemented.", module->name);
-            if (disabled) {
-                /* set it back disabled */
-                lys_set_disabled(module);
-            }
-            return EXIT_FAILURE;
-        }
-    }
-
     unres = calloc(1, sizeof *unres);
     if (!unres) {
-        LOGMEM(ctx);
+        LOGMEM(module->ctx);
         if (disabled) {
             /* set it back disabled */
             lys_set_disabled(module);
@@ -4551,27 +4566,10 @@ lys_set_implemented(const struct lys_module *module)
     }
     /* recursively make the module implemented */
     ((struct lys_module *)module)->implemented = 1;
-    if (lys_set_implemented_recursion((struct lys_module *)module, unres)) {
+    if (lys_make_implemented_r((struct lys_module *)module, unres)) {
         goto error;
     }
-    /* process augments in submodules */
-    for (i = 0; i < module->inc_size && module->inc[i].submodule; ++i) {
-        for (j = 0; j < module->inc[i].submodule->augment_size; j++) {
-            /* apply augment */
-            assert(module->inc[i].submodule->augment[j].target);
-            if (apply_aug(&module->inc[i].submodule->augment[j], unres)) {
-                goto error;
-            }
-        }
 
-        /* identities */
-        for (j = 0; j < module->inc[i].submodule->ident_size; j++) {
-            for (k = 0; k < module->inc[i].submodule->ident[j].base_size; k++) {
-                resolve_identity_backlink_update(&module->inc[i].submodule->ident[j],
-                                                 module->inc[i].submodule->ident[j].base[k]);
-            }
-        }
-    }
     /* try again resolve augments in other modules possibly augmenting this one,
      * since we have just enabled it
      */
@@ -4580,11 +4578,6 @@ lys_set_implemented(const struct lys_module *module)
         goto error;
     }
     unres_schema_free(NULL, &unres, 0);
-
-    /* reflect implemented flag in submodules */
-    for (i = 0; i < module->inc_size; i++) {
-        module->inc[i].submodule->implemented = 1;
-    }
 
     LOGVRB("Module \"%s%s%s\" now implemented.", module->name, (module->rev_size ? "@" : ""),
            (module->rev_size ? module->rev[0].date : ""));

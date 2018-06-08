@@ -23,38 +23,38 @@
  */
 enum UNRES_ITEM {
     /* SCHEMA */
-    UNRES_USES,          /* unresolved uses grouping (refines and augments in it are resolved as well) */
-    UNRES_IFFEAT,        /* unresolved if-feature */
-    UNRES_TYPE_DER,      /* unresolved derived type defined in leaf/leaflist */
-    UNRES_TYPE_DER_TPDF, /* unresolved derived type defined as typedef */
-    UNRES_TYPE_DER_EXT,
-    UNRES_TYPE_LEAFREF,  /* check leafref value */
-    UNRES_AUGMENT,       /* unresolved augment targets */
-    UNRES_CHOICE_DFLT,   /* check choice default case */
-    UNRES_IDENT,         /* unresolved derived identities */
-    UNRES_TYPE_IDENTREF, /* check identityref value */
-    UNRES_FEATURE,       /* feature for circular check, it must be postponed when all if-features are resolved */
-    UNRES_TYPEDEF_DFLT,  /* validate default type value (from typedef) */
-    UNRES_TYPE_DFLT,     /* validate default type value (from lys_node) */
-    UNRES_LIST_KEYS,     /* list keys */
-    UNRES_LIST_UNIQ,     /* list uniques */
-    UNRES_XPATH,         /* unchecked XPath expression */
-    UNRES_EXT,           /* extension instances */
-
-    UNRES_EXT_FINALIZE,  /* extension is already resolved, but needs to be finalized via plugin callbacks */
+    UNRES_USES = 0x00000001,          /* unresolved uses grouping (refines and augments in it are resolved as well) */
+    UNRES_IFFEAT = 0x00000002,        /* unresolved if-feature */
+    UNRES_TYPE_DER = 0x00000004,      /* unresolved derived type defined in leaf/leaflist */
+    UNRES_TYPE_DER_TPDF = 0x00000008, /* unresolved derived type defined as typedef */
+    UNRES_TYPE_DER_EXT = 0x00000010,
+    UNRES_TYPE_LEAFREF = 0x00000020,  /* check leafref value */
+    UNRES_AUGMENT = 0x00000040,       /* unresolved augment targets */
+    UNRES_CHOICE_DFLT = 0x00000080,   /* check choice default case */
+    UNRES_IDENT = 0x00000100,         /* unresolved derived identities */
+    UNRES_TYPE_IDENTREF = 0x00000200, /* check identityref value */
+    UNRES_FEATURE = 0x00000400,       /* feature for circular check, it must be postponed when all if-features are resolved */
+    UNRES_TYPEDEF_DFLT = 0x00000800,  /* validate default type value (from typedef) */
+    UNRES_TYPE_DFLT = 0x00001000,     /* validate default type value (from lys_node) */
+    UNRES_LIST_KEYS = 0x00002000,     /* list keys */
+    UNRES_LIST_UNIQ = 0x00004000,     /* list uniques */
+    UNRES_MOD_IMPLEMENT = 0x00008000, /* unimplemented module */
+    UNRES_EXT = 0x00010000,           /* extension instances */
+    UNRES_XPATH = 0x00020000,         /* unchecked XPath expression */
+    UNRES_EXT_FINALIZE = 0x00040000,  /* extension is already resolved, but needs to be finalized via plugin callbacks */
 
     /* DATA */
-    UNRES_LEAFREF,       /* unresolved leafref reference */
-    UNRES_INSTID,        /* unresolved instance-identifier reference */
-    UNRES_WHEN,          /* unresolved when condition */
-    UNRES_MUST,          /* unresolved must condition */
-    UNRES_MUST_INOUT,    /* unresolved must condition in parent input or output */
-    UNRES_UNION,         /* union with leafref which must be checked because the type can change without changing the
-                            value itself, but removing the target node */
+    UNRES_LEAFREF = 0x00080000,       /* unresolved leafref reference */
+    UNRES_INSTID = 0x00100000,        /* unresolved instance-identifier reference */
+    UNRES_WHEN = 0x00200000,          /* unresolved when condition */
+    UNRES_MUST = 0x00400000,          /* unresolved must condition */
+    UNRES_MUST_INOUT = 0x00800000,    /* unresolved must condition in parent input or output */
+    UNRES_UNION = 0x01000000,         /* union with leafref which must be checked because the type can change without changing the
+                                         value itself, but removing the target node */
 
     /* generic */
-    UNRES_RESOLVED,      /* a resolved item */
-    UNRES_DELETE,        /* prepared for auto-delete */
+    UNRES_RESOLVED = 0x02000000,      /* a resolved item */
+    UNRES_DELETE = 0x04000000,        /* prepared for auto-delete */
 };
 
 /**

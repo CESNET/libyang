@@ -438,6 +438,8 @@ void lyd_free_value(lyd_val value, LY_DATA_TYPE value_type, uint8_t value_flags,
 
 int lyd_list_equal(struct lyd_node *node1, struct lyd_node *node2, int with_defaults);
 
+int lys_make_implemented_r(struct lys_module *module, struct unres_schema *unres);
+
 /**
  * @brief Check for (validate) mandatory nodes of a data tree. Checks recursively whole data tree. Requires all when
  * statement to be solved.

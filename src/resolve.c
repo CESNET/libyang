@@ -5772,13 +5772,14 @@ match:
     }
     if (need_implemented) {
         if (dflt) {
-            /* try to make the module implemented */
+            /* later try to make the module implemented */
             LOGVRB("Making \"%s\" module implemented because of identityref default value \"%s\" used in the implemented \"%s\" module",
                    imod->name, cur->name, mod->name);
+            /* to be more effective we should use UNRES_MOD_IMPLEMENT but that would require changing prototype of
+             * several functions with little gain */
             if (lys_set_implemented(imod)) {
                 LOGERR(ctx, ly_errno, "Setting the module \"%s\" implemented because of used default identity \"%s\" failed.",
                        imod->name, cur->name);
-                LOGVAL(ctx, LYE_SPEC, LY_VLOG_LYD, node, "Identity used as identityref value is not implemented.");
                 goto fail;
             }
         } else {
@@ -6761,11 +6762,13 @@ resolve_unres_schema_item(struct lys_module *mod, void *item, enum UNRES_ITEM ty
         if (!rc) {
             assert(stype->info.lref.target);
 
+            /* as the last thing traverse this leafref and make targets on the path implemented */
             if (lys_node_module(node)->implemented) {
                 /* make all the modules in the path implemented */
                 for (next = (struct lys_node *)stype->info.lref.target; next; next = lys_parent(next)) {
                     if (!lys_node_module(next)->implemented) {
-                        if (lys_set_implemented(lys_node_module(next))) {
+                        lys_node_module(next)->implemented = 1;
+                        if (unres_schema_add_node(lys_node_module(next), unres, NULL, UNRES_MOD_IMPLEMENT, NULL) == -1) {
                             rc = -1;
                             break;
                         }
@@ -6957,6 +6960,9 @@ featurecheckdone:
     case UNRES_XPATH:
         node = (struct lys_node *)item;
         rc = check_xpath(node, 1);
+        break;
+    case UNRES_MOD_IMPLEMENT:
+        rc = lys_make_implemented_r(mod, unres);
         break;
     case UNRES_EXT:
         ext_data = (struct unres_ext *)str_snode;
@@ -7180,6 +7186,84 @@ print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node)
     }
 }
 
+static int
+resolve_unres_schema_types(struct unres_schema *unres, enum UNRES_ITEM types, struct ly_ctx *ctx, int forward_ref,
+                           int print_all_errors, uint32_t *resolved)
+{
+    uint32_t i, unres_count, res_count;
+    int ret = 0, rc;
+    struct ly_err_item *prev_eitem;
+    enum int_log_opts prev_ilo;
+    LY_ERR prev_ly_errno;
+
+    /* if there can be no forward references, every failure is final, so we can print it directly */
+    if (forward_ref) {
+        prev_ly_errno = ly_errno;
+        ly_ilo_change(ctx, ILO_STORE, &prev_ilo, &prev_eitem);
+    }
+
+    do {
+        unres_count = 0;
+        res_count = 0;
+
+        for (i = 0; i < unres->count; ++i) {
+            /* UNRES_TYPE_LEAFREF must be resolved (for storing leafref target pointers);
+             * if-features are resolved here to make sure that we will have all if-features for
+             * later check of feature circular dependency */
+            if (unres->type[i] & types) {
+                ++unres_count;
+                rc = resolve_unres_schema_item(unres->module[i], unres->item[i], unres->type[i], unres->str_snode[i], unres);
+                if (unres->type[i] == UNRES_EXT_FINALIZE) {
+                    /* to avoid double free */
+                    unres->type[i] = UNRES_RESOLVED;
+                }
+                if (!rc || (unres->type[i] == UNRES_XPATH)) {
+                    /* invalid XPath can never cause an error, only a warning */
+                    if (unres->type[i] == UNRES_LIST_UNIQ) {
+                        /* free the allocated structure */
+                        free(unres->item[i]);
+                    }
+
+                    unres->type[i] = UNRES_RESOLVED;
+                    ++(*resolved);
+                    ++res_count;
+                } else if ((rc == EXIT_FAILURE) && forward_ref) {
+                    /* forward reference, erase errors */
+                    ly_err_free_next(ctx, prev_eitem);
+                } else if (print_all_errors) {
+                    /* just so that we quit the loop */
+                    ++res_count;
+                    ret = -1;
+                } else {
+                    ly_ilo_restore(ctx, prev_ilo, prev_eitem, 1);
+                    return -1;
+                }
+            }
+        }
+    } while (res_count && (res_count < unres_count));
+
+    if (res_count < unres_count) {
+        assert(forward_ref);
+        /* just print the errors (but we must free the ones we have and get them again :-/ ) */
+        ly_ilo_restore(ctx, prev_ilo, prev_eitem, 0);
+
+        for (i = 0; i < unres->count; ++i) {
+            if (unres->type[i] & types) {
+                resolve_unres_schema_item(unres->module[i], unres->item[i], unres->type[i], unres->str_snode[i], unres);
+            }
+        }
+        return -1;
+    }
+
+    if (forward_ref) {
+        /* restore log */
+        ly_ilo_restore(ctx, prev_ilo, prev_eitem, 0);
+        ly_errno = prev_ly_errno;
+    }
+
+    return ret;
+}
+
 /**
  * @brief Resolve every unres schema item in the structure. Logs directly.
  *
@@ -7191,132 +7275,35 @@ print_unres_schema_item_fail(void *item, enum UNRES_ITEM type, void *str_node)
 int
 resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
 {
-    uint32_t i, resolved = 0, unres_count, res_count;
-    struct ly_err_item *prev_eitem;
-    enum int_log_opts prev_ilo;
-    LY_ERR prev_ly_errno;
-    int rc;
+    uint32_t resolved = 0;
 
     assert(unres);
 
     LOGVRB("Resolving \"%s\" unresolved schema nodes and their constraints...", mod->name);
-    prev_ly_errno = ly_errno;
-    ly_ilo_change(mod->ctx, ILO_STORE, &prev_ilo, &prev_eitem);
 
-    /* uses */
-    do {
-        unres_count = 0;
-        res_count = 0;
-
-        for (i = 0; i < unres->count; ++i) {
-            /* UNRES_TYPE_LEAFREF must be resolved (for storing leafref target pointers);
-             * if-features are resolved here to make sure that we will have all if-features for
-             * later check of feature circular dependency */
-            if (unres->type[i] > UNRES_IDENT) {
-                continue;
-            }
-            /* processes UNRES_USES, UNRES_IFFEAT, UNRES_TYPE_DER, UNRES_TYPE_DER_TPDF, UNRES_TYPE_LEAFREF,
-             * UNRES_AUGMENT, UNRES_CHOICE_DFLT and UNRES_IDENT */
-
-            ++unres_count;
-            rc = resolve_unres_schema_item(unres->module[i], unres->item[i], unres->type[i], unres->str_snode[i], unres);
-            if (!rc) {
-                unres->type[i] = UNRES_RESOLVED;
-                ++resolved;
-                ++res_count;
-            } else if (rc == -1) {
-                goto error;
-            } else {
-                /* forward reference, erase errors */
-                ly_err_free_next(mod->ctx, prev_eitem);
-            }
-        }
-    } while (res_count && (res_count < unres_count));
-
-    if (res_count < unres_count) {
-        /* just print the errors (but we must free the ones we have and get them again :-/ ) */
-        ly_ilo_restore(mod->ctx, prev_ilo, prev_eitem, 0);
-
-        for (i = 0; i < unres->count; ++i) {
-            if (unres->type[i] > UNRES_IDENT) {
-                continue;
-            }
-            resolve_unres_schema_item(unres->module[i], unres->item[i], unres->type[i], unres->str_snode[i], unres);
-        }
+    /* UNRES_TYPE_LEAFREF must be resolved (for storing leafref target pointers);
+     * if-features are resolved here to make sure that we will have all if-features for
+     * later check of feature circular dependency */
+    if (resolve_unres_schema_types(unres, UNRES_USES | UNRES_IFFEAT | UNRES_TYPE_DER | UNRES_TYPE_DER_TPDF | UNRES_TYPE_DER_TPDF
+                                   | UNRES_TYPE_LEAFREF | UNRES_MOD_IMPLEMENT | UNRES_AUGMENT | UNRES_CHOICE_DFLT | UNRES_IDENT,
+                                   mod->ctx, 1, 0, &resolved)) {
         return -1;
     }
 
-    /* the rest except finalizing extensions and xpath */
-    for (i = 0; i < unres->count; ++i) {
-        if ((unres->type[i] == UNRES_RESOLVED) || (unres->type[i] == UNRES_EXT_FINALIZE) || (unres->type[i] == UNRES_XPATH)) {
-            continue;
-        }
-
-        rc = resolve_unres_schema_item(unres->module[i], unres->item[i], unres->type[i], unres->str_snode[i], unres);
-        if (rc == 0) {
-            if (unres->type[i] == UNRES_LIST_UNIQ) {
-                /* free the allocated structure */
-                free(unres->item[i]);
-            }
-            unres->type[i] = UNRES_RESOLVED;
-            ++resolved;
-        } else if (rc == -1) {
-            goto error;
-        } else {
-            /* forward reference, erase errors */
-            ly_err_free_next(mod->ctx, prev_eitem);
-        }
+    /* another batch of resolved items */
+    if (resolve_unres_schema_types(unres, UNRES_TYPE_IDENTREF | UNRES_FEATURE | UNRES_TYPEDEF_DFLT | UNRES_TYPE_DFLT
+                                   | UNRES_LIST_KEYS | UNRES_LIST_UNIQ | UNRES_EXT, mod->ctx, 1, 0, &resolved)) {
+        return -1;
     }
 
-    /* log normally now */
-    ly_ilo_restore(mod->ctx, prev_ilo, prev_eitem, 0);
-    ly_errno = prev_ly_errno;
-
-    /* finalize extensions, keep it last to provide the complete schema tree information to the plugin's checkers */
-    for (i = 0; i < unres->count; ++i) {
-        if (unres->type[i] != UNRES_EXT_FINALIZE) {
-            continue;
-        }
-
-        rc = resolve_unres_schema_item(unres->module[i], unres->item[i], unres->type[i], unres->str_snode[i], unres);
-        unres->type[i] = UNRES_RESOLVED;
-        if (rc == 0) {
-            ++resolved;
-        }
-        /* else error - it was already printed, but resolved was not increased,
-           so this unres item will not be resolved again in the following code,
-           but it will cause returning -1 at the end, this way we are able to
-           print all the issues with unres */
-    }
-
-    if (resolved < unres->count) {
-        /* try to resolve the unresolved nodes again, it will not resolve anything, but it will print
-         * all the validation errors, xpath is resolved only here to properly print all the messages
-         */
-        for (i = 0; i < unres->count; ++i) {
-            if (unres->type[i] == UNRES_RESOLVED) {
-                continue;
-            }
-            resolve_unres_schema_item(unres->module[i], unres->item[i], unres->type[i], unres->str_snode[i], unres);
-            if (unres->type[i] == UNRES_XPATH) {
-                /* XPath referencing an unknown node is actually supposed to be just a warning */
-                unres->type[i] = UNRES_RESOLVED;
-                resolved++;
-            }
-        }
-        if (resolved < unres->count) {
-            return -1;
-        }
+    /* print xpath warnings and finalize extensions, keep it last to provide the complete schema tree information to the plugin's checkers */
+    if (resolve_unres_schema_types(unres, UNRES_XPATH | UNRES_EXT_FINALIZE, mod->ctx, 0, 1, &resolved)) {
+        return -1;
     }
 
     LOGVRB("All \"%s\" schema nodes and constraints resolved.", mod->name);
     unres->count = 0;
     return EXIT_SUCCESS;
-
-error:
-    ly_ilo_restore(mod->ctx, prev_ilo, prev_eitem, 1);
-    /* ly_errno will be set accordingly, we do not want to keep the previous value */
-    return -1;
 }
 
 /**
@@ -7369,8 +7356,8 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
     struct lyxml_elem *yin;
     struct ly_ctx *ctx = mod->ctx;
 
-    assert(unres && item && ((type != UNRES_LEAFREF) && (type != UNRES_INSTID) && (type != UNRES_WHEN)
-           && (type != UNRES_MUST)));
+    assert(unres && (item || (type == UNRES_MOD_IMPLEMENT)) && ((type != UNRES_LEAFREF) && (type != UNRES_INSTID)
+           && (type != UNRES_WHEN) && (type != UNRES_MUST)));
 
     /* check for duplicities in unres */
     for (u = 0; u < unres->count; u++) {
@@ -7383,9 +7370,11 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
         }
     }
 
-    if ((type == UNRES_EXT_FINALIZE) || (type == UNRES_XPATH)) {
+    if ((type == UNRES_EXT_FINALIZE) || (type == UNRES_XPATH) || (type == UNRES_MOD_IMPLEMENT)) {
         /* extension finalization is not even tried when adding the item into the inres list,
-         * xpath is not tried because it would hide some potential warnings */
+         * xpath is not tried because it would hide some potential warnings,
+         * implementing module must be deferred because some other nodes can be added that will need to be traversed
+         * and their targets made implemented */
         rc = EXIT_FAILURE;
     } else {
         prev_ly_errno = ly_errno;
