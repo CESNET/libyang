@@ -72,6 +72,11 @@ include_directories(${CMAKE_SOURCE_DIR})
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}/cpp/src")
 target_link_libraries(libyang-cpp yang)
 
+if(PKG_CONFIG_FOUND)
+    configure_file("${CMAKE_CURRENT_SOURCE_DIR}/libyang-cpp.pc.in" "${CMAKE_CURRENT_BINARY_DIR}/libyang-cpp.pc" @ONLY)
+    install(FILES "${CMAKE_CURRENT_BINARY_DIR}/libyang-cpp.pc" DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
+endif()
+
 # install binary
 install(TARGETS libyang-cpp DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${LIBYANG_HPP_SOURCES} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libyang)
