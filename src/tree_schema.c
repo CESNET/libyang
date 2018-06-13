@@ -4005,7 +4005,7 @@ apply_aug(struct lys_node_augment *augment, struct unres_schema *unres)
     unsigned int u;
     uint8_t *v;
     struct lys_ext_instance *ext;
-
+    
     assert(augment->target && (augment->flags & LYS_NOTAPPLIED));
 
     if (!augment->child) {
@@ -4454,11 +4454,10 @@ lys_make_implemented_r(struct lys_module *module, struct unres_schema *unres)
 
     for (i = 0; i < module->augment_size; i++) {
         /* apply augment */
-        if (apply_aug(&module->augment[i], unres)) {
+        if ((module->augment[i].flags & LYS_NOTAPPLIED && module->augment[i].target) && apply_aug(&module->augment[i], unres)) {
             return EXIT_FAILURE;
         }
     }
-
     /* identities */
     for (i = 0; i < module->ident_size; i++) {
         for (j = 0; j < module->ident[i].base_size; j++) {
@@ -4472,7 +4471,7 @@ lys_make_implemented_r(struct lys_module *module, struct unres_schema *unres)
 
         for (j = 0; j < module->inc[i].submodule->augment_size; j++) {
             /* apply augment */
-            if (apply_aug(&module->inc[i].submodule->augment[j], unres)) {
+            if ((module->inc[i].submodule->augment[j].flags & LYS_NOTAPPLIED && module->inc[i].submodule->augment[j].target) && apply_aug(&module->inc[i].submodule->augment[j], unres)) {
                 return EXIT_FAILURE;
             }
         }
