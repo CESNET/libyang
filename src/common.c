@@ -842,7 +842,7 @@ transform_json2xpath_subexpr(const struct lys_module *cur_module, const struct l
             }
 
             /* do we print the module name? (always for "*" if there was any, it's an exception) */
-            if ((prev_mod != cur_module) || (name_len && (end[0] == '*'))) {
+            if (((prev_mod != cur_module) && (end[0] != '*')) || (name_len && (end[0] == '*'))) {
                 /* adjust out size (it can even decrease in some strange cases) */
                 *out_size += (strlen(prev_mod->name) - name_len) + 1;
                 *out = ly_realloc(*out, *out_size);
