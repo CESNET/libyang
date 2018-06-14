@@ -4454,7 +4454,7 @@ lys_make_implemented_r(struct lys_module *module, struct unres_schema *unres)
 
     for (i = 0; i < module->augment_size; i++) {
         /* apply augment */
-        if ((module->augment[i].flags & LYS_NOTAPPLIED && module->augment[i].target) && apply_aug(&module->augment[i], unres)) {
+        if ((module->augment[i].flags & LYS_NOTAPPLIED) && apply_aug(&module->augment[i], unres)) {
             return EXIT_FAILURE;
         }
     }
@@ -4472,7 +4472,7 @@ lys_make_implemented_r(struct lys_module *module, struct unres_schema *unres)
 
         for (j = 0; j < module->inc[i].submodule->augment_size; j++) {
             /* apply augment */
-            if ((module->inc[i].submodule->augment[j].flags & LYS_NOTAPPLIED && module->inc[i].submodule->augment[j].target) && apply_aug(&module->inc[i].submodule->augment[j], unres)) {
+            if ((module->inc[i].submodule->augment[j].flags & LYS_NOTAPPLIED) && apply_aug(&module->inc[i].submodule->augment[j], unres)) {
                 return EXIT_FAILURE;
             }
         }
