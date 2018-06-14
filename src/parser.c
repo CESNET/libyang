@@ -315,7 +315,7 @@ lyp_add_ietf_netconf_annotations(struct lys_module *mod)
     LY_CHECK_ERR_RETURN(!reallocated, LOGMEM(ctx), EXIT_FAILURE);
     mod->ext = reallocated;
     /* 1) edit-config's operation */
-    op = calloc(1, sizeof(struct lys_ext_instance_complex) + 5 * sizeof(void*) + sizeof(uint16_t));
+    op = calloc(1, (sizeof(struct lys_ext_instance_complex) - 1) + 5 * sizeof(void*) + sizeof(uint16_t));
     LY_CHECK_ERR_RETURN(!op, LOGMEM(ctx), EXIT_FAILURE);
     mod->ext[mod->ext_size] = (struct lys_ext_instance *)op;
     op->arg_value = lydict_insert(ctx, "operation", 9);
@@ -347,7 +347,7 @@ lyp_add_ietf_netconf_annotations(struct lys_module *mod)
     mod->ext_size++;
 
     /* 2) filter's type */
-    op = calloc(1, sizeof(struct lys_ext_instance_complex) + 5 * sizeof(void*) + sizeof(uint16_t));
+    op = calloc(1, (sizeof(struct lys_ext_instance_complex) - 1) + 5 * sizeof(void*) + sizeof(uint16_t));
     LY_CHECK_ERR_RETURN(!op, LOGMEM(ctx), EXIT_FAILURE);
     mod->ext[mod->ext_size] = (struct lys_ext_instance *)op;
     op->arg_value = lydict_insert(ctx, "type", 4);
@@ -387,7 +387,7 @@ lyp_add_ietf_netconf_annotations(struct lys_module *mod)
     mod->ext_size++;
 
     /* 3) filter's select */
-    op = calloc(1, sizeof(struct lys_ext_instance_complex) + 5 * sizeof(void*) + sizeof(uint16_t));
+    op = calloc(1, (sizeof(struct lys_ext_instance_complex) - 1) + 5 * sizeof(void*) + sizeof(uint16_t));
     LY_CHECK_ERR_RETURN(!op, LOGMEM(ctx), EXIT_FAILURE);
     mod->ext[mod->ext_size] = (struct lys_ext_instance *)op;
     op->arg_value = lydict_insert(ctx, "select", 6);

@@ -152,7 +152,7 @@ struct lyext_plugin_complex annotation = {
     .substmt = annotation_substmt,
 
     /* final size of the extension instance structure with the space for storing the substatements */
-    .instance_size = sizeof(struct lys_ext_instance_complex) + 5 * sizeof(void*) + sizeof(uint16_t)
+    .instance_size = (sizeof(struct lys_ext_instance_complex) - 1) + 5 * sizeof(void*) + sizeof(uint16_t)
 };
 
 /**

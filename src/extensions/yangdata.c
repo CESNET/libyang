@@ -202,7 +202,7 @@ struct lyext_plugin_complex yang_data = {
     .substmt = yang_data_substmt,
 
     /* final size of the extension instance structure with the space for storing the substatements */
-    .instance_size = sizeof(struct lys_ext_instance_complex) + 2 * sizeof(void*)
+    .instance_size = (sizeof(struct lys_ext_instance_complex) - 1) + 2 * sizeof(void*)
 };
 
 /**

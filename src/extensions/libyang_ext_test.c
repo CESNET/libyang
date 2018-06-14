@@ -183,7 +183,7 @@ struct lyext_plugin_complex libyang_ext_test_p = {
     .substmt = libyang_ext_test_substmt,
 
     /* final size of the extension instance structure with the space for storing the substatements */
-    .instance_size = sizeof(struct lys_ext_instance_complex) + 34 * sizeof(void*) + 6 * sizeof(uint8_t)
+    .instance_size = (sizeof(struct lys_ext_instance_complex) - 1) + 34 * sizeof(void*) + 6 * sizeof(uint8_t)
 };
 
 /**
@@ -200,7 +200,7 @@ struct lyext_plugin_complex libyang_ext_test_arrays_p = {
     .substmt = libyang_ext_test_substmt_arrays,
 
     /* final size of the extension instance structure with the space for storing the substatements */
-    .instance_size = sizeof(struct lys_ext_instance_complex) + 36 * sizeof(void*)
+    .instance_size = (sizeof(struct lys_ext_instance_complex) - 1) + 36 * sizeof(void*)
 };
 
 /**
@@ -217,7 +217,7 @@ struct lyext_plugin_complex libyang_ext_test_mand_p = {
     .substmt = libyang_ext_test_substmt_mand,
 
     /* final size of the extension instance structure with the space for storing the substatements */
-    .instance_size = sizeof(struct lys_ext_instance_complex) + 5 * sizeof(void*) + sizeof(uint8_t) + sizeof(uint16_t)
+    .instance_size = (sizeof(struct lys_ext_instance_complex) - 1) + 5 * sizeof(void*) + sizeof(uint8_t) + sizeof(uint16_t)
 };
 
 /**
