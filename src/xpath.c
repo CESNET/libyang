@@ -1088,6 +1088,31 @@ set_snode_insert_node(struct lyxp_set *set, const struct lys_node *node, enum ly
     return ret;
 }
 
+/**
+ * @brief Replace a node in a set with another. Context position aware.
+ *
+ * @param[in] set Set to use.
+ * @param[in] node Node to insert to \p set.
+ * @param[in] pos Sort position of \p node. If left 0, it is filled just before sorting.
+ * @param[in] node_type Node type of \p node.
+ * @param[in] idx Index in \p set of the node to replace.
+ */
+static void
+set_replace_node(struct lyxp_set *set, const struct lyd_node *node, uint32_t pos, enum lyxp_node_type node_type, uint32_t idx)
+{
+    assert(set && (idx < set->used));
+
+#ifdef LY_ENABLED_CACHE
+    set_remove_node_hash(set, set->val.nodes[idx].node, set->val.nodes[idx].type);
+#endif
+    set->val.nodes[idx].node = (struct lyd_node *)node;
+    set->val.nodes[idx].type = node_type;
+    set->val.nodes[idx].pos = pos;
+#ifdef LY_ENABLED_CACHE
+    set_insert_node_hash(set, set->val.nodes[idx].node, set->val.nodes[idx].type);
+#endif
+}
+
 static uint32_t
 set_snode_new_in_ctx(struct lyxp_set *set)
 {
@@ -5240,34 +5265,6 @@ moveto_snode_check(const struct lys_node *node, enum lyxp_node_type root_type, c
 }
 
 /**
- * @brief Add \p node into \p set as a part of NameTest processing.
- *
- * @param[in] node Node to add.
- * @param[in] pos Node sort position.
- * @param[in,out] set Set to use.
- * @param[in] i Desired index of \p node in \p set.
- * @param[in,out] replaced Whether the node in \p set has already been replaced.
- */
-static void
-moveto_node_add(struct lyxp_set *set, struct lyd_node *node, uint32_t pos, uint32_t i, int *replaced)
-{
-    if (!(*replaced)) {
-#ifdef LY_ENABLED_CACHE
-        set_remove_node_hash(set, set->val.nodes[i].node, set->val.nodes[i].type);
-#endif
-        set->val.nodes[i].node = node;
-        set->val.nodes[i].type = LYXP_NODE_ELEM;
-        set->val.nodes[i].pos = pos;
-        *replaced = 1;
-#ifdef LY_ENABLED_CACHE
-        set_insert_node_hash(set, set->val.nodes[i].node, set->val.nodes[i].type);
-#endif
-    } else {
-        set_insert_node(set, node, pos, LYXP_NODE_ELEM, i);
-    }
-}
-
-/**
  * @brief Move context \p set to a node. Handles '/' and '*', 'NAME', 'PREFIX:*', or 'PREFIX:NAME'.
  *        Result is LYXP_SET_NODE_SET (or LYXP_SET_EMPTY). Context position aware.
  *
@@ -5334,7 +5331,12 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
                 ret = moveto_node_check(sub, root_type, name_dict, moveto_mod, options);
                 if (!ret) {
                     /* pos filled later */
-                    moveto_node_add(set, sub, 0, i, &replaced);
+                    if (!replaced) {
+                        set_replace_node(set, sub, 0, LYXP_NODE_ELEM, i);
+                        replaced = 1;
+                    } else {
+                        set_insert_node(set, sub, 0, LYXP_NODE_ELEM, i);
+                    }
                     ++i;
                 } else if (ret == EXIT_FAILURE) {
                     lydict_remove(ctx, name_dict);
@@ -5349,7 +5351,12 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
             LY_TREE_FOR(set->val.nodes[i].node->child, sub) {
                 ret = moveto_node_check(sub, root_type, name_dict, moveto_mod, options);
                 if (!ret) {
-                    moveto_node_add(set, sub, 0, i, &replaced);
+                    if (!replaced) {
+                        set_replace_node(set, sub, 0, LYXP_NODE_ELEM, i);
+                        replaced = 1;
+                    } else {
+                        set_insert_node(set, sub, 0, LYXP_NODE_ELEM, i);
+                    }
                     ++i;
                 } else if (ret == EXIT_FAILURE) {
                     lydict_remove(ctx, name_dict);
@@ -6277,10 +6284,7 @@ moveto_parent(struct lyxp_set *set, struct lyd_node *cur_node, int all_desc, int
         if (set_dup_node_check(set, new_node, new_type, -1)) {
             set_remove_node(set, i);
         } else {
-            set->val.nodes[i].node = new_node;
-            set->val.nodes[i].type = new_type;
-            set->val.nodes[i].pos = 0;
-
+            set_replace_node(set, new_node, 0, new_type, i);
             ++i;
         }
     }
