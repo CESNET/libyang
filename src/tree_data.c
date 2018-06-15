@@ -4763,7 +4763,7 @@ lyd_schema_sort(struct lyd_node *sibling, int recursive)
     if (recursive) {
         LY_TREE_FOR(sibling, node) {
             if ((node->schema->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_RPC | LYS_ACTION | LYS_NOTIF))
-                    && lyd_schema_sort(node->child, recursive)) {
+                    && node->child && lyd_schema_sort(node->child, recursive)) {
                 return -1;
             }
         }
