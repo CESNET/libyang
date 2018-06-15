@@ -5038,7 +5038,7 @@ xpath_true(struct lyxp_set **UNUSED(args), uint16_t UNUSED(arg_count), struct ly
  */
 static struct lys_module *
 moveto_resolve_model(const char *mod_name_ns, uint16_t mod_nam_ns_len, struct ly_ctx *ctx, struct lys_node *cur_snode,
-                     int is_name)
+                     int is_name, int import_and_disabled_model)
 {
     uint16_t i;
     const char *str;
@@ -5070,7 +5070,7 @@ moveto_resolve_model(const char *mod_name_ns, uint16_t mod_nam_ns_len, struct ly
     }
 
     for (i = 0; i < ctx->models.used; ++i) {
-        if (!ctx->models.list[i]->implemented || ctx->models.list[i]->disabled) {
+        if (!import_and_disabled_model && (!ctx->models.list[i]->implemented || ctx->models.list[i]->disabled)) {
             /* skip not implemented or disabled modules */
             continue;
         }
@@ -5305,7 +5305,7 @@ moveto_node(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
     if ((ptr = strnchr(qname, ':', qname_len))) {
         /* specific module */
         pref_len = ptr - qname;
-        moveto_mod = moveto_resolve_model(qname, pref_len, ctx, NULL, 1);
+        moveto_mod = moveto_resolve_model(qname, pref_len, ctx, NULL, 1, 0);
         if (!moveto_mod) {
             LOGVAL(ctx, LYE_XPATH_INMOD, LY_VLOG_NONE, NULL, pref_len, qname);
             return -1;
@@ -5402,7 +5402,7 @@ moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, const char *qname,
     /* prefix */
     if ((ptr = strnchr(qname, ':', qname_len))) {
         pref_len = ptr - qname;
-        moveto_mod = moveto_resolve_model(qname, pref_len, ctx, cur_node, 1);
+        moveto_mod = moveto_resolve_model(qname, pref_len, ctx, cur_node, 1, 1);
         if (!moveto_mod) {
             LOGVAL(ctx, LYE_XPATH_INMOD, LY_VLOG_NONE, NULL, pref_len, qname);
             return -1;
@@ -5525,7 +5525,7 @@ moveto_node_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
     /* prefix */
     if (strnchr(qname, ':', qname_len) && cur_node) {
         pref_len = strnchr(qname, ':', qname_len) - qname;
-        moveto_mod = moveto_resolve_model(qname, pref_len, cur_node->schema->module->ctx, NULL, 1);
+        moveto_mod = moveto_resolve_model(qname, pref_len, cur_node->schema->module->ctx, NULL, 1, 0);
         if (!moveto_mod) {
             LOGVAL(cur_node->schema->module->ctx, LYE_XPATH_INMOD, LY_VLOG_NONE, NULL, pref_len, qname);
             return -1;
@@ -5661,7 +5661,7 @@ moveto_snode_alldesc(struct lyxp_set *set, struct lys_node *cur_node, const char
     /* prefix */
     if (strnchr(qname, ':', qname_len)) {
         pref_len = strnchr(qname, ':', qname_len) - qname;
-        moveto_mod = moveto_resolve_model(qname, pref_len, ctx, cur_node, 1);
+        moveto_mod = moveto_resolve_model(qname, pref_len, ctx, cur_node, 1, 1);
         if (!moveto_mod) {
             LOGVAL(ctx, LYE_XPATH_INMOD, LY_VLOG_NONE, NULL, pref_len, qname);
             return -1;
@@ -5809,7 +5809,7 @@ moveto_attr(struct lyxp_set *set, struct lyd_node *cur_node, const char *qname, 
     /* prefix */
     if (strnchr(qname, ':', qname_len) && cur_node) {
         pref_len = strnchr(qname, ':', qname_len) - qname;
-        moveto_mod = moveto_resolve_model(qname, pref_len, cur_node->schema->module->ctx, NULL, 1);
+        moveto_mod = moveto_resolve_model(qname, pref_len, cur_node->schema->module->ctx, NULL, 1, 0);
         if (!moveto_mod) {
             LOGVAL(cur_node->schema->module->ctx, LYE_XPATH_INMOD, LY_VLOG_NONE, NULL, pref_len, qname);
             return -1;
@@ -5942,7 +5942,7 @@ moveto_attr_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
     /* prefix */
     if (strnchr(qname, ':', qname_len)) {
         pref_len = strnchr(qname, ':', qname_len) - qname;
-        moveto_mod = moveto_resolve_model(qname, pref_len, cur_node->schema->module->ctx, NULL, 1);
+        moveto_mod = moveto_resolve_model(qname, pref_len, cur_node->schema->module->ctx, NULL, 1, 0);
         if (!moveto_mod) {
             LOGVAL(cur_node->schema->module->ctx, LYE_XPATH_INMOD, LY_VLOG_NONE, NULL, pref_len, qname);
             return -1;
