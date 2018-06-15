@@ -4478,7 +4478,7 @@ lys_make_implemented_r(struct lys_module *module, struct unres_schema *unres)
         for (j = 0; j < module->inc[i].submodule->augment_size; j++) {
 
             /* make target module implemented if it was not */
-            assert(module->augment[i].target);
+            assert(module->inc[i].submodule->augment[j].target);
             target_module = lys_node_module(module->inc[i].submodule->augment[j].target);
             if (!target_module->implemented) {
                 target_module->implemented = 1;
