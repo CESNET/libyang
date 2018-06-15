@@ -4013,16 +4013,6 @@ apply_aug(struct lys_node_augment *augment, struct unres_schema *unres)
         goto success;
     }
 
-    /* check that all the modules are implemented */
-    for (parent = augment->target; parent; parent = lys_parent(parent)) {
-        if (!lys_node_module(parent)->implemented) {
-            lys_node_module(parent)->implemented = 1;
-            if (unres_schema_add_node(lys_node_module(parent), unres, NULL, UNRES_MOD_IMPLEMENT, NULL) == -1) {
-                return -1;
-            }
-        }
-    }
-
     /* reconnect augmenting data into the target - add them to the target child list */
     if (augment->target->child) {
         child = augment->target->child->prev;
@@ -4150,6 +4140,7 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module,
                     lys_node_addchild(parent, NULL, dev->orig_node);
                     if (reapply) {
                         /* augment is supposed to be applied, so fix pointers in target and the status of the original node */
+                        assert(lys_node_module(parent)->implemented);
                         parent->flags |= LYS_NOTAPPLIED; /* allow apply_aug() */
                         apply_aug((struct lys_node_augment *)parent, unres);
                     }
@@ -4360,6 +4351,8 @@ lys_sub_module_apply_devs_augs(struct lys_module *module)
     uint8_t u, v;
     struct unres_schema *unres;
 
+    assert(module->implemented);
+
     unres = calloc(1, sizeof *unres);
     LY_CHECK_ERR_RETURN(!unres, LOGMEM(module->ctx), );
 
@@ -4436,6 +4429,7 @@ lys_make_implemented_r(struct lys_module *module, struct unres_schema *unres)
 {
     struct ly_ctx *ctx;
     struct lys_node *root, *next, *node;
+    struct lys_module *target_module;
     uint16_t i, j, k;
 
     assert(module->implemented);
@@ -4453,6 +4447,17 @@ lys_make_implemented_r(struct lys_module *module, struct unres_schema *unres)
     }
 
     for (i = 0; i < module->augment_size; i++) {
+
+        /* make target module implemented if was not */
+        assert(module->augment[i].target);
+        target_module = lys_node_module(module->augment[i].target);
+        if (!target_module->implemented) {
+            target_module->implemented = 1;
+            if (unres_schema_add_node(target_module, unres, NULL, UNRES_MOD_IMPLEMENT, NULL) == -1) {
+                return -1;
+            }
+        }
+
         /* apply augment */
         if ((module->augment[i].flags & LYS_NOTAPPLIED) && apply_aug(&module->augment[i], unres)) {
             return EXIT_FAILURE;
@@ -4471,6 +4476,17 @@ lys_make_implemented_r(struct lys_module *module, struct unres_schema *unres)
         module->inc[i].submodule->implemented = 1;
 
         for (j = 0; j < module->inc[i].submodule->augment_size; j++) {
+
+            /* make target module implemented if it was not */
+            assert(module->augment[i].target);
+            target_module = lys_node_module(module->inc[i].submodule->augment[j].target);
+            if (!target_module->implemented) {
+                target_module->implemented = 1;
+                if (unres_schema_add_node(target_module, unres, NULL, UNRES_MOD_IMPLEMENT, NULL) == -1) {
+                    return -1;
+                }
+            }
+
             /* apply augment */
             if ((module->inc[i].submodule->augment[j].flags & LYS_NOTAPPLIED) && apply_aug(&module->inc[i].submodule->augment[j], unres)) {
                 return EXIT_FAILURE;

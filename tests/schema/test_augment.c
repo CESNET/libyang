@@ -407,6 +407,37 @@ test_import_augment_leafref_implemented(void **state)
 }
 
 static void
+test_import_augment_leafref_imported(void **state)
+{
+    int length;
+    char *path = *state;
+    const struct lys_module *module;
+
+    ly_ctx_set_searchdir(ctx, path);
+    length = strlen(path);
+    if (!strcmp(path, SCHEMA_FOLDER_YIN)) {
+        strcpy(path + length, "/installme.yin");
+        if (!(module = lys_parse_path(ctx, path, LYS_IN_YIN))) {
+            fail();
+        }
+    } else {
+        strcpy(path + length, "/installme.yang");
+        if (!(module = lys_parse_path(ctx, path, LYS_IN_YANG))) {
+            fail();
+        }
+    }
+
+    module = ly_ctx_get_module(ctx, "installme", NULL, 0);
+    assert_true(module && module->implemented);
+
+    module = ly_ctx_get_module(ctx, "aug", NULL, 0);
+    assert_true(module && !module->implemented);
+
+    module = ly_ctx_get_module(ctx, "base", NULL, 0);
+    assert_true(module && !module->implemented);
+}
+
+static void
 compare_output(void **state)
 {
     int i;
@@ -453,6 +484,8 @@ main(void)
         cmocka_unit_test_setup_teardown(test_leafref_w_feature3, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_imp_aug, setup_ctx_yin, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_import_augment_leafref_implemented, setup_ctx_yin, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_import_augment_leafref_imported, setup_ctx_yin, teardown_ctx),
+
         cmocka_unit_test_setup_teardown(test_target_include_submodule, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_leafref, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_target_augment, setup_ctx_yang, teardown_ctx),
@@ -463,6 +496,8 @@ main(void)
         cmocka_unit_test_setup_teardown(test_leafref_w_feature3, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_imp_aug, setup_ctx_yang, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_import_augment_leafref_implemented, setup_ctx_yang, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_import_augment_leafref_imported, setup_ctx_yang, teardown_ctx),
+
         cmocka_unit_test_teardown(compare_output, teardown_output),
     };
 
