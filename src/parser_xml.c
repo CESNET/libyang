@@ -177,8 +177,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                             }
                             /* 2) now, the data node will be top-level, there are only non-data schema nodes */
                             if (!target) {
-                                while ((schema = (struct lys_node *) lys_getnext(schema, (struct lys_node *) aug, NULL,
-                                                                                 0))) {
+                                while ((schema = (struct lys_node *) lys_getnext(schema, (struct lys_node *) aug, NULL, 0))) {
                                     /* 3) alright, even the name matches, we found our schema node */
                                     if (ly_strequal(schema->name, xml->name, 1)) {
                                         break;
