@@ -1265,7 +1265,9 @@ checkdependency:
 
     /* re-apply the deviations and augments */
     for (v = 0; v < mods->number; v++) {
-        lys_sub_module_apply_devs_augs((struct lys_module *)mods->set.g[v]);
+        if (((struct lys_module *)mods->set.g[v])->implemented) {
+            lys_sub_module_apply_devs_augs((struct lys_module *)mods->set.g[v]);
+        }
     }
 
     /* free the sets */
