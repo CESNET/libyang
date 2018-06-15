@@ -857,7 +857,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
     if (!(*parent)) {
         /* starting in root */
         /* get the proper schema */
-        module = ly_ctx_get_module(ctx, prefix, NULL, 1);
+        module = ly_ctx_get_module(ctx, prefix, NULL, 0);
         if (ctx->data_clb) {
             if (!module) {
                 module = ctx->data_clb(ctx, prefix, NULL, 0, ctx->data_clb_data);
