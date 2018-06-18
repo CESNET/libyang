@@ -92,6 +92,7 @@ date_and_time_store_clb(const char *UNUSED(type_name), const char *value_str, ly
 {
     struct tm tm, tm2;
     uint32_t i, j, k;
+    int ret;
 
     /* \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[\+\-]\d{2}:\d{2})
      * 2018-03-21T09:11:05(.5)(Z|+02:00) */
@@ -104,13 +105,13 @@ date_and_time_store_clb(const char *UNUSED(type_name), const char *value_str, ly
     tm.tm_year -= 1900;
     for (j = i + 4; i < j; ++i) {
         if (!isdigit(value_str[i])) {
-            asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", a digit expected.", value_str[i], i, value_str);
-            return 1;
+            ret = asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", a digit expected.", value_str[i], i, value_str);
+            goto error;
         }
     }
     if (value_str[i] != '-') {
-        asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", '-' expected.", value_str[i], i, value_str);
-        return 1;
+        ret = asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", '-' expected.", value_str[i], i, value_str);
+        goto error;
     }
     ++i;
 
@@ -119,13 +120,13 @@ date_and_time_store_clb(const char *UNUSED(type_name), const char *value_str, ly
     tm.tm_mon -= 1;
     for (j = i + 2; i < j; ++i) {
         if (!isdigit(value_str[i])) {
-            asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", a digit expected.", value_str[i], i, value_str);
-            return 1;
+            ret = asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", a digit expected.", value_str[i], i, value_str);
+            goto error;
         }
     }
     if (value_str[i] != '-') {
-        asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", '-' expected.", value_str[i], i, value_str);
-        return 1;
+        ret = asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", '-' expected.", value_str[i], i, value_str);
+        goto error;
     }
     ++i;
 
@@ -133,13 +134,13 @@ date_and_time_store_clb(const char *UNUSED(type_name), const char *value_str, ly
     tm.tm_mday = atoi(value_str + i);
     for (j = i + 2; i < j; ++i) {
         if (!isdigit(value_str[i])) {
-            asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", a digit expected.", value_str[i], i, value_str);
-            return 1;
+            ret = asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", a digit expected.", value_str[i], i, value_str);
+            goto error;
         }
     }
     if (value_str[i] != 'T') {
-        asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", 'T' expected.", value_str[i], i, value_str);
-        return 1;
+        ret = asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", 'T' expected.", value_str[i], i, value_str);
+        goto error;
     }
     ++i;
 
@@ -147,13 +148,13 @@ date_and_time_store_clb(const char *UNUSED(type_name), const char *value_str, ly
     tm.tm_hour = atoi(value_str + i);
     for (j = i + 2; i < j; ++i) {
         if (!isdigit(value_str[i])) {
-            asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", a digit expected.", value_str[i], i, value_str);
-            return 1;
+            ret = asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", a digit expected.", value_str[i], i, value_str);
+            goto error;
         }
     }
     if (value_str[i] != ':') {
-        asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", ':' expected.", value_str[i], i, value_str);
-        return 1;
+        ret = asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", ':' expected.", value_str[i], i, value_str);
+        goto error;
     }
     ++i;
 
@@ -161,13 +162,13 @@ date_and_time_store_clb(const char *UNUSED(type_name), const char *value_str, ly
     tm.tm_min = atoi(value_str + i);
     for (j = i + 2; i < j; ++i) {
         if (!isdigit(value_str[i])) {
-            asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", a digit expected.", value_str[i], i, value_str);
-            return 1;
+            ret = asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", a digit expected.", value_str[i], i, value_str);
+            goto error;
         }
     }
     if (value_str[i] != ':') {
-        asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", ':' expected.", value_str[i], i, value_str);
-        return 1;
+        ret = asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", ':' expected.", value_str[i], i, value_str);
+        goto error;
     }
     ++i;
 
@@ -175,21 +176,21 @@ date_and_time_store_clb(const char *UNUSED(type_name), const char *value_str, ly
     tm.tm_sec = atoi(value_str + i);
     for (j = i + 2; i < j; ++i) {
         if (!isdigit(value_str[i])) {
-            asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", a digit expected.", value_str[i], i, value_str);
-            return 1;
+            ret = asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", a digit expected.", value_str[i], i, value_str);
+            goto error;
         }
     }
     if ((value_str[i] != '.') && (value_str[i] != 'Z') && (value_str[i] != '+') && (value_str[i] != '-')) {
-        asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", '.', 'Z', '+', or '-' expected.",
-                 value_str[i], i, value_str);
-        return 1;
+        ret = asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", '.', 'Z', '+', or '-' expected.",
+                       value_str[i], i, value_str);
+        goto error;
     }
 
     /* validate using mktime() */
     tm2 = tm;
     if (mktime(&tm) == -1) {
-        asprintf(err_msg, "Checking date-and-time value \"%s\" failed (%s).", value_str, strerror(errno));
-        return 1;
+        ret = asprintf(err_msg, "Checking date-and-time value \"%s\" failed (%s).", value_str, strerror(errno));
+        goto error;
     }
     /* we now have correctly filled the remaining values, use them */
     memcpy(((char *)&tm2) + (6 * sizeof(int)), ((char *)&tm) + (6 * sizeof(int)), sizeof(struct tm) - (6 * sizeof(int)));
@@ -197,22 +198,22 @@ date_and_time_store_clb(const char *UNUSED(type_name), const char *value_str, ly
     tm = tm2;
     /* let mktime() correct date & time with having the other values correct now */
     if (mktime(&tm) == -1) {
-        asprintf(err_msg, "Checking date-and-time value \"%s\" failed (%s).", value_str, strerror(errno));
-        return 1;
+        ret = asprintf(err_msg, "Checking date-and-time value \"%s\" failed (%s).", value_str, strerror(errno));
+        goto error;
     }
     /* detect changes in the filled values */
     if (memcmp(&tm, &tm2, 6 * sizeof(int))) {
-        asprintf(err_msg, "Checking date-and-time value \"%s\" failed, canonical date and time is \"%04d-%02d-%02dT%02d:%02d:%02d\".",
-                 value_str, tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
-        return 1;
+        ret = asprintf(err_msg, "Checking date-and-time value \"%s\" failed, canonical date and time is \"%04d-%02d-%02dT%02d:%02d:%02d\".",
+                       value_str, tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+        goto error;
     }
 
     /* tenth of a second */
     if (value_str[i] == '.') {
         ++i;
         if (!isdigit(value_str[i])) {
-            asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", a digit expected.", value_str[i], i, value_str);
-            return 1;
+            ret = asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", a digit expected.", value_str[i], i, value_str);
+            goto error;
         }
         ++i;
     }
@@ -231,8 +232,8 @@ date_and_time_store_clb(const char *UNUSED(type_name), const char *value_str, ly
             }
         }
         if (j == k) {
-            asprintf(err_msg, "Invalid timezone \"%.6s\" in date-and-time value \"%s\".", value_str + i, value_str);
-            return 1;
+            ret = asprintf(err_msg, "Invalid timezone \"%.6s\" in date-and-time value \"%s\".", value_str + i, value_str);
+            goto error;
         }
         i += 5;
         break;
@@ -244,12 +245,18 @@ date_and_time_store_clb(const char *UNUSED(type_name), const char *value_str, ly
     /* no other characters expected */
     ++i;
     if (value_str[i]) {
-        asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", no characters expected.", value_str[i], i, value_str);
-        return 1;
+        ret = asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", no characters expected.", value_str[i], i, value_str);
+        goto error;
     }
 
     /* validation succeeded and we do not want to change how it is stored */
     return 0;
+
+error:
+    if (ret == -1) {
+        err_msg = NULL;
+    }
+    return 1;
 }
 
 /* Name of this array must match the file name! */
