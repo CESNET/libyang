@@ -26,6 +26,7 @@
 #include <cmocka.h>
 
 #include "libyang.h"
+#include <context.h>
 #include "tests/config.h"
 
 #define SCHEMA_FOLDER_YIN TESTS_DIR"/schema/yin/conformance"
@@ -546,6 +547,43 @@ test_revision_date_yang(void **state)
     assert_ptr_not_equal(lys_parse_mem(ctx, yang6, LYS_IN_YANG), NULL);
 }
 
+
+const struct lys_module *
+_my_data_clb(struct ly_ctx *ctx, const char *name, const char *ns, int options, void *user_data)
+{
+    char filepath[256] = {0};
+    const struct lys_module *ly_module = NULL;
+
+    fprintf(stderr, "%s:%i %s() name:%s ns:%s \n", __FILE__, __LINE__, __FUNCTION__, name, ns);
+
+    snprintf(filepath, sizeof(filepath), "%s/%s.yang", SCHEMA_FOLDER_YANG, name);
+    ly_module = lys_parse_path(ctx, filepath, LYS_IN_YANG);
+    if ( !ly_module ) {
+        fprintf(stderr, "%s:%i %s() lys_parse_path(%s) failed (%d %p)\n", __FILE__, __LINE__, __FUNCTION__, filepath, options, user_data);
+    }
+
+    return ly_module;
+}
+
+static void
+test_issue_already_implemented(void **state) {
+    struct ly_ctx *ctx = *state;
+    const struct lys_module *a = NULL;
+    char* search_paths[] = {SCHEMA_FOLDER_YANG, NULL};
+
+    ctx->models.search_paths = search_paths;
+    ctx->data_clb = _my_data_clb;
+
+    a = lys_parse_path(ctx, SCHEMA_FOLDER_YANG "/ident-aug-must-issue-apst.yang", LYS_IN_YANG);
+
+    ctx->data_clb = NULL;
+    ctx->models.search_paths = NULL;
+
+    assert_ptr_not_equal(a, NULL);
+
+}
+
+
 int
 main(void)
 {
@@ -558,6 +596,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_implemented_info_yang, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_revision_date_yin, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_revision_date_yang, setup_ctx, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_issue_already_implemented, setup_ctx, teardown_ctx)
     };
 
     return cmocka_run_group_tests(cmut, NULL, NULL);
