@@ -2229,7 +2229,7 @@ error:
 static struct lys_node *
 lys_get_schema_inctx(struct lys_node *schema, struct ly_ctx *ctx)
 {
-    const struct lys_module *mod, *trg_mod;
+    const struct lys_module *mod, *trg_mod = NULL;
     struct lys_node *parent, *first_sibling = NULL, *iter = NULL;
     struct ly_set *parents;
     unsigned int index;
@@ -2279,6 +2279,11 @@ lys_get_schema_inctx(struct lys_node *schema, struct ly_ctx *ctx)
             /* we have match */
             break;
         }
+    }
+    /* try data callback */
+    if (!mod && trg_mod && ctx->data_clb) {
+        LOGDBG(LY_LDGYANG, "Attempting to load '%s' into context using callback ...", trg_mod->name);
+        mod = ctx->data_clb(ctx, trg_mod->name, NULL, 0, ctx->data_clb_data);
     }
     if (!mod) {
         ly_set_free(parents);
