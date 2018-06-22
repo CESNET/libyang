@@ -490,6 +490,63 @@ test_merge_to_ctx(void **state)
 }
 
 
+const struct lys_module *
+test_load_module_clb(struct ly_ctx *ctx, const char *name, const char *ns, int options, void *user_data)
+{
+    return lys_parse_mem(ctx, (char *) user_data, LYS_IN_YANG);
+}
+
+static void
+test_merge_to_ctx_with_missing_schema(void **state)
+{
+    struct state *st = (*state);
+    const char *sch_x = "module x {"
+                        "  namespace urn:x;"
+                        "  prefix x;"
+                        "  leaf x { type string; }}";
+    const char *src = "<x xmlns=\"urn:x\">x</x>";
+    const char *sch_y = "module y {"
+                        "  namespace urn:y;"
+                        "  prefix y;"
+                        "  leaf y { type string; }}";
+    const char *trg = "<y xmlns=\"urn:y\">y</y>";
+    const char *result = "<y xmlns=\"urn:y\">y</y><x xmlns=\"urn:x\">x</x>";
+    char *printed = NULL;
+
+    /* case 4: src contains module X schema and data, trg contains Y schema and data.
+       Verify that X is loaded into Y when merging X into Y. */
+    assert_ptr_not_equal(lys_parse_mem(st->ctx1, sch_x, LYS_IN_YANG), NULL);
+    assert_ptr_not_equal(lys_parse_mem(st->ctx2, sch_y, LYS_IN_YANG), NULL);
+
+    st->source = lyd_parse_mem(st->ctx1, src, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->source, NULL);
+
+    st->target = lyd_parse_mem(st->ctx2, trg, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->target, NULL);
+
+    ly_ctx_set_module_data_clb(st->ctx2, test_load_module_clb, sch_x);
+
+    assert_int_equal(lyd_merge(st->target, st->source, 0), 0);
+
+    assert_ptr_equal(st->target->schema->module->ctx, st->ctx2);
+    /* check the merged data - leaf x */
+    assert_ptr_not_equal(st->target->next, NULL);
+    assert_ptr_equal(st->target->next->schema->module->ctx, st->ctx2);
+
+    assert_ptr_not_equal(st->source, st->target->next);
+
+    /* print the result after freeing the ctx1 */
+    lyd_free(st->source);
+    ly_ctx_destroy(st->ctx1, NULL);
+    st->source = NULL;
+    st->ctx1 = NULL;
+
+    lyd_print_mem(&printed, st->target, LYD_XML, LYP_WITHSIBLINGS);
+    assert_string_equal(printed, result);
+    free(printed);
+}
+
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -501,7 +558,9 @@ int main(void)
                     cmocka_unit_test_setup_teardown(test_merge_dflt2, setup_dflt, teardown_dflt),
                     cmocka_unit_test_setup_teardown(test_merge_to_trgctx1, setup_mctx, teardown_mctx),
                     cmocka_unit_test_setup_teardown(test_merge_to_trgctx2, setup_mctx, teardown_mctx),
-                    cmocka_unit_test_setup_teardown(test_merge_to_ctx, setup_mctx, teardown_mctx),};
+                    cmocka_unit_test_setup_teardown(test_merge_to_ctx, setup_mctx, teardown_mctx),
+                    cmocka_unit_test_setup_teardown(test_merge_to_ctx_with_missing_schema, setup_mctx, teardown_mctx),
+                    };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
