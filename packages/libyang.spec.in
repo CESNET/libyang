@@ -107,6 +107,7 @@ make DESTDIR=%{buildroot} install
 %defattr(-,root,root)
 %{_libdir}/libyang-cpp.so
 %{_includedir}/libyang/*.hpp
+%{_libdir}/pkgconfig/libyang-cpp.pc
 %dir %{_includedir}/libyang/
 
 %files -n python3-yang@PACKAGE_PART_NAME@
