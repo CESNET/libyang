@@ -636,7 +636,7 @@ xml_print_data(struct lyout *out, const struct lyd_node *root, int options)
         }
 
         if (node) {
-            if (node->child) {
+            if (!(node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && node->child) {
                 for (parent = lys_parent(node->child->schema); parent && (parent->nodetype == LYS_USES); parent = lys_parent(parent));
             }
             if (parent && (parent->nodetype == LYS_OUTPUT)) {
