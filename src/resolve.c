@@ -5949,6 +5949,10 @@ resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres
      *       unresolved uses. The grouping cannot be used unless this counter is decreased back to 0. To remember
      *       that the uses already increased grouping's counter, the LYS_USESGRP flag is used. */
     for (par_grp = lys_parent((struct lys_node *)uses); par_grp && (par_grp->nodetype != LYS_GROUPING); par_grp = lys_parent(par_grp));
+    if (par_grp && ly_strequal(par_grp->name, uses->name, 1)) {
+        LOGVAL(ctx, LYE_INRESOLV, LY_VLOG_LYS, uses, "uses", uses->name);
+        return -1;
+    }
 
     if (!uses->grp) {
         rc = resolve_uses_schema_nodeid(uses->name, (const struct lys_node *)uses, (const struct lys_node_grp **)&uses->grp);
@@ -5982,6 +5986,7 @@ resolve_unres_schema_uses(struct lys_node_uses *uses, struct unres_schema *unres
             /* instantiate grouping only when it is completely resolved */
             uses->grp = NULL;
         }
+        LOGVAL(ctx, LYE_INRESOLV, LY_VLOG_LYS, uses, "uses", uses->name);
         return EXIT_FAILURE;
     }
 
