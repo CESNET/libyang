@@ -179,6 +179,10 @@ struct lyd_node {
                                           node in the list. */
     struct lyd_node *parent;         /**< pointer to the parent node, NULL in case of root node */
 
+#ifdef LY_ENABLED_LYD_PRIV
+    void *priv;                      /**< private user data, not used by libyang */
+#endif
+
 #ifdef LY_ENABLED_CACHE
     uint32_t hash;                   /**< hash of this particular node (module name + schema name + key string values if list) */
     struct hash_table *ht;           /**< hash table with all the direct children (except keys for a list, lists without keys) */
@@ -216,6 +220,10 @@ struct lyd_node_leaf_list {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
     struct lyd_node *parent;         /**< pointer to the parent node, NULL in case of root node */
+
+#ifdef LY_ENABLED_LYD_PRIV
+    void *priv;                      /**< private user data, not used by libyang */
+#endif
 
 #ifdef LY_ENABLED_CACHE
     uint32_t hash;                   /**< hash of this particular node (module name + schema name + string value if leaf-list) */
@@ -262,6 +270,10 @@ struct lyd_node_anydata {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
     struct lyd_node *parent;         /**< pointer to the parent node, NULL in case of root node */
+
+#ifdef LY_ENABLED_LYD_PRIV
+    void *priv;                      /**< private user data, not used by libyang */
+#endif
 
 #ifdef LY_ENABLED_CACHE
     uint32_t hash;                   /**< hash of this particular node (module name + schema name) */
@@ -1293,6 +1305,21 @@ int lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count),
  * @return Closest double equivalent to the decimal64 value.
  */
 double lyd_dec64_to_double(const struct lyd_node *node);
+
+#ifdef LY_ENABLED_LYD_PRIV
+
+/**
+ * @brief Set a schema private pointer to a user pointer.
+ *
+ * @param[in] node Data node, whose private field will be assigned.
+ * @param[in] priv Arbitrary user-specified pointer.
+ * @return Previous private object of the \p node (NULL if this is the first call on the \p node). Note, that
+ * the caller is in this case responsible (if it is necessary) for freeing the replaced private object. In case
+ * of invalid (NULL) \p node, NULL is returned and #ly_errno is set to #LY_EINVAL.
+ */
+void *lyd_set_private(const struct lyd_node *node, void *priv);
+
+#endif
 
 /**@} */
 

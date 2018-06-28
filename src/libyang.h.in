@@ -3,7 +3,7 @@
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief The main libyang public header.
  *
- * Copyright (c) 2015-2017 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -17,9 +17,20 @@
 
 #include <stdio.h>
 
-@ENABLE_CACHE_MACRO@
+/**
+ * @brief Whether to enable schema and data cache.
+ */
+#cmakedefine LY_ENABLED_CACHE
 
-@ENABLE_LATEST_REVISIONS_MACRO@
+/**
+ * @brief Whether to allow reusing latest revisions of schemas.
+ */
+#cmakedefine LY_ENABLED_LATEST_REVISIONS
+
+/**
+ * @brief Whether to add priv pointer to struct lyd_node.
+ */
+#cmakedefine LY_ENABLED_LYD_PRIV
 
 /**
  * @brief Compiler flag for packed data types.

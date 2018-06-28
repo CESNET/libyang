@@ -7251,3 +7251,23 @@ lyd_leaf_type(const struct lyd_node_leaf_list *leaf)
 
     return type;
 }
+
+#ifdef LY_ENABLED_LYD_PRIV
+
+API void *
+lyd_set_private(const struct lyd_node *node, void *priv)
+{
+    void *prev;
+
+    if (!node) {
+        LOGARG;
+        return NULL;
+    }
+
+    prev = node->priv;
+    ((struct lyd_node *)node)->priv = priv;
+
+    return prev;
+}
+
+#endif
