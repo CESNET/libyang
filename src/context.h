@@ -44,6 +44,9 @@ struct ly_ctx {
     void *imp_clb_data;
     ly_module_data_clb data_clb;
     void *data_clb_data;
+#ifdef LY_ENABLED_LYD_PRIV
+    void *(*priv_dup_clb)(const void *priv);
+#endif
     pthread_key_t errlist_key;
     uint8_t internal_module_count;
 };

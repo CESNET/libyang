@@ -5237,10 +5237,11 @@ lyd_dup_common(struct lyd_node *parent, struct lyd_node *new, const struct lyd_n
     } else {
         /* the context is the same so also the pointer into the schema will be the same */
         new->schema = orig->schema;
+        ctx = orig->schema->module->ctx;
     }
     new->attr = NULL;
     LY_TREE_FOR(orig->attr, attr) {
-        lyd_dup_attr(ctx ? ctx : orig->schema->module->ctx, new, attr);
+        lyd_dup_attr(ctx, new, attr);
     }
     new->next = NULL;
     new->prev = new;
@@ -5252,6 +5253,12 @@ lyd_dup_common(struct lyd_node *parent, struct lyd_node *new, const struct lyd_n
     /* just copy the hash, it will not change */
     if ((new->schema->nodetype != LYS_LIST) || lyd_list_has_keys(new)) {
         new->hash = orig->hash;
+    }
+#endif
+
+#ifdef LY_ENABLED_LYD_PRIV
+    if (ctx->priv_dup_clb) {
+        new->priv = ctx->priv_dup_clb(orig->priv);
     }
 #endif
 

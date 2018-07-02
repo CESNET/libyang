@@ -738,6 +738,16 @@ ly_ctx_get_module_data_clb(const struct ly_ctx *ctx, void **user_data)
     return ctx->data_clb;
 }
 
+#ifdef LY_ENABLED_LYD_PRIV
+
+API void
+ly_ctx_set_priv_dup_clb(struct ly_ctx *ctx, void *(*priv_dup_clb)(const void *priv))
+{
+    ctx->priv_dup_clb = priv_dup_clb;
+}
+
+#endif
+
 const struct lys_module *
 ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char *name, const char *revision,
                        int implement, struct unres_schema *unres)

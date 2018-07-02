@@ -1437,6 +1437,12 @@ void ly_ctx_set_module_data_clb(struct ly_ctx *ctx, ly_module_data_clb clb, void
  */
 ly_module_data_clb ly_ctx_get_module_data_clb(const struct ly_ctx *ctx, void **user_data);
 
+#ifdef LY_ENABLED_LYD_PRIV
+
+void ly_ctx_set_priv_dup_clb(struct ly_ctx *ctx, void *(*priv_dup_clb)(const void *priv));
+
+#endif
+
 /**
  * @brief Get pointer to the schema tree of the module of the specified namespace
  *
