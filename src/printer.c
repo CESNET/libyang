@@ -13,6 +13,7 @@
  */
 
 #define _GNU_SOURCE /* vasprintf(), vdprintf() */
+#include <sys/types.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -85,7 +86,7 @@ ly_print(struct lyout *out, const char *format, ...)
 
     va_start(ap, format);
 
-    switch(out->type) {
+    switch (out->type) {
     case LYOUT_FD:
 #ifdef HAVE_VDPRINTF
         count = vdprintf(out->method.fd, format, ap);
@@ -149,34 +150,132 @@ ly_print_flush(struct lyout *out)
 int
 ly_write(struct lyout *out, const char *buf, size_t count)
 {
-    char *aux;
+    if (out->hole_count) {
+        /* we are buffering data after a hole */
+        if (out->buf_len + count > out->buf_size) {
+            out->buffered = ly_realloc(out->buffered, out->buf_len + count);
+            if (!out->buffered) {
+                out->buf_len = 0;
+                out->buf_size = 0;
+                LOGMEM(NULL);
+                return -1;
+            }
+            out->buf_size = out->buf_len + count;
+        }
 
-    switch(out->type) {
-    case LYOUT_FD:
-        return write(out->method.fd, buf, count);
-    case LYOUT_STREAM:
-        return fwrite(buf, sizeof *buf, count, out->method.f);
+        memcpy(&out->buffered[out->buf_len], buf, count);
+        out->buf_len += count;
+        return count;
+    }
+
+    switch (out->type) {
     case LYOUT_MEMORY:
         if (out->method.mem.len + count + 1 > out->method.mem.size) {
-            aux = ly_realloc(out->method.mem.buf, out->method.mem.len + count + 1);
-            if (!aux) {
-                out->method.mem.buf = NULL;
+            out->method.mem.buf = ly_realloc(out->method.mem.buf, out->method.mem.len + count + 1);
+            if (!out->method.mem.buf) {
                 out->method.mem.len = 0;
                 out->method.mem.size = 0;
                 LOGMEM(NULL);
                 return -1;
             }
-            out->method.mem.buf = aux;
             out->method.mem.size = out->method.mem.len + count + 1;
         }
-        memcpy(&out->method.mem.buf[out->method.mem.len], buf, count + 1);
+        memcpy(&out->method.mem.buf[out->method.mem.len], buf, count);
         out->method.mem.len += count;
+        out->method.mem.buf[out->method.mem.len] = '\0';
         return count;
+    case LYOUT_FD:
+        return write(out->method.fd, buf, count);
+    case LYOUT_STREAM:
+        return fwrite(buf, sizeof *buf, count, out->method.f);
     case LYOUT_CALLBACK:
         return out->method.clb.f(out->method.clb.arg, buf, count);
     }
 
     return 0;
+}
+
+int
+ly_write_skip(struct lyout *out, size_t count, size_t *position)
+{
+    switch (out->type) {
+    case LYOUT_MEMORY:
+        if (out->method.mem.len + count > out->method.mem.size) {
+            out->method.mem.buf = ly_realloc(out->method.mem.buf, out->method.mem.len + count);
+            if (!out->method.mem.buf) {
+                out->method.mem.len = 0;
+                out->method.mem.size = 0;
+                LOGMEM(NULL);
+                return -1;
+            }
+            out->method.mem.size = out->method.mem.len + count;
+        }
+
+        /* save the current position */
+        *position = out->method.mem.len;
+
+        /* skip the memory */
+        out->method.mem.len += count;
+        break;
+    case LYOUT_FD:
+    case LYOUT_STREAM:
+    case LYOUT_CALLBACK:
+        /* buffer the hole */
+        if (out->buf_len + count > out->buf_size) {
+            out->buffered = ly_realloc(out->buffered, out->buf_len + count);
+            if (!out->buffered) {
+                out->buf_len = 0;
+                out->buf_size = 0;
+                LOGMEM(NULL);
+                return -1;
+            }
+            out->buf_size = out->buf_len + count;
+        }
+
+        /* save the current position */
+        *position = out->buf_len;
+
+        /* skip the memory */
+        out->buf_len += count;
+
+        /* increase hole counter */
+        ++out->hole_count;
+    }
+
+    return count;
+}
+
+int
+ly_write_skipped(struct lyout *out, size_t position, const char *buf, size_t count)
+{
+    switch (out->type) {
+    case LYOUT_MEMORY:
+        /* write */
+        memcpy(&out->method.mem.buf[position], buf, count);
+        break;
+    case LYOUT_FD:
+    case LYOUT_STREAM:
+    case LYOUT_CALLBACK:
+        if (out->buf_len < position + count) {
+            LOGINT(NULL);
+            return -1;
+        }
+
+        /* write into the hole */
+        memcpy(&out->buffered[position], buf, count);
+
+        /* decrease hole counter */
+        --out->hole_count;
+
+        if (!out->hole_count) {
+            /* all holes filled, we can write the buffer */
+            count = ly_write(out, out->buffered, out->buf_len);
+            out->buf_len = 0;
+        }
+        break;
+    }
+
+    return count;
 }
 
 static int
@@ -286,6 +385,8 @@ lys_print_file(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, c
         return EXIT_FAILURE;
     }
 
+    memset(&out, 0, sizeof out);
+
     out.type = LYOUT_STREAM;
     out.method.f = f;
 
@@ -302,6 +403,8 @@ lys_print_fd(int fd, const struct lys_module *module, LYS_OUTFORMAT format, cons
         LOGARG;
         return EXIT_FAILURE;
     }
+
+    memset(&out, 0, sizeof out);
 
     out.type = LYOUT_FD;
     out.method.fd = fd;
@@ -321,10 +424,9 @@ lys_print_mem(char **strp, const struct lys_module *module, LYS_OUTFORMAT format
         return EXIT_FAILURE;
     }
 
+    memset(&out, 0, sizeof out);
+
     out.type = LYOUT_MEMORY;
-    out.method.mem.buf = NULL;
-    out.method.mem.len = 0;
-    out.method.mem.size = 0;
 
     r = lys_print_(&out, module, format, target_node, line_length, options);
 
@@ -342,6 +444,8 @@ lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), voi
         LOGARG;
         return EXIT_FAILURE;
     }
+
+    memset(&out, 0, sizeof out);
 
     out.type = LYOUT_CALLBACK;
     out.method.clb.f = writeclb;
@@ -366,6 +470,8 @@ lyd_print_(struct lyout *out, const struct lyd_node *root, LYD_FORMAT format, in
         return xml_print_data(out, root, options);
     case LYD_JSON:
         return json_print_data(out, root, options);
+    case LYD_LYB:
+        return lyb_print_data(out, root, options);
     default:
         LOGERR(root->schema->module->ctx, LY_EINVAL, "Unknown output format.");
         return EXIT_FAILURE;
@@ -375,6 +481,7 @@ lyd_print_(struct lyout *out, const struct lyd_node *root, LYD_FORMAT format, in
 API int
 lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format, int options)
 {
+    int r;
     struct lyout out;
 
     if (!f) {
@@ -382,15 +489,21 @@ lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format, int opti
         return EXIT_FAILURE;
     }
 
+    memset(&out, 0, sizeof out);
+
     out.type = LYOUT_STREAM;
     out.method.f = f;
 
-    return lyd_print_(&out, root, format, options);
+    r = lyd_print_(&out, root, format, options);
+
+    free(out.buffered);
+    return r;
 }
 
 API int
 lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format, int options)
 {
+    int r;
     struct lyout out;
 
     if (fd < 0) {
@@ -398,10 +511,15 @@ lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format, int options
         return EXIT_FAILURE;
     }
 
+    memset(&out, 0, sizeof out);
+
     out.type = LYOUT_FD;
     out.method.fd = fd;
 
-    return lyd_print_(&out, root, format, options);
+    r = lyd_print_(&out, root, format, options);
+
+    free(out.buffered);
+    return r;
 }
 
 API int
@@ -415,14 +533,14 @@ lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format, int o
         return EXIT_FAILURE;
     }
 
+    memset(&out, 0, sizeof out);
+
     out.type = LYOUT_MEMORY;
-    out.method.mem.buf = NULL;
-    out.method.mem.len = 0;
-    out.method.mem.size = 0;
 
     r = lyd_print_(&out, root, format, options);
 
     *strp = out.method.mem.buf;
+    free(out.buffered);
     return r;
 }
 
@@ -430,6 +548,7 @@ API int
 lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, const struct lyd_node *root,
               LYD_FORMAT format, int options)
 {
+    int r;
     struct lyout out;
 
     if (!writeclb) {
@@ -437,11 +556,16 @@ lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), voi
         return EXIT_FAILURE;
     }
 
+    memset(&out, 0, sizeof out);
+
     out.type = LYOUT_CALLBACK;
     out.method.clb.f = writeclb;
     out.method.clb.arg = arg;
 
-    return lyd_print_(&out, root, format, options);
+    r = lyd_print_(&out, root, format, options);
+
+    free(out.buffered);
+    return r;
 }
 
 int

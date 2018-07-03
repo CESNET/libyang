@@ -41,6 +41,14 @@ struct lyout {
             void *arg;
         } clb;
     } method;
+
+    /* buffer for holes */
+    char *buffered;
+    size_t buf_len;
+    size_t buf_size;
+
+    /* hole counter */
+    size_t hole_count;
 };
 
 struct ext_substmt_info_s {
@@ -60,6 +68,9 @@ extern struct ext_substmt_info_s ext_substmt_info[];
 int ly_print(struct lyout *out, const char *format, ...);
 void ly_print_flush(struct lyout *out);
 int ly_write(struct lyout *out, const char *buf, size_t count);
+int ly_write_skip(struct lyout *out, size_t count, size_t *position);
+int ly_write_skipped(struct lyout *out, size_t position, const char *buf, size_t count);
+
 /* prefix_kind: 0 - print import prefixes for foreign features, 1 - print module names, 2 - print prefixes (tree printer) */
 int ly_print_iffeature(struct lyout *out, const struct lys_module *module, struct lys_iffeature *expr, int prefix_kind);
 
@@ -71,6 +82,7 @@ int info_print_model(struct lyout *out, const struct lys_module *module, const c
 int json_print_data(struct lyout *out, const struct lyd_node *root, int options);
 int xml_print_data(struct lyout *out, const struct lyd_node *root, int options);
 int xml_print_node(struct lyout *out, int level, const struct lyd_node *node, int toplevel, int options);
+int lyb_print_data(struct lyout *out, const struct lyd_node *root, int options);
 
 /**
  * get know if the node is supposed to be printed according to the specified with-default mode

@@ -1365,3 +1365,125 @@ dec64cmp(int64_t num1, uint8_t dig1, int64_t num2, uint8_t dig2)
     }
     return (num1 > num2 ? 1 : -1);
 }
+
+static int
+lyb_ht_build_equal_cb(void *UNUSED(val1_p), void *UNUSED(val2_p), int UNUSED(mod), void *UNUSED(cb_data))
+{
+    /* for this purpose, if hash matches, the value must also */
+    return 1;
+}
+
+static int
+lyb_val_equal_cb(void *val1_p, void *val2_p, int UNUSED(mod), void *UNUSED(cb_data))
+{
+    struct lys_node *val1 = *(struct lys_node **)val1_p;
+    struct lys_node *val2 = *(struct lys_node **)val2_p;
+
+    if (val1 == val2) {
+        return 1;
+    }
+    return 0;
+}
+
+LYB_HASH
+lyb_hash(const struct lys_node *sibling, uint8_t collision_id)
+{
+    struct lys_module *mod;
+    uint32_t full_hash;
+    LYB_HASH hash;
+
+    mod = lys_node_module(sibling);
+
+    full_hash = dict_hash_multi(0, mod->name, strlen(mod->name));
+    full_hash = dict_hash_multi(full_hash, sibling->name, strlen(sibling->name));
+    if (collision_id) {
+        if (collision_id > strlen(mod->name)) {
+            /* wow */
+            LOGINT(sibling->module->ctx);
+            return 0;
+        }
+        full_hash = dict_hash_multi(full_hash, mod->name, collision_id);
+    }
+    full_hash = dict_hash_multi(full_hash, NULL, 0);
+
+    /* use the shortened hash */
+    hash = full_hash & (LYB_HASH_MASK >> (collision_id + 1));
+    /* add colision identificator */
+    hash |= LYB_HASH_COLLISION_ID >> collision_id;
+
+    return hash;
+}
+
+struct hash_table *
+lyb_hash_siblings(struct lys_node *sibling)
+{
+    LYB_HASH hash;
+    struct hash_table *ht;
+    struct lys_node *parent;
+    const struct lys_module *mod;
+    uint32_t i;
+
+    /* find first sibling */
+    for (; sibling->prev->next; sibling = sibling->prev);
+
+    ht = lyht_new(1, sizeof(struct lys_node *), lyb_ht_build_equal_cb, NULL, 1);
+    LY_CHECK_ERR_RETURN(!ht, LOGMEM(sibling->module->ctx), NULL);
+
+    parent = lys_parent(sibling);
+    mod = lys_node_module(sibling);
+    sibling = NULL;
+    while ((sibling = (struct lys_node *)lys_getnext(sibling, parent, mod, 0))) {
+        for (i = 0; i < LYB_HASH_BITS; ++i) {
+            hash = lyb_hash(sibling, i);
+            if (!hash) {
+                lyht_free(ht);
+                return NULL;
+            }
+
+            if (!lyht_insert(ht, &sibling, hash)) {
+                /* success, no collision */
+                break;
+            }
+        }
+        if (i == LYB_HASH_BITS) {
+            /* wow */
+            LOGINT(sibling->module->ctx);
+            lyht_free(ht);
+            return NULL;
+        }
+
+#ifdef LY_ENABLED_CACHE
+        sibling->hash = hash;
+#endif
+    }
+
+    /* change val equal callback so that the HT is usable for finding value hashes */
+    lyht_set_cb(ht, lyb_val_equal_cb);
+
+    return ht;
+}
+
+LYB_HASH
+lyb_hash_find(struct hash_table *ht, const struct lys_node *node)
+{
+    LYB_HASH hash;
+    uint32_t i;
+
+    for (i = 0; i < LYB_HASH_BITS; ++i) {
+        hash = lyb_hash(node, i);
+        if (!hash) {
+            lyht_free(ht);
+            return 0;
+        }
+
+        if (!lyht_find(ht, &node, hash, NULL)) {
+            /* success, no collision */
+            break;
+        }
+    }
+    /* cannot happen, we already calculated the hash */
+    assert(i <= LYB_HASH_BITS);
+
+    return hash;
+}
+

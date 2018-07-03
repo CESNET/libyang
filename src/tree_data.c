@@ -923,6 +923,9 @@ lyd_parse_(struct ly_ctx *ctx, const struct lyd_node *rpc_act, const char *data,
     case LYD_JSON:
         result = lyd_parse_json(ctx, data, options, rpc_act, data_tree, yang_data_name);
         break;
+    case LYD_LYB:
+        result = lyd_parse_lyb(ctx, data, options, rpc_act, data_tree, yang_data_name, NULL);
+        break;
     default:
         /* error */
         break;
@@ -1266,7 +1269,6 @@ lyd_wd_update_parents(struct lyd_node *node)
         }
     }
 }
-
 
 /* op - 0 add, 1 del, 2 mod (add + del) */
 static void

@@ -2210,6 +2210,19 @@ lys_grp_free(struct ly_ctx *ctx, struct lys_node_grp *grp,
 }
 
 static void
+lys_rpc_action_free(struct ly_ctx *ctx, struct lys_node_rpc_action *rpc_act,
+             void (*private_destructor)(const struct lys_node *node, void *priv))
+{
+    int i;
+
+    /* handle only specific parts for LYS_GROUPING */
+    for (i = 0; i < rpc_act->tpdf_size; i++) {
+        lys_tpdf_free(ctx, &rpc_act->tpdf[i], private_destructor);
+    }
+    free(rpc_act->tpdf);
+}
+
+static void
 lys_inout_free(struct ly_ctx *ctx, struct lys_node_inout *io,
                void (*private_destructor)(const struct lys_node *node, void *priv))
 {
@@ -2553,9 +2566,11 @@ lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys
         /* do nothing */
         break;
     case LYS_GROUPING:
+        lys_grp_free(ctx, (struct lys_node_grp *)node, private_destructor);
+        break;
     case LYS_RPC:
     case LYS_ACTION:
-        lys_grp_free(ctx, (struct lys_node_grp *)node, private_destructor);
+        lys_rpc_action_free(ctx, (struct lys_node_rpc_action *)node, private_destructor);
         break;
     case LYS_NOTIF:
         lys_notif_free(ctx, (struct lys_node_notif *)node, private_destructor);
@@ -3485,7 +3500,6 @@ lys_features_disable_recursive(struct lys_feature *f)
     }
 }
 
-
 /*
  * op: 1 - enable, 0 - disable
  */
@@ -4356,16 +4370,16 @@ lys_sub_module_apply_devs_augs(struct lys_module *module)
     unres = calloc(1, sizeof *unres);
     LY_CHECK_ERR_RETURN(!unres, LOGMEM(module->ctx), );
 
-    /* remove applied deviations */
+    /* apply deviations */
     for (u = 0; u < module->deviation_size; ++u) {
         apply_dev(&module->deviation[u], module, unres);
     }
-    /* remove applied augments */
+    /* apply augments */
     for (u = 0; u < module->augment_size; ++u) {
         apply_aug(&module->augment[u], unres);
     }
 
-    /* remove deviation and augments defined in submodules */
+    /* apply deviations and augments defined in submodules */
     for (v = 0; v < module->inc_size; ++v) {
         for (u = 0; u < module->inc[v].submodule->deviation_size; ++u) {
             apply_dev(&module->inc[v].submodule->deviation[u], module, unres);
@@ -4394,7 +4408,7 @@ lys_sub_module_remove_devs_augs(struct lys_module *module)
 
     /* remove applied deviations */
     for (u = 0; u < module->deviation_size; ++u) {
-        /* the deviation could be not applied because it failed to be applied */
+        /* the deviation could not be applied because it failed to be applied in the first place*/
         if (module->deviation[u].orig_node) {
             remove_dev(&module->deviation[u], module, unres);
         }
@@ -4798,6 +4812,7 @@ lys_extcomplex_free_str(struct ly_ctx *ctx, struct lys_ext_instance_complex *ext
         }
     }
 }
+
 void
 lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, unsigned int size,
                              void (*private_destructor)(const struct lys_node *node, void *priv))

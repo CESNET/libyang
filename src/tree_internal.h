@@ -63,6 +63,54 @@ struct lyd_node_pos {
 };
 
 /**
+ * @brief Internal structure for LYB parser/printer.
+ */
+struct lyb_state {
+    size_t *written;
+    size_t *position;
+    int used;
+    int size;
+};
+
+/* struct lyb_state allocation step */
+#define LYB_STATE_STEP 4
+
+/**
+ * LYB schema hash constants
+ *
+ * Hash is divided to collision ID and hash itself.
+ *
+ * First bits are collision ID until 1 is found. The rest is truncated 32b hash.
+ * 1xxx xxxx - collision ID 0 (no collisions)
+ * 01xx xxxx - collision ID 1 (collision ID 0 hash collided)
+ * 001x xxxx - collision ID 2 ...
+ */
+
+/* Number of bits the whole hash will take (including hash collision ID) */
+#define LYB_HASH_BITS 8
+
+/* Masking 32b hash (collision ID 0) */
+#define LYB_HASH_MASK 0x7f
+
+/* Type for storing the whole hash (used only internally, publicly defined directly) */
+#define LYB_HASH uint8_t
+
+/* Need to move this first >> collision number (from 0) to get collision ID hash part */
+#define LYB_HASH_COLLISION_ID 0x80
+
+/* How many bytes are reserved for one data chunk SIZE (8B is maximum) */
+#define LYB_SIZE_BYTES 1
+
+/* Maximum size that will be written into LYB_SIZE_BYTES (must be large enough) */
+#define LYB_SIZE_MAX 255
+
+LYB_HASH lyb_hash(const struct lys_node *sibling, uint8_t collision_id);
+
+struct hash_table *lyb_hash_siblings(struct lys_node *sibling);
+
+LYB_HASH lyb_hash_find(struct hash_table *ht, const struct lys_node *node);
+
+/**
  * Macros to work with ::lyd_node#when_status
  * +--- bit 1 - some when-stmt connected with the node (resolve_applies_when() is true)
  * |+-- bit 2 - when-stmt's condition is resolved and it is true

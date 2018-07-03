@@ -41,6 +41,7 @@ typedef enum {
     LYD_UNKNOWN,         /**< unknown format, used as return value in case of error */
     LYD_XML,             /**< XML format of the instance data */
     LYD_JSON,            /**< JSON format of the instance data */
+    LYD_LYB,             /**< LYB format of the instance data */
 } LYD_FORMAT;
 
 /**
