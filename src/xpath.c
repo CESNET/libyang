@@ -8272,6 +8272,8 @@ lyxp_set_print_xml(FILE *f, struct lyxp_set *set)
     char *str_num;
     struct lyout out;
 
+    memset(&out, 0, sizeof out);
+
     out.type = LYOUT_STREAM;
     out.method.f = f;
 
