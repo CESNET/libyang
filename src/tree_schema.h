@@ -2044,7 +2044,7 @@ struct lys_restr {
     const char *emsg;                /**< error-message (optional) */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     uint8_t ext_size;                /**< number of elements in #ext array */
-    uint16_t flags;                  /**< only one flag can be specified, #LYS_XPATH_DEP */
+    uint16_t flags;                  /**< only flags #LYS_XPCONF_DEP and #LYS_XPSTATE_DEP can be specified */
 };
 
 /**
@@ -2056,7 +2056,7 @@ struct lys_when {
     const char *ref;                 /**< reference (optional) */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     uint8_t ext_size;                /**< number of elements in #ext array */
-    uint16_t flags;                  /**< only one flag can be specified, #LYS_XPATH_DEP */
+    uint16_t flags;                  /**< only flags #LYS_XPCONF_DEP and #LYS_XPSTATE_DEP can be specified */
 };
 
 /**

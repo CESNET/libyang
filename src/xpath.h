@@ -296,8 +296,8 @@ int lyxp_atomize(const char *expr, const struct lys_node *cur_snode, enum lyxp_n
  * @param[in] node Node to examine.
  * @param[in,out] set Resulting set of atoms merged from all the expressions.
  * Will be cleared before use.
- * @param[in] set_ext_dep_flags Set #LYS_XPATH_DEP for conditions that require foreign subtree and
- * also for the node itself, if it has any such condition.
+ * @param[in] set_ext_dep_flags Whether to set #LYS_XPCONF_DEP or #LYS_XPSTATE_DEP for conditions that
+ * require foreign configuration or state subtree and also for the node itself, if it has any such condition.
  *
  * @return EXIT_SUCCESS on success, -1 on error.
  */
