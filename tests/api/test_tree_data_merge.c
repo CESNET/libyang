@@ -491,7 +491,7 @@ test_merge_to_ctx(void **state)
 
 
 const struct lys_module *
-test_load_module_clb(struct ly_ctx *ctx, const char *name, const char *ns, int options, void *user_data)
+test_load_module_clb(struct ly_ctx *ctx, const char *UNUSED(name), const char *UNUSED(ns), int UNUSED(options), void *user_data)
 {
     return lys_parse_mem(ctx, (char *) user_data, LYS_IN_YANG);
 }
@@ -524,7 +524,7 @@ test_merge_to_ctx_with_missing_schema(void **state)
     st->target = lyd_parse_mem(st->ctx2, trg, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(st->target, NULL);
 
-    ly_ctx_set_module_data_clb(st->ctx2, test_load_module_clb, sch_x);
+    ly_ctx_set_module_data_clb(st->ctx2, test_load_module_clb, (void *)sch_x);
 
     assert_int_equal(lyd_merge(st->target, st->source, 0), 0);
 

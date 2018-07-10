@@ -14,6 +14,8 @@
 #ifndef LYTEST_CONFIG_H_
 #define LYTEST_CONFIG_H_
 
+#define UNUSED(x) @COMPILER_UNUSED_ATTR@
+
 #define TESTS_DIR "@CMAKE_SOURCE_DIR@/tests"
 #define BUILD_DIR "@PROJECT_BINARY_DIR@"
 
