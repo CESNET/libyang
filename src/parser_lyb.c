@@ -600,8 +600,10 @@ lyb_parse_subtree(struct ly_ctx *ctx, const char *data, struct lyd_node *parent,
     LYB_HAVE_READ_GOTO(r, data, error);
 
     if (!snode) {
-        /* unknown data subtree, skip it */
-        ret += (r = lyb_read(data, NULL, lybs->written[lybs->used - 1], lybs));
+        /* unknown data subtree, skip it whole */
+        do {
+            ret += (r = lyb_read(data, NULL, lybs->written[lybs->used - 1], lybs));
+        } while (lybs->written[lybs->used - 1]);
         goto stop_subtree;
     }
 
