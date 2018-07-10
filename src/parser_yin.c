@@ -1429,24 +1429,22 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             LY_TREE_FOR(yin->child, node) {
                 GETVAL(ctx, value, node, "value");
 
-                if (!(ctx->models.flags & LY_CTX_TRUSTED)) {
-                    if (in_grp) {
-                        /* in grouping, just check the pattern syntax */
-                        if (lyp_check_pattern(ctx, value, NULL)) {
-                            goto error;
-                        }
+                if (in_grp) {
+                    /* in grouping, just check the pattern syntax */
+                    if (!(ctx->models.flags & LY_CTX_TRUSTED) && lyp_check_pattern(ctx, value, NULL)) {
+                        goto error;
                     }
-#ifdef LY_ENABLED_CACHE
-                    else {
-                        /* outside grouping, check syntax and precompile pattern for later use by libpcre */
-                        if (lyp_precompile_pattern(ctx, value,
-                                (pcre**)&type->info.str.patterns_pcre[type->info.str.pat_count * 2],
-                                (pcre_extra**)&type->info.str.patterns_pcre[type->info.str.pat_count * 2 + 1])) {
-                            goto error;
-                        }
-                    }
-#endif
                 }
+#ifdef LY_ENABLED_CACHE
+                else {
+                    /* outside grouping, check syntax and precompile pattern for later use by libpcre */
+                    if (lyp_precompile_pattern(ctx, value,
+                            (pcre **)&type->info.str.patterns_pcre[type->info.str.pat_count * 2],
+                            (pcre_extra **)&type->info.str.patterns_pcre[type->info.str.pat_count * 2 + 1])) {
+                        goto error;
+                    }
+                }
+#endif
                 restr = &type->info.str.patterns[type->info.str.pat_count]; /* shortcut */
                 type->info.str.pat_count++;
 

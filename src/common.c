@@ -267,6 +267,7 @@ _transform_json2xml_subexp(const struct lys_module *module, const char *expr, ch
     uint32_t i, j;
     struct lyxp_expr *exp;
     struct ly_ctx *ctx = module->ctx;
+    enum int_log_opts prev_ilo;
 
     assert(module && expr && ((!prefixes && !namespaces && !ns_count) || (prefixes && namespaces && ns_count)));
 
@@ -373,10 +374,12 @@ _transform_json2xml_subexp(const struct lys_module *module, const char *expr, ch
             literal = lydict_insert(module->ctx, cur_expr + 1, exp->tok_len[i] - 2);
 
             /* parse literals as subexpressions if possible, otherwise treat as a literal */
+            ly_ilo_change(NULL, ILO_IGNORE, &prev_ilo, NULL);
             if (_transform_json2xml_subexp(module, literal, out, out_used, out_size, schema, inst_id, prefixes, namespaces, ns_count)) {
                 strncpy(&(*out)[*out_used], literal, exp->tok_len[i] - 2);
                 *out_used += exp->tok_len[i] - 2;
             }
+            ly_ilo_restore(NULL, prev_ilo, NULL, 0);
 
             lydict_remove(module->ctx, literal);
 
