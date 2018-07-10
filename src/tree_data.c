@@ -924,7 +924,7 @@ lyd_parse_(struct ly_ctx *ctx, const struct lyd_node *rpc_act, const char *data,
         result = lyd_parse_json(ctx, data, options, rpc_act, data_tree, yang_data_name);
         break;
     case LYD_LYB:
-        result = lyd_parse_lyb(ctx, data, options, rpc_act, data_tree, yang_data_name, NULL);
+        result = lyd_parse_lyb(ctx, data, options, data_tree, yang_data_name, NULL);
         break;
     default:
         /* error */
@@ -5006,7 +5006,7 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
     }
 
     /* add default values, resolve unres and check for mandatory nodes in final tree */
-    if (lyd_defaults_add_unres(node, options, ctx, data_tree, act_notif, unres)) {
+    if (lyd_defaults_add_unres(node, options, ctx, data_tree, act_notif, unres, 1)) {
         goto cleanup;
     }
     if (act_notif) {
@@ -7017,24 +7017,9 @@ lyd_wd_add(struct lyd_node **root, struct ly_ctx *ctx, struct unres_data *unres,
     return EXIT_SUCCESS;
 }
 
-/**
- * @brief Process (add/clean) default nodes in the data tree and resolve the unresolved items
- *
- * @param[in,out] root  Pointer to the root node of the complete data tree, the root node can be NULL if the data tree
- *                      is empty
- * @param[in] options   Parser options to know the data tree type, see @ref parseroptions.
- * @param[in] ctx       Context for the case the \p root is empty (in that case \p ctx must not be NULL)
- * @param[in] data_tree Additional data tree for validating RPC/action/notification. The tree is used to satisfy
- *                      possible references to the datastore content.
- * @param[in] act_notif In case of nested action/notification, pointer to the subroot of the action/notification. Note
- *                      that in this case the \p root points to the top level data tree node which provides the context
- *                      for the nested action/notification
- * @param[in] unres     Unresolved data list, the newly added default nodes may need to add some unresolved items
- * @return EXIT_SUCCESS or EXIT_FAILURE
- */
 int
 lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, const struct lyd_node *data_tree,
-                       struct lyd_node *act_notif, struct unres_data *unres)
+                       struct lyd_node *act_notif, struct unres_data *unres, int wd)
 {
     struct lyd_node *msg_sibling = NULL, *msg_parent = NULL, *data_tree_sibling, *data_tree_parent;
     struct lys_node *msg_op = NULL;
@@ -7080,7 +7065,7 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
     }
 
     /* add missing default nodes */
-    if (lyd_wd_add((act_notif ? &act_notif : root), ctx, unres, options)) {
+    if (wd && lyd_wd_add((act_notif ? &act_notif : root), ctx, unres, options)) {
         return EXIT_FAILURE;
     }
 

@@ -1485,7 +1485,7 @@ empty:
     ly_set_free(set);
 
     /* add/validate default values, unres */
-    if (lyd_defaults_add_unres(&result, options, ctx, data_tree, act_notif, unres)) {
+    if (lyd_defaults_add_unres(&result, options, ctx, data_tree, act_notif, unres, 1)) {
         goto error;
     }
 

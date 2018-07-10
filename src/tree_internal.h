@@ -70,6 +70,8 @@ struct lyb_state {
     size_t *position;
     int used;
     int size;
+    const struct lys_module **models;
+    int mod_count;
 };
 
 /* struct lyb_state allocation step */
@@ -104,11 +106,11 @@ struct lyb_state {
 /* Maximum size that will be written into LYB_SIZE_BYTES (must be large enough) */
 #define LYB_SIZE_MAX 255
 
-LYB_HASH lyb_hash(const struct lys_node *sibling, uint8_t collision_id);
+LYB_HASH lyb_hash(struct lys_node *sibling, uint8_t collision_id);
 
-struct hash_table *lyb_hash_siblings(struct lys_node *sibling);
+int lyb_has_schema_model(struct lys_node *sibling, const struct lys_module **models, int mod_count);
 
-LYB_HASH lyb_hash_find(struct hash_table *ht, const struct lys_node *node);
+struct hash_table *lyb_hash_siblings(struct lys_node *sibling, const struct lys_module **models, int mod_count);
 
 /**
  * Macros to work with ::lyd_node#when_status
@@ -508,22 +510,23 @@ int lyd_check_mandatory_tree(struct lyd_node *root, struct ly_ctx *ctx, int opti
 int lys_ingrouping(const struct lys_node *node);
 
 /**
- * @brief Add default values, \p resolve unres, and finally
- * remove any redundant default values based on \p options.
+ * @brief Process (add/clean) default nodes in the data tree and resolve the unresolved items
  *
- * @param[in] root Data tree root. With empty data tree, new default nodes can be created so the root pointer
- *            will contain/return the newly created data tree.
- * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions.
- * @param[in] ctx Optional parameter. If provided, default nodes from all modules in the context will be added.
- *            If NULL, only the modules explicitly mentioned in data tree are taken into account.
- * @param[in] data_tree Additional data tree to be traversed when evaluating when or must expressions in \p root
- *            tree.
- * @param[in] act_notif Action/notification itself in case \p root is actually an action/notification.
- * @param[in] unres Valid unres structure, on function successful exit they are all resolved.
- * @return 0 on success, nonzero on failure.
+ * @param[in,out] root  Pointer to the root node of the complete data tree, the root node can be NULL if the data tree
+ *                      is empty
+ * @param[in] options   Parser options to know the data tree type, see @ref parseroptions.
+ * @param[in] ctx       Context for the case the \p root is empty (in that case \p ctx must not be NULL)
+ * @param[in] data_tree Additional data tree for validating RPC/action/notification. The tree is used to satisfy
+ *                      possible references to the datastore content.
+ * @param[in] act_notif In case of nested action/notification, pointer to the subroot of the action/notification. Note
+ *                      that in this case the \p root points to the top level data tree node which provides the context
+ *                      for the nested action/notification
+ * @param[in] unres     Unresolved data list, the newly added default nodes may need to add some unresolved items
+ * @param[in] wd        Whether to add default values.
+ * @return EXIT_SUCCESS or EXIT_FAILURE
  */
 int lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, const struct lyd_node *data_tree,
-                           struct lyd_node *act_notif, struct unres_data *unres);
+                           struct lyd_node *act_notif, struct unres_data *unres, int wd);
 
 void lys_enable_deviations(struct lys_module *module);
 

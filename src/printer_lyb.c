@@ -128,10 +128,8 @@ lyb_write_number(uint64_t num, uint64_t max_num, struct lyout *out, struct lyb_s
     max_bytes = max_bits / 8 + (max_bits % 8 ? 1 : 0);
 
     for (i = 0; i < max_bytes; ++i) {
-        byte = (uint8_t)num;
+        byte = *(((uint8_t *)&num) + i);
         ret += lyb_write(out, &byte, 1, lybs);
-
-        num >>= 8;
     }
 
     return ret;
@@ -194,12 +192,12 @@ lyb_print_model(struct lyout *out, const struct lys_module *mod, struct lyb_stat
 }
 
 static int
-is_added_module(const struct lys_module **modules, size_t mod_count, const struct lys_module *mod)
+is_added_model(const struct lys_module **models, size_t mod_count, const struct lys_module *mod)
 {
     size_t i;
 
     for (i = 0; i < mod_count; ++i) {
-        if (modules[i] == mod) {
+        if (models[i] == mod) {
             return 1;
         }
     }
@@ -208,21 +206,21 @@ is_added_module(const struct lys_module **modules, size_t mod_count, const struc
 }
 
 static void
-add_module(const struct lys_module ***modules, size_t *mod_count, const struct lys_module *mod)
+add_model(const struct lys_module ***models, size_t *mod_count, const struct lys_module *mod)
 {
-    if (is_added_module(*modules, *mod_count, mod)) {
+    if (is_added_model(*models, *mod_count, mod)) {
         return;
     }
 
-    *modules = ly_realloc(*modules, ++(*mod_count) * sizeof **modules);
-    (*modules)[*mod_count - 1] = mod;
+    *models = ly_realloc(*models, ++(*mod_count) * sizeof **models);
+    (*models)[*mod_count - 1] = mod;
 }
 
 static int
 lyb_print_data_models(struct lyout *out, const struct lyd_node *root, struct lyb_state *lybs)
 {
     int ret = 0;
-    const struct lys_module **modules = NULL, *mod;
+    const struct lys_module **models = NULL, *mod;
     const struct lyd_node *node;
     size_t mod_count = 0;
     uint32_t idx = 0, i;
@@ -230,7 +228,7 @@ lyb_print_data_models(struct lyout *out, const struct lyd_node *root, struct lyb
     /* first, collect all data node modules */
     LY_TREE_FOR(root, node) {
         mod = lyd_node_module(node);
-        add_module(&modules, &mod_count, mod);
+        add_model(&models, &mod_count, mod);
     }
 
     /* then add all models augmenting or deviating the used models */
@@ -242,28 +240,28 @@ next_mod:
         }
 
         for (i = 0; i < mod->deviation_size; ++i) {
-            if (mod->deviation[i].orig_node && is_added_module(modules, mod_count, lys_node_module(mod->deviation[i].orig_node))) {
-                add_module(&modules, &mod_count, mod);
+            if (mod->deviation[i].orig_node && is_added_model(models, mod_count, lys_node_module(mod->deviation[i].orig_node))) {
+                add_model(&models, &mod_count, mod);
                 goto next_mod;
             }
         }
         for (i = 0; i < mod->augment_size; ++i) {
-            if (is_added_module(modules, mod_count, lys_node_module(mod->augment[i].target))) {
-                add_module(&modules, &mod_count, mod);
+            if (is_added_model(models, mod_count, lys_node_module(mod->augment[i].target))) {
+                add_model(&models, &mod_count, mod);
                 goto next_mod;
             }
         }
     }
 
     /* now write module count on 2 bytes */
-    ret += lyb_write(out, (uint8_t *)mod_count, 2, lybs);
+    ret += lyb_write(out, (uint8_t *)&mod_count, 2, lybs);
 
     /* and all the used models */
     for (i = 0; i < mod_count; ++i) {
-        ret += lyb_print_model(out, modules[i], lybs);
+        ret += lyb_print_model(out, models[i], lybs);
     }
 
-    free(modules);
+    free(models);
     return ret;
 }
 
@@ -273,10 +271,8 @@ lyb_print_header(struct lyout *out, int options)
     int ret = 0;
     uint8_t byte = 0;
 
-    /* TODO version, option for hash storing */
+    /* TODO version, some other flags? */
     ret += ly_write(out, (char *)&byte, sizeof byte);
-
-    /* TODO all used models */
 
     return ret;
 }
@@ -435,8 +431,9 @@ store_value_type:
         /* find the correct structure */
         for (; !type->info.enums.count; type = &type->der->type);
 
-        /* store the value (save bytes if possible) */
-        ret += lyb_write_number(leaf->value.enm->value, type->info.enums.enm[type->info.enums.count - 1].value, out, lybs);
+        /* store the enum index (save bytes if possible) */
+        i = (leaf->value.enm - type->info.enums.enm) / sizeof *leaf->value.enm;
+        ret += lyb_write_number(i, type->info.enums.enm[type->info.enums.count - 1].value, out, lybs);
         break;
     case LY_TYPE_INT8:
     case LY_TYPE_UINT8:
@@ -462,6 +459,31 @@ store_value_type:
     return ret;
 }
 
+static LYB_HASH
+lyb_hash_find(struct hash_table *ht, struct lys_node *node)
+{
+    LYB_HASH hash;
+    uint32_t i;
+
+    for (i = 0; i < LYB_HASH_BITS; ++i) {
+        hash = lyb_hash(node, i);
+        if (!hash) {
+            return 0;
+        }
+
+        if (!lyht_find(ht, &node, hash, NULL)) {
+            /* success, no collision */
+            break;
+        }
+    }
+    /* cannot happen, we already calculated the hash */
+    if (i > LYB_HASH_BITS) {
+        return 0;
+    }
+
+    return hash;
+}
+
 static int
 lyb_print_subtree(struct lyout *out, const struct lyd_node *node, struct hash_table **sibling_ht, struct lyb_state *lybs,
                   int options, int top_level)
@@ -470,23 +492,16 @@ lyb_print_subtree(struct lyout *out, const struct lyd_node *node, struct hash_ta
     LYB_HASH hash = 0;
     struct hash_table *children_ht = NULL;
 
-    /* get the correct node hash, create whole sibling HT if needed */
-#ifdef LY_ENABLED_CACHE
-    if (node->schema->hash) {
-        hash = node->schema->hash;
-    } else
-#endif
+    /* create whole sibling HT if not already and get our hash */
     if (!*sibling_ht) {
-        *sibling_ht = lyb_hash_siblings(node->schema);
+        *sibling_ht = lyb_hash_siblings(node->schema, NULL, 0);
         if (!*sibling_ht) {
             return -1;
         }
     }
+    hash = lyb_hash_find(*sibling_ht, node->schema);
     if (!hash) {
-        hash = lyb_hash_find(*sibling_ht, node->schema);
-        if (!hash) {
-            return -1;
-        }
+        return -1;
     }
 
     /* register a new subtree */
@@ -514,8 +529,6 @@ lyb_print_subtree(struct lyout *out, const struct lyd_node *node, struct hash_ta
     }
 
     /* TODO write attributes */
-
-    /* TODO write hash if flag */
 
     /* write node content */
     switch (node->schema->nodetype) {
@@ -570,7 +583,7 @@ lyb_print_subtree(struct lyout *out, const struct lyd_node *node, struct hash_ta
 int
 lyb_print_data(struct lyout *out, const struct lyd_node *root, int options)
 {
-    int ret = 0;
+    int r, ret = 0;
     uint8_t zero = 0;
     struct hash_table *top_sibling_ht = NULL;
     struct lyb_state lybs;
@@ -582,16 +595,36 @@ lyb_print_data(struct lyout *out, const struct lyd_node *root, int options)
     lybs.size = LYB_STATE_STEP;
 
     /* LYB header */
-    ret += lyb_print_header(out, options);
-
-    /* all used models */
-    ret += lyb_print_data_models(out, root, &lybs);
-
-    LY_TREE_FOR(root, root) {
-        ret += lyb_print_subtree(out, root, &top_sibling_ht, &lybs, options, 1);
+    ret += (r = lyb_print_header(out, options));
+    if (r < 0) {
+        ret = -1;
+        goto finish;
     }
 
-    ret += lyb_write(out, &zero, sizeof zero, &lybs);
+    /* all used models */
+    ret += (r = lyb_print_data_models(out, root, &lybs));
+    if (r < 0) {
+        ret = -1;
+        goto finish;
+    }
+
+    LY_TREE_FOR(root, root) {
+        ret += (r = lyb_print_subtree(out, root, &top_sibling_ht, &lybs, options, 1));
+        if (r < 0) {
+            ret = -1;
+            goto finish;
+        }
+
+        if (!(options & LYP_WITHSIBLINGS)) {
+            break;
+        }
+    }
+
+    /* ending zero byte */
+    ret += (r = lyb_write(out, &zero, sizeof zero, &lybs));
+    if (r < 0) {
+        ret = -1;
+    }
 
 finish:
     if (top_sibling_ht) {

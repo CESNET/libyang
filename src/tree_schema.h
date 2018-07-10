@@ -1210,6 +1210,15 @@ struct lys_iffeature {
  * @}
  */
 
+#ifdef LY_ENABLED_CACHE
+
+/**
+ * @brief Maximum number of hashes stored in a schema node if cache is enabled.
+ */
+#define LYS_NODE_HASH_COUNT 4
+
+#endif
+
 /**
  * @brief Common structure representing single YANG data statement describing.
  *
@@ -1256,7 +1265,7 @@ struct lys_node {
     void *priv;                      /**< private caller's data, not used by libyang */
 
 #ifdef LY_ENABLED_CACHE
-    uint8_t hash;                    /**< schema hash required for LYB printer/parser */
+    uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
 #endif
 } _PACKED;
 
@@ -1298,7 +1307,7 @@ struct lys_node_container {
     void *priv;                      /**< private caller's data, not used by libyang */
 
 #ifdef LY_ENABLED_CACHE
-    uint8_t hash;                    /**< schema hash required for LYB printer/parser */
+    uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
 #endif
 
     /* specific container's data */
@@ -1389,7 +1398,7 @@ struct lys_node_leaf {
     void *priv;                      /**< private caller's data, not used by libyang */
 
 #ifdef LY_ENABLED_CACHE
-    uint8_t hash;                    /**< schema hash required for LYB printer/parser */
+    uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
 #endif
 
     /* specific leaf's data */
@@ -1443,7 +1452,7 @@ struct lys_node_leaflist {
     void *priv;                      /**< private caller's data, not used by libyang */
 
 #ifdef LY_ENABLED_CACHE
-    uint8_t hash;                    /**< schema hash required for LYB printer/parser */
+    uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
 #endif
 
     /* specific leaf-list's data */
@@ -1498,7 +1507,7 @@ struct lys_node_list {
     void *priv;                      /**< private caller's data, not used by libyang */
 
 #ifdef LY_ENABLED_CACHE
-    uint8_t hash;                    /**< schema hash required for LYB printer/parser */
+    uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
 #endif
 
     /* specific list's data */
@@ -1555,7 +1564,7 @@ struct lys_node_anydata {
     void *priv;                      /**< private caller's data, not used by libyang */
 
 #ifdef LY_ENABLED_CACHE
-    uint8_t hash;                    /**< schema hash required for LYB printer/parser */
+    uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
 #endif
 
     /* specific anyxml's data */
@@ -1773,7 +1782,7 @@ struct lys_node_notif {
     void *priv;                      /**< private caller's data, not used by libyang */
 
 #ifdef LY_ENABLED_CACHE
-    uint8_t hash;                    /**< schema hash required for LYB printer/parser */
+    uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
 #endif
 
     /* specific rpc's data */
@@ -1819,7 +1828,7 @@ struct lys_node_rpc_action {
     void *priv;                      /**< private caller's data, not used by libyang */
 
 #ifdef LY_ENABLED_CACHE
-    uint8_t hash;                    /**< schema hash required for LYB printer/parser */
+    uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
 #endif
 
     /* specific rpc's data */

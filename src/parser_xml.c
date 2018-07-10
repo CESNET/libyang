@@ -748,7 +748,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     ly_set_free(set);
 
     /* add default values, resolve unres and check for mandatory nodes in final tree */
-    if (lyd_defaults_add_unres(&result, options, ctx, data_tree, act_notif, unres)) {
+    if (lyd_defaults_add_unres(&result, options, ctx, data_tree, act_notif, unres, 1)) {
         goto error;
     }
     if (!(options & (LYD_OPT_TRUSTED | LYD_OPT_NOTIF_FILTER))

@@ -58,8 +58,8 @@ struct lyd_node *lyd_parse_json(struct ly_ctx *ctx, const char *data, int option
  * @defgroup lybdata LYB data format support
  * @{
  */
-struct lyd_node *lyd_parse_lyb(struct ly_ctx *ctx, const char *data, int options, const struct lyd_node *rpc_act,
-                               const struct lyd_node *data_tree, const char *yang_data_name, int *parsed);
+struct lyd_node *lyd_parse_lyb(struct ly_ctx *ctx, const char *data, int options, const struct lyd_node *data_tree,
+                               const char *yang_data_name, int *parsed);
 
 /**@} lybdata */
 

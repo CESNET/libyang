@@ -530,7 +530,7 @@ char *lyd_path(const struct lyd_node *node);
  * @param[in] ctx Context to connect with the data tree being built here.
  * @param[in] data Serialized data in the specified format.
  * @param[in] format Format of the input data to be parsed.
- * @param[in] options Parser options, see @ref parseroptions.
+ * @param[in] options Parser options, see @ref parseroptions. \p format LYD_LYB uses #LYD_OPT_TRUSTED implicitly.
  * @param[in] ... Variable arguments depend on \p options. If they include:
  *                - #LYD_OPT_DATA:
  *                - #LYD_OPT_CONFIG:
@@ -568,7 +568,7 @@ struct lyd_node *lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT 
  * @param[in] ctx Context to connect with the data tree being built here.
  * @param[in] fd The standard file descriptor of the file containing the data tree in the specified format.
  * @param[in] format Format of the input data to be parsed.
- * @param[in] options Parser options, see @ref parseroptions.
+ * @param[in] options Parser options, see @ref parseroptions. \p format LYD_LYB uses #LYD_OPT_TRUSTED implicitly.
  * @param[in] ... Variable arguments depend on \p options. If they include:
  *                - #LYD_OPT_DATA:
  *                - #LYD_OPT_CONFIG:
@@ -604,7 +604,7 @@ struct lyd_node *lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int
  * @param[in] ctx Context to connect with the data tree being built here.
  * @param[in] path Path to the file containing the data tree in the specified format.
  * @param[in] format Format of the input data to be parsed.
- * @param[in] options Parser options, see @ref parseroptions.
+ * @param[in] options Parser options, see @ref parseroptions. \p format LYD_LYB uses #LYD_OPT_TRUSTED implicitly.
  * @param[in] ... Variable arguments depend on \p options. If they include:
  *                - #LYD_OPT_DATA:
  *                - #LYD_OPT_CONFIG:
@@ -1240,14 +1240,11 @@ const struct lys_type *lyd_leaf_type(const struct lyd_node_leaf_list *leaf);
 /**
 * @brief Print data tree in the specified format.
 *
-* Same as lyd_print(), but it allocates memory and store the data into it.
-* It is up to caller to free the returned string by free().
-*
 * @param[out] strp Pointer to store the resulting dump.
 * @param[in] root Root node of the data tree to print. It can be actually any (not only real root)
 * node of the data tree to print the specific subtree.
 * @param[in] format Data output format.
-* @param[in] options [printer flags](@ref printerflags).
+* @param[in] options [printer flags](@ref printerflags). \p format LYD_LYB accepts only #LYP_WITHSIBLINGS option.
 * @return 0 on success, 1 on failure (#ly_errno is set).
 */
 int lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format, int options);
@@ -1255,13 +1252,11 @@ int lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format, i
 /**
  * @brief Print data tree in the specified format.
  *
- * Same as lyd_print(), but output is written into the specified file descriptor.
- *
  * @param[in] root Root node of the data tree to print. It can be actually any (not only real root)
  * node of the data tree to print the specific subtree.
  * @param[in] fd File descriptor where to print the data.
  * @param[in] format Data output format.
- * @param[in] options [printer flags](@ref printerflags).
+ * @param[in] options [printer flags](@ref printerflags). \p format LYD_LYB accepts only #LYP_WITHSIBLINGS option.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
 int lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format, int options);
@@ -1269,13 +1264,11 @@ int lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format, int opt
 /**
  * @brief Print data tree in the specified format.
  *
- * To write data into a file descriptor, use lyd_print_fd().
- *
  * @param[in] root Root node of the data tree to print. It can be actually any (not only real root)
  * node of the data tree to print the specific subtree.
  * @param[in] f File stream where to print the data.
  * @param[in] format Data output format.
- * @param[in] options [printer flags](@ref printerflags).
+ * @param[in] options [printer flags](@ref printerflags). \p format LYD_LYB accepts only #LYP_WITHSIBLINGS option.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
 int lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format, int options);
@@ -1283,14 +1276,12 @@ int lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format, int 
 /**
  * @brief Print data tree in the specified format.
  *
- * Same as lyd_print(), but output is written via provided callback.
- *
  * @param[in] root Root node of the data tree to print. It can be actually any (not only real root)
  * node of the data tree to print the specific subtree.
  * @param[in] writeclb Callback function to write the data (see write(1)).
  * @param[in] arg Optional caller-specific argument to be passed to the \p writeclb callback.
  * @param[in] format Data output format.
- * @param[in] options [printer flags](@ref printerflags).
+ * @param[in] options [printer flags](@ref printerflags). \p format LYD_LYB accepts only #LYP_WITHSIBLINGS option.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
 int lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
