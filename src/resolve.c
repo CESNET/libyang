@@ -1987,8 +1987,8 @@ resolve_schema_nodeid(const char *nodeid, const struct lys_node *start_parent, c
                 aux_mod = cur_module;
             }
 
-            /* if the module is implemented, all the augments will be connected */
-            if (!aux_mod->implemented && !extended) {
+            /* look into augments */
+            if (!extended) {
 get_next_augment:
                 last_aug = lys_getnext_target_aug(last_aug, aux_mod, start_parent);
             }
