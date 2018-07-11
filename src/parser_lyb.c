@@ -588,6 +588,16 @@ lyb_parse_schema_hash(const struct lys_node *sparent, const struct lys_module *m
         LYB_HAVE_READ_RETURN(r, data, -1);
     }
 
+    /* handle yang data templates */
+    if ((options & LYD_OPT_DATA_TEMPLATE) && yang_data_name && mod) {
+        sparent = lyp_get_yang_data_template(mod, yang_data_name, strlen(yang_data_name));
+        if (!sparent) {
+            sibling = NULL;
+            goto finish;
+        }
+    }
+
+    /* handle RPC/action input/output */
     if (sparent && (sparent->nodetype & (LYS_RPC | LYS_ACTION))) {
         sibling = NULL;
         while ((sibling = (struct lys_node *)lys_getnext(sibling, sparent, NULL, LYS_GETNEXT_WITHINOUT))) {
@@ -638,7 +648,7 @@ lyb_parse_subtree(struct ly_ctx *ctx, const char *data, struct lyd_node *parent,
     int r, ret = 0;
     struct lyd_node *node = NULL, *iter;
     const struct lys_module *mod;
-    struct lys_node *sparent, *snode;
+    struct lys_node *snode;
 
     assert((parent && !first_sibling) || (!parent && first_sibling));
 
@@ -651,14 +661,14 @@ lyb_parse_subtree(struct ly_ctx *ctx, const char *data, struct lyd_node *parent,
         ret += (r = lyb_parse_model(ctx, data, &mod, lybs));
         LYB_HAVE_READ_GOTO(r, data, error);
 
-        sparent = NULL;
+        /* read hash, find the schema node starting from mod, possibly yang_data_name */
+        r = lyb_parse_schema_hash(NULL, mod, data, yang_data_name, options, &snode, lybs);
     } else {
-        mod = NULL;
-        sparent = parent->schema;
-    }
 
-    /* read hash, find the schema node */
-    ret += (r = lyb_parse_schema_hash(sparent, mod, data, yang_data_name, options, &snode, lybs));
+        /* read hash, find the schema node starting from parent schema */
+        r = lyb_parse_schema_hash(parent->schema, NULL, data, NULL, options, &snode, lybs);
+    }
+    ret += r;
     LYB_HAVE_READ_GOTO(r, data, error);
 
     if (!snode) {

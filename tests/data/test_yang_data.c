@@ -129,6 +129,7 @@ static void
 test_mem_yangdata(void **state)
 {
     struct state *st = (*state);
+    char *str;
 
     char *xml_file = "<errors xmlns=\"urn:cesnet:yang-data\">\n"
                      "  <error>\n"
@@ -170,7 +171,14 @@ test_mem_yangdata(void **state)
     assert_ptr_equal(st->dt, NULL);
     st->dt = lyd_parse_mem(st->ctx, json_file2, LYD_JSON, LYD_OPT_DATA_TEMPLATE, "data");
     assert_ptr_not_equal(st->dt, NULL);
+
+    lyd_print_mem(&str, st->dt, LYD_LYB, 0);
     lyd_free(st->dt);
+    st->dt = lyd_parse_mem(st->ctx, str, LYD_LYB, LYD_OPT_DATA_TEMPLATE, "data");
+    free(str);
+    assert_ptr_not_equal(st->dt, NULL);
+    lyd_free(st->dt);
+
     st->dt = lyd_parse_mem(st->ctx, xml_file, LYD_XML, LYD_OPT_DATA_TEMPLATE | LYD_OPT_STRICT, "data");
     assert_ptr_equal(st->dt, NULL);
     st->dt = lyd_parse_mem(st->ctx, xml_file, LYD_XML, LYD_OPT_DATA_TEMPLATE, "data");
