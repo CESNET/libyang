@@ -408,19 +408,22 @@ store_value_type:
         }
 
         /* store the remainder */
-        for (byte = 0, i = 0; i < type->info.bits.count % 8; ++i) {
-            if (leaf->value.bit[bits_i + i]) {
-                byte |= 0x80;
+        if (type->info.bits.count % 8) {
+            for (byte = 0, i = 0; i < type->info.bits.count % 8; ++i) {
+                if (leaf->value.bit[bits_i + i]) {
+                    byte |= 0x80;
+                }
+                byte >>= 1;
             }
-            byte >>= 1;
+            byte >>= 8 - (i + 1);
+            ret += lyb_write(out, &byte, sizeof byte, lybs);
         }
-        ret += lyb_write(out, &byte, sizeof byte, lybs);
         break;
     case LY_TYPE_BOOL:
-        /* store only 1b */
+        /* store the whole byte */
         byte = 0;
         if (leaf->value.bln) {
-            byte |= 0x01;
+            byte = 1;
         }
         ret += lyb_write(out, &byte, sizeof byte, lybs);
         break;
@@ -432,8 +435,8 @@ store_value_type:
         for (; !type->info.enums.count; type = &type->der->type);
 
         /* store the enum index (save bytes if possible) */
-        i = (leaf->value.enm - type->info.enums.enm) / sizeof *leaf->value.enm;
-        ret += lyb_write_number(i, type->info.enums.enm[type->info.enums.count - 1].value, out, lybs);
+        i = leaf->value.enm - type->info.enums.enm;
+        ret += lyb_write_number(i, type->info.enums.count, out, lybs);
         break;
     case LY_TYPE_INT8:
     case LY_TYPE_UINT8:
@@ -485,24 +488,61 @@ lyb_hash_find(struct hash_table *ht, struct lys_node *node)
 }
 
 static int
-lyb_print_subtree(struct lyout *out, const struct lyd_node *node, struct hash_table **sibling_ht, struct lyb_state *lybs,
-                  int options, int top_level)
+lyb_print_schema_hash(struct lyout *out, struct lys_node *schema, struct hash_table **sibling_ht, struct lyb_state *lybs)
 {
     int r, ret = 0;
-    LYB_HASH hash = 0;
-    struct hash_table *children_ht = NULL;
+    uint32_t i;
+    LYB_HASH hash;
 
-    /* create whole sibling HT if not already and get our hash */
+    /* create whole sibling HT if not already and get our last hash */
     if (!*sibling_ht) {
-        *sibling_ht = lyb_hash_siblings(node->schema, NULL, 0);
+        *sibling_ht = lyb_hash_siblings(schema, NULL, 0);
         if (!*sibling_ht) {
             return -1;
         }
     }
-    hash = lyb_hash_find(*sibling_ht, node->schema);
+
+    /* get first hash */
+    hash = lyb_hash_find(*sibling_ht, schema);
     if (!hash) {
         return -1;
     }
+
+    /* write the hash */
+    ret += (r = lyb_write(out, &hash, sizeof hash, lybs));
+    if (r < 0) {
+        return -1;
+    }
+
+    if (hash & LYB_HASH_COLLISION_ID) {
+        /* no collision for this hash, we are done */
+        return ret;
+    }
+
+    /* written hash was a collision, write also all the preceding hashes */
+    for (i = 0; !(hash & (LYB_HASH_COLLISION_ID >> i)); ++i);
+
+    for (; i; --i) {
+        hash = lyb_hash(schema, i - 1);
+        if (!hash) {
+            return -1;
+        }
+
+        ret += (r = lyb_write(out, &hash, sizeof hash, lybs));
+        if (r < 0) {
+            return -1;
+        }
+    }
+
+    return ret;
+}
+
+static int
+lyb_print_subtree(struct lyout *out, const struct lyd_node *node, struct hash_table **sibling_ht, struct lyb_state *lybs,
+                  int options, int top_level)
+{
+    int r, ret = 0;
+    struct hash_table *children_ht = NULL;
 
     /* register a new subtree */
     ret += (r = lyb_write_start_subtree(out, lybs));
@@ -522,8 +562,7 @@ lyb_print_subtree(struct lyout *out, const struct lyd_node *node, struct hash_ta
         }
     }
 
-    /* write schema node hash */
-    ret += (r = lyb_write(out, &hash, sizeof hash, lybs));
+    ret += (r = lyb_print_schema_hash(out, node->schema, sibling_ht, lybs));
     if (r < 0) {
         return -1;
     }
@@ -534,6 +573,9 @@ lyb_print_subtree(struct lyout *out, const struct lyd_node *node, struct hash_ta
     switch (node->schema->nodetype) {
     case LYS_CONTAINER:
     case LYS_LIST:
+    case LYS_NOTIF:
+    case LYS_RPC:
+    case LYS_ACTION:
         /* nothing to write */
         break;
     case LYS_LEAF:
@@ -556,7 +598,7 @@ lyb_print_subtree(struct lyout *out, const struct lyd_node *node, struct hash_ta
 
     /* recursively write all the descendants */
     r = 0;
-    if (node->schema->nodetype & (LYS_CONTAINER | LYS_LIST)) {
+    if (node->schema->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_NOTIF | LYS_RPC | LYS_ACTION)) {
         LY_TREE_FOR(node->child, node) {
             ret += (r = lyb_print_subtree(out, node, &children_ht, lybs, options, 0));
             if (r < 0) {

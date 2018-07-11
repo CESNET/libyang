@@ -219,6 +219,10 @@ lyb_new_node(const struct lys_node *schema)
     case LYS_LEAF:
     case LYS_LEAFLIST:
         node = calloc(sizeof(struct lyd_node_leaf_list), 1);
+
+        if (((struct lys_node_leaf *)schema)->type.base == LY_TYPE_LEAFREF) {
+            node->validity |= LYD_VAL_LEAFREF;
+        }
         break;
     case LYS_ANYDATA:
     case LYS_ANYXML:
@@ -231,7 +235,6 @@ lyb_new_node(const struct lys_node *schema)
 
     /* fill basic info */
     node->schema = (struct lys_node *)schema;
-    node->validity = ly_new_node_validity(schema);
     if (resolve_applies_when(schema, 0, NULL)) {
         node->when_status = LYD_WHEN;
     }
@@ -273,7 +276,7 @@ lyb_parse_val(struct lyd_node_leaf_list *node, const char *data, struct lyb_stat
     struct ly_ctx *ctx = node->schema->module->ctx;
     struct lys_type *type = &((struct lys_node_leaf *)node->schema)->type;
 
-    if (node->value_flags & (LY_VALUE_USER || LY_VALUE_UNRES)) {
+    if (node->value_flags & (LY_VALUE_USER | LY_VALUE_UNRES)) {
         /* just read value_str */
         return lyb_read_string(ctx, &node->value_str, data, lybs);
     }
@@ -331,8 +334,9 @@ lyb_parse_val(struct lyd_node_leaf_list *node, const char *data, struct lyb_stat
         for (; !type->info.enums.count; type = &type->der->type);
 
         num = 0;
-        ret = lyb_read_number(&num, type->info.enums.enm[type->info.enums.count - 1].value, data, lybs);
-        if ((ret > 0) && (num < type->info.enums.count)) {
+        ret = lyb_read_number(&num, type->info.enums.count, data, lybs);
+        if (ret > 0) {
+            assert(num < type->info.enums.count);
             node->value.enm = &type->info.enums.enm[num];
         }
         break;
@@ -387,6 +391,15 @@ lyb_parse_val_str(struct lyd_node_leaf_list *node, struct unres_data *unres)
         return 0;
     }
 
+    /* we are parsing leafref/ptr union stored as the target type,
+     * so we first parse it into string and then resolve the leafref/ptr union */
+    if ((type->base == LY_TYPE_LEAFREF) || ((type->base == LY_TYPE_UNION) && type->info.uni.has_ptr_type)) {
+        if ((node->value_type == LY_TYPE_INST) || (node->value_type == LY_TYPE_IDENT) || (node->value_type == LY_TYPE_UNION)) {
+            /* we already have a string */
+            goto parse_reference;
+        }
+    }
+
     switch (node->value_type) {
     case LY_TYPE_INST:
         /* try to fill the instance-identifier target now */
@@ -414,15 +427,13 @@ lyb_parse_val_str(struct lyd_node_leaf_list *node, struct unres_data *unres)
         str = malloc(1);
         LY_CHECK_ERR_RETURN(!str, LOGMEM(ctx), -1);
         str[0] = '\0';
-        str_len = 1;
+        str_len = 0;
         for (i = 0; i < type->info.bits.count; ++i) {
             if (node->value.bit[i]) {
-                str = ly_realloc(str, str_len + strlen(node->value.bit[i]->name) + 1);
+                str = ly_realloc(str, str_len + strlen(node->value.bit[i]->name) + (str_len ? 1 : 0) + 1);
                 LY_CHECK_ERR_RETURN(!str, LOGMEM(ctx), -1);
 
-                sprintf(str + str_len, "%s%s", str_len == 1 ? "" : " ", node->value.bit[i]->name);
-
-                str_len += strlen(node->value.bit[i]->name) + 1;
+                str_len += sprintf(str + str_len, "%s%s", str_len ? " " : "", node->value.bit[i]->name);
             }
         }
 
@@ -472,11 +483,28 @@ lyb_parse_val_str(struct lyd_node_leaf_list *node, struct unres_data *unres)
         node->value_str = lydict_insert(ctx, num_str, 0);
         break;
     case LY_TYPE_DEC64:
-        sprintf(num_str, "%ld.%ld", node->value.dec64 / (type->info.dec64.dig * 10), node->value.dec64 % (type->info.dec64.dig * 10));
+        sprintf(num_str, "%ld.%.*ld", node->value.dec64 / type->info.dec64.div, type->info.dec64.dig,
+                node->value.dec64 % type->info.dec64.div);
         node->value_str = lydict_insert(ctx, num_str, 0);
         break;
     default:
         return -1;
+    }
+
+    if ((type->base == LY_TYPE_LEAFREF) || ((type->base == LY_TYPE_UNION) && type->info.uni.has_ptr_type)) {
+
+parse_reference:
+        assert(node->value_str);
+
+        if (type->base == LY_TYPE_LEAFREF) {
+            if (unres_data_add(unres, (struct lyd_node *)node, UNRES_LEAFREF)) {
+                return -1;
+            }
+        } else {
+            if (unres_data_add(unres, (struct lyd_node *)node, UNRES_UNION)) {
+                return -1;
+            }
+        }
     }
 
     return 0;
@@ -515,18 +543,20 @@ lyb_parse_leaf(struct lyd_node *node, const char *data, struct unres_data *unres
 }
 
 static int
-lyb_is_schema_hash_match(struct lys_node *sibling, LYB_HASH hash)
+lyb_is_schema_hash_match(struct lys_node *sibling, LYB_HASH *hash, uint8_t hash_count)
 {
     LYB_HASH sibling_hash;
-    uint8_t collision_id;
+    uint8_t i;
 
-    /* get collision ID */
-    for (collision_id = 0; !(hash & (LYB_HASH_COLLISION_ID >> collision_id)); ++collision_id);
+    /* compare all the hashes starting from collision ID 0 */
+    for (i = 0; i < hash_count; ++i) {
+        sibling_hash = lyb_hash(sibling, i);
+        if (sibling_hash != hash[i]) {
+            return 0;
+        }
+    }
 
-    /* get correct collision ID node hash */
-    sibling_hash = lyb_hash(sibling, collision_id);
-
-    return hash == sibling_hash;
+    return 1;
 }
 
 static int
@@ -534,28 +564,60 @@ lyb_parse_schema_hash(const struct lys_node *sparent, const struct lys_module *m
                       int options, struct lys_node **snode, struct lyb_state *lybs)
 {
     int r, ret = 0;
-    struct lys_node *sibling = NULL;
-    LYB_HASH hash = 0;
+    uint8_t i, j;
+    struct lys_node *sibling;
+    LYB_HASH hash[LYB_HASH_BITS - 1];
     struct ly_ctx *ctx;
 
     assert((sparent || mod) && (!sparent || !mod));
     ctx = (sparent ? sparent->module->ctx : mod->ctx);
 
-    /* read the hash */
-    ret += (r = lyb_read(data, &hash, sizeof hash, lybs));
+    /* read the first hash */
+    ret += (r = lyb_read(data, &hash[0], sizeof *hash, lybs));
     LYB_HAVE_READ_RETURN(r, data, -1);
-    if (!hash) {
-        return -1;
+
+    /* based on the first hash read all the other ones, if any */
+    for (i = 0; !(hash[0] & (LYB_HASH_COLLISION_ID >> i)); ++i);
+
+    /* move the first hash on its accurate position */
+    hash[i] = hash[0];
+
+    /* read the rest of hashes */
+    for (j = i; j; --j) {
+        ret += (r = lyb_read(data, &hash[j - 1], sizeof *hash, lybs));
+        LYB_HAVE_READ_RETURN(r, data, -1);
     }
 
+    if (sparent && (sparent->nodetype & (LYS_RPC | LYS_ACTION))) {
+        sibling = NULL;
+        while ((sibling = (struct lys_node *)lys_getnext(sibling, sparent, NULL, LYS_GETNEXT_WITHINOUT))) {
+            if ((sibling->nodetype == LYS_INPUT) && (options & LYD_OPT_RPC)) {
+                break;
+            }
+            if ((sibling->nodetype == LYS_OUTPUT) && (options & LYD_OPT_RPCREPLY)) {
+                break;
+            }
+        }
+        if (!sibling) {
+            /* fail */
+            goto finish;
+        }
+
+        /* use only input/output children nodes */
+        sparent = sibling;
+    }
+
+    /* find our node with matching hashes */
+    sibling = NULL;
     while ((sibling = (struct lys_node *)lys_getnext(sibling, sparent, mod, 0))) {
         /* skip schema nodes from models not present during printing */
-        if (lyb_has_schema_model(sibling, lybs->models, lybs->mod_count) && lyb_is_schema_hash_match(sibling, hash)) {
+        if (lyb_has_schema_model(sibling, lybs->models, lybs->mod_count) && lyb_is_schema_hash_match(sibling, hash, i + 1)) {
             /* match found */
             break;
         }
     }
 
+finish:
     *snode = sibling;
     if (!sibling && (options & LYD_OPT_STRICT)) {
         if (mod) {
@@ -621,6 +683,9 @@ lyb_parse_subtree(struct ly_ctx *ctx, const char *data, struct lyd_node *parent,
     switch (snode->nodetype) {
     case LYS_CONTAINER:
     case LYS_LIST:
+    case LYS_NOTIF:
+    case LYS_RPC:
+    case LYS_ACTION:
         /* nothing to read */
         break;
     case LYS_LEAF:
@@ -686,7 +751,7 @@ stop_subtree:
 
 error:
     lyd_free(node);
-    if (*first_sibling == node) {
+    if (first_sibling && (*first_sibling == node)) {
         *first_sibling = NULL;
     }
     return -1;
