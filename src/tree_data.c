@@ -3290,8 +3290,16 @@ lyd_diff_equivnode(struct lyd_node *first, struct lyd_node *second)
     struct lyd_node *iter1, *iter2;
 
     for (iter1 = first, iter2 = second; iter1 && iter2; iter1 = iter1->parent, iter2 = iter2->parent) {
-        if (iter1->schema != iter2->schema) {
-            return 0;
+        if (iter1->schema->module->ctx == iter2->schema->module->ctx) {
+            if (iter1->schema != iter2->schema) {
+                return 0;
+            }
+        } else {
+            if (!ly_strequal(iter1->schema->name, iter2->schema->name, 0)) {
+                /* comparing the names is fine, even if they are, in fact, 2 different nodes
+                 * with equal names, some of their parents will differ */
+                return 0;
+            }
         }
         if (iter1->schema->nodetype == LYS_LIST) {
             /* compare keys */
