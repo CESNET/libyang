@@ -4031,6 +4031,8 @@ check_leafref_features(struct lys_type *type)
                 ret = EXIT_FAILURE;
                 goto cleanup;
             }
+            /* also add this augment */
+            ly_set_add(src_parents, aug, LY_SET_OPT_USEASLIST);
         }
         ly_set_add(src_parents, iter, LY_SET_OPT_USEASLIST);
     }
