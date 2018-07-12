@@ -1644,7 +1644,7 @@ resolve_iffeature_compile(struct lys_iffeature *iffeat_expr, const char *value, 
         }
         i++; /* get back by one step */
 
-        if (!strncmp(&c[i], "not ", 4)) {
+        if (!strncmp(&c[i], "not", 3) && isspace(c[i + 3])) {
             if (stack.index && stack.stack[stack.index - 1] == LYS_IFF_NOT) {
                 /* double not */
                 iff_stack_pop(&stack);
@@ -1653,7 +1653,7 @@ resolve_iffeature_compile(struct lys_iffeature *iffeat_expr, const char *value, 
                  * as in case of AND and OR */
                 iff_stack_push(&stack, LYS_IFF_NOT);
             }
-        } else if (!strncmp(&c[i], "and ", 4)) {
+        } else if (!strncmp(&c[i], "and", 3) && isspace(c[i + 3])) {
             /* as for OR - pop from the stack all operators with the same or higher
              * priority and store them to the result, then push the AND to the stack */
             while (stack.index && stack.stack[stack.index - 1] <= LYS_IFF_AND) {
@@ -1661,7 +1661,7 @@ resolve_iffeature_compile(struct lys_iffeature *iffeat_expr, const char *value, 
                 iff_setop(iffeat_expr->expr, op, expr_size--);
             }
             iff_stack_push(&stack, LYS_IFF_AND);
-        } else if (!strncmp(&c[i], "or ", 3)) {
+        } else if (!strncmp(&c[i], "or", 2) && isspace(c[i + 2])) {
             while (stack.index && stack.stack[stack.index - 1] <= LYS_IFF_OR) {
                 op = iff_stack_pop(&stack);
                 iff_setop(iffeat_expr->expr, op, expr_size--);
