@@ -737,8 +737,9 @@ transform_iffeat_schema2json(const struct lys_module *module, const char *expr)
             assert(out_size == out_used);
             return lydict_insert_zc(ctx, out);
         }
-        id = strpbrk_backwards(col - 1, "/ [\'\"", (col - in) - 1);
-        if ((id[0] == '/') || (id[0] == ' ') || (id[0] == '[') || (id[0] == '\'') || (id[0] == '\"')) {
+        id = strpbrk_backwards(col - 1, "/ [\'\"\f\n\r\t\v", (col - in) - 1);
+        if ((id[0] == '/') || (id[0] == ' ') || (id[0] == '[') || (id[0] == '\'') || (id[0] == '\"') || (id[0] == '\f') ||
+                (id[0] == '\n') || (id[0] == '\r') || (id[0] == '\t') || (id[0] == '\v')) {
             ++id;
         }
         id_len = col - id;
@@ -752,7 +753,7 @@ transform_iffeat_schema2json(const struct lys_module *module, const char *expr)
         /* get the module */
         mod = lyp_get_module(module, id, id_len, NULL, 0, 0);
         if (!mod) {
-            LOGVAL(ctx, LYE_INMOD_LEN, LY_VLOG_NONE, NULL, id_len, id);
+            LOGVAL(ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Module prefix \"%.*s\" is unknown.", id_len, id);
             free(out);
             return NULL;
         }
