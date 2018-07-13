@@ -752,7 +752,7 @@ transform_iffeat_schema2json(const struct lys_module *module, const char *expr)
         /* get the module */
         mod = lyp_get_module(module, id, id_len, NULL, 0, 0);
         if (!mod) {
-            LOGVAL(ctx, LYE_INMOD_LEN, LY_VLOG_NONE, NULL, id_len, id);
+            LOGVAL(ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Module prefix \"%.*s\" is unknown.", id_len, id);
             free(out);
             return NULL;
         }
