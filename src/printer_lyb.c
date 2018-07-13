@@ -136,29 +136,42 @@ lyb_write_number(uint64_t num, uint64_t max_num, struct lyout *out, struct lyb_s
 }
 
 static int
-lyb_write_string(const char *str, struct lyout *out, struct lyb_state *lybs)
+lyb_write_string(const char *str, size_t str_len, int with_length, struct lyout *out, struct lyb_state *lybs)
 {
-    return lyb_write(out, (const uint8_t *)str, strlen(str), lybs);
+    int r, ret = 0;
+
+    if (!str_len) {
+        str_len = strlen(str);
+    }
+    if (str_len > UINT16_MAX) {
+        LOGINT(NULL);
+        return -1;
+    }
+
+    if (with_length) {
+        /* print length on 2 bytes */
+        ret += (r = lyb_write(out, (uint8_t *)&str_len, 2, lybs));
+        if (r < 0) {
+            return -1;
+        }
+    }
+
+    ret += (r = lyb_write(out, (const uint8_t *)str, str_len, lybs));
+    if (r < 0) {
+        return -1;
+    }
+
+    return ret;
 }
 
 static int
 lyb_print_model(struct lyout *out, const struct lys_module *mod, struct lyb_state *lybs)
 {
     int r, ret = 0;
-    size_t len;
     uint16_t revision;
 
     /* model name length and model name */
-    len = strlen(mod->name);
-    if (len > UINT16_MAX) {
-        LOGINT(mod->ctx);
-        return -1;
-    }
-    ret += (r = lyb_write(out, (uint8_t *)&len, sizeof(uint16_t), lybs));
-    if (r < 0) {
-        return -1;
-    }
-    ret += (r = lyb_write(out, (uint8_t *)mod->name, len, lybs));
+    ret += (r = lyb_write_string(mod->name, 0, 1, out, lybs));
     if (r < 0) {
         return -1;
     }
@@ -310,20 +323,20 @@ lyb_print_anydata(struct lyd_node_anydata *anydata, struct lyout *out, struct ly
     if (type == LYD_ANYDATA_DATATREE) {
         ret += lyb_print_data(out, anydata->value.tree, 0);
     } else {
-        ret += lyb_write_string(anydata->value.str, out, lybs);
+        ret += lyb_write_string(anydata->value.str, 0, 0, out, lybs);
     }
 
     return ret;
 }
 
 static int
-lyb_print_leaf(const struct lyd_node_leaf_list *leaf, struct lyout *out, struct lyb_state *lybs)
+lyb_print_value(const struct lys_type *type, const char *value_str, lyd_val value, LY_DATA_TYPE value_type,
+                uint8_t value_flags, uint8_t dflt, struct lyout *out, struct lyb_state *lybs)
 {
     int ret = 0;
     uint8_t byte = 0;
     size_t count, i, bits_i;
     LY_DATA_TYPE dtype;
-    const struct lys_type *type = &((struct lys_node_leaf *)leaf->schema)->type;
 
     /* value type byte - ABCD DDDD
      *
@@ -332,51 +345,41 @@ lyb_print_leaf(const struct lyd_node_leaf_list *leaf, struct lyout *out, struct 
      * C - unres flag
      * D (5b) - data type value
      */
-    if (leaf->dflt) {
+    if (dflt) {
         byte |= 0x80;
     }
-    if (leaf->value_flags & LY_VALUE_USER) {
+    if (value_flags & LY_VALUE_USER) {
         byte |= 0x40;
     }
-    if (leaf->value_flags & LY_VALUE_UNRES) {
+    if (value_flags & LY_VALUE_UNRES) {
         byte |= 0x20;
     }
 
-store_value_type:
     /* we have only 5b available, must be enough */
-    assert((type->base & 0x1f) == type->base);
+    assert((value_type & 0x1f) == value_type);
 
-    if (!(leaf->value_flags & LY_VALUE_USER)) {
-        switch (type->base) {
-        case LY_TYPE_DER:
-            /* error */
-            return 0;
-
-        case LY_TYPE_LEAFREF:
-            assert(!(leaf->value_flags & LY_VALUE_UNRES));
-            /* find the leafref target */
-            type = lyd_leaf_type(leaf);
-            if (!type) {
-                /* error */
-                return 0;
-            }
-            goto store_value_type;
-
-        default:
-            /* just store the value type */
-            byte |= type->base & 0x1f;
-            break;
+    if (value_flags & LY_VALUE_USER) {
+        value_type = LY_TYPE_STRING;
+    } else if (value_type == LY_TYPE_LEAFREF) {
+        assert(!(value_flags & LY_VALUE_UNRES));
+        /* find the leafref target */
+        while (type->base == LY_TYPE_LEAFREF) {
+            type = &type->info.lref.target->type;
         }
+        value_type = type->base;
     }
+
+    /* store the value type */
+    byte |= value_type & 0x1f;
 
     /* write value type byte */
     ret += lyb_write(out, &byte, sizeof byte, lybs);
 
     /* print value itself */
-    if (leaf->value_flags & LY_VALUE_USER) {
+    if (value_flags & LY_VALUE_USER) {
         dtype = LY_TYPE_STRING;
     } else {
-        dtype = type->base;
+        dtype = value_type;
     }
     switch (dtype) {
     case LY_TYPE_BINARY:
@@ -386,7 +389,7 @@ store_value_type:
     case LY_TYPE_IDENT:
     case LY_TYPE_UNKNOWN:
         /* store string */
-        ret += lyb_write_string(leaf->value_str, out, lybs);
+        ret += lyb_write_string(value_str, 0, 0, out, lybs);
         break;
     case LY_TYPE_BITS:
         /* find the correct structure */
@@ -398,7 +401,7 @@ store_value_type:
         for (count = type->info.bits.count / 8; count; --count) {
             /* will be a full byte */
             for (byte = 0, i = 0; i < 8; ++i) {
-                if (leaf->value.bit[bits_i + i]) {
+                if (value.bit[bits_i + i]) {
                     byte |= 0x80;
                 }
                 byte >>= 1;
@@ -410,7 +413,7 @@ store_value_type:
         /* store the remainder */
         if (type->info.bits.count % 8) {
             for (byte = 0, i = 0; i < type->info.bits.count % 8; ++i) {
-                if (leaf->value.bit[bits_i + i]) {
+                if (value.bit[bits_i + i]) {
                     byte |= 0x80;
                 }
                 byte >>= 1;
@@ -422,7 +425,7 @@ store_value_type:
     case LY_TYPE_BOOL:
         /* store the whole byte */
         byte = 0;
-        if (leaf->value.bln) {
+        if (value.bln) {
             byte = 1;
         }
         ret += lyb_write(out, &byte, sizeof byte, lybs);
@@ -435,28 +438,89 @@ store_value_type:
         for (; !type->info.enums.count; type = &type->der->type);
 
         /* store the enum index (save bytes if possible) */
-        i = leaf->value.enm - type->info.enums.enm;
+        i = value.enm - type->info.enums.enm;
         ret += lyb_write_number(i, type->info.enums.count, out, lybs);
         break;
     case LY_TYPE_INT8:
     case LY_TYPE_UINT8:
-        ret += lyb_write_number(leaf->value.uint8, UINT8_MAX, out, lybs);
+        ret += lyb_write_number(value.uint8, UINT8_MAX, out, lybs);
         break;
     case LY_TYPE_INT16:
     case LY_TYPE_UINT16:
-        ret += lyb_write_number(leaf->value.uint16, UINT16_MAX, out, lybs);
+        ret += lyb_write_number(value.uint16, UINT16_MAX, out, lybs);
         break;
     case LY_TYPE_INT32:
     case LY_TYPE_UINT32:
-        ret += lyb_write_number(leaf->value.uint32, UINT32_MAX, out, lybs);
+        ret += lyb_write_number(value.uint32, UINT32_MAX, out, lybs);
         break;
     case LY_TYPE_DEC64:
     case LY_TYPE_INT64:
     case LY_TYPE_UINT64:
-        ret += lyb_write_number(leaf->value.uint64, UINT64_MAX, out, lybs);
+        ret += lyb_write_number(value.uint64, UINT64_MAX, out, lybs);
         break;
     default:
         return 0;
+    }
+
+    return ret;
+}
+
+static int
+lyb_print_attributes(struct lyout *out, struct lyd_attr *attr, struct lyb_state *lybs)
+{
+    int r, ret = 0;
+    uint8_t count;
+    struct lyd_attr *iter;
+    struct lys_type *type;
+
+    /* count attributes */
+    for (count = 0, iter = attr; iter; ++count, iter = iter->next) {
+        if (count == UINT8_MAX) {
+            LOGERR(NULL, LY_EINT, "Maximum supported number of data node attributes is %u.", UINT8_MAX);
+            return -1;
+        }
+    }
+
+    /* write number of attributes on 1 byte */
+    ret += (r = lyb_write(out, &count, 1, lybs));
+    if (r < 0) {
+        return -1;
+    }
+
+    /* write all the attributes */
+    LY_TREE_FOR(attr, iter) {
+        /* each attribute is a subtree */
+        ret += (r = lyb_write_start_subtree(out, lybs));
+        if (r < 0) {
+            return -1;
+        }
+
+        /* model */
+        ret += (r = lyb_print_model(out, attr->annotation->module, lybs));
+        if (r < 0) {
+            return -1;
+        }
+
+        /* annotation name with length */
+        ret += (r = lyb_write_string(attr->annotation->arg_value, 0, 1, out, lybs));
+        if (r < 0) {
+            return -1;
+        }
+
+        /* get the type */
+        type = *(struct lys_type **)lys_ext_complex_get_substmt(LY_STMT_TYPE, attr->annotation, NULL);
+
+        /* attribute value */
+        ret += (r = lyb_print_value(type, attr->value_str, attr->value, attr->value_type, attr->value_flags, 0, out, lybs));
+        if (r < 0) {
+            return -1;
+        }
+
+        /* finish attribute subtree */
+        ret += (r = lyb_write_stop_subtree(out, lybs));
+        if (r < 0) {
+            return -1;
+        }
     }
 
     return ret;
@@ -527,6 +591,7 @@ lyb_print_schema_hash(struct lyout *out, struct lys_node *schema, struct hash_ta
         if (!hash) {
             return -1;
         }
+        assert(hash & (LYB_HASH_COLLISION_ID >> (i - 1)));
 
         ret += (r = lyb_write(out, &hash, sizeof hash, lybs));
         if (r < 0) {
@@ -543,6 +608,7 @@ lyb_print_subtree(struct lyout *out, const struct lyd_node *node, struct hash_ta
 {
     int r, ret = 0;
     struct hash_table *children_ht = NULL;
+    struct lyd_node_leaf_list *leaf;
 
     /* register a new subtree */
     ret += (r = lyb_write_start_subtree(out, lybs));
@@ -567,7 +633,10 @@ lyb_print_subtree(struct lyout *out, const struct lyd_node *node, struct hash_ta
         return -1;
     }
 
-    /* TODO write attributes */
+    ret += (r = lyb_print_attributes(out, node->attr, lybs));
+    if (r < 0) {
+        return -1;
+    }
 
     /* write node content */
     switch (node->schema->nodetype) {
@@ -580,7 +649,9 @@ lyb_print_subtree(struct lyout *out, const struct lyd_node *node, struct hash_ta
         break;
     case LYS_LEAF:
     case LYS_LEAFLIST:
-        ret += (r = lyb_print_leaf((const struct lyd_node_leaf_list *)node, out, lybs));
+        leaf = (struct lyd_node_leaf_list *)node;
+        ret += (r = lyb_print_value(&((struct lys_node_leaf *)leaf->schema)->type, leaf->value_str, leaf->value,
+                                    leaf->value_type, leaf->value_flags, leaf->dflt, out, lybs));
         if (r < 0) {
             return -1;
         }
@@ -625,7 +696,7 @@ lyb_print_subtree(struct lyout *out, const struct lyd_node *node, struct hash_ta
 int
 lyb_print_data(struct lyout *out, const struct lyd_node *root, int options)
 {
-    int r, ret = 0;
+    int r, ret = 0, rc = EXIT_SUCCESS;
     uint8_t zero = 0;
     struct hash_table *top_sibling_ht = NULL;
     struct lyb_state lybs;
@@ -639,21 +710,21 @@ lyb_print_data(struct lyout *out, const struct lyd_node *root, int options)
     /* LYB header */
     ret += (r = lyb_print_header(out, options));
     if (r < 0) {
-        ret = -1;
+        rc = EXIT_FAILURE;
         goto finish;
     }
 
     /* all used models */
     ret += (r = lyb_print_data_models(out, root, &lybs));
     if (r < 0) {
-        ret = -1;
+        rc = EXIT_FAILURE;
         goto finish;
     }
 
     LY_TREE_FOR(root, root) {
         ret += (r = lyb_print_subtree(out, root, &top_sibling_ht, &lybs, options, 1));
         if (r < 0) {
-            ret = -1;
+            rc = EXIT_FAILURE;
             goto finish;
         }
 
@@ -665,7 +736,7 @@ lyb_print_data(struct lyout *out, const struct lyd_node *root, int options)
     /* ending zero byte */
     ret += (r = lyb_write(out, &zero, sizeof zero, &lybs));
     if (r < 0) {
-        ret = -1;
+        rc = EXIT_FAILURE;
     }
 
 finish:
@@ -675,5 +746,5 @@ finish:
     free(lybs.written);
     free(lybs.position);
 
-    return ret;
+    return rc;
 }

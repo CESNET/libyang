@@ -2239,9 +2239,9 @@ lyp_fill_attr(struct ly_ctx *ctx, struct lyd_node *parent, const char *module_ns
 
     /* first, get module where the annotation should be defined */
     if (module_ns) {
-        mod = (struct lys_module *)ly_ctx_get_module_by_ns(ctx, module_ns, NULL, 1);
+        mod = (struct lys_module *)ly_ctx_get_module_by_ns(ctx, module_ns, NULL, 0);
     } else if (module_name) {
-        mod = (struct lys_module *)ly_ctx_get_module(ctx, module_name, NULL, 1);
+        mod = (struct lys_module *)ly_ctx_get_module(ctx, module_name, NULL, 0);
     } else {
         LOGINT(ctx);
         return -1;

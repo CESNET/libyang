@@ -1,0 +1,286 @@
+/**
+ * @file test_lyb.c
+ * @author Michal Vasko <mvasko@cesnet.cz>
+ * @brief Cmocka tests for LYB binary data format.
+ *
+ * Copyright (c) 2018 CESNET, z.s.p.o.
+ *
+ * This source code is licensed under BSD 3-Clause License (the "License").
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://opensource.org/licenses/BSD-3-Clause
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <setjmp.h>
+#include <stdarg.h>
+#include <cmocka.h>
+
+#include "tests/config.h"
+#include "libyang.h"
+
+struct state {
+    struct ly_ctx *ctx;
+    struct lyd_node *dt1, *dt2;
+    char *mem;
+};
+
+static void
+check_data_tree_next(struct lyd_node *start, struct lyd_node **next, struct lyd_node **elem)
+{
+    if (*elem) {
+        goto loop_next;
+    }
+
+    LY_TREE_DFS_BEGIN(start, *next, *elem) {
+        return;
+loop_next:
+        LY_TREE_DFS_END(start, *next, *elem);
+    }
+
+    return;
+}
+
+static void
+check_data_tree(struct lyd_node *root1, struct lyd_node *root2)
+{
+    struct lyd_node *next1, *next2, *elem1 = NULL, *elem2 = NULL;
+    struct lyd_attr *attr1, *attr2;
+    struct lyd_node_leaf_list *leaf1, *leaf2;
+    struct lyd_node_anydata *any1, *any2;
+
+    for (check_data_tree_next(root1, &next1, &elem1), check_data_tree_next(root2, &next2, &elem2);
+         elem1 && elem2;
+         check_data_tree_next(root1, &next1, &elem1), check_data_tree_next(root2, &next2, &elem2)) {
+
+        if (elem1->schema != elem2->schema) {
+            fprintf(stderr, "Schema mismatch (\"%s\" and \"%s\").\n", elem1->schema->name, elem2->schema->name);
+            fail();
+        }
+
+        /* check common data node attributes */
+        if (elem1->validity != elem2->validity) {
+            fprintf(stderr, "\"%s\": validity flags mismatch (\"%u\" and \"%u\").\n", elem1->schema->name, elem1->validity, elem2->validity);
+            fail();
+        } else if (elem1->dflt != elem2->dflt) {
+            fprintf(stderr, "\"%s\": dflt flag mismatch (\"%u\" and \"%u\").\n", elem1->schema->name, elem1->dflt, elem2->dflt);
+            fail();
+        } else if (elem1->when_status != elem2->when_status) {
+            fprintf(stderr, "\"%s\": when flags mismatch (\"%u\" and \"%u\").\n", elem1->schema->name, elem1->when_status, elem2->when_status);
+            fail();
+        }
+
+        /* check data node attributes */
+        for (attr1 = elem1->attr, attr2 = elem2->attr; attr1 && attr2; attr1 = attr1->next, attr2 = attr2->next) {
+            if (attr1->annotation != attr2->annotation) {
+                fprintf(stderr, "\"%s\": attr annotation mismatch.\n", elem1->schema->name);
+                fail();
+            }
+            if (strcmp(attr1->name, attr2->name)) {
+                fprintf(stderr, "\"%s\": attr name mismatch (\"%s\" and \"%s\").\n", elem1->schema->name, attr1->name, attr2->name);
+                fail();
+            }
+            if (strcmp(attr1->value_str, attr2->value_str)) {
+                fprintf(stderr, "\"%s\": attr value_str mismatch (\"%s\" and \"%s\").\n", elem1->schema->name, attr1->value_str, attr2->value_str);
+                fail();
+            }
+            if (attr1->value.uint64 != attr2->value.uint64) {
+                fprintf(stderr, "\"%s\": attr value mismatch (\"%lu\" and \"%lu\").\n", elem1->schema->name, attr1->value.uint64, attr2->value.uint64);
+                fail();
+            }
+            if (attr1->value_type != attr2->value_type) {
+                fprintf(stderr, "\"%s\": attr value_type mismatch (\"%d\" and \"%d\").\n", elem1->schema->name, attr1->value_type, attr2->value_type);
+                fail();
+            }
+            if (attr1->value_flags != attr2->value_flags) {
+                fprintf(stderr, "\"%s\": attr value_flags mismatch (\"%d\" and \"%d\").\n", elem1->schema->name, attr1->value_flags, attr2->value_flags);
+                fail();
+            }
+        }
+        if (attr1) {
+            fprintf(stderr, "\"%s\": attr mismatch (\"%s\" and \"NULL\").\n", elem1->schema->name, attr1->name);
+            fail();
+        }
+        if (attr2) {
+            fprintf(stderr, "\"%s\": attr mismatch (\"NULL\" and \"%s\").\n", elem1->schema->name, attr2->name);
+            fail();
+        }
+
+        /* check specific data node attributes */
+        switch (elem1->schema->nodetype) {
+        case LYS_CONTAINER:
+        case LYS_LIST:
+        case LYS_RPC:
+        case LYS_ACTION:
+        case LYS_NOTIF:
+            /* nothing to check */
+            break;
+        case LYS_LEAF:
+        case LYS_LEAFLIST:
+            leaf1 = (struct lyd_node_leaf_list *)elem1;
+            leaf2 = (struct lyd_node_leaf_list *)elem2;
+
+            /* both should be in the same dictionary */
+            if (leaf1->value_str != leaf2->value_str) {
+                fprintf(stderr, "\"%s\": value_str mismatch (\"%s\" and \"%s\").\n", elem1->schema->name, leaf1->value_str, leaf2->value_str);
+                fail();
+            }
+            if (leaf1->value.uint64 != leaf2->value.uint64) {
+                fprintf(stderr, "\"%s\": value mismatch (\"%lu\" and \"%lu\").\n", elem1->schema->name, leaf1->value.uint64, leaf2->value.uint64);
+                fail();
+            }
+            if (leaf1->value_type != leaf2->value_type) {
+                fprintf(stderr, "\"%s\": value_type mismatch (\"%d\" and \"%d\").\n", elem1->schema->name, leaf1->value_type, leaf2->value_type);
+                fail();
+            }
+            if (leaf1->value_flags != leaf2->value_flags) {
+                fprintf(stderr, "\"%s\": attr value_flags mismatch (\"%d\" and \"%d\").\n", elem1->schema->name, leaf1->value_flags, leaf2->value_flags);
+                fail();
+            }
+            break;
+        case LYS_ANYDATA:
+        case LYS_ANYXML:
+            any1 = (struct lyd_node_anydata *)elem1;
+            any2 = (struct lyd_node_anydata *)elem2;
+
+            /* if we had to do conversion from XML, skip it, assume it was done correctly */
+            if ((any1->value_type != LYD_ANYDATA_XML) && (any2->value_type != LYD_ANYDATA_XML)) {
+                if (any1->value_type != any2->value_type) {
+                    fprintf(stderr, "\"%s\": value_type mismatch (\"%d\" and \"%d\").\n", elem1->schema->name, any1->value_type, any2->value_type);
+                    fail();
+                }
+                if (any1->value_type == LYD_ANYDATA_DATATREE) {
+                    check_data_tree(any1->value.tree, any2->value.tree);
+                } else if (strcmp(any1->value.str, any2->value.str)) {
+                    fprintf(stderr, "\"%s\": value mismatch\n\"\"%s\"\"\nand\n\"\"%s\"\"\n", elem1->schema->name, any1->value.str, any2->value.str);
+                    fail();
+                }
+            }
+            break;
+        default:
+            fprintf(stderr, "Unexpected data node type.\n");
+            fail();
+        }
+    }
+
+    if (elem1) {
+        fprintf(stderr, "Schema mismatch (\"%s\" and \"NULL\").\n", elem1->schema->name);
+        fail();
+    }
+    if (elem2) {
+        fprintf(stderr, "Schema mismatch (\"NULL\" and \"%s\").\n", elem2->schema->name);
+        fail();
+    }
+}
+
+static int
+setup_f(void **state)
+{
+    struct state *st;
+
+    (*state) = st = calloc(1, sizeof *st);
+    if (!st) {
+        fprintf(stderr, "Memory allocation error");
+        return -1;
+    }
+
+    /* libyang context */
+    st->ctx = ly_ctx_new(TESTS_DIR"/schema/yang/ietf/", 0);
+    if (!st->ctx) {
+        fprintf(stderr, "Failed to create context.\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+static int
+teardown_f(void **state)
+{
+    struct state *st = (*state);
+
+    lyd_free_withsiblings(st->dt1);
+    lyd_free_withsiblings(st->dt2);
+    ly_ctx_destroy(st->ctx, NULL);
+    free(st->mem);
+    free(st);
+    (*state) = NULL;
+
+    return 0;
+}
+
+static void
+test_ietf_interfaces(void **state)
+{
+    struct state *st = (*state);
+    int ret;
+
+    assert_non_null(ly_ctx_load_module(st->ctx, "ietf-ip", NULL));
+    assert_non_null(ly_ctx_load_module(st->ctx, "iana-if-type", NULL));
+
+    st->dt1 = lyd_parse_path(st->ctx, TESTS_DIR"/data/files/ietf-interfaces.json", LYD_JSON, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->dt1, NULL);
+
+    ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYP_WITHSIBLINGS);
+    assert_int_equal(ret, 0);
+
+    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->dt2, NULL);
+
+    check_data_tree(st->dt1, st->dt2);
+}
+
+static void
+test_origin(void **state)
+{
+    struct state *st = (*state);
+    int ret;
+    const char *test_origin =
+    "module test-origin {"
+    "   namespace \"urn:test-origin\";"
+    "   prefix to;"
+    "   import ietf-origin {"
+    "       prefix or;"
+    "   }"
+    ""
+    "   container cont {"
+    "       leaf leaf1 {"
+    "           type string;"
+    "       }"
+    "       leaf leaf2 {"
+    "           type string;"
+    "       }"
+    "       leaf leaf3 {"
+    "           type uint8;"
+    "       }"
+    "   }"
+    "}";
+
+    assert_non_null(lys_parse_mem(st->ctx, test_origin, LYS_YANG));
+    lys_set_implemented(ly_ctx_get_module(st->ctx, "ietf-origin", NULL, 0));
+
+    st->dt1 = lyd_parse_path(st->ctx, TESTS_DIR"/data/files/test-origin.json", LYD_JSON, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->dt1, NULL);
+
+    ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYP_WITHSIBLINGS);
+    assert_int_equal(ret, 0);
+
+    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->dt2, NULL);
+
+    check_data_tree(st->dt1, st->dt2);
+}
+
+int
+main(void)
+{
+    const struct CMUnitTest tests[] = {
+        cmocka_unit_test_setup_teardown(test_ietf_interfaces, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_origin, setup_f, teardown_f),
+    };
+
+    return cmocka_run_group_tests(tests, NULL, NULL);
+}

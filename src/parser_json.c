@@ -601,7 +601,7 @@ repeat:
         *name = '\0';
         name++;
         prefix = str;
-        module = (struct lys_module *)ly_ctx_get_module(parent_module->ctx, prefix, NULL, 1);
+        module = (struct lys_module *)ly_ctx_get_module(parent_module->ctx, prefix, NULL, 0);
         if (!module) {
             LOGVAL(ctx, LYE_INELEM, LY_VLOG_NONE, NULL, name);
             goto error;
