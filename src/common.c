@@ -1417,7 +1417,7 @@ lyb_hash(struct lys_node *sibling, uint8_t collision_id)
     full_hash = dict_hash_multi(full_hash, NULL, 0);
 
     /* use the shortened hash */
-    hash = full_hash & (LYB_HASH_MASK >> (collision_id + 1));
+    hash = full_hash & (LYB_HASH_MASK >> collision_id);
     /* add colision identificator */
     hash |= LYB_HASH_COLLISION_ID >> collision_id;
 
