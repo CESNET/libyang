@@ -1,0 +1,19 @@
+module annotations {
+  namespace "urn:annot";
+  prefix annot;
+  yang-version 1.1;
+
+  import ietf-yang-metadata {
+    prefix md;
+  }
+
+  md:annotation id {
+    type string;
+  }
+
+  container parrent {
+    leaf-list child {
+      type string;
+    }
+  }
+}
