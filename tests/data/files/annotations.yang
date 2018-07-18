@@ -16,4 +16,92 @@ module annotations {
       type string;
     }
   }
+
+  md:annotation abin {
+    type binary;
+  }
+
+  md:annotation abits {
+    type bits {
+      bit CF;
+      bit SF;
+      bit OF;
+    }
+  }
+
+  md:annotation abool {
+    type boolean;
+  }
+
+  md:annotation adec {
+    type decimal64 {
+      fraction-digits 3;
+    }
+  }
+
+  md:annotation aempty {
+    type empty;
+  }
+
+  md:annotation aenum {
+    type enumeration {
+      enum zero;
+      enum one;
+    }
+  }
+
+  md:annotation aint8 {
+    type int8;
+  }
+
+  md:annotation aint16 {
+    type int16;
+  }
+
+  md:annotation aint32 {
+    type int32;
+  }
+
+  md:annotation aint64 {
+    type int64;
+  }
+
+  md:annotation auint8 {
+    type uint8;
+  }
+
+  md:annotation auint16 {
+    type uint16;
+  }
+
+  md:annotation auint32 {
+    type uint32;
+  }
+
+  md:annotation auint64 {
+    type uint64;
+  }
+
+  md:annotation astring {
+    type string;
+  }
+
+  md:annotation aunion {
+    type union {
+      type int64;
+      type decimal64 {
+        fraction-digits 3;
+      }
+      type boolean;
+    }
+  }
+
+  container annotations {
+    list annot {
+      key annoted-leaf;
+      leaf annoted-leaf {
+        type string;
+      }
+    }
+  }
 }
