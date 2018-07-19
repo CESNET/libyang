@@ -104,4 +104,125 @@ module annotations {
       }
     }
   }
+
+  container similar-annot-names {
+    leaf-list l1leaf {
+      type string;
+    }
+
+    container l2a {
+      leaf-list l2aleaf {
+        type uint32;
+      }
+
+      container l3aa {
+        leaf-list l3aaleaf {
+          type int8;
+        }
+      }
+    }
+
+    container l2b {
+      leaf-list l2bleaf {
+        type decimal64 {
+          fraction-digits 2;
+        }
+      }
+    }
+  }
+
+  md:annotation aaaa1 {
+    type string;
+  }
+
+  md:annotation aaaa2 {
+    type string;
+  }
+
+  md:annotation aaaa3 {
+    type string;
+  }
+
+  md:annotation aaaa4 {
+    type string;
+  }
+
+  md:annotation aaaa5 {
+    type string;
+  }
+
+  md:annotation aaaa6 {
+    type string;
+  }
+
+  md:annotation baaa1 {
+    type string;
+  }
+
+  md:annotation baaa2 {
+    type string;
+  }
+
+  md:annotation baaa3 {
+    type string;
+  }
+
+  md:annotation baaa4 {
+    type string;
+  }
+
+  md:annotation baaa5 {
+    type string;
+  }
+
+  md:annotation baaa6 {
+    type string;
+  }
+  md:annotation caaa1 {
+    type string;
+  }
+
+  md:annotation caaa2 {
+    type string;
+  }
+
+  md:annotation caaa3 {
+    type string;
+  }
+
+  md:annotation caaa4 {
+    type string;
+  }
+
+  md:annotation caaa5 {
+    type string;
+  }
+
+  md:annotation caaa6 {
+    type string;
+  }
+
+  md:annotation daaa1 {
+    type string;
+  }
+
+  md:annotation daaa2 {
+    type string;
+  }
+
+  md:annotation daaa3 {
+    type string;
+  }
+
+  md:annotation daaa4 {
+    type string;
+  }
+
+  md:annotation daaa5 {
+    type string;
+  }
+
+  md:annotation daaa6 {
+    type string;
+  }
 }
