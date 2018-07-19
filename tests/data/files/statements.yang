@@ -1,0 +1,238 @@
+module statements {
+    namespace "urn:module";
+    prefix mod;
+    yang-version 1.1;
+    
+    import links {
+        prefix mod2;
+    }
+
+    identity random-identity {
+        base "mod2:just-another-identity";
+        base "another-identity";
+    }
+
+    identity another-identity {
+        base "mod2:just-another-identity";
+    }
+
+    typedef percent {
+        type uint8 {
+         range "0 .. 100";
+       }
+    }
+
+    container ice-cream-shop {
+        container ice-creams {
+            list ice-cream {
+                key flavour;
+                config true;
+                min-elements 0;
+                max-elements 80;
+                leaf flavour {
+                    mandatory true;
+                    type enumeration {
+                        enum other {
+                        }
+                        enum lemon {
+                            value 1;
+                        }
+                        enum strawberry {
+                            value 5;
+                        }
+                        enum orange {
+                        }
+                    } 
+                }
+
+                leaf price {
+                    type decimal64 {
+                        fraction-digits 2;
+                    }
+                }
+
+                leaf in-stock {
+                    type union {
+                        type empty;
+                        type percent;
+                        type boolean;
+                        type identityref {
+                            base mod2:just-another-identity;
+                        }
+                        type leafref {
+                                   path "/mod2:one-leaf";
+                        }
+                    }
+                }
+
+                leaf color {
+                    type union {
+                        type enumeration {
+                            enum other {
+                            }
+
+                            enum blue {
+                            }
+
+                            enum yellow {
+                            }
+
+                            enum white {
+                            }
+                        }
+                        type uint32;
+                        type int64;
+                        type boolean;
+                    }
+                }
+            }
+            leaf ice-cream-reference {
+                type leafref {
+                    path "../ice-cream/flavour";
+                }
+            }
+        }
+
+        container employees {
+            list employee {
+                config true;
+                key id;
+                min-elements 0;
+                max-elements 100;
+
+                leaf id {
+                    type uint64;
+                    mandatory true;
+                }
+
+                leaf name {
+                    type string;
+                }
+
+                leaf age {
+                    type uint32;
+                }
+
+                leaf uniception {
+                    type union {
+                        type int8;
+                        type decimal64 {
+                        fraction-digits 10;
+                        }
+                        type boolean;
+                        type union {
+                            type union {
+                                type identityref {
+                                    base "mod2:just-another-identity";
+                                }
+
+                                type leafref {
+                                   path "/mod2:one-leaf";
+                                }
+                                type empty;
+                                type bits {
+                                    bit cf {
+                                        position 0;
+                                    }
+
+                                    bit of {
+                                        position 1;
+                                    }
+
+                                    bit sf {
+                                        position 2;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        leaf aditional-storage-availeable {
+            config true;
+            mandatory false;
+            type union {
+                type boolean;
+                type uint32;
+                type binary;
+                type empty;
+            }
+        }
+    }
+
+    container random {        
+        choice switch {
+            case a {
+                leaf aleaf {
+                    type union {
+                        type empty;
+                        type boolean;
+                        type percent;
+                    }
+                }
+            }
+
+            case c {
+                leaf c-un {
+                    type union {
+                        type empty;
+                        type bits {
+                            bit cf {
+                                position 0;
+                            }
+
+                            bit of {
+                                position 1;
+                            }
+
+                            bit sf {
+                                position 2;
+                            }
+                        }
+                        type identityref {
+                            base "another-identity";
+                        }
+
+                        type leafref {
+                            path "/mod2:one-leaf";
+                        }
+                    }
+                }
+            }
+        }
+        anyxml xml-data;
+        anydata data;
+    }  
+
+    notification notif-test {
+        leaf event-class {
+            type string;
+        }
+
+        leaf detail {
+            type string;
+        }
+    }
+
+    rpc rpc-test {
+        input {
+            leaf in {
+                type string;
+            }
+        }
+
+        output {
+            leaf out {
+                type string;
+            }
+        }
+    }
+
+    augment "/mod2:list-for-augment" {
+        leaf augmented-leaf {
+            type string;
+        }
+    }
+}
