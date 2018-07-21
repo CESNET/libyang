@@ -1,0 +1,32 @@
+<ice-cream-shop xmlns="urn:module">
+    <employees>
+
+    <employee>
+      <id>0</id>
+      <name>John Doe</name>
+      <age>28</age>
+    </employee>
+
+    <employee>
+      <id>1</id>
+      <name>Dohn Joe</name>
+      <age>20</age>
+    </employee>
+
+  </employees>
+</ice-cream-shop>
+
+<random xmlns="urn:module">
+  <aleaf>string</aleaf>
+  <xml-data><anyxml>data</anyxml></xml-data>
+  <any-data>any data</any-data>
+
+  <leaflist>l0</leaflist>
+  <leaflist>l1</leaflist>
+  <leaflist>l2</leaflist>
+
+  <g1>string</g1>
+  <g2>string</g2>
+
+  <aug-leaf>string</aug-leaf>
+</random>
