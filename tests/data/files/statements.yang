@@ -118,14 +118,14 @@ module statements {
     anydata any-data;
     leaf-list leaflist {
       type string;
-      min-elements 1;
+      min-elements 0;
       max-elements 20;
       ordered-by system;
     }
 
     grouping group {
       leaf g1 {
-        mandatory true;
+        mandatory false;
         type string;
       }
 
@@ -135,6 +135,19 @@ module statements {
     }
 
     uses group;
+    uses mod2:rgroup;
+
+    leaf lref {
+      type leafref {
+        path "/mod2:one-leaf";
+      }
+    }
+
+    leaf iref {
+      type identityref {
+        base "mod2:just-another-identity";
+      }
+    }
   }
 
   notification notif-test {

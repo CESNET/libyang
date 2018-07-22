@@ -12,9 +12,9 @@ module links {
   }
 
   list list-for-augment {
-    key augment-target-leaf;
+    key keyleaf;
 
-    leaf augment-target-leaf {
+    leaf keyleaf {
       type string;
     }
 
@@ -32,5 +32,15 @@ module links {
     min-elements 0;
     max-elements 100;
     ordered-by user;
+  }
+
+  grouping rgroup {
+    leaf rg1 {
+      type string;
+    }
+
+    leaf rg2 {
+      type string;
+    }
   }
 }
