@@ -383,7 +383,7 @@ lyb_parse_val_2(struct lys_type *type, struct lyd_node_leaf_list *leaf, struct l
     char num_str[22], *str;
     int64_t frac;
     uint32_t i, str_len;
-    uint8_t *value_flags;
+    uint8_t *value_flags, dig;
     const char **value_str;
     LY_DATA_TYPE value_type;
     lyd_val *value;
@@ -521,7 +521,14 @@ lyb_parse_val_2(struct lys_type *type, struct lyd_node_leaf_list *leaf, struct l
         break;
     case LY_TYPE_DEC64:
         frac = value->dec64 % type->info.dec64.div;
-        sprintf(num_str, "%ld.%.*ld", value->dec64 / (int64_t)type->info.dec64.div, frac ? type->info.dec64.dig : 1, frac);
+        dig = type->info.dec64.dig;
+        /* remove trailing zeros */
+        while ((dig > 1) && !(frac % 10)) {
+            frac /= 10;
+            --dig;
+        }
+
+        sprintf(num_str, "%ld.%.*ld", value->dec64 / (int64_t)type->info.dec64.div, dig, frac);
         *value_str = lydict_insert(ctx, num_str, 0);
         break;
     default:
