@@ -16,6 +16,8 @@
 #ifndef LY_TREE_INTERNAL_H_
 #define LY_TREE_INTERNAL_H_
 
+#include <stdint.h>
+
 #include "libyang.h"
 #include "tree_schema.h"
 #include "tree_data.h"
@@ -72,6 +74,13 @@ struct lyb_state {
     int size;
     const struct lys_module **models;
     int mod_count;
+
+    /* LYB printer only */
+    struct {
+        struct lys_node *first_sibling;
+        struct hash_table *ht;
+    } *sib_ht;
+    int sib_ht_count;
 };
 
 /* struct lyb_state allocation step */
@@ -104,13 +113,11 @@ struct lyb_state {
 #define LYB_SIZE_BYTES 1
 
 /* Maximum size that will be written into LYB_SIZE_BYTES (must be large enough) */
-#define LYB_SIZE_MAX 255
+#define LYB_SIZE_MAX UINT8_MAX
 
 LYB_HASH lyb_hash(struct lys_node *sibling, uint8_t collision_id);
 
 int lyb_has_schema_model(struct lys_node *sibling, const struct lys_module **models, int mod_count);
-
-struct hash_table *lyb_hash_siblings(struct lys_node *sibling, const struct lys_module **models, int mod_count);
 
 /**
  * Macros to work with ::lyd_node#when_status

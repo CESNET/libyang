@@ -1209,6 +1209,8 @@ error:
 int
 yang_read_fraction(struct ly_ctx *ctx, struct yang_type *typ, uint32_t value)
 {
+    uint32_t i;
+
     if (typ->base == 0 || typ->base == LY_TYPE_DEC64) {
         typ->base = LY_TYPE_DEC64;
     } else {
@@ -1225,6 +1227,10 @@ yang_read_fraction(struct ly_ctx *ctx, struct yang_type *typ, uint32_t value)
         goto error;
     }
     typ->type->info.dec64.dig = value;
+    typ->type->info.dec64.div = 10;
+    for (i = 1; i < value; i++) {
+        typ->type->info.dec64.div *= 10;
+    }
     return EXIT_SUCCESS;
 
 error:

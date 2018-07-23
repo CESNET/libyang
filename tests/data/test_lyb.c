@@ -29,16 +29,27 @@ struct state {
 };
 
 static void
-check_data_tree_next(struct lyd_node *start, struct lyd_node **next, struct lyd_node **elem)
+check_data_tree_next(struct lyd_node **start, struct lyd_node **next, struct lyd_node **elem)
 {
     if (*elem) {
         goto loop_next;
     }
 
-    LY_TREE_DFS_BEGIN(start, *next, *elem) {
+loop_begin:
+    LY_TREE_DFS_BEGIN(*start, *next, *elem) {
         return;
 loop_next:
-        LY_TREE_DFS_END(start, *next, *elem);
+        LY_TREE_DFS_END(*start, *next, *elem);
+    }
+
+    if (!*next) {
+        /* top-level siblings */
+        *start = (*start)->next;
+        if (!(*start)) {
+            *elem = NULL;
+            return;
+        }
+        goto loop_begin;
     }
 
     return;
@@ -52,9 +63,9 @@ check_data_tree(struct lyd_node *root1, struct lyd_node *root2)
     struct lyd_node_leaf_list *leaf1, *leaf2;
     struct lyd_node_anydata *any1, *any2;
 
-    for (check_data_tree_next(root1, &next1, &elem1), check_data_tree_next(root2, &next2, &elem2);
+    for (check_data_tree_next(&root1, &next1, &elem1), check_data_tree_next(&root2, &next2, &elem2);
          elem1 && elem2;
-         check_data_tree_next(root1, &next1, &elem1), check_data_tree_next(root2, &next2, &elem2)) {
+         check_data_tree_next(&root1, &next1, &elem1), check_data_tree_next(&root2, &next2, &elem2)) {
 
         if (elem1->schema != elem2->schema) {
             fprintf(stderr, "Schema mismatch (\"%s\" and \"%s\").\n", elem1->schema->name, elem2->schema->name);
@@ -87,9 +98,18 @@ check_data_tree(struct lyd_node *root1, struct lyd_node *root2)
                 fprintf(stderr, "\"%s\": attr value_str mismatch (\"%s\" and \"%s\").\n", elem1->schema->name, attr1->value_str, attr2->value_str);
                 fail();
             }
-            if (attr1->value.uint64 != attr2->value.uint64) {
-                fprintf(stderr, "\"%s\": attr value mismatch (\"%lu\" and \"%lu\").\n", elem1->schema->name, attr1->value.uint64, attr2->value.uint64);
-                fail();
+            switch (attr1->value_type) {
+            case LY_TYPE_BITS:
+            case LY_TYPE_INST:
+            case LY_TYPE_LEAFREF:
+                /* do not compare pointers */
+                break;
+            default:
+                if (attr1->value.uint64 != attr2->value.uint64) {
+                    fprintf(stderr, "\"%s\": attr value mismatch (\"%lu\" and \"%lu\").\n", elem1->schema->name, attr1->value.uint64, attr2->value.uint64);
+                    fail();
+                }
+                break;
             }
             if (attr1->value_type != attr2->value_type) {
                 fprintf(stderr, "\"%s\": attr value_type mismatch (\"%d\" and \"%d\").\n", elem1->schema->name, attr1->value_type, attr2->value_type);
@@ -128,9 +148,18 @@ check_data_tree(struct lyd_node *root1, struct lyd_node *root2)
                 fprintf(stderr, "\"%s\": value_str mismatch (\"%s\" and \"%s\").\n", elem1->schema->name, leaf1->value_str, leaf2->value_str);
                 fail();
             }
-            if (leaf1->value.uint64 != leaf2->value.uint64) {
-                fprintf(stderr, "\"%s\": value mismatch (\"%lu\" and \"%lu\").\n", elem1->schema->name, leaf1->value.uint64, leaf2->value.uint64);
-                fail();
+            switch (leaf1->value_type) {
+            case LY_TYPE_BITS:
+            case LY_TYPE_INST:
+            case LY_TYPE_LEAFREF:
+                /* do not compare pointers */
+                break;
+            default:
+                if (leaf1->value.uint64 != leaf2->value.uint64) {
+                    fprintf(stderr, "\"%s\": value mismatch (\"%lu\" and \"%lu\").\n", elem1->schema->name, leaf1->value.uint64, leaf2->value.uint64);
+                    fail();
+                }
+                break;
             }
             if (leaf1->value_type != leaf2->value_type) {
                 fprintf(stderr, "\"%s\": value_type mismatch (\"%d\" and \"%d\").\n", elem1->schema->name, leaf1->value_type, leaf2->value_type);

@@ -381,8 +381,9 @@ lyb_parse_val_2(struct lys_type *type, struct lyd_node_leaf_list *leaf, struct l
     struct ly_ctx *ctx;
     struct lys_module *mod;
     char num_str[22], *str;
+    int64_t frac;
     uint32_t i, str_len;
-    uint8_t *value_flags;
+    uint8_t *value_flags, dig;
     const char **value_str;
     LY_DATA_TYPE value_type;
     lyd_val *value;
@@ -469,8 +470,18 @@ lyb_parse_val_2(struct lys_type *type, struct lyd_node_leaf_list *leaf, struct l
         *value_str = lydict_insert(ctx, (value->bln ? "true" : "false"), 0);
         break;
     case LY_TYPE_EMPTY:
+        *value_str = lydict_insert(ctx, "", 0);
+        break;
     case LY_TYPE_UNION:
-        /* leave value empty */
+        if (attr) {
+            /* we do not support union type attribute */
+            LOGINT(ctx);
+            return -1;
+        }
+
+        if (resolve_union(leaf, type, 1, 2, NULL)) {
+            return -1;
+        }
         break;
     case LY_TYPE_ENUM:
         /* print the value */
@@ -509,8 +520,15 @@ lyb_parse_val_2(struct lys_type *type, struct lyd_node_leaf_list *leaf, struct l
         *value_str = lydict_insert(ctx, num_str, 0);
         break;
     case LY_TYPE_DEC64:
-        sprintf(num_str, "%ld.%.*ld", value->dec64 / type->info.dec64.div, type->info.dec64.dig,
-                value->dec64 % type->info.dec64.div);
+        frac = value->dec64 % type->info.dec64.div;
+        dig = type->info.dec64.dig;
+        /* remove trailing zeros */
+        while ((dig > 1) && !(frac % 10)) {
+            frac /= 10;
+            --dig;
+        }
+
+        sprintf(num_str, "%ld.%.*ld", value->dec64 / (int64_t)type->info.dec64.div, dig, frac);
         *value_str = lydict_insert(ctx, num_str, 0);
         break;
     default:
@@ -593,6 +611,15 @@ lyb_parse_value(struct lys_type *type, struct lyd_node_leaf_list *leaf, struct l
 
     ret += (r = lyb_parse_val_1(ctx, type, *value_type, *value_flags, data, value_str, value, lybs));
     LYB_HAVE_READ_RETURN(r, data, -1);
+
+    /* union is handled specially */
+    if (type->base == LY_TYPE_UNION) {
+        assert(*value_type == LY_TYPE_STRING);
+
+        *value_str = value->string;
+        value->string = NULL;
+        *value_type = LY_TYPE_UNION;
+    }
 
     ret += (r = lyb_parse_val_2(type, leaf, attr, unres));
     LYB_HAVE_READ_RETURN(r, data, -1);
@@ -690,6 +717,7 @@ lyb_parse_attributes(struct lyd_node *node, const char *data, int options, struc
             /* unknown attribute, skip it */
             do {
                 ret += (r = lyb_read(data, NULL, lybs->written[lybs->used - 1], lybs));
+                LYB_HAVE_READ_GOTO(r, data, error);
             } while (lybs->written[lybs->used - 1]);
             goto stop_subtree;
         }
@@ -720,6 +748,7 @@ lyb_parse_attributes(struct lyd_node *node, const char *data, int options, struc
 
         /* attribute value */
         ret += (r = lyb_parse_value(type, NULL, attr, data, unres, lybs));
+        LYB_HAVE_READ_GOTO(r, data, error);
 
 stop_subtree:
         lyb_read_stop_subtree(lybs);

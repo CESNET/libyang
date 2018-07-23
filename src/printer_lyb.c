@@ -26,6 +26,98 @@
 #include "resolve.h"
 #include "tree_internal.h"
 
+static int
+lyb_hash_equal_cb(void *UNUSED(val1_p), void *UNUSED(val2_p), int UNUSED(mod), void *UNUSED(cb_data))
+{
+    /* for this purpose, if hash matches, the value does also, we do not want 2 values to have the same hash */
+    return 1;
+}
+
+static int
+lyb_ptr_equal_cb(void *val1_p, void *val2_p, int UNUSED(mod), void *UNUSED(cb_data))
+{
+    struct lys_node *val1 = *(struct lys_node **)val1_p;
+    struct lys_node *val2 = *(struct lys_node **)val2_p;
+
+    if (val1 == val2) {
+        return 1;
+    }
+    return 0;
+}
+
+static struct hash_table *
+lyb_hash_siblings(struct lys_node *sibling, const struct lys_module **models, int mod_count)
+{
+    LYB_HASH hash;
+    struct hash_table *ht;
+    struct lys_node *parent;
+    const struct lys_module *mod;
+    uint32_t i;
+
+    ht = lyht_new(1, sizeof(struct lys_node *), lyb_hash_equal_cb, NULL, 1);
+    LY_CHECK_ERR_RETURN(!ht, LOGMEM(sibling->module->ctx), NULL);
+
+    for (parent = lys_parent(sibling); parent && (parent->nodetype == LYS_USES); parent = lys_parent(parent));
+    mod = lys_node_module(sibling);
+
+    sibling = NULL;
+    while ((sibling = (struct lys_node *)lys_getnext(sibling, parent, mod, 0))) {
+        if (models && !lyb_has_schema_model(sibling, models, mod_count)) {
+            /* ignore models not present during printing */
+            continue;
+        }
+
+        for (i = 0; i < LYB_HASH_BITS; ++i) {
+            hash = lyb_hash(sibling, i);
+            if (!hash) {
+                lyht_free(ht);
+                return NULL;
+            }
+
+            if (!lyht_insert(ht, &sibling, hash)) {
+                /* success, no collision */
+                break;
+            }
+        }
+        if (i == LYB_HASH_BITS) {
+            /* wow */
+            LOGINT(sibling->module->ctx);
+            lyht_free(ht);
+            return NULL;
+        }
+    }
+
+    /* change val equal callback so that the HT is usable for finding value hashes */
+    lyht_set_cb(ht, lyb_ptr_equal_cb);
+
+    return ht;
+}
+
+static LYB_HASH
+lyb_hash_find(struct hash_table *ht, struct lys_node *node)
+{
+    LYB_HASH hash;
+    uint32_t i;
+
+    for (i = 0; i < LYB_HASH_BITS; ++i) {
+        hash = lyb_hash(node, i);
+        if (!hash) {
+            return 0;
+        }
+
+        if (!lyht_find(ht, &node, hash, NULL)) {
+            /* success, no collision */
+            break;
+        }
+    }
+    /* cannot happen, we already calculated the hash */
+    if (i > LYB_HASH_BITS) {
+        return 0;
+    }
+
+    return hash;
+}
+
 /* writing function handles writing size information */
 static int
 lyb_write(struct lyout *out, const uint8_t *buf, size_t count, struct lyb_state *lybs)
@@ -279,7 +371,7 @@ next_mod:
 }
 
 static int
-lyb_print_header(struct lyout *out, int options)
+lyb_print_header(struct lyout *out)
 {
     int ret = 0;
     uint8_t byte = 0;
@@ -358,15 +450,18 @@ lyb_print_value(const struct lys_type *type, const char *value_str, lyd_val valu
     /* we have only 5b available, must be enough */
     assert((value_type & 0x1f) == value_type);
 
-    if (value_flags & LY_VALUE_USER) {
+    if ((value_flags & LY_VALUE_USER) || (type->base == LY_TYPE_UNION)) {
         value_type = LY_TYPE_STRING;
     } else if (value_type == LY_TYPE_LEAFREF) {
         assert(!(value_flags & LY_VALUE_UNRES));
-        /* find the leafref target */
+        /* find the leafref target type */
         while (type->base == LY_TYPE_LEAFREF) {
             type = &type->info.lref.target->type;
         }
         value_type = type->base;
+
+        /* and also use its value */
+        value = ((struct lyd_node_leaf_list *)value.leafref)->value;
     }
 
     /* store the value type */
@@ -526,47 +621,48 @@ lyb_print_attributes(struct lyout *out, struct lyd_attr *attr, struct lyb_state 
     return ret;
 }
 
-static LYB_HASH
-lyb_hash_find(struct hash_table *ht, struct lys_node *node)
-{
-    LYB_HASH hash;
-    uint32_t i;
-
-    for (i = 0; i < LYB_HASH_BITS; ++i) {
-        hash = lyb_hash(node, i);
-        if (!hash) {
-            return 0;
-        }
-
-        if (!lyht_find(ht, &node, hash, NULL)) {
-            /* success, no collision */
-            break;
-        }
-    }
-    /* cannot happen, we already calculated the hash */
-    if (i > LYB_HASH_BITS) {
-        return 0;
-    }
-
-    return hash;
-}
-
 static int
 lyb_print_schema_hash(struct lyout *out, struct lys_node *schema, struct hash_table **sibling_ht, struct lyb_state *lybs)
 {
     int r, ret = 0;
+    void *mem;
     uint32_t i;
     LYB_HASH hash;
+    struct lys_node *first_sibling, *parent;
 
-    /* create whole sibling HT if not already and get our last hash */
+    /* create whole sibling HT if not already created and saved */
     if (!*sibling_ht) {
-        *sibling_ht = lyb_hash_siblings(schema, NULL, 0);
+        /* get first schema sibling */
+        for (parent = lys_parent(schema); parent && (parent->nodetype == LYS_USES); parent = lys_parent(parent));
+        first_sibling = (struct lys_node *)lys_getnext(NULL, parent, lys_node_module(schema), 0);
+
+        for (r = 0; r < lybs->sib_ht_count; ++r) {
+            if (lybs->sib_ht[r].first_sibling == first_sibling) {
+                /* we have already created a hash table for these siblings */
+                *sibling_ht = lybs->sib_ht[r].ht;
+                break;
+            }
+        }
+
         if (!*sibling_ht) {
-            return -1;
+            /* we must create sibling hash table */
+            *sibling_ht = lyb_hash_siblings(first_sibling, NULL, 0);
+            if (!*sibling_ht) {
+                return -1;
+            }
+
+            /* and save it */
+            ++lybs->sib_ht_count;
+            mem = realloc(lybs->sib_ht, lybs->sib_ht_count * sizeof *lybs->sib_ht);
+            LY_CHECK_ERR_RETURN(!mem, LOGMEM(schema->module->ctx), -1);
+            lybs->sib_ht = mem;
+
+            lybs->sib_ht[lybs->sib_ht_count - 1].first_sibling = first_sibling;
+            lybs->sib_ht[lybs->sib_ht_count - 1].ht = *sibling_ht;
         }
     }
 
-    /* get first hash */
+    /* get our hash */
     hash = lyb_hash_find(*sibling_ht, schema);
     if (!hash) {
         return -1;
@@ -607,8 +703,8 @@ lyb_print_subtree(struct lyout *out, const struct lyd_node *node, struct hash_ta
                   int options, int top_level)
 {
     int r, ret = 0;
-    struct hash_table *children_ht = NULL;
     struct lyd_node_leaf_list *leaf;
+    struct hash_table *child_ht = NULL;
 
     /* register a new subtree */
     ret += (r = lyb_write_start_subtree(out, lybs));
@@ -619,7 +715,6 @@ lyb_print_subtree(struct lyout *out, const struct lyd_node *node, struct hash_ta
     /*
      * write the node information
      */
-
     if (top_level) {
         /* write model info first */
         ret += (r = lyb_print_model(out, lyd_node_module(node), lybs));
@@ -671,14 +766,11 @@ lyb_print_subtree(struct lyout *out, const struct lyd_node *node, struct hash_ta
     r = 0;
     if (node->schema->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_NOTIF | LYS_RPC | LYS_ACTION)) {
         LY_TREE_FOR(node->child, node) {
-            ret += (r = lyb_print_subtree(out, node, &children_ht, lybs, options, 0));
+            ret += (r = lyb_print_subtree(out, node, &child_ht, lybs, options, 0));
             if (r < 0) {
                 break;
             }
         }
-    }
-    if (children_ht) {
-        lyht_free(children_ht);
     }
     if (r < 0) {
         return -1;
@@ -699,16 +791,13 @@ lyb_print_data(struct lyout *out, const struct lyd_node *root, int options)
     int r, ret = 0, rc = EXIT_SUCCESS;
     uint8_t zero = 0;
     struct hash_table *top_sibling_ht = NULL;
+    const struct lys_module *prev_mod = NULL;
     struct lyb_state lybs;
 
-    lybs.written = malloc(LYB_STATE_STEP * sizeof *lybs.written);
-    lybs.position = malloc(LYB_STATE_STEP * sizeof *lybs.position);
-    LY_CHECK_ERR_GOTO(!lybs.written || !lybs.position, LOGMEM(root->schema->module->ctx), finish);
-    lybs.used = 0;
-    lybs.size = LYB_STATE_STEP;
+    memset(&lybs, 0, sizeof lybs);
 
     /* LYB header */
-    ret += (r = lyb_print_header(out, options));
+    ret += (r = lyb_print_header(out));
     if (r < 0) {
         rc = EXIT_FAILURE;
         goto finish;
@@ -722,6 +811,12 @@ lyb_print_data(struct lyout *out, const struct lyd_node *root, int options)
     }
 
     LY_TREE_FOR(root, root) {
+        /* do not reuse sibling hash tables from different modules */
+        if (lyd_node_module(root) != prev_mod) {
+            top_sibling_ht = NULL;
+            prev_mod = lyd_node_module(root);
+        }
+
         ret += (r = lyb_print_subtree(out, root, &top_sibling_ht, &lybs, options, 1));
         if (r < 0) {
             rc = EXIT_FAILURE;
@@ -740,11 +835,12 @@ lyb_print_data(struct lyout *out, const struct lyd_node *root, int options)
     }
 
 finish:
-    if (top_sibling_ht) {
-        lyht_free(top_sibling_ht);
-    }
     free(lybs.written);
     free(lybs.position);
+    for (r = 0; r < lybs.sib_ht_count; ++r) {
+        lyht_free(lybs.sib_ht[r].ht);
+    }
+    free(lybs.sib_ht);
 
     return rc;
 }
