@@ -450,15 +450,18 @@ lyb_print_value(const struct lys_type *type, const char *value_str, lyd_val valu
     /* we have only 5b available, must be enough */
     assert((value_type & 0x1f) == value_type);
 
-    if (value_flags & LY_VALUE_USER) {
+    if ((value_flags & LY_VALUE_USER) || (type->base == LY_TYPE_UNION)) {
         value_type = LY_TYPE_STRING;
     } else if (value_type == LY_TYPE_LEAFREF) {
         assert(!(value_flags & LY_VALUE_UNRES));
-        /* find the leafref target */
+        /* find the leafref target type */
         while (type->base == LY_TYPE_LEAFREF) {
             type = &type->info.lref.target->type;
         }
         value_type = type->base;
+
+        /* and also use its value */
+        value = ((struct lyd_node_leaf_list *)value.leafref)->value;
     }
 
     /* store the value type */
@@ -788,6 +791,7 @@ lyb_print_data(struct lyout *out, const struct lyd_node *root, int options)
     int r, ret = 0, rc = EXIT_SUCCESS;
     uint8_t zero = 0;
     struct hash_table *top_sibling_ht = NULL;
+    const struct lys_module *prev_mod = NULL;
     struct lyb_state lybs;
 
     memset(&lybs, 0, sizeof lybs);
@@ -807,6 +811,12 @@ lyb_print_data(struct lyout *out, const struct lyd_node *root, int options)
     }
 
     LY_TREE_FOR(root, root) {
+        /* do not reuse sibling hash tables from different modules */
+        if (lyd_node_module(root) != prev_mod) {
+            top_sibling_ht = NULL;
+            prev_mod = lyd_node_module(root);
+        }
+
         ret += (r = lyb_print_subtree(out, root, &top_sibling_ht, &lybs, options, 1));
         if (r < 0) {
             rc = EXIT_FAILURE;

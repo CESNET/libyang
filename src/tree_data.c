@@ -1315,7 +1315,7 @@ check_leaf_list_backlinks(struct lyd_node *node, int op)
 
     /* invalidate parent to make sure it will be checked in future validation */
     if (validity_changed && node->parent) {
-        node->parent->validity = LYD_VAL_MAND;
+        node->parent->validity |= LYD_VAL_MAND;
     }
 }
 
@@ -6776,9 +6776,12 @@ lyd_wd_add_subtree(struct lyd_node **root, struct lyd_node *last_parent, struct 
              * because accroding to RFC, the empty NP container is always part of
              * accessible tree (e.g. for evaluating when and must conditions) */
             subroot = _lyd_new(last_parent, schema, 1);
+            /* useless to set mand flag */
+            subroot->validity &= ~LYD_VAL_MAND;
+
             if (!last_parent) {
                 if (*root) {
-                    lyd_insert_sibling(root, subroot);
+                    lyd_insert_common((*root)->parent, root, subroot, 0);
                 } else {
                     *root = subroot;
                 }
