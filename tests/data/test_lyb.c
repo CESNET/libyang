@@ -155,7 +155,7 @@ check_data_tree(struct lyd_node *root1, struct lyd_node *root2)
                 /* do not compare pointers */
                 break;
             default:
-                if (leaf1->value.uint64 != leaf2->value.uint64) {
+                if ((leaf1->value.uint64 != leaf2->value.uint64) && !(leaf1->value_flags & LY_VALUE_USER)) {
                     fprintf(stderr, "\"%s\": value mismatch (\"%lu\" and \"%lu\").\n", elem1->schema->name, leaf1->value.uint64, leaf2->value.uint64);
                     fail();
                 }
@@ -242,6 +242,153 @@ teardown_f(void **state)
 }
 
 static void
+test_statements(void **state)
+{
+    struct state *st = (*state);
+    int ret;
+
+    ly_ctx_set_searchdir(st->ctx, TESTS_DIR"/data/files");
+    assert_non_null(ly_ctx_load_module(st->ctx, "statements", NULL));
+
+    st->dt1 = lyd_parse_path(st->ctx, TESTS_DIR"/data/files/statements.xml", LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->dt1, NULL);
+
+    ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYP_WITHSIBLINGS);
+    assert_int_equal(ret, 0);
+
+    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->dt2, NULL);
+
+    check_data_tree(st->dt1, st->dt2);
+}
+
+static void
+test_types(void **state)
+{
+    struct state *st = (*state);
+    int ret;
+
+    ly_ctx_set_searchdir(st->ctx, TESTS_DIR"/data/files");
+    assert_non_null(ly_ctx_load_module(st->ctx, "types", NULL));
+
+    st->dt1 = lyd_parse_path(st->ctx, TESTS_DIR"/data/files/types.xml", LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->dt1, NULL);
+
+    ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYP_WITHSIBLINGS);
+    assert_int_equal(ret, 0);
+
+    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->dt2, NULL);
+
+    check_data_tree(st->dt1, st->dt2);
+}
+
+static void
+test_annotations(void **state)
+{
+    struct state *st = (*state);
+    int ret;
+
+    ly_ctx_set_searchdir(st->ctx, TESTS_DIR"/data/files");
+    assert_non_null(ly_ctx_load_module(st->ctx, "annotations", NULL));
+
+    st->dt1 = lyd_parse_path(st->ctx, TESTS_DIR"/data/files/annotations.xml", LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->dt1, NULL);
+
+    ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYP_WITHSIBLINGS);
+    assert_int_equal(ret, 0);
+
+    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->dt2, NULL);
+
+    check_data_tree(st->dt1, st->dt2);
+}
+
+static void
+test_similar_annot_names(void **state)
+{
+    struct state *st = (*state);
+    int ret;
+
+    ly_ctx_set_searchdir(st->ctx, TESTS_DIR"/data/files");
+    assert_non_null(ly_ctx_load_module(st->ctx, "annotations", NULL));
+
+    st->dt1 = lyd_parse_path(st->ctx, TESTS_DIR"/data/files/similar-annot-names.xml", LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->dt1, NULL);
+
+    ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYP_WITHSIBLINGS);
+    assert_int_equal(ret, 0);
+
+    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->dt2, NULL);
+
+    check_data_tree(st->dt1, st->dt2);
+}
+
+static void
+test_many_child_annot(void **state)
+{
+    struct state *st = (*state);
+    int ret;
+
+    ly_ctx_set_searchdir(st->ctx, TESTS_DIR"/data/files");
+    assert_non_null(ly_ctx_load_module(st->ctx, "annotations", NULL));
+
+    st->dt1 = lyd_parse_path(st->ctx, TESTS_DIR"/data/files/many-childs-annot.xml", LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->dt1, NULL);
+
+    ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYP_WITHSIBLINGS);
+    assert_int_equal(ret, 0);
+
+    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->dt2, NULL);
+
+    check_data_tree(st->dt1, st->dt2);
+}
+
+static void
+test_union(void **state)
+{
+    struct state *st = (*state);
+    int ret;
+
+    ly_ctx_set_searchdir(st->ctx, TESTS_DIR"/data/files");
+    assert_non_null(ly_ctx_load_module(st->ctx, "union", NULL));
+
+    st->dt1 = lyd_parse_path(st->ctx, TESTS_DIR"/data/files/union.xml", LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->dt1, NULL);
+
+    ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYP_WITHSIBLINGS);
+    assert_int_equal(ret, 0);
+
+    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->dt2, NULL);
+
+    check_data_tree(st->dt1, st->dt2);
+}
+
+static void
+test_union2(void **state)
+{
+    struct state *st = (*state);
+    int ret;
+
+    ly_ctx_set_searchdir(st->ctx, TESTS_DIR"/data/files");
+    assert_non_null(ly_ctx_load_module(st->ctx, "statements", NULL));
+
+    st->dt1 = lyd_parse_path(st->ctx, TESTS_DIR"/data/files/union2.xml", LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->dt1, NULL);
+
+    ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYP_WITHSIBLINGS);
+    assert_int_equal(ret, 0);
+
+    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->dt2, NULL);
+
+    check_data_tree(st->dt1, st->dt2);
+}
+
+static void
 test_ietf_interfaces(void **state)
 {
     struct state *st = (*state);
@@ -307,8 +454,15 @@ int
 main(void)
 {
     const struct CMUnitTest tests[] = {
+        cmocka_unit_test_setup_teardown(test_statements, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ietf_interfaces, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_origin, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_union, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_union2, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_types, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_many_child_annot, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_annotations, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_similar_annot_names, setup_f, teardown_f),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
