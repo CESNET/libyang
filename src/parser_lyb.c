@@ -279,7 +279,7 @@ lyb_parse_val_1(struct ly_ctx *ctx, struct lys_type *type, LY_DATA_TYPE value_ty
     uint8_t byte;
     uint64_t num;
 
-    if (value_flags & (LY_VALUE_USER | LY_VALUE_UNRES)) {
+    if (value_flags & LY_VALUE_USER) {
         /* just read value_str */
         ret = lyb_read_string(data, &str, 0, lybs);
         if (ret > -1) {
@@ -409,11 +409,6 @@ lyb_parse_val_2(struct lys_type *type, struct lyd_node_leaf_list *leaf, struct l
         value_type = attr->value_type;
     }
 
-    if (*value_flags & LY_VALUE_UNRES) {
-        /* nothing to do */
-        return 0;
-    }
-
     if (*value_flags & LY_VALUE_USER) {
         /* unfortunately, we need to also fill the value properly, so just parse it again */
         *value_flags &= ~LY_VALUE_USER;
@@ -429,7 +424,8 @@ lyb_parse_val_2(struct lys_type *type, struct lyd_node_leaf_list *leaf, struct l
 
     /* we are parsing leafref/ptr union stored as the target type,
      * so we first parse it into string and then resolve the leafref/ptr union */
-    if ((type->base == LY_TYPE_LEAFREF) || (type->base == LY_TYPE_INST) || ((type->base == LY_TYPE_UNION) && type->info.uni.has_ptr_type)) {
+    if (!(*value_flags & LY_VALUE_UNRES) && ((type->base == LY_TYPE_LEAFREF)
+            || (type->base == LY_TYPE_INST) || ((type->base == LY_TYPE_UNION) && type->info.uni.has_ptr_type))) {
         if ((value_type == LY_TYPE_INST) || (value_type == LY_TYPE_IDENT) || (value_type == LY_TYPE_UNION)) {
             /* we already have a string */
             goto parse_reference;
