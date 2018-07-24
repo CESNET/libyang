@@ -126,7 +126,7 @@ module statements {
     grouping group {
       leaf g1 {
         mandatory false;
-        type string;
+        type percent;
       }
 
       leaf g2 {
