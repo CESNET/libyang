@@ -86,16 +86,6 @@ module annotations {
     type string;
   }
 
-  md:annotation aunion {
-    type union {
-      type int64;
-      type decimal64 {
-        fraction-digits 3;
-      }
-      type boolean;
-    }
-  }
-
   container annotations {
     list annot {
       key annoted-leaf;
