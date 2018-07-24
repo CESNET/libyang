@@ -50,7 +50,7 @@ lyb_hash_siblings(struct lys_node *sibling, const struct lys_module **models, in
 {
     LYB_HASH hash;
     struct hash_table *ht;
-    struct lys_node *parent;
+    struct lys_node *parent, **col_node;
     const struct lys_module *mod;
     uint32_t i;
 
@@ -67,18 +67,49 @@ lyb_hash_siblings(struct lys_node *sibling, const struct lys_module **models, in
             continue;
         }
 
-        for (i = 0; i < LYB_HASH_BITS; ++i) {
+        /* try to use hash with collision ID 0 */
+        hash = lyb_hash(sibling, 0);
+        if (!hash) {
+            lyht_free(ht);
+            return NULL;
+        }
+
+        if (!lyht_insert(ht, &sibling, hash)) {
+            /* success, no collision */
+            continue;
+        }
+
+        /* there is a colliding schema node, get it */
+        if (lyht_find(ht, &sibling, hash, (void **)&col_node)) {
+            LOGINT(mod->ctx);
+            lyht_free(ht);
+            return NULL;
+        }
+
+        /* find the first non-colliding hash */
+        for (i = 1; i < LYB_HASH_BITS; ++i) {
             hash = lyb_hash(sibling, i);
             if (!hash) {
                 lyht_free(ht);
                 return NULL;
             }
 
-            if (!lyht_insert(ht, &sibling, hash)) {
-                /* success, no collision */
-                break;
+            /* make sure the hashes do not collide again, we need unique hash sequence */
+            if (hash != lyb_hash(*col_node, i)) {
+                if (!lyht_insert(ht, &sibling, hash)) {
+                    /* success, no collision anymore */
+                    break;
+                }
+
+                /* there is still another colliding schema node, get it */
+                if (lyht_find(ht, &sibling, hash, (void **)&col_node)) {
+                    LOGINT(mod->ctx);
+                    lyht_free(ht);
+                    return NULL;
+                }
             }
         }
+
         if (i == LYB_HASH_BITS) {
             /* wow */
             LOGINT(sibling->module->ctx);
