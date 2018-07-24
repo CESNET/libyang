@@ -185,9 +185,12 @@ lyb_parse_model(struct ly_ctx *ctx, const char *data, const struct lys_module **
     } else {
         *mod = ly_ctx_get_module(ctx, mod_name, NULL, 0);
     }
-    if (!*mod) {
-        LOGVAL(ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Module \"%s@%s\" not found in the context.", mod_name, (rev ? mod_rev : "<none>"));
-        goto error;
+    if (ctx->data_clb) {
+        if (!*mod) {
+            *mod = ctx->data_clb(ctx, mod_name, NULL, 0, ctx->data_clb_data);
+        } else if (!(*mod)->implemented) {
+            *mod = ctx->data_clb(ctx, mod_name, (*mod)->ns, LY_MODCLB_NOT_IMPLEMENTED, ctx->data_clb_data);
+        }
     }
 
     free(mod_name);
