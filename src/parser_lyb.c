@@ -979,6 +979,14 @@ lyb_parse_subtree(struct ly_ctx *ctx, const char *data, struct lyd_node *parent,
         }
     }
 
+#ifdef LY_ENABLED_CACHE
+    /* calculate the hash and insert it into parent (list with keys is handled when its keys are inserted) */
+    if ((node->schema->nodetype != LYS_LIST) || !((struct lys_node_list *)node->schema)->keys_size) {
+        lyd_hash(node);
+        lyd_insert_hash(node);
+    }
+#endif
+
 stop_subtree:
     /* end the subtree */
     lyb_read_stop_subtree(lybs);

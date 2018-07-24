@@ -70,6 +70,7 @@ lyd_anydata_equal(struct lyd_node *first, struct lyd_node *second)
     }
 }
 
+/* used in tests */
 int
 lyd_list_has_keys(struct lyd_node *list)
 {

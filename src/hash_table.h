@@ -1,6 +1,7 @@
 /**
  * @file hash_table.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang hash table
  *
  * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
