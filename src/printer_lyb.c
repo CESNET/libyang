@@ -223,7 +223,7 @@ lyb_write_stop_subtree(struct lyout *out, struct lyb_state *lybs)
     }
 
     --lybs->used;
-    return r;
+    return 0;
 }
 
 static int
