@@ -91,19 +91,19 @@ json_print_attrs(struct lyout *out, int level, const struct lyd_node *node, cons
         case LY_TYPE_BITS:
         case LY_TYPE_ENUM:
         case LY_TYPE_INST:
-        case LY_TYPE_INT64:
-        case LY_TYPE_UINT64:
-        case LY_TYPE_DEC64:
             json_print_string(out, attr->value_str);
             break;
 
         case LY_TYPE_INT8:
         case LY_TYPE_INT16:
         case LY_TYPE_INT32:
+        case LY_TYPE_INT64:
         case LY_TYPE_UINT8:
         case LY_TYPE_UINT16:
         case LY_TYPE_UINT32:
+        case LY_TYPE_UINT64:
         case LY_TYPE_BOOL:
+        case LY_TYPE_DEC64:
             ly_print(out, "%s", attr->value_str[0] ? attr->value_str : "null");
             break;
 
@@ -171,20 +171,20 @@ contentprint:
     case LY_TYPE_BITS:
     case LY_TYPE_ENUM:
     case LY_TYPE_INST:
-    case LY_TYPE_INT64:
-    case LY_TYPE_UINT64:
     case LY_TYPE_UNION:
-    case LY_TYPE_DEC64:
         json_print_string(out, leaf->value_str);
         break;
 
     case LY_TYPE_INT8:
     case LY_TYPE_INT16:
     case LY_TYPE_INT32:
+    case LY_TYPE_INT64:
     case LY_TYPE_UINT8:
     case LY_TYPE_UINT16:
     case LY_TYPE_UINT32:
+    case LY_TYPE_UINT64:
     case LY_TYPE_BOOL:
+    case LY_TYPE_DEC64:
         ly_print(out, "%s", leaf->value_str[0] ? leaf->value_str : "null");
         break;
 
