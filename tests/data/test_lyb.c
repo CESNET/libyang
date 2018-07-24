@@ -155,7 +155,7 @@ check_data_tree(struct lyd_node *root1, struct lyd_node *root2)
                 /* do not compare pointers */
                 break;
             default:
-                if (leaf1->value.uint64 != leaf2->value.uint64) {
+                if ((leaf1->value.uint64 != leaf2->value.uint64) && !(leaf1->value_flags & LY_VALUE_USER)) {
                     fprintf(stderr, "\"%s\": value mismatch (\"%lu\" and \"%lu\").\n", elem1->schema->name, leaf1->value.uint64, leaf2->value.uint64);
                     fail();
                 }
