@@ -708,11 +708,13 @@ lyb_parse_attributes(struct lyd_node *node, const char *data, int options, struc
         ret += (r = lyb_parse_model(ctx, data, &mod, lybs));
         LYB_HAVE_READ_GOTO(r, data, error);
 
-        /* annotation name */
-        ret += (r = lyb_parse_attr_name(mod, data, &ext, options, lybs));
-        LYB_HAVE_READ_GOTO(r, data, error);
+        if (mod) {
+            /* annotation name */
+            ret += (r = lyb_parse_attr_name(mod, data, &ext, options, lybs));
+            LYB_HAVE_READ_GOTO(r, data, error);
+        }
 
-        if (!ext) {
+        if (!mod || !ext) {
             /* unknown attribute, skip it */
             do {
                 ret += (r = lyb_read(data, NULL, lybs->written[lybs->used - 1], lybs));
@@ -884,9 +886,12 @@ lyb_parse_subtree(struct ly_ctx *ctx, const char *data, struct lyd_node *parent,
         ret += (r = lyb_parse_model(ctx, data, &mod, lybs));
         LYB_HAVE_READ_GOTO(r, data, error);
 
-        /* read hash, find the schema node starting from mod, possibly yang_data_name */
-        r = lyb_parse_schema_hash(NULL, mod, data, yang_data_name, options, &snode, lybs);
+        if (mod) {
+            /* read hash, find the schema node starting from mod, possibly yang_data_name */
+            r = lyb_parse_schema_hash(NULL, mod, data, yang_data_name, options, &snode, lybs);
+        }
     } else {
+        mod = lyd_node_module(parent);
 
         /* read hash, find the schema node starting from parent schema */
         r = lyb_parse_schema_hash(parent->schema, NULL, data, NULL, options, &snode, lybs);
@@ -894,7 +899,7 @@ lyb_parse_subtree(struct ly_ctx *ctx, const char *data, struct lyd_node *parent,
     ret += r;
     LYB_HAVE_READ_GOTO(r, data, error);
 
-    if (!snode) {
+    if (!mod || !snode) {
         /* unknown data subtree, skip it whole */
         do {
             ret += (r = lyb_read(data, NULL, lybs->written[lybs->used - 1], lybs));
