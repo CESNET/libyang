@@ -205,6 +205,7 @@ set(libsrc
     src/xpath.c
     src/printer_yang.c
     src/printer_yin.c
+    src/printer_json_schema.c
     src/printer_xml.c
     src/printer_tree.c
     src/printer_info.c

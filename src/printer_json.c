@@ -30,7 +30,7 @@
 static int json_print_nodes(struct lyout *out, int level, const struct lyd_node *root, int withsiblings, int toplevel,
                             int options);
 
-static int
+int
 json_print_string(struct lyout *out, const char *text)
 {
     unsigned int i, n;

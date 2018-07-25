@@ -257,6 +257,7 @@ typedef enum {
     LYS_OUT_YIN = 2,     /**< YIN schema output format */
     LYS_OUT_TREE,        /**< Tree schema output format, for more information see the [printers](@ref howtoschemasprinters) page */
     LYS_OUT_INFO,        /**< Info schema output format, for more information see the [printers](@ref howtoschemasprinters) page */
+    LYS_OUT_JSON,        /**< JSON schema output format, reflecting YIN format with conversion of attributes to object's members */
 } LYS_OUTFORMAT;
 
 /**

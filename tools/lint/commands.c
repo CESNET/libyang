@@ -52,7 +52,7 @@ cmd_clear_help(void)
 void
 cmd_print_help(void)
 {
-    printf("print [-f (yang | yin | tree [<tree-options>] | info [-t <info-path>])] [-o <output-file>]"
+    printf("print [-f (yang | yin | tree [<tree-options>] | info [-P <info-path>]) | jsons] [-o <output-file>]"
            " <model-name>[@<revision>]\n");
     printf("\n");
     printf("\ttree-options:\t--tree-print-groupings\t(print top-level groupings in a separate section)\n");
@@ -330,6 +330,8 @@ cmd_print(const char *arg)
                 tree_opts |= LYS_OUTOPT_TREE_RFC;
             } else if (!strcmp(optarg, "info")) {
                 format = LYS_OUT_INFO;
+            } else if (!strcmp(optarg, "jsons")) {
+                format = LYS_OUT_JSON;
             } else {
                 fprintf(stderr, "Unknown output format \"%s\".\n", optarg);
                 goto cleanup;
@@ -407,6 +409,9 @@ cmd_print(const char *arg)
     }
 
     ret = lys_print_file(output, module, format, target_path, tree_ll, tree_opts);
+    if (format == LYS_OUT_JSON) {
+        fputs("\n", output);
+    }
 
 cleanup:
     free(*argv);
