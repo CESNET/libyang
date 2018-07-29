@@ -38,6 +38,7 @@ struct ly_modules_list {
 };
 
 struct ly_ctx {
+    struct hash_table *hash_tb;
     struct dict_table dict;
     struct ly_modules_list models;
     ly_module_imp_clb imp_clb;
