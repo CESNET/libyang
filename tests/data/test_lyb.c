@@ -389,6 +389,27 @@ test_union2(void **state)
 }
 
 static void
+test_collisions(void **state)
+{
+    struct state *st = (*state);
+    int ret;
+
+    ly_ctx_set_searchdir(st->ctx, TESTS_DIR"/data/files");
+    assert_non_null(ly_ctx_load_module(st->ctx, "annotations", NULL));
+
+    st->dt1 = lyd_parse_path(st->ctx, TESTS_DIR"/data/files/collisions.xml", LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->dt1, NULL);
+
+    ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYP_WITHSIBLINGS);
+    assert_int_equal(ret, 0);
+
+    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->dt2, NULL);
+
+    check_data_tree(st->dt1, st->dt2);
+}
+
+static void
 test_ietf_interfaces(void **state)
 {
     struct state *st = (*state);
@@ -463,6 +484,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_many_child_annot, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_annotations, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_similar_annot_names, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_collisions, setup_f, teardown_f),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
