@@ -77,12 +77,6 @@ ly_ctx_internal_modules_count(struct ly_ctx *ctx)
     return ctx->internal_module_count;
 }
 
-int
-lyht_str_cmp_cb(void *val1_p, void *val2_p, int UNUSED(mod), void *UNUSED(cb_data))
-{
-    return(strcmp((const char *)val1_p, (const char *)val2_p));
-}
-
 API struct ly_ctx *
 ly_ctx_new(const char *search_dir, int options)
 {
@@ -99,11 +93,6 @@ ly_ctx_new(const char *search_dir, int options)
 
     /* dictionary */
     lydict_init(&ctx->dict);
-
-    /* hash table */
-    /* TODO check for error */
-    ctx->hash_tb = lyht_new(256, sizeof(char *), lyht_str_cmp_cb, NULL, 1);
-
 
     /* plugins */
     ly_load_plugins();
@@ -485,9 +474,6 @@ ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_n
 
     /* dictionary */
     lydict_clean(&ctx->dict);
-
-    /* hash table */
-    lyht_free(ctx->hash_tb);
 
     /* plugins - will be removed only if this is the last context */
     ly_clean_plugins();
