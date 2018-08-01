@@ -1416,6 +1416,7 @@ set_comp_cast(struct lyxp_set *trg, struct lyxp_set *src, enum lyxp_set_type typ
 
     /* cast target set appropriately */
     if (lyxp_set_cast(trg, type, cur_node, local_mod, options)) {
+        set_free_content(trg);
         return -1;
     }
 
