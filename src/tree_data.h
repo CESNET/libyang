@@ -162,7 +162,8 @@ struct lyd_attr {
  * ::lyd_node_leaf_list or ::lyd_node_anydata structures. This structure fits only to #LYS_CONTAINER, #LYS_LIST and
  * #LYS_CHOICE values.
  *
- * To traverse through all the child elements or attributes, use #LY_TREE_FOR or #LY_TREE_FOR_SAFE macro.
+ * To traverse all the child elements or attributes, use #LY_TREE_FOR or #LY_TREE_FOR_SAFE macro. To traverse
+ * the whole subtree, use #LY_TREE_DFS_BEGIN macro.
  */
 struct lyd_node {
     struct lys_node *schema;         /**< pointer to the schema definition of this node */
