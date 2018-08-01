@@ -1407,7 +1407,7 @@ static int
 set_comp_cast(struct lyxp_set *trg, struct lyxp_set *src, enum lyxp_set_type type, const struct lyd_node *cur_node,
               const struct lys_module *local_mod, uint32_t src_idx, int options)
 {
-    assert((trg->type != LYXP_SET_NODE_SET) && (src->type == LYXP_SET_NODE_SET));
+    assert(src->type == LYXP_SET_NODE_SET);
 
     memset(trg, 0, sizeof *trg);
 
