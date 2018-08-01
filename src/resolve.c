@@ -2611,7 +2611,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
     struct lyd_node_leaf_list *llist;
     const struct lys_module *prev_mod;
     struct ly_ctx *ctx;
-    const struct lys_node *ssibling;
+    const struct lys_node *ssibling, *sparent;
     struct lys_node_list *slist;
     struct parsed_pred pp;
 
@@ -2661,7 +2661,21 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
     while (1) {
         /* find the correct schema node first */
         ssibling = NULL;
-        while ((ssibling = lys_getnext(ssibling, (start && start->parent) ? start->parent->schema : NULL, prev_mod, 0))) {
+        sparent = (start && start->parent) ? start->parent->schema : NULL;
+        while ((ssibling = lys_getnext(ssibling, sparent, prev_mod, 0))) {
+            /* skip invalid input/output nodes */
+            if (sparent && (sparent->nodetype & (LYS_RPC | LYS_ACTION))) {
+                if (options & LYD_PATH_OPT_OUTPUT) {
+                    if (lys_parent(ssibling)->nodetype == LYS_INPUT) {
+                        continue;
+                    }
+                } else {
+                    if (lys_parent(ssibling)->nodetype == LYS_OUTPUT) {
+                        continue;
+                    }
+                }
+            }
+
             if (!schema_nodeid_siblingcheck(ssibling, prev_mod, mod_name, mod_name_len, name, nam_len)) {
                 break;
             }
