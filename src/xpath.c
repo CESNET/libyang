@@ -1607,6 +1607,11 @@ set_sorted_merge(struct lyxp_set *trg, struct lyxp_set *src, struct lyd_node *cu
             /* inserting src node into trg, just remember it for now */
             ++count;
             ++i;
+
+#ifdef LY_ENABLED_CACHE
+            /* insert the hash now */
+            set_insert_node_hash(trg, src->val.nodes[i - 1].node, src->val.nodes[i - 1].type);
+#endif
         } else if (count) {
 copy_nodes:
             /* time to actually copy the nodes, we have found the largest block of nodes */
@@ -1627,6 +1632,14 @@ copy_nodes:
     } while ((i < src->used) && (j < trg->used));
 
     if ((i < src->used) || count) {
+#ifdef LY_ENABLED_CACHE
+        uint32_t k;
+
+        /* insert all the hashes first */
+        for (k = i; k < src->used; ++k) {
+            set_insert_node_hash(trg, src->val.nodes[k].node, src->val.nodes[k].type);
+        }
+#endif
         /* loop ended, but we need to copy something at trg end */
         count += src->used - i;
         i = src->used;
@@ -5906,6 +5919,9 @@ moveto_union(struct lyxp_set *set1, struct lyxp_set *set2, struct lyd_node *cur_
     if (set_sorted_merge(set1, set2, cur_node, options)) {
         return -1;
     }
+
+    /* final set must be sorted */
+    assert(!set_sort(set1, cur_node, options));
 
     return EXIT_SUCCESS;
 }
