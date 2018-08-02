@@ -4110,6 +4110,7 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module,
     int ret, reapply = 0;
     char *parent_path;
     struct lys_node *target = NULL, *parent;
+    struct lys_node_inout *inout;
     struct ly_set *set;
 
     if (!dev->deviate) {
@@ -4182,12 +4183,31 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module,
             /* unlink and store the original node */
             parent = target->parent;
             lys_node_unlink(target);
-            if (parent && (parent->nodetype & (LYS_AUGMENT | LYS_USES))) {
-                /* hack for augment, because when the original will be sometime reconnected back, we actually need
-                 * to reconnect it to both - the augment and its target (which is deduced from the deviations target
-                 * path), so we need to remember the augment as an addition */
-                /* we also need to remember the parent uses so that we connect it back to it when switching deviation state */
-                target->parent = parent;
+            if (parent) {
+                if (parent->nodetype & (LYS_AUGMENT | LYS_USES)) {
+                    /* hack for augment, because when the original will be sometime reconnected back, we actually need
+                     * to reconnect it to both - the augment and its target (which is deduced from the deviations target
+                     * path), so we need to remember the augment as an addition */
+                    /* we also need to remember the parent uses so that we connect it back to it when switching deviation state */
+                    target->parent = parent;
+                } else if (parent->nodetype & (LYS_RPC | LYS_ACTION)) {
+                    /* re-create implicit node */
+                    inout = calloc(1, sizeof *inout);
+                    LY_CHECK_ERR_RETURN(!inout, LOGMEM(module->ctx), );
+
+                    inout->nodetype = target->nodetype;
+                    inout->name = lydict_insert(module->ctx, (inout->nodetype == LYS_INPUT) ? "input" : "output", 0);
+                    inout->module = target->module;
+                    inout->flags = LYS_IMPLICIT;
+
+                    /* insert it manually */
+                    assert(parent->child && !parent->child->next
+                    && (parent->child->nodetype == (inout->nodetype == LYS_INPUT ? LYS_OUTPUT : LYS_INPUT)));
+                    parent->child->next = (struct lys_node *)inout;
+                    inout->prev = parent->child;
+                    parent->child->prev = (struct lys_node *)inout;
+                    inout->parent = parent;
+                }
             }
             dev->orig_node = target;
         }
