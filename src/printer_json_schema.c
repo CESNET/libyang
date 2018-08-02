@@ -591,7 +591,7 @@ jsons_print_deviation(struct lyout *out, const struct lys_deviation *dev, uint8_
         jsons_print_text(out, "description", "text", dev[i].dsc, 1, &f);
         jsons_print_text(out, "reference", "text", dev[i].ref, 1, &f);
         if (dev[i].deviate_size) {
-            ly_print(out, ",\"deviates\":[");
+            ly_print(out, "%s\"deviates\":[", f ? "" : ",");
             f = 0;
             f2 = 1;
             for (j = 0; j < dev[i].deviate_size; ++j) {
@@ -630,7 +630,7 @@ jsons_print_identity(struct lyout *out, const struct lys_ident *ident, int *firs
 
     ly_print(out, "%s\"%s\":{", (first && (*first)) ? "" : ",", ident->name);
     if (ident->base_size) {
-        ly_print(out, ",\"bases\":[");
+        ly_print(out, "\"bases\":[");
         f = 0;
         for (j = 0; j < ident->base_size; ++j) {
             ly_print(out, "%s\"%s\"", j ? "," : "", ident->base[j]->name);
@@ -679,7 +679,7 @@ jsons_print_feature(struct lyout *out, const struct lys_feature *feat, int *firs
     jsons_print_status(out, feat->flags, &f);
     jsons_print_iffeatures(out, feat->module, feat->iffeature, feat->iffeature_size, &f);
     if (feat->depfeatures && feat->depfeatures->number) {
-        ly_print(out, ",\"depending-features\":[");
+        ly_print(out, "%s\"depending-features\":[", f ? "" : ",");
         for (j = 0; j < feat->depfeatures->number; ++j) {
             ly_print(out, "%s\"%s\"", j ? "," : "", ((struct lys_feature*)(feat->depfeatures->set.g[j]))->name);
         }
