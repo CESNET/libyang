@@ -541,7 +541,7 @@ public:
     S_Type type();
     const char *units() {return ((struct lys_node_leaf *)node)->units;};
     const char *dflt() {return ((struct lys_node_leaf *)node)->dflt;};
-    S_Schema_Node child() {return nullptr;};
+    S_Schema_Node child() override {return nullptr;};
     int is_key();
 
 private:
@@ -577,7 +577,7 @@ public:
     std::vector<std::string> *dflt();
     uint32_t min() {return ((struct lys_node_leaflist *)node)->min;};
     uint32_t max() {return ((struct lys_node_leaflist *)node)->max;};
-    S_Schema_Node child() {return nullptr;};
+    S_Schema_Node child() override {return nullptr;};
 
 private:
     struct lys_node *node;
