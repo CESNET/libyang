@@ -111,6 +111,7 @@ public:
     S_Schema_Node data() LY_NEW(module, data, Schema_Node);
     std::vector<S_Schema_Node> *data_instantiables(int options);
     std::string print_mem(LYS_OUTFORMAT format, int options);
+    std::string print_mem(LYS_OUTFORMAT format, const char *target, int options);
 
     friend Context;
     friend Data_Node;
