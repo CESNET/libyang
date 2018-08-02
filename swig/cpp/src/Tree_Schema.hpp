@@ -409,7 +409,7 @@ class Schema_Node
 {
 public:
     Schema_Node(lys_node *node, S_Deleter deleter);
-    ~Schema_Node();
+    virtual ~Schema_Node();
     const char *name() {return node->name;};
     const char *dsc() {return node->dsc;};
     const char *ref() {return node->ref;};
