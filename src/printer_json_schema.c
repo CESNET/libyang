@@ -471,6 +471,7 @@ jsons_print_imports_(struct lyout *out, const struct lys_submodule *submodule,
                      const struct lys_import *imp, uint8_t imp_size, char **label)
 {
     int i, j = 1, f;
+    char *str;
 
     if (imp_size && (*label)) {
         ly_print(out, *label);
@@ -489,6 +490,9 @@ jsons_print_imports_(struct lyout *out, const struct lys_submodule *submodule,
             ly_print(out, ",\"from-submodule\":\"%s%s%s\"", submodule->name,
                      submodule->rev_size ? "@" : "", submodule->rev_size ? submodule->rev[0].date : "");
         }
+        asprintf(&str, "%s%s%s", imp[i].module->name, imp[i].module->rev_size ? "@" : "", imp[i].module->rev_size ? imp[i].module->rev[0].date : "");
+        jsons_print_text(out, "resolves-to", "module", str, 1, &f);
+        free(str);
         ly_print(out, "}");
     }
 }
