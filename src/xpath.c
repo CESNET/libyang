@@ -691,6 +691,7 @@ set_free_content(struct lyxp_set *set)
     } else if (set->type == LYXP_SET_STRING) {
         free(set->val.str);
     }
+    set->type = LYXP_SET_EMPTY;
 }
 
 void
@@ -6473,9 +6474,11 @@ moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, str
      * NUMBER + BOOLEAN = NUMBER + NUMBER      /(1 NUMBER) 2 NUMBER
      * STRING + BOOLEAN = NUMBER + NUMBER      /(1 NUMBER) 2 NUMBER
      */
-    struct lyxp_set iter, *node_set, *other_set;
+    struct lyxp_set iter1, iter2;
     int result;
     int64_t i;
+
+    iter1.type = LYXP_SET_EMPTY;
 
     /* empty node-sets are always false */
     if ((set1->type == LYXP_SET_EMPTY) || (set2->type == LYXP_SET_EMPTY)) {
@@ -6486,40 +6489,70 @@ moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, str
     /* iterative evaluation with node-sets */
     if ((set1->type == LYXP_SET_NODE_SET) || (set2->type == LYXP_SET_NODE_SET)) {
         if (set1->type == LYXP_SET_NODE_SET) {
-            node_set = set1;
-            other_set = set2;
+            for (i = 0; i < set1->used; ++i) {
+                switch (set2->type) {
+                case LYXP_SET_NUMBER:
+                    if (set_comp_cast(&iter1, set1, LYXP_SET_NUMBER, cur_node, local_mod, i, options)) {
+                        return -1;
+                    }
+                    break;
+                case LYXP_SET_BOOLEAN:
+                    if (set_comp_cast(&iter1, set1, LYXP_SET_BOOLEAN, cur_node, local_mod, i, options)) {
+                        return -1;
+                    }
+                    break;
+                default:
+                    if (set_comp_cast(&iter1, set1, LYXP_SET_STRING, cur_node, local_mod, i, options)) {
+                        return -1;
+                    }
+                    break;
+                }
+
+                if (moveto_op_comp(&iter1, set2, op, cur_node, local_mod, options)) {
+                    set_free_content(&iter1);
+                    return -1;
+                }
+
+                /* lazy evaluation until true */
+                if (iter1.val.bool) {
+                    set_fill_boolean(set1, 1);
+                    return EXIT_SUCCESS;
+                }
+            }
         } else {
-            node_set = set2;
-            other_set = set1;
-        }
+            for (i = 0; i < set2->used; ++i) {
+                switch (set1->type) {
+                    case LYXP_SET_NUMBER:
+                        if (set_comp_cast(&iter2, set2, LYXP_SET_NUMBER, cur_node, local_mod, i, options)) {
+                            return -1;
+                        }
+                        break;
+                    case LYXP_SET_BOOLEAN:
+                        if (set_comp_cast(&iter2, set2, LYXP_SET_BOOLEAN, cur_node, local_mod, i, options)) {
+                            return -1;
+                        }
+                        break;
+                    default:
+                        if (set_comp_cast(&iter2, set2, LYXP_SET_STRING, cur_node, local_mod, i, options)) {
+                            return -1;
+                        }
+                        break;
+                }
 
-        for (i = 0; i < node_set->used; ++i) {
-            switch (other_set->type) {
-            case LYXP_SET_NUMBER:
-                if (set_comp_cast(&iter, node_set, LYXP_SET_NUMBER, cur_node, local_mod, i, options)) {
+                set_fill_set(&iter1, set1);
+
+                if (moveto_op_comp(&iter1, &iter2, op, cur_node, local_mod, options)) {
+                    set_free_content(&iter1);
+                    set_free_content(&iter2);
                     return -1;
                 }
-                break;
-            case LYXP_SET_BOOLEAN:
-                if (set_comp_cast(&iter, node_set, LYXP_SET_BOOLEAN, cur_node, local_mod, i, options)) {
-                    return -1;
-                }
-                break;
-            default:
-                if (set_comp_cast(&iter, node_set, LYXP_SET_STRING, cur_node, local_mod, i, options)) {
-                    return -1;
-                }
-                break;
-            }
+                set_free_content(&iter2);
 
-            if (moveto_op_comp(&iter, other_set, op, cur_node, local_mod, options)) {
-                return -1;
-            }
-
-            /* lazy evaluation until true */
-            if (iter.val.bool) {
-                set_fill_boolean(set1, 1);
-                return EXIT_SUCCESS;
+                /* lazy evaluation until true */
+                if (iter1.val.bool) {
+                    set_fill_boolean(set1, 1);
+                    return EXIT_SUCCESS;
+                }
             }
         }
 
