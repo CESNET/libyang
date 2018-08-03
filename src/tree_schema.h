@@ -1264,7 +1264,7 @@ struct lys_node {
  * @brief Schema container node structure.
  *
  * Beginning of the structure is completely compatible with ::lys_node structure extending it by the #when,
- * #presence, #must_size, #tpdf_size, #must and #tpdf members.
+ * #must, #tpdf, and #presence members.
  *
  * The container schema node can be instantiated in the data tree, so the ::lys_node_container can be directly
  * referenced from ::lyd_node#schema.
