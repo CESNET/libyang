@@ -48,6 +48,9 @@ jsons_nodetype_str(LYS_NODE value) {
 /* shared with printer_json.c */
 int json_print_string(struct lyout *out, const char *text);
 
+static void jsons_print_data(struct lyout *out, const struct lys_module *mod, struct lys_node *data, int *first);
+static void jsons_print_notifs(struct lyout *out, struct lys_node *data, int *first);
+
 static void
 jsons_print_text(struct lyout *out, const char *label, const char *arg, const char *text, int closeit, int *first)
 {
@@ -160,7 +163,7 @@ jsons_print_when(struct lyout *out, const struct lys_when *when, int *first)
     if (!when) {
         return;
     }
-    jsons_print_object(out, "when", "condition", when->cond, 0, first);
+    jsons_print_text(out, "when", "condition", when->cond, 0, first);
     jsons_print_text(out, "description", "text", when->dsc, 1, NULL);
     jsons_print_text(out, "reference", "text", when->ref, 1, NULL);
     ly_print(out, "}");
@@ -567,6 +570,8 @@ jsons_print_augment(struct lyout *out, const struct lys_node_augment *aug, uint8
         jsons_print_status(out, aug[i].flags, &f);
         jsons_print_iffeatures(out, aug[i].module, aug[i].iffeature, aug[i].iffeature_size, &f);
         jsons_print_when(out, aug[i].when, &f);
+        jsons_print_data(out, aug->module, aug->child, &f);
+        jsons_print_notifs(out, aug->child, &f);
         ly_print(out, "}");
     }
     ly_print(out, "}");
@@ -631,13 +636,17 @@ static void
 jsons_print_identity(struct lyout *out, const struct lys_ident *ident, int *first)
 {
     int f = 1, j;
+    struct lys_module *mod;
 
     ly_print(out, "%s\"%s\":{", (first && (*first)) ? "" : ",", ident->name);
     if (ident->base_size) {
         ly_print(out, "\"bases\":[");
         f = 0;
         for (j = 0; j < ident->base_size; ++j) {
-            ly_print(out, "%s\"%s\"", j ? "," : "", ident->base[j]->name);
+            mod = ident->base[j]->module;
+            ly_print(out, "%s\"%s%s%s:%s\"", j ? "," : "",
+                     mod->name, mod->rev_size ? "@" : "", mod->rev_size ? mod->rev[0].date : "",
+                     ident->base[j]->name);
         }
         ly_print(out, "]");
     }
@@ -749,6 +758,9 @@ jsons_print_data(struct lyout *out, const struct lys_module *mod, struct lys_nod
     f = 1;
     jsons_print_data_(out, mod, data, &f);
     ly_print(out, "}");
+    if (first) {
+        (*first) = 0;
+    }
 }
 
 static void
@@ -816,6 +828,7 @@ jsons_print_module(struct lyout *out, const struct lys_module *module)
     jsons_print_groupings(out, module->data, NULL);
     jsons_print_data(out, module, module->data, NULL);
     jsons_print_rpcs(out, module->data, NULL);
+    jsons_print_notifs(out, module->data, NULL);
 
     /* close the module */
     ly_print(out, "}}");
@@ -841,10 +854,6 @@ jsons_print_submodule(struct lyout *out, const struct lys_submodule *module)
     jsons_print_features(out, module->features, module->features_size, NULL);
     jsons_print_augment(out, module->augment, module->augment_size, NULL);
     jsons_print_deviation(out, module->deviation, module->deviation_size, NULL);
-
-    jsons_print_groupings(out, module->belongsto->data, NULL);
-    jsons_print_data(out, (struct lys_module *)module, module->belongsto->data, NULL);
-    jsons_print_rpcs(out, module->belongsto->data, NULL);
 
     /* close the module */
     ly_print(out, "}}");
@@ -872,6 +881,7 @@ jsons_print_container(struct lyout *out, const struct lys_node *node, int *first
 
     jsons_print_groupings(out, cont->child, NULL);
     jsons_print_data(out, cont->module, cont->child, NULL);
+    jsons_print_notifs(out, cont->child, NULL);
     ly_print(out, "}");
 }
 
@@ -991,6 +1001,7 @@ jsons_print_list(struct lyout *out, const struct lys_node *node, int *first)
 
     jsons_print_groupings(out, list->child, NULL);
     jsons_print_data(out, list->module, list->child, NULL);
+    jsons_print_notifs(out, list->child, NULL);
     ly_print(out, "}");
 }
 
@@ -1034,6 +1045,7 @@ jsons_print_grouping(struct lyout *out, const struct lys_node *node, int *first)
 
     jsons_print_groupings(out, group->child, NULL);
     jsons_print_data(out, group->module, group->child, NULL);
+    jsons_print_notifs(out, group->child, NULL);
     ly_print(out, "}");
 }
 
@@ -1104,6 +1116,26 @@ jsons_print_notif(struct lyout *out, const struct lys_node *node, int *first)
     jsons_print_groupings(out, ntf->child, NULL);
     jsons_print_data(out, ntf->module, ntf->child, NULL);
     ly_print(out, "}");
+}
+
+static void
+jsons_print_notifs(struct lyout *out, struct lys_node *data, int *first)
+{
+    int i = 0;
+    struct lys_node *node;
+
+    ly_print(out, "%s\"notifications\":[", (first && (*first)) ? "" : ",");
+    LY_TREE_FOR(data, node) {
+        if (node->nodetype != LYS_NOTIF) {
+            continue;
+        }
+        ly_print(out, "%s\"%s\"", i ? "," : "", node->name);
+        ++i;
+    }
+    ly_print(out, "]");
+    if (first) {
+        (*first) = 0;
+    }
 }
 
 static void
