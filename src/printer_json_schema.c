@@ -182,9 +182,13 @@ jsons_print_typerestr(struct lyout *out, const struct lys_restr *restr, const ch
     }
 
     if (label) {
-        jsons_print_object(out, label, "value", pattern ? &restr->expr[1] : restr->expr, 0, first);
+        jsons_print_text(out, label, "value", pattern ? &restr->expr[1] : restr->expr, 0, first);
     } else {
-        ly_print(out, "%s{\"%s\":\"%s\"", (first && (*first)) ? "" : ",", "value", pattern ? &restr->expr[1] : restr->expr);
+        ly_print(out, "%s{\"%s\":", (first && (*first)) ? "" : ",", "value");
+        json_print_string(out, pattern ? &restr->expr[1] : restr->expr);
+    }
+    if (pattern && restr->expr[0] == 0x15) {
+        jsons_print_object(out, "modifier", "value", "invert-match", 1, NULL);
     }
     jsons_print_text(out, "description", "text", restr->dsc, 1, NULL);
     jsons_print_text(out, "reference", "text", restr->ref, 1, NULL);
@@ -214,17 +218,22 @@ jsons_print_musts(struct lyout *out, const struct lys_restr *must, uint8_t must_
 }
 
 static void
-jsons_print_type(struct lyout *out, const struct lys_type *type, int *first)
+jsons_print_type_(struct lyout *out, const struct lys_type *type, int with_label, int *first)
 {
     unsigned int i;
     int f;
     struct lys_type *orig;
+    struct lys_module *mod;
 
     if (!type) {
         return;
     }
 
-    ly_print(out, "%s\"type\":{", (first && (*first)) ? "" : ",");
+    if (with_label) {
+        ly_print(out, "%s\"type\":{", (first && (*first)) ? "" : ",");
+    } else {
+        ly_print(out, "%s{", (first && (*first)) ? "" : ",");
+    }
 
     switch (type->base) {
     case LY_TYPE_BINARY:
@@ -278,13 +287,19 @@ jsons_print_type(struct lyout *out, const struct lys_type *type, int *first)
         if (type->info.ident.count) {
             ly_print(out, ",\"bases\":[");
             for (i = 0; i < type->info.ident.count; ++i) {
-                ly_print(out, "%s\"%s\"", i ? "," : "", type->info.ident.ref[i]->name);
+                mod = type->info.ident.ref[i]->module;
+                ly_print(out, "%s\"%s%s%s:%s\"", i ? "," : "",
+                         mod->name, mod->rev_size ? "@" : "", mod->rev_size ? mod->rev[0].date : "",
+                         type->info.ident.ref[i]->name);
             }
+            ly_print(out, "]");
         }
         break;
     case LY_TYPE_INST:
         ly_print(out, "\"basetype\":\"instance-identifier\"");
-        ly_print(out, ",\"require-instance\":%s", (type->info.inst.req < 1) ? "false" : "true");
+        if (type->info.inst.req) {
+            jsons_print_object(out, "require-instance", "value", type->info.inst.req == -1 ? "false" : "true", 1, NULL);
+        }
         break;
     case LY_TYPE_INT8:
         ly_print(out, "\"basetype\":\"int8\"");
@@ -316,6 +331,9 @@ int_range:
     case LY_TYPE_LEAFREF:
         ly_print(out, "\"basetype\":\"leafref\"");
         jsons_print_text(out, "path", "value", type->info.lref.path, 1, NULL);
+        if (type->info.lref.req) {
+            jsons_print_object(out, "require-instance", "value", type->info.lref.req == -1 ? "false" : "true", 1, NULL);
+        }
         break;
     case LY_TYPE_STRING:
         ly_print(out, "\"basetype\":\"string\"");
@@ -332,9 +350,12 @@ int_range:
         break;
     case LY_TYPE_UNION:
         ly_print(out, "\"basetype\":\"union\"");
+        ly_print(out, ",\"types\":[");
+        f = 1;
         for (i = 0; i < type->info.uni.count; ++i) {
-            jsons_print_type(out, &type->info.uni.types[i], NULL);
+            jsons_print_type_(out, &type->info.uni.types[i], 0, &f);
         }
+        ly_print(out, "]");
         break;
     default:
         /* unused outside libyang, we never should be here */
@@ -344,13 +365,25 @@ int_range:
 
     if (type->der) {
         ly_print(out, ",\"derived-from\":");
-        if (!lys_type_is_local(type)) {
-            ly_print(out, "\"%s:%s\"", type->der->module->name, type->der->name);
+        if (type->der->module) {
+            mod = type->der->module;
+            ly_print(out, "\"%s%s%s:%s\"",
+                     mod->name, mod->rev_size ? "@" : "", mod->rev_size ? mod->rev[0].date : "",
+                     type->der->name);
         } else {
             ly_print(out, "\"%s\"", type->der->name);
         }
     }
     ly_print(out, "}");
+    if (first) {
+        (*first) = 0;
+    }
+}
+
+static void
+jsons_print_type(struct lyout *out, const struct lys_type *type, int *first)
+{
+    return jsons_print_type_(out, type, 1, first);
 }
 
 static void
