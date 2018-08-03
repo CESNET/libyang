@@ -853,7 +853,7 @@ int
 tree_print_model(struct lyout *out, const struct lys_module *module, const char *target_schema_path,
                  int ll, int options)
 {
-    struct lys_node *node = NULL, *data;
+    struct lys_node *node = NULL, *data, *aug;
     struct ly_set *set;
     uint16_t max_child_len;
     int have_rpcs = 0, have_notifs = 0, have_grps = 0, have_augs = 0, printed;
@@ -965,16 +965,16 @@ tree_print_model(struct lyout *out, const struct lys_module *module, const char 
         }
         ly_print(out, "\n");
 
-        data = (struct lys_node *)&module->augment[i];
+        aug = (struct lys_node *)&module->augment[i];
         mask = LYS_CHOICE | LYS_CASE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_USES
                | LYS_ACTION | LYS_NOTIF;
-        max_child_len = tree_get_max_name_len(data->child, data, mask, &opts);
-        LY_TREE_FOR(data->child, node) {
+        max_child_len = tree_get_max_name_len(aug->child, aug, mask, &opts);
+        LY_TREE_FOR(aug->child, node) {
             /* submodule, foreign augments */
-            if (node->parent != data) {
+            if (node->parent != aug) {
                 continue;
             }
-            tree_print_snode(out, 0, max_child_len, node, mask, data, 0, &opts);
+            tree_print_snode(out, 0, max_child_len, node, mask, aug, 0, &opts);
         }
     }
 
