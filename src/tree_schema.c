@@ -3446,7 +3446,8 @@ lys_node_switch(struct lys_node *node1, struct lys_node *node2)
     memcpy(((uint8_t *)node1) + offset, ((uint8_t *)node2) + offset, size);
     memcpy(((uint8_t *)node2) + offset, mem, size);
 
-    /* typedefs were not copied to the backup node, so always reuse them */
+    /* typedefs were not copied to the backup node, so always reuse them,
+     * in leaves/leaf-lists we must correct the type parent pointer */
     switch (node1->nodetype) {
     case LYS_CONTAINER:
         ((struct lys_node_container *)node1)->tpdf_size = ((struct lys_node_container *)node2)->tpdf_size;
@@ -3480,6 +3481,10 @@ lys_node_switch(struct lys_node *node1, struct lys_node *node2)
         ((struct lys_node_inout *)node2)->tpdf_size = 0;
         ((struct lys_node_inout *)node2)->tpdf = NULL;
         break;
+    case LYS_LEAF:
+    case LYS_LEAFLIST:
+        ((struct lys_node_leaf *)node1)->type.parent = (struct lys_tpdf *)node1;
+        ((struct lys_node_leaf *)node2)->type.parent = (struct lys_tpdf *)node2;
     default:
         break;
     }
