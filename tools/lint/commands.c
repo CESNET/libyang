@@ -64,7 +64,7 @@ cmd_print_help(void)
     printf("\n");
     printf("\tinfo-path:\t<schema-path> | typedef[<schema-path>]/<typedef-name> |\n");
     printf("\t          \t| identity/<identity-name> | feature/<feature-name> |\n");
-    printf("\t          \t| grouping/<grouping-name>(<schema-path>) |\n");
+    printf("\t          \t| grouping[<schema-path>]/<grouping-name> |\n");
     printf("\t          \t| type/<schema-path-leaf-or-leaflist>\n");
     printf("\n");
     printf("\tschema-path:\t( /<module-name>:<node-identifier> )+\n");
