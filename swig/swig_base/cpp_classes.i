@@ -72,6 +72,7 @@
 %newobject Data_Node::path;
 %newobject Data_Node::qualifed_path;
 %newobject Data_Node::dup;
+%newobject Data_Node::dup_withsiblings;
 %newobject Data_Node::dup_to_ctx;
 %newobject Data_Node::find_path;
 %newobject Data_Node::find_instance;

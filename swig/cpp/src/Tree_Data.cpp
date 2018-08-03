@@ -208,6 +208,17 @@ S_Data_Node Data_Node::dup(int recursive) {
     S_Deleter new_deleter = std::make_shared<Deleter>(new_node, deleter);
     return std::make_shared<Data_Node>(new_node, new_deleter);
 }
+S_Data_Node Data_Node::dup_withsiblings(int recursive) {
+    struct lyd_node *new_node = nullptr;
+
+    new_node = lyd_dup_withsiblings(node, recursive);
+    if (!new_node) {
+        return nullptr;
+    }
+
+    S_Deleter new_deleter = std::make_shared<Deleter>(new_node, deleter);
+    return std::make_shared<Data_Node>(new_node, new_deleter);
+}
 S_Data_Node Data_Node::dup_to_ctx(int recursive, S_Context context) {
     struct lyd_node *new_node = nullptr;
 
