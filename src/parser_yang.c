@@ -2606,7 +2606,6 @@ yang_parse_ext_substatement(struct lys_module *module, struct unres_schema *unre
 struct lys_module *
 yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const char *revision, int implement)
 {
-
     struct lys_module *module = NULL, *tmp_mod;
     struct unres_schema *unres = NULL;
     struct lys_node *node = NULL;
@@ -2651,9 +2650,18 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
         if (unres->count && resolve_unres_schema(module, unres)) {
             goto error;
         }
+
+        /* check correctness of includes */
+        if (lyp_check_include_missing(module)) {
+            goto error;
+        }
     }
 
     lyp_sort_revisions(module);
+
+    if (lyp_rfn_apply_ext(module) || lyp_deviation_apply_ext(module)) {
+        goto error;
+    }
 
     if (revision) {
         /* check revision of the parsed model */
@@ -2666,15 +2674,6 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
 
     /* add into context if not already there */
     if (!ret) {
-        /* check correctness of includes */
-        if (lyp_check_include_missing(module)) {
-            goto error;
-        }
-
-        if (lyp_rfn_apply_ext(module) || lyp_deviation_apply_ext(module)) {
-            goto error;
-        }
-
         if (lyp_ctx_add_module(module)) {
             goto error;
         }
@@ -2692,16 +2691,16 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
         lys_free(tmp_mod, NULL, 0, 0);
     }
 
-    lyp_check_circmod_pop(ctx);
     unres_schema_free(NULL, &unres, 0);
+    lyp_check_circmod_pop(ctx);
     LOGVRB("Module \"%s%s%s\" successfully parsed as %s.", module->name, (module->rev_size ? "@" : ""),
            (module->rev_size ? module->rev[0].date : ""), (module->implemented ? "implemented" : "imported"));
     return module;
 
 error:
     /* cleanup */
-    lyp_check_circmod_pop(ctx);
     unres_schema_free(module, &unres, 1);
+
     if (!module) {
         if (ly_vecode(ctx) != LYVE_SUBMODULE) {
             LOGERR(ctx, ly_errno, "Module parsing failed.");
@@ -2715,6 +2714,7 @@ error:
         LOGERR(ctx, ly_errno, "Module parsing failed.");
     }
 
+    lyp_check_circmod_pop(ctx);
     lys_sub_module_remove_devs_augs(module);
     lyp_del_includedup(module, 1);
     lys_free(module, NULL, 0, 1);
