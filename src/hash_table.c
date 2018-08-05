@@ -22,6 +22,24 @@
 #include "context.h"
 #include "hash_table.h"
 
+static int
+lydict_val_eq(void *val1_p, void *val2_p, int UNUSED(mod), void *UNUSED(cb_data))
+{
+    const char *str1 = ((struct dict_rec *)val1_p)->value;
+    const char *str2 = ((struct dict_rec *)val2_p)->value;
+
+    if(!str1 || !str2) {
+        /* TODO log error */
+        return 0;
+    }
+
+    if(strcmp(str1, str2) == 0) {
+        return 1;
+    }
+
+    return 0;
+}
+
 void
 lydict_init(struct dict_table *dict)
 {
@@ -30,35 +48,28 @@ lydict_init(struct dict_table *dict)
         return;
     }
 
-    dict->hash_mask = DICT_SIZE - 1;
+    /* TODO check for error */
+    dict->hash_tab = lyht_new(512, sizeof(struct dict_rec), lydict_val_eq, NULL, 1);
     pthread_mutex_init(&dict->lock, NULL);
 }
 
 void
 lydict_clean(struct dict_table *dict)
 {
-    int i;
-    struct dict_rec *chain, *rec;
+    unsigned int i;
 
     if (!dict) {
         LOGARG;
         return;
     }
 
-    for (i = 0; i < DICT_SIZE; i++) {
-        rec = &dict->recs[i];
-        chain = rec->next;
+    /* TODO free records one by one befor lyht_free call */
+    for (i = 0; i < dict->hash_tab->size; i++)
+    {
 
-        free(rec->value);
-        while (chain) {
-            rec = chain;
-            chain = rec->next;
-
-            free(rec->value);
-            free(rec);
-        }
     }
 
+    lyht_free(dict->hash_tab);
     pthread_mutex_destroy(&dict->lock);
 }
 
@@ -114,161 +125,90 @@ API void
 lydict_remove(struct ly_ctx *ctx, const char *value)
 {
     size_t len;
-    uint32_t index;
-    struct dict_rec *record, *prev = NULL;
+    int ret;
+    uint32_t hash;
+    struct dict_rec rec, *match = NULL;
 
     if (!value || !ctx) {
         return;
     }
 
     len = strlen(value);
+    hash = dict_hash(value, len);
+    rec.value = value;
+    rec.refcount = 0;
 
     pthread_mutex_lock(&ctx->dict.lock);
+    ret = lyht_find(ctx->dict.hash_tab, &rec, hash, (void **)&match);
 
-    if (!ctx->dict.used) {
-        pthread_mutex_unlock(&ctx->dict.lock);
-        return;
-    }
-
-    index = dict_hash(value, len) & ctx->dict.hash_mask;
-    record = &ctx->dict.recs[index];
-
-    while (record && record->value != value) {
-        prev = record;
-        record = record->next;
-    }
-
-    if (!record) {
-        /* record not found */
-        pthread_mutex_unlock(&ctx->dict.lock);
-        return;
-    }
-
-    record->refcount--;
-    if (!record->refcount) {
-        free(record->value);
-        if (record->next) {
-            if (prev) {
-                /* change in dynamically allocated chain */
-                prev->next = record->next;
-                free(record);
-            } else {
-                /* move dynamically allocated record into the static array */
-                prev = record->next;    /* temporary storage */
-                memcpy(record, record->next, sizeof *record);
-                free(prev);
-            }
-        } else if (prev) {
-            /* removing last record from the dynamically allocated chain */
-            prev->next = NULL;
-            free(record);
-        } else {
-            /* clean the static record content */
-            memset(record, 0, sizeof *record);
+    if ((ret == 0) && match) {
+        if (match->refcount == 1) {
+            lyht_remove(ctx->dict.hash_tab, &rec, hash);
+            free(match->value);
+            match->value = NULL;
+            match->value = 0;
         }
-        ctx->dict.used--;
+        else if (match->refcount > 1) {
+            (match->refcount)--;
+        }
+        else {
+            /* this should never happen */
+            /* TODO log error */
+        }
     }
 
     pthread_mutex_unlock(&ctx->dict.lock);
+    return;
 }
 
 static char *
 dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
 {
-    uint32_t index;
-    int match = 0;
-    struct dict_rec *record, *new;
+    char *result = value;
+    char *rec_s = value;
+    struct dict_rec *match = NULL, rec;
+    int ret = 0;
+    uint32_t hash;
 
-    index = dict_hash(value, len) & ctx->dict.hash_mask;
-    record = &ctx->dict.recs[index];
+    if (value && !len) {
+        len = strlen(value);
+    }
 
-    if (!record->value) {
-        /* first record with this hash */
+    if (!value) {
+        return NULL;
+    }
+
+    hash = dict_hash(value, len);
+    rec.value = value;
+    rec.refcount = 1;
+
+    ret = lyht_find(ctx->dict.hash_tab, (void *)&rec, hash, (void **)&match);
+    if (ret == 0 && match) {
+        (match->refcount)++;
+        result = match->value;
         if (zerocopy) {
-            record->value = value;
-        } else {
-            record->value = malloc((len + 1) * sizeof *record->value);
-            LY_CHECK_ERR_RETURN(!record->value, LOGMEM(ctx), NULL);
-            memcpy(record->value, value, len);
-            record->value[len] = '\0';
+            free(value);
         }
-        record->refcount = 1;
-        if (len > DICT_REC_MAXLEN) {
-            record->len = 0;
-        } else {
-            record->len = len;
-        }
-        record->next = NULL;
-
-        ctx->dict.used++;
-
-        LOGDBG(LY_LDGDICT, "inserting \"%s\"", record->value);
-        return record->value;
     }
-
-    /* collision, search if the value is already in dict */
-    while (record) {
-        if (record->len) {
-            /* for strings shorter than DICT_REC_MAXLEN we are able to speed up
-             * recognition of varying strings according to their lengths, and
-             * for strings with the same length it is safe to use faster memcmp()
-             * instead of strncmp() */
-            if ((record->len == len) && !memcmp(value, record->value, len)) {
-                match = 1;
+    else {
+        if (!zerocopy) {
+            rec_s = malloc(sizeof(char) * (len + 1));
+            if (!rec_s) {
+                /* TODO log error */
+                return NULL;
             }
-        } else {
-            if (!strncmp(value, record->value, len) && record->value[len] == '\0') {
-                match = 1;
-            }
+            memcpy(rec_s, value, len);
+            rec_s[len] = '\0';
+            result = rec_s;
+            rec.value = rec_s;
         }
-        if (match) {
-            /* record found */
-            if (record->refcount == DICT_REC_MAXCOUNT) {
-                LOGWRN(ctx, "Refcount overflow detected, duplicating dictionary record");
-                break;
-            }
-            record->refcount++;
-
-            if (zerocopy) {
-                free(value);
-            }
-
-            LOGDBG(LY_LDGDICT, "inserting (refcount) \"%s\"", record->value);
-            return record->value;
+        ret = lyht_insert(ctx->dict.hash_tab, (void *)&rec, hash);
+        if (ret == -1) {
+            /* TODO log error*/
+            return NULL;
         }
-
-        if (!record->next) {
-            /* not present, add as a new record in chain */
-            break;
-        }
-
-        record = record->next;
     }
-
-    /* create new record and add it behind the last record */
-    new = malloc(sizeof *record);
-    LY_CHECK_ERR_RETURN(!new, LOGMEM(ctx), NULL);
-    if (zerocopy) {
-        new->value = value;
-    } else {
-        new->value = malloc((len + 1) * sizeof *record->value);
-        LY_CHECK_ERR_RETURN(!new->value, LOGMEM(ctx); free(new), NULL);
-        memcpy(new->value, value, len);
-        new->value[len] = '\0';
-    }
-    new->refcount = 1;
-    if (len > DICT_REC_MAXLEN) {
-        new->len = 0;
-    } else {
-        new->len = len;
-    }
-    new->next = record->next; /* in case of refcount overflow, we are not at the end of chain */
-    record->next = new;
-
-    ctx->dict.used++;
-
-    LOGDBG(LY_LDGDICT, "inserting \"%s\" with collision ", new->value);
-    return new->value;
+    return result;
 }
 
 API const char *
