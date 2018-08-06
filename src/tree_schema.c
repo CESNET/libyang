@@ -741,7 +741,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
 {
     struct ly_ctx *ctx = child->module->ctx;
     struct lys_node *iter, **pchild;
-    struct lys_node_inout *in, *out, *inout;
+    struct lys_node_inout *in, *out;
     struct lys_node_case *c;
     int type, shortcase = 0;
     void *p;
@@ -852,28 +852,36 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
     }
 
     if ((child->nodetype & (LYS_INPUT | LYS_OUTPUT)) && parent->nodetype != LYS_EXT) {
-        /* replace the implicit input/output node */
-        if (child->nodetype == LYS_OUTPUT) {
-            inout = (struct lys_node_inout *)parent->child->next;
-        } else { /* LYS_INPUT */
-            inout = (struct lys_node_inout *)parent->child;
-            parent->child = child;
+        /* find the implicit input/output node */
+        LY_TREE_FOR(parent->child, iter) {
+            if (iter->nodetype == child->nodetype) {
+                break;
+            }
         }
-        if (inout->next) {
-            child->next = inout->next;
-            inout->next->prev = child;
-            inout->next = NULL;
+        assert(iter);
+
+        /* switch the old implicit node (iter) with the new one (child) */
+        if (parent->child == iter) {
+            /* first child */
+            parent->child = child;
         } else {
+            iter->prev->next = child;
+        }
+        child->prev = iter->prev;
+        child->next = iter->next;
+        if (iter->next) {
+            iter->next->prev = child;
+        } else {
+            /* last child */
             parent->child->prev = child;
         }
-        child->prev = inout->prev;
-        if (inout->prev->next) {
-            inout->prev->next = child;
-        }
-        inout->prev = (struct lys_node *)inout;
         child->parent = parent;
-        inout->parent = NULL;
-        lys_node_free((struct lys_node *)inout, NULL, 0);
+
+        /* isolate the node and free it */
+        iter->next = NULL;
+        iter->prev = iter;
+        iter->parent = NULL;
+        lys_node_free(iter, NULL, 0);
     } else {
         if (shortcase) {
             /* create the implicit case to allow it to serve as a target of the augments,
