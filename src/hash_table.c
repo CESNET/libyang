@@ -135,23 +135,22 @@ lydict_remove(struct ly_ctx *ctx, const char *value)
 
     len = strlen(value);
     hash = dict_hash(value, len);
-    rec.value = value;
+    rec.value = (char *)value;
     rec.refcount = 0;
 
     pthread_mutex_lock(&ctx->dict.lock);
     ret = lyht_find(ctx->dict.hash_tab, &rec, hash, (void **)&match);
 
     if ((ret == 0) && match) {
-        if (match->refcount == 1) {
+        /* if value is already in dictionary, decrement reference counter */
+        (match->refcount)--;
+        if (match->refcount == 0) {
+            /* remove record */
             lyht_remove(ctx->dict.hash_tab, &rec, hash);
             free(match->value);
             match->value = NULL;
-            match->value = 0;
-        }
-        else if (match->refcount > 1) {
-            (match->refcount)--;
-        }
-        else {
+            match->refcount = 0;
+        } else {
             /* this should never happen */
             /* TODO log error */
         }
@@ -179,6 +178,7 @@ dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
     }
 
     hash = dict_hash(value, len);
+    /* these values are inserted if value is not in dictionary already and zc is set*/
     rec.value = value;
     rec.refcount = 1;
 
@@ -189,24 +189,17 @@ dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
         if (zerocopy) {
             free(value);
         }
-    }
-    else {
+    } else {
         if (!zerocopy) {
             rec_s = malloc(sizeof(char) * (len + 1));
-            if (!rec_s) {
-                /* TODO log error */
-                return NULL;
-            }
+            LY_CHECK_ERR_RETURN(!rec_s, LOGMEM(ctx), NULL);
             memcpy(rec_s, value, len);
             rec_s[len] = '\0';
             result = rec_s;
             rec.value = rec_s;
         }
         ret = lyht_insert(ctx->dict.hash_tab, (void *)&rec, hash);
-        if (ret == -1) {
-            /* TODO log error*/
-            return NULL;
-        }
+        LY_CHECK_ERR_RETURN(ret == -1, LOGMEM(ctx), NULL);
     }
     return result;
 }
