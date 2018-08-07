@@ -807,10 +807,10 @@ lyb_parse_schema_hash(const struct lys_node *sparent, const struct lys_module *m
         ret += (r = lyb_read(data, &hash[j - 1], sizeof *hash, lybs));
         LYB_HAVE_READ_RETURN(r, data, -1);
 
-        if (!(hash[j - 1] & (LYB_HASH_COLLISION_ID >> (j - 1)))) {
-            LOGERR(ctx, LY_EINT, "Invalid hash read with collision ID %d (0x%x).", j - 1, hash[j - 1]);
-            return -1;
-        }
+        /* correct collision ID */
+        assert(hash[j - 1] & (LYB_HASH_COLLISION_ID >> (j - 1)));
+        /* preceded with zeros */
+        assert(!(hash[j - 1] & (LYB_HASH_MASK << (LYB_HASH_BITS - (j - 1)))));
     }
 
     /* handle yang data templates */

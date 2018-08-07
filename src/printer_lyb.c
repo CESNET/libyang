@@ -174,6 +174,7 @@ lyb_hash_find(struct hash_table *ht, struct lys_node *node)
     for (i = 0; i < LYB_HASH_BITS; ++i) {
         hash = lyb_hash(node, i);
         if (!hash) {
+            LOGINT(node->module->ctx);
             return 0;
         }
 
@@ -183,7 +184,8 @@ lyb_hash_find(struct hash_table *ht, struct lys_node *node)
         }
     }
     /* cannot happen, we already calculated the hash */
-    if (i > LYB_HASH_BITS) {
+    if (i == LYB_HASH_BITS) {
+        LOGINT(node->module->ctx);
         return 0;
     }
 
