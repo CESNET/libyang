@@ -249,6 +249,7 @@
 %ignore    Schema_Node_Leaf::swig_node;
 %ignore    Schema_Node_Leaf::swig_deleter;
 %newobject Schema_Node_Leaf::type;
+%newobject Schema_Node_Leaf::is_key;
 
 %shared_ptr(Schema_Node_Leaflist);
 %newobject Schema_Node_Leaflist::parent;
