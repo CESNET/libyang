@@ -696,19 +696,40 @@ lyb_print_attributes(struct lyout *out, struct lyd_attr *attr, struct lyb_state 
 }
 
 static int
-lyb_print_schema_hash(struct lyout *out, struct lys_node *schema, struct hash_table **sibling_ht, struct lyb_state *lybs)
+lyb_print_schema_hash(struct lyout *out, struct lys_node *schema, struct hash_table **sibling_ht, struct lyb_state *lybs,
+                      int options)
 {
     int r, ret = 0;
     void *mem;
     uint32_t i;
     LYB_HASH hash;
-    struct lys_node *first_sibling, *parent;
+    struct lys_node *first_sibling, *parent, *iter;
 
     /* create whole sibling HT if not already created and saved */
     if (!*sibling_ht) {
-        /* get first schema sibling */
-        for (parent = lys_parent(schema); parent && (parent->nodetype == LYS_USES); parent = lys_parent(parent));
+        /* get first schema data sibling */
+        for (parent = lys_parent(schema);
+             parent && (parent->nodetype & (LYS_USES | LYS_CASE | LYS_CHOICE | LYS_INPUT | LYS_OUTPUT));
+             parent = lys_parent(parent)) {
+
+            /* we have checked this before */
+            assert(!(options & LYD_OPT_RPC) || (parent->nodetype != LYS_OUTPUT));
+            assert(!(options & LYD_OPT_RPCREPLY) || (parent->nodetype != LYS_INPUT));
+        }
+
         first_sibling = (struct lys_node *)lys_getnext(NULL, parent, lys_node_module(schema), 0);
+        if (options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY)) {
+check_inout:
+            for (iter = lys_parent(first_sibling);
+                 iter && (iter->nodetype & (LYS_USES | LYS_CASE | LYS_CHOICE));
+                 iter = lys_parent(iter));
+
+            if (((options & LYD_OPT_RPC) && (iter->nodetype == LYS_OUTPUT))
+                    || ((options & LYD_OPT_RPCREPLY) && (iter->nodetype == LYS_INPUT))) {
+                first_sibling = (struct lys_node *)lys_getnext(first_sibling, NULL, NULL, 0);
+                goto check_inout;
+            }
+        }
 
         for (r = 0; r < lybs->sib_ht_count; ++r) {
             if (lybs->sib_ht[r].first_sibling == first_sibling) {
@@ -720,7 +741,7 @@ lyb_print_schema_hash(struct lyout *out, struct lys_node *schema, struct hash_ta
 
         if (!*sibling_ht) {
             /* we must create sibling hash table */
-            *sibling_ht = lyb_hash_siblings(first_sibling, NULL, 0);
+            *sibling_ht = lyb_hash_siblings(first_sibling, NULL, 0, options);
             if (!*sibling_ht) {
                 return -1;
             }
@@ -778,7 +799,22 @@ lyb_print_subtree(struct lyout *out, const struct lyd_node *node, struct hash_ta
 {
     int r, ret = 0;
     struct lyd_node_leaf_list *leaf;
+    struct lys_node *sparent;
     struct hash_table *child_ht = NULL;
+
+    /* skip nodes that should not be printed */
+    if (options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY)) {
+        for (sparent = lys_parent(node->schema);
+            sparent && (sparent->nodetype & (LYS_USES | LYS_CASE | LYS_CHOICE));
+            sparent = lys_parent(sparent));
+
+        if ((options & LYD_OPT_RPC) && (sparent->nodetype == LYS_OUTPUT)) {
+            return 0;
+        }
+        if ((options & LYD_OPT_RPCREPLY) && (sparent->nodetype == LYS_INPUT)) {
+            return 0;
+        }
+    }
 
     /* register a new subtree */
     ret += (r = lyb_write_start_subtree(out, lybs));
@@ -797,7 +833,7 @@ lyb_print_subtree(struct lyout *out, const struct lyd_node *node, struct hash_ta
         }
     }
 
-    ret += (r = lyb_print_schema_hash(out, node->schema, sibling_ht, lybs));
+    ret += (r = lyb_print_schema_hash(out, node->schema, sibling_ht, lybs, options));
     if (r < 0) {
         return -1;
     }
