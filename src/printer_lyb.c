@@ -45,19 +45,56 @@ lyb_ptr_equal_cb(void *val1_p, void *val2_p, int UNUSED(mod), void *UNUSED(cb_da
     return 0;
 }
 
-static struct hash_table *
-lyb_hash_siblings(struct lys_node *sibling, const struct lys_module **models, int mod_count)
+/* check that sibling collision hash i is safe to insert into ht
+ * return: 0 - no whole hash sequence collision, 1 - whole hash sequence collision, -1 - fatal error
+ */
+static int
+lyb_hash_sequence_check(struct hash_table *ht, struct lys_node *sibling, int ht_col_id, int compare_col_id)
 {
-    LYB_HASH hash;
+    int j;
+    struct lys_node **col_node;
+
+    /* get the first node inserted with last hash col ID ht_col_id */
+    if (lyht_find(ht, &sibling, lyb_hash(sibling, ht_col_id), (void **)&col_node)) {
+        /* there is none. valid situation */
+        return 0;
+    }
+
+    lyht_set_cb(ht, lyb_ptr_equal_cb);
+    do {
+        for (j = compare_col_id; j > -1; --j) {
+            if (lyb_hash(sibling, j) != lyb_hash(*col_node, j)) {
+                /* one non-colliding hash */
+                break;
+            }
+        }
+        if (j == -1) {
+            /* all whole hash sequences of nodes inserted with last hash col ID compare_col_id collide */
+            lyht_set_cb(ht, lyb_hash_equal_cb);
+            return 1;
+        }
+
+        /* get next node inserted with last hash col ID ht_col_id */
+    } while (!lyht_find_next(ht, col_node, lyb_hash(*col_node, ht_col_id), (void **)&col_node));
+
+    lyht_set_cb(ht, lyb_hash_equal_cb);
+    return 0;
+}
+
+static struct hash_table *
+lyb_hash_siblings(struct lys_node *sibling, const struct lys_module **models, int mod_count, int options)
+{
     struct hash_table *ht;
-    struct lys_node *parent, **col_node;
+    struct lys_node *parent, *iter;
     const struct lys_module *mod;
-    uint32_t i;
+    int i, j;
 
     ht = lyht_new(1, sizeof(struct lys_node *), lyb_hash_equal_cb, NULL, 1);
     LY_CHECK_ERR_RETURN(!ht, LOGMEM(sibling->module->ctx), NULL);
 
-    for (parent = lys_parent(sibling); parent && (parent->nodetype == LYS_USES); parent = lys_parent(parent));
+    for (parent = lys_parent(sibling);
+         parent && (parent->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE | LYS_INPUT | LYS_OUTPUT));
+         parent = lys_parent(parent));
     mod = lys_node_module(sibling);
 
     sibling = NULL;
@@ -67,47 +104,51 @@ lyb_hash_siblings(struct lys_node *sibling, const struct lys_module **models, in
             continue;
         }
 
-        /* try to use hash with collision ID 0 */
-        hash = lyb_hash(sibling, 0);
-        if (!hash) {
-            lyht_free(ht);
-            return NULL;
-        }
+        if (options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY)) {
+            for (iter = lys_parent(sibling);
+                 iter && (iter->nodetype & (LYS_USES | LYS_CASE | LYS_CHOICE));
+                 iter = lys_parent(iter));
 
-        if (!lyht_insert(ht, &sibling, hash)) {
-            /* success, no collision */
-            continue;
-        }
-
-        /* there is a colliding schema node, get it */
-        if (lyht_find(ht, &sibling, hash, (void **)&col_node)) {
-            LOGINT(mod->ctx);
-            lyht_free(ht);
-            return NULL;
-        }
-
-        /* find the first non-colliding hash */
-        for (i = 1; i < LYB_HASH_BITS; ++i) {
-            hash = lyb_hash(sibling, i);
-            if (!hash) {
-                lyht_free(ht);
-                return NULL;
+            if (((options & LYD_OPT_RPC) && (iter->nodetype == LYS_OUTPUT))
+                    || ((options & LYD_OPT_RPCREPLY) && (iter->nodetype == LYS_INPUT))) {
+                /* skip unused nodes */
+                continue;
             }
+        }
 
-            /* make sure the hashes do not collide again, we need unique hash sequence */
-            if (hash != lyb_hash(*col_node, i)) {
-                if (!lyht_insert(ht, &sibling, hash)) {
-                    /* success, no collision anymore */
+        /* find the first non-colliding hash (or specifically non-colliding hash sequence) */
+        for (i = 0; i < LYB_HASH_BITS; ++i) {
+            /* check that we are not colliding with nodes inserted with a lower collision ID than ours */
+            for (j = i - 1; j > -1; --j) {
+                if (lyb_hash_sequence_check(ht, sibling, j, i)) {
                     break;
                 }
+            }
+            if (j > -1) {
+                /* some check failed, we must use a higher collision ID */
+                continue;
+            }
 
-                /* there is still another colliding schema node, get it */
-                if (lyht_find(ht, &sibling, hash, (void **)&col_node)) {
-                    LOGINT(mod->ctx);
+            /* try to insert node with the current collision ID */
+            if (!lyht_insert_with_resize_cb(ht, &sibling, lyb_hash(sibling, i), lyb_ptr_equal_cb)) {
+                /* success, no collision */
+                break;
+            }
+
+            /* make sure we really cannot insert it with this hash col ID (meaning the whole hash sequence is colliding) */
+            if (i && !lyb_hash_sequence_check(ht, sibling, i, i)) {
+                /* it can be inserted after all, even though there is already a node with the same last collision ID */
+                lyht_set_cb(ht, lyb_ptr_equal_cb);
+                if (lyht_insert(ht, &sibling, lyb_hash(sibling, i))) {
+                    lyht_set_cb(ht, lyb_hash_equal_cb);
+                    LOGINT(sibling->module->ctx);
                     lyht_free(ht);
                     return NULL;
                 }
+                lyht_set_cb(ht, lyb_hash_equal_cb);
+                break;
             }
+            /* there is still another colliding schema node with the same hash sequence, try higher collision ID */
         }
 
         if (i == LYB_HASH_BITS) {

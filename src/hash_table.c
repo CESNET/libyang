@@ -626,11 +626,12 @@ lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p
 }
 
 int
-lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash)
+lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, values_equal_cb resize_val_equal)
 {
     struct ht_rec *rec, *crec = NULL;
     int32_t i;
     int r, ret;
+    values_equal_cb old_val_equal;
 
     if (!lyht_find_first(ht, hash, &rec)) {
         /* we found matching shortened hash */
@@ -680,11 +681,25 @@ lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash)
             ht->resize = 2;
         }
         if ((ht->resize == 2) && (r >= LYHT_ENLARGE_PERCENTAGE)) {
+            if (resize_val_equal) {
+                old_val_equal = lyht_set_cb(ht, resize_val_equal);
+            }
+
             /* enlarge */
             ret = lyht_resize(ht, 1);
+
+            if (resize_val_equal) {
+                lyht_set_cb(ht, old_val_equal);
+            }
         }
     }
     return ret;
+}
+
+int
+lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash)
+{
+    return lyht_insert_with_resize_cb(ht, val_p, hash, NULL);
 }
 
 int

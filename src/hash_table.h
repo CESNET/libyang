@@ -208,6 +208,20 @@ int lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **mat
 int lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash);
 
 /**
+ * @brief Insert a value into hash table. Same functionality as lyht_insert()
+ * but allows to specify a temporary val equal callback to be used in case the hash table
+ * will be resized after successful insertion.
+ *
+ * @param[in] ht Hash table to insert into.
+ * @param[in] val_p Pointer to the value to insert. Be careful, if the values stored in the hash table
+ * are pointers, \p val_p must be a pointer to a pointer.
+ * @param[in] hash Hash of the stored value.
+ * @param[in] resize_val_equal Val equal callback to use for resizing.
+ * @return 0 on success, 1 if already inserted, -1 on error.
+ */
+int lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, values_equal_cb resize_val_equal);
+
+/**
  * @brief Remove a value from a hash table.
  *
  * @param[in] ht Hash table to remove from.
