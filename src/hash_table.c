@@ -49,7 +49,7 @@ lydict_init(struct dict_table *dict)
     }
 
     /* TODO check for error */
-    dict->hash_tab = lyht_new(512, sizeof(struct dict_rec), lydict_val_eq, NULL, 1);
+    dict->hash_tab = lyht_new(2048, sizeof(struct dict_rec), lydict_val_eq, NULL, 1);
     pthread_mutex_init(&dict->lock, NULL);
 }
 
@@ -135,7 +135,11 @@ lydict_remove(struct ly_ctx *ctx, const char *value)
 
     len = strlen(value);
     hash = dict_hash(value, len);
-    rec.value = (char *)value;
+    /* create record for lyht_find call */
+    rec.value = malloc(sizeof(char) * (len + 1));
+    LY_CHECK_ERR_RETURN(!rec.value, LOGMEM(ctx), );
+    memcpy(rec.value, value, len);
+    rec.value[len] = '\0';
     rec.refcount = 0;
 
     pthread_mutex_lock(&ctx->dict.lock);
@@ -146,17 +150,15 @@ lydict_remove(struct ly_ctx *ctx, const char *value)
         (match->refcount)--;
         if (match->refcount == 0) {
             /* remove record */
-            lyht_remove(ctx->dict.hash_tab, &rec, hash);
             free(match->value);
             match->value = NULL;
             match->refcount = 0;
-        } else {
-            /* this should never happen */
-            /* TODO log error */
+            lyht_remove(ctx->dict.hash_tab, &rec, hash);
         }
     }
-
     pthread_mutex_unlock(&ctx->dict.lock);
+    /* rec.value is not required anymore */
+    free(rec.value);
     return;
 }
 
@@ -164,7 +166,6 @@ static char *
 dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
 {
     char *result = value;
-    char *rec_s = value;
     struct dict_rec *match = NULL, rec;
     int ret = 0;
     uint32_t hash;
@@ -178,25 +179,27 @@ dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
     }
 
     hash = dict_hash(value, len);
-    /* these values are inserted if value is not in dictionary already and zc is set*/
-    rec.value = value;
+    /* memmory for rec.value must be allocated even befor lyht_find because value doesn't have to be NULL terminated */
+    rec.value = malloc(sizeof(char) * (len + 1));
+    LY_CHECK_ERR_RETURN(!rec.value, LOGMEM(ctx), NULL);
+    memcpy(rec.value, value, len);
+    rec.value[len] = '\0';
     rec.refcount = 1;
+    result = rec.value;
 
     ret = lyht_find(ctx->dict.hash_tab, (void *)&rec, hash, (void **)&match);
     if (ret == 0 && match) {
         (match->refcount)++;
         result = match->value;
+        free(rec.value);
         if (zerocopy) {
             free(value);
         }
     } else {
-        if (!zerocopy) {
-            rec_s = malloc(sizeof(char) * (len + 1));
-            LY_CHECK_ERR_RETURN(!rec_s, LOGMEM(ctx), NULL);
-            memcpy(rec_s, value, len);
-            rec_s[len] = '\0';
-            result = rec_s;
-            rec.value = rec_s;
+        if (zerocopy) {
+            free(rec.value);
+            rec.value = value;
+            result = value;
         }
         ret = lyht_insert(ctx->dict.hash_tab, (void *)&rec, hash);
         LY_CHECK_ERR_RETURN(ret == -1, LOGMEM(ctx), NULL);
