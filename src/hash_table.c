@@ -398,6 +398,7 @@ lyht_resize(struct hash_table *ht, int enlarge)
     struct ht_rec *rec;
     unsigned char *old_recs;
     uint32_t i, old_size;
+    int ret;
 
     old_recs = ht->recs;
     old_size = ht->size;
@@ -420,7 +421,9 @@ lyht_resize(struct hash_table *ht, int enlarge)
     for (i = 0; i < old_size; ++i) {
         rec = lyht_get_rec(old_recs, ht->rec_size, i);
         if (rec->hits > 0) {
-            lyht_insert(ht, rec->val, rec->hash);
+            ret = lyht_insert(ht, rec->val, rec->hash);
+            assert(!ret);
+            (void)ret;
         }
     }
 
