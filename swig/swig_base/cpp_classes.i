@@ -261,7 +261,7 @@
 %newobject Schema_Node_Leaflist::xpath_atomize;
 %ignore    Schema_Node_Leaflist::swig_node;
 %ignore    Schema_Node_Leaflist::swig_deleter;
-%newobject Schema_Node_Leaf::type;
+%newobject Schema_Node_Leaflist::type;
 
 %shared_ptr(Schema_Node_List);
 %newobject Schema_Node_List::parent;
