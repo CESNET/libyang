@@ -1420,6 +1420,9 @@ lyd_create_anydata(struct lyd_node *parent, const struct lys_node *schema, void 
     case LYD_ANYDATA_XML:
         ret->value.xml = (struct lyxml_elem *)value;
         break;
+    case LYD_ANYDATA_LYB:
+        ret->value.str = lydict_insert_zc(schema->module->ctx, (char *)value);
+        break;
     }
     ret->value_type = value_type;
 

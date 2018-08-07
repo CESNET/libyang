@@ -476,9 +476,11 @@ lyb_print_anydata(struct lyd_node_anydata *anydata, struct lyout *out, struct ly
     case LYD_ANYDATA_JSON:
     case LYD_ANYDATA_SXML:
     case LYD_ANYDATA_CONSTSTRING:
+    case LYD_ANYDATA_LYB:
         type = anydata->value_type;
         break;
     default:
+        LOGERR(anydata->schema->module->ctx, LY_EINT, "Unsupported anydata value type to print.");
         return -1;
     }
 

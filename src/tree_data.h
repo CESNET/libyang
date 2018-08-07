@@ -79,6 +79,9 @@ typedef enum {
                                          into the anydata node without duplication, caller is supposed to not manipulate
                                          with the data after a successful call (including calling lyd_free() on the
                                          provided data) */
+    LYD_ANYDATA_LYB = 0x20,         /**< value is dynamically allocated string with serialized data tree into LYB format,
+                                         so the data are used directly without duplication and caller is supposed to not
+                                         manipulate with the data after a successful call */
 } LYD_ANYDATA_VALUETYPE;
 
 /**
