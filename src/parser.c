@@ -1089,7 +1089,7 @@ error:
 int
 lyp_check_pattern(struct ly_ctx *ctx, const char *pattern, pcre **pcre_precomp)
 {
-    int idx, start, end, err_offset, dol_count;
+    int idx, idx2, start, end, err_offset, count;
     char *perl_regex, *ptr;
     const char *err_msg, *orig_ptr;
     pcre *precomp;
@@ -1101,9 +1101,9 @@ lyp_check_pattern(struct ly_ctx *ctx, const char *pattern, pcre **pcre_precomp)
      */
 
     /* we need to replace all "$" with "\$", count them now */
-    for (dol_count = 0, ptr = strchr(pattern, '$'); ptr; ++dol_count, ptr = strchr(ptr + 1, '$'));
+    for (count = 0, ptr = strchr(pattern, '$'); ptr; ++count, ptr = strchr(ptr + 1, '$'));
 
-    perl_regex = malloc((strlen(pattern) + 4 + dol_count) * sizeof(char));
+    perl_regex = malloc((strlen(pattern) + 4 + count) * sizeof(char));
     LY_CHECK_ERR_RETURN(!perl_regex, LOGMEM(ctx), EXIT_FAILURE);
     perl_regex[0] = '\0';
 
@@ -1162,9 +1162,23 @@ lyp_check_pattern(struct ly_ctx *ctx, const char *pattern, pcre **pcre_precomp)
             return EXIT_FAILURE;
         }
 
-        /* make the space in the string and replace the block */
-        memmove(perl_regex + start + LYP_URANGE_LEN, perl_regex + end, strlen(perl_regex + end) + 1);
-        memcpy(perl_regex + start, lyp_ublock2urange[idx][1], LYP_URANGE_LEN);
+        /* make the space in the string and replace the block (but we cannot include brackets if it was already enclosed in them) */
+        for (idx2 = 0, count = 0; idx2 < start; ++idx2) {
+            if ((perl_regex[idx2] == '[') && (!idx2 || (perl_regex[-1] != '\\'))) {
+                ++count;
+            }
+            if ((perl_regex[idx2] == ']') && (!idx2 || (perl_regex[-1] != '\\'))) {
+                --count;
+            }
+        }
+        if (count) {
+            /* skip brackets */
+            memmove(perl_regex + start + (LYP_URANGE_LEN - 2), perl_regex + end, strlen(perl_regex + end) + 1);
+            memcpy(perl_regex + start, lyp_ublock2urange[idx][1] + 1, LYP_URANGE_LEN - 2);
+        } else {
+            memmove(perl_regex + start + LYP_URANGE_LEN, perl_regex + end, strlen(perl_regex + end) + 1);
+            memcpy(perl_regex + start, lyp_ublock2urange[idx][1], LYP_URANGE_LEN);
+        }
     }
 
     /* must return 0, already checked during parsing */

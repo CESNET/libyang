@@ -1667,6 +1667,16 @@ copy_nodes:
         goto copy_nodes;
     }
 
+#ifdef LY_ENABLED_CACHE
+    /* we are inserting hashes before the actual node insert, which causes
+     * situations when there were initially not enough items for a hash table,
+     * but even after some were inserted, hash table was not created (during
+     * insertion the number of items is not updated yet) */
+    if (!trg->ht && (trg->used >= LY_CACHE_HT_MIN_CHILDREN)) {
+        set_insert_node_hash(trg, NULL, 0);
+    }
+#endif
+
 #ifndef NDEBUG
     LOGDBG(LY_LDGXPATH, "MERGE result");
     print_set_debug(trg);
