@@ -312,65 +312,6 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
         (*result)->when_status = LYD_WHEN;
     }
 
-    /* type specific processing */
-    if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
-        /* type detection and assigning the value */
-        if (xml_get_value(*result, xml, editbits, options & LYD_OPT_TRUSTED)) {
-            /* we cannot call lyd_free() because this node was not yet inserted
-             * into parent hash table (an assert would fail) */
-            lyd_unlink(*result);
-            free(*result);
-            *result = NULL;
-            return -1;
-        }
-    } else if (schema->nodetype & LYS_ANYDATA) {
-        /* store children values */
-        if (xml->child) {
-            child = xml->child;
-            /* manually unlink all siblings and correct namespaces */
-            xml->child = NULL;
-            LY_TREE_FOR(child, next) {
-                next->parent = NULL;
-                lyxml_correct_elem_ns(ctx, next, 1, 1);
-            }
-
-            ((struct lyd_node_anydata *)*result)->value_type = LYD_ANYDATA_XML;
-            ((struct lyd_node_anydata *)*result)->value.xml = child;
-        } else {
-            ((struct lyd_node_anydata *)*result)->value_type = LYD_ANYDATA_CONSTSTRING;
-            ((struct lyd_node_anydata *)*result)->value.str = lydict_insert(ctx, xml->content, 0);
-        }
-    } else if (schema->nodetype & (LYS_RPC | LYS_ACTION)) {
-        if (!(options & LYD_OPT_RPC) || *act_notif) {
-            LOGVAL(ctx, LYE_INELEM, LY_VLOG_LYD, (*result), schema->name);
-            LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Unexpected %s node \"%s\".",
-                   (schema->nodetype == LYS_RPC ? "rpc" : "action"), schema->name);
-            lyd_unlink(*result);
-            free(*result);
-            *result = NULL;
-            return -1;
-        }
-        *act_notif = *result;
-    } else if (schema->nodetype == LYS_NOTIF) {
-        if (!(options & LYD_OPT_NOTIF) || *act_notif) {
-            LOGVAL(ctx, LYE_INELEM, LY_VLOG_LYD, (*result), schema->name);
-            LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Unexpected notification node \"%s\".", schema->name);
-            lyd_unlink(*result);
-            free(*result);
-            *result = NULL;
-            return -1;
-        }
-        *act_notif = *result;
-    }
-
-#ifdef LY_ENABLED_CACHE
-    /* calculate the hash and insert it into parent (list with keys is handled when its keys are inserted) */
-    if (((*result)->schema->nodetype != LYS_LIST) || !((struct lys_node_list *)(*result)->schema)->keys_size) {
-        lyd_hash(*result);
-        lyd_insert_hash(*result);
-    }
-#endif
-
     /* process attributes */
     for (attr = xml->attr; attr; attr = attr->next) {
         if (attr->type != LYXML_ATTR_STD) {
@@ -508,6 +449,54 @@ attr_error:
             goto error;
         }
     }
+
+    /* type specific processing */
+    if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+        /* type detection and assigning the value */
+        if (xml_get_value(*result, xml, editbits, options & LYD_OPT_TRUSTED)) {
+            goto error;
+        }
+    } else if (schema->nodetype & LYS_ANYDATA) {
+        /* store children values */
+        if (xml->child) {
+            child = xml->child;
+            /* manually unlink all siblings and correct namespaces */
+            xml->child = NULL;
+            LY_TREE_FOR(child, next) {
+                next->parent = NULL;
+                lyxml_correct_elem_ns(ctx, next, 1, 1);
+            }
+
+            ((struct lyd_node_anydata *)*result)->value_type = LYD_ANYDATA_XML;
+            ((struct lyd_node_anydata *)*result)->value.xml = child;
+        } else {
+            ((struct lyd_node_anydata *)*result)->value_type = LYD_ANYDATA_CONSTSTRING;
+            ((struct lyd_node_anydata *)*result)->value.str = lydict_insert(ctx, xml->content, 0);
+        }
+    } else if (schema->nodetype & (LYS_RPC | LYS_ACTION)) {
+        if (!(options & LYD_OPT_RPC) || *act_notif) {
+            LOGVAL(ctx, LYE_INELEM, LY_VLOG_LYD, (*result), schema->name);
+            LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Unexpected %s node \"%s\".",
+                   (schema->nodetype == LYS_RPC ? "rpc" : "action"), schema->name);
+            goto error;
+        }
+        *act_notif = *result;
+    } else if (schema->nodetype == LYS_NOTIF) {
+        if (!(options & LYD_OPT_NOTIF) || *act_notif) {
+            LOGVAL(ctx, LYE_INELEM, LY_VLOG_LYD, (*result), schema->name);
+            LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Unexpected notification node \"%s\".", schema->name);
+            goto error;
+        }
+        *act_notif = *result;
+    }
+
+#ifdef LY_ENABLED_CACHE
+    /* calculate the hash and insert it into parent (list with keys is handled when its keys are inserted) */
+    if (((*result)->schema->nodetype != LYS_LIST) || !((struct lys_node_list *)(*result)->schema)->keys_size) {
+        lyd_hash(*result);
+        lyd_insert_hash(*result);
+    }
+#endif
 
     /* first part of validation checks */
     if (lyv_data_context(*result, options, unres)) {
