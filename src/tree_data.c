@@ -1299,8 +1299,9 @@ check_leaf_list_backlinks(struct lyd_node *node, int op)
                             leaf_list->validity |= LYD_VAL_LEAFREF;
                             validity_changed = 1;
                             if (leaf_list->value_type == LY_TYPE_LEAFREF) {
-                                /* remove invalid link */
-                                leaf_list->value.leafref = NULL;
+                                /* remove invalid link and put unresolved value back */
+                                lyp_parse_value(&((struct lys_node_leaf *)leaf_list->schema)->type, &leaf_list->value_str,
+                                                NULL, leaf_list, NULL, NULL, 1, leaf_list->dflt, 0);
                             }
                         }
                     }
@@ -2355,7 +2356,8 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
             src_leaf->value_type = 0;
             if (trg_leaf->value_type == LY_TYPE_LEAFREF) {
                 trg_leaf->validity |= LYD_VAL_LEAFREF;
-                trg_leaf->value.leafref = NULL;
+                lyp_parse_value(&((struct lys_node_leaf *)trg_leaf->schema)->type, &trg_leaf->value_str,
+                                NULL, trg_leaf, NULL, NULL, 1, src_leaf->dflt, 0);
             } else {
                 lyd_free_value(trg_leaf->value, trg_leaf->value_type, trg_leaf->value_flags,
                                &((struct lys_node_leaf *)trg_leaf->schema)->type);
@@ -2416,7 +2418,8 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
                 break;
             case LY_TYPE_LEAFREF:
                 trg_leaf->validity |= LYD_VAL_LEAFREF;
-                trg_leaf->value.leafref = NULL;
+                lyp_parse_value(&((struct lys_node_leaf *)trg_leaf->schema)->type, &trg_leaf->value_str,
+                                NULL, trg_leaf, NULL, NULL, 1, trg_leaf->dflt, 0);
                 break;
             case LY_TYPE_INST:
                 trg_leaf->value.instance = NULL;
@@ -5119,7 +5122,8 @@ lyd_dup_attr(struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_attr *attr)
         ret->value.string = ret->value_str;
         break;
     case LY_TYPE_LEAFREF:
-        ret->value.leafref = NULL;
+        lyp_parse_value(*((struct lys_type **)lys_ext_complex_get_substmt(LY_STMT_TYPE, ret->annotation, NULL)),
+                             &ret->value_str, NULL, NULL, ret, NULL, 1, 0, 0);
         break;
     case LY_TYPE_INST:
         ret->value.instance = NULL;
@@ -5343,7 +5347,8 @@ lyd_dup_to_ctx(const struct lyd_node *node, int recursive, struct ly_ctx *ctx)
                 new_leaf->value.string = new_leaf->value_str;
                 break;
             case LY_TYPE_LEAFREF:
-                new_leaf->value.leafref = NULL;
+                new_leaf->validity |= LYD_VAL_LEAFREF;
+                lyp_parse_value(&sleaf->type, &new_leaf->value_str, NULL, new_leaf, NULL, NULL, 1, node->dflt, 0);
                 break;
             case LY_TYPE_INST:
                 new_leaf->value.instance = NULL;
