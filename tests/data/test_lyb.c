@@ -307,7 +307,7 @@ test_statements(void **state)
     ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYP_WITHSIBLINGS);
     assert_int_equal(ret, 0);
 
-    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG);
+    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG | LYD_OPT_STRICT);
     assert_ptr_not_equal(st->dt2, NULL);
 
     check_data_tree(st->dt1, st->dt2);
@@ -328,7 +328,7 @@ test_types(void **state)
     ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYP_WITHSIBLINGS);
     assert_int_equal(ret, 0);
 
-    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG);
+    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG | LYD_OPT_STRICT);
     assert_ptr_not_equal(st->dt2, NULL);
 
     check_data_tree(st->dt1, st->dt2);
@@ -349,7 +349,7 @@ test_annotations(void **state)
     ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYP_WITHSIBLINGS);
     assert_int_equal(ret, 0);
 
-    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG);
+    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG | LYD_OPT_STRICT);
     assert_ptr_not_equal(st->dt2, NULL);
 
     check_data_tree(st->dt1, st->dt2);
@@ -370,7 +370,7 @@ test_similar_annot_names(void **state)
     ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYP_WITHSIBLINGS);
     assert_int_equal(ret, 0);
 
-    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG);
+    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG | LYD_OPT_STRICT);
     assert_ptr_not_equal(st->dt2, NULL);
 
     check_data_tree(st->dt1, st->dt2);
@@ -391,7 +391,7 @@ test_many_child_annot(void **state)
     ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYP_WITHSIBLINGS);
     assert_int_equal(ret, 0);
 
-    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG);
+    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG | LYD_OPT_STRICT);
     assert_ptr_not_equal(st->dt2, NULL);
 
     check_data_tree(st->dt1, st->dt2);
@@ -412,7 +412,7 @@ test_union(void **state)
     ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYP_WITHSIBLINGS);
     assert_int_equal(ret, 0);
 
-    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG);
+    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG | LYD_OPT_STRICT);
     assert_ptr_not_equal(st->dt2, NULL);
 
     check_data_tree(st->dt1, st->dt2);
@@ -433,7 +433,7 @@ test_union2(void **state)
     ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYP_WITHSIBLINGS);
     assert_int_equal(ret, 0);
 
-    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG);
+    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG | LYD_OPT_STRICT);
     assert_ptr_not_equal(st->dt2, NULL);
 
     check_data_tree(st->dt1, st->dt2);
@@ -454,7 +454,7 @@ test_collisions(void **state)
     ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYP_WITHSIBLINGS);
     assert_int_equal(ret, 0);
 
-    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG);
+    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG | LYD_OPT_STRICT);
     assert_ptr_not_equal(st->dt2, NULL);
 
     check_data_tree(st->dt1, st->dt2);
@@ -475,7 +475,7 @@ test_ietf_interfaces(void **state)
     ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYP_WITHSIBLINGS);
     assert_int_equal(ret, 0);
 
-    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG);
+    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG | LYD_OPT_STRICT);
     assert_ptr_not_equal(st->dt2, NULL);
 
     check_data_tree(st->dt1, st->dt2);
@@ -516,7 +516,7 @@ test_origin(void **state)
     ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYP_WITHSIBLINGS);
     assert_int_equal(ret, 0);
 
-    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG);
+    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG | LYD_OPT_STRICT);
     assert_ptr_not_equal(st->dt2, NULL);
 
     check_data_tree(st->dt1, st->dt2);
