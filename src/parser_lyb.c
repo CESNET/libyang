@@ -114,8 +114,8 @@ lyb_read_number(uint64_t *num, uint64_t max_num, const char *data, struct lyb_st
 static int
 lyb_read_string(const char *data, char **str, int with_length, struct lyb_state *lybs)
 {
-    int r, ret = 0;
-    size_t len = 0;
+    int next_chunk = 0, r, ret = 0;
+    size_t len = 0, cur_len;
 
     if (with_length) {
         ret += (r = lyb_read(data, (uint8_t *)&len, 2, lybs));
@@ -123,6 +123,9 @@ lyb_read_string(const char *data, char **str, int with_length, struct lyb_state 
     } else {
         /* read until the end of this subtree */
         len = lybs->written[lybs->used - 1];
+        if (lybs->position[lybs->used - 1]) {
+            next_chunk = 1;
+        }
     }
 
     *str = malloc((len + 1) * sizeof **str);
@@ -130,6 +133,23 @@ lyb_read_string(const char *data, char **str, int with_length, struct lyb_state 
 
     ret += (r = lyb_read(data, (uint8_t *)*str, len, lybs));
     LYB_HAVE_READ_GOTO(ret, data, error);
+
+    while (next_chunk) {
+        cur_len = lybs->written[lybs->used - 1];
+        if (lybs->position[lybs->used - 1]) {
+            next_chunk = 1;
+        } else {
+            next_chunk = 0;
+        }
+
+        *str = ly_realloc(*str, (len + cur_len + 1) * sizeof **str);
+        LY_CHECK_ERR_RETURN(!*str, LOGMEM(NULL), -1);
+
+        ret += (r = lyb_read(data, ((uint8_t *)*str) + len, cur_len, lybs));
+        LYB_HAVE_READ_GOTO(ret, data, error);
+
+        len += cur_len;
+    }
 
     ((char *)*str)[len] = '\0';
     return ret;
