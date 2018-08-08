@@ -198,6 +198,7 @@ lyb_write(struct lyout *out, const uint8_t *buf, size_t count, struct lyb_state 
 {
     int ret, i, full_chunk_i;
     size_t r, to_write;
+    LYB_META meta;
 
     assert(out && lybs);
 
@@ -232,22 +233,35 @@ lyb_write(struct lyout *out, const uint8_t *buf, size_t count, struct lyb_state 
         ret += r;
 
         if (full_chunk_i > -1) {
-            /* write the chunk size */
-            r = ly_write_skipped(out, lybs->position[full_chunk_i], (char *)&lybs->written[full_chunk_i], LYB_SIZE_BYTES);
-            if (r < LYB_SIZE_BYTES) {
+            /* write the meta information (inner chunk count and chunk size) */
+            memcpy(&meta, &lybs->written[full_chunk_i], LYB_SIZE_BYTES);
+            memcpy(((uint8_t *)&meta) + LYB_SIZE_BYTES, &lybs->inner_chunks[full_chunk_i], LYB_INCHUNK_BYTES);
+
+            r = ly_write_skipped(out, lybs->position[full_chunk_i], (char *)&meta, LYB_META_BYTES);
+            if (r < LYB_META_BYTES) {
                 return -1;
             }
 
-            /* zero written */
+            /* zero written and inner chunks */
             lybs->written[full_chunk_i] = 0;
+            lybs->inner_chunks[full_chunk_i] = 0;
 
             /* skip space for another chunk size */
-            r = ly_write_skip(out, LYB_SIZE_BYTES, &lybs->position[full_chunk_i]);
-            if (r < LYB_SIZE_BYTES) {
+            r = ly_write_skip(out, LYB_META_BYTES, &lybs->position[full_chunk_i]);
+            if (r < LYB_META_BYTES) {
                 return -1;
             }
 
             ret += r;
+
+            /* increase inner chunk count */
+            for (i = 0; i < full_chunk_i; ++i) {
+                if (lybs->inner_chunks[i] == LYB_INCHUNK_MAX) {
+                    LOGINT(NULL);
+                    return -1;
+                }
+                ++lybs->inner_chunks[i];
+            }
         }
     }
 
@@ -258,10 +272,14 @@ static int
 lyb_write_stop_subtree(struct lyout *out, struct lyb_state *lybs)
 {
     int r;
+    LYB_META meta;
 
-    /* write the chunk size */
-    r = ly_write_skipped(out, lybs->position[lybs->used - 1], (char *)&lybs->written[lybs->used - 1], LYB_SIZE_BYTES);
-    if (r < LYB_SIZE_BYTES) {
+    /* write the meta chunk information */
+    memcpy(&meta, &lybs->written[lybs->used - 1], LYB_SIZE_BYTES);
+    memcpy(((uint8_t *)&meta) + LYB_SIZE_BYTES, &lybs->inner_chunks[lybs->used - 1], LYB_INCHUNK_BYTES);
+
+    r = ly_write_skipped(out, lybs->position[lybs->used - 1], (char *)&meta, LYB_META_BYTES);
+    if (r < LYB_META_BYTES) {
         return -1;
     }
 
@@ -272,16 +290,30 @@ lyb_write_stop_subtree(struct lyout *out, struct lyb_state *lybs)
 static int
 lyb_write_start_subtree(struct lyout *out, struct lyb_state *lybs)
 {
+    int i;
+
     if (lybs->used == lybs->size) {
         lybs->size += LYB_STATE_STEP;
         lybs->written = ly_realloc(lybs->written, lybs->size * sizeof *lybs->written);
         lybs->position = ly_realloc(lybs->position, lybs->size * sizeof *lybs->position);
-        LY_CHECK_ERR_RETURN(!lybs->written || !lybs->position, LOGMEM(NULL), -1);
+        lybs->inner_chunks = ly_realloc(lybs->inner_chunks, lybs->size * sizeof *lybs->inner_chunks);
+        LY_CHECK_ERR_RETURN(!lybs->written || !lybs->position || !lybs->inner_chunks, LOGMEM(NULL), -1);
     }
 
     ++lybs->used;
     lybs->written[lybs->used - 1] = 0;
-    return ly_write_skip(out, LYB_SIZE_BYTES, &lybs->position[lybs->used - 1]);
+    lybs->inner_chunks[lybs->used - 1] = 0;
+
+    /* another inner chunk */
+    for (i = 0; i < lybs->used - 1; ++i) {
+        if (lybs->inner_chunks[i] == LYB_INCHUNK_MAX) {
+            LOGINT(NULL);
+            return -1;
+        }
+        ++lybs->inner_chunks[i];
+    }
+
+    return ly_write_skip(out, LYB_META_BYTES, &lybs->position[lybs->used - 1]);
 }
 
 static int
@@ -949,6 +981,7 @@ lyb_print_data(struct lyout *out, const struct lyd_node *root, int options)
 finish:
     free(lybs.written);
     free(lybs.position);
+    free(lybs.inner_chunks);
     for (r = 0; r < lybs.sib_ht_count; ++r) {
         lyht_free(lybs.sib_ht[r].ht);
     }

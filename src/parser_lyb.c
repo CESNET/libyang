@@ -31,6 +31,7 @@ lyb_read(const char *data, uint8_t *buf, size_t count, struct lyb_state *lybs)
 {
     int ret = 0, i, empty_chunk_i;
     size_t to_read;
+    LYB_META meta;
 
     assert(data && lybs);
 
@@ -73,12 +74,18 @@ lyb_read(const char *data, uint8_t *buf, size_t count, struct lyb_state *lybs)
         }
 
         if (empty_chunk_i > -1) {
-            /* read the next chunk size */
-            memcpy(&lybs->written[empty_chunk_i], data + ret, LYB_SIZE_BYTES);
+            /* read the next chunk meta information */
+            memcpy(&meta, data + ret, LYB_META_BYTES);
+            lybs->written[empty_chunk_i] = 0;
+            lybs->inner_chunks[empty_chunk_i] = 0;
+
+            memcpy(&lybs->written[empty_chunk_i], &meta, LYB_SIZE_BYTES);
+            memcpy(&lybs->inner_chunks[empty_chunk_i], ((uint8_t *)&meta) + LYB_SIZE_BYTES, LYB_INCHUNK_BYTES);
+
             /* remember whether there is a following chunk or not */
             lybs->position[empty_chunk_i] = (lybs->written[empty_chunk_i] == LYB_SIZE_MAX ? 1 : 0);
 
-            ret += LYB_SIZE_BYTES;
+            ret += LYB_META_BYTES;
         }
     }
 
@@ -146,22 +153,27 @@ lyb_read_stop_subtree(struct lyb_state *lybs)
 static int
 lyb_read_start_subtree(const char *data, struct lyb_state *lybs)
 {
-    uint64_t num = 0;
+    LYB_META meta;
 
     if (lybs->used == lybs->size) {
         lybs->size += LYB_STATE_STEP;
         lybs->written = ly_realloc(lybs->written, lybs->size * sizeof *lybs->written);
         lybs->position = ly_realloc(lybs->position, lybs->size * sizeof *lybs->position);
-        LY_CHECK_ERR_RETURN(!lybs->written || !lybs->position, LOGMEM(NULL), -1);
+        lybs->inner_chunks = ly_realloc(lybs->inner_chunks, lybs->size * sizeof *lybs->inner_chunks);
+        LY_CHECK_ERR_RETURN(!lybs->written || !lybs->position || !lybs->inner_chunks, LOGMEM(NULL), -1);
     }
 
-    memcpy(&num, data, LYB_SIZE_BYTES);
+    memcpy(&meta, data, LYB_META_BYTES);
 
     ++lybs->used;
-    lybs->written[lybs->used - 1] = num;
-    lybs->position[lybs->used - 1] = (num == LYB_SIZE_MAX ? 1 : 0);
+    lybs->written[lybs->used - 1] = 0;
+    lybs->inner_chunks[lybs->used - 1] = 0;
 
-    return LYB_SIZE_BYTES;
+    memcpy(&lybs->written[lybs->used - 1], &meta, LYB_SIZE_BYTES);
+    memcpy(&lybs->inner_chunks[lybs->used - 1], ((uint8_t *)&meta) + LYB_SIZE_BYTES, LYB_INCHUNK_BYTES);
+    lybs->position[lybs->used - 1] = (lybs->written[lybs->used - 1] == LYB_SIZE_MAX ? 1 : 0);
+
+    return LYB_META_BYTES;
 }
 
 static int
@@ -903,6 +915,8 @@ lyb_parse_subtree(struct ly_ctx *ctx, const char *data, struct lyd_node *parent,
         /* unknown data subtree, skip it whole */
         do {
             ret += (r = lyb_read(data, NULL, lybs->written[lybs->used - 1], lybs));
+            /* also skip the meta information inside */
+            ret += (r = lyb_read(data, NULL, lybs->inner_chunks[lybs->used - 1] * LYB_META_BYTES, lybs));
         } while (lybs->written[lybs->used - 1]);
         goto stop_subtree;
     }
@@ -1054,7 +1068,8 @@ lyd_parse_lyb(struct ly_ctx *ctx, const char *data, int options, const struct ly
 
     lybs.written = malloc(LYB_STATE_STEP * sizeof *lybs.written);
     lybs.position = malloc(LYB_STATE_STEP * sizeof *lybs.position);
-    LY_CHECK_ERR_GOTO(!lybs.written || !lybs.position, LOGMEM(ctx), finish);
+    lybs.inner_chunks = malloc(LYB_STATE_STEP * sizeof *lybs.inner_chunks);
+    LY_CHECK_ERR_GOTO(!lybs.written || !lybs.position || !lybs.inner_chunks, LOGMEM(ctx), finish);
     lybs.used = 0;
     lybs.size = LYB_STATE_STEP;
     lybs.models = NULL;
@@ -1115,6 +1130,7 @@ lyd_parse_lyb(struct ly_ctx *ctx, const char *data, int options, const struct ly
 finish:
     free(lybs.written);
     free(lybs.position);
+    free(lybs.inner_chunks);
     free(lybs.models);
     if (unres) {
         free(unres->node);
