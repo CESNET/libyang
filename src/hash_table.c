@@ -29,6 +29,7 @@ lydict_val_eq(void *val1_p, void *val2_p, int UNUSED(mod), void *cb_data)
     const char *str2 = ((struct dict_rec *)val2_p)->value;
 
     if (!str1 || !str2 || !cb_data) {
+        LOGARG;
         return 0;
     }
 
@@ -47,8 +48,8 @@ lydict_init(struct dict_table *dict)
         return;
     }
 
-    /* TODO check for error */
     dict->hash_tab = lyht_new(2048, sizeof(struct dict_rec), lydict_val_eq, NULL, 1);
+    LY_CHECK_ERR_RETURN(!dict->hash_tab, LOGINT(NULL), );
     pthread_mutex_init(&dict->lock, NULL);
 }
 
@@ -73,7 +74,7 @@ lydict_clean(struct dict_table *dict)
              * dictionary are supposed to be removed using lydict_remove()
              * before calling lydict_clean()
              */
-            assert(1);
+            assert(!(rec->hits == 1));
         }
     }
 
@@ -150,21 +151,27 @@ lydict_remove(struct ly_ctx *ctx, const char *value)
     rec.refcount = 0;
 
     pthread_mutex_lock(&ctx->dict.lock);
-    /* set len as data for compare callback*/
+    /* set len as data for compare callback */
     lyht_set_cb_data(ctx->dict.hash_tab, (void *)&len);
     ret = lyht_find(ctx->dict.hash_tab, &rec, hash, (void **)&match);
 
-    if ((ret == 0) && match) {
+    if (ret == 0) {
+        if (!match) {
+            LOGINT(ctx);
+            pthread_mutex_unlock(&ctx->dict.lock);
+            return;
+        }
         /* if value is already in dictionary, decrement reference counter */
         (match->refcount)--;
         if (match->refcount == 0) {
             /* remove record
              * save pointer to stored string before lyht_remove to
-             * free it after it's removed from dictionary
-            */
+             * free it after it is removed from hash table
+             */
             val_p = match->value;
             ret = lyht_remove(ctx->dict.hash_tab, &rec, hash);
             free(val_p);
+            LY_CHECK_ERR_RETURN(ret != 0, LOGINT(ctx), );
         }
     }
     pthread_mutex_unlock(&ctx->dict.lock);
@@ -187,16 +194,19 @@ dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
     }
 
     hash = dict_hash(value, len);
-    /* set len as data for compare callback*/
+    /* set len as data for compare callback */
     lyht_set_cb_data(ctx->dict.hash_tab, (void *)&len);
-    /* create record for lyht_find call */
-    /* this record is inserted if record is not find and zerocopy is set*/
+    /*
+     * create record for lyht_find call
+     * this record is inserted if record was not found and zerocopy is set
+     */
     rec.value = value;
     rec.refcount = 1;
     result = value;
 
     ret = lyht_find(ctx->dict.hash_tab, (void *)&rec, hash, (void **)&match);
-    if (ret == 0 && match) {
+    if (ret == 0) {
+        LY_CHECK_ERR_RETURN(!match, LOGINT(ctx), NULL);
         (match->refcount)++;
         result = match->value;
         if (zerocopy) {
@@ -208,11 +218,10 @@ dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
             LY_CHECK_ERR_RETURN(!rec.value, LOGMEM(ctx), NULL);
             memcpy(rec.value, value, len);
             rec.value[len] = '\0';
-            rec.refcount = 1;
             result = rec.value;
         }
         ret = lyht_insert(ctx->dict.hash_tab, (void *)&rec, hash);
-        LY_CHECK_ERR_RETURN(ret == -1, LOGMEM(ctx), NULL);
+        LY_CHECK_ERR_RETURN(ret != 0, LOGINT(ctx), NULL);
     }
     return result;
 }
