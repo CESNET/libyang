@@ -1307,6 +1307,14 @@ int lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count),
  */
 double lyd_dec64_to_double(const struct lyd_node *node);
 
+/**
+ * @brief Get the length of a printed LYB data tree.
+ *
+ * @param[in] data LYB data.
+ * @return \p data length or -1 on error.
+ */
+int lyd_lyb_data_length(const char *data);
+
 #ifdef LY_ENABLED_LYD_PRIV
 
 /**

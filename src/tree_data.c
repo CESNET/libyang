@@ -7332,6 +7332,54 @@ lyd_leaf_type(const struct lyd_node_leaf_list *leaf)
     return type;
 }
 
+API int
+lyd_lyb_data_length(const char *data)
+{
+    const char *ptr;
+    uint16_t i, mod_count, str_len;
+    LYB_META meta;
+
+    if (!data) {
+        return -1;
+    }
+
+    ptr = data;
+
+    /* header */
+    ++ptr;
+
+    /* models */
+    memcpy(&mod_count, ptr, 2);
+    ptr += 2;
+
+    for (i = 0; i < mod_count; ++i) {
+        /* model name */
+        memcpy(&str_len, ptr, 2);
+        ptr += 2;
+
+        ptr += str_len;
+
+        /* revision */
+        ptr += 2;
+    }
+
+    /* subtrees */
+    do {
+        memcpy(&meta, ptr, LYB_META_BYTES);
+        ptr += LYB_META_BYTES;
+
+        /* read whole subtree (chunk size) */
+        ptr += *((uint8_t *)&meta);
+        /* skip inner chunks (inner chunk count) */
+        ptr += *(((uint8_t *)&meta) + LYB_SIZE_BYTES) * LYB_META_BYTES;
+    } while ((*((uint8_t *)&meta) == LYB_SIZE_MAX) || ptr[0]);
+
+    /* ending zero */
+    ++ptr;
+
+    return ptr - data;
+}
+
 #ifdef LY_ENABLED_LYD_PRIV
 
 API void *
