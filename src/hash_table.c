@@ -62,10 +62,19 @@ lydict_clean(struct dict_table *dict)
         return;
     }
 
-    /* TODO free records one by one befor lyht_free call */
     for (i = 0; i < dict->hash_tab->size; i++)
     {
-
+        /* get ith record */
+        struct ht_rec *rec = (struct ht_rec *)&dict->hash_tab->recs[i * dict->hash_tab->rec_size];
+        if (rec->hits == 1) {
+            /* if record wasn't removed before free string allocated for that record */
+            free(((struct dict_rec *)rec->val)->value);
+            /* this should not happen, all records inserted into
+             * dictionary are supposed to be removed using lydict_remove()
+             * before calling lydict_clean()
+             */
+            assert(1);
+        }
     }
 
     lyht_free(dict->hash_tab);
