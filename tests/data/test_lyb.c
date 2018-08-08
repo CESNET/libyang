@@ -522,6 +522,73 @@ test_origin(void **state)
     check_data_tree(st->dt1, st->dt2);
 }
 
+static void
+test_anydata(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    int ret;
+    const char *test_anydata =
+    "module test-anydata {"
+    "   namespace \"urn:test-anydata\";"
+    "   prefix ya;"
+    ""
+    "   container cont {"
+    "       anydata ntf;"
+    "   }"
+    "}";
+
+    assert_non_null(ly_ctx_load_module(st->ctx, "ietf-netconf-notifications", NULL));
+
+    st->dt1 = lyd_parse_path(st->ctx, TESTS_DIR"/data/files/ietf-netconf-notifications.json", LYD_JSON, LYD_OPT_NOTIF | LYD_OPT_TRUSTED, NULL);
+    assert_ptr_not_equal(st->dt1, NULL);
+
+    /* get notification in LYB format to set as anydata content */
+    ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYP_WITHSIBLINGS);
+    assert_int_equal(ret, 0);
+
+    lyd_free_withsiblings(st->dt1);
+    st->dt1 = NULL;
+
+    /* now comes the real test, test anydata */
+    mod = lys_parse_mem(st->ctx, test_anydata, LYS_YANG);
+    assert_non_null(mod);
+
+    st->dt1 = lyd_new(NULL, mod, "cont");
+    assert_non_null(st->dt1);
+
+    assert_non_null(lyd_new_anydata(st->dt1, NULL, "ntf", st->mem, LYD_ANYDATA_LYBD));
+    st->mem = NULL;
+
+    ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYP_WITHSIBLINGS);
+    assert_int_equal(ret, 0);
+
+    ret = lyd_validate(&st->dt1, LYD_OPT_CONFIG, NULL);
+    assert_int_equal(ret, 0);
+
+    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG | LYD_OPT_STRICT);
+    assert_ptr_not_equal(st->dt2, NULL);
+
+    check_data_tree(st->dt1, st->dt2);
+
+    /* and also test the embedded notification itself */
+    free(st->mem);
+    ret = lyd_lyb_data_length(((struct lyd_node_anydata *)st->dt1->child)->value.mem);
+    st->mem = malloc(ret);
+    memcpy(st->mem, ((struct lyd_node_anydata *)st->dt1->child)->value.mem, ret);
+
+    lyd_free_withsiblings(st->dt2);
+    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_NOTIF | LYD_OPT_STRICT, NULL);
+    assert_ptr_not_equal(st->dt2, NULL);
+
+    /* parse the JSON again for this comparison */
+    lyd_free_withsiblings(st->dt1);
+    st->dt1 = lyd_parse_path(st->ctx, TESTS_DIR"/data/files/ietf-netconf-notifications.json", LYD_JSON, LYD_OPT_NOTIF | LYD_OPT_TRUSTED, NULL);
+    assert_ptr_not_equal(st->dt1, NULL);
+
+    check_data_tree(st->dt1, st->dt2);
+}
+
 int
 main(void)
 {
@@ -536,6 +603,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_annotations, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_similar_annot_names, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_collisions, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_anydata, setup_f, teardown_f),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
