@@ -144,14 +144,14 @@ lydict_remove(struct ly_ctx *ctx, const char *value)
 
     len = strlen(value);
     hash = dict_hash(value, len);
-    /* set len as data for compare callback*/
-    lyht_set_cb_data(ctx->dict.hash_tab, (void *)&len);
 
     /* create record for lyht_find call */
     rec.value = (char *)value;
     rec.refcount = 0;
 
     pthread_mutex_lock(&ctx->dict.lock);
+    /* set len as data for compare callback*/
+    lyht_set_cb_data(ctx->dict.hash_tab, (void *)&len);
     ret = lyht_find(ctx->dict.hash_tab, &rec, hash, (void **)&match);
 
     if ((ret == 0) && match) {
