@@ -70,7 +70,8 @@ lydict_clean(struct dict_table *dict)
         if (rec->hits == 1) {
             /* if record wasn't removed before free string allocated for that record */
             free(((struct dict_rec *)rec->val)->value);
-            /* this should not happen, all records inserted into
+            /*
+             * this should not happen, all records inserted into
              * dictionary are supposed to be removed using lydict_remove()
              * before calling lydict_clean()
              */
@@ -78,6 +79,7 @@ lydict_clean(struct dict_table *dict)
         }
     }
 
+    /* free table and destroy mutex */
     lyht_free(dict->hash_tab);
     pthread_mutex_destroy(&dict->lock);
 }
@@ -153,6 +155,7 @@ lydict_remove(struct ly_ctx *ctx, const char *value)
     pthread_mutex_lock(&ctx->dict.lock);
     /* set len as data for compare callback */
     lyht_set_cb_data(ctx->dict.hash_tab, (void *)&len);
+    /* check if value is already inserted */
     ret = lyht_find(ctx->dict.hash_tab, &rec, hash, (void **)&match);
 
     if (ret == 0) {
@@ -164,7 +167,8 @@ lydict_remove(struct ly_ctx *ctx, const char *value)
         /* if value is already in dictionary, decrement reference counter */
         (match->refcount)--;
         if (match->refcount == 0) {
-            /* remove record
+            /*
+             * remove record
              * save pointer to stored string before lyht_remove to
              * free it after it is removed from hash table
              */
@@ -204,22 +208,26 @@ dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
     rec.refcount = 1;
     result = value;
 
+    /* check if value is already inserted */
     ret = lyht_find(ctx->dict.hash_tab, (void *)&rec, hash, (void **)&match);
     if (ret == 0) {
         LY_CHECK_ERR_RETURN(!match, LOGINT(ctx), NULL);
         (match->refcount)++;
         result = match->value;
+        LOGDBG(LY_LDGDICT, "inserting (refcount) \"%s\"", match->value);
         if (zerocopy) {
             free(value);
         }
     } else {
         if (!zerocopy) {
+            /* create record with allocated string that will be inserted */
             rec.value = malloc(sizeof *rec.value * (len + 1));
             LY_CHECK_ERR_RETURN(!rec.value, LOGMEM(ctx), NULL);
             memcpy(rec.value, value, len);
             rec.value[len] = '\0';
             result = rec.value;
         }
+        LOGDBG(LY_LDGDICT, "inserting \"%s\"", rec.value);
         ret = lyht_insert(ctx->dict.hash_tab, (void *)&rec, hash);
         LY_CHECK_ERR_RETURN(ret != 0, LOGINT(ctx), NULL);
     }
