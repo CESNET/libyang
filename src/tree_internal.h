@@ -70,6 +70,7 @@ struct lyd_node_pos {
 struct lyb_state {
     size_t *written;
     size_t *position;
+    uint8_t *inner_chunks;
     int used;
     int size;
     const struct lys_module **models;
@@ -114,6 +115,18 @@ struct lyb_state {
 
 /* Maximum size that will be written into LYB_SIZE_BYTES (must be large enough) */
 #define LYB_SIZE_MAX UINT8_MAX
+
+/* How many bytes are reserved for one data chunk inner chunk count */
+#define LYB_INCHUNK_BYTES 1
+
+/* Maximum size that will be written into LYB_INCHUNK_BYTES (must be large enough) */
+#define LYB_INCHUNK_MAX UINT8_MAX
+
+/* Just a helper macro */
+#define LYB_META_BYTES (LYB_INCHUNK_BYTES + LYB_SIZE_BYTES)
+
+/* Type large enough for all meta data */
+#define LYB_META uint16_t
 
 LYB_HASH lyb_hash(struct lys_node *sibling, uint8_t collision_id);
 

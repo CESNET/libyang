@@ -289,6 +289,9 @@ lyb_parse_anydata(struct lyd_node *node, const char *data, struct lyb_state *lyb
         any->value.tree = lyd_parse_lyb(node->schema->module->ctx, data, 0, NULL, NULL, &r);
         ret += r;
         LYB_HAVE_READ_RETURN(r, data, -1);
+    } else if (any->value_type == LYD_ANYDATA_LYB) {
+        ret += (r = lyb_read_string(data, &any->value.mem, 0, lybs));
+        LYB_HAVE_READ_RETURN(r, data, -1);
     } else {
         ret += (r = lyb_read_string(data, &str, 0, lybs));
         LYB_HAVE_READ_RETURN(r, data, -1);

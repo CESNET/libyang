@@ -79,9 +79,13 @@ typedef enum {
                                          into the anydata node without duplication, caller is supposed to not manipulate
                                          with the data after a successful call (including calling lyd_free() on the
                                          provided data) */
-    LYD_ANYDATA_LYB = 0x20,         /**< value is dynamically allocated string with serialized data tree into LYB format,
-                                         so the data are used directly without duplication and caller is supposed to not
-                                         manipulate with the data after a successful call */
+    LYD_ANYDATA_LYB = 0x20,         /**< value is a memory with serialized data tree in LYB format. The data are handled
+                                         as a constant string. In case of using the value as input parameter,
+                                         the #LYD_ANYDATA_LYBD can be used for dynamically allocated string. */
+    LYD_ANYDATA_LYBD = 0x21,        /**< In case of using LYB value as input parameter, this enumeration is
+                                         supposed to be used for dynamically allocated strings (it is actually
+                                         combination of #LYD_ANYDATA_LYB and #LYD_ANYDATA_STRING (and it can be also
+                                         specified as ORed value of the mentioned values). */
 } LYD_ANYDATA_VALUETYPE;
 
 /**
@@ -290,6 +294,7 @@ struct lyd_node_anydata {
     LYD_ANYDATA_VALUETYPE value_type;/**< type of the stored anydata value */
     union {
         const char *str;             /**< string value, in case of printing as XML, characters like '<' or '&' are escaped */
+        char *mem;                   /**< raw memory (used for LYB format) */
         struct lyxml_elem *xml;      /**< xml tree */
         struct lyd_node *tree;       /**< libyang data tree, does not change the root's parent, so it is not possible
                                           to get from the data tree into the anydata/anyxml */

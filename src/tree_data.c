@@ -1391,6 +1391,7 @@ lyd_create_anydata(struct lyd_node *parent, const struct lys_node *schema, void 
 {
     struct lyd_node *iter;
     struct lyd_node_anydata *ret;
+    int len;
 
     ret = calloc(1, sizeof *ret);
     LY_CHECK_ERR_RETURN(!ret, LOGMEM(schema->module->ctx), NULL);
@@ -1422,7 +1423,18 @@ lyd_create_anydata(struct lyd_node *parent, const struct lys_node *schema, void 
         ret->value.xml = (struct lyxml_elem *)value;
         break;
     case LYD_ANYDATA_LYB:
-        ret->value.str = lydict_insert_zc(schema->module->ctx, (char *)value);
+        len = lyd_lyb_data_length(value);
+        if (len == -1) {
+            LOGERR(schema->module->ctx, LY_EINVAL, "Invalid LYB data.");
+            return NULL;
+        }
+        ret->value.mem = malloc(len);
+        LY_CHECK_ERR_RETURN(!ret->value.mem, LOGMEM(schema->module->ctx); free(ret), NULL);
+        memcpy(ret->value.mem, value, len);
+        break;
+    case LYD_ANYDATA_LYBD:
+        ret->value.mem = value;
+        value_type &= ~LYD_ANYDATA_STRING; /* make const string from string */
         break;
     }
     ret->value_type = value_type;
@@ -1653,6 +1665,7 @@ lyd_new_path_update(struct lyd_node *node, void *value, LYD_ANYDATA_VALUETYPE va
 {
     struct ly_ctx *ctx = node->schema->module->ctx;
     struct lyd_node_anydata *any;
+    int len;
 
     switch (node->schema->nodetype) {
     case LYS_LEAF:
@@ -1711,9 +1724,13 @@ lyd_new_path_update(struct lyd_node *node, void *value, LYD_ANYDATA_VALUETYPE va
         case LYD_ANYDATA_XML:
             lyxml_free_withsiblings(ctx, any->value.xml);
             break;
+        case LYD_ANYDATA_LYB:
+            free(any->value.mem);
+            break;
         case LYD_ANYDATA_STRING:
         case LYD_ANYDATA_SXMLD:
         case LYD_ANYDATA_JSOND:
+        case LYD_ANYDATA_LYBD:
             /* dynamic strings are used only as input parameters */
             assert(0);
             break;
@@ -1736,6 +1753,20 @@ lyd_new_path_update(struct lyd_node *node, void *value, LYD_ANYDATA_VALUETYPE va
             break;
         case LYD_ANYDATA_XML:
             any->value.xml = value;
+            break;
+        case LYD_ANYDATA_LYB:
+            len = lyd_lyb_data_length(value);
+            if (len == -1) {
+                LOGERR(ctx, LY_EINVAL, "Invalid LYB data.");
+                return NULL;
+            }
+            any->value.mem = malloc(len);
+            LY_CHECK_ERR_RETURN(!any->value.mem, LOGMEM(ctx), NULL);
+            memcpy(any->value.mem, value, len);
+            break;
+        case LYD_ANYDATA_LYBD:
+            any->value.mem = value;
+            value_type &= ~LYD_ANYDATA_STRING; /* make const string from string */
             break;
         }
         return node;
@@ -2339,6 +2370,7 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
     struct ly_ctx *ctx;
     struct lyd_node_leaf_list *trg_leaf, *src_leaf;
     struct lyd_node_anydata *trg_any, *src_any;
+    int len;
 
     assert(target->schema->nodetype & (LYS_LEAF | LYS_ANYDATA));
     ctx = target->schema->module->ctx;
@@ -2383,9 +2415,13 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
             case LYD_ANYDATA_XML:
                 lyxml_free_withsiblings(ctx, trg_any->value.xml);
                 break;
+            case LYD_ANYDATA_LYB:
+                free(trg_any->value.mem);
+                break;
             case LYD_ANYDATA_STRING:
             case LYD_ANYDATA_SXMLD:
             case LYD_ANYDATA_JSOND:
+            case LYD_ANYDATA_LYBD:
                 /* dynamic strings are used only as input parameters */
                 assert(0);
                 break;
@@ -2460,9 +2496,13 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
             case LYD_ANYDATA_XML:
                 lyxml_free_withsiblings(ctx, trg_any->value.xml);
                 break;
+            case LYD_ANYDATA_LYB:
+                free(trg_any->value.mem);
+                break;
             case LYD_ANYDATA_STRING:
             case LYD_ANYDATA_SXMLD:
             case LYD_ANYDATA_JSOND:
+            case LYD_ANYDATA_LYBD:
                 /* dynamic strings are used only as input parameters */
                 assert(0);
                 break;
@@ -2483,9 +2523,20 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
                 case LYD_ANYDATA_XML:
                     trg_any->value.xml = lyxml_dup_elem(ctx, src_any->value.xml, NULL, 1);
                     break;
+                case LYD_ANYDATA_LYB:
+                    len = lyd_lyb_data_length(src_any->value.mem);
+                    if (len == -1) {
+                        LOGERR(ctx, LY_EINVAL, "Invalid LYB data.");
+                        return;
+                    }
+                    trg_any->value.mem = malloc(len);
+                    LY_CHECK_ERR_RETURN(!trg_any->value.mem, LOGMEM(ctx), );
+                    memcpy(trg_any->value.mem, src_any->value.mem, len);
+                    break;
                 case LYD_ANYDATA_STRING:
                 case LYD_ANYDATA_SXMLD:
                 case LYD_ANYDATA_JSOND:
+                case LYD_ANYDATA_LYBD:
                     /* dynamic strings are used only as input parameters */
                     assert(0);
                     break;
@@ -5417,9 +5468,20 @@ lyd_dup_to_ctx(const struct lyd_node *node, int recursive, struct ly_ctx *ctx)
             case LYD_ANYDATA_XML:
                 new_any->value.xml = lyxml_dup_elem(ctx ? ctx : elem->schema->module->ctx, old_any->value.xml, NULL, 1);
                 break;
+            case LYD_ANYDATA_LYB:
+                r = lyd_lyb_data_length(old_any->value.mem);
+                if (r == -1) {
+                    LOGERR(log_ctx, LY_EINVAL, "Invalid LYB data.");
+                    goto error;
+                }
+                new_any->value.mem = malloc(r);
+                LY_CHECK_ERR_GOTO(!new_any->value.mem, LOGMEM(log_ctx), error);
+                memcpy(new_any->value.mem, old_any->value.mem, r);
+                break;
             case LYD_ANYDATA_STRING:
             case LYD_ANYDATA_SXMLD:
             case LYD_ANYDATA_JSOND:
+            case LYD_ANYDATA_LYBD:
                 /* dynamic strings are used only as input parameters */
                 assert(0);
                 break;
@@ -5766,9 +5828,13 @@ lyd_free_internal(struct lyd_node *node, int top)
         case LYD_ANYDATA_XML:
             lyxml_free_withsiblings(node->schema->module->ctx, ((struct lyd_node_anydata *)node)->value.xml);
             break;
+        case LYD_ANYDATA_LYB:
+            free(((struct lyd_node_anydata *)node)->value.mem);
+            break;
         case LYD_ANYDATA_STRING:
         case LYD_ANYDATA_SXMLD:
         case LYD_ANYDATA_JSOND:
+        case LYD_ANYDATA_LYBD:
             /* dynamic strings are used only as input parameters */
             assert(0);
             break;

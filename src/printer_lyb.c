@@ -491,7 +491,7 @@ lyb_print_header(struct lyout *out)
 static int
 lyb_print_anydata(struct lyd_node_anydata *anydata, struct lyout *out, struct lyb_state *lybs)
 {
-    int ret = 0;
+    int ret = 0, len;
     char *buf;
     LYD_ANYDATA_VALUETYPE type;
 
@@ -522,6 +522,11 @@ lyb_print_anydata(struct lyd_node_anydata *anydata, struct lyout *out, struct ly
     /* followed by the content */
     if (type == LYD_ANYDATA_DATATREE) {
         ret += lyb_print_data(out, anydata->value.tree, 0);
+    } else if (type == LYD_ANYDATA_LYB) {
+        len = lyd_lyb_data_length(anydata->value.mem);
+        if (len > -1) {
+            ret += lyb_write_string(anydata->value.str, (size_t)len, 0, out, lybs);
+        }
     } else {
         ret += lyb_write_string(anydata->value.str, 0, 0, out, lybs);
     }
