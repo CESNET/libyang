@@ -239,12 +239,12 @@ lydict_insert(struct ly_ctx *ctx, const char *value, size_t len)
 {
     const char *result;
 
-    if (value && !len) {
-        len = strlen(value);
-    }
-
     if (!value) {
         return NULL;
+    }
+
+    if (!len) {
+        len = strlen(value);
     }
 
     pthread_mutex_lock(&ctx->dict.lock);
