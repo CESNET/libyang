@@ -99,12 +99,12 @@
 
 #define LY_NEW_LIST(data, element, size, class)\
     {\
-        auto s_vector = new std::vector<S_##class>;\
+        std::vector<S_##class> s_vector;\
         if (0 >= data->size) {\
             return s_vector;\
         }\
         for (uint8_t i = 0; i < data->size; i++) {\
-            s_vector->push_back(std::make_shared<class>(&data->element[i], deleter));\
+            s_vector.push_back(std::make_shared<class>(&data->element[i], deleter));\
         }\
         return s_vector;\
     }
@@ -117,12 +117,12 @@
 
 #define LY_NEW_P_LIST(data, element, size, class)\
     {\
-        auto s_vector = new std::vector<S_##class>;\
+        std::vector<S_##class> s_vector;\
         if (0 >= data->size) {\
             return s_vector;\
         }\
         for (uint8_t i = 0; i < data->size; i++) {\
-            s_vector->push_back(std::make_shared<class>(data->element[i], deleter));\
+            s_vector.push_back(std::make_shared<class>(data->element[i], deleter));\
         }\
         return s_vector;\
     }
@@ -135,12 +135,12 @@
 
 #define LY_NEW_STRING_LIST(data, element, size)\
     {\
-        auto s_vector = new std::vector<std::string>;\
+        std::vector<std::string> s_vector;\
         if (0 >= data->size) {\
             return s_vector;\
         }\
         for (uint8_t i = 0; i < data->size; i++) {\
-            s_vector->push_back(std::string(data->element[i]));\
+            s_vector.push_back(std::string(data->element[i]));\
         }\
         return s_vector;\
     }

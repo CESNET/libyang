@@ -416,6 +416,29 @@
 
 %shared_ptr(Error);
 
+%template(vectorData_Node) std::vector<std::shared_ptr<Data_Node>, std::allocator<std::shared_ptr <Data_Node> > >;
+%template(vectorSchema_Node) std::vector<std::shared_ptr<Schema_Node>, std::allocator<std::shared_ptr <Schema_Node> > >;
+%template(vector_String) std::vector<std::string, std::allocator<std::string> >;
+%template(vectorModules) std::vector<std::shared_ptr<Module>, std::allocator<std::shared_ptr<Module> > >;
+%template(vectorType) std::vector<std::shared_ptr<Type>, std::allocator<std::shared_ptr<Type> > >;
+%template(vectorExt_Instance) std::vector<std::shared_ptr<Ext_Instance>, std::allocator<std::shared_ptr<Ext_Instance> > >;
+%template(vectorIffeature) std::vector<std::shared_ptr<Iffeature>, std::allocator<std::shared_ptr<Iffeature> > >;
+%template(vectorFeature) std::vector<std::shared_ptr<Feature>, std::allocator<std::shared_ptr<Feature> > >;
+%template(vectorWhen) std::vector<std::shared_ptr<When>, std::allocator<std::shared_ptr<When> > >;
+%template(vectorRefine) std::vector<std::shared_ptr<Refine>, std::allocator<std::shared_ptr<Refine> > >;
+%template(vectorXml_Elem) std::vector<std::shared_ptr<Xml_Elem>, std::allocator<std::shared_ptr<Xml_Elem> > >;
+%template(vectorDeviate) std::vector<std::shared_ptr<Deviate>, std::allocator<std::shared_ptr<Deviate> > >;
+%template(vectorDeviation) std::vector<std::shared_ptr<Deviation>, std::allocator<std::shared_ptr<Deviation> > >;
+%template(vectorIdent) std::vector<std::shared_ptr<Ident>, std::allocator<std::shared_ptr<Ident> > >;
+%template(vectorRestr) std::vector<std::shared_ptr<Restr>, std::allocator<std::shared_ptr<Restr> > >;
+%template(vectorTpdf) std::vector<std::shared_ptr<Tpdf>, std::allocator<std::shared_ptr<Tpdf> > >;
+%template(vectorUnique) std::vector<std::shared_ptr<Unique>, std::allocator<std::shared_ptr<Unique> > >;
+%template(vectorSchema_Node_Leaf) std::vector<std::shared_ptr<Schema_Node_Leaf>, std::allocator<std::shared_ptr<Schema_Node_Leaf> > >;
+%template(vectorSchema_Node_Augment) std::vector<std::shared_ptr<Schema_Node_Augment>, std::allocator<std::shared_ptr<Schema_Node_Augment> > >;
+%template(vectorType_Bit) std::vector<std::shared_ptr<Type_Bit>, std::allocator<std::shared_ptr<Type_Bit> > >;
+%template(vectorType_Enum) std::vector<std::shared_ptr<Type_Enum>, std::allocator<std::shared_ptr<Type_Enum> > >;
+%template(vectorError) std::vector<std::shared_ptr<Error>, std::allocator<std::shared_ptr<Error> > >;
+
 %{
 /* Includes the header in the wrapper code */
 #include "Xml.hpp"
@@ -431,26 +454,3 @@
 %include "Libyang.hpp"
 %include "Tree_Data.hpp"
 %include "Tree_Schema.hpp"
-
-%template(vector_String) std::vector<std::string>;
-%template(vectorModules) std::vector<S_Module>;
-%template(vectorType) std::vector<S_Type>;
-%template(vectorData_Node) std::vector<S_Data_Node>;
-%template(vectorSchema_Node) std::vector<S_Schema_Node>;
-%template(vectorExt_Instance) std::vector<S_Ext_Instance>;
-%template(vectorIffeature) std::vector<S_Iffeature>;
-%template(vectorFeature) std::vector<S_Feature>;
-%template(vectorWhen) std::vector<S_When>;
-%template(vectorRefine) std::vector<S_Refine>;
-%template(vectorXml_Elem) std::vector<S_Xml_Elem>;
-%template(vectorDeviate) std::vector<S_Deviate>;
-%template(vectorDeviation) std::vector<S_Deviation>;
-%template(vectorIdent) std::vector<S_Ident>;
-%template(vectorRestr) std::vector<S_Restr>;
-%template(vectorTpdf) std::vector<S_Tpdf>;
-%template(vectorUnique) std::vector<S_Unique>;
-%template(vectorSchema_Node_Leaf) std::vector<S_Schema_Node_Leaf>;
-%template(vectorSchema_Node_Augment) std::vector<S_Schema_Node_Augment>;
-%template(vectorType_Bit) std::vector<S_Type_Bit>;
-%template(vectorType_Enum) std::vector<S_Type_Enum>;
-%template(vectorError) std::vector<S_Error>;
