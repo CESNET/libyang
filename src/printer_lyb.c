@@ -432,9 +432,10 @@ lyb_print_data_models(struct lyout *out, const struct lyd_node *root, struct lyb
 {
     int ret = 0;
     const struct lys_module **models = NULL, *mod;
+    const struct lys_submodule *submod;
     const struct lyd_node *node;
     size_t mod_count = 0;
-    uint32_t idx = 0, i;
+    uint32_t idx = 0, i, j;
 
     /* first, collect all data node modules */
     LY_TREE_FOR(root, node) {
@@ -460,6 +461,24 @@ next_mod:
             if (is_added_model(models, mod_count, lys_node_module(mod->augment[i].target))) {
                 add_model(&models, &mod_count, mod);
                 goto next_mod;
+            }
+        }
+
+        /* submodules */
+        for (j = 0; j < mod->inc_size; ++j) {
+            submod = mod->inc[j].submodule;
+
+            for (i = 0; i < submod->deviation_size; ++i) {
+                if (submod->deviation[i].orig_node && is_added_model(models, mod_count, lys_node_module(submod->deviation[i].orig_node))) {
+                    add_model(&models, &mod_count, mod);
+                    goto next_mod;
+                }
+            }
+            for (i = 0; i < submod->augment_size; ++i) {
+                if (is_added_model(models, mod_count, lys_node_module(submod->augment[i].target))) {
+                    add_model(&models, &mod_count, mod);
+                    goto next_mod;
+                }
             }
         }
     }

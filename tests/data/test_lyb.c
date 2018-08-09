@@ -589,6 +589,30 @@ test_anydata(void **state)
     check_data_tree(st->dt1, st->dt2);
 }
 
+static void
+test_submodule_feature(void **state)
+{
+    struct state *st = (*state);
+    const struct lys_module *mod;
+    int ret;
+
+    ly_ctx_set_searchdir(st->ctx, TESTS_DIR"/data/files");
+    mod = ly_ctx_load_module(st->ctx, "feature-submodule-main", NULL);
+    assert_non_null(mod);
+    assert_int_equal(lys_features_enable(mod, "test-submodule-feature"), 0);
+
+    st->dt1 = lyd_parse_path(st->ctx, TESTS_DIR"/data/files/test-submodule-feature.json", LYD_JSON, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->dt1, NULL);
+
+    ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYP_WITHSIBLINGS);
+    assert_int_equal(ret, 0);
+
+    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG | LYD_OPT_STRICT);
+    assert_ptr_not_equal(st->dt2, NULL);
+
+    check_data_tree(st->dt1, st->dt2);
+}
+
 int
 main(void)
 {
@@ -604,6 +628,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_similar_annot_names, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_collisions, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_anydata, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_submodule_feature, setup_f, teardown_f),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
