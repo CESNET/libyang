@@ -185,9 +185,10 @@ int lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **mat
  * @param[in] val_p Pointer to the value to insert. Be careful, if the values stored in the hash table
  * are pointers, \p val_p must be a pointer to a pointer.
  * @param[in] hash Hash of the stored value.
+ * @param[out] match_p pointer to the stored value, optional
  * @return 0 on success, 1 if already inserted, -1 on error.
  */
-int lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash);
+int lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p);
 
 /**
  * @brief Remove a value from a hash table.

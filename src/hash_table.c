@@ -586,7 +586,7 @@ lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p
 }
 
 int
-lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash)
+lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p)
 {
     struct ht_rec *rec, *crec = NULL;
     int32_t i;
@@ -596,6 +596,9 @@ lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash)
         /* we found matching shortened hash */
         if ((rec->hash == hash) && ht->val_equal(val_p, &rec->val, 1, ht->cb_data)) {
             /* even the value matches */
+            if (match_p) {
+                *match_p = (void *)&rec->val;
+            }
             return 1;
         }
 
@@ -607,6 +610,9 @@ lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash)
 
             /* compare values */
             if ((rec->hash == hash) && ht->val_equal(val_p, &rec->val, 1, ht->cb_data)) {
+                if (match_p) {
+                    *match_p = (void *)&rec->val;
+                }
                 return 1;
             }
         }
@@ -621,6 +627,9 @@ lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash)
     rec->hash = hash;
     rec->hits = 1;
     memcpy(&rec->val, val_p, ht->rec_size - (sizeof(struct ht_rec) - 1));
+    if (match_p) {
+        *match_p = (void *)&rec->val;
+    }
 
     if (crec) {
         /* there was a collision, increase hits */
@@ -642,6 +651,10 @@ lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash)
         if ((ht->resize == 2) && (r >= LYHT_ENLARGE_PERCENTAGE)) {
             /* enlarge */
             ret = lyht_resize(ht, 1);
+            /* if hash_table was resized, we need to find new matching value */
+            if (ret == 0 && match_p) {
+                lyht_find(ht, val_p, hash, match_p);
+            }
         }
     }
     return ret;
