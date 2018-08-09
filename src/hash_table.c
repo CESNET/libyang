@@ -68,14 +68,14 @@ lydict_clean(struct dict_table *dict)
         /* get ith record */
         struct ht_rec *rec = (struct ht_rec *)&dict->hash_tab->recs[i * dict->hash_tab->rec_size];
         if (rec->hits == 1) {
-            /* if record wasn't removed before free string allocated for that record */
-            free(((struct dict_rec *)rec->val)->value);
             /*
              * this should not happen, all records inserted into
              * dictionary are supposed to be removed using lydict_remove()
              * before calling lydict_clean()
              */
             assert(!(rec->hits == 1));
+            /* if record wasn't removed before free string allocated for that record */
+            free(((struct dict_rec *)rec->val)->value);
         }
     }
 
