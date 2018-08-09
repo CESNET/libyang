@@ -383,7 +383,7 @@ lyht_resize(struct hash_table *ht, int enlarge)
     for (i = 0; i < old_size; ++i) {
         rec = lyht_get_rec(old_recs, ht->rec_size, i);
         if (rec->hits > 0) {
-            lyht_insert(ht, rec->val, rec->hash);
+            lyht_insert(ht, rec->val, rec->hash, NULL);
         }
     }
 

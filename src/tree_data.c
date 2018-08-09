@@ -389,7 +389,7 @@ lyd_keyless_list_hash_change(struct lyd_node *parent)
                 lyd_hash(parent);
                 if (parent->parent && parent->parent->ht) {
                     /* re-add the list again */
-                    lyht_insert(parent->parent->ht, &parent, parent->hash);
+                    lyht_insert(parent->parent->ht, &parent, parent->hash, NULL);
                 }
             } else if (!lyd_list_has_keys(parent)) {
                 /* a parent is a list without keys so it cannot be a part of any parent hash */
@@ -435,13 +435,13 @@ _lyd_insert_hash(struct lyd_node *node, int keyless_list_check)
                             continue;
                         }
 
-                        if (lyht_insert(node->parent->ht, &iter, iter->hash)) {
+                        if (lyht_insert(node->parent->ht, &iter, iter->hash, NULL)) {
                             assert(0);
                         }
                     }
                 }
             } else {
-                if (lyht_insert(node->parent->ht, &node, node->hash)) {
+                if (lyht_insert(node->parent->ht, &node, node->hash, NULL)) {
                     assert(0);
                 }
             }

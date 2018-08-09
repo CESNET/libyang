@@ -594,7 +594,7 @@ set_insert_node_hash(struct lyxp_set *set, struct lyd_node *node, enum lyxp_node
             hash = dict_hash_multi(hash, (const char *)&hnode.type, sizeof hnode.type);
             hash = dict_hash_multi(hash, NULL, 0);
 
-            r = lyht_insert(set->ht, &hnode, hash);
+            r = lyht_insert(set->ht, &hnode, hash, NULL);
             assert(!r);
             (void)r;
         }
@@ -609,7 +609,7 @@ set_insert_node_hash(struct lyxp_set *set, struct lyd_node *node, enum lyxp_node
         hash = dict_hash_multi(hash, (const char *)&hnode.type, sizeof hnode.type);
         hash = dict_hash_multi(hash, NULL, 0);
 
-        r = lyht_insert(set->ht, &hnode, hash);
+        r = lyht_insert(set->ht, &hnode, hash, NULL);
         assert(!r);
         (void)r;
     }

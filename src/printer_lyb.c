@@ -74,7 +74,7 @@ lyb_hash_siblings(struct lys_node *sibling, const struct lys_module **models, in
                 return NULL;
             }
 
-            if (!lyht_insert(ht, &sibling, hash)) {
+            if (!lyht_insert(ht, &sibling, hash, NULL)) {
                 /* success, no collision */
                 break;
             }

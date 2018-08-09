@@ -375,7 +375,7 @@ lyv_data_unique(struct lyd_node *node, struct lyd_node *start)
             hash = dict_hash_multi(hash, NULL, 0);
 
             /* insert into the hashtable */
-            if (lyht_insert(keystable, &set->set.d[u], hash)) {
+            if (lyht_insert(keystable, &set->set.d[u], hash, NULL)) {
                 ret = 1;
                 goto unique_cleanup;
             }
@@ -410,7 +410,7 @@ lyv_data_unique(struct lyd_node *node, struct lyd_node *start)
                 hash = dict_hash_multi(hash, NULL, 0);
 
                 /* insert into the hashtable */
-                if (lyht_insert(uniquetables[j], &set->set.d[u], hash)) {
+                if (lyht_insert(uniquetables[j], &set->set.d[u], hash, NULL)) {
                     ret = 1;
                     goto unique_cleanup;
                 }
