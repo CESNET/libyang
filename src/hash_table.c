@@ -193,14 +193,6 @@ dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
     int ret = 0;
     uint32_t hash;
 
-    if (value && !len) {
-        len = strlen(value);
-    }
-
-    if (!value) {
-        return NULL;
-    }
-
     hash = dict_hash(value, len);
     /* set len as data for compare callback */
     lyht_set_cb_data(ctx->dict.hash_tab, (void *)&len);
