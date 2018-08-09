@@ -495,6 +495,7 @@ test_ly_ctx_clean(void **state)
     assert_int_equal(dict_used, ctx->dict.hash_tab->used);
 
     /* cleanup */
+    lydict_remove(ctx, "qwertyuiop");
     ly_ctx_destroy(ctx, NULL);
 }
 

@@ -134,6 +134,8 @@ test_lydict_insert(void **state)
     }
 
     assert_string_equal(value, string);
+    lydict_remove(ctx, "bubba");
+    lydict_remove(ctx, "x");
 }
 
 static void
@@ -167,6 +169,8 @@ test_lydict_insert_zc(void **state)
     }
 
     assert_string_equal("bubba", string);
+    lydict_remove(ctx, "bubba");
+    lydict_remove(ctx, "x");
 }
 
 static void
