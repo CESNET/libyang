@@ -1013,7 +1013,7 @@ lyb_parse_subtree(struct ly_ctx *ctx, const char *data, struct lyd_node *parent,
     }
 
     /* make containers default if should be */
-    if (node->schema->nodetype == LYS_CONTAINER) {
+    if ((node->schema->nodetype == LYS_CONTAINER) && !((struct lys_node_container *)node->schema)->presence) {
         LY_TREE_FOR(node->child, iter) {
             if (!iter->dflt) {
                 break;
