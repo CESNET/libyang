@@ -2632,7 +2632,7 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
         if (ly_vecode(ctx) == LYVE_SUBMODULE) {
             /* Remove this module from the list of processed modules,
                as we're about to free it */
-            lyp_check_circmod_pop(module);
+            lyp_check_circmod_pop(ctx);
 
             free(module);
             module = NULL;
