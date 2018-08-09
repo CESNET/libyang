@@ -132,7 +132,7 @@ lyb_read_string(const char *data, char **str, int with_length, struct lyb_state 
     LY_CHECK_ERR_RETURN(!*str, LOGMEM(NULL), -1);
 
     ret += (r = lyb_read(data, (uint8_t *)*str, len, lybs));
-    LYB_HAVE_READ_GOTO(ret, data, error);
+    LYB_HAVE_READ_GOTO(r, data, error);
 
     while (next_chunk) {
         cur_len = lybs->written[lybs->used - 1];
@@ -146,7 +146,7 @@ lyb_read_string(const char *data, char **str, int with_length, struct lyb_state 
         LY_CHECK_ERR_RETURN(!*str, LOGMEM(NULL), -1);
 
         ret += (r = lyb_read(data, ((uint8_t *)*str) + len, cur_len, lybs));
-        LYB_HAVE_READ_GOTO(ret, data, error);
+        LYB_HAVE_READ_GOTO(r, data, error);
 
         len += cur_len;
     }
