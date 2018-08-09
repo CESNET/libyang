@@ -25,6 +25,11 @@
 static int
 lydict_val_eq(void *val1_p, void *val2_p, int UNUSED(mod), void *cb_data)
 {
+    if (!val1_p || !val2_p) {
+        LOGARG;
+        return 0;
+    }
+
     const char *str1 = ((struct dict_rec *)val1_p)->value;
     const char *str2 = ((struct dict_rec *)val2_p)->value;
 
@@ -165,7 +170,7 @@ lydict_remove(struct ly_ctx *ctx, const char *value)
             return;
         }
         /* if value is already in dictionary, decrement reference counter */
-        (match->refcount)--;
+        match->refcount--;
         if (match->refcount == 0) {
             /*
              * remove record
@@ -184,7 +189,6 @@ lydict_remove(struct ly_ctx *ctx, const char *value)
 static char *
 dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
 {
-    char *result = value;
     struct dict_rec *match = NULL, rec;
     int ret = 0;
     uint32_t hash;
@@ -200,38 +204,35 @@ dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
     hash = dict_hash(value, len);
     /* set len as data for compare callback */
     lyht_set_cb_data(ctx->dict.hash_tab, (void *)&len);
-    /*
-     * create record for lyht_find call
-     * this record is inserted if record was not found and zerocopy is set
-     */
+    /* create record for lyht_insert */
     rec.value = value;
     rec.refcount = 1;
-    result = value;
 
-    /* check if value is already inserted */
-    ret = lyht_find(ctx->dict.hash_tab, (void *)&rec, hash, (void **)&match);
-    if (ret == 0) {
-        LY_CHECK_ERR_RETURN(!match, LOGINT(ctx), NULL);
-        (match->refcount)++;
-        result = match->value;
-        LOGDBG(LY_LDGDICT, "inserting (refcount) \"%s\"", match->value);
+    LOGDBG(LY_LDGDICT, "inserting \"%s\"", rec.value);
+    ret = lyht_insert(ctx->dict.hash_tab, (void *)&rec, hash, (void **)&match);
+    if (ret == 1) {
+        match->refcount++;
         if (zerocopy) {
             free(value);
         }
-    } else {
+    } else if (ret == 0) {
         if (!zerocopy) {
-            /* create record with allocated string that will be inserted */
-            rec.value = malloc(sizeof *rec.value * (len + 1));
-            LY_CHECK_ERR_RETURN(!rec.value, LOGMEM(ctx), NULL);
-            memcpy(rec.value, value, len);
-            rec.value[len] = '\0';
-            result = rec.value;
+            /* 
+             * allocate string for new record 
+             * record is already inserted in hash table
+             */
+            match->value = malloc(sizeof *match->value * (len + 1));
+            LY_CHECK_ERR_RETURN(!match->value, LOGMEM(ctx), NULL);
+            memcpy(match->value, value, len);
+            match->value[len] = '\0';
         }
-        LOGDBG(LY_LDGDICT, "inserting \"%s\"", rec.value);
-        ret = lyht_insert(ctx->dict.hash_tab, (void *)&rec, hash);
-        LY_CHECK_ERR_RETURN(ret != 0, LOGINT(ctx), NULL);
+    } else {
+        /* lyht_insert returned error */
+        LOGINT(ctx);
+        return NULL;
     }
-    return result;
+
+    return match->value;
 }
 
 API const char *
