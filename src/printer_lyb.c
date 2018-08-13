@@ -130,7 +130,7 @@ lyb_hash_siblings(struct lys_node *sibling, const struct lys_module **models, in
             }
 
             /* try to insert node with the current collision ID */
-            if (!lyht_insert_with_resize_cb(ht, &sibling, lyb_hash(sibling, i), lyb_ptr_equal_cb)) {
+            if (!lyht_insert_with_resize_cb(ht, &sibling, lyb_hash(sibling, i), lyb_ptr_equal_cb, NULL)) {
                 /* success, no collision */
                 break;
             }
@@ -139,7 +139,7 @@ lyb_hash_siblings(struct lys_node *sibling, const struct lys_module **models, in
             if (i && !lyb_hash_sequence_check(ht, sibling, i, i)) {
                 /* it can be inserted after all, even though there is already a node with the same last collision ID */
                 lyht_set_cb(ht, lyb_ptr_equal_cb);
-                if (lyht_insert(ht, &sibling, lyb_hash(sibling, i))) {
+                if (lyht_insert(ht, &sibling, lyb_hash(sibling, i), NULL)) {
                     lyht_set_cb(ht, lyb_hash_equal_cb);
                     LOGINT(sibling->module->ctx);
                     lyht_free(ht);

@@ -8221,7 +8221,6 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
 
             *(struct lys_restr **)p = calloc(1, sizeof(struct lys_restr));
             LY_CHECK_ERR_GOTO(!*(struct lys_restr **)p, LOGMEM(mod->ctx), error);
-            (*(struct lys_restr **)p)->expr = lydict_insert(mod->ctx, value, 0);
 
             modifier = 0x06; /* ACK */
             if (mod->version >= 2) {

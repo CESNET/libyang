@@ -84,7 +84,7 @@ test_simple(void **state)
     (void)state;
 
     i = 2;
-    assert_int_equal(lyht_insert(ht, &i, i), 0);
+    assert_int_equal(lyht_insert(ht, &i, i, NULL), 0);
     assert_int_equal(lyht_find(ht, &i, i, NULL), 0);
     assert_int_equal(lyht_remove(ht, &i, i), 0);
     assert_int_equal(lyht_find(ht, &i, i, NULL), 1);
@@ -98,13 +98,13 @@ test_half_full(void **state)
     (void)state;
 
     i = 0;
-    assert_int_equal(lyht_insert(ht, &i, i), 0);
+    assert_int_equal(lyht_insert(ht, &i, i, NULL), 0);
     j = 2;
-    assert_int_equal(lyht_insert(ht, &j, j), 0);
+    assert_int_equal(lyht_insert(ht, &j, j, NULL), 0);
     k = 4;
-    assert_int_equal(lyht_insert(ht, &k, k), 0);
+    assert_int_equal(lyht_insert(ht, &k, k, NULL), 0);
     l = 6;
-    assert_int_equal(lyht_insert(ht, &l, l), 0);
+    assert_int_equal(lyht_insert(ht, &l, l, NULL), 0);
 
     assert_int_equal(lyht_find(ht, &i, i, NULL), 0);
     assert_int_equal(lyht_find(ht, &j, j, NULL), 0);
@@ -136,7 +136,7 @@ test_resize(void **state)
     (void)state;
 
     for (i = 2; i < 8; ++i) {
-        assert_int_equal(lyht_insert(ht, &i, i), 0);
+        assert_int_equal(lyht_insert(ht, &i, i, NULL), 0);
     }
 
     assert_int_equal(ht->size, 16);
@@ -186,7 +186,7 @@ test_collisions(void **state)
     (void)state;
 
     for (i = 2; i < 6; ++i) {
-        assert_int_equal(lyht_insert(ht, &i, 2), 0);
+        assert_int_equal(lyht_insert(ht, &i, 2, NULL), 0);
     }
 
     /* check all records */
