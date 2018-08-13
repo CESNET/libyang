@@ -163,7 +163,7 @@ void lyht_free(struct hash_table *ht);
  * @param[in] ht Hash table to search in.
  * @param[in] val_p Pointer to the value to find.
  * @param[in] hash Hash of the stored value.
- * @param[out] match_p pointer to the matching value, optional.
+ * @param[out] match_p Pointer to the matching value, optional.
  * @return 0 on success, 1 on not found.
  */
 int lyht_find(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p);
@@ -174,7 +174,7 @@ int lyht_find(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p)
  * @param[in] ht Hash table to search in.
  * @param[in] val_p Pointer to the previously found value in \p ht.
  * @param[in] hash Hash of the previously found value.
- * @param[out] match_p pointer to the matching value, optional.
+ * @param[out] match_p Pointer to the matching value, optional.
  * @return 0 on success, 1 on not found.
  */
 int lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p);
@@ -186,7 +186,7 @@ int lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **mat
  * @param[in] val_p Pointer to the value to insert. Be careful, if the values stored in the hash table
  * are pointers, \p val_p must be a pointer to a pointer.
  * @param[in] hash Hash of the stored value.
- * @param[out] match_p pointer to the stored value, optional
+ * @param[out] match_p Pointer to the stored value, optional
  * @return 0 on success, 1 if already inserted, -1 on error.
  */
 int lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p);
@@ -201,9 +201,11 @@ int lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash, void **match_
  * are pointers, \p val_p must be a pointer to a pointer.
  * @param[in] hash Hash of the stored value.
  * @param[in] resize_val_equal Val equal callback to use for resizing.
+ * @param[out] match_p Pointer to the stored value, optional
  * @return 0 on success, 1 if already inserted, -1 on error.
  */
-int lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, values_equal_cb resize_val_equal);
+int lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, values_equal_cb resize_val_equal,
+                               void **match_p);
 
 /**
  * @brief Remove a value from a hash table.
