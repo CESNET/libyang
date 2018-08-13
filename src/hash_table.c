@@ -53,7 +53,7 @@ lydict_init(struct dict_table *dict)
         return;
     }
 
-    dict->hash_tab = lyht_new(2048, sizeof(struct dict_rec), lydict_val_eq, NULL, 1);
+    dict->hash_tab = lyht_new(1024, sizeof(struct dict_rec), lydict_val_eq, NULL, 1);
     LY_CHECK_ERR_RETURN(!dict->hash_tab, LOGINT(NULL), );
     pthread_mutex_init(&dict->lock, NULL);
 }
