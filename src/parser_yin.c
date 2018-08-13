@@ -5471,9 +5471,7 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     }
 
     if (list->keys_str) {
-        /* check that we are not in grouping */
-        for (node = parent; node && node->nodetype != LYS_GROUPING; node = lys_parent(node));
-        if (!node && unres_schema_add_node(module, unres, list, UNRES_LIST_KEYS, NULL) == -1) {
+        if (unres_schema_add_node(module, unres, list, UNRES_LIST_KEYS, NULL) == -1) {
             goto error;
         }
     } /* else config false list without a key, key_str presence in case of config true is checked earlier */
