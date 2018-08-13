@@ -185,6 +185,7 @@ write_iff(struct lyout *out, const struct lys_module *module, struct lys_iffeatu
 {
     int count = 0, brackets_flag = *index_e;
     uint8_t op;
+    struct lys_module *mod;
 
     op = iff_getop(expr->expr, *index_e);
     (*index_e)++;
@@ -199,6 +200,9 @@ write_iff(struct lyout *out, const struct lys_module *module, struct lys_iffeatu
                 count += ly_print(out, "%s:", lys_main_module(expr->features[*index_f]->module)->name);
             } else if (prefix_kind == 2) {
                 count += ly_print(out, "%s:", lys_main_module(expr->features[*index_f]->module)->prefix);
+            } else if (prefix_kind == 3) {
+                mod =  lys_main_module(expr->features[*index_f]->module);
+                count += ly_print(out, "%s%s%s:", mod->name, mod->rev_size ? "@" : "", mod->rev_size ? mod->rev[0].date : "");
             }
         }
         count += ly_print(out, expr->features[*index_f]->name);

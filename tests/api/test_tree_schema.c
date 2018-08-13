@@ -313,15 +313,17 @@ char *result_jsons = "{\"a\":{"
   "\"yang-version\":{\"value\":\"1.0\"},"
   "\"revision\":{\"2015-01-01\":{\"description\":{\"text\":\"version 1\"},\"reference\":{\"text\":\"RFC XXXX\"}}},"
   "\"include\":{\"asub\":{},\"atop\":{}},"
-  "\"features\":[\"foo\"],"
-  "\"augment\":{\"/x\":"
-    "{\"if-features\":[\"bar\"]}},"
+  "\"features\":{\"foo\":{}},"
+  "\"augment\":{\"/x\":{"
+    "\"if-features\":[\"bar\"],"
+    "\"data\":{\"bar-y\":{\"nodetype\":\"container\"}}}},"
   "\"groupings\":[\"gg\"],"
   "\"data\":{\"top\":{\"nodetype\":\"container\",\"included-from\":\"atop\"},"
     "\"x\":{\"nodetype\":\"container\"}},"
-  "\"rpcs\":[\"bar-rpc\",\"foo-rpc\"]}}";
+  "\"rpcs\":[\"bar-rpc\",\"foo-rpc\"],"
+  "\"notifications\":[\"bar-notif\",\"fox-notif\"]}}";
 
-char *result_jsons_grouping = "{\"gg\":{\"module\":\"a\",\"groupings\":[],\"data\":{\"bar-gggg\":{\"nodetype\":\"leaf\"}}}}";
+char *result_jsons_grouping = "{\"gg\":{\"module\":\"a\",\"data\":{\"bar-gggg\":{\"nodetype\":\"leaf\"}}}}";
 
 static int
 setup_f(void **state)

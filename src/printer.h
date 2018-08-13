@@ -60,7 +60,7 @@ extern struct ext_substmt_info_s ext_substmt_info[];
 int ly_print(struct lyout *out, const char *format, ...);
 void ly_print_flush(struct lyout *out);
 int ly_write(struct lyout *out, const char *buf, size_t count);
-/* prefix_kind: 0 - print import prefixes for foreign features, 1 - print module names, 2 - print prefixes (tree printer) */
+/* prefix_kind: 0 - print import prefixes for foreign features, 1 - print module names, 2 - print prefixes (tree printer), 3 - print module names including revisions (JSONS printer) */
 int ly_print_iffeature(struct lyout *out, const struct lys_module *module, struct lys_iffeature *expr, int prefix_kind);
 
 int yang_print_model(struct lyout *out, const struct lys_module *module);
