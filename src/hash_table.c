@@ -354,6 +354,7 @@ lyht_resize(struct hash_table *ht, int enlarge)
     struct ht_rec *rec;
     unsigned char *old_recs;
     uint32_t i, old_size;
+    int ret;
 
     old_recs = ht->recs;
     old_size = ht->size;
@@ -376,7 +377,9 @@ lyht_resize(struct hash_table *ht, int enlarge)
     for (i = 0; i < old_size; ++i) {
         rec = lyht_get_rec(old_recs, ht->rec_size, i);
         if (rec->hits > 0) {
-            lyht_insert(ht, rec->val, rec->hash, NULL);
+            ret = lyht_insert(ht, rec->val, rec->hash, NULL);
+            assert(!ret);
+            (void)ret;
         }
     }
 
@@ -579,11 +582,13 @@ lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p
 }
 
 int
-lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p)
+lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash,
+                           values_equal_cb resize_val_equal, void **match_p)
 {
     struct ht_rec *rec, *crec = NULL;
     int32_t i;
     int r, ret;
+    values_equal_cb old_val_equal;
 
     if (!lyht_find_first(ht, hash, &rec)) {
         /* we found matching shortened hash */
@@ -642,15 +647,29 @@ lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p)
             ht->resize = 2;
         }
         if ((ht->resize == 2) && (r >= LYHT_ENLARGE_PERCENTAGE)) {
+            if (resize_val_equal) {
+                old_val_equal = lyht_set_cb(ht, resize_val_equal);
+            }
+
             /* enlarge */
             ret = lyht_resize(ht, 1);
             /* if hash_table was resized, we need to find new matching value */
             if (ret == 0 && match_p) {
                 lyht_find(ht, val_p, hash, match_p);
             }
+            
+            if (resize_val_equal) {
+                lyht_set_cb(ht, old_val_equal);
+            }
         }
     }
     return ret;
+}
+
+int
+lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p)
+{
+    return lyht_insert_with_resize_cb(ht, val_p, hash, NULL, match_p);
 }
 
 int

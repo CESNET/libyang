@@ -79,6 +79,13 @@ typedef enum {
                                          into the anydata node without duplication, caller is supposed to not manipulate
                                          with the data after a successful call (including calling lyd_free() on the
                                          provided data) */
+    LYD_ANYDATA_LYB = 0x20,         /**< value is a memory with serialized data tree in LYB format. The data are handled
+                                         as a constant string. In case of using the value as input parameter,
+                                         the #LYD_ANYDATA_LYBD can be used for dynamically allocated string. */
+    LYD_ANYDATA_LYBD = 0x21,        /**< In case of using LYB value as input parameter, this enumeration is
+                                         supposed to be used for dynamically allocated strings (it is actually
+                                         combination of #LYD_ANYDATA_LYB and #LYD_ANYDATA_STRING (and it can be also
+                                         specified as ORed value of the mentioned values). */
 } LYD_ANYDATA_VALUETYPE;
 
 /**
@@ -163,7 +170,8 @@ struct lyd_attr {
  * ::lyd_node_leaf_list or ::lyd_node_anydata structures. This structure fits only to #LYS_CONTAINER, #LYS_LIST and
  * #LYS_CHOICE values.
  *
- * To traverse through all the child elements or attributes, use #LY_TREE_FOR or #LY_TREE_FOR_SAFE macro.
+ * To traverse all the child elements or attributes, use #LY_TREE_FOR or #LY_TREE_FOR_SAFE macro. To traverse
+ * the whole subtree, use #LY_TREE_DFS_BEGIN macro.
  */
 struct lyd_node {
     struct lys_node *schema;         /**< pointer to the schema definition of this node */
@@ -286,6 +294,7 @@ struct lyd_node_anydata {
     LYD_ANYDATA_VALUETYPE value_type;/**< type of the stored anydata value */
     union {
         const char *str;             /**< string value, in case of printing as XML, characters like '<' or '&' are escaped */
+        char *mem;                   /**< raw memory (used for LYB format) */
         struct lyxml_elem *xml;      /**< xml tree */
         struct lyd_node *tree;       /**< libyang data tree, does not change the root's parent, so it is not possible
                                           to get from the data tree into the anydata/anyxml */
@@ -1297,6 +1306,14 @@ int lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count),
  * @return Closest double equivalent to the decimal64 value.
  */
 double lyd_dec64_to_double(const struct lyd_node *node);
+
+/**
+ * @brief Get the length of a printed LYB data tree.
+ *
+ * @param[in] data LYB data.
+ * @return \p data length or -1 on error.
+ */
+int lyd_lyb_data_length(const char *data);
 
 #ifdef LY_ENABLED_LYD_PRIV
 

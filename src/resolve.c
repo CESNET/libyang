@@ -2611,7 +2611,7 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
     struct lyd_node_leaf_list *llist;
     const struct lys_module *prev_mod;
     struct ly_ctx *ctx;
-    const struct lys_node *ssibling;
+    const struct lys_node *ssibling, *sparent;
     struct lys_node_list *slist;
     struct parsed_pred pp;
 
@@ -2661,7 +2661,21 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
     while (1) {
         /* find the correct schema node first */
         ssibling = NULL;
-        while ((ssibling = lys_getnext(ssibling, (start && start->parent) ? start->parent->schema : NULL, prev_mod, 0))) {
+        sparent = (start && start->parent) ? start->parent->schema : NULL;
+        while ((ssibling = lys_getnext(ssibling, sparent, prev_mod, 0))) {
+            /* skip invalid input/output nodes */
+            if (sparent && (sparent->nodetype & (LYS_RPC | LYS_ACTION))) {
+                if (options & LYD_PATH_OPT_OUTPUT) {
+                    if (lys_parent(ssibling)->nodetype == LYS_INPUT) {
+                        continue;
+                    }
+                } else {
+                    if (lys_parent(ssibling)->nodetype == LYS_OUTPUT) {
+                        continue;
+                    }
+                }
+            }
+
             if (!schema_nodeid_siblingcheck(ssibling, prev_mod, mod_name, mod_name_len, name, nam_len)) {
                 break;
             }
@@ -7808,32 +7822,34 @@ error:
 static int
 resolve_leafref(struct lyd_node_leaf_list *leaf, const char *path, int req_inst, struct lyd_node **ret)
 {
-    struct ly_set *set;
+    struct lyxp_set xp_set;
     uint32_t i;
 
+    memset(&xp_set, 0, sizeof xp_set);
     *ret = NULL;
 
     /* syntax was already checked, so just evaluate the path using standard XPath */
-    set = lyd_find_path((struct lyd_node *)leaf, path);
-    if (!set) {
+    if (lyxp_eval(path, (struct lyd_node *)leaf, LYXP_NODE_ELEM, lyd_node_module((struct lyd_node *)leaf), &xp_set, 0) != EXIT_SUCCESS) {
         return -1;
     }
 
-    for (i = 0; i < set->number; ++i) {
-        if (!(set->set.d[i]->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
-            continue;
-        }
+    if (xp_set.type == LYXP_SET_NODE_SET) {
+        for (i = 0; i < xp_set.used; ++i) {
+            if ((xp_set.val.nodes[i].type != LYXP_NODE_ELEM) || !(xp_set.val.nodes[i].node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+                continue;
+            }
 
-        /* not that the value is already in canonical form since the parsers does the conversion,
-         * so we can simply compare just the values */
-        if (ly_strequal(leaf->value_str, ((struct lyd_node_leaf_list *)set->set.d[i])->value_str, 1)) {
-            /* we have the match */
-            *ret = set->set.d[i];
-            break;
+            /* not that the value is already in canonical form since the parsers does the conversion,
+             * so we can simply compare just the values */
+            if (ly_strequal(leaf->value_str, ((struct lyd_node_leaf_list *)xp_set.val.nodes[i].node)->value_str, 1)) {
+                /* we have the match */
+                *ret = xp_set.val.nodes[i].node;
+                break;
+            }
         }
     }
 
-    ly_set_free(set);
+    lyxp_set_cast(&xp_set, LYXP_SET_EMPTY, (struct lyd_node *)leaf, NULL, 0);
 
     if (!*ret) {
         /* reference not found */

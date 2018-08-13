@@ -89,13 +89,13 @@
 #define LY_NEW(data, element, class)\
     {\
         return data->element ? std::make_shared<class>(data->element, deleter) : nullptr;\
-    };
+    }
 
 #define LY_NEW_CASTED(cast, data, element, class)\
     {\
         cast *casted = (struct cast *) data;\
         return casted->element ? std::make_shared<class>(casted->element, deleter) : nullptr;\
-    };
+    }
 
 #define LY_NEW_LIST(data, element, size, class)\
     {\
@@ -107,13 +107,13 @@
             s_vector->push_back(std::make_shared<class>(&data->element[i], deleter));\
         }\
         return s_vector;\
-    };
+    }
 
 #define LY_NEW_LIST_CASTED(cast, data, element, size, class)\
     {\
         struct cast *casted = (struct cast *) data;\
         LY_NEW_LIST(casted, element, size, class);\
-    };
+    }
 
 #define LY_NEW_P_LIST(data, element, size, class)\
     {\
@@ -125,13 +125,13 @@
             s_vector->push_back(std::make_shared<class>(data->element[i], deleter));\
         }\
         return s_vector;\
-    };
+    }
 
 #define LY_NEW_P_LIST_CASTED(cast, data, element, size, class)\
     {\
         struct cast *casted = (struct cast *) data;\
         LY_NEW_P_LIST(casted, element, size, class);\
-    };
+    }
 
 #define LY_NEW_STRING_LIST(data, element, size)\
     {\
@@ -143,7 +143,7 @@
             s_vector->push_back(std::string(data->element[i]));\
         }\
         return s_vector;\
-    };
+    }
 
 #include <iostream>
 #include <memory>

@@ -45,19 +45,56 @@ lyb_ptr_equal_cb(void *val1_p, void *val2_p, int UNUSED(mod), void *UNUSED(cb_da
     return 0;
 }
 
-static struct hash_table *
-lyb_hash_siblings(struct lys_node *sibling, const struct lys_module **models, int mod_count)
+/* check that sibling collision hash i is safe to insert into ht
+ * return: 0 - no whole hash sequence collision, 1 - whole hash sequence collision, -1 - fatal error
+ */
+static int
+lyb_hash_sequence_check(struct hash_table *ht, struct lys_node *sibling, int ht_col_id, int compare_col_id)
 {
-    LYB_HASH hash;
+    int j;
+    struct lys_node **col_node;
+
+    /* get the first node inserted with last hash col ID ht_col_id */
+    if (lyht_find(ht, &sibling, lyb_hash(sibling, ht_col_id), (void **)&col_node)) {
+        /* there is none. valid situation */
+        return 0;
+    }
+
+    lyht_set_cb(ht, lyb_ptr_equal_cb);
+    do {
+        for (j = compare_col_id; j > -1; --j) {
+            if (lyb_hash(sibling, j) != lyb_hash(*col_node, j)) {
+                /* one non-colliding hash */
+                break;
+            }
+        }
+        if (j == -1) {
+            /* all whole hash sequences of nodes inserted with last hash col ID compare_col_id collide */
+            lyht_set_cb(ht, lyb_hash_equal_cb);
+            return 1;
+        }
+
+        /* get next node inserted with last hash col ID ht_col_id */
+    } while (!lyht_find_next(ht, col_node, lyb_hash(*col_node, ht_col_id), (void **)&col_node));
+
+    lyht_set_cb(ht, lyb_hash_equal_cb);
+    return 0;
+}
+
+static struct hash_table *
+lyb_hash_siblings(struct lys_node *sibling, const struct lys_module **models, int mod_count, int options)
+{
     struct hash_table *ht;
-    struct lys_node *parent;
+    struct lys_node *parent, *iter;
     const struct lys_module *mod;
-    uint32_t i;
+    int i, j;
 
     ht = lyht_new(1, sizeof(struct lys_node *), lyb_hash_equal_cb, NULL, 1);
     LY_CHECK_ERR_RETURN(!ht, LOGMEM(sibling->module->ctx), NULL);
 
-    for (parent = lys_parent(sibling); parent && (parent->nodetype == LYS_USES); parent = lys_parent(parent));
+    for (parent = lys_parent(sibling);
+         parent && (parent->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE | LYS_INPUT | LYS_OUTPUT));
+         parent = lys_parent(parent));
     mod = lys_node_module(sibling);
 
     sibling = NULL;
@@ -67,18 +104,53 @@ lyb_hash_siblings(struct lys_node *sibling, const struct lys_module **models, in
             continue;
         }
 
+        if (options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY)) {
+            for (iter = lys_parent(sibling);
+                 iter && (iter->nodetype & (LYS_USES | LYS_CASE | LYS_CHOICE));
+                 iter = lys_parent(iter));
+
+            if (((options & LYD_OPT_RPC) && (iter->nodetype == LYS_OUTPUT))
+                    || ((options & LYD_OPT_RPCREPLY) && (iter->nodetype == LYS_INPUT))) {
+                /* skip unused nodes */
+                continue;
+            }
+        }
+
+        /* find the first non-colliding hash (or specifically non-colliding hash sequence) */
         for (i = 0; i < LYB_HASH_BITS; ++i) {
-            hash = lyb_hash(sibling, i);
-            if (!hash) {
-                lyht_free(ht);
-                return NULL;
+            /* check that we are not colliding with nodes inserted with a lower collision ID than ours */
+            for (j = i - 1; j > -1; --j) {
+                if (lyb_hash_sequence_check(ht, sibling, j, i)) {
+                    break;
+                }
+            }
+            if (j > -1) {
+                /* some check failed, we must use a higher collision ID */
+                continue;
             }
 
-            if (!lyht_insert(ht, &sibling, hash, NULL)) {
+            /* try to insert node with the current collision ID */
+            if (!lyht_insert_with_resize_cb(ht, &sibling, lyb_hash(sibling, i), lyb_ptr_equal_cb, NULL)) {
                 /* success, no collision */
                 break;
             }
+
+            /* make sure we really cannot insert it with this hash col ID (meaning the whole hash sequence is colliding) */
+            if (i && !lyb_hash_sequence_check(ht, sibling, i, i)) {
+                /* it can be inserted after all, even though there is already a node with the same last collision ID */
+                lyht_set_cb(ht, lyb_ptr_equal_cb);
+                if (lyht_insert(ht, &sibling, lyb_hash(sibling, i), NULL)) {
+                    lyht_set_cb(ht, lyb_hash_equal_cb);
+                    LOGINT(sibling->module->ctx);
+                    lyht_free(ht);
+                    return NULL;
+                }
+                lyht_set_cb(ht, lyb_hash_equal_cb);
+                break;
+            }
+            /* there is still another colliding schema node with the same hash sequence, try higher collision ID */
         }
+
         if (i == LYB_HASH_BITS) {
             /* wow */
             LOGINT(sibling->module->ctx);
@@ -102,6 +174,7 @@ lyb_hash_find(struct hash_table *ht, struct lys_node *node)
     for (i = 0; i < LYB_HASH_BITS; ++i) {
         hash = lyb_hash(node, i);
         if (!hash) {
+            LOGINT(node->module->ctx);
             return 0;
         }
 
@@ -111,7 +184,8 @@ lyb_hash_find(struct hash_table *ht, struct lys_node *node)
         }
     }
     /* cannot happen, we already calculated the hash */
-    if (i > LYB_HASH_BITS) {
+    if (i == LYB_HASH_BITS) {
+        LOGINT(node->module->ctx);
         return 0;
     }
 
@@ -124,6 +198,7 @@ lyb_write(struct lyout *out, const uint8_t *buf, size_t count, struct lyb_state 
 {
     int ret, i, full_chunk_i;
     size_t r, to_write;
+    LYB_META meta;
 
     assert(out && lybs);
 
@@ -158,22 +233,35 @@ lyb_write(struct lyout *out, const uint8_t *buf, size_t count, struct lyb_state 
         ret += r;
 
         if (full_chunk_i > -1) {
-            /* write the chunk size */
-            r = ly_write_skipped(out, lybs->position[full_chunk_i], (char *)&lybs->written[full_chunk_i], LYB_SIZE_BYTES);
-            if (r < LYB_SIZE_BYTES) {
+            /* write the meta information (inner chunk count and chunk size) */
+            memcpy(&meta, &lybs->written[full_chunk_i], LYB_SIZE_BYTES);
+            memcpy(((uint8_t *)&meta) + LYB_SIZE_BYTES, &lybs->inner_chunks[full_chunk_i], LYB_INCHUNK_BYTES);
+
+            r = ly_write_skipped(out, lybs->position[full_chunk_i], (char *)&meta, LYB_META_BYTES);
+            if (r < LYB_META_BYTES) {
                 return -1;
             }
 
-            /* zero written */
+            /* zero written and inner chunks */
             lybs->written[full_chunk_i] = 0;
+            lybs->inner_chunks[full_chunk_i] = 0;
 
             /* skip space for another chunk size */
-            r = ly_write_skip(out, LYB_SIZE_BYTES, &lybs->position[full_chunk_i]);
-            if (r < LYB_SIZE_BYTES) {
+            r = ly_write_skip(out, LYB_META_BYTES, &lybs->position[full_chunk_i]);
+            if (r < LYB_META_BYTES) {
                 return -1;
             }
 
             ret += r;
+
+            /* increase inner chunk count */
+            for (i = 0; i < full_chunk_i; ++i) {
+                if (lybs->inner_chunks[i] == LYB_INCHUNK_MAX) {
+                    LOGINT(NULL);
+                    return -1;
+                }
+                ++lybs->inner_chunks[i];
+            }
         }
     }
 
@@ -184,30 +272,48 @@ static int
 lyb_write_stop_subtree(struct lyout *out, struct lyb_state *lybs)
 {
     int r;
+    LYB_META meta;
 
-    /* write the chunk size */
-    r = ly_write_skipped(out, lybs->position[lybs->used - 1], (char *)&lybs->written[lybs->used - 1], LYB_SIZE_BYTES);
-    if (r < LYB_SIZE_BYTES) {
+    /* write the meta chunk information */
+    memcpy(&meta, &lybs->written[lybs->used - 1], LYB_SIZE_BYTES);
+    memcpy(((uint8_t *)&meta) + LYB_SIZE_BYTES, &lybs->inner_chunks[lybs->used - 1], LYB_INCHUNK_BYTES);
+
+    r = ly_write_skipped(out, lybs->position[lybs->used - 1], (char *)&meta, LYB_META_BYTES);
+    if (r < LYB_META_BYTES) {
         return -1;
     }
 
     --lybs->used;
-    return r;
+    return 0;
 }
 
 static int
 lyb_write_start_subtree(struct lyout *out, struct lyb_state *lybs)
 {
+    int i;
+
     if (lybs->used == lybs->size) {
         lybs->size += LYB_STATE_STEP;
         lybs->written = ly_realloc(lybs->written, lybs->size * sizeof *lybs->written);
         lybs->position = ly_realloc(lybs->position, lybs->size * sizeof *lybs->position);
-        LY_CHECK_ERR_RETURN(!lybs->written || !lybs->position, LOGMEM(NULL), -1);
+        lybs->inner_chunks = ly_realloc(lybs->inner_chunks, lybs->size * sizeof *lybs->inner_chunks);
+        LY_CHECK_ERR_RETURN(!lybs->written || !lybs->position || !lybs->inner_chunks, LOGMEM(NULL), -1);
     }
 
     ++lybs->used;
     lybs->written[lybs->used - 1] = 0;
-    return ly_write_skip(out, LYB_SIZE_BYTES, &lybs->position[lybs->used - 1]);
+    lybs->inner_chunks[lybs->used - 1] = 0;
+
+    /* another inner chunk */
+    for (i = 0; i < lybs->used - 1; ++i) {
+        if (lybs->inner_chunks[i] == LYB_INCHUNK_MAX) {
+            LOGINT(NULL);
+            return -1;
+        }
+        ++lybs->inner_chunks[i];
+    }
+
+    return ly_write_skip(out, LYB_META_BYTES, &lybs->position[lybs->used - 1]);
 }
 
 static int
@@ -326,9 +432,10 @@ lyb_print_data_models(struct lyout *out, const struct lyd_node *root, struct lyb
 {
     int ret = 0;
     const struct lys_module **models = NULL, *mod;
+    const struct lys_submodule *submod;
     const struct lyd_node *node;
     size_t mod_count = 0;
-    uint32_t idx = 0, i;
+    uint32_t idx = 0, i, j;
 
     /* first, collect all data node modules */
     LY_TREE_FOR(root, node) {
@@ -354,6 +461,24 @@ next_mod:
             if (is_added_model(models, mod_count, lys_node_module(mod->augment[i].target))) {
                 add_model(&models, &mod_count, mod);
                 goto next_mod;
+            }
+        }
+
+        /* submodules */
+        for (j = 0; j < mod->inc_size; ++j) {
+            submod = mod->inc[j].submodule;
+
+            for (i = 0; i < submod->deviation_size; ++i) {
+                if (submod->deviation[i].orig_node && is_added_model(models, mod_count, lys_node_module(submod->deviation[i].orig_node))) {
+                    add_model(&models, &mod_count, mod);
+                    goto next_mod;
+                }
+            }
+            for (i = 0; i < submod->augment_size; ++i) {
+                if (is_added_model(models, mod_count, lys_node_module(submod->augment[i].target))) {
+                    add_model(&models, &mod_count, mod);
+                    goto next_mod;
+                }
             }
         }
     }
@@ -385,7 +510,7 @@ lyb_print_header(struct lyout *out)
 static int
 lyb_print_anydata(struct lyd_node_anydata *anydata, struct lyout *out, struct lyb_state *lybs)
 {
-    int ret = 0;
+    int ret = 0, len;
     char *buf;
     LYD_ANYDATA_VALUETYPE type;
 
@@ -402,9 +527,11 @@ lyb_print_anydata(struct lyd_node_anydata *anydata, struct lyout *out, struct ly
     case LYD_ANYDATA_JSON:
     case LYD_ANYDATA_SXML:
     case LYD_ANYDATA_CONSTSTRING:
+    case LYD_ANYDATA_LYB:
         type = anydata->value_type;
         break;
     default:
+        LOGERR(anydata->schema->module->ctx, LY_EINT, "Unsupported anydata value type to print.");
         return -1;
     }
 
@@ -414,6 +541,11 @@ lyb_print_anydata(struct lyd_node_anydata *anydata, struct lyout *out, struct ly
     /* followed by the content */
     if (type == LYD_ANYDATA_DATATREE) {
         ret += lyb_print_data(out, anydata->value.tree, 0);
+    } else if (type == LYD_ANYDATA_LYB) {
+        len = lyd_lyb_data_length(anydata->value.mem);
+        if (len > -1) {
+            ret += lyb_write_string(anydata->value.str, (size_t)len, 0, out, lybs);
+        }
     } else {
         ret += lyb_write_string(anydata->value.str, 0, 0, out, lybs);
     }
@@ -622,19 +754,40 @@ lyb_print_attributes(struct lyout *out, struct lyd_attr *attr, struct lyb_state 
 }
 
 static int
-lyb_print_schema_hash(struct lyout *out, struct lys_node *schema, struct hash_table **sibling_ht, struct lyb_state *lybs)
+lyb_print_schema_hash(struct lyout *out, struct lys_node *schema, struct hash_table **sibling_ht, struct lyb_state *lybs,
+                      int options)
 {
     int r, ret = 0;
     void *mem;
     uint32_t i;
     LYB_HASH hash;
-    struct lys_node *first_sibling, *parent;
+    struct lys_node *first_sibling, *parent, *iter;
 
     /* create whole sibling HT if not already created and saved */
     if (!*sibling_ht) {
-        /* get first schema sibling */
-        for (parent = lys_parent(schema); parent && (parent->nodetype == LYS_USES); parent = lys_parent(parent));
+        /* get first schema data sibling */
+        for (parent = lys_parent(schema);
+             parent && (parent->nodetype & (LYS_USES | LYS_CASE | LYS_CHOICE | LYS_INPUT | LYS_OUTPUT));
+             parent = lys_parent(parent)) {
+
+            /* we have checked this before */
+            assert(!(options & LYD_OPT_RPC) || (parent->nodetype != LYS_OUTPUT));
+            assert(!(options & LYD_OPT_RPCREPLY) || (parent->nodetype != LYS_INPUT));
+        }
+
         first_sibling = (struct lys_node *)lys_getnext(NULL, parent, lys_node_module(schema), 0);
+        if (options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY)) {
+check_inout:
+            for (iter = lys_parent(first_sibling);
+                 iter && (iter->nodetype & (LYS_USES | LYS_CASE | LYS_CHOICE));
+                 iter = lys_parent(iter));
+
+            if (((options & LYD_OPT_RPC) && (iter->nodetype == LYS_OUTPUT))
+                    || ((options & LYD_OPT_RPCREPLY) && (iter->nodetype == LYS_INPUT))) {
+                first_sibling = (struct lys_node *)lys_getnext(first_sibling, NULL, NULL, 0);
+                goto check_inout;
+            }
+        }
 
         for (r = 0; r < lybs->sib_ht_count; ++r) {
             if (lybs->sib_ht[r].first_sibling == first_sibling) {
@@ -646,7 +799,7 @@ lyb_print_schema_hash(struct lyout *out, struct lys_node *schema, struct hash_ta
 
         if (!*sibling_ht) {
             /* we must create sibling hash table */
-            *sibling_ht = lyb_hash_siblings(first_sibling, NULL, 0);
+            *sibling_ht = lyb_hash_siblings(first_sibling, NULL, 0, options);
             if (!*sibling_ht) {
                 return -1;
             }
@@ -704,7 +857,22 @@ lyb_print_subtree(struct lyout *out, const struct lyd_node *node, struct hash_ta
 {
     int r, ret = 0;
     struct lyd_node_leaf_list *leaf;
+    struct lys_node *sparent;
     struct hash_table *child_ht = NULL;
+
+    /* skip nodes that should not be printed */
+    if (options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY)) {
+        for (sparent = lys_parent(node->schema);
+            sparent && (sparent->nodetype & (LYS_USES | LYS_CASE | LYS_CHOICE));
+            sparent = lys_parent(sparent));
+
+        if ((options & LYD_OPT_RPC) && (sparent->nodetype == LYS_OUTPUT)) {
+            return 0;
+        }
+        if ((options & LYD_OPT_RPCREPLY) && (sparent->nodetype == LYS_INPUT)) {
+            return 0;
+        }
+    }
 
     /* register a new subtree */
     ret += (r = lyb_write_start_subtree(out, lybs));
@@ -723,7 +891,7 @@ lyb_print_subtree(struct lyout *out, const struct lyd_node *node, struct hash_ta
         }
     }
 
-    ret += (r = lyb_print_schema_hash(out, node->schema, sibling_ht, lybs));
+    ret += (r = lyb_print_schema_hash(out, node->schema, sibling_ht, lybs, options));
     if (r < 0) {
         return -1;
     }
@@ -837,6 +1005,7 @@ lyb_print_data(struct lyout *out, const struct lyd_node *root, int options)
 finish:
     free(lybs.written);
     free(lybs.position);
+    free(lybs.inner_chunks);
     for (r = 0; r < lybs.sib_ht_count; ++r) {
         lyht_free(lybs.sib_ht[r].ht);
     }

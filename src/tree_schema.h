@@ -265,10 +265,10 @@ typedef enum {
  *
  * @{
  */
-#define LYS_OUTOPT_TREE_RFC        0x01 /**< Conform to the RFC TODO tree output */
-#define LYS_OUTOPT_TREE_GROUPING   0x02 /**< Print groupings separately */
-#define LYS_OUTOPT_TREE_USES       0x04 /**< Print only uses instead the resolved grouping nodes */
-#define LYS_OUTOPT_TREE_NO_LEAFREF 0x08 /**< Do not print the target of leafrefs */
+#define LYS_OUTOPT_TREE_RFC        0x01 /**< Conform to the RFC TODO tree output (only for tree format) */
+#define LYS_OUTOPT_TREE_GROUPING   0x02 /**< Print groupings separately (only for tree format) */
+#define LYS_OUTOPT_TREE_USES       0x04 /**< Print only uses instead the resolved grouping nodes (only for tree format) */
+#define LYS_OUTOPT_TREE_NO_LEAFREF 0x08 /**< Do not print the target of leafrefs (only for tree format) */
 
 /**
  * @}
@@ -1227,7 +1227,8 @@ struct lys_iffeature {
  * the node in some way or get more appropriate information, you are supposed to cast it to the appropriate
  * lys_node_* structure according to the #nodetype value.
  *
- * To traverse through all the child elements, use #LY_TREE_FOR or #LY_TREE_FOR_SAFE macro.
+ * To traverse through all the child elements, use #LY_TREE_FOR or #LY_TREE_FOR_SAFE macro. To traverse
+ * the whole subtree, use #LY_TREE_DFS_BEGIN macro.
  *
  * To cover all possible schema nodes, the ::lys_node type is used in ::lyd_node#schema for referencing schema
  * definition for a specific data node instance.
@@ -1255,7 +1256,10 @@ struct lys_node {
 
     LYS_NODE nodetype;               /**< type of the node (mandatory) */
     struct lys_node *parent;         /**< pointer to the parent node, NULL in case of a top level node */
-    struct lys_node *child;          /**< pointer to the first child node */
+    struct lys_node *child;          /**< pointer to the first child node \note Since other lys_node_*
+                                          structures represent end nodes, this member
+                                          is replaced in those structures. Therefore, be careful with accessing
+                                          this member without having information about the ::lys_node#nodetype. */
     struct lys_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
     struct lys_node *prev;           /**< pointer to the previous sibling node \note Note that this pointer is
                                           never NULL. If there is no sibling node, pointer points to the node
@@ -1273,7 +1277,7 @@ struct lys_node {
  * @brief Schema container node structure.
  *
  * Beginning of the structure is completely compatible with ::lys_node structure extending it by the #when,
- * #presence, #must_size, #tpdf_size, #must and #tpdf members.
+ * #must, #tpdf, and #presence members.
  *
  * The container schema node can be instantiated in the data tree, so the ::lys_node_container can be directly
  * referenced from ::lyd_node#schema.
