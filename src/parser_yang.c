@@ -160,6 +160,7 @@ error:
     free(value);
     lydict_remove(module->ctx, imp_old->dsc);
     lydict_remove(module->ctx, imp_old->ref);
+    lydict_remove(module->ctx, imp_old->prefix);
     lys_extension_instances_free(module->ctx, imp_old->ext, imp_old->ext_size, NULL);
     return EXIT_FAILURE;
 }
