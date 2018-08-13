@@ -686,12 +686,34 @@ lyd_wd_toprint(const struct lyd_node *node, int options)
                     if (elem->dflt) {
                         /* skip subtree */
                         goto trim_dfs_nextsibling;
-                    } else if (elem->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+                    }
+                    switch (elem->schema->nodetype) {
+                    case LYS_LEAF:
+                    case LYS_LEAFLIST:
                         if (!lyd_wd_default((struct lyd_node_leaf_list *)elem)) {
                             /* non-default node */
                             flag = 1;
-                            break;
                         }
+                        break;
+                    case LYS_ANYDATA:
+                    case LYS_ANYXML:
+                    case LYS_NOTIF:
+                    case LYS_ACTION:
+                    case LYS_LIST:
+                        /* non-default nodes */
+                        flag = 1;
+                        break;
+                    case LYS_CONTAINER:
+                        if (((struct lys_node_container *)elem->schema)->presence) {
+                            /* non-default node */
+                            flag = 1;
+                        }
+                        break;
+                    default:
+                        break;
+                    }
+                    if (flag) {
+                        break;
                     }
 
                     /* modified LY_TREE_DFS_END */

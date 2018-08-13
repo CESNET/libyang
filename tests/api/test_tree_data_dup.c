@@ -195,9 +195,9 @@ test_dup_to_ctx_leafrefs(void **state)
     assert_ptr_not_equal(st->dt2, NULL);
 
     /* the result is not valid - the leafref is not resolved */
-    assert_ptr_equal(((struct lyd_node_leaf_list *)st->dt2->child)->value.leafref, NULL);
+    assert_int_not_equal(((struct lyd_node_leaf_list *)st->dt2->child)->value_type, LY_TYPE_LEAFREF);
     assert_int_equal(lyd_validate(&st->dt2, LYD_OPT_CONFIG, st->ctx2), 0);
-    assert_ptr_not_equal(((struct lyd_node_leaf_list *)st->dt2->child)->value.leafref, NULL);
+    assert_ptr_equal(((struct lyd_node_leaf_list *)st->dt2->child)->value_type, LY_TYPE_LEAFREF);
 
     /* the values are the same, but they are stored in different contexts */
     assert_string_equal(((struct lyd_node_leaf_list *)st->dt1->child)->value_str,

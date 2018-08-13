@@ -242,15 +242,6 @@ void lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **
                                   void (*private_destructor)(const struct lys_node *node, void *priv));
 
 /**
- * @brief Switch two same schema nodes. \p src must be a shallow copy
- * of \p dst.
- *
- * @param[in] dst Destination node that will be replaced with \p src.
- * @param[in] src Source node that will replace \p dst.
- */
-void lys_node_switch(struct lys_node *dst, struct lys_node *src);
-
-/**
  * @brief Add pointer to \p leafref to \p leafref_target children so that it knows there
  * are some leafrefs referring it.
  *

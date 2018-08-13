@@ -741,7 +741,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
 {
     struct ly_ctx *ctx = child->module->ctx;
     struct lys_node *iter, **pchild;
-    struct lys_node_inout *in, *out, *inout;
+    struct lys_node_inout *in, *out;
     struct lys_node_case *c;
     int type, shortcase = 0;
     void *p;
@@ -852,28 +852,36 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
     }
 
     if ((child->nodetype & (LYS_INPUT | LYS_OUTPUT)) && parent->nodetype != LYS_EXT) {
-        /* replace the implicit input/output node */
-        if (child->nodetype == LYS_OUTPUT) {
-            inout = (struct lys_node_inout *)parent->child->next;
-        } else { /* LYS_INPUT */
-            inout = (struct lys_node_inout *)parent->child;
-            parent->child = child;
+        /* find the implicit input/output node */
+        LY_TREE_FOR(parent->child, iter) {
+            if (iter->nodetype == child->nodetype) {
+                break;
+            }
         }
-        if (inout->next) {
-            child->next = inout->next;
-            inout->next->prev = child;
-            inout->next = NULL;
+        assert(iter);
+
+        /* switch the old implicit node (iter) with the new one (child) */
+        if (parent->child == iter) {
+            /* first child */
+            parent->child = child;
         } else {
+            iter->prev->next = child;
+        }
+        child->prev = iter->prev;
+        child->next = iter->next;
+        if (iter->next) {
+            iter->next->prev = child;
+        } else {
+            /* last child */
             parent->child->prev = child;
         }
-        child->prev = inout->prev;
-        if (inout->prev->next) {
-            inout->prev->next = child;
-        }
-        inout->prev = (struct lys_node *)inout;
         child->parent = parent;
-        inout->parent = NULL;
-        lys_node_free((struct lys_node *)inout, NULL, 0);
+
+        /* isolate the node and free it */
+        iter->next = NULL;
+        iter->prev = iter;
+        iter->parent = NULL;
+        lys_node_free(iter, NULL, 0);
     } else {
         if (shortcase) {
             /* create the implicit case to allow it to serve as a target of the augments,
@@ -3323,99 +3331,171 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
     return result;
 }
 
-void
-lys_node_switch(struct lys_node *dst, struct lys_node *src)
+/**
+ * @brief Switch contents of two same schema nodes. One of the nodes
+ * is expected to be ashallow copy of the other.
+ *
+ * @param[in] node1 Node whose contents will be switched with \p node2.
+ * @param[in] node2 Node whose contents will be switched with \p node1.
+ */
+static void
+lys_node_switch(struct lys_node *node1, struct lys_node *node2)
 {
-    struct lys_node *child;
+    const size_t mem_size = 104;
+    uint8_t mem[mem_size];
+    size_t offset, size;
 
-    assert((dst->module == src->module) && ly_strequal(dst->name, src->name, 1) && (dst->nodetype == src->nodetype));
+    assert((node1->module == node2->module) && ly_strequal(node1->name, node2->name, 1) && (node1->nodetype == node2->nodetype));
 
-    /* sibling next */
-    if (dst->prev->next) {
-        dst->prev->next = src;
+    /*
+     * Initially, the nodes were really switched in the tree which
+     * caused problems for some other nodes with pointers (augments, leafrefs, ...)
+     * because their pointers were not being updated. Code kept in case there is
+     * a use of it in future (it took some debugging to cover all the cases).
+
+    * sibling next *
+    if (node1->prev->next) {
+        node1->prev->next = node2;
     }
 
-    /* sibling prev */
-    if (dst->next) {
-        dst->next->prev = src;
+    * sibling prev *
+    if (node1->next) {
+        node1->next->prev = node2;
     } else {
-        for (child = dst->prev; child->prev->next; child = child->prev);
-        child->prev = src;
+        for (child = node1->prev; child->prev->next; child = child->prev);
+        child->prev = node2;
     }
 
-    /* next */
-    src->next = dst->next;
-    dst->next = NULL;
+    * next *
+    node2->next = node1->next;
+    node1->next = NULL;
 
-    /* prev */
-    if (dst->prev != dst) {
-        src->prev = dst->prev;
+    * prev *
+    if (node1->prev != node1) {
+        node2->prev = node1->prev;
     }
-    dst->prev = dst;
+    node1->prev = node1;
 
-    /* parent child */
-    if (dst->parent) {
-        if (dst->parent->child == dst) {
-            dst->parent->child = src;
+    * parent child *
+    if (node1->parent) {
+        if (node1->parent->child == node1) {
+            node1->parent->child = node2;
         }
-    } else if (lys_main_module(dst->module)->data == dst) {
-        lys_main_module(dst->module)->data = src;
+    } else if (lys_main_module(node1->module)->data == node1) {
+        lys_main_module(node1->module)->data = node2;
     }
 
-    /* parent */
-    src->parent = dst->parent;    dst->parent = NULL;
+    * parent *
+    node2->parent = node1->parent;
+    node1->parent = NULL;
 
-
-    /* child parent */
-    LY_TREE_FOR(dst->child, child) {
-        if (child->parent == dst) {
-            child->parent = src;
+    * child parent *
+    LY_TREE_FOR(node1->child, child) {
+        if (child->parent == node1) {
+            child->parent = node2;
         }
     }
 
-    /* child */
-    src->child = dst->child;
-    dst->child = NULL;
+    * child *
+    node2->child = node1->child;
+    node1->child = NULL;
+    */
 
-    /* node-specific data */
-    switch (dst->nodetype) {
+    /* switch common node part */
+    offset = 3 * sizeof(char *);
+    size = sizeof(uint16_t) + 6 * sizeof(uint8_t) + sizeof(struct lys_ext_instance **) + sizeof(struct lys_iffeature *);
+    memcpy(mem, ((uint8_t *)node1) + offset, size);
+    memcpy(((uint8_t *)node1) + offset, ((uint8_t *)node2) + offset, size);
+    memcpy(((uint8_t *)node2) + offset, mem, size);
+
+    /* switch node-specific data */
+    offset = sizeof(struct lys_node);
+    switch (node1->nodetype) {
     case LYS_CONTAINER:
-        ((struct lys_node_container *)src)->tpdf_size = ((struct lys_node_container *)dst)->tpdf_size;
-        ((struct lys_node_container *)src)->tpdf = ((struct lys_node_container *)dst)->tpdf;
-        ((struct lys_node_container *)dst)->tpdf_size = 0;
-        ((struct lys_node_container *)dst)->tpdf = NULL;
+        size = sizeof(struct lys_node_container) - offset;
+        break;
+    case LYS_CHOICE:
+        size = sizeof(struct lys_node_choice) - offset;
+        break;
+    case LYS_LEAF:
+        size = sizeof(struct lys_node_leaf) - offset;
+        break;
+    case LYS_LEAFLIST:
+        size = sizeof(struct lys_node_leaflist) - offset;
         break;
     case LYS_LIST:
-        ((struct lys_node_list *)src)->tpdf_size = ((struct lys_node_list *)dst)->tpdf_size;
-        ((struct lys_node_list *)src)->tpdf = ((struct lys_node_list *)dst)->tpdf;
-        ((struct lys_node_list *)dst)->tpdf_size = 0;
-        ((struct lys_node_list *)dst)->tpdf = NULL;
+        size = sizeof(struct lys_node_list) - offset;
         break;
-    case LYS_RPC:
-    case LYS_ACTION:
-        ((struct lys_node_rpc_action *)src)->tpdf_size = ((struct lys_node_rpc_action *)dst)->tpdf_size;
-        ((struct lys_node_rpc_action *)src)->tpdf = ((struct lys_node_rpc_action *)dst)->tpdf;
-        ((struct lys_node_rpc_action *)dst)->tpdf_size = 0;
-        ((struct lys_node_rpc_action *)dst)->tpdf = NULL;
+    case LYS_ANYDATA:
+    case LYS_ANYXML:
+        size = sizeof(struct lys_node_anydata) - offset;
         break;
-    case LYS_NOTIF:
-        ((struct lys_node_notif *)src)->tpdf_size = ((struct lys_node_notif *)dst)->tpdf_size;
-        ((struct lys_node_notif *)src)->tpdf = ((struct lys_node_notif *)dst)->tpdf;
-        ((struct lys_node_notif *)dst)->tpdf_size = 0;
-        ((struct lys_node_notif *)dst)->tpdf = NULL;
+    case LYS_CASE:
+        size = sizeof(struct lys_node_case) - offset;
         break;
     case LYS_INPUT:
     case LYS_OUTPUT:
-        ((struct lys_node_inout *)src)->tpdf_size = ((struct lys_node_inout *)dst)->tpdf_size;
-        ((struct lys_node_inout *)src)->tpdf = ((struct lys_node_inout *)dst)->tpdf;
-        ((struct lys_node_inout *)dst)->tpdf_size = 0;
-        ((struct lys_node_inout *)dst)->tpdf = NULL;
+        size = sizeof(struct lys_node_inout) - offset;
+        break;
+    case LYS_NOTIF:
+        size = sizeof(struct lys_node_notif) - offset;
+        break;
+    case LYS_RPC:
+    case LYS_ACTION:
+        size = sizeof(struct lys_node_rpc_action) - offset;
         break;
     default:
-        /* nothing special */
+        assert(0);
+        LOGINT(node1->module->ctx);
+        return;
+    }
+    assert(size <= mem_size);
+    memcpy(mem, ((uint8_t *)node1) + offset, size);
+    memcpy(((uint8_t *)node1) + offset, ((uint8_t *)node2) + offset, size);
+    memcpy(((uint8_t *)node2) + offset, mem, size);
+
+    /* typedefs were not copied to the backup node, so always reuse them,
+     * in leaves/leaf-lists we must correct the type parent pointer */
+    switch (node1->nodetype) {
+    case LYS_CONTAINER:
+        ((struct lys_node_container *)node1)->tpdf_size = ((struct lys_node_container *)node2)->tpdf_size;
+        ((struct lys_node_container *)node1)->tpdf = ((struct lys_node_container *)node2)->tpdf;
+        ((struct lys_node_container *)node2)->tpdf_size = 0;
+        ((struct lys_node_container *)node2)->tpdf = NULL;
+        break;
+    case LYS_LIST:
+        ((struct lys_node_list *)node1)->tpdf_size = ((struct lys_node_list *)node2)->tpdf_size;
+        ((struct lys_node_list *)node1)->tpdf = ((struct lys_node_list *)node2)->tpdf;
+        ((struct lys_node_list *)node2)->tpdf_size = 0;
+        ((struct lys_node_list *)node2)->tpdf = NULL;
+        break;
+    case LYS_RPC:
+    case LYS_ACTION:
+        ((struct lys_node_rpc_action *)node1)->tpdf_size = ((struct lys_node_rpc_action *)node2)->tpdf_size;
+        ((struct lys_node_rpc_action *)node1)->tpdf = ((struct lys_node_rpc_action *)node2)->tpdf;
+        ((struct lys_node_rpc_action *)node2)->tpdf_size = 0;
+        ((struct lys_node_rpc_action *)node2)->tpdf = NULL;
+        break;
+    case LYS_NOTIF:
+        ((struct lys_node_notif *)node1)->tpdf_size = ((struct lys_node_notif *)node2)->tpdf_size;
+        ((struct lys_node_notif *)node1)->tpdf = ((struct lys_node_notif *)node2)->tpdf;
+        ((struct lys_node_notif *)node2)->tpdf_size = 0;
+        ((struct lys_node_notif *)node2)->tpdf = NULL;
+        break;
+    case LYS_INPUT:
+    case LYS_OUTPUT:
+        ((struct lys_node_inout *)node1)->tpdf_size = ((struct lys_node_inout *)node2)->tpdf_size;
+        ((struct lys_node_inout *)node1)->tpdf = ((struct lys_node_inout *)node2)->tpdf;
+        ((struct lys_node_inout *)node2)->tpdf_size = 0;
+        ((struct lys_node_inout *)node2)->tpdf = NULL;
+        break;
+    case LYS_LEAF:
+    case LYS_LEAFLIST:
+        ((struct lys_node_leaf *)node1)->type.parent = (struct lys_tpdf *)node1;
+        ((struct lys_node_leaf *)node2)->type.parent = (struct lys_tpdf *)node2;
+    default:
         break;
     }
-
 }
 
 void
@@ -4110,6 +4190,7 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module,
     int ret, reapply = 0;
     char *parent_path;
     struct lys_node *target = NULL, *parent;
+    struct lys_node_inout *inout;
     struct ly_set *set;
 
     if (!dev->deviate) {
@@ -4182,12 +4263,31 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module,
             /* unlink and store the original node */
             parent = target->parent;
             lys_node_unlink(target);
-            if (parent && (parent->nodetype & (LYS_AUGMENT | LYS_USES))) {
-                /* hack for augment, because when the original will be sometime reconnected back, we actually need
-                 * to reconnect it to both - the augment and its target (which is deduced from the deviations target
-                 * path), so we need to remember the augment as an addition */
-                /* we also need to remember the parent uses so that we connect it back to it when switching deviation state */
-                target->parent = parent;
+            if (parent) {
+                if (parent->nodetype & (LYS_AUGMENT | LYS_USES)) {
+                    /* hack for augment, because when the original will be sometime reconnected back, we actually need
+                     * to reconnect it to both - the augment and its target (which is deduced from the deviations target
+                     * path), so we need to remember the augment as an addition */
+                    /* we also need to remember the parent uses so that we connect it back to it when switching deviation state */
+                    target->parent = parent;
+                } else if (parent->nodetype & (LYS_RPC | LYS_ACTION)) {
+                    /* re-create implicit node */
+                    inout = calloc(1, sizeof *inout);
+                    LY_CHECK_ERR_RETURN(!inout, LOGMEM(module->ctx), );
+
+                    inout->nodetype = target->nodetype;
+                    inout->name = lydict_insert(module->ctx, (inout->nodetype == LYS_INPUT) ? "input" : "output", 0);
+                    inout->module = target->module;
+                    inout->flags = LYS_IMPLICIT;
+
+                    /* insert it manually */
+                    assert(parent->child && !parent->child->next
+                    && (parent->child->nodetype == (inout->nodetype == LYS_INPUT ? LYS_OUTPUT : LYS_INPUT)));
+                    parent->child->next = (struct lys_node *)inout;
+                    inout->prev = parent->child;
+                    parent->child->prev = (struct lys_node *)inout;
+                    inout->parent = parent;
+                }
             }
             dev->orig_node = target;
         }
@@ -4201,8 +4301,8 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module,
         target = set->set.s[0];
         ly_set_free(set);
 
+        /* contents are switched */
         lys_node_switch(target, dev->orig_node);
-        dev->orig_node = target;
     }
 }
 

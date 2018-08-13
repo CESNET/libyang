@@ -2606,7 +2606,6 @@ yang_parse_ext_substatement(struct lys_module *module, struct unres_schema *unre
 struct lys_module *
 yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const char *revision, int implement)
 {
-
     struct lys_module *module = NULL, *tmp_mod;
     struct unres_schema *unres = NULL;
     struct lys_node *node = NULL;
@@ -2631,6 +2630,10 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
     ret = yang_parse_mem(module, NULL, unres, data, size, &node);
     if (ret == -1) {
         if (ly_vecode(ctx) == LYVE_SUBMODULE) {
+            /* Remove this module from the list of processed modules,
+               as we're about to free it */
+            lyp_check_circmod_pop(ctx);
+
             free(module);
             module = NULL;
         } else {
@@ -2651,9 +2654,18 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
         if (unres->count && resolve_unres_schema(module, unres)) {
             goto error;
         }
+
+        /* check correctness of includes */
+        if (lyp_check_include_missing(module)) {
+            goto error;
+        }
     }
 
     lyp_sort_revisions(module);
+
+    if (lyp_rfn_apply_ext(module) || lyp_deviation_apply_ext(module)) {
+        goto error;
+    }
 
     if (revision) {
         /* check revision of the parsed model */
@@ -2666,15 +2678,6 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
 
     /* add into context if not already there */
     if (!ret) {
-        /* check correctness of includes */
-        if (lyp_check_include_missing(module)) {
-            goto error;
-        }
-
-        if (lyp_rfn_apply_ext(module) || lyp_deviation_apply_ext(module)) {
-            goto error;
-        }
-
         if (lyp_ctx_add_module(module)) {
             goto error;
         }
@@ -2692,16 +2695,16 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
         lys_free(tmp_mod, NULL, 0, 0);
     }
 
-    lyp_check_circmod_pop(ctx);
     unres_schema_free(NULL, &unres, 0);
+    lyp_check_circmod_pop(ctx);
     LOGVRB("Module \"%s%s%s\" successfully parsed as %s.", module->name, (module->rev_size ? "@" : ""),
            (module->rev_size ? module->rev[0].date : ""), (module->implemented ? "implemented" : "imported"));
     return module;
 
 error:
     /* cleanup */
-    lyp_check_circmod_pop(ctx);
     unres_schema_free(module, &unres, 1);
+
     if (!module) {
         if (ly_vecode(ctx) != LYVE_SUBMODULE) {
             LOGERR(ctx, ly_errno, "Module parsing failed.");
@@ -2715,6 +2718,7 @@ error:
         LOGERR(ctx, ly_errno, "Module parsing failed.");
     }
 
+    lyp_check_circmod_pop(ctx);
     lys_sub_module_remove_devs_augs(module);
     lyp_del_includedup(module, 1);
     lys_free(module, NULL, 0, 1);
@@ -4485,6 +4489,7 @@ yang_check_deviation(struct lys_module *module, struct unres_schema *unres, stru
     const char *value, *target_name;
     struct lys_node_leaflist *llist;
     struct lys_node_leaf *leaf;
+    struct lys_node_inout *inout;
     struct unres_schema tmp_unres;
     struct lys_module *mod;
 
@@ -4527,12 +4532,31 @@ yang_check_deviation(struct lys_module *module, struct unres_schema *unres, stru
         /* unlink and store the original node */
         parent = dev_target->parent;
         lys_node_unlink(dev_target);
-        if (parent && (parent->nodetype & (LYS_AUGMENT | LYS_USES))) {
-            /* hack for augment, because when the original will be sometime reconnected back, we actually need
-             * to reconnect it to both - the augment and its target (which is deduced from the deviations target
-             * path), so we need to remember the augment as an addition */
-            /* remember uses parent so we can reconnect to it */
-            dev_target->parent = parent;
+        if (parent) {
+            if (parent->nodetype & (LYS_AUGMENT | LYS_USES)) {
+                /* hack for augment, because when the original will be sometime reconnected back, we actually need
+                 * to reconnect it to both - the augment and its target (which is deduced from the deviations target
+                 * path), so we need to remember the augment as an addition */
+                /* remember uses parent so we can reconnect to it */
+                dev_target->parent = parent;
+            } else if (parent->nodetype & (LYS_RPC | LYS_ACTION)) {
+                /* re-create implicit node */
+                inout = calloc(1, sizeof *inout);
+                LY_CHECK_ERR_GOTO(!inout, LOGMEM(module->ctx), error);
+
+                inout->nodetype = dev_target->nodetype;
+                inout->name = lydict_insert(module->ctx, (inout->nodetype == LYS_INPUT) ? "input" : "output", 0);
+                inout->module = dev_target->module;
+                inout->flags = LYS_IMPLICIT;
+
+                /* insert it manually */
+                assert(parent->child && !parent->child->next
+                    && (parent->child->nodetype == (inout->nodetype == LYS_INPUT ? LYS_OUTPUT : LYS_INPUT)));
+                parent->child->next = (struct lys_node *)inout;
+                inout->prev = parent->child;
+                parent->child->prev = (struct lys_node *)inout;
+                inout->parent = parent;
+            }
         }
         dev->orig_node = dev_target;
     } else {
