@@ -3278,6 +3278,9 @@ free_yang_common(struct lys_module *module, struct lys_node *node)
     for (i = 0; i < module->deviation_size; ++i) {
         yang_free_deviate(module->ctx, &module->deviation[i], 0);
         free(module->deviation[i].deviate);
+        lydict_remove(module->ctx, module->deviation[i].target_name);
+        lydict_remove(module->ctx, module->deviation[i].dsc);
+        lydict_remove(module->ctx, module->deviation[i].ref);
     }
     module->deviation_size = 0;
 }
