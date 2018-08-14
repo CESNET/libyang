@@ -20,6 +20,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <limits.h>
 #include <errno.h>
 #include <fcntl.h>
 
@@ -354,7 +355,7 @@ ly_ctx_unset_trusted(struct ly_ctx *ctx)
 API int
 ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
 {
-    char *cwd = NULL, *new = NULL;
+    char *new = NULL;
     int index = 0;
     void *r;
     int rc = EXIT_FAILURE;
@@ -365,14 +366,13 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
     }
 
     if (search_dir) {
-        cwd = get_current_dir_name();
-        if (chdir(search_dir)) {
+        if (access(search_dir, R_OK | X_OK)) {
             LOGERR(ctx, LY_ESYS, "Unable to use search directory \"%s\" (%s)",
                    search_dir, strerror(errno));
-            goto cleanup;
+            return EXIT_FAILURE;
         }
 
-        new = get_current_dir_name();
+        new = realpath(search_dir, NULL);
         if (!ctx->models.search_paths) {
             ctx->models.search_paths = malloc(2 * sizeof *ctx->models.search_paths);
             LY_CHECK_ERR_GOTO(!ctx->models.search_paths, LOGMEM(ctx), cleanup);
@@ -394,10 +394,6 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
         ctx->models.search_paths[index + 1] = NULL;
 
 success:
-        if (chdir(cwd)) {
-            LOGWRN(ctx, "Unable to return back to working directory \"%s\" (%s)",
-                   cwd, strerror(errno));
-        }
         rc = EXIT_SUCCESS;
     } else {
         /* consider that no change is not actually an error */
@@ -405,7 +401,6 @@ success:
     }
 
 cleanup:
-    free(cwd);
     free(new);
     return rc;
 }
