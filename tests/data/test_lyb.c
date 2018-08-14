@@ -60,11 +60,12 @@ loop_next:
 static void
 check_data_tree(struct lyd_node *root1, struct lyd_node *root2)
 {
-    struct lyd_node *next1, *next2, *elem1 = NULL, *elem2 = NULL, *iter;
+    struct lyd_node *next1, *next2, *elem1 = NULL, *elem2 = NULL;
     struct lyd_attr *attr1, *attr2;
     struct lyd_node_leaf_list *leaf1, *leaf2;
     struct lyd_node_anydata *any1, *any2;
 #ifdef LY_ENABLED_CACHE
+    struct lyd_node *iter;
     uint32_t i1, i2;
 #endif
 
@@ -464,7 +465,7 @@ static void
 test_ietf_interfaces(void **state)
 {
     struct state *st = (*state);
-    int ret;
+    int ret, print_options = LYP_WITHSIBLINGS;
 
     assert_non_null(ly_ctx_load_module(st->ctx, "ietf-ip", NULL));
     assert_non_null(ly_ctx_load_module(st->ctx, "iana-if-type", NULL));
@@ -472,7 +473,11 @@ test_ietf_interfaces(void **state)
     st->dt1 = lyd_parse_path(st->ctx, TESTS_DIR"/data/files/ietf-interfaces.json", LYD_JSON, LYD_OPT_CONFIG);
     assert_ptr_not_equal(st->dt1, NULL);
 
-    ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYP_WITHSIBLINGS);
+#ifdef LY_ENABLED_CACHE
+    print_options |= LYP_WITHHASH;
+#endif
+
+    ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, print_options);
     assert_int_equal(ret, 0);
 
     st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG | LYD_OPT_STRICT);

@@ -957,6 +957,13 @@ lyb_parse_subtree(struct ly_ctx *ctx, const char *data, struct lyd_node *parent,
         goto error;
     }
 
+#ifdef LY_ENABLED_CACHE
+    if (lybs->data_options & LYP_WITHHASH) {
+        ret += (r = lyb_read_number((uint64_t *)&node->hash, UINT32_MAX, data, lybs));
+        LYB_HAVE_READ_GOTO(r, data, error);
+    }
+#endif
+
     ret += (r = lyb_parse_attributes(node, data, options, unres, lybs));
     LYB_HAVE_READ_GOTO(r, data, error);
 
@@ -1026,8 +1033,13 @@ lyb_parse_subtree(struct ly_ctx *ctx, const char *data, struct lyd_node *parent,
     }
 
 #ifdef LY_ENABLED_CACHE
-    /* calculate the hash and insert it into parent (list with keys is handled when its keys are inserted) */
-    if ((node->schema->nodetype != LYS_LIST) || !((struct lys_node_list *)node->schema)->keys_size) {
+    /* calculate the hash and insert it into parent (list with keys is handled when its keys are inserted),
+     * but not if the hash was already read from the file */
+    if (lybs->data_options & LYP_WITHHASH) {
+        if (node->schema->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_NOTIF | LYS_RPC | LYS_ACTION)) {
+            lyd_create_child_ht(node);
+        }
+    } else if ((node->schema->nodetype != LYS_LIST) || !((struct lys_node_list *)node->schema)->keys_size) {
         lyd_hash(node);
         lyd_insert_hash(node);
     }
@@ -1077,6 +1089,12 @@ lyb_parse_header(const char *data, struct lyb_state *lybs)
     /* TODO version, any flags? */
     ret += lyb_read(data, (uint8_t *)&byte, sizeof byte, lybs);
 
+#ifdef LY_ENABLED_CACHE
+    if (byte & 0x01) {
+        lybs->data_options |= LYP_WITHHASH;
+    }
+#endif
+
     return ret;
 }
 
@@ -1094,14 +1112,13 @@ lyd_parse_lyb(struct ly_ctx *ctx, const char *data, int options, const struct ly
         return NULL;
     }
 
+    memset(&lybs, 0, sizeof lybs);
+
     lybs.written = malloc(LYB_STATE_STEP * sizeof *lybs.written);
     lybs.position = malloc(LYB_STATE_STEP * sizeof *lybs.position);
     lybs.inner_chunks = malloc(LYB_STATE_STEP * sizeof *lybs.inner_chunks);
     LY_CHECK_ERR_GOTO(!lybs.written || !lybs.position || !lybs.inner_chunks, LOGMEM(ctx), finish);
-    lybs.used = 0;
     lybs.size = LYB_STATE_STEP;
-    lybs.models = NULL;
-    lybs.mod_count = 0;
 
     unres = calloc(1, sizeof *unres);
     LY_CHECK_ERR_GOTO(!unres, LOGMEM(ctx), finish);
