@@ -1732,9 +1732,9 @@ void ly_set_free(struct ly_set *set);
  * @{
  */
 #define LYP_WITHSIBLINGS  0x01  /**< Flag for printing also the (following) sibling nodes of the data node. */
-#define LYP_FORMAT        0x02  /**< Flag for formatted output (ignored by #LYD_LYB). */
-#define LYP_KEEPEMPTYCONT 0x04  /**< Preserve empty non-presence containers (ignored by #LYD_LYB). */
-#define LYP_WD_MASK       0xF0  /**< Mask for with-defaults modes (all ignored by #LYD_LYB). */
+#define LYP_FORMAT        0x02  /**< Flag for formatted output. */
+#define LYP_KEEPEMPTYCONT 0x04  /**< Preserve empty non-presence containers */
+#define LYP_WD_MASK       0xF0  /**< Mask for with-defaults modes */
 #define LYP_WD_EXPLICIT   0x00  /**< Explicit mode - print only data explicitly being present in the data tree.
                                      Note that this is the default value when no WD option is specified. */
 #define LYP_WD_TRIM       0x10  /**< Do not print the nodes with the value equal to their default value */
@@ -1748,15 +1748,11 @@ void ly_set_free(struct ly_set *set);
                                      are not explicitly present in the original data tree despite their
                                      value is equal to their default value.  There is the same limitation regarding
                                      the presence of ietf-netconf-with-defaults module in libyang context. */
-#define LYP_NETCONF       0x100 /**< Print the data tree for use in NETCONF (ignored by #LYD_LYB) meaning:
+#define LYP_NETCONF       0x100 /**< Print the data tree for use in NETCONF meaning:
                                      - for RPC output - skip the top-level RPC node,
                                      - for action output - skip all the parents of and the action node itself,
                                      - for action input - enclose the data in an action element in the base YANG namespace,
                                      - for all other data - print the whole data tree normally. */
-#ifdef LY_ENABLED_CACHE
-#   define LYP_WITHHASH   0x200 /**< Also print data node hashes so they do not have to be calculated again
-                                     (only for #LYD_LYB). */
-#endif
 
 /**
  * @}

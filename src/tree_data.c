@@ -402,40 +402,12 @@ lyd_keyless_list_hash_change(struct lyd_node *parent)
     }
 }
 
-void
-lyd_create_child_ht(struct lyd_node *parent)
+static void
+_lyd_insert_hash(struct lyd_node *node, int keyless_list_check)
 {
     struct lyd_node *iter;
     int i;
 
-    assert(!parent->ht);
-
-    for (i = 0, iter = parent->child; iter; ++i, iter = iter->next) {
-        if ((iter->schema->nodetype == LYS_LIST) && !lyd_list_has_keys(iter)) {
-            /* it will either never have keys and will never be hashed or has not all keys created yet */
-            --i;
-        }
-    }
-
-    if (i >= LY_CACHE_HT_MIN_CHILDREN) {
-        /* create hash table, insert all the children */
-        parent->ht = lyht_new(1, sizeof(struct lyd_node *), lyd_hash_table_val_equal, NULL, 1);
-        LY_TREE_FOR(parent->child, iter) {
-            if ((iter->schema->nodetype == LYS_LIST) && !lyd_list_has_keys(iter)) {
-                /* skip lists without keys */
-                continue;
-                }
-
-            if (lyht_insert(parent->ht, &iter, iter->hash, NULL)) {
-                assert(0);
-            }
-        }
-    }
-}
-
-static void
-_lyd_insert_hash(struct lyd_node *node, int keyless_list_check)
-{
     if (node->parent) {
         if ((node->schema->nodetype != LYS_LIST) || lyd_list_has_keys(node)) {
             if ((node->schema->nodetype == LYS_LEAF) && lys_is_key((struct lys_node_leaf *)node->schema, NULL)) {
@@ -448,7 +420,27 @@ _lyd_insert_hash(struct lyd_node *node, int keyless_list_check)
 
             /* create parent hash table if required, otherwise just add the new child */
             if (!node->parent->ht) {
-                lyd_create_child_ht(node->parent);
+                for (i = 0, iter = node->parent->child; iter; ++i, iter = iter->next) {
+                    if ((iter->schema->nodetype == LYS_LIST) && !lyd_list_has_keys(iter)) {
+                        /* it will either never have keys and will never be hashed or has not all keys created yet */
+                        --i;
+                    }
+                }
+                assert(i <= LY_CACHE_HT_MIN_CHILDREN);
+                if (i == LY_CACHE_HT_MIN_CHILDREN) {
+                    /* create hash table, insert all the children */
+                    node->parent->ht = lyht_new(1, sizeof(struct lyd_node *), lyd_hash_table_val_equal, NULL, 1);
+                    LY_TREE_FOR(node->parent->child, iter) {
+                        if ((iter->schema->nodetype == LYS_LIST) && !lyd_list_has_keys(iter)) {
+                            /* skip lists without keys */
+                            continue;
+                        }
+
+                        if (lyht_insert(node->parent->ht, &iter, iter->hash, NULL)) {
+                            assert(0);
+                        }
+                    }
+                }
             } else {
                 if (lyht_insert(node->parent->ht, &node, node->hash, NULL)) {
                     assert(0);

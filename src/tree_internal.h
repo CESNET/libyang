@@ -73,12 +73,8 @@ struct lyb_state {
     uint8_t *inner_chunks;
     int used;
     int size;
-
     const struct lys_module **models;
     int mod_count;
-
-    /* LYB parser only */
-    int data_options;
 
     /* LYB printer only */
     struct {
@@ -163,14 +159,11 @@ int lyb_has_schema_model(struct lys_node *sibling, const struct lys_module **mod
  */
 #   define LY_CACHE_HT_MIN_CHILDREN 4
 
-int lyd_hash(struct lyd_node *node);
+    int lyd_hash(struct lyd_node *node);
 
-void lyd_create_child_ht(struct lyd_node *parent);
+    void lyd_insert_hash(struct lyd_node *node);
 
-void lyd_insert_hash(struct lyd_node *node);
-
-void lyd_unlink_hash(struct lyd_node *node, struct lyd_node *orig_parent);
-
+    void lyd_unlink_hash(struct lyd_node *node, struct lyd_node *orig_parent);
 #endif
 
 /**

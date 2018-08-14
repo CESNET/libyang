@@ -512,17 +512,10 @@ next_mod:
 }
 
 static int
-lyb_print_header(struct lyout *out, int options)
+lyb_print_header(struct lyout *out)
 {
     int ret = 0;
     uint8_t byte = 0;
-    (void)options;
-
-#ifdef LY_ENABLED_CACHE
-    if (options & LYP_WITHHASH) {
-        byte |= 0x01;
-    }
-#endif
 
     /* TODO version, some other flags? */
     ret += ly_write(out, (char *)&byte, sizeof byte);
@@ -919,15 +912,6 @@ lyb_print_subtree(struct lyout *out, const struct lyd_node *node, struct hash_ta
         return -1;
     }
 
-#ifdef LY_ENABLED_CACHE
-    if (options & LYP_WITHHASH) {
-        ret += (r = lyb_write_number(node->hash, 4, out, lybs));
-        if (r < 0) {
-            return -1;
-        }
-    }
-#endif
-
     ret += (r = lyb_print_attributes(out, node->attr, lybs));
     if (r < 0) {
         return -1;
@@ -997,7 +981,7 @@ lyb_print_data(struct lyout *out, const struct lyd_node *root, int options)
     memset(&lybs, 0, sizeof lybs);
 
     /* LYB header */
-    ret += (r = lyb_print_header(out, options));
+    ret += (r = lyb_print_header(out));
     if (r < 0) {
         rc = EXIT_FAILURE;
         goto finish;
