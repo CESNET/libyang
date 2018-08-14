@@ -317,20 +317,36 @@ lyb_write_start_subtree(struct lyout *out, struct lyb_state *lybs)
 }
 
 static int
-lyb_write_number(uint64_t num, uint64_t max_num, struct lyout *out, struct lyb_state *lybs)
+lyb_write_number(uint64_t num, size_t bytes, struct lyout *out, struct lyb_state *lybs)
 {
-    int max_bits, max_bytes, i, ret = 0;
+    int ret = 0;
+    size_t i;
     uint8_t byte;
 
-    for (max_bits = 0; max_num; max_num >>= 1, ++max_bits);
-    max_bytes = max_bits / 8 + (max_bits % 8 ? 1 : 0);
-
-    for (i = 0; i < max_bytes; ++i) {
+    for (i = 0; i < bytes; ++i) {
         byte = *(((uint8_t *)&num) + i);
         ret += lyb_write(out, &byte, 1, lybs);
     }
 
     return ret;
+}
+
+static int
+lyb_write_enum(uint32_t enum_idx, uint32_t count, struct lyout *out, struct lyb_state *lybs)
+{
+    size_t bytes;
+
+    if (count < (2 << 8)) {
+        bytes = 1;
+    } else if (count < (2 << 16)) {
+        bytes = 2;
+    } else if (count < (2 << 24)) {
+        bytes = 3;
+    } else {
+        bytes = 4;
+    }
+
+    return lyb_write_number(enum_idx, bytes, out, lybs);
 }
 
 static int
@@ -673,24 +689,24 @@ lyb_print_value(const struct lys_type *type, const char *value_str, lyd_val valu
 
         /* store the enum index (save bytes if possible) */
         i = value.enm - type->info.enums.enm;
-        ret += lyb_write_number(i, type->info.enums.count, out, lybs);
+        ret += lyb_write_enum(i, type->info.enums.count, out, lybs);
         break;
     case LY_TYPE_INT8:
     case LY_TYPE_UINT8:
-        ret += lyb_write_number(value.uint8, UINT8_MAX, out, lybs);
+        ret += lyb_write_number(value.uint8, 1, out, lybs);
         break;
     case LY_TYPE_INT16:
     case LY_TYPE_UINT16:
-        ret += lyb_write_number(value.uint16, UINT16_MAX, out, lybs);
+        ret += lyb_write_number(value.uint16, 2, out, lybs);
         break;
     case LY_TYPE_INT32:
     case LY_TYPE_UINT32:
-        ret += lyb_write_number(value.uint32, UINT32_MAX, out, lybs);
+        ret += lyb_write_number(value.uint32, 4, out, lybs);
         break;
     case LY_TYPE_DEC64:
     case LY_TYPE_INT64:
     case LY_TYPE_UINT64:
-        ret += lyb_write_number(value.uint64, UINT64_MAX, out, lybs);
+        ret += lyb_write_number(value.uint64, 8, out, lybs);
         break;
     default:
         return 0;
@@ -905,7 +921,7 @@ lyb_print_subtree(struct lyout *out, const struct lyd_node *node, struct hash_ta
 
 #ifdef LY_ENABLED_CACHE
     if (options & LYP_WITHHASH) {
-        ret += (r = lyb_write_number(node->hash, UINT32_MAX, out, lybs));
+        ret += (r = lyb_write_number(node->hash, 4, out, lybs));
         if (r < 0) {
             return -1;
         }

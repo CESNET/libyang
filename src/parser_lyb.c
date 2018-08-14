@@ -93,15 +93,13 @@ lyb_read(const char *data, uint8_t *buf, size_t count, struct lyb_state *lybs)
 }
 
 static int
-lyb_read_number(uint64_t *num, uint64_t max_num, const char *data, struct lyb_state *lybs)
+lyb_read_number(uint64_t *num, size_t bytes, const char *data, struct lyb_state *lybs)
 {
-    int max_bits, max_bytes, i, r, ret = 0;
+    int r, ret = 0;
+    size_t i;
     uint8_t byte;
 
-    for (max_bits = 0; max_num; max_num >>= 1, ++max_bits);
-    max_bytes = max_bits / 8 + (max_bits % 8 ? 1 : 0);
-
-    for (i = 0; i < max_bytes; ++i) {
+    for (i = 0; i < bytes; ++i) {
         ret += (r = lyb_read(data, &byte, 1, lybs));
         LYB_HAVE_READ_RETURN(r, data, -1);
 
@@ -109,6 +107,24 @@ lyb_read_number(uint64_t *num, uint64_t max_num, const char *data, struct lyb_st
     }
 
     return ret;
+}
+
+static int
+lyb_read_enum(uint64_t *enum_idx, uint32_t count, const char *data, struct lyb_state *lybs)
+{
+    size_t bytes;
+
+    if (count < (2 << 8)) {
+        bytes = 1;
+    } else if (count < (2 << 16)) {
+        bytes = 2;
+    } else if (count < (2 << 24)) {
+        bytes = 3;
+    } else {
+        bytes = 4;
+    }
+
+    return lyb_read_number(enum_idx, bytes, data, lybs);
 }
 
 static int
@@ -382,7 +398,7 @@ lyb_parse_val_1(struct ly_ctx *ctx, struct lys_type *type, LY_DATA_TYPE value_ty
         for (; !type->info.enums.count; type = &type->der->type);
 
         num = 0;
-        ret = lyb_read_number(&num, type->info.enums.count, data, lybs);
+        ret = lyb_read_enum(&num, type->info.enums.count, data, lybs);
         if (ret > 0) {
             assert(num < type->info.enums.count);
             value->enm = &type->info.enums.enm[num];
@@ -390,20 +406,20 @@ lyb_parse_val_1(struct ly_ctx *ctx, struct lys_type *type, LY_DATA_TYPE value_ty
         break;
     case LY_TYPE_INT8:
     case LY_TYPE_UINT8:
-        ret = lyb_read_number((uint64_t *)&value->uint8, UINT8_MAX, data, lybs);
+        ret = lyb_read_number((uint64_t *)&value->uint8, 1, data, lybs);
         break;
     case LY_TYPE_INT16:
     case LY_TYPE_UINT16:
-        ret = lyb_read_number((uint64_t *)&value->uint16, UINT16_MAX, data, lybs);
+        ret = lyb_read_number((uint64_t *)&value->uint16, 2, data, lybs);
         break;
     case LY_TYPE_INT32:
     case LY_TYPE_UINT32:
-        ret = lyb_read_number((uint64_t *)&value->uint32, UINT32_MAX, data, lybs);
+        ret = lyb_read_number((uint64_t *)&value->uint32, 4, data, lybs);
         break;
     case LY_TYPE_DEC64:
     case LY_TYPE_INT64:
     case LY_TYPE_UINT64:
-        ret = lyb_read_number((uint64_t *)&value->uint64, UINT64_MAX, data, lybs);
+        ret = lyb_read_number((uint64_t *)&value->uint64, 8, data, lybs);
         break;
     default:
         return -1;
@@ -959,7 +975,7 @@ lyb_parse_subtree(struct ly_ctx *ctx, const char *data, struct lyd_node *parent,
 
 #ifdef LY_ENABLED_CACHE
     if (lybs->data_options & LYP_WITHHASH) {
-        ret += (r = lyb_read_number((uint64_t *)&node->hash, UINT32_MAX, data, lybs));
+        ret += (r = lyb_read_number((uint64_t *)&node->hash, 4, data, lybs));
         LYB_HAVE_READ_GOTO(r, data, error);
     }
 #endif
