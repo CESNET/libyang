@@ -743,17 +743,17 @@ jsons_print_feature(struct lyout *out, const struct lys_feature *feat, int *firs
 static void
 jsons_print_features(struct lyout *out, const struct lys_feature *feat, uint8_t feat_size, int *first)
 {
-    int i, f = 1;
+    int i;
 
     if (!feat_size) {
         return;
     }
 
-    ly_print(out, "%s\"features\":{", (first && (*first)) ? "" : ",");
+    ly_print(out, "%s\"features\":[", (first && (*first)) ? "" : ",");
     for (i = 0; i < feat_size; ++i) {
-        jsons_print_feature(out, &feat[i], &f);
+        ly_print(out, "%s\"%s\"", i ? "," : "", feat[i].name);
     }
-    ly_print(out, "}");
+    ly_print(out, "]");
     if (first) {
         (*first) = 0;
     }
