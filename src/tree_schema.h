@@ -505,7 +505,7 @@ struct lys_ext {
     const char *argument;            /**< argument name, NULL if not specified, replacement for ::lys_node's iffeature */
     struct lys_module *module;       /**< link to the extension's data model */
     struct lyext_plugin *plugin;     /**< pointer to the plugin's data if any */
-} _PACKED;
+};
 
 /**
  * @brief Generic extension instance structure
@@ -540,7 +540,7 @@ struct lys_ext_instance {
     void *priv;                      /**< private caller's data, not used by libyang */
     struct lys_module *module;       /**< pointer to the extension instance's module (mandatory) */
     LYS_NODE nodetype;               /**< LYS_EXT */
-} _PACKED;
+};
 
 /**
  * @brief Complex extension instance structure
@@ -576,7 +576,7 @@ struct lys_ext_instance_complex {
     /* to this point the structure is compatible with the generic ::lys_ext_instance structure */
     struct lyext_substmt *substmt;   /**< pointer to the plugin's list of substatements' information */
     char content[1];                 /**< content of the extension instance */
-} _PACKED;
+};
 
 /**
  * @brief Get address of the substatement structure to which the extension instance refers.
@@ -1271,7 +1271,7 @@ struct lys_node {
 #ifdef LY_ENABLED_CACHE
     uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
 #endif
-} _PACKED;
+};
 
 /**
  * @brief Schema container node structure.
@@ -1319,7 +1319,7 @@ struct lys_node_container {
     struct lys_restr *must;          /**< array of must constraints */
     struct lys_tpdf *tpdf;           /**< array of typedefs */
     const char *presence;            /**< presence description, used also as a presence flag (optional) */
-} _PACKED;
+};
 
 /**
  * @brief Schema choice node structure.
@@ -1359,7 +1359,7 @@ struct lys_node_choice {
     /* specific choice's data */
     struct lys_when *when;           /**< when statement (optional) */
     struct lys_node *dflt;           /**< default case of the choice (optional) */
-} _PACKED;
+};
 
 /**
  * @brief Schema leaf node structure.
@@ -1413,7 +1413,7 @@ struct lys_node_leaf {
 
     /* to this point, struct lys_node_leaf is compatible with struct lys_node_leaflist */
     const char *dflt;                /**< default value of the leaf */
-} _PACKED;
+};
 
 /**
  * @brief Schema leaf-list node structure.
@@ -1470,7 +1470,7 @@ struct lys_node_leaflist {
     const char **dflt;               /**< array of default value(s) of the leaflist */
     uint32_t min;                    /**< min-elements constraint (optional) */
     uint32_t max;                    /**< max-elements constraint, 0 means unbounded (optional) */
-} _PACKED;
+};
 
 /**
  * @brief Schema list node structure.
@@ -1527,7 +1527,7 @@ struct lys_node_list {
     const char *keys_str;            /**< string defining the keys, must be stored besides the keys array since the
                                           keys may not be present in case the list is inside grouping */
 
-} _PACKED;
+};
 
 /**
  * @brief Schema anydata (and anyxml) node structure.
@@ -1574,7 +1574,7 @@ struct lys_node_anydata {
     /* specific anyxml's data */
     struct lys_when *when;           /**< when statement (optional) */
     struct lys_restr *must;          /**< array of must constraints */
-} _PACKED;
+};
 
 /**
  * @brief Schema uses node structure.
@@ -1622,7 +1622,7 @@ struct lys_node_uses {
     struct lys_refine *refine;       /**< array of refine changes to the referred grouping */
     struct lys_node_augment *augment;/**< array of local augments to the referred grouping */
     struct lys_node_grp *grp;        /**< referred grouping definition (mandatory) */
-} _PACKED;
+};
 
 /**
  * @brief Schema grouping node structure.
@@ -1664,7 +1664,7 @@ struct lys_node_grp {
 
     /* specific grouping's data */
     struct lys_tpdf *tpdf;           /**< array of typedefs */
-} _PACKED;
+};
 
 /**
  * @brief Schema case node structure.
@@ -1702,7 +1702,7 @@ struct lys_node_case {
 
     /* specific case's data */
     struct lys_when *when;           /**< when statement (optional) */
-} _PACKED;
+};
 
 /**
  * @brief RPC input and output node structure.
@@ -1749,7 +1749,7 @@ struct lys_node_inout {
     /* specific inout's data */
     struct lys_tpdf *tpdf;           /**< array of typedefs */
     struct lys_restr *must;          /**< array of must constraints */
-} _PACKED;
+};
 
 /**
  * @brief Schema notification node structure.
@@ -1792,7 +1792,7 @@ struct lys_node_notif {
     /* specific rpc's data */
     struct lys_tpdf *tpdf;           /**< array of typedefs */
     struct lys_restr *must;          /**< array of must constraints */
-} _PACKED;
+};
 
 /**
  * @brief Schema rpc/action node structure.
@@ -1837,7 +1837,7 @@ struct lys_node_rpc_action {
 
     /* specific rpc's data */
     struct lys_tpdf *tpdf;           /**< array of typedefs */
-} _PACKED;
+};
 
 /**
  * @brief YANG augment structure (covering both possibilities - uses's substatement as well as (sub)module's substatement).
@@ -1882,7 +1882,7 @@ struct lys_node_augment {
 
     /* again compatible members with ::lys_node */
     void *priv;                      /**< private caller's data, not used by libyang */
-} _PACKED;
+};
 
 /**
  * @brief Container for list modifications in ::lys_refine_mod.
@@ -1929,7 +1929,7 @@ struct lys_refine {
                                           #LYS_LEAFLIST.*/
 
     union lys_refine_mod mod;        /**< mutually exclusive target modifications according to the possible target_type */
-} _PACKED;
+};
 
 
 /**
@@ -2044,7 +2044,7 @@ struct lys_tpdf {
     struct lys_type type;            /**< base type from which the typedef is derived (mandatory). In case of a special
                                           built-in typedef (from yang_types.c), only the base member is filled */
     const char *dflt;                /**< default value of the newly defined type (optional) */
-} _PACKED;
+};
 
 /**
  * @brief YANG list's unique statement structure, see [RFC 6020 sec. 7.8.3](http://tools.ietf.org/html/rfc6020#section-7.8.3)
@@ -2074,7 +2074,7 @@ struct lys_feature {
     struct lys_iffeature *iffeature; /**< array of if-feature expressions */
     struct lys_module *module;       /**< link to the features's data model (mandatory) */
     struct ly_set *depfeatures;      /**< set of other features depending on this one */
-} _PACKED;
+};
 
 /**
  * @brief YANG validity restriction (must, length, etc.) structure providing information from the schema
@@ -2127,7 +2127,7 @@ struct lys_ident {
 
     struct lys_ident **base;         /**< array of pointers to the base identities */
     struct ly_set *der;              /**< set of backlinks to the derived identities */
-} _PACKED;
+};
 
 /**
  * @brief Load a schema into the specified context.
