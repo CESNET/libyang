@@ -1121,7 +1121,10 @@ struct ly_ctx;
                                         of this schema can be loaded with this option, note that the only
                                         revisions implemented by ly_ctx_info() are 2016-04-09 and 2018-01-17.
                                         This option cannot be used with ly_ctx_new_yl*() functions. */
-
+#define LY_CTX_DISABLE_SEARCHIDRS 0x08  /**< Do not search for schemas in context's searchidrs neither in current
+                                        working directory. It is entirely skipped and the only way to get
+                                        schema data for imports or for ly_ctx_load_module() is to use the
+                                        callbacks provided by caller via ly_ctx_set_module_imp_clb() */
 /**@} contextoptions */
 
 /**

@@ -924,7 +924,7 @@ ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char
         if (module_data_free) {
             module_data_free(module_data);
         }
-    } else {
+    } else if (!(ctx->models.flags & LY_CTX_DISABLE_SEARCHIDRS)) {
         /* module was not received from the callback or there is no callback set */
         mod = ly_ctx_load_localfile(ctx, module, name, revision, implement, unres);
     }
