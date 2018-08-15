@@ -195,6 +195,7 @@ set(libsrc
     src/parser_yin.c
     src/parser_xml.c
     src/parser_json.c
+    src/parser_lyb.c
     src/parser_yang_bis.c
     src/parser_yang_lex.c
     src/parser_yang.c
@@ -209,6 +210,7 @@ set(libsrc
     src/printer_tree.c
     src/printer_info.c
     src/printer_json.c
+    src/printer_lyb.c
     src/yang_types.c)
 
 set(lintsrc

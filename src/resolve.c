@@ -5766,7 +5766,7 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
     struct lys_module *imod = NULL, *m, *tmod;
     struct ly_ctx *ctx;
 
-    assert(type && ident_name && node && mod);
+    assert(type && ident_name && mod);
     ctx = mod->ctx;
 
     if (!type || (!type->info.ident.count && !type->der) || !ident_name) {
@@ -5775,10 +5775,10 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
 
     rc = parse_node_identifier(ident_name, &mod_name, &mod_name_len, &name, &nam_len, NULL, 0);
     if (rc < 1) {
-        LOGVAL(ctx, LYE_INCHAR, LY_VLOG_LYD, node, ident_name[-rc], &ident_name[-rc]);
+        LOGVAL(ctx, LYE_INCHAR, node ? LY_VLOG_LYD : LY_VLOG_NONE, node, ident_name[-rc], &ident_name[-rc]);
         return NULL;
     } else if (rc < (signed)strlen(ident_name)) {
-        LOGVAL(ctx, LYE_INCHAR, LY_VLOG_LYD, node, ident_name[rc], &ident_name[rc]);
+        LOGVAL(ctx, LYE_INCHAR, node ? LY_VLOG_LYD : LY_VLOG_NONE, node, ident_name[rc], &ident_name[rc]);
         return NULL;
     }
 
@@ -5886,7 +5886,7 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
                 type = &type->der->type;
             }
             /* matching base not found */
-            LOGVAL(ctx, LYE_SPEC, LY_VLOG_LYD, node, "Identity used as identityref value is not implemented.");
+            LOGVAL(ctx, LYE_SPEC, node ? LY_VLOG_LYD : LY_VLOG_NONE, node, "Identity used as identityref value is not implemented.");
             goto fail;
         }
     }
@@ -5912,13 +5912,15 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
     }
 
 fail:
-    LOGVAL(ctx, LYE_INRESOLV, LY_VLOG_LYD, node, "identityref", ident_name);
+    LOGVAL(ctx, LYE_INRESOLV, node ? LY_VLOG_LYD : LY_VLOG_NONE, node, "identityref", ident_name);
     return NULL;
 
 match:
     for (i = 0; i < cur->iffeature_size; i++) {
         if (!resolve_iffeature(&cur->iffeature[i])) {
-            LOGVAL(ctx, LYE_INVAL, LY_VLOG_LYD, node, cur->name, node->schema->name);
+            if (node) {
+                LOGVAL(ctx, LYE_INVAL, LY_VLOG_LYD, node, cur->name, node->schema->name);
+            }
             LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Identity \"%s\" is disabled by its if-feature condition.", cur->name);
             return NULL;
         }

@@ -1429,6 +1429,8 @@ lyxml_print_file(FILE *stream, const struct lyxml_elem *elem, int options)
         return 0;
     }
 
+    memset(&out, 0, sizeof out);
+
     out.type = LYOUT_STREAM;
     out.method.f = stream;
 
@@ -1447,6 +1449,8 @@ lyxml_print_fd(int fd, const struct lyxml_elem *elem, int options)
     if (fd < 0 || !elem) {
         return 0;
     }
+
+    memset(&out, 0, sizeof out);
 
     out.type = LYOUT_FD;
     out.method.fd = fd;
@@ -1468,10 +1472,9 @@ lyxml_print_mem(char **strp, const struct lyxml_elem *elem, int options)
         return 0;
     }
 
+    memset(&out, 0, sizeof out);
+
     out.type = LYOUT_MEMORY;
-    out.method.mem.buf = NULL;
-    out.method.mem.len = 0;
-    out.method.mem.size = 0;
 
     if (options & LYXML_PRINT_SIBLINGS) {
         r = dump_siblings(&out, elem, options);
@@ -1491,6 +1494,8 @@ lyxml_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), v
     if (!writeclb || !elem) {
         return 0;
     }
+
+    memset(&out, 0, sizeof out);
 
     out.type = LYOUT_CALLBACK;
     out.method.clb.f = writeclb;

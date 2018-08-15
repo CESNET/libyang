@@ -55,6 +55,15 @@ struct lyd_node *lyd_parse_json(struct ly_ctx *ctx, const char *data, int option
 /**@} jsondata */
 
 /**
+ * @defgroup lybdata LYB data format support
+ * @{
+ */
+struct lyd_node *lyd_parse_lyb(struct ly_ctx *ctx, const char *data, int options, const struct lyd_node *data_tree,
+                               const char *yang_data_name, int *parsed);
+
+/**@} lybdata */
+
+/**
  * internal options values for schema parsers
  */
 #define LYS_PARSE_OPT_CFG_NOINHERIT 0x01 /**< do not inherit config flag */

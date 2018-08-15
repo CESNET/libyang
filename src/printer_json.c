@@ -465,7 +465,11 @@ json_print_anydataxml(struct lyout *out, int level, const struct lyd_node *node,
             ly_print(out, "\"\"");
         }
         break;
-    default:
+    case LYD_ANYDATA_STRING:
+    case LYD_ANYDATA_SXMLD:
+    case LYD_ANYDATA_JSOND:
+    case LYD_ANYDATA_LYBD:
+    case LYD_ANYDATA_LYB:
         /* other formats are not supported */
         json_print_string(out, "(error)");
         break;

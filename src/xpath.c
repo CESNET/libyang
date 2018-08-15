@@ -423,9 +423,13 @@ cast_string_recursive(struct lyd_node *node, struct lys_module *local_mod, int f
                     return;
                 }
                 break;
+            case LYD_ANYDATA_LYB:
+                LOGERR(local_mod->ctx, LY_EINVAL, "Cannot convert LYB anydata into string.");
+                break;
             case LYD_ANYDATA_STRING:
             case LYD_ANYDATA_SXMLD:
             case LYD_ANYDATA_JSOND:
+            case LYD_ANYDATA_LYBD:
                 /* dynamic strings are used only as input parameters */
                 assert(0);
                 break;
@@ -594,7 +598,7 @@ set_insert_node_hash(struct lyxp_set *set, struct lyd_node *node, enum lyxp_node
             hash = dict_hash_multi(hash, (const char *)&hnode.type, sizeof hnode.type);
             hash = dict_hash_multi(hash, NULL, 0);
 
-            r = lyht_insert(set->ht, &hnode, hash);
+            r = lyht_insert(set->ht, &hnode, hash, NULL);
             assert(!r);
             (void)r;
         }
@@ -609,7 +613,7 @@ set_insert_node_hash(struct lyxp_set *set, struct lyd_node *node, enum lyxp_node
         hash = dict_hash_multi(hash, (const char *)&hnode.type, sizeof hnode.type);
         hash = dict_hash_multi(hash, NULL, 0);
 
-        r = lyht_insert(set->ht, &hnode, hash);
+        r = lyht_insert(set->ht, &hnode, hash, NULL);
         assert(!r);
         (void)r;
     }
@@ -8390,6 +8394,8 @@ lyxp_set_print_xml(FILE *f, struct lyxp_set *set)
     uint32_t i;
     char *str_num;
     struct lyout out;
+
+    memset(&out, 0, sizeof out);
 
     out.type = LYOUT_STREAM;
     out.method.f = f;

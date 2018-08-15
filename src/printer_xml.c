@@ -554,12 +554,14 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
             ly_print(out, "%s", any->value.str);
             break;
         case LYD_ANYDATA_JSON:
-            /* JSON format is not supported */
+        case LYD_ANYDATA_LYB:
+            /* JSON and LYB format is not supported */
             LOGWRN(node->schema->module->ctx, "Unable to print anydata content (type %d) as XML.", any->value_type);
             break;
         case LYD_ANYDATA_STRING:
         case LYD_ANYDATA_SXMLD:
         case LYD_ANYDATA_JSOND:
+        case LYD_ANYDATA_LYBD:
             /* dynamic strings are used only as input parameters */
             assert(0);
             break;

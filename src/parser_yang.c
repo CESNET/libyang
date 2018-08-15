@@ -160,6 +160,7 @@ error:
     free(value);
     lydict_remove(module->ctx, imp_old->dsc);
     lydict_remove(module->ctx, imp_old->ref);
+    lydict_remove(module->ctx, imp_old->prefix);
     lys_extension_instances_free(module->ctx, imp_old->ext, imp_old->ext_size, NULL);
     return EXIT_FAILURE;
 }
@@ -1209,6 +1210,8 @@ error:
 int
 yang_read_fraction(struct ly_ctx *ctx, struct yang_type *typ, uint32_t value)
 {
+    uint32_t i;
+
     if (typ->base == 0 || typ->base == LY_TYPE_DEC64) {
         typ->base = LY_TYPE_DEC64;
     } else {
@@ -1225,6 +1228,10 @@ yang_read_fraction(struct ly_ctx *ctx, struct yang_type *typ, uint32_t value)
         goto error;
     }
     typ->type->info.dec64.dig = value;
+    typ->type->info.dec64.div = 10;
+    for (i = 1; i < value; i++) {
+        typ->type->info.dec64.div *= 10;
+    }
     return EXIT_SUCCESS;
 
 error:
@@ -3275,6 +3282,9 @@ free_yang_common(struct lys_module *module, struct lys_node *node)
     for (i = 0; i < module->deviation_size; ++i) {
         yang_free_deviate(module->ctx, &module->deviation[i], 0);
         free(module->deviation[i].deviate);
+        lydict_remove(module->ctx, module->deviation[i].target_name);
+        lydict_remove(module->ctx, module->deviation[i].dsc);
+        lydict_remove(module->ctx, module->deviation[i].ref);
     }
     module->deviation_size = 0;
 }
