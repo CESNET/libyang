@@ -425,7 +425,7 @@ cast_string_recursive(struct lyd_node *node, struct lys_module *local_mod, int f
                 break;
             case LYD_ANYDATA_LYB:
                 LOGERR(local_mod->ctx, LY_EINVAL, "Cannot convert LYB anydata into string.");
-                break;
+                return;
             case LYD_ANYDATA_STRING:
             case LYD_ANYDATA_SXMLD:
             case LYD_ANYDATA_JSOND:
