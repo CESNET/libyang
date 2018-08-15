@@ -209,8 +209,8 @@ dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
         }
     } else if (ret == 0) {
         if (!zerocopy) {
-            /* 
-             * allocate string for new record 
+            /*
+             * allocate string for new record
              * record is already inserted in hash table
              */
             match->value = malloc(sizeof *match->value * (len + 1));
@@ -657,7 +657,7 @@ lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash,
             if (ret == 0 && match_p) {
                 lyht_find(ht, val_p, hash, match_p);
             }
-            
+
             if (resize_val_equal) {
                 lyht_set_cb(ht, old_val_equal);
             }
