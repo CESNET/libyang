@@ -205,6 +205,7 @@ extern "C" {
  * - lys_set_implemented()
  * - lys_set_disabled()
  * - lys_set_enabled()
+ * - lys_search_localfile()
  */
 
 /**
@@ -310,6 +311,7 @@ extern "C" {
  * - lys_parse_mem()
  * - lys_parse_fd()
  * - lys_parse_path()
+ * - lys_search_localfile()
  * - ly_ctx_set_module_imp_clb()
  * - ly_ctx_load_module()
  */

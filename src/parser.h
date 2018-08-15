@@ -93,9 +93,6 @@ int lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_co
 int lyp_yin_parse_subnode_ext(struct lys_module *mod, void *elem, LYEXT_PAR elem_type,
                               struct lyxml_elem *yin, LYEXT_SUBSTMT type, uint8_t i, struct unres_schema *unres);
 
-struct lys_module *lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
-                                   const char *revision, int implement, struct unres_schema *unres);
-
 struct lys_type *lyp_get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *found);
 
 /* return: 0 - ret set, ok; 1 - ret not set, no log, unknown meta; -1 - ret not set, log, fatal error */

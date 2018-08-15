@@ -28,6 +28,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <dirent.h>
 
 #include "common.h"
 #include "context.h"
@@ -1235,6 +1236,199 @@ lys_sub_parse_fd(struct lys_module *module, int fd, LYS_INFORMAT format, struct 
 
     return submodule;
 
+}
+
+API int
+lys_search_localfile(char * const *searchpaths, const char *name, const char *revision, char **localfile, LYS_INFORMAT *format)
+{
+    size_t len, flen, match_len = 0, dir_len;
+    int i, implicit_cwd = 0, ret = EXIT_FAILURE;
+    char *wd, *wn = NULL;
+    DIR *dir = NULL;
+    struct dirent *file;
+    char *match_name = NULL;
+    LYS_INFORMAT format_aux, match_format = 0;
+    unsigned int u;
+    struct ly_set *dirs;
+    struct stat st;
+
+    if (!localfile) {
+        LOGARG;
+        return EXIT_FAILURE;
+    }
+
+    /* start to fill the dir fifo with the context's search path (if set)
+     * and the current working directory */
+    dirs = ly_set_new();
+    if (!dirs) {
+        LOGMEM(NULL);
+        return EXIT_FAILURE;
+    }
+
+    len = strlen(name);
+    wd = get_current_dir_name();
+    if (!wd) {
+        LOGMEM(NULL);
+        goto cleanup;
+    } else {
+        /* add implicit current working directory (./) to be searched,
+         * this directory is not searched recursively */
+        if (ly_set_add(dirs, wd, 0) == -1) {
+            goto cleanup;
+        }
+        implicit_cwd = 1;
+    }
+    if (searchpaths) {
+        for (i = 0; searchpaths[i]; i++) {
+            /* check for duplicities with the implicit current working directory */
+            if (implicit_cwd && !strcmp(dirs->set.g[0], searchpaths[i])) {
+                implicit_cwd = 0;
+                continue;
+            }
+            wd = strdup(searchpaths[i]);
+            if (!wd) {
+                LOGMEM(NULL);
+                goto cleanup;
+            } else if (ly_set_add(dirs, wd, 0) == -1) {
+                goto cleanup;
+            }
+        }
+    }
+    wd = NULL;
+
+    /* start searching */
+    while (dirs->number) {
+        free(wd);
+        free(wn); wn = NULL;
+
+        dirs->number--;
+        wd = (char *)dirs->set.g[dirs->number];
+        dirs->set.g[dirs->number] = NULL;
+        LOGVRB("Searching for \"%s\" in %s.", name, wd);
+
+        if (dir) {
+            closedir(dir);
+        }
+        dir = opendir(wd);
+        dir_len = strlen(wd);
+        if (!dir) {
+            LOGWRN(NULL, "Unable to open directory \"%s\" for searching (sub)modules (%s).", wd, strerror(errno));
+        } else {
+            while ((file = readdir(dir))) {
+                if (!strcmp(".", file->d_name) || !strcmp("..", file->d_name)) {
+                    /* skip . and .. */
+                    continue;
+                }
+                free(wn);
+                if (asprintf(&wn, "%s/%s", wd, file->d_name) == -1) {
+                    LOGMEM(NULL);
+                    goto cleanup;
+                }
+                if (stat(wn, &st) == -1) {
+                    LOGWRN(NULL, "Unable to get information about \"%s\" file in \"%s\" when searching for (sub)modules (%s)",
+                           file->d_name, wd, strerror(errno));
+                    continue;
+                }
+                if (S_ISDIR(st.st_mode) && (dirs->number || !implicit_cwd)) {
+                    /* we have another subdirectory in searchpath to explore,
+                     * subdirectories are not taken into account in current working dir (dirs->set.g[0]) */
+                    if (ly_set_add(dirs, wn, 0) == -1) {
+                        goto cleanup;
+                    }
+                    /* continue with the next item in current directory */
+                    wn = NULL;
+                    continue;
+                } else if (!S_ISREG(st.st_mode)) {
+                    /* not a regular file (note that we see the target of symlinks instead of symlinks */
+                    continue;
+                }
+
+                /* here we know that the item is a file which can contain a module */
+                if (strncmp(name, file->d_name, len) ||
+                        (file->d_name[len] != '.' && file->d_name[len] != '@')) {
+                    /* different filename than the module we search for */
+                    continue;
+                }
+
+                /* get type according to filename suffix */
+                flen = strlen(file->d_name);
+                if (!strcmp(&file->d_name[flen - 4], ".yin")) {
+                    format_aux = LYS_IN_YIN;
+                } else if (!strcmp(&file->d_name[flen - 5], ".yang")) {
+                    format_aux = LYS_IN_YANG;
+                } else {
+                    /* not supportde suffix/file format */
+                    continue;
+                }
+
+                if (revision) {
+                    /* we look for the specific revision, try to get it from the filename */
+                    if (file->d_name[len] == '@') {
+                        /* check revision from the filename */
+                        if (strncmp(revision, &file->d_name[len + 1], strlen(revision))) {
+                            /* another revision */
+                            continue;
+                        } else {
+                            /* exact revision */
+                            free(match_name);
+                            match_name = wn;
+                            wn = NULL;
+                            match_len = dir_len + 1 + len;
+                            match_format = format_aux;
+                            goto success;
+                        }
+                    } else {
+                        /* continue trying to find exact revision match, use this only if not found */
+                        free(match_name);
+                        match_name = wn;
+                        wn = NULL;
+                        match_len = dir_len + 1 +len;
+                        match_format = format_aux;
+                        continue;
+                    }
+                } else {
+                    /* remember the revision and try to find the newest one */
+                    if (match_name) {
+                        if (file->d_name[len] != '@' || lyp_check_date(NULL, &file->d_name[len + 1])) {
+                            continue;
+                        } else if (match_name[match_len] == '@' &&
+                                (strncmp(&match_name[match_len + 1], &file->d_name[len + 1], LY_REV_SIZE - 1) >= 0)) {
+                            continue;
+                        }
+                        free(match_name);
+                    }
+
+                    match_name = wn;
+                    wn = NULL;
+                    match_len = dir_len + 1 + len;
+                    match_format = format_aux;
+                    continue;
+                }
+            }
+        }
+    }
+
+success:
+    (*localfile) = match_name;
+    match_name = NULL;
+    if (format) {
+        (*format) = match_format;
+    }
+    ret = EXIT_SUCCESS;
+
+cleanup:
+    free(wn);
+    free(wd);
+    if (dir) {
+        closedir(dir);
+    }
+    free(match_name);
+    for (u = 0; u < dirs->number; u++) {
+        free(dirs->set.g[u]);
+    }
+    ly_set_free(dirs);
+
+    return ret;
 }
 
 int

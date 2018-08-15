@@ -2164,6 +2164,22 @@ const struct lys_module *lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT f
 const struct lys_module *lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format);
 
 /**
+ * @brief Search for the schema file in the specified searchpaths.
+ *
+ * @param[in] searchpaths NULL-terminated array of paths to be searched (recursively). Current working
+ * directory is searched automatically (but non-recursively if not in the provided list). Caller can use
+ * result of the ly_ctx_get_searchdirs().
+ * @param[in] name Name of the schema to find.
+ * @param[in] revision Revision of the schema to find. If NULL, the newest found schema filepath is returned.
+ * @param[out] localfile Mandatory output variable containing absolute path of the found schema. If no schema
+ * complying the provided restriction is found, NULL is set.
+ * @param[out] format Optional output variable containing expected format of the schema document according to the
+ * file suffix.
+ * @return EXIT_FAILURE on error, EXIT_SUCCESS otherwise (even if the file is not found, then the *localfile is NULL).
+ */
+int lys_search_localfile(char * const *searchpaths, const char *name, const char *revision, char **localfile, LYS_INFORMAT *format);
+
+/**
  * @brief Get list of all the defined features in the module and its submodules.
  *
  * @param[in] module Module to explore.
