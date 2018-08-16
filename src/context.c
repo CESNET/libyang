@@ -329,6 +329,18 @@ ly_ctx_unset_option(struct ly_ctx *ctx, int options)
 }
 
 API void
+ly_ctx_set_disable_searchdirs(struct ly_ctx *ctx)
+{
+    ly_ctx_set_option(ctx, LY_CTX_DISABLE_SEARCHIDRS);
+}
+
+API void
+ly_ctx_unset_disable_searchdirs(struct ly_ctx *ctx)
+{
+    ly_ctx_unset_option(ctx, LY_CTX_DISABLE_SEARCHIDRS);
+}
+
+API void
 ly_ctx_set_allimplemented(struct ly_ctx *ctx)
 {
     ly_ctx_set_option(ctx, LY_CTX_ALLIMPLEMENTED);
@@ -754,7 +766,7 @@ ly_ctx_load_localfile(struct ly_ctx *ctx, struct lys_module *module, const char 
     LYS_INFORMAT format;
     struct lys_module *result = NULL;
 
-    if (lys_search_localfile(ctx->models.search_paths, name, revision, &filepath, &format)) {
+    if (lys_search_localfile(ly_ctx_get_searchdirs(ctx), name, revision, &filepath, &format)) {
         goto cleanup;
     } else if (!filepath) {
         if (!module && !revision) {

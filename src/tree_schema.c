@@ -1239,7 +1239,7 @@ lys_sub_parse_fd(struct lys_module *module, int fd, LYS_INFORMAT format, struct 
 }
 
 API int
-lys_search_localfile(char * const *searchpaths, const char *name, const char *revision, char **localfile, LYS_INFORMAT *format)
+lys_search_localfile(const char * const *searchpaths, const char *name, const char *revision, char **localfile, LYS_INFORMAT *format)
 {
     size_t len, flen, match_len = 0, dir_len;
     int i, implicit_cwd = 0, ret = EXIT_FAILURE;

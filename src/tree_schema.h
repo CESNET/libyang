@@ -2177,7 +2177,7 @@ const struct lys_module *lys_parse_path(struct ly_ctx *ctx, const char *path, LY
  * file suffix.
  * @return EXIT_FAILURE on error, EXIT_SUCCESS otherwise (even if the file is not found, then the *localfile is NULL).
  */
-int lys_search_localfile(char * const *searchpaths, const char *name, const char *revision, char **localfile, LYS_INFORMAT *format);
+int lys_search_localfile(const char * const *searchpaths, const char *name, const char *revision, char **localfile, LYS_INFORMAT *format);
 
 /**
  * @brief Get list of all the defined features in the module and its submodules.
