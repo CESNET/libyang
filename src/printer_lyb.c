@@ -82,13 +82,13 @@ lyb_hash_sequence_check(struct hash_table *ht, struct lys_node *sibling, int ht_
 }
 
 #ifndef NDEBUG
-static int lyb_check_augment_collision(struct hash_table *ht, struct lys_node *aug1, struct lys_node *aug2) {
+static int
+lyb_check_augment_collision(struct hash_table *ht, struct lys_node *aug1, struct lys_node *aug2)
+{
     struct lys_node *iter1 = NULL, *iter2 = NULL;
     int i, coliding = 0;
     values_equal_cb cb = NULL;
     LYB_HASH hash1, hash2;
-
-    cb = lyht_set_cb(ht, lyb_ptr_equal_cb);
 
     /* go throught combination of all nodes and check if coliding hash is used */
     while ((iter1 = (struct lys_node *)lys_getnext(iter1, aug1, aug1->module, 0))) {
@@ -98,40 +98,34 @@ static int lyb_check_augment_collision(struct hash_table *ht, struct lys_node *a
             for (i = 0; i < LYB_HASH_BITS; i++) {
                 hash1 = lyb_hash(iter1, i);
                 hash2 = lyb_hash(iter2, i);
-                if(!hash1 || !hash2) {
-                    lyht_set_cb(ht, cb);
-                    LOGINT(aug1->module->ctx);
-                    return 0;
-                }
+                LY_CHECK_ERR_RETURN(!hash1 || !hash2, LOGINT(aug1->module->ctx), 0);
 
                 if (hash1 == hash2) {
                     coliding++;
                     /* if one of values with coliding hash is in hash table, we have a problem */
+                    cb = lyht_set_cb(ht, lyb_ptr_equal_cb);
                     if ((lyht_find(ht, &iter1, hash1, NULL) == 0) || (lyht_find(ht, &iter2, hash2, NULL) == 0)) {
                         LOGWRN(aug1->module->ctx, "Augmentations from modules \"%s\" and \"%s\" have fatal hash collision.",
                                iter1->module->name, iter2->module->name);
-                        LOGWRN(aug1->module->ctx, "Load modules in correct order to resolve this issue.");
+                        LOGWRN(aug1->module->ctx, "Load module \"%s\" before \"%s\" to resolve this issue.",
+                               iter1->module->name, iter2->module->name);
                         lyht_set_cb(ht, cb);
                         return 1;
                     }
+                    lyht_set_cb(ht, cb);
                 }
             }
-
-            if (coliding == LYB_HASH_BITS) {
-                /* hashes colide on all ids, only if something really bad happened */
-                lyht_set_cb(ht, cb);
-                LOGINT(aug1->module->ctx);
-                return 1;
-            }
+            LY_CHECK_ERR_RETURN(coliding == LYB_HASH_BITS, LOGINT(aug1->module->ctx), 1);
         }
     }
 
     /* no used hashes with collision found */
-    lyht_set_cb(ht, cb);
     return 0;
 }
 
-static void lyb_check_augments(struct lys_node *parent, struct hash_table *ht, int options) {
+static void
+lyb_check_augments(struct lys_node *parent, struct hash_table *ht, int options)
+{
     struct lys_node *iter, *sibling = NULL, **augs = NULL;
     void *ret;
     int augs_size = 1, augs_found = 0, i, j, found;
