@@ -81,6 +81,119 @@ lyb_hash_sequence_check(struct hash_table *ht, struct lys_node *sibling, int ht_
     return 0;
 }
 
+#ifndef NDEBUG
+static int lyb_check_augment_collision(struct hash_table *ht, struct lys_node *aug1, struct lys_node *aug2) {
+    struct lys_node *iter1 = NULL, *iter2 = NULL;
+    int i, coliding = 0;
+    values_equal_cb cb = NULL;
+    LYB_HASH hash1, hash2;
+
+    cb = lyht_set_cb(ht, lyb_ptr_equal_cb);
+
+    /* go throught combination of all nodes and check if coliding hash is used */
+    while ((iter1 = (struct lys_node *)lys_getnext(iter1, aug1, aug1->module, 0))) {
+        iter2 = NULL;
+        while ((iter2 = (struct lys_node *)lys_getnext(iter2, aug2, aug2->module, 0))) {
+            coliding = 0;
+            for (i = 0; i < LYB_HASH_BITS; i++) {
+                hash1 = lyb_hash(iter1, i);
+                hash2 = lyb_hash(iter2, i);
+                if(!hash1 || !hash2) {
+                    lyht_set_cb(ht, cb);
+                    LOGINT(aug1->module->ctx);
+                    return 0;
+                }
+
+                if (hash1 == hash2) {
+                    coliding++;
+                    /* if one of values with coliding hash is in hash table, we have a problem */
+                    if ((lyht_find(ht, &iter1, hash1, NULL) == 0) || (lyht_find(ht, &iter2, hash2, NULL) == 0)) {
+                        LOGWRN(aug1->module->ctx, "Augmentations from modules \"%s\" and \"%s\" have fatal hash collision.",
+                               iter1->module->name, iter2->module->name);
+                        LOGWRN(aug1->module->ctx, "Load modules in correct order to resolve this issue.");
+                        lyht_set_cb(ht, cb);
+                        return 1;
+                    }
+                }
+            }
+
+            if (coliding == LYB_HASH_BITS) {
+                /* hashes colide on all ids, only if something really bad happened */
+                lyht_set_cb(ht, cb);
+                LOGINT(aug1->module->ctx);
+                return 1;
+            }
+        }
+    }
+
+    /* no used hashes with collision found */
+    lyht_set_cb(ht, cb);
+    return 0;
+}
+
+static void lyb_check_augments(struct lys_node *parent, struct hash_table *ht, int options) {
+    struct lys_node *iter, *sibling = NULL, **augs = NULL;
+    void *ret;
+    int augs_size = 1, augs_found = 0, i, j, found;
+    struct lys_module *mod;
+
+    assert(parent);
+    mod = lys_node_module(parent);
+
+    augs = malloc(sizeof sibling * augs_size);
+    LY_CHECK_ERR_RETURN(!augs, LOGMEM(mod->ctx), );
+
+    while ((sibling = (struct lys_node *)lys_getnext(sibling, parent, NULL, 0))) {
+        if (options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY)) {
+            for (iter = lys_parent(sibling);
+                iter && (iter->nodetype & (LYS_USES | LYS_CASE | LYS_CHOICE));
+                iter = lys_parent(iter));
+
+            if (((options & LYD_OPT_RPC) && (iter->nodetype == LYS_OUTPUT))
+                || ((options & LYD_OPT_RPCREPLY) && (iter->nodetype == LYS_INPUT))) {
+                /* skip unused nodes */
+                continue;
+            }
+        }
+        /* build array of all augments from different modules */
+        if (sibling->parent->nodetype == LYS_AUGMENT && lys_node_module(sibling->parent) != mod) {
+            found = 0;
+            for (i = 0; i < augs_found; i++) {
+                if (lys_node_module(augs[i]) == lys_node_module(sibling)) {
+                    found = 1;
+                    break;
+                }
+            }
+            if (!found) {
+                if (augs_size == augs_found) {
+                    augs_size *= 2;
+                    ret = realloc(augs, sizeof sibling * augs_size);
+                    if (!ret) {
+                        LOGMEM(mod->ctx);
+                        free(augs);
+                        return;
+                    }
+                    augs = ret;
+                }
+                augs[augs_found] = sibling;
+                augs_found++;
+            }
+        }
+    }
+    /* check collisions for every pair */
+    for (i = 0; i < augs_found; i++) {
+        for (j = i + 1; j < augs_found; j++) {
+            if (lyb_check_augment_collision(ht, augs[i]->parent, augs[j]->parent)) {
+                free(augs);
+                return;
+            }
+        }
+    }
+    free(augs);
+    return;
+}
+#endif
+
 static struct hash_table *
 lyb_hash_siblings(struct lys_node *sibling, const struct lys_module **models, int mod_count, int options)
 {
@@ -88,6 +201,10 @@ lyb_hash_siblings(struct lys_node *sibling, const struct lys_module **models, in
     struct lys_node *parent, *iter;
     const struct lys_module *mod;
     int i, j;
+#ifndef NDEBUG
+    int aug_col = 0;
+    const struct lys_module *aug_mod = NULL;
+#endif
 
     ht = lyht_new(1, sizeof(struct lys_node *), lyb_hash_equal_cb, NULL, 1);
     LY_CHECK_ERR_RETURN(!ht, LOGMEM(sibling->module->ctx), NULL);
@@ -116,6 +233,14 @@ lyb_hash_siblings(struct lys_node *sibling, const struct lys_module **models, in
             }
         }
 
+#ifndef NDEBUG
+        if (sibling->parent && sibling->parent->nodetype == LYS_AUGMENT && lys_node_module(sibling->parent) != mod) {
+            if (aug_mod && aug_mod != lys_node_module(sibling->parent)) {
+                aug_col = 1;
+            }
+            aug_mod = lys_node_module(sibling);
+        }
+#endif
         /* find the first non-colliding hash (or specifically non-colliding hash sequence) */
         for (i = 0; i < LYB_HASH_BITS; ++i) {
             /* check that we are not colliding with nodes inserted with a lower collision ID than ours */
@@ -158,6 +283,12 @@ lyb_hash_siblings(struct lys_node *sibling, const struct lys_module **models, in
             return NULL;
         }
     }
+
+#ifndef NDEBUG
+    if (aug_col) {
+        lyb_check_augments(parent, ht, options);
+    }
+#endif
 
     /* change val equal callback so that the HT is usable for finding value hashes */
     lyht_set_cb(ht, lyb_ptr_equal_cb);
