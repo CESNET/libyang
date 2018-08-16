@@ -30,7 +30,7 @@
 static int json_print_nodes(struct lyout *out, int level, const struct lyd_node *root, int withsiblings, int toplevel,
                             int options);
 
-static int
+int
 json_print_string(struct lyout *out, const char *text)
 {
     unsigned int i, n;
@@ -43,7 +43,7 @@ json_print_string(struct lyout *out, const char *text)
     for (i = n = 0; text[i]; i++) {
         if (text[i] >= 0 && text[i] < 0x20) {
             /* control character */
-            n += ly_print(out, "\\u%.4X");
+            n += ly_print(out, "\\u%.4X", text[i]);
         } else {
             switch (text[i]) {
             case '"':

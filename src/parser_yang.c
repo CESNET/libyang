@@ -468,7 +468,6 @@ int
 yang_read_key(struct lys_module *module, struct lys_node_list *list, struct unres_schema *unres)
 {
     char *exp, *value;
-    struct lys_node *node;
 
     exp = value = (char *) list->keys;
     while ((value = strpbrk(value, " \t\n"))) {
@@ -483,8 +482,7 @@ yang_read_key(struct lys_module *module, struct lys_node_list *list, struct unre
     list->keys = calloc(list->keys_size, sizeof *list->keys);
     LY_CHECK_ERR_RETURN(!list->keys, LOGMEM(module->ctx), EXIT_FAILURE);
 
-    for (node = list->parent; node && node->nodetype != LYS_GROUPING; node = lys_parent(node));
-    if (!node && unres_schema_add_node(module, unres, list, UNRES_LIST_KEYS, NULL) == -1) {
+    if (unres_schema_add_node(module, unres, list, UNRES_LIST_KEYS, NULL) == -1) {
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;

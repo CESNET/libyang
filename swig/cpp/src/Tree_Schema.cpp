@@ -61,6 +61,20 @@ std::string Module::print_mem(LYS_OUTFORMAT format, int options) {
     free(strp);
     return s_strp;
 }
+std::string Module::print_mem(LYS_OUTFORMAT format, const char *target, int options) {
+    char *strp = nullptr;
+    int rc = 0;
+
+    rc = lys_print_mem(&strp, module, format, target, 0, options);
+    if (rc) {
+        check_libyang_error(module->ctx);
+        return nullptr;
+    }
+
+    std::string s_strp = strp;
+    free(strp);
+    return s_strp;
+}
 Submodule::~Submodule() {};
 S_Revision Submodule::rev() LY_NEW(submodule, rev, Revision);
 std::vector<S_Deviation> *Submodule::deviation() LY_NEW_LIST(submodule, deviation, deviation_size, Deviation);

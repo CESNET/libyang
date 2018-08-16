@@ -36,7 +36,7 @@ void
 help(int shortout)
 {
     fprintf(stdout, "Usage:\n");
-    fprintf(stdout, "    yanglint [options] [-f { yang | yin | tree | tree-rfc }] <file>...\n");
+    fprintf(stdout, "    yanglint [options] [-f { yang | yin | tree | tree-rfc | jsons}] <file>...\n");
     fprintf(stdout, "        Validates the YANG module in <file>, and all its dependencies.\n\n");
     fprintf(stdout, "    yanglint [options] [-f { xml | json }] <schema>... <file>...\n");
     fprintf(stdout, "        Validates the YANG modeled data in <file> according to the <schema>.\n\n");
@@ -65,7 +65,7 @@ help(int shortout)
         "                        has no effect for the auto, rpc, rpcreply and notif TYPEs.\n\n"
         "  -f FORMAT, --format=FORMAT\n"
         "                        Convert to FORMAT. Supported formats: \n"
-        "                        tree, yin, yang for schemas,\n"
+        "                        yang, yin, tree and jsons (JSON) for schemas,\n"
         "                        xml, json for data.\n"
         "  -a, --auto            Modify the xml output by adding envelopes for autodetection.\n\n"
         "  -i, --allimplemented  Make all the imported modules implemented.\n\n"
@@ -337,6 +337,9 @@ main_ni(int argc, char* argv[])
                 outformat_d = 0;
             } else if (!strcasecmp(optarg, "yang")) {
                 outformat_s = LYS_OUT_YANG;
+                outformat_d = 0;
+            } else if (!strcasecmp(optarg, "jsons")) {
+                outformat_s = LYS_OUT_JSON;
                 outformat_d = 0;
             } else if (!strcasecmp(optarg, "xml")) {
                 outformat_s = 0;
@@ -691,11 +694,25 @@ main_ni(int argc, char* argv[])
 
     /* convert (print) to FORMAT */
     if (outformat_s) {
+        if (outformat_s == LYS_OUT_JSON && mods->number > 1) {
+            fputs("[", out);
+        }
         for (u = 0; u < mods->number; u++) {
             if (u) {
-                fputs("\n", out);
+                if (outformat_s == LYS_OUT_JSON) {
+                    fputs(",\n", out);
+                } else {
+                    fputs("\n", out);
+                }
             }
             lys_print_file(out, (struct lys_module *)mods->set.g[u], outformat_s, outtarget_s, outline_length_s, outoptions_s);
+        }
+        if (outformat_s == LYS_OUT_JSON) {
+            if (mods->number > 1) {
+                fputs("]\n", out);
+            } else if (mods->number == 1) {
+                fputs("\n", out);
+            }
         }
     } else if (data) {
         ly_errno = 0;

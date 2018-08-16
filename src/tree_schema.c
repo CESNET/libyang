@@ -3308,10 +3308,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
             list->keys_size = list_orig->keys_size;
 
             if (!shallow) {
-                /* the keys are going to be resolved only if the list is instantiated in data tree, not just
-                 * in another grouping */
-                for (iter = parent; iter && iter->nodetype != LYS_GROUPING; iter = iter->parent);
-                if (!iter && unres_schema_add_node(module, unres, list, UNRES_LIST_KEYS, NULL) == -1) {
+                if (unres_schema_add_node(module, unres, list, UNRES_LIST_KEYS, NULL) == -1) {
                     goto error;
                 }
             } else {

@@ -254,7 +254,7 @@ info_print_typedef_with_include(struct lyout *out, const struct lys_module *mod)
 }
 
 static void
-info_print_type_detail(struct lyout *out, const struct lys_type *type, int uni)
+info_print_type_detail_(struct lyout *out, const struct lys_type *type, int uni)
 {
     unsigned int i;
     struct lys_type *orig;
@@ -386,7 +386,7 @@ int_range:
 
         if (!uni) {
             for (i = 0; i < type->info.uni.count; ++i) {
-                info_print_type_detail(out, &type->info.uni.types[i], 1);
+                info_print_type_detail_(out, &type->info.uni.types[i], 1);
             }
         }
         break;
@@ -409,6 +409,12 @@ int_range:
     } else {
         ly_print(out, "\n");
     }
+}
+
+static void
+info_print_type_detail(struct lyout *out, const struct lys_type *type, int * UNUSED(first))
+{
+    return info_print_type_detail_(out, type, 0);
 }
 
 static void
@@ -672,20 +678,20 @@ info_print_data_mainmod_with_include(struct lyout *out, const struct lys_module 
 }
 
 static void
-info_print_typedef_detail(struct lyout *outf, const struct lys_tpdf *tpdf)
+info_print_typedef_detail(struct lyout *outf, const struct lys_tpdf *tpdf, int * UNUSED(first))
 {
     ly_print(outf, "%-*s%s\n", INDENT_LEN, "Typedef: ", tpdf->name);
     ly_print(outf, "%-*s%s\n", INDENT_LEN, "Module: ", tpdf->module->name);
     info_print_text(outf, tpdf->dsc, "Desc: ");
     info_print_text(outf, tpdf->ref, "Reference: ");
     info_print_flags(outf, tpdf->flags, LYS_STATUS_MASK, 0);
-    info_print_type_detail(outf, &tpdf->type, 0);
+    info_print_type_detail_(outf, &tpdf->type, 0);
     info_print_text(outf, tpdf->units, "Units: ");
     info_print_text(outf, tpdf->dflt, "Default: ");
 }
 
 static void
-info_print_ident_detail(struct lyout *out, const struct lys_ident *ident)
+info_print_ident_detail(struct lyout *out, const struct lys_ident *ident, int * UNUSED(first))
 {
     unsigned int i;
 
@@ -715,7 +721,7 @@ info_print_ident_detail(struct lyout *out, const struct lys_ident *ident)
 }
 
 static void
-info_print_feature_detail(struct lyout *out, const struct lys_feature *feat)
+info_print_feature_detail(struct lyout *out, const struct lys_feature *feat, int * UNUSED(first))
 {
     ly_print(out, "%-*s%s\n", INDENT_LEN, "Feature: ", feat->name);
     ly_print(out, "%-*s%s\n", INDENT_LEN, "Module: ", feat->module->name);
@@ -782,7 +788,7 @@ info_print_submodule(struct lyout *out, const struct lys_submodule *module)
 }
 
 static void
-info_print_container(struct lyout *out, const struct lys_node *node)
+info_print_container(struct lyout *out, const struct lys_node *node, int *UNUSED(first))
 {
     struct lys_node_container *cont = (struct lys_node_container *)node;
 
@@ -801,7 +807,7 @@ info_print_container(struct lyout *out, const struct lys_node *node)
 }
 
 static void
-info_print_choice(struct lyout *out, const struct lys_node *node)
+info_print_choice(struct lyout *out, const struct lys_node *node, int *UNUSED(first))
 {
     struct lys_node_choice *choice = (struct lys_node_choice *)node;
 
@@ -823,7 +829,7 @@ info_print_choice(struct lyout *out, const struct lys_node *node)
 }
 
 static void
-info_print_leaf(struct lyout *out, const struct lys_node *node)
+info_print_leaf(struct lyout *out, const struct lys_node *node, int *UNUSED(first))
 {
     struct lys_node_leaf *leaf = (struct lys_node_leaf *)node;
 
@@ -841,7 +847,7 @@ info_print_leaf(struct lyout *out, const struct lys_node *node)
 }
 
 static void
-info_print_leaflist(struct lyout *out, const struct lys_node *node)
+info_print_leaflist(struct lyout *out, const struct lys_node *node, int *UNUSED(first))
 {
     struct lys_node_leaflist *llist = (struct lys_node_leaflist *)node;
 
@@ -859,7 +865,7 @@ info_print_leaflist(struct lyout *out, const struct lys_node *node)
 }
 
 static void
-info_print_list(struct lyout *out, const struct lys_node *node)
+info_print_list(struct lyout *out, const struct lys_node *node, int *UNUSED(first))
 {
     struct lys_node_list *list = (struct lys_node_list *)node;
 
@@ -880,7 +886,7 @@ info_print_list(struct lyout *out, const struct lys_node *node)
 }
 
 static void
-info_print_anydata(struct lyout *out, const struct lys_node *node)
+info_print_anydata(struct lyout *out, const struct lys_node *node, int *UNUSED(first))
 {
     struct lys_node_anydata *any = (struct lys_node_anydata *)node;
 
@@ -895,7 +901,7 @@ info_print_anydata(struct lyout *out, const struct lys_node *node)
 }
 
 static void
-info_print_grouping(struct lyout *out, const struct lys_node *node)
+info_print_grouping(struct lyout *out, const struct lys_node *node, int * UNUSED(first))
 {
     struct lys_node_grp *group = (struct lys_node_grp *)node;
 
@@ -910,7 +916,7 @@ info_print_grouping(struct lyout *out, const struct lys_node *node)
 }
 
 static void
-info_print_case(struct lyout *out, const struct lys_node *node)
+info_print_case(struct lyout *out, const struct lys_node *node, int *UNUSED(first))
 {
     struct lys_node_case *cas = (struct lys_node_case *)node;
 
@@ -926,7 +932,7 @@ info_print_case(struct lyout *out, const struct lys_node *node)
 }
 
 static void
-info_print_input(struct lyout *out, const struct lys_node *node)
+info_print_input(struct lyout *out, const struct lys_node *node, int *UNUSED(first))
 {
     struct lys_node_inout *input = (struct lys_node_inout *)node;
 
@@ -940,7 +946,7 @@ info_print_input(struct lyout *out, const struct lys_node *node)
 }
 
 static void
-info_print_output(struct lyout *out, const struct lys_node *node)
+info_print_output(struct lyout *out, const struct lys_node *node, int *UNUSED(first))
 {
     struct lys_node_inout *output = (struct lys_node_inout *)node;
 
@@ -954,7 +960,7 @@ info_print_output(struct lyout *out, const struct lys_node *node)
 }
 
 static void
-info_print_notif(struct lyout *out, const struct lys_node *node)
+info_print_notif(struct lyout *out, const struct lys_node *node, int *UNUSED(first))
 {
     struct lys_node_notif *ntf = (struct lys_node_notif *)node;
 
@@ -971,7 +977,7 @@ info_print_notif(struct lyout *out, const struct lys_node *node)
 }
 
 static void
-info_print_rpc(struct lyout *out, const struct lys_node *node)
+info_print_rpc(struct lyout *out, const struct lys_node *node, int *UNUSED(first))
 {
     struct lys_node_rpc_action *rpc = (struct lys_node_rpc_action *)node;
 
@@ -987,7 +993,7 @@ info_print_rpc(struct lyout *out, const struct lys_node *node)
 }
 
 static void
-info_print_action(struct lyout *out, const struct lys_node *node)
+info_print_action(struct lyout *out, const struct lys_node *node, int *UNUSED(first))
 {
     struct lys_node_rpc_action *act = (struct lys_node_rpc_action *)node;
 
@@ -1005,11 +1011,7 @@ info_print_action(struct lyout *out, const struct lys_node *node)
 int
 info_print_model(struct lyout *out, const struct lys_module *module, const char *target_schema_path)
 {
-    int i, rc;
-    char *spec_target = NULL;
-    struct lys_node *target = NULL;
-    struct lys_tpdf *tpdf = NULL;
-    uint8_t tpdf_size = 0;
+    int rc = EXIT_SUCCESS;
 
     if (!target_schema_path) {
         if (module->type == 0) {
@@ -1018,194 +1020,26 @@ info_print_model(struct lyout *out, const struct lys_module *module, const char 
             info_print_submodule(out, (struct lys_submodule *)module);
         }
     } else {
-        if ((target_schema_path[0] == '/') || !strncmp(target_schema_path, "type/", 5)) {
-            rc = resolve_absolute_schema_nodeid((target_schema_path[0] == '/' ? target_schema_path : target_schema_path + 4), module,
-                                                LYS_ANY & ~(LYS_USES | LYS_AUGMENT | LYS_GROUPING), (const struct lys_node **)&target);
-            if (rc || !target) {
-                ly_print(out, "Target %s could not be resolved.\n", (target_schema_path[0] == '/' ? target_schema_path : target_schema_path + 4));
-                return EXIT_FAILURE;
-            }
-        } else if (!strncmp(target_schema_path, "grouping/", 9)) {
-            /* cut the data part off */
-            if ((spec_target = strchr(target_schema_path + 9, '/'))) {
-                /* HACK only temporary */
-                spec_target[0] = '\0';
-                ++spec_target;
-            }
-            rc = resolve_absolute_schema_nodeid(target_schema_path + 8, module, LYS_GROUPING, (const struct lys_node **)&target);
-            if (rc || !target) {
-                ly_print(out, "Grouping %s not found.\n", target_schema_path + 8);
-                return EXIT_FAILURE;
-            }
-        } else if (!strncmp(target_schema_path, "typedef/", 8)) {
-            if ((spec_target = strrchr(target_schema_path + 8, '/'))) {
-                /* schema node typedef */
-                /* HACK only temporary */
-                spec_target[0] = '\0';
-                ++spec_target;
-
-                rc = resolve_absolute_schema_nodeid(target_schema_path + 7, module,
-                                                    LYS_CONTAINER | LYS_LIST | LYS_NOTIF | LYS_RPC | LYS_ACTION,
-                                                    (const struct lys_node **)&target);
-                if (rc || !target) {
-                    /* perhaps it's in a grouping */
-                    rc = resolve_absolute_schema_nodeid(target_schema_path + 7, module, LYS_GROUPING,
-                                                        (const struct lys_node **)&target);
-                }
-                if (!rc && target) {
-                    switch (target->nodetype) {
-                    case LYS_CONTAINER:
-                        tpdf = ((struct lys_node_container *)target)->tpdf;
-                        tpdf_size = ((struct lys_node_container *)target)->tpdf_size;
-                        break;
-                    case LYS_LIST:
-                        tpdf = ((struct lys_node_list *)target)->tpdf;
-                        tpdf_size = ((struct lys_node_list *)target)->tpdf_size;
-                        break;
-                    case LYS_NOTIF:
-                        tpdf = ((struct lys_node_notif *)target)->tpdf;
-                        tpdf_size = ((struct lys_node_notif *)target)->tpdf_size;
-                        break;
-                    case LYS_RPC:
-                    case LYS_ACTION:
-                        tpdf = ((struct lys_node_rpc_action *)target)->tpdf;
-                        tpdf_size = ((struct lys_node_rpc_action *)target)->tpdf_size;
-                        break;
-                    case LYS_GROUPING:
-                        tpdf = ((struct lys_node_grp *)target)->tpdf;
-                        tpdf_size = ((struct lys_node_grp *)target)->tpdf_size;
-                        break;
-                    default:
-                        LOGINT(module->ctx);
-                        return EXIT_FAILURE;
-                    }
-                }
-            } else {
-                /* module typedef */
-                spec_target = (char *)target_schema_path + 8;
-                tpdf = module->tpdf;
-                tpdf_size = module->tpdf_size;
-            }
-
-            for (i = 0; i < tpdf_size; ++i) {
-                if (!strcmp(tpdf[i].name, spec_target)) {
-                    info_print_typedef_detail(out, &tpdf[i]);
-                    break;
-                }
-            }
-            /* HACK return previous hack */
-            --spec_target;
-            spec_target[0] = '/';
-
-            if (i == tpdf_size) {
-                ly_print(out, "Typedef %s not found.\n", target_schema_path);
-                return EXIT_FAILURE;
-            }
-            return EXIT_SUCCESS;
-
-        } else if (!strncmp(target_schema_path, "identity/", 9)) {
-            target_schema_path += 9;
-            for (i = 0; i < (signed)module->ident_size; ++i) {
-                if (!strcmp(module->ident[i].name, target_schema_path)) {
-                    break;
-                }
-            }
-            if (i == (signed)module->ident_size) {
-                ly_print(out, "Identity %s not found.\n", target_schema_path);
-                return EXIT_FAILURE;
-            }
-
-            info_print_ident_detail(out, &module->ident[i]);
-            return EXIT_SUCCESS;
-
-        } else if (!strncmp(target_schema_path, "feature/", 8)) {
-            target_schema_path += 8;
-            for (i = 0; i < module->features_size; ++i) {
-                if (!strcmp(module->features[i].name, target_schema_path)) {
-                    break;
-                }
-            }
-            if (i == module->features_size) {
-                ly_print(out, "Feature %s not found.\n", target_schema_path);
-                return EXIT_FAILURE;
-            }
-
-            info_print_feature_detail(out, &module->features[i]);
-            return EXIT_SUCCESS;
-        } else {
-            ly_print(out, "Target could not be resolved.\n");
-            return EXIT_FAILURE;
-        }
-
-        if (!strncmp(target_schema_path, "type/", 5)) {
-            if (!(target->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
-                ly_print(out, "Target is not a leaf or a leaf-list.\n");
-                return EXIT_FAILURE;
-            }
-            info_print_type_detail(out, &((struct lys_node_leaf *)target)->type, 0);
-            return EXIT_SUCCESS;
-        } else if (!strncmp(target_schema_path, "grouping/", 9) && !spec_target) {
-            info_print_grouping(out, target);
-            return EXIT_SUCCESS;
-        }
-
-        /* find the node in the grouping */
-        if (spec_target) {
-            rc = resolve_descendant_schema_nodeid(spec_target, target->child, LYS_NO_RPC_NOTIF_NODE,
-                                                  0, (const struct lys_node **)&target);
-            if (rc || !target) {
-                ly_print(out, "Grouping %s child \"%s\" not found.\n", target_schema_path + 9, spec_target);
-                return EXIT_FAILURE;
-            }
-            /* HACK return previous hack */
-            --spec_target;
-            spec_target[0] = '/';
-        }
-
-        switch (target->nodetype) {
-        case LYS_CONTAINER:
-            info_print_container(out, target);
-            break;
-        case LYS_CHOICE:
-            info_print_choice(out, target);
-            break;
-        case LYS_LEAF:
-            info_print_leaf(out, target);
-            break;
-        case LYS_LEAFLIST:
-            info_print_leaflist(out, target);
-            break;
-        case LYS_LIST:
-            info_print_list(out, target);
-            break;
-        case LYS_ANYXML:
-        case LYS_ANYDATA:
-            info_print_anydata(out, target);
-            break;
-        case LYS_CASE:
-            info_print_case(out, target);
-            break;
-        case LYS_NOTIF:
-            info_print_notif(out, target);
-            break;
-        case LYS_RPC:
-            info_print_rpc(out, target);
-            break;
-        case LYS_ACTION:
-            info_print_action(out, target);
-            break;
-        case LYS_INPUT:
-            info_print_input(out, target);
-            break;
-        case LYS_OUTPUT:
-            info_print_output(out, target);
-            break;
-        default:
-            ly_print(out, "Nodetype %s not supported.\n", strnodetype(target->nodetype));
-            break;
-        }
+        rc = lys_print_target(out, module, target_schema_path,
+                              info_print_typedef_detail,
+                              info_print_ident_detail,
+                              info_print_feature_detail,
+                              info_print_type_detail,
+                              info_print_grouping,
+                              info_print_container,
+                              info_print_choice,
+                              info_print_leaf,
+                              info_print_leaflist,
+                              info_print_list,
+                              info_print_anydata,
+                              info_print_case,
+                              info_print_notif,
+                              info_print_rpc,
+                              info_print_action,
+                              info_print_input,
+                              info_print_output);
     }
     ly_print_flush(out);
 
-    return EXIT_SUCCESS;
+    return rc;
 }

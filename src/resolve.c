@@ -6064,11 +6064,6 @@ resolve_list_keys(struct lys_node_list *list, const char *keys_str)
             len = strlen(keys_str);
         }
 
-        if (list->keys[i]) {
-            /* skip already resolved keys */
-            goto next;
-        }
-
         rc = lys_getnext_data(lys_node_module((struct lys_node *)list), (struct lys_node *)list, keys_str, len, LYS_LEAF,
                               (const struct lys_node **)&list->keys[i]);
         if (rc) {
@@ -6101,7 +6096,6 @@ resolve_list_keys(struct lys_node_list *list, const char *keys_str)
             free(s);
         }
 
-next:
         /* prepare for next iteration */
         while (value && isspace(value[0])) {
             value++;
