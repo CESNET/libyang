@@ -7252,7 +7252,9 @@ resolve_unres_schema_types(struct unres_schema *unres, enum UNRES_ITEM types, st
                     ++res_count;
                     ret = -1;
                 } else {
-                    ly_ilo_restore(ctx, prev_ilo, prev_eitem, 1);
+                    if (forward_ref) {
+                        ly_ilo_restore(ctx, prev_ilo, prev_eitem, 1);
+                    }
                     return -1;
                 }
             }
