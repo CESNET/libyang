@@ -1100,7 +1100,7 @@ struct lyd_node *
 lyd_parse_lyb(struct ly_ctx *ctx, const char *data, int options, const struct lyd_node *data_tree,
               const char *yang_data_name, int *parsed)
 {
-    int r, ret = 0;
+    int r = 0, ret = 0;
     struct lyd_node *node = NULL, *next, *act_notif = NULL;
     struct unres_data *unres = NULL;
     struct lyb_state lybs;
