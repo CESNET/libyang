@@ -318,6 +318,7 @@ ly_load_plugins_dir(DIR *dir, const char *dir_path, int ext_or_type)
         name = strndup(file->d_name, len - LY_PLUGIN_SUFFIX_LEN);
         if (!name) {
             LOGMEM(NULL);
+            dlclose(dlhandler);
             free(str);
             return;
         }
