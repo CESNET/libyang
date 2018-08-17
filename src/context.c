@@ -880,7 +880,7 @@ const struct lys_module *
 ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char *name, const char *revision,
                        int implement, struct unres_schema *unres)
 {
-    struct lys_module *mod;
+    struct lys_module *mod = NULL;
     char *module_data = NULL;
     int i;
     void (*module_data_free)(void *module_data) = NULL;
