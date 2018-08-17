@@ -164,11 +164,8 @@ lydict_remove(struct ly_ctx *ctx, const char *value)
     ret = lyht_find(ctx->dict.hash_tab, &rec, hash, (void **)&match);
 
     if (ret == 0) {
-        if (!match) {
-            LOGINT(ctx);
-            pthread_mutex_unlock(&ctx->dict.lock);
-            return;
-        }
+        LY_CHECK_ERR_GOTO(!match, LOGINT(ctx), finish);
+
         /* if value is already in dictionary, decrement reference counter */
         match->refcount--;
         if (match->refcount == 0) {
@@ -180,9 +177,11 @@ lydict_remove(struct ly_ctx *ctx, const char *value)
             val_p = match->value;
             ret = lyht_remove(ctx->dict.hash_tab, &rec, hash);
             free(val_p);
-            LY_CHECK_ERR_RETURN(ret != 0, LOGINT(ctx), );
+            LY_CHECK_ERR_GOTO(ret, LOGINT(ctx), finish);
         }
     }
+
+finish:
     pthread_mutex_unlock(&ctx->dict.lock);
 }
 
