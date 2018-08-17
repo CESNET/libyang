@@ -528,7 +528,10 @@ jsons_print_imports_(struct lyout *out, const struct lys_submodule *submodule,
             ly_print(out, ",\"from-submodule\":\"%s%s%s\"", submodule->name,
                      submodule->rev_size ? "@" : "", submodule->rev_size ? submodule->rev[0].date : "");
         }
-        asprintf(&str, "%s%s%s", imp[i].module->name, imp[i].module->rev_size ? "@" : "", imp[i].module->rev_size ? imp[i].module->rev[0].date : "");
+        if (asprintf(&str, "%s%s%s", imp[i].module->name, imp[i].module->rev_size ? "@" : "", imp[i].module->rev_size ? imp[i].module->rev[0].date : "") == -1) {
+            LOGMEM(NULL);
+            return;
+        }
         jsons_print_text(out, "resolves-to", "module", str, 1, &f);
         free(str);
         ly_print(out, "}");
@@ -544,7 +547,10 @@ jsons_print_imports(struct lyout *out, const struct lys_module *mod, int *first)
         return;
     }
 
-    asprintf(&str, "%s\"import\":{", (first && (*first)) ? "" : ",");
+    if (asprintf(&str, "%s\"import\":{", (first && (*first)) ? "" : ",") == -1) {
+        LOGMEM(mod->ctx);
+        return;
+    }
     jsons_print_imports_(out, NULL, mod->imp, mod->imp_size, &str);
     /* FIXME key duplication in case multiple submodules imports the same module,
      * but the question is if it is needed to print imports even from submodules -

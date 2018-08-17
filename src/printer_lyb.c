@@ -876,6 +876,9 @@ lyb_print_attributes(struct lyout *out, struct lyd_attr *attr, struct lyb_state 
 
         /* get the type */
         type = *(struct lys_type **)lys_ext_complex_get_substmt(LY_STMT_TYPE, attr->annotation, NULL);
+        if (!type) {
+            return -1;
+        }
 
         /* attribute value */
         ret += (r = lyb_print_value(type, attr->value_str, attr->value, attr->value_type, attr->value_flags, 0, out, lybs));
