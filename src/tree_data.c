@@ -390,7 +390,9 @@ lyd_keyless_list_hash_change(struct lyd_node *parent)
                 lyd_hash(parent);
                 if (parent->parent && parent->parent->ht) {
                     /* re-add the list again */
-                    lyht_insert(parent->parent->ht, &parent, parent->hash, NULL);
+                    r = lyht_insert(parent->parent->ht, &parent, parent->hash, NULL);
+                    assert(!r);
+                    (void)r;
                 }
             } else if (!lyd_list_has_keys(parent)) {
                 /* a parent is a list without keys so it cannot be a part of any parent hash */
