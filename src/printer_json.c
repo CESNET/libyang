@@ -440,7 +440,7 @@ json_print_anydataxml(struct lyout *out, int level, const struct lyd_node *node,
         if (any->value.str) {
             ly_print(out, "%s", any->value.str);
         }
-        if (level && (any->value.str[strlen(any->value.str) - 1] != '\n')) {
+        if (level && (!any->value.str || (any->value.str[strlen(any->value.str) - 1] != '\n'))) {
             /* do not print 2 newlines */
             ly_print(out, "\n");
         }
