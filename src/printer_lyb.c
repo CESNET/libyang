@@ -838,7 +838,7 @@ lyb_print_attributes(struct lyout *out, struct lyd_attr *attr, struct lyb_state 
     int r, ret = 0;
     uint8_t count;
     struct lyd_attr *iter;
-    struct lys_type *type;
+    struct lys_type **type;
 
     /* count attributes */
     for (count = 0, iter = attr; iter; ++count, iter = iter->next) {
@@ -875,13 +875,13 @@ lyb_print_attributes(struct lyout *out, struct lyd_attr *attr, struct lyb_state 
         }
 
         /* get the type */
-        type = *(struct lys_type **)lys_ext_complex_get_substmt(LY_STMT_TYPE, attr->annotation, NULL);
-        if (!type) {
+        type = (struct lys_type **)lys_ext_complex_get_substmt(LY_STMT_TYPE, attr->annotation, NULL);
+        if (!type || !(*type)) {
             return -1;
         }
 
         /* attribute value */
-        ret += (r = lyb_print_value(type, attr->value_str, attr->value, attr->value_type, attr->value_flags, 0, out, lybs));
+        ret += (r = lyb_print_value(*type, attr->value_str, attr->value, attr->value_type, attr->value_flags, 0, out, lybs));
         if (r < 0) {
             return -1;
         }

@@ -746,7 +746,7 @@ lyb_parse_attributes(struct lyd_node *node, const char *data, int options, struc
     int r, ret = 0;
     uint8_t i, count = 0;
     const struct lys_module *mod;
-    struct lys_type *type;
+    struct lys_type **type;
     struct lyd_attr *attr = NULL;
     struct lys_ext_instance_complex *ext;
     struct ly_ctx *ctx = node->schema->module->ctx;
@@ -801,10 +801,13 @@ lyb_parse_attributes(struct lyd_node *node, const char *data, int options, struc
         attr->name = lydict_insert(ctx, attr->annotation->arg_value, 0);
 
         /* get the type */
-        type = *(struct lys_type **)lys_ext_complex_get_substmt(LY_STMT_TYPE, attr->annotation, NULL);
+        type = (struct lys_type **)lys_ext_complex_get_substmt(LY_STMT_TYPE, attr->annotation, NULL);
+        if (!type || !(*type)) {
+            goto error;
+        }
 
         /* attribute value */
-        ret += (r = lyb_parse_value(type, NULL, attr, data, unres, lybs));
+        ret += (r = lyb_parse_value(*type, NULL, attr, data, unres, lybs));
         LYB_HAVE_READ_GOTO(r, data, error);
 
 stop_subtree:
