@@ -816,7 +816,7 @@ jsons_print_nodes_uses_(struct lyout *out, struct lys_node *data, const char *la
         if (node->nodetype & (LYS_USES)) {
             jsons_print_nodes_uses_(out, node->child, label, mask, top_first, first);
         } else {
-            if (*first) {
+            if (first && *first) {
                 ly_print(out, "%s\"%s\":[", (top_first && (*top_first)) ? "" : ",", label);
             }
             ly_print(out, "%s\"%s\"", (first && (*first)) ? "" : ",", node->name);

@@ -143,8 +143,8 @@ lyb_check_augments(struct lys_node *parent, struct hash_table *ht, int options)
                 iter && (iter->nodetype & (LYS_USES | LYS_CASE | LYS_CHOICE));
                 iter = lys_parent(iter));
 
-            if (((options & LYD_OPT_RPC) && (iter->nodetype == LYS_OUTPUT))
-                || ((options & LYD_OPT_RPCREPLY) && (iter->nodetype == LYS_INPUT))) {
+            if (iter && (((options & LYD_OPT_RPC) && (iter->nodetype == LYS_OUTPUT))
+                || ((options & LYD_OPT_RPCREPLY) && (iter->nodetype == LYS_INPUT)))) {
                 /* skip unused nodes */
                 continue;
             }
@@ -220,8 +220,8 @@ lyb_hash_siblings(struct lys_node *sibling, const struct lys_module **models, in
                  iter && (iter->nodetype & (LYS_USES | LYS_CASE | LYS_CHOICE));
                  iter = lys_parent(iter));
 
-            if (((options & LYD_OPT_RPC) && (iter->nodetype == LYS_OUTPUT))
-                    || ((options & LYD_OPT_RPCREPLY) && (iter->nodetype == LYS_INPUT))) {
+            if (iter && (((options & LYD_OPT_RPC) && (iter->nodetype == LYS_OUTPUT))
+                    || ((options & LYD_OPT_RPCREPLY) && (iter->nodetype == LYS_INPUT)))) {
                 /* skip unused nodes */
                 continue;
             }
@@ -925,8 +925,8 @@ check_inout:
                  iter && (iter->nodetype & (LYS_USES | LYS_CASE | LYS_CHOICE));
                  iter = lys_parent(iter));
 
-            if (((options & LYD_OPT_RPC) && (iter->nodetype == LYS_OUTPUT))
-                    || ((options & LYD_OPT_RPCREPLY) && (iter->nodetype == LYS_INPUT))) {
+            if (iter && (((options & LYD_OPT_RPC) && (iter->nodetype == LYS_OUTPUT))
+                    || ((options & LYD_OPT_RPCREPLY) && (iter->nodetype == LYS_INPUT)))) {
                 first_sibling = (struct lys_node *)lys_getnext(first_sibling, NULL, NULL, 0);
                 goto check_inout;
             }
@@ -1009,11 +1009,13 @@ lyb_print_subtree(struct lyout *out, const struct lyd_node *node, struct hash_ta
             sparent && (sparent->nodetype & (LYS_USES | LYS_CASE | LYS_CHOICE));
             sparent = lys_parent(sparent));
 
-        if ((options & LYD_OPT_RPC) && (sparent->nodetype == LYS_OUTPUT)) {
-            return 0;
-        }
-        if ((options & LYD_OPT_RPCREPLY) && (sparent->nodetype == LYS_INPUT)) {
-            return 0;
+        if (sparent) {
+            if ((options & LYD_OPT_RPC) && (sparent->nodetype == LYS_OUTPUT)) {
+                return 0;
+            }
+            if ((options & LYD_OPT_RPCREPLY) && (sparent->nodetype == LYS_INPUT)) {
+                return 0;
+            }
         }
     }
 
