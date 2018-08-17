@@ -1250,6 +1250,14 @@ void ly_ctx_unset_searchdirs(struct ly_ctx *ctx, int index);
 const char * const *ly_ctx_get_searchdirs(const struct ly_ctx *ctx);
 
 /**
+ * @brief Get the currently set context's options.
+ *
+ * @param[in] ctx Context to query.
+ * @return Combination of all the currently set context's options, see @ref contextoptions.
+ */
+int ly_ctx_get_options(struct ly_ctx *ctx);
+
+/**
  * @brief Make context to stop searching for schemas (imported, included or requested via ly_ctx_load_module())
  * in searchdirs set via ly_ctx_set_searchdir() functions. Searchdirs are still stored in the context, so by
  * unsetting the option by ly_ctx_unset_disable_searchdirs() searching in all previously searchdirs is restored.

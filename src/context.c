@@ -377,6 +377,12 @@ ly_ctx_unset_trusted(struct ly_ctx *ctx)
 }
 
 API int
+ly_ctx_get_options(struct ly_ctx *ctx)
+{
+    return ctx->models.flags;
+}
+
+API int
 ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
 {
     char *new = NULL;
