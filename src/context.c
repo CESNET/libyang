@@ -385,7 +385,7 @@ ly_ctx_get_options(struct ly_ctx *ctx)
 API int
 ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
 {
-    char *new = NULL;
+    char *new_dir = NULL;
     int index = 0;
     void *r;
     int rc = EXIT_FAILURE;
@@ -402,7 +402,8 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
             return EXIT_FAILURE;
         }
 
-        new = realpath(search_dir, NULL);
+        new_dir = realpath(search_dir, NULL);
+        LY_CHECK_ERR_GOTO(!new_dir, LOGERR(ctx, LY_ESYS, "realpath() call failed (%s).", strerror(errno)), cleanup);
         if (!ctx->models.search_paths) {
             ctx->models.search_paths = malloc(2 * sizeof *ctx->models.search_paths);
             LY_CHECK_ERR_GOTO(!ctx->models.search_paths, LOGMEM(ctx), cleanup);
@@ -410,7 +411,7 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
         } else {
             for (index = 0; ctx->models.search_paths[index]; index++) {
                 /* check for duplicities */
-                if (!strcmp(new, ctx->models.search_paths[index])) {
+                if (!strcmp(new_dir, ctx->models.search_paths[index])) {
                     /* path is already present */
                     goto success;
                 }
@@ -419,8 +420,8 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
             LY_CHECK_ERR_GOTO(!r, LOGMEM(ctx), cleanup);
             ctx->models.search_paths = r;
         }
-        ctx->models.search_paths[index] = new;
-        new = NULL;
+        ctx->models.search_paths[index] = new_dir;
+        new_dir = NULL;
         ctx->models.search_paths[index + 1] = NULL;
 
 success:
@@ -431,7 +432,7 @@ success:
     }
 
 cleanup:
-    free(new);
+    free(new_dir);
     return rc;
 }
 
