@@ -905,7 +905,7 @@ lyxml_parse_elem(struct ly_ctx *ctx, const char *data, unsigned int *len, struct
 
     /* allocate element structure */
     elem = calloc(1, sizeof *elem);
-    LY_CHECK_ERR_RETURN(!elem, LOGMEM(ctx), NULL);
+    LY_CHECK_ERR_RETURN(!elem, free(prefix); LOGMEM(ctx), NULL);
 
     elem->next = NULL;
     elem->prev = elem;
