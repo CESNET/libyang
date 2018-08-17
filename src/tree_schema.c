@@ -1239,7 +1239,7 @@ lys_sub_parse_fd(struct lys_module *module, int fd, LYS_INFORMAT format, struct 
 }
 
 API int
-lys_search_localfile(const char * const *searchpaths, const char *name, const char *revision, char **localfile, LYS_INFORMAT *format)
+lys_search_localfile(const char * const *searchpaths, int cwd, const char *name, const char *revision, char **localfile, LYS_INFORMAT *format)
 {
     size_t len, flen, match_len = 0, dir_len;
     int i, implicit_cwd = 0, ret = EXIT_FAILURE;
@@ -1266,17 +1266,19 @@ lys_search_localfile(const char * const *searchpaths, const char *name, const ch
     }
 
     len = strlen(name);
-    wd = get_current_dir_name();
-    if (!wd) {
-        LOGMEM(NULL);
-        goto cleanup;
-    } else {
-        /* add implicit current working directory (./) to be searched,
-         * this directory is not searched recursively */
-        if (ly_set_add(dirs, wd, 0) == -1) {
+    if (cwd) {
+        wd = get_current_dir_name();
+        if (!wd) {
+            LOGMEM(NULL);
             goto cleanup;
+        } else {
+            /* add implicit current working directory (./) to be searched,
+             * this directory is not searched recursively */
+            if (ly_set_add(dirs, wd, 0) == -1) {
+                goto cleanup;
+            }
+            implicit_cwd = 1;
         }
-        implicit_cwd = 1;
     }
     if (searchpaths) {
         for (i = 0; searchpaths[i]; i++) {

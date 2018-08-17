@@ -189,6 +189,8 @@ extern "C" {
  * - ly_ctx_unset_allimplemented()
  * - ly_ctx_set_disable_searchdirs()
  * - ly_ctx_unset_disable_searchdirs()
+ * - ly_ctx_set_disable_searchdir_cwd()
+ * - ly_ctx_unset_disable_searchdir_cwd()
  * - ly_ctx_load_module()
  * - ly_ctx_info()
  * - ly_ctx_get_module_set_id()
@@ -1127,6 +1129,9 @@ struct ly_ctx;
                                         working directory. It is entirely skipped and the only way to get
                                         schema data for imports or for ly_ctx_load_module() is to use the
                                         callbacks provided by caller via ly_ctx_set_module_imp_clb() */
+#define LY_CTX_DISABLE_SEARCHDIR_CWD 0x10 /**< Do not automatically search for schemas in current working
+                                        directory, which is by default searched automatically (despite not
+                                        recursively). */
 /**@} contextoptions */
 
 /**
@@ -1262,6 +1267,24 @@ void ly_ctx_set_disable_searchdirs(struct ly_ctx *ctx);
  * @param[in] ctx Context to be modified.
  */
 void ly_ctx_unset_disable_searchdirs(struct ly_ctx *ctx);
+
+/**
+ * @brief Make context to stop implicitly searching for schemas (imported, included or requested via ly_ctx_load_module())
+ * in current working directory. This flag can be unset by ly_ctx_unset_disable_searchdir_cwd().
+ *
+ * The same effect is achieved by using #LY_CTX_DISABLE_SEARCHDIR_CWD option when creating new context or parsing
+ * a specific schema.
+ *
+ * @param[in] ctx Context to be modified.
+ */
+void ly_ctx_set_disable_searchdir_cwd(struct ly_ctx *ctx);
+
+/**
+ * @brief Reverse function to ly_ctx_set_disable_searchdir_cwd().
+ *
+ * @param[in] ctx Context to be modified.
+ */
+void ly_ctx_unset_disable_searchdir_cwd(struct ly_ctx *ctx);
 
 /**
  * @brief Make context to set all the imported modules to be implemented. By default,
