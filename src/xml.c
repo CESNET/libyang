@@ -888,7 +888,7 @@ lyxml_parse_elem(struct ly_ctx *ctx, const char *data, unsigned int *len, struct
 
             /* look for the prefix in namespaces */
             prefix_len = e - c;
-            LY_CHECK_ERR_GOTO(prefix, LOGVAL(LYE_XML_INCHAR, LY_VLOG_NONE, NULL, e), error);
+            LY_CHECK_ERR_GOTO(prefix, LOGVAL(ctx, LYE_XML_INCHAR, LY_VLOG_NONE, NULL, e), error);
             prefix = malloc((prefix_len + 1) * sizeof *prefix);
             LY_CHECK_ERR_GOTO(!prefix, LOGMEM(ctx), error);
             memcpy(prefix, c, prefix_len);
