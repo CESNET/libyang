@@ -331,13 +331,13 @@ ly_ctx_unset_option(struct ly_ctx *ctx, int options)
 API void
 ly_ctx_set_disable_searchdirs(struct ly_ctx *ctx)
 {
-    ly_ctx_set_option(ctx, LY_CTX_DISABLE_SEARCHIDRS);
+    ly_ctx_set_option(ctx, LY_CTX_DISABLE_SEARCHDIRS);
 }
 
 API void
 ly_ctx_unset_disable_searchdirs(struct ly_ctx *ctx)
 {
-    ly_ctx_unset_option(ctx, LY_CTX_DISABLE_SEARCHIDRS);
+    ly_ctx_unset_option(ctx, LY_CTX_DISABLE_SEARCHDIRS);
 }
 
 API void
@@ -936,7 +936,7 @@ ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char
         if (module_data_free) {
             module_data_free(module_data);
         }
-    } else if (!(ctx->models.flags & LY_CTX_DISABLE_SEARCHIDRS)) {
+    } else if (!(ctx->models.flags & LY_CTX_DISABLE_SEARCHDIRS)) {
         /* module was not received from the callback or there is no callback set */
         mod = ly_ctx_load_localfile(ctx, module, name, revision, implement, unres);
     }
