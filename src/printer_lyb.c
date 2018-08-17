@@ -655,34 +655,33 @@ lyb_print_anydata(struct lyd_node_anydata *anydata, struct lyout *out, struct ly
     char *buf;
     LYD_ANYDATA_VALUETYPE type;
 
-    switch (anydata->value_type) {
-    case LYD_ANYDATA_XML:
+    if (anydata->value_type == LYD_ANYDATA_XML) {
         /* transform XML into CONSTSTRING */
         lyxml_print_mem(&buf, anydata->value.xml, LYXML_PRINT_SIBLINGS);
         lyxml_free(anydata->schema->module->ctx, anydata->value.xml);
 
         anydata->value_type = LYD_ANYDATA_CONSTSTRING;
         anydata->value.str = lydict_insert_zc(anydata->schema->module->ctx, buf);
-        /* fallthrough */
-    case LYD_ANYDATA_DATATREE:
-    case LYD_ANYDATA_JSON:
-    case LYD_ANYDATA_SXML:
-    case LYD_ANYDATA_CONSTSTRING:
-    case LYD_ANYDATA_LYB:
-        type = anydata->value_type;
-        break;
-    default:
+    }
+
+    if (anydata->value_type == LYD_ANYDATA_DATATREE) {
+        /* that is the format used */
+        type = LYD_ANYDATA_LYB;
+    } else if (anydata->value_type & LYD_ANYDATA_STRING) {
+        /* dynamic value, only used for input */
         LOGERR(anydata->schema->module->ctx, LY_EINT, "Unsupported anydata value type to print.");
         return -1;
+    } else {
+        type = anydata->value_type;
     }
 
     /* first byte is type */
     ret += lyb_write(out, (uint8_t *)&type, sizeof type, lybs);
 
     /* followed by the content */
-    if (type == LYD_ANYDATA_DATATREE) {
+    if (anydata->value_type == LYD_ANYDATA_DATATREE) {
         ret += lyb_print_data(out, anydata->value.tree, 0);
-    } else if (type == LYD_ANYDATA_LYB) {
+    } else if (anydata->value_type == LYD_ANYDATA_LYB) {
         len = lyd_lyb_data_length(anydata->value.mem);
         if (len > -1) {
             ret += lyb_write_string(anydata->value.str, (size_t)len, 0, out, lybs);
