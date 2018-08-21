@@ -16,6 +16,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 
 #include "libyang.h"
 #include "common.h"
@@ -566,11 +567,11 @@ lyb_parse_val_2(struct lys_type *type, struct lyd_node_leaf_list *leaf, struct l
         *value_str = lydict_insert(ctx, num_str, 0);
         break;
     case LY_TYPE_INT64:
-        sprintf(num_str, "%ld", value->int64);
+        sprintf(num_str, "%"PRId64, value->int64);
         *value_str = lydict_insert(ctx, num_str, 0);
         break;
     case LY_TYPE_UINT64:
-        sprintf(num_str, "%lu", value->uint64);
+        sprintf(num_str, "%"PRIu64, value->uint64);
         *value_str = lydict_insert(ctx, num_str, 0);
         break;
     case LY_TYPE_DEC64:
@@ -582,7 +583,7 @@ lyb_parse_val_2(struct lys_type *type, struct lyd_node_leaf_list *leaf, struct l
             --dig;
         }
 
-        sprintf(num_str, "%ld.%.*ld", value->dec64 / (int64_t)type->info.dec64.div, dig, frac);
+        sprintf(num_str, "%"PRId64".%.*"PRId64, value->dec64 / (int64_t)type->info.dec64.div, dig, frac);
         *value_str = lydict_insert(ctx, num_str, 0);
         break;
     default:
