@@ -70,8 +70,7 @@ lydict_clean(struct dict_table *dict)
         return;
     }
 
-    for (i = 0; i < dict->hash_tab->size; i++)
-    {
+    for (i = 0; i < dict->hash_tab->size; i++) {
         /* get ith record */
         rec = (struct ht_rec *)&dict->hash_tab->recs[i * dict->hash_tab->rec_size];
         if (rec->hits == 1) {
