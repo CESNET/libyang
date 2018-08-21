@@ -599,6 +599,10 @@ test_ly_ctx_remove_module(void **state)
     setid = ctx->models.module_set_id;
     assert_int_equal(modules_count + 1, ctx->models.used);
     assert_int_not_equal(dict_used, ctx->dict.hash_tab->used);
+    mod = ly_ctx_get_module(ctx, "y", NULL, 0);
+    assert_ptr_equal(mod, NULL);
+    mod = ly_ctx_get_module(ctx, "x", NULL, 0);
+    assert_ptr_not_equal(mod, NULL);
     ly_ctx_clean(ctx, NULL);
 
     /* add a module again ... */
@@ -619,6 +623,12 @@ test_ly_ctx_remove_module(void **state)
     setid = ctx->models.module_set_id;
     assert_int_equal(modules_count + 2, ctx->models.used);
     assert_int_not_equal(dict_used, ctx->dict.hash_tab->used);
+    mod = ly_ctx_get_module(ctx, "y", NULL, 0);
+    assert_ptr_equal(mod, NULL);
+    mod = ly_ctx_get_module(ctx, "x", NULL, 0);
+    assert_ptr_not_equal(mod, NULL);
+    mod = ly_ctx_get_module(ctx, "z", NULL, 0);
+    assert_ptr_not_equal(mod, NULL);
 }
 
 static void
