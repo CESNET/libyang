@@ -20,7 +20,7 @@
     <revision-date date="2014-12-10"/>
   </include>
   <include module="ietf-snmp-community">
-    <revision-date date="2014-12-10"/>
+    <revision-date date="2015-01-23"/>
   </include>
   <include module="ietf-snmp-usm">
     <revision-date date="2014-12-10"/>

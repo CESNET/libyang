@@ -2777,6 +2777,18 @@ lyp_check_include(struct lys_module *module, const char *value, struct lys_inclu
         return -1;
     }
 
+    /* check the revision */
+    if (inc->rev[0] && inc->submodule->rev_size && strcmp(inc->rev, inc->submodule->rev[0].date)) {
+        LOGERR(module->ctx, LY_EVALID, "\"%s\" include of submodule \"%s\" in revision \"%s\" not found.",
+               module->name, value, inc->rev);
+        unres_schema_free((struct lys_module *)inc->submodule, &unres, 0);
+        lys_sub_module_remove_devs_augs((struct lys_module *)inc->submodule);
+        lys_submodule_module_data_free((struct lys_submodule *)inc->submodule);
+        lys_submodule_free(inc->submodule, NULL);
+        inc->submodule = NULL;
+        return -1;
+    }
+
     /* store the submodule as successfully parsed */
     lyp_add_includedup(module, inc->submodule);
 
@@ -2911,6 +2923,12 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
     /* check the result */
     if (!imp->module) {
         LOGERR(ctx, LY_EVALID, "Importing \"%s\" module into \"%s\" failed.", value, module->name);
+        return -1;
+    }
+
+    if (imp->rev[0] && imp->module->rev_size && strcmp(imp->rev, imp->module->rev[0].date)) {
+        LOGERR(ctx, LY_EVALID, "\"%s\" import of module \"%s\" in revision \"%s\" not found.",
+               module->name, value, imp->rev);
         return -1;
     }
 
