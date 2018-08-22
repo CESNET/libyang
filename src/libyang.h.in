@@ -1104,6 +1104,7 @@ extern "C" {
  */
 
 /**
+ * @struct ly_ctx
  * @brief libyang context handler.
  */
 struct ly_ctx;

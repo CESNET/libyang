@@ -48,7 +48,7 @@ class Xml_Elem;
 class Deleter;
 
 /**
- * @brief class for wrapping [ly_ctx](@ref ly_ctx).
+ * @brief class for wrapping ly_ctx.
  * @class Context
  */
 class Context
