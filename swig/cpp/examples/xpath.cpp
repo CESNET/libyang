@@ -36,15 +36,15 @@ int main() {
             return -1;
         }
 
-        auto list = std::shared_ptr<std::vector<S_Data_Node>>(node_set->data());
-        for(auto data_set = list->begin() ; data_set != list->end() ; ++data_set) {
+        auto list = node_set->data();
+        for(auto data_set = list.begin() ; data_set != list.end() ; ++data_set) {
             std::cout << "name: " << (*data_set)->schema()->name() << " type: " << (*data_set)->schema()->nodetype() << " path: " << (*data_set)->path() << std::endl;
         }
     } catch( const std::exception& e ) {
         std::cout << "test" << std::endl;
         std::cout << e.what() << std::endl;
-        auto errors = std::shared_ptr<std::vector<S_Error>>(get_ly_errors(ctx));
-        for(auto error = errors->begin() ; error != errors->end() ; ++error) {
+        auto errors = get_ly_errors(ctx);
+        for(auto error = errors.begin() ; error != errors.end() ; ++error) {
             std::cout << "err: " << (*error)->err() << std::endl;
             std::cout << "vecode: " << (*error)->vecode() << std::endl;
             std::cout << "errmsg: " << (*error)->errmsg() << std::endl;

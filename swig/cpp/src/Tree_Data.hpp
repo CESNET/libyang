@@ -210,9 +210,9 @@ public:
 
     /* emulate TREE macro's */
     /** wrapper for macro [LY_TREE_FOR](@ref LY_TREE_FOR) */
-    std::vector<S_Data_Node> *tree_for();
+    std::vector<S_Data_Node> tree_for();
     /** wrapper for macro [LY_TREE_DFS_BEGIN](@ref LY_TREE_DFS_BEGIN) and [LY_TREE_DFS_END](@ref LY_TREE_DFS_END) */
-    std::vector<S_Data_Node> *tree_dfs();
+    std::vector<S_Data_Node> tree_dfs();
 
     /** SWIG related wrappers, for internal use only */
     struct lyd_node *swig_node() {return node;};
@@ -331,9 +331,9 @@ public:
     /** get type variable from [lyd_difflist](@ref lyd_difflist)*/
     LYD_DIFFTYPE *type() {return diff->type;};
     /** get first variable from [lyd_difflist](@ref lyd_difflist)*/
-    std::vector<S_Data_Node> *first();
+    std::vector<S_Data_Node> first();
     /** get second variable from [lyd_difflist](@ref lyd_difflist)*/
-    std::vector<S_Data_Node> *second();
+    std::vector<S_Data_Node> second();
 
 private:
     struct lyd_difflist *diff;

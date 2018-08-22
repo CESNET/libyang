@@ -143,11 +143,11 @@ public:
     /** get rev variable from [lys_module](@ref lys_module)*/
     S_Revision rev();
     /** get deviation variable from [lys_module](@ref lys_module)*/
-    std::vector<S_Deviation> *deviation();
+    std::vector<S_Deviation> deviation();
     /** get data variable from [lys_module](@ref lys_module)*/
     S_Schema_Node data() LY_NEW(module, data, Schema_Node);
     /** wrapper for [lys_getnext](@ref lys_getnext) */
-    std::vector<S_Schema_Node> *data_instantiables(int options);
+    std::vector<S_Schema_Node> data_instantiables(int options);
     /** wrapper for [lys_print_mem](@ref lys_print_mem) */
     std::string print_mem(LYS_OUTFORMAT format, int options);
     std::string print_mem(LYS_OUTFORMAT format, const char *target, int options);
@@ -219,7 +219,7 @@ public:
     /** get rev variable from [lys_submodule](@ref lys_submodule)*/
     S_Revision rev();
     /** get deviation variable from [lys_submodule](@ref lys_submodule)*/
-    std::vector<S_Deviation> *deviation();
+    std::vector<S_Deviation> deviation();
     /** get belongsto variable from [lys_submodule](@ref lys_submodule)*/
     S_Module belongsto() LY_NEW(submodule, belongsto, Module);
 
@@ -263,9 +263,9 @@ public:
     /** get pos variable from [lys_type_bit](@ref lys_type_bit)*/
     uint32_t pos() {return info_bit->pos;};
     /** get ext variable from [lys_type_bit](@ref lys_type_bit)*/
-    std::vector<S_Ext_Instance> *ext();
+    std::vector<S_Ext_Instance> ext();
     /** get iffeature variable from [lys_type_bit](@ref lys_type_bit)*/
-    std::vector<S_Iffeature> *iffeature();
+    std::vector<S_Iffeature> iffeature();
 
 private:
     lys_type_bit *info_bit;
@@ -279,7 +279,7 @@ public:
     Type_Info_Bits(struct lys_type_info_bits *info_bits, S_Deleter deleter);
     ~Type_Info_Bits();
     /** get bit variable from [lys_type_info_bits](@ref lys_type_info_bits)*/
-    std::vector<S_Type_Bit> *bit();
+    std::vector<S_Type_Bit> bit();
     /** get count variable from [lys_type_info_bits](@ref lys_type_info_bits)*/
     unsigned int count() {return info_bits->count;};
 
@@ -327,9 +327,9 @@ public:
     /** get value variable from [lys_type_enum](@ref lys_type_enum)*/
     int32_t value() {return info_enum->value;};
     /** get ext variable from [lys_type_enum](@ref lys_type_enum)*/
-    std::vector<S_Ext_Instance> *ext();
+    std::vector<S_Ext_Instance> ext();
     /** get iffeature variable from [lys_type_enum](@ref lys_type_enum)*/
-    std::vector<S_Iffeature> *iffeature();
+    std::vector<S_Iffeature> iffeature();
 
 private:
     lys_type_enum *info_enum;
@@ -343,7 +343,7 @@ public:
     Type_Info_Enums(struct lys_type_info_enums *info_enums, S_Deleter deleter);
     ~Type_Info_Enums();
     /** get enm variable from [lys_type_info_enums](@ref lys_type_info_enums)*/
-    std::vector<S_Type_Enum> *enm();
+    std::vector<S_Type_Enum> enm();
     /** get count variable from [lys_type_info_enums](@ref lys_type_info_enums)*/
     unsigned int count() {return info_enums->count;};
 
@@ -359,7 +359,7 @@ public:
     Type_Info_Ident(struct lys_type_info_ident *info_ident, S_Deleter deleter);
     ~Type_Info_Ident();
     /** get ref variable from [lys_type_info_ident](@ref lys_type_info_ident)*/
-    std::vector<S_Ident> *ref();
+    std::vector<S_Ident> ref();
     /** get count variable from [lys_type_info_ident](@ref lys_type_info_ident)*/
     int count() {return info_ident->count;};
 
@@ -439,7 +439,7 @@ public:
     Type_Info_Union(struct lys_type_info_union *info_union, S_Deleter deleter);
     ~Type_Info_Union();
     /** get types variable from [lys_type_info_union](@ref lys_type_info_union)*/
-    std::vector<S_Type> *types();
+    std::vector<S_Type> types();
     /** get count variable from [lys_type_info_union](@ref lys_type_info_union)*/
     int count() {return info_union->count;};
     /** get has_ptr_type variable from [lys_type_info_union](@ref lys_type_info_union)*/
@@ -495,7 +495,7 @@ public:
     /** get ext_size variable from [lys_type](@ref lys_type)*/
     uint8_t ext_size() {return type->ext_size;};
     /** get ext variable from [lys_type](@ref lys_type)*/
-    std::vector<S_Ext_Instance> *ext();
+    std::vector<S_Ext_Instance> ext();
     /** get der variable from [lys_type](@ref lys_type)*/
     S_Tpdf der();
     /** get parent variable from [lys_type](@ref lys_type)*/
@@ -518,9 +518,9 @@ public:
     /** get ext_size variable from [lys_iffeature](@ref lys_iffeature)*/
     uint8_t ext_size() {return iffeature->ext_size;};
     /** get features variable from [lys_iffeature](@ref lys_iffeature)*/
-    std::vector<S_Feature> *features();
+    std::vector<S_Feature> features();
     /** get ext variable from [lys_iffeature](@ref lys_iffeature)*/
-    std::vector<S_Ext_Instance> *ext();
+    std::vector<S_Ext_Instance> ext();
 
 private:
     struct lys_iffeature *iffeature;
@@ -549,7 +549,7 @@ public:
     /** get ext_type variable from [lys_ext_instance](@ref lys_ext_instance)*/
     uint8_t ext_type() {return ext_instance->ext_type;};
     /** get ext variable from [lys_ext_instance](@ref lys_ext_instance)*/
-    std::vector<S_Ext_Instance> *ext();
+    std::vector<S_Ext_Instance> ext();
     /** get priv variable from [lys_ext_instance](@ref lys_ext_instance)*/
     void *priv() {return ext_instance->priv;};
     /** get module variable from [lys_ext_instance](@ref lys_ext_instance)*/
@@ -580,9 +580,9 @@ public:
     /** get iffeature_size variable from [lys_node](@ref lys_node)*/
     uint8_t iffeature_size() {return node->iffeature_size;};
     /** get ext variable from [lys_node](@ref lys_node)*/
-    std::vector<S_Ext_Instance> *ext();
+    std::vector<S_Ext_Instance> ext();
     /** get iffeature variable from [lys_node](@ref lys_node)*/
-    std::vector<S_Iffeature> *iffeature() LY_NEW_LIST(node, iffeature, iffeature_size, Iffeature);
+    std::vector<S_Iffeature> iffeature() LY_NEW_LIST(node, iffeature, iffeature_size, Iffeature);
     /** get module variable from [lys_node](@ref lys_node)*/
     S_Module module();
     /** get nodetype variable from [lys_node](@ref lys_node)*/
@@ -601,7 +601,7 @@ public:
     /** wrapper for [lyd_validate_value](@ref lyd_validate_value) */
     int validate_value(const char *value) {return lyd_validate_value(node, value);};
     /** wrapper for [lys_getnext](@ref lys_getnext) */
-    std::vector<S_Schema_Node> *child_instantiables(int options);
+    std::vector<S_Schema_Node> child_instantiables(int options);
     /** wrapper for [lys_find_path](@ref lys_find_path) */
     S_Set find_path(const char *path);
     /** wrapper for [lys_xpath_atomize](@ref lys_xpath_atomize) */
@@ -612,9 +612,9 @@ public:
 
     /* emulate TREE macro's */
     /** wrapper for macro [LY_TREE_FOR](@ref LY_TREE_FOR) */
-    std::vector<S_Schema_Node> *tree_for();
+    std::vector<S_Schema_Node> tree_for();
     /** wrapper for macro [LY_TREE_DFS_BEGIN](@ref LY_TREE_DFS_BEGIN) and [LY_TREE_DFS_END](@ref LY_TREE_DFS_END) */
-    std::vector<S_Schema_Node> *tree_dfs();
+    std::vector<S_Schema_Node> tree_dfs();
 
     /* SWIG can not access private variables so it needs public getters */
     struct lys_node *swig_node() {return node;};
@@ -771,13 +771,13 @@ public:
     /** get backlinks variable from [lys_node_leaflist](@ref lys_node_leaflist)*/
     S_Set backlinks();
     /** get must variable from [lys_node_leaflist](@ref lys_node_leaflist)*/
-    std::vector<S_Restr> *must();
+    std::vector<S_Restr> must();
     /** get type variable from [lys_node_leaflist](@ref lys_node_leaflist)*/
     S_Type type();
     /** get units variable from [lys_node_leaflist](@ref lys_node_leaflist)*/
     const char *units() {return ((struct lys_node_leaflist *)node)->units;};
     /** get dflt variable from [lys_node_leaflist](@ref lys_node_leaflist)*/
-    std::vector<std::string> *dflt();
+    std::vector<std::string> dflt();
     /** get min variable from [lys_node_leaflist](@ref lys_node_leaflist)*/
     uint32_t min() {return ((struct lys_node_leaflist *)node)->min;};
     /** get max variable from [lys_node_leaflist](@ref lys_node_leaflist)*/
@@ -819,13 +819,13 @@ public:
     /** get when variable from [lys_node_leaflist](@ref lys_node_leaflist)*/
     S_When when();
     /** get must variable from [lys_node_leaflist](@ref lys_node_leaflist)*/
-    std::vector<S_Restr> *must();
+    std::vector<S_Restr> must();
     /** get tpdf variable from [lys_node_leaflist](@ref lys_node_leaflist)*/
-    std::vector<S_Tpdf> *tpdf();
+    std::vector<S_Tpdf> tpdf();
     /** get keys variable from [lys_node_leaflist](@ref lys_node_leaflist)*/
-    std::vector<S_Schema_Node_Leaf> *keys();
+    std::vector<S_Schema_Node_Leaf> keys();
     /** get unique variable from [lys_node_leaflist](@ref lys_node_leaflist)*/
-    std::vector<S_Unique> *unique();
+    std::vector<S_Unique> unique();
     /** get min variable from [lys_node_leaflist](@ref lys_node_leaflist)*/
     uint32_t min() {return ((struct lys_node_list *)node)->min;};
     /** get max variable from [lys_node_leaflist](@ref lys_node_leaflist)*/
@@ -862,7 +862,7 @@ public:
     /** get when variable from [lys_node_anydata](@ref lys_node_anydata)*/
     S_When when();
     /** get must variable from [lys_node_anydata](@ref lys_node_anydata)*/
-    std::vector<S_Restr> *must();
+    std::vector<S_Restr> must();
 
 private:
     struct lys_node *node;
@@ -893,9 +893,9 @@ public:
     /** get when variable from [lys_node_uses](@ref lys_node_uses)*/
     S_When when();
     /** get refine variable from [lys_node_uses](@ref lys_node_uses)*/
-    std::vector<S_Refine> *refine();
+    std::vector<S_Refine> refine();
     /** get augment variable from [lys_node_uses](@ref lys_node_uses)*/
-    std::vector<S_Schema_Node_Augment> *augment();
+    std::vector<S_Schema_Node_Augment> augment();
     /** get grp variable from [lys_node_uses](@ref lys_node_uses)*/
     S_Schema_Node_Grp grp();
 
@@ -926,7 +926,7 @@ public:
     /** get tpdf_size variable from [lys_node_grp](@ref lys_node_grp)*/
     uint8_t tpdf_size() {return ((struct lys_node_grp *)node)->tpdf_size;};
     /** get tpdf variable from [lys_node_grp](@ref lys_node_grp)*/
-    std::vector<S_Tpdf> *tpdf();
+    std::vector<S_Tpdf> tpdf();
 
 private:
     struct lys_node *node;
@@ -984,9 +984,9 @@ public:
     /** get must_size variable from [lys_node_inout](@ref lys_node_inout)*/
     uint8_t must_size() {return ((struct lys_node_inout *)node)->must_size;};
     /** get tpdf variable from [lys_node_inout](@ref lys_node_inout)*/
-    std::vector<S_Tpdf> *tpdf();
+    std::vector<S_Tpdf> tpdf();
     /** get must variable from [lys_node_inout](@ref lys_node_inout)*/
-    std::vector<S_Restr> *must();
+    std::vector<S_Restr> must();
 
 private:
     struct lys_node *node;
@@ -1017,9 +1017,9 @@ public:
     /** get must_size variable from [lys_node_notif](@ref lys_node_notif)*/
     uint8_t must_size() {return ((struct lys_node_notif *)node)->must_size;};
     /** get tpdf variable from [lys_node_notif](@ref lys_node_notif)*/
-    std::vector<S_Tpdf> *tpdf();
+    std::vector<S_Tpdf> tpdf();
     /** get must variable from [lys_node_notif](@ref lys_node_notif)*/
-    std::vector<S_Restr> *must();
+    std::vector<S_Restr> must();
 
 private:
     struct lys_node *node;
@@ -1048,7 +1048,7 @@ public:
     /** get tpdf_size variable from [lys_node_rpc_action](@ref lys_node_rpc_action)*/
     uint8_t tpdf_size() {return ((struct lys_node_rpc_action *)node)->tpdf_size;};
     /** get tpdf variable from [lys_node_rpc_action](@ref lys_node_rpc_action)*/
-    std::vector<S_Tpdf> *tpdf();
+    std::vector<S_Tpdf> tpdf();
 
 private:
     struct lys_node *node;
@@ -1118,7 +1118,7 @@ public:
     /** get ext_size variable from [lys_ext](@ref lys_ext)*/
     uint8_t ext_size() {return ext->ext_size;};
     /** get ext_instance variable from [lys_ext](@ref lys_ext)*/
-    std::vector<S_Ext_Instance> *ext_instance();
+    std::vector<S_Ext_Instance> ext_instance();
     /** get argument variable from [lys_ext](@ref lys_ext)*/
     const char *argument() {return ext->argument;};
     /** get module variable from [lys_ext](@ref lys_ext)*/
@@ -1187,15 +1187,15 @@ public:
     /** get dflt_size variable from [lys_refine](@ref lys_refine)*/
     uint8_t dflt_size() {return refine->dflt_size;};
     /** get ext variable from [lys_refine](@ref lys_refine)*/
-    std::vector<S_Ext_Instance> *ext();
+    std::vector<S_Ext_Instance> ext();
     /** get iffeature variable from [lys_refine](@ref lys_refine)*/
-    std::vector<S_Iffeature> *iffeature() LY_NEW_LIST(refine, iffeature, iffeature_size, Iffeature);
+    std::vector<S_Iffeature> iffeature() LY_NEW_LIST(refine, iffeature, iffeature_size, Iffeature);
     /** get module variable from [lys_refine](@ref lys_refine)*/
     S_Module module();
     /** get must variable from [lys_refine](@ref lys_refine)*/
-    std::vector<S_Restr> *must();
+    std::vector<S_Restr> must();
     /** get dflt variable from [lys_refine](@ref lys_refine)*/
-    std::vector<std::string> *dflt() LY_NEW_STRING_LIST(refine, dflt, dflt_size);
+    std::vector<std::string> dflt() LY_NEW_STRING_LIST(refine, dflt, dflt_size);
     /** get mod variable from [lys_refine](@ref lys_refine)*/
     S_Refine_Mod mod();
 
@@ -1239,9 +1239,9 @@ public:
     /** get units variable from [lys_deviate](@ref lys_deviate)*/
     const char *units() {return deviate->units;};
     /** get dflt variable from [lys_deviate](@ref lys_deviate)*/
-    std::vector<std::string> *dflt() LY_NEW_STRING_LIST(deviate, dflt, dflt_size);
+    std::vector<std::string> dflt() LY_NEW_STRING_LIST(deviate, dflt, dflt_size);
     /** get ext variable from [lys_deviate](@ref lys_deviate)*/
-    std::vector<S_Ext_Instance> *ext();
+    std::vector<S_Ext_Instance> ext();
 
 private:
     struct lys_deviate *deviate;
@@ -1267,9 +1267,9 @@ public:
     /** get ext_size variable from [lys_deviation](@ref lys_deviation)*/
     uint8_t ext_size() {return deviation->ext_size;};
     /** get deviate variable from [lys_deviation](@ref lys_deviation)*/
-    std::vector<S_Deviate> *deviate();
+    std::vector<S_Deviate> deviate();
     /** get ext variable from [lys_deviation](@ref lys_deviation)*/
-    std::vector<S_Ext_Instance> *ext();
+    std::vector<S_Ext_Instance> ext();
 
 private:
     struct lys_deviation *deviation;
@@ -1291,7 +1291,7 @@ public:
     /** get ext_size variable from [lys_import](@ref lys_import)*/
     uint8_t ext_size() {return import->ext_size;};
     /** get ext variable from [lys_import](@ref lys_import)*/
-    std::vector<S_Ext_Instance> *ext() LY_NEW_P_LIST(import, ext, ext_size, Ext_Instance);
+    std::vector<S_Ext_Instance> ext() LY_NEW_P_LIST(import, ext, ext_size, Ext_Instance);
     /** get dsc variable from [lys_import](@ref lys_import)*/
     const char *dsc() {return import->dsc;};
     /** get ref variable from [lys_import](@ref lys_import)*/
@@ -1315,7 +1315,7 @@ public:
     /** get ext_size variable from [lys_include](@ref lys_include)*/
     uint8_t ext_size() {return include->ext_size;};
     /** get ext variable from [lys_include](@ref lys_include)*/
-    std::vector<S_Ext_Instance> *ext() LY_NEW_P_LIST(include, ext, ext_size, Ext_Instance);
+    std::vector<S_Ext_Instance> ext() LY_NEW_P_LIST(include, ext, ext_size, Ext_Instance);
     /** get dsc variable from [lys_include](@ref lys_include)*/
     const char *dsc() {return include->dsc;};
     /** get ref variable from [lys_include](@ref lys_include)*/
@@ -1367,7 +1367,7 @@ public:
     /** get has_union_leafref variable from [lys_tpdf](@ref lys_tpdf)*/
     uint8_t has_union_leafref() {return tpdf->has_union_leafref;};
     /** get ext variable from [lys_tpdf](@ref lys_tpdf)*/
-    std::vector<S_Ext_Instance> *ext() LY_NEW_P_LIST(tpdf, ext, ext_size, Ext_Instance);
+    std::vector<S_Ext_Instance> ext() LY_NEW_P_LIST(tpdf, ext, ext_size, Ext_Instance);
     /** get units variable from [lys_tpdf](@ref lys_tpdf)*/
     const char *units() {return tpdf->units;};
     /** get module variable from [lys_tpdf](@ref lys_tpdf)*/
@@ -1389,7 +1389,7 @@ public:
     Unique(struct lys_unique *unique, S_Deleter deleter);
     ~Unique();
     /** get expr variable from [lys_unique](@ref lys_unique)*/
-    std::vector<std::string> *expr() LY_NEW_STRING_LIST(unique, expr, expr_size);
+    std::vector<std::string> expr() LY_NEW_STRING_LIST(unique, expr, expr_size);
     /** get expr_size variable from [lys_unique](@ref lys_unique)*/
     uint8_t expr_size() {return unique->expr_size;};
     /** get trg_type variable from [lys_unique](@ref lys_unique)*/
@@ -1419,9 +1419,9 @@ public:
     /** get iffeature_size variable from [lys_feature](@ref lys_feature)*/
     uint8_t iffeature_size() {return feature->iffeature_size;};
     /** get ext variable from [lys_feature](@ref lys_feature)*/
-    std::vector<S_Ext_Instance> *ext() LY_NEW_P_LIST(feature, ext, ext_size, Ext_Instance);
+    std::vector<S_Ext_Instance> ext() LY_NEW_P_LIST(feature, ext, ext_size, Ext_Instance);
     /** get iffeature variable from [lys_feature](@ref lys_feature)*/
-    std::vector<S_Iffeature> *iffeature() LY_NEW_LIST(feature, iffeature, iffeature_size, Iffeature);
+    std::vector<S_Iffeature> iffeature() LY_NEW_LIST(feature, iffeature, iffeature_size, Iffeature);
     /** get module variable from [lys_feature](@ref lys_feature)*/
     S_Module module() LY_NEW(feature, module, Module);
     /** get depfeatures variable from [lys_feature](@ref lys_feature)*/
@@ -1449,7 +1449,7 @@ public:
     /** get emsg variable from [lys_restr](@ref lys_restr)*/
     const char *emsg() {return restr->emsg;};
     /** get ext variable from [lys_restr](@ref lys_restr)*/
-    std::vector<S_Ext_Instance> *ext() LY_NEW_P_LIST(restr, ext, ext_size, Ext_Instance);
+    std::vector<S_Ext_Instance> ext() LY_NEW_P_LIST(restr, ext, ext_size, Ext_Instance);
     /** get ext_size variable from [lys_restr](@ref lys_restr)*/
     uint8_t ext_size() {return restr->ext_size;};
 
@@ -1471,7 +1471,7 @@ public:
     /** get ref variable from [lys_when](@ref lys_when)*/
     const char *ref() {return when->ref;};
     /** get ext variable from [lys_when](@ref lys_when)*/
-    std::vector<S_Ext_Instance> *ext();
+    std::vector<S_Ext_Instance> ext();
     /** get ext_size variable from [lys_when](@ref lys_when)*/
     uint8_t ext_size() {return when->ext_size;};
 
@@ -1501,13 +1501,13 @@ public:
     /** get base_size variable from [lys_ident](@ref lys_ident)*/
     uint8_t base_size() {return ident->base_size;};
     /** get ext variable from [lys_ident](@ref lys_ident)*/
-    std::vector<S_Ext_Instance> *ext() LY_NEW_P_LIST(ident, ext, ext_size, Ext_Instance);
+    std::vector<S_Ext_Instance> ext() LY_NEW_P_LIST(ident, ext, ext_size, Ext_Instance);
     /** get iffeature variable from [lys_ident](@ref lys_ident)*/
-    std::vector<S_Iffeature> *iffeature() LY_NEW_LIST(ident, iffeature, iffeature_size, Iffeature);
+    std::vector<S_Iffeature> iffeature() LY_NEW_LIST(ident, iffeature, iffeature_size, Iffeature);
     /** get module variable from [lys_ident](@ref lys_ident)*/
     S_Module module() LY_NEW(ident, module, Module);
     /** get base variable from [lys_ident](@ref lys_ident)*/
-    std::vector<S_Ident> *base();
+    std::vector<S_Ident> base();
     /** get der variable from [lys_ident](@ref lys_ident)*/
     S_Set der() LY_NEW(ident, der, Set);
 

@@ -68,7 +68,7 @@ public:
     /** wrapper for [ly_ctx_unset_searchdirs](@ref ly_ctx_unset_searchdirs) */
     void unset_searchdirs(int idx) {return ly_ctx_unset_searchdirs(ctx, idx);};
     /** wrapper for [ly_ctx_get_searchdirs](@ref ly_ctx_get_searchdirs) */
-    std::vector<std::string> *get_searchdirs();
+    std::vector<std::string> get_searchdirs();
     /** wrapper for [ly_ctx_set_allimplemented](@ref ly_ctx_set_allimplemented) */
     void set_allimplemented() {return ly_ctx_set_allimplemented(ctx);};
     /** wrapper for [ly_ctx_unset_allimplemented](@ref ly_ctx_unset_allimplemented) */
@@ -76,9 +76,9 @@ public:
     /** wrapper for [ly_ctx_info](@ref ly_ctx_info) */
     S_Data_Node info();
     /** wrapper for [ly_ctx_get_module_iter](@ref ly_ctx_get_module_iter) */
-    std::vector<S_Module> *get_module_iter();
+    std::vector<S_Module> get_module_iter();
     /** wrapper for [ly_ctx_get_disabled_module_iter](@ref ly_ctx_get_disabled_module_iter) */
-    std::vector<S_Module> *get_disabled_module_iter();
+    std::vector<S_Module> get_disabled_module_iter();
     /** wrapper for [ly_ctx_get_module](@ref ly_ctx_get_module) */
     S_Module get_module(const char *name, const char *revision = nullptr, int implemented = 0);
     /** wrapper for [ly_ctx_get_module_older](@ref ly_ctx_get_module_older) */
@@ -94,7 +94,7 @@ public:
     /** wrapper for [ly_ctx_get_node](@ref ly_ctx_get_node) */
     S_Schema_Node get_node(S_Schema_Node start, const char *data_path, int output = 0);
     /** wrapper for [lys_getnext](@ref lys_getnext) */
-    std::vector<S_Schema_Node> *data_instantiables(int options);
+    std::vector<S_Schema_Node> data_instantiables(int options);
     /** wrapper for [ly_ctx_find_path](@ref ly_ctx_find_path) */
     S_Set find_path(const char *schema_path);
     /** wrapper for [ly_ctx_clean](@ref ly_ctx_clean) */
@@ -116,7 +116,7 @@ public:
     /** wrapper for [lys_parse_path](@ref lys_parse_path) */
     S_Module parse_module_path(const char *path, LYS_INFORMAT format);
 
-    friend std::vector<S_Error> *get_ly_errors(S_Context context);
+    friend std::vector<S_Error> get_ly_errors(S_Context context);
     friend Data_Node;
     friend Deleter;
     friend Error;
@@ -152,7 +152,7 @@ private:
 	struct ly_err_item *eitem;
 };
 
-std::vector<S_Error> *get_ly_errors(S_Context context);
+std::vector<S_Error> get_ly_errors(S_Context context);
 int set_log_options(int options);
 LY_LOG_LEVEL set_log_verbosity(LY_LOG_LEVEL level);
 
@@ -172,9 +172,9 @@ public:
     /** get number variable from [ly_set](@ref ly_set)*/
     unsigned int number() {return set->number;};
     /** get d variable from [ly_set_set](@ref ly_set_set)*/
-    std::vector<S_Data_Node> *data();
+    std::vector<S_Data_Node> data();
     /** get s variable from [ly_set_set](@ref ly_set_set)*/
-    std::vector<S_Schema_Node> *schema();
+    std::vector<S_Schema_Node> schema();
 
     /* functions */
     /** wrapper for [ly_set_dup](@ref ly_set_dup) */

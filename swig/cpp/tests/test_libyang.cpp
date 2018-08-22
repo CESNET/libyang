@@ -40,15 +40,13 @@ TEST(test_ly_ctx_new)
     try {
         auto ctx = S_Context(new Context(yang_folder1));
         ASSERT_FALSE(nullptr == ctx);
-        auto list = std::shared_ptr<std::vector<std::string>>(ctx->get_searchdirs());
-        ASSERT_FALSE(nullptr == list);
-        ASSERT_EQ(1, list->size());
+        auto list = ctx->get_searchdirs();
+        ASSERT_EQ(1, list.size());
 
         ctx = S_Context(new Context(yang_folder2));
         ASSERT_FALSE(nullptr == ctx);
-        list = std::shared_ptr<std::vector<std::string>>(ctx->get_searchdirs());
-        ASSERT_FALSE(nullptr == list);
-        ASSERT_EQ(2, list->size());
+        list = ctx->get_searchdirs();
+        ASSERT_EQ(2, list.size());
     } catch( const std::exception& e ) {
         mt::printFailed(e.what(), stdout);
         return;
@@ -76,9 +74,9 @@ TEST(test_ly_ctx_get_searchdirs)
         auto ctx = S_Context(new Context(yang_folder));
         ASSERT_FALSE(nullptr == ctx);
 
-        auto list = std::shared_ptr<std::vector<std::string>>(ctx->get_searchdirs());
-        ASSERT_EQ(1, list->size());
-        ASSERT_EQ(yang_folder, list->at(0));
+        auto list = ctx->get_searchdirs();
+        ASSERT_EQ(1, list.size());
+        ASSERT_EQ(yang_folder, list.at(0));
     } catch( const std::exception& e ) {
         mt::printFailed(e.what(), stdout);
         return;
@@ -94,19 +92,19 @@ TEST(test_ly_ctx_set_searchdir)
         auto ctx = S_Context(new Context(yang_folder));
         ASSERT_FALSE(nullptr == ctx);
 
-        auto list = std::shared_ptr<std::vector<std::string>>(ctx->get_searchdirs());
-        ASSERT_EQ(1, list->size());
-        ASSERT_EQ(yang_folder, list->at(0));
+        auto list = ctx->get_searchdirs();
+        ASSERT_EQ(1, list.size());
+        ASSERT_EQ(yang_folder, list.at(0));
 
         ctx->set_searchdir(new_yang_folder);
-        list = std::shared_ptr<std::vector<std::string>>(ctx->get_searchdirs());
-        ASSERT_EQ(2, list->size());
-        ASSERT_EQ(new_yang_folder, list->at(1));
+        list = ctx->get_searchdirs();
+        ASSERT_EQ(2, list.size());
+        ASSERT_EQ(new_yang_folder, list.at(1));
 
         ctx->unset_searchdirs(0);
-        list = std::shared_ptr<std::vector<std::string>>(ctx->get_searchdirs());
-        ASSERT_EQ(1, list->size());
-        ASSERT_EQ(new_yang_folder, list->at(0));
+        list = ctx->get_searchdirs();
+        ASSERT_EQ(1, list.size());
+        ASSERT_EQ(new_yang_folder, list.at(0));
     } catch( const std::exception& e ) {
         mt::printFailed(e.what(), stdout);
         return;

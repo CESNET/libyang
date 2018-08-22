@@ -433,22 +433,22 @@ std::string Data_Node::print_mem(LYD_FORMAT format, int options) {
     return s_strp;
 
 }
-std::vector<S_Data_Node> *Data_Node::tree_for() {
-    auto s_vector = new std::vector<S_Data_Node>;
+std::vector<S_Data_Node> Data_Node::tree_for() {
+    std::vector<S_Data_Node> s_vector;
 
     struct lyd_node *elem = nullptr;
     LY_TREE_FOR(node, elem) {
-        s_vector->push_back(std::make_shared<Data_Node>(elem, deleter));
+        s_vector.push_back(std::make_shared<Data_Node>(elem, deleter));
     }
 
     return s_vector;
 }
-std::vector<S_Data_Node> *Data_Node::tree_dfs() {
-    auto s_vector = new std::vector<S_Data_Node>;
+std::vector<S_Data_Node> Data_Node::tree_dfs() {
+    std::vector<S_Data_Node> s_vector;
 
     struct lyd_node *elem = nullptr, *next = nullptr;
     LY_TREE_DFS_BEGIN(node, next, elem) {
-        s_vector->push_back(std::make_shared<Data_Node>(elem, deleter));
+        s_vector.push_back(std::make_shared<Data_Node>(elem, deleter));
         LY_TREE_DFS_END(node, next, elem)
     }
 
@@ -525,8 +525,8 @@ Difflist::Difflist(struct lyd_difflist *diff, S_Deleter deleter) {
     deleter = std::make_shared<Deleter>(diff, deleter);
 }
 Difflist::~Difflist() {};
-std::vector<S_Data_Node> *Difflist::first() {
-    auto s_vector = new std::vector<S_Data_Node>;
+std::vector<S_Data_Node> Difflist::first() {
+    std::vector<S_Data_Node> s_vector;
     unsigned int i = 0;
 
     if (!*diff->first) {
@@ -534,13 +534,13 @@ std::vector<S_Data_Node> *Difflist::first() {
     }
 
     for(i = 0; i < sizeof(*diff->first); i++) {
-        s_vector->push_back(std::make_shared<Data_Node>(*diff->first, deleter));
+        s_vector.push_back(std::make_shared<Data_Node>(*diff->first, deleter));
     }
 
     return s_vector;
 }
-std::vector<S_Data_Node> *Difflist::second() {
-    auto s_vector = new std::vector<S_Data_Node>;
+std::vector<S_Data_Node> Difflist::second() {
+    std::vector<S_Data_Node> s_vector;
     unsigned int i = 0;
 
     if (!*diff->second) {
@@ -548,7 +548,7 @@ std::vector<S_Data_Node> *Difflist::second() {
     }
 
     for(i = 0; i < sizeof(*diff->second); i++) {
-        s_vector->push_back(std::make_shared<Data_Node>(*diff->second, deleter));
+        s_vector.push_back(std::make_shared<Data_Node>(*diff->second, deleter));
     }
 
     return s_vector;
