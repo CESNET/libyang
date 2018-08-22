@@ -8773,9 +8773,13 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int set_ext
     if (when) {
         if (lyxp_atomize(when->cond, node, LYXP_NODE_ELEM, &tmp_set, LYXP_SNODE_WHEN | opts, &ctx_snode)) {
             free(tmp_set.val.snodes);
-            path = lys_path(ctx_snode, LYS_PATH_FIRST_PREFIX);
-            LOGVAL(node->module->ctx, LYE_SPEC, LY_VLOG_LYS, node,
-                   "Invalid when condition \"%s\" with context node \"%s\".", when->cond, path);
+            if (ctx_snode) {
+                path = lys_path(ctx_snode, LYS_PATH_FIRST_PREFIX);
+                LOGVAL(node->module->ctx, LYE_SPEC, LY_VLOG_LYS, node,
+                       "Invalid when condition \"%s\" with context node \"%s\".", when->cond, path);
+            } else {
+                LOGVAL(node->module->ctx, LYE_SPEC, LY_VLOG_LYS, node, "Invalid when condition \"%s\".", when->cond);
+            }
             ret = -1;
             goto finish;
         } else {
@@ -8816,9 +8820,13 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int set_ext
     for (i = 0; i < must_size; ++i) {
         if (lyxp_atomize(must[i].expr, node, LYXP_NODE_ELEM, &tmp_set, LYXP_SNODE_MUST | opts, &ctx_snode)) {
             free(tmp_set.val.snodes);
-            path = lys_path(ctx_snode, LYS_PATH_FIRST_PREFIX);
-            LOGVAL(node->module->ctx, LYE_SPEC, LY_VLOG_LYS, node,
-                   "Invalid must restriction \"%s\" with context node \"%s\".", must[i].expr, path);
+            if (ctx_snode) {
+                path = lys_path(ctx_snode, LYS_PATH_FIRST_PREFIX);
+                LOGVAL(node->module->ctx, LYE_SPEC, LY_VLOG_LYS, node,
+                       "Invalid must restriction \"%s\" with context node \"%s\".", must[i].expr, path);
+            } else {
+                LOGVAL(node->module->ctx, LYE_SPEC, LY_VLOG_LYS, node, "Invalid must restriction \"%s\".", must[i].expr);
+            }
             ret = -1;
             goto finish;
         } else {
