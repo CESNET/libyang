@@ -485,6 +485,16 @@ lyb_parse_val_2(struct lys_type *type, struct lyd_node_leaf_list *leaf, struct l
     }
 
     switch (value_type) {
+    case LY_TYPE_BITS:
+    case LY_TYPE_DEC64:
+        /* we need the actual type */
+        for (; type->base == LY_TYPE_LEAFREF; type = &type->der->type);
+        break;
+    default:
+        break;
+    }
+
+    switch (value_type) {
     case LY_TYPE_IDENT:
         /* fill the identity pointer now */
         value->ident = resolve_identref(type, *value_str, (struct lyd_node *)leaf, mod, (leaf ? leaf->dflt : 0));
@@ -503,8 +513,6 @@ lyb_parse_val_2(struct lys_type *type, struct lyd_node_leaf_list *leaf, struct l
         *value_str = value->string;
         break;
     case LY_TYPE_BITS:
-        for (; !type->info.bits.count; type = &type->der->type);
-
         /* print the set bits */
         str = malloc(1);
         LY_CHECK_ERR_RETURN(!str, LOGMEM(ctx), -1);
