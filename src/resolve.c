@@ -3932,7 +3932,7 @@ resolve_schema_leafref_predicate(const char *path, const struct lys_node *contex
         if (sour_pref) {
             trg_mod = lyp_get_module(lys_node_module(parent), NULL, 0, sour_pref, sour_pref_len, 0);
         } else {
-            trg_mod = NULL;
+            trg_mod = lys_node_module(parent);
         }
         rc = lys_getnext_data(trg_mod, context_node, source, sour_len, LYS_LEAF | LYS_LEAFLIST, &src_node);
         if (rc) {
@@ -3975,7 +3975,7 @@ resolve_schema_leafref_predicate(const char *path, const struct lys_node *contex
             if (dest_pref) {
                 trg_mod = lyp_get_module(lys_node_module(parent), NULL, 0, dest_pref, dest_pref_len, 0);
             } else {
-                trg_mod = NULL;
+                trg_mod = lys_node_module(parent);
             }
             rc = lys_getnext_data(trg_mod, dst_node, dest, dest_len, LYS_CONTAINER | LYS_LIST | LYS_LEAF, &dst_node);
             if (rc) {
