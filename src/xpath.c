@@ -8690,7 +8690,7 @@ int
 lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int set_ext_dep_flags)
 {
     struct lys_node *parent, *elem;
-    const struct lys_node *ctx_snode;
+    const struct lys_node *ctx_snode = NULL;
     struct lyxp_set tmp_set;
     uint8_t must_size = 0;
     uint32_t i, j;
