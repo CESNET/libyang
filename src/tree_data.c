@@ -3038,6 +3038,13 @@ lyd_merge_to_ctx(struct lyd_node **trg, const struct lyd_node *src, int options,
 
     /* process source according to options */
     if (options & LYD_OPT_DESTRUCT) {
+        LY_TREE_FOR(src, iter) {
+            check_leaf_list_backlinks((struct lyd_node *)iter, 2);
+            if (options & LYD_OPT_NOSIBLINGS) {
+                break;
+            }
+        }
+
         node = (struct lyd_node *)src;
         if ((node->prev != node) && (options & LYD_OPT_NOSIBLINGS)) {
             node2 = node->prev;
