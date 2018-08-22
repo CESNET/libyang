@@ -75,6 +75,13 @@ int main() {
         auto schema_list = std::shared_ptr<std::vector<S_Schema_Node>>(node->schema()->tree_dfs());
         for(auto elem = schema_list->begin() ; elem != schema_list->end() ; ++elem) {
             std::cout << "schema name " << (*elem)->name() << " type " << (*elem)->nodetype() << std::endl;
+            if  (LYS_LEAF == (*elem)->nodetype()) {
+                auto leaf = Schema_Node_Leaf(*elem);
+                auto list = leaf.is_key();
+                if (list) {
+                    std::cout << "leaf " << leaf.name() << " is a key for the list " << list->name() << std::endl;
+                }
+            }
         }
     }
 

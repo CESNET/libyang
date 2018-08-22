@@ -159,6 +159,8 @@ public:
     std::string path();
     /** wrapper for [lyd_dup](@ref lyd_dup) */
     S_Data_Node dup(int recursive);
+    /** wrapper for [lyd_dup_withsiblings](@ref lyd_dup_withsiblings) */
+    S_Data_Node dup_withsiblings(int recursive);
     /** wrapper for [lyd_dup_to_ctx](@ref lyd_dup_to_ctx) */
     S_Data_Node dup_to_ctx(int recursive, S_Context context);
     /** wrapper for [lyd_merge](@ref lyd_merge) */

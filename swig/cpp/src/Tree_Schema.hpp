@@ -735,8 +735,8 @@ public:
     /** get dflt variable from [lys_node_leaf](@ref lys_node_leaf)*/
     const char *dflt() {return ((struct lys_node_leaf *)node)->dflt;};
     S_Schema_Node child() override {return nullptr;};
-    /** get is_key variable from [lys_node_leaf](@ref lys_node_leaf)*/
-    int is_key();
+    /** wrapper for [lys_is_key](@ref lys_is_key) */
+    S_Schema_Node_List is_key();
 
 private:
     struct lys_node *node;

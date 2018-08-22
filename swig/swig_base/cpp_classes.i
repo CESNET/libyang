@@ -72,6 +72,7 @@
 %newobject Data_Node::path;
 %newobject Data_Node::qualifed_path;
 %newobject Data_Node::dup;
+%newobject Data_Node::dup_withsiblings;
 %newobject Data_Node::dup_to_ctx;
 %newobject Data_Node::find_path;
 %newobject Data_Node::find_instance;
@@ -248,6 +249,7 @@
 %ignore    Schema_Node_Leaf::swig_node;
 %ignore    Schema_Node_Leaf::swig_deleter;
 %newobject Schema_Node_Leaf::type;
+%newobject Schema_Node_Leaf::is_key;
 
 %shared_ptr(Schema_Node_Leaflist);
 %newobject Schema_Node_Leaflist::parent;
@@ -259,7 +261,7 @@
 %newobject Schema_Node_Leaflist::xpath_atomize;
 %ignore    Schema_Node_Leaflist::swig_node;
 %ignore    Schema_Node_Leaflist::swig_deleter;
-%newobject Schema_Node_Leaf::type;
+%newobject Schema_Node_Leaflist::type;
 
 %shared_ptr(Schema_Node_List);
 %newobject Schema_Node_List::parent;
