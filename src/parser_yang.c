@@ -2634,7 +2634,7 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
 
     ret = yang_parse_mem(module, NULL, unres, data, size, &node);
     if (ret == -1) {
-        if (ly_vecode(ctx) == LYVE_SUBMODULE) {
+        if (ly_vecode(ctx) == LYVE_SUBMODULE && !module->name) {
             /* Remove this module from the list of processed modules,
                as we're about to free it */
             lyp_check_circmod_pop(ctx);
@@ -2853,6 +2853,7 @@ yang_read_string(struct ly_ctx *ctx, const char *input, char *output, int size, 
             } else {
                 /* backslash must not be followed by any other character */
                 LOGVAL(ctx, LYE_XML_INCHAR, LY_VLOG_NONE, NULL, input + i);
+                free(output);
                 return NULL;
             }
             break;
@@ -3225,6 +3226,7 @@ yang_free_deviate(struct ly_ctx *ctx, struct lys_deviation *dev, uint index)
 
         if (dev->deviate[i].type) {
             yang_type_free(ctx, dev->deviate[i].type);
+            free(dev->deviate[i].type);
         }
 
         for (j = 0; j < dev->deviate[i].dflt_size; ++j) {
@@ -4743,6 +4745,9 @@ error:
     for (i = module->deviation_size; i < dev_size; ++i) {
         yang_free_deviate(module->ctx, &module->deviation[i], 0);
         free(module->deviation[i].deviate);
+        lydict_remove(module->ctx, module->deviation[i].target_name);
+        lydict_remove(module->ctx, module->deviation[i].dsc);
+        lydict_remove(module->ctx, module->deviation[i].ref);
     }
     return EXIT_FAILURE;
 }
