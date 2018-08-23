@@ -30,6 +30,8 @@ extern "C" {
 #include "context.h"
 }
 
+namespace libyang {
+
 Context::Context(ly_ctx *ctx, S_Deleter deleter):
     ctx(ctx),
     deleter(deleter)
@@ -378,4 +380,6 @@ int Set::rm_index(unsigned int index) {
 /* API for wrapping struct ly_ctx from libnetconf2 python bindings */
 S_Context create_new_Context(struct ly_ctx *new_ctx) {
     return new_ctx ? std::make_shared<Context>(new_ctx, nullptr) : nullptr;
+}
+
 }

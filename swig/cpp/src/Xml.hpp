@@ -27,21 +27,14 @@ extern "C" {
 #include "xml.h"
 }
 
+namespace libyang {
+
 /**
  * @defgroup classes C++/Python
  * @{
  *
  * Class wrappers for data structures and functions to manipulate and access instance data tree.
  */
-
-/* defined */
-class Xml_Ns;
-class Xml_Attr;
-class Xml_Elem;
-
-/* used */
-class Data_Node;
-class Context;
 
 /**
  * @brief class for wrapping [lyxml_ns](@ref lyxml_ns).
@@ -147,5 +140,7 @@ private:
 };
 
 /**@} */
+
+}
 
 #endif

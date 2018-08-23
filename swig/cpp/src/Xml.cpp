@@ -25,6 +25,8 @@ extern "C" {
 #include "xml.h"
 }
 
+namespace libyang {
+
 Xml_Ns::Xml_Ns(const struct lyxml_ns *ns, S_Deleter deleter):
     ns((struct lyxml_ns *) ns),
     deleter(deleter)
@@ -92,4 +94,6 @@ std::vector<S_Xml_Elem> *Xml_Elem::tree_dfs() {
     }
 
     return s_vector;
+}
+
 }
