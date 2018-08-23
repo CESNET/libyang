@@ -293,6 +293,68 @@ teardown_f(void **state)
 }
 
 static void
+test_ietf_interfaces(void **state)
+{
+    struct state *st = (*state);
+    int ret;
+
+    assert_non_null(ly_ctx_load_module(st->ctx, "ietf-ip", NULL));
+    assert_non_null(ly_ctx_load_module(st->ctx, "iana-if-type", NULL));
+
+    st->dt1 = lyd_parse_path(st->ctx, TESTS_DIR"/data/files/ietf-interfaces.json", LYD_JSON, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->dt1, NULL);
+
+    ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYP_WITHSIBLINGS);
+    assert_int_equal(ret, 0);
+
+    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG | LYD_OPT_STRICT);
+    assert_ptr_not_equal(st->dt2, NULL);
+
+    check_data_tree(st->dt1, st->dt2);
+}
+
+static void
+test_origin(void **state)
+{
+    struct state *st = (*state);
+    int ret;
+    const char *test_origin =
+    "module test-origin {"
+    "   namespace \"urn:test-origin\";"
+    "   prefix to;"
+    "   import ietf-origin {"
+    "       prefix or;"
+    "   }"
+    ""
+    "   container cont {"
+    "       leaf leaf1 {"
+    "           type string;"
+    "       }"
+    "       leaf leaf2 {"
+    "           type string;"
+    "       }"
+    "       leaf leaf3 {"
+    "           type uint8;"
+    "       }"
+    "   }"
+    "}";
+
+    assert_non_null(lys_parse_mem(st->ctx, test_origin, LYS_YANG));
+    lys_set_implemented(ly_ctx_get_module(st->ctx, "ietf-origin", NULL, 0));
+
+    st->dt1 = lyd_parse_path(st->ctx, TESTS_DIR"/data/files/test-origin.json", LYD_JSON, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(st->dt1, NULL);
+
+    ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYP_WITHSIBLINGS);
+    assert_int_equal(ret, 0);
+
+    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG | LYD_OPT_STRICT);
+    assert_ptr_not_equal(st->dt2, NULL);
+
+    check_data_tree(st->dt1, st->dt2);
+}
+
+static void
 test_statements(void **state)
 {
     struct state *st = (*state);
@@ -461,68 +523,6 @@ test_collisions(void **state)
 }
 
 static void
-test_ietf_interfaces(void **state)
-{
-    struct state *st = (*state);
-    int ret;
-
-    assert_non_null(ly_ctx_load_module(st->ctx, "ietf-ip", NULL));
-    assert_non_null(ly_ctx_load_module(st->ctx, "iana-if-type", NULL));
-
-    st->dt1 = lyd_parse_path(st->ctx, TESTS_DIR"/data/files/ietf-interfaces.json", LYD_JSON, LYD_OPT_CONFIG);
-    assert_ptr_not_equal(st->dt1, NULL);
-
-    ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYP_WITHSIBLINGS);
-    assert_int_equal(ret, 0);
-
-    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG | LYD_OPT_STRICT);
-    assert_ptr_not_equal(st->dt2, NULL);
-
-    check_data_tree(st->dt1, st->dt2);
-}
-
-static void
-test_origin(void **state)
-{
-    struct state *st = (*state);
-    int ret;
-    const char *test_origin =
-    "module test-origin {"
-    "   namespace \"urn:test-origin\";"
-    "   prefix to;"
-    "   import ietf-origin {"
-    "       prefix or;"
-    "   }"
-    ""
-    "   container cont {"
-    "       leaf leaf1 {"
-    "           type string;"
-    "       }"
-    "       leaf leaf2 {"
-    "           type string;"
-    "       }"
-    "       leaf leaf3 {"
-    "           type uint8;"
-    "       }"
-    "   }"
-    "}";
-
-    assert_non_null(lys_parse_mem(st->ctx, test_origin, LYS_YANG));
-    lys_set_implemented(ly_ctx_get_module(st->ctx, "ietf-origin", NULL, 0));
-
-    st->dt1 = lyd_parse_path(st->ctx, TESTS_DIR"/data/files/test-origin.json", LYD_JSON, LYD_OPT_CONFIG);
-    assert_ptr_not_equal(st->dt1, NULL);
-
-    ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYP_WITHSIBLINGS);
-    assert_int_equal(ret, 0);
-
-    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG | LYD_OPT_STRICT);
-    assert_ptr_not_equal(st->dt2, NULL);
-
-    check_data_tree(st->dt1, st->dt2);
-}
-
-static void
 test_anydata(void **state)
 {
     struct state *st = (*state);
@@ -636,23 +636,45 @@ test_coliding_augments(void **state)
     check_data_tree(st->dt1, st->dt2);
 }
 
+static void
+test_leafrefs(void **state)
+{
+    struct state *st = (*state);
+    int ret;
+
+    ly_ctx_set_searchdir(st->ctx, TESTS_DIR"/data/files");
+    assert_non_null(ly_ctx_load_module(st->ctx, "leafrefs2", NULL));
+
+    st->dt1 = lyd_parse_path(st->ctx, TESTS_DIR"/data/files/leafrefs2.json", LYD_JSON, LYD_OPT_CONFIG | LYD_OPT_STRICT);
+    assert_ptr_not_equal(st->dt1, NULL);
+
+    ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYP_WITHSIBLINGS);
+    assert_int_equal(ret, 0);
+
+    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_CONFIG | LYD_OPT_STRICT);
+    assert_ptr_not_equal(st->dt2, NULL);
+
+    check_data_tree(st->dt1, st->dt2);
+}
+
 int
 main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(test_statements, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_ietf_interfaces, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_origin, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_union, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_union2, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_statements, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_types, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_many_child_annot, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_annotations, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_similar_annot_names, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_many_child_annot, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_union, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_union2, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_collisions, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_anydata, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_submodule_feature, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_coliding_augments, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_leafrefs, setup_f, teardown_f),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

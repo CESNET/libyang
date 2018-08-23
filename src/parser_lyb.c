@@ -340,6 +340,20 @@ lyb_parse_val_1(struct ly_ctx *ctx, struct lys_type *type, LY_DATA_TYPE value_ty
         return ret;
     }
 
+    /* find the correct structure, go through leafrefs and typedefs */
+    switch (value_type) {
+    case LY_TYPE_ENUM:
+        for (; type->base == LY_TYPE_LEAFREF; type = &type->info.lref.target->type);
+        for (; !type->info.enums.count; type = &type->der->type);
+        break;
+    case LY_TYPE_BITS:
+        for (; type->base == LY_TYPE_LEAFREF; type = &type->info.lref.target->type);
+        for (; !type->info.bits.count; type = &type->der->type);
+        break;
+    default:
+        break;
+    }
+
     switch (value_type) {
     case LY_TYPE_INST:
     case LY_TYPE_IDENT:
@@ -360,9 +374,6 @@ lyb_parse_val_1(struct ly_ctx *ctx, struct lys_type *type, LY_DATA_TYPE value_ty
         }
         break;
     case LY_TYPE_BITS:
-        /* find the correct structure */
-        for (; !type->info.bits.count; type = &type->der->type);
-
         value->bit = calloc(type->info.bits.count, sizeof *value->bit);
         LY_CHECK_ERR_RETURN(!value->bit, LOGMEM(ctx), -1);
 
@@ -395,9 +406,6 @@ lyb_parse_val_1(struct ly_ctx *ctx, struct lys_type *type, LY_DATA_TYPE value_ty
         ret = 0;
         break;
     case LY_TYPE_ENUM:
-        /* find the correct structure */
-        for (; !type->info.enums.count; type = &type->der->type);
-
         num = 0;
         ret = lyb_read_enum(&num, type->info.enums.count, data, lybs);
         if (ret > 0) {
@@ -435,6 +443,7 @@ lyb_parse_val_2(struct lys_type *type, struct lyd_node_leaf_list *leaf, struct l
 {
     struct ly_ctx *ctx;
     struct lys_module *mod;
+    struct lys_type *rtype;
     char num_str[22], *str;
     int64_t frac;
     uint32_t i, str_len;
@@ -484,11 +493,14 @@ lyb_parse_val_2(struct lys_type *type, struct lyd_node_leaf_list *leaf, struct l
         }
     }
 
+    /* find the correct structure, go through leafrefs and typedefs */
     switch (value_type) {
     case LY_TYPE_BITS:
+        for (rtype = type; rtype->base == LY_TYPE_LEAFREF; rtype = &rtype->info.lref.target->type);
+        for (; !rtype->info.bits.count; rtype = &rtype->der->type);
+        break;
     case LY_TYPE_DEC64:
-        /* we need the actual type */
-        for (; type->base == LY_TYPE_LEAFREF; type = &type->der->type);
+        for (rtype = type; rtype->base == LY_TYPE_LEAFREF; rtype = &type->info.lref.target->type);
         break;
     default:
         break;
@@ -518,7 +530,7 @@ lyb_parse_val_2(struct lys_type *type, struct lyd_node_leaf_list *leaf, struct l
         LY_CHECK_ERR_RETURN(!str, LOGMEM(ctx), -1);
         str[0] = '\0';
         str_len = 0;
-        for (i = 0; i < type->info.bits.count; ++i) {
+        for (i = 0; i < rtype->info.bits.count; ++i) {
             if (value->bit[i]) {
                 str = ly_realloc(str, str_len + strlen(value->bit[i]->name) + (str_len ? 1 : 0) + 1);
                 LY_CHECK_ERR_RETURN(!str, LOGMEM(ctx), -1);
@@ -583,15 +595,15 @@ lyb_parse_val_2(struct lys_type *type, struct lyd_node_leaf_list *leaf, struct l
         *value_str = lydict_insert(ctx, num_str, 0);
         break;
     case LY_TYPE_DEC64:
-        frac = value->dec64 % type->info.dec64.div;
-        dig = type->info.dec64.dig;
+        frac = value->dec64 % rtype->info.dec64.div;
+        dig = rtype->info.dec64.dig;
         /* remove trailing zeros */
         while ((dig > 1) && !(frac % 10)) {
             frac /= 10;
             --dig;
         }
 
-        sprintf(num_str, "%"PRId64".%.*"PRId64, value->dec64 / (int64_t)type->info.dec64.div, dig, frac);
+        sprintf(num_str, "%"PRId64".%.*"PRId64, value->dec64 / (int64_t)rtype->info.dec64.div, dig, frac);
         *value_str = lydict_insert(ctx, num_str, 0);
         break;
     default:
