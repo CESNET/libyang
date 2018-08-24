@@ -14,14 +14,14 @@
 %ignore throw_exception;
 
 /* Xml.hpp */
-%shared_ptr(Xml_Ns);
+%shared_ptr(libyang::Xml_Ns);
 %newobject Xml_Ns::next;
 
-%shared_ptr(Xml_Attr);
+%shared_ptr(libyang::Xml_Attr);
 %newobject Xml_Attr::next;
 %newobject Xml_Attr::ns;
 
-%shared_ptr(Xml_Elem);
+%shared_ptr(libyang::Xml_Elem);
 %newobject Xml_Elem::parent;
 %newobject Xml_Elem::attr;
 %newobject Xml_Elem::child;
@@ -32,7 +32,7 @@
 
 
 /* Libyang.hpp */
-%shared_ptr(Context);
+%shared_ptr(libyang::Context);
 %newobject Context::info;
 %newobject Context::get_module;
 %newobject Context::get_module_older;
@@ -48,7 +48,7 @@
 %newobject Context::find_path;
 %newobject Context::data_instantiables;
 
-%shared_ptr(Set);
+%shared_ptr(libyang::Set);
 %newobject Set::dup;
 
 %newobject create_new_Context;
@@ -56,13 +56,13 @@
 /* Tree_Data.hpp */
 %newobject create_new_Data_Node;
 
-%shared_ptr(Value);
+%shared_ptr(libyang::Value);
 %newobject Value::enm;
 %newobject Value::ident;
 %newobject Value::instance;
 %newobject Value::leafref;
 
-%shared_ptr(Data_Node);
+%shared_ptr(libyang::Data_Node);
 %newobject Data_Node::schema;
 %newobject Data_Node::attr;
 %newobject Data_Node::next;
@@ -84,7 +84,7 @@
 %newobject Data_Node::print_mem;
 %newobject Data_Node::C_lyd_node;
 
-%shared_ptr(Data_Node_Leaf_List);
+%shared_ptr(libyang::Data_Node_Leaf_List);
 %newobject Data_Node_Leaf_List::value;
 %newobject Data_Node_Leaf_List::schema;
 %newobject Data_Node_Leaf_List::attr;
@@ -107,7 +107,7 @@
 %newobject Data_Node_Leaf_List::type;
 %newobject Data_Node_Leaf_List::C_lyd_node;
 
-%shared_ptr(Data_Node_Anydata);
+%shared_ptr(libyang::Data_Node_Anydata);
 %newobject Data_Node_Anydata::schema;
 %newobject Data_Node_Anydata::attr;
 %newobject Data_Node_Anydata::next;
@@ -128,56 +128,56 @@
 %newobject Data_Node_Anydata::print_mem;
 %newobject Data_Node_Anydata::C_lyd_node;
 
-%shared_ptr(Attr);
+%shared_ptr(libyang::Attr);
 %newobject Attr::value;
 %newobject Attr::parent;
 %newobject Attr::next;
 
-%shared_ptr(Difflist);
+%shared_ptr(libyang::Difflist);
 
 /* Tree_Schema.hpp */
-%shared_ptr(Module);
+%shared_ptr(libyang::Module);
 %newobject Module::rev;
 %newobject Module::data;
 %newobject Module::data_instantiables;
 %newobject Module::print_mem;
 
-%shared_ptr(Submodule);
+%shared_ptr(libyang::Submodule);
 %newobject Submodule::ctx;
 %newobject Submodule::rev;
 %newobject Submodule::belongsto;
 
-%shared_ptr(Type_Info_Binary);
+%shared_ptr(libyang::Type_Info_Binary);
 %newobject Type_Info_Binary::length;
 
-%shared_ptr(Type_Bit);
+%shared_ptr(libyang::Type_Bit);
 
-%shared_ptr(Type_Info_Bits);
+%shared_ptr(libyang::Type_Info_Bits);
 
-%shared_ptr(Type_Info_Dec64);
+%shared_ptr(libyang::Type_Info_Dec64);
 %newobject Type_Info_Dec64::range;
 
-%shared_ptr(Type_Enum);
+%shared_ptr(libyang::Type_Enum);
 
-%shared_ptr(Type_Info_Enums);
+%shared_ptr(libyang::Type_Info_Enums);
 
-%shared_ptr(Type_Info_Ident);
+%shared_ptr(libyang::Type_Info_Ident);
 
-%shared_ptr(Type_Info_Inst);
+%shared_ptr(libyang::Type_Info_Inst);
 
-%shared_ptr(Type_Info_Num);
+%shared_ptr(libyang::Type_Info_Num);
 %newobject Type_Info_Num::range;
 
-%shared_ptr(Type_Info_Lref);
+%shared_ptr(libyang::Type_Info_Lref);
 %newobject Type_Info_Lref::target;
 
-%shared_ptr(Type_Info_Str);
+%shared_ptr(libyang::Type_Info_Str);
 %newobject Type_Info_Str::length;
 %newobject Type_Info_Str::patterns;
 
-%shared_ptr(Type_Info_Union);
+%shared_ptr(libyang::Type_Info_Union);
 
-%shared_ptr(Type_Info);
+%shared_ptr(libyang::Type_Info);
 %newobject Type_Info::binary;
 %newobject Type_Info::bits;
 %newobject Type_Info::dec64;
@@ -189,18 +189,18 @@
 %newobject Type_Info::str;
 %newobject Type_Info::uni;
 
-%shared_ptr(Type);
+%shared_ptr(libyang::Type);
 %newobject Type::ext;
 %newobject Type::der;
 %newobject Type::parent;
 %newobject Type::info;
 
-%shared_ptr(Iffeature);
+%shared_ptr(libyang::Iffeature);
 
-%shared_ptr(Ext_Instance);
+%shared_ptr(libyang::Ext_Instance);
 %newobject Ext_Instance::module;
 
-%shared_ptr(Schema_Node);
+%shared_ptr(libyang::Schema_Node);
 %newobject Schema_Node::parent;
 %newobject Schema_Node::child;
 %newobject Schema_Node::next;
@@ -213,7 +213,7 @@
 %ignore    Schema_Node::swig_node;
 %ignore    Schema_Node::swig_deleter;
 
-%shared_ptr(Schema_Node_Container);
+%shared_ptr(libyang::Schema_Node_Container);
 %newobject Schema_Node_Container::parent;
 %newobject Schema_Node_Container::child;
 %newobject Schema_Node_Container::next;
@@ -226,7 +226,7 @@
 %newobject Schema_Node_Container::must;
 %newobject Schema_Node_Container::tpdf;
 
-%shared_ptr(Schema_Node_Choice);
+%shared_ptr(libyang::Schema_Node_Choice);
 %newobject Schema_Node_Choice::parent;
 %newobject Schema_Node_Choice::child;
 %newobject Schema_Node_Choice::next;
@@ -238,7 +238,7 @@
 %ignore    Schema_Node_Choice::swig_deleter;
 %newobject Schema_Node_Choice::dflt;
 
-%shared_ptr(Schema_Node_Leaf);
+%shared_ptr(libyang::Schema_Node_Leaf);
 %newobject Schema_Node_Leaf::parent;
 %newobject Schema_Node_Leaf::child;
 %newobject Schema_Node_Leaf::next;
@@ -251,7 +251,7 @@
 %newobject Schema_Node_Leaf::type;
 %newobject Schema_Node_Leaf::is_key;
 
-%shared_ptr(Schema_Node_Leaflist);
+%shared_ptr(libyang::Schema_Node_Leaflist);
 %newobject Schema_Node_Leaflist::parent;
 %newobject Schema_Node_Leaflist::child;
 %newobject Schema_Node_Leaflist::next;
@@ -263,7 +263,7 @@
 %ignore    Schema_Node_Leaflist::swig_deleter;
 %newobject Schema_Node_Leaflist::type;
 
-%shared_ptr(Schema_Node_List);
+%shared_ptr(libyang::Schema_Node_List);
 %newobject Schema_Node_List::parent;
 %newobject Schema_Node_List::child;
 %newobject Schema_Node_List::next;
@@ -274,7 +274,7 @@
 %ignore    Schema_Node_List::swig_node;
 %ignore    Schema_Node_List::swig_deleter;
 
-%shared_ptr(Schema_Node_Anydata);
+%shared_ptr(libyang::Schema_Node_Anydata);
 %newobject Schema_Node_Anydata::parent;
 %newobject Schema_Node_Anydata::child;
 %newobject Schema_Node_Anydata::next;
@@ -285,7 +285,7 @@
 %ignore    Schema_Node_Anydata::swig_node;
 %ignore    Schema_Node_Anydata::swig_deleter;
 
-%shared_ptr(Schema_Node_Uses);
+%shared_ptr(libyang::Schema_Node_Uses);
 %newobject Schema_Node_Uses::parent;
 %newobject Schema_Node_Uses::child;
 %newobject Schema_Node_Uses::next;
@@ -298,7 +298,7 @@
 %ignore    Schema_Node_Uses::swig_deleter;
 %newobject Schema_Node_Uses::grp;
 
-%shared_ptr(Schema_Node_Grp);
+%shared_ptr(libyang::Schema_Node_Grp);
 %newobject Schema_Node_Grp::parent;
 %newobject Schema_Node_Grp::child;
 %newobject Schema_Node_Grp::next;
@@ -309,7 +309,7 @@
 %ignore    Schema_Node_Grp::swig_node;
 %ignore    Schema_Node_Grp::swig_deleter;
 
-%shared_ptr(Schema_Node_Case);
+%shared_ptr(libyang::Schema_Node_Case);
 %newobject Schema_Node_Case::parent;
 %newobject Schema_Node_Case::child;
 %newobject Schema_Node_Case::next;
@@ -320,7 +320,7 @@
 %ignore    Schema_Node_Case::swig_node;
 %ignore    Schema_Node_Case::swig_deleter;
 
-%shared_ptr(Schema_Node_Inout);
+%shared_ptr(libyang::Schema_Node_Inout);
 %newobject Schema_Node_Inout::parent;
 %newobject Schema_Node_Inout::child;
 %newobject Schema_Node_Inout::next;
@@ -331,7 +331,7 @@
 %ignore    Schema_Node_Inout::swig_node;
 %ignore    Schema_Node_Inout::swig_deleter;
 
-%shared_ptr(Schema_Node_Notif);
+%shared_ptr(libyang::Schema_Node_Notif);
 %newobject Schema_Node_Notif::parent;
 %newobject Schema_Node_Notif::child;
 %newobject Schema_Node_Notif::next;
@@ -342,7 +342,7 @@
 %ignore    Schema_Node_Notif::swig_node;
 %ignore    Schema_Node_Notif::swig_deleter;
 
-%shared_ptr(Schema_Node_Rpc_Action);
+%shared_ptr(libyang::Schema_Node_Rpc_Action);
 %newobject Schema_Node_Rpc_Action::parent;
 %newobject Schema_Node_Rpc_Action::child;
 %newobject Schema_Node_Rpc_Action::next;
@@ -353,7 +353,7 @@
 %ignore    Schema_Node_Rpc_Action::swig_node;
 %ignore    Schema_Node_Rpc_Action::swig_deleter;
 
-%shared_ptr(Schema_Node_Augment);
+%shared_ptr(libyang::Schema_Node_Augment);
 %newobject Schema_Node_Augment::parent;
 %newobject Schema_Node_Augment::child;
 %newobject Schema_Node_Augment::next;
@@ -365,92 +365,92 @@
 %ignore    Schema_Node_Augment::swig_node;
 %ignore    Schema_Node_Augment::swig_deleter;
 
-%shared_ptr(Substmt);
+%shared_ptr(libyang::Substmt);
 
-%shared_ptr(Ext);
+%shared_ptr(libyang::Ext);
 %newobject Ext::module;
 
-%shared_ptr(Refine_Mod_List);
+%shared_ptr(libyang::Refine_Mod_List);
 
-%shared_ptr(Refine_Mod);
+%shared_ptr(libyang::Refine_Mod);
 %newobject Refine_Mod::list;
 
-%shared_ptr(Refine);
+%shared_ptr(libyang::Refine);
 %newobject Refine::module;
 %newobject Refine::dflt;
 %newobject Refine::mod;
 
-%shared_ptr(Deviate);
+%shared_ptr(libyang::Deviate);
 %newobject Deviate::must;
 %newobject Deviate::unique;
 %newobject Deviate::type;
 
-%shared_ptr(Deviation);
+%shared_ptr(libyang::Deviation);
 %newobject Deviation::orig_node;
 
-%shared_ptr(Import);
+%shared_ptr(libyang::Import);
 %newobject Import::module;
 
-%shared_ptr(Include);
+%shared_ptr(libyang::Include);
 %newobject Include::submodule;
 
-%shared_ptr(Revision);
+%shared_ptr(libyang::Revision);
 %newobject Tpdf::module;
 
-%shared_ptr(Tpdf);
+%shared_ptr(libyang::Tpdf);
 %newobject Tpdf::type;
 
-%shared_ptr(Unique);
+%shared_ptr(libyang::Unique);
 
-%shared_ptr(Feature);
+%shared_ptr(libyang::Feature);
 %newobject Feature::module;
 %newobject Feature::depfeatures;
 
-%shared_ptr(Restr);
+%shared_ptr(libyang::Restr);
 
-%shared_ptr(When);
+%shared_ptr(libyang::When);
 
-%shared_ptr(Ident);
+%shared_ptr(libyang::Ident);
 %newobject Ident::module;
 %newobject Ident::der;
 
-%shared_ptr(Error);
+%shared_ptr(libyang::Error);
 
-%template(vectorData_Node) std::vector<std::shared_ptr<Data_Node>, std::allocator<std::shared_ptr <Data_Node> > >;
-%template(vectorSchema_Node) std::vector<std::shared_ptr<Schema_Node>, std::allocator<std::shared_ptr <Schema_Node> > >;
+%template(vectorData_Node) std::vector<std::shared_ptr<libyang::Data_Node>, std::allocator<std::shared_ptr <libyang::Data_Node> > >;
+%template(vectorSchema_Node) std::vector<std::shared_ptr<libyang::Schema_Node>, std::allocator<std::shared_ptr <libyang::Schema_Node> > >;
 %template(vector_String) std::vector<std::string, std::allocator<std::string> >;
-%template(vectorModules) std::vector<std::shared_ptr<Module>, std::allocator<std::shared_ptr<Module> > >;
-%template(vectorType) std::vector<std::shared_ptr<Type>, std::allocator<std::shared_ptr<Type> > >;
-%template(vectorExt_Instance) std::vector<std::shared_ptr<Ext_Instance>, std::allocator<std::shared_ptr<Ext_Instance> > >;
-%template(vectorIffeature) std::vector<std::shared_ptr<Iffeature>, std::allocator<std::shared_ptr<Iffeature> > >;
-%template(vectorFeature) std::vector<std::shared_ptr<Feature>, std::allocator<std::shared_ptr<Feature> > >;
-%template(vectorWhen) std::vector<std::shared_ptr<When>, std::allocator<std::shared_ptr<When> > >;
-%template(vectorRefine) std::vector<std::shared_ptr<Refine>, std::allocator<std::shared_ptr<Refine> > >;
-%template(vectorXml_Elem) std::vector<std::shared_ptr<Xml_Elem>, std::allocator<std::shared_ptr<Xml_Elem> > >;
-%template(vectorDeviate) std::vector<std::shared_ptr<Deviate>, std::allocator<std::shared_ptr<Deviate> > >;
-%template(vectorDeviation) std::vector<std::shared_ptr<Deviation>, std::allocator<std::shared_ptr<Deviation> > >;
-%template(vectorIdent) std::vector<std::shared_ptr<Ident>, std::allocator<std::shared_ptr<Ident> > >;
-%template(vectorRestr) std::vector<std::shared_ptr<Restr>, std::allocator<std::shared_ptr<Restr> > >;
-%template(vectorTpdf) std::vector<std::shared_ptr<Tpdf>, std::allocator<std::shared_ptr<Tpdf> > >;
-%template(vectorUnique) std::vector<std::shared_ptr<Unique>, std::allocator<std::shared_ptr<Unique> > >;
-%template(vectorSchema_Node_Leaf) std::vector<std::shared_ptr<Schema_Node_Leaf>, std::allocator<std::shared_ptr<Schema_Node_Leaf> > >;
-%template(vectorSchema_Node_Augment) std::vector<std::shared_ptr<Schema_Node_Augment>, std::allocator<std::shared_ptr<Schema_Node_Augment> > >;
-%template(vectorType_Bit) std::vector<std::shared_ptr<Type_Bit>, std::allocator<std::shared_ptr<Type_Bit> > >;
-%template(vectorType_Enum) std::vector<std::shared_ptr<Type_Enum>, std::allocator<std::shared_ptr<Type_Enum> > >;
-%template(vectorError) std::vector<std::shared_ptr<Error>, std::allocator<std::shared_ptr<Error> > >;
+%template(vectorModules) std::vector<std::shared_ptr<libyang::Module>, std::allocator<std::shared_ptr<libyang::Module> > >;
+%template(vectorType) std::vector<std::shared_ptr<libyang::Type>, std::allocator<std::shared_ptr<libyang::Type> > >;
+%template(vectorExt_Instance) std::vector<std::shared_ptr<libyang::Ext_Instance>, std::allocator<std::shared_ptr<libyang::Ext_Instance> > >;
+%template(vectorIffeature) std::vector<std::shared_ptr<libyang::Iffeature>, std::allocator<std::shared_ptr<libyang::Iffeature> > >;
+%template(vectorFeature) std::vector<std::shared_ptr<libyang::Feature>, std::allocator<std::shared_ptr<libyang::Feature> > >;
+%template(vectorWhen) std::vector<std::shared_ptr<libyang::When>, std::allocator<std::shared_ptr<libyang::When> > >;
+%template(vectorRefine) std::vector<std::shared_ptr<libyang::Refine>, std::allocator<std::shared_ptr<libyang::Refine> > >;
+%template(vectorXml_Elem) std::vector<std::shared_ptr<libyang::Xml_Elem>, std::allocator<std::shared_ptr<libyang::Xml_Elem> > >;
+%template(vectorDeviate) std::vector<std::shared_ptr<libyang::Deviate>, std::allocator<std::shared_ptr<libyang::Deviate> > >;
+%template(vectorDeviation) std::vector<std::shared_ptr<libyang::Deviation>, std::allocator<std::shared_ptr<libyang::Deviation> > >;
+%template(vectorIdent) std::vector<std::shared_ptr<libyang::Ident>, std::allocator<std::shared_ptr<libyang::Ident> > >;
+%template(vectorRestr) std::vector<std::shared_ptr<libyang::Restr>, std::allocator<std::shared_ptr<libyang::Restr> > >;
+%template(vectorTpdf) std::vector<std::shared_ptr<libyang::Tpdf>, std::allocator<std::shared_ptr<libyang::Tpdf> > >;
+%template(vectorUnique) std::vector<std::shared_ptr<libyang::Unique>, std::allocator<std::shared_ptr<libyang::Unique> > >;
+%template(vectorSchema_Node_Leaf) std::vector<std::shared_ptr<libyang::Schema_Node_Leaf>, std::allocator<std::shared_ptr<libyang::Schema_Node_Leaf> > >;
+%template(vectorSchema_Node_Augment) std::vector<std::shared_ptr<libyang::Schema_Node_Augment>, std::allocator<std::shared_ptr<libyang::Schema_Node_Augment> > >;
+%template(vectorType_Bit) std::vector<std::shared_ptr<libyang::Type_Bit>, std::allocator<std::shared_ptr<libyang::Type_Bit> > >;
+%template(vectorType_Enum) std::vector<std::shared_ptr<libyang::Type_Enum>, std::allocator<std::shared_ptr<libyang::Type_Enum> > >;
+%template(vectorError) std::vector<std::shared_ptr<libyang::Error>, std::allocator<std::shared_ptr<libyang::Error> > >;
 
 %{
 /* Includes the header in the wrapper code */
-#include "Xml.hpp"
 #include "Internal.hpp"
 #include "Libyang.hpp"
 #include "Tree_Data.hpp"
 #include "Tree_Schema.hpp"
+#include "Xml.hpp"
 #include <vector>
 %}
 
-%include "Xml.hpp"
 %include "Internal.hpp"
 %include "Libyang.hpp"
 %include "Tree_Data.hpp"
 %include "Tree_Schema.hpp"
+%include "Xml.hpp"
