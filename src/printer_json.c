@@ -41,11 +41,12 @@ json_print_string(struct lyout *out, const char *text)
 
     ly_write(out, "\"", 1);
     for (i = n = 0; text[i]; i++) {
-        if (((signed char)text[i]) >= 0 && text[i] < 0x20) {
+        const unsigned char ascii = text[i];
+        if (ascii < 0x20) {
             /* control character */
-            n += ly_print(out, "\\u%.4X", text[i]);
+            n += ly_print(out, "\\u%.4X", ascii);
         } else {
-            switch (text[i]) {
+            switch (ascii) {
             case '"':
                 n += ly_print(out, "\\\"");
                 break;
