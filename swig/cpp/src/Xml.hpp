@@ -120,9 +120,9 @@ public:
 
     /* emulate TREE macro's */
     /** wrapper for macro [LY_TREE_FOR](@ref LY_TREE_FOR) */
-    std::vector<S_Xml_Elem> *tree_for();
+    std::vector<S_Xml_Elem> tree_for();
     /** wrapper for macro [LY_TREE_DFS_BEGIN](@ref LY_TREE_DFS_BEGIN) and [LY_TREE_DFS_END](@ref LY_TREE_DFS_END) */
-    std::vector<S_Xml_Elem> *tree_dfs();
+    std::vector<S_Xml_Elem> tree_dfs();
 
     /* TODO
     struct lyxml_elem *lyxml_dup(struct ly_ctx *ctx, struct lyxml_elem *root);
