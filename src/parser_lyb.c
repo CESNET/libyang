@@ -386,6 +386,7 @@ lyb_parse_val_1(struct ly_ctx *ctx, struct lys_type *type, LY_DATA_TYPE value_ty
                 if (r < 0) {
                     return -1;
                 }
+                data += r;
             }
 
             if (byte & (0x01 << (i % 8))) {
