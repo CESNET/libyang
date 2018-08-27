@@ -117,12 +117,14 @@ extern "C" {
  *
  * When creating a new context, search dir can be specified (NULL is accepted) to provide directory
  * where libyang will automatically search for schemas being imported or included. The search path
- * can be later changed via ly_ctx_set_searchdir() and ly_ctx_unset_searchdrs() functions. If the search dir
- * is specified, it is explored first. Except the searchpath, also all its subdirectories (and symlinks) are
- * taken into account. In case the module is not found, libyang tries to find the (sub)module also in the current
- * working working directory. Note, that in this case only the current directory without any other subdirectory
- * is examined. This automatic searching can be completely avoided when the caller sets module searching callback
- * (#ly_module_imp_clb) via ly_ctx_set_module_imp_clb(), but both approaches can also be combined.
+ * can be later changed via ly_ctx_set_searchdir() and ly_ctx_unset_searchdirs() functions. Before the search dirs,
+ * also the current working directory is (non-recursively) searched. For the case of the explicitly set search
+ * dirs, also all their subdirectories (and symlinks) are taken into account. Searching in the current working
+ * directory can be avoided with context's #LY_CTX_DISABLE_SEARCHDIR_CWD option (or via ly_ctx_set_disable_searchdir_cwd()).
+ * Searching in all the context's search dirs (without removing them) can be avoided with the context's
+ * #LY_CTX_DISABLE_SEARCHDIRS option (or via ly_ctx_set_disable_searchdirs()). This automatic searching can be preceded
+ * by a custom  module searching callback (#ly_module_imp_clb) set via ly_ctx_set_module_imp_clb(). The algorithm of
+ * searching in search dirs is also available via API as lys_search_localfile() function.
  *
  * Schemas are added into the context using [parser functions](@ref howtoschemasparsers) - \b lys_parse_*().
  * In case of schemas, also ly_ctx_load_module() can be used - in that case the #ly_module_imp_clb or automatic
