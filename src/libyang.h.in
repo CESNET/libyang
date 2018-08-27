@@ -1116,6 +1116,7 @@ struct ly_ctx;
  * @ingroup context
  *
  * Options to change context behavior.
+ * @{
  */
 
 #define LY_CTX_ALLIMPLEMENTED 0x01 /**< All the imports of the schema being parsed are treated implemented. */
