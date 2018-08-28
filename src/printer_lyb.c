@@ -769,9 +769,8 @@ lyb_print_value(const struct lys_type *type, const char *value_str, lyd_val valu
             /* will be a full byte */
             for (byte = 0, i = 0; i < 8; ++i) {
                 if (value.bit[bits_i + i]) {
-                    byte |= 0x80;
+                    byte |= (1 << i);
                 }
-                byte >>= 1;
             }
             ret += lyb_write(out, &byte, sizeof byte, lybs);
             bits_i += 8;
@@ -781,11 +780,9 @@ lyb_print_value(const struct lys_type *type, const char *value_str, lyd_val valu
         if (type->info.bits.count % 8) {
             for (byte = 0, i = 0; i < type->info.bits.count % 8; ++i) {
                 if (value.bit[bits_i + i]) {
-                    byte |= 0x80;
+                    byte |= (1 << i);
                 }
-                byte >>= 1;
             }
-            byte >>= 8 - (i + 1);
             ret += lyb_write(out, &byte, sizeof byte, lybs);
         }
         break;

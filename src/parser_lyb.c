@@ -382,7 +382,7 @@ lyb_parse_val_1(struct ly_ctx *ctx, struct lys_type *type, LY_DATA_TYPE value_ty
         for (i = 0; i < type->info.bits.count; ++i) {
             if (i % 8 == 0) {
                 /* read another byte */
-                ret += (r = lyb_read(data, &byte, sizeof byte, lybs));
+                ret += (r = lyb_read(data + ret, &byte, sizeof byte, lybs));
                 if (r < 0) {
                     return -1;
                 }
