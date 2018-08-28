@@ -1136,6 +1136,7 @@ struct ly_ctx;
 #define LY_CTX_DISABLE_SEARCHDIR_CWD 0x10 /**< Do not automatically search for schemas in current working
                                         directory, which is by default searched automatically (despite not
                                         recursively). */
+#define LY_CTX_PREFER_SEARCHDIRS 0x20 /**< When searching for schema, prefer searchdirs instead of user callback. */
 /**@} contextoptions */
 
 /**
@@ -1297,6 +1298,23 @@ void ly_ctx_set_disable_searchdir_cwd(struct ly_ctx *ctx);
  * @param[in] ctx Context to be modified.
  */
 void ly_ctx_unset_disable_searchdir_cwd(struct ly_ctx *ctx);
+
+/**
+ * @brief Prefer context's searchdirs before the user callback (ly_module_imp_clb) provided via ly_ctx_set_module_imp_clb()).
+ *
+ * The same effect is achieved by using #LY_CTX_PREFER_SEARCHDIRS option when creating new context or parsing
+ * a specific schema.
+ *
+ * @param[in] ctx Context to be modified.
+ */
+void ly_ctx_set_prefer_searchdirs(struct ly_ctx *ctx);
+
+/**
+ * @brief Reverse function to ly_ctx_set_prefer_searchdirs().
+ *
+ * @param[in] ctx Context to be modified.
+ */
+void ly_ctx_unset_prefer_searchdirs(struct ly_ctx *ctx);
 
 /**
  * @brief Make context to set all the imported modules to be implemented. By default,

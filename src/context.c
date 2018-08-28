@@ -353,6 +353,18 @@ ly_ctx_unset_disable_searchdir_cwd(struct ly_ctx *ctx)
 }
 
 API void
+ly_ctx_set_prefer_searchdirs(struct ly_ctx *ctx)
+{
+    ly_ctx_set_option(ctx, LY_CTX_PREFER_SEARCHDIRS);
+}
+
+API void
+ly_ctx_unset_prefer_searchdirs(struct ly_ctx *ctx)
+{
+    ly_ctx_unset_option(ctx, LY_CTX_PREFER_SEARCHDIRS);
+}
+
+API void
 ly_ctx_set_allimplemented(struct ly_ctx *ctx)
 {
     ly_ctx_set_option(ctx, LY_CTX_ALLIMPLEMENTED);
@@ -876,15 +888,50 @@ cleanup:
     return result;
 }
 
+static struct lys_module *
+ly_ctx_load_sub_module_clb(struct ly_ctx *ctx, struct lys_module *module, const char *name, const char *revision,
+                           int implement, struct unres_schema *unres)
+{
+    struct lys_module *mod = NULL;
+    char *module_data = NULL;
+    LYS_INFORMAT format = LYS_IN_UNKNOWN;
+    void (*module_data_free)(void *module_data) = NULL;
+
+    ly_errno = LY_SUCCESS;
+    if (module) {
+        mod = lys_main_module(module);
+        module_data = ctx->imp_clb(mod->name, (mod->rev_size ? mod->rev[0].date : NULL), name, revision, ctx->imp_clb_data, &format, &module_data_free);
+    } else {
+        module_data = ctx->imp_clb(name, revision, NULL, NULL, ctx->imp_clb_data, &format, &module_data_free);
+    }
+    if (!module_data && (ly_errno != LY_SUCCESS)) {
+        /* callback encountered an error, do not change it */
+        LOGERR(ctx, ly_errno, "User module retrieval callback failed!");
+        return NULL;
+    }
+
+    if (module_data) {
+        /* we got the module from the callback */
+        if (module) {
+            mod = (struct lys_module *)lys_sub_parse_mem(module, module_data, format, unres);
+        } else {
+            mod = (struct lys_module *)lys_parse_mem_(ctx, module_data, format, NULL, 0, implement);
+        }
+
+        if (module_data_free) {
+            module_data_free(module_data);
+        }
+    }
+
+    return mod;
+}
+
 const struct lys_module *
 ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char *name, const char *revision,
                        int implement, struct unres_schema *unres)
 {
     struct lys_module *mod = NULL;
-    char *module_data = NULL;
     int i;
-    void (*module_data_free)(void *module_data) = NULL;
-    LYS_INFORMAT format = LYS_IN_UNKNOWN;
 
     if (!module) {
         /* exception for internal modules */
@@ -930,35 +977,23 @@ ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char
     }
 
     /* module is not yet in context, use the user callback or try to find the schema on our own */
-    if (ctx->imp_clb) {
-        ly_errno = LY_SUCCESS;
-        if (module) {
-            mod = lys_main_module(module);
-            module_data = ctx->imp_clb(mod->name, (mod->rev_size ? mod->rev[0].date : NULL), name, revision, ctx->imp_clb_data, &format, &module_data_free);
-        } else {
-            module_data = ctx->imp_clb(name, revision, NULL, NULL, ctx->imp_clb_data, &format, &module_data_free);
+    if (ctx->imp_clb && !(ctx->models.flags & LY_CTX_PREFER_SEARCHDIRS)) {
+search_clb:
+        if (ctx->imp_clb) {
+            mod = ly_ctx_load_sub_module_clb(ctx, module, name, revision, implement, unres);
         }
-        if (!module_data && (ly_errno != LY_SUCCESS)) {
-            /* callback encountered an error, do not change it */
-            LOGERR(ctx, ly_errno, "User module retrieval callback failed!");
-            return NULL;
+        if (!mod && !(ctx->models.flags & LY_CTX_PREFER_SEARCHDIRS)) {
+            goto search_file;
         }
-    }
-
-    if (module_data) {
-        /* we got the module from the callback */
-        if (module) {
-            mod = (struct lys_module *)lys_sub_parse_mem(module, module_data, format, unres);
-        } else {
-            mod = (struct lys_module *)lys_parse_mem_(ctx, module_data, format, NULL, 0, implement);
+    } else {
+search_file:
+        if (!(ctx->models.flags & LY_CTX_DISABLE_SEARCHDIRS)) {
+            /* module was not received from the callback or there is no callback set */
+            mod = ly_ctx_load_localfile(ctx, module, name, revision, implement, unres);
         }
-
-        if (module_data_free) {
-            module_data_free(module_data);
+        if (!mod && (ctx->models.flags & LY_CTX_PREFER_SEARCHDIRS)) {
+            goto search_clb;
         }
-    } else if (!(ctx->models.flags & LY_CTX_DISABLE_SEARCHDIRS)) {
-        /* module was not received from the callback or there is no callback set */
-        mod = ly_ctx_load_localfile(ctx, module, name, revision, implement, unres);
     }
 
 #ifdef LY_ENABLED_LATEST_REVISIONS
