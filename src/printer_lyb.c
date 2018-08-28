@@ -637,6 +637,19 @@ next_mod:
 }
 
 static int
+lyb_print_magic_number(struct lyout *out)
+{
+    uint32_t magic_number;
+
+    /* 'l', 'y', 'b' - 0x6c7962 */
+    ((char *)&magic_number)[0] = 'l';
+    ((char *)&magic_number)[1] = 'y';
+    ((char *)&magic_number)[2] = 'b';
+
+    return ly_write(out, (char *)&magic_number, 3);
+}
+
+static int
 lyb_print_header(struct lyout *out)
 {
     int ret = 0;
@@ -1105,6 +1118,13 @@ lyb_print_data(struct lyout *out, const struct lyd_node *root, int options)
     struct lyb_state lybs;
 
     memset(&lybs, 0, sizeof lybs);
+
+    /* LYB magic number */
+    ret += (r = lyb_print_magic_number(out));
+    if (r < 0) {
+        rc = EXIT_FAILURE;
+        goto finish;
+    }
 
     /* LYB header */
     ret += (r = lyb_print_header(out));

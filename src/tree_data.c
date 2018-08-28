@@ -7354,6 +7354,12 @@ lyd_lyb_data_length(const char *data)
 
     ptr = data;
 
+    /* magic number */
+    if (memcmp(ptr, "lyb", 3)) {
+        return -1;
+    }
+    ptr += 3;
+
     /* header */
     ++ptr;
 

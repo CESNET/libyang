@@ -1109,6 +1109,23 @@ lyb_parse_data_models(struct ly_ctx *ctx, const char *data, struct lyb_state *ly
 }
 
 static int
+lyb_parse_magic_number(const char *data, struct lyb_state *lybs)
+{
+    int ret = 0;
+    uint32_t magic_number = 0;
+
+    ret += lyb_read(data, (uint8_t *)&magic_number, 3, lybs);
+
+    if (memcmp(&magic_number, "lyb", 3)) {
+        LOGERR(NULL, LY_EINVAL, "Invalid magic number \"0x%02x%02x%02x\".",
+               ((uint8_t *)&magic_number)[0], ((uint8_t *)&magic_number)[1], ((uint8_t *)&magic_number)[2]);
+        return -1;
+    }
+
+    return ret;
+}
+
+static int
 lyb_parse_header(const char *data, struct lyb_state *lybs)
 {
     int ret = 0;
@@ -1145,6 +1162,10 @@ lyd_parse_lyb(struct ly_ctx *ctx, const char *data, int options, const struct ly
 
     unres = calloc(1, sizeof *unres);
     LY_CHECK_ERR_GOTO(!unres, LOGMEM(ctx), finish);
+
+    /* read magic number */
+    ret += (r = lyb_parse_magic_number(data, &lybs));
+    LYB_HAVE_READ_GOTO(r, data, finish);
 
     /* read header */
     ret += (r = lyb_parse_header(data, &lybs));
