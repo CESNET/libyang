@@ -1,7 +1,7 @@
 <types xmlns="urn:ty">
     <bin>TWFuIGlzIGRpc3Rpbmd1aXNoZWQsIG5vdCBvbmx5IGJ=</bin>
 
-    <bits>CF</bits>
+    <bits>position-0 position-5</bits>
 
     <boolean-true>true</boolean-true>
 
