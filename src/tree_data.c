@@ -5109,6 +5109,7 @@ lyd_dup_attr(struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_attr *attr)
     ret->name = lydict_insert(ctx, attr->name, 0);
     ret->value_str = lydict_insert(ctx, attr->value_str, 0);
     ret->value_type = attr->value_type;
+    ret->value_flags = attr->value_flags;
     switch (ret->value_type) {
     case LY_TYPE_BINARY:
     case LY_TYPE_STRING:
