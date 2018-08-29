@@ -336,12 +336,12 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
 
         r = lyp_fill_attr(ctx, *result, str, NULL, attr->name, attr->value, xml, options, &dattr);
         if (r == -1) {
-            goto error;
+            goto unlink_node_error;
         } else if (r == 1) {
 attr_error:
             if (options & LYD_OPT_STRICT) {
                 LOGVAL(ctx, LYE_INATTR, LY_VLOG_LYD, *result, attr->name);
-                goto error;
+                goto unlink_node_error;
             }
 
             LOGWRN(ctx, "Unknown \"%s:%s\" metadata with value \"%s\", ignoring.",
@@ -355,7 +355,7 @@ attr_error:
             if (!dattr->value.string) {
                 /* problem with resolving value as xpath */
                 dattr->value.string = dattr->value_str;
-                goto error;
+                goto unlink_node_error;
             }
             lydict_remove(ctx, dattr->value_str);
             dattr->value_str = dattr->value.string;
@@ -374,7 +374,7 @@ attr_error:
     /* check insert attribute and its values */
     if (options & LYD_OPT_EDIT) {
         if (lyp_check_edit_attr(ctx, (*result)->attr, *result, &editbits)) {
-            goto error;
+            goto unlink_node_error;
         }
 
     /* check correct filter extension attributes */
@@ -384,14 +384,14 @@ attr_error:
             if (!strcmp(dattr_iter->name, "type")) {
                 if ((found == 1) || (found == 2) || (found == 4)) {
                     LOGVAL(ctx, LYE_TOOMANY, LY_VLOG_LYD, (*result), "type", xml->name);
-                    goto error;
+                    goto unlink_node_error;
                 }
                 switch (dattr_iter->value.enm->value) {
                 case 0:
                     /* subtree */
                     if (found == 3) {
                         LOGVAL(ctx, LYE_INATTR, LY_VLOG_LYD, (*result), dattr_iter->name);
-                        goto error;
+                        goto unlink_node_error;
                     }
 
                     assert(!found);
@@ -408,7 +408,7 @@ attr_error:
                     break;
                 default:
                     LOGINT(ctx);
-                    goto error;
+                    goto unlink_node_error;
                 }
             } else if (!strcmp(dattr_iter->name, "select")) {
                 switch (found) {
@@ -417,17 +417,17 @@ attr_error:
                     break;
                 case 1:
                     LOGVAL(ctx, LYE_INATTR, LY_VLOG_LYD, (*result), dattr_iter->name);
-                    goto error;
+                    goto unlink_node_error;
                 case 2:
                     found = 4;
                     break;
                 case 3:
                 case 4:
                     LOGVAL(ctx, LYE_TOOMANY, LY_VLOG_LYD, (*result), "select", xml->name);
-                    goto error;
+                    goto unlink_node_error;
                 default:
                     LOGINT(ctx);
-                    goto error;
+                    goto unlink_node_error;
                 }
             }
         }
@@ -440,13 +440,13 @@ attr_error:
             break;
         case 2:
             LOGVAL(ctx, LYE_MISSATTR, LY_VLOG_LYD, (*result), "select", xml->name);
-            goto error;
+            goto unlink_node_error;
         case 3:
             LOGVAL(ctx, LYE_MISSATTR, LY_VLOG_LYD, (*result), "type", xml->name);
-            goto error;
+            goto unlink_node_error;
         default:
             LOGINT(ctx);
-            goto error;
+            goto unlink_node_error;
         }
     }
 
@@ -454,7 +454,7 @@ attr_error:
     if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
         /* type detection and assigning the value */
         if (xml_get_value(*result, xml, editbits, options & LYD_OPT_TRUSTED)) {
-            goto error;
+            goto unlink_node_error;
         }
     } else if (schema->nodetype & LYS_ANYDATA) {
         /* store children values */
@@ -478,14 +478,14 @@ attr_error:
             LOGVAL(ctx, LYE_INELEM, LY_VLOG_LYD, (*result), schema->name);
             LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Unexpected %s node \"%s\".",
                    (schema->nodetype == LYS_RPC ? "rpc" : "action"), schema->name);
-            goto error;
+            goto unlink_node_error;
         }
         *act_notif = *result;
     } else if (schema->nodetype == LYS_NOTIF) {
         if (!(options & LYD_OPT_NOTIF) || *act_notif) {
             LOGVAL(ctx, LYE_INELEM, LY_VLOG_LYD, (*result), schema->name);
             LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Unexpected notification node \"%s\".", schema->name);
-            goto error;
+            goto unlink_node_error;
         }
         *act_notif = *result;
     }
@@ -541,6 +541,8 @@ attr_error:
 
     return ret;
 
+unlink_node_error:
+    lyd_unlink_internal(*result, 2);
 error:
     /* cleanup */
     for (i = unres->count - 1; i >= 0; i--) {
