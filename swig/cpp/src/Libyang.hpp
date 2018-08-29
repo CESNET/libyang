@@ -133,6 +133,9 @@ public:
     friend Deleter;
     friend Error;
 
+    /* SWIG specific */
+    struct ly_ctx *swig_ctx() {return ctx;};
+    std::vector<void*> wrap_cb_l;
 private:
     struct ly_ctx *ctx;
     S_Deleter deleter;

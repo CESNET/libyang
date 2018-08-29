@@ -4,11 +4,14 @@
     extern "C" {
         #include "libyang.h"
         #include "tree_data.h"
+        #include "tree_schema.h"
     }
 %}
 
 %include exception.i
 %include <std_except.i>
+%include <std_pair.i>
+%include <std_shared_ptr.i>
 %catches(std::runtime_error, std::exception, std::string);
 
 %inline %{
@@ -21,7 +24,77 @@
 #include "Libyang.hpp"
 #include "Tree_Data.hpp"
 
+class Wrap_cb {
+public:
+    Wrap_cb(PyObject *callback): _callback(nullptr) {
+
+        if (!PyCallable_Check(callback)) {
+            throw std::runtime_error("Python Object is not callable.\n");
+        }
+        else {
+            _callback = callback;
+            Py_XINCREF(_callback);
+        }
+    }
+    ~Wrap_cb() {
+        if(_callback)
+            Py_XDECREF(_callback);
+    }
+
+
+    std::pair<char *, LYS_INFORMAT> ly_module_imp_clb(const char *mod_name, const char *mod_rev, const char *submod_name, const char *sub_rev, PyObject *user_data) {
+        PyObject *arglist = Py_BuildValue("(ssssO)", mod_name, mod_rev, submod_name, sub_rev, user_data);
+        PyObject *my_result = PyEval_CallObject(_callback, arglist);
+        Py_DECREF(arglist);
+        if (my_result == nullptr) {
+            throw std::runtime_error("Python callback ly_module_imp_clb failed.\n");
+        } else {
+            LYS_INFORMAT format;
+            char *data;
+
+            if (!PyArg_ParseTuple(my_result, "is", &format, &data)) {
+                Py_DECREF(my_result);
+                std::runtime_error("failed to parse ly_module_imp_clb");
+            }
+
+            Py_DECREF(my_result);
+            return std::make_pair(data,format);
+        }
+    }
+
+    PyObject *private_ctx;
+private:
+    PyObject *_callback;
+};
+
+static char *g_ly_module_imp_clb(const char *mod_name, const char *mod_rev, const char *submod_name, const char *sub_rev,
+                                   void *user_data, LYS_INFORMAT *format, void (**free_module_data)(void *model_data)) {
+    Wrap_cb *ctx = (Wrap_cb *) user_data;
+    (void)free_module_data;
+    auto pair = ctx->ly_module_imp_clb(mod_name, mod_rev, submod_name, sub_rev, ctx->private_ctx);
+    *format = pair.second;
+    return pair.first;
+}
 %}
+
+%extend Context {
+
+    void set_module_imp_clb(PyObject *clb, PyObject *user_data = nullptr) {
+        /* create class */
+        Wrap_cb *class_ctx = nullptr;
+        class_ctx = new Wrap_cb(clb);
+
+        self->wrap_cb_l.push_back(class_ctx);
+        if (user_data) {
+            class_ctx->private_ctx = user_data;
+        } else {
+            Py_INCREF(Py_None);
+            class_ctx->private_ctx = Py_None;
+        }
+
+        ly_ctx_set_module_imp_clb(self->swig_ctx(), g_ly_module_imp_clb, class_ctx);
+    };
+}
 
 %extend Data_Node {
     PyObject *subtype() {
