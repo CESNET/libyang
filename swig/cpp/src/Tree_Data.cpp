@@ -520,20 +520,27 @@ S_Value Attr::value() {
 }
 S_Attr Attr::next() LY_NEW(attr, next, Attr);
 
-Difflist::Difflist(struct lyd_difflist *diff, S_Deleter deleter) {
-    diff = diff;
-    deleter = std::make_shared<Deleter>(diff, deleter);
-}
+Difflist::Difflist(struct lyd_difflist *diff, S_Deleter deleter)
+  : diff(diff)
+  , deleter(std::make_shared<Deleter>(diff, deleter))
+{
 Difflist::~Difflist() {};
 std::vector<S_Data_Node> Difflist::first() {
     std::vector<S_Data_Node> s_vector;
     unsigned int i = 0;
+    unsigned int s = 0;
 
-    if (!*diff->first) {
+    for(s = 0; diff->type[s] != LYD_DIFF_END; s++) {
+    }
+
+    s_vector.reserve(s);
+
+    if (diff->first == nullptr) {
+        s_vector.resize(s);
         return s_vector;
     }
 
-    for(i = 0; i < sizeof(*diff->first); i++) {
+    for(i = 0; i < s; i++) {
         s_vector.push_back(std::make_shared<Data_Node>(*diff->first, deleter));
     }
 
@@ -542,12 +549,19 @@ std::vector<S_Data_Node> Difflist::first() {
 std::vector<S_Data_Node> Difflist::second() {
     std::vector<S_Data_Node> s_vector;
     unsigned int i = 0;
+    unsigned int s = 0;
 
-    if (!*diff->second) {
+    for(s = 0; diff->type[s] != LYD_DIFF_END; s++) {
+    }
+
+    s_vector.reserve(s);
+
+    if (diff->second == nullptr) {
+        s_vector.resize(s);
         return s_vector;
     }
 
-    for(i = 0; i < sizeof(*diff->second); i++) {
+    for(i = 0; i < s; i++) {
         s_vector.push_back(std::make_shared<Data_Node>(*diff->second, deleter));
     }
 
