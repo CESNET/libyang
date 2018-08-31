@@ -117,7 +117,7 @@ jsons_print_config(struct lyout *out, uint16_t flags, int *first)
 static void
 jsons_print_mand(struct lyout *out, uint16_t flags, int *first)
 {
-    const char *str;
+    const char *str = NULL;
 
     if (flags & LYS_MAND_MASK) {
         if (flags & LYS_MAND_TRUE) {
