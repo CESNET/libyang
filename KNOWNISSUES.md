@@ -1,5 +1,12 @@
 # Known Issues
 
+## Printer crash
+
+There is a bug in Clang 3.4.2 that causes wrong data tree traversal, which results in a crash.
+It can occur during any traversal but it was observed in XML printer while printing default
+values. The solution is to compile using either GCC or newer version of Clang. Starting
+from which version it works we do not exactly know. Clang 5.0.0 works fine.
+
 ## XPath Expressions
 
 ### Axes
