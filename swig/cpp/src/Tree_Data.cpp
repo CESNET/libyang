@@ -524,6 +524,7 @@ Difflist::Difflist(struct lyd_difflist *diff, S_Deleter deleter)
   : diff(diff)
   , deleter(std::make_shared<Deleter>(diff, deleter))
 {
+}
 Difflist::~Difflist() {};
 std::vector<S_Data_Node> Difflist::first() {
     std::vector<S_Data_Node> s_vector;
