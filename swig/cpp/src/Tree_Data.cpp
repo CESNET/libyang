@@ -536,13 +536,17 @@ std::vector<S_Data_Node> Difflist::first() {
 
     s_vector.reserve(s);
 
-    if (diff->first == nullptr) {
+    if (!diff->first) {
         s_vector.resize(s);
         return s_vector;
     }
 
     for(i = 0; i < s; i++) {
-        s_vector.push_back(diff->first[i] != nullptr ? std::make_shared<Data_Node>(diff->first[i], deleter) : nullptr);
+        if (diff->first[i]) {
+            s_vector.emplace_back(std::make_shared<Data_Node>(diff->first[i], deleter));
+        } else {
+            s_vector.emplace_back();
+        }
     }
 
     return s_vector;
@@ -557,13 +561,17 @@ std::vector<S_Data_Node> Difflist::second() {
 
     s_vector.reserve(s);
 
-    if (diff->second == nullptr) {
+    if (!diff->second) {
         s_vector.resize(s);
         return s_vector;
     }
 
     for(i = 0; i < s; i++) {
-        s_vector.push_back(diff->second[i] != nullptr ? std::make_shared<Data_Node>(diff->second[i], deleter) : nullptr);
+        if (diff->second[i]) {
+            s_vector.emplace_back(std::make_shared<Data_Node>(diff->second[i], deleter));
+        } else {
+            s_vector.emplace_back();
+        }
     }
 
     return s_vector;
