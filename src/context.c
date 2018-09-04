@@ -884,8 +884,11 @@ ly_ctx_load_localfile(struct ly_ctx *ctx, struct lys_module *module, const char 
 
     if (!result->filepath) {
         char rpath[PATH_MAX];
-        if (realpath(filepath, rpath) != NULL)
+        if (realpath(filepath, rpath) != NULL) {
             result->filepath = lydict_insert(ctx, rpath, 0);
+        } else {
+            result->filepath = lydict_insert(ctx, filepath, 0);
+        }
     }
 
     /* success */

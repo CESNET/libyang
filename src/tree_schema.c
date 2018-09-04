@@ -1130,7 +1130,12 @@ lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format)
 
     if (!ret->filepath) {
         /* store URI */
-        ((struct lys_module *)ret)->filepath = lydict_insert(ctx, path, 0);
+        char rpath[PATH_MAX];
+        if (realpath(path, rpath) != NULL) {
+            ((struct lys_module *)ret)->filepath = lydict_insert(ctx, rpath, 0);
+        } else {
+            ((struct lys_module *)ret)->filepath = lydict_insert(ctx, path, 0);
+        }
     }
 
     return ret;
