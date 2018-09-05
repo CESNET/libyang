@@ -61,6 +61,18 @@ public:
     void set_allimplemented() {return ly_ctx_set_allimplemented(ctx);};
     /** wrapper for [ly_ctx_unset_allimplemented](@ref ly_ctx_unset_allimplemented) */
     void unset_allimplemented() {return ly_ctx_unset_allimplemented(ctx);};
+    /** wrapper for [ly_ctx_set_disable_searchdirs](@ref ly_ctx_set_disable_searchdirs) */
+    void set_disable_searchdirs() {return ly_ctx_set_disable_searchdirs(ctx);};
+    /** wrapper for [ly_ctx_unset_disable_searchdirs](@ref ly_ctx_unset_disable_searchdirs) */
+    void unset_disable_searchdirs() {return ly_ctx_unset_disable_searchdirs(ctx);};
+    /** wrapper for [ly_ctx_set_disable_searchdir_cwd](@ref ly_ctx_set_disable_searchdir_cwd) */
+    void set_disable_searchdir_cwd() {return ly_ctx_set_disable_searchdir_cwd(ctx);};
+    /** wrapper for [ly_ctx_unset_disable_searchdir_cwd](@ref ly_ctx_unset_disable_searchdir_cwd) */
+    void unset_disable_searchdir_cwd() {return ly_ctx_unset_disable_searchdir_cwd(ctx);};
+    /** wrapper for [ly_ctx_set_prefer_searchdirs](@ref ly_ctx_set_disable_searchdirs) */
+    void set_prefer_searchdirs() {return ly_ctx_set_prefer_searchdirs(ctx);};
+    /** wrapper for [ly_ctx_unset_prefer_searchdirs](@ref ly_ctx_unset_prefer_searchdirs) */
+    void unset_prefer_searchdirs() {return ly_ctx_unset_prefer_searchdirs(ctx);};
     /** wrapper for [ly_ctx_info](@ref ly_ctx_info) */
     S_Data_Node info();
     /** wrapper for [ly_ctx_get_module_iter](@ref ly_ctx_get_module_iter) */
@@ -109,6 +121,9 @@ public:
     friend Deleter;
     friend Error;
 
+    /* SWIG specific */
+    struct ly_ctx *swig_ctx() {return ctx;};
+    std::vector<void*> wrap_cb_l;
 private:
     struct ly_ctx *ctx;
     S_Deleter deleter;

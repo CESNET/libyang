@@ -7,6 +7,7 @@
 %include <cpointer.i>
 %include <typemaps.i>
 %include <stdint.i>
+%include <std_pair.i>
 %include <std_string.i>
 %include <std_vector.i>
 %include <std_shared_ptr.i>
@@ -47,6 +48,8 @@
 %newobject Context::get_submodule2;
 %newobject Context::find_path;
 %newobject Context::data_instantiables;
+%ignore    Context::swig_ctx;
+%ignore    Context::wrap_cb_l;
 
 %shared_ptr(libyang::Set);
 %newobject Set::dup;
@@ -438,6 +441,8 @@
 %template(vectorType_Bit) std::vector<std::shared_ptr<libyang::Type_Bit>, std::allocator<std::shared_ptr<libyang::Type_Bit> > >;
 %template(vectorType_Enum) std::vector<std::shared_ptr<libyang::Type_Enum>, std::allocator<std::shared_ptr<libyang::Type_Enum> > >;
 %template(vectorError) std::vector<std::shared_ptr<libyang::Error>, std::allocator<std::shared_ptr<libyang::Error> > >;
+
+%template(pairStringLysInformat) std::pair<char *, LYS_INFORMAT>;
 
 %{
 /* Includes the header in the wrapper code */

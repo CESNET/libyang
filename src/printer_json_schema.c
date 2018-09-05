@@ -117,7 +117,7 @@ jsons_print_config(struct lyout *out, uint16_t flags, int *first)
 static void
 jsons_print_mand(struct lyout *out, uint16_t flags, int *first)
 {
-    const char *str;
+    const char *str = NULL;
 
     if (flags & LYS_MAND_MASK) {
         if (flags & LYS_MAND_TRUE) {
@@ -227,6 +227,7 @@ jsons_print_type_(struct lyout *out, const struct lys_type *type, int with_label
     unsigned int i;
     int f;
     struct lys_module *mod;
+    struct lys_node *node;
 
     if (!type) {
         return;
@@ -332,7 +333,13 @@ int_range:
         break;
     case LY_TYPE_LEAFREF:
         ly_print(out, "\"basetype\":\"leafref\"");
-        jsons_print_text(out, "path", "value", type->info.lref.path, 1, NULL);
+        jsons_print_text(out, "path", "value", type->info.lref.path, 0, NULL);
+        for (node = (struct lys_node*)type->info.lref.target; node && node->parent; node = lys_parent(node));
+        if (node) {
+            mod = node->module;
+            ly_print(out, ",\"target-schema\":\"%s%s%s\"", mod->name, mod->rev_size ? "@" : "", mod->rev_size ? mod->rev[0].date : "");
+        }
+        ly_print(out, "}");
         if (type->info.lref.req) {
             jsons_print_object(out, "require-instance", "value", type->info.lref.req == -1 ? "false" : "true", 1, NULL);
         }
