@@ -1708,24 +1708,34 @@ copy_nodes:
  * @param[in] token Token to add.
  * @param[in] expr_pos Token position in the XPath expression.
  * @param[in] tok_len Token length in the XPath expression.
+ * @return 0 on success, -1 on error.
  */
-static void
+static int
 exp_add_token(struct lyxp_expr *exp, enum lyxp_token token, uint16_t expr_pos, uint16_t tok_len)
 {
+    uint32_t prev;
+
     if (exp->used == exp->size) {
+        prev = exp->size;
         exp->size += LYXP_EXPR_SIZE_STEP;
+        if (prev > exp->size) {
+            LOGINT(NULL);
+            return -1;
+        }
+
         exp->tokens = ly_realloc(exp->tokens, exp->size * sizeof *exp->tokens);
-        LY_CHECK_ERR_RETURN(!exp->tokens, LOGMEM(NULL), );
+        LY_CHECK_ERR_RETURN(!exp->tokens, LOGMEM(NULL), -1);
         exp->expr_pos = ly_realloc(exp->expr_pos, exp->size * sizeof *exp->expr_pos);
-        LY_CHECK_ERR_RETURN(!exp->expr_pos, LOGMEM(NULL), );
+        LY_CHECK_ERR_RETURN(!exp->expr_pos, LOGMEM(NULL), -1);
         exp->tok_len = ly_realloc(exp->tok_len, exp->size * sizeof *exp->tok_len);
-        LY_CHECK_ERR_RETURN(!exp->tok_len, LOGMEM(NULL), );
+        LY_CHECK_ERR_RETURN(!exp->tok_len, LOGMEM(NULL), -1);
     }
 
     exp->tokens[exp->used] = token;
     exp->expr_pos[exp->used] = expr_pos;
     exp->tok_len[exp->used] = tok_len;
     ++exp->used;
+    return 0;
 }
 
 /**
@@ -2720,7 +2730,9 @@ lyxp_parse_expr(struct ly_ctx *ctx, const char *expr)
         }
 
         /* store the token, move on to the next one */
-        exp_add_token(ret, tok_type, parsed, tok_len);
+        if (exp_add_token(ret, tok_type, parsed, tok_len)) {
+            goto error;
+        }
         parsed += tok_len;
         while (is_xmlws(expr[parsed])) {
             ++parsed;
