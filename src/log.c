@@ -313,6 +313,52 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE v
     }
 }
 
+#ifndef NDEBUG
+
+void
+ly_log_dbg(int group, const char *format, ...)
+{
+    char *dbg_format;
+    const char *str_group;
+    va_list ap;
+
+    if (!(ly_log_dbg_groups & group)) {
+        return;
+    }
+
+    switch (group) {
+    case LY_LDGDICT:
+        str_group = "DICT";
+        break;
+    case LY_LDGYANG:
+        str_group = "YANG";
+        break;
+    case LY_LDGYIN:
+        str_group = "YIN";
+        break;
+    case LY_LDGXPATH:
+        str_group = "XPATH";
+        break;
+    case LY_LDGDIFF:
+        str_group = "DIFF";
+        break;
+    default:
+        LOGINT(NULL);
+        return;
+    }
+
+    if (asprintf(&dbg_format, "%s: %s", str_group, format) == -1) {
+        LOGMEM(NULL);
+        return;
+    }
+
+    va_start(ap, format);
+    log_vprintf(NULL, LY_LLDBG, 0, 0, NULL, dbg_format, ap);
+    va_end(ap);
+}
+
+#endif
+
 void
 ly_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, const char *format, ...)
 {

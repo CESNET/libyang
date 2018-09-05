@@ -58,6 +58,13 @@ void ly_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, const char 
 #define LOGWRN(ctx, str, args...) ly_log(ctx, LY_LLWRN, 0, str, ##args)
 #define LOGVRB(str, args...) ly_log(NULL, LY_LLVRB, 0, str, ##args)
 
+#ifdef NDEBUG
+#  define LOGDBG(dbg_group, str, args...)
+#else
+   void ly_log_dbg(int group, const char *format, ...);
+#  define LOGDBG(dbg_group, str, args...) ly_log_dbg(dbg_group, str, ##args);
+#endif
+
 #define LOGMEM(CTX) LOGERR(CTX, LY_EMEM, "Memory allocation failed (%s()).", __func__)
 #define LOGINT(CTX) LOGERR(CTX, LY_EINT, "Internal error (%s:%d).", __FILE__, __LINE__)
 #define LOGARG(CTX, ARG) LOGERR(CTX, LY_EINVAL, "Invalid argument %s (%s()).", #ARG, __func__)
