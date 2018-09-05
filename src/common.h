@@ -19,8 +19,7 @@
 #include <stdlib.h>
 
 #include "libyang.h"
-
-#define UNUSED(x) UNUSED_ ## x __attribute__((__unused__))
+#include "config.h"
 
 #if __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
 # define THREAD_LOCAL _Thread_local
