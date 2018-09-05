@@ -501,6 +501,15 @@ struct lysp_notif {
 };
 
 /**
+ * @brief supported YANG schema version values
+ */
+typedef enum LYS_VERSION {
+    LYS_VERSION_UNDEF = 0,  /**< no specific version, YANG 1.0 as default */
+    LYS_VERSION_1_0 = 1,    /**< YANG 1.0 */
+    LYS_VERSION_1_1 = 2     /**< YANG 1.1 */
+} LYS_VERSION;
+
+/**
  * @brief Printable YANG schema tree structure representing YANG module.
  *
  * Simple structure corresponding to the YANG format. The schema is only syntactically validated.
@@ -536,17 +545,12 @@ struct lysp_module {
     struct lysp_deviation *deviations; /**< list of deviations (NULL-terminated) */
     struct lysp_ext_instance **exts; /**< list of the extension instances (NULL-terminated) */
 
-    uint8_t type:1;                  /**< 0 - module, 1 - submodule */
-    uint8_t version:3;               /**< yang-version (LYS_VERSION):
-                                          - 0 = not specified, YANG 1.0 as default,
-                                          - 1 = YANG 1.0,
-                                          - 2 = YANG 1.1 */
-    uint8_t deviated:2;              /**< deviated flag:
-                                          - 0 = not deviated,
-                                          - 1 = the module is deviated by another module */
+    uint8_t submodule:1;             /**< flag to distinguish main modules and submodules */
+    uint8_t deviated:1;              /**< flag if the module is deviated by another module */
     uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
     uint8_t latest_revision:1;       /**< flag if the module was loaded without specific revision and is
                                           the latest revision found */
+    uint8_t version:4;               /**< yang-version (LYS_VERSION values) */
 };
 
 /**
