@@ -23,9 +23,9 @@
 
 int main() {
 
-    S_Context ctx = nullptr;
+    libyang::S_Context ctx;
     try {
-        ctx = S_Context(new Context("/etc/sysrepo/yang"));
+        ctx = std::make_shared<libyang::Context>("/etc/sysrepo/yang");
         auto module = ctx->load_module("turing-machine", nullptr);
 
         auto node = ctx->parse_data_path("/etc/sysrepo/data/turing-machine.startup", LYD_XML, LYD_OPT_CONFIG);
@@ -43,7 +43,7 @@ int main() {
     } catch( const std::exception& e ) {
         std::cout << "test" << std::endl;
         std::cout << e.what() << std::endl;
-        auto errors = get_ly_errors(ctx);
+        auto errors = libyang::get_ly_errors(ctx);
         for(auto error = errors.begin() ; error != errors.end() ; ++error) {
             std::cout << "err: " << (*error)->err() << std::endl;
             std::cout << "vecode: " << (*error)->vecode() << std::endl;

@@ -12,8 +12,8 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#ifndef LIBYANG_H
-#define LIBYANG_H
+#ifndef LIBYANG_CPP_H
+#define LIBYANG_CPP_H
 
 #include <iostream>
 #include <memory>
@@ -26,26 +26,14 @@ extern "C" {
 #include "libyang.h"
 }
 
+namespace libyang {
+
 /**
  * @defgroup classes C++/Python
  * @{
  *
  * Class wrappers for data structures and functions to manipulate and access instance data tree.
  */
-
-/* defined */
-class Context;
-class Error;
-class Set;
-
-/* used */
-class Module;
-class Submodule;
-class Data_Node;
-class Schema_Node;
-class Schema_Node;
-class Xml_Elem;
-class Deleter;
 
 /**
  * @brief class for wrapping ly_ctx.
@@ -217,5 +205,7 @@ private:
 };
 
 /**@} */
+
+}
 
 #endif

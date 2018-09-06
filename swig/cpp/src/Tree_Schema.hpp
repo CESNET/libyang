@@ -28,63 +28,14 @@ extern "C" {
 #include "tree_schema.h"
 }
 
+namespace libyang {
+
 /**
  * @defgroup classes C++/Python
  * @{
  *
  * Class wrappers for data structures and functions to manipulate and access instance data tree.
  */
-
-/* defined */
-class Module;
-class Submodule;
-class Type_Info_Binary;
-class Type_Bit;
-class Type_Info_Bits;
-class Type_Info_Dec64;
-class Type_Info_Enum;
-class Type_Info_Enums;
-class Type_Info_Ident;
-class Type_Info_Inst;
-class Type_Info_Num;
-class Type_Info_Lref;
-class Type_Info_Str;
-class Type_Info_Union;
-class Type_Info;
-class Type;
-class Iffeature;
-class Ext_Instance;
-class Schema_Node;
-class Schema_Node_Container;
-class Schema_Node_Choice;
-class Schema_Node_Leaf;
-class Schema_Node_Leaflist;
-class Schema_Node_List;
-class Schema_Node_Anydata;
-class Schema_Node_Uses;
-class Schema_Node_Grp;
-class Schema_Node_Case;
-class Schema_Node_Inout;
-class Schema_Node_Notif;
-class Schema_Node_Action;
-class Schema_Node_Augment;
-class Schema_Node_Rpc_Action;
-class Substmt;
-class Ext;
-class Refine_Mod_List;
-class Refine_Mod;
-class Refine;
-class Deviate;
-class Deviation;
-class Import;
-class Include;
-class Revision;
-class Tpdf;
-class Unique;
-class Feature;
-class Restr;
-class When;
-class Ident;
 
 /**
  * @brief classes for wrapping [lys_module](@ref lys_module).
@@ -1517,5 +1468,7 @@ private:
 };
 
 /**@} */
+
+}
 
 #endif

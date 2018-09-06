@@ -28,6 +28,8 @@ extern "C" {
 #include "tree_schema.h"
 }
 
+namespace libyang {
+
 Value::Value(lyd_val value, LY_DATA_TYPE* value_type, uint8_t value_flags, S_Deleter deleter):
     value(value),
     type(*value_type),
@@ -556,4 +558,6 @@ std::vector<S_Data_Node> Difflist::second() {
 
 S_Data_Node create_new_Data_Node(struct lyd_node *new_node) {
     return new_node ? std::make_shared<Data_Node>(new_node, nullptr) : nullptr;
+}
+
 }

@@ -25,6 +25,8 @@ extern "C" {
 #include "tree_schema.h"
 }
 
+namespace libyang {
+
 void check_libyang_error(ly_ctx *ctx) {
     const char *errmsg = ctx ? ly_errmsg(ctx) : nullptr;
 
@@ -123,3 +125,5 @@ Deleter::~Deleter() {
         break;
     }
 };
+
+}

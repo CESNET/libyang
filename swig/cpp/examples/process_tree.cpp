@@ -23,9 +23,9 @@
 
 int main() {
 
-    S_Context ctx = nullptr;
+    libyang::S_Context ctx;
     try {
-        ctx = S_Context(new Context("/etc/sysrepo/yang"));
+        ctx = std::make_shared<libyang::Context>("/etc/sysrepo/yang");
     } catch( const std::exception& e ) {
         std::cout << e.what() << std::endl;
         auto errors = get_ly_errors(ctx);
@@ -46,7 +46,7 @@ int main() {
         module = ctx->load_module("turing-machine");
     }
 
-    S_Data_Node node = nullptr;
+    libyang::S_Data_Node node;
     try {
         node = ctx->parse_data_path("/etc/sysrepo/data/turing-machine.startup", LYD_XML, LYD_OPT_CONFIG);
     } catch( const std::exception& e ) {
@@ -76,7 +76,7 @@ int main() {
         for(auto elem = schema_list.begin() ; elem != schema_list.end() ; ++elem) {
             std::cout << "schema name " << (*elem)->name() << " type " << (*elem)->nodetype() << std::endl;
             if  (LYS_LEAF == (*elem)->nodetype()) {
-                auto leaf = Schema_Node_Leaf(*elem);
+                auto leaf = libyang::Schema_Node_Leaf(*elem);
                 auto list = leaf.is_key();
                 if (list) {
                     std::cout << "leaf " << leaf.name() << " is a key for the list " << list->name() << std::endl;

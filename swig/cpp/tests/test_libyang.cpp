@@ -38,12 +38,12 @@ TEST(test_ly_ctx_new)
     const char *yang_folder2 = TESTS_DIR "/data:" TESTS_DIR "/data/files";
 
     try {
-        auto ctx = S_Context(new Context(yang_folder1));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder1);
         ASSERT_FALSE(nullptr == ctx);
         auto list = ctx->get_searchdirs();
         ASSERT_EQ(1, list.size());
 
-        ctx = S_Context(new Context(yang_folder2));
+        ctx = std::make_shared<libyang::Context>(yang_folder2);
         ASSERT_FALSE(nullptr == ctx);
         list = ctx->get_searchdirs();
         ASSERT_EQ(2, list.size());
@@ -58,7 +58,7 @@ TEST(test_ly_ctx_new_invalid)
     const char *yang_folder = "INVALID_PATH";
 
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_FALSE("exception not thrown");
     } catch( const std::exception& e ) {
         ASSERT_NOTNULL(strstr(e.what(), "No Context"));
@@ -71,7 +71,7 @@ TEST(test_ly_ctx_get_searchdirs)
     const char *yang_folder = TESTS_DIR "/data/files";
 
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_FALSE(nullptr == ctx);
 
         auto list = ctx->get_searchdirs();
@@ -89,7 +89,7 @@ TEST(test_ly_ctx_set_searchdir)
     const char *new_yang_folder = TESTS_DIR "/schema/yin";
 
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_FALSE(nullptr == ctx);
 
         auto list = ctx->get_searchdirs();
@@ -117,7 +117,7 @@ TEST(test_ly_ctx_set_searchdir_invalid)
     const char *new_yang_folder = TESTS_DIR "INVALID_PATH";
 
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_FALSE(nullptr == ctx);
 
         ctx->set_searchdir(new_yang_folder);
@@ -132,7 +132,7 @@ TEST(test_ly_ctx_info)
 {
     const char *yang_folder = TESTS_DIR "/api/files";
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_FALSE(nullptr == ctx);
 
         auto info = ctx->info();
@@ -148,7 +148,7 @@ TEST(test_ly_ctx_load_module_invalid)
 {
     const char *yang_folder = TESTS_DIR "/api/files";
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_FALSE(nullptr == ctx);
 
         auto module = ctx->load_module("invalid", nullptr);
@@ -167,7 +167,7 @@ TEST(test_ly_ctx_load_get_module)
     const char *revision = "2016-03-01";
 
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_NOTNULL(ctx);
 
         auto module = ctx->get_module("invalid");
@@ -210,7 +210,7 @@ TEST(test_ly_ctx_get_module_older)
     const char *revision_older = "2015-01-01";
 
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_NOTNULL(ctx);
 
         auto module = ctx->load_module("c");
@@ -239,7 +239,7 @@ TEST(test_ly_ctx_get_module_by_ns)
     const char *ns = "urn:a";
 
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_NOTNULL(ctx);
 
         auto module = ctx->load_module(module_name);
@@ -261,7 +261,7 @@ TEST(test_ly_ctx_clean)
     const char *module_name = "a";
 
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_NOTNULL(ctx);
 
         auto module = ctx->load_module(module_name);
@@ -291,7 +291,7 @@ TEST(test_ly_ctx_parse_module_path)
     const char *module_name2 = "b";
 
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_NOTNULL(ctx);
 
         auto module = ctx->parse_module_path(yin_file, LYS_IN_YIN);
@@ -312,7 +312,7 @@ TEST(test_ly_ctx_parse_module_path_invalid)
     const char *yang_folder = TESTS_DIR "/api/files";
 
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_NOTNULL(ctx);
 
         auto module = ctx->parse_module_path("INVALID_YANG_FILE", LYS_IN_YANG);
@@ -331,7 +331,7 @@ TEST(test_ly_ctx_get_submodule)
     const char *sub_name = "asub";
 
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_NOTNULL(ctx);
         ctx->parse_module_path(yin_file, LYS_IN_YIN);
 
@@ -352,7 +352,7 @@ TEST(test_ly_ctx_get_submodule2)
     const char *sub_name = "asub";
 
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_NOTNULL(ctx);
         ctx->parse_module_path(yin_file, LYS_IN_YIN);
 
@@ -378,7 +378,7 @@ TEST(test_ly_ctx_find_path)
     const char *schema_path2 = "/a:x/a:bubba";
 
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_NOTNULL(ctx);
 
         ctx->parse_module_path(yang_file, LYS_IN_YANG);
@@ -388,7 +388,7 @@ TEST(test_ly_ctx_find_path)
         ctx->parse_module_path(yin_file, LYS_IN_YIN);
         set = ctx->find_path(schema_path2);
         ASSERT_NOTNULL(set);
-        S_Set(new Set());
+        std::make_shared<libyang::Set>();
     } catch( const std::exception& e ) {
         mt::printFailed(e.what(), stdout);
         return;
@@ -402,13 +402,13 @@ TEST(test_ly_set)
     const char *config_file = TESTS_DIR "/api/files/a.xml";
 
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_NOTNULL(ctx);
         ctx->parse_module_path(yin_file, LYS_IN_YIN);
         auto root = ctx->parse_data_path(config_file, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_STRICT);
         ASSERT_NOTNULL(root);
 
-        auto set = S_Set(new Set());
+        auto set = std::make_shared<libyang::Set>();
         ASSERT_NOTNULL(set);
         ASSERT_EQ(0, set->number());
 

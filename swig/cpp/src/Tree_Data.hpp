@@ -12,8 +12,8 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#ifndef TREE_DATA_H
-#define TREE_DATA_H
+#ifndef LIBYANG_CPP_TREE_DATA_H
+#define LIBYANG_CPP_TREE_DATA_H
 
 #include <iostream>
 #include <memory>
@@ -28,27 +28,14 @@ extern "C" {
 #include "tree_data.h"
 }
 
+namespace libyang {
+
 /**
  * @defgroup classes C++/Python
  * @{
  *
  * Class wrappers for data structures and functions to manipulate and access instance data tree.
  */
-
-/* defined */
-class Value;
-class Data_Node;
-class Data_Node_Leaf_List;
-class Data_Node_Anydata;
-class Attr;
-class Difflist;
-
-/* used */
-class Schema_Node;
-class Xml_Elem;
-class Context;
-class Type_Enum;
-class Ident;
 
 /**
  * @brief class for wrapping [lyd_val](@ref lyd_val).
@@ -341,5 +328,7 @@ private:
 };
 
 /**@} */
+
+}
 
 #endif

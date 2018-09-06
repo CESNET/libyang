@@ -26,6 +26,8 @@ extern "C" {
 #include "tree_schema.h"
 }
 
+namespace libyang {
+
 Module::Module(struct lys_module *module, S_Deleter deleter):
     module(module),
     deleter(deleter)
@@ -519,3 +521,5 @@ Ident::Ident(struct lys_ident *ident, S_Deleter deleter):
 {};
 Ident::~Ident() {};
 std::vector<S_Ident> Ident::base() LY_NEW_P_LIST(ident, base, base_size, Ident);
+
+}

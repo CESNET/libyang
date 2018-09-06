@@ -23,9 +23,9 @@
 
 int main() {
 
-    S_Context ctx = nullptr;
+    libyang::S_Context ctx;
     try {
-        ctx = S_Context(new Context("/etc/sysrepo2/yang"));
+        ctx = std::make_shared<libyang::Context>("/etc/sysrepo2/yang");
     } catch( const std::exception& e ) {
         std::cout << e.what() << std::endl;
         auto errors = get_ly_errors(ctx);
@@ -39,9 +39,14 @@ int main() {
     }
 
     try {
-        ctx = S_Context(new Context("/etc/sysrepo/yang"));
+        ctx = std::make_shared<libyang::Context>("/etc/sysrepo/yang");
     } catch( const std::exception& e ) {
         std::cout << e.what() << std::endl;
+    }
+
+    if (!ctx) {
+        std::cerr << "Modify this example so that it can find some YANG dirs" << std::endl;
+        return 1;
     }
 
     auto folders = ctx->get_searchdirs();

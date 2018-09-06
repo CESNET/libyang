@@ -27,21 +27,14 @@ extern "C" {
 #include "xml.h"
 }
 
+namespace libyang {
+
 /**
  * @defgroup classes C++/Python
  * @{
  *
  * Class wrappers for data structures and functions to manipulate and access instance data tree.
  */
-
-/* defined */
-class Xml_Ns;
-class Xml_Attr;
-class Xml_Elem;
-
-/* used */
-class Data_Node;
-class Context;
 
 /**
  * @brief class for wrapping [lyxml_ns](@ref lyxml_ns).
@@ -127,9 +120,9 @@ public:
 
     /* emulate TREE macro's */
     /** wrapper for macro [LY_TREE_FOR](@ref LY_TREE_FOR) */
-    std::vector<S_Xml_Elem> *tree_for();
+    std::vector<S_Xml_Elem> tree_for();
     /** wrapper for macro [LY_TREE_DFS_BEGIN](@ref LY_TREE_DFS_BEGIN) and [LY_TREE_DFS_END](@ref LY_TREE_DFS_END) */
-    std::vector<S_Xml_Elem> *tree_dfs();
+    std::vector<S_Xml_Elem> tree_dfs();
 
     /* TODO
     struct lyxml_elem *lyxml_dup(struct ly_ctx *ctx, struct lyxml_elem *root);
@@ -147,5 +140,7 @@ private:
 };
 
 /**@} */
+
+}
 
 #endif
