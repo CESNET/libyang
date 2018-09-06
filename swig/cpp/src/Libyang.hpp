@@ -18,6 +18,7 @@
 #include <iostream>
 #include <memory>
 #include <exception>
+#include <functional>
 #include <vector>
 
 #include "Internal.hpp"
@@ -100,6 +101,20 @@ public:
     /** wrapper for [ly_ctx_clean](@ref ly_ctx_clean) */
     void clean();
 
+    struct mod_missing_cb_return {
+        LYS_INFORMAT format;
+        const char *data;
+    };
+    using mod_missing_cb_t = std::function<mod_missing_cb_return(const char *mod_name, const char *mod_rev, const char *submod_name, const char *sub_rev)>;
+    using mod_missing_deleter_t = std::function<void(void *)>;
+    /** @short Add a missing include or import module callback
+
+    When libyang hits a missing module, the @arg callback will be called. If it can accommodate this request, it should return an
+    appropriate mod_missing_cb_return struct. If it is needed to free the actual module "source code", then @arg deleter should be
+    provided; it is then responsible for deallocation of the resulting mod_missing_cb_return::data.
+    */
+    void add_missing_module_callback(const mod_missing_cb_t &callback, const mod_missing_deleter_t &deleter = mod_missing_deleter_t());
+
     /* functions */
     /** wrapper for [lyd_parse_mem](@ref lyd_parse_mem) */
     S_Data_Node parse_data_mem(const char *data, LYD_FORMAT format, int options = 0);
@@ -120,6 +135,11 @@ public:
     friend Data_Node;
     friend Deleter;
     friend Error;
+
+    std::vector<std::pair<mod_missing_cb_t, mod_missing_deleter_t>> mod_missing_cb;
+    const mod_missing_deleter_t *mod_missing_deleter;
+    static const char* cpp_mod_missing_cb(const char *mod_name, const char *mod_rev, const char *submod_name, const char *sub_rev, void *user_data, LYS_INFORMAT *format, void(**free_module_data)(void *model_data, void *user_data));
+    static void cpp_mod_missing_deleter(void *data, void *user_data);
 
     /* SWIG specific */
     struct ly_ctx *swig_ctx() {return ctx;};

@@ -274,6 +274,42 @@ S_Data_Node Context::parse_data_xml(S_Xml_Elem elem, int options) {
     return std::make_shared<Data_Node>(new_node, new_deleter);
 }
 
+void Context::add_missing_module_callback(const mod_missing_cb_t &callback, const mod_missing_deleter_t &deleter)
+{
+    if (mod_missing_cb.empty()) {
+        ly_ctx_set_module_imp_clb(ctx, Context::cpp_mod_missing_cb, this);
+    }
+    mod_missing_cb.emplace_back(std::move(callback), std::move(deleter));
+}
+
+const char* Context::cpp_mod_missing_cb(const char *mod_name, const char *mod_rev, const char *submod_name, const char *sub_rev, void *user_data, LYS_INFORMAT *format, void (**free_module_data)(void*, void*))
+{
+    Context *ctx = static_cast<Context*>(user_data);
+    for (const auto &x : ctx->mod_missing_cb) {
+        const auto &cb = x.first;
+        ctx->mod_missing_deleter = &x.second;
+        auto ret = cb(mod_name, mod_rev, submod_name, sub_rev);
+        if (ret.data) {
+            *format = ret.format;
+            *free_module_data = Context::cpp_mod_missing_deleter;
+            return ret.data;
+        }
+        if (ly_errno != LY_SUCCESS) {
+            // The C API docs say that we should not try any more callbacks
+            return nullptr;
+        }
+    }
+    return nullptr;
+}
+
+void Context::cpp_mod_missing_deleter(void *data, void *user_data)
+{
+    Context *ctx = static_cast<Context*>(user_data);
+    (*ctx->mod_missing_deleter)(data);
+    ctx->mod_missing_deleter = nullptr;
+}
+
+
 Error::Error(struct ly_err_item *eitem):
 	eitem(eitem)
 {};
