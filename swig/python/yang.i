@@ -68,7 +68,7 @@ private:
 };
 
 static char *g_ly_module_imp_clb(const char *mod_name, const char *mod_rev, const char *submod_name, const char *sub_rev,
-                                   void *user_data, LYS_INFORMAT *format, void (**free_module_data)(void *model_data)) {
+                                   void *user_data, LYS_INFORMAT *format, void (**free_module_data)(void *model_data, void *user_data)) {
     Wrap_cb *ctx = (Wrap_cb *) user_data;
     (void)free_module_data;
     auto pair = ctx->ly_module_imp_clb(mod_name, mod_rev, submod_name, sub_rev, ctx->private_ctx);

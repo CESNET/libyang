@@ -904,7 +904,7 @@ ly_ctx_load_sub_module_clb(struct ly_ctx *ctx, struct lys_module *module, const 
     struct lys_module *mod = NULL;
     char *module_data = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
-    void (*module_data_free)(void *module_data) = NULL;
+    void (*module_data_free)(void *module_data, void *user_data) = NULL;
 
     ly_errno = LY_SUCCESS;
     if (module) {
@@ -928,7 +928,7 @@ ly_ctx_load_sub_module_clb(struct ly_ctx *ctx, struct lys_module *module, const 
         }
 
         if (module_data_free) {
-            module_data_free(module_data);
+            module_data_free(module_data, ctx->imp_clb_data);
         }
     }
 
