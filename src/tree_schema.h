@@ -63,8 +63,8 @@ typedef enum {
  * @brief YANG import-stmt
  */
 struct lysp_import {
+    const char *name;                /**< name of the module to import (mandatory) */
     const char *prefix;              /**< prefix for the data from the imported schema (mandatory) */
-    struct lysp_module *module;      /**< link to the imported module (mandatory) */
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysp_ext_instance *exts;  /**< list of the extension instances (0-terminated) */
@@ -75,7 +75,7 @@ struct lysp_import {
  * @brief YANG include-stmt
  */
 struct lysp_include {
-    struct lysp_module *submodule;   /**< link to the included submodule (mandatory) */
+    const char *name;                /**< name of the submodule to include (mandatory) */
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysp_ext_instance *exts;  /**< list of the extension instances (0-terminated) */
@@ -597,11 +597,11 @@ struct lysp_module {
     const char *filepath;            /**< path, if the schema was read from a file, NULL in case of reading from memory */
     union {
         /* module */
-        const char *ns;                /**< namespace of the module (module - type 0, mandatory) */
+        const char *ns;              /**< namespace of the module (module - mandatory) */
         /* submodule */
-        struct lysp_module *belongsto; /**< belongs to parent module (submodule - type 1, mandatory) */
+        const char *belongsto;       /**< belongs to parent module (submodule - mandatory) */
     };
-    const char *prefix;              /**< prefix of the module (module - type 0, mandatory) */
+    const char *prefix;              /**< module prefix or submodule belongsto prefix of main module (mandatory) */
     struct lysp_import *imports;     /**< list of imported modules (0-terminated) */
     struct lysp_include *includes;   /**< list of included submodules (0-terminated) */
     const char *org;                 /**< party/company responsible for the module */
