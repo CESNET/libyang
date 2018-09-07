@@ -152,6 +152,7 @@ if(NOT UNIX)
 endif()
 
 set(libsrc
+    src/common.c
     src/log.c
     src/hash_table.c
     src/set.c)
@@ -175,7 +176,7 @@ set(headers
     src/tree_schema.h
     src/dict.h
     src/log.h
-    src.set.h)
+    src/set.h)
 
 check_symbol_exists(vdprintf stdio.h HAVE_VDPRINTF)
 if(HAVE_VDPRINTF)

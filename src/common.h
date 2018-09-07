@@ -93,4 +93,32 @@ void ly_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, const char 
  */
 #define API __attribute__((visibility("default")))
 
+/*
+ * Generic useful functions.
+ */
+
+/**
+ * @brief Wrapper for realloc() call. The only difference is that if it fails to
+ * allocate the requested memory, the original memory is freed as well.
+ *
+ * @param[in] ptr Memory to reallocate.
+ * @param[in] size New size of the memory block.
+ *
+ * @return Pointer to the new memory, NULL on error.
+ */
+void *ly_realloc(void *ptr, size_t size);
+
+/*
+ * Macros to work with lysp structures arrays.
+ *
+ * There is a byte allocated after the last item with value 0.
+ */
+#define LYSP_ARRAY_NEW_RET(CTX, ARRAY, NEW_ITEM, RETVAL) int _count; \
+        for (_count = 0; *(ARRAY) && *((uint8_t *)(*(ARRAY) + _count)); ++_count); \
+        if (!_count) *(ARRAY) = malloc(sizeof **(ARRAY) + 1); \
+            else *(ARRAY) = ly_realloc(*(ARRAY), (_count + 1) * sizeof **(ARRAY) + 1); \
+        LY_CHECK_ERR_RET(!*(ARRAY), LOGMEM(CTX), RETVAL); \
+        *((uint8_t *)(*(ARRAY) + _count + 1)) = 0; \
+        (NEW_ITEM) = (*(ARRAY)) + _count;
+
 #endif /* LY_COMMON_H_ */
