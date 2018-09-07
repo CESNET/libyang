@@ -119,6 +119,7 @@ void *ly_realloc(void *ptr, size_t size);
             else *(ARRAY) = ly_realloc(*(ARRAY), (_count + 1) * sizeof **(ARRAY) + 1); \
         LY_CHECK_ERR_RET(!*(ARRAY), LOGMEM(CTX), RETVAL); \
         *((uint8_t *)(*(ARRAY) + _count + 1)) = 0; \
-        (NEW_ITEM) = (*(ARRAY)) + _count;
+        (NEW_ITEM) = (*(ARRAY)) + _count; \
+        memset(NEW_ITEM, 0, sizeof *(NEW_ITEM));
 
 #endif /* LY_COMMON_H_ */
