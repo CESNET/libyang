@@ -75,13 +75,13 @@ public:
     /** get string variable from [lyd_val](@ref lyd_val)*/
     const char *string() {return LY_TYPE_STRING == type ? value.string : throw "wrong type";};
     /** get uint8 variable from [lyd_val](@ref lyd_val)*/
-    int8_t uint8() {return LY_TYPE_UINT8 == type ? value.uint8 : throw "wrong type";};
+    uint8_t uint8() {return LY_TYPE_UINT8 == type ? value.uint8 : throw "wrong type";};
     /** get uint16 variable from [lyd_val](@ref lyd_val)*/
-    int16_t uint16() {return LY_TYPE_UINT16 == type ? value.uint16 : throw "wrong type";};
+    uint16_t uint16() {return LY_TYPE_UINT16 == type ? value.uint16 : throw "wrong type";};
     /** get uint32 variable from [lyd_val](@ref lyd_val)*/
-    int32_t uintu32() {return LY_TYPE_UINT32 == type ? value.uint32 : throw "wrong type";};
+    uint32_t uintu32() {return LY_TYPE_UINT32 == type ? value.uint32 : throw "wrong type";};
     /** get uint64 variable from [lyd_val](@ref lyd_val)*/
-    int64_t uint64() {return LY_TYPE_UINT64 == type ? value.uint64 : throw "wrong type";};
+    uint64_t uint64() {return LY_TYPE_UINT64 == type ? value.uint64 : throw "wrong type";};
 
 private:
     lyd_val value;

@@ -88,6 +88,7 @@ set(GEN_CPP_BINDINGS 1 CACHE BOOL "Enable C++ bindings.")
 set(GEN_PYTHON_BINDINGS 1 CACHE BOOL "Enable Python bindings.")
 set(GEN_PYTHON_VERSION "3" CACHE STRING "Python version")
 set(GEN_JAVASCRIPT_BINDINGS 0 CACHE BOOL "Enable JavaScript bindings.")
+set(GEN_JAVA_BINDINGS 1 CACHE BOOL "Enable Java bindings.")
 
 find_package(FLEX)
 find_package(BISON)
