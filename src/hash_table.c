@@ -142,7 +142,7 @@ lydict_remove(struct ly_ctx *ctx, const char *value)
     LY_CHECK_ARG_RET(ctx, ctx,);
 
     if (!value) {
-        return NULL;
+        return;
     }
 
     len = strlen(value);
