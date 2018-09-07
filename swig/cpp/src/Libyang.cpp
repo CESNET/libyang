@@ -191,7 +191,7 @@ std::vector<S_Schema_Node> Context::data_instantiables(int options) {
 S_Data_Node Context::parse_data_mem(const char *data, LYD_FORMAT format, int options) {
     struct lyd_node *new_node = nullptr;
 
-    new_node = lyd_parse_mem(ctx, data, format, options);
+    new_node = lyd_parse_mem(ctx, data, format, options, NULL);
     if (!new_node) {
         check_libyang_error(ctx);
         return nullptr;
@@ -203,7 +203,7 @@ S_Data_Node Context::parse_data_mem(const char *data, LYD_FORMAT format, int opt
 S_Data_Node Context::parse_data_fd(int fd, LYD_FORMAT format, int options) {
     struct lyd_node *new_node = nullptr;
 
-    new_node = lyd_parse_fd(ctx, fd, format, options);
+    new_node = lyd_parse_fd(ctx, fd, format, options, NULL);
     if (!new_node) {
         check_libyang_error(ctx);
         return nullptr;
@@ -252,7 +252,7 @@ S_Module Context::parse_module_path(const char *path, LYS_INFORMAT format) {
 S_Data_Node Context::parse_data_path(const char *path, LYD_FORMAT format, int options) {
     struct lyd_node *new_node = nullptr;
 
-    new_node = lyd_parse_path(ctx, path, format, options);
+    new_node = lyd_parse_path(ctx, path, format, options, NULL);
     if (!new_node) {
         check_libyang_error(ctx);
         return nullptr;
@@ -264,7 +264,7 @@ S_Data_Node Context::parse_data_path(const char *path, LYD_FORMAT format, int op
 S_Data_Node Context::parse_data_xml(S_Xml_Elem elem, int options) {
     struct lyd_node *new_node = nullptr;
 
-    new_node = lyd_parse_xml(ctx, &elem->elem, options);
+    new_node = lyd_parse_xml(ctx, &elem->elem, options, NULL);
     if (!new_node) {
         check_libyang_error(ctx);
         return nullptr;
