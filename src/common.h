@@ -18,8 +18,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "libyang.h"
 #include "config.h"
+#include "log.h"
 
 #if __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
 # define THREAD_LOCAL _Thread_local
@@ -51,6 +51,7 @@ extern THREAD_LOCAL enum int_log_opts log_opt;
 extern volatile uint8_t ly_log_level;
 extern volatile uint8_t ly_log_opts;
 
+void ly_err_free(void *ptr);
 void ly_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, const char *format, ...);
 
 #define LOGERR(ctx, errno, str, args...) ly_log(ctx, LY_LLERR, errno, str, ##args)

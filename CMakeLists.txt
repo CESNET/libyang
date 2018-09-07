@@ -155,7 +155,8 @@ set(libsrc
     src/common.c
     src/log.c
     src/hash_table.c
-    src/set.c)
+    src/set.c
+    src/context.c)
 
 #set(lintsrc
 #    tools/lint/main.c

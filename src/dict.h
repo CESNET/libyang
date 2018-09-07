@@ -19,11 +19,12 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "libyang.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/* dummy context structure */
+struct ly_ctx;
 
 /**
  * @defgroup dict Dictionary

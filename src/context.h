@@ -18,6 +18,7 @@
 #include <pthread.h>
 
 #include "common.h"
+#include "set.h"
 #include "hash_table.h"
 #include "tree_schema.h"
 

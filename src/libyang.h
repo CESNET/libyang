@@ -107,9 +107,9 @@ LY_ERR ly_ctx_new(const char *search_dir, int options, struct ly_ctx **new_ctx);
  *
  * @param[in] ctx Context to be modified.
  * @param[in] search_dir New search path to add to the current paths previously set in ctx.
- * @return EXIT_SUCCESS, EXIT_FAILURE.
+ * @return LY_ERR return value.
  */
-int ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir);
+LY_ERR ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir);
 
 /**
  * @brief Clean the search path(s) from the libyang context

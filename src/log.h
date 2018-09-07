@@ -15,11 +15,12 @@
 #ifndef LY_LOG_H_
 #define LY_LOG_H_
 
-#include "libyang.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/* dummy context structure */
+struct ly_ctx;
 
 /**
  * @defgroup log Logger
