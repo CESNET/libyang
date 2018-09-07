@@ -501,6 +501,8 @@ public:
     uint8_t ext_type() {return ext_instance->ext_type;};
     /** get ext variable from [lys_ext_instance](@ref lys_ext_instance)*/
     std::vector<S_Ext_Instance> ext();
+    /** get definition of the instantiated extension from [lys_ext_instance](@ref lys_ext_instance)*/
+    S_Ext def() LY_NEW(ext_instance, def, Ext);
     /** get priv variable from [lys_ext_instance](@ref lys_ext_instance)*/
     void *priv() {return ext_instance->priv;};
     /** get module variable from [lys_ext_instance](@ref lys_ext_instance)*/
