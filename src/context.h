@@ -21,29 +21,16 @@
 #include "hash_table.h"
 #include "tree_schema.h"
 
-struct ly_modules_list {
-    char **search_paths;
-    int size;
-    int used;
-    struct lys_module **list;
-    /* all (sub)modules that are currently being parsed */
-    struct lys_module **parsing_sub_modules;
-    /* all already parsed submodules of a module, which is before all its submodules (to mark submodule imports) */
-    struct lys_module **parsed_submodules;
-    uint8_t parsing_sub_modules_count;
-    uint8_t parsed_submodules_count;
-    uint16_t module_set_id;
-    int flags; /* see @ref contextoptions. */
-};
-
 /**
  * @brief Context of the YANG schemas
  */
 struct ly_ctx {
-    struct dict_table dict;
-    struct ly_modules_list models;
-    pthread_key_t errlist_key;
+    struct dict_table dict;           /**< dictionary to effectively store strings used in the context related structures */
+    struct ly_set search_paths;       /**< set of directories where to search for schema's imports/includes */
+    struct ly_set list;               /**< set of YANG schemas */
+    uint16_t module_set_id;           /**< ID of the current set of schemas */
+    uint16_t flags;                   /**< context settings, see @ref contextoptions. */
+    pthread_key_t errlist_key;        /**< key for the thread-specific list of errors related to the context */
 };
-
 
 #endif /* LY_CONTEXT_H_ */

@@ -24,6 +24,27 @@
  * Data structures and functions to manipulate and access schema tree.
  */
 
+/**
+ * @brief Schema input formats accepted by libyang [parser functions](@ref howtoschemasparsers).
+ */
+typedef enum {
+    LYS_IN_UNKNOWN = 0,  /**< unknown format, used as return value in case of error */
+    LYS_IN_YANG = 1,     /**< YANG schema input format */
+    LYS_IN_YIN = 2       /**< YIN schema input format */
+} LYS_INFORMAT;
+
+/**
+ * @brief Schema output formats accepted by libyang [printer functions](@ref howtoschemasprinters).
+ */
+typedef enum {
+    LYS_OUT_UNKNOWN = 0, /**< unknown format, used as return value in case of error */
+    LYS_OUT_YANG = 1,    /**< YANG schema output format */
+    LYS_OUT_YIN = 2,     /**< YIN schema output format */
+    LYS_OUT_TREE,        /**< Tree schema output format, for more information see the [printers](@ref howtoschemasprinters) page */
+    LYS_OUT_INFO,        /**< Info schema output format, for more information see the [printers](@ref howtoschemasprinters) page */
+    LYS_OUT_JSON,        /**< JSON schema output format, reflecting YIN format with conversion of attributes to object's members */
+} LYS_OUTFORMAT;
+
 #define LY_REV_SIZE 11   /**< revision data string length (including terminating NULL byte) */
 
 #define LYS_UNKNOWN 0x0000,        /**< uninitalized unknown statement node */
@@ -616,6 +637,12 @@ struct lysp_module {
  * Contains only the necessary information for the data validation.
  */
 struct lysc_module {
+};
+
+/**
+ * @brief Compiled YANG data node
+ */
+struct lysc_node {
 };
 
 /**
