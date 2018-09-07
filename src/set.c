@@ -142,7 +142,7 @@ ly_set_merge(struct ly_set *trg, struct ly_set *src, int options)
 API LY_ERR
 ly_set_rm_index(struct ly_set *set, unsigned int index)
 {
-    LY_CHECK_ARG_RET(NULL, set, -1);
+    LY_CHECK_ARG_RET(NULL, set, LY_EINVAL);
     LY_CHECK_ERR_RET(((index + 1) > set->number), LOGARG(NULL, set), LY_EINVAL);
 
     if (index == set->number - 1) {
