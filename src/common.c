@@ -73,6 +73,6 @@ lysp_check_date(struct ly_ctx *ctx, const char *date, int date_len)
     return 0;
 
 error:
-    fprintf(stderr, "Invalid date format \"%*.s\".\n", date_len, date);
+    fprintf(stderr, "Invalid date format \"%.*s\".\n", date_len, date);
     return -1;
 }
