@@ -190,7 +190,7 @@ struct lysp_ident {
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_ values are allowed */
 };
 
-/*
+/**
  * @brief Covers restrictions: range, length, pattern, must
  */
 struct lysp_restr {
@@ -201,6 +201,16 @@ struct lysp_restr {
     const char *eapptag;             /**< error-app-tag value */
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
+    struct lysp_ext_instance *exts;  /**< list of the extension instances (0-terminated) */
+};
+
+/**
+ * @brief YANG revision-stmt
+ */
+struct lysp_revision {
+    char rev[LY_REV_SIZE];           /**< revision date (madatory) */
+    const char *dsc;                 /**< description statement */
+    const char *ref;                 /**< reference statement */
     struct lysp_ext_instance *exts;  /**< list of the extension instances (0-terminated) */
 };
 
