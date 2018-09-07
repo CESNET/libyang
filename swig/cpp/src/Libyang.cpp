@@ -291,7 +291,7 @@ const char* Context::cpp_mod_missing_cb(const char *mod_name, const char *mod_re
         auto ret = cb(mod_name, mod_rev, submod_name, sub_rev);
         if (ret.data) {
             *format = ret.format;
-            *free_module_data = Context::cpp_mod_missing_deleter;
+            *free_module_data = x.second ? Context::cpp_mod_missing_deleter : nullptr;
             return ret.data;
         }
         if (ly_errno != LY_SUCCESS) {
