@@ -142,6 +142,7 @@ typedef enum
 {
     LY_SUCCESS = 0, /**< no error, not set by functions, included just to complete #LY_ERR enumeration */
     LY_EMEM,        /**< Memory allocation failure */
+    LY_ESYS,        /**< System call failure */
     LY_EINVAL,      /**< Invalid value */
     LY_EEXIST,      /**< Item already exists */
     LY_EINT,        /**< Internal error */
