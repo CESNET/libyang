@@ -12,7 +12,12 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
+#define _DEFAULT_SOURCE
+#define _BSD_SOURCE
 #include <errno.h>
+#include <limits.h>
+#include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "context.h"
