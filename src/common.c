@@ -11,8 +11,15 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
+#define _XOPEN_SOURCE
 
 #include <stdlib.h>
+#include <stdio.h>
+#include <ctype.h>
+#include <string.h>
+#include <time.h>
+
+#include "tree_schema.h"
 
 void *
 ly_realloc(void *ptr, size_t size)
@@ -25,4 +32,47 @@ ly_realloc(void *ptr, size_t size)
     }
 
     return new_mem;
+}
+
+int
+lysp_check_date(struct ly_ctx *ctx, const char *date, int date_len)
+{
+    int i;
+    struct tm tm, tm_;
+    char *r;
+
+    if (date_len != LY_REV_SIZE - 1) {
+        goto error;
+    }
+
+    /* check format */
+    for (i = 0; i < date_len; i++) {
+        if (i == 4 || i == 7) {
+            if (date[i] != '-') {
+                goto error;
+            }
+        } else if (!isdigit(date[i])) {
+            goto error;
+        }
+    }
+
+    /* check content, e.g. 2018-02-31 */
+    memset(&tm, 0, sizeof tm);
+    r = strptime(date, "%Y-%m-%d", &tm);
+    if (!r || r != &date[LY_REV_SIZE - 1]) {
+        goto error;
+    }
+    memcpy(&tm_, &tm, sizeof tm);
+    mktime(&tm_); /* mktime modifies tm_ if it refers invalid date */
+    if (tm.tm_mday != tm_.tm_mday) { /* e.g 2018-02-29 -> 2018-03-01 */
+        /* checking days is enough, since other errors
+         * have been checked by strptime() */
+        goto error;
+    }
+
+    return 0;
+
+error:
+    fprintf(stderr, "Invalid date format \"%*.s\".\n", date_len, date);
+    return -1;
 }

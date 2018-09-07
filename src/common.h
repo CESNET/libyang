@@ -109,6 +109,8 @@ void ly_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, const char 
  */
 void *ly_realloc(void *ptr, size_t size);
 
+int lysp_check_date(struct ly_ctx *ctx, const char *date, int date_len);
+
 /*
  * Macros to work with lysp structures arrays.
  *
