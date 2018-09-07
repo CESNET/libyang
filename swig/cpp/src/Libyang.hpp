@@ -137,7 +137,7 @@ public:
     friend Error;
 
     std::vector<std::pair<mod_missing_cb_t, mod_missing_deleter_t>> mod_missing_cb;
-    const mod_missing_deleter_t *mod_missing_deleter;
+    std::vector<const mod_missing_deleter_t *> mod_missing_deleter;
     static const char* cpp_mod_missing_cb(const char *mod_name, const char *mod_rev, const char *submod_name, const char *sub_rev, void *user_data, LYS_INFORMAT *format, void(**free_module_data)(void *model_data, void *user_data));
     static void cpp_mod_missing_deleter(void *data, void *user_data);
 
