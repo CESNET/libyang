@@ -46,7 +46,7 @@ struct lysp_import {
     struct lysp_module *module;      /**< link to the imported module (mandatory) */
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
-    struct lysp_ext_instance **ext;  /**< list of the extension instances (NULL-terminated) */
+    struct lysp_ext_instance *ext;  /**< list of the extension instances (NULL-terminated) */
     char rev[LY_REV_SIZE];           /**< revision-date of the imported module */
 };
 
@@ -57,7 +57,7 @@ struct lysp_include {
     struct lysp_module *submodule;   /**< link to the included submodule (mandatory) */
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
-    struct lysp_ext_instance **ext;  /**< list of the extension instances (NULL-terminated) */
+    struct lysp_ext_instance *ext;  /**< list of the extension instances (NULL-terminated) */
     char rev[LY_REV_SIZE];           /**< revision-date of the included submodule */
 };
 
@@ -69,7 +69,7 @@ struct lysp_ext {
     const char *argument;            /**< argument name, NULL if not specified */
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
-    struct lysp_ext_instance **ext;  /**< list of the extension instances (NULL-terminated) */
+    struct lysp_ext_instance *ext;  /**< list of the extension instances (NULL-terminated) */
     uint16_t flags;                  /**< LYS_STATUS_* and LYS_YINELEM values (@ref snodeflags) */
 };
 
@@ -100,7 +100,7 @@ struct lysp_feature {
     const char **iffeatures;         /**< list of if-feature expressions (NULL-terminated) */
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement  */
-    struct lysp_ext_instance **ext;  /**< list of the extension instances (NULL-terminated) */
+    struct lysp_ext_instance *ext;  /**< list of the extension instances (NULL-terminated) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values allowed */
 };
 
@@ -113,7 +113,7 @@ struct lysp_ident {
     const char **bases;              /**< list of base identifiers (NULL-terminated) */
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
-    struct lysp_ext_instance **ext;  /**< list of the extension instances (NULL-terminated) */
+    struct lysp_ext_instance *ext;  /**< list of the extension instances (NULL-terminated) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_ values are allowed */
 };
 
@@ -128,7 +128,7 @@ struct lysp_restr {
     const char *eapptag;             /**< error-app-tag value */
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
-    struct lysp_ext_instance **ext;  /**< list of the extension instances (NULL-terminated) */
+    struct lysp_ext_instance *ext;  /**< list of the extension instances (NULL-terminated) */
 };
 
 /**
@@ -140,7 +140,7 @@ struct lysp_type_enum {
     const char *ref;                 /**< reference statement */
     const char *value;               /**< enum's value or bit's position */
     const char **iffeatures;         /**< list of if-feature expressions (NULL-terminated) */
-    struct lysp_ext_instance **ext;  /**< list of the extension instances (NULL-terminated) */
+    struct lysp_ext_instance *ext;  /**< list of the extension instances (NULL-terminated) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_ values are allowed */
 };
 
@@ -159,7 +159,7 @@ struct lysp_type {
     const char *path;                /**< path - leafref */
     const char **bases;              /**< list of base identifiers (NULL-terminated) - identityref */
     struct lysp_type *types;         /**< list of sub-types (NULL-terminated) - union */
-    struct lysp_ext_instance **ext;  /**< list of the extension instances (NULL-terminated) */
+    struct lysp_ext_instance *ext;  /**< list of the extension instances (NULL-terminated) */
 
     uint8_t fraction_digits;         /**< number of fraction digits - decimal64 */
     uint8_t require_instance;        /**< require-instance flag - leafref, instance */
@@ -174,7 +174,7 @@ struct lysp_tpdf {
     const char *dflt;                /**< default value of the newly defined type */
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
-    struct lysp_ext_instance **ext;  /**< list of the extension instances (NULL-terminated) */
+    struct lysp_ext_instance *ext;  /**< list of the extension instances (NULL-terminated) */
     struct lysp_type type;           /**< base type from which the typedef is derived (mandatory) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values allowed */
 };
@@ -191,7 +191,7 @@ struct lysp_grp {
     struct lysp_node *data;          /**< list of data nodes (linked list) */
     struct lysp_action *actions;     /**< list of actions (NULL-terminated) */
     struct lysp_notif *notifications;/**< list of notifications (NULL-terminated) */
-    struct lysp_ext_instance **ext;  /**< list of the extension instances (NULL-terminated) */
+    struct lysp_ext_instance *ext;  /**< list of the extension instances (NULL-terminated) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values are allowed */
 };
 
@@ -202,7 +202,7 @@ struct lysp_when {
     const char *cond;                /**< specified condition (mandatory) */
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
-    struct lysp_ext_instance **ext;  /**< list of the extension instances (NULL-terminated) */
+    struct lysp_ext_instance *ext;  /**< list of the extension instances (NULL-terminated) */
 };
 
 /**
@@ -233,7 +233,7 @@ struct lysp_augment {
     struct lysp_node *child;         /**< list of data nodes (linked list) */
     struct lysp_action *actions;     /**< list of actions (NULL-terminated) */
     struct lysp_notif *notifications;/**< list of notifications (NULL-terminated) */
-    struct lysp_ext_instance **ext;  /**< list of the extension instances (NULL-terminated) */
+    struct lysp_ext_instance *ext;  /**< list of the extension instances (NULL-terminated) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values are allowed */
 };
 
@@ -306,7 +306,7 @@ struct lysp_node {
     const char *ref;                 /**< reference statement */
     struct lysp_when *when;          /**< when statement */
     const char **iffeatures;         /**< list of if-feature expressions (NULL-terminated) */
-    struct lysp_ext_instance **ext;  /**< list of the extension instances (NULL-terminated) */
+    struct lysp_ext_instance *ext;  /**< list of the extension instances (NULL-terminated) */
 };
 
 /**
@@ -321,7 +321,7 @@ struct lysp_node_container {
     const char *ref;                 /**< reference statement */
     struct lysp_when *when;          /**< when statement */
     const char **iffeatures;         /**< list of if-feature expressions (NULL-terminated) */
-    struct lysp_ext_instance **ext;  /**< list of the extension instances (NULL-terminated) */
+    struct lysp_ext_instance *ext;  /**< list of the extension instances (NULL-terminated) */
 
     /* container */
     struct lysp_restr *musts;        /**< list of must restrictions (NULL-terminated) */
@@ -342,7 +342,7 @@ struct lysp_node_leaf {
     const char *ref;                 /**< reference statement */
     struct lysp_when *when;          /**< when statement */
     const char **iffeatures;         /**< list of if-feature expressions (NULL-terminated) */
-    struct lysp_ext_instance **ext;  /**< list of the extension instances (NULL-terminated) */
+    struct lysp_ext_instance *ext;  /**< list of the extension instances (NULL-terminated) */
 
     /* leaf */
     struct lysp_restr *musts;        /**< list of must restrictions (NULL-terminated) */
@@ -360,7 +360,7 @@ struct lysp_node_leaflist {
     const char *ref;                 /**< reference statement */
     struct lysp_when *when;          /**< when statement */
     const char **iffeatures;         /**< list of if-feature expressions (NULL-terminated) */
-    struct lysp_ext_instance **ext;  /**< list of the extension instances (NULL-terminated) */
+    struct lysp_ext_instance *ext;  /**< list of the extension instances (NULL-terminated) */
 
     /* leaf-list */
     struct lysp_restr *musts;        /**< list of must restrictions (NULL-terminated) */
@@ -380,7 +380,7 @@ struct lysp_node_list {
     const char *ref;                 /**< reference statement */
     struct lysp_when *when;          /**< when statement */
     const char **iffeatures;         /**< list of if-feature expressions (NULL-terminated) */
-    struct lysp_ext_instance **ext;  /**< list of the extension instances (NULL-terminated) */
+    struct lysp_ext_instance *ext;  /**< list of the extension instances (NULL-terminated) */
 
     /* list */
     struct lysp_restr *musts;        /**< list of must restrictions (NULL-terminated) */
@@ -404,7 +404,7 @@ struct lysp_node_choice {
     const char *ref;                 /**< reference statement */
     struct lysp_when *when;          /**< when statement */
     const char **iffeatures;         /**< list of if-feature expressions (NULL-terminated) */
-    struct lysp_ext_instance **ext;  /**< list of the extension instances (NULL-terminated) */
+    struct lysp_ext_instance *ext;  /**< list of the extension instances (NULL-terminated) */
 
     /* choice */
     struct lysp_node *child;         /**< list of data nodes (linked list) */
@@ -420,7 +420,7 @@ struct lysp_node_case {
     const char *ref;                 /**< reference statement */
     struct lysp_when *when;          /**< when statement */
     const char **iffeatures;         /**< list of if-feature expressions (NULL-terminated) */
-    struct lysp_ext_instance **ext;  /**< list of the extension instances (NULL-terminated) */
+    struct lysp_ext_instance *ext;  /**< list of the extension instances (NULL-terminated) */
 
     /* case */
     struct lysp_node *child;         /**< list of data nodes (linked list) */
@@ -435,7 +435,7 @@ struct lysp_node_anydata {
     const char *ref;                 /**< reference statement */
     struct lysp_when *when;          /**< when statement */
     const char **iffeatures;         /**< list of if-feature expressions (NULL-terminated) */
-    struct lysp_ext_instance **ext;  /**< list of the extension instances (NULL-terminated) */
+    struct lysp_ext_instance *ext;  /**< list of the extension instances (NULL-terminated) */
 
     /* anyxml/anydata */
     struct lysp_restr *musts;        /**< list of must restrictions (NULL-terminated) */
@@ -450,7 +450,7 @@ struct lysp_node_uses {
     const char *ref;                 /**< reference statement */
     struct lysp_when *when;          /**< when statement */
     const char **iffeatures;         /**< list of if-feature expressions (NULL-terminated) */
-    struct lysp_ext_instance **ext;  /**< list of the extension instances (NULL-terminated) */
+    struct lysp_ext_instance *ext;  /**< list of the extension instances (NULL-terminated) */
 
     /* uses */
     struct lysp_refine *refines;     /**< list of uses's refines (NULL-terminated) */
@@ -465,7 +465,7 @@ struct lysp_action_inout {
     struct lysp_tpdf *typedefs;      /**< list of typedefs (NULL-terminated) */
     struct lysp_grp *groupings;      /**< list of groupings (NULL-terminated) */
     struct lysp_node *data;          /**< list of data nodes (linked list) */
-    struct lysp_ext_instance **ext;  /**< list of the extension instances (NULL-terminated) */
+    struct lysp_ext_instance *ext;  /**< list of the extension instances (NULL-terminated) */
 };
 
 /**
@@ -480,7 +480,7 @@ struct lysp_action {
     struct lysp_grp *groupings;      /**< list of groupings (NULL-terminated) */
     struct lysp_action_inout input;  /**< RPC's/Action's input */
     struct lysp_action_inout output; /**< RPC's/Action's output */
-    struct lysp_ext_instance **ext;  /**< list of the extension instances (NULL-terminated) */
+    struct lysp_ext_instance *ext;  /**< list of the extension instances (NULL-terminated) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
 };
 
@@ -496,7 +496,7 @@ struct lysp_notif {
     struct lysp_tpdf *typedefs;      /**< list of typedefs (NULL-terminated) */
     struct lysp_grp *groupings;      /**< list of groupings (NULL-terminated) */
     struct lysp_node *data;          /**< list of data nodes (linked list) */
-    struct lysp_ext_instance **ext;  /**< list of the extension instances (NULL-terminated) */
+    struct lysp_ext_instance *ext;  /**< list of the extension instances (NULL-terminated) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values are allowed */
 };
 
@@ -543,7 +543,7 @@ struct lysp_module {
     struct lysp_action *rpcs;   /**< list of RPCs (NULL-terminated) */
     struct lysp_notif *notifications; /**< list of notifications (NULL-terminated) */
     struct lysp_deviation *deviations; /**< list of deviations (NULL-terminated) */
-    struct lysp_ext_instance **exts; /**< list of the extension instances (NULL-terminated) */
+    struct lysp_ext_instance *exts; /**< list of the extension instances (NULL-terminated) */
 
     uint8_t submodule:1;             /**< flag to distinguish main modules and submodules */
     uint8_t deviated:1;              /**< flag if the module is deviated by another module */
