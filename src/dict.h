@@ -39,12 +39,12 @@ extern "C" {
  * performed.
  *
  * @param[in] ctx libyang context handler
- * @param[in] value String to be stored in the dictionary.
+ * @param[in] value String to be stored in the dictionary. If NULL, function does nothing.
  * @param[in] len Number of bytes to store. The value is not required to be
  * NULL terminated string, the len parameter says number of bytes stored in
  * dictionary. The specified number of bytes is duplicated and terminating NULL
  * byte is added automatically.
- * @return pointer to the string stored in the dictionary
+ * @return pointer to the string stored in the dictionary, NULL if \p value was NULL.
  */
 const char *lydict_insert(struct ly_ctx *ctx, const char *value, size_t len);
 
@@ -59,8 +59,8 @@ const char *lydict_insert(struct ly_ctx *ctx, const char *value, size_t len);
  * the string is not present in dictionary, the pointer is directly used by the
  * dictionary. Otherwise, the reference counter is incremented and the value is
  * freed. So, after calling the function, caller is supposed to not use the
- * value address anymore.
- * @return pointer to the string stored in the dictionary
+ * value address anymore. If NULL, function does nothing.
+ * @return pointer to the string stored in the dictionary, NULL if \p value was NULL.
  */
 const char *lydict_insert_zc(struct ly_ctx *ctx, char *value);
 
@@ -71,7 +71,7 @@ const char *lydict_insert_zc(struct ly_ctx *ctx, char *value);
  * @param[in] ctx libyang context handler
  * @param[in] value String to be freed. Note, that not only the string itself
  * must match the stored value, but also the address is being compared and the
- * counter is decremented only if it matches.
+ * counter is decremented only if it matches. If NULL, function does nothing.
  */
 void lydict_remove(struct ly_ctx *ctx, const char *value);
 
