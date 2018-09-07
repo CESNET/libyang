@@ -21,14 +21,14 @@ ly_set_new(void)
     struct ly_set *new;
 
     new = calloc(1, sizeof(struct ly_set));
-    LY_CHECK_ERR_RETURN(!new, LOGMEM(NULL), NULL);
+    LY_CHECK_ERR_RET(!new, LOGMEM(NULL), NULL);
     return new;
 }
 
 API void
 ly_set_free(struct ly_set *set)
 {
-    LY_CHECK_ARG_NON_NULL_RETURN(NULL, set,);
+    LY_CHECK_ARG_RET(NULL, set,);
 
     free(set->objs);
     free(set);
@@ -39,7 +39,7 @@ ly_set_contains(const struct ly_set *set, void *object)
 {
     unsigned int i;
 
-    LY_CHECK_ARG_NON_NULL_RETURN(NULL, set, -1);
+    LY_CHECK_ARG_RET(NULL, set, -1);
 
     for (i = 0; i < set->number; i++) {
         if (set->objs[i] == object) {
@@ -57,14 +57,14 @@ ly_set_dup(const struct ly_set *set)
 {
     struct ly_set *new;
 
-    LY_CHECK_ARG_NON_NULL_RETURN(NULL, set, NULL);
+    LY_CHECK_ARG_RET(NULL, set, NULL);
 
     new = malloc(sizeof *new);
-    LY_CHECK_ERR_RETURN(!new, LOGMEM(NULL), NULL);
+    LY_CHECK_ERR_RET(!new, LOGMEM(NULL), NULL);
     new->number = set->number;
     new->size = set->size;
     new->objs = malloc(new->size * sizeof *(new->objs));
-    LY_CHECK_ERR_RETURN(!new->objs, LOGMEM(NULL); free(new), NULL);
+    LY_CHECK_ERR_RET(!new->objs, LOGMEM(NULL); free(new), NULL);
     memcpy(new->objs, set->objs, new->size * sizeof *(new->objs));
 
     return new;
@@ -76,7 +76,7 @@ ly_set_add(struct ly_set *set, void *object, int options)
     unsigned int i;
     void **new;
 
-    LY_CHECK_ARG_NON_NULL_RETURN(NULL, set, object, -1);
+    LY_CHECK_ARG_RET(NULL, set, object, -1);
 
     if (!(options & LY_SET_OPT_USEASLIST)) {
         /* search for duplication */
@@ -90,7 +90,7 @@ ly_set_add(struct ly_set *set, void *object, int options)
 
     if (set->size == set->number) {
         new = realloc(set->objs, (set->size + 8) * sizeof *(set->objs));
-        LY_CHECK_ERR_RETURN(!new, LOGMEM(NULL), -1);
+        LY_CHECK_ERR_RET(!new, LOGMEM(NULL), -1);
         set->size += 8;
         set->objs = new;
     }
@@ -106,8 +106,8 @@ ly_set_merge(struct ly_set *trg, struct ly_set *src, int options)
     unsigned int i, ret;
     void **new;
 
-    LY_CHECK_ARG_NON_NULL_RETURN(NULL, trg, -1);
-    LY_CHECK_ARG_NON_NULL_RETURN(NULL, src, 0);
+    LY_CHECK_ARG_RET(NULL, trg, -1);
+    LY_CHECK_ARG_RET(NULL, src, 0);
 
     if (!(options & LY_SET_OPT_USEASLIST)) {
         /* remove duplicates */
@@ -124,7 +124,7 @@ ly_set_merge(struct ly_set *trg, struct ly_set *src, int options)
     /* allocate more memory if needed */
     if (trg->size < trg->number + src->number) {
         new = realloc(trg->objs, (trg->number + src->number) * sizeof *(trg->objs));
-        LY_CHECK_ERR_RETURN(!new, LOGMEM(NULL), -1);
+        LY_CHECK_ERR_RET(!new, LOGMEM(NULL), -1);
         trg->size = trg->number + src->number;
         trg->objs = new;
     }
@@ -142,8 +142,8 @@ ly_set_merge(struct ly_set *trg, struct ly_set *src, int options)
 API LY_ERR
 ly_set_rm_index(struct ly_set *set, unsigned int index)
 {
-    LY_CHECK_ARG_NON_NULL_RETURN(NULL, set, -1);
-    LY_CHECK_ERR_RETURN(((index + 1) > set->number), LOGARG(NULL, set), LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, set, -1);
+    LY_CHECK_ERR_RET(((index + 1) > set->number), LOGARG(NULL, set), LY_EINVAL);
 
     if (index == set->number - 1) {
         /* removing last item in set */
@@ -163,7 +163,7 @@ ly_set_rm(struct ly_set *set, void *object)
 {
     unsigned int i;
 
-    LY_CHECK_ARG_NON_NULL_RETURN(NULL, set, object, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, set, object, LY_EINVAL);
 
     /* get index */
     for (i = 0; i < set->number; i++) {
@@ -171,7 +171,7 @@ ly_set_rm(struct ly_set *set, void *object)
             break;
         }
     }
-    LY_CHECK_ERR_RETURN((i == set->number), LOGARG(NULL, set), LY_EINVAL); /* object is not in set */
+    LY_CHECK_ERR_RET((i == set->number), LOGARG(NULL, set), LY_EINVAL); /* object is not in set */
 
     return ly_set_rm_index(set, i);
 }
@@ -179,7 +179,7 @@ ly_set_rm(struct ly_set *set, void *object)
 API LY_ERR
 ly_set_clean(struct ly_set *set)
 {
-    LY_CHECK_ARG_NON_NULL_RETURN(NULL, set, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, set, LY_EINVAL);
 
     set->number = 0;
     return LY_SUCCESS;

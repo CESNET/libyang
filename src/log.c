@@ -48,7 +48,7 @@ ly_errmsg(const struct ly_ctx *ctx)
 {
     struct ly_err_item *i;
 
-    LY_CHECK_ARG_NON_NULL_RETURN(NULL, ctx, NULL);
+    LY_CHECK_ARG_RET(NULL, ctx, NULL);
 
     i = ly_err_first(ctx);
     if (i) {
@@ -63,7 +63,7 @@ ly_errpath(const struct ly_ctx *ctx)
 {
     struct ly_err_item *i;
 
-    LY_CHECK_ARG_NON_NULL_RETURN(NULL, ctx, NULL);
+    LY_CHECK_ARG_RET(NULL, ctx, NULL);
 
     i = ly_err_first(ctx);
     if (i) {
@@ -78,7 +78,7 @@ ly_errapptag(const struct ly_ctx *ctx)
 {
     struct ly_err_item *i;
 
-    LY_CHECK_ARG_NON_NULL_RETURN(NULL, ctx, NULL);
+    LY_CHECK_ARG_RET(NULL, ctx, NULL);
 
     i = ly_err_first(ctx);
     if (i) {
@@ -91,7 +91,7 @@ ly_errapptag(const struct ly_ctx *ctx)
 API struct ly_err_item *
 ly_err_first(const struct ly_ctx *ctx)
 {
-    LY_CHECK_ARG_NON_NULL_RETURN(NULL, ctx, NULL);
+    LY_CHECK_ARG_RET(NULL, ctx, NULL);
 
     return pthread_getspecific(ctx->errlist_key);
 }
