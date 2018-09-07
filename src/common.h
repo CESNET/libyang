@@ -47,12 +47,22 @@ enum int_log_opts {
     ILO_ERR2WRN, /* change errors to warnings */
 };
 
+enum LY_VLOG_ELEM {
+    LY_VLOG_NONE = 0,
+    LY_VLOG_LINE,/* line number */
+    LY_VLOG_LYS, /* struct lysc_node* */
+    LY_VLOG_LYD, /* struct lyd_node* */
+    LY_VLOG_STR, /* const char* */
+    LY_VLOG_PREV /* use exact same previous path */
+};
+
 extern THREAD_LOCAL enum int_log_opts log_opt;
 extern volatile uint8_t ly_log_level;
 extern volatile uint8_t ly_log_opts;
 
 void ly_err_free(void *ptr);
 void ly_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, const char *format, ...);
+void ly_vlog(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const void *elem, LY_VECODE code, const char *format, ...);
 
 #define LOGERR(ctx, errno, str, args...) ly_log(ctx, LY_LLERR, errno, str, ##args)
 #define LOGWRN(ctx, str, args...) ly_log(ctx, LY_LLWRN, 0, str, ##args)
@@ -68,6 +78,11 @@ void ly_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, const char 
 #define LOGMEM(CTX) LOGERR(CTX, LY_EMEM, "Memory allocation failed (%s()).", __func__)
 #define LOGINT(CTX) LOGERR(CTX, LY_EINT, "Internal error (%s:%d).", __FILE__, __LINE__)
 #define LOGARG(CTX, ARG) LOGERR(CTX, LY_EINVAL, "Invalid argument %s (%s()).", #ARG, __func__)
+#define LOGVAL(CTX, ELEM_TYPE, ELEM, CODE, FORMAT, args...) ly_vlog(CTX, ELEM_TYPE, ELEM, FORMAT ##args)
+
+#define LOGMEM_RET(CTX) LOGMEM(CTX); return LY_EMEM
+#define LOGINT_RET(CTX) LOGINT(CTX); return LY_EINT
+#define LOGARG_RET(CTX) LOGARG(CTX); return LY_EINVAL
 
 /*
  * Common code to check return value and perform appropriate action.
@@ -86,6 +101,13 @@ void ly_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, const char 
 #define LY_CHECK_ARG_RET2(CTX, ARG1, ARG2, RETVAL) LY_CHECK_ARG_RET1(CTX, ARG1, RETVAL);LY_CHECK_ARG_RET1(CTX, ARG2, RETVAL)
 #define LY_CHECK_ARG_RET3(CTX, ARG1, ARG2, ARG3, RETVAL) LY_CHECK_ARG_RET2(CTX, ARG1, ARG2, RETVAL);LY_CHECK_ARG_RET1(CTX, ARG3, RETVAL)
 #define LY_CHECK_ARG_RET(CTX, ...) GETMACRO4(__VA_ARGS__, LY_CHECK_ARG_RET3, LY_CHECK_ARG_RET2, LY_CHECK_ARG_RET1)(CTX, __VA_ARGS__)
+
+#define LY_VCODE_MISSING     LYVE_SYNTAX, "Missing %s \"%s\"."
+#define LY_VCODE_INVAL       LYVE_SYNTAX, "Invalid %s."
+#define LY_VCODE_INCHAR      LYVE_SYNTAX, "Encountered invalid character sequence \"%.10s\"."
+#define LY_VCODE_EOF         LYVE_SYNTAX, "Unexpected end of input data."
+#define LY_VCODE_INSTMT      LYVE_SYNTAX_YANG, "Invalid keyword \"%s\"."
+#define LY_VCODE_INCHILDSTMT LYVE_SYNTAX_YANG, "Invalid keyword \"%s\" as a child to \"%s\"."
 
 /*
  * If the compiler supports attribute to mark objects as hidden, mark all

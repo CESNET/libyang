@@ -159,6 +159,8 @@ typedef enum
  */
 typedef enum {
     LYVE_SUCCESS = 0,  /**< no error */
+    LYVE_SYNTAX,       /**< generic syntax error */
+    LYVE_SYNTAX_YANG,  /**< YANG-related syntax error */
 } LY_VECODE;
 
 /**
