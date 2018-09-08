@@ -1,13 +1,13 @@
 import com.cesnet.*;
 import com.cesnet.Module;
-import org.junit.Test;
-
 import static com.cesnet.LYD_FORMAT.LYD_XML;
 import static com.cesnet.LYS_INFORMAT.LYS_IN_YANG;
 import static com.cesnet.LYS_INFORMAT.LYS_IN_YIN;
 import static com.cesnet.yangConstants.LYD_OPT_CONFIG;
 import static com.cesnet.yangConstants.LYD_OPT_STRICT;
 import static com.cesnet.yangConstants.LYD_VAL_OK;
+
+import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class LibyangTest {
@@ -409,18 +409,11 @@ public class LibyangTest {
             assertEquals(0, set.number());
         } catch(Exception e) {
             fail(e.getMessage());
-        return;
-    }
+        }
     }
 
-    // public static void main(String[] args) {
-    //
-    //     LibyangTest test = new LibyangTest();
-    //
-    //     try {
-    //
-    //     } catch (Exception e) {
-    //         e.printStackTrace();
-    //     }
-    // }
+    public static void main(String[] args) {
+        new LibyangTest();
+    }
+
 }

@@ -19,6 +19,19 @@ set_target_properties(${SWIG_MODULE_${JAVA_SWIG_BINDING}_REAL_NAME} PROPERTIES P
 swig_link_libraries(${JAVA_SWIG_BINDING} ${JNI_LIBRARIES} libyang-cpp)
 
 add_custom_command(TARGET ${JAVA_SWIG_BINDING} POST_BUILD COMMAND "${Java_JAVAC_EXECUTABLE}" *.java -d . COMMAND "${Java_JAR_EXECUTABLE}" -cvf libyang.jar com)
+set(NATIVE_JAR "${CMAKE_CURRENT_BINARY_DIR}/libyang.jar")
 
 # install so file
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${JAVA_SWIG_BINDING}.so" DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+
+file(COPY "examples" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
+add_custom_command(TARGET ${JAVA_SWIG_BINDING} POST_BUILD
+        COMMAND ${Java_JAVAC_EXECUTABLE} -cp .:${NATIVE_JAR} ${CMAKE_SWIG_OUTDIR}/examples/Context.java
+        COMMAND ${Java_JAVAC_EXECUTABLE} -cp .:${NATIVE_JAR} ${CMAKE_SWIG_OUTDIR}/examples/ProcessTree.java
+        COMMAND ${Java_JAVAC_EXECUTABLE} -cp .:${NATIVE_JAR} ${CMAKE_SWIG_OUTDIR}/examples/Xpath.java
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+
+if (ENABLE_BUILD_TESTS)
+    file(COPY "tests" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
+    add_subdirectory(tests)
+endif()

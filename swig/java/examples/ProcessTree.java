@@ -1,7 +1,10 @@
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
+
 import com.cesnet.*;
 import com.cesnet.Module;
-import com.huawei.vncalarm.util.FileUtil;
-
 import static com.cesnet.LYD_FORMAT.LYD_XML;
 import static com.cesnet.yangConstants.LYD_OPT_CONFIG;
 
@@ -50,9 +53,19 @@ public class ProcessTree {
         ProcessTree processTree = new ProcessTree();
         Data_Node node = ctx.parse_data_path("/etc/sysrepo/data/turing-machine.startup", LYD_XML, LYD_OPT_CONFIG);
 
+        StringBuilder sb = new StringBuilder();
+        try {
+            String s ="";
+            BufferedReader br = new BufferedReader(new FileReader("/etc/sysrepo/data/turing-machine.startup"));
+            while((s = br.readLine()) != null) {
+                sb.append(s + "\n");
+            }
+            br.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         Data_Node mem_node = ctx.parse_data_mem(
-                FileUtil.readToString("/etc/sysrepo/data/turing-machine.startup"),
-                LYD_XML, LYD_OPT_CONFIG);
+                sb.toString(), LYD_XML, LYD_OPT_CONFIG);
 
         processTree.printNode(node);
         System.out.println("------------------------------------");
