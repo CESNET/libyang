@@ -1357,6 +1357,10 @@ struct lys_node_choice {
 
     void *priv;                      /**< private caller's data, not used by libyang */
 
+#ifdef LY_ENABLED_CACHE
+    uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
+#endif
+
     /* specific choice's data */
     struct lys_when *when;           /**< when statement (optional) */
     struct lys_node *dflt;           /**< default case of the choice (optional) */
@@ -1618,6 +1622,10 @@ struct lys_node_uses {
 
     void *priv;                      /**< private caller's data, not used by libyang */
 
+#ifdef LY_ENABLED_CACHE
+    uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
+#endif
+
     /* specific uses's data */
     struct lys_when *when;           /**< when statement (optional) */
     struct lys_refine *refine;       /**< array of refine changes to the referred grouping */
@@ -1700,6 +1708,10 @@ struct lys_node_case {
                                           node in the list. */
 
     void *priv;                      /**< private caller's data, not used by libyang */
+
+#ifdef LY_ENABLED_CACHE
+    uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
+#endif
 
     /* specific case's data */
     struct lys_when *when;           /**< when statement (optional) */
