@@ -6,7 +6,7 @@ set(JAVA_TEST_SRC
         TreeSchemaTest)
 configure_file("${JAVA_TEST_DIR}/Constants.java.in" "${JAVA_TEST_DIR}/Constants.java" ESCAPE_QUOTES @ONLY)
 
-add_custom_target("java_tests")
+add_custom_target("java_tests" ALL)
 
 foreach(JTEST ${JAVA_TEST_SRC})
 
