@@ -16,6 +16,6 @@ $ make install
 if you wang to test, make sure you are in libyang-src-dir/build
 ```
 $ cmake -DGEN_LANGUAGE_BINDINGS=ON -DGEN_JAVA_BINDINGS=ON -DENABLE_BUILD_TESTS=ON ..
-$ make && make java_tests
+$ make
 $ cd swig/java && make test
 ```
