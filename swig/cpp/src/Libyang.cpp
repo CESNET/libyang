@@ -287,11 +287,13 @@ const char* Context::cpp_mod_missing_cb(const char *mod_name, const char *mod_re
     Context *ctx = static_cast<Context*>(user_data);
     for (const auto &x : ctx->mod_missing_cb) {
         const auto &cb = x.first;
-        ctx->mod_missing_deleter = &x.second;
         auto ret = cb(mod_name, mod_rev, submod_name, sub_rev);
         if (ret.data) {
             *format = ret.format;
-            *free_module_data = Context::cpp_mod_missing_deleter;
+            if (x.second) {
+                ctx->mod_missing_deleter.push_back(&x.second);
+                *free_module_data = Context::cpp_mod_missing_deleter;
+            }
             return ret.data;
         }
         if (ly_errno != LY_SUCCESS) {
@@ -305,8 +307,8 @@ const char* Context::cpp_mod_missing_cb(const char *mod_name, const char *mod_re
 void Context::cpp_mod_missing_deleter(void *data, void *user_data)
 {
     Context *ctx = static_cast<Context*>(user_data);
-    (*ctx->mod_missing_deleter)(data);
-    ctx->mod_missing_deleter = nullptr;
+    (*ctx->mod_missing_deleter.back())(data);
+    ctx->mod_missing_deleter.pop_back();
 }
 
 

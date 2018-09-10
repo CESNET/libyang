@@ -437,10 +437,12 @@ TEST(test_ly_set)
 
 TEST(test_module_impl_callback)
 {
-    std::string mod_a{"module a {namespace urn:a; prefix a; import b { prefix b; } import c { prefix c; } leaf a { type b:mytype; } leaf a1 { type c:mytype; } }"};
-    std::string mod_b{"module b {namespace urn:b; prefix b; typedef mytype { type string; }}"};
+    std::string mod_a{"module a {namespace urn:a; prefix a; import b { prefix b; } import c { prefix c; } import d { prefix d; } leaf a { type b:mytype; } leaf a1 { type c:mytype; } }"};
+    std::string mod_b{"module b {namespace urn:b; prefix b; import b_1 { prefix b_1; } typedef mytype { type string; }}"};
+    std::string mod_b_1{"module b_1 {namespace urn:b_1; prefix b_1; typedef mytype { type string; }}"};
     std::string mod_c{"module c {namespace urn:c; prefix c; typedef mytype { type string; }}"};
-    int b_allocated = 0, b_freed = 0, c_allocated = 0, c_freed = 0;
+    std::string mod_d{"module d {namespace urn:d; prefix d; typedef mytype { type string; }}"};
+    int b_allocated = 0, b_freed = 0, b_1_allocated = 0, b_1_freed = 0, c_allocated = 0, c_freed = 0, d_allocated = 0;
     auto mod_b_cb = [mod_b, &b_allocated](const char *mod_name, const char *, const char *, const char *) -> libyang::Context::mod_missing_cb_return {
         if (mod_name == std::string("b")) {
             ASSERT_EQ(0, b_allocated);
@@ -452,6 +454,19 @@ TEST(test_module_impl_callback)
     auto mod_b_free = [&b_allocated, &b_freed](void *data) {
         ASSERT_EQ(1, b_allocated);
         ++b_freed;
+        free(data);
+    };
+    auto mod_b_1_cb = [mod_b_1, &b_1_allocated](const char *mod_name, const char *, const char *, const char *) -> libyang::Context::mod_missing_cb_return {
+        if (mod_name == std::string("b_1")) {
+            ASSERT_EQ(0, b_1_allocated);
+            ++b_1_allocated;
+            return {LYS_IN_YANG, strdup(mod_b_1.c_str())};
+        }
+        return {LYS_IN_UNKNOWN, nullptr};
+    };
+    auto mod_b_1_free = [&b_1_allocated, &b_1_freed](void *data) {
+        ASSERT_EQ(1, b_1_allocated);
+        ++b_1_freed;
         free(data);
     };
     auto mod_c_cb = [mod_c, &c_allocated](const char *mod_name, const char *, const char *, const char *) -> libyang::Context::mod_missing_cb_return {
@@ -468,15 +483,29 @@ TEST(test_module_impl_callback)
         ++c_freed;
         // no actual deallocation
     };
+    auto mod_d_cb = [mod_d, &d_allocated](const char *mod_name, const char *, const char *, const char *) -> libyang::Context::mod_missing_cb_return {
+        if (mod_name == std::string("d")) {
+            ASSERT_EQ(0, d_allocated);
+            ++d_allocated;
+            // no allocation because we are testing behavior with no deleter
+            return {LYS_IN_YANG, mod_d.c_str()};
+        }
+        return {LYS_IN_UNKNOWN, nullptr};
+    };
 
     auto ctx = std::make_shared<libyang::Context>();
     ctx->add_missing_module_callback(mod_b_cb, mod_b_free);
+    ctx->add_missing_module_callback(mod_b_1_cb, mod_b_1_free);
     ctx->add_missing_module_callback(mod_c_cb, mod_c_free);
+    ctx->add_missing_module_callback(mod_d_cb);
     ctx->parse_module_mem(mod_a.c_str(), LYS_IN_YANG);
     ASSERT_EQ(1, b_allocated);
     ASSERT_EQ(1, b_freed);
+    ASSERT_EQ(1, b_1_allocated);
+    ASSERT_EQ(1, b_1_freed);
     ASSERT_EQ(1, c_allocated);
     ASSERT_EQ(1, c_freed);
+    ASSERT_EQ(1, d_allocated);
 }
 
 TEST_MAIN();
