@@ -738,7 +738,7 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
 
 /* logs directly */
 int
-lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys_node *child)
+lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys_node *child, int options)
 {
     struct ly_ctx *ctx = child->module->ctx;
     struct lys_node *iter, **pchild;
@@ -891,10 +891,14 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
             LY_CHECK_ERR_RETURN(!c, LOGMEM(ctx), EXIT_FAILURE);
             c->name = lydict_insert(module->ctx, child->name, 0);
             c->flags = LYS_IMPLICIT;
+            if (!(options & (LYS_PARSE_OPT_CFG_IGNORE | LYS_PARSE_OPT_CFG_NOINHERIT))) {
+                /* get config flag from parent */
+                c->flags |= parent->flags & LYS_CONFIG_MASK;
+            }
             c->module = module;
             c->nodetype = LYS_CASE;
             c->prev = (struct lys_node*)c;
-            lys_node_addchild(parent, module, (struct lys_node*)c);
+            lys_node_addchild(parent, module, (struct lys_node*)c, options);
             parent = (struct lys_node*)c;
         }
         /* connect the child correctly */
@@ -3164,7 +3168,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         }
 
         /* connect it to the parent */
-        if (lys_node_addchild(parent, retval->module, retval)) {
+        if (lys_node_addchild(parent, retval->module, retval, 0)) {
             goto error;
         }
 
@@ -4430,7 +4434,7 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module,
                         reapply = 1;
                     }
                     /* connect the deviated node back into the augment */
-                    lys_node_addchild(parent, NULL, dev->orig_node);
+                    lys_node_addchild(parent, NULL, dev->orig_node, 0);
                     if (reapply) {
                         /* augment is supposed to be applied, so fix pointers in target and the status of the original node */
                         assert(lys_node_module(parent)->implemented);
@@ -4439,7 +4443,7 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module,
                     }
                 } else if (parent && (parent->nodetype == LYS_USES)) {
                     /* uses child */
-                    lys_node_addchild(parent, NULL, dev->orig_node);
+                    lys_node_addchild(parent, NULL, dev->orig_node, 0);
                 } else {
                     /* non-augment, non-toplevel */
                     parent_path = strndup(dev->target_name, strrchr(dev->target_name, '/') - dev->target_name);
@@ -4453,11 +4457,11 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module,
                     target = set->set.s[0];
                     ly_set_free(set);
 
-                    lys_node_addchild(target, NULL, dev->orig_node);
+                    lys_node_addchild(target, NULL, dev->orig_node, 0);
                 }
             } else {
                 /* ... from top-level data */
-                lys_node_addchild(NULL, (struct lys_module *)dev->orig_node->module, dev->orig_node);
+                lys_node_addchild(NULL, (struct lys_module *)dev->orig_node->module, dev->orig_node, 0);
             }
 
             dev->orig_node = NULL;
