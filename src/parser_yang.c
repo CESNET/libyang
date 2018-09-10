@@ -4246,11 +4246,16 @@ yang_check_nodes(struct lys_module *module, struct lys_node *parent, struct lys_
         node->parent = NULL;
         node->prev = node;
 
-        if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, node) ||
+        if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, node, 0) ||
             check_status_flag(node, parent)) {
             lys_node_unlink(node);
             yang_free_nodes(module->ctx, node);
             goto error;
+        }
+        if (node->parent != parent) {
+            assert(node->parent->parent == parent);
+            assert((node->parent->nodetype == LYS_CASE) && (node->parent->flags & LYS_IMPLICIT));
+            store_config_flag(node->parent, options);
         }
         store_config_flag(node, options);
         if (yang_check_ext_instance(module, &node->ext, node->ext_size, node, unres)) {

@@ -216,9 +216,10 @@ void lys_submodule_free(struct lys_submodule *submodule, void (*private_destruct
  * the module of the \p child element. If the \p parent parameter is present,
  * the \p module parameter is ignored.
  * @param[in] child The schema tree node to be added.
+ * @param[in] options Parsing options. Only relevant when creating a shorthand case.
  * @return 0 on success, nonzero else
  */
-int lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys_node *child);
+int lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys_node *child, int options);
 
 /**
  * @brief Find a valid grouping definition relative to a node.
