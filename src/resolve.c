@@ -6487,6 +6487,34 @@ resolve_applies_must(const struct lyd_node *node)
     return ret;
 }
 
+static struct lys_when *
+snode_get_when(const struct lys_node *schema)
+{
+    switch (schema->nodetype) {
+    case LYS_CONTAINER:
+        return ((struct lys_node_container *)schema)->when;
+    case LYS_CHOICE:
+        return ((struct lys_node_choice *)schema)->when;
+    case LYS_LEAF:
+        return ((struct lys_node_leaf *)schema)->when;
+    case LYS_LEAFLIST:
+        return ((struct lys_node_leaflist *)schema)->when;
+    case LYS_LIST:
+        return ((struct lys_node_list *)schema)->when;
+    case LYS_ANYDATA:
+    case LYS_ANYXML:
+        return ((struct lys_node_anydata *)schema)->when;
+    case LYS_CASE:
+        return ((struct lys_node_case *)schema)->when;
+    case LYS_USES:
+        return ((struct lys_node_uses *)schema)->when;
+    case LYS_AUGMENT:
+        return ((struct lys_node_augment *)schema)->when;
+    default:
+        return NULL;
+    }
+}
+
 int
 resolve_applies_when(const struct lys_node *schema, int mode, const struct lys_node *stop)
 {
@@ -6494,7 +6522,7 @@ resolve_applies_when(const struct lys_node *schema, int mode, const struct lys_n
 
     assert(schema);
 
-    if (!(schema->nodetype & (LYS_NOTIF | LYS_RPC)) && (((struct lys_node_container *)schema)->when)) {
+    if (!(schema->nodetype & (LYS_NOTIF | LYS_RPC)) && snode_get_when(schema)) {
         return 1;
     }
 
@@ -6515,13 +6543,12 @@ resolve_applies_when(const struct lys_node *schema, int mode, const struct lys_n
             }
         }
 
-        if (((const struct lys_node_uses *)parent)->when) {
+        if (snode_get_when(parent)) {
             return 1;
         }
 check_augment:
 
-        if ((parent->parent && (parent->parent->nodetype == LYS_AUGMENT) &&
-                (((const struct lys_node_augment *)parent->parent)->when))) {
+        if (parent->parent && (parent->parent->nodetype == LYS_AUGMENT) && snode_get_when(parent->parent)) {
             return 1;
         }
         parent = lys_parent(parent);
@@ -6557,15 +6584,15 @@ resolve_when(struct lyd_node *node, int ignore_fail, struct lys_when **failed_wh
     assert(node);
     memset(&set, 0, sizeof set);
 
-    if (!(node->schema->nodetype & (LYS_NOTIF | LYS_RPC | LYS_ACTION)) && (((struct lys_node_container *)node->schema)->when)) {
+    if (!(node->schema->nodetype & (LYS_NOTIF | LYS_RPC | LYS_ACTION)) && snode_get_when(node->schema)) {
         /* make the node dummy for the evaluation */
         node->validity |= LYD_VAL_INUSE;
-        rc = lyxp_eval(((struct lys_node_container *)node->schema)->when->cond, node, LYXP_NODE_ELEM, lyd_node_module(node),
+        rc = lyxp_eval(snode_get_when(node->schema)->cond, node, LYXP_NODE_ELEM, lyd_node_module(node),
                        &set, LYXP_WHEN);
         node->validity &= ~LYD_VAL_INUSE;
         if (rc) {
             if (rc == 1) {
-                LOGVAL(ctx, LYE_INWHEN, LY_VLOG_LYD, node, ((struct lys_node_container *)node->schema)->when->cond);
+                LOGVAL(ctx, LYE_INWHEN, LY_VLOG_LYD, node, snode_get_when(node->schema)->cond);
             }
             goto cleanup;
         }
@@ -6574,15 +6601,13 @@ resolve_when(struct lyd_node *node, int ignore_fail, struct lys_when **failed_wh
         lyxp_set_cast(&set, LYXP_SET_BOOLEAN, node, lyd_node_module(node), LYXP_WHEN);
         if (!set.val.bool) {
             node->when_status |= LYD_WHEN_FALSE;
-            if ((ignore_fail == 1)
-                    || ((((struct lys_node_container *)node->schema)->when->flags & (LYS_XPCONF_DEP | LYS_XPSTATE_DEP))
+            if ((ignore_fail == 1) || ((snode_get_when(node->schema)->flags & (LYS_XPCONF_DEP | LYS_XPSTATE_DEP))
                     && (ignore_fail == 2))) {
-                LOGVRB("When condition \"%s\" is not satisfied, but it is not required.",
-                       ((struct lys_node_container *)node->schema)->when->cond);
+                LOGVRB("When condition \"%s\" is not satisfied, but it is not required.", snode_get_when(node->schema)->cond);
             } else {
-                LOGVAL(ctx, LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_container *)node->schema)->when->cond);
+                LOGVAL(ctx, LYE_NOWHEN, LY_VLOG_LYD, node, snode_get_when(node->schema)->cond);
                 if (failed_when) {
-                    *failed_when = ((struct lys_node_container *)node->schema)->when;
+                    *failed_when = snode_get_when(node->schema);
                 }
                 goto cleanup;
             }
@@ -6597,7 +6622,7 @@ resolve_when(struct lyd_node *node, int ignore_fail, struct lys_when **failed_wh
 
     /* check when in every schema node that affects node */
     while (sparent && (sparent->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE))) {
-        if (((struct lys_node_uses *)sparent)->when) {
+        if (snode_get_when(sparent)) {
             if (!ctx_node) {
                 rc = resolve_when_ctx_node(node, sparent, &ctx_node, &ctx_node_type);
                 if (rc) {
@@ -6614,7 +6639,7 @@ resolve_when(struct lyd_node *node, int ignore_fail, struct lys_when **failed_wh
                 goto cleanup;
             }
 
-            rc = lyxp_eval(((struct lys_node_uses *)sparent)->when->cond, ctx_node, ctx_node_type, lys_node_module(sparent),
+            rc = lyxp_eval(snode_get_when(sparent)->cond, ctx_node, ctx_node_type, lys_node_module(sparent),
                            &set, LYXP_WHEN);
 
             if (unlinked_nodes && ctx_node) {
@@ -6626,23 +6651,21 @@ resolve_when(struct lyd_node *node, int ignore_fail, struct lys_when **failed_wh
 
             if (rc) {
                 if (rc == 1) {
-                    LOGVAL(ctx, LYE_INWHEN, LY_VLOG_LYD, node, ((struct lys_node_uses *)sparent)->when->cond);
+                    LOGVAL(ctx, LYE_INWHEN, LY_VLOG_LYD, node, snode_get_when(sparent)->cond);
                 }
                 goto cleanup;
             }
 
             lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, lys_node_module(sparent), LYXP_WHEN);
             if (!set.val.bool) {
-                if ((ignore_fail == 1)
-                        || ((((struct lys_node_uses *)sparent)->when->flags & (LYS_XPCONF_DEP | LYS_XPSTATE_DEP))
-                        || (ignore_fail == 2))) {
-                    LOGVRB("When condition \"%s\" is not satisfied, but it is not required.",
-                        ((struct lys_node_uses *)sparent)->when->cond);
+                if ((ignore_fail == 1) || ((snode_get_when(sparent)->flags & (LYS_XPCONF_DEP | LYS_XPSTATE_DEP))
+                        && (ignore_fail == 2))) {
+                    LOGVRB("When condition \"%s\" is not satisfied, but it is not required.", snode_get_when(sparent)->cond);
                 } else {
                     node->when_status |= LYD_WHEN_FALSE;
-                    LOGVAL(ctx, LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_uses *)sparent)->when->cond);
+                    LOGVAL(ctx, LYE_NOWHEN, LY_VLOG_LYD, node, snode_get_when(sparent)->cond);
                     if (failed_when) {
-                        *failed_when = ((struct lys_node_uses *)sparent)->when;
+                        *failed_when = snode_get_when(sparent);
                     }
                     goto cleanup;
                 }
@@ -6653,7 +6676,7 @@ resolve_when(struct lyd_node *node, int ignore_fail, struct lys_when **failed_wh
         }
 
 check_augment:
-        if ((sparent->parent && (sparent->parent->nodetype == LYS_AUGMENT) && (((struct lys_node_augment *)sparent->parent)->when))) {
+        if ((sparent->parent && (sparent->parent->nodetype == LYS_AUGMENT) && snode_get_when(sparent->parent))) {
             if (!ctx_node) {
                 rc = resolve_when_ctx_node(node, sparent->parent, &ctx_node, &ctx_node_type);
                 if (rc) {
@@ -6669,7 +6692,7 @@ check_augment:
                 goto cleanup;
             }
 
-            rc = lyxp_eval(((struct lys_node_augment *)sparent->parent)->when->cond, ctx_node, ctx_node_type,
+            rc = lyxp_eval(snode_get_when(sparent->parent)->cond, ctx_node, ctx_node_type,
                            lys_node_module(sparent->parent), &set, LYXP_WHEN);
 
             /* reconnect nodes, if ctx_node is NULL then all the nodes were unlinked, but linked together,
@@ -6684,7 +6707,7 @@ check_augment:
 
             if (rc) {
                 if (rc == 1) {
-                    LOGVAL(ctx, LYE_INWHEN, LY_VLOG_LYD, node, ((struct lys_node_augment *)sparent->parent)->when->cond);
+                    LOGVAL(ctx, LYE_INWHEN, LY_VLOG_LYD, node, snode_get_when(sparent->parent)->cond);
                 }
                 goto cleanup;
             }
@@ -6692,15 +6715,14 @@ check_augment:
             lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, lys_node_module(sparent->parent), LYXP_WHEN);
             if (!set.val.bool) {
                 node->when_status |= LYD_WHEN_FALSE;
-                if ((ignore_fail == 1)
-                        || ((((struct lys_node_augment *)sparent->parent)->when->flags & (LYS_XPCONF_DEP | LYS_XPSTATE_DEP))
+                if ((ignore_fail == 1) || ((snode_get_when(sparent->parent)->flags & (LYS_XPCONF_DEP | LYS_XPSTATE_DEP))
                         && (ignore_fail == 2))) {
                     LOGVRB("When condition \"%s\" is not satisfied, but it is not required.",
-                           ((struct lys_node_augment *)sparent->parent)->when->cond);
+                           snode_get_when(sparent->parent)->cond);
                 } else {
-                    LOGVAL(ctx, LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_augment *)sparent->parent)->when->cond);
+                    LOGVAL(ctx, LYE_NOWHEN, LY_VLOG_LYD, node, snode_get_when(sparent->parent)->cond);
                     if (failed_when) {
-                        *failed_when = ((struct lys_node_augment *)sparent->parent)->when;
+                        *failed_when = snode_get_when(sparent->parent);
                     }
                     goto cleanup;
                 }
