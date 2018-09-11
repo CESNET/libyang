@@ -1256,12 +1256,6 @@ attr_repeat:
             lyv_multicases(result, NULL, prev ? &first_sibling : NULL, 0, NULL)) {
         goto error;
     }
-    /* order the elements by hand as it is not required of the input */
-    if (lyp_is_rpc_action(result->schema)) {
-        if (lyd_schema_sort(result, 1)) {
-            goto error;
-        }
-    }
 
     /* validation successful */
     if (result->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
@@ -1451,6 +1445,13 @@ empty:
     if (!result) {
         LOGERR(ctx, LY_EVALID, "Model for the data to be linked with not found.");
         goto error;
+    }
+
+    /* order the elements by hand as it is not required of the JSON input */
+    if (lyp_is_rpc_action(result->schema)) {
+        if (lyd_schema_sort(result, 1)) {
+            goto error;
+        }
     }
 
     if ((options & LYD_OPT_RPCREPLY) && (rpc_act->schema->nodetype != LYS_RPC)) {
