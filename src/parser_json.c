@@ -1250,11 +1250,17 @@ attr_repeat:
         goto error;
     }
 
-    /* various validation checks */
-    if (lyv_data_context(result, options, unres) ||
+    /* various validation checks (LYD_OPT_TRUSTED is used just so that the order of elements is not checked) */
+    if (lyv_data_context(result, options | LYD_OPT_TRUSTED, unres) ||
             lyv_data_content(result, options, unres) ||
             lyv_multicases(result, NULL, prev ? &first_sibling : NULL, 0, NULL)) {
         goto error;
+    }
+    /* order the elements by hand as it is not required of the input */
+    if (lyp_is_rpc_action(result->schema)) {
+        if (lyd_schema_sort(result, 1)) {
+            goto error;
+        }
     }
 
     /* validation successful */
