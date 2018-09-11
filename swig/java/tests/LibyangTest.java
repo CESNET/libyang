@@ -1,11 +1,11 @@
-import com.cesnet.*;
-import com.cesnet.Module;
-import static com.cesnet.LYD_FORMAT.LYD_XML;
-import static com.cesnet.LYS_INFORMAT.LYS_IN_YANG;
-import static com.cesnet.LYS_INFORMAT.LYS_IN_YIN;
-import static com.cesnet.yangConstants.LYD_OPT_CONFIG;
-import static com.cesnet.yangConstants.LYD_OPT_STRICT;
-import static com.cesnet.yangConstants.LYD_VAL_OK;
+import org.cesnet.*;
+import org.cesnet.Module;
+import static org.cesnet.LYD_FORMAT.LYD_XML;
+import static org.cesnet.LYS_INFORMAT.LYS_IN_YANG;
+import static org.cesnet.LYS_INFORMAT.LYS_IN_YIN;
+import static org.cesnet.yangConstants.LYD_OPT_CONFIG;
+import static org.cesnet.yangConstants.LYD_OPT_STRICT;
+import static org.cesnet.yangConstants.LYD_VAL_OK;
 
 import org.junit.Test;
 import static org.junit.Assert.*;

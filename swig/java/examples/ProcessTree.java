@@ -3,10 +3,10 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 
-import com.cesnet.*;
-import com.cesnet.Module;
-import static com.cesnet.LYD_FORMAT.LYD_XML;
-import static com.cesnet.yangConstants.LYD_OPT_CONFIG;
+import org.cesnet.*;
+import org.cesnet.Module;
+import static org.cesnet.LYD_FORMAT.LYD_XML;
+import static org.cesnet.yangConstants.LYD_OPT_CONFIG;
 
 public class ProcessTree {
 
@@ -42,7 +42,7 @@ public class ProcessTree {
 
     public static void main(String[] args) {
         System.loadLibrary("yangJava");
-        com.cesnet.Context ctx = new com.cesnet.Context("/etc/sysrepo/yang");
+        org.cesnet.Context ctx = new org.cesnet.Context("/etc/sysrepo/yang");
         Module module = ctx.get_module("turing-machine");
         if (module != null){
             System.out.println(module.name());

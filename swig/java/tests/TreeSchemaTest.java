@@ -1,10 +1,10 @@
-import com.cesnet.*;
-import com.cesnet.Module;
-import static com.cesnet.LYS_INFORMAT.LYS_IN_YANG;
-import static com.cesnet.LYS_INFORMAT.LYS_IN_YIN;
-import static com.cesnet.LYS_OUTFORMAT.LYS_OUT_TREE;
-import static com.cesnet.LYS_OUTFORMAT.LYS_OUT_YANG;
-import static com.cesnet.LYS_OUTFORMAT.LYS_OUT_YIN;
+import org.cesnet.*;
+import org.cesnet.Module;
+import static org.cesnet.LYS_INFORMAT.LYS_IN_YANG;
+import static org.cesnet.LYS_INFORMAT.LYS_IN_YIN;
+import static org.cesnet.LYS_OUTFORMAT.LYS_OUT_TREE;
+import static org.cesnet.LYS_OUTFORMAT.LYS_OUT_YANG;
+import static org.cesnet.LYS_OUTFORMAT.LYS_OUT_YIN;
 
 import java.io.FileDescriptor;
 import java.io.RandomAccessFile;

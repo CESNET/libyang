@@ -1,12 +1,12 @@
-import com.cesnet.Module;
-import com.cesnet.vectorModules;
-import com.cesnet.vector_String;
+import org.cesnet.Module;
+import org.cesnet.vectorModules;
+import org.cesnet.vector_String;
 
 public class Context {
 
     public static void main(String[] args) {
         System.loadLibrary("yangJava");
-        com.cesnet.Context ctx = new com.cesnet.Context("/etc/sysrepo/yang");
+        org.cesnet.Context ctx = new org.cesnet.Context("/etc/sysrepo/yang");
         vector_String vs = ctx.get_searchdirs();
         for (int i = 0; i < vs.size(); i++) {
             System.out.println(vs.get(i));

@@ -10,15 +10,20 @@ set(CMAKE_SWIG_FLAGS "-c++")
 set(CMAKE_SWIG_FLAGS "-I${PROJECT_SOURCE_DIR}")
 set(CMAKE_SWIG_OUTDIR ${CMAKE_CURRENT_BINARY_DIR})
 
-file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/com/cesnet")
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/org/cesnet")
 
-set_source_files_properties(${JAVA_SWIG_BINDING}.i PROPERTIES CPLUSPLUS ON PREFIX "" SWIG_FLAGS "-package;com.cesnet")
+set_source_files_properties(${JAVA_SWIG_BINDING}.i PROPERTIES CPLUSPLUS ON PREFIX "" SWIG_FLAGS "-package;org.cesnet")
 
-swig_add_module(${JAVA_SWIG_BINDING} java ${JAVA_SWIG_BINDING}.i)
+if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
+    swig_add_module(${JAVA_SWIG_BINDING} java ${JAVA_SWIG_BINDING}.i)
+else()
+    swig_add_library(${JAVA_SWIG_BINDING} LANGUAGE java SOURCES ${JAVA_SWIG_BINDING}.i)
+endif()
+
 set_target_properties(${SWIG_MODULE_${JAVA_SWIG_BINDING}_REAL_NAME} PROPERTIES PREFIX "")
 swig_link_libraries(${JAVA_SWIG_BINDING} ${JNI_LIBRARIES} libyang-cpp)
 
-add_custom_command(TARGET ${JAVA_SWIG_BINDING} POST_BUILD COMMAND "${Java_JAVAC_EXECUTABLE}" *.java -d . COMMAND "${Java_JAR_EXECUTABLE}" -cvf libyang.jar com)
+add_custom_command(TARGET ${JAVA_SWIG_BINDING} POST_BUILD COMMAND "${Java_JAVAC_EXECUTABLE}" *.java -d . COMMAND "${Java_JAR_EXECUTABLE}" -cvf libyang.jar org)
 set(NATIVE_JAR "${CMAKE_CURRENT_BINARY_DIR}/libyang.jar")
 
 # install so file

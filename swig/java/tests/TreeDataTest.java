@@ -1,10 +1,10 @@
-import com.cesnet.*;
-import com.cesnet.Module;
-import static com.cesnet.LYD_ANYDATA_VALUETYPE.LYD_ANYDATA_CONSTSTRING;
-import static com.cesnet.LYD_FORMAT.LYD_JSON;
-import static com.cesnet.LYD_FORMAT.LYD_XML;
-import static com.cesnet.LYS_INFORMAT.LYS_IN_YIN;
-import static com.cesnet.yangConstants.*;
+import org.cesnet.*;
+import org.cesnet.Module;
+import static org.cesnet.LYD_ANYDATA_VALUETYPE.LYD_ANYDATA_CONSTSTRING;
+import static org.cesnet.LYD_FORMAT.LYD_JSON;
+import static org.cesnet.LYD_FORMAT.LYD_XML;
+import static org.cesnet.LYS_INFORMAT.LYS_IN_YIN;
+import static org.cesnet.yangConstants.*;
 
 import java.io.FileDescriptor;
 import java.io.RandomAccessFile;
