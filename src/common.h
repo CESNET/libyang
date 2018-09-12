@@ -103,15 +103,15 @@ void ly_vlog(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const void *
 #define LY_CHECK_ARG_RET(CTX, ...) GETMACRO4(__VA_ARGS__, LY_CHECK_ARG_RET3, LY_CHECK_ARG_RET2, LY_CHECK_ARG_RET1)(CTX, __VA_ARGS__)
 
 #define LY_VCODE_INCHAR      LYVE_SYNTAX, "Invalid character 0x%x."
-#define LY_VCODE_INSTREXP    LYVE_SYNTAX, "Invalid character sequence \"%.*s\", expected \"%s\"."
+#define LY_VCODE_INSTREXP    LYVE_SYNTAX, "Invalid character sequence \"%.*s\", expected %s."
 #define LY_VCODE_EOF         LYVE_SYNTAX, "Unexpected end-of-file."
 #define LY_VCODE_INSTMT      LYVE_SYNTAX_YANG, "Invalid keyword \"%s\"."
 #define LY_VCODE_INCHILDSTMT LYVE_SYNTAX_YANG, "Invalid keyword \"%s\" as a child of \"%s\"."
 #define LY_VCODE_DUPSTMT     LYVE_SYNTAX_YANG, "Duplicate keyword \"%s\"."
-#define LY_VCODE_INVAL       LYVE_SYNTAX_YANG, "Invalid value \"%*.s\" of \"%s\"."
+#define LY_VCODE_INVAL       LYVE_SYNTAX_YANG, "Invalid value \"%.*s\" of \"%s\"."
 #define LY_VCODE_MISSTMT     LYVE_SYNTAX_YANG, "Missing mandatory keyword \"%s\" as a child of \"%s\"."
 #define LY_VCODE_INORD       LYVE_SYNTAX_YANG, "Invalid keyword \"%s\", it cannot appear after \"%s\"."
-#define LY_VCODE_OOB         LYVE_SYNTAX_YANG, "Value \"%*.s\" is out of \"%s\" bounds."
+#define LY_VCODE_OOB         LYVE_SYNTAX_YANG, "Value \"%.*s\" is out of \"%s\" bounds."
 #define LY_VCODE_INDEV       LYVE_SYNTAX_YANG, "Deviate \"%s\" does not support keyword \"%s\"."
 
 /*
