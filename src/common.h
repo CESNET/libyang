@@ -78,7 +78,7 @@ void ly_vlog(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const void *
 #define LOGMEM(CTX) LOGERR(CTX, LY_EMEM, "Memory allocation failed (%s()).", __func__)
 #define LOGINT(CTX) LOGERR(CTX, LY_EINT, "Internal error (%s:%d).", __FILE__, __LINE__)
 #define LOGARG(CTX, ARG) LOGERR(CTX, LY_EINVAL, "Invalid argument %s (%s()).", #ARG, __func__)
-#define LOGVAL(CTX, ELEM_TYPE, ELEM, CODE, FORMAT, args...) ly_vlog(CTX, ELEM_TYPE, ELEM, FORMAT ##args)
+#define LOGVAL(CTX, ELEM_TYPE, ELEM, CODE, FORMAT, ...) ly_vlog(CTX, ELEM_TYPE, ELEM, CODE, FORMAT __VA_OPT__(,) __VA_ARGS__)
 
 #define LOGMEM_RET(CTX) LOGMEM(CTX); return LY_EMEM
 #define LOGINT_RET(CTX) LOGINT(CTX); return LY_EINT
@@ -102,12 +102,17 @@ void ly_vlog(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const void *
 #define LY_CHECK_ARG_RET3(CTX, ARG1, ARG2, ARG3, RETVAL) LY_CHECK_ARG_RET2(CTX, ARG1, ARG2, RETVAL);LY_CHECK_ARG_RET1(CTX, ARG3, RETVAL)
 #define LY_CHECK_ARG_RET(CTX, ...) GETMACRO4(__VA_ARGS__, LY_CHECK_ARG_RET3, LY_CHECK_ARG_RET2, LY_CHECK_ARG_RET1)(CTX, __VA_ARGS__)
 
-#define LY_VCODE_MISSING     LYVE_SYNTAX, "Missing %s \"%s\"."
-#define LY_VCODE_INVAL       LYVE_SYNTAX, "Invalid %s."
-#define LY_VCODE_INCHAR      LYVE_SYNTAX, "Encountered invalid character sequence \"%.10s\"."
-#define LY_VCODE_EOF         LYVE_SYNTAX, "Unexpected end of input data."
+#define LY_VCODE_INCHAR      LYVE_SYNTAX, "Invalid character 0x%x."
+#define LY_VCODE_INSTREXP    LYVE_SYNTAX, "Invalid character sequence \"%.*s\", expected \"%s\"."
+#define LY_VCODE_EOF         LYVE_SYNTAX, "Unexpected end-of-file."
 #define LY_VCODE_INSTMT      LYVE_SYNTAX_YANG, "Invalid keyword \"%s\"."
-#define LY_VCODE_INCHILDSTMT LYVE_SYNTAX_YANG, "Invalid keyword \"%s\" as a child to \"%s\"."
+#define LY_VCODE_INCHILDSTMT LYVE_SYNTAX_YANG, "Invalid keyword \"%s\" as a child of \"%s\"."
+#define LY_VCODE_DUPSTMT     LYVE_SYNTAX_YANG, "Duplicate keyword \"%s\"."
+#define LY_VCODE_INVAL       LYVE_SYNTAX_YANG, "Invalid value \"%*.s\" of \"%s\"."
+#define LY_VCODE_MISSTMT     LYVE_SYNTAX_YANG, "Missing mandatory keyword \"%s\" as a child of \"%s\"."
+#define LY_VCODE_INORD       LYVE_SYNTAX_YANG, "Invalid keyword \"%s\", it cannot appear after \"%s\"."
+#define LY_VCODE_OOB         LYVE_SYNTAX_YANG, "Value \"%*.s\" is out of \"%s\" bounds."
+#define LY_VCODE_INDEV       LYVE_SYNTAX_YANG, "Deviate \"%s\" does not support keyword \"%s\"."
 
 /*
  * If the compiler supports attribute to mark objects as hidden, mark all
@@ -131,7 +136,7 @@ void ly_vlog(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const void *
  */
 void *ly_realloc(void *ptr, size_t size);
 
-int lysp_check_date(struct ly_ctx *ctx, const char *date, int date_len);
+int lysp_check_date(struct ly_ctx *ctx, const char *date, int date_len, const char *stmt);
 
 /*
  * Macros to work with lysp structures arrays.

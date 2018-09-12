@@ -19,6 +19,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "common.h"
 #include "tree_schema.h"
 
 void *
@@ -35,7 +36,7 @@ ly_realloc(void *ptr, size_t size)
 }
 
 int
-lysp_check_date(struct ly_ctx *ctx, const char *date, int date_len)
+lysp_check_date(struct ly_ctx *ctx, const char *date, int date_len, const char *stmt)
 {
     int i;
     struct tm tm, tm_;
@@ -73,6 +74,6 @@ lysp_check_date(struct ly_ctx *ctx, const char *date, int date_len)
     return 0;
 
 error:
-    fprintf(stderr, "Invalid date format \"%.*s\".\n", date_len, date);
+    LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_INVAL, date_len, date, stmt);
     return -1;
 }
