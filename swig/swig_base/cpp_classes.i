@@ -419,28 +419,28 @@
 
 %shared_ptr(libyang::Error);
 
-%template(vectorData_Node) std::vector<std::shared_ptr<libyang::Data_Node>, std::allocator<std::shared_ptr <libyang::Data_Node> > >;
-%template(vectorSchema_Node) std::vector<std::shared_ptr<libyang::Schema_Node>, std::allocator<std::shared_ptr <libyang::Schema_Node> > >;
-%template(vector_String) std::vector<std::string, std::allocator<std::string> >;
-%template(vectorModules) std::vector<std::shared_ptr<libyang::Module>, std::allocator<std::shared_ptr<libyang::Module> > >;
-%template(vectorType) std::vector<std::shared_ptr<libyang::Type>, std::allocator<std::shared_ptr<libyang::Type> > >;
-%template(vectorExt_Instance) std::vector<std::shared_ptr<libyang::Ext_Instance>, std::allocator<std::shared_ptr<libyang::Ext_Instance> > >;
-%template(vectorIffeature) std::vector<std::shared_ptr<libyang::Iffeature>, std::allocator<std::shared_ptr<libyang::Iffeature> > >;
-%template(vectorFeature) std::vector<std::shared_ptr<libyang::Feature>, std::allocator<std::shared_ptr<libyang::Feature> > >;
-%template(vectorWhen) std::vector<std::shared_ptr<libyang::When>, std::allocator<std::shared_ptr<libyang::When> > >;
-%template(vectorRefine) std::vector<std::shared_ptr<libyang::Refine>, std::allocator<std::shared_ptr<libyang::Refine> > >;
-%template(vectorXml_Elem) std::vector<std::shared_ptr<libyang::Xml_Elem>, std::allocator<std::shared_ptr<libyang::Xml_Elem> > >;
-%template(vectorDeviate) std::vector<std::shared_ptr<libyang::Deviate>, std::allocator<std::shared_ptr<libyang::Deviate> > >;
-%template(vectorDeviation) std::vector<std::shared_ptr<libyang::Deviation>, std::allocator<std::shared_ptr<libyang::Deviation> > >;
-%template(vectorIdent) std::vector<std::shared_ptr<libyang::Ident>, std::allocator<std::shared_ptr<libyang::Ident> > >;
-%template(vectorRestr) std::vector<std::shared_ptr<libyang::Restr>, std::allocator<std::shared_ptr<libyang::Restr> > >;
-%template(vectorTpdf) std::vector<std::shared_ptr<libyang::Tpdf>, std::allocator<std::shared_ptr<libyang::Tpdf> > >;
-%template(vectorUnique) std::vector<std::shared_ptr<libyang::Unique>, std::allocator<std::shared_ptr<libyang::Unique> > >;
-%template(vectorSchema_Node_Leaf) std::vector<std::shared_ptr<libyang::Schema_Node_Leaf>, std::allocator<std::shared_ptr<libyang::Schema_Node_Leaf> > >;
-%template(vectorSchema_Node_Augment) std::vector<std::shared_ptr<libyang::Schema_Node_Augment>, std::allocator<std::shared_ptr<libyang::Schema_Node_Augment> > >;
-%template(vectorType_Bit) std::vector<std::shared_ptr<libyang::Type_Bit>, std::allocator<std::shared_ptr<libyang::Type_Bit> > >;
-%template(vectorType_Enum) std::vector<std::shared_ptr<libyang::Type_Enum>, std::allocator<std::shared_ptr<libyang::Type_Enum> > >;
-%template(vectorError) std::vector<std::shared_ptr<libyang::Error>, std::allocator<std::shared_ptr<libyang::Error> > >;
+%template(vectorData_Node) std::vector<std::shared_ptr<libyang::Data_Node>>;
+%template(vectorSchema_Node) std::vector<std::shared_ptr<libyang::Schema_Node>>;
+%template(vector_String) std::vector<std::string>;
+%template(vectorModules) std::vector<std::shared_ptr<libyang::Module>>;
+%template(vectorType) std::vector<std::shared_ptr<libyang::Type>>;
+%template(vectorExt_Instance) std::vector<std::shared_ptr<libyang::Ext_Instance>>;
+%template(vectorIffeature) std::vector<std::shared_ptr<libyang::Iffeature>>;
+%template(vectorFeature) std::vector<std::shared_ptr<libyang::Feature>>;
+%template(vectorWhen) std::vector<std::shared_ptr<libyang::When>>;
+%template(vectorRefine) std::vector<std::shared_ptr<libyang::Refine>>;
+%template(vectorXml_Elem) std::vector<std::shared_ptr<libyang::Xml_Elem>>;
+%template(vectorDeviate) std::vector<std::shared_ptr<libyang::Deviate>>;
+%template(vectorDeviation) std::vector<std::shared_ptr<libyang::Deviation>>;
+%template(vectorIdent) std::vector<std::shared_ptr<libyang::Ident>>;
+%template(vectorRestr) std::vector<std::shared_ptr<libyang::Restr>>;
+%template(vectorTpdf) std::vector<std::shared_ptr<libyang::Tpdf>>;
+%template(vectorUnique) std::vector<std::shared_ptr<libyang::Unique>>;
+%template(vectorSchema_Node_Leaf) std::vector<std::shared_ptr<libyang::Schema_Node_Leaf>>;
+%template(vectorSchema_Node_Augment) std::vector<std::shared_ptr<libyang::Schema_Node_Augment>>;
+%template(vectorType_Bit) std::vector<std::shared_ptr<libyang::Type_Bit>>;
+%template(vectorType_Enum) std::vector<std::shared_ptr<libyang::Type_Enum>>;
+%template(vectorError) std::vector<std::shared_ptr<libyang::Error>>;
 
 %template(pairStringLysInformat) std::pair<char *, LYS_INFORMAT>;
 
