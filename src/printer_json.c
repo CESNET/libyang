@@ -356,6 +356,10 @@ json_print_leaf_list(struct lyout *out, int level, const struct lyd_node *node, 
                 flag_attrs = 1;
             }
         }
+        if (toplevel && !(options & LYP_WITHSIBLINGS)) {
+            /* if initially called without LYP_WITHSIBLINGS do not print other list entries */
+            break;
+        }
         for (list = list->next; list && list->schema != node->schema; list = list->next);
         if (list) {
             ly_print(out, ",%s", (level ? "\n" : ""));
@@ -533,8 +537,8 @@ json_print_nodes(struct lyout *out, int level, const struct lyd_node *root, int 
             break;
         case LYS_LEAFLIST:
         case LYS_LIST:
-            /* is it already printed? */
-            for (iter = node->prev; iter->next; iter = iter->prev) {
+            /* is it already printed? (root node is not) */
+            for (iter = node->prev; iter->next && node != root; iter = iter->prev) {
                 if (iter == node) {
                     continue;
                 }
@@ -543,7 +547,7 @@ json_print_nodes(struct lyout *out, int level, const struct lyd_node *root, int 
                     break;
                 }
             }
-            if (!iter->next) {
+            if (!iter->next || node == root) {
                 if (comma_flag) {
                     /* print the previous comma */
                     ly_print(out, ",%s", (level ? "\n" : ""));
