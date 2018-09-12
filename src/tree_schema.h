@@ -47,17 +47,16 @@ typedef enum {
 
 #define LY_REV_SIZE 11   /**< revision data string length (including terminating NULL byte) */
 
-#define LYS_UNKNOWN 0x0000,        /**< uninitalized unknown statement node */
-#define LYS_CONTAINER 0x0001,      /**< container statement node */
-#define LYS_CHOICE 0x0002,         /**< choice statement node */
-#define LYS_LEAF 0x0004,           /**< leaf statement node */
-#define LYS_LEAFLIST 0x0008,       /**< leaf-list statement node */
-#define LYS_LIST 0x0010,           /**< list statement node */
-#define LYS_ANYXML 0x0020,         /**< anyxml statement node */
-#define LYS_CASE 0x0040,           /**< case statement node */
-#define LYS_USES 0x0080,           /**< uses statement node */
-#define LYS_AUGMENT 0x0100,        /**< augment statement node */
-#define LYS_ANYDATA 0x0220,        /**< anydata statement node, in tests it can be used for both #LYS_ANYXML and #LYS_ANYDATA */
+#define LYS_UNKNOWN 0x0000        /**< uninitalized unknown statement node */
+#define LYS_CONTAINER 0x0001      /**< container statement node */
+#define LYS_CHOICE 0x0002         /**< choice statement node */
+#define LYS_LEAF 0x0004           /**< leaf statement node */
+#define LYS_LEAFLIST 0x0008       /**< leaf-list statement node */
+#define LYS_LIST 0x0010           /**< list statement node */
+#define LYS_ANYXML 0x0020         /**< anyxml statement node */
+#define LYS_CASE 0x0040           /**< case statement node */
+#define LYS_USES 0x0080           /**< uses statement node */
+#define LYS_ANYDATA 0x0120        /**< anydata statement node, in tests it can be used for both #LYS_ANYXML and #LYS_ANYDATA */
 
 /**
  * @brief YANG import-stmt
@@ -144,13 +143,14 @@ typedef enum {
     LYEXT_SUBSTMT_ORDEREDBY,     /**< extension of the ordered-by statement, can appear in lys_node_list and lys_node_leaflist */
     LYEXT_SUBSTMT_STATUS,        /**< extension of the status statement, can appear in lys_tpdf, lys_node, lys_ident,
                                       lys_ext, lys_feature, lys_type_enum and lys_type_bit */
-    LYEXT_SUBSTMT_DIGITS,        /**< extension of the fraction-digits statement, can appear in lys_type */
+    LYEXT_SUBSTMT_FRACDIGITS,    /**< extension of the fraction-digits statement, can appear in lys_type */
     LYEXT_SUBSTMT_MAX,           /**< extension of the max-elements statement, can appear in lys_node_list,
                                       lys_node_leaflist and lys_deviate */
     LYEXT_SUBSTMT_MIN,           /**< extension of the min-elements statement, can appear in lys_node_list,
                                       lys_node_leaflist and lys_deviate */
     LYEXT_SUBSTMT_POSITION,      /**< extension of the position statement, can appear in lys_type_bit */
     LYEXT_SUBSTMT_UNIQUE,        /**< extension of the unique statement, can appear in lys_node_list and lys_deviate */
+    LYEXT_SUBSTMT_IFFEATURE,     /**< extension of the if-feature statement */
 } LYEXT_SUBSTMT;
 
 /**
@@ -221,10 +221,11 @@ struct lysp_type_enum {
     const char *name;                /**< name (mandatory) */
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
-    const char *value;               /**< enum's value or bit's position */
+    int64_t value;                   /**< enum's value or bit's position */
     const char **iffeatures;         /**< list of if-feature expressions (NULL-terminated) */
     struct lysp_ext_instance *exts;  /**< list of the extension instances (0-terminated) */
-    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_ values are allowed */
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_ and LYS_SET_VALUE
+                                          values are allowed */
 };
 
 /**
@@ -246,6 +247,7 @@ struct lysp_type {
 
     uint8_t fraction_digits;         /**< number of fraction digits - decimal64 */
     uint8_t require_instance;        /**< require-instance flag - leafref, instance */
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_SET_REQINST allowed */
 };
 
 /**
@@ -301,6 +303,7 @@ struct lysp_refine {
     const char **dflts;              /**< list of default values (NULL-terminated) */
     uint32_t min;                    /**< min-elements constraint */
     uint32_t max;                    /**< max-elements constraint, 0 means unbounded */
+    struct lysp_ext_instance *exts;  /**< list of the extension instances (0-terminated) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
 };
 
@@ -336,50 +339,82 @@ struct lysp_augment {
 struct lysp_deviate {
     uint8_t mod;                     /**< [type](@ref deviatetypes) of the deviate modification */
     struct lysp_deviate *next;       /**< next deviate structure in the list */
+    struct lysp_ext_instance *exts;  /**< list of the extension instances (0-terminated) */
 };
 
 struct lysp_deviate_add {
     uint8_t mod;                     /**< [type](@ref deviatetypes) of the deviate modification */
     struct lysp_deviate *next;       /**< next deviate structure in the list */
-    const char *units;               /**< units of the leaf's type */
+    struct lysp_ext_instance *exts;  /**< list of the extension instances (0-terminated) */
+    const char *units;               /**< units of the values */
     struct lysp_restr *musts;        /**< list of must restrictions (0-terminated) */
     const char **uniques;            /**< list of uniques specifications (NULL-terminated) */
     const char **dflts;              /**< list of default values (NULL-terminated) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     uint32_t min;                    /**< min-elements constraint */
     uint32_t max;                    /**< max-elements constraint, 0 means unbounded */
-    struct lysp_ext_instance *exts;  /**< list of the extension instances (0-terminated) */
 };
 
 struct lysp_deviate_del {
     uint8_t mod;                     /**< [type](@ref deviatetypes) of the deviate modification */
     struct lysp_deviate *next;       /**< next deviate structure in the list */
-    const char *units;               /**< units of the leaf's type */
+    struct lysp_ext_instance *exts;  /**< list of the extension instances (0-terminated) */
+    const char *units;               /**< units of the values */
     struct lysp_restr *musts;        /**< list of must restrictions (0-terminated) */
     const char **uniques;            /**< list of uniques specifications (NULL-terminated) */
     const char **dflts;              /**< list of default values (NULL-terminated) */
-    struct lysp_ext_instance *exts;  /**< list of the extension instances (0-terminated) */
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
+    uint32_t min;                    /**< min-elements constraint */
+    uint32_t max;                    /**< max-elements constraint, 0 means unbounded */
 };
 
 struct lysp_deviate_rpl {
     uint8_t mod;                     /**< [type](@ref deviatetypes) of the deviate modification */
     struct lysp_deviate *next;       /**< next deviate structure in the list */
-    struct lysp_type *type;          /**< type of the node (mandatory) */
+    struct lysp_ext_instance *exts;  /**< list of the extension instances (0-terminated) */
+    struct lysp_type *type;          /**< type of the node */
     const char *units;               /**< units of the values */
     const char *dflt;                /**< default value */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     uint32_t min;                    /**< min-elements constraint */
     uint32_t max;                    /**< max-elements constraint, 0 means unbounded */
-    struct lysp_ext_instance *exts;  /**< list of the extension instances (0-terminated) */
 };
 
 struct lysp_deviation {
-    uint8_t mod;                     /**< [type](@ref deviatetypes) of the deviate modification */
+    const char *nodeid;              /**< target absolute schema nodeid (mandatory) */
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
     struct lysp_deviate* deviates;   /**< list of deviate specifications (linked list) */
     struct lysp_ext_instance *exts;  /**< list of the extension instances (0-terminated) */
 };
+
+#define LYS_CONFIG_W     0x01        /**< config true; */
+#define LYS_CONFIG_R     0x02        /**< config false; */
+#define LYS_CONFIG_MASK  0x03        /**< mask for config value */
+#define LYS_STATUS_CURR  0x08        /**< status current; */
+#define LYS_STATUS_DEPRC 0x10        /**< status deprecated; */
+#define LYS_STATUS_OBSLT 0x20        /**< status obsolete; */
+#define LYS_STATUS_MASK  0x38        /**< mask for status value */
+#define LYS_MAND_TRUE    0x40        /**< mandatory true; applicable only to
+                                          ::lys_node_choice, ::lys_node_leaf and ::lys_node_anydata */
+#define LYS_MAND_FALSE   0x80        /**< mandatory false; applicable only to
+                                          ::lys_node_choice, ::lys_node_leaf and ::lys_node_anydata */
+#define LYS_MAND_MASK    0xc0        /**< mask for mandatory values */
+#define LYS_ORDBY_SYSTEM 0x100       /**< ordered-by system lists, applicable only to
+                                          ::lys_node_list and ::lys_node_leaflist */
+#define LYS_ORDBY_USER   0x200       /**< ordered-by user lists, applicable only to
+                                          ::lys_node_list and ::lys_node_leaflist */
+#define LYS_ORDBY_MASK   0x300       /**< mask for ordered-by flags */
+#define LYS_FENABLED     0x100       /**< feature enabled flag, applicable only to ::lys_feature */
+#define LYS_AUTOASSIGNED 0x01        /**< value was auto-assigned, applicable only to
+                                          ::lys_type enum and bits flags */
+#define LYS_YINELEM_TRUE 0x01        /**< yin-element true for extension's argument */
+#define LYS_YINELEM_FALSE 0x02       /**< yin-element false for extension's argument */
+#define LYS_YINELEM_MASK 0x03        /**< mask for yin-element value */
+#define LYS_SET_VALUE    0x01        /**< value attribute is set */
+#define LYS_SET_MAX      0x400       /**< max attribute is set */
+#define LYS_SET_MIN      0x800       /**< min attribute is set */
+#define LYS_SET_REQINST  0x01        /**< require_instance attribute is set */
 
 /**
  * @brief Generic YANG data node
@@ -476,7 +511,7 @@ struct lysp_node_list {
     struct lysp_grp *groupings;      /**< list of groupings (0-terminated) */
     struct lysp_node *child;         /**< list of data nodes (linked list) */
     struct lysp_action *actions;     /**< list of actions (0-terminated) */
-    struct lysp_notif *notifications;/**< list of notifications (0-terminated) */
+    struct lysp_notif *notifs;       /**< list of notifications (0-terminated) */
     const char **uniques;            /**< list of uniques specifications (NULL-terminated) */
     uint32_t min;                    /**< min-elements constraint */
     uint32_t max;                    /**< max-elements constraint, 0 means unbounded */
@@ -529,7 +564,7 @@ struct lysp_node_anydata {
 };
 
 struct lysp_node_uses {
-    uint16_t nodetype;               /**< LYS_ANYXML || LYS_ANYDATA */
+    uint16_t nodetype;               /**< LYS_USES */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     struct lysp_node *next;          /**< pointer to the next sibling node (NULL if there is no one) */
     const char *name;                /**< grouping name reference (mandatory) */
@@ -565,8 +600,8 @@ struct lysp_action {
     const char **iffeatures;         /**< list of if-feature expressions (NULL-terminated) */
     struct lysp_tpdf *typedefs;      /**< list of typedefs (0-terminated) */
     struct lysp_grp *groupings;      /**< list of groupings (0-terminated) */
-    struct lysp_action_inout input;  /**< RPC's/Action's input */
-    struct lysp_action_inout output; /**< RPC's/Action's output */
+    struct lysp_action_inout *input; /**< RPC's/Action's input */
+    struct lysp_action_inout *output;/**< RPC's/Action's output */
     struct lysp_ext_instance *exts;  /**< list of the extension instances (0-terminated) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
 };
