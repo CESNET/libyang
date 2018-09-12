@@ -138,6 +138,8 @@ void *ly_realloc(void *ptr, size_t size);
 
 int lysp_check_date(struct ly_ctx *ctx, const char *date, int date_len, const char *stmt);
 
+int lysp_get_data_line(const char *data, int fail_char);
+
 /*
  * Macros to work with lysp structures arrays.
  *
