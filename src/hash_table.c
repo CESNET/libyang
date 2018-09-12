@@ -196,12 +196,12 @@ dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
 
     LOGDBG(LY_LDGDICT, "inserting \"%s\"", rec.value);
     ret = lyht_insert(ctx->dict.hash_tab, (void *)&rec, hash, (void **)&match);
-    if (ret == 1) {
+    if (ret == LY_EEXIST) {
         match->refcount++;
         if (zerocopy) {
             free(value);
         }
-    } else if (ret == 0) {
+    } else if (ret == LY_SUCCESS) {
         if (!zerocopy) {
             /*
              * allocate string for new record
