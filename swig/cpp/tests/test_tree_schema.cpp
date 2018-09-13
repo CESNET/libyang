@@ -332,13 +332,13 @@ TEST(test_ly_ctx_parse_module_fd)
         ASSERT_NOTNULL(ctx);
 
         FILE *f = fopen(yin_file, "r");
-        auto fd = f->_fileno;
+        auto fd = fileno(f);
         auto module = ctx->parse_module_fd(fd, LYS_IN_YIN);
         ASSERT_NOTNULL(module);
         ASSERT_STREQ("a", module->name());
         fclose(f);
         f = fopen(yang_file, "r");
-        fd = f->_fileno;
+        fd = fileno(f);
         module = ctx->parse_module_fd(fd, LYS_IN_YANG);
         ASSERT_NOTNULL(module);
         ASSERT_STREQ("b", module->name());
@@ -359,7 +359,7 @@ TEST(test_ly_ctx_parse_module_fd_invalid)
         ASSERT_NOTNULL(ctx);
 
         FILE *f = fopen(yin_file, "r");
-        auto fd = f->_fileno;
+        auto fd = fileno(f);
         auto module = ctx->parse_module_fd(fd, LYS_IN_YANG);
         throw std::runtime_error("exception not thrown");
     } catch( const std::exception& e ) {
