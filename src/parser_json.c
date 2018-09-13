@@ -1260,7 +1260,7 @@ attr_repeat:
     /* validation successful */
     if (result->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
         /* postpone checking of unique when there will be all list/leaflist instances */
-        result->validity |= LYD_VAL_UNIQUE;
+        result->validity |= LYD_VAL_DUP;
     }
 
     if (!(*parent)) {
@@ -1299,9 +1299,8 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
     struct lyd_node *result = NULL, *next, *iter, *reply_parent = NULL, *reply_top = NULL, *act_notif = NULL;
     struct unres_data *unres = NULL;
     unsigned int len = 0, r;
-    int i, act_cont = 0;
+    int act_cont = 0;
     struct attr_cont *attrs = NULL;
-    struct ly_set *set;
 
     if (!ctx || !data) {
         LOGARG;
@@ -1472,25 +1471,15 @@ empty:
 
     /* check for uniquness of top-level lists/leaflists because
      * only the inner instances were tested in lyv_data_content() */
-    set = ly_set_new();
     LY_TREE_FOR(result, iter) {
-        if (!(iter->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) || !(iter->validity & LYD_VAL_UNIQUE)) {
+        if (!(iter->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) || !(iter->validity & LYD_VAL_DUP)) {
             continue;
         }
 
-        /* check each list/leaflist only once */
-        i = set->number;
-        if (ly_set_add(set, iter->schema, 0) != i) {
-            /* already checked */
-            continue;
-        }
-
-        if (lyv_data_unique(iter, result)) {
-            ly_set_free(set);
+        if (lyv_data_dup(iter, result)) {
             goto error;
         }
     }
-    ly_set_free(set);
 
     /* add/validate default values, unres */
     if (lyd_defaults_add_unres(&result, options, ctx, data_tree, act_notif, unres, 1)) {

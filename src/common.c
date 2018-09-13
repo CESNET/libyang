@@ -1286,27 +1286,24 @@ ly_new_node_validity(const struct lys_node *schema)
     int validity;
 
     validity = LYD_VAL_OK;
-    switch (schema->nodetype) {
-    case LYS_LEAF:
-    case LYS_LEAFLIST:
+
+    if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
         if (((struct lys_node_leaf *)schema)->type.base == LY_TYPE_LEAFREF) {
+            /* leafref target validation */
             validity |= LYD_VAL_LEAFREF;
         }
-        validity |= LYD_VAL_MAND;
-        break;
-    case LYS_LIST:
+    }
+    if (schema->nodetype & (LYS_LEAFLIST | LYS_LIST)) {
+        /* duplicit instance check */
+        validity |= LYD_VAL_DUP;
+    }
+    if ((schema->nodetype == LYS_LIST) && ((struct lys_node_list *)schema)->unique_size) {
+        /* unique check */
         validity |= LYD_VAL_UNIQUE;
-        /* fallthrough */
-    case LYS_CONTAINER:
-    case LYS_NOTIF:
-    case LYS_RPC:
-    case LYS_ACTION:
-    case LYS_ANYXML:
-    case LYS_ANYDATA:
+    }
+    if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_CONTAINER | LYS_NOTIF | LYS_RPC | LYS_ACTION | LYS_ANYDATA)) {
+        /* mandatory children check */
         validity |= LYD_VAL_MAND;
-        break;
-    default:
-        break;
     }
 
     return validity;

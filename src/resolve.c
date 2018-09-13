@@ -30,6 +30,7 @@
 #include "hash_table.h"
 #include "tree_internal.h"
 #include "extensions.h"
+#include "validation.h"
 
 /* internal parsed predicate structure */
 struct parsed_pred {
@@ -8129,6 +8130,12 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int ignore_
         }
         break;
 
+    case UNRES_UNIQ_LEAVES:
+        if (lyv_data_unique(node)) {
+            return -1;
+        }
+        break;
+
     default:
         LOGINT(NULL);
         return -1;
@@ -8150,7 +8157,7 @@ unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM 
 {
     assert(unres && node);
     assert((type == UNRES_LEAFREF) || (type == UNRES_INSTID) || (type == UNRES_WHEN) || (type == UNRES_MUST)
-           || (type == UNRES_MUST_INOUT) || (type == UNRES_UNION));
+           || (type == UNRES_MUST_INOUT) || (type == UNRES_UNION) || (type == UNRES_UNIQ_LEAVES));
 
     unres->count++;
     unres->node = ly_realloc(unres->node, unres->count * sizeof *unres->node);

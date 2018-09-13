@@ -1200,13 +1200,12 @@ _lyd_new_leaf(struct lyd_node *parent, const struct lys_node *schema, const char
         return NULL;
     }
 
-    if (ret->schema->flags & LYS_UNIQUE) {
-        /* locate the first parent list */
-        for (parent = ret->parent; parent && parent->schema->nodetype != LYS_LIST; parent = parent->parent);
-
-        /* set flag for future validation */
+    if ((ret->schema->nodetype == LYS_LEAF) && (ret->schema->flags & LYS_UNIQUE)) {
+        for (; parent && (parent->schema->nodetype != LYS_LIST); parent = parent->parent);
         if (parent) {
             parent->validity |= LYD_VAL_UNIQUE;
+        } else {
+            LOGINT(schema->module->ctx);
         }
     }
 
@@ -1375,12 +1374,12 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
     }
 
     if (val_change && (leaf->schema->flags & LYS_UNIQUE)) {
-        /* locate the first parent list */
-        for (parent = leaf->parent; parent && parent->schema->nodetype != LYS_LIST; parent = parent->parent);
-
-        /* set flag for future validation */
+        for (parent = leaf->parent; parent && (parent->schema->nodetype != LYS_LIST); parent = parent->parent);
         if (parent) {
             parent->validity |= LYD_VAL_UNIQUE;
+        } else {
+            LOGINT(leaf->schema->module->ctx);
+            return -1;
         }
     }
 
@@ -4859,10 +4858,9 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
 {
     struct lyd_node *root, *next1, *next2, *iter, *act_notif = NULL, *to_free = NULL, *data_tree = NULL;
     struct ly_ctx *ctx = NULL;
-    int ret = EXIT_FAILURE, i;
+    int ret = EXIT_FAILURE;
     struct unres_data *unres = NULL;
     const struct lys_module *yanglib_mod;
-    struct ly_set *set;
 
     if (!node) {
         LOGARG;
@@ -5043,7 +5041,6 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
     if (*node) {
         /* check for uniqueness of top-level lists/leaflists because
          * only the inner instances were tested in lyv_data_content() */
-        set = ly_set_new();
         yanglib_mod = ly_ctx_get_module(ctx ? ctx : (*node)->schema->module->ctx, "ietf-yang-library", NULL, 1);
         LY_TREE_FOR(*node, root) {
             if ((options & LYD_OPT_DATA_ADD_YANGLIB) && yanglib_mod && (root->schema->module == yanglib_mod)) {
@@ -5051,23 +5048,14 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
                 options &= ~LYD_OPT_DATA_ADD_YANGLIB;
             }
 
-            if (!(root->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) || !(root->validity & LYD_VAL_UNIQUE)) {
+            if (!(root->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) || !(root->validity & LYD_VAL_DUP)) {
                 continue;
             }
 
-            /* check each list/leaflist only once */
-            i = set->number;
-            if (ly_set_add(set, root->schema, 0) != i) {
-                /* already checked */
-                continue;
-            }
-
-            if (lyv_data_unique(root, *node)) {
-                ly_set_free(set);
+            if (lyv_data_dup(root, *node)) {
                 goto cleanup;
             }
         }
-        ly_set_free(set);
     }
 
     /* add missing ietf-yang-library if requested */
@@ -6012,7 +6000,7 @@ lyd_path(const struct lyd_node *node)
         return NULL;
     }
 
-    if (ly_vlog_build_path(LY_VLOG_LYD, node, &buf, 0)) {
+    if (ly_vlog_build_path(LY_VLOG_LYD, node, &buf, 0, 0)) {
         return NULL;
     }
 
