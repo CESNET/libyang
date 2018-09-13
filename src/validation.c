@@ -676,7 +676,8 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
     }
 
     if (schema->nodetype & (LYS_LIST | LYS_CONTAINER | LYS_NOTIF | LYS_RPC | LYS_ACTION)) {
-        LY_TREE_FOR(schema->child, siter) {
+        siter = NULL;
+        while ((siter = lys_getnext(siter, schema, NULL, 0))) {
             if (siter->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
                 LY_TREE_FOR(node->child, diter) {
                     if (diter->schema == siter && (diter->validity & LYD_VAL_UNIQUE)) {
