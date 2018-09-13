@@ -1059,7 +1059,8 @@ attr_repeat:
         if (!r) {
             goto error;
         }
-        while (result->next) {
+        /* only for leaf-list */
+        while (result->next && (result->next->schema == result->schema)) {
             result = result->next;
         }
 
