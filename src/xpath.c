@@ -20,6 +20,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <assert.h>
 #include <limits.h>
@@ -2505,6 +2506,11 @@ lyxp_parse_expr(struct ly_ctx *ctx, const char *expr)
     uint16_t parsed = 0, tok_len, ncname_len;
     enum lyxp_token tok_type;
     int prev_function_check = 0;
+
+    if (strlen(expr) > UINT16_MAX) {
+        LOGERR(ctx, LY_EINVAL, "XPath expression cannot be longer than %ud characters.", UINT16_MAX);
+        return NULL;
+    }
 
     /* init lyxp_expr structure */
     ret = calloc(1, sizeof *ret);
