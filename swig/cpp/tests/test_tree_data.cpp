@@ -166,7 +166,7 @@ TEST(test_ly_ctx_parse_data_fd)
         ctx->parse_module_path(yin_file, LYS_IN_YIN);
 
         FILE *f = fopen(config_file, "r");
-        auto fd = f->_fileno;
+        auto fd = fileno(f);
         auto root = ctx->parse_data_fd(fd, LYD_XML, LYD_OPT_NOSIBLINGS | LYD_OPT_STRICT);
         ASSERT_NOTNULL(root);
         ASSERT_STREQ("x", root->schema()->name());
