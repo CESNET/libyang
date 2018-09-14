@@ -673,9 +673,8 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         LY_CHECK_ERR_GOTO(!type->info.bits.bit, LOGMEM(ctx), error);
 
         p = 0;
-        i = -1;
+        i = 0;
         LY_TREE_FOR(yin->child, next) {
-            i++;
             c_ftrs = 0;
 
             GETVAL(ctx, value, next, "name");
@@ -847,6 +846,8 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 memcpy(&type->info.bits.bit[j - 1], &bit, sizeof bit);
                 j--;
             }
+
+            ++i;
         }
         break;
 
@@ -967,9 +968,8 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         LY_CHECK_ERR_GOTO(!type->info.enums.enm, LOGMEM(ctx), error);
 
         v = 0;
-        i = -1;
+        i = 0;
         LY_TREE_FOR(yin->child, next) {
-            i++;
             c_ftrs = 0;
 
             GETVAL(ctx, value, next, "name");
@@ -1147,6 +1147,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 }
             }
 
+            ++i;
         }
         break;
 
