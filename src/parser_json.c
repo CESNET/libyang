@@ -901,7 +901,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
         }
 
         /* go through RPC's input/output following the options' data type */
-        if ((*parent)->schema->nodetype == LYS_RPC) {
+        if ((*parent)->schema->nodetype == LYS_RPC || (*parent)->schema->nodetype == LYS_ACTION) {
             while ((schema = (struct lys_node *)lys_getnext(schema, (*parent)->schema, NULL, LYS_GETNEXT_WITHINOUT))) {
                 if ((options & LYD_OPT_RPC) && (schema->nodetype == LYS_INPUT)) {
                     break;
