@@ -78,7 +78,7 @@ void ly_vlog(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const void *
 #define LOGMEM(CTX) LOGERR(CTX, LY_EMEM, "Memory allocation failed (%s()).", __func__)
 #define LOGINT(CTX) LOGERR(CTX, LY_EINT, "Internal error (%s:%d).", __FILE__, __LINE__)
 #define LOGARG(CTX, ARG) LOGERR(CTX, LY_EINVAL, "Invalid argument %s (%s()).", #ARG, __func__)
-#define LOGVAL(CTX, ELEM_TYPE, ELEM, CODE, FORMAT, ...) ly_vlog(CTX, ELEM_TYPE, ELEM, CODE, FORMAT __VA_OPT__(,) __VA_ARGS__)
+#define LOGVAL(CTX, ELEM_TYPE, ELEM, CODE, FORMAT...) ly_vlog(CTX, ELEM_TYPE, ELEM, CODE, ##FORMAT)
 
 #define LOGMEM_RET(CTX) LOGMEM(CTX); return LY_EMEM
 #define LOGINT_RET(CTX) LOGINT(CTX); return LY_EINT

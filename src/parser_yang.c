@@ -1291,7 +1291,7 @@ keyword_start:
             ++(*data);
         }
         if (!**data) {
-            /* LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_EOF); */
+            LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_EOF);
             return LY_EVALID;
         }
 
