@@ -1448,7 +1448,7 @@ empty:
     }
 
     /* order the elements by hand as it is not required of the JSON input */
-    if (lyp_is_rpc_action(result->schema)) {
+    if ((options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY))) {
         if (lyd_schema_sort(result, 1)) {
             goto error;
         }
