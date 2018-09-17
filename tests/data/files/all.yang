@@ -100,17 +100,21 @@ module all {
     }
 
     choice choic1 {
-      default "leaf10";
-      leaf leaf9 {
+      default "leaf9b";
+      leaf leaf9a {
         type decimal64 {
           fraction-digits 9;
         }
       }
 
-      leaf leaf10 {
+      leaf leaf9b {
         type boolean;
         default "false";
       }
+    }
+
+    leaf leaf10 {
+      type boolean;
     }
 
     leaf leaf11 {
@@ -216,6 +220,13 @@ module all {
 
     leaf leaf29 {
       type instance-identifier;
+    }
+
+    container must-deviations-container {
+      presence "Allows deviations on the leaf";
+      leaf leaf30 {
+        type string;
+      }
     }
 
     leaf leaf23 {

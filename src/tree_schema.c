@@ -4702,7 +4702,7 @@ lys_sub_module_apply_devs_augs(struct lys_module *module)
 void
 lys_sub_module_remove_devs_augs(struct lys_module *module)
 {
-    uint8_t u, v;
+    uint8_t u, v, w;
     struct unres_schema *unres;
 
     unres = calloc(1, sizeof *unres);
@@ -4713,6 +4713,14 @@ lys_sub_module_remove_devs_augs(struct lys_module *module)
         /* the deviation could not be applied because it failed to be applied in the first place*/
         if (module->deviation[u].orig_node) {
             remove_dev(&module->deviation[u], module, unres);
+        }
+
+        /* Free the deviation's must array(s). These are shallow copies of the arrays
+           on the target node(s), so a deep free is not needed. */
+        for (v = 0; v < module->deviation[u].deviate_size; ++v) {
+            if (module->deviation[u].deviate[v].mod == LY_DEVIATE_ADD) {
+                free(module->deviation[u].deviate[v].must);
+            }
         }
     }
     /* remove applied augments */
@@ -4725,6 +4733,14 @@ lys_sub_module_remove_devs_augs(struct lys_module *module)
         for (u = 0; u < module->inc[v].submodule->deviation_size; ++u) {
             if (module->inc[v].submodule->deviation[u].orig_node) {
                 remove_dev(&module->inc[v].submodule->deviation[u], module, unres);
+            }
+
+            /* Free the deviation's must array(s). These are shallow copies of the arrays
+               on the target node(s), so a deep free is not needed. */
+            for (w = 0; w < module->inc[v].submodule->deviation[u].deviate_size; ++w) {
+                if (module->inc[v].submodule->deviation[u].deviate[w].mod == LY_DEVIATE_ADD) {
+                    free(module->inc[v].submodule->deviation[u].deviate[w].must);
+                }
             }
         }
 

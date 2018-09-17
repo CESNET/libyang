@@ -191,6 +191,12 @@
     <leaf name="leaf29">
       <type name="instance-identifier"/>
     </leaf>
+    <container name="must-deviations-container">
+      <presence value="Allows deviations on the leaf"/>
+      <leaf name="leaf30">
+        <type name="string"/>
+      </leaf>
+    </container>
     <leaf name="leaf23">
       <type name="empty"/>
     </leaf>

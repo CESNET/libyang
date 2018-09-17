@@ -38,4 +38,16 @@
   <deviation target-node="/all_mod:cont1/all_mod:leaf23">
     <deviate value="not-supported"/>
   </deviation>
+  <deviation target-node="/all_mod:cont1/all_mod:must-deviations-container">
+    <deviate value="add">
+      <must condition="all_mod:leaf30 != 'foo'"/>
+    </deviate>
+  </deviation>
+  <deviation target-node="/all_mod:cont1/all_mod:must-deviations-container">
+    <deviate value="add">
+      <must condition="all_mod:leaf30 != 'bar'"/>
+      <must condition="all_mod:leaf30 != 'baz'"/>
+      <must condition="all_mod:leaf30 != 'qux'"/>
+    </deviate>
+  </deviation>
 </module>
