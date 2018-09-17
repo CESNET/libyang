@@ -42,7 +42,7 @@ extern "C" {
 struct ly_set
 {
     unsigned int size;                /**< allocated size of the set array */
-    unsigned int number;              /**< number of elements in (used size of) the set array */
+    unsigned int count;               /**< number of elements in (used size of) the set array */
     union
     {
         struct lys_node **schemas;    /**< array of pointers to a ::lys_node objects */
@@ -62,7 +62,7 @@ struct ly_set
  *
  * @return Created ::ly_set structure or NULL in case of error.
  */
-struct ly_set *ly_set_new (void);
+struct ly_set *ly_set_new(void);
 
 /**
  * @brief Duplicate the existing set.
@@ -70,7 +70,7 @@ struct ly_set *ly_set_new (void);
  * @param[in] set Original set to duplicate
  * @return Duplication of the original set.
  */
-struct ly_set *ly_set_dup (const struct ly_set *set);
+struct ly_set *ly_set_dup(const struct ly_set *set);
 
 /**
  * @brief Add a ::lyd_node or ::lys_node object into the set
@@ -85,7 +85,7 @@ struct ly_set *ly_set_dup (const struct ly_set *set);
  * - #LY_SET_OPT_USEASLIST - do not check for duplicities
  * @return -1 on failure, index of the \p node in the set on success
  */
-int ly_set_add (struct ly_set *set, void *object, int options);
+int ly_set_add(struct ly_set *set, void *object, int options);
 
 /**
  * @brief Add all objects from \p src to \p trg.
@@ -99,7 +99,7 @@ int ly_set_add (struct ly_set *set, void *object, int options);
  * - #LY_SET_OPT_USEASLIST - do not check for duplicities
  * @return -1 on failure, number of objects added into \p trg on success.
  */
-int ly_set_merge (struct ly_set *trg, struct ly_set *src, int options);
+int ly_set_merge(struct ly_set *trg, struct ly_set *src, int options);
 
 /**
  * @brief Get know if the set contains the specified object.
@@ -107,7 +107,7 @@ int ly_set_merge (struct ly_set *trg, struct ly_set *src, int options);
  * @param[in] object Object to be found in the set.
  * @return Index of the object in the set or -1 if the object is not present in the set.
  */
-int ly_set_contains (const struct ly_set *set, void *object);
+int ly_set_contains(const struct ly_set *set, void *object);
 
 /**
  * @brief Remove all objects from the set, but keep the set container for further use.
@@ -115,7 +115,7 @@ int ly_set_contains (const struct ly_set *set, void *object);
  * @param[in] set Set to clean.
  * @return LY_ERR return value.
  */
-LY_ERR ly_set_clean (struct ly_set *set);
+LY_ERR ly_set_clean(struct ly_set *set);
 
 /**
  * @brief Remove an object from the set.
@@ -127,7 +127,7 @@ LY_ERR ly_set_clean (struct ly_set *set);
  * @param[in] obejct The object to be removed from the \p set.
  * @return LY_ERR return value.
  */
-LY_ERR ly_set_rm (struct ly_set *set, void *object);
+LY_ERR ly_set_rm(struct ly_set *set, void *object);
 
 /**
  * @brief Remove an object on the specific set index.
@@ -139,14 +139,14 @@ LY_ERR ly_set_rm (struct ly_set *set, void *object);
  * @param[in] index Index of the object to remove in the \p set.
  * @return LY_ERR return value.
  */
-LY_ERR ly_set_rm_index (struct ly_set *set, unsigned int index);
+LY_ERR ly_set_rm_index(struct ly_set *set, unsigned int index);
 
 /**
  * @brief Free the ::ly_set data. Frees only the set structure content, not the referred data.
  *
  * @param[in] set The set to be freed.
  */
-void ly_set_free (struct ly_set *set);
+void ly_set_free(struct ly_set *set);
 
 /** @} lyset */
 

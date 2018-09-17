@@ -102,7 +102,7 @@ ly_ctx_get_searchdirs(const struct ly_ctx *ctx)
 API LY_ERR
 ly_ctx_unset_searchdirs(struct ly_ctx *ctx, int index)
 {
-    if (!ctx->search_paths.number) {
+    if (!ctx->search_paths.count) {
         return LY_SUCCESS;
     }
 
@@ -111,8 +111,8 @@ ly_ctx_unset_searchdirs(struct ly_ctx *ctx, int index)
         return ly_set_rm_index(&ctx->search_paths, index);
     } else {
         /* remove them all */
-        for (; ctx->search_paths.number; ctx->search_paths.number--) {
-            free(ctx->search_paths.objs[ctx->search_paths.number - 1]);
+        for (; ctx->search_paths.count; ctx->search_paths.count--) {
+            free(ctx->search_paths.objs[ctx->search_paths.count - 1]);
         }
         free(ctx->search_paths.objs);
         memset(&ctx->search_paths, 0, sizeof ctx->search_paths);
@@ -271,10 +271,10 @@ ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lysc_
     LY_CHECK_ARG_RET(ctx, ctx,);
 
     /* models list */
-    for (; ctx->list.number; ctx->list.number--) {
+    for (; ctx->list.count; ctx->list.count--) {
         /* remove the module */
 #if 0 /* TODO when parser implemented */
-        lys_free(ctx->list[ctx->list.number - 1], private_destructor, 1, 0);
+        lys_free(ctx->list[ctx->list.count - 1], private_destructor, 1, 0);
 #endif
     }
     free(ctx->list.objs);
