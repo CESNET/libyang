@@ -2186,6 +2186,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     struct unres_schema tmp_unres;
     struct lys_module *mod;
     void *reallocated;
+    size_t deviate_must_index;
 
     GETVAL(ctx, value, yin, "target-node");
     dev->target_name = transform_schema2json(module, value);
@@ -2727,10 +2728,10 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 goto error;
             } else if (d->mod == LY_DEVIATE_ADD) {
                 /* reallocate the must array of the target */
-                d->must = ly_realloc(*trg_must, (c_must + *trg_must_size) * sizeof *d->must);
-                LY_CHECK_ERR_GOTO(!d->must, LOGMEM(ctx), error);
-                *trg_must = d->must;
-                d->must = &((*trg_must)[*trg_must_size]);
+                struct lys_restr *must = ly_realloc(*trg_must, (c_must + *trg_must_size) * sizeof *d->must);
+                LY_CHECK_ERR_GOTO(!must, LOGMEM(ctx), error);
+                *trg_must = must;
+                d->must = calloc(c_must, sizeof *d->must);
                 d->must_size = c_must;
             } else { /* LY_DEVIATE_DEL */
                 d->must = calloc(c_must, sizeof *d->must);
@@ -2824,6 +2825,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
         }
 
         /* process deviation properties with 0..n cardinality */
+        deviate_must_index = 0;
         LY_TREE_FOR_SAFE(develem->child, next2, child) {
             if (strcmp(child->ns->value, LY_NSYIN)) {
                 /* extension */
@@ -2879,6 +2881,8 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                     if (fill_yin_must(module, child, &((*trg_must)[*trg_must_size]), unres)) {
                         goto error;
                     }
+                    memcpy(d->must + deviate_must_index, &((*trg_must)[*trg_must_size]), sizeof *d->must);
+                    ++deviate_must_index;
                     (*trg_must_size)++;
                 }
 

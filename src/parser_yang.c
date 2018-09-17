@@ -1878,8 +1878,6 @@ yang_check_deviate_must(struct lys_module *module, struct unres_schema *unres,
         LY_CHECK_ERR_GOTO(!must, LOGMEM(ctx), error);
         *trg_must = must;
         memcpy(&(*trg_must)[*trg_must_size], deviate->must, deviate->must_size * sizeof *must);
-        free(deviate->must);
-        deviate->must = &must[*trg_must_size];
         *trg_must_size = *trg_must_size + deviate->must_size;
         erase_must = 0;
     } else if (deviate->mod == LY_DEVIATE_DEL) {
