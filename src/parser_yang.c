@@ -4629,7 +4629,7 @@ parse_sub_module(struct ly_ctx *ctx, const char **data, struct lysp_module *mod)
     return ret;
 }
 
-static LY_ERR
+LY_ERR
 yang_parse(struct ly_ctx *ctx, const char *data, struct lysp_module **mod_p)
 {
     LY_ERR ret = 0;
@@ -4680,55 +4680,4 @@ error:
     LOGERR(ctx, LY_EINVAL, "Module parsing failed on line %d.", lysp_get_data_line(data_start, data - data_start));
     /* TODO free module */
     return ret;
-}
-
-int
-main(int argc, char **argv)
-{
-    char *data = NULL;
-    int fd = -1;
-    struct stat st;
-    struct lysp_module *mod;
-    struct ly_ctx *ctx = NULL;
-
-    if (argc != 2) {
-        fprintf(stderr, "No arguments specified.\n");
-        goto cleanup;
-    }
-
-    ly_verb(LY_LLERR);
-
-    if (ly_ctx_new(NULL, 0, &ctx)) {
-        fprintf(stderr, "ly_ctx_new() failed.\n");
-        goto cleanup;
-    }
-
-    fd = open(argv[1], O_RDONLY);
-    if (fd == -1) {
-        fprintf(stderr, "open() failed (%s).\n", strerror(errno));
-        goto cleanup;
-    }
-
-    if (fstat(fd, &st)) {
-        fprintf(stderr, "fstat() failed (%s).\n", strerror(errno));
-        goto cleanup;
-    }
-
-    data = malloc(st.st_size + 1);
-    if (read(fd, data, st.st_size) < st.st_size) {
-        fprintf(stderr, "read() failed.\n");
-        goto cleanup;
-    }
-    data[st.st_size] = '\0';
-
-    yang_parse(ctx, data, &mod);
-
-cleanup:
-    if (ctx) {
-        ly_ctx_destroy(ctx, NULL);
-    }
-    /* free mod */
-    close(fd);
-    free(data);
-    return 0;
 }
