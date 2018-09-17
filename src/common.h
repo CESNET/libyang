@@ -20,6 +20,7 @@
 
 #include "config.h"
 #include "log.h"
+#include "tree_schema.h"
 
 #if __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
 # define THREAD_LOCAL _Thread_local
@@ -31,13 +32,21 @@
 # error "Cannot define THREAD_LOCAL"
 #endif
 
+#define GETMACRO1(_1, NAME, ...) NAME
 #define GETMACRO2(_1, _2, NAME, ...) NAME
 #define GETMACRO3(_1, _2, _3, NAME, ...) NAME
 #define GETMACRO4(_1, _2, _3, _4, NAME, ...) NAME
 
 /*
- * logger
+ * If the compiler supports attribute to mark objects as hidden, mark all
+ * objects as hidden and export only objects explicitly marked to be part of
+ * the public API.
  */
+#define API __attribute__((visibility("default")))
+
+/******************************************************************************
+ * Logger
+ *****************************************************************************/
 
 /* internal logging options */
 enum int_log_opts {
@@ -89,7 +98,9 @@ void ly_vlog(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const void *
  */
 #define LY_CHECK_GOTO(COND, GOTO) if (COND) {goto GOTO;}
 #define LY_CHECK_ERR_GOTO(COND, ERR, GOTO) if (COND) {ERR; goto GOTO;}
-#define LY_CHECK_RET(COND, RETVAL) if (COND) {return RETVAL;}
+#define LY_CHECK_RET1(RETVAL) if (RETVAL != LY_SUCCESS) {return RETVAL;}
+#define LY_CHECK_RET2(COND, RETVAL) if (COND) {return RETVAL;}
+#define LY_CHECK_RET(...) GETMACRO2(__VA_ARGS__, LY_CHECK_RET2, LY_CHECK_RET1)(__VA_ARGS__)
 #define LY_CHECK_ERR_RET(COND, ERR, RETVAL) if (COND) {ERR; return RETVAL;}
 
 #define LY_CHECK_ARG_GOTO1(CTX, ARG, GOTO) if (!ARG) {LOGARG(CTX, ARG);goto GOTO;}
@@ -114,16 +125,117 @@ void ly_vlog(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const void *
 #define LY_VCODE_OOB         LYVE_SYNTAX_YANG, "Value \"%.*s\" is out of \"%s\" bounds."
 #define LY_VCODE_INDEV       LYVE_SYNTAX_YANG, "Deviate \"%s\" does not support keyword \"%s\"."
 
-/*
- * If the compiler supports attribute to mark objects as hidden, mark all
- * objects as hidden and export only objects explicitly marked to be part of
- * the public API.
- */
-#define API __attribute__((visibility("default")))
+/******************************************************************************
+ * Parsers
+ *****************************************************************************/
 
-/*
+enum yang_module_stmt {
+    Y_MOD_MODULE_HEADER,
+    Y_MOD_LINKAGE,
+    Y_MOD_META,
+    Y_MOD_REVISION,
+    Y_MOD_BODY
+};
+
+enum yang_arg {
+    Y_IDENTIF_ARG,
+    Y_PREF_IDENTIF_ARG,
+    Y_STR_ARG,
+    Y_MAYBE_STR_ARG
+};
+
+enum yang_keyword {
+    YANG_NONE = 0,
+    YANG_ACTION,
+    YANG_ANYDATA,
+    YANG_ANYXML,
+    YANG_ARGUMENT,
+    YANG_AUGMENT,
+    YANG_BASE,
+    YANG_BELONGS_TO,
+    YANG_BIT,
+    YANG_CASE,
+    YANG_CHOICE,
+    YANG_CONFIG,
+    YANG_CONTACT,
+    YANG_CONTAINER,
+    YANG_DEFAULT,
+    YANG_DESCRIPTION,
+    YANG_DEVIATE,
+    YANG_DEVIATION,
+    YANG_ENUM,
+    YANG_ERROR_APP_TAG,
+    YANG_ERROR_MESSAGE,
+    YANG_EXTENSION,
+    YANG_FEATURE,
+    YANG_FRACTION_DIGITS,
+    YANG_GROUPING,
+    YANG_IDENTITY,
+    YANG_IF_FEATURE,
+    YANG_IMPORT,
+    YANG_INCLUDE,
+    YANG_INPUT,
+    YANG_KEY,
+    YANG_LEAF,
+    YANG_LEAF_LIST,
+    YANG_LENGTH,
+    YANG_LIST,
+    YANG_MANDATORY,
+    YANG_MAX_ELEMENTS,
+    YANG_MIN_ELEMENTS,
+    YANG_MODIFIER,
+    YANG_MODULE,
+    YANG_MUST,
+    YANG_NAMESPACE,
+    YANG_NOTIFICATION,
+    YANG_ORDERED_BY,
+    YANG_ORGANIZATION,
+    YANG_OUTPUT,
+    YANG_PATH,
+    YANG_PATTERN,
+    YANG_POSITION,
+    YANG_PREFIX,
+    YANG_PRESENCE,
+    YANG_RANGE,
+    YANG_REFERENCE,
+    YANG_REFINE,
+    YANG_REQUIRE_INSTANCE,
+    YANG_REVISION,
+    YANG_REVISION_DATE,
+    YANG_RPC,
+    YANG_STATUS,
+    YANG_SUBMODULE,
+    YANG_TYPE,
+    YANG_TYPEDEF,
+    YANG_UNIQUE,
+    YANG_UNITS,
+    YANG_USES,
+    YANG_VALUE,
+    YANG_WHEN,
+    YANG_YANG_VERSION,
+    YANG_YIN_ELEMENT,
+
+    YANG_SEMICOLON,
+    YANG_LEFT_BRACE,
+    YANG_RIGHT_BRACE,
+    YANG_CUSTOM
+};
+
+/* list of the YANG statements strings */
+extern const char *const ly_stmt_list[];
+#define ly_stmt2str(STMT) ly_stmt_list[STMT]
+
+/* list of the extensions' substatements strings */
+extern const char *const lyext_substmt_list[];
+#define lyext_substmt2str(STMT) lyext_substmt_list[STMT]
+
+/* list of the deviate modifications strings */
+extern const char *const ly_devmod_list[];
+#define ly_devmod2str(TYPE) ly_devmod_list[TYPE]
+
+/******************************************************************************
  * Generic useful functions.
- */
+ *****************************************************************************/
 
 /**
  * @brief Wrapper for realloc() call. The only difference is that if it fails to
