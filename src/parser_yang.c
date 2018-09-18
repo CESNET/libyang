@@ -4285,8 +4285,6 @@ parse_deviate(struct ly_ctx *ctx, const char **data, struct lysp_deviate **devia
         d_dflts = &d_del->dflts;
         d_musts = &d_del->musts;
         d_flags = &d_del->flags;
-        d_min = &d_del->min;
-        d_max = &d_del->max;
         break;
     default:
         assert(0);
@@ -4309,6 +4307,7 @@ parse_deviate(struct ly_ctx *ctx, const char **data, struct lysp_deviate **devia
         case YANG_CONFIG:
             switch (dev_mod) {
             case LYS_DEV_NOT_SUPPORTED:
+            case LYS_DEV_DELETE:
                 LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_INDEV, ly_devmod2str(dev_mod), ly_stmt2str(kw));
                 return LY_EVALID;
             default:
@@ -4332,6 +4331,7 @@ parse_deviate(struct ly_ctx *ctx, const char **data, struct lysp_deviate **devia
         case YANG_MANDATORY:
             switch (dev_mod) {
             case LYS_DEV_NOT_SUPPORTED:
+            case LYS_DEV_DELETE:
                 LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_INDEV, ly_devmod2str(dev_mod), ly_stmt2str(kw));
                 return LY_EVALID;
             default:
@@ -4342,6 +4342,7 @@ parse_deviate(struct ly_ctx *ctx, const char **data, struct lysp_deviate **devia
         case YANG_MAX_ELEMENTS:
             switch (dev_mod) {
             case LYS_DEV_NOT_SUPPORTED:
+            case LYS_DEV_DELETE:
                 LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_INDEV, ly_devmod2str(dev_mod), ly_stmt2str(kw));
                 return LY_EVALID;
             default:
@@ -4352,6 +4353,7 @@ parse_deviate(struct ly_ctx *ctx, const char **data, struct lysp_deviate **devia
         case YANG_MIN_ELEMENTS:
             switch (dev_mod) {
             case LYS_DEV_NOT_SUPPORTED:
+            case LYS_DEV_DELETE:
                 LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_INDEV, ly_devmod2str(dev_mod), ly_stmt2str(kw));
                 return LY_EVALID;
             default:
@@ -4362,6 +4364,7 @@ parse_deviate(struct ly_ctx *ctx, const char **data, struct lysp_deviate **devia
         case YANG_MUST:
             switch (dev_mod) {
             case LYS_DEV_NOT_SUPPORTED:
+            case LYS_DEV_REPLACE:
                 LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_INDEV, ly_devmod2str(dev_mod), ly_stmt2str(kw));
                 return LY_EVALID;
             default:

@@ -364,8 +364,6 @@ struct lysp_deviate_del {
     const char **uniques;            /**< list of uniques specifications (NULL-terminated) */
     const char **dflts;              /**< list of default values (NULL-terminated) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
-    uint32_t min;                    /**< min-elements constraint */
-    uint32_t max;                    /**< max-elements constraint, 0 means unbounded */
 };
 
 struct lysp_deviate_rpl {
