@@ -781,7 +781,7 @@ WARN_LOGFILE           =
 # spaces. See also FILE_PATTERNS and EXTENSION_MAPPING
 # Note: If this tag is empty the current directory is searched.
 
-INPUT                  = @CMAKE_BINARY_DIR@/src/libyang.h \
+INPUT                  = ./src/libyang.h \
                          ./src/tree_schema.h \
                          ./src/log.h \
                          ./src/set.h \
