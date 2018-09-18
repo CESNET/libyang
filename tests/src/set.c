@@ -110,7 +110,7 @@ test_inval(void **state)
     ly_set_free(NULL, NULL);
     assert_string_equal(logbuf, "Invalid argument set (ly_set_free()).");
 
-    assert_null(ly_set_dup(NULL));
+    assert_null(ly_set_dup(NULL, NULL));
     assert_string_equal(logbuf, "Invalid argument set (ly_set_dup()).");
 
     assert_int_equal(-1, ly_set_add(NULL, NULL, 0));
@@ -118,9 +118,9 @@ test_inval(void **state)
     assert_int_equal(-1, ly_set_add(&set, NULL, 0));
     assert_string_equal(logbuf, "Invalid argument object (ly_set_add()).");
 
-    assert_int_equal(-1, ly_set_merge(NULL, NULL, 0));
+    assert_int_equal(-1, ly_set_merge(NULL, NULL, 0, NULL));
     assert_string_equal(logbuf, "Invalid argument trg (ly_set_merge()).");
-    assert_int_equal(0, ly_set_merge(&set, NULL, 0));
+    assert_int_equal(0, ly_set_merge(&set, NULL, 0, NULL));
     assert_string_equal(logbuf, "Invalid argument src (ly_set_merge()).");
 
     assert_int_equal(LY_EINVAL, ly_set_rm_index(NULL, 0));
@@ -136,10 +136,174 @@ test_inval(void **state)
     assert_string_equal(logbuf, "Invalid argument object (ly_set_rm()).");
 }
 
+static void
+test_duplication(void **state)
+{
+    (void) state; /* unused */
+
+    struct ly_set *orig, *new;
+    char *str;
+
+    orig = ly_set_new();
+    assert_non_null(orig);
+
+    /* add a testing object */
+    str = strdup("test string");
+    assert_non_null(str);
+    assert_int_equal(0, ly_set_add(orig, str, 0));
+
+    /* duplicate the set - without duplicator, so the new set will point to the same string */
+    new = ly_set_dup(orig, NULL);
+    assert_non_null(new);
+    assert_ptr_not_equal(orig, new);
+    assert_int_equal(orig->count, new->count);
+    assert_ptr_equal(orig->objs[0], new->objs[0]);
+
+    ly_set_free(new, NULL);
+
+    /* duplicate the set - with duplicator, so the new set will point to a different buffer with the same content */
+    new = ly_set_dup(orig, (void*(*)(void*))strdup);
+    assert_non_null(new);
+    assert_ptr_not_equal(orig, new);
+    assert_int_equal(orig->count, new->count);
+    assert_ptr_not_equal(orig->objs[0], new->objs[0]);
+    assert_string_equal(orig->objs[0], new->objs[0]);
+
+    /* cleanup */
+    ly_set_free(new, free);
+    ly_set_free(orig, free);
+}
+
+static void
+test_add(void **state)
+{
+    (void) state; /* unused */
+
+    unsigned int u, i;
+    char *str = "test string";
+    struct ly_set set;
+    memset(&set, 0, sizeof set);
+
+    /* add a testing object */
+    assert_int_equal(0, ly_set_add(&set, str, 0));
+
+    /* test avoiding data duplicities */
+    assert_int_equal(0, ly_set_add(&set, str, 0));
+    assert_int_equal(1, set.count);
+    assert_int_equal(1, ly_set_add(&set, str, LY_SET_OPT_USEASLIST));
+    assert_int_equal(2, set.count);
+
+    /* test array resizing */
+    u = set.size;
+    for (i = 2; i <= u; ++i) {
+        assert_int_equal(i, ly_set_add(&set, str, LY_SET_OPT_USEASLIST));
+    }
+    assert_true(u != set.size);
+
+    /* cleanup */
+    ly_set_erase(&set, NULL);
+}
+
+static void
+test_merge(void **state)
+{
+    (void) state; /* unused */
+
+    char *str1, *str2;
+    struct ly_set one, two;
+    memset(&one, 0, sizeof one);
+    memset(&two, 0, sizeof two);
+
+    str1 = strdup("string1");
+    str2 = strdup("string2");
+
+    /* fill first set
+     * - str1 is the same as in two, so it must not be freed! */
+    assert_int_equal(0, ly_set_add(&one, str1, 0));
+
+    /* fill second set */
+    assert_int_equal(0, ly_set_add(&two, str1, 0));
+    assert_int_equal(1, ly_set_add(&two, str2, 0));
+
+    /* merge with checking duplicities - only one item is added into one;
+     * also without duplicating data, so it must not be freed at the end */
+    assert_int_equal(1, ly_set_merge(&one, &two, 0, NULL));
+    assert_ptr_equal(one.objs[1], two.objs[1]);
+
+    /* clean and re-fill one (now duplicating str1, to allow testing duplicator) */
+    ly_set_clean(&one, NULL);
+    assert_int_equal(0, ly_set_add(&one, strdup(str1), 0));
+
+    /* merge without checking duplicities - two items are added into one;
+     * here also with duplicator */
+    assert_int_equal(2, ly_set_merge(&one, &two, LY_SET_OPT_USEASLIST, (void*(*)(void*))strdup));
+    assert_ptr_not_equal(one.objs[1], two.objs[0]);
+    assert_string_equal(one.objs[1], two.objs[0]);
+
+    /* cleanup */
+    ly_set_erase(&one, free);
+    ly_set_erase(&two, free);
+}
+
+static void
+test_rm(void **state)
+{
+    (void) state; /* unused */
+
+    char *str1, *str2, *str3;
+    struct ly_set set;
+    memset(&set, 0, sizeof set);
+
+    /* fill the set */
+    assert_int_equal(0, ly_set_add(&set, "string1", 0));
+    assert_int_equal(1, ly_set_add(&set, "string2", 0));
+    assert_int_equal(2, ly_set_add(&set, "string3", 0));
+
+    /* remove by index ... */
+    /* ... in the middle ... */
+    assert_int_equal(LY_SUCCESS, ly_set_rm_index(&set, 1));
+    assert_int_equal(2, set.count);
+    assert_string_not_equal("string2", set.objs[0]);
+    assert_string_not_equal("string2", set.objs[1]);
+    /* ... last .. */
+    assert_int_equal(LY_SUCCESS, ly_set_rm_index(&set, 1));
+    assert_int_equal(1, set.count);
+    assert_string_not_equal("string3", set.objs[0]);
+    /* ... first .. */
+    assert_int_equal(LY_SUCCESS, ly_set_rm_index(&set, 0));
+    assert_int_equal(0, set.count);
+
+    /* fill the set */
+    assert_int_equal(0, ly_set_add(&set, str1 = "string1", 0));
+    assert_int_equal(1, ly_set_add(&set, str2 = "string2", 0));
+    assert_int_equal(2, ly_set_add(&set, str3 = "string3", 0));
+
+    /* remove by pointer ... */
+    /* ... in the middle ... */
+    assert_int_equal(LY_SUCCESS, ly_set_rm(&set, str2));
+    assert_int_equal(2, set.count);
+    assert_string_not_equal("string2", set.objs[0]);
+    assert_string_not_equal("string2", set.objs[1]);
+    /* ... last .. */
+    assert_int_equal(LY_SUCCESS, ly_set_rm(&set, str3));
+    assert_int_equal(1, set.count);
+    assert_string_not_equal("string3", set.objs[0]);
+    /* ... first .. */
+    assert_int_equal(LY_SUCCESS, ly_set_rm(&set, str1));
+    assert_int_equal(0, set.count);
+
+    /* cleanup */
+    ly_set_erase(&set, NULL);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_basics),
+        cmocka_unit_test(test_duplication),
+        cmocka_unit_test(test_add),
+        cmocka_unit_test(test_merge),
+        cmocka_unit_test(test_rm),
         cmocka_unit_test_setup(test_inval, logger_setup),
     };
 
