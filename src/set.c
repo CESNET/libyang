@@ -81,9 +81,10 @@ ly_set_contains(const struct ly_set *set, void *object)
 }
 
 API struct ly_set *
-ly_set_dup(const struct ly_set *set)
+ly_set_dup(const struct ly_set *set, void *(*duplicator)(void *obj))
 {
     struct ly_set *new;
+    unsigned int u;
 
     LY_CHECK_ARG_RET(NULL, set, NULL);
 
@@ -93,7 +94,13 @@ ly_set_dup(const struct ly_set *set)
     new->size = set->size;
     new->objs = malloc(new->size * sizeof *(new->objs));
     LY_CHECK_ERR_RET(!new->objs, LOGMEM(NULL); free(new), NULL);
-    memcpy(new->objs, set->objs, new->size * sizeof *(new->objs));
+    if (duplicator) {
+        for (u = 0; u < set->count; ++u) {
+            new->objs[u] = duplicator(set->objs[u]);
+        }
+    } else {
+        memcpy(new->objs, set->objs, new->size * sizeof *(new->objs));
+    }
 
     return new;
 }
@@ -129,41 +136,28 @@ ly_set_add(struct ly_set *set, void *object, int options)
 }
 
 API int
-ly_set_merge(struct ly_set *trg, struct ly_set *src, int options)
+ly_set_merge(struct ly_set *trg, struct ly_set *src, int options, void *(*duplicator)(void *obj))
 {
-    unsigned int i, ret;
-    void **new;
+    unsigned int u, c, ret = 0;
+    int i;
+    void *obj;
 
     LY_CHECK_ARG_RET(NULL, trg, -1);
     LY_CHECK_ARG_RET(NULL, src, 0);
 
-    if (!(options & LY_SET_OPT_USEASLIST)) {
-        /* remove duplicates */
-        i = 0;
-        while (i < src->count) {
-            if (ly_set_contains(trg, src->objs[i]) > -1) {
-                ly_set_rm_index(src, i);
-            } else {
-                ++i;
-            }
+    for (u = 0; u < src->count; ++u) {
+        if (duplicator) {
+            obj = duplicator(src->objs[u]);
+        } else {
+            obj = src->objs[u];
+        }
+        c = trg->count;
+        i = ly_set_add(trg, obj, options);
+        if (i > 0 && (unsigned int)i == c) {
+            ++ret;
         }
     }
 
-    /* allocate more memory if needed */
-    if (trg->size < trg->count + src->count) {
-        new = realloc(trg->objs, (trg->count + src->count) * sizeof *(trg->objs));
-        LY_CHECK_ERR_RET(!new, LOGMEM(NULL), -1);
-        trg->size = trg->count + src->count;
-        trg->objs = new;
-    }
-
-    /* copy contents from src into trg */
-    memcpy(trg->objs + trg->count, src->objs, src->count * sizeof *(src->objs));
-    ret = src->count;
-    trg->count += ret;
-
-    /* cleanup */
-    ly_set_free(src, NULL);
     return ret;
 }
 

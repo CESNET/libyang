@@ -68,9 +68,12 @@ struct ly_set *ly_set_new(void);
  * @brief Duplicate the existing set.
  *
  * @param[in] set Original set to duplicate
+ * @param[in] duplicator Optional pointer to function that duplicates the objects stored
+ * in the original set. If not provided, the new set points to the exact same objects as
+ * the original set.
  * @return Duplication of the original set.
  */
-struct ly_set *ly_set_dup(const struct ly_set *set);
+struct ly_set *ly_set_dup(const struct ly_set *set, void *(*duplicator)(void *obj));
 
 /**
  * @brief Add a ::lyd_node or ::lys_node object into the set
@@ -91,15 +94,17 @@ int ly_set_add(struct ly_set *set, void *object, int options);
  * @brief Add all objects from \p src to \p trg.
  *
  * Since it is a set, the function checks for duplicities.
- * After success, \p src is completely freed.
  *
  * @param[in] trg Target (result) set.
  * @param[in] src Source set.
  * @param[in] options Options to change behavior of the function. Accepted options are:
- * - #LY_SET_OPT_USEASLIST - do not check for duplicities
+ * - #LY_SET_OPT_USEASLIST - add without checking for duplicities
+ * @param[in] duplicator Optional pointer to function that duplicates the objects being added
+ * from \p src into \p trg set. If not provided, the \p trg set will point to the exact same
+ * objects as the \p src set.
  * @return -1 on failure, number of objects added into \p trg on success.
  */
-int ly_set_merge(struct ly_set *trg, struct ly_set *src, int options);
+int ly_set_merge(struct ly_set *trg, struct ly_set *src, int options, void *(*duplicator)(void *obj));
 
 /**
  * @brief Get know if the set contains the specified object.
