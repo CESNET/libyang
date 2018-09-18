@@ -28,6 +28,18 @@
 #include "context.h"
 #include "libyang.h"
 
+/**
+ * @brief Loop through all substatements providing, return if there are none.
+ *
+ * @param[in] CTX libyang context for logging.
+ * @param[in] DATA Raw data to read from.
+ * @param[out] KW YANG keyword read.
+ * @param[out] WORD Pointer to the keyword itself.
+ * @param[out] WORD_LEN Length of the keyword.
+ * @param[out] ERR Variable for error storing.
+ *
+ * @return In case there are no substatements or a fatal error encountered.
+ */
 #define YANG_READ_SUBSTMT_FOR(CTX, DATA, KW, WORD, WORD_LEN, ERR) \
     ERR = get_keyword(CTX, DATA, &KW, &WORD, &WORD_LEN); \
     LY_CHECK_RET(ERR); \
@@ -50,6 +62,19 @@ static LY_ERR parse_case(struct ly_ctx *ctx, const char **data, struct lysp_node
 static LY_ERR parse_list(struct ly_ctx *ctx, const char **data, struct lysp_node **siblings);
 static LY_ERR parse_grouping(struct ly_ctx *ctx, const char **data, struct lysp_grp **groupings);
 
+/**
+ * @brief Add another character to dynamic buffer, a low-level function.
+ *
+ * Enlarge if needed. Does not update \p buf_used !
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in] c Character to store.
+ * @param[in,out] buf Buffer to use, can be moved by realloc().
+ * @param[in,out] buf_len Current size of the buffer.
+ * @param[in] buf_used Currently used characters of the buffer.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 buf_add_char(struct ly_ctx *ctx, char c, char **buf, int *buf_len, int buf_used)
 {
@@ -63,6 +88,20 @@ buf_add_char(struct ly_ctx *ctx, char c, char **buf, int *buf_len, int buf_used)
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Store a character. It depends whether in a dynamically-allocated buffer or just as a pointer to the data.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in] c Pointer to the character to store.
+ * @param[out] word_p Word pointer. If buffer (\p word_b) was not yet needed, it is just a pointer to the first
+ * stored character. If buffer was needed (\p word_b is non-NULL or \p need_buf is set), it is pointing to the buffer.
+ * @param[out] word_len Current length of the word pointed to by \p word_p.
+ * @param[in,out] word_b Word buffer. Is kept NULL as long as it is not needed (word is a substring of the data).
+ * @param[in,out] buf_len Current length of \p word_b.
+ * @param[in] need_buf Whether we need a buffer or not.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 buf_store_char(struct ly_ctx *ctx, const char *c, char **word_p, int *word_len, char **word_b, int *buf_len, int need_buf)
 {
@@ -101,6 +140,17 @@ buf_store_char(struct ly_ctx *ctx, const char *c, char **word_p, int *word_len, 
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Check that a character is correct and valid.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in] c Character to check.
+ * @param[in] arg Type of YANG keyword argument expected. Affects character validity.
+ * @param[in] first Whether the character is the first of the word. May affect validity.
+ * @param[in,out] prefix Set to 0 on first call. Used for internal tracking of a prefix presence.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 check_char(struct ly_ctx *ctx, char c, enum yang_arg arg, int first, int *prefix)
 {
@@ -141,6 +191,15 @@ check_char(struct ly_ctx *ctx, char c, enum yang_arg arg, int first, int *prefix
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Skip YANG comment in data.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] comment 1 for a one-line comment, 2 for a block comment.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 skip_comment(struct ly_ctx *ctx, const char **data, int comment)
 {
@@ -180,6 +239,22 @@ skip_comment(struct ly_ctx *ctx, const char **data, int comment)
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Read a quoted string from data.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] arg Type of YANG keyword argument expected.
+ * @param[out] word_p Pointer to the read quoted string.
+ * @param[out] word_b Pointer to a dynamically-allocated buffer holding the read quoted string. If not needed,
+ * set to NULL. Otherwise equal to \p word_p.
+ * @param[out] word_len Length of the read quoted string.
+ * @param[out] buf_len Length of the dynamically-allocated buffer \p word_b.
+ * @param[in] indent Current indent (number of YANG spaces). Needed for correct multi-line string
+ * indenation in the final quoted string.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 read_qstring(struct ly_ctx *ctx, const char **data, enum yang_arg arg, char **word_p, char **word_b, int *word_len,
              int *buf_len, int indent)
@@ -366,12 +441,18 @@ string_end:
     return LY_SUCCESS;
 }
 
-/* read another word - character sequence without whitespaces (logs directly)
- * - there can be whitespaces if they are a part of string
- * - strings are always returned separately even if not separated by whitespaces
- * - strings are returned without ' or "
- * - strings divided by + are returned concatenated
- * - comments are skipped
+/**
+ * @brief Get another YANG string from the raw data.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] arg Type of YANG keyword argument expected.
+ * @param[out] word_p Pointer to the read string.
+ * @param[out] word_b Pointer to a dynamically-allocated buffer holding the read string. If not needed,
+ * set to NULL. Otherwise equal to \p word_p.
+ * @param[out] word_len Length of the read string.
+ *
+ * @return LY_ERR values.
  */
 static LY_ERR
 get_string(struct ly_ctx *ctx, const char **data, enum yang_arg arg, char **word_p, char **word_b, int *word_len)
@@ -484,6 +565,17 @@ str_end:
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Get another YANG keyword from the raw data.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[out] kw YANG keyword read.
+ * @param[out] word_p Pointer to the keyword in the data. Useful for extension instances.
+ * @param[out] word_len Length of the keyword in the data. Useful for extension instances.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 get_keyword(struct ly_ctx *ctx, const char **data, enum yang_keyword *kw, char **word_p, int *word_len)
 {
@@ -946,6 +1038,17 @@ keyword_start:
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Parse extension instance substatements.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] word Extension instance substatement name (keyword).
+ * @param[in] word_len Extension instance substatement name length.
+ * @param[in,out] child Children of this extension instance to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_ext_substmt(struct ly_ctx *ctx, const char **data, char *word, int word_len,
                   struct lysp_stmt **child)
@@ -989,6 +1092,19 @@ parse_ext_substmt(struct ly_ctx *ctx, const char **data, char *word, int word_le
     return ret;
 }
 
+/**
+ * @brief Parse extension instance.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] ext_name Extension instance substatement name (keyword).
+ * @param[in] ext_name_len Extension instance substatement name length.
+ * @param[in] insubstmt Type of the keyword this extension instance is a substatement of.
+ * @param[in] insubstmt_index Index of the keyword instance this extension instance is a substatement of.
+ * @param[in,out] exts Extension instances to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_ext(struct ly_ctx *ctx, const char **data, const char *ext_name, int ext_name_len, LYEXT_SUBSTMT insubstmt,
           uint32_t insubstmt_index, struct lysp_ext_instance **exts)
@@ -1027,6 +1143,20 @@ parse_ext(struct ly_ctx *ctx, const char **data, const char *ext_name, int ext_n
     return ret;
 }
 
+/**
+ * @brief Parse a generic text field without specific constraints. Those are contact, organization,
+ * description, etc...
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] substmt Type of this substatement.
+ * @param[in] substmt_index Index of this substatement.
+ * @param[in,out] value Place to store the parsed value.
+ * @param[in] arg Type of the YANG keyword argument (of the value).
+ * @param[in,out] exts Extension instances to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_text_field(struct ly_ctx *ctx, const char **data, LYEXT_SUBSTMT substmt, uint32_t substmt_index,
                  const char **value, enum yang_arg arg, struct lysp_ext_instance **exts)
@@ -1070,6 +1200,15 @@ parse_text_field(struct ly_ctx *ctx, const char **data, LYEXT_SUBSTMT substmt, u
     return ret;
 }
 
+/**
+ * @brief Parse the yang-version statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] mod Module to store the parsed information in.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_yangversion(struct ly_ctx *ctx, const char **data, struct lysp_module *mod)
 {
@@ -1116,6 +1255,17 @@ parse_yangversion(struct ly_ctx *ctx, const char **data, struct lysp_module *mod
     return ret;
 }
 
+/**
+ * @brief Parse the belongs-to statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] belongsto Place to store the parsed value.
+ * @param[in,out] prefix Place to store the parsed belongs-to prefix value.
+ * @param[in,out] exts Extension instances to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_belongsto(struct ly_ctx *ctx, const char **data, const char **belongsto, const char **prefix, struct lysp_ext_instance **exts)
 {
@@ -1166,6 +1316,16 @@ parse_belongsto(struct ly_ctx *ctx, const char **data, const char **belongsto, c
     return ret;
 }
 
+/**
+ * @brief Parse the revision-date statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] rev Array to store the parsed value in.
+ * @param[in,out] exts Extension instances to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_revisiondate(struct ly_ctx *ctx, const char **data, char *rev, struct lysp_ext_instance **exts)
 {
@@ -1211,6 +1371,15 @@ parse_revisiondate(struct ly_ctx *ctx, const char **data, char *rev, struct lysp
     return ret;
 }
 
+/**
+ * @brief Parse the include statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] includes Parsed includes to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_include(struct ly_ctx *ctx, const char **data, struct lysp_include **includes)
 {
@@ -1259,6 +1428,15 @@ parse_include(struct ly_ctx *ctx, const char **data, struct lysp_include **inclu
     return ret;
 }
 
+/**
+ * @brief Parse the import statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] imports Parsed imports to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_import(struct ly_ctx *ctx, const char **data, struct lysp_import **imports)
 {
@@ -1316,6 +1494,15 @@ parse_import(struct ly_ctx *ctx, const char **data, struct lysp_import **imports
     return ret;
 }
 
+/**
+ * @brief Parse the revision statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] revs Parsed revisions to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_revision(struct ly_ctx *ctx, const char **data, struct lysp_revision **revs)
 {
@@ -1363,6 +1550,18 @@ parse_revision(struct ly_ctx *ctx, const char **data, struct lysp_revision **rev
     return ret;
 }
 
+/**
+ * @brief Parse a generic text field that can have more instances such as base.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] substmt Type of this substatement.
+ * @param[in,out] texts Parsed values to add to.
+ * @param[in] arg Type of the expected argument.
+ * @param[in,out] exts Extension instances to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_text_fields(struct ly_ctx *ctx, const char **data, LYEXT_SUBSTMT substmt, const char ***texts, enum yang_arg arg,
                   struct lysp_ext_instance **exts)
@@ -1405,6 +1604,16 @@ parse_text_fields(struct ly_ctx *ctx, const char **data, LYEXT_SUBSTMT substmt, 
     return ret;
 }
 
+/**
+ * @brief Parse the config statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] flags Flags to add to.
+ * @param[in,out] exts Extension instances to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_config(struct ly_ctx *ctx, const char **data, uint16_t *flags, struct lysp_ext_instance **exts)
 {
@@ -1451,6 +1660,16 @@ parse_config(struct ly_ctx *ctx, const char **data, uint16_t *flags, struct lysp
     return ret;
 }
 
+/**
+ * @brief Parse the mandatory statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] flags Flags to add to.
+ * @param[in,out] exts Extension instances to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_mandatory(struct ly_ctx *ctx, const char **data, uint16_t *flags, struct lysp_ext_instance **exts)
 {
@@ -1497,6 +1716,16 @@ parse_mandatory(struct ly_ctx *ctx, const char **data, uint16_t *flags, struct l
     return ret;
 }
 
+/**
+ * @brief Parse a restriction such as range or length.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] restr_kw Type of this particular restriction.
+ * @param[in,out] exts Extension instances to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_restr(struct ly_ctx *ctx, const char **data, enum yang_keyword restr_kw, struct lysp_restr *restr)
 {
@@ -1545,6 +1774,16 @@ parse_restr(struct ly_ctx *ctx, const char **data, enum yang_keyword restr_kw, s
     return ret;
 }
 
+/**
+ * @brief Parse a restriction that can have more instances such as must.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] restr_kw Type of this particular restriction.
+ * @param[in,out] restrs Restrictions to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_restrs(struct ly_ctx *ctx, const char **data, enum yang_keyword restr_kw, struct lysp_restr **restrs)
 {
@@ -1555,6 +1794,16 @@ parse_restrs(struct ly_ctx *ctx, const char **data, enum yang_keyword restr_kw, 
     return parse_restr(ctx, data, restr_kw, restr);
 }
 
+/**
+ * @brief Parse the status statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] flags Flags to add to.
+ * @param[in,out] exts Extension instances to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_status(struct ly_ctx *ctx, const char **data, uint16_t *flags, struct lysp_ext_instance **exts)
 {
@@ -1603,6 +1852,15 @@ parse_status(struct ly_ctx *ctx, const char **data, uint16_t *flags, struct lysp
     return ret;
 }
 
+/**
+ * @brief Parse the when statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] when_p When pointer to parse to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_when(struct ly_ctx *ctx, const char **data, struct lysp_when **when_p)
 {
@@ -1655,6 +1913,16 @@ parse_when(struct ly_ctx *ctx, const char **data, struct lysp_when **when_p)
     return ret;
 }
 
+/**
+ * @brief Parse the anydata or anyxml statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] kw Type of this particular keyword.
+ * @param[in,out] siblings Siblings to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_any(struct ly_ctx *ctx, const char **data, enum yang_keyword kw, struct lysp_node **siblings)
 {
@@ -1731,6 +1999,18 @@ parse_any(struct ly_ctx *ctx, const char **data, enum yang_keyword kw, struct ly
     return ret;
 }
 
+/**
+ * @brief Parse the value or position statement. Substatement of type enum statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] val_kw Type of this particular keyword.
+ * @param[in,out] value Value to write to.
+ * @param[in,out] flags Flags to write to.
+ * @param[in,out] exts Extension instances to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_type_enum_value_pos(struct ly_ctx *ctx, const char **data, enum yang_keyword val_kw, int64_t *value, uint16_t *flags,
                           struct lysp_ext_instance **exts)
@@ -1800,6 +2080,16 @@ parse_type_enum_value_pos(struct ly_ctx *ctx, const char **data, enum yang_keywo
     return ret;
 }
 
+/**
+ * @brief Parse the enum or bit statement. Substatement of type statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] enum_kw Type of this particular keyword.
+ * @param[in,out] enums Enums or bits to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_type_enum(struct ly_ctx *ctx, const char **data, enum yang_keyword enum_kw, struct lysp_type_enum **enums)
 {
@@ -1855,6 +2145,16 @@ parse_type_enum(struct ly_ctx *ctx, const char **data, enum yang_keyword enum_kw
     return ret;
 }
 
+/**
+ * @brief Parse the fraction-digits statement. Substatement of type statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] fracdig Value to write to.
+ * @param[in,out] exts Extension instances to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_type_fracdigits(struct ly_ctx *ctx, const char **data, uint8_t *fracdig, struct lysp_ext_instance **exts)
 {
@@ -1913,6 +2213,17 @@ parse_type_fracdigits(struct ly_ctx *ctx, const char **data, uint8_t *fracdig, s
     return ret;
 }
 
+/**
+ * @brief Parse the require-instance statement. Substatement of type statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] reqinst Value to write to.
+ * @param[in,out] flags Flags to write to.
+ * @param[in,out] exts Extension instances to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_type_reqinstance(struct ly_ctx *ctx, const char **data, uint8_t *reqinst, uint16_t *flags,
                        struct lysp_ext_instance **exts)
@@ -1959,6 +2270,16 @@ parse_type_reqinstance(struct ly_ctx *ctx, const char **data, uint8_t *reqinst, 
     return ret;
 }
 
+/**
+ * @brief Parse the modifier statement. Substatement of type pattern statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] pat Value to write to.
+ * @param[in,out] exts Extension instances to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_type_pattern_modifier(struct ly_ctx *ctx, const char **data, const char **pat, struct lysp_ext_instance **exts)
 {
@@ -2011,6 +2332,15 @@ parse_type_pattern_modifier(struct ly_ctx *ctx, const char **data, const char **
     return ret;
 }
 
+/**
+ * @brief Parse the pattern statement. Substatement of type statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] patterns Restrictions to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_type_pattern(struct ly_ctx *ctx, const char **data, struct lysp_restr **patterns)
 {
@@ -2071,6 +2401,15 @@ parse_type_pattern(struct ly_ctx *ctx, const char **data, struct lysp_restr **pa
     return ret;
 }
 
+/**
+ * @brief Parse the type statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] type Type to wrote to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_type(struct ly_ctx *ctx, const char **data, struct lysp_type *type)
 {
@@ -2160,6 +2499,15 @@ parse_type(struct ly_ctx *ctx, const char **data, struct lysp_type *type)
     return ret;
 }
 
+/**
+ * @brief Parse the leaf statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] siblings Siblings to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_leaf(struct ly_ctx *ctx, const char **data, struct lysp_node **siblings)
 {
@@ -2251,6 +2599,17 @@ parse_leaf(struct ly_ctx *ctx, const char **data, struct lysp_node **siblings)
     return ret;
 }
 
+/**
+ * @brief Parse the max-elements statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] max Value to write to.
+ * @param[in,out] flags Flags to write to.
+ * @param[in,out] exts Extension instances to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_maxelements(struct ly_ctx *ctx, const char **data, uint32_t *max, uint16_t *flags, struct lysp_ext_instance **exts)
 {
@@ -2313,6 +2672,17 @@ parse_maxelements(struct ly_ctx *ctx, const char **data, uint32_t *max, uint16_t
     return ret;
 }
 
+/**
+ * @brief Parse the min-elements statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] min Value to write to.
+ * @param[in,out] flags Flags to write to.
+ * @param[in,out] exts Extension instances to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_minelements(struct ly_ctx *ctx, const char **data, uint32_t *min, uint16_t *flags, struct lysp_ext_instance **exts)
 {
@@ -2372,6 +2742,16 @@ parse_minelements(struct ly_ctx *ctx, const char **data, uint32_t *min, uint16_t
     return ret;
 }
 
+/**
+ * @brief Parse the ordered-by statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] flags Flags to write to.
+ * @param[in,out] exts Extension instances to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_orderedby(struct ly_ctx *ctx, const char **data, uint16_t *flags, struct lysp_ext_instance **exts)
 {
@@ -2418,6 +2798,15 @@ parse_orderedby(struct ly_ctx *ctx, const char **data, uint16_t *flags, struct l
     return ret;
 }
 
+/**
+ * @brief Parse the leaf-list statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] siblings Siblings to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_leaflist(struct ly_ctx *ctx, const char **data, struct lysp_node **siblings)
 {
@@ -2515,6 +2904,15 @@ parse_leaflist(struct ly_ctx *ctx, const char **data, struct lysp_node **sibling
     return ret;
 }
 
+/**
+ * @brief Parse the refine statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] refines Refines to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_refine(struct ly_ctx *ctx, const char **data, struct lysp_refine **refines)
 {
@@ -2584,6 +2982,15 @@ parse_refine(struct ly_ctx *ctx, const char **data, struct lysp_refine **refines
     return ret;
 }
 
+/**
+ * @brief Parse the typedef statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] typedefs Typedefs to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_typedef(struct ly_ctx *ctx, const char **data, struct lysp_tpdf **typedefs)
 {
@@ -2648,6 +3055,16 @@ parse_typedef(struct ly_ctx *ctx, const char **data, struct lysp_tpdf **typedefs
     return ret;
 }
 
+/**
+ * @brief Parse the input or output statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] kw Type of this particular keyword
+ * @param[in,out] inout_p Input/output pointer to write to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_inout(struct ly_ctx *ctx, const char **data, enum yang_keyword kw, struct lysp_action_inout **inout_p)
 {
@@ -2717,6 +3134,15 @@ parse_inout(struct ly_ctx *ctx, const char **data, enum yang_keyword kw, struct 
     return ret;
 }
 
+/**
+ * @brief Parse the action statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] actions Actions to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_action(struct ly_ctx *ctx, const char **data, struct lysp_action **actions)
 {
@@ -2782,6 +3208,15 @@ parse_action(struct ly_ctx *ctx, const char **data, struct lysp_action **actions
     return ret;
 }
 
+/**
+ * @brief Parse the notification statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] notifs Notifications to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_notif(struct ly_ctx *ctx, const char **data, struct lysp_notif **notifs)
 {
@@ -2866,6 +3301,15 @@ parse_notif(struct ly_ctx *ctx, const char **data, struct lysp_notif **notifs)
     return ret;
 }
 
+/**
+ * @brief Parse the grouping statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] groupings Groupings to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_grouping(struct ly_ctx *ctx, const char **data, struct lysp_grp **groupings)
 {
@@ -2950,6 +3394,15 @@ parse_grouping(struct ly_ctx *ctx, const char **data, struct lysp_grp **grouping
     return ret;
 }
 
+/**
+ * @brief Parse the refine statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] augments Augments to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_augment(struct ly_ctx *ctx, const char **data, struct lysp_augment **augments)
 {
@@ -3037,6 +3490,15 @@ parse_augment(struct ly_ctx *ctx, const char **data, struct lysp_augment **augme
     return ret;
 }
 
+/**
+ * @brief Parse the uses statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] siblings Siblings to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_uses(struct ly_ctx *ctx, const char **data, struct lysp_node **siblings)
 {
@@ -3111,6 +3573,15 @@ parse_uses(struct ly_ctx *ctx, const char **data, struct lysp_node **siblings)
     return ret;
 }
 
+/**
+ * @brief Parse the case statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] siblings Siblings to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_case(struct ly_ctx *ctx, const char **data, struct lysp_node **siblings)
 {
@@ -3201,6 +3672,15 @@ parse_case(struct ly_ctx *ctx, const char **data, struct lysp_node **siblings)
     return ret;
 }
 
+/**
+ * @brief Parse the choice statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] siblings Siblings to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_choice(struct ly_ctx *ctx, const char **data, struct lysp_node **siblings)
 {
@@ -3300,6 +3780,15 @@ parse_choice(struct ly_ctx *ctx, const char **data, struct lysp_node **siblings)
     return ret;
 }
 
+/**
+ * @brief Parse the container statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] siblings Siblings to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_container(struct ly_ctx *ctx, const char **data, struct lysp_node **siblings)
 {
@@ -3412,6 +3901,15 @@ parse_container(struct ly_ctx *ctx, const char **data, struct lysp_node **siblin
     return ret;
 }
 
+/**
+ * @brief Parse the list statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] siblings Siblings to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_list(struct ly_ctx *ctx, const char **data, struct lysp_node **siblings)
 {
@@ -3536,6 +4034,16 @@ parse_list(struct ly_ctx *ctx, const char **data, struct lysp_node **siblings)
     return ret;
 }
 
+/**
+ * @brief Parse the yin-element statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] flags Flags to write to.
+ * @param[in,out] exts Extension instances to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_yinelement(struct ly_ctx *ctx, const char **data, uint16_t *flags, struct lysp_ext_instance **exts)
 {
@@ -3582,6 +4090,17 @@ parse_yinelement(struct ly_ctx *ctx, const char **data, uint16_t *flags, struct 
     return ret;
 }
 
+/**
+ * @brief Parse the yin-element statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] argument Value to write to.
+ * @param[in,out] flags Flags to write to.
+ * @param[in,out] exts Extension instances to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_argument(struct ly_ctx *ctx, const char **data, const char **argument, uint16_t *flags, struct lysp_ext_instance **exts)
 {
@@ -3626,6 +4145,15 @@ parse_argument(struct ly_ctx *ctx, const char **data, const char **argument, uin
     return ret;
 }
 
+/**
+ * @brief Parse the extension statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] extensions Extensions to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_extension(struct ly_ctx *ctx, const char **data, struct lysp_ext **extensions)
 {
@@ -3677,6 +4205,15 @@ parse_extension(struct ly_ctx *ctx, const char **data, struct lysp_ext **extensi
     return ret;
 }
 
+/**
+ * @brief Parse the deviate statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] deviates Deviates to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_deviate(struct ly_ctx *ctx, const char **data, struct lysp_deviate **deviates)
 {
@@ -3881,6 +4418,15 @@ parse_deviate(struct ly_ctx *ctx, const char **data, struct lysp_deviate **devia
     return ret;
 }
 
+/**
+ * @brief Parse the deviation statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] deviations Deviations to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_deviation(struct ly_ctx *ctx, const char **data, struct lysp_deviation **deviations)
 {
@@ -3935,6 +4481,15 @@ parse_deviation(struct ly_ctx *ctx, const char **data, struct lysp_deviation **d
     return ret;
 }
 
+/**
+ * @brief Parse the feature statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] features Features to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_feature(struct ly_ctx *ctx, const char **data, struct lysp_feature **features)
 {
@@ -3986,6 +4541,15 @@ parse_feature(struct ly_ctx *ctx, const char **data, struct lysp_feature **featu
     return ret;
 }
 
+/**
+ * @brief Parse the identity statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] identities Identities to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_identity(struct ly_ctx *ctx, const char **data, struct lysp_ident **identities)
 {
@@ -4040,6 +4604,15 @@ parse_identity(struct ly_ctx *ctx, const char **data, struct lysp_ident **identi
     return ret;
 }
 
+/**
+ * @brief Parse the module or submodule statement.
+ *
+ * @param[in] ctx libyang context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] mod Module to write to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 parse_sub_module(struct ly_ctx *ctx, const char **data, struct lysp_module *mod)
 {
