@@ -113,9 +113,9 @@ int ly_set_contains(const struct ly_set *set, void *object);
  * @brief Remove all objects from the set, but keep the set container for further use.
  *
  * @param[in] set Set to clean.
- * @return LY_ERR return value.
+ * @param[in] destructor Optional function to free the objects in the set.
  */
-LY_ERR ly_set_clean(struct ly_set *set);
+void ly_set_clean(struct ly_set *set, void (*destructor)(void *obj));
 
 /**
  * @brief Remove an object from the set.
@@ -142,11 +142,22 @@ LY_ERR ly_set_rm(struct ly_set *set, void *object);
 LY_ERR ly_set_rm_index(struct ly_set *set, unsigned int index);
 
 /**
- * @brief Free the ::ly_set data. Frees only the set structure content, not the referred data.
+ * @brief Free the ::ly_set data. If the destructor is not provided, it frees only the set structure
+ * content, not the referred data.
  *
  * @param[in] set The set to be freed.
+ * @param[in] destructor Optional function to free the objects in the set.
  */
-void ly_set_free(struct ly_set *set);
+void ly_set_free(struct ly_set *set, void (*destructor)(void *obj));
+
+/**
+ * @brief Alternative to the ly_set_free() for static ::ly_set objects - in contrast to ly_set_free()
+ * it does not free the provided ::ly_set object.
+ *
+ * @param[in] set The set to be erased.
+ * @param[in] destructor Optional function to free the objects in the set.
+ */
+void ly_set_erase(struct ly_set *set, void (*destructor)(void *obj));
 
 /** @} lyset */
 

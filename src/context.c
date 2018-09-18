@@ -111,10 +111,7 @@ ly_ctx_unset_searchdirs(struct ly_ctx *ctx, int index)
         return ly_set_rm_index(&ctx->search_paths, index);
     } else {
         /* remove them all */
-        for (; ctx->search_paths.count; ctx->search_paths.count--) {
-            free(ctx->search_paths.objs[ctx->search_paths.count - 1]);
-        }
-        free(ctx->search_paths.objs);
+        ly_set_erase(&ctx->search_paths, free);
         memset(&ctx->search_paths, 0, sizeof ctx->search_paths);
     }
 
@@ -280,7 +277,7 @@ ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lysc_
     free(ctx->list.objs);
 
     /* search paths list */
-    ly_ctx_unset_searchdirs(ctx, -1);
+    ly_set_erase(&ctx->search_paths, free);
 
     /* clean the error list */
     ly_err_clean(ctx, 0);

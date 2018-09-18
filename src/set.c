@@ -26,11 +26,39 @@ ly_set_new(void)
 }
 
 API void
-ly_set_free(struct ly_set *set)
+ly_set_clean(struct ly_set *set, void (*destructor)(void *obj))
+{
+    unsigned int u;
+
+    LY_CHECK_ARG_RET(NULL, set,);
+
+    if (destructor) {
+        for (u = 0; u < set->count; ++u) {
+            destructor(set->objs[u]);
+        }
+    }
+    set->count = 0;
+}
+
+API void
+ly_set_erase(struct ly_set *set, void (*destructor)(void *obj))
 {
     LY_CHECK_ARG_RET(NULL, set,);
 
+    ly_set_clean(set, destructor);
+
     free(set->objs);
+    set->size = 0;
+    set->objs = NULL;
+}
+
+API void
+ly_set_free(struct ly_set *set, void (*destructor)(void *obj))
+{
+    LY_CHECK_ARG_RET(NULL, set,);
+
+    ly_set_erase(set, destructor);
+
     free(set);
 }
 
@@ -135,7 +163,7 @@ ly_set_merge(struct ly_set *trg, struct ly_set *src, int options)
     trg->count += ret;
 
     /* cleanup */
-    ly_set_free(src);
+    ly_set_free(src, NULL);
     return ret;
 }
 
@@ -176,11 +204,3 @@ ly_set_rm(struct ly_set *set, void *object)
     return ly_set_rm_index(set, i);
 }
 
-API LY_ERR
-ly_set_clean(struct ly_set *set)
-{
-    LY_CHECK_ARG_RET(NULL, set, LY_EINVAL);
-
-    set->count = 0;
-    return LY_SUCCESS;
-}
