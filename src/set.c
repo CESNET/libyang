@@ -171,7 +171,7 @@ API LY_ERR
 ly_set_rm_index(struct ly_set *set, unsigned int index)
 {
     LY_CHECK_ARG_RET(NULL, set, LY_EINVAL);
-    LY_CHECK_ERR_RET(((index + 1) > set->count), LOGARG(NULL, set), LY_EINVAL);
+    LY_CHECK_ERR_RET(((index + 1) > set->count), LOGARG(NULL, index), LY_EINVAL);
 
     if (index == set->count - 1) {
         /* removing last item in set */
@@ -199,7 +199,7 @@ ly_set_rm(struct ly_set *set, void *object)
             break;
         }
     }
-    LY_CHECK_ERR_RET((i == set->count), LOGARG(NULL, set), LY_EINVAL); /* object is not in set */
+    LY_CHECK_ERR_RET((i == set->count), LOGARG(NULL, object), LY_EINVAL); /* object is not in set */
 
     return ly_set_rm_index(set, i);
 }
