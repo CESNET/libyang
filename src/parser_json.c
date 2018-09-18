@@ -518,7 +518,7 @@ repeat:
         len += skip_ws(&data[len]);
         if (data[len] == ',') {
             /* various validation checks */
-            if (lyv_data_context((struct lyd_node*)leaf, options, unres) ||
+            if (lyv_data_context((struct lyd_node*)leaf, options | LYD_OPT_TRUSTED, unres) ||
                     lyv_data_content((struct lyd_node*)leaf, options, unres) ||
                     lyv_multicases((struct lyd_node*)leaf, NULL, first_sibling, 0, NULL)) {
                 return 0;
@@ -1213,7 +1213,7 @@ attr_repeat:
 
             if (data[len] == ',') {
                 /* various validation checks */
-                if (lyv_data_context(list, options, unres) ||
+                if (lyv_data_context(list, options | LYD_OPT_TRUSTED, unres) ||
                         lyv_data_content(list, options, unres) ||
                         lyv_multicases(list, NULL, prev ? &first_sibling : NULL, 0, NULL)) {
                     goto error;
