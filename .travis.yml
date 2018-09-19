@@ -29,8 +29,9 @@ branches:
 
 before_install:
   - eval "${MATRIX_EVAL}"
-  - git clone git://git.cryptomilk.org/projects/cmocka.git
-  - cd cmocka && mkdir build && cd build
+  - wget https://cmocka.org/files/1.1/cmocka-1.1.2.tar.xz
+  - tar -xf cmocka-1.1.2.tar.xz
+  - cd cmocka-1.1.2; mkdir build; cd build
   - cmake .. && make -j2 && sudo make install
   - cd ../..
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew update; fi
