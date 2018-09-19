@@ -15,6 +15,7 @@ endif()
 include_directories(SYSTEM ${CMOCKA_INCLUDE_DIR})
 
 set(tests)
+set(tests_wraps)
 add_subdirectory(src)
 
 foreach(test_name IN LISTS tests)
@@ -26,6 +27,9 @@ endforeach(test_name)
 # Set common attributes of all tests
 foreach(test_name IN LISTS tests)
     target_link_libraries(${test_name} ${CMOCKA_LIBRARIES} yang)
+    list(GET tests_wraps 0 test_wrap)
+    set_target_properties(${test_name} PROPERTIES LINK_FLAGS "${test_wrap}")
+    list(REMOVE_AT tests_wraps 0)
     add_test(NAME ${test_name} COMMAND ${test_name})
 #    set_property(TEST ${test_name} PROPERTY ENVIRONMENT "LIBYANG_EXTENSIONS_PLUGINS_DIR=${CMAKE_BINARY_DIR}/src/extensions")
 #    set_property(TEST ${test_name} APPEND PROPERTY ENVIRONMENT "LIBYANG_USER_TYPES_PLUGINS_DIR=${CMAKE_BINARY_DIR}/src/user_types")
