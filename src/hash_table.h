@@ -1,6 +1,7 @@
 /**
  * @file hash_table.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief libyang hash table
  *
  * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
@@ -20,50 +21,6 @@
 
 #include "common.h"
 #include "dict.h"
-
-/**
- * size of the dictionary for each context
- */
-#define DICT_SIZE 1024
-
-/**
- * record of the dictionary
- * TODO: save the next pointer by different collision strategy, will need to
- * make dictionary size dynamic
- */
-struct dict_rec {
-    struct dict_rec *next;
-    char *value;
-    uint32_t refcount:22;
-    uint32_t len:10;
-#define DICT_REC_MAXCOUNT 0x003fffff
-#define DICT_REC_MAXLEN   0x000003ff
-};
-
-/**
- * dictionary to store repeating strings
- * TODO: make it variable size
- */
-struct dict_table {
-    struct dict_rec recs[DICT_SIZE];
-    int hash_mask;
-    uint32_t used;
-    pthread_mutex_t lock;
-};
-
-/**
- * @brief Initiate content (non-zero values) of the dictionary
- *
- * @param[in] dict Dictionary table to initiate
- */
-void lydict_init(struct dict_table *dict);
-
-/**
- * @brief Cleanup the dictionary content
- *
- * @param[in] dict Dictionary table to cleanup
- */
-void lydict_clean(struct dict_table *dict);
 
 /**
  * @brief Compute hash from (several) string(s).
@@ -128,6 +85,33 @@ struct hash_table {
     unsigned char *recs;  /* pointer to the hash table itself (array of struct ht_rec) */
 };
 
+struct dict_rec {
+    char *value;
+    uint32_t refcount;
+};
+
+/**
+ * dictionary to store repeating strings
+ */
+struct dict_table {
+    struct hash_table *hash_tab;
+    pthread_mutex_t lock;
+};
+
+/**
+ * @brief Initiate content (non-zero values) of the dictionary
+ *
+ * @param[in] dict Dictionary table to initiate
+ */
+void lydict_init(struct dict_table *dict);
+
+/**
+ * @brief Cleanup the dictionary content
+ *
+ * @param[in] dict Dictionary table to cleanup
+ */
+void lydict_clean(struct dict_table *dict);
+
 /**
  * @brief Create new hash table.
  *
@@ -179,7 +163,7 @@ void lyht_free(struct hash_table *ht);
  * @param[in] ht Hash table to search in.
  * @param[in] val_p Pointer to the value to find.
  * @param[in] hash Hash of the stored value.
- * @param[out] match_p pointer to the matching value, optional.
+ * @param[out] match_p Pointer to the matching value, optional.
  * @return 0 on success, 1 on not found.
  */
 int lyht_find(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p);
@@ -190,7 +174,7 @@ int lyht_find(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p)
  * @param[in] ht Hash table to search in.
  * @param[in] val_p Pointer to the previously found value in \p ht.
  * @param[in] hash Hash of the previously found value.
- * @param[out] match_p pointer to the matching value, optional.
+ * @param[out] match_p Pointer to the matching value, optional.
  * @return 0 on success, 1 on not found.
  */
 int lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p);
@@ -202,9 +186,26 @@ int lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **mat
  * @param[in] val_p Pointer to the value to insert. Be careful, if the values stored in the hash table
  * are pointers, \p val_p must be a pointer to a pointer.
  * @param[in] hash Hash of the stored value.
+ * @param[out] match_p Pointer to the stored value, optional
  * @return 0 on success, 1 if already inserted, -1 on error.
  */
-int lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash);
+int lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p);
+
+/**
+ * @brief Insert a value into hash table. Same functionality as lyht_insert()
+ * but allows to specify a temporary val equal callback to be used in case the hash table
+ * will be resized after successful insertion.
+ *
+ * @param[in] ht Hash table to insert into.
+ * @param[in] val_p Pointer to the value to insert. Be careful, if the values stored in the hash table
+ * are pointers, \p val_p must be a pointer to a pointer.
+ * @param[in] hash Hash of the stored value.
+ * @param[in] resize_val_equal Val equal callback to use for resizing.
+ * @param[out] match_p Pointer to the stored value, optional
+ * @return 0 on success, 1 if already inserted, -1 on error.
+ */
+int lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, values_equal_cb resize_val_equal,
+                               void **match_p);
 
 /**
  * @brief Remove a value from a hash table.

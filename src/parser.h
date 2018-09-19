@@ -55,6 +55,15 @@ struct lyd_node *lyd_parse_json(struct ly_ctx *ctx, const char *data, int option
 /**@} jsondata */
 
 /**
+ * @defgroup lybdata LYB data format support
+ * @{
+ */
+struct lyd_node *lyd_parse_lyb(struct ly_ctx *ctx, const char *data, int options, const struct lyd_node *data_tree,
+                               const char *yang_data_name, int *parsed);
+
+/**@} lybdata */
+
+/**
  * internal options values for schema parsers
  */
 #define LYS_PARSE_OPT_CFG_NOINHERIT 0x01 /**< do not inherit config flag */
@@ -83,9 +92,6 @@ int lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_co
                               struct lyxml_elem *yin, struct unres_schema *unres);
 int lyp_yin_parse_subnode_ext(struct lys_module *mod, void *elem, LYEXT_PAR elem_type,
                               struct lyxml_elem *yin, LYEXT_SUBSTMT type, uint8_t i, struct unres_schema *unres);
-
-struct lys_module *lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name,
-                                   const char *revision, int implement, struct unres_schema *unres);
 
 struct lys_type *lyp_get_next_union_type(struct lys_type *type, struct lys_type *prev_type, int *found);
 

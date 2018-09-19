@@ -30,7 +30,7 @@
 static int json_print_nodes(struct lyout *out, int level, const struct lyd_node *root, int withsiblings, int toplevel,
                             int options);
 
-static int
+int
 json_print_string(struct lyout *out, const char *text)
 {
     unsigned int i, n;
@@ -41,11 +41,12 @@ json_print_string(struct lyout *out, const char *text)
 
     ly_write(out, "\"", 1);
     for (i = n = 0; text[i]; i++) {
-        if (text[i] >= 0 && text[i] < 0x20) {
+        const unsigned char ascii = text[i];
+        if (ascii < 0x20) {
             /* control character */
-            n += ly_print(out, "\\u%.4X");
+            n += ly_print(out, "\\u%.4X", ascii);
         } else {
-            switch (text[i]) {
+            switch (ascii) {
             case '"':
                 n += ly_print(out, "\\\"");
                 break;
@@ -355,6 +356,10 @@ json_print_leaf_list(struct lyout *out, int level, const struct lyd_node *node, 
                 flag_attrs = 1;
             }
         }
+        if (toplevel && !(options & LYP_WITHSIBLINGS)) {
+            /* if initially called without LYP_WITHSIBLINGS do not print other list entries */
+            break;
+        }
         for (list = list->next; list && list->schema != node->schema; list = list->next);
         if (list) {
             ly_print(out, ",%s", (level ? "\n" : ""));
@@ -440,7 +445,7 @@ json_print_anydataxml(struct lyout *out, int level, const struct lyd_node *node,
         if (any->value.str) {
             ly_print(out, "%s", any->value.str);
         }
-        if (level && (any->value.str[strlen(any->value.str) - 1] != '\n')) {
+        if (level && (!any->value.str || (any->value.str[strlen(any->value.str) - 1] != '\n'))) {
             /* do not print 2 newlines */
             ly_print(out, "\n");
         }
@@ -465,7 +470,11 @@ json_print_anydataxml(struct lyout *out, int level, const struct lyd_node *node,
             ly_print(out, "\"\"");
         }
         break;
-    default:
+    case LYD_ANYDATA_STRING:
+    case LYD_ANYDATA_SXMLD:
+    case LYD_ANYDATA_JSOND:
+    case LYD_ANYDATA_LYBD:
+    case LYD_ANYDATA_LYB:
         /* other formats are not supported */
         json_print_string(out, "(error)");
         break;
@@ -528,8 +537,8 @@ json_print_nodes(struct lyout *out, int level, const struct lyd_node *root, int 
             break;
         case LYS_LEAFLIST:
         case LYS_LIST:
-            /* is it already printed? */
-            for (iter = node->prev; iter->next; iter = iter->prev) {
+            /* is it already printed? (root node is not) */
+            for (iter = node->prev; iter->next && node != root; iter = iter->prev) {
                 if (iter == node) {
                     continue;
                 }
@@ -538,7 +547,7 @@ json_print_nodes(struct lyout *out, int level, const struct lyd_node *root, int 
                     break;
                 }
             }
-            if (!iter->next) {
+            if (!iter->next || node == root) {
                 if (comma_flag) {
                     /* print the previous comma */
                     ly_print(out, ",%s", (level ? "\n" : ""));

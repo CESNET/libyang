@@ -30,6 +30,7 @@
 #include "hash_table.h"
 #include "tree_internal.h"
 #include "extensions.h"
+#include "validation.h"
 
 /* internal parsed predicate structure */
 struct parsed_pred {
@@ -3932,7 +3933,7 @@ resolve_schema_leafref_predicate(const char *path, const struct lys_node *contex
         if (sour_pref) {
             trg_mod = lyp_get_module(lys_node_module(parent), NULL, 0, sour_pref, sour_pref_len, 0);
         } else {
-            trg_mod = NULL;
+            trg_mod = lys_node_module(parent);
         }
         rc = lys_getnext_data(trg_mod, context_node, source, sour_len, LYS_LEAF | LYS_LEAFLIST, &src_node);
         if (rc) {
@@ -3975,7 +3976,7 @@ resolve_schema_leafref_predicate(const char *path, const struct lys_node *contex
             if (dest_pref) {
                 trg_mod = lyp_get_module(lys_node_module(parent), NULL, 0, dest_pref, dest_pref_len, 0);
             } else {
-                trg_mod = NULL;
+                trg_mod = lys_node_module(parent);
             }
             rc = lys_getnext_data(trg_mod, dst_node, dest, dest_len, LYS_CONTAINER | LYS_LIST | LYS_LEAF, &dst_node);
             if (rc) {
@@ -5766,7 +5767,7 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
     struct lys_module *imod = NULL, *m, *tmod;
     struct ly_ctx *ctx;
 
-    assert(type && ident_name && node && mod);
+    assert(type && ident_name && mod);
     ctx = mod->ctx;
 
     if (!type || (!type->info.ident.count && !type->der) || !ident_name) {
@@ -5775,10 +5776,10 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
 
     rc = parse_node_identifier(ident_name, &mod_name, &mod_name_len, &name, &nam_len, NULL, 0);
     if (rc < 1) {
-        LOGVAL(ctx, LYE_INCHAR, LY_VLOG_LYD, node, ident_name[-rc], &ident_name[-rc]);
+        LOGVAL(ctx, LYE_INCHAR, node ? LY_VLOG_LYD : LY_VLOG_NONE, node, ident_name[-rc], &ident_name[-rc]);
         return NULL;
     } else if (rc < (signed)strlen(ident_name)) {
-        LOGVAL(ctx, LYE_INCHAR, LY_VLOG_LYD, node, ident_name[rc], &ident_name[rc]);
+        LOGVAL(ctx, LYE_INCHAR, node ? LY_VLOG_LYD : LY_VLOG_NONE, node, ident_name[rc], &ident_name[rc]);
         return NULL;
     }
 
@@ -5886,7 +5887,7 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
                 type = &type->der->type;
             }
             /* matching base not found */
-            LOGVAL(ctx, LYE_SPEC, LY_VLOG_LYD, node, "Identity used as identityref value is not implemented.");
+            LOGVAL(ctx, LYE_SPEC, node ? LY_VLOG_LYD : LY_VLOG_NONE, node, "Identity used as identityref value is not implemented.");
             goto fail;
         }
     }
@@ -5912,13 +5913,15 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
     }
 
 fail:
-    LOGVAL(ctx, LYE_INRESOLV, LY_VLOG_LYD, node, "identityref", ident_name);
+    LOGVAL(ctx, LYE_INRESOLV, node ? LY_VLOG_LYD : LY_VLOG_NONE, node, "identityref", ident_name);
     return NULL;
 
 match:
     for (i = 0; i < cur->iffeature_size; i++) {
         if (!resolve_iffeature(&cur->iffeature[i])) {
-            LOGVAL(ctx, LYE_INVAL, LY_VLOG_LYD, node, cur->name, node->schema->name);
+            if (node) {
+                LOGVAL(ctx, LYE_INVAL, LY_VLOG_LYD, node, cur->name, node->schema->name);
+            }
             LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Identity \"%s\" is disabled by its if-feature condition.", cur->name);
             return NULL;
         }
@@ -6062,11 +6065,6 @@ resolve_list_keys(struct lys_node_list *list, const char *keys_str)
             len = strlen(keys_str);
         }
 
-        if (list->keys[i]) {
-            /* skip already resolved keys */
-            goto next;
-        }
-
         rc = lys_getnext_data(lys_node_module((struct lys_node *)list), (struct lys_node *)list, keys_str, len, LYS_LEAF,
                               (const struct lys_node **)&list->keys[i]);
         if (rc) {
@@ -6099,7 +6097,6 @@ resolve_list_keys(struct lys_node_list *list, const char *keys_str)
             free(s);
         }
 
-next:
         /* prepare for next iteration */
         while (value && isspace(value[0])) {
             value++;
@@ -6491,6 +6488,34 @@ resolve_applies_must(const struct lyd_node *node)
     return ret;
 }
 
+static struct lys_when *
+snode_get_when(const struct lys_node *schema)
+{
+    switch (schema->nodetype) {
+    case LYS_CONTAINER:
+        return ((struct lys_node_container *)schema)->when;
+    case LYS_CHOICE:
+        return ((struct lys_node_choice *)schema)->when;
+    case LYS_LEAF:
+        return ((struct lys_node_leaf *)schema)->when;
+    case LYS_LEAFLIST:
+        return ((struct lys_node_leaflist *)schema)->when;
+    case LYS_LIST:
+        return ((struct lys_node_list *)schema)->when;
+    case LYS_ANYDATA:
+    case LYS_ANYXML:
+        return ((struct lys_node_anydata *)schema)->when;
+    case LYS_CASE:
+        return ((struct lys_node_case *)schema)->when;
+    case LYS_USES:
+        return ((struct lys_node_uses *)schema)->when;
+    case LYS_AUGMENT:
+        return ((struct lys_node_augment *)schema)->when;
+    default:
+        return NULL;
+    }
+}
+
 int
 resolve_applies_when(const struct lys_node *schema, int mode, const struct lys_node *stop)
 {
@@ -6498,7 +6523,7 @@ resolve_applies_when(const struct lys_node *schema, int mode, const struct lys_n
 
     assert(schema);
 
-    if (!(schema->nodetype & (LYS_NOTIF | LYS_RPC)) && (((struct lys_node_container *)schema)->when)) {
+    if (!(schema->nodetype & (LYS_NOTIF | LYS_RPC)) && snode_get_when(schema)) {
         return 1;
     }
 
@@ -6519,13 +6544,12 @@ resolve_applies_when(const struct lys_node *schema, int mode, const struct lys_n
             }
         }
 
-        if (((const struct lys_node_uses *)parent)->when) {
+        if (snode_get_when(parent)) {
             return 1;
         }
 check_augment:
 
-        if ((parent->parent && (parent->parent->nodetype == LYS_AUGMENT) &&
-                (((const struct lys_node_augment *)parent->parent)->when))) {
+        if (parent->parent && (parent->parent->nodetype == LYS_AUGMENT) && snode_get_when(parent->parent)) {
             return 1;
         }
         parent = lys_parent(parent);
@@ -6561,15 +6585,15 @@ resolve_when(struct lyd_node *node, int ignore_fail, struct lys_when **failed_wh
     assert(node);
     memset(&set, 0, sizeof set);
 
-    if (!(node->schema->nodetype & (LYS_NOTIF | LYS_RPC | LYS_ACTION)) && (((struct lys_node_container *)node->schema)->when)) {
+    if (!(node->schema->nodetype & (LYS_NOTIF | LYS_RPC | LYS_ACTION)) && snode_get_when(node->schema)) {
         /* make the node dummy for the evaluation */
         node->validity |= LYD_VAL_INUSE;
-        rc = lyxp_eval(((struct lys_node_container *)node->schema)->when->cond, node, LYXP_NODE_ELEM, lyd_node_module(node),
+        rc = lyxp_eval(snode_get_when(node->schema)->cond, node, LYXP_NODE_ELEM, lyd_node_module(node),
                        &set, LYXP_WHEN);
         node->validity &= ~LYD_VAL_INUSE;
         if (rc) {
             if (rc == 1) {
-                LOGVAL(ctx, LYE_INWHEN, LY_VLOG_LYD, node, ((struct lys_node_container *)node->schema)->when->cond);
+                LOGVAL(ctx, LYE_INWHEN, LY_VLOG_LYD, node, snode_get_when(node->schema)->cond);
             }
             goto cleanup;
         }
@@ -6578,15 +6602,13 @@ resolve_when(struct lyd_node *node, int ignore_fail, struct lys_when **failed_wh
         lyxp_set_cast(&set, LYXP_SET_BOOLEAN, node, lyd_node_module(node), LYXP_WHEN);
         if (!set.val.bool) {
             node->when_status |= LYD_WHEN_FALSE;
-            if ((ignore_fail == 1)
-                    || ((((struct lys_node_container *)node->schema)->when->flags & (LYS_XPCONF_DEP | LYS_XPSTATE_DEP))
+            if ((ignore_fail == 1) || ((snode_get_when(node->schema)->flags & (LYS_XPCONF_DEP | LYS_XPSTATE_DEP))
                     && (ignore_fail == 2))) {
-                LOGVRB("When condition \"%s\" is not satisfied, but it is not required.",
-                       ((struct lys_node_container *)node->schema)->when->cond);
+                LOGVRB("When condition \"%s\" is not satisfied, but it is not required.", snode_get_when(node->schema)->cond);
             } else {
-                LOGVAL(ctx, LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_container *)node->schema)->when->cond);
+                LOGVAL(ctx, LYE_NOWHEN, LY_VLOG_LYD, node, snode_get_when(node->schema)->cond);
                 if (failed_when) {
-                    *failed_when = ((struct lys_node_container *)node->schema)->when;
+                    *failed_when = snode_get_when(node->schema);
                 }
                 goto cleanup;
             }
@@ -6601,7 +6623,7 @@ resolve_when(struct lyd_node *node, int ignore_fail, struct lys_when **failed_wh
 
     /* check when in every schema node that affects node */
     while (sparent && (sparent->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE))) {
-        if (((struct lys_node_uses *)sparent)->when) {
+        if (snode_get_when(sparent)) {
             if (!ctx_node) {
                 rc = resolve_when_ctx_node(node, sparent, &ctx_node, &ctx_node_type);
                 if (rc) {
@@ -6618,7 +6640,7 @@ resolve_when(struct lyd_node *node, int ignore_fail, struct lys_when **failed_wh
                 goto cleanup;
             }
 
-            rc = lyxp_eval(((struct lys_node_uses *)sparent)->when->cond, ctx_node, ctx_node_type, lys_node_module(sparent),
+            rc = lyxp_eval(snode_get_when(sparent)->cond, ctx_node, ctx_node_type, lys_node_module(sparent),
                            &set, LYXP_WHEN);
 
             if (unlinked_nodes && ctx_node) {
@@ -6630,23 +6652,21 @@ resolve_when(struct lyd_node *node, int ignore_fail, struct lys_when **failed_wh
 
             if (rc) {
                 if (rc == 1) {
-                    LOGVAL(ctx, LYE_INWHEN, LY_VLOG_LYD, node, ((struct lys_node_uses *)sparent)->when->cond);
+                    LOGVAL(ctx, LYE_INWHEN, LY_VLOG_LYD, node, snode_get_when(sparent)->cond);
                 }
                 goto cleanup;
             }
 
             lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, lys_node_module(sparent), LYXP_WHEN);
             if (!set.val.bool) {
-                if ((ignore_fail == 1)
-                        || ((((struct lys_node_uses *)sparent)->when->flags & (LYS_XPCONF_DEP | LYS_XPSTATE_DEP))
-                        || (ignore_fail == 2))) {
-                    LOGVRB("When condition \"%s\" is not satisfied, but it is not required.",
-                        ((struct lys_node_uses *)sparent)->when->cond);
+                if ((ignore_fail == 1) || ((snode_get_when(sparent)->flags & (LYS_XPCONF_DEP | LYS_XPSTATE_DEP))
+                        && (ignore_fail == 2))) {
+                    LOGVRB("When condition \"%s\" is not satisfied, but it is not required.", snode_get_when(sparent)->cond);
                 } else {
                     node->when_status |= LYD_WHEN_FALSE;
-                    LOGVAL(ctx, LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_uses *)sparent)->when->cond);
+                    LOGVAL(ctx, LYE_NOWHEN, LY_VLOG_LYD, node, snode_get_when(sparent)->cond);
                     if (failed_when) {
-                        *failed_when = ((struct lys_node_uses *)sparent)->when;
+                        *failed_when = snode_get_when(sparent);
                     }
                     goto cleanup;
                 }
@@ -6657,7 +6677,7 @@ resolve_when(struct lyd_node *node, int ignore_fail, struct lys_when **failed_wh
         }
 
 check_augment:
-        if ((sparent->parent && (sparent->parent->nodetype == LYS_AUGMENT) && (((struct lys_node_augment *)sparent->parent)->when))) {
+        if ((sparent->parent && (sparent->parent->nodetype == LYS_AUGMENT) && snode_get_when(sparent->parent))) {
             if (!ctx_node) {
                 rc = resolve_when_ctx_node(node, sparent->parent, &ctx_node, &ctx_node_type);
                 if (rc) {
@@ -6673,7 +6693,7 @@ check_augment:
                 goto cleanup;
             }
 
-            rc = lyxp_eval(((struct lys_node_augment *)sparent->parent)->when->cond, ctx_node, ctx_node_type,
+            rc = lyxp_eval(snode_get_when(sparent->parent)->cond, ctx_node, ctx_node_type,
                            lys_node_module(sparent->parent), &set, LYXP_WHEN);
 
             /* reconnect nodes, if ctx_node is NULL then all the nodes were unlinked, but linked together,
@@ -6688,7 +6708,7 @@ check_augment:
 
             if (rc) {
                 if (rc == 1) {
-                    LOGVAL(ctx, LYE_INWHEN, LY_VLOG_LYD, node, ((struct lys_node_augment *)sparent->parent)->when->cond);
+                    LOGVAL(ctx, LYE_INWHEN, LY_VLOG_LYD, node, snode_get_when(sparent->parent)->cond);
                 }
                 goto cleanup;
             }
@@ -6696,15 +6716,14 @@ check_augment:
             lyxp_set_cast(&set, LYXP_SET_BOOLEAN, ctx_node, lys_node_module(sparent->parent), LYXP_WHEN);
             if (!set.val.bool) {
                 node->when_status |= LYD_WHEN_FALSE;
-                if ((ignore_fail == 1)
-                        || ((((struct lys_node_augment *)sparent->parent)->when->flags & (LYS_XPCONF_DEP | LYS_XPSTATE_DEP))
+                if ((ignore_fail == 1) || ((snode_get_when(sparent->parent)->flags & (LYS_XPCONF_DEP | LYS_XPSTATE_DEP))
                         && (ignore_fail == 2))) {
                     LOGVRB("When condition \"%s\" is not satisfied, but it is not required.",
-                           ((struct lys_node_augment *)sparent->parent)->when->cond);
+                           snode_get_when(sparent->parent)->cond);
                 } else {
-                    LOGVAL(ctx, LYE_NOWHEN, LY_VLOG_LYD, node, ((struct lys_node_augment *)sparent->parent)->when->cond);
+                    LOGVAL(ctx, LYE_NOWHEN, LY_VLOG_LYD, node, snode_get_when(sparent->parent)->cond);
                     if (failed_when) {
-                        *failed_when = ((struct lys_node_augment *)sparent->parent)->when;
+                        *failed_when = snode_get_when(sparent->parent);
                     }
                     goto cleanup;
                 }
@@ -7256,7 +7275,9 @@ resolve_unres_schema_types(struct unres_schema *unres, enum UNRES_ITEM types, st
                     ++res_count;
                     ret = -1;
                 } else {
-                    ly_ilo_restore(ctx, prev_ilo, prev_eitem, 1);
+                    if (forward_ref) {
+                        ly_ilo_restore(ctx, prev_ilo, prev_eitem, 1);
+                    }
                     return -1;
                 }
             }
@@ -7518,6 +7539,10 @@ unres_schema_find(struct unres_schema *unres, int start_on_backwards, void *item
 {
     int i;
     struct unres_list_uniq *aux_uniq1, *aux_uniq2;
+
+    if (!unres->count) {
+        return -1;
+    }
 
     if (start_on_backwards >= 0) {
         i = start_on_backwards;
@@ -8109,6 +8134,12 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int ignore_
         }
         break;
 
+    case UNRES_UNIQ_LEAVES:
+        if (lyv_data_unique(node)) {
+            return -1;
+        }
+        break;
+
     default:
         LOGINT(NULL);
         return -1;
@@ -8130,7 +8161,7 @@ unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM 
 {
     assert(unres && node);
     assert((type == UNRES_LEAFREF) || (type == UNRES_INSTID) || (type == UNRES_WHEN) || (type == UNRES_MUST)
-           || (type == UNRES_MUST_INOUT) || (type == UNRES_UNION));
+           || (type == UNRES_MUST_INOUT) || (type == UNRES_UNION) || (type == UNRES_UNIQ_LEAVES));
 
     unres->count++;
     unres->node = ly_realloc(unres->node, unres->count * sizeof *unres->node);

@@ -160,6 +160,7 @@ error:
     free(value);
     lydict_remove(module->ctx, imp_old->dsc);
     lydict_remove(module->ctx, imp_old->ref);
+    lydict_remove(module->ctx, imp_old->prefix);
     lys_extension_instances_free(module->ctx, imp_old->ext, imp_old->ext_size, NULL);
     return EXIT_FAILURE;
 }
@@ -467,7 +468,6 @@ int
 yang_read_key(struct lys_module *module, struct lys_node_list *list, struct unres_schema *unres)
 {
     char *exp, *value;
-    struct lys_node *node;
 
     exp = value = (char *) list->keys;
     while ((value = strpbrk(value, " \t\n"))) {
@@ -482,8 +482,7 @@ yang_read_key(struct lys_module *module, struct lys_node_list *list, struct unre
     list->keys = calloc(list->keys_size, sizeof *list->keys);
     LY_CHECK_ERR_RETURN(!list->keys, LOGMEM(module->ctx), EXIT_FAILURE);
 
-    for (node = list->parent; node && node->nodetype != LYS_GROUPING; node = lys_parent(node));
-    if (!node && unres_schema_add_node(module, unres, list, UNRES_LIST_KEYS, NULL) == -1) {
+    if (unres_schema_add_node(module, unres, list, UNRES_LIST_KEYS, NULL) == -1) {
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
@@ -1209,6 +1208,8 @@ error:
 int
 yang_read_fraction(struct ly_ctx *ctx, struct yang_type *typ, uint32_t value)
 {
+    uint32_t i;
+
     if (typ->base == 0 || typ->base == LY_TYPE_DEC64) {
         typ->base = LY_TYPE_DEC64;
     } else {
@@ -1225,6 +1226,10 @@ yang_read_fraction(struct ly_ctx *ctx, struct yang_type *typ, uint32_t value)
         goto error;
     }
     typ->type->info.dec64.dig = value;
+    typ->type->info.dec64.div = 10;
+    for (i = 1; i < value; i++) {
+        typ->type->info.dec64.div *= 10;
+    }
     return EXIT_SUCCESS;
 
 error:
@@ -1873,8 +1878,6 @@ yang_check_deviate_must(struct lys_module *module, struct unres_schema *unres,
         LY_CHECK_ERR_GOTO(!must, LOGMEM(ctx), error);
         *trg_must = must;
         memcpy(&(*trg_must)[*trg_must_size], deviate->must, deviate->must_size * sizeof *must);
-        free(deviate->must);
-        deviate->must = &must[*trg_must_size];
         *trg_must_size = *trg_must_size + deviate->must_size;
         erase_must = 0;
     } else if (deviate->mod == LY_DEVIATE_DEL) {
@@ -2629,7 +2632,7 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
 
     ret = yang_parse_mem(module, NULL, unres, data, size, &node);
     if (ret == -1) {
-        if (ly_vecode(ctx) == LYVE_SUBMODULE) {
+        if (ly_vecode(ctx) == LYVE_SUBMODULE && !module->name) {
             /* Remove this module from the list of processed modules,
                as we're about to free it */
             lyp_check_circmod_pop(ctx);
@@ -2848,6 +2851,7 @@ yang_read_string(struct ly_ctx *ctx, const char *input, char *output, int size, 
             } else {
                 /* backslash must not be followed by any other character */
                 LOGVAL(ctx, LYE_XML_INCHAR, LY_VLOG_NONE, NULL, input + i);
+                free(output);
                 return NULL;
             }
             break;
@@ -3220,6 +3224,7 @@ yang_free_deviate(struct ly_ctx *ctx, struct lys_deviation *dev, uint index)
 
         if (dev->deviate[i].type) {
             yang_type_free(ctx, dev->deviate[i].type);
+            free(dev->deviate[i].type);
         }
 
         for (j = 0; j < dev->deviate[i].dflt_size; ++j) {
@@ -3275,6 +3280,9 @@ free_yang_common(struct lys_module *module, struct lys_node *node)
     for (i = 0; i < module->deviation_size; ++i) {
         yang_free_deviate(module->ctx, &module->deviation[i], 0);
         free(module->deviation[i].deviate);
+        lydict_remove(module->ctx, module->deviation[i].target_name);
+        lydict_remove(module->ctx, module->deviation[i].dsc);
+        lydict_remove(module->ctx, module->deviation[i].ref);
     }
     module->deviation_size = 0;
 }
@@ -4236,11 +4244,16 @@ yang_check_nodes(struct lys_module *module, struct lys_node *parent, struct lys_
         node->parent = NULL;
         node->prev = node;
 
-        if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, node) ||
+        if (lys_node_addchild(parent, module->type ? ((struct lys_submodule *)module)->belongsto: module, node, 0) ||
             check_status_flag(node, parent)) {
             lys_node_unlink(node);
             yang_free_nodes(module->ctx, node);
             goto error;
+        }
+        if (node->parent != parent) {
+            assert(node->parent->parent == parent);
+            assert((node->parent->nodetype == LYS_CASE) && (node->parent->flags & LYS_IMPLICIT));
+            store_config_flag(node->parent, options);
         }
         store_config_flag(node, options);
         if (yang_check_ext_instance(module, &node->ext, node->ext_size, node, unres)) {
@@ -4735,6 +4748,9 @@ error:
     for (i = module->deviation_size; i < dev_size; ++i) {
         yang_free_deviate(module->ctx, &module->deviation[i], 0);
         free(module->deviation[i].deviate);
+        lydict_remove(module->ctx, module->deviation[i].target_name);
+        lydict_remove(module->ctx, module->deviation[i].dsc);
+        lydict_remove(module->ctx, module->deviation[i].ref);
     }
     return EXIT_FAILURE;
 }

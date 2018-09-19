@@ -888,6 +888,7 @@ lyxml_parse_elem(struct ly_ctx *ctx, const char *data, unsigned int *len, struct
 
             /* look for the prefix in namespaces */
             prefix_len = e - c;
+            LY_CHECK_ERR_GOTO(prefix, LOGVAL(ctx, LYE_XML_INCHAR, LY_VLOG_NONE, NULL, e), error);
             prefix = malloc((prefix_len + 1) * sizeof *prefix);
             LY_CHECK_ERR_GOTO(!prefix, LOGMEM(ctx), error);
             memcpy(prefix, c, prefix_len);
@@ -905,7 +906,7 @@ lyxml_parse_elem(struct ly_ctx *ctx, const char *data, unsigned int *len, struct
 
     /* allocate element structure */
     elem = calloc(1, sizeof *elem);
-    LY_CHECK_ERR_RETURN(!elem, LOGMEM(ctx), NULL);
+    LY_CHECK_ERR_RETURN(!elem, free(prefix); LOGMEM(ctx), NULL);
 
     elem->next = NULL;
     elem->prev = elem;
@@ -1429,6 +1430,8 @@ lyxml_print_file(FILE *stream, const struct lyxml_elem *elem, int options)
         return 0;
     }
 
+    memset(&out, 0, sizeof out);
+
     out.type = LYOUT_STREAM;
     out.method.f = stream;
 
@@ -1447,6 +1450,8 @@ lyxml_print_fd(int fd, const struct lyxml_elem *elem, int options)
     if (fd < 0 || !elem) {
         return 0;
     }
+
+    memset(&out, 0, sizeof out);
 
     out.type = LYOUT_FD;
     out.method.fd = fd;
@@ -1468,10 +1473,9 @@ lyxml_print_mem(char **strp, const struct lyxml_elem *elem, int options)
         return 0;
     }
 
+    memset(&out, 0, sizeof out);
+
     out.type = LYOUT_MEMORY;
-    out.method.mem.buf = NULL;
-    out.method.mem.len = 0;
-    out.method.mem.size = 0;
 
     if (options & LYXML_PRINT_SIBLINGS) {
         r = dump_siblings(&out, elem, options);
@@ -1491,6 +1495,8 @@ lyxml_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), v
     if (!writeclb || !elem) {
         return 0;
     }
+
+    memset(&out, 0, sizeof out);
 
     out.type = LYOUT_CALLBACK;
     out.method.clb.f = writeclb;

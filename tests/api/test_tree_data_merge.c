@@ -616,6 +616,44 @@ test_merge_to_ctx_with_missing_schema(void **state)
     free(printed);
 }
 
+static void
+test_merge_leafrefs(void **state)
+{
+    struct state *st = (*state);
+    const char *sch = "module x {"
+                      "  namespace urn:x;"
+                      "  prefix x;"
+                      "  list l {"
+                      "    key n;"
+                      "    leaf n { type string; }"
+                      "    leaf t { type string; }"
+                      "    leaf r { type leafref { path '/l/n'; } }}}";
+    const char *trg = "<l xmlns=\"urn:x\"><n>a</n></l>"
+                      "<l xmlns=\"urn:x\"><n>b</n><r>a</r></l>";
+    const char *src = "<l xmlns=\"urn:x\"><n>c</n><r>a</r></l>"
+                      "<l xmlns=\"urn:x\"><n>a</n><t>*</t></l>";
+    const char *res = "<l xmlns=\"urn:x\"><n>a</n><t>*</t></l>"
+                      "<l xmlns=\"urn:x\"><n>b</n><r>a</r></l>"
+                      "<l xmlns=\"urn:x\"><n>c</n><r>a</r></l>";
+    char *prt = NULL;
+
+    assert_ptr_not_equal(lys_parse_mem(st->ctx1, sch, LYS_IN_YANG), NULL);
+
+    st->target = lyd_parse_mem(st->ctx1, trg, LYD_XML, LYD_OPT_GET);
+    assert_ptr_not_equal(st->target, NULL);
+
+    st->source = lyd_parse_mem(st->ctx1, src, LYD_XML, LYD_OPT_GET);
+    assert_ptr_not_equal(st->source, NULL);
+
+    assert_int_equal(lyd_merge(st->target, st->source, LYD_OPT_DESTRUCT), 0);
+    st->source = NULL;
+
+    lyd_print_mem(&prt, st->target, LYD_XML, LYP_WITHSIBLINGS);
+    assert_string_equal(prt, res);
+    free(prt);
+}
+
+
 int
 main(void)
 {
@@ -631,6 +669,7 @@ main(void)
                     cmocka_unit_test_setup_teardown(test_merge_to_trgctx2, setup_mctx, teardown_mctx),
                     cmocka_unit_test_setup_teardown(test_merge_to_ctx, setup_mctx, teardown_mctx),
                     cmocka_unit_test_setup_teardown(test_merge_to_ctx_with_missing_schema, setup_mctx, teardown_mctx),
+                    cmocka_unit_test_setup_teardown(test_merge_leafrefs, setup_dflt, teardown_dflt),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

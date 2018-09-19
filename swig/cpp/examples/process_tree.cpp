@@ -23,13 +23,13 @@
 
 int main() {
 
-    S_Context ctx = nullptr;
+    libyang::S_Context ctx;
     try {
-        ctx = S_Context(new Context("/etc/sysrepo/yang"));
+        ctx = std::make_shared<libyang::Context>("/etc/sysrepo/yang");
     } catch( const std::exception& e ) {
         std::cout << e.what() << std::endl;
-        auto errors = std::shared_ptr<std::vector<S_Error>>(get_ly_errors(ctx));
-        for(auto error = errors->begin() ; error != errors->end() ; ++error) {
+        auto errors = get_ly_errors(ctx);
+        for(auto error = errors.begin() ; error != errors.end() ; ++error) {
             std::cout << "err: " << (*error)->err() << std::endl;
             std::cout << "vecode: " << (*error)->vecode() << std::endl;
             std::cout << "errmsg: " << (*error)->errmsg() << std::endl;
@@ -46,7 +46,7 @@ int main() {
         module = ctx->load_module("turing-machine");
     }
 
-    S_Data_Node node = nullptr;
+    libyang::S_Data_Node node;
     try {
         node = ctx->parse_data_path("/etc/sysrepo/data/turing-machine.startup", LYD_XML, LYD_OPT_CONFIG);
     } catch( const std::exception& e ) {
@@ -57,8 +57,8 @@ int main() {
         std::cout << "parse_path did not return any nodes" << std::endl;
     } else {
         std::cout << "tree_dfs\n" << std::endl;
-        auto data_list = std::shared_ptr<std::vector<S_Data_Node>>(node->tree_dfs());
-        for(auto elem = data_list->begin() ; elem != data_list->end() ; ++elem) {
+        auto data_list = node->tree_dfs();
+        for(auto elem = data_list.begin() ; elem != data_list.end() ; ++elem) {
             std::cout << "name: " << (*elem)->schema()->name() << " type: " << (*elem)->schema()->nodetype() << std::endl;
         }
 
@@ -66,15 +66,22 @@ int main() {
 
         std::cout << "tree_for\n" << std::endl;
 
-        data_list = std::shared_ptr<std::vector<S_Data_Node>>(node->child()->child()->tree_dfs());
-        for(auto elem = data_list->begin() ; elem != data_list->end() ; ++elem) {
+        data_list = node->child()->child()->tree_dfs();
+        for(auto elem = data_list.begin() ; elem != data_list.end() ; ++elem) {
             std::cout << "child of " << node->child()->schema()->name() << " is: " << (*elem)->schema()->name() << " type: " << (*elem)->schema()->nodetype() << std::endl;
         }
 
         std::cout << "\n schema tree_dfs\n" << std::endl;
-        auto schema_list = std::shared_ptr<std::vector<S_Schema_Node>>(node->schema()->tree_dfs());
-        for(auto elem = schema_list->begin() ; elem != schema_list->end() ; ++elem) {
+        auto schema_list = node->schema()->tree_dfs();
+        for(auto elem = schema_list.begin() ; elem != schema_list.end() ; ++elem) {
             std::cout << "schema name " << (*elem)->name() << " type " << (*elem)->nodetype() << std::endl;
+            if  (LYS_LEAF == (*elem)->nodetype()) {
+                auto leaf = libyang::Schema_Node_Leaf(*elem);
+                auto list = leaf.is_key();
+                if (list) {
+                    std::cout << "leaf " << leaf.name() << " is a key for the list " << list->name() << std::endl;
+                }
+            }
         }
     }
 

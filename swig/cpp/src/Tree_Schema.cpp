@@ -26,23 +26,25 @@ extern "C" {
 #include "tree_schema.h"
 }
 
+namespace libyang {
+
 Module::Module(struct lys_module *module, S_Deleter deleter):
     module(module),
     deleter(deleter)
 {};
 Module::~Module() {};
 S_Revision Module::rev() LY_NEW(module, rev, Revision);
-std::vector<S_Deviation> *Module::deviation() LY_NEW_LIST(module, deviation, deviation_size, Deviation);
+std::vector<S_Deviation> Module::deviation() LY_NEW_LIST(module, deviation, deviation_size, Deviation);
 Submodule::Submodule(struct lys_submodule *submodule, S_Deleter deleter):
     submodule(submodule),
     deleter(deleter)
 {};
-std::vector<S_Schema_Node> *Module::data_instantiables(int options) {
-    auto s_vector = new std::vector<S_Schema_Node>;
+std::vector<S_Schema_Node> Module::data_instantiables(int options) {
+    std::vector<S_Schema_Node> s_vector;
     struct lys_node *iter = NULL;
 
     while ((iter = (struct lys_node *)lys_getnext(iter, NULL, module, options))) {
-        s_vector->push_back(std::make_shared<Schema_Node>(iter, deleter));
+        s_vector.push_back(std::make_shared<Schema_Node>(iter, deleter));
     }
 
     return s_vector;
@@ -61,9 +63,23 @@ std::string Module::print_mem(LYS_OUTFORMAT format, int options) {
     free(strp);
     return s_strp;
 }
+std::string Module::print_mem(LYS_OUTFORMAT format, const char *target, int options) {
+    char *strp = nullptr;
+    int rc = 0;
+
+    rc = lys_print_mem(&strp, module, format, target, 0, options);
+    if (rc) {
+        check_libyang_error(module->ctx);
+        return nullptr;
+    }
+
+    std::string s_strp = strp;
+    free(strp);
+    return s_strp;
+}
 Submodule::~Submodule() {};
 S_Revision Submodule::rev() LY_NEW(submodule, rev, Revision);
-std::vector<S_Deviation> *Submodule::deviation() LY_NEW_LIST(submodule, deviation, deviation_size, Deviation);
+std::vector<S_Deviation> Submodule::deviation() LY_NEW_LIST(submodule, deviation, deviation_size, Deviation);
 
 Type_Info_Binary::Type_Info_Binary(struct lys_type_info_binary *info_binary, S_Deleter deleter):
     info_binary(info_binary),
@@ -77,15 +93,15 @@ Type_Bit::Type_Bit(struct lys_type_bit *info_bit, S_Deleter deleter):
     deleter(deleter)
 {};
 Type_Bit::~Type_Bit() {};
-std::vector<S_Ext_Instance> *Type_Bit::ext() LY_NEW_P_LIST(info_bit, ext, ext_size, Ext_Instance);
-std::vector<S_Iffeature> *Type_Bit::iffeature() LY_NEW_LIST(info_bit, iffeature, iffeature_size, Iffeature);
+std::vector<S_Ext_Instance> Type_Bit::ext() LY_NEW_P_LIST(info_bit, ext, ext_size, Ext_Instance);
+std::vector<S_Iffeature> Type_Bit::iffeature() LY_NEW_LIST(info_bit, iffeature, iffeature_size, Iffeature);
 
 Type_Info_Bits::Type_Info_Bits(struct lys_type_info_bits *info_bits, S_Deleter deleter):
     info_bits(info_bits),
     deleter(deleter)
 {};
 Type_Info_Bits::~Type_Info_Bits() {};
-std::vector<S_Type_Bit> *Type_Info_Bits::bit() LY_NEW_LIST(info_bits, bit, count, Type_Bit);
+std::vector<S_Type_Bit> Type_Info_Bits::bit() LY_NEW_LIST(info_bits, bit, count, Type_Bit);
 
 Type_Info_Dec64::Type_Info_Dec64(struct lys_type_info_dec64 *info_dec64, S_Deleter deleter):
     info_dec64(info_dec64),
@@ -99,22 +115,22 @@ Type_Enum::Type_Enum(struct lys_type_enum *info_enum, S_Deleter deleter):
     deleter(deleter)
 {};
 Type_Enum::~Type_Enum() {};
-std::vector<S_Ext_Instance> *Type_Enum::ext() LY_NEW_P_LIST(info_enum, ext, ext_size, Ext_Instance);
-std::vector<S_Iffeature> *Type_Enum::iffeature() LY_NEW_LIST(info_enum, iffeature, iffeature_size, Iffeature);
+std::vector<S_Ext_Instance> Type_Enum::ext() LY_NEW_P_LIST(info_enum, ext, ext_size, Ext_Instance);
+std::vector<S_Iffeature> Type_Enum::iffeature() LY_NEW_LIST(info_enum, iffeature, iffeature_size, Iffeature);
 
 Type_Info_Enums::Type_Info_Enums(struct lys_type_info_enums *info_enums, S_Deleter deleter):
     info_enums(info_enums),
     deleter(deleter)
 {};
 Type_Info_Enums::~Type_Info_Enums() {};
-std::vector<S_Type_Enum> *Type_Info_Enums::enm() LY_NEW_LIST(info_enums, enm, count, Type_Enum);
+std::vector<S_Type_Enum> Type_Info_Enums::enm() LY_NEW_LIST(info_enums, enm, count, Type_Enum);
 
 Type_Info_Ident::Type_Info_Ident(struct lys_type_info_ident *info_ident, S_Deleter deleter):
     info_ident(info_ident),
     deleter(deleter)
 {};
 Type_Info_Ident::~Type_Info_Ident() {};
-std::vector<S_Ident> *Type_Info_Ident::ref() LY_NEW_P_LIST(info_ident, ref, count, Ident);
+std::vector<S_Ident> Type_Info_Ident::ref() LY_NEW_P_LIST(info_ident, ref, count, Ident);
 
 Type_Info_Inst::Type_Info_Inst(struct lys_type_info_inst *info_inst, S_Deleter deleter):
     info_inst(info_inst),
@@ -149,7 +165,7 @@ Type_Info_Union::Type_Info_Union(lys_type_info_union *info_union, S_Deleter dele
     deleter(deleter)
 {};
 Type_Info_Union::~Type_Info_Union() {};
-std::vector<S_Type> *Type_Info_Union::types() LY_NEW_LIST(info_union, types, count, Type);
+std::vector<S_Type> Type_Info_Union::types() LY_NEW_LIST(info_union, types, count, Type);
 
 Type_Info::Type_Info(union lys_type_info info, LY_DATA_TYPE *type, uint8_t flags, S_Deleter deleter):
     info(info),
@@ -180,7 +196,7 @@ Type::Type(struct lys_type *type, S_Deleter deleter):
     deleter(deleter)
 {};
 Type::~Type() {};
-std::vector<S_Ext_Instance> *Type::ext() LY_NEW_P_LIST(type, ext, ext_size, Ext_Instance);
+std::vector<S_Ext_Instance> Type::ext() LY_NEW_P_LIST(type, ext, ext_size, Ext_Instance);
 S_Tpdf Type::der() {return type->der ? std::make_shared<Tpdf>(type->der, deleter) : nullptr;};
 S_Tpdf Type::parent() {return type->parent ? std::make_shared<Tpdf>(type->parent, deleter) : nullptr;};
 S_Type_Info Type::info() {return std::make_shared<Type_Info>(type->info, &type->base, type->value_flags, deleter);};
@@ -190,24 +206,23 @@ Iffeature::Iffeature(struct lys_iffeature *iffeature, S_Deleter deleter):
     deleter(deleter)
 {};
 Iffeature::~Iffeature() {};
-std::vector<S_Feature> *Iffeature::features() {
-    auto s_vector = new std::vector<S_Feature>;
+std::vector<S_Feature> Iffeature::features() {
+    std::vector<S_Feature> s_vector;
 
-    //TODO check if sizeof can be used
     for (size_t i = 0; i < sizeof(*iffeature->features); i++) {
-        s_vector->push_back(std::make_shared<Feature>(iffeature->features[i], deleter));
+        s_vector.push_back(std::make_shared<Feature>(iffeature->features[i], deleter));
     }
 
     return s_vector;
 };
-std::vector<S_Ext_Instance> *Iffeature::ext() LY_NEW_P_LIST(iffeature, ext, ext_size, Ext_Instance);
+std::vector<S_Ext_Instance> Iffeature::ext() LY_NEW_P_LIST(iffeature, ext, ext_size, Ext_Instance);
 
 Ext_Instance::Ext_Instance(lys_ext_instance *ext_instance, S_Deleter deleter):
     ext_instance(ext_instance),
     deleter(deleter)
 {};
 Ext_Instance::~Ext_Instance() {};
-std::vector<S_Ext_Instance> *Ext_Instance::ext() LY_NEW_P_LIST(ext_instance, ext, ext_size, Ext_Instance);
+std::vector<S_Ext_Instance> Ext_Instance::ext() LY_NEW_P_LIST(ext_instance, ext, ext_size, Ext_Instance);
 
 Revision::Revision(lys_revision *revision, S_Deleter deleter):
     revision(revision),
@@ -220,7 +235,7 @@ Schema_Node::Schema_Node(struct lys_node *node, S_Deleter deleter):
     deleter(deleter)
 {};
 Schema_Node::~Schema_Node() {};
-std::vector<S_Ext_Instance> *Schema_Node::ext() LY_NEW_P_LIST(node, ext, ext_size, Ext_Instance);
+std::vector<S_Ext_Instance> Schema_Node::ext() LY_NEW_P_LIST(node, ext, ext_size, Ext_Instance);
 S_Module Schema_Node::module() LY_NEW(node, module, Module);
 S_Schema_Node Schema_Node::parent() LY_NEW(node, parent, Schema_Node);
 S_Schema_Node Schema_Node::child() LY_NEW(node, child, Schema_Node);
@@ -238,12 +253,12 @@ std::string Schema_Node::path(int options) {
     free(path);
     return s_path;
 }
-std::vector<S_Schema_Node> *Schema_Node::child_instantiables(int options) {
-    auto s_vector = new std::vector<S_Schema_Node>;
+std::vector<S_Schema_Node> Schema_Node::child_instantiables(int options) {
+    std::vector<S_Schema_Node> s_vector;
     struct lys_node *iter = NULL;
 
     while ((iter = (struct lys_node *)lys_getnext(iter, node, node->module, options))) {
-        s_vector->push_back(std::make_shared<Schema_Node>(iter, deleter));
+        s_vector.push_back(std::make_shared<Schema_Node>(iter, deleter));
     }
 
     return s_vector;
@@ -277,22 +292,22 @@ S_Set Schema_Node::xpath_atomize(int options) {
 
     return std::make_shared<Set>(set, deleter);
 }
-std::vector<S_Schema_Node> *Schema_Node::tree_for() {
-    auto s_vector = new std::vector<S_Schema_Node>;
+std::vector<S_Schema_Node> Schema_Node::tree_for() {
+    std::vector<S_Schema_Node> s_vector;
 
     struct lys_node *elem = nullptr;
     LY_TREE_FOR(node, elem) {
-        s_vector->push_back(std::make_shared<Schema_Node>(elem, deleter));
+        s_vector.push_back(std::make_shared<Schema_Node>(elem, deleter));
     }
 
     return s_vector;
 }
-std::vector<S_Schema_Node> *Schema_Node::tree_dfs() {
-    auto s_vector = new std::vector<S_Schema_Node>;
+std::vector<S_Schema_Node> Schema_Node::tree_dfs() {
+    std::vector<S_Schema_Node> s_vector;
 
     struct lys_node *elem = nullptr, *next = nullptr;
     LY_TREE_DFS_BEGIN(node, next, elem) {
-        s_vector->push_back(std::make_shared<Schema_Node>(elem, deleter));
+        s_vector.push_back(std::make_shared<Schema_Node>(elem, deleter));
         LY_TREE_DFS_END(node, next, elem)
     }
 
@@ -321,57 +336,54 @@ Schema_Node_Leaf::~Schema_Node_Leaf() {};
 S_Set Schema_Node_Leaf::backlinks() LY_NEW_CASTED(lys_node_leaf, node, backlinks, Set);
 S_When Schema_Node_Leaf::when() LY_NEW_CASTED(lys_node_leaf, node, when, When);
 S_Type Schema_Node_Leaf::type() {return std::make_shared<Type>(&((struct lys_node_leaf *)node)->type, deleter);}
-int Schema_Node_Leaf::is_key() {
+S_Schema_Node_List Schema_Node_Leaf::is_key() {
     uint8_t pos;
 
-    if (lys_is_key((struct lys_node_leaf *)node, &pos)) {
-        return pos;
-    } else {
-        return -1;
-    }
+    auto list = lys_is_key((struct lys_node_leaf *)node, &pos);
+    return list ? std::make_shared<Schema_Node_List>((struct lys_node *) list, deleter) : nullptr;
 }
 
 Schema_Node_Leaflist::~Schema_Node_Leaflist() {};
 S_Set Schema_Node_Leaflist::backlinks() LY_NEW_CASTED(lys_node_leaflist, node, backlinks, Set);
 S_When Schema_Node_Leaflist::when() LY_NEW_CASTED(lys_node_leaflist, node, when, When);
-std::vector<std::string> *Schema_Node_Leaflist::dflt() {
+std::vector<std::string> Schema_Node_Leaflist::dflt() {
     struct lys_node_leaflist *node_leaflist = (struct lys_node_leaflist *)node;
     LY_NEW_STRING_LIST(node_leaflist, dflt, dflt_size);
 }
-std::vector<S_Restr> *Schema_Node_Leaflist::must() LY_NEW_LIST_CASTED(lys_node_leaflist, node, must, must_size, Restr);
+std::vector<S_Restr> Schema_Node_Leaflist::must() LY_NEW_LIST_CASTED(lys_node_leaflist, node, must, must_size, Restr);
 S_Type Schema_Node_Leaflist::type() {return std::make_shared<Type>(&((struct lys_node_leaflist *)node)->type, deleter);}
 
 Schema_Node_List::~Schema_Node_List() {};
 S_When Schema_Node_List::when() LY_NEW_CASTED(lys_node_list, node, when, When);
-std::vector<S_Restr> *Schema_Node_List::must() LY_NEW_LIST_CASTED(lys_node_list, node, must, must_size, Restr);
-std::vector<S_Tpdf> *Schema_Node_List::tpdf() LY_NEW_LIST_CASTED(lys_node_list, node, tpdf, tpdf_size, Tpdf);
-std::vector<S_Schema_Node_Leaf> *Schema_Node_List::keys() {
+std::vector<S_Restr> Schema_Node_List::must() LY_NEW_LIST_CASTED(lys_node_list, node, must, must_size, Restr);
+std::vector<S_Tpdf> Schema_Node_List::tpdf() LY_NEW_LIST_CASTED(lys_node_list, node, tpdf, tpdf_size, Tpdf);
+std::vector<S_Schema_Node_Leaf> Schema_Node_List::keys() {
     auto list = (struct lys_node_list *) node;
 
-    auto s_vector = new std::vector<S_Schema_Node_Leaf>;
+    std::vector<S_Schema_Node_Leaf> s_vector;
 
     for (uint8_t i = 0; i < list->keys_size; i++) {
-        s_vector->push_back(std::make_shared<Schema_Node_Leaf>((struct lys_node *) list->keys[i], deleter));
+        s_vector.push_back(std::make_shared<Schema_Node_Leaf>((struct lys_node *) list->keys[i], deleter));
     }
 
     return s_vector;
 }
-std::vector<S_Unique> *Schema_Node_List::unique() LY_NEW_LIST_CASTED(lys_node_list, node, unique, unique_size, Unique);
+std::vector<S_Unique> Schema_Node_List::unique() LY_NEW_LIST_CASTED(lys_node_list, node, unique, unique_size, Unique);
 
 Schema_Node_Anydata::~Schema_Node_Anydata() {};
 S_When Schema_Node_Anydata::when() LY_NEW_CASTED(lys_node_anydata, node, when, When);
-std::vector<S_Restr> *Schema_Node_Anydata::must() LY_NEW_LIST_CASTED(lys_node_anydata, node, must, must_size, Restr);
+std::vector<S_Restr> Schema_Node_Anydata::must() LY_NEW_LIST_CASTED(lys_node_anydata, node, must, must_size, Restr);
 
 Schema_Node_Uses::~Schema_Node_Uses() {};
 S_When Schema_Node_Uses::when() LY_NEW_CASTED(lys_node_uses, node, when, When);
-std::vector<S_Refine> *Schema_Node_Uses::refine() LY_NEW_LIST_CASTED(lys_node_uses, node, refine, refine_size, Refine);
-std::vector<S_Schema_Node_Augment> *Schema_Node_Uses::augment() {
+std::vector<S_Refine> Schema_Node_Uses::refine() LY_NEW_LIST_CASTED(lys_node_uses, node, refine, refine_size, Refine);
+std::vector<S_Schema_Node_Augment> Schema_Node_Uses::augment() {
     auto uses = (struct lys_node_uses *) node;
 
-    auto s_vector = new std::vector<S_Schema_Node_Augment>;
+    std::vector<S_Schema_Node_Augment> s_vector;
 
     for (uint8_t i = 0; i < uses->augment_size; i++) {
-        s_vector->push_back(std::make_shared<Schema_Node_Augment>((struct lys_node *) &uses->augment[i], deleter));
+        s_vector.push_back(std::make_shared<Schema_Node_Augment>((struct lys_node *) &uses->augment[i], deleter));
     }
 
     return s_vector;
@@ -382,21 +394,21 @@ S_Schema_Node_Grp Schema_Node_Uses::grp() {
 };
 
 Schema_Node_Grp::~Schema_Node_Grp() {};
-std::vector<S_Tpdf> *Schema_Node_Grp::tpdf() LY_NEW_LIST_CASTED(lys_node_grp, node, tpdf, tpdf_size, Tpdf);
+std::vector<S_Tpdf> Schema_Node_Grp::tpdf() LY_NEW_LIST_CASTED(lys_node_grp, node, tpdf, tpdf_size, Tpdf);
 
 Schema_Node_Case::~Schema_Node_Case() {};
 S_When Schema_Node_Case::when() LY_NEW_CASTED(lys_node_case, node, when, When);
 
 Schema_Node_Inout::~Schema_Node_Inout() {};
-std::vector<S_Tpdf> *Schema_Node_Inout::tpdf() LY_NEW_LIST_CASTED(lys_node_inout, node, tpdf, tpdf_size, Tpdf);
-std::vector<S_Restr> *Schema_Node_Inout::must() LY_NEW_LIST_CASTED(lys_node_inout, node, must, must_size, Restr);
+std::vector<S_Tpdf> Schema_Node_Inout::tpdf() LY_NEW_LIST_CASTED(lys_node_inout, node, tpdf, tpdf_size, Tpdf);
+std::vector<S_Restr> Schema_Node_Inout::must() LY_NEW_LIST_CASTED(lys_node_inout, node, must, must_size, Restr);
 
 Schema_Node_Notif::~Schema_Node_Notif() {};
-std::vector<S_Tpdf> *Schema_Node_Notif::tpdf() LY_NEW_LIST_CASTED(lys_node_notif, node, tpdf, tpdf_size, Tpdf);
-std::vector<S_Restr> *Schema_Node_Notif::must() LY_NEW_LIST_CASTED(lys_node_notif, node, must, must_size, Restr);
+std::vector<S_Tpdf> Schema_Node_Notif::tpdf() LY_NEW_LIST_CASTED(lys_node_notif, node, tpdf, tpdf_size, Tpdf);
+std::vector<S_Restr> Schema_Node_Notif::must() LY_NEW_LIST_CASTED(lys_node_notif, node, must, must_size, Restr);
 
 Schema_Node_Rpc_Action::~Schema_Node_Rpc_Action() {};
-std::vector<S_Tpdf> *Schema_Node_Rpc_Action::tpdf() LY_NEW_LIST_CASTED(lys_node_rpc_action, node, tpdf, tpdf_size, Tpdf);
+std::vector<S_Tpdf> Schema_Node_Rpc_Action::tpdf() LY_NEW_LIST_CASTED(lys_node_rpc_action, node, tpdf, tpdf_size, Tpdf);
 
 Schema_Node_Augment::~Schema_Node_Augment() {};
 S_When Schema_Node_Augment::when() LY_NEW_CASTED(lys_node_augment, node, when, When);
@@ -406,7 +418,7 @@ When::When(struct lys_when *when, S_Deleter deleter):
     deleter(deleter)
 {};
 When::~When() {};
-std::vector<S_Ext_Instance> *When::ext() LY_NEW_P_LIST(when, ext, ext_size, Ext_Instance);
+std::vector<S_Ext_Instance> When::ext() LY_NEW_P_LIST(when, ext, ext_size, Ext_Instance);
 
 Substmt::Substmt(struct lyext_substmt *substmt, S_Deleter deleter):
     substmt(substmt),
@@ -419,7 +431,7 @@ Ext::Ext(struct lys_ext *ext, S_Deleter deleter):
     deleter(deleter)
 {};
 Ext::~Ext() {};
-std::vector<S_Ext_Instance> *Ext::ext_instance() LY_NEW_P_LIST(ext, ext, ext_size, Ext_Instance);
+std::vector<S_Ext_Instance> Ext::ext_instance() LY_NEW_P_LIST(ext, ext, ext_size, Ext_Instance);
 S_Module Ext::module() LY_NEW(ext, module, Module);
 
 Refine_Mod_List::Refine_Mod_List(struct lys_refine_mod_list *list, S_Deleter deleter):
@@ -442,9 +454,9 @@ Refine::Refine(struct lys_refine *refine, S_Deleter deleter):
     deleter(deleter)
 {};
 Refine::~Refine() {};
-std::vector<S_Ext_Instance> *Refine::ext() LY_NEW_P_LIST(refine, ext, ext_size, Ext_Instance);
+std::vector<S_Ext_Instance> Refine::ext() LY_NEW_P_LIST(refine, ext, ext_size, Ext_Instance);
 S_Module Refine::module() LY_NEW(refine, module, Module);
-std::vector<S_Restr> *Refine::must() LY_NEW_LIST(refine, must, must_size, Restr);
+std::vector<S_Restr> Refine::must() LY_NEW_LIST(refine, must, must_size, Restr);
 S_Refine_Mod Refine::mod() {return std::make_shared<Refine_Mod>(refine->mod, refine->target_type, deleter);};
 
 Deviate::Deviate(struct lys_deviate *deviate, S_Deleter deleter):
@@ -452,7 +464,7 @@ Deviate::Deviate(struct lys_deviate *deviate, S_Deleter deleter):
     deleter(deleter)
 {};
 Deviate::~Deviate() {};
-std::vector<S_Ext_Instance> *Deviate::ext() LY_NEW_P_LIST(deviate, ext, ext_size, Ext_Instance);
+std::vector<S_Ext_Instance> Deviate::ext() LY_NEW_P_LIST(deviate, ext, ext_size, Ext_Instance);
 S_Restr Deviate::must() {return deviate->must ? std::make_shared<Restr>(deviate->must, deleter) : nullptr;};
 S_Unique Deviate::unique() {return deviate->unique ? std::make_shared<Unique>(deviate->unique, deleter) : nullptr;};
 S_Type Deviate::type() {return deviate->type ? std::make_shared<Type>(deviate->type, deleter) : nullptr;}
@@ -463,8 +475,8 @@ Deviation::Deviation(struct lys_deviation *deviation, S_Deleter deleter):
 {};
 Deviation::~Deviation() {};
 S_Schema_Node Deviation::orig_node() LY_NEW(deviation, orig_node, Schema_Node);
-std::vector<S_Deviate> *Deviation::deviate() LY_NEW_LIST(deviation, deviate, deviate_size, Deviate);
-std::vector<S_Ext_Instance> *Deviation::ext() LY_NEW_P_LIST(deviation, ext, ext_size, Ext_Instance);
+std::vector<S_Deviate> Deviation::deviate() LY_NEW_LIST(deviation, deviate, deviate_size, Deviate);
+std::vector<S_Ext_Instance> Deviation::ext() LY_NEW_P_LIST(deviation, ext, ext_size, Ext_Instance);
 
 Import::Import(struct lys_import *import, S_Deleter deleter):
     import(import),
@@ -508,4 +520,6 @@ Ident::Ident(struct lys_ident *ident, S_Deleter deleter):
     deleter(deleter)
 {};
 Ident::~Ident() {};
-std::vector<S_Ident> *Ident::base() LY_NEW_P_LIST(ident, base, base_size, Ident);
+std::vector<S_Ident> Ident::base() LY_NEW_P_LIST(ident, base, base_size, Ident);
+
+}

@@ -257,6 +257,7 @@ typedef enum {
     LYS_OUT_YIN = 2,     /**< YIN schema output format */
     LYS_OUT_TREE,        /**< Tree schema output format, for more information see the [printers](@ref howtoschemasprinters) page */
     LYS_OUT_INFO,        /**< Info schema output format, for more information see the [printers](@ref howtoschemasprinters) page */
+    LYS_OUT_JSON,        /**< JSON schema output format, reflecting YIN format with conversion of attributes to object's members */
 } LYS_OUTFORMAT;
 
 /**
@@ -1210,6 +1211,15 @@ struct lys_iffeature {
  * @}
  */
 
+#ifdef LY_ENABLED_CACHE
+
+/**
+ * @brief Maximum number of hashes stored in a schema node if cache is enabled.
+ */
+#define LYS_NODE_HASH_COUNT 4
+
+#endif
+
 /**
  * @brief Common structure representing single YANG data statement describing.
  *
@@ -1258,6 +1268,10 @@ struct lys_node {
                                           node in the list. */
 
     void *priv;                      /**< private caller's data, not used by libyang */
+
+#ifdef LY_ENABLED_CACHE
+    uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
+#endif
 };
 
 /**
@@ -1296,6 +1310,10 @@ struct lys_node_container {
                                           node in the list. */
 
     void *priv;                      /**< private caller's data, not used by libyang */
+
+#ifdef LY_ENABLED_CACHE
+    uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
+#endif
 
     /* specific container's data */
     struct lys_when *when;           /**< when statement (optional) */
@@ -1384,6 +1402,10 @@ struct lys_node_leaf {
 
     void *priv;                      /**< private caller's data, not used by libyang */
 
+#ifdef LY_ENABLED_CACHE
+    uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
+#endif
+
     /* specific leaf's data */
     struct lys_when *when;           /**< when statement (optional) */
     struct lys_restr *must;          /**< array of must constraints */
@@ -1433,6 +1455,10 @@ struct lys_node_leaflist {
                                           node in the list. */
 
     void *priv;                      /**< private caller's data, not used by libyang */
+
+#ifdef LY_ENABLED_CACHE
+    uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
+#endif
 
     /* specific leaf-list's data */
     struct lys_when *when;           /**< when statement (optional) */
@@ -1484,6 +1510,10 @@ struct lys_node_list {
                                           node in the list. */
 
     void *priv;                      /**< private caller's data, not used by libyang */
+
+#ifdef LY_ENABLED_CACHE
+    uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
+#endif
 
     /* specific list's data */
     struct lys_when *when;           /**< when statement (optional) */
@@ -1537,6 +1567,10 @@ struct lys_node_anydata {
                                           node in the list. */
 
     void *priv;                      /**< private caller's data, not used by libyang */
+
+#ifdef LY_ENABLED_CACHE
+    uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
+#endif
 
     /* specific anyxml's data */
     struct lys_when *when;           /**< when statement (optional) */
@@ -1752,6 +1786,10 @@ struct lys_node_notif {
 
     void *priv;                      /**< private caller's data, not used by libyang */
 
+#ifdef LY_ENABLED_CACHE
+    uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
+#endif
+
     /* specific rpc's data */
     struct lys_tpdf *tpdf;           /**< array of typedefs */
     struct lys_restr *must;          /**< array of must constraints */
@@ -1793,6 +1831,10 @@ struct lys_node_rpc_action {
                                           node in the list. */
 
     void *priv;                      /**< private caller's data, not used by libyang */
+
+#ifdef LY_ENABLED_CACHE
+    uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
+#endif
 
     /* specific rpc's data */
     struct lys_tpdf *tpdf;           /**< array of typedefs */
@@ -2121,6 +2163,23 @@ const struct lys_module *lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT f
  * @return Pointer to the data model structure or NULL on error.
  */
 const struct lys_module *lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format);
+
+/**
+ * @brief Search for the schema file in the specified searchpaths.
+ *
+ * @param[in] searchpaths NULL-terminated array of paths to be searched (recursively). Current working
+ * directory is searched automatically (but non-recursively if not in the provided list). Caller can use
+ * result of the ly_ctx_get_searchdirs().
+ * @param[in] cwd Flag to implicitly search also in the current working directory (non-recursively).
+ * @param[in] name Name of the schema to find.
+ * @param[in] revision Revision of the schema to find. If NULL, the newest found schema filepath is returned.
+ * @param[out] localfile Mandatory output variable containing absolute path of the found schema. If no schema
+ * complying the provided restriction is found, NULL is set.
+ * @param[out] format Optional output variable containing expected format of the schema document according to the
+ * file suffix.
+ * @return EXIT_FAILURE on error, EXIT_SUCCESS otherwise (even if the file is not found, then the *localfile is NULL).
+ */
+int lys_search_localfile(const char * const *searchpaths, int cwd, const char *name, const char *revision, char **localfile, LYS_INFORMAT *format);
 
 /**
  * @brief Get list of all the defined features in the module and its submodules.

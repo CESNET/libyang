@@ -51,10 +51,11 @@ enum UNRES_ITEM {
     UNRES_MUST_INOUT = 0x00800000,    /* unresolved must condition in parent input or output */
     UNRES_UNION = 0x01000000,         /* union with leafref which must be checked because the type can change without changing the
                                          value itself, but removing the target node */
+    UNRES_UNIQ_LEAVES = 0x02000000,   /* list with a unique statement(s) whose leaves need to be checked */
 
     /* generic */
-    UNRES_RESOLVED = 0x02000000,      /* a resolved item */
-    UNRES_DELETE = 0x04000000,        /* prepared for auto-delete */
+    UNRES_RESOLVED = 0x04000000,      /* a resolved item */
+    UNRES_DELETE = 0x08000000,        /* prepared for auto-delete */
 };
 
 /**

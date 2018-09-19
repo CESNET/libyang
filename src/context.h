@@ -34,7 +34,7 @@ struct ly_modules_list {
     uint8_t parsing_sub_modules_count;
     uint8_t parsed_submodules_count;
     uint16_t module_set_id;
-    int flags;
+    int flags; /* see @ref contextoptions. */
 };
 
 struct ly_ctx {

@@ -38,17 +38,15 @@ TEST(test_ly_ctx_new)
     const char *yang_folder2 = TESTS_DIR "/data:" TESTS_DIR "/data/files";
 
     try {
-        auto ctx = S_Context(new Context(yang_folder1));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder1);
         ASSERT_FALSE(nullptr == ctx);
-        auto list = std::shared_ptr<std::vector<std::string>>(ctx->get_searchdirs());
-        ASSERT_FALSE(nullptr == list);
-        ASSERT_EQ(1, list->size());
+        auto list = ctx->get_searchdirs();
+        ASSERT_EQ(1, list.size());
 
-        ctx = S_Context(new Context(yang_folder2));
+        ctx = std::make_shared<libyang::Context>(yang_folder2);
         ASSERT_FALSE(nullptr == ctx);
-        list = std::shared_ptr<std::vector<std::string>>(ctx->get_searchdirs());
-        ASSERT_FALSE(nullptr == list);
-        ASSERT_EQ(2, list->size());
+        list = ctx->get_searchdirs();
+        ASSERT_EQ(2, list.size());
     } catch( const std::exception& e ) {
         mt::printFailed(e.what(), stdout);
         return;
@@ -60,7 +58,7 @@ TEST(test_ly_ctx_new_invalid)
     const char *yang_folder = "INVALID_PATH";
 
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_FALSE("exception not thrown");
     } catch( const std::exception& e ) {
         ASSERT_NOTNULL(strstr(e.what(), "No Context"));
@@ -73,12 +71,12 @@ TEST(test_ly_ctx_get_searchdirs)
     const char *yang_folder = TESTS_DIR "/data/files";
 
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_FALSE(nullptr == ctx);
 
-        auto list = std::shared_ptr<std::vector<std::string>>(ctx->get_searchdirs());
-        ASSERT_EQ(1, list->size());
-        ASSERT_EQ(yang_folder, list->at(0));
+        auto list = ctx->get_searchdirs();
+        ASSERT_EQ(1, list.size());
+        ASSERT_EQ(yang_folder, list.at(0));
     } catch( const std::exception& e ) {
         mt::printFailed(e.what(), stdout);
         return;
@@ -91,22 +89,22 @@ TEST(test_ly_ctx_set_searchdir)
     const char *new_yang_folder = TESTS_DIR "/schema/yin";
 
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_FALSE(nullptr == ctx);
 
-        auto list = std::shared_ptr<std::vector<std::string>>(ctx->get_searchdirs());
-        ASSERT_EQ(1, list->size());
-        ASSERT_EQ(yang_folder, list->at(0));
+        auto list = ctx->get_searchdirs();
+        ASSERT_EQ(1, list.size());
+        ASSERT_EQ(yang_folder, list.at(0));
 
         ctx->set_searchdir(new_yang_folder);
-        list = std::shared_ptr<std::vector<std::string>>(ctx->get_searchdirs());
-        ASSERT_EQ(2, list->size());
-        ASSERT_EQ(new_yang_folder, list->at(1));
+        list = ctx->get_searchdirs();
+        ASSERT_EQ(2, list.size());
+        ASSERT_EQ(new_yang_folder, list.at(1));
 
         ctx->unset_searchdirs(0);
-        list = std::shared_ptr<std::vector<std::string>>(ctx->get_searchdirs());
-        ASSERT_EQ(1, list->size());
-        ASSERT_EQ(new_yang_folder, list->at(0));
+        list = ctx->get_searchdirs();
+        ASSERT_EQ(1, list.size());
+        ASSERT_EQ(new_yang_folder, list.at(0));
     } catch( const std::exception& e ) {
         mt::printFailed(e.what(), stdout);
         return;
@@ -119,7 +117,7 @@ TEST(test_ly_ctx_set_searchdir_invalid)
     const char *new_yang_folder = TESTS_DIR "INVALID_PATH";
 
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_FALSE(nullptr == ctx);
 
         ctx->set_searchdir(new_yang_folder);
@@ -134,7 +132,7 @@ TEST(test_ly_ctx_info)
 {
     const char *yang_folder = TESTS_DIR "/api/files";
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_FALSE(nullptr == ctx);
 
         auto info = ctx->info();
@@ -150,7 +148,7 @@ TEST(test_ly_ctx_load_module_invalid)
 {
     const char *yang_folder = TESTS_DIR "/api/files";
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_FALSE(nullptr == ctx);
 
         auto module = ctx->load_module("invalid", nullptr);
@@ -169,7 +167,7 @@ TEST(test_ly_ctx_load_get_module)
     const char *revision = "2016-03-01";
 
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_NOTNULL(ctx);
 
         auto module = ctx->get_module("invalid");
@@ -212,7 +210,7 @@ TEST(test_ly_ctx_get_module_older)
     const char *revision_older = "2015-01-01";
 
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_NOTNULL(ctx);
 
         auto module = ctx->load_module("c");
@@ -241,7 +239,7 @@ TEST(test_ly_ctx_get_module_by_ns)
     const char *ns = "urn:a";
 
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_NOTNULL(ctx);
 
         auto module = ctx->load_module(module_name);
@@ -263,7 +261,7 @@ TEST(test_ly_ctx_clean)
     const char *module_name = "a";
 
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_NOTNULL(ctx);
 
         auto module = ctx->load_module(module_name);
@@ -293,7 +291,7 @@ TEST(test_ly_ctx_parse_module_path)
     const char *module_name2 = "b";
 
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_NOTNULL(ctx);
 
         auto module = ctx->parse_module_path(yin_file, LYS_IN_YIN);
@@ -314,7 +312,7 @@ TEST(test_ly_ctx_parse_module_path_invalid)
     const char *yang_folder = TESTS_DIR "/api/files";
 
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_NOTNULL(ctx);
 
         auto module = ctx->parse_module_path("INVALID_YANG_FILE", LYS_IN_YANG);
@@ -333,7 +331,7 @@ TEST(test_ly_ctx_get_submodule)
     const char *sub_name = "asub";
 
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_NOTNULL(ctx);
         ctx->parse_module_path(yin_file, LYS_IN_YIN);
 
@@ -354,7 +352,7 @@ TEST(test_ly_ctx_get_submodule2)
     const char *sub_name = "asub";
 
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_NOTNULL(ctx);
         ctx->parse_module_path(yin_file, LYS_IN_YIN);
 
@@ -380,7 +378,7 @@ TEST(test_ly_ctx_find_path)
     const char *schema_path2 = "/a:x/a:bubba";
 
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_NOTNULL(ctx);
 
         ctx->parse_module_path(yang_file, LYS_IN_YANG);
@@ -390,7 +388,7 @@ TEST(test_ly_ctx_find_path)
         ctx->parse_module_path(yin_file, LYS_IN_YIN);
         set = ctx->find_path(schema_path2);
         ASSERT_NOTNULL(set);
-        S_Set(new Set());
+        std::make_shared<libyang::Set>();
     } catch( const std::exception& e ) {
         mt::printFailed(e.what(), stdout);
         return;
@@ -404,13 +402,13 @@ TEST(test_ly_set)
     const char *config_file = TESTS_DIR "/api/files/a.xml";
 
     try {
-        auto ctx = S_Context(new Context(yang_folder));
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
         ASSERT_NOTNULL(ctx);
         ctx->parse_module_path(yin_file, LYS_IN_YIN);
         auto root = ctx->parse_data_path(config_file, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_STRICT);
         ASSERT_NOTNULL(root);
 
-        auto set = S_Set(new Set());
+        auto set = std::make_shared<libyang::Set>();
         ASSERT_NOTNULL(set);
         ASSERT_EQ(0, set->number());
 
@@ -435,6 +433,79 @@ TEST(test_ly_set)
         mt::printFailed(e.what(), stdout);
         return;
     }
+}
+
+TEST(test_module_impl_callback)
+{
+    std::string mod_a{"module a {namespace urn:a; prefix a; import b { prefix b; } import c { prefix c; } import d { prefix d; } leaf a { type b:mytype; } leaf a1 { type c:mytype; } }"};
+    std::string mod_b{"module b {namespace urn:b; prefix b; import b_1 { prefix b_1; } typedef mytype { type string; }}"};
+    std::string mod_b_1{"module b_1 {namespace urn:b_1; prefix b_1; typedef mytype { type string; }}"};
+    std::string mod_c{"module c {namespace urn:c; prefix c; typedef mytype { type string; }}"};
+    std::string mod_d{"module d {namespace urn:d; prefix d; typedef mytype { type string; }}"};
+    int b_allocated = 0, b_freed = 0, b_1_allocated = 0, b_1_freed = 0, c_allocated = 0, c_freed = 0, d_allocated = 0;
+    auto mod_b_cb = [mod_b, &b_allocated](const char *mod_name, const char *, const char *, const char *) -> libyang::Context::mod_missing_cb_return {
+        if (mod_name == std::string("b")) {
+            ASSERT_EQ(0, b_allocated);
+            ++b_allocated;
+            return {LYS_IN_YANG, strdup(mod_b.c_str())};
+        }
+        return {LYS_IN_UNKNOWN, nullptr};
+    };
+    auto mod_b_free = [&b_allocated, &b_freed](void *data) {
+        ASSERT_EQ(1, b_allocated);
+        ++b_freed;
+        free(data);
+    };
+    auto mod_b_1_cb = [mod_b_1, &b_1_allocated](const char *mod_name, const char *, const char *, const char *) -> libyang::Context::mod_missing_cb_return {
+        if (mod_name == std::string("b_1")) {
+            ASSERT_EQ(0, b_1_allocated);
+            ++b_1_allocated;
+            return {LYS_IN_YANG, strdup(mod_b_1.c_str())};
+        }
+        return {LYS_IN_UNKNOWN, nullptr};
+    };
+    auto mod_b_1_free = [&b_1_allocated, &b_1_freed](void *data) {
+        ASSERT_EQ(1, b_1_allocated);
+        ++b_1_freed;
+        free(data);
+    };
+    auto mod_c_cb = [mod_c, &c_allocated](const char *mod_name, const char *, const char *, const char *) -> libyang::Context::mod_missing_cb_return {
+        if (mod_name == std::string("c")) {
+            ASSERT_EQ(0, c_allocated);
+            ++c_allocated;
+            // no actual allocation here
+            return {LYS_IN_YANG, mod_c.c_str()};
+        }
+        return {LYS_IN_UNKNOWN, nullptr};
+    };
+    auto mod_c_free = [&c_allocated, &c_freed](void *) {
+        ASSERT_EQ(1, c_allocated);
+        ++c_freed;
+        // no actual deallocation
+    };
+    auto mod_d_cb = [mod_d, &d_allocated](const char *mod_name, const char *, const char *, const char *) -> libyang::Context::mod_missing_cb_return {
+        if (mod_name == std::string("d")) {
+            ASSERT_EQ(0, d_allocated);
+            ++d_allocated;
+            // no allocation because we are testing behavior with no deleter
+            return {LYS_IN_YANG, mod_d.c_str()};
+        }
+        return {LYS_IN_UNKNOWN, nullptr};
+    };
+
+    auto ctx = std::make_shared<libyang::Context>();
+    ctx->add_missing_module_callback(mod_b_cb, mod_b_free);
+    ctx->add_missing_module_callback(mod_b_1_cb, mod_b_1_free);
+    ctx->add_missing_module_callback(mod_c_cb, mod_c_free);
+    ctx->add_missing_module_callback(mod_d_cb);
+    ctx->parse_module_mem(mod_a.c_str(), LYS_IN_YANG);
+    ASSERT_EQ(1, b_allocated);
+    ASSERT_EQ(1, b_freed);
+    ASSERT_EQ(1, b_1_allocated);
+    ASSERT_EQ(1, b_1_freed);
+    ASSERT_EQ(1, c_allocated);
+    ASSERT_EQ(1, c_freed);
+    ASSERT_EQ(1, d_allocated);
 }
 
 TEST_MAIN();

@@ -23,10 +23,22 @@ if module is not None:
 else:
     module = ctx.load_module("turing-machine")
 
+node = None
 try:
-    node = ctx.parse_data_path("/etc/sysrepo/data/turing-machine.startup", ly.LYD_XML, ly.LYD_OPT_CONFIG)
+    if node is None : node = ctx.parse_data_path("/etc/sysrepo/data/turing-machine.startup", ly.LYD_LYB, ly.LYD_OPT_CONFIG)
 except Exception as e:
     print(e)
+try:
+    if node is None : node = ctx.parse_data_path("/etc/sysrepo/data/turing-machine.startup", ly.LYD_XML, ly.LYD_OPT_CONFIG)
+except Exception as e:
+    print(e)
+try:
+    if node is None : node = ctx.parse_data_path("/etc/sysrepo/data/turing-machine.startup", ly.LYD_JSON, ly.LYD_OPT_CONFIG)
+except Exception as e:
+    print(e)
+
+if node is None:
+    sys.exit()
 
 if node is None:
     print("parse_data_path did not return any nodes")

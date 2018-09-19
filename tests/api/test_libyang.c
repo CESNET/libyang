@@ -464,25 +464,25 @@ test_ly_ctx_clean(void **state)
     /* remember starting values */
     setid = ctx->models.module_set_id;
     modules_count = ctx->models.used;
-    dict_used = ctx->dict.used;
+    dict_used = ctx->dict.hash_tab->used;
 
     /* add a module */
     mod = ly_ctx_load_module(ctx, "x", NULL);
     assert_ptr_not_equal(mod, NULL);
     assert_int_equal(modules_count + 1, ctx->models.used);
-    assert_int_not_equal(dict_used, ctx->dict.used);
+    assert_int_not_equal(dict_used, ctx->dict.hash_tab->used);
 
     /* clean the context */
     ly_ctx_clean(ctx, NULL);
     assert_int_equal(setid + 2, ctx->models.module_set_id);
     assert_int_equal(modules_count, ctx->models.used);
-    assert_int_equal(dict_used, ctx->dict.used);
+    assert_int_equal(dict_used, ctx->dict.hash_tab->used);
 
     /* add a module again ... */
     mod = ly_ctx_load_module(ctx, "x", NULL);
     assert_ptr_not_equal(mod, NULL);
     assert_int_equal(modules_count + 1, ctx->models.used);
-    assert_int_not_equal(dict_used, ctx->dict.used);
+    assert_int_not_equal(dict_used, ctx->dict.hash_tab->used);
 
     /* .. and add some string into dictionary */
     assert_ptr_not_equal(lydict_insert(ctx, "qwertyuiop", 0), NULL);
@@ -492,9 +492,10 @@ test_ly_ctx_clean(void **state)
     ly_ctx_clean(ctx, NULL);
     assert_int_equal(setid + 4, ctx->models.module_set_id);
     assert_int_equal(modules_count, ctx->models.used);
-    assert_int_equal(dict_used, ctx->dict.used);
+    assert_int_equal(dict_used, ctx->dict.hash_tab->used);
 
     /* cleanup */
+    lydict_remove(ctx, "qwertyuiop");
     ly_ctx_destroy(ctx, NULL);
 }
 
@@ -546,7 +547,7 @@ test_ly_ctx_remove_module(void **state)
     /* remember starting values */
     setid = ctx->models.module_set_id;
     modules_count = ctx->models.used;
-    dict_used = ctx->dict.used;
+    dict_used = ctx->dict.hash_tab->used;
 
     mod = ly_ctx_load_module(ctx, "x", NULL);
     ly_ctx_remove_module(mod, NULL);
@@ -557,7 +558,7 @@ test_ly_ctx_remove_module(void **state)
     assert_true(setid < ctx->models.module_set_id);
     setid = ctx->models.module_set_id;
     assert_int_equal(modules_count + 2, ctx->models.used);
-    assert_int_not_equal(dict_used, ctx->dict.used);
+    assert_int_not_equal(dict_used, ctx->dict.hash_tab->used);
 
     /* remove the imported module (x), that should cause removing also the loaded module (y) */
     mod = ly_ctx_get_module(ctx, "x", NULL, 0);
@@ -566,7 +567,7 @@ test_ly_ctx_remove_module(void **state)
     assert_true(setid < ctx->models.module_set_id);
     setid = ctx->models.module_set_id;
     assert_int_equal(modules_count, ctx->models.used);
-    assert_int_equal(dict_used, ctx->dict.used);
+    assert_int_equal(dict_used, ctx->dict.hash_tab->used);
 
     /* add a module again ... */
     mod = ly_ctx_load_module(ctx, "y", NULL);
@@ -574,14 +575,14 @@ test_ly_ctx_remove_module(void **state)
     assert_true(setid < ctx->models.module_set_id);
     setid = ctx->models.module_set_id;
     assert_int_equal(modules_count + 2, ctx->models.used);
-    assert_int_not_equal(dict_used, ctx->dict.used);
+    assert_int_not_equal(dict_used, ctx->dict.hash_tab->used);
     /* ... now remove the loaded module, the imported module is supposed to be removed because it is not
      * used in any other module */
     ly_ctx_remove_module(mod, NULL);
     assert_true(setid < ctx->models.module_set_id);
     setid = ctx->models.module_set_id;
     assert_int_equal(modules_count, ctx->models.used);
-    assert_int_equal(dict_used, ctx->dict.used);
+    assert_int_equal(dict_used, ctx->dict.hash_tab->used);
 
     /* add a module again ... */
     mod = ly_ctx_load_module(ctx, "y", NULL);
@@ -589,7 +590,7 @@ test_ly_ctx_remove_module(void **state)
     assert_true(setid < ctx->models.module_set_id);
     setid = ctx->models.module_set_id;
     assert_int_equal(modules_count + 2, ctx->models.used);
-    assert_int_not_equal(dict_used, ctx->dict.used);
+    assert_int_not_equal(dict_used, ctx->dict.hash_tab->used);
     /* and mark even the imported module 'x' as implemented ... */
     assert_int_equal(lys_set_implemented(mod->imp[0].module), EXIT_SUCCESS);
     /* ... now remove the loaded module, the imported module is supposed to be kept because it is implemented */
@@ -597,7 +598,11 @@ test_ly_ctx_remove_module(void **state)
     assert_true(setid < ctx->models.module_set_id);
     setid = ctx->models.module_set_id;
     assert_int_equal(modules_count + 1, ctx->models.used);
-    assert_int_not_equal(dict_used, ctx->dict.used);
+    assert_int_not_equal(dict_used, ctx->dict.hash_tab->used);
+    mod = ly_ctx_get_module(ctx, "y", NULL, 0);
+    assert_ptr_equal(mod, NULL);
+    mod = ly_ctx_get_module(ctx, "x", NULL, 0);
+    assert_ptr_not_equal(mod, NULL);
     ly_ctx_clean(ctx, NULL);
 
     /* add a module again ... */
@@ -605,7 +610,7 @@ test_ly_ctx_remove_module(void **state)
     assert_true(setid < ctx->models.module_set_id);
     setid = ctx->models.module_set_id;
     assert_int_equal(modules_count + 2, ctx->models.used);
-    assert_int_not_equal(dict_used, ctx->dict.used);
+    assert_int_not_equal(dict_used, ctx->dict.hash_tab->used);
     /* and add another one also importing module 'x' ... */
     assert_ptr_not_equal(ly_ctx_load_module(ctx, "z", NULL), NULL);
     assert_true(setid < ctx->models.module_set_id);
@@ -617,7 +622,13 @@ test_ly_ctx_remove_module(void **state)
     assert_true(setid < ctx->models.module_set_id);
     setid = ctx->models.module_set_id;
     assert_int_equal(modules_count + 2, ctx->models.used);
-    assert_int_not_equal(dict_used, ctx->dict.used);
+    assert_int_not_equal(dict_used, ctx->dict.hash_tab->used);
+    mod = ly_ctx_get_module(ctx, "y", NULL, 0);
+    assert_ptr_equal(mod, NULL);
+    mod = ly_ctx_get_module(ctx, "x", NULL, 0);
+    assert_ptr_not_equal(mod, NULL);
+    mod = ly_ctx_get_module(ctx, "z", NULL, 0);
+    assert_ptr_not_equal(mod, NULL);
 }
 
 static void

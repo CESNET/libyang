@@ -737,9 +737,9 @@ transform_iffeat_schema2json(const struct lys_module *module, const char *expr)
             assert(out_size == out_used);
             return lydict_insert_zc(ctx, out);
         }
-        id = strpbrk_backwards(col - 1, "/ [\'\"\f\n\r\t\v", (col - in) - 1);
-        if ((id[0] == '/') || (id[0] == ' ') || (id[0] == '[') || (id[0] == '\'') || (id[0] == '\"') || (id[0] == '\f') ||
-                (id[0] == '\n') || (id[0] == '\r') || (id[0] == '\t') || (id[0] == '\v')) {
+        id = strpbrk_backwards(col - 1, " \f\n\r\t\v(", (col - in) - 1);
+        if ((id[0] == ' ') || (id[0] == '\f') || (id[0] == '\n') || (id[0] == '\r') ||
+            (id[0] == '\t') || (id[0] == '\v') || (id[0] == '(')) {
             ++id;
         }
         id_len = col - id;
@@ -1286,27 +1286,24 @@ ly_new_node_validity(const struct lys_node *schema)
     int validity;
 
     validity = LYD_VAL_OK;
-    switch (schema->nodetype) {
-    case LYS_LEAF:
-    case LYS_LEAFLIST:
+
+    if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
         if (((struct lys_node_leaf *)schema)->type.base == LY_TYPE_LEAFREF) {
+            /* leafref target validation */
             validity |= LYD_VAL_LEAFREF;
         }
-        validity |= LYD_VAL_MAND;
-        break;
-    case LYS_LIST:
+    }
+    if (schema->nodetype & (LYS_LEAFLIST | LYS_LIST)) {
+        /* duplicit instance check */
+        validity |= LYD_VAL_DUP;
+    }
+    if ((schema->nodetype == LYS_LIST) && ((struct lys_node_list *)schema)->unique_size) {
+        /* unique check */
         validity |= LYD_VAL_UNIQUE;
-        /* fallthrough */
-    case LYS_CONTAINER:
-    case LYS_NOTIF:
-    case LYS_RPC:
-    case LYS_ACTION:
-    case LYS_ANYXML:
-    case LYS_ANYDATA:
+    }
+    if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_CONTAINER | LYS_NOTIF | LYS_RPC | LYS_ACTION | LYS_ANYDATA)) {
+        /* mandatory children check */
         validity |= LYD_VAL_MAND;
-        break;
-    default:
-        break;
     }
 
     return validity;
@@ -1368,4 +1365,61 @@ dec64cmp(int64_t num1, uint8_t dig1, int64_t num2, uint8_t dig2)
         return 0;
     }
     return (num1 > num2 ? 1 : -1);
+}
+
+LYB_HASH
+lyb_hash(struct lys_node *sibling, uint8_t collision_id)
+{
+    struct lys_module *mod;
+    uint32_t full_hash;
+    LYB_HASH hash;
+
+#ifdef LY_ENABLED_CACHE
+    if ((collision_id < LYS_NODE_HASH_COUNT) && sibling->hash[collision_id]) {
+        return sibling->hash[collision_id];
+    }
+#endif
+
+    mod = lys_node_module(sibling);
+
+    full_hash = dict_hash_multi(0, mod->name, strlen(mod->name));
+    full_hash = dict_hash_multi(full_hash, sibling->name, strlen(sibling->name));
+    if (collision_id) {
+        if (collision_id > strlen(mod->name)) {
+            /* wow */
+            LOGINT(sibling->module->ctx);
+            return 0;
+        }
+        full_hash = dict_hash_multi(full_hash, mod->name, collision_id);
+    }
+    full_hash = dict_hash_multi(full_hash, NULL, 0);
+
+    /* use the shortened hash */
+    hash = full_hash & (LYB_HASH_MASK >> collision_id);
+    /* add colision identificator */
+    hash |= LYB_HASH_COLLISION_ID >> collision_id;
+
+    /* save this hash */
+#ifdef LY_ENABLED_CACHE
+    if (collision_id < LYS_NODE_HASH_COUNT) {
+        sibling->hash[collision_id] = hash;
+    }
+#endif
+
+    return hash;
+}
+
+int
+lyb_has_schema_model(struct lys_node *sibling, const struct lys_module **models, int mod_count)
+{
+    int i;
+    const struct lys_module *mod = lys_node_module(sibling);
+
+    for (i = 0; i < mod_count; ++i) {
+        if (mod == models[i]) {
+            return 1;
+        }
+    }
+
+    return 0;
 }

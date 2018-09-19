@@ -15,7 +15,6 @@
 #define _GNU_SOURCE
 #include <assert.h>
 #include <ctype.h>
-#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
@@ -406,274 +405,6 @@ lyp_add_ietf_netconf_annotations(struct lys_module *mod)
     mod->ext_size++;
 
     return EXIT_SUCCESS;
-}
-
-/* if module is !NULL, then the function searches for submodule */
-struct lys_module *
-lyp_search_file(struct ly_ctx *ctx, struct lys_module *module, const char *name, const char *revision,
-                int implement, struct unres_schema *unres)
-{
-    size_t len, flen, match_len = 0, dir_len;
-    int fd, i, implicit_cwd = 0;
-    char *wd, *wn = NULL;
-    DIR *dir = NULL;
-    struct dirent *file;
-    char *match_name = NULL, *dot, *rev, *filename;
-    LYS_INFORMAT format, match_format = 0;
-    struct lys_module *result = NULL;
-    unsigned int u;
-    struct ly_set *dirs;
-    struct stat st;
-
-    /* start to fill the dir fifo with the context's search path (if set)
-     * and the current working directory */
-    dirs = ly_set_new();
-    if (!dirs) {
-        LOGMEM(ctx);
-        return NULL;
-    }
-
-    len = strlen(name);
-    wd = get_current_dir_name();
-    if (!wd) {
-        LOGMEM(ctx);
-        goto cleanup;
-    } else {
-        /* add implicit current working directory (./) to be searched,
-         * this directory is not searched recursively */
-        if (ly_set_add(dirs, wd, 0) == -1) {
-            goto cleanup;
-        }
-        implicit_cwd = 1;
-    }
-    if (ctx->models.search_paths) {
-        for (i = 0; ctx->models.search_paths[i]; i++) {
-            /* check for duplicities with the implicit current working directory */
-            if (implicit_cwd && !strcmp(dirs->set.g[0], ctx->models.search_paths[i])) {
-                implicit_cwd = 0;
-                continue;
-            }
-            wd = strdup(ctx->models.search_paths[i]);
-            if (!wd) {
-                LOGMEM(ctx);
-                goto cleanup;
-            } else if (ly_set_add(dirs, wd, 0) == -1) {
-                goto cleanup;
-            }
-        }
-    }
-    wd = NULL;
-
-    /* start searching */
-    while (dirs->number) {
-        free(wd);
-        free(wn); wn = NULL;
-
-        dirs->number--;
-        wd = (char *)dirs->set.g[dirs->number];
-        dirs->set.g[dirs->number] = NULL;
-        LOGVRB("Searching for \"%s\" in %s.", name, wd);
-
-        if (dir) {
-            closedir(dir);
-        }
-        dir = opendir(wd);
-        dir_len = strlen(wd);
-        if (!dir) {
-            LOGWRN(ctx, "Unable to open directory \"%s\" for searching (sub)modules (%s).", wd, strerror(errno));
-        } else {
-            while ((file = readdir(dir))) {
-                if (!strcmp(".", file->d_name) || !strcmp("..", file->d_name)) {
-                    /* skip . and .. */
-                    continue;
-                }
-                free(wn);
-                if (asprintf(&wn, "%s/%s", wd, file->d_name) == -1) {
-                    LOGMEM(ctx);
-                    goto cleanup;
-                }
-                if (stat(wn, &st) == -1) {
-                    LOGWRN(ctx, "Unable to get information about \"%s\" file in \"%s\" when searching for (sub)modules (%s)",
-                           file->d_name, wd, strerror(errno));
-                    continue;
-                }
-                if (S_ISDIR(st.st_mode) && (dirs->number || !implicit_cwd)) {
-                    /* we have another subdirectory in searchpath to explore,
-                     * subdirectories are not taken into account in current working dir (dirs->set.g[0]) */
-                    if (ly_set_add(dirs, wn, 0) == -1) {
-                        goto cleanup;
-                    }
-                    /* continue with the next item in current directory */
-                    wn = NULL;
-                    continue;
-                } else if (!S_ISREG(st.st_mode)) {
-                    /* not a regular file (note that we see the target of symlinks instead of symlinks */
-                    continue;
-                }
-
-                /* here we know that the item is a file which can contain a module */
-                if (strncmp(name, file->d_name, len) ||
-                        (file->d_name[len] != '.' && file->d_name[len] != '@')) {
-                    /* different filename than the module we search for */
-                    continue;
-                }
-
-                /* get type according to filename suffix */
-                flen = strlen(file->d_name);
-                if (!strcmp(&file->d_name[flen - 4], ".yin")) {
-                    format = LYS_IN_YIN;
-                } else if (!strcmp(&file->d_name[flen - 5], ".yang")) {
-                    format = LYS_IN_YANG;
-                } else {
-                    /* not supportde suffix/file format */
-                    continue;
-                }
-
-                if (revision) {
-                    /* we look for the specific revision, try to get it from the filename */
-                    if (file->d_name[len] == '@') {
-                        /* check revision from the filename */
-                        if (strncmp(revision, &file->d_name[len + 1], strlen(revision))) {
-                            /* another revision */
-                            continue;
-                        } else {
-                            /* exact revision */
-                            free(match_name);
-                            match_name = wn;
-                            wn = NULL;
-                            match_len = dir_len + 1 + len;
-                            match_format = format;
-                            goto matched;
-                        }
-                    } else {
-                        /* continue trying to find exact revision match, use this only if not found */
-                        free(match_name);
-                        match_name = wn;
-                        wn = NULL;
-                        match_len = dir_len + 1 +len;
-                        match_format = format;
-                        continue;
-                    }
-                } else {
-                    /* remember the revision and try to find the newest one */
-                    if (match_name) {
-                        if (file->d_name[len] != '@' || lyp_check_date(ctx, &file->d_name[len + 1])) {
-                            continue;
-                        } else if (match_name[match_len] == '@' &&
-                                (strncmp(&match_name[match_len + 1], &file->d_name[len + 1], LY_REV_SIZE - 1) >= 0)) {
-                            continue;
-                        }
-                        free(match_name);
-                    }
-
-                    match_name = wn;
-                    wn = NULL;
-                    match_len = dir_len + 1 + len;
-                    match_format = format;
-                    continue;
-                }
-            }
-        }
-    }
-
-    if (!match_name) {
-        if (!module && !revision) {
-            /* otherwise the module would be already taken from the context */
-            result = (struct lys_module *)ly_ctx_get_module(ctx, name, NULL, 0);
-        }
-        if (!result) {
-            LOGERR(ctx, LY_ESYS, "Data model \"%s\" not found.", name);
-        }
-        goto cleanup;
-    }
-
-matched:
-    LOGVRB("Loading schema from \"%s\" file.", match_name);
-
-    /* cut the format for now */
-    dot = strrchr(match_name, '.');
-    dot[1] = '\0';
-
-    /* check that the same file was not already loaded - it make sense only in case of loading the newest revision,
-     * search also in disabled module - if the matching module is disabled, it will be enabled instead of loading it */
-    if (!revision) {
-        for (i = 0; i < ctx->models.used; ++i) {
-            if (ctx->models.list[i]->filepath && !strcmp(name, ctx->models.list[i]->name)
-                    && !strncmp(match_name, ctx->models.list[i]->filepath, strlen(match_name))) {
-                result = ctx->models.list[i];
-                if (implement && !result->implemented) {
-                    /* make it implemented now */
-                    if (lys_set_implemented(result)) {
-                        result = NULL;
-                    }
-                } else if (result->disabled) {
-                    lys_set_enabled(result);
-                }
-
-                goto cleanup;
-            }
-        }
-    }
-
-    /* add the format back */
-    dot[1] = 'y';
-
-    /* open the file */
-    fd = open(match_name, O_RDONLY);
-    if (fd < 0) {
-        LOGERR(ctx, LY_ESYS, "Unable to open data model file \"%s\" (%s).",
-               match_name, strerror(errno));
-        goto cleanup;
-    }
-
-    if (module) {
-        result = (struct lys_module *)lys_sub_parse_fd(module, fd, match_format, unres);
-    } else {
-        result = (struct lys_module *)lys_parse_fd_(ctx, fd, match_format, revision, implement);
-    }
-    close(fd);
-
-    if (!result) {
-        goto cleanup;
-    }
-
-    /* check that name and revision match filename */
-    filename = strrchr(match_name, '/');
-    if (!filename) {
-        filename = match_name;
-    } else {
-        filename++;
-    }
-    rev = strchr(filename, '@');
-    /* name */
-    len = strlen(result->name);
-    if (strncmp(filename, result->name, len) ||
-            ((rev && rev != &filename[len]) || (!rev && dot != &filename[len]))) {
-        LOGWRN(ctx, "File name \"%s\" does not match module name \"%s\".", filename, result->name);
-    }
-    if (rev) {
-        len = dot - ++rev;
-        if (!result->rev_size || len != 10 || strncmp(result->rev[0].date, rev, len)) {
-            LOGWRN(ctx, "File name \"%s\" does not match module revision \"%s\".", filename,
-                   result->rev_size ? result->rev[0].date : "none");
-        }
-    }
-
-    /* success */
-
-cleanup:
-    free(wn);
-    free(wd);
-    if (dir) {
-        closedir(dir);
-    }
-    free(match_name);
-    for (u = 0; u < dirs->number; u++) {
-        free(dirs->set.g[u]);
-    }
-    ly_set_free(dirs);
-
-    return result;
 }
 
 /* logs directly
@@ -2253,9 +1984,9 @@ lyp_fill_attr(struct ly_ctx *ctx, struct lyd_node *parent, const char *module_ns
 
     /* first, get module where the annotation should be defined */
     if (module_ns) {
-        mod = (struct lys_module *)ly_ctx_get_module_by_ns(ctx, module_ns, NULL, 1);
+        mod = (struct lys_module *)ly_ctx_get_module_by_ns(ctx, module_ns, NULL, 0);
     } else if (module_name) {
-        mod = (struct lys_module *)ly_ctx_get_module(ctx, module_name, NULL, 1);
+        mod = (struct lys_module *)ly_ctx_get_module(ctx, module_name, NULL, 0);
     } else {
         LOGINT(ctx);
         return -1;
@@ -3046,6 +2777,18 @@ lyp_check_include(struct lys_module *module, const char *value, struct lys_inclu
         return -1;
     }
 
+    /* check the revision */
+    if (inc->rev[0] && inc->submodule->rev_size && strcmp(inc->rev, inc->submodule->rev[0].date)) {
+        LOGERR(module->ctx, LY_EVALID, "\"%s\" include of submodule \"%s\" in revision \"%s\" not found.",
+               module->name, value, inc->rev);
+        unres_schema_free((struct lys_module *)inc->submodule, &unres, 0);
+        lys_sub_module_remove_devs_augs((struct lys_module *)inc->submodule);
+        lys_submodule_module_data_free((struct lys_submodule *)inc->submodule);
+        lys_submodule_free(inc->submodule, NULL);
+        inc->submodule = NULL;
+        return -1;
+    }
+
     /* store the submodule as successfully parsed */
     lyp_add_includedup(module, inc->submodule);
 
@@ -3180,6 +2923,12 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
     /* check the result */
     if (!imp->module) {
         LOGERR(ctx, LY_EVALID, "Importing \"%s\" module into \"%s\" failed.", value, module->name);
+        return -1;
+    }
+
+    if (imp->rev[0] && imp->module->rev_size && strcmp(imp->rev, imp->module->rev[0].date)) {
+        LOGERR(ctx, LY_EVALID, "\"%s\" import of module \"%s\" in revision \"%s\" not found.",
+               module->name, value, imp->rev);
         return -1;
     }
 

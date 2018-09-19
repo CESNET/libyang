@@ -41,6 +41,7 @@ typedef enum {
     LYD_UNKNOWN,         /**< unknown format, used as return value in case of error */
     LYD_XML,             /**< XML format of the instance data */
     LYD_JSON,            /**< JSON format of the instance data */
+    LYD_LYB,             /**< LYB format of the instance data */
 } LYD_FORMAT;
 
 /**
@@ -78,6 +79,13 @@ typedef enum {
                                          into the anydata node without duplication, caller is supposed to not manipulate
                                          with the data after a successful call (including calling lyd_free() on the
                                          provided data) */
+    LYD_ANYDATA_LYB = 0x20,         /**< value is a memory with serialized data tree in LYB format. The data are handled
+                                         as a constant string. In case of using the value as input parameter,
+                                         the #LYD_ANYDATA_LYBD can be used for dynamically allocated string. */
+    LYD_ANYDATA_LYBD = 0x21,        /**< In case of using LYB value as input parameter, this enumeration is
+                                         supposed to be used for dynamically allocated strings (it is actually
+                                         combination of #LYD_ANYDATA_LYB and #LYD_ANYDATA_STRING (and it can be also
+                                         specified as ORed value of the mentioned values). */
 } LYD_ANYDATA_VALUETYPE;
 
 /**
@@ -137,14 +145,16 @@ struct lyd_attr {
  * @{
  */
 #define LYD_VAL_OK       0x00    /**< Node is successfully validated including whole subtree */
-#define LYD_VAL_UNIQUE   0x01    /**< Unique value(s) changed, applicable only to ::lys_node_list data nodes */
-#define LYD_VAL_MAND     0x02    /**< Some child added/removed and it is needed to perform check for mandatory
+#define LYD_VAL_DUP      0x01    /**< Instance duplication must be checked again, applicable only to ::lys_node_list and
+                                      ::lys_node_leaf_list data nodes */
+#define LYD_VAL_UNIQUE   0x02    /**< Unique value(s) changed, applicable only to ::lys_node_list data nodes */
+#define LYD_VAL_MAND     0x04    /**< Some child added/removed and it is needed to perform check for mandatory
                                       node or min/max constraints of direct list/leaflist children, applicable only
                                       to ::lys_node_list and ::lys_node_container data nodes, but if on any other node
                                       except ::lys_node_leaflist, it means checking that data node for duplicities.
                                       Additionally, it can be set on truly any node type and then status references
                                       are checked for this node if flag #LYD_OPT_OBSOLETE is used. */
-#define LYD_VAL_LEAFREF  0x04    /**< Node is a leafref, which needs to be resolved (it is invalid, new possible
+#define LYD_VAL_LEAFREF  0x08    /**< Node is a leafref, which needs to be resolved (it is invalid, new possible
                                       resolvent, or something similar) */
 #define LYD_VAL_INUSE    0x80    /**< Internal flag for note about various processing on data, should be used only
                                       internally and removed before libyang returns the node to the caller */
@@ -286,6 +296,7 @@ struct lyd_node_anydata {
     LYD_ANYDATA_VALUETYPE value_type;/**< type of the stored anydata value */
     union {
         const char *str;             /**< string value, in case of printing as XML, characters like '<' or '&' are escaped */
+        char *mem;                   /**< raw memory (used for LYB format) */
         struct lyxml_elem *xml;      /**< xml tree */
         struct lyd_node *tree;       /**< libyang data tree, does not change the root's parent, so it is not possible
                                           to get from the data tree into the anydata/anyxml */
@@ -530,7 +541,7 @@ char *lyd_path(const struct lyd_node *node);
  * @param[in] ctx Context to connect with the data tree being built here.
  * @param[in] data Serialized data in the specified format.
  * @param[in] format Format of the input data to be parsed.
- * @param[in] options Parser options, see @ref parseroptions.
+ * @param[in] options Parser options, see @ref parseroptions. \p format LYD_LYB uses #LYD_OPT_TRUSTED implicitly.
  * @param[in] ... Variable arguments depend on \p options. If they include:
  *                - #LYD_OPT_DATA:
  *                - #LYD_OPT_CONFIG:
@@ -568,7 +579,7 @@ struct lyd_node *lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT 
  * @param[in] ctx Context to connect with the data tree being built here.
  * @param[in] fd The standard file descriptor of the file containing the data tree in the specified format.
  * @param[in] format Format of the input data to be parsed.
- * @param[in] options Parser options, see @ref parseroptions.
+ * @param[in] options Parser options, see @ref parseroptions. \p format LYD_LYB uses #LYD_OPT_TRUSTED implicitly.
  * @param[in] ... Variable arguments depend on \p options. If they include:
  *                - #LYD_OPT_DATA:
  *                - #LYD_OPT_CONFIG:
@@ -604,7 +615,7 @@ struct lyd_node *lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int
  * @param[in] ctx Context to connect with the data tree being built here.
  * @param[in] path Path to the file containing the data tree in the specified format.
  * @param[in] format Format of the input data to be parsed.
- * @param[in] options Parser options, see @ref parseroptions.
+ * @param[in] options Parser options, see @ref parseroptions. \p format LYD_LYB uses #LYD_OPT_TRUSTED implicitly.
  * @param[in] ... Variable arguments depend on \p options. If they include:
  *                - #LYD_OPT_DATA:
  *                - #LYD_OPT_CONFIG:
@@ -1240,14 +1251,11 @@ const struct lys_type *lyd_leaf_type(const struct lyd_node_leaf_list *leaf);
 /**
 * @brief Print data tree in the specified format.
 *
-* Same as lyd_print(), but it allocates memory and store the data into it.
-* It is up to caller to free the returned string by free().
-*
 * @param[out] strp Pointer to store the resulting dump.
 * @param[in] root Root node of the data tree to print. It can be actually any (not only real root)
 * node of the data tree to print the specific subtree.
 * @param[in] format Data output format.
-* @param[in] options [printer flags](@ref printerflags).
+* @param[in] options [printer flags](@ref printerflags). \p format LYD_LYB accepts only #LYP_WITHSIBLINGS option.
 * @return 0 on success, 1 on failure (#ly_errno is set).
 */
 int lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format, int options);
@@ -1255,13 +1263,11 @@ int lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format, i
 /**
  * @brief Print data tree in the specified format.
  *
- * Same as lyd_print(), but output is written into the specified file descriptor.
- *
  * @param[in] root Root node of the data tree to print. It can be actually any (not only real root)
  * node of the data tree to print the specific subtree.
  * @param[in] fd File descriptor where to print the data.
  * @param[in] format Data output format.
- * @param[in] options [printer flags](@ref printerflags).
+ * @param[in] options [printer flags](@ref printerflags). \p format LYD_LYB accepts only #LYP_WITHSIBLINGS option.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
 int lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format, int options);
@@ -1269,13 +1275,11 @@ int lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format, int opt
 /**
  * @brief Print data tree in the specified format.
  *
- * To write data into a file descriptor, use lyd_print_fd().
- *
  * @param[in] root Root node of the data tree to print. It can be actually any (not only real root)
  * node of the data tree to print the specific subtree.
  * @param[in] f File stream where to print the data.
  * @param[in] format Data output format.
- * @param[in] options [printer flags](@ref printerflags).
+ * @param[in] options [printer flags](@ref printerflags). \p format LYD_LYB accepts only #LYP_WITHSIBLINGS option.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
 int lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format, int options);
@@ -1283,14 +1287,12 @@ int lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format, int 
 /**
  * @brief Print data tree in the specified format.
  *
- * Same as lyd_print(), but output is written via provided callback.
- *
  * @param[in] root Root node of the data tree to print. It can be actually any (not only real root)
  * node of the data tree to print the specific subtree.
  * @param[in] writeclb Callback function to write the data (see write(1)).
  * @param[in] arg Optional caller-specific argument to be passed to the \p writeclb callback.
  * @param[in] format Data output format.
- * @param[in] options [printer flags](@ref printerflags).
+ * @param[in] options [printer flags](@ref printerflags). \p format LYD_LYB accepts only #LYP_WITHSIBLINGS option.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
 int lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
@@ -1306,6 +1308,14 @@ int lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count),
  * @return Closest double equivalent to the decimal64 value.
  */
 double lyd_dec64_to_double(const struct lyd_node *node);
+
+/**
+ * @brief Get the length of a printed LYB data tree.
+ *
+ * @param[in] data LYB data.
+ * @return \p data length or -1 on error.
+ */
+int lyd_lyb_data_length(const char *data);
 
 #ifdef LY_ENABLED_LYD_PRIV
 

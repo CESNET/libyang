@@ -11,8 +11,8 @@ set(CMAKE_MACOSX_RPATH TRUE)
 
 # set version
 set(LIBYANG_MAJOR_VERSION 0)
-set(LIBYANG_MINOR_VERSION 15)
-set(LIBYANG_MICRO_VERSION 166)
+set(LIBYANG_MINOR_VERSION 16)
+set(LIBYANG_MICRO_VERSION 41)
 set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION})
 
@@ -88,6 +88,7 @@ set(GEN_CPP_BINDINGS 1 CACHE BOOL "Enable C++ bindings.")
 set(GEN_PYTHON_BINDINGS 1 CACHE BOOL "Enable Python bindings.")
 set(GEN_PYTHON_VERSION "3" CACHE STRING "Python version")
 set(GEN_JAVASCRIPT_BINDINGS 0 CACHE BOOL "Enable JavaScript bindings.")
+set(GEN_JAVA_BINDINGS 1 CACHE BOOL "Enable Java bindings.")
 
 find_package(FLEX)
 find_package(BISON)
@@ -195,6 +196,7 @@ set(libsrc
     src/parser_yin.c
     src/parser_xml.c
     src/parser_json.c
+    src/parser_lyb.c
     src/parser_yang_bis.c
     src/parser_yang_lex.c
     src/parser_yang.c
@@ -205,10 +207,12 @@ set(libsrc
     src/xpath.c
     src/printer_yang.c
     src/printer_yin.c
+    src/printer_json_schema.c
     src/printer_xml.c
     src/printer_tree.c
     src/printer_info.c
     src/printer_json.c
+    src/printer_lyb.c
     src/yang_types.c)
 
 set(lintsrc
@@ -300,7 +304,13 @@ endif()
 # generate doxygen documentation for libyang API
 find_package(Doxygen)
 if(DOXYGEN_FOUND)
-    set(DOXYGEN_SKIP_DOT TRUE)
+    find_program(DOT_PATH dot PATH_SUFFIXES graphviz2.38/bin graphviz/bin)
+    if(DOT_PATH)
+        set(HAVE_DOT "YES")
+    else()
+        set(HAVE_DOT "NO")
+        message(AUTHOR_WARNING "Doxygen: to generate UML diagrams please install graphviz")
+    endif()
     add_custom_target(doc
             COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/Doxyfile
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})

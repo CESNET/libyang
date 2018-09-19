@@ -14,7 +14,22 @@ try:
         print("module not loaded")
         sys.exit()
 
-    node = ctx.parse_data_path("/etc/sysrepo/data/turing-machine.startup", ly.LYD_XML, ly.LYD_OPT_CONFIG)
+    node = None
+    try:
+        if node is None : node = ctx.parse_data_path("/etc/sysrepo/data/turing-machine.startup", ly.LYD_LYB, ly.LYD_OPT_CONFIG)
+    except Exception as e:
+        print(e)
+    try:
+        if node is None : node = ctx.parse_data_path("/etc/sysrepo/data/turing-machine.startup", ly.LYD_XML, ly.LYD_OPT_CONFIG)
+    except Exception as e:
+        print(e)
+    try:
+        if node is None : node = ctx.parse_data_path("/etc/sysrepo/data/turing-machine.startup", ly.LYD_JSON, ly.LYD_OPT_CONFIG)
+    except Exception as e:
+        print(e)
+
+    if node is None:
+        sys.exit()
 
     node_set = node.find_path("/turing-machine:turing-machine/transition-function/delta[label='left summand']/*")
     if node_set is None:

@@ -52,7 +52,7 @@ cmd_clear_help(void)
 void
 cmd_print_help(void)
 {
-    printf("print [-f (yang | yin | tree [<tree-options>] | info [-t <info-path>])] [-o <output-file>]"
+    printf("print [-f (yang | yin | tree [<tree-options>] | info [-P <info-path>]) | jsons] [-o <output-file>]"
            " <model-name>[@<revision>]\n");
     printf("\n");
     printf("\ttree-options:\t--tree-print-groupings\t(print top-level groupings in a separate section)\n");
@@ -64,7 +64,7 @@ cmd_print_help(void)
     printf("\n");
     printf("\tinfo-path:\t<schema-path> | typedef[<schema-path>]/<typedef-name> |\n");
     printf("\t          \t| identity/<identity-name> | feature/<feature-name> |\n");
-    printf("\t          \t| grouping/<grouping-name>(<schema-path>) |\n");
+    printf("\t          \t| grouping[<schema-path>]/<grouping-name> |\n");
     printf("\t          \t| type/<schema-path-leaf-or-leaflist>\n");
     printf("\n");
     printf("\tschema-path:\t( /<module-name>:<node-identifier> )+\n");
@@ -73,7 +73,7 @@ cmd_print_help(void)
 void
 cmd_data_help(void)
 {
-    printf("data [-(-s)trict] [-t TYPE] [-d DEFAULTS] [-o <output-file>] [-f (xml | json)] [-r <running-file-name>]\n");
+    printf("data [-(-s)trict] [-t TYPE] [-d DEFAULTS] [-o <output-file>] [-f (xml | json | lyb)] [-r <running-file-name>]\n");
     printf("     <data-file-name> [<RPC/action-data-file-name> | <yang-data name>]\n\n");
     printf("Accepted TYPEs:\n");
     printf("\tauto       - resolve data type (one of the following) automatically (as pyang does),\n");
@@ -330,6 +330,8 @@ cmd_print(const char *arg)
                 tree_opts |= LYS_OUTOPT_TREE_RFC;
             } else if (!strcmp(optarg, "info")) {
                 format = LYS_OUT_INFO;
+            } else if (!strcmp(optarg, "jsons")) {
+                format = LYS_OUT_JSON;
             } else {
                 fprintf(stderr, "Unknown output format \"%s\".\n", optarg);
                 goto cleanup;
@@ -407,6 +409,9 @@ cmd_print(const char *arg)
     }
 
     ret = lys_print_file(output, module, format, target_path, tree_ll, tree_opts);
+    if (format == LYS_OUT_JSON) {
+        fputs("\n", output);
+    }
 
 cleanup:
     free(*argv);
@@ -431,6 +436,8 @@ detect_data_format(char *filepath)
         return LYD_XML;
     } else if (len >= 6 && !strcmp(&filepath[len - 5], ".json")) {
         return LYD_JSON;
+    } else if (len >= 5 && !strcmp(&filepath[len - 4], ".lyb")) {
+        return LYD_LYB;
     } else {
         return LYD_UNKNOWN;
     }
@@ -449,7 +456,7 @@ parse_data(char *filepath, int *options, struct lyd_node *val_tree, const char *
     /* detect input format according to file suffix */
     informat = detect_data_format(filepath);
     if (informat == LYD_UNKNOWN) {
-        fprintf(stderr, "Unable to resolve format of the input file, please add \".xml\" or \".json\" suffix.\n");
+        fprintf(stderr, "Unable to resolve format of the input file, please add \".xml\", \".json\", or \".lyb\" suffix.\n");
         return EXIT_FAILURE;
     }
 
@@ -696,6 +703,8 @@ cmd_data(const char *arg)
                 outformat = LYD_XML;
             } else if (!strcmp(optarg, "json")) {
                 outformat = LYD_JSON;
+            } else if (!strcmp(optarg, "lyb")) {
+                outformat = LYD_LYB;
             } else {
                 fprintf(stderr, "Unknown output format \"%s\".\n", optarg);
                 goto cleanup;

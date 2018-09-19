@@ -23,13 +23,13 @@
 
 int main() {
 
-    S_Context ctx = nullptr;
+    libyang::S_Context ctx;
     try {
-        ctx = S_Context(new Context("/etc/sysrepo2/yang"));
+        ctx = std::make_shared<libyang::Context>("/etc/sysrepo2/yang");
     } catch( const std::exception& e ) {
         std::cout << e.what() << std::endl;
-        auto errors = std::shared_ptr<std::vector<S_Error>>(get_ly_errors(ctx));
-        for(auto error = errors->begin() ; error != errors->end() ; ++error) {
+        auto errors = get_ly_errors(ctx);
+        for(auto error = errors.begin() ; error != errors.end() ; ++error) {
             std::cout << "err: " << (*error)->err() << std::endl;
             std::cout << "vecode: " << (*error)->vecode() << std::endl;
             std::cout << "errmsg: " << (*error)->errmsg() << std::endl;
@@ -39,13 +39,18 @@ int main() {
     }
 
     try {
-        ctx = S_Context(new Context("/etc/sysrepo/yang"));
+        ctx = std::make_shared<libyang::Context>("/etc/sysrepo/yang");
     } catch( const std::exception& e ) {
         std::cout << e.what() << std::endl;
     }
 
-    auto folders = std::shared_ptr<std::vector<std::string>>(ctx->get_searchdirs());
-    for(auto elem = folders->begin() ; elem != folders->end() ; ++elem) {
+    if (!ctx) {
+        std::cerr << "Modify this example so that it can find some YANG dirs" << std::endl;
+        return 1;
+    }
+
+    auto folders = ctx->get_searchdirs();
+    for(auto elem = folders.begin() ; elem != folders.end() ; ++elem) {
         std::cout << (*elem) << std::endl;
     }
     std::cout << std::endl;
@@ -60,8 +65,8 @@ int main() {
         }
     }
 
-    auto modules = std::shared_ptr<std::vector<S_Module>>(ctx->get_module_iter());
-    for(auto mod = modules->begin() ; mod != modules->end() ; ++mod) {
+    auto modules = ctx->get_module_iter();
+    for(auto mod = modules.begin() ; mod != modules.end() ; ++mod) {
         std::cout << "module " << (*mod)->name() << " prefix " << (*mod)->prefix() << " type " << (*mod)->type() << std::endl;
     }
 

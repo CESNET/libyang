@@ -16,7 +16,7 @@
 
 #define UNUSED(x) @COMPILER_UNUSED_ATTR@
 
-#define TESTS_DIR "@CMAKE_SOURCE_DIR@/tests"
+#define TESTS_DIR "@TESTS_DIR@"
 #define BUILD_DIR "@PROJECT_BINARY_DIR@"
 
 #ifdef LY_ENABLED_CACHE

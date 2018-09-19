@@ -28,6 +28,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <dirent.h>
 
 #include "common.h"
 #include "context.h"
@@ -737,7 +738,7 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
 
 /* logs directly */
 int
-lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys_node *child)
+lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys_node *child, int options)
 {
     struct ly_ctx *ctx = child->module->ctx;
     struct lys_node *iter, **pchild;
@@ -890,10 +891,14 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
             LY_CHECK_ERR_RETURN(!c, LOGMEM(ctx), EXIT_FAILURE);
             c->name = lydict_insert(module->ctx, child->name, 0);
             c->flags = LYS_IMPLICIT;
+            if (!(options & (LYS_PARSE_OPT_CFG_IGNORE | LYS_PARSE_OPT_CFG_NOINHERIT))) {
+                /* get config flag from parent */
+                c->flags |= parent->flags & LYS_CONFIG_MASK;
+            }
             c->module = module;
             c->nodetype = LYS_CASE;
             c->prev = (struct lys_node*)c;
-            lys_node_addchild(parent, module, (struct lys_node*)c);
+            lys_node_addchild(parent, module, (struct lys_node*)c, options);
             parent = (struct lys_node*)c;
         }
         /* connect the child correctly */
@@ -1129,7 +1134,12 @@ lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format)
 
     if (!ret->filepath) {
         /* store URI */
-        ((struct lys_module *)ret)->filepath = lydict_insert(ctx, path, 0);
+        char rpath[PATH_MAX];
+        if (realpath(path, rpath) != NULL) {
+            ((struct lys_module *)ret)->filepath = lydict_insert(ctx, rpath, 0);
+        } else {
+            ((struct lys_module *)ret)->filepath = lydict_insert(ctx, path, 0);
+        }
     }
 
     return ret;
@@ -1235,6 +1245,201 @@ lys_sub_parse_fd(struct lys_module *module, int fd, LYS_INFORMAT format, struct 
 
     return submodule;
 
+}
+
+API int
+lys_search_localfile(const char * const *searchpaths, int cwd, const char *name, const char *revision, char **localfile, LYS_INFORMAT *format)
+{
+    size_t len, flen, match_len = 0, dir_len;
+    int i, implicit_cwd = 0, ret = EXIT_FAILURE;
+    char *wd, *wn = NULL;
+    DIR *dir = NULL;
+    struct dirent *file;
+    char *match_name = NULL;
+    LYS_INFORMAT format_aux, match_format = 0;
+    unsigned int u;
+    struct ly_set *dirs;
+    struct stat st;
+
+    if (!localfile) {
+        LOGARG;
+        return EXIT_FAILURE;
+    }
+
+    /* start to fill the dir fifo with the context's search path (if set)
+     * and the current working directory */
+    dirs = ly_set_new();
+    if (!dirs) {
+        LOGMEM(NULL);
+        return EXIT_FAILURE;
+    }
+
+    len = strlen(name);
+    if (cwd) {
+        wd = get_current_dir_name();
+        if (!wd) {
+            LOGMEM(NULL);
+            goto cleanup;
+        } else {
+            /* add implicit current working directory (./) to be searched,
+             * this directory is not searched recursively */
+            if (ly_set_add(dirs, wd, 0) == -1) {
+                goto cleanup;
+            }
+            implicit_cwd = 1;
+        }
+    }
+    if (searchpaths) {
+        for (i = 0; searchpaths[i]; i++) {
+            /* check for duplicities with the implicit current working directory */
+            if (implicit_cwd && !strcmp(dirs->set.g[0], searchpaths[i])) {
+                implicit_cwd = 0;
+                continue;
+            }
+            wd = strdup(searchpaths[i]);
+            if (!wd) {
+                LOGMEM(NULL);
+                goto cleanup;
+            } else if (ly_set_add(dirs, wd, 0) == -1) {
+                goto cleanup;
+            }
+        }
+    }
+    wd = NULL;
+
+    /* start searching */
+    while (dirs->number) {
+        free(wd);
+        free(wn); wn = NULL;
+
+        dirs->number--;
+        wd = (char *)dirs->set.g[dirs->number];
+        dirs->set.g[dirs->number] = NULL;
+        LOGVRB("Searching for \"%s\" in %s.", name, wd);
+
+        if (dir) {
+            closedir(dir);
+        }
+        dir = opendir(wd);
+        dir_len = strlen(wd);
+        if (!dir) {
+            LOGWRN(NULL, "Unable to open directory \"%s\" for searching (sub)modules (%s).", wd, strerror(errno));
+        } else {
+            while ((file = readdir(dir))) {
+                if (!strcmp(".", file->d_name) || !strcmp("..", file->d_name)) {
+                    /* skip . and .. */
+                    continue;
+                }
+                free(wn);
+                if (asprintf(&wn, "%s/%s", wd, file->d_name) == -1) {
+                    LOGMEM(NULL);
+                    goto cleanup;
+                }
+                if (stat(wn, &st) == -1) {
+                    LOGWRN(NULL, "Unable to get information about \"%s\" file in \"%s\" when searching for (sub)modules (%s)",
+                           file->d_name, wd, strerror(errno));
+                    continue;
+                }
+                if (S_ISDIR(st.st_mode) && (dirs->number || !implicit_cwd)) {
+                    /* we have another subdirectory in searchpath to explore,
+                     * subdirectories are not taken into account in current working dir (dirs->set.g[0]) */
+                    if (ly_set_add(dirs, wn, 0) == -1) {
+                        goto cleanup;
+                    }
+                    /* continue with the next item in current directory */
+                    wn = NULL;
+                    continue;
+                } else if (!S_ISREG(st.st_mode)) {
+                    /* not a regular file (note that we see the target of symlinks instead of symlinks */
+                    continue;
+                }
+
+                /* here we know that the item is a file which can contain a module */
+                if (strncmp(name, file->d_name, len) ||
+                        (file->d_name[len] != '.' && file->d_name[len] != '@')) {
+                    /* different filename than the module we search for */
+                    continue;
+                }
+
+                /* get type according to filename suffix */
+                flen = strlen(file->d_name);
+                if (!strcmp(&file->d_name[flen - 4], ".yin")) {
+                    format_aux = LYS_IN_YIN;
+                } else if (!strcmp(&file->d_name[flen - 5], ".yang")) {
+                    format_aux = LYS_IN_YANG;
+                } else {
+                    /* not supportde suffix/file format */
+                    continue;
+                }
+
+                if (revision) {
+                    /* we look for the specific revision, try to get it from the filename */
+                    if (file->d_name[len] == '@') {
+                        /* check revision from the filename */
+                        if (strncmp(revision, &file->d_name[len + 1], strlen(revision))) {
+                            /* another revision */
+                            continue;
+                        } else {
+                            /* exact revision */
+                            free(match_name);
+                            match_name = wn;
+                            wn = NULL;
+                            match_len = dir_len + 1 + len;
+                            match_format = format_aux;
+                            goto success;
+                        }
+                    } else {
+                        /* continue trying to find exact revision match, use this only if not found */
+                        free(match_name);
+                        match_name = wn;
+                        wn = NULL;
+                        match_len = dir_len + 1 +len;
+                        match_format = format_aux;
+                        continue;
+                    }
+                } else {
+                    /* remember the revision and try to find the newest one */
+                    if (match_name) {
+                        if (file->d_name[len] != '@' || lyp_check_date(NULL, &file->d_name[len + 1])) {
+                            continue;
+                        } else if (match_name[match_len] == '@' &&
+                                (strncmp(&match_name[match_len + 1], &file->d_name[len + 1], LY_REV_SIZE - 1) >= 0)) {
+                            continue;
+                        }
+                        free(match_name);
+                    }
+
+                    match_name = wn;
+                    wn = NULL;
+                    match_len = dir_len + 1 + len;
+                    match_format = format_aux;
+                    continue;
+                }
+            }
+        }
+    }
+
+success:
+    (*localfile) = match_name;
+    match_name = NULL;
+    if (format) {
+        (*format) = match_format;
+    }
+    ret = EXIT_SUCCESS;
+
+cleanup:
+    free(wn);
+    free(wd);
+    if (dir) {
+        closedir(dir);
+    }
+    free(match_name);
+    for (u = 0; u < dirs->number; u++) {
+        free(dirs->set.g[u]);
+    }
+    ly_set_free(dirs);
+
+    return ret;
 }
 
 int
@@ -2218,6 +2423,19 @@ lys_grp_free(struct ly_ctx *ctx, struct lys_node_grp *grp,
 }
 
 static void
+lys_rpc_action_free(struct ly_ctx *ctx, struct lys_node_rpc_action *rpc_act,
+             void (*private_destructor)(const struct lys_node *node, void *priv))
+{
+    int i;
+
+    /* handle only specific parts for LYS_GROUPING */
+    for (i = 0; i < rpc_act->tpdf_size; i++) {
+        lys_tpdf_free(ctx, &rpc_act->tpdf[i], private_destructor);
+    }
+    free(rpc_act->tpdf);
+}
+
+static void
 lys_inout_free(struct ly_ctx *ctx, struct lys_node_inout *io,
                void (*private_destructor)(const struct lys_node *node, void *priv))
 {
@@ -2561,9 +2779,11 @@ lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys
         /* do nothing */
         break;
     case LYS_GROUPING:
+        lys_grp_free(ctx, (struct lys_node_grp *)node, private_destructor);
+        break;
     case LYS_RPC:
     case LYS_ACTION:
-        lys_grp_free(ctx, (struct lys_node_grp *)node, private_destructor);
+        lys_rpc_action_free(ctx, (struct lys_node_rpc_action *)node, private_destructor);
         break;
     case LYS_NOTIF:
         lys_notif_free(ctx, (struct lys_node_notif *)node, private_destructor);
@@ -2948,7 +3168,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         }
 
         /* connect it to the parent */
-        if (lys_node_addchild(parent, retval->module, retval)) {
+        if (lys_node_addchild(parent, retval->module, retval, 0)) {
             goto error;
         }
 
@@ -3099,10 +3319,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
             list->keys_size = list_orig->keys_size;
 
             if (!shallow) {
-                /* the keys are going to be resolved only if the list is instantiated in data tree, not just
-                 * in another grouping */
-                for (iter = parent; iter && iter->nodetype != LYS_GROUPING; iter = iter->parent);
-                if (!iter && unres_schema_add_node(module, unres, list, UNRES_LIST_KEYS, NULL) == -1) {
+                if (unres_schema_add_node(module, unres, list, UNRES_LIST_KEYS, NULL) == -1) {
                     goto error;
                 }
             } else {
@@ -3564,7 +3781,6 @@ lys_features_disable_recursive(struct lys_feature *f)
         }
     }
 }
-
 
 /*
  * op: 1 - enable, 0 - disable
@@ -4218,7 +4434,7 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module,
                         reapply = 1;
                     }
                     /* connect the deviated node back into the augment */
-                    lys_node_addchild(parent, NULL, dev->orig_node);
+                    lys_node_addchild(parent, NULL, dev->orig_node, 0);
                     if (reapply) {
                         /* augment is supposed to be applied, so fix pointers in target and the status of the original node */
                         assert(lys_node_module(parent)->implemented);
@@ -4227,7 +4443,7 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module,
                     }
                 } else if (parent && (parent->nodetype == LYS_USES)) {
                     /* uses child */
-                    lys_node_addchild(parent, NULL, dev->orig_node);
+                    lys_node_addchild(parent, NULL, dev->orig_node, 0);
                 } else {
                     /* non-augment, non-toplevel */
                     parent_path = strndup(dev->target_name, strrchr(dev->target_name, '/') - dev->target_name);
@@ -4241,11 +4457,11 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module,
                     target = set->set.s[0];
                     ly_set_free(set);
 
-                    lys_node_addchild(target, NULL, dev->orig_node);
+                    lys_node_addchild(target, NULL, dev->orig_node, 0);
                 }
             } else {
                 /* ... from top-level data */
-                lys_node_addchild(NULL, (struct lys_module *)dev->orig_node->module, dev->orig_node);
+                lys_node_addchild(NULL, (struct lys_module *)dev->orig_node->module, dev->orig_node, 0);
             }
 
             dev->orig_node = NULL;
@@ -4456,16 +4672,16 @@ lys_sub_module_apply_devs_augs(struct lys_module *module)
     unres = calloc(1, sizeof *unres);
     LY_CHECK_ERR_RETURN(!unres, LOGMEM(module->ctx), );
 
-    /* remove applied deviations */
+    /* apply deviations */
     for (u = 0; u < module->deviation_size; ++u) {
         apply_dev(&module->deviation[u], module, unres);
     }
-    /* remove applied augments */
+    /* apply augments */
     for (u = 0; u < module->augment_size; ++u) {
         apply_aug(&module->augment[u], unres);
     }
 
-    /* remove deviation and augments defined in submodules */
+    /* apply deviations and augments defined in submodules */
     for (v = 0; v < module->inc_size; ++v) {
         for (u = 0; u < module->inc[v].submodule->deviation_size; ++u) {
             apply_dev(&module->inc[v].submodule->deviation[u], module, unres);
@@ -4486,7 +4702,7 @@ lys_sub_module_apply_devs_augs(struct lys_module *module)
 void
 lys_sub_module_remove_devs_augs(struct lys_module *module)
 {
-    uint8_t u, v;
+    uint8_t u, v, w;
     struct unres_schema *unres;
 
     unres = calloc(1, sizeof *unres);
@@ -4494,9 +4710,17 @@ lys_sub_module_remove_devs_augs(struct lys_module *module)
 
     /* remove applied deviations */
     for (u = 0; u < module->deviation_size; ++u) {
-        /* the deviation could be not applied because it failed to be applied */
+        /* the deviation could not be applied because it failed to be applied in the first place*/
         if (module->deviation[u].orig_node) {
             remove_dev(&module->deviation[u], module, unres);
+        }
+
+        /* Free the deviation's must array(s). These are shallow copies of the arrays
+           on the target node(s), so a deep free is not needed. */
+        for (v = 0; v < module->deviation[u].deviate_size; ++v) {
+            if (module->deviation[u].deviate[v].mod == LY_DEVIATE_ADD) {
+                free(module->deviation[u].deviate[v].must);
+            }
         }
     }
     /* remove applied augments */
@@ -4509,6 +4733,14 @@ lys_sub_module_remove_devs_augs(struct lys_module *module)
         for (u = 0; u < module->inc[v].submodule->deviation_size; ++u) {
             if (module->inc[v].submodule->deviation[u].orig_node) {
                 remove_dev(&module->inc[v].submodule->deviation[u], module, unres);
+            }
+
+            /* Free the deviation's must array(s). These are shallow copies of the arrays
+               on the target node(s), so a deep free is not needed. */
+            for (w = 0; w < module->inc[v].submodule->deviation[u].deviate_size; ++w) {
+                if (module->inc[v].submodule->deviation[u].deviate[w].mod == LY_DEVIATE_ADD) {
+                    free(module->inc[v].submodule->deviation[u].deviate[w].must);
+                }
             }
         }
 
@@ -4733,7 +4965,7 @@ lys_path(const struct lys_node *node, int options)
         return NULL;
     }
 
-    if (ly_vlog_build_path(LY_VLOG_LYS, node, &buf, !options)) {
+    if (ly_vlog_build_path(LY_VLOG_LYS, node, &buf, !options, 0)) {
         return NULL;
     }
 
@@ -4898,6 +5130,7 @@ lys_extcomplex_free_str(struct ly_ctx *ctx, struct lys_ext_instance_complex *ext
         }
     }
 }
+
 void
 lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, unsigned int size,
                              void (*private_destructor)(const struct lys_node *node, void *priv))

@@ -150,7 +150,8 @@ lyjson_parse_text(struct ly_ctx *ctx, const char *data, unsigned int *len)
             }
             o += r - 1; /* o is ++ in for loop */
             (*len) += i; /* number of read characters */
-        } else if ((data[*len] >= 0 && data[*len] < 0x20) || data[*len] == 0x5c) {
+        } else if ((unsigned char)(data[*len]) < 0x20) {
+            /* In C, char != unsigned char != signed char, so let's work with ASCII explicitly */
             /* control characters must be escaped */
             LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_NONE, NULL, "control character (unescaped)");
             goto error;
@@ -517,7 +518,7 @@ repeat:
         len += skip_ws(&data[len]);
         if (data[len] == ',') {
             /* various validation checks */
-            if (lyv_data_context((struct lyd_node*)leaf, options, unres) ||
+            if (lyv_data_context((struct lyd_node*)leaf, options | LYD_OPT_TRUSTED, unres) ||
                     lyv_data_content((struct lyd_node*)leaf, options, unres) ||
                     lyv_multicases((struct lyd_node*)leaf, NULL, first_sibling, 0, NULL)) {
                 return 0;
@@ -601,7 +602,7 @@ repeat:
         *name = '\0';
         name++;
         prefix = str;
-        module = (struct lys_module *)ly_ctx_get_module(parent_module->ctx, prefix, NULL, 1);
+        module = (struct lys_module *)ly_ctx_get_module(parent_module->ctx, prefix, NULL, 0);
         if (!module) {
             LOGVAL(ctx, LYE_INELEM, LY_VLOG_NONE, NULL, name);
             goto error;
@@ -900,7 +901,7 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
         }
 
         /* go through RPC's input/output following the options' data type */
-        if ((*parent)->schema->nodetype == LYS_RPC) {
+        if ((*parent)->schema->nodetype == LYS_RPC || (*parent)->schema->nodetype == LYS_ACTION) {
             while ((schema = (struct lys_node *)lys_getnext(schema, (*parent)->schema, NULL, LYS_GETNEXT_WITHINOUT))) {
                 if ((options & LYD_OPT_RPC) && (schema->nodetype == LYS_INPUT)) {
                     break;
@@ -1058,7 +1059,8 @@ attr_repeat:
         if (!r) {
             goto error;
         }
-        while (result->next) {
+        /* only for leaf-list */
+        while (result->next && (result->next->schema == result->schema)) {
             result = result->next;
         }
 
@@ -1211,7 +1213,7 @@ attr_repeat:
 
             if (data[len] == ',') {
                 /* various validation checks */
-                if (lyv_data_context(list, options, unres) ||
+                if (lyv_data_context(list, options | LYD_OPT_TRUSTED, unres) ||
                         lyv_data_content(list, options, unres) ||
                         lyv_multicases(list, NULL, prev ? &first_sibling : NULL, 0, NULL)) {
                     goto error;
@@ -1249,8 +1251,8 @@ attr_repeat:
         goto error;
     }
 
-    /* various validation checks */
-    if (lyv_data_context(result, options, unres) ||
+    /* various validation checks (LYD_OPT_TRUSTED is used just so that the order of elements is not checked) */
+    if (lyv_data_context(result, options | LYD_OPT_TRUSTED, unres) ||
             lyv_data_content(result, options, unres) ||
             lyv_multicases(result, NULL, prev ? &first_sibling : NULL, 0, NULL)) {
         goto error;
@@ -1259,7 +1261,7 @@ attr_repeat:
     /* validation successful */
     if (result->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
         /* postpone checking of unique when there will be all list/leaflist instances */
-        result->validity |= LYD_VAL_UNIQUE;
+        result->validity |= LYD_VAL_DUP;
     }
 
     if (!(*parent)) {
@@ -1298,9 +1300,8 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
     struct lyd_node *result = NULL, *next, *iter, *reply_parent = NULL, *reply_top = NULL, *act_notif = NULL;
     struct unres_data *unres = NULL;
     unsigned int len = 0, r;
-    int i, act_cont = 0;
+    int act_cont = 0;
     struct attr_cont *attrs = NULL;
-    struct ly_set *set;
 
     if (!ctx || !data) {
         LOGARG;
@@ -1446,6 +1447,13 @@ empty:
         goto error;
     }
 
+    /* order the elements by hand as it is not required of the JSON input */
+    if ((options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY))) {
+        if (lyd_schema_sort(result, 1)) {
+            goto error;
+        }
+    }
+
     if ((options & LYD_OPT_RPCREPLY) && (rpc_act->schema->nodetype != LYS_RPC)) {
         /* action reply */
         act_notif = reply_parent;
@@ -1464,28 +1472,18 @@ empty:
 
     /* check for uniquness of top-level lists/leaflists because
      * only the inner instances were tested in lyv_data_content() */
-    set = ly_set_new();
     LY_TREE_FOR(result, iter) {
-        if (!(iter->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) || !(iter->validity & LYD_VAL_UNIQUE)) {
+        if (!(iter->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) || !(iter->validity & LYD_VAL_DUP)) {
             continue;
         }
 
-        /* check each list/leaflist only once */
-        i = set->number;
-        if (ly_set_add(set, iter->schema, 0) != i) {
-            /* already checked */
-            continue;
-        }
-
-        if (lyv_data_unique(iter, result)) {
-            ly_set_free(set);
+        if (lyv_data_dup(iter, result)) {
             goto error;
         }
     }
-    ly_set_free(set);
 
     /* add/validate default values, unres */
-    if (lyd_defaults_add_unres(&result, options, ctx, data_tree, act_notif, unres)) {
+    if (lyd_defaults_add_unres(&result, options, ctx, data_tree, act_notif, unres, 1)) {
         goto error;
     }
 

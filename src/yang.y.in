@@ -3987,7 +3987,7 @@ descendant_path_opt: @EMPTYDIR@
   |  path_predicate absolute_paths;
 
 path_predicate: @EMPTYDIR@
-  | path_predicate '[' whitespace_opt path_equality_expr whitespace_opt ']'
+  | path_predicate '[' whitespace_opt path_equality_expr ']'
 
 path_equality_expr: node_identifier whitespace_opt '=' whitespace_opt path_key_expr
 
@@ -3996,7 +3996,6 @@ path_key_expr: current_function_invocation whitespace_opt '/' whitespace_opt
 
 rel_path_keyexpr: rel_path_keyexpr_part1 rel_path_keyexpr_part1_opt
                     node_identifier rel_path_keyexpr_part2
-                     node_identifier
 
 rel_path_keyexpr_part1: DOUBLEDOT whitespace_opt '/' whitespace_opt;
 

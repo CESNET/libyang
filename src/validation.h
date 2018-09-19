@@ -50,7 +50,15 @@ int lyv_data_context(const struct lyd_node *node, int options, struct unres_data
 int lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres);
 
 /**
- * @brief check for list/leaflist uniqueness.
+ * @brief Check list unique leaves.
+ *
+ * @param[in] list List node to be checked.
+ * @return 0 on success, non-zero on error.
+ */
+int lyv_data_unique(struct lyd_node *list);
+
+/**
+ * @brief Check for list/leaflist instance duplications.
  *
  * Function is used by lyv_data_context for inner lists/leaflists. Due to optimization, the function
  * is used separatedly for the top-level lists/leaflists.
@@ -60,7 +68,7 @@ int lyv_data_content(struct lyd_node *node, int options, struct unres_data *unre
  *                  Used for optimization, but can be NULL and the first sibling will be found.
  * @return 0 on success, non-zero on error.
  */
-int lyv_data_unique(struct lyd_node *node, struct lyd_node *start);
+int lyv_data_dup(struct lyd_node *node, struct lyd_node *start);
 
 /**
  * @brief Validate if the \p node has a sibling from another choice's case. It can report an error or automatically

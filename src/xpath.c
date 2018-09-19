@@ -20,6 +20,7 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <assert.h>
 #include <limits.h>
@@ -423,9 +424,13 @@ cast_string_recursive(struct lyd_node *node, struct lys_module *local_mod, int f
                     return;
                 }
                 break;
+            case LYD_ANYDATA_LYB:
+                LOGERR(local_mod->ctx, LY_EINVAL, "Cannot convert LYB anydata into string.");
+                return;
             case LYD_ANYDATA_STRING:
             case LYD_ANYDATA_SXMLD:
             case LYD_ANYDATA_JSOND:
+            case LYD_ANYDATA_LYBD:
                 /* dynamic strings are used only as input parameters */
                 assert(0);
                 break;
@@ -594,7 +599,7 @@ set_insert_node_hash(struct lyxp_set *set, struct lyd_node *node, enum lyxp_node
             hash = dict_hash_multi(hash, (const char *)&hnode.type, sizeof hnode.type);
             hash = dict_hash_multi(hash, NULL, 0);
 
-            r = lyht_insert(set->ht, &hnode, hash);
+            r = lyht_insert(set->ht, &hnode, hash, NULL);
             assert(!r);
             (void)r;
         }
@@ -609,7 +614,7 @@ set_insert_node_hash(struct lyxp_set *set, struct lyd_node *node, enum lyxp_node
         hash = dict_hash_multi(hash, (const char *)&hnode.type, sizeof hnode.type);
         hash = dict_hash_multi(hash, NULL, 0);
 
-        r = lyht_insert(set->ht, &hnode, hash);
+        r = lyht_insert(set->ht, &hnode, hash, NULL);
         assert(!r);
         (void)r;
     }
@@ -1704,24 +1709,34 @@ copy_nodes:
  * @param[in] token Token to add.
  * @param[in] expr_pos Token position in the XPath expression.
  * @param[in] tok_len Token length in the XPath expression.
+ * @return 0 on success, -1 on error.
  */
-static void
+static int
 exp_add_token(struct lyxp_expr *exp, enum lyxp_token token, uint16_t expr_pos, uint16_t tok_len)
 {
+    uint32_t prev;
+
     if (exp->used == exp->size) {
+        prev = exp->size;
         exp->size += LYXP_EXPR_SIZE_STEP;
+        if (prev > exp->size) {
+            LOGINT(NULL);
+            return -1;
+        }
+
         exp->tokens = ly_realloc(exp->tokens, exp->size * sizeof *exp->tokens);
-        LY_CHECK_ERR_RETURN(!exp->tokens, LOGMEM(NULL), );
+        LY_CHECK_ERR_RETURN(!exp->tokens, LOGMEM(NULL), -1);
         exp->expr_pos = ly_realloc(exp->expr_pos, exp->size * sizeof *exp->expr_pos);
-        LY_CHECK_ERR_RETURN(!exp->expr_pos, LOGMEM(NULL), );
+        LY_CHECK_ERR_RETURN(!exp->expr_pos, LOGMEM(NULL), -1);
         exp->tok_len = ly_realloc(exp->tok_len, exp->size * sizeof *exp->tok_len);
-        LY_CHECK_ERR_RETURN(!exp->tok_len, LOGMEM(NULL), );
+        LY_CHECK_ERR_RETURN(!exp->tok_len, LOGMEM(NULL), -1);
     }
 
     exp->tokens[exp->used] = token;
     exp->expr_pos[exp->used] = expr_pos;
     exp->tok_len[exp->used] = tok_len;
     ++exp->used;
+    return 0;
 }
 
 /**
@@ -2492,6 +2507,11 @@ lyxp_parse_expr(struct ly_ctx *ctx, const char *expr)
     enum lyxp_token tok_type;
     int prev_function_check = 0;
 
+    if (strlen(expr) > UINT16_MAX) {
+        LOGERR(ctx, LY_EINVAL, "XPath expression cannot be longer than %ud characters.", UINT16_MAX);
+        return NULL;
+    }
+
     /* init lyxp_expr structure */
     ret = calloc(1, sizeof *ret);
     LY_CHECK_ERR_GOTO(!ret, LOGMEM(ctx), error);
@@ -2716,7 +2736,9 @@ lyxp_parse_expr(struct ly_ctx *ctx, const char *expr)
         }
 
         /* store the token, move on to the next one */
-        exp_add_token(ret, tok_type, parsed, tok_len);
+        if (exp_add_token(ret, tok_type, parsed, tok_len)) {
+            goto error;
+        }
         parsed += tok_len;
         while (is_xmlws(expr[parsed])) {
             ++parsed;
@@ -3330,22 +3352,13 @@ static int
 xpath_count(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd_node *UNUSED(cur_node),
             struct lys_module *local_mod, struct lyxp_set *set, int options)
 {
-    struct lys_node *snode = NULL, *sparent;
+    struct lys_node *snode = NULL;
     int ret = EXIT_SUCCESS;
 
     if (options & LYXP_SNODE_ALL) {
         if ((args[0]->type != LYXP_SET_SNODE_SET) || !(snode = warn_get_snode_in_ctx(args[0]))) {
             LOGWRN(local_mod->ctx, "Argument #1 of %s not a node-set as expected.", __func__);
             ret = EXIT_FAILURE;
-        }
-
-        if (snode) {
-            for (sparent = snode; sparent && !(sparent->nodetype & (LYS_LIST | LYS_LEAFLIST)); sparent = lys_parent(sparent));
-            if (!sparent) {
-                LOGWRN(local_mod->ctx, "Argument #1 of %s is a %s node \"%s\" without a list node parent.",
-                    __func__, strnodetype(snode->nodetype), snode->name);
-                ret = EXIT_FAILURE;
-            }
         }
         set_snode_clear_ctx(set);
         return ret;
@@ -8391,6 +8404,8 @@ lyxp_set_print_xml(FILE *f, struct lyxp_set *set)
     char *str_num;
     struct lyout out;
 
+    memset(&out, 0, sizeof out);
+
     out.type = LYOUT_STREAM;
     out.method.f = f;
 
@@ -8684,7 +8699,7 @@ int
 lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int set_ext_dep_flags)
 {
     struct lys_node *parent, *elem;
-    const struct lys_node *ctx_snode;
+    const struct lys_node *ctx_snode = NULL;
     struct lyxp_set tmp_set;
     uint8_t must_size = 0;
     uint32_t i, j;
@@ -8767,9 +8782,13 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int set_ext
     if (when) {
         if (lyxp_atomize(when->cond, node, LYXP_NODE_ELEM, &tmp_set, LYXP_SNODE_WHEN | opts, &ctx_snode)) {
             free(tmp_set.val.snodes);
-            path = lys_path(ctx_snode, LYS_PATH_FIRST_PREFIX);
-            LOGVAL(node->module->ctx, LYE_SPEC, LY_VLOG_LYS, node,
-                   "Invalid when condition \"%s\" with context node \"%s\".", when->cond, path);
+            if (ctx_snode) {
+                path = lys_path(ctx_snode, LYS_PATH_FIRST_PREFIX);
+                LOGVAL(node->module->ctx, LYE_SPEC, LY_VLOG_LYS, node,
+                       "Invalid when condition \"%s\" with context node \"%s\".", when->cond, path);
+            } else {
+                LOGVAL(node->module->ctx, LYE_SPEC, LY_VLOG_LYS, node, "Invalid when condition \"%s\".", when->cond);
+            }
             ret = -1;
             goto finish;
         } else {
@@ -8810,9 +8829,13 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int set_ext
     for (i = 0; i < must_size; ++i) {
         if (lyxp_atomize(must[i].expr, node, LYXP_NODE_ELEM, &tmp_set, LYXP_SNODE_MUST | opts, &ctx_snode)) {
             free(tmp_set.val.snodes);
-            path = lys_path(ctx_snode, LYS_PATH_FIRST_PREFIX);
-            LOGVAL(node->module->ctx, LYE_SPEC, LY_VLOG_LYS, node,
-                   "Invalid must restriction \"%s\" with context node \"%s\".", must[i].expr, path);
+            if (ctx_snode) {
+                path = lys_path(ctx_snode, LYS_PATH_FIRST_PREFIX);
+                LOGVAL(node->module->ctx, LYE_SPEC, LY_VLOG_LYS, node,
+                       "Invalid must restriction \"%s\" with context node \"%s\".", must[i].expr, path);
+            } else {
+                LOGVAL(node->module->ctx, LYE_SPEC, LY_VLOG_LYS, node, "Invalid must restriction \"%s\".", must[i].expr);
+            }
             ret = -1;
             goto finish;
         } else {

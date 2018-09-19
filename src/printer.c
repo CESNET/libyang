@@ -13,6 +13,7 @@
  */
 
 #define _GNU_SOURCE /* vasprintf(), vdprintf() */
+#include <sys/types.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -85,7 +86,7 @@ ly_print(struct lyout *out, const char *format, ...)
 
     va_start(ap, format);
 
-    switch(out->type) {
+    switch (out->type) {
     case LYOUT_FD:
 #ifdef HAVE_VDPRINTF
         count = vdprintf(out->method.fd, format, ap);
@@ -149,34 +150,132 @@ ly_print_flush(struct lyout *out)
 int
 ly_write(struct lyout *out, const char *buf, size_t count)
 {
-    char *aux;
+    if (out->hole_count) {
+        /* we are buffering data after a hole */
+        if (out->buf_len + count > out->buf_size) {
+            out->buffered = ly_realloc(out->buffered, out->buf_len + count);
+            if (!out->buffered) {
+                out->buf_len = 0;
+                out->buf_size = 0;
+                LOGMEM(NULL);
+                return -1;
+            }
+            out->buf_size = out->buf_len + count;
+        }
 
-    switch(out->type) {
-    case LYOUT_FD:
-        return write(out->method.fd, buf, count);
-    case LYOUT_STREAM:
-        return fwrite(buf, sizeof *buf, count, out->method.f);
+        memcpy(&out->buffered[out->buf_len], buf, count);
+        out->buf_len += count;
+        return count;
+    }
+
+    switch (out->type) {
     case LYOUT_MEMORY:
         if (out->method.mem.len + count + 1 > out->method.mem.size) {
-            aux = ly_realloc(out->method.mem.buf, out->method.mem.len + count + 1);
-            if (!aux) {
-                out->method.mem.buf = NULL;
+            out->method.mem.buf = ly_realloc(out->method.mem.buf, out->method.mem.len + count + 1);
+            if (!out->method.mem.buf) {
                 out->method.mem.len = 0;
                 out->method.mem.size = 0;
                 LOGMEM(NULL);
                 return -1;
             }
-            out->method.mem.buf = aux;
             out->method.mem.size = out->method.mem.len + count + 1;
         }
-        memcpy(&out->method.mem.buf[out->method.mem.len], buf, count + 1);
+        memcpy(&out->method.mem.buf[out->method.mem.len], buf, count);
         out->method.mem.len += count;
+        out->method.mem.buf[out->method.mem.len] = '\0';
         return count;
+    case LYOUT_FD:
+        return write(out->method.fd, buf, count);
+    case LYOUT_STREAM:
+        return fwrite(buf, sizeof *buf, count, out->method.f);
     case LYOUT_CALLBACK:
         return out->method.clb.f(out->method.clb.arg, buf, count);
     }
 
     return 0;
+}
+
+int
+ly_write_skip(struct lyout *out, size_t count, size_t *position)
+{
+    switch (out->type) {
+    case LYOUT_MEMORY:
+        if (out->method.mem.len + count > out->method.mem.size) {
+            out->method.mem.buf = ly_realloc(out->method.mem.buf, out->method.mem.len + count);
+            if (!out->method.mem.buf) {
+                out->method.mem.len = 0;
+                out->method.mem.size = 0;
+                LOGMEM(NULL);
+                return -1;
+            }
+            out->method.mem.size = out->method.mem.len + count;
+        }
+
+        /* save the current position */
+        *position = out->method.mem.len;
+
+        /* skip the memory */
+        out->method.mem.len += count;
+        break;
+    case LYOUT_FD:
+    case LYOUT_STREAM:
+    case LYOUT_CALLBACK:
+        /* buffer the hole */
+        if (out->buf_len + count > out->buf_size) {
+            out->buffered = ly_realloc(out->buffered, out->buf_len + count);
+            if (!out->buffered) {
+                out->buf_len = 0;
+                out->buf_size = 0;
+                LOGMEM(NULL);
+                return -1;
+            }
+            out->buf_size = out->buf_len + count;
+        }
+
+        /* save the current position */
+        *position = out->buf_len;
+
+        /* skip the memory */
+        out->buf_len += count;
+
+        /* increase hole counter */
+        ++out->hole_count;
+    }
+
+    return count;
+}
+
+int
+ly_write_skipped(struct lyout *out, size_t position, const char *buf, size_t count)
+{
+    switch (out->type) {
+    case LYOUT_MEMORY:
+        /* write */
+        memcpy(&out->method.mem.buf[position], buf, count);
+        break;
+    case LYOUT_FD:
+    case LYOUT_STREAM:
+    case LYOUT_CALLBACK:
+        if (out->buf_len < position + count) {
+            LOGINT(NULL);
+            return -1;
+        }
+
+        /* write into the hole */
+        memcpy(&out->buffered[position], buf, count);
+
+        /* decrease hole counter */
+        --out->hole_count;
+
+        if (!out->hole_count) {
+            /* all holes filled, we can write the buffer */
+            count = ly_write(out, out->buffered, out->buf_len);
+            out->buf_len = 0;
+        }
+        break;
+    }
+
+    return count;
 }
 
 static int
@@ -185,6 +284,7 @@ write_iff(struct lyout *out, const struct lys_module *module, struct lys_iffeatu
 {
     int count = 0, brackets_flag = *index_e;
     uint8_t op;
+    struct lys_module *mod;
 
     op = iff_getop(expr->expr, *index_e);
     (*index_e)++;
@@ -199,6 +299,9 @@ write_iff(struct lyout *out, const struct lys_module *module, struct lys_iffeatu
                 count += ly_print(out, "%s:", lys_main_module(expr->features[*index_f]->module)->name);
             } else if (prefix_kind == 2) {
                 count += ly_print(out, "%s:", lys_main_module(expr->features[*index_f]->module)->prefix);
+            } else if (prefix_kind == 3) {
+                mod =  lys_main_module(expr->features[*index_f]->module);
+                count += ly_print(out, "%s%s%s:", mod->name, mod->rev_size ? "@" : "", mod->rev_size ? mod->rev[0].date : "");
             }
         }
         count += ly_print(out, expr->features[*index_f]->name);
@@ -266,6 +369,9 @@ lys_print_(struct lyout *out, const struct lys_module *module, LYS_OUTFORMAT for
     case LYS_OUT_INFO:
         ret = info_print_model(out, module, target_node);
         break;
+    case LYS_OUT_JSON:
+        ret = jsons_print_model(out, module, target_node);
+        break;
     default:
         LOGERR(module->ctx, LY_EINVAL, "Unknown output format.");
         ret = EXIT_FAILURE;
@@ -286,6 +392,8 @@ lys_print_file(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, c
         return EXIT_FAILURE;
     }
 
+    memset(&out, 0, sizeof out);
+
     out.type = LYOUT_STREAM;
     out.method.f = f;
 
@@ -302,6 +410,8 @@ lys_print_fd(int fd, const struct lys_module *module, LYS_OUTFORMAT format, cons
         LOGARG;
         return EXIT_FAILURE;
     }
+
+    memset(&out, 0, sizeof out);
 
     out.type = LYOUT_FD;
     out.method.fd = fd;
@@ -321,10 +431,9 @@ lys_print_mem(char **strp, const struct lys_module *module, LYS_OUTFORMAT format
         return EXIT_FAILURE;
     }
 
+    memset(&out, 0, sizeof out);
+
     out.type = LYOUT_MEMORY;
-    out.method.mem.buf = NULL;
-    out.method.mem.len = 0;
-    out.method.mem.size = 0;
 
     r = lys_print_(&out, module, format, target_node, line_length, options);
 
@@ -343,11 +452,229 @@ lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), voi
         return EXIT_FAILURE;
     }
 
+    memset(&out, 0, sizeof out);
+
     out.type = LYOUT_CALLBACK;
     out.method.clb.f = writeclb;
     out.method.clb.arg = arg;
 
     return lys_print_(&out, module, format, target_node, line_length, options);
+}
+
+int
+lys_print_target(struct lyout *out, const struct lys_module *module, const char *target_schema_path,
+                 void (*clb_print_typedef)(struct lyout*, const struct lys_tpdf*, int*),
+                 void (*clb_print_identity)(struct lyout*, const struct lys_ident*, int*),
+                 void (*clb_print_feature)(struct lyout*, const struct lys_feature*, int*),
+                 void (*clb_print_type)(struct lyout*, const struct lys_type*, int*),
+                 void (*clb_print_grouping)(struct lyout*, const struct lys_node*, int*),
+                 void (*clb_print_container)(struct lyout*, const struct lys_node*, int*),
+                 void (*clb_print_choice)(struct lyout*, const struct lys_node*, int*),
+                 void (*clb_print_leaf)(struct lyout*, const struct lys_node*, int*),
+                 void (*clb_print_leaflist)(struct lyout*, const struct lys_node*, int*),
+                 void (*clb_print_list)(struct lyout*, const struct lys_node*, int*),
+                 void (*clb_print_anydata)(struct lyout*, const struct lys_node*, int*),
+                 void (*clb_print_case)(struct lyout*, const struct lys_node*, int*),
+                 void (*clb_print_notif)(struct lyout*, const struct lys_node*, int*),
+                 void (*clb_print_rpc)(struct lyout*, const struct lys_node*, int*),
+                 void (*clb_print_action)(struct lyout*, const struct lys_node*, int*),
+                 void (*clb_print_input)(struct lyout*, const struct lys_node*, int*),
+                 void (*clb_print_output)(struct lyout*, const struct lys_node*, int*))
+{
+    int rc, i, f = 1;
+    char *spec_target = NULL;
+    struct lys_node *target = NULL;
+    struct lys_tpdf *tpdf = NULL;
+    uint8_t tpdf_size = 0;
+
+    if ((target_schema_path[0] == '/') || !strncmp(target_schema_path, "type/", 5)) {
+        rc = resolve_absolute_schema_nodeid((target_schema_path[0] == '/' ? target_schema_path : target_schema_path + 4), module,
+                                            LYS_ANY & ~(LYS_USES | LYS_AUGMENT | LYS_GROUPING), (const struct lys_node **)&target);
+        if (rc || !target) {
+            LOGERR(module->ctx, LY_EINVAL, "Target %s could not be resolved.",
+                   (target_schema_path[0] == '/' ? target_schema_path : target_schema_path + 4));
+            return EXIT_FAILURE;
+        }
+    } else if (!strncmp(target_schema_path, "grouping/", 9)) {
+        /* cut the data part off */
+        if ((spec_target = strchr(target_schema_path + 9, '/'))) {
+            /* HACK only temporary */
+            spec_target[0] = '\0';
+            ++spec_target;
+        }
+        rc = resolve_absolute_schema_nodeid(target_schema_path + 8, module, LYS_GROUPING, (const struct lys_node **)&target);
+        if (rc || !target) {
+            ly_print(out, "Grouping %s not found.\n", target_schema_path + 8);
+            return EXIT_FAILURE;
+        }
+    } else if (!strncmp(target_schema_path, "typedef/", 8)) {
+        if ((spec_target = strrchr(target_schema_path + 8, '/'))) {
+            /* schema node typedef */
+            /* HACK only temporary */
+            spec_target[0] = '\0';
+            ++spec_target;
+
+            rc = resolve_absolute_schema_nodeid(target_schema_path + 7, module,
+                                                LYS_CONTAINER | LYS_LIST | LYS_NOTIF | LYS_RPC | LYS_ACTION,
+                                                (const struct lys_node **)&target);
+            if (rc || !target) {
+                /* perhaps it's in a grouping */
+                rc = resolve_absolute_schema_nodeid(target_schema_path + 7, module, LYS_GROUPING,
+                                                    (const struct lys_node **)&target);
+            }
+            if (!rc && target) {
+                switch (target->nodetype) {
+                case LYS_CONTAINER:
+                    tpdf = ((struct lys_node_container *)target)->tpdf;
+                    tpdf_size = ((struct lys_node_container *)target)->tpdf_size;
+                    break;
+                case LYS_LIST:
+                    tpdf = ((struct lys_node_list *)target)->tpdf;
+                    tpdf_size = ((struct lys_node_list *)target)->tpdf_size;
+                    break;
+                case LYS_NOTIF:
+                    tpdf = ((struct lys_node_notif *)target)->tpdf;
+                    tpdf_size = ((struct lys_node_notif *)target)->tpdf_size;
+                    break;
+                case LYS_RPC:
+                case LYS_ACTION:
+                    tpdf = ((struct lys_node_rpc_action *)target)->tpdf;
+                    tpdf_size = ((struct lys_node_rpc_action *)target)->tpdf_size;
+                    break;
+                case LYS_GROUPING:
+                    tpdf = ((struct lys_node_grp *)target)->tpdf;
+                    tpdf_size = ((struct lys_node_grp *)target)->tpdf_size;
+                    break;
+                default:
+                    LOGINT(module->ctx);
+                    return EXIT_FAILURE;
+                }
+            }
+        } else {
+            /* module typedef */
+            spec_target = (char *)target_schema_path + 8;
+            tpdf = module->tpdf;
+            tpdf_size = module->tpdf_size;
+        }
+
+        for (i = 0; i < tpdf_size; ++i) {
+            if (!strcmp(tpdf[i].name, spec_target)) {
+                clb_print_typedef(out, &tpdf[i], &f);
+                break;
+            }
+        }
+        /* HACK return previous hack */
+        --spec_target;
+        spec_target[0] = '/';
+
+        if (i == tpdf_size) {
+            ly_print(out, "Typedef %s not found.\n", target_schema_path);
+            return EXIT_FAILURE;
+        }
+        return EXIT_SUCCESS;
+
+    } else if (!strncmp(target_schema_path, "identity/", 9)) {
+        target_schema_path += 9;
+        for (i = 0; i < (signed)module->ident_size; ++i) {
+            if (!strcmp(module->ident[i].name, target_schema_path)) {
+                break;
+            }
+        }
+        if (i == (signed)module->ident_size) {
+            ly_print(out, "Identity %s not found.\n", target_schema_path);
+            return EXIT_FAILURE;
+        }
+
+        clb_print_identity(out, &module->ident[i], &f);
+        return EXIT_SUCCESS;
+
+    } else if (!strncmp(target_schema_path, "feature/", 8)) {
+        target_schema_path += 8;
+        for (i = 0; i < module->features_size; ++i) {
+            if (!strcmp(module->features[i].name, target_schema_path)) {
+                break;
+            }
+        }
+        if (i == module->features_size) {
+            ly_print(out, "Feature %s not found.\n", target_schema_path);
+            return EXIT_FAILURE;
+        }
+
+        clb_print_feature(out, &module->features[i], &f);
+        return EXIT_SUCCESS;
+    } else {
+        ly_print(out, "Target could not be resolved.\n");
+        return EXIT_FAILURE;
+    }
+
+    if (!strncmp(target_schema_path, "type/", 5)) {
+        if (!(target->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+            LOGERR(module->ctx, LY_EINVAL, "Target is not a leaf or a leaf-list.");
+            return EXIT_FAILURE;
+        }
+        clb_print_type(out, &((struct lys_node_leaf *)target)->type, &f);
+        return EXIT_SUCCESS;
+    } else if (!strncmp(target_schema_path, "grouping/", 9) && !spec_target) {
+        clb_print_grouping(out, target, &f);
+        return EXIT_SUCCESS;
+    }
+
+    /* find the node in the grouping */
+    if (spec_target) {
+        rc = resolve_descendant_schema_nodeid(spec_target, target->child, LYS_NO_RPC_NOTIF_NODE,
+                                              0, (const struct lys_node **)&target);
+        if (rc || !target) {
+            ly_print(out, "Grouping %s child \"%s\" not found.\n", target_schema_path + 9, spec_target);
+            return EXIT_FAILURE;
+        }
+        /* HACK return previous hack */
+        --spec_target;
+        spec_target[0] = '/';
+    }
+    switch (target->nodetype) {
+    case LYS_CONTAINER:
+        clb_print_container(out, target, &f);
+        break;
+    case LYS_CHOICE:
+        clb_print_choice(out, target, &f);
+        break;
+    case LYS_LEAF:
+        clb_print_leaf(out, target, &f);
+        break;
+    case LYS_LEAFLIST:
+        clb_print_leaflist(out, target, &f);
+        break;
+    case LYS_LIST:
+        clb_print_list(out, target, &f);
+        break;
+    case LYS_ANYXML:
+    case LYS_ANYDATA:
+        clb_print_anydata(out, target, &f);
+        break;
+    case LYS_CASE:
+        clb_print_case(out, target, &f);
+        break;
+    case LYS_NOTIF:
+        clb_print_notif(out, target, &f);
+        break;
+    case LYS_RPC:
+        clb_print_rpc(out, target, &f);
+        break;
+    case LYS_ACTION:
+        clb_print_action(out, target, &f);
+        break;
+    case LYS_INPUT:
+        clb_print_input(out, target, &f);
+        break;
+    case LYS_OUTPUT:
+        clb_print_output(out, target, &f);
+        break;
+    default:
+        ly_print(out, "Nodetype %s not supported.\n", strnodetype(target->nodetype));
+        break;
+    }
+
+    return EXIT_SUCCESS;
 }
 
 static int
@@ -366,6 +693,8 @@ lyd_print_(struct lyout *out, const struct lyd_node *root, LYD_FORMAT format, in
         return xml_print_data(out, root, options);
     case LYD_JSON:
         return json_print_data(out, root, options);
+    case LYD_LYB:
+        return lyb_print_data(out, root, options);
     default:
         LOGERR(root->schema->module->ctx, LY_EINVAL, "Unknown output format.");
         return EXIT_FAILURE;
@@ -375,6 +704,7 @@ lyd_print_(struct lyout *out, const struct lyd_node *root, LYD_FORMAT format, in
 API int
 lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format, int options)
 {
+    int r;
     struct lyout out;
 
     if (!f) {
@@ -382,15 +712,21 @@ lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format, int opti
         return EXIT_FAILURE;
     }
 
+    memset(&out, 0, sizeof out);
+
     out.type = LYOUT_STREAM;
     out.method.f = f;
 
-    return lyd_print_(&out, root, format, options);
+    r = lyd_print_(&out, root, format, options);
+
+    free(out.buffered);
+    return r;
 }
 
 API int
 lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format, int options)
 {
+    int r;
     struct lyout out;
 
     if (fd < 0) {
@@ -398,10 +734,15 @@ lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format, int options
         return EXIT_FAILURE;
     }
 
+    memset(&out, 0, sizeof out);
+
     out.type = LYOUT_FD;
     out.method.fd = fd;
 
-    return lyd_print_(&out, root, format, options);
+    r = lyd_print_(&out, root, format, options);
+
+    free(out.buffered);
+    return r;
 }
 
 API int
@@ -415,14 +756,14 @@ lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format, int o
         return EXIT_FAILURE;
     }
 
+    memset(&out, 0, sizeof out);
+
     out.type = LYOUT_MEMORY;
-    out.method.mem.buf = NULL;
-    out.method.mem.len = 0;
-    out.method.mem.size = 0;
 
     r = lyd_print_(&out, root, format, options);
 
     *strp = out.method.mem.buf;
+    free(out.buffered);
     return r;
 }
 
@@ -430,6 +771,7 @@ API int
 lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, const struct lyd_node *root,
               LYD_FORMAT format, int options)
 {
+    int r;
     struct lyout out;
 
     if (!writeclb) {
@@ -437,11 +779,16 @@ lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), voi
         return EXIT_FAILURE;
     }
 
+    memset(&out, 0, sizeof out);
+
     out.type = LYOUT_CALLBACK;
     out.method.clb.f = writeclb;
     out.method.clb.arg = arg;
 
-    return lyd_print_(&out, root, format, options);
+    r = lyd_print_(&out, root, format, options);
+
+    free(out.buffered);
+    return r;
 }
 
 int
