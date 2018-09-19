@@ -4840,6 +4840,21 @@ parse_sub_module(struct ly_ctx *ctx, const char **data, struct lysp_module *mod)
     return ret;
 }
 
+static unsigned int
+lysp_get_data_line(const char *start, const char *stop)
+{
+    unsigned int i, length, line = 1;
+
+    length = stop - start;
+    for (i = 0; i < length; ++i) {
+        if (start[i] == '\n') {
+            ++line;
+        }
+    }
+
+    return line;
+}
+
 LY_ERR
 yang_parse(struct ly_ctx *ctx, const char *data, struct lysp_module **mod_p)
 {
@@ -4888,7 +4903,7 @@ yang_parse(struct ly_ctx *ctx, const char *data, struct lysp_module **mod_p)
     return ret;
 
 error:
-    LOGERR(ctx, LY_EINVAL, "Module parsing failed on line %d.", lysp_get_data_line(data_start, data - data_start));
+    LOGERR(ctx, LY_EINVAL, "Module parsing failed on line %u.", lysp_get_data_line(data_start, data));
     /* TODO free module */
     return ret;
 }

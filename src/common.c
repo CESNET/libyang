@@ -193,17 +193,3 @@ error:
     LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_INVAL, date_len, date, stmt);
     return LY_EINVAL;
 }
-
-int
-lysp_get_data_line(const char *data, int fail_char)
-{
-    int i, line = 1;
-
-    for (i = 0; i < fail_char; ++i) {
-        if (data[i] == '\n') {
-            ++line;
-        }
-    }
-
-    return line;
-}
