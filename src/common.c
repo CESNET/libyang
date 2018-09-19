@@ -152,16 +152,15 @@ ly_realloc(void *ptr, size_t size)
     return new_mem;
 }
 
-int
+LY_ERR
 lysp_check_date(struct ly_ctx *ctx, const char *date, int date_len, const char *stmt)
 {
     int i;
     struct tm tm, tm_;
     char *r;
 
-    if (date_len != LY_REV_SIZE - 1) {
-        goto error;
-    }
+    LY_CHECK_ARG_RET(ctx, date, LY_EINVAL);
+    LY_CHECK_ERR_RET(date_len != LY_REV_SIZE - 1, LOGARG(ctx, date_len), LY_EINVAL);
 
     /* check format */
     for (i = 0; i < date_len; i++) {
@@ -188,11 +187,11 @@ lysp_check_date(struct ly_ctx *ctx, const char *date, int date_len, const char *
         goto error;
     }
 
-    return 0;
+    return LY_SUCCESS;
 
 error:
     LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_INVAL, date_len, date, stmt);
-    return -1;
+    return LY_EINVAL;
 }
 
 int

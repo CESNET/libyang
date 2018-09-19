@@ -248,7 +248,16 @@ extern const char *const ly_devmod_list[];
  */
 void *ly_realloc(void *ptr, size_t size);
 
-int lysp_check_date(struct ly_ctx *ctx, const char *date, int date_len, const char *stmt);
+/**
+ * @brief Check date string (4DIGIT "-" 2DIGIT "-" 2DIGIT)
+ *
+ * @param[in] ctx Context to store log message.
+ * @param[in] date Date string to check (non-necessarily terminated by \0)
+ * @param[in] date_len Length of the date string, 10 expected.
+ * @param[in] stmt Statement name for error message.
+ * @return LY_ERR value.
+ */
+LY_ERR lysp_check_date(struct ly_ctx *ctx, const char *date, int date_len, const char *stmt);
 
 int lysp_get_data_line(const char *data, int fail_char);
 
