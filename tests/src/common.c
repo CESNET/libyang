@@ -64,6 +64,10 @@ test_date(void **state)
     assert_string_equal(logbuf, "Invalid value \"2018-11-41\" of \"date\".");
     assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "2018-02-29", 10, "date"));
     assert_string_equal(logbuf, "Invalid value \"2018-02-29\" of \"date\".");
+    assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "2018.02-28", 10, "date"));
+    assert_string_equal(logbuf, "Invalid value \"2018.02-28\" of \"date\".");
+    assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "2018-02.28", 10, "date"));
+    assert_string_equal(logbuf, "Invalid value \"2018-02.28\" of \"date\".");
 
     assert_int_equal(LY_SUCCESS, lysp_check_date(NULL, "2018-11-11", 10, "date"));
     assert_int_equal(LY_SUCCESS, lysp_check_date(NULL, "2018-02-28", 10, "date"));
