@@ -298,14 +298,16 @@ ly_ctx_unset_trusted(struct ly_ctx *ctx)
 }
 
 API int
-ly_ctx_get_options(struct ly_ctx *ctx)
+ly_ctx_get_options(const struct ly_ctx *ctx)
 {
+    LY_CHECK_ARG_RET(ctx, ctx, 0);
     return ctx->flags;
 }
 
 API uint16_t
 ly_ctx_get_module_set_id(const struct ly_ctx *ctx)
 {
+    LY_CHECK_ARG_RET(ctx, ctx, 0);
     return ctx->module_set_id;
 }
 

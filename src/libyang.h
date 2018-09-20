@@ -135,7 +135,7 @@ const char * const *ly_ctx_get_searchdirs(const struct ly_ctx *ctx);
  * @param[in] ctx Context to query.
  * @return Combination of all the currently set context's options, see @ref contextoptions.
  */
-int ly_ctx_get_options(struct ly_ctx *ctx);
+int ly_ctx_get_options(const struct ly_ctx *ctx);
 
 /**
  * @brief Make context to stop searching for schemas (imported, included or requested via ly_ctx_load_module())
