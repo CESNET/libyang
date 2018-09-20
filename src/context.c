@@ -132,6 +132,9 @@ ly_ctx_get_searchdirs(const struct ly_ctx *ctx)
 API LY_ERR
 ly_ctx_unset_searchdirs(struct ly_ctx *ctx, int index)
 {
+    LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
+    LY_CHECK_ERR_RET(index >= 0 && (unsigned int)index >= ctx->search_paths.count, LOGARG(ctx, index), LY_EINVAL);
+
     if (!ctx->search_paths.count) {
         return LY_SUCCESS;
     }
