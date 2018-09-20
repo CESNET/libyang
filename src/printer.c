@@ -17,6 +17,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -398,6 +399,29 @@ lys_print_file(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, c
     out.method.f = f;
 
     return lys_print_(&out, module, format, target_node, line_length, options);
+}
+
+API int
+lys_print_path(const char *path, const struct lys_module *module, LYS_OUTFORMAT format, const char *target_node,
+               int line_length, int options)
+{
+    FILE *f;
+    int ret;
+
+    if (!path || !module) {
+        LOGARG;
+        return EXIT_FAILURE;
+    }
+
+    f = fopen(path, "w");
+    if (!f) {
+        LOGERR(module->ctx, LY_ESYS, "Failed to open file \"%s\" (%s).", path, strerror(errno));
+        return EXIT_FAILURE;
+    }
+
+    ret = lys_print_file(f, module, format, target_node, line_length, options);
+    fclose(f);
+    return ret;
 }
 
 API int
