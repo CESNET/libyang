@@ -162,11 +162,14 @@ ly_set_merge(struct ly_set *trg, struct ly_set *src, int options, void *(*duplic
 }
 
 API LY_ERR
-ly_set_rm_index(struct ly_set *set, unsigned int index)
+ly_set_rm_index(struct ly_set *set, unsigned int index, void (*destructor)(void *obj))
 {
     LY_CHECK_ARG_RET(NULL, set, LY_EINVAL);
-    LY_CHECK_ERR_RET(((index + 1) > set->count), LOGARG(NULL, index), LY_EINVAL);
+    LY_CHECK_ERR_RET(index >= set->count, LOGARG(NULL, index), LY_EINVAL);
 
+    if (destructor) {
+        destructor(set->objs[index]);
+    }
     if (index == set->count - 1) {
         /* removing last item in set */
         set->objs[index] = NULL;
@@ -181,7 +184,7 @@ ly_set_rm_index(struct ly_set *set, unsigned int index)
 }
 
 API LY_ERR
-ly_set_rm(struct ly_set *set, void *object)
+ly_set_rm(struct ly_set *set, void *object, void (*destructor)(void *obj))
 {
     unsigned int i;
 
@@ -195,6 +198,6 @@ ly_set_rm(struct ly_set *set, void *object)
     }
     LY_CHECK_ERR_RET((i == set->count), LOGARG(NULL, object), LY_EINVAL); /* object is not in set */
 
-    return ly_set_rm_index(set, i);
+    return ly_set_rm_index(set, i, destructor);
 }
 

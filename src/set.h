@@ -130,9 +130,10 @@ void ly_set_clean(struct ly_set *set, void (*destructor)(void *obj));
  *
  * @param[in] set Set from which the \p node will be removed.
  * @param[in] obejct The object to be removed from the \p set.
+ * @param[in] destructor Optional function to free the objects being removed.
  * @return LY_ERR return value.
  */
-LY_ERR ly_set_rm(struct ly_set *set, void *object);
+LY_ERR ly_set_rm(struct ly_set *set, void *object, void (*destructor)(void *obj));
 
 /**
  * @brief Remove an object on the specific set index.
@@ -142,9 +143,10 @@ LY_ERR ly_set_rm(struct ly_set *set, void *object);
  *
  * @param[in] set Set from which a node will be removed.
  * @param[in] index Index of the object to remove in the \p set.
+ * @param[in] destructor Optional function to free the objects being removed.
  * @return LY_ERR return value.
  */
-LY_ERR ly_set_rm_index(struct ly_set *set, unsigned int index);
+LY_ERR ly_set_rm_index(struct ly_set *set, unsigned int index, void (*destructor)(void *obj));
 
 /**
  * @brief Free the ::ly_set data. If the destructor is not provided, it frees only the set structure

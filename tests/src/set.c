@@ -123,16 +123,16 @@ test_inval(void **state)
     assert_int_equal(0, ly_set_merge(&set, NULL, 0, NULL));
     assert_string_equal(logbuf, "Invalid argument src (ly_set_merge()).");
 
-    assert_int_equal(LY_EINVAL, ly_set_rm_index(NULL, 0));
+    assert_int_equal(LY_EINVAL, ly_set_rm_index(NULL, 0, NULL));
     assert_string_equal(logbuf, "Invalid argument set (ly_set_rm_index()).");
-    assert_int_equal(LY_EINVAL, ly_set_rm_index(&set, 1));
+    assert_int_equal(LY_EINVAL, ly_set_rm_index(&set, 1, NULL));
     assert_string_equal(logbuf, "Invalid argument index (ly_set_rm_index()).");
 
-    assert_int_equal(LY_EINVAL, ly_set_rm(NULL, NULL));
+    assert_int_equal(LY_EINVAL, ly_set_rm(NULL, NULL, NULL));
     assert_string_equal(logbuf, "Invalid argument set (ly_set_rm()).");
-    assert_int_equal(LY_EINVAL, ly_set_rm(&set, NULL));
+    assert_int_equal(LY_EINVAL, ly_set_rm(&set, NULL, NULL));
     assert_string_equal(logbuf, "Invalid argument object (ly_set_rm()).");
-    assert_int_equal(LY_EINVAL, ly_set_rm(&set, &state));
+    assert_int_equal(LY_EINVAL, ly_set_rm(&set, &state, NULL));
     assert_string_equal(logbuf, "Invalid argument object (ly_set_rm()).");
 }
 
@@ -256,40 +256,40 @@ test_rm(void **state)
 
     /* fill the set */
     assert_int_equal(0, ly_set_add(&set, "string1", 0));
-    assert_int_equal(1, ly_set_add(&set, "string2", 0));
+    assert_int_equal(1, ly_set_add(&set, strdup("string2"), 0));
     assert_int_equal(2, ly_set_add(&set, "string3", 0));
 
     /* remove by index ... */
     /* ... in the middle ... */
-    assert_int_equal(LY_SUCCESS, ly_set_rm_index(&set, 1));
+    assert_int_equal(LY_SUCCESS, ly_set_rm_index(&set, 1, free));
     assert_int_equal(2, set.count);
     assert_string_not_equal("string2", set.objs[0]);
     assert_string_not_equal("string2", set.objs[1]);
     /* ... last .. */
-    assert_int_equal(LY_SUCCESS, ly_set_rm_index(&set, 1));
+    assert_int_equal(LY_SUCCESS, ly_set_rm_index(&set, 1, NULL));
     assert_int_equal(1, set.count);
     assert_string_not_equal("string3", set.objs[0]);
     /* ... first .. */
-    assert_int_equal(LY_SUCCESS, ly_set_rm_index(&set, 0));
+    assert_int_equal(LY_SUCCESS, ly_set_rm_index(&set, 0, NULL));
     assert_int_equal(0, set.count);
 
     /* fill the set */
     assert_int_equal(0, ly_set_add(&set, str1 = "string1", 0));
     assert_int_equal(1, ly_set_add(&set, str2 = "string2", 0));
-    assert_int_equal(2, ly_set_add(&set, str3 = "string3", 0));
+    assert_int_equal(2, ly_set_add(&set, str3 = strdup("string3"), 0));
 
     /* remove by pointer ... */
     /* ... in the middle ... */
-    assert_int_equal(LY_SUCCESS, ly_set_rm(&set, str2));
+    assert_int_equal(LY_SUCCESS, ly_set_rm(&set, str2, NULL));
     assert_int_equal(2, set.count);
     assert_string_not_equal("string2", set.objs[0]);
     assert_string_not_equal("string2", set.objs[1]);
-    /* ... last .. */
-    assert_int_equal(LY_SUCCESS, ly_set_rm(&set, str3));
+    /* ... last (with destructor) .. */
+    assert_int_equal(LY_SUCCESS, ly_set_rm(&set, str3, free));
     assert_int_equal(1, set.count);
     assert_string_not_equal("string3", set.objs[0]);
     /* ... first .. */
-    assert_int_equal(LY_SUCCESS, ly_set_rm(&set, str1));
+    assert_int_equal(LY_SUCCESS, ly_set_rm(&set, str1, NULL));
     assert_int_equal(0, set.count);
 
     /* cleanup */

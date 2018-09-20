@@ -141,7 +141,7 @@ ly_ctx_unset_searchdirs(struct ly_ctx *ctx, int index)
 
     if (index >= 0) {
         /* remove specific search directory */
-        return ly_set_rm_index(&ctx->search_paths, index);
+        return ly_set_rm_index(&ctx->search_paths, index, free);
     } else {
         /* remove them all */
         ly_set_erase(&ctx->search_paths, free);
