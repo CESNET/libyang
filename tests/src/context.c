@@ -84,10 +84,8 @@ test_searchdirs(void **state)
     logbuf_assert("Invalid argument ctx (ly_ctx_set_searchdir()).");
     assert_null(ly_ctx_get_searchdirs(NULL));
     logbuf_assert("Invalid argument ctx (ly_ctx_get_searchdirs()).");
-    assert_int_equal(LY_EINVAL, ly_ctx_unset_searchdirs(NULL, 0));
+    assert_int_equal(LY_EINVAL, ly_ctx_unset_searchdirs(NULL, NULL));
     logbuf_assert("Invalid argument ctx (ly_ctx_unset_searchdirs()).");
-    assert_int_equal(LY_EINVAL, ly_ctx_unset_searchdirs(ctx, 0));
-    logbuf_assert("Invalid argument index (ly_ctx_unset_searchdirs()).");
 
     /* readable and executable, but not a directory */
     assert_int_equal(LY_EINVAL, ly_ctx_set_searchdir(ctx, TESTS_BIN"/src_context"));
@@ -138,22 +136,25 @@ test_searchdirs(void **state)
     assert_null(list[8]);
 
     /* removing searchpaths */
+    /* nonexisting */
+    assert_int_equal(LY_EINVAL, ly_ctx_unset_searchdirs(ctx, "/nonexistingfile"));
+    logbuf_assert("Invalid argument value (ly_ctx_unset_searchdirs()).");
     /* first */
-    assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdirs(ctx, 0));
+    assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdirs(ctx, TESTS_BIN"/src"));
     assert_string_not_equal(TESTS_BIN"/src", list[0]);
     assert_int_equal(7, ctx->search_paths.count);
     /* middle */
-    assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdirs(ctx, 4));
+    assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdirs(ctx, TESTS_SRC));
     assert_int_equal(6, ctx->search_paths.count);
     /* last */
-    assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdirs(ctx, 5));
+    assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdirs(ctx, "/tmp"));
     assert_int_equal(5, ctx->search_paths.count);
     /* all */
-    assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdirs(ctx, -5));
+    assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdirs(ctx, NULL));
     assert_int_equal(0, ctx->search_paths.count);
 
     /* again - no change */
-    assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdirs(ctx, -1));
+    assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdirs(ctx, NULL));
 
     /* cleanup */
     ly_ctx_destroy(ctx, NULL);

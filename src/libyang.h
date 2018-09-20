@@ -115,11 +115,10 @@ LY_ERR ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir);
  * @brief Clean the search path(s) from the libyang context
  *
  * @param[in] ctx Context to be modified.
- * @param[in] index Index of the search path to be removed, use negative value to remove them all.
- *            Correct index value can be checked via ly_ctx_get_searchdirs().
+ * @param[in] value Searchdir to be removed, use NULL to remove them all.
  * @return LY_ERR return value
  */
-LY_ERR ly_ctx_unset_searchdirs(struct ly_ctx *ctx, int index);
+LY_ERR ly_ctx_unset_searchdirs(struct ly_ctx *ctx, const char *value);
 
 /**
  * @brief Get the NULL-terminated list of the search paths in libyang context. Do not modify the result!

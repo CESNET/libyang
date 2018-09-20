@@ -125,18 +125,29 @@ ly_ctx_get_searchdirs(const struct ly_ctx *ctx)
 }
 
 API LY_ERR
-ly_ctx_unset_searchdirs(struct ly_ctx *ctx, int index)
+ly_ctx_unset_searchdirs(struct ly_ctx *ctx, const char *value)
 {
+    unsigned int index;
+
     LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
-    LY_CHECK_ERR_RET(index >= 0 && (unsigned int)index >= ctx->search_paths.count, LOGARG(ctx, index), LY_EINVAL);
 
     if (!ctx->search_paths.count) {
         return LY_SUCCESS;
     }
 
-    if (index >= 0) {
+    if (value) {
         /* remove specific search directory */
-        return ly_set_rm_index(&ctx->search_paths, index, free);
+        for (index = 0; index < ctx->search_paths.count; ++index) {
+            if (!strcmp(value, ctx->search_paths.objs[index])) {
+                break;
+            }
+        }
+        if (index == ctx->search_paths.count) {
+            LOGARG(ctx, value);
+            return LY_EINVAL;
+        } else {
+            return ly_set_rm_index(&ctx->search_paths, index, free);
+        }
     } else {
         /* remove them all */
         ly_set_erase(&ctx->search_paths, free);
