@@ -267,7 +267,9 @@ ly_ctx_get_module_set_id(const struct ly_ctx *ctx)
 API void
 ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lysc_node *node, void *priv))
 {
-    LY_CHECK_ARG_RET(ctx, ctx,);
+    if (!ctx) {
+        return;
+    }
 
     /* models list */
     for (; ctx->list.count; ctx->list.count--) {
