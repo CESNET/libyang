@@ -226,82 +226,35 @@ error:
     ly_ctx_destroy(ctx, NULL);
     return rc;
 }
-
-API void
-ly_ctx_set_disable_searchdirs(struct ly_ctx *ctx)
-{
-    LY_CHECK_ARG_RET(ctx, ctx,);
-    ctx->flags |= LY_CTX_DISABLE_SEARCHDIRS;
-}
-
-API void
-ly_ctx_unset_disable_searchdirs(struct ly_ctx *ctx)
-{
-    LY_CHECK_ARG_RET(ctx, ctx,);
-    ctx->flags &= ~LY_CTX_DISABLE_SEARCHDIRS;
-}
-
-API void
-ly_ctx_set_disable_searchdir_cwd(struct ly_ctx *ctx)
-{
-    LY_CHECK_ARG_RET(ctx, ctx,);
-    ctx->flags |= LY_CTX_DISABLE_SEARCHDIR_CWD;
-}
-
-API void
-ly_ctx_unset_disable_searchdir_cwd(struct ly_ctx *ctx)
-{
-    LY_CHECK_ARG_RET(ctx, ctx,);
-    ctx->flags &= ~LY_CTX_DISABLE_SEARCHDIR_CWD;
-}
-
-API void
-ly_ctx_set_prefer_searchdirs(struct ly_ctx *ctx)
-{
-    LY_CHECK_ARG_RET(ctx, ctx,);
-    ctx->flags |= LY_CTX_PREFER_SEARCHDIRS;
-}
-
-API void
-ly_ctx_unset_prefer_searchdirs(struct ly_ctx *ctx)
-{
-    LY_CHECK_ARG_RET(ctx, ctx,);
-    ctx->flags &= ~LY_CTX_PREFER_SEARCHDIRS;
-}
-
-API void
-ly_ctx_set_allimplemented(struct ly_ctx *ctx)
-{
-    LY_CHECK_ARG_RET(ctx, ctx,);
-    ctx->flags |= LY_CTX_ALLIMPLEMENTED;
-}
-
-API void
-ly_ctx_unset_allimplemented(struct ly_ctx *ctx)
-{
-    LY_CHECK_ARG_RET(ctx, ctx,);
-    ctx->flags &= ~LY_CTX_ALLIMPLEMENTED;
-}
-
-API void
-ly_ctx_set_trusted(struct ly_ctx *ctx)
-{
-    LY_CHECK_ARG_RET(ctx, ctx,);
-    ctx->flags |= LY_CTX_TRUSTED;
-}
-
-API void
-ly_ctx_unset_trusted(struct ly_ctx *ctx)
-{
-    LY_CHECK_ARG_RET(ctx, ctx,);
-    ctx->flags &= ~LY_CTX_TRUSTED;
-}
-
 API int
 ly_ctx_get_options(const struct ly_ctx *ctx)
 {
     LY_CHECK_ARG_RET(ctx, ctx, 0);
     return ctx->flags;
+}
+
+API LY_ERR
+ly_ctx_set_option(struct ly_ctx *ctx, int option)
+{
+    LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
+    LY_CHECK_ERR_RET(option & LY_CTX_NOYANGLIBRARY, LOGARG(ctx, option), LY_EINVAL);
+
+    /* set the option(s) */
+    ctx->flags |= option;
+
+    return LY_SUCCESS;
+}
+
+API LY_ERR
+ly_ctx_unset_option(struct ly_ctx *ctx, int option)
+{
+    LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
+    LY_CHECK_ERR_RET(option & LY_CTX_NOYANGLIBRARY, LOGARG(ctx, option), LY_EINVAL);
+
+    /* unset the option(s) */
+    ctx->flags &= ~option;
+
+    return LY_SUCCESS;
 }
 
 API uint16_t

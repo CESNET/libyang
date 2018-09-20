@@ -65,7 +65,7 @@ struct ly_ctx;
                                         the ietf-yang-library module is loaded manually. While any revision
                                         of this schema can be loaded with this option, note that the only
                                         revisions implemented by ly_ctx_info() are 2016-04-09 and 2018-01-17.
-                                        This option cannot be used with ly_ctx_new_yl*() functions. */
+                                        This option cannot be changed on existing context. */
 #define LY_CTX_DISABLE_SEARCHDIRS 0x08  /**< Do not search for schemas in context's searchdirs neither in current
                                         working directory. It is entirely skipped and the only way to get
                                         schema data for imports or for ly_ctx_load_module() is to use the
@@ -138,101 +138,20 @@ const char * const *ly_ctx_get_searchdirs(const struct ly_ctx *ctx);
 int ly_ctx_get_options(const struct ly_ctx *ctx);
 
 /**
- * @brief Make context to stop searching for schemas (imported, included or requested via ly_ctx_load_module())
- * in searchdirs set via ly_ctx_set_searchdir() functions. Searchdirs are still stored in the context, so by
- * unsetting the option by ly_ctx_unset_disable_searchdirs() searching in all previously searchdirs is restored.
- *
- * The same effect is achieved by using #LY_CTX_DISABLE_SEARCHDIRS option when creating new context or parsing
- * a specific schema.
- *
+ * @brief Set some of the context's options, see @ref contextoptions.
  * @param[in] ctx Context to be modified.
+ * @param[in] option Combination of the context's options to be set, see @ref contextoptions.
+ * @return LY_ERR value.
  */
-void ly_ctx_set_disable_searchdirs(struct ly_ctx *ctx);
+LY_ERR ly_ctx_set_option(struct ly_ctx *ctx, int option);
 
 /**
- * @brief Reverse function to ly_ctx_set_disable_searchdirs().
- *
+ * @brief Unset some of the context's options, see @ref contextoptions.
  * @param[in] ctx Context to be modified.
+ * @param[in] option Combination of the context's options to be unset, see @ref contextoptions.
+ * @return LY_ERR value.
  */
-void ly_ctx_unset_disable_searchdirs(struct ly_ctx *ctx);
-
-/**
- * @brief Make context to stop implicitly searching for schemas (imported, included or requested via ly_ctx_load_module())
- * in current working directory. This flag can be unset by ly_ctx_unset_disable_searchdir_cwd().
- *
- * The same effect is achieved by using #LY_CTX_DISABLE_SEARCHDIR_CWD option when creating new context or parsing
- * a specific schema.
- *
- * @param[in] ctx Context to be modified.
- */
-void ly_ctx_set_disable_searchdir_cwd(struct ly_ctx *ctx);
-
-/**
- * @brief Reverse function to ly_ctx_set_disable_searchdir_cwd().
- *
- * @param[in] ctx Context to be modified.
- */
-void ly_ctx_unset_disable_searchdir_cwd(struct ly_ctx *ctx);
-
-/**
- * @brief Prefer context's searchdirs before the user callback (ly_module_imp_clb) provided via ly_ctx_set_module_imp_clb()).
- *
- * The same effect is achieved by using #LY_CTX_PREFER_SEARCHDIRS option when creating new context or parsing
- * a specific schema.
- *
- * @param[in] ctx Context to be modified.
- */
-void ly_ctx_set_prefer_searchdirs(struct ly_ctx *ctx);
-
-/**
- * @brief Reverse function to ly_ctx_set_prefer_searchdirs().
- *
- * @param[in] ctx Context to be modified.
- */
-void ly_ctx_unset_prefer_searchdirs(struct ly_ctx *ctx);
-
-/**
- * @brief Make context to set all the imported modules to be implemented. By default,
- * if the imported module is not used in leafref's path, augment or deviation, it is
- * imported and its data tree is not taken into account.
- *
- * The same effect is achieved by using #LY_CTX_ALLIMPLEMENTED option when creating new context or parsing
- * a specific schema.
- *
- * Note, that function does not make the currently loaded modules, it just change the
- * schema parser behavior for the future parsing. This flag can be unset by ly_ctx_unset_allimplemented().
- *
- * @param[in] ctx Context to be modified.
- */
-void ly_ctx_set_allimplemented(struct ly_ctx *ctx);
-
-/**
- * @brief Reverse function to ly_ctx_set_allimplemented().
- *
- * @param[in] ctx Context to be modified.
- */
-void ly_ctx_unset_allimplemented(struct ly_ctx *ctx);
-
-/**
- * @brief Change the schema parser behavior when parsing new schemas forcing it to skip some of the schema
- * validation checks to improve performance. Note that parsing invalid schemas this way may lead to an
- * undefined behavior later, e.g. when working with data trees.
- *
- * The same effect is achieved by using #LY_CTX_TRUSTED option when creating new context or parsing
- * a specific schema.
- *
- * This flag can be unset by ly_ctx_unset_trusted().
- *
- * @param[in] ctx Context to be modified.
- */
-void ly_ctx_set_trusted(struct ly_ctx *ctx);
-
-/**
- * @brief Reverse function to ly_ctx_set_trusted().
- *
- * @param[in] ctx Context to be modified.
- */
-void ly_ctx_unset_trusted(struct ly_ctx *ctx);
+LY_ERR ly_ctx_unset_option(struct ly_ctx *ctx, int option);
 
 /**
  * @brief Get current ID of the modules set. The value is available also
