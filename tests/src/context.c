@@ -103,6 +103,9 @@ test_searchdirs(void **state)
     will_return(__wrap_ly_set_add, 1);
     assert_int_equal(LY_EMEM, ly_ctx_set_searchdir(ctx, TESTS_BIN"/src"));
 
+    /* no change */
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, NULL));
+
     /* correct path */
     will_return_always(__wrap_ly_set_add, 0);
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, TESTS_BIN"/src"));

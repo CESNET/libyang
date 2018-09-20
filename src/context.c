@@ -67,7 +67,6 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
 {
     struct stat st;
     char *new_dir = NULL;
-    LY_ERR rc = LY_ESYS;
     unsigned int u;
 
     LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
@@ -83,9 +82,9 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
                          LOGERR(ctx, LY_ESYS, "Given search directory \"%s\" is not a directory.", search_dir),
                          LY_EINVAL);
         new_dir = realpath(search_dir, NULL);
-        LY_CHECK_ERR_GOTO(!new_dir,
-                          LOGERR(ctx, LY_ESYS, "realpath() call failed for \"%s\" (%s).", search_dir, strerror(errno)),
-                          cleanup);
+        LY_CHECK_ERR_RET(!new_dir,
+                         LOGERR(ctx, LY_ESYS, "realpath() call failed for \"%s\" (%s).", search_dir, strerror(errno)),
+                         LY_ESYS);
         /* avoid path duplication */
         for (u = 0; u < ctx->search_paths.count; ++u) {
             if (!strcmp(new_dir, ctx->search_paths.objs[0])) {
@@ -103,10 +102,6 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
         /* consider that no change is not actually an error */
         return LY_SUCCESS;
     }
-
-cleanup:
-    free(new_dir);
-    return rc;
 }
 
 API const char * const *
