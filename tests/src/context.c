@@ -112,8 +112,8 @@ test_searchdirs(void **state)
     assert_int_equal(1, ctx->search_paths.count);
     assert_string_equal(TESTS_BIN"/src", ctx->search_paths.objs[0]);
 
-    /* duplicated paths - function succeeds, but context still contains just a single path */
-    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, TESTS_BIN"/src"));
+    /* duplicated paths */
+    assert_int_equal(LY_EEXIST, ly_ctx_set_searchdir(ctx, TESTS_BIN"/src"));
     assert_int_equal(1, ctx->search_paths.count);
     assert_string_equal(TESTS_BIN"/src", ctx->search_paths.objs[0]);
 
@@ -161,7 +161,7 @@ test_searchdirs(void **state)
     /* test searchdir list in ly_ctx_new() */
     assert_int_equal(LY_EINVAL, ly_ctx_new("/nonexistingfile", 0, &ctx));
     logbuf_assert("Unable to use search directory \"/nonexistingfile\" (No such file or directory)");
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC":/tmp", 0, &ctx));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC":/tmp:/tmp", 0, &ctx));
     assert_int_equal(2, ctx->search_paths.count);
     assert_string_equal(TESTS_SRC, ctx->search_paths.objs[0]);
     assert_string_equal("/tmp", ctx->search_paths.objs[1]);

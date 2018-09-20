@@ -87,9 +87,9 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
                          LY_ESYS);
         /* avoid path duplication */
         for (u = 0; u < ctx->search_paths.count; ++u) {
-            if (!strcmp(new_dir, ctx->search_paths.objs[0])) {
+            if (!strcmp(new_dir, ctx->search_paths.objs[u])) {
                 free(new_dir);
-                return LY_SUCCESS;
+                return LY_EEXIST;
             }
         }
         if (ly_set_add(&ctx->search_paths, new_dir, LY_SET_OPT_USEASLIST) == -1) {
@@ -178,9 +178,17 @@ ly_ctx_new(const char *search_dir, int options, struct ly_ctx **new_ctx)
         for (dir = search_dir_list; (sep = strchr(dir, ':')) != NULL && rc == LY_SUCCESS; dir = sep + 1) {
             *sep = 0;
             rc = ly_ctx_set_searchdir(ctx, dir);
+            if (rc == LY_EEXIST) {
+                /* ignore duplication */
+                rc = LY_SUCCESS;
+            }
         }
         if (*dir && rc == LY_SUCCESS) {
             rc = ly_ctx_set_searchdir(ctx, dir);
+            if (rc == LY_EEXIST) {
+                /* ignore duplication */
+                rc = LY_SUCCESS;
+            }
         }
         free(search_dir_list);
 
