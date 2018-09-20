@@ -44,7 +44,7 @@ struct ly_ctx;
  * @param[in] len Number of bytes to store. The value is not required to be
  * NULL terminated string, the len parameter says number of bytes stored in
  * dictionary. The specified number of bytes is duplicated and terminating NULL
- * byte is added automatically.
+ * byte is added automatically. If \p len is 0, it is count automatically using strlen().
  * @return pointer to the string stored in the dictionary, NULL if \p value was NULL.
  */
 const char *lydict_insert(struct ly_ctx *ctx, const char *value, size_t len);
