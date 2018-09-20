@@ -139,7 +139,7 @@ lydict_remove(struct ly_ctx *ctx, const char *value)
     struct dict_rec rec, *match = NULL;
     char *val_p;
 
-    LY_CHECK_ARG_RET(ctx, ctx,);
+    LY_CHECK_ARG_RET(ctx, ctx, value,);
 
     if (!value) {
         return;
@@ -226,11 +226,9 @@ lydict_insert(struct ly_ctx *ctx, const char *value, size_t len)
 {
     const char *result;
 
-    LY_CHECK_ARG_RET(ctx, ctx, NULL);
+    LY_CHECK_ARG_RET(ctx, ctx, value, NULL);
 
-    if (!value) {
-        return NULL;
-    } else if (!len) {
+    if (!len) {
         len = strlen(value);
     }
 
@@ -246,11 +244,7 @@ lydict_insert_zc(struct ly_ctx *ctx, char *value)
 {
     const char *result;
 
-    LY_CHECK_ARG_RET(ctx, ctx, NULL);
-
-    if (!value) {
-        return NULL;
-    }
+    LY_CHECK_ARG_RET(ctx, ctx, value, NULL);
 
     pthread_mutex_lock(&ctx->dict.lock);
     result = dict_insert(ctx, value, strlen(value), 1);
@@ -660,7 +654,7 @@ lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash,
     return ret;
 }
 
-int
+LY_ERR
 lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p)
 {
     return lyht_insert_with_resize_cb(ht, val_p, hash, NULL, match_p);

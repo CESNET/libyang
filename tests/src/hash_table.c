@@ -78,9 +78,8 @@ test_invalid_arguments(void **state)
 
     assert_null(lydict_insert_zc(NULL, NULL));
     logbuf_assert("Invalid argument ctx (lydict_insert_zc()).");
-    logbuf_clean();
     assert_null(lydict_insert_zc(ctx, NULL));
-    logbuf_assert("");
+    logbuf_assert("Invalid argument value (lydict_insert_zc()).");
 
     ly_ctx_destroy(ctx, NULL);
 }
@@ -120,11 +119,210 @@ test_dict_hit(void **state)
 #endif
 }
 
+static int
+ht_equal_clb(void *val1, void *val2, int mod, void *cb_data)
+{
+    int *v1, *v2;
+    (void)mod;
+    (void)cb_data;
+
+    v1 = (int *)val1;
+    v2 = (int *)val2;
+
+    return *v1 == *v2;
+}
+
+static void
+test_ht_basic(void **state)
+{
+    (void) state; /* unused */
+
+    uint32_t i;
+    struct hash_table *ht;
+
+    assert_non_null(ht = lyht_new(8, sizeof(int), ht_equal_clb, NULL, 0));
+
+    i = 2;
+    assert_int_equal(1, lyht_find(ht, &i, i, NULL));
+    assert_int_equal(LY_SUCCESS, lyht_insert(ht, &i, i, NULL));
+    assert_int_equal(0, lyht_find(ht, &i, i, NULL));
+    assert_int_equal(LY_SUCCESS, lyht_remove(ht, &i, i));
+    assert_int_equal(1, lyht_find(ht, &i, i, NULL));
+    assert_int_equal(LY_EINVAL, lyht_remove(ht, &i, i));
+    logbuf_assert("Invalid argument hash (lyht_remove()).");
+
+    lyht_free(ht);
+}
+
+static void
+test_ht_resize(void **state)
+{
+    (void) state; /* unused */
+
+    uint32_t i;
+    struct ht_rec *rec;
+    struct hash_table *ht;
+
+    assert_non_null(ht = lyht_new(8, sizeof(int), ht_equal_clb, NULL, 1));
+    assert_int_equal(8, ht->size);
+
+    /* insert records into indexes 2-7 */
+    for (i = 2; i < 8; ++i) {
+        assert_int_equal(LY_SUCCESS, lyht_insert(ht, &i, i, NULL));
+    }
+    /* check that table resized */
+    assert_int_equal(16, ht->size);
+
+    /* check expected content of the table */
+    for (i = 0; i < 16; ++i) {
+        if (i >=2 && i < 8) {
+            /* inserted data on indexes 2-7 */
+            rec = lyht_get_rec(ht->recs, ht->rec_size, i);
+            assert_int_equal(1, rec->hits);
+            assert_int_equal(i, rec->hash);
+        } else {
+            /* nothing otherwise */
+            rec = lyht_get_rec(ht->recs, ht->rec_size, i);
+            assert_int_equal(0, rec->hits);
+        }
+    }
+
+    /* removing not present data should fail */
+    for (i = 0; i < 2; ++i) {
+        logbuf_clean();
+        assert_int_equal(LY_EINVAL, lyht_remove(ht, &i, i));
+        logbuf_assert("Invalid argument hash (lyht_remove()).");
+    }
+    /* removing present data, resize should happened
+     * when we are below 25% of the table filled, so with 3 records left */
+    for (; i < 5; ++i) {
+        assert_int_equal(LY_SUCCESS, lyht_remove(ht, &i, i));
+    }
+    assert_int_equal(8, ht->size);
+
+    /* remove the rest */
+    for (; i < 8; ++i) {
+        assert_int_equal(LY_SUCCESS, lyht_remove(ht, &i, i));
+    }
+
+    for (i = 0; i < 8; ++i) {
+        assert_int_equal(1, lyht_find(ht, &i, i, NULL));
+    }
+
+    /* cleanup */
+    lyht_free(ht);
+}
+
+
+static void
+test_ht_collisions(void **state)
+{
+    (void) state; /* unused */
+#define GET_REC_INT(rec) (*((uint32_t *)&(rec)->val))
+
+    uint32_t i;
+    struct ht_rec *rec;
+    struct hash_table *ht;
+
+    assert_non_null(ht = lyht_new(8, sizeof(int), ht_equal_clb, NULL, 1));
+
+    for (i = 2; i < 6; ++i) {
+        assert_int_equal(lyht_insert(ht, &i, 2, NULL), 0);
+    }
+
+    /* check all records */
+    for (i = 0; i < 2; ++i) {
+        rec = lyht_get_rec(ht->recs, ht->rec_size, i);
+        assert_int_equal(rec->hits, 0);
+    }
+    rec = lyht_get_rec(ht->recs, ht->rec_size, i);
+    assert_int_equal(rec->hits, 4);
+    assert_int_equal(GET_REC_INT(rec), i);
+    ++i;
+    for (; i < 6; ++i) {
+        rec = lyht_get_rec(ht->recs, ht->rec_size, i);
+        assert_int_equal(rec->hits, 1);
+        assert_int_equal(GET_REC_INT(rec), i);
+    }
+    for (; i < 8; ++i) {
+        rec = lyht_get_rec(ht->recs, ht->rec_size, i);
+        assert_int_equal(rec->hits, 0);
+    }
+
+    i = 4;
+    assert_int_equal(lyht_remove(ht, &i, 2), 0);
+
+    rec = lyht_get_rec(ht->recs, ht->rec_size, i);
+    assert_int_equal(rec->hits, -1);
+
+    i = 2;
+    assert_int_equal(lyht_remove(ht, &i, 2), 0);
+
+    /* check all records */
+    for (i = 0; i < 2; ++i) {
+        rec = lyht_get_rec(ht->recs, ht->rec_size, i);
+        assert_int_equal(rec->hits, 0);
+    }
+    rec = lyht_get_rec(ht->recs, ht->rec_size, i);
+    assert_int_equal(rec->hits, 2);
+    assert_int_equal(GET_REC_INT(rec), 5);
+    ++i;
+    rec = lyht_get_rec(ht->recs, ht->rec_size, i);
+    assert_int_equal(rec->hits, 1);
+    assert_int_equal(GET_REC_INT(rec), 3);
+    ++i;
+    for (; i < 6; ++i) {
+        rec = lyht_get_rec(ht->recs, ht->rec_size, i);
+        assert_int_equal(rec->hits, -1);
+    }
+    for (; i < 8; ++i) {
+        rec = lyht_get_rec(ht->recs, ht->rec_size, i);
+        assert_int_equal(rec->hits, 0);
+    }
+
+    for (i = 0; i < 3; ++i) {
+        assert_int_equal(lyht_find(ht, &i, 2, NULL), 1);
+    }
+    assert_int_equal(lyht_find(ht, &i, 2, NULL), 0);
+    ++i;
+    assert_int_equal(lyht_find(ht, &i, 2, NULL), 1);
+    ++i;
+    assert_int_equal(lyht_find(ht, &i, 2, NULL), 0);
+    ++i;
+    for (; i < 8; ++i) {
+        assert_int_equal(lyht_find(ht, &i, 2, NULL), 1);
+    }
+
+    i = 3;
+    assert_int_equal(lyht_remove(ht, &i, 2), 0);
+    i = 5;
+    assert_int_equal(lyht_remove(ht, &i, 2), 0);
+
+    /* check all records */
+    for (i = 0; i < 2; ++i) {
+        rec = lyht_get_rec(ht->recs, ht->rec_size, i);
+        assert_int_equal(rec->hits, 0);
+    }
+    for (; i < 6; ++i) {
+        rec = lyht_get_rec(ht->recs, ht->rec_size, i);
+        assert_int_equal(rec->hits, -1);
+    }
+    for (; i < 8; ++i) {
+        rec = lyht_get_rec(ht->recs, ht->rec_size, i);
+        assert_int_equal(rec->hits, 0);
+    }
+
+    lyht_free(ht);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup(test_invalid_arguments, logger_setup),
         cmocka_unit_test_setup(test_dict_hit, logger_setup),
+        cmocka_unit_test_setup(test_ht_basic, logger_setup),
+        cmocka_unit_test_setup(test_ht_resize, logger_setup),
+        cmocka_unit_test_setup(test_ht_collisions, logger_setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

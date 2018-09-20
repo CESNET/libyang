@@ -1067,10 +1067,12 @@ parse_ext_substmt(struct ly_ctx *ctx, const char **data, char *word, int word_le
     ret = get_string(ctx, data, Y_MAYBE_STR_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
-    if (buf) {
-        stmt->arg = lydict_insert_zc(ctx, word);
-    } else {
-        stmt->arg = lydict_insert(ctx, word, word_len);
+    if (word) {
+        if (buf) {
+            stmt->arg = lydict_insert_zc(ctx, word);
+        } else {
+            stmt->arg = lydict_insert(ctx, word, word_len);
+        }
     }
 
     /* insert into parent statements */
@@ -1126,10 +1128,12 @@ parse_ext(struct ly_ctx *ctx, const char **data, const char *ext_name, int ext_n
     ret = get_string(ctx, data, Y_MAYBE_STR_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
-    if (buf) {
-        e->argument = lydict_insert_zc(ctx, word);
-    } else {
-        e->argument = lydict_insert(ctx, word, word_len);
+    if (word) {
+        if (buf) {
+            e->argument = lydict_insert_zc(ctx, word);
+        } else {
+            e->argument = lydict_insert(ctx, word, word_len);
+        }
     }
 
     YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret) {
