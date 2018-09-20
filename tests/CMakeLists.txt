@@ -3,16 +3,15 @@ cmake_minimum_required(VERSION 2.8.12)
 # Correct RPATH usage on OS X
 set(CMAKE_MACOSX_RPATH TRUE)
 
-# Set TESTS_DIR to realpath
-#get_filename_component(TESTS_DIR "${CMAKE_SOURCE_DIR}/tests" REALPATH)
-
 if(ENABLE_STATIC AND ENABLE_VALGRIND_TESTS)
     message(WARNING "Can't run C valgrind tests on a static build")
 else()
     find_program(VALGRIND_FOUND valgrind)
 endif()
 
+configure_file("${PROJECT_SOURCE_DIR}/tests/config.h.in" "${PROJECT_BINARY_DIR}/tests/config.h" ESCAPE_QUOTES @ONLY)
 include_directories(SYSTEM ${CMOCKA_INCLUDE_DIR})
+include_directories(${PROJECT_BINARY_DIR})
 
 set(tests)
 set(tests_wraps)

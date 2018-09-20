@@ -1,8 +1,10 @@
 set(local_tests
     src_set
-    src_common)
+    src_common
+    src_context)
 set(local_tests_wraps
     " "
-    "-Wl,--wrap=realloc")
+    "-Wl,--wrap=realloc"
+    "-Wl,--wrap=ly_set_add")
 set(tests ${tests} ${local_tests} PARENT_SCOPE)
 set(tests_wraps ${tests_wraps} ${local_tests_wraps} PARENT_SCOPE)
