@@ -179,55 +179,89 @@ test_options(void **state)
     struct ly_ctx *ctx;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0xffffffff, &ctx));
 
+    /* invalid arguments */
+    assert_int_equal(0, ly_ctx_get_options(NULL));
+    logbuf_assert("Invalid argument ctx (ly_ctx_get_options()).");
+
+    assert_int_equal(LY_EINVAL, ly_ctx_set_option(NULL, 0));
+    logbuf_assert("Invalid argument ctx (ly_ctx_set_option()).");
+    assert_int_equal(LY_EINVAL, ly_ctx_unset_option(NULL, 0));
+    logbuf_assert("Invalid argument ctx (ly_ctx_unset_option()).");
+
+    /* option not allowed to be changed */
+    assert_int_equal(LY_EINVAL, ly_ctx_set_option(ctx, LY_CTX_NOYANGLIBRARY));
+    logbuf_assert("Invalid argument option (ly_ctx_set_option()).");
+    assert_int_equal(LY_EINVAL, ly_ctx_set_option(ctx, LY_CTX_NOYANGLIBRARY));
+    logbuf_assert("Invalid argument option (ly_ctx_set_option()).");
+
+
     /* unset */
     /* LY_CTX_ALLIMPLEMENTED */
     assert_int_not_equal(0, ctx->flags & LY_CTX_ALLIMPLEMENTED);
-    ly_ctx_unset_allimplemented(ctx);
+    assert_int_equal(LY_SUCCESS, ly_ctx_unset_option(ctx, LY_CTX_ALLIMPLEMENTED));
     assert_int_equal(0, ctx->flags & LY_CTX_ALLIMPLEMENTED);
 
     /* LY_CTX_DISABLE_SEARCHDIRS */
     assert_int_not_equal(0, ctx->flags & LY_CTX_DISABLE_SEARCHDIRS);
-    ly_ctx_unset_disable_searchdirs(ctx);
+    assert_int_equal(LY_SUCCESS, ly_ctx_unset_option(ctx, LY_CTX_DISABLE_SEARCHDIRS));
     assert_int_equal(0, ctx->flags & LY_CTX_DISABLE_SEARCHDIRS);
 
     /* LY_CTX_DISABLE_SEARCHDIR_CWD */
     assert_int_not_equal(0, ctx->flags & LY_CTX_DISABLE_SEARCHDIR_CWD);
-    ly_ctx_unset_disable_searchdir_cwd(ctx);
+    assert_int_equal(LY_SUCCESS, ly_ctx_unset_option(ctx, LY_CTX_DISABLE_SEARCHDIR_CWD));
     assert_int_equal(0, ctx->flags & LY_CTX_DISABLE_SEARCHDIR_CWD);
-
-    /* LY_CTX_NOYANGLIBRARY (not possible to unset) */
-    assert_int_not_equal(0, ctx->flags & LY_CTX_NOYANGLIBRARY);
 
     /* LY_CTX_PREFER_SEARCHDIRS */
     assert_int_not_equal(0, ctx->flags & LY_CTX_PREFER_SEARCHDIRS);
-    ly_ctx_unset_prefer_searchdirs(ctx);
+    assert_int_equal(LY_SUCCESS, ly_ctx_unset_option(ctx, LY_CTX_PREFER_SEARCHDIRS));
     assert_int_equal(0, ctx->flags & LY_CTX_PREFER_SEARCHDIRS);
 
     /* LY_CTX_TRUSTED */
     assert_int_not_equal(0, ctx->flags & LY_CTX_TRUSTED);
-    ly_ctx_unset_trusted(ctx);
+    assert_int_equal(LY_SUCCESS, ly_ctx_unset_option(ctx, LY_CTX_TRUSTED));
     assert_int_equal(0, ctx->flags & LY_CTX_TRUSTED);
+
+    assert_int_equal(ctx->flags, ly_ctx_get_options(ctx));
 
     /* set back */
     /* LY_CTX_ALLIMPLEMENTED */
-    ly_ctx_set_allimplemented(ctx);
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_option(ctx, LY_CTX_ALLIMPLEMENTED));
     assert_int_not_equal(0, ctx->flags & LY_CTX_ALLIMPLEMENTED);
 
     /* LY_CTX_DISABLE_SEARCHDIRS */
-    ly_ctx_set_disable_searchdirs(ctx);
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_option(ctx, LY_CTX_DISABLE_SEARCHDIRS));
     assert_int_not_equal(0, ctx->flags & LY_CTX_DISABLE_SEARCHDIRS);
 
     /* LY_CTX_DISABLE_SEARCHDIR_CWD */
-    ly_ctx_set_disable_searchdir_cwd(ctx);
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_option(ctx, LY_CTX_DISABLE_SEARCHDIR_CWD));
     assert_int_not_equal(0, ctx->flags & LY_CTX_DISABLE_SEARCHDIR_CWD);
 
     /* LY_CTX_PREFER_SEARCHDIRS */
-    ly_ctx_set_prefer_searchdirs(ctx);
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_option(ctx, LY_CTX_PREFER_SEARCHDIRS));
     assert_int_not_equal(0, ctx->flags & LY_CTX_PREFER_SEARCHDIRS);
 
     /* LY_CTX_TRUSTED */
-    ly_ctx_set_trusted(ctx);
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_option(ctx, LY_CTX_TRUSTED));
     assert_int_not_equal(0, ctx->flags & LY_CTX_TRUSTED);
+
+    assert_int_equal(ctx->flags, ly_ctx_get_options(ctx));
+
+    /* cleanup */
+    ly_ctx_destroy(ctx, NULL);
+}
+
+static void
+test_models(void **state)
+{
+    (void) state; /* unused */
+
+    /* invalid arguments */
+    assert_int_equal(0, ly_ctx_get_module_set_id(NULL));
+    logbuf_assert("Invalid argument ctx (ly_ctx_get_module_set_id()).");
+
+    struct ly_ctx *ctx;
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
+    assert_int_equal(ctx->module_set_id, ly_ctx_get_module_set_id(ctx));
 
     /* cleanup */
     ly_ctx_destroy(ctx, NULL);
@@ -238,6 +272,7 @@ int main(void)
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup(test_searchdirs, logger_setup),
         cmocka_unit_test_setup(test_options, logger_setup),
+        cmocka_unit_test_setup(test_models, logger_setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
