@@ -112,7 +112,20 @@ cleanup:
 API const char * const *
 ly_ctx_get_searchdirs(const struct ly_ctx *ctx)
 {
+    void **new;
+
     LY_CHECK_ARG_RET(ctx, ctx, NULL);
+
+    if (ctx->search_paths.count == ctx->search_paths.size) {
+        /* not enough space for terminating NULL byte */
+        new = realloc(((struct ly_ctx *)ctx)->search_paths.objs, (ctx->search_paths.size + 8) * sizeof *ctx->search_paths.objs);
+        LY_CHECK_ERR_RET(!new, LOGMEM(NULL), NULL);
+        ((struct ly_ctx *)ctx)->search_paths.size += 8;
+        ((struct ly_ctx *)ctx)->search_paths.objs = new;
+    }
+    /* set terminating NULL byte to the strings list */
+    ctx->search_paths.objs[ctx->search_paths.count] = NULL;
+
     return (const char * const *)ctx->search_paths.objs;
 }
 
