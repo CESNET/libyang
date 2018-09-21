@@ -14,6 +14,7 @@
 
 #define _GNU_SOURCE
 #include <assert.h>
+#include <inttypes.h>
 #include <stdarg.h>
 #include <stdio.h>
 
@@ -373,224 +374,24 @@ ly_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, const char *form
 }
 
 static LY_ERR
-ly_vlog_build_path_print(const struct ly_ctx *ctx, char **path, uint16_t *index, const char *str, uint16_t str_len, uint16_t *length)
+ly_vlog_build_path(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const void *elem, char **path)
 {
-    void *mem;
-    uint16_t step;
+    int rc;
 
-    if ((*index) < str_len) {
-        /* enlarge buffer */
-        step = (str_len < LY_BUF_STEP) ? LY_BUF_STEP : str_len;
-        mem = realloc(*path, *length + *index + step + 1);
-        LY_CHECK_ERR_RET(!mem, LOGMEM(ctx), LY_EMEM);
-        *path = mem;
-
-        /* move data, lengths */
-        memmove(&(*path)[*index + step], &(*path)[*index], *length);
-        (*index) += step;
+    switch (elem_type) {
+    case LY_VLOG_STR:
+        (*path) = strdup(elem);
+        LY_CHECK_ERR_RET(!(*path), LOGMEM(ctx), LY_EMEM);
+        break;
+    case LY_VLOG_LINE:
+        rc = asprintf(path, "Line number %"PRIu64".", *((uint64_t*)elem));
+        LY_CHECK_ERR_RET(rc == -1, LOGMEM(ctx), LY_EMEM);
+        break;
+    default:
+        /* shouldn't be here */
+        LOGINT_RET(ctx);
     }
 
-    (*index) -= str_len;
-    memcpy(&(*path)[*index], str, str_len);
-    *length += str_len;
-
-    return 0;
-}
-
-LY_ERR
-ly_vlog_build_path(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const void *elem, char **path, int UNUSED(schema_all_prefixes))
-{
-    uint16_t length, index;
-    size_t len;
-    LY_ERR rc = LY_SUCCESS;
-
-    length = 0;
-    *path = malloc(1);
-    LY_CHECK_ERR_RET(!(*path), LOGMEM(ctx), LY_EMEM);
-    index = 0;
-
-    while (elem) {
-        switch (elem_type) {
-        case LY_VLOG_LYS:
-            /* TODO */
-            break;
-        case LY_VLOG_LYD:
-#if 0 /* TODO when data tree present */
-            name = ((struct lyd_node *)elem)->schema->name;
-            if (!((struct lyd_node *)elem)->parent ||
-                    lyd_node_module((struct lyd_node *)elem) != lyd_node_module(((struct lyd_node *)elem)->parent)) {
-                prefix = lyd_node_module((struct lyd_node *)elem)->name;
-            } else {
-                prefix = NULL;
-            }
-
-            /* handle predicates (keys) in case of lists */
-            if (((struct lyd_node *)elem)->schema->nodetype == LYS_LIST) {
-                dlist = (struct lyd_node *)elem;
-                slist = (struct lys_node_list *)((struct lyd_node *)elem)->schema;
-                if (slist->keys_size) {
-                    /* schema list with keys - use key values in predicates */
-                    for (i = slist->keys_size - 1; i > -1; i--) {
-                        LY_TREE_FOR(dlist->child, diter) {
-                            if (diter->schema == (struct lys_node *)slist->keys[i]) {
-                                break;
-                            }
-                        }
-                        if (diter && ((struct lyd_node_leaf_list *)diter)->value_str) {
-                            if (strchr(((struct lyd_node_leaf_list *)diter)->value_str, '\'')) {
-                                val_start = "=\"";
-                                val_end = "\"]";
-                            } else {
-                                val_start = "='";
-                                val_end = "']";
-                            }
-
-                            /* print value */
-                            if (ly_vlog_build_path_print(path, &index, val_end, 2, &length)) {
-                                return -1;
-                            }
-                            len = strlen(((struct lyd_node_leaf_list *)diter)->value_str);
-                            if (ly_vlog_build_path_print(path, &index,
-                                    ((struct lyd_node_leaf_list *)diter)->value_str, len, &length)) {
-                                return -1;
-                            }
-
-                            /* print schema name */
-                            if (ly_vlog_build_path_print(path, &index, val_start, 2, &length)) {
-                                return -1;
-                            }
-                            len = strlen(diter->schema->name);
-                            if (ly_vlog_build_path_print(path, &index, diter->schema->name, len, &length)) {
-                                return -1;
-                            }
-
-                            if (lyd_node_module(dlist) != lyd_node_module(diter)) {
-                                if (ly_vlog_build_path_print(path, &index, ":", 1, &length)) {
-                                    return -1;
-                                }
-                                len = strlen(lyd_node_module(diter)->name);
-                                if (ly_vlog_build_path_print(path, &index, lyd_node_module(diter)->name, len, &length)) {
-                                    return -1;
-                                }
-                            }
-
-                            if (ly_vlog_build_path_print(path, &index, "[", 1, &length)) {
-                                return -1;
-                            }
-                        }
-                    }
-                } else {
-                    /* schema list without keys - use instance position */
-                    i = j = lyd_list_pos(dlist);
-                    len = 1;
-                    while (j > 9) {
-                        ++len;
-                        j /= 10;
-                    }
-
-                    if (ly_vlog_build_path_print(path, &index, "]", 1, &length)) {
-                        return -1;
-                    }
-
-                    str = malloc(len + 1);
-                    LY_CHECK_ERR_RETURN(!str, LOGMEM(NULL), -1);
-                    sprintf(str, "%d", i);
-
-                    if (ly_vlog_build_path_print(path, &index, str, len, &length)) {
-                        free(str);
-                        return -1;
-                    }
-                    free(str);
-
-                    if (ly_vlog_build_path_print(path, &index, "[", 1, &length)) {
-                        return -1;
-                    }
-                }
-            } else if (((struct lyd_node *)elem)->schema->nodetype == LYS_LEAFLIST &&
-                    ((struct lyd_node_leaf_list *)elem)->value_str) {
-                if (strchr(((struct lyd_node_leaf_list *)elem)->value_str, '\'')) {
-                    val_start = "[.=\"";
-                    val_end = "\"]";
-                } else {
-                    val_start = "[.='";
-                    val_end = "']";
-                }
-
-                if (ly_vlog_build_path_print(path, &index, val_end, 2, &length)) {
-                    return -1;
-                }
-                len = strlen(((struct lyd_node_leaf_list *)elem)->value_str);
-                if (ly_vlog_build_path_print(path, &index, ((struct lyd_node_leaf_list *)elem)->value_str, len, &length)) {
-                    return -1;
-                }
-                if (ly_vlog_build_path_print(path, &index, val_start, 4, &length)) {
-                    return -1;
-                }
-            }
-
-            /* check if it is yang-data top element */
-            if (!((struct lyd_node *)elem)->parent) {
-                ext_name = lyp_get_yang_data_template_name(elem);
-                if (ext_name) {
-                    if (ly_vlog_build_path_print(path, &index, name, strlen(name), &length)) {
-                        return -1;
-                    }
-                    if (ly_vlog_build_path_print(path, &index, "/", 1, &length)) {
-                        return -1;
-                    }
-                    yang_data_extension = 1;
-                    name = ext_name;
-               }
-            }
-
-            elem = ((struct lyd_node *)elem)->parent;
-            break;
-#endif
-        case LY_VLOG_STR:
-            len = strlen((const char *)elem);
-            rc = ly_vlog_build_path_print(ctx, path, &index, (const char *)elem, len, &length);
-            LY_CHECK_RET(rc != LY_SUCCESS, rc);
-            goto success;
-        case LY_VLOG_LINE:
-
-            goto success;
-        default:
-            /* shouldn't be here */
-            LOGINT_RET(ctx);
-        }
-
-#if 0 /* TODO when data/schema tree present */
-        if (name) {
-            if (ly_vlog_build_path_print(ctx, path, &index, name, strlen(name), &length)) {
-                return -1;
-            }
-            if (prefix) {
-                if (yang_data_extension && ly_vlog_build_path_print(path, &index, "#", 1, &length)) {
-                    return -1;
-                }
-                if (ly_vlog_build_path_print(ctx, path, &index, ":", 1, &length)) {
-                    return -1;
-                }
-                if (ly_vlog_build_path_print(ctx, path, &index, prefix, strlen(prefix), &length)) {
-                    return -1;
-                }
-            }
-        }
-        if (ly_vlog_build_path_print(ctx, path, &index, "/", 1, &length)) {
-            return -1;
-        }
-        if ((elem_type == LY_VLOG_LYS) && !elem && sparent && (sparent->nodetype == LYS_AUGMENT)) {
-            len = strlen(((struct lys_node_augment *)sparent)->target_name);
-            if (ly_vlog_build_path_print(ctx, path, &index, ((struct lys_node_augment *)sparent)->target_name, len, &length)) {
-                return -1;
-            }
-        }
-#endif
-    }
-
-success:
-    memmove(*path, (*path) + index, length);
-    (*path)[length] = '\0';
     return LY_SUCCESS;
 }
 
@@ -614,7 +415,7 @@ ly_vlog(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const void *elem,
                 /* top-level */
                 path = strdup("/");
             } else {
-                ly_vlog_build_path(ctx, elem_type, elem, &path, 0);
+                ly_vlog_build_path(ctx, elem_type, elem, &path);
             }
         }
     }
