@@ -123,6 +123,18 @@ check:
     goto check;
 }
 
+API const struct lys_type *
+lys_getnext_union_type(const struct lys_type *last, const struct lys_type *type)
+{
+    int found = 0;
+
+    if (!type || (type->base != LY_TYPE_UNION)) {
+        retur NULL;
+    }
+
+    return lyp_get_next_union_type(type, last, &found);
+}
+
 int
 lys_get_sibling(const struct lys_node *siblings, const char *mod_name, int mod_name_len, const char *name,
                 int nam_len, LYS_NODE type, const struct lys_node **ret)

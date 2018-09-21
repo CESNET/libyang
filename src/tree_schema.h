@@ -2291,6 +2291,15 @@ const struct lys_node *lys_getnext(const struct lys_node *last, const struct lys
                                             relevant if-feature conditions state */
 
 /**
+ * @brief Get next type of a union.
+ *
+ * @param[in] last Last returned type. NULL on first call.
+ * @param[in] type Union type structure.
+ * @return Next union type in order, NULL if all were returned or on error.
+ */
+const struct lys_type *lys_getnext_union_type(const struct lys_type *last, const struct lys_type *type);
+
+/**
  * @brief Search for schema nodes matching the provided path.
  *
  * Learn more about the path format at page @ref howtoxpath.
