@@ -83,22 +83,25 @@ test_utf8(void **state)
     buf[0] = 0x80;
     assert_int_equal(LY_EINVAL, lyxml_getutf8(&str, &c, &len));
 
-    buf[1] = 0xc0;
-    buf[0] = 0x00;
-    assert_int_equal(LY_EINVAL, lyxml_getutf8(&str, &c, &len));
-    buf[0] = 0x80;
-    assert_int_equal(LY_EINVAL, lyxml_getutf8(&str, &c, &len));
-
-    buf[2] = 0xe0;
+    buf[0] = 0xc0;
     buf[1] = 0x00;
     assert_int_equal(LY_EINVAL, lyxml_getutf8(&str, &c, &len));
     buf[1] = 0x80;
     assert_int_equal(LY_EINVAL, lyxml_getutf8(&str, &c, &len));
 
-    buf[3] = 0xf0;
-    buf[2] = 0x00;
-    assert_int_equal(LY_EINVAL, lyxml_getutf8(&str, &c, &len));
+    buf[0] = 0xe0;
+    buf[1] = 0x00;
     buf[2] = 0x80;
+    assert_int_equal(LY_EINVAL, lyxml_getutf8(&str, &c, &len));
+    buf[1] = 0x80;
+    assert_int_equal(LY_EINVAL, lyxml_getutf8(&str, &c, &len));
+
+    buf[0] = 0xf0;
+    buf[1] = 0x00;
+    buf[2] = 0x80;
+    buf[3] = 0x80;
+    assert_int_equal(LY_EINVAL, lyxml_getutf8(&str, &c, &len));
+    buf[1] = 0x80;
     assert_int_equal(LY_EINVAL, lyxml_getutf8(&str, &c, &len));
 }
 
