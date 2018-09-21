@@ -129,10 +129,10 @@ lys_getnext_union_type(const struct lys_type *last, const struct lys_type *type)
     int found = 0;
 
     if (!type || (type->base != LY_TYPE_UNION)) {
-        retur NULL;
+        return NULL;
     }
 
-    return lyp_get_next_union_type(type, last, &found);
+    return lyp_get_next_union_type((struct lys_type *)type, (struct lys_type *)last, &found);
 }
 
 int
