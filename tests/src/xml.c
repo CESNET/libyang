@@ -65,6 +65,44 @@ logbuf_clean(void)
 #   define logbuf_assert(str)
 #endif
 
+
+static void
+test_utf8(void **state)
+{
+    (void) state; /* unused */
+
+    char buf[5] = {0};
+    const char *str = buf;
+    unsigned int c;
+    size_t len;
+
+    /* test invalid UTF-8 characters in lyxml_getutf8
+     * - https://en.wikipedia.org/wiki/UTF-8 */
+    buf[0] = 0x80;
+    assert_int_equal(LY_EINVAL, lyxml_getutf8(&str, &c, &len));
+
+    buf[1] = 0xe0;
+    assert_int_equal(LY_EINVAL, lyxml_getutf8(&str, &c, &len));
+    buf[1] = 0x80;
+    assert_int_equal(LY_EINVAL, lyxml_getutf8(&str, &c, &len));
+
+    buf[2] = 0xf0;
+    assert_int_equal(LY_EINVAL, lyxml_getutf8(&str, &c, &len));
+    buf[2] = 0xc0;
+    assert_int_equal(LY_EINVAL, lyxml_getutf8(&str, &c, &len));
+    buf[2] = 0x80;
+    assert_int_equal(LY_EINVAL, lyxml_getutf8(&str, &c, &len));
+
+    buf[3] = 0xf8;
+    assert_int_equal(LY_EINVAL, lyxml_getutf8(&str, &c, &len));
+    buf[3] = 0xe0;
+    assert_int_equal(LY_EINVAL, lyxml_getutf8(&str, &c, &len));
+    buf[3] = 0xc0;
+    assert_int_equal(LY_EINVAL, lyxml_getutf8(&str, &c, &len));
+    buf[3] = 0x80;
+    assert_int_equal(LY_EINVAL, lyxml_getutf8(&str, &c, &len));
+}
+
 static void
 test_element(void **state)
 {
@@ -107,7 +145,7 @@ test_element(void **state)
     assert_int_equal(7, name_len);
     assert_string_equal("/>", str);
 
-    str = "<?xml version=\"1.0\"?>  <!-- comment --> <?TEST xxx?> <element/>";
+    str = "<?xml version=\"1.0\"?>  <!-- comment --> <![CDATA[<greeting>Hello, world!</greeting>]]> <?TEST xxx?> <element/>";
     assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
     assert_null(prefix);
     assert_false(strncmp("element", name, name_len));
@@ -159,7 +197,8 @@ test_element(void **state)
 int main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup(test_element, logger_setup),
+        cmocka_unit_test_setup(test_utf8, logger_setup),
+        cmocka_unit_test(test_element),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
