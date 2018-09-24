@@ -226,7 +226,8 @@ S_Data_Node Data_Node::dup_to_ctx(int recursive, S_Context context) {
 
     new_node = lyd_dup_to_ctx(node, recursive, context->ctx);
 
-    return new_node ? std::make_shared<Data_Node>(new_node, deleter) : nullptr;
+    S_Deleter new_deleter = std::make_shared<Deleter>(new_node, context->deleter);
+    return new_node ? std::make_shared<Data_Node>(new_node, new_deleter) : nullptr;
 }
 int Data_Node::merge(S_Data_Node source, int options) {
     int ret = lyd_merge(node, source->node, options);
