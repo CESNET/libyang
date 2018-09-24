@@ -748,6 +748,29 @@ lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format, int opti
 }
 
 API int
+lyd_print_path(const char *path, const struct lyd_node *root, LYD_FORMAT format, int options)
+{
+    FILE *f;
+    int ret;
+
+    if (!path) {
+        LOGARG;
+        return EXIT_FAILURE;
+    }
+
+    f = fopen(path, "w");
+    if (!f) {
+        LOGERR(root->schema->module->ctx, LY_EINVAL, "Cannot open file \"%s\" for writing.", path);
+        return EXIT_FAILURE;
+    }
+
+    ret = lyd_print_file(f, root, format, options);
+
+    fclose(f);
+    return ret;
+}
+
+API int
 lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format, int options)
 {
     int r;

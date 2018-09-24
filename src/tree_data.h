@@ -1263,9 +1263,9 @@ int lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format, i
 /**
  * @brief Print data tree in the specified format.
  *
+ * @param[in] fd File descriptor where to print the data.
  * @param[in] root Root node of the data tree to print. It can be actually any (not only real root)
  * node of the data tree to print the specific subtree.
- * @param[in] fd File descriptor where to print the data.
  * @param[in] format Data output format.
  * @param[in] options [printer flags](@ref printerflags). \p format LYD_LYB accepts only #LYP_WITHSIBLINGS option.
  * @return 0 on success, 1 on failure (#ly_errno is set).
@@ -1275,9 +1275,9 @@ int lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format, int opt
 /**
  * @brief Print data tree in the specified format.
  *
+ * @param[in] f File stream where to print the data.
  * @param[in] root Root node of the data tree to print. It can be actually any (not only real root)
  * node of the data tree to print the specific subtree.
- * @param[in] f File stream where to print the data.
  * @param[in] format Data output format.
  * @param[in] options [printer flags](@ref printerflags). \p format LYD_LYB accepts only #LYP_WITHSIBLINGS option.
  * @return 0 on success, 1 on failure (#ly_errno is set).
@@ -1287,9 +1287,21 @@ int lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format, int 
 /**
  * @brief Print data tree in the specified format.
  *
+ * @param[in] path File path where to print the data.
  * @param[in] root Root node of the data tree to print. It can be actually any (not only real root)
  * node of the data tree to print the specific subtree.
+ * @param[in] format Data output format.
+ * @param[in] options [printer flags](@ref printerflags). \p format LYD_LYB accepts only #LYP_WITHSIBLINGS option.
+ * @return 0 on success, 1 on failure (#ly_errno is set).
+ */
+int lyd_print_path(const char *path, const struct lyd_node *root, LYD_FORMAT format, int options);
+
+/**
+ * @brief Print data tree in the specified format.
+ *
  * @param[in] writeclb Callback function to write the data (see write(1)).
+ * @param[in] root Root node of the data tree to print. It can be actually any (not only real root)
+ * node of the data tree to print the specific subtree.
  * @param[in] arg Optional caller-specific argument to be passed to the \p writeclb callback.
  * @param[in] format Data output format.
  * @param[in] options [printer flags](@ref printerflags). \p format LYD_LYB accepts only #LYP_WITHSIBLINGS option.

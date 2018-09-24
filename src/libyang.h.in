@@ -615,6 +615,7 @@ extern "C" {
  * - lys_print_mem()
  * - lys_print_fd()
  * - lys_print_file()
+ * - lys_print_path()
  * - lys_print_clb()
  */
 
@@ -878,6 +879,7 @@ extern "C" {
  * - lyd_print_mem()
  * - lyd_print_fd()
  * - lyd_print_file()
+ * - lyd_print_path()
  * - lyd_print_clb()
  */
 
