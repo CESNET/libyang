@@ -150,7 +150,7 @@ TEST(test_ly_ctx_parse_data_mem)
         ASSERT_STREQ("x", root->schema()->name());
     } catch( const std::exception& e ) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -173,7 +173,7 @@ TEST(test_ly_ctx_parse_data_fd)
         fclose(f);
     } catch( const std::exception& e ) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -197,7 +197,7 @@ TEST(test_ly_ctx_parse_data_path)
         ASSERT_STREQ(schema_name, root->schema()->name());
     } catch( const std::exception& e ) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -237,7 +237,7 @@ TEST(test_ly_data_node)
         ASSERT_NOTNULL(dup_node);
     } catch( const std::exception& e ) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -285,7 +285,7 @@ TEST(test_ly_data_node_new_path)
         ASSERT_STREQ("value", node->child()->next()->next()->schema()->name());
     } catch (const std::exception& e) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -307,7 +307,7 @@ TEST(test_ly_data_node_insert)
         ASSERT_STREQ("number32", root->child()->prev()->schema()->name());
     } catch (const std::exception& e) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -332,7 +332,7 @@ TEST(test_ly_data_node_insert_sibling)
         ASSERT_STREQ("y", root->prev()->schema()->name());
     } catch (const std::exception& e) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -357,7 +357,7 @@ TEST(test_ly_data_node_insert_before)
         ASSERT_STREQ("y", root->prev()->schema()->name());
     } catch (const std::exception& e) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -382,7 +382,7 @@ TEST(test_ly_data_node_insert_after)
         ASSERT_STREQ("y", root->next()->schema()->name());
     } catch (const std::exception& e) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -434,7 +434,7 @@ TEST(test_ly_data_node_schema_sort)
         ASSERT_STREQ("number64", root->child()->next()->next()->next()->schema()->name());
     } catch (const std::exception& e) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -457,7 +457,7 @@ TEST(test_ly_data_node_find_path)
         ASSERT_EQ(1, set->number());
     } catch (const std::exception& e) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -506,7 +506,7 @@ TEST(test_ly_data_node_validate)
         ASSERT_EQ(0, rc);
     } catch (const std::exception& e) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -536,7 +536,7 @@ TEST(test_ly_data_node_unlink)
         ASSERT_STRNEQ("number32", node->prev()->schema()->name());
     } catch( const std::exception& e ) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -556,7 +556,7 @@ TEST(test_ly_data_node_print_mem_xml)
         ASSERT_STREQ(result_xml, result);
     } catch (const std::exception& e) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -576,7 +576,7 @@ TEST(test_ly_data_node_print_mem_xml_format)
         ASSERT_STREQ(result_xml_format, result);
     } catch (const std::exception& e) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -596,7 +596,7 @@ TEST(test_ly_data_node_print_mem_json)
         ASSERT_STREQ(result_json, result);
     } catch (const std::exception& e) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 

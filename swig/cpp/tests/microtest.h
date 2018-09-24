@@ -182,6 +182,8 @@ namespace mt {
           fprintf(file, "           %s%s:%d%s\n",
                   red(), e.getFilepath(), e.getLine(), def());
           ++num_failed;
+        } catch (std::exception& e) {
+          ++num_failed;
         }
       }
 

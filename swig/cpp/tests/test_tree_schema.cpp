@@ -301,7 +301,7 @@ TEST(test_ly_ctx_parse_module_mem)
         ASSERT_STREQ("b", module->name());
     } catch (const std::exception& e) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -345,7 +345,7 @@ TEST(test_ly_ctx_parse_module_fd)
         fclose(f);
     } catch (const std::exception& e) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -387,7 +387,7 @@ TEST(test_ly_ctx_parse_module_path)
         ASSERT_STREQ("b", module->name());
     } catch (const std::exception& e) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -422,7 +422,7 @@ TEST(test_ly_module_print_mem_tree)
         ASSERT_STREQ(result_tree, result);
     } catch (const std::exception& e) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -440,7 +440,7 @@ TEST(test_ly_module_print_mem_yang)
         ASSERT_STREQ(result_yang, result);
     } catch (const std::exception& e) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -458,7 +458,7 @@ TEST(test_ly_module_print_mem_yin)
         ASSERT_STREQ(result_yin, result);
     } catch (const std::exception& e) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -485,7 +485,7 @@ TEST(test_ly_schema_node_find_path)
         ASSERT_EQ(7, set->number());
     } catch (const std::exception& e) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -511,7 +511,7 @@ TEST(test_ly_schema_node_path)
         ASSERT_STREQ(path_template, path);
     } catch (const std::exception& e) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
