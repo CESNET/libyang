@@ -67,6 +67,7 @@ lys_module_a = \
       <type name=\"string\"/>                         \
       <default value=\"def\"/>                        \
     </leaf>                                           \
+    <anydata name=\"any-data\"/>                      \
   </container>                                        \
   <leaf name=\"y\"><type name=\"string\"/></leaf>     \
   <anyxml name=\"any\"/>                              \
@@ -247,8 +248,6 @@ class TestUM(unittest.TestCase):
             # Tests
             new_node = ly.Data_Node(root, root.schema().module(), "number32", "100")
             self.assertIsNotNone(new_node)
-            dup_node = new_node.dup(0)
-            self.assertIsNotNone(dup_node)
 
         except Exception as e:
             self.fail(e)
@@ -620,6 +619,132 @@ class TestUM(unittest.TestCase):
             str = root.child().path()
             self.assertIsNotNone(str)
             self.assertEqual("/a:x/bubba", str)
+
+        except Exception as e:
+            self.fail(e)
+
+    def test_ly_data_node_leaf(self):
+        yang_folder = config.TESTS_DIR + "/api/files"
+        config_file = config.TESTS_DIR + "/api/files/a.xml"
+
+        try:
+            ctx = ly.Context(yang_folder)
+            self.assertIsNotNone(ctx)
+            ctx.parse_module_mem(lys_module_a, ly.LYS_IN_YIN)
+            root = ctx.parse_data_path(config_file, ly.LYD_XML, ly.LYD_OPT_CONFIG | ly.LYD_OPT_STRICT)
+            self.assertIsNotNone(root)
+
+            new_node = ly.Data_Node(root, root.schema().module(), "number32", "100")
+            self.assertIsNotNone(new_node)
+
+        except Exception as e:
+            self.fail(e)
+
+    def test_ly_data_node_anydata(self):
+        yang_folder = config.TESTS_DIR + "/api/files"
+        config_file = config.TESTS_DIR + "/api/files/a.xml"
+
+        try:
+            ctx = ly.Context(yang_folder)
+            self.assertIsNotNone(ctx)
+            ctx.parse_module_mem(lys_module_a, ly.LYS_IN_YIN)
+            root = ctx.parse_data_path(config_file, ly.LYD_XML, ly.LYD_OPT_CONFIG | ly.LYD_OPT_STRICT)
+            self.assertIsNotNone(root)
+            mod = ctx.get_module("a", None, 1)
+
+            new_node = ly.Data_Node(root, mod, "any-data", "100", ly.LYD_ANYDATA_CONSTSTRING)
+            self.assertIsNotNone(new_node)
+
+        except Exception as e:
+            self.fail(e)
+
+    def test_ly_data_node_dup(self):
+        yang_folder = config.TESTS_DIR + "/api/files";
+        config_file = config.TESTS_DIR + "/api/files/a.xml";
+
+        try:
+            ctx = ly.Context(yang_folder)
+            self.assertIsNotNone(ctx)
+            ctx.parse_module_mem(lys_module_a, ly.LYS_IN_YIN)
+            root = ctx.parse_data_path(config_file, ly.LYD_XML, ly.LYD_OPT_CONFIG | ly.LYD_OPT_STRICT)
+            self.assertIsNotNone(root)
+
+            new_node = ly.Data_Node(root, root.child().schema().module(), "bar-y")
+            self.assertIsNotNone(new_node)
+            dup_node = new_node.dup(0);
+            self.assertIsNotNone(dup_node)
+
+        except Exception as e:
+            self.fail(e)
+
+
+    def test_ly_data_node_dup_to_ctx(self):
+        sch = "module x {\
+              namespace urn:x;\
+              prefix x;\
+              leaf x { type string; }}"
+        data = "<x xmlns=\"urn:x\">hello</x>"
+
+        try:
+            ctx1 = ly.Context(None)
+            self.assertIsNotNone(ctx1);
+            ctx1.parse_module_mem(sch, ly.LYS_IN_YANG)
+            data1 = ctx1.parse_data_mem(data, ly.LYD_XML, ly.LYD_OPT_CONFIG | ly.LYD_OPT_STRICT)
+            self.assertIsNotNone(data1)
+
+            ctx2 = ly.Context(None)
+            self.assertIsNotNone(ctx2)
+            # we expect NULL due to missing schema in the second ctx
+            dup_node = data1.dup_to_ctx(1, ctx2)
+            self.assertIsNone(dup_node)
+
+            ctx2.parse_module_mem(sch, ly.LYS_IN_YANG)
+            # now we expect success due to schema being added to the second ctx
+            dup_node = data1.dup_to_ctx(1, ctx2)
+            self.assertIsNotNone(dup_node)
+
+        except Exception as e:
+            self.fail(e)
+
+    def test_ly_data_node_validate_node(self):
+        yang_folder = config.TESTS_DIR + "/api/files";
+        config_file = config.TESTS_DIR + "/api/files/a.xml";
+
+        try:
+            ctx = ly.Context(yang_folder)
+            self.assertIsNotNone(ctx)
+            ctx.parse_module_mem(lys_module_a, ly.LYS_IN_YIN)
+            root = ctx.parse_data_path(config_file, ly.LYD_XML, ly.LYD_OPT_CONFIG | ly.LYD_OPT_STRICT)
+            self.assertIsNotNone(root)
+
+            rc = root.validate(ly.LYD_OPT_CONFIG, ctx)
+            self.assertEqual(0, rc)
+            new_node = ly.Data_Node(root, root.schema().module(), "number32", "1")
+            self.assertIsNotNone(new_node)
+            rc = root.validate(ly.LYD_OPT_CONFIG, new_node)
+            self.assertEqual(0, rc)
+
+        except Exception as e:
+            self.fail(e)
+
+    def test_ly_data_node_validate_value(self):
+        yang_folder = config.TESTS_DIR + "/api/files";
+        config_file = config.TESTS_DIR + "/api/files/a.xml";
+
+        try:
+            ctx = ly.Context(yang_folder)
+            self.assertIsNotNone(ctx)
+            ctx.parse_module_mem(lys_module_a, ly.LYS_IN_YIN)
+            root = ctx.parse_data_path(config_file, ly.LYD_XML, ly.LYD_OPT_CONFIG | ly.LYD_OPT_STRICT)
+            self.assertIsNotNone(root)
+
+            rc = root.validate(ly.LYD_OPT_CONFIG, ctx)
+            self.assertEqual(0, rc)
+            new_node = ly.Data_Node(root, root.schema().module(), "number32", "1")
+            self.assertIsNotNone(new_node)
+            self.assertEqual(0, new_node.validate_value("1"))
+            self.assertEqual(0, new_node.validate_value("100"))
+            self.assertEqual(0, new_node.validate_value("110000000"))
 
         except Exception as e:
             self.fail(e)
