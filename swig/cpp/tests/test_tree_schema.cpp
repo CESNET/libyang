@@ -515,4 +515,52 @@ TEST(test_ly_schema_node_path)
     }
 }
 
+TEST(test_ly_module_data_instatiables)
+{
+    const char *yang_folder = TESTS_DIR "/api/files";
+    const char *module_name1 = "b";
+
+    try {
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
+        ASSERT_NOTNULL(ctx);
+
+        auto module = ctx->load_module(module_name1);
+        ASSERT_NOTNULL(module);
+        ASSERT_STREQ(module_name1, module->name());
+
+        auto list = std::make_shared<std::vector<libyang::S_Schema_Node>>(module->data_instantiables(0));
+        ASSERT_NOTNULL(list);
+        ASSERT_EQ(1, list->size());
+    } catch( const std::exception& e ) {
+        mt::printFailed(e.what(), stdout);
+        throw;
+    }
+}
+
+TEST(test_ly_schema_child_instatiables)
+{
+    const char *yang_folder = TESTS_DIR "/api/files";
+    const char *module_name = "b";
+
+    try {
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
+        ASSERT_NOTNULL(ctx);
+
+        auto module = ctx->load_module(module_name);
+        ASSERT_NOTNULL(module);
+        ASSERT_STREQ(module_name, module->name());
+
+        auto list = std::make_shared<std::vector<libyang::S_Schema_Node>>(module->data_instantiables(0));
+        ASSERT_NOTNULL(list);
+        ASSERT_EQ(1, list->size());
+        auto child_list = std::make_shared<std::vector<libyang::S_Schema_Node>>(list->front()->child_instantiables(0));
+        ASSERT_NOTNULL(child_list);
+        ASSERT_EQ(3, child_list->size());
+
+    } catch( const std::exception& e ) {
+        mt::printFailed(e.what(), stdout);
+        throw;
+    }
+}
+
 TEST_MAIN();
