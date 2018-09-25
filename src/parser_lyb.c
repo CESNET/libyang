@@ -242,6 +242,16 @@ lyb_parse_model(struct ly_ctx *ctx, const char *data, const struct lys_module **
         }
     }
 
+    if (!*mod) {
+        LOGERR(ctx, LY_EINVAL, "Invalid context for LYB data parsing, missing module \"%s%s%s\".",
+               mod_name, rev ? "@" : "", rev ? mod_rev : "");
+        goto error;
+    } else if (!(*mod)->implemented) {
+        LOGERR(ctx, LY_EINVAL, "Invalid context for LYB data parsing, module \"%s%s%s\" not implemented.",
+               mod_name, rev ? "@" : "", rev ? mod_rev : "");
+        goto error;
+    }
+
     free(mod_name);
     return ret;
 
