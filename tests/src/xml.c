@@ -120,42 +120,42 @@ test_element(void **state)
 
     /* empty */
     str = "";
-    assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
+    assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
     assert_null(name);
     assert_true(str[0] == '\0');
 
     /* no element */
     logbuf_clean();
     str = p = "no data present";
-    assert_int_equal(LY_EINVAL, lyxml_get_element(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
+    assert_int_equal(LY_EINVAL, lyxml_get_element(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
     assert_null(name);
     assert_ptr_equal(p, str); /* input data not eaten */
     logbuf_assert("");
 
     /* not supported DOCTYPE */
     str = p = "<!DOCTYPE greeting SYSTEM \"hello.dtd\"><greeting/>";
-    assert_int_equal(LY_EVALID, lyxml_get_element(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
+    assert_int_equal(LY_EVALID, lyxml_get_element(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
     assert_null(name);
     assert_ptr_equal(p, str); /* input data not eaten */
     logbuf_assert("Document Type Declaration not supported. Line number 1.");
 
     /* unqualified element */
     str = "  <  element/>";
-    assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
+    assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
     assert_null(prefix);
     assert_false(strncmp("element", name, name_len));
     assert_int_equal(7, name_len);
     assert_string_equal("/>", str);
 
     str = "<?xml version=\"1.0\"?>  <!-- comment --> <![CDATA[<greeting>Hello, world!</greeting>]]> <?TEST xxx?> <element/>";
-    assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
+    assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
     assert_null(prefix);
     assert_false(strncmp("element", name, name_len));
     assert_int_equal(7, name_len);
     assert_string_equal("/>", str);
 
     str = "<element xmlns=\"urn\"></element>";
-    assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
+    assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
     assert_null(prefix);
     assert_false(strncmp("element", name, name_len));
     assert_int_equal(7, name_len);
@@ -163,7 +163,7 @@ test_element(void **state)
 
     /* qualified element */
     str = "  <  yin:element/>";
-    assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
+    assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
     assert_false(strncmp("yin", prefix, prefix_len));
     assert_false(strncmp("element", name, name_len));
     assert_int_equal(3, prefix_len);
@@ -171,7 +171,7 @@ test_element(void **state)
     assert_string_equal("/>", str);
 
     str = "<yin:element xmlns=\"urn\"></element>";
-    assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
+    assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
     assert_false(strncmp("yin", prefix, prefix_len));
     assert_false(strncmp("element", name, name_len));
     assert_int_equal(3, prefix_len);
@@ -180,7 +180,7 @@ test_element(void **state)
 
     /* UTF8 characters */
     str = "<𠜎€𠜎Øn:𠜎€𠜎Øn/>";
-    assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
+    assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
     assert_false(strncmp("𠜎€𠜎Øn", prefix, prefix_len));
     assert_false(strncmp("𠜎€𠜎Øn", name, name_len));
     assert_int_equal(14, prefix_len);
@@ -189,10 +189,10 @@ test_element(void **state)
 
     /* invalid UTF-8 character */
     str = "<¢:element>";
-    assert_int_equal(LY_EVALID, lyxml_get_element(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
+    assert_int_equal(LY_EVALID, lyxml_get_element(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
     logbuf_assert("Identifier \"¢:element>\" starts with invalid character. Line number 1.");
     str = "<yin:c⁐element>";
-    assert_int_equal(LY_EVALID, lyxml_get_element(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
+    assert_int_equal(LY_EVALID, lyxml_get_element(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
     logbuf_assert("Invalid character sequence \"⁐element>\", expected whitespace or element tag termination ('>' or '/>'. Line number 1.");
 }
 
@@ -211,39 +211,39 @@ test_attribute(void **state)
 
     /* empty - without element tag termination */
     str = "";
-    assert_int_equal(LY_EINVAL, lyxml_get_attribute(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
+    assert_int_equal(LY_EINVAL, lyxml_get_attribute(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
 
     /* empty - without element tag termination */
     str = "   />";
-    assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
+    assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
     assert_null(name);
     assert_true(str[0] == '/');
     str = ">";
-    assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
+    assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
     assert_null(name);
     assert_true(str[0] == '>');
 
     /* not an attribute */
     str = p = "unknown/>";
-    assert_int_equal(LY_EVALID, lyxml_get_attribute(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
+    assert_int_equal(LY_EVALID, lyxml_get_attribute(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
     assert_ptr_equal(p, str); /* input data not eaten */
     logbuf_assert("Invalid character sequence \"/>\", expected whitespace or '='. Line number 1.");
     str = p = "unknown />";
-    assert_int_equal(LY_EVALID, lyxml_get_attribute(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
+    assert_int_equal(LY_EVALID, lyxml_get_attribute(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
     assert_ptr_equal(p, str); /* input data not eaten */
     logbuf_assert("Invalid character sequence \"/>\", expected '='. Line number 1.");
     str = p = "xxx=/>";
-    assert_int_equal(LY_EVALID, lyxml_get_attribute(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
+    assert_int_equal(LY_EVALID, lyxml_get_attribute(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
     assert_ptr_equal(p, str); /* input data not eaten */
     logbuf_assert("Invalid character sequence \"/>\", expected either single or double quotation mark. Line number 1.");
     str = p = "xxx\n = yyy/>";
-    assert_int_equal(LY_EVALID, lyxml_get_attribute(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
+    assert_int_equal(LY_EVALID, lyxml_get_attribute(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
     assert_ptr_equal(p, str); /* input data not eaten */
     logbuf_assert("Invalid character sequence \"yyy/>\", expected either single or double quotation mark. Line number 2.");
 
     /* valid attribute */
     str = "xmlns=\"urn\">";
-    assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
+    assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
     assert_non_null(name);
     assert_null(prefix);
     assert_int_equal(5, name_len);
@@ -252,7 +252,7 @@ test_attribute(void **state)
     assert_string_equal("\"urn\">", str);
 
     str = "xmlns:nc\n = \'urn\'>";
-    assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
+    assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
     assert_non_null(name);
     assert_non_null(prefix);
     assert_int_equal(2, name_len);
@@ -263,12 +263,68 @@ test_attribute(void **state)
     assert_string_equal("\'urn\'>", str);
 }
 
+static void
+test_text(void **state)
+{
+    (void) state; /* unused */
+
+    size_t out_len;
+    const char *str, *p;
+    char *out = NULL;
+
+    struct lyxml_context ctx;
+    memset(&ctx, 0, sizeof ctx);
+    ctx.line = 1;
+
+    /* empty attribute value */
+    str = "\"\"";
+    assert_int_equal(LY_SUCCESS, lyxml_get_string(&ctx, &str, &out, &out_len));
+    assert_non_null(out);
+    assert_int_equal(1, out_len);
+    assert_true(str[0] == '\0'); /* everything eaten */
+    assert_true(out[0] == '\0'); /* empty string */
+    str = "\'\'";
+    assert_int_equal(LY_SUCCESS, lyxml_get_string(&ctx, &str, &out, &out_len));
+    assert_non_null(out);
+    assert_int_equal(1, out_len);
+    assert_true(str[0] == '\0'); /* everything eaten */
+    assert_true(out[0] == '\0'); /* empty string */
+
+    /* empty element content is invalid - missing content terminating character < */
+    str = "";
+    assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &out, &out_len));
+    logbuf_assert("Unexpected end-of-file. Line number 1.");
+
+    free(out);
+    out = NULL;
+
+    /* valid strings */
+    str = "€𠜎Øn \n&lt;&amp;&quot;&apos;&gt; &#82;&#x52;<";
+    assert_int_equal(LY_SUCCESS, lyxml_get_string(&ctx, &str, &out, &out_len));
+    assert_int_equal(21, out_len);
+    assert_string_equal("€𠜎Øn \n<&\"\'> RR", out);
+    assert_string_equal("<", str);
+
+    /* invalid characters in string */
+    str = p = "\'&#x52\'";
+    assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &out, &out_len));
+    logbuf_assert("Invalid character sequence \"'\", expected ;. Line number 2.");
+    assert_ptr_equal(p, str); /* input data not eaten */
+    str = p = "\"&#82\"";
+    assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &out, &out_len));
+    logbuf_assert("Invalid character sequence \"\"\", expected ;. Line number 2.");
+    assert_ptr_equal(p, str); /* input data not eaten */
+
+    free(out);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup(test_utf8, logger_setup),
         cmocka_unit_test_setup(test_element, logger_setup),
         cmocka_unit_test_setup(test_attribute, logger_setup),
+        cmocka_unit_test_setup(test_text, logger_setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -12,6 +12,7 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
+#include <ctype.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -154,6 +155,69 @@ lyxml_getutf8(const char **input, unsigned int *utf8_char, size_t *bytes_read)
     return LY_SUCCESS;
 }
 
+/**
+ * Store UTF-8 character specified as 4byte integer into the dst buffer.
+ * Returns number of written bytes (4 max), expects that dst has enough space.
+ *
+ * UTF-8 mapping:
+ * 00000000 -- 0000007F:    0xxxxxxx
+ * 00000080 -- 000007FF:    110xxxxx 10xxxxxx
+ * 00000800 -- 0000FFFF:    1110xxxx 10xxxxxx 10xxxxxx
+ * 00010000 -- 001FFFFF:    11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+ *
+ * Includes checking for valid characters (following RFC 7950, sec 9.4)
+ */
+static LY_ERR
+lyxml_pututf8(char *dst, int32_t value, size_t *bytes_written)
+{
+    if (value < 0x80) {
+        /* one byte character */
+        if (value < 0x20 &&
+                value != 0x09 &&
+                value != 0x0a &&
+                value != 0x0d) {
+            return LY_EINVAL;
+        }
+
+        dst[0] = value;
+        (*bytes_written) = 1;
+    } else if (value < 0x800) {
+        /* two bytes character */
+        dst[0] = 0xc0 | (value >> 6);
+        dst[1] = 0x80 | (value & 0x3f);
+        (*bytes_written) = 2;
+    } else if (value < 0xfffe) {
+        /* three bytes character */
+        if (((value & 0xf800) == 0xd800) ||
+                (value >= 0xfdd0 && value <= 0xfdef)) {
+            /* exclude surrogate blocks %xD800-DFFF */
+            /* exclude noncharacters %xFDD0-FDEF */
+            return LY_EINVAL;
+        }
+
+        dst[0] = 0xe0 | (value >> 12);
+        dst[1] = 0x80 | ((value >> 6) & 0x3f);
+        dst[2] = 0x80 | (value & 0x3f);
+
+        (*bytes_written) = 3;
+    } else if (value < 0x10fffe) {
+        if ((value & 0xffe) == 0xffe) {
+            /* exclude noncharacters %xFFFE-FFFF, %x1FFFE-1FFFF, %x2FFFE-2FFFF, %x3FFFE-3FFFF, %x4FFFE-4FFFF,
+             * %x5FFFE-5FFFF, %x6FFFE-6FFFF, %x7FFFE-7FFFF, %x8FFFE-8FFFF, %x9FFFE-9FFFF, %xAFFFE-AFFFF,
+             * %xBFFFE-BFFFF, %xCFFFE-CFFFF, %xDFFFE-DFFFF, %xEFFFE-EFFFF, %xFFFFE-FFFFF, %x10FFFE-10FFFF */
+            return LY_EINVAL;
+        }
+        /* four bytes character */
+        dst[0] = 0xf0 | (value >> 18);
+        dst[1] = 0x80 | ((value >> 12) & 0x3f);
+        dst[2] = 0x80 | ((value >> 6) & 0x3f);
+        dst[3] = 0x80 | (value & 0x3f);
+
+        (*bytes_written) = 4;
+    }
+    return LY_SUCCESS;
+}
+
 LY_ERR
 lyxml_check_qname(struct lyxml_context *context, const char **input, unsigned int *term_char, size_t *term_char_len)
 {
@@ -180,6 +244,220 @@ lyxml_check_qname(struct lyxml_context *context, const char **input, unsigned in
 }
 
 /**
+ * @brief Parse input as XML text (attribute's values and element's content).
+ *
+ * Mixed content of XML elements is not allowed.
+ *
+ * In the case of attribute's values, the input string is expected to start on a quotation mark to
+ * select which delimiter (single or double quote) is used. Otherwise, the element content is beeing
+ * parsed expected to be terminated by '<' character.
+ *
+ * If function succeedes, the string in output buffer is always NULL-terminated.
+ *
+ * @param[in] context XML context to track lines or store errors into libyang context.
+ * @param[in,out] input Input string to process, updated according to the processed/read data.
+ * @param[out] buffer Storage of the output string. If NULL, the buffer is allocated. Otherwise, the buffer
+ * is used and enlarged when necessary.
+ * @param[out] buffer_size Allocated size of the returned buffer. If a buffer is provided by a caller, it
+ * is not being reduced even if the string is shorter. On the other hand, it can be enlarged if needed.
+ * @return LY_ERR value.
+ */
+LY_ERR
+lyxml_get_string(struct lyxml_context *context, const char **input, char **buffer, size_t *buffer_size)
+{
+#define BUFSIZE 4096
+#define BUFSIZE_STEP 4096
+#define BUFSIZE_CHECK(CTX, BUF, SIZE, CURR, NEED) \
+    if (CURR+NEED >= SIZE) { \
+        BUF = ly_realloc(BUF, SIZE + BUFSIZE_STEP); \
+        LY_CHECK_ERR_RET(!BUF, LOGMEM(CTX), LY_EMEM); \
+        SIZE += BUFSIZE_STEP; \
+    }
+
+    struct ly_ctx *ctx = context->ctx; /* shortcut */
+    const char *in = (*input);
+    char *buf, delim;
+    size_t offset;  /* read offset in input buffer */
+    size_t len;     /* write offset in output buffer */
+    size_t size;    /* size of the output buffer */
+    void *p;
+    int32_t n;
+    size_t u;
+    bool empty_content = false;
+    LY_ERR rc;
+
+    if (in[0] == '\'') {
+        delim = '\'';
+        ++in;
+    } else if (in[0] == '"') {
+        delim = '"';
+        ++in;
+    } else {
+        delim = '<';
+        empty_content = true;
+    }
+
+    if (empty_content) {
+        /* only when processing element's content - try to ignore whitespaces used to format XML data
+         * before element's child or closing tag */
+        for (offset = 0; in[offset] && is_xmlws(in[offset]); ++offset);
+        LY_CHECK_ERR_RET(!in[offset], LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_EOF), LY_EVALID);
+        if (in[offset] == '<') {
+            in += offset;
+            return LY_EINVAL;
+        }
+    } else {
+        /* init */
+        offset = 0;
+    }
+
+    /* prepare output buffer */
+    if (*buffer) {
+        buf = *buffer;
+        size = *buffer_size;
+    } else {
+        buf = malloc(BUFSIZE);
+        size = BUFSIZE;
+
+        LY_CHECK_ERR_RET(!buf, LOGMEM(ctx), LY_EMEM);
+    }
+    len = 0;
+
+    /* parse */
+    while (in[offset]) {
+        if (in[offset] == '&') {
+            if (offset) {
+                /* store what we have so far */
+                BUFSIZE_CHECK(ctx, buf, size, len, offset);
+                memcpy(&buf[len], in, offset);
+                len += offset;
+                in += offset;
+                offset = 0;
+            }
+            /* process reference */
+            /* we will need 4 bytes at most since we support only the predefined
+             * (one-char) entities and character references */
+            BUFSIZE_CHECK(ctx, buf, size, len, 4);
+            ++offset;
+            if (in[offset] != '#') {
+                /* entity reference - only predefined references are supported */
+                if (!strncmp(&in[offset], "lt;", 3)) {
+                    buf[len++] = '<';
+                    in += 4; /* &lt; */
+                } else if (!strncmp(&in[offset], "gt;", 3)) {
+                    buf[len++] = '>';
+                    in += 4; /* &gt; */
+                } else if (!strncmp(&in[offset], "amp;", 4)) {
+                    buf[len++] = '&';
+                    in += 5; /* &amp; */
+                } else if (!strncmp(&in[offset], "apos;", 5)) {
+                    buf[len++] = '\'';
+                    in += 6; /* &apos; */
+                } else if (!strncmp(&in[offset], "quot;", 5)) {
+                    buf[len++] = '\"';
+                    in += 6; /* &quot; */
+                } else {
+                    LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_NSUPP,
+                           "entity references (except the predefined references)");
+                    goto error;
+                }
+                offset = 0;
+            } else {
+                p = (void*)&in[offset - 1];
+                /* character reference */
+                ++offset;
+                if (isdigit(in[offset])) {
+                    for (n = 0; isdigit(in[offset]); offset++) {
+                        n = (10 * n) + (in[offset] - '0');
+                    }
+                } else if (in[offset] == 'x' && isxdigit(in[offset + 1])) {
+                    for (n = 0, ++offset; isxdigit(in[offset]); offset++) {
+                        if (isdigit(in[offset])) {
+                            u = (in[offset] - '0');
+                        } else if (in[offset] > 'F') {
+                            u = 10 + (in[offset] - 'a');
+                        } else {
+                            u = 10 + (in[offset] - 'A');
+                        }
+                        n = (16 * n) + u;
+                    }
+                } else {
+                    LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Invalid character reference %.*s", 12, p);
+                    goto error;
+
+                }
+                LY_CHECK_ERR_GOTO(in[offset] != ';',
+                                  LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_INSTREXP,
+                                         LY_VCODE_INSTREXP_len(&in[offset]), &in[offset], ";"),
+                                  error);
+                ++offset;
+                rc = lyxml_pututf8(&buf[len], n, &u);
+                LY_CHECK_ERR_GOTO(rc, LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX,
+                                             "Invalid character reference %.*s (0x%08x).", 12, p, n),
+                                  error);
+                len += u;
+                in += offset;
+                offset = 0;
+            }
+        } else if (in[offset] == delim) {
+            /* end of string */
+            if (len + offset >= size) {
+                buf = ly_realloc(buf, len + offset + 1);
+                LY_CHECK_ERR_RET(!buf, LOGMEM(ctx), LY_EMEM);
+                size = len + offset + 1;
+            }
+            memcpy(&buf[len], in, offset);
+            len += offset;
+            /* in case of element content, keep the leading <,
+             * for attribute's value mova after the terminating quotation mark */
+            if (delim == '<') {
+                in += offset;
+            } else {
+                in += offset + 1;
+            }
+            goto success;
+        } else {
+            /* log lines */
+            if (in[offset] == '\n') {
+                ++context->line;
+            }
+
+            /* continue */
+            ++offset;
+        }
+    }
+    LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_EOF);
+error:
+    if (!(*buffer)) {
+        free(buf);
+    }
+    return LY_EVALID;
+
+success:
+    if (!(*buffer) && size != len + 1) {
+        /* not using provided buffer, so fit the allocated buffer to what we really have inside */
+        p = realloc(buf, len + 1);
+        /* ignore realloc fail because we are reducing the buffer,
+         * so just return bigger buffer than needed */
+        if (p) {
+            size = len + 1;
+            buf = p;
+        }
+    }
+    /* set terminating NULL byte */
+    buf[len] = '\0';
+
+    (*input) = in;
+    (*buffer) = buf;
+    (*buffer_size) = size;
+    return LY_SUCCESS;
+
+#undef BUFSIZE
+#undef BUFSIZE_STEP
+#undef BUFSIZE_CHECK
+}
+
+/**
  * @brief Parse input expecting an XML attribute (including XML namespace).
  *
  * Input string is not being modified, so the returned values are not NULL-terminated, instead their length
@@ -190,8 +468,7 @@ lyxml_check_qname(struct lyxml_context *context, const char **input, unsigned in
  *
  * @param[in] context XML context to track lines or store errors into libyang context.
  * @param[in,out] input Input string to process, updated according to the processed/read data so,
- * when succeeded, it points to the opening quote of the attribute's value..
- * @param[in] options Currently unused options to modify input processing.
+ * when succeeded, it points to the opening quote of the attribute's value.
  * @param[out] prefix Pointer to prefix if present in the attribute name, NULL otherwise.
  * @param[out] prefix_len Length of the prefix if any.
  * @param[out] name Attribute name. LY_SUCCESS can be returned with NULL name only in case the
@@ -200,7 +477,7 @@ lyxml_check_qname(struct lyxml_context *context, const char **input, unsigned in
  * @return LY_ERR values.
  */
 LY_ERR
-lyxml_get_attribute(struct lyxml_context *context, const char **input, int UNUSED(options),
+lyxml_get_attribute(struct lyxml_context *context, const char **input,
                     const char **prefix, size_t *prefix_len, const char **name, size_t *name_len)
 {
     struct ly_ctx *ctx = context->ctx; /* shortcut */
@@ -290,7 +567,7 @@ success:
  * @return LY_ERR values.
  */
 LY_ERR
-lyxml_get_element(struct lyxml_context *context, const char **input, int UNUSED(options),
+lyxml_get_element(struct lyxml_context *context, const char **input,
                   const char **prefix, size_t *prefix_len, const char **name, size_t *name_len)
 {
     struct ly_ctx *ctx = context->ctx; /* shortcut */
