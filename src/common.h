@@ -113,6 +113,11 @@ void ly_vlog(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const void *
 #define LY_CHECK_ARG_RET3(CTX, ARG1, ARG2, ARG3, RETVAL) LY_CHECK_ARG_RET2(CTX, ARG1, ARG2, RETVAL);LY_CHECK_ARG_RET1(CTX, ARG3, RETVAL)
 #define LY_CHECK_ARG_RET(CTX, ...) GETMACRO4(__VA_ARGS__, LY_CHECK_ARG_RET3, LY_CHECK_ARG_RET2, LY_CHECK_ARG_RET1)(CTX, __VA_ARGS__)
 
+/* count sequence size for LY_VCODE_INCHILDSTMT validation error code */
+size_t LY_VCODE_INSTREXP_len(const char *str);
+/* default maximum characters to print in LY_VCODE_INCHILDSTMT */
+#define LY_VCODE_INSTREXP_MAXLEN 20
+
 #define LY_VCODE_INCHAR      LYVE_SYNTAX, "Invalid character 0x%x."
 #define LY_VCODE_INSTREXP    LYVE_SYNTAX, "Invalid character sequence \"%.*s\", expected %s."
 #define LY_VCODE_EOF         LYVE_SYNTAX, "Unexpected end-of-file."

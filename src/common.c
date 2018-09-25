@@ -152,6 +152,19 @@ ly_realloc(void *ptr, size_t size)
     return new_mem;
 }
 
+size_t
+LY_VCODE_INSTREXP_len(const char *str)
+{
+    size_t len = 0;
+    if (!str) {
+        return len;
+    } else if (!str[0]) {
+        return 1;
+    }
+    for (len = 1; len < LY_VCODE_INSTREXP_MAXLEN && str[len]; ++len);
+    return len;
+}
+
 LY_ERR
 lysp_check_date(struct ly_ctx *ctx, const char *date, int date_len, const char *stmt)
 {

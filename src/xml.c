@@ -179,6 +179,116 @@ lyxml_check_qname(struct lyxml_context *context, const char **input, unsigned in
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Parse input expecting an XML attribute (including XML namespace).
+ *
+ * Input string is not being modified, so the returned values are not NULL-terminated, instead their length
+ * is returned.
+ *
+ * In case of a namespace definition, prefix just contains xmlns string. In case of the default namespace,
+ * prefix is NULL and the attribute name is xmlns.
+ *
+ * @param[in] context XML context to track lines or store errors into libyang context.
+ * @param[in,out] input Input string to process, updated according to the processed/read data so,
+ * when succeeded, it points to the opening quote of the attribute's value..
+ * @param[in] options Currently unused options to modify input processing.
+ * @param[out] prefix Pointer to prefix if present in the attribute name, NULL otherwise.
+ * @param[out] prefix_len Length of the prefix if any.
+ * @param[out] name Attribute name. LY_SUCCESS can be returned with NULL name only in case the
+ * end of the element tag was reached.
+ * @param[out] name_len Length of the element name.
+ * @return LY_ERR values.
+ */
+LY_ERR
+lyxml_get_attribute(struct lyxml_context *context, const char **input, int UNUSED(options),
+                    const char **prefix, size_t *prefix_len, const char **name, size_t *name_len)
+{
+    struct ly_ctx *ctx = context->ctx; /* shortcut */
+    const char *in = (*input);
+    const char *id;
+    const char *endtag;
+    LY_ERR rc;
+    unsigned int c;
+    size_t endtag_len;
+
+    /* initialize output variables */
+    (*prefix) = (*name) = NULL;
+    (*prefix_len) = (*name_len) = 0;
+
+    /* skip initial whitespaces */
+    ign_xmlws(context, in);
+
+    if (in[0] == '\0') {
+        /* EOF - not expected at this place */
+        return LY_EINVAL;
+    } else if (in[0] == '>' || in[0] == '/') {
+        /* element terminated by > or /> */
+        goto success;
+    }
+
+    /* remember the identifier start before checking its format */
+    id = in;
+    rc = lyxml_check_qname(context, &in, &c, &endtag_len);
+    LY_CHECK_RET(rc);
+    if (c == ':') {
+        /* we have prefixed identifier */
+        endtag = in - endtag_len;
+
+        rc = lyxml_check_qname(context, &in, &c, &endtag_len);
+        LY_CHECK_RET(rc);
+
+        (*prefix) = id;
+        (*prefix_len) = endtag - id;
+        id = endtag + 1;
+    }
+    if (!is_xmlws(c) && c != '=') {
+        in = in - endtag_len;
+        LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(in), in, "whitespace or '='");
+        return LY_EVALID;
+    }
+    in = in - endtag_len;
+    (*name) = id;
+    (*name_len) = in - id;
+
+    /* eat '=' and stop at the value beginning */
+    ign_xmlws(context, in);
+    if (in[0] != '=') {
+        LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(in), in, "'='");
+        return LY_EVALID;
+    }
+    ++in;
+    ign_xmlws(context, in);
+    if (in[0] != '\'' && in[0] != '"') {
+        LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(in), in, "either single or double quotation mark");
+        return LY_EVALID;
+    }
+
+success:
+    /* move caller's input */
+    (*input) = in;
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Parse input expecting an XML element.
+ *
+ * Able to silently skip comments, PIs and CData. DOCTYPE is not parsable, so it is reported as LY_EVALID error.
+ * If '<' is not found in input, LY_EINVAL is returned (but no error is logged), so it is possible to continue
+ * with parsing input as text content.
+ *
+ * Input string is not being modified, so the returned values are not NULL-terminated, instead their length
+ * is returned.
+ *
+ * @param[in] context XML context to track lines or store errors into libyang context.
+ * @param[in,out] input Input string to process, updated according to the processed/read data.
+ * @param[in] options Currently unused options to modify input processing.
+ * @param[out] prefix Pointer to prefix if present in the element name, NULL otherwise.
+ * @param[out] prefix_len Length of the prefix if any.
+ * @param[out] name Element name. LY_SUCCESS can be returned with NULL name only in case the
+ * end of the input string was reached (EOF).
+ * @param[out] name_len Length of the element name.
+ * @return LY_ERR values.
+ */
 LY_ERR
 lyxml_get_element(struct lyxml_context *context, const char **input, int UNUSED(options),
                   const char **prefix, size_t *prefix_len, const char **name, size_t *name_len)
@@ -192,7 +302,6 @@ lyxml_get_element(struct lyxml_context *context, const char **input, int UNUSED(
     bool loop = true;
     unsigned int c;
     LY_ERR rc;
-    uint32_t x;
 
     /* initialize output variables */
     (*prefix) = (*name) = NULL;
@@ -260,9 +369,8 @@ lyxml_get_element(struct lyxml_context *context, const char **input, int UNUSED(
             }
             if (!is_xmlws(c) && c != '/' && c != '>') {
                 in = in - endtag_len;
-                x = 0;
-                memcpy(&x, in, endtag_len);
-                LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_INCHAR, x);
+                LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(in), in,
+                       "whitespace or element tag termination ('>' or '/>'");
                 return LY_EVALID;
             }
             in = in - endtag_len;

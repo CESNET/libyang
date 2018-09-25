@@ -193,14 +193,82 @@ test_element(void **state)
     logbuf_assert("Identifier \"¢:element>\" starts with invalid character. Line number 1.");
     str = "<yin:c⁐element>";
     assert_int_equal(LY_EVALID, lyxml_get_element(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
-    logbuf_assert("Invalid character 0x9081e2. Line number 1.");
+    logbuf_assert("Invalid character sequence \"⁐element>\", expected whitespace or element tag termination ('>' or '/>'. Line number 1.");
+}
+
+static void
+test_attribute(void **state)
+{
+    (void) state; /* unused */
+
+    size_t name_len, prefix_len;
+    const char *name, *prefix;
+    const char *str, *p;
+
+    struct lyxml_context ctx;
+    memset(&ctx, 0, sizeof ctx);
+    ctx.line = 1;
+
+    /* empty - without element tag termination */
+    str = "";
+    assert_int_equal(LY_EINVAL, lyxml_get_attribute(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
+
+    /* empty - without element tag termination */
+    str = "   />";
+    assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
+    assert_null(name);
+    assert_true(str[0] == '/');
+    str = ">";
+    assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
+    assert_null(name);
+    assert_true(str[0] == '>');
+
+    /* not an attribute */
+    str = p = "unknown/>";
+    assert_int_equal(LY_EVALID, lyxml_get_attribute(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
+    assert_ptr_equal(p, str); /* input data not eaten */
+    logbuf_assert("Invalid character sequence \"/>\", expected whitespace or '='. Line number 1.");
+    str = p = "unknown />";
+    assert_int_equal(LY_EVALID, lyxml_get_attribute(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
+    assert_ptr_equal(p, str); /* input data not eaten */
+    logbuf_assert("Invalid character sequence \"/>\", expected '='. Line number 1.");
+    str = p = "xxx=/>";
+    assert_int_equal(LY_EVALID, lyxml_get_attribute(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
+    assert_ptr_equal(p, str); /* input data not eaten */
+    logbuf_assert("Invalid character sequence \"/>\", expected either single or double quotation mark. Line number 1.");
+    str = p = "xxx\n = yyy/>";
+    assert_int_equal(LY_EVALID, lyxml_get_attribute(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
+    assert_ptr_equal(p, str); /* input data not eaten */
+    logbuf_assert("Invalid character sequence \"yyy/>\", expected either single or double quotation mark. Line number 2.");
+
+    /* valid attribute */
+    str = "xmlns=\"urn\">";
+    assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
+    assert_non_null(name);
+    assert_null(prefix);
+    assert_int_equal(5, name_len);
+    assert_int_equal(0, prefix_len);
+    assert_false(strncmp("xmlns", name, name_len));
+    assert_string_equal("\"urn\">", str);
+
+    str = "xmlns:nc\n = \'urn\'>";
+    assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, &str, 0, &prefix, &prefix_len, &name, &name_len));
+    assert_non_null(name);
+    assert_non_null(prefix);
+    assert_int_equal(2, name_len);
+    assert_int_equal(5, prefix_len);
+    assert_int_equal(3, ctx.line);
+    assert_false(strncmp("xmlns", prefix, prefix_len));
+    assert_false(strncmp("nc", name, name_len));
+    assert_string_equal("\'urn\'>", str);
 }
 
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup(test_utf8, logger_setup),
-        cmocka_unit_test(test_element),
+        cmocka_unit_test_setup(test_element, logger_setup),
+        cmocka_unit_test_setup(test_attribute, logger_setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
