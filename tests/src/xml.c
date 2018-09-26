@@ -298,14 +298,14 @@ test_text(void **state)
     /* empty element content is invalid - missing content terminating character < */
     str = "";
     assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &out, &out_len));
-    logbuf_assert("Unexpected end-of-file. Line number 1.");
-    str = p = "xxx";
+    logbuf_assert("Unexpected end-of-file. Line number 2.");
 
     free(out);
     out = NULL;
 
+    str = p = "xxx";
     assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &out, &out_len));
-    logbuf_assert("Unexpected end-of-file. Line number 1.");
+    logbuf_assert("Unexpected end-of-file. Line number 2.");
     assert_ptr_equal(p, str); /* input data not eaten */
 
     free(out);
@@ -318,22 +318,40 @@ test_text(void **state)
     assert_string_equal("€𠜎Øn \n<&\"\'> ROK", out);
     assert_string_equal("<", str);
 
+    /* test using n-bytes UTF8 hexadecimal code points */
+    str = "\'&#x0024;&#x00A2;&#x20ac;&#x10348;\'";
+    assert_int_equal(LY_SUCCESS, lyxml_get_string(&ctx, &str, &out, &out_len));
+    assert_string_equal("$¢€𐍈", out);
+
     /* invalid characters in string */
     str = p = "\'&#x52\'";
     assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &out, &out_len));
-    logbuf_assert("Invalid character sequence \"'\", expected ;. Line number 2.");
+    logbuf_assert("Invalid character sequence \"'\", expected ;. Line number 3.");
     assert_ptr_equal(p, str); /* input data not eaten */
     str = p = "\"&#82\"";
     assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &out, &out_len));
-    logbuf_assert("Invalid character sequence \"\"\", expected ;. Line number 2.");
+    logbuf_assert("Invalid character sequence \"\"\", expected ;. Line number 3.");
     assert_ptr_equal(p, str); /* input data not eaten */
     str = p = "\"&nonsence;\"";
     assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &out, &out_len));
-    logbuf_assert("Entity reference \"&nonsence;\" not supported, only predefined references allowed. Line number 2.");
+    logbuf_assert("Entity reference \"&nonsence;\" not supported, only predefined references allowed. Line number 3.");
     assert_ptr_equal(p, str); /* input data not eaten */
     str = p = "&#o122;";
     assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &out, &out_len));
-    logbuf_assert("Invalid character reference \"&#o122;\". Line number 2.");
+    logbuf_assert("Invalid character reference \"&#o122;\". Line number 3.");
+    assert_ptr_equal(p, str); /* input data not eaten */
+
+    str = p = "\'&#x06;\'";
+    assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &out, &out_len));
+    logbuf_assert("Invalid character reference \"&#x06;\'\" (0x00000006). Line number 3.");
+    assert_ptr_equal(p, str); /* input data not eaten */
+    str = p = "\'&#xfdd0;\'";
+    assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &out, &out_len));
+    logbuf_assert("Invalid character reference \"&#xfdd0;\'\" (0x0000fdd0). Line number 3.");
+    assert_ptr_equal(p, str); /* input data not eaten */
+    str = p = "\'&#xffff;\'";
+    assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &out, &out_len));
+    logbuf_assert("Invalid character reference \"&#xffff;\'\" (0x0000ffff). Line number 3.");
     assert_ptr_equal(p, str); /* input data not eaten */
 
     free(out);

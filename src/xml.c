@@ -168,7 +168,7 @@ lyxml_getutf8(const char **input, unsigned int *utf8_char, size_t *bytes_read)
  * Includes checking for valid characters (following RFC 7950, sec 9.4)
  */
 static LY_ERR
-lyxml_pututf8(char *dst, int32_t value, size_t *bytes_written)
+lyxml_pututf8(char *dst, uint32_t value, size_t *bytes_written)
 {
     if (value < 0x80) {
         /* one byte character */
@@ -283,8 +283,8 @@ lyxml_get_string(struct lyxml_context *context, const char **input, char **buffe
     size_t len;     /* write offset in output buffer */
     size_t size;    /* size of the output buffer */
     void *p;
-    int32_t n;
-    size_t u;
+    uint32_t n;
+    size_t u, newlines;
     bool empty_content = false;
     LY_ERR rc;
 
@@ -302,8 +302,13 @@ lyxml_get_string(struct lyxml_context *context, const char **input, char **buffe
     if (empty_content) {
         /* only when processing element's content - try to ignore whitespaces used to format XML data
          * before element's child or closing tag */
-        for (offset = 0; in[offset] && is_xmlws(in[offset]); ++offset);
+        for (offset = newlines = 0; in[offset] && is_xmlws(in[offset]); ++offset) {
+            if (in[offset] == '\n') {
+                ++newlines;
+            }
+        }
         LY_CHECK_ERR_RET(!in[offset], LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_EOF), LY_EVALID);
+        context->line += newlines;
         if (in[offset] == '<') {
             (*input) = in + offset;
             return LY_EINVAL;
@@ -395,7 +400,7 @@ lyxml_get_string(struct lyxml_context *context, const char **input, char **buffe
                 ++offset;
                 rc = lyxml_pututf8(&buf[len], n, &u);
                 LY_CHECK_ERR_GOTO(rc, LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX,
-                                             "Invalid character reference %.*s (0x%08x).", 12, p, n),
+                                             "Invalid character reference \"%.*s\" (0x%08x).", 12, p, n),
                                   error);
                 len += u;
                 in += offset;
