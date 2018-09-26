@@ -91,8 +91,8 @@ test_searchdirs(void **state)
     assert_int_equal(LY_EINVAL, ly_ctx_set_searchdir(ctx, TESTS_BIN"/src_context"));
     logbuf_assert("Given search directory \""TESTS_BIN"/src_context\" is not a directory.");
     /* not executable */
-    assert_int_equal(LY_EINVAL, ly_ctx_set_searchdir(ctx, TESTS_SRC"/src/context.c"));
-    logbuf_assert("Unable to use search directory \""TESTS_SRC"/src/context.c\" (Permission denied)");
+    assert_int_equal(LY_EINVAL, ly_ctx_set_searchdir(ctx, __FILE__));
+    logbuf_assert("Unable to use search directory \""__FILE__"\" (Permission denied)");
     /* not existing */
     assert_int_equal(LY_EINVAL, ly_ctx_set_searchdir(ctx, "/nonexistingfile"));
     logbuf_assert("Unable to use search directory \"/nonexistingfile\" (No such file or directory)");

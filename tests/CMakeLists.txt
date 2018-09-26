@@ -21,7 +21,7 @@ foreach(test_name IN LISTS tests)
     message(STATUS ${test_name})
     string(REGEX REPLACE "[a-z]*_(.*)" "\\1" name "${test_name}")
     string(REGEX REPLACE "([a-z]*)_.*" "\\1" prefix "${test_name}")
-    add_executable(${test_name} ${prefix}/${name}.c)
+    add_executable(${test_name} ${prefix}/test_${name}.c)
 endforeach(test_name)
 
 # Set common attributes of all tests
