@@ -49,7 +49,7 @@ TEST(test_ly_ctx_new)
         ASSERT_EQ(2, list.size());
     } catch( const std::exception& e ) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -79,7 +79,7 @@ TEST(test_ly_ctx_get_searchdirs)
         ASSERT_EQ(yang_folder, list.at(0));
     } catch( const std::exception& e ) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -107,7 +107,7 @@ TEST(test_ly_ctx_set_searchdir)
         ASSERT_EQ(new_yang_folder, list.at(0));
     } catch( const std::exception& e ) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -140,7 +140,7 @@ TEST(test_ly_ctx_info)
         ASSERT_EQ(LYD_VAL_OK, info->validity());
     } catch( const std::exception& e ) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -198,7 +198,7 @@ TEST(test_ly_ctx_load_get_module)
         ASSERT_STREQ(revision, module->rev()->date());
     } catch( const std::exception& e ) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -228,7 +228,7 @@ TEST(test_ly_ctx_get_module_older)
         ASSERT_STREQ(revision_older, module_older->rev()->date());
     } catch( const std::exception& e ) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -251,7 +251,7 @@ TEST(test_ly_ctx_get_module_by_ns)
         ASSERT_STREQ(module_name, module->name());
     } catch( const std::exception& e ) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -278,7 +278,7 @@ TEST(test_ly_ctx_clean)
         ASSERT_NULL(module);
     } catch( const std::exception& e ) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -303,7 +303,7 @@ TEST(test_ly_ctx_parse_module_path)
         ASSERT_STREQ(module_name2, module->name());
     } catch( const std::exception& e ) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -340,7 +340,7 @@ TEST(test_ly_ctx_get_submodule)
         ASSERT_STREQ(sub_name, submodule->name());
     } catch( const std::exception& e ) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -365,7 +365,7 @@ TEST(test_ly_ctx_get_submodule2)
         ASSERT_STREQ(sub_name, submodule->name());
     } catch( const std::exception& e ) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -391,7 +391,7 @@ TEST(test_ly_ctx_find_path)
         std::make_shared<libyang::Set>();
     } catch( const std::exception& e ) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
     }
 }
 
@@ -431,7 +431,142 @@ TEST(test_ly_set)
         ASSERT_EQ(0, set->number());
     } catch( const std::exception& e ) {
         mt::printFailed(e.what(), stdout);
-        return;
+        throw;
+    }
+}
+
+TEST(test_ly_ctx_new_ylpath)
+{
+    const char *yang_folder = TESTS_DIR "/api/files";
+    const char *path = TESTS_DIR "/api/files/ylpath.xml";
+
+    try {
+        auto ctx = std::make_shared<libyang::Context>(yang_folder, path, LYD_XML, 0);
+        ASSERT_FALSE(nullptr == ctx);
+        auto list = std::make_shared<std::vector<std::string>>(ctx->get_searchdirs());
+        ASSERT_FALSE(nullptr == list);
+        ASSERT_EQ(1, list->size());
+
+    } catch( const std::exception& e ) {
+        mt::printFailed(e.what(), stdout);
+        throw;
+    }
+}
+
+TEST(test_ly_ctx_new_ylmem)
+{
+    const char *yang_folder = TESTS_DIR "/api/files";
+
+    try {
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
+        ASSERT_FALSE(nullptr == ctx);
+        auto info = ctx->info();
+        ASSERT_FALSE(nullptr == info);
+        ASSERT_EQ(LYD_VAL_OK, info->validity());
+
+        auto mem = info->print_mem(LYD_XML, 0);
+        auto new_ctx = std::make_shared<libyang::Context>(yang_folder, LYD_XML, mem.data(), 0);
+        ASSERT_FALSE(nullptr == new_ctx);
+        auto list = std::make_shared<std::vector<std::string>>(new_ctx->get_searchdirs());
+        ASSERT_FALSE(nullptr == list);
+        ASSERT_EQ(1, list->size());
+    } catch( const std::exception& e ) {
+        mt::printFailed(e.what(), stdout);
+        throw;
+    }
+}
+
+TEST(test_ly_ctx_get_module_iter)
+{
+    const char *yang_folder = TESTS_DIR "/api/files";
+    const char *module_name = "a";
+
+    try {
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
+        ASSERT_NOTNULL(ctx);
+
+        auto module = ctx->load_module(module_name);
+        ASSERT_NOTNULL(module);
+        ASSERT_STREQ(module_name, module->name());
+        auto list = std::make_shared<std::vector<libyang::S_Module>>(ctx->get_module_iter());
+        ASSERT_NOTNULL(list);
+        ASSERT_EQ(7, list->size());
+    } catch( const std::exception& e ) {
+        mt::printFailed(e.what(), stdout);
+        throw;
+    }
+}
+
+TEST(test_ly_ctx_get_disabled_module_iter)
+{
+    const char *yang_folder = TESTS_DIR "/api/files";
+    const char *module_name = "x";
+
+    try {
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
+        ASSERT_NOTNULL(ctx);
+
+        auto module = ctx->load_module(module_name);
+        ASSERT_NOTNULL(module);
+        ASSERT_STREQ(module_name, module->name());
+        // FIXME no way to disable module from here
+
+        auto list = std::make_shared<std::vector<libyang::S_Module>>(ctx->get_disabled_module_iter());
+        ASSERT_NOTNULL(list);
+        ASSERT_EQ(0, list->size());
+    } catch( const std::exception& e ) {
+        mt::printFailed(e.what(), stdout);
+        throw;
+    }
+}
+
+TEST(test_ly_ctx_data_instantiables)
+{
+    const char *yang_folder = TESTS_DIR "/api/files";
+    const char *module_name = "b";
+
+    try {
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
+        ASSERT_NOTNULL(ctx);
+
+        auto module = ctx->load_module(module_name);
+        ASSERT_NOTNULL(module);
+        ASSERT_STREQ(module_name, module->name());
+
+        auto list = std::make_shared<std::vector<libyang::S_Schema_Node>>(ctx->data_instantiables(0));
+        ASSERT_NOTNULL(list);
+        ASSERT_EQ(5, list->size());
+    } catch( const std::exception& e ) {
+        mt::printFailed(e.what(), stdout);
+        throw;
+    }
+}
+
+TEST(test_ly_ctx_get_node)
+{
+    const char *yang_folder = TESTS_DIR "/api/files";
+    const char *module_name = "b";
+
+    try {
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
+        ASSERT_NOTNULL(ctx);
+
+        auto module = ctx->load_module(module_name);
+        ASSERT_NOTNULL(module);
+        ASSERT_STREQ(module_name, module->name());
+
+        auto list = std::make_shared<std::vector<libyang::S_Schema_Node>>(ctx->data_instantiables(0));
+        ASSERT_NOTNULL(list);
+        ASSERT_EQ(5, list->size());
+
+        auto schema = list->back();
+        ASSERT_NOTNULL(schema);
+        auto node = ctx->get_node(schema, "/b:x/b:bubba", 0);
+        ASSERT_NOTNULL(node);
+
+    } catch( const std::exception& e ) {
+        mt::printFailed(e.what(), stdout);
+        throw;
     }
 }
 
