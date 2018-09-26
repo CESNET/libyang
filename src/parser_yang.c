@@ -203,8 +203,11 @@ check_char(struct ly_ctx *ctx, char c, enum yang_arg arg, int first, int *prefix
 static LY_ERR
 skip_comment(struct ly_ctx *ctx, const char **data, int comment)
 {
-    /* comment: 0 - comment ended, 1 - in line comment, 2 - in block comment, 3 - in block comment with last read character '*' */
-
+    /* internal statuses: 0 - comment ended,
+     *                    1 - in line comment,
+     *                    2 - in block comment,
+     *                    3 - in block comment with last read character '*'
+     */
     while (**data && comment) {
         switch (comment) {
         case 1:
