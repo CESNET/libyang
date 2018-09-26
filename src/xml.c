@@ -246,13 +246,15 @@ lyxml_check_qname(struct lyxml_context *context, const char **input, unsigned in
 /**
  * @brief Parse input as XML text (attribute's values and element's content).
  *
- * Mixed content of XML elements is not allowed.
+ * Mixed content of XML elements is not allowed. Formating whitespaces before child element are ignored,
+ * LY_EINVAL is returned in such a case (buffer is not filled, no error is printed) and input is moved
+ * to the beginning of a child definition.
  *
  * In the case of attribute's values, the input string is expected to start on a quotation mark to
- * select which delimiter (single or double quote) is used. Otherwise, the element content is beeing
+ * select which delimiter (single or double quote) is used. Otherwise, the element content is being
  * parsed expected to be terminated by '<' character.
  *
- * If function succeedes, the string in output buffer is always NULL-terminated.
+ * If function succeeds, the string in output buffer is always NULL-terminated.
  *
  * @param[in] context XML context to track lines or store errors into libyang context.
  * @param[in,out] input Input string to process, updated according to the processed/read data.
@@ -303,7 +305,7 @@ lyxml_get_string(struct lyxml_context *context, const char **input, char **buffe
         for (offset = 0; in[offset] && is_xmlws(in[offset]); ++offset);
         LY_CHECK_ERR_RET(!in[offset], LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_EOF), LY_EVALID);
         if (in[offset] == '<') {
-            in += offset;
+            (*input) = in + offset;
             return LY_EINVAL;
         }
     } else {
@@ -357,8 +359,8 @@ lyxml_get_string(struct lyxml_context *context, const char **input, char **buffe
                     buf[len++] = '\"';
                     in += 6; /* &quot; */
                 } else {
-                    LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_NSUPP,
-                           "entity references (except the predefined references)");
+                    LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX,
+                           "Entity reference \"%.*s\" not supported, only predefined references allowed.", 10, &in[offset-1]);
                     goto error;
                 }
                 offset = 0;
@@ -382,7 +384,7 @@ lyxml_get_string(struct lyxml_context *context, const char **input, char **buffe
                         n = (16 * n) + u;
                     }
                 } else {
-                    LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Invalid character reference %.*s", 12, p);
+                    LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Invalid character reference \"%.*s\".", 12, p);
                     goto error;
 
                 }

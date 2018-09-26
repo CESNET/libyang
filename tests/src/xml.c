@@ -290,19 +290,32 @@ test_text(void **state)
     assert_true(str[0] == '\0'); /* everything eaten */
     assert_true(out[0] == '\0'); /* empty string */
 
+    /* empty element content - only formating before defining child */
+    str = "\n  <";
+    assert_int_equal(LY_EINVAL, lyxml_get_string(&ctx, &str, &out, &out_len));
+    assert_string_equal("<", str);
+
     /* empty element content is invalid - missing content terminating character < */
     str = "";
     assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &out, &out_len));
     logbuf_assert("Unexpected end-of-file. Line number 1.");
+    str = p = "xxx";
+
+    free(out);
+    out = NULL;
+
+    assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &out, &out_len));
+    logbuf_assert("Unexpected end-of-file. Line number 1.");
+    assert_ptr_equal(p, str); /* input data not eaten */
 
     free(out);
     out = NULL;
 
     /* valid strings */
-    str = "€𠜎Øn \n&lt;&amp;&quot;&apos;&gt; &#82;&#x52;<";
+    str = "€𠜎Øn \n&lt;&amp;&quot;&apos;&gt; &#82;&#x4f;&#x4B;<";
     assert_int_equal(LY_SUCCESS, lyxml_get_string(&ctx, &str, &out, &out_len));
-    assert_int_equal(21, out_len);
-    assert_string_equal("€𠜎Øn \n<&\"\'> RR", out);
+    assert_int_equal(22, out_len);
+    assert_string_equal("€𠜎Øn \n<&\"\'> ROK", out);
     assert_string_equal("<", str);
 
     /* invalid characters in string */
@@ -313,6 +326,14 @@ test_text(void **state)
     str = p = "\"&#82\"";
     assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &out, &out_len));
     logbuf_assert("Invalid character sequence \"\"\", expected ;. Line number 2.");
+    assert_ptr_equal(p, str); /* input data not eaten */
+    str = p = "\"&nonsence;\"";
+    assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &out, &out_len));
+    logbuf_assert("Entity reference \"&nonsence;\" not supported, only predefined references allowed. Line number 2.");
+    assert_ptr_equal(p, str); /* input data not eaten */
+    str = p = "&#o122;";
+    assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &out, &out_len));
+    logbuf_assert("Invalid character reference \"&#o122;\". Line number 2.");
     assert_ptr_equal(p, str); /* input data not eaten */
 
     free(out);
