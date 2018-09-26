@@ -357,6 +357,51 @@ test_text(void **state)
     free(out);
 }
 
+static void
+test_ns(void **state)
+{
+    (void) state; /* unused */
+
+    const char *e1, *e2;
+    const struct lyxml_ns *ns;
+
+    struct lyxml_context ctx;
+    memset(&ctx, 0, sizeof ctx);
+    ctx.line = 1;
+
+    e1 = "element1";
+    e2 = "element2";
+    assert_int_equal(LY_SUCCESS, lyxml_ns_add(&ctx, e1, NULL, 0, strdup("urn:default")));
+    assert_int_equal(LY_SUCCESS, lyxml_ns_add(&ctx, e1, "nc", 2, strdup("urn:nc1")));
+    assert_int_equal(LY_SUCCESS, lyxml_ns_add(&ctx, e2, "nc", 2, strdup("urn:nc2")));
+    assert_int_equal(3, (&ctx)->ns.count);
+    assert_int_not_equal(0, (&ctx)->ns.size);
+
+    ns = lyxml_ns_get(&ctx, NULL, 0);
+    assert_non_null(ns);
+    assert_null(ns->prefix);
+    assert_string_equal("urn:default", ns->uri);
+
+    ns = lyxml_ns_get(&ctx, "nc", 2);
+    assert_non_null(ns);
+    assert_string_equal("nc", ns->prefix);
+    assert_string_equal("urn:nc2", ns->uri);
+
+    assert_int_equal(LY_SUCCESS, lyxml_ns_rm(&ctx, e2));
+    assert_int_equal(2, (&ctx)->ns.count);
+
+    ns = lyxml_ns_get(&ctx, "nc", 2);
+    assert_non_null(ns);
+    assert_string_equal("nc", ns->prefix);
+    assert_string_equal("urn:nc1", ns->uri);
+
+    assert_int_equal(LY_SUCCESS, lyxml_ns_rm(&ctx, e1));
+    assert_int_equal(0, (&ctx)->ns.count);
+
+    assert_null(lyxml_ns_get(&ctx, "nc", 2));
+    assert_null(lyxml_ns_get(&ctx, NULL, 0));
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -364,6 +409,7 @@ int main(void)
         cmocka_unit_test_setup(test_element, logger_setup),
         cmocka_unit_test_setup(test_attribute, logger_setup),
         cmocka_unit_test_setup(test_text, logger_setup),
+        cmocka_unit_test_setup(test_ns, logger_setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

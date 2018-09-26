@@ -12,9 +12,12 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
+#define _POSIX_C_SOURCE 200809L /* strndup() */
+
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "libyang.h"
 #include "xml.h"
@@ -50,6 +53,13 @@
 /* Ignore whitespaces in the input string p, if EOF log with lyxml_context c */
 #define ign_xmlws(c,p) while (is_xmlws(*(p))) {if (*(p) == '\n') {++c->line;} ++p;}
 
+/**
+ * @brief Ignore any characters until the delim of the size delim_len is read
+ *
+ * Detects number of read new lines.
+ * Returns the pointer to the beginning of the detected delim, or NULL in case the delim not found in
+ * NULL-terminated input string.
+ *  */
 static const char *
 ign_todelim(register const char *input, const char *delim, size_t delim_len, size_t *newlines)
 {
@@ -78,6 +88,14 @@ ign_todelim(register const char *input, const char *delim, size_t delim_len, siz
     return NULL;
 }
 
+/**
+ * @brief Get UTF8 code point of the next character in the input string.
+ *
+ * @param[in,out] input Input string to process, updated according to the processed/read data.
+ * @param[out] utf8_char UTF8 code point of the next character.
+ * @param[out] bytes_read Number of bytes used to encode the read utf8_char.
+ * @return LY_ERR value
+ */
 static LY_ERR
 lyxml_getutf8(const char **input, unsigned int *utf8_char, size_t *bytes_read)
 {
@@ -218,7 +236,22 @@ lyxml_pututf8(char *dst, uint32_t value, size_t *bytes_written)
     return LY_SUCCESS;
 }
 
-LY_ERR
+/**
+ * @brief Check/Get an XML qualified name from the input string.
+ *
+ * The identifier must have at least one valid character complying the name start character constraints.
+ * The identifier is terminated by the first character, which does not comply to the name character constraints.
+ *
+ * See https://www.w3.org/TR/xml-names/#NT-NCName
+ *
+ * @param[in] context XML context to track lines or store errors into libyang context.
+ * @param[in,out] input Input string to process, updated according to the processed/read data.
+ * Note that the term_char is also read, so input points after the term_char at the end.
+ * @param[out] term_char The first character in the input string which does not compy to the name constraints.
+ * @param[out] term_char_len Number of bytes used to encode UTF8 term_char. Serves to be able to go back in input string.
+ * @return LY_ERR value.
+ */
+static LY_ERR
 lyxml_check_qname(struct lyxml_context *context, const char **input, unsigned int *term_char, size_t *term_char_len)
 {
     unsigned int c;
@@ -243,27 +276,6 @@ lyxml_check_qname(struct lyxml_context *context, const char **input, unsigned in
     return LY_SUCCESS;
 }
 
-/**
- * @brief Parse input as XML text (attribute's values and element's content).
- *
- * Mixed content of XML elements is not allowed. Formating whitespaces before child element are ignored,
- * LY_EINVAL is returned in such a case (buffer is not filled, no error is printed) and input is moved
- * to the beginning of a child definition.
- *
- * In the case of attribute's values, the input string is expected to start on a quotation mark to
- * select which delimiter (single or double quote) is used. Otherwise, the element content is being
- * parsed expected to be terminated by '<' character.
- *
- * If function succeeds, the string in output buffer is always NULL-terminated.
- *
- * @param[in] context XML context to track lines or store errors into libyang context.
- * @param[in,out] input Input string to process, updated according to the processed/read data.
- * @param[out] buffer Storage of the output string. If NULL, the buffer is allocated. Otherwise, the buffer
- * is used and enlarged when necessary.
- * @param[out] buffer_size Allocated size of the returned buffer. If a buffer is provided by a caller, it
- * is not being reduced even if the string is shorter. On the other hand, it can be enlarged if needed.
- * @return LY_ERR value.
- */
 LY_ERR
 lyxml_get_string(struct lyxml_context *context, const char **input, char **buffer, size_t *buffer_size)
 {
@@ -464,25 +476,6 @@ success:
 #undef BUFSIZE_CHECK
 }
 
-/**
- * @brief Parse input expecting an XML attribute (including XML namespace).
- *
- * Input string is not being modified, so the returned values are not NULL-terminated, instead their length
- * is returned.
- *
- * In case of a namespace definition, prefix just contains xmlns string. In case of the default namespace,
- * prefix is NULL and the attribute name is xmlns.
- *
- * @param[in] context XML context to track lines or store errors into libyang context.
- * @param[in,out] input Input string to process, updated according to the processed/read data so,
- * when succeeded, it points to the opening quote of the attribute's value.
- * @param[out] prefix Pointer to prefix if present in the attribute name, NULL otherwise.
- * @param[out] prefix_len Length of the prefix if any.
- * @param[out] name Attribute name. LY_SUCCESS can be returned with NULL name only in case the
- * end of the element tag was reached.
- * @param[out] name_len Length of the element name.
- * @return LY_ERR values.
- */
 LY_ERR
 lyxml_get_attribute(struct lyxml_context *context, const char **input,
                     const char **prefix, size_t *prefix_len, const char **name, size_t *name_len)
@@ -553,26 +546,6 @@ success:
     return LY_SUCCESS;
 }
 
-/**
- * @brief Parse input expecting an XML element.
- *
- * Able to silently skip comments, PIs and CData. DOCTYPE is not parsable, so it is reported as LY_EVALID error.
- * If '<' is not found in input, LY_EINVAL is returned (but no error is logged), so it is possible to continue
- * with parsing input as text content.
- *
- * Input string is not being modified, so the returned values are not NULL-terminated, instead their length
- * is returned.
- *
- * @param[in] context XML context to track lines or store errors into libyang context.
- * @param[in,out] input Input string to process, updated according to the processed/read data.
- * @param[in] options Currently unused options to modify input processing.
- * @param[out] prefix Pointer to prefix if present in the element name, NULL otherwise.
- * @param[out] prefix_len Length of the prefix if any.
- * @param[out] name Element name. LY_SUCCESS can be returned with NULL name only in case the
- * end of the input string was reached (EOF).
- * @param[out] name_len Length of the element name.
- * @return LY_ERR values.
- */
 LY_ERR
 lyxml_get_element(struct lyxml_context *context, const char **input,
                   const char **prefix, size_t *prefix_len, const char **name, size_t *name_len)
@@ -671,3 +644,69 @@ success:
     return LY_SUCCESS;
 }
 
+LY_ERR
+lyxml_ns_add(struct lyxml_context *context, const char *element_name, const char *prefix, size_t prefix_len, char *uri)
+{
+    struct lyxml_ns *ns;
+
+    ns = malloc(sizeof *ns);
+    LY_CHECK_ERR_RET(!ns, LOGMEM(context->ctx), LY_EMEM);
+
+    ns->element = element_name;
+    ns->uri = uri;
+    if (prefix) {
+        ns->prefix = strndup(prefix, prefix_len);
+        LY_CHECK_ERR_RET(!ns->prefix, LOGMEM(context->ctx); free(ns), LY_EMEM);
+    } else {
+        ns->prefix = NULL;
+    }
+
+    LY_CHECK_ERR_RET(ly_set_add(&context->ns, ns, LY_SET_OPT_USEASLIST) == -1, free(ns->prefix), LY_EMEM);
+    return LY_SUCCESS;
+}
+
+const struct lyxml_ns *
+lyxml_ns_get(struct lyxml_context *context, const char *prefix, size_t prefix_len)
+{
+    unsigned int u;
+    struct lyxml_ns *ns;
+
+    for (u = context->ns.count - 1; u + 1 > 0; --u) {
+        ns = (struct lyxml_ns *)context->ns.objs[u];
+        if (prefix) {
+            if (!strncmp(prefix, ns->prefix, prefix_len) && ns->prefix[prefix_len] == '\0') {
+                return ns;
+            }
+        } else if (!ns->prefix) {
+            /* default namespace */
+            return ns;
+        }
+    }
+
+    return NULL;
+}
+
+LY_ERR
+lyxml_ns_rm(struct lyxml_context *context, const char *element_name)
+{
+    unsigned int u;
+
+    for (u = context->ns.count - 1; u + 1 > 0; --u) {
+        if (((struct lyxml_ns *)context->ns.objs[u])->element != element_name) {
+            /* we are done, the namespaces from a single element are supposed to be together */
+            break;
+        }
+        /* remove the ns structure */
+        free(((struct lyxml_ns *)context->ns.objs[u])->prefix);
+        free(((struct lyxml_ns *)context->ns.objs[u])->uri);
+        free(context->ns.objs[u]);
+        --context->ns.count;
+    }
+
+    if (!context->ns.count) {
+        /* cleanup the context's namespaces storage */
+        ly_set_erase(&context->ns, NULL);
+    }
+
+    return LY_SUCCESS;
+}
