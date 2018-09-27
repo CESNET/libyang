@@ -450,7 +450,7 @@ string_end:
  * @param[in] ctx libyang context for logging.
  * @param[in,out] data Data to read from, always moved to currently handled character.
  * @param[in] arg Type of YANG keyword argument expected.
- * @param[out] word_p Pointer to the read string. Can be NULL if \p arg is #Y_MAYBE_STR_ARG.
+ * @param[out] word_p Pointer to the read string. Can return NULL if \p arg is #Y_MAYBE_STR_ARG.
  * @param[out] word_b Pointer to a dynamically-allocated buffer holding the read string. If not needed,
  * set to NULL. Otherwise equal to \p word_p.
  * @param[out] word_len Length of the read string.
