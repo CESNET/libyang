@@ -145,10 +145,10 @@ enum yang_module_stmt {
 };
 
 enum yang_arg {
-    Y_IDENTIF_ARG,
-    Y_PREF_IDENTIF_ARG,
-    Y_STR_ARG,
-    Y_MAYBE_STR_ARG
+    Y_IDENTIF_ARG,        /**< YANG "identifier-arg-str" rule */
+    Y_PREF_IDENTIF_ARG,   /**< YANG "identifier-ref-arg-str" rule */
+    Y_STR_ARG,            /**< YANG "string" rule */
+    Y_MAYBE_STR_ARG       /**< optional YANG "string" rule */
 };
 
 enum yang_keyword {
