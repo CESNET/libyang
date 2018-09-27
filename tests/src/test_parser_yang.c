@@ -72,14 +72,21 @@ test_comments(void **state)
     (void) state; /* unused */
 
     const char *str, *p;
+    char *word, *buf;
+    size_t len;
 
-    str = " this is a text of / one * line */ comment\nx";
-    assert_int_equal(LY_SUCCESS, skip_comment(NULL, &str, 1));
-    assert_string_equal("x", str);
+    str = " // this is a text of / one * line */ comment\nargument";
+    assert_int_equal(LY_SUCCESS, get_string(NULL, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_string_equal("argument", word);
+    assert_null(buf);
+    assert_int_equal(8, len);
 
-    str = " this is a \n * text // of / block * comment */x";
-    assert_int_equal(LY_SUCCESS, skip_comment(NULL, &str, 2));
-    assert_string_equal("x", str);
+    str = "/* this is a \n * text // of / block * comment */\"arg\" + \"ume\" \n + \n \"nt\"";
+    assert_int_equal(LY_SUCCESS, get_string(NULL, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_string_equal("argument", word);
+    assert_ptr_equal(buf, word);
+    assert_int_equal(8, len);
+    free(word);
 
     str = p = " this is one line comment on last line";
     assert_int_equal(LY_SUCCESS, skip_comment(NULL, &str, 1));
@@ -91,10 +98,69 @@ test_comments(void **state)
     assert_true(str[0] == '\0');
 }
 
+static void
+test_arg(void **state)
+{
+    (void) state; /* unused */
+
+    const char *str;
+    char *word, *buf;
+    size_t len;
+
+    /* missing argument */
+    str = ";";
+    assert_int_equal(LY_SUCCESS, get_string(NULL, &str, Y_MAYBE_STR_ARG, &word, &buf, &len));
+    assert_null(word);
+
+    assert_int_equal(LY_EVALID, get_string(NULL, &str, Y_STR_ARG, &word, &buf, &len));
+    logbuf_assert("Invalid character sequence \";\", expected an argument.");
+
+    /* different quoting */
+    str = "hello";
+    assert_int_equal(LY_SUCCESS, get_string(NULL, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_null(buf);
+    assert_string_equal("hello", word);
+
+    str = "\"hello\"";
+    assert_int_equal(LY_SUCCESS, get_string(NULL, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_null(buf);
+    assert_int_equal(5, len);
+    assert_false(strncmp("hello", word, 5));
+
+    str = "\'hello\'";
+    assert_int_equal(LY_SUCCESS, get_string(NULL, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_null(buf);
+    assert_int_equal(5, len);
+    assert_false(strncmp("hello", word, 5));
+
+    str = "\"hel\"  +\t\n\"lo\"";
+    assert_int_equal(LY_SUCCESS, get_string(NULL, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_ptr_equal(word, buf);
+    assert_int_equal(5, len);
+    assert_string_equal("hello", word);
+    free(buf);
+
+    str = "\'he\'\t\n+ \"llo\"";
+    assert_int_equal(LY_SUCCESS, get_string(NULL, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_ptr_equal(word, buf);
+    assert_int_equal(5, len);
+    assert_string_equal("hello", word);
+    free(buf);
+
+    str = "\"he\"+\'llo\'";
+    assert_int_equal(LY_SUCCESS, get_string(NULL, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_ptr_equal(word, buf);
+    assert_int_equal(5, len);
+    assert_string_equal("hello", word);
+    free(buf);
+
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup(test_comments, logger_setup),
+        cmocka_unit_test_setup(test_arg, logger_setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
