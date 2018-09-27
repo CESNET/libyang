@@ -16,7 +16,7 @@ BuildRequires:  valgrind
 BuildRequires:  libcmocka-devel
 BuildRequires:  gcc
 BuildRequires:  gcc-c++
-BuildRequires:  swig >= 3.0.8
+BuildRequires:  swig >= 3.0.12
 
 %if 0%{?suse_version} + 0%{?fedora} > 0
 BuildRequires:  python3-devel
