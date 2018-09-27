@@ -106,22 +106,24 @@ lyxml_getutf8(const char **input, unsigned int *utf8_char, size_t *bytes_read)
     c = (*input)[0];
     LY_CHECK_RET(!c, LY_EINVAL);
 
-    /* process character byte(s) */
-    if ((c & 0xf8) == 0xf0) {
-        /* four bytes character */
-        len = 4;
+    if (!(c & 0x80)) {
+        /* one byte character */
+        len = 1;
 
-        c &= 0x07;
-        for (i = 1; i <= 3; i++) {
-            aux = (*input)[i];
-            if ((aux & 0xc0) != 0x80) {
-                return LY_EINVAL;
-            }
-
-            c = (c << 6) | (aux & 0x3f);
+        if (c < 0x20 && c != 0x9 && c != 0xa && c != 0xd) {
+            return LY_EINVAL;
         }
+    } else if ((c & 0xe0) == 0xc0) {
+        /* two bytes character */
+        len = 2;
 
-        if (c < 0x1000 || c > 0x10ffff) {
+        aux = (*input)[1];
+        if ((aux & 0xc0) != 0x80) {
+            return LY_EINVAL;
+        }
+        c = ((c & 0x1f) << 6) | (aux & 0x3f);
+
+        if (c < 0x80) {
             return LY_EINVAL;
         }
     } else if ((c & 0xf0) == 0xe0) {
@@ -141,24 +143,21 @@ lyxml_getutf8(const char **input, unsigned int *utf8_char, size_t *bytes_read)
         if (c < 0x800 || (c > 0xd7ff && c < 0xe000) || c > 0xfffd) {
             return LY_EINVAL;
         }
-    } else if ((c & 0xe0) == 0xc0) {
-        /* two bytes character */
-        len = 2;
+    } else if ((c & 0xf8) == 0xf0) {
+        /* four bytes character */
+        len = 4;
 
-        aux = (*input)[1];
-        if ((aux & 0xc0) != 0x80) {
-            return LY_EINVAL;
+        c &= 0x07;
+        for (i = 1; i <= 3; i++) {
+            aux = (*input)[i];
+            if ((aux & 0xc0) != 0x80) {
+                return LY_EINVAL;
+            }
+
+            c = (c << 6) | (aux & 0x3f);
         }
-        c = ((c & 0x1f) << 6) | (aux & 0x3f);
 
-        if (c < 0x80) {
-            return LY_EINVAL;
-        }
-    } else if (!(c & 0x80)) {
-        /* one byte character */
-        len = 1;
-
-        if (c < 0x20 && c != 0x9 && c != 0xa && c != 0xd) {
+        if (c < 0x1000 || c > 0x10ffff) {
             return LY_EINVAL;
         }
     } else {
