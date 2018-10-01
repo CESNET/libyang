@@ -37,8 +37,6 @@ struct lyxml_context {
     struct ly_set ns;     /* handled with LY_SET_OPT_USEASLIST */
 };
 
-#endif /* LY_XML_H_ */
-
 /**
  * @brief Parse input expecting an XML element.
  *
@@ -150,3 +148,5 @@ const struct lyxml_ns *lyxml_ns_get(struct lyxml_context *context, const char *p
  * @return LY_ERR values.
  */
 LY_ERR lyxml_ns_rm(struct lyxml_context *context, const char *element_name);
+
+#endif /* LY_XML_H_ */

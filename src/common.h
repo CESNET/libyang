@@ -256,6 +256,16 @@ extern const char *const ly_devmod_list[];
 void *ly_realloc(void *ptr, size_t size);
 
 /**
+ * @brief Get UTF8 code point of the next character in the input string.
+ *
+ * @param[in,out] input Input string to process, updated according to the processed/read data.
+ * @param[out] utf8_char UTF8 code point of the next character.
+ * @param[out] bytes_read Number of bytes used to encode the read utf8_char.
+ * @return LY_ERR value
+ */
+LY_ERR ly_getutf8(const char **input, unsigned int *utf8_char, size_t *bytes_read);
+
+/**
  * @brief Check date string (4DIGIT "-" 2DIGIT "-" 2DIGIT)
  *
  * @param[in] ctx Context to store log message.
@@ -275,7 +285,7 @@ LY_ERR lysp_check_date(struct ly_ctx *ctx, const char *date, int date_len, const
         for (_count = 0; *(ARRAY) && *((uint8_t *)(*(ARRAY) + _count)); ++_count); \
         if (!_count) *(ARRAY) = malloc(sizeof **(ARRAY) + 1); \
             else *(ARRAY) = ly_realloc(*(ARRAY), (_count + 1) * sizeof **(ARRAY) + 1); \
-        LY_CHECK_ERR_RET(!*(ARRAY), LOGMEM(CTX), RETVAL); \
+        LY_CHECK_ERR_RET(!*(ARRAY), LOGMEM(CTX->ctx), RETVAL); \
         *((uint8_t *)(*(ARRAY) + _count + 1)) = 0; \
         (NEW_ITEM) = (*(ARRAY)) + _count; \
         memset(NEW_ITEM, 0, sizeof *(NEW_ITEM));
