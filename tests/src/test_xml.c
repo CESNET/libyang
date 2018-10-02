@@ -65,46 +65,6 @@ logbuf_clean(void)
 #   define logbuf_assert(str)
 #endif
 
-
-static void
-test_utf8(void **state)
-{
-    (void) state; /* unused */
-
-    char buf[5] = {0};
-    const char *str = buf;
-    unsigned int c;
-    size_t len;
-
-    /* test invalid UTF-8 characters in lyxml_getutf8
-     * - https://en.wikipedia.org/wiki/UTF-8 */
-    buf[0] = 0x04;
-    assert_int_equal(LY_EINVAL, lyxml_getutf8(&str, &c, &len));
-    buf[0] = 0x80;
-    assert_int_equal(LY_EINVAL, lyxml_getutf8(&str, &c, &len));
-
-    buf[0] = 0xc0;
-    buf[1] = 0x00;
-    assert_int_equal(LY_EINVAL, lyxml_getutf8(&str, &c, &len));
-    buf[1] = 0x80;
-    assert_int_equal(LY_EINVAL, lyxml_getutf8(&str, &c, &len));
-
-    buf[0] = 0xe0;
-    buf[1] = 0x00;
-    buf[2] = 0x80;
-    assert_int_equal(LY_EINVAL, lyxml_getutf8(&str, &c, &len));
-    buf[1] = 0x80;
-    assert_int_equal(LY_EINVAL, lyxml_getutf8(&str, &c, &len));
-
-    buf[0] = 0xf0;
-    buf[1] = 0x00;
-    buf[2] = 0x80;
-    buf[3] = 0x80;
-    assert_int_equal(LY_EINVAL, lyxml_getutf8(&str, &c, &len));
-    buf[1] = 0x80;
-    assert_int_equal(LY_EINVAL, lyxml_getutf8(&str, &c, &len));
-}
-
 static void
 test_element(void **state)
 {
@@ -405,7 +365,6 @@ test_ns(void **state)
 int main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup(test_utf8, logger_setup),
         cmocka_unit_test_setup(test_element, logger_setup),
         cmocka_unit_test_setup(test_attribute, logger_setup),
         cmocka_unit_test_setup(test_text, logger_setup),
