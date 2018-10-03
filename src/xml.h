@@ -26,14 +26,27 @@ struct lyxml_ns {
     char *uri;            /* namespace URI */
 };
 
+/* element tag identifier for matching opening and closing tags */
+struct lyxml_elem {
+    const char *prefix;
+    const char *name;
+    size_t prefix_len;
+    size_t name_len;
+};
+
 enum LYXML_PARSER_STATUS {
-    LYXML_STATUS_CDSECT,  /* CDATA section */
-    LYXML_STATUS_COMMENT, /* XML comment */
+    LYXML_ELEMENT,        /* expecting XML element, call lyxml_get_element() */
+    LYXML_ELEM_CONTENT,   /* expecting content of an element, call lyxml_get_string */
+    LYXML_ATTRIBUTE,      /* expecting XML attribute, call lyxml_get_attribute() */
+    LYXML_ATTR_CONTENT,   /* expecting value of an attribute, call lyxml_get_string */
+    LYXML_END             /* end of input data */
 };
 
 struct lyxml_context {
     struct ly_ctx *ctx;
     uint64_t line;
+    enum LYXML_PARSER_STATUS status; /* status providing information about the next expected object in input data */
+    struct ly_set elements; /* list of not-yet-closed elements */
     struct ly_set ns;     /* handled with LY_SET_OPT_USEASLIST */
 };
 
@@ -52,8 +65,9 @@ struct lyxml_context {
  * @param[in] options Currently unused options to modify input processing.
  * @param[out] prefix Pointer to prefix if present in the element name, NULL otherwise.
  * @param[out] prefix_len Length of the prefix if any.
- * @param[out] name Element name. LY_SUCCESS can be returned with NULL name only in case the
- * end of the input string was reached (EOF).
+ * @param[out] name Element name. When LY_SUCCESS is returned but name is NULL, check context's status field:
+ * - LYXML_END - end of input was reached
+ * - LYXML_ELEMENT - closing element found, expecting sibling element so call lyxml_get_element() again
  * @param[out] name_len Length of the element name.
  * @return LY_ERR values.
  */
@@ -75,7 +89,8 @@ LY_ERR lyxml_get_element(struct lyxml_context *context, const char **input,
  * @param[out] prefix Pointer to prefix if present in the attribute name, NULL otherwise.
  * @param[out] prefix_len Length of the prefix if any.
  * @param[out] name Attribute name. LY_SUCCESS can be returned with NULL name only in case the
- * end of the element tag was reached.
+ * end of the element tag was reached. According to the context's status field, the opening tag was read
+ * (LYXML_CONTENT) or empty element was closed (LYXML_ELEMENT).
  * @param[out] name_len Length of the element name.
  * @return LY_ERR values.
  */
@@ -148,5 +163,12 @@ const struct lyxml_ns *lyxml_ns_get(struct lyxml_context *context, const char *p
  * @return LY_ERR values.
  */
 LY_ERR lyxml_ns_rm(struct lyxml_context *context, const char *element_name);
+
+/**
+ * @brief Remove the allocated working memory of the context.
+ *
+ * @param[in] context XML context to clear.
+ */
+void lyxml_context_clear(struct lyxml_context *context);
 
 #endif /* LY_XML_H_ */

@@ -14,6 +14,7 @@
 
 #define _POSIX_C_SOURCE 200809L /* strndup() */
 
+#include <assert.h>
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -50,7 +51,7 @@
 /* Move input p by s characters, if EOF log with lyxml_context c */
 #define move_input(c,p,s) p += s; LY_CHECK_ERR_RET(!p[0], LOGVAL(c->ctx, LY_VLOG_LINE, &c->line, LY_VCODE_EOF), LY_EVALID)
 
-/* Ignore whitespaces in the input string p, if EOF log with lyxml_context c */
+/* Ignore whitespaces in the input string p */
 #define ign_xmlws(c,p) while (is_xmlws(*(p))) {if (*(p) == '\n') {++c->line;} ++p;}
 
 /**
@@ -215,6 +216,9 @@ lyxml_get_string(struct lyxml_context *context, const char **input, char **buffe
     bool empty_content = false;
     LY_ERR rc;
 
+    assert(context);
+    assert(context->status == LYXML_ELEM_CONTENT || context->status == LYXML_ATTR_CONTENT);
+
     if (in[0] == '\'') {
         delim = '\'';
         ++in;
@@ -343,8 +347,8 @@ lyxml_get_string(struct lyxml_context *context, const char **input, char **buffe
             memcpy(&buf[len], in, offset);
             len += offset;
             /* in case of element content, keep the leading <,
-             * for attribute's value mova after the terminating quotation mark */
-            if (delim == '<') {
+             * for attribute's value move after the terminating quotation mark */
+            if (context->status == LYXML_ELEM_CONTENT) {
                 in += offset;
             } else {
                 in += offset + 1;
@@ -381,6 +385,7 @@ success:
     /* set terminating NULL byte */
     buf[len] = '\0';
 
+    context->status -= 1;
     (*input) = in;
     (*buffer) = buf;
     (*buffer_size) = size;
@@ -413,8 +418,15 @@ lyxml_get_attribute(struct lyxml_context *context, const char **input,
     if (in[0] == '\0') {
         /* EOF - not expected at this place */
         return LY_EINVAL;
-    } else if (in[0] == '>' || in[0] == '/') {
-        /* element terminated by > or /> */
+    } else if (in[0] == '>') {
+        /* element terminated by > - termination of the opening tag */
+        context->status = LYXML_ELEM_CONTENT;
+        ++in;
+        goto success;
+    } else if (in[0] == '/' && in[1] == '>') {
+        /* element terminated by /> - termination of an empty element */
+        context->status = LYXML_ELEMENT;
+        in += 2;
         goto success;
     }
 
@@ -451,9 +463,11 @@ lyxml_get_attribute(struct lyxml_context *context, const char **input,
     ++in;
     ign_xmlws(context, in);
     if (in[0] != '\'' && in[0] != '"') {
-        LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(in), in, "either single or double quotation mark");
+        LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_INSTREXP,
+               LY_VCODE_INSTREXP_len(in), in, "either single or double quotation mark");
         return LY_EVALID;
     }
+    context->status = LYXML_ATTR_CONTENT;
 
 success:
     /* move caller's input */
@@ -471,9 +485,10 @@ lyxml_get_element(struct lyxml_context *context, const char **input,
     const char *sectname;
     const char *id;
     size_t endtag_len, newlines;
-    bool loop = true;
+    bool loop = true, closing = false;
     unsigned int c;
     LY_ERR rc;
+    struct lyxml_elem *e;
 
     /* initialize output variables */
     (*prefix) = (*name) = NULL;
@@ -484,6 +499,7 @@ lyxml_get_element(struct lyxml_context *context, const char **input,
 
         if (in[0] == '\0') {
             /* EOF */
+            context->status = LYXML_END;
             goto success;
         } else if (in[0] != '<') {
             return LY_EINVAL;
@@ -519,8 +535,14 @@ lyxml_get_element(struct lyxml_context *context, const char **input,
             LY_CHECK_ERR_RET(!in, LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_NTERM, "Declaration"), LY_EVALID);
             context->line += newlines;
             in += 2;
+        } else if (in[0] == '/') {
+            /* closing element */
+            closing = true;
+            ++in;
+            goto element;
         } else {
             /* element */
+element:
             ign_xmlws(context, in);
             LY_CHECK_ERR_RET(!in[0], LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_EOF), LY_EVALID);
 
@@ -545,10 +567,70 @@ lyxml_get_element(struct lyxml_context *context, const char **input,
                        "whitespace or element tag termination ('>' or '/>'");
                 return LY_EVALID;
             }
-            in = in - endtag_len;
             (*name) = id;
-            (*name_len) = in - id;
+            (*name_len) = in - endtag_len - id;
 
+            if (is_xmlws(c)) {
+                /* go to the next meaningful input */
+                ign_xmlws(context, in);
+                LY_CHECK_ERR_RET(!in[0], LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_EOF), LY_EVALID);
+                c = in[0];
+                ++in;
+                endtag_len = 1;
+            }
+
+            if (closing) {
+                /* match opening and closing element tags */
+                LY_CHECK_ERR_RET(
+                        !context->elements.count,
+                        LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Opening and closing elements tag missmatch (\"%.*s\").", name_len, *name),
+                        LY_EVALID);
+                e = (struct lyxml_elem*)context->elements.objs[context->elements.count - 1];
+                LY_CHECK_ERR_RET(e->prefix_len != *prefix_len || e->name_len != *name_len
+                                 || (*prefix_len && strncmp(*prefix, e->prefix, e->prefix_len)) || strncmp(*name, e->name, e->name_len),
+                                 LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Opening and closing elements tag missmatch (\"%.*s\").", name_len, *name),
+                                 LY_EVALID);
+                /* opening and closing element tags matches, remove record from the opening tags list */
+                free(e);
+                --context->elements.count;
+                /* do not return element information to announce closing element being currently processed */
+                *name = *prefix = NULL;
+                *name_len = *prefix_len = 0;
+
+                if (c == '>') {
+                    /* end of closing element */
+                    context->status = LYXML_ELEMENT;
+                } else {
+                    in -= endtag_len;
+                    LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Unexpected data \"%.*s\" in closing element tag.",
+                           LY_VCODE_INSTREXP_len(in), in);
+                    return LY_EVALID;
+                }
+            } else {
+                if (c == '>') {
+                    /* end of opening element */
+                    context->status = LYXML_ELEM_CONTENT;
+                } else if (c == '/' && in[0] == '>') {
+                    /* empty element closing */
+                    context->status = LYXML_ELEMENT;
+                    ++in;
+                } else {
+                    /* attribute */
+                    context->status = LYXML_ATTRIBUTE;
+                    in -= endtag_len;
+                }
+
+                if (context->status != LYXML_ELEMENT) {
+                    /* store element opening tag information */
+                    e = malloc(sizeof *e);
+                    LY_CHECK_ERR_RET(!e, LOGMEM(ctx), LY_EMEM);
+                    e->name = *name;
+                    e->prefix = *prefix;
+                    e->name_len = *name_len;
+                    e->prefix_len = *prefix_len;
+                    ly_set_add(&context->elements, e, LY_SET_OPT_USEASLIST);
+                }
+            }
             loop = false;
         }
     }
@@ -624,4 +706,19 @@ lyxml_ns_rm(struct lyxml_context *context, const char *element_name)
     }
 
     return LY_SUCCESS;
+}
+
+void
+lyxml_context_clear(struct lyxml_context *context)
+{
+    unsigned int u;
+
+    ly_set_erase(&context->elements, free);
+    for (u = context->ns.count - 1; u + 1 > 0; --u) {
+        /* remove the ns structure */
+        free(((struct lyxml_ns *)context->ns.objs[u])->prefix);
+        free(((struct lyxml_ns *)context->ns.objs[u])->uri);
+        free(context->ns.objs[u]);
+    }
+    ly_set_erase(&context->ns, NULL);
 }
