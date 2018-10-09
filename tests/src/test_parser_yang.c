@@ -71,7 +71,7 @@ test_helpers(void **state)
     (void) state; /* unused */
 
     const char *str;
-    char *buf;
+    char *buf, *p;
     size_t len, size;
     int prefix;
     struct ly_parser_ctx ctx;
@@ -87,6 +87,36 @@ test_helpers(void **state)
     assert_int_equal(2, len);
     assert_string_equal("cd", str);
     assert_false(strncmp("ab", buf, 2));
+    free(buf);
+    buf = NULL;
+
+    /* invalid first characters */
+    len = 0;
+    str = "2invalid";
+    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &str, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1));
+    str = ".invalid";
+    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &str, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1));
+    str = "-invalid";
+    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &str, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1));
+    /* invalid following characters */
+    len = 3; /* number of characters read before the str content */
+    str = "!";
+    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &str, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1));
+    str = ":";
+    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &str, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1));
+    /* valid colon for prefixed identifiers */
+    len = size = 0;
+    p = NULL;
+    str = "x:id";
+    assert_int_equal(LY_SUCCESS, buf_store_char(&ctx, &str, Y_PREF_IDENTIF_ARG, &p, &len, &buf, &size, 0));
+    assert_int_equal(1, len);
+    assert_null(buf);
+    assert_string_equal(":id", str);
+    assert_int_equal('x', p[len - 1]);
+    assert_int_equal(LY_SUCCESS, buf_store_char(&ctx, &str, Y_PREF_IDENTIF_ARG, &p, &len, &buf, &size, 1));
+    assert_int_equal(2, len);
+    assert_string_equal("id", str);
+    assert_int_equal(':', p[len - 1]);
     free(buf);
 
     /* checking identifiers */

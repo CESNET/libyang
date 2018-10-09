@@ -94,7 +94,7 @@ static LY_ERR parse_grouping(struct ly_parser_ctx *ctx, const char **data, struc
  *
  * Enlarge if needed. Updates \p input as well as \p buf_used.
  *
- * @param[in] ctx yang parser context for logging.
+ * @param[in] ctx libyang context for logging.
  * @param[in, out] input Input string to process.
  * @param[in] len Number of bytes to get from the input string and copy into the buffer.
  * @param[in,out] buf Buffer to use, can be moved by realloc().
@@ -189,7 +189,7 @@ static LY_ERR
 buf_store_char(struct ly_parser_ctx *ctx, const char **input, enum yang_arg arg,
                char **word_p, size_t *word_len, char **word_b, size_t *buf_len, int need_buf)
 {
-    int prefix;
+    int prefix = 0;
     unsigned int c;
     size_t len;
 
