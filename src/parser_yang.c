@@ -277,10 +277,10 @@ skip_comment(struct ly_parser_ctx *ctx, const char **data, int comment)
             break;
         case 2:
             if (**data == '*') {
-				comment = 3;
-			} else if (**data == '\n') {
-				++ctx->line;
-			}
+                comment = 3;
+            } else if (**data == '\n') {
+                ++ctx->line;
+            }
             break;
         case 3:
             if (**data == '/') {
