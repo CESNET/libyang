@@ -101,24 +101,33 @@ LY_ERR lyxml_get_attribute(struct lyxml_context *context, const char **input,
  * @brief Parse input as XML text (attribute's values and element's content).
  *
  * Mixed content of XML elements is not allowed. Formating whitespaces before child element are ignored,
- * LY_EINVAL is returned in such a case (buffer is not filled, no error is printed) and input is moved
+ * LY_EINVAL is returned in such a case (output is not set, no error is printed) and input is moved
  * to the beginning of a child definition.
  *
  * In the case of attribute's values, the input string is expected to start on a quotation mark to
  * select which delimiter (single or double quote) is used. Otherwise, the element content is being
  * parsed expected to be terminated by '<' character.
  *
- * If function succeeds, the string in output buffer is always NULL-terminated.
+ * If function succeeds, the string in a dynamically allocated output buffer is always NULL-terminated.
+ *
+ * The dynamically allocated buffer is used only when necessary because of a character or the supported entity
+ * reference which modify the input data. These constructs are replaced by their real value, so in case the output
+ * string will be again printed as an XML data, it may be necessary to correctly encode such characters.
  *
  * @param[in] context XML context to track lines or store errors into libyang context.
  * @param[in,out] input Input string to process, updated according to the processed/read data.
- * @param[out] buffer Storage of the output string. If NULL, the buffer is allocated. Otherwise, the buffer
- * is used and enlarged when necessary.
- * @param[out] buffer_size Allocated size of the returned buffer. If a buffer is provided by a caller, it
+ * @param[in, out] buffer Storage for the output string. If the parameter points to NULL, the buffer is allocated if needed.
+ * Otherwise, when needed, the buffer is used and enlarged when necessary. Whenever the buffer is used, the string is NULL-terminated.
+ * @param[in, out] buffer_size Allocated size of the returned buffer. If a buffer is provided by a caller, it
  * is not being reduced even if the string is shorter. On the other hand, it can be enlarged if needed.
+ * @param[out] output Returns pointer to the resulting string - to the provided/allocated buffer if it was necessary to modify
+ * the input string or directly into the input string (see the \p dynamic parameter).
+ * @param[out] length Length of the \p output string.
+ * @param[out] dynamic Flag if a dynamically allocated memory (\p buffer) was used and caller is supposed to free it at the end.
+ * In case the value is zero, the \p output points directly into the \p input string.
  * @return LY_ERR value.
  */
-LY_ERR lyxml_get_string(struct lyxml_context *context, const char **input, char **buffer, size_t *buffer_size);
+LY_ERR lyxml_get_string(struct lyxml_context *context, const char **input, char **buffer, size_t *buffer_size, char **output, size_t *length, int *dynamic);
 
 /**
  * @brief Add namespace definition into XML context.

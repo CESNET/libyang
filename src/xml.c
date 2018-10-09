@@ -193,7 +193,7 @@ lyxml_check_qname(struct lyxml_context *context, const char **input, unsigned in
 }
 
 LY_ERR
-lyxml_get_string(struct lyxml_context *context, const char **input, char **buffer, size_t *buffer_size)
+lyxml_get_string(struct lyxml_context *context, const char **input, char **buffer, size_t *buffer_size, char **output, size_t *length, int *dynamic)
 {
 #define BUFSIZE 4096
 #define BUFSIZE_STEP 4096
@@ -205,10 +205,10 @@ lyxml_get_string(struct lyxml_context *context, const char **input, char **buffe
     }
 
     struct ly_ctx *ctx = context->ctx; /* shortcut */
-    const char *in = (*input);
-    char *buf, delim;
+    const char *in = (*input), *start;
+    char *buf = NULL, delim;
     size_t offset;  /* read offset in input buffer */
-    size_t len;     /* write offset in output buffer */
+    size_t len;     /* length of the output string (write offset in output buffer) */
     size_t size;    /* size of the output buffer */
     void *p;
     uint32_t n;
@@ -229,6 +229,7 @@ lyxml_get_string(struct lyxml_context *context, const char **input, char **buffe
         delim = '<';
         empty_content = true;
     }
+    start = in;
 
     if (empty_content) {
         /* only when processing element's content - try to ignore whitespaces used to format XML data
@@ -244,26 +245,31 @@ lyxml_get_string(struct lyxml_context *context, const char **input, char **buffe
             (*input) = in + offset;
             return LY_EINVAL;
         }
-    } else {
-        /* init */
-        offset = 0;
     }
+    /* init */
+    offset = len = 0;
 
-    /* prepare output buffer */
-    if (*buffer) {
-        buf = *buffer;
-        size = *buffer_size;
-    } else {
-        buf = malloc(BUFSIZE);
-        size = BUFSIZE;
-
-        LY_CHECK_ERR_RET(!buf, LOGMEM(ctx), LY_EMEM);
+    if (0) {
+getbuffer:
+        /* prepare output buffer */
+        if (*buffer) {
+            buf = *buffer;
+            size = *buffer_size;
+        } else {
+            buf = malloc(BUFSIZE);
+            size = BUFSIZE;
+            LY_CHECK_ERR_RET(!buf, LOGMEM(ctx), LY_EMEM);
+        }
     }
-    len = 0;
 
     /* parse */
     while (in[offset]) {
         if (in[offset] == '&') {
+            if (!buf) {
+                /* it is necessary to modify the input, so we will need a dynamically allocated buffer */
+                goto getbuffer;
+            }
+
             if (offset) {
                 /* store what we have so far */
                 BUFSIZE_CHECK(ctx, buf, size, len, offset);
@@ -339,12 +345,14 @@ lyxml_get_string(struct lyxml_context *context, const char **input, char **buffe
             }
         } else if (in[offset] == delim) {
             /* end of string */
-            if (len + offset >= size) {
-                buf = ly_realloc(buf, len + offset + 1);
-                LY_CHECK_ERR_RET(!buf, LOGMEM(ctx), LY_EMEM);
-                size = len + offset + 1;
+            if (buf) {
+                if (len + offset >= size) {
+                    buf = ly_realloc(buf, len + offset + 1);
+                    LY_CHECK_ERR_RET(!buf, LOGMEM(ctx), LY_EMEM);
+                    size = len + offset + 1;
+                }
+                memcpy(&buf[len], in, offset);
             }
-            memcpy(&buf[len], in, offset);
             len += offset;
             /* in case of element content, keep the leading <,
              * for attribute's value move after the terminating quotation mark */
@@ -372,23 +380,34 @@ error:
     return LY_EVALID;
 
 success:
-    if (!(*buffer) && size != len + 1) {
-        /* not using provided buffer, so fit the allocated buffer to what we really have inside */
-        p = realloc(buf, len + 1);
-        /* ignore realloc fail because we are reducing the buffer,
-         * so just return bigger buffer than needed */
-        if (p) {
-            size = len + 1;
-            buf = p;
+    if (buf) {
+        if (!(*buffer) && size != len + 1) {
+            /* not using provided buffer, so fit the allocated buffer to what we really have inside */
+            p = realloc(buf, len + 1);
+            /* ignore realloc fail because we are reducing the buffer,
+             * so just return bigger buffer than needed */
+            if (p) {
+                size = len + 1;
+                buf = p;
+            }
         }
+        /* set terminating NULL byte */
+        buf[len] = '\0';
     }
-    /* set terminating NULL byte */
-    buf[len] = '\0';
 
     context->status -= 1;
     (*input) = in;
-    (*buffer) = buf;
-    (*buffer_size) = size;
+    if (buf) {
+        (*buffer) = buf;
+        (*buffer_size) = size;
+        (*output) = buf;
+        (*dynamic) = 1;
+    } else {
+        (*output) = (char*)start;
+        (*dynamic) = 0;
+    }
+    (*length) = len;
+
     return LY_SUCCESS;
 
 #undef BUFSIZE

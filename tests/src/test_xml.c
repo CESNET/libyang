@@ -253,9 +253,10 @@ test_text(void **state)
 {
     (void) state; /* unused */
 
-    size_t out_len;
+    size_t buf_len, len;
+    int dynamic;
     const char *str, *p;
-    char *out = NULL;
+    char *buf = NULL, *out = NULL;
 
     struct lyxml_context ctx;
     memset(&ctx, 0, sizeof ctx);
@@ -264,101 +265,120 @@ test_text(void **state)
     /* empty attribute value */
     ctx.status = LYXML_ATTR_CONTENT;
     str = "\"\"";
-    assert_int_equal(LY_SUCCESS, lyxml_get_string(&ctx, &str, &out, &out_len));
-    assert_non_null(out);
-    assert_int_equal(1, out_len);
+    assert_int_equal(LY_SUCCESS, lyxml_get_string(&ctx, &str, &buf, &buf_len, &out, &len, &dynamic));
+    assert_null(buf);
+    assert_ptr_equal(&str[-1], out);
+    assert_int_equal(0, dynamic);
+    assert_int_equal(0, len);
     assert_true(str[0] == '\0'); /* everything eaten */
-    assert_true(out[0] == '\0'); /* empty string */
     assert_int_equal(LYXML_ATTRIBUTE, ctx.status);
 
     ctx.status = LYXML_ATTR_CONTENT;
     str = "\'\'";
-    assert_int_equal(LY_SUCCESS, lyxml_get_string(&ctx, &str, &out, &out_len));
-    assert_non_null(out);
-    assert_int_equal(1, out_len);
+    assert_int_equal(LY_SUCCESS, lyxml_get_string(&ctx, &str, &buf, &buf_len, &out, &len, &dynamic));
+    assert_null(buf);
+    assert_ptr_equal(&str[-1], out);
+    assert_int_equal(0, dynamic);
+    assert_int_equal(0, len);
     assert_true(str[0] == '\0'); /* everything eaten */
-    assert_true(out[0] == '\0'); /* empty string */
     assert_int_equal(LYXML_ATTRIBUTE, ctx.status);
 
     /* empty element content - only formating before defining child */
     ctx.status = LYXML_ELEM_CONTENT;
     str = "\n  <";
-    assert_int_equal(LY_EINVAL, lyxml_get_string(&ctx, &str, &out, &out_len));
+    assert_int_equal(LY_EINVAL, lyxml_get_string(&ctx, &str, &buf, &buf_len, &out, &len, &dynamic));
+    assert_null(buf);
     assert_string_equal("<", str);
 
     /* empty element content is invalid - missing content terminating character < */
     ctx.status = LYXML_ELEM_CONTENT;
     str = "";
-    assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &out, &out_len));
+    assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &buf, &buf_len, &out, &len, &dynamic));
+    assert_null(buf);
     logbuf_assert("Unexpected end-of-file. Line number 2.");
-
-    free(out);
-    out = NULL;
 
     ctx.status = LYXML_ELEM_CONTENT;
     str = p = "xxx";
-    assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &out, &out_len));
+    assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &buf, &buf_len, &out, &len, &dynamic));
+    assert_null(buf);
     logbuf_assert("Unexpected end-of-file. Line number 2.");
     assert_ptr_equal(p, str); /* input data not eaten */
-
-    free(out);
-    out = NULL;
 
     /* valid strings */
     ctx.status = LYXML_ELEM_CONTENT;
     str = "€𠜎Øn \n&lt;&amp;&quot;&apos;&gt; &#82;&#x4f;&#x4B;<";
-    assert_int_equal(LY_SUCCESS, lyxml_get_string(&ctx, &str, &out, &out_len));
-    assert_int_equal(22, out_len);
-    assert_string_equal("€𠜎Øn \n<&\"\'> ROK", out);
+    assert_int_equal(LY_SUCCESS, lyxml_get_string(&ctx, &str, &buf, &buf_len, &out, &len, &dynamic));
+    assert_int_not_equal(0, dynamic);
+    assert_non_null(buf);
+    assert_ptr_equal(out, buf);
+    assert_int_equal(22, buf_len);
+    assert_int_equal(21, len);
+    assert_string_equal("€𠜎Øn \n<&\"\'> ROK", buf);
     assert_string_equal("<", str);
     assert_int_equal(LYXML_ELEMENT, ctx.status);
+
+    free(buf);
+    buf = NULL;
 
     /* test using n-bytes UTF8 hexadecimal code points */
     ctx.status = LYXML_ATTR_CONTENT;
     str = "\'&#x0024;&#x00A2;&#x20ac;&#x10348;\'";
-    assert_int_equal(LY_SUCCESS, lyxml_get_string(&ctx, &str, &out, &out_len));
-    assert_string_equal("$¢€𐍈", out);
+    assert_int_equal(LY_SUCCESS, lyxml_get_string(&ctx, &str, &buf, &buf_len, &out, &len, &dynamic));
+    assert_int_not_equal(0, dynamic);
+    assert_non_null(buf);
+    assert_ptr_equal(out, buf);
+    assert_int_equal(11, buf_len);
+    assert_int_equal(10, len);
+    assert_string_equal("$¢€𐍈", buf);
     assert_int_equal(LYXML_ATTRIBUTE, ctx.status);
+
+    free(buf);
+    buf = NULL;
 
     /* invalid characters in string */
     ctx.status = LYXML_ATTR_CONTENT;
     str = p = "\'&#x52\'";
-    assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &out, &out_len));
+    assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &buf, &buf_len, &out, &len, &dynamic));
     logbuf_assert("Invalid character sequence \"'\", expected ;. Line number 3.");
+    assert_null(buf);
     assert_ptr_equal(p, str); /* input data not eaten */
     ctx.status = LYXML_ATTR_CONTENT;
     str = p = "\"&#82\"";
-    assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &out, &out_len));
+    assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &buf, &buf_len, &out, &len, &dynamic));
     logbuf_assert("Invalid character sequence \"\"\", expected ;. Line number 3.");
+    assert_null(buf);
     assert_ptr_equal(p, str); /* input data not eaten */
     ctx.status = LYXML_ATTR_CONTENT;
     str = p = "\"&nonsence;\"";
-    assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &out, &out_len));
+    assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &buf, &buf_len, &out, &len, &dynamic));
     logbuf_assert("Entity reference \"&nonsence;\" not supported, only predefined references allowed. Line number 3.");
+    assert_null(buf);
     assert_ptr_equal(p, str); /* input data not eaten */
     ctx.status = LYXML_ELEM_CONTENT;
     str = p = "&#o122;";
-    assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &out, &out_len));
+    assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &buf, &buf_len, &out, &len, &dynamic));
     logbuf_assert("Invalid character reference \"&#o122;\". Line number 3.");
+    assert_null(buf);
     assert_ptr_equal(p, str); /* input data not eaten */
 
     ctx.status = LYXML_ATTR_CONTENT;
     str = p = "\'&#x06;\'";
-    assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &out, &out_len));
+    assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &buf, &buf_len, &out, &len, &dynamic));
     logbuf_assert("Invalid character reference \"&#x06;\'\" (0x00000006). Line number 3.");
+    assert_null(buf);
     assert_ptr_equal(p, str); /* input data not eaten */
     ctx.status = LYXML_ATTR_CONTENT;
     str = p = "\'&#xfdd0;\'";
-    assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &out, &out_len));
+    assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &buf, &buf_len, &out, &len, &dynamic));
     logbuf_assert("Invalid character reference \"&#xfdd0;\'\" (0x0000fdd0). Line number 3.");
+    assert_null(buf);
     assert_ptr_equal(p, str); /* input data not eaten */
     ctx.status = LYXML_ATTR_CONTENT;
     str = p = "\'&#xffff;\'";
-    assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &out, &out_len));
+    assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &buf, &buf_len, &out, &len, &dynamic));
     logbuf_assert("Invalid character reference \"&#xffff;\'\" (0x0000ffff). Line number 3.");
+    assert_null(buf);
     assert_ptr_equal(p, str); /* input data not eaten */
-
-    free(out);
 }
 
 static void
