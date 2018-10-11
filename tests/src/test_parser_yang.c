@@ -149,13 +149,13 @@ test_comments(void **state)
     ctx.line = 1;
 
     str = " // this is a text of / one * line */ comment\nargument";
-    assert_int_equal(LY_SUCCESS, get_string(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
     assert_string_equal("argument", word);
     assert_null(buf);
     assert_int_equal(8, len);
 
     str = "/* this is a \n * text // of / block * comment */\"arg\" + \"ume\" \n + \n \"nt\"";
-    assert_int_equal(LY_SUCCESS, get_string(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
     assert_string_equal("argument", word);
     assert_ptr_equal(buf, word);
     assert_int_equal(8, len);
@@ -186,50 +186,64 @@ test_arg(void **state)
 
     /* missing argument */
     str = ";";
-    assert_int_equal(LY_SUCCESS, get_string(&ctx, &str, Y_MAYBE_STR_ARG, &word, &buf, &len));
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_MAYBE_STR_ARG, &word, &buf, &len));
     assert_null(word);
 
     str = "{";
-    assert_int_equal(LY_EVALID, get_string(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
     logbuf_assert("Invalid character sequence \"{\", expected an argument. Line number 1.");
 
-    str = "\"\\s\""; /* invalid escape sequence */
-    assert_int_equal(LY_EVALID, get_string(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    /* invalid escape sequence */
+    str = "\"\\s\"";
+    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
     logbuf_assert("Double-quoted string unknown special character \'\\s\'. Line number 1.");
     str = "\'\\s\'"; /* valid, since it is not an escape sequence in single quoted string */
-    assert_int_equal(LY_SUCCESS, get_string(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
     assert_int_equal(2, len);
     assert_string_equal("\\s\'", word);
     assert_int_equal('\0', str[0]); /* input has been eaten */
 
+    /* invalid character after the argument */
+    str = "hello\"";
+    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    logbuf_assert("Invalid character sequence \"\"\", expected unquoted string character, optsep, semicolon or opening brace. Line number 1.");
+    str = "hello}";
+    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    logbuf_assert("Invalid character sequence \"}\", expected unquoted string character, optsep, semicolon or opening brace. Line number 1.");
+
+    str = "hello/x\t"; /* slash is not an invalid character */
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_int_equal(7, len);
+    assert_string_equal("hello/x\t", word);
+
     assert_null(buf);
 
     /* different quoting */
-    str = "hello";
-    assert_int_equal(LY_SUCCESS, get_string(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    str = "hello ";
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
     assert_null(buf);
     assert_int_equal(5, len);
-    assert_string_equal("hello", word);
+    assert_string_equal("hello ", word);
 
-    str = "hello/*comment*/";
-    assert_int_equal(LY_SUCCESS, get_string(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    str = "hello/*comment*/\n";
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
     assert_null(buf);
     assert_int_equal(5, len);
     assert_false(strncmp("hello", word, len));
 
 
-    str = "\"hello\\n\\t\\\"\\\\\"";
-    assert_int_equal(LY_SUCCESS, get_string(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    str = "\"hello\\n\\t\\\"\\\\\";";
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
     assert_null(buf);
     assert_int_equal(9, len);
-    assert_string_equal("hello\\n\\t\\\"\\\\\"", word);
+    assert_string_equal("hello\\n\\t\\\"\\\\\";", word);
 
     ctx.indent = 14;
     str = "\"hello \t\n\t\t world!\"";
     /* - space and tabs before newline are stripped out
      * - space and tabs after newline (indentation) are stripped out
      */
-    assert_int_equal(LY_SUCCESS, get_string(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
     assert_non_null(buf);
     assert_ptr_equal(word, buf);
     assert_int_equal(14, len);
@@ -238,7 +252,7 @@ test_arg(void **state)
 
     ctx.indent = 14;
     str = "\"hello\n \tworld!\"";
-    assert_int_equal(LY_SUCCESS, get_string(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
     assert_non_null(buf);
     assert_ptr_equal(word, buf);
     assert_int_equal(12, len);
@@ -246,27 +260,30 @@ test_arg(void **state)
     free(buf);
 
     str = "\'hello\'";
-    assert_int_equal(LY_SUCCESS, get_string(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
     assert_null(buf);
     assert_int_equal(5, len);
     assert_false(strncmp("hello", word, 5));
 
     str = "\"hel\"  +\t\n\"lo\"";
-    assert_int_equal(LY_SUCCESS, get_string(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
     assert_ptr_equal(word, buf);
     assert_int_equal(5, len);
     assert_string_equal("hello", word);
     free(buf);
+    str = "\"hel\"  +\t\nlo"; /* unquoted the second part */
+    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    logbuf_assert("Both string parts divided by '+' must be quoted. Line number 5.");
 
     str = "\'he\'\t\n+ \"llo\"";
-    assert_int_equal(LY_SUCCESS, get_string(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
     assert_ptr_equal(word, buf);
     assert_int_equal(5, len);
     assert_string_equal("hello", word);
     free(buf);
 
-    str = "\"he\"+\'llo\'";
-    assert_int_equal(LY_SUCCESS, get_string(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    str = " \t\n\"he\"+\'llo\'";
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
     assert_ptr_equal(word, buf);
     assert_int_equal(5, len);
     assert_string_equal("hello", word);
@@ -274,8 +291,8 @@ test_arg(void **state)
 
     /* missing argument */
     str = ";";
-    assert_int_equal(LY_EVALID, get_string(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
-    logbuf_assert("Invalid character sequence \";\", expected an argument. Line number 5.");
+    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    logbuf_assert("Invalid character sequence \";\", expected an argument. Line number 7.");
 
 }
 

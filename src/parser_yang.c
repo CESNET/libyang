@@ -506,7 +506,7 @@ read_qstring(struct ly_parser_ctx *ctx, const char **data, enum yang_arg arg, ch
                 break;
             default:
                 /* it must be quoted again */
-                LOGVAL_YANG(ctx, LYVE_SYNTAX_YANG, "Both string parts divided by '+' must be quoted.\n");
+                LOGVAL_YANG(ctx, LYVE_SYNTAX_YANG, "Both string parts divided by '+' must be quoted.");
                 return LY_EVALID;
             }
             MOVE_INPUT(ctx, data, 1);
@@ -534,7 +534,7 @@ string_end:
  * @return LY_ERR values.
  */
 static LY_ERR
-get_string(struct ly_parser_ctx *ctx, const char **data, enum yang_arg arg, char **word_p, char **word_b, size_t *word_len)
+get_argument(struct ly_parser_ctx *ctx, const char **data, enum yang_arg arg, char **word_p, char **word_b, size_t *word_len)
 {
     size_t buf_len = 0;
     LY_ERR ret;
@@ -551,8 +551,10 @@ get_string(struct ly_parser_ctx *ctx, const char **data, enum yang_arg arg, char
         case '\'':
         case '\"':
             if (*word_len) {
-                /* we want strings always in a separate word, leave it */
-                goto str_end;
+                /* invalid - quotes cannot be in unquoted string and only optsep, ; or { can follow it */
+                LOGVAL_YANG(ctx, LY_VCODE_INSTREXP, 1, *data,
+                            "unquoted string character, optsep, semicolon or opening brace");
+                return LY_EVALID;
             }
             ret = read_qstring(ctx, data, arg, word_p, word_b, word_len, &buf_len);
             LY_CHECK_RET(ret);
@@ -568,7 +570,6 @@ get_string(struct ly_parser_ctx *ctx, const char **data, enum yang_arg arg, char
                 ret = skip_comment(ctx, data, 2);
             } else {
                 /* not a comment after all */
-                --data;
                 ret = buf_store_char(ctx, data, arg, word_p, word_len, word_b, &buf_len, 0);
             }
             LY_CHECK_RET(ret);
@@ -611,6 +612,11 @@ get_string(struct ly_parser_ctx *ctx, const char **data, enum yang_arg arg, char
             }
 
             LOGVAL_YANG(ctx, LY_VCODE_INSTREXP, 1, *data, "an argument");
+            return LY_EVALID;
+        case '}':
+            /* invalid - braces cannot be in unquoted string (opening braces terminates the string and can follow it) */
+            LOGVAL_YANG(ctx, LY_VCODE_INSTREXP, 1, *data,
+                        "unquoted string character, optsep, semicolon or opening brace");
             return LY_EVALID;
         default:
             LY_CHECK_RET(buf_store_char(ctx, data, arg, word_p, word_len, word_b, &buf_len, 0));
@@ -968,7 +974,7 @@ parse_ext_substmt(struct ly_parser_ctx *ctx, const char **data, char *word, size
     stmt->stmt = lydict_insert(ctx->ctx, word, word_len);
 
     /* get optional argument */
-    ret = get_string(ctx, data, Y_MAYBE_STR_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_MAYBE_STR_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     if (word) {
@@ -1029,7 +1035,7 @@ parse_ext(struct ly_parser_ctx *ctx, const char **data, const char *ext_name, in
     e->insubstmt_index = insubstmt_index;
 
     /* get optional argument */
-    ret = get_string(ctx, data, Y_MAYBE_STR_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_MAYBE_STR_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     if (word) {
@@ -1076,7 +1082,7 @@ parse_text_field(struct ly_parser_ctx *ctx, const char **data, LYEXT_SUBSTMT sub
     }
 
     /* get value */
-    ret = get_string(ctx, data, arg, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, arg, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     /* store value and spend buf if allocated */
@@ -1123,7 +1129,7 @@ parse_yangversion(struct ly_parser_ctx *ctx, const char **data, struct lysp_modu
     }
 
     /* get value */
-    ret = get_string(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     if ((word_len == 3) && !strncmp(word, "1.0", word_len)) {
@@ -1180,7 +1186,7 @@ parse_belongsto(struct ly_parser_ctx *ctx, const char **data, const char **belon
     }
 
     /* get value */
-    ret = get_string(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, *belongsto, word, word_len);
@@ -1235,7 +1241,7 @@ parse_revisiondate(struct ly_parser_ctx *ctx, const char **data, char *rev, stru
     }
 
     /* get value */
-    ret = get_string(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     /* check value */
@@ -1287,7 +1293,7 @@ parse_include(struct ly_parser_ctx *ctx, const char **data, struct lysp_include 
     LYSP_ARRAY_NEW_RET(ctx, includes, inc, LY_EMEM);
 
     /* get value */
-    ret = get_string(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, inc->name, word, word_len);
@@ -1339,7 +1345,7 @@ parse_import(struct ly_parser_ctx *ctx, const char **data, struct lysp_import **
     LYSP_ARRAY_NEW_RET(ctx, imports, imp, LY_EVALID);
 
     /* get value */
-    ret = get_string(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, imp->name, word, word_len);
@@ -1400,7 +1406,7 @@ parse_revision(struct ly_parser_ctx *ctx, const char **data, struct lysp_revisio
     LYSP_ARRAY_NEW_RET(ctx, revs, rev, LY_EMEM);
 
     /* get value */
-    ret = get_string(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     /* check value */
@@ -1462,7 +1468,7 @@ parse_text_fields(struct ly_parser_ctx *ctx, const char **data, LYEXT_SUBSTMT su
     LY_CHECK_ERR_RET(!*texts, LOGMEM(ctx->ctx), LY_EMEM);
 
     /* get value */
-    ret = get_string(ctx, data, arg, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, arg, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, (*texts)[count - 1], word, word_len);
@@ -1508,7 +1514,7 @@ parse_config(struct ly_parser_ctx *ctx, const char **data, uint16_t *flags, stru
     }
 
     /* get value */
-    ret = get_string(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     if ((word_len == 4) && !strncmp(word, "true", word_len)) {
@@ -1564,7 +1570,7 @@ parse_mandatory(struct ly_parser_ctx *ctx, const char **data, uint16_t *flags, s
     }
 
     /* get value */
-    ret = get_string(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     if ((word_len == 4) && !strncmp(word, "true", word_len)) {
@@ -1615,7 +1621,7 @@ parse_restr(struct ly_parser_ctx *ctx, const char **data, enum yang_keyword rest
     enum yang_keyword kw;
 
     /* get value */
-    ret = get_string(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, restr->arg, word, word_len);
@@ -1693,7 +1699,7 @@ parse_status(struct ly_parser_ctx *ctx, const char **data, uint16_t *flags, stru
     }
 
     /* get value */
-    ret = get_string(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     if ((word_len == 7) && !strncmp(word, "current", word_len)) {
@@ -1755,7 +1761,7 @@ parse_when(struct ly_parser_ctx *ctx, const char **data, struct lysp_when **when
     *when_p = when;
 
     /* get value */
-    ret = get_string(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, when->cond, word, word_len);
@@ -1816,7 +1822,7 @@ parse_any(struct ly_parser_ctx *ctx, const char **data, enum yang_keyword kw, st
     }
 
     /* get name */
-    ret = get_string(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, any->name, word, word_len);
@@ -1895,7 +1901,7 @@ parse_type_enum_value_pos(struct ly_parser_ctx *ctx, const char **data, enum yan
     *flags |= LYS_SET_VALUE;
 
     /* get value */
-    ret = get_string(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     if (!word_len || (word[0] == '+') || ((word[0] == '0') && (word_len > 1)) || ((val_kw == YANG_VALUE) && !strncmp(word, "-0", 2))) {
@@ -1968,7 +1974,7 @@ parse_type_enum(struct ly_parser_ctx *ctx, const char **data, enum yang_keyword 
     LYSP_ARRAY_NEW_RET(ctx, enums, enm, LY_EMEM);
 
     /* get value */
-    ret = get_string(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, enm->name, word, word_len);
@@ -2031,7 +2037,7 @@ parse_type_fracdigits(struct ly_parser_ctx *ctx, const char **data, uint8_t *fra
     }
 
     /* get value */
-    ret = get_string(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     if (!word_len || (word[0] == '0') || !isdigit(word[0])) {
@@ -2101,7 +2107,7 @@ parse_type_reqinstance(struct ly_parser_ctx *ctx, const char **data, uint8_t *re
     *flags |= LYS_SET_REQINST;
 
     /* get value */
-    ret = get_string(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     if ((word_len == 4) && !strncmp(word, "true", word_len)) {
@@ -2155,7 +2161,7 @@ parse_type_pattern_modifier(struct ly_parser_ctx *ctx, const char **data, const 
     }
 
     /* get value */
-    ret = get_string(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     if ((word_len != 12) || strncmp(word, "invert-match", word_len)) {
@@ -2214,7 +2220,7 @@ parse_type_pattern(struct ly_parser_ctx *ctx, const char **data, struct lysp_res
     LYSP_ARRAY_NEW_RET(ctx, patterns, restr, LY_EMEM);
 
     /* get value */
-    ret = get_string(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     /* add special meaning first byte */
@@ -2286,7 +2292,7 @@ parse_type(struct ly_parser_ctx *ctx, const char **data, struct lysp_type *type)
     }
 
     /* get value */
-    ret = get_string(ctx, data, Y_PREF_IDENTIF_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_PREF_IDENTIF_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, type->name, word, word_len);
@@ -2388,7 +2394,7 @@ parse_leaf(struct ly_parser_ctx *ctx, const char **data, struct lysp_node **sibl
     }
 
     /* get name */
-    ret = get_string(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, leaf->name, word, word_len);
@@ -2478,7 +2484,7 @@ parse_maxelements(struct ly_parser_ctx *ctx, const char **data, uint32_t *max, u
     *flags |= LYS_SET_MAX;
 
     /* get value */
-    ret = get_string(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     if (!word_len || (word[0] == '0') || ((word[0] != 'u') && !isdigit(word[0]))) {
@@ -2551,7 +2557,7 @@ parse_minelements(struct ly_parser_ctx *ctx, const char **data, uint32_t *min, u
     *flags |= LYS_SET_MIN;
 
     /* get value */
-    ret = get_string(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     if (!word_len || !isdigit(word[0]) || ((word[0] == '0') && (word_len > 1))) {
@@ -2618,7 +2624,7 @@ parse_orderedby(struct ly_parser_ctx *ctx, const char **data, uint16_t *flags, s
     }
 
     /* get value */
-    ret = get_string(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     if ((word_len == 6) && !strncmp(word, "system", word_len)) {
@@ -2683,7 +2689,7 @@ parse_leaflist(struct ly_parser_ctx *ctx, const char **data, struct lysp_node **
     }
 
     /* get name */
-    ret = get_string(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, llist->name, word, word_len);
@@ -2773,7 +2779,7 @@ parse_refine(struct ly_parser_ctx *ctx, const char **data, struct lysp_refine **
     LYSP_ARRAY_NEW_RET(ctx, refines, rf, LY_EMEM);
 
     /* get value */
-    ret = get_string(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, rf->nodeid, word, word_len);
@@ -2846,7 +2852,7 @@ parse_typedef(struct ly_parser_ctx *ctx, const char **data, struct lysp_tpdf **t
     LYSP_ARRAY_NEW_RET(ctx, typedefs, tpdf, LY_EMEM);
 
     /* get value */
-    ret = get_string(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, tpdf->name, word, word_len);
@@ -2993,7 +2999,7 @@ parse_action(struct ly_parser_ctx *ctx, const char **data, struct lysp_action **
     LYSP_ARRAY_NEW_RET(ctx, actions, act, LY_EMEM);
 
     /* get value */
-    ret = get_string(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, act->name, word, word_len);
@@ -3062,7 +3068,7 @@ parse_notif(struct ly_parser_ctx *ctx, const char **data, struct lysp_notif **no
     LYSP_ARRAY_NEW_RET(ctx, notifs, notif, LY_EMEM);
 
     /* get value */
-    ret = get_string(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, notif->name, word, word_len);
@@ -3150,7 +3156,7 @@ parse_grouping(struct ly_parser_ctx *ctx, const char **data, struct lysp_grp **g
     LYSP_ARRAY_NEW_RET(ctx, groupings, grp, LY_EMEM);
 
     /* get value */
-    ret = get_string(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, grp->name, word, word_len);
@@ -3239,7 +3245,7 @@ parse_augment(struct ly_parser_ctx *ctx, const char **data, struct lysp_augment 
     LYSP_ARRAY_NEW_RET(ctx, augments, aug, LY_EMEM);
 
     /* get value */
-    ret = get_string(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, aug->nodeid, word, word_len);
@@ -3342,7 +3348,7 @@ parse_uses(struct ly_parser_ctx *ctx, const char **data, struct lysp_node **sibl
     }
 
     /* get name */
-    ret = get_string(ctx, data, Y_PREF_IDENTIF_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_PREF_IDENTIF_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, uses->name, word, word_len);
@@ -3421,7 +3427,7 @@ parse_case(struct ly_parser_ctx *ctx, const char **data, struct lysp_node **sibl
     }
 
     /* get name */
-    ret = get_string(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, cas->name, word, word_len);
@@ -3516,7 +3522,7 @@ parse_choice(struct ly_parser_ctx *ctx, const char **data, struct lysp_node **si
     }
 
     /* get name */
-    ret = get_string(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, choice->name, word, word_len);
@@ -3620,7 +3626,7 @@ parse_container(struct ly_parser_ctx *ctx, const char **data, struct lysp_node *
     }
 
     /* get name */
-    ret = get_string(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, cont->name, word, word_len);
@@ -3737,7 +3743,7 @@ parse_list(struct ly_parser_ctx *ctx, const char **data, struct lysp_node **sibl
     }
 
     /* get name */
-    ret = get_string(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, list->name, word, word_len);
@@ -3857,7 +3863,7 @@ parse_yinelement(struct ly_parser_ctx *ctx, const char **data, uint16_t *flags, 
     }
 
     /* get value */
-    ret = get_string(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     if ((word_len == 4) && !strncmp(word, "true", word_len)) {
@@ -3914,7 +3920,7 @@ parse_argument(struct ly_parser_ctx *ctx, const char **data, const char **argume
     }
 
     /* get value */
-    ret = get_string(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, *argument, word, word_len);
@@ -3960,7 +3966,7 @@ parse_extension(struct ly_parser_ctx *ctx, const char **data, struct lysp_ext **
     LYSP_ARRAY_NEW_RET(ctx, extensions, ex, LY_EMEM);
 
     /* get value */
-    ret = get_string(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, ex->name, word, word_len);
@@ -4020,7 +4026,7 @@ parse_deviate(struct ly_parser_ctx *ctx, const char **data, struct lysp_deviate 
     uint32_t *d_min, *d_max;
 
     /* get value */
-    ret = get_string(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     if ((word_len == 13) && !strncmp(word, "not-supported", word_len)) {
@@ -4231,7 +4237,7 @@ parse_deviation(struct ly_parser_ctx *ctx, const char **data, struct lysp_deviat
     LYSP_ARRAY_NEW_RET(ctx, deviations, dev, LY_EMEM);
 
     /* get value */
-    ret = get_string(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, dev->nodeid, word, word_len);
@@ -4289,7 +4295,7 @@ parse_feature(struct ly_parser_ctx *ctx, const char **data, struct lysp_feature 
     LYSP_ARRAY_NEW_RET(ctx, features, feat, LY_EMEM);
 
     /* get value */
-    ret = get_string(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, feat->name, word, word_len);
@@ -4344,7 +4350,7 @@ parse_identity(struct ly_parser_ctx *ctx, const char **data, struct lysp_ident *
     LYSP_ARRAY_NEW_RET(ctx, identities, ident, LY_EMEM);
 
     /* get value */
-    ret = get_string(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, ident->name, word, word_len);
@@ -4400,7 +4406,7 @@ parse_sub_module(struct ly_parser_ctx *ctx, const char **data, struct lysp_modul
     enum yang_module_stmt mod_stmt = Y_MOD_MODULE_HEADER;
 
     /* (sub)module name */
-    ret = get_string(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
+    ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, mod->name, word, word_len);
@@ -4627,7 +4633,7 @@ yang_parse(struct ly_ctx *ctx, const char *data, struct lysp_module **mod_p)
     LY_CHECK_GOTO(ret, error);
 
     if ((kw != YANG_MODULE) && (kw != YANG_SUBMODULE)) {
-        LOGVAL_YANG(&context, LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".\n",
+        LOGVAL_YANG(&context, LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".",
                ly_stmt2str(kw));
         goto error;
     }
@@ -4643,7 +4649,7 @@ yang_parse(struct ly_ctx *ctx, const char *data, struct lysp_module **mod_p)
     LY_CHECK_GOTO(ret, error);
 
     /* read some trailing spaces or new lines */
-    ret = get_string(&context, &data, Y_MAYBE_STR_ARG, &word, &buf, &word_len);
+    ret = get_argument(&context, &data, Y_MAYBE_STR_ARG, &word, &buf, &word_len);
     LY_CHECK_GOTO(ret, error);
 
     if (word) {
