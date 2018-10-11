@@ -157,6 +157,7 @@ set(libsrc
     src/hash_table.c
     src/set.c
     src/context.c
+    src/tree_schema.c
     src/parser_yang.c
     src/xml.c)
 

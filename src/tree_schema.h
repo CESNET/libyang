@@ -674,6 +674,13 @@ struct lysp_module {
 };
 
 /**
+ * @brief Free the printable YANG schema tree structure.
+ *
+ * @param[in] module Printable YANG schema tree structure to free.
+ */
+void lysp_module_free(struct lysp_module *module);
+
+/**
  * @brief Compiled YANG schema tree structure representing YANG module.
  *
  * Semantically validated YANG schema tree for data tree parsing.
