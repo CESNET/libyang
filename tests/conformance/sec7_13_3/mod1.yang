@@ -38,14 +38,14 @@ module mod1 {
                 }
             }
 
-            uses gr;
-
             container cont {
                 leaf mandatory {
                     type boolean;
                     mandatory true;
                 }
             }
+
+            uses gr;
 
             anyxml any;
         }
@@ -118,15 +118,15 @@ module mod1 {
 
     rpc test5 {
         output {
-            uses global {
-                when "cont/top = 'false'";
-            }
-
             container cont {
                 presence "enable";
                 leaf top {
                     type boolean;
                 }
+            }
+
+            uses global {
+                when "cont/top = 'false'";
             }
 
             leaf leaf {
