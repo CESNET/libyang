@@ -145,7 +145,11 @@ check_stringchar(struct ly_parser_ctx *ctx, unsigned int c)
  * @param[in] ctx yang parser context for logging.
  * @param[in] c UTF8 code point of a character to check.
  * @param[in] first Flag to check the first character of an identifier, which is more restricted.
- * @param[in,out] prefix Storage for internally used flag in case of possible prefixed identifiers.
+ * @param[in,out] prefix Storage for internally used flag in case of possible prefixed identifiers:
+ * 0 - colon not yet found (no prefix)
+ * 1 - \p c is the colon character
+ * 2 - prefix already processed, now processing the identifier
+ *
  * If the identifier cannot be prefixed, NULL is expected.
  * @return LY_ERR values.
  */
@@ -653,8 +657,6 @@ get_keyword(struct ly_parser_ctx *ctx, const char **data, enum yang_keyword *kw,
     LY_ERR ret;
     int prefix;
     const char *word_start;
-    /* slash: 0 - nothing, 1 - last character was '/' */
-    int slash = 0;
     unsigned int c;
     size_t len;
 
@@ -665,32 +667,27 @@ get_keyword(struct ly_parser_ctx *ctx, const char **data, enum yang_keyword *kw,
 
     /* first skip "optsep", comments */
     while (**data) {
-        if (slash) {
-            if (**data == '/') {
+        switch (**data) {
+        case '/':
+            if ((*data)[1] == '/') {
                 /* one-line comment */
-                MOVE_INPUT(ctx, data, 1);
+                MOVE_INPUT(ctx, data, 2);
                 ret = skip_comment(ctx, data, 1);
                 if (ret) {
                     return ret;
                 }
-            } else if (**data == '*') {
+            } else if ((*data)[1] == '*') {
                 /* block comment */
-                MOVE_INPUT(ctx, data, 1);
+                MOVE_INPUT(ctx, data, 2);
                 ret = skip_comment(ctx, data, 2);
                 if (ret) {
                     return ret;
                 }
             } else {
-                /* not a comment after all */
-                goto keyword_start;
+                /* error - not a comment after all, keyword cannot start with slash */
+                LOGVAL_YANG(ctx, LYVE_SYNTAX_YANG, "Invalid identifier first character '/'.");
+                return LY_EVALID;
             }
-            slash = 0;
-        }
-
-        switch (**data) {
-        case '/':
-            slash = 1;
-            ++ctx->indent;
             break;
         case '\n':
             /* skip whitespaces (optsep) */
@@ -910,6 +907,12 @@ keyword_start:
         case '\t':
             /* mandatory "sep" */
             break;
+        case '{':
+            /* allowed only for input and output statements which can be without arguments */
+            if (*kw == YANG_INPUT || *kw == YANG_OUTPUT) {
+                break;
+            }
+            /* fallthrough */
         default:
             MOVE_INPUT(ctx, data, 1);
             LOGVAL_YANG(ctx, LY_VCODE_INSTREXP, (int)(*data - word_start), word_start,
@@ -932,7 +935,7 @@ keyword_start:
         }
 
         /* prefix is mandatory for extension instances */
-        if (prefix != 1) {
+        if (prefix != 2) {
             LOGVAL_YANG(ctx, LY_VCODE_INSTREXP, (int)(*data - word_start), word_start, "a keyword");
             return LY_EVALID;
         }
