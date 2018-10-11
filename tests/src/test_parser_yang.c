@@ -634,7 +634,53 @@ test_stmts(void **state)
     assert_int_equal(YANG_CUSTOM, kw);
     assert_int_equal(23, len);
     assert_ptr_equal(p, word);
+}
 
+static struct lysp_module *
+mod_renew(struct ly_parser_ctx *ctx, struct lysp_module *mod)
+{
+    lysp_module_free(mod);
+    mod = calloc(1, sizeof *mod);
+    mod->ctx = ctx->ctx;
+    assert_non_null(mod);
+    return mod;
+}
+
+static void
+test_module(void **state)
+{
+    (void) state; /* unused */
+
+    struct ly_parser_ctx ctx;
+    struct lysp_module *mod;
+    const char *str;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
+    assert_non_null(ctx.ctx);
+    ctx.line = 1;
+
+    mod = mod_renew(&ctx, NULL);
+
+    /* missing mandatory substatements */
+    str = " name {}";
+    assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
+    assert_string_equal("name", mod->name);
+    logbuf_assert("Missing mandatory keyword \"namespace\" as a child of \"module\". Line number 1.");
+    mod = mod_renew(&ctx, mod);
+
+    str = " name {namespace urn:x;}";
+    assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
+    assert_string_equal("urn:x", mod->ns);
+    logbuf_assert("Missing mandatory keyword \"prefix\" as a child of \"module\". Line number 1.");
+    mod = mod_renew(&ctx, mod);
+
+    str = " name {namespace urn:x;prefix \"x\";}";
+    assert_int_equal(LY_SUCCESS, parse_sub_module(&ctx, &str, mod));
+    assert_string_equal("x", mod->prefix);
+    mod = mod_renew(&ctx, mod);
+
+    lysp_module_free(mod);
+    ly_ctx_destroy(ctx.ctx, NULL);
 }
 
 int main(void)
@@ -644,6 +690,7 @@ int main(void)
         cmocka_unit_test_setup(test_comments, logger_setup),
         cmocka_unit_test_setup(test_arg, logger_setup),
         cmocka_unit_test_setup(test_stmts, logger_setup),
+        cmocka_unit_test_setup(test_module, logger_setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

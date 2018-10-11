@@ -51,8 +51,9 @@ struct ly_parser_ctx {
 #define is_yangidentchar(c) ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || \
         c == '_' || c == '-' || c == '.')
 
-#define INSERT_WORD(CTX, BUF, TARGET, WORD, LEN) if (BUF) {(TARGET) = lydict_insert_zc((CTX)->ctx, WORD);} \
-                                                 else {(TARGET) = lydict_insert((CTX)->ctx, WORD, LEN);}
+#define INSERT_WORD(CTX, BUF, TARGET, WORD, LEN) \
+    if (BUF) {(TARGET) = lydict_insert_zc((CTX)->ctx, WORD);}\
+    else {(TARGET) = lydict_insert((CTX)->ctx, WORD, LEN);}
 
 #define MOVE_INPUT(CTX, DATA, COUNT) (*(data))+=COUNT;(CTX)->indent+=COUNT
 
@@ -161,10 +162,12 @@ check_identifierchar(struct ly_parser_ctx *ctx, unsigned int c, int first, int *
             LOGVAL_YANG(ctx, LYVE_SYNTAX_YANG, "Invalid identifier first character '%c'.", c);
             return LY_EVALID;
         }
-        if (first) {
-            (*prefix) = 0;
-        } else {
-            (*prefix) = 2;
+        if (prefix) {
+            if (first) {
+                (*prefix) = 0;
+            } else {
+                (*prefix) = 2;
+            }
         }
     } else if (c == ':' && prefix && (*prefix) == 0) {
         (*prefix) = 1;
@@ -4646,6 +4649,7 @@ yang_parse(struct ly_ctx *ctx, const char *data, struct lysp_module **mod_p)
     if (kw == YANG_SUBMODULE) {
         mod->submodule = 1;
     }
+    mod->ctx = ctx;
 
     /* substatements */
     ret = parse_sub_module(&context, &data, mod);
@@ -4667,6 +4671,6 @@ yang_parse(struct ly_ctx *ctx, const char *data, struct lysp_module **mod_p)
     return ret;
 
 error:
-    /* TODO free module */
+    lysp_module_free(mod);
     return ret;
 }
