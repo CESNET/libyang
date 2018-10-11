@@ -612,6 +612,21 @@ test_stmts(void **state)
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
     assert_int_equal(YANG_YIN_ELEMENT, kw);
     assert_int_equal(11, len);
+    str = ";config false;";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    assert_int_equal(YANG_SEMICOLON, kw);
+    assert_int_equal(1, len);
+    assert_string_equal("config false;", str);
+    str = "{ config false;";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    assert_int_equal(YANG_LEFT_BRACE, kw);
+    assert_int_equal(1, len);
+    assert_string_equal(" config false;", str);
+    str = "}";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    assert_int_equal(YANG_RIGHT_BRACE, kw);
+    assert_int_equal(1, len);
+    assert_string_equal("", str);
 
     /* geenric extension */
     str = p = "nacm:default-deny-write;";

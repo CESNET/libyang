@@ -884,15 +884,15 @@ keyword_start:
     case ';':
         MOVE_INPUT(ctx, data, 1);
         *kw = YANG_SEMICOLON;
-        break;
+        goto success;
     case '{':
         MOVE_INPUT(ctx, data, 1);
         *kw = YANG_LEFT_BRACE;
-        break;
+        goto success;
     case '}':
         MOVE_INPUT(ctx, data, 1);
         *kw = YANG_RIGHT_BRACE;
-        break;
+        goto success;
     default:
         break;
     }
@@ -942,7 +942,7 @@ keyword_start:
 
         *kw = YANG_CUSTOM;
     }
-
+success:
     if (word_p) {
         *word_p = (char *)word_start;
         *word_len = *data - word_start;
