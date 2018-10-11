@@ -52,6 +52,7 @@ int
 lyv_data_context(const struct lyd_node *node, int options, struct unres_data *unres)
 {
     const struct lys_node *siter = NULL;
+    struct lys_node *sparent;
     struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
     struct ly_ctx *ctx = node->schema->module->ctx;
 
@@ -99,9 +100,13 @@ lyv_data_context(const struct lyd_node *node, int options, struct unres_data *un
     /* check elements order in case of RPC's input and output */
     if (!(options & (LYD_OPT_TRUSTED | LYD_OPT_NOTIF_FILTER)) && (node->validity & LYD_VAL_MAND) && lyp_is_rpc_action(node->schema)) {
         if ((node->prev != node) && node->prev->next) {
-            for (siter = lys_getnext(node->schema, lys_parent(node->schema), lyd_node_module(node), LYS_GETNEXT_PARENTUSES);
+            /* find schema data parent */
+            for (sparent = lys_parent(node->schema);
+                    sparent && (sparent->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE));
+                    sparent = lys_parent(sparent));
+            for (siter = lys_getnext(node->schema, sparent, lyd_node_module(node), 0);
                     siter;
-                    siter = lys_getnext(siter, lys_parent(node->schema), lyd_node_module(node), LYS_GETNEXT_PARENTUSES)) {
+                    siter = lys_getnext(siter, sparent, lyd_node_module(node), 0)) {
                 if (siter == node->prev->schema) {
                     /* data predecessor has the schema node after
                      * the schema node of the data node being checked */
