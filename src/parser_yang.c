@@ -30,7 +30,8 @@
 
 struct ly_parser_ctx {
     struct ly_ctx *ctx;
-    uint64_t line;
+    uint64_t line;      /* line number */
+    uint64_t indent;    /* current position on the line for indentation */
 };
 
 /* Macro to check YANG's yang-char grammar rule */
@@ -52,6 +53,8 @@ struct ly_parser_ctx {
 
 #define INSERT_WORD(CTX, BUF, TARGET, WORD, LEN) if (BUF) {(TARGET) = lydict_insert_zc((CTX)->ctx, WORD);} \
                                                  else {(TARGET) = lydict_insert((CTX)->ctx, WORD, LEN);}
+
+#define MOVE_INPUT(CTX, DATA, COUNT) (*(data))+=COUNT;(CTX)->indent+=COUNT
 
 #define LOGVAL_YANG(CTX, ...) LOGVAL((CTX)->ctx, LY_VLOG_LINE, &(CTX)->line, __VA_ARGS__)
 
@@ -197,6 +200,13 @@ buf_store_char(struct ly_parser_ctx *ctx, const char **input, enum yang_arg arg,
     LY_CHECK_ERR_RET(ly_getutf8(input, &c, &len),
                      LOGVAL_YANG(ctx, LY_VCODE_INCHAR, (*input)[-len]), LY_EVALID);
     (*input) -= len;
+    if (c == '\n') {
+        ctx->indent = 0;
+    } else {
+        /* note - even the multibyte character is count as 1 */
+        ++ctx->indent;
+    }
+
     /* check character validity */
     switch (arg) {
     case Y_IDENTIF_ARG:
@@ -296,6 +306,11 @@ skip_comment(struct ly_parser_ctx *ctx, const char **data, int comment)
             LOGINT_RET(ctx->ctx);
         }
 
+        if (**data == '\n') {
+            ctx->indent = 0;
+        } else {
+            ++ctx->indent;
+        }
         ++(*data);
     }
 
@@ -325,23 +340,22 @@ skip_comment(struct ly_parser_ctx *ctx, const char **data, int comment)
  */
 static LY_ERR
 read_qstring(struct ly_parser_ctx *ctx, const char **data, enum yang_arg arg, char **word_p, char **word_b, size_t *word_len,
-             size_t *buf_len, int indent)
+             size_t *buf_len)
 {
     /* string: 0 - string ended, 1 - string with ', 2 - string with ", 3 - string with " with last character \,
      *         4 - string finished, now skipping whitespaces looking for +,
      *         5 - string continues after +, skipping whitespaces */
-    int string, str_nl_indent = 0, need_buf = 0;
+    unsigned int string, block_indent = 0, current_indent = 0, need_buf = 0;
     const char *c;
 
     if (**data == '\"') {
-        /* indent of the " itself */
-        ++indent;
         string = 2;
+        current_indent = block_indent = ctx->indent + 1;
     } else {
         assert(**data == '\'');
         string = 1;
     }
-    ++(*data);
+    MOVE_INPUT(ctx, data, 1);
 
     while (**data && string) {
         switch (string) {
@@ -350,7 +364,7 @@ read_qstring(struct ly_parser_ctx *ctx, const char **data, enum yang_arg arg, ch
             case '\'':
                 /* string may be finished, but check for + */
                 string = 4;
-                ++(*data);
+                MOVE_INPUT(ctx, data, 1);
                 break;
             default:
                 /* check and store character */
@@ -363,7 +377,7 @@ read_qstring(struct ly_parser_ctx *ctx, const char **data, enum yang_arg arg, ch
             case '\"':
                 /* string may be finished, but check for + */
                 string = 4;
-                ++(*data);
+                MOVE_INPUT(ctx, data, 1);
                 break;
             case '\\':
                 /* special character following */
@@ -371,32 +385,44 @@ read_qstring(struct ly_parser_ctx *ctx, const char **data, enum yang_arg arg, ch
                 ++(*data);
                 break;
             case ' ':
-                if (str_nl_indent) {
-                    --str_nl_indent;
-                    ++(*data);
+                if (current_indent < block_indent) {
+                    ++current_indent;
+                    MOVE_INPUT(ctx, data, 1);
                 } else {
                     /* check and store character */
                     LY_CHECK_RET(buf_store_char(ctx, data, arg, word_p, word_len, word_b, buf_len, need_buf));
                 }
                 break;
             case '\t':
-                if (str_nl_indent) {
-                    if (str_nl_indent < 9) {
-                        str_nl_indent = 0;
-                    } else {
-                        str_nl_indent -= 8;
+                if (current_indent < block_indent) {
+                    assert(need_buf);
+                    current_indent += 8;
+                    ctx->indent += 8;
+                    for (; current_indent > block_indent; --current_indent, --ctx->indent) {
+                        /* store leftover spaces from the tab */
+                        c = " ";
+                        LY_CHECK_RET(buf_store_char(ctx, &c, arg, word_p, word_len, word_b, buf_len, need_buf));
                     }
                     ++(*data);
                 } else {
                     /* check and store character */
                     LY_CHECK_RET(buf_store_char(ctx, data, arg, word_p, word_len, word_b, buf_len, need_buf));
+                    /* additional characters for indentation - only 1 was count in buf_store_char */
+                    ctx->indent += 7;
                 }
                 break;
             case '\n':
-                str_nl_indent = indent;
-                if (indent) {
+                if (block_indent) {
                     /* we will be removing the indents so we need our own buffer */
                     need_buf = 1;
+
+                    /* remove trailing tabs and spaces */
+                    while ((*word_len) && ((*word_p)[(*word_len) - 1] == '\t' || (*word_p)[(*word_len) - 1] == ' ')) {
+                        --(*word_len);
+                    }
+
+                    /* start indentation */
+                    current_indent = 0;
                 }
 
                 /* check and store character */
@@ -404,10 +430,13 @@ read_qstring(struct ly_parser_ctx *ctx, const char **data, enum yang_arg arg, ch
 
                 /* maintain line number */
                 ++ctx->line;
+
+                /* reset context indentation counter for possible string after this one */
+                ctx->indent = 0;
                 break;
             default:
-                /* first non-whitespace character, clear current indent */
-                str_nl_indent = 0;
+                /* first non-whitespace character, stop eating indentation */
+                current_indent = block_indent;
 
                 /* check and store character */
                 LY_CHECK_RET(buf_store_char(ctx, data, arg, word_p, word_len, word_b, buf_len, need_buf));
@@ -430,7 +459,7 @@ read_qstring(struct ly_parser_ctx *ctx, const char **data, enum yang_arg arg, ch
                 c = *data;
                 break;
             default:
-                LOGVAL_YANG(ctx, LYVE_SYNTAX_YANG, "Double-quoted string unknown special character '\\%c'.\n", **data);
+                LOGVAL_YANG(ctx, LYVE_SYNTAX_YANG, "Double-quoted string unknown special character '\\%c'.", **data);
                 return LY_EVALID;
             }
 
@@ -458,7 +487,7 @@ read_qstring(struct ly_parser_ctx *ctx, const char **data, enum yang_arg arg, ch
                 /* string is finished */
                 goto string_end;
             }
-            ++(*data);
+            MOVE_INPUT(ctx, data, 1);
             break;
         case 5:
             switch (**data) {
@@ -480,7 +509,7 @@ read_qstring(struct ly_parser_ctx *ctx, const char **data, enum yang_arg arg, ch
                 LOGVAL_YANG(ctx, LYVE_SYNTAX_YANG, "Both string parts divided by '+' must be quoted.\n");
                 return LY_EVALID;
             }
-            ++(*data);
+            MOVE_INPUT(ctx, data, 1);
             break;
         default:
             return LY_EINT;
@@ -508,7 +537,6 @@ static LY_ERR
 get_string(struct ly_parser_ctx *ctx, const char **data, enum yang_arg arg, char **word_p, char **word_b, size_t *word_len)
 {
     size_t buf_len = 0;
-    int indent = 0;
     LY_ERR ret;
 
     /* word buffer - dynamically allocated */
@@ -526,17 +554,17 @@ get_string(struct ly_parser_ctx *ctx, const char **data, enum yang_arg arg, char
                 /* we want strings always in a separate word, leave it */
                 goto str_end;
             }
-            ret = read_qstring(ctx, data, arg, word_p, word_b, word_len, &buf_len, indent);
+            ret = read_qstring(ctx, data, arg, word_p, word_b, word_len, &buf_len);
             LY_CHECK_RET(ret);
             goto str_end;
         case '/':
             if ((*data)[1] == '/') {
                 /* one-line comment */
-                (*data) += 2;
+                MOVE_INPUT(ctx, data, 2);
                 ret = skip_comment(ctx, data, 1);
             } else if ((*data)[1] == '*') {
                 /* block comment */
-                (*data) += 2;
+                MOVE_INPUT(ctx, data, 2);
                 ret = skip_comment(ctx, data, 2);
             } else {
                 /* not a comment after all */
@@ -550,10 +578,7 @@ get_string(struct ly_parser_ctx *ctx, const char **data, enum yang_arg arg, char
                 /* word is finished */
                 goto str_end;
             }
-            /* increase indent */
-            ++indent;
-
-            ++(*data);
+            MOVE_INPUT(ctx, data, 1);
             break;
         case '\t':
             if (*word_len) {
@@ -561,7 +586,7 @@ get_string(struct ly_parser_ctx *ctx, const char **data, enum yang_arg arg, char
                 goto str_end;
             }
             /* tabs count for 8 spaces */
-            indent += 8;
+            ctx->indent += 8;
 
             ++(*data);
             break;
@@ -571,7 +596,7 @@ get_string(struct ly_parser_ctx *ctx, const char **data, enum yang_arg arg, char
                 goto str_end;
             }
             /* reset indent */
-            indent = 0;
+            ctx->indent = 0;
 
             /* track line numbers */
             ++ctx->line;
@@ -637,12 +662,14 @@ get_keyword(struct ly_parser_ctx *ctx, const char **data, enum yang_keyword *kw,
         if (slash) {
             if (**data == '/') {
                 /* one-line comment */
+                MOVE_INPUT(ctx, data, 1);
                 ret = skip_comment(ctx, data, 1);
                 if (ret) {
                     return ret;
                 }
             } else if (**data == '*') {
                 /* block comment */
+                MOVE_INPUT(ctx, data, 1);
                 ret = skip_comment(ctx, data, 2);
                 if (ret) {
                     return ret;
@@ -657,13 +684,20 @@ get_keyword(struct ly_parser_ctx *ctx, const char **data, enum yang_keyword *kw,
         switch (**data) {
         case '/':
             slash = 1;
+            ++ctx->indent;
             break;
         case '\n':
+            /* skip whitespaces (optsep) */
             ++ctx->line;
-            /* fallthrough */
+            ctx->indent = 0;
+            break;
         case ' ':
+            /* skip whitespaces (optsep) */
+            ++ctx->indent;
+            break;
         case '\t':
             /* skip whitespaces (optsep) */
+            ctx->indent += 8;
             break;
         default:
             /* either a keyword start or an invalid character */
@@ -673,6 +707,10 @@ get_keyword(struct ly_parser_ctx *ctx, const char **data, enum yang_keyword *kw,
         ++(*data);
     }
 
+#define IF_KW(STR, LEN, STMT) if (!strncmp(*(data), STR, LEN)) {MOVE_INPUT(ctx, data, LEN);*kw=STMT;}
+#define IF_KW_PREFIX(STR, LEN) if (!strncmp(*(data), STR, LEN)) {MOVE_INPUT(ctx, data, LEN);
+#define IF_KW_PREFIX_END }
+
 keyword_start:
     word_start = *data;
     *kw = YANG_NONE;
@@ -680,357 +718,176 @@ keyword_start:
     /* read the keyword itself */
     switch (**data) {
     case 'a':
-        ++(*data);
-        if (!strncmp(*data, "rgument", 7)) {
-            *data += 7;
-            *kw = YANG_ARGUMENT;
-        } else if (!strncmp(*data, "ugment", 6)) {
-            *data += 6;
-            *kw = YANG_AUGMENT;
-        } else if (!strncmp(*data, "ction", 5)) {
-            *data += 5;
-            *kw = YANG_ACTION;
-        } else if (!strncmp(*data, "ny", 2)) {
-            *data += 2;
-            if (!strncmp(*data, "data", 4)) {
-                *data += 4;
-                *kw = YANG_ANYDATA;
-            } else if (!strncmp(*data, "xml", 3)) {
-                *data += 3;
-                *kw = YANG_ANYXML;
-            }
-        }
+        MOVE_INPUT(ctx, data, 1);
+        IF_KW("rgument", 7, YANG_ARGUMENT)
+        else IF_KW("ugment", 6, YANG_AUGMENT)
+        else IF_KW("ction", 5, YANG_ACTION)
+        else IF_KW_PREFIX("ny", 2)
+            IF_KW("data", 4, YANG_ANYDATA)
+            else IF_KW("xml", 3, YANG_ANYXML)
+        IF_KW_PREFIX_END
         break;
     case 'b':
-        ++(*data);
-        if (!strncmp(*data, "ase", 3)) {
-            *data += 3;
-            *kw = YANG_BASE;
-        } else if (!strncmp(*data, "elongs-to", 9)) {
-            *data += 9;
-            *kw = YANG_BELONGS_TO;
-        } else if (!strncmp(*data, "it", 2)) {
-            *data += 2;
-            *kw = YANG_BIT;
-        }
+        MOVE_INPUT(ctx, data, 1);
+        IF_KW("ase", 3, YANG_BASE)
+        else IF_KW("elongs-to", 9, YANG_BELONGS_TO)
+        else IF_KW("it", 2, YANG_BIT)
         break;
     case 'c':
-        ++(*data);
-        if (!strncmp(*data, "ase", 3)) {
-            *data += 3;
-            *kw = YANG_CASE;
-        } else if (!strncmp(*data, "hoice", 5)) {
-            *data += 5;
-            *kw = YANG_CHOICE;
-        } else if (!strncmp(*data, "on", 2)) {
-            *data += 2;
-            if (!strncmp(*data, "fig", 3)) {
-                *data += 3;
-                *kw = YANG_CONFIG;
-            } else if (!strncmp(*data, "ta", 2)) {
-                *data += 2;
-                if (!strncmp(*data, "ct", 2)) {
-                    *data += 2;
-                    *kw = YANG_CONTACT;
-                } else if (!strncmp(*data, "iner", 4)) {
-                    *data += 4;
-                    *kw = YANG_CONTAINER;
-                }
-            }
-        }
+        MOVE_INPUT(ctx, data, 1);
+        IF_KW("ase", 3, YANG_CASE)
+        else IF_KW("hoice", 5, YANG_CHOICE)
+        else IF_KW_PREFIX("on", 2)
+            IF_KW("fig", 3, YANG_CONFIG)
+            else IF_KW_PREFIX("ta", 2)
+                IF_KW("ct", 2, YANG_CONTACT)
+                else IF_KW("iner", 4, YANG_CONTAINER)
+            IF_KW_PREFIX_END
+        IF_KW_PREFIX_END
         break;
     case 'd':
-        ++(*data);
-        if (**data == 'e') {
-            ++(*data);
-            if (!strncmp(*data, "fault", 5)) {
-                *data += 5;
-                *kw = YANG_DEFAULT;
-            } else if (!strncmp(*data, "scription", 9)) {
-                *data += 9;
-                *kw = YANG_DESCRIPTION;
-            } else if (!strncmp(*data, "viat", 4)) {
-                *data += 4;
-                if (**data == 'e') {
-                    ++(*data);
-                    *kw = YANG_DEVIATE;
-                } else if (!strncmp(*data, "ion", 3)) {
-                    *data += 3;
-                    *kw = YANG_DEVIATION;
-                }
-            }
-        }
+        MOVE_INPUT(ctx, data, 1);
+        IF_KW_PREFIX("e", 1)
+            IF_KW("fault", 5, YANG_DEFAULT)
+            else IF_KW("scription", 9, YANG_DESCRIPTION)
+            else IF_KW_PREFIX("viat", 4)
+                IF_KW("e", 1, YANG_DEVIATE)
+                else IF_KW("ion", 3, YANG_DEVIATION)
+            IF_KW_PREFIX_END
+        IF_KW_PREFIX_END
         break;
     case 'e':
-        ++(*data);
-        if (!strncmp(*data, "num", 3)) {
-            *data += 3;
-            *kw = YANG_ENUM;
-        } else if (!strncmp(*data, "rror-", 5)) {
-            *data += 5;
-            if (!strncmp(*data, "app-tag", 7)) {
-                *data += 7;
-                *kw = YANG_ERROR_APP_TAG;
-            } else if (!strncmp(*data, "message", 7)) {
-                *data += 7;
-                *kw = YANG_ERROR_MESSAGE;
-            }
-        } else if (!strncmp(*data, "xtension", 8)) {
-            *data += 8;
-            *kw = YANG_EXTENSION;
-        }
+        MOVE_INPUT(ctx, data, 1);
+        IF_KW("num", 3, YANG_ENUM)
+        else IF_KW_PREFIX("rror-", 5)
+            IF_KW("app-tag", 7, YANG_ERROR_APP_TAG)
+            else IF_KW("message", 7, YANG_ERROR_MESSAGE)
+        IF_KW_PREFIX_END
+        else IF_KW("xtension", 8, YANG_EXTENSION)
         break;
     case 'f':
-        ++(*data);
-        if (!strncmp(*data, "eature", 6)) {
-            *data += 6;
-            *kw = YANG_FEATURE;
-        } else if (!strncmp(*data, "raction-digits", 14)) {
-            *data += 14;
-            *kw = YANG_FRACTION_DIGITS;
-        }
+        MOVE_INPUT(ctx, data, 1);
+        IF_KW("eature", 6, YANG_FEATURE)
+        else IF_KW("raction-digits", 14, YANG_FRACTION_DIGITS)
         break;
     case 'g':
-        ++(*data);
-        if (!strncmp(*data, "rouping", 7)) {
-            *data += 7;
-            *kw = YANG_GROUPING;
-        }
+        MOVE_INPUT(ctx, data, 1);
+        IF_KW("rouping", 7, YANG_GROUPING)
         break;
     case 'i':
-        ++(*data);
-        if (!strncmp(*data, "dentity", 7)) {
-            *data += 7;
-            *kw = YANG_IDENTITY;
-        } else if (!strncmp(*data, "f-feature", 9)) {
-            *data += 9;
-            *kw = YANG_IF_FEATURE;
-        } else if (!strncmp(*data, "mport", 5)) {
-            *data += 5;
-            *kw = YANG_IMPORT;
-        } else if (**data == 'n') {
-            ++(*data);
-            if (!strncmp(*data, "clude", 5)) {
-                *data += 5;
-                *kw = YANG_INCLUDE;
-            } else if (!strncmp(*data, "put", 3)) {
-                *data += 3;
-                *kw = YANG_INPUT;
-            }
-        }
+        MOVE_INPUT(ctx, data, 1);
+        IF_KW("dentity", 7, YANG_IDENTITY)
+        else IF_KW("f-feature", 9, YANG_IF_FEATURE)
+        else IF_KW("mport", 5, YANG_IMPORT)
+        else IF_KW_PREFIX("n", 1)
+            IF_KW("clude", 5, YANG_INCLUDE)
+            else IF_KW("put", 3, YANG_INPUT)
+        IF_KW_PREFIX_END
         break;
     case 'k':
-        ++(*data);
-        if (!strncmp(*data, "ey", 2)) {
-            *data += 2;
-            *kw = YANG_KEY;
-        }
+        MOVE_INPUT(ctx, data, 1);
+        IF_KW("ey", 2, YANG_KEY)
         break;
     case 'l':
-        ++(*data);
-        if (**data == 'e') {
-            ++(*data);
-            if (!strncmp(*data, "af", 2)) {
-                *data += 2;
-                if (**data != '-') {
-                    *kw = YANG_LEAF;
-                } else if (!strncmp(*data, "-list", 5)) {
-                    *data += 5;
-                    *kw = YANG_LEAF_LIST;
-                }
-            } else if (!strncmp(*data, "ngth", 4)) {
-                *data += 4;
-                *kw = YANG_LENGTH;
-            }
-        } else if (!strncmp(*data, "ist", 3)) {
-            *data += 3;
-            *kw = YANG_LIST;
-        }
+        MOVE_INPUT(ctx, data, 1);
+        IF_KW_PREFIX("e", 1)
+            IF_KW("af-list", 7, YANG_LEAF_LIST)
+            else IF_KW("af", 2, YANG_LEAF)
+            else IF_KW("ngth", 4, YANG_LENGTH)
+        IF_KW_PREFIX_END
+        else IF_KW("ist", 3, YANG_LIST)
         break;
     case 'm':
-        ++(*data);
-        if (**data == 'a') {
-            ++(*data);
-            if (!strncmp(*data, "ndatory", 7)) {
-                *data += 7;
-                *kw = YANG_MANDATORY;
-            } else if (!strncmp(*data, "x-elements", 10)) {
-                *data += 10;
-                *kw = YANG_MAX_ELEMENTS;
-            }
-        } else if (!strncmp(*data, "in-elements", 11)) {
-            *data += 11;
-            *kw = YANG_MIN_ELEMENTS;
-        } else if (!strncmp(*data, "ust", 3)) {
-            *data += 3;
-            *kw = YANG_MUST;
-        } else if (!strncmp(*data, "od", 2)) {
-            *data += 2;
-            if (!strncmp(*data, "ule", 3)) {
-                *data += 3;
-                *kw = YANG_MODULE;
-            } else if (!strncmp(*data, "ifier", 5)) {
-                *data += 3;
-                *kw = YANG_MODIFIER;
-            }
-        }
+        MOVE_INPUT(ctx, data, 1);
+        IF_KW_PREFIX("a", 1)
+            IF_KW("ndatory", 7, YANG_MANDATORY)
+            else IF_KW("x-elements", 10, YANG_MAX_ELEMENTS)
+        IF_KW_PREFIX_END
+        else IF_KW("in-elements", 11, YANG_MIN_ELEMENTS)
+        else IF_KW("ust", 3, YANG_MUST)
+        else IF_KW_PREFIX("od", 2)
+            IF_KW("ule", 3, YANG_MODULE)
+            else IF_KW("ifier", 5, YANG_MODIFIER)
+        IF_KW_PREFIX_END
         break;
     case 'n':
-        ++(*data);
-        if (!strncmp(*data, "amespace", 8)) {
-            *data += 8;
-            *kw = YANG_NAMESPACE;
-        } else if (!strncmp(*data, "otification", 11)) {
-            *data += 11;
-            *kw = YANG_NOTIFICATION;
-        }
+        MOVE_INPUT(ctx, data, 1);
+        IF_KW("amespace", 8, YANG_NAMESPACE)
+        else IF_KW("otification", 11, YANG_NOTIFICATION)
         break;
     case 'o':
-        ++(*data);
-        if (**data == 'r') {
-            ++(*data);
-            if (!strncmp(*data, "dered-by", 8)) {
-                *data += 8;
-                *kw = YANG_ORDERED_BY;
-            } else if (!strncmp(*data, "ganization", 10)) {
-                *data += 10;
-                *kw = YANG_ORGANIZATION;
-            }
-        } else if (!strncmp(*data, "utput", 5)) {
-            *data += 5;
-            *kw = YANG_OUTPUT;
-        }
+        MOVE_INPUT(ctx, data, 1);
+        IF_KW_PREFIX("r", 1)
+            IF_KW("dered-by", 8, YANG_ORDERED_BY)
+            else IF_KW("ganization", 10, YANG_ORGANIZATION)
+        IF_KW_PREFIX_END
+        else IF_KW("utput", 5, YANG_OUTPUT)
         break;
     case 'p':
-        ++(*data);
-        if (!strncmp(*data, "at", 2)) {
-            *data += 2;
-            if (**data == 'h') {
-                ++(*data);
-                *kw = YANG_PATH;
-            } else if (!strncmp(*data, "tern", 4)) {
-                *data += 4;
-                *kw = YANG_PATTERN;
-            }
-        } else if (!strncmp(*data, "osition", 7)) {
-            *data += 7;
-            *kw = YANG_POSITION;
-        } else if (!strncmp(*data, "re", 2)) {
-            *data += 2;
-            if (!strncmp(*data, "fix", 3)) {
-                *data += 3;
-                *kw = YANG_PREFIX;
-            } else if (!strncmp(*data, "sence", 5)) {
-                *data += 5;
-                *kw = YANG_PRESENCE;
-            }
-        }
+        MOVE_INPUT(ctx, data, 1);
+        IF_KW("ath", 3, YANG_PATH)
+        else IF_KW("attern", 6, YANG_PATTERN)
+        else IF_KW("osition", 7, YANG_POSITION)
+        else IF_KW_PREFIX("re", 2)
+            IF_KW("fix", 3, YANG_PREFIX)
+            else IF_KW("sence", 5, YANG_PRESENCE)
+        IF_KW_PREFIX_END
         break;
     case 'r':
-        ++(*data);
-        if (!strncmp(*data, "ange", 4)) {
-            *data += 4;
-            *kw = YANG_RANGE;
-        } else if (**data == 'e') {
-            ++(*data);
-            if (**data == 'f') {
-                ++(*data);
-                if (!strncmp(*data, "erence", 6)) {
-                    *data += 6;
-                    *kw = YANG_REFERENCE;
-                } else if (!strncmp(*data, "ine", 3)) {
-                    *data += 3;
-                    *kw = YANG_REFINE;
-                }
-            } else if (!strncmp(*data, "quire-instance", 14)) {
-                *data += 14;
-                *kw = YANG_REQUIRE_INSTANCE;
-            } else if (!strncmp(*data, "vision", 6)) {
-                *data += 6;
-                if (**data != '-') {
-                    *kw = YANG_REVISION;
-                } else if (!strncmp(*data, "-date", 5)) {
-                    *data += 5;
-                    *kw = YANG_REVISION_DATE;
-                }
-            }
-        } else if (!strncmp(*data, "pc", 2)) {
-            *data += 2;
-            *kw = YANG_RPC;
-        }
+        MOVE_INPUT(ctx, data, 1);
+        IF_KW("ange", 4, YANG_RANGE)
+        else IF_KW_PREFIX("e", 1)
+            IF_KW_PREFIX("f", 1)
+                IF_KW("erence", 6, YANG_REFERENCE)
+                else IF_KW("ine", 3, YANG_REFINE)
+            IF_KW_PREFIX_END
+            else IF_KW("quire-instance", 14, YANG_REQUIRE_INSTANCE)
+            else IF_KW("vision-date", 11, YANG_REVISION_DATE)
+            else IF_KW("vision", 6, YANG_REVISION)
+        IF_KW_PREFIX_END
+        else IF_KW("pc", 2, YANG_RPC)
         break;
     case 's':
-        ++(*data);
-        if (!strncmp(*data, "tatus", 5)) {
-            *data += 5;
-            *kw = YANG_STATUS;
-        } else if (!strncmp(*data, "ubmodule", 8)) {
-            *data += 8;
-            *kw = YANG_SUBMODULE;
-        }
+        MOVE_INPUT(ctx, data, 1);
+        IF_KW("tatus", 5, YANG_STATUS)
+        else IF_KW("ubmodule", 8, YANG_SUBMODULE)
         break;
     case 't':
-        ++(*data);
-        if (!strncmp(*data, "ype", 3)) {
-            *data += 3;
-            if (**data != 'd') {
-                *kw = YANG_TYPE;
-            } else if (!strncmp(*data, "def", 3)) {
-                *data += 3;
-                *kw = YANG_TYPEDEF;
-            }
-        }
+        MOVE_INPUT(ctx, data, 1);
+        IF_KW("ypedef", 6, YANG_TYPEDEF)
+        else IF_KW("ype", 3, YANG_TYPE)
         break;
     case 'u':
-        ++(*data);
-        if (!strncmp(*data, "ni", 2)) {
-            *data += 2;
-            if (!strncmp(*data, "que", 3)) {
-                *data += 3;
-                *kw = YANG_UNIQUE;
-            } else if (!strncmp(*data, "ts", 2)) {
-                *data += 2;
-                *kw = YANG_UNITS;
-            }
-        } else if (!strncmp(*data, "ses", 3)) {
-            *data += 3;
-            *kw = YANG_USES;
-        }
+        MOVE_INPUT(ctx, data, 1);
+        IF_KW_PREFIX("ni", 2)
+            IF_KW("que", 3, YANG_UNIQUE)
+            else IF_KW("ts", 2, YANG_UNITS)
+        IF_KW_PREFIX_END
+        else IF_KW("ses", 3, YANG_USES)
         break;
     case 'v':
-        ++(*data);
-        if (!strncmp(*data, "alue", 4)) {
-            *data += 4;
-            *kw = YANG_VALUE;
-        }
+        MOVE_INPUT(ctx, data, 1);
+        IF_KW("alue", 4, YANG_VALUE)
         break;
     case 'w':
-        ++(*data);
-        if (!strncmp(*data, "hen", 3)) {
-            *data += 3;
-            *kw = YANG_WHEN;
-        }
+        MOVE_INPUT(ctx, data, 1);
+        IF_KW("hen", 3, YANG_WHEN)
         break;
     case 'y':
-        ++(*data);
-        if (!strncmp(*data, "ang-version", 11)) {
-            *data += 11;
-            *kw = YANG_YANG_VERSION;
-        } else if (!strncmp(*data, "in-element", 10)) {
-            *data += 10;
-            *kw = YANG_YIN_ELEMENT;
-        }
+        MOVE_INPUT(ctx, data, 1);
+        IF_KW("ang-version", 11, YANG_YANG_VERSION)
+        else IF_KW("in-element", 10, YANG_YIN_ELEMENT)
         break;
     case ';':
-        ++(*data);
+        MOVE_INPUT(ctx, data, 1);
         *kw = YANG_SEMICOLON;
         break;
     case '{':
-        ++(*data);
+        MOVE_INPUT(ctx, data, 1);
         *kw = YANG_LEFT_BRACE;
         break;
     case '}':
-        ++(*data);
+        MOVE_INPUT(ctx, data, 1);
         *kw = YANG_RIGHT_BRACE;
         break;
     default:
@@ -1040,14 +897,15 @@ keyword_start:
     if (*kw != YANG_NONE) {
         /* make sure we have the whole keyword */
         switch (**data) {
+        case '\n':
+            ++ctx->line;
+            /* fallthrough */
         case ' ':
         case '\t':
-        case '\n':
             /* mandatory "sep" */
-            ++ctx->line;
             break;
         default:
-            ++(*data);
+            MOVE_INPUT(ctx, data, 1);
             LOGVAL_YANG(ctx, LY_VCODE_INSTREXP, (int)(*data - word_start), word_start,
                         "a keyword followed by a separator");
             return LY_EVALID;
@@ -1058,6 +916,7 @@ keyword_start:
         while (**data && (**data != ' ') && (**data != '\t') && (**data != '\n') && (**data != '{') && (**data != ';')) {
             LY_CHECK_ERR_RET(ly_getutf8(data, &c, &len),
                              LOGVAL_YANG(ctx, LY_VCODE_INCHAR, (*data)[-len]), LY_EVALID);
+            ++ctx->indent;
             /* check character validity */
             LY_CHECK_RET(check_identifierchar(ctx, c, *data - len == word_start ? 1 : 0, &prefix));
         }

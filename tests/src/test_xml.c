@@ -317,9 +317,6 @@ test_text(void **state)
     assert_string_equal("<", str);
     assert_int_equal(LYXML_ELEMENT, ctx.status);
 
-    free(buf);
-    buf = NULL;
-
     /* test using n-bytes UTF8 hexadecimal code points */
     ctx.status = LYXML_ATTR_CONTENT;
     str = "\'&#x0024;&#x00A2;&#x20ac;&#x10348;\'";
@@ -327,7 +324,7 @@ test_text(void **state)
     assert_int_not_equal(0, dynamic);
     assert_non_null(buf);
     assert_ptr_equal(out, buf);
-    assert_int_equal(11, buf_len);
+    assert_int_equal(22, buf_len);
     assert_int_equal(10, len);
     assert_string_equal("$¢€𐍈", buf);
     assert_int_equal(LYXML_ATTRIBUTE, ctx.status);
