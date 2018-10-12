@@ -237,7 +237,7 @@ set(headers
     src/xml.h
     src/dict.h)
 
-check_symbol_exists(vdprintf stdio.h HAVE_VDPRINTF)
+check_symbol_exists(vdprintf stdio.h stdarg.h HAVE_VDPRINTF)
 if(HAVE_VDPRINTF)
     add_definitions(-DHAVE_VDPRINTF)
 endif(HAVE_VDPRINTF)

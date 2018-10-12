@@ -3,7 +3,7 @@
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief Wrapper for all libyang printers.
  *
- * Copyright (c) 2015 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -13,6 +13,8 @@
  */
 
 #define _GNU_SOURCE /* vasprintf(), vdprintf() */
+#define _POSIX_C_SOURCE 200809L
+
 #include <sys/types.h>
 #include <stdarg.h>
 #include <stdio.h>
