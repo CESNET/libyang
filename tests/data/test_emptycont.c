@@ -99,7 +99,7 @@ test_parse_autodel1(void **state)
     const char *xml = "<topleaf xmlns=\"urn:libyang:tests:emptycont\">X</topleaf>"
                       "<top xmlns=\"urn:libyang:tests:emptycont\"><b><b1>B</b1></b><c><c1>C</c1></c></top>";
 
-    st->dt = lyd_parse_mem(st->ctx, xml, LYD_XML, LYD_OPT_CONFIG);
+    st->dt = lyd_parse_mem(st->ctx, xml, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_WHENAUTODEL);
     assert_ptr_not_equal(st->dt, NULL);
     lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS);
     assert_string_equal(st->xml, "<topleaf xmlns=\"urn:libyang:tests:emptycont\">X</topleaf><top xmlns=\"urn:libyang:tests:emptycont\"><c/></top>");
@@ -111,7 +111,7 @@ test_parse_autodel2(void **state)
     struct state *st = (*state);
     const char *xml = "<top xmlns=\"urn:libyang:tests:emptycont\"><b><b1>B</b1></b><c><c1>C</c1></c></top>";
 
-    st->dt = lyd_parse_mem(st->ctx, xml, LYD_XML, LYD_OPT_CONFIG);
+    st->dt = lyd_parse_mem(st->ctx, xml, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_WHENAUTODEL);
     assert_ptr_not_equal(st->dt, NULL);
     lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS);
     assert_string_equal(st->xml, "<top xmlns=\"urn:libyang:tests:emptycont\"><c/></top>");
@@ -124,7 +124,7 @@ test_parse_autodel3(void **state)
     const char *xml = "<topleaf xmlns=\"urn:libyang:tests:emptycont\">X</topleaf>"
                       "<top xmlns=\"urn:libyang:tests:emptycont\"><b><b1>B</b1></b></top>";
 
-    st->dt = lyd_parse_mem(st->ctx, xml, LYD_XML, LYD_OPT_CONFIG);
+    st->dt = lyd_parse_mem(st->ctx, xml, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_WHENAUTODEL);
     assert_ptr_not_equal(st->dt, NULL);
     lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS);
     assert_string_equal(st->xml, "<topleaf xmlns=\"urn:libyang:tests:emptycont\">X</topleaf>");

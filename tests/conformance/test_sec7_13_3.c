@@ -30,7 +30,7 @@
 #define TEST_SCHEMA_COUNT 1
 #define TEST_SCHEMA_LOAD_FAIL 0
 #define TEST_DATA_FILE_COUNT 14
-#define TEST_DATA_FILE_LOAD_FAIL 0,0,0,0,1,0,0,0,1,1,1,1,1,1
+#define TEST_DATA_FILE_LOAD_FAIL 1,0,0,0,1,0,0,0,1,1,1,1,1,1
 #define TEST_DATA_COMPARE_FAIL 1,0,0,0,0,0,0,0
 #define TEST_DATA_COMPARE "ssh", "ssh", "42", "pattern", "", "true", "", ""
 #define TEST_RPC_NODE "test5", "test5", "test5", "test4", \

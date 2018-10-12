@@ -186,7 +186,7 @@ test_dependency_autodel(void **state)
     node = lyd_new_path(st->dt, st->ctx, "/when-depend:top/e", "val_e", 0, 0);
     assert_ptr_not_equal(node, NULL);
 
-    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG, NULL), 0);
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG | LYD_OPT_WHENAUTODEL, NULL), 0);
 
     assert_ptr_equal(st->dt, NULL);
 }

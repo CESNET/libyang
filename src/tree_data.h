@@ -464,8 +464,8 @@ char *lyd_path(const struct lyd_node *node);
  * subtree filter data, edit-config's data or other type of data set - such data do not represent a complete data set
  * and some of the validation rules can fail. Therefore there are other options (within lower 8 bits) to make parser
  * to accept such a data.
- * - when parser evaluates when-stmt condition to false, the constrained subtree is automatically removed. If the
- * #LYD_OPT_NOAUTODEL is used, error is raised instead of silent auto delete. The option (and also this default
+ * - when parser evaluates when-stmt condition to false, a validation error is raised. If the
+ * #LYD_OPT_WHENAUTODEL is used, the invalid node is silently removed instead of an error. The option (and also this default
  * behavior) takes effect only in case of #LYD_OPT_DATA or #LYD_OPT_CONFIG type of data.
  * @{
  */
@@ -516,10 +516,9 @@ char *lyd_path(const struct lyd_node *node);
                                        are connected with the schema, but the most validation checks (mandatory nodes,
                                        list instance uniqueness, etc.) are not performed. This option does not make
                                        sense for lyd_validate() so it is ignored by this function. */
-#define LYD_OPT_NOAUTODEL  0x4000 /**< Avoid automatic delete of subtrees with false when-stmt condition. The flag is
-                                       applicable only in combination with #LYD_OPT_DATA and #LYD_OPT_CONFIG flags.
-                                       If used, libyang generates validation error instead of silently removing the
-                                       constrained subtree. */
+#define LYD_OPT_WHENAUTODEL 0x4000 /**< Automatically delete subtrees with false when-stmt condition. The flag is
+                                        applicable only in combination with #LYD_OPT_DATA and #LYD_OPT_CONFIG flags.
+                                        If used, libyang will not generate a validation error. */
 #define LYD_OPT_NOEXTDEPS  0x8000 /**< Allow external dependencies (external leafrefs, instance-identifiers, must,
                                        and when) to not be resolved/satisfied during validation. */
 #define LYD_OPT_DATA_NO_YANGLIB  0x10000 /**< Ignore (possibly) missing ietf-yang-library data. Applicable only with #LYD_OPT_DATA. */
@@ -1113,7 +1112,7 @@ struct lyd_node *lyd_first_sibling(struct lyd_node *node);
 /**
  * @brief Validate \p node data subtree.
  *
- * @param[in,out] node Data tree to be validated. In case the \p options does not includes #LYD_OPT_NOAUTODEL, libyang
+ * @param[in,out] node Data tree to be validated. In case the \p options includes #LYD_OPT_WHENAUTODEL, libyang
  *                     can modify the provided tree including the root \p node.
  * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions.
  * @param[in] var_arg Variable argument depends on \p options. If they include:

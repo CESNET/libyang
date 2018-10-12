@@ -8186,7 +8186,7 @@ unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM 
  * unresolved leafrefs/instids are accepted, when conditions are normally resolved because at least some implicit
  * non-presence containers may need to be deleted).
  *
- * If options includes LYD_OPT_NOAUTODEL, the false resulting when condition on non-default nodes, the error is raised.
+ * If options includes #LYD_OPT_WHENAUTODEL, the non-default nodes with false when conditions are auto-deleted.
  *
  * @param[in] ctx Context used.
  * @param[in] unres Unres data structure to use.
@@ -8272,7 +8272,7 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
                  * or it was not provided (the flag would not be passed down otherwise, checked in upper functions) */
                 if ((unres->node[i]->when_status & LYD_WHEN_FALSE)
                         && (!(when->flags & (LYS_XPCONF_DEP | LYS_XPSTATE_DEP)) || !(options & LYD_OPT_NOEXTDEPS))) {
-                    if ((options & LYD_OPT_NOAUTODEL) && !unres->node[i]->dflt) {
+                    if (!(options & LYD_OPT_WHENAUTODEL) && !unres->node[i]->dflt) {
                         /* false when condition */
                         goto error;
                     } /* follows else */
