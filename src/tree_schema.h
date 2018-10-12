@@ -25,6 +25,47 @@
  */
 
 /**
+ * @brief Helper macro to go through 0-terminated arrays
+ *
+ * Use with opening curly bracket '{'.
+ *
+ * @param[in] ARRAY Array to go through
+ * @param[out] ITER Numeric iterator storing available indexes of the ARRAY
+ */
+#define LY_ARRAY_FOR(ARRAY, ITER) for (ITER = 0; (ARRAY) && *((uint8_t *)((ARRAY) + ITER)); ++ITER)
+
+/**
+ * @brief Macro to iterate via all sibling elements without affecting the list itself
+ *
+ * Works for all types of nodes despite it is data or schema tree, but all the
+ * parameters must be pointers to the same type.
+ *
+ * Use with opening curly bracket '{'. All parameters must be of the same type.
+ *
+ * @param START Pointer to the starting element.
+ * @param ELEM Iterator.
+ */
+#define LY_LIST_FOR(START, ELEM) \
+    for ((ELEM) = (START); \
+         (ELEM); \
+         (ELEM) = (ELEM)->next)
+
+/**
+ * @ingroup datatree
+ * @brief Macro to iterate via all sibling elements allowing to modify the list itself (e.g. removing elements)
+ *
+ * Use with opening curly bracket '{'. All parameters must be of the same type.
+ *
+ * @param START Pointer to the starting element.
+ * @param NEXT Temporary storage to allow removing of the current iterator content.
+ * @param ELEM Iterator.
+ */
+#define LY_LIST_FOR_SAFE(START, NEXT, ELEM) \
+    for ((ELEM) = (START); \
+         (ELEM) ? (NEXT = (ELEM)->next, 1) : 0; \
+         (ELEM) = (NEXT))
+
+/**
  * @brief Schema input formats accepted by libyang [parser functions](@ref howtoschemasparsers).
  */
 typedef enum {
