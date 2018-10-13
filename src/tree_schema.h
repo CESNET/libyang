@@ -707,7 +707,6 @@ struct lysp_module {
     struct lysp_ext_instance *exts; /**< list of the extension instances (0-terminated) */
 
     uint8_t submodule:1;             /**< flag to distinguish main modules and submodules */
-    uint8_t deviated:1;              /**< flag if the module is deviated by another module */
     uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
     uint8_t latest_revision:1;       /**< flag if the module was loaded without specific revision and is
                                           the latest revision found */
