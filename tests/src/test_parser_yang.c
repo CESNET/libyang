@@ -29,7 +29,7 @@
 char logbuf[BUFSIZE] = {0};
 
 /* set to 0 to printing error messages to stderr instead of checking them in code */
-#define ENABLE_LOGGER_CHECKING 1
+#define ENABLE_LOGGER_CHECKING 0
 
 #if ENABLE_LOGGER_CHECKING
 static void
@@ -658,6 +658,7 @@ test_module(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
     ctx.line = 1;
+    ctx.indent = 0;
 
     mod = mod_renew(&ctx, NULL);
 
@@ -678,6 +679,124 @@ test_module(void **state)
     assert_int_equal(LY_SUCCESS, parse_sub_module(&ctx, &str, mod));
     assert_string_equal("x", mod->prefix);
     mod = mod_renew(&ctx, mod);
+
+#define SCHEMA_BEGINNING " name {namespace urn:x;prefix \"x\";"
+#define TEST_NODE(NODETYPE, INPUT, NAME) \
+        str = SCHEMA_BEGINNING INPUT; \
+        assert_int_equal(LY_SUCCESS, parse_sub_module(&ctx, &str, mod)); \
+        assert_non_null(mod->data); \
+        assert_int_equal(NODETYPE, mod->data->nodetype); \
+        assert_string_equal(NAME, mod->data->name); \
+        mod = mod_renew(&ctx, mod);
+#define TEST_GENERIC(INPUT, TARGET, TEST) \
+        str = SCHEMA_BEGINNING INPUT; \
+        assert_int_equal(LY_SUCCESS, parse_sub_module(&ctx, &str, mod)); \
+        assert_non_null(TARGET); \
+        TEST; \
+        mod = mod_renew(&ctx, mod);
+
+    /* duplicated namespace, prefix */
+    str = SCHEMA_BEGINNING "namespace y;}";
+    assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
+    logbuf_assert("Duplicate keyword \"namespace\". Line number 1.");
+    mod = mod_renew(&ctx, mod);
+    str = SCHEMA_BEGINNING "prefix y;}";
+    assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
+    logbuf_assert("Duplicate keyword \"prefix\". Line number 1.");
+    mod = mod_renew(&ctx, mod);
+
+    /* anydata */
+    TEST_NODE(LYS_ANYDATA, "anydata test;}", "test");
+    /* anyxml */
+    TEST_NODE(LYS_ANYXML, "anyxml test;}", "test");
+    /* augment */
+    TEST_GENERIC("augment /somepath;}", mod->augments,
+                 assert_string_equal("/somepath", mod->augments[0].nodeid));
+    /* choice */
+    TEST_NODE(LYS_CHOICE, "choice test;}", "test");
+    /* contact 0..1 */
+    TEST_GENERIC("contact \"firstname\" + \n\t\" surname\";}", mod->contact,
+                 assert_string_equal("firstname surname", mod->contact));
+    /* container */
+    TEST_NODE(LYS_CONTAINER, "container test;}", "test");
+    /* description 0..1 */
+    TEST_GENERIC("description \'some description\';}", mod->dsc,
+                 assert_string_equal("some description", mod->dsc));
+    /* deviation */
+    TEST_GENERIC("deviation /somepath {deviate not-supported;}}", mod->deviations,
+                 assert_string_equal("/somepath", mod->deviations[0].nodeid));
+    /* extension */
+    TEST_GENERIC("extension test;}", mod->extensions,
+                 assert_string_equal("test", mod->extensions[0].name));
+    /* feature */
+    TEST_GENERIC("feature test;}", mod->features,
+                 assert_string_equal("test", mod->features[0].name));
+    /* grouping */
+    TEST_GENERIC("grouping grp;}", mod->groupings,
+                 assert_string_equal("grp", mod->groupings[0].name));
+    /* identity */
+    TEST_GENERIC("identity test;}", mod->identities,
+                 assert_string_equal("test", mod->identities[0].name));
+    /* import */
+    TEST_GENERIC("import test {prefix z;}}", mod->imports,
+                 assert_string_equal("test", mod->imports[0].name));
+#if 0
+    /* import - prefix collision */
+    str = SCHEMA_BEGINNING "import test {prefix x;}}";
+    assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
+    logbuf_assert("Duplicate keyword \"namespace\". Line number 1.");
+    mod = mod_renew(&ctx, mod);
+#endif
+    /* include */
+    TEST_GENERIC("rpc test;}", mod->rpcs,
+                 assert_string_equal("test", mod->rpcs[0].name));
+    /* leaf */
+    TEST_NODE(LYS_LEAF, "leaf test {type string;}}", "test");
+    /* leaf-list */
+    TEST_NODE(LYS_LEAFLIST, "leaf-list test {type string;}}", "test");
+    /* list */
+    TEST_NODE(LYS_LIST, "list test {key a;leaf a {type string;}}}", "test");
+    /* notification */
+    TEST_GENERIC("notification test;}", mod->notifs,
+                 assert_string_equal("test", mod->notifs[0].name));
+    /* organization 0..1 */
+    TEST_GENERIC("organization \"CESNET a.l.e.\";}", mod->org,
+                 assert_string_equal("CESNET a.l.e.", mod->org));
+    /* reference 0..1 */
+    TEST_GENERIC("reference RFC7950;}", mod->ref,
+                 assert_string_equal("RFC7950", mod->ref));
+    /* revision */
+    TEST_GENERIC("revision 2018-10-12;}", mod->revs,
+                 assert_string_equal("2018-10-12", mod->revs[0].rev));
+    /* rpc */
+    TEST_GENERIC("rpc test;}", mod->rpcs,
+                 assert_string_equal("test", mod->rpcs[0].name));
+    /* typedef */
+    TEST_GENERIC("typedef test{type string;}}", mod->typedefs,
+                 assert_string_equal("test", mod->typedefs[0].name));
+    /* uses */
+    TEST_NODE(LYS_USES, "uses test;}", "test");
+    /* yang-version */
+    str = SCHEMA_BEGINNING "\n\tyang-version 10;}";
+    assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
+    logbuf_assert("Invalid value \"10\" of \"yang-version\". Line number 3.");
+    mod = mod_renew(&ctx, mod);
+    str = SCHEMA_BEGINNING "yang-version 1.0;yang-version 1.1;}";
+    assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
+    logbuf_assert("Duplicate keyword \"yang-version\". Line number 3.");
+    mod = mod_renew(&ctx, mod);
+    str = SCHEMA_BEGINNING "yang-version 1.0;}";
+    assert_int_equal(LY_SUCCESS, parse_sub_module(&ctx, &str, mod));
+    assert_int_equal(1, mod->version);
+    mod = mod_renew(&ctx, mod);
+    str = SCHEMA_BEGINNING "yang-version \"1.1\";}";
+    assert_int_equal(LY_SUCCESS, parse_sub_module(&ctx, &str, mod));
+    assert_int_equal(2, mod->version);
+    mod = mod_renew(&ctx, mod);
+
+#undef TEST_GENERIC
+#undef TEST_NODE
+#undef SCHEMA_BEGINNING
 
     lysp_module_free(mod);
     ly_ctx_destroy(ctx.ctx, NULL);
