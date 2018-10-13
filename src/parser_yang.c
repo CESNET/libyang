@@ -4628,7 +4628,7 @@ yang_parse(struct ly_ctx *ctx, const char *data, struct lysp_module **mod_p)
     char *word, *buf;
     size_t word_len;
     enum yang_keyword kw;
-    struct lysp_module *mod;
+    struct lysp_module *mod = NULL;
     struct ly_parser_ctx context;
 
     context.ctx = ctx;
