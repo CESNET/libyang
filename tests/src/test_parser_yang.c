@@ -637,11 +637,12 @@ test_stmts(void **state)
 }
 
 static struct lysp_module *
-mod_renew(struct ly_parser_ctx *ctx, struct lysp_module *mod)
+mod_renew(struct ly_parser_ctx *ctx, struct lysp_module *mod, uint8_t submodule)
 {
     lysp_module_free(mod);
     mod = calloc(1, sizeof *mod);
     mod->ctx = ctx->ctx;
+    mod->submodule = submodule;
     assert_non_null(mod);
     return mod;
 }
@@ -660,25 +661,25 @@ test_module(void **state)
     ctx.line = 1;
     ctx.indent = 0;
 
-    mod = mod_renew(&ctx, NULL);
+    mod = mod_renew(&ctx, NULL, 0);
 
     /* missing mandatory substatements */
     str = " name {}";
     assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
     assert_string_equal("name", mod->name);
     logbuf_assert("Missing mandatory keyword \"namespace\" as a child of \"module\". Line number 1.");
-    mod = mod_renew(&ctx, mod);
+    mod = mod_renew(&ctx, mod, 0);
 
     str = " name {namespace urn:x;}";
     assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
     assert_string_equal("urn:x", mod->ns);
     logbuf_assert("Missing mandatory keyword \"prefix\" as a child of \"module\". Line number 1.");
-    mod = mod_renew(&ctx, mod);
+    mod = mod_renew(&ctx, mod, 0);
 
     str = " name {namespace urn:x;prefix \"x\";}";
     assert_int_equal(LY_SUCCESS, parse_sub_module(&ctx, &str, mod));
     assert_string_equal("x", mod->prefix);
-    mod = mod_renew(&ctx, mod);
+    mod = mod_renew(&ctx, mod, 0);
 
 #define SCHEMA_BEGINNING " name {namespace urn:x;prefix \"x\";"
 #define TEST_NODE(NODETYPE, INPUT, NAME) \
@@ -687,29 +688,29 @@ test_module(void **state)
         assert_non_null(mod->data); \
         assert_int_equal(NODETYPE, mod->data->nodetype); \
         assert_string_equal(NAME, mod->data->name); \
-        mod = mod_renew(&ctx, mod);
+        mod = mod_renew(&ctx, mod, 0);
 #define TEST_GENERIC(INPUT, TARGET, TEST) \
         str = SCHEMA_BEGINNING INPUT; \
         assert_int_equal(LY_SUCCESS, parse_sub_module(&ctx, &str, mod)); \
         assert_non_null(TARGET); \
         TEST; \
-        mod = mod_renew(&ctx, mod);
+        mod = mod_renew(&ctx, mod, 0);
 
     /* duplicated namespace, prefix */
     str = SCHEMA_BEGINNING "namespace y;}";
     assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
     logbuf_assert("Duplicate keyword \"namespace\". Line number 1.");
-    mod = mod_renew(&ctx, mod);
+    mod = mod_renew(&ctx, mod, 0);
     str = SCHEMA_BEGINNING "prefix y;}";
     assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
     logbuf_assert("Duplicate keyword \"prefix\". Line number 1.");
-    mod = mod_renew(&ctx, mod);
+    mod = mod_renew(&ctx, mod, 0);
 
     /* not allowed in module (submodule-specific) */
     str = SCHEMA_BEGINNING "belongs-to master {prefix m;}}";
     assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
     logbuf_assert("Invalid keyword \"belongs-to\" as a child of \"module\". Line number 1.");
-    mod = mod_renew(&ctx, mod);
+    mod = mod_renew(&ctx, mod, 0);
 
     /* anydata */
     TEST_NODE(LYS_ANYDATA, "anydata test;}", "test");
@@ -751,7 +752,7 @@ test_module(void **state)
     str = SCHEMA_BEGINNING "import test {prefix x;}}";
     assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
     logbuf_assert("Prefix \"x\" already used as module prefix. Line number 2.");
-    mod = mod_renew(&ctx, mod);
+    mod = mod_renew(&ctx, mod, 0);
 
     /* include */
     TEST_GENERIC("rpc test;}", mod->rpcs,
@@ -786,19 +787,53 @@ test_module(void **state)
     str = SCHEMA_BEGINNING "\n\tyang-version 10;}";
     assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
     logbuf_assert("Invalid value \"10\" of \"yang-version\". Line number 3.");
-    mod = mod_renew(&ctx, mod);
+    mod = mod_renew(&ctx, mod, 0);
     str = SCHEMA_BEGINNING "yang-version 1.0;yang-version 1.1;}";
     assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
     logbuf_assert("Duplicate keyword \"yang-version\". Line number 3.");
-    mod = mod_renew(&ctx, mod);
+    mod = mod_renew(&ctx, mod, 0);
     str = SCHEMA_BEGINNING "yang-version 1.0;}";
     assert_int_equal(LY_SUCCESS, parse_sub_module(&ctx, &str, mod));
     assert_int_equal(1, mod->version);
-    mod = mod_renew(&ctx, mod);
+    mod = mod_renew(&ctx, mod, 0);
     str = SCHEMA_BEGINNING "yang-version \"1.1\";}";
     assert_int_equal(LY_SUCCESS, parse_sub_module(&ctx, &str, mod));
     assert_int_equal(2, mod->version);
-    mod = mod_renew(&ctx, mod);
+    mod = mod_renew(&ctx, mod, 0);
+
+    /* submodule */
+    mod->submodule = 1;
+
+    /* missing mandatory substatements */
+    str = " subname {}";
+    assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
+    assert_string_equal("subname", mod->name);
+    logbuf_assert("Missing mandatory keyword \"belongs-to\" as a child of \"submodule\". Line number 3.");
+    mod = mod_renew(&ctx, mod, 1);
+
+    str = " subname {belongs-to name;}";
+    assert_int_equal(LY_SUCCESS, parse_sub_module(&ctx, &str, mod));
+    assert_string_equal("name", mod->belongsto);
+    mod = mod_renew(&ctx, mod, 1);
+
+#undef SCHEMA_BEGINNING
+#define SCHEMA_BEGINNING " subname {belongs-to name;"
+
+    /* duplicated namespace, prefix */
+    str = SCHEMA_BEGINNING "belongs-to othermodule;}";
+    assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
+    logbuf_assert("Duplicate keyword \"belongs-to\". Line number 3.");
+    mod = mod_renew(&ctx, mod, 1);
+
+    /* not allowed in submodule (module-specific) */
+    str = SCHEMA_BEGINNING "namespace \"urn:z\";}";
+    assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
+    logbuf_assert("Invalid keyword \"namespace\" as a child of \"submodule\". Line number 3.");
+    mod = mod_renew(&ctx, mod, 1);
+    str = SCHEMA_BEGINNING "prefix m;}}";
+    assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
+    logbuf_assert("Invalid keyword \"prefix\" as a child of \"submodule\". Line number 3.");
+    mod = mod_renew(&ctx, mod, 1);
 
 #undef TEST_GENERIC
 #undef TEST_NODE
