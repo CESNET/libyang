@@ -755,8 +755,8 @@ test_module(void **state)
     mod = mod_renew(&ctx, mod, 0);
 
     /* include */
-    TEST_GENERIC("rpc test;}", mod->rpcs,
-                 assert_string_equal("test", mod->rpcs[0].name));
+    TEST_GENERIC("include test;}", mod->includes,
+                 assert_string_equal("test", mod->includes[0].name));
     /* leaf */
     TEST_NODE(LYS_LEAF, "leaf test {type string;}}", "test");
     /* leaf-list */
