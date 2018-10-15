@@ -18,6 +18,7 @@
 #include <string.h>
 #include <assert.h>
 #include <stdint.h>
+#include <endian.h>
 
 #include "common.h"
 #include "printer.h"
@@ -323,7 +324,7 @@ lyb_write(struct lyout *out, const uint8_t *buf, size_t count, struct lyb_state 
 {
     int ret, i, full_chunk_i;
     size_t r, to_write;
-    LYB_META meta;
+    uint8_t meta_buf[LYB_META_BYTES];
 
     assert(out && lybs);
 
@@ -359,10 +360,10 @@ lyb_write(struct lyout *out, const uint8_t *buf, size_t count, struct lyb_state 
 
         if (full_chunk_i > -1) {
             /* write the meta information (inner chunk count and chunk size) */
-            memcpy(&meta, &lybs->written[full_chunk_i], LYB_SIZE_BYTES);
-            memcpy(((uint8_t *)&meta) + LYB_SIZE_BYTES, &lybs->inner_chunks[full_chunk_i], LYB_INCHUNK_BYTES);
+            meta_buf[0] = lybs->written[full_chunk_i] & 0xFF;
+            meta_buf[1] = lybs->inner_chunks[full_chunk_i] & 0xFF;
 
-            r = ly_write_skipped(out, lybs->position[full_chunk_i], (char *)&meta, LYB_META_BYTES);
+            r = ly_write_skipped(out, lybs->position[full_chunk_i], (char *)meta_buf, LYB_META_BYTES);
             if (r < LYB_META_BYTES) {
                 return -1;
             }
@@ -397,13 +398,13 @@ static int
 lyb_write_stop_subtree(struct lyout *out, struct lyb_state *lybs)
 {
     int r;
-    LYB_META meta;
+    uint8_t meta_buf[LYB_META_BYTES];
 
     /* write the meta chunk information */
-    memcpy(&meta, &lybs->written[lybs->used - 1], LYB_SIZE_BYTES);
-    memcpy(((uint8_t *)&meta) + LYB_SIZE_BYTES, &lybs->inner_chunks[lybs->used - 1], LYB_INCHUNK_BYTES);
+    meta_buf[0] = lybs->written[lybs->used - 1] & 0xFF;
+    meta_buf[1] = lybs->inner_chunks[lybs->used - 1] & 0xFF;
 
-    r = ly_write_skipped(out, lybs->position[lybs->used - 1], (char *)&meta, LYB_META_BYTES);
+    r = ly_write_skipped(out, lybs->position[lybs->used - 1], (char *)&meta_buf, LYB_META_BYTES);
     if (r < LYB_META_BYTES) {
         return -1;
     }
@@ -448,9 +449,13 @@ lyb_write_number(uint64_t num, size_t bytes, struct lyout *out, struct lyb_state
     size_t i;
     uint8_t byte;
 
+    num = htole64(num);
     for (i = 0; i < bytes; ++i) {
         byte = *(((uint8_t *)&num) + i);
         ret += lyb_write(out, &byte, 1, lybs);
+        if (ret < 0) {
+            break;
+        }
     }
 
     return ret;
@@ -489,7 +494,7 @@ lyb_write_string(const char *str, size_t str_len, int with_length, struct lyout 
 
     if (with_length) {
         /* print length on 2 bytes */
-        ret += (r = lyb_write(out, (uint8_t *)&str_len, 2, lybs));
+        ret += (r = lyb_write_number(str_len, 2, out, lybs));
         if (r < 0) {
             return -1;
         }
@@ -534,8 +539,7 @@ lyb_print_model(struct lyout *out, const struct lys_module *mod, struct lyb_stat
 
         revision |= r;
     }
-
-    ret += (r = lyb_write(out, (uint8_t *)&revision, sizeof revision, lybs));
+    ret += (r = lyb_write_number(revision, sizeof revision, out, lybs));
     if (r < 0) {
         return -1;
     }
@@ -625,7 +629,7 @@ next_mod:
     }
 
     /* now write module count on 2 bytes */
-    ret += lyb_write(out, (uint8_t *)&mod_count, 2, lybs);
+    ret += lyb_write_number(mod_count, 2, out, lybs);
 
     /* and all the used models */
     for (i = 0; i < mod_count; ++i) {

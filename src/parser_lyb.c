@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <inttypes.h>
+#include <endian.h>
 
 #include "libyang.h"
 #include "common.h"
@@ -32,7 +33,7 @@ lyb_read(const char *data, uint8_t *buf, size_t count, struct lyb_state *lybs)
 {
     int ret = 0, i, empty_chunk_i;
     size_t to_read;
-    LYB_META meta;
+    uint8_t meta_buf[LYB_META_BYTES];
 
     assert(data && lybs);
 
@@ -76,12 +77,9 @@ lyb_read(const char *data, uint8_t *buf, size_t count, struct lyb_state *lybs)
 
         if (empty_chunk_i > -1) {
             /* read the next chunk meta information */
-            memcpy(&meta, data + ret, LYB_META_BYTES);
-            lybs->written[empty_chunk_i] = 0;
-            lybs->inner_chunks[empty_chunk_i] = 0;
-
-            memcpy(&lybs->written[empty_chunk_i], &meta, LYB_SIZE_BYTES);
-            memcpy(&lybs->inner_chunks[empty_chunk_i], ((uint8_t *)&meta) + LYB_SIZE_BYTES, LYB_INCHUNK_BYTES);
+            memcpy(meta_buf, data + ret, LYB_META_BYTES);
+            lybs->written[empty_chunk_i] = meta_buf[0];
+            lybs->inner_chunks[empty_chunk_i] = meta_buf[1];
 
             /* remember whether there is a following chunk or not */
             lybs->position[empty_chunk_i] = (lybs->written[empty_chunk_i] == LYB_SIZE_MAX ? 1 : 0);
@@ -113,7 +111,9 @@ lyb_read_number(uint64_t *num, size_t bytes, const char *data, struct lyb_state 
 static int
 lyb_read_enum(uint64_t *enum_idx, uint32_t count, const char *data, struct lyb_state *lybs)
 {
+    int ret = 0;
     size_t bytes;
+    uint64_t tmp_enum = 0;
 
     if (count < (2 << 8)) {
         bytes = 1;
@@ -125,7 +125,11 @@ lyb_read_enum(uint64_t *enum_idx, uint32_t count, const char *data, struct lyb_s
         bytes = 4;
     }
 
-    return lyb_read_number(enum_idx, bytes, data, lybs);
+    /* The enum is always read into a uint64_t buffer */
+    ret = lyb_read_number(&tmp_enum, bytes, data, lybs);
+    *enum_idx = le64toh(tmp_enum);
+
+    return ret;
 }
 
 static int
@@ -133,10 +137,12 @@ lyb_read_string(const char *data, char **str, int with_length, struct lyb_state 
 {
     int next_chunk = 0, r, ret = 0;
     size_t len = 0, cur_len;
+    uint8_t len_buf[2];
 
     if (with_length) {
-        ret += (r = lyb_read(data, (uint8_t *)&len, 2, lybs));
+        ret += (r = lyb_read(data, len_buf, 2, lybs));
         LYB_HAVE_READ_GOTO(r, data, error);
+        len = len_buf[0] | (len_buf[1] << 8);
     } else {
         /* read until the end of this subtree */
         len = lybs->written[lybs->used - 1];
@@ -190,7 +196,7 @@ lyb_read_stop_subtree(struct lyb_state *lybs)
 static int
 lyb_read_start_subtree(const char *data, struct lyb_state *lybs)
 {
-    LYB_META meta;
+    uint8_t meta_buf[LYB_META_BYTES];
 
     if (lybs->used == lybs->size) {
         lybs->size += LYB_STATE_STEP;
@@ -200,14 +206,11 @@ lyb_read_start_subtree(const char *data, struct lyb_state *lybs)
         LY_CHECK_ERR_RETURN(!lybs->written || !lybs->position || !lybs->inner_chunks, LOGMEM(NULL), -1);
     }
 
-    memcpy(&meta, data, LYB_META_BYTES);
+    memcpy(meta_buf, data, LYB_META_BYTES);
 
     ++lybs->used;
-    lybs->written[lybs->used - 1] = 0;
-    lybs->inner_chunks[lybs->used - 1] = 0;
-
-    memcpy(&lybs->written[lybs->used - 1], &meta, LYB_SIZE_BYTES);
-    memcpy(&lybs->inner_chunks[lybs->used - 1], ((uint8_t *)&meta) + LYB_SIZE_BYTES, LYB_INCHUNK_BYTES);
+    lybs->written[lybs->used - 1] = meta_buf[0];
+    lybs->inner_chunks[lybs->used - 1] = meta_buf[LYB_SIZE_BYTES];
     lybs->position[lybs->used - 1] = (lybs->written[lybs->used - 1] == LYB_SIZE_MAX ? 1 : 0);
 
     return LYB_META_BYTES;
@@ -219,14 +222,16 @@ lyb_parse_model(struct ly_ctx *ctx, const char *data, const struct lys_module **
     int r, ret = 0;
     char *mod_name = NULL, mod_rev[11];
     uint16_t rev = 0;
+    uint8_t tmp_buf[2];
 
     /* model name */
     ret += (r = lyb_read_string(data, &mod_name, 1, lybs));
     LYB_HAVE_READ_GOTO(r, data, error);
 
     /* revision */
-    ret += (r = lyb_read(data, (uint8_t *)&rev, sizeof rev, lybs));
+    ret += (r = lyb_read(data, tmp_buf, sizeof tmp_buf, lybs));
     LYB_HAVE_READ_GOTO(r, data, error);
+    rev = tmp_buf[0] | (tmp_buf[1] << 8);
 
     if (rev) {
         sprintf(mod_rev, "%04u-%02u-%02u", ((rev & 0xFE00) >> 9) + 2000, (rev & 0x01E0) >> 5, (rev & 0x001F));
@@ -430,15 +435,18 @@ lyb_parse_val_1(struct ly_ctx *ctx, struct lys_type *type, LY_DATA_TYPE value_ty
     case LY_TYPE_INT16:
     case LY_TYPE_UINT16:
         ret = lyb_read_number((uint64_t *)&value->uint16, 2, data, lybs);
+        value->uint16 = le16toh(value->uint16);
         break;
     case LY_TYPE_INT32:
     case LY_TYPE_UINT32:
         ret = lyb_read_number((uint64_t *)&value->uint32, 4, data, lybs);
+        value->uint32 = le32toh(value->uint32);
         break;
     case LY_TYPE_DEC64:
     case LY_TYPE_INT64:
     case LY_TYPE_UINT64:
         ret = lyb_read_number((uint64_t *)&value->uint64, 8, data, lybs);
+        value->uint64 = le64toh(value->uint64);
         break;
     default:
         return -1;
@@ -1101,10 +1109,12 @@ static int
 lyb_parse_data_models(struct ly_ctx *ctx, const char *data, struct lyb_state *lybs)
 {
     int i, r, ret = 0;
+    uint8_t mod_count_buf[2];
 
     /* read model count */
-    ret += (r = lyb_read(data, (uint8_t *)&lybs->mod_count, 2, lybs));
+    ret += (r = lyb_read(data, mod_count_buf, 2, lybs));
     LYB_HAVE_READ_RETURN(r, data, -1);
+    lybs->mod_count = mod_count_buf[0] | (mod_count_buf[1] << 8);
 
     lybs->models = malloc(lybs->mod_count * sizeof *lybs->models);
     LY_CHECK_ERR_RETURN(!lybs->models, LOGMEM(NULL), -1);
