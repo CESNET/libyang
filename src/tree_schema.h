@@ -32,7 +32,7 @@
  * @param[in] ARRAY Array to go through
  * @param[out] ITER Numeric iterator storing available indexes of the ARRAY
  */
-#define LY_ARRAY_FOR(ARRAY, ITER) for (ITER = 0; (ARRAY) && *((uint8_t *)((ARRAY) + ITER)); ++ITER)
+#define LY_ARRAY_FOR(ARRAY, ITER) for (ITER = 0; (ARRAY) && *((void **)((ARRAY) + ITER)); ++ITER)
 
 /**
  * @brief Macro to iterate via all sibling elements without affecting the list itself

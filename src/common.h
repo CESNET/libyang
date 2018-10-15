@@ -282,11 +282,11 @@ LY_ERR lysp_check_date(struct ly_ctx *ctx, const char *date, int date_len, const
  * There is a byte allocated after the last item with value 0.
  */
 #define LYSP_ARRAY_NEW_RET(CTX, ARRAY, NEW_ITEM, RETVAL) int _count; \
-        for (_count = 0; *(ARRAY) && *((uint8_t *)(*(ARRAY) + _count)); ++_count); \
-        if (!_count) *(ARRAY) = malloc(sizeof **(ARRAY) + 1); \
-            else *(ARRAY) = ly_realloc(*(ARRAY), (_count + 1) * sizeof **(ARRAY) + 1); \
+        for (_count = 0; *(ARRAY) && *((void **)(*(ARRAY) + _count)); ++_count); \
+        if (!_count) *(ARRAY) = malloc(sizeof **(ARRAY) + sizeof(void *)); \
+            else *(ARRAY) = ly_realloc(*(ARRAY), (_count + 1) * sizeof **(ARRAY) + sizeof(void *)); \
         LY_CHECK_ERR_RET(!*(ARRAY), LOGMEM(CTX->ctx), RETVAL); \
-        *((uint8_t *)(*(ARRAY) + _count + 1)) = 0; \
+        *((void **)(*(ARRAY) + _count + 1)) = NULL; \
         (NEW_ITEM) = (*(ARRAY)) + _count; \
         memset(NEW_ITEM, 0, sizeof *(NEW_ITEM));
 
