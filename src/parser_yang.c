@@ -4415,6 +4415,9 @@ parse_sub_module(struct ly_parser_ctx *ctx, const char **data, struct lysp_modul
     YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret) {
         LY_CHECK_RET(ret);
 
+#define CHECK_ORDER(SECTION) \
+        if (mod_stmt > SECTION) {LOGVAL_YANG(ctx, LY_VCODE_INORD, ly_stmt2str(kw), ly_stmt2str(prev_kw)); return LY_EVALID;}mod_stmt = SECTION
+
         switch (kw) {
         /* module header */
         case YANG_NAMESPACE:
@@ -4423,49 +4426,35 @@ parse_sub_module(struct ly_parser_ctx *ctx, const char **data, struct lysp_modul
                 LOGVAL_YANG(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "submodule");
                 return LY_EVALID;
             }
-            /* fallthrough */
+            CHECK_ORDER(Y_MOD_MODULE_HEADER);
+            break;
         case YANG_BELONGS_TO:
-            if ((kw == YANG_BELONGS_TO) && !mod->submodule) {
+            if (!mod->submodule) {
                 LOGVAL_YANG(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "module");
                 return LY_EVALID;
             }
-            /* fallthrough */
+            CHECK_ORDER(Y_MOD_MODULE_HEADER);
+            break;
         case YANG_YANG_VERSION:
-            if (mod_stmt > Y_MOD_MODULE_HEADER) {
-                LOGVAL_YANG(ctx, LY_VCODE_INORD, ly_stmt2str(kw), ly_stmt2str(prev_kw));
-                return LY_EVALID;
-            }
+            CHECK_ORDER(Y_MOD_MODULE_HEADER);
             break;
         /* linkage */
         case YANG_INCLUDE:
         case YANG_IMPORT:
-            if (mod_stmt > Y_MOD_LINKAGE) {
-                LOGVAL_YANG(ctx, LY_VCODE_INORD, ly_stmt2str(kw), ly_stmt2str(prev_kw));
-                return LY_EVALID;
-            }
-            mod_stmt = Y_MOD_LINKAGE;
+            CHECK_ORDER(Y_MOD_LINKAGE);
             break;
         /* meta */
         case YANG_ORGANIZATION:
         case YANG_CONTACT:
         case YANG_DESCRIPTION:
         case YANG_REFERENCE:
-            if (mod_stmt > Y_MOD_META) {
-                LOGVAL_YANG(ctx, LY_VCODE_INORD, ly_stmt2str(kw), ly_stmt2str(prev_kw));
-                return LY_EVALID;
-            }
-            mod_stmt = Y_MOD_META;
+            CHECK_ORDER(Y_MOD_META);
             break;
 
         /* revision */
         case YANG_REVISION:
-            if (mod_stmt > Y_MOD_REVISION) {
-                LOGVAL_YANG(ctx, LY_VCODE_INORD, ly_stmt2str(kw), ly_stmt2str(prev_kw));
-                return LY_EVALID;
-            }
-            mod_stmt = Y_MOD_REVISION;
+            CHECK_ORDER(Y_MOD_REVISION);
             break;
-
         /* body */
         case YANG_ANYDATA:
         case YANG_ANYXML:
@@ -4491,8 +4480,9 @@ parse_sub_module(struct ly_parser_ctx *ctx, const char **data, struct lysp_modul
             /* error handled in the next switch */
             break;
         }
-        prev_kw = kw;
+#undef CHECK_ORDER
 
+        prev_kw = kw;
         switch (kw) {
         /* module header */
         case YANG_YANG_VERSION:

@@ -16,6 +16,27 @@
 #define LY_TREE_SCHEMA_INTERNAL_H_
 
 /**
+ * @brief List of YANG statement groups - the (sub)module's substatements
+ */
+enum yang_module_stmt {
+    Y_MOD_MODULE_HEADER,
+    Y_MOD_LINKAGE,
+    Y_MOD_META,
+    Y_MOD_REVISION,
+    Y_MOD_BODY
+};
+
+/**
+ * @brief Types of arguments of YANG statements
+ */
+enum yang_arg {
+    Y_IDENTIF_ARG,        /**< YANG "identifier-arg-str" rule */
+    Y_PREF_IDENTIF_ARG,   /**< YANG "identifier-ref-arg-str" rule */
+    Y_STR_ARG,            /**< YANG "string" rule */
+    Y_MAYBE_STR_ARG       /**< optional YANG "string" rule */
+};
+
+/**
  * @brief internal context for schema parsers
  */
 struct ly_parser_ctx {

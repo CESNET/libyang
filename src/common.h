@@ -136,21 +136,6 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
  * Parsers
  *****************************************************************************/
 
-enum yang_module_stmt {
-    Y_MOD_MODULE_HEADER,
-    Y_MOD_LINKAGE,
-    Y_MOD_META,
-    Y_MOD_REVISION,
-    Y_MOD_BODY
-};
-
-enum yang_arg {
-    Y_IDENTIF_ARG,        /**< YANG "identifier-arg-str" rule */
-    Y_PREF_IDENTIF_ARG,   /**< YANG "identifier-ref-arg-str" rule */
-    Y_STR_ARG,            /**< YANG "string" rule */
-    Y_MAYBE_STR_ARG       /**< optional YANG "string" rule */
-};
-
 enum yang_keyword {
     YANG_NONE = 0,
     YANG_ACTION,
