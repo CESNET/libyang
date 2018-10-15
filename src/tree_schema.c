@@ -336,6 +336,7 @@ lysp_deviation_free(struct ly_ctx *ctx, struct lysp_deviation *dev)
     FREE_STRING(ctx, dev->ref);
     LY_LIST_FOR_SAFE(dev->deviates, next, iter) {
         lysp_deviate_free(ctx, iter);
+        free(iter);
     }
     FREE_ARRAY(ctx, dev->exts, u, lysp_ext_instance_free);
 }
