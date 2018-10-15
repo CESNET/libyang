@@ -801,6 +801,12 @@ test_module(void **state)
     assert_int_equal(2, mod->version);
     mod = mod_renew(&ctx, mod, 0);
 
+    /* extensions */
+    TEST_GENERIC("prefix:test;}", mod->exts,
+                 assert_string_equal("prefix:test", mod->exts[0].name);
+                 assert_int_equal(LYEXT_SUBSTMT_SELF, mod->exts[0].insubstmt));
+    mod = mod_renew(&ctx, mod, 0);
+
     /* submodule */
     mod->submodule = 1;
 

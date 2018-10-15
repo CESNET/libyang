@@ -905,6 +905,13 @@ keyword_start:
         case '\t':
             /* mandatory "sep" */
             break;
+        case ':':
+            /* keyword is not actually a keyword, but prefix of an extension.
+             * To avoid repeated check of the prefix syntax, move to the point where the colon was read
+             * and we will be checking the keyword (extension instance) itself */
+            prefix = 1;
+            MOVE_INPUT(ctx, data, 1);
+            goto extension;
         case '{':
             /* allowed only for input and output statements which can be without arguments */
             if (*kw == YANG_INPUT || *kw == YANG_OUTPUT) {
@@ -920,6 +927,7 @@ keyword_start:
     } else {
         /* still can be an extension */
         prefix = 0;
+extension:
         while (**data && (**data != ' ') && (**data != '\t') && (**data != '\n') && (**data != '{') && (**data != ';')) {
             LY_CHECK_ERR_RET(ly_getutf8(data, &c, &len),
                              LOGVAL_YANG(ctx, LY_VCODE_INCHAR, (*data)[-len]), LY_EVALID);
