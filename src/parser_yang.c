@@ -1474,7 +1474,7 @@ parse_text_fields(struct ly_parser_ctx *ctx, const char **data, LYEXT_SUBSTMT su
 
     /* allocate new pointer */
     for (count = 1; (*texts) && (*texts)[count - 1]; ++count);
-    *texts = realloc(*texts, count * sizeof **texts);
+    *texts = realloc(*texts, (1 + count) * sizeof **texts);
     LY_CHECK_ERR_RET(!*texts, LOGMEM(ctx->ctx), LY_EMEM);
 
     /* get value */
@@ -1482,6 +1482,7 @@ parse_text_fields(struct ly_parser_ctx *ctx, const char **data, LYEXT_SUBSTMT su
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, (*texts)[count - 1], word, word_len);
+    (*texts)[count] = NULL; /* NULL-termination of the array */
     YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret) {
         LY_CHECK_RET(ret);
 
@@ -4392,7 +4393,6 @@ parse_identity(struct ly_parser_ctx *ctx, const char **data, struct lysp_ident *
         }
         LY_CHECK_RET(ret);
     }
-    LY_CHECK_RET(ret);
 
     return ret;
 }
