@@ -24,6 +24,7 @@
 
 #include "libyang.h"
 #include "../../src/parser_yang.c"
+#include "../../src/tree_schema.c"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -849,6 +850,43 @@ test_module(void **state)
     ly_ctx_destroy(ctx.ctx, NULL);
 }
 
+static void
+test_identity(void **state)
+{
+    (void) state; /* unused */
+
+    struct ly_parser_ctx ctx;
+    struct lysp_ident *ident = NULL;
+    const char *str;
+    unsigned int u;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
+    assert_non_null(ctx.ctx);
+    ctx.line = 1;
+    ctx.indent = 0;
+
+    /* invalid cardinality */
+#define TEST_DUP(MEMBER, VALUE1, VALUE2) \
+    str = " test {"MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
+    assert_int_equal(LY_EVALID, parse_identity(&ctx, &str, &ident)); \
+    logbuf_assert("Duplicate keyword \""MEMBER"\". Line number 1."); \
+    FREE_ARRAY(ctx.ctx, ident, u, lysp_ident_free); \
+    ident = NULL;
+
+    TEST_DUP("description", "a", "b");
+    TEST_DUP("reference", "a", "b");
+    TEST_DUP("status", "current", "obsolete");
+
+    /* full identity */
+    str = " test {base \"a\";base b; description text;reference \'another text\';status current; if-feature x;if-feature y;} ...";
+    assert_int_equal(LY_SUCCESS, parse_identity(&ctx, &str, &ident));
+    assert_non_null(ident);
+    assert_string_equal(" ...", str);
+    FREE_ARRAY(ctx.ctx, ident, u, lysp_ident_free);
+
+    ly_ctx_destroy(ctx.ctx, NULL);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -857,6 +895,7 @@ int main(void)
         cmocka_unit_test_setup(test_arg, logger_setup),
         cmocka_unit_test_setup(test_stmts, logger_setup),
         cmocka_unit_test_setup(test_module, logger_setup),
+        cmocka_unit_test_setup(test_identity, logger_setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
