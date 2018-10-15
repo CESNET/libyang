@@ -14,6 +14,7 @@
 
 #include "libyang.h"
 #include "common.h"
+#include "tree_schema_internal.h"
 
 #define FREE_ARRAY(CTX, ARRAY, ITER, FUNC) LY_ARRAY_FOR(ARRAY, ITER){FUNC(CTX, &ARRAY[ITER]);}free(ARRAY);
 #define FREE_MEMBER(CTX, MEMBER, FUNC) if (MEMBER) {FUNC(CTX, MEMBER);free(MEMBER);}
@@ -485,4 +486,26 @@ lysp_module_free(struct lysp_module *module)
 
 
     free(module);
+}
+
+LY_ERR
+lysp_check_prefix(struct ly_parser_ctx *ctx, struct lysp_module *module, const char **value)
+{
+    unsigned int u;
+
+    if (module->prefix && &module->prefix != value && !strcmp(module->prefix, *value)) {
+        LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_REFERENCE,
+               "Prefix \"%s\" already used as module prefix.", *value);
+        return LY_EEXIST;
+    }
+    if (module->imports) {
+        LY_ARRAY_FOR(module->imports, u) {
+            if (module->imports[u].prefix && &module->imports[u].prefix != value && !strcmp(module->imports[u].prefix, *value)) {
+                LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_REFERENCE,
+                       "Prefix \"%s\" already used to import \"%s\" module.", *value, module->imports[u].name);
+                return LY_EEXIST;
+            }
+        }
+    }
+    return LY_SUCCESS;
 }

@@ -27,12 +27,7 @@
 #include "common.h"
 #include "context.h"
 #include "libyang.h"
-
-struct ly_parser_ctx {
-    struct ly_ctx *ctx;
-    uint64_t line;      /* line number */
-    uint64_t indent;    /* current position on the line for indentation */
-};
+#include "tree_schema_internal.h"
 
 /* Macro to check YANG's yang-char grammar rule */
 #define is_yangutf8char(c) ((c >= 0x20 && c <= 0xd77) || c == 0x09 || c == 0x0a || c == 0x0d || \
@@ -1340,7 +1335,7 @@ parse_include(struct ly_parser_ctx *ctx, const char **data, struct lysp_include 
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_import(struct ly_parser_ctx *ctx, const char **data, struct lysp_import **imports)
+parse_import(struct ly_parser_ctx *ctx, const char **data, struct lysp_module *module)
 {
     LY_ERR ret = 0;
     char *buf, *word;
@@ -1348,7 +1343,7 @@ parse_import(struct ly_parser_ctx *ctx, const char **data, struct lysp_import **
     enum yang_keyword kw;
     struct lysp_import *imp;
 
-    LYSP_ARRAY_NEW_RET(ctx, imports, imp, LY_EVALID);
+    LYSP_ARRAY_NEW_RET(ctx, &module->imports, imp, LY_EVALID);
 
     /* get value */
     ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
@@ -1361,6 +1356,7 @@ parse_import(struct ly_parser_ctx *ctx, const char **data, struct lysp_import **
         switch (kw) {
         case YANG_PREFIX:
             ret = parse_text_field(ctx, data, LYEXT_SUBSTMT_PREFIX, 0, &imp->prefix, Y_IDENTIF_ARG, &imp->exts);
+            LY_CHECK_RET(lysp_check_prefix(ctx, module, &imp->prefix), LY_EVALID);
             break;
         case YANG_DESCRIPTION:
             ret = parse_text_field(ctx, data, LYEXT_SUBSTMT_DESCRIPTION, 0, &imp->dsc, Y_STR_ARG, &imp->exts);
@@ -4507,6 +4503,7 @@ parse_sub_module(struct ly_parser_ctx *ctx, const char **data, struct lysp_modul
             break;
         case YANG_PREFIX:
             ret = parse_text_field(ctx, data, LYEXT_SUBSTMT_PREFIX, 0, &mod->prefix, Y_IDENTIF_ARG, &mod->exts);
+            LY_CHECK_RET(lysp_check_prefix(ctx, mod, &mod->prefix), LY_EVALID);
             break;
         case YANG_BELONGS_TO:
             ret = parse_belongsto(ctx, data, &mod->belongsto, &mod->prefix, &mod->exts);
@@ -4517,7 +4514,7 @@ parse_sub_module(struct ly_parser_ctx *ctx, const char **data, struct lysp_modul
             ret = parse_include(ctx, data, &mod->includes);
             break;
         case YANG_IMPORT:
-            ret = parse_import(ctx, data, &mod->imports);
+            ret = parse_import(ctx, data, mod);
             break;
 
         /* meta */

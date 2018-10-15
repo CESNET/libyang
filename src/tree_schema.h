@@ -17,6 +17,10 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @defgroup schematree Schema Tree
  * @{
@@ -744,5 +748,9 @@ struct lys_module {
 };
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LY_TREE_SCHEMA_H_ */

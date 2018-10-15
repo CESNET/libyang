@@ -29,7 +29,7 @@
 char logbuf[BUFSIZE] = {0};
 
 /* set to 0 to printing error messages to stderr instead of checking them in code */
-#define ENABLE_LOGGER_CHECKING 0
+#define ENABLE_LOGGER_CHECKING 1
 
 #if ENABLE_LOGGER_CHECKING
 static void
@@ -705,6 +705,12 @@ test_module(void **state)
     logbuf_assert("Duplicate keyword \"prefix\". Line number 1.");
     mod = mod_renew(&ctx, mod);
 
+    /* not allowed in module (submodule-specific) */
+    str = SCHEMA_BEGINNING "belongs-to master {prefix m;}}";
+    assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
+    logbuf_assert("Invalid keyword \"belongs-to\" as a child of \"module\". Line number 1.");
+    mod = mod_renew(&ctx, mod);
+
     /* anydata */
     TEST_NODE(LYS_ANYDATA, "anydata test;}", "test");
     /* anyxml */
@@ -740,13 +746,13 @@ test_module(void **state)
     /* import */
     TEST_GENERIC("import test {prefix z;}}", mod->imports,
                  assert_string_equal("test", mod->imports[0].name));
-#if 0
+
     /* import - prefix collision */
     str = SCHEMA_BEGINNING "import test {prefix x;}}";
     assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
-    logbuf_assert("Duplicate keyword \"namespace\". Line number 1.");
+    logbuf_assert("Prefix \"x\" already used as module prefix. Line number 2.");
     mod = mod_renew(&ctx, mod);
-#endif
+
     /* include */
     TEST_GENERIC("rpc test;}", mod->rpcs,
                  assert_string_equal("test", mod->rpcs[0].name));
