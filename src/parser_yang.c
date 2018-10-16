@@ -4186,6 +4186,10 @@ parse_deviate(struct ly_parser_ctx *ctx, const char **data, struct lysp_deviate 
                 LOGVAL_YANG(ctx, LY_VCODE_INDEV, ly_devmod2str(dev_mod), ly_stmt2str(kw));
                 return LY_EVALID;
             default:
+                if (d_rpl->type) {
+                    LOGVAL_YANG(ctx, LY_VCODE_DUPSTMT, ly_stmt2str(kw));
+                    return LY_EVALID;
+                }
                 d_rpl->type = calloc(1, sizeof *d_rpl->type);
                 LY_CHECK_ERR_RET(!d_rpl->type, LOGMEM(ctx->ctx), LY_EMEM);
                 ret = parse_type(ctx, data, d_rpl->type);
@@ -4331,7 +4335,7 @@ parse_feature(struct ly_parser_ctx *ctx, const char **data, struct lysp_feature 
             break;
         default:
             LOGVAL_YANG(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "feature");
-            return LY_EMEM;
+            return LY_EVALID;
         }
         LY_CHECK_RET(ret);
     }
