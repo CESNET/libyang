@@ -262,15 +262,15 @@ LY_ERR ly_getutf8(const char **input, unsigned int *utf8_char, size_t *bytes_rea
 LY_ERR lysp_check_date(struct ly_ctx *ctx, const char *date, int date_len, const char *stmt);
 
 /*
- * Macros to work with lysp structures arrays.
+ * Macros to work with 0-terminated arrays.
  *
- * There is a byte allocated after the last item with value 0.
+ * There is a NULL pointer allocated after the last item to terminate the array.
  */
 #define LYSP_ARRAY_NEW_RET(CTX, ARRAY, NEW_ITEM, RETVAL) int _count; \
         for (_count = 0; *(ARRAY) && *((void **)(*(ARRAY) + _count)); ++_count); \
         if (!_count) *(ARRAY) = malloc(sizeof **(ARRAY) + sizeof(void *)); \
             else *(ARRAY) = ly_realloc(*(ARRAY), (_count + 1) * sizeof **(ARRAY) + sizeof(void *)); \
-        LY_CHECK_ERR_RET(!*(ARRAY), LOGMEM(CTX->ctx), RETVAL); \
+        LY_CHECK_ERR_RET(!*(ARRAY), LOGMEM(CTX), RETVAL); \
         *((void **)(*(ARRAY) + _count + 1)) = NULL; \
         (NEW_ITEM) = (*(ARRAY)) + _count; \
         memset(NEW_ITEM, 0, sizeof *(NEW_ITEM));

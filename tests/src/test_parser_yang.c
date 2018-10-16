@@ -865,6 +865,7 @@ static void
 test_identity(void **state)
 {
     (void) state; /* unused */
+    int dict = 1; /* magic variable for FREE macros */
 
     struct ly_parser_ctx ctx;
     struct lysp_ident *ident = NULL;
@@ -909,6 +910,7 @@ static void
 test_feature(void **state)
 {
     (void) state; /* unused */
+    int dict = 1; /* magic variable for FREE macros */
 
     struct ly_parser_ctx ctx;
     struct lysp_feature *features = NULL;
@@ -953,6 +955,7 @@ static void
 test_deviation(void **state)
 {
     (void) state; /* unused */
+    int dict = 1; /* magic variable for FREE macros */
 
     struct ly_parser_ctx ctx;
     struct lysp_deviation *d = NULL;
@@ -1016,7 +1019,7 @@ test_deviate(void **state)
     /* invalid cardinality */
 #define TEST_DUP(TYPE, MEMBER, VALUE1, VALUE2) \
     TEST_DUP_GENERIC(TYPE" {", MEMBER, VALUE1, VALUE2, parse_deviate, \
-                     &d, "1", lysp_deviate_free(ctx.ctx, d); free(d); d = NULL)
+                     &d, "1", lysp_deviate_free(ctx.ctx, d, 1); free(d); d = NULL)
 
     TEST_DUP("add", "config", "true", "false");
     TEST_DUP("replace", "default", "int8", "uint8");
@@ -1031,29 +1034,29 @@ test_deviate(void **state)
     assert_int_equal(LY_SUCCESS, parse_deviate(&ctx, &str, &d));
     assert_non_null(d);
     assert_string_equal(" ...", str);
-    lysp_deviate_free(ctx.ctx, d); free(d); d = NULL;
+    lysp_deviate_free(ctx.ctx, d, 1); free(d); d = NULL;
     str = " add {units meters; must 1; must 2; unique x; unique y; default a; default b; config true; mandatory true; min-elements 1; max-elements 2; prefix:ext;} ...";
     assert_int_equal(LY_SUCCESS, parse_deviate(&ctx, &str, &d));
     assert_non_null(d);
     assert_string_equal(" ...", str);
-    lysp_deviate_free(ctx.ctx, d); free(d); d = NULL;
+    lysp_deviate_free(ctx.ctx, d, 1); free(d); d = NULL;
     str = " delete {units meters; must 1; must 2; unique x; unique y; default a; default b; prefix:ext;} ...";
     assert_int_equal(LY_SUCCESS, parse_deviate(&ctx, &str, &d));
     assert_non_null(d);
     assert_string_equal(" ...", str);
-    lysp_deviate_free(ctx.ctx, d); free(d); d = NULL;
+    lysp_deviate_free(ctx.ctx, d, 1); free(d); d = NULL;
     str = " replace {type string; units meters; default a; config true; mandatory true; min-elements 1; max-elements 2; prefix:ext;} ...";
     assert_int_equal(LY_SUCCESS, parse_deviate(&ctx, &str, &d));
     assert_non_null(d);
     assert_string_equal(" ...", str);
-    lysp_deviate_free(ctx.ctx, d); free(d); d = NULL;
+    lysp_deviate_free(ctx.ctx, d, 1); free(d); d = NULL;
 
     /* invalid substatements */
 #define TEST_NOT_SUP(DEV, STMT, VALUE) \
     str = " "DEV" {"STMT" "VALUE";}..."; \
     assert_int_equal(LY_EVALID, parse_deviate(&ctx, &str, &d)); \
     logbuf_assert("Deviate \""DEV"\" does not support keyword \""STMT"\". Line number 1."); \
-    lysp_deviate_free(ctx.ctx, d); free(d); d = NULL
+    lysp_deviate_free(ctx.ctx, d, 1); free(d); d = NULL
 
     TEST_NOT_SUP("not-supported", "units", "meters");
     TEST_NOT_SUP("not-supported", "must", "1");

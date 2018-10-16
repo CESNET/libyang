@@ -22,6 +22,11 @@ extern "C" {
 #endif
 
 /**
+ * @brief XPath representation.
+ */
+struct lyxp_expr;
+
+/**
  * @defgroup schematree Schema Tree
  * @{
  *
@@ -725,18 +730,64 @@ struct lysp_module {
 void lysp_module_free(struct lysp_module *module);
 
 /**
- * @brief Compiled YANG schema tree structure representing YANG module.
- *
- * Semantically validated YANG schema tree for data tree parsing.
- * Contains only the necessary information for the data validation.
+ * @brief YANG when-stmt
  */
-struct lysc_module {
+struct lysc_when {
+    struct lyxp_expr *cond;          /**< XPath when condition */
+    struct lysc_ext_instance *exts;  /**< list of the extension instances (0-terminated) */
+};
+
+/**
+ * @brief YANG feature-stmt
+ */
+struct lysc_feature {
+    const char *name;                /**< feature name (mandatory) */
+    struct lysc_feature *depfeatures;/**< list of other features depending on this one (0-terminated) */
+    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions (0-terminated) */
+    struct lysp_ext_instance *exts;  /**< list of the extension instances (0-terminated) */
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* and
+                                          #LYS_FENABLED values allowed */
+};
+
+struct lysc_iffeature {
+    struct lysc_feature *features;   /**< array of pointers to the features used in expression, size depends on content of expr */
+    uint32_t expr[];                 /**< 2bits array describing the if-feature expression in prefix format */
 };
 
 /**
  * @brief Compiled YANG data node
  */
 struct lysc_node {
+    uint16_t nodetype;               /**< type of the node (mandatory) */
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
+    struct lysp_node *sp;            /**< link to the simply parsed (SP) original of the node, NULL if the SP schema was removed. */
+    struct lysc_node *next;          /**< pointer to the next sibling node (NULL if there is no one) */
+    const char *name;                /**< node name (mandatory) */
+    struct lysc_when *when;          /**< when statement */
+    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions (0-terminated) */
+    struct lysc_ext_instance *exts;  /**< list of the extension instances (0-terminated) */
+};
+
+/**
+ * @brief Compiled YANG schema tree structure representing YANG module.
+ *
+ * Semantically validated YANG schema tree for data tree parsing.
+ * Contains only the necessary information for the data validation.
+ */
+struct lysc_module {
+    struct ly_ctx *ctx;              /**< libyang context of the module (mandatory) */
+    const char *name;                /**< name of the module (mandatory) */
+    const char *ns;                  /**< namespace of the module (mandatory) */
+    const char *prefix;              /**< module prefix (mandatory) */
+
+
+    struct lysc_feature *features;   /**< list of feature definitions (0-terminated) */
+
+
+    uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
+    uint8_t latest_revision:1;       /**< flag if the module was loaded without specific revision and is
+                                          the latest revision found */
+    uint8_t version:4;               /**< yang-version (LYS_VERSION values) */
 };
 
 /**
@@ -746,6 +797,29 @@ struct lys_module {
     struct lysp_module *parsed;      /**< Simply parsed (unresolved) YANG schema tree */
     struct lysc_module *compiled;    /**< Compiled and fully validated YANG schema tree for data parsing */
 };
+
+
+/**
+ * @defgroup scflags Schema compile flags
+ * @ingroup schematree
+ *
+ * @{
+ */
+#define LYSC_OPT_FREE_SP 1           /**< Free the input printable schema */
+
+/**
+ * @}
+ */
+
+/**
+ * @brief Compile printable schema into a validated schema linking all the references.
+ *
+ * @param[in] sp Simple parsed printable schema to compile. Can be changed according to the provided options.
+ * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
+ * @param[out] sc Resulting compiled schema structure.
+ * @return LY_ERR value.
+ */
+LY_ERR lys_compile(struct lysp_module *sp, int options, struct lysc_module **sc);
 
 /** @} */
 
