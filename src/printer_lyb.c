@@ -19,9 +19,10 @@
 #include <assert.h>
 #include <stdint.h>
 #ifdef __APPLE__
-#   include <machine/endian.h>
+# include <libkern/OSByteOrder.h>
+# define htole64(x) OSSwapHostToLittleInt64(x)
 #else
-#   include <endian.h>
+# include <endian.h>
 #endif
 
 #include "common.h"

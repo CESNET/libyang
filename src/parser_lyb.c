@@ -18,9 +18,13 @@
 #include <string.h>
 #include <inttypes.h>
 #ifdef __APPLE__
-#   include <machine/endian.h>
+# include <libkern/OSByteOrder.h>
+
+# define le16toh(x) OSSwapLittleToHostInt16(x)
+# define le32toh(x) OSSwapLittleToHostInt32(x)
+# define le64toh(x) OSSwapLittleToHostInt64(x)
 #else
-#   include <endian.h>
+# include <endian.h>
 #endif
 
 #include "libyang.h"
