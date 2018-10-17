@@ -1041,9 +1041,9 @@ extern "C" {
  * @page howtothreads libyang in Threads
  *
  * libyang can be used in multithreaded applications keeping in mind the following rules:
- * - libyang context manipulation (adding new schemas) is not thread safe and it is supposed to be done in a main
- *   thread before any other work with context, schemas or data instances. Destroying the context is supposed to
- *   be done when no other thread accesses context, schemas nor data trees,
+ * - libyang context manipulation (adding new schemas, removing schemas or even printing schemas) is not thread safe
+ *   and it is supposed to be done in a main thread before any other work with context, schemas or data instances.
+ *   Destroying the context is supposed to be done when no other thread accesses context, schemas nor data trees,
  * - data parser (\b lyd_parse*() functions) can be used simultaneously in multiple threads (also the returned
  *   #ly_errno is thread safe),
  * - data manipulation (lyd_new(), lyd_insert(), lyd_unlink(), lyd_free() and many other
