@@ -18,7 +18,11 @@
 #include <string.h>
 #include <assert.h>
 #include <stdint.h>
-#include <endian.h>
+#ifdef __APPLE__
+#   include <machine/endian.h>
+#else
+#   include <endian.h>
+#endif
 
 #include "common.h"
 #include "printer.h"

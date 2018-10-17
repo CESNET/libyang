@@ -17,7 +17,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <inttypes.h>
-#include <endian.h>
+#ifdef __APPLE__
+#   include <machine/endian.h>
+#else
+#   include <endian.h>
+#endif
 
 #include "libyang.h"
 #include "common.h"
