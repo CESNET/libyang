@@ -14,8 +14,6 @@
 
 #include "../../src/common.c"
 
-#define _BSD_SOURCE
-#define _DEFAULT_SOURCE
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -84,35 +82,6 @@ test_utf8(void **state)
     assert_int_equal(LY_EINVAL, ly_getutf8(&str, &c, &len));
 }
 
-static void
-test_date(void **state)
-{
-    (void) state; /* unused */
-
-    assert_int_equal(LY_EINVAL, lysp_check_date(NULL, NULL, 0, "date"));
-    assert_string_equal(logbuf, "Invalid argument date (lysp_check_date()).");
-    assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "x", 1, "date"));
-    assert_string_equal(logbuf, "Invalid argument date_len (lysp_check_date()).");
-    assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "nonsencexx", 10, "date"));
-    assert_string_equal(logbuf, "Invalid value \"nonsencexx\" of \"date\".");
-    assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "123x-11-11", 10, "date"));
-    assert_string_equal(logbuf, "Invalid value \"123x-11-11\" of \"date\".");
-    assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "2018-13-11", 10, "date"));
-    assert_string_equal(logbuf, "Invalid value \"2018-13-11\" of \"date\".");
-    assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "2018-11-41", 10, "date"));
-    assert_string_equal(logbuf, "Invalid value \"2018-11-41\" of \"date\".");
-    assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "2018-02-29", 10, "date"));
-    assert_string_equal(logbuf, "Invalid value \"2018-02-29\" of \"date\".");
-    assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "2018.02-28", 10, "date"));
-    assert_string_equal(logbuf, "Invalid value \"2018.02-28\" of \"date\".");
-    assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "2018-02.28", 10, "date"));
-    assert_string_equal(logbuf, "Invalid value \"2018-02.28\" of \"date\".");
-
-    assert_int_equal(LY_SUCCESS, lysp_check_date(NULL, "2018-11-11", 10, "date"));
-    assert_int_equal(LY_SUCCESS, lysp_check_date(NULL, "2018-02-28", 10, "date"));
-    assert_int_equal(LY_SUCCESS, lysp_check_date(NULL, "2016-02-29", 10, "date"));
-}
-
 void *__real_realloc(void *ptr, size_t size);
 void *__wrap_realloc(void *ptr, size_t size)
 {
@@ -154,7 +123,6 @@ int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup(test_utf8, logger_setup),
-        cmocka_unit_test_setup(test_date, logger_setup),
         cmocka_unit_test(test_lyrealloc),
     };
 

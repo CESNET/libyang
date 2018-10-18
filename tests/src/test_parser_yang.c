@@ -12,8 +12,9 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#define _BSD_SOURCE
-#define _DEFAULT_SOURCE
+#include "../../src/tree_schema.c"
+#include "../../src/parser_yang.c"
+
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -23,13 +24,12 @@
 #include <string.h>
 
 #include "libyang.h"
-#include "../../src/parser_yang.c"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
 
 /* set to 0 to printing error messages to stderr instead of checking them in code */
-#define ENABLE_LOGGER_CHECKING 0
+#define ENABLE_LOGGER_CHECKING 1
 
 #if ENABLE_LOGGER_CHECKING
 static void
@@ -66,6 +66,12 @@ logbuf_clean(void)
 #else
 #   define logbuf_assert(str)
 #endif
+
+#define TEST_DUP_GENERIC(PREFIX, MEMBER, VALUE1, VALUE2, FUNC, RESULT, LINE, CLEANUP) \
+    str = PREFIX MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
+    assert_int_equal(LY_EVALID, FUNC(&ctx, &str, RESULT)); \
+    logbuf_assert("Duplicate keyword \""MEMBER"\". Line number "LINE"."); \
+    CLEANUP
 
 static void
 test_helpers(void **state)
@@ -637,11 +643,12 @@ test_stmts(void **state)
 }
 
 static struct lysp_module *
-mod_renew(struct ly_parser_ctx *ctx, struct lysp_module *mod)
+mod_renew(struct ly_parser_ctx *ctx, struct lysp_module *mod, uint8_t submodule)
 {
     lysp_module_free(mod);
     mod = calloc(1, sizeof *mod);
     mod->ctx = ctx->ctx;
+    mod->submodule = submodule;
     assert_non_null(mod);
     return mod;
 }
@@ -660,25 +667,25 @@ test_module(void **state)
     ctx.line = 1;
     ctx.indent = 0;
 
-    mod = mod_renew(&ctx, NULL);
+    mod = mod_renew(&ctx, NULL, 0);
 
     /* missing mandatory substatements */
     str = " name {}";
     assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
     assert_string_equal("name", mod->name);
     logbuf_assert("Missing mandatory keyword \"namespace\" as a child of \"module\". Line number 1.");
-    mod = mod_renew(&ctx, mod);
+    mod = mod_renew(&ctx, mod, 0);
 
     str = " name {namespace urn:x;}";
     assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
     assert_string_equal("urn:x", mod->ns);
     logbuf_assert("Missing mandatory keyword \"prefix\" as a child of \"module\". Line number 1.");
-    mod = mod_renew(&ctx, mod);
+    mod = mod_renew(&ctx, mod, 0);
 
     str = " name {namespace urn:x;prefix \"x\";}";
     assert_int_equal(LY_SUCCESS, parse_sub_module(&ctx, &str, mod));
     assert_string_equal("x", mod->prefix);
-    mod = mod_renew(&ctx, mod);
+    mod = mod_renew(&ctx, mod, 0);
 
 #define SCHEMA_BEGINNING " name {namespace urn:x;prefix \"x\";"
 #define TEST_NODE(NODETYPE, INPUT, NAME) \
@@ -687,23 +694,30 @@ test_module(void **state)
         assert_non_null(mod->data); \
         assert_int_equal(NODETYPE, mod->data->nodetype); \
         assert_string_equal(NAME, mod->data->name); \
-        mod = mod_renew(&ctx, mod);
+        mod = mod_renew(&ctx, mod, 0);
 #define TEST_GENERIC(INPUT, TARGET, TEST) \
         str = SCHEMA_BEGINNING INPUT; \
         assert_int_equal(LY_SUCCESS, parse_sub_module(&ctx, &str, mod)); \
         assert_non_null(TARGET); \
         TEST; \
-        mod = mod_renew(&ctx, mod);
+        mod = mod_renew(&ctx, mod, 0);
+#define TEST_DUP(MEMBER, VALUE1, VALUE2, LINE, SUBMODULE) \
+        TEST_DUP_GENERIC(SCHEMA_BEGINNING, MEMBER, VALUE1, VALUE2, \
+                         parse_sub_module, mod, LINE, mod = mod_renew(&ctx, mod, SUBMODULE))
 
     /* duplicated namespace, prefix */
-    str = SCHEMA_BEGINNING "namespace y;}";
+    TEST_DUP("namespace", "y", "z", "1", 0);
+    TEST_DUP("prefix", "y", "z", "1", 0);
+    TEST_DUP("contact", "a", "b", "1", 0);
+    TEST_DUP("description", "a", "b", "1", 0);
+    TEST_DUP("organization", "a", "b", "1", 0);
+    TEST_DUP("reference", "a", "b", "1", 0);
+
+    /* not allowed in module (submodule-specific) */
+    str = SCHEMA_BEGINNING "belongs-to master {prefix m;}}";
     assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
-    logbuf_assert("Duplicate keyword \"namespace\". Line number 1.");
-    mod = mod_renew(&ctx, mod);
-    str = SCHEMA_BEGINNING "prefix y;}";
-    assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
-    logbuf_assert("Duplicate keyword \"prefix\". Line number 1.");
-    mod = mod_renew(&ctx, mod);
+    logbuf_assert("Invalid keyword \"belongs-to\" as a child of \"module\". Line number 1.");
+    mod = mod_renew(&ctx, mod, 0);
 
     /* anydata */
     TEST_NODE(LYS_ANYDATA, "anydata test;}", "test");
@@ -711,7 +725,7 @@ test_module(void **state)
     TEST_NODE(LYS_ANYXML, "anyxml test;}", "test");
     /* augment */
     TEST_GENERIC("augment /somepath;}", mod->augments,
-                 assert_string_equal("/somepath", mod->augments[0].nodeid));
+                 assert_string_equal("/somepath", LY_ARRAY_INDEX(mod->augments, 0, struct lysp_augment)->nodeid));
     /* choice */
     TEST_NODE(LYS_CHOICE, "choice test;}", "test");
     /* contact 0..1 */
@@ -724,32 +738,36 @@ test_module(void **state)
                  assert_string_equal("some description", mod->dsc));
     /* deviation */
     TEST_GENERIC("deviation /somepath {deviate not-supported;}}", mod->deviations,
-                 assert_string_equal("/somepath", mod->deviations[0].nodeid));
+                 assert_string_equal("/somepath", LY_ARRAY_INDEX(mod->deviations, 0, struct lysp_deviation)->nodeid));
     /* extension */
     TEST_GENERIC("extension test;}", mod->extensions,
-                 assert_string_equal("test", mod->extensions[0].name));
+                 assert_string_equal("test", LY_ARRAY_INDEX(mod->extensions, 0, struct lysp_ext)->name));
     /* feature */
     TEST_GENERIC("feature test;}", mod->features,
-                 assert_string_equal("test", mod->features[0].name));
+                 assert_string_equal("test", LY_ARRAY_INDEX(mod->features, 0, struct lysp_feature)->name));
     /* grouping */
     TEST_GENERIC("grouping grp;}", mod->groupings,
-                 assert_string_equal("grp", mod->groupings[0].name));
+                 assert_string_equal("grp", LY_ARRAY_INDEX(mod->groupings, 0, struct lysp_grp)->name));
     /* identity */
     TEST_GENERIC("identity test;}", mod->identities,
-                 assert_string_equal("test", mod->identities[0].name));
+                 assert_string_equal("test", LY_ARRAY_INDEX(mod->identities, 0, struct lysp_ident)->name));
     /* import */
     TEST_GENERIC("import test {prefix z;}}", mod->imports,
-                 assert_string_equal("test", mod->imports[0].name));
-#if 0
+                 assert_string_equal("test", LY_ARRAY_INDEX(mod->imports, 0, struct lysp_import)->name));
+
     /* import - prefix collision */
     str = SCHEMA_BEGINNING "import test {prefix x;}}";
     assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
-    logbuf_assert("Duplicate keyword \"namespace\". Line number 1.");
-    mod = mod_renew(&ctx, mod);
-#endif
+    logbuf_assert("Prefix \"x\" already used as module prefix. Line number 2.");
+    mod = mod_renew(&ctx, mod, 0);
+    str = SCHEMA_BEGINNING "import test1 {prefix y;}import test2 {prefix y;}}";
+    assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
+    logbuf_assert("Prefix \"y\" already used to import \"test1\" module. Line number 2.");
+    mod = mod_renew(&ctx, mod, 0);
+
     /* include */
-    TEST_GENERIC("rpc test;}", mod->rpcs,
-                 assert_string_equal("test", mod->rpcs[0].name));
+    TEST_GENERIC("include test;}", mod->includes,
+                 assert_string_equal("test", LY_ARRAY_INDEX(mod->includes, 0, struct lysp_include)->name));
     /* leaf */
     TEST_NODE(LYS_LEAF, "leaf test {type string;}}", "test");
     /* leaf-list */
@@ -758,7 +776,7 @@ test_module(void **state)
     TEST_NODE(LYS_LIST, "list test {key a;leaf a {type string;}}}", "test");
     /* notification */
     TEST_GENERIC("notification test;}", mod->notifs,
-                 assert_string_equal("test", mod->notifs[0].name));
+                 assert_string_equal("test", LY_ARRAY_INDEX(mod->notifs, 0, struct lysp_notif)->name));
     /* organization 0..1 */
     TEST_GENERIC("organization \"CESNET a.l.e.\";}", mod->org,
                  assert_string_equal("CESNET a.l.e.", mod->org));
@@ -767,38 +785,305 @@ test_module(void **state)
                  assert_string_equal("RFC7950", mod->ref));
     /* revision */
     TEST_GENERIC("revision 2018-10-12;}", mod->revs,
-                 assert_string_equal("2018-10-12", mod->revs[0].rev));
+                 assert_string_equal("2018-10-12", LY_ARRAY_INDEX(mod->revs, 0, struct lysp_revision)->rev));
     /* rpc */
     TEST_GENERIC("rpc test;}", mod->rpcs,
-                 assert_string_equal("test", mod->rpcs[0].name));
+                 assert_string_equal("test", LY_ARRAY_INDEX(mod->rpcs, 0, struct lysp_action)->name));
     /* typedef */
     TEST_GENERIC("typedef test{type string;}}", mod->typedefs,
-                 assert_string_equal("test", mod->typedefs[0].name));
+                 assert_string_equal("test", LY_ARRAY_INDEX(mod->typedefs, 0, struct lysp_tpdf)->name));
     /* uses */
     TEST_NODE(LYS_USES, "uses test;}", "test");
     /* yang-version */
     str = SCHEMA_BEGINNING "\n\tyang-version 10;}";
     assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
     logbuf_assert("Invalid value \"10\" of \"yang-version\". Line number 3.");
-    mod = mod_renew(&ctx, mod);
+    mod = mod_renew(&ctx, mod, 0);
     str = SCHEMA_BEGINNING "yang-version 1.0;yang-version 1.1;}";
     assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
     logbuf_assert("Duplicate keyword \"yang-version\". Line number 3.");
-    mod = mod_renew(&ctx, mod);
+    mod = mod_renew(&ctx, mod, 0);
     str = SCHEMA_BEGINNING "yang-version 1.0;}";
     assert_int_equal(LY_SUCCESS, parse_sub_module(&ctx, &str, mod));
     assert_int_equal(1, mod->version);
-    mod = mod_renew(&ctx, mod);
+    mod = mod_renew(&ctx, mod, 0);
     str = SCHEMA_BEGINNING "yang-version \"1.1\";}";
     assert_int_equal(LY_SUCCESS, parse_sub_module(&ctx, &str, mod));
     assert_int_equal(2, mod->version);
-    mod = mod_renew(&ctx, mod);
+    mod = mod_renew(&ctx, mod, 0);
+
+    /* extensions */
+    TEST_GENERIC("prefix:test;}", mod->exts,
+                 assert_string_equal("prefix:test", LY_ARRAY_INDEX(mod->exts, 0, struct lysp_ext_instance)->name);
+                 assert_int_equal(LYEXT_SUBSTMT_SELF, LY_ARRAY_INDEX(mod->exts, 0, struct lysp_ext_instance)->insubstmt));
+    mod = mod_renew(&ctx, mod, 0);
+
+    /* invalid substatement */
+    str = SCHEMA_BEGINNING "must false;}";
+    assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
+    logbuf_assert("Invalid keyword \"must\" as a child of \"module\". Line number 3.");
+    mod = mod_renew(&ctx, mod, 0);
+
+    /* submodule */
+    mod->submodule = 1;
+
+    /* missing mandatory substatements */
+    str = " subname {}";
+    assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
+    assert_string_equal("subname", mod->name);
+    logbuf_assert("Missing mandatory keyword \"belongs-to\" as a child of \"submodule\". Line number 3.");
+    mod = mod_renew(&ctx, mod, 1);
+
+    str = " subname {belongs-to name;}";
+    assert_int_equal(LY_SUCCESS, parse_sub_module(&ctx, &str, mod));
+    assert_string_equal("name", mod->belongsto);
+    mod = mod_renew(&ctx, mod, 1);
+
+#undef SCHEMA_BEGINNING
+#define SCHEMA_BEGINNING " subname {belongs-to name;"
+
+    /* duplicated namespace, prefix */
+    TEST_DUP("belongs-to", "module1", "module2", "3", 1);
+
+    /* not allowed in submodule (module-specific) */
+    str = SCHEMA_BEGINNING "namespace \"urn:z\";}";
+    assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
+    logbuf_assert("Invalid keyword \"namespace\" as a child of \"submodule\". Line number 3.");
+    mod = mod_renew(&ctx, mod, 1);
+    str = SCHEMA_BEGINNING "prefix m;}}";
+    assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
+    logbuf_assert("Invalid keyword \"prefix\" as a child of \"submodule\". Line number 3.");
+    mod = mod_renew(&ctx, mod, 1);
 
 #undef TEST_GENERIC
 #undef TEST_NODE
+#undef TEST_DUP
 #undef SCHEMA_BEGINNING
 
     lysp_module_free(mod);
+    ly_ctx_destroy(ctx.ctx, NULL);
+}
+
+static void
+test_identity(void **state)
+{
+    (void) state; /* unused */
+    int dict = 1; /* magic variable for FREE macros */
+
+    struct ly_parser_ctx ctx;
+    struct lysp_ident *ident = NULL;
+    const char *str;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
+    assert_non_null(ctx.ctx);
+    ctx.line = 1;
+    ctx.indent = 0;
+
+    /* invalid cardinality */
+#define TEST_DUP(MEMBER, VALUE1, VALUE2) \
+    TEST_DUP_GENERIC(" test {", MEMBER, VALUE1, VALUE2, parse_identity, \
+                     &ident, "1", FREE_ARRAY(ctx.ctx, ident, lysp_ident_free); ident = NULL)
+
+    TEST_DUP("description", "a", "b");
+    TEST_DUP("reference", "a", "b");
+    TEST_DUP("status", "current", "obsolete");
+
+    /* full content */
+    str = " test {base \"a\";base b; description text;reference \'another text\';status current; if-feature x;if-feature y;prefix:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_identity(&ctx, &str, &ident));
+    assert_non_null(ident);
+    assert_string_equal(" ...", str);
+    FREE_ARRAY(ctx.ctx, ident, lysp_ident_free);
+    ident = NULL;
+
+    /* invalid substatement */
+    str = " test {organization XXX;}";
+    assert_int_equal(LY_EVALID, parse_identity(&ctx, &str, &ident));
+    logbuf_assert("Invalid keyword \"organization\" as a child of \"identity\". Line number 1.");
+    FREE_ARRAY(ctx.ctx, ident, lysp_ident_free);
+    ident = NULL;
+
+#undef TEST_DUP
+
+    ly_ctx_destroy(ctx.ctx, NULL);
+}
+
+static void
+test_feature(void **state)
+{
+    (void) state; /* unused */
+    int dict = 1; /* magic variable for FREE macros */
+
+    struct ly_parser_ctx ctx;
+    struct lysp_feature *features = NULL;
+    const char *str;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
+    assert_non_null(ctx.ctx);
+    ctx.line = 1;
+    ctx.indent = 0;
+
+    /* invalid cardinality */
+#define TEST_DUP(MEMBER, VALUE1, VALUE2) \
+    TEST_DUP_GENERIC(" test {", MEMBER, VALUE1, VALUE2, parse_feature, \
+                     &features, "1", FREE_ARRAY(ctx.ctx, features, lysp_feature_free); features = NULL)
+
+    TEST_DUP("description", "a", "b");
+    TEST_DUP("reference", "a", "b");
+    TEST_DUP("status", "current", "obsolete");
+
+    /* full content */
+    str = " test {description text;reference \'another text\';status current; if-feature x;if-feature y;prefix:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_feature(&ctx, &str, &features));
+    assert_non_null(features);
+    assert_string_equal(" ...", str);
+    FREE_ARRAY(ctx.ctx, features, lysp_feature_free);
+    features = NULL;
+
+    /* invalid substatement */
+    str = " test {organization XXX;}";
+    assert_int_equal(LY_EVALID, parse_feature(&ctx, &str, &features));
+    logbuf_assert("Invalid keyword \"organization\" as a child of \"feature\". Line number 1.");
+    FREE_ARRAY(ctx.ctx, features, lysp_feature_free);
+    features = NULL;
+
+#undef TEST_DUP
+
+    ly_ctx_destroy(ctx.ctx, NULL);
+}
+
+static void
+test_deviation(void **state)
+{
+    (void) state; /* unused */
+    int dict = 1; /* magic variable for FREE macros */
+
+    struct ly_parser_ctx ctx;
+    struct lysp_deviation *d = NULL;
+    const char *str;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
+    assert_non_null(ctx.ctx);
+    ctx.line = 1;
+    ctx.indent = 0;
+
+    /* invalid cardinality */
+#define TEST_DUP(MEMBER, VALUE1, VALUE2) \
+    TEST_DUP_GENERIC(" test {deviate not-supported;", MEMBER, VALUE1, VALUE2, parse_deviation, \
+                     &d, "1", FREE_ARRAY(ctx.ctx, d, lysp_deviation_free); d = NULL)
+
+    TEST_DUP("description", "a", "b");
+    TEST_DUP("reference", "a", "b");
+
+    /* full content */
+    str = " test {deviate not-supported;description text;reference \'another text\';prefix:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_deviation(&ctx, &str, &d));
+    assert_non_null(d);
+    assert_string_equal(" ...", str);
+    FREE_ARRAY(ctx.ctx, d, lysp_deviation_free);
+    d = NULL;
+
+    /* missing mandatory substatement */
+    str = " test {description text;}";
+    assert_int_equal(LY_EVALID, parse_deviation(&ctx, &str, &d));
+    logbuf_assert("Missing mandatory keyword \"deviate\" as a child of \"deviation\". Line number 1.");
+    FREE_ARRAY(ctx.ctx, d, lysp_deviation_free);
+    d = NULL;
+
+    /* invalid substatement */
+    str = " test {deviate not-supported; status obsolete;}";
+    assert_int_equal(LY_EVALID, parse_deviation(&ctx, &str, &d));
+    logbuf_assert("Invalid keyword \"status\" as a child of \"deviation\". Line number 1.");
+    FREE_ARRAY(ctx.ctx, d, lysp_deviation_free);
+    d = NULL;
+
+#undef TEST_DUP
+
+    ly_ctx_destroy(ctx.ctx, NULL);
+}
+
+static void
+test_deviate(void **state)
+{
+    (void) state; /* unused */
+
+    struct ly_parser_ctx ctx;
+    struct lysp_deviate *d = NULL;
+    const char *str;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
+    assert_non_null(ctx.ctx);
+    ctx.line = 1;
+    ctx.indent = 0;
+
+    /* invalid cardinality */
+#define TEST_DUP(TYPE, MEMBER, VALUE1, VALUE2) \
+    TEST_DUP_GENERIC(TYPE" {", MEMBER, VALUE1, VALUE2, parse_deviate, \
+                     &d, "1", lysp_deviate_free(ctx.ctx, d, 1); free(d); d = NULL)
+
+    TEST_DUP("add", "config", "true", "false");
+    TEST_DUP("replace", "default", "int8", "uint8");
+    TEST_DUP("add", "mandatory", "true", "false");
+    TEST_DUP("add", "max-elements", "1", "2");
+    TEST_DUP("add", "min-elements", "1", "2");
+    TEST_DUP("replace", "type", "int8", "uint8");
+    TEST_DUP("add", "units", "kilometers", "miles");
+
+    /* full contents */
+    str = " not-supported {prefix:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_deviate(&ctx, &str, &d));
+    assert_non_null(d);
+    assert_string_equal(" ...", str);
+    lysp_deviate_free(ctx.ctx, d, 1); free(d); d = NULL;
+    str = " add {units meters; must 1; must 2; unique x; unique y; default a; default b; config true; mandatory true; min-elements 1; max-elements 2; prefix:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_deviate(&ctx, &str, &d));
+    assert_non_null(d);
+    assert_string_equal(" ...", str);
+    lysp_deviate_free(ctx.ctx, d, 1); free(d); d = NULL;
+    str = " delete {units meters; must 1; must 2; unique x; unique y; default a; default b; prefix:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_deviate(&ctx, &str, &d));
+    assert_non_null(d);
+    assert_string_equal(" ...", str);
+    lysp_deviate_free(ctx.ctx, d, 1); free(d); d = NULL;
+    str = " replace {type string; units meters; default a; config true; mandatory true; min-elements 1; max-elements 2; prefix:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_deviate(&ctx, &str, &d));
+    assert_non_null(d);
+    assert_string_equal(" ...", str);
+    lysp_deviate_free(ctx.ctx, d, 1); free(d); d = NULL;
+
+    /* invalid substatements */
+#define TEST_NOT_SUP(DEV, STMT, VALUE) \
+    str = " "DEV" {"STMT" "VALUE";}..."; \
+    assert_int_equal(LY_EVALID, parse_deviate(&ctx, &str, &d)); \
+    logbuf_assert("Deviate \""DEV"\" does not support keyword \""STMT"\". Line number 1."); \
+    lysp_deviate_free(ctx.ctx, d, 1); free(d); d = NULL
+
+    TEST_NOT_SUP("not-supported", "units", "meters");
+    TEST_NOT_SUP("not-supported", "must", "1");
+    TEST_NOT_SUP("not-supported", "unique", "x");
+    TEST_NOT_SUP("not-supported", "default", "a");
+    TEST_NOT_SUP("not-supported", "config", "true");
+    TEST_NOT_SUP("not-supported", "mandatory", "true");
+    TEST_NOT_SUP("not-supported", "min-elements", "1");
+    TEST_NOT_SUP("not-supported", "max-elements", "2");
+    TEST_NOT_SUP("not-supported", "type", "string");
+    TEST_NOT_SUP("add", "type", "string");
+    TEST_NOT_SUP("delete", "config", "true");
+    TEST_NOT_SUP("delete", "mandatory", "true");
+    TEST_NOT_SUP("delete", "min-elements", "1");
+    TEST_NOT_SUP("delete", "max-elements", "2");
+    TEST_NOT_SUP("delete", "type", "string");
+    TEST_NOT_SUP("replace", "must", "1");
+    TEST_NOT_SUP("replace", "unique", "a");
+
+    str = " nonsence; ...";
+    assert_int_equal(LY_EVALID, parse_deviate(&ctx, &str, &d));
+    logbuf_assert("Invalid value \"nonsence\" of \"deviate\". Line number 1.");
+    assert_null(d);
+
+#undef TEST_NOT_SUP
+#undef TEST_DUP
+
     ly_ctx_destroy(ctx.ctx, NULL);
 }
 
@@ -810,6 +1095,10 @@ int main(void)
         cmocka_unit_test_setup(test_arg, logger_setup),
         cmocka_unit_test_setup(test_stmts, logger_setup),
         cmocka_unit_test_setup(test_module, logger_setup),
+        cmocka_unit_test_setup(test_identity, logger_setup),
+        cmocka_unit_test_setup(test_feature, logger_setup),
+        cmocka_unit_test_setup(test_deviation, logger_setup),
+        cmocka_unit_test_setup(test_deviate, logger_setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

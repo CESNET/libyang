@@ -28,8 +28,8 @@ extern "C" {
  */
 
 /**
- * @brief Structure to hold a set of (not necessary somehow connected) objects. Usually used for ::lyd_node
- * or ::lys_node objects, but it is not limited to them. Caller is supposed to not mix the type of objects
+ * @brief Structure to hold a set of (not necessary somehow connected) objects. Usually used for ::lyd_node,
+ * ::lysp_node or ::lysc_node objects, but it is not limited to them. Caller is supposed to not mix the type of objects
  * added to the set and according to its knowledge about the set content, it can access objects via the members
  * of the set union.
  *
@@ -43,12 +43,7 @@ struct ly_set
 {
     unsigned int size;                /**< allocated size of the set array */
     unsigned int count;               /**< number of elements in (used size of) the set array */
-    union
-    {
-        struct lys_node **schemas;    /**< array of pointers to a ::lys_node objects */
-        struct lyd_node **data;       /**< array of pointers to a ::lyd_node objects */
-        void **objs;                  /**< dummy array for generic work */
-    };                                /**< set array - union to simplify access to the stored objects */
+    void **objs;                      /**< set array of generic object pointers */
 };
 
 /**
@@ -76,7 +71,7 @@ struct ly_set *ly_set_new(void);
 struct ly_set *ly_set_dup(const struct ly_set *set, void *(*duplicator)(void *obj));
 
 /**
- * @brief Add a ::lyd_node or ::lys_node object into the set
+ * @brief Add an object into the set
  *
  * Since it is a set, the function checks for duplicity and if the
  * node is already in the set, the index of the previously added
@@ -129,7 +124,7 @@ void ly_set_clean(struct ly_set *set, void (*destructor)(void *obj));
  * (the last object is placed instead of the removed object).
  *
  * @param[in] set Set from which the \p node will be removed.
- * @param[in] obejct The object to be removed from the \p set.
+ * @param[in] object The object to be removed from the \p set.
  * @param[in] destructor Optional function to free the objects being removed.
  * @return LY_ERR return value.
  */

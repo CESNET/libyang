@@ -136,21 +136,6 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
  * Parsers
  *****************************************************************************/
 
-enum yang_module_stmt {
-    Y_MOD_MODULE_HEADER,
-    Y_MOD_LINKAGE,
-    Y_MOD_META,
-    Y_MOD_REVISION,
-    Y_MOD_BODY
-};
-
-enum yang_arg {
-    Y_IDENTIF_ARG,        /**< YANG "identifier-arg-str" rule */
-    Y_PREF_IDENTIF_ARG,   /**< YANG "identifier-ref-arg-str" rule */
-    Y_STR_ARG,            /**< YANG "string" rule */
-    Y_MAYBE_STR_ARG       /**< optional YANG "string" rule */
-};
-
 enum yang_keyword {
     YANG_NONE = 0,
     YANG_ACTION,
@@ -266,28 +251,45 @@ void *ly_realloc(void *ptr, size_t size);
 LY_ERR ly_getutf8(const char **input, unsigned int *utf8_char, size_t *bytes_read);
 
 /**
- * @brief Check date string (4DIGIT "-" 2DIGIT "-" 2DIGIT)
+ * @brief mmap(2) wrapper to map input files into memory to unify parsing.
  *
- * @param[in] ctx Context to store log message.
- * @param[in] date Date string to check (non-necessarily terminated by \0)
- * @param[in] date_len Length of the date string, 10 expected.
- * @param[in] stmt Statement name for error message.
+ * The address space is allocate only for reading.
+ *
+ * @param[in] ctx libyang context for logging
+ * @param[in] fd Open file descriptor of a file to map.
+ * @param[out] length Allocated size.
+ * @param[out] addr Address where the file is mapped.
  * @return LY_ERR value.
  */
-LY_ERR lysp_check_date(struct ly_ctx *ctx, const char *date, int date_len, const char *stmt);
+LY_ERR ly_mmap(struct ly_ctx *ctx, int fd, size_t *length, void **addr);
 
-/*
- * Macros to work with lysp structures arrays.
+/**
+ * @brief munmap(2) wrapper to free the memory mapped by ly_mmap()
  *
- * There is a byte allocated after the last item with value 0.
+ * @param[in] addr Address where the input file is mapped.
+ * @param[in] length Allocated size of the address space.
+ * @return LY_ERR value.
  */
-#define LYSP_ARRAY_NEW_RET(CTX, ARRAY, NEW_ITEM, RETVAL) int _count; \
-        for (_count = 0; *(ARRAY) && *((uint8_t *)(*(ARRAY) + _count)); ++_count); \
-        if (!_count) *(ARRAY) = malloc(sizeof **(ARRAY) + 1); \
-            else *(ARRAY) = ly_realloc(*(ARRAY), (_count + 1) * sizeof **(ARRAY) + 1); \
-        LY_CHECK_ERR_RET(!*(ARRAY), LOGMEM(CTX->ctx), RETVAL); \
-        *((uint8_t *)(*(ARRAY) + _count + 1)) = 0; \
-        (NEW_ITEM) = (*(ARRAY)) + _count; \
+LY_ERR ly_munmap(void *addr, size_t length);
+
+/**
+ * @brief (Re-)Allocation of a ([sized array](@ref sizedarrays)).
+ *
+ * @param[in] CTX libyang context for logging.
+ * @param[in,out] ARRAY Pointer to the array to allocate/resize.
+ * @param[out] NEW_ITEM Returning pointer to the newly allocated record in the ARRAY.
+ * @param[in] RETVAL Return value for the case of error (memory allocation failure).
+ */
+#define LYSP_ARRAY_NEW_RET(CTX, ARRAY, NEW_ITEM, RETVAL) \
+        if (!(ARRAY)) { \
+            ARRAY = malloc(sizeof(uint32_t) + sizeof *(ARRAY)); \
+            *((uint32_t*)(ARRAY)) = 1; \
+        } else { \
+            ++(*((uint32_t*)(ARRAY))); \
+            ARRAY = ly_realloc(ARRAY, sizeof(uint32_t) + (*((uint32_t*)(ARRAY)) * sizeof *(ARRAY))); \
+            LY_CHECK_ERR_RET(!(ARRAY), LOGMEM(CTX), RETVAL); \
+        } \
+        (NEW_ITEM) = (void*)((uint32_t*)((ARRAY) + *((uint32_t*)(ARRAY)) - 1) + 1); \
         memset(NEW_ITEM, 0, sizeof *(NEW_ITEM));
 
 #endif /* LY_COMMON_H_ */

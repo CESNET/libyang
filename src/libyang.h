@@ -22,6 +22,82 @@ extern "C" {
 #endif
 
 /**
+ * @mainpage About
+ *
+ * libyang is a library implementing processing of the YANG schemas and data modeled by the YANG language. The
+ * library is implemented in C for GNU/Linux and provides C API.
+ *
+ * @section about-features Main Features
+ *
+ * - [Parsing (and validating) schemas](@ref howtoschemasparsers) in YANG format.
+ * - [Parsing (and validating) schemas](@ref howtoschemasparsers) in YIN format.
+ * - [Parsing, validating and printing instance data](@ref howtodata) in XML format.
+ * - [Parsing, validating and printing instance data](@ref howtodata) in JSON format
+ *   ([RFC 7951](https://tools.ietf.org/html/rfc7951)).
+ * - [Manipulation with the instance data](@ref howtodatamanipulators).
+ * - Support for [default values in the instance data](@ref howtodatawd) ([RFC 6243](https://tools.ietf.org/html/rfc6243)).
+ * - Support for [YANG extensions and user types](@ref howtoschemaplugins).
+ * - Support for [YANG Metadata](@ref howtoschemametadata) ([RFC 7952](https://tools.ietf.org/html/rfc6243)).
+ *
+ * The current implementation covers YANG 1.0 ([RFC 6020](https://tools.ietf.org/html/rfc6020)) as well as
+ * YANG 1.1 ([RFC 7950](https://tools.ietf.org/html/rfc7950)).
+ *
+ * @section about-license License
+ *
+ * Copyright (c) 2015-2017 CESNET, z.s.p.o.
+ *
+ * (The BSD 3-Clause License)
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name of the Company nor the names of its contributors
+ *    may be used to endorse or promote products derived from this
+ *    software without specific prior written permission.
+ */
+
+/**
+ * @page howto How To ...
+ *
+ * - @subpage howtocontext
+ * - @subpage howtoschemas
+ * - @subpage howtodata
+ * - @subpage howtoxpath
+ * - @subpage howtoxml
+ * - @subpage howtothreads
+ * - @subpage howtologger
+ * - @subpage howtostructures
+ */
+
+/**
+ * @page howtostructures Data Structures
+ *
+ * @section sizedarrays Sized Arrays
+ *
+ * The structure starts with 32bit number storing size of the array - the number of the items inside. The size is part of the
+ * array to allocate it together with the array itself only when it is needed. This way the memory demands are decreased with
+ * possibility to have "infinite" (32bit) array of items. Because of a known size, it is not terminated by any special byte
+ * (sequence), so there is also no limit for specific content of the stored records (e.g. that first byte must not be NULL).
+ *
+ * Due to the structure, the records in the array cannot be accessed directly. There is a set of macros supposed to make
+ * work with the arrays more easy.
+ *
+ * - ::LY_ARRAY_SIZE
+ * - ::LY_ARRAY_INDEX
+ * - ::LY_ARRAY_FOR
+ *
+ * @section struct_lists Lists
+ *
+ * The lists are structures connected via a `next` pointer. Iterating over the siblings can be simply done by ::LY_LIST_FOR macro.
+ */
+
+/**
  * @defgroup context Context
  * @{
  *
@@ -175,8 +251,8 @@ uint16_t ly_ctx_get_module_set_id(const struct ly_ctx *ctx);
  * @param[in] ctx libyang context to destroy
  * @param[in] private_destructor Optional destructor function for private objects assigned
  * to the nodes via lys_set_private(). If NULL, the private objects are not freed by libyang.
- * Remember the differences between the structures derived from ::lys_node and always check
- * ::lys_node#nodetype.
+ * Remember the differences between the structures derived from ::lysc_node and always check
+ * ::lysc_node#nodetype.
  */
 void ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lysc_node *node, void *priv));
 
