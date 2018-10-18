@@ -24,10 +24,10 @@
 
 #include "context.h"
 #include "common.h"
-
+#include "tree_schema_internal.h"
 #include "libyang.h"
 
-#define LY_INTERNAL_MODS_COUNT 0 /* TODO 6 when parser available */
+#define LY_INTERNAL_MODS_COUNT 6
 
 #define IETF_YANG_METADATA_PATH "../models/ietf-yang-metadata@2016-08-05.h"
 #define YANG_PATH "../models/yang@2017-02-20.h"
@@ -37,7 +37,6 @@
 #define IETF_YANG_LIB_PATH "../models/ietf-yang-library@2018-01-17.h"
 #define IETF_YANG_LIB_REV "2018-01-17"
 
-#if LY_INTERNAL_MODS_COUNT
 #include IETF_YANG_METADATA_PATH
 #include YANG_PATH
 #include IETF_INET_TYPES_PATH
@@ -52,15 +51,14 @@ static struct internal_modules_s {
     uint8_t implemented;
     LYS_INFORMAT format;
 } internal_modules[LY_INTERNAL_MODS_COUNT] = {
-    {"ietf-yang-metadata", "2016-08-05", (const char*)ietf_yang_metadata_2016_08_05_yin, 0, LYS_IN_YIN},
-    {"yang", "2017-02-20", (const char*)yang_2017_02_20_yin, 1, LYS_IN_YIN},
-    {"ietf-inet-types", "2013-07-15", (const char*)ietf_inet_types_2013_07_15_yin, 0, LYS_IN_YIN},
-    {"ietf-yang-types", "2013-07-15", (const char*)ietf_yang_types_2013_07_15_yin, 0, LYS_IN_YIN},
+    {"ietf-yang-metadata", "2016-08-05", (const char*)ietf_yang_metadata_2016_08_05_yang, 0, LYS_IN_YANG},
+    {"yang", "2017-02-20", (const char*)yang_2017_02_20_yang, 1, LYS_IN_YANG},
+    {"ietf-inet-types", "2013-07-15", (const char*)ietf_inet_types_2013_07_15_yang, 0, LYS_IN_YANG},
+    {"ietf-yang-types", "2013-07-15", (const char*)ietf_yang_types_2013_07_15_yang, 0, LYS_IN_YANG},
     /* ietf-datastores and ietf-yang-library must be right here at the end of the list! */
-    {"ietf-datastores", "2017-08-17", (const char*)ietf_datastores_2017_08_17_yin, 0, LYS_IN_YIN},
-    {"ietf-yang-library", IETF_YANG_LIB_REV, (const char*)ietf_yang_library_2018_01_17_yin, 1, LYS_IN_YIN}
+    {"ietf-datastores", "2017-08-17", (const char*)ietf_datastores_2017_08_17_yang, 0, LYS_IN_YANG},
+    {"ietf-yang-library", IETF_YANG_LIB_REV, (const char*)ietf_yang_library_2018_01_17_yang, 1, LYS_IN_YANG}
 };
-#endif
 
 API LY_ERR
 ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
@@ -164,6 +162,7 @@ ly_ctx_new(const char *search_dir, int options, struct ly_ctx **new_ctx)
     struct lys_module *module;
     char *search_dir_list;
     char *sep, *dir;
+    int i;
     LY_ERR rc = LY_SUCCESS;
 
     ctx = calloc(1, sizeof *ctx);
@@ -210,14 +209,12 @@ ly_ctx_new(const char *search_dir, int options, struct ly_ctx **new_ctx)
     }
     ctx->module_set_id = 1;
 
-#if 0 /* TODO when parser implemented */
     /* load internal modules */
-    for (i = 0; i < (options & LY_CTX_NOYANGLIBRARY) ? LY_INTERNAL_MODS_COUNT - 2 : LY_INTERNAL_MODS_COUNT; i++) {
+    for (i = 0; i < ((options & LY_CTX_NOYANGLIBRARY) ? (LY_INTERNAL_MODS_COUNT - 2) : LY_INTERNAL_MODS_COUNT); i++) {
         module = (struct lys_module *)lys_parse_mem(ctx, internal_modules[i].data, internal_modules[i].format);
         LY_CHECK_GOTO(!module, error);
         module->parsed->implemented = internal_modules[i].implemented;
     }
-#endif
 
     *new_ctx = ctx;
     return rc;
@@ -274,9 +271,7 @@ ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lysc_
     /* models list */
     for (; ctx->list.count; ctx->list.count--) {
         /* remove the module */
-#if 0 /* TODO when parser implemented */
-        lys_free(ctx->list[ctx->list.count - 1], private_destructor, 1, 0);
-#endif
+        lys_module_free(ctx->list.objs[ctx->list.count - 1], private_destructor);
     }
     free(ctx->list.objs);
 

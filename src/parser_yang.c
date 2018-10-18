@@ -2242,9 +2242,10 @@ parse_type_pattern(struct ly_parser_ctx *ctx, const char **data, struct lysp_res
         buf = malloc(word_len + 2);
     }
     LY_CHECK_ERR_RET(!buf, LOGMEM(ctx->ctx), LY_EMEM);
-    memmove(buf + 1, word, word_len + 1);
-    word[0] = 0x06;
-    restr->arg = lydict_insert_zc(ctx->ctx, word);
+    memmove(buf + 1, word, word_len);
+    buf[0] = 0x06; /* pattern's default regular-match flag */
+    buf[word_len + 1] = '\0'; /* terminating NULL byte */
+    restr->arg = lydict_insert_zc(ctx->ctx, buf);
 
     YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret) {
         LY_CHECK_RET(ret);
@@ -4628,7 +4629,7 @@ yang_parse(struct ly_ctx *ctx, const char *data, struct lysp_module **mod_p)
     size_t word_len;
     enum yang_keyword kw;
     struct lysp_module *mod = NULL;
-    struct ly_parser_ctx context;
+    struct ly_parser_ctx context = {0};
 
     context.ctx = ctx;
     context.line = 1;
@@ -4665,6 +4666,9 @@ yang_parse(struct ly_ctx *ctx, const char *data, struct lysp_module **mod_p)
         goto error;
     }
     assert(!buf);
+
+    /* make sure that the newest revision is at position 0 */
+    lysp_sort_revisions(mod->revs);
 
     *mod_p = mod;
     return ret;

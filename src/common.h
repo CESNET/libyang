@@ -251,21 +251,34 @@ void *ly_realloc(void *ptr, size_t size);
 LY_ERR ly_getutf8(const char **input, unsigned int *utf8_char, size_t *bytes_read);
 
 /**
- * @brief Check date string (4DIGIT "-" 2DIGIT "-" 2DIGIT)
+ * @brief mmap(2) wrapper to map input files into memory to unify parsing.
  *
- * @param[in] ctx Context to store log message.
- * @param[in] date Date string to check (non-necessarily terminated by \0)
- * @param[in] date_len Length of the date string, 10 expected.
- * @param[in] stmt Statement name for error message.
+ * The address space is allocate only for reading.
+ *
+ * @param[in] ctx libyang context for logging
+ * @param[in] fd Open file descriptor of a file to map.
+ * @param[out] length Allocated size.
+ * @param[out] addr Address where the file is mapped.
  * @return LY_ERR value.
  */
-LY_ERR lysp_check_date(struct ly_ctx *ctx, const char *date, int date_len, const char *stmt);
+LY_ERR ly_mmap(struct ly_ctx *ctx, int fd, size_t *length, void **addr);
 
-/*
- * Macros to work with sized-arrays.
+/**
+ * @brief munmap(2) wrapper to free the memory mapped by ly_mmap()
  *
- * There is a 32b unsigned size (number of items) of the array at its beginning.
+ * @param[in] addr Address where the input file is mapped.
+ * @param[in] length Allocated size of the address space.
+ * @return LY_ERR value.
+ */
+LY_ERR ly_munmap(void *addr, size_t length);
+
+/**
+ * @brief (Re-)Allocation of a ([sized array](@ref sizedarrays)).
  *
+ * @param[in] CTX libyang context for logging.
+ * @param[in,out] ARRAY Pointer to the array to allocate/resize.
+ * @param[out] NEW_ITEM Returning pointer to the newly allocated record in the ARRAY.
+ * @param[in] RETVAL Return value for the case of error (memory allocation failure).
  */
 #define LYSP_ARRAY_NEW_RET(CTX, ARRAY, NEW_ITEM, RETVAL) \
         if (!(ARRAY)) { \

@@ -12,8 +12,9 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#define _BSD_SOURCE
-#define _DEFAULT_SOURCE
+#include "../../src/tree_schema.c"
+#include "../../src/parser_yang.c"
+
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -23,8 +24,6 @@
 #include <string.h>
 
 #include "libyang.h"
-#include "../../src/parser_yang.c"
-#include "../../src/tree_schema.c"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -760,6 +759,10 @@ test_module(void **state)
     str = SCHEMA_BEGINNING "import test {prefix x;}}";
     assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
     logbuf_assert("Prefix \"x\" already used as module prefix. Line number 2.");
+    mod = mod_renew(&ctx, mod, 0);
+    str = SCHEMA_BEGINNING "import test1 {prefix y;}import test2 {prefix y;}}";
+    assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
+    logbuf_assert("Prefix \"y\" already used to import \"test1\" module. Line number 2.");
     mod = mod_renew(&ctx, mod, 0);
 
     /* include */

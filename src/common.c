@@ -12,12 +12,18 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 #define _XOPEN_SOURCE
+#define _DEFAULT_SOURCE
 
+#include <assert.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
-#include <time.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "common.h"
 #include "tree_schema.h"
@@ -242,43 +248,59 @@ LY_VCODE_INSTREXP_len(const char *str)
 }
 
 LY_ERR
-lysp_check_date(struct ly_ctx *ctx, const char *date, int date_len, const char *stmt)
+ly_mmap(struct ly_ctx *ctx, int fd, size_t *length, void **addr)
 {
-    int i;
-    struct tm tm, tm_;
-    char *r;
+    struct stat sb;
+    long pagesize;
+    size_t m;
 
-    LY_CHECK_ARG_RET(ctx, date, LY_EINVAL);
-    LY_CHECK_ERR_RET(date_len != LY_REV_SIZE - 1, LOGARG(ctx, date_len), LY_EINVAL);
+    assert(length);
+    assert(addr);
+    assert(fd >= 0);
 
-    /* check format */
-    for (i = 0; i < date_len; i++) {
-        if (i == 4 || i == 7) {
-            if (date[i] != '-') {
-                goto error;
-            }
-        } else if (!isdigit(date[i])) {
-            goto error;
-        }
+    if (fstat(fd, &sb) == -1) {
+        LOGERR(ctx, LY_ESYS, "Failed to stat the file descriptor (%s) for the mmap().", strerror(errno));
+        return LY_ESYS;
     }
-
-    /* check content, e.g. 2018-02-31 */
-    memset(&tm, 0, sizeof tm);
-    r = strptime(date, "%Y-%m-%d", &tm);
-    if (!r || r != &date[LY_REV_SIZE - 1]) {
-        goto error;
+    if (!S_ISREG(sb.st_mode)) {
+        LOGERR(ctx, LY_EINVAL, "File to mmap() is not a regular file.");
+        return LY_ESYS;
     }
-    memcpy(&tm_, &tm, sizeof tm);
-    mktime(&tm_); /* mktime modifies tm_ if it refers invalid date */
-    if (tm.tm_mday != tm_.tm_mday) { /* e.g 2018-02-29 -> 2018-03-01 */
-        /* checking days is enough, since other errors
-         * have been checked by strptime() */
-        goto error;
+    if (!sb.st_size) {
+        *addr = NULL;
+        return LY_SUCCESS;
+    }
+    pagesize = sysconf(_SC_PAGESIZE);
+
+    m = sb.st_size % pagesize;
+    if (m && pagesize - m >= 1) {
+        /* there will be enough space (at least 1 byte) after the file content mapping to provide zeroed NULL-termination byte */
+        *length = sb.st_size + 1;
+        *addr = mmap(NULL, *length, PROT_READ, MAP_PRIVATE, fd, 0);
+    } else {
+        /* there will not be enough bytes after the file content mapping for the additional bytes and some of them
+         * would overflow into another page that would not be zerroed and any access into it would generate SIGBUS.
+         * Therefore we have to do the following hack with double mapping. First, the required number of bytes
+         * (including the additinal bytes) is required as anonymous and thus they will be really provided (actually more
+         * because of using whole pages) and also initialized by zeros. Then, the file is mapped to the same address
+         * where the anonymous mapping starts. */
+        *length = sb.st_size + pagesize;
+        *addr = mmap(NULL, *length, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        *addr = mmap(*addr, sb.st_size, PROT_READ, MAP_PRIVATE | MAP_FIXED, fd, 0);
+    }
+    if (*addr == MAP_FAILED) {
+        LOGERR(ctx, LY_ESYS, "mmap() failed (%s).", strerror(errno));
+        return LY_ESYS;
     }
 
     return LY_SUCCESS;
+}
 
-error:
-    LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_INVAL, date_len, date, stmt);
-    return LY_EINVAL;
+LY_ERR
+ly_munmap(void *addr, size_t length)
+{
+    if (munmap(addr, length)) {
+        return LY_ESYS;
+    }
+    return LY_SUCCESS;
 }

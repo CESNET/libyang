@@ -86,6 +86,8 @@ struct lyxp_expr;
 
 /**
  * @brief Get a number of records in the ARRAY.
+ *
+ * Does not check if array exists!
  */
 #define LY_ARRAY_SIZE(ARRAY) (*((uint32_t*)(ARRAY)))
 
@@ -866,6 +868,40 @@ struct lys_module {
     struct lysc_module *compiled;    /**< Compiled and fully validated YANG schema tree for data parsing */
 };
 
+
+/**
+ * @brief Load a schema into the specified context.
+ *
+ * @param[in] ctx libyang context where to process the data model.
+ * @param[in] data The string containing the dumped data model in the specified
+ * format.
+ * @param[in] format Format of the input data (YANG or YIN).
+ * @return Pointer to the data model structure or NULL on error.
+ */
+const struct lys_module *lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format);
+
+/**
+ * @brief Read a schema from file descriptor into the specified context.
+ *
+ * \note Current implementation supports only reading data from standard (disk) file, not from sockets, pipes, etc.
+ *
+ * @param[in] ctx libyang context where to process the data model.
+ * @param[in] fd File descriptor of a regular file (e.g. sockets are not supported) containing the schema
+ *            in the specified format.
+ * @param[in] format Format of the input data (YANG or YIN).
+ * @return Pointer to the data model structure or NULL on error.
+ */
+const struct lys_module *lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
+
+/**
+ * @brief Load a schema into the specified context from a file.
+ *
+ * @param[in] ctx libyang context where to process the data model.
+ * @param[in] path Path to the file with the model in the specified format.
+ * @param[in] format Format of the input data (YANG or YIN).
+ * @return Pointer to the data model structure or NULL on error.
+ */
+const struct lys_module *lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format);
 
 /**
  * @defgroup scflags Schema compile flags

@@ -55,4 +55,33 @@ struct ly_parser_ctx {
  */
 LY_ERR lysp_check_prefix(struct ly_parser_ctx *ctx, struct lysp_module *module, const char **value);
 
+/**
+ * @brief Check date string (4DIGIT "-" 2DIGIT "-" 2DIGIT)
+ *
+ * @param[in] ctx Context to store log message.
+ * @param[in] date Date string to check (non-necessarily terminated by \0)
+ * @param[in] date_len Length of the date string, 10 expected.
+ * @param[in] stmt Statement name for error message.
+ * @return LY_ERR value.
+ */
+LY_ERR lysp_check_date(struct ly_ctx *ctx, const char *date, int date_len, const char *stmt);
+
+/**
+ * @brief Just move the newest revision into the first position, does not sort the rest
+ * @param[in] revs Sized-array of the revisions in a printable schema tree.
+ */
+void lysp_sort_revisions(struct lysp_revision *revs);
+
+/**
+ * @brief Free the schema structure. It just frees, it does not remove the schema from its context.
+ * @param[in,out] module Schema module structure to free.
+ * @param[in] private_destructor Function to remove private data from the compiled schema tree.
+ */
+void lys_module_free(struct lys_module *module, void (*private_destructor)(const struct lysc_node *node, void *priv));
+
+/**
+ * @brief
+ */
+LY_ERR yang_parse(struct ly_ctx *ctx, const char *data, struct lysp_module **mod_p);
+
 #endif /* LY_TREE_SCHEMA_INTERNAL_H_ */

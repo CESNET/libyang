@@ -11,9 +11,20 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
+#define _DEFAULT_SOURCE
+
+#include <errno.h>
+#include <fcntl.h>
+#include <linux/limits.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "libyang.h"
 #include "common.h"
+#include "context.h"
 #include "tree_schema_internal.h"
 
 #define FREE_ARRAY(CTX, ARRAY, FUNC) {uint64_t c__; LY_ARRAY_FOR(ARRAY, c__){FUNC(CTX, LY_ARRAY_INDEX(ARRAY, c__), dict);}free(ARRAY);}
@@ -22,6 +33,13 @@
 
 static void lysp_grp_free(struct ly_ctx *ctx, struct lysp_grp *grp, int dict);
 static void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node, int dict);
+
+#define LYSC_CTX_BUFSIZE 4086
+struct lysc_ctx {
+    struct lysc_module *mod;
+    uint16_t path_len;
+    char path[LYSC_CTX_BUFSIZE];
+};
 
 static void
 lysp_stmt_free(struct ly_ctx *ctx, struct lysp_stmt *stmt, int dict)
@@ -518,48 +536,60 @@ lysc_module_free_(struct lysc_module *module, int dict)
 }
 
 API void
-lysc_module_free(struct lysc_module *module)
+lysc_module_free(struct lysc_module *module, void (*private_destructor)(const struct lysc_node *node, void *priv))
 {
     lysc_module_free_(module, 1);
 }
 
-LY_ERR
-lysp_check_prefix(struct ly_parser_ctx *ctx, struct lysp_module *module, const char **value)
+void
+lys_module_free(struct lys_module *module, void (*private_destructor)(const struct lysc_node *node, void *priv))
 {
-    struct lysp_import *i;
+    if (!module) {
+        return;
+    }
 
-    if (module->prefix && &module->prefix != value && !strcmp(module->prefix, *value)) {
-        LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_REFERENCE,
-               "Prefix \"%s\" already used as module prefix.", *value);
-        return LY_EEXIST;
+    lysc_module_free(module->compiled, private_destructor);
+    lysp_module_free(module->parsed);
+    free(module);
+}
+
+static LY_ERR
+lys_compile_iffeature(struct lysc_ctx *ctx, const char *iff_p, struct lysc_iffeature **iffeatures)
+{
+    struct lysc_iffeature *iff;
+
+    if ((ctx->mod->version != 2) && ((iff_p[0] == '(') || strchr(iff_p, ' '))) {
+        LOGVAL(ctx->mod->ctx, LY_VLOG_STR, ctx->path,LY_VCODE_INVAL, strlen(iff_p), iff_p, "if-feature");
+        return LY_EVALID;
     }
-    if (module->imports) {
-        LY_ARRAY_FOR(module->imports, struct lysp_import, i) {
-            if (i->prefix && &i->prefix != value && !strcmp(i->prefix, *value)) {
-                LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_REFERENCE,
-                       "Prefix \"%s\" already used to import \"%s\" module.", *value, i->name);
-                return LY_EEXIST;
-            }
-        }
-    }
+
+    LYSP_ARRAY_NEW_RET(ctx->mod->ctx, *iffeatures, iff, LY_EMEM);
+
     return LY_SUCCESS;
 }
 
 static LY_ERR
-lys_compile_feature(struct ly_ctx *ctx, struct lysp_feature *feature_p, int options, struct lysc_feature **features)
+lys_compile_feature(struct lysc_ctx *ctx, struct lysp_feature *feature_p, int options, struct lysc_feature **features)
 {
     struct lysc_feature *feature;
+    unsigned int u;
+    LY_ERR ret;
 
-    LYSP_ARRAY_NEW_RET(ctx, *features, feature, LY_EMEM);
+    LYSP_ARRAY_NEW_RET(ctx->mod->ctx, *features, feature, LY_EMEM);
 
     if (options & LYSC_OPT_FREE_SP) {
         /* just switch the pointers */
         feature->name = feature_p->name;
     } else {
         /* keep refcounts correct for lysp_module_free() */
-        feature->name = lydict_insert(ctx, feature_p->name, 0);
+        feature->name = lydict_insert(ctx->mod->ctx, feature_p->name, 0);
     }
     feature->flags = feature_p->flags;
+
+    for (u = 0; feature_p->iffeatures && feature_p->iffeatures[u]; ++u) {
+        ret = lys_compile_iffeature(ctx, feature_p->iffeatures[u], &feature->iffeatures);
+        LY_CHECK_RET(ret);
+    }
 
     return LY_SUCCESS;
 }
@@ -567,24 +597,22 @@ lys_compile_feature(struct ly_ctx *ctx, struct lysp_feature *feature_p, int opti
 LY_ERR
 lys_compile(struct lysp_module *sp, int options, struct lysc_module **sc)
 {
-    /* shortcuts */
-    struct ly_ctx *ctx;
+    struct lysc_ctx ctx = {0};
     struct lysc_module *mod_c;
     void *p;
-
     LY_ERR ret;
 
     LY_CHECK_ARG_RET(NULL, sc, sp, sp->ctx, LY_EINVAL);
-    ctx = sp->ctx;
 
     if (sp->submodule) {
-        LOGERR(ctx, LY_EINVAL, "Submodules (%s) are not supposed to be compiled, compile only the main modules.", sp->name);
+        LOGERR(sp->ctx, LY_EINVAL, "Submodules (%s) are not supposed to be compiled, compile only the main modules.", sp->name);
         return LY_EINVAL;
     }
 
-    mod_c = calloc(1, sizeof *mod_c);
-    LY_CHECK_ERR_RET(!mod_c, LOGMEM(ctx), LY_EMEM);
-    mod_c->ctx = ctx;
+    ctx.mod = mod_c = calloc(1, sizeof *mod_c);
+    LY_CHECK_ERR_RET(!mod_c, LOGMEM(sp->ctx), LY_EMEM);
+    mod_c->ctx = sp->ctx;
+    mod_c->version = sp->version;
 
     if (options & LYSC_OPT_FREE_SP) {
         /* just switch the pointers */
@@ -593,14 +621,14 @@ lys_compile(struct lysp_module *sp, int options, struct lysc_module **sc)
         mod_c->prefix = sp->prefix;
     } else {
         /* keep refcounts correct for lysp_module_free() */
-        mod_c->name = lydict_insert(ctx, sp->name, 0);
-        mod_c->ns = lydict_insert(ctx, sp->ns, 0);
-        mod_c->prefix = lydict_insert(ctx, sp->prefix, 0);
+        mod_c->name = lydict_insert(sp->ctx, sp->name, 0);
+        mod_c->ns = lydict_insert(sp->ctx, sp->ns, 0);
+        mod_c->prefix = lydict_insert(sp->ctx, sp->prefix, 0);
     }
 
     if (sp->features) {
         LY_ARRAY_FOR(sp->features, struct lysp_feature, p) {
-            ret = lys_compile_feature(ctx, p, options, &mod_c->features);
+            ret = lys_compile_feature(&ctx, p, options, &mod_c->features);
             LY_CHECK_GOTO(ret != LY_SUCCESS, error);
         }
     }
@@ -621,3 +649,185 @@ error:
     }
     return ret;
 }
+
+const struct lys_module *
+lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const char *revision, int implement)
+{
+    struct lys_module *mod = NULL;
+    LY_ERR ret;
+
+    LY_CHECK_ARG_RET(ctx, ctx, data, NULL);
+
+    mod = calloc(1, sizeof *mod);
+    LY_CHECK_ERR_RET(!mod, LOGMEM(ctx), NULL);
+
+    switch (format) {
+    case LYS_IN_YIN:
+        /* TODO not yet supported
+        mod = yin_read_module(ctx, data, revision, implement);
+        */
+        break;
+    case LYS_IN_YANG:
+        ret = yang_parse(ctx, data, &mod->parsed);
+        LY_CHECK_RET(ret, NULL);
+        break;
+    default:
+        LOGERR(ctx, LY_EINVAL, "Invalid schema input format.");
+        break;
+    }
+
+    if (implement) {
+        mod->parsed->implemented = 1;
+    }
+
+    if (revision) {
+        /* check revision of the parsed model */
+        if (!mod->parsed->revs || strcmp(revision, LY_ARRAY_INDEX(mod->parsed->revs, 0, struct lysp_revision)->rev)) {
+            LOGERR(ctx, LY_EINVAL, "Module \"%s\" parsed with the wrong revision (\"%s\" instead \"%s\").",
+                   mod->parsed->name, LY_ARRAY_INDEX(mod->parsed->revs, 0, struct lysp_revision)->rev, revision);
+            lysp_module_free(mod->parsed);
+            free(mod);
+            return NULL;
+        }
+    }
+
+    /* check for duplicity in the context */
+
+    /* add into context */
+    ly_set_add(&ctx->list, mod, LY_SET_OPT_USEASLIST);
+
+#if 0
+    /* hack for NETCONF's edit-config's operation attribute. It is not defined in the schema, but since libyang
+     * implements YANG metadata (annotations), we need its definition. Because the ietf-netconf schema is not the
+     * internal part of libyang, we cannot add the annotation into the schema source, but we do it here to have
+     * the anotation definitions available in the internal schema structure. There is another hack in schema
+     * printers to do not print this internally added annotation. */
+    if (mod && ly_strequal(mod->name, "ietf-netconf", 0)) {
+        if (lyp_add_ietf_netconf_annotations(mod)) {
+            lys_free(mod, NULL, 1, 1);
+            return NULL;
+        }
+    }
+#endif
+
+    return mod;
+}
+
+API const struct lys_module *
+lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
+{
+    return lys_parse_mem_(ctx, data, format, NULL, 1);
+}
+
+static void
+lys_parse_set_filename(struct ly_ctx *ctx, const char **filename, int fd)
+{
+#ifdef __APPLE__
+    char path[MAXPATHLEN];
+#else
+    int len;
+    char path[PATH_MAX], proc_path[32];
+#endif
+
+#ifdef __APPLE__
+    if (fcntl(fd, F_GETPATH, path) != -1) {
+        *filename = lydict_insert(ctx, path, 0);
+    }
+#else
+    /* get URI if there is /proc */
+    sprintf(proc_path, "/proc/self/fd/%d", fd);
+    if ((len = readlink(proc_path, path, PATH_MAX - 1)) > 0) {
+        *filename = lydict_insert(ctx, path, len);
+    }
+#endif
+}
+
+const struct lys_module *
+lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const char *revision, int implement)
+{
+    const struct lys_module *mod;
+    size_t length;
+    char *addr;
+
+    LY_CHECK_ARG_RET(ctx, ctx, NULL);
+    if (fd < 0) {
+        LOGARG(ctx, fd);
+        return NULL;
+    }
+
+    LY_CHECK_RET(ly_mmap(ctx, fd, &length, (void **)&addr), NULL);
+    if (!addr) {
+        LOGERR(ctx, LY_EINVAL, "Empty schema file.");
+        return NULL;
+    }
+
+    mod = lys_parse_mem_(ctx, addr, format, revision, implement);
+    ly_munmap(addr, length);
+
+    if (mod && !mod->parsed->filepath) {
+        lys_parse_set_filename(ctx, &mod->parsed->filepath, fd);
+    }
+
+    return mod;
+}
+
+API const struct lys_module *
+lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
+{
+    return lys_parse_fd_(ctx, fd, format, NULL, 1);
+}
+
+API const struct lys_module *
+lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format)
+{
+    int fd;
+    const struct lys_module *mod;
+    const char *rev, *dot, *filename;
+    size_t len;
+
+    LY_CHECK_ARG_RET(ctx, ctx, path, NULL);
+
+    fd = open(path, O_RDONLY);
+    LY_CHECK_ERR_RET(fd == -1, LOGERR(ctx, LY_ESYS, "Opening file \"%s\" failed (%s).", path, strerror(errno)), NULL);
+
+    mod = lys_parse_fd(ctx, fd, format);
+    close(fd);
+    LY_CHECK_RET(!mod, NULL);
+
+    /* check that name and revision match filename */
+    filename = strrchr(path, '/');
+    if (!filename) {
+        filename = path;
+    } else {
+        filename++;
+    }
+    rev = strchr(filename, '@');
+    dot = strrchr(filename, '.');
+
+    /* name */
+    len = strlen(mod->parsed->name);
+    if (strncmp(filename, mod->parsed->name, len) ||
+            ((rev && rev != &filename[len]) || (!rev && dot != &filename[len]))) {
+        LOGWRN(ctx, "File name \"%s\" does not match module name \"%s\".", filename, mod->parsed->name);
+    }
+    if (rev) {
+        len = dot - ++rev;
+        if (!mod->parsed->revs || len != 10 || strncmp(LY_ARRAY_INDEX(mod->parsed->revs, 0, struct lysp_revision)->rev, rev, len)) {
+            LOGWRN(ctx, "File name \"%s\" does not match module revision \"%s\".", filename,
+                   mod->parsed->revs ? LY_ARRAY_INDEX(mod->parsed->revs, 0, struct lysp_revision)->rev : "none");
+        }
+    }
+
+    if (!mod->parsed->filepath) {
+        /* store URI */
+        char rpath[PATH_MAX];
+        if (realpath(path, rpath) != NULL) {
+            mod->parsed->filepath = lydict_insert(ctx, rpath, 0);
+        } else {
+            mod->parsed->filepath = lydict_insert(ctx, path, 0);
+        }
+    }
+
+    return mod;
+}
+

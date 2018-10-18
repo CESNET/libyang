@@ -12,8 +12,9 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#define _BSD_SOURCE
-#define _DEFAULT_SOURCE
+#include "../../src/tree_schema.c"
+#include "../../src/parser_yang.c"
+
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -23,8 +24,6 @@
 #include <string.h>
 
 #include "libyang.h"
-#include "../../src/parser_yang.c"
-#include "../../src/tree_schema.c"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -91,14 +90,23 @@ test_module(void **state)
     assert_ptr_equal(mod.parsed->name, mod.compiled->name);
     assert_ptr_equal(mod.parsed->ns, mod.compiled->ns);
 
-    lysc_module_free(mod.compiled);
+    lysc_module_free(mod.compiled, NULL);
 
     assert_int_equal(LY_SUCCESS, lys_compile(mod.parsed, LYSC_OPT_FREE_SP, &mod.compiled));
     assert_non_null(mod.compiled);
     assert_string_equal("test", mod.compiled->name);
     assert_string_equal("urn:test", mod.compiled->ns);
 
-    lysc_module_free(mod.compiled);
+    lysc_module_free(mod.compiled, NULL);
+    mod.compiled = NULL;
+
+    str = "submodule test {belongs-to xxx {prefix x;}}";
+    assert_int_equal(LY_SUCCESS, yang_parse(ctx, str, &mod.parsed));
+    assert_int_equal(LY_EINVAL, lys_compile(mod.parsed, 0, &mod.compiled));
+    logbuf_assert("Submodules (test) are not supposed to be compiled, compile only the main modules.");
+    assert_null(mod.compiled);
+
+    lysp_module_free(mod.parsed);
     ly_ctx_destroy(ctx, NULL);
 }
 
