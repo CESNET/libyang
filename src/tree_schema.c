@@ -77,16 +77,6 @@ lysp_import_free(struct ly_ctx *ctx, struct lysp_import *import, int dict)
     FREE_STRING(ctx, import->dsc);
     FREE_STRING(ctx, import->ref);
     FREE_ARRAY(ctx, import->exts, lysp_ext_instance_free);
-    {
-        void *p__;
-        int64_t c__;
-        for(p__ = ((void*)((uint32_t*)((import->exts) + 0) + 1)), c__ = 0;
-                (import->exts) && c__ < (*(uint32_t*)(import->exts));
-                p__ = ((void*)((uint32_t*)((import->exts) + c__) + 1))) {
-            lysp_ext_instance_free(ctx, p__, dict);
-        }
-        free(import->exts);
-    }
 }
 
 static void
