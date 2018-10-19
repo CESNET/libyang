@@ -5000,10 +5000,11 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
             while (!next2) {
                 iter = iter->parent;
 
-                /* if we have empty non-dflt and non-presence container, we can remove it */
+                /* if we have empty non-dflt, non-presence container without any attributes, we can remove it */
                 if (to_free && !iter->dflt && !to_free->next && to_free->prev == to_free &&
                         iter->schema->nodetype == LYS_CONTAINER &&
-                        !((struct lys_node_container *)iter->schema)->presence) {
+                        !((struct lys_node_container *)iter->schema)->presence &&
+                        !iter->attr) {
                     to_free = iter;
                 } else {
                     lyd_free(to_free);
