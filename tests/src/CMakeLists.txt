@@ -5,12 +5,14 @@ set(local_tests
     src_hash_table
     src_xml
     src_parser_yang
+    src_parser_yin
     src_tree_schema_compile
     src_tree_schema_helpers)
 set(local_tests_wraps
     " "
     "-Wl,--wrap=realloc"
     "-Wl,--wrap=ly_set_add"
+    " "
     " "
     " "
     " "
