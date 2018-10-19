@@ -94,14 +94,14 @@ test_module(void **state)
     /* features */
     assert_non_null(mod.compiled->features);
     assert_int_equal(2, LY_ARRAY_SIZE(mod.compiled->features));
-    f = LY_ARRAY_INDEX(mod.compiled->features, 1);
+    f = &mod.compiled->features[1];
     assert_non_null(f->iffeatures);
     assert_int_equal(1, LY_ARRAY_SIZE(f->iffeatures));
-    iff = LY_ARRAY_INDEX(f->iffeatures, 0);
+    iff = &f->iffeatures[0];
     assert_non_null(iff->expr);
     assert_non_null(iff->features);
     assert_int_equal(1, LY_ARRAY_SIZE(iff->features));
-    assert_ptr_equal(LY_ARRAY_INDEX(mod.compiled->features, 0), *LY_ARRAY_INDEX(iff->features, 0, struct lysc_feature*));
+    assert_ptr_equal(&mod.compiled->features[0], iff->features[0]);
 
     lysc_module_free(mod.compiled, NULL);
 
@@ -153,17 +153,17 @@ test_feature(void **state)
     }
     /* enable f1 */
     assert_int_equal(LY_SUCCESS, lys_feature_enable(&mod, "f1"));
-    f1 = LY_ARRAY_INDEX(mod.compiled->features, 0);
+    f1 = &mod.compiled->features[0];
     assert_int_equal(1, lysc_feature_value(f1));
 
     /* enable f4 */
-    f = LY_ARRAY_INDEX(mod.compiled->features, 3);
+    f = &mod.compiled->features[3];
     assert_int_equal(0, lysc_feature_value(f));
     assert_int_equal(LY_SUCCESS, lys_feature_enable(&mod, "f4"));
     assert_int_equal(1, lysc_feature_value(f));
 
     /* enable f5 - no possible since f2 is disabled */
-    f = LY_ARRAY_INDEX(mod.compiled->features, 4);
+    f = &mod.compiled->features[4];
     assert_int_equal(0, lysc_feature_value(f));
     assert_int_equal(LY_EDENIED, lys_feature_enable(&mod, "f5"));
     logbuf_assert("Feature \"f5\" cannot be enabled since it is disabled by its if-feature condition(s).");
@@ -175,7 +175,7 @@ test_feature(void **state)
     assert_int_equal(1, lysc_feature_value(f));
 
     /* f1 is enabled, so f6 cannot be enabled */
-    f = LY_ARRAY_INDEX(mod.compiled->features, 5);
+    f = &mod.compiled->features[5];
     assert_int_equal(0, lysc_feature_value(f));
     assert_int_equal(LY_EDENIED, lys_feature_enable(&mod, "f6"));
     logbuf_assert("Feature \"f6\" cannot be enabled since it is disabled by its if-feature condition(s).");
@@ -183,19 +183,17 @@ test_feature(void **state)
 
     /* so disable f1 - f5 will became also disabled */
     assert_int_equal(1, lysc_feature_value(f1));
-    f = LY_ARRAY_INDEX(mod.compiled->features, 4);
     assert_int_equal(LY_SUCCESS, lys_feature_disable(&mod, "f1"));
     assert_int_equal(0, lysc_feature_value(f1));
-    assert_int_equal(0, lysc_feature_value(f));
+    assert_int_equal(0, lysc_feature_value(&mod.compiled->features[4]));
     /* while f4 is stille enabled */
-    assert_int_equal(1, lysc_feature_value(LY_ARRAY_INDEX(mod.compiled->features, 3)));
+    assert_int_equal(1, lysc_feature_value(&mod.compiled->features[3]));
     /* and finally f6 can be enabled */
-    f = LY_ARRAY_INDEX(mod.compiled->features, 5);
     assert_int_equal(LY_SUCCESS, lys_feature_enable(&mod, "f6"));
-    assert_int_equal(1, lysc_feature_value(f));
+    assert_int_equal(1, lysc_feature_value(&mod.compiled->features[5]));
 
     /* complex evaluation of f7: f1 and f3 are disabled, while f2 is enabled */
-    assert_int_equal(1, lysc_iffeature_value(LY_ARRAY_INDEX(LY_ARRAY_INDEX(mod.compiled->features, 6, struct lysc_feature)->iffeatures, 0)));
+    assert_int_equal(1, lysc_iffeature_value(&mod.compiled->features[6].iffeatures[0]));
 
     lysc_module_free(mod.compiled, NULL);
     lysp_module_free(mod.parsed);

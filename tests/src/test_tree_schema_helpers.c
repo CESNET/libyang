@@ -90,20 +90,20 @@ test_revisions(void **state)
     logbuf_assert("");
 
     /* revisions are stored in wrong order - the newest is the last */
-    LYSP_ARRAY_NEW_RET(NULL, revs, rev,);
+    LY_ARRAY_NEW_RET(NULL, revs, rev,);
     strcpy(rev->rev, "2018-01-01");
-    LYSP_ARRAY_NEW_RET(NULL, revs, rev,);
+    LY_ARRAY_NEW_RET(NULL, revs, rev,);
     strcpy(rev->rev, "2018-12-31");
 
     assert_int_equal(2, LY_ARRAY_SIZE(revs));
-    assert_string_equal("2018-01-01", LY_ARRAY_INDEX(revs, 0));
-    assert_string_equal("2018-12-31", LY_ARRAY_INDEX(revs, 1));
+    assert_string_equal("2018-01-01", &revs[0]);
+    assert_string_equal("2018-12-31", &revs[1]);
     /* the order should be fixed, so the newest revision will be the first in the array */
     lysp_sort_revisions(revs);
-    assert_string_equal("2018-12-31", LY_ARRAY_INDEX(revs, 0));
-    assert_string_equal("2018-01-01", LY_ARRAY_INDEX(revs, 1));
+    assert_string_equal("2018-12-31", &revs[0]);
+    assert_string_equal("2018-01-01", &revs[1]);
 
-    free(revs);
+    LY_ARRAY_FREE(revs);
 }
 
 int main(void)
