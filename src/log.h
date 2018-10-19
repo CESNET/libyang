@@ -148,7 +148,8 @@ typedef enum
     LY_EEXIST,      /**< Item already exists */
     LY_EINT,        /**< Internal error */
     LY_EVALID,      /**< Validation failure */
-    LY_EPLUGIN      /**< Error reported by a plugin */
+    LY_EPLUGIN,     /**< Error reported by a plugin */
+    LY_EDENIED      /**< Operation is not allowed */
 } LY_ERR;
 
 /**

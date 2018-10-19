@@ -43,39 +43,74 @@ logger_setup(void **state)
     return 0;
 }
 
+#if ENABLE_LOGGER_CHECKING
+#   define logbuf_assert(str) assert_string_equal(logbuf, str)
+#else
+#   define logbuf_assert(str)
+#endif
+
 static void
 test_date(void **state)
 {
     (void) state; /* unused */
 
     assert_int_equal(LY_EINVAL, lysp_check_date(NULL, NULL, 0, "date"));
-    assert_string_equal(logbuf, "Invalid argument date (lysp_check_date()).");
+    logbuf_assert("Invalid argument date (lysp_check_date()).");
     assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "x", 1, "date"));
-    assert_string_equal(logbuf, "Invalid argument date_len (lysp_check_date()).");
+    logbuf_assert("Invalid argument date_len (lysp_check_date()).");
     assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "nonsencexx", 10, "date"));
-    assert_string_equal(logbuf, "Invalid value \"nonsencexx\" of \"date\".");
+    logbuf_assert("Invalid value \"nonsencexx\" of \"date\".");
     assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "123x-11-11", 10, "date"));
-    assert_string_equal(logbuf, "Invalid value \"123x-11-11\" of \"date\".");
+    logbuf_assert("Invalid value \"123x-11-11\" of \"date\".");
     assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "2018-13-11", 10, "date"));
-    assert_string_equal(logbuf, "Invalid value \"2018-13-11\" of \"date\".");
+    logbuf_assert("Invalid value \"2018-13-11\" of \"date\".");
     assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "2018-11-41", 10, "date"));
-    assert_string_equal(logbuf, "Invalid value \"2018-11-41\" of \"date\".");
+    logbuf_assert("Invalid value \"2018-11-41\" of \"date\".");
     assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "2018-02-29", 10, "date"));
-    assert_string_equal(logbuf, "Invalid value \"2018-02-29\" of \"date\".");
+    logbuf_assert("Invalid value \"2018-02-29\" of \"date\".");
     assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "2018.02-28", 10, "date"));
-    assert_string_equal(logbuf, "Invalid value \"2018.02-28\" of \"date\".");
+    logbuf_assert("Invalid value \"2018.02-28\" of \"date\".");
     assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "2018-02.28", 10, "date"));
-    assert_string_equal(logbuf, "Invalid value \"2018-02.28\" of \"date\".");
+    logbuf_assert("Invalid value \"2018-02.28\" of \"date\".");
 
     assert_int_equal(LY_SUCCESS, lysp_check_date(NULL, "2018-11-11", 10, "date"));
     assert_int_equal(LY_SUCCESS, lysp_check_date(NULL, "2018-02-28", 10, "date"));
     assert_int_equal(LY_SUCCESS, lysp_check_date(NULL, "2016-02-29", 10, "date"));
 }
 
+static void
+test_revisions(void **state)
+{
+    (void) state; /* unused */
+
+    struct lysp_revision *revs = NULL, *rev;
+
+    /* no error, it just does nothing */
+    lysp_sort_revisions(NULL);
+    logbuf_assert("");
+
+    /* revisions are stored in wrong order - the newest is the last */
+    LYSP_ARRAY_NEW_RET(NULL, revs, rev,);
+    strcpy(rev->rev, "2018-01-01");
+    LYSP_ARRAY_NEW_RET(NULL, revs, rev,);
+    strcpy(rev->rev, "2018-12-31");
+
+    assert_int_equal(2, LY_ARRAY_SIZE(revs));
+    assert_string_equal("2018-01-01", LY_ARRAY_INDEX(revs, 0));
+    assert_string_equal("2018-12-31", LY_ARRAY_INDEX(revs, 1));
+    /* the order should be fixed, so the newest revision will be the first in the array */
+    lysp_sort_revisions(revs);
+    assert_string_equal("2018-12-31", LY_ARRAY_INDEX(revs, 0));
+    assert_string_equal("2018-01-01", LY_ARRAY_INDEX(revs, 1));
+
+    free(revs);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup(test_date, logger_setup),
+        cmocka_unit_test_setup(test_revisions, logger_setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -156,6 +156,9 @@ test_element(void **state)
     str += 12;
     assert_int_equal(LY_EVALID, lyxml_get_element(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
     logbuf_assert("Opening and closing elements tag missmatch (\"element>\"). Line number 1.");
+    str = "</yin:element/>";
+    assert_int_equal(LY_EVALID, lyxml_get_element(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
+    logbuf_assert("Unexpected data \"/>\" in closing element tag. Line number 1.");
     lyxml_context_clear(&ctx);
 
     /* UTF8 characters */

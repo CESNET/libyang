@@ -1469,26 +1469,24 @@ parse_text_fields(struct ly_parser_ctx *ctx, const char **data, LYEXT_SUBSTMT su
 {
     LY_ERR ret = 0;
     char *buf, *word;
-    size_t count, word_len;
+    const char **item;
+    size_t word_len;
     enum yang_keyword kw;
 
     /* allocate new pointer */
-    for (count = 1; (*texts) && (*texts)[count - 1]; ++count);
-    *texts = realloc(*texts, (1 + count) * sizeof **texts);
-    LY_CHECK_ERR_RET(!*texts, LOGMEM(ctx->ctx), LY_EMEM);
+    LYSP_ARRAY_NEW_RET(ctx->ctx, *texts, item, LY_EMEM);
 
     /* get value */
     ret = get_argument(ctx, data, arg, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
 
-    INSERT_WORD(ctx, buf, (*texts)[count - 1], word, word_len);
-    (*texts)[count] = NULL; /* NULL-termination of the array */
+    INSERT_WORD(ctx, buf, *item, word, word_len);
     YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret) {
         LY_CHECK_RET(ret);
 
         switch (kw) {
         case YANG_CUSTOM:
-            ret = parse_ext(ctx, data, word, word_len, substmt, count - 1, exts);
+            ret = parse_ext(ctx, data, word, word_len, substmt, LY_ARRAY_SIZE(*texts) - 1, exts);
             LY_CHECK_RET(ret);
             break;
         default:

@@ -73,6 +73,16 @@ LY_ERR lysp_check_date(struct ly_ctx *ctx, const char *date, int date_len, const
 void lysp_sort_revisions(struct lysp_revision *revs);
 
 /**
+ * @brief Find the module referenced by prefix in the provided mod.
+ *
+ * @param[in] mod Schema module where the prefix was used.
+ * @param[in] prefix Prefix used to reference a module.
+ * @param[in] len Length of the prefix since it is not necessary NULL-terminated.
+ * @return Pointer to the module or NULL if the module is not found.
+ */
+struct lysc_module *lysc_module_find_prefix(struct lysc_module *mod, const char *prefix, size_t len);
+
+/**
  * @brief Free the schema structure. It just frees, it does not remove the schema from its context.
  * @param[in,out] module Schema module structure to free.
  * @param[in] private_destructor Function to remove private data from the compiled schema tree.
