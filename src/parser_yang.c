@@ -1036,7 +1036,7 @@ parse_ext(struct ly_parser_ctx *ctx, const char **data, const char *ext_name, in
     struct lysp_ext_instance *e;
     enum yang_keyword kw;
 
-    LYSP_ARRAY_NEW_RET(ctx->ctx, *exts, e, LY_EMEM);
+    LY_ARRAY_NEW_RET(ctx->ctx, *exts, e, LY_EMEM);
 
     /* store name and insubstmt info */
     e->name = lydict_insert(ctx->ctx, ext_name, ext_name_len);
@@ -1299,7 +1299,7 @@ parse_include(struct ly_parser_ctx *ctx, const char **data, struct lysp_include 
     enum yang_keyword kw;
     struct lysp_include *inc;
 
-    LYSP_ARRAY_NEW_RET(ctx->ctx, *includes, inc, LY_EMEM);
+    LY_ARRAY_NEW_RET(ctx->ctx, *includes, inc, LY_EMEM);
 
     /* get value */
     ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
@@ -1351,7 +1351,7 @@ parse_import(struct ly_parser_ctx *ctx, const char **data, struct lysp_module *m
     enum yang_keyword kw;
     struct lysp_import *imp;
 
-    LYSP_ARRAY_NEW_RET(ctx->ctx, module->imports, imp, LY_EVALID);
+    LY_ARRAY_NEW_RET(ctx->ctx, module->imports, imp, LY_EVALID);
 
     /* get value */
     ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
@@ -1413,7 +1413,7 @@ parse_revision(struct ly_parser_ctx *ctx, const char **data, struct lysp_revisio
     enum yang_keyword kw;
     struct lysp_revision *rev;
 
-    LYSP_ARRAY_NEW_RET(ctx->ctx, *revs, rev, LY_EMEM);
+    LY_ARRAY_NEW_RET(ctx->ctx, *revs, rev, LY_EMEM);
 
     /* get value */
     ret = get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
@@ -1474,7 +1474,7 @@ parse_text_fields(struct ly_parser_ctx *ctx, const char **data, LYEXT_SUBSTMT su
     enum yang_keyword kw;
 
     /* allocate new pointer */
-    LYSP_ARRAY_NEW_RET(ctx->ctx, *texts, item, LY_EMEM);
+    LY_ARRAY_NEW_RET(ctx->ctx, *texts, item, LY_EMEM);
 
     /* get value */
     ret = get_argument(ctx, data, arg, &word, &buf, &word_len);
@@ -1679,7 +1679,7 @@ parse_restrs(struct ly_parser_ctx *ctx, const char **data, enum yang_keyword res
 {
     struct lysp_restr *restr;
 
-    LYSP_ARRAY_NEW_RET(ctx->ctx, *restrs, restr, LY_EMEM);
+    LY_ARRAY_NEW_RET(ctx->ctx, *restrs, restr, LY_EMEM);
 
     return parse_restr(ctx, data, restr_kw, restr);
 }
@@ -1980,7 +1980,7 @@ parse_type_enum(struct ly_parser_ctx *ctx, const char **data, enum yang_keyword 
     enum yang_keyword kw;
     struct lysp_type_enum *enm;
 
-    LYSP_ARRAY_NEW_RET(ctx->ctx, *enums, enm, LY_EMEM);
+    LY_ARRAY_NEW_RET(ctx->ctx, *enums, enm, LY_EMEM);
 
     /* get value */
     ret = get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
@@ -2226,7 +2226,7 @@ parse_type_pattern(struct ly_parser_ctx *ctx, const char **data, struct lysp_res
     enum yang_keyword kw;
     struct lysp_restr *restr;
 
-    LYSP_ARRAY_NEW_RET(ctx->ctx, *patterns, restr, LY_EMEM);
+    LY_ARRAY_NEW_RET(ctx->ctx, *patterns, restr, LY_EMEM);
 
     /* get value */
     ret = get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
@@ -2353,7 +2353,7 @@ parse_type(struct ly_parser_ctx *ctx, const char **data, struct lysp_type *type)
             break;
         case YANG_TYPE:
             {
-                LYSP_ARRAY_NEW_RET(ctx->ctx, type->types, nest_type, LY_EMEM);
+                LY_ARRAY_NEW_RET(ctx->ctx, type->types, nest_type, LY_EMEM);
             }
             ret = parse_type(ctx, data, nest_type);
             break;
@@ -2786,7 +2786,7 @@ parse_refine(struct ly_parser_ctx *ctx, const char **data, struct lysp_refine **
     enum yang_keyword kw;
     struct lysp_refine *rf;
 
-    LYSP_ARRAY_NEW_RET(ctx->ctx, *refines, rf, LY_EMEM);
+    LY_ARRAY_NEW_RET(ctx->ctx, *refines, rf, LY_EMEM);
 
     /* get value */
     ret = get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
@@ -2859,7 +2859,7 @@ parse_typedef(struct ly_parser_ctx *ctx, const char **data, struct lysp_tpdf **t
     enum yang_keyword kw;
     struct lysp_tpdf *tpdf;
 
-    LYSP_ARRAY_NEW_RET(ctx->ctx, *typedefs, tpdf, LY_EMEM);
+    LY_ARRAY_NEW_RET(ctx->ctx, *typedefs, tpdf, LY_EMEM);
 
     /* get value */
     ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
@@ -3006,7 +3006,7 @@ parse_action(struct ly_parser_ctx *ctx, const char **data, struct lysp_action **
     enum yang_keyword kw;
     struct lysp_action *act;
 
-    LYSP_ARRAY_NEW_RET(ctx->ctx, *actions, act, LY_EMEM);
+    LY_ARRAY_NEW_RET(ctx->ctx, *actions, act, LY_EMEM);
 
     /* get value */
     ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
@@ -3075,7 +3075,7 @@ parse_notif(struct ly_parser_ctx *ctx, const char **data, struct lysp_notif **no
     enum yang_keyword kw;
     struct lysp_notif *notif;
 
-    LYSP_ARRAY_NEW_RET(ctx->ctx, *notifs, notif, LY_EMEM);
+    LY_ARRAY_NEW_RET(ctx->ctx, *notifs, notif, LY_EMEM);
 
     /* get value */
     ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
@@ -3163,7 +3163,7 @@ parse_grouping(struct ly_parser_ctx *ctx, const char **data, struct lysp_grp **g
     enum yang_keyword kw;
     struct lysp_grp *grp;
 
-    LYSP_ARRAY_NEW_RET(ctx->ctx, *groupings, grp, LY_EMEM);
+    LY_ARRAY_NEW_RET(ctx->ctx, *groupings, grp, LY_EMEM);
 
     /* get value */
     ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
@@ -3252,7 +3252,7 @@ parse_augment(struct ly_parser_ctx *ctx, const char **data, struct lysp_augment 
     enum yang_keyword kw;
     struct lysp_augment *aug;
 
-    LYSP_ARRAY_NEW_RET(ctx->ctx, *augments, aug, LY_EMEM);
+    LY_ARRAY_NEW_RET(ctx->ctx, *augments, aug, LY_EMEM);
 
     /* get value */
     ret = get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
@@ -3973,7 +3973,7 @@ parse_extension(struct ly_parser_ctx *ctx, const char **data, struct lysp_ext **
     enum yang_keyword kw;
     struct lysp_ext *ex;
 
-    LYSP_ARRAY_NEW_RET(ctx->ctx, *extensions, ex, LY_EMEM);
+    LY_ARRAY_NEW_RET(ctx->ctx, *extensions, ex, LY_EMEM);
 
     /* get value */
     ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
@@ -4248,7 +4248,7 @@ parse_deviation(struct ly_parser_ctx *ctx, const char **data, struct lysp_deviat
     enum yang_keyword kw;
     struct lysp_deviation *dev;
 
-    LYSP_ARRAY_NEW_RET(ctx->ctx, *deviations, dev, LY_EMEM);
+    LY_ARRAY_NEW_RET(ctx->ctx, *deviations, dev, LY_EMEM);
 
     /* get value */
     ret = get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len);
@@ -4306,7 +4306,7 @@ parse_feature(struct ly_parser_ctx *ctx, const char **data, struct lysp_feature 
     enum yang_keyword kw;
     struct lysp_feature *feat;
 
-    LYSP_ARRAY_NEW_RET(ctx->ctx, *features, feat, LY_EMEM);
+    LY_ARRAY_NEW_RET(ctx->ctx, *features, feat, LY_EMEM);
 
     /* get value */
     ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
@@ -4361,7 +4361,7 @@ parse_identity(struct ly_parser_ctx *ctx, const char **data, struct lysp_ident *
     enum yang_keyword kw;
     struct lysp_ident *ident;
 
-    LYSP_ARRAY_NEW_RET(ctx->ctx, *identities, ident, LY_EMEM);
+    LY_ARRAY_NEW_RET(ctx->ctx, *identities, ident, LY_EMEM);
 
     /* get value */
     ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);

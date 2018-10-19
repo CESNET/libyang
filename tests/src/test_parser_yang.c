@@ -725,7 +725,7 @@ test_module(void **state)
     TEST_NODE(LYS_ANYXML, "anyxml test;}", "test");
     /* augment */
     TEST_GENERIC("augment /somepath;}", mod->augments,
-                 assert_string_equal("/somepath", LY_ARRAY_INDEX(mod->augments, 0, struct lysp_augment)->nodeid));
+                 assert_string_equal("/somepath", mod->augments[0].nodeid));
     /* choice */
     TEST_NODE(LYS_CHOICE, "choice test;}", "test");
     /* contact 0..1 */
@@ -738,22 +738,22 @@ test_module(void **state)
                  assert_string_equal("some description", mod->dsc));
     /* deviation */
     TEST_GENERIC("deviation /somepath {deviate not-supported;}}", mod->deviations,
-                 assert_string_equal("/somepath", LY_ARRAY_INDEX(mod->deviations, 0, struct lysp_deviation)->nodeid));
+                 assert_string_equal("/somepath", mod->deviations[0].nodeid));
     /* extension */
     TEST_GENERIC("extension test;}", mod->extensions,
-                 assert_string_equal("test", LY_ARRAY_INDEX(mod->extensions, 0, struct lysp_ext)->name));
+                 assert_string_equal("test", mod->extensions[0].name));
     /* feature */
     TEST_GENERIC("feature test;}", mod->features,
-                 assert_string_equal("test", LY_ARRAY_INDEX(mod->features, 0, struct lysp_feature)->name));
+                 assert_string_equal("test", mod->features[0].name));
     /* grouping */
     TEST_GENERIC("grouping grp;}", mod->groupings,
-                 assert_string_equal("grp", LY_ARRAY_INDEX(mod->groupings, 0, struct lysp_grp)->name));
+                 assert_string_equal("grp", mod->groupings[0].name));
     /* identity */
     TEST_GENERIC("identity test;}", mod->identities,
-                 assert_string_equal("test", LY_ARRAY_INDEX(mod->identities, 0, struct lysp_ident)->name));
+                 assert_string_equal("test", mod->identities[0].name));
     /* import */
     TEST_GENERIC("import test {prefix z;}}", mod->imports,
-                 assert_string_equal("test", LY_ARRAY_INDEX(mod->imports, 0, struct lysp_import)->name));
+                 assert_string_equal("test", mod->imports[0].name));
 
     /* import - prefix collision */
     str = SCHEMA_BEGINNING "import test {prefix x;}}";
@@ -767,7 +767,7 @@ test_module(void **state)
 
     /* include */
     TEST_GENERIC("include test;}", mod->includes,
-                 assert_string_equal("test", LY_ARRAY_INDEX(mod->includes, 0, struct lysp_include)->name));
+                 assert_string_equal("test", mod->includes[0].name));
     /* leaf */
     TEST_NODE(LYS_LEAF, "leaf test {type string;}}", "test");
     /* leaf-list */
@@ -776,7 +776,7 @@ test_module(void **state)
     TEST_NODE(LYS_LIST, "list test {key a;leaf a {type string;}}}", "test");
     /* notification */
     TEST_GENERIC("notification test;}", mod->notifs,
-                 assert_string_equal("test", LY_ARRAY_INDEX(mod->notifs, 0, struct lysp_notif)->name));
+                 assert_string_equal("test", mod->notifs[0].name));
     /* organization 0..1 */
     TEST_GENERIC("organization \"CESNET a.l.e.\";}", mod->org,
                  assert_string_equal("CESNET a.l.e.", mod->org));
@@ -785,13 +785,13 @@ test_module(void **state)
                  assert_string_equal("RFC7950", mod->ref));
     /* revision */
     TEST_GENERIC("revision 2018-10-12;}", mod->revs,
-                 assert_string_equal("2018-10-12", LY_ARRAY_INDEX(mod->revs, 0, struct lysp_revision)->rev));
+                 assert_string_equal("2018-10-12", mod->revs[0].rev));
     /* rpc */
     TEST_GENERIC("rpc test;}", mod->rpcs,
-                 assert_string_equal("test", LY_ARRAY_INDEX(mod->rpcs, 0, struct lysp_action)->name));
+                 assert_string_equal("test", mod->rpcs[0].name));
     /* typedef */
     TEST_GENERIC("typedef test{type string;}}", mod->typedefs,
-                 assert_string_equal("test", LY_ARRAY_INDEX(mod->typedefs, 0, struct lysp_tpdf)->name));
+                 assert_string_equal("test", mod->typedefs[0].name));
     /* uses */
     TEST_NODE(LYS_USES, "uses test;}", "test");
     /* yang-version */
@@ -814,8 +814,8 @@ test_module(void **state)
 
     /* extensions */
     TEST_GENERIC("prefix:test;}", mod->exts,
-                 assert_string_equal("prefix:test", LY_ARRAY_INDEX(mod->exts, 0, struct lysp_ext_instance)->name);
-                 assert_int_equal(LYEXT_SUBSTMT_SELF, LY_ARRAY_INDEX(mod->exts, 0, struct lysp_ext_instance)->insubstmt));
+                 assert_string_equal("prefix:test", mod->exts[0].name);
+                 assert_int_equal(LYEXT_SUBSTMT_SELF, mod->exts[0].insubstmt));
     mod = mod_renew(&ctx, mod, 0);
 
     /* invalid substatement */

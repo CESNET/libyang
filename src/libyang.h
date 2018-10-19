@@ -81,15 +81,15 @@ extern "C" {
  * @section sizedarrays Sized Arrays
  *
  * The structure starts with 32bit number storing size of the array - the number of the items inside. The size is part of the
- * array to allocate it together with the array itself only when it is needed. This way the memory demands are decreased with
- * possibility to have "infinite" (32bit) array of items. Because of a known size, it is not terminated by any special byte
- * (sequence), so there is also no limit for specific content of the stored records (e.g. that first byte must not be NULL).
+ * array to have it allocated together with the array itself only when it is needed. However, the pointers to the array always
+ * points after the 32b number, so items can be accessed directly as for standard C arrays. Because of a known size (available
+ * via ::LY_ARRAY_SIZE macro), it is not terminated by any special byte (sequence), so there is also no limitation for specific
+ * content of the stored records (e.g. that first byte must not be NULL).
  *
- * Due to the structure, the records in the array cannot be accessed directly. There is a set of macros supposed to make
- * work with the arrays more easy.
+ * The sized arrays must be carefully freed (which should be done anyway only internally), since pointers to the sized arrays used
+ * in libyang structures, does not point to the beginning of the allocated space.
  *
  * - ::LY_ARRAY_SIZE
- * - ::LY_ARRAY_INDEX
  * - ::LY_ARRAY_FOR
  *
  * @section struct_lists Lists

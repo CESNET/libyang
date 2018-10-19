@@ -28,10 +28,10 @@
 #include "context.h"
 #include "tree_schema_internal.h"
 
-#define FREE_ARRAY(CTX, ARRAY, FUNC) {uint64_t c__; LY_ARRAY_FOR(ARRAY, c__){FUNC(CTX, LY_ARRAY_INDEX(ARRAY, c__), dict);}free(ARRAY);}
+#define FREE_ARRAY(CTX, ARRAY, FUNC) {uint64_t c__; LY_ARRAY_FOR(ARRAY, c__){FUNC(CTX, &ARRAY[c__], dict);}LY_ARRAY_FREE(ARRAY);}
 #define FREE_MEMBER(CTX, MEMBER, FUNC) if (MEMBER) {FUNC(CTX, MEMBER, dict);free(MEMBER);}
 #define FREE_STRING(CTX, STRING, DICT) if (DICT && STRING) {lydict_remove(CTX, STRING);}
-#define FREE_STRINGS(CTX, ARRAY, DICT) {uint64_t c__; LY_ARRAY_FOR(ARRAY, c__){FREE_STRING(CTX, *(LY_ARRAY_INDEX(ARRAY, c__, const char*)), DICT);}free(ARRAY);}
+#define FREE_STRINGS(CTX, ARRAY, DICT) {uint64_t c__; LY_ARRAY_FOR(ARRAY, c__){FREE_STRING(CTX, ARRAY[c__], DICT);}LY_ARRAY_FREE(ARRAY);}
 
 static void lysp_grp_free(struct ly_ctx *ctx, struct lysp_grp *grp, int dict);
 static void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node, int dict);
@@ -122,16 +122,7 @@ static void
 lysp_ident_free(struct ly_ctx *ctx, struct lysp_ident *ident, int dict)
 {
     FREE_STRING(ctx, ident->name, dict);
-    //FREE_STRINGS(ctx, ident->iffeatures, 1);
-    {
-        uint64_t c__;
-        for (c__ = 0; ident->iffeatures && c__ < (*((uint32_t*)(ident->iffeatures))); ++c__) {
-            if (1 && ((void*)((uint32_t*)((ident->iffeatures) + c__) + 1))) {
-                lydict_remove(ctx, *((char**)((uint32_t*)((ident->iffeatures) + c__) + 1)));
-            };
-        }
-        free(ident->iffeatures);
-    }
+    FREE_STRINGS(ctx, ident->iffeatures, 1);
     FREE_STRINGS(ctx, ident->bases, dict);
     FREE_STRING(ctx, ident->dsc, dict);
     FREE_STRING(ctx, ident->ref, dict);
@@ -460,7 +451,7 @@ lysp_module_free(struct lysp_module *module)
 static void
 lysc_iffeature_free(struct ly_ctx *UNUSED(ctx), struct lysc_iffeature *iff, int UNUSED(dict))
 {
-    free(iff->features);
+    LY_ARRAY_FREE(iff->features);
     free(iff->expr);
 }
 
@@ -469,7 +460,7 @@ lysc_feature_free(struct ly_ctx *ctx, struct lysc_feature *feat, int dict)
 {
     FREE_STRING(ctx, feat->name, dict);
     FREE_ARRAY(ctx, feat->iffeatures, lysc_iffeature_free);
-    free(feat->depfeatures);
+    LY_ARRAY_FREE(feat->depfeatures);
 }
 
 static void
@@ -600,7 +591,7 @@ lysc_feature_find(struct lysc_module *mod, const char *name, size_t len)
 
     /* we have the correct module, get the feature */
     LY_ARRAY_FOR(mod->features, i) {
-        f = LY_ARRAY_INDEX(mod->features, i);
+        f = &mod->features[i];
         if (!strncmp(f->name, name, len) && f->name[len] == '\0') {
             return f;
         }
@@ -621,7 +612,7 @@ lysc_iffeature_value_(const struct lysc_iffeature *iff, int *index_e, int *index
     switch (op) {
     case LYS_IFF_F:
         /* resolve feature */
-        return lysc_feature_value(*LY_ARRAY_INDEX(iff->features, (*index_f)++, struct lysc_feature*));
+        return lysc_feature_value(iff->features[(*index_f)++]);
     case LYS_IFF_NOT:
         /* invert result */
         return lysc_iffeature_value_(iff, index_e, index_f) ? 0 : 1;
@@ -690,7 +681,7 @@ lys_feature_change(const struct lysc_module *mod, const char *name, int value)
     changed = ly_set_new();
 
     for (u = 0; u < LY_ARRAY_SIZE(mod->features); ++u) {
-        f = LY_ARRAY_INDEX(mod->features, u);
+        f = &mod->features[u];
         if (all || !strcmp(f->name, name)) {
             if ((value && (f->flags & LYS_FENABLED)) || (!value && !(f->flags & LYS_FENABLED))) {
                 if (all) {
@@ -802,7 +793,7 @@ lys_feature_value(const struct lys_module *module, const char *feature)
 
     /* search for the specified feature */
     for (u = 0; u < LY_ARRAY_SIZE(mod->features); ++u) {
-        f = LY_ARRAY_INDEX(mod->features, u);
+        f = &mod->features[u];
         if (!strcmp(f->name, feature)) {
             if (f->flags & LYS_FENABLED) {
                 return 1;
@@ -897,12 +888,11 @@ lys_compile_iffeature(struct lysc_ctx *ctx, const char *value, int UNUSED(option
     }
 
     /* allocate the memory */
+    LY_ARRAY_CREATE_RET(ctx->mod->ctx, iff->features, f_size, LY_EMEM);
     iff->expr = calloc((j = (expr_size / 4) + ((expr_size % 4) ? 1 : 0)), sizeof *iff->expr);
-    iff->features = malloc(sizeof(uint32_t) + (f_size * sizeof *iff->features));
     stack.stack = malloc(expr_size * sizeof *stack.stack);
-    LY_CHECK_ERR_GOTO(!stack.stack || !iff->expr || !iff->features, LOGMEM(ctx->mod->ctx), error);
+    LY_CHECK_ERR_GOTO(!stack.stack || !iff->expr, LOGMEM(ctx->mod->ctx), error);
 
-    *((uint32_t*)iff->features) = f_size;
     stack.size = expr_size;
     f_size--; expr_size--; /* used as indexes from now */
 
@@ -964,25 +954,11 @@ lys_compile_iffeature(struct lysc_ctx *ctx, const char *value, int UNUSED(option
                                      "Invalid value \"%s\" of if-feature - unable to find feature \"%.*s\".", value, j - i, &c[i]);
                               rc = LY_EINVAL,
                               error)
-            *(LY_ARRAY_INDEX(iff->features, f_size, struct lysc_feature*)) = f;
+            iff->features[f_size] = f;
+            LY_ARRAY_INCREMENT(iff->features);
             if (parent) {
                 /* and add itself into the dependants list */
-                //LYSP_ARRAY_NEW_RET(ctx->mod->ctx, f->depfeatures, df, LY_EMEM);
-                if (!(f->depfeatures)) {
-                    f->depfeatures = malloc(sizeof(uint32_t) + sizeof *(f->depfeatures));
-                    *((uint32_t*)(f->depfeatures)) = 1;
-                } else {
-                    ++(*((uint32_t*)(f->depfeatures)));
-                    f->depfeatures = ly_realloc(f->depfeatures,
-                                                sizeof(uint32_t) + (*((uint32_t*)(f->depfeatures)) * sizeof *(f->depfeatures)));
-                    if (!(f->depfeatures)) {
-                        ly_log(ctx->mod->ctx, LY_LLERR, LY_EMEM, "Memory allocation failed (%s()).", __func__);
-                        return LY_EMEM;
-                    };
-                }
-                (df) = (void*)((uint32_t*)((f->depfeatures) + *((uint32_t*)(f->depfeatures)) - 1) + 1);
-                memset(df, 0, sizeof *(df));
-
+                LY_ARRAY_NEW_RET(ctx->mod->ctx, f->depfeatures, df, LY_EMEM);
                 *df = parent;
 
                 /* TODO check for circular dependency */
@@ -1028,13 +1004,12 @@ lys_compile_feature(struct lysc_ctx *ctx, struct lysp_feature *feature_p, int op
 
     if (feature_p->iffeatures) {
         /* allocate everything now */
-        feature->iffeatures = calloc(1, sizeof(uint32_t) + (*((uint32_t*)(feature_p->iffeatures)) * sizeof *feature->iffeatures));
-        *((uint32_t*)(feature->iffeatures)) = 0;
+        LY_ARRAY_CREATE_RET(ctx->mod->ctx, feature->iffeatures, LY_ARRAY_SIZE(feature_p->iffeatures), LY_EMEM);
 
         for (u = 0; u < LY_ARRAY_SIZE(feature_p->iffeatures); ++u) {
-            ret = lys_compile_iffeature(ctx, *LY_ARRAY_INDEX(feature_p->iffeatures, u, const char *), options, LY_ARRAY_INDEX(feature->iffeatures, u), feature);
+            ret = lys_compile_iffeature(ctx, feature_p->iffeatures[u], options, &feature->iffeatures[u], feature);
             LY_CHECK_RET(ret);
-            ++(*((uint32_t*)(feature->iffeatures)));
+            LY_ARRAY_INCREMENT(feature->iffeatures);
         }
     }
 
@@ -1075,13 +1050,12 @@ lys_compile(struct lysp_module *sp, int options, struct lysc_module **sc)
 
     if (sp->features) {
         /* allocate everything now */
-        mod_c->features = calloc(1, sizeof(uint32_t) + (*((uint32_t*)(sp->features)) * sizeof *mod_c->features));
-        *((uint32_t*)(mod_c->features)) = 0;
+        LY_ARRAY_CREATE_RET(ctx.mod->ctx, mod_c->features, LY_ARRAY_SIZE(sp->features), LY_EMEM);
 
         for (u = 0; u < LY_ARRAY_SIZE(sp->features); ++u) {
-            ret = lys_compile_feature(&ctx, LY_ARRAY_INDEX(sp->features, u), options, LY_ARRAY_INDEX(mod_c->features, u));
+            ret = lys_compile_feature(&ctx, &sp->features[u], options, &mod_c->features[u]);
             LY_CHECK_GOTO(ret != LY_SUCCESS, error);
-            ++(*((uint32_t*)(mod_c->features)));
+            LY_ARRAY_INCREMENT(mod_c->features);
         }
     }
 
@@ -1134,9 +1108,9 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const 
 
     if (revision) {
         /* check revision of the parsed model */
-        if (!mod->parsed->revs || strcmp(revision, LY_ARRAY_INDEX(mod->parsed->revs, 0, struct lysp_revision)->rev)) {
+        if (!mod->parsed->revs || strcmp(revision, mod->parsed->revs[0].rev)) {
             LOGERR(ctx, LY_EINVAL, "Module \"%s\" parsed with the wrong revision (\"%s\" instead \"%s\").",
-                   mod->parsed->name, LY_ARRAY_INDEX(mod->parsed->revs, 0, struct lysp_revision)->rev, revision);
+                   mod->parsed->name, mod->parsed->revs[0].rev, revision);
             lysp_module_free(mod->parsed);
             free(mod);
             return NULL;
@@ -1264,9 +1238,9 @@ lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format)
     }
     if (rev) {
         len = dot - ++rev;
-        if (!mod->parsed->revs || len != 10 || strncmp(LY_ARRAY_INDEX(mod->parsed->revs, 0, struct lysp_revision)->rev, rev, len)) {
+        if (!mod->parsed->revs || len != 10 || strncmp(mod->parsed->revs[0].rev, rev, len)) {
             LOGWRN(ctx, "File name \"%s\" does not match module revision \"%s\".", filename,
-                   mod->parsed->revs ? LY_ARRAY_INDEX(mod->parsed->revs, 0, struct lysp_revision)->rev : "none");
+                   mod->parsed->revs ? mod->parsed->revs[0].rev : "none");
         }
     }
 

@@ -32,16 +32,6 @@ struct lyxp_expr;
 #define LY_ARRAY_SELECT(_1, _2, NAME, ...) NAME
 
 /**
- * @brief Get void pointer to the item on the INDEX in the ARRAY
- */
-#define LY_ARRAY_INDEX1(ARRAY, INDEX) ((void*)((uint32_t*)((ARRAY) + INDEX) + 1))
-
-/**
- * @brief Get the TYPE pointer to the item on the INDEX in the ARRAY
- */
-#define LY_ARRAY_INDEX2(ARRAY, INDEX, TYPE) ((TYPE*)((uint32_t*)((ARRAY) + INDEX) + 1))
-
-/**
  * @brief Helper macro to go through sized-arrays with a pointer iterator.
  *
  * Use with opening curly bracket (`{`).
@@ -51,8 +41,8 @@ struct lyxp_expr;
  * @param[out] ITER Iterating pointer to the item being processed in each loop
  */
 #define LY_ARRAY_FOR_ITER(ARRAY, TYPE, ITER) \
-    for (ITER = LY_ARRAY_INDEX1(ARRAY, 0); \
-         (ARRAY) && ((void*)ITER - (void*)ARRAY - sizeof(uint32_t))/(sizeof(TYPE)) < (*(uint32_t*)(ARRAY)); \
+    for (ITER = ARRAY; \
+         (ARRAY) && ((void*)ITER - (void*)ARRAY)/(sizeof(TYPE)) < (*((uint32_t*)(ARRAY) - 1)); \
          ITER = (void*)((TYPE*)ITER + 1))
 
 /**
@@ -67,7 +57,7 @@ struct lyxp_expr;
  */
 #define LY_ARRAY_FOR_INDEX(ARRAY, INDEX) \
     for (INDEX = 0; \
-         ARRAY && INDEX < (*((uint32_t*)(ARRAY))); \
+         ARRAY && INDEX < (*((uint32_t*)(ARRAY) - 1)); \
          ++INDEX)
 
 /**
@@ -78,18 +68,11 @@ struct lyxp_expr;
  */
 
 /**
- * @brief Get (optionally TYPEd) pointer to the item on the INDEX in the ARRAY
- *
- *     LY_ARRAY_INDEX(ARRAY, INDEX [, TYPE])
- */
-#define LY_ARRAY_INDEX(ARRAY, ...) LY_ARRAY_SELECT(__VA_ARGS__, LY_ARRAY_INDEX2, LY_ARRAY_INDEX1)(ARRAY, __VA_ARGS__)
-
-/**
  * @brief Get a number of records in the ARRAY.
  *
  * Does not check if array exists!
  */
-#define LY_ARRAY_SIZE(ARRAY) (*((uint32_t*)(ARRAY)))
+#define LY_ARRAY_SIZE(ARRAY) (*((uint32_t*)(ARRAY) - 1))
 
 /**
  * @brief Sized-array iterator (for-loop).
@@ -106,8 +89,7 @@ struct lyxp_expr;
  *     LY_ARRAY_FOR(ARRAY, INDEX)
  *
  * The ARRAY is again a sized-array to go through, the INDEX is a variable (unsigned integer) for storing iterating ARRAY's index
- * to access the items of ARRAY in the loops. The INDEX is supposed to be used via LY_ARRAY_INDEX macro which can provide the item
- * in the loop body. This functionality is provided by LY_ARRAY_FOR_INDEX macro.
+ * to access the items of ARRAY in the loops. This functionality is provided by LY_ARRAY_FOR_INDEX macro.
  */
 #define LY_ARRAY_FOR(ARRAY, ...) LY_ARRAY_SELECT(__VA_ARGS__, LY_ARRAY_FOR_ITER, LY_ARRAY_FOR_INDEX)(ARRAY, __VA_ARGS__)
 

@@ -276,21 +276,53 @@ LY_ERR ly_munmap(void *addr, size_t length);
 /**
  * @brief (Re-)Allocation of a ([sized array](@ref sizedarrays)).
  *
+ * Increases the size information.
+ *
  * @param[in] CTX libyang context for logging.
- * @param[in,out] ARRAY Pointer to the array to allocate/resize.
+ * @param[in,out] ARRAY Pointer to the array to allocate/resize. The size of the allocated
+ * space is counted from the type of the ARRAY, so do not provide placeholder void pointers.
  * @param[out] NEW_ITEM Returning pointer to the newly allocated record in the ARRAY.
  * @param[in] RETVAL Return value for the case of error (memory allocation failure).
  */
-#define LYSP_ARRAY_NEW_RET(CTX, ARRAY, NEW_ITEM, RETVAL) \
+#define LY_ARRAY_NEW_RET(CTX, ARRAY, NEW_ITEM, RETVAL) \
         if (!(ARRAY)) { \
             ARRAY = malloc(sizeof(uint32_t) + sizeof *(ARRAY)); \
             *((uint32_t*)(ARRAY)) = 1; \
         } else { \
-            ++(*((uint32_t*)(ARRAY))); \
-            ARRAY = ly_realloc(ARRAY, sizeof(uint32_t) + (*((uint32_t*)(ARRAY)) * sizeof *(ARRAY))); \
+            ++(*((uint32_t*)(ARRAY) - 1)); \
+            ARRAY = ly_realloc(((uint32_t*)(ARRAY) - 1), sizeof(uint32_t) + (*((uint32_t*)(ARRAY) - 1) * sizeof *(ARRAY))); \
             LY_CHECK_ERR_RET(!(ARRAY), LOGMEM(CTX), RETVAL); \
         } \
-        (NEW_ITEM) = (void*)((uint32_t*)((ARRAY) + *((uint32_t*)(ARRAY)) - 1) + 1); \
-        memset(NEW_ITEM, 0, sizeof *(NEW_ITEM));
+        ARRAY = (void*)((uint32_t*)(ARRAY) + 1); \
+        (NEW_ITEM) = &(ARRAY)[*((uint32_t*)(ARRAY) - 1) - 1]; \
+        memset(NEW_ITEM, 0, sizeof *(NEW_ITEM))
 
+/**
+ * @brief Allocate a ([sized array](@ref sizedarrays)) for the specified number of items.
+ *
+ * Does not set the size information, it is supposed to be incremented via ::LY_ARRAY_INCREMENT
+ * when the items are filled.
+ *
+ * @param[in] CTX libyang context for logging.
+ * @param[in,out] ARRAY Pointer to the array to create.
+ * @param[in] SIZE Number of items the array is supposed to hold. The size of the allocated
+ * space is then counted from the type of the ARRAY, so do not provide placeholder void pointers.
+ * @param[in] RETVAL Return value for the case of error (memory allocation failure).
+ */
+#define LY_ARRAY_CREATE_RET(CTX, ARRAY, SIZE, RETVAL) \
+        ARRAY = calloc(1, sizeof(uint32_t) + SIZE * sizeof *(ARRAY)); \
+        LY_CHECK_ERR_RET(!(ARRAY), LOGMEM(CTX), RETVAL); \
+        ARRAY = (void*)((uint32_t*)(ARRAY) + 1)
+
+#define LY_ARRAY_INCREMENT(ARRAY) \
+        ++(*((uint32_t*)(ARRAY) - 1))
+/**
+ * @brief Free the space allocated for the ([sized array](@ref sizedarrays)).
+ *
+ * The items inside the array are not freed.
+ *
+ * @param[in] ARRAY A ([sized array](@ref sizedarrays)) to be freed.
+ */
+#define LY_ARRAY_FREE(ARRAY) \
+        if (ARRAY){free((uint32_t*)(ARRAY) - 1);}
 #endif /* LY_COMMON_H_ */
