@@ -4983,7 +4983,7 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
 
                 /* if we have empty non-dflt and non-presence container, we can remove it */
                 if (!next2 && !iter->dflt && (iter->schema->nodetype == LYS_CONTAINER)
-                        && !((struct lys_node_container *)iter->schema)->presence) {
+                        && !((struct lys_node_container *)iter->schema)->presence && !iter->attr) {
                     lyd_free(to_free);
                     to_free = iter;
                 }
@@ -5003,8 +5003,7 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
                 /* if we have empty non-dflt, non-presence container without any attributes, we can remove it */
                 if (to_free && !iter->dflt && !to_free->next && to_free->prev == to_free &&
                         iter->schema->nodetype == LYS_CONTAINER &&
-                        !((struct lys_node_container *)iter->schema)->presence &&
-                        !iter->attr) {
+                        !((struct lys_node_container *)iter->schema)->presence && !iter->attr) {
                     to_free = iter;
                 } else {
                     lyd_free(to_free);
