@@ -2076,6 +2076,8 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
                 lyd_free(ret);
                 return NULL;
             }
+
+            /* set first created node */
             ret = node;
             first_iter = 0;
         }
@@ -2089,6 +2091,10 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
 
         if (!id[0]) {
             /* we are done */
+            if (options & LYD_PATH_OPT_NOPARENTRET) {
+                /* last created node */
+                return node;
+            }
             return ret;
         }
 
