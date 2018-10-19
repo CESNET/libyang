@@ -15,6 +15,7 @@
 #ifndef LY_COMMON_H_
 #define LY_COMMON_H_
 
+#include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
 

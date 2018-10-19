@@ -105,3 +105,25 @@ lysp_sort_revisions(struct lysp_revision *revs)
         memcpy(LY_ARRAY_INDEX(revs, r), &rev, sizeof rev);
     }
 }
+
+struct lysc_module *
+lysc_module_find_prefix(struct lysc_module *mod, const char *prefix, size_t len)
+{
+    struct lysc_import *imp;
+
+    assert(mod);
+
+    if (!strncmp(mod->prefix, prefix, len) && mod->prefix[len] == '\0') {
+        /* it is the prefix of the module itself */
+        return mod;
+    }
+
+    /* search in imports */
+    LY_ARRAY_FOR(mod->imports, struct lysc_import, imp) {
+        if (!strncmp(imp->prefix, prefix, len) && mod->prefix[len] == '\0') {
+            return imp->module;
+        }
+    }
+
+    return NULL;
+}

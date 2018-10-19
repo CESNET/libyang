@@ -75,9 +75,11 @@ test_module(void **state)
     const char *str;
     struct ly_ctx *ctx;
     struct lys_module mod = {0};
+    struct lysc_feature *f;
+    struct lysc_iffeature *iff;
 
     str = "module test {namespace urn:test; prefix t;"
-          "feature f1;}";
+          "feature f1;feature f2 {if-feature f1;}}";
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
 
     assert_int_equal(LY_EINVAL, lys_compile(NULL, 0, NULL));
@@ -89,6 +91,17 @@ test_module(void **state)
     assert_non_null(mod.compiled);
     assert_ptr_equal(mod.parsed->name, mod.compiled->name);
     assert_ptr_equal(mod.parsed->ns, mod.compiled->ns);
+    /* features */
+    assert_non_null(mod.compiled->features);
+    assert_int_equal(2, LY_ARRAY_SIZE(mod.compiled->features));
+    f = LY_ARRAY_INDEX(mod.compiled->features, 1);
+    assert_non_null(f->iffeatures);
+    assert_int_equal(1, LY_ARRAY_SIZE(f->iffeatures));
+    iff = LY_ARRAY_INDEX(f->iffeatures, 0);
+    assert_non_null(iff->expr);
+    assert_non_null(iff->features);
+    assert_int_equal(1, LY_ARRAY_SIZE(iff->features));
+    assert_ptr_equal(LY_ARRAY_INDEX(mod.compiled->features, 0), *LY_ARRAY_INDEX(iff->features, 0, struct lysc_feature*));
 
     lysc_module_free(mod.compiled, NULL);
 
@@ -100,6 +113,7 @@ test_module(void **state)
     lysc_module_free(mod.compiled, NULL);
     mod.compiled = NULL;
 
+    /* submodules cannot be compiled directly */
     str = "submodule test {belongs-to xxx {prefix x;}}";
     assert_int_equal(LY_SUCCESS, yang_parse(ctx, str, &mod.parsed));
     assert_int_equal(LY_EINVAL, lys_compile(mod.parsed, 0, &mod.compiled));
@@ -110,11 +124,89 @@ test_module(void **state)
     ly_ctx_destroy(ctx, NULL);
 }
 
+static void
+test_feature(void **state)
+{
+    (void) state; /* unused */
+
+    struct ly_ctx *ctx;
+    struct lys_module mod = {0};
+    const char *str;
+    struct lysc_feature *f, *f1;
+
+    str = "module a {namespace urn:a;prefix a;yang-version 1.1;\n"
+          "feature f1 {description test1;reference test2;status current;} feature f2; feature f3;\n"
+          "feature f4 {if-feature \"f1 or f2\";}\n"
+          "feature f5 {if-feature \"f1 and f2\";}\n"
+          "feature f6 {if-feature \"not f1\";}\n"
+          "feature f7 {if-feature \"(f2 and f3) or (not f1)\";}}";
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
+    assert_int_equal(LY_SUCCESS, yang_parse(ctx, str, &mod.parsed));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod.parsed, 0, &mod.compiled));
+    assert_non_null(mod.compiled);
+    assert_non_null(mod.compiled->features);
+    assert_int_equal(7, LY_ARRAY_SIZE(mod.compiled->features));
+    /* all features are disabled by default */
+    LY_ARRAY_FOR(mod.compiled->features, struct lysc_feature, f) {
+        assert_int_equal(0, lysc_feature_value(f));
+    }
+    /* enable f1 */
+    assert_int_equal(LY_SUCCESS, lys_feature_enable(&mod, "f1"));
+    f1 = LY_ARRAY_INDEX(mod.compiled->features, 0);
+    assert_int_equal(1, lysc_feature_value(f1));
+
+    /* enable f4 */
+    f = LY_ARRAY_INDEX(mod.compiled->features, 3);
+    assert_int_equal(0, lysc_feature_value(f));
+    assert_int_equal(LY_SUCCESS, lys_feature_enable(&mod, "f4"));
+    assert_int_equal(1, lysc_feature_value(f));
+
+    /* enable f5 - no possible since f2 is disabled */
+    f = LY_ARRAY_INDEX(mod.compiled->features, 4);
+    assert_int_equal(0, lysc_feature_value(f));
+    assert_int_equal(LY_EDENIED, lys_feature_enable(&mod, "f5"));
+    logbuf_assert("Feature \"f5\" cannot be enabled since it is disabled by its if-feature condition(s).");
+    assert_int_equal(0, lysc_feature_value(f));
+
+    /* first enable f2, so f5 can be enabled then */
+    assert_int_equal(LY_SUCCESS, lys_feature_enable(&mod, "f2"));
+    assert_int_equal(LY_SUCCESS, lys_feature_enable(&mod, "f5"));
+    assert_int_equal(1, lysc_feature_value(f));
+
+    /* f1 is enabled, so f6 cannot be enabled */
+    f = LY_ARRAY_INDEX(mod.compiled->features, 5);
+    assert_int_equal(0, lysc_feature_value(f));
+    assert_int_equal(LY_EDENIED, lys_feature_enable(&mod, "f6"));
+    logbuf_assert("Feature \"f6\" cannot be enabled since it is disabled by its if-feature condition(s).");
+    assert_int_equal(0, lysc_feature_value(f));
+
+    /* so disable f1 - f5 will became also disabled */
+    assert_int_equal(1, lysc_feature_value(f1));
+    f = LY_ARRAY_INDEX(mod.compiled->features, 4);
+    assert_int_equal(LY_SUCCESS, lys_feature_disable(&mod, "f1"));
+    assert_int_equal(0, lysc_feature_value(f1));
+    assert_int_equal(0, lysc_feature_value(f));
+    /* while f4 is stille enabled */
+    assert_int_equal(1, lysc_feature_value(LY_ARRAY_INDEX(mod.compiled->features, 3)));
+    /* and finally f6 can be enabled */
+    f = LY_ARRAY_INDEX(mod.compiled->features, 5);
+    assert_int_equal(LY_SUCCESS, lys_feature_enable(&mod, "f6"));
+    assert_int_equal(1, lysc_feature_value(f));
+
+    /* complex evaluation of f7: f1 and f3 are disabled, while f2 is enabled */
+    assert_int_equal(1, lysc_iffeature_value(LY_ARRAY_INDEX(LY_ARRAY_INDEX(mod.compiled->features, 6, struct lysc_feature)->iffeatures, 0)));
+
+    lysc_module_free(mod.compiled, NULL);
+    lysp_module_free(mod.parsed);
+    ly_ctx_destroy(ctx, NULL);
+}
 
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup(test_module, logger_setup),
+        cmocka_unit_test_setup(test_feature, logger_setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
