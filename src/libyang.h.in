@@ -680,7 +680,7 @@ extern "C" {
  * - JSON
  *
  *   The alternative data format available in RESTCONF protocol. Specification of JSON encoding of data modeled by YANG
- *   can be found in [this draft](https://tools.ietf.org/html/draft-ietf-netmod-yang-json-05).
+ *   can be found in [RFC 7951](http://tools.ietf.org/html/rfc7951).
  *
  * Besides the format of input data, the parser functions accepts additional [options](@ref parseroptions) to specify
  * how the input data should be processed.
