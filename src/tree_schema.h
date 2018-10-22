@@ -175,16 +175,22 @@ extern "C" {
 
 #else
 
+#if __STDC_VERSION__ >= 201112L
+#define TYPES_COMPATIBLE(type1, type2) _Generic(*(type1), struct type2: 1, default: 0)
+#else
+#define TYPES_COMPATIBLE(type1, type2) __builtin_types_compatible_p(typeof(*(type1)), struct type2)
+#endif
+
 #define LY_TREE_DFS_END(START, NEXT, ELEM)                                    \
     /* select element for the next run - children first */                    \
-    if (_Generic(*(ELEM), struct lyd_node: 1, default: 0)) {                  \
+    if (TYPES_COMPATIBLE(ELEM, lyd_node)) {                                   \
         /* child exception for leafs, leaflists and anyxml without children */\
         if (((struct lyd_node *)(ELEM))->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) { \
             (NEXT) = NULL;                                                    \
         } else {                                                              \
             (NEXT) = (ELEM)->child;                                           \
         }                                                                     \
-    } else if (_Generic(*(ELEM), struct lys_node: 1, default: 0)) {           \
+    } else if (TYPES_COMPATIBLE(ELEM, lys_node)) {                            \
         /* child exception for leafs, leaflists and anyxml without children */\
         if (((struct lys_node *)(ELEM))->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) { \
             (NEXT) = NULL;                                                    \
@@ -206,14 +212,14 @@ extern "C" {
     }                                                                         \
     while (!(NEXT)) {                                                         \
         /* parent is already processed, go to its sibling */                  \
-        if (_Generic(*(ELEM), struct lys_node: 1, default: 0)                \
+        if (TYPES_COMPATIBLE(ELEM, lys_node)                                  \
                 && (((struct lys_node *)(ELEM)->parent)->nodetype == LYS_AUGMENT)) {  \
             (ELEM) = (ELEM)->parent->prev;                                    \
         } else {                                                              \
             (ELEM) = (ELEM)->parent;                                          \
         }                                                                     \
         /* no siblings, go back through parents */                            \
-        if (_Generic(*(ELEM), struct lys_node: 1, default: 0)) {              \
+        if (TYPES_COMPATIBLE(ELEM, lys_node)) {                               \
             /* due to possible augments */                                    \
             if (lys_parent((struct lys_node *)(ELEM)) == lys_parent((struct lys_node *)(START))) { \
                 /* we are done, no next element to process */                 \
