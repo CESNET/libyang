@@ -87,7 +87,7 @@ extern "C" {
  * #LY_TREE_DFS_BEGIN and #LY_TREE_DFS_END.
  *
  * Since the next node is selected as part of #LY_TREE_DFS_END, do not use
- * continue statement between the #LY_TREE_DFS_BEGIN and #LY_TREE_DFS_BEGIN.
+ * continue statement between the #LY_TREE_DFS_BEGIN and #LY_TREE_DFS_END.
  *
  * Use with opening curly bracket '{' after the macro.
  *
@@ -285,7 +285,7 @@ typedef enum {
  * Values are defined as separated bit values to allow checking using bitwise operations for multiple nodes.
  */
 typedef enum lys_nodetype {
-    LYS_UNKNOWN = 0x0000,        /**< uninitalized unknown statement node */
+    LYS_UNKNOWN = 0x0000,        /**< uninitialized unknown statement node */
     LYS_CONTAINER = 0x0001,      /**< container statement node */
     LYS_CHOICE = 0x0002,         /**< choice statement node */
     LYS_LEAF = 0x0004,           /**< leaf statement node */
@@ -1715,7 +1715,7 @@ struct lys_node_case {
  * ::lys_node#iffeature_size is replaced by the #tpdf_size member and ::lys_node#iffeature is replaced by the #tpdf
  * member.
  *
- * Note, that the the inout nodes are always present in ::lys_node_rpc_action node as its input and output children
+ * Note, that the inout nodes are always present in ::lys_node_rpc_action node as its input and output children
  * nodes. If they are not specified explicitely in the schema, they are implicitly added to serve as possible target
  * of augments. These implicit elements can be recognised via #LYS_IMPLICIT bit in flags member of the input/output
  * node.
@@ -2330,7 +2330,7 @@ enum lyxp_node_type {
 /**
  * @brief Get all the partial XPath nodes (atoms) that are required for \p expr to be evaluated.
  *
- * @param[in] ctx_node Context (current) schema node. Fake roots are distinguished using \p cur_snode_type
+ * @param[in] ctx_node Context (current) schema node. Fake roots are distinguished using \p ctx_node_type
  * and then this node can be any node from the module (so, for example, do not put node added by an augment from another module).
  * @param[in] ctx_node_type Context (current) schema node type. Most commonly is #LYXP_NODE_ELEM, but if
  * your context node is supposed to be the root, you can specify what kind of root it is.
@@ -2430,7 +2430,7 @@ struct lys_module *lys_main_module(const struct lys_module *module);
  * module.
  *
  * @param[in] mod Module to be searched.
- * @return The implemeneted revision of the module if any, the given module otherwise.
+ * @return The implemented revision of the module if any, the given module otherwise.
  */
 struct lys_module *lys_implemented_module(const struct lys_module *mod);
 
