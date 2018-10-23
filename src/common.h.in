@@ -25,7 +25,9 @@
 
 #define UNUSED(x) @COMPILER_UNUSED_ATTR@
 
-#if __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
+#if __STDC_VERSION__ >= 201112 && \
+    !defined __STDC_NO_THREADS__ && \
+    !defined __NetBSD__
 # define THREAD_LOCAL _Thread_local
 #elif defined __GNUC__ || \
       defined __SUNPRO_C || \
@@ -52,6 +54,10 @@
 #    define __UINT64_C(c) c ## ULL
 #  endif
 #endif
+
+#ifndef MAP_ANONYMOUS
+#define MAP_ANONYMOUS MAP_ANON
+#endif /* !MAP_ANONYMOUS */
 
 #define LY_CHECK_GOTO(COND, GOTO) if (COND) {goto GOTO;}
 #define LY_CHECK_ERR_GOTO(COND, ERR, GOTO) if (COND) {ERR; goto GOTO;}
