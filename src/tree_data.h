@@ -120,7 +120,7 @@ typedef union lyd_value_u {
  *
  * The structure provides information about attributes of a data element. Such attributes must map to
  * annotations as specified in RFC 7952. The only exception is the filter type (in NETCONF get operations)
- * and edit-config's operation attributes. In XML, they are represented as standard XML attrbutes. In JSON,
+ * and edit-config's operation attributes. In XML, they are represented as standard XML attributes. In JSON,
  * they are represented as JSON elements starting with the '@' character (for more information, see the
  * YANG metadata RFC.
  *
@@ -256,7 +256,7 @@ struct lyd_node_leaf_list {
                                    leafref - value union is filled as if being the target node's type,
                                    instance-identifier - value union should not be accessed */
 #define LY_VALUE_USER 0x02    /**< flag for a user type stored value */
-/* 0x80 is reserveed for internal use */
+/* 0x80 is reserved for internal use */
 
 /**
  * @brief Structure for data nodes defined as #LYS_ANYDATA or #LYS_ANYXML.
@@ -304,7 +304,7 @@ struct lyd_node_anydata {
 };
 
 /**
- * @brief list of possible types of differencies in #lyd_difflist
+ * @brief list of possible types of differences in #lyd_difflist
  */
 typedef enum {
     LYD_DIFF_END = 0,        /**< end of the differences list */
@@ -959,7 +959,7 @@ int lyd_merge(struct lyd_node *target, const struct lyd_node *source, int option
  * @param[in] options Bitmask of the following option flags:
  * - #LYD_OPT_DESTRUCT - spend \p source in the function, otherwise \p source is left untouched,
  * - #LYD_OPT_NOSIBLINGS - merge only the \p source subtree (ignore siblings), otherwise merge
- * \p source and all its succeeding siblings (preceeding ones are still ignored!),
+ * \p source and all its succeeding siblings (preceding ones are still ignored!),
  * - #LYD_OPT_EXPLICIT - when merging an explicitly set node and a default node, always put
  * the explicit node into \p target, otherwise the node which is in \p source is used.
  * @param[in] ctx Target context in which the result will be created. Note that the successful merge requires to have

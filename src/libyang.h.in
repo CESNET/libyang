@@ -373,7 +373,7 @@ extern "C" {
  * useful implementation. Therefore, you can reach some limitation regarding the extensions support, but the common
  * use cases should be covered and supported.
  *
- * Since libyang does not understand human text, it is not possible to get the complete defintion of the extension from
+ * Since libyang does not understand human text, it is not possible to get the complete definition of the extension from
  * its description statement. Therefore, libyang allows the schema authors to provide @link extplugins extension
  * plugin@endlink that provides information from the extension description to libyang.
  *
@@ -680,7 +680,7 @@ extern "C" {
  * - JSON
  *
  *   The alternative data format available in RESTCONF protocol. Specification of JSON encoding of data modeled by YANG
- *   can be found in [this draft](https://tools.ietf.org/html/draft-ietf-netmod-yang-json-05).
+ *   can be found in [RFC 7951](http://tools.ietf.org/html/rfc7951).
  *
  * Besides the format of input data, the parser functions accepts additional [options](@ref parseroptions) to specify
  * how the input data should be processed.
@@ -772,7 +772,7 @@ extern "C" {
  * change is done on the data tree (via a combination of \b lyd_change_*(), \b lyd_insert*(), \b lyd_new*(),
  * lyd_unlink() and lyd_free() functions).
  *
- * Part of data validation is resolving leafrefs and instance-identifiers. Leafrefs are resolved only when a change occured
+ * Part of data validation is resolving leafrefs and instance-identifiers. Leafrefs are resolved only when a change occurred
  * in the data tree that could have broken the link. However, as instance-identifiers can point to any node whatsoever
  * without an import, it would not be effective to store metadata as in the case of leafrefs. That is why they are resolved
  * during every validation. Also, for the same reason, it can easily happen that when parsing/validating data with
@@ -1517,7 +1517,7 @@ void ly_ctx_set_module_data_clb(struct ly_ctx *ctx, ly_module_data_clb clb, void
  * @brief Get the missing data module calback.
  *
  * @param[in] ctx Context to read from.
- * @param[in] user_data Optional pointer for getting the user-supplied callbck data.
+ * @param[in] user_data Optional pointer for getting the user-supplied callback data.
  * @return Callback or NULL if not set.
  */
 ly_module_data_clb ly_ctx_get_module_data_clb(const struct ly_ctx *ctx, void **user_data);
@@ -2086,7 +2086,7 @@ LY_ERR *ly_errno_glob_address(void);
 LY_VECODE ly_vecode(const struct ly_ctx *ctx);
 
 /**
- * @brief Get the last (thread, context-specific) error message. If the coresponding module defined
+ * @brief Get the last (thread, context-specific) error message. If the corresponding module defined
  * a specific error message, it will be used instead the default one.
  *
  * Sometimes, the error message is extended with path of the element where the problem is.
