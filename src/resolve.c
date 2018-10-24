@@ -3693,7 +3693,8 @@ check_key(struct lys_node_list *list, int index, const char *name, int len)
     }
 
     /* config attribute is the same as of the list */
-    if ((key->flags & LYS_CONFIG_MASK) && (list->flags & LYS_CONFIG_MASK) != (key->flags & LYS_CONFIG_MASK)) {
+    if ((key->flags & LYS_CONFIG_MASK) && (list->flags & LYS_CONFIG_MASK)
+            && ((list->flags & LYS_CONFIG_MASK) != (key->flags & LYS_CONFIG_MASK))) {
         LOGVAL(ctx, LYE_KEY_CONFIG, LY_VLOG_LYS, list, key->name);
         return -1;
     }
