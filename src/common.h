@@ -16,12 +16,15 @@
 #define LY_COMMON_H_
 
 #include <assert.h>
+#include <pthread.h>
 #include <stdint.h>
 #include <stdlib.h>
 
 #include "config.h"
 #include "log.h"
 #include "tree_schema.h"
+#include "set.h"
+#include "hash_table.h"
 
 #if __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
 # define THREAD_LOCAL _Thread_local
@@ -132,6 +135,22 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_INORD       LYVE_SYNTAX_YANG, "Invalid keyword \"%s\", it cannot appear after \"%s\"."
 #define LY_VCODE_OOB         LYVE_SYNTAX_YANG, "Value \"%.*s\" is out of \"%s\" bounds."
 #define LY_VCODE_INDEV       LYVE_SYNTAX_YANG, "Deviate \"%s\" does not support keyword \"%s\"."
+
+/******************************************************************************
+ * Context
+ *****************************************************************************/
+
+/**
+ * @brief Context of the YANG schemas
+ */
+struct ly_ctx {
+    struct dict_table dict;           /**< dictionary to effectively store strings used in the context related structures */
+    struct ly_set search_paths;       /**< set of directories where to search for schema's imports/includes */
+    struct ly_set list;               /**< set of YANG schemas */
+    uint16_t module_set_id;           /**< ID of the current set of schemas */
+    uint16_t flags;                   /**< context settings, see @ref contextoptions. */
+    pthread_key_t errlist_key;        /**< key for the thread-specific list of errors related to the context */
+};
 
 /******************************************************************************
  * Parsers

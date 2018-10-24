@@ -178,6 +178,7 @@ set(libsrc
 
 set(headers
     src/libyang.h
+    src/context.h
     src/tree_schema.h
     src/dict.h
     src/log.h
