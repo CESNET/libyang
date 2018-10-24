@@ -282,7 +282,6 @@ cmd_load(const char *arg)
     int name_len, ret = 1;
     char *name, *s, *arg_ptr;
     const struct lys_module *model;
-    LYS_INFORMAT format = LYS_IN_UNKNOWN;
 
     if (strlen(arg) < 6) {
         cmd_load_help();
@@ -332,11 +331,6 @@ cmd_load(const char *arg)
         } else {
             name = NULL;
         }
-    }
-    if (format == LYS_IN_UNKNOWN) {
-        /* no schema on input */
-        cmd_load_help();
-        goto cleanup;
     }
     ret = 0;
 
