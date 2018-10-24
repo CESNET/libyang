@@ -139,14 +139,15 @@ test_feature(void **state)
           "feature f4 {if-feature \"f1 or f2\";}\n"
           "feature f5 {if-feature \"f1 and f2\";}\n"
           "feature f6 {if-feature \"not f1\";}\n"
-          "feature f7 {if-feature \"(f2 and f3) or (not f1)\";}}";
+          "feature f7 {if-feature \"(f2 and f3) or (not f1)\";}\n"
+          "feature f8 {if-feature \"f1 or f2 or f3 or f4 or f5\";}}";
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
     assert_int_equal(LY_SUCCESS, yang_parse(ctx, str, &mod.parsed));
     assert_int_equal(LY_SUCCESS, lys_compile(mod.parsed, 0, &mod.compiled));
     assert_non_null(mod.compiled);
     assert_non_null(mod.compiled->features);
-    assert_int_equal(7, LY_ARRAY_SIZE(mod.compiled->features));
+    assert_int_equal(8, LY_ARRAY_SIZE(mod.compiled->features));
     /* all features are disabled by default */
     LY_ARRAY_FOR(mod.compiled->features, struct lysc_feature, f) {
         assert_int_equal(0, lysc_feature_value(f));
@@ -194,6 +195,8 @@ test_feature(void **state)
 
     /* complex evaluation of f7: f1 and f3 are disabled, while f2 is enabled */
     assert_int_equal(1, lysc_iffeature_value(&mod.compiled->features[6].iffeatures[0]));
+    /* long evaluation of f8 to need to reallocate internal stack for operators */
+    assert_int_equal(1, lysc_iffeature_value(&mod.compiled->features[7].iffeatures[0]));
 
     lysc_module_free(mod.compiled, NULL);
     lysp_module_free(mod.parsed);
