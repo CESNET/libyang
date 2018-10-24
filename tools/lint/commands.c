@@ -36,7 +36,14 @@ extern struct ly_ctx *ctx;
 void
 cmd_add_help(void)
 {
-    printf("add [-i] <path-to-model> [<other-models> ...]\n");
+    printf("add [-i] <path-to-model> [<paths-to-other-models> ...]\n");
+    printf("\t-i         - make all the imported modules implemented\n");
+}
+
+void
+cmd_load_help(void)
+{
+    printf("load [-i] <model-name> [<other-model-names> ...]\n");
     printf("\t-i         - make all the imported modules implemented\n");
 }
 
@@ -138,7 +145,9 @@ cmd_feature_help(void)
 void
 cmd_searchpath_help(void)
 {
-    printf("searchpath <model-dir-path> | --clear\n");
+    printf("searchpath [<model-dir-path> | --clear]\n\n");
+    printf("\tThey are used to search for imports and includes of a model.\n");
+    printf("\tThe \"load\" command uses these directories to find models directly.\n");
 }
 
 void
@@ -256,6 +265,77 @@ cmd_add(const char *arg)
     if (format == LYS_IN_UNKNOWN) {
         /* no schema on input */
         cmd_add_help();
+        goto cleanup;
+    }
+    ret = 0;
+
+cleanup:
+    free(s);
+    ly_ctx_unset_allimplemented(ctx);
+
+    return ret;
+}
+
+int
+cmd_load(const char *arg)
+{
+    int name_len, ret = 1;
+    char *name, *s, *arg_ptr;
+    const struct lys_module *model;
+    LYS_INFORMAT format = LYS_IN_UNKNOWN;
+
+    if (strlen(arg) < 6) {
+        cmd_load_help();
+        return 1;
+    }
+
+    arg_ptr = strdup(arg + 4 /* ignore "load" */);
+
+    for (s = strstr(arg_ptr, "-i"); s ; s = strstr(s + 2, "-i")) {
+        if (s[2] == '\0' || s[2] == ' ') {
+            ly_ctx_set_allimplemented(ctx);
+            s[0] = s[1] = ' ';
+        }
+    }
+    s = arg_ptr;
+
+    while (arg_ptr[0] == ' ') {
+        ++arg_ptr;
+    }
+    if (strchr(arg_ptr, ' ')) {
+        name_len = strchr(arg_ptr, ' ') - arg_ptr;
+    } else {
+        name_len = strlen(arg_ptr);
+    }
+    name = strndup(arg_ptr, name_len);
+
+    while (name) {
+        model = ly_ctx_load_module(ctx, name, NULL);
+        if (!model) {
+            /* libyang printed the error messages */
+            goto cleanup;
+        }
+
+        /* next model */
+        arg_ptr += name_len;
+        while (arg_ptr[0] == ' ') {
+            ++arg_ptr;
+        }
+        if (strchr(arg_ptr, ' ')) {
+            name_len = strchr(arg_ptr, ' ') - arg_ptr;
+        } else {
+            name_len = strlen(arg_ptr);
+        }
+
+        if (name_len) {
+            name = strndup(arg_ptr, name_len);
+        } else {
+            name = NULL;
+        }
+    }
+    if (format == LYS_IN_UNKNOWN) {
+        /* no schema on input */
+        cmd_load_help();
         goto cleanup;
     }
     ret = 0;
@@ -1271,19 +1351,19 @@ int
 cmd_searchpath(const char *arg)
 {
     const char *path;
+    const char * const *searchpaths;
+    int index;
     struct stat st;
 
-    if (strchr(arg, ' ') == NULL) {
-        fprintf(stderr, "Missing the search path.\n");
-        return 1;
-    }
-    path = strchr(arg, ' ');
-    while (path[0] == ' ') {
-        path = &path[1];
-    }
-    if (path[0] == '\0') {
-        fprintf(stderr, "Missing the search path.\n");
-        return 1;
+    for (path = strchr(arg, ' '); path && (path[0] == ' '); ++path);
+    if (!path || (path[0] == '\0')) {
+        searchpaths = ly_ctx_get_searchdirs(ctx);
+        if (searchpaths) {
+            for (index = 0; searchpaths[index]; index++) {
+                fprintf(stdout, "%s\n", searchpaths[index]);
+            }
+        }
+        return 0;
     }
 
     if ((!strncmp(path, "-h", 2) && (path[2] == '\0' || path[2] == ' ')) ||
@@ -1489,13 +1569,14 @@ generic_help:
 
 COMMAND commands[] = {
         {"help", cmd_help, NULL, "Display commands description"},
-        {"add", cmd_add, cmd_add_help, "Add a new model"},
-        {"print", cmd_print, cmd_print_help, "Print model"},
+        {"add", cmd_add, cmd_add_help, "Add a new model from a specific file"},
+        {"load", cmd_load, cmd_load_help, "Load a new model from the searchdirs"},
+        {"print", cmd_print, cmd_print_help, "Print a model"},
         {"data", cmd_data, cmd_data_help, "Load, validate and optionally print instance data"},
         {"xpath", cmd_xpath, cmd_xpath_help, "Get data nodes satisfying an XPath expression"},
         {"list", cmd_list, cmd_list_help, "List all the loaded models"},
         {"feature", cmd_feature, cmd_feature_help, "Print/enable/disable all/specific features of models"},
-        {"searchpath", cmd_searchpath, cmd_searchpath_help, "Set the search path for models"},
+        {"searchpath", cmd_searchpath, cmd_searchpath_help, "Print/set the search path(s) for models"},
         {"clear", cmd_clear, cmd_clear_help, "Clear the context - remove all the loaded models"},
         {"verb", cmd_verb, cmd_verb_help, "Change verbosity"},
 #ifndef NDEBUG
