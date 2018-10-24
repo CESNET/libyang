@@ -12,8 +12,8 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#define _BSD_SOURCE
-#define _DEFAULT_SOURCE
+#include "common.h"
+
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>

@@ -14,6 +14,7 @@
 
 #include "tests/config.h"
 #include "../../src/context.c"
+#include "../../src/tree_schema.c"
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -77,6 +78,7 @@ test_searchdirs(void **state)
     struct ly_ctx *ctx;
     const char * const *list;
 
+    will_return_count(__wrap_ly_set_add, 0, 6);
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
 
     /* invalid arguments */
@@ -177,6 +179,8 @@ test_options(void **state)
     (void) state; /* unused */
 
     struct ly_ctx *ctx;
+
+    will_return_always(__wrap_ly_set_add, 0);
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0xffffffff, &ctx));
 
     /* invalid arguments */
@@ -255,13 +259,73 @@ test_models(void **state)
 {
     (void) state; /* unused */
 
+    struct ly_ctx *ctx;
+
     /* invalid arguments */
     assert_int_equal(0, ly_ctx_get_module_set_id(NULL));
     logbuf_assert("Invalid argument ctx (ly_ctx_get_module_set_id()).");
 
-    struct ly_ctx *ctx;
+    will_return_always(__wrap_ly_set_add, 0);
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
     assert_int_equal(ctx->module_set_id, ly_ctx_get_module_set_id(ctx));
+
+    /* cleanup */
+    ly_ctx_destroy(ctx, NULL);
+}
+
+static void
+test_get_models(void **state)
+{
+    (void) state; /* unused */
+
+    struct ly_ctx *ctx;
+    const struct lys_module *mod, *mod2;
+    const char *str1 = "module a {namespace urn:a;prefix a;revision 2018-10-23;}";
+    const char *str2 = "module a {namespace urn:a;prefix a;revision 2018-10-23;revision 2018-10-24;}";
+
+    will_return_always(__wrap_ly_set_add, 0);
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
+
+    /* invalid arguments */
+    assert_ptr_equal(NULL, ly_ctx_get_module(NULL, NULL, NULL));
+    logbuf_assert("Invalid argument ctx (ly_ctx_get_module()).");
+    assert_ptr_equal(NULL, ly_ctx_get_module(ctx, NULL, NULL));
+    logbuf_assert("Invalid argument name (ly_ctx_get_module()).");
+    assert_ptr_equal(NULL, ly_ctx_get_module_ns(NULL, NULL, NULL));
+    logbuf_assert("Invalid argument ctx (ly_ctx_get_module_ns()).");
+    assert_ptr_equal(NULL, ly_ctx_get_module_ns(ctx, NULL, NULL));
+    logbuf_assert("Invalid argument ns (ly_ctx_get_module_ns()).");
+    assert_null(ly_ctx_get_module(ctx, "nonsence", NULL));
+
+    /* internal modules */
+    assert_null(ly_ctx_get_module_implemented(ctx, "ietf-yang-types"));
+    mod = ly_ctx_get_module_implemented(ctx, "yang");
+    assert_non_null(mod);
+    assert_non_null(mod->parsed);
+    assert_string_equal("yang", mod->parsed->name);
+    mod2 = ly_ctx_get_module_implemented_ns(ctx, mod->parsed->ns);
+    assert_ptr_equal(mod, mod2);
+    assert_non_null(ly_ctx_get_module(ctx, "ietf-yang-metadata", "2016-08-05"));
+    assert_non_null(ly_ctx_get_module(ctx, "ietf-yang-types", "2013-07-15"));
+    assert_non_null(ly_ctx_get_module(ctx, "ietf-inet-types", "2013-07-15"));
+    assert_non_null(ly_ctx_get_module(ctx, "ietf-datastores", "2017-08-17"));
+
+    /* select module by revision */
+    mod = lys_parse_mem(ctx, str1, LYS_IN_YANG);
+    /* invalid attempts - implementing module of the same name and inserting the same module */
+    assert_null(lys_parse_mem(ctx, str2, LYS_IN_YANG));
+    logbuf_assert("Module \"a\" is already implemented in the context.");
+    assert_null(lys_parse_mem_(ctx, str1, LYS_IN_YANG, NULL, 0));
+    logbuf_assert("Module \"a\" of revision \"2018-10-23\" is already present in the context.");
+    /* insert the second module only as imported, not implemented */
+    mod2 = lys_parse_mem_(ctx, str2, LYS_IN_YANG, NULL, 0);
+    assert_non_null(mod);
+    assert_non_null(mod2);
+    assert_ptr_not_equal(mod, mod2);
+    mod = ly_ctx_get_module_latest(ctx, "a");
+    assert_ptr_equal(mod, mod2);
+    mod2 = ly_ctx_get_module_latest_ns(ctx, mod->parsed->ns);
+    assert_ptr_equal(mod, mod2);
 
     /* cleanup */
     ly_ctx_destroy(ctx, NULL);
@@ -273,6 +337,7 @@ int main(void)
         cmocka_unit_test_setup(test_searchdirs, logger_setup),
         cmocka_unit_test_setup(test_options, logger_setup),
         cmocka_unit_test_setup(test_models, logger_setup),
+        cmocka_unit_test_setup(test_get_models, logger_setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

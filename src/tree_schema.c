@@ -11,7 +11,8 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
-#define _DEFAULT_SOURCE
+
+#include "common.h"
 
 #include <ctype.h>
 #include <errno.h>
@@ -24,7 +25,6 @@
 #include <unistd.h>
 
 #include "libyang.h"
-#include "common.h"
 #include "context.h"
 #include "tree_schema_internal.h"
 
@@ -1076,7 +1076,7 @@ error:
     return ret;
 }
 
-const struct lys_module *
+static const struct lys_module *
 lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const char *revision, int implement)
 {
     struct lys_module *mod = NULL;
@@ -1103,21 +1103,36 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const 
     }
 
     if (implement) {
+        if (ly_ctx_get_module_implemented(ctx, mod->parsed->name)) {
+            LOGERR(ctx, LY_EDENIED, "Module \"%s\" is already implemented in the context.", mod->parsed->name);
+            lys_module_free(mod, NULL);
+            return NULL;
+        }
         mod->parsed->implemented = 1;
     }
 
     if (revision) {
         /* check revision of the parsed model */
-        if (!mod->parsed->revs || strcmp(revision, mod->parsed->revs[0].rev)) {
+        if (!mod->parsed->revs || strcmp(revision, mod->parsed->revs[0].date)) {
             LOGERR(ctx, LY_EINVAL, "Module \"%s\" parsed with the wrong revision (\"%s\" instead \"%s\").",
-                   mod->parsed->name, mod->parsed->revs[0].rev, revision);
-            lysp_module_free(mod->parsed);
-            free(mod);
+                   mod->parsed->name, mod->parsed->revs[0].date, revision);
+            lys_module_free(mod, NULL);
             return NULL;
         }
     }
 
     /* check for duplicity in the context */
+    if (ly_ctx_get_module(ctx, mod->parsed->name, mod->parsed->revs ? mod->parsed->revs[0].date : NULL)) {
+        if (mod->parsed->revs) {
+            LOGERR(ctx, LY_EEXIST, "Module \"%s\" of revision \"%s\" is already present in the context.",
+                   mod->parsed->name, mod->parsed->revs[0].date);
+        } else {
+            LOGERR(ctx, LY_EEXIST, "Module \"%s\" with no revision is already present in the context.",
+                   mod->parsed->name);
+        }
+        lys_module_free(mod, NULL);
+        return NULL;
+    }
 
     /* add into context */
     ly_set_add(&ctx->list, mod, LY_SET_OPT_USEASLIST);
@@ -1238,9 +1253,9 @@ lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format)
     }
     if (rev) {
         len = dot - ++rev;
-        if (!mod->parsed->revs || len != 10 || strncmp(mod->parsed->revs[0].rev, rev, len)) {
+        if (!mod->parsed->revs || len != 10 || strncmp(mod->parsed->revs[0].date, rev, len)) {
             LOGWRN(ctx, "File name \"%s\" does not match module revision \"%s\".", filename,
-                   mod->parsed->revs ? mod->parsed->revs[0].rev : "none");
+                   mod->parsed->revs ? mod->parsed->revs[0].date : "none");
         }
     }
 

@@ -785,7 +785,7 @@ test_module(void **state)
                  assert_string_equal("RFC7950", mod->ref));
     /* revision */
     TEST_GENERIC("revision 2018-10-12;}", mod->revs,
-                 assert_string_equal("2018-10-12", mod->revs[0].rev));
+                 assert_string_equal("2018-10-12", mod->revs[0].date));
     /* rpc */
     TEST_GENERIC("rpc test;}", mod->rpcs,
                  assert_string_equal("test", mod->rpcs[0].name));

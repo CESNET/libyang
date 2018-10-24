@@ -15,6 +15,10 @@
 #ifndef LY_COMMON_H_
 #define LY_COMMON_H_
 
+#define _DEFAULT_SOURCE
+#define _GNU_SOURCE
+#define _XOPEN_SOURCE
+
 #include <assert.h>
 #include <pthread.h>
 #include <stdint.h>

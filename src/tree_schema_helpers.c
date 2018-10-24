@@ -92,7 +92,7 @@ lysp_sort_revisions(struct lysp_revision *revs)
     struct lysp_revision rev;
 
     for (i = 1, r = 0; revs && i < LY_ARRAY_SIZE(revs); i++) {
-        if (strcmp(revs[i].rev, revs[r].rev) > 0) {
+        if (strcmp(revs[i].date, revs[r].date) > 0) {
             r = i;
         }
     }

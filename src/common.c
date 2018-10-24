@@ -11,8 +11,8 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
-#define _XOPEN_SOURCE
-#define _DEFAULT_SOURCE
+
+#include "common.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -25,7 +25,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "common.h"
 #include "tree_schema.h"
 
 const char *const ly_stmt_list[] = {

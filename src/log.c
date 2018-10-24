@@ -12,14 +12,14 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#define _GNU_SOURCE
+#include "common.h"
+
 #include <assert.h>
 #include <inttypes.h>
 #include <stdarg.h>
 #include <stdio.h>
 
 #include "libyang.h"
-#include "common.h"
 #include "context.h"
 
 THREAD_LOCAL enum int_log_opts log_opt;

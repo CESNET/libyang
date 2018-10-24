@@ -12,7 +12,8 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#define _DEFAULT_SOURCE
+#include "common.h"
+
 #define _BSD_SOURCE
 #include <errno.h>
 #include <limits.h>
@@ -23,7 +24,6 @@
 #include <unistd.h>
 
 #include "context.h"
-#include "common.h"
 #include "tree_schema_internal.h"
 #include "libyang.h"
 
@@ -259,6 +259,187 @@ ly_ctx_get_module_set_id(const struct ly_ctx *ctx)
 {
     LY_CHECK_ARG_RET(ctx, ctx, 0);
     return ctx->module_set_id;
+}
+
+/**
+ * @brief Iterate over the modules in the given context. Returned modules must match the given key at the offset of
+ * lysp_module and lysc_module structures (they are supposed to be placed at the same offset in both structures).
+ *
+ * @param[in] ctx Context where to iterate.
+ * @param[in] key Key value to search for.
+ * @param[in] key_offset Key's offset in struct lysp_module and struct lysc_module to get value from the context's
+ * modules to match with the key.
+ * @param[in,out] Iterator to pass between the function calls. On the first call, the variable is supposed to be
+ * initiated to 0. After each call returning a module, the value is greater by 1 than the index of the returned
+ * module in the context.
+ * @return Module matching the given key, NULL if no such module found.
+ */
+static const struct lys_module *
+ly_ctx_get_module_by_iter(const struct ly_ctx *ctx, const char *key, size_t key_offset, unsigned int *index)
+{
+    const struct lys_module *mod;
+    const char *value;
+
+    for (; *index < ctx->list.count; ++(*index)) {
+        mod = ctx->list.objs[*index];
+        if (mod->compiled) {
+            value = *(const char**)(((int8_t*)(mod->compiled)) + key_offset);
+        } else {
+            value = *(const char**)(((int8_t*)(mod->parsed)) + key_offset);
+        }
+        if (!strcmp(key, value)) {
+            /* increment index for the next run */
+            ++(*index);
+            return mod;
+        }
+    }
+    /* done */
+    return NULL;
+}
+
+/**
+ * @brief Unifying function for ly_ctx_get_module() and ly_ctx_get_module_ns()
+ * @param[in] ctx Context where to search.
+ * @param[in] key Name or Namespace as a search key.
+ * @param[in] key_offset Key's offset in struct lysp_module to get value from the context's modules to match with the key.
+ * @param[in] revision Revision date to match. If NULL, the matching module must have no revision. To search for the latest
+ * revision module, use ly_ctx_get_module_latest_by().
+ * @return Matching module if any.
+ */
+static const struct lys_module *
+ly_ctx_get_module_by(const struct ly_ctx *ctx, const char *key, size_t key_offset, const char *revision)
+{
+    const struct lys_module *mod;
+    unsigned int index = 0;
+
+    while ((mod = ly_ctx_get_module_by_iter(ctx, key, key_offset, &index))) {
+        if (!revision) {
+            if ((mod->compiled && !mod->compiled->revs) || (!mod->compiled && !mod->parsed->revs)) {
+                /* found requested module without revision */
+                return mod;
+            }
+        } else {
+            if ((mod->compiled && mod->compiled->revs && !strcmp(mod->compiled->revs[0].date, revision)) ||
+                    (!mod->compiled && mod->parsed->revs && !strcmp(mod->parsed->revs[0].date, revision))) {
+                /* found requested module of the specific revision */
+                return mod;
+            }
+        }
+    }
+
+    return NULL;
+}
+
+API const struct lys_module *
+ly_ctx_get_module_ns(const struct ly_ctx *ctx, const char *ns, const char *revision)
+{
+    LY_CHECK_ARG_RET(ctx, ctx, ns, NULL);
+    return ly_ctx_get_module_by(ctx, ns, offsetof(struct lysp_module, ns), revision);
+}
+
+API const struct lys_module *
+ly_ctx_get_module(const struct ly_ctx *ctx, const char *name, const char *revision)
+{
+    LY_CHECK_ARG_RET(ctx, ctx, name, NULL);
+    return ly_ctx_get_module_by(ctx, name, offsetof(struct lysp_module, name), revision);
+}
+
+/**
+ * @brief Unifying function for ly_ctx_get_module_latest() and ly_ctx_get_module_latest_ns()
+ * @param[in] ctx Context where to search.
+ * @param[in] key Name or Namespace as a search key.
+ * @param[in] key_offset Key's offset in struct lysp_module to get value from the context's modules to match with the key.
+ * @return Matching module if any.
+ */
+static const struct lys_module *
+ly_ctx_get_module_latest_by(const struct ly_ctx *ctx, const char *key, size_t key_offset)
+{
+    const struct lys_module *mod, *newest = NULL;
+    unsigned int index = 0;
+    const char *date, *date_newest = NULL;
+
+    while ((mod = ly_ctx_get_module_by_iter(ctx, key, key_offset, &index))) {
+        if (!newest) {
+            newest = mod;
+        } else {
+            if ((newest->compiled && !newest->compiled->revs) || (!newest->compiled && !newest->parsed->revs)) {
+                /* prefer modules with revisions, module with no revision
+                 * is supposed to be the oldest one */
+                newest = mod;
+                date_newest = NULL;
+            } else {
+                if (!date_newest) {
+                    if (newest->compiled) {
+                        date_newest = newest->compiled->revs[0].date;
+                    } else {
+                        date_newest = newest->parsed->revs[0].date;
+                    }
+                }
+                if (mod->compiled) {
+                    date = mod->compiled->revs[0].date;
+                } else {
+                    date = mod->parsed->revs[0].date;
+                }
+                if (strcmp(date, date_newest) > 0) {
+                    /* the current module is newer than so far newest, so remember it */
+                    newest = mod;
+                    date_newest = NULL;
+                }
+            }
+        }
+    }
+
+    return newest;
+}
+
+API const struct lys_module *
+ly_ctx_get_module_latest(const struct ly_ctx *ctx, const char *name)
+{
+    LY_CHECK_ARG_RET(ctx, ctx, name, NULL);
+    return ly_ctx_get_module_latest_by(ctx, name, offsetof(struct lysp_module, name));
+}
+
+const struct lys_module *
+ly_ctx_get_module_latest_ns(const struct ly_ctx *ctx, const char *ns)
+{
+    LY_CHECK_ARG_RET(ctx, ctx, ns, NULL);
+    return ly_ctx_get_module_latest_by(ctx, ns, offsetof(struct lysp_module, ns));
+}
+
+/**
+ * @brief Unifying function for ly_ctx_get_module_implemented() and ly_ctx_get_module_implemented_ns()
+ * @param[in] ctx Context where to search.
+ * @param[in] key Name or Namespace as a search key.
+ * @param[in] key_offset Key's offset in struct lysp_module to get value from the context's modules to match with the key.
+ * @return Matching module if any.
+ */
+static const struct lys_module *
+ly_ctx_get_module_implemented_by(const struct ly_ctx *ctx, const char *key, size_t key_offset)
+{
+    const struct lys_module *mod;
+    unsigned int index = 0;
+
+    while ((mod = ly_ctx_get_module_by_iter(ctx, key, key_offset, &index))) {
+        if ((mod->compiled && mod->compiled->implemented) || (!mod->compiled && mod->parsed->implemented)) {
+            return mod;
+        }
+    }
+
+    return NULL;
+}
+
+API const struct lys_module *
+ly_ctx_get_module_implemented(const struct ly_ctx *ctx, const char *name)
+{
+    LY_CHECK_ARG_RET(ctx, ctx, name, NULL);
+    return ly_ctx_get_module_implemented_by(ctx, name, offsetof(struct lysp_module, name));
+}
+
+API const struct lys_module *
+ly_ctx_get_module_implemented_ns(const struct ly_ctx *ctx, const char *ns)
+{
+    LY_CHECK_ARG_RET(ctx, ctx, ns, NULL);
+    return ly_ctx_get_module_implemented_by(ctx, ns, offsetof(struct lysp_module, ns));
 }
 
 API void

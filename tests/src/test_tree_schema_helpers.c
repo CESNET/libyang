@@ -91,9 +91,9 @@ test_revisions(void **state)
 
     /* revisions are stored in wrong order - the newest is the last */
     LY_ARRAY_NEW_RET(NULL, revs, rev,);
-    strcpy(rev->rev, "2018-01-01");
+    strcpy(rev->date, "2018-01-01");
     LY_ARRAY_NEW_RET(NULL, revs, rev,);
-    strcpy(rev->rev, "2018-12-31");
+    strcpy(rev->date, "2018-12-31");
 
     assert_int_equal(2, LY_ARRAY_SIZE(revs));
     assert_string_equal("2018-01-01", &revs[0]);

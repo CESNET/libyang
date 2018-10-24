@@ -152,6 +152,72 @@ LY_ERR ly_ctx_unset_option(struct ly_ctx *ctx, int option);
 uint16_t ly_ctx_get_module_set_id(const struct ly_ctx *ctx);
 
 /**
+ * @brief Get YANG module of the given name and revision.
+ *
+ * @param[in] ctx Context to work in.
+ * @param[in] name Name of the YANG module to get.
+ * @param[in] revision Requested revision date of the YANG module to get. If not specified,
+ * the schema with no revision is returned, if it is present in the context.
+ * @return Pointer to the YANG module, NULL if no schema in the context follows the name and revision requirements.
+ */
+const struct lys_module *ly_ctx_get_module(const struct ly_ctx *ctx, const char *name, const char *revision);
+
+/**
+ * @brief Get the latest revision of the YANG module specified by its name.
+ *
+ * YANG modules with no revision are supposed to be the oldest one.
+ *
+ * @param[in] ctx Context where to search.
+ * @param[in] name Name of the YANG module to get.
+ * @return The latest revision of the specified YANG module in the given context, NULL if no YANG module of the
+ * given name is present in the context.
+ */
+const struct lys_module *ly_ctx_get_module_latest(const struct ly_ctx *ctx, const char *name);
+
+/**
+ * @brief Get the (only) implemented YANG module specified by its name.
+ *
+ * @param[in] ctx Context where to search.
+ * @param[in] name Name of the YANG module to get.
+ * @return The only implemented YANG module revision of the given name in the given context. NULL if there is no
+ * implemented module of the given name.
+ */
+const struct lys_module *ly_ctx_get_module_implemented(const struct ly_ctx *ctx, const char *name);
+
+/**
+ * @brief Get YANG module of the given namespace and revision.
+ *
+ * @param[in] ctx Context to work in.
+ * @param[in] ns Namespace of the YANG module to get.
+ * @param[in] revision Requested revision date of the YANG module to get. If not specified,
+ * the schema with no revision is returned, if it is present in the context.
+ * @return Pointer to the YANG module, NULL if no schema in the context follows the namespace and revision requirements.
+ */
+const struct lys_module *ly_ctx_get_module_ns(const struct ly_ctx *ctx, const char *ns, const char *revision);
+
+/**
+ * @brief Get the latest revision of the YANG module specified by its namespace.
+ *
+ * YANG modules with no revision are supposed to be the oldest one.
+ *
+ * @param[in] ctx Context where to search.
+ * @param[in] ns Namespace of the YANG module to get.
+ * @return The latest revision of the specified YANG module in the given context, NULL if no YANG module of the
+ * given namespace is present in the context.
+ */
+const struct lys_module *ly_ctx_get_module_latest_ns(const struct ly_ctx *ctx, const char *ns);
+
+/**
+ * @brief Get the (only) implemented YANG module specified by its namespace.
+ *
+ * @param[in] ctx Context where to search.
+ * @param[in] ns Namespace of the YANG module to get.
+ * @return The only implemented YANG module revision of the given namespace in the given context. NULL if there is no
+ * implemented module of the given namespace.
+ */
+const struct lys_module *ly_ctx_get_module_implemented_ns(const struct ly_ctx *ctx, const char *ns);
+
+/**
  * @brief Free all internal structures of the specified context.
  *
  * The function should be used before terminating the application to destroy

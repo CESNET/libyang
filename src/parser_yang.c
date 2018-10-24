@@ -1424,7 +1424,7 @@ parse_revision(struct ly_parser_ctx *ctx, const char **data, struct lysp_revisio
         return LY_EVALID;
     }
 
-    strncpy(rev->rev, word, word_len);
+    strncpy(rev->date, word, word_len);
     free(buf);
 
     YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret) {

@@ -308,7 +308,7 @@ struct lysp_restr {
  * @brief YANG revision-stmt
  */
 struct lysp_revision {
-    char rev[LY_REV_SIZE];           /**< revision date (madatory) */
+    char date[LY_REV_SIZE];           /**< revision date (madatory) */
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
@@ -739,7 +739,6 @@ typedef enum LYS_VERSION {
 struct lysp_module {
     struct ly_ctx *ctx;              /**< libyang context of the module (mandatory) */
     const char *name;                /**< name of the module (mandatory) */
-    const char *filepath;            /**< path, if the schema was read from a file, NULL in case of reading from memory */
     union {
         /* module */
         const char *ns;              /**< namespace of the module (module - mandatory) */
@@ -747,14 +746,15 @@ struct lysp_module {
         const char *belongsto;       /**< belongs to parent module (submodule - mandatory) */
     };
     const char *prefix;              /**< module prefix or submodule belongsto prefix of main module (mandatory) */
+    struct lysp_revision *revs;      /**< list of the module revisions ([sized array](@ref sizedarrays)), the first revision
+                                          in the list is always the last (newest) revision of the module */
     struct lysp_import *imports;     /**< list of imported modules ([sized array](@ref sizedarrays)) */
     struct lysp_include *includes;   /**< list of included submodules ([sized array](@ref sizedarrays)) */
+    const char *filepath;            /**< path, if the schema was read from a file, NULL in case of reading from memory */
     const char *org;                 /**< party/company responsible for the module */
     const char *contact;             /**< contact information for the module */
     const char *dsc;                 /**< description of the module */
     const char *ref;                 /**< cross-reference for the module */
-    struct lysp_revision *revs;      /**< list of the module revisions ([sized array](@ref sizedarrays)), the first revision
-                                          in the list is always the last (newest) revision of the module */
     struct lysp_ext *extensions;     /**< list of extension statements ([sized array](@ref sizedarrays)) */
     struct lysp_feature *features;   /**< list of feature definitions ([sized array](@ref sizedarrays)) */
     struct lysp_ident *identities;   /**< list of identities ([sized array](@ref sizedarrays)) */
@@ -825,6 +825,14 @@ struct lysc_feature {
  */
 
 /**
+ * @brief Compiled YANG revision statement
+ */
+struct lysc_revision {
+    char date[LY_REV_SIZE];          /**< revision-date (mandatory) */
+    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+};
+
+/**
  * @brief Compiled YANG if-feature-stmt
  */
 struct lysc_iffeature {
@@ -857,6 +865,8 @@ struct lysc_module {
     const char *name;                /**< name of the module (mandatory) */
     const char *ns;                  /**< namespace of the module (mandatory) */
     const char *prefix;              /**< module prefix (mandatory) */
+    struct lysc_revision *revs;      /**< list of the module revisions ([sized array](@ref sizedarrays)), the first revision
+                                          in the list is always the last (newest) revision of the module */
     struct lysc_import *imports;     /**< list of imported modules ([sized array](@ref sizedarrays)) */
 
 
