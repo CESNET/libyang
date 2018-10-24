@@ -367,7 +367,7 @@ ly_ctx_get_module_latest_by(const struct ly_ctx *ctx, const char *key, size_t ke
                  * is supposed to be the oldest one */
                 newest = mod;
                 date_newest = NULL;
-            } else {
+            } else if ((mod->compiled && mod->compiled->revs) || (!mod->compiled && mod->parsed->revs)) {
                 if (!date_newest) {
                     if (newest->compiled) {
                         date_newest = newest->compiled->revs[0].date;

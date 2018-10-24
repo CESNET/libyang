@@ -280,6 +280,7 @@ test_get_models(void **state)
 
     struct ly_ctx *ctx;
     const struct lys_module *mod, *mod2;
+    const char *str0 = "module a {namespace urn:a;prefix a;}";
     const char *str1 = "module a {namespace urn:a;prefix a;revision 2018-10-23;}";
     const char *str2 = "module a {namespace urn:a;prefix a;revision 2018-10-23;revision 2018-10-24;}";
 
@@ -308,7 +309,7 @@ test_get_models(void **state)
     assert_non_null(ly_ctx_get_module(ctx, "ietf-yang-metadata", "2016-08-05"));
     assert_non_null(ly_ctx_get_module(ctx, "ietf-yang-types", "2013-07-15"));
     assert_non_null(ly_ctx_get_module(ctx, "ietf-inet-types", "2013-07-15"));
-    assert_non_null(ly_ctx_get_module(ctx, "ietf-datastores", "2017-08-17"));
+    assert_non_null(ly_ctx_get_module_ns(ctx, "urn:ietf:params:xml:ns:yang:ietf-datastores", "2017-08-17"));
 
     /* select module by revision */
     mod = lys_parse_mem(ctx, str1, LYS_IN_YANG);
@@ -326,6 +327,11 @@ test_get_models(void **state)
     assert_ptr_equal(mod, mod2);
     mod2 = ly_ctx_get_module_latest_ns(ctx, mod->parsed->ns);
     assert_ptr_equal(mod, mod2);
+    /* work with module with no revision */
+    mod = lys_parse_mem_(ctx, str0, LYS_IN_YANG, NULL, 0);
+    assert_non_null(mod);
+    assert_ptr_equal(mod, ly_ctx_get_module(ctx, "a", NULL));
+    assert_ptr_not_equal(mod, ly_ctx_get_module_latest(ctx, "a"));
 
     /* cleanup */
     ly_ctx_destroy(ctx, NULL);
