@@ -174,7 +174,7 @@ struct lysp_import {
  * @brief YANG include-stmt
  */
 struct lysp_include {
-    const char *name;                /**< name of the submodule to include (mandatory) */
+    struct lysp_module *submodule;   /**< pointer to the parsed submodule structure (mandatory) */
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
@@ -772,6 +772,7 @@ struct lysp_module {
     uint8_t latest_revision:1;       /**< flag if the module was loaded without specific revision and is
                                           the latest revision found */
     uint8_t version:4;               /**< yang-version (LYS_VERSION values) */
+    uint16_t refcount;               /**< 0 in modules, number of includes of a submodules */
 };
 
 /**
@@ -965,7 +966,7 @@ const struct lys_module *lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS
 const struct lys_module *lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
 
 /**
- * @brief Load a schema into the specified context from a file.
+ * @brief Read a schema into the specified context from a file.
  *
  * @param[in] ctx libyang context where to process the data model.
  * @param[in] path Path to the file with the model in the specified format.
@@ -973,6 +974,23 @@ const struct lys_module *lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT f
  * @return Pointer to the data model structure or NULL on error.
  */
 const struct lys_module *lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format);
+
+/**
+ * @brief Search for the schema file in the specified searchpaths.
+ *
+ * @param[in] searchpaths NULL-terminated array of paths to be searched (recursively). Current working
+ * directory is searched automatically (but non-recursively if not in the provided list). Caller can use
+ * result of the ly_ctx_get_searchdirs().
+ * @param[in] cwd Flag to implicitly search also in the current working directory (non-recursively).
+ * @param[in] name Name of the schema to find.
+ * @param[in] revision Revision of the schema to find. If NULL, the newest found schema filepath is returned.
+ * @param[out] localfile Mandatory output variable containing absolute path of the found schema. If no schema
+ * complying the provided restriction is found, NULL is set.
+ * @param[out] format Optional output variable containing expected format of the schema document according to the
+ * file suffix.
+ * @return LY_ERR value (LY_SUCCESS is returned even if the file is not found, then the *localfile is NULL).
+ */
+LY_ERR lys_search_localfile(const char * const *searchpaths, int cwd, const char *name, const char *revision, char **localfile, LYS_INFORMAT *format);
 
 /**
  * @defgroup scflags Schema compile flags

@@ -653,6 +653,16 @@ mod_renew(struct ly_parser_ctx *ctx, struct lysp_module *mod, uint8_t submodule)
     return mod;
 }
 
+static LY_ERR test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const char *UNUSED(submod_name),
+                           const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT *format,
+                           const char **module_data, void (**free_module_data)(void *model_data, void *user_data))
+{
+    *module_data = user_data;
+    *format = LYS_IN_YANG;
+    *free_module_data = NULL;
+    return LY_SUCCESS;
+}
+
 static void
 test_module(void **state)
 {
@@ -766,8 +776,23 @@ test_module(void **state)
     mod = mod_renew(&ctx, mod, 0);
 
     /* include */
-    TEST_GENERIC("include test;}", mod->includes,
-                 assert_string_equal("test", mod->includes[0].name));
+    ly_ctx_set_module_imp_clb(ctx.ctx, test_imp_clb, "module xxx { namespace urn:xxx; prefix x;}");
+    str = SCHEMA_BEGINNING "include xxx;}";
+    assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
+    logbuf_assert("Included \"xxx\" schema from \"name\" is actually not a submodule. Line number 2.");
+    mod = mod_renew(&ctx, mod, 0);
+
+    ly_ctx_set_module_imp_clb(ctx.ctx, test_imp_clb, "submodule xxx {belongs-to wrong-name;}");
+    str = SCHEMA_BEGINNING "include xxx;}";
+    assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
+    logbuf_assert("Included \"xxx\" submodule from \"name\" belongs-to a different module \"wrong-name\". Line number 2.");
+    mod = mod_renew(&ctx, mod, 0);
+
+    ly_ctx_set_module_imp_clb(ctx.ctx, test_imp_clb, "submodule xxx {belongs-to name;}");
+    TEST_GENERIC("include xxx;}", mod->includes,
+                 assert_non_null(mod->includes[0].submodule);
+                 assert_string_equal("xxx", mod->includes[0].submodule->name));
+
     /* leaf */
     TEST_NODE(LYS_LEAF, "leaf test {type string;}}", "test");
     /* leaf-list */

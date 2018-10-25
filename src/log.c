@@ -34,6 +34,19 @@ volatile int ly_log_dbg_groups = 0;
 /* how many bytes add when enlarging buffers */
 #define LY_BUF_STEP 128
 
+API LY_ERR
+ly_errcode(const struct ly_ctx *ctx)
+{
+    struct ly_err_item *i;
+
+    i = ly_err_first(ctx);
+    if (i) {
+        return i->prev->no;
+    }
+
+    return LY_SUCCESS;
+}
+
 API LY_VECODE
 ly_vecode(const struct ly_ctx *ctx)
 {

@@ -146,6 +146,7 @@ typedef enum
     LY_ESYS,        /**< System call failure */
     LY_EINVAL,      /**< Invalid value */
     LY_EEXIST,      /**< Item already exists */
+    LY_ENOTFOUND,   /**< Item does not exists */
     LY_EINT,        /**< Internal error */
     LY_EVALID,      /**< Validation failure */
     LY_EPLUGIN,     /**< Error reported by a plugin */
@@ -189,6 +190,14 @@ struct ly_err_item {
  * @return Validation error code.
  */
 LY_VECODE ly_vecode(const struct ly_ctx *ctx);
+
+/**
+ * @brief Get the last (thread, context-specific) error code.
+ *
+ * @param[in] ctx Relative context.
+ * @return LY_ERR value of the last error code.
+ */
+LY_ERR ly_errcode(const struct ly_ctx *ctx);
 
 /**
  * @brief Get the last (thread, context-specific) error message. If the coresponding module defined

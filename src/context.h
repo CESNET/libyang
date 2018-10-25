@@ -152,6 +152,50 @@ LY_ERR ly_ctx_unset_option(struct ly_ctx *ctx, int option);
 uint16_t ly_ctx_get_module_set_id(const struct ly_ctx *ctx);
 
 /**
+ * @brief Callback for retrieving missing included or imported models in a custom way.
+ *
+ * When submod_name is provided, the submodule is requested instead of the module (in this case only
+ * the module name without its revision is provided).
+ *
+ * If an @arg free_module_data callback is provided, it will be used later to free the allegedly const data
+ * which were returned by this callback.
+ *
+ * @param[in] mod_name Missing module name.
+ * @param[in] mod_rev Optional missing module revision.
+ * @param[in] submod_name Optional missing submodule name.
+ * @param[in] submod_rev Optional missing submodule revision.
+ * @param[in] user_data User-supplied callback data.
+ * @param[out] format Format of the returned module data.
+ * @param[out] module_data Requested module data.
+ * @param[out] free_module_data Callback for freeing the returned module data. If not set, the data will be left untouched.
+ * @return LY_ERR value. If the returned value differs from LY_SUCCESS, libyang continue in trying to get the module data
+ * according to the settings of its mechanism to search for the imported/included schemas.
+ */
+typedef LY_ERR (*ly_module_imp_clb)(const char *mod_name, const char *mod_rev, const char *submod_name, const char *sub_rev,
+                                    void *user_data, LYS_INFORMAT *format, const char **module_data,
+                                    void (**free_module_data)(void *model_data, void *user_data));
+
+/**
+ * @brief Get the custom callback for missing import/include module retrieval.
+ *
+ * @param[in] ctx Context to read from.
+ * @param[in] user_data Optional pointer for getting the user-supplied callback data.
+ * @return Callback or NULL if not set.
+ */
+ly_module_imp_clb ly_ctx_get_module_imp_clb(const struct ly_ctx *ctx, void **user_data);
+
+/**
+ * @brief Set missing include or import module callback. It is meant to be used when the models
+ * are not locally available (such as when downloading modules from a NETCONF server), it should
+ * not be required in other cases.
+ *
+ * @param[in] ctx Context that will use this callback.
+ * @param[in] clb Callback responsible for returning the missing model.
+ * @param[in] user_data Arbitrary data that will always be passed to the callback \p clb.
+ */
+void ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_imp_clb clb, void *user_data);
+
+/**
  * @brief Get YANG module of the given name and revision.
  *
  * @param[in] ctx Context to work in.

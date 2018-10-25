@@ -139,8 +139,6 @@ lydict_remove(struct ly_ctx *ctx, const char *value)
     struct dict_rec rec, *match = NULL;
     char *val_p;
 
-    LY_CHECK_ARG_RET(ctx, ctx, value,);
-
     if (!value) {
         return;
     }

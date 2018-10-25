@@ -52,8 +52,6 @@
 
 #define MOVE_INPUT(CTX, DATA, COUNT) (*(data))+=COUNT;(CTX)->indent+=COUNT
 
-#define LOGVAL_YANG(CTX, ...) LOGVAL((CTX)->ctx, LY_VLOG_LINE, &(CTX)->line, __VA_ARGS__)
-
 /**
  * @brief Loop through all substatements providing, return if there are none.
  *
@@ -1291,24 +1289,31 @@ parse_revisiondate(struct ly_parser_ctx *ctx, const char **data, char *rev, stru
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_include(struct ly_parser_ctx *ctx, const char **data, struct lysp_include **includes)
+parse_include(struct ly_parser_ctx *ctx, const char **data, struct lysp_module *mod)
 {
-    LY_ERR ret = 0;
+    LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
+    const char *name = NULL;
     size_t word_len;
     enum yang_keyword kw;
     struct lysp_include *inc;
 
-    LY_ARRAY_NEW_RET(ctx->ctx, *includes, inc, LY_EMEM);
+    LY_ARRAY_NEW_RET(ctx->ctx, mod->includes, inc, LY_EMEM);
 
     /* get value */
     ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
+    INSERT_WORD(ctx, buf, name, word, word_len);
 
-    INSERT_WORD(ctx, buf, inc->name, word, word_len);
-    YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret) {
-        LY_CHECK_RET(ret);
-
+    ret = get_keyword(ctx, data, &kw, &word, &word_len);
+    LY_CHECK_GOTO(ret, cleanup);
+    LY_CHECK_GOTO(kw == YANG_SEMICOLON, parse_include);
+    LY_CHECK_ERR_GOTO(kw != YANG_LEFT_BRACE,
+                      LOGVAL_YANG(ctx, LYVE_SYNTAX_YANG, "Invalid keyword \"%s\", expected \";\" or \"{\".", ly_stmt2str(kw));
+                      ret = LY_EVALID, cleanup);
+    for (ret = get_keyword(ctx, data, &kw, &word, &word_len);
+            !ret && (kw != YANG_RIGHT_BRACE);
+            ret = get_keyword(ctx, data, &kw, &word, &word_len)) {
         switch (kw) {
         case YANG_DESCRIPTION:
             ret = parse_text_field(ctx, data, LYEXT_SUBSTMT_DESCRIPTION, 0, &inc->dsc, Y_STR_ARG, &inc->exts);
@@ -1324,12 +1329,18 @@ parse_include(struct ly_parser_ctx *ctx, const char **data, struct lysp_include 
             break;
         default:
             LOGVAL_YANG(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "include");
+            lydict_remove(ctx->ctx, name);
             return LY_EVALID;
         }
-        LY_CHECK_RET(ret);
+        LY_CHECK_GOTO(ret, cleanup);
     }
-    LY_CHECK_RET(ret);
+    LY_CHECK_GOTO(ret, cleanup);
 
+parse_include:
+    ret = lysp_parse_include(ctx, mod, name, inc);
+
+cleanup:
+    lydict_remove(ctx->ctx, name);
     return ret;
 }
 
@@ -4512,7 +4523,7 @@ parse_sub_module(struct ly_parser_ctx *ctx, const char **data, struct lysp_modul
 
         /* linkage */
         case YANG_INCLUDE:
-            ret = parse_include(ctx, data, &mod->includes);
+            ret = parse_include(ctx, data, mod);
             break;
         case YANG_IMPORT:
             ret = parse_import(ctx, data, mod);

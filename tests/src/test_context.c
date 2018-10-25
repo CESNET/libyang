@@ -333,6 +333,10 @@ test_get_models(void **state)
     assert_ptr_equal(mod, ly_ctx_get_module(ctx, "a", NULL));
     assert_ptr_not_equal(mod, ly_ctx_get_module_latest(ctx, "a"));
 
+    str1 = "submodule b {belongs-to a;}";
+    assert_null(lys_parse_mem(ctx, str1, LYS_IN_YANG));
+    logbuf_assert("Input data contains submodule \"b\" which cannot be parsed directly without its main module.");
+
     /* cleanup */
     ly_ctx_destroy(ctx, NULL);
 }

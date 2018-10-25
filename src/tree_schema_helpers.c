@@ -81,7 +81,9 @@ lysp_check_date(struct ly_ctx *ctx, const char *date, int date_len, const char *
     return LY_SUCCESS;
 
 error:
-    LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_INVAL, date_len, date, stmt);
+    if (stmt) {
+        LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_INVAL, date_len, date, stmt);
+    }
     return LY_EINVAL;
 }
 
@@ -103,6 +105,76 @@ lysp_sort_revisions(struct lysp_revision *revs)
         memcpy(&revs[0], &revs[r], sizeof rev);
         memcpy(&revs[r], &rev, sizeof rev);
     }
+}
+
+LY_ERR
+lysp_parse_include(struct ly_parser_ctx *ctx, struct lysp_module *mod, const char *name, struct lysp_include *inc)
+{
+    struct lys_module *submod;
+    const char *submodule_data = NULL;
+    LYS_INFORMAT format = LYS_IN_UNKNOWN;
+    void (*submodule_data_free)(void *module_data, void *user_data) = NULL;
+
+    /* Try to get submodule from the context, if already present */
+    inc->submodule = ly_ctx_get_submodule(ctx->ctx, mod->name, name, inc->rev[0] ? inc->rev : NULL);
+    if (!inc->submodule) {
+        /* submodule not present in the context, get the input data and parse it */
+        if (!(ctx->ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+search_clb:
+            if (ctx->ctx->imp_clb) {
+                if (ctx->ctx->imp_clb(mod->name, NULL, name, inc->rev, ctx->ctx->imp_clb_data,
+                                      &format, &submodule_data, &submodule_data_free) == LY_SUCCESS) {
+                    submod = lys_parse_mem_(ctx->ctx, submodule_data, format, inc->rev[0] ? inc->rev : NULL, mod->implemented);
+                }
+            }
+            if (!submod && !(ctx->ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+                goto search_file;
+            }
+        } else {
+search_file:
+            if (!(ctx->ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
+                /* module was not received from the callback or there is no callback set */
+                lys_module_localfile(ctx->ctx, name, inc->rev[0] ? inc->rev : NULL, mod->implemented, &submod);
+                if (inc->submodule) {
+                    ++inc->submodule->refcount;
+                }
+            }
+            if (!submod && (ctx->ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+                goto search_clb;
+            }
+        }
+        if (submod) {
+            /* check that we have really a submodule */
+            if (!submod->parsed->submodule) {
+                /* submodule is not a submodule */
+                LOGVAL_YANG(ctx, LYVE_REFERENCE, "Included \"%s\" schema from \"%s\" is actually not a submodule.", name, mod->name);
+                lys_module_free(submod, NULL);
+                /* fix list of modules in context, since it was already changed */
+                --ctx->ctx->list.count;
+                return LY_EVALID;
+            }
+            /* check that the submodule belongs-to our module */
+            if (strcmp(mod->name, submod->parsed->belongsto)) {
+                LOGVAL_YANG(ctx, LYVE_REFERENCE, "Included \"%s\" submodule from \"%s\" belongs-to a different module \"%s\".",
+                            name, mod->name, submod->parsed->belongsto);
+                lys_module_free(submod, NULL);
+                return LY_EVALID;
+            }
+            inc->submodule = submod->parsed;
+            ++inc->submodule->refcount;
+            free(submod);
+        }
+    }
+    if (!inc->submodule) {
+        if (ly_errcode(ctx->ctx) != LY_EVALID) {
+            LOGVAL_YANG(ctx, LY_VCODE_INVAL, strlen(name), name, "include");
+        } else {
+            LOGVAL_YANG(ctx, LYVE_REFERENCE, "Including \"%s\" submodule into \"%s\" failed.", name, mod->name);
+        }
+        return LY_EVALID;
+    }
+
+    return LY_SUCCESS;
 }
 
 struct lysc_module *

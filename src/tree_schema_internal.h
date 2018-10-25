@@ -15,6 +15,8 @@
 #ifndef LY_TREE_SCHEMA_INTERNAL_H_
 #define LY_TREE_SCHEMA_INTERNAL_H_
 
+#define LOGVAL_YANG(CTX, ...) LOGVAL((CTX)->ctx, LY_VLOG_LINE, &(CTX)->line, __VA_ARGS__)
+
 /**
  * @brief List of YANG statement groups - the (sub)module's substatements
  */
@@ -73,6 +75,18 @@ LY_ERR lysp_check_date(struct ly_ctx *ctx, const char *date, int date_len, const
 void lysp_sort_revisions(struct lysp_revision *revs);
 
 /**
+ * @brief Parse included submodule into the simply parsed YANG module.
+ *
+ * @param[in] ctx yang parser context.
+ * @param[in] mod Module including a submodule.
+ * @param[in] name Name of the submodule to include.
+ * @param[in,out] inc Include structure holding all available information about the include statement, the parsed
+ * submodule is stored into this structure.
+ * @return LY_ERR value.
+ */
+LY_ERR lysp_parse_include(struct ly_parser_ctx *ctx, struct lysp_module *mod, const char *name, struct lysp_include *inc);
+
+/**
  * @brief Find the module referenced by prefix in the provided mod.
  *
  * @param[in] mod Schema module where the prefix was used.
@@ -82,6 +96,80 @@ void lysp_sort_revisions(struct lysp_revision *revs);
  */
 struct lysc_module *lysc_module_find_prefix(struct lysc_module *mod, const char *prefix, size_t len);
 
+/**
+ * @brief Parse YANG module and submodule from a string.
+ *
+ * In contrast to public lys_parse_mem(), also submodules can be parsed here. However,
+ * while the modules are added into the context, submodules not. The latest_revision
+ * flag is updated in both cases.
+ *
+ * @param[in] ctx libyang context where to process the data model.
+ * @param[in] data The string containing the dumped data model in the specified
+ * format.
+ * @param[in] format Format of the input data (YANG or YIN).
+ * @param[in] revision If a specific revision is required, it is checked before the parsed
+ * schema is accepted.
+ * @param[in] implement Flag if the schema is supposed to be marked as implemented.
+ * @return Pointer to the data model structure or NULL on error.
+ */
+struct lys_module *lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const char *revision, int implement);
+
+/**
+ * @brief Parse YANG module and submodule from a file descriptor.
+ *
+ * In contrast to public lys_parse_mem(), also submodules can be parsed here. However,
+ * while the modules are added into the context, submodules not. The latest_revision
+ * flag is updated in both cases.
+ *
+ * \note Current implementation supports only reading data from standard (disk) file, not from sockets, pipes, etc.
+ *
+ * @param[in] ctx libyang context where to process the data model.
+ * @param[in] fd File descriptor of a regular file (e.g. sockets are not supported) containing the schema
+ *            in the specified format.
+ * @param[in] format Format of the input data (YANG or YIN).
+ * @param[in] revision If a specific revision is required, it is checked before the parsed
+ * schema is accepted.
+ * @param[in] implement Flag if the schema is supposed to be marked as implemented.
+ * @return Pointer to the data model structure or NULL on error.
+ */
+struct lys_module *lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const char *revision, int implement);
+
+/**
+ * @brief Parse YANG module and submodule from a file descriptor.
+ *
+ * In contrast to public lys_parse_mem(), also submodules can be parsed here. However,
+ * while the modules are added into the context, submodules not. The latest_revision
+ * flag is updated in both cases.
+ *
+ * \note Current implementation supports only reading data from standard (disk) file, not from sockets, pipes, etc.
+ *
+ * @brief REad a schema into the specified context from a file.
+ *
+ * @param[in] ctx libyang context where to process the data model.
+ * @param[in] path Path to the file with the model in the specified format.
+ * @param[in] format Format of the input data (YANG or YIN).
+ * @param[in] revision If a specific revision is required, it is checked before the parsed
+ * schema is accepted.
+ * @param[in] implement Flag if the schema is supposed to be marked as implemented.
+ * @return Pointer to the data model structure or NULL on error.
+ */
+struct lys_module *lys_parse_path_(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, const char *revision, int implement);
+
+/**
+ * @brief Load the (sub)module into the context.
+ *
+ * This function does not check the presence of the (sub)module in context, it should be done before calling this function.
+ *
+ * module_name and submodule_name are alternatives - only one of the
+ *
+ * @param[in] ctx libyang context where to work.
+ * @param[in] name Name of the (sub)module to load.
+ * @param[in] revision Optional revision of the (sub)module to load, if NULL the newest revision is being loaded.
+ * @param[in] implement Flag if the (sub)module is supposed to be marked as implemented.
+ * @param[out] result Parsed YANG schema tree of the requested module. If it is a module, it is already in the context!
+ * @return LY_ERR value, in case of LY_SUCCESS, the \arg result is always provided.
+ */
+LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, int implement, struct lys_module **result);
 /**
  * @brief Free the schema structure. It just frees, it does not remove the schema from its context.
  * @param[in,out] module Schema module structure to free.

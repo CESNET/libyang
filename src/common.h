@@ -26,6 +26,7 @@
 
 #include "config.h"
 #include "log.h"
+#include "context.h"
 #include "tree_schema.h"
 #include "set.h"
 #include "hash_table.h"
@@ -151,10 +152,25 @@ struct ly_ctx {
     struct dict_table dict;           /**< dictionary to effectively store strings used in the context related structures */
     struct ly_set search_paths;       /**< set of directories where to search for schema's imports/includes */
     struct ly_set list;               /**< set of YANG schemas */
+    ly_module_imp_clb imp_clb;        /**< Optional callback for retrieving missing included or imported models in a custom way. */
+    void *imp_clb_data;               /**< Optional private data for imp_clb() */
     uint16_t module_set_id;           /**< ID of the current set of schemas */
     uint16_t flags;                   /**< context settings, see @ref contextoptions. */
     pthread_key_t errlist_key;        /**< key for the thread-specific list of errors related to the context */
 };
+
+/**
+ * @brief Try to find submodule in the context. Submodules are present only in the parsed (lysp_) schema trees, if only
+ * the compiled versions of the schemas are present, the submodule cannot be returned even if it was used to compile
+ * some of the currently present schemas.
+ *
+ * @param[in] ctx Context where to search
+ * @param[in] module Name of the module where the submodule is supposed to belongs-to.
+ * @param[in] submodule Name of the submodule to find.
+ * @param[in] revision Optional revision of the submodule to find. If not specified, the latest revision is returned.
+ * @return Pointer to the specified submodule if it is present in the context.
+ */
+struct lysp_module *ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *submodule, const char *revision);
 
 /******************************************************************************
  * Parsers

@@ -261,6 +261,26 @@ ly_ctx_get_module_set_id(const struct ly_ctx *ctx)
     return ctx->module_set_id;
 }
 
+API void
+ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_imp_clb clb, void *user_data)
+{
+    LY_CHECK_ARG_RET(ctx, ctx,);
+
+    ctx->imp_clb = clb;
+    ctx->imp_clb_data = user_data;
+}
+
+API ly_module_imp_clb
+ly_ctx_get_module_imp_clb(const struct ly_ctx *ctx, void **user_data)
+{
+    LY_CHECK_ARG_RET(ctx, ctx, NULL);
+
+    if (user_data) {
+        *user_data = ctx->imp_clb_data;
+    }
+    return ctx->imp_clb;
+}
+
 /**
  * @brief Iterate over the modules in the given context. Returned modules must match the given key at the offset of
  * lysp_module and lysc_module structures (they are supposed to be placed at the same offset in both structures).
@@ -414,6 +434,35 @@ ly_ctx_get_module_implemented_ns(const struct ly_ctx *ctx, const char *ns)
 {
     LY_CHECK_ARG_RET(ctx, ctx, ns, NULL);
     return ly_ctx_get_module_implemented_by(ctx, ns, offsetof(struct lysp_module, ns));
+}
+
+struct lysp_module *
+ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *submodule, const char *revision)
+{
+    const struct lys_module *mod;
+    struct lysp_include *inc;
+    unsigned int index = 0, u;
+
+    while ((mod = ly_ctx_get_module_by_iter(ctx, module, offsetof(struct lysp_module, name), &index))) {
+        if (!mod->parsed) {
+            continue;
+        }
+
+        LY_ARRAY_FOR(mod->parsed->includes, u) {
+            if (!strcmp(submodule, mod->parsed->includes[u].submodule->name)) {
+                inc = &mod->parsed->includes[u];
+                if (!revision) {
+                    if (inc->submodule->latest_revision) {
+                        return inc->submodule;
+                    }
+                } else if (inc->submodule->revs && !strcmp(revision, inc->submodule->revs[0].date)) {
+                    return inc->submodule;
+                }
+            }
+        }
+    }
+
+    return NULL;
 }
 
 API void
