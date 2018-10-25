@@ -354,42 +354,16 @@ ly_ctx_get_module(const struct ly_ctx *ctx, const char *name, const char *revisi
 static const struct lys_module *
 ly_ctx_get_module_latest_by(const struct ly_ctx *ctx, const char *key, size_t key_offset)
 {
-    const struct lys_module *mod, *newest = NULL;
+    const struct lys_module *mod;
     unsigned int index = 0;
-    const char *date, *date_newest = NULL;
 
     while ((mod = ly_ctx_get_module_by_iter(ctx, key, key_offset, &index))) {
-        if (!newest) {
-            newest = mod;
-        } else {
-            if ((newest->compiled && !newest->compiled->revs) || (!newest->compiled && !newest->parsed->revs)) {
-                /* prefer modules with revisions, module with no revision
-                 * is supposed to be the oldest one */
-                newest = mod;
-                date_newest = NULL;
-            } else if ((mod->compiled && mod->compiled->revs) || (!mod->compiled && mod->parsed->revs)) {
-                if (!date_newest) {
-                    if (newest->compiled) {
-                        date_newest = newest->compiled->revs[0].date;
-                    } else {
-                        date_newest = newest->parsed->revs[0].date;
-                    }
-                }
-                if (mod->compiled) {
-                    date = mod->compiled->revs[0].date;
-                } else {
-                    date = mod->parsed->revs[0].date;
-                }
-                if (strcmp(date, date_newest) > 0) {
-                    /* the current module is newer than so far newest, so remember it */
-                    newest = mod;
-                    date_newest = NULL;
-                }
-            }
+        if ((mod->compiled && mod->compiled->latest_revision) || (!mod->compiled && mod->parsed->latest_revision)) {
+            return mod;
         }
     }
 
-    return newest;
+    return NULL;
 }
 
 API const struct lys_module *

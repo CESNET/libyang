@@ -1076,10 +1076,21 @@ error:
     return ret;
 }
 
+static void
+lys_latest_unset(struct lys_module *mod)
+{
+    if (mod->parsed) {
+        mod->parsed->latest_revision = 0;
+    }
+    if (mod->compiled) {
+        mod->compiled->latest_revision = 0;
+    }
+}
+
 static const struct lys_module *
 lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const char *revision, int implement)
 {
-    struct lys_module *mod = NULL;
+    struct lys_module *mod = NULL, *latest;
     LY_ERR ret;
 
     LY_CHECK_ARG_RET(ctx, ctx, data, NULL);
@@ -1095,14 +1106,18 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const 
         break;
     case LYS_IN_YANG:
         ret = yang_parse(ctx, data, &mod->parsed);
-        LY_CHECK_RET(ret, NULL);
         break;
     default:
         LOGERR(ctx, LY_EINVAL, "Invalid schema input format.");
         break;
     }
+    LY_CHECK_RET(ret, NULL);
+
+    /* make sure that the newest revision is at position 0 */
+    lysp_sort_revisions(mod->parsed->revs);
 
     if (implement) {
+        /* mark the loaded module implemented */
         if (ly_ctx_get_module_implemented(ctx, mod->parsed->name)) {
             LOGERR(ctx, LY_EDENIED, "Module \"%s\" is already implemented in the context.", mod->parsed->name);
             lys_module_free(mod, NULL);
@@ -1132,6 +1147,25 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const 
         }
         lys_module_free(mod, NULL);
         return NULL;
+    }
+
+    /* decide the latest revision */
+    latest = (struct lys_module*)ly_ctx_get_module_latest(ctx, mod->parsed->name);
+    if (latest) {
+        if (mod->parsed->revs) {
+            if ((latest->parsed && !latest->parsed->revs) || (!latest->parsed && !latest->compiled->revs)) {
+                /* latest has no revision, so mod is anyway newer */
+                mod->parsed->latest_revision = 1;
+                lys_latest_unset(latest);
+            } else {
+                if (strcmp(mod->parsed->revs[0].date, latest->parsed ? latest->parsed->revs[0].date : latest->compiled->revs[0].date) > 0) {
+                    mod->parsed->latest_revision = 1;
+                    lys_latest_unset(latest);
+                }
+            }
+        }
+    } else {
+        mod->parsed->latest_revision = 1;
     }
 
     /* add into context */

@@ -4665,9 +4665,6 @@ yang_parse(struct ly_ctx *ctx, const char *data, struct lysp_module **mod_p)
     }
     assert(!buf);
 
-    /* make sure that the newest revision is at position 0 */
-    lysp_sort_revisions(mod->revs);
-
     *mod_p = mod;
     return ret;
 
