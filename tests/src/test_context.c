@@ -254,12 +254,24 @@ test_options(void **state)
     ly_ctx_destroy(ctx, NULL);
 }
 
+static LY_ERR test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const char *UNUSED(submod_name),
+                           const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT *format,
+                           const char **module_data, void (**free_module_data)(void *model_data, void *user_data))
+{
+    *module_data = user_data;
+    *format = LYS_IN_YANG;
+    *free_module_data = NULL;
+    return LY_SUCCESS;
+}
+
 static void
 test_models(void **state)
 {
     (void) state; /* unused */
 
     struct ly_ctx *ctx;
+    const char *str;
+    const struct lys_module *mod1, *mod2;
 
     /* invalid arguments */
     assert_int_equal(0, ly_ctx_get_module_set_id(NULL));
@@ -268,6 +280,25 @@ test_models(void **state)
     will_return_always(__wrap_ly_set_add, 0);
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
     assert_int_equal(ctx->module_set_id, ly_ctx_get_module_set_id(ctx));
+
+    /* import callback */
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, (void*)(str = "test"));
+    assert_ptr_equal(test_imp_clb, ctx->imp_clb);
+    assert_ptr_equal(str, ctx->imp_clb_data);
+    assert_ptr_equal(test_imp_clb, ly_ctx_get_module_imp_clb(ctx, (void**)&str));
+    assert_string_equal("test", str);
+
+    ly_ctx_set_module_imp_clb(ctx, NULL, NULL);
+    assert_null(ctx->imp_clb);
+    assert_null(ctx->imp_clb_data);
+
+    /* submodule in multiple modules */
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule xx {belongs-to x;}");
+    mod1 = lys_parse_mem(ctx, "module x {namespace urn:x;prefix x;include xx;revision 2018-10-24;}", LYS_IN_YANG);
+    assert_non_null(mod1);
+    mod2 = lys_parse_mem_(ctx, "module x {namespace urn:x;prefix x;include xx;revision 2018-10-25;}", LYS_IN_YANG, NULL, 0);
+    assert_non_null(mod2);
+    assert_ptr_equal(mod1->parsed->includes[0].submodule, mod2->parsed->includes[0].submodule);
 
     /* cleanup */
     ly_ctx_destroy(ctx, NULL);

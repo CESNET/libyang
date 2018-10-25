@@ -164,6 +164,8 @@ search_file:
             ++inc->submodule->refcount;
             free(submod);
         }
+    } else {
+        ++inc->submodule->refcount;
     }
     if (!inc->submodule) {
         if (ly_errcode(ctx->ctx) != LY_EVALID) {
