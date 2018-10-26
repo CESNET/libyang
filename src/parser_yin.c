@@ -14,201 +14,85 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 
 #include "common.h"
 #include "context.h"
 #include "libyang.h"
 #include "xml.h"
 #include "tree_schema_internal.h"
-#include "string.h"
 
-LY_ERR
-match_argument_name()
-{
+enum YIN_ARGUMENT {
+    YIN_ARG_NONE = 0,
+    YIN_ARG_NAME,
+    YIN_ARG_TARGET_NODE,
+    YIN_ARG_MODULE,
+    YIN_ARG_VALUE,
+    YIN_ARG_TEXT,
+    YIN_ARG_CONDITION,
+    YIN_ARG_URI,
+    YIN_ARG_DATE,
+    YIN_ARG_TAG,
+};
 
-}
-
-#define MOVE_START(array, offset) array = &array[offset];
-#define IF_KW(STR, LEN, SHIFT, STMT) if (!strncmp((word), STR, LEN)) {MOVE_START(word, SHIFT);kw=STMT;}
-#define IF_KW_PREFIX(STR, LEN, SHIFT) if (!strncmp((word), STR, LEN)) {MOVE_START(word, SHIFT);
+#define MOVE_INPUT(DATA, COUNT) already_read+=COUNT;
+#define IF_KW(STR, LEN, STMT) if (!strncmp((name) + already_read, STR, LEN)) {MOVE_INPUT(name, LEN);arg=STMT;}
+#define IF_KW_PREFIX(STR, LEN) if (!strncmp((name) + already_read, STR, LEN)) {MOVE_INPUT(name, LEN);
 #define IF_KW_PREFIX_END }
 
-enum yang_keyword
-match_keyword(const char *word, size_t len)
+enum YIN_ARGUMENT
+match_argument_name(char *name, size_t len)
 {
-    if (!word) {
-        return YANG_NONE;
-    }
-    enum yang_keyword kw = YANG_NONE;
+    enum YIN_ARGUMENT arg = YIN_ARG_NONE;
+    size_t already_read = 0;
 
-    /* try to match the keyword */
-    switch (*word) {
-    case 'a':
-        MOVE_START(word, 1);
-        IF_KW("rgument", len, 7, YANG_ARGUMENT)
-        else IF_KW("ugment", len, 6, YANG_AUGMENT)
-        else IF_KW("ction", len, 5, YANG_ACTION)
-        else IF_KW_PREFIX("ny", len, 2)
-            IF_KW("data", len, 4, YANG_ANYDATA)
-            else IF_KW("xml", len, 3, YANG_ANYXML)
-        IF_KW_PREFIX_END
+    switch(*name) {
+        case 'c':
+            MOVE_INPUT(name, 1);
+            IF_KW("ondition", 8, YIN_ARG_CONDITION);
         break;
-    case 'b':
-        MOVE_START(word, 1);
-        IF_KW("ase", len, 3, YANG_BASE)
-        else IF_KW("elongs-to", len, 9, YANG_BELONGS_TO)
-        else IF_KW("it", len, 2, YANG_BIT)
+
+        case 'd':
+            MOVE_INPUT(name, 1);
+            IF_KW("ate", 3, YIN_ARG_DATE);
         break;
-    case 'c':
-        MOVE_START(word, 1);
-        IF_KW("ase", len, 3, YANG_CASE)
-        else IF_KW("hoice", len, 5, YANG_CHOICE)
-        else IF_KW_PREFIX("on", len, 2)
-            IF_KW("fig", len, 3, YANG_CONFIG)
-            else IF_KW_PREFIX("ta", len, 2)
-                IF_KW("ct", len, 2, YANG_CONTACT)
-                else IF_KW("iner", len, 4, YANG_CONTAINER)
+
+        case 'm':
+            MOVE_INPUT(name, 1);
+            IF_KW("odule", 5, YIN_ARG_MODULE);
+        break;
+
+        case 'n':
+            MOVE_INPUT(name, 1);
+            IF_KW("ame", 3, YIN_ARG_NAME);
+        break;
+
+        case 't':
+            MOVE_INPUT(name, 1);
+            IF_KW_PREFIX("a", 1)
+                IF_KW("g", 1, YIN_ARG_TAG)
+                else IF_KW("rget-node", 9, YIN_ARG_TARGET_NODE)
             IF_KW_PREFIX_END
-        IF_KW_PREFIX_END
+            else IF_KW("ext", 3, YIN_ARG_TEXT)
         break;
-    case 'd':
-        MOVE_START(word, 1);
-        IF_KW_PREFIX("e", len, 1)
-            IF_KW("fault", len, 5, YANG_DEFAULT)
-            else IF_KW("scription", len, 9, YANG_DESCRIPTION)
-            else IF_KW_PREFIX("viat", len, 4)
-                IF_KW("e", len, 1, YANG_DEVIATE)
-                else IF_KW("ion", len, 3, YANG_DEVIATION)
-            IF_KW_PREFIX_END
-        IF_KW_PREFIX_END
+
+        case 'u':
+            MOVE_INPUT(name, 1);
+            IF_KW("ri", 2, YIN_ARG_URI)
         break;
-    case 'e':
-        MOVE_START(word, 1);
-        IF_KW("num", len, 3, YANG_ENUM)
-        else IF_KW_PREFIX("rror-", len, 5)
-            IF_KW("app-tag", len, 7, YANG_ERROR_APP_TAG)
-            else IF_KW("message", len, 7, YANG_ERROR_MESSAGE)
-        IF_KW_PREFIX_END
-        else IF_KW("xtension", len, 8, YANG_EXTENSION)
-        break;
-    case 'f':
-        MOVE_START(word, 1);
-        IF_KW("eature", len, 6, YANG_FEATURE)
-        else IF_KW("raction-digits", len, 14, YANG_FRACTION_DIGITS)
-        break;
-    case 'g':
-        MOVE_START(word, 1);
-        IF_KW("rouping", len, 7, YANG_GROUPING)
-        break;
-    case 'i':
-        MOVE_START(word, 1);
-        IF_KW("dentity", len, 7, YANG_IDENTITY)
-        else IF_KW("f-feature", len, 9, YANG_IF_FEATURE)
-        else IF_KW("mport", len, 5, YANG_IMPORT)
-        else IF_KW_PREFIX("n", len, 1)
-            IF_KW("clude", len, 5, YANG_INCLUDE)
-            else IF_KW("put", len, 3, YANG_INPUT)
-        IF_KW_PREFIX_END
-        break;
-    case 'k':
-        MOVE_START(word, 1);
-        IF_KW("ey", len, 2, YANG_KEY)
-        break;
-    case 'l':
-        MOVE_START(word, 1);
-        IF_KW_PREFIX("e", len, 1)
-            IF_KW("af-list", len, 7, YANG_LEAF_LIST)
-            else IF_KW("af", len, 2, YANG_LEAF)
-            else IF_KW("ngth", len, 4, YANG_LENGTH)
-        IF_KW_PREFIX_END
-        else IF_KW("ist", len, 3, YANG_LIST)
-        break;
-    case 'm':
-        MOVE_START(word, 1);
-        IF_KW_PREFIX("a", len, 1)
-            IF_KW("ndatory", len, 7, YANG_MANDATORY)
-            else IF_KW("x-elements", len, 10, YANG_MAX_ELEMENTS)
-        IF_KW_PREFIX_END
-        else IF_KW("in-elements", len, 11, YANG_MIN_ELEMENTS)
-        else IF_KW("ust", len, 3, YANG_MUST)
-        else IF_KW_PREFIX("od", len, 2)
-            IF_KW("ule", len, 3, YANG_MODULE)
-            else IF_KW("ifier", len, 5, YANG_MODIFIER)
-        IF_KW_PREFIX_END
-        break;
-    case 'n':
-        MOVE_START(word, 1);
-        IF_KW("amespace", len, 8, YANG_NAMESPACE)
-        else IF_KW("otification", len, 11, YANG_NOTIFICATION)
-        break;
-    case 'o':
-        MOVE_START(word, 1);
-        IF_KW_PREFIX("r", len, 1)
-            IF_KW("dered-by", len, 8, YANG_ORDERED_BY)
-            else IF_KW("ganization", len, 10, YANG_ORGANIZATION)
-        IF_KW_PREFIX_END
-        else IF_KW("utput", len, 5, YANG_OUTPUT)
-        break;
-    case 'p':
-        MOVE_START(word, 1);
-        IF_KW("ath", len, 3, YANG_PATH)
-        else IF_KW("attern", len, 6, YANG_PATTERN)
-        else IF_KW("osition", len, 7, YANG_POSITION)
-        else IF_KW_PREFIX("re", len, 2)
-            IF_KW("fix", len, 3, YANG_PREFIX)
-            else IF_KW("sence", len, 5, YANG_PRESENCE)
-        IF_KW_PREFIX_END
-        break;
-    case 'r':
-        MOVE_START(word, 1);
-        IF_KW("ange", len, 4, YANG_RANGE)
-        else IF_KW_PREFIX("e", len, 1)
-            IF_KW_PREFIX("f", len, 1)
-                IF_KW("erence", len, 6, YANG_REFERENCE)
-                else IF_KW("ine", len, 3, YANG_REFINE)
-            IF_KW_PREFIX_END
-            else IF_KW("quire-instance", len, 14, YANG_REQUIRE_INSTANCE)
-            else IF_KW("vision-date", len, 11, YANG_REVISION_DATE)
-            else IF_KW("vision", len, 6, YANG_REVISION)
-        IF_KW_PREFIX_END
-        else IF_KW("pc", len, 2, YANG_RPC)
-        break;
-    case 's':
-        MOVE_START(word, 1);
-        IF_KW("tatus", len, 5, YANG_STATUS)
-        else IF_KW("ubmodule", len, 8, YANG_SUBMODULE)
-        break;
-    case 't':
-        MOVE_START(word, 1);
-        IF_KW("ypedef", len, 6, YANG_TYPEDEF)
-        else IF_KW("ype", len, 3, YANG_TYPE)
-        break;
-    case 'u':
-        MOVE_START(word, 1);
-        IF_KW_PREFIX("ni", len, 2)
-            IF_KW("que", len, 3, YANG_UNIQUE)
-            else IF_KW("ts", len, 2, YANG_UNITS)
-        IF_KW_PREFIX_END
-        else IF_KW("ses", len, 3, YANG_USES)
-        break;
-    case 'v':
-        MOVE_START(word, 1);
-        IF_KW("alue", len, 4, YANG_VALUE)
-        break;
-    case 'w':
-        MOVE_START(word, 1);
-        IF_KW("hen", len, 3, YANG_WHEN)
-        break;
-    case 'y':
-        MOVE_START(word, 1);
-        IF_KW("ang-version", len, 11, YANG_YANG_VERSION)
-        else IF_KW("in-element", len, 10, YANG_YIN_ELEMENT)
-        break;
-    default:
+
+        case 'v':
+            MOVE_INPUT(name, 1);
+            IF_KW("alue", 4, YIN_ARG_VALUE);
         break;
     }
 
-    return kw;
+    /* whole keyword must be matched */
+    if (already_read != len) {
+        arg = YIN_ARG_NONE;
+    }
+
+    return arg;
 }
 
 LY_ERR
@@ -219,17 +103,17 @@ parse_submodule(struct lyxml_context *xml_ctx, const char **data, struct lysp_mo
     const char *prefix, *name, *elem;
     size_t prefix_len, name_len;
 
-    /* inefficient keyword check - just temporary */
+    /* check if root keyword is module or submodule */
     ret = lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
     LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), LY_EMEM);
-    if ((strncmp("module", name, name_len) != 0) && (strncmp("submodule", name, name_len) != 0)) {
+    if (match_keyword(name) != YANG_MODULE && match_keyword(name) != YANG_SUBMODULE) {
         LOGVAL(xml_ctx->ctx, xml_ctx->line, &xml_ctx->line, LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".", name);
     }
 
-    /* inefficient argument name check - just temporary */
+    /* check if module/submodule has argument "name" */
     ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
     LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), LY_EMEM);
-    if (strncmp("name", name, name_len)) {
+    if (match_argument_name(name, name_len) != YIN_ARG_NAME) {
         LOGVAL(xml_ctx->ctx, xml_ctx->line, &xml_ctx->line, LYVE_SYNTAX, "Invalid argument name \"%s\", expected \"name\".", name);
     }
 
