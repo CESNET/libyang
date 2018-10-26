@@ -2314,8 +2314,7 @@ const struct lys_type *lys_getnext_union_type(const struct lys_type *last, const
  * @param[in] cur_module Current module name.
  * @param[in] cur_node Current (context) schema node.
  * @param[in] path Schema path expression filtering the matching nodes.
- * @return Set of found schema nodes. If no nodes are matching \p path the returned set is empty.
- * In case of an error, NULL is returned.
+ * @return Set of found schema nodes. In case of an error, NULL is returned.
  */
 struct ly_set *lys_find_path(const struct lys_module *cur_module, const struct lys_node *cur_node, const char *path);
 
