@@ -122,7 +122,7 @@ lysp_parse_include(struct ly_parser_ctx *ctx, struct lysp_module *mod, const cha
         if (!(ctx->ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
 search_clb:
             if (ctx->ctx->imp_clb) {
-                if (ctx->ctx->imp_clb(mod->name, NULL, name, inc->rev, ctx->ctx->imp_clb_data,
+                if (ctx->ctx->imp_clb(mod->name, NULL, name, inc->rev[0] ? inc->rev : NULL, ctx->ctx->imp_clb_data,
                                       &format, &submodule_data, &submodule_data_free) == LY_SUCCESS) {
                     submod = lys_parse_mem_(ctx->ctx, submodule_data, format, inc->rev[0] ? inc->rev : NULL, mod->implemented);
                 }
