@@ -762,36 +762,40 @@ test_module(void **state)
     TEST_GENERIC("identity test;}", mod->identities,
                  assert_string_equal("test", mod->identities[0].name));
     /* import */
-    TEST_GENERIC("import test {prefix z;}}", mod->imports,
-                 assert_string_equal("test", mod->imports[0].name));
+    ly_ctx_set_module_imp_clb(ctx.ctx, test_imp_clb, "module zzz { namespace urn:zzz; prefix z;}");
+    TEST_GENERIC("import zzz {prefix z;}}", mod->imports,
+                 assert_string_equal("zzz", mod->imports[0].name));
 
     /* import - prefix collision */
-    str = SCHEMA_BEGINNING "import test {prefix x;}}";
+    str = SCHEMA_BEGINNING "import zzz {prefix x;}}";
     assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
     logbuf_assert("Prefix \"x\" already used as module prefix. Line number 2.");
     mod = mod_renew(&ctx, mod, 0);
-    str = SCHEMA_BEGINNING "import test1 {prefix y;}import test2 {prefix y;}}";
+    str = SCHEMA_BEGINNING "import zzz {prefix y;}import zzz {prefix y;}}";
     assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
-    logbuf_assert("Prefix \"y\" already used to import \"test1\" module. Line number 2.");
+    logbuf_assert("Prefix \"y\" already used to import \"zzz\" module. Line number 2.");
     mod = mod_renew(&ctx, mod, 0);
+    str = "module" SCHEMA_BEGINNING "import zzz {prefix y;}import zzz {prefix z;}}";
+    assert_null(lys_parse_mem(ctx.ctx, str, LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, ly_errcode(ctx.ctx));
+    logbuf_assert("Single revision of the module \"zzz\" referred twice.");
 
     /* include */
     ly_ctx_set_module_imp_clb(ctx.ctx, test_imp_clb, "module xxx { namespace urn:xxx; prefix x;}");
-    str = SCHEMA_BEGINNING "include xxx;}";
-    assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
-    logbuf_assert("Included \"xxx\" schema from \"name\" is actually not a submodule. Line number 2.");
-    mod = mod_renew(&ctx, mod, 0);
+    str = "module" SCHEMA_BEGINNING "include xxx;}";
+    assert_null(lys_parse_mem(ctx.ctx, str, LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, ly_errcode(ctx.ctx));
+    logbuf_assert("Included \"xxx\" schema from \"name\" is actually not a submodule.");
 
     ly_ctx_set_module_imp_clb(ctx.ctx, test_imp_clb, "submodule xxx {belongs-to wrong-name;}");
-    str = SCHEMA_BEGINNING "include xxx;}";
-    assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
-    logbuf_assert("Included \"xxx\" submodule from \"name\" belongs-to a different module \"wrong-name\". Line number 2.");
-    mod = mod_renew(&ctx, mod, 0);
+    str = "module" SCHEMA_BEGINNING "include xxx;}";
+    assert_null(lys_parse_mem(ctx.ctx, str, LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, ly_errcode(ctx.ctx));
+    logbuf_assert("Included \"xxx\" submodule from \"name\" belongs-to a different module \"wrong-name\".");
 
     ly_ctx_set_module_imp_clb(ctx.ctx, test_imp_clb, "submodule xxx {belongs-to name;}");
     TEST_GENERIC("include xxx;}", mod->includes,
-                 assert_non_null(mod->includes[0].submodule);
-                 assert_string_equal("xxx", mod->includes[0].submodule->name));
+                 assert_string_equal("xxx", mod->includes[0].name));
 
     /* leaf */
     TEST_NODE(LYS_LEAF, "leaf test {type string;}}", "test");

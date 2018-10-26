@@ -162,7 +162,9 @@ typedef enum {
  * @brief YANG import-stmt
  */
 struct lysp_import {
-    const char *name;                /**< name of the module to import (mandatory) */
+    struct lys_module *module;       /**< pointer to the imported module
+                                          (mandatory, but resolved when the referring module is completely parsed) */
+    const char *name;                /**< name of the imported module (mandatory) */
     const char *prefix;              /**< prefix for the data from the imported schema (mandatory) */
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
@@ -174,7 +176,9 @@ struct lysp_import {
  * @brief YANG include-stmt
  */
 struct lysp_include {
-    struct lysp_module *submodule;   /**< pointer to the parsed submodule structure (mandatory) */
+    struct lysp_module *submodule;   /**< pointer to the parsed submodule structure
+                                         (mandatory, but resolved when the referring module is completely parsed) */
+    const char *name;                /**< name of the included submodule (mandatory) */
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
@@ -769,9 +773,12 @@ struct lysp_module {
 
     uint8_t submodule:1;             /**< flag to distinguish main modules and submodules */
     uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
-    uint8_t latest_revision:1;       /**< flag if the module was loaded without specific revision and is
-                                          the latest revision found */
-    uint8_t version:4;               /**< yang-version (LYS_VERSION values) */
+    uint8_t latest_revision:2;       /**< flag to mark the latest available revision:
+                                          1 - the latest revision in searchdirs was not searched yet and this is the
+                                          latest revision in the current context
+                                          2 - searchdirs were searched and this is the latest available revision */
+    uint8_t parsing:1;               /**< flag for circular check */
+    uint8_t version;                 /**< yang-version (LYS_VERSION values) */
     uint16_t refcount;               /**< 0 in modules, number of includes of a submodules */
 };
 
@@ -877,7 +884,7 @@ struct lysc_module {
     uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
     uint8_t latest_revision:1;       /**< flag if the module was loaded without specific revision and is
                                           the latest revision found */
-    uint8_t version:4;               /**< yang-version (LYS_VERSION values) */
+    uint8_t version;                 /**< yang-version (LYS_VERSION values) */
 };
 
 /**

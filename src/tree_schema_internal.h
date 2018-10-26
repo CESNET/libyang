@@ -75,16 +75,26 @@ LY_ERR lysp_check_date(struct ly_ctx *ctx, const char *date, int date_len, const
 void lysp_sort_revisions(struct lysp_revision *revs);
 
 /**
+ * @brief Find and parse module of the given name.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] name Name of the module to load.
+ * @param[in] revison Optional revision of the module to load. If NULL, the newest revision is loaded.
+ * @param[out] mod Parsed module structure.
+ * @return LY_ERR value.
+ */
+LY_ERR lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, int implement, struct lys_module **mod);
+
+/**
  * @brief Parse included submodule into the simply parsed YANG module.
  *
- * @param[in] ctx yang parser context.
+ * @param[in] ctx libyang context
  * @param[in] mod Module including a submodule.
- * @param[in] name Name of the submodule to include.
  * @param[in,out] inc Include structure holding all available information about the include statement, the parsed
  * submodule is stored into this structure.
  * @return LY_ERR value.
  */
-LY_ERR lysp_parse_include(struct ly_parser_ctx *ctx, struct lysp_module *mod, const char *name, struct lysp_include *inc);
+LY_ERR lysp_load_submodule(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_include *inc);
 
 /**
  * @brief Find the module referenced by prefix in the provided mod.
@@ -170,6 +180,14 @@ struct lys_module *lys_parse_path_(struct ly_ctx *ctx, const char *path, LYS_INF
  * @return LY_ERR value, in case of LY_SUCCESS, the \arg result is always provided.
  */
 LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, int implement, struct lys_module **result);
+
+/**
+ * @brief Make the module implemented.
+ * Does not check for collision in context, it must be done before calling the function, this is a simple switch.
+ * @param[in] mod Module to make implemented.
+ */
+void lys_module_implement(struct lys_module *mod);
+
 /**
  * @brief Free the schema structure. It just frees, it does not remove the schema from its context.
  * @param[in,out] module Schema module structure to free.

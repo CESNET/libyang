@@ -449,7 +449,7 @@ ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *s
         }
 
         LY_ARRAY_FOR(mod->parsed->includes, u) {
-            if (!strcmp(submodule, mod->parsed->includes[u].submodule->name)) {
+            if (mod->parsed->includes[u].submodule && !strcmp(submodule, mod->parsed->includes[u].submodule->name)) {
                 inc = &mod->parsed->includes[u];
                 if (!revision) {
                     if (inc->submodule->latest_revision) {

@@ -161,9 +161,11 @@ uint16_t ly_ctx_get_module_set_id(const struct ly_ctx *ctx);
  * which were returned by this callback.
  *
  * @param[in] mod_name Missing module name.
- * @param[in] mod_rev Optional missing module revision.
+ * @param[in] mod_rev Optional missing module revision. If NULL and submod_name is not provided, the latest revision is
+ * requested, the parsed module is then marked by the latest_revision flag.
  * @param[in] submod_name Optional missing submodule name.
- * @param[in] submod_rev Optional missing submodule revision.
+ * @param[in] submod_rev Optional missing submodule revision. If NULL and submod_name is provided, the latest revision is
+ * requested, the parsed submodule is then marked by the latest_revision flag.
  * @param[in] user_data User-supplied callback data.
  * @param[out] format Format of the returned module data.
  * @param[out] module_data Requested module data.

@@ -1293,7 +1293,6 @@ parse_include(struct ly_parser_ctx *ctx, const char **data, struct lysp_module *
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    const char *name = NULL;
     size_t word_len;
     enum yang_keyword kw;
     struct lysp_include *inc;
@@ -1303,17 +1302,10 @@ parse_include(struct ly_parser_ctx *ctx, const char **data, struct lysp_module *
     /* get value */
     ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
-    INSERT_WORD(ctx, buf, name, word, word_len);
 
-    ret = get_keyword(ctx, data, &kw, &word, &word_len);
-    LY_CHECK_GOTO(ret, cleanup);
-    LY_CHECK_GOTO(kw == YANG_SEMICOLON, parse_include);
-    LY_CHECK_ERR_GOTO(kw != YANG_LEFT_BRACE,
-                      LOGVAL_YANG(ctx, LYVE_SYNTAX_YANG, "Invalid keyword \"%s\", expected \";\" or \"{\".", ly_stmt2str(kw));
-                      ret = LY_EVALID, cleanup);
-    for (ret = get_keyword(ctx, data, &kw, &word, &word_len);
-            !ret && (kw != YANG_RIGHT_BRACE);
-            ret = get_keyword(ctx, data, &kw, &word, &word_len)) {
+    INSERT_WORD(ctx, buf, inc->name, word, word_len);
+
+    YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret) {
         switch (kw) {
         case YANG_DESCRIPTION:
             ret = parse_text_field(ctx, data, LYEXT_SUBSTMT_DESCRIPTION, 0, &inc->dsc, Y_STR_ARG, &inc->exts);
@@ -1329,18 +1321,12 @@ parse_include(struct ly_parser_ctx *ctx, const char **data, struct lysp_module *
             break;
         default:
             LOGVAL_YANG(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "include");
-            lydict_remove(ctx->ctx, name);
             return LY_EVALID;
         }
-        LY_CHECK_GOTO(ret, cleanup);
+        LY_CHECK_RET(ret);
     }
-    LY_CHECK_GOTO(ret, cleanup);
+    LY_CHECK_RET(ret);
 
-parse_include:
-    ret = lysp_parse_include(ctx, mod, name, inc);
-
-cleanup:
-    lydict_remove(ctx->ctx, name);
     return ret;
 }
 
@@ -1369,9 +1355,8 @@ parse_import(struct ly_parser_ctx *ctx, const char **data, struct lysp_module *m
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, imp->name, word, word_len);
-    YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret) {
-        LY_CHECK_RET(ret);
 
+    YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret) {
         switch (kw) {
         case YANG_PREFIX:
             ret = parse_text_field(ctx, data, LYEXT_SUBSTMT_PREFIX, 0, &imp->prefix, Y_IDENTIF_ARG, &imp->exts);
@@ -1398,10 +1383,7 @@ parse_import(struct ly_parser_ctx *ctx, const char **data, struct lysp_module *m
     LY_CHECK_RET(ret);
 
     /* mandatory substatements */
-    if (!imp->prefix) {
-        LOGVAL_YANG(ctx, LY_VCODE_MISSTMT, "prefix", "import");
-        return LY_EVALID;
-    }
+    LY_CHECK_ERR_RET(!imp->prefix, LOGVAL_YANG(ctx, LY_VCODE_MISSTMT, "prefix", "import"), LY_EVALID);
 
     return ret;
 }

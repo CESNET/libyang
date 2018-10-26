@@ -75,6 +75,7 @@ lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext, int di
 static void
 lysp_import_free(struct ly_ctx *ctx, struct lysp_import *import, int dict)
 {
+    /* imported module is freed directly from the context's list */
     FREE_STRING(ctx, import->name, dict);
     FREE_STRING(ctx, import->prefix, dict);
     FREE_STRING(ctx, import->dsc, dict);
@@ -88,6 +89,7 @@ lysp_include_free(struct ly_ctx *ctx, struct lysp_include *include, int dict)
     if (include->submodule && !(--include->submodule->refcount)) {
         lysp_module_free(include->submodule);
     }
+    FREE_STRING(ctx, include->name, dict);
     FREE_STRING(ctx, include->dsc, dict);
     FREE_STRING(ctx, include->ref, dict);
     FREE_ARRAY(ctx, include->exts, lysp_ext_instance_free);
@@ -1080,13 +1082,15 @@ error:
 }
 
 static void
-lys_latest_unset(struct lys_module *mod)
+lys_latest_switch(struct lys_module *old, struct lysp_module *new)
 {
-    if (mod->parsed) {
-        mod->parsed->latest_revision = 0;
+    if (old->parsed) {
+        new->latest_revision = old->parsed->latest_revision;
+        old->parsed->latest_revision = 0;
     }
-    if (mod->compiled) {
-        mod->compiled->latest_revision = 0;
+    if (old->compiled) {
+        new->latest_revision = old->parsed->latest_revision;
+        old->compiled->latest_revision = 0;
     }
 }
 
@@ -1095,7 +1099,10 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const 
 {
     struct lys_module *mod = NULL, *latest;
     struct lysp_module *latest_p;
+    struct lysp_import *imp;
+    struct lysp_include *inc;
     LY_ERR ret;
+    unsigned int u, i;
 
     LY_CHECK_ARG_RET(ctx, ctx, data, NULL);
 
@@ -1147,17 +1154,17 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const 
             if (mod->parsed->revs) {
                 if (!latest_p->revs) {
                     /* latest has no revision, so mod is anyway newer */
-                    mod->parsed->latest_revision = 1;
+                    mod->parsed->latest_revision = revision ? latest_p->latest_revision : 1;
                     latest_p->latest_revision = 0;
                 } else {
                     if (strcmp(mod->parsed->revs[0].date, latest_p->revs[0].date) > 0) {
-                        mod->parsed->latest_revision = 1;
+                        mod->parsed->latest_revision = revision ? latest_p->latest_revision : 1;
                         latest_p->latest_revision = 0;
                     }
                 }
             }
         } else {
-            mod->parsed->latest_revision = 1;
+            mod->parsed->latest_revision = revision ? 1 : 2;
         }
     } else { /* module */
         /* check for duplicity in the context */
@@ -1193,12 +1200,10 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const 
             if (mod->parsed->revs) {
                 if ((latest->parsed && !latest->parsed->revs) || (!latest->parsed && !latest->compiled->revs)) {
                     /* latest has no revision, so mod is anyway newer */
-                    mod->parsed->latest_revision = 1;
-                    lys_latest_unset(latest);
+                    lys_latest_switch(latest, mod->parsed);
                 } else {
                     if (strcmp(mod->parsed->revs[0].date, latest->parsed ? latest->parsed->revs[0].date : latest->compiled->revs[0].date) > 0) {
-                        mod->parsed->latest_revision = 1;
-                        lys_latest_unset(latest);
+                        lys_latest_switch(latest, mod->parsed);
                     }
                 }
             }
@@ -1209,6 +1214,34 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const 
         /* add into context */
         ly_set_add(&ctx->list, mod, LY_SET_OPT_USEASLIST);
 
+        /* resolve imports and includes */
+        mod->parsed->parsing = 1;
+        LY_ARRAY_FOR(mod->parsed->imports, u) {
+            imp = &mod->parsed->imports[u];
+            if (!imp->module && lysp_load_module(ctx, imp->name, imp->rev[0] ? imp->rev : NULL, 0, &imp->module)) {
+                ly_set_rm(&ctx->list, mod, NULL);
+                lys_module_free(mod, NULL);
+                return NULL;
+            }
+            /* check for importing the same module twice */
+            for (i = 0; i < u; ++i) {
+                if (imp->module == mod->parsed->imports[i].module) {
+                    LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Single revision of the module \"%s\" referred twice.", imp->name);
+                    ly_set_rm(&ctx->list, mod, NULL);
+                    lys_module_free(mod, NULL);
+                    return NULL;
+                }
+            }
+        }
+        LY_ARRAY_FOR(mod->parsed->includes, u) {
+            inc = &mod->parsed->includes[u];
+            if (!inc->submodule && lysp_load_submodule(ctx, mod->parsed, inc)) {
+                ly_set_rm(&ctx->list, mod, NULL);
+                lys_module_free(mod, NULL);
+                return NULL;
+            }
+        }
+        mod->parsed->parsing = 0;
     }
 
     return mod;
