@@ -1398,7 +1398,8 @@ empty:
         if (!result) {
             if (reply_parent) {
                 result = next->child;
-                iter = next->child;
+                //find the last lyd_node created by json_parse_data
+                for (iter = next->child; iter && iter->next; iter = iter->next);
             } else {
                 for (iter = next; iter && iter->prev->next; iter = iter->prev);
                 result = iter;
