@@ -1091,6 +1091,68 @@ done:
 }
 
 static LY_ERR
+lys_compile_identity(struct lysc_ctx *ctx, struct lysp_ident *ident_p, int options, struct lysc_ident *ident)
+{
+    unsigned int u;
+    LY_ERR ret = LY_SUCCESS;
+
+    if (options & LYSC_OPT_FREE_SP) {
+        /* just switch the pointers */
+        ident->name = ident_p->name;
+    } else {
+        /* keep refcounts correct for lysp_module_free() */
+        ident->name = lydict_insert(ctx->mod->ctx, ident_p->name, 0);
+    }
+    COMPILE_ARRAY_GOTO(ctx, ident_p->iffeatures, ident->iffeatures, options, u, lys_compile_iffeature, ret, done);
+    /* backlings (derived) can be added no sooner than when all the identities in the current module are present */
+    COMPILE_ARRAY_GOTO(ctx, ident_p->exts, ident->exts, options, u, lys_compile_ext, ret, done);
+    ident->flags = ident_p->flags;
+
+done:
+    return ret;
+}
+
+static LY_ERR
+lys_compile_identities_derived(struct lysc_ctx *ctx, struct lysp_ident *idents_p, struct lysc_ident *idents)
+{
+    unsigned int i, u, v;
+    const char *s, *name;
+    struct lysc_module *mod;
+    struct lysc_ident **dident;
+
+    for (i = 0; i < LY_ARRAY_SIZE(idents_p); ++i) {
+        for (u = 0; u < LY_ARRAY_SIZE(idents_p[i].bases); ++u) {
+            s = strchr(idents_p[i].bases[u], ':');
+            if (s) {
+                /* prefixed identity */
+                name = &s[1];
+                mod = lysc_module_find_prefix(ctx->mod, idents_p[i].bases[u], s - idents_p[i].bases[u])->compiled;
+            } else {
+                name = idents_p[i].bases[u];
+                mod = ctx->mod;
+            }
+            LY_CHECK_ERR_RET(!mod, LOGVAL(ctx->mod->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                                          "Invalid prefix used for base (%s) of identity \"%s\".", idents_p[i].bases[u], idents[i].name),
+                             LY_EVALID);
+            if (mod->identities) {
+                for (v = 0; v < LY_ARRAY_SIZE(mod->identities); ++v) {
+                    if (!strcmp(name, mod->identities[v].name)) {
+                        /* we have match! store the backlink */
+                        LY_ARRAY_NEW_RET(ctx->mod->ctx, mod->identities[v].derived, dident, LY_EMEM);
+                        *dident = &idents[i];
+                        break;
+                    }
+                }
+            }
+            LY_CHECK_ERR_RET(!dident, LOGVAL(ctx->mod->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                                             "Unable to find base (%s) of identity \"%s\".", idents_p[i].bases[u], idents[i].name),
+                             LY_EVALID);
+        }
+    }
+    return LY_SUCCESS;
+}
+
+static LY_ERR
 lys_compile_feature(struct lysc_ctx *ctx, struct lysp_feature *feature_p, int options, struct lysc_feature *feature)
 {
     unsigned int u, v;
@@ -1158,6 +1220,10 @@ lys_compile(struct lysp_module *sp, int options, struct lysc_module **sc)
 
     COMPILE_ARRAY_GOTO(&ctx, sp->imports, mod_c->imports, options, u, lys_compile_import, ret, error);
     COMPILE_ARRAY_GOTO(&ctx, sp->features, mod_c->features, options, u, lys_compile_feature, ret, error);
+    COMPILE_ARRAY_GOTO(&ctx, sp->identities, mod_c->identities, options, u, lys_compile_identity, ret, error);
+    if (sp->identities) {
+        LY_CHECK_RET(lys_compile_identities_derived(&ctx, sp->identities, mod_c->identities));
+    }
 
     COMPILE_ARRAY_GOTO(&ctx, sp->exts, mod_c->exts, options, u, lys_compile_ext, ret, error);
 

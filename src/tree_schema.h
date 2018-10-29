@@ -752,15 +752,15 @@ struct lysc_ext_instance {
     LYEXT_SUBSTMT insubstmt;         /**< value identifying placement of the extension instance */
     uint32_t insubstmt_index;        /**< in case the instance is in a substatement that can appear multiple times,
                                           this identifies the index of the substatement for this extension instance */
+    LYEXT_PARENT parent_type;        /**< type of the parent structure */
 #if 0
-    uint8_t parent_type;             /**< #LYEXT_PAR - type of the parent structure */
     uint8_t ext_type;                /**< extension type (#LYEXT_TYPE) */
     uint8_t padding;                 /**< 32b padding */
-    struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
-    void *priv;                      /**< private caller's data, not used by libyang */
     struct lys_module *module;       /**< pointer to the extension instance's module (mandatory) */
     LYS_NODE nodetype;               /**< LYS_EXT */
 #endif
+    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    void *priv;                      /**< private caller's data, not used by libyang */
 };
 
 /**
@@ -778,6 +778,17 @@ struct lysc_import {
 struct lysc_when {
     struct lyxp_expr *cond;          /**< XPath when condition */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+};
+
+/**
+ * @brief YANG identity-stmt
+ */
+struct lysc_ident {
+    const char *name;                /**< identity name (mandatory), including possible prefix */
+    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+    struct lysc_ident **derived;     /**< list of (pointers to the) derived identities ([sized array](@ref sizedarrays)) */
+    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_ values are allowed */
 };
 
 /**
@@ -853,7 +864,10 @@ struct lysc_module {
     struct lysc_import *imports;     /**< list of imported modules ([sized array](@ref sizedarrays)) */
 
     struct lysc_feature *features;   /**< list of feature definitions ([sized array](@ref sizedarrays)) */
-
+    struct lysc_ident *identities;   /**< list of identities ([sized array](@ref sizedarrays)) */
+    struct lysc_node *data;          /**< list of module's top-level data nodes (linked list) */
+    struct lysc_action *rpcs;        /**< list of RPCs ([sized array](@ref sizedarrays)) */
+    struct lysc_notif *notifs;       /**< list of notifications ([sized array](@ref sizedarrays)) */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 
     uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
