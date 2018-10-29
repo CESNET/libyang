@@ -100,6 +100,26 @@ LY_ERR lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revisi
 LY_ERR lysp_load_submodule(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_include *inc);
 
 /**
+ * @brief Find the module referenced by prefix in the provided parsed mod.
+ *
+ * @param[in] mod Schema module where the prefix was used.
+ * @param[in] prefix Prefix used to reference a module.
+ * @param[in] len Length of the prefix since it is not necessary NULL-terminated.
+ * @return Pointer to the module or NULL if the module is not found.
+ */
+struct lys_module *lysp_module_find_prefix(struct lysp_module *mod, const char *prefix, size_t len);
+
+/**
+ * @brief Find the module referenced by prefix in the provided compiled mod.
+ *
+ * @param[in] mod Schema module where the prefix was used.
+ * @param[in] prefix Prefix used to reference a module.
+ * @param[in] len Length of the prefix since it is not necessary NULL-terminated.
+ * @return Pointer to the module or NULL if the module is not found.
+ */
+struct lys_module *lysc_module_find_prefix(struct lysc_module *mod, const char *prefix, size_t len);
+
+/**
  * @brief Find the module referenced by prefix in the provided mod.
  *
  * @param[in] mod Schema module where the prefix was used.
@@ -107,7 +127,7 @@ LY_ERR lysp_load_submodule(struct ly_ctx *ctx, struct lysp_module *mod, struct l
  * @param[in] len Length of the prefix since it is not necessary NULL-terminated.
  * @return Pointer to the module or NULL if the module is not found.
  */
-struct lysc_module *lysc_module_find_prefix(struct lysc_module *mod, const char *prefix, size_t len);
+struct lys_module *lys_module_find_prefix(struct lys_module *mod, const char *prefix, size_t len);
 
 /**
  * @brief Parse YANG module and submodule from a string.

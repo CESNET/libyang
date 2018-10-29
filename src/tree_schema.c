@@ -36,9 +36,9 @@
 
 #define COMPILE_ARRAY_GOTO(CTX, ARRAY_P, ARRAY_C, OPTIONS, ITER, FUNC, RET, GOTO) \
     if (ARRAY_P) { \
-        LY_ARRAY_CREATE_GOTO((CTX).mod->ctx, ARRAY_C, LY_ARRAY_SIZE(ARRAY_P), RET, GOTO); \
+        LY_ARRAY_CREATE_GOTO((CTX)->mod->ctx, ARRAY_C, LY_ARRAY_SIZE(ARRAY_P), RET, GOTO); \
         for (ITER = 0; ITER < LY_ARRAY_SIZE(ARRAY_P); ++ITER) { \
-            RET = FUNC(&(CTX), &(ARRAY_P)[ITER], OPTIONS, &(ARRAY_C)[ITER]); \
+            RET = FUNC(CTX, &(ARRAY_P)[ITER], OPTIONS, &(ARRAY_C)[ITER]); \
             LY_CHECK_GOTO(RET != LY_SUCCESS, GOTO); \
             LY_ARRAY_INCREMENT(ARRAY_C); \
         } \
@@ -596,7 +596,7 @@ lysc_feature_find(struct lysc_module *mod, const char *name, size_t len)
     for (i = 0; i < len; ++i) {
         if (name[i] == ':') {
             /* we have a prefixed feature */
-            mod = lysc_module_find_prefix(mod, name, i);
+            mod = lysc_module_find_prefix(mod, name, i)->compiled;
             LY_CHECK_RET(!mod, NULL);
 
             name = &name[i + 1];
@@ -823,15 +823,63 @@ lys_feature_value(const struct lys_module *module, const char *feature)
 }
 
 static LY_ERR
-lys_compile_iffeature(struct lysc_ctx *ctx, const char *value, int UNUSED(options), struct lysc_iffeature *iff, struct lysc_feature *parent)
+lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, int options, struct lysc_ext_instance *ext)
 {
-    const char *c = value;
+    const char *name;
+    unsigned int u;
+    const struct lys_module *mod;
+    struct lysp_ext *edef;
+
+    if (options & LYSC_OPT_FREE_SP) {
+        /* just switch the pointers */
+        ext->argument = ext_p->argument;
+    } else {
+        /* keep refcounts correct for lysp_module_free() */
+        ext->argument = lydict_insert(ctx->mod->ctx, ext_p->argument, 0);
+    }
+    ext->insubstmt = ext_p->insubstmt;
+    ext->insubstmt_index = ext_p->insubstmt_index;
+
+    /* get module where the extension definition should be placed */
+    for (u = 0; ext_p->name[u] != ':'; ++u);
+    mod = lysc_module_find_prefix(ctx->mod, ext_p->name, u);
+    LY_CHECK_ERR_RET(!mod, LOGVAL(ctx->mod->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                                  "Invalid prefix \"%.*s\" used for extension instance identifier.", u, ext_p->name),
+                     LY_EVALID);
+    LY_CHECK_ERR_RET(!mod->parsed->extensions,
+                     LOGVAL(ctx->mod->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                            "Extension instance \"%s\" refers \"%s\" module that does not contain extension definitions.",
+                            ext_p->name, mod->parsed->name),
+                     LY_EVALID);
+    name = &ext_p->name[u + 1];
+    /* find the extension definition there */
+    for (ext = NULL, u = 0; u < LY_ARRAY_SIZE(mod->parsed->extensions); ++u) {
+        if (!strcmp(name, mod->parsed->extensions[u].name)) {
+            edef = &mod->parsed->extensions[u];
+            break;
+        }
+    }
+    LY_CHECK_ERR_RET(!edef, LOGVAL(ctx->mod->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                                   "Extension definition of extension instance \"%s\" not found.", ext_p->name),
+                     LY_EVALID);
+    /* TODO plugins */
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @param[in] parent Provided only in case the if-feature is inside
+ */
+static LY_ERR
+lys_compile_iffeature(struct lysc_ctx *ctx, const char **value, int UNUSED(options), struct lysc_iffeature *iff)
+{
+    const char *c = *value;
     int r, rc = EXIT_FAILURE;
     int i, j, last_not, checkversion = 0;
     unsigned int f_size = 0, expr_size = 0, f_exp = 1;
     uint8_t op;
     struct iff_stack stack = {0, 0, NULL};
-    struct lysc_feature *f, **df;
+    struct lysc_feature *f;
 
     assert(c);
 
@@ -852,7 +900,7 @@ lys_compile_iffeature(struct lysc_ctx *ctx, const char *value, int UNUSED(option
         if (!strncmp(&c[i], "not", r = 3) || !strncmp(&c[i], "and", r = 3) || !strncmp(&c[i], "or", r = 2)) {
             if (c[i + r] == '\0') {
                 LOGVAL(ctx->mod->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
-                       "Invalid value \"%s\" of if-feature - unexpected end of expression.", value);
+                       "Invalid value \"%s\" of if-feature - unexpected end of expression.", *value);
                 return LY_EVALID;
             } else if (!isspace(c[i + r])) {
                 /* feature name starting with the not/and/or */
@@ -889,7 +937,7 @@ lys_compile_iffeature(struct lysc_ctx *ctx, const char *value, int UNUSED(option
     if (j || f_exp != f_size) {
         /* not matching count of ( and ) */
         LOGVAL(ctx->mod->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
-               "Invalid value \"%s\" of if-feature - non-matching opening and closing parentheses.", value);
+               "Invalid value \"%s\" of if-feature - non-matching opening and closing parentheses.", *value);
         return LY_EVALID;
     }
 
@@ -897,7 +945,7 @@ lys_compile_iffeature(struct lysc_ctx *ctx, const char *value, int UNUSED(option
         /* check that we have 1.1 module */
         if (ctx->mod->version != LYS_VERSION_1_1) {
             LOGVAL(ctx->mod->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
-                   "Invalid value \"%s\" of if-feature - YANG 1.1 expression in YANG 1.0 module.", value);
+                   "Invalid value \"%s\" of if-feature - YANG 1.1 expression in YANG 1.0 module.", *value);
             return LY_EVALID;
         }
     }
@@ -966,18 +1014,11 @@ lys_compile_iffeature(struct lysc_ctx *ctx, const char *value, int UNUSED(option
             f = lysc_feature_find(ctx->mod, &c[i], j - i);
             LY_CHECK_ERR_GOTO(!f,
                               LOGVAL(ctx->mod->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
-                                     "Invalid value \"%s\" of if-feature - unable to find feature \"%.*s\".", value, j - i, &c[i]);
+                                     "Invalid value \"%s\" of if-feature - unable to find feature \"%.*s\".", *value, j - i, &c[i]);
                               rc = LY_EINVAL,
                               error)
             iff->features[f_size] = f;
             LY_ARRAY_INCREMENT(iff->features);
-            if (parent) {
-                /* and add itself into the dependants list */
-                LY_ARRAY_NEW_RET(ctx->mod->ctx, f->depfeatures, df, LY_EMEM);
-                *df = parent;
-
-                /* TODO check for circular dependency */
-            }
             f_size--;
         }
     }
@@ -989,7 +1030,7 @@ lys_compile_iffeature(struct lysc_ctx *ctx, const char *value, int UNUSED(option
     if (++expr_size || ++f_size) {
         /* not all expected operators and operands found */
         LOGVAL(ctx->mod->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
-               "Invalid value \"%s\" of if-feature - processing error.", value);
+               "Invalid value \"%s\" of if-feature - processing error.", *value);
         rc = LY_EINT;
     } else {
         rc = LY_SUCCESS;
@@ -1005,8 +1046,10 @@ error:
 static LY_ERR
 lys_compile_import(struct lysc_ctx *ctx, struct lysp_import *imp_p, int options, struct lysc_import *imp)
 {
+    unsigned int u;
     struct lys_module *mod;
     struct lysc_module *comp;
+    LY_ERR ret = LY_SUCCESS;
 
     if (options & LYSC_OPT_FREE_SP) {
         /* just switch the pointers */
@@ -1015,6 +1058,7 @@ lys_compile_import(struct lysc_ctx *ctx, struct lysp_import *imp_p, int options,
         /* keep refcounts correct for lysp_module_free() */
         imp->prefix = lydict_insert(ctx->mod->ctx, imp_p->prefix, 0);
     }
+    COMPILE_ARRAY_GOTO(ctx, imp_p->exts, imp->exts, options, u, lys_compile_ext, ret, done);
     imp->module = imp_p->module;
 
     /* make sure that we have both versions (lysp_ and lysc_) of the imported module. To import groupings or
@@ -1042,14 +1086,16 @@ lys_compile_import(struct lysc_ctx *ctx, struct lysp_import *imp_p, int options,
         return lys_compile(imp->module->parsed, options, &imp->module->compiled);
     }
 
-    return LY_SUCCESS;
+done:
+    return ret;
 }
 
 static LY_ERR
 lys_compile_feature(struct lysc_ctx *ctx, struct lysp_feature *feature_p, int options, struct lysc_feature *feature)
 {
-    unsigned int u;
-    LY_ERR ret;
+    unsigned int u, v;
+    LY_ERR ret = LY_SUCCESS;
+    struct lysc_feature **df;
 
     if (options & LYSC_OPT_FREE_SP) {
         /* just switch the pointers */
@@ -1060,18 +1106,22 @@ lys_compile_feature(struct lysc_ctx *ctx, struct lysp_feature *feature_p, int op
     }
     feature->flags = feature_p->flags;
 
-    if (feature_p->iffeatures) {
-        /* allocate everything now */
-        LY_ARRAY_CREATE_RET(ctx->mod->ctx, feature->iffeatures, LY_ARRAY_SIZE(feature_p->iffeatures), LY_EMEM);
-
-        for (u = 0; u < LY_ARRAY_SIZE(feature_p->iffeatures); ++u) {
-            ret = lys_compile_iffeature(ctx, feature_p->iffeatures[u], options, &feature->iffeatures[u], feature);
-            LY_CHECK_RET(ret);
-            LY_ARRAY_INCREMENT(feature->iffeatures);
+    COMPILE_ARRAY_GOTO(ctx, feature_p->exts, feature->exts, options, u, lys_compile_ext, ret, done);
+    COMPILE_ARRAY_GOTO(ctx, feature_p->iffeatures, feature->iffeatures, options, u, lys_compile_iffeature, ret, done);
+    if (feature->iffeatures) {
+        for (u = 0; u < LY_ARRAY_SIZE(feature->iffeatures); ++u) {
+            if (feature->iffeatures[u].features) {
+                for (v = 0; v < LY_ARRAY_SIZE(feature->iffeatures[u].features); ++v) {
+                    /* add itself into the dependants list */
+                    LY_ARRAY_NEW_RET(ctx->mod->ctx, feature->iffeatures[u].features[v]->depfeatures, df, LY_EMEM);
+                    *df = feature;
+                }
+                /* TODO check for circular dependency */
+            }
         }
     }
-
-    return LY_SUCCESS;
+done:
+    return ret;
 }
 
 LY_ERR
@@ -1106,8 +1156,10 @@ lys_compile(struct lysp_module *sp, int options, struct lysc_module **sc)
         mod_c->prefix = lydict_insert(sp->ctx, sp->prefix, 0);
     }
 
-    COMPILE_ARRAY_GOTO(ctx, sp->imports, mod_c->imports, options, u, lys_compile_import, ret, error);
-    COMPILE_ARRAY_GOTO(ctx, sp->features, mod_c->features, options, u, lys_compile_feature, ret, error);
+    COMPILE_ARRAY_GOTO(&ctx, sp->imports, mod_c->imports, options, u, lys_compile_import, ret, error);
+    COMPILE_ARRAY_GOTO(&ctx, sp->features, mod_c->features, options, u, lys_compile_feature, ret, error);
+
+    COMPILE_ARRAY_GOTO(&ctx, sp->exts, mod_c->exts, options, u, lys_compile_ext, ret, error);
 
     if (options & LYSC_OPT_FREE_SP) {
         lysp_module_free_(sp, 0);

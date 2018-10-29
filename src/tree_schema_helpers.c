@@ -280,30 +280,38 @@ search_file:
     return LY_SUCCESS;
 }
 
-struct lysc_module *
+#define FIND_MODULE(TYPE, MOD) \
+    TYPE *imp; \
+    if (!strncmp((MOD)->prefix, prefix, len) && (MOD)->prefix[len] == '\0') { \
+        /* it is the prefix of the module itself */ \
+        return (struct lys_module*)ly_ctx_get_module((MOD)->ctx, (MOD)->name, (MOD)->revs ? (MOD)->revs[0].date : NULL); \
+    } \
+    /* search in imports */ \
+    LY_ARRAY_FOR((MOD)->imports, TYPE, imp) { \
+        if (!strncmp(imp->prefix, prefix, len) && (MOD)->prefix[len] == '\0') { \
+            return imp->module; \
+        } \
+    } \
+    return NULL
+
+struct lys_module *
 lysc_module_find_prefix(struct lysc_module *mod, const char *prefix, size_t len)
 {
-    struct lysc_import *imp;
+    FIND_MODULE(struct lysc_import, mod);
+}
 
-    assert(mod);
+struct lys_module *
+lysp_module_find_prefix(struct lysp_module *mod, const char *prefix, size_t len)
+{
+    FIND_MODULE(struct lysp_import, mod);
+}
 
-    if (!strncmp(mod->prefix, prefix, len) && mod->prefix[len] == '\0') {
-        /* it is the prefix of the module itself */
-        return mod;
+struct lys_module *
+lys_module_find_prefix(struct lys_module *mod, const char *prefix, size_t len)
+{
+    if (mod->compiled) {
+        FIND_MODULE(struct lysc_import, mod->compiled);
+    } else {
+        FIND_MODULE(struct lysp_import, mod->parsed);
     }
-
-    /* search in imports */
-    LY_ARRAY_FOR(mod->imports, struct lysc_import, imp) {
-        if (!strncmp(imp->prefix, prefix, len) && mod->prefix[len] == '\0') {
-            if (!imp->module->compiled) {
-                /* shouldn't be needed, the function is internally used when
-                 * the imported modules should be also compiled. But for sure
-                 * and possible future optimizations, check it here */
-                lys_compile(imp->module->parsed, 0, &imp->module->compiled);
-            }
-            return imp->module->compiled;
-        }
-    }
-
-    return NULL;
 }
