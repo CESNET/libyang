@@ -743,6 +743,7 @@ typedef enum LYS_VERSION {
 struct lysp_module {
     struct ly_ctx *ctx;              /**< libyang context of the module (mandatory) */
     const char *name;                /**< name of the module (mandatory) */
+    const char *filepath;            /**< path, if the schema was read from a file, NULL in case of reading from memory */
     union {
         /* module */
         const char *ns;              /**< namespace of the module (module - mandatory) */
@@ -754,7 +755,6 @@ struct lysp_module {
                                           in the list is always the last (newest) revision of the module */
     struct lysp_import *imports;     /**< list of imported modules ([sized array](@ref sizedarrays)) */
     struct lysp_include *includes;   /**< list of included submodules ([sized array](@ref sizedarrays)) */
-    const char *filepath;            /**< path, if the schema was read from a file, NULL in case of reading from memory */
     const char *org;                 /**< party/company responsible for the module */
     const char *contact;             /**< contact information for the module */
     const char *dsc;                 /**< description of the module */
@@ -793,7 +793,7 @@ void lysp_module_free(struct lysp_module *module);
  * @brief YANG import-stmt
  */
 struct lysc_import {
-    struct lysc_module *module;      /**< link to the imported module */
+    struct lys_module *module;       /**< link to the imported module */
     const char *prefix;              /**< prefix for the data from the imported schema (mandatory) */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 };
@@ -871,6 +871,7 @@ struct lysc_node {
 struct lysc_module {
     struct ly_ctx *ctx;              /**< libyang context of the module (mandatory) */
     const char *name;                /**< name of the module (mandatory) */
+    const char *filepath;            /**< path, if the schema was read from a file, NULL in case of reading from memory */
     const char *ns;                  /**< namespace of the module (mandatory) */
     const char *prefix;              /**< module prefix (mandatory) */
     struct lysc_revision *revs;      /**< list of the module revisions ([sized array](@ref sizedarrays)), the first revision

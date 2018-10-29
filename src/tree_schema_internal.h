@@ -80,10 +80,13 @@ void lysp_sort_revisions(struct lysp_revision *revs);
  * @param[in] ctx libyang context.
  * @param[in] name Name of the module to load.
  * @param[in] revison Optional revision of the module to load. If NULL, the newest revision is loaded.
+ * @param[in] implement Flag if the loaded module is supposed to be marked as implemented.
+ * @param[in] require_parsed Flag to require parsed module structure in case the module is already in the context,
+ * but only the compiled structure is available.
  * @param[out] mod Parsed module structure.
  * @return LY_ERR value.
  */
-LY_ERR lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, int implement, struct lys_module **mod);
+LY_ERR lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, int implement, int require_parsed, struct lys_module **mod);
 
 /**
  * @brief Parse included submodule into the simply parsed YANG module.

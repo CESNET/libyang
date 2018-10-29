@@ -353,6 +353,24 @@ LY_ERR ly_munmap(void *addr, size_t length);
         LY_CHECK_ERR_RET(!(ARRAY), LOGMEM(CTX), RETVAL); \
         ARRAY = (void*)((uint32_t*)(ARRAY) + 1)
 
+/**
+ * @brief Allocate a ([sized array](@ref sizedarrays)) for the specified number of items.
+ *
+ * Does not set the size information, it is supposed to be incremented via ::LY_ARRAY_INCREMENT
+ * when the items are filled.
+ *
+ * @param[in] CTX libyang context for logging.
+ * @param[in,out] ARRAY Pointer to the array to create.
+ * @param[in] SIZE Number of items the array is supposed to hold. The size of the allocated
+ * space is then counted from the type of the ARRAY, so do not provide placeholder void pointers.
+ * @param[out] RET Variable to store error code.
+ * @param[in] GOTO Label to go in case of error (memory allocation failure).
+ */
+#define LY_ARRAY_CREATE_GOTO(CTX, ARRAY, SIZE, RET, GOTO) \
+        ARRAY = calloc(1, sizeof(uint32_t) + SIZE * sizeof *(ARRAY)); \
+        LY_CHECK_ERR_GOTO(!(ARRAY), LOGMEM(CTX); RET = LY_EMEM, GOTO); \
+        ARRAY = (void*)((uint32_t*)(ARRAY) + 1)
+
 #define LY_ARRAY_INCREMENT(ARRAY) \
         ++(*((uint32_t*)(ARRAY) - 1))
 /**

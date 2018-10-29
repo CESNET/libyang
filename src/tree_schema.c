@@ -34,6 +34,16 @@
 #define FREE_STRING(CTX, STRING, DICT) if (DICT && STRING) {lydict_remove(CTX, STRING);}
 #define FREE_STRINGS(CTX, ARRAY, DICT) {uint64_t c__; LY_ARRAY_FOR(ARRAY, c__){FREE_STRING(CTX, ARRAY[c__], DICT);}LY_ARRAY_FREE(ARRAY);}
 
+#define COMPILE_ARRAY_GOTO(CTX, ARRAY_P, ARRAY_C, OPTIONS, ITER, FUNC, RET, GOTO) \
+    if (ARRAY_P) { \
+        LY_ARRAY_CREATE_GOTO((CTX).mod->ctx, ARRAY_C, LY_ARRAY_SIZE(ARRAY_P), RET, GOTO); \
+        for (ITER = 0; ITER < LY_ARRAY_SIZE(ARRAY_P); ++ITER) { \
+            RET = FUNC(&(CTX), &(ARRAY_P)[ITER], OPTIONS, &(ARRAY_C)[ITER]); \
+            LY_CHECK_GOTO(RET != LY_SUCCESS, GOTO); \
+            LY_ARRAY_INCREMENT(ARRAY_C); \
+        } \
+    }
+
 static void lysp_grp_free(struct ly_ctx *ctx, struct lysp_grp *grp, int dict);
 static void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node, int dict);
 
@@ -993,6 +1003,49 @@ error:
 }
 
 static LY_ERR
+lys_compile_import(struct lysc_ctx *ctx, struct lysp_import *imp_p, int options, struct lysc_import *imp)
+{
+    struct lys_module *mod;
+    struct lysc_module *comp;
+
+    if (options & LYSC_OPT_FREE_SP) {
+        /* just switch the pointers */
+        imp->prefix = imp_p->prefix;
+    } else {
+        /* keep refcounts correct for lysp_module_free() */
+        imp->prefix = lydict_insert(ctx->mod->ctx, imp_p->prefix, 0);
+    }
+    imp->module = imp_p->module;
+
+    /* make sure that we have both versions (lysp_ and lysc_) of the imported module. To import groupings or
+     * typedefs, the lysp_ is needed. To augment or deviate imported module, we need the lysc_ structure */
+    if (!imp->module->parsed) {
+        comp = imp->module->compiled;
+        /* try to get filepath from the compiled version */
+        if (comp->filepath) {
+            mod = (struct lys_module*)lys_parse_path(ctx->mod->ctx, comp->filepath,
+                                 !strcmp(&comp->filepath[strlen(comp->filepath - 4)], ".yin") ? LYS_IN_YIN : LYS_IN_YANG);
+            if (mod != imp->module) {
+                LOGERR(ctx->mod->ctx, LY_EINT, "Filepath \"%s\" of the module \"%s\" does not match.",
+                       comp->filepath, comp->name);
+                mod = NULL;
+            }
+        }
+        if (!mod) {
+            if (lysp_load_module(ctx->mod->ctx, comp->name, comp->revs ? comp->revs[0].date : NULL, 0, 1, &mod)) {
+                LOGERR(ctx->mod->ctx, LY_ENOTFOUND, "Unable to reload \"%s\" module to import it into \"%s\", source data not found.",
+                       comp->name, ctx->mod->name);
+                return LY_ENOTFOUND;
+            }
+        }
+    } else if (!imp->module->compiled) {
+        return lys_compile(imp->module->parsed, options, &imp->module->compiled);
+    }
+
+    return LY_SUCCESS;
+}
+
+static LY_ERR
 lys_compile_feature(struct lysc_ctx *ctx, struct lysp_feature *feature_p, int options, struct lysc_feature *feature)
 {
     unsigned int u;
@@ -1053,16 +1106,8 @@ lys_compile(struct lysp_module *sp, int options, struct lysc_module **sc)
         mod_c->prefix = lydict_insert(sp->ctx, sp->prefix, 0);
     }
 
-    if (sp->features) {
-        /* allocate everything now */
-        LY_ARRAY_CREATE_RET(ctx.mod->ctx, mod_c->features, LY_ARRAY_SIZE(sp->features), LY_EMEM);
-
-        for (u = 0; u < LY_ARRAY_SIZE(sp->features); ++u) {
-            ret = lys_compile_feature(&ctx, &sp->features[u], options, &mod_c->features[u]);
-            LY_CHECK_GOTO(ret != LY_SUCCESS, error);
-            LY_ARRAY_INCREMENT(mod_c->features);
-        }
-    }
+    COMPILE_ARRAY_GOTO(ctx, sp->imports, mod_c->imports, options, u, lys_compile_import, ret, error);
+    COMPILE_ARRAY_GOTO(ctx, sp->features, mod_c->features, options, u, lys_compile_feature, ret, error);
 
     if (options & LYSC_OPT_FREE_SP) {
         lysp_module_free_(sp, 0);
@@ -1072,12 +1117,8 @@ lys_compile(struct lysp_module *sp, int options, struct lysc_module **sc)
     return LY_SUCCESS;
 
 error:
+    lysc_module_free_(mod_c, (options & LYSC_OPT_FREE_SP) ? 0 : 1);
 
-    if (options & LYSC_OPT_FREE_SP) {
-        lysc_module_free_(mod_c, 0);
-    } else {
-        lysc_module_free_(mod_c, 1);
-    }
     return ret;
 }
 
@@ -1097,7 +1138,7 @@ lys_latest_switch(struct lys_module *old, struct lysp_module *new)
 struct lys_module *
 lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const char *revision, int implement)
 {
-    struct lys_module *mod = NULL, *latest;
+    struct lys_module *mod = NULL, *latest, *mod_dup;
     struct lysp_module *latest_p;
     struct lysp_import *imp;
     struct lysp_include *inc;
@@ -1168,16 +1209,26 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const 
         }
     } else { /* module */
         /* check for duplicity in the context */
-        if (ly_ctx_get_module(ctx, mod->parsed->name, mod->parsed->revs ? mod->parsed->revs[0].date : NULL)) {
-            if (mod->parsed->revs) {
-                LOGERR(ctx, LY_EEXIST, "Module \"%s\" of revision \"%s\" is already present in the context.",
-                       mod->parsed->name, mod->parsed->revs[0].date);
+        mod_dup = (struct lys_module*)ly_ctx_get_module(ctx, mod->parsed->name, mod->parsed->revs ? mod->parsed->revs[0].date : NULL);
+        if (mod_dup) {
+            if (mod_dup->parsed) {
+                /* error */
+                if (mod->parsed->revs) {
+                    LOGERR(ctx, LY_EEXIST, "Module \"%s\" of revision \"%s\" is already present in the context.",
+                           mod->parsed->name, mod->parsed->revs[0].date);
+                } else {
+                    LOGERR(ctx, LY_EEXIST, "Module \"%s\" with no revision is already present in the context.",
+                           mod->parsed->name);
+                }
+                lys_module_free(mod, NULL);
+                return NULL;
             } else {
-                LOGERR(ctx, LY_EEXIST, "Module \"%s\" with no revision is already present in the context.",
-                       mod->parsed->name);
+                /* add the parsed data to the currently compiled-only module in the context */
+                mod_dup->parsed = mod->parsed;
+                free(mod);
+                mod = mod_dup;
+                goto finish_parsing;
             }
-            lys_module_free(mod, NULL);
-            return NULL;
         }
 
 #if 0
@@ -1214,11 +1265,12 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const 
         /* add into context */
         ly_set_add(&ctx->list, mod, LY_SET_OPT_USEASLIST);
 
+finish_parsing:
         /* resolve imports and includes */
         mod->parsed->parsing = 1;
         LY_ARRAY_FOR(mod->parsed->imports, u) {
             imp = &mod->parsed->imports[u];
-            if (!imp->module && lysp_load_module(ctx, imp->name, imp->rev[0] ? imp->rev : NULL, 0, &imp->module)) {
+            if (!imp->module && lysp_load_module(ctx, imp->name, imp->rev[0] ? imp->rev : NULL, 0, 0, &imp->module)) {
                 ly_set_rm(&ctx->list, mod, NULL);
                 lys_module_free(mod, NULL);
                 return NULL;

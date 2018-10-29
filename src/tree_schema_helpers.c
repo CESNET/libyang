@@ -120,7 +120,7 @@ lys_module_implement(struct lys_module *mod)
 }
 
 LY_ERR
-lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, int implement, struct lys_module **mod)
+lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, int implement, int require_parsed, struct lys_module **mod)
 {
     const char *submodule_data = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
@@ -133,7 +133,9 @@ lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, int
         *mod = (struct lys_module*)ly_ctx_get_module_latest(ctx, name);
     }
 
-    if (!(*mod)) {
+    if (!(*mod) || (require_parsed && !(*mod)->parsed)) {
+        (*mod) = NULL;
+
         /* check collision with other implemented revision */
         if (implement && ly_ctx_get_module_implemented(ctx, name)) {
             LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE,
@@ -293,7 +295,13 @@ lysc_module_find_prefix(struct lysc_module *mod, const char *prefix, size_t len)
     /* search in imports */
     LY_ARRAY_FOR(mod->imports, struct lysc_import, imp) {
         if (!strncmp(imp->prefix, prefix, len) && mod->prefix[len] == '\0') {
-            return imp->module;
+            if (!imp->module->compiled) {
+                /* shouldn't be needed, the function is internally used when
+                 * the imported modules should be also compiled. But for sure
+                 * and possible future optimizations, check it here */
+                lys_compile(imp->module->parsed, 0, &imp->module->compiled);
+            }
+            return imp->module->compiled;
         }
     }
 
