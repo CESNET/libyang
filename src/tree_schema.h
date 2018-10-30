@@ -871,8 +871,10 @@ struct lysc_module {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 
     uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
-    uint8_t latest_revision:1;       /**< flag if the module was loaded without specific revision and is
-                                          the latest revision found */
+    uint8_t latest_revision:2;       /**< flag to mark the latest available revision:
+                                          1 - the latest revision in searchdirs was not searched yet and this is the
+                                          latest revision in the current context
+                                          2 - searchdirs were searched and this is the latest available revision */
     uint8_t version;                 /**< yang-version (LYS_VERSION values) */
 };
 

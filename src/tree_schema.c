@@ -1281,7 +1281,7 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const 
         LOGERR(ctx, LY_EINVAL, "Invalid schema input format.");
         break;
     }
-    LY_CHECK_RET(ret, NULL);
+    LY_CHECK_ERR_RET(ret, free(mod), NULL);
 
     /* make sure that the newest revision is at position 0 */
     lysp_sort_revisions(mod->parsed->revs);

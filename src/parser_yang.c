@@ -46,6 +46,16 @@
 #define is_yangidentchar(c) ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || \
         c == '_' || c == '-' || c == '.')
 
+#define CHECK_UNIQUENESS(CTX, ARRAY, MEMBER, STMT, IDENT) \
+    if (ARRAY) { \
+        for (unsigned int u = 0; u < LY_ARRAY_SIZE(ARRAY) - 1; ++u) { \
+            if (!strcmp((ARRAY)[u].MEMBER, IDENT)) { \
+                LOGVAL_YANG(CTX, LY_VCODE_DUPIDENT, IDENT, STMT); \
+                return LY_EVALID; \
+            } \
+        } \
+    }
+
 #define INSERT_WORD(CTX, BUF, TARGET, WORD, LEN) \
     if (BUF) {(TARGET) = lydict_insert_zc((CTX)->ctx, WORD);}\
     else {(TARGET) = lydict_insert((CTX)->ctx, WORD, LEN);}
@@ -1304,6 +1314,13 @@ parse_include(struct ly_parser_ctx *ctx, const char **data, struct lysp_module *
     LY_CHECK_RET(ret);
 
     INSERT_WORD(ctx, buf, inc->name, word, word_len);
+
+    /* submodules share the namespace with the module names, so there must not be
+     * a module of the same name in the context, no need for revision matching */
+    if (!strcmp(ctx->mod->name, inc->name) || ly_ctx_get_module_latest(ctx->ctx, inc->name)) {
+        LOGVAL_YANG(ctx, LYVE_SYNTAX_YANG, "Name collision between module and submodule of name \"%s\".", inc->name);
+        return LY_EVALID;
+    }
 
     YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret) {
         switch (kw) {
@@ -4304,8 +4321,10 @@ parse_feature(struct ly_parser_ctx *ctx, const char **data, struct lysp_feature 
     /* get value */
     ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
-
     INSERT_WORD(ctx, buf, feat->name, word, word_len);
+
+    CHECK_UNIQUENESS(ctx, *features, name, "feature", feat->name);
+
     YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret) {
         LY_CHECK_RET(ret);
 
@@ -4359,8 +4378,10 @@ parse_identity(struct ly_parser_ctx *ctx, const char **data, struct lysp_ident *
     /* get value */
     ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
-
     INSERT_WORD(ctx, buf, ident->name, word, word_len);
+
+    CHECK_UNIQUENESS(ctx, *identities, name, "identity", ident->name);
+
     YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret) {
         LY_CHECK_RET(ret);
 
@@ -4414,8 +4435,16 @@ parse_sub_module(struct ly_parser_ctx *ctx, const char **data, struct lysp_modul
     /* (sub)module name */
     ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
-
     INSERT_WORD(ctx, buf, mod->name, word, word_len);
+
+    /* submodules share the namespace with the module names, so there must not be
+     * a submodule of the same name in the context, no need for revision matching */
+    if (ly_ctx_get_submodule(ctx->ctx, NULL, mod->name, NULL)) {
+        LOGVAL_YANG(ctx, LYVE_SYNTAX_YANG, "Name collision between %s of name \"%s\".",
+                    mod->submodule ? "submodules" : "module and submodule", mod->name);
+        return LY_EVALID;
+    }
+
     YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret) {
         LY_CHECK_RET(ret);
 
@@ -4641,6 +4670,7 @@ yang_parse(struct ly_ctx *ctx, const char *data, struct lysp_module **mod_p)
         mod->submodule = 1;
     }
     mod->ctx = ctx;
+    context.mod = mod;
 
     /* substatements */
     ret = parse_sub_module(&context, &data, mod);

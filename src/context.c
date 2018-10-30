@@ -441,10 +441,16 @@ ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *s
 {
     const struct lys_module *mod;
     struct lysp_include *inc;
-    unsigned int index = 0, u;
+    unsigned int v, u;
 
-    while ((mod = ly_ctx_get_module_by_iter(ctx, module, offsetof(struct lysp_module, name), &index))) {
+    assert(submodule);
+
+    for (v = 0; v < ctx->list.count; ++v) {
+        mod = ctx->list.objs[v];
         if (!mod->parsed) {
+            continue;
+        }
+        if (module && strcmp(module, mod->parsed->name)) {
             continue;
         }
 

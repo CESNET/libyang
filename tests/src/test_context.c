@@ -28,6 +28,7 @@
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
+int store = -1; /* negative for infinite logging, positive for limited logging */
 
 /* set to 0 to printing error messages to stderr instead of checking them in code */
 #define ENABLE_LOGGER_CHECKING 1
@@ -36,9 +37,16 @@ static void
 logger(LY_LOG_LEVEL level, const char *msg, const char *path)
 {
     (void) level; /* unused */
-    (void) path; /* unused */
-
-    strncpy(logbuf, msg, BUFSIZE - 1);
+    if (store) {
+        if (path) {
+            snprintf(logbuf, BUFSIZE - 1, "%s %s", msg, path);
+        } else {
+            strncpy(logbuf, msg, BUFSIZE - 1);
+        }
+        if (store > 0) {
+            --store;
+        }
+    }
 }
 
 static int
@@ -46,7 +54,7 @@ logger_setup(void **state)
 {
     (void) state; /* unused */
 #if ENABLE_LOGGER_CHECKING
-    ly_set_log_clb(logger, 0);
+    ly_set_log_clb(logger, 1);
 #endif
     return 0;
 }
@@ -278,7 +286,7 @@ test_models(void **state)
     logbuf_assert("Invalid argument ctx (ly_ctx_get_module_set_id()).");
 
     will_return_always(__wrap_ly_set_add, 0);
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
     assert_int_equal(ctx->module_set_id, ly_ctx_get_module_set_id(ctx));
 
     /* import callback */
@@ -299,6 +307,24 @@ test_models(void **state)
     mod2 = lys_parse_mem_(ctx, "module x {namespace urn:x;prefix x;include xx;revision 2018-10-25;}", LYS_IN_YANG, NULL, 0);
     assert_non_null(mod2);
     assert_ptr_equal(mod1->parsed->includes[0].submodule, mod2->parsed->includes[0].submodule);
+
+    /* name collision of module and submodule */
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule y {belongs-to a;}");
+    assert_null(lys_parse_mem(ctx, "module y {namespace urn:y;prefix y;include y;}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, ly_errcode(ctx));
+    logbuf_assert("Name collision between module and submodule of name \"y\". Line number 1.");
+
+    assert_non_null(lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;include y;}", LYS_IN_YANG));
+    assert_null(lys_parse_mem(ctx, "module y {namespace urn:y;prefix y;}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, ly_errcode(ctx));
+    logbuf_assert("Name collision between module and submodule of name \"y\". Line number 1.");
+
+    store = 1;
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule y {belongs-to b;}");
+    assert_null(lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;include y;}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, ly_errcode(ctx));
+    logbuf_assert("Name collision between submodules of name \"y\". Line number 1.");
+    store = -1;
 
     /* cleanup */
     ly_ctx_destroy(ctx, NULL);

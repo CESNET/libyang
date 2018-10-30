@@ -43,6 +43,7 @@ enum yang_arg {
  */
 struct ly_parser_ctx {
     struct ly_ctx *ctx;
+    struct lysp_module *mod;
     uint64_t line;      /* line number */
     uint64_t indent;    /* current position on the line for YANG indentation */
 };

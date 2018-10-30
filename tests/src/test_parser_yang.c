@@ -650,6 +650,7 @@ mod_renew(struct ly_parser_ctx *ctx, struct lysp_module *mod, uint8_t submodule)
     mod->ctx = ctx->ctx;
     mod->submodule = submodule;
     assert_non_null(mod);
+    ctx->mod = mod;
     return mod;
 }
 
@@ -858,12 +859,14 @@ test_module(void **state)
 
     /* missing mandatory substatements */
     str = " subname {}";
+    lydict_remove(ctx.ctx, mod->name);
     assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
     assert_string_equal("subname", mod->name);
     logbuf_assert("Missing mandatory keyword \"belongs-to\" as a child of \"submodule\". Line number 3.");
     mod = mod_renew(&ctx, mod, 1);
 
     str = " subname {belongs-to name;}";
+    lydict_remove(ctx.ctx, mod->name);
     assert_int_equal(LY_SUCCESS, parse_sub_module(&ctx, &str, mod));
     assert_string_equal("name", mod->belongsto);
     mod = mod_renew(&ctx, mod, 1);
@@ -900,6 +903,7 @@ test_identity(void **state)
     int dict = 1; /* magic variable for FREE macros */
 
     struct ly_parser_ctx ctx;
+    struct lysp_module *mod = NULL;
     struct lysp_ident *ident = NULL;
     const char *str;
 
@@ -932,6 +936,12 @@ test_identity(void **state)
     FREE_ARRAY(ctx.ctx, ident, lysp_ident_free);
     ident = NULL;
 
+    /* identity duplication */
+    str = "module a {namespace urn:a; prefix a; identity a; identity a;}";
+    assert_int_equal(LY_EVALID, yang_parse(ctx.ctx, str, &mod));
+    logbuf_assert("Duplicate identifier \"a\" of identity statement. Line number 1.");
+    assert_null(mod);
+
 #undef TEST_DUP
 
     ly_ctx_destroy(ctx.ctx, NULL);
@@ -944,6 +954,7 @@ test_feature(void **state)
     int dict = 1; /* magic variable for FREE macros */
 
     struct ly_parser_ctx ctx;
+    struct lysp_module *mod = NULL;
     struct lysp_feature *features = NULL;
     const char *str;
 
@@ -975,6 +986,12 @@ test_feature(void **state)
     logbuf_assert("Invalid keyword \"organization\" as a child of \"feature\". Line number 1.");
     FREE_ARRAY(ctx.ctx, features, lysp_feature_free);
     features = NULL;
+
+    /* feature duplication */
+    str = "module a {namespace urn:a; prefix a; feature a; feature a;}";
+    assert_int_equal(LY_EVALID, yang_parse(ctx.ctx, str, &mod));
+    logbuf_assert("Duplicate identifier \"a\" of feature statement. Line number 1.");
+    assert_null(mod);
 
 #undef TEST_DUP
 

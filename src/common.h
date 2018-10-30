@@ -135,6 +135,7 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_INSTMT      LYVE_SYNTAX_YANG, "Invalid keyword \"%s\"."
 #define LY_VCODE_INCHILDSTMT LYVE_SYNTAX_YANG, "Invalid keyword \"%s\" as a child of \"%s\"."
 #define LY_VCODE_DUPSTMT     LYVE_SYNTAX_YANG, "Duplicate keyword \"%s\"."
+#define LY_VCODE_DUPIDENT    LYVE_SYNTAX_YANG, "Duplicate identifier \"%s\" of %s statement."
 #define LY_VCODE_INVAL       LYVE_SYNTAX_YANG, "Invalid value \"%.*s\" of \"%s\"."
 #define LY_VCODE_MISSTMT     LYVE_SYNTAX_YANG, "Missing mandatory keyword \"%s\" as a child of \"%s\"."
 #define LY_VCODE_INORD       LYVE_SYNTAX_YANG, "Invalid keyword \"%s\", it cannot appear after \"%s\"."
@@ -165,7 +166,7 @@ struct ly_ctx {
  * some of the currently present schemas.
  *
  * @param[in] ctx Context where to search
- * @param[in] module Name of the module where the submodule is supposed to belongs-to.
+ * @param[in] module Name of the module where the submodule is supposed to belongs-to. If NULL, the module name is not checked.
  * @param[in] submodule Name of the submodule to find.
  * @param[in] revision Optional revision of the submodule to find. If not specified, the latest revision is returned.
  * @return Pointer to the specified submodule if it is present in the context.
