@@ -464,10 +464,34 @@ lysp_module_free(struct lysp_module *module)
 }
 
 static void
+lysc_ext_instance_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext, int dict)
+{
+    FREE_STRING(ctx, ext->argument, dict);
+    FREE_ARRAY(ctx, ext->exts, lysc_ext_instance_free);
+}
+
+static void
 lysc_iffeature_free(struct ly_ctx *UNUSED(ctx), struct lysc_iffeature *iff, int UNUSED(dict))
 {
     LY_ARRAY_FREE(iff->features);
     free(iff->expr);
+}
+
+static void
+lysc_import_free(struct ly_ctx *ctx, struct lysc_import *import, int dict)
+{
+    /* imported module is freed directly from the context's list */
+    FREE_STRING(ctx, import->prefix, dict);
+    FREE_ARRAY(ctx, import->exts, lysc_ext_instance_free);
+}
+
+static void
+lysc_ident_free(struct ly_ctx *ctx, struct lysc_ident *ident, int dict)
+{
+    FREE_STRING(ctx, ident->name, dict);
+    FREE_ARRAY(ctx, ident->iffeatures, lysc_iffeature_free);
+    LY_ARRAY_FREE(ident->derived);
+    FREE_ARRAY(ctx, ident->exts, lysc_ext_instance_free);
 }
 
 static void
@@ -476,6 +500,7 @@ lysc_feature_free(struct ly_ctx *ctx, struct lysc_feature *feat, int dict)
     FREE_STRING(ctx, feat->name, dict);
     FREE_ARRAY(ctx, feat->iffeatures, lysc_iffeature_free);
     LY_ARRAY_FREE(feat->depfeatures);
+    FREE_ARRAY(ctx, feat->exts, lysc_ext_instance_free);
 }
 
 static void
@@ -490,9 +515,11 @@ lysc_module_free_(struct lysc_module *module, int dict)
     FREE_STRING(ctx, module->ns, dict);
     FREE_STRING(ctx, module->prefix, dict);
 
-
+    FREE_ARRAY(ctx, module->imports, lysc_import_free);
     FREE_ARRAY(ctx, module->features, lysc_feature_free);
+    FREE_ARRAY(ctx, module->identities, lysc_ident_free);
 
+    FREE_ARRAY(ctx, module->exts, lysc_ext_instance_free);
 
     free(module);
 }
@@ -1121,6 +1148,9 @@ lys_compile_identities_derived(struct lysc_ctx *ctx, struct lysp_ident *idents_p
     struct lysc_ident **dident;
 
     for (i = 0; i < LY_ARRAY_SIZE(idents_p); ++i) {
+        if (!idents_p[i].bases) {
+            continue;
+        }
         for (u = 0; u < LY_ARRAY_SIZE(idents_p[i].bases); ++u) {
             s = strchr(idents_p[i].bases[u], ':');
             if (s) {
@@ -1201,7 +1231,7 @@ lys_compile(struct lysp_module *sp, int options, struct lysc_module **sc)
         return LY_EINVAL;
     }
 
-    ctx.mod = mod_c = calloc(1, sizeof *mod_c);
+    ctx.mod = *sc = mod_c = calloc(1, sizeof *mod_c);
     LY_CHECK_ERR_RET(!mod_c, LOGMEM(sp->ctx), LY_EMEM);
     mod_c->ctx = sp->ctx;
     mod_c->version = sp->version;
@@ -1231,7 +1261,6 @@ lys_compile(struct lysp_module *sp, int options, struct lysc_module **sc)
         lysp_module_free_(sp, 0);
     }
 
-    (*sc) = mod_c;
     return LY_SUCCESS;
 
 error:

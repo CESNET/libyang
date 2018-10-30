@@ -203,11 +203,50 @@ test_feature(void **state)
     ly_ctx_destroy(ctx, NULL);
 }
 
+static void
+test_identity(void **state)
+{
+    (void) state; /* unused */
+
+    struct ly_ctx *ctx;
+    const struct lys_module *mod1, *mod2;
+    const char *mod1_str = "module a {namespace urn:a;prefix a; identity a1;}";
+    const char *mod2_str = "module b {namespace urn:b;prefix b; import a {prefix a;}identity b1; identity b2; identity b3 {base b1; base b:b2; base a:a1;} identity b4 {base b:b1; base b3;}}";
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+    assert_non_null(mod1 = lys_parse_mem(ctx, mod1_str, LYS_IN_YANG));
+    assert_non_null(mod2 = lys_parse_mem(ctx, mod2_str, LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod2->parsed, 0, (struct lysc_module**)&mod2->compiled));
+
+    assert_non_null(mod1->compiled);
+    assert_non_null(mod1->compiled->identities);
+    assert_non_null(mod2->compiled);
+    assert_non_null(mod2->compiled->identities);
+
+    assert_non_null(mod1->compiled->identities[0].derived);
+    assert_int_equal(1, LY_ARRAY_SIZE(mod1->compiled->identities[0].derived));
+    assert_ptr_equal(mod1->compiled->identities[0].derived[0], &mod2->compiled->identities[2]);
+    assert_non_null(mod2->compiled->identities[0].derived);
+    assert_int_equal(2, LY_ARRAY_SIZE(mod2->compiled->identities[0].derived));
+    assert_ptr_equal(mod2->compiled->identities[0].derived[0], &mod2->compiled->identities[2]);
+    assert_ptr_equal(mod2->compiled->identities[0].derived[1], &mod2->compiled->identities[3]);
+    assert_non_null(mod2->compiled->identities[1].derived);
+    assert_int_equal(1, LY_ARRAY_SIZE(mod2->compiled->identities[1].derived));
+    assert_ptr_equal(mod2->compiled->identities[1].derived[0], &mod2->compiled->identities[2]);
+    assert_non_null(mod2->compiled->identities[2].derived);
+    assert_int_equal(1, LY_ARRAY_SIZE(mod2->compiled->identities[2].derived));
+    assert_ptr_equal(mod2->compiled->identities[2].derived[0], &mod2->compiled->identities[3]);
+
+
+    ly_ctx_destroy(ctx, NULL);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup(test_module, logger_setup),
         cmocka_unit_test_setup(test_feature, logger_setup),
+        cmocka_unit_test_setup(test_identity, logger_setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
