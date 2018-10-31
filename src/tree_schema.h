@@ -178,7 +178,7 @@ extern "C" {
 #if __STDC_VERSION__ >= 201112L
 #define TYPES_COMPATIBLE(type1, type2) _Generic(*(type1), struct type2: 1, default: 0)
 #else
-#define TYPES_COMPATIBLE(type1, type2) __builtin_types_compatible_p(typeof(*(type1)), struct type2)
+#define TYPES_COMPATIBLE(type1, type2) __builtin_types_compatible_p(__typeof__(*(type1)), struct type2)
 #endif
 
 #define LY_TREE_DFS_END(START, NEXT, ELEM)                                    \
