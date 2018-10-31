@@ -895,10 +895,10 @@ lyp_check_pattern(struct ly_ctx *ctx, const char *pattern, pcre **pcre_precomp)
 
         /* make the space in the string and replace the block (but we cannot include brackets if it was already enclosed in them) */
         for (idx2 = 0, count = 0; idx2 < start; ++idx2) {
-            if ((perl_regex[idx2] == '[') && (!idx2 || (perl_regex[-1] != '\\'))) {
+            if ((perl_regex[idx2] == '[') && (!idx2 || (perl_regex[idx2 - 1] != '\\'))) {
                 ++count;
             }
-            if ((perl_regex[idx2] == ']') && (!idx2 || (perl_regex[-1] != '\\'))) {
+            if ((perl_regex[idx2] == ']') && (!idx2 || (perl_regex[idx2 - 1] != '\\'))) {
                 --count;
             }
         }
