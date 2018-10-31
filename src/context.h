@@ -264,6 +264,23 @@ const struct lys_module *ly_ctx_get_module_latest_ns(const struct ly_ctx *ctx, c
 const struct lys_module *ly_ctx_get_module_implemented_ns(const struct ly_ctx *ctx, const char *ns);
 
 /**
+ * @brief Reset cached latest revision information of the schemas in the context.
+ *
+ * When a (sub)module is imported/included without revision, the latest revision is
+ * searched. libyang searches for the latest revision in searchdirs and/or via provided
+ * import callback ly_module_imp_clb() just once. Then it is expected that the content
+ * of searchdirs or data returned by the callback does not change. So when it changes,
+ * it is necessary to force searching for the latest revision in case of loading another
+ * module, which what this function does.
+ *
+ * The latest revision information is also reset when the searchdirs set changes via
+ * ly_ctx_set_searchdir().
+ *
+ * @param[in] ctx libyang context where the latest revision information is going to be reset.
+ */
+void ly_ctx_reset_latests(struct ly_ctx *ctx);
+
+/**
  * @brief Free all internal structures of the specified context.
  *
  * The function should be used before terminating the application to destroy

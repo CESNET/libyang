@@ -213,7 +213,7 @@ lysp_load_submodule(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_inc
 
     /* Try to get submodule from the context, if already present */
     inc->submodule = ly_ctx_get_submodule(ctx, mod->name, inc->name, inc->rev[0] ? inc->rev : NULL);
-    if (!inc->submodule) {
+    if (!inc->submodule || (!inc->rev[0] && inc->submodule->latest_revision != 2)) {
         /* submodule not present in the context, get the input data and parse it */
         if (!(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
 search_clb:

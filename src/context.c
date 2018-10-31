@@ -95,6 +95,9 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
             return LY_EMEM;
         }
 
+        /* new searchdir - possibly more latest revision available */
+        ly_ctx_reset_latests(ctx);
+
         return LY_SUCCESS;
     } else {
         /* consider that no change is not actually an error */
@@ -469,6 +472,32 @@ ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *s
     }
 
     return NULL;
+}
+
+API void
+ly_ctx_reset_latests(struct ly_ctx *ctx)
+{
+    unsigned int u,v ;
+    struct lys_module *mod;
+
+    for (u = 0; u < ctx->list.count; ++u) {
+        mod = ctx->list.objs[u];
+        if (mod->compiled && mod->compiled->latest_revision == 2) {
+            mod->compiled->latest_revision = 1;
+        }
+        if (mod->parsed) {
+            if (mod->parsed->latest_revision == 2) {
+                mod->parsed->latest_revision = 1;
+            }
+            if (mod->parsed->includes) {
+                for (v = 0; v < LY_ARRAY_SIZE(mod->parsed->includes); ++v) {
+                    if (mod->parsed->includes[v].submodule->latest_revision == 2) {
+                        mod->parsed->includes[v].submodule->latest_revision = 1;
+                    }
+                }
+            }
+        }
+    }
 }
 
 API void

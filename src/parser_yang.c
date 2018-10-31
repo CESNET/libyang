@@ -4431,19 +4431,12 @@ parse_sub_module(struct ly_parser_ctx *ctx, const char **data, struct lysp_modul
     size_t word_len;
     enum yang_keyword kw, prev_kw = 0;
     enum yang_module_stmt mod_stmt = Y_MOD_MODULE_HEADER;
+    struct lysp_module *dup;
 
     /* (sub)module name */
     ret = get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len);
     LY_CHECK_RET(ret);
     INSERT_WORD(ctx, buf, mod->name, word, word_len);
-
-    /* submodules share the namespace with the module names, so there must not be
-     * a submodule of the same name in the context, no need for revision matching */
-    if (ly_ctx_get_submodule(ctx->ctx, NULL, mod->name, NULL)) {
-        LOGVAL_YANG(ctx, LYVE_SYNTAX_YANG, "Name collision between %s of name \"%s\".",
-                    mod->submodule ? "submodules" : "module and submodule", mod->name);
-        return LY_EVALID;
-    }
 
     YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret) {
         LY_CHECK_RET(ret);
@@ -4636,6 +4629,15 @@ parse_sub_module(struct ly_parser_ctx *ctx, const char **data, struct lysp_modul
             LOGVAL_YANG(ctx, LY_VCODE_MISSTMT, "prefix", "module");
             return LY_EVALID;
         }
+    }
+
+    /* submodules share the namespace with the module names, so there must not be
+     * a submodule of the same name in the context, no need for revision matching */
+    dup = ly_ctx_get_submodule(ctx->ctx, NULL, mod->name, NULL);
+    if (dup && (!mod->submodule || strcmp(dup->belongsto, mod->belongsto))) {
+        LOGVAL_YANG(ctx, LYVE_SYNTAX_YANG, "Name collision between %s of name \"%s\".",
+                    mod->submodule ? "submodules" : "module and submodule", mod->name);
+        return LY_EVALID;
     }
 
     return ret;
