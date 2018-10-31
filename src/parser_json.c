@@ -1398,7 +1398,7 @@ empty:
         if (!result) {
             if (reply_parent) {
                 result = next->child;
-                iter = next->child->prev;
+                iter = next->child ? next->child->prev : NULL;
             } else {
                 for (iter = next; iter && iter->prev->next; iter = iter->prev);
                 result = iter;
