@@ -333,6 +333,19 @@ test_models(void **state)
     assert_non_null(mod2);
     assert_string_equal("2018-10-31", mod2->parsed->includes[0].submodule->revs[0].date);
 
+    /* reloading module in case only the compiled module resists in the context */
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module w {namespace urn:w;prefix w;revision 2018-10-24;}");
+    mod1 = lys_parse_mem(ctx, "module w {namespace urn:w;prefix w;revision 2018-10-24;}", LYS_IN_YANG);
+    assert_non_null(mod1);
+    assert_int_equal(LY_SUCCESS, lys_compile(mod1, LYSC_OPT_FREE_SP));
+    assert_non_null(mod1->compiled);
+    assert_null(mod1->parsed);
+    mod2 = lys_parse_mem(ctx, "module z {namespace urn:z;prefix z;import w {prefix w;revision-date 2018-10-24;}}", LYS_IN_YANG);
+    assert_non_null(mod2);
+    /* mod1->parsed is necessary to compile mod2 because of possible groupings, typedefs, ... */
+    assert_int_equal(LY_SUCCESS, lys_compile(mod2, 0));
+    assert_non_null(mod1->parsed);
+    assert_string_equal("w", mod1->parsed->name);
 
     /* cleanup */
     ly_ctx_destroy(ctx, NULL);
