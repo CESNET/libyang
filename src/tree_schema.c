@@ -38,9 +38,9 @@
     if (ARRAY_P) { \
         LY_ARRAY_CREATE_GOTO((CTX)->mod->ctx, ARRAY_C, LY_ARRAY_SIZE(ARRAY_P), RET, GOTO); \
         for (ITER = 0; ITER < LY_ARRAY_SIZE(ARRAY_P); ++ITER) { \
+            LY_ARRAY_INCREMENT(ARRAY_C); \
             RET = FUNC(CTX, &(ARRAY_P)[ITER], OPTIONS, &(ARRAY_C)[ITER]); \
             LY_CHECK_GOTO(RET != LY_SUCCESS, GOTO); \
-            LY_ARRAY_INCREMENT(ARRAY_C); \
         } \
     }
 
@@ -1042,7 +1042,7 @@ lys_compile_iffeature(struct lysc_ctx *ctx, const char **value, int UNUSED(optio
             LY_CHECK_ERR_GOTO(!f,
                               LOGVAL(ctx->mod->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
                                      "Invalid value \"%s\" of if-feature - unable to find feature \"%.*s\".", *value, j - i, &c[i]);
-                              rc = LY_EINVAL,
+                              rc = LY_EVALID,
                               error)
             iff->features[f_size] = f;
             LY_ARRAY_INCREMENT(iff->features);

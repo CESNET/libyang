@@ -37,7 +37,7 @@ logger(LY_LOG_LEVEL level, const char *msg, const char *path)
 {
     (void) level; /* unused */
 
-    if (path) {
+    if (path && path[0]) {
         snprintf(logbuf, BUFSIZE - 1, "%s %s", msg, path);
     } else {
         strncpy(logbuf, msg, BUFSIZE - 1);
@@ -136,18 +136,19 @@ test_feature(void **state)
 
     str = "module a {namespace urn:a;prefix a;yang-version 1.1;\n"
           "feature f1 {description test1;reference test2;status current;} feature f2; feature f3;\n"
-          "feature f4 {if-feature \"f1 or f2\";}\n"
-          "feature f5 {if-feature \"f1 and f2\";}\n"
+          "feature orfeature {if-feature \"f1 or f2\";}\n"
+          "feature andfeature {if-feature \"f1 and f2\";}\n"
           "feature f6 {if-feature \"not f1\";}\n"
           "feature f7 {if-feature \"(f2 and f3) or (not f1)\";}\n"
-          "feature f8 {if-feature \"f1 or f2 or f3 or f4 or f5\";}}";
+          "feature f8 {if-feature \"f1 or f2 or f3 or orfeature or andfeature\";}\n"
+          "feature f9 {if-feature \"not not f1\";}}";
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
     assert_int_equal(LY_SUCCESS, yang_parse(ctx, str, &mod.parsed));
     assert_int_equal(LY_SUCCESS, lys_compile(mod.parsed, 0, &mod.compiled));
     assert_non_null(mod.compiled);
     assert_non_null(mod.compiled->features);
-    assert_int_equal(8, LY_ARRAY_SIZE(mod.compiled->features));
+    assert_int_equal(9, LY_ARRAY_SIZE(mod.compiled->features));
     /* all features are disabled by default */
     LY_ARRAY_FOR(mod.compiled->features, struct lysc_feature, f) {
         assert_int_equal(0, lysc_feature_value(f));
@@ -157,22 +158,22 @@ test_feature(void **state)
     f1 = &mod.compiled->features[0];
     assert_int_equal(1, lysc_feature_value(f1));
 
-    /* enable f4 */
+    /* enable orfeature */
     f = &mod.compiled->features[3];
     assert_int_equal(0, lysc_feature_value(f));
-    assert_int_equal(LY_SUCCESS, lys_feature_enable(&mod, "f4"));
+    assert_int_equal(LY_SUCCESS, lys_feature_enable(&mod, "orfeature"));
     assert_int_equal(1, lysc_feature_value(f));
 
-    /* enable f5 - no possible since f2 is disabled */
+    /* enable andfeature - no possible since f2 is disabled */
     f = &mod.compiled->features[4];
     assert_int_equal(0, lysc_feature_value(f));
-    assert_int_equal(LY_EDENIED, lys_feature_enable(&mod, "f5"));
-    logbuf_assert("Feature \"f5\" cannot be enabled since it is disabled by its if-feature condition(s).");
+    assert_int_equal(LY_EDENIED, lys_feature_enable(&mod, "andfeature"));
+    logbuf_assert("Feature \"andfeature\" cannot be enabled since it is disabled by its if-feature condition(s).");
     assert_int_equal(0, lysc_feature_value(f));
 
     /* first enable f2, so f5 can be enabled then */
     assert_int_equal(LY_SUCCESS, lys_feature_enable(&mod, "f2"));
-    assert_int_equal(LY_SUCCESS, lys_feature_enable(&mod, "f5"));
+    assert_int_equal(LY_SUCCESS, lys_feature_enable(&mod, "andfeature"));
     assert_int_equal(1, lysc_feature_value(f));
 
     /* f1 is enabled, so f6 cannot be enabled */
@@ -182,12 +183,12 @@ test_feature(void **state)
     logbuf_assert("Feature \"f6\" cannot be enabled since it is disabled by its if-feature condition(s).");
     assert_int_equal(0, lysc_feature_value(f));
 
-    /* so disable f1 - f5 will became also disabled */
+    /* so disable f1 - andfeature will became also disabled */
     assert_int_equal(1, lysc_feature_value(f1));
     assert_int_equal(LY_SUCCESS, lys_feature_disable(&mod, "f1"));
     assert_int_equal(0, lysc_feature_value(f1));
     assert_int_equal(0, lysc_feature_value(&mod.compiled->features[4]));
-    /* while f4 is stille enabled */
+    /* while orfeature is stille enabled */
     assert_int_equal(1, lysc_feature_value(&mod.compiled->features[3]));
     /* and finally f6 can be enabled */
     assert_int_equal(LY_SUCCESS, lys_feature_enable(&mod, "f6"));
@@ -198,8 +199,48 @@ test_feature(void **state)
     /* long evaluation of f8 to need to reallocate internal stack for operators */
     assert_int_equal(1, lysc_iffeature_value(&mod.compiled->features[7].iffeatures[0]));
 
+    /* double negation of disabled f1 -> disabled */
+    assert_int_equal(0, lysc_iffeature_value(&mod.compiled->features[8].iffeatures[0]));
+
     lysc_module_free(mod.compiled, NULL);
     lysp_module_free(mod.parsed);
+
+    /* some invalid expressions */
+    assert_int_equal(LY_SUCCESS, yang_parse(ctx, "module b{yang-version 1.1;namespace urn:b; prefix b; feature f{if-feature f1;}}", &mod.parsed));
+    assert_int_equal(LY_EVALID, lys_compile(mod.parsed, 0, &mod.compiled));
+    logbuf_assert("Invalid value \"f1\" of if-feature - unable to find feature \"f1\".");
+    lysp_module_free(mod.parsed);
+
+    assert_int_equal(LY_SUCCESS, yang_parse(ctx, "module b{yang-version 1.1;namespace urn:b; prefix b; feature f1; feature f2{if-feature 'f and';}}", &mod.parsed));
+    assert_int_equal(LY_EVALID, lys_compile(mod.parsed, 0, &mod.compiled));
+    logbuf_assert("Invalid value \"f and\" of if-feature - unexpected end of expression.");
+    lysp_module_free(mod.parsed);
+
+    assert_int_equal(LY_SUCCESS, yang_parse(ctx, "module b{yang-version 1.1;namespace urn:b; prefix b; feature f{if-feature 'or';}}", &mod.parsed));
+    assert_int_equal(LY_EVALID, lys_compile(mod.parsed, 0, &mod.compiled));
+    logbuf_assert("Invalid value \"or\" of if-feature - unexpected end of expression.");
+    lysp_module_free(mod.parsed);
+
+    assert_int_equal(LY_SUCCESS, yang_parse(ctx, "module b{yang-version 1.1;namespace urn:b; prefix b; feature f1; feature f2{if-feature '(f1';}}", &mod.parsed));
+    assert_int_equal(LY_EVALID, lys_compile(mod.parsed, 0, &mod.compiled));
+    logbuf_assert("Invalid value \"(f1\" of if-feature - non-matching opening and closing parentheses.");
+    lysp_module_free(mod.parsed);
+
+    assert_int_equal(LY_SUCCESS, yang_parse(ctx, "module b{yang-version 1.1;namespace urn:b; prefix b; feature f1; feature f2{if-feature 'f1)';}}", &mod.parsed));
+    assert_int_equal(LY_EVALID, lys_compile(mod.parsed, 0, &mod.compiled));
+    logbuf_assert("Invalid value \"f1)\" of if-feature - non-matching opening and closing parentheses.");
+    lysp_module_free(mod.parsed);
+
+    assert_int_equal(LY_SUCCESS, yang_parse(ctx, "module b{yang-version 1.1;namespace urn:b; prefix b; feature f1; feature f2{if-feature ---;}}", &mod.parsed));
+    assert_int_equal(LY_EVALID, lys_compile(mod.parsed, 0, &mod.compiled));
+    logbuf_assert("Invalid value \"---\" of if-feature - unable to find feature \"---\".");
+    lysp_module_free(mod.parsed);
+
+    assert_int_equal(LY_SUCCESS, yang_parse(ctx, "module b{namespace urn:b; prefix b; feature f1; feature f2{if-feature 'not f1';}}", &mod.parsed));
+    assert_int_equal(LY_EVALID, lys_compile(mod.parsed, 0, &mod.compiled));
+    logbuf_assert("Invalid value \"not f1\" of if-feature - YANG 1.1 expression in YANG 1.0 module.");
+    lysp_module_free(mod.parsed);
+
     ly_ctx_destroy(ctx, NULL);
 }
 
@@ -236,7 +277,6 @@ test_identity(void **state)
     assert_non_null(mod2->compiled->identities[2].derived);
     assert_int_equal(1, LY_ARRAY_SIZE(mod2->compiled->identities[2].derived));
     assert_ptr_equal(mod2->compiled->identities[2].derived[0], &mod2->compiled->identities[3]);
-
 
     ly_ctx_destroy(ctx, NULL);
 }
