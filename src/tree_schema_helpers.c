@@ -11,14 +11,20 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
-#define _XOPEN_SOURCE
+#include "common.h"
 
 #include <ctype.h>
+#include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <limits.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <time.h>
 
 #include "libyang.h"
-#include "common.h"
 #include "tree_schema_internal.h"
 
 LY_ERR
@@ -119,12 +125,139 @@ lys_module_implement(struct lys_module *mod)
     }
 }
 
+struct lysp_load_module_check_data {
+    const char *name;
+    const char *revision;
+    const char *path;
+    const char* submoduleof;
+};
+
+static LY_ERR
+lysp_load_module_check(struct ly_ctx *ctx, struct lysp_module *mod, void *data)
+{
+    struct lysp_load_module_check_data *info = data;
+    const char *filename, *dot, *rev;
+    size_t len;
+
+    if (info->name) {
+        /* check name of the parsed model */
+        if (strcmp(info->name, mod->name)) {
+            LOGERR(ctx, LY_EINVAL, "Unexpected module \"%s\" parsed instead of \"%s\").", mod->name, info->name);
+            return LY_EINVAL;
+        }
+    }
+    if (info->revision) {
+        /* check revision of the parsed model */
+        if (!mod->revs || strcmp(info->revision, mod->revs[0].date)) {
+            LOGERR(ctx, LY_EINVAL, "Module \"%s\" parsed with the wrong revision (\"%s\" instead \"%s\").", mod->name,
+                   mod->revs[0].date, info->revision);
+            return LY_EINVAL;
+        }
+    }
+    if (info->submoduleof) {
+        /* check that we have really a submodule */
+        if (!mod->submodule) {
+            /* submodule is not a submodule */
+            LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Included \"%s\" schema from \"%s\" is actually not a submodule.",
+                   mod->name, info->submoduleof);
+            return LY_EVALID;
+        }
+        /* check that the submodule belongs-to our module */
+        if (strcmp(info->submoduleof, mod->belongsto)) {
+            LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Included \"%s\" submodule from \"%s\" belongs-to a different module \"%s\".",
+                   mod->name, info->submoduleof, mod->belongsto);
+            return LY_EVALID;
+        }
+        /* check circular dependency */
+        if (mod->parsing) {
+            LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "A circular dependency (include) for module \"%s\".", mod->name);
+            return LY_EVALID;
+        }
+    }
+    if (info->path) {
+        /* check that name and revision match filename */
+        filename = strrchr(info->path, '/');
+        if (!filename) {
+            filename = info->path;
+        } else {
+            filename++;
+        }
+        /* name */
+        len = strlen(mod->name);
+        rev = strchr(filename, '@');
+        dot = strrchr(info->path, '.');
+        if (strncmp(filename, mod->name, len) ||
+                ((rev && rev != &filename[len]) || (!rev && dot != &filename[len]))) {
+            LOGWRN(ctx, "File name \"%s\" does not match module name \"%s\".", filename, mod->name);
+        }
+        /* revision */
+        if (rev) {
+            len = dot - ++rev;
+            if (!mod->revs || len != 10 || strncmp(mod->revs[0].date, rev, len)) {
+                LOGWRN(ctx, "File name \"%s\" does not match module revision \"%s\".", filename,
+                       mod->revs ? mod->revs[0].date : "none");
+            }
+        }
+    }
+    return LY_SUCCESS;
+}
+
+LY_ERR
+lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, int implement,
+                     struct lys_module **result)
+{
+    int fd;
+    char *filepath = NULL;
+    LYS_INFORMAT format;
+    struct lys_module *mod = NULL;
+    LY_ERR ret = LY_SUCCESS;
+    struct lysp_load_module_check_data check_data = {0};
+
+    LY_CHECK_RET(lys_search_localfile(ly_ctx_get_searchdirs(ctx), !(ctx->flags & LY_CTX_DISABLE_SEARCHDIR_CWD), name, revision,
+                                      &filepath, &format));
+    LY_CHECK_ERR_RET(!filepath, LOGERR(ctx, LY_ENOTFOUND, "Data model \"%s%s%s\" not found in local searchdirs.",
+                                       name, revision ? "@" : "", revision ? revision : ""), LY_ENOTFOUND);
+
+
+    LOGVRB("Loading schema from \"%s\" file.", filepath);
+
+    /* open the file */
+    fd = open(filepath, O_RDONLY);
+    LY_CHECK_ERR_GOTO(fd < 0, LOGERR(ctx, LY_ESYS, "Unable to open data model file \"%s\" (%s).",
+                                     filepath, strerror(errno)); ret = LY_ESYS, cleanup);
+
+    check_data.name = name;
+    check_data.revision = revision;
+    check_data.path = filepath;
+    mod = lys_parse_fd_(ctx, fd, format, implement,
+                        lysp_load_module_check, &check_data);
+    close(fd);
+    LY_CHECK_ERR_GOTO(!mod, ly_errcode(ctx), cleanup);
+
+    if (!mod->parsed->filepath) {
+        char rpath[PATH_MAX];
+        if (realpath(filepath, rpath) != NULL) {
+            mod->parsed->filepath = lydict_insert(ctx, rpath, 0);
+        } else {
+            mod->parsed->filepath = lydict_insert(ctx, filepath, 0);
+        }
+    }
+
+    *result = mod;
+
+    /* success */
+cleanup:
+    free(filepath);
+    return ret;
+}
+
 LY_ERR
 lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, int implement, int require_parsed, struct lys_module **mod)
 {
-    const char *submodule_data = NULL;
+    const char *module_data = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
-    void (*submodule_data_free)(void *module_data, void *user_data) = NULL;
+    void (*module_data_free)(void *module_data, void *user_data) = NULL;
+    struct lysp_load_module_check_data check_data = {0};
 
     /* try to get the module from the context */
     if (revision) {
@@ -143,13 +276,19 @@ lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, int
             return LY_EDENIED;
         }
 
-        /* submodule not present in the context, get the input data and parse it */
+        /* module not present in the context, get the input data and parse it */
         if (!(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
 search_clb:
             if (ctx->imp_clb) {
                 if (ctx->imp_clb(name, revision, NULL, NULL, ctx->imp_clb_data,
-                                      &format, &submodule_data, &submodule_data_free) == LY_SUCCESS) {
-                    *mod = lys_parse_mem_(ctx, submodule_data, format, revision, implement);
+                                      &format, &module_data, &module_data_free) == LY_SUCCESS) {
+                    check_data.name = name;
+                    check_data.revision = revision;
+                    *mod = lys_parse_mem_(ctx, module_data, format, implement,
+                                          lysp_load_module_check, &check_data);
+                    if (module_data_free) {
+                        module_data_free((void*)module_data, ctx->imp_clb_data);
+                    }
                 }
             }
             if (!(*mod) && !(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
@@ -164,6 +303,12 @@ search_file:
             if (!(*mod) && (ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
                 goto search_clb;
             }
+        }
+
+        if (!revision && ((*mod)->parsed->latest_revision == 1)) {
+            /* update the latest_revision flag - here we have selected the latest available schema,
+             * consider that even the callback provides correct latest revision */
+            (*mod)->parsed->latest_revision = 2;
         }
     } else {
         /* we have module from the current context */
@@ -183,21 +328,13 @@ search_file:
         }
     }
     if (!(*mod)) {
-        if (ly_errcode(ctx) != LY_EVALID) {
-            LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_INVAL, strlen(name), name, "import");
-        } else {
-            LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Loading \"%s\" module failed.", name);
-        }
+        LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "%s \"%s\" module failed.", implement ? "Loading" : "Importing", name);
         return LY_EVALID;
     }
 
     if (implement) {
         /* mark the module implemented, check for collision was already done */
         lys_module_implement(*mod);
-    }
-    if (!revision && ((*mod)->parsed->latest_revision == 1)) {
-        /* update the latest_revision flag - here we have selected the latest available schema */
-        (*mod)->parsed->latest_revision = 2;
     }
 
     return LY_SUCCESS;
@@ -210,6 +347,7 @@ lysp_load_submodule(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_inc
     const char *submodule_data = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
     void (*submodule_data_free)(void *module_data, void *user_data) = NULL;
+    struct lysp_load_module_check_data check_data = {0};
 
     /* Try to get submodule from the context, if already present */
     inc->submodule = ly_ctx_get_submodule(ctx, mod->name, inc->name, inc->rev[0] ? inc->rev : NULL);
@@ -220,7 +358,14 @@ search_clb:
             if (ctx->imp_clb) {
                 if (ctx->imp_clb(mod->name, NULL, inc->name, inc->rev[0] ? inc->rev : NULL, ctx->imp_clb_data,
                                       &format, &submodule_data, &submodule_data_free) == LY_SUCCESS) {
-                    submod = lys_parse_mem_(ctx, submodule_data, format, inc->rev[0] ? inc->rev : NULL, mod->implemented);
+                    check_data.name = inc->name;
+                    check_data.revision = inc->rev[0] ? inc->rev : NULL;
+                    check_data.submoduleof = mod->name;
+                    submod = lys_parse_mem_(ctx, submodule_data, format, mod->implemented,
+                                            lysp_load_module_check, &check_data);
+                    if (submodule_data_free) {
+                        submodule_data_free((void*)submodule_data, ctx->imp_clb_data);
+                    }
                 }
             }
             if (!submod && !(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
@@ -237,30 +382,12 @@ search_file:
             }
         }
         if (submod) {
-            /* check that we have really a submodule */
-            if (!submod->parsed->submodule) {
-                /* submodule is not a submodule */
-                LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Included \"%s\" schema from \"%s\" is actually not a submodule.",
-                       inc->name, mod->name);
-                lys_module_free(submod, NULL);
-                /* fix list of modules in context, since it was already changed */
-                --ctx->list.count;
-                return LY_EVALID;
+            if (!inc->rev[0] && (submod->parsed->latest_revision == 1)) {
+                /* update the latest_revision flag - here we have selected the latest available schema,
+                 * consider that even the callback provides correct latest revision */
+                submod->parsed->latest_revision = 2;
             }
-            /* check that the submodule belongs-to our module */
-            if (strcmp(mod->name, submod->parsed->belongsto)) {
-                LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Included \"%s\" submodule from \"%s\" belongs-to a different module \"%s\".",
-                       inc->name, mod->name, submod->parsed->belongsto);
-                lys_module_free(submod, NULL);
-                return LY_EVALID;
-            }
-            /* check circular dependency */
-            if (submod->parsed->parsing) {
-                LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "A circular dependency (include) for module \"%s\".",
-                       submod->parsed->name);
-                lys_module_free(submod, NULL);
-                return LY_EVALID;
-            }
+
             inc->submodule = submod->parsed;
             ++inc->submodule->refcount;
             free(submod);
@@ -269,11 +396,7 @@ search_file:
         ++inc->submodule->refcount;
     }
     if (!inc->submodule) {
-        if (ly_errcode(ctx) != LY_EVALID) {
-            LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Invalid value \"%s\" of include statement.", inc->name);
-        } else {
-            LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Including \"%s\" submodule into \"%s\" failed.", inc->name, mod->name);
-        }
+        LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Including \"%s\" submodule into \"%s\" failed.", inc->name, mod->name);
         return LY_EVALID;
     }
 

@@ -1291,13 +1291,14 @@ lys_latest_switch(struct lys_module *old, struct lysp_module *new)
 }
 
 struct lys_module *
-lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const char *revision, int implement)
+lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int implement,
+               LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, void *data), void *check_data)
 {
     struct lys_module *mod = NULL, *latest, *mod_dup;
     struct lysp_module *latest_p;
     struct lysp_import *imp;
     struct lysp_include *inc;
-    LY_ERR ret;
+    LY_ERR ret = LY_EINVAL;
     unsigned int u, i;
 
     LY_CHECK_ARG_RET(ctx, ctx, data, NULL);
@@ -1333,14 +1334,8 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const 
         mod->parsed->implemented = 1;
     }
 
-    if (revision) {
-        /* check revision of the parsed model */
-        if (!mod->parsed->revs || strcmp(revision, mod->parsed->revs[0].date)) {
-            LOGERR(ctx, LY_EINVAL, "Module \"%s\" parsed with the wrong revision (\"%s\" instead \"%s\").",
-                   mod->parsed->name, mod->parsed->revs[0].date, revision);
-            lys_module_free(mod, NULL);
-            return NULL;
-        }
+    if (custom_check) {
+        LY_CHECK_ERR_RET(custom_check(ctx, mod->parsed, check_data), lys_module_free(mod, NULL), NULL);
     }
 
     if (mod->parsed->submodule) { /* submodule */
@@ -1350,17 +1345,17 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const 
             if (mod->parsed->revs) {
                 if (!latest_p->revs) {
                     /* latest has no revision, so mod is anyway newer */
-                    mod->parsed->latest_revision = revision ? latest_p->latest_revision : 1;
+                    mod->parsed->latest_revision = latest_p->latest_revision;
                     latest_p->latest_revision = 0;
                 } else {
                     if (strcmp(mod->parsed->revs[0].date, latest_p->revs[0].date) > 0) {
-                        mod->parsed->latest_revision = revision ? latest_p->latest_revision : 1;
+                        mod->parsed->latest_revision = latest_p->latest_revision;
                         latest_p->latest_revision = 0;
                     }
                 }
             }
         } else {
-            mod->parsed->latest_revision = revision ? 1 : 2;
+            mod->parsed->latest_revision = 1;
         }
     } else { /* module */
         /* check for duplicity in the context */
@@ -1459,7 +1454,7 @@ lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
 {
     struct lys_module *result;
 
-    result = lys_parse_mem_(ctx, data, format, NULL, 1);
+    result = lys_parse_mem_(ctx, data, format, 1, NULL, NULL);
     if (result && result->parsed->submodule) {
         LOGERR(ctx, LY_EDENIED, "Input data contains submodule \"%s\" which cannot be parsed directly without its main module.",
                result->parsed->name);
@@ -1493,7 +1488,8 @@ lys_parse_set_filename(struct ly_ctx *ctx, const char **filename, int fd)
 }
 
 struct lys_module *
-lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const char *revision, int implement)
+lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int implement,
+              LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, void *data), void *check_data)
 {
     struct lys_module *mod;
     size_t length;
@@ -1511,7 +1507,7 @@ lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const char *revis
         return NULL;
     }
 
-    mod = lys_parse_mem_(ctx, addr, format, revision, implement);
+    mod = lys_parse_mem_(ctx, addr, format, implement, custom_check, check_data);
     ly_munmap(addr, length);
 
     if (mod && !mod->parsed->filepath) {
@@ -1526,7 +1522,7 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
 {
     struct lys_module *result;
 
-    result = lys_parse_fd_(ctx, fd, format, NULL, 1);
+    result = lys_parse_fd_(ctx, fd, format, 1, NULL, NULL);
     if (result && result->parsed->submodule) {
         LOGERR(ctx, LY_EDENIED, "Input data contains submodule \"%s\" which cannot be parsed directly without its main module.",
                result->parsed->name);
@@ -1537,7 +1533,8 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
 }
 
 struct lys_module *
-lys_parse_path_(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, const char *revision, int implement)
+lys_parse_path_(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, int implement,
+                LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, void *data), void *check_data)
 {
     int fd;
     struct lys_module *mod;
@@ -1549,7 +1546,7 @@ lys_parse_path_(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, const
     fd = open(path, O_RDONLY);
     LY_CHECK_ERR_RET(fd == -1, LOGERR(ctx, LY_ESYS, "Opening file \"%s\" failed (%s).", path, strerror(errno)), NULL);
 
-    mod = lys_parse_fd_(ctx, fd, format, revision, implement);
+    mod = lys_parse_fd_(ctx, fd, format, implement, custom_check, check_data);
     close(fd);
     LY_CHECK_RET(!mod, NULL);
 
@@ -1595,7 +1592,7 @@ lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format)
 {
     struct lys_module *result;
 
-    result = lys_parse_path_(ctx, path, format, NULL, 1);
+    result = lys_parse_path_(ctx, path, format, 1, NULL, NULL);
     if (result && result->parsed->submodule) {
         LOGERR(ctx, LY_EDENIED, "Input file \"%s\" contains submodule \"%s\" which cannot be parsed directly without its main module.",
                path, result->parsed->name);
@@ -1795,71 +1792,3 @@ cleanup:
     return ret;
 }
 
-LY_ERR
-lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, int implement,
-                     struct lys_module **result)
-{
-    size_t len;
-    int fd;
-    char *filepath = NULL, *dot, *rev, *filename;
-    LYS_INFORMAT format;
-    struct lys_module *mod = NULL;
-    LY_ERR ret = LY_SUCCESS;
-
-    LY_CHECK_RET(lys_search_localfile(ly_ctx_get_searchdirs(ctx), !(ctx->flags & LY_CTX_DISABLE_SEARCHDIR_CWD), name, revision,
-                                      &filepath, &format));
-    LY_CHECK_ERR_RET(!filepath, LOGERR(ctx, LY_ENOTFOUND, "Data model \"%s%s%s\" not found in local searchdirs.",
-                                       name, revision ? "@" : "", revision ? revision : ""), LY_ENOTFOUND);
-
-
-    LOGVRB("Loading schema from \"%s\" file.", filepath);
-
-    /* open the file */
-    fd = open(filepath, O_RDONLY);
-    LY_CHECK_ERR_GOTO(fd < 0, LOGERR(ctx, LY_ESYS, "Unable to open data model file \"%s\" (%s).",
-                                     filepath, strerror(errno)); ret = LY_ESYS, cleanup);
-
-    mod = lys_parse_fd_(ctx, fd, format, revision, implement);
-    close(fd);
-    LY_CHECK_ERR_GOTO(!mod, ly_errcode(ctx), cleanup);
-
-    /* check that name and revision match filename */
-    filename = strrchr(filepath, '/');
-    if (!filename) {
-        filename = filepath;
-    } else {
-        filename++;
-    }
-    /* name */
-    len = strlen(mod->parsed->name);
-    rev = strchr(filename, '@');
-    dot = strrchr(filepath, '.');
-    if (strncmp(filename, mod->parsed->name, len) ||
-            ((rev && rev != &filename[len]) || (!rev && dot != &filename[len]))) {
-        LOGWRN(ctx, "File name \"%s\" does not match module name \"%s\".", filename, mod->parsed->name);
-    }
-    /* revision */
-    if (rev) {
-        len = dot - ++rev;
-        if (!mod->parsed->revs || len != 10 || strncmp(mod->parsed->revs[0].date, rev, len)) {
-            LOGWRN(ctx, "File name \"%s\" does not match module revision \"%s\".", filename,
-                   mod->parsed->revs ? mod->parsed->revs[0].date : "none");
-        }
-    }
-
-    if (!mod->parsed->filepath) {
-        char rpath[PATH_MAX];
-        if (realpath(filepath, rpath) != NULL) {
-            mod->parsed->filepath = lydict_insert(ctx, rpath, 0);
-        } else {
-            mod->parsed->filepath = lydict_insert(ctx, filepath, 0);
-        }
-    }
-
-    *result = mod;
-
-    /* success */
-cleanup:
-    free(filepath);
-    return ret;
-}

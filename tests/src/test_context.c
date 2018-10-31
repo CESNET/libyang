@@ -38,7 +38,7 @@ logger(LY_LOG_LEVEL level, const char *msg, const char *path)
 {
     (void) level; /* unused */
     if (store) {
-        if (path) {
+        if (path && path[0]) {
             snprintf(logbuf, BUFSIZE - 1, "%s %s", msg, path);
         } else {
             strncpy(logbuf, msg, BUFSIZE - 1);
@@ -289,6 +289,9 @@ test_models(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
     assert_int_equal(ctx->module_set_id, ly_ctx_get_module_set_id(ctx));
 
+    assert_null(lys_parse_mem(ctx, "module x {namespace urn:x;prefix x;}", 3));
+    logbuf_assert("Invalid schema input format.");
+
     /* import callback */
     ly_ctx_set_module_imp_clb(ctx, test_imp_clb, (void*)(str = "test"));
     assert_ptr_equal(test_imp_clb, ctx->imp_clb);
@@ -304,7 +307,7 @@ test_models(void **state)
     ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule xx {belongs-to x;}");
     mod1 = lys_parse_mem(ctx, "module x {namespace urn:x;prefix x;include xx;revision 2018-10-24;}", LYS_IN_YANG);
     assert_non_null(mod1);
-    mod2 = lys_parse_mem_(ctx, "module x {namespace urn:x;prefix x;include xx;revision 2018-10-25;}", LYS_IN_YANG, NULL, 0);
+    mod2 = lys_parse_mem_(ctx, "module x {namespace urn:x;prefix x;include xx;revision 2018-10-25;}", LYS_IN_YANG, 0, NULL, NULL);
     assert_non_null(mod2);
     assert_ptr_equal(mod1->parsed->includes[0].submodule, mod2->parsed->includes[0].submodule);
 
@@ -329,12 +332,11 @@ test_models(void **state)
     /* selecting correct revision of the submodules */
     ly_ctx_reset_latests(ctx);
     ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule y {belongs-to a; revision 2018-10-31;}");
-    mod2 = lys_parse_mem_(ctx, "module a {namespace urn:a;prefix a;include y; revision 2018-10-31;}", LYS_IN_YANG, NULL, 0);
+    mod2 = lys_parse_mem_(ctx, "module a {namespace urn:a;prefix a;include y; revision 2018-10-31;}", LYS_IN_YANG, 0, NULL, NULL);
     assert_non_null(mod2);
     assert_string_equal("2018-10-31", mod2->parsed->includes[0].submodule->revs[0].date);
 
     /* reloading module in case only the compiled module resists in the context */
-    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module w {namespace urn:w;prefix w;revision 2018-10-24;}");
     mod1 = lys_parse_mem(ctx, "module w {namespace urn:w;prefix w;revision 2018-10-24;}", LYS_IN_YANG);
     assert_non_null(mod1);
     assert_int_equal(LY_SUCCESS, lys_compile(mod1, LYSC_OPT_FREE_SP));
@@ -343,6 +345,10 @@ test_models(void **state)
     mod2 = lys_parse_mem(ctx, "module z {namespace urn:z;prefix z;import w {prefix w;revision-date 2018-10-24;}}", LYS_IN_YANG);
     assert_non_null(mod2);
     /* mod1->parsed is necessary to compile mod2 because of possible groupings, typedefs, ... */
+    ly_ctx_set_module_imp_clb(ctx, NULL, NULL);
+    assert_int_equal(LY_ENOTFOUND, lys_compile(mod2, 0));
+    logbuf_assert("Unable to reload \"w\" module to import it into \"z\", source data not found.");
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module w {namespace urn:w;prefix w;revision 2018-10-24;}");
     assert_int_equal(LY_SUCCESS, lys_compile(mod2, 0));
     assert_non_null(mod1->parsed);
     assert_string_equal("w", mod1->parsed->name);
@@ -394,10 +400,10 @@ test_get_models(void **state)
     /* invalid attempts - implementing module of the same name and inserting the same module */
     assert_null(lys_parse_mem(ctx, str2, LYS_IN_YANG));
     logbuf_assert("Module \"a\" is already implemented in the context.");
-    assert_null(lys_parse_mem_(ctx, str1, LYS_IN_YANG, NULL, 0));
+    assert_null(lys_parse_mem_(ctx, str1, LYS_IN_YANG, 0, NULL, NULL));
     logbuf_assert("Module \"a\" of revision \"2018-10-23\" is already present in the context.");
     /* insert the second module only as imported, not implemented */
-    mod2 = lys_parse_mem_(ctx, str2, LYS_IN_YANG, NULL, 0);
+    mod2 = lys_parse_mem_(ctx, str2, LYS_IN_YANG, 0, NULL, NULL);
     assert_non_null(mod);
     assert_non_null(mod2);
     assert_ptr_not_equal(mod, mod2);
@@ -406,7 +412,7 @@ test_get_models(void **state)
     mod2 = ly_ctx_get_module_latest_ns(ctx, mod->parsed->ns);
     assert_ptr_equal(mod, mod2);
     /* work with module with no revision */
-    mod = lys_parse_mem_(ctx, str0, LYS_IN_YANG, NULL, 0);
+    mod = lys_parse_mem_(ctx, str0, LYS_IN_YANG, 0, NULL, NULL);
     assert_non_null(mod);
     assert_ptr_equal(mod, ly_ctx_get_module(ctx, "a", NULL));
     assert_ptr_not_equal(mod, ly_ctx_get_module_latest(ctx, "a"));

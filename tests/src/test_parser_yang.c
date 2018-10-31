@@ -27,6 +27,7 @@
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
+int store = -1; /* negative for infinite logging, positive for limited logging */
 
 /* set to 0 to printing error messages to stderr instead of checking them in code */
 #define ENABLE_LOGGER_CHECKING 1
@@ -36,11 +37,15 @@ static void
 logger(LY_LOG_LEVEL level, const char *msg, const char *path)
 {
     (void) level; /* unused */
-
-    if (path) {
-        snprintf(logbuf, BUFSIZE - 1, "%s %s", msg, path);
-    } else {
-        strncpy(logbuf, msg, BUFSIZE - 1);
+    if (store) {
+        if (path && path[0]) {
+            snprintf(logbuf, BUFSIZE - 1, "%s %s", msg, path);
+        } else {
+            strncpy(logbuf, msg, BUFSIZE - 1);
+        }
+        if (store > 0) {
+            --store;
+        }
     }
 }
 #endif
@@ -782,17 +787,21 @@ test_module(void **state)
     logbuf_assert("Single revision of the module \"zzz\" referred twice.");
 
     /* include */
+    store = 1;
     ly_ctx_set_module_imp_clb(ctx.ctx, test_imp_clb, "module xxx { namespace urn:xxx; prefix x;}");
     str = "module" SCHEMA_BEGINNING "include xxx;}";
     assert_null(lys_parse_mem(ctx.ctx, str, LYS_IN_YANG));
     assert_int_equal(LY_EVALID, ly_errcode(ctx.ctx));
     logbuf_assert("Included \"xxx\" schema from \"name\" is actually not a submodule.");
+    store = -1;
 
+    store = 1;
     ly_ctx_set_module_imp_clb(ctx.ctx, test_imp_clb, "submodule xxx {belongs-to wrong-name;}");
     str = "module" SCHEMA_BEGINNING "include xxx;}";
     assert_null(lys_parse_mem(ctx.ctx, str, LYS_IN_YANG));
     assert_int_equal(LY_EVALID, ly_errcode(ctx.ctx));
     logbuf_assert("Included \"xxx\" submodule from \"name\" belongs-to a different module \"wrong-name\".");
+    store = -1;
 
     ly_ctx_set_module_imp_clb(ctx.ctx, test_imp_clb, "submodule xxx {belongs-to name;}");
     TEST_GENERIC("include xxx;}", mod->includes,

@@ -141,12 +141,13 @@ struct lys_module *lys_module_find_prefix(struct lys_module *mod, const char *pr
  * @param[in] data The string containing the dumped data model in the specified
  * format.
  * @param[in] format Format of the input data (YANG or YIN).
- * @param[in] revision If a specific revision is required, it is checked before the parsed
- * schema is accepted.
  * @param[in] implement Flag if the schema is supposed to be marked as implemented.
+ * @param[in] custom_check Callback to check the parsed schema before it is accepted.
+ * @param[in] check_data Caller's data to pass to the custom_check callback.
  * @return Pointer to the data model structure or NULL on error.
  */
-struct lys_module *lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const char *revision, int implement);
+struct lys_module *lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int implement,
+                                  LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, void *data), void *check_data);
 
 /**
  * @brief Parse YANG module and submodule from a file descriptor.
@@ -161,12 +162,13 @@ struct lys_module *lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFO
  * @param[in] fd File descriptor of a regular file (e.g. sockets are not supported) containing the schema
  *            in the specified format.
  * @param[in] format Format of the input data (YANG or YIN).
- * @param[in] revision If a specific revision is required, it is checked before the parsed
- * schema is accepted.
  * @param[in] implement Flag if the schema is supposed to be marked as implemented.
+ * @param[in] custom_check Callback to check the parsed schema before it is accepted.
+ * @param[in] check_data Caller's data to pass to the custom_check callback.
  * @return Pointer to the data model structure or NULL on error.
  */
-struct lys_module *lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const char *revision, int implement);
+struct lys_module *lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int implement,
+                                 LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, void *data), void *check_data);
 
 /**
  * @brief Parse YANG module and submodule from a file descriptor.
@@ -182,12 +184,13 @@ struct lys_module *lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format
  * @param[in] ctx libyang context where to process the data model.
  * @param[in] path Path to the file with the model in the specified format.
  * @param[in] format Format of the input data (YANG or YIN).
- * @param[in] revision If a specific revision is required, it is checked before the parsed
- * schema is accepted.
  * @param[in] implement Flag if the schema is supposed to be marked as implemented.
+ * @param[in] custom_check Callback to check the parsed schema before it is accepted.
+ * @param[in] check_data Caller's data to pass to the custom_check callback.
  * @return Pointer to the data model structure or NULL on error.
  */
-struct lys_module *lys_parse_path_(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, const char *revision, int implement);
+struct lys_module *lys_parse_path_(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, int implement,
+                                   LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, void *data), void *check_data);
 
 /**
  * @brief Load the (sub)module into the context.
