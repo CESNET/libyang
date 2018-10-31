@@ -176,7 +176,7 @@ search_file:
         }
 
         /* circular check */
-        if ((*mod)->parsed->parsing) {
+        if ((*mod)->parsed && (*mod)->parsed->parsing) {
             LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "A circular dependency (import) for module \"%s\".", name);
             *mod = NULL;
             return LY_EVALID;
@@ -284,7 +284,7 @@ search_file:
     TYPE *imp; \
     if (!strncmp((MOD)->prefix, prefix, len) && (MOD)->prefix[len] == '\0') { \
         /* it is the prefix of the module itself */ \
-        return (struct lys_module*)ly_ctx_get_module((MOD)->ctx, (MOD)->name, (MOD)->revs ? (MOD)->revs[0].date : NULL); \
+        return (struct lys_module*)ly_ctx_get_module((MOD)->ctx, (MOD)->name, ((struct lysc_module*)(MOD))->revision); \
     } \
     /* search in imports */ \
     LY_ARRAY_FOR((MOD)->imports, TYPE, imp) { \

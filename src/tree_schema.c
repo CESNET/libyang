@@ -99,6 +99,7 @@ lysp_include_free(struct ly_ctx *ctx, struct lysp_include *include, int dict)
     if (include->submodule && !(--include->submodule->refcount)) {
         lysp_module_free(include->submodule);
     }
+    dict = 1; /* includes not present in compiled tree, so the data are not reused there in anyway */
     FREE_STRING(ctx, include->name, dict);
     FREE_STRING(ctx, include->dsc, dict);
     FREE_STRING(ctx, include->ref, dict);
@@ -514,6 +515,7 @@ lysc_module_free_(struct lysc_module *module, int dict)
     FREE_STRING(ctx, module->name, dict);
     FREE_STRING(ctx, module->ns, dict);
     FREE_STRING(ctx, module->prefix, dict);
+    FREE_STRING(ctx, module->revision, 1);
 
     FREE_ARRAY(ctx, module->imports, lysc_import_free);
     FREE_ARRAY(ctx, module->features, lysc_feature_free);
@@ -1074,7 +1076,7 @@ static LY_ERR
 lys_compile_import(struct lysc_ctx *ctx, struct lysp_import *imp_p, int options, struct lysc_import *imp)
 {
     unsigned int u;
-    struct lys_module *mod;
+    struct lys_module *mod = NULL;
     struct lysc_module *comp;
     LY_ERR ret = LY_SUCCESS;
 
@@ -1103,14 +1105,14 @@ lys_compile_import(struct lysc_ctx *ctx, struct lysp_import *imp_p, int options,
             }
         }
         if (!mod) {
-            if (lysp_load_module(ctx->mod->ctx, comp->name, comp->revs ? comp->revs[0].date : NULL, 0, 1, &mod)) {
+            if (lysp_load_module(ctx->mod->ctx, comp->name, comp->revision, 0, 1, &mod)) {
                 LOGERR(ctx->mod->ctx, LY_ENOTFOUND, "Unable to reload \"%s\" module to import it into \"%s\", source data not found.",
                        comp->name, ctx->mod->name);
                 return LY_ENOTFOUND;
             }
         }
     } else if (!imp->module->compiled) {
-        return lys_compile(imp->module->parsed, options, &imp->module->compiled);
+        return lys_compile(imp->module, options);
     }
 
 done:
@@ -1217,21 +1219,23 @@ done:
 }
 
 LY_ERR
-lys_compile(struct lysp_module *sp, int options, struct lysc_module **sc)
+lys_compile(const struct lys_module *mod, int options)
 {
     struct lysc_ctx ctx = {0};
     struct lysc_module *mod_c;
+    struct lysp_module *sp;
     unsigned int u;
     LY_ERR ret;
 
-    LY_CHECK_ARG_RET(NULL, sc, sp, sp->ctx, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, mod, mod->parsed, mod->parsed->ctx, LY_EINVAL);
+    sp = mod->parsed;
 
     if (sp->submodule) {
         LOGERR(sp->ctx, LY_EINVAL, "Submodules (%s) are not supposed to be compiled, compile only the main modules.", sp->name);
         return LY_EINVAL;
     }
 
-    ctx.mod = *sc = mod_c = calloc(1, sizeof *mod_c);
+    ctx.mod = ((struct lys_module*)mod)->compiled = mod_c = calloc(1, sizeof *mod_c);
     LY_CHECK_ERR_RET(!mod_c, LOGMEM(sp->ctx), LY_EMEM);
     mod_c->ctx = sp->ctx;
     mod_c->version = sp->version;
@@ -1247,7 +1251,9 @@ lys_compile(struct lysp_module *sp, int options, struct lysc_module **sc)
         mod_c->ns = lydict_insert(sp->ctx, sp->ns, 0);
         mod_c->prefix = lydict_insert(sp->ctx, sp->prefix, 0);
     }
-
+    if (sp->revs) {
+        mod_c->revision = lydict_insert(sp->ctx, sp->revs[0].date, 10);
+    }
     COMPILE_ARRAY_GOTO(&ctx, sp->imports, mod_c->imports, options, u, lys_compile_import, ret, error);
     COMPILE_ARRAY_GOTO(&ctx, sp->features, mod_c->features, options, u, lys_compile_feature, ret, error);
     COMPILE_ARRAY_GOTO(&ctx, sp->identities, mod_c->identities, options, u, lys_compile_identity, ret, error);
@@ -1258,14 +1264,16 @@ lys_compile(struct lysp_module *sp, int options, struct lysc_module **sc)
     COMPILE_ARRAY_GOTO(&ctx, sp->exts, mod_c->exts, options, u, lys_compile_ext, ret, error);
 
     if (options & LYSC_OPT_FREE_SP) {
-        lysp_module_free_(sp, 0);
+        lysp_module_free_(mod->parsed, 0);
+        ((struct lys_module*)mod)->parsed = NULL;
     }
 
+    ((struct lys_module*)mod)->compiled = mod_c;
     return LY_SUCCESS;
 
 error:
     lysc_module_free_(mod_c, (options & LYSC_OPT_FREE_SP) ? 0 : 1);
-
+    ((struct lys_module*)mod)->compiled = NULL;
     return ret;
 }
 
@@ -1396,11 +1404,11 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const 
         latest = (struct lys_module*)ly_ctx_get_module_latest(ctx, mod->parsed->name);
         if (latest) {
             if (mod->parsed->revs) {
-                if ((latest->parsed && !latest->parsed->revs) || (!latest->parsed && !latest->compiled->revs)) {
+                if ((latest->parsed && !latest->parsed->revs) || (!latest->parsed && !latest->compiled->revision)) {
                     /* latest has no revision, so mod is anyway newer */
                     lys_latest_switch(latest, mod->parsed);
                 } else {
-                    if (strcmp(mod->parsed->revs[0].date, latest->parsed ? latest->parsed->revs[0].date : latest->compiled->revs[0].date) > 0) {
+                    if (strcmp(mod->parsed->revs[0].date, latest->parsed ? latest->parsed->revs[0].date : latest->compiled->revision) > 0) {
                         lys_latest_switch(latest, mod->parsed);
                     }
                 }

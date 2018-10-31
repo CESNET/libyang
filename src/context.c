@@ -337,12 +337,12 @@ ly_ctx_get_module_by(const struct ly_ctx *ctx, const char *key, size_t key_offse
 
     while ((mod = ly_ctx_get_module_by_iter(ctx, key, key_offset, &index))) {
         if (!revision) {
-            if ((mod->compiled && !mod->compiled->revs) || (!mod->compiled && !mod->parsed->revs)) {
+            if ((mod->compiled && !mod->compiled->revision) || (!mod->compiled && !mod->parsed->revs)) {
                 /* found requested module without revision */
                 return mod;
             }
         } else {
-            if ((mod->compiled && mod->compiled->revs && !strcmp(mod->compiled->revs[0].date, revision)) ||
+            if ((mod->compiled && mod->compiled->revision && !strcmp(mod->compiled->revision, revision)) ||
                     (!mod->compiled && mod->parsed->revs && !strcmp(mod->parsed->revs[0].date, revision))) {
                 /* found requested module of the specific revision */
                 return mod;

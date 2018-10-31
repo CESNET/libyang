@@ -859,8 +859,7 @@ struct lysc_module {
     const char *filepath;            /**< path, if the schema was read from a file, NULL in case of reading from memory */
     const char *ns;                  /**< namespace of the module (mandatory) */
     const char *prefix;              /**< module prefix (mandatory) */
-    struct lysc_revision *revs;      /**< list of the module revisions ([sized array](@ref sizedarrays)), the first revision
-                                          in the list is always the last (newest) revision of the module */
+    const char *revision;            /**< the revision of the module */
     struct lysc_import *imports;     /**< list of imported modules ([sized array](@ref sizedarrays)) */
 
     struct lysc_feature *features;   /**< list of feature definitions ([sized array](@ref sizedarrays)) */
@@ -1005,12 +1004,12 @@ LY_ERR lys_search_localfile(const char * const *searchpaths, int cwd, const char
 /**
  * @brief Compile printable schema into a validated schema linking all the references.
  *
- * @param[in] sp Simple parsed printable schema to compile. Can be changed according to the provided options.
+ * @param[in, out] mod Schema structure holding pointers to both schema structure types. The ::lys_module#parsed
+ * member is used as input and ::lys_module#compiled is used to hold the result of the compilation.
  * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
- * @param[out] sc Resulting compiled schema structure.
  * @return LY_ERR value.
  */
-LY_ERR lys_compile(struct lysp_module *sp, int options, struct lysc_module **sc);
+LY_ERR lys_compile(const struct lys_module *mod, int options);
 
 /** @} */
 
