@@ -1736,6 +1736,7 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
     case LY_TYPE_LEAFREF:
         if (old->info.lref.path) {
             new->info.lref.path = lydict_insert(mod->ctx, old->info.lref.path, 0);
+            new->info.lref.req = old->info.lref.req;
             if (!in_grp && unres_schema_add_node(mod, unres, new, UNRES_TYPE_LEAFREF, parent) == -1) {
                 return -1;
             }
