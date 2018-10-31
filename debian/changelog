@@ -1,0 +1,6 @@
+libyang (0.16.52-1) testing; urgency=medium
+
+  * Initial release.
+  * Closes: #913219
+
+ -- David Lamparter <equinox-debian@diac24.net>  Wed, 31 Oct 2018 22:17:21 +0100

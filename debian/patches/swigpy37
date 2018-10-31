@@ -1,0 +1,26 @@
+Description: work around swig python 3.7 tp_new issue
+ Python 3.7dm checks that the first argument to tp_new is in fact a tuple.
+ Swig passes Py_None instead, causing an assert failure.  Hack around by
+ sed'ing the swig-generated files...
+Author: David Lamparter <equinox-debian@diac24.net>
+Last-Update: 2018-11-08
+
+diff --git a/swig/python/CMakeLists.txt b/swig/python/CMakeLists.txt
+index 97d215e7b887..5d18b8bfd9d0 100644
+--- a/swig/python/CMakeLists.txt
++++ b/swig/python/CMakeLists.txt
+@@ -22,6 +22,14 @@ set_target_properties(_${PYTHON_SWIG_TARGET} PROPERTIES OUTPUT_NAME "_yang${PYTH
+ # Generate header with SWIG run-time functions
+ execute_process(COMMAND ${SWIG_EXECUTABLE} -python -external-runtime ${CMAKE_CURRENT_BINARY_DIR}/swigpyrun.h)
+ 
++add_custom_command(TARGET ${PYTHON_SWIG_TARGET}_swig_compilation POST_BUILD
++        COMMAND sed -e "'s/\\(inst =.*tp_new.*\\)Py_None, Py_None);/PyObject *tup = PyTuple_New(0); \\1tup, Py_None); Py_DECREF(tup);/'" < swigpyrun.h > swigpyrun.h.new
++        COMMAND sed -e "'s/\\(inst =.*tp_new.*\\)Py_None, Py_None);/PyObject *tup = PyTuple_New(0); \\1tup, Py_None); Py_DECREF(tup);/'" < yangPYTHON_wrap.cxx > yangPYTHON_wrap.cxx.new
++        COMMAND diff -q swigpyrun.h swigpyrun.h.new || mv swigpyrun.h.new swigpyrun.h
++        COMMAND diff -q yangPYTHON_wrap.cxx yangPYTHON_wrap.cxx.new || mv yangPYTHON_wrap.cxx.new yangPYTHON_wrap.cxx
++        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
++        )
++
+ file(COPY "examples" DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+ 
+ install( TARGETS _${PYTHON_SWIG_TARGET} DESTINATION ${PYTHON_MODULE_PATH})

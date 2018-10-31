@@ -1,0 +1,44 @@
+Origin: commit:18f7481c76471f158837b0005b91fc8558936575
+Author: David Lamparter <equinox@diac24.net>
+Subject: fix spelling errors
+
+(lintian runs spellcheck on binaries)
+
+diff --git a/src/parser_json.c b/src/parser_json.c
+index 4a8246d6c2bf..0a6f6313f855 100644
+--- a/src/parser_json.c
++++ b/src/parser_json.c
+@@ -587,7 +587,7 @@ repeat:
+     len += skip_ws(&data[len]);
+ 
+     if (data[len] != '"') {
+-        LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_NONE, NULL, "JSON data (missing quotation-mark at the begining of string)");
++        LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_NONE, NULL, "JSON data (missing quotation-mark at the beginning of string)");
+         return 0;
+     }
+     len++;
+diff --git a/tools/re/main.c b/tools/re/main.c
+index 17319905d97b..7f81970b9dc9 100644
+--- a/tools/re/main.c
++++ b/tools/re/main.c
+@@ -38,7 +38,7 @@ help(void)
+         "  -h, --help              Show this help message and exit.\n"
+         "  -v, --version           Show version number and exit.\n"
+         "  -V, --verbose           Print the processing information.\n"
+-        "  -i, --invert-match      Invert-match modifier for the closest preceeding\n"
++        "  -i, --invert-match      Invert-match modifier for the closest preceding\n"
+         "                          pattern.\n"
+         "  -p, --pattern=\"REGEXP\"  Regular expression including the quoting,\n"
+         "                          which is applied the same way as in a YANG module.\n"
+@@ -231,7 +231,7 @@ main(int argc, char* argv[])
+             goto cleanup;
+         } else if (!patterns_count) {
+             help();
+-            fprintf(stderr, "yangre error: missing patern parameter to use.\n");
++            fprintf(stderr, "yangre error: missing pattern parameter to use.\n");
+             goto cleanup;
+         }
+         str = argv[optind];
+-- 
+2.19.1
+
