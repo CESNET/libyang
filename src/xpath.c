@@ -864,8 +864,10 @@ set_fill_set(struct lyxp_set *trg, struct lyxp_set *src)
 
             trg->val.nodes = malloc(trg->used * sizeof *trg->val.nodes);
             LY_CHECK_ERR_RETURN(!trg->val.nodes, LOGMEM(NULL); memset(trg, 0, sizeof *trg), );
-
             memcpy(trg->val.nodes, src->val.nodes, src->used * sizeof *src->val.nodes);
+#ifdef LY_ENABLED_CACHE
+            trg->ht = lyht_dup(src->ht);
+#endif
         }
     }
 
@@ -1035,6 +1037,9 @@ set_insert_node(struct lyxp_set *set, const struct lyd_node *node, uint32_t pos,
         set->size = LYXP_SET_SIZE_START;
         set->ctx_pos = 1;
         set->ctx_size = 1;
+#ifdef LY_ENABLED_CACHE
+        set->ht = NULL;
+#endif
     } else {
         /* not an empty set */
         if (set->used == set->size) {
