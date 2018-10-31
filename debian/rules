@@ -1,0 +1,31 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+# Uncomment this to turn on verbose mode.
+export DH_VERBOSE=1
+
+%:
+	dh $@
+
+override_dh_strip:
+	dh_strip -plibyang  --dbg-package=libyang-dbg
+	dh_strip -plibyang-cpp --dbg-package=libyang-cpp-dbg
+	dh_strip -ppython3-yang --dbg-package=python3-yang-dbg
+
+override_dh_auto_configure:
+	mkdir my_build
+	cd my_build && cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr -DCMAKE_BUILD_TYPE:String="Package" -DGEN_LANGUAGE_BINDINGS=ON ..
+
+override_dh_auto_install:
+	install -d debian/libyang
+	install -d debian/libyang-dbg
+	install -d debian/libyang-cpp
+	install -d debian/libyang-cpp-dbg
+	install -d debian/python3-yang
+	install -d debian/python3-yang-dbg
+	cd my_build && make -j1 install DESTDIR=/usr/src/packages/BUILD/debian/tmp AM_UPDATE_INFO_DIR=no
+
+override_dh_auto_build:
+	cd my_build && make
+
+override_dh_auto_test:
+	cd my_build && ctest --output-on-failure
