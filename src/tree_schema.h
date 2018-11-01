@@ -909,6 +909,14 @@ struct lys_module {
  *
  * By default, when the module is loaded by libyang parser, all features are disabled.
  *
+ * If all features are being enabled, it must be possible respecting their if-feature conditions. For example,
+ * enabling all features on the following feature set will fail since it is not possible to enable both features
+ * (and it is unclear which of them should be enabled then). In this case the LY_EDENIED is returned and the feature
+ * is untouched.
+ *
+ *     feature f1;
+ *     feature f2 { if-feature 'not f1';}
+ *
  * @param[in] module Module where the feature will be enabled.
  * @param[in] feature Name of the feature to enable. To enable all features at once, use asterisk (`*`) character.
  * @return LY_ERR value.

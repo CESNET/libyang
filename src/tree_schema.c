@@ -708,7 +708,7 @@ static LY_ERR
 lys_feature_change(const struct lysc_module *mod, const char *name, int value)
 {
     int all = 0;
-    unsigned int u;
+    unsigned int u, changed_count, disabled_count;
     struct lysc_feature *f, **df;
     struct lysc_iffeature *iff;
     struct ly_set *changed;
@@ -723,8 +723,10 @@ lys_feature_change(const struct lysc_module *mod, const char *name, int value)
         all = 1;
     }
     changed = ly_set_new();
+    changed_count = 0;
 
-    for (u = 0; u < LY_ARRAY_SIZE(mod->features); ++u) {
+run:
+    for (disabled_count = u = 0; u < LY_ARRAY_SIZE(mod->features); ++u) {
         f = &mod->features[u];
         if (all || !strcmp(f->name, name)) {
             if ((value && (f->flags & LYS_FENABLED)) || (!value && !(f->flags & LYS_FENABLED))) {
@@ -743,9 +745,7 @@ lys_feature_change(const struct lysc_module *mod, const char *name, int value)
                 LY_ARRAY_FOR(f->iffeatures, struct lysc_iffeature, iff) {
                     if (!lysc_iffeature_value(iff)) {
                         if (all) {
-                            LOGWRN(mod->ctx,
-                                   "Feature \"%s\" cannot be enabled since it is disabled by its if-feature condition(s).",
-                                   f->name);
+                            ++disabled_count;
                             goto next;
                         } else {
                             LOGERR(mod->ctx, LY_EDENIED,
@@ -779,6 +779,34 @@ next:
         LOGERR(mod->ctx, LY_EINVAL, "Feature \"%s\" not found in module \"%s\".", name, mod->name);
         ly_set_free(changed, NULL);
         return LY_EINVAL;
+    }
+
+    if (value && all && disabled_count) {
+        if (changed_count == changed->count) {
+            /* no change in last run -> not able to enable all ... */
+            /* ... print errors */
+            for (u = 0; disabled_count && u < LY_ARRAY_SIZE(mod->features); ++u) {
+                if (!(mod->features[u].flags & LYS_FENABLED)) {
+                    LOGERR(mod->ctx, LY_EDENIED,
+                           "Feature \"%s\" cannot be enabled since it is disabled by its if-feature condition(s).",
+                           mod->features[u].name);
+                    --disabled_count;
+                }
+            }
+            /* ... restore the original state */
+            for (u = 0; u < changed->count; ++u) {
+                f = changed->objs[u];
+                /* re-disable the feature */
+                f->flags &= ~LYS_FENABLED;
+            }
+
+            ly_set_free(changed, NULL);
+            return LY_EDENIED;
+        } else {
+            /* we did some change in last run, try it again */
+            changed_count = changed->count;
+            goto run;
+        }
     }
 
     /* reflect change(s) in the dependent features */

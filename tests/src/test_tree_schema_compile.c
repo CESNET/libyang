@@ -214,6 +214,8 @@ test_feature(void **state)
     /* enabling feature that cannot be enabled due to its if-features */
     assert_int_equal(LY_EDENIED, lys_feature_enable(&mod, "orfeature"));
     logbuf_assert("Feature \"orfeature\" cannot be enabled since it is disabled by its if-feature condition(s).");
+    assert_int_equal(LY_EDENIED, lys_feature_enable(&mod, "*"));
+    logbuf_assert("Feature \"f6\" cannot be enabled since it is disabled by its if-feature condition(s).");
 
     /* */
     assert_int_equal(LY_EINVAL, lys_feature_enable(&mod, "xxx"));
