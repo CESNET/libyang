@@ -202,6 +202,23 @@ test_feature(void **state)
     /* double negation of disabled f1 -> disabled */
     assert_int_equal(0, lysc_iffeature_value(&mod.compiled->features[8].iffeatures[0]));
 
+    /* disable all features */
+    assert_int_equal(LY_SUCCESS, lys_feature_disable(&mod, "*"));
+    LY_ARRAY_FOR(mod.compiled->features, struct lysc_feature, f) {
+        assert_int_equal(0, lys_feature_value(&mod, f->name));
+    }
+    /* re-setting already set feature */
+    assert_int_equal(LY_SUCCESS, lys_feature_disable(&mod, "f1"));
+    assert_int_equal(0, lys_feature_value(&mod, "f1"));
+
+    /* enabling feature that cannot be enabled due to its if-features */
+    assert_int_equal(LY_EDENIED, lys_feature_enable(&mod, "orfeature"));
+    logbuf_assert("Feature \"orfeature\" cannot be enabled since it is disabled by its if-feature condition(s).");
+
+    /* */
+    assert_int_equal(LY_EINVAL, lys_feature_enable(&mod, "xxx"));
+    logbuf_assert("Feature \"xxx\" not found in module \"a\".");
+
     lysc_module_free(mod.compiled, NULL);
     lysp_module_free(mod.parsed);
 
