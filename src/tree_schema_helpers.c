@@ -305,7 +305,7 @@ search_file:
             }
         }
 
-        if (!revision && ((*mod)->parsed->latest_revision == 1)) {
+        if ((*mod) && !revision && ((*mod)->parsed->latest_revision == 1)) {
             /* update the latest_revision flag - here we have selected the latest available schema,
              * consider that even the callback provides correct latest revision */
             (*mod)->parsed->latest_revision = 2;

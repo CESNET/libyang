@@ -955,7 +955,7 @@ int lys_feature_value(const struct lys_module *module, const char *feature);
  * @param[in] format Format of the input data (YANG or YIN).
  * @return Pointer to the data model structure or NULL on error.
  */
-const struct lys_module *lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format);
+struct lys_module *lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format);
 
 /**
  * @brief Read a schema from file descriptor into the specified context.
@@ -968,7 +968,7 @@ const struct lys_module *lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS
  * @param[in] format Format of the input data (YANG or YIN).
  * @return Pointer to the data model structure or NULL on error.
  */
-const struct lys_module *lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
+struct lys_module *lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
 
 /**
  * @brief Read a schema into the specified context from a file.
@@ -978,7 +978,7 @@ const struct lys_module *lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT f
  * @param[in] format Format of the input data (YANG or YIN).
  * @return Pointer to the data model structure or NULL on error.
  */
-const struct lys_module *lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format);
+struct lys_module *lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format);
 
 /**
  * @brief Search for the schema file in the specified searchpaths.
@@ -1017,7 +1017,7 @@ LY_ERR lys_search_localfile(const char * const *searchpaths, int cwd, const char
  * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
  * @return LY_ERR value.
  */
-LY_ERR lys_compile(const struct lys_module *mod, int options);
+LY_ERR lys_compile(struct lys_module *mod, int options);
 
 /** @} */
 

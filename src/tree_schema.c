@@ -1247,7 +1247,7 @@ done:
 }
 
 LY_ERR
-lys_compile(const struct lys_module *mod, int options)
+lys_compile(struct lys_module *mod, int options)
 {
     struct lysc_ctx ctx = {0};
     struct lysc_module *mod_c;
@@ -1266,6 +1266,8 @@ lys_compile(const struct lys_module *mod, int options)
     ctx.mod = ((struct lys_module*)mod)->compiled = mod_c = calloc(1, sizeof *mod_c);
     LY_CHECK_ERR_RET(!mod_c, LOGMEM(sp->ctx), LY_EMEM);
     mod_c->ctx = sp->ctx;
+    mod_c->implemented = sp->implemented;
+    mod_c->latest_revision = sp->latest_revision;
     mod_c->version = sp->version;
 
     if (options & LYSC_OPT_FREE_SP) {
@@ -1477,7 +1479,7 @@ finish_parsing:
     return mod;
 }
 
-API const struct lys_module *
+API struct lys_module *
 lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
 {
     struct lys_module *result;
@@ -1545,7 +1547,7 @@ lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int implement,
     return mod;
 }
 
-API const struct lys_module *
+API struct lys_module *
 lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
 {
     struct lys_module *result;
@@ -1615,7 +1617,7 @@ lys_parse_path_(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, int i
     return mod;
 }
 
-API const struct lys_module *
+API struct lys_module *
 lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format)
 {
     struct lys_module *result;
