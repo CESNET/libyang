@@ -279,7 +279,7 @@ test_models(void **state)
 
     struct ly_ctx *ctx;
     const char *str;
-    const struct lys_module *mod1, *mod2;
+    struct lys_module *mod1, *mod2;
 
     /* invalid arguments */
     assert_int_equal(0, ly_ctx_get_module_set_id(NULL));

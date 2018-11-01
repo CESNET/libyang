@@ -130,7 +130,7 @@ test_feature(void **state)
     (void) state; /* unused */
 
     struct ly_ctx *ctx;
-    struct lys_module mod = {0};
+    struct lys_module mod = {0}, *modp;
     const char *str;
     struct lysc_feature *f, *f1;
 
@@ -212,12 +212,16 @@ test_feature(void **state)
     assert_int_equal(0, lys_feature_value(&mod, "f1"));
 
     /* enabling feature that cannot be enabled due to its if-features */
-    assert_int_equal(LY_EDENIED, lys_feature_enable(&mod, "orfeature"));
-    logbuf_assert("Feature \"orfeature\" cannot be enabled since it is disabled by its if-feature condition(s).");
+    assert_int_equal(LY_SUCCESS, lys_feature_enable(&mod, "f1"));
+    assert_int_equal(LY_EDENIED, lys_feature_enable(&mod, "andfeature"));
+    logbuf_assert("Feature \"andfeature\" cannot be enabled since it is disabled by its if-feature condition(s).");
     assert_int_equal(LY_EDENIED, lys_feature_enable(&mod, "*"));
     logbuf_assert("Feature \"f6\" cannot be enabled since it is disabled by its if-feature condition(s).");
+    /* test if not changed */
+    assert_int_equal(1, lys_feature_value(&mod, "f1"));
+    assert_int_equal(0, lys_feature_value(&mod, "f2"));
 
-    /* */
+    /* invalid reference */
     assert_int_equal(LY_EINVAL, lys_feature_enable(&mod, "xxx"));
     logbuf_assert("Feature \"xxx\" not found in module \"a\".");
 
@@ -260,6 +264,16 @@ test_feature(void **state)
     logbuf_assert("Invalid value \"not f1\" of if-feature - YANG 1.1 expression in YANG 1.0 module.");
     lysp_module_free(mod.parsed);
 
+    /* import reference */
+    assert_non_null(modp = lys_parse_mem(ctx, str, LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(modp, 0));
+    assert_int_equal(LY_SUCCESS, lys_feature_enable(modp, "f1"));
+    assert_non_null(modp = lys_parse_mem(ctx, "module b{namespace urn:b; prefix b; import a {prefix a;} feature f1; feature f2{if-feature 'a:f1';}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(modp, 0));
+    assert_int_equal(LY_SUCCESS, lys_feature_enable(modp, "f2"));
+    assert_int_equal(0, lys_feature_value(modp, "f1"));
+    assert_int_equal(1, lys_feature_value(modp, "f2"));
+
     ly_ctx_destroy(ctx, NULL);
 }
 
@@ -269,7 +283,7 @@ test_identity(void **state)
     (void) state; /* unused */
 
     struct ly_ctx *ctx;
-    const struct lys_module *mod1, *mod2;
+    struct lys_module *mod1, *mod2;
     const char *mod1_str = "module a {namespace urn:a;prefix a; identity a1;}";
     const char *mod2_str = "module b {namespace urn:b;prefix b; import a {prefix a;}identity b1; identity b2; identity b3 {base b1; base b:b2; base a:a1;} identity b4 {base b:b1; base b3;}}";
 
