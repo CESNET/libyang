@@ -544,6 +544,54 @@ lyd_get_node_siblings(const struct lyd_node *data, const struct lys_node *schema
 }
 
 /**
+ * Check whether there are any "when" statements on a \p schema node and evaluate them.
+ *
+ * @return -1 on error, 0 on no when or evaluated to true, 1 on when evaluated to false
+ */
+static int
+lyd_is_when_false(struct lyd_node *root, struct lyd_node *last_parent, struct lys_node *schema, int options)
+{
+    enum int_log_opts prev_ilo;
+    struct lyd_node *current, *dummy;
+
+    if ((!(options & LYD_OPT_TYPEMASK) || (options & (LYD_OPT_CONFIG | LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF | LYD_OPT_DATA_TEMPLATE)))
+            && resolve_applies_when(schema, 1, last_parent ? last_parent->schema : NULL)) {
+        /* evaluate when statements on a dummy data node */
+        if (schema->nodetype == LYS_CHOICE) {
+            schema = (struct lys_node *)lys_getnext(NULL, schema, NULL, LYS_GETNEXT_NOSTATECHECK);
+        }
+        dummy = lyd_new_dummy(root, last_parent, schema, NULL, 0);
+        if (!dummy) {
+            return -1;
+        }
+        if (!dummy->parent && root) {
+            /* connect dummy nodes into the data tree, insert it before the root
+             * to optimize later unlinking (lyd_free()) */
+            lyd_insert_before(root, dummy);
+        }
+        for (current = dummy; current; current = current->child) {
+            ly_ilo_change(NULL, ILO_IGNORE, &prev_ilo, NULL);
+            resolve_when(current, 0, NULL);
+            ly_ilo_restore(NULL, prev_ilo, NULL, 0);
+
+            if (current->when_status & LYD_WHEN_FALSE) {
+                /* when evaluates to false */
+                lyd_free(dummy);
+                return 1;
+            }
+
+            if (current->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
+                /* termination node without a child */
+                break;
+            }
+        }
+        lyd_free(dummy);
+    }
+
+    return 0;
+}
+
+/**
  * @param[in] root Root node to be able search the data tree in case of no instance
  * @return
  *  0 - all restrictions met
@@ -555,8 +603,6 @@ lyd_check_mandatory_data(struct lyd_node *root, struct lyd_node *last_parent,
                          struct ly_set *instances, struct lys_node *schema, int options)
 {
     struct ly_ctx *ctx = schema->module->ctx;
-    enum int_log_opts prev_ilo;
-    struct lyd_node *dummy, *current;
     uint32_t limit;
     uint16_t status;
 
@@ -571,37 +617,8 @@ lyd_check_mandatory_data(struct lyd_node *root, struct lyd_node *last_parent,
         } else if ((options & LYD_OPT_TRUSTED) || ((options & LYD_OPT_TYPEMASK) && (schema->flags & LYS_CONFIG_R))) {
             /* status schema node in non-status data tree */
             return EXIT_SUCCESS;
-        } else {
-            if ((!(options & LYD_OPT_TYPEMASK) || (options & (LYD_OPT_CONFIG | LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF | LYD_OPT_DATA_TEMPLATE)))
-                    && resolve_applies_when(schema, 1, last_parent ? last_parent->schema : NULL)) {
-                /* evaluate when statements */
-                dummy = lyd_new_dummy(root, last_parent, schema, NULL, 0);
-                if (!dummy) {
-                    return EXIT_FAILURE;
-                }
-                if (!dummy->parent && root) {
-                    /* connect dummy nodes into the data tree, insert it before the root
-                     * to optimize later unlinking (lyd_free()) */
-                    lyd_insert_before(root, dummy);
-                }
-                for (current = dummy; current; current = current->child) {
-                    ly_ilo_change(NULL, ILO_IGNORE, &prev_ilo, NULL);
-                    resolve_when(current, 0, NULL);
-                    ly_ilo_restore(NULL, prev_ilo, NULL, 0);
-
-                    if (current->when_status & LYD_WHEN_FALSE) {
-                        /* when evaluates to false */
-                        lyd_free(dummy);
-                        return EXIT_SUCCESS;
-                    }
-
-                    if (current->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
-                        /* termination node without a child */
-                        break;
-                    }
-                }
-                lyd_free(dummy);
-            }
+        } else if (lyd_is_when_false(root, last_parent, schema, options)) {
+            return EXIT_SUCCESS;
         }
         /* the schema instance is not disabled by anything, continue with checking */
     }
@@ -764,6 +781,10 @@ lyd_check_mandatory_subtree(struct lyd_node *tree, struct lyd_node *subtree, str
             }
         }
         if (!iter) {
+            if (lyd_is_when_false(tree, last_parent, schema, options)) {
+                /* nothing to check */
+                break;
+            }
             if (((struct lys_node_choice *)schema)->dflt) {
                 /* there is a default case */
                 if (lyd_check_mandatory_subtree(tree, subtree, last_parent, ((struct lys_node_choice *)schema)->dflt,
