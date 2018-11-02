@@ -41,7 +41,7 @@ enum YIN_ARGUMENT {
 #define IF_KW_PREFIX_END }
 
 enum YIN_ARGUMENT
-match_argument_name(char *name, size_t len)
+match_argument_name(const char *name, size_t len)
 {
     enum YIN_ARGUMENT arg = YIN_ARG_NONE;
     size_t already_read = 0;
@@ -100,15 +100,8 @@ parse_submodule(struct lyxml_context *xml_ctx, const char **data, struct lysp_mo
 {
     LY_ERR ret = 0;
 
-    const char *prefix, *name, *elem;
+    const char *prefix, *name;
     size_t prefix_len, name_len;
-
-    /* check if root keyword is module or submodule */
-    ret = lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
-    LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), LY_EMEM);
-    if (match_keyword(name) != YANG_MODULE && match_keyword(name) != YANG_SUBMODULE) {
-        LOGVAL(xml_ctx->ctx, xml_ctx->line, &xml_ctx->line, LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".", name);
-    }
 
     /* check if module/submodule has argument "name" */
     ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
@@ -121,26 +114,41 @@ parse_submodule(struct lyxml_context *xml_ctx, const char **data, struct lysp_mo
     size_t buf_len = 0, out_len = 0;
     int dynamic;
 
+    /* read name of module */
     ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
     LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), LY_EMEM);
-
     (*mod_p)->name = lydict_insert(xml_ctx->ctx, out, out_len);
+    LY_CHECK_ERR_RET(!(*mod_p)->name, LOGMEM(xml_ctx->ctx), LY_EMEM);
     return 0;
 }
 
 LY_ERR
 yin_parse(struct ly_ctx *ctx, const char *data, struct lysp_module **mod_p)
 {
-    LY_ERR ret = 0;
-    struct ly_parser_ctx context = {0};
-
+    LY_ERR ret = LY_SUCCESS;
+    enum yang_keyword kw = YANG_NONE;
     struct lyxml_context xml_ctx;
-    xml_ctx.ctx = ctx;
 
-    const char *prefix, *name, *elem;
+    memset(&xml_ctx, 0, sizeof xml_ctx);
+    xml_ctx.ctx = ctx;
+    xml_ctx.line = 1;
+
+    const char *prefix, *name;
     size_t prefix_len, name_len;
 
-    parse_submodule(&xml_ctx, &data, mod_p);
+    /* check if root keyword is module or submodule */
+    ret = lyxml_get_element(&xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx.ctx), LY_EMEM);
+    kw = match_keyword(name);
+    if (kw != YANG_MODULE && kw != YANG_SUBMODULE) {
+        LOGVAL(xml_ctx.ctx, xml_ctx.line, &xml_ctx.line, LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".", name);
+    }
 
-    return LY_SUCCESS;
+    if (kw == YANG_SUBMODULE) {
+        (*mod_p)->submodule = 1;
+    }
+
+    ret = parse_submodule(&xml_ctx, &data, mod_p);
+
+    return ret;
 }

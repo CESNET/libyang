@@ -10,18 +10,6 @@
 #include "tree_schema_internal.h"
 #include "../../src/parser_yin.c"
 
-
-static struct lysp_module *
-mod_renew(struct ly_parser_ctx *ctx, struct lysp_module *mod, uint8_t submodule)
-{
-    lysp_module_free(mod);
-    mod = calloc(1, sizeof *mod);
-    mod->ctx = ctx->ctx;
-    mod->submodule = submodule;
-    assert_non_null(mod);
-    return mod;
-}
-
 static void
 test_parse(void **state)
 {
@@ -31,7 +19,7 @@ test_parse(void **state)
     struct lysp_module *mod;
 
     ly_ctx_new(NULL, 0, &ctx);
-    mod = malloc(sizeof(*mod));
+    mod = calloc(1, sizeof(*mod));
     mod->ctx = ctx;
 
     yin_parse(ctx, "<module name=\"example-foo\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:foo=\"urn:example:foo\" xmlns:myext=\"urn:example:extensions\">",
