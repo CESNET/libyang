@@ -112,7 +112,6 @@ struct lyxp_expr;
          (ELEM) = (ELEM)->next)
 
 /**
- * @ingroup datatree
  * @brief Macro to iterate via all sibling elements allowing to modify the list itself (e.g. removing elements)
  *
  * Use with opening curly bracket (`{`). All parameters must be of the same type.
@@ -159,6 +158,12 @@ typedef enum {
 #define LYS_CASE 0x0040           /**< case statement node */
 #define LYS_USES 0x0080           /**< uses statement node */
 #define LYS_ANYDATA 0x0120        /**< anydata statement node, in tests it can be used for both #LYS_ANYXML and #LYS_ANYDATA */
+
+#define LYS_INOUT 0x200
+#define LYS_ACTION 0x400
+#define LYS_NOTIF 0x800
+#define LYS_GROUPING 0x1000
+#define LYS_AUGMENT 0x2000
 
 /**
  * @brief YANG import-stmt
@@ -324,6 +329,9 @@ struct lysp_tpdf {
  * @brief YANG grouping-stmt
  */
 struct lysp_grp {
+    struct lysp_node *parent;        /**< parent node (NULL if this is a top-level grouping) */
+    uint16_t nodetype;               /**< LYS_GROUPING */
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values are allowed */
     const char *name;                /**< grouping name (mandatory) */
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
@@ -333,7 +341,6 @@ struct lysp_grp {
     struct lysp_action *actions;     /**< list of actions ([sized array](@ref sizedarrays)) */
     struct lysp_notif *notifs;       /**< list of notifications ([sized array](@ref sizedarrays)) */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values are allowed */
 };
 
 /**
@@ -367,6 +374,9 @@ struct lysp_refine {
  * @brief YANG uses-augment-stmt and augment-stmt
  */
 struct lysp_augment {
+    struct lysp_node *parent;        /**< parent node (NULL if this is a top-level augment) */
+    uint16_t nodetype;               /**< LYS_AUGMENT */
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values are allowed */
     const char *nodeid;              /**< target schema nodeid (mandatory) - absolute for global augments, descendant for uses's augments */
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
@@ -376,7 +386,6 @@ struct lysp_augment {
     struct lysp_action *actions;     /**< list of actions ([sized array](@ref sizedarrays)) */
     struct lysp_notif *notifs;       /**< list of notifications ([sized array](@ref sizedarrays)) */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values are allowed */
 };
 
 /**
@@ -476,9 +485,10 @@ struct lysp_deviation {
  * @brief Generic YANG data node
  */
 struct lysp_node {
+    struct lysp_node *parent;        /**< parent node (NULL if this is a top-level node) */
     uint16_t nodetype;               /**< type of the node (mandatory) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
-    struct lysp_node *next;          /**< pointer to the next sibling node (NULL if there is no one) */
+    struct lysp_node *next;          /**< next sibling node (NULL if there is no one) */
     const char *name;                /**< node name (mandatory) */
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
@@ -491,6 +501,7 @@ struct lysp_node {
  * @brief Extension structure of the lysp_node for YANG container
  */
 struct lysp_node_container {
+    struct lysp_node *parent;        /**< parent node (NULL if this is a top-level node) */
     uint16_t nodetype;               /**< LYS_CONTAINER */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     struct lysp_node *next;          /**< pointer to the next sibling node (NULL if there is no one) */
@@ -512,6 +523,7 @@ struct lysp_node_container {
 };
 
 struct lysp_node_leaf {
+    struct lysp_node *parent;        /**< parent node (NULL if this is a top-level node) */
     uint16_t nodetype;               /**< LYS_LEAF */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     struct lysp_node *next;          /**< pointer to the next sibling node (NULL if there is no one) */
@@ -530,6 +542,7 @@ struct lysp_node_leaf {
 };
 
 struct lysp_node_leaflist {
+    struct lysp_node *parent;        /**< parent node (NULL if this is a top-level node) */
     uint16_t nodetype;               /**< LYS_LEAFLIST */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     struct lysp_node *next;          /**< pointer to the next sibling node (NULL if there is no one) */
@@ -550,6 +563,7 @@ struct lysp_node_leaflist {
 };
 
 struct lysp_node_list {
+    struct lysp_node *parent;        /**< parent node (NULL if this is a top-level node) */
     uint16_t nodetype;               /**< LYS_LIST */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     struct lysp_node *next;          /**< pointer to the next sibling node (NULL if there is no one) */
@@ -574,6 +588,7 @@ struct lysp_node_list {
 };
 
 struct lysp_node_choice {
+    struct lysp_node *parent;        /**< parent node (NULL if this is a top-level node) */
     uint16_t nodetype;               /**< LYS_CHOICE */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     struct lysp_node *next;          /**< pointer to the next sibling node (NULL if there is no one) */
@@ -590,6 +605,7 @@ struct lysp_node_choice {
 };
 
 struct lysp_node_case {
+    struct lysp_node *parent;        /**< parent node (NULL if this is a top-level node) */
     uint16_t nodetype;               /**< LYS_CASE */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     struct lysp_node *next;          /**< pointer to the next sibling node (NULL if there is no one) */
@@ -605,6 +621,7 @@ struct lysp_node_case {
 };
 
 struct lysp_node_anydata {
+    struct lysp_node *parent;        /**< parent node (NULL if this is a top-level node) */
     uint16_t nodetype;               /**< LYS_ANYXML || LYS_ANYDATA */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     struct lysp_node *next;          /**< pointer to the next sibling node (NULL if there is no one) */
@@ -620,6 +637,7 @@ struct lysp_node_anydata {
 };
 
 struct lysp_node_uses {
+    struct lysp_node *parent;        /**< parent node (NULL if this is a top-level node) */
     uint16_t nodetype;               /**< LYS_USES */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     struct lysp_node *next;          /**< pointer to the next sibling node (NULL if there is no one) */
@@ -639,6 +657,8 @@ struct lysp_node_uses {
  * @brief YANG input-stmt and output-stmt
  */
 struct lysp_action_inout {
+    struct lysp_node *parent;        /**< parent node (NULL if this is a top-level node) */
+    uint16_t nodetype;               /**< LYS_INOUT */
     struct lysp_restr *musts;        /**< list of must restrictions ([sized array](@ref sizedarrays)) */
     struct lysp_tpdf *typedefs;      /**< list of typedefs ([sized array](@ref sizedarrays)) */
     struct lysp_grp *groupings;      /**< list of groupings ([sized array](@ref sizedarrays)) */
@@ -650,6 +670,9 @@ struct lysp_action_inout {
  * @brief YANG rpc-stmt and action-stmt
  */
 struct lysp_action {
+    struct lysp_node *parent;        /**< parent node (NULL if this is a top-level node) */
+    uint16_t nodetype;               /**< LYS_ACTION */
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     const char *name;                /**< grouping name reference (mandatory) */
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
@@ -659,13 +682,15 @@ struct lysp_action {
     struct lysp_action_inout *input; /**< RPC's/Action's input */
     struct lysp_action_inout *output;/**< RPC's/Action's output */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
 };
 
 /**
  * @brief YANG notification-stmt
  */
 struct lysp_notif {
+    struct lysp_node *parent;        /**< parent node (NULL if this is a top-level node) */
+    uint16_t nodetype;               /**< LYS_NOTIF */
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values are allowed */
     const char *name;                /**< grouping name reference (mandatory) */
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
@@ -675,7 +700,6 @@ struct lysp_notif {
     struct lysp_grp *groupings;      /**< list of groupings ([sized array](@ref sizedarrays)) */
     struct lysp_node *data;          /**< list of data nodes (linked list) */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values are allowed */
 };
 
 /**

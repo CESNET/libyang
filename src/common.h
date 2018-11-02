@@ -107,7 +107,7 @@ void ly_vlog(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const void *
  */
 #define LY_CHECK_GOTO(COND, GOTO) if (COND) {goto GOTO;}
 #define LY_CHECK_ERR_GOTO(COND, ERR, GOTO) if (COND) {ERR; goto GOTO;}
-#define LY_CHECK_RET1(RETVAL) if (RETVAL != LY_SUCCESS) {return RETVAL;}
+#define LY_CHECK_RET1(RETVAL) {LY_ERR ret__ = RETVAL;if (ret__ != LY_SUCCESS) {return ret__;}}
 #define LY_CHECK_RET2(COND, RETVAL) if (COND) {return RETVAL;}
 #define LY_CHECK_RET(...) GETMACRO2(__VA_ARGS__, LY_CHECK_RET2, LY_CHECK_RET1)(__VA_ARGS__)
 #define LY_CHECK_ERR_RET(COND, ERR, RETVAL) if (COND) {ERR; return RETVAL;}
