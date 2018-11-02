@@ -1142,6 +1142,70 @@ test_deviate(void **state)
     ly_ctx_destroy(ctx.ctx, NULL);
 }
 
+static void
+test_container(void **state)
+{
+    (void) state; /* unused */
+
+    struct ly_parser_ctx ctx;
+    struct lysp_node_container *c = NULL;
+    const char *str;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
+    assert_non_null(ctx.ctx);
+    ctx.line = 1;
+    ctx.indent = 0;
+
+    /* invalid cardinality */
+#define TEST_DUP(MEMBER, VALUE1, VALUE2) \
+    str = "cont {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
+    assert_int_equal(LY_EVALID, parse_container(&ctx, &str, NULL, (struct lysp_node**)&c)); \
+    logbuf_assert("Duplicate keyword \""MEMBER"\". Line number 1."); \
+    lysp_node_free(ctx.ctx, (struct lysp_node*)c, 1); c = NULL;
+
+    TEST_DUP("config", "true", "false");
+    TEST_DUP("description", "text1", "text2");
+    TEST_DUP("presence", "true", "false");
+    TEST_DUP("reference", "1", "2");
+    TEST_DUP("status", "current", "obsolete");
+    TEST_DUP("when", "true", "false");
+#undef TEST_DUP
+
+    /* full content */
+    str = "cont {action x;anydata any;anyxml anyxml; choice ch;config false;container c;description test;grouping g;if-feature f; leaf l;"
+          "leaf-list ll; list li;must 'expr';notification not; presence true; reference test;status current;typedef t;uses g;when true;m:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_container(&ctx, &str, NULL, (struct lysp_node**)&c));
+    assert_non_null(c);
+    assert_non_null(c->actions);
+    assert_non_null(c->child);
+    assert_string_equal("test", c->dsc);
+    assert_non_null(c->exts);
+    assert_non_null(c->groupings);
+    assert_non_null(c->iffeatures);
+    assert_non_null(c->musts);
+    assert_non_null(c->notifs);
+    assert_string_equal("true", c->presence);
+    assert_string_equal("test", c->ref);
+    assert_non_null(c->typedefs);
+    assert_non_null(c->when);
+    assert_null(c->parent);
+    assert_null(c->next);
+    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR, c->flags);
+    lysp_node_free(ctx.ctx, (struct lysp_node*)c, 1); c = NULL;
+
+    /* invalid */
+    str = " cont {augment /root;} ...";
+    assert_int_equal(LY_EVALID, parse_container(&ctx, &str, NULL, (struct lysp_node**)&c));
+    logbuf_assert("Invalid keyword \"augment\" as a child of \"container\". Line number 1.");
+    lysp_node_free(ctx.ctx, (struct lysp_node*)c, 1); c = NULL;
+    str = " cont {nonsence true;} ...";
+    assert_int_equal(LY_EVALID, parse_container(&ctx, &str, NULL, (struct lysp_node**)&c));
+    logbuf_assert("Invalid character sequence \"nonsence\", expected a keyword. Line number 1.");
+    lysp_node_free(ctx.ctx, (struct lysp_node*)c, 1); c = NULL;
+
+    ly_ctx_destroy(ctx.ctx, NULL);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1154,6 +1218,7 @@ int main(void)
         cmocka_unit_test_setup(test_feature, logger_setup),
         cmocka_unit_test_setup(test_deviation, logger_setup),
         cmocka_unit_test_setup(test_deviate, logger_setup),
+        cmocka_unit_test_setup(test_container, logger_setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
