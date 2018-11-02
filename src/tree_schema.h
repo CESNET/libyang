@@ -788,6 +788,14 @@ struct lysc_ext_instance {
 };
 
 /**
+ * @brief Compiled YANG if-feature-stmt
+ */
+struct lysc_iffeature {
+    uint8_t *expr;                   /**< 2bits array describing the if-feature expression in prefix format, see @ref ifftokens */
+    struct lysc_feature **features;  /**< array of pointers to the features used in expression ([sized array](@ref sizedarrays)) */
+};
+
+/**
  * @brief YANG import-stmt
  */
 struct lysc_import {
@@ -849,12 +857,6 @@ struct lysc_revision {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 };
 
-/**
- * @brief Compiled YANG if-feature-stmt
- */
-struct lysc_iffeature {
-    uint8_t *expr;                   /**< 2bits array describing the if-feature expression in prefix format, see @ref ifftokens */
-    struct lysc_feature **features;  /**< array of pointers to the features used in expression ([sized array](@ref sizedarrays)) */
 };
 
 /**
@@ -863,12 +865,149 @@ struct lysc_iffeature {
 struct lysc_node {
     uint16_t nodetype;               /**< type of the node (mandatory) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
-    struct lysp_node *sp;            /**< link to the simply parsed (SP) original of the node, NULL if the SP schema was removed. */
-    struct lysc_node *next;          /**< pointer to the next sibling node (NULL if there is no one) */
+    struct lys_module *module;       /**< module structure */
+    struct lysp_node *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
+    struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
+    struct lysc_node *next;          /**< next sibling node (NULL if there is no one) */
+    struct lysc_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
+                                          never NULL. If there is no sibling node, pointer points to the node
+                                          itself. In case of the first node, this pointer points to the last
+                                          node in the list. */
     const char *name;                /**< node name (mandatory) */
-    struct lysc_when *when;          /**< when statement */
-    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+};
+
+struct lysc_node_container {
+    uint16_t nodetype;               /**< LYS_CONTAINER */
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
+    struct lys_module *module;       /**< module structure */
+    struct lysp_node *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
+    struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
+    struct lysc_node *next;          /**< next sibling node (NULL if there is no one) */
+    struct lysc_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
+                                          never NULL. If there is no sibling node, pointer points to the node
+                                          itself. In case of the first node, this pointer points to the last
+                                          node in the list. */
+    const char *name;                /**< node name (mandatory) */
+    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+
+    struct lysc_node *child;
+};
+
+struct lysc_node_choice {
+    uint16_t nodetype;               /**< LYS_CHOICE */
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
+    struct lys_module *module;       /**< module structure */
+    struct lysp_node *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
+    struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
+    struct lysc_node *next;          /**< next sibling node (NULL if there is no one) */
+    struct lysc_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
+                                          never NULL. If there is no sibling node, pointer points to the node
+                                          itself. In case of the first node, this pointer points to the last
+                                          node in the list. */
+    const char *name;                /**< node name (mandatory) */
+    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+
+    struct lysc_node *child;
+};
+
+struct lysc_node_leaf {
+    uint16_t nodetype;               /**< LYS_LEAF */
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
+    struct lys_module *module;       /**< module structure */
+    struct lysp_node *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
+    struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
+    struct lysc_node *next;          /**< next sibling node (NULL if there is no one) */
+    struct lysc_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
+                                          never NULL. If there is no sibling node, pointer points to the node
+                                          itself. In case of the first node, this pointer points to the last
+                                          node in the list. */
+    const char *name;                /**< node name (mandatory) */
+    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+
+};
+
+struct lysc_node_leaflist {
+    uint16_t nodetype;               /**< LYS_LEAFLIST */
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
+    struct lys_module *module;       /**< module structure */
+    struct lysp_node *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
+    struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
+    struct lysc_node *next;          /**< next sibling node (NULL if there is no one) */
+    struct lysc_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
+                                          never NULL. If there is no sibling node, pointer points to the node
+                                          itself. In case of the first node, this pointer points to the last
+                                          node in the list. */
+    const char *name;                /**< node name (mandatory) */
+    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+
+};
+
+struct lysc_node_list {
+    uint16_t nodetype;               /**< LYS_LIST */
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
+    struct lys_module *module;       /**< module structure */
+    struct lysp_node *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
+    struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
+    struct lysc_node *next;          /**< next sibling node (NULL if there is no one) */
+    struct lysc_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
+                                          never NULL. If there is no sibling node, pointer points to the node
+                                          itself. In case of the first node, this pointer points to the last
+                                          node in the list. */
+    const char *name;                /**< node name (mandatory) */
+    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+
+    struct lysc_node *child;
+};
+
+struct lysc_node_anydata {
+    uint16_t nodetype;               /**< LYS_ANYXML or LYS_ANYDATA */
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
+    struct lys_module *module;       /**< module structure */
+    struct lysp_node *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
+    struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
+    struct lysc_node *next;          /**< next sibling node (NULL if there is no one) */
+    struct lysc_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
+                                          never NULL. If there is no sibling node, pointer points to the node
+                                          itself. In case of the first node, this pointer points to the last
+                                          node in the list. */
+    const char *name;                /**< node name (mandatory) */
+    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+
+};
+
+struct lysc_node_case {
+    uint16_t nodetype;               /**< LYS_CASE */
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
+    struct lys_module *module;       /**< module structure */
+    struct lysp_node *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
+    struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
+    struct lysc_node *next;          /**< next sibling node (NULL if there is no one) */
+    struct lysc_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
+                                          never NULL. If there is no sibling node, pointer points to the node
+                                          itself. In case of the first node, this pointer points to the last
+                                          node in the list. */
+    const char *name;                /**< node name (mandatory) */
+    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+
+    struct lysc_node *child;
+};
+
+struct lysc_node_uses {
+    uint16_t nodetype;               /**< LYS_CHOICE */
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
+    struct lys_module *module;       /**< module structure */
+    struct lysp_node *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
+    struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
+    struct lysc_node *next;          /**< next sibling node (NULL if there is no one) */
+    struct lysc_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
+                                          never NULL. If there is no sibling node, pointer points to the node
+                                          itself. In case of the first node, this pointer points to the last
+                                          node in the list. */
+    const char *name;                /**< node name (mandatory) */
+    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+
+    struct lysc_node *child;
 };
 
 /**

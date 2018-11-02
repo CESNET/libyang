@@ -314,12 +314,45 @@ test_identity(void **state)
     ly_ctx_destroy(ctx, NULL);
 }
 
+static void
+test_node_container(void **state)
+{
+    (void) state; /* unused */
+
+    struct ly_ctx *ctx;
+    struct lys_module *mod;
+    struct lysc_node_container *cont;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+    assert_non_null(mod = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;container c;}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    assert_non_null(mod->compiled);
+    assert_non_null((cont = (struct lysc_node_container*)mod->compiled->data));
+    assert_int_equal(LYS_CONTAINER, cont->nodetype);
+    assert_string_equal("c", cont->name);
+    assert_true(cont->flags & LYS_CONFIG_W);
+    assert_true(cont->flags & LYS_STATUS_CURR);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;container c {config false;container child;}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    assert_non_null(mod->compiled);
+    assert_non_null((cont = (struct lysc_node_container*)mod->compiled->data));
+    assert_true(cont->flags & LYS_CONFIG_R);
+    assert_non_null((cont = (struct lysc_node_container*)cont->child));
+    assert_int_equal(LYS_CONTAINER, cont->nodetype);
+    assert_true(cont->flags & LYS_CONFIG_R);
+    assert_string_equal("child", cont->name);
+
+    ly_ctx_destroy(ctx, NULL);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup(test_module, logger_setup),
         cmocka_unit_test_setup(test_feature, logger_setup),
         cmocka_unit_test_setup(test_identity, logger_setup),
+        cmocka_unit_test_setup(test_node_container, logger_setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
