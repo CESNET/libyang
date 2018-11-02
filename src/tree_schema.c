@@ -1358,7 +1358,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, st
      * current in deprecated or deprecated in obsolete, so we do print warning and inherit status */
     if (!(node->flags & LYS_STATUS_MASK)) {
         if (parent && (parent->flags & (LYS_STATUS_DEPRC | LYS_STATUS_OBSLT))) {
-            LOGWRN(ctx->ctx, "Missing explicit \"%s\" status in already specified in parent, inheriting.",
+            LOGWRN(ctx->ctx, "Missing explicit \"%s\" status that was already specified in parent, inheriting.",
                    (parent->flags & LYS_STATUS_DEPRC) ? "deprecated" : "obsolete");
             node->flags |= parent->flags & LYS_STATUS_MASK;
         } else {

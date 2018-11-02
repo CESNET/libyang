@@ -333,14 +333,17 @@ test_node_container(void **state)
     assert_true(cont->flags & LYS_CONFIG_W);
     assert_true(cont->flags & LYS_STATUS_CURR);
 
-    assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;container c {config false;container child;}}", LYS_IN_YANG));
+    assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;container c {config false; status deprecated; container child;}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    logbuf_assert("Missing explicit \"deprecated\" status that was already specified in parent, inheriting.");
     assert_non_null(mod->compiled);
     assert_non_null((cont = (struct lysc_node_container*)mod->compiled->data));
     assert_true(cont->flags & LYS_CONFIG_R);
+    assert_true(cont->flags & LYS_STATUS_DEPRC);
     assert_non_null((cont = (struct lysc_node_container*)cont->child));
     assert_int_equal(LYS_CONTAINER, cont->nodetype);
     assert_true(cont->flags & LYS_CONFIG_R);
+    assert_true(cont->flags & LYS_STATUS_DEPRC);
     assert_string_equal("child", cont->name);
 
     ly_ctx_destroy(ctx, NULL);
