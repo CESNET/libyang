@@ -98,10 +98,14 @@ match_argument_name(const char *name, size_t len)
 LY_ERR
 parse_submodule(struct lyxml_context *xml_ctx, const char **data, struct lysp_module **mod_p)
 {
-    LY_ERR ret = 0;
+    LY_ERR ret = LY_SUCCESS;
 
     const char *prefix, *name;
     size_t prefix_len, name_len;
+
+    char *buf = NULL, *out = NULL;
+    size_t buf_len = 0, out_len = 0;
+    int dynamic;
 
     /* check if module/submodule has argument "name" */
     ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
@@ -110,16 +114,13 @@ parse_submodule(struct lyxml_context *xml_ctx, const char **data, struct lysp_mo
         LOGVAL(xml_ctx->ctx, xml_ctx->line, &xml_ctx->line, LYVE_SYNTAX, "Invalid argument name \"%s\", expected \"name\".", name);
     }
 
-    char *buf = NULL, *out = NULL;
-    size_t buf_len = 0, out_len = 0;
-    int dynamic;
-
-    /* read name of module */
+    /* read module name */
     ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
     LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), LY_EMEM);
     (*mod_p)->name = lydict_insert(xml_ctx->ctx, out, out_len);
     LY_CHECK_ERR_RET(!(*mod_p)->name, LOGMEM(xml_ctx->ctx), LY_EMEM);
-    return 0;
+
+    return ret;
 }
 
 LY_ERR
@@ -136,7 +137,7 @@ yin_parse(struct ly_ctx *ctx, const char *data, struct lysp_module **mod_p)
     const char *prefix, *name;
     size_t prefix_len, name_len;
 
-    /* check if root keyword is module or submodule */
+    /* check if root element is module or submodule */
     ret = lyxml_get_element(&xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx.ctx), LY_EMEM);
     kw = match_keyword(name);
@@ -146,9 +147,11 @@ yin_parse(struct ly_ctx *ctx, const char *data, struct lysp_module **mod_p)
 
     if (kw == YANG_SUBMODULE) {
         (*mod_p)->submodule = 1;
+
     }
 
     ret = parse_submodule(&xml_ctx, &data, mod_p);
 
+    lyxml_context_clear(&xml_ctx);
     return ret;
 }
