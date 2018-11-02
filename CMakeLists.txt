@@ -160,7 +160,8 @@ set(libsrc
     src/tree_schema.c
     src/tree_schema_helpers.c
     src/parser_yang.c
-    src/xml.c)
+    src/xml.c
+    src/xpath.c)
 
 #set(lintsrc
 #    tools/lint/main.c

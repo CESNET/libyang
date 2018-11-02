@@ -20,6 +20,30 @@
 #include "context.h"
 #include "set.h"
 
+/* Macro to test if character is whitespace */
+#define is_xmlws(c) (c == 0x20 || c == 0x9 || c == 0xa || c == 0xd)
+
+/* Macro to test if character is allowed to be a first character of an qualified identifier */
+#define is_xmlqnamestartchar(c) ((c >= 'a' && c <= 'z') || c == '_' || \
+        (c >= 'A' && c <= 'Z') || /* c == ':' || */ \
+        (c >= 0x370 && c <= 0x1fff && c != 0x37e ) || \
+        (c >= 0xc0 && c <= 0x2ff && c != 0xd7 && c != 0xf7) || c == 0x200c || \
+        c == 0x200d || (c >= 0x2070 && c <= 0x218f) || \
+        (c >= 0x2c00 && c <= 0x2fef) || (c >= 0x3001 && c <= 0xd7ff) || \
+        (c >= 0xf900 && c <= 0xfdcf) || (c >= 0xfdf0 && c <= 0xfffd) || \
+        (c >= 0x10000 && c <= 0xeffff))
+
+/* Macro to test if character is allowed to be used in an qualified identifier */
+#define is_xmlqnamechar(c) ((c >= 'a' && c <= 'z') || c == '_' || c == '-' || \
+        (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || /* c == ':' || */ \
+        c == '.' || c == 0xb7 || (c >= 0x370 && c <= 0x1fff && c != 0x37e ) ||\
+        (c >= 0xc0 && c <= 0x2ff && c != 0xd7 && c != 0xf7) || c == 0x200c || \
+        c == 0x200d || (c >= 0x300 && c <= 0x36f) || \
+        (c >= 0x2070 && c <= 0x218f) || (c >= 0x2030f && c <= 0x2040) || \
+        (c >= 0x2c00 && c <= 0x2fef) || (c >= 0x3001 && c <= 0xd7ff) || \
+        (c >= 0xf900 && c <= 0xfdcf) || (c >= 0xfdf0 && c <= 0xfffd) || \
+        (c >= 0x10000 && c <= 0xeffff))
+
 struct lyxml_ns {
     const char *element;  /* element where the namespace is defined */
     char *prefix;         /* prefix of the namespace, NULL for the default namespace */

@@ -141,6 +141,8 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_INORD       LYVE_SYNTAX_YANG, "Invalid keyword \"%s\", it cannot appear after \"%s\"."
 #define LY_VCODE_OOB         LYVE_SYNTAX_YANG, "Value \"%.*s\" is out of \"%s\" bounds."
 #define LY_VCODE_INDEV       LYVE_SYNTAX_YANG, "Deviate \"%s\" does not support keyword \"%s\"."
+#define LY_VCODE_XP_EOE      LYVE_XPATH, "Unterminated string delimited with %c (%.15s)."
+#define LY_VCODE_XP_INEXPR   LYVE_XPATH, "Invalid expression 0x%x."
 
 /******************************************************************************
  * Context
