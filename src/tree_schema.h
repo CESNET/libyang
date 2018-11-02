@@ -15,6 +15,7 @@
 #ifndef LY_TREE_SCHEMA_H_
 #define LY_TREE_SCHEMA_H_
 
+#include <pcre.h>
 #include <stdint.h>
 
 #include "extensions.h"
@@ -166,6 +167,33 @@ typedef enum {
 #define LYS_AUGMENT 0x2000
 
 /**
+ * @brief YANG built-in types
+ */
+typedef enum {
+    LY_TYPE_UNKNOWN = 0,  /**< Unknown type */
+    LY_TYPE_BINARY,       /**< Any binary data ([RFC 6020 sec 9.8](http://tools.ietf.org/html/rfc6020#section-9.8)) */
+    LY_TYPE_BITS,         /**< A set of bits or flags ([RFC 6020 sec 9.7](http://tools.ietf.org/html/rfc6020#section-9.7)) */
+    LY_TYPE_BOOL,         /**< "true" or "false" ([RFC 6020 sec 9.5](http://tools.ietf.org/html/rfc6020#section-9.5)) */
+    LY_TYPE_DEC64,        /**< 64-bit signed decimal number ([RFC 6020 sec 9.3](http://tools.ietf.org/html/rfc6020#section-9.3))*/
+    LY_TYPE_EMPTY,        /**< A leaf that does not have any value ([RFC 6020 sec 9.11](http://tools.ietf.org/html/rfc6020#section-9.11)) */
+    LY_TYPE_ENUM,         /**< Enumerated strings ([RFC 6020 sec 9.6](http://tools.ietf.org/html/rfc6020#section-9.6)) */
+    LY_TYPE_IDENT,        /**< A reference to an abstract identity ([RFC 6020 sec 9.10](http://tools.ietf.org/html/rfc6020#section-9.10)) */
+    LY_TYPE_INST,         /**< References a data tree node ([RFC 6020 sec 9.13](http://tools.ietf.org/html/rfc6020#section-9.13)) */
+    LY_TYPE_LEAFREF,      /**< A reference to a leaf instance ([RFC 6020 sec 9.9](http://tools.ietf.org/html/rfc6020#section-9.9))*/
+    LY_TYPE_STRING,       /**< Human-readable string ([RFC 6020 sec 9.4](http://tools.ietf.org/html/rfc6020#section-9.4)) */
+    LY_TYPE_UNION,        /**< Choice of member types ([RFC 6020 sec 9.12](http://tools.ietf.org/html/rfc6020#section-9.12)) */
+    LY_TYPE_INT8,         /**< 8-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
+    LY_TYPE_UINT8,        /**< 8-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
+    LY_TYPE_INT16,        /**< 16-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
+    LY_TYPE_UINT16,       /**< 16-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
+    LY_TYPE_INT32,        /**< 32-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
+    LY_TYPE_UINT32,       /**< 32-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
+    LY_TYPE_INT64,        /**< 64-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
+    LY_TYPE_UINT64,       /**< 64-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
+} LY_DATA_TYPE;
+#define LY_DATA_TYPE_COUNT 20 /**< Number of different types */
+
+/**
  * @brief YANG import-stmt
  */
 struct lysp_import {
@@ -305,6 +333,8 @@ struct lysp_type {
     const char **bases;              /**< list of base identifiers ([sized array](@ref sizedarrays)) - identityref */
     struct lysp_type *types;         /**< list of sub-types ([sized array](@ref sizedarrays)) - union */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+
+    struct lysc_type *compiled;      /**< pointer to the compiled type */
 
     uint8_t fraction_digits;         /**< number of fraction digits - decimal64 */
     uint8_t require_instance;        /**< require-instance flag - leafref, instance */
@@ -857,6 +887,131 @@ struct lysc_revision {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 };
 
+struct lysc_default {
+    struct lys_module *module;       /**< module where the default was defined */
+    const char *value;               /**< default value (with possible prefixes from the module where defined) */
+};
+
+struct lysc_range {
+    struct {
+        union {                      /**< min boundary TODO decimal */
+            int64_t min_64;          /**< for int8, int16, int32 and int64 */
+            uint64_t min_u64;        /**< for uint8, uint16, uint32 and uint64 */
+        };
+        union {                      /**< max boundary TODO decimal */
+            int64_t max_64;          /**< for int8, int16, int32 and int64 */
+            uint64_t max_u64;        /**< for uint8, uint16, uint32 and uint64 */
+        };
+    } *parts;                        /**< compiled range expression */
+    const char *emsg;                /**< error-message */
+    const char *eapptag;             /**< error-app-tag value */
+    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+};
+
+struct lysc_pattern {
+    pcre *expr;                      /**< compiled regular expression */
+    pcre_extra *expr_extra;          /**< additional information to speed up matching */
+    const char *emsg;                /**< error-message */
+    const char *eapptag;             /**< error-app-tag value */
+    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    uint8_t inverted;                /**< invert-match flag */
+};
+
+struct lysc_must {
+    struct lys_module *module;       /**< module where the must was defined */
+    struct lyxp_expr *cond;          /**< XPath when condition */
+    const char *emsg;                /**< error-message */
+    const char *eapptag;             /**< error-app-tag value */
+    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+};
+
+struct lysc_type {
+    struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    LY_DATA_TYPE basetype;           /**< Base type of the type */
+    uint32_t refcount;               /**< reference counter for type sharing */
+};
+
+struct lysc_type_num {
+    struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    LY_DATA_TYPE basetype;           /**< Base type of the type */
+    uint32_t refcount;               /**< reference counter for type sharing */
+    struct lysc_range *range;        /**< Optional range limitation */
+};
+
+struct lysc_type_dec {
+    struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    LY_DATA_TYPE basetype;           /**< Base type of the type */
+    uint32_t refcount;               /**< reference counter for type sharing */
+    uint64_t fraction_digits:1;      /**< fraction digits specification */
+    uint64_t div:63;                 /**< value for moving decimal point (dividing the stored value to get the real value) */
+    struct lysc_range *range;        /**< Optional range limitation */
+};
+
+struct lysc_type_str {
+    struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    LY_DATA_TYPE basetype;           /**< Base type of the type */
+    uint32_t refcount;               /**< reference counter for type sharing */
+    struct lysc_range *length;       /**< Optional length limitation */
+    struct lysc_pattern *patterns;   /**< Optional list of pattern limitations ([sized array](@ref sizedarrays)) */
+};
+
+struct lysc_type_enum {
+    struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    LY_DATA_TYPE basetype;           /**< Base type of the type */
+    uint32_t refcount;               /**< reference counter for type sharing */
+    struct {
+        const char *name;            /**< enumeration identifier */
+        struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+        int32_t value;               /**< integer value associated with the enumeration */
+    } *enums;                        /**< enumerations list ([sized array](@ref sizedarrays)), mandatory (at least 1 item) */
+};
+
+struct lysc_type_leafref {
+    struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    LY_DATA_TYPE basetype;           /**< Base type of the type */
+    uint32_t refcount;               /**< reference counter for type sharing */
+    struct lysc_node* target;        /**< Target schema node */
+    uint8_t require_instance;        /**< require-instance flag */
+};
+
+struct lysc_type_identityref {
+    struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    LY_DATA_TYPE basetype;           /**< Base type of the type */
+    uint32_t refcount;               /**< reference counter for type sharing */
+    struct lysc_ident **base;        /**< list of pointers to the base identities ([sized array](@ref sizedarrays)),
+                                          mandatory (at least 1 item) */
+};
+
+struct lysc_type_instanceid {
+    struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    LY_DATA_TYPE basetype;           /**< Base type of the type */
+    uint32_t refcount;               /**< reference counter for type sharing */
+    uint8_t require_instance;        /**< require-instance flag */
+};
+
+struct lysc_type_bits {
+    struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    LY_DATA_TYPE basetype;           /**< Base type of the type */
+    uint32_t refcount;               /**< reference counter for type sharing */
+    struct {
+        const char *name;            /**< bit identifier */
+        struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+        uint32_t position;           /**< non-negative integer value associated with the bit */
+    } *bits;                         /**< bits list ([sized array](@ref sizedarrays)), mandatory (at least 1 item) */
+};
+
+struct lysc_type_union {
+    struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    LY_DATA_TYPE basetype;           /**< Base type of the type */
+    uint32_t refcount;               /**< reference counter for type sharing */
+    struct lysc_type **types;        /**< list of types in the union ([sized array](@ref sizedarrays)), mandatory (at least 1 item) */
+};
+
+struct lysc_type_bin {
+    struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    LY_DATA_TYPE basetype;           /**< Base type of the type */
+    uint32_t refcount;               /**< reference counter for type sharing */
+    struct lysc_range *length;       /**< Optional length limitation */
 };
 
 /**
