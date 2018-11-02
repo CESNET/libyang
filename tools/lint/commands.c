@@ -523,9 +523,8 @@ parse_data(char *filepath, int *options, struct lyd_node *val_tree, const char *
 {
     LYD_FORMAT informat = LYD_UNKNOWN;
     struct lyxml_elem *xml = NULL;
-    struct lyd_node *data = NULL, *root, *next, *iter, *rpc_act = NULL;
-    void *lydval_arg = NULL;
-    int opts = *options;
+    struct lyd_node *data = NULL, *rpc_act = NULL;
+    int opts = *options | LYD_OPT_DATA_ADD_YANGLIB;
 
     /* detect input format according to file suffix */
     informat = detect_data_format(filepath);
@@ -554,23 +553,18 @@ parse_data(char *filepath, int *options, struct lyd_node *val_tree, const char *
         if (!strcmp(xml->name, "data")) {
             fprintf(stdout, "Parsing %s as complete datastore.\n", filepath);
             opts = (opts & ~LYD_OPT_TYPEMASK);
-            lydval_arg = ctx;
         } else if (!strcmp(xml->name, "config")) {
             fprintf(stdout, "Parsing %s as config data.\n", filepath);
             opts = (opts & ~LYD_OPT_TYPEMASK) | LYD_OPT_CONFIG;
-            lydval_arg = ctx;
         } else if (!strcmp(xml->name, "get-reply")) {
             fprintf(stdout, "Parsing %s as <get> reply data.\n", filepath);
             opts = (opts & ~LYD_OPT_TYPEMASK) | LYD_OPT_GET;
-            lydval_arg = ctx;
         } else if (!strcmp(xml->name, "get-config-reply")) {
             fprintf(stdout, "Parsing %s as <get-config> reply data.\n", filepath);
             opts = (opts & ~LYD_OPT_TYPEMASK) | LYD_OPT_GETCONFIG;
-            lydval_arg = ctx;
         } else if (!strcmp(xml->name, "edit-config")) {
             fprintf(stdout, "Parsing %s as <edit-config> data.\n", filepath);
             opts = (opts & ~LYD_OPT_TYPEMASK) | LYD_OPT_EDIT;
-            lydval_arg = ctx;
         } else if (!strcmp(xml->name, "rpc")) {
             fprintf(stdout, "Parsing %s as <rpc> data.\n", filepath);
             opts = (opts & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPC;
@@ -612,11 +606,6 @@ parse_data(char *filepath, int *options, struct lyd_node *val_tree, const char *
         } else if (opts & LYD_OPT_DATA_TEMPLATE) {
             data = lyd_parse_xml(ctx, &xml->child, opts, rpc_act_file);
         } else {
-            if ((opts & LYD_OPT_TYPEMASK) == LYD_OPT_DATA && !(opts & LYD_OPT_STRICT )) {
-                /* we have to include status data from ietf-yang-library which is part of the context,
-                 * so we have to postpone validation after merging input data with ly_ctx_info() */
-                opts |= LYD_OPT_TRUSTED;
-            }
             data = lyd_parse_xml(ctx, &xml->child, opts);
         }
         lyxml_free(ctx, xml);
@@ -641,11 +630,6 @@ parse_data(char *filepath, int *options, struct lyd_node *val_tree, const char *
             }
             data = lyd_parse_path(ctx, filepath, informat, opts, rpc_act_file);
         } else {
-            if ((opts & LYD_OPT_TYPEMASK) == LYD_OPT_DATA && !(opts & LYD_OPT_STRICT )) {
-                /* we have to include status data from ietf-yang-library which is part of the context,
-                 * so we have to postpone validation after merging input data with ly_ctx_info() */
-                opts |= LYD_OPT_TRUSTED;
-            }
             data = lyd_parse_path(ctx, filepath, informat, opts);
         }
     }
@@ -655,55 +639,6 @@ parse_data(char *filepath, int *options, struct lyd_node *val_tree, const char *
         fprintf(stderr, "Failed to parse data.\n");
         lyd_free_withsiblings(data);
         return EXIT_FAILURE;
-    }
-
-    if (opts & LYD_OPT_TRUSTED) {
-        /* postponed validation in case of LYD_OPT_DATA */
-        /* remove the trusted flag */
-        opts &= ~LYD_OPT_TRUSTED;
-
-        /* merge with ietf-yang-library */
-        root = ly_ctx_info(ctx);
-        if (lyd_merge(data, root, LYD_OPT_DESTRUCT | LYD_OPT_EXPLICIT)) {
-            fprintf(stderr, "Merging input data with ietf-yang-library failed.\n");
-            lyd_free_withsiblings(root);
-            lyd_free_withsiblings(data);
-            return EXIT_FAILURE;
-        }
-
-        /* invalidate all data - do not believe to the source */
-        LY_TREE_FOR(data, root) {
-            LY_TREE_DFS_BEGIN(root, next, iter) {
-                iter->validity = LYD_VAL_OK;
-                switch (iter->schema->nodetype) {
-                case LYS_LEAFLIST:
-                case LYS_LEAF:
-                    if (((struct lys_node_leaf *)iter->schema)->type.base == LY_TYPE_LEAFREF) {
-                        iter->validity |= LYD_VAL_LEAFREF;
-                    }
-                    break;
-                case LYS_LIST:
-                    iter->validity |= LYD_VAL_UNIQUE;
-                    /* fallthrough */
-                case LYS_CONTAINER:
-                case LYS_NOTIF:
-                case LYS_RPC:
-                case LYS_ACTION:
-                    iter->validity |= LYD_VAL_MAND;
-                    break;
-                default:
-                    break;
-                }
-                LY_TREE_DFS_END(root, next, iter)
-            }
-        }
-
-        /* validate the result */
-        if (lyd_validate(&data, opts, lydval_arg)) {
-            fprintf(stderr, "Failed to parse data.\n");
-            lyd_free_withsiblings(data);
-            return EXIT_FAILURE;
-        }
     }
 
     *result = data;
