@@ -1245,7 +1245,8 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
     /* fully clear the value */
     if (store) {
-        lyd_free_value(*val, *val_type, *val_flags, type);
+        if (type->base != LY_TYPE_BITS)
+            lyd_free_value(*val, *val_type, *val_flags, type);
         *val_flags &= ~LY_VALUE_UNRES;
     }
 
@@ -1334,6 +1335,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         if (!value) {
             /* no bits set */
             if (store) {
+                lyd_free_value(*val, *val_type, *val_flags, type);
                 /* store empty array */
                 val->bit = bits;
                 *val_type = LY_TYPE_BITS;
@@ -1414,6 +1416,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         make_canonical(ctx, LY_TYPE_BITS, value_, bits, &type->info.bits.count);
 
         if (store) {
+            lyd_free_value(*val, *val_type, *val_flags, type);
             /* store the result */
             val->bit = bits;
             *val_type = LY_TYPE_BITS;
