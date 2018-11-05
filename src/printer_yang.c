@@ -1161,6 +1161,11 @@ yang_print_anydata(struct lyout *out, int level, const struct lys_node *node)
     int i, flag = 0;
     struct lys_node_anydata *any = (struct lys_node_anydata *)node;
 
+    if (!lys_parent(node) && !strcmp(node->name, "config") && !strcmp(node->module->name, "ietf-netconf")) {
+        /* node added by libyang, not actually in the model */
+        return;
+    }
+
     ly_print(out, "%*s%s %s", LEVEL, INDENT, any->nodetype == LYS_ANYXML ? "anyxml" : "anydata", any->name);
     level++;
 

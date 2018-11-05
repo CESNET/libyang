@@ -302,11 +302,12 @@ lyp_munmap(void *addr, size_t length)
 }
 
 int
-lyp_add_ietf_netconf_annotations(struct lys_module *mod)
+lyp_add_ietf_netconf_annotations_config(struct lys_module *mod)
 {
     void *reallocated;
     struct lys_ext_instance_complex *op;
     struct lys_type **type;
+    struct lys_node_anydata *anyxml;
     int i;
     struct ly_ctx *ctx = mod->ctx; /* shortcut */
 
@@ -403,6 +404,18 @@ lyp_add_ietf_netconf_annotations(struct lys_module *mod)
     (*type)->der = ly_types[LY_TYPE_STRING];
     (*type)->parent = (struct lys_tpdf *)op;
     mod->ext_size++;
+
+    /* 4) URL config */
+    anyxml = calloc(1, sizeof *anyxml);
+    LY_CHECK_ERR_RETURN(!anyxml, LOGMEM(ctx), EXIT_FAILURE);
+    anyxml->nodetype = LYS_ANYXML;
+    anyxml->prev = (struct lys_node *)anyxml;
+    anyxml->name = lydict_insert(ctx, "config", 0);
+    anyxml->module = mod;
+    anyxml->flags = LYS_CONFIG_W;
+    if (lys_node_addchild(NULL, mod, (struct lys_node *)anyxml, 0)) {
+        return EXIT_FAILURE;
+    }
 
     return EXIT_SUCCESS;
 }

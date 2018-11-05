@@ -1039,7 +1039,7 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const 
      * the anotation definitions available in the internal schema structure. There is another hack in schema
      * printers to do not print this internally added annotation. */
     if (mod && ly_strequal(mod->name, "ietf-netconf", 0)) {
-        if (lyp_add_ietf_netconf_annotations(mod)) {
+        if (lyp_add_ietf_netconf_annotations_config(mod)) {
             lys_free(mod, NULL, 1, 1);
             return NULL;
         }
