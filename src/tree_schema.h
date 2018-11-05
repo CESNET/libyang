@@ -112,26 +112,31 @@ extern "C" {
  * type (e.g. lys_node_leaf), caller is supposed to cast it to the base type
  * identical to the other parameters.
  *
- * Use with closing curly bracket '}' after the macro. Also, this macro requires
- * compiler support of a C11 statement _Generic() and should be compiled with
- * support for C11 standard.
+ * Use with closing curly bracket '}' after the macro.
  *
  * @param START Pointer to the starting element processed first.
  * @param NEXT Temporary storage, do not use.
  * @param ELEM Iterator intended for use in the block.
  */
+
 #ifdef __cplusplus
+#define TYPES_COMPATIBLE(type1, type2) typeid(*(type1)) == typeid(type2)
+#elif __STDC_VERSION__ >= 201112L
+#define TYPES_COMPATIBLE(type1, type2) _Generic(*(type1), type2: 1, default: 0)
+#else
+#define TYPES_COMPATIBLE(type1, type2) __builtin_types_compatible_p(__typeof__(*(type1)), type2)
+#endif
 
 #define LY_TREE_DFS_END(START, NEXT, ELEM)                                    \
     /* select element for the next run - children first */                    \
-    if (typeid(*(ELEM)) == typeid(struct lyd_node)) {                         \
+    if (TYPES_COMPATIBLE(ELEM, struct lyd_node)) {                            \
         /* child exception for leafs, leaflists and anyxml without children */\
         if (((struct lyd_node *)(ELEM))->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) { \
             (NEXT) = NULL;                                                    \
         } else {                                                              \
             (NEXT) = (ELEM)->child;                                           \
         }                                                                     \
-    } else if (typeid(*(ELEM)) == typeid(struct lys_node)) {                  \
+    } else if (TYPES_COMPATIBLE(ELEM, struct lys_node)) {                     \
         /* child exception for leafs, leaflists and anyxml without children */\
         if (((struct lys_node *)(ELEM))->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) { \
             (NEXT) = NULL;                                                    \
@@ -153,14 +158,14 @@ extern "C" {
     }                                                                         \
     while (!(NEXT)) {                                                         \
         /* parent is already processed, go to its sibling */                  \
-        if ((typeid(*(ELEM)) == typeid(struct lys_node))                      \
+        if (TYPES_COMPATIBLE(ELEM, struct lys_node)                           \
                 && (((struct lys_node *)(ELEM)->parent)->nodetype == LYS_AUGMENT)) {  \
             (ELEM) = (ELEM)->parent->prev;                                    \
         } else {                                                              \
             (ELEM) = (ELEM)->parent;                                          \
         }                                                                     \
         /* no siblings, go back through parents */                            \
-        if (typeid(*(ELEM)) == typeid(struct lys_node)) {                     \
+        if (TYPES_COMPATIBLE(ELEM, struct lys_node)) {                        \
             /* due to possible augments */                                    \
             if (lys_parent((struct lys_node *)(ELEM)) == lys_parent((struct lys_node *)(START))) { \
                 /* we are done, no next element to process */                 \
@@ -172,67 +177,6 @@ extern "C" {
         }                                                                     \
         (NEXT) = (ELEM)->next;                                                \
     }
-
-#else
-
-#if __STDC_VERSION__ >= 201112L
-#define TYPES_COMPATIBLE(type1, type2) _Generic(*(type1), struct type2: 1, default: 0)
-#else
-#define TYPES_COMPATIBLE(type1, type2) __builtin_types_compatible_p(__typeof__(*(type1)), struct type2)
-#endif
-
-#define LY_TREE_DFS_END(START, NEXT, ELEM)                                    \
-    /* select element for the next run - children first */                    \
-    if (TYPES_COMPATIBLE(ELEM, lyd_node)) {                                   \
-        /* child exception for leafs, leaflists and anyxml without children */\
-        if (((struct lyd_node *)(ELEM))->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) { \
-            (NEXT) = NULL;                                                    \
-        } else {                                                              \
-            (NEXT) = (ELEM)->child;                                           \
-        }                                                                     \
-    } else if (TYPES_COMPATIBLE(ELEM, lys_node)) {                            \
-        /* child exception for leafs, leaflists and anyxml without children */\
-        if (((struct lys_node *)(ELEM))->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) { \
-            (NEXT) = NULL;                                                    \
-        } else {                                                              \
-            (NEXT) = (ELEM)->child;                                           \
-        }                                                                     \
-    } else {                                                                  \
-        (NEXT) = (ELEM)->child;                                               \
-    }                                                                         \
-                                                                              \
-    if (!(NEXT)) {                                                            \
-        /* no children */                                                     \
-        if ((ELEM) == (START)) {                                              \
-            /* we are done, (START) has no children */                        \
-            break;                                                            \
-        }                                                                     \
-        /* try siblings */                                                    \
-        (NEXT) = (ELEM)->next;                                                \
-    }                                                                         \
-    while (!(NEXT)) {                                                         \
-        /* parent is already processed, go to its sibling */                  \
-        if (TYPES_COMPATIBLE(ELEM, lys_node)                                  \
-                && (((struct lys_node *)(ELEM)->parent)->nodetype == LYS_AUGMENT)) {  \
-            (ELEM) = (ELEM)->parent->prev;                                    \
-        } else {                                                              \
-            (ELEM) = (ELEM)->parent;                                          \
-        }                                                                     \
-        /* no siblings, go back through parents */                            \
-        if (TYPES_COMPATIBLE(ELEM, lys_node)) {                               \
-            /* due to possible augments */                                    \
-            if (lys_parent((struct lys_node *)(ELEM)) == lys_parent((struct lys_node *)(START))) { \
-                /* we are done, no next element to process */                 \
-                break;                                                        \
-            }                                                                 \
-        } else if ((ELEM)->parent == (START)->parent) {                       \
-            /* we are done, no next element to process */                     \
-            break;                                                            \
-        }                                                                     \
-        (NEXT) = (ELEM)->next;                                                \
-    }
-
-#endif
 
 /**
  * @defgroup schematree Schema Tree
