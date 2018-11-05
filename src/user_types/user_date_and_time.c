@@ -95,7 +95,7 @@ date_and_time_store_clb(const char *UNUSED(type_name), const char *value_str, ly
     int ret;
 
     /* \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[\+\-]\d{2}:\d{2})
-     * 2018-03-21T09:11:05(.5)(Z|+02:00) */
+     * 2018-03-21T09:11:05(.55785...)(Z|+02:00) */
     memset(&tm, 0, sizeof tm);
     i = 0;
 
@@ -215,7 +215,9 @@ date_and_time_store_clb(const char *UNUSED(type_name), const char *value_str, ly
             ret = asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", a digit expected.", value_str[i], i, value_str);
             goto error;
         }
-        ++i;
+        do {
+            ++i;
+        } while (isdigit(value_str[i]));
     }
 
     switch (value_str[i]) {
@@ -238,8 +240,8 @@ date_and_time_store_clb(const char *UNUSED(type_name), const char *value_str, ly
         i += 5;
         break;
     default:
-        /* unreachable */
-        return 1;
+        ret = asprintf(err_msg, "Invalid character '%c'[%d] in date-and-time value \"%s\", 'Z', '+', or '-' expected.", value_str[i], i, value_str);
+        goto error;
     }
 
     /* no other characters expected */
