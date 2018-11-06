@@ -121,10 +121,10 @@ extern "C" {
 
 #ifdef __cplusplus
 #define TYPES_COMPATIBLE(type1, type2) typeid(*(type1)) == typeid(type2)
-#elif __STDC_VERSION__ >= 201112L
-#define TYPES_COMPATIBLE(type1, type2) _Generic(*(type1), type2: 1, default: 0)
-#else
+#elif defined(__GNUC__) || defined(__clang__)
 #define TYPES_COMPATIBLE(type1, type2) __builtin_types_compatible_p(__typeof__(*(type1)), type2)
+#else
+#define TYPES_COMPATIBLE(type1, type2) _Generic(*(type1), type2: 1, default: 0)
 #endif
 
 #define LY_TREE_DFS_END(START, NEXT, ELEM)                                    \
