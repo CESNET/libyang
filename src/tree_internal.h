@@ -496,7 +496,8 @@ int lyd_get_unique_default(const char* unique_expr, struct lyd_node *list, const
 int lyd_build_relative_data_path(const struct lys_module *module, const struct lyd_node *node, const char *schema_id,
                                  char *buf);
 
-void lyd_free_value(lyd_val value, LY_DATA_TYPE value_type, uint8_t value_flags, struct lys_type *type);
+void lyd_free_value(lyd_val value, LY_DATA_TYPE value_type, uint8_t value_flags, struct lys_type *type, lyd_val *old_val,
+                    LY_DATA_TYPE *old_val_type, uint8_t *old_val_flags);
 
 int lyd_list_equal(struct lyd_node *node1, struct lyd_node *node2, int with_defaults);
 

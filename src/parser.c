@@ -1213,9 +1213,9 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
     const char *ptr, *value = *value_, *itemname;
     struct lys_type_bit **bits = NULL;
     struct lys_ident *ident;
-    lyd_val *val;
-    LY_DATA_TYPE *val_type;
-    uint8_t *val_flags;
+    lyd_val *val, old_val;
+    LY_DATA_TYPE *val_type, old_val_type;
+    uint8_t *val_flags, old_val_flags;
     struct lyd_node *contextnode;
     struct ly_ctx *ctx = type->parent->module->ctx;
 
@@ -1245,7 +1245,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
     /* fully clear the value */
     if (store) {
-        lyd_free_value(*val, *val_type, *val_flags, type);
+        lyd_free_value(*val, *val_type, *val_flags, type, &old_val, &old_val_type, &old_val_flags);
         *val_flags &= ~LY_VALUE_UNRES;
     }
 
@@ -1282,7 +1282,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                         /* error */
                         LOGVAL(ctx, LYE_INCHAR, LY_VLOG_LYD, contextnode, ptr[uind], &ptr[uind]);
                         LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Invalid Base64 character.");
-                        goto cleanup;
+                        goto error;
                     }
                 }
             }
@@ -1296,13 +1296,13 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                 LOGVAL(ctx, LYE_INMETA, LY_VLOG_LYD, contextnode, "<none>", itemname, value);
             }
             LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Base64 encoded value length must be divisible by 4.");
-            goto cleanup;
+            goto error;
         }
 
         /* length of the encoded string */
         len = ((unum / 4) * 3) - found;
         if (!trusted && validate_length_range(0, len, 0, 0, 0, type, value, contextnode)) {
-            goto cleanup;
+            goto error;
         }
 
         if (value && (ptr != value || ptr[u] != '\0')) {
@@ -1328,7 +1328,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         if (value || store) {
             /* allocate the array of pointers to bits definition */
             bits = calloc(type->info.bits.count, sizeof *bits);
-            LY_CHECK_ERR_GOTO(!bits, LOGMEM(ctx), cleanup);
+            LY_CHECK_ERR_GOTO(!bits, LOGMEM(ctx), error);
         }
 
         if (!value) {
@@ -1374,7 +1374,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                                    "Bit \"%s\" is disabled by its %d. if-feature condition.",
                                    type->info.bits.bit[i].name, j + 1);
                             free(bits);
-                            goto cleanup;
+                            goto error;
                         }
                     }
                     /* check that the value was not already set */
@@ -1387,7 +1387,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                         LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Bit \"%s\" used multiple times.",
                                type->info.bits.bit[i].name);
                         free(bits);
-                        goto cleanup;
+                        goto error;
                     }
                     /* ... and then store the pointer */
                     bits[i] = &type->info.bits.bit[i];
@@ -1406,7 +1406,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                     LOGVAL(ctx, LYE_INMETA, LY_VLOG_LYD, contextnode, "<none>", itemname, value);
                 }
                 free(bits);
-                goto cleanup;
+                goto error;
             }
             c = c + len;
         }
@@ -1433,7 +1433,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             } else {
                 LOGVAL(ctx, LYE_INMETA, LY_VLOG_LYD, contextnode, "<none>", itemname, value ? value : "");
             }
-            goto cleanup;
+            goto error;
         } else {
             if (store) {
                 val->bln = 0;
@@ -1452,7 +1452,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             } else {
                 LOGVAL(ctx, LYE_INMETA, LY_VLOG_LYD, contextnode, "<none>", itemname, "");
             }
-            goto cleanup;
+            goto error;
         }
 
         ptr = value;
@@ -1462,11 +1462,11 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             } else {
                 LOGVAL(ctx, LYE_INMETA, LY_VLOG_LYD, contextnode, "<none>", itemname, value);
             }
-            goto cleanup;
+            goto error;
         }
 
         if (!trusted && validate_length_range(2, 0, 0, num, type->info.dec64.dig, type, value, contextnode)) {
-            goto cleanup;
+            goto error;
         }
 
         make_canonical(ctx, LY_TYPE_DEC64, value_, &num, &type->info.dec64.dig);
@@ -1485,7 +1485,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             } else {
                 LOGVAL(ctx, LYE_INMETA, LY_VLOG_LYD, contextnode, "<none>", itemname, value);
             }
-            goto cleanup;
+            goto error;
         }
 
         if (store) {
@@ -1512,7 +1512,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                         }
                         LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "Enum \"%s\" is disabled by its %d. if-feature condition.",
                                value, j + 1);
-                        goto cleanup;
+                        goto error;
                     }
                 }
                 /* ... and store pointer to the definition */
@@ -1531,7 +1531,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             } else {
                 LOGVAL(ctx, LYE_INMETA, LY_VLOG_LYD, contextnode, "<none>", itemname, value ? value : "");
             }
-            goto cleanup;
+            goto error;
         }
         break;
 
@@ -1542,7 +1542,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             } else {
                 LOGVAL(ctx, LYE_INMETA, LY_VLOG_LYD, contextnode, "<none>", itemname, "");
             }
-            goto cleanup;
+            goto error;
         }
 
         if (xml) {
@@ -1557,14 +1557,14 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                 } else {
                     LOGVAL(ctx, LYE_INMETA, LY_VLOG_LYD, contextnode, "<none>", itemname, *value_);
                 }
-                goto cleanup;
+                goto error;
             }
 
             /* the value has no prefix (default namespace), but the element's namespace has a prefix, find default namespace */
             if (!strchr(value, ':') && xml->ns->prefix) {
                 value = ident_val_add_module_prefix(value, xml, ctx);
                 if (!value) {
-                    goto cleanup;
+                    goto error;
                 }
             }
         } else if (dflt) {
@@ -1590,7 +1590,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         ident = resolve_identref(type, value, contextnode, local_mod, dflt);
         if (!ident) {
             lydict_remove(ctx, value);
-            goto cleanup;
+            goto error;
         } else if (store) {
             /* store the result */
             val->ident = ident;
@@ -1611,7 +1611,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             } else {
                 LOGVAL(ctx, LYE_INMETA, LY_VLOG_LYD, contextnode, "<none>", itemname, "");
             }
-            goto cleanup;
+            goto error;
         }
 
         if (xml) {
@@ -1626,7 +1626,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                 } else {
                     LOGVAL(ctx, LYE_INMETA, LY_VLOG_LYD, contextnode, "<none>", itemname, *value_);
                 }
-                goto cleanup;
+                goto error;
             } else if (ly_strequal(value, *value_, 1)) {
                 /* we have actually created the same expression (prefixes are the same as the module names)
                  * so we have just increased dictionary's refcount - fix it */
@@ -1682,7 +1682,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             } else {
                 LOGVAL(ctx, LYE_INMETA, LY_VLOG_LYD, contextnode, "<none>", itemname, "");
             }
-            goto cleanup;
+            goto error;
         }
 
         /* it is called not only to get the final type, but mainly to update value to canonical or JSON form
@@ -1695,7 +1695,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             } else {
                 LOGVAL(ctx, LYE_INMETA, LY_VLOG_LYD, contextnode, "<none>", itemname, value);
             }
-            goto cleanup;
+            goto error;
         }
 
         if (store) {
@@ -1708,11 +1708,11 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
     case LY_TYPE_STRING:
         if (!trusted && validate_length_range(0, (value ? strlen(value) : 0), 0, 0, 0, type, value, contextnode)) {
-            goto cleanup;
+            goto error;
         }
 
         if (!trusted && validate_pattern(ctx, value, type, contextnode)) {
-            goto cleanup;
+            goto error;
         }
 
         /* special handling of ietf-yang-types xpath1.0 */
@@ -1729,7 +1729,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
                 } else {
                     LOGVAL(ctx, LYE_INMETA, LY_VLOG_LYD, contextnode, "<none>", itemname, *value_);
                 }
-                goto cleanup;
+                goto error;
             }
 
             if (!ly_strequal(value, *value_, 1)) {
@@ -1749,7 +1749,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
     case LY_TYPE_INT8:
         if (parse_int(value, __INT64_C(-128), __INT64_C(127), dflt ? 0 : 10, &num, contextnode)
                 || (!trusted && validate_length_range(1, 0, num, 0, 0, type, value, contextnode))) {
-            goto cleanup;
+            goto error;
         }
 
         make_canonical(ctx, LY_TYPE_INT8, value_, &num, NULL);
@@ -1764,7 +1764,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
     case LY_TYPE_INT16:
         if (parse_int(value, __INT64_C(-32768), __INT64_C(32767), dflt ? 0 : 10, &num, contextnode)
                 || (!trusted && validate_length_range(1, 0, num, 0, 0, type, value, contextnode))) {
-            goto cleanup;
+            goto error;
         }
 
         make_canonical(ctx, LY_TYPE_INT16, value_, &num, NULL);
@@ -1779,7 +1779,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
     case LY_TYPE_INT32:
         if (parse_int(value, __INT64_C(-2147483648), __INT64_C(2147483647), dflt ? 0 : 10, &num, contextnode)
                 || (!trusted && validate_length_range(1, 0, num, 0, 0, type, value, contextnode))) {
-            goto cleanup;
+            goto error;
         }
 
         make_canonical(ctx, LY_TYPE_INT32, value_, &num, NULL);
@@ -1795,7 +1795,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         if (parse_int(value, __INT64_C(-9223372036854775807) - __INT64_C(1), __INT64_C(9223372036854775807),
                       dflt ? 0 : 10, &num, contextnode)
                 || (!trusted && validate_length_range(1, 0, num, 0, 0, type, value, contextnode))) {
-            goto cleanup;
+            goto error;
         }
 
         make_canonical(ctx, LY_TYPE_INT64, value_, &num, NULL);
@@ -1810,7 +1810,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
     case LY_TYPE_UINT8:
         if (parse_uint(value, __UINT64_C(255), dflt ? 0 : 10, &unum, contextnode)
                 || (!trusted && validate_length_range(0, unum, 0, 0, 0, type, value, contextnode))) {
-            goto cleanup;
+            goto error;
         }
 
         make_canonical(ctx, LY_TYPE_UINT8, value_, &unum, NULL);
@@ -1825,7 +1825,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
     case LY_TYPE_UINT16:
         if (parse_uint(value, __UINT64_C(65535), dflt ? 0 : 10, &unum, contextnode)
                 || (!trusted && validate_length_range(0, unum, 0, 0, 0, type, value, contextnode))) {
-            goto cleanup;
+            goto error;
         }
 
         make_canonical(ctx, LY_TYPE_UINT16, value_, &unum, NULL);
@@ -1840,7 +1840,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
     case LY_TYPE_UINT32:
         if (parse_uint(value, __UINT64_C(4294967295), dflt ? 0 : 10, &unum, contextnode)
                 || (!trusted && validate_length_range(0, unum, 0, 0, 0, type, value, contextnode))) {
-            goto cleanup;
+            goto error;
         }
 
         make_canonical(ctx, LY_TYPE_UINT32, value_, &unum, NULL);
@@ -1855,7 +1855,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
     case LY_TYPE_UINT64:
         if (parse_uint(value, __UINT64_C(18446744073709551615), dflt ? 0 : 10, &unum, contextnode)
                 || (!trusted && validate_length_range(0, unum, 0, 0, 0, type, value, contextnode))) {
-            goto cleanup;
+            goto error;
         }
 
         make_canonical(ctx, LY_TYPE_UINT64, value_, &unum, NULL);
@@ -1907,7 +1907,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
             if (store) {
                 /* erase possible present and invalid value data */
-                lyd_free_value(*val, *val_type, *val_flags, t);
+                lyd_free_value(*val, *val_type, *val_flags, t, NULL, NULL, NULL);
                 memset(val, 0, sizeof(lyd_val));
             }
         }
@@ -1925,29 +1925,39 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             } else {
                 LOGVAL(ctx, LYE_INMETA, LY_VLOG_LYD, contextnode, "<none>", itemname, *value_);
             }
-            goto cleanup;
+            goto error;
         }
         break;
 
     default:
         LOGINT(ctx);
-        return NULL;
+        goto error;
     }
 
     /* search user types in case this value is supposed to be stored in a custom way */
     if (store && type->der && type->der->module) {
         c = lytype_store(type->der->module, type->der->name, *value_, val);
         if (c == -1) {
-            return NULL;
+            goto error;
         } else if (!c) {
             *val_flags |= LY_VALUE_USER;
         }
     }
 
-    ret = type;
+    /* free backup */
+    if (store) {
+        lyd_free_value(old_val, old_val_type, old_val_flags, type, NULL, NULL, NULL);
+    }
+    return type;
 
-cleanup:
-    return ret;
+error:
+    /* restore the backup */
+    if (store) {
+        *val = old_val;
+        *val_type = old_val_type;
+        *val_flags = old_val_flags;
+    }
+    return NULL;
 }
 
 /* does not log, cannot fail */

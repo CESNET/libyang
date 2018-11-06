@@ -2420,7 +2420,7 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
                                 NULL, trg_leaf, NULL, NULL, 1, src_leaf->dflt, 0);
             } else {
                 lyd_free_value(trg_leaf->value, trg_leaf->value_type, trg_leaf->value_flags,
-                               &((struct lys_node_leaf *)trg_leaf->schema)->type);
+                               &((struct lys_node_leaf *)trg_leaf->schema)->type, NULL, NULL, NULL);
                 trg_leaf->value = src_leaf->value;
             }
             src_leaf->value = (lyd_val)0;
@@ -2470,7 +2470,7 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
             lydict_remove(ctx, trg_leaf->value_str);
             trg_leaf->value_str = lydict_insert(ctx, src_leaf->value_str, 0);
             lyd_free_value(trg_leaf->value, trg_leaf->value_type, trg_leaf->value_flags,
-                           &((struct lys_node_leaf *)trg_leaf->schema)->type);
+                           &((struct lys_node_leaf *)trg_leaf->schema)->type, NULL, NULL, NULL);
             trg_leaf->value_type = src_leaf->value_type;
             trg_leaf->dflt = src_leaf->dflt;
 
@@ -5682,7 +5682,7 @@ lyd_free_attr(struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_attr *attr
         lydict_remove(ctx, attr->name);
         type = lys_ext_complex_get_substmt(LY_STMT_TYPE, attr->annotation, NULL);
         assert(type);
-        lyd_free_value(attr->value, attr->value_type, attr->value_flags, *type);
+        lyd_free_value(attr->value, attr->value_type, attr->value_flags, *type, NULL, NULL, NULL);
         lydict_remove(ctx, attr->value_str);
         free(attr);
     }
@@ -5791,8 +5791,18 @@ lyd_insert_attr(struct lyd_node *parent, const struct lys_module *mod, const cha
 }
 
 void
-lyd_free_value(lyd_val value, LY_DATA_TYPE value_type, uint8_t value_flags, struct lys_type *type)
+lyd_free_value(lyd_val value, LY_DATA_TYPE value_type, uint8_t value_flags, struct lys_type *type, lyd_val *old_val,
+               LY_DATA_TYPE *old_val_type, uint8_t *old_val_flags)
 {
+    if (old_val) {
+        *old_val = value;
+        *old_val_type = value_type;
+        *old_val_flags = value_flags;
+        /* we only backup the values for now */
+        return;
+    }
+
+    /* otherwise the value is correctly freed */
     if (value_flags & LY_VALUE_USER) {
         assert(type->der && type->der->module);
         lytype_free(type->der->module, type->der->name, value);
@@ -5866,7 +5876,8 @@ lyd_free_internal(struct lyd_node *node, int top)
         }
     } else { /* LYS_LEAF | LYS_LEAFLIST */
         leaf = (struct lyd_node_leaf_list *)node;
-        lyd_free_value(leaf->value, leaf->value_type, leaf->value_flags, &((struct lys_node_leaf *)leaf->schema)->type);
+        lyd_free_value(leaf->value, leaf->value_type, leaf->value_flags, &((struct lys_node_leaf *)leaf->schema)->type,
+                       NULL, NULL, NULL);
         lydict_remove(leaf->schema->module->ctx, leaf->value_str);
     }
     lyd_free_attr(node->schema->module->ctx, node, node->attr, 1);
