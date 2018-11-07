@@ -1361,8 +1361,7 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
 
     /* parse the type correctly, makes the value canonical if needed */
     if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, NULL, leaf, NULL, NULL, 1, 0, 0)) {
-        lydict_remove(leaf->schema->module->ctx, leaf->value_str);
-        leaf->value_str = backup;
+        lydict_remove(leaf->schema->module->ctx, backup);
         return -1;
     }
 
@@ -1386,11 +1385,11 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
         dflt_change = 0;
     }
 
-    /* make the node non-validated */
-    leaf->validity = ly_new_node_validity(leaf->schema);
-
-    /* check possible leafref backlinks */
     if (val_change) {
+        /* make the node non-validated */
+        leaf->validity = ly_new_node_validity(leaf->schema);
+
+        /* check possible leafref backlinks */
         check_leaf_list_backlinks((struct lyd_node *)leaf, 2);
     }
 
