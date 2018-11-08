@@ -83,28 +83,6 @@ lydict_clean(struct dict_table *dict)
 }
 
 /*
- * Bob Jenkin's one-at-a-time hash
- * http://www.burtleburtle.net/bob/hash/doobs.html
- *
- * Spooky hash is faster, but it works only for little endian architectures.
- */
-static uint32_t
-dict_hash(const char *key, size_t len)
-{
-    uint32_t hash, i;
-
-    for (hash = i = 0; i < len; ++i) {
-        hash += key[i];
-        hash += (hash << 10);
-        hash ^= (hash >> 6);
-    }
-    hash += (hash << 3);
-    hash ^= (hash >> 11);
-    hash += (hash << 15);
-    return hash;
-}
-
-/*
  * Usage:
  * - init hash to 0
  * - repeatedly call dict_hash_multi(), provide hash from the last call
@@ -128,6 +106,21 @@ dict_hash_multi(uint32_t hash, const char *key_part, size_t len)
     }
 
     return hash;
+}
+
+/*
+ * Bob Jenkin's one-at-a-time hash
+ * http://www.burtleburtle.net/bob/hash/doobs.html
+ *
+ * Spooky hash is faster, but it works only for little endian architectures.
+ */
+uint32_t
+dict_hash(const char *key, size_t len)
+{
+    uint32_t hash;
+
+    hash = dict_hash_multi(0, key, len);
+    return dict_hash_multi(hash, NULL, len);
 }
 
 API void
