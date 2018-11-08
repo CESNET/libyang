@@ -83,7 +83,7 @@ set(GEN_LANGUAGE_BINDINGS 0 CACHE BOOL "Enable language bindings generation.")
 set(GEN_CPP_BINDINGS 1 CACHE BOOL "Enable C++ bindings.")
 # Python bindings depend on C++ bindings because of SWIG
 set(GEN_PYTHON_BINDINGS 1 CACHE BOOL "Enable Python bindings.")
-set(GEN_PYTHON_VERSION "3" CACHE STRING "Python version")
+set(GEN_PYTHON_VERSION "3" CACHE STRING "List of Python versions.  Separate with ';'")
 set(GEN_JAVASCRIPT_BINDINGS 0 CACHE BOOL "Enable JavaScript bindings.")
 set(GEN_JAVA_BINDINGS 0 CACHE BOOL "Enable Java bindings.")
 

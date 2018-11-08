@@ -1,30 +1,30 @@
 set(PYTHON_SWIG_BINDING yang)
+set(PYTHON_SWIG_TARGET yang${CUR_PYTHON_VERSION})
 include_directories(${PYTHON_INCLUDE_PATH})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${PROJECT_SOURCE_DIR}/cpp/src)
 
 set(CMAKE_SWIG_FLAGS "-c++")
-set(CMAKE_SWIG_FLAGS "-I${PROJECT_SOURCE_DIR}")
+set(CMAKE_SWIG_FLAGS "-I${PROJECT_SOURCE_DIR}" "-I${PROJECT_SOURCE_DIR}/cpp/src")
 set(CMAKE_SWIG_OUTDIR ${CMAKE_CURRENT_BINARY_DIR})
 
-set_source_files_properties(${PYTHON_SWIG_BINDING}.i PROPERTIES CPLUSPLUS ON PREFIX "")
+set_source_files_properties(${PYTHON_SWIG_BINDING}.i PROPERTIES CPLUSPLUS ON PREFIX "" SWIG_MODULE_NAME ${PYTHON_SWIG_BINDING})
 
 if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
-    swig_add_module(${PYTHON_SWIG_BINDING} python ${PYTHON_SWIG_BINDING}.i)
+    swig_add_module(${PYTHON_SWIG_TARGET} python ${PYTHON_SWIG_BINDING}.i)
 else()
-    swig_add_library(${PYTHON_SWIG_BINDING} LANGUAGE python SOURCES ${PYTHON_SWIG_BINDING}.i)
+    swig_add_library(${PYTHON_SWIG_TARGET} LANGUAGE python SOURCES ${PYTHON_SWIG_BINDING}.i)
 endif()
-swig_link_libraries(${PYTHON_SWIG_BINDING} ${PYTHON_LIBRARIES} libyang-cpp)
+swig_link_libraries(${PYTHON_SWIG_TARGET} ${PYTHON_LIBRARIES} libyang-cpp)
+
+set_target_properties(_${PYTHON_SWIG_TARGET} PROPERTIES OUTPUT_NAME "_yang${PYTHON_EXT_SUFFIX}" SUFFIX "")
 
 # Generate header with SWIG run-time functions
 execute_process(COMMAND ${SWIG_EXECUTABLE} -python -external-runtime ${CMAKE_CURRENT_BINARY_DIR}/swigpyrun.h)
 
 file(COPY "examples" DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
-execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(plat_specific=True))"
-                OUTPUT_VARIABLE PYTHON_MODULE_PATH
-                OUTPUT_STRIP_TRAILING_WHITESPACE )
-
-install( TARGETS _${PYTHON_SWIG_BINDING} DESTINATION ${PYTHON_MODULE_PATH})
+install( TARGETS _${PYTHON_SWIG_TARGET} DESTINATION ${PYTHON_MODULE_PATH})
 install( FILES "${CMAKE_CURRENT_BINARY_DIR}/${PYTHON_SWIG_BINDING}.py" DESTINATION ${PYTHON_MODULE_PATH})
 install( FILES "${CMAKE_CURRENT_BINARY_DIR}/swigpyrun.h" DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libyang)
 
@@ -51,8 +51,8 @@ if(ENABLE_BUILD_TESTS)
     ADD_PYTHON_TEST(test_tree_data)
     ADD_PYTHON_TEST(test_tree_schema)
 
-    add_custom_command(TARGET ${SWIG_MODULE_${PYTHON_SWIG_BINDING}_REAL_NAME} POST_BUILD
-        COMMAND cp "${CMAKE_CURRENT_BINARY_DIR}/_${PYTHON_SWIG_BINDING}.so" ${PY2_SWIG_DIR}/tests
+    add_custom_command(TARGET ${SWIG_MODULE_${PYTHON_SWIG_TARGET}_REAL_NAME} POST_BUILD
+            COMMAND cp "${CMAKE_CURRENT_BINARY_DIR}/_yang${PYTHON_EXT_SUFFIX}" ${PY2_SWIG_DIR}/tests/_yang.so
             COMMAND cp "${CMAKE_CURRENT_BINARY_DIR}/${PYTHON_SWIG_BINDING}.py" ${PY2_SWIG_DIR}/tests
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         )

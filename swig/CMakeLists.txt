@@ -20,27 +20,47 @@ endif()
 
 # find Python package
 if(GEN_PYTHON_BINDINGS AND SWIG_FOUND)
-    message(STATUS "Python version ${GEN_PYTHON_VERSION} was selected")
-    unset(PYTHON_LIBRARY CACHE)
-    unset(PYTHON_EXECUTABLE CACHE)
-    unset(PYTHON_INCLUDE_DIR CACHE)
-    unset(PYTHON_LIBRARY_DEBUG CACHE)
-    if(${GEN_PYTHON_VERSION} STREQUAL "2")
-        find_package(PythonLibs 2 REQUIRED)
-        find_package(PythonInterp 2 REQUIRED)
-        if(NOT PYTHONLIBS_FOUND)
-            message(WARNING "Did not found Python version 2.x")
-            message(STATUS "Sysrepo supports Python 2.x and Python 3.x")
-        endif()
-    elseif(${GEN_PYTHON_VERSION} STREQUAL "3")
-        find_package(PythonLibs 3 REQUIRED)
-        find_package(PythonInterp 3 REQUIRED)
-        if(NOT PYTHONLIBS_FOUND)
-            message(WARNING "Did not found Python version 3.x")
-            message(STATUS "Sysrepo supports Python 2.x and Python 3.x")
-        endif()
+    if(ENABLE_STATIC)
+        message(WARNING "Can't create a static Python module")
     else()
-        message(WARNING "Sysrepo supports Python 2.x and Python 3.x")
+        foreach(CUR_PYTHON_VERSION ${GEN_PYTHON_VERSION})
+            unset(PYTHON_EXECUTABLE CACHE)
+            unset(PYTHON_INCLUDE_PATH CACHE)
+            unset(PYTHON_EXT_SUFFIX CACHE)
+            unset(PYTHON_MODULE_PATH CACHE)
+
+            # find_package(Python...) does not do the right thing here.  we
+            # need the extension suffix, and we need support for things like
+            # "python3.6" + "python3.6dm" (debug)
+            #
+            # Note PYTHON_LIBRARIES is intentionally not set here.  Python
+            # symbols and library linkage are provided by the interpreter that
+            # is loading the module -- the dynamic linker uses the symbols
+            # from the executable.  libpython should only be linked by people
+            # embedding the python interpreter, not by extensions.
+
+            find_program(PYTHON_EXECUTABLE NAMES python${CUR_PYTHON_VERSION})
+            if ("${PYTHON_EXECUTABLE}" STREQUAL "PYTHON_EXECUTABLE-NOTFOUND")
+                message(FATAL_ERROR "cannot find python${CUR_PYTHON_VERSION} executable")
+            endif()
+
+            execute_process(COMMAND ${PYTHON_EXECUTABLE} -c
+                    "from distutils.sysconfig import get_config_var; print(get_config_var('INCLUDEPY'))"
+                    OUTPUT_VARIABLE PYTHON_INCLUDE_PATH
+                    OUTPUT_STRIP_TRAILING_WHITESPACE )
+            execute_process(COMMAND ${PYTHON_EXECUTABLE} -c
+                    "from distutils.sysconfig import get_config_var; print(get_config_var('EXT_SUFFIX'))"
+                    OUTPUT_VARIABLE PYTHON_EXT_SUFFIX
+                    OUTPUT_STRIP_TRAILING_WHITESPACE )
+            execute_process(COMMAND ${PYTHON_EXECUTABLE} -c
+                    "from distutils.sysconfig import get_python_lib; print(get_python_lib(plat_specific=True))"
+                    OUTPUT_VARIABLE PYTHON_MODULE_PATH
+                    OUTPUT_STRIP_TRAILING_WHITESPACE )
+
+            message(STATUS "Python version ${CUR_PYTHON_VERSION}: ${PYTHON_EXT_SUFFIX}")
+
+            add_subdirectory(python python${CUR_PYTHON_VERSION})
+        endforeach(CUR_PYTHON_VERSION)
     endif()
 endif()
 
@@ -97,12 +117,6 @@ if (GEN_CPP_BINDINGS)
     if (ENABLE_BUILD_TESTS)
         add_subdirectory(cpp/tests)
     endif()
-endif()
-
-if(ENABLE_STATIC AND PYTHONLIBS_FOUND AND PYTHONINTERP_FOUND AND (${GEN_PYTHON_VERSION} STREQUAL "2" OR ${GEN_PYTHON_VERSION} STREQUAL "3"))
-    message(WARNING "Can't create a static Python module")
-elseif(PYTHONLIBS_FOUND AND PYTHONINTERP_FOUND AND (${GEN_PYTHON_VERSION} STREQUAL "2" OR ${GEN_PYTHON_VERSION} STREQUAL "3"))
-    add_subdirectory(python)
 endif()
 
 if(NOT ENABLE_STATIC AND GEN_JAVASCRIPT_BINDINGS)
