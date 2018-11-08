@@ -1613,7 +1613,7 @@ lys_restr_free(struct ly_ctx *ctx, struct lys_restr *restr,
     lydict_remove(ctx, restr->emsg);
 }
 
-void
+API void
 lys_iffeature_free(struct ly_ctx *ctx, struct lys_iffeature *iffeature, uint8_t iffeature_size,
                    int shallow, void (*private_destructor)(const struct lys_node *node, void *priv))
 {

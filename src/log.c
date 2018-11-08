@@ -280,7 +280,7 @@ ly_log_dbg(int group, const char *format, ...)
 
 #endif
 
-void
+API void
 lyext_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, const char *plugin, const char *function, const char *format, ...)
 {
     va_list ap;

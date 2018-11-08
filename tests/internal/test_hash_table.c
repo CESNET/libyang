@@ -20,9 +20,6 @@
 
 #include "tests/config.h"
 #include "libyang.h"
-
-/* include hash_table directly as it is not a part of public API */
-#include "hash_table.c"
 #include "hash_table.h"
 
 static struct hash_table *ht;

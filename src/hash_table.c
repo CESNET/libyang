@@ -266,7 +266,7 @@ lydict_insert_zc(struct ly_ctx *ctx, char *value)
     return result;
 }
 
-static struct ht_rec *
+struct ht_rec *
 lyht_get_rec(unsigned char *recs, uint16_t rec_size, uint32_t idx)
 {
     return (struct ht_rec *)&recs[idx * rec_size];
