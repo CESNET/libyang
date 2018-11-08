@@ -24,6 +24,9 @@
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
 
+/* set to 0 to printing error messages to stderr instead of checking them in code */
+#define ENABLE_LOGGER_CHECKING 1
+
 static void
 logger(LY_LOG_LEVEL level, const char *msg, const char *path)
 {
@@ -41,6 +44,12 @@ logger_setup(void **state)
     ly_set_log_clb(logger, 0);
 
     return 0;
+}
+
+void
+logbuf_clean(void)
+{
+    logbuf[0] = '\0';
 }
 
 #if ENABLE_LOGGER_CHECKING
@@ -85,6 +94,7 @@ test_revisions(void **state)
 
     struct lysp_revision *revs = NULL, *rev;
 
+    logbuf_clean();
     /* no error, it just does nothing */
     lysp_sort_revisions(NULL);
     logbuf_assert("");
@@ -106,11 +116,37 @@ test_revisions(void **state)
     LY_ARRAY_FREE(revs);
 }
 
+static void
+test_typedef(void **state)
+{
+    (void) state; /* unused */
+
+    struct ly_ctx *ctx = NULL;
+    const char *str;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    str = "module a {namespace urn:a; prefix a; typedef test {type string;} typedef test {type int8;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"test\" of typedef - name collision with another top-level type.");
+
+    str = "module a {namespace urn:a; prefix a; typedef x {type string;} container c {typedef x {type int8;}}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"x\" of typedef - scoped type collide with a top-level type.");
+
+    str = "module a {namespace urn:a; prefix a; container c {container d {typedef y {type int8;}} typedef y {type string;}}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"y\" of typedef - name collision with another scoped type.");
+
+    ly_ctx_destroy(ctx, NULL);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup(test_date, logger_setup),
         cmocka_unit_test_setup(test_revisions, logger_setup),
+        cmocka_unit_test_setup(test_typedef, logger_setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

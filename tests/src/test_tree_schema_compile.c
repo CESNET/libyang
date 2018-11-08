@@ -73,20 +73,20 @@ test_module(void **state)
     (void) state; /* unused */
 
     const char *str;
-    struct ly_ctx *ctx;
+    struct ly_parser_ctx ctx = {0};
     struct lys_module mod = {0};
     struct lysc_feature *f;
     struct lysc_iffeature *iff;
 
     str = "module test {namespace urn:test; prefix t;"
           "feature f1;feature f2 {if-feature f1;}}";
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
 
     assert_int_equal(LY_EINVAL, lys_compile(NULL, 0));
     logbuf_assert("Invalid argument mod (lys_compile()).");
     assert_int_equal(LY_EINVAL, lys_compile(&mod, 0));
     logbuf_assert("Invalid argument mod->parsed (lys_compile()).");
-    assert_int_equal(LY_SUCCESS, yang_parse(ctx, str, &mod.parsed));
+    assert_int_equal(LY_SUCCESS, yang_parse(&ctx, str, &mod.parsed));
     assert_int_equal(LY_SUCCESS, lys_compile(&mod, 0));
     assert_non_null(mod.compiled);
     assert_ptr_equal(mod.parsed->name, mod.compiled->name);
@@ -115,13 +115,13 @@ test_module(void **state)
 
     /* submodules cannot be compiled directly */
     str = "submodule test {belongs-to xxx {prefix x;}}";
-    assert_int_equal(LY_SUCCESS, yang_parse(ctx, str, &mod.parsed));
+    assert_int_equal(LY_SUCCESS, yang_parse(&ctx, str, &mod.parsed));
     assert_int_equal(LY_EINVAL, lys_compile(&mod, 0));
     logbuf_assert("Submodules (test) are not supposed to be compiled, compile only the main modules.");
     assert_null(mod.compiled);
 
     lysp_module_free(mod.parsed);
-    ly_ctx_destroy(ctx, NULL);
+    ly_ctx_destroy(ctx.ctx, NULL);
 }
 
 static void
@@ -129,7 +129,7 @@ test_feature(void **state)
 {
     (void) state; /* unused */
 
-    struct ly_ctx *ctx;
+    struct ly_parser_ctx ctx = {0};
     struct lys_module mod = {0}, *modp;
     const char *str;
     struct lysc_feature *f, *f1;
@@ -143,8 +143,8 @@ test_feature(void **state)
           "feature f8 {if-feature \"f1 or f2 or f3 or orfeature or andfeature\";}\n"
           "feature f9 {if-feature \"not not f1\";}}";
 
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
-    assert_int_equal(LY_SUCCESS, yang_parse(ctx, str, &mod.parsed));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
+    assert_int_equal(LY_SUCCESS, yang_parse(&ctx, str, &mod.parsed));
     assert_int_equal(LY_SUCCESS, lys_compile(&mod, 0));
     assert_non_null(mod.compiled);
     assert_non_null(mod.compiled->features);
@@ -229,52 +229,52 @@ test_feature(void **state)
     lysp_module_free(mod.parsed);
 
     /* some invalid expressions */
-    assert_int_equal(LY_SUCCESS, yang_parse(ctx, "module b{yang-version 1.1;namespace urn:b; prefix b; feature f{if-feature f1;}}", &mod.parsed));
+    assert_int_equal(LY_SUCCESS, yang_parse(&ctx, "module b{yang-version 1.1;namespace urn:b; prefix b; feature f{if-feature f1;}}", &mod.parsed));
     assert_int_equal(LY_EVALID, lys_compile(&mod, 0));
     logbuf_assert("Invalid value \"f1\" of if-feature - unable to find feature \"f1\".");
     lysp_module_free(mod.parsed);
 
-    assert_int_equal(LY_SUCCESS, yang_parse(ctx, "module b{yang-version 1.1;namespace urn:b; prefix b; feature f1; feature f2{if-feature 'f and';}}", &mod.parsed));
+    assert_int_equal(LY_SUCCESS, yang_parse(&ctx, "module b{yang-version 1.1;namespace urn:b; prefix b; feature f1; feature f2{if-feature 'f and';}}", &mod.parsed));
     assert_int_equal(LY_EVALID, lys_compile(&mod, 0));
     logbuf_assert("Invalid value \"f and\" of if-feature - unexpected end of expression.");
     lysp_module_free(mod.parsed);
 
-    assert_int_equal(LY_SUCCESS, yang_parse(ctx, "module b{yang-version 1.1;namespace urn:b; prefix b; feature f{if-feature 'or';}}", &mod.parsed));
+    assert_int_equal(LY_SUCCESS, yang_parse(&ctx, "module b{yang-version 1.1;namespace urn:b; prefix b; feature f{if-feature 'or';}}", &mod.parsed));
     assert_int_equal(LY_EVALID, lys_compile(&mod, 0));
     logbuf_assert("Invalid value \"or\" of if-feature - unexpected end of expression.");
     lysp_module_free(mod.parsed);
 
-    assert_int_equal(LY_SUCCESS, yang_parse(ctx, "module b{yang-version 1.1;namespace urn:b; prefix b; feature f1; feature f2{if-feature '(f1';}}", &mod.parsed));
+    assert_int_equal(LY_SUCCESS, yang_parse(&ctx, "module b{yang-version 1.1;namespace urn:b; prefix b; feature f1; feature f2{if-feature '(f1';}}", &mod.parsed));
     assert_int_equal(LY_EVALID, lys_compile(&mod, 0));
     logbuf_assert("Invalid value \"(f1\" of if-feature - non-matching opening and closing parentheses.");
     lysp_module_free(mod.parsed);
 
-    assert_int_equal(LY_SUCCESS, yang_parse(ctx, "module b{yang-version 1.1;namespace urn:b; prefix b; feature f1; feature f2{if-feature 'f1)';}}", &mod.parsed));
+    assert_int_equal(LY_SUCCESS, yang_parse(&ctx, "module b{yang-version 1.1;namespace urn:b; prefix b; feature f1; feature f2{if-feature 'f1)';}}", &mod.parsed));
     assert_int_equal(LY_EVALID, lys_compile(&mod, 0));
     logbuf_assert("Invalid value \"f1)\" of if-feature - non-matching opening and closing parentheses.");
     lysp_module_free(mod.parsed);
 
-    assert_int_equal(LY_SUCCESS, yang_parse(ctx, "module b{yang-version 1.1;namespace urn:b; prefix b; feature f1; feature f2{if-feature ---;}}", &mod.parsed));
+    assert_int_equal(LY_SUCCESS, yang_parse(&ctx, "module b{yang-version 1.1;namespace urn:b; prefix b; feature f1; feature f2{if-feature ---;}}", &mod.parsed));
     assert_int_equal(LY_EVALID, lys_compile(&mod, 0));
     logbuf_assert("Invalid value \"---\" of if-feature - unable to find feature \"---\".");
     lysp_module_free(mod.parsed);
 
-    assert_int_equal(LY_SUCCESS, yang_parse(ctx, "module b{namespace urn:b; prefix b; feature f1; feature f2{if-feature 'not f1';}}", &mod.parsed));
+    assert_int_equal(LY_SUCCESS, yang_parse(&ctx, "module b{namespace urn:b; prefix b; feature f1; feature f2{if-feature 'not f1';}}", &mod.parsed));
     assert_int_equal(LY_EVALID, lys_compile(&mod, 0));
     logbuf_assert("Invalid value \"not f1\" of if-feature - YANG 1.1 expression in YANG 1.0 module.");
     lysp_module_free(mod.parsed);
 
     /* import reference */
-    assert_non_null(modp = lys_parse_mem(ctx, str, LYS_IN_YANG));
+    assert_non_null(modp = lys_parse_mem(ctx.ctx, str, LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(modp, 0));
     assert_int_equal(LY_SUCCESS, lys_feature_enable(modp, "f1"));
-    assert_non_null(modp = lys_parse_mem(ctx, "module b{namespace urn:b; prefix b; import a {prefix a;} feature f1; feature f2{if-feature 'a:f1';}}", LYS_IN_YANG));
+    assert_non_null(modp = lys_parse_mem(ctx.ctx, "module b{namespace urn:b; prefix b; import a {prefix a;} feature f1; feature f2{if-feature 'a:f1';}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(modp, 0));
     assert_int_equal(LY_SUCCESS, lys_feature_enable(modp, "f2"));
     assert_int_equal(0, lys_feature_value(modp, "f1"));
     assert_int_equal(1, lys_feature_value(modp, "f2"));
 
-    ly_ctx_destroy(ctx, NULL);
+    ly_ctx_destroy(ctx.ctx, NULL);
 }
 
 static void

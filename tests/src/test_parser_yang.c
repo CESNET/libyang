@@ -796,14 +796,14 @@ test_module(void **state)
     store = -1;
 
     store = 1;
-    ly_ctx_set_module_imp_clb(ctx.ctx, test_imp_clb, "submodule xxx {belongs-to wrong-name;}");
+    ly_ctx_set_module_imp_clb(ctx.ctx, test_imp_clb, "submodule xxx {belongs-to wrong-name {prefix w;}}");
     str = "module" SCHEMA_BEGINNING "include xxx;}";
     assert_null(lys_parse_mem(ctx.ctx, str, LYS_IN_YANG));
     assert_int_equal(LY_EVALID, ly_errcode(ctx.ctx));
     logbuf_assert("Included \"xxx\" submodule from \"name\" belongs-to a different module \"wrong-name\".");
     store = -1;
 
-    ly_ctx_set_module_imp_clb(ctx.ctx, test_imp_clb, "submodule xxx {belongs-to name;}");
+    ly_ctx_set_module_imp_clb(ctx.ctx, test_imp_clb, "submodule xxx {belongs-to name {prefix x;}}");
     TEST_GENERIC("include xxx;}", mod->includes,
                  assert_string_equal("xxx", mod->includes[0].name));
 
@@ -874,14 +874,14 @@ test_module(void **state)
     logbuf_assert("Missing mandatory keyword \"belongs-to\" as a child of \"submodule\". Line number 3.");
     mod = mod_renew(&ctx, mod, 1);
 
-    str = " subname {belongs-to name;}";
+    str = " subname {belongs-to name {prefix x;}}";
     lydict_remove(ctx.ctx, mod->name);
     assert_int_equal(LY_SUCCESS, parse_sub_module(&ctx, &str, mod));
     assert_string_equal("name", mod->belongsto);
     mod = mod_renew(&ctx, mod, 1);
 
 #undef SCHEMA_BEGINNING
-#define SCHEMA_BEGINNING " subname {belongs-to name;"
+#define SCHEMA_BEGINNING " subname {belongs-to name {prefix x;}"
 
     /* duplicated namespace, prefix */
     TEST_DUP("belongs-to", "module1", "module2", "3", 1);
@@ -947,7 +947,7 @@ test_identity(void **state)
 
     /* identity duplication */
     str = "module a {namespace urn:a; prefix a; identity a; identity a;}";
-    assert_int_equal(LY_EVALID, yang_parse(ctx.ctx, str, &mod));
+    assert_int_equal(LY_EVALID, yang_parse(&ctx, str, &mod));
     logbuf_assert("Duplicate identifier \"a\" of identity statement. Line number 1.");
     assert_null(mod);
 
@@ -998,7 +998,7 @@ test_feature(void **state)
 
     /* feature duplication */
     str = "module a {namespace urn:a; prefix a; feature a; feature a;}";
-    assert_int_equal(LY_EVALID, yang_parse(ctx.ctx, str, &mod));
+    assert_int_equal(LY_EVALID, yang_parse(&ctx, str, &mod));
     logbuf_assert("Duplicate identifier \"a\" of feature statement. Line number 1.");
     assert_null(mod);
 
@@ -1147,14 +1147,15 @@ test_container(void **state)
 {
     (void) state; /* unused */
 
-    struct ly_parser_ctx ctx;
+    struct lysp_module mod = {0};
+    struct ly_parser_ctx ctx = {0};
     struct lysp_node_container *c = NULL;
     const char *str;
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
     ctx.line = 1;
-    ctx.indent = 0;
+    ctx.mod = &mod;
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
@@ -1172,8 +1173,8 @@ test_container(void **state)
 #undef TEST_DUP
 
     /* full content */
-    str = "cont {action x;anydata any;anyxml anyxml; choice ch;config false;container c;description test;grouping g;if-feature f; leaf l;"
-          "leaf-list ll; list li;must 'expr';notification not; presence true; reference test;status current;typedef t;uses g;when true;m:ext;} ...";
+    str = "cont {action x;anydata any;anyxml anyxml; choice ch;config false;container c;description test;grouping g;if-feature f; leaf l {type string;}"
+          "leaf-list ll {type string;} list li;must 'expr';notification not; presence true; reference test;status current;typedef t {type int8;}uses g;when true;m:ext;} ...";
     assert_int_equal(LY_SUCCESS, parse_container(&ctx, &str, NULL, (struct lysp_node**)&c));
     assert_non_null(c);
     assert_non_null(c->actions);
@@ -1191,6 +1192,7 @@ test_container(void **state)
     assert_null(c->parent);
     assert_null(c->next);
     assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR, c->flags);
+    ly_set_erase(&ctx.tpdfs_nodes, NULL);
     lysp_node_free(ctx.ctx, (struct lysp_node*)c, 1); c = NULL;
 
     /* invalid */

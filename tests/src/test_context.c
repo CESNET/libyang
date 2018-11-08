@@ -303,16 +303,8 @@ test_models(void **state)
     assert_null(ctx->imp_clb);
     assert_null(ctx->imp_clb_data);
 
-    /* submodule in multiple modules */
-    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule xx {belongs-to x;}");
-    mod1 = lys_parse_mem(ctx, "module x {namespace urn:x;prefix x;include xx;revision 2018-10-24;}", LYS_IN_YANG);
-    assert_non_null(mod1);
-    mod2 = lys_parse_mem_(ctx, "module x {namespace urn:x;prefix x;include xx;revision 2018-10-25;}", LYS_IN_YANG, 0, NULL, NULL);
-    assert_non_null(mod2);
-    assert_ptr_equal(mod1->parsed->includes[0].submodule, mod2->parsed->includes[0].submodule);
-
     /* name collision of module and submodule */
-    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule y {belongs-to a; revision 2018-10-30;}");
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule y {belongs-to a {prefix a;} revision 2018-10-30;}");
     assert_null(lys_parse_mem(ctx, "module y {namespace urn:y;prefix y;include y;}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, ly_errcode(ctx));
     logbuf_assert("Name collision between module and submodule of name \"y\". Line number 1.");
@@ -323,7 +315,7 @@ test_models(void **state)
     logbuf_assert("Name collision between module and submodule of name \"y\". Line number 1.");
 
     store = 1;
-    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule y {belongs-to b;}");
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule y {belongs-to b {prefix b;}}");
     assert_null(lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;include y;}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, ly_errcode(ctx));
     logbuf_assert("Name collision between submodules of name \"y\". Line number 1.");
@@ -331,7 +323,7 @@ test_models(void **state)
 
     /* selecting correct revision of the submodules */
     ly_ctx_reset_latests(ctx);
-    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule y {belongs-to a; revision 2018-10-31;}");
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule y {belongs-to a {prefix a;} revision 2018-10-31;}");
     mod2 = lys_parse_mem_(ctx, "module a {namespace urn:a;prefix a;include y; revision 2018-10-31;}", LYS_IN_YANG, 0, NULL, NULL);
     assert_non_null(mod2);
     assert_string_equal("2018-10-31", mod2->parsed->includes[0].submodule->revs[0].date);
@@ -417,7 +409,7 @@ test_get_models(void **state)
     assert_ptr_equal(mod, ly_ctx_get_module(ctx, "a", NULL));
     assert_ptr_not_equal(mod, ly_ctx_get_module_latest(ctx, "a"));
 
-    str1 = "submodule b {belongs-to a;}";
+    str1 = "submodule b {belongs-to a {prefix a;}}";
     assert_null(lys_parse_mem(ctx, str1, LYS_IN_YANG));
     logbuf_assert("Input data contains submodule \"b\" which cannot be parsed directly without its main module.");
 
