@@ -215,7 +215,7 @@ ly_ctx_new(const char *search_dir, int options, struct ly_ctx **new_ctx)
     /* load internal modules */
     for (i = 0; i < ((options & LY_CTX_NOYANGLIBRARY) ? (LY_INTERNAL_MODS_COUNT - 2) : LY_INTERNAL_MODS_COUNT); i++) {
         module = (struct lys_module *)lys_parse_mem(ctx, internal_modules[i].data, internal_modules[i].format);
-        LY_CHECK_GOTO(!module, error);
+        LY_CHECK_ERR_GOTO(!module, rc = ly_errcode(ctx), error);
         module->parsed->implemented = internal_modules[i].implemented;
     }
 
