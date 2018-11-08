@@ -50,14 +50,14 @@ lysp_check_prefix(struct ly_parser_ctx *ctx, struct lysp_module *module, const c
 }
 
 LY_ERR
-lysp_check_date(struct ly_ctx *ctx, const char *date, int date_len, const char *stmt)
+lysp_check_date(struct ly_parser_ctx *ctx, const char *date, int date_len, const char *stmt)
 {
     int i;
     struct tm tm, tm_;
     char *r;
 
-    LY_CHECK_ARG_RET(ctx, date, LY_EINVAL);
-    LY_CHECK_ERR_RET(date_len != LY_REV_SIZE - 1, LOGARG(ctx, date_len), LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx ? ctx->ctx : NULL, date, LY_EINVAL);
+    LY_CHECK_ERR_RET(date_len != LY_REV_SIZE - 1, LOGARG(ctx ? ctx->ctx : NULL, date_len), LY_EINVAL);
 
     /* check format */
     for (i = 0; i < date_len; i++) {
@@ -88,7 +88,11 @@ lysp_check_date(struct ly_ctx *ctx, const char *date, int date_len, const char *
 
 error:
     if (stmt) {
-        LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_INVAL, date_len, date, stmt);
+        if (ctx) {
+            LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LY_VCODE_INVAL, date_len, date, stmt);
+        } else {
+            LOGVAL(NULL, LY_VLOG_NONE, NULL, LY_VCODE_INVAL, date_len, date, stmt);
+        }
     }
     return LY_EINVAL;
 }
@@ -111,6 +115,262 @@ lysp_sort_revisions(struct lysp_revision *revs)
         memcpy(&revs[0], &revs[r], sizeof rev);
         memcpy(&revs[r], &rev, sizeof rev);
     }
+}
+
+static const struct lysp_tpdf *
+lysp_type_match(const char *name, struct lysp_node *node)
+{
+    struct lysp_tpdf **typedefs;
+    unsigned int u;
+
+    typedefs = lysp_node_typedefs(node);
+    if (typedefs && *typedefs) {
+        LY_ARRAY_FOR(*typedefs, u) {
+            if (!strcmp(name, (*typedefs)[u].name)) {
+                /* match */
+                return &(*typedefs)[u];
+            }
+        }
+    }
+
+    return NULL;
+}
+
+LY_ERR
+lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_module *start_module,
+               const struct lysp_tpdf **tpdf, struct lysp_node **node, struct lysp_module **module)
+{
+    const char *str, *name;
+    struct lysp_tpdf *typedefs;
+    unsigned int u, v;
+
+    assert(id);
+    assert(start_module);
+    assert(tpdf);
+    assert(node);
+    assert(module);
+
+    str = strchr(id, ':');
+    if (str) {
+        *module = lysp_module_find_prefix(start_module, id, str - id);
+        name = str + 1;
+    } else {
+        *module = start_module;
+        name = id;
+    }
+    LY_CHECK_RET(!(*module), LY_ENOTFOUND);
+
+    if (start_node && *module == start_module) {
+        /* search typedefs in parent's nodes */
+        *node = start_node;
+        while (*node) {
+            *tpdf = lysp_type_match(name, *node);
+            if (*tpdf) {
+                /* match */
+                return LY_SUCCESS;
+            }
+            *node = (*node)->parent;
+        }
+    }
+
+    /* search in top-level typedefs */
+    if ((*module)->typedefs) {
+        LY_ARRAY_FOR((*module)->typedefs, u) {
+            if (!strcmp(name, (*module)->typedefs[u].name)) {
+                /* match */
+                *tpdf = &(*module)->typedefs[u];
+                return LY_SUCCESS;
+            }
+        }
+    }
+
+    /* search in submodules' typedefs */
+    LY_ARRAY_FOR((*module)->includes, u) {
+        typedefs = (*module)->includes[u].submodule->typedefs;
+        if (typedefs) {
+            LY_ARRAY_FOR(typedefs, v) {
+                if (!strcmp(name, typedefs[v].name)) {
+                    /* match */
+                    *tpdf = &typedefs[v];
+                    return LY_SUCCESS;
+                }
+            }
+        }
+    }
+
+    return LY_ENOTFOUND;
+}
+
+/*
+ * @brief Check name of a new type to avoid name collisions.
+ *
+ * @param[in] ctx Parser context, module where the type is being defined is taken from here.
+ * @param[in] node Schema node where the type is being defined, NULL in case of a top-level typedef.
+ * @param[in] tpdf Typedef definition to check.
+ * @param[in,out] tpdfs_global Initialized hash table to store temporary data between calls. When the module's
+ *            typedefs are checked, caller is supposed to free the table.
+ * @param[in,out] tpdfs_global Initialized hash table to store temporary data between calls. When the module's
+ *            typedefs are checked, caller is supposed to free the table.
+ * @return LY_EEXIST in case of collision, LY_SUCCESS otherwise.
+ */
+static LY_ERR
+lysp_check_typedef(struct ly_parser_ctx *ctx, struct lysp_node *node, struct lysp_tpdf *tpdf,
+                   struct hash_table *tpdfs_global, struct hash_table *tpdfs_scoped)
+{
+    struct lysp_node *parent;
+    uint32_t hash;
+    size_t name_len;
+    const char *name;
+    unsigned int u;
+    struct lysp_tpdf **typedefs;
+
+    assert(ctx);
+    assert(tpdf);
+
+    name = tpdf->name;
+    name_len = strlen(name);
+
+    if (name_len >= 4) {
+        /* otherwise it does not match any built-in type,
+         * check collision with the built-in types */
+        if (name[0] == 'b') {
+            if (name[1] == 'i') {
+                if ((name_len == 6 && !strcmp(&name[2], "nary")) || (name_len == 4 && !strcmp(&name[2], "ts"))) {
+collision:
+                    LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_SYNTAX_YANG,
+                           "Invalid name \"%s\" of typedef - name collision with a built-in type.", name);
+                    return LY_EEXIST;
+                }
+            } else if (name_len == 7 && !strcmp(&name[1], "oolean")) {
+                goto collision;
+            }
+        } else if (name[0] == 'd') {
+            if (name_len == 9 && !strcmp(&name[1], "ecimal64")) {
+                goto collision;
+            }
+        } else if (name[0] == 'e') {
+            if ((name_len == 5 && !strcmp(&name[1], "mpty")) || (name_len == 11 && !strcmp(&name[1], "numeration"))) {
+                goto collision;
+            }
+        } else if (name[0] == 'i') {
+            if (name[1] == 'n') {
+                if ((name_len == 4 && !strcmp(&name[2], "t8")) ||
+                        (name_len == 5 && (!strcmp(&name[2], "t16") || !strcmp(&name[2], "t32") || !strcmp(&name[2], "t64"))) ||
+                        (name_len == 19 && !strcmp(&name[2], "stance-identifier"))) {
+                    goto collision;
+                }
+            } else if (name_len == 11 && !strcmp(&name[1], "dentityref")) {
+                goto collision;
+            }
+        } else if (name[0] == 'l') {
+            if (name_len == 7 && !strcmp(&name[1], "eafref")) {
+                goto collision;
+            }
+        } else if (name[0] == 's') {
+            if (name_len == 6 && !strcmp(&name[1], "tring")) {
+                goto collision;
+            }
+        } else if (name[0] == 'u') {
+            if (name[1] == 'n') {
+                if (name_len == 5 && !strcmp(&name[2], "ion")) {
+                    goto collision;
+                }
+            } else if (name[1] == 'i' && name[2] == 'n' && name[3] == 't' &&
+                    ((name_len == 5 && !strcmp(&name[4], "8")) ||
+                     (name_len == 6 && (!strcmp(&name[4], "16") || !strcmp(&name[4], "32") || !strcmp(&name[4], "64"))))) {
+                goto collision;
+            }
+        }
+    }
+
+    /* check locally scoped typedefs (avoid name shadowing) */
+    if (node) {
+        typedefs = lysp_node_typedefs(node);
+        if (typedefs && *typedefs) {
+            LY_ARRAY_FOR(*typedefs, u) {
+                if (typedefs[u] == tpdf) {
+                    break;
+                }
+                if (!strcmp(name, (*typedefs)[u].name)) {
+                    LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_SYNTAX_YANG,
+                           "Invalid name \"%s\" of typedef - name collision with sibling type.", name);
+                    return LY_EEXIST;
+                }
+            }
+        }
+        /* search typedefs in parent's nodes */
+        for (parent = node->parent; parent; parent = node->parent) {
+            if (lysp_type_match(name, parent)) {
+                LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_SYNTAX_YANG,
+                       "Invalid name \"%s\" of typedef - name collision with another scoped type.", name);
+                return LY_EEXIST;
+            }
+        }
+    }
+
+    /* check collision with the top-level typedefs */
+    hash = dict_hash(name, name_len);
+    if (node) {
+        lyht_insert(tpdfs_scoped, &name, hash, NULL);
+        if (!lyht_find(tpdfs_global, &name, hash, NULL)) {
+            LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_SYNTAX_YANG,
+                   "Invalid name \"%s\" of typedef - scoped type collide with a top-level type.", name);
+            return LY_EEXIST;
+        }
+    } else {
+        if (lyht_insert(tpdfs_global, &name, hash, NULL)) {
+            LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_SYNTAX_YANG,
+                   "Invalid name \"%s\" of typedef - name collision with another top-level type.", name);
+            return LY_EEXIST;
+        }
+        if (!lyht_find(tpdfs_scoped, &name, hash, NULL)) {
+            LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_SYNTAX_YANG,
+                   "Invalid name \"%s\" of typedef - top-level type collide with a scoped type.", name);
+            return LY_EEXIST;
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
+static int
+lysp_id_cmp(void *val1, void *val2, int UNUSED(mod), void *UNUSED(cb_data))
+{
+    return !strcmp(val1, val2);
+}
+
+LY_ERR
+lysp_check_typedefs(struct ly_parser_ctx *ctx)
+{
+    struct hash_table *ids_global;
+    struct hash_table *ids_scoped;
+    struct lysp_tpdf **typedefs;
+    unsigned int i, u;
+    LY_ERR ret = LY_EVALID;
+
+    /* check name collisions - typedefs and groupings */
+    ids_global = lyht_new(8, sizeof(char*), lysp_id_cmp, NULL, 1);
+    ids_scoped = lyht_new(8, sizeof(char*), lysp_id_cmp, NULL, 1);
+    LY_ARRAY_FOR(ctx->mod->typedefs, i) {
+        if (lysp_check_typedef(ctx, NULL, &ctx->mod->typedefs[i], ids_global, ids_scoped)) {
+            goto cleanup;
+        }
+    }
+    for (u = 0; u < ctx->tpdfs_nodes.count; ++u) {
+        typedefs = lysp_node_typedefs((struct lysp_node *)ctx->tpdfs_nodes.objs[u]);
+        LY_ARRAY_FOR(*typedefs, i) {
+            if (lysp_check_typedef(ctx, (struct lysp_node *)ctx->tpdfs_nodes.objs[u], &(*typedefs)[i], ids_global, ids_scoped)) {
+                goto cleanup;
+            }
+        }
+    }
+    ret = LY_SUCCESS;
+cleanup:
+    lyht_free(ids_global);
+    lyht_free(ids_scoped);
+    ly_set_erase(&ctx->tpdfs_nodes, NULL);
+
+    return ret;
 }
 
 void
@@ -349,51 +609,44 @@ lysp_load_submodule(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_inc
     void (*submodule_data_free)(void *module_data, void *user_data) = NULL;
     struct lysp_load_module_check_data check_data = {0};
 
-    /* Try to get submodule from the context, if already present */
-    inc->submodule = ly_ctx_get_submodule(ctx, mod->name, inc->name, inc->rev[0] ? inc->rev : NULL);
-    if (!inc->submodule || (!inc->rev[0] && inc->submodule->latest_revision != 2)) {
-        /* submodule not present in the context, get the input data and parse it */
-        if (!(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+    /* submodule not present in the context, get the input data and parse it */
+    if (!(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
 search_clb:
-            if (ctx->imp_clb) {
-                if (ctx->imp_clb(mod->name, NULL, inc->name, inc->rev[0] ? inc->rev : NULL, ctx->imp_clb_data,
-                                      &format, &submodule_data, &submodule_data_free) == LY_SUCCESS) {
-                    check_data.name = inc->name;
-                    check_data.revision = inc->rev[0] ? inc->rev : NULL;
-                    check_data.submoduleof = mod->name;
-                    submod = lys_parse_mem_(ctx, submodule_data, format, mod->implemented,
-                                            lysp_load_module_check, &check_data);
-                    if (submodule_data_free) {
-                        submodule_data_free((void*)submodule_data, ctx->imp_clb_data);
-                    }
+        if (ctx->imp_clb) {
+            if (ctx->imp_clb(mod->name, NULL, inc->name, inc->rev[0] ? inc->rev : NULL, ctx->imp_clb_data,
+                                  &format, &submodule_data, &submodule_data_free) == LY_SUCCESS) {
+                check_data.name = inc->name;
+                check_data.revision = inc->rev[0] ? inc->rev : NULL;
+                check_data.submoduleof = mod->name;
+                submod = lys_parse_mem_(ctx, submodule_data, format, mod->implemented,
+                                        lysp_load_module_check, &check_data);
+                if (submodule_data_free) {
+                    submodule_data_free((void*)submodule_data, ctx->imp_clb_data);
                 }
             }
-            if (!submod && !(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
-                goto search_file;
-            }
-        } else {
-search_file:
-            if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
-                /* module was not received from the callback or there is no callback set */
-                lys_module_localfile(ctx, inc->name, inc->rev[0] ? inc->rev : NULL, mod->implemented, &submod);
-            }
-            if (!submod && (ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
-                goto search_clb;
-            }
         }
-        if (submod) {
-            if (!inc->rev[0] && (submod->parsed->latest_revision == 1)) {
-                /* update the latest_revision flag - here we have selected the latest available schema,
-                 * consider that even the callback provides correct latest revision */
-                submod->parsed->latest_revision = 2;
-            }
-
-            inc->submodule = submod->parsed;
-            ++inc->submodule->refcount;
-            free(submod);
+        if (!submod && !(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+            goto search_file;
         }
     } else {
-        ++inc->submodule->refcount;
+search_file:
+        if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
+            /* module was not received from the callback or there is no callback set */
+            lys_module_localfile(ctx, inc->name, inc->rev[0] ? inc->rev : NULL, mod->implemented, &submod);
+        }
+        if (!submod && (ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+            goto search_clb;
+        }
+    }
+    if (submod) {
+        if (!inc->rev[0] && (submod->parsed->latest_revision == 1)) {
+            /* update the latest_revision flag - here we have selected the latest available schema,
+             * consider that even the callback provides correct latest revision */
+            submod->parsed->latest_revision = 2;
+        }
+
+        inc->submodule = submod->parsed;
+        free(submod);
     }
     if (!inc->submodule) {
         LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Including \"%s\" submodule into \"%s\" failed.", inc->name, mod->name);
@@ -403,38 +656,159 @@ search_file:
     return LY_SUCCESS;
 }
 
-#define FIND_MODULE(TYPE, MOD) \
+#define FIND_MODULE(TYPE, MOD, ID) \
     TYPE *imp; \
     if (!strncmp((MOD)->prefix, prefix, len) && (MOD)->prefix[len] == '\0') { \
         /* it is the prefix of the module itself */ \
-        return (struct lys_module*)ly_ctx_get_module((MOD)->ctx, (MOD)->name, ((struct lysc_module*)(MOD))->revision); \
+        m = ly_ctx_get_module((MOD)->ctx, (MOD)->name, ((struct lysc_module*)(MOD))->revision); \
     } \
     /* search in imports */ \
-    LY_ARRAY_FOR((MOD)->imports, TYPE, imp) { \
-        if (!strncmp(imp->prefix, prefix, len) && (MOD)->prefix[len] == '\0') { \
-            return imp->module; \
+    if (!m) { \
+        LY_ARRAY_FOR((MOD)->imports, TYPE, imp) { \
+            if (!strncmp(imp->prefix, prefix, len) && (MOD)->prefix[len] == '\0') { \
+                m = imp->module; \
+                break; \
+            } \
         } \
-    } \
-    return NULL
+    }
 
-struct lys_module *
+struct lysc_module *
 lysc_module_find_prefix(struct lysc_module *mod, const char *prefix, size_t len)
 {
-    FIND_MODULE(struct lysc_import, mod);
+    const struct lys_module *m = NULL;
+
+    FIND_MODULE(struct lysc_import, mod, 1);
+    return m ? m->compiled : NULL;
 }
 
-struct lys_module *
+struct lysp_module *
 lysp_module_find_prefix(struct lysp_module *mod, const char *prefix, size_t len)
 {
-    FIND_MODULE(struct lysp_import, mod);
+    const struct lys_module *m = NULL;
+
+    FIND_MODULE(struct lysp_import, mod, 1);
+    return m ? m->parsed : NULL;
 }
 
 struct lys_module *
 lys_module_find_prefix(struct lys_module *mod, const char *prefix, size_t len)
 {
+    const struct lys_module *m = NULL;
+
     if (mod->compiled) {
-        FIND_MODULE(struct lysc_import, mod->compiled);
+        FIND_MODULE(struct lysc_import, mod->compiled, 1);
     } else {
-        FIND_MODULE(struct lysp_import, mod->parsed);
+        FIND_MODULE(struct lysp_import, mod->parsed, 2);
+    }
+    return (struct lys_module*)m;
+}
+
+struct lysp_tpdf **
+lysp_node_typedefs(struct lysp_node *node)
+{
+    switch (node->nodetype) {
+    case LYS_CONTAINER:
+        return &((struct lysp_node_container*)node)->typedefs;
+    case LYS_LIST:
+        return &((struct lysp_node_list*)node)->typedefs;
+    case LYS_GROUPING:
+        return &((struct lysp_grp*)node)->typedefs;
+    case LYS_ACTION:
+        return &((struct lysp_action*)node)->typedefs;
+    case LYS_INOUT:
+        return &((struct lysp_action_inout*)node)->typedefs;
+    case LYS_NOTIF:
+        return &((struct lysp_notif*)node)->typedefs;
+    default:
+        return NULL;
     }
 }
+
+struct lysp_action **
+lysp_node_actions(struct lysp_node *node)
+{
+    assert(node);
+    switch (node->nodetype) {
+    case LYS_CONTAINER:
+        return &((struct lysp_node_container*)node)->actions;
+    case LYS_LIST:
+        return &((struct lysp_node_list*)node)->actions;
+    case LYS_GROUPING:
+        return &((struct lysp_grp*)node)->actions;
+    case LYS_AUGMENT:
+        return &((struct lysp_augment*)node)->actions;
+    default:
+        return NULL;
+    }
+}
+
+struct lysp_notif **
+lysp_node_notifs(struct lysp_node *node)
+{
+    assert(node);
+    switch (node->nodetype) {
+    case LYS_CONTAINER:
+        return &((struct lysp_node_container*)node)->notifs;
+    case LYS_LIST:
+        return &((struct lysp_node_list*)node)->notifs;
+    case LYS_GROUPING:
+        return &((struct lysp_grp*)node)->notifs;
+    case LYS_AUGMENT:
+        return &((struct lysp_augment*)node)->notifs;
+    default:
+        return NULL;
+    }
+}
+
+struct lysp_node **
+lysp_node_children(struct lysp_node *node)
+{
+    assert(node);
+    switch (node->nodetype) {
+    case LYS_CONTAINER:
+        return &((struct lysp_node_container*)node)->child;
+    case LYS_CHOICE:
+        return &((struct lysp_node_choice*)node)->child;
+    case LYS_LIST:
+        return &((struct lysp_node_list*)node)->child;
+    case LYS_CASE:
+        return &((struct lysp_node_case*)node)->child;
+    case LYS_GROUPING:
+        return &((struct lysp_grp*)node)->data;
+    case LYS_AUGMENT:
+        return &((struct lysp_augment*)node)->child;
+    case LYS_INOUT:
+        return &((struct lysp_action_inout*)node)->data;
+    case LYS_NOTIF:
+        return &((struct lysp_notif*)node)->data;
+    default:
+        return NULL;
+    }
+}
+
+struct lysc_node **
+lysc_node_children(struct lysc_node *node)
+{
+    assert(node);
+    switch (node->nodetype) {
+    case LYS_CONTAINER:
+        return &((struct lysc_node_container*)node)->child;
+    case LYS_CHOICE:
+        return &((struct lysc_node_choice*)node)->child;
+    case LYS_LIST:
+        return &((struct lysc_node_list*)node)->child;
+    case LYS_CASE:
+        return &((struct lysc_node_case*)node)->child;
+    case LYS_USES:
+        return &((struct lysc_node_uses*)node)->child;
+/* TODO
+    case LYS_INOUT:
+        return &((struct lysc_action_inout*)node)->child;
+    case LYS_NOTIF:
+        return &((struct lysc_notif*)node)->child;
+*/
+    default:
+        return NULL;
+    }
+}
+

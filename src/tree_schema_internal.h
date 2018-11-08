@@ -44,14 +44,16 @@ enum yang_arg {
 struct ly_parser_ctx {
     struct ly_ctx *ctx;
     struct lysp_module *mod;
-    uint64_t line;      /* line number */
-    uint64_t indent;    /* current position on the line for YANG indentation */
+    struct ly_set tpdfs_nodes;
+    struct ly_set grps_nodes;
+    uint64_t line;      /**< line number */
+    uint64_t indent;    /**< current position on the line for YANG indentation */
 };
 
 /**
  * @brief Check the currently present prefixes in the module for collision with the new one.
  *
- * @param[in] ctx yang parser context.
+ * @param[in] ctx Context for logging.
  * @param[in] module Schema tree to check.
  * @param[in] value Newly added prefix value (including its location to distinguish collision with itself).
  * @return LY_EEXIST when prefix is already used in the module, LY_SUCCESS otherwise
@@ -61,19 +63,40 @@ LY_ERR lysp_check_prefix(struct ly_parser_ctx *ctx, struct lysp_module *module, 
 /**
  * @brief Check date string (4DIGIT "-" 2DIGIT "-" 2DIGIT)
  *
- * @param[in] ctx Context to store log message.
+ * @param[in] ctx Optional context for logging.
  * @param[in] date Date string to check (non-necessarily terminated by \0)
  * @param[in] date_len Length of the date string, 10 expected.
  * @param[in] stmt Statement name for error message.
  * @return LY_ERR value.
  */
-LY_ERR lysp_check_date(struct ly_ctx *ctx, const char *date, int date_len, const char *stmt);
+LY_ERR lysp_check_date(struct ly_parser_ctx *ctx, const char *date, int date_len, const char *stmt);
+
+/**
+ * @brief Check names of typedefs in the parsed module to detect collisions.
+ *
+ * @param[in] ctx Parser context, module where the type is being defined is taken from here.
+ * @return LY_ERR value.
+ */
+LY_ERR lysp_check_typedefs(struct ly_parser_ctx *ctx);
 
 /**
  * @brief Just move the newest revision into the first position, does not sort the rest
  * @param[in] revs Sized-array of the revisions in a printable schema tree.
  */
 void lysp_sort_revisions(struct lysp_revision *revs);
+
+/**
+ * @brief Find type specified type definition
+ *
+ * @param[in] id Name of the type including possible prefix. Module where the prefix is being searched is start_module.
+ * @param[in] start_node Context node where the type is being instantiated to be able to search typedefs in parents.
+ * @param[in] start_module Module where the type is being instantiated for search for typedefs.
+ * @param[out] tpdf Found type definition.
+ * @param[out] node Node where the found typedef is defined, NULL in case of a top-level typedef.
+ * @param[out] module Module where the found typedef is being defined, NULL in case of built-in YANG types.
+ */
+LY_ERR lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_module *start_module,
+                      const struct lysp_tpdf **tpdf, struct lysp_node **node, struct lysp_module **module);
 
 /**
  * @brief Find and parse module of the given name.
@@ -101,6 +124,51 @@ LY_ERR lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revisi
 LY_ERR lysp_load_submodule(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_include *inc);
 
 /**
+ * @brief Get address of a node's typedefs list if any.
+ *
+ * Decides the node's type and in case it has an typedefs list, returns its address.
+ * @param[in] node Node to check.
+ * @return Address of the node's tpdf member if any, NULL otherwise.
+ */
+struct lysp_tpdf **lysp_node_typedefs(struct lysp_node *node);
+
+/**
+ * @brief Get address of a node's actions list if any.
+ *
+ * Decides the node's type and in case it has an actions list, returns its address.
+ * @param[in] node Node to check.
+ * @return Address of the node's actions member if any, NULL otherwise.
+ */
+struct lysp_action **lysp_node_actions(struct lysp_node *node);
+
+/**
+ * @brief Get address of a node's notifications list if any.
+ *
+ * Decides the node's type and in case it has a notifications list, returns its address.
+ * @param[in] node Node to check.
+ * @return Address of the node's notifs member if any, NULL otherwise.
+ */
+struct lysp_notif **lysp_node_notifs(struct lysp_node *node);
+
+/**
+ * @brief Get address of a node's child pointer if any.
+ *
+ * Decides the node's type and in case it has a children list, returns its address.
+ * @param[in] node Node to check.
+ * @return Address of the node's child member if any, NULL otherwise.
+ */
+struct lysp_node **lysp_node_children(struct lysp_node *node);
+
+/**
+ * @brief Get address of a node's child pointer if any.
+ *
+ * Decides the node's type and in case it has a children list, returns its address.
+ * @param[in] node Node to check.
+ * @return Address of the node's child member if any, NULL otherwise.
+ */
+struct lysc_node **lysc_node_children(struct lysc_node *node);
+
+/**
  * @brief Find the module referenced by prefix in the provided parsed mod.
  *
  * @param[in] mod Schema module where the prefix was used.
@@ -108,7 +176,7 @@ LY_ERR lysp_load_submodule(struct ly_ctx *ctx, struct lysp_module *mod, struct l
  * @param[in] len Length of the prefix since it is not necessary NULL-terminated.
  * @return Pointer to the module or NULL if the module is not found.
  */
-struct lys_module *lysp_module_find_prefix(struct lysp_module *mod, const char *prefix, size_t len);
+struct lysp_module *lysp_module_find_prefix(struct lysp_module *mod, const char *prefix, size_t len);
 
 /**
  * @brief Find the module referenced by prefix in the provided compiled mod.
@@ -118,7 +186,7 @@ struct lys_module *lysp_module_find_prefix(struct lysp_module *mod, const char *
  * @param[in] len Length of the prefix since it is not necessary NULL-terminated.
  * @return Pointer to the module or NULL if the module is not found.
  */
-struct lys_module *lysc_module_find_prefix(struct lysc_module *mod, const char *prefix, size_t len);
+struct lysc_module *lysc_module_find_prefix(struct lysc_module *mod, const char *prefix, size_t len);
 
 /**
  * @brief Find the module referenced by prefix in the provided mod.
@@ -225,6 +293,6 @@ void lys_module_free(struct lys_module *module, void (*private_destructor)(const
 /**
  * @brief
  */
-LY_ERR yang_parse(struct ly_ctx *ctx, const char *data, struct lysp_module **mod_p);
+LY_ERR yang_parse(struct ly_parser_ctx *ctx, const char *data, struct lysp_module **mod_p);
 
 #endif /* LY_TREE_SCHEMA_INTERNAL_H_ */

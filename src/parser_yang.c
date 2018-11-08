@@ -1220,7 +1220,7 @@ parse_revisiondate(struct ly_parser_ctx *ctx, const char **data, char *rev, stru
     LY_CHECK_RET(get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len));
 
     /* check value */
-    if (lysp_check_date(ctx->ctx, word, word_len, "revision-date")) {
+    if (lysp_check_date(ctx, word, word_len, "revision-date")) {
         free(buf);
         return LY_EVALID;
     }
@@ -1375,7 +1375,7 @@ parse_revision(struct ly_parser_ctx *ctx, const char **data, struct lysp_revisio
     LY_CHECK_RET(get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len));
 
     /* check value */
-    if (lysp_check_date(ctx->ctx, word, word_len, "revision")) {
+    if (lysp_check_date(ctx, word, word_len, "revision")) {
         return LY_EVALID;
     }
 
@@ -2682,7 +2682,7 @@ parse_refine(struct ly_parser_ctx *ctx, const char **data, struct lysp_refine **
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_typedef(struct ly_parser_ctx *ctx, const char **data, struct lysp_tpdf **typedefs)
+parse_typedef(struct ly_parser_ctx *ctx, struct lysp_node *parent, const char **data, struct lysp_tpdf **typedefs)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -2726,11 +2726,16 @@ parse_typedef(struct ly_parser_ctx *ctx, const char **data, struct lysp_tpdf **t
         }
     }
     LY_CHECK_RET(ret);
-
+checks:
     /* mandatory substatements */
     if (!tpdf->type.name) {
         LOGVAL_YANG(ctx, LY_VCODE_MISSTMT, "type", "typedef");
         return LY_EVALID;
+    }
+
+    /* store data for collision check */
+    if (parent) {
+        ly_set_add(&ctx->tpdfs_nodes, parent, 0);
     }
 
     return ret;
@@ -2792,7 +2797,7 @@ parse_inout(struct ly_parser_ctx *ctx, const char **data, enum yang_keyword kw, 
             LY_CHECK_RET(parse_uses(ctx, data, (struct lysp_node*)inout, &inout->data));
             break;
         case YANG_TYPEDEF:
-            LY_CHECK_RET(parse_typedef(ctx, data, &inout->typedefs));
+            LY_CHECK_RET(parse_typedef(ctx, (struct lysp_node*)inout, data, &inout->typedefs));
             break;
         case YANG_MUST:
             LY_CHECK_RET(parse_restrs(ctx, data, kw, &inout->musts));
@@ -2860,7 +2865,7 @@ parse_action(struct ly_parser_ctx *ctx, const char **data, struct lysp_node *par
             break;
 
         case YANG_TYPEDEF:
-            LY_CHECK_RET(parse_typedef(ctx, data, &act->typedefs));
+            LY_CHECK_RET(parse_typedef(ctx, (struct lysp_node*)act, data, &act->typedefs));
             break;
         case YANG_GROUPING:
             LY_CHECK_RET(parse_grouping(ctx, data, (struct lysp_node*)act, &act->groupings));
@@ -2944,7 +2949,7 @@ parse_notif(struct ly_parser_ctx *ctx, const char **data, struct lysp_node *pare
             LY_CHECK_RET(parse_restrs(ctx, data, kw, &notif->musts));
             break;
         case YANG_TYPEDEF:
-            LY_CHECK_RET(parse_typedef(ctx, data, &notif->typedefs));
+            LY_CHECK_RET(parse_typedef(ctx, (struct lysp_node*)notif, data, &notif->typedefs));
             break;
         case YANG_GROUPING:
             LY_CHECK_RET(parse_grouping(ctx, data, (struct lysp_node*)notif, &notif->groupings));
@@ -3022,7 +3027,7 @@ parse_grouping(struct ly_parser_ctx *ctx, const char **data, struct lysp_node *p
             break;
 
         case YANG_TYPEDEF:
-            LY_CHECK_RET(parse_typedef(ctx, data, &grp->typedefs));
+            LY_CHECK_RET(parse_typedef(ctx, (struct lysp_node*)grp, data, &grp->typedefs));
             break;
         case YANG_ACTION:
             LY_CHECK_RET(parse_action(ctx, data, (struct lysp_node*)grp, &grp->actions));
@@ -3477,7 +3482,7 @@ parse_container(struct ly_parser_ctx *ctx, const char **data, struct lysp_node *
             break;
 
         case YANG_TYPEDEF:
-            LY_CHECK_RET(parse_typedef(ctx, data, &cont->typedefs));
+            LY_CHECK_RET(parse_typedef(ctx, (struct lysp_node*)cont, data, &cont->typedefs));
             break;
         case YANG_MUST:
             LY_CHECK_RET(parse_restrs(ctx, data, kw, &cont->musts));
@@ -3600,7 +3605,7 @@ parse_list(struct ly_parser_ctx *ctx, const char **data, struct lysp_node *paren
             break;
 
         case YANG_TYPEDEF:
-            LY_CHECK_RET(parse_typedef(ctx, data, &list->typedefs));
+            LY_CHECK_RET(parse_typedef(ctx, (struct lysp_node*)list, data, &list->typedefs));
             break;
         case YANG_MUST:
             LY_CHECK_RET(parse_restrs(ctx, data, kw, &list->musts));
@@ -4327,7 +4332,7 @@ parse_sub_module(struct ly_parser_ctx *ctx, const char **data, struct lysp_modul
             LY_CHECK_RET(parse_action(ctx, data, NULL, &mod->rpcs));
             break;
         case YANG_TYPEDEF:
-            LY_CHECK_RET(parse_typedef(ctx, data, &mod->typedefs));
+            LY_CHECK_RET(parse_typedef(ctx, NULL, data, &mod->typedefs));
             break;
         case YANG_CUSTOM:
             LY_CHECK_RET(parse_ext(ctx, data, word, word_len, LYEXT_SUBSTMT_SELF, 0, &mod->exts));
@@ -4369,56 +4374,56 @@ parse_sub_module(struct ly_parser_ctx *ctx, const char **data, struct lysp_modul
 }
 
 LY_ERR
-yang_parse(struct ly_ctx *ctx, const char *data, struct lysp_module **mod_p)
+yang_parse(struct ly_parser_ctx *context, const char *data, struct lysp_module **mod_p)
 {
     LY_ERR ret = LY_SUCCESS;
     char *word, *buf;
     size_t word_len;
     enum yang_keyword kw;
     struct lysp_module *mod = NULL;
-    struct ly_parser_ctx context = {0};
-
-    context.ctx = ctx;
-    context.line = 1;
 
     /* "module"/"submodule" */
-    ret = get_keyword(&context, &data, &kw, &word, &word_len);
-    LY_CHECK_GOTO(ret, error);
+    ret = get_keyword(context, &data, &kw, &word, &word_len);
+    LY_CHECK_GOTO(ret, cleanup);
 
     if ((kw != YANG_MODULE) && (kw != YANG_SUBMODULE)) {
-        LOGVAL_YANG(&context, LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".",
+        LOGVAL_YANG(context, LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".",
                ly_stmt2str(kw));
-        goto error;
+        goto cleanup;
     }
 
     mod = calloc(1, sizeof *mod);
-    LY_CHECK_ERR_GOTO(!mod, LOGMEM(ctx), error);
+    LY_CHECK_ERR_GOTO(!mod, LOGMEM(context->ctx), cleanup);
     if (kw == YANG_SUBMODULE) {
         mod->submodule = 1;
     }
-    mod->ctx = ctx;
-    context.mod = mod;
+    mod->parsing = 1;
+    mod->ctx = context->ctx;
+    context->mod = mod;
 
     /* substatements */
-    ret = parse_sub_module(&context, &data, mod);
-    LY_CHECK_GOTO(ret, error);
+    ret = parse_sub_module(context, &data, mod);
+    LY_CHECK_GOTO(ret, cleanup);
 
     /* read some trailing spaces or new lines */
-    ret = get_argument(&context, &data, Y_MAYBE_STR_ARG, &word, &buf, &word_len);
-    LY_CHECK_GOTO(ret, error);
+    ret = get_argument(context, &data, Y_MAYBE_STR_ARG, &word, &buf, &word_len);
+    LY_CHECK_GOTO(ret, cleanup);
 
     if (word) {
-        LOGVAL_YANG(&context, LYVE_SYNTAX, "Invalid character sequence \"%.*s\", expected end-of-file.",
+        LOGVAL_YANG(context, LYVE_SYNTAX, "Invalid character sequence \"%.*s\", expected end-of-file.",
                word_len, word);
         free(buf);
-        goto error;
+        goto cleanup;
     }
     assert(!buf);
 
+    mod->parsing = 0;
     *mod_p = mod;
-    return ret;
 
-error:
-    lysp_module_free(mod);
+cleanup:
+    if (ret) {
+        lysp_module_free(mod);
+    }
+
     return ret;
 }

@@ -785,7 +785,6 @@ struct lysp_module {
                                           2 - searchdirs were searched and this is the latest available revision */
     uint8_t parsing:1;               /**< flag for circular check */
     uint8_t version;                 /**< yang-version (LYS_VERSION values) */
-    uint16_t refcount;               /**< 0 in modules, number of includes of a submodules */
 };
 
 /**
