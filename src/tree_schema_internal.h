@@ -115,13 +115,13 @@ LY_ERR lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revisi
 /**
  * @brief Parse included submodule into the simply parsed YANG module.
  *
- * @param[in] ctx libyang context
+ * @param[in] ctx parser context
  * @param[in] mod Module including a submodule.
  * @param[in,out] inc Include structure holding all available information about the include statement, the parsed
  * submodule is stored into this structure.
  * @return LY_ERR value.
  */
-LY_ERR lysp_load_submodule(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_include *inc);
+LY_ERR lysp_load_submodule(struct ly_parser_ctx *ctx, struct lysp_module *mod, struct lysp_include *inc);
 
 /**
  * @brief Get address of a node's typedefs list if any.
@@ -210,11 +210,12 @@ struct lys_module *lys_module_find_prefix(struct lys_module *mod, const char *pr
  * format.
  * @param[in] format Format of the input data (YANG or YIN).
  * @param[in] implement Flag if the schema is supposed to be marked as implemented.
+ * @param[in] main_ctx Parser context of the main module in case of parsing submodule.
  * @param[in] custom_check Callback to check the parsed schema before it is accepted.
  * @param[in] check_data Caller's data to pass to the custom_check callback.
  * @return Pointer to the data model structure or NULL on error.
  */
-struct lys_module *lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int implement,
+struct lys_module *lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int implement, struct ly_parser_ctx *main_ctx,
                                   LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, void *data), void *check_data);
 
 /**
@@ -231,11 +232,12 @@ struct lys_module *lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFO
  *            in the specified format.
  * @param[in] format Format of the input data (YANG or YIN).
  * @param[in] implement Flag if the schema is supposed to be marked as implemented.
+ * @param[in] main_ctx Parser context of the main module in case of parsing submodule.
  * @param[in] custom_check Callback to check the parsed schema before it is accepted.
  * @param[in] check_data Caller's data to pass to the custom_check callback.
  * @return Pointer to the data model structure or NULL on error.
  */
-struct lys_module *lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int implement,
+struct lys_module *lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int implement, struct ly_parser_ctx *main_ctx,
                                  LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, void *data), void *check_data);
 
 /**
@@ -253,11 +255,12 @@ struct lys_module *lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format
  * @param[in] path Path to the file with the model in the specified format.
  * @param[in] format Format of the input data (YANG or YIN).
  * @param[in] implement Flag if the schema is supposed to be marked as implemented.
+ * @param[in] main_ctx Parser context of the main module in case of parsing submodule.
  * @param[in] custom_check Callback to check the parsed schema before it is accepted.
  * @param[in] check_data Caller's data to pass to the custom_check callback.
  * @return Pointer to the data model structure or NULL on error.
  */
-struct lys_module *lys_parse_path_(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, int implement,
+struct lys_module *lys_parse_path_(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, int implement, struct ly_parser_ctx *main_ctx,
                                    LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, void *data), void *check_data);
 
 /**
@@ -271,10 +274,12 @@ struct lys_module *lys_parse_path_(struct ly_ctx *ctx, const char *path, LYS_INF
  * @param[in] name Name of the (sub)module to load.
  * @param[in] revision Optional revision of the (sub)module to load, if NULL the newest revision is being loaded.
  * @param[in] implement Flag if the (sub)module is supposed to be marked as implemented.
+ * @param[in] main_ctx Parser context of the main module in case of loading submodule.
  * @param[out] result Parsed YANG schema tree of the requested module. If it is a module, it is already in the context!
  * @return LY_ERR value, in case of LY_SUCCESS, the \arg result is always provided.
  */
-LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, int implement, struct lys_module **result);
+LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, int implement, struct ly_parser_ctx *main_ctx,
+                            struct lys_module **result);
 
 /**
  * @brief Make the module implemented.

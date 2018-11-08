@@ -1506,7 +1506,7 @@ lys_latest_switch(struct lys_module *old, struct lysp_module *new)
 }
 
 struct lys_module *
-lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int implement,
+lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int implement, struct ly_parser_ctx *main_ctx,
                LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, void *data), void *check_data)
 {
     struct lys_module *mod = NULL, *latest, *mod_dup;
@@ -1521,6 +1521,12 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int im
 
     context.ctx = ctx;
     context.line = 1;
+
+    if (main_ctx) {
+        /* map the typedefs and groupings list from main context to the submodule's context */
+        memcpy(&context.tpdfs_nodes, &main_ctx->tpdfs_nodes, sizeof main_ctx->tpdfs_nodes);
+        memcpy(&context.grps_nodes, &main_ctx->grps_nodes, sizeof main_ctx->grps_nodes);
+    }
 
     mod = calloc(1, sizeof *mod);
     LY_CHECK_ERR_RET(!mod, LOGMEM(ctx), NULL);
@@ -1557,6 +1563,11 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int im
     }
 
     if (mod->parsed->submodule) { /* submodule */
+        if (!main_ctx) {
+            LOGERR(ctx, LY_EDENIED, "Input data contains submodule \"%s\" which cannot be parsed directly without its main module.",
+                   mod->parsed->name);
+            goto error;
+        }
         /* decide the latest revision */
         latest_p = ly_ctx_get_submodule(ctx, mod->parsed->belongsto, mod->parsed->name, NULL);
         if (latest_p) {
@@ -1575,6 +1586,9 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int im
         } else {
             mod->parsed->latest_revision = 1;
         }
+        /* remap possibly changed and reallocated typedefs and groupings list back to the main context */
+        memcpy(&main_ctx->tpdfs_nodes, &context.tpdfs_nodes, sizeof main_ctx->tpdfs_nodes);
+        memcpy(&main_ctx->grps_nodes, &context.grps_nodes, sizeof main_ctx->grps_nodes);
     } else { /* module */
         /* check for duplicity in the context */
         mod_dup = (struct lys_module*)ly_ctx_get_module(ctx, mod->parsed->name, mod->parsed->revs ? mod->parsed->revs[0].date : NULL);
@@ -1650,7 +1664,7 @@ finish_parsing:
         }
         LY_ARRAY_FOR(mod->parsed->includes, u) {
             inc = &mod->parsed->includes[u];
-            if (!inc->submodule && lysp_load_submodule(ctx, mod->parsed, inc)) {
+            if (!inc->submodule && lysp_load_submodule(&context, mod->parsed, inc)) {
                 goto error_ctx;
             }
         }
@@ -1673,16 +1687,7 @@ error:
 API struct lys_module *
 lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
 {
-    struct lys_module *result;
-
-    result = lys_parse_mem_(ctx, data, format, 1, NULL, NULL);
-    if (result && result->parsed->submodule) {
-        LOGERR(ctx, LY_EDENIED, "Input data contains submodule \"%s\" which cannot be parsed directly without its main module.",
-               result->parsed->name);
-        lys_module_free(result, NULL);
-        return NULL;
-    }
-    return result;
+    return lys_parse_mem_(ctx, data, format, 1, NULL, NULL, NULL);
 }
 
 static void
@@ -1709,7 +1714,7 @@ lys_parse_set_filename(struct ly_ctx *ctx, const char **filename, int fd)
 }
 
 struct lys_module *
-lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int implement,
+lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int implement, struct ly_parser_ctx *main_ctx,
               LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, void *data), void *check_data)
 {
     struct lys_module *mod;
@@ -1728,7 +1733,7 @@ lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int implement,
         return NULL;
     }
 
-    mod = lys_parse_mem_(ctx, addr, format, implement, custom_check, check_data);
+    mod = lys_parse_mem_(ctx, addr, format, implement, main_ctx, custom_check, check_data);
     ly_munmap(addr, length);
 
     if (mod && !mod->parsed->filepath) {
@@ -1741,20 +1746,11 @@ lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int implement,
 API struct lys_module *
 lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
 {
-    struct lys_module *result;
-
-    result = lys_parse_fd_(ctx, fd, format, 1, NULL, NULL);
-    if (result && result->parsed->submodule) {
-        LOGERR(ctx, LY_EDENIED, "Input data contains submodule \"%s\" which cannot be parsed directly without its main module.",
-               result->parsed->name);
-        lys_module_free(result, NULL);
-        return NULL;
-    }
-    return result;
+    return lys_parse_fd_(ctx, fd, format, 1, NULL, NULL, NULL);
 }
 
 struct lys_module *
-lys_parse_path_(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, int implement,
+lys_parse_path_(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, int implement, struct ly_parser_ctx *main_ctx,
                 LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, void *data), void *check_data)
 {
     int fd;
@@ -1767,7 +1763,7 @@ lys_parse_path_(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, int i
     fd = open(path, O_RDONLY);
     LY_CHECK_ERR_RET(fd == -1, LOGERR(ctx, LY_ESYS, "Opening file \"%s\" failed (%s).", path, strerror(errno)), NULL);
 
-    mod = lys_parse_fd_(ctx, fd, format, implement, custom_check, check_data);
+    mod = lys_parse_fd_(ctx, fd, format, implement, main_ctx, custom_check, check_data);
     close(fd);
     LY_CHECK_RET(!mod, NULL);
 
@@ -1811,16 +1807,7 @@ lys_parse_path_(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, int i
 API struct lys_module *
 lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format)
 {
-    struct lys_module *result;
-
-    result = lys_parse_path_(ctx, path, format, 1, NULL, NULL);
-    if (result && result->parsed->submodule) {
-        LOGERR(ctx, LY_EDENIED, "Input file \"%s\" contains submodule \"%s\" which cannot be parsed directly without its main module.",
-               path, result->parsed->name);
-        lys_module_free(result, NULL);
-        return NULL;
-    }
-    return result;
+    return lys_parse_path_(ctx, path, format, 1, NULL, NULL, NULL);
 }
 
 API LY_ERR

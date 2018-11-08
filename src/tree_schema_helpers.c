@@ -323,11 +323,9 @@ collision:
                    "Invalid name \"%s\" of typedef - name collision with another top-level type.", name);
             return LY_EEXIST;
         }
-        if (!lyht_find(tpdfs_scoped, &name, hash, NULL)) {
-            LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_SYNTAX_YANG,
-                   "Invalid name \"%s\" of typedef - top-level type collide with a scoped type.", name);
-            return LY_EEXIST;
-        }
+        /* it is not necessary to test collision with the scoped types - in lysp_check_typedefs, all the
+         * top-level typedefs are inserted into the tables before the scoped typedefs, so the collision
+         * is detected in the first branch few lines above */
     }
 
     return LY_SUCCESS;
@@ -354,6 +352,13 @@ lysp_check_typedefs(struct ly_parser_ctx *ctx)
     LY_ARRAY_FOR(ctx->mod->typedefs, i) {
         if (lysp_check_typedef(ctx, NULL, &ctx->mod->typedefs[i], ids_global, ids_scoped)) {
             goto cleanup;
+        }
+    }
+    LY_ARRAY_FOR(ctx->mod->includes, i) {
+        LY_ARRAY_FOR(ctx->mod->includes[i].submodule->typedefs, u) {
+            if (lysp_check_typedef(ctx, NULL, &ctx->mod->includes[i].submodule->typedefs[u], ids_global, ids_scoped)) {
+                goto cleanup;
+            }
         }
     }
     for (u = 0; u < ctx->tpdfs_nodes.count; ++u) {
@@ -463,7 +468,7 @@ lysp_load_module_check(struct ly_ctx *ctx, struct lysp_module *mod, void *data)
 }
 
 LY_ERR
-lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, int implement,
+lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, int implement, struct ly_parser_ctx *main_ctx,
                      struct lys_module **result)
 {
     int fd;
@@ -489,7 +494,7 @@ lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision,
     check_data.name = name;
     check_data.revision = revision;
     check_data.path = filepath;
-    mod = lys_parse_fd_(ctx, fd, format, implement,
+    mod = lys_parse_fd_(ctx, fd, format, implement, main_ctx,
                         lysp_load_module_check, &check_data);
     close(fd);
     LY_CHECK_ERR_GOTO(!mod, ly_errcode(ctx), cleanup);
@@ -544,7 +549,7 @@ search_clb:
                                       &format, &module_data, &module_data_free) == LY_SUCCESS) {
                     check_data.name = name;
                     check_data.revision = revision;
-                    *mod = lys_parse_mem_(ctx, module_data, format, implement,
+                    *mod = lys_parse_mem_(ctx, module_data, format, implement, NULL,
                                           lysp_load_module_check, &check_data);
                     if (module_data_free) {
                         module_data_free((void*)module_data, ctx->imp_clb_data);
@@ -558,7 +563,7 @@ search_clb:
 search_file:
             if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
                 /* module was not received from the callback or there is no callback set */
-                lys_module_localfile(ctx, name, revision, implement, mod);
+                lys_module_localfile(ctx, name, revision, implement, NULL, mod);
             }
             if (!(*mod) && (ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
                 goto search_clb;
@@ -601,7 +606,7 @@ search_file:
 }
 
 LY_ERR
-lysp_load_submodule(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_include *inc)
+lysp_load_submodule(struct ly_parser_ctx *ctx, struct lysp_module *mod, struct lysp_include *inc)
 {
     struct lys_module *submod;
     const char *submodule_data = NULL;
@@ -610,31 +615,31 @@ lysp_load_submodule(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_inc
     struct lysp_load_module_check_data check_data = {0};
 
     /* submodule not present in the context, get the input data and parse it */
-    if (!(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+    if (!(ctx->ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
 search_clb:
-        if (ctx->imp_clb) {
-            if (ctx->imp_clb(mod->name, NULL, inc->name, inc->rev[0] ? inc->rev : NULL, ctx->imp_clb_data,
+        if (ctx->ctx->imp_clb) {
+            if (ctx->ctx->imp_clb(mod->name, NULL, inc->name, inc->rev[0] ? inc->rev : NULL, ctx->ctx->imp_clb_data,
                                   &format, &submodule_data, &submodule_data_free) == LY_SUCCESS) {
                 check_data.name = inc->name;
                 check_data.revision = inc->rev[0] ? inc->rev : NULL;
                 check_data.submoduleof = mod->name;
-                submod = lys_parse_mem_(ctx, submodule_data, format, mod->implemented,
+                submod = lys_parse_mem_(ctx->ctx, submodule_data, format, mod->implemented, ctx,
                                         lysp_load_module_check, &check_data);
                 if (submodule_data_free) {
-                    submodule_data_free((void*)submodule_data, ctx->imp_clb_data);
+                    submodule_data_free((void*)submodule_data, ctx->ctx->imp_clb_data);
                 }
             }
         }
-        if (!submod && !(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+        if (!submod && !(ctx->ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
             goto search_file;
         }
     } else {
 search_file:
-        if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
+        if (!(ctx->ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
             /* module was not received from the callback or there is no callback set */
-            lys_module_localfile(ctx, inc->name, inc->rev[0] ? inc->rev : NULL, mod->implemented, &submod);
+            lys_module_localfile(ctx->ctx, inc->name, inc->rev[0] ? inc->rev : NULL, mod->implemented, ctx, &submod);
         }
-        if (!submod && (ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+        if (!submod && (ctx->ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
             goto search_clb;
         }
     }
@@ -649,7 +654,7 @@ search_file:
         free(submod);
     }
     if (!inc->submodule) {
-        LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Including \"%s\" submodule into \"%s\" failed.", inc->name, mod->name);
+        LOGVAL(ctx->ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Including \"%s\" submodule into \"%s\" failed.", inc->name, mod->name);
         return LY_EVALID;
     }
 

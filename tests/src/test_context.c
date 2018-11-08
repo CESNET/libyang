@@ -324,7 +324,7 @@ test_models(void **state)
     /* selecting correct revision of the submodules */
     ly_ctx_reset_latests(ctx);
     ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule y {belongs-to a {prefix a;} revision 2018-10-31;}");
-    mod2 = lys_parse_mem_(ctx, "module a {namespace urn:a;prefix a;include y; revision 2018-10-31;}", LYS_IN_YANG, 0, NULL, NULL);
+    mod2 = lys_parse_mem_(ctx, "module a {namespace urn:a;prefix a;include y; revision 2018-10-31;}", LYS_IN_YANG, 0, NULL, NULL, NULL);
     assert_non_null(mod2);
     assert_string_equal("2018-10-31", mod2->parsed->includes[0].submodule->revs[0].date);
 
@@ -392,10 +392,10 @@ test_get_models(void **state)
     /* invalid attempts - implementing module of the same name and inserting the same module */
     assert_null(lys_parse_mem(ctx, str2, LYS_IN_YANG));
     logbuf_assert("Module \"a\" is already implemented in the context.");
-    assert_null(lys_parse_mem_(ctx, str1, LYS_IN_YANG, 0, NULL, NULL));
+    assert_null(lys_parse_mem_(ctx, str1, LYS_IN_YANG, 0, NULL, NULL, NULL));
     logbuf_assert("Module \"a\" of revision \"2018-10-23\" is already present in the context.");
     /* insert the second module only as imported, not implemented */
-    mod2 = lys_parse_mem_(ctx, str2, LYS_IN_YANG, 0, NULL, NULL);
+    mod2 = lys_parse_mem_(ctx, str2, LYS_IN_YANG, 0, NULL, NULL, NULL);
     assert_non_null(mod);
     assert_non_null(mod2);
     assert_ptr_not_equal(mod, mod2);
@@ -404,7 +404,7 @@ test_get_models(void **state)
     mod2 = ly_ctx_get_module_latest_ns(ctx, mod->parsed->ns);
     assert_ptr_equal(mod, mod2);
     /* work with module with no revision */
-    mod = lys_parse_mem_(ctx, str0, LYS_IN_YANG, 0, NULL, NULL);
+    mod = lys_parse_mem_(ctx, str0, LYS_IN_YANG, 0, NULL, NULL, NULL);
     assert_non_null(mod);
     assert_ptr_equal(mod, ly_ctx_get_module(ctx, "a", NULL));
     assert_ptr_not_equal(mod, ly_ctx_get_module_latest(ctx, "a"));
