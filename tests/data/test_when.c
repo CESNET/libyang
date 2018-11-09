@@ -43,7 +43,7 @@ setup_f(void **state)
     }
 
     /* libyang context */
-    st->ctx = ly_ctx_new(NULL, 0);
+    st->ctx = ly_ctx_new(TESTS_DIR"/schema/yang/ietf", 0);
     if (!st->ctx) {
         fprintf(stderr, "Failed to create context.\n");
         goto error;
@@ -167,7 +167,8 @@ test_insert_autodel(void **state)
 }
 
 static void
-test_value_prefix(void **state) {
+test_value_prefix(void **state)
+{
     struct state *st = (struct state *)*state;
 
     /* schema */
@@ -184,6 +185,31 @@ test_value_prefix(void **state) {
     assert_string_equal(st->xml, "<outer xmlns=\"urn:when:value:prefix\"><indicator xmlns:wvpa=\"urn:when:value:prefix:aug\">wvpa:inner-indicator</indicator><inner xmlns=\"urn:when:value:prefix:aug\"><text>any-text</text></inner></outer>");
 }
 
+static void
+test_augment_choice(void **state)
+{
+    struct state *st = (struct state *)*state;
+    const char data[] =
+"<interfaces xmlns=\"urn:ietf:params:xml:ns:yang:ietf-interfaces\">"
+    "<interface>"
+        "<name>bu</name>"
+        "<type xmlns:ii=\"urn:ietf:params:xml:ns:yang:iana-if-type\">ii:ethernetCsmacd</type>"
+    "</interface>"
+"</interfaces>";
+    const char *schemafile = TESTS_DIR"/data/files/ietf-microwave-radio-link@2018-10-03.yang";
+
+    ly_ctx_set_searchdir(st->ctx, TESTS_DIR"/data/files");
+    st->mod2 = lys_parse_path(st->ctx, schemafile, LYS_IN_YANG);
+    assert_non_null(st->mod2);
+
+    st->mod3 = ly_ctx_get_module(st->ctx, "iana-if-type", NULL, 0);
+    assert_non_null(st->mod3);
+    lys_set_implemented(st->mod3);
+
+    st->dt = lyd_parse_mem(st->ctx, data, LYD_XML, LYD_OPT_CONFIG);
+    assert_non_null(st->dt);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -192,6 +218,7 @@ int main(void)
                     cmocka_unit_test_setup_teardown(test_insert, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_insert_autodel, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_value_prefix, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_augment_choice, setup_f, teardown_f),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

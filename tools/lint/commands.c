@@ -36,7 +36,14 @@ extern struct ly_ctx *ctx;
 void
 cmd_add_help(void)
 {
-    printf("add [-i] <path-to-model> [<other-models> ...]\n");
+    printf("add [-i] <path-to-model> [<paths-to-other-models> ...]\n");
+    printf("\t-i         - make all the imported modules implemented\n");
+}
+
+void
+cmd_load_help(void)
+{
+    printf("load [-i] <model-name> [<other-model-names> ...]\n");
     printf("\t-i         - make all the imported modules implemented\n");
 }
 
@@ -52,7 +59,7 @@ cmd_clear_help(void)
 void
 cmd_print_help(void)
 {
-    printf("print [-f (yang | yin | tree [<tree-options>] | info [-P <info-path>]) | jsons] [-o <output-file>]"
+    printf("print [-f (yang | yin | tree [<tree-options>] | info [-P <info-path>] | jsons)] [-o <output-file>]"
            " <model-name>[@<revision>]\n");
     printf("\n");
     printf("\ttree-options:\t--tree-print-groupings\t(print top-level groupings in a separate section)\n");
@@ -138,7 +145,9 @@ cmd_feature_help(void)
 void
 cmd_searchpath_help(void)
 {
-    printf("searchpath <model-dir-path> | --clear\n");
+    printf("searchpath [<model-dir-path> | --clear]\n\n");
+    printf("\tThey are used to search for imports and includes of a model.\n");
+    printf("\tThe \"load\" command uses these directories to find models directly.\n");
 }
 
 void
@@ -257,6 +266,71 @@ cmd_add(const char *arg)
         /* no schema on input */
         cmd_add_help();
         goto cleanup;
+    }
+    ret = 0;
+
+cleanup:
+    free(s);
+    ly_ctx_unset_allimplemented(ctx);
+
+    return ret;
+}
+
+int
+cmd_load(const char *arg)
+{
+    int name_len, ret = 1;
+    char *name, *s, *arg_ptr;
+    const struct lys_module *model;
+
+    if (strlen(arg) < 6) {
+        cmd_load_help();
+        return 1;
+    }
+
+    arg_ptr = strdup(arg + 4 /* ignore "load" */);
+
+    for (s = strstr(arg_ptr, "-i"); s ; s = strstr(s + 2, "-i")) {
+        if (s[2] == '\0' || s[2] == ' ') {
+            ly_ctx_set_allimplemented(ctx);
+            s[0] = s[1] = ' ';
+        }
+    }
+    s = arg_ptr;
+
+    while (arg_ptr[0] == ' ') {
+        ++arg_ptr;
+    }
+    if (strchr(arg_ptr, ' ')) {
+        name_len = strchr(arg_ptr, ' ') - arg_ptr;
+    } else {
+        name_len = strlen(arg_ptr);
+    }
+    name = strndup(arg_ptr, name_len);
+
+    while (name) {
+        model = ly_ctx_load_module(ctx, name, NULL);
+        if (!model) {
+            /* libyang printed the error messages */
+            goto cleanup;
+        }
+
+        /* next model */
+        arg_ptr += name_len;
+        while (arg_ptr[0] == ' ') {
+            ++arg_ptr;
+        }
+        if (strchr(arg_ptr, ' ')) {
+            name_len = strchr(arg_ptr, ' ') - arg_ptr;
+        } else {
+            name_len = strlen(arg_ptr);
+        }
+
+        if (name_len) {
+            name = strndup(arg_ptr, name_len);
+        } else {
+            name = NULL;
+        }
     }
     ret = 0;
 
@@ -449,9 +523,8 @@ parse_data(char *filepath, int *options, struct lyd_node *val_tree, const char *
 {
     LYD_FORMAT informat = LYD_UNKNOWN;
     struct lyxml_elem *xml = NULL;
-    struct lyd_node *data = NULL, *root, *next, *iter, *rpc_act = NULL;
-    void *lydval_arg = NULL;
-    int opts = *options;
+    struct lyd_node *data = NULL, *rpc_act = NULL;
+    int opts = *options | LYD_OPT_DATA_ADD_YANGLIB;
 
     /* detect input format according to file suffix */
     informat = detect_data_format(filepath);
@@ -480,23 +553,18 @@ parse_data(char *filepath, int *options, struct lyd_node *val_tree, const char *
         if (!strcmp(xml->name, "data")) {
             fprintf(stdout, "Parsing %s as complete datastore.\n", filepath);
             opts = (opts & ~LYD_OPT_TYPEMASK);
-            lydval_arg = ctx;
         } else if (!strcmp(xml->name, "config")) {
             fprintf(stdout, "Parsing %s as config data.\n", filepath);
             opts = (opts & ~LYD_OPT_TYPEMASK) | LYD_OPT_CONFIG;
-            lydval_arg = ctx;
         } else if (!strcmp(xml->name, "get-reply")) {
             fprintf(stdout, "Parsing %s as <get> reply data.\n", filepath);
             opts = (opts & ~LYD_OPT_TYPEMASK) | LYD_OPT_GET;
-            lydval_arg = ctx;
         } else if (!strcmp(xml->name, "get-config-reply")) {
             fprintf(stdout, "Parsing %s as <get-config> reply data.\n", filepath);
             opts = (opts & ~LYD_OPT_TYPEMASK) | LYD_OPT_GETCONFIG;
-            lydval_arg = ctx;
         } else if (!strcmp(xml->name, "edit-config")) {
             fprintf(stdout, "Parsing %s as <edit-config> data.\n", filepath);
             opts = (opts & ~LYD_OPT_TYPEMASK) | LYD_OPT_EDIT;
-            lydval_arg = ctx;
         } else if (!strcmp(xml->name, "rpc")) {
             fprintf(stdout, "Parsing %s as <rpc> data.\n", filepath);
             opts = (opts & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPC;
@@ -538,11 +606,6 @@ parse_data(char *filepath, int *options, struct lyd_node *val_tree, const char *
         } else if (opts & LYD_OPT_DATA_TEMPLATE) {
             data = lyd_parse_xml(ctx, &xml->child, opts, rpc_act_file);
         } else {
-            if ((opts & LYD_OPT_TYPEMASK) == LYD_OPT_DATA && !(opts & LYD_OPT_STRICT )) {
-                /* we have to include status data from ietf-yang-library which is part of the context,
-                 * so we have to postpone validation after merging input data with ly_ctx_info() */
-                opts |= LYD_OPT_TRUSTED;
-            }
             data = lyd_parse_xml(ctx, &xml->child, opts);
         }
         lyxml_free(ctx, xml);
@@ -567,11 +630,6 @@ parse_data(char *filepath, int *options, struct lyd_node *val_tree, const char *
             }
             data = lyd_parse_path(ctx, filepath, informat, opts, rpc_act_file);
         } else {
-            if ((opts & LYD_OPT_TYPEMASK) == LYD_OPT_DATA && !(opts & LYD_OPT_STRICT )) {
-                /* we have to include status data from ietf-yang-library which is part of the context,
-                 * so we have to postpone validation after merging input data with ly_ctx_info() */
-                opts |= LYD_OPT_TRUSTED;
-            }
             data = lyd_parse_path(ctx, filepath, informat, opts);
         }
     }
@@ -581,55 +639,6 @@ parse_data(char *filepath, int *options, struct lyd_node *val_tree, const char *
         fprintf(stderr, "Failed to parse data.\n");
         lyd_free_withsiblings(data);
         return EXIT_FAILURE;
-    }
-
-    if (opts & LYD_OPT_TRUSTED) {
-        /* postponed validation in case of LYD_OPT_DATA */
-        /* remove the trusted flag */
-        opts &= ~LYD_OPT_TRUSTED;
-
-        /* merge with ietf-yang-library */
-        root = ly_ctx_info(ctx);
-        if (lyd_merge(data, root, LYD_OPT_DESTRUCT | LYD_OPT_EXPLICIT)) {
-            fprintf(stderr, "Merging input data with ietf-yang-library failed.\n");
-            lyd_free_withsiblings(root);
-            lyd_free_withsiblings(data);
-            return EXIT_FAILURE;
-        }
-
-        /* invalidate all data - do not believe to the source */
-        LY_TREE_FOR(data, root) {
-            LY_TREE_DFS_BEGIN(root, next, iter) {
-                iter->validity = LYD_VAL_OK;
-                switch (iter->schema->nodetype) {
-                case LYS_LEAFLIST:
-                case LYS_LEAF:
-                    if (((struct lys_node_leaf *)iter->schema)->type.base == LY_TYPE_LEAFREF) {
-                        iter->validity |= LYD_VAL_LEAFREF;
-                    }
-                    break;
-                case LYS_LIST:
-                    iter->validity |= LYD_VAL_UNIQUE;
-                    /* fallthrough */
-                case LYS_CONTAINER:
-                case LYS_NOTIF:
-                case LYS_RPC:
-                case LYS_ACTION:
-                    iter->validity |= LYD_VAL_MAND;
-                    break;
-                default:
-                    break;
-                }
-                LY_TREE_DFS_END(root, next, iter)
-            }
-        }
-
-        /* validate the result */
-        if (lyd_validate(&data, opts, lydval_arg)) {
-            fprintf(stderr, "Failed to parse data.\n");
-            lyd_free_withsiblings(data);
-            return EXIT_FAILURE;
-        }
     }
 
     *result = data;
@@ -1271,19 +1280,19 @@ int
 cmd_searchpath(const char *arg)
 {
     const char *path;
+    const char * const *searchpaths;
+    int index;
     struct stat st;
 
-    if (strchr(arg, ' ') == NULL) {
-        fprintf(stderr, "Missing the search path.\n");
-        return 1;
-    }
-    path = strchr(arg, ' ');
-    while (path[0] == ' ') {
-        path = &path[1];
-    }
-    if (path[0] == '\0') {
-        fprintf(stderr, "Missing the search path.\n");
-        return 1;
+    for (path = strchr(arg, ' '); path && (path[0] == ' '); ++path);
+    if (!path || (path[0] == '\0')) {
+        searchpaths = ly_ctx_get_searchdirs(ctx);
+        if (searchpaths) {
+            for (index = 0; searchpaths[index]; index++) {
+                fprintf(stdout, "%s\n", searchpaths[index]);
+            }
+        }
+        return 0;
     }
 
     if ((!strncmp(path, "-h", 2) && (path[2] == '\0' || path[2] == ' ')) ||
@@ -1489,13 +1498,14 @@ generic_help:
 
 COMMAND commands[] = {
         {"help", cmd_help, NULL, "Display commands description"},
-        {"add", cmd_add, cmd_add_help, "Add a new model"},
-        {"print", cmd_print, cmd_print_help, "Print model"},
+        {"add", cmd_add, cmd_add_help, "Add a new model from a specific file"},
+        {"load", cmd_load, cmd_load_help, "Load a new model from the searchdirs"},
+        {"print", cmd_print, cmd_print_help, "Print a model"},
         {"data", cmd_data, cmd_data_help, "Load, validate and optionally print instance data"},
         {"xpath", cmd_xpath, cmd_xpath_help, "Get data nodes satisfying an XPath expression"},
         {"list", cmd_list, cmd_list_help, "List all the loaded models"},
         {"feature", cmd_feature, cmd_feature_help, "Print/enable/disable all/specific features of models"},
-        {"searchpath", cmd_searchpath, cmd_searchpath_help, "Set the search path for models"},
+        {"searchpath", cmd_searchpath, cmd_searchpath_help, "Print/set the search path(s) for models"},
         {"clear", cmd_clear, cmd_clear_help, "Clear the context - remove all the loaded models"},
         {"verb", cmd_verb, cmd_verb_help, "Change verbosity"},
 #ifndef NDEBUG

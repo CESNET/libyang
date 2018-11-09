@@ -80,6 +80,9 @@ tree_sibling_is_valid_child(const struct lys_node *node, int including, const st
 
     if (!node) {
         return 0;
+    } else if (!lys_parent(node) && !strcmp(node->name, "config") && !strcmp(node->module->name, "ietf-netconf")) {
+        /* node added by libyang, not actually in the model */
+        return 0;
     }
 
     /* has a following printed child */
@@ -526,6 +529,12 @@ tree_print_snode(struct lyout *out, int level, uint16_t max_name_len, const stru
         /* fallthrough */
     case LYS_GROUPING:
         goto print_children;
+    case LYS_ANYXML:
+        if (!lys_parent(node) && !strcmp(node->name, "config") && !strcmp(node->module->name, "ietf-netconf")) {
+            /* node added by libyang, not actually in the model */
+            return;
+        }
+        break;
     default:
         break;
     }

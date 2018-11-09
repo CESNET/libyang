@@ -113,6 +113,16 @@ void lydict_init(struct dict_table *dict);
 void lydict_clean(struct dict_table *dict);
 
 /**
+ * @brief Get a specific record from a hash table.
+ *
+ * @param[in] recs Hash table records.
+ * @param[in] rec_size Size of one hash table record.
+ * @param[in] idx Index of the record.
+ * @return Record from \p recs on index \p idx.
+ */
+struct ht_rec *lyht_get_rec(unsigned char *recs, uint16_t rec_size, uint32_t idx);
+
+/**
  * @brief Create new hash table.
  *
  * @param[in] size Starting size of the hash table (capacity of values), must be power of 2.

@@ -12,20 +12,7 @@ override_dh_strip:
 	dh_strip -ppython3-yang@PACKAGE_PART_NAME@ --dbg-package=python3-yang@PACKAGE_PART_NAME@-dbg
 
 override_dh_auto_configure:
-	mkdir my_build
-	cd my_build && cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr -DCMAKE_BUILD_TYPE:String="@BUILD_TYPE@" -DGEN_LANGUAGE_BINDINGS=ON ..
-
-override_dh_auto_install:
-	install -d debian/libyang@PACKAGE_PART_NAME@
-	install -d debian/libyang@PACKAGE_PART_NAME@-dbg
-	install -d debian/libyang-cpp@PACKAGE_PART_NAME@
-	install -d debian/libyang-cpp@PACKAGE_PART_NAME@-dbg
-	install -d debian/python3-yang@PACKAGE_PART_NAME@
-	install -d debian/python3-yang@PACKAGE_PART_NAME@-dbg
-	cd my_build && make -j1 install DESTDIR=/usr/src/packages/BUILD/debian/tmp AM_UPDATE_INFO_DIR=no
-
-override_dh_auto_build:
-	cd my_build && make
+	cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr -DCMAKE_BUILD_TYPE:String="@BUILD_TYPE@" -DGEN_LANGUAGE_BINDINGS=ON .
 
 override_dh_auto_test:
-	cd my_build && ctest --output-on-failure
+	ctest --output-on-failure

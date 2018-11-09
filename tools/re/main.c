@@ -38,7 +38,7 @@ help(void)
         "  -h, --help              Show this help message and exit.\n"
         "  -v, --version           Show version number and exit.\n"
         "  -V, --verbose           Print the processing information.\n"
-        "  -i, --invert-match      Invert-match modifier for the closest preceeding\n"
+        "  -i, --invert-match      Invert-match modifier for the closest preceding\n"
         "                          pattern.\n"
         "  -p, --pattern=\"REGEXP\"  Regular expression including the quoting,\n"
         "                          which is applied the same way as in a YANG module.\n"
@@ -231,7 +231,7 @@ main(int argc, char* argv[])
             goto cleanup;
         } else if (!patterns_count) {
             help();
-            fprintf(stderr, "yangre error: missing patern parameter to use.\n");
+            fprintf(stderr, "yangre error: missing pattern parameter to use.\n");
             goto cleanup;
         }
         str = argv[optind];

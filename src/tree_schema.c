@@ -1039,7 +1039,7 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const 
      * the anotation definitions available in the internal schema structure. There is another hack in schema
      * printers to do not print this internally added annotation. */
     if (mod && ly_strequal(mod->name, "ietf-netconf", 0)) {
-        if (lyp_add_ietf_netconf_annotations(mod)) {
+        if (lyp_add_ietf_netconf_annotations_config(mod)) {
             lys_free(mod, NULL, 1, 1);
             return NULL;
         }
@@ -1613,7 +1613,7 @@ lys_restr_free(struct ly_ctx *ctx, struct lys_restr *restr,
     lydict_remove(ctx, restr->emsg);
 }
 
-void
+API void
 lys_iffeature_free(struct ly_ctx *ctx, struct lys_iffeature *iffeature, uint8_t iffeature_size,
                    int shallow, void (*private_destructor)(const struct lys_node *node, void *priv))
 {
@@ -1736,6 +1736,7 @@ type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *new, 
     case LY_TYPE_LEAFREF:
         if (old->info.lref.path) {
             new->info.lref.path = lydict_insert(mod->ctx, old->info.lref.path, 0);
+            new->info.lref.req = old->info.lref.req;
             if (!in_grp && unres_schema_add_node(mod, unres, new, UNRES_TYPE_LEAFREF, parent) == -1) {
                 return -1;
             }

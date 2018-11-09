@@ -544,6 +544,54 @@ lyd_get_node_siblings(const struct lyd_node *data, const struct lys_node *schema
 }
 
 /**
+ * Check whether there are any "when" statements on a \p schema node and evaluate them.
+ *
+ * @return -1 on error, 0 on no when or evaluated to true, 1 on when evaluated to false
+ */
+static int
+lyd_is_when_false(struct lyd_node *root, struct lyd_node *last_parent, struct lys_node *schema, int options)
+{
+    enum int_log_opts prev_ilo;
+    struct lyd_node *current, *dummy;
+
+    if ((!(options & LYD_OPT_TYPEMASK) || (options & (LYD_OPT_CONFIG | LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF | LYD_OPT_DATA_TEMPLATE)))
+            && resolve_applies_when(schema, 1, last_parent ? last_parent->schema : NULL)) {
+        /* evaluate when statements on a dummy data node */
+        if (schema->nodetype == LYS_CHOICE) {
+            schema = (struct lys_node *)lys_getnext(NULL, schema, NULL, LYS_GETNEXT_NOSTATECHECK);
+        }
+        dummy = lyd_new_dummy(root, last_parent, schema, NULL, 0);
+        if (!dummy) {
+            return -1;
+        }
+        if (!dummy->parent && root) {
+            /* connect dummy nodes into the data tree, insert it before the root
+             * to optimize later unlinking (lyd_free()) */
+            lyd_insert_before(root, dummy);
+        }
+        for (current = dummy; current; current = current->child) {
+            ly_ilo_change(NULL, ILO_IGNORE, &prev_ilo, NULL);
+            resolve_when(current, 0, NULL);
+            ly_ilo_restore(NULL, prev_ilo, NULL, 0);
+
+            if (current->when_status & LYD_WHEN_FALSE) {
+                /* when evaluates to false */
+                lyd_free(dummy);
+                return 1;
+            }
+
+            if (current->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
+                /* termination node without a child */
+                break;
+            }
+        }
+        lyd_free(dummy);
+    }
+
+    return 0;
+}
+
+/**
  * @param[in] root Root node to be able search the data tree in case of no instance
  * @return
  *  0 - all restrictions met
@@ -555,8 +603,6 @@ lyd_check_mandatory_data(struct lyd_node *root, struct lyd_node *last_parent,
                          struct ly_set *instances, struct lys_node *schema, int options)
 {
     struct ly_ctx *ctx = schema->module->ctx;
-    enum int_log_opts prev_ilo;
-    struct lyd_node *dummy, *current;
     uint32_t limit;
     uint16_t status;
 
@@ -571,37 +617,8 @@ lyd_check_mandatory_data(struct lyd_node *root, struct lyd_node *last_parent,
         } else if ((options & LYD_OPT_TRUSTED) || ((options & LYD_OPT_TYPEMASK) && (schema->flags & LYS_CONFIG_R))) {
             /* status schema node in non-status data tree */
             return EXIT_SUCCESS;
-        } else {
-            if ((!(options & LYD_OPT_TYPEMASK) || (options & (LYD_OPT_CONFIG | LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF | LYD_OPT_DATA_TEMPLATE)))
-                    && resolve_applies_when(schema, 1, last_parent ? last_parent->schema : NULL)) {
-                /* evaluate when statements */
-                dummy = lyd_new_dummy(root, last_parent, schema, NULL, 0);
-                if (!dummy) {
-                    return EXIT_FAILURE;
-                }
-                if (!dummy->parent && root) {
-                    /* connect dummy nodes into the data tree, insert it before the root
-                     * to optimize later unlinking (lyd_free()) */
-                    lyd_insert_before(root, dummy);
-                }
-                for (current = dummy; current; current = current->child) {
-                    ly_ilo_change(NULL, ILO_IGNORE, &prev_ilo, NULL);
-                    resolve_when(current, 0, NULL);
-                    ly_ilo_restore(NULL, prev_ilo, NULL, 0);
-
-                    if (current->when_status & LYD_WHEN_FALSE) {
-                        /* when evaluates to false */
-                        lyd_free(dummy);
-                        return EXIT_SUCCESS;
-                    }
-
-                    if (current->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
-                        /* termination node without a child */
-                        break;
-                    }
-                }
-                lyd_free(dummy);
-            }
+        } else if (lyd_is_when_false(root, last_parent, schema, options)) {
+            return EXIT_SUCCESS;
         }
         /* the schema instance is not disabled by anything, continue with checking */
     }
@@ -764,6 +781,10 @@ lyd_check_mandatory_subtree(struct lyd_node *tree, struct lyd_node *subtree, str
             }
         }
         if (!iter) {
+            if (lyd_is_when_false(tree, last_parent, schema, options)) {
+                /* nothing to check */
+                break;
+            }
             if (((struct lys_node_choice *)schema)->dflt) {
                 /* there is a default case */
                 if (lyd_check_mandatory_subtree(tree, subtree, last_parent, ((struct lys_node_choice *)schema)->dflt,
@@ -1340,8 +1361,7 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
 
     /* parse the type correctly, makes the value canonical if needed */
     if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, NULL, leaf, NULL, NULL, 1, 0, 0)) {
-        lydict_remove(leaf->schema->module->ctx, leaf->value_str);
-        leaf->value_str = backup;
+        lydict_remove(leaf->schema->module->ctx, backup);
         return -1;
     }
 
@@ -1365,11 +1385,11 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
         dflt_change = 0;
     }
 
-    /* make the node non-validated */
-    leaf->validity = ly_new_node_validity(leaf->schema);
-
-    /* check possible leafref backlinks */
     if (val_change) {
+        /* make the node non-validated */
+        leaf->validity = ly_new_node_validity(leaf->schema);
+
+        /* check possible leafref backlinks */
         check_leaf_list_backlinks((struct lyd_node *)leaf, 2);
     }
 
@@ -2076,6 +2096,8 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
                 lyd_free(ret);
                 return NULL;
             }
+
+            /* set first created node */
             ret = node;
             first_iter = 0;
         }
@@ -2089,6 +2111,10 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
 
         if (!id[0]) {
             /* we are done */
+            if (options & LYD_PATH_OPT_NOPARENTRET) {
+                /* last created node */
+                return node;
+            }
             return ret;
         }
 
@@ -2393,7 +2419,7 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
                                 NULL, trg_leaf, NULL, NULL, 1, src_leaf->dflt, 0);
             } else {
                 lyd_free_value(trg_leaf->value, trg_leaf->value_type, trg_leaf->value_flags,
-                               &((struct lys_node_leaf *)trg_leaf->schema)->type);
+                               &((struct lys_node_leaf *)trg_leaf->schema)->type, NULL, NULL, NULL);
                 trg_leaf->value = src_leaf->value;
             }
             src_leaf->value = (lyd_val)0;
@@ -2443,7 +2469,7 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
             lydict_remove(ctx, trg_leaf->value_str);
             trg_leaf->value_str = lydict_insert(ctx, src_leaf->value_str, 0);
             lyd_free_value(trg_leaf->value, trg_leaf->value_type, trg_leaf->value_flags,
-                           &((struct lys_node_leaf *)trg_leaf->schema)->type);
+                           &((struct lys_node_leaf *)trg_leaf->schema)->type, NULL, NULL, NULL);
             trg_leaf->value_type = src_leaf->value_type;
             trg_leaf->dflt = src_leaf->dflt;
 
@@ -4977,7 +5003,7 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
 
                 /* if we have empty non-dflt and non-presence container, we can remove it */
                 if (!next2 && !iter->dflt && (iter->schema->nodetype == LYS_CONTAINER)
-                        && !((struct lys_node_container *)iter->schema)->presence) {
+                        && !((struct lys_node_container *)iter->schema)->presence && !iter->attr) {
                     lyd_free(to_free);
                     to_free = iter;
                 }
@@ -4994,10 +5020,10 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
             while (!next2) {
                 iter = iter->parent;
 
-                /* if we have empty non-dflt and non-presence container, we can remove it */
+                /* if we have empty non-dflt, non-presence container without any attributes, we can remove it */
                 if (to_free && !iter->dflt && !to_free->next && to_free->prev == to_free &&
                         iter->schema->nodetype == LYS_CONTAINER &&
-                        !((struct lys_node_container *)iter->schema)->presence) {
+                        !((struct lys_node_container *)iter->schema)->presence && !iter->attr) {
                     to_free = iter;
                 } else {
                     lyd_free(to_free);
@@ -5655,7 +5681,7 @@ lyd_free_attr(struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_attr *attr
         lydict_remove(ctx, attr->name);
         type = lys_ext_complex_get_substmt(LY_STMT_TYPE, attr->annotation, NULL);
         assert(type);
-        lyd_free_value(attr->value, attr->value_type, attr->value_flags, *type);
+        lyd_free_value(attr->value, attr->value_type, attr->value_flags, *type, NULL, NULL, NULL);
         lydict_remove(ctx, attr->value_str);
         free(attr);
     }
@@ -5764,8 +5790,18 @@ lyd_insert_attr(struct lyd_node *parent, const struct lys_module *mod, const cha
 }
 
 void
-lyd_free_value(lyd_val value, LY_DATA_TYPE value_type, uint8_t value_flags, struct lys_type *type)
+lyd_free_value(lyd_val value, LY_DATA_TYPE value_type, uint8_t value_flags, struct lys_type *type, lyd_val *old_val,
+               LY_DATA_TYPE *old_val_type, uint8_t *old_val_flags)
 {
+    if (old_val) {
+        *old_val = value;
+        *old_val_type = value_type;
+        *old_val_flags = value_flags;
+        /* we only backup the values for now */
+        return;
+    }
+
+    /* otherwise the value is correctly freed */
     if (value_flags & LY_VALUE_USER) {
         assert(type->der && type->der->module);
         lytype_free(type->der->module, type->der->name, value);
@@ -5839,7 +5875,8 @@ lyd_free_internal(struct lyd_node *node, int top)
         }
     } else { /* LYS_LEAF | LYS_LEAFLIST */
         leaf = (struct lyd_node_leaf_list *)node;
-        lyd_free_value(leaf->value, leaf->value_type, leaf->value_flags, &((struct lys_node_leaf *)leaf->schema)->type);
+        lyd_free_value(leaf->value, leaf->value_type, leaf->value_flags, &((struct lys_node_leaf *)leaf->schema)->type,
+                       NULL, NULL, NULL);
         lydict_remove(leaf->schema->module->ctx, leaf->value_str);
     }
     lyd_free_attr(node->schema->module->ctx, node, node->attr, 1);

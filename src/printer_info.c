@@ -661,6 +661,11 @@ info_print_data_mainmod_with_include(struct lyout *out, const struct lys_module 
                 from_include = 0;
             }
 
+            if (!lys_parent(node) && !strcmp(node->name, "config") && !strcmp(node->module->name, "ietf-netconf")) {
+                /* node added by libyang, not actually in the model */
+                continue;
+            }
+
             if (first) {
                 ly_print(out, "%s \"%s\"%s%s%s\n", strnodetype(node->nodetype), node->name, (from_include ? " (" : ""),
                                                    (from_include ? node->module->name : ""), (from_include ? ")" : ""));

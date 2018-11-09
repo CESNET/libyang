@@ -3628,7 +3628,7 @@ check_default(struct lys_type *type, const char **value, struct lys_module *modu
     }
 
 cleanup:
-    lyd_free_value(node.value, node.value_type, node.value_flags, type);
+    lyd_free_value(node.value, node.value_type, node.value_flags, type, NULL, NULL, NULL);
     lydict_remove(ctx, node.value_str);
     if (tpdf && node.schema) {
         free((char *)node.schema->name);
@@ -3693,7 +3693,8 @@ check_key(struct lys_node_list *list, int index, const char *name, int len)
     }
 
     /* config attribute is the same as of the list */
-    if ((key->flags & LYS_CONFIG_MASK) && (list->flags & LYS_CONFIG_MASK) != (key->flags & LYS_CONFIG_MASK)) {
+    if ((key->flags & LYS_CONFIG_MASK) && (list->flags & LYS_CONFIG_MASK)
+            && ((list->flags & LYS_CONFIG_MASK) != (key->flags & LYS_CONFIG_MASK))) {
         LOGVAL(ctx, LYE_KEY_CONFIG, LY_VLOG_LYS, list, key->name);
         return -1;
     }
@@ -7907,7 +7908,8 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int store,
     }
 
     if (store) {
-        lyd_free_value(leaf->value, leaf->value_type, leaf->value_flags, &((struct lys_node_leaf *)leaf->schema)->type);
+        lyd_free_value(leaf->value, leaf->value_type, leaf->value_flags, &((struct lys_node_leaf *)leaf->schema)->type,
+                       NULL, NULL, NULL);
         memset(&leaf->value, 0, sizeof leaf->value);
     }
 
@@ -7996,7 +7998,7 @@ resolve_union(struct lyd_node_leaf_list *leaf, struct lys_type *type, int store,
 
         /* erase possible present and invalid value data */
         if (store) {
-            lyd_free_value(leaf->value, leaf->value_type, leaf->value_flags, t);
+            lyd_free_value(leaf->value, leaf->value_type, leaf->value_flags, t, NULL, NULL, NULL);
             memset(&leaf->value, 0, sizeof leaf->value);
         }
     }

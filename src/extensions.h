@@ -223,6 +223,19 @@ void lyext_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, const char *plugin,
     lyext_log(ctx, level, plugin, __func__, str, ##args); \
 
 /**
+ * @brief Free iffeature structure. In API only for plugins that want to handle if-feature statements similarly
+ * to libyang.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] iffeature iffeature array to free.
+ * @param[in] iffeature_size size of array \p iffeature.
+ * @param[in] shallow Whether to make only shallow free.
+ * @param[in] private_destructor Custom destructor for freeing any extension instances.
+ */
+void lys_iffeature_free(struct ly_ctx *ctx, struct lys_iffeature *iffeature, uint8_t iffeature_size, int shallow,
+                        void (*private_destructor)(const struct lys_node *node, void *priv));
+
+/**
  * @}
  */
 

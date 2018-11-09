@@ -1093,6 +1093,11 @@ jsons_print_anydata(struct lyout *out, const struct lys_node *node, int *first)
 {
     struct lys_node_anydata *any = (struct lys_node_anydata *)node;
 
+    if (!lys_parent(node) && !strcmp(node->name, "config") && !strcmp(node->module->name, "ietf-netconf")) {
+        /* node added by libyang, not actually in the model */
+        return;
+    }
+
     jsons_print_object(out, node->name, "nodetype", jsons_nodetype_str(node->nodetype), 0, first);
     ly_print(out, ",\"module\":\"%s\"", lys_main_module(node->module)->name);
     if (node->module->type) {

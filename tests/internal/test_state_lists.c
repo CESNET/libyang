@@ -17,10 +17,12 @@
 #include <setjmp.h>
 #include <stdarg.h>
 #include <cmocka.h>
+#include <assert.h>
 
 #include "libyang.h"
 #include "tree_internal.h"
 #include "tests/config.h"
+#include "hash_table.h"
 
 struct state {
     struct ly_ctx *ctx;
@@ -31,10 +33,6 @@ const char *schemafile = TESTS_DIR"/data/files/state-lists.yang";
 const char *datafile = TESTS_DIR"/data/files/state-lists1.xml";
 
 #ifdef LY_ENABLED_CACHE
-
-/* include hash_table directly as it is not a part of public API */
-#include "hash_table.c"
-#include "hash_table.h"
 
 static void
 lyd_hash_check(struct lyd_node *node)

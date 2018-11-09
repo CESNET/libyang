@@ -12,7 +12,7 @@ set(CMAKE_MACOSX_RPATH TRUE)
 # set version
 set(LIBYANG_MAJOR_VERSION 0)
 set(LIBYANG_MINOR_VERSION 16)
-set(LIBYANG_MICRO_VERSION 52)
+set(LIBYANG_MICRO_VERSION 71)
 set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION})
 
@@ -21,7 +21,8 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE debug)
 endif()
 
-set(CMAKE_C_FLAGS         "${CMAKE_C_FLAGS} -Wall -Wextra -std=gnu11")
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_FLAGS         "${CMAKE_C_FLAGS} -Wall -Wextra")
 set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
 set(CMAKE_C_FLAGS_PACKAGE "-g -O2 -DNDEBUG")
 set(CMAKE_C_FLAGS_DEBUG   "-g -O0")
@@ -52,10 +53,6 @@ if(ENABLE_LYD_PRIV)
 endif()
 
 if(CMAKE_C_COMPILER_ID STREQUAL "GNU")
-    # require at least gcc 4.9
-    if (CMAKE_C_COMPILER_VERSION VERSION_LESS 4.9)
-        message(FATAL_ERROR "GCC version must be at least 4.9!")
-    endif()
     set(COMPILER_UNUSED_ATTR "UNUSED_ ## x __attribute__((__unused__))")
     set(COMPILER_PACKED_ATTR "__attribute__((__packed__))")
 elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang")
@@ -66,7 +63,7 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang")
     set(COMPILER_UNUSED_ATTR "UNUSED_ ## x __attribute__((__unused__))")
     set(COMPILER_PACKED_ATTR "__attribute__((__packed__))")
 else()
-    message(WARNING "You are using an unknown compiler, it must support C11 standard \"_Generic\" statement.")
+    message(WARNING "You are using an unknown compiler, it must support C11 standard \"_Generic\" statement or the \"__builtin_types_compatible_p\" built-in function.")
     set(COMPILER_UNUSED_ATTR "UNUSED_ ## x")
     set(COMPILER_PACKED_ATTR "")
 endif()
@@ -88,7 +85,7 @@ set(GEN_CPP_BINDINGS 1 CACHE BOOL "Enable C++ bindings.")
 set(GEN_PYTHON_BINDINGS 1 CACHE BOOL "Enable Python bindings.")
 set(GEN_PYTHON_VERSION "3" CACHE STRING "Python version")
 set(GEN_JAVASCRIPT_BINDINGS 0 CACHE BOOL "Enable JavaScript bindings.")
-set(GEN_JAVA_BINDINGS 1 CACHE BOOL "Enable Java bindings.")
+set(GEN_JAVA_BINDINGS 0 CACHE BOOL "Enable Java bindings.")
 
 find_package(FLEX)
 find_package(BISON)
@@ -255,12 +252,15 @@ else()
     add_library(yangobj OBJECT ${libsrc})
     add_library(yang SHARED $<TARGET_OBJECTS:yangobj>)
 
+    #only for tests with visible internal symbols
+    add_library(yangobj_tests OBJECT ${libsrc})
+
     #link dl
     target_link_libraries(yang ${CMAKE_DL_LIBS})
 endif(ENABLE_STATIC)
 
 set_target_properties(yang PROPERTIES VERSION ${LIBYANG_VERSION} SOVERSION ${LIBYANG_SOVERSION})
-set_target_properties(yang PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
+set_target_properties(yangobj PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
 
 # link math
 target_link_libraries(yang m)
@@ -380,6 +380,7 @@ install(FILES ${PROJECT_SOURCE_DIR}/tools/lint/yanglint.1 DESTINATION ${CMAKE_IN
 add_executable(yangre ${resrc})
 target_link_libraries(yangre yang)
 install(TARGETS yangre DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES ${PROJECT_SOURCE_DIR}/tools/re/yangre.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 
 # yang2yin
 add_executable(yang2yin ${yang2yinsrc})
