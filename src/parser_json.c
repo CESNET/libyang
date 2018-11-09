@@ -587,7 +587,7 @@ repeat:
     len += skip_ws(&data[len]);
 
     if (data[len] != '"') {
-        LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_NONE, NULL, "JSON data (missing quotation-mark at the begining of string)");
+        LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_NONE, NULL, "JSON data (missing quotation-mark at the beginning of string)");
         return 0;
     }
     len++;
