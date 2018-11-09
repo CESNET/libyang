@@ -380,6 +380,7 @@ install(FILES ${PROJECT_SOURCE_DIR}/tools/lint/yanglint.1 DESTINATION ${CMAKE_IN
 add_executable(yangre ${resrc})
 target_link_libraries(yangre yang)
 install(TARGETS yangre DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES ${PROJECT_SOURCE_DIR}/tools/re/yangre.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 
 # yang2yin
 add_executable(yang2yin ${yang2yinsrc})
