@@ -138,8 +138,7 @@ cleanup:
 static int
 lytype_load_plugin(void *dlhandler, const char *file_name)
 {
-    struct lytype_plugin_list *plugin, *p;
-    uint32_t u, v;
+    struct lytype_plugin_list *plugin;
     char *str;
 
 #ifdef STATIC
@@ -153,6 +152,14 @@ lytype_load_plugin(void *dlhandler, const char *file_name)
         LOGERR(NULL, LY_ESYS, "Processing \"%s\" user type plugin failed, missing plugin list object (%s).", file_name, str);
         return 1;
     }
+    return ly_register_types(plugin, file_name);
+}
+
+API int
+ly_register_types(struct lytype_plugin_list *plugin, const char *log_name)
+{
+    struct lytype_plugin_list *p;
+    uint32_t u, v;
 
     for (u = 0; plugin[u].name; u++) {
         /* check user type implementations for collisions */
@@ -162,7 +169,7 @@ lytype_load_plugin(void *dlhandler, const char *file_name)
                     (!plugin[u].revision || !type_plugins[v].revision || !strcmp(plugin[u].revision, type_plugins[v].revision))) {
                 LOGERR(NULL, LY_ESYS, "Processing \"%s\" extension plugin failed,"
                         "implementation collision for extension %s from module %s%s%s.",
-                        file_name, plugin[u].name, plugin[u].module, plugin[u].revision ? "@" : "",
+                        log_name, plugin[u].name, plugin[u].module, plugin[u].revision ? "@" : "",
                         plugin[u].revision ? plugin[u].revision : "");
                 return 1;
             }
@@ -187,9 +194,7 @@ lytype_load_plugin(void *dlhandler, const char *file_name)
 static int
 lyext_load_plugin(void *dlhandler, const char *file_name)
 {
-    struct lyext_plugin_list *plugin, *p;
-    struct lyext_plugin_complex *pluginc;
-    uint32_t u, v;
+    struct lyext_plugin_list *plugin;
     char *str;
 
 #ifdef STATIC
@@ -203,6 +208,15 @@ lyext_load_plugin(void *dlhandler, const char *file_name)
         LOGERR(NULL, LY_ESYS, "Processing \"%s\" extension plugin failed, missing plugin list object (%s).", file_name, str);
         return 1;
     }
+    return ly_register_exts(plugin, file_name);
+}
+
+API int
+ly_register_exts(struct lyext_plugin_list *plugin, const char *log_name)
+{
+    struct lyext_plugin_list *p;
+    struct lyext_plugin_complex *pluginc;
+    uint32_t u, v;
 
     for (u = 0; plugin[u].name; u++) {
         /* check extension implementations for collisions */
@@ -212,7 +226,7 @@ lyext_load_plugin(void *dlhandler, const char *file_name)
                     (!plugin[u].revision || !ext_plugins[v].revision || !strcmp(plugin[u].revision, ext_plugins[v].revision))) {
                 LOGERR(NULL, LY_ESYS, "Processing \"%s\" extension plugin failed,"
                         "implementation collision for extension %s from module %s%s%s.",
-                        file_name, plugin[u].name, plugin[u].module, plugin[u].revision ? "@" : "",
+                        log_name, plugin[u].name, plugin[u].module, plugin[u].revision ? "@" : "",
                         plugin[u].revision ? plugin[u].revision : "");
                 return 1;
             }
@@ -227,7 +241,7 @@ lyext_load_plugin(void *dlhandler, const char *file_name)
                         pluginc->substmt[v].stmt == LY_STMT_YINELEM) {
                     LOGERR(NULL, LY_EINVAL,
                             "Extension plugin \"%s\" (extension %s) allows not supported extension substatement (%s)",
-                            file_name, plugin[u].name, ly_stmt_str[pluginc->substmt[v].stmt]);
+                            log_name, plugin[u].name, ly_stmt_str[pluginc->substmt[v].stmt]);
                     return 1;
                 }
                 if (pluginc->substmt[v].cardinality > LY_STMT_CARD_MAND &&
@@ -235,7 +249,7 @@ lyext_load_plugin(void *dlhandler, const char *file_name)
                         pluginc->substmt[v].stmt <= LY_STMT_STATUS) {
                     LOGERR(NULL, LY_EINVAL, "Extension plugin \"%s\" (extension %s) allows multiple instances on \"%s\" "
                            "substatement, which is not supported.",
-                           file_name, plugin[u].name, ly_stmt_str[pluginc->substmt[v].stmt]);
+                           log_name, plugin[u].name, ly_stmt_str[pluginc->substmt[v].stmt]);
                     return 1;
                 }
             }
