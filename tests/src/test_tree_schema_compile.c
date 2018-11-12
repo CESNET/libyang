@@ -372,12 +372,14 @@ test_node_type_length_range(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
 
-    assert_non_null(mod = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;leaf l {type binary {length min;}}}", LYS_IN_YANG));
+    assert_non_null(mod = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;leaf l {type binary {length min {error-app-tag errortag;error-message error;}}}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
     type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
     assert_non_null(type);
     assert_non_null(((struct lysc_type_bin*)type)->length);
     assert_non_null(((struct lysc_type_bin*)type)->length->parts);
+    assert_string_equal("errortag", ((struct lysc_type_bin*)type)->length->eapptag);
+    assert_string_equal("error", ((struct lysc_type_bin*)type)->length->emsg);
     assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_type_bin*)type)->length->parts));
     assert_int_equal(0, ((struct lysc_type_bin*)type)->length->parts[0].min_u64);
     assert_int_equal(0, ((struct lysc_type_bin*)type)->length->parts[0].max_u64);

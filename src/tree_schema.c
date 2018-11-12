@@ -1557,11 +1557,11 @@ lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA
 
     if (range_p->eapptag) {
         lydict_remove(ctx->ctx, (*range)->eapptag);
-        lydict_insert(ctx->ctx, range_p->eapptag, 0);
+        (*range)->eapptag = lydict_insert(ctx->ctx, range_p->eapptag, 0);
     }
     if (range_p->emsg) {
         lydict_remove(ctx->ctx, (*range)->emsg);
-        lydict_insert(ctx->ctx, range_p->emsg, 0);
+        (*range)->emsg = lydict_insert(ctx->ctx, range_p->emsg, 0);
     }
     /* extensions are taken only from the last range by the caller */
 
