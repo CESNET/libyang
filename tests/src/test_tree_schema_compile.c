@@ -535,6 +535,9 @@ test_node_type_length(void **state)
     assert_non_null(mod = lys_parse_mem(ctx, "module kk {namespace urn:kk;prefix kk;leaf l {type binary {length \"10 |\";}}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Invalid length restriction - unexpected end of the expression (10 |).");
+    assert_non_null(mod = lys_parse_mem(ctx, "module kl {namespace urn:kl;prefix kl;leaf l {type binary {length \"10..20 | 15..30\";}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid length restriction - values are not in ascending order (15).");
 
     assert_non_null(mod = lys_parse_mem(ctx, "module ll {namespace urn:ll;prefix ll;typedef mytype {type binary {length 10;}}"
                                              "leaf l {type mytype {length 11;}}}", LYS_IN_YANG));
@@ -560,6 +563,10 @@ test_node_type_length(void **state)
                                              "leaf l {type mytype {length 15..35;}}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Invalid length restriction - the derived restriction (15..35) is not equally or more limiting.");
+    assert_non_null(mod = lys_parse_mem(ctx, "module rr {namespace urn:rr;prefix rr;typedef mytype {type binary {length 10;}}"
+                                             "leaf l {type mytype {length 10..35;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid length restriction - the derived restriction (10..35) is not equally or more limiting.");
 
 
     *state = NULL;
