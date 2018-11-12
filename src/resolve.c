@@ -6975,6 +6975,15 @@ featurecheckdone:
     case UNRES_TYPE_DFLT:
         stype = item;
         rc = check_default(stype, (const char **)str_snode, mod, parent_type);
+        if ((rc == EXIT_FAILURE) && !parent_type) {
+            for (par_grp = (struct lys_node *)stype->parent;
+                 par_grp && (par_grp->nodetype != LYS_GROUPING);
+                 par_grp = lys_parent(par_grp));
+            if (par_grp) {
+                /* checking default value in a grouping finished with forward reference means we cannot check the value */
+                rc = EXIT_SUCCESS;
+            }
+        }
         break;
     case UNRES_CHOICE_DFLT:
         expr = str_snode;
