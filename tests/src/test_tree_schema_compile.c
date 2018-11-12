@@ -55,6 +55,18 @@ logger_setup(void **state)
     return 0;
 }
 
+static int
+logger_teardown(void **state)
+{
+    (void) state; /* unused */
+#if ENABLE_LOGGER_CHECKING
+    if (*state) {
+        fprintf(stderr, "%s\n", logbuf);
+    }
+#endif
+    return 0;
+}
+
 void
 logbuf_clean(void)
 {
@@ -349,13 +361,123 @@ test_node_container(void **state)
     ly_ctx_destroy(ctx, NULL);
 }
 
+static void
+test_node_type_length_range(void **state)
+{
+    *state = test_node_type_length_range;
+
+    struct ly_ctx *ctx;
+    struct lys_module *mod;
+    struct lysc_type *type;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;leaf l {type binary {length min;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_non_null(((struct lysc_type_bin*)type)->length);
+    assert_non_null(((struct lysc_type_bin*)type)->length->parts);
+    assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_type_bin*)type)->length->parts));
+    assert_int_equal(0, ((struct lysc_type_bin*)type)->length->parts[0].min_u64);
+    assert_int_equal(0, ((struct lysc_type_bin*)type)->length->parts[0].max_u64);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;leaf l {type binary {length max;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_non_null(((struct lysc_type_bin*)type)->length);
+    assert_non_null(((struct lysc_type_bin*)type)->length->parts);
+    assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_type_bin*)type)->length->parts));
+    assert_int_equal(__UINT64_C(18446744073709551615), ((struct lysc_type_bin*)type)->length->parts[0].min_u64);
+    assert_int_equal(__UINT64_C(18446744073709551615), ((struct lysc_type_bin*)type)->length->parts[0].max_u64);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module c {namespace urn:c;prefix c;leaf l {type binary {length min..max;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_non_null(((struct lysc_type_bin*)type)->length);
+    assert_non_null(((struct lysc_type_bin*)type)->length->parts);
+    assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_type_bin*)type)->length->parts));
+    assert_int_equal(0, ((struct lysc_type_bin*)type)->length->parts[0].min_u64);
+    assert_int_equal(__UINT64_C(18446744073709551615), ((struct lysc_type_bin*)type)->length->parts[0].max_u64);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module d {namespace urn:d;prefix d;leaf l {type binary {length 5;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_non_null(((struct lysc_type_bin*)type)->length);
+    assert_non_null(((struct lysc_type_bin*)type)->length->parts);
+    assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_type_bin*)type)->length->parts));
+    assert_int_equal(5, ((struct lysc_type_bin*)type)->length->parts[0].min_u64);
+    assert_int_equal(5, ((struct lysc_type_bin*)type)->length->parts[0].max_u64);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module e {namespace urn:e;prefix e;leaf l {type binary {length 1..10;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_non_null(((struct lysc_type_bin*)type)->length);
+    assert_non_null(((struct lysc_type_bin*)type)->length->parts);
+    assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_type_bin*)type)->length->parts));
+    assert_int_equal(1, ((struct lysc_type_bin*)type)->length->parts[0].min_u64);
+    assert_int_equal(10, ((struct lysc_type_bin*)type)->length->parts[0].max_u64);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module f {namespace urn:f;prefix f;leaf l {type binary {length 1..10|20..30;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_non_null(((struct lysc_type_bin*)type)->length);
+    assert_non_null(((struct lysc_type_bin*)type)->length->parts);
+    assert_int_equal(2, LY_ARRAY_SIZE(((struct lysc_type_bin*)type)->length->parts));
+    assert_int_equal(1, ((struct lysc_type_bin*)type)->length->parts[0].min_u64);
+    assert_int_equal(10, ((struct lysc_type_bin*)type)->length->parts[0].max_u64);
+    assert_int_equal(20, ((struct lysc_type_bin*)type)->length->parts[1].min_u64);
+    assert_int_equal(30, ((struct lysc_type_bin*)type)->length->parts[1].max_u64);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module g {namespace urn:g;prefix g;leaf l {type binary {length \"16 | 32\";}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_non_null(((struct lysc_type_bin*)type)->length);
+    assert_non_null(((struct lysc_type_bin*)type)->length->parts);
+    assert_int_equal(2, LY_ARRAY_SIZE(((struct lysc_type_bin*)type)->length->parts));
+    assert_int_equal(16, ((struct lysc_type_bin*)type)->length->parts[0].min_u64);
+    assert_int_equal(16, ((struct lysc_type_bin*)type)->length->parts[0].max_u64);
+    assert_int_equal(32, ((struct lysc_type_bin*)type)->length->parts[1].min_u64);
+    assert_int_equal(32, ((struct lysc_type_bin*)type)->length->parts[1].max_u64);
+
+    /* invalid values */
+    assert_non_null(mod = lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;leaf l {type binary {length -10;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid length restriction - value \"-10\" does not fit the type limitations.");
+    assert_non_null(mod = lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb;leaf l {type binary {length 18446744073709551616;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid length restriction - invalid value \"18446744073709551616\".");
+    assert_non_null(mod = lys_parse_mem(ctx, "module cc {namespace urn:cc;prefix cc;leaf l {type binary {length \"max .. 10\";}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid length restriction - unexpected data after max keyword (.. 10).");
+    assert_non_null(mod = lys_parse_mem(ctx, "module dd {namespace urn:dd;prefix dd;leaf l {type binary {length 50..10;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid length restriction - values are not in ascending order (10).");
+    assert_non_null(mod = lys_parse_mem(ctx, "module ee {namespace urn:ee;prefix ee;leaf l {type binary {length \"50 | 10\";}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid length restriction - values are not in ascending order (10).");
+    assert_non_null(mod = lys_parse_mem(ctx, "module ff {namespace urn:ff;prefix ff;leaf l {type binary {length \"x\";}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid length restriction - unexpected data (x).");
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup(test_module, logger_setup),
-        cmocka_unit_test_setup(test_feature, logger_setup),
-        cmocka_unit_test_setup(test_identity, logger_setup),
-        cmocka_unit_test_setup(test_node_container, logger_setup),
+        cmocka_unit_test_setup_teardown(test_module, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_feature, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_identity, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_node_type_length_range, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_node_container, logger_setup, logger_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

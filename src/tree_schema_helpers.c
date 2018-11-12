@@ -50,6 +50,29 @@ lysp_check_prefix(struct ly_parser_ctx *ctx, struct lysp_module *module, const c
 }
 
 LY_ERR
+lysc_check_status(struct lysc_ctx *ctx,
+                  uint16_t flags1, void *mod1, const char *name1,
+                  uint16_t flags2, void *mod2, const char *name2)
+{
+    uint16_t flg1, flg2;
+
+    flg1 = (flags1 & LYS_STATUS_MASK) ? (flags1 & LYS_STATUS_MASK) : LYS_STATUS_CURR;
+    flg2 = (flags2 & LYS_STATUS_MASK) ? (flags2 & LYS_STATUS_MASK) : LYS_STATUS_CURR;
+
+    if ((flg1 < flg2) && (mod1 == mod2)) {
+        if (ctx) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                   "A %s definition \"%s\" is not allowed to reference %s definition \"%s\".",
+                   flg1 == LYS_STATUS_CURR ? "current" : "deprecated", name1,
+                   flg2 == LYS_STATUS_OBSLT ? "obsolete" : "deprecated", name2);
+        }
+        return LY_EVALID;
+    }
+
+    return LY_SUCCESS;
+}
+
+LY_ERR
 lysp_check_date(struct ly_parser_ctx *ctx, const char *date, int date_len, const char *stmt)
 {
     int i;
@@ -136,9 +159,83 @@ lysp_type_match(const char *name, struct lysp_node *node)
     return NULL;
 }
 
+static LY_DATA_TYPE
+lysp_type_str2builtin(const char *name, size_t len)
+{
+    if (len >= 4) { /* otherwise it does not match any built-in type */
+        if (name[0] == 'b') {
+            if (name[1] == 'i') {
+                if (len == 6 && !strncmp(&name[2], "nary", 4)) {
+                    return LY_TYPE_BINARY;
+                } else if (len == 4 && !strncmp(&name[2], "ts", 2)) {
+                    return LY_TYPE_BITS;
+                }
+            } else if (len == 7 && !strncmp(&name[1], "oolean", 6)) {
+                return LY_TYPE_BOOL;
+            }
+        } else if (name[0] == 'd') {
+            if (len == 9 && !strncmp(&name[1], "ecimal64", 8)) {
+                return LY_TYPE_DEC64;
+            }
+        } else if (name[0] == 'e') {
+            if (len == 5 && !strncmp(&name[1], "mpty", 4)) {
+                return LY_TYPE_EMPTY;
+            } else if (len == 11 && !strncmp(&name[1], "numeration", 10)) {
+                return LY_TYPE_ENUM;
+            }
+        } else if (name[0] == 'i') {
+            if (name[1] == 'n') {
+                if (len == 4 && !strncmp(&name[2], "t8", 2)) {
+                    return LY_TYPE_INT8;
+                } else if (len == 5) {
+                    if (!strncmp(&name[2], "t16", 3)) {
+                        return LY_TYPE_INT16;
+                    } else if (!strncmp(&name[2], "t32", 3)) {
+                        return LY_TYPE_INT32;
+                    } else if (!strncmp(&name[2], "t64", 3)) {
+                        return LY_TYPE_INT64;
+                    }
+                } else if (len == 19 && !strncmp(&name[2], "stance-identifier", 17)) {
+                    return LY_TYPE_INST;
+                }
+            } else if (len == 11 && !strncmp(&name[1], "dentityref", 10)) {
+                return LY_TYPE_IDENT;
+            }
+        } else if (name[0] == 'l') {
+            if (len == 7 && !strncmp(&name[1], "eafref", 6)) {
+                return LY_TYPE_LEAFREF;
+            }
+        } else if (name[0] == 's') {
+            if (len == 6 && !strncmp(&name[1], "tring", 5)) {
+                return LY_TYPE_STRING;
+            }
+        } else if (name[0] == 'u') {
+            if (name[1] == 'n') {
+                if (len == 5 && !strncmp(&name[2], "ion", 3)) {
+                    return LY_TYPE_UNION;
+                }
+            } else if (name[1] == 'i' && name[2] == 'n' && name[3] == 't') {
+                if (len == 5 && name[4] == '8') {
+                    return LY_TYPE_UINT8;
+                } else if (len == 6) {
+                    if (!strncmp(&name[4], "16", 2)) {
+                        return LY_TYPE_UINT16;
+                    } else if (!strncmp(&name[4], "32", 2)) {
+                        return LY_TYPE_UINT32;
+                    } else if (!strncmp(&name[4], "64", 2)) {
+                        return LY_TYPE_UINT64;
+                    }
+                }
+            }
+        }
+    }
+
+    return LY_TYPE_UNKNOWN;
+}
+
 LY_ERR
 lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_module *start_module,
-               const struct lysp_tpdf **tpdf, struct lysp_node **node, struct lysp_module **module)
+               LY_DATA_TYPE *type, const struct lysp_tpdf **tpdf, struct lysp_node **node, struct lysp_module **module)
 {
     const char *str, *name;
     struct lysp_tpdf *typedefs;
@@ -150,13 +247,22 @@ lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_module 
     assert(node);
     assert(module);
 
+    *node = NULL;
     str = strchr(id, ':');
     if (str) {
         *module = lysp_module_find_prefix(start_module, id, str - id);
         name = str + 1;
+        *type = LY_TYPE_UNKNOWN;
     } else {
         *module = start_module;
         name = id;
+
+        /* check for built-in types */
+        *type = lysp_type_str2builtin(name, strlen(name));
+        if (*type) {
+            *tpdf = NULL;
+            return LY_SUCCESS;
+        }
     }
     LY_CHECK_RET(!(*module), LY_ENOTFOUND);
 
@@ -230,57 +336,10 @@ lysp_check_typedef(struct ly_parser_ctx *ctx, struct lysp_node *node, struct lys
     name = tpdf->name;
     name_len = strlen(name);
 
-    if (name_len >= 4) {
-        /* otherwise it does not match any built-in type,
-         * check collision with the built-in types */
-        if (name[0] == 'b') {
-            if (name[1] == 'i') {
-                if ((name_len == 6 && !strcmp(&name[2], "nary")) || (name_len == 4 && !strcmp(&name[2], "ts"))) {
-collision:
-                    LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_SYNTAX_YANG,
-                           "Invalid name \"%s\" of typedef - name collision with a built-in type.", name);
-                    return LY_EEXIST;
-                }
-            } else if (name_len == 7 && !strcmp(&name[1], "oolean")) {
-                goto collision;
-            }
-        } else if (name[0] == 'd') {
-            if (name_len == 9 && !strcmp(&name[1], "ecimal64")) {
-                goto collision;
-            }
-        } else if (name[0] == 'e') {
-            if ((name_len == 5 && !strcmp(&name[1], "mpty")) || (name_len == 11 && !strcmp(&name[1], "numeration"))) {
-                goto collision;
-            }
-        } else if (name[0] == 'i') {
-            if (name[1] == 'n') {
-                if ((name_len == 4 && !strcmp(&name[2], "t8")) ||
-                        (name_len == 5 && (!strcmp(&name[2], "t16") || !strcmp(&name[2], "t32") || !strcmp(&name[2], "t64"))) ||
-                        (name_len == 19 && !strcmp(&name[2], "stance-identifier"))) {
-                    goto collision;
-                }
-            } else if (name_len == 11 && !strcmp(&name[1], "dentityref")) {
-                goto collision;
-            }
-        } else if (name[0] == 'l') {
-            if (name_len == 7 && !strcmp(&name[1], "eafref")) {
-                goto collision;
-            }
-        } else if (name[0] == 's') {
-            if (name_len == 6 && !strcmp(&name[1], "tring")) {
-                goto collision;
-            }
-        } else if (name[0] == 'u') {
-            if (name[1] == 'n') {
-                if (name_len == 5 && !strcmp(&name[2], "ion")) {
-                    goto collision;
-                }
-            } else if (name[1] == 'i' && name[2] == 'n' && name[3] == 't' &&
-                    ((name_len == 5 && !strcmp(&name[4], "8")) ||
-                     (name_len == 6 && (!strcmp(&name[4], "16") || !strcmp(&name[4], "32") || !strcmp(&name[4], "64"))))) {
-                goto collision;
-            }
-        }
+    if (lysp_type_str2builtin(name, name_len)) {
+        LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_SYNTAX_YANG,
+               "Invalid name \"%s\" of typedef - name collision with a built-in type.", name);
+        return LY_EEXIST;
     }
 
     /* check locally scoped typedefs (avoid name shadowing) */

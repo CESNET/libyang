@@ -28,11 +28,12 @@
 #include "libyang.h"
 #include "context.h"
 #include "tree_schema_internal.h"
+#include "xpath.h"
 
-#define FREE_ARRAY(CTX, ARRAY, FUNC) {uint64_t c__; LY_ARRAY_FOR(ARRAY, c__){FUNC(CTX, &ARRAY[c__], dict);}LY_ARRAY_FREE(ARRAY);}
-#define FREE_MEMBER(CTX, MEMBER, FUNC) if (MEMBER) {FUNC(CTX, MEMBER, dict);free(MEMBER);}
-#define FREE_STRING(CTX, STRING, DICT) if (DICT && STRING) {lydict_remove(CTX, STRING);}
-#define FREE_STRINGS(CTX, ARRAY, DICT) {uint64_t c__; LY_ARRAY_FOR(ARRAY, c__){FREE_STRING(CTX, ARRAY[c__], DICT);}LY_ARRAY_FREE(ARRAY);}
+#define FREE_ARRAY(CTX, ARRAY, FUNC) {uint64_t c__; LY_ARRAY_FOR(ARRAY, c__){FUNC(CTX, &ARRAY[c__]);}LY_ARRAY_FREE(ARRAY);}
+#define FREE_MEMBER(CTX, MEMBER, FUNC) if (MEMBER) {FUNC(CTX, MEMBER);free(MEMBER);}
+#define FREE_STRING(CTX, STRING) if (STRING) {lydict_remove(CTX, STRING);}
+#define FREE_STRINGS(CTX, ARRAY) {uint64_t c__; LY_ARRAY_FOR(ARRAY, c__){FREE_STRING(CTX, ARRAY[c__]);}LY_ARRAY_FREE(ARRAY);}
 
 #define COMPILE_ARRAY_GOTO(CTX, ARRAY_P, ARRAY_C, OPTIONS, ITER, FUNC, RET, GOTO) \
     if (ARRAY_P) { \
@@ -44,158 +45,157 @@
         } \
     }
 
-static void lysp_grp_free(struct ly_ctx *ctx, struct lysp_grp *grp, int dict);
-static void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node, int dict);
+#define COMPILE_MEMBER_GOTO(CTX, MEMBER_P, MEMBER_C, OPTIONS, FUNC, RET, GOTO) \
+    if (MEMBER_P) { \
+        MEMBER_C = calloc(1, sizeof *(MEMBER_C)); \
+        LY_CHECK_ERR_GOTO(!(MEMBER_C), LOGMEM((CTX)->ctx); RET = LY_EMEM, GOTO); \
+        RET = FUNC(CTX, MEMBER_P, OPTIONS, MEMBER_C); \
+        LY_CHECK_GOTO(RET != LY_SUCCESS, GOTO); \
+    }
 
-#define LYSC_CTX_BUFSIZE 4078
-struct lysc_ctx {
-    struct ly_ctx *ctx;
-    struct lys_module *mod;
-    uint16_t path_len;
-    char path[LYSC_CTX_BUFSIZE];
-};
+static void lysp_grp_free(struct ly_ctx *ctx, struct lysp_grp *grp);
+static void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node);
 
 static void
-lysp_stmt_free(struct ly_ctx *ctx, struct lysp_stmt *stmt, int dict)
+lysp_stmt_free(struct ly_ctx *ctx, struct lysp_stmt *stmt)
 {
     struct lysp_stmt *child, *next;
 
-    FREE_STRING(ctx, stmt->stmt, dict);
-    FREE_STRING(ctx, stmt->arg, dict);
+    FREE_STRING(ctx, stmt->stmt);
+    FREE_STRING(ctx, stmt->arg);
 
     LY_LIST_FOR_SAFE(stmt->child, next, child) {
-        lysp_stmt_free(ctx, child, dict);
+        lysp_stmt_free(ctx, child);
     }
 
     free(stmt);
 }
 
 static void
-lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext, int dict)
+lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext)
 {
     struct lysp_stmt *stmt, *next;
 
-    FREE_STRING(ctx, ext->name, dict);
-    FREE_STRING(ctx, ext->argument, dict);
+    FREE_STRING(ctx, ext->name);
+    FREE_STRING(ctx, ext->argument);
 
     LY_LIST_FOR_SAFE(ext->child, next, stmt) {
-        lysp_stmt_free(ctx, stmt, dict);
+        lysp_stmt_free(ctx, stmt);
     }
 }
 
 static void
-lysp_import_free(struct ly_ctx *ctx, struct lysp_import *import, int dict)
+lysp_import_free(struct ly_ctx *ctx, struct lysp_import *import)
 {
     /* imported module is freed directly from the context's list */
-    FREE_STRING(ctx, import->name, dict);
-    FREE_STRING(ctx, import->prefix, dict);
-    FREE_STRING(ctx, import->dsc, dict);
-    FREE_STRING(ctx, import->ref, dict);
+    FREE_STRING(ctx, import->name);
+    FREE_STRING(ctx, import->prefix);
+    FREE_STRING(ctx, import->dsc);
+    FREE_STRING(ctx, import->ref);
     FREE_ARRAY(ctx, import->exts, lysp_ext_instance_free);
 }
 
 static void
-lysp_include_free(struct ly_ctx *ctx, struct lysp_include *include, int dict)
+lysp_include_free(struct ly_ctx *ctx, struct lysp_include *include)
 {
     if (include->submodule) {
         lysp_module_free(include->submodule);
     }
-    dict = 1; /* includes not present in compiled tree, so the data are not reused there in anyway */
-    FREE_STRING(ctx, include->name, dict);
-    FREE_STRING(ctx, include->dsc, dict);
-    FREE_STRING(ctx, include->ref, dict);
+    FREE_STRING(ctx, include->name);
+    FREE_STRING(ctx, include->dsc);
+    FREE_STRING(ctx, include->ref);
     FREE_ARRAY(ctx, include->exts, lysp_ext_instance_free);
 }
 
 static void
-lysp_revision_free(struct ly_ctx *ctx, struct lysp_revision *rev, int dict)
+lysp_revision_free(struct ly_ctx *ctx, struct lysp_revision *rev)
 {
-    FREE_STRING(ctx, rev->dsc, dict);
-    FREE_STRING(ctx, rev->ref, dict);
+    FREE_STRING(ctx, rev->dsc);
+    FREE_STRING(ctx, rev->ref);
     FREE_ARRAY(ctx, rev->exts, lysp_ext_instance_free);
 }
 
 static void
-lysp_ext_free(struct ly_ctx *ctx, struct lysp_ext *ext, int dict)
+lysp_ext_free(struct ly_ctx *ctx, struct lysp_ext *ext)
 {
-    FREE_STRING(ctx, ext->name, dict);
-    FREE_STRING(ctx, ext->argument, dict);
-    FREE_STRING(ctx, ext->dsc, dict);
-    FREE_STRING(ctx, ext->ref, dict);
+    FREE_STRING(ctx, ext->name);
+    FREE_STRING(ctx, ext->argument);
+    FREE_STRING(ctx, ext->dsc);
+    FREE_STRING(ctx, ext->ref);
     FREE_ARRAY(ctx, ext->exts, lysp_ext_instance_free);
 }
 
 static void
-lysp_feature_free(struct ly_ctx *ctx, struct lysp_feature *feat, int dict)
+lysp_feature_free(struct ly_ctx *ctx, struct lysp_feature *feat)
 {
-    FREE_STRING(ctx, feat->name, dict);
-    FREE_STRINGS(ctx, feat->iffeatures, 1);
-    FREE_STRING(ctx, feat->dsc, dict);
-    FREE_STRING(ctx, feat->ref, dict);
+    FREE_STRING(ctx, feat->name);
+    FREE_STRINGS(ctx, feat->iffeatures);
+    FREE_STRING(ctx, feat->dsc);
+    FREE_STRING(ctx, feat->ref);
     FREE_ARRAY(ctx, feat->exts, lysp_ext_instance_free);
 }
 
 static void
-lysp_ident_free(struct ly_ctx *ctx, struct lysp_ident *ident, int dict)
+lysp_ident_free(struct ly_ctx *ctx, struct lysp_ident *ident)
 {
-    FREE_STRING(ctx, ident->name, dict);
-    FREE_STRINGS(ctx, ident->iffeatures, 1);
-    FREE_STRINGS(ctx, ident->bases, dict);
-    FREE_STRING(ctx, ident->dsc, dict);
-    FREE_STRING(ctx, ident->ref, dict);
+    FREE_STRING(ctx, ident->name);
+    FREE_STRINGS(ctx, ident->iffeatures);
+    FREE_STRINGS(ctx, ident->bases);
+    FREE_STRING(ctx, ident->dsc);
+    FREE_STRING(ctx, ident->ref);
     FREE_ARRAY(ctx, ident->exts, lysp_ext_instance_free);
 }
 
 static void
-lysp_restr_free(struct ly_ctx *ctx, struct lysp_restr *restr, int dict)
+lysp_restr_free(struct ly_ctx *ctx, struct lysp_restr *restr)
 {
-    FREE_STRING(ctx, restr->arg, dict);
-    FREE_STRING(ctx, restr->emsg, dict);
-    FREE_STRING(ctx, restr->eapptag, dict);
-    FREE_STRING(ctx, restr->dsc, dict);
-    FREE_STRING(ctx, restr->ref, dict);
+    FREE_STRING(ctx, restr->arg);
+    FREE_STRING(ctx, restr->emsg);
+    FREE_STRING(ctx, restr->eapptag);
+    FREE_STRING(ctx, restr->dsc);
+    FREE_STRING(ctx, restr->ref);
     FREE_ARRAY(ctx, restr->exts, lysp_ext_instance_free);
 }
 
 static void
-lysp_type_enum_free(struct ly_ctx *ctx, struct lysp_type_enum *item, int dict)
+lysp_type_enum_free(struct ly_ctx *ctx, struct lysp_type_enum *item)
 {
-    FREE_STRING(ctx, item->name, dict);
-    FREE_STRING(ctx, item->dsc, dict);
-    FREE_STRING(ctx, item->ref, dict);
-    FREE_STRINGS(ctx, item->iffeatures, 1);
+    FREE_STRING(ctx, item->name);
+    FREE_STRING(ctx, item->dsc);
+    FREE_STRING(ctx, item->ref);
+    FREE_STRINGS(ctx, item->iffeatures);
     FREE_ARRAY(ctx, item->exts, lysp_ext_instance_free);
 }
 
 static void
-lysp_type_free(struct ly_ctx *ctx, struct lysp_type *type, int dict)
+lysp_type_free(struct ly_ctx *ctx, struct lysp_type *type)
 {
-    FREE_STRING(ctx, type->name, dict);
+    FREE_STRING(ctx, type->name);
     FREE_MEMBER(ctx, type->range, lysp_restr_free);
     FREE_MEMBER(ctx, type->length, lysp_restr_free);
     FREE_ARRAY(ctx, type->patterns, lysp_restr_free);
     FREE_ARRAY(ctx, type->enums, lysp_type_enum_free);
     FREE_ARRAY(ctx, type->bits, lysp_type_enum_free);
-    FREE_STRING(ctx, type->path, dict);
-    FREE_STRINGS(ctx, type->bases, dict);
+    FREE_STRING(ctx, type->path);
+    FREE_STRINGS(ctx, type->bases);
     FREE_ARRAY(ctx, type->types, lysp_type_free);
     FREE_ARRAY(ctx, type->exts, lysp_ext_instance_free);
 }
 
 static void
-lysp_tpdf_free(struct ly_ctx *ctx, struct lysp_tpdf *tpdf, int dict)
+lysp_tpdf_free(struct ly_ctx *ctx, struct lysp_tpdf *tpdf)
 {
-    FREE_STRING(ctx, tpdf->name, dict);
-    FREE_STRING(ctx, tpdf->units, dict);
-    FREE_STRING(ctx, tpdf->dflt, dict);
-    FREE_STRING(ctx, tpdf->dsc, dict);
-    FREE_STRING(ctx, tpdf->ref, dict);
+    FREE_STRING(ctx, tpdf->name);
+    FREE_STRING(ctx, tpdf->units);
+    FREE_STRING(ctx, tpdf->dflt);
+    FREE_STRING(ctx, tpdf->dsc);
+    FREE_STRING(ctx, tpdf->ref);
     FREE_ARRAY(ctx, tpdf->exts, lysp_ext_instance_free);
-    lysp_type_free(ctx, &tpdf->type, dict);
+    lysp_type_free(ctx, &tpdf->type);
 }
 
 static void
-lysp_action_inout_free(struct ly_ctx *ctx, struct lysp_action_inout *inout, int dict)
+lysp_action_inout_free(struct ly_ctx *ctx, struct lysp_action_inout *inout)
 {
     struct lysp_node *node, *next;
 
@@ -203,19 +203,19 @@ lysp_action_inout_free(struct ly_ctx *ctx, struct lysp_action_inout *inout, int 
     FREE_ARRAY(ctx, inout->typedefs, lysp_tpdf_free);
     FREE_ARRAY(ctx, inout->groupings, lysp_grp_free);
     LY_LIST_FOR_SAFE(inout->data, next, node) {
-        lysp_node_free(ctx, node, dict);
+        lysp_node_free(ctx, node);
     }
     FREE_ARRAY(ctx, inout->exts, lysp_ext_instance_free);
 
 }
 
 static void
-lysp_action_free(struct ly_ctx *ctx, struct lysp_action *action, int dict)
+lysp_action_free(struct ly_ctx *ctx, struct lysp_action *action)
 {
-    FREE_STRING(ctx, action->name, dict);
-    FREE_STRING(ctx, action->dsc, dict);
-    FREE_STRING(ctx, action->ref, dict);
-    FREE_STRINGS(ctx, action->iffeatures, 1);
+    FREE_STRING(ctx, action->name);
+    FREE_STRING(ctx, action->dsc);
+    FREE_STRING(ctx, action->ref);
+    FREE_STRINGS(ctx, action->iffeatures);
     FREE_ARRAY(ctx, action->typedefs, lysp_tpdf_free);
     FREE_ARRAY(ctx, action->groupings, lysp_grp_free);
     FREE_MEMBER(ctx, action->input, lysp_action_inout_free);
@@ -224,35 +224,35 @@ lysp_action_free(struct ly_ctx *ctx, struct lysp_action *action, int dict)
 }
 
 static void
-lysp_notif_free(struct ly_ctx *ctx, struct lysp_notif *notif, int dict)
+lysp_notif_free(struct ly_ctx *ctx, struct lysp_notif *notif)
 {
     struct lysp_node *node, *next;
 
-    FREE_STRING(ctx, notif->name, dict);
-    FREE_STRING(ctx, notif->dsc, dict);
-    FREE_STRING(ctx, notif->ref, dict);
-    FREE_STRINGS(ctx, notif->iffeatures, 1);
+    FREE_STRING(ctx, notif->name);
+    FREE_STRING(ctx, notif->dsc);
+    FREE_STRING(ctx, notif->ref);
+    FREE_STRINGS(ctx, notif->iffeatures);
     FREE_ARRAY(ctx, notif->musts, lysp_restr_free);
     FREE_ARRAY(ctx, notif->typedefs, lysp_tpdf_free);
     FREE_ARRAY(ctx, notif->groupings, lysp_grp_free);
     LY_LIST_FOR_SAFE(notif->data, next, node) {
-        lysp_node_free(ctx, node, dict);
+        lysp_node_free(ctx, node);
     }
     FREE_ARRAY(ctx, notif->exts, lysp_ext_instance_free);
 }
 
 static void
-lysp_grp_free(struct ly_ctx *ctx, struct lysp_grp *grp, int dict)
+lysp_grp_free(struct ly_ctx *ctx, struct lysp_grp *grp)
 {
     struct lysp_node *node, *next;
 
-    FREE_STRING(ctx, grp->name, dict);
-    FREE_STRING(ctx, grp->dsc, dict);
-    FREE_STRING(ctx, grp->ref, dict);
+    FREE_STRING(ctx, grp->name);
+    FREE_STRING(ctx, grp->dsc);
+    FREE_STRING(ctx, grp->ref);
     FREE_ARRAY(ctx, grp->typedefs, lysp_tpdf_free);
     FREE_ARRAY(ctx, grp->groupings, lysp_grp_free);
     LY_LIST_FOR_SAFE(grp->data, next, node) {
-        lysp_node_free(ctx, node, dict);
+        lysp_node_free(ctx, node);
     }
     FREE_ARRAY(ctx, grp->actions, lysp_action_free);
     FREE_ARRAY(ctx, grp->notifs, lysp_notif_free);
@@ -260,26 +260,26 @@ lysp_grp_free(struct ly_ctx *ctx, struct lysp_grp *grp, int dict)
 }
 
 static void
-lysp_when_free(struct ly_ctx *ctx, struct lysp_when *when, int dict)
+lysp_when_free(struct ly_ctx *ctx, struct lysp_when *when)
 {
-    FREE_STRING(ctx, when->cond, dict);
-    FREE_STRING(ctx, when->dsc, dict);
-    FREE_STRING(ctx, when->ref, dict);
+    FREE_STRING(ctx, when->cond);
+    FREE_STRING(ctx, when->dsc);
+    FREE_STRING(ctx, when->ref);
     FREE_ARRAY(ctx, when->exts, lysp_ext_instance_free);
 }
 
 static void
-lysp_augment_free(struct ly_ctx *ctx, struct lysp_augment *augment, int dict)
+lysp_augment_free(struct ly_ctx *ctx, struct lysp_augment *augment)
 {
     struct lysp_node *node, *next;
 
-    FREE_STRING(ctx, augment->nodeid, dict);
-    FREE_STRING(ctx, augment->dsc, dict);
-    FREE_STRING(ctx, augment->ref, dict);
+    FREE_STRING(ctx, augment->nodeid);
+    FREE_STRING(ctx, augment->dsc);
+    FREE_STRING(ctx, augment->ref);
     FREE_MEMBER(ctx, augment->when, lysp_when_free);
-    FREE_STRINGS(ctx, augment->iffeatures, 1);
+    FREE_STRINGS(ctx, augment->iffeatures);
     LY_LIST_FOR_SAFE(augment->child, next, node) {
-        lysp_node_free(ctx, node, dict);
+        lysp_node_free(ctx, node);
     }
     FREE_ARRAY(ctx, augment->actions, lysp_action_free);
     FREE_ARRAY(ctx, augment->notifs, lysp_notif_free);
@@ -287,7 +287,7 @@ lysp_augment_free(struct ly_ctx *ctx, struct lysp_augment *augment, int dict)
 }
 
 static void
-lysp_deviate_free(struct ly_ctx *ctx, struct lysp_deviate *d, int dict)
+lysp_deviate_free(struct ly_ctx *ctx, struct lysp_deviate *d)
 {
     struct lysp_deviate_add *add = (struct lysp_deviate_add*)d;
     struct lysp_deviate_rpl *rpl = (struct lysp_deviate_rpl*)d;
@@ -299,15 +299,15 @@ lysp_deviate_free(struct ly_ctx *ctx, struct lysp_deviate *d, int dict)
         break;
     case LYS_DEV_ADD:
     case LYS_DEV_DELETE: /* compatible for dynamically allocated data */
-        FREE_STRING(ctx, add->units, dict);
+        FREE_STRING(ctx, add->units);
         FREE_ARRAY(ctx, add->musts, lysp_restr_free);
-        FREE_STRINGS(ctx, add->uniques, dict);
-        FREE_STRINGS(ctx, add->dflts, dict);
+        FREE_STRINGS(ctx, add->uniques);
+        FREE_STRINGS(ctx, add->dflts);
         break;
     case LYS_DEV_REPLACE:
         FREE_MEMBER(ctx, rpl->type, lysp_type_free);
-        FREE_STRING(ctx, rpl->units, dict);
-        FREE_STRING(ctx, rpl->dflt, dict);
+        FREE_STRING(ctx, rpl->units);
+        FREE_STRING(ctx, rpl->dflt);
         break;
     default:
         LOGINT(ctx);
@@ -316,90 +316,90 @@ lysp_deviate_free(struct ly_ctx *ctx, struct lysp_deviate *d, int dict)
 }
 
 static void
-lysp_deviation_free(struct ly_ctx *ctx, struct lysp_deviation *dev, int dict)
+lysp_deviation_free(struct ly_ctx *ctx, struct lysp_deviation *dev)
 {
     struct lysp_deviate *next, *iter;
 
-    FREE_STRING(ctx, dev->nodeid, dict);
-    FREE_STRING(ctx, dev->dsc, dict);
-    FREE_STRING(ctx, dev->ref, dict);
+    FREE_STRING(ctx, dev->nodeid);
+    FREE_STRING(ctx, dev->dsc);
+    FREE_STRING(ctx, dev->ref);
     LY_LIST_FOR_SAFE(dev->deviates, next, iter) {
-        lysp_deviate_free(ctx, iter, dict);
+        lysp_deviate_free(ctx, iter);
         free(iter);
     }
     FREE_ARRAY(ctx, dev->exts, lysp_ext_instance_free);
 }
 
 static void
-lysp_refine_free(struct ly_ctx *ctx, struct lysp_refine *ref, int dict)
+lysp_refine_free(struct ly_ctx *ctx, struct lysp_refine *ref)
 {
-    FREE_STRING(ctx, ref->nodeid, dict);
-    FREE_STRING(ctx, ref->dsc, dict);
-    FREE_STRING(ctx, ref->ref, dict);
-    FREE_STRINGS(ctx, ref->iffeatures, 1);
+    FREE_STRING(ctx, ref->nodeid);
+    FREE_STRING(ctx, ref->dsc);
+    FREE_STRING(ctx, ref->ref);
+    FREE_STRINGS(ctx, ref->iffeatures);
     FREE_ARRAY(ctx, ref->musts, lysp_restr_free);
-    FREE_STRING(ctx, ref->presence, dict);
-    FREE_STRINGS(ctx, ref->dflts, dict);
+    FREE_STRING(ctx, ref->presence);
+    FREE_STRINGS(ctx, ref->dflts);
     FREE_ARRAY(ctx, ref->exts, lysp_ext_instance_free);
 }
 
 static void
-lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node, int dict)
+lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node)
 {
     struct lysp_node *child, *next;
 
-    FREE_STRING(ctx, node->name, dict);
-    FREE_STRING(ctx, node->dsc, dict);
-    FREE_STRING(ctx, node->ref, dict);
+    FREE_STRING(ctx, node->name);
+    FREE_STRING(ctx, node->dsc);
+    FREE_STRING(ctx, node->ref);
     FREE_MEMBER(ctx, node->when, lysp_when_free);
-    FREE_STRINGS(ctx, node->iffeatures, dict);
+    FREE_STRINGS(ctx, node->iffeatures);
     FREE_ARRAY(ctx, node->exts, lysp_ext_instance_free);
 
     switch(node->nodetype) {
     case LYS_CONTAINER:
         FREE_ARRAY(ctx, ((struct lysp_node_container*)node)->musts, lysp_restr_free);
-        FREE_STRING(ctx, ((struct lysp_node_container*)node)->presence, dict);
+        FREE_STRING(ctx, ((struct lysp_node_container*)node)->presence);
         FREE_ARRAY(ctx, ((struct lysp_node_container*)node)->typedefs, lysp_tpdf_free);
         FREE_ARRAY(ctx, ((struct lysp_node_container*)node)->groupings, lysp_grp_free);
         LY_LIST_FOR_SAFE(((struct lysp_node_container*)node)->child, next, child) {
-            lysp_node_free(ctx, child, dict);
+            lysp_node_free(ctx, child);
         }
         FREE_ARRAY(ctx, ((struct lysp_node_container*)node)->actions, lysp_action_free);
         FREE_ARRAY(ctx, ((struct lysp_node_container*)node)->notifs, lysp_notif_free);
         break;
     case LYS_LEAF:
         FREE_ARRAY(ctx, ((struct lysp_node_leaf*)node)->musts, lysp_restr_free);
-        lysp_type_free(ctx, &((struct lysp_node_leaf*)node)->type, dict);
-        FREE_STRING(ctx, ((struct lysp_node_leaf*)node)->units, dict);
-        FREE_STRING(ctx, ((struct lysp_node_leaf*)node)->dflt, dict);
+        lysp_type_free(ctx, &((struct lysp_node_leaf*)node)->type);
+        FREE_STRING(ctx, ((struct lysp_node_leaf*)node)->units);
+        FREE_STRING(ctx, ((struct lysp_node_leaf*)node)->dflt);
         break;
     case LYS_LEAFLIST:
         FREE_ARRAY(ctx, ((struct lysp_node_leaflist*)node)->musts, lysp_restr_free);
-        lysp_type_free(ctx, &((struct lysp_node_leaflist*)node)->type, dict);
-        FREE_STRING(ctx, ((struct lysp_node_leaflist*)node)->units, dict);
-        FREE_STRINGS(ctx, ((struct lysp_node_leaflist*)node)->dflts, dict);
+        lysp_type_free(ctx, &((struct lysp_node_leaflist*)node)->type);
+        FREE_STRING(ctx, ((struct lysp_node_leaflist*)node)->units);
+        FREE_STRINGS(ctx, ((struct lysp_node_leaflist*)node)->dflts);
         break;
     case LYS_LIST:
         FREE_ARRAY(ctx, ((struct lysp_node_list*)node)->musts, lysp_restr_free);
-        FREE_STRING(ctx, ((struct lysp_node_list*)node)->key, dict);
+        FREE_STRING(ctx, ((struct lysp_node_list*)node)->key);
         FREE_ARRAY(ctx, ((struct lysp_node_list*)node)->typedefs, lysp_tpdf_free);
         FREE_ARRAY(ctx, ((struct lysp_node_list*)node)->groupings,  lysp_grp_free);
         LY_LIST_FOR_SAFE(((struct lysp_node_list*)node)->child, next, child) {
-            lysp_node_free(ctx, child, dict);
+            lysp_node_free(ctx, child);
         }
         FREE_ARRAY(ctx, ((struct lysp_node_list*)node)->actions, lysp_action_free);
         FREE_ARRAY(ctx, ((struct lysp_node_list*)node)->notifs, lysp_notif_free);
-        FREE_STRINGS(ctx, ((struct lysp_node_list*)node)->uniques, dict);
+        FREE_STRINGS(ctx, ((struct lysp_node_list*)node)->uniques);
         break;
     case LYS_CHOICE:
         LY_LIST_FOR_SAFE(((struct lysp_node_choice*)node)->child, next, child) {
-            lysp_node_free(ctx, child, dict);
+            lysp_node_free(ctx, child);
         }
-        FREE_STRING(ctx, ((struct lysp_node_choice*)node)->dflt, dict);
+        FREE_STRING(ctx, ((struct lysp_node_choice*)node)->dflt);
         break;
     case LYS_CASE:
         LY_LIST_FOR_SAFE(((struct lysp_node_case*)node)->child, next, child) {
-            lysp_node_free(ctx, child, dict);
+            lysp_node_free(ctx, child);
         }
         break;
     case LYS_ANYDATA:
@@ -417,8 +417,8 @@ lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node, int dict)
     free(node);
 }
 
-static void
-lysp_module_free_(struct lysp_module *module, int dict)
+API void
+lysp_module_free(struct lysp_module *module)
 {
     struct ly_ctx *ctx;
     struct lysp_node *node, *next;
@@ -426,18 +426,18 @@ lysp_module_free_(struct lysp_module *module, int dict)
     LY_CHECK_ARG_RET(NULL, module,);
     ctx = module->ctx;
 
-    FREE_STRING(ctx, module->name, dict);
-    FREE_STRING(ctx, module->filepath, dict);
-    FREE_STRING(ctx, module->ns, dict);  /* or belongs-to */
-    FREE_STRING(ctx, module->prefix, dict);
+    FREE_STRING(ctx, module->name);
+    FREE_STRING(ctx, module->filepath);
+    FREE_STRING(ctx, module->ns);  /* or belongs-to */
+    FREE_STRING(ctx, module->prefix);
 
     FREE_ARRAY(ctx, module->imports, lysp_import_free);
     FREE_ARRAY(ctx, module->includes, lysp_include_free);
 
-    FREE_STRING(ctx, module->org, dict);
-    FREE_STRING(ctx, module->contact, dict);
-    FREE_STRING(ctx, module->dsc, dict);
-    FREE_STRING(ctx, module->ref, dict);
+    FREE_STRING(ctx, module->org);
+    FREE_STRING(ctx, module->contact);
+    FREE_STRING(ctx, module->dsc);
+    FREE_STRING(ctx, module->ref);
 
     FREE_ARRAY(ctx, module->revs, lysp_revision_free);
     FREE_ARRAY(ctx, module->extensions, lysp_ext_free);
@@ -446,7 +446,7 @@ lysp_module_free_(struct lysp_module *module, int dict)
     FREE_ARRAY(ctx, module->typedefs, lysp_tpdf_free);
     FREE_ARRAY(ctx, module->groupings, lysp_grp_free);
     LY_LIST_FOR_SAFE(module->data, next, node) {
-        lysp_node_free(ctx, node, dict);
+        lysp_node_free(ctx, node);
     }
     FREE_ARRAY(ctx, module->augments, lysp_augment_free);
     FREE_ARRAY(ctx, module->rpcs, lysp_action_free);
@@ -457,76 +457,97 @@ lysp_module_free_(struct lysp_module *module, int dict)
     free(module);
 }
 
-API void
-lysp_module_free(struct lysp_module *module)
-{
-    if (module) {
-        lysp_module_free_(module, 1);
-    }
-}
-
 static void
-lysc_ext_instance_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext, int dict)
+lysc_ext_instance_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext)
 {
-    FREE_STRING(ctx, ext->argument, dict);
+    FREE_STRING(ctx, ext->argument);
     FREE_ARRAY(ctx, ext->exts, lysc_ext_instance_free);
 }
 
 static void
-lysc_iffeature_free(struct ly_ctx *UNUSED(ctx), struct lysc_iffeature *iff, int UNUSED(dict))
+lysc_iffeature_free(struct ly_ctx *UNUSED(ctx), struct lysc_iffeature *iff)
 {
     LY_ARRAY_FREE(iff->features);
     free(iff->expr);
 }
 
 static void
-lysc_import_free(struct ly_ctx *ctx, struct lysc_import *import, int dict)
+lysc_import_free(struct ly_ctx *ctx, struct lysc_import *import)
 {
     /* imported module is freed directly from the context's list */
-    FREE_STRING(ctx, import->prefix, dict);
+    FREE_STRING(ctx, import->prefix);
     FREE_ARRAY(ctx, import->exts, lysc_ext_instance_free);
 }
 
 static void
-lysc_ident_free(struct ly_ctx *ctx, struct lysc_ident *ident, int dict)
+lysc_ident_free(struct ly_ctx *ctx, struct lysc_ident *ident)
 {
-    FREE_STRING(ctx, ident->name, dict);
+    FREE_STRING(ctx, ident->name);
     FREE_ARRAY(ctx, ident->iffeatures, lysc_iffeature_free);
     LY_ARRAY_FREE(ident->derived);
     FREE_ARRAY(ctx, ident->exts, lysc_ext_instance_free);
 }
 
 static void
-lysc_feature_free(struct ly_ctx *ctx, struct lysc_feature *feat, int dict)
+lysc_feature_free(struct ly_ctx *ctx, struct lysc_feature *feat)
 {
-    FREE_STRING(ctx, feat->name, dict);
+    FREE_STRING(ctx, feat->name);
     FREE_ARRAY(ctx, feat->iffeatures, lysc_iffeature_free);
     LY_ARRAY_FREE(feat->depfeatures);
     FREE_ARRAY(ctx, feat->exts, lysc_ext_instance_free);
 }
 
-static void lysc_node_free(struct ly_ctx *ctx, struct lysc_node *node, int dict);
+static void
+lysc_range_free(struct ly_ctx *ctx, struct lysc_range *range)
+{
+    LY_ARRAY_FREE(range->parts);
+    FREE_STRING(ctx, range->eapptag);
+    FREE_STRING(ctx, range->emsg);
+    FREE_ARRAY(ctx, range->exts, lysc_ext_instance_free);
+}
 
 static void
-lysc_node_container_free(struct ly_ctx *ctx, struct lysc_node_container *node, int dict)
+lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
+{
+    switch(type->basetype) {
+    case LY_TYPE_BINARY:
+        FREE_MEMBER(ctx, ((struct lysc_type_bin*)type)->length, lysc_range_free);
+        break;
+    }
+    FREE_ARRAY(ctx, type->exts, lysc_ext_instance_free);
+}
+
+static void lysc_node_free(struct ly_ctx *ctx, struct lysc_node *node);
+
+static void
+lysc_node_container_free(struct ly_ctx *ctx, struct lysc_node_container *node)
 {
     struct lysc_node *child, *child_next;
 
     LY_LIST_FOR_SAFE(node->child, child_next, child) {
-        lysc_node_free(ctx, child, dict);
+        lysc_node_free(ctx, child);
     }
 }
 
 static void
-lysc_node_free(struct ly_ctx *ctx, struct lysc_node *node, int dict)
+lysc_node_leaf_free(struct ly_ctx *ctx, struct lysc_node_leaf *node)
+{
+    FREE_MEMBER(ctx, node->type, lysc_type_free);
+}
+
+static void
+lysc_node_free(struct ly_ctx *ctx, struct lysc_node *node)
 {
     /* common part */
-    FREE_STRING(ctx, node->name, dict);
+    FREE_STRING(ctx, node->name);
 
     /* nodetype-specific part */
     switch(node->nodetype) {
     case LYS_CONTAINER:
-        lysc_node_container_free(ctx, (struct lysc_node_container*)node, dict);
+        lysc_node_container_free(ctx, (struct lysc_node_container*)node);
+        break;
+    case LYS_LEAF:
+        lysc_node_leaf_free(ctx, (struct lysc_node_leaf*)node);
         break;
     default:
         LOGINT(ctx);
@@ -536,7 +557,7 @@ lysc_node_free(struct ly_ctx *ctx, struct lysc_node *node, int dict)
 }
 
 static void
-lysc_module_free_(struct lysc_module *module, int dict)
+lysc_module_free_(struct lysc_module *module)
 {
     struct ly_ctx *ctx;
     struct lysc_node *node, *node_next;
@@ -544,17 +565,17 @@ lysc_module_free_(struct lysc_module *module, int dict)
     LY_CHECK_ARG_RET(NULL, module,);
     ctx = module->ctx;
 
-    FREE_STRING(ctx, module->name, dict);
-    FREE_STRING(ctx, module->ns, dict);
-    FREE_STRING(ctx, module->prefix, dict);
-    FREE_STRING(ctx, module->revision, 1);
+    FREE_STRING(ctx, module->name);
+    FREE_STRING(ctx, module->ns);
+    FREE_STRING(ctx, module->prefix);
+    FREE_STRING(ctx, module->revision);
 
     FREE_ARRAY(ctx, module->imports, lysc_import_free);
     FREE_ARRAY(ctx, module->features, lysc_feature_free);
     FREE_ARRAY(ctx, module->identities, lysc_ident_free);
 
     LY_LIST_FOR_SAFE(module->data, node_next, node) {
-        lysc_node_free(ctx, node, dict);
+        lysc_node_free(ctx, node);
     }
 
     FREE_ARRAY(ctx, module->exts, lysc_ext_instance_free);
@@ -566,7 +587,7 @@ API void
 lysc_module_free(struct lysc_module *module, void (*private_destructor)(const struct lysc_node *node, void *priv))
 {
     if (module) {
-        lysc_module_free_(module, 1);
+        lysc_module_free_(module);
     }
 }
 
@@ -916,20 +937,14 @@ lys_feature_value(const struct lys_module *module, const char *feature)
 }
 
 static LY_ERR
-lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, int options, struct lysc_ext_instance *ext)
+lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, int UNUSED(options), struct lysc_ext_instance *ext)
 {
     const char *name;
     unsigned int u;
     const struct lys_module *mod;
-    struct lysp_ext *edef;
+    struct lysp_ext *edef = NULL;
 
-    if (options & LYSC_OPT_FREE_SP) {
-        /* just switch the pointers */
-        ext->argument = ext_p->argument;
-    } else {
-        /* keep refcounts correct for lysp_module_free() */
-        ext->argument = lydict_insert(ctx->ctx, ext_p->argument, 0);
-    }
+    ext->argument = lydict_insert(ctx->ctx, ext_p->argument, 0);
     ext->insubstmt = ext_p->insubstmt;
     ext->insubstmt_index = ext_p->insubstmt_index;
 
@@ -960,9 +975,6 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, int optio
     return LY_SUCCESS;
 }
 
-/**
- * @param[in] parent Provided only in case the if-feature is inside
- */
 static LY_ERR
 lys_compile_iffeature(struct lysc_ctx *ctx, const char **value, int UNUSED(options), struct lysc_iffeature *iff)
 {
@@ -1137,6 +1149,37 @@ error:
 }
 
 static LY_ERR
+lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, int options, struct lysc_when *when)
+{
+    unsigned int u;
+    LY_ERR ret = LY_SUCCESS;
+
+    when->cond = lyxp_expr_parse(ctx->ctx, when_p->cond);
+    LY_CHECK_ERR_GOTO(!when->cond, ret = ly_errcode(ctx->ctx), done);
+    COMPILE_ARRAY_GOTO(ctx, when_p->exts, when->exts, options, u, lys_compile_ext, ret, done);
+
+done:
+    return ret;
+}
+
+static LY_ERR
+lys_compile_must(struct lysc_ctx *ctx, struct lysp_restr *must_p, int options, struct lysc_must *must)
+{
+    unsigned int u;
+    LY_ERR ret = LY_SUCCESS;
+
+    must->cond = lyxp_expr_parse(ctx->ctx, must_p->arg);
+    LY_CHECK_ERR_GOTO(!must->cond, ret = ly_errcode(ctx->ctx), done);
+
+    must->eapptag = lydict_insert(ctx->ctx, must_p->eapptag, 0);
+    must->emsg = lydict_insert(ctx->ctx, must_p->emsg, 0);
+    COMPILE_ARRAY_GOTO(ctx, must_p->exts, must->exts, options, u, lys_compile_ext, ret, done);
+
+done:
+    return ret;
+}
+
+static LY_ERR
 lys_compile_import(struct lysc_ctx *ctx, struct lysp_import *imp_p, int options, struct lysc_import *imp)
 {
     unsigned int u;
@@ -1144,13 +1187,7 @@ lys_compile_import(struct lysc_ctx *ctx, struct lysp_import *imp_p, int options,
     struct lysc_module *comp;
     LY_ERR ret = LY_SUCCESS;
 
-    if (options & LYSC_OPT_FREE_SP) {
-        /* just switch the pointers */
-        imp->prefix = imp_p->prefix;
-    } else {
-        /* keep refcounts correct for lysp_module_free() */
-        imp->prefix = lydict_insert(ctx->ctx, imp_p->prefix, 0);
-    }
+    imp->prefix = lydict_insert(ctx->ctx, imp_p->prefix, 0);
     COMPILE_ARRAY_GOTO(ctx, imp_p->exts, imp->exts, options, u, lys_compile_ext, ret, done);
     imp->module = imp_p->module;
 
@@ -1189,13 +1226,7 @@ lys_compile_identity(struct lysc_ctx *ctx, struct lysp_ident *ident_p, int optio
     unsigned int u;
     LY_ERR ret = LY_SUCCESS;
 
-    if (options & LYSC_OPT_FREE_SP) {
-        /* just switch the pointers */
-        ident->name = ident_p->name;
-    } else {
-        /* keep refcounts correct for lysp_module_free() */
-        ident->name = lydict_insert(ctx->ctx, ident_p->name, 0);
-    }
+    ident->name = lydict_insert(ctx->ctx, ident_p->name, 0);
     COMPILE_ARRAY_GOTO(ctx, ident_p->iffeatures, ident->iffeatures, options, u, lys_compile_iffeature, ret, done);
     /* backlings (derived) can be added no sooner than when all the identities in the current module are present */
     COMPILE_ARRAY_GOTO(ctx, ident_p->exts, ident->exts, options, u, lys_compile_ext, ret, done);
@@ -1255,13 +1286,7 @@ lys_compile_feature(struct lysc_ctx *ctx, struct lysp_feature *feature_p, int op
     LY_ERR ret = LY_SUCCESS;
     struct lysc_feature **df;
 
-    if (options & LYSC_OPT_FREE_SP) {
-        /* just switch the pointers */
-        feature->name = feature_p->name;
-    } else {
-        /* keep refcounts correct for lysp_module_free() */
-        feature->name = lydict_insert(ctx->ctx, feature_p->name, 0);
-    }
+    feature->name = lydict_insert(ctx->ctx, feature_p->name, 0);
     feature->flags = feature_p->flags;
 
     COMPILE_ARRAY_GOTO(ctx, feature_p->exts, feature->exts, options, u, lys_compile_ext, ret, done);
@@ -1282,27 +1307,551 @@ done:
     return ret;
 }
 
+static LY_ERR
+range_part_check_value_syntax(struct lysc_ctx *ctx, LY_DATA_TYPE basetype, const char *value, size_t *len, char **valcopy)
+{
+    size_t fraction = 0;
+    *len = 0;
+
+    assert(value);
+    /* parse value */
+    if (!isdigit(value[*len]) && (value[*len] != '-') && (value[*len] != '+')) {
+        return LY_EVALID;
+    }
+
+    if ((value[*len] == '-') || (value[*len] == '+')) {
+        ++(*len);
+    }
+
+    while (isdigit(value[*len])) {
+        ++(*len);
+    }
+
+    if ((basetype != LY_TYPE_DEC64) || (value[*len] != '.') || !isdigit(value[*len + 1])) {
+        *valcopy = strndup(value, *len);
+        return LY_SUCCESS;
+    }
+    fraction = *len;
+
+    ++(*len);
+    while (isdigit(value[*len])) {
+        ++(*len);
+    }
+
+    if (fraction) {
+        *valcopy = malloc(((*len) - 1) * sizeof **valcopy);
+        LY_CHECK_ERR_RET(!(*valcopy), LOGMEM(ctx->ctx), LY_EMEM);
+
+        *valcopy[(*len) - 1] = '\0';
+        memcpy(&(*valcopy)[0], &value[0], fraction);
+        memcpy(&(*valcopy)[fraction], &value[fraction + 1], (*len) - 1 - (fraction + 1));
+    }
+    return LY_SUCCESS;
+}
+
+static LY_ERR
+range_part_check_ascendance(int unsigned_value, int64_t value, int64_t prev_value)
+{
+    if (unsigned_value) {
+        if ((uint64_t)prev_value >= (uint64_t)value) {
+            return LY_EEXIST;
+        }
+    } else {
+        if (prev_value >= value) {
+            return LY_EEXIST;
+        }
+    }
+    return LY_SUCCESS;
+}
+
+static LY_ERR
+range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, int64_t prev, LY_DATA_TYPE basetype, int first, int length_restr,
+                  const char **value)
+{
+    LY_ERR ret = LY_SUCCESS;
+    char *valcopy = NULL;
+    size_t len;
+
+    if (value) {
+        ret = range_part_check_value_syntax(ctx, basetype, *value, &len, &valcopy);
+        LY_CHECK_GOTO(ret, error);
+    }
+
+    switch (basetype) {
+    case LY_TYPE_BINARY: /* length */
+        if (valcopy) {
+            ret = ly_parse_uint(valcopy, __UINT64_C(18446744073709551615), 10, max ? &part->max_u64 : &part->min_u64);
+        } else if (max) {
+            part->max_u64 = __UINT64_C(18446744073709551615);
+        } else {
+            part->min_u64 = __UINT64_C(0);
+        }
+        if (!first) {
+            ret = range_part_check_ascendance(1, max ? part->max_64 : part->min_64, prev);
+        }
+        break;
+    case LY_TYPE_DEC64: /* range */
+        if (valcopy) {
+            ret = ly_parse_int(valcopy, __INT64_C(-9223372036854775807) - __INT64_C(1), __INT64_C(9223372036854775807), 10,
+                               max ? &part->max_64 : &part->min_64);
+        } else if (max) {
+            part->max_64 = __INT64_C(9223372036854775807);
+        } else {
+            part->min_64 = __INT64_C(-9223372036854775807) - __INT64_C(1);
+        }
+        if (!first) {
+            ret = range_part_check_ascendance(0, max ? part->max_64 : part->min_64, prev);
+        }
+        break;
+    case LY_TYPE_INT8: /* range */
+        if (valcopy) {
+            ret = ly_parse_int(valcopy, __INT64_C(-128), INT64_C(127), 10, max ? &part->max_64 : &part->min_64);
+        } else if (max) {
+            part->max_64 = __INT64_C(127);
+        } else {
+            part->min_64 = __INT64_C(-128);
+        }
+        if (!first) {
+            ret = range_part_check_ascendance(0, max ? part->max_64 : part->min_64, prev);
+        }
+        break;
+    case LY_TYPE_INT16: /* range */
+        if (valcopy) {
+            ret = ly_parse_int(valcopy, __INT64_C(-32768), INT64_C(32767), 10, max ? &part->max_64 : &part->min_64);
+        } else if (max) {
+            part->max_64 = __INT64_C(32767);
+        } else {
+            part->min_64 = __INT64_C(-32768);
+        }
+        if (!first) {
+            ret = range_part_check_ascendance(0, max ? part->max_64 : part->min_64, prev);
+        }
+        break;
+    case LY_TYPE_INT32: /* range */
+        if (valcopy) {
+            ret = ly_parse_int(valcopy, __INT64_C(-2147483648), INT64_C(2147483647), 10, max ? &part->max_64 : &part->min_64);
+        } else if (max) {
+            part->max_64 = __INT64_C(2147483647);
+        } else {
+            part->min_64 = __INT64_C(-2147483648);
+        }
+        if (!first) {
+            ret = range_part_check_ascendance(0, max ? part->max_64 : part->min_64, prev);
+        }
+        break;
+    case LY_TYPE_INT64: /* range */
+        if (valcopy) {
+            ret = ly_parse_int(valcopy, __INT64_C(-9223372036854775807) - __INT64_C(1), INT64_C(9223372036854775807), 10,
+                               max ? &part->max_64 : &part->min_64);
+        } else if (max) {
+            part->max_64 = __INT64_C(9223372036854775807);
+        } else {
+            part->min_64 = __INT64_C(-9223372036854775807) - __INT64_C(1);
+        }
+        if (!first) {
+            ret = range_part_check_ascendance(0, max ? part->max_64 : part->min_64, prev);
+        }
+        break;
+    case LY_TYPE_UINT8: /* range */
+        if (valcopy) {
+            ret = ly_parse_uint(valcopy, __UINT64_C(255), 10, max ? &part->max_u64 : &part->min_u64);
+        } else if (max) {
+            part->max_u64 = __UINT64_C(255);
+        } else {
+            part->min_u64 = __UINT64_C(0);
+        }
+        if (!first) {
+            ret = range_part_check_ascendance(1, max ? part->max_64 : part->min_64, prev);
+        }
+        break;
+    case LY_TYPE_UINT16: /* range */
+        if (valcopy) {
+            ret = ly_parse_uint(valcopy, __UINT64_C(65535), 10, max ? &part->max_u64 : &part->min_u64);
+        } else if (max) {
+            part->max_u64 = __UINT64_C(65535);
+        } else {
+            part->min_u64 = __UINT64_C(0);
+        }
+        if (!first) {
+            ret = range_part_check_ascendance(1, max ? part->max_64 : part->min_64, prev);
+        }
+        break;
+    case LY_TYPE_UINT32: /* range */
+        if (valcopy) {
+            ret = ly_parse_uint(valcopy, __UINT64_C(4294967295), 10, max ? &part->max_u64 : &part->min_u64);
+        } else if (max) {
+            part->max_u64 = __UINT64_C(4294967295);
+        } else {
+            part->min_u64 = __UINT64_C(0);
+        }
+        if (!first) {
+            ret = range_part_check_ascendance(1, max ? part->max_64 : part->min_64, prev);
+        }
+        break;
+    case LY_TYPE_UINT64: /* range */
+        if (valcopy) {
+            ret = ly_parse_uint(valcopy, __UINT64_C(18446744073709551615), 10, max ? &part->max_u64 : &part->min_u64);
+        } else if (max) {
+            part->max_u64 = __UINT64_C(18446744073709551615);
+        } else {
+            part->min_u64 = __UINT64_C(0);
+        }
+        if (!first) {
+            ret = range_part_check_ascendance(1, max ? part->max_64 : part->min_64, prev);
+        }
+        break;
+    case LY_TYPE_STRING: /* length */
+        if (valcopy) {
+            ret = ly_parse_uint(valcopy, __UINT64_C(18446744073709551615), 10, max ? &part->max_u64 : &part->min_u64);
+        } else if (max) {
+            part->max_u64 = __UINT64_C(18446744073709551615);
+        } else {
+            part->min_u64 = __UINT64_C(0);
+        }
+        if (!first) {
+            ret = range_part_check_ascendance(1, max ? part->max_64 : part->min_64, prev);
+        }
+        break;
+    default:
+        LOGINT(ctx->ctx);
+        ret = LY_EINT;
+    }
+
+error:
+    if (ret == LY_EDENIED) {
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+               "Invalid %s restriction - value \"%s\" does not fit the type limitations.",
+               length_restr ? "length" : "range", valcopy ? valcopy : *value);
+    } else if (ret == LY_EVALID) {
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+               "Invalid %s restriction - invalid value \"%s\".",
+               length_restr ? "length" : "range", valcopy ? valcopy : *value);
+    } else if (ret == LY_EEXIST) {
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                       "Invalid %s restriction - values are not in ascending order (%s).",
+                       length_restr ? "length" : "range", valcopy ? valcopy : *value);
+    } else if (!ret && value) {
+        *value = *value + len;
+    }
+    free(valcopy);
+    return ret;
+}
+
+static LY_ERR
+lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA_TYPE basetype, int length_restr,
+                       struct lysc_range **range)
+{
+    LY_ERR ret = LY_EVALID;
+    const char *expr;
+    struct lysc_range_part *parts = NULL, *part;
+    size_t parts_done = 0;
+    int range_expected = 0;
+
+    assert(range);
+    assert(range_p);
+
+    if (!(*range)) {
+        *range = calloc(1, sizeof **range);
+        LY_CHECK_ERR_RET(!(*range), LOGMEM(ctx->ctx), LY_EMEM);
+    }
+
+    if (range_p->eapptag) {
+        lydict_remove(ctx->ctx, (*range)->eapptag);
+        lydict_insert(ctx->ctx, range_p->eapptag, 0);
+    }
+    if (range_p->emsg) {
+        lydict_remove(ctx->ctx, (*range)->emsg);
+        lydict_insert(ctx->ctx, range_p->emsg, 0);
+    }
+    /* extensions are taken only from the last range by the caller */
+
+    expr = range_p->arg;
+    while(1) {
+        if (isspace(*expr)) {
+            ++expr;
+            continue;
+        } else if (*expr == '\0') {
+            parts_done++;
+            break;
+        } else if (!strncmp(expr, "min", 3)) {
+            if (parts) {
+                /* min cannot be used elsewhere than in the first part */
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                       "Invalid %s restriction - unexpected data before min keyword (%.*s).", length_restr ? "length" : "range",
+                       expr - range_p->arg, range_p->arg);
+                goto cleanup;
+            }
+            expr += 3;
+
+            LY_ARRAY_NEW_GOTO(ctx->ctx, parts, part, ret, cleanup);
+            LY_CHECK_GOTO(range_part_minmax(ctx, part, 0, 0, basetype, 1, length_restr, NULL), cleanup);
+            part->max_64 = part->min_64;
+        } else if (*expr == '|') {
+            if (!parts || range_expected) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                       "Invalid %s restriction - unexpected beginning of the expression (%s).", length_restr ? "length" : "range", expr);
+                goto cleanup;
+            }
+            expr++;
+            parts_done++;
+            /* process next part of the expression */
+            continue;
+        } else if (!strncmp(expr, "..", 2)) {
+            expr += 2;
+            while (isspace(*expr)) {
+                expr++;
+            }
+            if (*expr == '\0') {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                       "Invalid %s restriction - unexpected end of the expression after \"..\".", length_restr ? "length" : "range");
+                goto cleanup;
+            } else if (!parts || LY_ARRAY_SIZE(parts) == parts_done) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                       "Invalid %s restriction - unexpected \"..\" without a lower bound.", length_restr ? "length" : "range");
+                goto cleanup;
+            }
+            /* continue expecting the upper boundary */
+            range_expected = 1;
+        } else if (isdigit(*expr) || (*expr == '-') || (*expr == '+')) {
+            /* number */
+            if (range_expected) {
+                part = &parts[LY_ARRAY_SIZE(parts) - 1];
+                LY_CHECK_GOTO(range_part_minmax(ctx, part, 1, part->min_64, basetype, 0, length_restr, &expr), cleanup);
+            } else {
+                LY_ARRAY_NEW_GOTO(ctx->ctx, parts, part, ret, cleanup);
+                LY_CHECK_GOTO(range_part_minmax(ctx, part, 0, parts_done ? parts[LY_ARRAY_SIZE(parts) - 2].max_64 : 0,
+                                                basetype, parts_done ? 0 : 1, length_restr, &expr), cleanup);
+                part->max_64 = part->min_64;
+            }
+
+            /* continue with possible another expression part */
+            range_expected = 0;
+            continue;
+        } else if (!strncmp(expr, "max", 3)) {
+            expr += 3;
+            while (isspace(*expr)) {
+                expr++;
+            }
+            if (*expr != '\0') {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Invalid %s restriction - unexpected data after max keyword (%s).",
+                       length_restr ? "length" : "range", expr);
+                goto cleanup;
+            }
+            if (range_expected) {
+                part = &parts[LY_ARRAY_SIZE(parts) - 1];
+                LY_CHECK_GOTO(range_part_minmax(ctx, part, 1, part->min_64, basetype, 0, length_restr, NULL), cleanup);
+                parts_done++;
+            } else {
+                LY_ARRAY_NEW_GOTO(ctx->ctx, parts, part, ret, cleanup);
+                LY_CHECK_GOTO(range_part_minmax(ctx, part, 1, parts_done ? parts[LY_ARRAY_SIZE(parts) - 2].max_64 : 0,
+                                                basetype, parts_done ? 0 : 1, length_restr, NULL), cleanup);
+                part->min_64 = part->max_64;
+            }
+            /* done */
+            break;
+        } else {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Invalid %s restriction - unexpected data (%s).",
+                   length_restr ? "length" : "range", expr);
+            goto cleanup;
+        }
+    }
+
+    (*range)->parts = parts;
+    parts = NULL;
+    ret = LY_SUCCESS;
+cleanup:
+    /* TODO clean up */
+    LY_ARRAY_FREE(parts);
+
+    return ret;
+}
+
+static LY_ERR
+lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int options, struct lysc_type **type)
+{
+    LY_ERR ret = LY_SUCCESS;
+    unsigned int u;
+    struct lysp_type *type_p = &leaf_p->type;
+    struct type_context {
+        const struct lysp_tpdf *tpdf;
+        struct lysp_node *node;
+        struct lysp_module *mod;
+    } *tctx, *tctx_prev = NULL;
+    LY_DATA_TYPE basetype = LY_TYPE_UNKNOWN;
+    struct ly_set tpdf_chain = {0};
+    struct lysc_type_bin* bin;
+
+
+    tctx = calloc(1, sizeof *tctx);
+    LY_CHECK_ERR_RET(!tctx, LOGMEM(ctx->ctx), LY_EMEM);
+    for (ret = lysp_type_find(type_p->name, (struct lysp_node*)leaf_p, ctx->mod->parsed,
+                             &basetype, &tctx->tpdf, &tctx->node, &tctx->mod);
+            ret;
+            ret = lysp_type_find(tctx_prev->tpdf->type.name, tctx_prev->node, tctx_prev->mod,
+                                         &basetype, &tctx->tpdf, &tctx->node, &tctx->mod)) {
+        if (basetype) {
+            break;
+        }
+
+        /* check status */
+        if (lysc_check_status(ctx, leaf_p->flags, ctx->mod->parsed, leaf_p->name,
+                              tctx->tpdf->flags, tctx->mod, tctx->node ? tctx->node->name : tctx->mod->name)) {
+            free(tctx);
+            goto cleanup;
+        }
+
+        if (!(tctx->tpdf->flags & LYS_TYPE_MODIFIED)) {
+            /* no change in comparison to the following (actually preceding in the chain of type derivations) type */
+            memset(tctx, 0, sizeof *tctx);
+            continue;
+        }
+
+        /* store information for the following processing */
+        ly_set_add(&tpdf_chain, tctx, LY_SET_OPT_USEASLIST);
+
+        /* prepare next loop */
+        tctx = calloc(1, sizeof *tctx);
+        LY_CHECK_ERR_RET(!tctx, LOGMEM(ctx->ctx), LY_EMEM);
+    }
+    free(tctx);
+
+    /* allocate type according to the basetype */
+    switch (basetype) {
+    case LY_TYPE_BINARY:
+        *type = calloc(1, sizeof(struct lysc_type_bin));
+        bin = (struct lysc_type_bin*)(*type);
+        break;
+    case LY_TYPE_BITS:
+        *type = calloc(1, sizeof(struct lysc_type_bits));
+        break;
+    case LY_TYPE_BOOL:
+    case LY_TYPE_EMPTY:
+        *type = calloc(1, sizeof(struct lysc_type));
+        break;
+    case LY_TYPE_DEC64:
+        *type = calloc(1, sizeof(struct lysc_type_dec));
+        break;
+    case LY_TYPE_ENUM:
+        *type = calloc(1, sizeof(struct lysc_type_enum));
+        break;
+    case LY_TYPE_IDENT:
+        *type = calloc(1, sizeof(struct lysc_type_identityref));
+        break;
+    case LY_TYPE_INST:
+        *type = calloc(1, sizeof(struct lysc_type_instanceid));
+        break;
+    case LY_TYPE_LEAFREF:
+        *type = calloc(1, sizeof(struct lysc_type_leafref));
+        break;
+    case LY_TYPE_STRING:
+        *type = calloc(1, sizeof(struct lysc_type_str));
+        break;
+    case LY_TYPE_UNION:
+        *type = calloc(1, sizeof(struct lysc_type_union));
+        break;
+    case LY_TYPE_INT8:
+    case LY_TYPE_UINT8:
+    case LY_TYPE_INT16:
+    case LY_TYPE_UINT16:
+    case LY_TYPE_INT32:
+    case LY_TYPE_UINT32:
+    case LY_TYPE_INT64:
+    case LY_TYPE_UINT64:
+        *type = calloc(1, sizeof(struct lysc_type_num));
+        break;
+    default:
+        LOGINT(ctx->ctx);
+    }
+    LY_CHECK_ERR_GOTO(!(*type), LOGMEM(ctx->ctx), cleanup);
+    (*type)->basetype = basetype;
+    COMPILE_ARRAY_GOTO(ctx, type_p->exts, (*type)->exts, options, u, lys_compile_ext, ret, cleanup);
+
+
+    /* get restrictions from the referred typedefs */
+    for (u = tpdf_chain.count - 1; u + 1 > 0; --u) {
+        tctx = (struct type_context*)tpdf_chain.objs[u];
+
+        switch (basetype) {
+        case LY_TYPE_BINARY:
+            /* RFC 6020 9.8.1, 9.4.4 - length, number of octets it contains */
+            if (tctx->tpdf->type.length) {
+                ret = lys_compile_type_range(ctx, tctx->tpdf->type.length, basetype, 1, &bin->length);
+                LY_CHECK_GOTO(ret, cleanup);
+            }
+            break;
+        }
+    }
+
+    /* get restrictions from the node itself, finalize the type structure */
+    switch ((*type)->basetype) {
+    case LY_TYPE_BINARY:
+        if (leaf_p->type.length) {
+            ret = lys_compile_type_range(ctx, leaf_p->type.length, basetype, 1, &bin->length);
+            LY_CHECK_GOTO(ret, cleanup);
+            COMPILE_ARRAY_GOTO(ctx, leaf_p->type.length->exts, bin->length->exts,
+                               options, u, lys_compile_ext, ret, cleanup);
+        }
+        break;
+    }
+
+cleanup:
+    ly_set_erase(&tpdf_chain, free);
+
+    return ret;
+}
+
 static LY_ERR lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, struct lysc_node *parent);
 
 static LY_ERR
 lys_compile_node_container(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, struct lysc_node *node)
 {
     struct lysp_node_container *cont_p = (struct lysp_node_container*)node_p;
-    //struct lysc_node_container *cont = (struct lysc_node_container*)node;
+    struct lysc_node_container *cont = (struct lysc_node_container*)node;
     struct lysp_node *child_p;
+    unsigned int u;
+    LY_ERR ret = LY_SUCCESS;
+
+    COMPILE_MEMBER_GOTO(ctx, cont_p->when, cont->when, options, lys_compile_when, ret, done);
+    COMPILE_ARRAY_GOTO(ctx, cont_p->iffeatures, cont->iffeatures, options, u, lys_compile_iffeature, ret, done);
 
     LY_LIST_FOR(cont_p->child, child_p) {
         LY_CHECK_RET(lys_compile_node(ctx, child_p, options, node));
     }
 
-    return LY_SUCCESS;
+    COMPILE_ARRAY_GOTO(ctx, cont_p->musts, cont->musts, options, u, lys_compile_must, ret, done);
+    //COMPILE_ARRAY_GOTO(ctx, cont_p->actions, cont->actions, options, u, lys_compile_action, ret, done);
+    //COMPILE_ARRAY_GOTO(ctx, cont_p->notifs, cont->notifs, options, u, lys_compile_notif, ret, done);
+
+done:
+    return ret;
+}
+
+static LY_ERR
+lys_compile_node_leaf(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, struct lysc_node *node)
+{
+    struct lysp_node_leaf *leaf_p = (struct lysp_node_leaf*)node_p;
+    struct lysc_node_leaf *leaf = (struct lysc_node_leaf*)node;
+    unsigned int u;
+    LY_ERR ret = LY_SUCCESS;
+
+    COMPILE_MEMBER_GOTO(ctx, leaf_p->when, leaf->when, options, lys_compile_when, ret, done);
+    COMPILE_ARRAY_GOTO(ctx, leaf_p->iffeatures, leaf->iffeatures, options, u, lys_compile_iffeature, ret, done);
+
+    COMPILE_ARRAY_GOTO(ctx, leaf_p->musts, leaf->musts, options, u, lys_compile_must, ret, done);
+    ret = lys_compile_type(ctx, leaf_p, options, &leaf->type);
+    LY_CHECK_GOTO(ret, done);
+
+    leaf->units = lydict_insert(ctx->ctx, leaf_p->units, 0);
+    leaf->dflt = lydict_insert(ctx->ctx, leaf_p->dflt, 0);
+done:
+    return ret;
 }
 
 static LY_ERR
 lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, struct lysc_node *parent)
 {
     LY_ERR ret = LY_EVALID;
-    struct lysc_node *node;
+    struct lysc_node *node, **children;
     unsigned int u;
     LY_ERR (*node_compile_spec)(struct lysc_ctx*, struct lysp_node*, int, struct lysc_node*);
 
@@ -1313,6 +1862,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, st
         break;
     case LYS_LEAF:
         node = (struct lysc_node*)calloc(1, sizeof(struct lysc_node_leaf));
+        node_compile_spec = lys_compile_node_leaf;
         break;
     case LYS_LIST:
         node = (struct lysc_node*)calloc(1, sizeof(struct lysc_node_list));
@@ -1379,29 +1929,25 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, st
         }
     }
 
-    if (options & LYSC_OPT_FREE_SP) {
-        /* just switch the pointers */
-        node->name = node_p->name;
-    } else {
+    if (!(options & LYSC_OPT_FREE_SP)) {
         node->sp = node_p;
-        /* keep refcounts correct for lysp_module_free() */
-        node->name = lydict_insert(ctx->ctx, node_p->name, 0);
     }
+    node->name = lydict_insert(ctx->ctx, node_p->name, 0);
     COMPILE_ARRAY_GOTO(ctx, node_p->exts, node->exts, options, u, lys_compile_ext, ret, error);
 
     /* nodetype-specific part */
     LY_CHECK_GOTO(node_compile_spec(ctx, node_p, options, node), error);
 
     /* insert into parent's children */
-    if (parent) {
-        if (!((struct lysc_node_case*)parent)->child) {
+    if (parent && (children = lysc_node_children(parent))) {
+        if (!(*children)) {
             /* first child */
-            ((struct lysc_node_case*)parent)->child = node;
+            *children = node;
         } else {
             /* insert at the end of the parent's children list */
-            ((struct lysc_node_case*)parent)->child->prev->next = node;
-            node->prev = ((struct lysc_node_case*)parent)->child->prev;
-            ((struct lysc_node_case*)parent)->child->prev = node;
+            (*children)->prev->next = node;
+            node->prev = (*children)->prev;
+            (*children)->prev = node;
         }
     } else {
         /* top-level element */
@@ -1418,7 +1964,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, st
     return LY_SUCCESS;
 
 error:
-    lysc_node_free(ctx->ctx, node, (options & LYSC_OPT_FREE_SP) ? 0 : 1);
+    lysc_node_free(ctx->ctx, node);
     return ret;
 }
 
@@ -1450,17 +1996,9 @@ lys_compile(struct lys_module *mod, int options)
     mod_c->latest_revision = sp->latest_revision;
     mod_c->version = sp->version;
 
-    if (options & LYSC_OPT_FREE_SP) {
-        /* just switch the pointers */
-        mod_c->name = sp->name;
-        mod_c->ns = sp->ns;
-        mod_c->prefix = sp->prefix;
-    } else {
-        /* keep refcounts correct for lysp_module_free() */
-        mod_c->name = lydict_insert(sp->ctx, sp->name, 0);
-        mod_c->ns = lydict_insert(sp->ctx, sp->ns, 0);
-        mod_c->prefix = lydict_insert(sp->ctx, sp->prefix, 0);
-    }
+    mod_c->name = lydict_insert(sp->ctx, sp->name, 0);
+    mod_c->ns = lydict_insert(sp->ctx, sp->ns, 0);
+    mod_c->prefix = lydict_insert(sp->ctx, sp->prefix, 0);
     if (sp->revs) {
         mod_c->revision = lydict_insert(sp->ctx, sp->revs[0].date, 10);
     }
@@ -1471,15 +2009,17 @@ lys_compile(struct lys_module *mod, int options)
         LY_CHECK_RET(lys_compile_identities_derived(&ctx, sp->identities, mod_c->identities));
     }
 
-    COMPILE_ARRAY_GOTO(&ctx, sp->exts, mod_c->exts, options, u, lys_compile_ext, ret, error);
-
     LY_LIST_FOR(sp->data, node_p) {
         ret = lys_compile_node(&ctx, node_p, options, NULL);
         LY_CHECK_GOTO(ret, error);
     }
+    //COMPILE_ARRAY_GOTO(ctx, sp->rpcs, mod_c->rpcs, options, u, lys_compile_action, ret, error);
+    //COMPILE_ARRAY_GOTO(ctx, sp->notifs, mod_c->notifs, options, u, lys_compile_notif, ret, error);
+
+    COMPILE_ARRAY_GOTO(&ctx, sp->exts, mod_c->exts, options, u, lys_compile_ext, ret, error);
 
     if (options & LYSC_OPT_FREE_SP) {
-        lysp_module_free_(mod->parsed, 0);
+        lysp_module_free(mod->parsed);
         ((struct lys_module*)mod)->parsed = NULL;
     }
 
@@ -1487,7 +2027,7 @@ lys_compile(struct lys_module *mod, int options)
     return LY_SUCCESS;
 
 error:
-    lysc_module_free_(mod_c, (options & LYSC_OPT_FREE_SP) ? 0 : 1);
+    lysc_module_free(mod_c, NULL);
     ((struct lys_module*)mod)->compiled = NULL;
     return ret;
 }

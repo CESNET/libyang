@@ -294,6 +294,39 @@ void *ly_realloc(void *ptr, size_t size);
 LY_ERR ly_getutf8(const char **input, unsigned int *utf8_char, size_t *bytes_read);
 
 /**
+ * @brief Parse signed integer with possible limitation.
+ * @param[in] val_str String value containing signed integer, note that
+ * nothing else than whitespaces are expected after the value itself.
+ * @param[in] min Limitation for the value which must not be lower than min.
+ * @param[in] max Limitation for the value which must not be higher than max.
+ * @param[in] base Numeric base for parsing:
+ *        0 - to accept decimal, octal, hexadecimal (e.g. in default value)
+ *       10 - to accept only decimal (e.g. data instance value)
+ * @param[out] ret Resulting value.
+ * @return LY_ERR value:
+ * LY_EDENIED - the value breaks the limits,
+ * LY_EVALID - string contains invalid value,
+ * LY_SUCCESS - successful parsing.
+ */
+LY_ERR ly_parse_int(const char *val_str, int64_t min, int64_t max, int base, int64_t *ret);
+
+/**
+ * @brief Parse unsigned integer with possible limitation.
+ * @param[in] val_str String value containing unsigned integer, note that
+ * nothing else than whitespaces are expected after the value itself.
+ * @param[in] max Limitation for the value which must not be higher than max.
+ * @param[in] base Numeric base for parsing:
+ *        0 - to accept decimal, octal, hexadecimal (e.g. in default value)
+ *       10 - to accept only decimal (e.g. data instance value)
+ * @param[out] ret Resulting value.
+ * @return LY_ERR value:
+ * LY_EDENIED - the value breaks the limits,
+ * LY_EVALID - string contains invalid value,
+ * LY_SUCCESS - successful parsing.
+ */
+LY_ERR ly_parse_uint(const char *val_str, uint64_t max, int base, uint64_t *ret);
+
+/**
  * @brief mmap(2) wrapper to map input files into memory to unify parsing.
  *
  * The address space is allocate only for reading.
@@ -334,6 +367,31 @@ LY_ERR ly_munmap(void *addr, size_t length);
             ++(*((uint32_t*)(ARRAY) - 1)); \
             ARRAY = ly_realloc(((uint32_t*)(ARRAY) - 1), sizeof(uint32_t) + (*((uint32_t*)(ARRAY) - 1) * sizeof *(ARRAY))); \
             LY_CHECK_ERR_RET(!(ARRAY), LOGMEM(CTX), RETVAL); \
+        } \
+        ARRAY = (void*)((uint32_t*)(ARRAY) + 1); \
+        (NEW_ITEM) = &(ARRAY)[*((uint32_t*)(ARRAY) - 1) - 1]; \
+        memset(NEW_ITEM, 0, sizeof *(NEW_ITEM))
+
+/**
+ * @brief (Re-)Allocation of a ([sized array](@ref sizedarrays)).
+ *
+ * Increases the size information.
+ *
+ * @param[in] CTX libyang context for logging.
+ * @param[in,out] ARRAY Pointer to the array to allocate/resize. The size of the allocated
+ * space is counted from the type of the ARRAY, so do not provide placeholder void pointers.
+ * @param[out] NEW_ITEM Returning pointer to the newly allocated record in the ARRAY.
+ * @param[out] RET Variable to store error code.
+ * @param[in] GOTO Label to go in case of error (memory allocation failure).
+ */
+#define LY_ARRAY_NEW_GOTO(CTX, ARRAY, NEW_ITEM, RET, GOTO) \
+        if (!(ARRAY)) { \
+            ARRAY = malloc(sizeof(uint32_t) + sizeof *(ARRAY)); \
+            *((uint32_t*)(ARRAY)) = 1; \
+        } else { \
+            ++(*((uint32_t*)(ARRAY) - 1)); \
+            ARRAY = ly_realloc(((uint32_t*)(ARRAY) - 1), sizeof(uint32_t) + (*((uint32_t*)(ARRAY) - 1) * sizeof *(ARRAY))); \
+            LY_CHECK_ERR_GOTO(!(ARRAY), LOGMEM(CTX); RET = LY_EMEM, GOTO); \
         } \
         ARRAY = (void*)((uint32_t*)(ARRAY) + 1); \
         (NEW_ITEM) = &(ARRAY)[*((uint32_t*)(ARRAY) - 1) - 1]; \

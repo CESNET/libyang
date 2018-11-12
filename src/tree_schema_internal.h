@@ -51,6 +51,17 @@ struct ly_parser_ctx {
 };
 
 /**
+ * @brief internal context for compilation
+ */
+struct lysc_ctx {
+    struct ly_ctx *ctx;
+    struct lys_module *mod;
+    uint16_t path_len;
+#define LYSC_CTX_BUFSIZE 4078
+    char path[LYSC_CTX_BUFSIZE];
+};
+
+/**
  * @brief Check the currently present prefixes in the module for collision with the new one.
  *
  * @param[in] ctx Context for logging.
@@ -91,12 +102,13 @@ void lysp_sort_revisions(struct lysp_revision *revs);
  * @param[in] id Name of the type including possible prefix. Module where the prefix is being searched is start_module.
  * @param[in] start_node Context node where the type is being instantiated to be able to search typedefs in parents.
  * @param[in] start_module Module where the type is being instantiated for search for typedefs.
+ * @param[out] type Built-in type identifier of the id. If #LY_TYPE_UNKNOWN, tpdf is expected to contain found YANG schema typedef statement.
  * @param[out] tpdf Found type definition.
  * @param[out] node Node where the found typedef is defined, NULL in case of a top-level typedef.
  * @param[out] module Module where the found typedef is being defined, NULL in case of built-in YANG types.
  */
 LY_ERR lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_module *start_module,
-                      const struct lysp_tpdf **tpdf, struct lysp_node **node, struct lysp_module **module);
+                      LY_DATA_TYPE *type, const struct lysp_tpdf **tpdf, struct lysp_node **node, struct lysp_module **module);
 
 /**
  * @brief Find and parse module of the given name.
@@ -187,6 +199,26 @@ struct lysp_module *lysp_module_find_prefix(struct lysp_module *mod, const char 
  * @return Pointer to the module or NULL if the module is not found.
  */
 struct lysc_module *lysc_module_find_prefix(struct lysc_module *mod, const char *prefix, size_t len);
+
+/**
+ * @brief Check statement's status for invalid combination.
+ *
+ * The modX parameters are used just to determine if both flags are in the same module,
+ * so any of the schema module structure can be used, but both modules must be provided
+ * in the same type.
+ *
+ * @param[in] ctx Compile context for logging.
+ * @param[in] flags1 Flags of the referencing node.
+ * @param[in] mod1 Module of the referencing node,
+ * @param[in] name1 Schema node name of the referencing node.
+ * @param[in] flags2 Flags of the referenced node.
+ * @param[in] mod2 Module of the referenced node,
+ * @param[in] name2 Schema node name of the referenced node.
+ * @return LY_ERR value
+ */
+LY_ERR lysc_check_status(struct lysc_ctx *ctx,
+                         uint16_t flags1, void *mod1, const char *name1,
+                         uint16_t flags2, void *mod2, const char *name2);
 
 /**
  * @brief Find the module referenced by prefix in the provided mod.

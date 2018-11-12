@@ -2231,6 +2231,10 @@ parse_type(struct ly_parser_ctx *ctx, const char **data, struct lysp_type *type)
             LOGVAL_YANG(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "when");
             return LY_EVALID;
         }
+
+        if (kw != YANG_CUSTOM) {
+            type->flags |= LYS_TYPE_MODIFIED;
+        }
     }
     return ret;
 }
