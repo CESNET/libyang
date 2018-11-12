@@ -35,6 +35,8 @@
 #define FREE_STRING(CTX, STRING) if (STRING) {lydict_remove(CTX, STRING);}
 #define FREE_STRINGS(CTX, ARRAY) {uint64_t c__; LY_ARRAY_FOR(ARRAY, c__){FREE_STRING(CTX, ARRAY[c__]);}LY_ARRAY_FREE(ARRAY);}
 
+#define DUP_STRING(CTX, DUP, ORIG) if (ORIG) {DUP = lydict_insert(CTX, ORIG, 0);}
+
 #define COMPILE_ARRAY_GOTO(CTX, ARRAY_P, ARRAY_C, OPTIONS, ITER, FUNC, RET, GOTO) \
     if (ARRAY_P) { \
         LY_ARRAY_CREATE_GOTO((CTX)->ctx, ARRAY_C, LY_ARRAY_SIZE(ARRAY_P), RET, GOTO); \
@@ -182,6 +184,7 @@ lysp_type_free(struct ly_ctx *ctx, struct lysp_type *type)
     FREE_ARRAY(ctx, type->exts, lysp_ext_instance_free);
 }
 
+static void lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type);
 static void
 lysp_tpdf_free(struct ly_ctx *ctx, struct lysp_tpdf *tpdf)
 {
@@ -191,7 +194,9 @@ lysp_tpdf_free(struct ly_ctx *ctx, struct lysp_tpdf *tpdf)
     FREE_STRING(ctx, tpdf->dsc);
     FREE_STRING(ctx, tpdf->ref);
     FREE_ARRAY(ctx, tpdf->exts, lysp_ext_instance_free);
+
     lysp_type_free(ctx, &tpdf->type);
+    FREE_MEMBER(ctx, tpdf->type.compiled, lysc_type_free);
 }
 
 static void
@@ -457,6 +462,15 @@ lysp_module_free(struct lysp_module *module)
     free(module);
 }
 
+static struct lysc_ext_instance *
+lysc_ext_instance_dup(struct ly_ctx *ctx, struct lysc_ext_instance *orig)
+{
+    /* TODO */
+    (void) ctx;
+    (void) orig;
+    return NULL;
+}
+
 static void
 lysc_ext_instance_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext)
 {
@@ -495,6 +509,30 @@ lysc_feature_free(struct ly_ctx *ctx, struct lysc_feature *feat)
     FREE_ARRAY(ctx, feat->iffeatures, lysc_iffeature_free);
     LY_ARRAY_FREE(feat->depfeatures);
     FREE_ARRAY(ctx, feat->exts, lysc_ext_instance_free);
+}
+
+struct lysc_range*
+lysc_range_dup(struct ly_ctx *ctx, const struct lysc_range *orig)
+{
+    struct lysc_range *dup;
+    LY_ERR ret;
+
+    dup = calloc(1, sizeof *dup);
+    LY_CHECK_ERR_RET(!dup, LOGMEM(ctx), NULL);
+    if (orig->parts) {
+        LY_ARRAY_CREATE_GOTO(ctx, dup->parts, LY_ARRAY_SIZE(orig->parts), ret, cleanup);
+        LY_ARRAY_SIZE(dup->parts) = LY_ARRAY_SIZE(orig->parts);
+        memcpy(dup->parts, orig->parts, LY_ARRAY_SIZE(dup->parts) * sizeof *dup->parts);
+    }
+    DUP_STRING(ctx, dup->eapptag, orig->eapptag);
+    DUP_STRING(ctx, dup->emsg, orig->emsg);
+    dup->exts = lysc_ext_instance_dup(ctx, orig->exts);
+
+    return dup;
+cleanup:
+    free(dup);
+    (void) ret; /* set but not used due to the return type */
+    return NULL;
 }
 
 static void
@@ -1539,38 +1577,33 @@ error:
 
 static LY_ERR
 lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA_TYPE basetype, int length_restr,
-                       struct lysc_range **range)
+                       struct lysc_range *base_range, struct lysc_range **range)
 {
     LY_ERR ret = LY_EVALID;
     const char *expr;
     struct lysc_range_part *parts = NULL, *part;
-    size_t parts_done = 0;
-    int range_expected = 0;
+    int range_expected = 0, uns;
+    unsigned int parts_done = 0, u, v;
 
     assert(range);
     assert(range_p);
-
-    if (!(*range)) {
-        *range = calloc(1, sizeof **range);
-        LY_CHECK_ERR_RET(!(*range), LOGMEM(ctx->ctx), LY_EMEM);
-    }
-
-    if (range_p->eapptag) {
-        lydict_remove(ctx->ctx, (*range)->eapptag);
-        (*range)->eapptag = lydict_insert(ctx->ctx, range_p->eapptag, 0);
-    }
-    if (range_p->emsg) {
-        lydict_remove(ctx->ctx, (*range)->emsg);
-        (*range)->emsg = lydict_insert(ctx->ctx, range_p->emsg, 0);
-    }
-    /* extensions are taken only from the last range by the caller */
 
     expr = range_p->arg;
     while(1) {
         if (isspace(*expr)) {
             ++expr;
-            continue;
         } else if (*expr == '\0') {
+            if (range_expected) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                       "Invalid %s restriction - unexpected end of the expression after \"..\" (%s).",
+                       length_restr ? "length" : "range", range_p->arg);
+                goto cleanup;
+            } else if (!parts || parts_done == LY_ARRAY_SIZE(parts)) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                       "Invalid %s restriction - unexpected end of the expression (%s).",
+                       length_restr ? "length" : "range", range_p->arg);
+                goto cleanup;
+            }
             parts_done++;
             break;
         } else if (!strncmp(expr, "min", 3)) {
@@ -1595,17 +1628,12 @@ lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA
             expr++;
             parts_done++;
             /* process next part of the expression */
-            continue;
         } else if (!strncmp(expr, "..", 2)) {
             expr += 2;
             while (isspace(*expr)) {
                 expr++;
             }
-            if (*expr == '\0') {
-                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
-                       "Invalid %s restriction - unexpected end of the expression after \"..\".", length_restr ? "length" : "range");
-                goto cleanup;
-            } else if (!parts || LY_ARRAY_SIZE(parts) == parts_done) {
+            if (!parts || LY_ARRAY_SIZE(parts) == parts_done) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
                        "Invalid %s restriction - unexpected \"..\" without a lower bound.", length_restr ? "length" : "range");
                 goto cleanup;
@@ -1617,6 +1645,7 @@ lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA
             if (range_expected) {
                 part = &parts[LY_ARRAY_SIZE(parts) - 1];
                 LY_CHECK_GOTO(range_part_minmax(ctx, part, 1, part->min_64, basetype, 0, length_restr, &expr), cleanup);
+                range_expected = 0;
             } else {
                 LY_ARRAY_NEW_GOTO(ctx->ctx, parts, part, ret, cleanup);
                 LY_CHECK_GOTO(range_part_minmax(ctx, part, 0, parts_done ? parts[LY_ARRAY_SIZE(parts) - 2].max_64 : 0,
@@ -1625,8 +1654,6 @@ lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA
             }
 
             /* continue with possible another expression part */
-            range_expected = 0;
-            continue;
         } else if (!strncmp(expr, "max", 3)) {
             expr += 3;
             while (isspace(*expr)) {
@@ -1640,21 +1667,123 @@ lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA
             if (range_expected) {
                 part = &parts[LY_ARRAY_SIZE(parts) - 1];
                 LY_CHECK_GOTO(range_part_minmax(ctx, part, 1, part->min_64, basetype, 0, length_restr, NULL), cleanup);
-                parts_done++;
+                range_expected = 0;
             } else {
                 LY_ARRAY_NEW_GOTO(ctx->ctx, parts, part, ret, cleanup);
                 LY_CHECK_GOTO(range_part_minmax(ctx, part, 1, parts_done ? parts[LY_ARRAY_SIZE(parts) - 2].max_64 : 0,
                                                 basetype, parts_done ? 0 : 1, length_restr, NULL), cleanup);
                 part->min_64 = part->max_64;
             }
-            /* done */
-            break;
         } else {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Invalid %s restriction - unexpected data (%s).",
                    length_restr ? "length" : "range", expr);
             goto cleanup;
         }
     }
+
+    /* check with the previous range/length restriction */
+    if (base_range) {
+        switch (basetype) {
+        case LY_TYPE_BINARY:
+        case LY_TYPE_UINT8:
+        case LY_TYPE_UINT16:
+        case LY_TYPE_UINT32:
+        case LY_TYPE_UINT64:
+        case LY_TYPE_STRING:
+            uns = 1;
+            break;
+        case LY_TYPE_DEC64:
+        case LY_TYPE_INT8:
+        case LY_TYPE_INT16:
+        case LY_TYPE_INT32:
+        case LY_TYPE_INT64:
+            uns = 0;
+            break;
+        default:
+            LOGINT(ctx->ctx);
+            ret = LY_EINT;
+            goto cleanup;
+        }
+        for (u = v = 0; u < parts_done && v < LY_ARRAY_SIZE(base_range->parts); ++u) {
+            if ((uns && parts[u].min_u64 < base_range->parts[v].min_u64) || (!uns && parts[u].min_64 < base_range->parts[v].min_64)) {
+                goto baseerror;
+            }
+            /* current lower bound is not lower than the base */
+            if (base_range->parts[v].min_64 == base_range->parts[v].max_64) {
+                /* base has single value */
+                if (base_range->parts[v].min_64 == parts[u].min_64) {
+                    /* both lower bounds are the same */
+                    if (parts[u].min_64 != parts[u].max_64) {
+                        /* current continues with a range */
+                        goto baseerror;
+                    } else {
+                        /* equal single values, move both forward */
+                        ++v;
+                        continue;
+                    }
+                } else {
+                    /* base is single value lower than current range, so the
+                     * value from base range is removed in the current,
+                     * move only base and repeat checking */
+                    ++v;
+                    --u;
+                    continue;
+                }
+            } else {
+                /* base is the range */
+                if (parts[u].min_64 == parts[u].max_64) {
+                    /* current is a single value */
+                    if ((uns && parts[u].max_u64 > base_range->parts[v].max_u64) || (!uns && parts[u].max_64 > base_range->parts[v].max_64)) {
+                        /* current is behind the base range, so base range is omitted,
+                         * move the base and keep the current for further check */
+                        ++v;
+                        --u;
+                    } /* else it is within the base range, so move the current, but keep the base */
+                    continue;
+                } else {
+                    /* both are ranges - check the higher bound, the lower was already checked */
+                    if ((uns && parts[u].max_u64 > base_range->parts[v].max_u64) || (!uns && parts[u].max_64 > base_range->parts[v].max_64)) {
+                        /* higher bound is higher than the current higher bound */
+                        if ((uns && parts[u].min_u64 > base_range->parts[v].max_u64) || (!uns && parts[u].min_64 > base_range->parts[v].max_64)) {
+                            /* but the current lower bound is also higher, so the base range is omitted,
+                             * continue with the same current, but move the base */
+                            --u;
+                            ++v;
+                            continue;
+                        }
+                        /* current range starts within the base range but end behind it */
+                        goto baseerror;
+                    } else {
+                        /* current range is smaller than the base,
+                         * move current, but stay with the base */
+                        continue;
+                    }
+                }
+            }
+        }
+        if (u != parts_done) {
+baseerror:
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                   "Invalid %s restriction - the derived restriction (%s) is not equally or more limiting.",
+                   length_restr ? "length" : "range", range_p->arg);
+            goto cleanup;
+        }
+    }
+
+    if (!(*range)) {
+        *range = calloc(1, sizeof **range);
+        LY_CHECK_ERR_RET(!(*range), LOGMEM(ctx->ctx), LY_EMEM);
+    }
+
+    if (range_p->eapptag) {
+        lydict_remove(ctx->ctx, (*range)->eapptag);
+        (*range)->eapptag = lydict_insert(ctx->ctx, range_p->eapptag, 0);
+    }
+    if (range_p->emsg) {
+        lydict_remove(ctx->ctx, (*range)->emsg);
+        (*range)->emsg = lydict_insert(ctx->ctx, range_p->emsg, 0);
+    }
+    /* extensions are taken only from the last range by the caller */
 
     (*range)->parts = parts;
     parts = NULL;
@@ -1678,6 +1807,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
         struct lysp_module *mod;
     } *tctx, *tctx_prev = NULL;
     LY_DATA_TYPE basetype = LY_TYPE_UNKNOWN;
+    struct lysc_type *base = NULL;
     struct ly_set tpdf_chain = {0};
     struct lysc_type_bin* bin;
 
@@ -1686,7 +1816,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
     LY_CHECK_ERR_RET(!tctx, LOGMEM(ctx->ctx), LY_EMEM);
     for (ret = lysp_type_find(type_p->name, (struct lysp_node*)leaf_p, ctx->mod->parsed,
                              &basetype, &tctx->tpdf, &tctx->node, &tctx->mod);
-            ret;
+            ret == LY_SUCCESS;
             ret = lysp_type_find(tctx_prev->tpdf->type.name, tctx_prev->node, tctx_prev->mod,
                                          &basetype, &tctx->tpdf, &tctx->node, &tctx->mod)) {
         if (basetype) {
@@ -1700,7 +1830,13 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
             goto cleanup;
         }
 
-        if (!(tctx->tpdf->flags & LYS_TYPE_MODIFIED)) {
+        if (tctx->tpdf->type.compiled) {
+            /* it is not necessary to continue, the rest of the chain was already compiled */
+            basetype = tctx->tpdf->type.compiled->basetype;
+            ly_set_add(&tpdf_chain, tctx, LY_SET_OPT_USEASLIST);
+            tctx = NULL;
+            break;
+        } else if (!(tctx->tpdf->type.flags & LYS_TYPE_MODIFIED)) {
             /* no change in comparison to the following (actually preceding in the chain of type derivations) type */
             memset(tctx, 0, sizeof *tctx);
             continue;
@@ -1710,6 +1846,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
         ly_set_add(&tpdf_chain, tctx, LY_SET_OPT_USEASLIST);
 
         /* prepare next loop */
+        tctx_prev = tctx;
         tctx = calloc(1, sizeof *tctx);
         LY_CHECK_ERR_RET(!tctx, LOGMEM(ctx->ctx), LY_EMEM);
     }
@@ -1759,40 +1896,65 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
     case LY_TYPE_UINT64:
         *type = calloc(1, sizeof(struct lysc_type_num));
         break;
-    default:
-        LOGINT(ctx->ctx);
+    case LY_TYPE_UNKNOWN:
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+               "Referenced type \"%s\" not found.", tctx_prev ? tctx_prev->tpdf->type.name : type_p->name);
+        goto cleanup;
     }
     LY_CHECK_ERR_GOTO(!(*type), LOGMEM(ctx->ctx), cleanup);
-    (*type)->basetype = basetype;
-    COMPILE_ARRAY_GOTO(ctx, type_p->exts, (*type)->exts, options, u, lys_compile_ext, ret, cleanup);
 
 
     /* get restrictions from the referred typedefs */
     for (u = tpdf_chain.count - 1; u + 1 > 0; --u) {
         tctx = (struct type_context*)tpdf_chain.objs[u];
+        if (tctx->tpdf->type.compiled) {
+            base = tctx->tpdf->type.compiled;
+            continue;
+        } else if ((u != tpdf_chain.count - 1) && (tctx->tpdf->type.flags & LYS_TYPE_MODIFIED)) {
+            base = ((struct lysp_tpdf*)tctx->tpdf)->type.compiled = ((struct type_context*)tpdf_chain.objs[u + 1])->tpdf->type.compiled;
+            ++base->refcount;
+            continue;
+        }
 
+        ++(*type)->refcount;
+        (*type)->basetype = basetype;
         switch (basetype) {
         case LY_TYPE_BINARY:
             /* RFC 6020 9.8.1, 9.4.4 - length, number of octets it contains */
             if (tctx->tpdf->type.length) {
-                ret = lys_compile_type_range(ctx, tctx->tpdf->type.length, basetype, 1, &bin->length);
+                ret = lys_compile_type_range(ctx, tctx->tpdf->type.length, basetype, 1,
+                                             base ? ((struct lysc_type_bin*)base)->length : NULL, &bin->length);
                 LY_CHECK_GOTO(ret, cleanup);
+            } else if (base && ((struct lysc_type_bin*)base)->length) {
+                bin->length = lysc_range_dup(ctx->ctx, ((struct lysc_type_bin*)base)->length);
             }
+
+            base = ((struct lysp_tpdf*)tctx->tpdf)->type.compiled = *type;
+            *type = calloc(1, sizeof(struct lysc_type_bin));
+            bin = (struct lysc_type_bin*)(*type);
             break;
         }
+        LY_CHECK_ERR_GOTO(!(*type), LOGMEM(ctx->ctx), cleanup);
+
     }
 
     /* get restrictions from the node itself, finalize the type structure */
-    switch ((*type)->basetype) {
+    (*type)->basetype = basetype;
+    switch (basetype) {
     case LY_TYPE_BINARY:
         if (leaf_p->type.length) {
-            ret = lys_compile_type_range(ctx, leaf_p->type.length, basetype, 1, &bin->length);
+            ret = lys_compile_type_range(ctx, leaf_p->type.length, basetype, 1,
+                                         base ? ((struct lysc_type_bin*)base)->length : NULL, &bin->length);
             LY_CHECK_GOTO(ret, cleanup);
             COMPILE_ARRAY_GOTO(ctx, leaf_p->type.length->exts, bin->length->exts,
                                options, u, lys_compile_ext, ret, cleanup);
+        } else if (base && ((struct lysc_type_bin*)base)->length) {
+            bin->length = lysc_range_dup(ctx->ctx, ((struct lysc_type_bin*)base)->length);
         }
         break;
     }
+
+    COMPILE_ARRAY_GOTO(ctx, type_p->exts, (*type)->exts, options, u, lys_compile_ext, ret, cleanup);
 
 cleanup:
     ly_set_erase(&tpdf_chain, free);
