@@ -615,6 +615,27 @@ const char * const *ly_get_loaded_plugins(void);
  */
 void ly_load_plugins(void);
 
+/* don't need the contents of these types, just forward-declare them for the next 2 functions. */
+struct lyext_plugin_list;
+struct lytype_plugin_list;
+
+/**
+ * @brief Directly register a YANG extension by pointer.
+ *
+ * This is intended to be called by executables or libraries using libyang, while bringing along their own
+ * application-specific extensions.  Instead of loading them from separate module files through dlopen (which can
+ * introduce additional problems like mismatching or incorrectly installed modules), they can be directly added
+ * by reference.
+ */
+int ly_register_exts(struct lyext_plugin_list *plugin, const char *log_name);
+
+/**
+ * @brief Directly register a YANG type by pointer.
+ *
+ * This is the analog of ly_register_exts(), for types instead of extensions.
+ */
+int ly_register_types(struct lytype_plugin_list *plugin, const char *log_name);
+
 /**
  * @brief Unload all the YANG extension and type plugins.
  *
