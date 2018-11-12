@@ -3588,6 +3588,8 @@ check_default(struct lys_type *type, const char **value, struct lys_module *modu
     if (type->base == LY_TYPE_LEAFREF) {
         if (!type->info.lref.target) {
             ret = EXIT_FAILURE;
+            LOGVAL(ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Default value \"%s\" cannot be checked in an unresolved leafref.",
+                   dflt);
             goto cleanup;
         }
         ret = check_default(&type->info.lref.target->type, &dflt, module, 0);
