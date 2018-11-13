@@ -568,6 +568,14 @@ test_node_type_length(void **state)
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Invalid length restriction - the derived restriction (10..35) is not equally or more limiting.");
 
+    assert_non_null(mod = lys_parse_mem(ctx, "module ss {namespace urn:rr;prefix rr;leaf l {type binary {pattern '[0-9]*';}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid type restrictions for binary type.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module tt {namespace urn:tt;prefix tt;typedef mytype {type string {length 10;}}"
+                                             "leaf l {type mytype {length min..max;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid length restriction - the derived restriction (min..max) is not equally or more limiting.");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
