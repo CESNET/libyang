@@ -30,6 +30,11 @@
 #include "tree_schema_internal.h"
 #include "xpath.h"
 
+const char* ly_data_type2str[LY_DATA_TYPE_COUNT] = {"unknown", "binary", "bits", "boolean", "decimal64", "empty", "enumeration",
+    "identityref", "instance-identifier", "leafref", "string", "union", "8bit integer", "8bit unsigned integer", "16bit integer",
+    "16bit unsigned integer", "32bit integer", "32bit unsigned integer", "64bit integer", "64bit unsigned integer"
+};
+
 #define FREE_ARRAY(CTX, ARRAY, FUNC) {uint64_t c__; LY_ARRAY_FOR(ARRAY, c__){FUNC(CTX, &ARRAY[c__]);}LY_ARRAY_FREE(ARRAY);}
 #define FREE_MEMBER(CTX, MEMBER, FUNC) if (MEMBER) {FUNC(CTX, MEMBER);free(MEMBER);}
 #define FREE_STRING(CTX, STRING) if (STRING) {lydict_remove(CTX, STRING);}
@@ -1795,6 +1800,29 @@ cleanup:
     return ret;
 }
 
+static uint16_t type_substmt_map[LY_DATA_TYPE_COUNT] = {
+    0 /* LY_TYPE_UNKNOWN */,
+    LYS_SET_LENGTH /* LY_TYPE_BINARY */,
+    LYS_SET_BIT /* LY_TYPE_BITS */,
+    0 /* LY_TYPE_BOOL */,
+    LYS_SET_FRDIGITS | LYS_SET_RANGE /* LY_TYPE_DEC64 */,
+    0 /* LY_TYPE_EMPTY */,
+    LYS_SET_ENUM /* LY_TYPE_ENUM */,
+    LYS_SET_BASE /* LY_TYPE_IDENT */,
+    LYS_SET_REQINST /* LY_TYPE_INST */,
+    LYS_SET_REQINST | LYS_SET_PATH /* LY_TYPE_LEAFREF */,
+    LYS_SET_LENGTH | LYS_SET_PATTERN /* LY_TYPE_STRING */,
+    LYS_SET_TYPE /* LY_TYPE_UNION */,
+    LYS_SET_RANGE /* LY_TYPE_INT8 */,
+    LYS_SET_RANGE /* LY_TYPE_UINT8 */,
+    LYS_SET_RANGE /* LY_TYPE_INT16 */,
+    LYS_SET_RANGE /* LY_TYPE_UINT16 */,
+    LYS_SET_RANGE /* LY_TYPE_INT32 */,
+    LYS_SET_RANGE /* LY_TYPE_UINT32 */,
+    LYS_SET_RANGE /* LY_TYPE_INT64 */,
+    LYS_SET_RANGE /* LY_TYPE_UINT64 */
+};
+
 static LY_ERR
 lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int options, struct lysc_type **type)
 {
@@ -1836,7 +1864,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
             ly_set_add(&tpdf_chain, tctx, LY_SET_OPT_USEASLIST);
             tctx = NULL;
             break;
-        } else if (!(tctx->tpdf->type.flags & LYS_TYPE_MODIFIED)) {
+        } else if (!tctx->tpdf->type.flags) {
             /* no change in comparison to the following (actually preceding in the chain of type derivations) type */
             memset(tctx, 0, sizeof *tctx);
             continue;
@@ -1907,10 +1935,14 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
     /* get restrictions from the referred typedefs */
     for (u = tpdf_chain.count - 1; u + 1 > 0; --u) {
         tctx = (struct type_context*)tpdf_chain.objs[u];
-        if (tctx->tpdf->type.compiled) {
+        if (~type_substmt_map[basetype] & tctx->tpdf->type.flags) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Invalid type \"%s\" restriction(s) for %s type.",
+                   tctx_prev ? tctx_prev->tpdf->type.name : type_p->name, ly_data_type2str[basetype]);
+            goto cleanup;
+        } else if (tctx->tpdf->type.compiled) {
             base = tctx->tpdf->type.compiled;
             continue;
-        } else if ((u != tpdf_chain.count - 1) && (tctx->tpdf->type.flags & LYS_TYPE_MODIFIED)) {
+        } else if ((u != tpdf_chain.count - 1) && (tctx->tpdf->type.flags)) {
             base = ((struct lysp_tpdf*)tctx->tpdf)->type.compiled = ((struct type_context*)tpdf_chain.objs[u + 1])->tpdf->type.compiled;
             ++base->refcount;
             continue;

@@ -193,6 +193,8 @@ typedef enum {
 } LY_DATA_TYPE;
 #define LY_DATA_TYPE_COUNT 20 /**< Number of different types */
 
+extern const char* ly_data_type2str[LY_DATA_TYPE_COUNT];
+
 /**
  * @brief YANG import-stmt
  */
@@ -497,31 +499,39 @@ struct lysp_deviation {
  *     bit name              1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2
  *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       1 LYS_CONFIG_W     |x|x|x|x|x|x|x| | | | | | | | | | |x| |x| | |
+ *         LYS_SET_BASE     | | | | | | | | | | | | | | | | | | | | | |x|
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       2 LYS_CONFIG_R     |x|x|x|x|x|x|x| | | | | | | | | | |x| |x| | |
+ *         LYS_SET_BIT      | | | | | | | | | | | | | | | | | | | | | |x|
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       3 LYS_STATUS_CURR  |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |x|x|x| |
+ *         LYS_SET_ENUM     | | | | | | | | | | | | | | | | | | | | | |x|
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       4 LYS_STATUS_DEPRC |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |x|x|x| |
+ *         LYS_SET_FRDIGITS | | | | | | | | | | | | | | | | | | | | | |x|
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       5 LYS_STATUS_OBSLT |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |x|x|x| |
+ *         LYS_SET_LENGTH   | | | | | | | | | | | | | | | | | | | | | |x|
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       6 LYS_MAND_TRUE    | |x|x| | |x| | | | | | | | | | | |x| |x| | |
  *         LYS_ORDBY_SYSTEM | | | |x|x| | | | | | | | | | | | | | | | | |
+ *         LYS_SET_PATH     | | | | | | | | | | | | | | | | | | | | | |x|
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       7 LYS_MAND_FALSE   | |x|x| | |x| | | | | | | | | | | |x| |x| | |
  *         LYS_ORDBY_USER   | | | |x|x| | | | | | | | | | | | | | | | | |
+ *         LYS_SET_PATTERN  | | | | | | | | | | | | | | | | | | | | | |x|
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       8 LYS_YINELEM_TRUE | | | | | | | | | | | | | |x| | | | | | | | |
+ *         LYS_SET_RANGE    | | | | | | | | | | | | | | | | | | | | | |x|
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       9 LYS_YINELEM_FALSE| | | | | | | | | | | | | |x| | | | | | | | |
+ *         LYS_SET_TYPE     | | | | | | | | | | | | | | | | | | | | | |x|
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *      10 LYS_SET_VALUE    | | | | | | | | | | | | | | | | | | | | |x| |
  *         LYS_SET_REQINST  | | | | | | | | | | | | | | | | | | | | | |x|
  *         LYS_SET_MIN      | | | |x|x| | | | | | | | | | | | |x| |x| | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *      11 LYS_SET_MAX      | | | |x|x| | | | | | | | | | | | |x| |x| | |
- *         LYS_TYPE_MODIFIED| | | | | | | | | | | | | | | | | | | | | |x|
  *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  */
@@ -588,10 +598,19 @@ struct lysp_deviation {
 #define LYS_YINELEM_FALSE 0x100      /**< yin-element false for extension's argument */
 #define LYS_YINELEM_MASK 0x180       /**< mask for yin-element value */
 #define LYS_SET_VALUE    0x200       /**< value attribute is set */
-#define LYS_SET_REQINST  0x200       /**< require_instance attribute is set */
 #define LYS_SET_MIN      0x200       /**< min attribute is set */
 #define LYS_SET_MAX      0x400       /**< max attribute is set */
-#define LYS_TYPE_MODIFIED 0x400      /**< referenced type has been modified by a restriction */
+
+#define LYS_SET_BASE     0x0001      /**< type's flag for present base substatement */
+#define LYS_SET_BIT      0x0002      /**< type's flag for present bit substatement */
+#define LYS_SET_ENUM     0x0004      /**< type's flag for present enum substatement */
+#define LYS_SET_FRDIGITS 0x0008      /**< type's flag for present fraction-digits substatement */
+#define LYS_SET_LENGTH   0x0010      /**< type's flag for present length substatement */
+#define LYS_SET_PATH     0x0020      /**< type's flag for present path substatement */
+#define LYS_SET_PATTERN  0x0040      /**< type's flag for present pattern substatement */
+#define LYS_SET_RANGE    0x0080      /**< type's flag for present range substatement */
+#define LYS_SET_TYPE     0x0100      /**< type's flag for present type substatement */
+#define LYS_SET_REQINST  0x0200      /**< type's flag for present require-instance substatement */
 /** @} */
 
 /**

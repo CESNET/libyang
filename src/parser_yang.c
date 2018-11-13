@@ -2181,15 +2181,19 @@ parse_type(struct ly_parser_ctx *ctx, const char **data, struct lysp_type *type)
         switch (kw) {
         case YANG_BASE:
             LY_CHECK_RET(parse_text_fields(ctx, data, LYEXT_SUBSTMT_BASE, &type->bases, Y_PREF_IDENTIF_ARG, &type->exts));
+            type->flags |= LYS_SET_BASE;
             break;
         case YANG_BIT:
             LY_CHECK_RET(parse_type_enum(ctx, data, kw, &type->bits));
+            type->flags |= LYS_SET_BIT;
             break;
         case YANG_ENUM:
             LY_CHECK_RET(parse_type_enum(ctx, data, kw, &type->enums));
+            type->flags |= LYS_SET_ENUM;
             break;
         case YANG_FRACTION_DIGITS:
             LY_CHECK_RET(parse_type_fracdigits(ctx, data, &type->fraction_digits, &type->exts));
+            type->flags |= LYS_SET_FRDIGITS;
             break;
         case YANG_LENGTH:
             if (type->length) {
@@ -2200,12 +2204,15 @@ parse_type(struct ly_parser_ctx *ctx, const char **data, struct lysp_type *type)
             LY_CHECK_ERR_RET(!type->length, LOGMEM(ctx->ctx), LY_EMEM);
 
             LY_CHECK_RET(parse_restr(ctx, data, kw, type->length));
+            type->flags |= LYS_SET_LENGTH;
             break;
         case YANG_PATH:
             LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_PATH, 0, &type->path, Y_STR_ARG, &type->exts));
+            type->flags |= LYS_SET_PATH;
             break;
         case YANG_PATTERN:
             LY_CHECK_RET(parse_type_pattern(ctx, data, &type->patterns));
+            type->flags |= LYS_SET_PATTERN;
             break;
         case YANG_RANGE:
             if (type->range) {
@@ -2216,13 +2223,16 @@ parse_type(struct ly_parser_ctx *ctx, const char **data, struct lysp_type *type)
             LY_CHECK_ERR_RET(!type->range, LOGMEM(ctx->ctx), LY_EVALID);
 
             LY_CHECK_RET(parse_restr(ctx, data, kw, type->range));
+            type->flags |= LYS_SET_RANGE;
             break;
         case YANG_REQUIRE_INSTANCE:
             LY_CHECK_RET(parse_type_reqinstance(ctx, data, &type->require_instance, &type->flags, &type->exts));
+            /* LYS_SET_REQINST checked and set inside parse_type_reqinstance() */
             break;
         case YANG_TYPE:
             LY_ARRAY_NEW_RET(ctx->ctx, type->types, nest_type, LY_EMEM);
             LY_CHECK_RET(parse_type(ctx, data, nest_type));
+            type->flags |= LYS_SET_TYPE;
             break;
         case YANG_CUSTOM:
             LY_CHECK_RET(parse_ext(ctx, data, word, word_len, LYEXT_SUBSTMT_SELF, 0, &type->exts));
@@ -2230,10 +2240,6 @@ parse_type(struct ly_parser_ctx *ctx, const char **data, struct lysp_type *type)
         default:
             LOGVAL_YANG(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "when");
             return LY_EVALID;
-        }
-
-        if (kw != YANG_CUSTOM) {
-            type->flags |= LYS_TYPE_MODIFIED;
         }
     }
     return ret;
