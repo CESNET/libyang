@@ -174,6 +174,7 @@ lysp_type_enum_free(struct ly_ctx *ctx, struct lysp_type_enum *item)
     FREE_ARRAY(ctx, item->exts, lysp_ext_instance_free);
 }
 
+static void lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type);
 static void
 lysp_type_free(struct ly_ctx *ctx, struct lysp_type *type)
 {
@@ -187,9 +188,11 @@ lysp_type_free(struct ly_ctx *ctx, struct lysp_type *type)
     FREE_STRINGS(ctx, type->bases);
     FREE_ARRAY(ctx, type->types, lysp_type_free);
     FREE_ARRAY(ctx, type->exts, lysp_ext_instance_free);
+    if (type->compiled) {
+        lysc_type_free(ctx, type->compiled);
+    }
 }
 
-static void lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type);
 static void
 lysp_tpdf_free(struct ly_ctx *ctx, struct lysp_tpdf *tpdf)
 {
@@ -201,7 +204,7 @@ lysp_tpdf_free(struct ly_ctx *ctx, struct lysp_tpdf *tpdf)
     FREE_ARRAY(ctx, tpdf->exts, lysp_ext_instance_free);
 
     lysp_type_free(ctx, &tpdf->type);
-    FREE_MEMBER(ctx, tpdf->type.compiled, lysc_type_free);
+
 }
 
 static void
@@ -587,6 +590,9 @@ lysc_pattern_free(struct ly_ctx *ctx, struct lysc_pattern **pattern)
 static void
 lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
 {
+    if (--type->refcount) {
+        return;
+    }
     switch(type->basetype) {
     case LY_TYPE_BINARY:
         FREE_MEMBER(ctx, ((struct lysc_type_bin*)type)->length, lysc_range_free);
@@ -612,6 +618,8 @@ lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
         break;
     }
     FREE_ARRAY(ctx, type->exts, lysc_ext_instance_free);
+
+    free(type);
 }
 
 static void lysc_node_free(struct ly_ctx *ctx, struct lysc_node *node);
@@ -629,7 +637,9 @@ lysc_node_container_free(struct ly_ctx *ctx, struct lysc_node_container *node)
 static void
 lysc_node_leaf_free(struct ly_ctx *ctx, struct lysc_node_leaf *node)
 {
-    FREE_MEMBER(ctx, node->type, lysc_type_free);
+    if (node->type) {
+        lysc_type_free(ctx, node->type);
+    }
 }
 
 static void
@@ -2153,6 +2163,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
     struct lysc_type_num* num;
     struct lysc_type_str* str;
 
+    (*type) = NULL;
 
     tctx = calloc(1, sizeof *tctx);
     LY_CHECK_ERR_RET(!tctx, LOGMEM(ctx->ctx), LY_EMEM);
@@ -2176,10 +2187,6 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
             ly_set_add(&tpdf_chain, tctx, LY_SET_OPT_USEASLIST);
             tctx = NULL;
             break;
-        } else if (!tctx->tpdf->type.flags) {
-            /* no change in comparison to the following (actually preceding in the chain of type derivations) type */
-            memset(tctx, 0, sizeof *tctx);
-            continue;
         }
 
         /* store information for the following processing */
@@ -2248,6 +2255,8 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
     if (~type_substmt_map[basetype] & leaf_p->type.flags) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Invalid type restrictions for %s type.",
                ly_data_type2str[basetype]);
+        free(*type);
+        (*type) = NULL;
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -2263,7 +2272,8 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
         } else if (tctx->tpdf->type.compiled) {
             base = tctx->tpdf->type.compiled;
             continue;
-        } else if ((u != tpdf_chain.count - 1) && (tctx->tpdf->type.flags)) {
+        } else if ((u != tpdf_chain.count - 1) && !(tctx->tpdf->type.flags)) {
+            /* no change, just use the type information from the base */
             base = ((struct lysp_tpdf*)tctx->tpdf)->type.compiled = ((struct type_context*)tpdf_chain.objs[u + 1])->tpdf->type.compiled;
             ++base->refcount;
             continue;
@@ -2341,69 +2351,76 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
 
     }
 
-    /* get restrictions from the node itself, finalize the type structure */
-    (*type)->basetype = basetype;
-    switch (basetype) {
-    case LY_TYPE_BINARY:
-        if (leaf_p->type.length) {
-            ret = lys_compile_type_range(ctx, leaf_p->type.length, basetype, 1,
-                                         base ? ((struct lysc_type_bin*)base)->length : NULL, &bin->length);
-            LY_CHECK_GOTO(ret, cleanup);
-            COMPILE_ARRAY_GOTO(ctx, leaf_p->type.length->exts, bin->length->exts,
-                               options, u, lys_compile_ext, ret, cleanup);
-        } else if (base && ((struct lysc_type_bin*)base)->length) {
-            bin->length = lysc_range_dup(ctx->ctx, ((struct lysc_type_bin*)base)->length);
-        }
-        break;
-    case LY_TYPE_STRING:
-        if (leaf_p->type.length) {
-            ret = lys_compile_type_range(ctx, leaf_p->type.length, basetype, 1,
-                                         base ? ((struct lysc_type_str*)base)->length : NULL, &str->length);
-            LY_CHECK_GOTO(ret, cleanup);
-            COMPILE_ARRAY_GOTO(ctx, leaf_p->type.length->exts, str->length->exts,
-                               options, u, lys_compile_ext, ret, cleanup);
-        } else if (base && ((struct lysc_type_str*)base)->length) {
-            str->length = lysc_range_dup(ctx->ctx, ((struct lysc_type_str*)base)->length);
-        }
+    if (leaf_p->type.flags) {
+        /* get restrictions from the node itself, finalize the type structure */
+        (*type)->basetype = basetype;
+        ++(*type)->refcount;
+        switch (basetype) {
+        case LY_TYPE_BINARY:
+            if (leaf_p->type.length) {
+                ret = lys_compile_type_range(ctx, leaf_p->type.length, basetype, 1,
+                                             base ? ((struct lysc_type_bin*)base)->length : NULL, &bin->length);
+                LY_CHECK_GOTO(ret, cleanup);
+                COMPILE_ARRAY_GOTO(ctx, leaf_p->type.length->exts, bin->length->exts,
+                                   options, u, lys_compile_ext, ret, cleanup);
+            } else if (base && ((struct lysc_type_bin*)base)->length) {
+                bin->length = lysc_range_dup(ctx->ctx, ((struct lysc_type_bin*)base)->length);
+            }
+            break;
+        case LY_TYPE_STRING:
+            if (leaf_p->type.length) {
+                ret = lys_compile_type_range(ctx, leaf_p->type.length, basetype, 1,
+                                             base ? ((struct lysc_type_str*)base)->length : NULL, &str->length);
+                LY_CHECK_GOTO(ret, cleanup);
+                COMPILE_ARRAY_GOTO(ctx, leaf_p->type.length->exts, str->length->exts,
+                                   options, u, lys_compile_ext, ret, cleanup);
+            } else if (base && ((struct lysc_type_str*)base)->length) {
+                str->length = lysc_range_dup(ctx->ctx, ((struct lysc_type_str*)base)->length);
+            }
 
-        if (tctx->tpdf->type.patterns) {
-            ret = lys_compile_type_patterns(ctx, tctx->tpdf->type.patterns, options,
-                                            base ? ((struct lysc_type_str*)base)->patterns : NULL, &str->patterns);
-            LY_CHECK_GOTO(ret, cleanup);
-        } else if (base && ((struct lysc_type_str*)base)->patterns) {
-            str->patterns = lysc_patterns_dup(ctx->ctx, ((struct lysc_type_str*)base)->patterns);
+            if (leaf_p->type.patterns) {
+                ret = lys_compile_type_patterns(ctx, leaf_p->type.patterns, options,
+                                                base ? ((struct lysc_type_str*)base)->patterns : NULL, &str->patterns);
+                LY_CHECK_GOTO(ret, cleanup);
+            } else if (base && ((struct lysc_type_str*)base)->patterns) {
+                str->patterns = lysc_patterns_dup(ctx->ctx, ((struct lysc_type_str*)base)->patterns);
+            }
+            break;
+        case LY_TYPE_INT8:
+        case LY_TYPE_UINT8:
+        case LY_TYPE_INT16:
+        case LY_TYPE_UINT16:
+        case LY_TYPE_INT32:
+        case LY_TYPE_UINT32:
+        case LY_TYPE_INT64:
+        case LY_TYPE_UINT64:
+            if (leaf_p->type.range) {
+                ret = lys_compile_type_range(ctx, leaf_p->type.range, basetype, 0,
+                                             base ? ((struct lysc_type_num*)base)->range : NULL, &num->range);
+                LY_CHECK_GOTO(ret, cleanup);
+                COMPILE_ARRAY_GOTO(ctx, leaf_p->type.range->exts, num->range->exts,
+                                   options, u, lys_compile_ext, ret, cleanup);
+            } else if (base && ((struct lysc_type_num*)base)->range) {
+                num->range = lysc_range_dup(ctx->ctx, ((struct lysc_type_num*)base)->range);
+            }
+            break;
+        case LY_TYPE_BOOL:
+        case LY_TYPE_EMPTY:
+        case LY_TYPE_UNKNOWN: /* just to complete switch */
+            /* nothing to do */
+            break;
         }
-        break;
-    case LY_TYPE_INT8:
-    case LY_TYPE_UINT8:
-    case LY_TYPE_INT16:
-    case LY_TYPE_UINT16:
-    case LY_TYPE_INT32:
-    case LY_TYPE_UINT32:
-    case LY_TYPE_INT64:
-    case LY_TYPE_UINT64:
-        if (leaf_p->type.range) {
-            ret = lys_compile_type_range(ctx, leaf_p->type.range, basetype, 0,
-                                         base ? ((struct lysc_type_num*)base)->range : NULL, &num->range);
-            LY_CHECK_GOTO(ret, cleanup);
-            COMPILE_ARRAY_GOTO(ctx, leaf_p->type.range->exts, num->range->exts,
-                               options, u, lys_compile_ext, ret, cleanup);
-        } else if (base && ((struct lysc_type_num*)base)->range) {
-            num->range = lysc_range_dup(ctx->ctx, ((struct lysc_type_num*)base)->range);
-        }
-        break;
-    case LY_TYPE_BOOL:
-    case LY_TYPE_EMPTY:
-    case LY_TYPE_UNKNOWN: /* just to complete switch */
-        /* nothing to do */
-        break;
+    } else if (base) {
+        /* no specific restriction in leaf's type definition, copy from the base */
+        free(*type);
+        (*type) = base;
+        ++(*type)->refcount;
     }
 
     COMPILE_ARRAY_GOTO(ctx, type_p->exts, (*type)->exts, options, u, lys_compile_ext, ret, cleanup);
 
 cleanup:
     ly_set_erase(&tpdf_chain, free);
-
     return ret;
 }
 

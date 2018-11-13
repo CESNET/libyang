@@ -501,6 +501,31 @@ test_node_type_length(void **state)
     assert_int_equal(10, ((struct lysc_type_bin*)type)->length->parts[0].min_u64);
     assert_int_equal(100, ((struct lysc_type_bin*)type)->length->parts[0].max_u64);
 
+    assert_non_null(mod = lys_parse_mem(ctx, "module l {namespace urn:l;prefix l;typedef mytype {type binary {length 10..100;}}"
+                                             "typedef mytype2 {type mytype;} leaf l {type mytype2;}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_BINARY, type->basetype);
+    assert_int_equal(3, type->refcount);
+    assert_non_null(((struct lysc_type_bin*)type)->length);
+    assert_non_null(((struct lysc_type_bin*)type)->length->parts);
+    assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_type_bin*)type)->length->parts));
+    assert_int_equal(10, ((struct lysc_type_bin*)type)->length->parts[0].min_u64);
+    assert_int_equal(100, ((struct lysc_type_bin*)type)->length->parts[0].max_u64);
+    assert_non_null(mod = lys_parse_mem(ctx, "module m {namespace urn:m;prefix m;typedef mytype {type string {length 10..100;}}"
+                                             "typedef mytype2 {type mytype;} leaf l {type mytype2;}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_STRING, type->basetype);
+    assert_int_equal(3, type->refcount);
+    assert_non_null(((struct lysc_type_str*)type)->length);
+    assert_non_null(((struct lysc_type_str*)type)->length->parts);
+    assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_type_bin*)type)->length->parts));
+    assert_int_equal(10, ((struct lysc_type_bin*)type)->length->parts[0].min_u64);
+    assert_int_equal(100, ((struct lysc_type_bin*)type)->length->parts[0].max_u64);
+
     /* invalid values */
     assert_non_null(mod = lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;leaf l {type binary {length -10;}}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
