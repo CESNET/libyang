@@ -2076,7 +2076,7 @@ static LY_ERR
 lys_compile_type_patterns(struct lysc_ctx *ctx, struct lysp_restr *patterns_p, int options,
                           struct lysc_pattern **base_patterns, struct lysc_pattern ***patterns)
 {
-    struct lysc_pattern **result, **pattern;
+    struct lysc_pattern **result = NULL, **pattern;
     unsigned int u, v;
     const char *err_msg;
     LY_ERR ret;
@@ -2284,8 +2284,6 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
                 ret = lys_compile_type_range(ctx, tctx->tpdf->type.length, basetype, 1,
                                              base ? ((struct lysc_type_bin*)base)->length : NULL, &bin->length);
                 LY_CHECK_GOTO(ret, cleanup);
-            } else if (base && ((struct lysc_type_bin*)base)->length) {
-                bin->length = lysc_range_dup(ctx->ctx, ((struct lysc_type_bin*)base)->length);
             }
 
             base = ((struct lysp_tpdf*)tctx->tpdf)->type.compiled = *type;
@@ -2328,8 +2326,6 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
                 ret = lys_compile_type_range(ctx, tctx->tpdf->type.range, basetype, 1,
                                              base ? ((struct lysc_type_num*)base)->range : NULL, &num->range);
                 LY_CHECK_GOTO(ret, cleanup);
-            } else if (base && ((struct lysc_type_num*)base)->range) {
-                num->range = lysc_range_dup(ctx->ctx, ((struct lysc_type_num*)base)->range);
             }
 
             base = ((struct lysp_tpdf*)tctx->tpdf)->type.compiled = *type;
@@ -2359,8 +2355,6 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
                 LY_CHECK_GOTO(ret, cleanup);
                 COMPILE_ARRAY_GOTO(ctx, leaf_p->type.length->exts, bin->length->exts,
                                    options, u, lys_compile_ext, ret, cleanup);
-            } else if (base && ((struct lysc_type_bin*)base)->length) {
-                bin->length = lysc_range_dup(ctx->ctx, ((struct lysc_type_bin*)base)->length);
             }
             break;
         case LY_TYPE_STRING:
@@ -2396,8 +2390,6 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
                 LY_CHECK_GOTO(ret, cleanup);
                 COMPILE_ARRAY_GOTO(ctx, leaf_p->type.range->exts, num->range->exts,
                                    options, u, lys_compile_ext, ret, cleanup);
-            } else if (base && ((struct lysc_type_num*)base)->range) {
-                num->range = lysc_range_dup(ctx->ctx, ((struct lysc_type_num*)base)->range);
             }
             break;
         case LY_TYPE_BOOL:

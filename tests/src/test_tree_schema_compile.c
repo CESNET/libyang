@@ -618,44 +618,34 @@ test_type_length(void **state)
     assert_int_equal(100, ((struct lysc_type_bin*)type)->length->parts[1].max_u64);
 
     assert_non_null(mod = lys_parse_mem(ctx, "module k {namespace urn:k;prefix k;typedef mytype {type binary {length 10..100;}}"
-                                             "leaf l {type mytype {length \"10..100\";}}leaf ll {type mytype;}}", LYS_IN_YANG));
+                                             "leaf l {type mytype {length \"10..80\";}}leaf ll {type mytype;}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
     type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
     assert_non_null(type);
+    assert_int_equal(1, type->refcount);
     assert_non_null(((struct lysc_type_bin*)type)->length);
     assert_non_null(((struct lysc_type_bin*)type)->length->parts);
     assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_type_bin*)type)->length->parts));
     assert_int_equal(10, ((struct lysc_type_bin*)type)->length->parts[0].min_u64);
-    assert_int_equal(100, ((struct lysc_type_bin*)type)->length->parts[0].max_u64);
+    assert_int_equal(80, ((struct lysc_type_bin*)type)->length->parts[0].max_u64);
     type = ((struct lysc_node_leaf*)mod->compiled->data->next)->type;
     assert_non_null(type);
+    assert_int_equal(2, type->refcount);
     assert_non_null(((struct lysc_type_bin*)type)->length);
     assert_non_null(((struct lysc_type_bin*)type)->length->parts);
     assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_type_bin*)type)->length->parts));
     assert_int_equal(10, ((struct lysc_type_bin*)type)->length->parts[0].min_u64);
     assert_int_equal(100, ((struct lysc_type_bin*)type)->length->parts[0].max_u64);
 
-    assert_non_null(mod = lys_parse_mem(ctx, "module l {namespace urn:l;prefix l;typedef mytype {type binary {length 10..100;}}"
-                                             "typedef mytype2 {type mytype;} leaf l {type mytype2;}}", LYS_IN_YANG));
-    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
-    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
-    assert_non_null(type);
-    assert_int_equal(LY_TYPE_BINARY, type->basetype);
-    assert_int_equal(3, type->refcount);
-    assert_non_null(((struct lysc_type_bin*)type)->length);
-    assert_non_null(((struct lysc_type_bin*)type)->length->parts);
-    assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_type_bin*)type)->length->parts));
-    assert_int_equal(10, ((struct lysc_type_bin*)type)->length->parts[0].min_u64);
-    assert_int_equal(100, ((struct lysc_type_bin*)type)->length->parts[0].max_u64);
-    assert_non_null(mod = lys_parse_mem(ctx, "module m {namespace urn:m;prefix m;typedef mytype {type string {length 10..100;}}"
-                                             "typedef mytype2 {type mytype;} leaf l {type mytype2;}}", LYS_IN_YANG));
+    assert_non_null(mod = lys_parse_mem(ctx, "module l {namespace urn:l;prefix l;typedef mytype {type string {length 10..100;}}"
+                                             "typedef mytype2 {type mytype {pattern '[0-9]*';}} leaf l {type mytype2 {pattern '[0-4]*';}}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
     type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
     assert_non_null(type);
     assert_int_equal(LY_TYPE_STRING, type->basetype);
-    assert_int_equal(3, type->refcount);
-    assert_non_null(((struct lysc_type_str*)type)->length);
-    assert_non_null(((struct lysc_type_str*)type)->length->parts);
+    assert_int_equal(1, type->refcount);
+    assert_non_null(((struct lysc_type_bin*)type)->length);
+    assert_non_null(((struct lysc_type_bin*)type)->length->parts);
     assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_type_bin*)type)->length->parts));
     assert_int_equal(10, ((struct lysc_type_bin*)type)->length->parts[0].min_u64);
     assert_int_equal(100, ((struct lysc_type_bin*)type)->length->parts[0].max_u64);
