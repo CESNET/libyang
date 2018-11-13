@@ -361,10 +361,144 @@ test_node_container(void **state)
     ly_ctx_destroy(ctx, NULL);
 }
 
+/**
+ * actually the same as length restriction (tested in test_type_length()), so just check the correct handling in appropriate types,
+ * do not test the expression itself
+ */
 static void
-test_node_type_length(void **state)
+test_type_range(void **state)
 {
-    *state = test_node_type_length;
+    *state = test_type_range;
+
+    struct ly_ctx *ctx;
+    struct lys_module *mod;
+    struct lysc_type *type;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;leaf l {type int8 {range min..10|max;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_INT8, type->basetype);
+    assert_non_null(((struct lysc_type_num*)type)->range);
+    assert_non_null(((struct lysc_type_num*)type)->range->parts);
+    assert_int_equal(2, LY_ARRAY_SIZE(((struct lysc_type_num*)type)->range->parts));
+    assert_int_equal(-128, ((struct lysc_type_num*)type)->range->parts[0].min_64);
+    assert_int_equal(10, ((struct lysc_type_num*)type)->range->parts[0].max_64);
+    assert_int_equal(127, ((struct lysc_type_num*)type)->range->parts[1].min_64);
+    assert_int_equal(127, ((struct lysc_type_num*)type)->range->parts[1].max_64);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;leaf l {type int16 {range min..10|max;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_INT16, type->basetype);
+    assert_non_null(((struct lysc_type_num*)type)->range);
+    assert_non_null(((struct lysc_type_num*)type)->range->parts);
+    assert_int_equal(2, LY_ARRAY_SIZE(((struct lysc_type_num*)type)->range->parts));
+    assert_int_equal(-32768, ((struct lysc_type_num*)type)->range->parts[0].min_64);
+    assert_int_equal(10, ((struct lysc_type_num*)type)->range->parts[0].max_64);
+    assert_int_equal(32767, ((struct lysc_type_num*)type)->range->parts[1].min_64);
+    assert_int_equal(32767, ((struct lysc_type_num*)type)->range->parts[1].max_64);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module c {namespace urn:c;prefix c;leaf l {type int32 {range min..10|max;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_INT32, type->basetype);
+    assert_non_null(((struct lysc_type_num*)type)->range);
+    assert_non_null(((struct lysc_type_num*)type)->range->parts);
+    assert_int_equal(2, LY_ARRAY_SIZE(((struct lysc_type_num*)type)->range->parts));
+    assert_int_equal(INT64_C(-2147483648), ((struct lysc_type_num*)type)->range->parts[0].min_64);
+    assert_int_equal(10, ((struct lysc_type_num*)type)->range->parts[0].max_64);
+    assert_int_equal(INT64_C(2147483647), ((struct lysc_type_num*)type)->range->parts[1].min_64);
+    assert_int_equal(INT64_C(2147483647), ((struct lysc_type_num*)type)->range->parts[1].max_64);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module d {namespace urn:d;prefix d;leaf l {type int64 {range min..10|max;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_INT64, type->basetype);
+    assert_non_null(((struct lysc_type_num*)type)->range);
+    assert_non_null(((struct lysc_type_num*)type)->range->parts);
+    assert_int_equal(2, LY_ARRAY_SIZE(((struct lysc_type_num*)type)->range->parts));
+    assert_int_equal(INT64_C(-9223372036854775807) - INT64_C(1), ((struct lysc_type_num*)type)->range->parts[0].min_64);
+    assert_int_equal(10, ((struct lysc_type_num*)type)->range->parts[0].max_64);
+    assert_int_equal(INT64_C(9223372036854775807), ((struct lysc_type_num*)type)->range->parts[1].min_64);
+    assert_int_equal(INT64_C(9223372036854775807), ((struct lysc_type_num*)type)->range->parts[1].max_64);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module e {namespace urn:e;prefix e;leaf l {type uint8 {range min..10|max;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_UINT8, type->basetype);
+    assert_non_null(((struct lysc_type_num*)type)->range);
+    assert_non_null(((struct lysc_type_num*)type)->range->parts);
+    assert_int_equal(2, LY_ARRAY_SIZE(((struct lysc_type_num*)type)->range->parts));
+    assert_int_equal(0, ((struct lysc_type_num*)type)->range->parts[0].min_u64);
+    assert_int_equal(10, ((struct lysc_type_num*)type)->range->parts[0].max_u64);
+    assert_int_equal(255, ((struct lysc_type_num*)type)->range->parts[1].min_u64);
+    assert_int_equal(255, ((struct lysc_type_num*)type)->range->parts[1].max_u64);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module f {namespace urn:f;prefix f;leaf l {type uint16 {range min..10|max;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_UINT16, type->basetype);
+    assert_non_null(((struct lysc_type_num*)type)->range);
+    assert_non_null(((struct lysc_type_num*)type)->range->parts);
+    assert_int_equal(2, LY_ARRAY_SIZE(((struct lysc_type_num*)type)->range->parts));
+    assert_int_equal(0, ((struct lysc_type_num*)type)->range->parts[0].min_u64);
+    assert_int_equal(10, ((struct lysc_type_num*)type)->range->parts[0].max_u64);
+    assert_int_equal(65535, ((struct lysc_type_num*)type)->range->parts[1].min_u64);
+    assert_int_equal(65535, ((struct lysc_type_num*)type)->range->parts[1].max_u64);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module g {namespace urn:g;prefix g;leaf l {type uint32 {range min..10|max;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_UINT32, type->basetype);
+    assert_non_null(((struct lysc_type_num*)type)->range);
+    assert_non_null(((struct lysc_type_num*)type)->range->parts);
+    assert_int_equal(2, LY_ARRAY_SIZE(((struct lysc_type_num*)type)->range->parts));
+    assert_int_equal(0, ((struct lysc_type_num*)type)->range->parts[0].min_u64);
+    assert_int_equal(10, ((struct lysc_type_num*)type)->range->parts[0].max_u64);
+    assert_int_equal(UINT64_C(4294967295), ((struct lysc_type_num*)type)->range->parts[1].min_u64);
+    assert_int_equal(UINT64_C(4294967295), ((struct lysc_type_num*)type)->range->parts[1].max_u64);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module h {namespace urn:h;prefix h;leaf l {type uint64 {range min..10|max;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_UINT64, type->basetype);
+    assert_non_null(((struct lysc_type_num*)type)->range);
+    assert_non_null(((struct lysc_type_num*)type)->range->parts);
+    assert_int_equal(2, LY_ARRAY_SIZE(((struct lysc_type_num*)type)->range->parts));
+    assert_int_equal(0, ((struct lysc_type_num*)type)->range->parts[0].min_u64);
+    assert_int_equal(10, ((struct lysc_type_num*)type)->range->parts[0].max_u64);
+    assert_int_equal(UINT64_C(18446744073709551615), ((struct lysc_type_num*)type)->range->parts[1].min_u64);
+    assert_int_equal(UINT64_C(18446744073709551615), ((struct lysc_type_num*)type)->range->parts[1].max_u64);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module i {namespace urn:i;prefix i;typedef mytype {type uint8 {range 10..100;}}"
+                                             "typedef mytype2 {type mytype;} leaf l {type mytype2;}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(3, type->refcount);
+    assert_int_equal(LY_TYPE_UINT8, type->basetype);
+    assert_non_null(((struct lysc_type_num*)type)->range);
+    assert_non_null(((struct lysc_type_num*)type)->range->parts);
+    assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_type_num*)type)->range->parts));
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+
+static void
+test_type_length(void **state)
+{
+    *state = test_type_length;
 
     struct ly_ctx *ctx;
     struct lys_module *mod;
@@ -612,7 +746,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_module, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_feature, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_identity, logger_setup, logger_teardown),
-        cmocka_unit_test_setup_teardown(test_node_type_length, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_type_length, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_type_range, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_node_container, logger_setup, logger_teardown),
     };
 

@@ -1051,7 +1051,7 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, int UNUSE
     const struct lys_module *mod;
     struct lysp_ext *edef = NULL;
 
-    ext->argument = lydict_insert(ctx->ctx, ext_p->argument, 0);
+    DUP_STRING(ctx->ctx, ext->argument, ext_p->argument);
     ext->insubstmt = ext_p->insubstmt;
     ext->insubstmt_index = ext_p->insubstmt_index;
 
@@ -1278,8 +1278,8 @@ lys_compile_must(struct lysc_ctx *ctx, struct lysp_restr *must_p, int options, s
     must->cond = lyxp_expr_parse(ctx->ctx, must_p->arg);
     LY_CHECK_ERR_GOTO(!must->cond, ret = ly_errcode(ctx->ctx), done);
 
-    must->eapptag = lydict_insert(ctx->ctx, must_p->eapptag, 0);
-    must->emsg = lydict_insert(ctx->ctx, must_p->emsg, 0);
+    DUP_STRING(ctx->ctx, must->eapptag, must_p->eapptag);
+    DUP_STRING(ctx->ctx, must->emsg, must_p->emsg);
     COMPILE_ARRAY_GOTO(ctx, must_p->exts, must->exts, options, u, lys_compile_ext, ret, done);
 
 done:
@@ -1294,7 +1294,7 @@ lys_compile_import(struct lysc_ctx *ctx, struct lysp_import *imp_p, int options,
     struct lysc_module *comp;
     LY_ERR ret = LY_SUCCESS;
 
-    imp->prefix = lydict_insert(ctx->ctx, imp_p->prefix, 0);
+    DUP_STRING(ctx->ctx, imp->prefix, imp_p->prefix);
     COMPILE_ARRAY_GOTO(ctx, imp_p->exts, imp->exts, options, u, lys_compile_ext, ret, done);
     imp->module = imp_p->module;
 
@@ -1333,7 +1333,7 @@ lys_compile_identity(struct lysc_ctx *ctx, struct lysp_ident *ident_p, int optio
     unsigned int u;
     LY_ERR ret = LY_SUCCESS;
 
-    ident->name = lydict_insert(ctx->ctx, ident_p->name, 0);
+    DUP_STRING(ctx->ctx, ident->name, ident_p->name);
     COMPILE_ARRAY_GOTO(ctx, ident_p->iffeatures, ident->iffeatures, options, u, lys_compile_iffeature, ret, done);
     /* backlings (derived) can be added no sooner than when all the identities in the current module are present */
     COMPILE_ARRAY_GOTO(ctx, ident_p->exts, ident->exts, options, u, lys_compile_ext, ret, done);
@@ -1393,7 +1393,7 @@ lys_compile_feature(struct lysc_ctx *ctx, struct lysp_feature *feature_p, int op
     LY_ERR ret = LY_SUCCESS;
     struct lysc_feature **df;
 
-    feature->name = lydict_insert(ctx->ctx, feature_p->name, 0);
+    DUP_STRING(ctx->ctx, feature->name, feature_p->name);
     feature->flags = feature_p->flags;
 
     COMPILE_ARRAY_GOTO(ctx, feature_p->exts, feature->exts, options, u, lys_compile_ext, ret, done);
@@ -1487,11 +1487,11 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
     switch (basetype) {
     case LY_TYPE_BINARY: /* length */
         if (valcopy) {
-            ret = ly_parse_uint(valcopy, __UINT64_C(18446744073709551615), 10, max ? &part->max_u64 : &part->min_u64);
+            ret = ly_parse_uint(valcopy, UINT64_C(18446744073709551615), 10, max ? &part->max_u64 : &part->min_u64);
         } else if (max) {
-            part->max_u64 = __UINT64_C(18446744073709551615);
+            part->max_u64 = UINT64_C(18446744073709551615);
         } else {
-            part->min_u64 = __UINT64_C(0);
+            part->min_u64 = UINT64_C(0);
         }
         if (!first) {
             ret = range_part_check_ascendance(1, max ? part->max_64 : part->min_64, prev);
@@ -1499,12 +1499,12 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
         break;
     case LY_TYPE_DEC64: /* range */
         if (valcopy) {
-            ret = ly_parse_int(valcopy, __INT64_C(-9223372036854775807) - __INT64_C(1), __INT64_C(9223372036854775807), 10,
+            ret = ly_parse_int(valcopy, INT64_C(-9223372036854775807) - INT64_C(1), INT64_C(9223372036854775807), 10,
                                max ? &part->max_64 : &part->min_64);
         } else if (max) {
-            part->max_64 = __INT64_C(9223372036854775807);
+            part->max_64 = INT64_C(9223372036854775807);
         } else {
-            part->min_64 = __INT64_C(-9223372036854775807) - __INT64_C(1);
+            part->min_64 = INT64_C(-9223372036854775807) - INT64_C(1);
         }
         if (!first) {
             ret = range_part_check_ascendance(0, max ? part->max_64 : part->min_64, prev);
@@ -1512,11 +1512,11 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
         break;
     case LY_TYPE_INT8: /* range */
         if (valcopy) {
-            ret = ly_parse_int(valcopy, __INT64_C(-128), INT64_C(127), 10, max ? &part->max_64 : &part->min_64);
+            ret = ly_parse_int(valcopy, INT64_C(-128), INT64_C(127), 10, max ? &part->max_64 : &part->min_64);
         } else if (max) {
-            part->max_64 = __INT64_C(127);
+            part->max_64 = INT64_C(127);
         } else {
-            part->min_64 = __INT64_C(-128);
+            part->min_64 = INT64_C(-128);
         }
         if (!first) {
             ret = range_part_check_ascendance(0, max ? part->max_64 : part->min_64, prev);
@@ -1524,11 +1524,11 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
         break;
     case LY_TYPE_INT16: /* range */
         if (valcopy) {
-            ret = ly_parse_int(valcopy, __INT64_C(-32768), INT64_C(32767), 10, max ? &part->max_64 : &part->min_64);
+            ret = ly_parse_int(valcopy, INT64_C(-32768), INT64_C(32767), 10, max ? &part->max_64 : &part->min_64);
         } else if (max) {
-            part->max_64 = __INT64_C(32767);
+            part->max_64 = INT64_C(32767);
         } else {
-            part->min_64 = __INT64_C(-32768);
+            part->min_64 = INT64_C(-32768);
         }
         if (!first) {
             ret = range_part_check_ascendance(0, max ? part->max_64 : part->min_64, prev);
@@ -1536,11 +1536,11 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
         break;
     case LY_TYPE_INT32: /* range */
         if (valcopy) {
-            ret = ly_parse_int(valcopy, __INT64_C(-2147483648), INT64_C(2147483647), 10, max ? &part->max_64 : &part->min_64);
+            ret = ly_parse_int(valcopy, INT64_C(-2147483648), INT64_C(2147483647), 10, max ? &part->max_64 : &part->min_64);
         } else if (max) {
-            part->max_64 = __INT64_C(2147483647);
+            part->max_64 = INT64_C(2147483647);
         } else {
-            part->min_64 = __INT64_C(-2147483648);
+            part->min_64 = INT64_C(-2147483648);
         }
         if (!first) {
             ret = range_part_check_ascendance(0, max ? part->max_64 : part->min_64, prev);
@@ -1548,12 +1548,12 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
         break;
     case LY_TYPE_INT64: /* range */
         if (valcopy) {
-            ret = ly_parse_int(valcopy, __INT64_C(-9223372036854775807) - __INT64_C(1), INT64_C(9223372036854775807), 10,
+            ret = ly_parse_int(valcopy, INT64_C(-9223372036854775807) - INT64_C(1), INT64_C(9223372036854775807), 10,
                                max ? &part->max_64 : &part->min_64);
         } else if (max) {
-            part->max_64 = __INT64_C(9223372036854775807);
+            part->max_64 = INT64_C(9223372036854775807);
         } else {
-            part->min_64 = __INT64_C(-9223372036854775807) - __INT64_C(1);
+            part->min_64 = INT64_C(-9223372036854775807) - INT64_C(1);
         }
         if (!first) {
             ret = range_part_check_ascendance(0, max ? part->max_64 : part->min_64, prev);
@@ -1561,11 +1561,11 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
         break;
     case LY_TYPE_UINT8: /* range */
         if (valcopy) {
-            ret = ly_parse_uint(valcopy, __UINT64_C(255), 10, max ? &part->max_u64 : &part->min_u64);
+            ret = ly_parse_uint(valcopy, UINT64_C(255), 10, max ? &part->max_u64 : &part->min_u64);
         } else if (max) {
-            part->max_u64 = __UINT64_C(255);
+            part->max_u64 = UINT64_C(255);
         } else {
-            part->min_u64 = __UINT64_C(0);
+            part->min_u64 = UINT64_C(0);
         }
         if (!first) {
             ret = range_part_check_ascendance(1, max ? part->max_64 : part->min_64, prev);
@@ -1573,11 +1573,11 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
         break;
     case LY_TYPE_UINT16: /* range */
         if (valcopy) {
-            ret = ly_parse_uint(valcopy, __UINT64_C(65535), 10, max ? &part->max_u64 : &part->min_u64);
+            ret = ly_parse_uint(valcopy, UINT64_C(65535), 10, max ? &part->max_u64 : &part->min_u64);
         } else if (max) {
-            part->max_u64 = __UINT64_C(65535);
+            part->max_u64 = UINT64_C(65535);
         } else {
-            part->min_u64 = __UINT64_C(0);
+            part->min_u64 = UINT64_C(0);
         }
         if (!first) {
             ret = range_part_check_ascendance(1, max ? part->max_64 : part->min_64, prev);
@@ -1585,11 +1585,11 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
         break;
     case LY_TYPE_UINT32: /* range */
         if (valcopy) {
-            ret = ly_parse_uint(valcopy, __UINT64_C(4294967295), 10, max ? &part->max_u64 : &part->min_u64);
+            ret = ly_parse_uint(valcopy, UINT64_C(4294967295), 10, max ? &part->max_u64 : &part->min_u64);
         } else if (max) {
-            part->max_u64 = __UINT64_C(4294967295);
+            part->max_u64 = UINT64_C(4294967295);
         } else {
-            part->min_u64 = __UINT64_C(0);
+            part->min_u64 = UINT64_C(0);
         }
         if (!first) {
             ret = range_part_check_ascendance(1, max ? part->max_64 : part->min_64, prev);
@@ -1597,11 +1597,11 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
         break;
     case LY_TYPE_UINT64: /* range */
         if (valcopy) {
-            ret = ly_parse_uint(valcopy, __UINT64_C(18446744073709551615), 10, max ? &part->max_u64 : &part->min_u64);
+            ret = ly_parse_uint(valcopy, UINT64_C(18446744073709551615), 10, max ? &part->max_u64 : &part->min_u64);
         } else if (max) {
-            part->max_u64 = __UINT64_C(18446744073709551615);
+            part->max_u64 = UINT64_C(18446744073709551615);
         } else {
-            part->min_u64 = __UINT64_C(0);
+            part->min_u64 = UINT64_C(0);
         }
         if (!first) {
             ret = range_part_check_ascendance(1, max ? part->max_64 : part->min_64, prev);
@@ -1609,11 +1609,11 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
         break;
     case LY_TYPE_STRING: /* length */
         if (valcopy) {
-            ret = ly_parse_uint(valcopy, __UINT64_C(18446744073709551615), 10, max ? &part->max_u64 : &part->min_u64);
+            ret = ly_parse_uint(valcopy, UINT64_C(18446744073709551615), 10, max ? &part->max_u64 : &part->min_u64);
         } else if (max) {
-            part->max_u64 = __UINT64_C(18446744073709551615);
+            part->max_u64 = UINT64_C(18446744073709551615);
         } else {
-            part->min_u64 = __UINT64_C(0);
+            part->min_u64 = UINT64_C(0);
         }
         if (!first) {
             ret = range_part_check_ascendance(1, max ? part->max_64 : part->min_64, prev);
@@ -2102,12 +2102,8 @@ lys_compile_type_patterns(struct lysc_ctx *ctx, struct lysp_restr *patterns_p, i
         if (patterns_p[u].arg[0] == 0x15) {
             (*pattern)->inverted = 1;
         }
-        if (patterns_p[u].eapptag) {
-            (*pattern)->eapptag = lydict_insert(ctx->ctx, patterns_p[u].eapptag, 0);
-        }
-        if (patterns_p[u].emsg) {
-            (*pattern)->emsg = lydict_insert(ctx->ctx, patterns_p[u].emsg, 0);
-        }
+        DUP_STRING(ctx->ctx, (*pattern)->eapptag, patterns_p[u].eapptag);
+        DUP_STRING(ctx->ctx, (*pattern)->emsg, patterns_p[u].emsg);
         COMPILE_ARRAY_GOTO(ctx, patterns_p[u].exts, (*pattern)->exts,
                            options, v, lys_compile_ext, ret, cleanup);
     }
@@ -2465,8 +2461,8 @@ lys_compile_node_leaf(struct lysc_ctx *ctx, struct lysp_node *node_p, int option
     ret = lys_compile_type(ctx, leaf_p, options, &leaf->type);
     LY_CHECK_GOTO(ret, done);
 
-    leaf->units = lydict_insert(ctx->ctx, leaf_p->units, 0);
-    leaf->dflt = lydict_insert(ctx->ctx, leaf_p->dflt, 0);
+    DUP_STRING(ctx->ctx, leaf->units, leaf_p->units);
+    DUP_STRING(ctx->ctx, leaf->dflt, leaf_p->dflt);
 done:
     return ret;
 }
@@ -2556,7 +2552,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, st
     if (!(options & LYSC_OPT_FREE_SP)) {
         node->sp = node_p;
     }
-    node->name = lydict_insert(ctx->ctx, node_p->name, 0);
+    DUP_STRING(ctx->ctx, node->name, node_p->name);
     COMPILE_ARRAY_GOTO(ctx, node_p->exts, node->exts, options, u, lys_compile_ext, ret, error);
 
     /* nodetype-specific part */
@@ -2620,11 +2616,11 @@ lys_compile(struct lys_module *mod, int options)
     mod_c->latest_revision = sp->latest_revision;
     mod_c->version = sp->version;
 
-    mod_c->name = lydict_insert(sp->ctx, sp->name, 0);
-    mod_c->ns = lydict_insert(sp->ctx, sp->ns, 0);
-    mod_c->prefix = lydict_insert(sp->ctx, sp->prefix, 0);
+    DUP_STRING(sp->ctx, mod_c->name, sp->name);
+    DUP_STRING(sp->ctx, mod_c->ns, sp->ns);
+    DUP_STRING(sp->ctx, mod_c->prefix, sp->prefix);
     if (sp->revs) {
-        mod_c->revision = lydict_insert(sp->ctx, sp->revs[0].date, 10);
+        DUP_STRING(sp->ctx, mod_c->revision, sp->revs[0].date);
     }
     COMPILE_ARRAY_GOTO(&ctx, sp->imports, mod_c->imports, options, u, lys_compile_import, ret, error);
     COMPILE_ARRAY_GOTO(&ctx, sp->features, mod_c->features, options, u, lys_compile_feature, ret, error);
