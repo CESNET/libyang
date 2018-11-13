@@ -1015,7 +1015,8 @@ struct lysc_pattern {
     const char *emsg;                /**< error-message */
     const char *eapptag;             /**< error-app-tag value */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    uint8_t inverted;                /**< invert-match flag */
+    uint32_t inverted:1;             /**< invert-match flag */
+    uint32_t refcount:31;            /**< reference counter */
 };
 
 struct lysc_must {
@@ -1053,7 +1054,7 @@ struct lysc_type_str {
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
     struct lysc_range *length;       /**< Optional length limitation */
-    struct lysc_pattern *patterns;   /**< Optional list of pattern limitations ([sized array](@ref sizedarrays)) */
+    struct lysc_pattern **patterns;  /**< Optional list of pointers to pattern limitations ([sized array](@ref sizedarrays)) */
 };
 
 struct lysc_type_enum {
