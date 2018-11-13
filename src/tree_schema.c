@@ -1970,7 +1970,7 @@ lys_compile_type_pattern_check(struct lysc_ctx *ctx, const char *pattern, pcre *
      * http://www.w3.org/TR/2004/REC-xmlschema-2-20041028/#regexs */
 
     /* we need to replace all "$" with "\$", count them now */
-    for (count = 0, ptr = strchr(pattern, '$'); ptr; ++count, ptr = strchr(ptr + 1, '$'));
+    for (count = 0, ptr = strpbrk(pattern, "^$"); ptr; ++count, ptr = strpbrk(ptr + 1, "^$"));
 
     perl_regex = malloc((strlen(pattern) + 4 + count) * sizeof(char));
     LY_CHECK_ERR_RET(!perl_regex, LOGMEM(ctx->ctx), LY_EMEM);
@@ -1979,7 +1979,7 @@ lys_compile_type_pattern_check(struct lysc_ctx *ctx, const char *pattern, pcre *
     ptr = perl_regex;
 
     if (strncmp(pattern + strlen(pattern) - 2, ".*", 2)) {
-        /* we wil add line-end anchoring */
+        /* we will add line-end anchoring */
         ptr[0] = '(';
         ++ptr;
     }
@@ -1987,6 +1987,8 @@ lys_compile_type_pattern_check(struct lysc_ctx *ctx, const char *pattern, pcre *
     for (orig_ptr = pattern; orig_ptr[0]; ++orig_ptr) {
         if (orig_ptr[0] == '$') {
             ptr += sprintf(ptr, "\\$");
+        } else if (orig_ptr[0] == '^') {
+            ptr += sprintf(ptr, "\\^");
         } else {
             ptr[0] = orig_ptr[0];
             ++ptr;
@@ -2052,7 +2054,7 @@ lys_compile_type_pattern_check(struct lysc_ctx *ctx, const char *pattern, pcre *
     }
 
     /* must return 0, already checked during parsing */
-    precomp = pcre_compile(perl_regex, PCRE_ANCHORED | PCRE_DOLLAR_ENDONLY | PCRE_NO_AUTO_CAPTURE,
+    precomp = pcre_compile(perl_regex, PCRE_UTF8 | PCRE_ANCHORED | PCRE_DOLLAR_ENDONLY | PCRE_NO_AUTO_CAPTURE,
                            &err_msg, &err_offset, NULL);
     if (!precomp) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_INREGEXP, pattern, perl_regex + err_offset, err_msg);

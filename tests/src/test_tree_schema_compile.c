@@ -644,11 +644,11 @@ test_type_length(void **state)
     assert_non_null(type);
     assert_int_equal(LY_TYPE_STRING, type->basetype);
     assert_int_equal(1, type->refcount);
-    assert_non_null(((struct lysc_type_bin*)type)->length);
-    assert_non_null(((struct lysc_type_bin*)type)->length->parts);
-    assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_type_bin*)type)->length->parts));
-    assert_int_equal(10, ((struct lysc_type_bin*)type)->length->parts[0].min_u64);
-    assert_int_equal(100, ((struct lysc_type_bin*)type)->length->parts[0].max_u64);
+    assert_non_null(((struct lysc_type_str*)type)->length);
+    assert_non_null(((struct lysc_type_str*)type)->length->parts);
+    assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_type_str*)type)->length->parts));
+    assert_int_equal(10, ((struct lysc_type_str*)type)->length->parts[0].min_u64);
+    assert_int_equal(100, ((struct lysc_type_str*)type)->length->parts[0].max_u64);
 
     /* invalid values */
     assert_non_null(mod = lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;leaf l {type binary {length -10;}}}", LYS_IN_YANG));
@@ -730,6 +730,58 @@ test_type_length(void **state)
     ly_ctx_destroy(ctx, NULL);
 }
 
+static void
+test_type_pattern(void **state)
+{
+    *state = test_type_pattern;
+
+    struct ly_ctx *ctx;
+    struct lys_module *mod;
+    struct lysc_type *type;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;leaf l {type string {"
+                                        "pattern .* {error-app-tag errortag;error-message error;}"
+                                        "pattern [0-9].*[0-9] {modifier invert-match;}}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_non_null(((struct lysc_type_str*)type)->patterns);
+    assert_int_equal(2, LY_ARRAY_SIZE(((struct lysc_type_str*)type)->patterns));
+    assert_string_equal("errortag", ((struct lysc_type_str*)type)->patterns[0]->eapptag);
+    assert_string_equal("error", ((struct lysc_type_str*)type)->patterns[0]->emsg);
+    assert_int_equal(0, ((struct lysc_type_str*)type)->patterns[0]->inverted);
+    assert_null(((struct lysc_type_str*)type)->patterns[1]->eapptag);
+    assert_null(((struct lysc_type_str*)type)->patterns[1]->emsg);
+    assert_int_equal(1, ((struct lysc_type_str*)type)->patterns[1]->inverted);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;typedef mytype {type string {pattern '[0-9]*';}}"
+                                             "typedef mytype2 {type mytype {length 10;}} leaf l {type mytype2 {pattern '[0-4]*';}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_STRING, type->basetype);
+    assert_int_equal(1, type->refcount);
+    assert_non_null(((struct lysc_type_str*)type)->patterns);
+    assert_int_equal(2, LY_ARRAY_SIZE(((struct lysc_type_str*)type)->patterns));
+    assert_int_equal(3, ((struct lysc_type_str*)type)->patterns[0]->refcount);
+    assert_int_equal(1, ((struct lysc_type_str*)type)->patterns[1]->refcount);
+
+    /* test substitutions */
+    assert_non_null(mod = lys_parse_mem(ctx, "module c {namespace urn:c;prefix c;leaf l {type string {"
+                                        "pattern '^\\p{IsLatinExtended-A}$';}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_non_null(((struct lysc_type_str*)type)->patterns);
+    assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_type_str*)type)->patterns));
+    /* TODO check some data "^ř$" */
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -738,6 +790,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_identity, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_type_length, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_type_range, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_type_pattern, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_node_container, logger_setup, logger_teardown),
     };
 
