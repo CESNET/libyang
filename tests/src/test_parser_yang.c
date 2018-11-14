@@ -703,7 +703,8 @@ test_module(void **state)
     assert_string_equal("x", mod->prefix);
     mod = mod_renew(&ctx, mod, 0);
 
-#define SCHEMA_BEGINNING " name {namespace urn:x;prefix \"x\";"
+#define SCHEMA_BEGINNING " name {yang-version 1.1;namespace urn:x;prefix \"x\";"
+#define SCHEMA_BEGINNING2 " name {namespace urn:x;prefix \"x\";"
 #define TEST_NODE(NODETYPE, INPUT, NAME) \
         str = SCHEMA_BEGINNING INPUT; \
         assert_int_equal(LY_SUCCESS, parse_sub_module(&ctx, &str, mod)); \
@@ -834,19 +835,19 @@ test_module(void **state)
     /* uses */
     TEST_NODE(LYS_USES, "uses test;}", "test");
     /* yang-version */
-    str = SCHEMA_BEGINNING "\n\tyang-version 10;}";
+    str = SCHEMA_BEGINNING2 "\n\tyang-version 10;}";
     assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
     logbuf_assert("Invalid value \"10\" of \"yang-version\". Line number 3.");
     mod = mod_renew(&ctx, mod, 0);
-    str = SCHEMA_BEGINNING "yang-version 1.0;yang-version 1.1;}";
+    str = SCHEMA_BEGINNING2 "yang-version 1.0;yang-version 1.1;}";
     assert_int_equal(LY_EVALID, parse_sub_module(&ctx, &str, mod));
     logbuf_assert("Duplicate keyword \"yang-version\". Line number 3.");
     mod = mod_renew(&ctx, mod, 0);
-    str = SCHEMA_BEGINNING "yang-version 1.0;}";
+    str = SCHEMA_BEGINNING2 "yang-version 1.0;}";
     assert_int_equal(LY_SUCCESS, parse_sub_module(&ctx, &str, mod));
     assert_int_equal(1, mod->version);
     mod = mod_renew(&ctx, mod, 0);
-    str = SCHEMA_BEGINNING "yang-version \"1.1\";}";
+    str = SCHEMA_BEGINNING2 "yang-version \"1.1\";}";
     assert_int_equal(LY_SUCCESS, parse_sub_module(&ctx, &str, mod));
     assert_int_equal(2, mod->version);
     mod = mod_renew(&ctx, mod, 0);
@@ -911,7 +912,7 @@ test_identity(void **state)
     (void) state; /* unused */
 
     struct ly_parser_ctx ctx;
-    struct lysp_module *mod = NULL;
+    struct lysp_module *mod = NULL, m = {0};
     struct lysp_ident *ident = NULL;
     const char *str;
 
@@ -919,6 +920,8 @@ test_identity(void **state)
     assert_non_null(ctx.ctx);
     ctx.line = 1;
     ctx.indent = 0;
+    ctx.mod = &m;
+    ctx.mod->version = 2; /* simulate YANG 1.1 */
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
@@ -1153,6 +1156,7 @@ test_container(void **state)
     assert_non_null(ctx.ctx);
     ctx.line = 1;
     ctx.mod = &mod;
+    ctx.mod->version = 2; /* simulate YANG 1.1 */
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \

@@ -297,7 +297,7 @@ test_identity(void **state)
     struct ly_ctx *ctx;
     struct lys_module *mod1, *mod2;
     const char *mod1_str = "module a {namespace urn:a;prefix a; identity a1;}";
-    const char *mod2_str = "module b {namespace urn:b;prefix b; import a {prefix a;}identity b1; identity b2; identity b3 {base b1; base b:b2; base a:a1;} identity b4 {base b:b1; base b3;}}";
+    const char *mod2_str = "module b {yang-version 1.1;namespace urn:b;prefix b; import a {prefix a;}identity b1; identity b2; identity b3 {base b1; base b:b2; base a:a1;} identity b4 {base b:b1; base b3;}}";
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
     assert_non_null(mod1 = lys_parse_mem(ctx, mod1_str, LYS_IN_YANG));
@@ -741,7 +741,7 @@ test_type_pattern(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
 
-    assert_non_null(mod = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;leaf l {type string {"
+    assert_non_null(mod = lys_parse_mem(ctx, "module a {yang-version 1.1; namespace urn:a;prefix a;leaf l {type string {"
                                         "pattern .* {error-app-tag errortag;error-message error;}"
                                         "pattern [0-9].*[0-9] {modifier invert-match;}}}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
@@ -804,7 +804,7 @@ test_type_enum(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
 
-    assert_non_null(mod = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;feature f; leaf l {type enumeration {"
+    assert_non_null(mod = lys_parse_mem(ctx, "module a {yang-version 1.1; namespace urn:a;prefix a;feature f; leaf l {type enumeration {"
                                         "enum automin; enum min {value -2147483648;}enum one {if-feature f; value 1;}"
                                         "enum two; enum seven {value 7;}enum eight;}}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
@@ -827,8 +827,8 @@ test_type_enum(void **state)
     assert_string_equal("eight", ((struct lysc_type_enum*)type)->enums[5].name);
     assert_int_equal(8, ((struct lysc_type_enum*)type)->enums[5].value);
 
-    assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;feature f; typedef mytype {type enumeration {"
-                                        "enum 11; enum min {value -2147483648;}enum x$& {if-feature f; value 1;}"
+    assert_non_null(mod = lys_parse_mem(ctx, "module b {yang-version 1.1; namespace urn:b;prefix b;feature f; typedef mytype {type enumeration {"
+                                        "enum 11; enum min {value -2147483648;}enum x$&;"
                                         "enum two; enum seven {value 7;}enum eight;}} leaf l { type mytype {enum seven;enum eight;}}}",
                                         LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
@@ -844,6 +844,9 @@ test_type_enum(void **state)
 
 
     /* invalid cases */
+    assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; feature f; leaf l {type enumeration {"
+                                   "enum one {if-feature f;}}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid keyword \"if-feature\" as a child of \"enum\" - the statement is allowed only in YANG 1.1 modules. Line number 1.");
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; leaf l {type enumeration {"
                                    "enum one {value -2147483649;}}}}", LYS_IN_YANG));
     logbuf_assert("Invalid value \"-2147483649\" of \"value\". Line number 1.");
@@ -870,12 +873,12 @@ test_type_enum(void **state)
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Missing enum substatement for enumeration type.");
 
-    assert_non_null(mod = lys_parse_mem(ctx, "module cc {namespace urn:cc;prefix cc;typedef mytype {type enumeration {enum one;}}"
+    assert_non_null(mod = lys_parse_mem(ctx, "module cc {yang-version 1.1;namespace urn:cc;prefix cc;typedef mytype {type enumeration {enum one;}}"
                                              "leaf l {type mytype {enum two;}}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Invalid enumeration - derived type adds new item \"two\".");
 
-    assert_non_null(mod = lys_parse_mem(ctx, "module dd {namespace urn:dd;prefix dd;typedef mytype {type enumeration {enum one;}}"
+    assert_non_null(mod = lys_parse_mem(ctx, "module dd {yang-version 1.1;namespace urn:dd;prefix dd;typedef mytype {type enumeration {enum one;}}"
                                              "leaf l {type mytype {enum one {value 1;}}}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Invalid enumeration - value of the item \"one\" has changed from 0 to 1 in the derived type.");
@@ -894,6 +897,11 @@ test_type_enum(void **state)
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Missing enum substatement for enumeration type \"mytype\".");
 
+    assert_non_null(mod = lys_parse_mem(ctx, "module hh {namespace urn:hh;prefix hh; typedef mytype {type enumeration {enum one;}}"
+                                        "leaf l {type mytype {enum one;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Enumeration type can be subtyped only in YANG 1.1 modules.");
+
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
 }
@@ -909,7 +917,7 @@ test_type_bits(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
 
-    assert_non_null(mod = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;feature f; leaf l {type bits {"
+    assert_non_null(mod = lys_parse_mem(ctx, "module a {yang-version 1.1; namespace urn:a;prefix a;feature f; leaf l {type bits {"
                                         "bit automin; bit one {if-feature f; position 1;}"
                                         "bit two; bit seven {position 7;}bit eight;}}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
@@ -930,23 +938,27 @@ test_type_bits(void **state)
     assert_string_equal("eight", ((struct lysc_type_bits*)type)->bits[4].name);
     assert_int_equal(8, ((struct lysc_type_bits*)type)->bits[4].position);
 
-    assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;feature f; typedef mytype {type bits {"
-                                        "bit automin; bit one {if-feature f; value 1;}"
-                                        "bit two; bit seven {value 7;}bit eight;}} leaf l { type mytype {bit seven;bit eight;}}}",
+    assert_non_null(mod = lys_parse_mem(ctx, "module b {yang-version 1.1;namespace urn:b;prefix b;feature f; typedef mytype {type bits {"
+                                        "bit automin; bit one;bit two; bit seven {value 7;}bit eight;}} leaf l { type mytype {bit eight;bit seven;bit automin;}}}",
                                         LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
     type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
     assert_non_null(type);
     assert_int_equal(LY_TYPE_BITS, type->basetype);
     assert_non_null(((struct lysc_type_bits*)type)->bits);
-    assert_int_equal(2, LY_ARRAY_SIZE(((struct lysc_type_bits*)type)->bits));
-    assert_string_equal("seven", ((struct lysc_type_bits*)type)->bits[0].name);
-    assert_int_equal(7, ((struct lysc_type_bits*)type)->bits[0].position);
-    assert_string_equal("eight", ((struct lysc_type_bits*)type)->bits[1].name);
-    assert_int_equal(8, ((struct lysc_type_bits*)type)->bits[1].position);
+    assert_int_equal(3, LY_ARRAY_SIZE(((struct lysc_type_bits*)type)->bits));
+    assert_string_equal("automin", ((struct lysc_type_bits*)type)->bits[0].name);
+    assert_int_equal(0, ((struct lysc_type_bits*)type)->bits[0].position);
+    assert_string_equal("seven", ((struct lysc_type_bits*)type)->bits[1].name);
+    assert_int_equal(7, ((struct lysc_type_bits*)type)->bits[1].position);
+    assert_string_equal("eight", ((struct lysc_type_bits*)type)->bits[2].name);
+    assert_int_equal(8, ((struct lysc_type_bits*)type)->bits[2].position);
 
 
     /* invalid cases */
+    assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; feature f; leaf l {type bits {"
+                                   "bit one {if-feature f;}}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid keyword \"if-feature\" as a child of \"bit\" - the statement is allowed only in YANG 1.1 modules. Line number 1.");
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; leaf l {type bits {"
                                    "bit one {position -1;}}}}", LYS_IN_YANG));
     logbuf_assert("Invalid value \"-1\" of \"position\". Line number 1.");
@@ -967,12 +979,12 @@ test_type_bits(void **state)
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Missing bit substatement for bits type.");
 
-    assert_non_null(mod = lys_parse_mem(ctx, "module cc {namespace urn:cc;prefix cc;typedef mytype {type bits {bit one;}}"
+    assert_non_null(mod = lys_parse_mem(ctx, "module cc {yang-version 1.1;namespace urn:cc;prefix cc;typedef mytype {type bits {bit one;}}"
                                              "leaf l {type mytype {bit two;}}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Invalid bits - derived type adds new item \"two\".");
 
-    assert_non_null(mod = lys_parse_mem(ctx, "module dd {namespace urn:dd;prefix dd;typedef mytype {type bits {bit one;}}"
+    assert_non_null(mod = lys_parse_mem(ctx, "module dd {yang-version 1.1;namespace urn:dd;prefix dd;typedef mytype {type bits {bit one;}}"
                                              "leaf l {type mytype {bit one {position 1;}}}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Invalid bits - position of the item \"one\" has changed from 0 to 1 in the derived type.");
@@ -990,6 +1002,11 @@ test_type_bits(void **state)
                                              "leaf l {type mytype {bit one;}}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Missing bit substatement for bits type \"mytype\".");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module hh {namespace urn:hh;prefix hh; typedef mytype {type bits {bit one;}}"
+                                        "leaf l {type mytype {bit one;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Bits type can be subtyped only in YANG 1.1 modules.");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
