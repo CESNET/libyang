@@ -8184,11 +8184,6 @@ unres_data_add(struct unres_data *unres, struct lyd_node *node, enum UNRES_ITEM 
     LY_CHECK_ERR_RETURN(!unres->type, LOGMEM(NULL), -1);
     unres->type[unres->count - 1] = type;
 
-    if (type == UNRES_WHEN) {
-        /* remove previous result */
-        node->when_status = LYD_WHEN;
-    }
-
     return 0;
 }
 
@@ -8212,6 +8207,7 @@ int
 resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node **root, int options)
 {
     uint32_t i, j, first, resolved, del_items, stmt_count;
+    uint8_t prev_when_status;
     int rc, progress, ignore_fail;
     enum int_log_opts prev_ilo;
     struct ly_err_item *prev_eitem;
@@ -8279,19 +8275,21 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
                 continue;
             }
 
+            prev_when_status = unres->node[i]->when_status;
             rc = resolve_unres_data_item(unres->node[i], unres->type[i], ignore_fail, &when);
             if (!rc) {
-                /* finish with error/delete the node only if when was false, an external dependency was not required,
-                 * or it was not provided (the flag would not be passed down otherwise, checked in upper functions) */
+                /* finish with error/delete the node only if when was changed from true to false, an external
+                 * dependency was not required, or it was not provided (the flag would not be passed down otherwise,
+                 * checked in upper functions) */
                 if ((unres->node[i]->when_status & LYD_WHEN_FALSE)
                         && (!(when->flags & (LYS_XPCONF_DEP | LYS_XPSTATE_DEP)) || !(options & LYD_OPT_NOEXTDEPS))) {
-                    if (!(options & LYD_OPT_WHENAUTODEL) && !unres->node[i]->dflt) {
+                    if ((!(prev_when_status & LYD_WHEN_TRUE) || !(options & LYD_OPT_WHENAUTODEL)) && !unres->node[i]->dflt) {
                         /* false when condition */
                         goto error;
                     } /* follows else */
 
                     /* auto-delete */
-                    LOGVRB("auto-delete node \"%s\" due to when condition (%s)", ly_errpath(ctx), when->cond);
+                    LOGVRB("Auto-deleting node \"%s\" due to when condition (%s)", ly_errpath(ctx), when->cond);
 
                     /* only unlink now, the subtree can contain another nodes stored in the unres list */
                     /* if it has parent non-presence containers that would be empty, we should actually

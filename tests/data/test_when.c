@@ -94,23 +94,78 @@ test_parse(void **state)
 }
 
 static void
-test_parse_autodel(void **state)
+test_netconf_autodel(void **state)
+{
+    const char *schema = TESTS_DIR"/data/files/nc-when.yang";
+    const struct lys_module *mod;
+    struct state *st = (*state);
+    struct lyd_node *node;
+    int ret;
+
+    /* load special schema for this test */
+    mod = lys_parse_path(st->ctx, schema, LYS_YANG);
+    assert_non_null(mod);
+
+    /* create valid data tree */
+    st->dt = lyd_new_path(NULL, st->ctx, "/nc-when:test-when/when-check", "true", 0, 0);
+    assert_non_null(st->dt);
+    node = lyd_new_path(st->dt, NULL, "/nc-when:test-when/gated-data", "100", 0, 0);
+    assert_non_null(node);
+    ret = lyd_validate(&st->dt, LYD_OPT_CONFIG | LYD_OPT_STRICT | LYD_OPT_WHENAUTODEL, NULL);
+    assert_int_equal(ret, 0);
+
+    /*
+     * Change when to false and auto-delete the conditioned node during validation.
+     * This is the only case when a node should be silently deleted (provided that the flag is used).
+     */
+    assert_non_null(st->dt->child->next);
+
+    node = st->dt->child;
+    assert_string_equal(node->schema->name, "when-check");
+    ret = lyd_change_leaf((struct lyd_node_leaf_list *)node, "false");
+    assert_int_equal(ret, 0);
+    ret = lyd_validate(&st->dt, LYD_OPT_CONFIG | LYD_OPT_STRICT | LYD_OPT_WHENAUTODEL, NULL);
+    assert_int_equal(ret, 0);
+
+    assert_null(st->dt->child->next);
+
+    /*
+     * If we try to create the deleted node now, we must get an error despite using the auto-delete flag.
+     * libyang must be able to handle this situation internally because these 2 cases may not be detectable
+     * in an application.
+     */
+    node = lyd_new_path(st->dt, NULL, "/nc-when:test-when/gated-data", "100", 0, 0);
+    assert_non_null(node);
+    ret = lyd_validate(&st->dt, LYD_OPT_CONFIG | LYD_OPT_STRICT | LYD_OPT_WHENAUTODEL, NULL);
+    assert_int_equal(ret, 1);
+
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_NOWHEN);
+    assert_string_equal(ly_errpath(st->ctx), "/nc-when:test-when/gated-data");
+}
+
+static void
+test_parse_noautodel(void **state)
 {
     struct state *st = (*state);
     const char *xml = "<top xmlns=\"urn:libyang:tests:when\"><b><b1>B</b1></b><c>C</c></top>";
 
+    /* when parsing data, false when is always an error */
     st->dt = lyd_parse_mem(st->ctx, xml, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_WHENAUTODEL);
-    assert_ptr_equal(st->dt, NULL);
-    assert_int_equal(ly_errno, LY_SUCCESS);
+    assert_null(st->dt);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_NOWHEN);
+    assert_string_equal(ly_errpath(st->ctx), "/when:top/c");
 
     xml = "<topleaf xmlns=\"urn:libyang:tests:when\">X</topleaf>"
           "<top xmlns=\"urn:libyang:tests:when\"><b><b1>B</b1></b><c>C</c></top>";
     lyd_free_withsiblings(st->dt);
 
     st->dt = lyd_parse_mem(st->ctx, xml, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_WHENAUTODEL);
-    assert_ptr_not_equal(st->dt, NULL);
-    lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS);
-    assert_string_equal(st->xml, "<topleaf xmlns=\"urn:libyang:tests:when\">X</topleaf>");
+    assert_null(st->dt);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_NOWHEN);
+    assert_string_equal(ly_errpath(st->ctx), "/when:top/c");
 }
 
 static void
@@ -134,7 +189,7 @@ test_insert(void **state)
 }
 
 static void
-test_insert_autodel(void **state)
+test_insert_noautodel(void **state)
 {
     struct state *st = (*state);
     struct lyd_node *node;
@@ -146,8 +201,13 @@ test_insert_autodel(void **state)
     node = lyd_new(st->dt, NULL, "b");
     assert_ptr_not_equal(lyd_new_leaf(node, NULL, "b1", "B"), NULL);
 
-    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG | LYD_OPT_WHENAUTODEL, NULL), 0);
-    assert_ptr_equal(st->dt, NULL);
+    /* when is not changing from true to false, always an error */
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG | LYD_OPT_WHENAUTODEL, NULL), 1);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_NOWHEN);
+    assert_string_equal(ly_errpath(st->ctx), "/when:top/c");
+
+    lyd_free_withsiblings(st->dt);
 
     st->dt = lyd_new(NULL, st->mod, "top");
     assert_ptr_not_equal(st->dt, NULL);
@@ -161,9 +221,10 @@ test_insert_autodel(void **state)
     assert_ptr_not_equal(node, NULL);
     assert_ptr_not_equal(lyd_new_leaf(node, NULL, "b1", "B"), NULL);
 
-    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG | LYD_OPT_WHENAUTODEL, NULL), 0);
-    lyd_print_mem(&(st->xml), st->dt, LYD_XML, 0);
-    assert_string_equal(st->xml, "<topleaf xmlns=\"urn:libyang:tests:when\">X</topleaf>");
+    assert_int_equal(lyd_validate(&(st->dt), LYD_OPT_CONFIG | LYD_OPT_WHENAUTODEL, NULL), 1);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_NOWHEN);
+    assert_string_equal(ly_errpath(st->ctx), "/when:top/c");
 }
 
 static void
@@ -214,9 +275,10 @@ int main(void)
 {
     const struct CMUnitTest tests[] = {
                     cmocka_unit_test_setup_teardown(test_parse, setup_f, teardown_f),
-                    cmocka_unit_test_setup_teardown(test_parse_autodel, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_netconf_autodel, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_parse_noautodel, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_insert, setup_f, teardown_f),
-                    cmocka_unit_test_setup_teardown(test_insert_autodel, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_insert_noautodel, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_value_prefix, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_augment_choice, setup_f, teardown_f),
     };

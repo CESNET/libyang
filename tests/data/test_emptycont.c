@@ -93,50 +93,48 @@ test_parse(void **state)
 }
 
 static void
-test_parse_autodel1(void **state)
+test_parse_noautodel(void **state)
 {
     struct state *st = (*state);
     const char *xml = "<topleaf xmlns=\"urn:libyang:tests:emptycont\">X</topleaf>"
                       "<top xmlns=\"urn:libyang:tests:emptycont\"><b><b1>B</b1></b><c><c1>C</c1></c></top>";
 
     st->dt = lyd_parse_mem(st->ctx, xml, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_WHENAUTODEL);
-    assert_ptr_not_equal(st->dt, NULL);
-    lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS);
-    assert_string_equal(st->xml, "<topleaf xmlns=\"urn:libyang:tests:emptycont\">X</topleaf><top xmlns=\"urn:libyang:tests:emptycont\"><c/></top>");
+    assert_null(st->dt);
+    assert_int_equal(ly_errno, LY_EVALID);
+    assert_int_equal(ly_vecode(st->ctx), LYVE_NOWHEN);
 }
 
 static void
-test_parse_autodel2(void **state)
-{
-    struct state *st = (*state);
-    const char *xml = "<top xmlns=\"urn:libyang:tests:emptycont\"><b><b1>B</b1></b><c><c1>C</c1></c></top>";
-
-    st->dt = lyd_parse_mem(st->ctx, xml, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_WHENAUTODEL);
-    assert_ptr_not_equal(st->dt, NULL);
-    lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS);
-    assert_string_equal(st->xml, "<top xmlns=\"urn:libyang:tests:emptycont\"><c/></top>");
-}
-
-static void
-test_parse_autodel3(void **state)
+test_parse_autodel(void **state)
 {
     struct state *st = (*state);
     const char *xml = "<topleaf xmlns=\"urn:libyang:tests:emptycont\">X</topleaf>"
-                      "<top xmlns=\"urn:libyang:tests:emptycont\"><b><b1>B</b1></b></top>";
+                      "<top xmlns=\"urn:libyang:tests:emptycont\"><a>A</a></top>";
 
-    st->dt = lyd_parse_mem(st->ctx, xml, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_WHENAUTODEL);
+    /* all is fine, b container present */
+    st->dt = lyd_parse_mem(st->ctx, xml, LYD_XML, LYD_OPT_CONFIG);
     assert_ptr_not_equal(st->dt, NULL);
-    lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS);
-    assert_string_equal(st->xml, "<topleaf xmlns=\"urn:libyang:tests:emptycont\">X</topleaf>");
+    lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL);
+    assert_string_equal(st->xml, "<topleaf xmlns=\"urn:libyang:tests:emptycont\">X</topleaf><top xmlns=\"urn:libyang:tests:emptycont\"><a>A</a><b/></top>");
+
+    /* no need for the autodel flag, b container must always be autodeleted */
+    assert_string_equal(st->dt->schema->name, "topleaf");
+    st->dt = st->dt->next;
+    lyd_free(st->dt->prev);
+
+    assert_int_equal(lyd_validate(&st->dt, LYD_OPT_CONFIG, NULL), 0);
+    lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL);
+    assert_string_equal(st->xml, "<top xmlns=\"urn:libyang:tests:emptycont\"><a>A</a></top>");
 }
 
 int main(void)
 {
     const struct CMUnitTest tests[] = {
                     cmocka_unit_test_setup_teardown(test_parse, setup_f, teardown_f),
-                    cmocka_unit_test_setup_teardown(test_parse_autodel1, setup_f, teardown_f),
-                    cmocka_unit_test_setup_teardown(test_parse_autodel2, setup_f, teardown_f),
-                    cmocka_unit_test_setup_teardown(test_parse_autodel3, setup_f, teardown_f), };
+                    cmocka_unit_test_setup_teardown(test_parse_noautodel, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_parse_autodel, setup_f, teardown_f),
+    };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
