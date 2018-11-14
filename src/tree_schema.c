@@ -2165,7 +2165,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
     unsigned int u, v, match;
     int32_t value = 0;
     uint32_t position = 0;
-    struct lysc_type_enum_item *e;
+    struct lysc_type_enum_item *e, storage;
 
     LY_ARRAY_FOR(enums_p, u) {
         LY_ARRAY_NEW_RET(ctx->ctx, *enums, e, LY_EMEM);
@@ -2269,7 +2269,17 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
         }
 
         COMPILE_ARRAY_GOTO(ctx, enums_p[u].iffeatures, e->iffeatures, options, v, lys_compile_iffeature, ret, done);
-        COMPILE_ARRAY_GOTO(ctx, enums_p[u].exts, e->exts, options, u, lys_compile_ext, ret, done);
+        COMPILE_ARRAY_GOTO(ctx, enums_p[u].exts, e->exts, options, v, lys_compile_ext, ret, done);
+
+        if (basetype == LY_TYPE_BITS) {
+            /* keep bits ordered by position */
+            for (v = u; v && (*enums)[v - 1].value > e->value; --v);
+            if (v != u) {
+                memcpy(&storage, e, sizeof *e);
+                memmove(&(*enums)[v + 1], &(*enums)[v], (u - v) * sizeof **enums);
+                memcpy(&(*enums)[v], &storage, sizeof storage);
+            }
+        }
     }
 
 done:
