@@ -124,6 +124,7 @@ test_parse_autodel(void **state)
     lyd_free(st->dt->prev);
 
     assert_int_equal(lyd_validate(&st->dt, LYD_OPT_CONFIG, NULL), 0);
+    free(st->xml);
     lyd_print_mem(&(st->xml), st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_WD_ALL);
     assert_string_equal(st->xml, "<top xmlns=\"urn:libyang:tests:emptycont\"><a>A</a></top>");
 }

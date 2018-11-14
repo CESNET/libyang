@@ -4882,7 +4882,7 @@ lyd_schema_sort(struct lyd_node *sibling, int recursive)
 API int
 lyd_validate(struct lyd_node **node, int options, void *var_arg)
 {
-    struct lyd_node *root, *next1, *next2, *iter, *act_notif = NULL, *to_free = NULL, *data_tree = NULL;
+    struct lyd_node *root, *next1, *next2, *iter, *act_notif = NULL, *data_tree = NULL;
     struct ly_ctx *ctx = NULL;
     int ret = EXIT_FAILURE;
     struct unres_data *unres = NULL;
@@ -4973,11 +4973,6 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
 
     LY_TREE_FOR_SAFE(*node, next1, root) {
         LY_TREE_DFS_BEGIN(root, next2, iter) {
-            if (to_free) {
-                lyd_free(to_free);
-                to_free = NULL;
-            }
-
             if (iter->parent && (iter->schema->nodetype & (LYS_ACTION | LYS_NOTIF))) {
                 if (!(options & LYD_OPT_ACT_NOTIF) || act_notif) {
                     LOGVAL(ctx, LYE_INELEM, LY_VLOG_LYD, iter, iter->schema->name);
@@ -4995,59 +4990,13 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
             /* basic validation successful */
             iter->validity &= ~LYD_VAL_MAND;
 
-            /* where go next? - modified LY_TREE_DFS_END */
-            if (iter->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
-                next2 = NULL;
-            } else {
-                next2 = iter->child;
-
-                /* if we have empty non-dflt and non-presence container, we can remove it */
-                if (!next2 && !iter->dflt && (iter->schema->nodetype == LYS_CONTAINER)
+            /* empty non-default, non-presence container without attributes, make it default */
+            if (!iter->dflt && (iter->schema->nodetype == LYS_CONTAINER) && !iter->child
                         && !((struct lys_node_container *)iter->schema)->presence && !iter->attr) {
-                    lyd_free(to_free);
-                    to_free = iter;
-                }
+                iter->dflt = 1;
             }
-            if (!next2) {
-                /* no children */
-                if (iter == root) {
-                    /* we are done */
-                    break;
-                }
-                /* try siblings */
-                next2 = iter->next;
-            }
-            while (!next2) {
-                iter = iter->parent;
 
-                /* if we have empty non-dflt, non-presence container without any attributes, we can remove it */
-                if (to_free && !iter->dflt && !to_free->next && to_free->prev == to_free &&
-                        iter->schema->nodetype == LYS_CONTAINER &&
-                        !((struct lys_node_container *)iter->schema)->presence && !iter->attr) {
-                    to_free = iter;
-                } else {
-                    lyd_free(to_free);
-                    to_free = NULL;
-                }
-
-                /* parent is already processed, go to its sibling */
-                if (iter->parent == root->parent) {
-                    /* we are done */
-                    break;
-                }
-                next2 = iter->next;
-            } /* end of modified LY_TREE_DFS_END */
-        }
-
-        if (to_free) {
-            if ((*node) == to_free) {
-                *node = to_free->next;
-                if (data_tree == to_free) {
-                    data_tree = to_free->next;
-                }
-            }
-            lyd_free(to_free);
-            to_free = NULL;
+            LY_TREE_DFS_END(root, next2, iter);
         }
 
         if (options & LYD_OPT_NOSIBLINGS) {
