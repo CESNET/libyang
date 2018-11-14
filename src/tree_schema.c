@@ -2167,6 +2167,12 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
     uint32_t position = 0;
     struct lysc_type_enum_item *e, storage;
 
+    if (base_enums && ctx->mod->compiled->version < 2) {
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "%s type can be subtyped only in YANG 1.1 modules.",
+               basetype == LY_TYPE_ENUM ? "Enumeration" : "Bits");
+        return LY_EVALID;
+    }
+
     LY_ARRAY_FOR(enums_p, u) {
         LY_ARRAY_NEW_RET(ctx->ctx, *enums, e, LY_EMEM);
         DUP_STRING(ctx->ctx, e->name, enums_p[u].name);
