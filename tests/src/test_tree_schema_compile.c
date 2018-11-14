@@ -768,8 +768,19 @@ test_type_pattern(void **state)
     assert_int_equal(3, ((struct lysc_type_str*)type)->patterns[0]->refcount);
     assert_int_equal(1, ((struct lysc_type_str*)type)->patterns[1]->refcount);
 
+    assert_non_null(mod = lys_parse_mem(ctx, "module c {namespace urn:c;prefix c;typedef mytype {type string {pattern '[0-9]*';}}"
+                                             "leaf l {type mytype {length 10;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_STRING, type->basetype);
+    assert_int_equal(1, type->refcount);
+    assert_non_null(((struct lysc_type_str*)type)->patterns);
+    assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_type_str*)type)->patterns));
+    assert_int_equal(2, ((struct lysc_type_str*)type)->patterns[0]->refcount);
+
     /* test substitutions */
-    assert_non_null(mod = lys_parse_mem(ctx, "module c {namespace urn:c;prefix c;leaf l {type string {"
+    assert_non_null(mod = lys_parse_mem(ctx, "module d {namespace urn:d;prefix d;leaf l {type string {"
                                         "pattern '^\\p{IsLatinExtended-A}$';}}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
     type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
@@ -878,6 +889,11 @@ test_type_enum(void **state)
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Invalid enumeration - value 1 collide in items \"y\" and \"x\".");
 
+    assert_non_null(mod = lys_parse_mem(ctx, "module gg {namespace urn:gg;prefix gg;typedef mytype {type enumeration;}"
+                                             "leaf l {type mytype {enum one;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Missing enum substatement for enumeration type \"mytype\".");
+
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
 }
@@ -969,6 +985,11 @@ test_type_bits(void **state)
                                         LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Invalid bits - position 1 collide in items \"y\" and \"x\".");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module gg {namespace urn:gg;prefix gg;typedef mytype {type bits;}"
+                                             "leaf l {type mytype {bit one;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Missing bit substatement for bits type \"mytype\".");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
