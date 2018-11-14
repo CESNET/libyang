@@ -1822,26 +1822,31 @@ parse_type_enum_value_pos(struct ly_parser_ctx *ctx, const char **data, enum yan
 
     if (!word_len || (word[0] == '+') || ((word[0] == '0') && (word_len > 1)) || ((val_kw == YANG_VALUE) && !strncmp(word, "-0", 2))) {
         LOGVAL_YANG(ctx, LY_VCODE_INVAL, word_len, word, ly_stmt2str(val_kw));
-        free(buf);
-        return LY_EVALID;
+        goto error;
     }
 
     errno = 0;
     if (val_kw == YANG_VALUE) {
         num = strtol(word, &ptr, 10);
+        if (num < INT64_C(-2147483648) || num > INT64_C(2147483647)) {
+            LOGVAL_YANG(ctx, LY_VCODE_INVAL, word_len, word, ly_stmt2str(val_kw));
+            goto error;
+        }
     } else {
         unum = strtoul(word, &ptr, 10);
+        if (unum > UINT64_C(4294967295)) {
+            LOGVAL_YANG(ctx, LY_VCODE_INVAL, word_len, word, ly_stmt2str(val_kw));
+            goto error;
+        }
     }
     /* we have not parsed the whole argument */
     if ((size_t)(ptr - word) != word_len) {
         LOGVAL_YANG(ctx, LY_VCODE_INVAL, word_len, word, ly_stmt2str(val_kw));
-        free(buf);
-        return LY_EVALID;
+        goto error;
     }
     if (errno == ERANGE) {
         LOGVAL_YANG(ctx, LY_VCODE_OOB, word_len, word, ly_stmt2str(val_kw));
-        free(buf);
-        return LY_EVALID;
+        goto error;
     }
     if (val_kw == YANG_VALUE) {
         *value = num;
@@ -1861,6 +1866,10 @@ parse_type_enum_value_pos(struct ly_parser_ctx *ctx, const char **data, enum yan
         }
     }
     return ret;
+
+error:
+    free(buf);
+    return LY_EVALID;
 }
 
 /**
@@ -1878,15 +1887,39 @@ parse_type_enum(struct ly_parser_ctx *ctx, const char **data, enum yang_keyword 
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len;
+    size_t word_len, u;
     enum yang_keyword kw;
     struct lysp_type_enum *enm;
 
     LY_ARRAY_NEW_RET(ctx->ctx, *enums, enm, LY_EMEM);
 
     /* get value */
-    LY_CHECK_RET(get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len));
+    LY_CHECK_RET(get_argument(ctx, data, enum_kw == YANG_ENUM ? Y_STR_ARG : Y_IDENTIF_ARG, &word, &buf, &word_len));
+    if (enum_kw == YANG_ENUM) {
+        if (!word_len) {
+            LOGVAL_YANG(ctx, LYVE_SYNTAX_YANG, "Enum name must not be zero-length.");
+            free(buf);
+            return LY_EVALID;
+        } else if (isspace(word[0]) || isspace(word[word_len - 1])) {
+            LOGVAL_YANG(ctx, LYVE_SYNTAX_YANG, "Enum name must not have any leading or trailing whitespaces (\"%.*s\").",
+                        word_len, word);
+            free(buf);
+            return LY_EVALID;
+        } else {
+            for (u = 0; u < word_len; ++u) {
+                if (iscntrl(word[u])) {
+                    LOGWRN(ctx->ctx, "Control characters in enum name should be avoided (\"%.*s\", character number %d).",
+                           word_len, word, u + 1);
+                    break;
+                }
+            }
+        }
+    } else { /* YANG_BIT */
+
+    }
     INSERT_WORD(ctx, buf, enm->name, word, word_len);
+
+    CHECK_UNIQUENESS(ctx, *enums, name, ly_stmt2str(enum_kw), enm->name);
 
     YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret,) {
         switch (kw) {
@@ -2238,7 +2271,7 @@ parse_type(struct ly_parser_ctx *ctx, const char **data, struct lysp_type *type)
             LY_CHECK_RET(parse_ext(ctx, data, word, word_len, LYEXT_SUBSTMT_SELF, 0, &type->exts));
             break;
         default:
-            LOGVAL_YANG(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "when");
+            LOGVAL_YANG(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "type");
             return LY_EVALID;
         }
     }

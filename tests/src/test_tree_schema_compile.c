@@ -782,6 +782,198 @@ test_type_pattern(void **state)
     ly_ctx_destroy(ctx, NULL);
 }
 
+static void
+test_type_enum(void **state)
+{
+    *state = test_type_enum;
+
+    struct ly_ctx *ctx;
+    struct lys_module *mod;
+    struct lysc_type *type;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;feature f; leaf l {type enumeration {"
+                                        "enum automin; enum min {value -2147483648;}enum one {if-feature f; value 1;}"
+                                        "enum two; enum seven {value 7;}enum eight;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_ENUM, type->basetype);
+    assert_non_null(((struct lysc_type_enum*)type)->enums);
+    assert_int_equal(6, LY_ARRAY_SIZE(((struct lysc_type_enum*)type)->enums));
+    assert_non_null(((struct lysc_type_enum*)type)->enums[2].iffeatures);
+    assert_string_equal("automin", ((struct lysc_type_enum*)type)->enums[0].name);
+    assert_int_equal(0, ((struct lysc_type_enum*)type)->enums[0].value);
+    assert_string_equal("min", ((struct lysc_type_enum*)type)->enums[1].name);
+    assert_int_equal(-2147483648, ((struct lysc_type_enum*)type)->enums[1].value);
+    assert_string_equal("one", ((struct lysc_type_enum*)type)->enums[2].name);
+    assert_int_equal(1, ((struct lysc_type_enum*)type)->enums[2].value);
+    assert_string_equal("two", ((struct lysc_type_enum*)type)->enums[3].name);
+    assert_int_equal(2, ((struct lysc_type_enum*)type)->enums[3].value);
+    assert_string_equal("seven", ((struct lysc_type_enum*)type)->enums[4].name);
+    assert_int_equal(7, ((struct lysc_type_enum*)type)->enums[4].value);
+    assert_string_equal("eight", ((struct lysc_type_enum*)type)->enums[5].name);
+    assert_int_equal(8, ((struct lysc_type_enum*)type)->enums[5].value);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;feature f; typedef mytype {type enumeration {"
+                                        "enum 11; enum min {value -2147483648;}enum x$& {if-feature f; value 1;}"
+                                        "enum two; enum seven {value 7;}enum eight;}} leaf l { type mytype {enum seven;enum eight;}}}",
+                                        LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_ENUM, type->basetype);
+    assert_non_null(((struct lysc_type_enum*)type)->enums);
+    assert_int_equal(2, LY_ARRAY_SIZE(((struct lysc_type_enum*)type)->enums));
+    assert_string_equal("seven", ((struct lysc_type_enum*)type)->enums[0].name);
+    assert_int_equal(7, ((struct lysc_type_enum*)type)->enums[0].value);
+    assert_string_equal("eight", ((struct lysc_type_enum*)type)->enums[1].name);
+    assert_int_equal(8, ((struct lysc_type_enum*)type)->enums[1].value);
+
+
+    /* invalid cases */
+    assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; leaf l {type enumeration {"
+                                   "enum one {value -2147483649;}}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid value \"-2147483649\" of \"value\". Line number 1.");
+    assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; leaf l {type enumeration {"
+                                   "enum one {value 2147483648;}}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid value \"2147483648\" of \"value\". Line number 1.");
+    assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; leaf l {type enumeration {"
+                                   "enum one; enum one;}}}", LYS_IN_YANG));
+    logbuf_assert("Duplicate identifier \"one\" of enum statement. Line number 1.");
+    assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; leaf l {type enumeration {"
+                                   "enum '';}}}", LYS_IN_YANG));
+    logbuf_assert("Enum name must not be zero-length. Line number 1.");
+    assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; leaf l {type enumeration {"
+                                   "enum ' x';}}}", LYS_IN_YANG));
+    logbuf_assert("Enum name must not have any leading or trailing whitespaces (\" x\"). Line number 1.");
+    assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; leaf l {type enumeration {"
+                                   "enum 'x ';}}}", LYS_IN_YANG));
+    logbuf_assert("Enum name must not have any leading or trailing whitespaces (\"x \"). Line number 1.");
+    assert_non_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; leaf l {type enumeration {"
+                                  "enum 'inva\nlid';}}}", LYS_IN_YANG));
+    logbuf_assert("Control characters in enum name should be avoided (\"inva\nlid\", character number 5).");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb; leaf l {type enumeration;}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Missing enum substatement for enumeration type.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module cc {namespace urn:cc;prefix cc;typedef mytype {type enumeration {enum one;}}"
+                                             "leaf l {type mytype {enum two;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid enumeration - derived type adds new item \"two\".");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module dd {namespace urn:dd;prefix dd;typedef mytype {type enumeration {enum one;}}"
+                                             "leaf l {type mytype {enum one {value 1;}}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid enumeration - value of the item \"one\" has changed from 0 to 1 in the derived type.");
+    assert_non_null(mod = lys_parse_mem(ctx, "module ee {namespace urn:ee;prefix ee;leaf l {type enumeration {enum x {value 2147483647;}enum y;}}}",
+                                        LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid enumeration - it is not possible to auto-assign enum value for \"y\" since the highest value is already 2147483647.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module ff {namespace urn:ff;prefix ff;leaf l {type enumeration {enum x {value 1;}enum y {value 1;}}}}",
+                                        LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid enumeration - value 1 collide in items \"y\" and \"x\".");
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+
+static void
+test_type_bits(void **state)
+{
+    *state = test_type_bits;
+
+    struct ly_ctx *ctx;
+    struct lys_module *mod;
+    struct lysc_type *type;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;feature f; leaf l {type bits {"
+                                        "bit automin; bit one {if-feature f; position 1;}"
+                                        "bit two; bit seven {position 7;}bit eight;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_BITS, type->basetype);
+    assert_non_null(((struct lysc_type_bits*)type)->bits);
+    assert_int_equal(5, LY_ARRAY_SIZE(((struct lysc_type_bits*)type)->bits));
+    assert_non_null(((struct lysc_type_bits*)type)->bits[1].iffeatures);
+    assert_string_equal("automin", ((struct lysc_type_bits*)type)->bits[0].name);
+    assert_int_equal(0, ((struct lysc_type_bits*)type)->bits[0].position);
+    assert_string_equal("one", ((struct lysc_type_bits*)type)->bits[1].name);
+    assert_int_equal(1, ((struct lysc_type_bits*)type)->bits[1].position);
+    assert_string_equal("two", ((struct lysc_type_bits*)type)->bits[2].name);
+    assert_int_equal(2, ((struct lysc_type_bits*)type)->bits[2].position);
+    assert_string_equal("seven", ((struct lysc_type_bits*)type)->bits[3].name);
+    assert_int_equal(7, ((struct lysc_type_bits*)type)->bits[3].position);
+    assert_string_equal("eight", ((struct lysc_type_bits*)type)->bits[4].name);
+    assert_int_equal(8, ((struct lysc_type_bits*)type)->bits[4].position);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;feature f; typedef mytype {type bits {"
+                                        "bit automin; bit one {if-feature f; value 1;}"
+                                        "bit two; bit seven {value 7;}bit eight;}} leaf l { type mytype {bit seven;bit eight;}}}",
+                                        LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_BITS, type->basetype);
+    assert_non_null(((struct lysc_type_bits*)type)->bits);
+    assert_int_equal(2, LY_ARRAY_SIZE(((struct lysc_type_bits*)type)->bits));
+    assert_string_equal("seven", ((struct lysc_type_bits*)type)->bits[0].name);
+    assert_int_equal(7, ((struct lysc_type_bits*)type)->bits[0].position);
+    assert_string_equal("eight", ((struct lysc_type_bits*)type)->bits[1].name);
+    assert_int_equal(8, ((struct lysc_type_bits*)type)->bits[1].position);
+
+
+    /* invalid cases */
+    assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; leaf l {type bits {"
+                                   "bit one {position -1;}}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid value \"-1\" of \"position\". Line number 1.");
+    assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; leaf l {type bits {"
+                                   "bit one {value 4294967296;}}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid value \"4294967296\" of \"value\". Line number 1.");
+    assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; leaf l {type bits {"
+                                   "bit one; bit one;}}}", LYS_IN_YANG));
+    logbuf_assert("Duplicate identifier \"one\" of bit statement. Line number 1.");
+    assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; leaf l {type bits {"
+                                   "bit '11';}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid identifier first character '1'. Line number 1.");
+    assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; leaf l {type bits {"
+                                   "bit 'x1$1';}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid identifier character '$'. Line number 1.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb; leaf l {type bits;}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Missing bit substatement for bits type.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module cc {namespace urn:cc;prefix cc;typedef mytype {type bits {bit one;}}"
+                                             "leaf l {type mytype {bit two;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid bits - derived type adds new item \"two\".");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module dd {namespace urn:dd;prefix dd;typedef mytype {type bits {bit one;}}"
+                                             "leaf l {type mytype {bit one {position 1;}}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid bits - position of the item \"one\" has changed from 0 to 1 in the derived type.");
+    assert_non_null(mod = lys_parse_mem(ctx, "module ee {namespace urn:ee;prefix ee;leaf l {type bits {bit x {position 4294967295;}bit y;}}}",
+                                        LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid bits - it is not possible to auto-assign bit position for \"y\" since the highest value is already 4294967295.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module ff {namespace urn:ff;prefix ff;leaf l {type bits {bit x {value 1;}bit y {value 1;}}}}",
+                                        LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid bits - position 1 collide in items \"y\" and \"x\".");
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -791,6 +983,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_type_length, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_type_range, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_type_pattern, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_type_enum, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_type_bits, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_node_container, logger_setup, logger_teardown),
     };
 

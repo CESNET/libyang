@@ -35,7 +35,7 @@ const char* ly_data_type2str[LY_DATA_TYPE_COUNT] = {"unknown", "binary", "bits",
     "16bit unsigned integer", "32bit integer", "32bit unsigned integer", "64bit integer", "64bit unsigned integer"
 };
 
-#define FREE_ARRAY(CTX, ARRAY, FUNC) {uint64_t c__; LY_ARRAY_FOR(ARRAY, c__){FUNC(CTX, &ARRAY[c__]);}LY_ARRAY_FREE(ARRAY);}
+#define FREE_ARRAY(CTX, ARRAY, FUNC) {uint64_t c__; LY_ARRAY_FOR(ARRAY, c__){FUNC(CTX, &(ARRAY)[c__]);}LY_ARRAY_FREE(ARRAY);}
 #define FREE_MEMBER(CTX, MEMBER, FUNC) if (MEMBER) {FUNC(CTX, MEMBER);free(MEMBER);}
 #define FREE_STRING(CTX, STRING) if (STRING) {lydict_remove(CTX, STRING);}
 #define FREE_STRINGS(CTX, ARRAY) {uint64_t c__; LY_ARRAY_FOR(ARRAY, c__){FREE_STRING(CTX, ARRAY[c__]);}LY_ARRAY_FREE(ARRAY);}
@@ -588,6 +588,14 @@ lysc_pattern_free(struct ly_ctx *ctx, struct lysc_pattern **pattern)
 }
 
 static void
+lysc_enum_item_free(struct ly_ctx *ctx, struct lysc_type_enum_item *item)
+{
+    FREE_STRING(ctx, item->name);
+    FREE_ARRAY(ctx, item->iffeatures, lysc_iffeature_free);
+    FREE_ARRAY(ctx, item->exts, lysc_ext_instance_free);
+}
+
+static void
 lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
 {
     if (--type->refcount) {
@@ -597,9 +605,15 @@ lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
     case LY_TYPE_BINARY:
         FREE_MEMBER(ctx, ((struct lysc_type_bin*)type)->length, lysc_range_free);
         break;
+    case LY_TYPE_BITS:
+        FREE_ARRAY(ctx, (struct lysc_type_enum_item*)((struct lysc_type_bits*)type)->bits, lysc_enum_item_free);
+        break;
     case LY_TYPE_STRING:
         FREE_MEMBER(ctx, ((struct lysc_type_str*)type)->length, lysc_range_free);
         FREE_ARRAY(ctx, ((struct lysc_type_str*)type)->patterns, lysc_pattern_free);
+        break;
+    case LY_TYPE_ENUM:
+        FREE_ARRAY(ctx, ((struct lysc_type_enum*)type)->enums, lysc_enum_item_free);
         break;
     case LY_TYPE_INT8:
     case LY_TYPE_UINT8:
@@ -2144,6 +2158,125 @@ static uint16_t type_substmt_map[LY_DATA_TYPE_COUNT] = {
 };
 
 static LY_ERR
+lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_DATA_TYPE basetype, int options,
+                       struct lysc_type_enum_item *base_enums, struct lysc_type_enum_item **enums)
+{
+    LY_ERR ret = LY_SUCCESS;
+    unsigned int u, v, match;
+    int32_t value = 0;
+    uint32_t position = 0;
+    struct lysc_type_enum_item *e;
+
+    LY_ARRAY_FOR(enums_p, u) {
+        LY_ARRAY_NEW_RET(ctx->ctx, *enums, e, LY_EMEM);
+        DUP_STRING(ctx->ctx, e->name, enums_p[u].name);
+        if (base_enums) {
+            /* check the enum/bit presence in the base type - the set of enums/bits in the derived type must be a subset */
+            LY_ARRAY_FOR(base_enums, v) {
+                if (!strcmp(e->name, base_enums[v].name)) {
+                    break;
+                }
+            }
+            if (v == LY_ARRAY_SIZE(base_enums)) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                       "Invalid %s - derived type adds new item \"%s\".",
+                       basetype == LY_TYPE_ENUM ? "enumeration" : "bits", e->name);
+                return LY_EVALID;
+            }
+            match = v;
+        }
+
+        if (basetype == LY_TYPE_ENUM) {
+            if (enums_p[u].flags & LYS_SET_VALUE) {
+                e->value = (int32_t)enums_p[u].value;
+                if (!u || e->value >= value) {
+                    value = e->value + 1;
+                }
+                /* check collision with other values */
+                for (v = 0; v < LY_ARRAY_SIZE(*enums) - 1; ++v) {
+                    if (e->value == (*enums)[v].value) {
+                        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                               "Invalid enumeration - value %d collide in items \"%s\" and \"%s\".",
+                               e->value, e->name, (*enums)[v].name);
+                        return LY_EVALID;
+                    }
+                }
+            } else if (base_enums) {
+                /* inherit the assigned value */
+                e->value = base_enums[match].value;
+                if (!u || e->value >= value) {
+                    value = e->value + 1;
+                }
+            } else {
+                /* assign value automatically */
+                if (u && value == INT32_MIN) {
+                    /* counter overflow */
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                           "Invalid enumeration - it is not possible to auto-assign enum value for "
+                           "\"%s\" since the highest value is already 2147483647.", e->name);
+                    return LY_EVALID;
+                }
+                e->value = value++;
+            }
+        } else { /* LY_TYPE_BITS */
+            if (enums_p[u].flags & LYS_SET_VALUE) {
+                e->value = (int32_t)enums_p[u].value;
+                if (!u || (uint32_t)e->value >= position) {
+                    position = (uint32_t)e->value + 1;
+                }
+                /* check collision with other values */
+                for (v = 0; v < LY_ARRAY_SIZE(*enums) - 1; ++v) {
+                    if (e->value == (*enums)[v].value) {
+                        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                               "Invalid bits - position %u collide in items \"%s\" and \"%s\".",
+                               (uint32_t)e->value, e->name, (*enums)[v].name);
+                        return LY_EVALID;
+                    }
+                }
+            } else if (base_enums) {
+                /* inherit the assigned value */
+                e->value = base_enums[match].value;
+                if (!u || (uint32_t)e->value >= position) {
+                    position = (uint32_t)e->value + 1;
+                }
+            } else {
+                /* assign value automatically */
+                if (u && position == 0) {
+                    /* counter overflow */
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                           "Invalid bits - it is not possible to auto-assign bit position for "
+                           "\"%s\" since the highest value is already 4294967295.", e->name);
+                    return LY_EVALID;
+                }
+                e->value = position++;
+            }
+        }
+
+        if (base_enums) {
+            /* the assigned values must not change from the derived type */
+            if (e->value != base_enums[match].value) {
+                if (basetype == LY_TYPE_ENUM) {
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                       "Invalid enumeration - value of the item \"%s\" has changed from %d to %d in the derived type.",
+                       e->name, base_enums[match].value, e->value);
+                } else {
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                       "Invalid bits - position of the item \"%s\" has changed from %u to %u in the derived type.",
+                       e->name, (uint32_t)base_enums[match].value, (uint32_t)e->value);
+                }
+                return LY_EVALID;
+            }
+        }
+
+        COMPILE_ARRAY_GOTO(ctx, enums_p[u].iffeatures, e->iffeatures, options, v, lys_compile_iffeature, ret, done);
+        COMPILE_ARRAY_GOTO(ctx, enums_p[u].exts, e->exts, options, u, lys_compile_ext, ret, done);
+    }
+
+done:
+    return ret;
+}
+
+static LY_ERR
 lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int options, struct lysc_type **type)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -2157,9 +2290,11 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
     LY_DATA_TYPE basetype = LY_TYPE_UNKNOWN;
     struct lysc_type *base = NULL;
     struct ly_set tpdf_chain = {0};
-    struct lysc_type_bin* bin;
-    struct lysc_type_num* num;
-    struct lysc_type_str* str;
+    struct lysc_type_bin *bin;
+    struct lysc_type_num *num;
+    struct lysc_type_str *str;
+    struct lysc_type_bits *bits;
+    struct lysc_type_enum *enumeration;
 
     (*type) = NULL;
 
@@ -2205,6 +2340,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
         break;
     case LY_TYPE_BITS:
         *type = calloc(1, sizeof(struct lysc_type_bits));
+        bits = (struct lysc_type_bits*)(*type);
         break;
     case LY_TYPE_BOOL:
     case LY_TYPE_EMPTY:
@@ -2215,6 +2351,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
         break;
     case LY_TYPE_ENUM:
         *type = calloc(1, sizeof(struct lysc_type_enum));
+        enumeration = (struct lysc_type_enum*)(*type);
         break;
     case LY_TYPE_IDENT:
         *type = calloc(1, sizeof(struct lysc_type_identityref));
@@ -2292,6 +2429,29 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
             *type = calloc(1, sizeof(struct lysc_type_bin));
             bin = (struct lysc_type_bin*)(*type);
             break;
+        case LY_TYPE_BITS:
+            /* RFC 6020 9.6 - enum */
+            if (tctx->tpdf->type.bits) {
+                ret = lys_compile_type_enums(ctx, tctx->tpdf->type.bits, basetype, options,
+                                             base ? (struct lysc_type_enum_item*)((struct lysc_type_bits*)base)->bits : NULL,
+                                             (struct lysc_type_enum_item**)&bits->bits);
+                LY_CHECK_GOTO(ret, cleanup);
+            }
+
+            if ((u == tpdf_chain.count - 1) && !(tctx->tpdf->type.flags)) {
+                /* type derived from bits built-in type must contain at least one bit */
+                if (!bits->bits) {
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                           "Missing bit substatement for bits type \"%s\".", tctx->tpdf->name);
+                    ret = LY_EVALID;
+                    goto cleanup;
+                }
+            }
+
+            base = ((struct lysp_tpdf*)tctx->tpdf)->type.compiled = *type;
+            *type = calloc(1, sizeof(struct lysc_type_bits));
+            bits = (struct lysc_type_bits*)(*type);
+            break;
         case LY_TYPE_STRING:
             /* RFC 6020 9.4.4 - length */
             if (tctx->tpdf->type.length) {
@@ -2314,6 +2474,28 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
             base = ((struct lysp_tpdf*)tctx->tpdf)->type.compiled = *type;
             *type = calloc(1, sizeof(struct lysc_type_str));
             str = (struct lysc_type_str*)(*type);
+            break;
+        case LY_TYPE_ENUM:
+            /* RFC 6020 9.6 - enum */
+            if (tctx->tpdf->type.enums) {
+                ret = lys_compile_type_enums(ctx, tctx->tpdf->type.enums, basetype, options,
+                                             base ? ((struct lysc_type_enum*)base)->enums : NULL, &enumeration->enums);
+                LY_CHECK_GOTO(ret, cleanup);
+            }
+
+            if ((u == tpdf_chain.count - 1) && !(tctx->tpdf->type.flags)) {
+                /* type derived from enumerations built-in type must contain at least one enum */
+                if (!enumeration->enums) {
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                           "Missing enum substatement for enumeration type \"%s\".", tctx->tpdf->name);
+                    ret = LY_EVALID;
+                    goto cleanup;
+                }
+            }
+
+            base = ((struct lysp_tpdf*)tctx->tpdf)->type.compiled = *type;
+            *type = calloc(1, sizeof(struct lysc_type_enum));
+            enumeration = (struct lysc_type_enum*)(*type);
             break;
         case LY_TYPE_INT8:
         case LY_TYPE_UINT8:
@@ -2359,6 +2541,14 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
                                    options, u, lys_compile_ext, ret, cleanup);
             }
             break;
+        case LY_TYPE_BITS:
+            if (leaf_p->type.bits) {
+                ret = lys_compile_type_enums(ctx, leaf_p->type.bits, basetype, options,
+                                             base ? (struct lysc_type_enum_item*)((struct lysc_type_bits*)base)->bits : NULL,
+                                             (struct lysc_type_enum_item**)&bits->bits);
+                LY_CHECK_GOTO(ret, cleanup);
+            }
+            break;
         case LY_TYPE_STRING:
             if (leaf_p->type.length) {
                 ret = lys_compile_type_range(ctx, leaf_p->type.length, basetype, 1,
@@ -2376,6 +2566,13 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
                 LY_CHECK_GOTO(ret, cleanup);
             } else if (base && ((struct lysc_type_str*)base)->patterns) {
                 str->patterns = lysc_patterns_dup(ctx->ctx, ((struct lysc_type_str*)base)->patterns);
+            }
+            break;
+        case LY_TYPE_ENUM:
+            if (leaf_p->type.enums) {
+                ret = lys_compile_type_enums(ctx, leaf_p->type.enums, basetype, options,
+                                             base ? ((struct lysc_type_enum*)base)->enums : NULL, &enumeration->enums);
+                LY_CHECK_GOTO(ret, cleanup);
             }
             break;
         case LY_TYPE_INT8:
@@ -2405,6 +2602,27 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
         free(*type);
         (*type) = base;
         ++(*type)->refcount;
+    } else {
+        /* there are some limitations on types derived directly from built-in types */
+        if (basetype == LY_TYPE_BITS) {
+            if (!bits->bits) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                       "Missing bit substatement for bits type.");
+                free(*type);
+                *type = NULL;
+                ret = LY_EVALID;
+                goto cleanup;
+            }
+        } else if (basetype == LY_TYPE_ENUM) {
+            if (!enumeration->enums) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                       "Missing enum substatement for enumeration type.");
+                free(*type);
+                *type = NULL;
+                ret = LY_EVALID;
+                goto cleanup;
+            }
+        }
     }
 
     COMPILE_ARRAY_GOTO(ctx, type_p->exts, (*type)->exts, options, u, lys_compile_ext, ret, cleanup);

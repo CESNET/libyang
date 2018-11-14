@@ -1061,9 +1061,10 @@ struct lysc_type_enum {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
-    struct {
+    struct lysc_type_enum_item {
         const char *name;            /**< enumeration identifier */
         struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+        struct lysc_ext_instance *exts;    /**< list of the extension instances ([sized array](@ref sizedarrays)) */
         int32_t value;               /**< integer value associated with the enumeration */
     } *enums;                        /**< enumerations list ([sized array](@ref sizedarrays)), mandatory (at least 1 item) */
 };
@@ -1095,9 +1096,10 @@ struct lysc_type_bits {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
-    struct {
+    struct lysc_type_bits_item {
         const char *name;            /**< bit identifier */
         struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+        struct lysc_ext_instance *exts;    /**< list of the extension instances ([sized array](@ref sizedarrays)) */
         uint32_t position;           /**< non-negative integer value associated with the bit */
     } *bits;                         /**< bits list ([sized array](@ref sizedarrays)), mandatory (at least 1 item) */
 };
